@@ -1,14 +1,16 @@
-/**
- *  @copyright defined in eos/LICENSE.txt
- */
-
 #include <rem.system/rem.system.hpp>
+#include <rem.token/rem.token.hpp>
 #include <rem.system/rex.results.hpp>
 
 namespace eosiosystem {
 
+   using eosio::current_time_point;
+   using eosio::token;
+
    void system_contract::deposit( const name& owner, const asset& amount )
    {
+      check( false, "REX is not supported" );
+
       require_auth( owner );
 
       check( amount.symbol == core_symbol(), "must deposit core token" );
@@ -23,6 +25,8 @@ namespace eosiosystem {
 
    void system_contract::withdraw( const name& owner, const asset& amount )
    {
+      check( false, "REX is not supported" );
+
       require_auth( owner );
 
       check( amount.symbol == core_symbol(), "must withdraw core token" );
@@ -38,6 +42,8 @@ namespace eosiosystem {
 
    void system_contract::buyrex( const name& from, const asset& amount )
    {
+      check( false, "REX is not supported" );
+
       require_auth( from );
 
       check( amount.symbol == core_symbol(), "asset must be core token" );
@@ -48,13 +54,15 @@ namespace eosiosystem {
       const asset delta_rex_stake = add_to_rex_balance( from, amount, rex_received );
       runrex(2);
       update_rex_account( from, asset( 0, core_symbol() ), delta_rex_stake );
-      // dummy action added so that amount of REX tokens purchased shows up in action trace 
+      // dummy action added so that amount of REX tokens purchased shows up in action trace
       rex_results::buyresult_action buyrex_act( rex_account, std::vector<eosio::permission_level>{ } );
       buyrex_act.send( rex_received );
    }
 
    void system_contract::unstaketorex( const name& owner, const name& receiver, const asset& from_net, const asset& from_cpu )
    {
+      check( false, "REX is not supported" );
+
       require_auth( owner );
 
       check( from_net.symbol == core_symbol() && from_cpu.symbol == core_symbol(), "asset must be core token" );
@@ -63,7 +71,7 @@ namespace eosiosystem {
       check_voting_requirement( owner );
 
       {
-         del_bandwidth_table dbw_table( _self, owner.value );
+         del_bandwidth_table dbw_table( get_self(), owner.value );
          auto del_itr = dbw_table.require_find( receiver.value, "delegated bandwidth record does not exist" );
          check( from_net.amount <= del_itr->net_weight.amount, "amount exceeds tokens staked for net");
          check( from_cpu.amount <= del_itr->cpu_weight.amount, "amount exceeds tokens staked for cpu");
@@ -95,6 +103,8 @@ namespace eosiosystem {
 
    void system_contract::sellrex( const name& from, const asset& rex )
    {
+      check( false, "REX is not supported" );
+
       require_auth( from );
 
       runrex(2);
@@ -145,6 +155,8 @@ namespace eosiosystem {
 
    void system_contract::cnclrexorder( const name& owner )
    {
+      check( false, "REX is not supported" );
+
       require_auth( owner );
 
       auto itr = _rexorders.require_find( owner.value, "no sellrex order is scheduled" );
@@ -154,56 +166,70 @@ namespace eosiosystem {
 
    void system_contract::rentcpu( const name& from, const name& receiver, const asset& loan_payment, const asset& loan_fund )
    {
+      check( false, "REX is not supported" );
+
       require_auth( from );
 
-      rex_cpu_loan_table cpu_loans( _self, _self.value );
+      rex_cpu_loan_table cpu_loans( get_self(), get_self().value );
       int64_t rented_tokens = rent_rex( cpu_loans, from, receiver, loan_payment, loan_fund );
       update_resource_limits( from, receiver, 0, rented_tokens );
    }
 
    void system_contract::rentnet( const name& from, const name& receiver, const asset& loan_payment, const asset& loan_fund )
    {
+      check( false, "REX is not supported" );
+
       require_auth( from );
 
-      rex_net_loan_table net_loans( _self, _self.value );
+      rex_net_loan_table net_loans( get_self(), get_self().value );
       int64_t rented_tokens = rent_rex( net_loans, from, receiver, loan_payment, loan_fund );
       update_resource_limits( from, receiver, rented_tokens, 0 );
    }
 
    void system_contract::fundcpuloan( const name& from, uint64_t loan_num, const asset& payment )
    {
+      check( false, "REX is not supported" );
+
       require_auth( from );
 
-      rex_cpu_loan_table cpu_loans( _self, _self.value );
+      rex_cpu_loan_table cpu_loans( get_self(), get_self().value );
       fund_rex_loan( cpu_loans, from, loan_num, payment  );
    }
 
    void system_contract::fundnetloan( const name& from, uint64_t loan_num, const asset& payment )
    {
+      check( false, "REX is not supported" );
+
       require_auth( from );
 
-      rex_net_loan_table net_loans( _self, _self.value );
+      rex_net_loan_table net_loans( get_self(), get_self().value );
       fund_rex_loan( net_loans, from, loan_num, payment );
    }
 
    void system_contract::defcpuloan( const name& from, uint64_t loan_num, const asset& amount )
    {
+      check( false, "REX is not supported" );
+
       require_auth( from );
 
-      rex_cpu_loan_table cpu_loans( _self, _self.value );
+      rex_cpu_loan_table cpu_loans( get_self(), get_self().value );
       defund_rex_loan( cpu_loans, from, loan_num, amount );
    }
 
    void system_contract::defnetloan( const name& from, uint64_t loan_num, const asset& amount )
    {
+      check( false, "REX is not supported" );
+
       require_auth( from );
 
-      rex_net_loan_table net_loans( _self, _self.value );
+      rex_net_loan_table net_loans( get_self(), get_self().value );
       defund_rex_loan( net_loans, from, loan_num, amount );
    }
 
    void system_contract::updaterex( const name& owner )
    {
+      check( false, "REX is not supported" );
+
       require_auth( owner );
 
       runrex(2);
@@ -230,6 +256,8 @@ namespace eosiosystem {
 
    void system_contract::setrex( const asset& balance )
    {
+      check( false, "REX is not supported" );
+
       require_auth( "rem"_n );
 
       check( balance.amount > 0, "balance must be set to have a positive amount" );
@@ -242,6 +270,8 @@ namespace eosiosystem {
 
    void system_contract::rexexec( const name& user, uint16_t max )
    {
+      check( false, "REX is not supported" );
+
       require_auth( user );
 
       runrex( max );
@@ -249,6 +279,8 @@ namespace eosiosystem {
 
    void system_contract::consolidate( const name& owner )
    {
+      check( false, "REX is not supported" );
+
       require_auth( owner );
 
       runrex(2);
@@ -260,6 +292,8 @@ namespace eosiosystem {
 
    void system_contract::mvtosavings( const name& owner, const asset& rex )
    {
+      check( false, "REX is not supported" );
+
       require_auth( owner );
 
       runrex(2);
@@ -294,6 +328,8 @@ namespace eosiosystem {
 
    void system_contract::mvfrsavings( const name& owner, const asset& rex )
    {
+      check( false, "REX is not supported" );
+
       require_auth( owner );
 
       runrex(2);
@@ -317,6 +353,8 @@ namespace eosiosystem {
 
    void system_contract::closerex( const name& owner )
    {
+      check( false, "REX is not supported" );
+
       require_auth( owner );
 
       if ( rex_system_initialized() )
@@ -326,11 +364,11 @@ namespace eosiosystem {
 
       /// check for any outstanding loans or rex fund
       {
-         rex_cpu_loan_table cpu_loans( _self, _self.value );
+         rex_cpu_loan_table cpu_loans( get_self(), get_self().value );
          auto cpu_idx = cpu_loans.get_index<"byowner"_n>();
          bool no_outstanding_cpu_loans = ( cpu_idx.find( owner.value ) == cpu_idx.end() );
 
-         rex_net_loan_table net_loans( _self, _self.value );
+         rex_net_loan_table net_loans( get_self(), get_self().value );
          auto net_idx = net_loans.get_index<"byowner"_n>();
          bool no_outstanding_net_loans = ( net_idx.find( owner.value ) == net_idx.end() );
 
@@ -366,7 +404,7 @@ namespace eosiosystem {
          return;
       }
 
-      user_resources_table totals_tbl( _self, receiver.value );
+      user_resources_table totals_tbl( get_self(), receiver.value );
       auto tot_itr = totals_tbl.find( receiver.value );
       if ( tot_itr == totals_tbl.end() ) {
          check( 0 <= delta_net && 0 <= delta_cpu, "logic error, should not occur");
@@ -472,7 +510,7 @@ namespace eosiosystem {
    void system_contract::remove_loan_from_rex_pool( const rex_loan& loan )
    {
       const auto& pool = _rexpool.begin();
-      const int64_t delta_total_rent = exchange_state::get_bancor_output( pool->total_unlent.amount,
+      const int64_t delta_total_rent = get_bancor_output( pool->total_unlent.amount,
                                                                           pool->total_rent.amount,
                                                                           loan.total_staked.amount );
       _rexpool.modify( pool, same_payer, [&]( auto& rt ) {
@@ -500,6 +538,19 @@ namespace eosiosystem {
       return delta_stake;
    }
 
+   int64_t system_contract::get_bancor_output( int64_t inp_reserve, int64_t out_reserve, int64_t inp )
+   {
+      const double ib = inp_reserve;
+      const double ob = out_reserve;
+      const double in = inp;
+
+      int64_t out = int64_t( (in * ob) / (ib + in) );
+
+      if ( out < 0 ) out = 0;
+
+      return out;
+   }
+
    /**
     * @brief Performs maintenance operations on expired NET and CPU loans and sellrex orders
     *
@@ -517,15 +568,15 @@ namespace eosiosystem {
          bool    delete_loan   = false;
          int64_t delta_stake   = 0;
          /// calculate rented tokens at current price
-         int64_t rented_tokens = exchange_state::get_bancor_output( pool->total_rent.amount,
+         int64_t rented_tokens = get_bancor_output( pool->total_rent.amount,
                                                                     pool->total_unlent.amount,
                                                                     itr->payment.amount );
          /// conditions for loan renewal
-         bool renew_loan = itr->payment <= itr->balance        /// loan has sufficient balance 
-                        && itr->payment.amount < rented_tokens /// loan has favorable return 
+         bool renew_loan = itr->payment <= itr->balance        /// loan has sufficient balance
+                        && itr->payment.amount < rented_tokens /// loan has favorable return
                         && rex_loans_available();              /// no pending sell orders
          if ( renew_loan ) {
-            /// update rex_pool in order to account for renewed loan 
+            /// update rex_pool in order to account for renewed loan
             add_loan_to_rex_pool( itr->payment, rented_tokens, false );
             /// update renewed loan fields
             delta_stake = update_renewed_loan( idx, itr, rented_tokens );
@@ -551,7 +602,7 @@ namespace eosiosystem {
 
       /// process cpu loans
       {
-         rex_cpu_loan_table cpu_loans( _self, _self.value );
+         rex_cpu_loan_table cpu_loans( get_self(), get_self().value );
          auto cpu_idx = cpu_loans.get_index<"byexpr"_n>();
          for ( uint16_t i = 0; i < max; ++i ) {
             auto itr = cpu_idx.begin();
@@ -568,7 +619,7 @@ namespace eosiosystem {
 
       /// process net loans
       {
-         rex_net_loan_table net_loans( _self, _self.value );
+         rex_net_loan_table net_loans( get_self(), get_self().value );
          auto net_idx = net_loans.get_index<"byexpr"_n>();
          for ( uint16_t i = 0; i < max; ++i ) {
             auto itr = net_idx.begin();
@@ -625,7 +676,7 @@ namespace eosiosystem {
 
       const auto& pool = _rexpool.begin(); /// already checked that _rexpool.begin() != _rexpool.end() in rex_loans_available()
 
-      int64_t rented_tokens = exchange_state::get_bancor_output( pool->total_rent.amount,
+      int64_t rented_tokens = get_bancor_output( pool->total_rent.amount,
                                                                  pool->total_unlent.amount,
                                                                  payment.amount );
       check( payment.amount < rented_tokens, "loan price does not favor renting" );
@@ -920,7 +971,7 @@ namespace eosiosystem {
       auto itr = _rexpool.begin();
       if ( !rex_system_initialized() ) {
          /// initialize REX pool
-         _rexpool.emplace( _self, [&]( auto& rp ) {
+         _rexpool.emplace( get_self(), [&]( auto& rp ) {
             rex_received.amount = payment.amount * rex_ratio;
             rp.total_lendable   = payment;
             rp.total_lent       = asset( 0, core_symbol() );
@@ -1006,7 +1057,7 @@ namespace eosiosystem {
     * @brief Reads amount of REX in savings bucket and removes the bucket from maturities
     *
     * Reads and (temporarily) removes REX savings bucket from REX maturities in order to
-    * allow uniform processing of remaining buckets as savings is a special case. This 
+    * allow uniform processing of remaining buckets as savings is a special case. This
     * function is used in conjunction with put_rex_savings.
     *
     * @param bitr - iterator pointing to rex_balance object
@@ -1060,7 +1111,7 @@ namespace eosiosystem {
          current_vote_stake.amount = ( uint128_t(bitr->rex_balance.amount) * _rexpool.begin()->total_lendable.amount )
                                      / _rexpool.begin()->total_rex.amount;
          _rexbalance.modify( bitr, same_payer, [&]( auto& rb ) {
-            rb.vote_stake.amount = current_vote_stake.amount; 
+            rb.vote_stake.amount = current_vote_stake.amount;
          });
          delta_stake = current_vote_stake.amount - init_vote_stake.amount;
       }

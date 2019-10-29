@@ -44,14 +44,14 @@ public:
       act.name    = name;
       act.data    = abi_ser.variant_to_binary( action_type_name, data,abi_serializer_max_time );
 
-      return base_tester::push_action( std::move(act), uint64_t(signer));
+      return base_tester::push_action( std::move(act), signer.to_uint64_t() );
    }
 
    fc::variant get_stats( const string& symbolname )
    {
       auto symb = eosio::chain::symbol::from_string(symbolname);
       auto symbol_code = symb.to_symbol_code().value;
-      vector<char> data = get_row_by_account( N(rem.token), symbol_code, N(stat), symbol_code );
+      vector<char> data = get_row_by_account( N(rem.token), name(symbol_code), N(stat), account_name(symbol_code) );
       return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "currency_stats", data, abi_serializer_max_time );
    }
 
@@ -59,7 +59,7 @@ public:
    {
       auto symb = eosio::chain::symbol::from_string(symbolname);
       auto symbol_code = symb.to_symbol_code().value;
-      vector<char> data = get_row_by_account( N(rem.token), acc, N(accounts), symbol_code );
+      vector<char> data = get_row_by_account( N(rem.token), acc, N(accounts), account_name(symbol_code) );
       return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "account", data, abi_serializer_max_time );
    }
 
@@ -367,7 +367,10 @@ BOOST_FIXTURE_TEST_CASE( open_tests, eosio_token_tester ) try {
    auto bob_balance = get_account(N(bob), "0,CERO");
    BOOST_REQUIRE_EQUAL(true, bob_balance.is_null() );
 
-   BOOST_REQUIRE_EQUAL( success(), open( N(bob), "0,CERO", N(alice) ) );
+   BOOST_REQUIRE_EQUAL( wasm_assert_msg("owner account does not exist"),
+                        open( N(nonexistent), "0,CERO", N(alice) ) );
+   BOOST_REQUIRE_EQUAL( success(),
+                        open( N(bob),         "0,CERO", N(alice) ) );
 
    bob_balance = get_account(N(bob), "0,CERO");
    REQUIRE_MATCHING_OBJECT( bob_balance, mvo()

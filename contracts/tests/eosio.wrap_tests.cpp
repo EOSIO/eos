@@ -184,7 +184,7 @@ BOOST_FIXTURE_TEST_CASE( wrap_exec_direct, eosio_wrap_tester ) try {
       ) );
       */
       wrap_trx.sign( get_private_key( N(alice), "active" ), control->get_chain_id() );
-      for( const auto& actor : {"prod1", "prod2", "prod3", "prod4"} ) {
+      for( const auto& actor : {N(prod1), N(prod2), N(prod3), N(prod4)} ) {
          wrap_trx.sign( get_private_key( actor, "active" ), control->get_chain_id() );
       }
       push_transaction( wrap_trx );
@@ -194,8 +194,8 @@ BOOST_FIXTURE_TEST_CASE( wrap_exec_direct, eosio_wrap_tester ) try {
 
    BOOST_REQUIRE( bool(trace) );
    BOOST_REQUIRE_EQUAL( 1, trace->action_traces.size() );
-   BOOST_REQUIRE_EQUAL( "rem", name{trace->action_traces[0].act.account} );
-   BOOST_REQUIRE_EQUAL( "reqauth", name{trace->action_traces[0].act.name} );
+   BOOST_REQUIRE_EQUAL( config::system_account_name, name{trace->action_traces[0].act.account} );
+   BOOST_REQUIRE_EQUAL( N(reqauth), name{trace->action_traces[0].act.name} );
    BOOST_REQUIRE_EQUAL( transaction_receipt::executed, trace->receipt->status );
 
 } FC_LOG_AND_RETHROW()
@@ -238,13 +238,13 @@ BOOST_FIXTURE_TEST_CASE( wrap_with_msig, eosio_wrap_tester ) try {
    BOOST_REQUIRE_EQUAL( 2, traces.size() );
 
    BOOST_REQUIRE_EQUAL( 1, traces[0]->action_traces.size() );
-   BOOST_REQUIRE_EQUAL( "rem.wrap", name{traces[0]->action_traces[0].act.account} );
-   BOOST_REQUIRE_EQUAL( "exec", name{traces[0]->action_traces[0].act.name} );
+   BOOST_REQUIRE_EQUAL( N(rem.wrap), name{traces[0]->action_traces[0].act.account} );
+   BOOST_REQUIRE_EQUAL( N(exec), name{traces[0]->action_traces[0].act.name} );
    BOOST_REQUIRE_EQUAL( transaction_receipt::executed, traces[0]->receipt->status );
 
    BOOST_REQUIRE_EQUAL( 1, traces[1]->action_traces.size() );
-   BOOST_REQUIRE_EQUAL( "rem", name{traces[1]->action_traces[0].act.account} );
-   BOOST_REQUIRE_EQUAL( "reqauth", name{traces[1]->action_traces[0].act.name} );
+   BOOST_REQUIRE_EQUAL( config::system_account_name, name{traces[1]->action_traces[0].act.account} );
+   BOOST_REQUIRE_EQUAL( N(reqauth), name{traces[1]->action_traces[0].act.name} );
    BOOST_REQUIRE_EQUAL( transaction_receipt::executed, traces[1]->receipt->status );
 
 } FC_LOG_AND_RETHROW()
@@ -354,13 +354,13 @@ BOOST_FIXTURE_TEST_CASE( wrap_with_msig_producers_change, eosio_wrap_tester ) tr
    BOOST_REQUIRE_EQUAL( 2, traces.size() );
 
    BOOST_REQUIRE_EQUAL( 1, traces[0]->action_traces.size() );
-   BOOST_REQUIRE_EQUAL( "rem.wrap", name{traces[0]->action_traces[0].act.account} );
-   BOOST_REQUIRE_EQUAL( "exec", name{traces[0]->action_traces[0].act.name} );
+   BOOST_REQUIRE_EQUAL( N(rem.wrap), name{traces[0]->action_traces[0].act.account} );
+   BOOST_REQUIRE_EQUAL( N(exec), name{traces[0]->action_traces[0].act.name} );
    BOOST_REQUIRE_EQUAL( transaction_receipt::executed, traces[0]->receipt->status );
 
    BOOST_REQUIRE_EQUAL( 1, traces[1]->action_traces.size() );
-   BOOST_REQUIRE_EQUAL( "rem", name{traces[1]->action_traces[0].act.account} );
-   BOOST_REQUIRE_EQUAL( "reqauth", name{traces[1]->action_traces[0].act.name} );
+   BOOST_REQUIRE_EQUAL( config::system_account_name, name{traces[1]->action_traces[0].act.account} );
+   BOOST_REQUIRE_EQUAL( N(reqauth), name{traces[1]->action_traces[0].act.name} );
    BOOST_REQUIRE_EQUAL( transaction_receipt::executed, traces[1]->receipt->status );
 
 } FC_LOG_AND_RETHROW()

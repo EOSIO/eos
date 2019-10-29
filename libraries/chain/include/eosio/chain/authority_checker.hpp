@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
 #pragma once
 
 #include <eosio/chain/types.hpp>
@@ -19,31 +15,9 @@
 namespace eosio { namespace chain {
 
 namespace detail {
-
-   // Order of the template types in the static_variant matters to meta_permission_comparator.
-   using meta_permission = static_variant<permission_level_weight, key_weight, wait_weight>;
-
-   struct get_weight_visitor {
-      using result_type = uint32_t;
-
-      template<typename Permission>
-      uint32_t operator()( const Permission& permission ) { return permission.weight; }
-   };
-
-   // Orders permissions descending by weight, and breaks ties with Wait permissions being less than
-   // Key permissions which are in turn less than Account permissions
-   struct meta_permission_comparator {
-      bool operator()( const meta_permission& lhs, const meta_permission& rhs ) const {
-         get_weight_visitor scale;
-         auto lhs_weight = lhs.visit(scale);
-         auto lhs_type   = lhs.which();
-         auto rhs_weight = rhs.visit(scale);
-         auto rhs_type   = rhs.which();
-         return std::tie( lhs_weight, lhs_type ) > std::tie( rhs_weight, rhs_type );
-      }
-   };
-
-   using meta_permission_set = boost::container::flat_multiset<meta_permission, meta_permission_comparator>;
+   using meta_permission_key = std::tuple<uint32_t, int>;
+   using meta_permission_value = std::function<uint32_t()>;
+   using meta_permission_map = boost::container::flat_multimap<meta_permission_key, meta_permission_value, std::greater<>>;
 
 } /// namespace detail
 
@@ -186,17 +160,27 @@ namespace detail {
             });
 
             // Sort key permissions and account permissions together into a single set of meta_permissions
-            detail::meta_permission_set permissions;
+            detail::meta_permission_map permissions;
 
-            permissions.insert(authority.waits.begin(), authority.waits.end());
-            permissions.insert(authority.keys.begin(), authority.keys.end());
-            permissions.insert(authority.accounts.begin(), authority.accounts.end());
+            weight_tally_visitor visitor(*this, cached_permissions, depth);
+            auto emplace_permission = [&permissions, &visitor](int priority, const auto& mp) {
+               permissions.emplace(
+                     std::make_tuple(mp.weight, priority),
+                     [&mp, &visitor]() {
+                        return visitor(mp);
+                     }
+               );
+            };
+
+            permissions.reserve(authority.waits.size() + authority.keys.size() + authority.accounts.size());
+            std::for_each(authority.accounts.begin(), authority.accounts.end(), boost::bind<void>(emplace_permission, 1, _1));
+            std::for_each(authority.keys.begin(), authority.keys.end(), boost::bind<void>(emplace_permission, 2, _1));
+            std::for_each(authority.waits.begin(), authority.waits.end(), boost::bind<void>(emplace_permission, 3, _1));
 
             // Check all permissions, from highest weight to lowest, seeing if provided authorization factors satisfies them or not
-            weight_tally_visitor visitor(*this, cached_permissions, depth);
-            for( const auto& permission : permissions )
+            for( const auto& p: permissions )
                // If we've got enough weight, to satisfy the authority, return!
-               if( permission.visit(visitor) >= authority.threshold ) {
+               if( p.second() >= authority.threshold ) {
                   KeyReverter.cancel();
                   return true;
                }
@@ -224,7 +208,8 @@ namespace detail {
                return total_weight;
             }
 
-            uint32_t operator()(const key_weight& permission) {
+            template<typename KeyWeight, typename = std::enable_if_t<detail::is_any_of_v<KeyWeight, shared_key_weight, key_weight>>>
+            uint32_t operator()(const KeyWeight& permission) {
                auto itr = boost::find( checker.provided_keys, permission.key );
                if( itr != checker.provided_keys.end() ) {
                   checker._used_keys[itr - checker.provided_keys.begin()] = true;

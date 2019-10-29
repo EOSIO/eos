@@ -1,13 +1,9 @@
-/**
- *  @copyright defined in eosio.cdt/LICENSE.txt
- */
-
 #include <rem.wrap/rem.wrap.hpp>
 
 namespace eosio {
 
 void wrap::exec( ignore<name>, ignore<transaction> ) {
-   require_auth( _self );
+   require_auth( get_self() );
 
    name executer;
    _ds >> executer;
@@ -18,5 +14,3 @@ void wrap::exec( ignore<name>, ignore<transaction> ) {
 }
 
 } /// namespace eosio
-
-EOSIO_DISPATCH( eosio::wrap, (exec) )

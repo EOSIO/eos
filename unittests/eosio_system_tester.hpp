@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
 #pragma once
 
 #include <eosio/chain/abi_serializer.hpp>
@@ -40,7 +36,7 @@ public:
       produce_blocks( 2 );
 
       create_accounts({ N(rem.token), N(rem.ram), N(rem.ramfee), N(rem.stake),
-               N(rem.bpay), N(rem.vpay), N(rem.saving), N(rem.names) });
+               N(rem.bpay), N(rem.vpay), N(rem.saving), N(rem.names), N(rem.rex) });
 
       produce_blocks( 100 );
 
@@ -56,7 +52,7 @@ public:
 
       create_currency( N(rem.token), config::system_account_name, core_from_string("1000000000.0000") );
       issue(config::system_account_name,      core_from_string("1000000000.0000"));
-      BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"), get_balance( "rem" ) );
+      BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"), get_balance( name("rem") ) );
 
       set_code( config::system_account_name, contracts::rem_system_wasm() );
       set_abi( config::system_account_name, contracts::rem_system_abi().data() );
@@ -79,7 +75,8 @@ public:
       create_account_with_resources( N(bob111111111), config::system_account_name, false );
       create_account_with_resources( N(carol1111111), config::system_account_name, false );
 
-      BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"), get_balance("rem")  + get_balance("rem.ramfee") + get_balance("rem.stake") + get_balance("rem.ram") );
+      BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"),
+            get_balance(name("rem")) + get_balance(name("rem.ramfee")) + get_balance(name("rem.stake")) + get_balance(name("rem.ram")) );
    }
 
    action_result open( account_name  owner,
@@ -173,7 +170,8 @@ public:
          act.name = name;
          act.data = abi_ser.variant_to_binary( action_type_name, data, abi_serializer_max_time );
 
-         return base_tester::push_action( std::move(act), auth ? uint64_t(signer) : signer == N(bob111111111) ? N(alice1111111) : N(bob111111111) );
+         return base_tester::push_action( std::move(act), auth ? signer.to_uint64_t() :
+                                                signer == N(bob111111111) ? N(alice1111111).to_uint64_t() : N(bob111111111).to_uint64_t() );
    }
 
    action_result stake( const account_name& from, const account_name& to, const asset& quantity, bool transfer = false ) {
@@ -268,7 +266,7 @@ public:
    }
 
    asset get_balance( const account_name& act ) {
-      vector<char> data = get_row_by_account( N(rem.token), act, N(accounts), symbol(CORE_SYMBOL).to_symbol_code().value );
+      vector<char> data = get_row_by_account( N(rem.token), act, N(accounts), name(symbol(CORE_SYMBOL).to_symbol_code().value) );
       return data.empty() ? asset(0, symbol(CORE_SYMBOL)) : token_abi_ser.binary_to_variant("account", data, abi_serializer_max_time)["balance"].as<asset>();
    }
 
@@ -323,7 +321,7 @@ public:
    fc::variant get_stats( const string& symbolname ) {
       auto symb = eosio::chain::symbol::from_string(symbolname);
       auto symbol_code = symb.to_symbol_code().value;
-      vector<char> data = get_row_by_account( N(rem.token), symbol_code, N(stat), symbol_code );
+      vector<char> data = get_row_by_account( N(rem.token), name(symbol_code), N(stat), name(symbol_code) );
       return data.empty() ? fc::variant() : token_abi_ser.binary_to_variant( "currency_stats", data, abi_serializer_max_time );
    }
 
@@ -369,8 +367,8 @@ public:
 
    vector<name> active_and_vote_producers() {
       //stake more than 15% of total EOS supply to activate chain
-      transfer( "rem", "alice1111111", core_from_string("650000000.0000"), "rem" );
-      BOOST_REQUIRE_EQUAL( success(), stake( "alice1111111", "alice1111111", core_from_string("600000000.0000") ) );
+      transfer( name("rem"), name("alice1111111"), core_from_string("650000000.0000"), name("rem") );
+      BOOST_REQUIRE_EQUAL( success(), stake( name("alice1111111"), name("alice1111111"), core_from_string("600000000.0000") ) );
 
       // create accounts {defproducera, defproducerb, ..., defproducerz} and register as producers
       std::vector<account_name> producer_names;
@@ -402,8 +400,8 @@ public:
 
       //vote for producers
       {
-         transfer( config::system_account_name, "alice1111111", core_from_string("100000000.0000"), config::system_account_name );
-         BOOST_REQUIRE_EQUAL(success(), stake( "alice1111111", core_from_string("60000000.0000") ) );
+         transfer( config::system_account_name, name("alice1111111"), core_from_string("100000000.0000"), config::system_account_name );
+         BOOST_REQUIRE_EQUAL(success(), stake( name("alice1111111"), core_from_string("60000000.0000") ) );
          BOOST_REQUIRE_EQUAL(success(), push_action(N(alice1111111), N(voteproducer), mvo()
                                                     ("voter",  "alice1111111")
                                                     ("proxy", name(0).to_string())

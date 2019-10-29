@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
 #include <eosio/template_plugin/template_plugin.hpp>
 
 namespace eosio {

@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
 #pragma once
 #include <chainbase/chainbase.hpp>
 #include <eosio/chain/transaction.hpp>
@@ -11,6 +7,75 @@
 
 namespace eosio { namespace chain {
 
+using shared_public_key_data = fc::static_variant<fc::ecc::public_key_shim, fc::crypto::r1::public_key_shim, shared_string>;
+
+struct shared_public_key {
+   shared_public_key( shared_public_key_data&& p ) :
+      pubkey(std::move(p)) {}
+
+   operator public_key_type() const {
+      fc::crypto::public_key::storage_type public_key_storage;
+      pubkey.visit(overloaded {
+         [&](const auto& k1r1) {
+            public_key_storage = k1r1;
+         },
+         [&](const shared_string& wa) {
+            fc::datastream ds(wa.data(), wa.size());
+            fc::crypto::webauthn::public_key pub;
+            fc::raw::unpack(ds, pub);
+            public_key_storage = pub;
+         }
+      });
+      return std::move(public_key_storage);
+   }
+
+   operator string() const {
+      return (string)this->operator public_key_type();
+   }
+
+   shared_public_key_data pubkey;
+
+   friend bool operator == ( const shared_public_key& lhs, const shared_public_key& rhs ) {
+      if(lhs.pubkey.which() != rhs.pubkey.which())
+         return false;
+
+      return lhs.pubkey.visit<bool>(overloaded {
+         [&](const fc::ecc::public_key_shim& k1) {
+            return k1._data == rhs.pubkey.get<fc::ecc::public_key_shim>()._data;
+         },
+         [&](const fc::crypto::r1::public_key_shim& r1) {
+            return r1._data == rhs.pubkey.get<fc::crypto::r1::public_key_shim>()._data;
+         },
+         [&](const shared_string& wa) {
+            return wa == rhs.pubkey.get<shared_string>();
+         }
+      });
+   }
+
+   friend bool operator==(const shared_public_key& l, const public_key_type& r) {
+      if(l.pubkey.which() != r._storage.which())
+         return false;
+
+      return l.pubkey.visit<bool>(overloaded {
+         [&](const fc::ecc::public_key_shim& k1) {
+            return k1._data == r._storage.get<fc::ecc::public_key_shim>()._data;
+         },
+         [&](const fc::crypto::r1::public_key_shim& r1) {
+            return r1._data == r._storage.get<fc::crypto::r1::public_key_shim>()._data;
+         },
+         [&](const shared_string& wa) {
+            fc::datastream ds(wa.data(), wa.size());
+            fc::crypto::webauthn::public_key pub;
+            fc::raw::unpack(ds, pub);
+            return pub == r._storage.get<fc::crypto::webauthn::public_key>();
+         }
+      });
+   }
+
+   friend bool operator==(const public_key_type& l, const shared_public_key& r) {
+      return r == l;
+   }
+};
 
 struct permission_level_weight {
    permission_level  permission;
@@ -26,6 +91,39 @@ struct key_weight {
    weight_type     weight;
 
    friend bool operator == ( const key_weight& lhs, const key_weight& rhs ) {
+      return tie( lhs.key, lhs.weight ) == tie( rhs.key, rhs.weight );
+   }
+};
+
+
+struct shared_key_weight {
+   shared_key_weight(shared_public_key_data&& k, const weight_type& w) :
+      key(std::move(k)), weight(w) {}
+
+   operator key_weight() const {
+      return key_weight{key, weight};
+   }
+
+   static shared_key_weight convert(chainbase::allocator<char> allocator, const key_weight& k) {
+      return k.key._storage.visit<shared_key_weight>(overloaded {
+         [&](const auto& k1r1) {
+            return shared_key_weight(k1r1, k.weight);
+         },
+         [&](const fc::crypto::webauthn::public_key& wa) {
+            size_t psz = fc::raw::pack_size(wa);
+            shared_string wa_ss(psz, boost::container::default_init, std::move(allocator));
+            fc::datastream<char*> ds(wa_ss.data(), wa_ss.size());
+            fc::raw::pack(ds, wa);
+
+            return shared_key_weight(std::move(wa_ss), k.weight);
+         }
+      });
+   }
+
+   shared_public_key key;
+   weight_type       weight;
+
+   friend bool operator == ( const shared_key_weight& lhs, const shared_key_weight& rhs ) {
       return tie( lhs.key, lhs.weight ) == tie( rhs.key, rhs.weight );
    }
 };
@@ -100,14 +198,18 @@ struct shared_authority {
 
    shared_authority& operator=(const authority& a) {
       threshold = a.threshold;
-      keys = decltype(keys)(a.keys.begin(), a.keys.end(), keys.get_allocator());
+      keys.clear();
+      keys.reserve(a.keys.size());
+      for(const key_weight& k : a.keys) {
+         keys.emplace_back(shared_key_weight::convert(keys.get_allocator(), k));
+      }
       accounts = decltype(accounts)(a.accounts.begin(), a.accounts.end(), accounts.get_allocator());
       waits = decltype(waits)(a.waits.begin(), a.waits.end(), waits.get_allocator());
       return *this;
    }
 
    uint32_t                                   threshold = 0;
-   shared_vector<key_weight>                  keys;
+   shared_vector<shared_key_weight>           keys;
    shared_vector<permission_level_weight>     accounts;
    shared_vector<wait_weight>                 waits;
 
@@ -202,4 +304,6 @@ FC_REFLECT(eosio::chain::permission_level_weight, (permission)(weight) )
 FC_REFLECT(eosio::chain::key_weight, (key)(weight) )
 FC_REFLECT(eosio::chain::wait_weight, (wait_sec)(weight) )
 FC_REFLECT(eosio::chain::authority, (threshold)(keys)(accounts)(waits) )
+FC_REFLECT(eosio::chain::shared_key_weight, (key)(weight) )
 FC_REFLECT(eosio::chain::shared_authority, (threshold)(keys)(accounts)(waits) )
+FC_REFLECT(eosio::chain::shared_public_key, (pubkey))

@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
 #pragma once
 
 #include <eosio/chain/exceptions.hpp>
@@ -15,10 +11,15 @@ struct chain_snapshot_header {
     *   2: Updated chain snapshot for v1.8.0 initial protocol features release:
     *         - Incompatible with version 1.
     *         - Adds new indices for: protocol_state_object and account_ram_correction_object
+    *   3: Updated for v2.0.0 protocol features:
+    *         - forwards compatible with version 2
+    *         - WebAuthn keys
+    *         - wtmsig block siganatures: the block header state changed to include producer authorities and additional signatures
+    *         - removed genesis_state and added chain ID to global_property_object
     */
 
    static constexpr uint32_t minimum_compatible_version = 2;
-   static constexpr uint32_t current_version = 2;
+   static constexpr uint32_t current_version = 3;
 
    uint32_t version = current_version;
 

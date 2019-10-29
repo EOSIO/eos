@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
 #include <algorithm>
 #include <vector>
 #include <iterator>
@@ -818,10 +814,10 @@ BOOST_AUTO_TEST_CASE(linkauth_test)
    auto var = fc::json::from_string(test_data);
 
    auto lauth = var.as<linkauth>();
-   BOOST_TEST("lnkauth.acct" == lauth.account);
-   BOOST_TEST("lnkauth.code" == lauth.code);
-   BOOST_TEST("lnkauth.type" == lauth.type);
-   BOOST_TEST("lnkauth.rqm" == lauth.requirement);
+   BOOST_TEST(name("lnkauth.acct") == lauth.account);
+   BOOST_TEST(name("lnkauth.code") == lauth.code);
+   BOOST_TEST(name("lnkauth.type") == lauth.type);
+   BOOST_TEST(name("lnkauth.rqm") == lauth.requirement);
 
    auto var2 = verify_byte_round_trip_conversion( abis, "linkauth", var );
    auto linkauth2 = var2.as<linkauth>();
@@ -851,9 +847,9 @@ BOOST_AUTO_TEST_CASE(unlinkauth_test)
    auto var = fc::json::from_string(test_data);
 
    auto unlauth = var.as<unlinkauth>();
-   BOOST_TEST("lnkauth.acct" == unlauth.account);
-   BOOST_TEST("lnkauth.code" == unlauth.code);
-   BOOST_TEST("lnkauth.type" == unlauth.type);
+   BOOST_TEST(name("lnkauth.acct") == unlauth.account);
+   BOOST_TEST(name("lnkauth.code") == unlauth.code);
+   BOOST_TEST(name("lnkauth.type") == unlauth.type);
 
    auto var2 = verify_byte_round_trip_conversion( abis, "unlinkauth", var );
    auto unlinkauth2 = var2.as<unlinkauth>();
@@ -890,9 +886,9 @@ BOOST_AUTO_TEST_CASE(updateauth_test)
    auto var = fc::json::from_string(test_data);
 
    auto updauth = var.as<updateauth>();
-   BOOST_TEST("updauth.acct" == updauth.account);
-   BOOST_TEST("updauth.prm" == updauth.permission);
-   BOOST_TEST("updauth.prnt" == updauth.parent);
+   BOOST_TEST(name("updauth.acct") == updauth.account);
+   BOOST_TEST(name("updauth.prm") == updauth.permission);
+   BOOST_TEST(name("updauth.prnt") == updauth.parent);
    BOOST_TEST(2147483145u == updauth.auth.threshold);
 
    BOOST_TEST_REQUIRE(2u == updauth.auth.keys.size());
@@ -902,11 +898,11 @@ BOOST_AUTO_TEST_CASE(updateauth_test)
    BOOST_TEST(57605u == updauth.auth.keys[1].weight);
 
    BOOST_TEST_REQUIRE(2u == updauth.auth.accounts.size());
-   BOOST_TEST("prm.acct1" == updauth.auth.accounts[0].permission.actor);
-   BOOST_TEST("prm.prm1" == updauth.auth.accounts[0].permission.permission);
+   BOOST_TEST(name("prm.acct1") == updauth.auth.accounts[0].permission.actor);
+   BOOST_TEST(name("prm.prm1") == updauth.auth.accounts[0].permission.permission);
    BOOST_TEST(53005u == updauth.auth.accounts[0].weight);
-   BOOST_TEST("prm.acct2" == updauth.auth.accounts[1].permission.actor);
-   BOOST_TEST("prm.prm2" == updauth.auth.accounts[1].permission.permission);
+   BOOST_TEST(name("prm.acct2") == updauth.auth.accounts[1].permission.actor);
+   BOOST_TEST(name("prm.prm2") == updauth.auth.accounts[1].permission.permission);
    BOOST_TEST(53405u == updauth.auth.accounts[1].weight);
 
    auto var2 = verify_byte_round_trip_conversion( abis, "updateauth", var );
@@ -951,8 +947,8 @@ BOOST_AUTO_TEST_CASE(deleteauth_test)
    auto var = fc::json::from_string(test_data);
 
    auto delauth = var.as<deleteauth>();
-   BOOST_TEST("delauth.acct" == delauth.account);
-   BOOST_TEST("delauth.prm" == delauth.permission);
+   BOOST_TEST(name("delauth.acct") == delauth.account);
+   BOOST_TEST(name("delauth.prm") == delauth.permission);
 
    auto var2 = verify_byte_round_trip_conversion( abis, "deleteauth", var );
    auto deleteauth2 = var2.as<deleteauth>();
@@ -994,8 +990,8 @@ BOOST_AUTO_TEST_CASE(newaccount_test)
    auto var = fc::json::from_string(test_data);
 
    auto newacct = var.as<newaccount>();
-   BOOST_TEST("newacct.crtr" == newacct.creator);
-   BOOST_TEST("newacct.name" == newacct.name);
+   BOOST_TEST(name("newacct.crtr") == newacct.creator);
+   BOOST_TEST(name("newacct.name") == newacct.name);
 
    BOOST_TEST(2147483145u == newacct.owner.threshold);
 
@@ -1006,11 +1002,11 @@ BOOST_AUTO_TEST_CASE(newaccount_test)
    BOOST_TEST(57605u == newacct.owner.keys[1].weight);
 
    BOOST_TEST_REQUIRE(2u == newacct.owner.accounts.size());
-   BOOST_TEST("prm.acct1" == newacct.owner.accounts[0].permission.actor);
-   BOOST_TEST("prm.prm1" == newacct.owner.accounts[0].permission.permission);
+   BOOST_TEST(name("prm.acct1") == newacct.owner.accounts[0].permission.actor);
+   BOOST_TEST(name("prm.prm1") == newacct.owner.accounts[0].permission.permission);
    BOOST_TEST(53005u == newacct.owner.accounts[0].weight);
-   BOOST_TEST("prm.acct2" == newacct.owner.accounts[1].permission.actor);
-   BOOST_TEST("prm.prm2" == newacct.owner.accounts[1].permission.permission);
+   BOOST_TEST(name("prm.acct2") == newacct.owner.accounts[1].permission.actor);
+   BOOST_TEST(name("prm.prm2") == newacct.owner.accounts[1].permission.permission);
    BOOST_TEST(53405u == newacct.owner.accounts[1].weight);
 
    BOOST_TEST(2146483145u == newacct.active.threshold);
@@ -1022,11 +1018,11 @@ BOOST_AUTO_TEST_CASE(newaccount_test)
    BOOST_TEST(57605u == newacct.active.keys[1].weight);
 
    BOOST_TEST_REQUIRE(2u == newacct.active.accounts.size());
-   BOOST_TEST("prm.acct1" == newacct.active.accounts[0].permission.actor);
-   BOOST_TEST("prm.prm1" == newacct.active.accounts[0].permission.permission);
+   BOOST_TEST(name("prm.acct1") == newacct.active.accounts[0].permission.actor);
+   BOOST_TEST(name("prm.prm1") == newacct.active.accounts[0].permission.permission);
    BOOST_TEST(53005u == newacct.active.accounts[0].weight);
-   BOOST_TEST("prm.acct2" == newacct.active.accounts[1].permission.actor);
-   BOOST_TEST("prm.prm2" == newacct.active.accounts[1].permission.permission);
+   BOOST_TEST(name("prm.acct2") == newacct.active.accounts[1].permission.actor);
+   BOOST_TEST(name("prm.prm2") == newacct.active.accounts[1].permission.permission);
    BOOST_TEST(53405u == newacct.active.accounts[1].weight);
 
 
@@ -1090,7 +1086,7 @@ BOOST_AUTO_TEST_CASE(setcode_test)
    auto var = fc::json::from_string(test_data);
 
    auto set_code = var.as<setcode>();
-   BOOST_TEST("setcode.acc" == set_code.account);
+   BOOST_TEST(name("setcode.acc") == set_code.account);
    BOOST_TEST(0 == set_code.vmtype);
    BOOST_TEST(0 == set_code.vmversion);
    BOOST_TEST("0061736d0100000001390a60037e7e7f017f60047e7e7f7f017f60017e0060057e7e7e7f7f" == fc::to_hex(set_code.code.data(), set_code.code.size()));
@@ -1335,11 +1331,11 @@ BOOST_AUTO_TEST_CASE(setabi_test)
    BOOST_TEST("uint64" == abi.structs[2].fields[1].type);
 
    BOOST_TEST_REQUIRE(1u == abi.actions.size());
-   BOOST_TEST("transfer" == abi.actions[0].name);
+   BOOST_TEST(name("transfer") == abi.actions[0].name);
    BOOST_TEST("transfer" == abi.actions[0].type);
 
    BOOST_TEST_REQUIRE(1u == abi.tables.size());
-   BOOST_TEST("account" == abi.tables[0].name);
+   BOOST_TEST(name("account") == abi.tables[0].name);
    BOOST_TEST("account" == abi.tables[0].type);
    BOOST_TEST("i64" == abi.tables[0].index_type);
    BOOST_TEST_REQUIRE(1u == abi.tables[0].key_names.size());
@@ -1446,20 +1442,20 @@ struct action2 {
 template<typename T>
 void verify_action_equal(const chain::action& exp, const chain::action& act)
 {
-   BOOST_REQUIRE_EQUAL((std::string)exp.account, (std::string)act.account);
-   BOOST_REQUIRE_EQUAL((std::string)exp.name, (std::string)act.name);
+   BOOST_REQUIRE_EQUAL(exp.account.to_string(), act.account.to_string());
+   BOOST_REQUIRE_EQUAL(exp.name.to_string(), act.name.to_string());
    BOOST_REQUIRE_EQUAL(exp.authorization.size(), act.authorization.size());
    for(unsigned int i = 0; i < exp.authorization.size(); ++i)
    {
-      BOOST_REQUIRE_EQUAL((std::string)exp.authorization[i].actor, (std::string)act.authorization[i].actor);
-      BOOST_REQUIRE_EQUAL((std::string)exp.authorization[i].permission, (std::string)act.authorization[i].permission);
+      BOOST_REQUIRE_EQUAL(exp.authorization[i].actor.to_string(), act.authorization[i].actor.to_string());
+      BOOST_REQUIRE_EQUAL(exp.authorization[i].permission.to_string(), act.authorization[i].permission.to_string());
    }
    BOOST_REQUIRE_EQUAL(exp.data.size(), act.data.size());
    BOOST_REQUIRE(!memcmp(exp.data.data(), act.data.data(), exp.data.size()));
 }
 
 private_key_type get_private_key( name keyname, string role ) {
-   return private_key_type::regenerate<fc::ecc::private_key_shim>(fc::sha256::hash(string(keyname)+role));
+   return private_key_type::regenerate<fc::ecc::private_key_shim>(fc::sha256::hash(keyname.to_string()+role));
 }
 
 public_key_type  get_public_key( name keyname, string role ) {
@@ -1955,8 +1951,8 @@ BOOST_AUTO_TEST_CASE(abi_type_redefine)
    }
    )=====";
 
-   auto is_type_exception = [](fc::exception const & e) -> bool { return e.to_detail_string().find("invalid type") != std::string::npos; };
-   BOOST_CHECK_EXCEPTION( abi_serializer abis(fc::json::from_string(repeat_abi).as<abi_def>(), max_serialization_time), invalid_type_inside_abi, is_type_exception );
+   auto is_type_exception = [](fc::exception const & e) -> bool { return e.to_detail_string().find("Circular reference in type account_name") != std::string::npos; };
+   BOOST_CHECK_EXCEPTION( abi_serializer abis(fc::json::from_string(repeat_abi).as<abi_def>(), max_serialization_time), abi_circular_def_exception, is_type_exception );
 
 } FC_LOG_AND_RETHROW() }
 
@@ -2301,6 +2297,57 @@ BOOST_AUTO_TEST_CASE(variants)
       verify_round_trip_conversion(abis, "v1", R"(["int16",4])", "020400");
       verify_round_trip_conversion(abis, "v2", R"(["foo",{"i0":5,"i1":6}])", "000506");
       verify_round_trip_conversion(abis, "v2", R"(["bar",{"i0":5,"i1":6}])", "010506");
+   } FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE(aliased_variants)
+{
+   using eosio::testing::fc_exception_message_starts_with;
+
+   auto aliased_variant = R"({
+      "version": "eosio::abi/1.1",
+      "types": [
+         { "new_type_name": "foo", "type": "foo_variant" }
+      ],
+      "variants": [
+         {"name": "foo_variant", "types": ["int8", "string"]}
+      ],
+   })";
+
+   try {
+      // round-trip abi through multiple formats
+      // json -> variant -> abi_def -> bin
+      auto bin = fc::raw::pack(fc::json::from_string(aliased_variant).as<abi_def>());
+      // bin -> abi_def -> variant -> abi_def
+      abi_serializer abis(variant(fc::raw::unpack<abi_def>(bin)).as<abi_def>(), max_serialization_time );
+
+      verify_round_trip_conversion(abis, "foo", R"(["int8",21])", "0015");
+   } FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE(variant_of_aliases)
+{
+   using eosio::testing::fc_exception_message_starts_with;
+
+   auto aliased_variant = R"({
+      "version": "eosio::abi/1.1",
+      "types": [
+         { "new_type_name": "foo_0", "type": "int8" },
+         { "new_type_name": "foo_1", "type": "string" }
+      ],
+      "variants": [
+         {"name": "foo", "types": ["foo_0", "foo_1"]}
+      ],
+   })";
+
+   try {
+      // round-trip abi through multiple formats
+      // json -> variant -> abi_def -> bin
+      auto bin = fc::raw::pack(fc::json::from_string(aliased_variant).as<abi_def>());
+      // bin -> abi_def -> variant -> abi_def
+      abi_serializer abis(variant(fc::raw::unpack<abi_def>(bin)).as<abi_def>(), max_serialization_time );
+
+      verify_round_trip_conversion(abis, "foo", R"(["foo_0",21])", "0015");
    } FC_LOG_AND_RETHROW()
 }
 
@@ -2716,6 +2763,26 @@ BOOST_AUTO_TEST_CASE(abi_deserialize_detailed_error_messages)
 
       BOOST_CHECK_EXCEPTION( abis.binary_to_variant("s5", fc::variant("00010101").as<bytes>(), max_serialization_time),
                              unpack_exception, fc_exception_message_is("Stream unexpectedly ended; unable to unpack field 'i1' of struct 's5.f1[0].<variant(1)=s1>'") );
+
+   } FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE(serialize_optional_struct_type)
+{
+   auto abi = R"({
+      "version": "eosio::abi/1.0",
+      "structs": [
+         {"name": "s", "base": "", "fields": [
+            {"name": "i0", "type": "int8"}
+         ]},
+      ],
+   })";
+
+   try {
+      abi_serializer abis( fc::json::from_string(abi).as<abi_def>(), max_serialization_time );
+
+      verify_round_trip_conversion(abis, "s?", R"({"i0":5})", "0105");
+      verify_round_trip_conversion(abis, "s?", R"(null)", "00");
 
    } FC_LOG_AND_RETHROW()
 }

@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE.txt
- */
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wsign-compare"
 #include <boost/test/unit_test.hpp>
@@ -99,10 +95,10 @@ class currency_tester : public TESTER {
       }
 
       abi_serializer abi_ser;
-      static const std::string rem_token;
+      static const name rem_token;
 };
 
-const std::string currency_tester::rem_token = name(N(rem.token)).to_string();
+const name currency_tester::rem_token = N(rem.token);
 
 BOOST_AUTO_TEST_SUITE(currency_tests)
 

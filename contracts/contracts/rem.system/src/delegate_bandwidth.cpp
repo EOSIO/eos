@@ -1,7 +1,3 @@
-/**
- *  @copyright defined in eos/LICENSE.txt
- */
-
 #include <eosio/datastream.hpp>
 #include <eosio/eosio.hpp>
 #include <eosio/multi_index.hpp>
@@ -16,36 +12,24 @@
 #include <map>
 #include <algorithm>
 
+#include "name_bidding.cpp"
+// Unfortunately, this is needed until CDT fixes the duplicate symbol error with eosio::send_deferred
+
 namespace eosiosystem {
 
    using eosio::asset;
    using eosio::const_mem_fun;
+   using eosio::current_time_point;
    using eosio::indexed_by;
    using eosio::permission_level;
+   using eosio::seconds;
    using eosio::time_point_sec;
-   
+   using eosio::token;
+
    using std::map;
    using std::pair;
    using namespace std::string_literals;
 
-   static constexpr uint32_t refund_delay_sec = 3*24*3600;
-
-   /**
-    *  Every user 'from' has a scope/table that uses every receipient 'to' as the primary key.
-    */
-   struct [[eosio::table, eosio::contract("rem.system")]] delegated_bandwidth {
-      name          from;
-      name          to;
-      asset         net_weight;
-      asset         cpu_weight;
-
-      bool is_empty()const { return net_weight.amount == 0 && cpu_weight.amount == 0; }
-      uint64_t  primary_key()const { return to.value; }
-
-      // explicit serialization macro is not necessary, used here only to improve compilation time
-      EOSLIB_SERIALIZE( delegated_bandwidth, (from)(to)(net_weight)(cpu_weight))
-
-   };
 
    struct [[eosio::table, eosio::contract("rem.system")]] refund_request {
       name            owner;
@@ -63,7 +47,6 @@ namespace eosiosystem {
     *  These tables are designed to be constructed in the scope of the relevant user, this
     *  facilitates simpler API for per-user queries
     */
-   typedef eosio::multi_index< "delband"_n, delegated_bandwidth > del_bandwidth_table;
    typedef eosio::multi_index< "refunds"_n, refund_request >      refunds_table;
 
    void validate_b1_vesting( int64_t stake ) {
@@ -87,7 +70,7 @@ namespace eosiosystem {
 
       // update stake delegated from "from" to "receiver"
       {
-         del_bandwidth_table     del_tbl( _self, from.value );
+         del_bandwidth_table     del_tbl( get_self(), from.value );
          auto itr = del_tbl.find( receiver.value );
          if( itr == del_tbl.end() ) {
             itr = del_tbl.emplace( from, [&]( auto& dbo ){
@@ -112,7 +95,7 @@ namespace eosiosystem {
 
       // update totals of "receiver"
       {
-         user_resources_table   totals_tbl( _self, receiver.value );
+         user_resources_table   totals_tbl( get_self(), receiver.value );
          auto tot_itr = totals_tbl.find( receiver.value );
          if( tot_itr ==  totals_tbl.end() ) {
             tot_itr = totals_tbl.emplace( from, [&]( auto& tot ) {
@@ -138,11 +121,6 @@ namespace eosiosystem {
          check( 0 <= tot_itr->net_weight.amount, "insufficient staked total net bandwidth" );
          check( 0 <= tot_itr->cpu_weight.amount, "insufficient staked total cpu bandwidth" );
          check( _gstate.min_account_stake <= tot_itr->own_stake_amount + tot_itr->free_stake_amount, "insufficient minimal account stake for " + receiver.to_string() );
-
-         auto prod = _producers.find( receiver.value );
-         if (prod != _producers.end() && prod->active() && from == receiver) {
-            _gstate.total_producer_stake += stake_delta.amount;
-         }
 
          {
             bool ram_managed = false;
@@ -174,7 +152,7 @@ namespace eosiosystem {
 
       // create refund or update from existing refund
       if ( stake_account != source_stake_from ) { //for eosio.stake both transfer and refund make no sense
-         refunds_table refunds_tbl( _self, from.value );
+         refunds_table refunds_tbl( get_self(), from.value );
          auto req = refunds_tbl.find( from.value );
 
          //create/update/delete refund
@@ -224,14 +202,14 @@ namespace eosiosystem {
          if ( need_deferred_trx ) {
             eosio::transaction out;
             out.actions.emplace_back( permission_level{from, active_permission},
-                                      _self, "refund"_n,
+                                      get_self(), "refund"_n,
                                       from
             );
             out.delay_sec = refund_delay_sec;
-            cancel_deferred( from.value ); // TODO: Remove this line when replacing deferred trxs is fixed
+            eosio::cancel_deferred( from.value ); // TODO: Remove this line when replacing deferred trxs is fixed
             out.send( from.value, from, true );
          } else {
-            cancel_deferred( from.value );
+            eosio::cancel_deferred( from.value );
          }
 
          auto transfer_amount = temp_balance;
@@ -247,7 +225,6 @@ namespace eosiosystem {
 
    void system_contract::update_voting_power( const name& voter, const asset& total_update )
    {
-      const auto ct = current_time_point();
       auto voter_itr = _voters.find( voter.value );
       if( voter_itr == _voters.end() ) {
          voter_itr = _voters.emplace( voter, [&]( auto& v ) {
@@ -334,7 +311,7 @@ namespace eosiosystem {
    void system_contract::refund( const name& owner ) {
       require_auth( owner );
 
-      refunds_table refunds_tbl( _self, owner.value );
+      refunds_table refunds_tbl( get_self(), owner.value );
       auto req = refunds_tbl.find( owner.value );
       check( req != refunds_tbl.end(), "refund request not found" );
       check( req->request_time + seconds(refund_delay_sec) <= current_time_point(),
@@ -346,14 +323,12 @@ namespace eosiosystem {
 
 
    void system_contract::refundtostake( const name& owner ) {
-      print("refundtostake");
       require_auth( owner );
 
-      refunds_table refunds_tbl( _self, owner.value );
+      refunds_table refunds_tbl( get_self(), owner.value );
       auto req = refunds_tbl.get( owner.value, "refund request not found" );
       check( req.request_time + seconds(refund_delay_sec) <= current_time_point(), "refund is not available yet" );
 
-      print( "refundtostake: ", req.resource_amount.to_string());
       changebw( owner, owner, req.resource_amount, false );
    }
 

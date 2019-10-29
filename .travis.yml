@@ -45,7 +45,7 @@ matrix:
             - automake
             - wget
             - gmp
-            - llvm@4
+            - llvm@7
             - pkgconfig
             - doxygen
             - openssl

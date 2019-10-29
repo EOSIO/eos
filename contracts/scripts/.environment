@@ -1,0 +1,12 @@
+export SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+export REPO_ROOT="${SCRIPT_DIR}/.."
+export TEST_DIR="${REPO_ROOT}/tests"
+
+export EOSIO_MIN_VERSION_MAJOR=$(cat $TEST_DIR/CMakeLists.txt | grep -E "^[[:blank:]]*set[[:blank:]]*\([[:blank:]]*EOSIO_VERSION_MIN" | tail -1 | sed 's/.*EOSIO_VERSION_MIN //g' | sed 's/ //g' | sed 's/"//g' | cut -d\) -f1 | cut -f1 -d '.')
+export EOSIO_MIN_VERSION_MINOR=$(cat $TEST_DIR/CMakeLists.txt | grep -E "^[[:blank:]]*set[[:blank:]]*\([[:blank:]]*EOSIO_VERSION_MIN" | tail -1 | sed 's/.*EOSIO_VERSION_MIN //g' | sed 's/ //g' | sed 's/"//g' | cut -d\) -f1 | cut -f2 -d '.')
+export EOSIO_SOFT_MAX_MAJOR=$(cat $TEST_DIR/CMakeLists.txt | grep -E "^[[:blank:]]*set[[:blank:]]*\([[:blank:]]*EOSIO_VERSION_SOFT_MAX" | tail -1 | sed 's/.*EOSIO_VERSION_SOFT_MAX //g' | sed 's/ //g' | sed 's/"//g' | cut -d\) -f1 | cut -f1 -d '.')
+export EOSIO_SOFT_MAX_MINOR=$(cat $TEST_DIR/CMakeLists.txt | grep -E "^[[:blank:]]*set[[:blank:]]*\([[:blank:]]*EOSIO_VERSION_SOFT_MAX" | tail -1 | sed 's/.*EOSIO_VERSION_SOFT_MAX //g' | sed 's/ //g' | sed 's/"//g' | cut -d\) -f1 | cut -f2 -d '.')
+export EOSIO_MAX_VERSION=$(cat $TEST_DIR/CMakeLists.txt | grep -E "^[[:blank:]]*set[[:blank:]]*\([[:blank:]]*EOSIO_VERSION_HARD_MAX" | tail -1 | sed 's/.*EOSIO_VERSION_HARD_MAX //g' | sed 's/ //g' | sed 's/"//g' | cut -d\) -f1)
+export EOSIO_MAX_VERSION="${EOSIO_MAX_VERSION:-$(echo $EOSIO_SOFT_MAX_MAJOR.999)}"
+export EOSIO_MAX_VERSION_MAJOR=$(echo $EOSIO_MAX_VERSION | cut -f1 -d '.')
+export EOSIO_MAX_VERSION_MINOR=$(echo $EOSIO_MAX_VERSION | cut -f2 -d '.')

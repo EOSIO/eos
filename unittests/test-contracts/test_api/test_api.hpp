@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
 #pragma once
 
 #include <string>
@@ -42,12 +38,12 @@ struct test_print {
    static void test_prints_l();
    static void test_printi();
    static void test_printui();
-   static void test_printi128();
-   static void test_printui128();
+//   static void test_printi128();
+//   static void test_printui128();
    static void test_printn();
    static void test_printsf();
    static void test_printdf();
-   static void test_printqf();
+//   static void test_printqf();
    static void test_print_simple();
 };
 
@@ -132,6 +128,7 @@ struct test_multi_index {
 
 struct test_crypto {
    static void test_recover_key();
+   static void test_recover_key_partial();
    static void test_recover_key_assert_true();
    static void test_recover_key_assert_false();
    static void test_sha1();

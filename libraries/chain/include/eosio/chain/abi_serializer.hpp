@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
 #pragma once
 #include <eosio/chain/abi_def.hpp>
 #include <eosio/chain/trace.hpp>
@@ -371,6 +367,8 @@ namespace impl {
 
       /**
        * overload of to_variant_object for actions
+       *
+       * This matches the FC_REFLECT for this type, but this is provided to extract the contents of act.data
        * @tparam Resolver
        * @param act
        * @param resolver
@@ -379,6 +377,7 @@ namespace impl {
       template<typename Resolver>
       static void add( mutable_variant_object &out, const char* name, const action& act, Resolver resolver, abi_traverse_context& ctx )
       {
+         static_assert(fc::reflector<action>::total_member_count == 4);
          auto h = ctx.enter_scope();
          mutable_variant_object mvo;
          mvo("account", act.account);
@@ -413,6 +412,8 @@ namespace impl {
 
       /**
        * overload of to_variant_object for packed_transaction
+       *
+       * This matches the FC_REFLECT for this type, but this is provided to allow extracting the contents of ptrx.transaction
        * @tparam Resolver
        * @param act
        * @param resolver
@@ -421,6 +422,7 @@ namespace impl {
       template<typename Resolver>
       static void add( mutable_variant_object &out, const char* name, const packed_transaction& ptrx, Resolver resolver, abi_traverse_context& ctx )
       {
+         static_assert(fc::reflector<packed_transaction>::total_member_count == 4);
          auto h = ctx.enter_scope();
          mutable_variant_object mvo;
          auto trx = ptrx.get_transaction();
@@ -431,6 +433,88 @@ namespace impl {
          mvo("context_free_data", ptrx.get_context_free_data());
          mvo("packed_trx", ptrx.get_packed_transaction());
          add(mvo, "transaction", trx, resolver, ctx);
+
+         out(name, std::move(mvo));
+      }
+
+      /**
+       * overload of to_variant_object for transaction
+       *
+       * This matches the FC_REFLECT for this type, but this is provided to allow extracting the contents of trx.transaction_extensions
+       */
+      template<typename Resolver>
+      static void add( mutable_variant_object &out, const char* name, const transaction& trx, Resolver resolver, abi_traverse_context& ctx )
+      {
+         static_assert(fc::reflector<transaction>::total_member_count == 9);
+         auto h = ctx.enter_scope();
+         mutable_variant_object mvo;
+         mvo("expiration", trx.expiration);
+         mvo("ref_block_num", trx.ref_block_num);
+         mvo("ref_block_prefix", trx.ref_block_prefix);
+         mvo("max_net_usage_words", trx.max_net_usage_words);
+         mvo("max_cpu_usage_ms", trx.max_cpu_usage_ms);
+         mvo("delay_sec", trx.delay_sec);
+         add(mvo, "context_free_actions", trx.context_free_actions, resolver, ctx);
+         add(mvo, "actions", trx.actions, resolver, ctx);
+
+         // process contents of block.transaction_extensions
+         auto exts = trx.validate_and_extract_extensions();
+         if (exts.count(deferred_transaction_generation_context::extension_id()) > 0) {
+            const auto& deferred_transaction_generation = exts.lower_bound(deferred_transaction_generation_context::extension_id())->second.get<deferred_transaction_generation_context>();
+            mvo("deferred_transaction_generation", deferred_transaction_generation);
+         }
+
+         out(name, std::move(mvo));
+      }
+
+      /**
+       * overload of to_variant_object for signed_block
+       *
+       * This matches the FC_REFLECT for this type, but this is provided to allow extracting the contents of
+       * block.header_extensions and block.block_extensions
+       */
+      template<typename Resolver>
+      static void add( mutable_variant_object &out, const char* name, const signed_block& block, Resolver resolver, abi_traverse_context& ctx )
+      {
+         static_assert(fc::reflector<signed_block>::total_member_count == 12);
+         auto h = ctx.enter_scope();
+         mutable_variant_object mvo;
+         mvo("timestamp", block.timestamp);
+         mvo("producer", block.producer);
+         mvo("confirmed", block.confirmed);
+         mvo("previous", block.previous);
+         mvo("transaction_mroot", block.transaction_mroot);
+         mvo("action_mroot", block.action_mroot);
+         mvo("schedule_version", block.schedule_version);
+         mvo("new_producers", block.new_producers);
+
+         // process contents of block.header_extensions
+         flat_multimap<uint16_t, block_header_extension> header_exts = block.validate_and_extract_header_extensions();
+         if ( header_exts.count(protocol_feature_activation::extension_id() > 0) ) {
+            const auto& new_protocol_features = header_exts.lower_bound(protocol_feature_activation::extension_id())->second.get<protocol_feature_activation>().protocol_features;
+            vector<variant> pf_array;
+            pf_array.reserve(new_protocol_features.size());
+            for (auto feature : new_protocol_features) {
+               mutable_variant_object feature_mvo;
+               add(feature_mvo, "feature_digest", feature, resolver, ctx);
+               pf_array.push_back(feature_mvo);
+            }
+            mvo("new_protocol_features", pf_array);
+         }
+         if ( header_exts.count(producer_schedule_change_extension::extension_id())) {
+            const auto& new_producer_schedule = header_exts.lower_bound(producer_schedule_change_extension::extension_id())->second.get<producer_schedule_change_extension>();
+            mvo("new_producer_schedule", new_producer_schedule);
+         }
+
+         mvo("producer_signature", block.producer_signature);
+         add(mvo, "transactions", block.transactions, resolver, ctx);
+
+         // process contents of block.block_extensions
+         auto block_exts = block.validate_and_extract_extensions();
+         if ( block_exts.count(additional_block_signatures_extension::extension_id()) > 0) {
+            const auto& additional_signatures = block_exts.lower_bound(additional_block_signatures_extension::extension_id())->second.get<additional_block_signatures_extension>();
+            mvo("additional_signatures", additional_signatures);
+         }
 
          out(name, std::move(mvo));
       }

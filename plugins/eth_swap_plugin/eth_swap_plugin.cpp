@@ -200,7 +200,7 @@ class eth_swap_plugin_impl {
 
             uint32_t slot = (data.timestamp * 1000 - block_timestamp_epoch) / block_interval_ms;
 
-            trx.actions.emplace_back(vector<chain::permission_level>{{this->_swap_signing_account,this->_swap_signing_permission}},
+            trx.actions.emplace_back(vector<chain::permission_level>{{this->_swap_signing_account,name(this->_swap_signing_permission)}},
               init{this->_swap_signing_account,
                 data.txid,
                 data.swap_pubkey,
@@ -218,7 +218,7 @@ class eth_swap_plugin_impl {
                auto trxs_copy = std::make_shared<std::decay_t<decltype(trxs)>>(std::move(trxs));
                app().post(priority::low, [trxs_copy, &is_tx_sent]() {
                  for (size_t i = 0; i < trxs_copy->size(); ++i) {
-                     app().get_plugin<chain_plugin>().accept_transaction( packed_transaction(trxs_copy->at(i)),
+                     app().get_plugin<chain_plugin>().accept_transaction( std::make_shared<packed_transaction>(trxs_copy->at(i)),
                      [&is_tx_sent](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& result){
                        is_tx_sent = true;
                        if (result.contains<fc::exception_ptr>()) {

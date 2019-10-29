@@ -1,0 +1,13 @@
+<h1 class="contract">exec</h1>
+
+---
+spec_version: "0.2.0"
+title: Privileged Execute
+summary: '{{nowrap executer}} executes a transaction while bypassing authority checks'
+icon: @ICON_BASE_URL@/@ADMIN_ICON_URI@
+---
+
+{{executer}} executes the following transaction while bypassing authority checks:
+{{to_json trx}}
+
+{{$action.account}} must also authorize this action.

@@ -1,10 +1,6 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
 #pragma once
 
-#include <eosiolib/serialize.hpp>
+#include <eosio/serialize.hpp>
 
 
 static constexpr unsigned int DJBH( const char* cp )

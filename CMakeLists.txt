@@ -8,16 +8,13 @@ if ("${CMAKE_INSTALL_PREFIX}" STREQUAL "/usr/local")
    message(WARNING "CMAKE_INSTALL_PREFIX is set to /usr/local. This is not recommended.")
 endif()
 
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/libraries/fc/CMakeModules")
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules")
 
 if (UNIX AND APPLE)
-   list(APPEND CMAKE_PREFIX_PATH "/usr/local/opt/llvm@4" "/usr/local/opt/gettext")
+   list(APPEND CMAKE_PREFIX_PATH "/usr/local/opt/llvm@7" "/usr/local/opt/gettext")
 endif()
 
 include( GNUInstallDirs )
-include( VersionMacros )
-include( SetupTargetMacros )
 include( InstallDirectoryPermissions )
 include( MASSigning )
 
@@ -26,10 +23,10 @@ set( CMAKE_CXX_STANDARD 17 )
 set( CMAKE_CXX_EXTENSIONS ON )
 set( CXX_STANDARD_REQUIRED ON)
 
-set(VERSION_MAJOR 1)
-set(VERSION_MINOR 8)
-set(VERSION_PATCH 4)
-#set(VERSION_SUFFIX develop)
+set(VERSION_MAJOR 2)
+set(VERSION_MINOR 0)
+set(VERSION_PATCH 0)
+set(VERSION_SUFFIX rc1)
 
 if(VERSION_SUFFIX)
     set(VERSION_FULL "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}-${VERSION_SUFFIX}")
@@ -40,25 +37,20 @@ endif()
 set( CLI_CLIENT_EXECUTABLE_NAME remcli )
 set( NODE_EXECUTABLE_NAME remnode )
 set( KEY_STORE_EXECUTABLE_NAME remvault )
-set( GUI_CLIENT_EXECUTABLE_NAME eosio )
-set( CUSTOM_URL_SCHEME "gcs" )
-set( INSTALLER_APP_ID "68ad7005-8eee-49c9-95ce-9eed97e5b347" )
 
 # http://stackoverflow.com/a/18369825
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
     if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 7.0)
         message(FATAL_ERROR "GCC version must be at least 7.0!")
     endif()
-    if ("${CMAKE_GENERATOR}" STREQUAL "Ninja")
-       add_compile_options(-fdiagnostics-color=always)
-    endif()
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "AppleClang")
     if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 5.0)
         message(FATAL_ERROR "Clang version must be at least 5.0!")
     endif()
-    if ("${CMAKE_GENERATOR}" STREQUAL "Ninja")
-       add_compile_options(-fcolor-diagnostics)
-    endif()
+endif()
+
+if ("${CMAKE_GENERATOR}" STREQUAL "Ninja")
+   add_compile_options(-fdiagnostics-color=always)
 endif()
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS "ON")
@@ -66,18 +58,32 @@ set(BUILD_DOXYGEN FALSE CACHE BOOL "Build doxygen documentation on every make")
 set(BUILD_MONGO_DB_PLUGIN FALSE CACHE BOOL "Build mongo database plugin")
 
 # add defaults for openssl
-if ("${OPENSSL_ROOT_DIR}" STREQUAL "")
-   if (NOT "$ENV{OPENSSL_ROOT_DIR}" STREQUAL "")
-      set(OPENSSL_ROOT_DIR $ENV{OPENSSL_ROOT_DIR})
-      set(OPENSSL_INCLUDE_DIR ${OPENSSL_ROOT_DIR}/include)
-   elseif (APPLE)
-      set(OPENSSL_ROOT_DIR "/usr/local/opt/openssl")
-      set(OPENSSL_INCLUDE_DIR "/usr/local/opt/openssl/include")
-   elseif(UNIX AND NOT APPLE)
-      set(OPENSSL_ROOT_DIR "/usr/include/openssl")
-      set(OPENSSL_INCLUDE_DIR "/usr/include/openssl/include")
-   else()
-      message(FATAL_ERROR "openssl not found and don't know where to look, please specify OPENSSL_ROOT_DIR")
+if(APPLE AND UNIX AND "${OPENSSL_ROOT_DIR}" STREQUAL "")
+   set(OPENSSL_ROOT_DIR "/usr/local/opt/openssl")
+endif()
+
+# WASM runtimes to enable. Each runtime in this list will have:
+#  * definition EOSIO_<RUNTIME>_RUNTIME_ENABLED defined in public libchain interface
+#  * ctest entries with --runtime
+list(APPEND EOSIO_WASM_RUNTIMES wabt)   #always enable wabt; it works everywhere and parts of eosio still assume it's always available
+if(CMAKE_SIZEOF_VOID_P EQUAL 8 AND NOT WIN32)
+   list(APPEND EOSIO_WASM_RUNTIMES wavm)
+   # WAVM requires LLVM, but move the check up here to a central location so that the EosioTester.cmakes
+   # can be created with the exact version found
+   find_package(LLVM REQUIRED CONFIG)
+   if(LLVM_VERSION_MAJOR VERSION_LESS 7 OR LLVM_VERSION_MAJOR VERSION_GREATER 9)
+	   message(FATAL_ERROR "EOSIO requires an LLVM version 7.0 to 9.0")
+   endif()
+
+   if("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux" AND "${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
+      list(APPEND EOSIO_WASM_RUNTIMES eos-vm-oc)
+   endif()
+endif()
+
+if(CMAKE_SIZEOF_VOID_P EQUAL 8 AND NOT WIN32)
+   list(APPEND EOSIO_WASM_RUNTIMES eos-vm)
+   if(CMAKE_SYSTEM_PROCESSOR STREQUAL x86_64)
+      list(APPEND EOSIO_WASM_RUNTIMES eos-vm-jit)
    endif()
 endif()
 
@@ -94,95 +100,33 @@ else()
   set(no_whole_archive_flag "--no-whole-archive")
 endif()
 
-SET( Boost_USE_STATIC_LIBS ON CACHE STRING "ON or OFF" )
-IF( WIN32 )
-  SET(BOOST_ROOT $ENV{BOOST_ROOT})
-  set(Boost_USE_MULTITHREADED ON)
-  set(BOOST_ALL_DYN_LINK OFF) # force dynamic linking for all libraries
-ENDIF(WIN32)
-### Remove after Boost 1.70 CMake fixes are in place
-set( Boost_NO_BOOST_CMAKE ON CACHE STRING "ON or OFF" )
-find_package(Boost 1.67 REQUIRED COMPONENTS
-    date_time
-    filesystem
-    system
-    program_options
-    chrono
-    unit_test_framework
-    iostreams)
+set( Boost_USE_STATIC_LIBS ON CACHE STRING "ON or OFF" )
+# Most boost deps get implictly picked up via fc, as just about everything links to fc. In addition we pick up
+# the pthread dependency through fc.
+find_package(Boost 1.67 REQUIRED COMPONENTS program_options unit_test_framework)
 
-add_definitions(-DBOOST_ASIO_DISABLE_STD_EXPERIMENTAL_STRING_VIEW)
+if( APPLE AND UNIX )
+# Apple Specific Options Here
+    message( STATUS "Configuring EOSIO on macOS" )
+    set( CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} ${CMAKE_CXX_FLAGS} -Wall -Wno-deprecated-declarations" )
+else()
+    # Linux Specific Options Here
+    message( STATUS "Configuring EOSIO on Linux" )
+    set( CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} ${CMAKE_CXX_FLAGS} -Wall" )
+    if ( FULL_STATIC_BUILD )
+      set( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libstdc++ -static-libgcc")
+    endif ( FULL_STATIC_BUILD )
 
-set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
-set(THREADS_PREFER_PTHREAD_FLAG TRUE)
-find_package(Threads)
-link_libraries(Threads::Threads)
-
-if( WIN32 )
-
-    message( STATUS "Configuring EOSIO on WIN32")
-    set( DB_VERSION 60 )
-    set( BDB_STATIC_LIBS 1 )
-
-    set( ZLIB_LIBRARIES "" )
-    SET( DEFAULT_EXECUTABLE_INSTALL_DIR bin/ )
-
-    set(CRYPTO_LIB)
-
-    #looks like this flag can have different default on some machines.
-    SET(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /SAFESEH:NO")
-    SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /SAFESEH:NO")
-
-    # Probably cmake has a bug and vcxproj generated for executable in Debug conf. has disabled debug info
-    set(CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG} /DEBUG")
-
-    # On windows tcl should be installed to the directory pointed by setenv.bat script
-    SET(TCL_INCLUDE_PATH $ENV{TCL_ROOT}/include)
-    MESSAGE(STATUS "tcl INCLUDE PATH: ${TCL_INCLUDE_PATH}")
-
-    FIND_PACKAGE(TCL)
-    MESSAGE(STATUS "tcl_library: ${TCL_LIBRARY}")
-
-    SET(TCL_LIBS "optimized;${TCL_LIBRARY};debug;")
-    get_filename_component(TCL_LIB_PATH "${TCL_LIBRARY}" PATH)
-    get_filename_component(TCL_LIB_NAME "${TCL_LIBRARY}" NAME_WE)
-    get_filename_component(TCL_LIB_EXT "${TCL_LIBRARY}" EXT)
-
-    SET(TCL_LIBS "${TCL_LIBS}${TCL_LIB_PATH}/${TCL_LIB_NAME}g${TCL_LIB_EXT}")
-    SET(TCL_LIBRARY ${TCL_LIBS})
-
-else( WIN32 ) # Apple AND Linux
-
-    if( APPLE )
-        # Apple Specific Options Here
-        message( STATUS "Configuring EOSIO on OS X" )
-        set( CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} ${CMAKE_CXX_FLAGS} -Wall -Wno-deprecated-declarations" )
-    else( APPLE )
-        # Linux Specific Options Here
-        message( STATUS "Configuring EOSIO on Linux" )
-        set( CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} ${CMAKE_CXX_FLAGS} -Wall" )
-        if ( FULL_STATIC_BUILD )
-          set( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libstdc++ -static-libgcc")
-        endif ( FULL_STATIC_BUILD )
-
-        if( "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" )
-            if( CMAKE_CXX_COMPILER_VERSION VERSION_EQUAL 4.0.0 OR CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 4.0.0 )
-                set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-invalid-partial-specialization" )
-            endif()
-        endif()
-    endif( APPLE )
-
-    if( "${CMAKE_GENERATOR}" STREQUAL "Ninja" )
-        if( "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" )
-            set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fcolor-diagnostics" )
+    if( "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" )
+        if( CMAKE_CXX_COMPILER_VERSION VERSION_EQUAL 4.0.0 OR CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 4.0.0 )
+            set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-invalid-partial-specialization" )
         endif()
     endif()
+endif()
 
-    # based on http://www.delorie.com/gnu/docs/gdb/gdb_70.html
-    # uncomment this line to tell GDB about macros (slows compile times)
-    # set( CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -gdwarf-2 -g3" )
-
-endif( WIN32 )
+# based on http://www.delorie.com/gnu/docs/gdb/gdb_70.html
+# uncomment this line to tell GDB about macros (slows compile times)
+# set( CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -gdwarf-2 -g3" )
 
 set(ENABLE_COVERAGE_TESTING FALSE CACHE BOOL "Build EOSIO for code coverage analysis")
 
@@ -220,7 +164,10 @@ add_subdirectory( scripts )
 add_subdirectory( unittests )
 add_subdirectory( tests )
 add_subdirectory( tools )
-add_subdirectory( debian )
+
+if (NOT DISABLE_WASM_SPEC_TESTS)
+add_subdirectory( eosio-wasm-spec-tests/generated-tests )
+endif()
 
 install_directory_permissions(DIRECTORY ${CMAKE_INSTALL_FULL_SYSCONFDIR}/eosio)
 
@@ -256,6 +203,8 @@ configure_file(${CMAKE_SOURCE_DIR}/libraries/fc/src/network/LICENSE.go
                ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE.go COPYONLY)
 configure_file(${CMAKE_SOURCE_DIR}/libraries/yubihsm/LICENSE
                ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE.yubihsm COPYONLY)
+configure_file(${CMAKE_SOURCE_DIR}/libraries/eos-vm/LICENSE
+               ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE.eos-vm COPYONLY)
 
 install(FILES LICENSE DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ COMPONENT base)
 install(FILES libraries/wabt/LICENSE DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ RENAME LICENSE.wabt COMPONENT base)
@@ -264,6 +213,7 @@ install(FILES libraries/wasm-jit/LICENSE DESTINATION ${CMAKE_INSTALL_FULL_DATARO
 install(FILES libraries/fc/secp256k1/upstream/COPYING DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ RENAME LICENSE.secp256k1 COMPONENT base)
 install(FILES libraries/fc/src/network/LICENSE.go DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ COMPONENT base)
 install(FILES libraries/yubihsm/LICENSE DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ RENAME LICENSE.yubihsm COMPONENT base)
+install(FILES libraries/eos-vm/LICENSE DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ RENAME LICENSE.eos-vm COMPONENT base)
 
 add_custom_target(base-install
   COMMAND "${CMAKE_COMMAND}" --build "${CMAKE_BINARY_DIR}"

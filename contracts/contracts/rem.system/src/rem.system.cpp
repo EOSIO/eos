@@ -1,49 +1,37 @@
-/**
- *  @copyright defined in eos/LICENSE.txt
- */
-
+#include <rem.system/rem.system.hpp>
+#include <rem.token/rem.token.hpp>
+#include <rem.attr/rem.attr.hpp>
 
 #include <eosio/crypto.hpp>
 #include <eosio/dispatcher.hpp>
 
-#include <rem.system/rem.system.hpp>
-#include <rem.attr/rem.attr.hpp>
-
-#include "producer_pay.cpp"
-#include "delegate_bandwidth.cpp"
-#include "voting.cpp"
-#include "exchange_state.cpp"
-#include "rex.cpp"
-#include "rotation.cpp"
+#include <cmath>
 
 namespace eosiosystem {
 
-   const int64_t  inflation_precision           = 100;     // 2 decimals
-   const int64_t  default_annual_rate           = 0;       // 0% annual rate
-   const int64_t  default_inflation_pay_factor  = 5;       // 20% of the inflation
-   const int64_t  default_votepay_factor        = 4;       // 25% of the producer pay
+   using eosio::current_time_point;
+   using eosio::token;
 
    double get_continuous_rate(int64_t annual_rate) {
-      return std::log(double(1)+double(annual_rate)/double(100*inflation_precision));
+      return std::log1p(double(annual_rate)/double(100*inflation_precision));
    }
 
 
    system_contract::system_contract( name s, name code, datastream<const char*> ds )
    :native(s,code,ds),
-    _voters(_self, _self.value),
-    _producers(_self, _self.value),
-    _producers2(_self, _self.value),
-    _global(_self, _self.value),
-    _global2(_self, _self.value),
-    _global3(_self, _self.value),
-    _global4(_self, _self.value),
-    _globalrem(_self, _self.value),
-    _rammarket(_self, _self.value),
-    _rotation(_self, _self.value),
-    _rexpool(_self, _self.value),
-    _rexfunds(_self, _self.value),
-    _rexbalance(_self, _self.value),
-    _rexorders(_self, _self.value)
+    _voters(get_self(), get_self().value),
+    _producers(get_self(), get_self().value),
+    _producers2(get_self(), get_self().value),
+    _global(get_self(), get_self().value),
+    _global2(get_self(), get_self().value),
+    _global3(get_self(), get_self().value),
+    _global4(get_self(), get_self().value),
+    _globalrem(get_self(), get_self().value),
+    _rotation(get_self(), get_self().value),
+    _rexpool(get_self(), get_self().value),
+    _rexfunds(get_self(), get_self().value),
+    _rexbalance(get_self(), get_self().value),
+    _rexorders(get_self(), get_self().value)
    {
       //print( "construct system\n" );
       _gstate  = _global.exists() ? _global.get() : get_default_parameters();
@@ -82,7 +70,7 @@ namespace eosiosystem {
          .gifter_attr_issuer   = name{"rem.attr"},
          .gifter_attr_name     = name{"accgifter"},
 
-         .producer_stake_threshold = 250'000'0000LL,
+         .guardian_stake_threshold = 250'000'0000LL,
 
          .stake_lock_period = eosio::days(180),
          .stake_unlock_period = eosio::days(180),
@@ -94,21 +82,21 @@ namespace eosiosystem {
    }
 
    symbol system_contract::core_symbol()const {
-      const static auto sym = get_core_symbol( _rammarket );
+      const static auto sym = get_core_symbol();
       return sym;
    }
 
    system_contract::~system_contract() {
-      _global.set( _gstate, _self );
-      _global2.set( _gstate2, _self );
-      _global3.set( _gstate3, _self );
-      _global4.set( _gstate4, _self );
-      _globalrem.set( _gremstate, _self );
-      _rotation.set( _grotation, _self );
+      _global.set( _gstate, get_self() );
+      _global2.set( _gstate2, get_self() );
+      _global3.set( _gstate3, get_self() );
+      _global4.set( _gstate4, get_self() );
+      _globalrem.set( _gremstate, get_self() );
+      _rotation.set( _grotation, get_self() );
    }
 
    void system_contract::setrwrdratio( double stake_share, double vote_share ) {
-      require_auth(_self);
+      require_auth(get_self());
 
       check(stake_share > 0, "share must be positive");
       check(vote_share > 0, "share must be positive");
@@ -118,104 +106,86 @@ namespace eosiosystem {
    }
 
    void system_contract::setlockperiod( uint64_t period_in_days ) {
-      require_auth(_self);
+      require_auth(get_self());
 
       check(period_in_days != 0, "lock period cannot be zero");
       _gremstate.stake_lock_period = eosio::days(period_in_days);
    }
 
    void system_contract::setunloperiod( uint64_t period_in_days ) {
-      require_auth(_self);
+      require_auth(get_self());
 
       check(period_in_days != 0, "unlock period cannot be zero");
       _gremstate.stake_unlock_period = eosio::days(period_in_days);
    }
 
    void system_contract::setgiftcontra( name value ) {
-      require_auth(_self);
+      require_auth(get_self());
 
       _gremstate.gifter_attr_contract = value;
    }
 
    void system_contract::setgiftiss( name value ) {
-      require_auth(_self);
+      require_auth(get_self());
 
       _gremstate.gifter_attr_issuer = value;
    }
 
    void system_contract::setgiftattr( name value ) {
-      require_auth(_self);
+      require_auth(get_self());
 
       _gremstate.gifter_attr_name = value;
    }
 
    void system_contract::setminstake( uint64_t min_account_stake ) {
-      require_auth( _self );
+      require_auth( get_self() );
 
       _gstate.min_account_stake = min_account_stake;
    }
 
    void system_contract::setram( uint64_t max_ram_size ) {
-      require_auth( _self );
+      require_auth( get_self() );
 
       check( _gstate.max_ram_size < max_ram_size, "ram may only be increased" ); /// decreasing ram might result market maker issues
       check( max_ram_size < 1024ll*1024*1024*1024*1024, "ram size is unrealistic" );
       check( max_ram_size > _gstate.total_ram_bytes_reserved, "attempt to set max below reserved" );
 
-      auto delta = int64_t(max_ram_size) - int64_t(_gstate.max_ram_size);
-      auto itr = _rammarket.find(ramcore_symbol.raw());
-
-      /**
-       *  Increase the amount of ram for sale based upon the change in max ram size.
-       */
-      _rammarket.modify( itr, same_payer, [&]( auto& m ) {
-         m.base.balance.amount += delta;
-      });
-
       _gstate.max_ram_size = max_ram_size;
    }
 
    void system_contract::update_ram_supply() {
-      auto cbt = current_block_time();
+      auto cbt = eosio::current_block_time();
 
       if( cbt <= _gstate2.last_ram_increase ) return;
 
-      auto itr = _rammarket.find(ramcore_symbol.raw());
       auto new_ram = (cbt.slot - _gstate2.last_ram_increase.slot)*_gstate2.new_ram_per_block;
       _gstate.max_ram_size += new_ram;
-
-      /**
-       *  Increase the amount of ram for sale based upon the change in max ram size.
-       */
-      _rammarket.modify( itr, same_payer, [&]( auto& m ) {
-         m.base.balance.amount += new_ram;
-      });
       _gstate2.last_ram_increase = cbt;
    }
 
    void system_contract::setramrate( uint16_t bytes_per_block ) {
-      require_auth( _self );
+      require_auth( get_self() );
 
       update_ram_supply();
       _gstate2.new_ram_per_block = bytes_per_block;
    }
 
    void system_contract::setparams( const eosio::blockchain_parameters& params ) {
-      require_auth( _self );
+      require_auth( get_self() );
       (eosio::blockchain_parameters&)(_gstate) = params;
       check( 3 <= _gstate.max_authority_depth, "max_authority_depth should be at least 3" );
       set_blockchain_parameters( params );
    }
 
    void system_contract::setpriv( const name& account, uint8_t ispriv ) {
-      require_auth( _self );
+      require_auth( get_self() );
       set_privileged( account, ispriv );
    }
 
    void system_contract::setalimits( const name& account, int64_t ram, int64_t net, int64_t cpu ) {
-      require_auth( _self );
+      require_auth( get_self() );
 
-      user_resources_table userres( _self, account.value );
+      user_resources_table userres( get_self(), account.value );
       auto ritr = userres.find( account.value );
       check( ritr == userres.end(), "only supports unlimited accounts" );
 
@@ -236,107 +206,36 @@ namespace eosiosystem {
    }
 
    void system_contract::rmvproducer( const name& producer ) {
-      require_auth( _self );
-      auto prod = _producers.find( producer.value );
-      check( prod != _producers.end(), "producer not found" );
-      if (prod->active()) {
-         user_resources_table totals_tbl( _self, producer.value );
-         const auto& tot = totals_tbl.get(producer.value, "producer must have resources");
-         _gstate.total_producer_stake -= tot.own_stake_amount;
-      }
+      require_auth( get_self() );
+      auto prod = _producers.get( producer.value, "producer not found" );
+
       _producers.modify( prod, same_payer, [&](auto& p) {
             p.deactivate();
-         });
+      });
    }
 
    void system_contract::updtrevision( uint8_t revision ) {
-      require_auth( _self );
+      require_auth( get_self() );
       check( _gstate2.revision < 255, "can not increment revision" ); // prevent wrap around
       check( revision == _gstate2.revision + 1, "can only increment revision by one" );
       check( revision <= 1, // set upper bound to greatest revision supported in the code
-                    "specified revision is not yet supported by the code" );
+             "specified revision is not yet supported by the code" );
       _gstate2.revision = revision;
    }
 
-   void system_contract::bidname( const name& bidder, const name& newname, const asset& bid ) {
-      require_auth( bidder );
-      check( newname.suffix() == newname, "you can only bid on top-level suffix" );
-
-      check( (bool)newname, "the empty name is not a valid account name to bid on" );
-      check( (newname.value & 0xFull) == 0, "13 character names are not valid account names to bid on" );
-      check( (newname.value & 0x1F0ull) == 0, "accounts with 12 character names and no dots can be created without bidding required" );
-      check( !is_account( newname ), "account already exists" );
-      check( bid.symbol == core_symbol(), "asset must be system token" );
-      check( bid.amount > 0, "insufficient bid" );
-      token::transfer_action transfer_act{ token_account, { {bidder, active_permission} } };
-      transfer_act.send( bidder, names_account, bid, std::string("bid name ")+ newname.to_string() );
-      name_bid_table bids(_self, _self.value);
-      print( name{bidder}, " bid ", bid, " on ", name{newname}, "\n" );
-      auto current = bids.find( newname.value );
-      if( current == bids.end() ) {
-         bids.emplace( bidder, [&]( auto& b ) {
-            b.newname = newname;
-            b.high_bidder = bidder;
-            b.high_bid = bid.amount;
-            b.last_bid_time = current_time_point();
-         });
-      } else {
-         check( current->high_bid > 0, "this auction has already closed" );
-         check( bid.amount - current->high_bid > (current->high_bid / 10), "must increase bid by 10%" );
-         check( current->high_bidder != bidder, "account is already highest bidder" );
-
-         bid_refund_table refunds_table(_self, newname.value);
-
-         auto it = refunds_table.find( current->high_bidder.value );
-         if ( it != refunds_table.end() ) {
-            refunds_table.modify( it, same_payer, [&](auto& r) {
-                  r.amount += asset( current->high_bid, core_symbol() );
-               });
-         } else {
-            refunds_table.emplace( bidder, [&](auto& r) {
-                  r.bidder = current->high_bidder;
-                  r.amount = asset( current->high_bid, core_symbol() );
-               });
-         }
-
-         transaction t;
-         t.actions.emplace_back( permission_level{_self, active_permission},
-                                 _self, "bidrefund"_n,
-                                 std::make_tuple( current->high_bidder, newname )
-         );
-         t.delay_sec = 0;
-         uint128_t deferred_id = (uint128_t(newname.value) << 64) | current->high_bidder.value;
-         cancel_deferred( deferred_id );
-         t.send( deferred_id, bidder );
-
-         bids.modify( current, bidder, [&]( auto& b ) {
-            b.high_bidder = bidder;
-            b.high_bid = bid.amount;
-            b.last_bid_time = current_time_point();
-         });
-      }
-   }
-
-   void system_contract::bidrefund( const name& bidder, const name& newname ) {
-      bid_refund_table refunds_table(_self, newname.value);
-      auto it = refunds_table.find( bidder.value );
-      check( it != refunds_table.end(), "refund not found" );
-
-      token::transfer_action transfer_act{ token_account, { {names_account, active_permission}, {bidder, active_permission} } };
-      transfer_act.send( names_account, bidder, asset(it->amount), std::string("refund bid on name ")+(name{newname}).to_string() );
-      refunds_table.erase( it );
-   }
-
    void system_contract::setinflation( int64_t annual_rate, int64_t inflation_pay_factor, int64_t votepay_factor ) {
-      require_auth(_self);
+      require_auth(get_self());
       check(annual_rate >= 0, "annual_rate can't be negative");
-      check(inflation_pay_factor > 0, "inflation_pay_factor must be positive");
-      check(votepay_factor > 0, "votepay_factor must be positive");
-
+      if ( inflation_pay_factor < pay_factor_precision ) {
+         check( false, "inflation_pay_factor must not be less than " + std::to_string(pay_factor_precision) );
+      }
+      if ( votepay_factor < pay_factor_precision ) {
+         check( false, "votepay_factor must not be less than " + std::to_string(pay_factor_precision) );
+      }
       _gstate4.continuous_rate      = get_continuous_rate(annual_rate);
       _gstate4.inflation_pay_factor = inflation_pay_factor;
       _gstate4.votepay_factor       = votepay_factor;
-      _global4.set( _gstate4, _self );
+      _global4.set( _gstate4, get_self() );
    }
 
    /**
@@ -353,7 +252,7 @@ namespace eosiosystem {
                             ignore<authority> owner,
                             ignore<authority> active ) {
 
-      if( creator != _self ) {
+      if( creator != get_self() ) {
          uint64_t tmp = newact.value >> 4;
          bool has_dot = false;
 
@@ -364,7 +263,7 @@ namespace eosiosystem {
          if( has_dot ) { // or is less than 12 characters
             auto suffix = newact.suffix();
             if( suffix == newact ) {
-               name_bid_table bids(_self, _self.value);
+               name_bid_table bids(get_self(), get_self().value);
                auto current = bids.find( newact.value );
                check( current != bids.end(), "no active bid for name" );
                check( current->high_bidder == creator, "only highest bidder can claim" );
@@ -376,7 +275,7 @@ namespace eosiosystem {
          }
       }
 
-      user_resources_table  userres( _self, newact.value);
+      user_resources_table  userres( get_self(), newact.value );
 
       int64_t free_stake_amount = 0;
       int64_t free_gift_bytes   = 0;
@@ -399,64 +298,35 @@ namespace eosiosystem {
    }
 
    void native::setabi( const name& acnt, const std::vector<char>& abi ) {
-      eosio::multi_index< "abihash"_n, abi_hash >  table(_self, _self.value);
+      eosio::multi_index< "abihash"_n, abi_hash >  table(get_self(), get_self().value);
       auto itr = table.find( acnt.value );
       if( itr == table.end() ) {
          table.emplace( acnt, [&]( auto& row ) {
             row.owner = acnt;
-            row.hash  = sha256(const_cast<char*>(abi.data()), abi.size());
+            row.hash = eosio::sha256(const_cast<char*>(abi.data()), abi.size());
          });
       } else {
          table.modify( itr, same_payer, [&]( auto& row ) {
-            row.hash = sha256(const_cast<char*>(abi.data()), abi.size());
+            row.hash = eosio::sha256(const_cast<char*>(abi.data()), abi.size());
          });
       }
    }
 
    void system_contract::init( unsigned_int version, const symbol& core ) {
-      require_auth( _self );
+      require_auth( get_self() );
       check( version.value == 0, "unsupported version for init action" );
-
-      auto itr = _rammarket.find(ramcore_symbol.raw());
-      check( itr == _rammarket.end(), "system contract has already been initialized" );
+      check( _gstate.core_symbol == symbol(), "system contract has already been initialized" );
+      _gstate.core_symbol = core;
 
       auto system_token_supply   = eosio::token::get_supply(token_account, core.code() );
       check( system_token_supply.symbol == core, "specified core symbol does not exist (precision mismatch)" );
-
       check( system_token_supply.amount > 0, "system token supply must be greater than 0" );
-      _rammarket.emplace( _self, [&]( auto& m ) {
-         m.supply.amount = 100000000000000ll;
-         m.supply.symbol = ramcore_symbol;
-         m.base.balance.amount = int64_t(_gstate.free_ram());
-         m.base.balance.symbol = ram_symbol;
-         m.quote.balance.amount = system_token_supply.amount / 1000;
-         m.quote.balance.symbol = core;
-      });
 
-      token::open_action open_act{ token_account, { {_self, active_permission} } };
-      open_act.send( rex_account, core, _self );
+      token::open_action open_act{ token_account, { {get_self(), active_permission} } };
+      open_act.send( rex_account, core, get_self() );
    }
-         
+
    bool system_contract::vote_is_reasserted( eosio::time_point last_reassertion_time ) const {
          return (current_time_point() - last_reassertion_time) < _gremstate.reassertion_period;
    }
 } /// rem.system
-
-
-EOSIO_DISPATCH( eosiosystem::system_contract,
-     // native.hpp (newaccount definition is actually in rem.system.cpp)
-     (newaccount)(updateauth)(deleteauth)(linkauth)(unlinkauth)(canceldelay)(onerror)(setabi)
-     // rem.system.cpp
-     (init)(setram)(setminstake)(setramrate)(setparams)(setpriv)(setalimits)(setrwrdratio)
-     (setlockperiod)(setunloperiod)(setgiftcontra)(setgiftiss)(setgiftattr)
-     (activate)(rmvproducer)(updtrevision)(bidname)(bidrefund)(setinflation)
-     // rex.cpp
-     (deposit)(withdraw)(buyrex)(unstaketorex)(sellrex)(cnclrexorder)(rentcpu)(rentnet)(fundcpuloan)(fundnetloan)
-     (defcpuloan)(defnetloan)(updaterex)(consolidate)(mvtosavings)(mvfrsavings)(setrex)(rexexec)(closerex)
-     // delegate_bandwidth.cpp
-     (delegatebw)(undelegatebw)(refund)(refundtostake)
-     // voting.cpp
-     (regproducer)(unregprod)(voteproducer)(regproxy)
-     // producer_pay.cpp
-     (onblock)(claimrewards)(torewards)
-)

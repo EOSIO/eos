@@ -130,7 +130,7 @@ public:
     }
 
     auto transfer( name from, name to, asset quantity ) {
-       auto r = push_action( N(rem.token), N(transfer), config::system_account_name, 
+       auto r = push_action( N(rem.token), N(transfer), config::system_account_name,
                              mutable_variant_object()
                              ("from", from)
                              ("to", to)
@@ -205,13 +205,13 @@ public:
        vector<char> data = get_row_by_account( config::system_account_name, config::system_account_name, N(producers), act );
        return abi_ser.binary_to_variant( "producer_info", data, abi_serializer_max_time );
     }
- 
+
     fc::variant get_voter_info( const account_name& act ) {
        vector<char> data = get_row_by_account( config::system_account_name, config::system_account_name, N(voters), act );
        return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "voter_info", data, abi_serializer_max_time );
     }
 
- 
+
     // Vote for producers
     void votepro( account_name voter, vector<account_name> producers ) {
        std::sort( producers.begin(), producers.end() );
@@ -253,7 +253,9 @@ public:
 
 voting_tester::voting_tester() {
    // Create rem.msig and rem.token
-   create_accounts({N(rem.msig), N(rem.token), N(rem.ram), N(rem.ramfee), N(rem.stake), N(rem.bpay), N(rem.spay), N(rem.vpay), N(rem.saving) });
+   create_accounts({N(rem.msig), N(rem.token), N(rem.rex), N(rem.ram),
+                    N(rem.ramfee), N(rem.stake), N(rem.bpay),
+                    N(rem.spay), N(rem.vpay), N(rem.saving)});
 
    // Set code for the following accounts:
    //  - rem (code: rem.bios) (already set by tester constructor)
@@ -354,7 +356,7 @@ BOOST_FIXTURE_TEST_CASE( rem_voting_test, voting_tester ) {
         produce_blocks_for_n_rounds(2); // 2 rounds since new producer schedule is set when the first block of next round is irreversible
         auto active_schedule = control->head_block_state()->active_schedule;
         BOOST_TEST(active_schedule.producers.size() == 1u);
-        BOOST_TEST(active_schedule.producers.front().producer_name == "rem");
+        BOOST_TEST(active_schedule.producers.front().producer_name == name("rem"));
 
         // This will increase the total vote stake by (1'000'000'000'000 - 1,000)
         votepro( N(b1), {N(proda), N(prodb), N(prodc), N(prodd), N(prode), N(prodf), N(prodg),
@@ -367,27 +369,27 @@ BOOST_FIXTURE_TEST_CASE( rem_voting_test, voting_tester ) {
         produce_blocks_for_n_rounds(2); // 2 rounds since new producer schedule is set when the first block of next round is irreversible
         active_schedule = control->head_block_state()->active_schedule;
         BOOST_REQUIRE(active_schedule.producers.size() == 21);
-        BOOST_TEST(active_schedule.producers.at(0).producer_name == "proda");
-        BOOST_TEST(active_schedule.producers.at(1).producer_name == "prodb");
-        BOOST_TEST(active_schedule.producers.at(2).producer_name == "prodc");
-        BOOST_TEST(active_schedule.producers.at(3).producer_name == "prodd");
-        BOOST_TEST(active_schedule.producers.at(4).producer_name == "prode");
-        BOOST_TEST(active_schedule.producers.at(5).producer_name == "prodf");
-        BOOST_TEST(active_schedule.producers.at(6).producer_name == "prodg");
-        BOOST_TEST(active_schedule.producers.at(7).producer_name == "prodh");
-        BOOST_TEST(active_schedule.producers.at(8).producer_name == "prodi");
-        BOOST_TEST(active_schedule.producers.at(9).producer_name == "prodj");
-        BOOST_TEST(active_schedule.producers.at(10).producer_name == "prodk");
-        BOOST_TEST(active_schedule.producers.at(11).producer_name == "prodl");
-        BOOST_TEST(active_schedule.producers.at(12).producer_name == "prodm");
-        BOOST_TEST(active_schedule.producers.at(13).producer_name == "prodn");
-        BOOST_TEST(active_schedule.producers.at(14).producer_name == "prodo");
-        BOOST_TEST(active_schedule.producers.at(15).producer_name == "prodp");
-        BOOST_TEST(active_schedule.producers.at(16).producer_name == "prodq");
-        BOOST_TEST(active_schedule.producers.at(17).producer_name == "prodr");
-        BOOST_TEST(active_schedule.producers.at(18).producer_name == "prods");
-        BOOST_TEST(active_schedule.producers.at(19).producer_name == "prodt");
-        BOOST_TEST(active_schedule.producers.at(20).producer_name == "produ");
+        BOOST_TEST(active_schedule.producers.at(0).producer_name == name("proda"));
+        BOOST_TEST(active_schedule.producers.at(1).producer_name == name("prodb"));
+        BOOST_TEST(active_schedule.producers.at(2).producer_name == name("prodc"));
+        BOOST_TEST(active_schedule.producers.at(3).producer_name == name("prodd"));
+        BOOST_TEST(active_schedule.producers.at(4).producer_name == name("prode"));
+        BOOST_TEST(active_schedule.producers.at(5).producer_name == name("prodf"));
+        BOOST_TEST(active_schedule.producers.at(6).producer_name == name("prodg"));
+        BOOST_TEST(active_schedule.producers.at(7).producer_name == name("prodh"));
+        BOOST_TEST(active_schedule.producers.at(8).producer_name == name("prodi"));
+        BOOST_TEST(active_schedule.producers.at(9).producer_name == name("prodj"));
+        BOOST_TEST(active_schedule.producers.at(10).producer_name == name("prodk"));
+        BOOST_TEST(active_schedule.producers.at(11).producer_name == name("prodl"));
+        BOOST_TEST(active_schedule.producers.at(12).producer_name == name("prodm"));
+        BOOST_TEST(active_schedule.producers.at(13).producer_name == name("prodn"));
+        BOOST_TEST(active_schedule.producers.at(14).producer_name == name("prodo"));
+        BOOST_TEST(active_schedule.producers.at(15).producer_name == name("prodp"));
+        BOOST_TEST(active_schedule.producers.at(16).producer_name == name("prodq"));
+        BOOST_TEST(active_schedule.producers.at(17).producer_name == name("prodr"));
+        BOOST_TEST(active_schedule.producers.at(18).producer_name == name("prods"));
+        BOOST_TEST(active_schedule.producers.at(19).producer_name == name("prodt"));
+        BOOST_TEST(active_schedule.producers.at(20).producer_name == name("produ"));
     } FC_LOG_AND_RETHROW()
 }
 
@@ -434,27 +436,27 @@ BOOST_FIXTURE_TEST_CASE( rem_vote_reassertion_test, voting_tester ) {
       produce_blocks_for_n_rounds(2); // 2 rounds since new producer schedule is set when the first block of next round is irreversible
       const auto active_schedule = control->head_block_state()->active_schedule;
       BOOST_REQUIRE(active_schedule.producers.size() == 21);
-      BOOST_TEST(active_schedule.producers.at(0).producer_name == "proda");
-      BOOST_TEST(active_schedule.producers.at(1).producer_name == "prodb");
-      BOOST_TEST(active_schedule.producers.at(2).producer_name == "prodc");
-      BOOST_TEST(active_schedule.producers.at(3).producer_name == "prodd");
-      BOOST_TEST(active_schedule.producers.at(4).producer_name == "prode");
-      BOOST_TEST(active_schedule.producers.at(5).producer_name == "prodf");
-      BOOST_TEST(active_schedule.producers.at(6).producer_name == "prodg");
-      BOOST_TEST(active_schedule.producers.at(7).producer_name == "prodh");
-      BOOST_TEST(active_schedule.producers.at(8).producer_name == "prodi");
-      BOOST_TEST(active_schedule.producers.at(9).producer_name == "prodj");
-      BOOST_TEST(active_schedule.producers.at(10).producer_name == "prodk");
-      BOOST_TEST(active_schedule.producers.at(11).producer_name == "prodl");
-      BOOST_TEST(active_schedule.producers.at(12).producer_name == "prodm");
-      BOOST_TEST(active_schedule.producers.at(13).producer_name == "prodn");
-      BOOST_TEST(active_schedule.producers.at(14).producer_name == "prodo");
-      BOOST_TEST(active_schedule.producers.at(15).producer_name == "prodp");
-      BOOST_TEST(active_schedule.producers.at(16).producer_name == "prodq");
-      BOOST_TEST(active_schedule.producers.at(17).producer_name == "prodr");
-      BOOST_TEST(active_schedule.producers.at(18).producer_name == "prods");
-      BOOST_TEST(active_schedule.producers.at(19).producer_name == "prodt");
-      BOOST_TEST(active_schedule.producers.at(20).producer_name == "produ");
+      BOOST_TEST(active_schedule.producers.at(0).producer_name == name("proda"));
+      BOOST_TEST(active_schedule.producers.at(1).producer_name == name("prodb"));
+      BOOST_TEST(active_schedule.producers.at(2).producer_name == name("prodc"));
+      BOOST_TEST(active_schedule.producers.at(3).producer_name == name("prodd"));
+      BOOST_TEST(active_schedule.producers.at(4).producer_name == name("prode"));
+      BOOST_TEST(active_schedule.producers.at(5).producer_name == name("prodf"));
+      BOOST_TEST(active_schedule.producers.at(6).producer_name == name("prodg"));
+      BOOST_TEST(active_schedule.producers.at(7).producer_name == name("prodh"));
+      BOOST_TEST(active_schedule.producers.at(8).producer_name == name("prodi"));
+      BOOST_TEST(active_schedule.producers.at(9).producer_name == name("prodj"));
+      BOOST_TEST(active_schedule.producers.at(10).producer_name == name("prodk"));
+      BOOST_TEST(active_schedule.producers.at(11).producer_name == name("prodl"));
+      BOOST_TEST(active_schedule.producers.at(12).producer_name == name("prodm"));
+      BOOST_TEST(active_schedule.producers.at(13).producer_name == name("prodn"));
+      BOOST_TEST(active_schedule.producers.at(14).producer_name == name("prodo"));
+      BOOST_TEST(active_schedule.producers.at(15).producer_name == name("prodp"));
+      BOOST_TEST(active_schedule.producers.at(16).producer_name == name("prodq"));
+      BOOST_TEST(active_schedule.producers.at(17).producer_name == name("prodr"));
+      BOOST_TEST(active_schedule.producers.at(18).producer_name == name("prods"));
+      BOOST_TEST(active_schedule.producers.at(19).producer_name == name("prodt"));
+      BOOST_TEST(active_schedule.producers.at(20).producer_name == name("produ"));
 
       // Skip 180 Days so vote gain 100% power
       produce_min_num_of_blocks_to_spend_time_wo_inactive_prod(fc::seconds(180 * 24 * 3600));
@@ -466,14 +468,14 @@ BOOST_FIXTURE_TEST_CASE( rem_vote_reassertion_test, voting_tester ) {
       // Day 0
       // We just claimed rewards so unpaid blocks == 0
       {
-         const auto prod = get_producer_info( "proda" );
+         const auto prod = get_producer_info( name("proda") );
          BOOST_TEST( 0 == prod["unpaid_blocks"].as_int64() );
       }
 
       // Day 3
       {
          produce_min_num_of_blocks_to_spend_time_wo_inactive_prod(fc::seconds(3 * 24 * 3600)); // +3 days
-         const auto prod = get_producer_info( "proda" );
+         const auto prod = get_producer_info( name("proda") );
          BOOST_TEST( 0 <= prod["unpaid_blocks"].as_int64() );
       }
 
@@ -481,7 +483,7 @@ BOOST_FIXTURE_TEST_CASE( rem_vote_reassertion_test, voting_tester ) {
       // Vote was not re-asserted for 7 days so we will not get paid anymore
       {
          produce_min_num_of_blocks_to_spend_time_wo_inactive_prod(fc::seconds(4 * 24 * 3600)); // +4 days
-         const auto prod = get_producer_info( "proda" );
+         const auto prod = get_producer_info( name("proda") );
          BOOST_TEST( 0 <= prod["unpaid_blocks"].as_int64() );
 
          claim_rewards(N(proda));
@@ -491,7 +493,7 @@ BOOST_FIXTURE_TEST_CASE( rem_vote_reassertion_test, voting_tester ) {
       // We claimed rewards and vote was not re-asserted, so unpaid_blocks == 0
       {
          produce_min_num_of_blocks_to_spend_time_wo_inactive_prod(fc::seconds(3 * 24 * 3600)); // +3 days
-         const auto prod = get_producer_info( "proda" );
+         const auto prod = get_producer_info( name("proda") );
          BOOST_TEST( 0 == prod["unpaid_blocks"].as_int64() );
       }
 
@@ -502,7 +504,7 @@ BOOST_FIXTURE_TEST_CASE( rem_vote_reassertion_test, voting_tester ) {
          produce_blocks_for_n_rounds(2);
 
          produce_min_num_of_blocks_to_spend_time_wo_inactive_prod(fc::seconds(1 * 24 * 3600)); // +1 days
-         const auto prod = get_producer_info( "proda" );
+         const auto prod = get_producer_info( name("proda") );
          BOOST_TEST( 0 <= prod["unpaid_blocks"].as_int64() );
       }
    }
@@ -529,10 +531,10 @@ BOOST_FIXTURE_TEST_CASE( rem_vote_weight_test, voting_tester ) {
 
       // Day 0
       {
-         const auto voter = get_voter_info( "whale1" );
+         const auto voter = get_voter_info( name("whale1") );
          BOOST_TEST_REQUIRE( 0.0 == voter["last_vote_weight"].as_double() );
 
-         const auto prod = get_producer_info( "proda" );
+         const auto prod = get_producer_info( name("proda") );
          BOOST_TEST_REQUIRE( 0.0 == prod["total_votes"].as_double() );
       }
 
@@ -546,7 +548,7 @@ BOOST_FIXTURE_TEST_CASE( rem_vote_weight_test, voting_tester ) {
          // weeks to mature: 24;
          // rem weight:      0.04;
          // staked:          399999999000;
-         const auto prod = get_producer_info( "proda" );
+         const auto prod = get_producer_info( name("proda") );
          BOOST_TEST_REQUIRE( 17461719597502810 == prod["total_votes"].as_double() );
       }
 
@@ -559,7 +561,7 @@ BOOST_FIXTURE_TEST_CASE( rem_vote_weight_test, voting_tester ) {
          // weeks to mature: 20;
          // rem weight:      0.2;
          // staked:          399999999000
-         const auto prod = get_producer_info( "proda" );
+         const auto prod = get_producer_info( name("proda") );
          BOOST_TEST_REQUIRE( 92090147342403456 == prod["total_votes"].as_double() );
       }
 
@@ -573,7 +575,7 @@ BOOST_FIXTURE_TEST_CASE( rem_vote_weight_test, voting_tester ) {
          // weeks to mature: 20;
          // rem weight:      0.2;
          // staked:          399999999000
-         const auto prod = get_producer_info( "proda" );
+         const auto prod = get_producer_info( name("proda") );
          BOOST_TEST_REQUIRE( 92090147342403456 == prod["total_votes"].as_double() );
       }
 
@@ -586,14 +588,14 @@ BOOST_FIXTURE_TEST_CASE( rem_vote_weight_test, voting_tester ) {
          // weeks to mature: 0;
          // rem weight:      1.000000;
          // staked:          399999999000
-         const auto prod = get_producer_info( "proda" );
+         const auto prod = get_producer_info( name("proda") );
          BOOST_TEST_REQUIRE( 6.1736501692861286e+17 == prod["total_votes"].as_double() );
       }
 
       // Day 180 (0)
       // re-staking vote power 100%
-      // staked 40KK 
-      // re-staked 20KK 
+      // staked 40KK
+      // re-staked 20KK
       {
          const auto r = delegate_bandwidth(N(rem.stake), N(whale1), asset(20'000'000'0000LL));
          BOOST_REQUIRE( !r->except_ptr );
@@ -605,17 +607,17 @@ BOOST_FIXTURE_TEST_CASE( rem_vote_weight_test, voting_tester ) {
          // eos weight:      1.543412546180063e+06;
          // rem weight:      0.72;
          // staked:          599999999000
-         const auto prod = get_producer_info( "proda" );
+         const auto prod = get_producer_info( name("proda") );
          BOOST_TEST_REQUIRE( 6.667542188385303e+17 == prod["total_votes"].as_double() );
       }
 
       // Day 210 (30)
       // re-staking vote power 83%
       // staked 60KK
-      // re-staked 20KK 
+      // re-staked 20KK
       {
          produce_min_num_of_blocks_to_spend_time_wo_inactive_prod(fc::seconds(30 * 24 * 3600)); // +30 days
-         
+
          const auto r = delegate_bandwidth(N(rem.stake), N(whale1), asset(20'000'000'0000LL));
          BOOST_REQUIRE( !r->except_ptr );
 
@@ -626,7 +628,7 @@ BOOST_FIXTURE_TEST_CASE( rem_vote_weight_test, voting_tester ) {
          // eos weight:      1.627939195726894e+06;
          // rem weight:      0.678;
          // staked:          799999999000
-         const auto prod = get_producer_info( "proda" );
+         const auto prod = get_producer_info( name("proda") );
          BOOST_TEST_REQUIRE( 8.8559892136843136e+17 == prod["total_votes"].as_double() );
       }
 
@@ -639,7 +641,7 @@ BOOST_FIXTURE_TEST_CASE( rem_vote_weight_test, voting_tester ) {
          // eos weight:      1.811133596417372e+06;
          // rem weight:      1.000000;
          // staked:          799999999000
-         const auto prod = get_producer_info( "proda" );
+         const auto prod = get_producer_info( name("proda") );
          BOOST_TEST_REQUIRE( 1.4489068753227643e+18 == prod["total_votes"].as_double() );
 
       }
@@ -656,7 +658,7 @@ BOOST_FIXTURE_TEST_CASE( stake_lock_period_test, voting_tester ) {
          // GMT: Monday, June 29, 2020
          const auto expected_lock_period = initial_time + fc::days(180);
 
-         auto voter = get_voter_info("proda");
+         auto voter = get_voter_info( name("proda") );
          BOOST_CHECK( expected_lock_period == microseconds_since_epoch_of_iso_string( voter["stake_lock_time"] ) );
       }
 
@@ -675,7 +677,7 @@ BOOST_FIXTURE_TEST_CASE( stake_lock_period_test, voting_tester ) {
          // GMT: Saturday, August 29, 2020
          const auto expected_lock_period = fc::microseconds( 1598577990345000 );
 
-         const auto voter = get_voter_info("proda");
+         const auto voter = get_voter_info( name("proda") );
          BOOST_CHECK( expected_lock_period == microseconds_since_epoch_of_iso_string( voter["stake_lock_time"] ) );
       }
 
@@ -697,7 +699,7 @@ BOOST_FIXTURE_TEST_CASE( stake_lock_period_test, voting_tester ) {
          // GMT: Wednesday, September 9, 2020
          const auto expected_lock_period = fc::microseconds(1599618933049000);
 
-         const auto voter = get_voter_info("proda");
+         const auto voter = get_voter_info( name("proda") );
          BOOST_CHECK( expected_lock_period == microseconds_since_epoch_of_iso_string( voter["stake_lock_time"] ) );
       }
 
@@ -721,7 +723,7 @@ BOOST_FIXTURE_TEST_CASE( stake_lock_period_test, voting_tester ) {
          // GMT: Tuesday, March 9, 2021
          const auto expected_lock_period = fc::microseconds( 1599618933049000 );
 
-         const auto voter = get_voter_info("proda");
+         const auto voter = get_voter_info( name("proda") );
          BOOST_CHECK( expected_lock_period == microseconds_since_epoch_of_iso_string( voter["stake_lock_time"] ) );
       }
    }
@@ -746,7 +748,7 @@ BOOST_FIXTURE_TEST_CASE( undelegate_locked_stake_test, voting_tester ) {
          // GMT: Monday, June 29, 2020
          const auto expected_lock_period = initial_time + fc::days(180);
 
-         auto voter = get_voter_info("proda");
+         auto voter = get_voter_info( name("proda") );
          BOOST_CHECK( expected_lock_period == microseconds_since_epoch_of_iso_string( voter["stake_lock_time"] ) );
          BOOST_TEST( initial_locked_stake == voter["locked_stake"].as_int64() );
       }
@@ -755,20 +757,20 @@ BOOST_FIXTURE_TEST_CASE( undelegate_locked_stake_test, voting_tester ) {
       {
          BOOST_REQUIRE_EXCEPTION( undelegate_bandwidth( N(proda), N(proda), core_from_string("1.0000") ), eosio_assert_message_exception, fc_exception_message_is("assertion failure with message: cannot undelegate during stake lock period") );
       }
-      
+
 
       // +180 Days
       // GMT: Monday, June 29, 2020
       {
          produce_min_num_of_blocks_to_spend_time_wo_inactive_prod( fc::days(180) );
-         
+
          // 499'999'9000 * 1 / 180 = 2'777'7772
          const auto one_day_undelegate_limit = 2'777'7772LL;
 
          BOOST_REQUIRE_EXCEPTION( undelegate_bandwidth( N(proda), N(proda), asset{ one_day_undelegate_limit + 1 } ), eosio_assert_message_exception, fc_exception_message_starts_with("assertion failure with message: insufficient unlocked amount") );
          undelegate_bandwidth( N(proda), N(proda), asset{ one_day_undelegate_limit } );
 
-         auto voter = get_voter_info("proda");
+         auto voter = get_voter_info( name("proda") );
          BOOST_TEST( (initial_locked_stake-one_day_undelegate_limit) == voter["locked_stake"].as_int64() );
       }
 
@@ -781,7 +783,7 @@ BOOST_FIXTURE_TEST_CASE( undelegate_locked_stake_test, voting_tester ) {
          const auto one_day_undelegate_limit = 2'762'3451LL;
          undelegate_bandwidth( N(proda), N(proda), asset{ 10 * one_day_undelegate_limit } );
 
-         auto voter = get_voter_info("proda");
+         auto voter = get_voter_info( name("proda") );
          BOOST_TEST( (remaining_locked_stake - 10 * one_day_undelegate_limit) == voter["locked_stake"].as_int64() );
       }
 
@@ -794,28 +796,28 @@ BOOST_FIXTURE_TEST_CASE( undelegate_locked_stake_test, voting_tester ) {
 
          // cannot undelegate more than locked
          BOOST_REQUIRE_EXCEPTION( undelegate_bandwidth( N(proda), N(proda), asset{ remaining_locked_stake + minimal_account_stake + 1 } ), eosio_assert_message_exception, fc_exception_message_is("assertion failure with message: insufficient locked amount") );
-         
+
          undelegate_bandwidth( N(proda), N(proda), asset{ remaining_locked_stake } );
 
-         auto voter = get_voter_info("proda");
+         auto voter = get_voter_info( name("proda") );
          BOOST_TEST( minimal_account_stake == voter["locked_stake"].as_int64() );
       }
 
-      // +3 Days   
+      // +3 Days
       {
          produce_min_num_of_blocks_to_spend_time_wo_inactive_prod( fc::days(3) );
 
-         const auto staked_before_refund = get_voter_info("proda")["staked"];
-         const auto locked_before_refund = get_voter_info("proda")["locked_stake"];
-         const auto lock_time_refund = microseconds_since_epoch_of_iso_string( get_voter_info("proda")["stake_lock_time"] );
+         const auto staked_before_refund = get_voter_info( name("proda") )["staked"];
+         const auto locked_before_refund = get_voter_info( name("proda") )["locked_stake"];
+         const auto lock_time_refund = microseconds_since_epoch_of_iso_string( get_voter_info( name("proda") )["stake_lock_time"] );
 
          refund_to_stake( N(proda) );
          produce_blocks(2);
-         BOOST_TEST( staked_before_refund < get_voter_info("proda")["staked"].as_int64() );
-         BOOST_TEST( initial_locked_stake == get_voter_info("proda")["staked"].as_int64() );
-         BOOST_TEST( locked_before_refund < get_voter_info("proda")["locked_stake"].as_int64() );
-         BOOST_TEST( initial_locked_stake == get_voter_info("proda")["locked_stake"].as_int64() );
-         BOOST_CHECK( lock_time_refund == microseconds_since_epoch_of_iso_string( get_voter_info("proda")["stake_lock_time"] ) );
+         BOOST_TEST( staked_before_refund < get_voter_info( name("proda") )["staked"].as_int64() );
+         BOOST_TEST( initial_locked_stake == get_voter_info( name("proda") )["staked"].as_int64() );
+         BOOST_TEST( locked_before_refund < get_voter_info( name("proda") )["locked_stake"].as_int64() );
+         BOOST_TEST( initial_locked_stake == get_voter_info( name("proda") )["locked_stake"].as_int64() );
+         BOOST_CHECK( lock_time_refund == microseconds_since_epoch_of_iso_string( get_voter_info( name("proda") )["stake_lock_time"] ) );
       }
 
       {

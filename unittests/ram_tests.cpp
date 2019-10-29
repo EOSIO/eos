@@ -1,7 +1,3 @@
-/**
- *  @file api_tests.cpp
- *  @copyright defined in eos/LICENSE
- */
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wsign-compare"
 #include <boost/test/unit_test.hpp>
@@ -172,7 +168,7 @@ BOOST_AUTO_TEST_SUITE(ram_tests)
 
          PRINT_USAGE(testram11111)
          PRINT_USAGE(testram22222)
-         BOOST_REQUIRE_EQUAL(success(), stake("rem.stake", "testram11111", core_from_string("15.0000")));
+         BOOST_REQUIRE_EQUAL(success(), stake(name("rem.stake"), name("testram11111"), core_from_string("15.0000")));
          produce_blocks(10);
          PRINT_USAGE(testram11111)
 

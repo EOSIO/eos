@@ -1,0 +1,703 @@
+<h1 class="contract">activate</h1>
+
+---
+spec_version: "0.2.0"
+title: Activate Protocol Feature
+summary: 'Activate protocol feature {{nowrap feature_digest}}'
+icon: @ICON_BASE_URL@/@ADMIN_ICON_URI@
+---
+
+{{$action.account}} activates the protocol feature with a digest of {{feature_digest}}.
+
+<h1 class="contract">bidname</h1>
+
+---
+spec_version: "0.2.0"
+title: Bid On a Premium Account Name
+summary: '{{nowrap bidder}} bids on the premium account name {{nowrap newname}}'
+icon: @ICON_BASE_URL@/@ACCOUNT_ICON_URI@
+---
+
+{{bidder}} bids {{bid}} on an auction to own the premium account name {{newname}}.
+
+{{bidder}} transfers {{bid}} to the system to cover the cost of the bid, which will be returned to {{bidder}} only if {{bidder}} is later outbid in the auction for {{newname}} by another account.
+
+If the auction for {{newname}} closes with {{bidder}} remaining as the highest bidder, {{bidder}} will be authorized to create the account with name {{newname}}.
+
+## Bid refund behavior
+
+If {{bidder}}’s bid on {{newname}} is later outbid by another account, {{bidder}} will be able to claim back the transferred amount of {{bid}}. The system will attempt to automatically do this on behalf of {{bidder}}, but the automatic refund may occasionally fail which will then require {{bidder}} to manually claim the refund with the bidrefund action.
+
+## Auction close criteria
+
+The system should automatically close the auction for {{newname}} if it satisfies the condition that over a period of two minutes the following two properties continuously hold:
+
+- no one has bid on {{newname}} within the last 24 hours;
+- and, the value of the latest bid on {{newname}} is greater than the value of the bids on each of the other open auctions.
+
+Be aware that the condition to close the auction described above are sufficient but not necessary. The auction for {{newname}} cannot close unless both of the properties are simultaneously satisfied, but it may be closed without requiring the properties to hold for a period of 2 minutes.
+
+<h1 class="contract">bidrefund</h1>
+
+---
+spec_version: "0.2.0"
+title: Claim Refund on Name Bid
+summary: 'Claim refund on {{nowrap newname}} bid'
+icon: @ICON_BASE_URL@/@ACCOUNT_ICON_URI@
+---
+
+{{bidder}} claims refund on {{newname}} bid after being outbid by someone else.
+
+<h1 class="contract">buyram</h1>
+
+---
+spec_version: "0.2.0"
+title: Buy RAM
+summary: '{{nowrap payer}} buys RAM on behalf of {{nowrap receiver}} by paying {{nowrap quant}}'
+icon: @ICON_BASE_URL@/@RESOURCE_ICON_URI@
+---
+
+{{payer}} buys RAM on behalf of {{receiver}} by paying {{quant}}. This transaction will incur a 0.5% fee out of {{quant}} and the amount of RAM delivered will depend on market rates.
+
+<h1 class="contract">buyrambytes</h1>
+
+---
+spec_version: "0.2.0"
+title: Buy RAM
+summary: '{{nowrap payer}} buys {{nowrap bytes}} bytes of RAM on behalf of {{nowrap receiver}}'
+icon: @ICON_BASE_URL@/@RESOURCE_ICON_URI@
+---
+
+{{payer}} buys approximately {{bytes}} bytes of RAM on behalf of {{receiver}} by paying market rates for RAM. This transaction will incur a 0.5% fee and the cost will depend on market rates.
+
+<h1 class="contract">buyrex</h1>
+
+---
+spec_version: "0.2.0"
+title: Buy REX Tokens
+summary: '{{nowrap from}} buys REX tokens in exchange for {{nowrap amount}} and his vote stake increases by {{nowrap amount}}'
+icon: @ICON_BASE_URL@/@REX_ICON_URI@
+---
+
+{{amount}} is taken out of {{from}}’s REX fund and used to purchase REX tokens at the current market exchange rate. In order for the action to succeed, {{from}} must have voted for a proxy or at least 21 block producers. {{amount}} is added to {{from}}’s vote stake.
+
+A sell order of the purchased amount can only be initiated after waiting for the maturity period of 4 to 5 days to pass. Even then, depending on the market conditions, the initiated sell order may not be executed immediately.
+
+<h1 class="contract">canceldelay</h1>
+
+---
+spec_version: "0.2.0"
+title: Cancel Delayed Transaction
+summary: '{{nowrap canceling_auth.actor}} cancels a delayed transaction'
+icon: @ICON_BASE_URL@/@ACCOUNT_ICON_URI@
+---
+
+{{canceling_auth.actor}} cancels the delayed transaction with id {{trx_id}}.
+
+<h1 class="contract">claimrewards</h1>
+
+---
+spec_version: "0.2.0"
+title: Claim Block Producer Rewards
+summary: '{{nowrap owner}} claims block and vote rewards'
+icon: @ICON_BASE_URL@/@ADMIN_ICON_URI@
+---
+
+{{owner}} claims block and vote rewards from the system.
+
+<h1 class="contract">closerex</h1>
+
+---
+spec_version: "0.2.0"
+title: Cleanup Unused REX Data
+summary: 'Delete REX related DB entries and free associated RAM'
+icon: @ICON_BASE_URL@/@REX_ICON_URI@
+---
+
+Delete REX related DB entries and free associated RAM for {{owner}}.
+
+To fully delete all REX related DB entries, {{owner}} must ensure that their REX balance and REX fund amounts are both zero and they have no outstanding loans.
+
+<h1 class="contract">cnclrexorder</h1>
+
+---
+spec_version: "0.2.0"
+title: Cancel Scheduled REX Sell Order
+summary: '{{nowrap owner}} cancels a scheduled sell order if not yet filled'
+icon: @ICON_BASE_URL@/@REX_ICON_URI@
+---
+
+{{owner}} cancels their open sell order.
+
+<h1 class="contract">consolidate</h1>
+
+---
+spec_version: "0.2.0"
+title: Consolidate REX Maturity Buckets Into One
+summary: 'Consolidate REX maturity buckets into one'
+icon: @ICON_BASE_URL@/@REX_ICON_URI@
+---
+
+Consolidate REX maturity buckets into one bucket that {{owner}} will not be able to sell until 4 to 5 days later.
+
+<h1 class="contract">defcpuloan</h1>
+
+---
+spec_version: "0.2.0"
+title: Withdraw from the Fund of a Specific CPU Loan
+summary: '{{nowrap from}} transfers {{nowrap amount}} from the fund of CPU loan number {{nowrap loan_num}} back to REX fund'
+icon: @ICON_BASE_URL@/@REX_ICON_URI@
+---
+
+{{from}} transfers {{amount}} from the fund of CPU loan number {{loan_num}} back to REX fund.
+
+<h1 class="contract">defnetloan</h1>
+
+---
+spec_version: "0.2.0"
+title: Withdraw from the Fund of a Specific NET Loan
+summary: '{{nowrap from}} transfers {{nowrap amount}} from the fund of NET loan number {{nowrap loan_num}} back to REX fund'
+icon: @ICON_BASE_URL@/@REX_ICON_URI@
+---
+
+{{from}} transfers {{amount}} from the fund of NET loan number {{loan_num}} back to REX fund.
+
+<h1 class="contract">delegatebw</h1>
+
+---
+spec_version: "0.2.0"
+title: Stake Tokens for NET and/or CPU
+summary: 'Stake tokens for NET and/or CPU and optionally transfer ownership'
+icon: @ICON_BASE_URL@/@RESOURCE_ICON_URI@
+---
+
+{{#if transfer}} {{from}} stakes on behalf of {{receiver}} {{stake_net_quantity}} for NET bandwidth and {{stake_cpu_quantity}} for CPU bandwidth.
+
+Staked tokens will also be transferred to {{receiver}}. The sum of these two quantities will be deducted from {{from}}’s liquid balance and add to the vote weight of {{receiver}}.
+{{else}}
+{{from}} stakes to self and delegates to {{receiver}} {{stake_net_quantity}} for NET bandwidth and {{stake_cpu_quantity}} for CPU bandwidth.
+
+The sum of these two quantities add to the vote weight of {{from}}.
+{{/if}}
+
+<h1 class="contract">deleteauth</h1>
+
+---
+spec_version: "0.2.0"
+title: Delete Account Permission
+summary: 'Delete the {{nowrap permission}} permission of {{nowrap account}}'
+icon: @ICON_BASE_URL@/@ACCOUNT_ICON_URI@
+---
+
+Delete the {{permission}} permission of {{account}}.
+
+<h1 class="contract">deposit</h1>
+
+---
+spec_version: "0.2.0"
+title: Deposit Into REX Fund
+summary: 'Add to {{nowrap owner}}’s REX fund by transferring {{nowrap amount}} from {{nowrap owner}}’s liquid balance'
+icon: @ICON_BASE_URL@/@REX_ICON_URI@
+---
+
+Transfer {{amount}} from {{owner}}’s liquid balance to {{owner}}’s REX fund. All proceeds and expenses related to REX are added to or taken out of this fund.
+
+<h1 class="contract">fundcpuloan</h1>
+
+---
+spec_version: "0.2.0"
+title: Deposit into the Fund of a Specific CPU Loan
+summary: '{{nowrap from}} funds a CPU loan'
+icon: @ICON_BASE_URL@/@REX_ICON_URI@
+---
+
+{{from}} transfers {{payment}} from REX fund to the fund of CPU loan number {{loan_num}} in order to be used in loan renewal at expiry. {{from}} can withdraw the total balance of the loan fund at any time.
+
+<h1 class="contract">fundnetloan</h1>
+
+---
+spec_version: "0.2.0"
+title: Deposit into the Fund of a Specific NET Loan
+summary: '{{nowrap from}} funds a NET loan'
+icon: @ICON_BASE_URL@/@REX_ICON_URI@
+---
+
+{{from}} transfers {{payment}} from REX fund to the fund of NET loan number {{loan_num}} in order to be used in loan renewal at expiry. {{from}} can withdraw the total balance of the loan fund at any time.
+
+<h1 class="contract">init</h1>
+
+---
+spec_version: "0.2.0"
+title: Initialize System Contract
+summary: 'Initialize system contract'
+icon: @ICON_BASE_URL@/@ADMIN_ICON_URI@
+---
+
+Initialize system contract. The core token symbol will be set to {{core}}.
+
+<h1 class="contract">linkauth</h1>
+
+---
+spec_version: "0.2.0"
+title: Link Action to Permission
+summary: '{{nowrap account}} sets the minimum required permission for the {{#if type}}{{nowrap type}} action of the{{/if}} {{nowrap code}} contract to {{nowrap requirement}}'
+icon: @ICON_BASE_URL@/@ACCOUNT_ICON_URI@
+---
+
+{{account}} sets the minimum required permission for the {{#if type}}{{type}} action of the{{/if}} {{code}} contract to {{requirement}}.
+
+{{#if type}}{{else}}Any links explicitly associated to specific actions of {{code}} will take precedence.{{/if}}
+
+<h1 class="contract">newaccount</h1>
+
+---
+spec_version: "0.2.0"
+title: Create New Account
+summary: '{{nowrap creator}} creates a new account with the name {{nowrap name}}'
+icon: @ICON_BASE_URL@/@ACCOUNT_ICON_URI@
+---
+
+{{creator}} creates a new account with the name {{name}} and the following permissions:
+
+owner permission with authority:
+{{to_json owner}}
+
+active permission with authority:
+{{to_json active}}
+
+<h1 class="contract">mvfrsavings</h1>
+
+---
+spec_version: "0.2.0"
+title: Unlock REX Tokens
+summary: '{{nowrap owner}} unlocks REX Tokens'
+icon: @ICON_BASE_URL@/@REX_ICON_URI@
+---
+
+{{owner}} unlocks {{rex}} by moving it out of the REX savings bucket. The unlocked REX tokens cannot be sold until 4 to 5 days later.
+
+<h1 class="contract">mvtosavings</h1>
+
+---
+spec_version: "0.2.0"
+title: Lock REX Tokens
+summary: '{{nowrap owner}} locks REX Tokens'
+icon: @ICON_BASE_URL@/@REX_ICON_URI@
+---
+
+{{owner}} locks {{rex}} by moving it into the REX savings bucket. The locked REX tokens cannot be sold directly and will have to be unlocked explicitly before selling.
+
+<h1 class="contract">refund</h1>
+
+---
+spec_version: "0.2.0"
+title: Claim Unstaked Tokens
+summary: 'Return previously unstaked tokens to {{nowrap owner}}'
+icon: @ICON_BASE_URL@/@ACCOUNT_ICON_URI@
+---
+
+Return previously unstaked tokens to {{owner}} after the unstaking period has elapsed.
+
+<h1 class="contract">regproducer</h1>
+
+---
+spec_version: "0.2.0"
+title: Register as a Block Producer Candidate
+summary: 'Register {{nowrap producer}} account as a block producer candidate'
+icon: @ICON_BASE_URL@/@VOTING_ICON_URI@
+---
+
+Register {{producer}} account as a block producer candidate.
+
+URL: {{url}}
+Location code: {{location}}
+Block signing key: {{producer_key}}
+
+## Block Producer Agreement
+{{$clauses.BlockProducerAgreement}}
+
+<h1 class="contract">regproducer2</h1>
+
+---
+spec_version: "0.2.0"
+title: Register as a Block Producer Candidate
+summary: 'Register {{nowrap producer}} account as a block producer candidate'
+icon: @ICON_BASE_URL@/@VOTING_ICON_URI@
+---
+
+Register {{producer}} account as a block producer candidate.
+
+URL: {{url}}
+Location code: {{location}}
+Block signing authority:
+{{to_json producer_authority}}
+
+## Block Producer Agreement
+{{$clauses.BlockProducerAgreement}}
+
+<h1 class="contract">regproxy</h1>
+
+---
+spec_version: "0.2.0"
+title: Register/unregister as a Proxy
+summary: 'Register/unregister {{nowrap proxy}} as a proxy account'
+icon: @ICON_BASE_URL@/@VOTING_ICON_URI@
+---
+
+{{#if isproxy}}
+{{proxy}} registers as a proxy that can vote on behalf of accounts that appoint it as their proxy.
+{{else}}
+{{proxy}} unregisters as a proxy that can vote on behalf of accounts that appoint it as their proxy.
+{{/if}}
+
+<h1 class="contract">rentcpu</h1>
+
+---
+spec_version: "0.2.0"
+title: Rent CPU Bandwidth for 30 Days
+summary: '{{nowrap from}} pays {{nowrap loan_payment}} to rent CPU bandwidth for {{nowrap receiver}}'
+icon: @ICON_BASE_URL@/@REX_ICON_URI@
+---
+
+{{from}} pays {{loan_payment}} to rent CPU bandwidth on behalf of {{receiver}} for a period of 30 days.
+
+{{loan_payment}} is taken out of {{from}}’s REX fund. The market price determines the number of tokens to be staked to {{receiver}}’s CPU resources. In addition, {{from}} provides {{loan_fund}}, which is also taken out of {{from}}’s REX fund, to be used for automatic renewal of the loan.
+
+At expiration, if the loan has less funds than {{loan_payment}}, it is closed and lent tokens that have been staked are taken out of {{receiver}}’s CPU bandwidth. Otherwise, it is renewed at the market price at the time of renewal, that is, the number of staked tokens is recalculated and {{receiver}}’s CPU bandwidth is updated accordingly. {{from}} can fund or defund a loan at any time before expiration. When the loan is closed, {{from}} is refunded any tokens remaining in the loan fund.
+
+<h1 class="contract">rentnet</h1>
+
+---
+spec_version: "0.2.0"
+title: Rent NET Bandwidth for 30 Days
+summary: '{{nowrap from}} pays {{nowrap loan_payment}} to rent NET bandwidth for {{nowrap receiver}}'
+icon: @ICON_BASE_URL@/@REX_ICON_URI@
+---
+
+{{from}} pays {{loan_payment}} to rent NET bandwidth on behalf of {{receiver}} for a period of 30 days.
+
+{{loan_payment}} is taken out of {{from}}’s REX fund. The market price determines the number of tokens to be staked to {{receiver}}’s NET resources for 30 days. In addition, {{from}} provides {{loan_fund}}, which is also taken out of {{from}}’s REX fund, to be used for automatic renewal of the loan.
+
+At expiration, if the loan has less funds than {{loan_payment}}, it is closed and lent tokens that have been staked are taken out of {{receiver}}’s NET bandwidth. Otherwise, it is renewed at the market price at the time of renewal, that is, the number of staked tokens is recalculated and {{receiver}}’s NET bandwidth is updated accordingly. {{from}} can fund or defund a loan at any time before expiration. When the loan is closed, {{from}} is refunded any tokens remaining in the loan fund.
+
+<h1 class="contract">rexexec</h1>
+
+---
+spec_version: "0.2.0"
+title: Perform REX Maintenance
+summary: 'Process sell orders and expired loans'
+icon: @ICON_BASE_URL@/@REX_ICON_URI@
+---
+
+Performs REX maintenance by processing a maximum of {{max}} REX sell orders and expired loans. Any account can execute this action.
+
+<h1 class="contract">rmvproducer</h1>
+
+---
+spec_version: "0.2.0"
+title: Forcibly Unregister a Block Producer Candidate
+summary: '{{nowrap producer}} is unregistered as a block producer candidate'
+icon: @ICON_BASE_URL@/@ADMIN_ICON_URI@
+---
+
+{{$action.account}} unregisters {{producer}} as a block producer candidate. {{producer}} account will retain its votes and those votes can change based on voter stake changes or votes removed from {{producer}}. However new voters will not be able to vote for {{producer}} while it remains unregistered.
+
+<h1 class="contract">sellram</h1>
+
+---
+spec_version: "0.2.0"
+title: Sell RAM From Account
+summary: 'Sell unused RAM from {{nowrap account}}'
+icon: @ICON_BASE_URL@/@RESOURCE_ICON_URI@
+---
+
+Sell {{bytes}} bytes of unused RAM from account {{account}} at market price. This transaction will incur a 0.5% fee on the proceeds which depend on market rates.
+
+<h1 class="contract">sellrex</h1>
+
+---
+spec_version: "0.2.0"
+title: Sell REX Tokens in Exchange for EOS
+summary: '{{nowrap from}} sells {{nowrap rex}} tokens'
+icon: @ICON_BASE_URL@/@REX_ICON_URI@
+---
+
+{{from}} initiates a sell order to sell {{rex}} tokens at the market exchange rate during the time at which the order is ultimately executed. If {{from}} already has an open sell order in the sell queue, {{rex}} will be added to the amount of the sell order without change the position of the sell order within the queue. Once the sell order is executed, proceeds are added to {{from}}’s REX fund, the value of sold REX tokens is deducted from {{from}}’s vote stake, and votes are updated accordingly.
+
+Depending on the market conditions, it may not be possible to fill the entire sell order immediately. In such a case, the sell order is added to the back of a sell queue. A sell order at the front of the sell queue will automatically be executed when the market conditions allow for the entire order to be filled. Regardless of the market conditions, the system is designed to execute this sell order within 30 days. {{from}} can cancel the order at any time before it is filled using the cnclrexorder action.
+
+<h1 class="contract">setabi</h1>
+
+---
+spec_version: "0.2.0"
+title: Deploy Contract ABI
+summary: 'Deploy contract ABI on account {{nowrap account}}'
+icon: @ICON_BASE_URL@/@ACCOUNT_ICON_URI@
+---
+
+Deploy the ABI file associated with the contract on account {{account}}.
+
+<h1 class="contract">setacctcpu</h1>
+
+---
+spec_version: "0.2.0"
+title: Explicitly Manage the CPU Quota of Account
+summary: 'Explicitly manage the CPU bandwidth quota of account {{nowrap account}}'
+icon: @ICON_BASE_URL@/@ADMIN_ICON_URI@
+---
+
+{{#if_has_value cpu_weight}}
+Explicitly manage the CPU bandwidth quota of account {{account}} by pinning it to a weight of {{cpu_weight}}.
+
+{{account}} can stake and unstake, however, it will not change their CPU bandwidth quota as long as it remains pinned.
+{{else}}
+Unpin the CPU bandwidth quota of account {{account}}. The CPU bandwidth quota of {{account}} will be driven by the current tokens staked for CPU bandwidth by {{account}}.
+{{/if_has_value}}
+
+<h1 class="contract">setacctnet</h1>
+
+---
+spec_version: "0.2.0"
+title: Explicitly Manage the NET Quota of Account
+summary: 'Explicitly manage the NET bandwidth quota of account {{nowrap account}}'
+icon: @ICON_BASE_URL@/@ADMIN_ICON_URI@
+---
+
+{{#if_has_value net_weight}}
+Explicitly manage the network bandwidth quota of account {{account}} by pinning it to a weight of {{net_weight}}.
+
+{{account}} can stake and unstake, however, it will not change their NET bandwidth quota as long as it remains pinned.
+{{else}}
+Unpin the NET bandwidth quota of account {{account}}. The NET bandwidth quota of {{account}} will be driven by the current tokens staked for NET bandwidth by {{account}}.
+{{/if_has_value}}
+
+<h1 class="contract">setacctram</h1>
+
+---
+spec_version: "0.2.0"
+title: Explicitly Manage the RAM Quota of Account
+summary: 'Explicitly manage the RAM quota of account {{nowrap account}}'
+icon: @ICON_BASE_URL@/@ADMIN_ICON_URI@
+---
+
+{{#if_has_value ram_bytes}}
+Explicitly manage the RAM quota of account {{account}} by pinning it to {{ram_bytes}} bytes.
+
+{{account}} can buy and sell RAM, however, it will not change their RAM quota as long as it remains pinned.
+{{else}}
+Unpin the RAM quota of account {{account}}. The RAM quota of {{account}} will be driven by the current RAM holdings of {{account}}.
+{{/if_has_value}}
+
+<h1 class="contract">setalimits</h1>
+
+---
+spec_version: "0.2.0"
+title: Adjust Resource Limits of Account
+summary: 'Adjust resource limits of account {{nowrap account}}'
+icon: @ICON_BASE_URL@/@ADMIN_ICON_URI@
+---
+
+{{$action.account}} updates {{account}}’s resource limits to have a RAM quota of {{ram_bytes}} bytes, a NET bandwidth quota of {{net_weight}} and a CPU bandwidth quota of {{cpu_weight}}.
+
+<h1 class="contract">setcode</h1>
+
+---
+spec_version: "0.2.0"
+title: Deploy Contract Code
+summary: 'Deploy contract code on account {{nowrap account}}'
+icon: @ICON_BASE_URL@/@ACCOUNT_ICON_URI@
+---
+
+Deploy compiled contract code to the account {{account}}.
+
+<h1 class="contract">setparams</h1>
+
+---
+spec_version: "0.2.0"
+title: Set System Parameters
+summary: 'Set System Parameters'
+icon: @ICON_BASE_URL@/@ADMIN_ICON_URI@
+---
+
+{{$action.account}} sets system parameters to:
+{{to_json params}}
+
+<h1 class="contract">setpriv</h1>
+
+---
+spec_version: "0.2.0"
+title: Make an Account Privileged or Unprivileged
+summary: '{{#if is_priv}}Make {{nowrap account}} privileged{{else}}Remove privileged status of {{nowrap account}}{{/if}}'
+icon: @ICON_BASE_URL@/@ADMIN_ICON_URI@
+---
+
+{{#if is_priv}}
+{{$action.account}} makes {{account}} privileged.
+{{else}}
+{{$action.account}} removes privileged status of {{account}}.
+{{/if}}
+
+<h1 class="contract">setram</h1>
+
+---
+spec_version: "0.2.0"
+title: Configure the Available RAM
+summary: 'Configure the available RAM'
+icon: @ICON_BASE_URL@/@ADMIN_ICON_URI@
+---
+
+{{$action.account}} configures the available RAM to {{max_ram_size}} bytes.
+
+<h1 class="contract">setramrate</h1>
+
+---
+spec_version: "0.2.0"
+title: Set the Rate of Increase of RAM
+summary: 'Set the rate of increase of RAM per block'
+icon: @ICON_BASE_URL@/@ADMIN_ICON_URI@
+---
+
+{{$action.account}} sets the rate of increase of RAM to {{bytes_per_block}} bytes/block.
+
+<h1 class="contract">setrex</h1>
+
+---
+spec_version: "0.2.0"
+title: Adjust REX Pool Virtual Balance
+summary: 'Adjust REX Pool Virtual Balance'
+icon: @ICON_BASE_URL@/@ADMIN_ICON_URI@
+---
+
+{{$action.account}} adjusts REX loan rate by setting REX pool virtual balance to {{balance}}. No token transfer or issue is executed in this action.
+
+<h1 class="contract">setinflation</h1>
+
+---
+spec_version: "0.2.0"
+title: Set Inflation Parameters
+summary: 'Set inflation parameters'
+icon: @ICON_BASE_URL@/@ADMIN_ICON_URI@
+---
+
+{{$action.account}} sets the inflation parameters as follows:
+
+* Annual inflation rate (in units of a hundredth of a percent): {{annual_rate}}
+* Fraction of inflation used to reward block producers: 10000/{{inflation_pay_factor}}
+* Fraction of block producer rewards to be distributed proportional to blocks produced: 10000/{{votepay_factor}}
+
+<h1 class="contract">undelegatebw</h1>
+
+---
+spec_version: "0.2.0"
+title: Unstake Tokens for NET and/or CPU
+summary: 'Unstake tokens for NET and/or CPU from {{nowrap receiver}}'
+icon: @ICON_BASE_URL@/@RESOURCE_ICON_URI@
+---
+
+{{from}} unstakes from {{receiver}} {{unstake_net_quantity}} for NET bandwidth and {{unstake_cpu_quantity}} for CPU bandwidth.
+
+The sum of these two quantities will be removed from the vote weight of {{receiver}} and will be made available to {{from}} after an uninterrupted 3 day period without further unstaking by {{from}}. After the uninterrupted 3 day period passes, the system will attempt to automatically return the funds to {{from}}’s regular token balance. However, this automatic refund may occasionally fail which will then require {{from}} to manually claim the funds with the refund action.
+
+<h1 class="contract">unlinkauth</h1>
+
+---
+spec_version: "0.2.0"
+title: Unlink Action from Permission
+summary: '{{nowrap account}} unsets the minimum required permission for the {{#if type}}{{nowrap type}} action of the{{/if}} {{nowrap code}} contract'
+icon: @ICON_BASE_URL@/@ACCOUNT_ICON_URI@
+---
+
+{{account}} removes the association between the {{#if type}}{{type}} action of the{{/if}} {{code}} contract and its minimum required permission.
+
+{{#if type}}{{else}}This will not remove any links explicitly associated to specific actions of {{code}}.{{/if}}
+
+<h1 class="contract">unregprod</h1>
+
+---
+spec_version: "0.2.0"
+title: Unregister as a Block Producer Candidate
+summary: '{{nowrap producer}} unregisters as a block producer candidate'
+icon: @ICON_BASE_URL@/@VOTING_ICON_URI@
+---
+
+{{producer}} unregisters as a block producer candidate. {{producer}} account will retain its votes and those votes can change based on voter stake changes or votes removed from {{producer}}. However new voters will not be able to vote for {{producer}} while it remains unregistered.
+
+<h1 class="contract">unstaketorex</h1>
+
+---
+spec_version: "0.2.0"
+title: Buy REX Tokens Using Staked Tokens
+summary: '{{nowrap owner}} buys REX tokens in exchange for tokens currently staked to NET and/or CPU'
+icon: @ICON_BASE_URL@/@REX_ICON_URI@
+---
+
+{{from_net}} and {{from_cpu}} are withdrawn from {{receiver}}’s NET and CPU bandwidths respectively. These funds are used to purchase REX tokens at the current market exchange rate. In order for the action to succeed, {{owner}} must have voted for a proxy or at least 21 block producers.
+
+A sell order of the purchased amount can only be initiated after waiting for the maturity period of 4 to 5 days to pass. Even then, depending on the market conditions, the initiated sell order may not be executed immediately.
+
+<h1 class="contract">updateauth</h1>
+
+---
+spec_version: "0.2.0"
+title: Modify Account Permission
+summary: 'Add or update the {{nowrap permission}} permission of {{nowrap account}}'
+icon: @ICON_BASE_URL@/@ACCOUNT_ICON_URI@
+---
+
+Modify, and create if necessary, the {{permission}} permission of {{account}} to have a parent permission of {{parent}} and the following authority:
+{{to_json auth}}
+
+<h1 class="contract">updaterex</h1>
+
+---
+spec_version: "0.2.0"
+title: Update REX Owner Vote Weight
+summary: 'Update vote weight to current value of held REX tokens'
+icon: @ICON_BASE_URL@/@REX_ICON_URI@
+---
+
+Update vote weight of {{owner}} account to current value of held REX tokens.
+
+<h1 class="contract">updtrevision</h1>
+
+---
+spec_version: "0.2.0"
+title: Update System Contract Revision Number
+summary: 'Update system contract revision number'
+icon: @ICON_BASE_URL@/@ADMIN_ICON_URI@
+---
+
+{{$action.account}} advances the system contract revision number to {{revision}}.
+
+<h1 class="contract">voteproducer</h1>
+
+---
+spec_version: "0.2.0"
+title: Vote for Block Producers
+summary: '{{nowrap voter}} votes for {{#if proxy}}the proxy {{nowrap proxy}}{{else}}up to 30 block producer candidates{{/if}}'
+icon: @ICON_BASE_URL@/@VOTING_ICON_URI@
+---
+
+{{#if proxy}}
+{{voter}} votes for the proxy {{proxy}}.
+At the time of voting the full weight of voter’s staked (CPU + NET) tokens will be cast towards each of the producers voted by {{proxy}}.
+{{else}}
+{{voter}} votes for the following block producer candidates:
+
+{{#each producers}}
+  + {{this}}
+{{/each}}
+
+At the time of voting the full weight of voter’s staked (CPU + NET) tokens will be cast towards each of the above producers.
+{{/if}}
+
+<h1 class="contract">withdraw</h1>
+
+---
+spec_version: "0.2.0"
+title: Withdraw from REX Fund
+summary: 'Withdraw {{nowrap amount}} from {{nowrap owner}}’s REX fund by transferring to {{owner}}’s liquid balance'
+icon: @ICON_BASE_URL@/@REX_ICON_URI@
+---
+
+Withdraws {{amount}} from {{owner}}’s REX fund and transfer them to {{owner}}’s liquid balance.

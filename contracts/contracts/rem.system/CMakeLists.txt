@@ -1,4 +1,12 @@
-add_contract(rem.system rem.system ${CMAKE_CURRENT_SOURCE_DIR}/src/rem.system.cpp)
+add_contract(rem.system rem.system
+   ${CMAKE_CURRENT_SOURCE_DIR}/src/rem.system.cpp
+   ${CMAKE_CURRENT_SOURCE_DIR}/src/delegate_bandwidth.cpp
+   ${CMAKE_CURRENT_SOURCE_DIR}/src/native.cpp
+   ${CMAKE_CURRENT_SOURCE_DIR}/src/producer_pay.cpp
+   ${CMAKE_CURRENT_SOURCE_DIR}/src/rex.cpp
+   ${CMAKE_CURRENT_SOURCE_DIR}/src/voting.cpp
+   ${CMAKE_CURRENT_SOURCE_DIR}/src/rotation.cpp
+)
 
 target_include_directories(rem.system
    PUBLIC
@@ -21,4 +29,6 @@ set_target_properties(rex.results
    PROPERTIES
    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/.rex")
 
-target_compile_options( rem.system PUBLIC -R${CMAKE_CURRENT_SOURCE_DIR}/ricardian )
+configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/ricardian/rem.system.contracts.md.in ${CMAKE_CURRENT_BINARY_DIR}/ricardian/rem.system.contracts.md @ONLY )
+
+target_compile_options( rem.system PUBLIC -R${CMAKE_CURRENT_SOURCE_DIR}/ricardian -R${CMAKE_CURRENT_BINARY_DIR}/ricardian )

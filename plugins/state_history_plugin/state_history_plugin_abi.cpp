@@ -312,6 +312,24 @@ extern const char* const state_history_plugin_abi = R"({
             ]
         },
         {
+            "name": "block_signing_authority_v0", "fields": [
+                { "type": "uint32", "name": "threshold" },
+                { "type": "key_weight[]", "name": "keys" }
+            ]
+        },
+        {
+            "name": "producer_authority", "fields": [
+                { "type": "name", "name": "producer_name" },
+                { "type": "block_signing_authority", "name": "authority" }
+            ]
+        },
+        {
+            "name": "producer_authority_schedule", "fields": [
+                { "type": "uint32", "name": "version" },
+                { "type": "producer_authority[]", "name": "producers" }
+            ]
+        },
+        {
             "name": "chain_config_v0", "fields": [
                 { "type": "uint64", "name": "max_block_net_usage" },
                 { "type": "uint32", "name": "target_block_net_usage_pct" },
@@ -337,6 +355,14 @@ extern const char* const state_history_plugin_abi = R"({
                 { "type": "uint32?", "name": "proposed_schedule_block_num" },
                 { "type": "producer_schedule", "name": "proposed_schedule" },
                 { "type": "chain_config", "name": "configuration" }
+            ]
+        },
+        {
+            "name": "global_property_v1", "fields": [
+                { "type": "uint32?", "name": "proposed_schedule_block_num" },
+                { "type": "producer_authority_schedule", "name": "proposed_schedule" },
+                { "type": "chain_config", "name": "configuration" },
+                { "type": "checksum256", "name": "chain_id" }
             ]
         },
         {
@@ -492,7 +518,7 @@ extern const char* const state_history_plugin_abi = R"({
         { "name": "contract_index_double", "types": ["contract_index_double_v0"] },
         { "name": "contract_index_long_double", "types": ["contract_index_long_double_v0"] },
         { "name": "chain_config", "types": ["chain_config_v0"] },
-        { "name": "global_property", "types": ["global_property_v0"] },
+        { "name": "global_property", "types": ["global_property_v0", "global_property_v1"] },
         { "name": "generated_transaction", "types": ["generated_transaction_v0"] },
         { "name": "activated_protocol_feature", "types": ["activated_protocol_feature_v0"] },
         { "name": "protocol_state", "types": ["protocol_state_v0"] },
@@ -504,7 +530,8 @@ extern const char* const state_history_plugin_abi = R"({
         { "name": "resource_limits_state", "types": ["resource_limits_state_v0"] },
         { "name": "resource_limits_ratio", "types": ["resource_limits_ratio_v0"] },
         { "name": "elastic_limit_parameters", "types": ["elastic_limit_parameters_v0"] },
-        { "name": "resource_limits_config", "types": ["resource_limits_config_v0"] }
+        { "name": "resource_limits_config", "types": ["resource_limits_config_v0"] },
+        { "name": "block_signing_authority", "types": ["block_signing_authority_v0"] }
     ],
     "tables": [
         { "name": "account", "type": "account", "key_names": ["name"] },

@@ -237,13 +237,13 @@ public:
     abi_serializer abi_ser;
 };
 
-BOOST_AUTO_TEST_SUITE(attribute_tests)
+BOOST_AUTO_TEST_SUITE(rem_attribute_tests)
 
 BOOST_FIXTURE_TEST_CASE( attribute_test, attribute_tester ) {
     try {
-
-        // Create rem.msig and rem.token
-        create_accounts({N(rem.msig), N(rem.token), N(rem.ram), N(rem.ramfee), N(rem.stake), N(rem.vpay), N(rem.spay), N(rem.saving), N(rem.attr) });
+        create_accounts({N(rem.msig), N(rem.token), N(rem.rex), N(rem.ram),
+                         N(rem.ramfee), N(rem.stake), N(rem.bpay),
+                         N(rem.spay), N(rem.vpay), N(rem.saving), N(rem.attr)});
         // Set code for the following accounts:
         //  - rem (code: rem.bios) (already set by tester constructor)
         //  - rem.msig (code: rem.msig)
