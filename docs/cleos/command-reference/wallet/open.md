@@ -17,6 +17,7 @@ $ cleos wallet open -n second-wallet
 
 ## Outputs
 
+
 ```shell
 Opened: default
 ```

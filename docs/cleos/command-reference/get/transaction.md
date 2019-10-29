@@ -14,7 +14,6 @@ $ ./cleos get transaction
 ```
 **Output**
 
-
 ## Example
 
 

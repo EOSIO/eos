@@ -13,7 +13,6 @@ None
 $ ./cleos wallet lock_all
 ```
 
-
 ## Outputs
 
 

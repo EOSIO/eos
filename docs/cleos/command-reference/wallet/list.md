@@ -10,11 +10,13 @@ None
 
 ## Usage
 
+
 ```shell
 $ ./cleos wallet list
 ```
 
 ## Outputs
+
 
 ```shell
 Wallets:
