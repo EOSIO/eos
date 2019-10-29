@@ -150,9 +150,9 @@ def bootstrap_system_contracts():
 
     run(remcli + f'push action rem.swap setswapfee \'["{producer_reward_per_swap}"]\' \
     -p rem.swap -p rem')
-    run(remcli + f'push action rem.swap setoutswpamt \'["{min_swap_out_amount}"]\' \
+    run(remcli + f'push action rem.swap setminswpout \'["{min_swap_out_amount}"]\' \
     -p rem.swap -p rem')
-    run(remcli + f'push action rem.swap setremchainid \'["{get_chain_id()}"]\' \
+    run(remcli + f'push action rem.swap setchainid \'["{get_chain_id()}"]\' \
     -p rem.swap -p rem')
     for chain_id, input, output, in swap_chains:
         run(remcli + f'push action rem.swap addchain \'["{chain_id}", "{input}", "{output}"]\' \
