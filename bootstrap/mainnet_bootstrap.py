@@ -42,6 +42,7 @@ remcli = f'remcli --url http://127.0.0.1:{remnode_port} --wallet-url http://127.
 public_key = 'EOS8Znrtgwt8TfpmbVpTKvA2oB8Nqey625CLN8bCN3TEbgx86Dsvr'
 
 contracts_dir = '../build/contracts/contracts'
+eosio_contracts_dir = '../unittests/contracts/old_versions/v1.7.0-develop-preactivate_feature'
 max_rem_supply = 1_000_000_000_0000
 max_auth_token_supply = 1_000_000_000_000_0000
 rem_symbol = 'REM'
@@ -169,7 +170,7 @@ def create_auth_token():
 
 
 def set_system_contract():
-    run(remcli + 'set contract rem ' + contracts_dir + '/rem.bios/ -p rem')
+    run(remcli + 'set contract rem ' + eosio_contracts_dir + '/eosio.bios/ -p rem')
     run(
         remcli + 'push action rem activate \'["299dcb6af692324b899b39f16d5a530a33062804e41f09dc97e9f156b4476707"]\' -p rem')
     run(
@@ -194,7 +195,7 @@ def set_system_contract():
         remcli + 'push action rem activate \'["1a99a59d87e06e09ec5b028a9cbb7749b4a5ad8819004365d02dc4379a8b7241"]\' -p rem')
     run(
         remcli + 'push action rem activate \'["4e7bf348da00a945489b2a681749eb56f5de00b900014e137ddae39f48f69d67"]\' -p rem')
-
+    run(remcli + 'set contract rem ' + contracts_dir + '/rem.bios/ -p rem')
     retry(remcli + 'set contract rem ' + contracts_dir + '/rem.system/')
     sleep(1)
     run(remcli + 'push action rem init' + jsonArg(['0', '4,' + rem_symbol]) + '-p rem@active')
