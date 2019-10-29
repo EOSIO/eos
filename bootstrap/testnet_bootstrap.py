@@ -131,6 +131,13 @@ def init_supply_to_rem_acc():
     -p rem@active')
 
 
+def issue_supply_to_rem_acc():
+    run(remcli + f' push action rem.token issue \'["rem.swap",\
+    "{intToRemCurrency(initial_supply)}", "initial supply"]\' -p rem.swap -p rem ')
+    run(remcli + f' push action rem.token transfer \'["rem.swap", "rem",\
+    "{intToRemCurrency(initial_supply)}", "initial supply"]\' -p rem.swap -p rem ')
+
+
 def create_producer_accounts():
     for prod in producers['producers']:
         run(remcli + f' system newaccount rem {prod["name"]} {prod["pub"]} {prod["pub"]} \
@@ -175,7 +182,7 @@ def vote_producers():
 
 
 if __name__ == '__main__':
-    init_supply_to_rem_acc()
+    issue_supply_to_rem_acc()
     create_tech_accounts()
     create_producer_accounts()
     import_producer_keys()
