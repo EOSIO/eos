@@ -48,6 +48,7 @@ rem_symbol = 'REM'
 auth_symbol = 'AUTH'
 
 producer_reward_per_swap = 10_0000  # torewards 10.0000 REM per swap
+min_swap_out_amount = 100_0000
 
 swap_chains = [
     # (chain_id, input, output)
@@ -146,7 +147,11 @@ def bootstrap_system_contracts():
     run(remcli + 'push action rem.oracle addpair \'["rem.btc"]\' -p rem.oracle -p rem')
     run(remcli + 'push action rem.oracle addpair \'["rem.eth"]\' -p rem.oracle -p rem')
 
-    run(remcli + f'push action rem.swap setbpreward \'["rem", "{intToRemCurrency(producer_reward_per_swap)}"]\' \
+    run(remcli + f'push action rem.swap setswapfee \'["{producer_reward_per_swap}"]\' \
+    -p rem.swap -p rem')
+    run(remcli + f'push action rem.swap setoutswpamt \'["{min_swap_out_amount}"]\' \
+    -p rem.swap -p rem')
+    run(remcli + f'push action rem.swap setremchainid \'["{get_chain_id()}"]\' \
     -p rem.swap -p rem')
     for chain_id, input, output, in swap_chains:
         run(remcli + f'push action rem.swap addchain \'["{chain_id}", "{input}", "{output}"]\' \
