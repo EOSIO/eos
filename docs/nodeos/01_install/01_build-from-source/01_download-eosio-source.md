@@ -7,9 +7,20 @@ $ mkdir -p ~/eosio && cd ~/eosio
 $ git clone --recursive https://github.com/EOSIO/eos
 ```
 
+## Update Submodules
+
 If a repository is cloned without the `--recursive` flag, the submodules *must* be updated before starting the build process:
 
 ```sh
 $ cd ~/eosio/eos
 $ git submodule update --init --recursive
+```
+
+## Pull Changes
+
+When pulling changes, especially after switching branches, the submodules *must* also be updated. This can be achieved with the `git submodule` command as above, or during the `git pull` directly:
+
+```sh
+$ [git checkout <branch>]  (optional)
+$ git pull --recurse-submodules
 ```
