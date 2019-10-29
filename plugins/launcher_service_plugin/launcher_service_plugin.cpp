@@ -30,17 +30,6 @@ namespace eosio {
    using namespace chain;
 
    namespace launcher_service {
-      action create_newaccount(const name& creator, const name& accname, public_key_type owner, public_key_type active) {
-         return action {
-            vector<chain::permission_level>{{creator, N(active)}},
-            newaccount {
-               .creator      = creator,
-               .name         = accname,
-               .owner        = authority(owner),
-               .active       = authority(active)
-            }
-         };
-      }
       action create_setabi(const name& account, const bytes& abi) {
          return action {
             vector<chain::permission_level>{{account, N(active)}},
@@ -145,15 +134,15 @@ public:
 
          const node_def &node_config = def.get_node_def(node_id);
 
-         cfg << "http-server-address = " << _config.host_name << ":" << node_config.http_port(_config, def.cluster_id) << "\n";
+         cfg << "http-server-address = " << _config.host_name << ":" << node_config.http_port(_config, def.cluster_id, node_id) << "\n";
          cfg << "http-validate-host = false\n";
-         cfg << "p2p-listen-endpoint = " << _config.p2p_listen_addr << ":" << node_config.p2p_port(_config, def.cluster_id) << "\n";
+         cfg << "p2p-listen-endpoint = " << _config.p2p_listen_addr << ":" << node_config.p2p_port(_config, def.cluster_id, node_id) << "\n";
          cfg << "p2p-max-nodes-per-host = " << def.node_count << "\n";
          cfg << "agent-name = " << cluster_to_string(def.cluster_id) << "_" << node_to_string(node_id) << "\n";
 
          if (def.shape == "mesh") {
             for (int peer = 0; peer < node_id; ++peer) {
-               cfg << "p2p-peer-address = " << _config.host_name << ":" << def.get_node_def(peer).p2p_port(_config, def.cluster_id) << "\n";
+               cfg << "p2p-peer-address = " << _config.host_name << ":" << def.get_node_def(peer).p2p_port(_config, def.cluster_id, peer) << "\n";
             }
          } else if (def.shape == "star") {
             int peer = def.center_node_id;
@@ -161,7 +150,7 @@ public:
                throw std::runtime_error("invalid center_node_id for star topology");
             }
             if (node_id != peer) {
-               cfg << "p2p-peer-address = " << _config.host_name << ":" << def.get_node_def(peer).p2p_port(_config, def.cluster_id) << "\n";
+               cfg << "p2p-peer-address = " << _config.host_name << ":" << def.get_node_def(peer).p2p_port(_config, def.cluster_id, peer) << "\n";
             }
          } else if (def.shape == "bridge") {
             if (def.center_node_id <= 0 || def.center_node_id >= def.node_count - 1) {
@@ -169,26 +158,28 @@ public:
             }
             if (node_id < def.center_node_id) {
                for (int peer = 0; peer < node_id; ++peer) {
-                  cfg << "p2p-peer-address = " << _config.host_name << ":" << def.get_node_def(peer).p2p_port(_config, def.cluster_id) << "\n";
+                  cfg << "p2p-peer-address = " << _config.host_name << ":" << def.get_node_def(peer).p2p_port(_config, def.cluster_id, peer) << "\n";
                }
             } else if (node_id > def.center_node_id) {
                for (int peer = def.center_node_id + 1; peer < node_id; ++peer) {
-                  cfg << "p2p-peer-address = " << _config.host_name << ":" << def.get_node_def(peer).p2p_port(_config, def.cluster_id) << "\n";
+                  cfg << "p2p-peer-address = " << _config.host_name << ":" << def.get_node_def(peer).p2p_port(_config, def.cluster_id, peer) << "\n";
                }
             } else {
-               cfg << "p2p-peer-address = " << _config.host_name << ":" << def.get_node_def(node_id - 1).p2p_port(_config, def.cluster_id) << "\n";
-               cfg << "p2p-peer-address = " << _config.host_name << ":" << def.get_node_def(node_id + 1).p2p_port(_config, def.cluster_id) << "\n";
+               cfg << "p2p-peer-address = " << _config.host_name << ":" << def.get_node_def(node_id - 1).p2p_port(_config, def.cluster_id, node_id - 1) << "\n";
+               cfg << "p2p-peer-address = " << _config.host_name << ":" << def.get_node_def(node_id + 1).p2p_port(_config, def.cluster_id, node_id + 1) << "\n";
             }
          } else if (def.shape == "line") {
             if (node_id) {
-               cfg << "p2p-peer-address = " << _config.host_name << ":" << def.get_node_def(node_id - 1).p2p_port(_config, def.cluster_id) << "\n";
+               cfg << "p2p-peer-address = " << _config.host_name << ":" << def.get_node_def(node_id - 1).p2p_port(_config, def.cluster_id, node_id - 1) << "\n";
             }
          } else if (def.shape == "ring") {
+            int peer = (node_id - 1 + def.node_count) % def.node_count;
             cfg << "p2p-peer-address = " << _config.host_name << ":"
-                  << def.get_node_def((node_id - 1 + def.node_count) % def.node_count).p2p_port(_config, def.cluster_id) << "\n";
+                  << def.get_node_def(peer).p2p_port(_config, def.cluster_id, peer) << "\n";
          } else if (def.shape == "tree") {
             if (node_id) {
-               cfg << "p2p-peer-address = " << _config.host_name << ":" << def.get_node_def((node_id + 1) / 2 - 1).p2p_port(_config, def.cluster_id) << "\n";
+               int peer = (node_id + 1) / 2 - 1;
+               cfg << "p2p-peer-address = " << _config.host_name << ":" << def.get_node_def(peer).p2p_port(_config, def.cluster_id, peer) << "\n";
             }
          } else {
             throw std::runtime_error("invalid shape");
@@ -271,8 +262,8 @@ public:
             node_def &node_config = def.get_node_def(i);
             node_state state;
             state.id = i;
-            state.http_port = node_config.http_port(_config, def.cluster_id);
-            state.p2p_port = node_config.p2p_port(_config, def.cluster_id);
+            state.http_port = node_config.http_port(_config, def.cluster_id, i);
+            state.p2p_port = node_config.p2p_port(_config, def.cluster_id, i);
             state.is_bios = node_config.is_bios();
 
             bfs::path node_path = bfs::path(_config.data_dir) / cluster_to_string(def.cluster_id) / node_to_string(i);
@@ -613,21 +604,6 @@ public:
          return push_actions(param.cluster_id, param.node_id, std::move(actlist), param.sign_keys);
       }
 
-      fc::variant create_bios_accounts(create_bios_accounts_param param) {
-         std::vector<eosio::chain::action> actlist;
-         public_key_type def_key = _config.default_key.get_public_key();
-         for (auto &a : param.accounts) {
-            if (a.owner == public_key_type()) {
-               a.owner = def_key;
-            }
-            if (a.active == public_key_type()) {
-               a.active = def_key;
-            }
-            actlist.push_back(create_newaccount(param.creator, a.name, a.owner, a.active));
-         }
-         return push_actions(param.cluster_id, param.node_id, std::move(actlist));
-      }
-
       fc::variant set_contract(set_contract_param param) {
          std::vector<eosio::chain::action> actlist;
          if (param.contract_file.length()) {
@@ -952,10 +928,6 @@ fc::variant launcher_service_plugin::start_node(launcher_service::start_node_par
 fc::variant launcher_service_plugin::stop_node(launcher_service::stop_node_param param) {
    _my->stop_node(param.cluster_id, param.node_id, param.kill_sig);
    return fc::mutable_variant_object("result", "OK");
-}
-
-fc::variant launcher_service_plugin::create_bios_accounts(launcher_service::create_bios_accounts_param param) {
-   return _my->create_bios_accounts(param);
 }
 
 fc::variant launcher_service_plugin::get_protocol_features(launcher_service::node_id_param param) {

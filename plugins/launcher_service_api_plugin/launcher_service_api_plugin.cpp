@@ -75,7 +75,6 @@ void launcher_service_api_plugin::plugin_startup() {
       CALL(launcher, get_table_rows, 200),
       CALL(launcher, get_log_data, 200),
 
-      CALL(launcher, create_bios_accounts, 200),
       CALL(launcher, set_contract, 200),
       CALL(launcher, push_actions, 200),
       CALL(launcher, verify_transaction, 200),
