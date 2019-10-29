@@ -171,6 +171,10 @@ def create_auth_token():
 def set_system_contract():
     run(remcli + 'set contract rem ' + contracts_dir + '/rem.bios/ -p rem')
     run(
+        remcli + 'push action rem activate \'["299dcb6af692324b899b39f16d5a530a33062804e41f09dc97e9f156b4476707"]\' -p rem')
+    run(
+        remcli + 'push action rem activate \'["4fca8bd82bbd181e714e283f83e1b45d95ca5af40fb89ad3977b653c448f78c2"]\' -p rem')
+    run(
         remcli + 'push action rem activate \'["f0af56d2c5a48d60a4a5b5c903edfb7db3a736a94ed589d0b797df33ff9d3e1d"]\' -p rem')
     run(
         remcli + 'push action rem activate \'["2652f5f96006294109b3dd0bbde63693f55324af452b799ee137a81a905eed25"]\' -p rem')
