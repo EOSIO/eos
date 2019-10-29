@@ -4,7 +4,7 @@ To download the EOSIO source code, clone the `eos` repo and its submodules. It i
 
 ```sh
 $ mkdir -p ~/eosio && cd ~/eosio
-$ git clone https://github.com/EOSIO/eos --recursive
+$ git clone --recursive https://github.com/EOSIO/eos
 ```
 
 If a repository is cloned without the `--recursive` flag, the submodules *must* be updated before starting the build process:
