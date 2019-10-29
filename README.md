@@ -111,11 +111,11 @@ $ sudo yum remove eosio
 
 ## Shell Scripts
 
-Shell scripts are provided in the EOSIO repository to:
+Shell scripts are provided in the EOSIO repository for:
 
-* Build EOSIO binaries from source
-* Install EOSIO binaries from built binaries
-* Uninstall EOSIO from built/installed binaries
+* Building EOSIO binaries from source
+* Installing EOSIO binaries from built binaries
+* Uninstalling EOSIO from built/installed binaries
 
 Check the [Build from Source](docs/nodeos/01_install/01_build-from-source/index.md) section in the documentation for more information. Below are the basic shell scripts to get started quickly.
 
