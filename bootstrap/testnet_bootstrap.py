@@ -6,7 +6,6 @@ from eosiopy import sign
 producers_quantity = 21
 rewards_account_supply = 100_000_000_0000
 producers_supply = 500_000_000_0000
-prod_stake_delta = 1_000_000_0000  # delta for arithmetic progression
 swapbot_supply = 1_000_000_0000
 fee = 21*100_0000+100_0000
 
@@ -81,14 +80,33 @@ producers = {
          "pub": "EOS69tWc1VS6aP2P1D8ryzTiakPAYbV3whbHeWUzfD8QWYuHKqQxk"}
     ]
 }
-prod_supply = producers_supply/producers_quantity + prod_stake_delta*(producers_quantity-1)/2
-prod_supply_sum = 0
-for prod in producers['producers']:
-    prod['funds'] = max(prod_supply, MINIMUM_PRODUCER_STAKE)
-    prod_supply_sum += prod['funds']
-    prod_supply = prod_supply - prod_stake_delta
 
-initial_supply = rewards_account_supply + prod_supply_sum + swapbot_supply + fee
+
+def geometric_progression():
+    prod_supply_sum = 0
+    prod_supply = producers_supply // 2
+    for prod in producers['producers']:
+        prod['funds'] = prod_supply
+        prod_supply_sum += prod['funds']
+        prod_supply = prod_supply // 2
+
+    return prod_supply_sum
+
+
+def algebraic_progression():
+    prod_stake_delta = 1_000_000_0000  # delta for arithmetic progression
+    global initial_supply
+    prod_supply = producers_supply / producers_quantity + prod_stake_delta * (producers_quantity - 1) / 2
+    prod_supply_sum = 0
+    for prod in producers['producers']:
+        prod['funds'] = max(prod_supply, MINIMUM_PRODUCER_STAKE)
+        prod_supply_sum += prod['funds']
+        prod_supply = prod_supply - prod_stake_delta
+
+    return prod_supply_sum
+
+
+initial_supply = rewards_account_supply + geometric_progression() + swapbot_supply + fee
 
 swap_pubkey = 'EOS8Znrtgwt8TfpmbVpTKvA2oB8Nqey625CLN8bCN3TEbgx86Dsvr'
 swap_privkey = '5K463ynhZoCDDa4RDcr63cUwWLTnKqmdcoTKTHBjqoKfv4u5V7p'
