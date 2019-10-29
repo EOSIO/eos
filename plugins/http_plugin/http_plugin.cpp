@@ -139,7 +139,8 @@ namespace eosio {
 
    class http_plugin_impl {
       public:
-         map<string,url_handler>  url_handlers;
+         // key -> priority, url_handler
+         map<string,std::pair<int,url_handler>>  url_handlers;
          optional<tcp::endpoint>  listen_endpoint;
          string                   access_control_allow_origin;
          string                   access_control_allow_headers;
@@ -311,11 +312,11 @@ namespace eosio {
                if( handler_itr != url_handlers.end()) {
                   con->defer_http_response();
                   bytes_in_flight += body.size();
-                  app().post( appbase::priority::low,
+                  app().post( handler_itr->second.first,
                               [&ioc = thread_pool->get_executor(), &bytes_in_flight = this->bytes_in_flight, handler_itr,
                                resource{std::move( resource )}, body{std::move( body )}, con]() {
                      try {
-                        handler_itr->second( resource, body,
+                        handler_itr->second.second( resource, body,
                               [&ioc, &bytes_in_flight, con]( int code, fc::variant response_body ) {
                            boost::asio::post( ioc, [response_body{std::move( response_body )}, &bytes_in_flight, con, code]() mutable {
                               std::string json = fc::json::to_string( response_body );
@@ -651,9 +652,9 @@ namespace eosio {
       }
    }
 
-   void http_plugin::add_handler(const string& url, const url_handler& handler) {
+   void http_plugin::add_handler(const string& url, const url_handler& handler, int priority) {
       fc_ilog( logger, "add api url: ${c}", ("c", url) );
-      my->url_handlers.insert(std::make_pair(url,handler));
+      my->url_handlers.insert(std::make_pair(url,std::make_pair(priority, handler)));
    }
 
    void http_plugin::handle_exception( const char *api_name, const char *call_name, const string& body, url_response_callback cb ) {
