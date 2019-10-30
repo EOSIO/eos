@@ -55,6 +55,7 @@ namespace eosio {
          MAKE_READ_WASM_ABI(crypto_keccak_test,        crypto_keccak_test,        test-contracts)
          MAKE_READ_WASM_ABI(crypto_assert_sha3_test,   crypto_assert_sha3_test,   test-contracts)
          MAKE_READ_WASM_ABI(crypto_assert_keccak_test, crypto_assert_keccak_test, test-contracts)
+         MAKE_READ_WASM_ABI(crypto_ec_add_test,        crypto_ec_add_test,        test-contracts)
          MAKE_READ_WASM_ABI(crypto_intrinsics_test,    crypto_intrinsics_test,    test-contracts)
       };
    } /// eosio::testing

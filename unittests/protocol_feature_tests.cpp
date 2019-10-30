@@ -1081,6 +1081,9 @@ BOOST_AUTO_TEST_CASE( crypto_intrinsics_test ) { try {
                            wasm_exception,
                            fc_exception_message_is( "env.assert_keccak unresolveable" ) );
 
+   BOOST_CHECK_EXCEPTION(  c.set_code( tester1_account, contracts::crypto_ec_add_test_wasm() ),
+                           wasm_exception,
+                           fc_exception_message_is( "env.ec_add unresolveable" ) );
 
    const auto& pfm = c.control->get_protocol_feature_manager();
    const auto& d = pfm.get_builtin_digest( builtin_protocol_feature_t::crypto_intrinsics_extension );
@@ -1121,6 +1124,16 @@ BOOST_AUTO_TEST_CASE( crypto_intrinsics_test ) { try {
    c.push_action( tester1_account, N(keccak), tester1_account, mutable_variant_object()
                                                                ("s", "test string")
                                                                ("expected", "c7fd1d987ada439fc085cfa3c49416cf2b504ac50151e3c2335d60595cb90745"));
+
+   BOOST_CHECK_EXCEPTION(   c.push_action( tester1_account, N(ecadd), tester1_account, mutable_variant_object()
+                                                               ("pk", eosio::chain::public_key_type("EOS8QH7zaArDtRRE7VcMsdKWhVWrPLFt8V74pKhT3szbKorvVeV3q"s))
+                                                               ("pk2", eosio::chain::public_key_type("EOS822y6oxYAm8CNgnxxM5Jh9WfiSwQ16zZMrHSE8ktL91wysvRcn"s))),
+                                                               eosio_assert_message_exception,
+                                                               eosio_assert_message_is("ec_add failure"));
+   return;
+   c.push_action( tester1_account, N(ecadd), tester1_account, mutable_variant_object()
+                                                               ("pk", eosio::chain::public_key_type("PUB_R1_7QZyaFNRYbsYpZhRf21D4qXUfnsrY8oZwhBNvTUazVrA2416TF"s))
+                                                               ("pk2", eosio::chain::public_key_type("PUB_R1_5R6N3iEHT45CJWwHqyo2cNASJdF1jkFcwSmkUqJxUciStJseGu"s)));
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_CASE( ram_restrictions_test ) { try {

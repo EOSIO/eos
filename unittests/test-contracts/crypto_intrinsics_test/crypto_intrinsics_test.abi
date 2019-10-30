@@ -4,6 +4,20 @@
     "types": [],
     "structs": [
         {
+            "name": "ecadd",
+            "base": "",
+            "fields": [
+                {
+                    "name": "pk",
+                    "type": "public_key"
+                },
+                {
+                    "name": "pk2",
+                    "type": "public_key"
+                }
+            ]
+        },
+        {
             "name": "keccak",
             "base": "",
             "fields": [
@@ -33,6 +47,11 @@
         }
     ],
     "actions": [
+        {
+            "name": "ecadd",
+            "type": "ecadd",
+            "ricardian_contract": ""
+        },
         {
             "name": "keccak",
             "type": "keccak",

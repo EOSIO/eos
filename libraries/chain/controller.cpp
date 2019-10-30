@@ -3266,6 +3266,7 @@ void controller_impl::on_activation<builtin_protocol_feature_t::crypto_intrinsic
       add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "keccak");
       add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "assert_sha3");
       add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "assert_keccak");
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "ec_add");
    });
 }
 

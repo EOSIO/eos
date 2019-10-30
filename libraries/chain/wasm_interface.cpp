@@ -18,6 +18,8 @@
 #include <fc/crypto/sha1.hpp>
 #include <fc/crypto/sha3.hpp>
 #include <fc/io/raw.hpp>
+#include <openssl/ec.h>
+#include <openssl/bn.h>
 
 #include <softfloat.hpp>
 #include <compiler_builtins.hpp>
@@ -860,6 +862,81 @@ class crypto_api : public context_aware_api {
             fc::raw::pack(out_ds, recovered);
             return out_ds.tellp();
          }
+      }
+
+      enum class ec_add_tags : uint64_t {
+         r1_v1,
+         k1_v1
+      };
+
+      int64_t ec_add(uint64_t tag, array_ptr<char> input, uint32_t input_len, array_ptr<char> output, uint32_t output_len) {
+         constexpr auto ui = [](auto t) { return static_cast<std::underlying_type_t<decltype(t)>>(t); };
+         switch(tag) {
+            case ui(ec_add_tags::r1_v1):
+               {
+                   EC_POINT* a, *b, *r = nullptr;
+                   //datastream<const char*> ds( input, input_len );
+                   static const ec_group& r1_group = EC_GROUP_new_by_curve_name( NID_X9_62_prime256v1 );
+                   a = EC_POINT_new(r1_group);
+                   b = EC_POINT_new(r1_group);
+                   r = EC_POINT_new(r1_group);
+
+                   BIGNUM* r_x = nullptr, *r_y = nullptr;
+                   BIGNUM* x1 = nullptr, *x2 = nullptr;
+                   auto cleanup = fc::make_scoped_exit([&]() {
+                      EC_POINT_free(a);
+                      EC_POINT_free(b);
+                      if (r != nullptr)
+                         EC_POINT_free(r);
+                      if (r_x != nullptr)
+                         BN_free(r_x);
+                      if (r_y != nullptr)
+                         BN_free(r_y);
+                      if (x1 != nullptr)
+                         BN_free(x1);
+                      if (x2 != nullptr)
+                         BN_free(x2);
+                   });
+
+                   uint8_t y1, y2;
+                   x1 = BN_bin2bn((const uint8_t*)input.value, 32, nullptr);
+                   if (!x1)
+                     return -1;
+                   y1 = *(input.value+32);
+                   x2 = BN_bin2bn((const uint8_t*)input.value+33, 32, nullptr);
+                   if (!x2)
+                     return -1;
+                   y2 = *(input.value+65);
+                   EC_POINT_set_compressed_coordinates_GFp(r1_group, a, x1, y1, nullptr);
+                   EC_POINT_set_compressed_coordinates_GFp(r1_group, b, x2, y2, nullptr);
+
+                   if (!EC_POINT_add(r1_group, r, a, b, nullptr))
+                      return -1;
+
+                   r_x = BN_new();
+                   r_y = BN_new();
+                   EC_POINT_get_affine_coordinates_GFp(r1_group, r, r_x, r_y, nullptr);
+                   std::cout << "\n";
+                   BN_print_fp(stdout, r_x);
+                   std::cout << "\n";
+                   BN_print_fp(stdout, r_y);
+                   std::cout << "\n";
+                   const uint32_t x_size = BN_num_bytes(r_x);
+                   const int64_t max_size = x_size + 1;  // sign byte for y
+                   if (output_len <= max_size) {
+                     uint32_t sz = BN_bn2bin(r_x, (unsigned char*)output.value) + 1;
+                     *(output.value+32) = BN_is_negative(r_y);
+                     return sz;
+                   } else {
+                     return -1;
+                   }
+               }
+            case ui(ec_add_tags::k1_v1):
+                  return -1;
+            default:
+               return -1;
+         }
+         return 0;
       }
 
       template<class Encoder> auto encode(char* data, uint32_t datalen) {
@@ -1956,20 +2033,21 @@ REGISTER_INTRINSICS( database_api,
 );
 
 REGISTER_INTRINSICS(crypto_api,
-   (assert_recover_key,     void(int, int, int, int, int) )
-   (recover_key,            int(int, int, int, int, int)  )
-   (assert_sha256,          void(int, int, int)           )
-   (assert_sha1,            void(int, int, int)           )
-   (assert_sha512,          void(int, int, int)           )
-   (assert_ripemd160,       void(int, int, int)           )
-   (assert_sha3,            void(int, int, int)           )
-   (assert_keccak,          void(int, int, int)           )
-   (sha1,                   void(int, int, int)           )
-   (sha256,                 void(int, int, int)           )
-   (sha512,                 void(int, int, int)           )
-   (ripemd160,              void(int, int, int)           )
-   (sha3,                   void(int, int, int)           )
-   (keccak,                 void(int, int, int)           )
+   (assert_recover_key,     void(int, int, int, int, int)                )
+   (recover_key,            int(int, int, int, int, int)                 )
+   (ec_add,                 int64_t(int64_t, int, int, int, int) )
+   (assert_sha256,          void(int, int, int)                          )
+   (assert_sha1,            void(int, int, int)                          )
+   (assert_sha512,          void(int, int, int)                          )
+   (assert_ripemd160,       void(int, int, int)                          )
+   (assert_sha3,            void(int, int, int)                          )
+   (assert_keccak,          void(int, int, int)                          )
+   (sha1,                   void(int, int, int)                          )
+   (sha256,                 void(int, int, int)                          )
+   (sha512,                 void(int, int, int)                          )
+   (ripemd160,              void(int, int, int)                          )
+   (sha3,                   void(int, int, int)                          )
+   (keccak,                 void(int, int, int)                          )
 );
 
 

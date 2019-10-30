@@ -1,4 +1,6 @@
 #include <eosio/eosio.hpp>
+#include <eosio/crypto.hpp>
+#include <array>
 
 extern "C"
 {
@@ -13,6 +15,8 @@ extern "C"
 	void assert_keccak(const char*, uint32_t, const checksum*);
 	__attribute__((eosio_wasm_import))
 	void assert_sha3(const char*, uint32_t, const checksum*);
+	__attribute__((eosio_wasm_import))
+	int64_t ec_add(uint64_t, const char*, uint32_t, const char*, uint32_t);
 }
 
 class[[eosio::contract]] crypto_intrinsics_test : public eosio::contract
@@ -50,5 +54,14 @@ public:
 		memset((char*)test.hash, 0, 32);
 		from_hex(expected, (char*)test.hash, 32);
 		::assert_keccak(s.c_str(), s.size(), &test);
+	}
+
+	[[eosio::action]] void ecadd(eosio::public_key pk, eosio::public_key pk2) {
+		eosio::public_key rpk;
+		std::array<char, 66> buff;
+		memcpy(buff.data(), pk.data.data(), 33);
+		memcpy(buff.data()+33, pk2.data.data(), 33);
+		int64_t res = ec_add(0, (const char*)buff.data(), 66, (const char*)rpk.data.data(), 33);
+		eosio::check(res != -1, "ec_add failure");
 	}
 };

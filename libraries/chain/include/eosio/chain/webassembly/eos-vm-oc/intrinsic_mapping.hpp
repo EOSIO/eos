@@ -140,14 +140,10 @@ constexpr auto intrinsic_table = boost::hana::make_tuple(
    "env.assert_sha1"_s,
    "env.assert_sha512"_s,
    "env.assert_ripemd160"_s,
-   "env.assert_sha3"_s,
-   "env.assert_keccak"_s,
    "env.sha1"_s,
    "env.sha256"_s,
    "env.sha512"_s,
    "env.ripemd160"_s,
-   "env.sha3"_s,
-   "env.keccak"_s,
    "env.check_transaction_authorization"_s,
    "env.check_permission_authorization"_s,
    "env.get_permission_last_used"_s,
@@ -252,7 +248,12 @@ constexpr auto intrinsic_table = boost::hana::make_tuple(
    "eosio_injection._eosio_i32_to_f64"_s,
    "eosio_injection._eosio_i64_to_f64"_s,
    "eosio_injection._eosio_ui32_to_f64"_s,
-   "eosio_injection._eosio_ui64_to_f64"_s
+   "eosio_injection._eosio_ui64_to_f64"_s,
+   "env.assert_sha3"_s,
+   "env.assert_keccak"_s,
+   "env.sha3"_s,
+   "env.keccak"_s,
+   "env.ec_add"_s,
 );
 
 }}}
