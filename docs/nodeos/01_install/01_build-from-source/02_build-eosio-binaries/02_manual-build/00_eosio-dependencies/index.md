@@ -35,7 +35,7 @@ $ ./scripts/eosio_build.sh [-P]
 
 ## Manual Installation of Dependencies
 
-EOSIO dependencies can also be built and installed manually by reproducing the same commands invoked by the [Build Script](../../00_build-script). The actual commands can be generated from the script directly by exporting specific environment variables to the script when invoked:
+EOSIO dependencies can also be built and installed manually by reproducing the same commands invoked by the [Build Script](../../00_build-script). The actual commands can be generated from the script directly by exporting specific environment variables and CLI parameters to the script when invoked:
 
 ```sh
 $ cd ~/eosio/eos
