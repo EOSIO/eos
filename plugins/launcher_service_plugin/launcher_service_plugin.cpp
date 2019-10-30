@@ -15,11 +15,18 @@
 #include <fc/io/fstream.hpp>
 #include <fc/variant.hpp>
 #include <fc/crypto/base64.hpp>
+#include <fc/exception/exception.hpp>
 
 #include <eosio/launcher_service_plugin/launcher_service_plugin.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
 #include <appbase/application.hpp>
 #include <eosio/chain/exceptions.hpp>
+
+#define EOS_ASSERT( expr, exception, FORMAT, ... )                \
+   FC_MULTILINE_MACRO_BEGIN                                           \
+   if( !(expr) )                                                      \
+      FC_THROW_EXCEPTION( exception, FORMAT, __VA_ARGS__ );            \
+   FC_MULTILINE_MACRO_END
 
 namespace eosio {
    static appbase::abstract_plugin& _launcher_service_plugin = app().register_plugin<launcher_service_plugin>();
@@ -804,6 +811,13 @@ void launcher_service_plugin::plugin_initialize(const variables_map& options) {
       _my->_config.node_span = options.at("node-port-span").as<uint16_t>();
       _my->_config.max_nodes_per_cluster = options.at("max-nodes-per-cluster").as<uint16_t>();
       _my->_config.max_clusters = options.at("max-clusters").as<uint16_t>();
+
+      // ephemeral port range starts from 32768 in linux, 49152 on mac
+      EOS_ASSERT((int)_my->_config.base_port + (int)_my->_config.cluster_span <= 32768, chain::plugin_config_exception, "base-port + cluster-port-span should not greater than 32768");
+      EOS_ASSERT((int)_my->_config.base_port + (int)_my->_config.cluster_span * _my->_config.max_clusters <= 32768, chain::plugin_config_exception, "max-clusters too large, cluster port numbers would exceed 32767");
+      EOS_ASSERT((int)_my->_config.max_nodes_per_cluster * _my->_config.node_span <= _my->_config.cluster_span, chain::plugin_config_exception, "cluster-port-span should not less than node-port-span * max-nodes-per-cluster");
+
+      EOS_ASSERT(bfs::exists(_my->_config.genesis_file), chain::plugin_config_exception,"genesis-file ${path} not exist", ("path", _my->_config.genesis_file));
    }
    FC_LOG_AND_RETHROW()
 }
