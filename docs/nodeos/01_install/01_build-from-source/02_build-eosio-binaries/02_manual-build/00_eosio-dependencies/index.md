@@ -1,6 +1,6 @@
 # EOSIO Software Dependencies
 
-The EOSIO software requires specific software dependencies to build the EOSIO binaries. These dependencies can be built from source or installed from binaries directly. Dependencies can be pinned to a specific version release or unpinned to any version, usually the latest. The main EOSIO dependencies hosted outside the EOSIO repos are:
+The EOSIO software requires specific software dependencies to build the EOSIO binaries. These dependencies can be built from source or installed from binaries directly. Dependencies can be pinned to a specific version release or unpinned to the current version, usually the latest. The main EOSIO dependencies hosted outside the EOSIO repos are:
 
 * Clang - the C++17 compliant compiler used by EOSIO
 * CMake - the build system used by EOSIO
@@ -22,20 +22,20 @@ To guarantee interoperability across different EOSIO software releases, develope
 
 ## Unpinned Dependencies
 
-Regular users or application developers may prefer installing unpinned versions of the EOSIO dependencies. These correspond to the latest or otherwise stable versions of the dependencies. The main advantage of unpinned dependencies is reduced installation times and perhaps better performance. Pinned dependencies are usually installed from binaries.
+Regular users or application developers may prefer installing unpinned versions of the EOSIO dependencies. These correspond to the latest or otherwise stable versions of the dependencies. The main advantage of unpinned dependencies is reduced installation times and perhaps better performance. Pinned dependencies are typically installed from binaries.
 
 ## Automatic Installation of Dependencies
 
-EOSIO dependencies can be built or installed automatically from the [Autobuild Script](../../00_autobuild-script) when [building EOSIO from Source](../../../index.md). To build the pinned dependencies, the optional `-P` parameter can be specified when invoking the script. Otherwise, the unpinned dependencies will be installed instead, with the exception of `Boost` and `Cmake` which are always pinned:
+EOSIO dependencies can be built or installed automatically from the [Build Script](../../00_build-script.md) when [building EOSIO from Source](../../../index.md). To build the pinned dependencies, the optional `-P` parameter can be specified when invoking the script. Otherwise, the unpinned dependencies will be installed instead, with the exception of `Boost` and `Cmake` which are always pinned:
 
 ```sh
 $ cd ~/eosio/eos
-$ ./scripts/eosio_build.sh [-P]  #builds/installs dependencies and EOSIO binaries
+$ ./scripts/eosio_build.sh [-P]
 ```
 
 ## Manual Installation of Dependencies
 
-EOSIO dependencies can also be built and installed manually by reproducing the same commands invoked by the [Autobuild Script](../../00_autobuild-script). The actual commands can be generated from the script directly by exporting specific environment variables to the script when invoked:
+EOSIO dependencies can also be built and installed manually by reproducing the same commands invoked by the [Build Script](../../00_build-script). The actual commands can be generated from the script directly by exporting specific environment variables to the script when invoked:
 
 ```sh
 $ cd ~/eosio/eos
