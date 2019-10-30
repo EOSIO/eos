@@ -1,23 +1,16 @@
-# EOSIO Autobuild Script
+# EOSIO Build Script
 
-An automated build script is provided to install all dependencies and build EOSIO. The script supports the following operating systems:
+[[info | Shell Scripts]]
+| The build script is one of various automated shell scripts provided in the EOSIO repository for building, installing, and optionally uninstalling the EOSIO software and its dependencies. They are available in the `eos/scripts` folder.
 
-* Amazon Linux 2
-* CentOS 7
-* Ubuntu 16.04
-* Ubuntu 18.04
-* MacOS 10.14 (Mojave)
-
-Run the build script from the `eos` folder:
+The build script first installs all dependencies and then builds EOSIO. The script supports these [Operating Systems](../../../../../README.md#supported-operating-systems). To run it, first change to the `~/eosio/eos` folder, then launch the script:
 
 ```sh
 $ cd ~/eosio/eos
 $ ./scripts/eosio_build.sh
 ```
 
-After the script has completed, install EOSIO:
+The build process writes temporary content to the `eos/build` folder. After building, the program binaries can be found at `eos/build/programs`.
 
-```sh
-$ cd ~/eosio/eos
-$ sudo ./scripts/eosio_install.sh
-```
+[[info | What's Next?]]
+| [Install EOSIO binaries](../03_install-eosio-binaries.md)
