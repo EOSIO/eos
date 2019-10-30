@@ -1518,6 +1518,13 @@ struct controller_impl {
       auto& bb = pending->_block_stage.get<building_block>();
       const auto& pbhs = bb._pending_block_header_state;
 
+      const auto& gpo = self.get_global_properties();
+
+      const auto size = gpo.configuration.max_block_cpu_usage /
+            ( gpo.configuration.min_transaction_cpu_usage ? gpo.configuration.min_transaction_cpu_usage : 1 );
+      bb._pending_trx_receipts.reserve( size );
+      bb._pending_trx_metas.reserve( size );
+
       // modify state of speculative block only if we are in speculative read mode (otherwise we need clean state for head or read-only modes)
       if ( read_mode == db_read_mode::SPECULATIVE || pending->_block_status != controller::block_status::incomplete )
       {
@@ -1587,8 +1594,6 @@ struct controller_impl {
             });
          }
 
-         const auto& gpo = db.get<global_property_object>();
-
          if( gpo.proposed_schedule_block_num.valid() && // if there is a proposed schedule that was proposed in a block ...
              ( *gpo.proposed_schedule_block_num <= pbhs.dpos_irreversible_blocknum ) && // ... that has now become irreversible ...
              pbhs.prev_pending_schedule.schedule.producers.size() == 0 // ... and there was room for a new pending schedule prior to any possible promotion
@@ -1620,7 +1625,7 @@ struct controller_impl {
                   in_trx_requiring_checks = old_value;
                });
             in_trx_requiring_checks = true;
-            push_transaction( onbtrx, fc::time_point::maximum(), self.get_global_properties().configuration.min_transaction_cpu_usage, true );
+            push_transaction( onbtrx, fc::time_point::maximum(), gpo.configuration.min_transaction_cpu_usage, true );
          } catch( const std::bad_alloc& e ) {
             elog( "on block transaction failed due to a std::bad_alloc" );
             throw;
@@ -1848,8 +1853,10 @@ struct controller_impl {
          transaction_trace_ptr trace;
 
          size_t packed_idx = 0;
+         const auto& trx_receipts = pending->_block_stage.get<building_block>()._pending_trx_receipts;
+         pending->_block_stage.get<building_block>()._pending_trx_receipts.reserve( b->transactions.size() );
+         pending->_block_stage.get<building_block>()._pending_trx_metas.reserve( b->transactions.size() );
          for( const auto& receipt : b->transactions ) {
-            const auto& trx_receipts = pending->_block_stage.get<building_block>()._pending_trx_receipts;
             auto num_pending_receipts = trx_receipts.size();
             if( receipt.trx.contains<packed_transaction>() ) {
                const auto& trx_meta = ( use_bsp_cached ? bsp->trxs_metas().at( packed_idx )
