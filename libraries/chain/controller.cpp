@@ -120,7 +120,7 @@ struct building_block {
    size_t                                _num_new_protocol_features_that_have_activated = 0;
    vector<transaction_metadata_ptr>      _pending_trx_metas;
    vector<transaction_receipt>           _pending_trx_receipts;
-   vector<action_receipt>                _actions;
+   vector<digest_type>                   _action_receipt_digests;
 };
 
 struct assembled_block {
@@ -1073,19 +1073,19 @@ struct controller_impl {
    // The returned scoped_exit should not exceed the lifetime of the pending which existed when make_block_restore_point was called.
    fc::scoped_exit<std::function<void()>> make_block_restore_point() {
       auto& bb = pending->_block_stage.get<building_block>();
-      auto orig_block_transactions_size = bb._pending_trx_receipts.size();
-      auto orig_state_transactions_size = bb._pending_trx_metas.size();
-      auto orig_state_actions_size      = bb._actions.size();
+      auto orig_trx_receipts_size           = bb._pending_trx_receipts.size();
+      auto orig_trx_metas_size              = bb._pending_trx_metas.size();
+      auto orig_action_receipt_digests_size = bb._action_receipt_digests.size();
 
       std::function<void()> callback = [this,
-                                        orig_block_transactions_size,
-                                        orig_state_transactions_size,
-                                        orig_state_actions_size]()
+            orig_trx_receipts_size,
+            orig_trx_metas_size,
+            orig_action_receipt_digests_size]()
       {
          auto& bb = pending->_block_stage.get<building_block>();
-         bb._pending_trx_receipts.resize(orig_block_transactions_size);
-         bb._pending_trx_metas.resize(orig_state_transactions_size);
-         bb._actions.resize(orig_state_actions_size);
+         bb._pending_trx_receipts.resize(orig_trx_receipts_size);
+         bb._pending_trx_metas.resize(orig_trx_metas_size);
+         bb._action_receipt_digests.resize(orig_action_receipt_digests_size);
       };
 
       return fc::make_scoped_exit( std::move(callback) );
@@ -1129,7 +1129,8 @@ struct controller_impl {
          auto restore = make_block_restore_point();
          trace->receipt = push_receipt( gtrx.trx_id, transaction_receipt::soft_fail,
                                         trx_context.billed_cpu_time_us, trace->net_usage );
-         fc::move_append( pending->_block_stage.get<building_block>()._actions, move(trx_context.executed) );
+         fc::move_append( pending->_block_stage.get<building_block>()._action_receipt_digests,
+                          std::move(trx_context.executed_action_receipt_digests) );
 
          trx_context.squash();
          restore.cancel();
@@ -1267,7 +1268,8 @@ struct controller_impl {
                                         trx_context.billed_cpu_time_us,
                                         trace->net_usage );
 
-         fc::move_append( pending->_block_stage.get<building_block>()._actions, move(trx_context.executed) );
+         fc::move_append( pending->_block_stage.get<building_block>()._action_receipt_digests,
+                          std::move(trx_context.executed_action_receipt_digests) );
 
          trace->account_ram_delta = account_delta( gtrx.payer, trx_removal_ram_delta );
 
@@ -1453,7 +1455,8 @@ struct controller_impl {
                trace->receipt = r;
             }
 
-            fc::move_append(pending->_block_stage.get<building_block>()._actions, move(trx_context.executed));
+            fc::move_append( pending->_block_stage.get<building_block>()._action_receipt_digests,
+                             std::move(trx_context.executed_action_receipt_digests) );
 
             // call the accept signal but only once for this transaction
             if (!trx->accepted) {
@@ -2111,13 +2114,7 @@ struct controller_impl {
    }
 
    checksum256_type calculate_action_merkle() {
-      vector<digest_type> action_digests;
-      const auto& actions = pending->_block_stage.get<building_block>()._actions;
-      action_digests.reserve( actions.size() );
-      for( const auto& a : actions )
-         action_digests.emplace_back( a.digest() );
-
-      return merkle( move(action_digests) );
+      return merkle( move(pending->_block_stage.get<building_block>()._action_receipt_digests) );
    }
 
    checksum256_type calculate_trx_merkle() {
