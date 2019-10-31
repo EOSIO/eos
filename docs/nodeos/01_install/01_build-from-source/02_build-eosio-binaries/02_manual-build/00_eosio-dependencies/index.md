@@ -48,3 +48,6 @@ Below are instructions to install the EOSIO dependencies manually on various pla
 * [Amazon Linux](01_amazon-linux.md)
 * [CentOS Linux](02_centos-linux.md)
 * [Ubuntu Linux](03_ubuntu-linux.md)
+
+[[info]]
+| [Automatic installation of dependencies](#automatic-installation-of-dependencies) should be preferred over manual installation if possible.
