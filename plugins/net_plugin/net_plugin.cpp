@@ -1372,6 +1372,9 @@ namespace eosio {
       std::tie( lib_block_num, std::ignore, fork_head_block_num,
                 std::ignore, std::ignore, std::ignore ) = my_impl->get_chain_info();
 
+      fc_dlog( logger, "sync_last_requested_num: ${r}, sync_next_expected_num: ${e}, sync_known_lib_num: ${k}, sync_req_span: ${s}",
+               ("r", sync_last_requested_num)("e", sync_next_expected_num)("k", sync_known_lib_num)("s", sync_req_span) );
+
       if( fork_head_block_num < sync_last_requested_num && sync_source && sync_source->current() ) {
          fc_ilog( logger, "ignoring request, head is ${h} last req = ${r} source is ${p}",
                   ("h", fork_head_block_num)( "r", sync_last_requested_num )( "p", sync_source->peer_name() ) );
@@ -1704,13 +1707,13 @@ namespace eosio {
       stages state = sync_state;
       fc_dlog( logger, "state ${s}", ("s", stage_str( state )) );
       if( state == lib_catchup ) {
+         fc_dlog( logger, "sync_last_requested_num: ${r}, sync_next_expected_num: ${e}, sync_known_lib_num: ${k}, sync_req_span: ${s}",
+                  ("r", sync_last_requested_num)("e", sync_next_expected_num)("k", sync_known_lib_num)("s", sync_req_span) );
          if (blk_num != sync_next_expected_num) {
-            if( ++c->consecutive_rejected_blocks > def_max_consecutive_rejected_blocks ) {
-               auto sync_next_expected = sync_next_expected_num;
-               g_sync.unlock();
-               fc_wlog( logger, "expected block ${ne} but got ${bn}, from connection: ${p}",
-                        ("ne", sync_next_expected)( "bn", blk_num )( "p", c->peer_name() ) );
-            }
+            auto sync_next_expected = sync_next_expected_num;
+            g_sync.unlock();
+            fc_dlog( logger, "expected block ${ne} but got ${bn}, from connection: ${p}",
+                     ("ne", sync_next_expected)( "bn", blk_num )( "p", c->peer_name() ) );
             return;
          }
          sync_next_expected_num = blk_num + 1;
@@ -2364,9 +2367,10 @@ namespace eosio {
 
             block_id_type blk_id = bh.id();
             if( my_impl->dispatcher->have_block( blk_id ) ) {
+               uint32_t blk_num = bh.block_num();
                fc_dlog( logger, "canceling wait on ${p}, already received block ${num}",
-                        ("p", peer_name())("num", block_header::num_from_id( blk_id )) );
-               consecutive_rejected_blocks = 0;
+                        ("p", peer_name())("num", blk_num) );
+               my_impl->sync_master->sync_recv_block( shared_from_this(), blk_id, blk_num );
                cancel_wait();
 
                pending_message_buffer.advance_read_ptr( message_length );
