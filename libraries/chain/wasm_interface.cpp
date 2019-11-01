@@ -865,54 +865,93 @@ class crypto_api : public context_aware_api {
       }
 
       enum class ec_add_tags : uint64_t {
-         r1_v1,
-         k1_v1
+         r1_v1_compressed,
+         r1_v1_uncompressed,
+         k1_v1_compressed,
+         k1_v1_uncompressed
       };
 
+      const ec_group& get_r1_group()const {
+         static const ec_group& r1_group = EC_GROUP_new_by_curve_name( NID_X9_62_prime256v1 );
+         return r1_group;
+      }
+
+      template <typename T>
+      constexpr auto ui(T t) { return static_cast<std::underlying_type_t<T>>(t); }
+      template <typename T>
+      constexpr auto is_r1(const T& tag) { return tag == ui(ec_add_tags::r1_v1_compressed) || tag == ui(ec_add_tags::r1_v1_uncompressed); }
+      template <typename T>
+      constexpr auto is_k1(const T& tag) { return tag == ui(ec_add_tags::k1_v1_compressed) || tag == ui(ec_add_tags::k1_v1_uncompressed); }
+
+      template <ec_add_tags Tag>
+      int64_t ec_add_r1(EC_POINT* p, EC_POINT* q, EC_POINT* r) {
+         static_assert(is_r1(Tag), "ec_add_r1 can only work on r1 points");
+         if constexpr (Tag == ec_add_tags::r1_v1_uncompressed) {
+            if (!EC_POINT_is_on_curve(r1_group, p, nullptr) || !EC_POINT_is_on_curve(r1_group, q, nullptr))
+               return -1;
+         }
+
+         if (!EC_POINT_add(r1_group, r, p, q, nullptr))
+            return -1;
+      }
+
       int64_t ec_add(uint64_t tag, array_ptr<char> input, uint32_t input_len, array_ptr<char> output, uint32_t output_len) {
-         constexpr auto ui = [](auto t) { return static_cast<std::underlying_type_t<decltype(t)>>(t); };
+
+         EC_POINT* p, *q, *r = nullptr;
+         BIGNUM* r_x = nullptr, *r_y = nullptr;
+         BIGNUM* x1 = nullptr, *x2 = nullptr;
+         std::variant<uint8_t, BIGNUM*> y1, y2;
+         ec_group& ecg;
+
+         datastream<const char*> ds( input, input_len );
+
+         auto cleanup = fc::make_scoped_exit([&]() {
+            EC_POINT_free(p);
+            EC_POINT_free(q);
+            if (r != nullptr)
+               EC_POINT_free(r);
+            if (r_x != nullptr)
+               BN_free(r_x);
+            if (r_y != nullptr)
+               BN_free(r_y);
+            if (x1 != nullptr)
+               BN_free(x1);
+            if (x2 != nullptr)
+               BN_free(x2);
+            if (std::holds_alternative<BIGNUM*>(y1))
+               BN_free(std::get<BIGNUM*>(y1));
+            if (std::holds_alternative<BIGNUM*>(y2))
+               BN_free(std::get<BIGNUM*>(y2));
+         });
+
+         if (is_r1(tag))
+            ecg = get_r1_group();
+         else if (is_k1(tag))
+            ecg = get_k1_group();
+
+         p = EC_POINT_new(ecg);
+         q = EC_POINT_new(ecg);
+         r = EC_POINT_new(ecg);
+
+         std::array<uint64_t, 4> point_bytes;
+         ds >> point_bytes;
+         x1 = BN_bin2bn((const uint8_t*)point_bytes, point_bytes.size(), nullptr);
+         if (!x1)
+            return -1;
+         ds >> point_bytes;
+         x2 = BN_bin2bn((const uint8_t*)input.value+33, point_bytes.size(), nullptr);
+         if (!x2)
+            return -1;
+
          switch(tag) {
-            case ui(ec_add_tags::r1_v1):
+            case ui(ec_add_tags::r1_v1_uncompressed):
+            case ui(ec_add_tags::r1_v1_compressed):
                {
-                   EC_POINT* a, *b, *r = nullptr;
-                   //datastream<const char*> ds( input, input_len );
-                   static const ec_group& r1_group = EC_GROUP_new_by_curve_name( NID_X9_62_prime256v1 );
-                   a = EC_POINT_new(r1_group);
-                   b = EC_POINT_new(r1_group);
-                   r = EC_POINT_new(r1_group);
-
-                   BIGNUM* r_x = nullptr, *r_y = nullptr;
-                   BIGNUM* x1 = nullptr, *x2 = nullptr;
-                   auto cleanup = fc::make_scoped_exit([&]() {
-                      EC_POINT_free(a);
-                      EC_POINT_free(b);
-                      if (r != nullptr)
-                         EC_POINT_free(r);
-                      if (r_x != nullptr)
-                         BN_free(r_x);
-                      if (r_y != nullptr)
-                         BN_free(r_y);
-                      if (x1 != nullptr)
-                         BN_free(x1);
-                      if (x2 != nullptr)
-                         BN_free(x2);
-                   });
-
                    uint8_t y1, y2;
-                   x1 = BN_bin2bn((const uint8_t*)input.value, 32, nullptr);
-                   if (!x1)
-                     return -1;
                    y1 = *(input.value+32);
-                   x2 = BN_bin2bn((const uint8_t*)input.value+33, 32, nullptr);
-                   if (!x2)
-                     return -1;
                    y2 = *(input.value+65);
-                   EC_POINT_set_compressed_coordinates_GFp(r1_group, a, x1, y1, nullptr);
-                   EC_POINT_set_compressed_coordinates_GFp(r1_group, b, x2, y2, nullptr);
-
-                   if (!EC_POINT_add(r1_group, r, a, b, nullptr))
-                      return -1;
-
+                   EC_POINT_set_compressed_coordinates_GFp(ecg, a, x1, y1, nullptr);
+                   EC_POINT_set_compressed_coordinates_GFp(ecg, b, x2, y2, nullptr);
                    r_x = BN_new();
                    r_y = BN_new();
                    EC_POINT_get_affine_coordinates_GFp(r1_group, r, r_x, r_y, nullptr);
@@ -937,6 +976,21 @@ class crypto_api : public context_aware_api {
                return -1;
          }
          return 0;
+         r_x = BN_new();
+         r_y = BN_new();
+         EC_POINT_get_affine_coordinates_GFp(r1_group, r, r_x, r_y, nullptr);
+         std::cout << "\n";
+         BN_print_fp(stdout, r_x);
+         std::cout << "\n";
+         BN_print_fp(stdout, r_y);
+         std::cout << "\n";
+         const uint32_t x_size = BN_num_bytes(r_x);
+         const int64_t max_size = x_size + 1;  // sign byte for y
+         if (output_len <= max_size) {
+         uint32_t sz = BN_bn2bin(r_x, (unsigned char*)output.value) + 1;
+         *(output.value+32) = BN_is_negative(r_y);
+         return sz;
+
       }
 
       template<class Encoder> auto encode(char* data, uint32_t datalen) {
