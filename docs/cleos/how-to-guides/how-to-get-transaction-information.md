@@ -12,8 +12,6 @@ Query infomation of a transaction
 
 ## Steps
 
-Steps
-
 ```shell
 cleos get transaction id
 ```
