@@ -5,8 +5,12 @@ import json
 import requests
 
 # user-defined modules
-import helper
-import color
+if __package__:
+    from . import helper
+    from . import color
+else:
+    import color
+    import helper
 
 
 class Connection:

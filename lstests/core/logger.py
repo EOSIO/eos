@@ -14,8 +14,12 @@ import time
 import typing
 
 # user-defined modules
-import color
-import helper
+if __package__:
+    from . import color
+    from . import helper
+else:
+    import color
+    import helper
 
 # VERTICAL_BAR = "|"
 VERTICAL_BAR = "│"
@@ -151,7 +155,7 @@ class Writer(abc.ABC):
         if self.show_clock_time:
             prefix += "{} ".format(helper.get_current_time())
         if self.show_elapsed_time:
-            prefix += "({:9.3f}s) ".format(time.time() - self.start_time)
+            prefix += "({:8.3f}s) ".format(time.time() - self.start_time)
         depth = len(inspect.stack()) - 1
         frame = inspect.stack()[min(6, depth)]
         if self.show_filename:
@@ -282,12 +286,10 @@ class Logger:
     def warn(self, msg, colorize=True, buffer=False):
         self.log(color.yellow(msg) if colorize else msg, level=LogLevel.WARN, buffer=buffer)
 
-    # to deprecate: assert_false (bad design)
-    # if error message has multiple lines, only the first line will be colorized (red)
-    def error(self, msg, colorize=True, buffer=False, assert_false=None):
-        self.log(color.red(msg) if colorize else msg, level=LogLevel.ERROR, buffer=buffer)
+    def error(self, msg, colorize=True, buffer=False):
+        self.log(color.red(msg) if (colorize and "\n" not in msg) else msg, level=LogLevel.ERROR, buffer=buffer)
 
-    def fatal(self, msg, colorize=True, buffer=False, assert_false=True):
+    def fatal(self, msg, colorize=True, buffer=False):
         self.log(color.bold(color.red(msg)) if colorize else msg, level=LogLevel.FATAL, buffer=buffer)
 
 
@@ -311,7 +313,7 @@ def _alice(logger):
     logger.warn("Alice:\tMy name is {}.".format(color.yellow("Alice")))
     logger.flush()
     _pause()
-    logger.debug(color.red("Alice:") + "\nThis is a \nMultiline\nStatement")
+    logger.error("Alice:" + "\nThis is a \nMultiline\nStatement")
     logger.flush()
 
 

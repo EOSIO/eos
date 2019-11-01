@@ -13,7 +13,10 @@ from typing import List, Optional, Union
 import requests
 
 # user-defined modules
-import color
+if __package__:
+    from . import color
+else:
+    import color
 
 HORIZONTAL_BAR = "─"
 HORIZONTAL_DASH = "⎯"
