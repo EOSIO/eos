@@ -6,6 +6,7 @@ export MOJAVE_ANKA_TAG_BASE=${MOJAVE_ANKA_TAG_BASE:-'clean::cicd::git-ssh::nas::
 export MOJAVE_ANKA_TEMPLATE_NAME=${MOJAVE_ANKA_TEMPLATE_NAME:-'10.14.6_6C_14G_40G'}
 export PLATFORMS_JSON_ARRAY='[]'
 [[ -z "$ROUNDS" ]] && export ROUNDS='1'
+DISABLE_CONCURRENCY=${DISABLE_CONCURRENCY:-false}
 LINUX_CONCURRENCY='8'
 MAC_CONCURRENCY='2'
 LINUX_CONCURRENCY_GROUP='eos-scheduled-build'
@@ -132,7 +133,7 @@ EOF
             - 'registry_2'
           pre-execute-sleep: 5
           pre-commands: 
-            - "git clone git@github.com:EOSIO/mac-anka-fleet.git && cd mac-anka-fleet && . ./ensure-tag.bash -u 12 -r 25G -a '-n'"
+            - "rm -rf mac-anka-fleet; git clone git@github.com:EOSIO/mac-anka-fleet.git && cd mac-anka-fleet && . ./ensure-tag.bash -u 12 -r 25G -a '-n'"
       - thedyrt/skip-checkout#v0.1.1:
           cd: ~
     env:
@@ -149,7 +150,7 @@ EOF
     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_BUILD}
 EOF
     fi
-    if [ "$BUILDKITE_SOURCE" = "schedule" ] || [[ $DISABLE_CONCURRENCY == true ]]; then
+    if [ "$BUILDKITE_SOURCE" = "schedule" ] && [[ $DISABLE_CONCURRENCY != true ]]; then
         cat <<EOF
     concurrency: ${CONCURRENCY}
     concurrency_group: ${CONCURRENCY_GROUP}
@@ -214,7 +215,7 @@ EOF
 
 EOF
         fi
-        if [ "$BUILDKITE_SOURCE" = "schedule" ] || [[ $DISABLE_CONCURRENCY == true ]]; then
+        if [ "$BUILDKITE_SOURCE" = "schedule" ] && [[ $DISABLE_CONCURRENCY != true ]]; then
             cat <<EOF
     concurrency: ${CONCURRENCY}
     concurrency_group: ${CONCURRENCY_GROUP}
@@ -272,7 +273,7 @@ EOF
 
 EOF
         fi
-        if [ "$BUILDKITE_SOURCE" = "schedule" ] || [[ $DISABLE_CONCURRENCY == true ]]; then
+        if [ "$BUILDKITE_SOURCE" = "schedule" ] && [[ $DISABLE_CONCURRENCY != true ]]; then
             cat <<EOF
     concurrency: ${CONCURRENCY}
     concurrency_group: ${CONCURRENCY_GROUP}
@@ -338,7 +339,7 @@ EOF
     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_SERIAL_TESTS}
 EOF
             fi
-            if [ "$BUILDKITE_SOURCE" = "schedule" ] || [[ $DISABLE_CONCURRENCY == true ]]; then
+            if [ "$BUILDKITE_SOURCE" = "schedule" ] && [[ $DISABLE_CONCURRENCY != true ]]; then
                 cat <<EOF
     concurrency: ${CONCURRENCY}
     concurrency_group: ${CONCURRENCY_GROUP}
@@ -406,7 +407,7 @@ EOF
     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_LONG_RUNNING_TESTS:-true}
 EOF
             fi
-            if [ "$BUILDKITE_SOURCE" = "schedule" ] || [[ $DISABLE_CONCURRENCY == true ]]; then
+            if [ "$BUILDKITE_SOURCE" = "schedule" ] && [[ $DISABLE_CONCURRENCY != true ]]; then
                 cat <<EOF
     concurrency: ${CONCURRENCY}
     concurrency_group: ${CONCURRENCY_GROUP}
