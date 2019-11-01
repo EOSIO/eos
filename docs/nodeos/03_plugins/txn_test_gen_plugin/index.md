@@ -2,8 +2,7 @@
 
 ## Description
 
-TODO: add description  
-The `txn_test_gen_plugin` ...
+The `txn_test_gen_plugin` is used for transaction test purposes.
 
 ## Usage
 

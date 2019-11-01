@@ -2,7 +2,7 @@
 
 ## Description
 
-The `state_history_plugin` is useful for capturing historical data about the blockchain state. The plugin receives blockchain data from other connected nodes and caches the data into files. The `state_history_plugin` listens on a socket for applications to connect and sends blockchain data back based on the plugin options specified when starting `nodeos`.
+The `state_history_plugin` is useful for capturing historical data about the blockchain state. The plugin receives blockchain data from other connected nodes and caches the data into files. The plugin listens on a socket for applications to connect and sends blockchain data back based on the plugin options specified when starting `nodeos`.
 
 ## Usage
 
@@ -48,10 +48,12 @@ Config Options for eosio::state_history_plugin:
 
 ## Examples
 
-* [JavaScript Example](examples/js-example.md)
-  * [source code] (TODO: add)
-* [history-tools](https://eosio.github.io/history-tools/)
-  * [source code](https://github.com/EOSIO/history-tools/)
+* JavaScript Example:
+  * [Source code](https://github.com/EOSIO/eos/blob/state-history-docs/docs/state-history-plugin/js-example.md)
+* history-tools:
+  * [Source code](https://github.com/EOSIO/history-tools/)
+  * [Documentation](https://eosio.github.io/history-tools/)
+  * [Protocol](https://github.com/EOSIO/eos/blob/state-history-docs/docs/state-history-plugin/protocol.md)
 
 ## Dependencies
 

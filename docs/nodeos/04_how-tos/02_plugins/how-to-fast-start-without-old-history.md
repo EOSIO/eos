@@ -5,7 +5,10 @@
 This procedure records the current chain state and future history, without previous historical data on the local chain.
 
 ## Before you begin
-[TODO] (things to have knowledge/mastery of before carrying out the how-to)
+
+* Make sure [EOSIO is installed](../../01_install/index.md).
+* Learn about [Using Nodeos](../../02_usage/index.md).
+* Get familiar with [state_history](../../03_plugins/state_history_plugin/index.md) plugin.
 
 ## Steps
 
