@@ -12,7 +12,6 @@ Connect to a specific `nodeos` or `keosd` host
 * Install the currently supported version of cleos
 
 ## Steps
-
 ### Connecting to Nodeos
 
 ```bash
