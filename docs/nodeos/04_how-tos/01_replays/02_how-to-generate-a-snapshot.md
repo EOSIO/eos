@@ -10,4 +10,5 @@ curl --request POST \
   --header 'content-type: application/x-www-form-urlencoded; charset=UTF-8'
 ```
 
-You can also download a snapshot file from block producers or other companies. You can search for `"eos snapshot"` on google to find some companies that provide this service.
+[[info]]
+| You can also download a `blocks.log` file from third party providers.
