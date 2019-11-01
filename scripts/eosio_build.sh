@@ -32,6 +32,15 @@ SCRIPT_VERSION=3.1 # Build script version (change this to re-build the CICD imag
 # https://github.com/EOSIO/eos/blob/master/LICENSE
 ##########################################################################
 
+cat <<EOS
+${COLOR_YELLOW}
+== DEPRECATION NOTICE ============================
+As of EOSIO 2.0, this script has been deprecated.
+It will be removed in a future version.
+==================================================
+${COLOR_NC}
+EOS
+
 function usage() {
    printf "Usage: $0 OPTION...
   -P          Build with pinned clang and libcxx
