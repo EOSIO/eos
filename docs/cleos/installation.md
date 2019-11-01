@@ -1,5 +1,3 @@
-# Installation
-
 There are two options to install `cleos`. You can either install via binaries or build `cleos` from source code. For both options `cleos` is distributed with `eos` repository
 
 Installation via binaries is recommended as it will save your time and avoid encouter build errors
