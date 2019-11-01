@@ -10,7 +10,7 @@ The following instructions will build the EOSIO binaries manually by invoking co
 
 After completing the steps above, perform the instructions below to build the EOSIO software manually:
 
-Create the `build` folder under the `~/eosio/eos` repo folder:
+Create and change to the `build` folder under the `eos` repo folder:
 ```sh
 $ mkdir -p ~/eosio/eos/build && cd ~/eosio/eos/build
 ```
