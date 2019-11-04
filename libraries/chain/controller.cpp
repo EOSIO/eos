@@ -118,15 +118,16 @@ struct building_block {
    optional<producer_authority_schedule> _new_pending_producer_schedule;
    vector<digest_type>                   _new_protocol_feature_activations;
    size_t                                _num_new_protocol_features_that_have_activated = 0;
-   vector<transaction_metadata_ptr>      _pending_trx_metas;
-   vector<transaction_receipt>           _pending_trx_receipts;
-   vector<digest_type>                   _action_receipt_digests;
+   deque<transaction_metadata_ptr>       _pending_trx_metas;
+   deque<transaction_receipt>            _pending_trx_receipts; // boost deque in 1.71 with 1024 elements performs better
+   deque<digest_type>                    _pending_trx_receipt_digests;
+   deque<digest_type>                    _action_receipt_digests;
 };
 
 struct assembled_block {
    block_id_type                     _id;
    pending_block_header_state        _pending_block_header_state;
-   vector<transaction_metadata_ptr>  _trx_metas;
+   deque<transaction_metadata_ptr>   _trx_metas;
    signed_block_ptr                  _unsigned_block;
 
    // if the _unsigned_block pre-dates block-signing authorities this may be present.
@@ -161,7 +162,7 @@ struct pending_state {
       return _block_stage.get<assembled_block>()._pending_block_header_state;
    }
 
-   const vector<transaction_receipt>& get_trx_receipts()const {
+   const deque<transaction_receipt>& get_trx_receipts()const {
       if( _block_stage.contains<building_block>() )
          return _block_stage.get<building_block>()._pending_trx_receipts;
 
@@ -171,7 +172,7 @@ struct pending_state {
       return _block_stage.get<completed_block>()._block_state->block->transactions;
    }
 
-   vector<transaction_metadata_ptr> extract_trx_metas() {
+   deque<transaction_metadata_ptr> extract_trx_metas() {
       if( _block_stage.contains<building_block>() )
          return std::move( _block_stage.get<building_block>()._pending_trx_metas );
 
@@ -1372,6 +1373,7 @@ struct controller_impl {
       r.cpu_usage_us         = cpu_usage_us;
       r.net_usage_words      = net_usage_words;
       r.status               = status;
+      pending->_block_stage.get<building_block>()._pending_trx_receipt_digests.emplace_back( r.digest() );
       return r;
    }
 
@@ -1523,11 +1525,6 @@ struct controller_impl {
 
       const auto& gpo = self.get_global_properties();
 
-      const auto size = gpo.configuration.max_block_cpu_usage /
-            ( gpo.configuration.min_transaction_cpu_usage ? gpo.configuration.min_transaction_cpu_usage : 1 );
-      bb._pending_trx_receipts.reserve( size );
-      bb._pending_trx_metas.reserve( size );
-
       // modify state of speculative block only if we are in speculative read mode (otherwise we need clean state for head or read-only modes)
       if ( read_mode == db_read_mode::SPECULATIVE || pending->_block_status != controller::block_status::incomplete )
       {
@@ -1672,8 +1669,8 @@ struct controller_impl {
 
       // Create (unsigned) block:
       auto block_ptr = std::make_shared<signed_block>( pbhs.make_block_header(
-         calculate_trx_merkle(),
-         calculate_action_merkle(),
+         merkle( std::move( pending->_block_stage.get<building_block>()._pending_trx_receipt_digests ) ),
+         merkle( std::move( pending->_block_stage.get<building_block>()._action_receipt_digests ) ),
          bb._new_pending_producer_schedule,
          std::move( bb._new_protocol_feature_activations ),
          protocol_features.get_protocol_feature_set()
@@ -1857,8 +1854,6 @@ struct controller_impl {
 
          size_t packed_idx = 0;
          const auto& trx_receipts = pending->_block_stage.get<building_block>()._pending_trx_receipts;
-         pending->_block_stage.get<building_block>()._pending_trx_receipts.reserve( b->transactions.size() );
-         pending->_block_stage.get<building_block>()._pending_trx_metas.reserve( b->transactions.size() );
          for( const auto& receipt : b->transactions ) {
             auto num_pending_receipts = trx_receipts.size();
             if( receipt.trx.contains<packed_transaction>() ) {
@@ -2103,28 +2098,14 @@ struct controller_impl {
 
    } /// push_block
 
-   vector<transaction_metadata_ptr> abort_block() {
-      vector<transaction_metadata_ptr> applied_trxs;
+   deque<transaction_metadata_ptr> abort_block() {
+      deque<transaction_metadata_ptr> applied_trxs;
       if( pending ) {
          applied_trxs = pending->extract_trx_metas();
          pending.reset();
          protocol_features.popped_blocks_to( head->block_num );
       }
       return applied_trxs;
-   }
-
-   checksum256_type calculate_action_merkle() {
-      return merkle( move(pending->_block_stage.get<building_block>()._action_receipt_digests) );
-   }
-
-   checksum256_type calculate_trx_merkle() {
-      vector<digest_type> trx_digests;
-      const auto& trxs = pending->_block_stage.get<building_block>()._pending_trx_receipts;
-      trx_digests.reserve( trxs.size() );
-      for( const auto& a : trxs )
-         trx_digests.emplace_back( a.digest() );
-
-      return merkle( move(trx_digests) );
    }
 
    void update_producers_authority() {
@@ -2608,7 +2589,7 @@ void controller::commit_block() {
    my->commit_block(true);
 }
 
-vector<transaction_metadata_ptr> controller::abort_block() {
+deque<transaction_metadata_ptr> controller::abort_block() {
    return my->abort_block();
 }
 
@@ -2771,7 +2752,7 @@ optional<block_id_type> controller::pending_producer_block_id()const {
    return my->pending->_producer_block_id;
 }
 
-const vector<transaction_receipt>& controller::get_pending_trx_receipts()const {
+const deque<transaction_receipt>& controller::get_pending_trx_receipts()const {
    EOS_ASSERT( my->pending, block_validate_exception, "no pending block" );
    return my->pending->get_trx_receipts();
 }

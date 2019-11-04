@@ -306,11 +306,11 @@ namespace impl {
       static void add( mutable_variant_object &mvo, const char* name, const M& v, Resolver resolver, abi_traverse_context& ctx );
 
       /**
-       * template which overloads add for vectors of types which contain ABI information in their trees
+       * template which overloads add for containers of types which contain ABI information in their trees
        * for these members we call ::add in order to trigger further processing
        */
-      template<typename M, typename Resolver, require_abi_t<M> = 1>
-      static void add( mutable_variant_object &mvo, const char* name, const vector<M>& v, Resolver resolver, abi_traverse_context& ctx )
+      template<template <typename, typename...> class C, typename M, typename Resolver, require_abi_t<M> = 1>
+      static void add( mutable_variant_object &mvo, const char* name, const C<M>& v, Resolver resolver, abi_traverse_context& ctx )
       {
          auto h = ctx.enter_scope();
          vector<variant> array;
