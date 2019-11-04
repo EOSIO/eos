@@ -54,7 +54,7 @@ if ( "${CMAKE_BUILD_TYPE}" STREQUAL "Debug" )
    find_library(libsecp256k1 secp256k1_debug @CMAKE_INSTALL_PREFIX@/lib64 @CMAKE_INSTALL_PREFIX@/lib)
 else()
    find_library(libfc fc @CMAKE_INSTALL_PREFIX@/lib64 @CMAKE_INSTALL_PREFIX@/lib)
-   find_library(libsecp256k1 secp256k1 @CMAKE_INSTALL_PREFIX@/lib64 @CMAKE_INSTALL_PREFIX@/lib)  
+   find_library(libsecp256k1 secp256k1 @CMAKE_INSTALL_PREFIX@/lib64 @CMAKE_INSTALL_PREFIX@/lib)
 endif()
 
 find_library(libwasm WASM @CMAKE_INSTALL_PREFIX@/lib64 @CMAKE_INSTALL_PREFIX@/lib)
@@ -106,6 +106,7 @@ macro(add_eosio_test_executable test_name)
        ${Boost_SYSTEM_LIBRARY}
        ${Boost_CHRONO_LIBRARY}
        ${Boost_IOSTREAMS_LIBRARY}
+       "-lz" # Needed by Boost iostreams
        ${Boost_DATE_TIME_LIBRARY}
 
        ${LLVM_LIBS}
