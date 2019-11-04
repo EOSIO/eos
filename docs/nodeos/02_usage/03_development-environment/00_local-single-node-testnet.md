@@ -1,4 +1,3 @@
-# Local Single-Node Testnet
 
 After successfully building the project, the `nodeos` binary should be present in the `build/programs/nodeos` folder.  `nodeos` can be run directly from the `build` folder using `programs/nodeos/nodeos`, or you can `cd programs/nodeos` to change into the folder and run the `nodeos` command from there.  Here, we run the command within the `programs/nodeos` folder.
 

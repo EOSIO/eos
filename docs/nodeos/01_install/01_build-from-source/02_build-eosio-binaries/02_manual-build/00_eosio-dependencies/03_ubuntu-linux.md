@@ -1,4 +1,4 @@
-# Dependencies - Manual Install - Ubuntu 16.04 or higher and Linux Mint 18
+## Dependencies - Manual Install - Ubuntu 16.04 or higher and Linux Mint 18
 
 Install the development toolkit:
 

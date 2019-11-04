@@ -1,4 +1,3 @@
-# Install EOSIO Prebuilt Binaries
 
 EOSIO prebuilt binary packages are available for various operating systems. For the full OS list and installation instructions, please visit the [Prebuilt Binaries](../../../README.md#prebuilt-binaries) section on the main README.
 

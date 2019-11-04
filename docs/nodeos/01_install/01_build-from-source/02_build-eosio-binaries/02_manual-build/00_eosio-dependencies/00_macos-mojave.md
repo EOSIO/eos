@@ -1,4 +1,4 @@
-# Dependencies - Manual Install - MacOS Mojave 10.14 or Higher
+## Dependencies - Manual Install - MacOS Mojave 10.14 or Higher
 
 MacOS additional Dependencies:
 

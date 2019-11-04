@@ -1,4 +1,4 @@
-# Dependencies - Manual Install - Amazon Linux 2017.09 or Higher
+## Dependencies - Manual Install - Amazon Linux 2017.09 or Higher
 
 Install the development toolkit:
 

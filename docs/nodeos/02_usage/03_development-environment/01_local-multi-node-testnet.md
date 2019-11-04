@@ -1,4 +1,3 @@
-# Local Multi-Node Testnet
 
 This tutorial describes how to set up a multi-node blockchain configuration running on a single host.  This is referred to as a _**single host, multi-node testnet**_.  We will set up two nodes on your local computer and have them communicate with each other.  The examples in this section rely on three command-line applications, `nodeos`, `keosd`, and `cleos`.  The following diagram depicts the desired testnet configuration.
 

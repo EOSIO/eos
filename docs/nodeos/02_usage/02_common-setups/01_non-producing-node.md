@@ -1,4 +1,3 @@
-# Non-Producing Node
 
 [[info]]
 | This article assumes you have already [installed `nodeos`](../../01_install/index.md).

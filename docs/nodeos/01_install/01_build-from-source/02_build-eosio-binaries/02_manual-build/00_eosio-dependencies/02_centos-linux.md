@@ -1,4 +1,4 @@
-# Dependencies - Manual Install - CentOS 7 and higher
+## Dependencies - Manual Install - CentOS 7 and higher
 
 Install the development toolkit:
 * Installation on Centos requires installing/enabling the Centos Software Collections Repository - [Centos SCL](https://wiki.centos.org/AdditionalResources/Repositories/SCL):

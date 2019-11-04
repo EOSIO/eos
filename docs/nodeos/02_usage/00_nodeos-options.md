@@ -1,4 +1,3 @@
-# Nodeos Options
 
 `Nodeos` is a command line interface (CLI) application. As such, it can be started manually from the command line or through an automated script. The behavior of `nodeos` is determined mainly by which plugins are loaded and which plugin options are used. The `nodeos` application features two main option categories: *nodeos-specific* options and *plugin-specific* options.
 

@@ -1,4 +1,3 @@
-# EOSIO Build Validation 
 
 Optionally, a set of tests can be run against your build to perform some basic validation.
 
