@@ -388,4 +388,22 @@ namespace eosio { namespace chain {
 
 } }  // eosio::chain
 
+namespace chainbase {
+   // chainbase::shared_cow_string
+   template<typename DataStream> inline DataStream& operator<<( DataStream& s, const chainbase::shared_cow_string& v )  {
+      FC_ASSERT( v.size() <= MAX_SIZE_OF_BYTE_ARRAYS );
+      fc::raw::pack( s, fc::unsigned_int((uint32_t)v.size()));
+      if( v.size() ) s.write( v.data(), v.size() );
+      return s;
+   }
+
+   template<typename DataStream> inline DataStream& operator>>( DataStream& s, chainbase::shared_cow_string& v )  {
+      fc::unsigned_int size; fc::raw::unpack( s, size );
+      FC_ASSERT( size.value <= MAX_SIZE_OF_BYTE_ARRAYS );
+      FC_ASSERT( v.size() == 0 );
+      v.resize_and_fill(size.value, [&s](char* buf, std::size_t sz) { s.read(buf, sz); });
+      return s;
+   }
+}
+
 FC_REFLECT_EMPTY( eosio::chain::void_t )
