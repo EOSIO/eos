@@ -5,7 +5,7 @@ pkg_config
 [requires]
 pkg-config_installer/0.29.2@bincrafters/stable
 boost/1.71.0@conan/stable
-OpenSSL/latest_1.1.1x@conan/stable
+openssl/1.1.1d
 libcurl/7.66.0@bincrafters/stable
 libusb/1.0.23@bincrafters/stable
 gmp/6.1.2@bincrafters/stable
