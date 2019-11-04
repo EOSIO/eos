@@ -876,32 +876,36 @@ class crypto_api : public context_aware_api {
          return r1_group;
       }
 
-      template <typename T>
-      constexpr auto ui(T t) { return static_cast<std::underlying_type_t<T>>(t); }
-      template <typename T>
-      constexpr auto is_r1(const T& tag) { return tag == ui(ec_add_tags::r1_v1_compressed) || tag == ui(ec_add_tags::r1_v1_uncompressed); }
-      template <typename T>
-      constexpr auto is_k1(const T& tag) { return tag == ui(ec_add_tags::k1_v1_compressed) || tag == ui(ec_add_tags::k1_v1_uncompressed); }
+      template <auto Val>
+      struct to_ui {
+         static constexpr auto value = static_cast<std::underlying_type_t<decltype(Val)>>(Val);
+      };
+      template <auto Val>
+      static constexpr auto to_ui_v = to_ui<Val>::value;
 
-      template <ec_add_tags Tag>
-      int64_t ec_add_r1(EC_POINT* p, EC_POINT* q, EC_POINT* r) {
-         static_assert(is_r1(Tag), "ec_add_r1 can only work on r1 points");
+      template <typename T>
+      constexpr bool is_r1(const T& tag) { return tag == to_ui_v<ec_add_tags::r1_v1_compressed> || tag == to_ui_v<ec_add_tags::r1_v1_uncompressed>; }
+      template <typename T>
+      constexpr bool is_k1(const T& tag) { return tag == to_ui_v<ec_add_tags::k1_v1_compressed> || tag == to_ui_v<ec_add_tags::k1_v1_uncompressed>; }
+
+      template <ec_add_tags Tag, typename Group>
+      int64_t ec_add_r1(const Group& group,EC_POINT* p, EC_POINT* q, EC_POINT* r) {
+         static_assert(is_r1(to_ui_v<Tag>), "ec_add_r1 can only work on r1 points");
          if constexpr (Tag == ec_add_tags::r1_v1_uncompressed) {
-            if (!EC_POINT_is_on_curve(r1_group, p, nullptr) || !EC_POINT_is_on_curve(r1_group, q, nullptr))
+            if (!EC_POINT_is_on_curve(group, p, nullptr) || !EC_POINT_is_on_curve(group, q, nullptr))
                return -1;
          }
 
-         if (!EC_POINT_add(r1_group, r, p, q, nullptr))
+         if (!EC_POINT_add(group, r, p, q, nullptr))
             return -1;
       }
 
       int64_t ec_add(uint64_t tag, array_ptr<char> input, uint32_t input_len, array_ptr<char> output, uint32_t output_len) {
-
          EC_POINT* p, *q, *r = nullptr;
          BIGNUM* r_x = nullptr, *r_y = nullptr;
          BIGNUM* x1 = nullptr, *x2 = nullptr;
          std::variant<uint8_t, BIGNUM*> y1, y2;
-         ec_group& ecg;
+         const ec_group& ecg = is_r1(tag) ? get_r1_group() : nullptr;
 
          datastream<const char*> ds( input, input_len );
 
@@ -924,37 +928,35 @@ class crypto_api : public context_aware_api {
                BN_free(std::get<BIGNUM*>(y2));
          });
 
-         if (is_r1(tag))
-            ecg = get_r1_group();
-         else if (is_k1(tag))
-            ecg = get_k1_group();
+         //else if (is_k1(tag))
+         //   ecg = get_k1_group();
 
          p = EC_POINT_new(ecg);
          q = EC_POINT_new(ecg);
          r = EC_POINT_new(ecg);
 
          std::array<uint64_t, 4> point_bytes;
-         ds >> point_bytes;
-         x1 = BN_bin2bn((const uint8_t*)point_bytes, point_bytes.size(), nullptr);
+         ds.read((char*)point_bytes.data(), 32);
+         x1 = BN_bin2bn((const uint8_t*)point_bytes.data(), point_bytes.size(), nullptr);
          if (!x1)
             return -1;
-         ds >> point_bytes;
-         x2 = BN_bin2bn((const uint8_t*)input.value+33, point_bytes.size(), nullptr);
+         ds.read((char*)point_bytes.data(), 32);
+         x2 = BN_bin2bn(((const uint8_t*)point_bytes.data())+33, point_bytes.size(), nullptr);
          if (!x2)
             return -1;
 
          switch(tag) {
-            case ui(ec_add_tags::r1_v1_uncompressed):
-            case ui(ec_add_tags::r1_v1_compressed):
+            case to_ui_v<ec_add_tags::r1_v1_uncompressed>:
+            case to_ui_v<ec_add_tags::r1_v1_compressed>:
                {
                    uint8_t y1, y2;
                    y1 = *(input.value+32);
                    y2 = *(input.value+65);
-                   EC_POINT_set_compressed_coordinates_GFp(ecg, a, x1, y1, nullptr);
-                   EC_POINT_set_compressed_coordinates_GFp(ecg, b, x2, y2, nullptr);
+                   EC_POINT_set_compressed_coordinates_GFp(ecg, p, x1, y1, nullptr);
+                   EC_POINT_set_compressed_coordinates_GFp(ecg, q, x2, y2, nullptr);
                    r_x = BN_new();
                    r_y = BN_new();
-                   EC_POINT_get_affine_coordinates_GFp(r1_group, r, r_x, r_y, nullptr);
+                   EC_POINT_get_affine_coordinates_GFp(ecg, r, r_x, r_y, nullptr);
                    std::cout << "\n";
                    BN_print_fp(stdout, r_x);
                    std::cout << "\n";
@@ -970,12 +972,13 @@ class crypto_api : public context_aware_api {
                      return -1;
                    }
                }
-            case ui(ec_add_tags::k1_v1):
-                  return -1;
+            case to_ui_v<ec_add_tags::k1_v1_uncompressed>:
+            case to_ui_v<ec_add_tags::k1_v1_compressed>:
+               return -1;
             default:
                return -1;
          }
-         return 0;
+         /*
          r_x = BN_new();
          r_y = BN_new();
          EC_POINT_get_affine_coordinates_GFp(r1_group, r, r_x, r_y, nullptr);
@@ -989,8 +992,9 @@ class crypto_api : public context_aware_api {
          if (output_len <= max_size) {
          uint32_t sz = BN_bn2bin(r_x, (unsigned char*)output.value) + 1;
          *(output.value+32) = BN_is_negative(r_y);
-         return sz;
-
+         */
+         //return sz;
+         return 10;
       }
 
       template<class Encoder> auto encode(char* data, uint32_t datalen) {
@@ -1219,7 +1223,7 @@ class system_api : public context_aware_api {
       }
 };
 
-constexpr size_t max_assert_message = 1024;
+static constexpr size_t max_assert_message = 1024;
 
 class context_free_system_api :  public context_aware_api {
 public:
