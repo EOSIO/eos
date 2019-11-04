@@ -149,6 +149,10 @@ class ExceptionThread(threading.Thread):
         except Exception as e:
             self.report(self.channel, self.id, str(e))
 
+def bassert(cond, message):
+    if not cond:
+        raise BlockchainError(message)
+
 
 class BlockchainError(RuntimeError):
     def __init__(self, message):
@@ -550,7 +554,7 @@ class Cluster:
             self.nodes += [[i]]
             prod = []
             for j in range(i * q + r if i else 0, (i + 1) * q + r):
-                name = self.get_defproducer_names(j)
+                name = self.get_defproducer_name(j)
                 prod.append(name)
                 self.producer_to_node[name] = i
             self.nodes[i] += [{"producers": (prod if i else ["eosio"] + prod)}]
@@ -746,13 +750,35 @@ class Cluster:
         return self.push_actions(actions=actions, name=f"bios-create \"{name}\" account", verify_key=verify_key, buffer=buffer)
 
 
+    def bios_create_accounts(self, accounts, verify_key="irreversible"):
+        actions = []
+        for name in accounts:
+            actions += [{"account": "eosio",
+                        "action": "newaccount",
+                        "permissions":[{"actor": "eosio",
+                                        "permission": "active"}],
+                        "data":{"creator": "eosio",
+                                "name": name,
+                                "owner": {"threshold": 1,
+                                          "keys": [{"key": PRODUCER_KEY,
+                                                    "weight":1}],
+                                          "accounts": [],
+                                          "waits": []},
+                                "active":{"threshold": 1,
+                                          "keys": [{"key": PRODUCER_KEY,
+                                                    "weight":1}],
+                                          "accounts": [],
+                                          "waits": []}}}]
+        return self.push_actions(actions=actions, name=f"bios-create {len(actions)} accounts", verify_key=verify_key)
+
+
     def bios_create_accounts_in_parallel(self, accounts, verify_key="irreversible"):
         threads = []
         channel = {}
         def report(channel, thread_id, message):
             channel[thread_id] = message
         for ac in accounts:
-            t = ExceptionThread(channel, report, target=self.bios_create_account, args=(ac,), kwargs={"buffer": True})
+            t = ExceptionThread(channel, report, target=self.bios_create_account, args=(ac,), kwargs={"buffer": True, "verify_key": verify_key})
             threads.append(t)
             t.start()
         for t in threads:
@@ -976,7 +1002,7 @@ class Cluster:
                 if self.in_sync:
                     self.block_num = self.max_block_num = self.min_block_num
                 else:
-                    assert self.min_block_num <= self.max_block_num
+                    assert self.min_block_num == math.inf or self.min_block_num <= self.max_block_num
                     self.block_num = -1
 
         # set arguments
@@ -1169,7 +1195,7 @@ class Cluster:
 
 
     @staticmethod
-    def get_defproducer_names(num):
+    def get_defproducer_name(num):
 
         def base26_to_int(s: str):
             res = 0
@@ -1265,8 +1291,8 @@ class Cluster:
             self.logger.error(cx.response_text)
         if verify_key:
             assert self.verify(transaction_id=cx.transaction_id, verify_key=verify_key, retry=verify_retry, level=level, buffer=buffer)
-        elif cx.transaction_id and not dont_warn:
-            self.logger.warn("WARNING: Verification of transaction ID {} skipped.".format(cx.transaction_id), buffer=buffer)
+        # elif cx.transaction_id and not dont_warn:
+        #     self.logger.warn("WARNING: Verification of transaction ID {} skipped.".format(cx.transaction_id), buffer=buffer)
         if buffer and not dont_flush:
             self.logger.flush()
         return cx

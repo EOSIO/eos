@@ -2,15 +2,18 @@
 
 import time
 
-import core
-import color
-from logger import LogLevel, ScreenWriter, FileWriter, Logger
-from service import Service, Cluster, BlockchainError, SyncError
+from core.logger import ScreenWriter, FileWriter, Logger
+from core.service import Service, Cluster, BlockchainError, SyncError
 
 
-PLUGIN = "eosio::txn_test_gen_plugin"
-TEST_NODE = 1
-catchupCount = 3
+TEST_PLUGIN = "eosio::txn_test_gen_plugin"
+CREATE_URL = "/v1/txn_test_gen/create_test_accounts"
+START_URL = "/v1/txn_test_gen/start_generation"
+STOP_URL = "/v1/txn_test_gen/stop_generation"
+PRIVATE_KEY = "5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3"
+CREATE_STR = f"[\"eosio\", \"{PRIVATE_KEY}\"]"
+START_STR = "[\"salt\",5,10]"
+CATCHUP_ROUNDS = 3
 
 
 def init_cluster():
@@ -19,176 +22,102 @@ def init_cluster():
                     FileWriter(filename="trace.log", threshold="trace"),
                     FileWriter(filename="mono.log", threshold="trace", monochrome=True))
     service = Service(logger=logger)
-    total_nodes = 3
-    cluster = Cluster(service=service,
-                      total_nodes=total_nodes,
-                      total_producers=total_nodes,
-                      producer_nodes=total_nodes,
-                      dont_bootstrap=True,
-                      extra_configs=["plugin={}".format(PLUGIN)])
+    cluster = Cluster(service=service, node_count=3, pnode_count=3, producer_count=3,
+                      dont_newaccount=True, extra_configs=[f"plugin={TEST_PLUGIN}"])
     return cluster
 
 
-
-def create_test_accounts(cluster):
-    cluster.print_header("create test accounts")
-    retry = 5
-    while retry >= 0:
-        ix = cluster.call("send_raw",
-                          retry=0,
-                          node_id=TEST_NODE,
-                          url="/v1/txn_test_gen/create_test_accounts",
-                          string_data="[\"eosio\",\"5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3\"]",
-                          level="trace")
-        # first response 500 likely to be a bug
-        if '"name": "account_name_exists_exception"' in ix.response_text:
-            cluster.info(color.black_on_green("Accounts Created"))
-            return
+def create_accounts(clus):
+    clus.info(">>> [Catch-up Test] Create Test Accounts")
+    for _ in range(5):
+        cx = clus.call("send_raw", url=CREATE_URL, string_data=CREATE_STR, node_id=1,
+                        retry=0, level="trace", dont_error=True)
+        if '"name": "account_name_exists_exception"' in cx.response_text:
+            return clus.check_sync().block_num
         time.sleep(1)
-        retry -= 1
-    raise BlockchainError(f"Cannot create test accounts with {PLUGIN}")
+    raise BlockchainError(f"Failed to create test accounts with {TEST_PLUGIN}")
 
 
-
-def generate_transactions(cluster, start_block_num):
-    cluster.logger.info("Start generating transactions on node {} via {}".format(TEST_NODE, PLUGIN))
-    cluster.call("send_raw", retry=10, node_id=TEST_NODE, url="/v1/txn_test_gen/start_generation", string_data="[\"salt\",5,10]")
-    blocks_to_wait = 10
-    cluster.logger.info("Wait for {} seconds for {} blocks...".format(blocks_to_wait * 0.5, blocks_to_wait))
-    cluster.logger.info("Begin block is {}".format(start_block_num))
-    time.sleep(blocks_to_wait * 0.5)
-    tries = 5
-    while tries >= 0:
-        end_block_num = cluster.check_sync()[1]
-        if end_block_num - start_block_num >= blocks_to_wait:
-            break
-        tries -= 1
-        time.sleep(1)
-    cluster.logger.info("Tries = {}".format(tries))
-    cluster.logger.info("End block is {}".format(end_block_num))
-    return end_block_num
+def start_gen(clus, begin):
+    clus.info(">>> [Catch-up Test] Generate Transactions")
+    clus.call("send_raw", url=START_URL, string_data=START_STR, node_id=1, level="trace")
+    blks = 30
+    clus.info(f"Generation begins at block num {begin}")
+    clus.debug(f"Wait {blks * 0.5} seconds for {blks} blocks...")
+    time.sleep(blks * 0.5)
+    end = clus.check_sync().block_num
+    if end - begin < blks:
+        raise BlockchainError(f"Blocks produced ({end - begin}) are fewer than expected ({blks})")
+    clus.info(f"Generation ends at block num {end}")
+    return end
 
 
-def stop_generation(cluster):
-    cluster.logger.info("Stop generating")
-    cluster.call("send_raw", retry=10, node_id=TEST_NODE, url="/v1/txn_test_gen/stop_generation")
-    return cluster.check_sync()[1]
+def stop_gen(clus):
+    clus.call("send_raw", url=STOP_URL, node_id=1)
+    stop = clus.check_sync().block_num
+    clus.info(f"Generation stops at block num {stop}")
+    return stop
 
 
-
-def count_txn(cluster, beg, end):
-    count = 0
-    for i in range(beg + 1, end + 1):
-        txn = len(cluster.get_block(i).response_dict["transactions"])
-        cluster.logger.info("Block {} has {} transactions.".format(i, txn))
-        count += txn
-
-    cluster.logger.info("In total {} transactions in {} blocks".format(count, end-beg))
-
-    return count
+def count_gen(clus, begin, end):
+    total = 0
+    for i in range(begin + 1, end + 1):
+        n = len(clus.get_block(i).response_dict["transactions"])
+        clus.debug(f"Block {i} has {n} transactions")
+        total += n
+    clus.info(f"There are {total} transactions in {end - begin} blocks")
+    return total
 
 
-
-def catchup(cluster, block_num_2):
-    cluster.print_header("catch up")
-
-
-    cluster.info("Gracefully shutdown node 2")
-    cluster.terminate_node(node_id=2)
-
-    in_sync = False
-    try:
-        in_sync, minN, maxN = cluster.check_sync(retry=2)
-    except SyncError:
-        cluster.info("SyncError expected. Node 2 should not be in sync as it has been stopped.")
-    if in_sync == True:
-        raise SyncError("Node 2 should not be in sync as it has been stopped.")
-
-    cluster.info("Restart node #2...")
-    cluster.start_node(node_id=2)
-    block_num_3 = cluster.check_sync()[1]
-
-    if block_num_3 <= block_num_2:
-        raise BlockchainError("Chain doesn't advance")
-
-    cluster.info("Hard-kill node #2...")
-    cluster.kill_node(node_id=2)
-
-    in_sync = False
-    try:
-        in_sync, minN, maxN = cluster.check_sync(retry=2)
-    except SyncError:
-        cluster.info("SyncError expected. Node 2 should not be in sync as it has been stopped.")
-    if in_sync == True:
-        raise SyncError("Node 2 should not be in sync as it has been stopped.")
+def assert_out_of_sync(clus, res):
+    if res.in_sync:
+        raise SyncError("Node 2 should be out of sync as it has been shut down")
+    else:
+        clus.info(f"Nodes are out of sync ({res.sync_nodes}/3 nodes in sync)")
 
 
-    cluster.info("Restarting node 2 with --delete-all-blocks...")
-    cluster.start_node(node_id=2, extra_args="--delete-all-blocks")
-    block_num_4 = cluster.check_sync()[1]
-    cluster.info("Cluster in-sync after restart with --delete-all-blocks, blocknum {}".format(block_num_4))
+def assert_in_sync(clus, begin, end):
+    if end <= begin:
+        raise BlockchainError(f"Chain stops advancing at block num {end}")
+    clus.info(f"Nodes are in sync again (at block num {end})")
 
-    if block_num_4 <= block_num_3:
-        raise BlockchainError("Chain doesn't advance")
 
-    return block_num_4
+def catchup(clus, begin, round):
+    clus.info(f">>> [Catch-up Test] Round {round}")
+    clus.info("Gracefully shut down node...")
+    clus.terminate_node(node_id=2)
+    res = clus.check_sync(retry=5, dont_raise=True)
+    assert_out_of_sync(clus, res)
+
+    clus.info("Restart node...")
+    clus.start_node(node_id=2)
+    restart = clus.check_sync().block_num
+    assert_in_sync(clus, begin, restart)
+
+    clus.info("Hard-kill node...")
+    clus.kill_node(node_id=2)
+    res = clus.check_sync(retry=5, dont_raise=True)
+    assert_out_of_sync(clus, res)
+
+    clus.info("Freshly restart node...")
+    clus.start_node(node_id=2, extra_args="--delete-all-blocks")
+    refresh = clus.check_sync().block_num
+    assert_in_sync(clus, restart, refresh)
+
+    return refresh
 
 
 def main():
-    with init_cluster() as cluster:
-        create_test_accounts(cluster)
-        block_num = cluster.check_sync()[1]
-        block_num_1 = generate_transactions(cluster, block_num)
-        block_num_2 = stop_generation(cluster)
-        count_txn(cluster, block_num, block_num_1)
-
-        for k in range(catchupCount):
-            block_num_2 = catchup(cluster, block_num_2)
-
+    with init_cluster() as clus:
+        clus.info(">>> [Catch-up Test] --- BEGIN -----------------------")
+        begin = create_accounts(clus)
+        end = start_gen(clus, begin)
+        stop = stop_gen(clus)
+        count_gen(clus, begin, end)
+        for i in range(CATCHUP_ROUNDS):
+            stop = catchup(clus, stop, i+1)
+        clus.info(">>> [Catch-up Test] --- END -------------------------")
 
 
 if __name__ == "__main__":
     main()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
