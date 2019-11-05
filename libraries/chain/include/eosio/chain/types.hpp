@@ -14,7 +14,6 @@
 #include <fc/string.hpp>
 #include <fc/io/raw.hpp>
 #include <fc/static_variant.hpp>
-#include <fc/smart_ref_fwd.hpp>
 #include <fc/crypto/ripemd160.hpp>
 #include <fc/fixed_string.hpp>
 #include <fc/crypto/private_key.hpp>
@@ -62,7 +61,6 @@ namespace eosio { namespace chain {
    using                               std::all_of;
 
    using                               fc::path;
-   using                               fc::smart_ref;
    using                               fc::variant_object;
    using                               fc::variant;
    using                               fc::enum_type;

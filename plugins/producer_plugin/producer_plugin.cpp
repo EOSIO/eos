@@ -9,7 +9,6 @@
 
 #include <fc/io/json.hpp>
 #include <fc/log/logger_config.hpp>
-#include <fc/smart_ref_impl.hpp>
 #include <fc/scoped_exit.hpp>
 
 #include <boost/asio.hpp>
