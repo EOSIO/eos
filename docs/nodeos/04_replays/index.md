@@ -12,10 +12,10 @@ Snapshot files can be created from a running `nodeos` instance. The snapshot con
 
 ## Replay How-Tos
 
-* [How To Generate a Blocks Log](how-to-generate-a-blocks-log.md)
+* [How To Generate a Blocks Log](how-to-generate-a-blocks.log.md)
 * [How To Generate a Snapshot](how-to-generate-a-snapshot.md)
 * [How To Replay from a Blocks Log](how-to-replay-from-a-blocks.log.md)
-* [How to Replay from a Snapshot](how-to-replay-from-snapshot.md)
+* [How to Replay from a Snapshot](how-to-replay-from-a-snapshot.md)
 
 ## Replay Snapshot-specific Options
 
