@@ -250,13 +250,15 @@ function ensure-boost() {
         if [[ $ARCH == "Linux" ]] && $PIN_COMPILER; then
             B2_FLAGS="toolset=clang cxxflags='-stdlib=libc++ -D__STRICT_ANSI__ -nostdinc++ -I${CLANG_ROOT}/include/c++/v1' linkflags='-stdlib=libc++' link=static threading=multi --with-iostreams --with-date_time --with-filesystem --with-system --with-program_options --with-chrono --with-test -q -j${JOBS} install"
             BOOTSTRAP_FLAGS="--with-toolset=clang"
+        elif $PIN_COMPILER; then
+            local SDKROOT="$(xcrun --sdk macosx --show-sdk-path)"
         fi
-		execute bash -c "cd $SRC_DIR && \
+        execute bash -c "cd $SRC_DIR && \
         curl -LO https://dl.bintray.com/boostorg/release/$BOOST_VERSION_MAJOR.$BOOST_VERSION_MINOR.$BOOST_VERSION_PATCH/source/boost_$BOOST_VERSION.tar.bz2 \
         && tar -xjf boost_$BOOST_VERSION.tar.bz2 \
         && cd $BOOST_ROOT \
-        && ./bootstrap.sh ${BOOTSTRAP_FLAGS} --prefix=$BOOST_ROOT \
-        && ./b2 ${B2_FLAGS} \
+        && SDKROOT="$SDKROOT" ./bootstrap.sh ${BOOTSTRAP_FLAGS} --prefix=$BOOST_ROOT \
+        && SDKROOT="$SDKROOT" ./b2 ${B2_FLAGS} \
         && cd .. \
         && rm -f boost_$BOOST_VERSION.tar.bz2 \
         && rm -rf $BOOST_LINK_LOCATION"        

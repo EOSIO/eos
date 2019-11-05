@@ -12,7 +12,7 @@ if [[ "$(uname)" == 'Darwin' ]]; then
     else
         CMAKE_EXTRAS="$CMAKE_EXTRAS -DBUILD_MONGO_DB_PLUGIN=true"
     fi
-    [[ ! "$PINNED" == 'false' || "$UNPINNED" == 'true' ]] && CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_TOOLCHAIN_FILE=$HELPERS_DIR/clang.make"
+    [[ ! "$PINNED" == 'false' ]] && CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_TOOLCHAIN_FILE=$HELPERS_DIR/clang.make"
     if [[ "$USE_CONAN" == 'true' ]]; then
         sed -n '/## Build Steps/,/make -j/p' $CONAN_DIR/$IMAGE_TAG.md | grep -v -e '```' -e '^$' -e 'git' -e 'cd eos' >> $CONAN_DIR/conan-build.sh
         bash -c "$CONAN_DIR/conan-build.sh && cp -r ~/.conan $BUILD_DIR/conan"
