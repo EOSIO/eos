@@ -12,7 +12,7 @@ if [[ "$(uname)" == 'Darwin' ]]; then
     else
         CMAKE_EXTRAS="$CMAKE_EXTRAS -DBUILD_MONGO_DB_PLUGIN=true"
     fi
-    [[ ! "$PINNED" == 'false' || "$UNPINNED" == 'true' ]] && CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_TOOLCHAIN_FILE=$HELPERS_DIR/clang.make"
+    [[ ! "$PINNED" == 'false' ]] && CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_TOOLCHAIN_FILE=$HELPERS_DIR/clang.make"
     cd $BUILD_DIR
     echo "cmake $CMAKE_EXTRAS .."
     cmake $CMAKE_EXTRAS ..
