@@ -47,7 +47,6 @@ namespace eosio { namespace chain {
    using                               std::vector;
    using                               std::unordered_map;
    using                               std::string;
-   using                               std::deque;
    using                               std::shared_ptr;
    using                               std::weak_ptr;
    using                               std::unique_ptr;
@@ -83,6 +82,16 @@ namespace eosio { namespace chain {
    using public_key_type  = fc::crypto::public_key;
    using private_key_type = fc::crypto::private_key;
    using signature_type   = fc::crypto::signature;
+
+#if BOOST_VERSION >= 107100
+   // configurable boost deque performs much better than std::deque in our use cases
+   using block_1024_option_t = boost::container::deque_options< boost::container::block_size<1024u> >::type;
+   template<typename T>
+   using deque = boost::container::deque< T, void, block_1024_option_t >;
+#else
+   template<typename T>
+   using deque = std::deque<T>;
+#endif
 
    struct void_t{};
 

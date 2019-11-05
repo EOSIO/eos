@@ -37,7 +37,6 @@ using boost::multi_index_container;
 
 using std::string;
 using std::vector;
-using std::deque;
 using boost::signals2::scoped_connection;
 
 #undef FC_LOG_AND_DROP
