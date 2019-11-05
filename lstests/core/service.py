@@ -1301,9 +1301,9 @@ class Cluster:
 
 def main():
     logger = Logger(ScreenWriter(threshold="debug"),
-                    FileWriter(filename="service-info.log", threshold="info"),
-                    FileWriter(filename="service-debug.log", threshold="debug"),
-                    FileWriter(filename="service-trace.log", threshold="trace"))
+                    FileWriter(filename="service-info.log", threshold="info", monochrome=True),
+                    FileWriter(filename="service-debug.log", threshold="debug", monochrome=True),
+                    FileWriter(filename="service-trace.log", threshold="trace", monochrome=True))
     service = Service(logger=logger)
     cluster = Cluster(service=service)
 

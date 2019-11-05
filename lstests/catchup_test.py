@@ -18,9 +18,9 @@ CATCHUP_ROUNDS = 3
 def init_cluster():
     test = "catchup"
     logger = Logger(ScreenWriter(threshold="info"),
-                    FileWriter(filename=f"{test}-info.log", threshold="info"),
-                    FileWriter(filename=f"{test}-debug.log", threshold="debug"),
-                    FileWriter(filename=f"{test}-trace.log", threshold="trace"))
+                    FileWriter(filename=f"{test}-info.log", threshold="info", monochrome=True),
+                    FileWriter(filename=f"{test}-debug.log", threshold="debug", monochrome=True),
+                    FileWriter(filename=f"{test}-trace.log", threshold="trace", monochrome=True))
     service = Service(logger=logger)
     cluster = Cluster(service=service, node_count=3, pnode_count=3, producer_count=3,
                       dont_newaccount=True, extra_configs=[f"plugin={TEST_PLUGIN}"])
