@@ -5,7 +5,6 @@ import time
 from core.logger import ScreenWriter, FileWriter, Logger
 from core.service import Service, Cluster, BlockchainError, SyncError
 
-
 TEST_PLUGIN = "eosio::txn_test_gen_plugin"
 CREATE_URL = "/v1/txn_test_gen/create_test_accounts"
 START_URL = "/v1/txn_test_gen/start_generation"
@@ -17,10 +16,11 @@ CATCHUP_ROUNDS = 3
 
 
 def init_cluster():
-    logger = Logger(ScreenWriter(threshold="debug"),
-                    FileWriter(filename="debug.log", threshold="debug"),
-                    FileWriter(filename="trace.log", threshold="trace"),
-                    FileWriter(filename="mono.log", threshold="trace", monochrome=True))
+    test = "catchup"
+    logger = Logger(ScreenWriter(threshold="info"),
+                    FileWriter(filename=f"{test}-info.log", threshold="info"),
+                    FileWriter(filename=f"{test}-debug.log", threshold="debug"),
+                    FileWriter(filename=f"{test}-trace.log", threshold="trace"))
     service = Service(logger=logger)
     cluster = Cluster(service=service, node_count=3, pnode_count=3, producer_count=3,
                       dont_newaccount=True, extra_configs=[f"plugin={TEST_PLUGIN}"])
@@ -73,33 +73,33 @@ def assert_out_of_sync(clus, res):
     if res.in_sync:
         raise SyncError("Node 2 should be out of sync as it has been shut down")
     else:
-        clus.info(f"Nodes are out of sync ({res.sync_nodes}/3 nodes in sync)")
+        clus.info(f"Nodes out of sync\n-------------------------------")
 
 
 def assert_in_sync(clus, begin, end):
     if end <= begin:
         raise BlockchainError(f"Chain stops advancing at block num {end}")
-    clus.info(f"Nodes are in sync again (at block num {end})")
+    clus.info(f"Nodes in sync at block num {end}\n-------------------------------")
 
 
 def catchup(clus, begin, round):
     clus.info(f">>> [Catch-up Test] Round {round}")
-    clus.info("Gracefully shut down node...")
+    clus.info("Gracefully shut down node 2...")
     clus.terminate_node(node_id=2)
     res = clus.check_sync(retry=5, dont_raise=True)
     assert_out_of_sync(clus, res)
 
-    clus.info("Restart node...")
+    clus.info("Restart node 2...")
     clus.start_node(node_id=2)
     restart = clus.check_sync().block_num
     assert_in_sync(clus, begin, restart)
 
-    clus.info("Hard-kill node...")
+    clus.info("Hard-kill node 2...")
     clus.kill_node(node_id=2)
     res = clus.check_sync(retry=5, dont_raise=True)
     assert_out_of_sync(clus, res)
 
-    clus.info("Freshly restart node...")
+    clus.info("Freshly restart node 2...")
     clus.start_node(node_id=2, extra_args="--delete-all-blocks")
     refresh = clus.check_sync().block_num
     assert_in_sync(clus, restart, refresh)
@@ -109,14 +109,14 @@ def catchup(clus, begin, round):
 
 def main():
     with init_cluster() as clus:
-        clus.info(">>> [Catch-up Test] --- BEGIN -----------------------")
+        clus.info(">>> [Catch-up Test] --------------------- BEGIN ------------------------------------------")
         begin = create_accounts(clus)
         end = start_gen(clus, begin)
         stop = stop_gen(clus)
         count_gen(clus, begin, end)
         for i in range(CATCHUP_ROUNDS):
             stop = catchup(clus, stop, i+1)
-        clus.info(">>> [Catch-up Test] --- END -------------------------")
+        clus.info(">>> [Catch-up Test] --------------------- END --------------------------------------------")
 
 
 if __name__ == "__main__":

@@ -28,10 +28,10 @@ def vislen(s: str):
     return len(re.compile(r"\033\[[0-9]+(;[0-9]+)?m").sub("", s))
 
 
-def compress(s: str, length: int = 16, ellipsis="..", tail: int = 0):
-    if len(s) <= length:
+def compress(s: str, maxlen: int = 16, ellipsis="..", tail: int = 0):
+    if len(s) <= maxlen:
         return s
-    return s[:(length - tail - 2)] + ".." + (s[-tail:] if tail else "")
+    return s[:(maxlen - tail - 2)] + ".." + (s[-tail:] if tail else "")
 
 
 # todo: review usage
@@ -150,17 +150,18 @@ def trim(data: typing.Union[dict, list], maxlen=64):
     if isinstance(data, dict):
         for key in data:
             if isinstance(data[key], (list, dict)):
-                trim(data[key])
+                trim(data[key], maxlen=maxlen)
             else:
                 if isinstance(data[key], str) and len(data[key]) > maxlen:
-                    data[key] = "..."
+                    data[key] = compress(data[key], maxlen=maxlen, tail=3)
     elif isinstance(data, list):
         for item in data:
             if isinstance(item, (list, dict)):
-                trim(item)
+                trim(item, maxlen=maxlen)
             else:
                 if isinstance(item, str) and len(item) > maxlen:
-                    item = "..."
+                    item = compress(item, maxlen=maxlen, tail=3)
+
 
 # --------------- subprocess-related ----------------------------------------------------------------------------------
 

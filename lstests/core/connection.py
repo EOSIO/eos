@@ -35,6 +35,21 @@ class Connection:
         return json.dumps(self.data, indent=4)
 
 
+    # @property
+    # def request_text(self):
+    #     if not hasattr(self, "_request_text"):
+    #         self._request_dict_abridged = helper.abridge(self.request_dict, maxlen=40)
+    #         self._request_text = json.dumps(self._request_dict_abridged, indent=4)
+    #     return self._request_text
+
+
+    # @property
+    # def request_text_unabridged(self):
+    #     if not hasattr(self, "_request_text_unabridged"):
+    #         self._request_text_unabridged = json.dumps(self._request_dict, indent=4)
+    #     return self._request_text_unabridged
+
+
     @property
     def ok(self):
         if not hasattr(self, "response"):

@@ -5,10 +5,11 @@ from core.service import Service, Cluster
 
 
 def init_cluster():
-    logger = Logger(ScreenWriter(threshold="debug"),
-                    FileWriter(filename="debug.log", threshold="debug"),
-                    FileWriter(filename="trace.log", threshold="trace"),
-                    FileWriter(filename="mono.log", threshold="trace", monochrome=True))
+    test = "schedule"
+    logger = Logger(ScreenWriter(threshold="info"),
+                    FileWriter(filename=f"{test}-info.log", threshold="info"),
+                    FileWriter(filename=f"{test}-debug.log", threshold="debug"),
+                    FileWriter(filename=f"{test}-trace.log", threshold="trace"))
     service = Service(logger=logger)
     cluster = Cluster(service=service, node_count=3, pnode_count=3, producer_count=12, dont_setprod=True)
     return cluster
@@ -36,11 +37,11 @@ def test_round(clus, round, verify_key="irreversible"):
 
 def main():
     with init_cluster() as clus:
-        clus.info(">>> [Production Schedule Test] --- BEGIN -----------------------")
+        clus.info(">>> [Production Schedule Test] ---------- BEGIN ------------------------------------------")
         # create_prod(clus)
         test_round(clus, round=1, verify_key="irreversible")
         test_round(clus, round=2, verify_key="contained")
-        clus.info(">>> [Production Schedule Test] --- END -------------------------")
+        clus.info(">>> [Production Schedule Test] ---------- END --------------------------------------------")
 
 
 if __name__ == "__main__":

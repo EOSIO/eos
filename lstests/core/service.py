@@ -98,7 +98,7 @@ HELP_SHAPE = "Cluster topology to launch with"
 HELP_CENTER_NODE_ID = "Center node ID for star or bridge"
 HELP_EXTRA_CONFIGS = "Extra configs to pass to launcher service"
 HELP_TOTAL_SUPPLY = "Total supply of tokens"
-HELP_REGULAR_LAUNCH = "Launch cluster in a regular (not bios) path"
+HELP_REGULAR_LAUNCH = "Launch cluster in a regular (not BIOS) mode"
 HELP_DONT_NEWACCOUNT = "Do not create accounts"
 HELP_DONT_SETPROD = "Do not set producers in bios launch"
 HELP_DONT_VOTE = "Do not vote for producers in regular launch"
@@ -218,25 +218,25 @@ class CommandLineArguments:
         parser.add_argument("-h", "--help", action="help", help=" " * left + HELP_HELP)
 
         parser.add_argument("-a", "--address", type=str, metavar="IP", help=form(HELP_ADDRESS, DEFAULT_ADDRESS))
-        parser.add_argument("-p", "--port", type=int, help=form(HELP_PORT, DEFAULT_PORT))
+        parser.add_argument("-o", "--port", type=int, help=form(HELP_PORT, DEFAULT_PORT))
         parser.add_argument("-w", "--wdir", type=str, metavar="PATH", help=form(HELP_WDIR, DEFAULT_WDIR))
         parser.add_argument("-f", "--file", type=str, metavar="PATH", help=form(HELP_FILE, DEFAULT_FILE))
         parser.add_argument("-s", "--start", action="store_true", default=None, help=form(HELP_START, DEFAULT_START))
         parser.add_argument("-k", "--kill", action="store_true", default=None, help=form(HELP_KILL, DEFAULT_KILL))
 
-        parser.add_argument("-v", "--contracts-dir", metavar="PATH", help=form(HELP_CONTRACTS_DIR, DEFAULT_CONTRACTS_DIR))
+        parser.add_argument("-d", "--contracts-dir", metavar="PATH", help=form(HELP_CONTRACTS_DIR, DEFAULT_CONTRACTS_DIR))
         parser.add_argument("-i", "--cluster-id", dest="cluster_id", type=int, metavar="ID", help=form(HELP_CLUSTER_ID, DEFAULT_CLUSTER_ID))
-        parser.add_argument("-x", "--node-count", type=int, metavar="NUM", help=form(HELP_NODE_COUNT, DEFAULT_NODE_COUNT))
-        parser.add_argument("-y", "--pnode-count", type=int, metavar="NUM", help=form(HELP_PNODE_COUNT, DEFAULT_PNODE_COUNT))
-        parser.add_argument("-z", "--producer-count", type=int, metavar="NUM", help=form(HELP_PRODUDCER_COUNT, DEFAULT_PRODUDCER_COUNT))
+        parser.add_argument("-n", "--node-count", type=int, metavar="NUM", help=form(HELP_NODE_COUNT, DEFAULT_NODE_COUNT))
+        parser.add_argument("-m", "--pnode-count", type=int, metavar="NUM", help=form(HELP_PNODE_COUNT, DEFAULT_PNODE_COUNT))
+        parser.add_argument("-p", "--producer-count", type=int, metavar="NUM", help=form(HELP_PRODUDCER_COUNT, DEFAULT_PRODUDCER_COUNT))
         parser.add_argument("-u", "--unstarted-count", type=int, metavar="NUM", help=form(HELP_UNSTARTED_COUNT, DEFAULT_UNSTARTED_COUNT))
         parser.add_argument("-t", "--shape", type=str, metavar="SHAPE", help=form(HELP_SHAPE, DEFAULT_SHAPE), choices={"mesh", "star", "bridge", "line", "ring", "tree"})
         parser.add_argument("-c", "--center-node-id", type=int, metavar="ID", help=form(HELP_CENTER_NODE_ID, DEFAULT_CENTER_NODE_ID))
         parser.add_argument("-g", "--total-supply", metavar="NUM", help=form(HELP_TOTAL_SUPPLY, "{:g}".format(DEFAULT_TOTAL_SUPPLY)))
         parser.add_argument("-r", "--regular-launch", dest="launch_mode", action="store_const", const="regular", default=None, help=form(HELP_REGULAR_LAUNCH, DEFAULT_REGULAR_LAUNCH))
-        parser.add_argument("-dn", "--dont-newaccount", action="store_true", default=None, help=form(HELP_DONT_NEWACCOUNT, DEFAULT_DONT_NEWACCOUNT))
-        parser.add_argument("-ds", "--dont-setprod", action="store_true", default=None, help=form(HELP_DONT_SETPROD, DEFAULT_DONT_SETPROD))
-        parser.add_argument("-dv", "--dont-vote", action="store_true", default=None, help=form(HELP_DONT_VOTE, DEFAULT_DONT_VOTE))
+        parser.add_argument("-xn", "--dont-newaccount", action="store_true", default=None, help=form(HELP_DONT_NEWACCOUNT, DEFAULT_DONT_NEWACCOUNT))
+        parser.add_argument("-xs", "--dont-setprod", action="store_true", default=None, help=form(HELP_DONT_SETPROD, DEFAULT_DONT_SETPROD))
+        parser.add_argument("-xv", "--dont-vote", action="store_true", default=None, help=form(HELP_DONT_VOTE, DEFAULT_DONT_VOTE))
         parser.add_argument("--http-retry", type=int, metavar="NUM", help=form(HELP_HTTP_RETRY, DEFAULT_HTTP_RETRY))
         parser.add_argument("--verify-retry", type=int, metavar="NUM", help=form(HELP_VERIFY_RETRY, DEFAULT_VERIFY_RETRY))
         parser.add_argument("--sync-retry", type=int, metavar="NUM", help=form(HELP_SYNC_RETRY, DEFAULT_SYNC_RETRY))
@@ -256,16 +256,16 @@ class CommandLineArguments:
         threshold.add_argument("--error", dest="threshold", action="store_const", const="ERROR", help=form(HELP_ERROR))
         threshold.add_argument("--fatal", dest="threshold", action="store_const", const="FATAL", help=form(HELP_FATAL))
         threshold.add_argument("--off", dest="threshold", action="store_const", const="OFF", help=form(HELP_LOG_OFF))
-        parser.add_argument("-n", "--unbuffer", dest="buffered", action="store_false", default=None, help=form(HELP_UNBUFFER, not DEFAULT_BUFFERED))
-        parser.add_argument("-m", "--monochrome", action="store_true", default=None, help=form(HELP_MONOCHROME, DEFAULT_MONOCHROME))
-        parser.add_argument("--hide-clock-time", dest="show_clock_time", action="store_false", default=None, help=form(HELP_HIDE_CLOCK_TIME, not DEFAULT_SHOW_CLOCK_TIME))
-        parser.add_argument("--hide-elapsed-time", dest="show_elapsed_time", action="store_false", default=None, help=form(HELP_HIDE_ELAPSED_TIME, not DEFAULT_SHOW_ELAPSED_TIME))
-        parser.add_argument("--hide-filename", dest="show_filename", action="store_false", default=None, help=form(HELP_HIDE_FILENAME, not DEFAULT_SHOW_FILENAME))
-        parser.add_argument("--hide-lineno", dest="show_lineno", action="store_false", default=None, help=form(HELP_HIDE_LINENO, not DEFAULT_SHOW_LINENO))
-        parser.add_argument("--hide-func", dest="show_func", action="store_false", default=None, help=form(HELP_HIDE_FUNC, not DEFAULT_SHOW_FUNC))
-        parser.add_argument("--hide-thread", dest="show_thread", action="store_false", default=None, help=form(HELP_HIDE_THREAD, not DEFAULT_SHOW_THREAD))
-        parser.add_argument("--hide-log-level", dest="show_log_level", action="store_false", default=None, help=form(HELP_HIDE_LOG_LEVEL, not DEFAULT_SHOW_LOG_LEVEL))
-        parser.add_argument("--hide-all", action="store_true", default=False, help=form(HELP_HIDE_ALL, DEFAULT_HIDE_ALL))
+        parser.add_argument("-xb", "--unbuffer", dest="buffered", action="store_false", default=None, help=form(HELP_UNBUFFER, not DEFAULT_BUFFERED))
+        parser.add_argument("-xc", "--monochrome", action="store_true", default=None, help=form(HELP_MONOCHROME, DEFAULT_MONOCHROME))
+        parser.add_argument("-xt", "--hide-clock-time", dest="show_clock_time", action="store_false", default=None, help=form(HELP_HIDE_CLOCK_TIME, not DEFAULT_SHOW_CLOCK_TIME))
+        parser.add_argument("-xe", "--hide-elapsed-time", dest="show_elapsed_time", action="store_false", default=None, help=form(HELP_HIDE_ELAPSED_TIME, not DEFAULT_SHOW_ELAPSED_TIME))
+        parser.add_argument("-xf", "--hide-filename", dest="show_filename", action="store_false", default=None, help=form(HELP_HIDE_FILENAME, not DEFAULT_SHOW_FILENAME))
+        parser.add_argument("-xl", "--hide-lineno", dest="show_lineno", action="store_false", default=None, help=form(HELP_HIDE_LINENO, not DEFAULT_SHOW_LINENO))
+        parser.add_argument("-xu", "--hide-func", dest="show_func", action="store_false", default=None, help=form(HELP_HIDE_FUNC, not DEFAULT_SHOW_FUNC))
+        parser.add_argument("-xr", "--hide-thread", dest="show_thread", action="store_false", default=None, help=form(HELP_HIDE_THREAD, not DEFAULT_SHOW_THREAD))
+        parser.add_argument("-xg", "--hide-log-level", dest="show_log_level", action="store_false", default=None, help=form(HELP_HIDE_LOG_LEVEL, not DEFAULT_SHOW_LOG_LEVEL))
+        parser.add_argument("-xa", "--hide-all", action="store_true", default=False, help=form(HELP_HIDE_ALL, DEFAULT_HIDE_ALL))
 
         return parser.parse_args()
 
@@ -333,14 +333,14 @@ class Service:
     def connect(self):
         self.change_working_dir()
         self.empty_log_files()
-        self.info(">>> [Connect to Service] --- BEGIN -------------------------------------------------------")
+        self.info(">>> [Connect to Service] ---------------- BEGIN ------------------------------------------")
         self.print_system_info()
         self.print_config()
         if self.address == "127.0.0.1":
             self.connect_to_local_service()
         else:
             self.connect_to_remote_service()
-        self.info(">>> [Connect to Service] --- END ---------------------------------------------------------")
+        self.info(">>> [Connect to Service] ---------------- END --------------------------------------------")
 
 
     def empty_log_files(self):
@@ -362,7 +362,7 @@ class Service:
 
         # print service config
         self.print_formatted_config("-a: address", HELP_ADDRESS, self.address, DEFAULT_ADDRESS)
-        self.print_formatted_config("-p: port",    HELP_PORT,    self.port,    DEFAULT_PORT)
+        self.print_formatted_config("-o: port",    HELP_PORT,    self.port,    DEFAULT_PORT)
         self.print_formatted_config("-w: wdir",    HELP_WDIR,    self.wdir,    DEFAULT_WDIR)
         self.print_formatted_config("-f: file",    HELP_FILE,    self.file,    DEFAULT_FILE)
         self.print_formatted_config("-s: start",   HELP_START,   self.start,   DEFAULT_START)
@@ -374,8 +374,8 @@ class Service:
         except ValueError:
             log_level = self.threshold
         self.print_formatted_config("-l: log-level",  HELP_LOG_LEVEL,  log_level)
-        self.print_formatted_config("-n: unbuffer",   HELP_UNBUFFER,   not self.buffered, not DEFAULT_BUFFERED)
-        self.print_formatted_config("-m: monochrome", HELP_MONOCHROME, self.monochrome,   DEFAULT_MONOCHROME)
+        self.print_formatted_config("-xb: unbuffer",   HELP_UNBUFFER,   not self.buffered, not DEFAULT_BUFFERED)
+        self.print_formatted_config("-xc: monochrome", HELP_MONOCHROME, self.monochrome,   DEFAULT_MONOCHROME)
 
 
     def change_working_dir(self):
@@ -580,12 +580,16 @@ class Cluster:
 
 
     def check_config(self):
-        assert self.cluster_id >= 0, "cluster_id ({}) < 0.".format(self.cluster_id)
-        assert self.node_count >= self.pnode_count + self.unstarted_count, "total_node ({}) < pnode_count ({}) + unstarted_count ({}).".format(self.node_count, self.pnode_count, self.unstarted_count)
+        bassert(self.cluster_id >= 0, f"Invalid cluster_id ({self.cluster_id}). Valid range is [0, 29].")
+        bassert(self.node_count >= self.pnode_count + self.unstarted_count,
+                f"node_count ({self.node_count}) must be greater than "
+                f"pnode_count ({self.pnode_count}) + unstarted_count ({self.unstarted_count}).")
         if self.shape in ("star", "bridge"):
-            assert self.center_node_id is not None, "center_node_id is not specified when shape is \"{}\".".format(self.shape)
+            bassert(self.center_node_id is not None, f"center_node_id is not specified when shape is \"{self.shape}\".")
         if self.shape == "bridge":
-            assert self.center_node_id not in (0, self.node_count-1), "center_node_id ({}) cannot be 0 or last node ({}) when shape is \"bridge\".".format(self.center_node_id, self.node_count-1)
+            bassert(self.center_node_id not in (0, self.node_count-1),
+                    f"center_node_id ({self.center_node_id}) cannot be 0 or {self.node_count-1} "
+                    f"when shape is \"bridge\" and node_count is {self.node_count}.")
 
 
     def bios_launch(self, dont_newaccount=False, dont_setprod=False):
@@ -601,7 +605,7 @@ class Cluster:
         6. set producers
         7. check if nodes are in sync
         """
-        self.info(">>> [Bios Launch] --- BEGIN --------------------------------------------------------------")
+        self.info(">>> [BIOS Launch] ----------------------- BEGIN ------------------------------------------")
         self.print_config()
         self.launch_cluster()
         self.get_cluster_info(level="debug")
@@ -612,7 +616,7 @@ class Cluster:
             if not dont_setprod:
                 self.set_producers()
         self.check_sync()
-        self.info(">>> [Bios Launch] --- END ----------------------------------------------------------------")
+        self.info(">>> [BIOS Launch] ----------------------- END --------------------------------------------")
 
 
     def regular_launch(self, dont_newaccount=False, dont_vote=False):
@@ -635,21 +639,21 @@ class Cluster:
         13. check if nodes are in sync
         14. verify production schedule change
         """
-        self.info(">>> [Regular Launch] --- BEGIN -----------------------------------------------------------")
+        self.info(">>> [Regular Launch] -------------------- BEGIN ------------------------------------------")
         self.print_config()
         self.launch_cluster()
         self.get_cluster_info(level="debug")
         self.schedule_protocol_feature_activations()
         self.bios_create_accounts_in_parallel(accounts=["eosio.bpay",
-                                                        "eosio.msig",
-                                                        "eosio.names",
-                                                        "eosio.ram",
-                                                        "eosio.ramfee",
-                                                        "eosio.rex",
-                                                        "eosio.saving",
-                                                        "eosio.stake",
-                                                        "eosio.token",
-                                                        "eosio.upay"])
+                                            "eosio.msig",
+                                            "eosio.names",
+                                            "eosio.ram",
+                                            "eosio.ramfee",
+                                            "eosio.rex",
+                                            "eosio.saving",
+                                            "eosio.stake",
+                                            "eosio.token",
+                                            "eosio.upay"])
         self.set_token_contract()
         self.create_tokens(maximum_supply=self.total_supply)
         self.issue_tokens(quantity=self.total_supply)
@@ -661,24 +665,24 @@ class Cluster:
                 self.vote_for_producers(voter="defproducera", voted_producers=list(self.producer_to_node.keys())[:min(21, len(self.producer_to_node))])
                 self.check_head_block_producer()
         self.check_sync()
-        self.info(">>> [Regular Launch] --- END -------------------------------------------------------------")
+        self.info(">>> [Regular Launch] -------------------- END --------------------------------------------")
 
 
     def print_config(self):
         self.print_header("cluster configuration")
         self.print_formatted_config("-d: contracts_dir",   HELP_CONTRACTS_DIR,   self.contracts_dir,   DEFAULT_CONTRACTS_DIR)
         self.print_formatted_config("-i: cluster_id",      HELP_CLUSTER_ID,      self.cluster_id,      DEFAULT_CLUSTER_ID)
-        self.print_formatted_config("-x: node_count",      HELP_NODE_COUNT,      self.node_count,      DEFAULT_NODE_COUNT)
-        self.print_formatted_config("-y: pnode_count",     HELP_PNODE_COUNT,     self.pnode_count,     DEFAULT_PNODE_COUNT)
-        self.print_formatted_config("-z: producer_count",  HELP_PRODUDCER_COUNT, self.producer_count,  DEFAULT_PRODUDCER_COUNT)
+        self.print_formatted_config("-n: node_count",      HELP_NODE_COUNT,      self.node_count,      DEFAULT_NODE_COUNT)
+        self.print_formatted_config("-m: pnode_count",     HELP_PNODE_COUNT,     self.pnode_count,     DEFAULT_PNODE_COUNT)
+        self.print_formatted_config("-p: producer_count",  HELP_PRODUDCER_COUNT, self.producer_count,  DEFAULT_PRODUDCER_COUNT)
         self.print_formatted_config("-u: unstarted_count", HELP_UNSTARTED_COUNT, self.unstarted_count, DEFAULT_UNSTARTED_COUNT)
         self.print_formatted_config("-t: shape",           HELP_SHAPE,           self.shape,           DEFAULT_SHAPE)
         self.print_formatted_config("-c: center_node_id",  HELP_CENTER_NODE_ID,  self.center_node_id,  DEFAULT_CENTER_NODE_ID)
         self.print_formatted_config("... extra_configs",   HELP_EXTRA_CONFIGS,   self.extra_configs,   DEFAULT_EXTRA_CONFIGS)
         self.print_formatted_config("-r: regular_launch",  HELP_REGULAR_LAUNCH,  self.launch_mode == "regular", DEFAULT_REGULAR_LAUNCH)
-        self.print_formatted_config("-dn: dont_newaccount",HELP_DONT_NEWACCOUNT, self.dont_newaccount, DEFAULT_DONT_NEWACCOUNT)
-        self.print_formatted_config("-ds: dont_setprod",   HELP_DONT_SETPROD,    self.dont_setprod,    DEFAULT_DONT_SETPROD)
-        self.print_formatted_config("-dv: dont_vote",      HELP_DONT_VOTE,       self.dont_vote,       DEFAULT_DONT_VOTE)
+        self.print_formatted_config("-xn: dont_newaccount",HELP_DONT_NEWACCOUNT, self.dont_newaccount, DEFAULT_DONT_NEWACCOUNT)
+        self.print_formatted_config("-xs: dont_setprod",   HELP_DONT_SETPROD,    self.dont_setprod,    DEFAULT_DONT_SETPROD)
+        self.print_formatted_config("-xv: dont_vote",      HELP_DONT_VOTE,       self.dont_vote,       DEFAULT_DONT_VOTE)
         self.print_formatted_config("--http-retry",        HELP_HTTP_RETRY,      self.http_retry,      DEFAULT_HTTP_RETRY)
         self.print_formatted_config("--verify-retry",      HELP_VERIFY_RETRY,    self.verify_retry,    DEFAULT_VERIFY_RETRY)
         self.print_formatted_config("--sync-retry",        HELP_SYNC_RETRY,      self.sync_retry,      DEFAULT_SYNC_RETRY)
@@ -975,11 +979,11 @@ class Cluster:
         sleep = self.verify_sleep if sleep is None else sleep
         while retry >= 0:
             if self.verify_transaction(transaction_id=transaction_id, verify_key=verify_key, buffer=buffer):
-                self.logger.log("{}".format(color.black_on_green(verify_key.title())), level=level, buffer=buffer)
+                self.logger.log("{}".format(color.black_on_green(verify_key)), level=level, buffer=buffer)
                 return True
             time.sleep(sleep)
             retry -= 1
-        self.logger.error(color.black_on_red("Not {}".format(verify_key.title())))
+        self.logger.error(color.black_on_red("not {}".format(verify_key.title())))
         return False
 
 
@@ -1040,7 +1044,7 @@ class Cluster:
                 self.log(color.green(f"<Num of Nodes In Sync> {sync_nodes}"), level=level)
                 self.log(color.green(f"<Head Block Num> {sync_block}"), level=level)
                 self.log(color.green(f"<Head Block ID> {sync_head}"), level=level)
-                self.log(color.black_on_green("Nodes In Sync"), level=level)
+                self.log(color.black_on_green("nodes in sync"), level=level)
                 return SyncResult(True, sync_nodes, min_block_num)
             if max_block_lag and max_block_num - min_block_num > max_block_lag:
                 self.log(f"Gap between max and min block numbers ({max_block_num - min_block_num}) is larger than tolerance ({max_block_lag}).", level=level)
@@ -1247,7 +1251,6 @@ class Cluster:
              header=None,
              level="DEBUG",
              buffer=False,
-             dont_warn=False,
              dont_error=False,
              dont_flush=False,
              **data) -> Connection:
@@ -1291,19 +1294,16 @@ class Cluster:
             self.logger.error(cx.response_text)
         if verify_key:
             assert self.verify(transaction_id=cx.transaction_id, verify_key=verify_key, retry=verify_retry, level=level, buffer=buffer)
-        # elif cx.transaction_id and not dont_warn:
-        #     self.logger.warn("WARNING: Verification of transaction ID {} skipped.".format(cx.transaction_id), buffer=buffer)
         if buffer and not dont_flush:
             self.logger.flush()
         return cx
 
 
-
 def main():
     logger = Logger(ScreenWriter(threshold="debug"),
-                    FileWriter(filename="debug.log", threshold="debug"),
-                    FileWriter(filename="trace.log", threshold="trace"),
-                    FileWriter(filename="mono.log", threshold="trace", monochrome=True))
+                    FileWriter(filename="service-info.log", threshold="info"),
+                    FileWriter(filename="service-debug.log", threshold="debug"),
+                    FileWriter(filename="service-trace.log", threshold="trace"))
     service = Service(logger=logger)
     cluster = Cluster(service=service)
 

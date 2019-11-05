@@ -6,11 +6,11 @@ from core.logger import ScreenWriter, FileWriter, Logger
 from core.service import Service, Cluster, BlockchainError, SyncError
 
 def init_cluster():
-    logger = Logger(ScreenWriter(threshold="debug"),
-                    FileWriter(filename="debug.log", threshold="debug"),
-                    FileWriter(filename="trace.log", threshold="trace"),
-                    FileWriter(filename="mono.log", threshold="trace", monochrome=True))
-    service = Service(logger=logger)
+    test = "fork"
+    logger = Logger(ScreenWriter(threshold="info"),
+                    FileWriter(filename=f"{test}-info.log", threshold="info"),
+                    FileWriter(filename=f"{test}-debug.log", threshold="debug"),
+                    FileWriter(filename=f"{test}-trace.log", threshold="trace"))
     cluster = Cluster(service=service, node_count=3, pnode_count=3, producer_count=7,
                       shape="bridge", center_node_id=1, dont_newaccount=True)
     return cluster
@@ -77,11 +77,11 @@ def restart_and_verify(clus, last_block_in_sync):
 
 def main():
     with init_cluster() as clus:
-        clus.info(">>> [Fork Test] --- BEGIN --------------------------------")
+        clus.info(">>> [Fork Test] ------------------------- BEGIN ------------------------------------------")
         last_block_in_sync = set_and_verify(clus)
         kill_and_verify(clus)
         restart_and_verify(clus, last_block_in_sync)
-        clus.info(">>> [Fork Test] --- END ----------------------------------")
+        clus.info(">>> [Fork Test] ------------------------- END --------------------------------------------")
 
 
 if __name__ == '__main__':

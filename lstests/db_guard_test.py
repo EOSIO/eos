@@ -8,10 +8,11 @@ from core.service import Service, Cluster, BlockchainError, bassert
 account_count = 0
 
 def init_cluster():
+    test = "db-guard"
     logger = Logger(ScreenWriter(threshold="info"),
-                    FileWriter(filename="info.log", threshold="info"),
-                    FileWriter(filename="debug.log", threshold="debug"),
-                    FileWriter(filename="trace.log", threshold="trace"))
+                    FileWriter(filename=f"{test}-info.log", threshold="info"),
+                    FileWriter(filename=f"{test}-debug.log", threshold="debug"),
+                    FileWriter(filename=f"{test}-trace.log", threshold="trace"))
     service = Service(logger=logger)
     cluster = Cluster(service=service, node_count=4, pnode_count=4, producer_count=4, dont_newaccount=True)
     return cluster
@@ -51,7 +52,7 @@ def main():
                 account_count += 1
             clus.bios_create_accounts(accounts=acco, verify_key="")
 
-        clus.info(">>> [DB Guard Test] --- BEGIN ------------------------------------------------------------")
+        clus.info(">>> [DB Guard Test] --------------------- BEGIN ------------------------------------------")
         clus.info(f">>> [DB Guard Test] Step 0: Set Up Database Guard")
         guard = 1002
         cap = 1010
@@ -113,7 +114,7 @@ def main():
         create_accounts(clus, 100)
         time.sleep(1)
         check_sync()
-        clus.info(">>> [DB Guard Test] --- END --------------------------------------------------------------")
+        clus.info(">>> [DB Guard Test] --------------------- END --------------------------------------------")
 
 
 if __name__ == "__main__":
