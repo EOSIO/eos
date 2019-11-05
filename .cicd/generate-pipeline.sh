@@ -132,7 +132,7 @@ EOF
           failover-registries:
             - 'registry_1'
             - 'registry_2'
-          pre-execute-sleep: 5
+          pre-execute-sleep: 10
           pre-commands: 
             - "git clone git@github.com:EOSIO/mac-anka-fleet.git && cd mac-anka-fleet && . ./ensure-tag.bash -u 12 -r 25G -a '-n'"
     env:
@@ -205,7 +205,7 @@ EOF
           failover-registries:
             - 'registry_1'
             - 'registry_2'
-          pre-execute-sleep: 5
+          pre-execute-sleep: 10
     timeout: ${TIMEOUT:-60}
     agents: "queue=mac-anka-node-fleet"
     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_UNIT_TESTS}
@@ -261,7 +261,7 @@ EOF
           failover-registries:
             - 'registry_1'
             - 'registry_2'
-          pre-execute-sleep: 5
+          pre-execute-sleep: 10
     timeout: ${TIMEOUT:-60}
     agents: "queue=mac-anka-node-fleet"
     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_WASM_SPEC_TESTS}
@@ -320,7 +320,7 @@ EOF
           failover-registries:
             - 'registry_1'
             - 'registry_2'
-          pre-execute-sleep: 5
+          pre-execute-sleep: 10
     timeout: ${TIMEOUT:-60}
     agents: "queue=mac-anka-node-fleet"
     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_SERIAL_TESTS}
@@ -380,7 +380,7 @@ EOF
           failover-registries:
             - 'registry_1'
             - 'registry_2'
-          pre-execute-sleep: 5
+          pre-execute-sleep: 10
     timeout: ${TIMEOUT:-180}
     agents: "queue=mac-anka-node-fleet"
     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_LONG_RUNNING_TESTS:-true}
@@ -521,7 +521,7 @@ cat <<EOF
           failover-registries:
             - 'registry_1'
             - 'registry_2'
-          pre-execute-sleep: 5
+          pre-execute-sleep: 10
     agents:
       - "queue=mac-anka-node-fleet"
     timeout: ${TIMEOUT:-60}
