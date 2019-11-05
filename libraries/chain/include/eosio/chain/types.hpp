@@ -85,7 +85,7 @@ namespace eosio { namespace chain {
    struct void_t{};
 
    using chainbase::allocator;
-   using shared_string = chainbase::shared_string;//boost::interprocess::basic_string<char, std::char_traits<char>, allocator<char>>;
+   using shared_string = chainbase::shared_string;
    template<typename T>
    using shared_vector = boost::interprocess::vector<T, allocator<T>>;
    template<typename T>
