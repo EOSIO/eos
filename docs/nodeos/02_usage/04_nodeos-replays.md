@@ -1,5 +1,5 @@
 
-Nodeos provides various options for replaying blockchain blocks. This can be useful if, for example, a node has downloaded a `blocks.log` file from the internet (as a faster alternative to synchronizing from the p2p network) and the node wants to use it to quickly catch up with the network, or if you want to know chain state at specified points in a blockchain's life.
+Nodeos provides various options for replaying blockchain blocks. This can be useful if, for example, a node has downloaded a `blocks.log` file from the internet (as a faster alternative to synchronizing from the p2p network) and the node wants to use it to quickly catch up with the network, or if you want to know the chain state at specified points in a blockchain's life.
 
 Replaying data can be done in two ways:
 
