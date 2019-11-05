@@ -19,7 +19,7 @@ namespace eosio { namespace chain {
 
       void set_abi( const eosio::chain::abi_def& a ) {
          abi.resize_and_fill( fc::raw::pack_size( a ), [&a](char* data, std::size_t size) {
-            fc::datastream<char*> ds( const_cast<char*>(data), size );
+            fc::datastream<char*> ds( data, size );
             fc::raw::pack( ds, a );
          });
       }
