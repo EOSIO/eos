@@ -18,6 +18,9 @@
 #include <fc/fixed_string.hpp>
 #include <fc/crypto/private_key.hpp>
 
+#include <boost/version.hpp>
+#include <boost/container/deque.hpp>
+
 #include <memory>
 #include <vector>
 #include <deque>
