@@ -129,8 +129,7 @@ public:
                                         ("id", itr->id())("e", itr->trx_meta->packed_trx()->expiration())
                                         ("bt", pending_block_time) ) ) ) );
          }
-
-         removed( itr, false );
+         removed( itr );
          persisted_by_expiry.erase( itr );
       }
       return true;
@@ -146,6 +145,10 @@ public:
             if( itr != queue.get<by_trx_id>().end() ) {
                if( itr->trx_type != trx_enum_type::persisted &&
                    itr->trx_type != trx_enum_type::incoming_persisted ) {
+                  if( itr->next ) {
+                     itr->next( std::static_pointer_cast<fc::exception>( std::make_shared<tx_duplicate>(
+                                   FC_LOG_MESSAGE( info, "duplicate transaction ${id}", ("id", itr->trx_meta->id())))));
+                  }
                   removed( itr );
                   idx.erase( itr );
                }
@@ -221,9 +224,9 @@ public:
    iterator incoming_begin() { return queue.get<by_type>().lower_bound( trx_enum_type::incoming_persisted ); }
    iterator incoming_end() { return queue.get<by_type>().end(); } // if changed to upper_bound, verify usage performance
 
-   /// callers responsibilty to call next() if applicable
+   /// caller's responsibilty to call next() if applicable
    iterator erase( iterator itr ) {
-      removed( itr, false );
+      removed( itr );
       return queue.get<by_type>().erase( itr );
    }
 
@@ -243,14 +246,9 @@ private:
    }
 
    template<typename Itr>
-   void removed( Itr itr, bool call_next = true ) {
+   void removed( Itr itr ) {
       if( itr->trx_type == trx_enum_type::incoming || itr->trx_type == trx_enum_type::incoming_persisted ) {
          --incoming_count;
-      }
-      if( call_next && itr->next ) {
-         transaction_trace_ptr trace = std::make_shared<transaction_trace>();
-         trace->id = itr->trx_meta->id();
-         itr->next( trace );
       }
       size_in_bytes -= calc_size( itr->trx_meta );
    }
