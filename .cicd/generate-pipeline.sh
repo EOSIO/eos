@@ -20,7 +20,7 @@ if [[ $BUILDKITE_BRANCH =~ ^pull/[0-9]+/head: ]]; then
   export GIT_FETCH="git fetch -v --prune origin refs/pull/$PR_ID/head &&"
 fi
 # Determine which dockerfiles/scripts to use for the pipeline.
-if [[ $PINNED == false || $UNPINNED == true ]]; then
+if [[ $PINNED == false ]]; then
     export PLATFORM_TYPE="unpinned"
 else
     export PLATFORM_TYPE="pinned"
@@ -30,7 +30,7 @@ for FILE in $(ls $CICD_DIR/platforms/$PLATFORM_TYPE); do
     ( [[ $SKIP_MAC == true ]] && [[ $FILE =~ 'macos' ]] ) && continue
     ( [[ $SKIP_LINUX == true ]] && [[ ! $FILE =~ 'macos' ]] ) && continue
     # use pinned or unpinned, not both sets of platform files
-    if [[ $PINNED == false || $UNPINNED == true ]]; then
+    if [[ $PINNED == false ]]; then
         export SKIP_CONTRACT_BUILDER=${SKIP_CONTRACT_BUILDER:-true}
         export SKIP_PACKAGE_BUILDER=${SKIP_PACKAGE_BUILDER:-true}
     fi
@@ -133,7 +133,7 @@ EOF
           failover-registries:
             - 'registry_1'
             - 'registry_2'
-          pre-execute-sleep: 5
+          pre-execute-sleep: 10
           pre-commands: 
             - "rm -rf mac-anka-fleet; git clone git@github.com:EOSIO/mac-anka-fleet.git && cd mac-anka-fleet && . ./ensure-tag.bash -u 12 -r 25G -a '-n'"
       - thedyrt/skip-checkout#v0.1.1:
@@ -208,7 +208,7 @@ EOF
           failover-registries:
             - 'registry_1'
             - 'registry_2'
-          pre-execute-sleep: 5
+          pre-execute-sleep: 10
       - thedyrt/skip-checkout#v0.1.1:
           cd: ~
     timeout: ${TIMEOUT:-60}
@@ -266,7 +266,7 @@ EOF
           failover-registries:
             - 'registry_1'
             - 'registry_2'
-          pre-execute-sleep: 5
+          pre-execute-sleep: 10
       - thedyrt/skip-checkout#v0.1.1:
           cd: ~
     timeout: ${TIMEOUT:-60}
@@ -333,7 +333,7 @@ EOF
           failover-registries:
             - 'registry_1'
             - 'registry_2'
-          pre-execute-sleep: 5
+          pre-execute-sleep: 10
       - thedyrt/skip-checkout#v0.1.1:
           cd: ~
     timeout: ${TIMEOUT:-60}
@@ -401,7 +401,7 @@ EOF
           failover-registries:
             - 'registry_1'
             - 'registry_2'
-          pre-execute-sleep: 5
+          pre-execute-sleep: 10
       - thedyrt/skip-checkout#v0.1.1:
           cd: ~
     timeout: ${TIMEOUT:-180}
@@ -427,7 +427,7 @@ EOF
 done
 # trigger eosio-lrt post pr
 if [[ -z $BUILDKITE_TRIGGERED_FROM_BUILD_ID && $TRIGGER_JOB == "true" ]]; then
-    if ( [[ ! $PINNED == false || $UNPINNED == true ]] ); then
+    if ( [[ ! $PINNED == false ]] ); then
     cat <<EOF
   - label: ":pipeline: Trigger Long Running Tests"
     trigger: "eosio-lrt"
@@ -441,15 +441,15 @@ if [[ -z $BUILDKITE_TRIGGERED_FROM_BUILD_ID && $TRIGGER_JOB == "true" ]]; then
         BUILDKITE_PULL_REQUEST_BASE_BRANCH: "${BUILDKITE_PULL_REQUEST_BASE_BRANCH}"
         BUILDKITE_PULL_REQUEST_REPO: "${BUILDKITE_PULL_REQUEST_REPO}"
         SKIP_BUILD: "true"
+        SKIP_WASM_SPEC_TESTS: "true"
         PINNED: "${PINNED}"
-        UNPINNED: "${UNPINNED}"
 
 EOF
     fi
 fi
 # trigger multiversion post pr
 if [[ -z $BUILDKITE_TRIGGERED_FROM_BUILD_ID && $TRIGGER_JOB = "true" ]]; then
-    if ( [[ ! $PINNED == false || $UNPINNED == true ]] ); then
+    if ( [[ ! $PINNED == false ]] ); then
     cat <<EOF
   - label: ":pipeline: Trigger Multiversion Test"
     trigger: "eos-multiversion-tests"
@@ -568,7 +568,7 @@ cat <<EOF
           failover-registries:
             - 'registry_1'
             - 'registry_2'
-          pre-execute-sleep: 5
+          pre-execute-sleep: 10
       - thedyrt/skip-checkout#v0.1.1:
           cd: ~
     agents:
