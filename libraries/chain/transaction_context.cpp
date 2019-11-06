@@ -65,7 +65,6 @@ namespace eosio { namespace chain {
       trace->block_num = c.head_block_num() + 1;
       trace->block_time = c.pending_block_time();
       trace->producer_block_id = c.pending_producer_block_id();
-      executed.reserve( trx.total_actions() );
    }
 
    void transaction_context::disallow_transaction_extensions( const char* error_msg )const {
