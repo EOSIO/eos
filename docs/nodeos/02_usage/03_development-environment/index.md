@@ -14,7 +14,7 @@ While this option can technically be used for smart contract development, it may
 
 * [Configure Nodeos as a Local Two-Node Testnet](01_local-multi-node-testnet.md)
 
-* [Configure Nodeos as a Local 21-Node Testnet](../../tutorials/bios-boot-tutorial/README.md)
+* [Configure Nodeos as a Local 21-Node Testnet](../../../../tutorials/bios-boot-tutorial/README.md)
 
 ## Third-Party Testnets
 
