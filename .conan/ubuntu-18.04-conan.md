@@ -27,7 +27,7 @@ git clone https://github.com/EOSIO/eos.git
 
 cd eos/
 
-git checkout conan-poc-v2
+git checkout conan-poc-v3
 
 git submodule update --init --recursive
 
