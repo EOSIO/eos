@@ -1076,16 +1076,19 @@ struct controller_impl {
       auto& bb = pending->_block_stage.get<building_block>();
       auto orig_trx_receipts_size           = bb._pending_trx_receipts.size();
       auto orig_trx_metas_size              = bb._pending_trx_metas.size();
+      auto orig_trx_receipt_digests_size    = bb._pending_trx_receipt_digests.size();
       auto orig_action_receipt_digests_size = bb._action_receipt_digests.size();
 
       std::function<void()> callback = [this,
             orig_trx_receipts_size,
             orig_trx_metas_size,
+            orig_trx_receipt_digests_size,
             orig_action_receipt_digests_size]()
       {
          auto& bb = pending->_block_stage.get<building_block>();
          bb._pending_trx_receipts.resize(orig_trx_receipts_size);
          bb._pending_trx_metas.resize(orig_trx_metas_size);
+         bb._pending_trx_receipt_digests.resize(orig_trx_receipt_digests_size);
          bb._action_receipt_digests.resize(orig_action_receipt_digests_size);
       };
 
