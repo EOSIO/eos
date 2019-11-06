@@ -164,7 +164,7 @@ Enables usage of WebAuthn keys and signatures.
             {}
          } )
          (  builtin_protocol_feature_t::crypto_intrinsics_extension, builtin_protocol_feature_spec{
-            "WTMSIG_BLOCK_SIGNATURES",
+            "CRYPTO_INTRINSICS",
             fc::variant("87c6c6c5ed70ae393c1cfa4d829460950c8c4b78bea77b0a82d476b550464919").as<digest_type>(),
             // SHA256 hash of the raw message below within the comment delimiters (do not modify message below).
 /*

@@ -871,43 +871,119 @@ class crypto_api : public context_aware_api {
          k1_v1_uncompressed
       };
 
-      const ec_group& get_r1_group()const {
-         static const ec_group& r1_group = EC_GROUP_new_by_curve_name( NID_X9_62_prime256v1 );
-         return r1_group;
-      }
-
+/*
       template <auto Val>
       struct to_ui {
          static constexpr auto value = static_cast<std::underlying_type_t<decltype(Val)>>(Val);
       };
       template <auto Val>
       static constexpr auto to_ui_v = to_ui<Val>::value;
-
-      template <typename T>
-      constexpr bool is_r1(const T& tag) { return tag == to_ui_v<ec_add_tags::r1_v1_compressed> || tag == to_ui_v<ec_add_tags::r1_v1_uncompressed>; }
       template <typename T>
       constexpr bool is_k1(const T& tag) { return tag == to_ui_v<ec_add_tags::k1_v1_compressed> || tag == to_ui_v<ec_add_tags::k1_v1_uncompressed>; }
+*/
 
-      template <ec_add_tags Tag, typename Group>
-      int64_t ec_add_r1(const Group& group,EC_POINT* p, EC_POINT* q, EC_POINT* r) {
-         static_assert(is_r1(to_ui_v<Tag>), "ec_add_r1 can only work on r1 points");
-         if constexpr (Tag == ec_add_tags::r1_v1_uncompressed) {
-            if (!EC_POINT_is_on_curve(group, p, nullptr) || !EC_POINT_is_on_curve(group, q, nullptr))
-               return -1;
+      template <ec_add_tags Tag>
+      static std::optional<fc::crypto::r1::ec_point> ec_add_r1(const char* p_x_bytes, const char* p_y_bytes, const char* q_x_bytes, const char* q_y_bytes) {
+         static_assert(Tag == ec_add_tags::r1_v1_compressed || Tag == ec_add_tags::r1_v1_uncompressed, "ec_add_r1 can only work on r1 points");
+         using y_type = std::conditional_t<Tag == ec_add_tags::r1_v1_compressed, uint8_t, fc::crypto::big_number>;
+         fc::crypto::big_number p_x(p_x_bytes, 32);
+         fc::crypto::big_number q_x(q_x_bytes, 32);
+         y_type p_y, q_y;
+         fc::crypto::r1::ec_point p, q;
+
+         if constexpr (Tag == ec_add_tags::r1_v1_compressed) {
+            p_y = *((uint8_t*)p_y_bytes);
+            q_y = *((uint8_t*)q_y_bytes);
+         } else {
+            p_y.from_bytes(p_y_bytes, 32);
+            q_y.from_bytes(q_y_bytes, 32);
          }
 
-         if (!EC_POINT_add(group, r, p, q, nullptr))
-            return -1;
+         p = fc::crypto::r1::ec_point(p_x, p_y);
+         q = fc::crypto::r1::ec_point(q_x, q_y);
+
+         if (p.valid() && q.valid())
+            return p.add(q);
+         return {};
       }
 
       int64_t ec_add(uint64_t tag, array_ptr<char> input, uint32_t input_len, array_ptr<char> output, uint32_t output_len) {
+         uint32_t input_len_lb = 0;
+         uint32_t p_y_offset = 0;
+         uint32_t q_y_offset = 0;
+         constexpr auto to_ui = [](auto tag) { return static_cast<std::underlying_type_t<decltype(tag)>>(tag); };
+         using ret_type = std::optional<fc::crypto::r1::ec_point>;
+         static const auto& partial = [&]() -> std::function<ret_type(const char*, uint32_t)>{
+            switch(tag) {
+               case to_ui(ec_add_tags::r1_v1_uncompressed):
+               {
+                  return {[](const char* base, uint32_t len) -> ret_type {
+                     // 64 bytes for x and y
+                     if (len < 128) return {};
+                     return ec_add_r1<ec_add_tags::r1_v1_uncompressed>(base, base+32, base+64, base+96);
+                  }};
+               }
+               case to_ui(ec_add_tags::r1_v1_compressed):
+               {
+                  return {[](const char* base, uint32_t len) -> ret_type {
+                     // 33 bytes for x and y
+                     if (len < 66) return {};
+                     return ec_add_r1<ec_add_tags::r1_v1_compressed>(base, base+32, base+33, base+65);
+                  }};
+               }
+            }
+            return {[](const char* base, uint32_t len) -> ret_type {
+               return {};
+            }};
+         }();
+
+         const auto& ret = partial(input.value, input_len);
+         if (!ret)
+            return -1;
+         if (output_len < 32)
+            return -1;
+
+
+
+
+
+         #if 0
+            case to_ui_v<ec_add_tags::r1_v1_uncompressed>:
+               {
+                  // 64 bytes for x and y
+                  input_len_lb = 128;
+               }
+               break;
+            case to_ui_v<ec_add_tags::r1_v1_compressed>:
+               {
+                  // 33 bytes for x and y
+                  if (input_len < 66)
+                     return -1;
+                  const auto& ret = ec_add_r1<ec_add_tags::r1_v1_compressed>(input.value, input.value+32, input_value+33, input_value+65);
+                  if (!ret)
+                     return -1;
+
+               }
+               if (input_len < 128)
+                  return -1;
+               const auto& ret = ec_add_r1<ec_add_tags::r1_v1_uncompressed>(input.value, input.value+32, input_value+64, input_value+96);
+               if (!ret)
+                  return -1;
+
+               break;
+            case to_ui_v<ec_add_tags::k1_v1_uncompressed>:
+            case to_ui_v<ec_add_tags::k1_v1_compressed>:
+               return -1;
+            default:
+               return -1;
+         }
+
+         ec_point p;
          EC_POINT* p, *q, *r = nullptr;
          BIGNUM* r_x = nullptr, *r_y = nullptr;
          BIGNUM* x1 = nullptr, *x2 = nullptr;
          std::variant<uint8_t, BIGNUM*> y1, y2;
          const ec_group& ecg = is_r1(tag) ? get_r1_group() : nullptr;
-
-         datastream<const char*> ds( input, input_len );
 
          auto cleanup = fc::make_scoped_exit([&]() {
             EC_POINT_free(p);
@@ -928,26 +1004,20 @@ class crypto_api : public context_aware_api {
                BN_free(std::get<BIGNUM*>(y2));
          });
 
-         //else if (is_k1(tag))
-         //   ecg = get_k1_group();
-
          p = EC_POINT_new(ecg);
          q = EC_POINT_new(ecg);
          r = EC_POINT_new(ecg);
 
-         std::array<uint64_t, 4> point_bytes;
-         ds.read((char*)point_bytes.data(), 32);
-         x1 = BN_bin2bn((const uint8_t*)point_bytes.data(), point_bytes.size(), nullptr);
+         uint32_t x_
+         uint32_t x_size = *((uint32_*)input.value);
+         x1 = BN_bin2bn((const uint8_t*)input.value, x_size, nullptr);
          if (!x1)
             return -1;
-         ds.read((char*)point_bytes.data(), 32);
-         x2 = BN_bin2bn(((const uint8_t*)point_bytes.data())+33, point_bytes.size(), nullptr);
+         x_size = *((uint32_*)input.value+x_size+sizeof(uint32_t)));
+         x2 = BN_bin2bn((const uint8_t*)input.value+33, point_bytes.size(), nullptr);
          if (!x2)
             return -1;
 
-         switch(tag) {
-            case to_ui_v<ec_add_tags::r1_v1_uncompressed>:
-            case to_ui_v<ec_add_tags::r1_v1_compressed>:
                {
                    uint8_t y1, y2;
                    y1 = *(input.value+32);
@@ -994,6 +1064,7 @@ class crypto_api : public context_aware_api {
          *(output.value+32) = BN_is_negative(r_y);
          */
          //return sz;
+         #endif
          return 10;
       }
 
