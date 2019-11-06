@@ -614,6 +614,23 @@ namespace impl {
       }
 
       /**
+       * template which overloads extract for deque of types which contain ABI information in their trees
+       * for these members we call ::extract in order to trigger further processing
+       */
+      template<typename M, typename Resolver, require_abi_t<M> = 1>
+      static void extract( const variant& v, deque<M>& o, Resolver resolver, abi_traverse_context& ctx )
+      {
+         auto h = ctx.enter_scope();
+         const variants& array = v.get_array();
+         o.clear();
+         for( auto itr = array.begin(); itr != array.end(); ++itr ) {
+            M o_iter;
+            extract(*itr, o_iter, resolver, ctx);
+            o.emplace_back(std::move(o_iter));
+         }
+      }
+
+      /**
        * template which overloads extract for shared_ptr of types which contain ABI information in their trees
        * for these members we call ::extract in order to trigger further processing
        */
