@@ -1655,7 +1655,7 @@ namespace eosio {
    }
 
    void sync_manager::sync_recv_notice( const connection_ptr& c, const notice_message& msg) {
-      fc_ilog( logger, "sync_manager got ${m} block notice", ("m", modes_str( msg.known_blocks.mode )) );
+      fc_dlog( logger, "sync_manager got ${m} block notice", ("m", modes_str( msg.known_blocks.mode )) );
       EOS_ASSERT( msg.known_blocks.mode == catch_up || msg.known_blocks.mode == last_irr_catch_up, plugin_exception,
                   "sync_recv_notice only called on catch_up" );
       if (msg.known_blocks.mode == catch_up) {
