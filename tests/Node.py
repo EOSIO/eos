@@ -1581,3 +1581,40 @@ class Node(object):
     def createSnapshot(self):
         param = { }
         return self.processCurlCmd("producer", "create_snapshot", json.dumps(param))
+
+    def disconnectP2P(self, host, port, exitOnError=False):
+        cmdDesc = "net disconnect"
+        cmd="%s %s:%s " % (
+            cmdDesc, host, port)
+        ret=self.processCleosCmd(cmd, cmdDesc, exitOnError=exitOnError, returnType=ReturnType.raw)
+
+        return ret
+
+    def connectP2P(self, host, port, exitOnError=False):
+        cmdDesc = "net connect"
+        cmd="%s %s:%s " % (
+            cmdDesc, host, port)
+        ret=self.processCleosCmd(cmd, cmdDesc, exitOnError=exitOnError, returnType=ReturnType.raw)
+
+        return ret
+
+    def disconnectNode(self, nodeNum, exitOnError=False):
+        # nodeNum can be "bios" or index number
+        configFile=Utils.getNodeConfigDir(nodeNum, "config.ini")
+        host = None
+        port = None
+        with open(configFile, 'r') as f:
+            configLines=f.readlines()
+            found = False
+            for configLine in configLines:
+                match = re.match(r'\s*p2p-server-address\s*=\s*([^\:\s]+)\:(\d+)', configLine)
+                if match:
+                    host = match.group(1)
+                    port = match.group(2)
+                    response = self.disconnectP2P(host, port)
+                    Utils.Print("Attempted disconnect from %s:%s.  Response: %s" % (host, port, json.dumps(response, indent=2)))
+                    assert not exitOnError or "connection removed" in response, Print("ERROR: Tried to disconnect from host: %s, port: %s.  Response was: %s" % (host, port, response))
+                    found = True
+                    break
+            assert not exitOnError or found, Utils.Print("ERROR: could not find p2p-server-address in config file: \n\n%s" % ("\n".join(configLines)))
+        return (host, port)
