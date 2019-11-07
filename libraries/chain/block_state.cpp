@@ -88,7 +88,7 @@ namespace eosio { namespace chain {
 
    block_state::block_state( pending_block_header_state&& cur,
                              signed_block_ptr&& b,
-                             vector<transaction_metadata_ptr>&& trx_metas,
+                             deque<transaction_metadata_ptr>&& trx_metas,
                              const protocol_feature_set& pfs,
                              const std::function<void( block_timestamp_type,
                                                        const flat_set<digest_type>&,

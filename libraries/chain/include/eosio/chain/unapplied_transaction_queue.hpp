@@ -171,7 +171,7 @@ public:
       }
    }
 
-   void add_aborted( std::vector<transaction_metadata_ptr> aborted_trxs ) {
+   void add_aborted( deque<transaction_metadata_ptr> aborted_trxs ) {
       if( mode == process_mode::non_speculative || mode == process_mode::speculative_non_producer ) return;
       for( auto& trx : aborted_trxs ) {
          fc::time_point expiry = trx->packed_trx()->expiration();
