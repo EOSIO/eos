@@ -66,7 +66,6 @@ void launcher_service_api_plugin::plugin_startup() {
 
       CALL(launcher, get_info, 200),
       CALL(launcher, get_block, 200),
-      CALL(launcher, get_block_header_state, 200),
       CALL(launcher, get_account, 200),
       CALL(launcher, get_code_hash, 200),
       CALL(launcher, get_cluster_info, 200),

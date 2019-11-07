@@ -114,7 +114,7 @@ namespace launcher_service {
       int                            cluster_id = 0;
       int                            node_id = 0;
       int64_t                        offset = 0; // negative -> offset from the end.
-      int64_t                        len = 0;
+      int64_t                        length = 0;
       std::string                    filename;
    };
 
@@ -236,7 +236,6 @@ public:
    // queries
    fc::variant get_info(launcher_service::node_id_param);
    fc::variant get_block(launcher_service::get_block_param);
-   fc::variant get_block_header_state(launcher_service::get_block_param);
    fc::variant get_account(launcher_service::get_account_param);
    fc::variant get_code_hash(launcher_service::get_account_param);
    fc::variant get_cluster_info(launcher_service::cluster_id_param);
@@ -276,7 +275,7 @@ FC_REFLECT(eosio::launcher_service::push_actions_param, (cluster_id)(node_id)(ac
 FC_REFLECT(eosio::launcher_service::verify_transaction_param, (cluster_id)(node_id)(transaction_id)(max_search_blocks)(block_num_hint))
 FC_REFLECT(eosio::launcher_service::schedule_protocol_feature_activations_param, (cluster_id)(node_id)(protocol_features_to_activate))
 FC_REFLECT(eosio::launcher_service::get_table_rows_param, (cluster_id)(node_id)(json)(code)(scope)(table)(lower_bound)(upper_bound)(limit)(key_type)(index_position)(encode_type)(reverse)(show_payer))
-FC_REFLECT(eosio::launcher_service::get_log_data_param, (cluster_id)(node_id)(offset)(len)(filename))
+FC_REFLECT(eosio::launcher_service::get_log_data_param, (cluster_id)(node_id)(offset)(length)(filename))
 FC_REFLECT(eosio::launcher_service::cluster_id_param, (cluster_id))
 FC_REFLECT(eosio::launcher_service::node_id_param, (cluster_id)(node_id))
 FC_REFLECT(eosio::launcher_service::start_node_param, (cluster_id)(node_id)(extra_args))

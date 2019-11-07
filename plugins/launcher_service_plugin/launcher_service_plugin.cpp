@@ -473,10 +473,6 @@ public:
          return call(cluster_id, node_id, "/v1/chain/get_block", fc::mutable_variant_object("block_num_or_id", block_num_or_id));
       }
 
-      fc::variant get_block_header_state(int cluster_id, int node_id, std::string block_num_or_id) {
-         return call(cluster_id, node_id, "/v1/chain/get_block_header_state", fc::mutable_variant_object("block_num_or_id", block_num_or_id));
-      }
-
       fc::variant get_protocol_features(int cluster_id, int node_id) {
          return call(cluster_id, node_id, "/v1/producer/get_supported_protocol_features");
       }
@@ -733,7 +729,7 @@ public:
          } else {
             offset = param.offset;
          }
-         size_t datasize = offset >= size ? 0 : std::min(size - offset, (size_t)param.len);
+         size_t datasize = offset >= size ? 0 : std::min(size - offset, (size_t)param.length);
          data.resize(datasize);
          bfs::ifstream fs(path);
          fs.seekg(offset, fs.beg);
@@ -954,10 +950,6 @@ fc::variant launcher_service_plugin::schedule_protocol_feature_activations(launc
 
 fc::variant launcher_service_plugin::get_block(launcher_service::get_block_param param) {
    return _my->get_block(param.cluster_id, param.node_id, param.block_num_or_id);
-}
-
-fc::variant launcher_service_plugin::get_block_header_state(launcher_service::get_block_param param) {
-   return _my->get_block_header_state(param.cluster_id, param.node_id, param.block_num_or_id);
 }
 
 fc::variant launcher_service_plugin::get_account(launcher_service::get_account_param param) {
