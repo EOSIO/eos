@@ -1,5 +1,5 @@
 
-EOSIO prebuilt binary packages are available for various operating systems. For the full OS list and installation instructions, please visit the [Prebuilt Binaries](../../../README.md#prebuilt-binaries) section on the main README.
+EOSIO prebuilt binary packages are available for specific [Operating Systems](../../../README.md#supported-operating-systems). For installation instructions, please visit the [Prebuilt Binaries](../../../README.md#prebuilt-binaries) section on the main README.
 
 [[info | Previous Builds]]
 | If you have previously installed EOSIO from source using shell scripts, you must first uninstall EOSIO before installing any prebuilt binaries on the same OS. 
