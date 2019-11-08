@@ -27,12 +27,6 @@ namespace LLVMJIT
 		llvm::Constant* defaultTableMaxElementIndex;
 		llvm::Constant* defaultMemoryBase;
 		llvm::Constant* defaultMemoryEndOffset;
-		
-		llvm::DIBuilder diBuilder;
-		llvm::DICompileUnit* diCompileUnit;
-		llvm::DIFile* diModuleScope;
-
-		llvm::DIType* diValueTypes[(Uptr)ValueType::num];
 
 		llvm::MDNode* likelyFalseBranchWeights;
 		llvm::MDNode* likelyTrueBranchWeights;
@@ -41,20 +35,7 @@ namespace LLVMJIT
 		: module(inModule)
 		, moduleInstance(inModuleInstance)
 		, llvmModule(new llvm::Module("",context))
-		, diBuilder(*llvmModule)
 		{
-			diModuleScope = diBuilder.createFile("unknown","unknown");
-			diCompileUnit = diBuilder.createCompileUnit(0xffff,diModuleScope,"WAVM",true,"",0);
-
-			diValueTypes[(Uptr)ValueType::any] = nullptr;
-			diValueTypes[(Uptr)ValueType::i32] = diBuilder.createBasicType("i32",32,llvm::dwarf::DW_ATE_signed);
-			diValueTypes[(Uptr)ValueType::i64] = diBuilder.createBasicType("i64",64,llvm::dwarf::DW_ATE_signed);
-			diValueTypes[(Uptr)ValueType::f32] = diBuilder.createBasicType("f32",32,llvm::dwarf::DW_ATE_float);
-			diValueTypes[(Uptr)ValueType::f64] = diBuilder.createBasicType("f64",64,llvm::dwarf::DW_ATE_float);
-			#if ENABLE_SIMD_PROTOTYPE
-			diValueTypes[(Uptr)ValueType::v128] = diBuilder.createBasicType("v128",128,llvm::dwarf::DW_ATE_signed);
-			#endif
-			
 			auto zeroAsMetadata = llvm::ConstantAsMetadata::get(emitLiteral(I32(0)));
 			auto i32MaxAsMetadata = llvm::ConstantAsMetadata::get(emitLiteral(I32(INT32_MAX)));
 			likelyFalseBranchWeights = llvm::MDTuple::getDistinct(context,{llvm::MDString::get(context,"branch_weights"),zeroAsMetadata,i32MaxAsMetadata});
@@ -1481,22 +1462,6 @@ namespace LLVMJIT
 
 	void EmitFunctionContext::emit()
 	{
-		// Create debug info for the function.
-		llvm::SmallVector<llvm::Metadata*,10> diFunctionParameterTypes;
-		for(auto parameterType : functionType->parameters) { diFunctionParameterTypes.push_back(moduleContext.diValueTypes[(Uptr)parameterType]); }
-		auto diFunctionType = moduleContext.diBuilder.createSubroutineType(moduleContext.diBuilder.getOrCreateTypeArray(diFunctionParameterTypes));
-		diFunction = moduleContext.diBuilder.createFunction(
-			moduleContext.diModuleScope,
-			functionInstance->debugName,
-			llvmFunction->getName(),
-			moduleContext.diModuleScope,
-			0,
-			diFunctionType,
-			false,
-			true,
-			0);
-		llvmFunction->setSubprogram(diFunction);
-
 		// Create the return basic block, and push the root control context for the function.
 		auto returnBlock = llvm::BasicBlock::Create(context,"return",llvmFunction);
 		auto returnPHI = createPHI(returnBlock,functionType->ret);
@@ -1544,10 +1509,8 @@ namespace LLVMJIT
 		OperatorDecoderStream decoder(functionDef.code);
 		UnreachableOpVisitor unreachableOpVisitor(*this);
 		OperatorPrinter operatorPrinter(module,functionDef);
-		Uptr opIndex = 0;
 		while(decoder && controlStack.size())
 		{
-			irBuilder.SetCurrentDebugLocation(llvm::DILocation::get(context,(unsigned int)opIndex++,0,diFunction));
 			if(ENABLE_LOGGING)
 			{
 				logOperator(decoder.decodeOpWithoutConsume(operatorPrinter));
@@ -1624,9 +1587,6 @@ namespace LLVMJIT
 		// Compile each function in the module.
 		for(Uptr functionDefIndex = 0;functionDefIndex < module.functions.defs.size();++functionDefIndex)
 		{ EmitFunctionContext(*this,module,module.functions.defs[functionDefIndex],moduleInstance->functionDefs[functionDefIndex],functionDefs[functionDefIndex]).emit(); }
-		
-		// Finalize the debug info.
-		diBuilder.finalize();
 
 		Timing::logRatePerSecond("Emitted LLVM IR",emitTimer,(F64)llvmModule->size(),"functions");
 

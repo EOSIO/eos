@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in eos/LICENSE
  */
 #pragma once
 #include <eosio/chain/exceptions.hpp>
@@ -18,7 +18,7 @@ with amount = 10 and symbol(4,"CUR")
 
 */
 
-struct asset
+struct asset : fc::reflect_init
 {
    static constexpr int64_t max_amount = (1LL << 62) - 1;
 
@@ -43,14 +43,14 @@ struct asset
 
    asset& operator += (const asset& o)
    {
-      FC_ASSERT(get_symbol() == o.get_symbol());
+      EOS_ASSERT(get_symbol() == o.get_symbol(), asset_type_exception, "addition between two different asset is not allowed");
       amount += o.amount;
       return *this;
    }
 
    asset& operator -= (const asset& o)
    {
-      FC_ASSERT(get_symbol() == o.get_symbol());
+      EOS_ASSERT(get_symbol() == o.get_symbol(), asset_type_exception, "subtraction between two different asset is not allowed");
       amount -= o.amount;
       return *this;
    }
@@ -62,7 +62,7 @@ struct asset
    }
    friend bool operator < (const asset& a, const asset& b)
    {
-      FC_ASSERT(a.get_symbol() == b.get_symbol());
+      EOS_ASSERT(a.get_symbol() == b.get_symbol(), asset_type_exception, "logical operation between two different asset is not allowed");
       return std::tie(a.amount,a.get_symbol()) < std::tie(b.amount,b.get_symbol());
    }
    friend bool operator <= (const asset& a, const asset& b) { return (a == b) || (a < b); }
@@ -71,12 +71,12 @@ struct asset
    friend bool operator >= (const asset& a, const asset& b) { return !(a < b);  }
 
    friend asset operator - (const asset& a, const asset& b) {
-      FC_ASSERT(a.get_symbol() == b.get_symbol());
+      EOS_ASSERT(a.get_symbol() == b.get_symbol(), asset_type_exception, "subtraction between two different asset is not allowed");
       return asset(a.amount - b.amount, a.get_symbol());
    }
 
    friend asset operator + (const asset& a, const asset& b) {
-      FC_ASSERT(a.get_symbol() == b.get_symbol());
+      EOS_ASSERT(a.get_symbol() == b.get_symbol(), asset_type_exception, "addition between two different asset is not allowed");
       return asset(a.amount + b.amount, a.get_symbol());
    }
 
@@ -84,7 +84,7 @@ struct asset
 
    friend struct fc::reflector<asset>;
 
-   void reflector_verify()const {
+   void reflector_init()const {
       EOS_ASSERT( is_amount_within_range(), asset_type_exception, "magnitude of asset amount must be less than 2^62" );
       EOS_ASSERT( sym.valid(), asset_type_exception, "invalid symbol" );
    }

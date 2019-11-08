@@ -84,3 +84,4 @@ namespace eosio { namespace chain {
 
 FC_REFLECT( eosio::chain::producer_key, (producer_name)(block_signing_key) )
 FC_REFLECT( eosio::chain::producer_schedule_type, (version)(producers) )
+FC_REFLECT( eosio::chain::shared_producer_schedule_type, (version)(producers) )

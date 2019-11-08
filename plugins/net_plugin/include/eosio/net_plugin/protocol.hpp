@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in eos/LICENSE
  */
 #pragma once
 #include <eosio/chain/block.hpp>
@@ -79,17 +79,12 @@ namespace eosio {
     fc::sha256 node_id; ///< for duplicate notification
   };
 
-   typedef std::chrono::system_clock::duration::rep tstamp;
-   typedef int32_t                                  tdist;
-
-   static_assert(sizeof(std::chrono::system_clock::duration::rep) >= 8, "system_clock is expected to be at least 64 bits");
-
-   struct time_message {
-              tstamp  org;       //!< origin timestamp
-              tstamp  rec;       //!< receive timestamp
-              tstamp  xmt;       //!< transmit timestamp
-      mutable tstamp  dst;       //!< destination timestamp
-   };
+  struct time_message {
+            tstamp  org;       //!< origin timestamp
+            tstamp  rec;       //!< receive timestamp
+            tstamp  xmt;       //!< transmit timestamp
+    mutable tstamp  dst;       //!< destination timestamp
+  };
 
   enum id_list_modes {
     none,
@@ -144,8 +139,8 @@ namespace eosio {
                                       notice_message,
                                       request_message,
                                       sync_request_message,
-                                      signed_block,
-                                      packed_transaction>;
+                                      signed_block,         // which = 7
+                                      packed_transaction>;  // which = 8
 
 } // namespace eosio
 

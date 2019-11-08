@@ -1,75 +1,69 @@
 /**
  *  @file api_tests.cpp
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in eos/LICENSE
  */
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wsign-compare"
 #include <boost/test/unit_test.hpp>
 #pragma GCC diagnostic pop
 
-#include <eosio/testing/tester.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/resource_limits.hpp>
+#include <eosio/testing/tester.hpp>
 
 #include <fc/exception/exception.hpp>
 #include <fc/variant_object.hpp>
 
+#include <contracts.hpp>
+
 #include "eosio_system_tester.hpp"
-
-#include <test_ram_limit/test_ram_limit.abi.hpp>
-#include <test_ram_limit/test_ram_limit.wast.hpp>
-
-#define DISABLE_EOSLIB_SERIALIZE
-#include <test_api/test_api_common.hpp>
 
 /*
  * register test suite `ram_tests`
  */
 BOOST_AUTO_TEST_SUITE(ram_tests)
 
-
-
 /*************************************************************************************
  * ram_tests test case
  *************************************************************************************/
 BOOST_FIXTURE_TEST_CASE(ram_tests, eosio_system::eosio_system_tester) { try {
-   auto init_request_bytes = 80000;
+   auto init_request_bytes = 80000 + 7110; // `7110' is for table token row
    const auto increment_contract_bytes = 10000;
    const auto table_allocation_bytes = 12000;
    BOOST_REQUIRE_MESSAGE(table_allocation_bytes > increment_contract_bytes, "increment_contract_bytes must be less than table_allocation_bytes for this test setup to work");
-   buyrambytes(N(eosio), N(eosio), 70000);
+   buyrambytes(config::system_account_name, config::system_account_name, 70000);
    produce_blocks(10);
-   create_account_with_resources(N(testram11111),N(eosio), init_request_bytes);
-   create_account_with_resources(N(testram22222),N(eosio), init_request_bytes + 1150);
+   create_account_with_resources(N(testram11111),config::system_account_name, init_request_bytes + 40);
+   create_account_with_resources(N(testram22222),config::system_account_name, init_request_bytes + 1190);
    produce_blocks(10);
    BOOST_REQUIRE_EQUAL( success(), stake( "eosio.stake", "testram11111", core_from_string("10.0000"), core_from_string("5.0000") ) );
    produce_blocks(10);
 
    for (auto i = 0; i < 10; ++i) {
       try {
-         set_code( N(testram11111), test_ram_limit_wast );
+         set_code( N(testram11111), contracts::test_ram_limit_wasm() );
          break;
       } catch (const ram_usage_exceeded&) {
          init_request_bytes += increment_contract_bytes;
-         buyrambytes(N(eosio), N(testram11111), increment_contract_bytes);
-         buyrambytes(N(eosio), N(testram22222), increment_contract_bytes);
+         buyrambytes(config::system_account_name, N(testram11111), increment_contract_bytes);
+         buyrambytes(config::system_account_name, N(testram22222), increment_contract_bytes);
       }
    }
    produce_blocks(10);
 
    for (auto i = 0; i < 10; ++i) {
       try {
-         set_abi( N(testram11111), test_ram_limit_abi );
+         set_abi( N(testram11111), contracts::test_ram_limit_abi().data() );
          break;
       } catch (const ram_usage_exceeded&) {
          init_request_bytes += increment_contract_bytes;
-         buyrambytes(N(eosio), N(testram11111), increment_contract_bytes);
-         buyrambytes(N(eosio), N(testram22222), increment_contract_bytes);
+         buyrambytes(config::system_account_name, N(testram11111), increment_contract_bytes);
+         buyrambytes(config::system_account_name, N(testram22222), increment_contract_bytes);
       }
    }
    produce_blocks(10);
-   set_code( N(testram22222), test_ram_limit_wast );
-   set_abi( N(testram22222), test_ram_limit_abi );
+   set_code( N(testram22222), contracts::test_ram_limit_wasm() );
+   set_abi( N(testram22222), contracts::test_ram_limit_abi().data() );
    produce_blocks(10);
 
    auto total = get_total_stake( N(testram11111) );
@@ -82,8 +76,8 @@ BOOST_FIXTURE_TEST_CASE(ram_tests, eosio_system::eosio_system_tester) { try {
    auto more_ram = table_allocation_bytes + init_bytes - init_request_bytes;
    BOOST_REQUIRE_MESSAGE(more_ram >= 0, "Underlying understanding changed, need to reduce size of init_request_bytes");
    wdump((init_bytes)(initial_ram_usage)(init_request_bytes)(more_ram) );
-   buyrambytes(N(eosio), N(testram11111), more_ram);
-   buyrambytes(N(eosio), N(testram22222), more_ram);
+   buyrambytes(config::system_account_name, N(testram11111), more_ram);
+   buyrambytes(config::system_account_name, N(testram22222), more_ram);
 
    TESTER* tester = this;
    // allocate just under the allocated bytes
@@ -216,7 +210,7 @@ BOOST_FIXTURE_TEST_CASE(ram_tests, eosio_system::eosio_system_tester) { try {
                         ("to", 13)
                         ("size", 1720));
    produce_blocks(1);
-
+   
    // verify that new entries for testram22222 exceed the allocation bytes limit
    BOOST_REQUIRE_EXCEPTION(
       tester->push_action( N(testram11111), N(setentry), {N(testram11111),N(testram22222)}, mvo()

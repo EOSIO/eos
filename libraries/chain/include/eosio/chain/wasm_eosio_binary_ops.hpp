@@ -5,6 +5,7 @@
 #include <boost/preprocessor/seq/remove.hpp>
 #include <boost/preprocessor/seq/push_back.hpp>
 #include <fc/reflect/reflect.hpp>
+#include <eosio/chain/exceptions.hpp>
 
 #include <cstdint>
 #include <functional>
@@ -663,14 +664,14 @@ struct EOSIO_OperatorDecoderStream
    operator bool() const { return nextByte < end; }
 
    instr* decodeOp() {
-      FC_ASSERT(nextByte + sizeof(IR::Opcode) <= end);
+      EOS_ASSERT(nextByte + sizeof(IR::Opcode) <= end, wasm_exception, "");
       IR::Opcode opcode = *(IR::Opcode*)nextByte;  
       switch(opcode)
       {
       #define VISIT_OPCODE(opcode,name,nameString,Imm,...) \
          case IR::Opcode::name: \
          { \
-            FC_ASSERT(nextByte + sizeof(IR::OpcodeAndImm<IR::Imm>) <= end); \
+            EOS_ASSERT(nextByte + sizeof(IR::OpcodeAndImm<IR::Imm>) <= end, wasm_exception, ""); \
             IR::OpcodeAndImm<IR::Imm>* encodedOperator = (IR::OpcodeAndImm<IR::Imm>*)nextByte; \
             nextByte += sizeof(IR::OpcodeAndImm<IR::Imm>); \
             auto op = _cached_ops->at(BOOST_PP_CAT(name, _code)); \

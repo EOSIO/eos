@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in eos/LICENSE
  */
 #pragma once
 #include <appbase/application.hpp>
@@ -25,6 +25,7 @@ namespace eosio {
 
         APPBASE_PLUGIN_REQUIRES((chain_plugin))
         virtual void set_program_options(options_description& cli, options_description& cfg) override;
+        void handle_sighup() override;
 
         void plugin_initialize(const variables_map& options);
         void plugin_startup();
@@ -39,7 +40,7 @@ namespace eosio {
 
         size_t num_peers() const;
       private:
-        std::unique_ptr<class net_plugin_impl> my;
+        std::shared_ptr<class net_plugin_impl> my;
    };
 
 }

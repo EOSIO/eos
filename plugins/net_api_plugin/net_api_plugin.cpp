@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in eos/LICENSE
  */
 #include <eosio/net_api_plugin/net_api_plugin.hpp>
 #include <eosio/chain/exceptions.hpp>
@@ -29,7 +29,7 @@ using namespace eosio;
           try { \
              if (body.empty()) body = "{}"; \
              INVOKE \
-             cb(http_response_code, fc::json::to_string(result)); \
+             cb(http_response_code, fc::variant(result)); \
           } catch (...) { \
              http_plugin::handle_exception(#api_name, #call_name, body, cb); \
           } \
@@ -83,20 +83,19 @@ void net_api_plugin::plugin_startup() {
 }
 
 void net_api_plugin::plugin_initialize(const variables_map& options) {
-   if (options.count("http-server-address")) {
-      const auto& lipstr = options.at("http-server-address").as<string>();
-      const auto& host = lipstr.substr(0, lipstr.find(':'));
-      if (host != "localhost" && host != "127.0.0.1") {
-         wlog("\n"
-              "*************************************\n"
-              "*                                   *\n"
-              "*  --  Net API NOT on localhost  -- *\n"
-              "*                                   *\n"
-              "*   this may be abused if exposed   *\n"
-              "*                                   *\n"
-              "*************************************\n");
+   try {
+      const auto& _http_plugin = app().get_plugin<http_plugin>();
+      if( !_http_plugin.is_on_loopback()) {
+         wlog( "\n"
+               "**********SECURITY WARNING**********\n"
+               "*                                  *\n"
+               "* --         Net API            -- *\n"
+               "* - EXPOSED to the LOCAL NETWORK - *\n"
+               "* - USE ONLY ON SECURE NETWORKS! - *\n"
+               "*                                  *\n"
+               "************************************\n" );
       }
-   }
+   } FC_LOG_AND_RETHROW()
 }
 
 

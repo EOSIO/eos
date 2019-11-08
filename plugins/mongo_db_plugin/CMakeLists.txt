@@ -1,70 +1,24 @@
 if(BUILD_MONGO_DB_PLUGIN)
-  file(GLOB HEADERS "include/eosio/mongo_db_plugin/*.hpp")
-  add_library( mongo_db_plugin
-               mongo_db_plugin.cpp
-               ${HEADERS} )
 
   find_package(libmongoc-1.0 1.8)
 
   if (libmongoc-1.0_FOUND)
 
-      # EOS has no direct dependencies on libmongoc but its shared libraries
-      # will need to be present at runtime for the C++ libraries we use:
-      # libbsoncxx & libmongocxx (both from github.com/mongodb/mongo-cxx-driver)
-
-      # The *.cmake package files provided by mongo-cxx-driver don't give us the
-      # absolute path to the libraries, which is needed whenever they are not
-      # installed in system-known locations.  CMake requires the absolute paths
-      # in target_link_libraries() since we are builiding an archive and the
-      # link step for all executables using this archive must include the
-      # mongo-cxx-driver libraries libmongocxx and libbsoncxx.
-
       find_package(libbsoncxx-static REQUIRED)
-      message(STATUS "Found bsoncxx headers: ${LIBBSONCXX_STATIC_INCLUDE_DIRS}")
-
-      # mongo-cxx-driver 3.2 release altered LIBBSONCXX_LIBRARIES semantics. Instead of library names,
-      #  it now hold library paths.
-      if((LIBBSONCXX_STATIC_VERSION_MAJOR LESS 3) OR ((LIBBSONCXX_STATIC_VERSION_MAJOR EQUAL 3) AND (LIBBSONCXX_STATIC_VERSION_MINOR LESS 2)))
-        find_library(EOS_LIBBSONCXX ${LIBBSONCXX_STATIC_LIBRARIES}
-          PATHS ${LIBBSONCXX_STATIC_LIBRARY_DIRS} NO_DEFAULT_PATH)
-      else()
-        set(EOS_LIBBSONCXX ${LIBBSONCXX_STATIC_LIBRARIES})
-      endif()
-
-      message(STATUS "Found bsoncxx library: ${EOS_LIBBSONCXX}")
-
       find_package(libmongocxx-static REQUIRED)
-      message(STATUS "Found mongocxx headers: ${LIBMONGOCXX_STATIC_INCLUDE_DIRS}")
+      find_package(libmongoc-static-1.0 REQUIRED)
+      find_package(libbson-static-1.0 REQUIRED)
 
-      # mongo-cxx-driver 3.2 release altered LIBBSONCXX_LIBRARIES semantics. Instead of library names,
-      #  it now hold library paths.
-      if((LIBMONGOCXX_STATIC_VERSION_MAJOR LESS 3) OR ((LIBMONGOCXX_STATIC_VERSION_MAJOR EQUAL 3) AND (LIBMONGOCXX_STATIC_VERSION_MINOR LESS 2)))
-        find_library(EOS_LIBMONGOCXX ${LIBMONGOCXX_STATIC_LIBRARIES}
-          PATHS ${LIBMONGOCXX_STATIC_LIBRARY_DIRS} NO_DEFAULT_PATH)
-      else()
-        set(EOS_LIBMONGOCXX ${LIBMONGOCXX_STATIC_LIBRARIES})
-      endif()
-
-      message(STATUS "Found mongocxx library: ${EOS_LIBMONGOCXX}")
   else()
-      message("Could NOT find MongoDB. mongo_db_plugin with MongoDB support will not be included.")
-      # sudo apt-get install pkg-config libssl-dev libsasl2-dev
-      # wget https://github.com/mongodb/mongo-c-driver/releases/download/1.8.0/mongo-c-driver-1.8.0.tar.gz
-      # tar xzf mongo-c-driver-1.8.0.tar.gz
-      # cd mongo-c-driver-1.8.0
-      # ./configure --disable-automatic-init-and-cleanup --enable-static
-      # make
-      # sudo make install
-      #
-      # git clone https://github.com/mongodb/mongo-cxx-driver.git --branch releases/stable --depth 1
-      # cd mongo-cxx-driver/build
-      # cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local -DBUILD_SHARED_LIBS=OFF ..
-      # sudo make EP_mnmlstc_core
-      # make
-      # sudo make install
-      #
-      # sudo apt-get install mongodb
+      message(FATAL_ERROR "Could NOT find mongo-c-driver. Disable mongo support or ensure mongo-c-driver and mongo-cxx-driver is built and installed")
+      return()
   endif()
+
+  # This needs to be after the else/return in the situation that libmongoc isn't found and we need to avoid building mongo :: 'bsoncxx/builder/basic/kvp.hpp' file not found
+  file(GLOB HEADERS "include/eosio/mongo_db_plugin/*.hpp")
+  add_library( mongo_db_plugin
+               mongo_db_plugin.cpp
+               ${HEADERS} )
 
   target_include_directories(mongo_db_plugin
           PRIVATE ${LIBMONGOCXX_STATIC_INCLUDE_DIRS} ${LIBBSONCXX_STATIC_INCLUDE_DIRS}
@@ -75,10 +29,35 @@ if(BUILD_MONGO_DB_PLUGIN)
     PRIVATE ${LIBMONGOCXX_STATIC_DEFINITIONS} ${LIBBSONCXX_STATIC_DEFINITIONS}
     )
 
+  # We can't just use *_STATIC_LIBRARIES variables to link against because the static
+  # variants of these may try to static link against libraries we don't want (like a system
+  # libc/c++). But we need to know if mongo c driver was built with ICU, SASL2, or snappy support
+  # so that we can continue to link to those. This certainly is a bit on the fragile side but
+  # try to parse what is included in MONGOC_STATIC_LIBRARIES to see what we should link to
+  foreach(MONGO_S_LIB ${MONGOC_STATIC_LIBRARIES})
+    string(REGEX MATCH "libsasl2\\${CMAKE_SHARED_LIBRARY_SUFFIX}$" REGOUT ${MONGO_S_LIB})
+    if(REGOUT)
+      set(LINK_SASL "sasl2")
+    endif()
+
+    string(REGEX MATCH "libicuuc\\${CMAKE_SHARED_LIBRARY_SUFFIX}$" REGOUT ${MONGO_S_LIB})
+    if(REGOUT)
+      set(LINK_ICU "icuuc")
+    endif()
+
+    string(REGEX MATCH "libsnappy\\${CMAKE_SHARED_LIBRARY_SUFFIX}$" REGOUT ${MONGO_S_LIB})
+    if(REGOUT)
+      set(LINK_SNAPPY "snappy")
+    endif()
+  endforeach()
+
   target_link_libraries(mongo_db_plugin
           PUBLIC chain_plugin eosio_chain appbase
-          ${EOS_LIBMONGOCXX} ${EOS_LIBBSONCXX}
+          ${LIBMONGOCXX_STATIC_LIBRARY_PATH} ${LIBBSONCXX_STATIC_LIBRARY_PATH}
+          ${MONGOC_STATIC_LIBRARY} ${BSON_STATIC_LIBRARY}
+          resolv ${LINK_SASL} ${LINK_ICU} ${LINK_SNAPPY}
           )
+
 else()
   message("mongo_db_plugin not selected and will be omitted.")
 endif()

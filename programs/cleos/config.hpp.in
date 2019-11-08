@@ -1,11 +1,14 @@
 /** @file 
- *    @copyright defined in eos/LICENSE.txt 
+ *    @copyright defined in eos/LICENSE 
  *
  * \warning This file is machine generated. DO NOT EDIT.  See config.hpp.in for changes.
  */
+#pragma once
 
 namespace eosio { namespace client { namespace config {
    constexpr char version_str[] = "${cleos_BUILD_VERSION}";
    constexpr char locale_path[] = "${LOCALEDIR}";
    constexpr char locale_domain[] = "${LOCALEDOMAIN}";
+   constexpr char key_store_executable_name[] = "${KEY_STORE_EXECUTABLE_NAME}";
+   constexpr char node_executable_name[] = "${NODE_EXECUTABLE_NAME}";
 }}}

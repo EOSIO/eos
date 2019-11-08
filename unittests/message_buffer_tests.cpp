@@ -1,12 +1,12 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in eos/LICENSE
  */
-
-#include <fc/network/message_buffer.hpp>
-#include <boost/test/unit_test.hpp>
 #include <iostream>
 
+#include <boost/test/unit_test.hpp>
+
+#include <fc/network/message_buffer.hpp>
 
 namespace eosio {
 using namespace std;
@@ -29,8 +29,8 @@ void* mb_data(boost::asio::mutable_buffer& mb) {
 
 BOOST_AUTO_TEST_SUITE(message_buffer_tests)
 
-constexpr auto     def_buffer_size_mb = 4;
-constexpr auto     def_buffer_size = 1024*1024*def_buffer_size_mb;
+constexpr size_t     def_buffer_size_mb = 4;
+constexpr size_t     def_buffer_size = 1024*1024*def_buffer_size_mb;
 
 /// Test default construction and buffer sequence generation
 BOOST_AUTO_TEST_CASE(message_buffer_construction)
@@ -39,7 +39,7 @@ BOOST_AUTO_TEST_CASE(message_buffer_construction)
     fc::message_buffer<def_buffer_size> mb;
     BOOST_CHECK_EQUAL(mb.total_bytes(), def_buffer_size);
     BOOST_CHECK_EQUAL(mb.bytes_to_write(), def_buffer_size);
-    BOOST_CHECK_EQUAL(mb.bytes_to_read(), 0);
+    BOOST_CHECK_EQUAL(mb.bytes_to_read(), 0u);
     BOOST_CHECK_EQUAL(mb.read_ptr(), mb.write_ptr());
 
     auto mbs = mb.get_buffer_sequence_for_boost_async_read();
@@ -60,7 +60,7 @@ BOOST_AUTO_TEST_CASE(message_buffer_growth)
     mb.add_buffer_to_chain();
     BOOST_CHECK_EQUAL(mb.total_bytes(), 2 * def_buffer_size);
     BOOST_CHECK_EQUAL(mb.bytes_to_write(), 2 * def_buffer_size);
-    BOOST_CHECK_EQUAL(mb.bytes_to_read(), 0);
+    BOOST_CHECK_EQUAL(mb.bytes_to_read(), 0u);
     BOOST_CHECK_EQUAL(mb.read_ptr(), mb.write_ptr());
 
     {
@@ -79,7 +79,7 @@ BOOST_AUTO_TEST_CASE(message_buffer_growth)
     mb.advance_write_ptr(100);
     BOOST_CHECK_EQUAL(mb.total_bytes(), 2 * def_buffer_size);
     BOOST_CHECK_EQUAL(mb.bytes_to_write(), 2 * def_buffer_size - 100);
-    BOOST_CHECK_EQUAL(mb.bytes_to_read(), 100);
+    BOOST_CHECK_EQUAL(mb.bytes_to_read(), 100u);
     BOOST_CHECK_NE(mb.read_ptr(), nullptr);
     BOOST_CHECK_NE(mb.write_ptr(), nullptr);
     BOOST_CHECK_EQUAL((mb.read_ptr() + 100), mb.write_ptr());
@@ -100,7 +100,7 @@ BOOST_AUTO_TEST_CASE(message_buffer_growth)
     mb.advance_read_ptr(50);
     BOOST_CHECK_EQUAL(mb.total_bytes(), 2 * def_buffer_size);
     BOOST_CHECK_EQUAL(mb.bytes_to_write(), 2 * def_buffer_size - 100);
-    BOOST_CHECK_EQUAL(mb.bytes_to_read(), 50);
+    BOOST_CHECK_EQUAL(mb.bytes_to_read(), 50u);
 
     mb.advance_write_ptr(def_buffer_size);
     BOOST_CHECK_EQUAL(mb.total_bytes(), 2 * def_buffer_size);
@@ -111,29 +111,29 @@ BOOST_AUTO_TEST_CASE(message_buffer_growth)
     mb.advance_read_ptr(def_buffer_size);
     BOOST_CHECK_EQUAL(mb.total_bytes(), def_buffer_size);
     BOOST_CHECK_EQUAL(mb.bytes_to_write(), def_buffer_size - 100);
-    BOOST_CHECK_EQUAL(mb.bytes_to_read(), 50);
+    BOOST_CHECK_EQUAL(mb.bytes_to_read(), 50u);
 
     // Moving read_ptr to write_ptr should shrink chain and reset ptrs
     mb.advance_read_ptr(50);
     BOOST_CHECK_EQUAL(mb.total_bytes(), def_buffer_size);
     BOOST_CHECK_EQUAL(mb.bytes_to_write(), def_buffer_size);
-    BOOST_CHECK_EQUAL(mb.bytes_to_read(), 0);
+    BOOST_CHECK_EQUAL(mb.bytes_to_read(), 0u);
 
     mb.add_buffer_to_chain();
     BOOST_CHECK_EQUAL(mb.total_bytes(), 2 * def_buffer_size);
     BOOST_CHECK_EQUAL(mb.bytes_to_write(), 2 * def_buffer_size);
-    BOOST_CHECK_EQUAL(mb.bytes_to_read(), 0);
+    BOOST_CHECK_EQUAL(mb.bytes_to_read(), 0u);
 
     mb.advance_write_ptr(50);
     BOOST_CHECK_EQUAL(mb.total_bytes(), 2 * def_buffer_size);
     BOOST_CHECK_EQUAL(mb.bytes_to_write(), 2 * def_buffer_size - 50);
-    BOOST_CHECK_EQUAL(mb.bytes_to_read(), 50);
+    BOOST_CHECK_EQUAL(mb.bytes_to_read(), 50u);
 
     // Moving read_ptr to write_ptr should shrink chain and reset ptrs
     mb.advance_read_ptr(50);
     BOOST_CHECK_EQUAL(mb.total_bytes(), def_buffer_size);
     BOOST_CHECK_EQUAL(mb.bytes_to_write(), def_buffer_size);
-    BOOST_CHECK_EQUAL(mb.bytes_to_read(), 0);
+    BOOST_CHECK_EQUAL(mb.bytes_to_read(), 0u);
   }
   FC_LOG_AND_RETHROW()
 }
@@ -227,7 +227,7 @@ BOOST_AUTO_TEST_CASE(message_buffer_write_ptr_to_end)
       BOOST_CHECK_EQUAL(mb.write_index().second, 0);
 
       char* write_ptr = mb.write_ptr();
-      for (char ind = 0; ind < small; ind++) {
+      for (uint32_t ind = 0; ind < small; ind++) {
         *write_ptr = ind;
         write_ptr++;
       }
@@ -318,7 +318,45 @@ BOOST_AUTO_TEST_CASE(message_buffer_read_peek_bounds_multi) {
    BOOST_CHECK_THROW(mbuff.read(&throw_away_buffer, 1), fc::out_of_range_exception);
 }
 
+BOOST_AUTO_TEST_CASE(message_buffer_datastream) {
+   using my_message_buffer_t = fc::message_buffer<1024>;
+   my_message_buffer_t mbuff;
+
+   char buf[1024];
+   fc::datastream<char*> ds( buf, 1024 );
+
+   int v = 13;
+   fc::raw::pack( ds, v );
+   v = 42;
+   fc::raw::pack( ds, 42 );
+   fc::raw::pack( ds, std::string( "hello" ) );
+
+   memcpy(mbuff.write_ptr(), buf, 1024);
+   mbuff.advance_write_ptr(1024);
+
+   for( int i = 0; i < 3; ++i ) {
+      auto ds2 = mbuff.create_peek_datastream();
+      fc::raw::unpack( ds2, v );
+      BOOST_CHECK_EQUAL( 13, v );
+      fc::raw::unpack( ds2, v );
+      BOOST_CHECK_EQUAL( 42, v );
+      std::string s;
+      fc::raw::unpack( ds2, s );
+      BOOST_CHECK_EQUAL( s, std::string( "hello" ) );
+   }
+
+   {
+      auto ds2 = mbuff.create_datastream();
+      fc::raw::unpack( ds2, v );
+      BOOST_CHECK_EQUAL( 13, v );
+      fc::raw::unpack( ds2, v );
+      BOOST_CHECK_EQUAL( 42, v );
+      std::string s;
+      fc::raw::unpack( ds2, s );
+      BOOST_CHECK_EQUAL( s, std::string( "hello" ) );
+   }
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 
 } // namespace eosio
-

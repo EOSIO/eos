@@ -11,6 +11,7 @@
 #include <eosio/chain/wasm_eosio_validation.hpp>
 #include <eosio/chain/wasm_eosio_injection.hpp>
 #include <eosio/chain/global_property_object.hpp>
+#include <eosio/chain/protocol_state_object.hpp>
 #include <eosio/chain/account_object.hpp>
 #include <fc/exception/exception.hpp>
 #include <fc/crypto/sha256.hpp>
@@ -22,16 +23,17 @@
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
 #include <fstream>
+#include <string.h>
 
 namespace eosio { namespace chain {
    using namespace webassembly;
    using namespace webassembly::common;
 
-   wasm_interface::wasm_interface(vm_type vm) : my( new wasm_interface_impl(vm) ) {}
+   wasm_interface::wasm_interface(vm_type vm, const chainbase::database& d) : my( new wasm_interface_impl(vm, d) ) {}
 
    wasm_interface::~wasm_interface() {}
 
-   void wasm_interface::validate(const bytes& code) {
+   void wasm_interface::validate(const controller& control, const bytes& code) {
       Module module;
       try {
          Serialization::MemoryInputStream stream((U8*)code.data(), code.size());
@@ -42,10 +44,12 @@ namespace eosio { namespace chain {
          EOS_ASSERT(false, wasm_serialization_error, e.message.c_str());
       }
 
-      wasm_validations::wasm_binary_validation validator(module);
+      wasm_validations::wasm_binary_validation validator(control, module);
       validator.validate();
 
-      root_resolver resolver(true);
+      const auto& pso = control.db().get<protocol_state_object>();
+
+      root_resolver resolver( pso.whitelisted_intrinsics );
       LinkResult link_result = linkModule(module, resolver);
 
       //there are a couple opportunties for improvement here--
@@ -53,8 +57,24 @@ namespace eosio { namespace chain {
       //Hard: Kick off instantiation in a separate thread at this location
 	 }
 
-   void wasm_interface::apply( const digest_type& code_id, const shared_string& code, apply_context& context ) {
-      my->get_instantiated_module(code_id, code, context.trx_context)->apply(context);
+   void wasm_interface::indicate_shutting_down() {
+      my->is_shutting_down = true;
+   }
+
+   void wasm_interface::code_block_num_last_used(const digest_type& code_hash, const uint8_t& vm_type, const uint8_t& vm_version, const uint32_t& block_num) {
+      my->code_block_num_last_used(code_hash, vm_type, vm_version, block_num);
+   }
+
+   void wasm_interface::current_lib(const uint32_t lib) {
+      my->current_lib(lib);
+   }
+
+   void wasm_interface::apply( const digest_type& code_hash, const uint8_t& vm_type, const uint8_t& vm_version, apply_context& context ) {
+      my->get_instantiated_module(code_hash, vm_type, vm_version, context.trx_context)->apply(context);
+   }
+
+   void wasm_interface::exit() {
+      my->runtime_interface->immediately_exit_currently_running_module();
    }
 
    wasm_instantiated_module_interface::~wasm_instantiated_module_interface() {}
@@ -69,9 +89,8 @@ class context_aware_api {
       context_aware_api(apply_context& ctx, bool context_free = false )
       :context(ctx)
       {
-         if( context.context_free )
-            FC_ASSERT( context_free, "only context free api's can be used in this context" );
-         context.used_context_free_api |= !context_free;
+         if( context.is_context_free() )
+            EOS_ASSERT( context_free, unaccessible_api, "only context free api's can be used in this context" );
       }
 
       void checktime() {
@@ -88,7 +107,7 @@ class context_free_api : public context_aware_api {
       context_free_api( apply_context& ctx )
       :context_aware_api(ctx, true) {
          /* the context_free_data is not available during normal application because it is prunable */
-         FC_ASSERT( context.context_free, "this API may only be called from context_free apply" );
+         EOS_ASSERT( context.is_context_free(), unaccessible_api, "this API may only be called from context_free apply" );
       }
 
       int get_context_free_data( uint32_t index, array_ptr<char> buffer, size_t buffer_size )const {
@@ -101,7 +120,7 @@ class privileged_api : public context_aware_api {
       privileged_api( apply_context& ctx )
       :context_aware_api(ctx)
       {
-         FC_ASSERT( context.privileged, "${code} does not have permission to call this API", ("code",context.receiver) );
+         EOS_ASSERT( context.is_privileged(), unaccessible_api, "${code} does not have permission to call this API", ("code",context.get_receiver()) );
       }
 
       /**
@@ -122,7 +141,16 @@ class privileged_api : public context_aware_api {
        *  Feature name should be base32 encoded name.
        */
       void activate_feature( int64_t feature_name ) {
-         FC_ASSERT( !"Unsupported Hardfork Detected" );
+         EOS_ASSERT( false, unsupported_feature, "Unsupported Hardfork Detected" );
+      }
+
+      /**
+       *  Pre-activates the specified protocol feature.
+       *  Fails if the feature is unrecognized, disabled, or not allowed to be activated at the current time.
+       *  Also fails if the feature was already activated or pre-activated.
+       */
+      void preactivate_feature( const digest_type& feature_digest ) {
+         context.control.preactivate_feature( feature_digest );
       }
 
       /**
@@ -151,6 +179,13 @@ class privileged_api : public context_aware_api {
          datastream<const char*> ds( packed_producer_schedule, datalen );
          vector<producer_key> producers;
          fc::raw::unpack(ds, producers);
+         EOS_ASSERT( producers.size() > 0
+                        || !context.control.is_builtin_activated(
+                              builtin_protocol_feature_t::disallow_empty_producer_schedule
+                           ),
+                     wasm_execution_error,
+                     "Producer schedule cannot be empty"
+         );
          EOS_ASSERT(producers.size() <= config::max_producers, wasm_execution_error, "Producer schedule exceeds the maximum producer count for this chain");
          // check that producers are unique
          std::set<account_name> unique_producers;
@@ -189,13 +224,13 @@ class privileged_api : public context_aware_api {
       }
 
       bool is_privileged( account_name n )const {
-         return context.db.get<account_object, by_name>( n ).privileged;
+         return context.db.get<account_metadata_object, by_name>( n ).is_privileged();
       }
 
       void set_privileged( account_name n, bool is_priv ) {
-         const auto& a = context.db.get<account_object, by_name>( n );
+         const auto& a = context.db.get<account_metadata_object, by_name>( n );
          context.db.modify( a, [&]( auto& ma ){
-            ma.privileged = is_priv;
+            ma.set_privileged( is_priv );
          });
       }
 
@@ -207,6 +242,8 @@ class softfloat_api : public context_aware_api {
       softfloat_api( apply_context& ctx )
       :context_aware_api(ctx, true) {}
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstrict-aliasing"
       // float binops
       float _eosio_f32_add( float a, float b ) {
          float32_t ret = f32_add( to_softfloat32(a), to_softfloat32(b) );
@@ -224,6 +261,7 @@ class softfloat_api : public context_aware_api {
          float32_t ret = f32_mul( to_softfloat32(a), to_softfloat32(b) );
          return *reinterpret_cast<float*>(&ret);
       }
+#pragma GCC diagnostic pop
       float _eosio_f32_min( float af, float bf ) {
          float32_t a = to_softfloat32(af);
          float32_t b = to_softfloat32(bf);
@@ -233,8 +271,8 @@ class softfloat_api : public context_aware_api {
          if (is_nan(b)) {
             return bf;
          }
-         if ( sign_bit(a) != sign_bit(b) ) {
-            return sign_bit(a) ? af : bf;
+         if ( f32_sign_bit(a) != f32_sign_bit(b) ) {
+            return f32_sign_bit(a) ? af : bf;
          }
          return f32_lt(a,b) ? af : bf;
       }
@@ -247,8 +285,8 @@ class softfloat_api : public context_aware_api {
          if (is_nan(b)) {
             return bf;
          }
-         if ( sign_bit(a) != sign_bit(b) ) {
-            return sign_bit(a) ? bf : af;
+         if ( f32_sign_bit(a) != f32_sign_bit(b) ) {
+            return f32_sign_bit(a) ? bf : af;
          }
          return f32_lt( a, b ) ? bf : af;
       }
@@ -400,8 +438,8 @@ class softfloat_api : public context_aware_api {
             return af;
          if (is_nan(b))
             return bf;
-         if (sign_bit(a) != sign_bit(b))
-            return sign_bit(a) ? af : bf;
+         if (f64_sign_bit(a) != f64_sign_bit(b))
+            return f64_sign_bit(a) ? af : bf;
          return f64_lt( a, b ) ? af : bf;
       }
       double _eosio_f64_max( double af, double bf ) {
@@ -411,8 +449,8 @@ class softfloat_api : public context_aware_api {
             return af;
          if (is_nan(b))
             return bf;
-         if (sign_bit(a) != sign_bit(b))
-            return sign_bit(a) ? bf : af;
+         if (f64_sign_bit(a) != f64_sign_bit(b))
+            return f64_sign_bit(a) ? bf : af;
          return f64_lt( a, b ) ? bf : af;
       }
       double _eosio_f64_copysign( double af, double bf ) {
@@ -646,32 +684,17 @@ class softfloat_api : public context_aware_api {
       }
 
       static bool is_nan( const float32_t f ) {
-         return ((f.v & 0x7FFFFFFF) > 0x7F800000);
+         return f32_is_nan( f );
       }
       static bool is_nan( const float64_t f ) {
-         return ((f.v & 0x7FFFFFFFFFFFFFFF) > 0x7FF0000000000000);
+         return f64_is_nan( f );
       }
       static bool is_nan( const float128_t& f ) {
-         return (((~(f.v[1]) & uint64_t( 0x7FFF000000000000 )) == 0) && (f.v[0] || ((f.v[1]) & uint64_t( 0x0000FFFFFFFFFFFF ))));
+         return f128_is_nan( f );
       }
-      static float32_t to_softfloat32( float f ) {
-         return *reinterpret_cast<float32_t*>(&f);
-      }
-      static float64_t to_softfloat64( double d ) {
-         return *reinterpret_cast<float64_t*>(&d);
-      }
-      static float from_softfloat32( float32_t f ) {
-         return *reinterpret_cast<float*>(&f);
-      }
-      static double from_softfloat64( float64_t d ) {
-         return *reinterpret_cast<double*>(&d);
-      }
+
       static constexpr uint32_t inv_float_eps = 0x4B000000;
       static constexpr uint64_t inv_double_eps = 0x4330000000000000;
-
-      static bool sign_bit( float32_t f ) { return f.v >> 31; }
-      static bool sign_bit( float64_t f ) { return f.v >> 63; }
-
 };
 
 class producer_api : public context_aware_api {
@@ -712,7 +735,7 @@ class crypto_api : public context_aware_api {
          fc::raw::unpack(pubds, p);
 
          auto check = fc::crypto::public_key( s, digest, false );
-         FC_ASSERT( check == p, "Error expected key different than recovered key" );
+         EOS_ASSERT( check == p, crypto_api_exception, "Error expected key different than recovered key" );
       }
 
       int recover_key( const fc::sha256& digest,
@@ -742,22 +765,22 @@ class crypto_api : public context_aware_api {
 
       void assert_sha256(array_ptr<char> data, size_t datalen, const fc::sha256& hash_val) {
          auto result = encode<fc::sha256::encoder>( data, datalen );
-         FC_ASSERT( result == hash_val, "hash mismatch" );
+         EOS_ASSERT( result == hash_val, crypto_api_exception, "hash mismatch" );
       }
 
       void assert_sha1(array_ptr<char> data, size_t datalen, const fc::sha1& hash_val) {
          auto result = encode<fc::sha1::encoder>( data, datalen );
-         FC_ASSERT( result == hash_val, "hash mismatch" );
+         EOS_ASSERT( result == hash_val, crypto_api_exception, "hash mismatch" );
       }
 
       void assert_sha512(array_ptr<char> data, size_t datalen, const fc::sha512& hash_val) {
          auto result = encode<fc::sha512::encoder>( data, datalen );
-         FC_ASSERT( result == hash_val, "hash mismatch" );
+         EOS_ASSERT( result == hash_val, crypto_api_exception, "hash mismatch" );
       }
 
       void assert_ripemd160(array_ptr<char> data, size_t datalen, const fc::ripemd160& hash_val) {
          auto result = encode<fc::ripemd160::encoder>( data, datalen );
-         FC_ASSERT( result == hash_val, "hash mismatch" );
+         EOS_ASSERT( result == hash_val, crypto_api_exception, "hash mismatch" );
       }
 
       void sha1(array_ptr<char> data, size_t datalen, fc::sha1& hash_val) {
@@ -910,7 +933,19 @@ class system_api : public context_aware_api {
          return static_cast<uint64_t>( context.trx_context.published.time_since_epoch().count() );
       }
 
+      /**
+       * Returns true if the specified protocol feature is activated, false if not.
+       */
+      bool is_feature_activated( const digest_type& feature_digest ) {
+         return context.control.is_protocol_feature_activated( feature_digest );
+      }
+
+      name get_sender() {
+         return context.get_sender();
+      }
 };
+
+constexpr size_t max_assert_message = 1024;
 
 class context_free_system_api :  public context_aware_api {
 public:
@@ -918,37 +953,50 @@ public:
    :context_aware_api(ctx,true){}
 
    void abort() {
-      edump(("abort() called"));
-      FC_ASSERT( false, "abort() called");
+      EOS_ASSERT( false, abort_called, "abort() called");
    }
 
    // Kept as intrinsic rather than implementing on WASM side (using eosio_assert_message and strlen) because strlen is faster on native side.
    void eosio_assert( bool condition, null_terminated_ptr msg ) {
       if( BOOST_UNLIKELY( !condition ) ) {
-         std::string message( msg );
-         edump((message));
+         const size_t sz = strnlen( msg, max_assert_message );
+         std::string message( msg, sz );
          EOS_THROW( eosio_assert_message_exception, "assertion failure with message: ${s}", ("s",message) );
       }
    }
 
    void eosio_assert_message( bool condition, array_ptr<const char> msg, size_t msg_len ) {
       if( BOOST_UNLIKELY( !condition ) ) {
-         std::string message( msg, msg_len );
-         edump((message));
+         const size_t sz = msg_len > max_assert_message ? max_assert_message : msg_len;
+         std::string message( msg, sz );
          EOS_THROW( eosio_assert_message_exception, "assertion failure with message: ${s}", ("s",message) );
       }
    }
 
    void eosio_assert_code( bool condition, uint64_t error_code ) {
       if( BOOST_UNLIKELY( !condition ) ) {
-         edump((error_code));
-         EOS_THROW( eosio_assert_code_exception,
-                    "assertion failure with error code: ${error_code}", ("error_code", error_code) );
+         if( error_code >= static_cast<uint64_t>(system_error_code::generic_system_error) ) {
+            restricted_error_code_exception e( FC_LOG_MESSAGE(
+                                                   error,
+                                                   "eosio_assert_code called with reserved error code: ${error_code}",
+                                                   ("error_code", error_code)
+            ) );
+            e.error_code = static_cast<uint64_t>(system_error_code::contract_restricted_error_code);
+            throw e;
+         } else {
+            eosio_assert_code_exception e( FC_LOG_MESSAGE(
+                                             error,
+                                             "assertion failure with error code: ${error_code}",
+                                             ("error_code", error_code)
+            ) );
+            e.error_code = error_code;
+            throw e;
+         }
       }
    }
 
    void eosio_exit(int32_t code) {
-      throw wasm_exit{code};
+      context.control.get_wasm_interface().exit();
    }
 
 };
@@ -959,21 +1007,21 @@ class action_api : public context_aware_api {
       :context_aware_api(ctx,true){}
 
       int read_action_data(array_ptr<char> memory, size_t buffer_size) {
-         auto s = context.act.data.size();
+         auto s = context.get_action().data.size();
          if( buffer_size == 0 ) return s;
 
          auto copy_size = std::min( buffer_size, s );
-         memcpy( memory, context.act.data.data(), copy_size );
+         memcpy( memory, context.get_action().data.data(), copy_size );
 
          return copy_size;
       }
 
       int action_data_size() {
-         return context.act.data.size();
+         return context.get_action().data.size();
       }
 
       name current_receiver() {
-         return context.receiver;
+         return context.get_receiver();
       }
 };
 
@@ -986,7 +1034,7 @@ class console_api : public context_aware_api {
       // Kept as intrinsic rather than implementing on WASM side (using prints_l and strlen) because strlen is faster on native side.
       void prints(null_terminated_ptr str) {
          if ( !ignore ) {
-            context.console_append<const char*>(str);
+            context.console_append( static_cast<const char*>(str) );
          }
       }
 
@@ -998,13 +1046,17 @@ class console_api : public context_aware_api {
 
       void printi(int64_t val) {
          if ( !ignore ) {
-            context.console_append(val);
+            std::ostringstream oss;
+            oss << val;
+            context.console_append( oss.str() );
          }
       }
 
       void printui(uint64_t val) {
          if ( !ignore ) {
-            context.console_append(val);
+            std::ostringstream oss;
+            oss << val;
+            context.console_append( oss.str() );
          }
       }
 
@@ -1020,11 +1072,13 @@ class console_api : public context_aware_api {
 
             fc::uint128_t v(val_magnitude>>64, static_cast<uint64_t>(val_magnitude) );
 
+            string s;
             if( is_negative ) {
-               context.console_append("-");
+               s += '-';
             }
+            s += fc::variant(v).get_string();
 
-            context.console_append(fc::variant(v).get_string());
+            context.console_append( s );
          }
       }
 
@@ -1038,26 +1092,22 @@ class console_api : public context_aware_api {
       void printsf( float val ) {
          if ( !ignore ) {
             // Assumes float representation on native side is the same as on the WASM side
-            auto& console = context.get_console_stream();
-            auto orig_prec = console.precision();
-
-            console.precision( std::numeric_limits<float>::digits10 );
-            context.console_append(val);
-
-            console.precision( orig_prec );
+            std::ostringstream oss;
+            oss.setf( std::ios::scientific, std::ios::floatfield );
+            oss.precision( std::numeric_limits<float>::digits10 );
+            oss << val;
+            context.console_append( oss.str() );
          }
       }
 
       void printdf( double val ) {
          if ( !ignore ) {
             // Assumes double representation on native side is the same as on the WASM side
-            auto& console = context.get_console_stream();
-            auto orig_prec = console.precision();
-
-            console.precision( std::numeric_limits<double>::digits10 );
-            context.console_append(val);
-
-            console.precision( orig_prec );
+            std::ostringstream oss;
+            oss.setf( std::ios::scientific, std::ios::floatfield );
+            oss.precision( std::numeric_limits<double>::digits10 );
+            oss << val;
+            context.console_append( oss.str() );
          }
       }
 
@@ -1075,16 +1125,23 @@ class console_api : public context_aware_api {
           */
 
          if ( !ignore ) {
-            auto& console = context.get_console_stream();
-            auto orig_prec = console.precision();
+            std::ostringstream oss;
+            oss.setf( std::ios::scientific, std::ios::floatfield );
 
-            console.precision( std::numeric_limits<long double>::digits10 );
-
+#ifdef __x86_64__
+            oss.precision( std::numeric_limits<long double>::digits10 );
             extFloat80_t val_approx;
             f128M_to_extF80M(&val, &val_approx);
-            context.console_append( *(long double*)(&val_approx) );
-
-            console.precision( orig_prec );
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstrict-aliasing"
+            oss << *(long double*)(&val_approx);
+#pragma GCC diagnostic pop
+#else
+            oss.precision( std::numeric_limits<double>::digits10 );
+            double val_approx = from_softfloat64( f128M_to_f64(&val) );
+            oss << val_approx;
+#endif
+            context.console_append( oss.str() );
          }
       }
 
@@ -1138,13 +1195,15 @@ class console_api : public context_aware_api {
 
 #define DB_API_METHOD_WRAPPERS_ARRAY_SECONDARY(IDX, ARR_SIZE, ARR_ELEMENT_TYPE)\
       int db_##IDX##_store( uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, array_ptr<const ARR_ELEMENT_TYPE> data, size_t data_len) {\
-         FC_ASSERT( data_len == ARR_SIZE,\
+         EOS_ASSERT( data_len == ARR_SIZE,\
+                    db_api_exception,\
                     "invalid size of secondary key array for " #IDX ": given ${given} bytes but expected ${expected} bytes",\
                     ("given",data_len)("expected",ARR_SIZE) );\
          return context.IDX.store(scope, table, payer, id, data.value);\
       }\
       void db_##IDX##_update( int iterator, uint64_t payer, array_ptr<const ARR_ELEMENT_TYPE> data, size_t data_len ) {\
-         FC_ASSERT( data_len == ARR_SIZE,\
+         EOS_ASSERT( data_len == ARR_SIZE,\
+                    db_api_exception,\
                     "invalid size of secondary key array for " #IDX ": given ${given} bytes but expected ${expected} bytes",\
                     ("given",data_len)("expected",ARR_SIZE) );\
          return context.IDX.update(iterator, payer, data.value);\
@@ -1153,25 +1212,29 @@ class console_api : public context_aware_api {
          return context.IDX.remove(iterator);\
       }\
       int db_##IDX##_find_secondary( uint64_t code, uint64_t scope, uint64_t table, array_ptr<const ARR_ELEMENT_TYPE> data, size_t data_len, uint64_t& primary ) {\
-         FC_ASSERT( data_len == ARR_SIZE,\
+         EOS_ASSERT( data_len == ARR_SIZE,\
+                    db_api_exception,\
                     "invalid size of secondary key array for " #IDX ": given ${given} bytes but expected ${expected} bytes",\
                     ("given",data_len)("expected",ARR_SIZE) );\
          return context.IDX.find_secondary(code, scope, table, data, primary);\
       }\
       int db_##IDX##_find_primary( uint64_t code, uint64_t scope, uint64_t table, array_ptr<ARR_ELEMENT_TYPE> data, size_t data_len, uint64_t primary ) {\
-         FC_ASSERT( data_len == ARR_SIZE,\
+         EOS_ASSERT( data_len == ARR_SIZE,\
+                    db_api_exception,\
                     "invalid size of secondary key array for " #IDX ": given ${given} bytes but expected ${expected} bytes",\
                     ("given",data_len)("expected",ARR_SIZE) );\
          return context.IDX.find_primary(code, scope, table, data.value, primary);\
       }\
       int db_##IDX##_lowerbound( uint64_t code, uint64_t scope, uint64_t table, array_ptr<ARR_ELEMENT_TYPE> data, size_t data_len, uint64_t& primary ) {\
-         FC_ASSERT( data_len == ARR_SIZE,\
+         EOS_ASSERT( data_len == ARR_SIZE,\
+                    db_api_exception,\
                     "invalid size of secondary key array for " #IDX ": given ${given} bytes but expected ${expected} bytes",\
                     ("given",data_len)("expected",ARR_SIZE) );\
          return context.IDX.lowerbound_secondary(code, scope, table, data.value, primary);\
       }\
       int db_##IDX##_upperbound( uint64_t code, uint64_t scope, uint64_t table, array_ptr<ARR_ELEMENT_TYPE> data, size_t data_len, uint64_t& primary ) {\
-         FC_ASSERT( data_len == ARR_SIZE,\
+         EOS_ASSERT( data_len == ARR_SIZE,\
+                    db_api_exception,\
                     "invalid size of secondary key array for " #IDX ": given ${given} bytes but expected ${expected} bytes",\
                     ("given",data_len)("expected",ARR_SIZE) );\
          return context.IDX.upperbound_secondary(code, scope, table, data.value, primary);\
@@ -1271,7 +1334,7 @@ class memory_api : public context_aware_api {
       :context_aware_api(ctx,true){}
 
       char* memcpy( array_ptr<char> dest, array_ptr<const char> src, size_t length) {
-         EOS_ASSERT((std::abs((ptrdiff_t)dest.value - (ptrdiff_t)src.value)) >= length,
+         EOS_ASSERT((size_t)(std::abs((ptrdiff_t)dest.value - (ptrdiff_t)src.value)) >= length,
                overlapping_memory_error, "memcpy can only accept non-aliasing pointers");
          return (char *)::memcpy(dest, src, length);
       }
@@ -1300,7 +1363,7 @@ class transaction_api : public context_aware_api {
 
       void send_inline( array_ptr<char> data, size_t data_len ) {
          //TODO: Why is this limit even needed? And why is it not consistently checked on actions in input or deferred transactions
-         FC_ASSERT( data_len < context.control.get_global_properties().configuration.max_inline_action_size,
+         EOS_ASSERT( data_len < context.control.get_global_properties().configuration.max_inline_action_size, inline_action_too_big,
                     "inline action too big" );
 
          action act;
@@ -1310,7 +1373,7 @@ class transaction_api : public context_aware_api {
 
       void send_context_free_inline( array_ptr<char> data, size_t data_len ) {
          //TODO: Why is this limit even needed? And why is it not consistently checked on actions in input or deferred transactions
-         FC_ASSERT( data_len < context.control.get_global_properties().configuration.max_inline_action_size,
+         EOS_ASSERT( data_len < context.control.get_global_properties().configuration.max_inline_action_size, inline_action_too_big,
                    "inline action too big" );
 
          action act;
@@ -1319,11 +1382,9 @@ class transaction_api : public context_aware_api {
       }
 
       void send_deferred( const uint128_t& sender_id, account_name payer, array_ptr<char> data, size_t data_len, uint32_t replace_existing) {
-         try {
-            transaction trx;
-            fc::raw::unpack<transaction>(data, data_len, trx);
-            context.schedule_deferred_transaction(sender_id, payer, std::move(trx), replace_existing);
-         } FC_CAPTURE_AND_RETHROW((fc::to_hex(data, data_len)));
+         transaction trx;
+         fc::raw::unpack<transaction>(data, data_len, trx);
+         context.schedule_deferred_transaction(sender_id, payer, std::move(trx), replace_existing);
       }
 
       bool cancel_deferred( const unsigned __int128& val ) {
@@ -1411,7 +1472,7 @@ class compiler_builtins : public context_aware_api {
          rhs <<= 64;
          rhs |=  lb;
 
-         FC_ASSERT(rhs != 0, "divide by zero");
+         EOS_ASSERT(rhs != 0, arithmetic_exception, "divide by zero");
 
          lhs /= rhs;
 
@@ -1428,7 +1489,7 @@ class compiler_builtins : public context_aware_api {
          rhs <<= 64;
          rhs |=  lb;
 
-         FC_ASSERT(rhs != 0, "divide by zero");
+         EOS_ASSERT(rhs != 0, arithmetic_exception, "divide by zero");
 
          lhs /= rhs;
          ret = lhs;
@@ -1458,7 +1519,7 @@ class compiler_builtins : public context_aware_api {
          rhs <<= 64;
          rhs |=  lb;
 
-         FC_ASSERT(rhs != 0, "divide by zero");
+         EOS_ASSERT(rhs != 0, arithmetic_exception, "divide by zero");
 
          lhs %= rhs;
          ret = lhs;
@@ -1474,7 +1535,7 @@ class compiler_builtins : public context_aware_api {
          rhs <<= 64;
          rhs |=  lb;
 
-         FC_ASSERT(rhs != 0, "divide by zero");
+         EOS_ASSERT(rhs != 0, arithmetic_exception, "divide by zero");
 
          lhs %= rhs;
          ret = lhs;
@@ -1507,18 +1568,18 @@ class compiler_builtins : public context_aware_api {
 
       // conversion long double
       void __extendsftf2( float128_t& ret, float f ) {
-         ret = f32_to_f128( softfloat_api::to_softfloat32(f) );
+         ret = f32_to_f128( to_softfloat32(f) );
       }
       void __extenddftf2( float128_t& ret, double d ) {
-         ret = f64_to_f128( softfloat_api::to_softfloat64(d) );
+         ret = f64_to_f128( to_softfloat64(d) );
       }
       double __trunctfdf2( uint64_t l, uint64_t h ) {
          float128_t f = {{ l, h }};
-         return softfloat_api::from_softfloat64(f128_to_f64( f ));
+         return from_softfloat64(f128_to_f64( f ));
       }
       float __trunctfsf2( uint64_t l, uint64_t h ) {
          float128_t f = {{ l, h }};
-         return softfloat_api::from_softfloat32(f128_to_f32( f ));
+         return from_softfloat32(f128_to_f32( f ));
       }
       int32_t __fixtfsi( uint64_t l, uint64_t h ) {
          float128_t f = {{ l, h }};
@@ -1545,19 +1606,19 @@ class compiler_builtins : public context_aware_api {
          ret = ___fixunstfti( f );
       }
       void __fixsfti( __int128& ret, float a ) {
-         ret = ___fixsfti( softfloat_api::to_softfloat32(a).v );
+         ret = ___fixsfti( to_softfloat32(a).v );
       }
       void __fixdfti( __int128& ret, double a ) {
-         ret = ___fixdfti( softfloat_api::to_softfloat64(a).v );
+         ret = ___fixdfti( to_softfloat64(a).v );
       }
       void __fixunssfti( unsigned __int128& ret, float a ) {
-         ret = ___fixunssfti( softfloat_api::to_softfloat32(a).v );
+         ret = ___fixunssfti( to_softfloat32(a).v );
       }
       void __fixunsdfti( unsigned __int128& ret, double a ) {
-         ret = ___fixunsdfti( softfloat_api::to_softfloat64(a).v );
+         ret = ___fixunsdfti( to_softfloat64(a).v );
       }
       double __floatsidf( int32_t i ) {
-         return softfloat_api::from_softfloat64(i32_to_f64(i));
+         return from_softfloat64(i32_to_f64(i));
       }
       void __floatsitf( float128_t& ret, int32_t i ) {
          ret = i32_to_f128(i);
@@ -1696,6 +1757,7 @@ REGISTER_INTRINSICS(privileged_api,
    (set_blockchain_parameters_packed, void(int,int)                         )
    (is_privileged,                    int(int64_t)                          )
    (set_privileged,                   void(int64_t, int)                    )
+   (preactivate_feature,              void(int)                             )
 );
 
 REGISTER_INJECTED_INTRINSICS(transaction_context,
@@ -1772,8 +1834,10 @@ REGISTER_INTRINSICS(permission_api,
 
 
 REGISTER_INTRINSICS(system_api,
-   (current_time, int64_t()       )
-   (publication_time,   int64_t() )
+   (current_time,          int64_t() )
+   (publication_time,      int64_t() )
+   (is_feature_activated,  int(int)  )
+   (get_sender,            int64_t() )
 );
 
 REGISTER_INTRINSICS(context_free_system_api,
@@ -1905,8 +1969,8 @@ std::istream& operator>>(std::istream& in, wasm_interface::vm_type& runtime) {
    in >> s;
    if (s == "wavm")
       runtime = eosio::chain::wasm_interface::vm_type::wavm;
-   else if (s == "binaryen")
-      runtime = eosio::chain::wasm_interface::vm_type::binaryen;
+   else if (s == "wabt")
+      runtime = eosio::chain::wasm_interface::vm_type::wabt;
    else
       in.setstate(std::ios_base::failbit);
    return in;

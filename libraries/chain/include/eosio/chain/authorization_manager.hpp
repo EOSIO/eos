@@ -1,11 +1,12 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in eos/LICENSE
  */
 #pragma once
 
 #include <eosio/chain/types.hpp>
 #include <eosio/chain/permission_object.hpp>
+#include <eosio/chain/snapshot.hpp>
 
 #include <utility>
 #include <functional>
@@ -27,6 +28,8 @@ namespace eosio { namespace chain {
 
          void add_indices();
          void initialize_database();
+         void add_to_snapshot( const snapshot_writer_ptr& snapshot ) const;
+         void read_from_snapshot( const snapshot_reader_ptr& snapshot );
 
          const permission_object& create_permission( account_name account,
                                                      permission_name name,
@@ -81,7 +84,8 @@ namespace eosio { namespace chain {
                               const flat_set<permission_level>&    provided_permissions = flat_set<permission_level>(),
                               fc::microseconds                     provided_delay = fc::microseconds(0),
                               const std::function<void()>&         checktime = std::function<void()>(),
-                              bool                                 allow_unused_keys = false
+                              bool                                 allow_unused_keys = false,
+                              const flat_set<permission_level>&    satisfied_authorizations = flat_set<permission_level>()
                             )const;
 
 

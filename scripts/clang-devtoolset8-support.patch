@@ -1,0 +1,55 @@
+From 32b65345c5760295d04c95e0abb3653fe20ffd16 Mon Sep 17 00:00:00 2001
+From: Tom Stellard <tstellar@redhat.com>
+Date: Tue, 9 Apr 2019 13:26:10 +0000
+Subject: [PATCH] Add support for detection of devtoolset-8
+
+Summary:
+The current llvm/clang et al. project can be built with the latest developer toolset (devtoolset-8) on RHEL, which provides GCC 8.2.1.
+However, the result compiler will not identify this toolset itself when compiling programs, which is of course not desirable.
+
+After the patch - which simply adds the name of the developer toolset to the existing list - it gets identified and selected, as shown below:
+
+[bamboo@bamboo llvm-project]$ clang -v
+clang version 9.0.0 (https://github.com/llvm/llvm-project.git e5ac385fb1ffa4bd3875ea6a4d24efdbd7814572)
+Target: x86_64-unknown-linux-gnu
+Thread model: posix
+InstalledDir: /home/bamboo/llvm/bin
+Found candidate GCC installation: /opt/rh/devtoolset-4/root/usr/lib/gcc/x86_64-redhat-linux/5.2.1
+Found candidate GCC installation: /opt/rh/devtoolset-7/root/usr/lib/gcc/x86_64-redhat-linux/7
+Found candidate GCC installation: /opt/rh/devtoolset-8/root/usr/lib/gcc/x86_64-redhat-linux/8
+Found candidate GCC installation: /usr/lib/gcc/x86_64-redhat-linux/4.8.2
+Found candidate GCC installation: /usr/lib/gcc/x86_64-redhat-linux/4.8.5
+Selected GCC installation: /opt/rh/devtoolset-8/root/usr/lib/gcc/x86_64-redhat-linux/8
+Candidate multilib: .;@m64
+Candidate multilib: 32;@m32
+Selected multilib: .;@m64
+
+Patch By: Radu-Adrian Popescu
+
+Reviewers: tstellar, fedor.sergeev
+
+Reviewed By: tstellar
+
+Subscribers: jdoerfert, cfe-commits
+
+Tags: #clang
+
+Differential Revision: https://reviews.llvm.org/D59987
+
+llvm-svn: 358002
+---
+ clang/lib/Driver/ToolChains/Gnu.cpp | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/clang/lib/Driver/ToolChains/Gnu.cpp b/clang/lib/Driver/ToolChains/Gnu.cpp
+index 2a58f0f7142..8915e3f948f 100644
+--- a/clang/lib/Driver/ToolChains/Gnu.cpp
++++ b/clang/lib/Driver/ToolChains/Gnu.cpp
+@@ -1875,6 +1875,7 @@ void Generic_GCC::GCCInstallationDetector::AddDefaultGCCPrefixes(
+   // Non-Solaris is much simpler - most systems just go with "/usr".
+   if (SysRoot.empty() && TargetTriple.getOS() == llvm::Triple::Linux) {
+     // Yet, still look for RHEL devtoolsets.
++    Prefixes.push_back("/opt/rh/devtoolset-8/root/usr");
+     Prefixes.push_back("/opt/rh/devtoolset-7/root/usr");
+     Prefixes.push_back("/opt/rh/devtoolset-6/root/usr");
+     Prefixes.push_back("/opt/rh/devtoolset-4/root/usr");

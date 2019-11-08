@@ -1,33 +1,28 @@
 #!/usr/bin/env python3
 
-import testUtils
+from testUtils import Utils
+from Cluster import Cluster
+from TestHelper import TestHelper
 
-import argparse
 import subprocess
 
-Print=testUtils.Utils.Print
+###############################################################
+# nodeos_run_remote_test
+#  Tests remote capability of the nodeos_run_test. Test will setup cluster and pass nodes info to nodeos_run_test. E.g.
+#  nodeos_run_remote_test.py -v --clean-run --dump-error-detail
+###############################################################
 
-def errorExit(msg="", errorCode=1):
-    Print("ERROR:", msg)
-    exit(errorCode)
+Print=Utils.Print
+errorExit=Utils.errorExit
 
-parser = argparse.ArgumentParser()
-parser.add_argument("-v", help="verbose", action='store_true')
-parser.add_argument("--dont-kill", help="Leave cluster running after test finishes", action='store_true')
-parser.add_argument("--only-bios", help="Limit testing to bios node.", action='store_true')
-parser.add_argument("--dump-error-details",
-                    help="Upon error print etc/eosio/node_*/config.ini and var/lib/node_*/stderr.log to stdout",
-                    action='store_true')
-parser.add_argument("--kill-all", help="Kill all nodeos and kleos instances", action='store_true')
-
-args = parser.parse_args()
+args = TestHelper.parse_args({"--dump-error-details","-v","--leave-running","--only-bios","--clean-run"})
 debug=args.v
-dontKill=args.dont_kill
+dontKill=args.leave_running
 dumpErrorDetails=args.dump_error_details
 onlyBios=args.only_bios
-killAll=args.kill_all
+killAll=args.clean_run
 
-testUtils.Utils.Debug=debug
+Utils.Debug=debug
 
 killEosInstances=not dontKill
 topo="mesh"
@@ -38,7 +33,7 @@ total_nodes=pnodes
 actualTest="tests/nodeos_run_test.py"
 testSuccessful=False
 
-cluster=testUtils.Cluster()
+cluster=Cluster(walletd=True)
 try:
     Print("BEGIN")
     cluster.killall(allInstances=killAll)
@@ -47,7 +42,8 @@ try:
     Print ("producing nodes: %s, non-producing nodes: %d, topology: %s, delay between nodes launch(seconds): %d" %
            (pnodes, total_nodes-pnodes, topo, delay))
     Print("Stand up cluster")
-    if cluster.launch(pnodes, total_nodes, prodCount, topo, delay, onlyBios=onlyBios, dontKill=dontKill) is False:
+
+    if cluster.launch(pnodes=pnodes, totalNodes=total_nodes, prodCount=prodCount, topo=topo, delay=delay, onlyBios=onlyBios) is False:
         errorExit("Failed to stand up eos cluster.")
 
     Print ("Wait for Cluster stabilization")
@@ -55,11 +51,11 @@ try:
     if not cluster.waitOnClusterBlockNumSync(3):
         errorExit("Cluster never stabilized")
 
-    producerKeys=testUtils.Cluster.parseClusterKeys(1)
+    producerKeys=Cluster.parseClusterKeys(1)
     defproduceraPrvtKey=producerKeys["defproducera"]["private"]
     defproducerbPrvtKey=producerKeys["defproducerb"]["private"]
 
-    cmd="%s --dont-launch --defproducera_prvt_key %s --defproducerb_prvt_key %s %s %s %s" % (actualTest, defproduceraPrvtKey, defproducerbPrvtKey, "-v" if debug else "", "--dont-kill" if dontKill else "", "--only-bios" if onlyBios else "")
+    cmd="%s --dont-launch --defproducera_prvt_key %s --defproducerb_prvt_key %s %s %s %s" % (actualTest, defproduceraPrvtKey, defproducerbPrvtKey, "-v" if debug else "", "--leave-running" if dontKill else "", "--only-bios" if onlyBios else "")
     Print("Starting up %s test: %s" % ("nodeos", actualTest))
     Print("cmd: %s\n" % (cmd))
     if 0 != subprocess.call(cmd, shell=True):
@@ -67,18 +63,6 @@ try:
 
     testSuccessful=True
 finally:
-    if testSuccessful:
-        Print("Test succeeded.")
-    else:
-        Print("Test failed.")
-
-    if not testSuccessful and dumpErrorDetails:
-        cluster.dumpErrorDetails()
-        Print("== Errors see above ==")
-
-    if killEosInstances:
-        Print("Shut down the cluster and cleanup.")
-        cluster.killall(allInstances=killAll)
-        cluster.cleanup()
+    TestHelper.shutdown(cluster, None, testSuccessful, killEosInstances, False, False, killAll, dumpErrorDetails)
 
 exit(0)

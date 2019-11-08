@@ -34,7 +34,7 @@ class StressNetwork:
         ta.name = self.randAcctName()
         acc1 = copy.copy(ta)
         print("creating new account %s" % (ta.name))
-        tr = node.createAccount(ta, eosio, stakedDeposit=0, waitForTransBlock=True)
+        tr = node.createAccount(ta, eosio, stakedDeposit=0, waitForTransBlock=True, exitOnError=True)
         trid = node.getTransId(tr)
         if trid is None:
             return ([], "", 0.0, "failed to create account")
@@ -43,7 +43,7 @@ class StressNetwork:
         ta.name = self.randAcctName()
         acc2 = copy.copy(ta)
         print("creating new account %s" % (ta.name))
-        tr = node.createAccount(ta, eosio, stakedDeposit=0, waitForTransBlock=True)
+        tr = node.createAccount(ta, eosio, stakedDeposit=0, waitForTransBlock=True, exitOnError=True)
         trid = node.getTransId(tr)
         if trid is None:
             return ([], "", 0.0, "failed to create account")
@@ -59,7 +59,7 @@ class StressNetwork:
         if trid is None:
             return ([], "", 0.0, "failed to issue currency0000")
         print("transaction id %s" % (trid))
-        node.waitForTransIdOnNode(trid)
+        node.waitForTransInBlock(trid)
 
         self.trList = []
         expBal = 0
@@ -97,7 +97,7 @@ class StressNetwork:
         for tr in self.trList:
             trid = node.getTransId(tr)
             transIdlist.append(trid)
-            node.waitForTransIdOnNode(trid)
+            node.waitForTransInBlock(trid)
         return (transIdlist, acc2.name, expBal, "")
     
     def on_exit(self):

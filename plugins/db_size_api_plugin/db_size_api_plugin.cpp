@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in eos/LICENSE
  */
 #include <fc/variant.hpp>
 #include <fc/io/json.hpp>
@@ -18,7 +18,7 @@ using namespace eosio;
           try { \
              if (body.empty()) body = "{}"; \
              INVOKE \
-             cb(http_response_code, fc::json::to_string(result)); \
+             cb(http_response_code, fc::variant(result)); \
           } catch (...) { \
              http_plugin::handle_exception(#api_name, #call_name, body, cb); \
           } \
@@ -36,7 +36,7 @@ void db_size_api_plugin::plugin_startup() {
 }
 
 db_size_stats db_size_api_plugin::get() {
-   chainbase::database& db = app().get_plugin<chain_plugin>().chain().db();
+   const chainbase::database& db = app().get_plugin<chain_plugin>().chain().db();
    db_size_stats ret;
 
    ret.free_bytes = db.get_segment_manager()->get_free_memory();

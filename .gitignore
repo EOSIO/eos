@@ -5,11 +5,12 @@
 *.bc
 *.wast
 *.wast.hpp
-*.wasm
 *.s
 *.dot
 *.abi.hpp
 *.cmake
+!.cicd
+!CMakeModules/*.cmake
 *.ninja
 \#*
 \.#*
@@ -63,6 +64,7 @@ tests/plugin_test
 unittests/unit_test
 
 doxygen
+eos.doxygen
 
 wallet.json
 witness_node_data_dir
@@ -72,6 +74,8 @@ witness_node_data_dir
 *.pyc
 *.pyo
 
+Testing/*
+build.tar.gz
 build/*
 build-debug/*
 

@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in eos/LICENSE
  */
 #pragma once
 #include <fc/io/raw.hpp>
@@ -27,7 +27,7 @@ namespace eosio { namespace chain {
 
          id_type             id;
          time_point_sec      expiration;
-         transaction_id_type trx_id;
+         transaction_id_type trx_id; //< trx_id should not be changed within a chainbase modifier lambda
    };
 
    struct by_expiration;
@@ -51,3 +51,4 @@ namespace eosio { namespace chain {
 
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::transaction_object, eosio::chain::transaction_multi_index)
 
+FC_REFLECT(eosio::chain::transaction_object, (expiration)(trx_id))

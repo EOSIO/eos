@@ -1,0 +1,13 @@
+cmake,/usr/local/bin/cmake
+graphviz,/usr/local/opt/graphviz
+libtool,/usr/local/bin/glibtool
+automake,/usr/local/bin/automake
+wget,/usr/local/bin/wget
+gmp,/usr/local/opt/gmp/include/gmpxx.h
+llvm@4,/usr/local/opt/llvm@4
+pkgconfig,/usr/local/bin/pkg-config
+python,/usr/local/opt/python3
+python@2,/usr/local/opt/python2
+doxygen,/usr/local/bin/doxygen
+libusb,/usr/local/lib/libusb-1.0.0.dylib
+openssl,/usr/local/opt/openssl/lib/libssl.a

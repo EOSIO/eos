@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in eos/LICENSE
  */
 #pragma once
 
@@ -14,20 +14,18 @@ using mongo_db_plugin_impl_ptr = std::shared_ptr<class mongo_db_plugin_impl>;
 
 /**
  * Provides persistence to MongoDB for:
- *   Blocks
- *   Transactions
- *   Actions
- *   Accounts
+ * accounts
+ * actions
+ * block_states
+ * blocks
+ * transaction_traces
+ * transactions
+ * pub_keys
+ * account_controls
  *
  *   See data dictionary (DB Schema Definition - EOS API) for description of MongoDB schema.
  *
- *   The goal ultimately is for all chainbase data to be mirrored in MongoDB via a delayed node processing
- *   irreversible blocks. Currently, only Blocks, Transactions, Messages, and Account balance it mirrored.
- *   Chainbase is being rewritten to be multi-threaded. Once chainbase is stable, integration directly with
- *   a mirror database approach can be followed removing the need for the direct processing of Blocks employed
- *   with this implementation.
- *
- *   If MongoDB env not available (#ifndef MONGODB) this plugin is a no-op.
+ *   If cmake -DBUILD_MONGO_DB_PLUGIN=true  not specified then this plugin not compiled/included.
  */
 class mongo_db_plugin : public plugin<mongo_db_plugin> {
 public:

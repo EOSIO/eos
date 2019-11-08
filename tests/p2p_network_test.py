@@ -18,18 +18,17 @@ Remote = p2p_test_peers.P2PTestPeers
 hosts=Remote.hosts
 ports=Remote.ports
 
-TEST_OUTPUT_DEFAULT="p2p_network_test_log.txt"
 DEFAULT_HOST=hosts[0]
 DEFAULT_PORT=ports[0]
 
 parser = argparse.ArgumentParser(add_help=False)
 Print=testUtils.Utils.Print
-errorExit=testUtils.Utils.errorExit
+cmdError=Utils.cmdError
+errorExit=Utils.errorExit
 
 # Override default help argument so that only --help (and not -h) can call help
 parser.add_argument('-?', action='help', default=argparse.SUPPRESS,
                     help=argparse._('show this help message and exit'))
-parser.add_argument("-o", "--output", type=str, help="output file", default=TEST_OUTPUT_DEFAULT)
 parser.add_argument("--defproducera_prvt_key", type=str, help="defproducera private key.",
                     default=testUtils.Cluster.defproduceraAccount.ownerPrivateKey)
 parser.add_argument("--defproducerb_prvt_key", type=str, help="defproducerb private key.",
@@ -42,7 +41,6 @@ parser.add_argument("--stress_network", help="test load/stress network", action=
 parser.add_argument("--not_kill_wallet", help="not killing walletd", action='store_true')
 
 args = parser.parse_args()
-testOutputFile=args.output
 enableMongo=False
 defproduceraPrvtKey=args.defproducera_prvt_key
 defproducerbPrvtKey=args.defproducerb_prvt_key
@@ -61,7 +59,6 @@ else:
 cluster=testUtils.Cluster(walletd=True, enableMongo=enableMongo, defproduceraPrvtKey=defproduceraPrvtKey, defproducerbPrvtKey=defproducerbPrvtKey, walletHost=args.wallet_host, walletPort=args.wallet_port)
 
 print("BEGIN")
-print("TEST_OUTPUT: %s" % (testOutputFile))
 
 print("number of hosts: %d, list of hosts:" % (len(hosts)))
 for i in range(len(hosts)):
@@ -115,9 +112,6 @@ if walletMgr.launch() is False:
 testWalletName="test"
 Print("Creating wallet \"%s\"." % (testWalletName))
 testWallet=walletMgr.create(testWalletName)
-if testWallet is None:
-    cmdError("eos wallet create")
-    errorExit("Failed to create wallet %s." % (testWalletName))
 
 for account in accounts:
     Print("Importing keys for account %s into wallet %s." % (account.name, testWallet.name))
@@ -128,9 +122,6 @@ for account in accounts:
 defproduceraWalletName="defproducera"
 Print("Creating wallet \"%s\"." % (defproduceraWalletName))
 defproduceraWallet=walletMgr.create(defproduceraWalletName)
-if defproduceraWallet is None:
-    cmdError("eos wallet create")
-    errorExit("Failed to create wallet %s." % (defproduceraWalletName))
 
 defproduceraAccount=testUtils.Cluster.defproduceraAccount
 # defproducerbAccount=testUtils.Cluster.defproducerbAccount
@@ -141,8 +132,6 @@ if not walletMgr.importKey(defproduceraAccount, defproduceraWallet):
      errorExit("Failed to import key for account %s" % (defproduceraAccount.name))
 
 node0=cluster.getNode(0)
-if node0 is None:
-    errorExit("cluster in bad state, received None node")
 
 # eosio should have the same key as defproducera
 eosio = copy.copy(defproduceraAccount)
@@ -150,16 +139,16 @@ eosio.name = "eosio"
 
 Print("Info of each node:")
 for i in range(len(hosts)):
-    node = cluster.getNode(0)
+    node = node0
     cmd="%s %s get info" % (testUtils.Utils.EosClientPath, node.endpointArgs)
     trans = node.runCmdReturnJson(cmd)
     Print("host %s: %s" % (hosts[i], trans))
 
 
-wastFile="contracts/eosio.system/eosio.system.wast"
-abiFile="contracts/eosio.system/eosio.system.abi"
-Print("\nPush system contract %s %s" % (wastFile, abiFile))
-trans=node0.publishContract(eosio.name, wastFile, abiFile, waitForTransBlock=True)
+wasmFile="eosio.system.wasm"
+abiFile="eosio.system.abi"
+Print("\nPush system contract %s %s" % (wasmFile, abiFile))
+trans=node0.publishContract(eosio.name, wasmFile, abiFile, waitForTransBlock=True)
 if trans is None:
     Utils.errorExit("Failed to publish eosio.system.")
 else:

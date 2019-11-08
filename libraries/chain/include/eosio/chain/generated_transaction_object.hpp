@@ -1,9 +1,10 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in eos/LICENSE
  */
 #pragma once
-#include <fc/io/raw.hpp>
+#include <eosio/chain/config.hpp>
+#include <eosio/chain/database_utils.hpp>
 
 #include <eosio/chain/transaction.hpp>
 #include <fc/uint128.hpp>
@@ -27,14 +28,14 @@ namespace eosio { namespace chain {
          OBJECT_CTOR(generated_transaction_object, (packed_trx) )
 
          id_type                       id;
-         transaction_id_type           trx_id;
-         account_name                  sender;
-         uint128_t                     sender_id = 0; /// ID given this transaction by the sender
+         transaction_id_type           trx_id; //< trx_id should not be changed within a chainbase modifier lambda
+         account_name                  sender; //< sender should not be changed within a chainbase modifier lambda
+         uint128_t                     sender_id = 0; /// ID given this transaction by the sender (should not be changed within a chainbase modifier lambda)
          account_name                  payer;
          time_point                    delay_until; /// this generated transaction will not be applied until the specified time
          time_point                    expiration; /// this generated transaction will not be applied after this time
          time_point                    published;
-         shared_string                 packed_trx;
+         shared_blob                   packed_trx;
 
          uint32_t set( const transaction& trx ) {
             auto trxsize = fc::raw::pack_size( trx );
@@ -77,6 +78,34 @@ namespace eosio { namespace chain {
       >
    >;
 
+   class generated_transaction
+   {
+      public:
+         generated_transaction(const generated_transaction_object& gto)
+         :trx_id(gto.trx_id)
+         ,sender(gto.sender)
+         ,sender_id(gto.sender_id)
+         ,payer(gto.payer)
+         ,delay_until(gto.delay_until)
+         ,expiration(gto.expiration)
+         ,published(gto.published)
+         ,packed_trx(gto.packed_trx.begin(), gto.packed_trx.end())
+         {}
+
+         generated_transaction(const generated_transaction& gt) = default;
+         generated_transaction(generated_transaction&& gt) = default;
+
+         transaction_id_type           trx_id;
+         account_name                  sender;
+         uint128_t                     sender_id;
+         account_name                  payer;
+         time_point                    delay_until; /// this generated transaction will not be applied until the specified time
+         time_point                    expiration; /// this generated transaction will not be applied after this time
+         time_point                    published;
+         vector<char>                  packed_trx;
+
+   };
+
    namespace config {
       template<>
       struct billable_size<generated_transaction_object> {
@@ -87,3 +116,5 @@ namespace eosio { namespace chain {
 } } // eosio::chain
 
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::generated_transaction_object, eosio::chain::generated_transaction_multi_index)
+
+FC_REFLECT(eosio::chain::generated_transaction_object, (trx_id)(sender)(sender_id)(payer)(delay_until)(expiration)(published)(packed_trx))

@@ -8,7 +8,6 @@
 #include <eosio/chain/resource_limits_private.hpp>
 
 #include <eosio/testing/tester_network.hpp>
-#include <eosio/chain/producer_object.hpp>
 
 #ifdef NON_VALIDATING_TEST
 #define TESTER tester
@@ -119,9 +118,9 @@ try {
       BOOST_TEST(obj->parent == 0);
       owner_id = obj->id;
       auto auth = obj->auth.to_authority();
-      BOOST_TEST(auth.threshold == 1);
-      BOOST_TEST(auth.keys.size() == 1);
-      BOOST_TEST(auth.accounts.size() == 0);
+      BOOST_TEST(auth.threshold == 1u);
+      BOOST_TEST(auth.keys.size() == 1u);
+      BOOST_TEST(auth.accounts.size() == 0u);
       BOOST_TEST(auth.keys[0].key == new_owner_pub_key);
       BOOST_TEST(auth.keys[0].weight == 1);
    }
@@ -140,11 +139,11 @@ try {
       BOOST_TEST(obj->name == "active");
       BOOST_TEST(obj->parent == owner_id);
       auto auth = obj->auth.to_authority();
-      BOOST_TEST(auth.threshold == 1);
-      BOOST_TEST(auth.keys.size() == 1);
-      BOOST_TEST(auth.accounts.size() == 0);
+      BOOST_TEST(auth.threshold == 1u);
+      BOOST_TEST(auth.keys.size() == 1u);
+      BOOST_TEST(auth.accounts.size() == 0u);
       BOOST_TEST(auth.keys[0].key == new_active_pub_key);
-      BOOST_TEST(auth.keys[0].weight == 1);
+      BOOST_TEST(auth.keys[0].weight == 1u);
    }
 
    auto spending_priv_key = chain.get_private_key("alice", "spending");
@@ -302,18 +301,18 @@ try {
 
    // Verify account created properly
    const auto& joe_owner_authority = chain.get<permission_object, by_owner>(boost::make_tuple("joe", "owner"));
-   BOOST_TEST(joe_owner_authority.auth.threshold == 1);
-   BOOST_TEST(joe_owner_authority.auth.accounts.size() == 1);
-   BOOST_TEST(joe_owner_authority.auth.keys.size() == 1);
+   BOOST_TEST(joe_owner_authority.auth.threshold == 1u);
+   BOOST_TEST(joe_owner_authority.auth.accounts.size() == 1u);
+   BOOST_TEST(joe_owner_authority.auth.keys.size() == 1u);
    BOOST_TEST(string(joe_owner_authority.auth.keys[0].key) == string(chain.get_public_key("joe", "owner")));
-   BOOST_TEST(joe_owner_authority.auth.keys[0].weight == 1);
+   BOOST_TEST(joe_owner_authority.auth.keys[0].weight == 1u);
 
    const auto& joe_active_authority = chain.get<permission_object, by_owner>(boost::make_tuple("joe", "active"));
-   BOOST_TEST(joe_active_authority.auth.threshold == 1);
-   BOOST_TEST(joe_active_authority.auth.accounts.size() == 1);
-   BOOST_TEST(joe_active_authority.auth.keys.size() == 1);
+   BOOST_TEST(joe_active_authority.auth.threshold == 1u);
+   BOOST_TEST(joe_active_authority.auth.accounts.size() == 1u);
+   BOOST_TEST(joe_active_authority.auth.keys.size() == 1u);
    BOOST_TEST(string(joe_active_authority.auth.keys[0].key) == string(chain.get_public_key("joe", "active")));
-   BOOST_TEST(joe_active_authority.auth.keys[0].weight == 1);
+   BOOST_TEST(joe_active_authority.auth.keys[0].weight == 1u);
 
    // Create duplicate name
    BOOST_CHECK_EXCEPTION(chain.create_account("joe"), action_validate_exception,
@@ -371,7 +370,8 @@ BOOST_AUTO_TEST_CASE( any_auth ) { try {
 
 BOOST_AUTO_TEST_CASE(no_double_billing) {
 try {
-   TESTER chain;
+   validating_tester chain( validating_tester::default_config() );
+   chain.execute_setup_policy( setup_policy::preactivate_feature_and_new_bios );
 
    chain.produce_block();
 
@@ -383,7 +383,7 @@ try {
    chain.create_account(acc1a);
    chain.produce_block();
 
-   chainbase::database &db = chain.control->db();
+   const chainbase::database &db = chain.control->db();
 
    using resource_usage_object = eosio::chain::resource_limits::resource_usage_object;
    using by_owner = eosio::chain::resource_limits::by_owner;
@@ -419,8 +419,8 @@ try {
 
    const auto &usage2 = db.get<resource_usage_object,by_owner>(acc1a);
 
-   BOOST_TEST(usage.cpu_usage.average() > 0);
-   BOOST_TEST(usage.net_usage.average() > 0);
+   BOOST_TEST(usage.cpu_usage.average() > 0U);
+   BOOST_TEST(usage.net_usage.average() > 0U);
    BOOST_REQUIRE_EQUAL(usage.cpu_usage.average(), usage2.cpu_usage.average());
    BOOST_REQUIRE_EQUAL(usage.net_usage.average(), usage2.net_usage.average());
    chain.produce_block();
@@ -499,17 +499,15 @@ BOOST_AUTO_TEST_CASE( linkauth_special ) { try {
    );
 
    auto validate_disallow = [&] (const char *type) {
-   BOOST_REQUIRE_EXCEPTION(
-   chain.push_action(config::system_account_name, linkauth::get_name(), tester_account, fc::mutable_variant_object()
-           ("account", "tester")
-           ("code", "eosio")
-           ("type", type)
-           ("requirement", "first")),
-   action_validate_exception,
-   [] (const action_validate_exception &ex)->bool {
-      BOOST_REQUIRE_EQUAL(std::string("action exception"), ex.what());
-      return true;
-   });
+      BOOST_REQUIRE_EXCEPTION(
+         chain.push_action(config::system_account_name, linkauth::get_name(), tester_account, fc::mutable_variant_object()
+               ("account", "tester")
+               ("code", "eosio")
+               ("type", type)
+               ("requirement", "first")),
+         action_validate_exception,
+         fc_exception_message_is(std::string("Cannot link eosio::") + std::string(type) + std::string(" to a minimum permission"))
+      );
    };
 
    validate_disallow("linkauth");

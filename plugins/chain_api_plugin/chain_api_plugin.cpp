@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in eos/LICENSE
  */
 #include <eosio/chain_api_plugin/chain_api_plugin.hpp>
 #include <eosio/chain/exceptions.hpp>
@@ -28,20 +28,21 @@ chain_api_plugin::~chain_api_plugin(){}
 void chain_api_plugin::set_program_options(options_description&, options_description&) {}
 void chain_api_plugin::plugin_initialize(const variables_map&) {}
 
-struct async_result_visitor : public fc::visitor<std::string> {
+struct async_result_visitor : public fc::visitor<fc::variant> {
    template<typename T>
-   std::string operator()(const T& v) const {
-      return fc::json::to_string(v);
+   fc::variant operator()(const T& v) const {
+      return fc::variant(v);
    }
 };
 
 #define CALL(api_name, api_handle, api_namespace, call_name, http_response_code) \
 {std::string("/v1/" #api_name "/" #call_name), \
-   [this, api_handle](string, string body, url_response_callback cb) mutable { \
+   [api_handle](string, string body, url_response_callback cb) mutable { \
+          api_handle.validate(); \
           try { \
              if (body.empty()) body = "{}"; \
-             auto result = api_handle.call_name(fc::json::from_string(body).as<api_namespace::call_name ## _params>()); \
-             cb(http_response_code, fc::json::to_string(result)); \
+             fc::variant result( api_handle.call_name(fc::json::from_string(body).as<api_namespace::call_name ## _params>()) ); \
+             cb(http_response_code, std::move(result)); \
           } catch (...) { \
              http_plugin::handle_exception(#api_name, #call_name, body, cb); \
           } \
@@ -49,8 +50,9 @@ struct async_result_visitor : public fc::visitor<std::string> {
 
 #define CALL_ASYNC(api_name, api_handle, api_namespace, call_name, call_result, http_response_code) \
 {std::string("/v1/" #api_name "/" #call_name), \
-   [this, api_handle](string, string body, url_response_callback cb) mutable { \
+   [api_handle](string, string body, url_response_callback cb) mutable { \
       if (body.empty()) body = "{}"; \
+      api_handle.validate(); \
       api_handle.call_name(fc::json::from_string(body).as<api_namespace::call_name ## _params>(),\
          [cb, body](const fc::static_variant<fc::exception_ptr, call_result>& result){\
             if (result.contains<fc::exception_ptr>()) {\
@@ -77,21 +79,35 @@ void chain_api_plugin::plugin_startup() {
    auto ro_api = app().get_plugin<chain_plugin>().get_read_only_api();
    auto rw_api = app().get_plugin<chain_plugin>().get_read_write_api();
 
-   app().get_plugin<http_plugin>().add_api({
+   auto& _http_plugin = app().get_plugin<http_plugin>();
+   ro_api.set_shorten_abi_errors( !_http_plugin.verbose_errors() );
+
+   _http_plugin.add_api({
       CHAIN_RO_CALL(get_info, 200l),
+      CHAIN_RO_CALL(get_activated_protocol_features, 200),
       CHAIN_RO_CALL(get_block, 200),
+      CHAIN_RO_CALL(get_block_header_state, 200),
       CHAIN_RO_CALL(get_account, 200),
       CHAIN_RO_CALL(get_code, 200),
+      CHAIN_RO_CALL(get_code_hash, 200),
+      CHAIN_RO_CALL(get_abi, 200),
+      CHAIN_RO_CALL(get_raw_code_and_abi, 200),
+      CHAIN_RO_CALL(get_raw_abi, 200),
       CHAIN_RO_CALL(get_table_rows, 200),
+      CHAIN_RO_CALL(get_table_by_scope, 200),
       CHAIN_RO_CALL(get_currency_balance, 200),
       CHAIN_RO_CALL(get_currency_stats, 200),
       CHAIN_RO_CALL(get_producers, 200),
+      CHAIN_RO_CALL(get_producer_schedule, 200),
+      CHAIN_RO_CALL(get_scheduled_transactions, 200),
       CHAIN_RO_CALL(abi_json_to_bin, 200),
       CHAIN_RO_CALL(abi_bin_to_json, 200),
       CHAIN_RO_CALL(get_required_keys, 200),
+      CHAIN_RO_CALL(get_transaction_id, 200),
       CHAIN_RW_CALL_ASYNC(push_block, chain_apis::read_write::push_block_results, 202),
       CHAIN_RW_CALL_ASYNC(push_transaction, chain_apis::read_write::push_transaction_results, 202),
-      CHAIN_RW_CALL_ASYNC(push_transactions, chain_apis::read_write::push_transactions_results, 202)
+      CHAIN_RW_CALL_ASYNC(push_transactions, chain_apis::read_write::push_transactions_results, 202),
+      CHAIN_RW_CALL_ASYNC(send_transaction, chain_apis::read_write::send_transaction_results, 202)
    });
 }
 

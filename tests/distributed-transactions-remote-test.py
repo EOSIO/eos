@@ -1,38 +1,30 @@
 #!/usr/bin/env python3
 
-import testUtils
+from testUtils import Utils
+from Cluster import Cluster
+from TestHelper import TestHelper
 
-import argparse
 import subprocess
 import tempfile
 import os
 
-Print=testUtils.Utils.Print
+###############################################################
+# distributed-transactions-remote-test
+#  Tests remote capability of the distributed-transactions-test. Test will setup cluster and pass nodes info to distributed-transactions-test. E.g.
+#  distributed-transactions-remote-test.py -v --clean-run --dump-error-detail
+###############################################################
 
-def errorExit(msg="", errorCode=1):
-    Print("ERROR:", msg)
-    exit(errorCode)
+Print=Utils.Print
+errorExit=Utils.errorExit
 
-pnodes=1
-# nodesFile="tests/sample-cluster-map.json"
-parser = argparse.ArgumentParser()
-parser.add_argument("-p", type=int, help="producing nodes count", default=pnodes)
-parser.add_argument("-v", help="verbose", action='store_true')
-parser.add_argument("--dont-kill", help="Leave cluster running after test finishes", action='store_true')
-parser.add_argument("--dump-error-details",
-                    help="Upon error print etc/eosio/node_*/config.ini and var/lib/node_*/stderr.log to stdout",
-                    action='store_true')
-parser.add_argument("--kill-all", help="Kill all nodeos and kleos instances", action='store_true')
-
-args = parser.parse_args()
+args = TestHelper.parse_args({"-p","--dump-error-details","-v","--leave-running","--clean-run"})
 pnodes=args.p
-# nodesFile=args.nodes_file
 debug=args.v
-dontKill=args.dont_kill
+dontKill=args.leave_running
 dumpErrorDetails=args.dump_error_details
-killAll=args.kill_all
+killAll=args.clean_run
 
-testUtils.Utils.Debug=debug
+Utils.Debug=debug
 
 killEosInstances=not dontKill
 topo="mesh"
@@ -55,18 +47,18 @@ clusterMapJsonTemplate="""{
 }
 """
 
-cluster=testUtils.Cluster()
+cluster=Cluster(walletd=True)
 
 (fd, nodesFile) = tempfile.mkstemp()
 try:
-    Print("BEGIN")
+    TestHelper.printSystemInfo("BEGIN")
     cluster.killall(allInstances=killAll)
     cluster.cleanup()
 
     Print ("producing nodes: %s, non-producing nodes: %d, topology: %s, delay between nodes launch(seconds): %d" %
            (pnodes, total_nodes-pnodes, topo, delay))
     Print("Stand up cluster")
-    if cluster.launch(pnodes, total_nodes, prodCount, topo, delay) is False:
+    if cluster.launch(pnodes=pnodes, totalNodes=total_nodes, prodCount=prodCount, topo=topo, delay=delay) is False:
         errorExit("Failed to stand up eos cluster.")
 
     Print ("Wait for Cluster stabilization")
@@ -74,7 +66,7 @@ try:
     if not cluster.waitOnClusterBlockNumSync(3):
         errorExit("Cluster never stabilized")
 
-    producerKeys=testUtils.Cluster.parseClusterKeys(total_nodes)
+    producerKeys=Cluster.parseClusterKeys(total_nodes)
     defproduceraPrvtKey=producerKeys["defproducera"]["private"]
     defproducerbPrvtKey=producerKeys["defproducerb"]["private"]
 
@@ -84,7 +76,7 @@ try:
     tfile.write(clusterMapJson)
     tfile.close()
 
-    cmd="%s --nodes-file %s %s %s" % (actualTest, nodesFile, "-v" if debug else "", "--dont-kill" if dontKill else "")
+    cmd="%s --nodes-file %s %s %s" % (actualTest, nodesFile, "-v" if debug else "", "--leave-running" if dontKill else "")
     Print("Starting up distributed transactions test: %s" % (actualTest))
     Print("cmd: %s\n" % (cmd))
     if 0 != subprocess.call(cmd, shell=True):
@@ -94,13 +86,6 @@ try:
     Print("\nEND")
 finally:
     os.remove(nodesFile)
-    if not testSuccessful and dumpErrorDetails:
-        cluster.dumpErrorDetails()
-        Print("== Errors see above ==")
-
-    if killEosInstances:
-        Print("Shut down the cluster and cleanup.")
-        cluster.killall(allInstances=killAll)
-        cluster.cleanup()
+    TestHelper.shutdown(cluster, None, testSuccessful, killEosInstances, False, False, killAll, dumpErrorDetails)
 
 exit(0)

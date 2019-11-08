@@ -21,7 +21,7 @@ include_directories(${WAVM_INCLUDE_DIR})
 
 	# Disable RTTI
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-rtti")
-	
+
 	# Ensure that even static libraries are relocatable so they can be linked into a .so
 #	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
 
@@ -36,6 +36,7 @@ include_directories(${WAVM_INCLUDE_DIR})
 #		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address")
 #	endif()
 
+set(CMAKE_CXX_STANDARD 11)
 option(WAVM_METRICS_OUTPUT "controls printing the timings of some operations to stdout" OFF)
 if(WAVM_METRICS_OUTPUT)
 	add_definitions("-DWAVM_METRICS_OUTPUT=1")
@@ -66,13 +67,14 @@ endif()
 
 add_subdirectory(Include/Inline)
 
-add_subdirectory(Source/Emscripten)
+#add_subdirectory(Source/Emscripten)
 add_subdirectory(Source/IR)
 add_subdirectory(Source/Logging)
 add_subdirectory(Source/Platform)
-add_subdirectory(Source/Programs)
+#add_subdirectory(Source/Programs)
 add_subdirectory(Source/Runtime)
 add_subdirectory(Source/WASM)
 add_subdirectory(Source/WAST)
 
 #add_subdirectory(Test/spec)
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/Include/ DESTINATION ${CMAKE_INSTALL_FULL_INCLUDEDIR}/wasm-jit)

@@ -9,6 +9,8 @@ connected="0"
 rundir=programs/nodeos
 prog=nodeos
 
+# Quote any args that are "*", so they are not expanded
+qargs=`echo "$*" | sed -e 's/ \* / "*" /' -e 's/ \*$/ "*"/'`
 
 if [ "$PWD" != "$EOSIO_HOME" ]; then
     echo $0 must only be run from $EOSIO_HOME
@@ -33,8 +35,8 @@ rm $datadir/stderr.txt
 ln -s $log $datadir/stderr.txt
 
 relaunch() {
-    echo "$rundir/$prog $* --data-dir $datadir --config-dir etc/eosio/node_$EOSIO_NODE > $datadir/stdout.txt  2>> $datadir/$log "
-    nohup $rundir/$prog $* --data-dir $datadir --config-dir etc/eosio/node_$EOSIO_NODE > $datadir/stdout.txt  2>> $datadir/$log &
+    echo "$rundir/$prog $qargs $* --data-dir $datadir --config-dir etc/eosio/node_$EOSIO_NODE > $datadir/stdout.txt  2>> $datadir/$log "
+    nohup $rundir/$prog $qargs $* --data-dir $datadir --config-dir etc/eosio/node_$EOSIO_NODE > $datadir/stdout.txt  2>> $datadir/$log &
     pid=$!
     echo pid = $pid
     echo $pid > $datadir/$prog.pid
@@ -56,7 +58,7 @@ relaunch() {
 
 if [ -z "$EOSIO_LEVEL" ]; then
     echo starting with no modifiers
-    relaunch $*
+    relaunch
     if [ "$connected" -eq 0 ]; then
         EOSIO_LEVEL=replay
     else
@@ -66,7 +68,7 @@ fi
 
 if [ "$EOSIO_LEVEL" == replay ]; then
     echo starting with replay
-    relaunch $* --replay
+    relaunch --hard-replay-blockchain
     if [  "$connected" -eq 0 ]; then
         EOSIO_LEVEL=resync
     else
@@ -74,6 +76,6 @@ if [ "$EOSIO_LEVEL" == replay ]; then
     fi
 fi
 if [ "$EOSIO_LEVEL" == resync ]; then
-    echo starting wih resync
-    relaunch $* --resync
+    echo starting with delete-all-blocks
+    relaunch --delete-all-blocks
 fi

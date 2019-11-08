@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in eos/LICENSE
  *
  * \warning This file is machine generated. DO NOT EDIT.  See config.hpp.in for changes.
  */
@@ -11,6 +11,7 @@
 
 namespace eosio { namespace launcher { namespace config {
   constexpr char version_str[] = "${launcher_BUILD_VERSION}";
+  constexpr char node_executable_name[] = "${NODE_EXECUTABLE_NAME}";
 }}}
 
 #endif // CONFIG_HPP_IN
