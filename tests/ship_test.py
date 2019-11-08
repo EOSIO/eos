@@ -11,7 +11,6 @@ from Node import BlockType
 from Node import Node
 from TestHelper import TestHelper
 from TestHelper import AppArgs
-from dateutil import parser
 
 import decimal
 import json
