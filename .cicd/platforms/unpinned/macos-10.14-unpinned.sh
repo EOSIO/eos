@@ -39,4 +39,4 @@ cat ~/.bash_profile
 source ~/.bash_profile
 echo $NVM_DIR
 nvm install --lts=dubnium
-nvm add eosjs
+yarn add eosjs
