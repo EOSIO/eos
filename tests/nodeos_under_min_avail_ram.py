@@ -177,6 +177,7 @@ try:
                         break
 
                     Print("Failed to push create action to eosio contract. sleep for 5 seconds")
+                    count-=1 # failed attempt shouldn't be counted
                     time.sleep(5)
                 else:
                     timeOutCount=0
@@ -188,8 +189,10 @@ try:
     #spread the actions to all accounts, to use each accounts tps bandwidth
     fromIndexStart=fromIndex+1 if fromIndex+1<namedAccounts.numAccounts else 0
 
-    if count < 5 or count > 15:
-        strMsg="little" if count < 15 else "much"
+    # min and max are subjective, just assigned to make sure that many small changes in nodeos don't 
+    # result in the test not correctly validating behavior
+    if count < 5 or count > 20:
+        strMsg="little" if count < 20 else "much"
         Utils.cmdError("Was able to send %d store actions which was too %s" % (count, strMsg))
         errorExit("Incorrect number of store actions sent")
 
