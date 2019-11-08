@@ -39,4 +39,5 @@ cat ~/.bash_profile
 source ~/.bash_profile
 echo $NVM_DIR
 nvm install --lts=dubnium
+brew install yarn
 yarn add eosjs
