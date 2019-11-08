@@ -1,6 +1,6 @@
 #!/bin/bash
 set -eo pipefail
-. ./.cicd/helpers/general.sh
+. ./helpers/general.sh
 mkdir -p $BUILD_DIR
 CMAKE_EXTRAS="-DCMAKE_BUILD_TYPE='Release'"
 if [[ "$(uname)" == 'Darwin' ]]; then
