@@ -303,7 +303,8 @@ void sign_transaction(signed_transaction& trx, fc::variant& required_keys, const
    trx = signed_trx.as<signed_transaction>();
 }
 
-fc::variant push_transaction( signed_transaction& trx, packed_transaction::compression_type compression = packed_transaction::compression_type::none ) {
+fc::variant push_transaction( signed_transaction& trx, packed_transaction::compression_type compression = packed_transaction::compression_type::none,
+                              const std::vector<public_key_type>& signing_keys = std::vector<public_key_type>() ) {
    auto info = get_info();
 
    if (trx.signatures.size() == 0) { // #5445 can't change txn content if already signed
@@ -330,7 +331,13 @@ fc::variant push_transaction( signed_transaction& trx, packed_transaction::compr
    }
 
    if (!tx_skip_sign) {
-      auto required_keys = determine_required_keys(trx);
+      fc::variant required_keys;
+      if (signing_keys.size() > 0) {
+         required_keys = fc::variant(signing_keys);
+      }
+      else {
+         required_keys = determine_required_keys(trx);
+      }
       sign_transaction(trx, required_keys, info.chain_id);
    }
 
@@ -355,11 +362,11 @@ fc::variant push_transaction( signed_transaction& trx, packed_transaction::compr
    }
 }
 
-fc::variant push_actions(std::vector<chain::action>&& actions, packed_transaction::compression_type compression = packed_transaction::compression_type::none ) {
+fc::variant push_actions(std::vector<chain::action>&& actions, packed_transaction::compression_type compression = packed_transaction::compression_type::none, const std::vector<public_key_type>& signing_keys = std::vector<public_key_type>() ) {
    signed_transaction trx;
    trx.actions = std::forward<decltype(actions)>(actions);
 
-   return push_transaction(trx, compression);
+   return push_transaction(trx, compression, signing_keys);
 }
 
 void print_action( const fc::variant& at ) {
@@ -511,13 +518,13 @@ void print_result( const fc::variant& result ) { try {
 } FC_CAPTURE_AND_RETHROW( (result) ) }
 
 using std::cout;
-void send_actions(std::vector<chain::action>&& actions, packed_transaction::compression_type compression = packed_transaction::compression_type::none ) {
+void send_actions(std::vector<chain::action>&& actions, packed_transaction::compression_type compression = packed_transaction::compression_type::none, const std::vector<public_key_type>& signing_keys = std::vector<public_key_type>() ) {
    std::ofstream out;
    if (tx_json_save_file.length()) {
       out.open(tx_json_save_file);
       EOSC_ASSERT(!out.fail(), "ERROR: Failed to create file \"${p}\"", ("p", tx_json_save_file));
    }
-   auto result = push_actions( move(actions), compression);
+   auto result = push_actions( move(actions), compression, signing_keys);
 
    string jsonstr;
    if (tx_json_save_file.length()) {
@@ -3137,6 +3144,7 @@ int main( int argc, char** argv ) {
    string amount;
    string memo;
    bool pay_ram = false;
+   string public_key_json;
    auto transfer = app.add_subcommand("transfer", localized("Transfer tokens from account to account"), false);
    transfer->add_option("sender", sender, localized("The account sending tokens"))->required();
    transfer->add_option("recipient", recipient, localized("The account receiving tokens"))->required();
@@ -3144,6 +3152,7 @@ int main( int argc, char** argv ) {
    transfer->add_option("memo", memo, localized("The memo for the transfer"));
    transfer->add_option("--contract,-c", con, localized("The contract that controls the token"));
    transfer->add_flag("--pay-ram-to-open", pay_ram, localized("Pay RAM to open recipient's token balance row"));
+   transfer->add_option("--sign-with", public_key_json, localized("The public key or json array of public keys to sign with"));
 
    add_standard_transaction_options(transfer, "sender@active");
    transfer->set_callback([&] {
@@ -3155,11 +3164,28 @@ int main( int argc, char** argv ) {
 
       auto transfer_amount = to_asset(name(con), amount);
       auto transfer = create_transfer(con, name(sender), name(recipient), transfer_amount, memo);
+      std::vector<public_key_type> signing_keys;
+      if (!public_key_json.empty()) {
+         if (boost::istarts_with(public_key_json, "EOS") || boost::istarts_with(public_key_json, "PUB_R1")) {
+            try {
+               signing_keys.push_back(public_key_type(public_key_json));
+            } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid public key: ${public_key}", ("public_key", public_key_json))
+         } else {
+            fc::variant json_keys;
+            try {
+               json_keys = fc::json::from_string(public_key_json, fc::json::relaxed_parser);
+            } EOS_RETHROW_EXCEPTIONS(json_parse_exception, "Fail to parse JSON from string: ${string}", ("string", public_key_json));
+            try {
+               std::vector<public_key_type> keys = json_keys.template as<std::vector<public_key_type>>();
+               signing_keys = std::move(keys);
+            } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid public key array format '${data}'", ("data", fc::json::to_string(json_keys)))
+         }
+      }
       if (!pay_ram) {
-         send_actions( { transfer });
+         send_actions( { transfer }, packed_transaction::compression_type::none, signing_keys);
       } else {
          auto open_ = create_open(con, name(recipient), transfer_amount.get_symbol(), name(sender));
-         send_actions( { open_, transfer } );
+         send_actions( { open_, transfer },  packed_transaction::compression_type::none, signing_keys);
       }
    });
 
