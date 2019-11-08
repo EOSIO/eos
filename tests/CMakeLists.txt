@@ -1,11 +1,3 @@
-
-
-find_package( Gperftools QUIET )
-if( GPERFTOOLS_FOUND )
-    message( STATUS "Found gperftools; compiling tests with TCMalloc")
-    list( APPEND PLATFORM_SPECIFIC_LIBS tcmalloc )
-endif()
-
 include_directories( "${CMAKE_SOURCE_DIR}/plugins/wallet_plugin/include" )
 
 file(GLOB UNIT_TESTS "*.cpp")
