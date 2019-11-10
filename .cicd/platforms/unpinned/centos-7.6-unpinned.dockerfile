@@ -79,7 +79,9 @@ RUN cp ~/.bashrc ~/.bashrc.bak && \
 # install node 10
 RUN bash -c '. ~/.bashrc; nvm install --lts=dubnium' && \
     ln -s "/root/.nvm/versions/node/$(ls -p /root/.nvm/versions/node | sort -Vr | head -1)bin/node" /usr/local/bin/node
-RUN curl --silent --location https://dl.yarnpkg.com/rpm/yarn.repo | sudo tee /etc/yum.repos.d/yarn.repo
+RUN curl --silent --location https://dl.yarnpkg.com/rpm/yarn.repo > ~/temp
+RUN sudo mv ~/temp /etc/yum.repos.d/yarn.repo
+RUN sudo yum install nodejs
 RUN sudo yum install yarn
 RUN yarn add eosjs
 
