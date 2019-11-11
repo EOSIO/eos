@@ -1125,9 +1125,29 @@ BOOST_AUTO_TEST_CASE( crypto_intrinsics_test ) { try {
                                                                ("s", "test string")
                                                                ("expected", "c7fd1d987ada439fc085cfa3c49416cf2b504ac50151e3c2335d60595cb90745"));
 
-   BOOST_CHECK_EXCEPTION(   c.push_action( tester1_account, N(ecadd), tester1_account, mutable_variant_object()
-                                                               ("pk", eosio::chain::public_key_type("EOS8QH7zaArDtRRE7VcMsdKWhVWrPLFt8V74pKhT3szbKorvVeV3q"s))
-                                                               ("pk2", eosio::chain::public_key_type("EOS822y6oxYAm8CNgnxxM5Jh9WfiSwQ16zZMrHSE8ktL91wysvRcn"s))),
+   fc::ecc::public_key k1_pt_1(eosio::chain::public_key_type("EOS8QH7zaArDtRRE7VcMsdKWhVWrPLFt8V74pKhT3szbKorvVeV3q"s)._storage.get<fc::ecc::public_key_shim>()._data);
+   fc::ecc::public_key k1_pt_2(eosio::chain::public_key_type("EOS822y6oxYAm8CNgnxxM5Jh9WfiSwQ16zZMrHSE8ktL91wysvRcn"s)._storage.get<fc::ecc::public_key_shim>()._data);
+
+   std::vector<char> k1_pt_1_c, k1_pt_2_c, k1_pt_1_u, k1_pt_2_u;
+
+   k1_pt_1_c.resize(32);
+   k1_pt_2_c.resize(32);
+   k1_pt_1_u.resize(64);
+   k1_pt_2_u.resize(64);
+   memcpy((char*)k1_pt_1_c.data(), (const char*)(k1_pt_1.serialize().begin()+1), 32);
+   memcpy((char*)k1_pt_2_c.data(), (const char*)(k1_pt_2.serialize().begin()+1), 32);
+   memcpy((char*)k1_pt_1_u.data(), (const char*)(k1_pt_1.serialize_ecc_point().begin()+1), 64);
+   memcpy((char*)k1_pt_2_u.data(), (const char*)(k1_pt_2.serialize_ecc_point().begin()+1), 64);
+
+
+   // should work fine with compressed points
+   c.push_action( tester1_account, N(ecadd1), tester1_account, mutable_variant_object()
+                                                               ("p", k1_pt_1_c)
+                                                               ("q", k1_pt_2_c));
+
+   BOOST_CHECK_EXCEPTION( c.push_action( tester1_account, N(ecadd2), tester1_account, mutable_variant_object()
+                                                               ("p", k1_pt_1_u)
+                                                               ("q", k1_pt_2_u)),
                                                                eosio_assert_message_exception,
                                                                eosio_assert_message_is("ec_add failure"));
    return;

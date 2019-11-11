@@ -56,12 +56,22 @@ public:
 		::assert_keccak(s.c_str(), s.size(), &test);
 	}
 
-	[[eosio::action]] void ecadd(eosio::public_key pk, eosio::public_key pk2) {
-		eosio::public_key rpk;
+	[[eosio::action]] void ecadd1(std::vector<char> p, std::vector<char> q) {
+		std::vector<char> r;
+		r.resize(64);
 		std::array<char, 66> buff;
-		memcpy(buff.data(), pk.data.data(), 33);
-		memcpy(buff.data()+33, pk2.data.data(), 33);
-		int64_t res = ec_add(0, (const char*)buff.data(), 66, (const char*)rpk.data.data(), 33);
+		memcpy(buff.data(), p.data(), 33);
+		memcpy(buff.data()+33, q.data(), 33);
+		int64_t res = ec_add(0, (const char*)buff.data(), 66, (const char*)r.data(), 64);
+		eosio::check(res != -1, "ec_add failure");
+	}
+	[[eosio::action]] void ecadd2(std::vector<char> p, std::vector<char> q) {
+		std::vector<char> r;
+		r.resize(64);
+		std::array<char, 128> buff;
+		memcpy(buff.data(), p.data(), 64);
+		memcpy(buff.data()+64, q.data(), 64);
+		int64_t res = ec_add(1, (const char*)buff.data(), 128, (const char*)r.data(), 64);
 		eosio::check(res != -1, "ec_add failure");
 	}
 };

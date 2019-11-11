@@ -4,16 +4,30 @@
     "types": [],
     "structs": [
         {
-            "name": "ecadd",
+            "name": "ecadd1",
             "base": "",
             "fields": [
                 {
-                    "name": "pk",
-                    "type": "public_key"
+                    "name": "p",
+                    "type": "bytes"
                 },
                 {
-                    "name": "pk2",
-                    "type": "public_key"
+                    "name": "q",
+                    "type": "bytes"
+                }
+            ]
+        },
+        {
+            "name": "ecadd2",
+            "base": "",
+            "fields": [
+                {
+                    "name": "p",
+                    "type": "bytes"
+                },
+                {
+                    "name": "q",
+                    "type": "bytes"
                 }
             ]
         },
@@ -48,8 +62,13 @@
     ],
     "actions": [
         {
-            "name": "ecadd",
-            "type": "ecadd",
+            "name": "ecadd1",
+            "type": "ecadd1",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "ecadd2",
+            "type": "ecadd2",
             "ricardian_contract": ""
         },
         {
