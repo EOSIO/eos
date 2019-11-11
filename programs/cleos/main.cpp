@@ -221,6 +221,45 @@ void add_standard_transaction_options(CLI::App* cmd, string default_permission =
    cmd->add_option("--delay-sec", delaysec, localized("Set the delay_sec seconds, defaults to 0s"));
 }
 
+class signing_keys_option {
+public:
+   signing_keys_option() {}
+   void add_option(CLI::App* cmd) {
+      cmd->add_option("--sign-with", public_key_json, localized("The public key or json array of public keys to sign with"));
+   }
+
+   std::vector<public_key_type> get_keys() {
+      std::vector<public_key_type> signing_keys;
+      if (!public_key_json.empty()) {
+         if (boost::istarts_with(public_key_json, "EOS") || boost::istarts_with(public_key_json, "PUB_R1")) {
+            try {
+               signing_keys.push_back(public_key_type(public_key_json));
+            } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid public key: ${public_key}", ("public_key", public_key_json))
+         } else {
+            fc::variant json_keys;
+            try {
+               json_keys = fc::json::from_string(public_key_json, fc::json::relaxed_parser);
+            } EOS_RETHROW_EXCEPTIONS(json_parse_exception, "Fail to parse JSON from string: ${string}", ("string", public_key_json));
+            try {
+               std::vector<public_key_type> keys = json_keys.template as<std::vector<public_key_type>>();
+               signing_keys = std::move(keys);
+            } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid public key array format '${data}'", ("data", fc::json::to_string(json_keys)))
+         }
+      }
+      return signing_keys;
+   }
+private:
+   string public_key_json;
+};
+
+signing_keys_option signing_key_opt;
+
+
+void add_standard_transaction_options_plus_signing(CLI::App* cmd, string default_permission = "") {
+   add_standard_transaction_options(cmd, default_permission);
+   signing_key_opt.add_option(cmd);
+}
+
 vector<chain::permission_level> get_account_permissions(const vector<string>& permissions) {
    auto fixedPermissions = permissions | boost::adaptors::transformed([](const string& p) {
       vector<string> pieces;
@@ -540,6 +579,10 @@ void send_actions(std::vector<chain::action>&& actions, packed_transaction::comp
    } else {
       print_result( result );
    }
+}
+
+void send_actions(std::vector<chain::action>&& actions, const std::vector<public_key_type>& signing_keys ) {
+   send_actions(std::move(actions), packed_transaction::compression_type::none, signing_keys_option.get_keys());
 }
 
 void send_transaction( signed_transaction& trx, packed_transaction::compression_type compression = packed_transaction::compression_type::none  ) {
