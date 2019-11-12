@@ -55,23 +55,27 @@ public:
 		from_hex(expected, (char*)test.hash, 32);
 		::assert_keccak(s.c_str(), s.size(), &test);
 	}
+	enum ec_add_tags {
+		r1_v1_compressed = 0,
+		r1_v1_uncompressed = 1,
+		k1_v1_compressed = 2,
+		k1_v1_uncompressed = 3
+	};
 
-	[[eosio::action]] void ecadd1(std::vector<char> p, std::vector<char> q) {
-		std::vector<char> r;
-		r.resize(64);
-		std::array<char, 66> buff;
-		memcpy(buff.data(), p.data(), 33);
-		memcpy(buff.data()+33, q.data(), 33);
-		int64_t res = ec_add(0, (const char*)buff.data(), 66, (const char*)r.data(), 64);
-		eosio::check(res != -1, "ec_add failure");
-	}
-	[[eosio::action]] void ecadd2(std::vector<char> p, std::vector<char> q) {
+	[[eosio::action]] void ecadd(uint32_t type, std::vector<char> p, std::vector<char> q, std::vector<char> e) {
 		std::vector<char> r;
 		r.resize(64);
 		std::array<char, 128> buff;
-		memcpy(buff.data(), p.data(), 64);
-		memcpy(buff.data()+64, q.data(), 64);
-		int64_t res = ec_add(1, (const char*)buff.data(), 128, (const char*)r.data(), 64);
+		if (type == 0 || type == 2) {
+			memcpy(buff.data(), p.data(), 33);
+			memcpy(buff.data()+33, q.data(), 33);
+		} else {
+			memcpy(buff.data(), p.data(), 64);
+			memcpy(buff.data()+64, q.data(), 64);
+		}
+
+		int64_t res = ec_add(type, (const char*)buff.data(), type == 0 || type == 2 ? 66 : 128, (const char*)r.data(), 64);
 		eosio::check(res != -1, "ec_add failure");
+		eosio::check(!memcmp(r.data(), e.data(), 64), "expected failure");
 	}
 };

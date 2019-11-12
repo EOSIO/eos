@@ -871,26 +871,30 @@ class crypto_api : public context_aware_api {
          k1_v1_uncompressed = 3
       };
 
-      template <ec_add_tags Tag>
-      static std::optional<fc::crypto::r1::ec_point> ec_add_r1(const char* p_x_bytes, const char* p_y_bytes, const char* q_x_bytes, const char* q_y_bytes) {
-         static_assert(Tag == ec_add_tags::r1_v1_compressed || Tag == ec_add_tags::r1_v1_uncompressed, "ec_add_r1 can only work on r1 points");
-         using y_type = std::conditional_t<Tag == ec_add_tags::r1_v1_compressed, int, fc::crypto::big_number>;
-         fc::crypto::big_number p_x(p_x_bytes, 32);
-         fc::crypto::big_number q_x(q_x_bytes, 32);
+      template <bool IsCompressed>
+      static std::optional<fc::ecc::ec_point> ec_add_impl(uint64_t tag, const char* p_x_bytes, const char* p_y_bytes, const char* q_x_bytes, const char* q_y_bytes) {
+         using y_type = std::conditional_t<IsCompressed, int, fc::bigint>;
+         constexpr auto is_r1 = [](uint64_t tag) { return tag == static_cast<uint64_t>(ec_add_tags::r1_v1_compressed) || tag == static_cast<uint64_t>(ec_add_tags::r1_v1_uncompressed); };
+         fc::bigint p_x(p_x_bytes, 32);
+         fc::bigint q_x(q_x_bytes, 32);
+         std::cout << "AX: ";
+         BN_print_fp(stdout, p_x.get());
+         std::cout << " BX: ";
+         BN_print_fp(stdout, p_x.get());
+         std::cout << "\n";
+
          y_type p_y, q_y;
-         fc::crypto::r1::ec_point p, q;
-         std::cout << "Tag " << static_cast<uint64_t>(Tag) << "\n";
-         if constexpr (Tag == ec_add_tags::r1_v1_compressed) {
+         fc::ecc::ec_point p, q;
+         if constexpr (IsCompressed) {
             p_y = (*((uint8_t*)p_y_bytes))&1;
             q_y = (*((uint8_t*)q_y_bytes))&1;
          } else {
-            std::cout << "Uncompressed\n";
-            p_y.from_bytes(p_y_bytes, 32);
-            q_y.from_bytes(q_y_bytes, 32);
+            p_y = fc::bigint(p_y_bytes, 32);
+            q_y = fc::bigint(q_y_bytes, 32);
          }
-
-         p = fc::crypto::r1::ec_point(p_x, p_y);
-         q = fc::crypto::r1::ec_point(q_x, q_y);
+         fc::ecc::ec_point::curve_t curve = is_r1(tag) ? fc::ecc::ec_point::r1_curve : fc::ecc::ec_point::k1_curve;
+         p = fc::ecc::ec_point(p_x, p_y, curve);
+         q = fc::ecc::ec_point(q_x, q_y, curve);
 
          if (p.valid() && q.valid())
             return p.add(q);
@@ -901,39 +905,43 @@ class crypto_api : public context_aware_api {
          uint32_t input_len_lb = 0;
          uint32_t p_y_offset = 0;
          uint32_t q_y_offset = 0;
-         std::cout << "tag " << tag << "\n";
          constexpr auto to_ui = [](auto tag) { return static_cast<std::underlying_type_t<decltype(tag)>>(tag); };
-         using ret_type = std::optional<fc::crypto::r1::ec_point>;
+         using ret_type = std::optional<fc::ecc::ec_point>;
          const auto& partial = [&](uint64_t tag) -> std::function<ret_type(const char*, uint32_t)>{
             switch(tag) {
+               case to_ui(ec_add_tags::k1_v1_compressed):
                case to_ui(ec_add_tags::r1_v1_compressed):
                {
-                  return {[](const char* base, uint32_t len) -> ret_type {
+                  return {[&](const char* base, uint32_t len) -> ret_type {
                      // 33 bytes for x and y
                      if (len < 66) return {};
-                     return ec_add_r1<ec_add_tags::r1_v1_compressed>(base, base+32, base+33, base+65);
+                     return ec_add_impl<true>(tag, base, base+32, base+33, base+65);
                   }};
                }
+               case to_ui(ec_add_tags::k1_v1_uncompressed):
                case to_ui(ec_add_tags::r1_v1_uncompressed):
                {
-                  return {[](const char* base, uint32_t len) -> ret_type {
+                  return {[&](const char* base, uint32_t len) -> ret_type {
                      // 64 bytes for x and y
                      if (len < 128) return {};
-                     return ec_add_r1<ec_add_tags::r1_v1_uncompressed>(base, base+32, base+64, base+96);
+                     return ec_add_impl<false>(tag, base, base+32, base+64, base+96);
                   }};
                }
+               default:
+                  return {[](const char* base, uint32_t len) -> ret_type {
+                     return {};
+                  }};
             }
-            return {[](const char* base, uint32_t len) -> ret_type {
-               return {};
-            }};
          }(tag);
 
          const auto& ret = partial(input.value, input_len);
          if (!ret)
             return -1;
-         if (output_len < 32)
-            return -1;
-         return ret;
+         if (output_len < 64)
+            return -2;
+         std::cout << "Foo\n";
+         ret->to_bin((uint8_t*)output.value, 64);
+         return 64;
       }
 
       template<class Encoder> auto encode(char* data, uint32_t datalen) {
