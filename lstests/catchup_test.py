@@ -31,7 +31,7 @@ def create_accounts(clus):
     clus.info(">>> [Catch-up Test] Create Test Accounts")
     for _ in range(5):
         cx = clus.call("send_raw", url=CREATE_URL, string_data=CREATE_STR, node_id=1,
-                        retry=0, level="trace", dont_error=True)
+                        retry=0, level="trace", error_level="trace")
         if '"name": "account_name_exists_exception"' in cx.response_text:
             return clus.check_sync().block_num
         time.sleep(1)
@@ -73,33 +73,33 @@ def assert_out_of_sync(clus, res):
     if res.in_sync:
         raise SyncError("Node 2 should be out of sync as it has been shut down")
     else:
-        clus.info(f"Nodes out of sync\n-------------------------------")
+        clus.info(f"Nodes out of sync")
 
 
 def assert_in_sync(clus, begin, end):
     if end <= begin:
         raise BlockchainError(f"Chain stops advancing at block num {end}")
-    clus.info(f"Nodes in sync at block num {end}\n-------------------------------")
+    clus.info(f"Nodes in sync at block num {end}")
 
 
 def catchup(clus, begin, round):
-    clus.info(f">>> [Catch-up Test] Round {round}")
-    clus.info("Gracefully shut down node 2...")
-    clus.terminate_node(node_id=2)
+    clus.info(f"-------------------------------\n>>> [Catch-up Test] Round {round}")
+    clus.info("-------------------------------\nGracefully shut down node...")
+    clus.stop_node(node_id=2, kill_sig=15)
     res = clus.check_sync(retry=5, dont_raise=True)
     assert_out_of_sync(clus, res)
 
-    clus.info("Restart node 2...")
+    clus.info("-------------------------------\nRestart node...")
     clus.start_node(node_id=2)
     restart = clus.check_sync().block_num
     assert_in_sync(clus, begin, restart)
 
-    clus.info("Hard-kill node 2...")
-    clus.kill_node(node_id=2)
+    clus.info("-------------------------------\nHard-kill node...")
+    clus.stop_node(node_id=2, kill_sig=9)
     res = clus.check_sync(retry=5, dont_raise=True)
     assert_out_of_sync(clus, res)
 
-    clus.info("Freshly restart node 2...")
+    clus.info("-------------------------------\nFreshly restart node...")
     clus.start_node(node_id=2, extra_args="--delete-all-blocks")
     refresh = clus.check_sync().block_num
     assert_in_sync(clus, restart, refresh)

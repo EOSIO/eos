@@ -13,23 +13,16 @@ def init_cluster():
                     FileWriter(filename=f"{test}-trace.log", threshold="trace", monochrome=True))
     service = Service(logger=logger)
     cluster = Cluster(service=service, node_count=3, pnode_count=3, producer_count=7,
-                      shape="bridge", center_node_id=1, dont_newaccount=True)
+                      shape="bridge", center_node_id=1, dont_setprod=True)
     return cluster
 
 
 def set_and_verify(clus):
-    # prod = clus.nodes[0]["producers"] + clus.nodes[2]["producers"]
     prod = clus.node_to_producers[0] + clus.node_to_producers[2]
-    # prod.remove("eosio")
-    acco = []
-    for p in prod:
-        acco.append(p)
-    # clus.create_bios_accounts(accounts=acco)
-    clus.bios_create_accounts_in_parallel(accounts=acco)
     clus.set_producers(prod)
     clus.check_sync()
     clus.info("Verify schedule...")
-    clus.check_production_round(prod)
+    clus.check_production_round(expected_producers=prod)
     return clus.check_sync().block_num
 
 
@@ -42,7 +35,7 @@ def assert_out_of_sync(clus, res):
 
 def kill_and_verify(clus):
     clus.info("Kill bridge node...")
-    clus.kill_node(node_id=1)
+    clus.stop_node(node_id=1, kill_sig=9)
     time.sleep(1)
     res = clus.check_sync(min_sync_nodes=2, max_block_lag=2, dont_raise=True)
     assert_out_of_sync(clus, res)
@@ -85,5 +78,5 @@ def main():
         clus.info(">>> [Fork Test] ------------------------- END --------------------------------------------")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

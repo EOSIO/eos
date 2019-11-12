@@ -26,7 +26,7 @@ def main():
 
         def restart_nodes():
             for i in range(1, clus.node_count):
-                clus.terminate_node(node_id=i)
+                clus.stop_node(node_id=i, kill_sig=15)
             time.sleep(1)
             for i in range(1, clus.node_count):
                 clus.start_node(node_id=i, extra_args=f"--chain-state-db-guard-size-mb {guard} "
