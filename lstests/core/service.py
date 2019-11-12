@@ -54,6 +54,7 @@ DEFAULT_UNSTARTED_COUNT = 0
 DEFAULT_SHAPE = "mesh"
 DEFAULT_CENTER_NODE_ID = None
 DEFAULT_EXTRA_CONFIGS = []
+DEFAULT_EXTRA_ARGS = ""
 DEFAULT_TOTAL_SUPPLY = 1e9
 DEFAULT_LAUNCH_MODE = "bios"
 DEFAULT_REGULAR_LAUNCH = False
@@ -61,12 +62,13 @@ DEFAULT_DONT_NEWACCOUNT = False
 DEFAULT_DONT_SETPROD = False
 DEFAULT_DONT_VOTE = False
 DEFAULT_HTTP_RETRY = 10
-DEFAULT_VERIFY_RETRY = 10
-DEFAULT_SYNC_RETRY = 100
-DEFAULT_PRODUCER_RETRY = 100
 DEFAULT_HTTP_SLEEP = 0.25
+DEFAULT_VERIFY_ASYNC = False
+DEFAULT_VERIFY_RETRY = 10
 DEFAULT_VERIFY_SLEEP = 0.25
+DEFAULT_SYNC_RETRY = 100
 DEFAULT_SYNC_SLEEP = 1
+DEFAULT_PRODUCER_RETRY = 100
 DEFAULT_PRODUCER_SLEEP = 1
 
 DEFAULT_BUFFERED = True
@@ -97,18 +99,20 @@ HELP_UNSTARTED_COUNT = "Number of unstarted nodes"
 HELP_SHAPE = "Cluster topology to launch with"
 HELP_CENTER_NODE_ID = "Center node ID for star or bridge"
 HELP_EXTRA_CONFIGS = "Extra configs to pass to launcher service"
+HELP_EXTRA_ARGS = "Extra arguments to pass to launcher service"
 HELP_TOTAL_SUPPLY = "Total supply of tokens"
 HELP_REGULAR_LAUNCH = "Launch cluster in a regular (not BIOS) mode"
 HELP_DONT_NEWACCOUNT = "Do not create accounts"
 HELP_DONT_SETPROD = "Do not set producers in bios launch"
 HELP_DONT_VOTE = "Do not vote for producers in regular launch"
-HELP_HTTP_RETRY = "Max retries for HTTP connection"
-HELP_VERIFY_RETRY = "Max retries for transaction verification"
-HELP_SYNC_RETRY = "Max retries for sync verification"
+HELP_HTTP_RETRY = "HTTP connection: max num of retries"
+HELP_HTTP_SLEEP = "HTTP connection: sleep time between retries"
+HELP_VERIFY_ASYNC = "Verify transaction: verify asynchronously"
+HELP_VERIFY_RETRY = "Verify transaction: max num of retries"
+HELP_VERIFY_SLEEP = "Verify transaction: sleep time between retries"
+HELP_SYNC_RETRY = "Check nodes in sync: max num of retries"
+HELP_SYNC_SLEEP = "Check nodes in sync: sleep time between retries"
 HELP_PRODUCER_RETRY = "Max retries for head block producer"
-HELP_HTTP_SLEEP = "Sleep time for HTTP connection retries"
-HELP_VERIFY_SLEEP = "Sleep time for transaction verifications"
-HELP_SYNC_SLEEP = "Sleep time for sync verification retries"
 HELP_PRODUCER_SLEEP = "Sleep time for head block producer retries"
 
 HELP_LOG_LEVEL = "Stdout logging level (numeric)"
@@ -149,9 +153,9 @@ class ExceptionThread(threading.Thread):
         except Exception as e:
             self.report(self.channel, self.id, str(e))
 
-def bassert(cond, message):
+def bassert(cond, message=None):
     if not cond:
-        raise BlockchainError(message)
+        raise BlockchainError(message=message)
 
 
 class BlockchainError(RuntimeError):
@@ -188,12 +192,13 @@ class CommandLineArguments:
         self.dont_setprod = cla.dont_setprod
         self.dont_vote = cla.dont_vote
         self.http_retry = cla.http_retry
-        self.verify_retry = cla.verify_retry
-        self.sync_retry = cla.sync_retry
-        self.producer_retry = cla.producer_retry
         self.http_sleep = cla.http_sleep
+        self.verify_async = cla.verify_async
+        self.verify_retry = cla.verify_retry
         self.verify_sleep = cla.verify_sleep
+        self.sync_retry = cla.sync_retry
         self.sync_sleep = cla.sync_sleep
+        self.producer_retry = cla.producer_retry
         self.producer_sleep = cla.producer_sleep
 
         self.threshold = cla.threshold
@@ -211,9 +216,9 @@ class CommandLineArguments:
 
     @staticmethod
     def parse():
-        desc = color.decorate("Launcher Service for EOS Testing Framework", style="underline", fcolor="green")
+        desc = color.decorate("Launcher Service for EOSIO Testing Framework", style="underline", fcolor="green")
         left = 5
-        form = lambda text, value=None: "{} ({})".format(helper.pad(text, left=left, total=50, char=" ", sep=""), value)
+        form = lambda text, value=None: "{} ({})".format(helper.pad(text, left=left, total=55, char=" ", sep=""), value)
         parser = argparse.ArgumentParser(description=desc, add_help=False, formatter_class=lambda prog: argparse.RawTextHelpFormatter(prog, max_help_position=50))
         parser.add_argument("-h", "--help", action="help", help=" " * left + HELP_HELP)
 
@@ -238,12 +243,13 @@ class CommandLineArguments:
         parser.add_argument("-xs", "--dont-setprod", action="store_true", default=None, help=form(HELP_DONT_SETPROD, DEFAULT_DONT_SETPROD))
         parser.add_argument("-xv", "--dont-vote", action="store_true", default=None, help=form(HELP_DONT_VOTE, DEFAULT_DONT_VOTE))
         parser.add_argument("--http-retry", type=int, metavar="NUM", help=form(HELP_HTTP_RETRY, DEFAULT_HTTP_RETRY))
-        parser.add_argument("--verify-retry", type=int, metavar="NUM", help=form(HELP_VERIFY_RETRY, DEFAULT_VERIFY_RETRY))
-        parser.add_argument("--sync-retry", type=int, metavar="NUM", help=form(HELP_SYNC_RETRY, DEFAULT_SYNC_RETRY))
-        parser.add_argument("--producer-retry", type=int, metavar="NUM", help=form(HELP_PRODUCER_RETRY, DEFAULT_PRODUCER_RETRY))
         parser.add_argument("--http-sleep", type=float, metavar="TIME", help=form(HELP_HTTP_SLEEP, DEFAULT_HTTP_SLEEP))
+        parser.add_argument("--verify-async", action="store_true", default=None, help=form(HELP_VERIFY_ASYNC, DEFAULT_VERIFY_ASYNC))
+        parser.add_argument("--verify-retry", type=int, metavar="NUM", help=form(HELP_VERIFY_RETRY, DEFAULT_VERIFY_RETRY))
         parser.add_argument("--verify-sleep", type=float, metavar="TIME", help=form(HELP_VERIFY_SLEEP, DEFAULT_VERIFY_SLEEP))
+        parser.add_argument("--sync-retry", type=int, metavar="NUM", help=form(HELP_SYNC_RETRY, DEFAULT_SYNC_RETRY))
         parser.add_argument("--sync-sleep", type=float, metavar="TIME", help=form(HELP_SYNC_SLEEP, DEFAULT_SYNC_SLEEP))
+        parser.add_argument("--producer-retry", type=int, metavar="NUM", help=form(HELP_PRODUCER_RETRY, DEFAULT_PRODUCER_RETRY))
         parser.add_argument("--producer-sleep", type=float, metavar="TIME", help=form(HELP_PRODUCER_SLEEP, DEFAULT_PRODUCER_SLEEP))
 
         threshold = parser.add_mutually_exclusive_group()
@@ -327,6 +333,7 @@ class Service:
         self.warn = self.logger.warn
         self.error = self.logger.error
         self.fatal = self.logger.fatal
+        self.flag = self.logger.flag
         self.flush = self.logger.flush
 
 
@@ -410,9 +417,9 @@ class Service:
 
 
     def print_formatted_config(self, label, help, value, default_value=None, compress=True):
-        to_mark = value != default_value
-        compressed = helper.compress(str(value))
-        highlighted = color.blue(compressed) if to_mark else compressed
+        different = value is not None and value != default_value
+        compressed = helper.compress(str(value if value is not None else default_value))
+        highlighted = color.blue(compressed) if different else compressed
         self.logger.debug("{:31}{:48}{}".format(color.yellow(label), help, highlighted))
 
 
@@ -461,36 +468,43 @@ class Service:
 
     def start_local_service(self):
         self.logger.debug(color.green("Starting a new launcher service."))
-        helper.quiet_run([self.file, "--http-server-address=0.0.0.0:{}".format(self.port), "--http-threads=4"])
+        stderr = helper.run_get_stderr([self.file, f"--http-server-address=0.0.0.0:{self.port}", "--http-threads=4"])
+        error = False
+        for x in stderr.splitlines():
+            if x.startswith("error"):
+                self.error(f">>> [Launcher Service] {x[x.find(']')+2:]}")
+                error = True
+        if error:
+            raise RuntimeError("Cannot start local service properly! If address already in use, try -o/--port another port.")
         if not self.get_local_services():
-            self.logger.error("ERROR: Launcher service is not started properly!")
+            self.error("ERROR: Launcher service is not started properly!")
+
 
 
 class Cluster:
     def __init__(self,
-                service,
-                contracts_dir=None,
-                cluster_id=None,
-                node_count=None,
-                pnode_count=None,
-                producer_count=None,
-                unstarted_count=None,
-                shape=None,
-                center_node_id=None,
-                extra_configs: typing.List[str] = None,
-                launch_mode=None,
-                dont_newaccount=None,
-                dont_setprod=None,
-                dont_vote=None,
-                total_supply=None,
-                http_retry=None,
-                verify_retry=None,
-                sync_retry=None,
-                producer_retry=None,
-                http_sleep=None,
-                verify_sleep=None,
-                sync_sleep=None,
-                producer_sleep=None):
+                 service,
+                 contracts_dir=None,
+                 cluster_id=None,
+                 node_count=None,
+                 pnode_count=None,
+                 producer_count=None,
+                 unstarted_count=None,
+                 shape=None,
+                 center_node_id=None,
+                 extra_configs: typing.List[str]=None,
+                 extra_args: str=None,
+                 launch_mode=None,
+                 dont_newaccount=None,
+                 dont_setprod=None,
+                 dont_vote=None,
+                 total_supply=None,
+                 http_retry=None,
+                 sync_retry=None,
+                 producer_retry=None,
+                 http_sleep=None,
+                 sync_sleep=None,
+                 producer_sleep=None):
         # register service
         self.service = service
         self.cla = service.cla
@@ -502,9 +516,11 @@ class Cluster:
         self.warn = service.warn
         self.error = service.error
         self.fatal = service.fatal
+        self.flag = service.flag
         self.flush = service.flush
         self.print_header = service.print_header
         self.print_formatted_config= service.print_formatted_config
+        self.verify_threads = []
 
         # configure cluster
         self.contracts_dir   = helper.override(DEFAULT_CONTRACTS_DIR,   contracts_dir,   self.cla.contracts_dir)
@@ -516,18 +532,17 @@ class Cluster:
         self.shape           = helper.override(DEFAULT_SHAPE,           shape,           self.cla.shape)
         self.center_node_id  = helper.override(DEFAULT_CENTER_NODE_ID,  center_node_id,  self.cla.center_node_id)
         self.extra_configs   = helper.override(DEFAULT_EXTRA_CONFIGS,   extra_configs)
+        self.extra_args      = helper.override(DEFAULT_EXTRA_ARGS,      extra_args)
         self.total_supply    = helper.override(DEFAULT_TOTAL_SUPPLY,    total_supply,    self.cla.total_supply)
         self.launch_mode     = helper.override(DEFAULT_LAUNCH_MODE,     launch_mode,     self.cla.launch_mode)
         self.dont_newaccount = helper.override(DEFAULT_DONT_NEWACCOUNT, dont_newaccount, self.cla.dont_newaccount)
         self.dont_setprod    = helper.override(DEFAULT_DONT_SETPROD,    dont_setprod,    self.cla.dont_setprod)
         self.dont_vote       = helper.override(DEFAULT_DONT_VOTE,       dont_vote,       self.cla.dont_vote)
         self.http_retry      = helper.override(DEFAULT_HTTP_RETRY,      http_retry,      self.cla.http_retry)
-        self.verify_retry    = helper.override(DEFAULT_VERIFY_RETRY,    verify_retry,    self.cla.verify_retry)
-        self.sync_retry      = helper.override(DEFAULT_SYNC_RETRY,      sync_retry,      self.cla.sync_retry)
-        self.producer_retry  = helper.override(DEFAULT_PRODUCER_RETRY,  producer_retry,  self.cla.producer_retry)
         self.http_sleep      = helper.override(DEFAULT_HTTP_SLEEP,      http_sleep,      self.cla.http_sleep)
-        self.verify_sleep    = helper.override(DEFAULT_VERIFY_SLEEP,    verify_sleep,    self.cla.verify_sleep)
+        self.sync_retry      = helper.override(DEFAULT_SYNC_RETRY,      sync_retry,      self.cla.sync_retry)
         self.sync_sleep      = helper.override(DEFAULT_SYNC_SLEEP,      sync_sleep,      self.cla.sync_sleep)
+        self.producer_retry  = helper.override(DEFAULT_PRODUCER_RETRY,  producer_retry,  self.cla.producer_retry)
         self.producer_sleep  = helper.override(DEFAULT_PRODUCER_SLEEP,  producer_sleep,  self.cla.producer_sleep)
 
         # check for logical errors in config
@@ -535,7 +550,11 @@ class Cluster:
 
         # Example
         # -------
-        # Given 4 nodes, 3 (non-eosio) producers and 2 producer nodes, the mappings would be:
+        # Given 4 nodes, 2 producer nodes and 3 (non-eosio) producers, the
+        # information and mappings would be:
+        # self.node_count = 4
+        # self.pnode_count = 2
+        # self.producer_count = 3
         # self.nodes = [[0, {"producers": ["eosio", "defproducera", "defproducerb"]}],
         #               [1, {"producers": ["defproducerc"]}],
         #               [2, {"producers": [""]}],
@@ -608,7 +627,8 @@ class Cluster:
         self.info(">>> [BIOS Launch] ----------------------- BEGIN ------------------------------------------")
         self.print_config()
         self.launch_cluster()
-        self.get_cluster_info(level="debug")
+        # self.get_cluster_info(level="debug", response_text_level="debug")
+        bassert(self.are_all_nodes_ready(response_text_level="debug")[0])
         self.schedule_protocol_feature_activations()
         self.set_bios_contract()
         if not dont_newaccount:
@@ -616,6 +636,8 @@ class Cluster:
             if not dont_setprod:
                 self.set_producers()
         self.check_sync()
+        for t in self.verify_threads:
+            t.join()
         self.info(">>> [BIOS Launch] ----------------------- END --------------------------------------------")
 
 
@@ -642,7 +664,7 @@ class Cluster:
         self.info(">>> [Regular Launch] -------------------- BEGIN ------------------------------------------")
         self.print_config()
         self.launch_cluster()
-        self.get_cluster_info(level="debug")
+        self.get_cluster_info(level="debug", response_text_level="debug")
         self.schedule_protocol_feature_activations()
         self.bios_create_accounts_in_parallel(accounts=["eosio.bpay",
                                             "eosio.msig",
@@ -665,54 +687,277 @@ class Cluster:
                 self.vote_for_producers(voter="defproducera", voted_producers=list(self.producer_to_node.keys())[:min(21, len(self.producer_to_node))])
                 self.check_head_block_producer()
         self.check_sync()
+        for t in self.verify_threads:
+            t.join()
         self.info(">>> [Regular Launch] -------------------- END --------------------------------------------")
 
 
     def print_config(self):
         self.print_header("cluster configuration")
-        self.print_formatted_config("-d: contracts_dir",   HELP_CONTRACTS_DIR,   self.contracts_dir,   DEFAULT_CONTRACTS_DIR)
-        self.print_formatted_config("-i: cluster_id",      HELP_CLUSTER_ID,      self.cluster_id,      DEFAULT_CLUSTER_ID)
-        self.print_formatted_config("-n: node_count",      HELP_NODE_COUNT,      self.node_count,      DEFAULT_NODE_COUNT)
-        self.print_formatted_config("-m: pnode_count",     HELP_PNODE_COUNT,     self.pnode_count,     DEFAULT_PNODE_COUNT)
-        self.print_formatted_config("-p: producer_count",  HELP_PRODUDCER_COUNT, self.producer_count,  DEFAULT_PRODUDCER_COUNT)
-        self.print_formatted_config("-u: unstarted_count", HELP_UNSTARTED_COUNT, self.unstarted_count, DEFAULT_UNSTARTED_COUNT)
-        self.print_formatted_config("-t: shape",           HELP_SHAPE,           self.shape,           DEFAULT_SHAPE)
-        self.print_formatted_config("-c: center_node_id",  HELP_CENTER_NODE_ID,  self.center_node_id,  DEFAULT_CENTER_NODE_ID)
-        self.print_formatted_config("... extra_configs",   HELP_EXTRA_CONFIGS,   self.extra_configs,   DEFAULT_EXTRA_CONFIGS)
+        self.print_formatted_config("-d: contracts_dir",   HELP_CONTRACTS_DIR,   self.contracts_dir,    DEFAULT_CONTRACTS_DIR)
+        self.print_formatted_config("-i: cluster_id",      HELP_CLUSTER_ID,      self.cluster_id,       DEFAULT_CLUSTER_ID)
+        self.print_formatted_config("-n: node_count",      HELP_NODE_COUNT,      self.node_count,       DEFAULT_NODE_COUNT)
+        self.print_formatted_config("-m: pnode_count",     HELP_PNODE_COUNT,     self.pnode_count,      DEFAULT_PNODE_COUNT)
+        self.print_formatted_config("-p: producer_count",  HELP_PRODUDCER_COUNT, self.producer_count,   DEFAULT_PRODUDCER_COUNT)
+        self.print_formatted_config("-u: unstarted_count", HELP_UNSTARTED_COUNT, self.unstarted_count,  DEFAULT_UNSTARTED_COUNT)
+        self.print_formatted_config("-t: shape",           HELP_SHAPE,           self.shape,            DEFAULT_SHAPE)
+        self.print_formatted_config("-c: center_node_id",  HELP_CENTER_NODE_ID,  self.center_node_id,   DEFAULT_CENTER_NODE_ID)
+        self.print_formatted_config("... extra_configs",   HELP_EXTRA_CONFIGS,   self.extra_configs,    DEFAULT_EXTRA_CONFIGS)
         self.print_formatted_config("-r: regular_launch",  HELP_REGULAR_LAUNCH,  self.launch_mode == "regular", DEFAULT_REGULAR_LAUNCH)
-        self.print_formatted_config("-xn: dont_newaccount",HELP_DONT_NEWACCOUNT, self.dont_newaccount, DEFAULT_DONT_NEWACCOUNT)
-        self.print_formatted_config("-xs: dont_setprod",   HELP_DONT_SETPROD,    self.dont_setprod,    DEFAULT_DONT_SETPROD)
-        self.print_formatted_config("-xv: dont_vote",      HELP_DONT_VOTE,       self.dont_vote,       DEFAULT_DONT_VOTE)
-        self.print_formatted_config("--http-retry",        HELP_HTTP_RETRY,      self.http_retry,      DEFAULT_HTTP_RETRY)
-        self.print_formatted_config("--verify-retry",      HELP_VERIFY_RETRY,    self.verify_retry,    DEFAULT_VERIFY_RETRY)
-        self.print_formatted_config("--sync-retry",        HELP_SYNC_RETRY,      self.sync_retry,      DEFAULT_SYNC_RETRY)
-        self.print_formatted_config("--producer-retry",    HELP_PRODUCER_RETRY,  self.producer_retry,  DEFAULT_PRODUCER_RETRY)
-        self.print_formatted_config("--http-sleep",        HELP_HTTP_SLEEP,      self.http_sleep,      DEFAULT_HTTP_SLEEP)
-        self.print_formatted_config("--verify-sleep",      HELP_VERIFY_SLEEP,    self.verify_sleep,    DEFAULT_VERIFY_SLEEP)
-        self.print_formatted_config("--sync-sleep",        HELP_SYNC_SLEEP,      self.sync_sleep,      DEFAULT_SYNC_SLEEP)
-        self.print_formatted_config("--producer-sleep",    HELP_PRODUCER_SLEEP,  self.producer_sleep,  DEFAULT_PRODUCER_SLEEP)
+        self.print_formatted_config("-xn: dont_newaccount",HELP_DONT_NEWACCOUNT, self.dont_newaccount,  DEFAULT_DONT_NEWACCOUNT)
+        self.print_formatted_config("-xs: dont_setprod",   HELP_DONT_SETPROD,    self.dont_setprod,     DEFAULT_DONT_SETPROD)
+        self.print_formatted_config("-xv: dont_vote",      HELP_DONT_VOTE,       self.dont_vote,        DEFAULT_DONT_VOTE)
+        self.print_formatted_config("--http-retry",        HELP_HTTP_RETRY,      self.http_retry,       DEFAULT_HTTP_RETRY)
+        self.print_formatted_config("--verify-async",      HELP_VERIFY_ASYNC,    self.cla.verify_async, DEFAULT_VERIFY_ASYNC)
+        self.print_formatted_config("--verify-retry",      HELP_VERIFY_RETRY,    self.cla.verify_retry, DEFAULT_VERIFY_RETRY)
+        self.print_formatted_config("--verify-sleep",      HELP_VERIFY_SLEEP,    self.cla.verify_sleep, DEFAULT_VERIFY_SLEEP)
+        self.print_formatted_config("--sync-retry",        HELP_SYNC_RETRY,      self.sync_retry,       DEFAULT_SYNC_RETRY)
+        self.print_formatted_config("--producer-retry",    HELP_PRODUCER_RETRY,  self.producer_retry,   DEFAULT_PRODUCER_RETRY)
+        self.print_formatted_config("--http-sleep",        HELP_HTTP_SLEEP,      self.http_sleep,       DEFAULT_HTTP_SLEEP)
+        self.print_formatted_config("--sync-sleep",        HELP_SYNC_SLEEP,      self.sync_sleep,       DEFAULT_SYNC_SLEEP)
+        self.print_formatted_config("--producer-sleep",    HELP_PRODUCER_SLEEP,  self.producer_sleep,   DEFAULT_PRODUCER_SLEEP)
 
 
-    def launch_cluster(self):
+    """
+    =====================
+    cluster-related calls
+    =====================
+    """
+
+    def launch_cluster(self, **call_kwargs):
         return self.call("launch_cluster",
                          nodes=self.nodes,
                          node_count=self.node_count,
                          shape=self.shape,
                          center_node_id=self.center_node_id,
-                         extra_configs=self.extra_configs)
+                         extra_configs=self.extra_configs,
+                         extra_args=self.extra_args,
+                         **call_kwargs)
 
 
-    def schedule_protocol_feature_activations(self):
-        return self.call("schedule_protocol_feature_activations",
-                         protocol_features_to_activate=[PREACTIVATE_FEATURE])
+    def stop_cluster(self, **call_kwargs):
+        return self.call("stop_cluster", **call_kwargs)
 
 
-    def get_cluster_info(self, node_id=0, level="trace", buffer=False):
-        return self.call("get_cluster_info",
+    def clean_cluster(self, **call_kwargs):
+        return self.call("clean_cluster")
+
+
+    def start_node(self, node_id, extra_args=None, **call_kwargs):
+        return self.call("start_node", node_id=node_id, extra_args=extra_args, **call_kwargs)
+
+
+    def stop_node(self, node_id, kill_sig=15, **call_kwargs):
+        """kill_sig: 15 for soft kill, 9 for hard kill"""
+        return self.call("stop_node", node_id=node_id, kill_sig=kill_sig, **call_kwargs)
+
+
+    def stop_all_nodes(self, kill_sig=15, **call_kwargs):
+        for node_id in self.node_count:
+            return self.call("stop_nodes", node_id=node_id, kill_sig=kill_sig, **call_kwargs)
+
+
+    """
+    =====================
+    queries
+    =====================
+    """
+    def get_cluster_info(self, **call_kwargs):
+        return self.call("get_cluster_info", **call_kwargs)
+
+
+    def get_cluster_running_state(self, **call_kwargs):
+        return self.call("get_cluster_running_state", **call_kwargs)
+
+
+    def get_info(self, node_id, **call_kwargs):
+        return self.call("get_info", node_id=node_id, **call_kwargs)
+
+
+    def get_block(self, block_num_or_id, node_id=0, **call_kwargs):
+        return self.call("get_block", node_id=node_id, block_num_or_id=block_num_or_id, **call_kwargs)
+
+
+    def get_account(self, name, node_id=0, **call_kwargs):
+        return call("get_account", node_id=node_id, name=name, **call_kwargs)
+
+
+    def get_protocol_features(self, node_id=0, **call_kwargs):
+        return call("get_protocol_features", node_id=node_id, **call_kwargs)
+
+
+    def get_log(self, node_id) -> str:
+        log = ""
+        offset = 0
+        length = 10000
+        while True:
+            response = self.get_log_data(node_id=node_id, offset=offset, length=length).response_dict
+            log += base64.b64decode(response["data"]).decode("utf-8")
+            if response["offset"] + length > response["filesize"]:
+                break
+            offset += length
+        return log
+
+
+    def get_log_data(self, node_id, offset, length=10000, filename="stderr_0.txt", **call_kwargs):
+        return self.call("get_log_data",
                          node_id=node_id,
-                         level=level,
-                         buffer=buffer)
+                         offset=offset,
+                         length=length,
+                         filename=filename)
 
+
+    def verify(self,
+               transaction_id,
+               verify_key=None,
+               verify_async=False,
+               retry=None,
+               sleep=None,
+               assertive=True,
+               level=None,
+               retry_level=None,
+               error_level=None,
+               buffer=None):
+        retry = helper.override(DEFAULT_VERIFY_RETRY, retry, self.cla.verify_retry)
+        sleep = helper.override(DEFAULT_VERIFY_SLEEP, sleep, self.cla.verify_sleep)
+        verified = False
+        while retry >= 0:
+            if self.verify_transaction(transaction_id=transaction_id, verify_key=verify_key, level=retry_level, buffer=buffer):
+                verified = True
+                break
+            time.sleep(sleep)
+            retry -= 1
+        if verify_async:
+            self.log(helper.make_header("async verify transaction", level=level), level=level, buffer=True)
+            if verified:
+                self.log(color.black_on_green(f"{verify_key.title()}") + f" {transaction_id}", level=level, buffer=True)
+            else:
+                self.log(color.black_on_red(f"Not {verify_key.title()}") + f" {transaction_id}", level=error_level, buffer=True)
+            self.flush()
+        else:
+            if verified:
+                self.log(color.black_on_green(f"{verify_key.title()}"), level=level)
+            else:
+                self.log(color.black_on_red(f"Not {verify_key.title()}"), level=error_level)
+        if assertive:
+            bassert(verified, f"{transaction_id} cannot be verified")
+        return verified
+
+
+    def verify_transaction(self, transaction_id, verify_key=None, **call_kwargs):
+        bassert(verify_key in ["irreversible", "contained"], "Verify key must be either \"irreversible\" or \"contained\".")
+        cx = self.call("verify_transaction", transaction_id=transaction_id, verify_key=None, dont_flush=True, **call_kwargs)
+        return helper.extract(cx.response, key=verify_key, fallback=False)
+
+
+    """
+    =====================
+    transactions
+    =====================
+    """
+    def schedule_protocol_feature_activations(self, **call_kwargs):
+        return self.call("schedule_protocol_feature_activations",
+                         protocol_features_to_activate=[PREACTIVATE_FEATURE],
+                         **call_kwargs)
+
+
+    def set_contract(self,
+                     account,
+                     contract_file,
+                     abi_file,
+                     node_id=0,
+                     verify_key="irreversible",
+                     name=None,
+                     **call_kwargs):
+        return self.call("set_contract",
+                         node_id=node_id,
+                         account=account,
+                         contract_file=contract_file,
+                         abi_file=abi_file,
+                         verify_key=verify_key,
+                         header=f"set <{name}> contract" if name else None,
+                         **call_kwargs)
+
+
+    def push_actions(self,
+                     actions,
+                     node_id=0,
+                     verify_key="irreversible",
+                     **call_kwargs):
+        return self.call("push_actions",
+                         node_id=node_id,
+                         actions=actions,
+                         verify_key=verify_key,
+                         **call_kwargs)
+
+    """
+    =====================
+    miscellaneous
+    =====================
+    """
+    def send_raw(self,
+                 url,
+                 string_data: str="",
+                 json_data: dict={},
+                 node_id=0,
+                 **call_kwargs):
+        return self.call("send_raw",
+                         url=url,
+                         string_data=string_data,
+                         json_data=json_data,
+                         **call_kwargs)
+
+
+    def pause_node_production(self, node_id):
+        return send_raw(url="/v1/producer/pause",
+                        node_id=node_id)
+
+
+    def resume_node_production(self, node_id):
+        return send_raw(url="/v1/producer/resume",
+                        node_id=node_id)
+
+
+    def get_greylist(self, node_id=0):
+        return send_raw(url="/v1/producer/get_greylist",
+                        node_id=node_id)
+
+
+    def add_greylist_accounts(self, accounts:list, node_id=0):
+        return send_raw(url="/v1/producer/add_greylist_accounts",
+                        node_id=node_id,
+                        json_data={"accounts": accounts})
+
+
+    def remove_greylist_accounts(self, accounts:list, node_id=0):
+        return send_raw(url="/v1/producer/remove_greylist_accounts",
+                        node_id=node_id,
+                        json_data={"accounts": accounts})
+
+
+
+    """
+    ======================
+    composite
+    ======================
+    """
+    def get_node_pid(self, node_id, **call_kwargs) ->bool:
+        return self.get_cluster_running_state(**call_kwargs).response_dict["result"]["nodes"][node_id][1]["pid"]
+
+
+    def is_node_down(self, node_id, **call_kwargs):
+        return self.get_node_pid(node_id, **call_kwargs) == 0
+
+
+    def is_node_ready(self, node_id, **call_kwargs):
+        return "error" not in self.get_cluster_info(**call_kwargs).response_dict["result"][node_id][1]
+
+
+    def are_all_nodes_ready(self, node_id_list=None, **call_kwargs):
+        node_id_list = helper.override(list(range(self.node_count)), node_id_list)
+        result = self.get_cluster_info(**call_kwargs).response_dict["result"]
+        error_nodes = [x[0] for x in result if x[0] in node_id_list and "error" in x[1]]
+        return len(error_nodes) == 0, error_nodes
 
 
     def get_head_block_number(self, node_id=0):
@@ -734,81 +979,13 @@ class Cluster:
         return count
 
 
-    def bios_create_account(self, name, verify_key="irreversible", buffer=False):
-        actions = [{"account": "eosio",
-                    "action": "newaccount",
-                    "permissions":[{"actor": "eosio",
-                                    "permission": "active"}],
-                    "data":{"creator": "eosio",
-                            "name": name,
-                            "owner": {"threshold": 1,
-                                      "keys": [{"key": PRODUCER_KEY,
-                                                "weight":1}],
-                                      "accounts": [],
-                                      "waits": []},
-                            "active":{"threshold": 1,
-                                      "keys": [{"key": PRODUCER_KEY,
-                                                "weight":1}],
-                                      "accounts": [],
-                                      "waits": []}}}]
-        return self.push_actions(actions=actions, name=f"bios-create \"{name}\" account", verify_key=verify_key, buffer=buffer)
-
-
-    def bios_create_accounts(self, accounts, verify_key="irreversible"):
-        actions = []
-        for name in accounts:
-            actions += [{"account": "eosio",
-                        "action": "newaccount",
-                        "permissions":[{"actor": "eosio",
-                                        "permission": "active"}],
-                        "data":{"creator": "eosio",
-                                "name": name,
-                                "owner": {"threshold": 1,
-                                          "keys": [{"key": PRODUCER_KEY,
-                                                    "weight":1}],
-                                          "accounts": [],
-                                          "waits": []},
-                                "active":{"threshold": 1,
-                                          "keys": [{"key": PRODUCER_KEY,
-                                                    "weight":1}],
-                                          "accounts": [],
-                                          "waits": []}}}]
-        return self.push_actions(actions=actions, name=f"bios-create {len(actions)} accounts", verify_key=verify_key)
-
-
-    def bios_create_accounts_in_parallel(self, accounts, verify_key="irreversible"):
-        threads = []
-        channel = {}
-        def report(channel, thread_id, message):
-            channel[thread_id] = message
-        for ac in accounts:
-            t = ExceptionThread(channel, report, target=self.bios_create_account, args=(ac,), kwargs={"buffer": True, "verify_key": verify_key})
-            threads.append(t)
-            t.start()
-        for t in threads:
-            t.join()
-        if len(channel) != 0:
-            self.error(f"{len(channel)} expcetions occurred in bios-creating accounts")
-
-
-    def set_producers(self, producers=None, verify_key="irreversible", verify_retry=None):
-        producers = self.producers if producers is None else producers
-        prod_keys = []
-        for p in sorted(producers):
-            prod_keys.append({"producer_name": p, "block_signing_key": PRODUCER_KEY})
-        actions = [{"account": "eosio",
-                    "action": "setprods",
-                    "permissions": [{"actor": "eosio", "permission": "active"}],
-                    "data": { "schedule": prod_keys}}]
-        return self.push_actions(actions=actions, name="set producers", verify_key=verify_key, verify_retry=verify_retry)
-
-
     def set_bios_contract(self):
         contract = "eosio.bios"
         return self.set_contract(account="eosio",
                                  contract_file=self.get_wasm_file(contract),
                                  abi_file=self.get_abi_file(contract),
                                  name=contract)
+
 
     def set_token_contract(self):
         contract = "eosio.token"
@@ -826,6 +1003,79 @@ class Cluster:
                           name=contract)
 
 
+    # def bios_create_accounts(self, name, verify_key="irreversible", buffer=False):
+    #     actions = [{"account": "eosio",
+    #                 "action": "newaccount",
+    #                 "permissions":[{"actor": "eosio",
+    #                                 "permission": "active"}],
+    #                 "data":{"creator": "eosio",
+    #                         "name": name,
+    #                         "owner": {"threshold": 1,
+    #                                   "keys": [{"key": PRODUCER_KEY,
+    #                                             "weight":1}],
+    #                                   "accounts": [],
+    #                                   "waits": []},
+    #                         "active":{"threshold": 1,
+    #                                   "keys": [{"key": PRODUCER_KEY,
+    #                                             "weight":1}],
+    #                                   "accounts": [],
+    #                                   "waits": []}}}]
+    #     return self.push_actions(actions=actions, header=f"bios create \"{name}\" account", verify_key=verify_key, buffer=buffer)
+
+
+    def bios_create_accounts(self, accounts: typing.Union[str, typing.List[str]], verify_key="irreversible", buffer=False):
+        actions = []
+        accounts = [accounts] if isinstance(accounts, str) else accounts
+        for name in accounts:
+            actions += [{"account": "eosio",
+                        "action": "newaccount",
+                        "permissions":[{"actor": "eosio",
+                                        "permission": "active"}],
+                        "data":{"creator": "eosio",
+                                "name": name,
+                                "owner": {"threshold": 1,
+                                          "keys": [{"key": PRODUCER_KEY,
+                                                    "weight":1}],
+                                          "accounts": [],
+                                          "waits": []},
+                                "active":{"threshold": 1,
+                                          "keys": [{"key": PRODUCER_KEY,
+                                                    "weight":1}],
+                                          "accounts": [],
+                                          "waits": []}}}]
+        if len(accounts) == 1:
+            return self.push_actions(actions=actions, header=f"bios create \"{accounts[0]}\" account", verify_key=verify_key, buffer=buffer)
+        else:
+            return self.push_actions(actions=actions, header=f"bios create {len(actions)} accounts", verify_key=verify_key, buffer=buffer)
+
+
+    def bios_create_accounts_in_parallel(self, accounts, verify_key="irreversible"):
+        threads = []
+        channel = {}
+        def report(channel, thread_id, message):
+            channel[thread_id] = message
+        for ac in accounts:
+            t = ExceptionThread(channel, report, target=self.bios_create_accounts, args=(ac,), kwargs={"buffer": True, "verify_key": verify_key})
+            threads.append(t)
+            t.start()
+        for t in threads:
+            t.join()
+        if len(channel) != 0:
+            self.error(f"{len(channel)} expcetions occurred in bios-creating accounts")
+
+
+    def set_producers(self, producers=None, verify_key="irreversible", verify_retry=None):
+        producers = self.producers if producers is None else producers
+        prod_keys = []
+        for p in sorted(producers):
+            prod_keys.append({"producer_name": p, "block_signing_key": PRODUCER_KEY})
+        actions = [{"account": "eosio",
+                    "action": "setprods",
+                    "permissions": [{"actor": "eosio", "permission": "active"}],
+                    "data": { "schedule": prod_keys}}]
+        return self.push_actions(actions=actions, header="set producers", verify_key=verify_key, verify_retry=verify_retry)
+
+
     def create_tokens(self, maximum_supply):
         formatted = helper.format_tokens(maximum_supply)
         actions = [{"account": "eosio.token",
@@ -837,7 +1087,7 @@ class Cluster:
                              "can_freeze": 0,
                              "can_recall": 0,
                              "can_whitelist":0}}]
-        return self.push_actions(actions=actions, name="create tokens")
+        return self.push_actions(actions=actions, header="create tokens")
 
 
     def issue_tokens(self, quantity):
@@ -849,7 +1099,7 @@ class Cluster:
                     "data": {"to": "eosio",
                              "quantity": formatted,
                              "memo": "hi"}}]
-        return self.push_actions(actions=actions, name="issue tokens")
+        return self.push_actions(actions=actions, header="issue tokens")
 
 
     def init_system_contract(self):
@@ -859,7 +1109,7 @@ class Cluster:
                                      "permission": "active"}],
                     "data": {"version": 0,
                              "core": "4,SYS"}}]
-        return self.push_actions(actions=actions, name="init system contract")
+        return self.push_actions(actions=actions, header="init system contract")
 
 
     def create_account(self, creator, name, stake_cpu, stake_net, buy_ram_bytes, transfer, node_id=0, verify_key="irreversible", buffer=False):
@@ -896,18 +1146,7 @@ class Cluster:
                                 "stake_net_quantity": stake_net,
                                 "transfer": transfer}}
         actions = [newaccount, buyrambytes, delegatebw]
-        return self.push_actions(actions=actions, name=f"create \"{name}\" account", verify_key=verify_key, buffer=buffer)
-        # return self.call("create_account",
-        #                  creator=creator,
-        #                  name=name,
-        #                  stake_cpu=stake_cpu,
-        #                  stake_net=stake_net,
-        #                  buy_ram_bytes=buy_ram_bytes,
-        #                  transfer=transfer,
-        #                  node_id=node_id,
-        #                  verify_key=verify_key,
-        #                  header="create \"{}\" account".format(name),
-        #                  buffer=buffer)
+        return self.push_actions(actions=actions, header=f"create \"{name}\" account", verify_key=verify_key, buffer=buffer)
 
 
     def register_producer(self, producer, buffer=False):
@@ -919,8 +1158,7 @@ class Cluster:
                              "producer_key": PRODUCER_KEY,
                              "url": "www.test.com",
                              "location": 0}}]
-        return self.push_actions(actions=actions, name="register \"{}\" producer".format(producer), buffer=buffer)
-
+        return self.push_actions(actions=actions, header="register \"{}\" producer".format(producer), buffer=buffer)
 
 
     def create_and_register_producers_in_parallel(self):
@@ -970,27 +1208,7 @@ class Cluster:
                     "data": {"voter": "{}".format(voter),
                              "proxy": "",
                              "producers": voted_producers}}]
-        return self.push_actions(actions=actions, name="votes for producers", buffer=buffer)
-
-
-
-    def verify(self, transaction_id, verify_key="irreversible", retry=None, sleep=None, level="DEBUG", buffer=False):
-        retry = self.verify_retry if retry is None else retry
-        sleep = self.verify_sleep if sleep is None else sleep
-        while retry >= 0:
-            if self.verify_transaction(transaction_id=transaction_id, verify_key=verify_key, buffer=buffer):
-                self.logger.log("{}".format(color.black_on_green(verify_key)), level=level, buffer=buffer)
-                return True
-            time.sleep(sleep)
-            retry -= 1
-        self.logger.error(color.black_on_red("not {}".format(verify_key.title())))
-        return False
-
-
-    def verify_transaction(self, transaction_id, verify_key="irreversible", level="TRACE", buffer=False):
-        cx = self.call("verify_transaction", transaction_id=transaction_id, verify_key=None, level=level, buffer=buffer, dont_flush=True)
-        return helper.extract(cx.response, key=verify_key, fallback=False)
-
+        return self.push_actions(actions=actions, header="votes for producers", buffer=buffer)
 
 
     def check_sync(self, retry=None, sleep=None, min_sync_nodes=None, max_block_lag=None, level="DEBUG", dont_raise=False):
@@ -1014,9 +1232,9 @@ class Cluster:
         sleep = self.sync_sleep if sleep is None else sleep
         min_sync_nodes = min_sync_nodes if min_sync_nodes else self.node_count
         # print head
-        self.print_header("verify nodes in sync", level=level)
+        self.print_header("check if nodes are in sync", level=level)
         while retry >= 0:
-            ix = self.get_cluster_info()
+            ix = self.get_cluster_info(level="trace")
             has_head_block_id = lambda node_id: "head_block_id" in ix.response_dict["result"][node_id][1]
             extract_head_block_id = lambda node_id: ix.response_dict["result"][node_id][1]["head_block_id"]
             extract_head_block_num = lambda node_id: ix.response_dict["result"][node_id][1]["head_block_num"]
@@ -1154,42 +1372,6 @@ class Cluster:
         assert head_block_producer != "eosio", "Head block producer is still \"eosio\"."
 
 
-    def start_node(self, node_id, extra_args=None):
-        return self.call("start_node", node_id=node_id, extra_args=extra_args)
-
-
-    def stop_node(self, node_id, kill_sig=15):
-        return self.call("stop_node", node_id=node_id, kill_sig=kill_sig)
-
-
-    def kill_node(self, node_id):
-        return self.call("stop_node", node_id=node_id, kill_sig=9)
-
-
-    def terminate_node(self, node_id):
-        return self.call("stop_node", node_id=node_id, kill_sig=15)
-
-
-    def get_block(self, block_num_or_id, node_id=0, level="TRACE"):
-        return self.call("get_block", block_num_or_id=block_num_or_id, node_id=node_id, level=level)
-
-
-    def get_log_data(self, offset, node_id, level="TRACE"):
-        return self.call("get_log_data", offset=offset, len=10000, node_id=node_id, filename="stderr_0.txt")
-
-
-    def get_log(self, node_id) -> str:
-        log = ""
-        offset = 0
-        while True:
-            resp = self.get_log_data(offset=offset, node_id=node_id).response_dict
-            log += base64.b64decode(resp["data"]).decode("utf-8")
-            if resp["offset"] + 10000 > resp["filesize"]:
-                break
-            offset += 10000
-        return log
-
-
     def get_wasm_file(self, contract):
         return os.path.join(self.contracts_dir, contract, contract + ".wasm")
 
@@ -1222,36 +1404,73 @@ class Cluster:
         return "defproducer" + string.ascii_lowercase[num] if num < 26 else "defpr" + int_to_base26(8031810176 + num)[1:]
 
 
-    def set_contract(self, account, contract_file, abi_file, node_id=0, verify_key="irreversible", name=None, buffer=False):
-        return self.call("set_contract",
-                         account=account,
-                         contract_file=contract_file,
-                         abi_file=abi_file,
-                         node_id=node_id,
-                         verify_key=verify_key,
-                         header="set <{}> contract".format(name) if name else None,
-                         buffer=buffer)
 
 
-    def push_actions(self, actions, node_id=0, verify_key="irreversible", verify_retry=None, name=None, buffer=False):
-        return self.call("push_actions",
-                         actions=actions,
-                         node_id=node_id,
-                         verify_key=verify_key,
-                         header=name,
-                         buffer=buffer)
+    """
+    ====================
+    Launcher Service API
+    ====================
+    @ plugins/launcher_service_plugin/include/eosio/launcher_service_plugin/launcher_service_plugin.hpp
 
+    -- cluster-related calls ----------------
+    1. launch_cluster
+    2. stop_cluster
+    3. stop_all_clusters
+    4. clean_cluster
+    5. start_node
+    6. stop_node
+
+    --- wallet-related calls ----------------
+    7. generate_key
+    8. import_keys
+
+    --- queries -----------------------------
+    9. get_cluster_info
+    10. get_cluster_running_state
+    11. get_info
+    12. get_block
+    13. get_account
+    14. get_code_hash
+    15. get_protocol_features
+    16. get_table_rows
+    17. get_log_data
+    18. verify_transaction
+
+    --- transactions ------------------------
+    19. schedule_protocol_feature_activations
+    20. set_contract
+    21. push_actions
+
+    --- miscellaneous------------------------
+    22. send_raw
+    """
 
     def call(self,
-             func: str,
-             retry=None,
-             sleep=None,
+             api: str,
+             http_retry=None,
+             http_sleep=None,
+             verify_async=False,
              verify_key=None,
+             verify_sleep=None,
              verify_retry=None,
+             verify_assert=True,
              header=None,
-             level="DEBUG",
+             level=None,
+             header_level=None,
+             url_level=None,
+             request_text_level=None,
+             retry_info_level=None,
+             retry_text_level=None,
+             response_code_level=None,
+             response_text_level=None,
+             transaction_id_level=None,
+             no_transaction_id_level=None,
+             error_level=None,
+             error_text_level=None,
+             verify_level=None,
+             verify_retry_level=None,
+             verify_error_level=None,
              buffer=False,
-             dont_error=False,
              dont_flush=False,
              **data) -> Connection:
         """
@@ -1264,39 +1483,82 @@ class Cluster:
         5. log response
         6. verify transaction
         """
-        retry = self.http_retry if retry is None else retry
-        sleep = self.http_sleep if sleep is None else sleep
+        http_retry = helper.override(http_retry, self.http_retry)
+        http_sleep = helper.override(http_sleep, self.http_sleep)
+        header = helper.override(api.replace("_", " "), header)
         data.setdefault("cluster_id", self.cluster_id)
         data.setdefault("node_id", 0)
-        header = header if header else func.replace("_", " ")
-        self.print_header(header, level=level, buffer=buffer)
-        cx = Connection(url="http://{}:{}/v1/launcher/{}".format(self.service.address, self.service.port, func), data=data)
-        self.logger.log(cx.url, level=level, buffer=buffer)
-        self.logger.log(cx.request_text, level=level, buffer=buffer)
-        while not cx.ok and retry > 0:
-            self.logger.trace(cx.response_code, buffer=buffer)
-            self.logger.trace("{} {} for http connection...".format(retry, "retries remain" if retry > 1 else "retry remains"), buffer=buffer)
-            self.logger.trace("Sleep for {}s before next retry...".format(sleep), buffer=buffer)
-            time.sleep(sleep)
+
+        verify_async = helper.override(DEFAULT_VERIFY_ASYNC, verify_async, self.cla.verify_async)
+
+        level = helper.override("debug", level)
+        header_level = helper.override(level, header_level)
+        url_level = helper.override(level, url_level)
+        request_text_level = helper.override(level, request_text_level)
+        retry_info_level = helper.override("trace", retry_info_level)
+        retry_text_level = helper.override("trace", retry_text_level)
+        response_code_level = helper.override(level, response_code_level)
+        response_text_level = helper.override("trace", response_text_level)
+        transaction_id_level = helper.override(level, transaction_id_level)
+        no_transaction_id_level = helper.override(transaction_id_level, no_transaction_id_level)
+        error_level = helper.override("error", error_level)
+        error_text_level = helper.override(error_level, error_text_level)
+        verify_level = helper.override(level, verify_level)
+        verify_retry_level = helper.override(retry_info_level, verify_retry_level)
+        verify_error_level = helper.override(error_level, verify_error_level)
+
+        self.log(helper.make_header(header, level=header_level), level=header_level, buffer=buffer)
+        cx = Connection(url=f"http://{self.service.address}:{self.service.port}/v1/launcher/{api}", data=data)
+        self.log(cx.url, level=url_level, buffer=buffer)
+        self.log(cx.request_text, level=request_text_level, buffer=buffer)
+        while not cx.ok and http_retry > 0:
+            self.log(cx.response_code, level=retry_info_level, buffer=buffer)
+            self.log(cx.response_text, level=retry_text_level, buffer=buffer)
+            self.log(f"{http_retry} retries remain for http connection...", level=retry_info_level, buffer=buffer)
+            self.log(f"Sleep for {http_sleep}s before next retry...", level=retry_info_level, buffer=buffer)
+            time.sleep(http_sleep)
             cx.attempt()
-            retry -= 1
+            http_retry -= 1
         if cx.response.ok:
-            self.logger.log(cx.response_code, level=level, buffer=buffer)
+            self.log(cx.response_code, level=response_code_level, buffer=buffer)
             if cx.transaction_id:
-                self.logger.log(color.green("<Transaction ID> {}".format(cx.transaction_id)), level=level, buffer=buffer)
+                self.log(color.green(f"<Transaction ID> {cx.transaction_id}"), level=transaction_id_level, buffer=buffer)
             else:
-                self.logger.log(color.yellow("<No Transaction ID>"), level=level, buffer=buffer)
-            self.logger.trace(cx.response_text, buffer=buffer)
-        elif dont_error:
-            self.log(cx.response_code, level=level, buffer=buffer)
+                self.log(color.yellow("<No Transaction ID>"), level=no_transaction_id_level, buffer=buffer)
+            self.log(cx.response_text, level=response_text_level, buffer=buffer)
         else:
-            self.logger.error(cx.response_code)
-            self.logger.error(cx.response_text)
+            self.log(cx.response_code, level=error_level, buffer=buffer)
+            self.log(cx.response_text, level=error_text_level, buffer=buffer)
         if verify_key:
-            assert self.verify(transaction_id=cx.transaction_id, verify_key=verify_key, retry=verify_retry, level=level, buffer=buffer)
+            if verify_async:
+                t = threading.Thread(target=self.verify,
+                                     kwargs={"transaction_id": cx.transaction_id,
+                                             "verify_key": verify_key,
+                                             "verify_async": True,
+                                             "retry": verify_retry,
+                                             "sleep":verify_sleep,
+                                             "assertive": verify_assert,
+                                             "level": verify_level,
+                                             "retry_level": verify_retry_level,
+                                             "error_level": verify_error_level,
+                                             "buffer": True})
+                t.start()
+                self.verify_threads.append(t)
+            else:
+                self.verify(transaction_id=cx.transaction_id,
+                            verify_key=verify_key,
+                            verify_async=False,
+                            retry=verify_retry,
+                            sleep=verify_sleep,
+                            assertive=verify_assert,
+                            level=verify_level,
+                            retry_level=verify_retry_level,
+                            error_level=verify_error_level,
+                            buffer=buffer)
         if buffer and not dont_flush:
-            self.logger.flush()
+            self.flush()
         return cx
+
 
 
 def main():
@@ -1305,7 +1567,7 @@ def main():
                     FileWriter(filename="service-debug.log", threshold="debug", monochrome=True),
                     FileWriter(filename="service-trace.log", threshold="trace", monochrome=True))
     service = Service(logger=logger)
-    cluster = Cluster(service=service)
+    # cluster = Cluster(service=service)
 
 
 if __name__ == "__main__":

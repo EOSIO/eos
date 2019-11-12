@@ -32,6 +32,7 @@ class LogLevel(enum.IntEnum):
     WARN  = 40
     ERROR = 50
     FATAL = 60
+    FLAG  = 90
     OFF   = 100
 
     def __str__(self):
@@ -157,7 +158,7 @@ class Writer(abc.ABC):
         if self.show_elapsed_time:
             prefix += "({:8.3f}s) ".format(time.time() - self.start_time)
         depth = len(inspect.stack()) - 1
-        frame = inspect.stack()[min(6, depth)]
+        frame = inspect.stack()[min(5, depth)]
         if self.show_filename:
             prefix += "{:10.10s}:".format(os.path.basename(frame.filename))
         if self.show_lineno:
@@ -283,15 +284,17 @@ class Logger:
     def info(self, msg, buffer=False):
         self.log(msg, level=LogLevel.INFO, buffer=buffer)
 
-    def warn(self, msg, colorize=True, buffer=False):
-        self.log(color.yellow(msg) if colorize else msg, level=LogLevel.WARN, buffer=buffer)
+    def warn(self, msg, buffer=False):
+        self.log(msg, level=LogLevel.WARN, buffer=buffer)
 
-    def error(self, msg, colorize=True, buffer=False):
-        self.log(color.red(msg) if (colorize and "\n" not in msg) else msg, level=LogLevel.ERROR, buffer=buffer)
+    def error(self, msg, buffer=False):
+        self.log(msg, level=LogLevel.ERROR, buffer=buffer)
 
-    def fatal(self, msg, colorize=True, buffer=False):
-        self.log(color.bold(color.red(msg)) if colorize else msg, level=LogLevel.FATAL, buffer=buffer)
+    def fatal(self, msg, buffer=False):
+        self.log(msg, level=LogLevel.FATAL, buffer=buffer)
 
+    def flag(self, msg, buffer=False):
+        self.log(msg, level=LogLevel.FLAG, buffer=buffer)
 
     def flush(self):
         for w in self.writers:

@@ -15,8 +15,10 @@ import requests
 # user-defined modules
 if __package__:
     from . import color
+    from . import logger
 else:
     import color
+    import logger
 
 HORIZONTAL_BAR = "─"
 HORIZONTAL_DASH = "⎯"
@@ -63,12 +65,23 @@ def get_current_time(date=True, precision=3, local_time=False, time_zone=False):
 def format_header(header, level: str):
     upper = level.upper()
     if upper == "INFO":
-        return color.bold(">>> {}".format(header))
+        return (">>> {}".format(header.title()))
     if upper == "DEBUG":
         return pad(color.black_on_cyan(header), char="-")
     if upper == "TRACE":
         return pad(header, char="⎯")
     raise RuntimeError("Invalid header level \"{}\"".format(level))
+
+
+def make_header(header, level):
+    level = logger.LogLevel.to_str(level)
+    if level == "INFO":
+        return (">>> {}".format(header.title()))
+    if level == "DEBUG":
+        return pad(color.black_on_cyan(header), char="-")
+    if level == "TRACE":
+        return pad(header, char="⎯")
+    return header
 
 
 # to be deprecated
@@ -107,6 +120,19 @@ def optional(x, y):
 #     return override_value if override_value is not None else value if value is not None else default_value
 
 def override(*args):
+    """
+    Example
+    -------
+    >>> a, b, c = 1, 2, None
+    >>> override(a, b, c)
+    2
+    >>> default_value = 1
+    >>> value = 2
+    >>> command_line_value = 3
+    >>> value = override(default_value, value, command_line_value)
+    >>> value
+    3
+    """
     for x in reversed(args):
         if x is not None:
             return x
@@ -133,13 +159,13 @@ def pad(text: str, left=20, total=90, right=None, char="-", sep=" ") -> str:
     return string.ljust(total + offset, char)
 
 
-def abridge(data: typing.Union[dict, list], maxlen=64):
+def abridge(data: typing.Union[dict, list], maxlen=79):
     clone = copy.deepcopy(data)
     trim(clone, maxlen=maxlen)
     return clone
 
 
-def trim(data: typing.Union[dict, list], maxlen=64):
+def trim(data: typing.Union[dict, list], maxlen=79):
     """
     Summary
     -------
@@ -166,24 +192,24 @@ def trim(data: typing.Union[dict, list], maxlen=64):
 # --------------- subprocess-related ----------------------------------------------------------------------------------
 
 def get_cmd_and_args_by_pid(pid: typing.Union[int, str]):
-    return interacitve_run(["ps", "-p", str(pid), "-o", "command="])
+    return interactive_run(["ps", "-p", str(pid), "-o", "command="])
 
 
 def get_pid_list_by_pattern(pattern: str) -> typing.List[int]:
-    out = interacitve_run(["pgrep", "-f", pattern])
+    out = interactive_run(["pgrep", "-f", pattern])
     return [int(x) for x in out.splitlines()]
 
 
-def interacitve_run(args: list):
+def interactive_run(args: list):
     return subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True).stdout.read().rstrip()
 
 
-def quiet_run(args: list) -> None:
-    subprocess.Popen(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+def run_get_stderr(args: list):
+    return subprocess.Popen(args, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True).stderr.read().rstrip()
 
 
 def terminate(pid: typing.Union[int, str]) -> None:
-    quiet_run(["kill", "-SIGTERM", str(pid)])
+    run_get_stderr(["kill", "-SIGTERM", str(pid)])
 
 # --------------- test ------------------------------------------------------------------------------------------------
 

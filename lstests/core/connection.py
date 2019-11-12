@@ -87,7 +87,7 @@ class Connection:
         if not hasattr(self, "response"):
             return str()
         if not hasattr(self.response, "_response_text"):
-            self._response_dict_abridged = helper.abridge(self.response_dict)
+            self._response_dict_abridged = helper.abridge(self.response_dict, maxlen=79)
             self._response_text = json.dumps(self._response_dict_abridged, indent=4)
         return self._response_text
 
