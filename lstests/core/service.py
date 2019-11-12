@@ -498,10 +498,13 @@ class Cluster:
                  dont_vote=None,
                  total_supply=None,
                  http_retry=None,
-                 sync_retry=None,
-                 producer_retry=None,
                  http_sleep=None,
+                 verify_async=None,
+                 verify_retry=None,
+                 verify_sleep=None,
+                 sync_retry=None,
                  sync_sleep=None,
+                 producer_retry=None,
                  producer_sleep=None):
         # register service
         self.service = service
@@ -538,6 +541,9 @@ class Cluster:
         self.dont_vote       = helper.override(DEFAULT_DONT_VOTE,       dont_vote,       self.cla.dont_vote)
         self.http_retry      = helper.override(DEFAULT_HTTP_RETRY,      http_retry,      self.cla.http_retry)
         self.http_sleep      = helper.override(DEFAULT_HTTP_SLEEP,      http_sleep,      self.cla.http_sleep)
+        self.verify_async    = helper.override(DEFAULT_VERIFY_ASYNC,    verify_async,    self.cla.verify_async)
+        self.verify_retry    = helper.override(DEFAULT_VERIFY_RETRY,    verify_retry,    self.cla.verify_retry)
+        self.verify_sleep    = helper.override(DEFAULT_VERIFY_SLEEP,    verify_sleep,    self.cla.verify_sleep)
         self.sync_retry      = helper.override(DEFAULT_SYNC_RETRY,      sync_retry,      self.cla.sync_retry)
         self.sync_sleep      = helper.override(DEFAULT_SYNC_SLEEP,      sync_sleep,      self.cla.sync_sleep)
         self.producer_retry  = helper.override(DEFAULT_PRODUCER_RETRY,  producer_retry,  self.cla.producer_retry)
@@ -706,9 +712,9 @@ class Cluster:
         self.print_formatted_config("-xs: dont_setprod",   HELP_DONT_SETPROD,    self.dont_setprod,     DEFAULT_DONT_SETPROD)
         self.print_formatted_config("-xv: dont_vote",      HELP_DONT_VOTE,       self.dont_vote,        DEFAULT_DONT_VOTE)
         self.print_formatted_config("--http-retry",        HELP_HTTP_RETRY,      self.http_retry,       DEFAULT_HTTP_RETRY)
-        self.print_formatted_config("--verify-async",      HELP_VERIFY_ASYNC,    self.cla.verify_async, DEFAULT_VERIFY_ASYNC)
-        self.print_formatted_config("--verify-retry",      HELP_VERIFY_RETRY,    self.cla.verify_retry, DEFAULT_VERIFY_RETRY)
-        self.print_formatted_config("--verify-sleep",      HELP_VERIFY_SLEEP,    self.cla.verify_sleep, DEFAULT_VERIFY_SLEEP)
+        self.print_formatted_config("--verify-async",      HELP_VERIFY_ASYNC,    self.verify_async,     DEFAULT_VERIFY_ASYNC)
+        self.print_formatted_config("--verify-retry",      HELP_VERIFY_RETRY,    self.verify_retry,     DEFAULT_VERIFY_RETRY)
+        self.print_formatted_config("--verify-sleep",      HELP_VERIFY_SLEEP,    self.verify_sleep,     DEFAULT_VERIFY_SLEEP)
         self.print_formatted_config("--sync-retry",        HELP_SYNC_RETRY,      self.sync_retry,       DEFAULT_SYNC_RETRY)
         self.print_formatted_config("--producer-retry",    HELP_PRODUCER_RETRY,  self.producer_retry,   DEFAULT_PRODUCER_RETRY)
         self.print_formatted_config("--http-sleep",        HELP_HTTP_SLEEP,      self.http_sleep,       DEFAULT_HTTP_SLEEP)
@@ -816,8 +822,9 @@ class Cluster:
                retry_level=None,
                error_level=None,
                buffer=None):
-        retry = helper.override(DEFAULT_VERIFY_RETRY, retry, self.cla.verify_retry)
-        sleep = helper.override(DEFAULT_VERIFY_SLEEP, sleep, self.cla.verify_sleep)
+        verify_async = helper.override(self.verify_async, verify_async, self.cla.verify_async)
+        retry = helper.override(self.verify_retry, retry, self.cla.verify_retry)
+        sleep = helper.override(self.verify_sleep, sleep, self.cla.verify_sleep)
         verified = False
         while retry >= 0:
             if self.verify_transaction(transaction_id=transaction_id, verify_key=verify_key, level=retry_level, buffer=buffer):
@@ -1447,7 +1454,7 @@ class Cluster:
              api: str,
              http_retry=None,
              http_sleep=None,
-             verify_async=False,
+             verify_async=None,
              verify_key=None,
              verify_sleep=None,
              verify_retry=None,
@@ -1481,13 +1488,13 @@ class Cluster:
         5. log response
         6. verify transaction
         """
-        http_retry = helper.override(http_retry, self.http_retry)
-        http_sleep = helper.override(http_sleep, self.http_sleep)
+        http_retry = helper.override(self.http_retry, http_retry, self.cla.http_retry)
+        http_sleep = helper.override(self.http_sleep, http_sleep, self.cla.http_sleep)
         header = helper.override(api.replace("_", " "), header)
         data.setdefault("cluster_id", self.cluster_id)
         data.setdefault("node_id", 0)
 
-        verify_async = helper.override(DEFAULT_VERIFY_ASYNC, verify_async, self.cla.verify_async)
+        verify_async = helper.override(self.verify_async, verify_async, self.cla.verify_async)
 
         level = helper.override("debug", level)
         header_level = helper.override(level, header_level)
