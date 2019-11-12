@@ -468,14 +468,12 @@ class Service:
 
     def start_local_service(self):
         self.logger.debug(color.green("Starting a new launcher service."))
-        stderr = helper.run_get_stderr([self.file, f"--http-server-address=0.0.0.0:{self.port}", "--http-threads=4"])
-        error = False
-        for x in stderr.splitlines():
-            if x.startswith("error"):
-                self.error(f">>> [Launcher Service] {x[x.find(']')+2:]}")
-                error = True
-        if error:
-            raise RuntimeError("Cannot start local service properly! If address already in use, try -o/--port another port.")
+        try:
+            helper.quiet_run([self.file, f"--http-server-address=0.0.0.0:{self.port}", "--http-threads=4"])
+        except RuntimeError as e:
+            x = str(e)
+            self.error(f">>> [Launcher Service] {x[x.find(']')+2:]}")
+            raise RuntimeError(e)
         if not self.get_local_services():
             self.error("ERROR: Launcher service is not started properly!")
 
@@ -1567,7 +1565,7 @@ def main():
                     FileWriter(filename="service-debug.log", threshold="debug", monochrome=True),
                     FileWriter(filename="service-trace.log", threshold="trace", monochrome=True))
     service = Service(logger=logger)
-    # cluster = Cluster(service=service)
+    cluster = Cluster(service=service)
 
 
 if __name__ == "__main__":

@@ -204,12 +204,19 @@ def interactive_run(args: list):
     return subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True).stdout.read().rstrip()
 
 
-def run_get_stderr(args: list):
-    return subprocess.Popen(args, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True).stderr.read().rstrip()
+def quiet_run(args: list, timeout=0.1):
+    p = subprocess.Popen(args, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
+    try:
+        _, stderr = p.communicate(timeout=timeout)
+        for line in stderr.splitlines():
+            if line.startswith("error"):
+                raise RuntimeError(line)
+    except subprocess.TimeoutExpired:
+        return
 
 
 def terminate(pid: typing.Union[int, str]) -> None:
-    run_get_stderr(["kill", "-SIGTERM", str(pid)])
+    quiet_run(["kill", "-SIGTERM", str(pid)])
 
 # --------------- test ------------------------------------------------------------------------------------------------
 
