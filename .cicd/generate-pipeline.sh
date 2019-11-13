@@ -61,8 +61,8 @@ for FILE in $(ls $CICD_DIR/platforms/$PLATFORM_TYPE); do
     [[ $FILE_NAME =~ 'centos' ]] && export ICON=':centos:'
     [[ $FILE_NAME =~ 'macos' ]] && export ICON=':darwin:'
     . $HELPERS_DIR/file-hash.sh $CICD_DIR/platforms/$PLATFORM_TYPE/$FILE # returns HASHED_IMAGE_TAG, etc
-    export PLATFORMS_JSON_ARRAY=$(echo $PLATFORMS_JSON_ARRAY | jq -c '. += [{ 
-        "FILE_NAME": env.FILE_NAME, 
+    export PLATFORMS_JSON_ARRAY=$(echo $PLATFORMS_JSON_ARRAY | jq -c '. += [{
+        "FILE_NAME": env.FILE_NAME,
         "PLATFORM_NAME": env.PLATFORM_NAME,
         "PLATFORM_NAME_UPCASE": env.PLATFORM_NAME_UPCASE,
         "VERSION_MAJOR": env.VERSION_MAJOR,
@@ -133,7 +133,7 @@ EOF
             - 'registry_1'
             - 'registry_2'
           pre-execute-sleep: 5
-          pre-commands: 
+          pre-commands:
             - "git clone git@github.com:EOSIO/mac-anka-fleet.git && cd mac-anka-fleet && . ./ensure-tag.bash -u 12 -r 25G -a '-n'"
     env:
       REPO: ${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO}
@@ -185,9 +185,11 @@ cat <<EOF
       ./programs/launcher-service/launcher-service --http-server-address=0.0.0.0:1234 --http-threads=4 --genesis-file=../../genesis.json &
       popd
 
-      pushd eos/lstests/
-      python3.7 schedule_test.py --mono --info
+      sleep 1
+      pushd eos/build/
+      ctest -L ls_tests -j 10
       popd
+
     agents:
       queue: "$BUILDKITE_BUILD_AGENT_QUEUE"
     timeout: ${TIMEOUT:-600}
