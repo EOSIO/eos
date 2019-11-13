@@ -113,16 +113,14 @@ int main(int argc, char** argv)
    } catch( const node_management_success& e ) {
       return NODE_MANAGEMENT_SUCCESS;
    } catch (const std_exception_wrapper& e) {
-	   try{
-	   	std::rethrow_exception(e.get_inner_exception());
-	   } catch (const std::system_error&i) {
-      		if (chainbase::db_error_code::dirty == i.code().value()) {
-         	   elog("Database dirty flag set (likely due to unclean shutdown): replay required" );
-         	   return DATABASE_DIRTY;
-		}
-      	   } catch (...) {
-
-	   } 
+      try {
+         std::rethrow_exception(e.get_inner_exception());
+      } catch (const std::system_error&i) {
+         if (chainbase::db_error_code::dirty == i.code().value()) {
+            elog("Database dirty flag set (likely due to unclean shutdown): replay required" );
+            return DATABASE_DIRTY;
+         }
+      } catch (...) { } 
 
       elog( "${e}", ("e",e.what()));
       return OTHER_FAIL;
