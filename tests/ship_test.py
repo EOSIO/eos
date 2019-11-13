@@ -195,8 +195,33 @@ try:
     testSuccessful = True
 finally:
     TestHelper.shutdown(cluster, walletMgr, testSuccessful=testSuccessful, killEosInstances=killEosInstances, killWallet=killWallet, keepLogs=keepLogs, cleanRun=killAll, dumpErrorDetails=dumpErrorDetails)
-    if shipTempDir is not None and not keepLogs:
-        shutil.rmtree(shipTempDir, ignore_errors=True)
+    if shipTempDir is not None:
+        if dumpErrorDetails and not testSuccessful:
+            for index in range(0, args.num_clients):
+                Print(Utils.FileDivider)
+                shipClientErrorFile = "%s%d.err" % (shipClientFilePrefix, i)
+                with open(shipClientErrorFile, "r") as f:
+                    Print("Contents of %s" % (shipClientErrorFile))
+                    line = f.readline()
+                    while line:
+                        Print(line)
+                        line = f.readline()
+                Print(Utils.FileDivider)
+                lineCount = 0
+                shipClientOutputFile = "%s%d.out" % (shipClientFilePrefix, i)
+                with open(shipClientOutputFile, "r") as f:
+                    Print("Contents of %s" % (shipClientOutputFile))
+                    line = f.readline()
+                    maxLines = 20000
+                    while line and lineCount < maxLines:
+                        Print(line)
+                        lineCount += 1
+                        line = f.readline()
+                    if line:
+                        Print("...       CONTENT TRUNCATED AT %d lines" % (maxLines))
+
+        if not keepLogs:
+            shutil.rmtree(shipTempDir, ignore_errors=True)
     if not testSuccessful and dumpErrorDetails:
         Print(Utils.FileDivider)
         Print("Compare Blocklog")
