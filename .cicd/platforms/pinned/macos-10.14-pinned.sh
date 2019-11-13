@@ -94,3 +94,7 @@ echo $NVM_DIR
 nvm install --lts=dubnium
 brew install yarn
 yarn add eosjs
+yarn add commander
+yarn add node-fetch
+yarn add zlib
+yarn add ws
