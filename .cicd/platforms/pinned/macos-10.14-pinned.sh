@@ -92,9 +92,8 @@ cat ~/.bash_profile
 source ~/.bash_profile
 echo $NVM_DIR
 nvm install --lts=dubnium
-brew install yarn
-yarn add eosjs
-yarn add commander
-yarn add node-fetch
-yarn add zlib
-yarn add ws
+npm install eosjs
+npm install commander
+npm install node-fetch
+npm install zlib
+npm install ws
