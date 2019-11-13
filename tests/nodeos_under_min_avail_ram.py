@@ -144,7 +144,7 @@ try:
     wasmFile="integration_test.wasm"
     abiFile="integration_test.abi"
     Print("Publish contract")
-    trans=nodes[0].publishContract(contractAccount.name, contractDir, wasmFile, abiFile, waitForTransBlock=True)
+    trans=nodes[0].publishContract(contractAccount, contractDir, wasmFile, abiFile, waitForTransBlock=True)
     if trans is None:
         Utils.cmdError("%s set contract %s" % (ClientName, contractAccount.name))
         errorExit("Failed to publish contract.")
