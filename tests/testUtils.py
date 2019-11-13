@@ -211,6 +211,12 @@ class Utils:
         return False if ret is None else ret
 
     @staticmethod
+    def waitForBoolWithArg(lam, arg, timeout=None, sleepTime=3, reporter=None):
+        myLam = lambda: True if lam(arg, timeout) else None
+        ret=Utils.waitForObj(myLam, timeout, sleepTime, reporter=reporter)
+        return False if ret is None else ret
+
+    @staticmethod
     def filterJsonObjectOrArray(data):
         firstObjIdx=data.find('{')
         lastObjIdx=data.rfind('}')

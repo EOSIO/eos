@@ -1396,9 +1396,23 @@ class Node(object):
                 pass
             return False
 
-        isAlive=Utils.waitForBool(isNodeAlive, timeout, sleepTime=1)
+        def didNodeExitGracefully(popen, timeout):
+            try:
+                popen.communicate(timeout=timeout)
+            except TimeoutExpired:
+                return False
+            with open(popen.errfile.name, 'r') as f:
+                if "Reached configured maximum block 10; terminating" in f.read():
+                    return True
+                else:
+                    return False
+
+        if "terminate-at-block" not in cmd:
+            isAlive=Utils.waitForBool(isNodeAlive, timeout, sleepTime=1)
+        else:
+            isAlive=Utils.waitForBoolWithArg(didNodeExitGracefully, self.popenProc, timeout, sleepTime=1)
         if isAlive:
-            Utils.Print("Node relaunch was successfull.")
+            Utils.Print("Node relaunch was successful.")
         else:
             Utils.Print("ERROR: Node relaunch Failed.")
             # Ensure the node process is really killed
@@ -1434,6 +1448,8 @@ class Node(object):
             Utils.Print("cmd: %s" % (cmd))
             popen=subprocess.Popen(cmd.split(), stdout=sout, stderr=serr)
             if cachePopen:
+                popen.outfile=sout
+                popen.errfile=serr
                 self.popenProc=popen
             self.pid=popen.pid
             if Utils.Debug: Utils.Print("start Node host=%s, port=%s, pid=%s, cmd=%s" % (self.host, self.port, self.pid, self.cmd))
