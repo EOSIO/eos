@@ -7,7 +7,7 @@ Please follow the steps below to set up a producing node:
 
 1. [Register your account as a producer](#1-register-your-account-as-a-producer)
 2. [Set Producer Name](#2-set-producer-name)
-3. [Set the Producer's signature-provider](#3-set-the-producer's-signature-provider)
+3. [Set the Producer's signature-provider](#3-set-the-producers-signature-provider)
 4. [Define a peers list](#4-define-a-peers-list)
 5. [Load the Required Plugins](#5-load-the-required-plugins)
 
