@@ -103,11 +103,16 @@ class Node(object):
         def __contextDesc(self):
             return "%s%s" % (self.desc, self.__keyContext())
 
-        def add(self, newKey):
+        def hasKey(self, newKey, subSection = None):
             assert isinstance(newKey, str), print("ERROR: Trying to use %s as a key" % (newKey))
-            subSection=self.sections[-1]
+            if subSection is None:
+                subSection=self.sections[-1]
             assert isinstance(subSection, dict), print("ERROR: Calling \"add\" method when context is not a dictionary. %s in %s" % (self.__contextDesc(), self.__json()))
-            assert newKey in subSection, print("ERROR: %s%s does not contain key \"%s\". %s" % (self.__contextDesc(), key, self.__json()))
+            return newKey in subSection
+
+        def add(self, newKey):
+            subSection=self.sections[-1]
+            assert self.hasKey(newKey, subSection), print("ERROR: %s does not contain key \"%s\". %s" % (self.__contextDesc(), newKey, self.__json()))
             current=subSection[newKey]
             self.sections.append(current)
             self.keyContext.append(newKey)
@@ -127,16 +132,28 @@ class Node(object):
     @staticmethod
     def getTransStatus(trans):
         cntxt=Node.Context(trans, "trans")
-        cntxt.add("processed")
+        # could be a transaction response
+        if cntxt.hasKey("processed"):
+            cntxt.add("processed")
+            cntxt.add("receipt")
+            return cntxt.add("status")
+
+        # or what the history plugin returns
+        cntxt.add("trx")
         cntxt.add("receipt")
         return cntxt.add("status")
 
     @staticmethod
     def getTransBlockNum(trans):
         cntxt=Node.Context(trans, "trans")
-        cntxt.add("processed")
-        cntxt.add("action_traces")
-        cntxt.index(0)
+        # could be a transaction response
+        if cntxt.hasKey("processed"):
+            cntxt.add("processed")
+            cntxt.add("action_traces")
+            cntxt.index(0)
+            return cntxt.add("block_num")
+
+        # or what the history plugin returns
         return cntxt.add("block_num")
 
 
@@ -728,7 +745,7 @@ class Node(object):
             if Utils.Debug:
                 end=time.perf_counter()
                 Utils.Print("cmd Duration: %.3f sec" % (end-start))
-            self.trackCmdTransaction(trans)
+            self.trackCmdTransaction(trans, reportStatus=reportStatus)
         except subprocess.CalledProcessError as ex:
             end=time.perf_counter()
             msg=ex.output.decode("utf-8")
@@ -1023,7 +1040,7 @@ class Node(object):
 
         return self.waitForTransBlockIfNeeded(trans, waitForTransBlock, exitOnError=exitOnError)
 
-    def delegatebw(self, fromAccount, netQuantity, cpuQuantity, toAccount=None, transferTo=False, waitForTransBlock=False, exitOnError=False, sign=False):
+    def delegatebw(self, fromAccount, netQuantity, cpuQuantity, toAccount=None, transferTo=False, waitForTransBlock=False, exitOnError=False, sign=False, reportStatus=True):
         if toAccount is None:
             toAccount=fromAccount
 
@@ -1034,7 +1051,7 @@ class Node(object):
             cmdDesc, signStr, fromAccount.name, toAccount.name, netQuantity, CORE_SYMBOL, cpuQuantity, CORE_SYMBOL, transferStr)
         msg="fromAccount=%s, toAccount=%s" % (fromAccount.name, toAccount.name);
         trans=self.processCleosCmd(cmd, cmdDesc, exitOnError=exitOnError, exitMsg=msg)
-        self.trackCmdTransaction(trans)
+        self.trackCmdTransaction(trans, reportStatus=reportStatus)
 
         return self.waitForTransBlockIfNeeded(trans, waitForTransBlock, exitOnError=exitOnError)
 
@@ -1469,24 +1486,28 @@ class Node(object):
             self.pid=popen.pid
             if Utils.Debug: Utils.Print("start Node host=%s, port=%s, pid=%s, cmd=%s" % (self.host, self.port, self.pid, self.cmd))
 
-    def trackCmdTransaction(self, trans, ignoreNonTrans=False):
+    def trackCmdTransaction(self, trans, ignoreNonTrans=False, reportStatus=True):
         if trans is None:
             if Utils.Debug: Utils.Print("  cmd returned transaction: %s" % (trans))
             return
 
         if ignoreNonTrans and not Node.isTrans(trans):
-            if Utils.Debug: Utils.Print("  cmd returned a non-transaction")
+            if Utils.Debug: Utils.Print("  cmd returned a non-transaction: %s" % (trans))
             return
 
         transId=Node.getTransId(trans)
-        if Utils.Debug:
+        if transId in self.transCache.keys():
+            replaceMsg="replacing previous trans=\n%s" % json.dumps(self.transCache[transId], indent=2, sort_keys=True)
+        else:
+            replaceMsg=""
+
+        if Utils.Debug and reportStatus:
             status=Node.getTransStatus(trans)
             blockNum=Node.getTransBlockNum(trans)
-            if transId in self.transCache.keys():
-                replaceMsg="replacing previous trans=\n%s" % json.dumps(self.transCache[transId], indent=2, sort_keys=True)
-            else:
-                replaceMsg=""
             Utils.Print("  cmd returned transaction id: %s, status: %s, (possible) block num: %s %s" % (transId, status, blockNum, replaceMsg))
+        elif Utils.Debug:
+            Utils.Print("  cmd returned transaction id: %s %s" % (transId, replaceMsg))
+
         self.transCache[transId]=trans
 
     def reportStatus(self):
