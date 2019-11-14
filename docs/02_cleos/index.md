@@ -1,10 +1,10 @@
 # Introduction
 
-`cleos` is a command line tool that interfaces with the REST API exposed by `nodeos`. Developers can also use `cleos` to deploy, test EOSIO smart contracts.
+`cleos` is a command line tool that interfaces with the REST API exposed by `nodeos`. Developers can also use `cleos` to deploy and test EOSIO smart contracts.
 
-In order to use `cleos` you will need to have the end point (IP address and port number) to a `nodeos` instance and also configure `nodeos` to load the 'eosio::chain_api_plugin'.  `cleos` contains documentation for all of its commands. For a list of all commands known to `cleos`, simply run it with no arguments:
+In order to use `cleos`, you will need the end point (IP address and port number) to a `nodeos` instance and configure `nodeos` to load the `eosio::chain_api_plugin`. `cleos` contains documentation for all of its commands. For a list of all commands known to `cleos`, simply run it with no arguments:
 
-```shell
+```sh
 Command Line Interface to EOSIO Client
 Usage: cleos [OPTIONS] SUBCOMMAND
 
@@ -39,7 +39,7 @@ Subcommands:
 
 To get help with any particular subcommand, run it with no arguments as well:
 
-```shell
+```sh
 Create various items, on and off the blockchain
 Usage: ./cleos create SUBCOMMAND
 
@@ -50,7 +50,7 @@ Subcommands:
 
 Create an account, buy ram, stake for bandwidth for the account
 
-```shell
+```sh
 Usage: ./programs/cleos/cleos create account [OPTIONS] creator name OwnerKey [ActiveKey]
 
 Positionals:
