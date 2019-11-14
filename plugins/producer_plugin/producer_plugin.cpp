@@ -1311,6 +1311,12 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
 
    const auto& hbs = chain.head_block_state();
 
+   if( chain.get_terminate_at_block() > 0 && chain.get_terminate_at_block() < hbs->block_num ) {
+      ilog("Reached configured maximum block ${num}; terminating", ("num", chain.get_terminate_at_block()));
+      app().quit();
+      return start_block_result::failed;
+   }
+
    //Schedule for the next second's tick regardless of chain state
    // If we would wait less than 50ms (1/10 of block_interval), wait for the whole block interval.
    const fc::time_point now = fc::time_point::now();
@@ -1887,9 +1893,7 @@ void producer_plugin_impl::produce_block() {
    //ilog("produce_block ${t}", ("t", fc::time_point::now())); // for testing _produce_time_offset_us
    EOS_ASSERT(_pending_block_mode == pending_block_mode::producing, producer_exception, "called produce_block while not actually producing");
    chain::controller& chain = chain_plug->chain();
-   const auto& hbs = chain.head_block_state();
    EOS_ASSERT(chain.is_building_block(), missing_pending_block_state, "pending_block_state does not exist but it should, another plugin may have corrupted it");
-
 
    const auto& auth = chain.pending_block_signing_authority();
    std::vector<std::reference_wrapper<const signature_provider_type>> relevant_providers;
