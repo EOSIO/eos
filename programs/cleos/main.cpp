@@ -357,8 +357,7 @@ fc::variant push_transaction( signed_transaction& trx, const std::vector<public_
             ref_block = call(get_block_func, fc::mutable_variant_object("block_num_or_id", tx_ref_block_num_or_id));
             ref_block_id = ref_block["id"].as<block_id_type>();
          }
-      } EOS_RETHROW_EXCEPTIONS(invalid_ref_block_exception, "Invalid refere"
-                                                            "nce block num or id: ${block_num_or_id}", ("block_num_or_id", tx_ref_block_num_or_id));
+      } EOS_RETHROW_EXCEPTIONS(invalid_ref_block_exception, "Invalid reference block num or id: ${block_num_or_id}", ("block_num_or_id", tx_ref_block_num_or_id));
       trx.set_reference_block(ref_block_id);
 
       if (tx_force_unique) {
