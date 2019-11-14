@@ -507,6 +507,7 @@ struct controller_impl {
       if( !except_ptr && !check_shutdown() ) {
          int rev = 0;
          while( auto obj = reversible_blocks.find<reversible_block_object,by_num>(head->block_num+1) ) {
+            if( check_shutdown() ) break;
             ++rev;
             replay_push_block( obj->get_block(), controller::block_status::validated );
          }
