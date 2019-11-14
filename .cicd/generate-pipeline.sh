@@ -187,7 +187,7 @@ cat <<EOF
 
       sleep 1
       pushd eos/build/
-      ctest -L ls_tests -j 10
+      ctest -L ls_tests -V -j 10
       popd
 
     agents:

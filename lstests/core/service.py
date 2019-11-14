@@ -632,7 +632,7 @@ class Cluster:
         self.print_config()
         self.launch_cluster()
         # self.get_cluster_info(level="debug", response_text_level="debug")
-        bassert(self.are_all_nodes_ready(response_text_level="debug")[0])
+        time.sleep(1.0)
         self.schedule_protocol_feature_activations()
         self.set_bios_contract()
         if not dont_newaccount:
