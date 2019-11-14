@@ -221,6 +221,10 @@ void add_standard_transaction_options(CLI::App* cmd, string default_permission =
    cmd->add_option("--delay-sec", delaysec, localized("Set the delay_sec seconds, defaults to 0s"));
 }
 
+bool is_public_key_str(const std::string& potential_key_str) {
+   return boost::istarts_with(potential_key_str, "EOS") || boost::istarts_with(potential_key_str, "PUB_R1") ||  boost::istarts_with(potential_key_str, "PUB_K1") ||  boost::istarts_with(potential_key_str, "PUB_WA");
+}
+
 class signing_keys_option {
 public:
    signing_keys_option() {}
@@ -231,7 +235,7 @@ public:
    std::vector<public_key_type> get_keys() {
       std::vector<public_key_type> signing_keys;
       if (!public_key_json.empty()) {
-         if (boost::istarts_with(public_key_json, "EOS") || boost::istarts_with(public_key_json, "PUB_R1")) {
+         if (is_public_key_str(public_key_json)) {
             try {
                signing_keys.push_back(public_key_type(public_key_json));
             } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid public key: ${public_key}", ("public_key", public_key_json))
@@ -715,7 +719,7 @@ authority parse_json_authority(const std::string& authorityJsonOrFile) {
 }
 
 authority parse_json_authority_or_key(const std::string& authorityJsonOrFile) {
-   if (boost::istarts_with(authorityJsonOrFile, "EOS") || boost::istarts_with(authorityJsonOrFile, "PUB_R1")) {
+   if (is_public_key_str(authorityJsonOrFile)) {
       try {
          return authority(public_key_type(authorityJsonOrFile));
       } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid public key: ${public_key}", ("public_key", authorityJsonOrFile))
