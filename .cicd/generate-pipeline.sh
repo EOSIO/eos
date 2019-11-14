@@ -187,6 +187,8 @@ cat <<EOF
 
       sleep 1
       pushd eos/build/
+      pwd
+      ls
       ctest -L ls_tests -V -j 10
       popd
 
