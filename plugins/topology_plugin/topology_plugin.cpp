@@ -241,6 +241,11 @@ namespace eosio {
       void    on_block_recv( link_id src, block_id_type blk_id, const signed_block_ptr sb );
       void    init_topology_message( topology_message &tm );
 
+      string  gen_report();
+      string  gen_link_report(link_id link);
+      size_t  list_forks( const chain::name prod, vector<string>& incidents);
+      string  gen_incident_report(const chain::name prod, link_id link);
+
       uint16_t sample_interval_sec;
       uint16_t max_hops;
 
@@ -508,12 +513,12 @@ namespace eosio {
                   elog( "Failed to find node for producer ${h}",("h",head_prod));
                   return;
                }
-
-               tnode->forks[head_prod].emplace_back(fork_info({now,src,blk_id,block_count,deficit,0}));
+               string rept = gen_incident_report(sb->producer, src);
+               tnode->forks[head_prod].emplace_back(fork_info({now,sb->producer,blk_id,block_count,rept}));
                tnode = find_node(prev_producer);
-               if (tnode != nullptr && tnode->current.from_link != 0) {
+               if (tnode != nullptr && tnode->current.producer.empty()) {
                   tnode->forks[prev_producer].push_back(tnode->current);
-                  tnode->current.from_link = 0;
+                  tnode->current.producer = name(0);
                }
                prev_producer = head_prod;
             }
@@ -528,6 +533,223 @@ namespace eosio {
       }
 
    }
+
+   string topology_plugin_impl::gen_link_report(link_id link) {
+      ostringstream df;
+      time_t now;
+      time(&now);
+      struct tm stm;
+      gmtime_r(&now, &stm);
+      char tmbuf[100];
+
+      auto &tlink = links[link];
+      df << "active connector: "
+         << nodes[tlink.info.active].info.location << "\n";
+      df << "<br>passive connector: "
+         << nodes[tlink.info.passive].info.location << "\n";
+      df << "<br>is open: " << tlink.is_open << "\n";
+      if ( tlink.closures > 0) {
+         df << "<br>closure count: " << tlink.closures << "\n";
+      }
+         df << "### Measurements from passive to active\n";
+         if (tlink.down.last_sample != 0) {
+            now = tlink.down.last_sample;
+            gmtime_r( &now, &stm);
+            df << "last sample time " << asctime_r(&stm, tmbuf);
+            now = tlink.down.first_sample;
+            gmtime_r( &now, &stm);
+            df << "<br>first sample time " << asctime_r(&stm, tmbuf);
+            df << "<br>total bytes " << tlink.down.total_bytes << "\n";
+            df << "<br>total messages " << tlink.down.total_messages << "\n\n";
+            df << "| metric name | sample count | last reading | min value | avg value | max value |\n";
+            df << "|-------------|--------------|--------------|-----------|-----------|-----------|\n";
+            int lines = 0;
+            for( auto &met : tlink.down.measurements ) {
+               df << metric_str(met.first) << " | "
+                  << met.second.count << " | "
+                  << met.second.last << " | "
+                  << met.second.min << " | "
+                  << met.second.avg << " | "
+                  << met.second.max << "\n";
+               ++lines;
+            }
+            lines = 0;
+            df << "\n### Measurements from active to passive\n";
+            now = tlink.up.last_sample;
+            gmtime_r( &now, &stm);
+            df << "last sample time " << asctime_r(&stm, tmbuf);
+            now = tlink.up.first_sample;
+            gmtime_r( &now, &stm);
+            df << "<br>first sample time " << asctime_r(&stm, tmbuf);
+            df << "<br>total bytes " << tlink.up.total_bytes << "\n";
+            df << "<br>total messages " << tlink.up.total_messages << "\n\n";
+            df << "| metric name | sample count | last reading | min value | avg value | max value |\n";
+            df << "|-------------|--------------|--------------|-----------|-----------|-----------|\n";
+            for( auto &met : tlink.up.measurements ) {
+               df << metric_str(met.first) << " | "
+                  << met.second.count << " | "
+                  << met.second.last << " | "
+                  << met.second.min << " | "
+                  << met.second.avg << " | "
+                  << met.second.max << "\n";
+               ++lines;
+            }
+         }
+         else {
+            df << "\nno measurements available\n";
+         }
+
+      return df.str();
+   }
+
+   string topology_plugin_impl::gen_report( ) {
+      ostringstream df;
+      time_t now;
+      time(&now);
+      struct tm stm;
+      gmtime_r(&now, &stm);
+      char tmbuf[100];
+
+      df << "# Link Performance Metrics\ngenerated " << asctime_r(&stm, tmbuf);
+      auto tnode = nodes[local_node_id];
+      df << "<br>reporting node: " << tnode.info.location << "\n";
+
+      df << "\n# Active Producer List\n";
+      if( !local_producers.empty() ) {
+         df << "## Local Producers\n";
+         for (auto &lp : local_producers) {
+            df << lp << "\n";
+         }
+      }
+      controller &db = chain_plug->chain();
+
+      df << "total nodes " << nodes.size() << " \n";
+
+
+      auto &plist = db.active_producers().producers;
+      if( plist.empty() ) {
+         df << "\n cannot retrieve active producers list \n";
+      }
+      else {
+         size_t pcount = plist.size();
+         df << "\nschedule has " << pcount << " producers\n";
+
+         topo_node *pnode = find_node(plist[pcount - 1].producer_name);
+         if (pnode == nullptr) {
+            df << "\n cannot resolve producer " << plist[pcount-1].producer_name << "\n";
+         }
+         else {
+            df << "\n| Producer Account | Location |     Id      | Hops |\n";
+            df <<   "|------------------|----------|-------------|------|\n";
+            node_id prev_node_id = pnode->info.my_id;
+            for( const auto &ap : plist) {
+               pnode = find_node(ap.producer_name);
+               if (pnode == nullptr ) {
+                  df << "\n cannot resolve producer " << ap.producer_name << "\n";
+                  break;
+               }
+               df << ap.producer_name << " | ";
+               if (pnode->info.location.empty() ) {
+                  df << "unknown | ";
+               }
+               else {
+                  df << pnode->info.location.c_str() << " | ";
+               }
+
+               df << pnode->info.my_id << " | ";
+
+               auto len = pnode->routes[prev_node_id].length;
+               if ( pnode->routes[prev_node_id].path == 0 ) {
+                  len = find_route(prev_node_id, pnode->info.my_id);
+               }
+               df << len;
+
+               df << "\n";
+               prev_node_id = pnode->info.my_id;
+            }
+         }
+      }
+
+      int effed = 0;
+      ostringstream flist;
+      if ( nodes.size() ) {
+         for (auto &tnode : nodes) {
+            for (auto &prod : tnode.second.info.producers) {
+               if (tnode.second.forks[prod].size() == 0) {
+                  continue;
+               }
+               ++effed;
+               flist << "\nReporter " << prod << " has " << tnode.second.forks[prod].size() << " episodes reported\n";
+               for (auto &fdes : tnode.second.forks[prod]) {
+                  //auto l = links[fdes.from_link];
+                  //node_id peer = l.info.active == tnode.second.info.my_id ? l.info.passive : l.info.active;
+                  // string fromloc = nodes[peer].info.location;
+                  flist << " from producer " << fdes.producer << " at block "
+                        << fdes.fork_base << " fork of " << fdes.depth << " blocks\n";
+               }
+            }
+         }
+      }
+      df << "\nNumber of producers indicating microforks: " << effed << "\n";
+      df << flist.str();
+
+      int tn = 1;
+      int anon = 0;
+      for (auto &tlink : links) {
+         if ( nodes[tlink.second.info.active].info.location.empty() ) {
+            ++anon;
+            continue;
+         }
+         df << "\n## Link " << tn++ << "\n";
+         df << gen_link_report(tlink.first);
+      }
+      if (anon > 0) {
+         df << "\n skipped " << anon << " anonymous links\n";
+      }
+      return df.str();
+   }
+
+   size_t topology_plugin_impl::list_forks( const chain::name prod, vector<string>& incidents) {
+      topo_node *tn = find_node(prod);
+      if (tn == nullptr) {
+         return 0;
+      }
+      incidents.clear();
+      for (auto &fi : tn->forks[prod]) {
+         incidents.push_back(fi.report);
+      }
+      return incidents.size();
+   }
+
+   string topology_plugin_impl::gen_incident_report (const chain::name prod, link_id onLink) {
+      ostringstream df;
+
+      topo_node *tn = find_node(prod);
+      if (tn == nullptr) {
+         df << " cannot find a node for producer " << prod << "\n";
+         return df.str();
+      }
+      const auto &tl = tn->links.find(onLink);
+      if (tl == tn->links.end()) {
+         df << "node for producer " << prod << " does not have link id " << onLink << "\n";
+         return df.str();
+      }
+
+      time_t now;
+      time(&now);
+      struct tm stm;
+      gmtime_r(&now, &stm);
+      char tmbuf[100];
+
+      df << "# Microfork detected \ngenerated " << asctime_r(&stm, tmbuf);
+      auto tnode = nodes[local_node_id];
+      df << "<br>reporting node: " << tnode.info.location << "\n";
+
+      df << gen_link_report(onLink);
+
+      return df.str();
+   }
+
 
    //----------------------------------------------------------------------------------------
 
@@ -745,6 +967,10 @@ namespace eosio {
       }
    };
 
+   void topology_plugin::on_fork_detected( node_id origin, const fork_info& fi) {
+      my->update_forks( origin, fi );
+   }
+
    void topology_plugin::on_block_recv( link_id src, block_id_type blk_id, const signed_block_ptr msg ) {
       my->on_block_recv( src, blk_id, msg );
    }
@@ -870,177 +1096,23 @@ namespace eosio {
 
    }
 
-   string topology_plugin::report( ) {
+   string topology_plugin::forkinfo( const string& prodname ) {
       ostringstream df;
-      time_t now;
-      time(&now);
-      struct tm stm;
-      gmtime_r(&now, &stm);
-      char tmbuf[100];
-
-      df << "# Link Performance Metrics\ngenerated " << asctime_r(&stm, tmbuf);
-      auto tnode = my->nodes[my->local_node_id];
-      df << "<br>reporting node: " << tnode.info.location << "\n";
-
-      df << "\n# Active Producer List\n";
-      if( !my->local_producers.empty() ) {
-         df << "## Local Producers\n";
-         for (auto &lp : my->local_producers) {
-            df << lp << "\n";
-         }
-      }
-      controller &db = my->chain_plug->chain();
-
-      df << "total nodes " << my->nodes.size() << " \n";
-
-
-      auto &plist = db.active_producers().producers;
-      if( plist.empty() ) {
-         df << "\n cannot retrieve active producers list \n";
-      }
-      else {
-         size_t pcount = plist.size();
-         df << "\nschedule has " << pcount << " producers\n";
-
-         topo_node *pnode = my->find_node(plist[pcount - 1].producer_name);
-         if (pnode == nullptr) {
-            df << "\n cannot resolve producer " << plist[pcount-1].producer_name << "\n";
-         }
-         else {
-            df << "\n| Producer Account | Location |     Id      | Hops |\n";
-            df <<   "|------------------|----------|-------------|------|\n";
-            node_id prev_node_id = pnode->info.my_id;
-            for( const auto &ap : plist) {
-               pnode = my->find_node(ap.producer_name);
-               if (pnode == nullptr ) {
-                  df << "\n cannot resolve producer " << ap.producer_name << "\n";
-                  break;
-               }
-               df << ap.producer_name << " | ";
-               if (pnode->info.location.empty() ) {
-                  df << "unknown | ";
-               }
-               else {
-                  df << pnode->info.location.c_str() << " | ";
-               }
-
-               df << pnode->info.my_id << " | ";
-
-               auto len = pnode->routes[prev_node_id].length;
-               if ( pnode->routes[prev_node_id].path == 0 ) {
-                  len = my->find_route(prev_node_id, pnode->info.my_id);
-               }
-               df << len;
-
-               df << "\n";
-               prev_node_id = pnode->info.my_id;
-            }
-         }
+      chain::name producer(prodname);
+      vector<string> incidents;
+      size_t count = my->list_forks( producer, incidents );
+      df << "Microfork incident report for producer " << producer
+         << "has " << count << " incidents detected.\n";
+      size_t c = 1;
+      for (auto irep : incidents) {
+         df << "Incident " << c++ << "\n" << irep << "\n";
       }
 
-      int effed = 0;
-      ostringstream flist;
-      if ( my->nodes.size() ) {
-         for (auto &tnode : my->nodes) {
-            for (auto &prod : tnode.second.info.producers) {
-               if (tnode.second.forks[prod].size() == 0) {
-                  continue;
-               }
-               ++effed;
-               flist << "\nProducer " << prod << " has " << tnode.second.forks[prod].size() << " episodes reported\n";
-               for (auto &fdes : tnode.second.forks[prod]) {
-                  auto l = my->links[fdes.from_link];
-                  node_id peer = l.info.active == tnode.second.info.my_id ? l.info.passive : l.info.active;
-                  string fromloc = my->nodes[peer].info.location;
-                  flist << " from link " << fdes.from_link << " symptom ";
-                  if (fdes.depth > 0) {
-                     flist << " fork of " << fdes.depth << " blocks ";
-                  }
-                  else if (fdes.deficit > 0) {
-                     flist << " production deficit of " << fdes.deficit << " blocks ";
-                  }
-                  else if (fdes.overage > 0) {
-                     flist << " produced " << fdes.overage << " too many blocks ";
-                  }
-                  else {
-                     flist << " reporting failure, no fork symptom recorded ";
-                  }
-                  flist << "\n";
-               }
-            }
-         }
-      }
-      df << "\nNumber of producers indicating microforks: " << effed << "\n";
-      df << flist.str();
-
-      int tn = 1;
-      int anon = 0;
-      for (auto &tlink : my->links) {
-         if ( my->nodes[tlink.second.info.active].info.location.empty() ) {
-            ++anon;
-            continue;
-         }
-         df << "\n## Link " << tn++ << "\n";
-         df << "active connector: "
-            << my->nodes[tlink.second.info.active].info.location << "\n";
-         df << "<br>passive connector: "
-            << my->nodes[tlink.second.info.passive].info.location << "\n";
-         df << "<br>is open: " << tlink.second.is_open << "\n";
-         if ( tlink.second.closures > 0) {
-            df << "<br>closure count: " << tlink.second.closures << "\n";
-         }
-         df << "### Measurements from passive to active\n";
-         if (tlink.second.down.last_sample != 0) {
-            now = tlink.second.down.last_sample;
-            gmtime_r( &now, &stm);
-            df << "last sample time " << asctime_r(&stm, tmbuf);
-            now = tlink.second.down.first_sample;
-            gmtime_r( &now, &stm);
-            df << "<br>first sample time " << asctime_r(&stm, tmbuf);
-            df << "<br>total bytes " << tlink.second.down.total_bytes << "\n";
-            df << "<br>total messages " << tlink.second.down.total_messages << "\n\n";
-            df << "| metric name | sample count | last reading | min value | avg value | max value |\n";
-            df << "|-------------|--------------|--------------|-----------|-----------|-----------|\n";
-            int lines = 0;
-            for( auto &met : tlink.second.down.measurements ) {
-               df << metric_str(met.first) << " | "
-                  << met.second.count << " | "
-                  << met.second.last << " | "
-                  << met.second.min << " | "
-                  << met.second.avg << " | "
-                  << met.second.max << "\n";
-               ++lines;
-            }
-            lines = 0;
-            df << "\n### Measurements from active to passive\n";
-            now = tlink.second.up.last_sample;
-            gmtime_r( &now, &stm);
-            df << "last sample time " << asctime_r(&stm, tmbuf);
-            now = tlink.second.up.first_sample;
-            gmtime_r( &now, &stm);
-            df << "<br>first sample time " << asctime_r(&stm, tmbuf);
-            df << "<br>total bytes " << tlink.second.up.total_bytes << "\n";
-            df << "<br>total messages " << tlink.second.up.total_messages << "\n\n";
-            df << "| metric name | sample count | last reading | min value | avg value | max value |\n";
-            df << "|-------------|--------------|--------------|-----------|-----------|-----------|\n";
-            for( auto &met : tlink.second.up.measurements ) {
-               df << metric_str(met.first) << " | "
-                  << met.second.count << " | "
-                  << met.second.last << " | "
-                  << met.second.min << " | "
-                  << met.second.avg << " | "
-                  << met.second.max << "\n";
-               ++lines;
-            }
-         }
-         else {
-            df << "\nno measurements available\n";
-         }
-      }
-      if (anon > 0) {
-         df << "\n skipped " << anon << " anonymous links\n";
-      }
       return df.str();
+   }
+
+   string topology_plugin::report( ) {
+      return my->gen_report();
    }
 }
 

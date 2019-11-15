@@ -55,6 +55,7 @@ namespace eosio{
       boost::signals2::signal<void(const topology_message& )>  topo_update;
       bool forward_topology_message(const topology_message&, link_id link );
       void on_block_recv( link_id src, block_id_type blk_id, const signed_block_ptr msg );
+      void on_fork_detected( node_id origin, const fork_info& fi);
 
       void init_node_descriptor( node_descriptor &nd,
                                  const fc::sha256& id,
@@ -86,6 +87,7 @@ namespace eosio{
       string graph( );
       string sample( );
       string report( );
+      string forkinfo( const string& prodname );
 
    private:
       std::shared_ptr<class topology_plugin_impl> my;

@@ -84,7 +84,9 @@ void topology_api_plugin::plugin_startup() {
        CALL(topology, topo_mgr, sample,
             INVOKE_R_V(topo_mgr, sample), 201),
        CALL(topology, topo_mgr, report,
-            INVOKE_R_V(topo_mgr, report), 201)
+            INVOKE_R_V(topo_mgr, report), 201),
+       CALL(topology, topo_mgr, forkinfo,
+            INVOKE_R_R(topo_mgr, forkinfo, std::string), 201)
    });
 }
 
