@@ -122,15 +122,9 @@ int main(int argc, char** argv)
          }
       } catch (...) { } 
 
-      elog( "${e}", ("e",e.what()));
+      elog( "${e}", ("e",e.to_detail_string()));
       return OTHER_FAIL;
    } catch( const fc::exception& e ) {
-      if( e.code() == fc::std_exception_code ) {
-         if( e.top_message().find( "Database dirty flag set" ) != std::string::npos ) {
-            elog( "database dirty flag set (likely due to unclean shutdown): replay required" );
-            return DATABASE_DIRTY;
-         }
-      }
       elog( "${e}", ("e", e.to_detail_string()));
       return OTHER_FAIL;
    } catch( const boost::interprocess::bad_alloc& e ) {
@@ -138,9 +132,6 @@ int main(int argc, char** argv)
       return BAD_ALLOC;
    } catch( const boost::exception& e ) {
       elog("${e}", ("e",boost::diagnostic_information(e)));
-      return OTHER_FAIL;
-   }  catch( const std::runtime_error& e ) {
-      elog( "${e}", ("e",e.what()));
       return OTHER_FAIL;
    } catch( const std::exception& e ) {
       elog("${e}", ("e",e.what()));
