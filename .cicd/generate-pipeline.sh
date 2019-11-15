@@ -189,7 +189,9 @@ cat <<EOF
       pushd eos/
       ./.cicd/test.sh scripts/ls-test.sh
       popd
-
+    env:
+      IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
+      PLATFORM_TYPE: $PLATFORM_TYPE
     agents:
       queue: "$BUILDKITE_BUILD_AGENT_QUEUE"
     timeout: ${TIMEOUT:-600}
