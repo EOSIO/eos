@@ -97,3 +97,4 @@ npm install commander
 npm install node-fetch
 npm install zlib
 npm install ws
+source ~/.bash_profile
