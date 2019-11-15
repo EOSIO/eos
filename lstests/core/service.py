@@ -45,7 +45,7 @@ DEFAULT_FILE = os.path.join(".", "programs", PROGRAM, PROGRAM)
 DEFAULT_START = False
 DEFAULT_KILL = False
 
-DEFAULT_CONTRACTS_DIR = "../../eosio.contracts/build/contracts"
+DEFAULT_CONTRACTS_DIR = "../unittests/contracts"
 DEFAULT_CLUSTER_ID = 0
 DEFAULT_NODE_COUNT = 4
 DEFAULT_PNODE_COUNT = 4
