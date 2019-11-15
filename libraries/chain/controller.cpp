@@ -1342,7 +1342,7 @@ struct controller_impl {
                                                                    trx_context.initial_objective_duration_limit.count()    ) );
          }
 
-         resource_limits.add_transaction_usage( trx_context.bill_to_accounts, cpu_time_to_bill_us, 0,
+         resource_limits.add_transaction_usage( trx_context, cpu_time_to_bill_us, 0,
                                                 block_timestamp_type(self.pending_block_time()).slot ); // Should never fail
 
          trace->receipt = push_receipt(gtrx.trx_id, transaction_receipt::hard_fail, cpu_time_to_bill_us, 0);

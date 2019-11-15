@@ -6,6 +6,11 @@
 #include <chainbase/chainbase.hpp>
 #include <set>
 
+// forward declarations
+namespace eosio { namespace chain {
+   class transaction_context;
+}}
+
 namespace eosio { namespace chain { namespace resource_limits {
    namespace impl {
       template<typename T>
@@ -69,7 +74,7 @@ namespace eosio { namespace chain { namespace resource_limits {
          void set_block_parameters( const elastic_limit_parameters& cpu_limit_parameters, const elastic_limit_parameters& net_limit_parameters );
 
          void update_account_usage( const flat_set<account_name>& accounts, uint32_t ordinal );
-         void add_transaction_usage( const flat_set<account_name>& accounts, uint64_t cpu_usage, uint64_t net_usage, uint32_t ordinal );
+         void add_transaction_usage( const transaction_context& accounts, uint64_t cpu_usage, uint64_t net_usage, uint32_t ordinal );
 
          void add_pending_ram_usage( const account_name account, int64_t ram_delta );
          void verify_account_ram_usage( const account_name accunt )const;

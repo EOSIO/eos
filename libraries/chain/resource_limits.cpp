@@ -2,6 +2,7 @@
 #include <eosio/chain/resource_limits.hpp>
 #include <eosio/chain/resource_limits_private.hpp>
 #include <eosio/chain/transaction_metadata.hpp>
+#include <eosio/chain/transaction_context.hpp>
 #include <eosio/chain/transaction.hpp>
 #include <boost/tuple/tuple_io.hpp>
 #include <eosio/chain/database_utils.hpp>
@@ -121,11 +122,11 @@ void resource_limits_manager::update_account_usage(const flat_set<account_name>&
    }
 }
 
-void resource_limits_manager::add_transaction_usage(const flat_set<account_name>& accounts, uint64_t cpu_usage, uint64_t net_usage, uint32_t time_slot ) {
+void resource_limits_manager::add_transaction_usage(const transaction_context& ctx, uint64_t cpu_usage, uint64_t net_usage, uint32_t time_slot ) {
    const auto& state = _db.get<resource_limits_state_object>();
    const auto& config = _db.get<resource_limits_config_object>();
 
-   for( const auto& a : accounts ) {
+   for( const auto& a : ctx.bill_to_accounts ) {
 
       const auto& usage = _db.get<resource_usage_object,by_owner>( a );
       int64_t unused;

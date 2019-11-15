@@ -3,6 +3,7 @@
 #include <eosio/chain/trace.hpp>
 #include <eosio/chain/platform_timer.hpp>
 #include <signal.h>
+#include <limits>
 
 namespace eosio { namespace chain {
 
@@ -116,6 +117,7 @@ namespace eosio { namespace chain {
          deque<digest_type>            executed_action_receipt_digests;
          flat_set<account_name>        bill_to_accounts;
          flat_set<account_name>        validate_ram_usage;
+         optional<account_name>        accepted_charges;
 
          /// the maximum number of virtual CPU instructions of the transaction that can be safely billed to the billable accounts
          uint64_t                      initial_max_billable_cpu = 0;
@@ -129,12 +131,13 @@ namespace eosio { namespace chain {
          fc::microseconds              leeway = fc::microseconds( config::default_subjective_cpu_leeway_us );
          int64_t                       billed_cpu_time_us = 0;
          bool                          explicit_billed_cpu_time = false;
+         uint32_t                      max_accepted_cpu_limit = std::numeric_limits<uint32_t>::max();
+         uint32_t                      max_accepted_net_limit = std::numeric_limits<uint32_t>::max();
 
          transaction_checktime_timer   transaction_timer;
 
       private:
          bool                          is_initialized = false;
-
 
          uint64_t                      net_limit = 0;
          bool                          net_limit_due_to_block = true;

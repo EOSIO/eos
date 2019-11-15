@@ -1502,6 +1502,35 @@ class transaction_api : public context_aware_api {
          fc::uint128_t sender_id(val>>64, uint64_t(val) );
          return context.cancel_deferred_transaction( (unsigned __int128)sender_id );
       }
+
+      bool accept_charges(uint32_t max_net, uint32_t max_cpu) {
+         auto& tc = context.trx_context;
+         const auto& mrlm = context.control.get_mutable_resource_limits_manager();
+         account_name acnt = context.get_receiver();
+         int64_t net_limit = 0, cpu_limit = 0, ram_limit = 0;
+         mrlm.get_account_limits(acnt, ram_limit, net_limit, cpu_limit);
+
+         if (net_limit < max_net || cpu_limit < max_cpu)
+            return false;
+
+         auto& accepted = tc.accepted_charges;
+         if (!accepted) {
+            accepted = context.get_receiver();
+            tc.max_accepted_net_limit = max_net;
+            tc.max_accepted_cpu_limit = max_cpu;
+         }
+         return (bool)accepted;
+      }
+
+      void get_accepted_charges(account_name& contract, uint32_t& max_net, uint32_t& max_cpu) {
+         auto& tc = context.trx_context;
+         auto& accepted = tc.accepted_charges;
+         if (accepted) {
+            contract = *accepted;
+            max_net = tc.max_accepted_net_limit;
+            max_cpu = tc.max_accepted_cpu_limit;
+         }
+      }
 };
 
 
@@ -1539,6 +1568,11 @@ class context_free_transaction_api : public context_aware_api {
 
       int get_action( uint32_t type, uint32_t index, array_ptr<char> buffer, uint32_t buffer_size )const {
          return context.get_action( type, index, buffer, buffer_size );
+      }
+
+      void get_num_actions(uint32_t& num_actions, uint32_t& num_context_free_actions)const {
+         num_actions = context.trx_context.trx.actions.size();
+         num_context_free_actions = context.trx_context.trx.context_free_actions.size();
       }
 };
 
@@ -1995,6 +2029,7 @@ REGISTER_INTRINSICS(context_free_transaction_api,
    (tapos_block_prefix,     int()                   )
    (tapos_block_num,        int()                   )
    (get_action,             int(int, int, int, int) )
+   (get_num_actions,        void(int, int)          )
 );
 
 REGISTER_INTRINSICS(transaction_api,
@@ -2002,6 +2037,8 @@ REGISTER_INTRINSICS(transaction_api,
    (send_context_free_inline,  void(int, int)                        )
    (send_deferred,             void(int, int64_t, int, int, int32_t) )
    (cancel_deferred,           int(int)                              )
+   (accept_charges,            int(int, int)          )
+   (get_accepted_charges,      void(int, int, int) )
 );
 
 REGISTER_INTRINSICS(context_free_api,
