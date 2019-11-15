@@ -102,11 +102,13 @@ find_package(Boost 1.67 REQUIRED COMPONENTS program_options unit_test_framework)
 if( APPLE AND UNIX )
 # Apple Specific Options Here
     message( STATUS "Configuring EOSIO on macOS" )
-    set( CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} ${CMAKE_CXX_FLAGS} -Wall -Wno-deprecated-declarations" )
+    set( CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -Wall -Wno-deprecated-declarations" )
+    set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-deprecated-declarations" )
 else()
     # Linux Specific Options Here
     message( STATUS "Configuring EOSIO on Linux" )
-    set( CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} ${CMAKE_CXX_FLAGS} -Wall" )
+    set( CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -Wall" )
+    set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall" )
     if ( FULL_STATIC_BUILD )
       set( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libstdc++ -static-libgcc")
     endif ( FULL_STATIC_BUILD )
@@ -125,6 +127,7 @@ endif()
 set(ENABLE_COVERAGE_TESTING FALSE CACHE BOOL "Build EOSIO for code coverage analysis")
 
 if(ENABLE_COVERAGE_TESTING)
+  SET(CMAKE_C_FLAGS   "--coverage ${CMAKE_C_FLAGS}")
   SET(CMAKE_CXX_FLAGS "--coverage ${CMAKE_CXX_FLAGS}")
   find_program( LCOV_PATH lcov )
   find_program( LLVMCOV_PATH  llvm-cov )
@@ -150,6 +153,17 @@ if ("${EOSIO_ROOT_KEY}" STREQUAL "")
 endif()
 
 message( STATUS "Using '${EOSIO_ROOT_KEY}' as public key for 'eosio' account" )
+
+find_package( Gperftools QUIET )
+if( GPERFTOOLS_FOUND )
+    message( STATUS "Found gperftools; compiling EOSIO with TCMalloc")
+    #if doing this by the book, simply link_libraries( ${GPERFTOOLS_TCMALLOC} ) here. That will
+    #give the performance benefits of tcmalloc but since it won't be linked last
+    #the heap profiler & checker may not be accurate. This here is rather undocumented behavior
+    #to stuff a library toward the end of the link list
+    set(CMAKE_C_STANDARD_LIBRARIES "${CMAKE_C_STANDARD_LIBRARIES} ${GPERFTOOLS_TCMALLOC}")
+    set(CMAKE_CXX_STANDARD_LIBRARIES "${CMAKE_CXX_STANDARD_LIBRARIES} ${GPERFTOOLS_TCMALLOC}")
+endif()
 
 add_subdirectory( libraries )
 add_subdirectory( plugins )
