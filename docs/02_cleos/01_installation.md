@@ -1,9 +1,9 @@
 There are two options to install `cleos`. You can either install via binaries or build `cleos` from source code. For either option, `cleos` is distributed within the `eos` repository.
 
 [[info | Binaries Installation]]
-| Installation via binaries is recommended as it will save time and avoid encouter build errors.
+| Installation via binaries is recommended as it will save time and avoid encounter build errors.
 
-## Installation cleos via binaries
+## Installation of Cleos via binaries
 
 ### Mac OS X Brew Install
 
