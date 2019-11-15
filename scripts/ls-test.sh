@@ -13,8 +13,8 @@ cd $GIT_ROOT/build
 
 # run tests
 pip3 install requests
-echo "ready to execute: ctest -L ls_tests -j $JOBS"
-ctest -L ls_tests -j $JOBS
+echo "ready to execute: ctest -L ls_tests -V -j $JOBS"
+ctest -L ls_tests -V -j $JOBS
 
 EXIT_STATUS=$?
 echo 'Done running launcher service related tests.'
