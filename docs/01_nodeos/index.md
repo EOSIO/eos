@@ -18,7 +18,7 @@ Please navigate the sections below to build the EOSIO components, deploy them in
 * [Replays](04_replays/index.md) - Replaying the chain from a snapshot or a blocks.log file.
 * [Logging](06_logging/index.md) - Logging config/usage, loggers, appenders, logging levels.
 * [Upgrade Guides](07_upgrade-guides/index.md) - EOSIO version/consensus upgrade guides.
-* [Troubleshooting](08_troubleshooting/index.md) - common `nodeos` troubleshooting questions.
+* [Troubleshooting](08_troubleshooting/index.md) - Common `nodeos` troubleshooting questions.
 
 [[info | Access Node]]
 | A local or remote EOSIO access node running `nodeos` is required for a client application or smart contract to interact with the blockchain.
