@@ -19,6 +19,7 @@ sleep 1
 
 # run tests
 pip3 install requests
+pip3 install dataclasses
 
 echo "ready to execute: ctest -L ls_tests -V -j $JOBS"
 ctest -L ls_tests -V -j $JOBS
