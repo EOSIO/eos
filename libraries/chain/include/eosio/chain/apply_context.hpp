@@ -2,6 +2,7 @@
 #include <eosio/chain/controller.hpp>
 #include <eosio/chain/transaction.hpp>
 #include <eosio/chain/contract_table_objects.hpp>
+#include <eosio/chain/kv_context.hpp>
 #include <fc/utility.hpp>
 #include <sstream>
 #include <algorithm>
@@ -529,6 +530,27 @@ class apply_context {
 
       int  db_store_i64( name code, name scope, name table, const account_name& payer, uint64_t id, const char* buffer, size_t buffer_size );
 
+   /// KV Database methods:
+   public:
+      void     kv_erase(uint64_t db, uint64_t contract, const char* key, uint32_t key_size);
+      void     kv_set(uint64_t db, uint64_t contract, const char* key, uint32_t key_size, const char* value, uint32_t value_size);
+      bool     kv_get(uint64_t db, uint64_t contract, const char* key, uint32_t key_size, uint32_t& value_size);
+      uint32_t kv_get_data(uint64_t db, uint32_t offset, char* data, uint32_t data_size);
+      uint32_t kv_it_create(uint64_t db, uint64_t contract, const char* prefix, uint32_t size);
+      void     kv_it_destroy(uint32_t itr);
+      int32_t  kv_it_status(uint32_t itr);
+      int32_t  kv_it_compare(uint32_t itr_a, uint32_t itr_b);
+      int32_t  kv_it_key_compare(uint32_t itr, const char* key, uint32_t size);
+      int32_t  kv_it_move_to_oob(uint32_t itr);
+      int32_t  kv_it_increment(uint32_t itr);
+      int32_t  kv_it_decrement(uint32_t itr);
+      int32_t  kv_it_lower_bound(uint32_t itr, const char* key, uint32_t size);
+      int32_t  kv_it_key(uint32_t itr, uint32_t offset, char* dest, uint32_t size, uint32_t& actual_size);
+      int32_t  kv_it_value(uint32_t itr, uint32_t offset, char* dest, uint32_t size, uint32_t& actual_size);
+
+   private:
+      void kv_check_db(uint64_t db);
+      void kv_check_iterator(uint32_t itr);
 
    /// Misc methods:
    public:
@@ -576,6 +598,10 @@ class apply_context {
       generic_index<index256_object, uint128_t*, const uint128_t*>   idx256;
       generic_index<index_double_object>                             idx_double;
       generic_index<index_long_double_object>                        idx_long_double;
+
+      std::vector<std::unique_ptr<kv_context>>                       kv_contexts;
+      std::vector<std::unique_ptr<kv_iterator>>                      kv_iterators;
+      std::vector<size_t>                                            kv_destroyed_iterators;
 
    private:
 

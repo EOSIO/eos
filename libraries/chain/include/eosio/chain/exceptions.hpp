@@ -537,6 +537,10 @@ namespace eosio { namespace chain {
                                     3160009, "No wasm file found" )
       FC_DECLARE_DERIVED_EXCEPTION( abi_file_not_found,          contract_exception,
                                     3160010, "No abi file found" )
+      FC_DECLARE_DERIVED_EXCEPTION( kv_bad_db_id,          contract_exception,
+                                    3160011, "Bad key-value database ID" )
+      FC_DECLARE_DERIVED_EXCEPTION( kv_bad_iter,          contract_exception,
+                                    3160012, "Bad key-value iterator" )
 
    FC_DECLARE_DERIVED_EXCEPTION( producer_exception,           chain_exception,
                                  3170000, "Producer exception" )

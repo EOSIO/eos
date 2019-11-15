@@ -43,6 +43,8 @@ apply_context::apply_context(controller& con, transaction_context& trx_ctx, uint
 ,idx_double(*this)
 ,idx_long_double(*this)
 {
+   kv_contexts.push_back(create_kv_chainbase_context(db, 0, receiver));
+   kv_iterators.emplace_back();
    action_trace& trace = trx_ctx.get_action_trace(action_ordinal);
    act = &trace.act;
    receiver = trace.receiver;
@@ -844,6 +846,101 @@ int apply_context::db_end_i64( name code, name scope, name table ) {
    if( !tab ) return -1;
 
    return keyval_cache.cache_table( *tab );
+}
+
+void apply_context::kv_erase(uint64_t db, uint64_t contract, const char* key, uint32_t key_size) {
+   kv_check_db(db);
+   return kv_contexts[db]->kv_erase(contract, key, key_size);
+}
+
+void apply_context::kv_set(uint64_t db, uint64_t contract, const char* key, uint32_t key_size, const char* value, uint32_t value_size) {
+   kv_check_db(db);
+   return kv_contexts[db]->kv_set(contract, key, key_size, value, value_size);
+}
+
+bool apply_context::kv_get(uint64_t db, uint64_t contract, const char* key, uint32_t key_size, uint32_t& value_size) {
+   kv_check_db(db);
+   return kv_contexts[db]->kv_get(contract, key, key_size, value_size);
+}
+
+uint32_t apply_context::kv_get_data(uint64_t db, uint32_t offset, char* data, uint32_t data_size) {
+   kv_check_db(db);
+   return kv_contexts[db]->kv_get_data(offset, data, data_size);
+}
+
+uint32_t apply_context::kv_it_create(uint64_t db, uint64_t contract, const char* prefix, uint32_t size) {
+   // KV-TODO: limit number of iterators
+   kv_check_db(db);
+   uint32_t itr;
+   if (!kv_destroyed_iterators.empty()) {
+      itr = kv_destroyed_iterators.back();
+      kv_destroyed_iterators.pop_back();
+   } else {
+      itr = kv_iterators.size();
+      kv_iterators.emplace_back();
+   }
+   kv_iterators[itr] = kv_contexts[db]->kv_it_create(contract, prefix, size);
+   return itr;
+}
+
+void apply_context::kv_it_destroy(uint32_t itr) {
+   kv_check_iterator(itr);
+   kv_destroyed_iterators.push_back(itr);
+   kv_iterators[itr].reset();
+}
+
+int32_t apply_context::kv_it_status(uint32_t itr) {
+   kv_check_iterator(itr);
+   return kv_iterators[itr]->kv_it_status();
+}
+
+int32_t apply_context::kv_it_compare(uint32_t itr_a, uint32_t itr_b) {
+   kv_check_iterator(itr_a);
+   kv_check_iterator(itr_b);
+   return kv_iterators[itr_a]->kv_it_compare(*kv_iterators[itr_b]);
+}
+
+int32_t apply_context::kv_it_key_compare(uint32_t itr, const char* key, uint32_t size) {
+   kv_check_iterator(itr);
+   return kv_iterators[itr]->kv_it_key_compare(key, size);
+}
+
+int32_t apply_context::kv_it_move_to_oob(uint32_t itr) {
+   kv_check_iterator(itr);
+   return kv_iterators[itr]->kv_it_move_to_oob();
+}
+
+int32_t apply_context::kv_it_increment(uint32_t itr) {
+   kv_check_iterator(itr);
+   return kv_iterators[itr]->kv_it_increment();
+}
+
+int32_t apply_context::kv_it_decrement(uint32_t itr) {
+   kv_check_iterator(itr);
+   return kv_iterators[itr]->kv_it_decrement();
+}
+
+int32_t apply_context::kv_it_lower_bound(uint32_t itr, const char* key, uint32_t size) {
+   kv_check_iterator(itr);
+   return kv_iterators[itr]->kv_it_lower_bound(key, size);
+}
+
+int32_t apply_context::kv_it_key(uint32_t itr, uint32_t offset, char* dest, uint32_t size, uint32_t& actual_size) {
+   kv_check_iterator(itr);
+   return kv_iterators[itr]->kv_it_key(offset, dest, size, actual_size);
+}
+
+int32_t apply_context::kv_it_value(uint32_t itr, uint32_t offset, char* dest, uint32_t size, uint32_t& actual_size) {
+   kv_check_iterator(itr);
+   return kv_iterators[itr]->kv_it_value(offset, dest, size, actual_size);
+}
+
+void apply_context::kv_check_db(uint64_t db) {
+   EOS_ASSERT(db < kv_contexts.size(), kv_bad_db_id, "Bad key-value database ID");
+}
+
+void apply_context::kv_check_iterator(uint32_t itr) {
+   EOS_ASSERT(itr < kv_iterators.size() && kv_iterators[itr], kv_bad_iter, "Bad key-value iterator");
 }
 
 uint64_t apply_context::next_global_sequence() {

@@ -1439,6 +1439,57 @@ class database_api : public context_aware_api {
       DB_API_METHOD_WRAPPERS_FLOAT_SECONDARY(idx_long_double, float128_t)
 };
 
+class kv_database_api : public context_aware_api {
+   public:
+      using context_aware_api::context_aware_api;
+
+      void kv_erase(uint64_t db, uint64_t contract, array_ptr<const char> key, uint32_t key_size) {
+         return context.kv_erase(db, contract, key, key_size);
+      }
+      void kv_set(uint64_t db, uint64_t contract, array_ptr<const char> key, uint32_t key_size, array_ptr<const char> value, uint32_t value_size) {
+         return context.kv_set(db, contract, key, key_size, value, value_size);
+      }
+      bool kv_get(uint64_t db, uint64_t contract, array_ptr<const char> key, uint32_t key_size, uint32_t& value_size) {
+         return context.kv_get(db, contract, key, key_size, value_size);
+      }
+      uint32_t kv_get_data(uint64_t db, uint32_t offset, array_ptr<char> data, uint32_t data_size) {
+         return context.kv_get_data(db, offset, data, data_size);
+      }
+      uint32_t kv_it_create(uint64_t db, uint64_t contract, array_ptr<const char> prefix, uint32_t size) {
+         return context.kv_it_create(db, contract, prefix, size);
+      }
+      void kv_it_destroy(uint32_t itr) {
+         return context.kv_it_destroy(itr);
+      }
+      int32_t kv_it_status(uint32_t itr) {
+         return context.kv_it_status(itr);
+      }
+      int32_t kv_it_compare(uint32_t itr_a, uint32_t itr_b) {
+         return context.kv_it_compare(itr_a, itr_b);
+      }
+      int32_t kv_it_key_compare(uint32_t itr, array_ptr<const char> key, uint32_t size) {
+         return context.kv_it_key_compare(itr, key, size);
+      }
+      int32_t kv_it_move_to_oob(uint32_t itr) {
+         return context.kv_it_move_to_oob(itr);
+      }
+      int32_t kv_it_increment(uint32_t itr) {
+         return context.kv_it_increment(itr);
+      }
+      int32_t kv_it_decrement(uint32_t itr) {
+         return context.kv_it_decrement(itr);
+      }
+      int32_t kv_it_lower_bound(uint32_t itr, array_ptr<const char> key, uint32_t size) {
+         return context.kv_it_lower_bound(itr, key, size);
+      }
+      int32_t kv_it_key(uint32_t itr, uint32_t offset, array_ptr<char> dest, uint32_t size, uint32_t& actual_size) {
+         return context.kv_it_key(itr, offset, dest, size, actual_size);
+      }
+      int32_t kv_it_value(uint32_t itr, uint32_t offset, array_ptr<char> dest, uint32_t size, uint32_t& actual_size) {
+         return context.kv_it_value(itr, offset, dest, size, actual_size);
+      }
+};
+
 class memory_api : public context_aware_api {
    public:
       memory_api( apply_context& ctx )
@@ -1921,6 +1972,24 @@ REGISTER_INTRINSICS( database_api,
    DB_SECONDARY_INDEX_METHODS_ARRAY(idx256)
    DB_SECONDARY_INDEX_METHODS_SIMPLE(idx_double)
    DB_SECONDARY_INDEX_METHODS_SIMPLE(idx_long_double)
+);
+
+REGISTER_INTRINSICS( kv_database_api,
+   (kv_erase,           void(int64_t,int64_t,int,int)          )
+   (kv_set,             void(int64_t,int64_t,int,int,int,int)  )
+   (kv_get,             int(int64_t,int64_t,int,int,int)       )
+   (kv_get_data,        int(int,int,int,int)                   )
+   (kv_it_create,       int(int64_t,int64_t,int,int)           )
+   (kv_it_destroy,      void(int)                              )
+   (kv_it_status,       int(int)                               )
+   (kv_it_compare,      int(int,int)                           )
+   (kv_it_key_compare,  int(int,int,int)                       )
+   (kv_it_move_to_oob,  int(int)                               )
+   (kv_it_increment,    int(int)                               )
+   (kv_it_decrement,    int(int)                               )
+   (kv_it_lower_bound,  int(int,int,int)                       )
+   (kv_it_key,          int(int,int,int,int,int)               )
+   (kv_it_value,        int(int,int,int,int,int)               )
 );
 
 REGISTER_INTRINSICS(crypto_api,
