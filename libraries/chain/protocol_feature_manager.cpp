@@ -186,6 +186,17 @@ may use a new `set_proposed_producers_ex` intrinsic to access extended features.
 */
             {}
          } )
+         (  builtin_protocol_feature_t::kv_database, builtin_protocol_feature_spec{
+            "KV_DATABASE",
+            fc::variant("14cfb3252a5fa3ae4c764929e0bbc467528990c9cc46aefcc7f16367f28b6278").as<digest_type>(),
+            // SHA256 hash of the raw message below within the comment delimiters (do not modify message below).
+/*
+Builtin protocol feature: KV_DATABASE
+
+Enables usage of key-value database intrinsics.
+*/
+            {}
+         } )
    ;
 
 

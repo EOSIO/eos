@@ -316,6 +316,7 @@ struct controller_impl {
       set_activation_handler<builtin_protocol_feature_t::get_sender>();
       set_activation_handler<builtin_protocol_feature_t::webauthn_key>();
       set_activation_handler<builtin_protocol_feature_t::wtmsig_block_signatures>();
+      set_activation_handler<builtin_protocol_feature_t::kv_database>();
 
       self.irreversible_block.connect([this](const block_state_ptr& bsp) {
          wasmif.current_lib(bsp->block_num);
@@ -3275,6 +3276,26 @@ void controller_impl::on_activation<builtin_protocol_feature_t::wtmsig_block_sig
    } );
 }
 
+template<>
+void controller_impl::on_activation<builtin_protocol_feature_t::kv_database>() {
+   db.modify( db.get<protocol_state_object>(), [&]( auto& ps ) {
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "kv_erase" );
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "kv_set" );
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "kv_get" );
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "kv_get_data" );
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "kv_it_create" );
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "kv_it_destroy" );
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "kv_it_status" );
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "kv_it_compare" );
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "kv_it_key_compare" );
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "kv_it_move_to_oob" );
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "kv_it_increment" );
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "kv_it_decrement" );
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "kv_it_lower_bound" );
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "kv_it_key" );
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "kv_it_value" );
+   } );
+}
 
 
 /// End of protocol feature activation handlers
