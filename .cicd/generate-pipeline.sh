@@ -187,8 +187,11 @@ cat <<EOF
 
       sleep 1
       pushd eos/build/
+      echo 'current path is:'
       pwd
-      ls
+      echo 'the content of DartConfiguration.tcl is:'
+      cat DartConfiguration.tcl
+      echo 'ready to execute ctest -L ls_tests -V -j 10'
       ctest -L ls_tests -V -j 10
       popd
 
