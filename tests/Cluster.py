@@ -62,8 +62,7 @@ class NamedAccounts:
             digits.append(digit)
 
         digits.reverse()
-        for digit in digits:
-            retStr=retStr+str(digit)
+        retStr += "".join(map(str, digits))
 
         Utils.Print("NamedAccounts Name for %d is %s" % (temp, retStr))
         return retStr

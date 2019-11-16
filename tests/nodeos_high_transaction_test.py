@@ -1,22 +1,16 @@
 #!/usr/bin/env python3
 
 from testUtils import Utils
-import testUtils
 import time
 from Cluster import Cluster
 from Cluster import NamedAccounts
 from core_symbol import CORE_SYMBOL
 from WalletMgr import WalletMgr
-from Node import BlockType
 from Node import Node
 from TestHelper import TestHelper
 from TestHelper import AppArgs
 
-import decimal
 import json
-import math
-import re
-import signal
 
 ###############################################################
 # nodeos_high_transaction_test
@@ -29,8 +23,6 @@ import signal
 ###############################################################
 
 Print=Utils.Print
-
-from core_symbol import CORE_SYMBOL
 
 appArgs = AppArgs()
 minTotalAccounts = 20
@@ -336,29 +328,14 @@ try:
     delayedReportError = False
     if len(missingTransactions) > 0:
         verboseOutput = "Missing transaction information: [" if Utils.Debug else "Missing transaction ids: ["
-        first = True
-        for missingTrans in missingTransactions:
-            if not first:
-                verboseOutput += ", "
-            verboseOutput += missingTrans if Utils.Debug else missingTrans["newer_trans_id"]
-            first = False
-
+        verboseOutput = ", ".join([missingTrans if Utils.Debug else missingTrans["newer_trans_id"] for missingTrans in missingTransactions])
         verboseOutput += "]"
         Utils.Print("ERROR: There are %d missing transactions.  %s" % (len(missingTransactions), verboseOutput))
         delayedReportError = True
 
     if len(transBlockOrderWeird) > 0:
         verboseOutput = "Delayed transaction information: [" if Utils.Debug else "Delayed transaction ids: ["
-        first = True
-        for trans in transBlockOrderWeird:
-            if not first:
-                verboseOutput += ", "
-            if Utils.Debug:
-                verboseOutput += json.dumps(trans, indent=2)
-            else:
-                verboseOutput += trans["newer_trans_id"]
-            first = False
-
+        verboseOutput = ", ".join([json.dumps(trans, indent=2) if Utils.Debug else trans["newer_trans_id"] for trans in transBlockOrderWeird])
         verboseOutput += "]"
         Utils.Print("ERROR: There are %d transactions delayed more than %d seconds.  %s" % (len(transBlockOrderWeird), args.transaction_time_delta, verboseOutput))
         delayedReportError = True
