@@ -134,8 +134,17 @@ try:
         shipClientErrorFile = "%s%d.err" % (shipClientFilePrefix, i)
         with open(shipClientErrorFile, "r") as errFile:
             statuses = None
+            lines = errFile.readlines()
+            missingModules = []
+            for line in lines:
+                match = re.search(r"Error: Cannot find module '(\w+)'", line)
+                if match:
+                    missingModules.append(match.group(1))
+            if len(missingModules) > 0:
+                Utils.errorExit("Javascript client #%d threw an exception, it was missing modules: %s" % (index, ", ".join(missingModules)))
+
             try:
-                statuses = json.load(errFile)
+                statuses = json.loads(" ".join(lines))
             except json.decoder.JSONDecodeError as er:
                 Utils.errorExit("javascript client output was malformed in %s. Exception: %s" % (shipClientErrorFile, er))
 
