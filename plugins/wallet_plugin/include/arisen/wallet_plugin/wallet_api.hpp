@@ -85,7 +85,7 @@ class wallet_api
 
       /** Removes a key from the wallet.
        *
-       * example: remove_key RSN7HknuwTB85iRC3iL8Fkc13PXkRyLoQnKbUMh4iXYY43orcxpjS
+       * example: remove_key 5JRQVeHYRb3E4HnhMhpHs5fivQJ157MdCMcq1VPEawEG7noNibR
        *
        * @param key the Public Key to remove
        */

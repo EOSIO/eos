@@ -112,7 +112,7 @@ sub write_config {
     if (defined $producer) {
         print $cfg "enable-stale-production = true\n";
         print $cfg "required-participation = true\n";
-        print $cfg "private-key = [\"RSN7HknuwTB85iRC3iL8Fkc13PXkRyLoQnKbUMh4iXYY43orcxpjS\",\"5HrpMSjfpEtWkaJALRBNPNysX7mv3juwAnY2bLK4A1ofMMuD9Qq\"]\n";
+        print $cfg "private-key = [\"5JRQVeHYRb3E4HnhMhpHs5fivQJ157MdCMcq1VPEawEG7noNibR\",\"5HrpMSjfpEtWkaJALRBNPNysX7mv3juwAnY2bLK4A1ofMMuD9Qq\"]\n";
 
         print $cfg "plugin = arisen::producer_plugin\n";
         print $cfg "plugin = arisen::chain_api_plugin\n";
