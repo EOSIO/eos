@@ -316,6 +316,7 @@ struct controller_impl {
       set_activation_handler<builtin_protocol_feature_t::get_sender>();
       set_activation_handler<builtin_protocol_feature_t::webauthn_key>();
       set_activation_handler<builtin_protocol_feature_t::wtmsig_block_signatures>();
+      set_activation_handler<builtin_protocol_feature_t::contract_pay_trx_costs>();
 
       self.irreversible_block.connect([this](const block_state_ptr& bsp) {
          wasmif.current_lib(bsp->block_num);
@@ -1342,7 +1343,7 @@ struct controller_impl {
                                                                    trx_context.initial_objective_duration_limit.count()    ) );
          }
 
-         resource_limits.add_transaction_usage( trx_context, cpu_time_to_bill_us, 0,
+         resource_limits.add_transaction_usage( trx_context.accepted_charges ? flat_set<account_name>{*trx_context.accepted_charges} : trx_context.bill_to_accounts, cpu_time_to_bill_us, 0,
                                                 block_timestamp_type(self.pending_block_time()).slot ); // Should never fail
 
          trace->receipt = push_receipt(gtrx.trx_id, transaction_receipt::hard_fail, cpu_time_to_bill_us, 0);
@@ -3272,6 +3273,15 @@ template<>
 void controller_impl::on_activation<builtin_protocol_feature_t::wtmsig_block_signatures>() {
    db.modify( db.get<protocol_state_object>(), [&]( auto& ps ) {
       add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "set_proposed_producers_ex" );
+   } );
+}
+
+template<>
+void controller_impl::on_activation<builtin_protocol_feature_t::contract_pay_trx_costs>() {
+   db.modify( db.get<protocol_state_object>(), [&]( auto& ps ) {
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "get_num_actions" );
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "accept_charges" );
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "get_accepted_charges" );
    } );
 }
 

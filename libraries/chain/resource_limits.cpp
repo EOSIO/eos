@@ -122,16 +122,17 @@ void resource_limits_manager::update_account_usage(const flat_set<account_name>&
    }
 }
 
-void resource_limits_manager::add_transaction_usage(const transaction_context& ctx, uint64_t cpu_usage, uint64_t net_usage, uint32_t time_slot ) {
+void resource_limits_manager::add_transaction_usage(const flat_set<account_name>& accounts, uint64_t cpu_usage, uint64_t net_usage, uint32_t time_slot) {
    const auto& state = _db.get<resource_limits_state_object>();
    const auto& config = _db.get<resource_limits_config_object>();
 
-   for( const auto& a : ctx.bill_to_accounts ) {
+   for( const auto& a : accounts ) {
 
       const auto& usage = _db.get<resource_usage_object,by_owner>( a );
       int64_t unused;
       int64_t net_weight;
       int64_t cpu_weight;
+
       get_account_limits( a, unused, net_weight, cpu_weight );
 
       _db.modify( usage, [&]( auto& bu ){
@@ -222,23 +223,25 @@ int64_t resource_limits_manager::get_account_ram_usage( const account_name& name
 }
 
 
-bool resource_limits_manager::set_account_limits( const account_name& account, int64_t ram_bytes, int64_t net_weight, int64_t cpu_weight) {
+bool resource_limits_manager::set_account_limits( const account_name& account, int64_t ram_bytes, int64_t net_weight, int64_t cpu_weight, bool is_transient) {
    //const auto& usage = _db.get<resource_usage_object,by_owner>( account );
    /*
     * Since we need to delay these until the next resource limiting boundary, these are created in a "pending"
     * state or adjusted in an existing "pending" state.  The chain controller will collapse "pending" state into
-    * the actual state at the next appropriate boundary.
+    * the actual state at the next appropriate boundary. If the limit change is transient
     */
    auto find_or_create_pending_limits = [&]() -> const resource_limits_object& {
-      const auto* pending_limits = _db.find<resource_limits_object, by_owner>( boost::make_tuple(true, account) );
+      uint8_t state = is_transient ? static_cast<uint8_t>(resource_limits_state::transient) :
+                                     static_cast<uint8_t>(resource_limits_state::pending);
+      const auto* pending_limits = _db.find<resource_limits_object, by_owner>( boost::make_tuple(state, account) );
       if (pending_limits == nullptr) {
-         const auto& limits = _db.get<resource_limits_object, by_owner>( boost::make_tuple(false, account));
+         const auto& limits = _db.get<resource_limits_object, by_owner>( boost::make_tuple(static_cast<uint8_t>(resource_limits_state::final), account));
          return _db.create<resource_limits_object>([&](resource_limits_object& pending_limits){
             pending_limits.owner = limits.owner;
             pending_limits.ram_bytes = limits.ram_bytes;
             pending_limits.net_weight = limits.net_weight;
             pending_limits.cpu_weight = limits.cpu_weight;
-            pending_limits.pending = true;
+            pending_limits.pending = state;
          });
       } else {
          return *pending_limits;
@@ -264,25 +267,34 @@ bool resource_limits_manager::set_account_limits( const account_name& account, i
    }
 
    _db.modify( limits, [&]( resource_limits_object& pending_limits ){
-      pending_limits.ram_bytes = ram_bytes;
+      if (!is_transient)
+         pending_limits.ram_bytes = ram_bytes;
       pending_limits.net_weight = net_weight;
       pending_limits.cpu_weight = cpu_weight;
    });
 
+   std::cout << "set_account_limits " << is_transient << " " << net_weight << " " << cpu_weight << "\n";
    return decreased_limit;
 }
 
 void resource_limits_manager::get_account_limits( const account_name& account, int64_t& ram_bytes, int64_t& net_weight, int64_t& cpu_weight ) const {
-   const auto* pending_buo = _db.find<resource_limits_object,by_owner>( boost::make_tuple(true, account) );
-   if (pending_buo) {
-      ram_bytes  = pending_buo->ram_bytes;
-      net_weight = pending_buo->net_weight;
-      cpu_weight = pending_buo->cpu_weight;
+   const auto* transient_buo = _db.find<resource_limits_object,by_owner>( boost::make_tuple(static_cast<uint8_t>(resource_limits_state::transient), account) );
+   if (transient_buo) {
+      ram_bytes = transient_buo->ram_bytes;
+      net_weight = transient_buo->net_weight;
+      cpu_weight = transient_buo->cpu_weight;
    } else {
-      const auto& buo = _db.get<resource_limits_object,by_owner>( boost::make_tuple( false, account ) );
-      ram_bytes  = buo.ram_bytes;
-      net_weight = buo.net_weight;
-      cpu_weight = buo.cpu_weight;
+      const auto* pending_buo = _db.find<resource_limits_object,by_owner>( boost::make_tuple(static_cast<uint8_t>(resource_limits_state::pending), account) );
+      if (pending_buo) {
+         ram_bytes  = pending_buo->ram_bytes;
+         net_weight = pending_buo->net_weight;
+         cpu_weight = pending_buo->cpu_weight;
+      } else {
+         const auto& buo = _db.get<resource_limits_object,by_owner>( boost::make_tuple( static_cast<uint8_t>(resource_limits_state::final), account ) );
+         ram_bytes  = buo.ram_bytes;
+         net_weight = buo.net_weight;
+         cpu_weight = buo.cpu_weight;
+      }
    }
 }
 
@@ -309,18 +321,29 @@ void resource_limits_manager::process_account_limit_updates() {
    const auto& state = _db.get<resource_limits_state_object>();
    _db.modify(state, [&](resource_limits_state_object& rso){
       while(!by_owner_index.empty()) {
-         const auto& itr = by_owner_index.lower_bound(boost::make_tuple(true));
-         if (itr == by_owner_index.end() || itr->pending!= true) {
+         const auto& trans_itr = by_owner_index.lower_bound(boost::make_tuple(static_cast<uint8_t>(resource_limits_state::transient)));
+         if ( trans_itr->pending == static_cast<uint8_t>(resource_limits_state::transient) ) {
+            multi_index.remove(*trans_itr);
+         }
+
+         const auto& itr = by_owner_index.lower_bound(boost::make_tuple(static_cast<uint8_t>(resource_limits_state::pending)));
+         if (itr == by_owner_index.end() || itr->pending == static_cast<uint8_t>(resource_limits_state::final)) {
             break;
          }
 
-         const auto& actual_entry = _db.get<resource_limits_object, by_owner>(boost::make_tuple(false, itr->owner));
-         _db.modify(actual_entry, [&](resource_limits_object& rlo){
-            update_state_and_value(rso.total_ram_bytes,  rlo.ram_bytes,  itr->ram_bytes, "ram_bytes");
-            update_state_and_value(rso.total_cpu_weight, rlo.cpu_weight, itr->cpu_weight, "cpu_weight");
-            update_state_and_value(rso.total_net_weight, rlo.net_weight, itr->net_weight, "net_weight");
-         });
+            const auto& actual_entry = _db.get<resource_limits_object, by_owner>(
+                  boost::make_tuple(static_cast<uint8_t>(resource_limits_state::pending), itr->owner));
 
+         std::cout << "update limits " << itr->owner.to_string() << " " << rso.total_ram_bytes << " " << actual_entry.ram_bytes << " " << itr->ram_bytes << " " << (uint32_t)itr->pending << " " << rso.total_cpu_weight << " " << actual_entry.cpu_weight << " " << itr->cpu_weight << " ""\n";
+         if ( itr->pending == static_cast<uint8_t>(resource_limits_state::pending) ) {
+            const auto& actual_entry = _db.get<resource_limits_object, by_owner>(
+                  boost::make_tuple(static_cast<uint8_t>(resource_limits_state::pending), itr->owner));
+            _db.modify(actual_entry, [&](resource_limits_object& rlo){
+               update_state_and_value(rso.total_ram_bytes,  rlo.ram_bytes,  itr->ram_bytes, "ram_bytes");
+               update_state_and_value(rso.total_cpu_weight, rlo.cpu_weight, itr->cpu_weight, "cpu_weight");
+               update_state_and_value(rso.total_net_weight, rlo.net_weight, itr->net_weight, "net_weight");
+            });
+         }
          multi_index.remove(*itr);
       }
    });

@@ -1,0 +1,50 @@
+{
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT ",
+    "version": "eosio::abi/1.1",
+    "types": [],
+    "structs": [
+        {
+            "name": "accept",
+            "base": "",
+            "fields": [
+                {
+                    "name": "net",
+                    "type": "uint32"
+                },
+                {
+                    "name": "cpu",
+                    "type": "uint32"
+                },
+                {
+                    "name": "acnt",
+                    "type": "uint64"
+                }
+            ]
+        },
+        {
+            "name": "eatcpu",
+            "base": "",
+            "fields": [
+                {
+                    "name": "iters",
+                    "type": "uint32"
+                }
+            ]
+        }
+    ],
+    "actions": [
+        {
+            "name": "accept",
+            "type": "accept",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "eatcpu",
+            "type": "eatcpu",
+            "ricardian_contract": ""
+        }
+    ],
+    "tables": [],
+    "ricardian_clauses": [],
+    "variants": []
+}

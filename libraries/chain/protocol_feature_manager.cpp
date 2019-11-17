@@ -186,6 +186,18 @@ may use a new `set_proposed_producers_ex` intrinsic to access extended features.
 */
             {}
          } )
+         (  builtin_protocol_feature_t::contract_pay_trx_costs, builtin_protocol_feature_spec{
+            "CONTRACT_PAY_TRX_COSTS",
+            fc::variant("020e06eae1f0e7b1f3615dea2b60592262428ba659454e606811cf5053dc6921").as<digest_type>(),
+            // SHA256 hash of the raw message below within the comment delimiters (do not modify message below).
+/*
+Builtin protocol feature: CONTRACT_PAY_TRX_COSTS
+
+Allows a contract to accept CPU and NET billing costs of all actions in a transaction.
+*/
+            {}
+         } )
+
    ;
 
 

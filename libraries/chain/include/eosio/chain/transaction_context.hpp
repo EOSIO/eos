@@ -100,6 +100,9 @@ namespace eosio { namespace chain {
          void validate_cpu_usage_to_bill( int64_t u, bool check_minimum = true )const;
 
          void disallow_transaction_extensions( const char* error_msg )const;
+         bool charge_net_usage(account_name acnt, uint32_t net);
+         bool charge_cpu_usage(account_name acnt, uint32_t cpu);
+         std::tuple<int64_t, int64_t> get_charged_limits()const;
 
       /// Fields:
       public:
@@ -131,8 +134,6 @@ namespace eosio { namespace chain {
          fc::microseconds              leeway = fc::microseconds( config::default_subjective_cpu_leeway_us );
          int64_t                       billed_cpu_time_us = 0;
          bool                          explicit_billed_cpu_time = false;
-         uint32_t                      max_accepted_cpu_limit = std::numeric_limits<uint32_t>::max();
-         uint32_t                      max_accepted_net_limit = std::numeric_limits<uint32_t>::max();
 
          transaction_checktime_timer   transaction_timer;
 

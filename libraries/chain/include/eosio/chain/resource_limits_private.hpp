@@ -2,6 +2,7 @@
 #include <eosio/chain/types.hpp>
 #include <eosio/chain/config.hpp>
 #include <eosio/chain/exceptions.hpp>
+#include <eosio/chain/resource_limits_state.hpp>
 
 #include "multi_index_includes.hpp"
 
@@ -134,7 +135,7 @@ namespace eosio { namespace chain { namespace resource_limits {
 
       id_type id;
       account_name owner; //< owner should not be changed within a chainbase modifier lambda
-      bool pending = false; //< pending should not be changed within a chainbase modifier lambda
+      uint8_t pending = static_cast<uint8_t>(resource_limits_state::final); //< pending should not be changed within a chainbase modifier lambda
 
       int64_t net_weight = -1;
       int64_t cpu_weight = -1;
@@ -151,7 +152,7 @@ namespace eosio { namespace chain { namespace resource_limits {
          ordered_unique<tag<by_id>, member<resource_limits_object, resource_limits_object::id_type, &resource_limits_object::id>>,
          ordered_unique<tag<by_owner>,
             composite_key<resource_limits_object,
-               BOOST_MULTI_INDEX_MEMBER(resource_limits_object, bool, pending),
+               BOOST_MULTI_INDEX_MEMBER(resource_limits_object, uint8_t, pending),
                BOOST_MULTI_INDEX_MEMBER(resource_limits_object, account_name, owner)
             >
          >

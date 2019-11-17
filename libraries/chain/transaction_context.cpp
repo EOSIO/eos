@@ -54,6 +54,7 @@ namespace eosio { namespace chain {
    ,undo_session()
    ,trace(std::make_shared<transaction_trace>())
    ,start(s)
+   ,accepted_charges()
    ,transaction_timer(std::move(tmr))
    ,net_usage(trace->net_usage)
    ,pseudo_start(s)
@@ -331,7 +332,10 @@ namespace eosio { namespace chain {
 
       validate_cpu_usage_to_bill( billed_cpu_time_us );
 
-      rl.add_transaction_usage( *this, static_cast<uint64_t>(billed_cpu_time_us), net_usage,
+      flat_set<account_name> accepted_account;
+      if (accepted_charges)
+         accepted_account = {*accepted_charges};
+      rl.add_transaction_usage( accepted_charges ? accepted_account : bill_to_accounts, static_cast<uint64_t>(billed_cpu_time_us), net_usage,
                                 block_timestamp_type(control.pending_block_time()).slot ); // Should never fail
    }
 
@@ -341,6 +345,38 @@ namespace eosio { namespace chain {
 
    void transaction_context::undo() {
       if (undo_session) undo_session->undo();
+   }
+
+   bool transaction_context::charge_net_usage(account_name acnt, uint32_t net) {
+      if (accepted_charges && *accepted_charges == acnt) {
+         net_limit = net;
+         return true;
+      } else {
+         accepted_charges = acnt;
+         net_limit = net;
+         bill_to_accounts = flat_set<account_name>{acnt};
+         return true;
+      }
+      return false;
+   }
+
+   bool transaction_context::charge_cpu_usage(account_name acnt, uint32_t cpu) {
+      if (accepted_charges && *accepted_charges == acnt) {
+         explicit_billed_cpu_time = cpu;
+         return true;
+      } else {
+         accepted_charges = acnt;
+         explicit_billed_cpu_time = cpu;
+         bill_to_accounts = flat_set<account_name>{acnt};
+         return true;
+      }
+      return false;
+   }
+
+   std::tuple<int64_t, int64_t> transaction_context::get_charged_limits()const {
+      if (accepted_charges)
+         return std::make_tuple(net_limit, explicit_billed_cpu_time);
+      return std::make_tuple(int64_t(-1), int64_t(-1));
    }
 
    void transaction_context::check_net_usage()const {

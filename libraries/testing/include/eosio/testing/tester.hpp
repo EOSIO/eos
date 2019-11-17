@@ -219,7 +219,6 @@ namespace eosio { namespace testing {
                                                uint32_t expiration = DEFAULT_EXPIRATION_DELTA,
                                                uint32_t delay_sec = 0 );
 
-
          action get_action( account_name code, action_name acttype, vector<permission_level> auths,
                                          const variant_object& data )const;
 

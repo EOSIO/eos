@@ -602,6 +602,12 @@ namespace eosio { namespace chain {
 
    FC_DECLARE_DERIVED_EXCEPTION( resource_limit_exception, chain_exception,
                                  3210000, "Resource limit exception" )
+      FC_DECLARE_DERIVED_EXCEPTION( charged_costs_cpu_error, chain_exception,
+                                 3210001, "Charged cost cpu error" )
+      FC_DECLARE_DERIVED_EXCEPTION( charged_costs_net_error, chain_exception,
+                                 3210002, "Charged cost net error" )
+
+
 
    FC_DECLARE_DERIVED_EXCEPTION( mongo_db_exception, chain_exception,
                                  3220000, "Mongo DB exception" )

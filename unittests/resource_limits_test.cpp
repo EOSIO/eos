@@ -3,6 +3,7 @@
 #include <eosio/chain/config.hpp>
 #include <eosio/chain/resource_limits.hpp>
 #include <eosio/testing/chainbase_fixture.hpp>
+#include <eosio/chain/transaction_context.hpp>
 
 #include <boost/test/unit_test.hpp>
 

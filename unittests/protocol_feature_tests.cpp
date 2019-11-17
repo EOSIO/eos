@@ -1739,4 +1739,77 @@ BOOST_AUTO_TEST_CASE( wtmsig_block_signing_inflight_extension_test ) { try {
 
 } FC_LOG_AND_RETHROW() }
 
+BOOST_AUTO_TEST_CASE( contracts_pay_transaction_costs) { try {
+   tester c( setup_policy::preactivate_feature_and_new_bios );
+
+   const auto& pfm = c.control->get_protocol_feature_manager();
+   const auto& d = pfm.get_builtin_digest(builtin_protocol_feature_t::contract_pay_trx_costs);
+   BOOST_REQUIRE(d);
+
+   c.produce_blocks(2);
+
+   // activate the feature
+   c.preactivate_protocol_features( {*d} );
+   c.produce_block();
+
+   auto rlm = c.control->get_resource_limits_manager();
+   const account_name payer("payer");
+   const account_name client("client");
+
+   c.create_accounts( {payer, client} );
+   c.set_code( payer, contracts::contract_pays_wasm() );
+   c.set_abi( payer, contracts::contract_pays_abi().data() );
+   c.produce_block();
+
+   rlm.set_account_limits(payer, 1000000, 9, 9);
+   rlm.set_account_limits(client, 0, 0, 0);
+   rlm.process_account_limit_updates();
+
+   BOOST_REQUIRE_EXCEPTION(c.push_action(payer, name("accept"), payer, fc::mutable_variant_object()
+         ("net", 10)
+         ("cpu", 10)
+         ("acnt",payer.to_uint64_t())),
+         charged_costs_net_error,
+         fc_exception_message_is("not enough net staked to cover accepting charges"));
+
+   BOOST_REQUIRE_EXCEPTION(c.push_action(payer, name("accept"), payer, fc::mutable_variant_object()
+         ("net", 8)
+         ("cpu", 10)
+         ("acnt",payer.to_uint64_t())),
+         charged_costs_cpu_error,
+         fc_exception_message_is("not enough cpu staked to cover accepting charges"));
+
+   rlm.set_account_limits(payer, 1000000, 100000, 100000);
+   rlm.process_account_limit_updates();
+
+   c.push_action(payer, name("accept"), payer, fc::mutable_variant_object()
+         ("net", 10)
+         ("cpu", 10)
+         ("acnt",payer.to_uint64_t()));
+
+   c.produce_block();
+
+   uint32_t net = 160;
+   uint32_t cpu = 10;
+   auto push_actions = [&](const std::vector<action_name>& actions, const std::vector<fc::mutable_variant_object>& mvos) {
+      signed_transaction trx;
+      name active("active");
+      trx.actions.emplace_back(c.get_action(payer, name("accept"), {{payer, active}},
+               fc::mutable_variant_object()("net", net)("cpu", cpu)("acnt", payer.to_uint64_t())));
+      for (uint32_t i=0; i < actions.size(); i++) {
+         trx.actions.emplace_back(c.get_action(payer, actions[i], {{client, active}}, mvos[i]));
+      }
+      c.set_transaction_headers(trx, c.DEFAULT_EXPIRATION_DELTA, 0);
+      trx.sign( c.get_private_key(client, active.to_string()), c.control->get_chain_id() );
+      trx.sign( c.get_private_key(payer, active.to_string()), c.control->get_chain_id() );
+      return c.push_transaction(trx);
+   };
+
+   push_actions({name("eatcpu")},
+         {fc::mutable_variant_object()("iters", 100)});
+
+   c.produce_block();
+
+} FC_LOG_AND_RETHROW() }
+
 BOOST_AUTO_TEST_SUITE_END()

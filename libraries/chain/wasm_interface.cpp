@@ -1505,19 +1505,20 @@ class transaction_api : public context_aware_api {
 
       bool accept_charges(uint32_t max_net, uint32_t max_cpu) {
          auto& tc = context.trx_context;
-         const auto& mrlm = context.control.get_mutable_resource_limits_manager();
+         auto& mrlm = context.control.get_mutable_resource_limits_manager();
          account_name acnt = context.get_receiver();
          int64_t net_limit = 0, cpu_limit = 0, ram_limit = 0;
          mrlm.get_account_limits(acnt, ram_limit, net_limit, cpu_limit);
 
-         if (net_limit < max_net || cpu_limit < max_cpu)
-            return false;
+         std::cout << "Net " << net_limit << " " << max_net << "\n";
+         std::cout << "CPU " << cpu_limit << " " << max_cpu << "\n";
+         EOS_ASSERT(net_limit >= max_net, charged_costs_net_error, "not enough net staked to cover accepting charges");
+         EOS_ASSERT(cpu_limit >= max_cpu, charged_costs_cpu_error, "not enough cpu staked to cover accepting charges");
 
          auto& accepted = tc.accepted_charges;
          if (!accepted) {
             accepted = context.get_receiver();
-            tc.max_accepted_net_limit = max_net;
-            tc.max_accepted_cpu_limit = max_cpu;
+            mrlm.set_account_limits(context.get_receiver(), -1, max_net, max_cpu, true);
          }
          return (bool)accepted;
       }
@@ -1527,8 +1528,15 @@ class transaction_api : public context_aware_api {
          auto& accepted = tc.accepted_charges;
          if (accepted) {
             contract = *accepted;
-            max_net = tc.max_accepted_net_limit;
-            max_cpu = tc.max_accepted_cpu_limit;
+            int64_t ram = -1, net = -1, cpu = -1;
+            const auto& mrlm = context.control.get_mutable_resource_limits_manager();
+            mrlm.get_account_limits(contract, ram, net, cpu);
+            max_net = static_cast<uint32_t>(net);
+            max_cpu = static_cast<uint32_t>(cpu);
+         } else {
+            contract = account_name(0);
+            max_net = 0;
+            max_cpu = 0;
          }
       }
 };

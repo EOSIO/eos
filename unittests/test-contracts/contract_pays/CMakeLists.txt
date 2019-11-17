@@ -1,0 +1,6 @@
+if( EOSIO_COMPILE_TEST_CONTRACTS )
+   add_contract( contract_pays contract_pays contract_pays.cpp )
+else()
+   configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/contract_pays.wasm ${CMAKE_CURRENT_BINARY_DIR}/contract_pays.wasm COPYONLY )
+   configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/contract_pays.abi  ${CMAKE_CURRENT_BINARY_DIR}/contract_pays.abi  COPYONLY )
+endif()
