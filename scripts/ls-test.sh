@@ -20,7 +20,7 @@ sleep 1
 echo "platform ID is $ID"
 if [[ "$ID" == 'centos' ]]; then
     echo "try to install python3.7 on centos"
-    yum update && yum install -y python37 python37-pip
+    yum -y update && yum -y install python37 python37-pip
 fi
 
 if [[ "$ID" == 'ubuntu' ]]; then
