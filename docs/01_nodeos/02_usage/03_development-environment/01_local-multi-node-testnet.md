@@ -1,15 +1,23 @@
 
-This tutorial describes how to set up a multi-node blockchain configuration running on a single host.  This is referred to as a _**single host, multi-node testnet**_.  We will set up two nodes on your local computer and have them communicate with each other.  The examples in this section rely on three command-line applications, `nodeos`, `keosd`, and `cleos`.  The following diagram depicts the desired testnet configuration.
+## Goal
+
+This section describes how to set up a multi-node blockchain configuration running on a single host.  This is referred to as a _**single host, multi-node testnet**_.  We will set up two nodes on your local computer and have them communicate with each other.  The examples in this section rely on three command-line applications, `nodeos`, `keosd`, and `cleos`.  The following diagram depicts the desired testnet configuration.
 
 ![Single host multi node testnet](single-host-multi-node-testnet.png)
 
-It is assumed that `keosd`, `cleos`, and `nodeos` have been installed in your path, or that you know how to start these applications from the location in the file system (see [EOSIO Software Installation](../../01_install/index.md)).
+## Before you begin
+
+* [Install the EOSIO software](../../../00_install/index.md) before starting this section.
+* It is assumed that `nodeos`, `cleos`, and `keosd` are accessible through the path. If you built from source, make sure to run the [install script](../../../00_install/01_build-from-source/03_install-eosio-binaries.md).
+* Know how to pass [Nodeos options](../../02_usage/00_nodeos-options.md) to enable or disable functionality.
+
+## Steps
 
 Open four "terminal" windows and perform the following steps:
 
 1. [Start the Wallet Manager](#1-start-the-wallet-manager)
 2. [Create a Default Wallet](#2-create-a-default-wallet)
-3. [Loading the eosio Key](#3-loading-the-eosio-key)
+3. [Loading the EOSIO Key](#3-loading-the-eosio-key)
 4. [Start the First Producer Node](#4-start-the-first-producer-node)
 5. [Start the Second Producer Node](#5-start-the-second-producer-node)
 6. [Get Nodes Info](#6-get-nodes-info)
@@ -54,7 +62,7 @@ Without password imported keys will not be retrievable.
 
 `keosd` will generate some status output in its window. We will continue to use this second window for subsequent `cleos` commands.
 
-### 3. Loading the eosio Key
+### 3. Loading the EOSIO Key
 
 The private blockchain launched in the steps above is created with a default initial key which must be loaded into the wallet.
 
