@@ -17,15 +17,14 @@ echo '{ "initial_timestamp": "2018-06-01T12:00:00.000", "initial_key": "EOS6MRyA
 
 sleep 1
 
+echo "platform ID is $ID"
 if [[ "$ID" == 'ubuntu' ]]; then
+    echo "try to install python3.7"
     apt-get --assume-yes install python3.7
 fi
 
-echo 'python3 version is:'
-python3 --version
-
-python3 -m pip install requests
-python3 -m pip install dataclasses
+python3.7 -m pip install requests
+python3.7 -m pip install dataclasses
 
 
 echo "ready to execute: ctest -L ls_tests -V -j $JOBS"
