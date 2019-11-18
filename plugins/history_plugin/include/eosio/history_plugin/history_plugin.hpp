@@ -28,13 +28,13 @@ class read_only {
 
       struct get_actions_params {
          chain::account_name account_name;
-         optional<int32_t>   pos; /// a absolute sequence positon -1 is the end/last action
-         optional<int32_t>   offset; ///< the number of actions relative to pos, negative numbers return [pos-offset,pos), positive numbers return [pos,pos+offset)
+         optional<int64_t>   pos; /// a absolute sequence positon -1 is the end/last action
+         optional<int64_t>   offset; ///< the number of actions relative to pos, negative numbers return [pos-offset,pos), positive numbers return [pos,pos+offset)
       };
 
       struct ordered_action_result {
          uint64_t                     global_action_seq = 0;
-         int32_t                      account_action_seq = 0;
+         int64_t                      account_action_seq = 0;
          uint32_t                     block_num;
          chain::block_timestamp_type  block_time;
          fc::variant                  action_trace;
