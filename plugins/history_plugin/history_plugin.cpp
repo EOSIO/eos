@@ -23,7 +23,7 @@ namespace eosio {
       id_type      id;
       account_name account; ///< the name of the account which has this action in its history
       uint64_t     action_sequence_num = 0; ///< the sequence number of the relevant action (global)
-      int32_t      account_sequence_num = 0; ///< the sequence number for this account (per-account)
+      int64_t      account_sequence_num = 0; ///< the sequence number for this account (per-account)
    };
 
    struct action_history_object : public chainbase::object<action_history_object_type, action_history_object> {
@@ -67,7 +67,7 @@ namespace eosio {
          ordered_unique<tag<by_account_action_seq>,
             composite_key< account_history_object,
                member<account_history_object, account_name, &account_history_object::account >,
-               member<account_history_object, int32_t, &account_history_object::account_sequence_num >
+               member<account_history_object, int64_t, &account_history_object::account_sequence_num >
             >
          >
       >
@@ -211,7 +211,7 @@ namespace eosio {
             const auto& idx = db.get_index<account_history_index, by_account_action_seq>();
             auto itr = idx.lower_bound( boost::make_tuple( name(n.to_uint64_t()+1), 0 ) );
 
-            uint64_t asn = 0;
+            int64_t asn = 0;
             if( itr != idx.begin() ) --itr;
             if( itr->account == n )
                asn = itr->account_sequence_num + 1;
@@ -376,10 +376,10 @@ namespace eosio {
 
         const auto& idx = db.get_index<account_history_index, by_account_action_seq>();
 
-        int32_t start = 0;
-        int32_t pos = params.pos ? *params.pos : -1;
-        int32_t end = 0;
-        int32_t offset = params.offset ? *params.offset : -20;
+        int64_t start = 0;
+        int64_t pos = params.pos ? *params.pos : -1;
+        int64_t end = 0;
+        int64_t offset = params.offset ? *params.offset : -20;
         auto n = params.account_name;
         idump((pos));
         if( pos == -1 ) {
@@ -393,7 +393,7 @@ namespace eosio {
                pos = itr->account_sequence_num + 1;
         }
 
-        if( pos== -1 ) pos = 0xfffffff;
+        if( pos== -1 ) pos = 0xfffffffffffffff;
 
         if( offset > 0 ) {
            start = pos;
