@@ -1,6 +1,16 @@
 
-[[info]]
+[[info | System contracts required]]
 | These instructions assume you want to launch a producing node on a network with **system contracts loaded**. These instructions will not work on a default development node using native functionality, or one without system contracts loaded.
+
+## Goal
+
+This section describes how to set up a producing node within the EOSIO network. A producing node, as its name implies, is a node that is configured to produce blocks in an `EOSIO` based blockchain. This functionality if provided through the `producer_plugin` as well as other [Nodeos Plugins](../../03_plugins/index.md).
+
+## Before you begin
+
+* [Install the EOSIO software](../../../00_install/index.md) before starting this section.
+* It is assumed that `nodeos`, `cleos`, and `keosd` are accessible through the path. If you built from source, make sure to run the [install script](../../../00_install/01_build-from-source/03_install-eosio-binaries.md).
+* Know how to pass [Nodeos options](../../02_usage/00_nodeos-options.md) to enable or disable functionality.
 
 ## Steps
 Please follow the steps below to set up a producing node:
