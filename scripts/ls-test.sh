@@ -17,9 +17,8 @@ echo '{ "initial_timestamp": "2018-06-01T12:00:00.000", "initial_key": "EOS6MRyA
 
 sleep 1
 
-# run tests
-pip3 install requests
-pip3 install dataclasses
+python3 -m pip install requests
+python3 -m pip install dataclasses
 
 echo "ready to execute: ctest -L ls_tests -V -j $JOBS"
 ctest -L ls_tests -V -j $JOBS

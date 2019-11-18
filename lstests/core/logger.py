@@ -22,7 +22,7 @@ else:
     import helper
 
 # VERTICAL_BAR = "|"
-VERTICAL_BAR = "│"
+VERTICAL_BAR = "|"
 
 class LogLevel(enum.IntEnum):
     ALL   = 0
