@@ -1,14 +1,37 @@
 
-After successfully building the project, the `nodeos` binary should be present in the `build/programs/nodeos` folder.  `nodeos` can be run directly from the `build` folder using `programs/nodeos/nodeos`, or you can `cd programs/nodeos` to change into the folder and run the `nodeos` command from there.  Here, we run the command within the `programs/nodeos` folder.
+## Goal
 
-You can start your own single-node blockchain with this single command:
+This section describes how to set up a single-node blockchain configuration running on a single host.  This is referred to as a _**single host, single-node testnet**_.  We will set up one node on your local computer and have it produce blocks.  The following diagram depicts the desired single host testnet.
+
+![Single host single node testnet](single-host-single-node-testnet.png)
+
+`cleos` is used to manage the wallets, manage the accounts, and invoke actions on the blockchain.  `keosd` performs wallet management, including digital signing.  If not started explicitly, `keosd` is started by `cleos` by default.
+
+## Before you begin
+
+* [Install the EOSIO software](../../../00_install/index.md) before starting this section.
+* It is assumed that `nodeos`, `cleos`, and `keosd` are accessible through the path. If you built from source, make sure to run the [install script](../../../00_install/01_build-from-source/03_install-eosio-binaries.md).
+* Know how to pass [Nodeos options](../../02_usage/00_nodeos-options.md) to enable or disable functionality.
+
+## Steps
+
+Open one "terminal" window and perform the following steps:
+
+1. [Start the Producer Node](#1-start-the-producer-node)
+2. [Get Node Info](#2-get-node-info)
+
+### 1. Start the Producer Node
+
+Start your own single-node blockchain with this single command:
 
 ```sh
-$ cd build/programs/nodeos
-$ ./nodeos -e -p eosio --plugin eosio::chain_api_plugin --plugin eosio::history_api_plugin
+$ nodeos -e -p eosio --plugin eosio::chain_api_plugin --plugin eosio::history_api_plugin
 ```
 
-When running `nodeos` you should get log messages similar to below. It means the blocks are successfully produced.
+[[info | Nodeos Minimal Options]]
+| A minimal `nodeos` instance setup for block production requires both `chain_api_plugin` and `history_api_plugin` with the `-e` option (enable stale production) and `-p eosio` option (producer name `eosio`). Alternatively, you can also setup and specify your own account as the producer name.
+
+After running `nodeos`, you should get log messages similar as below. It means the blocks are successfully produced.
 
 ```console
 1575001ms thread-0   chain_controller.cpp:235      _push_block          ] initm #1 @2017-09-04T04:26:15  | 0 trx, 0 pending, exectime_ms=0
@@ -22,11 +45,39 @@ eosio generated block 5e527ee2... #101528 @ 2018-04-01T14:24:58.500 with 0 trxs
 ```
 At this point, `nodeos` is running with a single producer, `eosio`.
 
-The following diagram depicts the single host testnet that we just created.   `cleos` is used to manage the wallets, manage the accounts, and invoke actions on the blockchain.  By default, `keosd` is started by `cleos` to perform wallet management.
+### 2. Get Node Info
 
-![Single host single node testnet](single-host-single-node-testnet.png)
+Get info about the producing node:
+
+```sh
+$ cleos get info
+```
+
+This should produce output that looks similar to this:
+
+```console
+{
+  "server_version": "0f9df63e",
+  "chain_id": "cf057bbfb72640471fd910bcb67639c22df9f92470936cddc1ade0e2f2e7dc4f",
+  "head_block_num": 134,
+  "last_irreversible_block_num": 133,
+  "last_irreversible_block_id": "00000085060e9872849ef87bef3b19ab07de9faaed71154510c7f0aeeaddae2c",
+  "head_block_id": "000000861e3222dce1c7c2cfb938940d8aac22c816cc8b0b89f6bf65a8ad5bdc",
+  "head_block_time": "2019-11-18T22:13:10.500",
+  "head_block_producer": "eosio",
+  "virtual_block_cpu_limit": 228396,
+  "virtual_block_net_limit": 1197744,
+  "block_cpu_limit": 199900,
+  "block_net_limit": 1048576,
+  "server_version_string": "v2.0.0-rc2",
+  "fork_db_head_block_num": 134,
+  "fork_db_head_block_id": "000000861e3222dce1c7c2cfb938940d8aac22c816cc8b0b89f6bf65a8ad5bdc",
+  "server_full_version_string": "v2.0.0-rc2-0f9df63e1eca4dda4cb7df30683f4a1220599444"
+}
+```
 
 ## Advanced Steps
+
 The more advanced user will likely have need to modify the configuration.  `nodeos` uses a custom configuration folder.  The location of this folder is determined by your system.
 
 - Mac OS: `~/Library/Application\ Support/eosio/nodeos/config`
@@ -63,3 +114,6 @@ $ ./programs/nodeos/nodeos
 - Linux: `~/.local/share/eosio/nodeos/data`
  
 A data folder can be specified using the `--data-dir` command line argument to `nodeos`.
+
+[[info | What's next?]]
+| We will explore how to setup and run a [single-host, multi-node testnet](#01_local-multi-node-testnet.md).
