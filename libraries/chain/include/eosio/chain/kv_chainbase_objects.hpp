@@ -13,7 +13,7 @@ namespace eosio { namespace chain {
 
       id_type     id;
       uint8_t     database_id = 0;
-      uint64_t    contract    = 0;
+      name        contract;
       shared_blob kv_key;
       shared_blob kv_value;
    };
@@ -23,11 +23,9 @@ namespace eosio { namespace chain {
          indexed_by<ordered_unique<tag<by_id>, member<kv_object, kv_object::id_type, &kv_object::id>>,
                     ordered_unique<tag<by_kv_key>,
                                    composite_key<kv_object, member<kv_object, uint8_t, &kv_object::database_id>,
-                                                 member<kv_object, uint64_t, &kv_object::contract>,
-                                                 member<kv_object, shared_blob, &kv_object::kv_key>,
-                                                 member<kv_object, shared_blob, &kv_object::kv_value>>,
-                                   composite_key_compare<std::less<uint8_t>, std::less<uint64_t>,
-                                                         std::less<shared_blob>, std::less<shared_blob>>>>>;
+                                                 member<kv_object, name, &kv_object::contract>,
+                                                 member<kv_object, shared_blob, &kv_object::kv_key>>,
+                                   composite_key_compare<std::less<uint8_t>, std::less<name>, unsigned_blob_less>>>>;
 
 }} // namespace eosio::chain
 

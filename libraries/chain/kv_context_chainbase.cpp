@@ -1,36 +1,138 @@
+#include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/kv_chainbase_objects.hpp>
 #include <eosio/chain/kv_context.hpp>
 
 namespace eosio { namespace chain {
 
    struct kv_iterator_chainbase : kv_iterator {
-      kv_iterator_chainbase() = default;
+      using index_type = std::decay_t<decltype(std::declval<chainbase::database>().get_index<kv_index, by_kv_key>())>;
+
+      chainbase::database&             db;
+      const index_type&                idx = db.get_index<kv_index, by_kv_key>();
+      uint8_t                          database_id;
+      name                             contract;
+      std::vector<char>                prefix;
+      std::optional<std::vector<char>> next_prefix;
+      std::optional<shared_blob>       kv_key;
+
+      kv_iterator_chainbase(chainbase::database& db, uint8_t database_id, name contract, std::vector<char> prefix)
+          : db{ db }, database_id{ database_id }, contract{ contract }, prefix{ std::move(prefix) } {
+
+         next_prefix.emplace(prefix);
+         bool have_next = false;
+         for (auto it = next_prefix->rbegin(); it != next_prefix->rend(); ++it) {
+            if (++*it) {
+               have_next = true;
+               break;
+            }
+         }
+         if (!have_next)
+            next_prefix.reset();
+      }
+
       ~kv_iterator_chainbase() override {}
 
-      int32_t kv_it_status() override { throw std::runtime_error("not implemented"); }
+      bool is_kv_chainbase_context_iterator() const override { return true; }
 
-      int32_t kv_it_compare(const kv_iterator& rhs) override { throw std::runtime_error("not implemented"); }
+      template <typename It>
+      kv_it_stat move_to(const It& it) {
+         if (it != idx.end() && it->database_id == database_id && it->contract == contract &&
+             it->kv_key.size() >= prefix.size() && !memcmp(it->kv_key.data(), prefix.data(), prefix.size())) {
+            kv_key.emplace(it->kv_key);
+            return kv_it_stat::iterator_ok;
+         } else {
+            kv_key.reset();
+            return kv_it_stat::iterator_oob;
+         }
+      }
+
+      kv_it_stat kv_it_status() override {
+         if (!kv_key)
+            return kv_it_stat::iterator_oob;
+         auto* kv = db.find<kv_object, by_kv_key>(boost::make_tuple(database_id, contract, *kv_key));
+         if (kv)
+            return kv_it_stat::iterator_ok;
+         else
+            return kv_it_stat::iterator_erased;
+      }
+
+      int32_t kv_it_compare(const kv_iterator& rhs) override {
+         EOS_ASSERT(rhs.is_kv_chainbase_context_iterator(), kv_bad_iter, "Incompatible key-value iterators");
+         auto& r = static_cast<const kv_iterator_chainbase&>(rhs);
+         EOS_ASSERT(database_id == r.database_id && contract == r.contract, kv_bad_iter,
+                    "Incompatible key-value iterators");
+         if (!r.kv_key) {
+            if (!kv_key)
+               return 0;
+            else
+               return -1;
+         }
+         if (!kv_key)
+            return 1;
+         return unsigned_blob_less()(*kv_key, *r.kv_key);
+      }
 
       int32_t kv_it_key_compare(const char* key, uint32_t size) override {
-         throw std::runtime_error("not implemented");
+         if (!kv_key)
+            return 1;
+         return unsigned_blob_less()(*kv_key, std::string_view{ key, size });
       }
 
-      int32_t kv_it_move_to_oob() override { throw std::runtime_error("not implemented"); }
-
-      int32_t kv_it_increment() override { throw std::runtime_error("not implemented"); }
-
-      int32_t kv_it_decrement() override { throw std::runtime_error("not implemented"); }
-
-      int32_t kv_it_lower_bound(const char* key, uint32_t size) override {
-         throw std::runtime_error("not implemented");
+      kv_it_stat kv_it_move_to_oob() override {
+         kv_key.reset();
+         return kv_it_stat::iterator_oob;
       }
 
-      int32_t kv_it_key(uint32_t offset, char* dest, uint32_t size, uint32_t& actual_size) override {
-         throw std::runtime_error("not implemented");
+      kv_it_stat kv_it_increment() override {
+         if (kv_key) {
+            auto it = idx.lower_bound(boost::make_tuple(database_id, contract, *kv_key));
+            if (it != idx.end())
+               return move_to(++it);
+            kv_key.reset();
+            return kv_it_stat::iterator_oob;
+         }
+         return move_to(idx.lower_bound(boost::make_tuple(database_id, contract, prefix)));
       }
 
-      int32_t kv_it_value(uint32_t offset, char* dest, uint32_t size, uint32_t& actual_size) override {
-         throw std::runtime_error("not implemented");
+      kv_it_stat kv_it_decrement() override {
+         std::decay_t<decltype(idx.end())> it;
+         if (kv_key)
+            it = idx.lower_bound(boost::make_tuple(database_id, contract, *kv_key));
+         else
+            it = next_prefix ? idx.lower_bound(boost::make_tuple(database_id, contract, *next_prefix)) : idx.end();
+         if (it != idx.begin())
+            return move_to(--it);
+         return kv_it_stat::iterator_oob;
+      }
+
+      kv_it_stat kv_it_lower_bound(const char* key, uint32_t size) override {
+         return move_to(idx.lower_bound(boost::make_tuple(database_id, contract, std::string_view{ key, size })));
+      }
+
+      kv_it_stat kv_it_key(uint32_t offset, char* dest, uint32_t size, uint32_t& actual_size) override {
+         if (kv_key) {
+            actual_size = kv_key->size();
+            memcpy(dest, kv_key->data(), std::min(size, actual_size));
+            return kv_it_status();
+         } else {
+            actual_size = 0;
+            return kv_it_stat::iterator_oob;
+         }
+      }
+
+      kv_it_stat kv_it_value(uint32_t offset, char* dest, uint32_t size, uint32_t& actual_size) override {
+         if (!kv_key) {
+            actual_size = 0;
+            return kv_it_stat::iterator_oob;
+         }
+         auto* kv = db.find<kv_object, by_kv_key>(boost::make_tuple(database_id, contract, *kv_key));
+         if (!kv) {
+            actual_size = 0;
+            return kv_it_stat::iterator_erased;
+         }
+         actual_size = kv->kv_value.size();
+         memcpy(dest, kv->kv_value.data(), std::min(size, actual_size));
+         return kv_it_stat::iterator_ok;
       }
    }; // kv_iterator_chainbase
 
@@ -62,7 +164,8 @@ namespace eosio { namespace chain {
       }
 
       std::unique_ptr<kv_iterator> kv_it_create(uint64_t contract, const char* prefix, uint32_t size) override {
-         return std::make_unique<kv_iterator_chainbase>();
+         return std::make_unique<kv_iterator_chainbase>(db, database_id, name{ contract },
+                                                        std::vector<char>{ prefix, prefix + size });
       }
    }; // kv_context_chainbase
 

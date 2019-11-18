@@ -891,7 +891,7 @@ void apply_context::kv_it_destroy(uint32_t itr) {
 
 int32_t apply_context::kv_it_status(uint32_t itr) {
    kv_check_iterator(itr);
-   return kv_iterators[itr]->kv_it_status();
+   return static_cast<int32_t>(kv_iterators[itr]->kv_it_status());
 }
 
 int32_t apply_context::kv_it_compare(uint32_t itr_a, uint32_t itr_b) {
@@ -907,32 +907,32 @@ int32_t apply_context::kv_it_key_compare(uint32_t itr, const char* key, uint32_t
 
 int32_t apply_context::kv_it_move_to_oob(uint32_t itr) {
    kv_check_iterator(itr);
-   return kv_iterators[itr]->kv_it_move_to_oob();
+   return static_cast<int32_t>(kv_iterators[itr]->kv_it_move_to_oob());
 }
 
 int32_t apply_context::kv_it_increment(uint32_t itr) {
    kv_check_iterator(itr);
-   return kv_iterators[itr]->kv_it_increment();
+   return static_cast<int32_t>(kv_iterators[itr]->kv_it_increment());
 }
 
 int32_t apply_context::kv_it_decrement(uint32_t itr) {
    kv_check_iterator(itr);
-   return kv_iterators[itr]->kv_it_decrement();
+   return static_cast<int32_t>(kv_iterators[itr]->kv_it_decrement());
 }
 
 int32_t apply_context::kv_it_lower_bound(uint32_t itr, const char* key, uint32_t size) {
    kv_check_iterator(itr);
-   return kv_iterators[itr]->kv_it_lower_bound(key, size);
+   return static_cast<int32_t>(kv_iterators[itr]->kv_it_lower_bound(key, size));
 }
 
 int32_t apply_context::kv_it_key(uint32_t itr, uint32_t offset, char* dest, uint32_t size, uint32_t& actual_size) {
    kv_check_iterator(itr);
-   return kv_iterators[itr]->kv_it_key(offset, dest, size, actual_size);
+   return static_cast<int32_t>(kv_iterators[itr]->kv_it_key(offset, dest, size, actual_size));
 }
 
 int32_t apply_context::kv_it_value(uint32_t itr, uint32_t offset, char* dest, uint32_t size, uint32_t& actual_size) {
    kv_check_iterator(itr);
-   return kv_iterators[itr]->kv_it_value(offset, dest, size, actual_size);
+   return static_cast<int32_t>(kv_iterators[itr]->kv_it_value(offset, dest, size, actual_size));
 }
 
 void apply_context::kv_check_db(uint64_t db) {

@@ -132,6 +132,20 @@ namespace eosio { namespace chain {
          {}
    };
 
+   /**
+    * Compare vector, string, string_view, shared_blob
+    */
+   struct unsigned_blob_less {
+      template<typename A, typename B>
+      bool operator()(const A& a, const B& b) const {
+         return std::lexicographical_compare(
+            reinterpret_cast<const unsigned char*>(a.data()),
+            reinterpret_cast<const unsigned char*>(a.data() + a.size()),
+            reinterpret_cast<const unsigned char*>(b.data()),
+            reinterpret_cast<const unsigned char*>(b.data() + b.size()));
+      }
+   };
+
    using action_name      = name;
    using scope_name       = name;
    using account_name     = name;

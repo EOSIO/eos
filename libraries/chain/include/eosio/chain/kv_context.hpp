@@ -18,15 +18,16 @@ namespace eosio { namespace chain {
    struct kv_iterator {
       virtual ~kv_iterator() {}
 
-      virtual int32_t kv_it_status()                                                                 = 0;
-      virtual int32_t kv_it_compare(const kv_iterator& rhs)                                          = 0;
-      virtual int32_t kv_it_key_compare(const char* key, uint32_t size)                              = 0;
-      virtual int32_t kv_it_move_to_oob()                                                            = 0;
-      virtual int32_t kv_it_increment()                                                              = 0;
-      virtual int32_t kv_it_decrement()                                                              = 0;
-      virtual int32_t kv_it_lower_bound(const char* key, uint32_t size)                              = 0;
-      virtual int32_t kv_it_key(uint32_t offset, char* dest, uint32_t size, uint32_t& actual_size)   = 0;
-      virtual int32_t kv_it_value(uint32_t offset, char* dest, uint32_t size, uint32_t& actual_size) = 0;
+      virtual bool       is_kv_chainbase_context_iterator() const                                       = 0;
+      virtual kv_it_stat kv_it_status()                                                                 = 0;
+      virtual int32_t    kv_it_compare(const kv_iterator& rhs)                                          = 0;
+      virtual int32_t    kv_it_key_compare(const char* key, uint32_t size)                              = 0;
+      virtual kv_it_stat kv_it_move_to_oob()                                                            = 0;
+      virtual kv_it_stat kv_it_increment()                                                              = 0;
+      virtual kv_it_stat kv_it_decrement()                                                              = 0;
+      virtual kv_it_stat kv_it_lower_bound(const char* key, uint32_t size)                              = 0;
+      virtual kv_it_stat kv_it_key(uint32_t offset, char* dest, uint32_t size, uint32_t& actual_size)   = 0;
+      virtual kv_it_stat kv_it_value(uint32_t offset, char* dest, uint32_t size, uint32_t& actual_size) = 0;
    };
 
    struct kv_context {

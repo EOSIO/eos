@@ -18,6 +18,7 @@
 #include <eosio/chain/genesis_intrinsics.hpp>
 #include <eosio/chain/whitelisted_intrinsics.hpp>
 #include <eosio/chain/database_header_object.hpp>
+#include <eosio/chain/kv_chainbase_objects.hpp>
 
 #include <eosio/chain/protocol_feature_manager.hpp>
 #include <eosio/chain/authorization_manager.hpp>
@@ -48,7 +49,8 @@ using controller_index_set = index_set<
    generated_transaction_multi_index,
    table_id_multi_index,
    code_index,
-   database_header_multi_index
+   database_header_multi_index,
+   kv_index
 >;
 
 using contract_database_index_set = index_set<
