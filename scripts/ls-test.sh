@@ -20,6 +20,7 @@ sleep 1
 echo "platform ID is $ID"
 if [[ "$ID" == 'centos' ]]; then
     echo "try to install python3.7 on centos"
+    yum -y install wget
     wget https://www.python.org/ftp/python/3.7.0/Python-3.7.0.tgz
     tar xzf Python-3.7.0.tgz
     cd Python-3.7.0
