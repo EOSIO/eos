@@ -1,8 +1,13 @@
 
-[[info]]
-| This article assumes you have already [installed `nodeos`](../../01_install/index.md).
+## Goal
 
-A non-producing node is a node that is not configured to produce blocks, instead it is connected and synchronized with other peers from an `EOSIO` based blockchain, exposing one or more services publicly or privately by enabling one or more [`nodeos` available plugins](../../03_plugins/index.md) except the `producer_plugin`.
+This section describes how to set up a non-producing node within the EOSIO network. A non-producing node is a node that is not configured to produce blocks, instead it is connected and synchronized with other peers from an `EOSIO` based blockchain, exposing one or more services publicly or privately by enabling one or more [Nodeos Plugins](../../03_plugins/index.md), except the `producer_plugin`.
+
+## Before you begin
+
+* [Install the EOSIO software](../../../00_install/index.md) before starting this section.
+* It is assumed that `nodeos`, `cleos`, and `keosd` are accessible through the path. If you built from source, make sure to run the [install script](../../../00_install/01_build-from-source/03_install-eosio-binaries.md).
+* Know how to pass [Nodeos options](../../02_usage/00_nodeos-options.md) to enable or disable functionality.
 
 ## Steps
 To setup a non-producing node is simple. 
@@ -28,6 +33,4 @@ $ nodeos ... --p2p-peer-address=106.10.42.238:9876
 
 ### 2. Enable one or more available plugins
 
-Each available plugin is listed and detailed in [nodeos available plugins](../../03_plugins/index.md) section.
-When you start `nodeos` it will expose the functionality provided by the plugins it was started with, and it is said about those plugins they are `enabled`. For example, if you start `nodeos` with [`state_history_plugin`](state_history_plugin/index.md) plugin you will have a non-producing node that offers full blockchain history, and if you start `nodeos` with [`http_plugin`](http_plugin/index.md) plugin additionally enabled you will have a non-producing node which exposes the EOSIO RPC API as well. You can enable any number of existing plugins and thus have a good amount of flexibility what the non-producing node function/s will be. Another aspect you need to know is that some plugins have dependencies on other plugins and therefor you'll have to satisfy all dependencies for a plugin in order to enable it.
-
+Each available plugin is listed and detailed in the [Nodeos Plugins](../../03_plugins/index.md) section. When `nodeos` starts, it will expose the functionality provided by the enabled plugins it was started with. For example, if you start `nodeos` with [`state_history_plugin`](state_history_plugin/index.md) enabled, you will have a non-producing node that offers full blockchain history. If you start `nodeos` with [`http_plugin`](http_plugin/index.md) enabled, you will have a non-producing node which exposes the EOSIO RPC API. Therefore, you can extend the basic functionality provided by a non-producing node by enabling any number of existing plugins on top of it. Another aspect to consider is that some plugins have dependencies to other plugins. Therefore, you need to satisfy all dependencies for a plugin in order to enable it.
