@@ -18,9 +18,22 @@ echo '{ "initial_timestamp": "2018-06-01T12:00:00.000", "initial_key": "EOS6MRyA
 sleep 1
 
 echo "platform ID is $ID"
+if [[ "$ID" == 'centos' ]]; then
+    echo "try to install python3.7 on centos"
+    wget https://www.python.org/ftp/python/3.7.0/Python-3.7.0.tgz
+    tar xzf Python-3.7.0.tgz
+    cd Python-3.7.0
+    ./configure --enable-optimizations
+    make altinstall
+    cd ..
+fi
+
 if [[ "$ID" == 'ubuntu' ]]; then
-    echo "try to install python3.7"
+    echo "try to install python3.7 on ubuntu"
+    apt-get --assume-yes install software-properties-common
+    add-apt-repository --assume-yes ppa:deadsnakes/ppa
     apt-get --assume-yes install python3.7
+    apt-get --assume-yes install python3-pip
 fi
 
 python3.7 -m pip install requests
