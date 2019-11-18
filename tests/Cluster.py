@@ -35,6 +35,38 @@ class PFSetupPolicy:
                policy == PFSetupPolicy.PREACTIVATE_FEATURE_ONLY or \
                policy == PFSetupPolicy.FULL
 
+# Class for generating distinct names for many accounts
+class NamedAccounts:
+
+    def __init__(self, cluster, numAccounts):
+        Utils.Print("NamedAccounts %d" % (numAccounts))
+        self.numAccounts=numAccounts
+        self.accounts=cluster.createAccountKeys(numAccounts)
+        if self.accounts is None:
+            Utils.errorExit("FAILURE - create keys")
+        accountNum = 0
+        for account in self.accounts:
+            Utils.Print("NamedAccounts Name for %d" % (accountNum))
+            account.name=self.setName(accountNum)
+            accountNum+=1
+
+    def setName(self, num):
+        retStr="test"
+        digits=[]
+        maxDigitVal=5
+        maxDigits=8
+        temp=num
+        while len(digits) < maxDigits:
+            digit=(num % maxDigitVal)+1
+            num=int(num/maxDigitVal)
+            digits.append(digit)
+
+        digits.reverse()
+        retStr += "".join(map(str, digits))
+
+        Utils.Print("NamedAccounts Name for %d is %s" % (temp, retStr))
+        return retStr
+
 # pylint: disable=too-many-instance-attributes
 # pylint: disable=too-many-public-methods
 class Cluster(object):

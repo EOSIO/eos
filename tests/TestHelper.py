@@ -72,7 +72,7 @@ class TestHelper(object):
             parser.add_argument("-h", "--host", type=str, help="%s host name" % (Utils.EosServerName),
                                      default=TestHelper.LOCAL_HOST)
         if "--port" in includeArgs:
-            parser.add_argument("-p", "--port", type=int, help="%s host port" % Utils.EosServerName,
+            parser.add_argument("--port", type=int, help="%s host port" % Utils.EosServerName,
                                      default=TestHelper.DEFAULT_PORT)
         if "--wallet-host" in includeArgs:
             parser.add_argument("--wallet-host", type=str, help="%s host" % Utils.EosWalletName,
