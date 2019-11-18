@@ -18,7 +18,7 @@ echo '{ "initial_timestamp": "2018-06-01T12:00:00.000", "initial_key": "EOS6MRyA
 sleep 1
 
 if [[ "$ID" == 'ubuntu' ]]; then
-    apt-get --assume-yes install python3
+    apt-get --assume-yes install python3.7
 fi
 
 echo 'python3 version is:'
