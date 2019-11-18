@@ -165,7 +165,7 @@ class soft_wallet final : public wallet_api
 
       /** Removes a key from the wallet.
        *
-       * example: remove_key 5JRQVeHYRb3E4HnhMhpHs5fivQJ157MdCMcq1VPEawEG7noNibR
+       * example: remove_key EOS6SR7Lac5MVFBTx9728qHBEDTRx6x6mx6hSBwLasYFf3XkshHmF
        *
        * @param key the Public Key to remove
        */

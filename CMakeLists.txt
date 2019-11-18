@@ -201,7 +201,7 @@ endif()
 message( STATUS "Using '${CORE_SYMBOL_NAME}' as CORE symbol name" )
 
 if ("${ARISEN_ROOT_KEY}" STREQUAL "")
-   set(ARISEN_ROOT_KEY "5JRQVeHYRb3E4HnhMhpHs5fivQJ157MdCMcq1VPEawEG7noNibR")
+   set(ARISEN_ROOT_KEY "EOS6SR7Lac5MVFBTx9728qHBEDTRx6x6mx6hSBwLasYFf3XkshHmF")
 endif()
 
 message( STATUS "Using '${ARISEN_ROOT_KEY}' as public key for 'arisen' account" )
