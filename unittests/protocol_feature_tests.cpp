@@ -1763,7 +1763,7 @@ BOOST_AUTO_TEST_CASE( contracts_pay_transaction_costs) { try {
 
    rlm.set_account_limits(payer, 1000000, 9, 9);
    rlm.set_account_limits(client, 0, 0, 0);
-   rlm.process_account_limit_updates();
+   c.produce_block();
 
    BOOST_REQUIRE_EXCEPTION(c.push_action(payer, name("accept"), payer, fc::mutable_variant_object()
          ("net", 10)
@@ -1783,7 +1783,7 @@ BOOST_AUTO_TEST_CASE( contracts_pay_transaction_costs) { try {
    rlm.process_account_limit_updates();
 
    c.push_action(payer, name("accept"), payer, fc::mutable_variant_object()
-         ("net", 10)
+         ("net", 112)
          ("cpu", 10)
          ("acnt",payer.to_uint64_t()));
 
@@ -1804,12 +1804,39 @@ BOOST_AUTO_TEST_CASE( contracts_pay_transaction_costs) { try {
       trx.sign( c.get_private_key(payer, active.to_string()), c.control->get_chain_id() );
       return c.push_transaction(trx);
    };
-
-   push_actions({name("eatcpu")},
-         {fc::mutable_variant_object()("iters", 100)});
+   rlm.process_account_limit_updates();
 
    c.produce_block();
 
+   BOOST_REQUIRE_EXCEPTION(c.push_action(payer, name("eatcpu"), client, fc::mutable_variant_object()
+         ("iters", 100)), tx_net_usage_exceeded, fc_exception_message_is("transaction net usage is too high: 96 > 0"));
+
+   c.produce_block();
+
+   c.push_action(payer, name("accept"), payer, fc::mutable_variant_object()
+         ("net", 170)
+         ("cpu", 10)
+         ("acnt",payer.to_uint64_t()));
+   cpu = 1;
+   push_actions({name("eatcpu")},
+         {fc::mutable_variant_object()("iters", 100000)});
+
+   c.produce_block();
+
+   rlm.set_account_limits(client, 0, 100, 1);
+   c.produce_block();
+
+   c.push_action(payer, name("eatcpu"), client, fc::mutable_variant_object()
+         ("iters", 100));
+   /*
+   BOOST_REQUIRE_EXCEPTION(c.push_action(payer, name("eatcpu"), client, fc::mutable_variant_object()
+         ("iters", 100)), tx_net_usage_exceeded, fc_exception_message_is("transaction net usage is too high: 96 > 0"));
+*/
+   int64_t rb = 0, nw = 0, cw = 0;
+   rlm.get_account_limits(payer, rb, nw, cw);
+   BOOST_CHECK(rb == 1000000);
+   BOOST_CHECK(nw == 100000);
+   BOOST_CHECK(cw == 100000);
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_SUITE_END()

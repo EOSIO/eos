@@ -1510,17 +1510,17 @@ class transaction_api : public context_aware_api {
          int64_t net_limit = 0, cpu_limit = 0, ram_limit = 0;
          mrlm.get_account_limits(acnt, ram_limit, net_limit, cpu_limit);
 
-         std::cout << "Net " << net_limit << " " << max_net << "\n";
-         std::cout << "CPU " << cpu_limit << " " << max_cpu << "\n";
-         EOS_ASSERT(net_limit >= max_net, charged_costs_net_error, "not enough net staked to cover accepting charges");
-         EOS_ASSERT(cpu_limit >= max_cpu, charged_costs_cpu_error, "not enough cpu staked to cover accepting charges");
-
          auto& accepted = tc.accepted_charges;
-         if (!accepted) {
+         if (!accepted || *accepted == context.get_receiver()) {
+            EOS_ASSERT(net_limit >= max_net, charged_costs_net_error, "not enough net staked to cover accepting charges");
+            EOS_ASSERT(cpu_limit >= max_cpu, charged_costs_cpu_error, "not enough cpu staked to cover accepting charges");
             accepted = context.get_receiver();
-            mrlm.set_account_limits(context.get_receiver(), -1, max_net, max_cpu, true);
+            mrlm.set_account_limits(context.get_receiver(), ram_limit, max_net, max_cpu, true);
+            tc.charge_net_usage(context.get_receiver(), max_net);
+            tc.charge_cpu_usage(context.get_receiver(), max_net);
+            return true;
          }
-         return (bool)accepted;
+         return false;
       }
 
       void get_accepted_charges(account_name& contract, uint32_t& max_net, uint32_t& max_cpu) {

@@ -158,7 +158,10 @@ namespace eosio { namespace chain {
 
       // Possibly limit deadline if the duration accounts can be billed for (+ a subjective leeway) does not exceed current delta
       if( (fc::microseconds(account_cpu_limit) + leeway) <= (_deadline - start) ) {
+         std::cout << "CPU LIMIT " << account_cpu_limit << "\n";
          _deadline = start + fc::microseconds(account_cpu_limit) + leeway;
+
+         wdump((_deadline));
          billing_timer_exception_code = leeway_deadline_exception::code_value;
       }
 
@@ -518,7 +521,8 @@ namespace eosio { namespace chain {
       bool greylisted_cpu = false;
 
       uint32_t specified_greylist_limit = control.get_greylist_limit();
-      for( const auto& a : bill_to_accounts ) {
+
+      auto per_account = [&](account_name a) {
          uint32_t greylist_limit = config::maximum_elastic_resource_multiplier;
          if( !force_elastic_limits && control.is_producing_block() ) {
             if( control.is_resource_greylisted(a) ) {
@@ -535,7 +539,17 @@ namespace eosio { namespace chain {
          auto [cpu_limit, cpu_was_greylisted] = rl.get_account_cpu_limit(a, greylist_limit);
          if( cpu_limit >= 0 ) {
             account_cpu_limit = std::min( account_cpu_limit, cpu_limit );
+            std::cout << "ACCCPL " << " " << a.to_string() << " " << account_cpu_limit << "\n";
             greylisted_cpu |= cpu_was_greylisted;
+         }
+      };
+
+      if (accepted_charges) {
+         std::cout << "Is Accepted\n";
+         per_account(*accepted_charges);
+      } else {
+         for( const auto& a : bill_to_accounts ) {
+            per_account(a);
          }
       }
 

@@ -69,6 +69,9 @@ namespace eosio { namespace chain {
          std::tuple<int64_t, int64_t, bool, bool> max_bandwidth_billed_accounts_can_pay( bool force_elastic_limits = false )const;
 
          void validate_referenced_accounts( const transaction& trx, bool enforce_actor_whitelist_blacklist )const;
+         bool charge_net_usage(account_name acnt, uint32_t net);
+         bool charge_cpu_usage(account_name acnt, uint32_t cpu);
+         std::tuple<int64_t, int64_t> get_charged_limits()const;
 
       private:
 
@@ -100,10 +103,6 @@ namespace eosio { namespace chain {
          void validate_cpu_usage_to_bill( int64_t u, bool check_minimum = true )const;
 
          void disallow_transaction_extensions( const char* error_msg )const;
-         bool charge_net_usage(account_name acnt, uint32_t net);
-         bool charge_cpu_usage(account_name acnt, uint32_t cpu);
-         std::tuple<int64_t, int64_t> get_charged_limits()const;
-
       /// Fields:
       public:
 
