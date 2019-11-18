@@ -17,17 +17,15 @@ echo '{ "initial_timestamp": "2018-06-01T12:00:00.000", "initial_key": "EOS6MRyA
 
 sleep 1
 
+if [[ "$ID" == 'ubuntu' ]]; then
+    apt-get --assume-yes install python3
+fi
+
 echo 'python3 version is:'
 python3 --version
 
-if [[ "$ID" == 'ubuntu' ]]; then
-    apt-get install python3-pip
-    pip3 install requests
-    pip3 install dataclasses
-else
-    python3 -m pip install requests
-    python3 -m pip install dataclasses
-fi
+python3 -m pip install requests
+python3 -m pip install dataclasses
 
 
 echo "ready to execute: ctest -L ls_tests -V -j $JOBS"
