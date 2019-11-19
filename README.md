@@ -119,7 +119,7 @@ Shell scripts are provided in the EOSIO repository for building, installing, and
 
 ---
 
-Check the [Build from Source](docs/nodeos/01_install/01_build-from-source/index.md) section in the documentation for more information. Below are the basic shell scripts to get started quickly.
+Check the **Build from Source** section in the documentation for more information. Below are the basic shell scripts to get started quickly.
 
 ### Build Script
 To build the EOSIO binaries and install dependencies, run:
