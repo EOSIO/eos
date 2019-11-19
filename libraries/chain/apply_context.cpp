@@ -43,12 +43,13 @@ apply_context::apply_context(controller& con, transaction_context& trx_ctx, uint
 ,idx_double(*this)
 ,idx_long_double(*this)
 {
-   kv_contexts.push_back(create_kv_chainbase_context(db, 0, receiver));
    kv_iterators.emplace_back();
    action_trace& trace = trx_ctx.get_action_trace(action_ordinal);
    act = &trace.act;
    receiver = trace.receiver;
    context_free = trace.context_free;
+   if (!context_free)
+      kv_contexts.push_back(create_kv_chainbase_context(db, 0, receiver));
 }
 
 void apply_context::exec_one()

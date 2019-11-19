@@ -1978,7 +1978,7 @@ REGISTER_INTRINSICS( kv_database_api,
    (kv_erase,           void(int64_t,int64_t,int,int)          )
    (kv_set,             void(int64_t,int64_t,int,int,int,int)  )
    (kv_get,             int(int64_t,int64_t,int,int,int)       )
-   (kv_get_data,        int(int,int,int,int)                   )
+   (kv_get_data,        int(int64_t,int,int,int)               )
    (kv_it_create,       int(int64_t,int64_t,int,int)           )
    (kv_it_destroy,      void(int)                              )
    (kv_it_status,       int(int)                               )

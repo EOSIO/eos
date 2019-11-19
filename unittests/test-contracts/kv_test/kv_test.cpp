@@ -48,13 +48,35 @@ class [[eosio::contract("kv_test")]] kvtest : public eosio::contract {
       check(5 == kv_it_create(db, 0, nullptr, 0), "itlifetime i");
       check(4 == kv_it_create(db, 0, nullptr, 0), "itlifetime j");
       check(7 == kv_it_create(db, 0, nullptr, 0), "itlifetime k");
-      // check(kv_it_status(1) == iterator_oob, "itlifetime l");
-      // check(kv_it_status(2) == iterator_oob, "itlifetime m");
-      // check(kv_it_status(3) == iterator_oob, "itlifetime n");
-      // check(kv_it_status(4) == iterator_oob, "itlifetime o");
-      // check(kv_it_status(5) == iterator_oob, "itlifetime p");
-      // check(kv_it_status(6) == iterator_oob, "itlifetime q");
-      // check(kv_it_status(7) == iterator_oob, "itlifetime r");
-      check(false, "itlifetime passed");
+      check(kv_it_status(1) == iterator_oob, "itlifetime l");
+      check(kv_it_status(2) == iterator_oob, "itlifetime m");
+      check(kv_it_status(3) == iterator_oob, "itlifetime n");
+      check(kv_it_status(4) == iterator_oob, "itlifetime o");
+      check(kv_it_status(5) == iterator_oob, "itlifetime p");
+      check(kv_it_status(6) == iterator_oob, "itlifetime q");
+      check(kv_it_status(7) == iterator_oob, "itlifetime r");
+   }
+
+   [[eosio::action]] void erase(uint64_t db, name contract, const std::vector<char>& k) {
+      kv_erase(db, contract.value, k.data(), k.size());
+   }
+
+   [[eosio::action]] void set(uint64_t db, name contract, const std::vector<char>& k, const std::vector<char>& v) {
+      kv_set(db, contract.value, k.data(), k.size(), v.data(), v.size());
+   }
+
+   [[eosio::action]] void get(uint64_t db, name contract, const std::vector<char>& k,
+                              const std::optional<std::vector<char>>& v) {
+      if (v) {
+         uint32_t value_size = 0xffff'ffff;
+         check(kv_get(db, contract.value, k.data(), k.size(), value_size), "kv_get found nothing");
+         check(value_size == v->size(), "kv_get size mismatch");
+         std::vector<char> actual(v->size());
+         check(kv_get_data(db, 0, actual.data(), actual.size()) == v->size(), "kv_get_data size mismatch");
+         check(actual == *v, "kv_get_data content mismatch");
+      } else {
+         uint32_t value_size = 0xffff'ffff;
+         check(!kv_get(db, contract.value, k.data(), k.size(), value_size), "kv_get found something");
+      }
    }
 };
