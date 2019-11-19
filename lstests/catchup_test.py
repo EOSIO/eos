@@ -31,7 +31,7 @@ def create_accounts(clus):
     clus.info(">>> [Catch-up Test] Create Test Accounts")
     for _ in range(5):
         cx = clus.call("send_raw", url=CREATE_URL, string_data=CREATE_STR, node_id=1,
-                        retry=0, level="trace", error_level="trace", http_dont_raise=True)
+                        retry=0, level="trace", error_level="trace", dont_raise=True)
         if '"name": "account_name_exists_exception"' in cx.response_text:
             return clus.check_sync().block_num
         time.sleep(1)
@@ -62,8 +62,8 @@ def stop_gen(clus):
 def count_gen(clus, begin, end):
     total = 0
     for i in range(begin + 1, end + 1):
-        n = len(clus.get_block(i).response_dict["transactions"])
-        clus.debug(f"Block {i} has {n} transactions")
+        n = len(clus.get_block(i, level="trace").response_dict["transactions"])
+        clus.info(f"Block {i} has {n} transactions")
         total += n
     clus.info(f"There are {total} transactions in {end - begin} blocks")
     return total
