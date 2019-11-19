@@ -18,7 +18,7 @@ namespace eosio { namespace chain {
       kv_iterator_chainbase(chainbase::database& db, uint8_t database_id, name contract, std::vector<char> prefix)
           : db{ db }, database_id{ database_id }, contract{ contract }, prefix{ std::move(prefix) } {
 
-         next_prefix.emplace(prefix);
+         next_prefix.emplace(this->prefix);
          bool have_next = false;
          for (auto it = next_prefix->rbegin(); it != next_prefix->rend(); ++it) {
             if (++*it) {

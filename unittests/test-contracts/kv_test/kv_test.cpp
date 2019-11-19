@@ -28,6 +28,11 @@ IMPORT it_stat  kv_it_key(uint32_t itr, uint32_t offset, char* dest, uint32_t si
 IMPORT it_stat  kv_it_value(uint32_t itr, uint32_t offset, char* dest, uint32_t size, uint32_t& actual_size);
 // clang-format on
 
+struct kv {
+   std::vector<char> k;
+   std::vector<char> v;
+};
+
 class [[eosio::contract("kv_test")]] kvtest : public eosio::contract {
  public:
    using eosio::contract::contract;
@@ -79,4 +84,138 @@ class [[eosio::contract("kv_test")]] kvtest : public eosio::contract {
          check(!kv_get(db, contract.value, k.data(), k.size(), value_size), "kv_get found something");
       }
    }
-};
+
+   [[eosio::action]] void setmany(uint64_t db, name contract, const std::vector<kv>& kvs) {
+      for (auto& kv : kvs) //
+         kv_set(db, contract.value, kv.k.data(), kv.k.size(), kv.v.data(), kv.v.size());
+   }
+
+   [[eosio::action]] void scan(uint64_t db, name contract, const std::vector<char>& prefix,
+                               const std::optional<std::vector<char>>& lower, const std::vector<kv>& expected) {
+      auto    itr = kv_it_create(db, contract.value, prefix.data(), prefix.size());
+      it_stat stat;
+      if (lower)
+         stat = kv_it_lower_bound(itr, lower->data(), lower->size());
+      else
+         stat = kv_it_increment(itr);
+      for (auto& exp : expected) {
+         check(stat == iterator_ok, "missing kv pairs");
+         check(stat == kv_it_status(itr), "status mismatch (a)");
+
+         // check kv_it_key
+         for (uint32_t offset = 0; offset <= exp.k.size(); ++offset) {
+            uint32_t k_size = 0xffff'ffff;
+            check(kv_it_key(itr, 0, nullptr, 0, k_size) == iterator_ok && k_size == exp.k.size(),
+                  "key has wrong size (a)");
+
+            { // use offset
+               std::vector<char> k(k_size - offset);
+               k.push_back(42);
+               k.push_back(53);
+               k_size = 0xffff'ffff;
+               check(kv_it_key(itr, offset, k.data(), k.size() - 2, k_size) == iterator_ok && k_size == exp.k.size(),
+                     "key has wrong size (b)");
+               check(!memcmp(exp.k.data() + offset, k.data(), k.size() - 2), "key has wrong content (b)");
+               check(k[k.size() - 2] == 42 && k[k.size() - 1] == 53, "buffer overrun (b)");
+            }
+
+            { // offset=0, truncate
+               std::vector<char> k(k_size - offset);
+               k.push_back(42);
+               k.push_back(53);
+               k_size = 0xffff'ffff;
+               check(kv_it_key(itr, 0, k.data(), k.size() - 2, k_size) == iterator_ok && k_size == exp.k.size(),
+                     "key has wrong size (c)");
+               check(!memcmp(exp.k.data(), k.data(), k.size() - 2), "key has wrong content (c)");
+               check(k[k.size() - 2] == 42 && k[k.size() - 1] == 53, "buffer overrun (c)");
+            }
+         }
+
+         // check kv_it_value
+         for (uint32_t offset = 0; offset <= exp.v.size(); ++offset) {
+            uint32_t v_size = 0xffff'ffff;
+            check(kv_it_value(itr, 0, nullptr, 0, v_size) == iterator_ok && v_size == exp.v.size(),
+                  "value has wrong size (d)");
+
+            { // use offset
+               std::vector<char> v(v_size - offset);
+               v.push_back(42);
+               v.push_back(53);
+               v_size = 0xffff'ffff;
+               check(kv_it_value(itr, offset, v.data(), v.size() - 2, v_size) == iterator_ok && v_size == exp.v.size(),
+                     "value has wrong size (e)");
+               check(!memcmp(exp.v.data() + offset, v.data(), v.size() - 2), "value has wrong content (e)");
+               check(v[v.size() - 2] == 42 && v[v.size() - 1] == 53, "buffer overrun (e)");
+            }
+
+            { // offset=0, truncate
+               std::vector<char> v(v_size - offset);
+               v.push_back(42);
+               v.push_back(53);
+               v_size = 0xffff'ffff;
+               check(kv_it_value(itr, 0, v.data(), v.size() - 2, v_size) == iterator_ok && v_size == exp.v.size(),
+                     "value has wrong size (f)");
+               check(!memcmp(exp.v.data(), v.data(), v.size() - 2), "value has wrong content (f)");
+               check(v[v.size() - 2] == 42 && v[v.size() - 1] == 53, "buffer overrun (f)");
+            }
+         }
+
+         stat = kv_it_increment(itr);
+      }
+      check(stat == iterator_oob, "extra kv pair (g)");
+      check(stat == kv_it_status(itr), "status mismatch (g)");
+
+      kv_it_destroy(itr);
+   } // scan()
+
+   [[eosio::action]] void scanrev(uint64_t db, name contract, const std::vector<char>& prefix,
+                                  const std::optional<std::vector<char>>& lower, const std::vector<kv>& expected) {
+      auto    itr = kv_it_create(db, contract.value, prefix.data(), prefix.size());
+      it_stat stat;
+      if (lower)
+         stat = kv_it_lower_bound(itr, lower->data(), lower->size());
+      else
+         stat = kv_it_decrement(itr);
+      for (auto& exp : expected) {
+         check(stat == iterator_ok, "missing kv pairs");
+         check(stat == kv_it_status(itr), "status mismatch (a)");
+
+         // check kv_it_key
+         {
+            uint32_t k_size = 0xffff'ffff;
+            check(kv_it_key(itr, 0, nullptr, 0, k_size) == iterator_ok && k_size == exp.k.size(),
+                  "key has wrong size (a)");
+            std::vector<char> k(k_size);
+            k.push_back(42);
+            k.push_back(53);
+            k_size = 0xffff'ffff;
+            check(kv_it_key(itr, 0, k.data(), k.size() - 2, k_size) == iterator_ok && k_size == exp.k.size(),
+                  "key has wrong size (b)");
+            check(!memcmp(exp.k.data(), k.data(), k.size() - 2), "key has wrong content (b)");
+            check(k[k.size() - 2] == 42 && k[k.size() - 1] == 53, "buffer overrun (b)");
+         }
+
+         // check kv_it_value
+         {
+            uint32_t v_size = 0xffff'ffff;
+            check(kv_it_value(itr, 0, nullptr, 0, v_size) == iterator_ok && v_size == exp.v.size(),
+                  "value has wrong size (d)");
+            std::vector<char> v(v_size);
+            v.push_back(42);
+            v.push_back(53);
+            v_size = 0xffff'ffff;
+            check(kv_it_value(itr, 0, v.data(), v.size() - 2, v_size) == iterator_ok && v_size == exp.v.size(),
+                  "value has wrong size (e)");
+            check(!memcmp(exp.v.data(), v.data(), v.size() - 2), "value has wrong content (e)");
+            check(v[v.size() - 2] == 42 && v[v.size() - 1] == 53, "buffer overrun (e)");
+         }
+
+         stat = kv_it_decrement(itr);
+      }
+      check(stat == iterator_oob, "extra kv pair (g)");
+      check(stat == kv_it_status(itr), "status mismatch (g)");
+
+      kv_it_destroy(itr);
+   } // scanrev()
+
+}; // kvtest
