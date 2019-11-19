@@ -18,7 +18,6 @@ else:
     import color
     import helper
 
-
 try:
     VERTICAL_BAR = "│"
 except UnicodeEncodeError:

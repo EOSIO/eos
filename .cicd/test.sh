@@ -11,9 +11,12 @@ if [[ $(uname) == 'Darwin' ]]; then # macOS
 else # Linux
     COMMANDS="$MOUNTED_DIR/$@"
     . $HELPERS_DIR/file-hash.sh $CICD_DIR/platforms/$PLATFORM_TYPE/$IMAGE_TAG.dockerfile
-    echo "$ docker run --rm --init -v $(pwd):$MOUNTED_DIR $(buildkite-intrinsics) -e JOBS $FULL_TAG bash -c \"$COMMANDS\""
+    mkdir -p $(pwd)/../eosio.contracts/
+    mkdir -p $(pwd)/../eosio.contracts/build/
+    ln -s $(pwd)/build/unittests/contracts/ $(pwd)/../eosio.contracts/build/contracts
+    echo "$ docker run --rm --init -v $(pwd):$MOUNTED_DIR -v $(pwd)/../eosio.contracts/:$MOUNTED_DIR/../eosio.contracts/ $(buildkite-intrinsics) -e JOBS $FULL_TAG bash -c \"$COMMANDS\""
     set +e # defer error handling to end
-    eval docker run --rm --init -v $(pwd):$MOUNTED_DIR $(buildkite-intrinsics) -e JOBS $FULL_TAG bash -c \"$COMMANDS\"
+    eval docker run --rm --init -v $(pwd):$MOUNTED_DIR -v $(pwd)/../eosio.contracts/:$MOUNTED_DIR/../eosio.contracts/ $(buildkite-intrinsics) -e JOBS $FULL_TAG bash -c \"$COMMANDS\"
     EXIT_STATUS=$?
 fi
 # buildkite
@@ -38,3 +41,4 @@ if [[ "$EXIT_STATUS" != 0 ]]; then
     echo "Failing due to non-zero exit status from ctest: $EXIT_STATUS"
     exit $EXIT_STATUS
 fi
+exit $EXIT_STATUS
