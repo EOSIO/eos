@@ -34,6 +34,7 @@ if [[ "$ID" == 'centos' ]]; then
     cd Python-3.7.4
     ./configure --enable-optimizations
     make altinstall
+    cd ..
 fi
 
 if [[ "$ID" == 'ubuntu' ]]; then
