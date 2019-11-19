@@ -63,10 +63,10 @@ DEFAULT_REGULAR_LAUNCH = False
 DEFAULT_DONT_NEWACCOUNT = False
 DEFAULT_DONT_SETPROD = False
 DEFAULT_DONT_VOTE = False
-DEFAULT_HTTP_RETRY = 10
+DEFAULT_HTTP_RETRY = 100
 DEFAULT_HTTP_SLEEP = 0.25
 DEFAULT_VERIFY_ASYNC = False
-DEFAULT_VERIFY_RETRY = 10
+DEFAULT_VERIFY_RETRY = 100
 DEFAULT_VERIFY_SLEEP = 0.25
 DEFAULT_SYNC_RETRY = 100
 DEFAULT_SYNC_SLEEP = 1
@@ -814,46 +814,8 @@ class Cluster:
                          filename=filename)
 
 
-    def verify(self,
-               transaction_id,
-               verify_key=None,
-               verify_async=False,
-               retry=None,
-               sleep=None,
-               assertive=True,
-               level=None,
-               retry_level=None,
-               error_level=None,
-               buffer=None):
-        verify_async = helper.override(self.verify_async, verify_async, self.cla.verify_async)
-        retry = helper.override(self.verify_retry, retry, self.cla.verify_retry)
-        sleep = helper.override(self.verify_sleep, sleep, self.cla.verify_sleep)
-        verified = False
-        while retry >= 0:
-            if self.verify_transaction(transaction_id=transaction_id, verify_key=verify_key, level=retry_level, buffer=buffer):
-                verified = True
-                break
-            time.sleep(sleep)
-            retry -= 1
-        if verify_async:
-            self.log(helper.make_header("async verify transaction", level=level), level=level, buffer=True)
-            if verified:
-                self.log(color.black_on_green(f"{verify_key.title()}") + f" {transaction_id}", level=level, buffer=True)
-            else:
-                self.log(color.black_on_red(f"Not {verify_key.title()}") + f" {transaction_id}", level=error_level, buffer=True)
-            self.flush()
-        else:
-            if verified:
-                self.log(color.black_on_green(f"{verify_key.title()}"), level=level)
-            else:
-                self.log(color.black_on_red(f"Not {verify_key.title()}"), level=error_level)
-        if assertive:
-            bassert(verified, f"{transaction_id} cannot be verified")
-        return verified
-
-
     def verify_transaction(self, transaction_id, verify_key=None, **call_kwargs):
-        bassert(verify_key in ["irreversible", "contained"], "Verify key must be either \"irreversible\" or \"contained\".")
+        assert verify_key in ["irreversible", "contained"], "Verify key must be either \"irreversible\" or \"contained\"."
         cx = self.call("verify_transaction", transaction_id=transaction_id, verify_key=None, dont_flush=True, **call_kwargs)
         return helper.extract(cx.response, key=verify_key, fallback=False)
 
@@ -1210,15 +1172,123 @@ class Cluster:
         return self.push_actions(actions=actions, header="votes for producers", buffer=buffer)
 
 
-    def check_sync(self, retry=None, sleep=None, min_sync_nodes=None, max_block_lag=None, level="DEBUG", dont_raise=False):
 
+    def wait_get_block(self, block_num, retry=5) -> dict:
+        """Get block information by block num. If that block has not been produced, wait for it."""
+        while retry >= 0:
+            head_block_num = self.get_head_block_number()
+            if head_block_num < block_num:
+                time.sleep(0.5 * (block_num - head_block_num))
+            else:
+                return self.get_block(block_num).response_dict
+            retry -= 1
+        msg = f"Cannot get block # {block_num}. Current head block num is {head_block_num}."
+        self.error(msg)
+        raise BlockchainError(msg)
+
+
+    def wait_get_producer_by_block(self, block_num, retry=5) -> str:
+        """Get block producer by block num. If that block has not been produced, wait for it."""
+        return self.wait_get_block(block_num, retry=retry)["producer"]
+
+
+    def check_head_block_producer(self, retry=None, sleep=None):
+        retry = self.producer_retry if retry is None else retry
+        sleep = self.producer_sleep if sleep is None else sleep
+        self.print_header("get head block producer")
+        cx = self.get_cluster_info(level="TRACE")
+        extract_head_block_producer = lambda cx: cx.response_dict["result"][0][1]["head_block_producer"]
+        while retry >= 0:
+            cx = self.get_cluster_info(level="TRACE")
+            head_block_producer = extract_head_block_producer(cx)
+            if head_block_producer == "eosio":
+                self.logger.debug(color.yellow("Head block producer is still \"eosio\"."))
+            else:
+                self.logger.debug(color.green("Head block producer is now \"{}\", no longer eosio.".format(head_block_producer)))
+                break
+            self.logger.trace("{} {} for head block producer verification...".format(retry, "retries remain" if retry > 1 else "retry remains"))
+            self.logger.trace("Sleep for {}s before next retry...".format(sleep))
+            time.sleep(sleep)
+            retry -= 1
+        assert head_block_producer != "eosio", "Head block producer is still \"eosio\"."
+
+
+    def get_wasm_file(self, contract):
+        return os.path.join(self.contracts_dir, contract, contract + ".wasm")
+
+
+    def get_abi_file(self, contract):
+        return os.path.join(self.contracts_dir, contract, contract + ".abi")
+
+
+    @staticmethod
+    def get_defproducer_name(num):
+
+        def base26_to_int(s: str):
+            res = 0
+            for c in s:
+                res *= 26
+                res += ord(c) - ord('a')
+            return res
+
+        def int_to_base26(x: int):
+            res = ""
+            while True:
+                q, r = divmod(x, 26)
+                res = chr(ord('a') + r) + res
+                x = q
+                if q == 0:
+                    break
+            return res
+
+        # 8031810176 = 26 ** 7 is integer for "baaaaaaa" in base26
+        return "defproducer" + string.ascii_lowercase[num] if num < 26 else "defpr" + int_to_base26(8031810176 + num)[1:]
+
+
+    def verify(self,
+               transaction_id,
+               verify_key=None,
+               verify_async=False,
+               dont_raise=False,
+               retry=None,
+               sleep=None,
+               level=None,
+               retry_level=None,
+               error_level=None,
+               buffer=None):
+        verify_async = helper.override(self.verify_async, verify_async, self.cla.verify_async)
+        retry = helper.override(self.verify_retry, retry, self.cla.verify_retry)
+        sleep = helper.override(self.verify_sleep, sleep, self.cla.verify_sleep)
+        verified = False
+        while retry >= 0:
+            if self.verify_transaction(transaction_id=transaction_id, verify_key=verify_key, level=retry_level, buffer=buffer):
+                verified = True
+                break
+            time.sleep(sleep)
+            retry -= 1
+        if verify_async:
+            self.print_header("async verify transaction", level=level, buffer=True)
+            if verified:
+                self.log(color.black_on_green(f"{verify_key.title()}") + f" {transaction_id}", level=level, buffer=True)
+            else:
+                self.log(color.black_on_red(f"Not {verify_key.title()}") + f" {transaction_id}", level=error_level, buffer=True)
+            self.flush()
+        else:
+            if verified:
+                self.log(color.black_on_green(f"{verify_key.title()}"), level=level)
+            else:
+                self.log(color.black_on_red(f"Not {verify_key.title()}"), level=error_level)
+        if not verified and not dont_raise:
+            raise BlockchainError(f"{transaction_id} cannot be verified")
+        return verified
+
+    def check_sync(self, retry=None, sleep=None, min_sync_nodes=None, max_block_lag=None, level="DEBUG", dont_raise=False):
         @dataclass
         class SyncResult:
             in_sync: bool
             sync_nodes: int
             min_block_num: int
             max_block_num: int = None
-
             def __post_init__(self):
                 if self.in_sync:
                     self.block_num = self.max_block_num = self.min_block_num
@@ -1247,7 +1317,7 @@ class Cluster:
                     block_num = extract_head_block_num(node_id)
                     if block_num > max_block_num:
                         max_block_num, max_block_node = block_num, node_id
-                    elif block_num < min_block_num:
+                    if block_num < min_block_num:
                         min_block_num, min_block_node = block_num, node_id
                     head_id = extract_head_block_id(node_id)
                     counter[head_id] += 1
@@ -1331,80 +1401,6 @@ class Cluster:
             raise BlockchainError(msg)
             return False
 
-    def wait_get_block(self, block_num, retry=5) -> dict:
-        """Get block information by block num. If that block has not been produced, wait for it."""
-        while retry >= 0:
-            head_block_num = self.get_head_block_number()
-            if head_block_num < block_num:
-                time.sleep(0.5 * (block_num - head_block_num))
-            else:
-                return self.get_block(block_num).response_dict
-            retry -= 1
-        msg = f"Cannot get block # {block_num}. Current head block num is {head_block_num}."
-        self.error(msg)
-        raise BlockchainError(msg)
-
-
-    def wait_get_producer_by_block(self, block_num, retry=5) -> str:
-        """Get block producer by block num. If that block has not been produced, wait for it."""
-        return self.wait_get_block(block_num, retry=retry)["producer"]
-
-
-    def check_head_block_producer(self, retry=None, sleep=None):
-        retry = self.producer_retry if retry is None else retry
-        sleep = self.producer_sleep if sleep is None else sleep
-        self.print_header("get head block producer")
-        cx = self.get_cluster_info(level="TRACE")
-        extract_head_block_producer = lambda cx: cx.response_dict["result"][0][1]["head_block_producer"]
-        while retry >= 0:
-            cx = self.get_cluster_info(level="TRACE")
-            head_block_producer = extract_head_block_producer(cx)
-            if head_block_producer == "eosio":
-                self.logger.debug(color.yellow("Head block producer is still \"eosio\"."))
-            else:
-                self.logger.debug(color.green("Head block producer is now \"{}\", no longer eosio.".format(head_block_producer)))
-                break
-            self.logger.trace("{} {} for head block producer verification...".format(retry, "retries remain" if retry > 1 else "retry remains"))
-            self.logger.trace("Sleep for {}s before next retry...".format(sleep))
-            time.sleep(sleep)
-            retry -= 1
-        assert head_block_producer != "eosio", "Head block producer is still \"eosio\"."
-
-
-    def get_wasm_file(self, contract):
-        return os.path.join(self.contracts_dir, contract, contract + ".wasm")
-
-
-    def get_abi_file(self, contract):
-        return os.path.join(self.contracts_dir, contract, contract + ".abi")
-
-
-    @staticmethod
-    def get_defproducer_name(num):
-
-        def base26_to_int(s: str):
-            res = 0
-            for c in s:
-                res *= 26
-                res += ord(c) - ord('a')
-            return res
-
-        def int_to_base26(x: int):
-            res = ""
-            while True:
-                q, r = divmod(x, 26)
-                res = chr(ord('a') + r) + res
-                x = q
-                if q == 0:
-                    break
-            return res
-
-        # 8031810176 = 26 ** 7 is integer for "baaaaaaa" in base26
-        return "defproducer" + string.ascii_lowercase[num] if num < 26 else "defpr" + int_to_base26(8031810176 + num)[1:]
-
-
-
-
     """
     ====================
     Launcher Service API
@@ -1448,11 +1444,13 @@ class Cluster:
              api: str,
              http_retry=None,
              http_sleep=None,
+             http_dont_raise=False,
              verify_async=None,
              verify_key=None,
              verify_sleep=None,
              verify_retry=None,
              verify_assert=True,
+             verify_dont_raise=None,
              header=None,
              level=None,
              header_level=None,
@@ -1506,16 +1504,15 @@ class Cluster:
         verify_retry_level = helper.override(retry_info_level, verify_retry_level)
         verify_error_level = helper.override(error_level, verify_error_level)
 
-        # self.log(helper.make_header(header, level=header_level), level=header_level, buffer=buffer)
         self.print_header(header, level=header_level, buffer=buffer)
+        # communication with launcher service
         cx = Connection(url=f"http://{self.service.addr}:{self.service.port}/v1/launcher/{api}", data=data)
         self.log(cx.url, level=url_level, buffer=buffer)
         self.log(cx.request_text, level=request_text_level, buffer=buffer)
         while not cx.ok and http_retry > 0:
             self.log(cx.response_code, level=retry_info_level, buffer=buffer)
             self.log(cx.response_text, level=retry_text_level, buffer=buffer)
-            self.log(f"{http_retry} retries remain for http connection...", level=retry_info_level, buffer=buffer)
-            self.log(f"Sleep for {http_sleep}s before next retry...", level=retry_info_level, buffer=buffer)
+            self.log(f"{http_retry} retries remain for http connection. Sleep for {http_sleep}s.", level=retry_info_level, buffer=buffer)
             time.sleep(http_sleep)
             cx.attempt()
             http_retry -= 1
@@ -1529,15 +1526,18 @@ class Cluster:
         else:
             self.log(cx.response_code, level=error_level, buffer=buffer)
             self.log(cx.response_text, level=error_text_level, buffer=buffer)
+            if not http_dont_raise:
+                raise LauncherServiceError(cx.response_text)
+        # verification of transaction
         if verify_key:
             if verify_async:
                 t = threading.Thread(target=self.verify,
                                      kwargs={"transaction_id": cx.transaction_id,
                                              "verify_key": verify_key,
                                              "verify_async": True,
+                                             "dont_raise": verify_dont_raise,
                                              "retry": verify_retry,
                                              "sleep":verify_sleep,
-                                             "assertive": verify_assert,
                                              "level": verify_level,
                                              "retry_level": verify_retry_level,
                                              "error_level": verify_error_level,
@@ -1548,9 +1548,9 @@ class Cluster:
                 self.verify(transaction_id=cx.transaction_id,
                             verify_key=verify_key,
                             verify_async=False,
+                            dont_raise=verify_dont_raise,
                             retry=verify_retry,
                             sleep=verify_sleep,
-                            assertive=verify_assert,
                             level=verify_level,
                             retry_level=verify_retry_level,
                             error_level=verify_error_level,
@@ -1558,7 +1558,6 @@ class Cluster:
         if buffer and not dont_flush:
             self.flush()
         return cx
-
 
 
 def main():

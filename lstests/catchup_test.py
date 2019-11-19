@@ -31,7 +31,7 @@ def create_accounts(clus):
     clus.info(">>> [Catch-up Test] Create Test Accounts")
     for _ in range(5):
         cx = clus.call("send_raw", url=CREATE_URL, string_data=CREATE_STR, node_id=1,
-                        retry=0, level="trace", error_level="trace")
+                        retry=0, level="trace", error_level="trace", http_dont_raise=True)
         if '"name": "account_name_exists_exception"' in cx.response_text:
             return clus.check_sync().block_num
         time.sleep(1)
@@ -109,14 +109,14 @@ def catchup(clus, begin, round):
 
 def main():
     with init_cluster() as clus:
-        clus.info(">>> [Catch-up Test] --------------------- BEGIN ------------------------------------------")
+        clus.info(">>> [Catch-up Test] --------------------- BEGIN ----------------------------------------------------")
         begin = create_accounts(clus)
         end = start_gen(clus, begin)
         stop = stop_gen(clus)
         count_gen(clus, begin, end)
         for i in range(CATCHUP_ROUNDS):
             stop = catchup(clus, stop, i+1)
-        clus.info(">>> [Catch-up Test] --------------------- END --------------------------------------------")
+        clus.info(">>> [Catch-up Test] --------------------- END ------------------------------------------------------")
 
 
 if __name__ == "__main__":
