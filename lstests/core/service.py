@@ -1337,7 +1337,7 @@ class Cluster:
             raise BlockchainError(msg)
             return False
 
-    def wait_get_block(self, block_num, retry=1) -> dict:
+    def wait_get_block(self, block_num, retry=5) -> dict:
         """Get block information by block num. If that block has not been produced, wait for it."""
         while retry >= 0:
             head_block_num = self.get_head_block_number()
@@ -1351,7 +1351,7 @@ class Cluster:
         raise BlockchainError(msg)
 
 
-    def wait_get_producer_by_block(self, block_num, retry=1) -> str:
+    def wait_get_producer_by_block(self, block_num, retry=5) -> str:
         """Get block producer by block num. If that block has not been produced, wait for it."""
         return self.wait_get_block(block_num, retry=retry)["producer"]
 
