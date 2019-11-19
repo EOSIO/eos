@@ -41,3 +41,4 @@ if [[ "$EXIT_STATUS" != 0 ]]; then
     echo "Failing due to non-zero exit status from ctest: $EXIT_STATUS"
     exit $EXIT_STATUS
 fi
+exit $EXIT_STATUS
