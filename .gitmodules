@@ -29,6 +29,8 @@
 [submodule "libraries/fc"]
 	path = libraries/fc
 	url = https://github.com/ArisenIO/fc
+	branch = master
+	update = merge
 [submodule "libraries/wabt"]
 	path = libraries/wabt
 	url = http://github.com/ArisenIO/wabt
