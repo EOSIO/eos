@@ -42,13 +42,13 @@ namespace eosio { namespace chain {
             return kv_it_stat::iterator_ok;
          } else {
             kv_key.reset();
-            return kv_it_stat::iterator_oob;
+            return kv_it_stat::iterator_end;
          }
       }
 
       kv_it_stat kv_it_status() override {
          if (!kv_key)
-            return kv_it_stat::iterator_oob;
+            return kv_it_stat::iterator_end;
          auto* kv = db.find<kv_object, by_kv_key>(boost::make_tuple(database_id, contract, *kv_key));
          if (kv)
             return kv_it_stat::iterator_ok;
@@ -78,9 +78,9 @@ namespace eosio { namespace chain {
          return unsigned_blob_less()(*kv_key, std::string_view{ key, size });
       }
 
-      kv_it_stat kv_it_move_to_oob() override {
+      kv_it_stat kv_it_move_to_end() override {
          kv_key.reset();
-         return kv_it_stat::iterator_oob;
+         return kv_it_stat::iterator_end;
       }
 
       kv_it_stat kv_it_increment() override {
@@ -92,7 +92,7 @@ namespace eosio { namespace chain {
                return move_to(it);
             }
             kv_key.reset();
-            return kv_it_stat::iterator_oob;
+            return kv_it_stat::iterator_end;
          }
          return move_to(idx.lower_bound(boost::make_tuple(database_id, contract, prefix)));
       }
@@ -106,7 +106,7 @@ namespace eosio { namespace chain {
          if (it != idx.begin())
             return move_to(--it);
          kv_key.reset();
-         return kv_it_stat::iterator_oob;
+         return kv_it_stat::iterator_end;
       }
 
       kv_it_stat kv_it_lower_bound(const char* key, uint32_t size) override {
@@ -122,7 +122,7 @@ namespace eosio { namespace chain {
          } else {
             actual_size = 0;
             EOS_ASSERT(offset <= actual_size, table_access_violation, "Offset is out of range");
-            return kv_it_stat::iterator_oob;
+            return kv_it_stat::iterator_end;
          }
       }
 
@@ -130,7 +130,7 @@ namespace eosio { namespace chain {
          if (!kv_key) {
             actual_size = 0;
             EOS_ASSERT(offset <= actual_size, table_access_violation, "Offset is out of range");
-            return kv_it_stat::iterator_oob;
+            return kv_it_stat::iterator_end;
          }
          auto* kv = db.find<kv_object, by_kv_key>(boost::make_tuple(database_id, contract, *kv_key));
          if (!kv) {

@@ -5,7 +5,7 @@ using namespace eosio;
 enum it_stat : int32_t {
    iterator_ok     = 0,
    iterator_erased = -1,
-   iterator_oob    = -2,
+   iterator_end    = -2,
 };
 
 #define IMPORT extern "C" __attribute__((eosio_wasm_import))
@@ -20,7 +20,7 @@ IMPORT void     kv_it_destroy(uint32_t itr);
 IMPORT it_stat  kv_it_status(uint32_t itr);
 IMPORT int      kv_it_compare(uint32_t itr_a, uint32_t itr_b);
 IMPORT int      kv_it_key_compare(uint32_t itr, const char* key, uint32_t size);
-IMPORT it_stat  kv_it_move_to_oob(uint32_t itr);
+IMPORT it_stat  kv_it_move_to_end(uint32_t itr);
 IMPORT it_stat  kv_it_increment(uint32_t itr);
 IMPORT it_stat  kv_it_decrement(uint32_t itr);
 IMPORT it_stat  kv_it_lower_bound(uint32_t itr, const char* key, uint32_t size);
@@ -53,13 +53,13 @@ class [[eosio::contract("kv_test")]] kvtest : public eosio::contract {
       check(5 == kv_it_create(db, 0, nullptr, 0), "itlifetime i");
       check(4 == kv_it_create(db, 0, nullptr, 0), "itlifetime j");
       check(7 == kv_it_create(db, 0, nullptr, 0), "itlifetime k");
-      check(kv_it_status(1) == iterator_oob, "itlifetime l");
-      check(kv_it_status(2) == iterator_oob, "itlifetime m");
-      check(kv_it_status(3) == iterator_oob, "itlifetime n");
-      check(kv_it_status(4) == iterator_oob, "itlifetime o");
-      check(kv_it_status(5) == iterator_oob, "itlifetime p");
-      check(kv_it_status(6) == iterator_oob, "itlifetime q");
-      check(kv_it_status(7) == iterator_oob, "itlifetime r");
+      check(kv_it_status(1) == iterator_end, "itlifetime l");
+      check(kv_it_status(2) == iterator_end, "itlifetime m");
+      check(kv_it_status(3) == iterator_end, "itlifetime n");
+      check(kv_it_status(4) == iterator_end, "itlifetime o");
+      check(kv_it_status(5) == iterator_end, "itlifetime p");
+      check(kv_it_status(6) == iterator_end, "itlifetime q");
+      check(kv_it_status(7) == iterator_end, "itlifetime r");
    }
 
    [[eosio::action]] void erase(uint64_t db, name contract, const std::vector<char>& k) {
@@ -162,7 +162,7 @@ class [[eosio::contract("kv_test")]] kvtest : public eosio::contract {
 
          stat = kv_it_increment(itr);
       }
-      check(stat == iterator_oob, "extra kv pair (g)");
+      check(stat == iterator_end, "extra kv pair (g)");
       check(stat == kv_it_status(itr), "status mismatch (g)");
 
       kv_it_destroy(itr);
@@ -212,7 +212,7 @@ class [[eosio::contract("kv_test")]] kvtest : public eosio::contract {
 
          stat = kv_it_decrement(itr);
       }
-      check(stat == iterator_oob, "extra kv pair (g)");
+      check(stat == iterator_end, "extra kv pair (g)");
       check(stat == kv_it_status(itr), "status mismatch (g)");
 
       kv_it_destroy(itr);

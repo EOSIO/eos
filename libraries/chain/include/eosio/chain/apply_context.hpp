@@ -541,7 +541,7 @@ class apply_context {
       int32_t  kv_it_status(uint32_t itr);
       int32_t  kv_it_compare(uint32_t itr_a, uint32_t itr_b);
       int32_t  kv_it_key_compare(uint32_t itr, const char* key, uint32_t size);
-      int32_t  kv_it_move_to_oob(uint32_t itr);
+      int32_t  kv_it_move_to_end(uint32_t itr);
       int32_t  kv_it_increment(uint32_t itr);
       int32_t  kv_it_decrement(uint32_t itr);
       int32_t  kv_it_lower_bound(uint32_t itr, const char* key, uint32_t size);

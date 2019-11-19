@@ -12,7 +12,7 @@ namespace eosio { namespace chain {
    enum class kv_it_stat {
       iterator_ok     = 0,  // Iterator is positioned at a key-value pair
       iterator_erased = -1, // The key-value pair that the iterator used to be positioned at was erased
-      iterator_oob    = -2, // Iterator is out-of-bounds
+      iterator_end    = -2, // Iterator is out-of-bounds
    };
 
    struct kv_iterator {
@@ -22,7 +22,7 @@ namespace eosio { namespace chain {
       virtual kv_it_stat kv_it_status()                                                                 = 0;
       virtual int32_t    kv_it_compare(const kv_iterator& rhs)                                          = 0;
       virtual int32_t    kv_it_key_compare(const char* key, uint32_t size)                              = 0;
-      virtual kv_it_stat kv_it_move_to_oob()                                                            = 0;
+      virtual kv_it_stat kv_it_move_to_end()                                                            = 0;
       virtual kv_it_stat kv_it_increment()                                                              = 0;
       virtual kv_it_stat kv_it_decrement()                                                              = 0;
       virtual kv_it_stat kv_it_lower_bound(const char* key, uint32_t size)                              = 0;

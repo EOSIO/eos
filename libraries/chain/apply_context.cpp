@@ -906,9 +906,9 @@ int32_t apply_context::kv_it_key_compare(uint32_t itr, const char* key, uint32_t
    return kv_iterators[itr]->kv_it_key_compare(key, size);
 }
 
-int32_t apply_context::kv_it_move_to_oob(uint32_t itr) {
+int32_t apply_context::kv_it_move_to_end(uint32_t itr) {
    kv_check_iterator(itr);
-   return static_cast<int32_t>(kv_iterators[itr]->kv_it_move_to_oob());
+   return static_cast<int32_t>(kv_iterators[itr]->kv_it_move_to_end());
 }
 
 int32_t apply_context::kv_it_increment(uint32_t itr) {
