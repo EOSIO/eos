@@ -84,6 +84,31 @@ class kv_tester : public tester {
                                                                "lower", lower)("expected", expected)));
    }
 
+   void test_basic(uint64_t db) {
+      get("", db, N(kvtest), "", nullptr);
+      set("", db, N(kvtest), "", "");
+      get("", db, N(kvtest), "", "");
+      set("", db, N(kvtest), "", "1234");
+      get("", db, N(kvtest), "", "1234");
+      get("", db, N(kvtest), "00", nullptr);
+      set("", db, N(kvtest), "00", "aabbccdd");
+      get("", db, N(kvtest), "00", "aabbccdd");
+      get("", db, N(kvtest), "02", nullptr);
+      erase("", db, N(kvtest), "02");
+      get("", db, N(kvtest), "02", nullptr);
+      set("", db, N(kvtest), "02", "42");
+      get("", db, N(kvtest), "02", "42");
+      get("", db, N(kvtest), "01020304", nullptr);
+      set("", db, N(kvtest), "01020304", "aabbccddee");
+      erase("", db, N(kvtest), "02");
+
+      get("", db, N(kvtest), "01020304", "aabbccddee");
+      get("", db, N(kvtest), "", "1234");
+      get("", db, N(kvtest), "00", "aabbccdd");
+      get("", db, N(kvtest), "02", nullptr);
+      get("", db, N(kvtest), "01020304", "aabbccddee");
+   }
+
    void test_scan(uint64_t db) {
       setmany("", db, N(kvtest),
               {
@@ -260,29 +285,7 @@ BOOST_FIXTURE_TEST_CASE(kv_basic, kv_tester) try {
    BOOST_REQUIRE_EQUAL("Bad key-value database ID", push_action(N(itlifetime), mvo()("db", 2)));
    BOOST_REQUIRE_EQUAL("Bad key-value database ID", push_action(N(itlifetime), mvo()("db", 3)));
    BOOST_REQUIRE_EQUAL("", push_action(N(itlifetime), mvo()("db", 0)));
-
-   get("", 0, N(kvtest), "", nullptr);
-   set("", 0, N(kvtest), "", "");
-   get("", 0, N(kvtest), "", "");
-   set("", 0, N(kvtest), "", "1234");
-   get("", 0, N(kvtest), "", "1234");
-   get("", 0, N(kvtest), "00", nullptr);
-   set("", 0, N(kvtest), "00", "aabbccdd");
-   get("", 0, N(kvtest), "00", "aabbccdd");
-   get("", 0, N(kvtest), "02", nullptr);
-   erase("", 0, N(kvtest), "02");
-   get("", 0, N(kvtest), "02", nullptr);
-   set("", 0, N(kvtest), "02", "42");
-   get("", 0, N(kvtest), "02", "42");
-   get("", 0, N(kvtest), "01020304", nullptr);
-   set("", 0, N(kvtest), "01020304", "aabbccddee");
-   erase("", 0, N(kvtest), "02");
-
-   get("", 0, N(kvtest), "01020304", "aabbccddee");
-   get("", 0, N(kvtest), "", "1234");
-   get("", 0, N(kvtest), "00", "aabbccdd");
-   get("", 0, N(kvtest), "02", nullptr);
-   get("", 0, N(kvtest), "01020304", "aabbccddee");
+   test_basic(0);
 }
 FC_LOG_AND_RETHROW()
 
