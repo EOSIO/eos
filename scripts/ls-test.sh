@@ -19,8 +19,21 @@ sleep 1
 
 echo "platform ID is $ID"
 if [[ "$ID" == 'centos' ]]; then
-    echo "try to install python3.7 on centos"
-    yum -y update && yum -y install python37 python37-pip
+    echo "installing wget"
+    yum -y update && yum -y install wget
+    echo "installing gcc"
+    yum -y install gcc
+    echo "installing zlib*"
+    yum -y install zlib*
+    echo "installing openssl"
+    yum -y install openssl-devel
+    echo "wget python 3.7"
+    wget https://www.python.org/ftp/python/3.7.4/Python-3.7.4.tgz
+    echo "installing Python-3.7.4.tgz"
+    tar xzf Python-3.7.4.tgz
+    cd Python-3.7.4
+    ./configure --enable-optimizations
+    make altinstall
 fi
 
 if [[ "$ID" == 'ubuntu' ]]; then
