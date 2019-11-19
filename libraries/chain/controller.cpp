@@ -2839,7 +2839,7 @@ bool controller::light_validation_allowed(bool replay_opts_disabled_by_policy) c
 
 
 bool controller::skip_auth_check() const {
-   return light_validation_allowed(!my->conf.skip_all_checks && my->conf.force_all_checks);
+   return my->conf.skip_all_checks || light_validation_allowed(my->conf.force_all_checks);
 }
 
 bool controller::skip_db_sessions( block_status bs ) const {
