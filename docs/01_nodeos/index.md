@@ -10,11 +10,9 @@ The basic relationship between these components is illustrated in the following 
 
 ![EOSIO components](eosio_components.png)
 
-[[info | EOSIO Software Installation]]
-| Please [Install EOSIO](../00_install/index.md) before proceeding to the sections below.
+Please navigate the sections below to build the EOSIO components, deploy them in various network configurations, and learn how to use them for supporting EOSIO blockchain applications.
 
-Please navigate the sections below to use `nodeos` in various network configurations, and learn how to setup `nodeos` instances for supporting EOSIO blockchain applications.
-
+* [Install](01_install/index.md) - Installing EOSIO and dependencies; build from source, etc.
 * [Usage](02_usage/index.md) - Using `nodeos`, config options, node setups/environments.
 * [Plugins](03_plugins/index.md) - Using plugins, plugin options, mandatory vs. optional.
 * [Replays](04_replays/index.md) - Replaying the chain from a snapshot or a blocks.log file.
