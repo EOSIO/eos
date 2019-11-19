@@ -25,7 +25,7 @@ fi
 
 if [[ "$ID" == 'ubuntu' ]]; then
     echo "try to install python3.7 on ubuntu"
-    apt update && apt -y install python3 python3-pip python3.7
+    apt update && apt-get update && apt -y install python3 python3-pip python3.7
 fi
 
 python3.7 -m pip install requests
@@ -33,7 +33,7 @@ python3.7 -m pip install dataclasses
 
 set +e # defer ctest error handling to end
 echo "ready to execute: ctest -L ls_tests -V -j $JOBS"
-ctest -L ls_tests -V -j $JOBS
+ctest -L ls_tests --output-on-failure -j $JOBS
 EXIT_STATUS=$?
 echo 'Done running launcher service related tests.'
 exit $EXIT_STATUS
