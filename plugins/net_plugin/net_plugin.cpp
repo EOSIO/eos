@@ -1595,7 +1595,7 @@ namespace eosio {
             note.known_blocks.ids.push_back(head_id);
             c->enqueue( note );
          }
-         c->syncing = true;
+         c->syncing = head != msg.head_num; // head might resolve fork if same length
          app().post( priority::medium, [chain_plug = my_impl->chain_plug, c,
                                         msg_head_num = msg.head_num, msg_head_id = msg.head_id]() {
             bool on_fork = true;
@@ -1680,15 +1680,13 @@ namespace eosio {
    // called from connection strand
    void sync_manager::rejected_block( const connection_ptr& c, uint32_t blk_num ) {
       std::unique_lock<std::mutex> g( sync_mtx );
-      if( sync_state != in_sync ) {
-         if( ++c->consecutive_rejected_blocks > def_max_consecutive_rejected_blocks ) {
-            fc_wlog( logger, "block ${bn} not accepted from ${p}, closing connection", ("bn", blk_num)( "p", c->peer_name() ) );
-            sync_last_requested_num = 0;
-            sync_source.reset();
-            g.unlock();
-            c->close();
-            send_handshakes();
-         }
+      if( ++c->consecutive_rejected_blocks > def_max_consecutive_rejected_blocks ) {
+         fc_wlog( logger, "block ${bn} not accepted from ${p}, closing connection", ("bn", blk_num)("p", c->peer_name()) );
+         sync_last_requested_num = 0;
+         sync_source.reset();
+         g.unlock();
+         c->close();
+         send_handshakes();
       }
    }
 
@@ -2367,7 +2365,8 @@ namespace eosio {
                uint32_t blk_num = bh.block_num();
                fc_dlog( logger, "canceling wait on ${p}, already received block ${num}",
                         ("p", peer_name())("num", blk_num) );
-               my_impl->sync_master->sync_recv_block( shared_from_this(), blk_id, blk_num );
+               if( my_impl->sync_master->syncing_with_peer() )
+                  my_impl->sync_master->sync_recv_block( shared_from_this(), blk_id, blk_num );
                cancel_wait();
 
                pending_message_buffer.advance_read_ptr( message_length );
@@ -2827,7 +2826,8 @@ namespace eosio {
             c->strand.post( [sync_master = my_impl->sync_master.get(),
                              dispatcher = my_impl->dispatcher.get(), c, blk_id, blk_num]() {
                dispatcher->add_peer_block( blk_id, c->connection_id );
-               sync_master->sync_recv_block( c, blk_id, blk_num );
+               if( my_impl->sync_master->syncing_with_peer() )
+                  sync_master->sync_recv_block( c, blk_id, blk_num );
             });
             return;
          }
