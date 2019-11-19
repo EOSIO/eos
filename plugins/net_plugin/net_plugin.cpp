@@ -1032,6 +1032,8 @@ namespace eosio {
       strand.post( [c = shared_from_this()]() {
          std::unique_lock<std::mutex> g_conn( c->conn_mtx );
          c->populate_handshake( c->last_handshake_sent );
+         static_assert( std::is_same_v<decltype(c->sent_handshake_count), int16_t>, "INT16_MAX based on int16_t" );
+         if( c->sent_handshake_count == INT16_MAX ) c->sent_handshake_count = 1; // do not wrap
          c->last_handshake_sent.generation = ++c->sent_handshake_count;
          auto last_handshake_sent = c->last_handshake_sent;
          g_conn.unlock();
