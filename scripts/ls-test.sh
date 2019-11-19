@@ -27,6 +27,8 @@ if [[ "$ID" == 'centos' ]]; then
     yum -y install zlib*
     echo "installing openssl"
     yum -y install openssl-devel
+    echo "installing libffi-devel"
+    yum -y install libffi-devel
     echo "wget python 3.7"
     wget https://www.python.org/ftp/python/3.7.4/Python-3.7.4.tgz
     echo "installing Python-3.7.4.tgz"
