@@ -1,11 +1,10 @@
 #! /usr/bin/env python3
 
 # standard libraries
-from typing import List, Optional, Union
-from dataclasses import dataclass
 import argparse
-import collections
 import base64
+import collections
+import dataclasses
 import json
 import math
 import os
@@ -1160,7 +1159,7 @@ class Cluster:
                     break
 
 
-    def vote_for_producers(self, voter, voted_producers: List[str],  buffer=False):
+    def vote_for_producers(self, voter, voted_producers: typing.List[str],  buffer=False):
         assert len(voted_producers) <= 30, "An account cannot votes for more than 30 producers. {} voted for {} producers.".format(voter, len(voted_producers))
         actions = [{"account": "eosio",
                     "action": "voteproducer",
@@ -1282,11 +1281,11 @@ class Cluster:
             raise BlockchainError(f"{transaction_id} cannot be verified")
         return verified
 
-    def check_sync(self, retry=None, sleep=None, min_sync_nodes=None, max_block_lag=None, level="DEBUG", dont_raise=False):
-        @dataclass
+    def check_sync(self, retry=None, sleep=None, min_sync_count=None, max_block_lag=None, dont_raise=False, level="debug"):
+        @dataclasses.dataclass
         class SyncResult:
             in_sync: bool
-            sync_nodes: int
+            sync_count: int
             min_block_num: int
             max_block_num: int = None
             def __post_init__(self):
@@ -1297,21 +1296,21 @@ class Cluster:
                     self.block_num = -1
 
         # set arguments
-        retry = self.sync_retry if retry is None else retry
-        sleep = self.sync_sleep if sleep is None else sleep
-        min_sync_nodes = min_sync_nodes if min_sync_nodes else self.node_count
+        retry = helper.override(self.sync_retry, retry, self.cla.sync_retry)
+        sleep = helper.override(self.sync_sleep, sleep, self.cla.sync_sleep)
+        min_sync_count = helper.override(self.node_count, min_sync_count)
         # print head
-        self.print_header("check if nodes are in sync", level=level)
+        self.print_header("check sync", level=level)
         while retry >= 0:
-            ix = self.get_cluster_info(level="trace")
-            has_head_block_id = lambda node_id: "head_block_id" in ix.response_dict["result"][node_id][1]
-            extract_head_block_id = lambda node_id: ix.response_dict["result"][node_id][1]["head_block_id"]
-            extract_head_block_num = lambda node_id: ix.response_dict["result"][node_id][1]["head_block_num"]
+            cx = self.get_cluster_info(level="trace")
+            has_head_block_id = lambda node_id: "head_block_id" in cx.response_dict["result"][node_id][1]
+            extract_head_block_id = lambda node_id: cx.response_dict["result"][node_id][1]["head_block_id"]
+            extract_head_block_num = lambda node_id: cx.response_dict["result"][node_id][1]["head_block_num"]
             counter = collections.defaultdict(int)
-            no_head_nodes = set()
+            headless = 0
             max_block_num, min_block_num = -1, math.inf
             max_block_node = min_block_node = -1
-            sync_nodes = 0
+            sync_count = 0
             for node_id in range(self.node_count):
                 if has_head_block_id(node_id):
                     block_num = extract_head_block_num(node_id)
@@ -1321,33 +1320,37 @@ class Cluster:
                         min_block_num, min_block_node = block_num, node_id
                     head_id = extract_head_block_id(node_id)
                     counter[head_id] += 1
-                    if counter[head_id] > sync_nodes:
-                        sync_nodes, sync_block, sync_head = counter[head_id], block_num, head_id
+                    if counter[head_id] > sync_count:
+                        sync_count, sync_block, sync_head = counter[head_id], block_num, head_id
                 else:
-                    no_head_nodes.add(node_id)
-            down = f" ({len(no_head_nodes)} nodes down)" if len(no_head_nodes) else ""
-            self.log(f"{sync_nodes}/{self.node_count} nodes in sync{down}: max block number {max_block_num} from node {max_block_node} │ min block number {min_block_num} from node {min_block_node}", level=level)
-            if sync_nodes >= min_sync_nodes:
-                self.log(color.green(f"<Num of Nodes In Sync> {sync_nodes}"), level=level)
-                self.log(color.green(f"<Head Block Num> {sync_block}"), level=level)
-                self.log(color.green(f"<Head Block ID> {sync_head}"), level=level)
-                self.log(color.black_on_green("Nodes In Sync"), level=level)
-                return SyncResult(True, sync_nodes, min_block_num)
-            if max_block_lag and max_block_num - min_block_num > max_block_lag:
-                self.log(f"Gap between max and min block numbers ({max_block_num - min_block_num}) is larger than tolerance ({max_block_lag}).", level=level)
+                    headless += 1
+            down_info = f"({headless} {helper.plural('node', headless)} down)"
+            self.log(f"{sync_count}/{self.node_count} {helper.plural('node', sync_count)} in sync: "
+                     f"max block num {max_block_num} from node {max_block_node}, "
+                     f"min block num {min_block_num} from node {min_block_node} "
+                     f"{down_info}", level=level)
+            if sync_count >= min_sync_count:
+                self.log(color.green(f"<Sync Nodes Count> {sync_count}"), level=level)
+                self.log(color.green(f"<Sync Block Num> {sync_block}"), level=level)
+                self.log(color.green(f"<Sync Block ID> {sync_head}"), level=level)
+                self.log(color.black_on_green("Nodes in sync"), level=level)
+                return SyncResult(True, sync_count, min_block_num)
+            if max_block_lag is not None and max_block_num - min_block_num > max_block_lag:
+                self.log(f"Lag between min and max block numbers (={max_block_num - min_block_num}) "
+                         f"is larger than tolerance (={max_block_lag}).", level=level)
                 break
             time.sleep(sleep)
             retry -= 1
-        msg = "Nodes Out of Sync"
+        msg = "Nodes out of sync"
         if not dont_raise:
             self.error(color.black_on_red(msg))
             raise SyncError(msg)
         else:
             self.log(color.black_on_yellow(msg), level=level)
-        return SyncResult(False, sync_nodes, min_block_num, max_block_num)
+        return SyncResult(False, sync_count, min_block_num, max_block_num)
 
 
-    def check_production_round(self, expected_producers: List[str], level="debug"):
+    def check_production_round(self, expected_producers: typing.List[str], level="debug"):
         self.print_header("verify production round", level=level)
 
         # list expected producers
@@ -1442,9 +1445,9 @@ class Cluster:
 
     def call(self,
              api: str,
-             http_retry=None,
-             http_sleep=None,
-             http_dont_raise=False,
+             retry=None,
+             sleep=None,
+             dont_raise=False,
              verify_async=None,
              verify_key=None,
              verify_sleep=None,
@@ -1480,8 +1483,8 @@ class Cluster:
         5. log response
         6. verify transaction
         """
-        http_retry = helper.override(self.http_retry, http_retry, self.cla.http_retry)
-        http_sleep = helper.override(self.http_sleep, http_sleep, self.cla.http_sleep)
+        retry = helper.override(self.http_retry, retry, self.cla.http_retry)
+        sleep = helper.override(self.http_sleep, sleep, self.cla.http_sleep)
         header = helper.override(api.replace("_", " "), header)
         data.setdefault("cluster_id", self.cluster_id)
         data.setdefault("node_id", 0)
@@ -1509,13 +1512,13 @@ class Cluster:
         cx = Connection(url=f"http://{self.service.addr}:{self.service.port}/v1/launcher/{api}", data=data)
         self.log(cx.url, level=url_level, buffer=buffer)
         self.log(cx.request_text, level=request_text_level, buffer=buffer)
-        while not cx.ok and http_retry > 0:
+        while not cx.ok and retry > 0:
             self.log(cx.response_code, level=retry_info_level, buffer=buffer)
             self.log(cx.response_text, level=retry_text_level, buffer=buffer)
-            self.log(f"{http_retry} retries remain for http connection. Sleep for {http_sleep}s.", level=retry_info_level, buffer=buffer)
-            time.sleep(http_sleep)
+            self.log(f"{retry} retries remain for http connection. Sleep for {sleep}s.", level=retry_info_level, buffer=buffer)
+            time.sleep(sleep)
             cx.attempt()
-            http_retry -= 1
+            retry -= 1
         if cx.response.ok:
             self.log(cx.response_code, level=response_code_level, buffer=buffer)
             if cx.transaction_id:
@@ -1526,7 +1529,7 @@ class Cluster:
         else:
             self.log(cx.response_code, level=error_level, buffer=buffer)
             self.log(cx.response_text, level=error_text_level, buffer=buffer)
-            if not http_dont_raise:
+            if not dont_raise:
                 raise LauncherServiceError(cx.response_text)
         # verification of transaction
         if verify_key:
