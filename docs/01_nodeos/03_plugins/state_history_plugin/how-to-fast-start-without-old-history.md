@@ -6,7 +6,7 @@ This procedure records the current chain state and future history, without previ
 
 ## Before you begin
 
-* Make sure [EOSIO is installed](../../01_install/index.md).
+* Make sure [EOSIO is installed](../../../00_install/index.md).
 * Learn about [Using Nodeos](../../02_usage/index.md).
 * Get familiar with [state_history](../../03_plugins/state_history_plugin/index.md) plugin.
 
@@ -15,10 +15,15 @@ This procedure records the current chain state and future history, without previ
 1. Get the following:
    * A portable snapshot (`data/snapshots/snapshot-xxxxxxx.bin`)
    * Optional: a block log which includes the block the snapshot was taken at
+
 2. Make sure `data/state` does not exist
+
 3. Start `nodeos` with the `--snapshot` option, and the options listed in the [`state_history_plugin`](#index.md).
+
 4. Look for `Placing initial state in block n` in the log, where n is the start block number.
+
 5. Start a filler with `--fpg-create` (if PostgreSQL), `--fill-skip-to n`, and `--fill-trim`. Replace `n` with the value above.
+
 6. Do not stop `nodeos` until it has received at least 1 block from the network, or it won't be able to restart.
 
 ## Remarks

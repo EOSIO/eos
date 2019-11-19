@@ -6,7 +6,7 @@ This procedure restores an existing snapshot with full history, so the node can 
 
 ## Before you begin
 
-* Make sure [EOSIO is installed](../../01_install/index.md).
+* Make sure [EOSIO is installed](../../../00_install/index.md).
 * Learn about [Using Nodeos](../../02_usage/index.md).
 * Get familiar with [state_history](../../03_plugins/state_history_plugin/index.md) plugin.
 
@@ -16,8 +16,11 @@ This procedure restores an existing snapshot with full history, so the node can 
    * A portable snapshot (`data/snapshots/snapshot-xxxxxxx.bin`)
    * The contents of `data/state-history`
    * Optional: a block log which includes the block the snapshot was taken at. Do not include `data/blocks/reversible`.
+
 2. Make sure `data/state` does not exist
+
 3. Start `nodeos` with the `--snapshot` option, and the options listed in the [`state_history_plugin`](#index.md).
+
 4. Do not stop `nodeos` until it has received at least 1 block from the network, or it won't be able to restart.
 
 ## Remarks
