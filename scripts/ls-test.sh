@@ -25,7 +25,7 @@ fi
 
 if [[ "$ID" == 'ubuntu' ]]; then
     echo "try to install python3.7 on ubuntu"
-    apt -y install software-properties-common && add-apt-repository -y ppa:deadsnakes/ppa && apt update && apt-get update && apt -y install python3 python3-pip python3.7
+    apt-get update && apt -y install software-properties-common && add-apt-repository -y ppa:deadsnakes/ppa && apt update && apt-get update && apt -y install python3 python3-pip python3.7
 fi
 
 python3.7 -m pip install requests
