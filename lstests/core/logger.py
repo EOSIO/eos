@@ -2,13 +2,10 @@
 
 # standard libraries
 import abc
-# import dataclasses
-import enum
+import dataclasses
 import inspect
-import os
+import os.path
 import queue
-import random
-import re
 import threading
 import time
 import typing
@@ -21,326 +18,330 @@ else:
     import color
     import helper
 
-# VERTICAL_BAR = "|"
-VERTICAL_BAR = "│"
 
-class LogLevel(enum.IntEnum):
-    ALL   = 0
-    TRACE = 10
-    DEBUG = 20
-    INFO  = 30
-    WARN  = 40
-    ERROR = 50
-    FATAL = 60
-    FLAG  = 90
-    OFF   = 100
+try:
+    VERTICAL_BAR = "│"
+except UnicodeEncodeError:
+    VERTICAL_BAR = "|"
+
+
+class LogLevel(int):
+    _val_of = {
+        "ALL":   0,
+        "TRACE": 10,
+        "DEBUG": 20,
+        "INFO":  30,
+        "WARN":  40,
+        "ERROR": 50,
+        "FATAL": 60,
+        "FLAG":  90,
+        "OFF":   100
+    }
+
+    _name_of = {
+        0:   "ALL",
+        10:  "TRACE",
+        20:  "DEBUG",
+        30:  "INFO",
+        40:  "WARN",
+        50:  "ERROR",
+        60:  "FATAL",
+        90:  "FLAG",
+        100: "OFF"
+    }
+
+    def __new__(cls, x):
+        if isinstance(x, int):
+            return int.__new__(cls, x)
+        if isinstance(x, str):
+            return int.__new__(cls, LogLevel._val_of[x.upper()])
 
     def __str__(self):
-        return self.name
-
-    @staticmethod
-    def to_int(x: typing.Union[int, str, typing.TypeVar("LogLevel")]):
-        """make best effort to convert an int, str or LogLevel to int value"""
-        if isinstance(x, int):
-            return int(x)
-        if isinstance(x, str):
-            try:
-                return int(LogLevel[x.upper()])
-            except KeyError:
-                return -1
-        return -1
+        try:
+            return LogLevel._name_of[self]
+        except KeyError:
+            return int.__str__(self)
 
 
-    @staticmethod
-    def to_str(x: typing.Union[int, str, typing.TypeVar("LogLevel")]):
-        """make best effort to convert an int, str or LogLevel to name"""
-        if isinstance(x, LogLevel):
-            return str(x)
-        if isinstance(x, int):
-            try:
-                return LogLevel.to_str(LogLevel(x))
-            except ValueError:
-                return str(x)
-        if isinstance(x, str):
-            try:
-                return LogLevel.to_str(LogLevel[x.upper()])
-            except KeyError:
-                return ""
-
-
-class MessageCenter:
-    def __init__(self, writer: typing.TypeVar("Writer")):
+class _MessageCenter:
+    def __init__(self, writer: typing.TypeVar("_Writer")):
         self.center = dict()
         self.writer = writer
 
     def store(self, msg):
         thread_id = threading.get_ident()
-        if thread_id in self.center:
-            self.center[thread_id].put(msg)
-        else:
-            self.center[thread_id] = queue.Queue()
-            self.store(msg)
+        self.center.setdefault(thread_id, queue.Queue())
+        self.center[thread_id].put(msg)
 
     def flush(self):
         thread_id = threading.get_ident()
         self.store("")
         while True:
             item = self.center[thread_id].get()
-            if item != "":
-                self.writer.raw_write(item)
-            else:
+            if item == "":
                 return
+            self.writer._raw_write(item)
 
 
-# @dataclasses.dataclass
-# class WriterConfig:
-#     threshold:          typing.Union[int, str, LogLevel]
-#     buffered:           bool
-#     monochrome:         bool
-#     show_clock_time:    bool = True
-#     show_elapsed_time:  bool = True
-#     show_filename:      bool = True
-#     show_lineno:        bool = True
-#     show_func:      bool = True
-#     show_thread:        bool = True
-#     show_log_level:     bool = True
+@dataclasses.dataclass
+class _Writer(abc.ABC):
+    threshold: typing.Union[int, str, LogLevel]
+    monochrome: bool
+    buffered: bool
+    show_clock_time: bool
+    show_elapsed_time: bool
+    show_filename: bool
+    show_lineno: bool
+    show_function: bool
+    show_thread: bool
+    show_log_level: bool
 
-#     def __post_init__(self):
-#         if isinstance(self.threshold, str):
-#             self.threshold = LogLevel[self.threshold]
-
-
-class Writer(abc.ABC):
-    def __init__(self,
-                 threshold: typing.Union[int, str, LogLevel],
-                 buffered: bool = True,
-                 monochrome: bool = False,
-                 show_clock_time: bool = True,
-                 show_elapsed_time: bool = True,
-                 show_filename: bool = True,
-                 show_lineno: bool = True,
-                 show_func: bool = True,
-                 show_thread: bool = True,
-                 show_log_level: bool = True):
-        self.threshold = LogLevel.to_int(threshold)
-        self.buffered = buffered
-        self.monochrome = monochrome
-        self.show_clock_time = show_clock_time
-        self.show_elapsed_time = show_elapsed_time
-        self.show_filename = show_filename
-        self.show_lineno = show_lineno
-        self.show_func = show_func
-        self.show_thread = show_thread
-        self.show_log_level = show_log_level
-        self.start_time = time.time()
-
-        self._color_regex = re.compile(r"\033\[[0-9]+(;[0-9]+)?m")
+    def __post_init__(self):
+        self.threshold = LogLevel(self.threshold)
         if self.buffered:
-            self._message_center = MessageCenter(self)
+            self._message_center = _MessageCenter(self)
             self._rlock = threading.RLock()
 
-    def prepend(self, msg, level):
-        def stylize(prefix, level):
-            if level <= LogLevel.DEBUG:
-                prefix =color.faint(prefix)
-            elif level == LogLevel.WARN:
-                prefix = color.yellow(prefix)
-            elif level == LogLevel.ERROR:
-                prefix = color.red(prefix)
-            elif level == LogLevel.FATAL:
-                prefix = color.bold(color.red(prefix))
-            return prefix
-        if self.monochrome:
-            msg = self._color_regex.sub("", msg)
-        prefix = str()
-        if self.show_clock_time:
-            prefix += "{} ".format(helper.get_current_time())
-        if self.show_elapsed_time:
-            prefix += "({:8.3f}s) ".format(time.time() - self.start_time)
-        depth = len(inspect.stack()) - 1
-        frame = inspect.stack()[min(5, depth)]
-        if self.show_filename:
-            prefix += "{:10.10s}:".format(os.path.basename(frame.filename))
-        if self.show_lineno:
-            prefix += "{:4.4s} ".format(str(frame.lineno))
-        if self.show_func:
-            prefix += "{:18.18s} ".format(helper.compress(frame.function) + "()")
-        if self.show_thread:
-            prefix += "[{:10}] ".format((threading.current_thread().name))
-        if self.show_log_level:
-            prefix += "{:5} ".format(LogLevel.to_str(level))
-        if prefix:
-            prefix = prefix if self.monochrome else stylize(prefix, level)
-            return "\n".join([prefix + VERTICAL_BAR + " " + x for x in msg.splitlines()])
-        else:
-            return msg
-
-    def write(self, msg, level):
+    def write(self, msg, level: LogLevel):
         if level >= self.threshold:
             if self.buffered:
-                self.buffered_write(msg, level)
+                self._buffered_write(msg, level)
             else:
-                self.unbuffered_write(msg, level)
-
-    @abc.abstractmethod
-    def raw_write(self, msg):
-        pass
-
-    def unbuffered_write(self, msg, level):
-        self.raw_write(self.prepend(msg, level))
-
-    def buffered_write(self, msg, level):
-        self._message_center.store(self.prepend(msg, level))
+                self._unbuffered_write(msg, level)
 
     def flush(self):
         if self.buffered:
             with self._rlock:
                 self._message_center.flush()
 
+    @staticmethod
+    def _colorize(txt, level):
+        if level <= LogLevel("debug"):
+            return color.faint(txt)
+        if level == LogLevel("warn"):
+            return color.yellow(txt)
+        if level == LogLevel("error"):
+            return color.red(txt)
+        if level == LogLevel("fatal"):
+            return color.bold(color.red(txt))
+        if level == LogLevel("flag"):
+            return color.bold(txt)
+        return txt
 
-class ScreenWriter(Writer):
+    def _prefix(self, msg: str, level: LogLevel):
+        if self.monochrome:
+            msg = color.REGEX.sub("", msg)
+        pre = ""
+        if self.show_clock_time:
+            pre += f"{helper.get_time()} "
+        if self.show_elapsed_time:
+            pre += f"({time.time() - self._start_time:8.3f}s) "
+        try:
+            frame = inspect.stack()[5]
+        except IndexError:
+            frame = inspect.stack()[-1]
+        if self.show_filename:
+            filename = os.path.basename(frame.filename)
+            pre += f"{helper.squeeze(filename, maxlen=10):10.10} "
+        if self.show_lineno:
+            pre += f":{frame.lineno:<4} "
+        if self.show_function:
+            pre += f"{helper.squeeze(frame.function, maxlen=15)+'()':17.17} "
+        if self.show_thread:
+            pre += f"[{threading.current_thread().name:10.10}] "
+        if self.show_log_level:
+            pre += f"{str(level):5.5} "
+        if pre:
+            if not self.monochrome:
+                pre = self._colorize(pre, level)
+            return "\n".join([pre + VERTICAL_BAR + " " + x for x in msg.splitlines()])
+        else:
+            return msg
+
+    @abc.abstractmethod
+    def _raw_write(self, msg):
+        pass
+
+    def _unbuffered_write(self, msg, level):
+        self._raw_write(self._prefix(msg, level))
+
+    def _buffered_write(self, msg, level):
+        self._message_center.store(self._prefix(msg, level))
+
+
+class ScreenWriter(_Writer):
     def __init__(self,
                  threshold: typing.Union[int, str, LogLevel],
-                 buffered: bool = True,
                  monochrome: bool = False,
+                 buffered: bool = True,
                  show_clock_time: bool = True,
                  show_elapsed_time: bool = True,
                  show_filename: bool = True,
                  show_lineno: bool = True,
-                 show_func: bool = True,
+                 show_function: bool = True,
                  show_thread: bool = True,
                  show_log_level: bool = True):
         super().__init__(threshold,
-                         buffered,
                          monochrome,
+                         buffered,
                          show_clock_time,
                          show_elapsed_time,
                          show_filename,
                          show_lineno,
-                         show_func,
+                         show_function,
                          show_thread,
                          show_log_level)
 
-    def raw_write(self, msg):
+    def _raw_write(self, msg):
         print(msg)
 
 
-class FileWriter(Writer):
+class FileWriter(_Writer):
     def __init__(self,
                  filename,
                  threshold: typing.Union[int, str, LogLevel],
-                 buffered: bool = True,
                  monochrome: bool = False,
+                 buffered: bool = True,
                  show_clock_time: bool = True,
                  show_elapsed_time: bool = True,
                  show_filename: bool = True,
                  show_lineno: bool = True,
-                 show_func: bool = True,
+                 show_function: bool = True,
                  show_thread: bool = True,
                  show_log_level: bool = True):
         super().__init__(threshold,
-                         buffered,
                          monochrome,
+                         buffered,
                          show_clock_time,
                          show_elapsed_time,
                          show_filename,
                          show_lineno,
-                         show_func,
+                         show_function,
                          show_thread,
                          show_log_level)
         self.filename = filename
 
-    def raw_write(self, msg):
+    def _raw_write(self, msg):
         with open(self.filename, "a") as f:
             print(msg, file=f)
 
 
 class Logger:
-    def __init__(self, *writers: typing.Tuple[Writer]):
+    def __init__(self, *writers: typing.Tuple[_Writer]):
         self.writers = writers
-        start_time = time.time()
+        now = time.time()
         for w in self.writers:
-            w.start_time = start_time
+            w._start_time = now
 
     def __enter__(self):
         return self
 
-    def __exit__(self, exception_type, exception_value, exception_traceback):
+    def __exit__(self, except_type, except_value, except_traceback):
         self.flush()
 
     def log(self, msg, level: typing.Union[int, str, LogLevel], buffer=False):
-        level = LogLevel.to_int(level)
+        level = LogLevel(level)
         for w in self.writers:
             w.write(str(msg), level)
         if not buffer:
             self.flush()
 
     def trace(self, msg, buffer=False):
-        self.log(msg, level=LogLevel.TRACE, buffer=buffer)
+        self.log(msg, level="trace", buffer=buffer)
 
     def debug(self, msg, buffer=False):
-        self.log(msg, level=LogLevel.DEBUG, buffer=buffer)
+        self.log(msg, level="debug", buffer=buffer)
 
     def info(self, msg, buffer=False):
-        self.log(msg, level=LogLevel.INFO, buffer=buffer)
+        self.log(msg, level="info", buffer=buffer)
 
     def warn(self, msg, buffer=False):
-        self.log(msg, level=LogLevel.WARN, buffer=buffer)
+        self.log(msg, level="warn", buffer=buffer)
 
     def error(self, msg, buffer=False):
-        self.log(msg, level=LogLevel.ERROR, buffer=buffer)
+        self.log(msg, level="error", buffer=buffer)
 
     def fatal(self, msg, buffer=False):
-        self.log(msg, level=LogLevel.FATAL, buffer=buffer)
+        self.log(msg, level="fatal", buffer=buffer)
 
     def flag(self, msg, buffer=False):
-        self.log(msg, level=LogLevel.FLAG, buffer=buffer)
+        self.log(msg, level="flag", buffer=buffer)
 
     def flush(self):
         for w in self.writers:
             w.flush()
 
 
-
-
 # ----------------- test ------------------------------------------------------
 
 
-def _pause(wait=None):
-    time.sleep(random.randint(0, 3) if wait is None else wait)
-
-
 def _alice(logger):
-    logger.info("Alice:\tHello!")
+    logger.info(f"Alice:\tHello! My name is {color.green('Alice')}.")
     _pause()
-    logger.warn("Alice:\tMy name is {}.".format(color.yellow("Alice")))
-    logger.flush()
+    logger.debug("Alice:\tI am sending a line at DEBUG level.")
     _pause()
-    logger.error("Alice:" + "\nThis is a \nMultiline\nStatement")
-    logger.flush()
+    logger.warn(f"Alice:\tA {color.yellow('WARNING')} message:", buffer=True)
+    _pause()
+    logger.warn("Alice:\t1. When anyone tries to say anything,", buffer=True)
+    _pause()
+    logger.warn("Alice:\t2. he/she shouldn't get interrupted", buffer=True)
+    _pause()
+    logger.warn("Alice:\t3. before he/she finishes.")
 
 
 def _bob(logger):
-    logger.log(color.green("Bob:\tHi, everyone."), level=38)
+    logger.info(f"Bob:\tHi, everyone! I'm {color.blue('Bob')}.")
     _pause()
-    logger.debug("Bob:\tI'm {}.".format(color.blue("Bob")))
-    logger.error("Bob:\tNice to meet you")
+    logger.log(f"Bob:\tI am logging a line with log level 38.", level=38)
+    _pause()
+    logger.debug("""Bob:\tThis is a
+            multiline
+            statement.""")
+    _pause()
+    logger.info(f"Bob:\tAn {color.cyan('IMPORTANT')} notice:", buffer=True)
+    _pause()
+    logger.info("Bob:\tYou should see a line in the log file", buffer=True)
+    _pause()
+    logger.info("Bob:\t...but not printed out on the screen.", buffer=True)
+    _pause()
+    logger.info("Bob:\tIf not, you've got an error.", buffer=True)
     logger.flush()
-    logger.trace("Bob:\tThis is a trace information.")
-    logger.flush()
+    _pause()
+    logger.trace(f"Bob:\t{color.bold('***TRACE: ONLY VISIBLE IN FILE***')}")
 
 
-def test():
-    logger = Logger(ScreenWriter(threshold="debug"), FileWriter(filename="trace.log", threshold="trace"))
+def _charlie(logger):
+    logger.error("Charlie:\tI am buffering my words. Then I am", buffer=True)
+    logger.error("Charlie:\tgoing to trigger an error. After the", buffer=True)
+    logger.error("Charlie:\terror occurs, all the buffered words", buffer=True)
+    logger.error("Charlie:\tshould get flushed.", buffer=True)
+    logger.fatal(f"Charlie:\t-- A {color.red('FATAL')} action --", buffer=True)
+    raise RuntimeError
 
-    t_alice = threading.Thread(target=_alice, args=(logger,))
-    t_bob = threading.Thread(target=_bob, args=(logger,))
 
-    for t in (t_alice, t_bob):
+def _pause(sleep=None):
+    time.sleep(random.randint(0, 2) if sleep is None else sleep)
+
+
+def _main():
+    filename = "logger-trace.log"
+    with open(filename, "w") as file:
+        pass
+    logger = Logger(ScreenWriter(threshold="debug"),
+                    FileWriter(filename=filename, threshold="trace"))
+    alice_thread = threading.Thread(target=_alice, args=(logger,))
+    bob_thread = threading.Thread(target=_bob, args=(logger,))
+    for t in (alice_thread, bob_thread):
         t.start()
-
-    for t in (t_alice, t_bob):
+    for t in (alice_thread, bob_thread):
         t.join()
+    with logger as logger:
+        try:
+            _charlie(logger)
+        except RuntimeError:
+            print("---------------- A RuntimeError Occurred -----------------")
+
 
 if __name__ == "__main__":
-    test()
+    import random
+    _main()

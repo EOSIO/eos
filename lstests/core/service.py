@@ -34,18 +34,20 @@ else:
 
 
 PROGRAM = "launcher-service"
+PROGRAM_LOG = "launcher-service.log"
 PRODUCER_KEY = "EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"
 PREACTIVATE_FEATURE = "0ec7e080177b2c02b278d5088611686b49d739925a92d9bfcacd7fc6b74053bd"
 PACKAGE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-DEFAULT_ADDRESS = "127.0.0.1"
+# service-related defaults
+DEFAULT_ADDR = "127.0.0.1"
 DEFAULT_PORT = 1234
 DEFAULT_WDIR = os.path.join(PACKAGE_DIR, "../../build")
 DEFAULT_FILE = os.path.join(".", "programs", PROGRAM, PROGRAM)
 DEFAULT_START = False
 DEFAULT_KILL = False
-
-DEFAULT_CONTRACTS_DIR = "../../eosio.contracts/build/contracts"
+# cluster-related defaults
+DEFAULT_CONTRACTS_DIR = "../unittests/contracts"
 DEFAULT_CLUSTER_ID = 0
 DEFAULT_NODE_COUNT = 4
 DEFAULT_PNODE_COUNT = 4
@@ -70,26 +72,26 @@ DEFAULT_SYNC_RETRY = 100
 DEFAULT_SYNC_SLEEP = 1
 DEFAULT_PRODUCER_RETRY = 100
 DEFAULT_PRODUCER_SLEEP = 1
-
-DEFAULT_BUFFERED = True
+# logger-related defaults
 DEFAULT_MONOCHROME = False
+DEFAULT_BUFFERED = True
 DEFAULT_SHOW_CLOCK_TIME = True
 DEFAULT_SHOW_ELAPSED_TIME = True
 DEFAULT_SHOW_FILENAME = True
 DEFAULT_SHOW_LINENO = True
-DEFAULT_SHOW_FUNC = True
+DEFAULT_SHOW_FUNCTION = True
 DEFAULT_SHOW_THREAD = True
 DEFAULT_SHOW_LOG_LEVEL = True
 DEFAULT_HIDE_ALL = False
-
+# service-related help
 HELP_HELP = "Show this message and exit"
-HELP_ADDRESS = "Address of launcher service"
+HELP_ADDR = "IP address of launcher service"
 HELP_PORT = "Listening port of launcher service"
 HELP_WDIR = "Working directory"
 HELP_FILE = "Path to local launcher service file"
 HELP_START = "Always start a new launcher service"
 HELP_KILL = "Kill existing launcher services (if any)"
-
+# cluster-related help
 HELP_CONTRACTS_DIR = "Directory of eosio smart contracts"
 HELP_CLUSTER_ID = "Cluster ID to launch with"
 HELP_NODE_COUNT = "Number of nodes"
@@ -114,19 +116,8 @@ HELP_SYNC_RETRY = "Check nodes in sync: max num of retries"
 HELP_SYNC_SLEEP = "Check nodes in sync: sleep time between retries"
 HELP_PRODUCER_RETRY = "Max retries for head block producer"
 HELP_PRODUCER_SLEEP = "Sleep time for head block producer retries"
-
+# logger-related help
 HELP_LOG_LEVEL = "Stdout logging level (numeric)"
-HELP_MONOCHROME = "Do not print in colors for stdout logging"
-HELP_UNBUFFER = "Do not buffer for stdout logging"
-HELP_HIDE_CLOCK_TIME = "Hide clock time in stdout logging"
-HELP_HIDE_ELAPSED_TIME = "Hide elapsed time in stdout logging"
-HELP_HIDE_FILENAME = "Hide filename in stdout logging"
-HELP_HIDE_LINENO = "Hide function line number in stdout logging"
-HELP_HIDE_FUNC = "Hide function name in stdout logging"
-HELP_HIDE_THREAD = "Hide thread name in stdout logging"
-HELP_HIDE_LOG_LEVEL = "Hide log level in stdout logging"
-HELP_HIDE_ALL = "Hide all the above in stdout logging"
-
 HELP_LOG_ALL = "Set stdout logging level to ALL (0)"
 HELP_TRACE = "Set stdout logging level to TRACE (10)"
 HELP_DEBUG = "Set stdout logging level to DEBUG (20)"
@@ -134,7 +125,18 @@ HELP_INFO = "Set stdout logging level to INFO (30)"
 HELP_WARN = "Set stdout logging level to WARN (40)"
 HELP_ERROR = "Set stdout logging level to ERROR (50)"
 HELP_FATAL = "Set stdout logging level to FATAL (60)"
+HELP_FLAG = "Set stdout logging level to FLAG (90)"
 HELP_LOG_OFF = "Set stdout logging level to OFF (100)"
+HELP_MONOCHROME = "Do not print in colors for stdout logging"
+HELP_DONT_BUFFER = "Do not buffer for stdout logging"
+HELP_HIDE_CLOCK_TIME = "Hide clock time in stdout logging"
+HELP_HIDE_ELAPSED_TIME = "Hide elapsed time in stdout logging"
+HELP_HIDE_FILENAME = "Hide filename in stdout logging"
+HELP_HIDE_LINENO = "Hide line number in stdout logging"
+HELP_HIDE_FUNCTION = "Hide function name in stdout logging"
+HELP_HIDE_THREAD = "Hide thread name in stdout logging"
+HELP_HIDE_LOG_LEVEL = "Hide log level in stdout logging"
+HELP_HIDE_ALL = "Hide all the above in stdout logging"
 
 
 class ExceptionThread(threading.Thread):
@@ -153,14 +155,20 @@ class ExceptionThread(threading.Thread):
         except Exception as e:
             self.report(self.channel, self.id, str(e))
 
-def bassert(cond, message=None):
-    if not cond:
-        raise BlockchainError(message=message)
+
+class LauncherServiceError(RuntimeError):
+    def __init__(self, message):
+        super().__init__(message)
 
 
 class BlockchainError(RuntimeError):
     def __init__(self, message):
         super().__init__(message)
+
+
+def bassert(cond, message=None):
+    if not cond:
+        raise BlockchainError(message=message)
 
 
 class SyncError(BlockchainError):
@@ -171,7 +179,7 @@ class SyncError(BlockchainError):
 class CommandLineArguments:
     def __init__(self):
         cla = self.parse()
-        self.address = cla.address
+        self.addr = cla.addr
         self.port = cla.port
         self.wdir = cla.wdir
         self.file = cla.file
@@ -208,7 +216,7 @@ class CommandLineArguments:
         self.show_elapsed_time = cla.show_elapsed_time
         self.show_filename = cla.show_filename
         self.show_lineno = cla.show_lineno
-        self.show_func = cla.show_func
+        self.show_function = cla.show_function
         self.show_thread = cla.show_thread
         self.show_log_level = cla.show_log_level
         self.hide_all = cla.hide_all
@@ -216,26 +224,26 @@ class CommandLineArguments:
 
     @staticmethod
     def parse():
-        desc = color.decorate("Launcher Service for EOSIO Testing Framework", style="underline", fcolor="green")
+        desc = color.decorate("Launcher Service-based EOSIO Testing Framework", style="underline", fcolor="green")
         left = 5
-        form = lambda text, value=None: "{} ({})".format(helper.pad(text, left=left, total=55, char=" ", sep=""), value)
+        form = lambda text, value=None: "{} ({})".format(helper.pad(text, left=left, total=55), value)
         parser = argparse.ArgumentParser(description=desc, add_help=False, formatter_class=lambda prog: argparse.RawTextHelpFormatter(prog, max_help_position=50))
         parser.add_argument("-h", "--help", action="help", help=" " * left + HELP_HELP)
-
-        parser.add_argument("-a", "--address", type=str, metavar="IP", help=form(HELP_ADDRESS, DEFAULT_ADDRESS))
+        # service-related options
+        parser.add_argument("-a", "--addr", type=str, metavar="IP", help=form(HELP_ADDR, DEFAULT_ADDR))
         parser.add_argument("-o", "--port", type=int, help=form(HELP_PORT, DEFAULT_PORT))
         parser.add_argument("-w", "--wdir", type=str, metavar="PATH", help=form(HELP_WDIR, DEFAULT_WDIR))
         parser.add_argument("-f", "--file", type=str, metavar="PATH", help=form(HELP_FILE, DEFAULT_FILE))
         parser.add_argument("-s", "--start", action="store_true", default=None, help=form(HELP_START, DEFAULT_START))
         parser.add_argument("-k", "--kill", action="store_true", default=None, help=form(HELP_KILL, DEFAULT_KILL))
-
+        # cluster-related options
         parser.add_argument("-d", "--contracts-dir", metavar="PATH", help=form(HELP_CONTRACTS_DIR, DEFAULT_CONTRACTS_DIR))
         parser.add_argument("-i", "--cluster-id", dest="cluster_id", type=int, metavar="ID", help=form(HELP_CLUSTER_ID, DEFAULT_CLUSTER_ID))
         parser.add_argument("-n", "--node-count", type=int, metavar="NUM", help=form(HELP_NODE_COUNT, DEFAULT_NODE_COUNT))
-        parser.add_argument("-m", "--pnode-count", type=int, metavar="NUM", help=form(HELP_PNODE_COUNT, DEFAULT_PNODE_COUNT))
-        parser.add_argument("-p", "--producer-count", type=int, metavar="NUM", help=form(HELP_PRODUDCER_COUNT, DEFAULT_PRODUDCER_COUNT))
+        parser.add_argument("-p", "--pnode-count", type=int, metavar="NUM", help=form(HELP_PNODE_COUNT, DEFAULT_PNODE_COUNT))
+        parser.add_argument("-q", "--producer-count", type=int, metavar="NUM", help=form(HELP_PRODUDCER_COUNT, DEFAULT_PRODUDCER_COUNT))
         parser.add_argument("-u", "--unstarted-count", type=int, metavar="NUM", help=form(HELP_UNSTARTED_COUNT, DEFAULT_UNSTARTED_COUNT))
-        parser.add_argument("-t", "--shape", type=str, metavar="SHAPE", help=form(HELP_SHAPE, DEFAULT_SHAPE), choices={"mesh", "star", "bridge", "line", "ring", "tree"})
+        parser.add_argument("-t", "--shape", type=str, metavar="TOPOLOGY", help=form(HELP_SHAPE, DEFAULT_SHAPE), choices={"mesh", "star", "bridge", "line", "ring", "tree"})
         parser.add_argument("-c", "--center-node-id", type=int, metavar="ID", help=form(HELP_CENTER_NODE_ID, DEFAULT_CENTER_NODE_ID))
         parser.add_argument("-g", "--total-supply", metavar="NUM", help=form(HELP_TOTAL_SUPPLY, "{:g}".format(DEFAULT_TOTAL_SUPPLY)))
         parser.add_argument("-r", "--regular-launch", dest="launch_mode", action="store_const", const="regular", default=None, help=form(HELP_REGULAR_LAUNCH, DEFAULT_REGULAR_LAUNCH))
@@ -251,80 +259,79 @@ class CommandLineArguments:
         parser.add_argument("--sync-sleep", type=float, metavar="TIME", help=form(HELP_SYNC_SLEEP, DEFAULT_SYNC_SLEEP))
         parser.add_argument("--producer-retry", type=int, metavar="NUM", help=form(HELP_PRODUCER_RETRY, DEFAULT_PRODUCER_RETRY))
         parser.add_argument("--producer-sleep", type=float, metavar="TIME", help=form(HELP_PRODUCER_SLEEP, DEFAULT_PRODUCER_SLEEP))
-
+        # logger-related options
         threshold = parser.add_mutually_exclusive_group()
         threshold.add_argument("-l", "--log-level", dest="threshold", type=int, metavar="LEVEL", action="store", help=form(HELP_LOG_LEVEL))
-        threshold.add_argument("--all", dest="threshold", action="store_const", const="ALL", help=form(HELP_LOG_ALL))
-        threshold.add_argument("--trace", dest="threshold", action="store_const", const="TRACE", help=form(HELP_TRACE))
-        threshold.add_argument("--debug", dest="threshold", action="store_const", const="DEBUG", help=form(HELP_DEBUG))
-        threshold.add_argument("--info", dest="threshold", action="store_const", const="INFO", help=form(HELP_INFO))
-        threshold.add_argument("--warn", dest="threshold", action="store_const", const="WARN", help=form(HELP_WARN))
-        threshold.add_argument("--error", dest="threshold", action="store_const", const="ERROR", help=form(HELP_ERROR))
-        threshold.add_argument("--fatal", dest="threshold", action="store_const", const="FATAL", help=form(HELP_FATAL))
-        threshold.add_argument("--off", dest="threshold", action="store_const", const="OFF", help=form(HELP_LOG_OFF))
-        parser.add_argument("-xb", "--unbuffer", dest="buffered", action="store_false", default=None, help=form(HELP_UNBUFFER, not DEFAULT_BUFFERED))
-        parser.add_argument("-xc", "--monochrome", action="store_true", default=None, help=form(HELP_MONOCHROME, DEFAULT_MONOCHROME))
-        parser.add_argument("-xt", "--hide-clock-time", dest="show_clock_time", action="store_false", default=None, help=form(HELP_HIDE_CLOCK_TIME, not DEFAULT_SHOW_CLOCK_TIME))
-        parser.add_argument("-xe", "--hide-elapsed-time", dest="show_elapsed_time", action="store_false", default=None, help=form(HELP_HIDE_ELAPSED_TIME, not DEFAULT_SHOW_ELAPSED_TIME))
-        parser.add_argument("-xf", "--hide-filename", dest="show_filename", action="store_false", default=None, help=form(HELP_HIDE_FILENAME, not DEFAULT_SHOW_FILENAME))
-        parser.add_argument("-xl", "--hide-lineno", dest="show_lineno", action="store_false", default=None, help=form(HELP_HIDE_LINENO, not DEFAULT_SHOW_LINENO))
-        parser.add_argument("-xu", "--hide-func", dest="show_func", action="store_false", default=None, help=form(HELP_HIDE_FUNC, not DEFAULT_SHOW_FUNC))
-        parser.add_argument("-xr", "--hide-thread", dest="show_thread", action="store_false", default=None, help=form(HELP_HIDE_THREAD, not DEFAULT_SHOW_THREAD))
-        parser.add_argument("-xg", "--hide-log-level", dest="show_log_level", action="store_false", default=None, help=form(HELP_HIDE_LOG_LEVEL, not DEFAULT_SHOW_LOG_LEVEL))
-        parser.add_argument("-xa", "--hide-all", action="store_true", default=False, help=form(HELP_HIDE_ALL, DEFAULT_HIDE_ALL))
+        threshold.add_argument("--all", dest="threshold", action="store_const", const="all", help=form(HELP_LOG_ALL))
+        threshold.add_argument("--trace", dest="threshold", action="store_const", const="trace", help=form(HELP_TRACE))
+        threshold.add_argument("--debug", dest="threshold", action="store_const", const="debug", help=form(HELP_DEBUG))
+        threshold.add_argument("--info", dest="threshold", action="store_const", const="info", help=form(HELP_INFO))
+        threshold.add_argument("--warn", dest="threshold", action="store_const", const="warn", help=form(HELP_WARN))
+        threshold.add_argument("--error", dest="threshold", action="store_const", const="error", help=form(HELP_ERROR))
+        threshold.add_argument("--fatal", dest="threshold", action="store_const", const="fatal", help=form(HELP_FATAL))
+        threshold.add_argument("--flag", dest="threshold", action="store_const", const="flag", help=form(HELP_FLAG))
+        threshold.add_argument("--off", dest="threshold", action="store_const", const="off", help=form(HELP_LOG_OFF))
+        parser.add_argument("-m", "--monochrome", action="store_true", default=None, help=form(HELP_MONOCHROME, DEFAULT_MONOCHROME))
+        parser.add_argument("-dbu", "--dont-buffer", dest="buffered", action="store_false", default=None, help=form(HELP_DONT_BUFFER, not DEFAULT_BUFFERED))
+        parser.add_argument("-hct", "--hide-clock-time", dest="show_clock_time", action="store_false", default=None, help=form(HELP_HIDE_CLOCK_TIME, not DEFAULT_SHOW_CLOCK_TIME))
+        parser.add_argument("-het", "--hide-elapsed-time", dest="show_elapsed_time", action="store_false", default=None, help=form(HELP_HIDE_ELAPSED_TIME, not DEFAULT_SHOW_ELAPSED_TIME))
+        parser.add_argument("-hfi", "--hide-filename", dest="show_filename", action="store_false", default=None, help=form(HELP_HIDE_FILENAME, not DEFAULT_SHOW_FILENAME))
+        parser.add_argument("-hln", "--hide-lineno", dest="show_lineno", action="store_false", default=None, help=form(HELP_HIDE_LINENO, not DEFAULT_SHOW_LINENO))
+        parser.add_argument("-hfn", "--hide-function", dest="show_function", action="store_false", default=None, help=form(HELP_HIDE_FUNCTION, not DEFAULT_SHOW_FUNCTION))
+        parser.add_argument("-hth", "--hide-thread", dest="show_thread", action="store_false", default=None, help=form(HELP_HIDE_THREAD, not DEFAULT_SHOW_THREAD))
+        parser.add_argument("-hll", "--hide-log-level", dest="show_log_level", action="store_false", default=None, help=form(HELP_HIDE_LOG_LEVEL, not DEFAULT_SHOW_LOG_LEVEL))
+        parser.add_argument("-hall", "--hide-all", action="store_true", default=False, help=form(HELP_HIDE_ALL, DEFAULT_HIDE_ALL))
 
         return parser.parse_args()
 
 
 class Service:
-    def __init__(self, address=None, port=None, wdir=None, file=None, start=None, kill=None, logger=None, dont_connect=False):
+    def __init__(self, addr=None, port=None, wdir=None, file=None, start=None, kill=None, logger=None, dont_connect=False):
         # read command-line arguments
         self.cla = CommandLineArguments()
-
         # configure service
-        self.address = helper.override(DEFAULT_ADDRESS, address, self.cla.address)
-        self.port    = helper.override(DEFAULT_PORT,    port,    self.cla.port)
-        self.wdir    = helper.override(DEFAULT_WDIR,    wdir,    self.cla.wdir)
-        self.file    = helper.override(DEFAULT_FILE,    file,    self.cla.file)
-        self.start   = helper.override(DEFAULT_START,   start,   self.cla.start)
-        self.kill    = helper.override(DEFAULT_KILL,    kill,    self.cla.kill)
-
+        self.addr  = helper.override(DEFAULT_ADDR,  addr,  self.cla.addr)
+        self.port  = helper.override(DEFAULT_PORT,  port,  self.cla.port)
+        self.wdir  = helper.override(DEFAULT_WDIR,  wdir,  self.cla.wdir)
+        self.file  = helper.override(DEFAULT_FILE,  file,  self.cla.file)
+        self.start = helper.override(DEFAULT_START, start, self.cla.start)
+        self.kill  = helper.override(DEFAULT_KILL,  kill,  self.cla.kill)
+        # change working dir
+        os.chdir(self.wdir)
         # register logger
         self.register_logger(logger)
-
         # connect
         if not dont_connect:
             self.connect()
 
-
     def __enter__(self):
         return self
-
 
     def __exit__(self, exception_type, exception_value, exception_traceback):
         self.flush()
 
-
     def register_logger(self, logger):
         self.logger = logger
-        # allow command-line arguments to overwrite screen writer settings
         for w in self.logger.writers:
+            # override screen writer settings with command-line arguments
             if isinstance(w, ScreenWriter):
-                th = helper.override(w.threshold, self.cla.threshold)
-                th = LogLevel.to_int(th)
-                self.threshold = w.threshold = th
+                self.threshold = w.threshold = LogLevel(helper.override(w.threshold, self.cla.threshold))
                 self.buffered = w.buffered = helper.override(DEFAULT_BUFFERED, w.buffered, self.cla.buffered)
                 self.monochrome = w.monochrome = helper.override(DEFAULT_MONOCHROME, w.monochrome, self.cla.monochrome)
                 if self.cla.hide_all:
-                    w.show_clock_time = w.show_elapsed_time = w.show_filename = w.show_lineno = w.show_func = w.show_thread = w.show_log_level = False
+                      w.show_clock_time = w.show_elapsed_time = w.show_filename = w.show_lineno = w.show_function = w.show_thread = w.show_log_level = False
                 else:
                     w.show_clock_time = helper.override(DEFAULT_SHOW_CLOCK_TIME, w.show_clock_time, self.cla.show_clock_time)
                     w.show_elapsed_time = helper.override(DEFAULT_SHOW_ELAPSED_TIME, w.show_elapsed_time, self.cla.show_elapsed_time)
                     w.show_filename = helper.override(DEFAULT_SHOW_FILENAME, w.show_filename, self.cla.show_filename)
                     w.show_lineno = helper.override(DEFAULT_SHOW_LINENO, w.show_lineno, self.cla.show_lineno)
-                    w.show_func = helper.override(DEFAULT_SHOW_FUNC, w.show_func, self.cla.show_func)
+                    w.show_function = helper.override(DEFAULT_SHOW_FUNCTION, w.show_function, self.cla.show_function)
                     w.show_thread = helper.override(DEFAULT_SHOW_THREAD, w.show_thread, self.cla.show_thread)
                     w.show_log_level = helper.override(DEFAULT_SHOW_LOG_LEVEL, w.show_log_level, self.cla.show_log_level)
+            # empty log files
+            elif isinstance(w, FileWriter):
+                with open(w.filename, "w"):
+                    pass
         # register for shorter names
         self.log = self.logger.log
         self.trace = self.logger.trace
@@ -336,60 +343,43 @@ class Service:
         self.flag = self.logger.flag
         self.flush = self.logger.flush
 
-
     def connect(self):
-        self.change_working_dir()
-        self.empty_log_files()
-        self.info(">>> [Connect to Service] ---------------- BEGIN ------------------------------------------")
+        self.info(">>> [Connect to Service] ---------------- BEGIN ----------------------------------------------------")
+        self.print_working_dir()
         self.print_system_info()
         self.print_config()
-        if self.address == "127.0.0.1":
+        if self.addr == "127.0.0.1":
             self.connect_to_local_service()
         else:
             self.connect_to_remote_service()
-        self.info(">>> [Connect to Service] ---------------- END --------------------------------------------")
+        self.info(">>> [Connect to Service] ---------------- END ------------------------------------------------------")
 
-
-    def empty_log_files(self):
-        for w in self.logger.writers:
-            if isinstance(w, FileWriter):
-                with open(w.filename, "w"):
-                    pass
-
+    def print_working_dir(self):
+        self.print_header("working directory")
+        self.debug("{:22}{}".format("Working Directory", os.getcwd()))
 
     def print_system_info(self):
         self.print_header("system info")
-        self.logger.debug("{:22}{}".format("UTC Time", time.strftime("%Y-%m-%d %H:%M:%S %Z", time.gmtime())))
-        self.logger.debug("{:22}{}".format("Local Time", time.strftime("%Y-%m-%d %H:%M:%S %Z", time.localtime())))
-        self.logger.debug("{:22}{}".format("Platform", platform.platform()))
-
+        self.debug("{:22}{}".format("UTC Time", time.strftime("%Y-%m-%d %H:%M:%S %Z", time.gmtime())))
+        self.debug("{:22}{}".format("Local Time", time.strftime("%Y-%m-%d %H:%M:%S %Z", time.localtime())))
+        self.debug("{:22}{}".format("Platform", platform.platform()))
 
     def print_config(self):
         self.print_header("service configuration")
-
         # print service config
-        self.print_formatted_config("-a: address", HELP_ADDRESS, self.address, DEFAULT_ADDRESS)
-        self.print_formatted_config("-o: port",    HELP_PORT,    self.port,    DEFAULT_PORT)
-        self.print_formatted_config("-w: wdir",    HELP_WDIR,    self.wdir,    DEFAULT_WDIR)
-        self.print_formatted_config("-f: file",    HELP_FILE,    self.file,    DEFAULT_FILE)
-        self.print_formatted_config("-s: start",   HELP_START,   self.start,   DEFAULT_START)
-        self.print_formatted_config("-k: kill",    HELP_KILL,    self.kill,    DEFAULT_KILL)
-
-        # print logger config (for screen logging)
-        try:
-            log_level = "{} ({})".format(LogLevel(self.threshold).name, self.threshold)
-        except ValueError:
-            log_level = self.threshold
-        self.print_formatted_config("-l: log-level",  HELP_LOG_LEVEL,  log_level)
-        self.print_formatted_config("-xb: unbuffer",   HELP_UNBUFFER,   not self.buffered, not DEFAULT_BUFFERED)
-        self.print_formatted_config("-xc: monochrome", HELP_MONOCHROME, self.monochrome,   DEFAULT_MONOCHROME)
-
-
-    def change_working_dir(self):
-        os.chdir(self.wdir)
-        self.print_header("change working directory")
-        self.logger.debug("{:22}{}".format("Working Directory", os.getcwd()))
-
+        self.print_formatted_config("-a: addr", HELP_ADDR,  self.addr,  DEFAULT_ADDR)
+        self.print_formatted_config("-o: port", HELP_PORT,  self.port,  DEFAULT_PORT)
+        self.print_formatted_config("-w: wdir", HELP_WDIR,  self.wdir,  DEFAULT_WDIR)
+        self.print_formatted_config("-f: file", HELP_FILE,  self.file,  DEFAULT_FILE)
+        self.print_formatted_config("-s: start",HELP_START, self.start, DEFAULT_START)
+        self.print_formatted_config("-k: kill", HELP_KILL,  self.kill,  DEFAULT_KILL)
+        # print stdout logger config
+        name = str(self.threshold)
+        ival = str(int(self.threshold))
+        text = "{} ({})".format(name, ival) if name != ival else "{}".format(name)
+        self.print_formatted_config("-l: log-level", HELP_LOG_LEVEL, text)
+        self.print_formatted_config("-m: monochrome", HELP_MONOCHROME, self.monochrome, DEFAULT_MONOCHROME)
+        self.print_formatted_config("-dbu: dont-buffer", HELP_DONT_BUFFER, not self.buffered, not DEFAULT_BUFFERED)
 
     def connect_to_local_service(self):
         self.print_header("connect to local service")
@@ -402,44 +392,52 @@ class Service:
         else:
             self.start_local_service()
 
-
     # TO DO IN FUTURE
     def connect_to_remote_service(self):
         self.print_header("connect to remote service")
-        self.logger.warn("WARNING: Local service file setting (file={}) ignored.".format(helper.compress(self.file)))
-        self.logger.warn("WARNING: Setting to always start a local service (start={}) ignored.".format(self.start))
-        self.logger.warn("WARNING: Setting to kill local services (kill={}) ignored.".format(self.kill))
-        self.logger.fatal("FATAL: Connecting to a remote service is experimental at this moment.")
+        self.warn("WARNING: File setting (file={}) is ignored.".format(helper.squeeze(self.file, maxlen=30)))
+        if self.start:
+            self.warn("WARNING: Setting to always start a new launcher service (start={}) is ignored.".format(self.start))
+        if self.kill:
+            self.warn("WARNING: Setting to kill existing launcher services (kill={}) is ignored.".format(self.kill))
+        msg = "Connecting to a remote service is a feature in future."
+        self.fatal("FATAL: {}".format(msg))
+        raise LauncherServiceError(msg)
 
+    def print_header(self, text, level: typing.Union[int, str, LogLevel]="debug", buffer=False):
+        level = LogLevel(level)
+        if level >= LogLevel("info"):
+            colorize = color.bold
+            fillchar = "="
+        elif level >= LogLevel("debug"):
+            colorize = color.black_on_cyan
+            fillchar = "-"
+        else:
+            colorize = color.vanilla
+            fillchar = "⎯"
+        self.log(helper.pad(colorize(text), total=100, left=20, char=fillchar, sep=" ", textlen=len(text)), level=level, buffer=buffer)
 
-    def print_header(self, text, level="DEBUG", buffer=False):
-        self.logger.log(helper.format_header(text, level=str(level)), level=level, buffer=buffer)
-
-
-    def print_formatted_config(self, label, help, value, default_value=None, compress=True):
+    def print_formatted_config(self, label, help, value, default_value=None):
         different = value is not None and value != default_value
-        compressed = helper.compress(str(value if value is not None else default_value))
-        highlighted = color.blue(compressed) if different else compressed
-        self.logger.debug("{:31}{:48}{}".format(color.yellow(label), help, highlighted))
-
+        squeezed = helper.squeeze(str(value if value is not None else default_value), maxlen=30)
+        highlighted = color.blue(squeezed) if different else squeezed
+        self.debug("{:31}{:48}{}".format(color.yellow(label), help, highlighted))
 
     def get_local_services(self) -> typing.List[int]:
         """Returns a list of 0, 1, or more process IDs"""
         pid_list = helper.get_pid_list_by_pattern(PROGRAM)
         if len(pid_list) == 0:
-            self.logger.debug(color.yellow("No launcher is running currently."))
+            self.debug(color.yellow("No launcher is running currently."))
         elif len(pid_list) == 1:
-            self.logger.debug(color.green("Launcher service is running with process ID [{}].".format(pid_list[0])))
+            self.debug(color.green("Launcher service is running with process ID [{}].".format(pid_list[0])))
         else:
-            self.logger.debug(color.green("Multiple launcher services are running with process IDs {}".format(pid_list)))
+            self.debug(color.green("Multiple launcher services are running with process IDs {}".format(pid_list)))
         return pid_list
-
 
     def kill_local_services(self, pid_list):
         for x in pid_list:
-            self.logger.debug(color.yellow("Killing exisiting launcher service with process ID [{}].".format(x)))
+            self.debug(color.yellow("Killing exisiting launcher service with process ID [{}].".format(x)))
             helper.terminate(x)
-
 
     def connect_to_existing_local_service(self, pid):
         cmd_and_args = helper.get_cmd_and_args_by_pid(pid)
@@ -450,33 +448,39 @@ class Service:
                 existing_port = int(val.split(":")[-1])
                 break
         else:
-            self.logger.error("ERROR: Failed to extract \"--http-server-address\" from \"{}\" (process ID {})!".format(cmd_and_args, pid))
-        self.logger.debug(color.green("Connecting to existing launcher service with process ID [{}].".format(pid)))
-        self.logger.debug(color.green("No new launcher service will be started."))
-        self.logger.debug("Configuration of existing launcher service:")
-        self.logger.debug("--- Listening port: [{}]".format(color.blue(existing_port)))
-        self.logger.debug("--- Path to file: [{}]".format(color.blue(existing_file)))
+            self.error("ERROR: Failed to extract \"--http-server-address\" from \"{}\" (process ID {})!".format(cmd_and_args, pid))
+        self.debug(color.green("Connecting to existing launcher service with process ID [{}].".format(pid)))
+        self.debug(color.green("No new launcher service will be started."))
+        self.debug("Configuration of existing launcher service:")
+        self.debug("--- Listening port: [{}]".format(color.blue(existing_port)))
+        self.debug("--- Path to file: [{}]".format(color.blue(existing_file)))
         if self.port != existing_port:
-            self.logger.warn("WARNING: Port setting (port={}) ignored.".format(self.port))
+            self.warn("WARNING: Port setting (port={}) is ignored.".format(self.port))
             self.port = existing_port
         if self.file != existing_file:
-            self.logger.warn("WARNING: File setting (file={}) ignored.".format(self.file))
+            self.warn("WARNING: File setting (file={}) is ignored.".format(self.file))
             self.file = existing_file
-        self.logger.debug("To always start a new launcher service, pass {} or {}.".format(color.yellow("-s"), color.yellow("--start")))
-        self.logger.debug("To kill existing launcher services, pass {} or {}.".format(color.yellow("-k"), color.yellow("--kill")))
-
+        self.debug("To always start a new launcher service, pass {} or {}.".format(color.yellow("-s"), color.yellow("--start")))
+        self.debug("To kill existing launcher services, pass {} or {}.".format(color.yellow("-k"), color.yellow("--kill")))
 
     def start_local_service(self):
-        self.logger.debug(color.green("Starting a new launcher service."))
-        try:
-            helper.quiet_run([self.file, f"--http-server-address=0.0.0.0:{self.port}", "--http-threads=4"])
-        except RuntimeError as e:
-            x = str(e)
-            self.error(f">>> [Launcher Service] {x[x.find(']')+2:]}")
-            raise RuntimeError(e)
+        self.debug(color.green("Starting a new launcher service."))
+        with open(PROGRAM_LOG, "w") as f:
+            pass
+        os.system("{} --http-server-address=0.0.0.0:{} --http-threads=4 >{} 2>&1 &".format(self.file, self.port, PROGRAM_LOG))
+        time.sleep(1)
+        with open(PROGRAM_LOG, "r") as f:
+            msg = ""
+            for line in f:
+                if line.startswith("error"):
+                    msg = line[line.find("]")+2:]
+                    self.error("ERROR: {}".format(msg))
+            if msg:
+                raise LauncherServiceError(msg)
         if not self.get_local_services():
-            self.error("ERROR: Launcher service is not started properly!")
-
+            msg = "ERROR: Launcher service is not started properly!"
+            self.error(msg)
+            raise LauncherServiceError(msg)
 
 
 class Cluster:
@@ -628,11 +632,10 @@ class Cluster:
         6. set producers
         7. check if nodes are in sync
         """
-        self.info(">>> [BIOS Launch] ----------------------- BEGIN ------------------------------------------")
+        self.info(">>> [BIOS Launch] ----------------------- BEGIN ----------------------------------------------------")
         self.print_config()
         self.launch_cluster()
-        # self.get_cluster_info(level="debug", response_text_level="debug")
-        bassert(self.are_all_nodes_ready(response_text_level="debug")[0])
+        bassert(self.wait_nodes_ready())
         self.schedule_protocol_feature_activations()
         self.set_bios_contract()
         if not dont_newaccount:
@@ -642,7 +645,7 @@ class Cluster:
         self.check_sync()
         for t in self.verify_threads:
             t.join()
-        self.info(">>> [BIOS Launch] ----------------------- END --------------------------------------------")
+        self.info(">>> [BIOS Launch] ----------------------- END ------------------------------------------------------")
 
 
     def regular_launch(self, dont_newaccount=False, dont_vote=False):
@@ -958,11 +961,22 @@ class Cluster:
         return "error" not in self.get_cluster_info(**call_kwargs).response_dict["result"][node_id][1]
 
 
-    def are_all_nodes_ready(self, node_id_list=None, **call_kwargs):
-        node_id_list = helper.override(list(range(self.node_count)), node_id_list)
-        result = self.get_cluster_info(**call_kwargs).response_dict["result"]
-        error_nodes = [x[0] for x in result if x[0] in node_id_list and "error" in x[1]]
-        return len(error_nodes) == 0, error_nodes
+    def wait_nodes_ready(self, nodes=None, retry=10, sleep=1, level="debug", sublevel="trace"):
+        if nodes is None:
+            nodes = list(range(self.node_count))
+        self.print_header("wait for nodes to get ready", level=level)
+        while True:
+            result = self.get_cluster_info(level=sublevel).response_dict["result"]
+            error_nodes = [x[0] for x in result if x[0] in nodes and "error" in x[1]]
+            if len(error_nodes) == 0:
+                self.log("All {} nodes are ready.".format(len(nodes)), level=level)
+                return True
+            if retry > 0:
+                self.log("Nodes that are not ready: {}. {} retries remain. Sleep for {}s.".format(error_nodes, retry, sleep), level=level)
+                time.sleep(sleep)
+                retry -= 1
+            else:
+                return False
 
 
     def get_head_block_number(self, node_id=0):
@@ -1008,27 +1022,7 @@ class Cluster:
                           name=contract)
 
 
-    # def bios_create_accounts(self, name, verify_key="irreversible", buffer=False):
-    #     actions = [{"account": "eosio",
-    #                 "action": "newaccount",
-    #                 "permissions":[{"actor": "eosio",
-    #                                 "permission": "active"}],
-    #                 "data":{"creator": "eosio",
-    #                         "name": name,
-    #                         "owner": {"threshold": 1,
-    #                                   "keys": [{"key": PRODUCER_KEY,
-    #                                             "weight":1}],
-    #                                   "accounts": [],
-    #                                   "waits": []},
-    #                         "active":{"threshold": 1,
-    #                                   "keys": [{"key": PRODUCER_KEY,
-    #                                             "weight":1}],
-    #                                   "accounts": [],
-    #                                   "waits": []}}}]
-    #     return self.push_actions(actions=actions, header=f"bios create \"{name}\" account", verify_key=verify_key, buffer=buffer)
-
-
-    def bios_create_accounts(self, accounts: typing.Union[str, typing.List[str]], verify_key="irreversible", buffer=False):
+    def bios_create_accounts(self, accounts: typing.Union[str, typing.List[str]], node_id=0, verify_key="irreversible", buffer=False):
         actions = []
         accounts = [accounts] if isinstance(accounts, str) else accounts
         for name in accounts:
@@ -1048,10 +1042,10 @@ class Cluster:
                                                     "weight":1}],
                                           "accounts": [],
                                           "waits": []}}}]
-        if len(accounts) == 1:
-            return self.push_actions(actions=actions, header=f"bios create \"{accounts[0]}\" account", verify_key=verify_key, buffer=buffer)
-        else:
-            return self.push_actions(actions=actions, header=f"bios create {len(actions)} accounts", verify_key=verify_key, buffer=buffer)
+
+        header = "bios create "
+        header += f"\"{accounts[0]}\" account" if len(accounts) == 1 else f"{len(actions)} accounts"
+        return self.push_actions(actions=actions, node_id=node_id, header=header, verify_key=verify_key, buffer=buffer)
 
 
     def bios_create_accounts_in_parallel(self, accounts, verify_key="irreversible"):
@@ -1267,14 +1261,14 @@ class Cluster:
                 self.log(color.green(f"<Num of Nodes In Sync> {sync_nodes}"), level=level)
                 self.log(color.green(f"<Head Block Num> {sync_block}"), level=level)
                 self.log(color.green(f"<Head Block ID> {sync_head}"), level=level)
-                self.log(color.black_on_green("nodes in sync"), level=level)
+                self.log(color.black_on_green("Nodes In Sync"), level=level)
                 return SyncResult(True, sync_nodes, min_block_num)
             if max_block_lag and max_block_num - min_block_num > max_block_lag:
                 self.log(f"Gap between max and min block numbers ({max_block_num - min_block_num}) is larger than tolerance ({max_block_lag}).", level=level)
                 break
             time.sleep(sleep)
             retry -= 1
-        msg = "nodes out of sync"
+        msg = "Nodes Out of Sync"
         if not dont_raise:
             self.error(color.black_on_red(msg))
             raise SyncError(msg)
@@ -1337,7 +1331,7 @@ class Cluster:
             raise BlockchainError(msg)
             return False
 
-    def wait_get_block(self, block_num, retry=1) -> dict:
+    def wait_get_block(self, block_num, retry=5) -> dict:
         """Get block information by block num. If that block has not been produced, wait for it."""
         while retry >= 0:
             head_block_num = self.get_head_block_number()
@@ -1351,7 +1345,7 @@ class Cluster:
         raise BlockchainError(msg)
 
 
-    def wait_get_producer_by_block(self, block_num, retry=1) -> str:
+    def wait_get_producer_by_block(self, block_num, retry=5) -> str:
         """Get block producer by block num. If that block has not been produced, wait for it."""
         return self.wait_get_block(block_num, retry=retry)["producer"]
 
@@ -1512,8 +1506,9 @@ class Cluster:
         verify_retry_level = helper.override(retry_info_level, verify_retry_level)
         verify_error_level = helper.override(error_level, verify_error_level)
 
-        self.log(helper.make_header(header, level=header_level), level=header_level, buffer=buffer)
-        cx = Connection(url=f"http://{self.service.address}:{self.service.port}/v1/launcher/{api}", data=data)
+        # self.log(helper.make_header(header, level=header_level), level=header_level, buffer=buffer)
+        self.print_header(header, level=header_level, buffer=buffer)
+        cx = Connection(url=f"http://{self.service.addr}:{self.service.port}/v1/launcher/{api}", data=data)
         self.log(cx.url, level=url_level, buffer=buffer)
         self.log(cx.request_text, level=request_text_level, buffer=buffer)
         while not cx.ok and http_retry > 0:
@@ -1577,3 +1572,33 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+
+
+    # def bios_create_accounts(self, name, verify_key="irreversible", buffer=False):
+    #     actions = [{"account": "eosio",
+    #                 "action": "newaccount",
+    #                 "permissions":[{"actor": "eosio",
+    #                                 "permission": "active"}],
+    #                 "data":{"creator": "eosio",
+    #                         "name": name,
+    #                         "owner": {"threshold": 1,
+    #                                   "keys": [{"key": PRODUCER_KEY,
+    #                                             "weight":1}],
+    #                                   "accounts": [],
+    #                                   "waits": []},
+    #                         "active":{"threshold": 1,
+    #                                   "keys": [{"key": PRODUCER_KEY,
+    #                                             "weight":1}],
+    #                                   "accounts": [],
+    #                                   "waits": []}}}]
+    #     return self.push_actions(actions=actions, header=f"bios create \"{name}\" account", verify_key=verify_key, buffer=buffer)
+
+
+    # def are_all_nodes_ready(self, node_id_list=None, **call_kwargs):
+    #     node_id_list = helper.override(list(range(self.node_count)), node_id_list)
+    #     result = self.get_cluster_info(**call_kwargs).response_dict["result"]
+    #     error_nodes = [x[0] for x in result if x[0] in node_id_list and "error" in x[1]]
+    #     return len(error_nodes) == 0, error_nodes
+

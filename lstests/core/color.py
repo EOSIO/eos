@@ -2,6 +2,8 @@
 
 from typing import Optional, List, Union
 
+import re
+
 
 _STYLES = {"bold":          1,
            "faint":         2,
@@ -21,6 +23,8 @@ _COLORS = {"black":         0,
            "white":         7}
 
 RESET = "\033[0m"
+
+REGEX = re.compile(r'\033\[[0-9]+(;[0-9]+)?m')
 
 
 def vanilla(text):

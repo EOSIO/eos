@@ -3,9 +3,11 @@
 import copy
 import json
 import re
+import os
 import subprocess
 import time
 import typing
+import threading
 
 from typing import List, Optional, Union
 
@@ -26,15 +28,14 @@ VERTICAL_BAR = "│"
 
 
 def vislen(s: str):
-    """return real visual length of a str after removing color code"""
+    """Return visible length of a string after removing color codes in it."""
     return len(re.compile(r"\033\[[0-9]+(;[0-9]+)?m").sub("", s))
 
 
-def compress(s: str, maxlen: int = 16, ellipsis="..", tail: int = 0):
+def squeeze(s, maxlen, tail=0):
     if len(s) <= maxlen:
         return s
-    return s[:(maxlen - tail - 2)] + ".." + (s[-tail:] if tail else "")
-
+    return s[:(maxlen-tail-2)] + ".." + (s[-tail:] if tail else "")
 
 # todo: review usage
 def extract(resp: requests.models.Response, key: str, fallback):
@@ -48,39 +49,39 @@ def fetch(data: dict, keys: List[str]) -> dict:
     return dict((k, data[k]) for k in keys)
 
 
-def get_current_time(date=True, precision=3, local_time=False, time_zone=False):
+def get_time(date=True, precision=3, local_time=False, time_zone=False):
     now = time.time()
-    form = "%H:%M:%S"
+    fmt = "%H:%M:%S"
     if date:
-        form = "T".join(["%Y-%m-%d", form])
+        fmt = "T".join(["%Y-%m-%d", fmt])
     if precision:
         subsec = int((now - int(now)) * (10 ** precision))
-        form = ".".join([form, "{{:0{}d}}".format(precision).format(subsec)])
+        fmt = ".".join([fmt, f"{subsec:0{precision}d}"])
     if time_zone:
-        form = " ".join([form, "%Z"])
-    struct = time.localtime if local_time else time.gmtime
-    return time.strftime(form, struct(now))
+        fmt = " ".join([fmt, "%Z"])
+    convert = time.localtime if local_time else time.gmtime
+    return time.strftime(fmt, convert(now))
 
 
 def format_header(header, level: str):
     upper = level.upper()
-    if upper == "INFO":
+    if upper == "info":
         return (">>> {}".format(header.title()))
-    if upper == "DEBUG":
+    if upper == "debug":
         return pad(color.black_on_cyan(header), char="-")
-    if upper == "TRACE":
+    if upper == "trace":
         return pad(header, char="⎯")
     raise RuntimeError("Invalid header level \"{}\"".format(level))
 
 
-def make_header(header, level):
-    level = logger.LogLevel.to_str(level)
-    if level == "INFO":
+def make_header(header, level="debug"):
+    level = str(logger.LogLevel(level))
+    if level == "info":
         return (">>> {}".format(header.title()))
-    if level == "DEBUG":
-        return pad(color.black_on_cyan(header), char="-")
-    if level == "TRACE":
-        return pad(header, char="⎯")
+    if level == "debug":
+        return pad(color.black_on_cyan(header), total=100, left=20, char="-")
+    if level == "trace":
+        return pad(header, total=100, left=20, char="⎯")
     return header
 
 
@@ -139,24 +140,31 @@ def override(*args):
     return None
 
 
-def pad(text: str, left=20, total=90, right=None, char="-", sep=" ") -> str:
-    """
-    Summary
-    -------
-    This function provides padding for a string.
+# def pad(text: str, left=20, total=90, right=None, char="-", sep=" ") -> str:
+#     """
+#     Summary
+#     -------
+#     This function provides padding for a string.
 
-    Doctest
-    -------
-    >>> # implied_total (24) < total (25), so total becomes 24.
-    >>> pad("hello, world", left=3, right=3, total=25, char=":", sep=" ~ ")
-    '::: ~ hello, world ~ :::'
-    """
-    if right is not None:
-        implied_total = vislen(char) * (left + right) + vislen(sep) * 2 + vislen(text)
-        total = min(total, implied_total)
-    string = char * left + sep + text + sep
-    offset = len(string) - vislen(string)
-    return string.ljust(total + offset, char)
+#     Doctest
+#     -------
+#     >>> # implied_total (24) < total (25), so total becomes 24.
+#     >>> pad("hello, world", left=3, right=3, total=25, char=":", sep=" ~ ")
+#     '::: ~ hello, world ~ :::'
+#     """
+#     if right is not None:
+#         implied_total = vislen(char) * (left + right) + vislen(sep) * 2 + vislen(text)
+#         total = min(total, implied_total)
+#     string = char * left + sep + text + sep
+#     offset = len(string) - vislen(string)
+#     return string.ljust(total + offset, char)
+
+
+def pad(text, total, left=0, char=" ", sep="", textlen=None) -> str:
+    """textlen is a hint for visable length of text"""
+    textlen = vislen(text) if textlen is None else textlen
+    offset = len(text) - textlen
+    return (char * left + sep + text + sep).ljust(total + offset, char)
 
 
 def abridge(data: typing.Union[dict, list], maxlen=79):
@@ -179,44 +187,31 @@ def trim(data: typing.Union[dict, list], maxlen=79):
                 trim(data[key], maxlen=maxlen)
             else:
                 if isinstance(data[key], str) and len(data[key]) > maxlen:
-                    data[key] = compress(data[key], maxlen=maxlen, tail=3)
+                    data[key] = squeeze(data[key], maxlen=maxlen, tail=3)
     elif isinstance(data, list):
         for item in data:
             if isinstance(item, (list, dict)):
                 trim(item, maxlen=maxlen)
             else:
                 if isinstance(item, str) and len(item) > maxlen:
-                    item = compress(item, maxlen=maxlen, tail=3)
+                    item = squeeze(item, maxlen=maxlen, tail=3)
 
 
 # --------------- subprocess-related ----------------------------------------------------------------------------------
 
-def get_cmd_and_args_by_pid(pid: typing.Union[int, str]):
-    return interactive_run(["ps", "-p", str(pid), "-o", "command="])
+
+def get_cmd_and_args_by_pid(pid: typing.Union[int, str]) -> str:
+    return subprocess.run(["ps", "-p", str(pid), "-o", "command="], capture_output=True, text=True).stdout
 
 
 def get_pid_list_by_pattern(pattern: str) -> typing.List[int]:
-    out = interactive_run(["pgrep", "-f", pattern])
-    return [int(x) for x in out.splitlines()]
+    out = subprocess.run(["pgrep", "-f", pattern], capture_output=True, text=True).stdout.splitlines()
+    return [int(x) for x in out]
 
 
-def interactive_run(args: list):
-    return subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True).stdout.read().rstrip()
+def terminate(pid: typing.Union[int, str]):
+    subprocess.run(["kill", "-SIGTERM", str(pid)])
 
-
-def quiet_run(args: list, timeout=0.1):
-    p = subprocess.Popen(args, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
-    try:
-        _, stderr = p.communicate(timeout=timeout)
-        for line in stderr.splitlines():
-            if line.startswith("error"):
-                raise RuntimeError(line)
-    except subprocess.TimeoutExpired:
-        return
-
-
-def terminate(pid: typing.Union[int, str]) -> None:
-    quiet_run(["kill", "-SIGTERM", str(pid)])
 
 # --------------- test ------------------------------------------------------------------------------------------------
 
@@ -228,3 +223,20 @@ if __name__ == '__main__':
     import doctest
     doctest.testmod()
     test()
+
+
+# def run(args: list):
+#     return subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True).stdout.readlines()
+
+# def timeout_run(args: list, timeout=1):
+#     p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+#     out = []
+#     def getline():
+#         out.append(p.stdout.readline())
+#     while True:
+#         t = threading.Thread(target=getline, daemon=True)
+#         t.start()
+#         t.join(timeout=timeout)
+#         if t.is_alive() or not out or not out[-1]:
+#             break
+#     return out
