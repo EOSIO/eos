@@ -3291,8 +3291,8 @@ void controller_impl::on_activation<builtin_protocol_feature_t::kv_database>() {
       add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "kv_it_compare" );
       add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "kv_it_key_compare" );
       add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "kv_it_move_to_end" );
-      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "kv_it_increment" );
-      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "kv_it_decrement" );
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "kv_it_next" );
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "kv_it_prev" );
       add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "kv_it_lower_bound" );
       add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "kv_it_key" );
       add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "kv_it_value" );

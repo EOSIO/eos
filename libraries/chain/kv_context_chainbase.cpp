@@ -83,7 +83,7 @@ namespace eosio { namespace chain {
          return kv_it_stat::iterator_end;
       }
 
-      kv_it_stat kv_it_increment() override {
+      kv_it_stat kv_it_next() override {
          if (kv_key) {
             auto it = idx.lower_bound(boost::make_tuple(database_id, contract, *kv_key));
             if (it != idx.end()) {
@@ -97,7 +97,7 @@ namespace eosio { namespace chain {
          return move_to(idx.lower_bound(boost::make_tuple(database_id, contract, prefix)));
       }
 
-      kv_it_stat kv_it_decrement() override {
+      kv_it_stat kv_it_prev() override {
          std::decay_t<decltype(idx.end())> it;
          if (kv_key)
             it = idx.lower_bound(boost::make_tuple(database_id, contract, *kv_key));

@@ -1473,11 +1473,11 @@ class kv_database_api : public context_aware_api {
       int32_t kv_it_move_to_end(uint32_t itr) {
          return context.kv_it_move_to_end(itr);
       }
-      int32_t kv_it_increment(uint32_t itr) {
-         return context.kv_it_increment(itr);
+      int32_t kv_it_next(uint32_t itr) {
+         return context.kv_it_next(itr);
       }
-      int32_t kv_it_decrement(uint32_t itr) {
-         return context.kv_it_decrement(itr);
+      int32_t kv_it_prev(uint32_t itr) {
+         return context.kv_it_prev(itr);
       }
       int32_t kv_it_lower_bound(uint32_t itr, array_ptr<const char> key, uint32_t size) {
          return context.kv_it_lower_bound(itr, key, size);
@@ -1985,8 +1985,8 @@ REGISTER_INTRINSICS( kv_database_api,
    (kv_it_compare,      int(int,int)                           )
    (kv_it_key_compare,  int(int,int,int)                       )
    (kv_it_move_to_end,  int(int)                               )
-   (kv_it_increment,    int(int)                               )
-   (kv_it_decrement,    int(int)                               )
+   (kv_it_next,         int(int)                               )
+   (kv_it_prev,         int(int)                               )
    (kv_it_lower_bound,  int(int,int,int)                       )
    (kv_it_key,          int(int,int,int,int,int)               )
    (kv_it_value,        int(int,int,int,int,int)               )

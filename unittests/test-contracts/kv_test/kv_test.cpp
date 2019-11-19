@@ -21,8 +21,8 @@ IMPORT it_stat  kv_it_status(uint32_t itr);
 IMPORT int      kv_it_compare(uint32_t itr_a, uint32_t itr_b);
 IMPORT int      kv_it_key_compare(uint32_t itr, const char* key, uint32_t size);
 IMPORT it_stat  kv_it_move_to_end(uint32_t itr);
-IMPORT it_stat  kv_it_increment(uint32_t itr);
-IMPORT it_stat  kv_it_decrement(uint32_t itr);
+IMPORT it_stat  kv_it_next(uint32_t itr);
+IMPORT it_stat  kv_it_prev(uint32_t itr);
 IMPORT it_stat  kv_it_lower_bound(uint32_t itr, const char* key, uint32_t size);
 IMPORT it_stat  kv_it_key(uint32_t itr, uint32_t offset, char* dest, uint32_t size, uint32_t& actual_size);
 IMPORT it_stat  kv_it_value(uint32_t itr, uint32_t offset, char* dest, uint32_t size, uint32_t& actual_size);
@@ -97,7 +97,7 @@ class [[eosio::contract("kv_test")]] kvtest : public eosio::contract {
       if (lower)
          stat = kv_it_lower_bound(itr, lower->data(), lower->size());
       else
-         stat = kv_it_increment(itr);
+         stat = kv_it_next(itr);
       for (auto& exp : expected) {
          check(stat == iterator_ok, "missing kv pairs");
          check(stat == kv_it_status(itr), "status mismatch (a)");
@@ -160,7 +160,7 @@ class [[eosio::contract("kv_test")]] kvtest : public eosio::contract {
             }
          }
 
-         stat = kv_it_increment(itr);
+         stat = kv_it_next(itr);
       }
       check(stat == iterator_end, "extra kv pair (g)");
       check(stat == kv_it_status(itr), "status mismatch (g)");
@@ -175,7 +175,7 @@ class [[eosio::contract("kv_test")]] kvtest : public eosio::contract {
       if (lower)
          stat = kv_it_lower_bound(itr, lower->data(), lower->size());
       else
-         stat = kv_it_decrement(itr);
+         stat = kv_it_prev(itr);
       for (auto& exp : expected) {
          check(stat == iterator_ok, "missing kv pairs");
          check(stat == kv_it_status(itr), "status mismatch (a)");
@@ -210,7 +210,7 @@ class [[eosio::contract("kv_test")]] kvtest : public eosio::contract {
             check(v[v.size() - 2] == 42 && v[v.size() - 1] == 53, "buffer overrun (e)");
          }
 
-         stat = kv_it_decrement(itr);
+         stat = kv_it_prev(itr);
       }
       check(stat == iterator_end, "extra kv pair (g)");
       check(stat == kv_it_status(itr), "status mismatch (g)");

@@ -911,14 +911,14 @@ int32_t apply_context::kv_it_move_to_end(uint32_t itr) {
    return static_cast<int32_t>(kv_iterators[itr]->kv_it_move_to_end());
 }
 
-int32_t apply_context::kv_it_increment(uint32_t itr) {
+int32_t apply_context::kv_it_next(uint32_t itr) {
    kv_check_iterator(itr);
-   return static_cast<int32_t>(kv_iterators[itr]->kv_it_increment());
+   return static_cast<int32_t>(kv_iterators[itr]->kv_it_next());
 }
 
-int32_t apply_context::kv_it_decrement(uint32_t itr) {
+int32_t apply_context::kv_it_prev(uint32_t itr) {
    kv_check_iterator(itr);
-   return static_cast<int32_t>(kv_iterators[itr]->kv_it_decrement());
+   return static_cast<int32_t>(kv_iterators[itr]->kv_it_prev());
 }
 
 int32_t apply_context::kv_it_lower_bound(uint32_t itr, const char* key, uint32_t size) {
