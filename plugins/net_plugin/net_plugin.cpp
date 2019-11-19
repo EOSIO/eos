@@ -2472,7 +2472,7 @@ namespace eosio {
 
       connecting = false;
       if (msg.generation == 1) {
-         if( msg.node_id == node_id) {
+         if( msg.node_id == my_impl->node_id) {
             fc_elog( logger, "Self connection detected node_id ${id}. Closing connection", ("id", node_id) );
             enqueue( go_away_message( self ) );
             return;
