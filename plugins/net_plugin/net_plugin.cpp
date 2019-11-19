@@ -422,8 +422,8 @@ namespace eosio {
    /**
     * Index by start_block_num
     */
-   struct sync_state {
-      sync_state(uint32_t start = 0, uint32_t end = 0, uint32_t last_acted = 0)
+   struct peer_sync_state {
+      explicit peer_sync_state(uint32_t start = 0, uint32_t end = 0, uint32_t last_acted = 0)
          :start_block( start ), end_block( end ), last( last_acted ),
           start_time(time_point::now())
       {}
@@ -551,7 +551,7 @@ namespace eosio {
 
       void update_endpoints();
 
-      optional<sync_state>    peer_requested;  // this peer is requesting info from us
+      optional<peer_sync_state>    peer_requested;  // this peer is requesting info from us
 
       std::atomic<bool>                         socket_open{false};
 
@@ -983,13 +983,13 @@ namespace eosio {
       g_conn.unlock();
 
       if( !peer_requested ) {
-         peer_requested = sync_state( block_header::num_from_id(lib_id)+1,
-                                      block_header::num_from_id(head_id),
-                                      block_header::num_from_id(lib_id) );
+         peer_requested = peer_sync_state( block_header::num_from_id(lib_id)+1,
+                                           block_header::num_from_id(head_id),
+                                           block_header::num_from_id(lib_id) );
       } else {
          uint32_t start = std::min( peer_requested->last + 1, block_header::num_from_id(lib_id)+1 );
          uint32_t end   = std::max( peer_requested->end_block, block_header::num_from_id(head_id) );
-         peer_requested = sync_state( start, end, start - 1 );
+         peer_requested = peer_sync_state( start, end, start - 1 );
       }
       if( peer_requested->start_block <= peer_requested->end_block ) {
          fc_dlog( logger, "enqueue ${s} - ${e}", ("s", peer_requested->start_block)( "e", peer_requested->end_block ) );
@@ -2745,7 +2745,7 @@ namespace eosio {
          peer_requested.reset();
          flush_queues();
       } else {
-         peer_requested = sync_state( msg.start_block, msg.end_block, msg.start_block-1);
+         peer_requested = peer_sync_state( msg.start_block, msg.end_block, msg.start_block-1);
          enqueue_sync_block();
       }
    }
