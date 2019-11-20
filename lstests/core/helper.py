@@ -111,8 +111,6 @@ def format_tokens(amount: int, ndigits=4, symbol="SYS"):
     return "{{:.{}f}} {{}}".format(ndigits).format(amount, symbol)
 
 
-
-
 def optional(x, y):
     return x if y is not None else None
 
@@ -140,24 +138,11 @@ def override(*args):
     return None
 
 
-# def pad(text: str, left=20, total=90, right=None, char="-", sep=" ") -> str:
-#     """
-#     Summary
-#     -------
-#     This function provides padding for a string.
+# --------------- text-related ----------------------------------------------------------------------------------------
 
-#     Doctest
-#     -------
-#     >>> # implied_total (24) < total (25), so total becomes 24.
-#     >>> pad("hello, world", left=3, right=3, total=25, char=":", sep=" ~ ")
-#     '::: ~ hello, world ~ :::'
-#     """
-#     if right is not None:
-#         implied_total = vislen(char) * (left + right) + vislen(sep) * 2 + vislen(text)
-#         total = min(total, implied_total)
-#     string = char * left + sep + text + sep
-#     offset = len(string) - vislen(string)
-#     return string.ljust(total + offset, char)
+
+def plural(word, count, suffix="s"):
+    return word + suffix if count > 1 else  word
 
 
 def pad(text, total, left=0, char=" ", sep="", textlen=None) -> str:
@@ -240,3 +225,25 @@ if __name__ == '__main__':
 #         if t.is_alive() or not out or not out[-1]:
 #             break
 #     return out
+
+
+
+
+# def pad(text: str, left=20, total=90, right=None, char="-", sep=" ") -> str:
+#     """
+#     Summary
+#     -------
+#     This function provides padding for a string.
+
+#     Doctest
+#     -------
+#     >>> # implied_total (24) < total (25), so total becomes 24.
+#     >>> pad("hello, world", left=3, right=3, total=25, char=":", sep=" ~ ")
+#     '::: ~ hello, world ~ :::'
+#     """
+#     if right is not None:
+#         implied_total = vislen(char) * (left + right) + vislen(sep) * 2 + vislen(text)
+#         total = min(total, implied_total)
+#     string = char * left + sep + text + sep
+#     offset = len(string) - vislen(string)
+#     return string.ljust(total + offset, char)

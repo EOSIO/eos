@@ -7,9 +7,9 @@ from core.service import Service, Cluster
 def init_cluster():
     test = "schedule"
     logger = Logger(ScreenWriter(threshold="info"),
-                    FileWriter(filename=f"{test}-info.log", threshold="info", monochrome=True),
-                    FileWriter(filename=f"{test}-debug.log", threshold="debug", monochrome=True),
-                    FileWriter(filename=f"{test}-trace.log", threshold="trace", monochrome=True))
+                    FileWriter(filename=f"{test}-info.log", threshold="info",  monochrome=True),
+                    FileWriter(filename=f"{test}-debug.log", threshold="debug",  monochrome=True),
+                    FileWriter(filename=f"{test}-trace.log", threshold="trace",  monochrome=True))
     service = Service(logger=logger)
     cluster = Cluster(service=service, node_count=3, pnode_count=3, producer_count=12, dont_setprod=True, verify_retry=600, verify_async=True)
     return cluster
