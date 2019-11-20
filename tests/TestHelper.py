@@ -11,20 +11,21 @@ class AppArgs:
         self.args=[]
 
     class AppArg:
-        def __init__(self, flag, type, help, default, choices=None):
+        def __init__(self, flag, help, type=None, default=None, choices=None, action=None):
             self.flag=flag
             self.type=type
             self.help=help
             self.default=default
             self.choices=choices
+            self.action=action
 
     def add(self, flag, type, help, default, choices=None):
-        arg=self.AppArg(flag, type, help, default, choices)
+        arg=self.AppArg(flag, help, type=type, default=default, choices=choices)
         self.args.append(arg)
 
 
     def add_bool(self, flag, help, action='store_true'):
-        arg=self.AppArg(flag=flag, help=help, action=action)
+        arg=self.AppArg(flag, help, action=action)
         self.args.append(arg)
 
 # pylint: disable=too-many-instance-attributes
@@ -114,7 +115,10 @@ class TestHelper(object):
             parser.add_argument("--alternate-version-labels-file", type=str, help="Provide a file to define the labels that can be used in the test and the path to the version installation associated with that.")
 
         for arg in applicationSpecificArgs.args:
-            parser.add_argument(arg.flag, type=arg.type, help=arg.help, choices=arg.choices, default=arg.default)
+            if arg.type is not None:
+                parser.add_argument(arg.flag, type=arg.type, help=arg.help, choices=arg.choices, default=arg.default)
+            else:
+                parser.add_argument(arg.flag, help=arg.help, action=arg.action)
 
         args = parser.parse_args()
         return args
