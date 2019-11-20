@@ -1004,7 +1004,7 @@ class Cluster:
                           name=contract)
 
 
-    def bios_create_accounts(self, accounts: typing.Union[str, typing.List[str]], node_id=0, verify_key="irreversible", buffer=False):
+    def bios_create_accounts(self, accounts: typing.Union[str, typing.List[str]], node_id=0, verify_key="irreversible", **call_kwargs):
         actions = []
         accounts = [accounts] if isinstance(accounts, str) else accounts
         for name in accounts:
@@ -1027,7 +1027,7 @@ class Cluster:
 
         header = "bios create "
         header += f"\"{accounts[0]}\" account" if len(accounts) == 1 else f"{len(actions)} accounts"
-        return self.push_actions(actions=actions, node_id=node_id, header=header, verify_key=verify_key, buffer=buffer)
+        return self.push_actions(actions=actions, node_id=node_id, header=header, verify_key=verify_key, **call_kwargs)
 
 
     def bios_create_accounts_in_parallel(self, accounts, verify_key="irreversible"):
