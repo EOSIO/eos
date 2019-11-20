@@ -115,9 +115,9 @@ namespace eosio { namespace chain {
 
       kv_it_stat kv_it_key(uint32_t offset, char* dest, uint32_t size, uint32_t& actual_size) override {
          if (kv_key) {
+            EOS_ASSERT(offset <= kv_key->size(), table_access_violation, "Offset is out of range");
+            memcpy(dest, kv_key->data() + offset, std::min((size_t)size, kv_key->size() - offset));
             actual_size = kv_key->size();
-            EOS_ASSERT(offset <= actual_size, table_access_violation, "Offset is out of range");
-            memcpy(dest, kv_key->data() + offset, std::min(size, actual_size - offset));
             return kv_it_status();
          } else {
             actual_size = 0;
@@ -138,9 +138,9 @@ namespace eosio { namespace chain {
             EOS_ASSERT(offset <= actual_size, table_access_violation, "Offset is out of range");
             return kv_it_stat::iterator_erased;
          }
+         EOS_ASSERT(offset <= kv->kv_value.size(), table_access_violation, "Offset is out of range");
+         memcpy(dest, kv->kv_value.data() + offset, std::min((size_t)size, kv->kv_value.size() - offset));
          actual_size = kv->kv_value.size();
-         EOS_ASSERT(offset <= actual_size, table_access_violation, "Offset is out of range");
-         memcpy(dest, kv->kv_value.data() + offset, std::min(size, actual_size - offset));
          return kv_it_stat::iterator_ok;
       }
    }; // kv_iterator_chainbase
