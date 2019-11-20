@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 from testUtils import Utils
+import signal
 import time
 from Cluster import Cluster
 from Cluster import NamedAccounts
@@ -30,6 +31,7 @@ extraArgs = appArgs.add(flag="--transaction-time-delta", type=int, help="How man
 extraArgs = appArgs.add(flag="--num-transactions", type=int, help="How many total transactions should be sent", default=10000)
 extraArgs = appArgs.add(flag="--max-transactions-per-second", type=int, help="How many transactions per second should be sent", default=500)
 extraArgs = appArgs.add(flag="--total-accounts", type=int, help="How many accounts should be involved in sending transfers.  Must be greater than %d" % (minTotalAccounts), default=100)
+extraArgs = appArgs.add_bool(flag="--send-duplicates", help="If identical transactions should be sent to all nodes")
 args = TestHelper.parse_args({"-p", "-n","--dump-error-details","--keep-logs","-v","--leave-running","--clean-run"}, applicationSpecificArgs=appArgs)
 
 Utils.Debug=args.v
@@ -77,7 +79,7 @@ try:
 
     if cluster.launch(pnodes=totalProducerNodes,
                       totalNodes=totalNodes, totalProducers=totalProducers,
-                      useBiosBootFile=False) is False:
+                      useBiosBootFile=False, topo="ring") is False:
         Utils.cmdError("launcher")
         Utils.errorExit("Failed to stand up eos cluster.")
 
@@ -108,8 +110,9 @@ try:
 
     nonProdNodes=[]
     prodNodes=[]
+    allNodes=cluster.getNodes()
     for i in range(0, totalNodes):
-        node=cluster.getNode(i)
+        node=allNodes[i]
         nodeProducers=Cluster.parseProducers(i)
         numProducers=len(nodeProducers)
         Print("node has producers=%s" % (nodeProducers))
@@ -184,6 +187,7 @@ try:
                     assert btrans is not None, Print("ERROR: could not retrieve \"trx\" from transaction_receipt: %s, from transId: %s that led to block: %s" % (json.dumps(trans_receipt, indent=2), transId, json.dumps(block, indent=2)))
                     btransId = btrans["id"]
                     assert btransId is not None, Print("ERROR: could not retrieve \"id\" from \"trx\": %s, from transId: %s that led to block: %s" % (json.dumps(btrans, indent=2), transId, json.dumps(block, indent=2)))
+                    assert btransId not in transToBlock, Print("ERROR: transaction_id: %s found in block: %d, but originally seen in block number: %d" % (btransId, blockNum, transToBlock[btransId]["block_num"]))
                     transToBlock[btransId] = block
 
                 break
@@ -218,6 +222,20 @@ try:
     #verify nodes are in sync and advancing
     cluster.waitOnClusterSync(blockAdvancing=5)
 
+    nodeOrder = None
+    if args.send_duplicates:
+        # kill bios, since it prevents the ring topography from really being a ring
+        cluster.biosNode.kill(signal.SIGTERM)
+        nodeOrder = [ 0 ]
+        # jump to node furthest in ring from node 0
+        next = int((totalNodes + 1) / 2)
+        nodeOrder.append(next)
+        # then just fill in the rest of the nodes
+        for i in range(1, next):
+            nodeOrder.append(i)
+        for i in range(next + 1, totalNodes):
+            nodeOrder.append(i)
+
     Print("Sending %d transfers" % (numTransactions))
     delayAfterRounds = int(maxTransactionsPerSecond / args.total_accounts)
     history = []
@@ -237,22 +255,46 @@ try:
             time.sleep(delayTime)
 
         transferAmount = Node.currencyIntToStr(round + 1, CORE_SYMBOL)
+
         Print("Sending round %d, transfer: %s" % (round, transferAmount))
         for accountIndex in range(0, args.total_accounts):
             fromAccount = accounts[accountIndex]
             toAccountIndex = accountIndex + 1 if accountIndex + 1 < args.total_accounts else 0
             toAccount = accounts[toAccountIndex]
             node = nonProdNodes[accountIndex % nonProdNodeCount]
-            trans=node.transferFunds(fromAccount, toAccount, transferAmount, "transfer round %d" % (round), exitOnError=False, reportStatus=False, sign = True)
-            if trans is None:
-                # delay and see if transfer is accepted now
-                Utils.Print("Transfer rejected, delay 1 second and see if it is then accepted")
-                time.sleep(1)
-                trans=node.transferFunds(fromAccount, toAccount, transferAmount, "transfer round %d" % (round), exitOnError=False, reportStatus=False, sign = True)
+            trans = None
+            attempts = 0
+            max_attempts = 3 if not args.send_duplicates else 1  # for send_duplicates we are just constructing a transaction, so should never require a second attempt
+            # can try up to max_attempts times to send the transfer
+            while trans is None and attempts < max_attempts:
+                if attempts > 0:
+                    # delay and see if transfer is accepted now
+                    Utils.Print("Transfer rejected, delay 1 second and see if it is then accepted")
+                    time.sleep(1)
+                trans=node.transferFunds(fromAccount, toAccount, transferAmount, "transfer round %d" % (round), exitOnError=False, reportStatus=False, sign = True, dontSend = args.send_duplicates)
+                attempts += 1
+
+            if args.send_duplicates:
+                sendTrans = trans
+                trans = None
+                numAccepted = 0
+                attempts = 0
+                while trans is None and attempts < 2:
+                    for nodeNum in nodeOrder:
+                        node = allNodes[nodeNum]
+                        repeatTrans = node.pushTransaction(sendTrans, silentErrors=True)
+                        if repeatTrans is not None:
+                            if trans is None and repeatTrans[0]:
+                                trans = repeatTrans[1]
+                                transId = Node.getTransId(trans)
+
+                            numAccepted += 1
+
+                    attempts += 1
 
             assert trans is not None, Print("ERROR: failed round: %d, fromAccount: %s, toAccount: %s" % (round, accountIndex, toAccountIndex))
-            # store off the transaction id, which we can use with the node.transCache
-            history.append(Node.getTransId(trans))
+            transId = Node.getTransId(trans)
+            history.append(transId)
 
     nextTime = time.perf_counter()
     Print("Sending transfers took %s sec" % (nextTime - startTransferTime))
