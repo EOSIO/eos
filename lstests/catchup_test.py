@@ -29,7 +29,7 @@ def init_cluster():
 
 def create_accounts(clus):
     clus.info(">>> [Catch-up Test] Create Test Accounts")
-    for _ in range(5):
+    for __ in range(5):
         cx = clus.call("send_raw", url=CREATE_URL, string_data=CREATE_STR, node_id=1,
                         retry=0, level="trace", error_level="trace", dont_raise=True)
         if '"name": "account_name_exists_exception"' in cx.response_text:

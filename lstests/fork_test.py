@@ -41,7 +41,7 @@ def kill_and_verify(clus):
     assert_out_of_sync(clus, res)
     min1, max1 = res.min_block_num, res.max_block_num
     clus.info("Wait until 2 forks have different lengths")
-    for _ in range(60):
+    for __ in range(60):
         res = clus.check_sync(min_sync_count=2, max_block_lag=2, dont_raise=True)
         min2, max2 = res.min_block_num, res.max_block_num
         assert_out_of_sync(clus, res)

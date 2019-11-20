@@ -80,7 +80,7 @@ def main():
                 raise BlockchainError(msg)
 
         clus.info(f">>> [DB Guard Test] Step 2: Restart Nodes with New Capacity")
-        for _ in range(10):
+        for __ in range(10):
             cap += 4
             print_db()
             restart_nodes()

@@ -69,8 +69,6 @@ DEFAULT_VERIFY_RETRY = 100
 DEFAULT_VERIFY_SLEEP = 0.25
 DEFAULT_SYNC_RETRY = 100
 DEFAULT_SYNC_SLEEP = 1
-DEFAULT_PRODUCER_RETRY = 100
-DEFAULT_PRODUCER_SLEEP = 1
 # logger-related defaults
 DEFAULT_MONOCHROME = False
 DEFAULT_BUFFERED = True
@@ -113,8 +111,6 @@ HELP_VERIFY_RETRY = "Verify transaction: max num of retries"
 HELP_VERIFY_SLEEP = "Verify transaction: sleep time between retries"
 HELP_SYNC_RETRY = "Check nodes in sync: max num of retries"
 HELP_SYNC_SLEEP = "Check nodes in sync: sleep time between retries"
-HELP_PRODUCER_RETRY = "Max retries for head block producer"
-HELP_PRODUCER_SLEEP = "Sleep time for head block producer retries"
 # logger-related help
 HELP_LOG_LEVEL = "Stdout logging level (numeric)"
 HELP_LOG_ALL = "Set stdout logging level to ALL (0)"
@@ -205,8 +201,6 @@ class CommandLineArguments:
         self.verify_sleep = cla.verify_sleep
         self.sync_retry = cla.sync_retry
         self.sync_sleep = cla.sync_sleep
-        self.producer_retry = cla.producer_retry
-        self.producer_sleep = cla.producer_sleep
 
         self.threshold = cla.threshold
         self.buffered = cla.buffered
@@ -256,8 +250,6 @@ class CommandLineArguments:
         parser.add_argument("--verify-sleep", type=float, metavar="TIME", help=form(HELP_VERIFY_SLEEP, DEFAULT_VERIFY_SLEEP))
         parser.add_argument("--sync-retry", type=int, metavar="NUM", help=form(HELP_SYNC_RETRY, DEFAULT_SYNC_RETRY))
         parser.add_argument("--sync-sleep", type=float, metavar="TIME", help=form(HELP_SYNC_SLEEP, DEFAULT_SYNC_SLEEP))
-        parser.add_argument("--producer-retry", type=int, metavar="NUM", help=form(HELP_PRODUCER_RETRY, DEFAULT_PRODUCER_RETRY))
-        parser.add_argument("--producer-sleep", type=float, metavar="TIME", help=form(HELP_PRODUCER_SLEEP, DEFAULT_PRODUCER_SLEEP))
         # logger-related options
         threshold = parser.add_mutually_exclusive_group()
         threshold.add_argument("-l", "--log-level", dest="threshold", type=int, metavar="LEVEL", action="store", help=form(HELP_LOG_LEVEL))
@@ -403,7 +395,7 @@ class Service:
         self.fatal("FATAL: {}".format(msg))
         raise LauncherServiceError(msg)
 
-    def print_header(self, text, level: typing.Union[int, str, LogLevel]="debug", buffer=False):
+    def print_header(self, text, level: typing.Union[int, str, LogLevel]="debug", sep=" ", buffer=False):
         level = LogLevel(level)
         if level >= LogLevel("info"):
             colorize = color.bold
@@ -414,7 +406,7 @@ class Service:
         else:
             colorize = color.vanilla
             fillchar = "⎯"
-        self.log(helper.pad(colorize(text), total=100, left=20, char=fillchar, sep=" ", textlen=len(text)), level=level, buffer=buffer)
+        self.log(helper.pad(colorize(text), total=100, left=20, char=fillchar, sep=sep, textlen=len(text)), level=level, buffer=buffer)
 
     def print_formatted_config(self, label, help, value, default_value=None):
         different = value is not None and value != default_value
@@ -506,9 +498,7 @@ class Cluster:
                  verify_retry=None,
                  verify_sleep=None,
                  sync_retry=None,
-                 sync_sleep=None,
-                 producer_retry=None,
-                 producer_sleep=None):
+                 sync_sleep=None):
         # register service
         self.service = service
         self.cla = service.cla
@@ -549,8 +539,6 @@ class Cluster:
         self.verify_sleep    = helper.override(DEFAULT_VERIFY_SLEEP,    verify_sleep,    self.cla.verify_sleep)
         self.sync_retry      = helper.override(DEFAULT_SYNC_RETRY,      sync_retry,      self.cla.sync_retry)
         self.sync_sleep      = helper.override(DEFAULT_SYNC_SLEEP,      sync_sleep,      self.cla.sync_sleep)
-        self.producer_retry  = helper.override(DEFAULT_PRODUCER_RETRY,  producer_retry,  self.cla.producer_retry)
-        self.producer_sleep  = helper.override(DEFAULT_PRODUCER_SLEEP,  producer_sleep,  self.cla.producer_sleep)
 
         # check for logical errors in config
         self.check_config()
@@ -714,14 +702,12 @@ class Cluster:
         self.print_formatted_config("-xs: dont_setprod",   HELP_DONT_SETPROD,    self.dont_setprod,     DEFAULT_DONT_SETPROD)
         self.print_formatted_config("-xv: dont_vote",      HELP_DONT_VOTE,       self.dont_vote,        DEFAULT_DONT_VOTE)
         self.print_formatted_config("--http-retry",        HELP_HTTP_RETRY,      self.http_retry,       DEFAULT_HTTP_RETRY)
+        self.print_formatted_config("--http-sleep",        HELP_HTTP_SLEEP,      self.http_sleep,       DEFAULT_HTTP_SLEEP)
         self.print_formatted_config("--verify-async",      HELP_VERIFY_ASYNC,    self.verify_async,     DEFAULT_VERIFY_ASYNC)
         self.print_formatted_config("--verify-retry",      HELP_VERIFY_RETRY,    self.verify_retry,     DEFAULT_VERIFY_RETRY)
         self.print_formatted_config("--verify-sleep",      HELP_VERIFY_SLEEP,    self.verify_sleep,     DEFAULT_VERIFY_SLEEP)
         self.print_formatted_config("--sync-retry",        HELP_SYNC_RETRY,      self.sync_retry,       DEFAULT_SYNC_RETRY)
-        self.print_formatted_config("--producer-retry",    HELP_PRODUCER_RETRY,  self.producer_retry,   DEFAULT_PRODUCER_RETRY)
-        self.print_formatted_config("--http-sleep",        HELP_HTTP_SLEEP,      self.http_sleep,       DEFAULT_HTTP_SLEEP)
         self.print_formatted_config("--sync-sleep",        HELP_SYNC_SLEEP,      self.sync_sleep,       DEFAULT_SYNC_SLEEP)
-        self.print_formatted_config("--producer-sleep",    HELP_PRODUCER_SLEEP,  self.producer_sleep,   DEFAULT_PRODUCER_SLEEP)
 
 
     """
@@ -940,18 +926,18 @@ class Cluster:
                 return False
 
 
-    def get_head_block_number(self, node_id=0):
+    def get_head_block_number(self, node_id=0, **call_kwargs):
         """Get head block number by node id."""
-        return self.get_cluster_info().response_dict["result"][node_id][1]["head_block_num"]
+        return self.get_cluster_info(**call_kwargs).response_dict["result"][node_id][1]["head_block_num"]
 
 
-    def get_head_block_producer(self, node_id=0):
+    def get_head_block_producer(self, node_id=0, **call_kwargs):
         """Get head block producer by node id."""
-        return self.get_cluster_info().response_dict["result"][node_id][1]["head_block_producer"]
+        return self.get_cluster_info(**call_kwargs).response_dict["result"][node_id][1]["head_block_producer"]
 
 
-    def get_running_nodes(self):
-        cluster_result = self.get_cluster_info().response_dict["result"]
+    def get_running_nodes(self, **call_kwargs):
+        cluster_result = self.get_cluster_info(**call_kwargs).response_dict["result"]
         count = 0
         for node_result in cluster_result:
             if "head_block_id" in node_result[1]:
@@ -1172,45 +1158,41 @@ class Cluster:
 
 
 
-    def wait_get_block(self, block_num, retry=5) -> dict:
+    def wait_get_block(self, block_num, node_id=0, **call_kwargs) -> dict:
         """Get block information by block num. If that block has not been produced, wait for it."""
-        while retry >= 0:
-            head_block_num = self.get_head_block_number()
+        for __ in range(5):
+            head_block_num = self.get_head_block_number(level="trace")
             if head_block_num < block_num:
                 time.sleep(0.5 * (block_num - head_block_num))
             else:
-                return self.get_block(block_num).response_dict
-            retry -= 1
+                return self.get_block(block_num_or_id=block_num, node_id=node_id, **call_kwargs).response_dict
         msg = f"Cannot get block # {block_num}. Current head block num is {head_block_num}."
         self.error(msg)
         raise BlockchainError(msg)
 
 
-    def wait_get_producer_by_block(self, block_num, retry=5) -> str:
+    def wait_get_producer_by_block(self, block_num, node_id=0, **call_kwargs) -> str:
         """Get block producer by block num. If that block has not been produced, wait for it."""
-        return self.wait_get_block(block_num, retry=retry)["producer"]
+        return self.wait_get_block(block_num=block_num, node_id=node_id, **call_kwargs)["producer"]
 
 
-    def check_head_block_producer(self, retry=None, sleep=None):
-        retry = self.producer_retry if retry is None else retry
-        sleep = self.producer_sleep if sleep is None else sleep
-        self.print_header("get head block producer")
-        cx = self.get_cluster_info(level="TRACE")
-        extract_head_block_producer = lambda cx: cx.response_dict["result"][0][1]["head_block_producer"]
-        while retry >= 0:
-            cx = self.get_cluster_info(level="TRACE")
-            head_block_producer = extract_head_block_producer(cx)
+    def check_head_block_producer(self, retry=None, sleep=None, dont_raise=False):
+        if retry is None: retry = 100
+        if sleep is None: sleep = 1.0
+        self.print_header("check head block producer")
+        for __ in range(retry + 1):
+            head_block_producer = self.get_head_block_producer(level="trace")
             if head_block_producer == "eosio":
-                self.logger.debug(color.yellow("Head block producer is still \"eosio\"."))
+                self.debug(color.yellow("Head block producer is still \"eosio\"."))
             else:
-                self.logger.debug(color.green("Head block producer is now \"{}\", no longer eosio.".format(head_block_producer)))
+                self.debug(color.green(f"Head block producer is now \"{head_block_producer}\", no longer eosio."))
                 break
-            self.logger.trace("{} {} for head block producer verification...".format(retry, "retries remain" if retry > 1 else "retry remains"))
-            self.logger.trace("Sleep for {}s before next retry...".format(sleep))
             time.sleep(sleep)
-            retry -= 1
-        assert head_block_producer != "eosio", "Head block producer is still \"eosio\"."
-
+        else:
+            msg = f"Head block producer is still \"eosio\" after {retry} {helper.plural(('retry', 'retries'), count=retry)}."
+            self.error(msg)
+            if not dont_raise:
+                raise BlockchainError(msg)
 
     def get_wasm_file(self, contract):
         return os.path.join(self.contracts_dir, contract, contract + ".wasm")
@@ -1222,7 +1204,6 @@ class Cluster:
 
     @staticmethod
     def get_defproducer_name(num):
-
         def base26_to_int(s: str):
             res = 0
             for c in s:
@@ -1239,10 +1220,8 @@ class Cluster:
                 if q == 0:
                     break
             return res
-
         # 8031810176 = 26 ** 7 is integer for "baaaaaaa" in base26
         return "defproducer" + string.ascii_lowercase[num] if num < 26 else "defpr" + int_to_base26(8031810176 + num)[1:]
-
 
     def verify(self,
                transaction_id,
@@ -1259,18 +1238,18 @@ class Cluster:
         retry = helper.override(self.verify_retry, retry, self.cla.verify_retry)
         sleep = helper.override(self.verify_sleep, sleep, self.cla.verify_sleep)
         verified = False
-        while retry >= 0:
+        for __ in range(retry + 1):
             if self.verify_transaction(transaction_id=transaction_id, verify_key=verify_key, level=retry_level, buffer=buffer):
                 verified = True
                 break
             time.sleep(sleep)
-            retry -= 1
         if verify_async:
             self.print_header("async verify transaction", level=level, buffer=True)
             if verified:
                 self.log(color.black_on_green(f"{verify_key.title()}") + f" {transaction_id}", level=level, buffer=True)
             else:
                 self.log(color.black_on_red(f"Not {verify_key.title()}") + f" {transaction_id}", level=error_level, buffer=True)
+            self.print_header("", sep="", level=level, buffer=True)
             self.flush()
         else:
             if verified:
@@ -1294,14 +1273,11 @@ class Cluster:
                 else:
                     assert self.min_block_num == math.inf or self.min_block_num <= self.max_block_num
                     self.block_num = -1
-
-        # set arguments
         retry = helper.override(self.sync_retry, retry, self.cla.sync_retry)
         sleep = helper.override(self.sync_sleep, sleep, self.cla.sync_sleep)
         min_sync_count = helper.override(self.node_count, min_sync_count)
-        # print head
         self.print_header("check sync", level=level)
-        while retry >= 0:
+        for __ in range(retry + 1):
             cx = self.get_cluster_info(level="trace")
             has_head_block_id = lambda node_id: "head_block_id" in cx.response_dict["result"][node_id][1]
             extract_head_block_id = lambda node_id: cx.response_dict["result"][node_id][1]["head_block_id"]
@@ -1340,7 +1316,6 @@ class Cluster:
                          f"is larger than tolerance (={max_block_lag}).", level=level)
                 break
             time.sleep(sleep)
-            retry -= 1
         msg = "Nodes out of sync"
         if not dont_raise:
             self.error(color.black_on_red(msg))
@@ -1350,59 +1325,63 @@ class Cluster:
         return SyncResult(False, sync_count, min_block_num, max_block_num)
 
 
-    def check_production_round(self, expected_producers: typing.List[str], level="debug"):
-        self.print_header("verify production round", level=level)
-
+    def check_production_round(self, expected_producers: typing.List[str], level="debug", dont_raise=False):
+        self.print_header("check production round", level=level)
         # list expected producers
         self.log("Expected producers:", level=level)
         for i, v in enumerate(expected_producers):
-            self.logger.log(f"[{i}] {v}", level=level)
-
+            self.log(f"[{i}] {v}", level=level)
         # skip unexpected producers
-        begin_block_num = self.get_head_block_number()
-        curr_prod = self.wait_get_producer_by_block(begin_block_num)
+        begin_block_num = self.get_head_block_number(level="trace")
+        curr_prod = self.wait_get_producer_by_block(begin_block_num, level="trace")
         while curr_prod not in expected_producers:
-            self.logger.log(f"Block # {begin_block_num}: {curr_prod} is not among expected producers. "
-                             "Waiting for schedule change.", level=level)
+            self.log(f"Block #{begin_block_num}: {curr_prod} is not among expected producers. "
+                     "Waiting for schedule change.", level=level)
             begin_block_num += 1
-            curr_prod = self.wait_get_producer_by_block(begin_block_num)
-
-        # verification
-        self.log(f">>> Verification starts, as expected producer \"{curr_prod}\" has come to produce.", level=level)
-        self.log(f"Block # {begin_block_num}: {curr_prod} has produced 1 blocks in this round. "
-                 f"{12 * len(expected_producers) - 1} blocks remain to verify.", level=level)
+            curr_prod = self.wait_get_producer_by_block(begin_block_num, level="trace")
+        # formally start
+        self.log(f">>> Production check formally starts, as expected producer \"{curr_prod}\" has come to produce.", level=level)
+        rest = 12 * len(expected_producers) - 1
+        self.log(f"Block #{begin_block_num}: {curr_prod} has produced 1 block in this round. "
+                 f"{rest} {helper.plural('block', rest)} {helper.singular('remain', rest)} to to be checked.", level=level)
         counter = {x: 0 for x in expected_producers}
         counter[curr_prod] += 1
         entr_prod = last_prod = curr_prod
         end_block_num = begin_block_num + 12 * len(expected_producers)
         for num in range(begin_block_num + 1, end_block_num):
-            curr_prod = self.wait_get_producer_by_block(num)
+            curr_prod = self.wait_get_producer_by_block(num, level="trace")
             counter[curr_prod] += 1
             if curr_prod not in expected_producers:
                 msg = f"Unexpected producer \"{curr_prod}\" in block #{num}."
                 self.error(msg)
-                raise BlockchainError(msg)
+                if not dont_raise:
+                    raise BlockchainError(msg)
             if curr_prod != last_prod and last_prod != entr_prod and counter[last_prod] != 12:
+                count = counter[last_prod]
                 msg = (f"Producer changes to \"{curr_prod}\" after last producer \"{last_prod}\" "
-                       f"produces {counter[last_prod]} blocks.")
+                       f"produces {count} {helper.plural('block'), count}.")
                 self.error(msg)
-                raise BlockchainError(msg)
-            self.logger.log(f"Block # {num}: {curr_prod} has produced {counter[curr_prod]} blocks in this round. "
-                            f"{end_block_num - num - 1} blocks remain to verify.", level=level)
+                if not dont_raise:
+                    raise BlockchainError(msg)
+            rest = end_block_num - num - 1
+            count = counter[curr_prod]
+            self.log(f"Block #{num}: {curr_prod} has produced {count} {helper.plural('block', count)} in this round. "
+                     f"{rest} {helper.plural('block', rest)} {helper.singular('remain', rest)} to to be checked.", level=level)
             last_prod = curr_prod
-
-        # conclusion
+        # summarize
         expected_counter = {x: 12 for x in expected_producers}
         if counter == expected_counter:
-            self.logger.log(">>> Verification succeeded.", level=level)
+            self.log(">>> Production check succeeded.", level=level)
             return True
         else:
-            msg = ">>> Verification failed."
+            msg = ">>> Production check failed."
             for prod in counter:
-                msg += f"\n{prod} produced {counter[prod]} blocks."
+                msg += f"\n{prod} produced {counter[prod]} {helper.plural('block', {counter[prod]})}."
             self.error(msg)
-            raise BlockchainError(msg)
+            if not dont_raise:
+                raise BlockchainError(msg)
             return False
+
 
     """
     ====================

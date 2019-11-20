@@ -142,7 +142,17 @@ def override(*args):
 
 
 def plural(word, count, suffix="s"):
-    return word + suffix if count > 1 else  word
+    if isinstance(word, tuple) or isinstance(word, list):
+        return word[0] if count <= 1 else word[1]
+    else:
+        return word if count <= 1 else  word + suffix
+
+
+def singular(word, count, suffix="s"):
+    if isinstance(word, tuple) or isinstance(word, list):
+        return word[0] if count <= 1 else word[1]
+    else:
+        return word  + suffix if count <= 1 else  word
 
 
 def pad(text, total, left=0, char=" ", sep="", textlen=None) -> str:
