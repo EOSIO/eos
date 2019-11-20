@@ -115,13 +115,12 @@ namespace eosio { namespace chain {
 
       kv_it_stat kv_it_key(uint32_t offset, char* dest, uint32_t size, uint32_t& actual_size) override {
          if (kv_key) {
-            EOS_ASSERT(offset <= kv_key->size(), table_access_violation, "Offset is out of range");
-            memcpy(dest, kv_key->data() + offset, std::min((size_t)size, kv_key->size() - offset));
+            if (offset < kv_key->size())
+               memcpy(dest, kv_key->data() + offset, std::min((size_t)size, kv_key->size() - offset));
             actual_size = kv_key->size();
             return kv_it_status();
          } else {
             actual_size = 0;
-            EOS_ASSERT(offset <= actual_size, table_access_violation, "Offset is out of range");
             return kv_it_stat::iterator_end;
          }
       }
@@ -129,17 +128,15 @@ namespace eosio { namespace chain {
       kv_it_stat kv_it_value(uint32_t offset, char* dest, uint32_t size, uint32_t& actual_size) override {
          if (!kv_key) {
             actual_size = 0;
-            EOS_ASSERT(offset <= actual_size, table_access_violation, "Offset is out of range");
             return kv_it_stat::iterator_end;
          }
          auto* kv = db.find<kv_object, by_kv_key>(boost::make_tuple(database_id, contract, *kv_key));
          if (!kv) {
             actual_size = 0;
-            EOS_ASSERT(offset <= actual_size, table_access_violation, "Offset is out of range");
             return kv_it_stat::iterator_erased;
          }
-         EOS_ASSERT(offset <= kv->kv_value.size(), table_access_violation, "Offset is out of range");
-         memcpy(dest, kv->kv_value.data() + offset, std::min((size_t)size, kv->kv_value.size() - offset));
+         if (offset < kv->kv_value.size())
+            memcpy(dest, kv->kv_value.data() + offset, std::min((size_t)size, kv->kv_value.size() - offset));
          actual_size = kv->kv_value.size();
          return kv_it_stat::iterator_ok;
       }
@@ -208,8 +205,8 @@ namespace eosio { namespace chain {
             temp      = temp_data_buffer->data();
             temp_size = temp_data_buffer->size();
          }
-         EOS_ASSERT(offset <= temp_size, table_access_violation, "Offset is out of range");
-         memcpy(data + offset, temp, std::min(data_size, temp_size - offset));
+         if (offset < temp_size)
+            memcpy(data + offset, temp, std::min(data_size, temp_size - offset));
          return temp_size;
       }
 
