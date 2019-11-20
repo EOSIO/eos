@@ -30,19 +30,19 @@ def assert_out_of_sync(clus, res):
     if res.in_sync:
         raise SyncError("Nodes should be out of sync")
     else:
-        clus.debug(f"Nodes are out of sync ({res.sync_nodes}/3 nodes in sync)")
+        clus.debug(f"Nodes are out of sync ({res.sync_count}/3 nodes in sync)")
 
 
 def kill_and_verify(clus):
     clus.info("Kill bridge node...")
     clus.stop_node(node_id=1, kill_sig=9)
     time.sleep(1)
-    res = clus.check_sync(min_sync_nodes=2, max_block_lag=2, dont_raise=True)
+    res = clus.check_sync(min_sync_count=2, max_block_lag=2, dont_raise=True)
     assert_out_of_sync(clus, res)
     min1, max1 = res.min_block_num, res.max_block_num
     clus.info("Wait until 2 forks have different lengths")
     for _ in range(60):
-        res = clus.check_sync(min_sync_nodes=2, max_block_lag=2, dont_raise=True)
+        res = clus.check_sync(min_sync_count=2, max_block_lag=2, dont_raise=True)
         min2, max2 = res.min_block_num, res.max_block_num
         assert_out_of_sync(clus, res)
         if max2 >= min2 + 13 and min2 > min1 and max2 > max1:

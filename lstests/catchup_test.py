@@ -63,9 +63,9 @@ def count_gen(clus, begin, end):
     total = 0
     for i in range(begin + 1, end + 1):
         n = len(clus.get_block(i, level="trace").response_dict["transactions"])
-        clus.info(f"Block {i} has {n} transactions")
+        clus.info(f"Block {i} has {n} transactions.")
         total += n
-    clus.info(f"There are {total} transactions in {end - begin} blocks")
+    clus.info(f"There are {total} transactions in {end - begin} blocks.")
     return total
 
 

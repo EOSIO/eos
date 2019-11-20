@@ -1330,7 +1330,7 @@ class Cluster:
                      f"min block num {min_block_num} from node {min_block_node} "
                      f"{down_info}", level=level)
             if sync_count >= min_sync_count:
-                self.log(color.green(f"<Sync Nodes Count> {sync_count}"), level=level)
+                self.log(color.green(f"<Sync Node Count> {sync_count}"), level=level)
                 self.log(color.green(f"<Sync Block Num> {sync_block}"), level=level)
                 self.log(color.green(f"<Sync Block ID> {sync_head}"), level=level)
                 self.log(color.black_on_green("Nodes in sync"), level=level)
