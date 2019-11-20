@@ -101,8 +101,10 @@ namespace eosio { namespace chain {
          std::decay_t<decltype(idx.end())> it;
          if (kv_key)
             it = idx.lower_bound(boost::make_tuple(database_id, contract, *kv_key));
+         else if (next_prefix)
+            it = idx.lower_bound(boost::make_tuple(database_id, contract, *next_prefix));
          else
-            it = next_prefix ? idx.lower_bound(boost::make_tuple(database_id, contract, *next_prefix)) : idx.end();
+            it = idx.end();
          if (it != idx.begin())
             return move_to(--it);
          kv_key.reset();
