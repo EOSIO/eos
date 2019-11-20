@@ -51,5 +51,9 @@ set +e # defer ctest error handling to end
 echo "ready to execute: ctest -L ls_tests -V -j $JOBS -T Test"
 ctest -L ls_tests --output-on-failure -j $JOBS -T Test
 EXIT_STATUS=$?
+
+echo "killing launcher-service"
+pkill -9 launcher-service
+
 echo 'Done running launcher service related tests.'
 exit $EXIT_STATUS
