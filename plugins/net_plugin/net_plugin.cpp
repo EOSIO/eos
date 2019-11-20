@@ -1605,7 +1605,7 @@ namespace eosio {
             note.known_blocks.ids.push_back(head_id);
             c->enqueue( note );
          }
-         c->syncing = head != msg.head_num; // head might resolve fork if same length
+         c->syncing = false;
          app().post( priority::medium, [chain_plug = my_impl->chain_plug, c,
                                         msg_head_num = msg.head_num, msg_head_id = msg.head_id]() {
             bool on_fork = true;
@@ -1701,7 +1701,6 @@ namespace eosio {
          sync_source.reset();
          g.unlock();
          c->close();
-         send_handshakes();
       }
    }
 
@@ -1756,7 +1755,6 @@ namespace eosio {
             set_state( head_catchup );
          } else {
             set_state( in_sync );
-            send_handshakes();
          }
       } else if( state == lib_catchup ) {
          if( blk_num == sync_known_lib_num ) {
@@ -2522,7 +2520,6 @@ namespace eosio {
                   gam.node_id = node_id;
                   enqueue(gam);
                   no_retry = duplicate;
-                  my_impl->sync_master->send_handshakes();
                   return;
                }
             }
