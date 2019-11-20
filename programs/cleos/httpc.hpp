@@ -116,6 +116,7 @@ namespace eosio { namespace client { namespace http {
    const string topology_graph = topology_func_base + "/graph";
    const string topology_report = topology_func_base + "/report";
    const string topology_sample = topology_func_base + "/sample";
+   const string topology_forkinfo = topology_func_base + "/forkinfo";
 
    const string wallet_func_base = "/v1/wallet";
    const string wallet_create = wallet_func_base + "/create";

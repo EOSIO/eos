@@ -3219,6 +3219,14 @@ int main( int argc, char** argv ) {
                              std::cout << fc::json::to_pretty_string(v) << std::endl;
                            });
 
+   auto getForkInfo = topology->add_subcommand( "forkinfo", localized("Retrieve a markdown formatted report about microforks from a specific producer."));
+   string producer_name;
+   getForkInfo->add_option("producer", producer_name, localized("The name of the producer of interest"));
+   getForkInfo->set_callback([&] {
+                                const auto& v = call(url, topology_forkinfo, producer_name);
+                                std::cout << v.as_string() << std::endl;
+                             });
+
    // Wallet subcommand
    auto wallet = app.add_subcommand( "wallet", localized("Interact with local wallet"), false );
    wallet->require_subcommand();

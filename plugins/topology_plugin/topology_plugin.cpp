@@ -1102,7 +1102,7 @@ namespace eosio {
       vector<string> incidents;
       size_t count = my->list_forks( producer, incidents );
       df << "Microfork incident report for producer " << producer
-         << "has " << count << " incidents detected.\n";
+         << " has " << count << " incidents detected.\n";
       size_t c = 1;
       for (auto irep : incidents) {
          df << "Incident " << c++ << "\n" << irep << "\n";
