@@ -69,13 +69,13 @@ namespace eosio { namespace chain {
          }
          if (!kv_key)
             return 1;
-         return unsigned_blob_less()(*kv_key, *r.kv_key);
+         return compare_blob(*kv_key, *r.kv_key);
       }
 
       int32_t kv_it_key_compare(const char* key, uint32_t size) override {
          if (!kv_key)
             return 1;
-         return unsigned_blob_less()(*kv_key, std::string_view{ key, size });
+         return compare_blob(*kv_key, std::string_view{ key, size });
       }
 
       kv_it_stat kv_it_move_to_end() override {
