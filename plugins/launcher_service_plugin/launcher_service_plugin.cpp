@@ -392,7 +392,7 @@ public:
                node_state &state = _running_clusters[cluster_id].nodes[node_id];
                if (state.child) {
                   if (state.child->running()) {
-                     ilog("killing pid ${p}", ("p", state.child->id()));
+                     ilog("killing pid ${p} (cluster ${c}, node ${n}) with signal ${s}", ("p", state.child->id())("c", cluster_id)("n", node_id)("s", killsig));
                      ::kill(state.child->id(), killsig);
                   }
                   if (killsig == SIGKILL || !state.child->running()) {
