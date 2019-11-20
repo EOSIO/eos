@@ -9,6 +9,9 @@ class database;
 
 namespace eosio { namespace chain {
 
+   inline constexpr name kvram_id  = N(eosio.kvram);
+   inline constexpr name kvdisk_id = N(eosio.kvdisk);
+
    enum class kv_it_stat {
       iterator_ok     = 0,  // Iterator is positioned at a key-value pair
       iterator_erased = -1, // The key-value pair that the iterator used to be positioned at was erased
@@ -42,6 +45,6 @@ namespace eosio { namespace chain {
       virtual std::unique_ptr<kv_iterator> kv_it_create(uint64_t contract, const char* prefix, uint32_t size) = 0;
    };
 
-   std::unique_ptr<kv_context> create_kv_chainbase_context(chainbase::database& db, uint8_t database_id, name receiver);
+   std::unique_ptr<kv_context> create_kv_chainbase_context(chainbase::database& db, name database_id, name receiver);
 
 }} // namespace eosio::chain

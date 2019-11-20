@@ -49,7 +49,7 @@ apply_context::apply_context(controller& con, transaction_context& trx_ctx, uint
    receiver = trace.receiver;
    context_free = trace.context_free;
    if (!context_free)
-      kv_ram = create_kv_chainbase_context(db, 0, receiver);
+      kv_ram = create_kv_chainbase_context(db, kvram_id, receiver);
 }
 
 void apply_context::exec_one()
@@ -933,8 +933,7 @@ int32_t apply_context::kv_it_value(uint32_t itr, uint32_t offset, char* dest, ui
 }
 
 kv_context& apply_context::kv_get_db(uint64_t db) {
-   static constexpr name kvram_name = N(eosio.kvram);
-   if (db == kvram_name.to_uint64_t())
+   if (db == kvram_id.to_uint64_t())
       return *kv_ram;
    EOS_ASSERT(false, kv_bad_db_id, "Bad key-value database ID");
 }

@@ -12,7 +12,7 @@ namespace eosio { namespace chain {
       OBJECT_CTOR(kv_object, (kv_key)(kv_value))
 
       id_type     id;
-      uint8_t     database_id = 0;
+      name        database_id;
       name        contract;
       shared_blob kv_key;
       shared_blob kv_value;
@@ -22,10 +22,10 @@ namespace eosio { namespace chain {
          kv_object,
          indexed_by<ordered_unique<tag<by_id>, member<kv_object, kv_object::id_type, &kv_object::id>>,
                     ordered_unique<tag<by_kv_key>,
-                                   composite_key<kv_object, member<kv_object, uint8_t, &kv_object::database_id>,
+                                   composite_key<kv_object, member<kv_object, name, &kv_object::database_id>,
                                                  member<kv_object, name, &kv_object::contract>,
                                                  member<kv_object, shared_blob, &kv_object::kv_key>>,
-                                   composite_key_compare<std::less<uint8_t>, std::less<name>, unsigned_blob_less>>>>;
+                                   composite_key_compare<std::less<name>, std::less<name>, unsigned_blob_less>>>>;
 
 }} // namespace eosio::chain
 

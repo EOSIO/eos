@@ -9,13 +9,13 @@ namespace eosio { namespace chain {
 
       chainbase::database&             db;
       const index_type&                idx = db.get_index<kv_index, by_kv_key>();
-      uint8_t                          database_id;
+      name                             database_id;
       name                             contract;
       std::vector<char>                prefix;
       std::optional<std::vector<char>> next_prefix;
       std::optional<shared_blob>       kv_key;
 
-      kv_iterator_chainbase(chainbase::database& db, uint8_t database_id, name contract, std::vector<char> prefix)
+      kv_iterator_chainbase(chainbase::database& db, name database_id, name contract, std::vector<char> prefix)
           : db{ db }, database_id{ database_id }, contract{ contract }, prefix{ std::move(prefix) } {
 
          next_prefix.emplace(this->prefix);
@@ -147,11 +147,11 @@ namespace eosio { namespace chain {
 
    struct kv_context_chainbase : kv_context {
       chainbase::database&       db;
-      uint8_t                    database_id;
+      name                       database_id;
       name                       receiver;
       std::optional<shared_blob> temp_data_buffer;
 
-      kv_context_chainbase(chainbase::database& db, uint8_t database_id, name receiver)
+      kv_context_chainbase(chainbase::database& db, name database_id, name receiver)
           : db{ db }, database_id{ database_id }, receiver{ receiver } {}
 
       ~kv_context_chainbase() override {}
@@ -219,8 +219,7 @@ namespace eosio { namespace chain {
       }
    }; // kv_context_chainbase
 
-   std::unique_ptr<kv_context> create_kv_chainbase_context(chainbase::database& db, uint8_t database_id,
-                                                           name receiver) {
+   std::unique_ptr<kv_context> create_kv_chainbase_context(chainbase::database& db, name database_id, name receiver) {
       return std::make_unique<kv_context_chainbase>(db, database_id, receiver);
    }
 
