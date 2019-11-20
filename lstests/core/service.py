@@ -1398,7 +1398,7 @@ class Cluster:
             if curr_prod != last_prod and last_prod != entr_prod and counter[last_prod] != 12:
                 count = counter[last_prod]
                 msg = (f"Producer changes to \"{curr_prod}\" after last producer \"{last_prod}\" "
-                       f"produces {count} {helper.plural('block'), count}.")
+                       f"produces {count} {helper.plural('block', count)}.")
                 self.error(msg)
                 if not dont_raise:
                     raise BlockchainError(msg)
