@@ -48,8 +48,8 @@ python3.7 -m pip install requests
 python3.7 -m pip install dataclasses
 
 set +e # defer ctest error handling to end
-echo "ready to execute: ctest -L ls_tests -V -j $JOBS"
-ctest -L ls_tests --output-on-failure -j $JOBS
+echo "ready to execute: ctest -L ls_tests -V -j $JOBS -T Test"
+ctest -L ls_tests --output-on-failure -j $JOBS -T Test
 EXIT_STATUS=$?
 echo 'Done running launcher service related tests.'
 exit $EXIT_STATUS
