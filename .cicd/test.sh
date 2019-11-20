@@ -33,6 +33,7 @@ if [[ "$BUILDKITE" == 'true' ]]; then
     [[ -f core.tar.gz ]] && buildkite-agent artifact upload core.tar.gz
     [[ -f genesis.json ]] && buildkite-agent artifact upload genesis.json
     [[ -f mongod.log ]] && buildkite-agent artifact upload mongod.log
+    [[ -f launcher_service.log ]] && buildkite-agent artifact upload launcher_service.log
     buildkite-agent artifact upload test-results.xml
     echo 'Done uploading artifacts.'
 fi
