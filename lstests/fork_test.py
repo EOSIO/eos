@@ -13,7 +13,7 @@ def init_cluster():
                     FileWriter(filename=f"{test}-trace.log", threshold="trace", monochrome=True))
     service = Service(logger=logger)
     cluster = Cluster(service=service, node_count=3, pnode_count=3, producer_count=7,
-                      shape="bridge", center_node_id=1, dont_setprod=True)
+                      topology="bridge", center_node_id=1, dont_setprod=True)
     return cluster
 
 
