@@ -141,9 +141,9 @@ class _Writer(abc.ABC):
             frame = inspect.stack()[-1]
         if self.show_filename:
             filename = os.path.basename(frame.filename)
-            pre += f"{helper.squeeze(filename, maxlen=10):10.10} "
+            pre += f"{helper.squeeze(filename, maxlen=10):10.10}:"
         if self.show_lineno:
-            pre += f":{frame.lineno:<4} "
+            pre += f"{frame.lineno:<4} "
         if self.show_function:
             pre += f"{helper.squeeze(frame.function, maxlen=15)+'()':17.17} "
         if self.show_thread:

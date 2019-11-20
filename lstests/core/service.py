@@ -5,13 +5,11 @@ import argparse
 import base64
 import collections
 import dataclasses
-import json
 import math
 import os
 import platform
 import shlex
 import string
-import subprocess
 import threading
 import time
 import typing
@@ -43,22 +41,22 @@ DEFAULT_ADDR = "127.0.0.1"
 DEFAULT_PORT = 1234
 DEFAULT_WDIR = os.path.join(PACKAGE_DIR, "../../build")
 DEFAULT_FILE = os.path.join(".", "programs", PROGRAM, PROGRAM)
+DEFAULT_GENE = os.path.join(".", "genesis.json")
 DEFAULT_START = False
 DEFAULT_KILL = False
 # cluster-related defaults
-DEFAULT_CONTRACTS_DIR = "../unittests/contracts/old_versions/v1.6.0-rc3"
+DEFAULT_CDIR = "../unittests/contracts/old_versions/v1.6.0-rc3"
 DEFAULT_CLUSTER_ID = 0
 DEFAULT_NODE_COUNT = 4
 DEFAULT_PNODE_COUNT = 4
 DEFAULT_PRODUDCER_COUNT = 4
 DEFAULT_UNSTARTED_COUNT = 0
-DEFAULT_SHAPE = "mesh"
+DEFAULT_TOPOLOGY = "mesh"
 DEFAULT_CENTER_NODE_ID = None
 DEFAULT_EXTRA_CONFIGS = []
 DEFAULT_EXTRA_ARGS = ""
-DEFAULT_TOTAL_SUPPLY = 1e9
-DEFAULT_LAUNCH_MODE = "bios"
-DEFAULT_REGULAR_LAUNCH = False
+DEFAULT_TOKENS_SUPPLY = 1e9
+DEFAULT_DONT_BIOS = False
 DEFAULT_DONT_NEWACCOUNT = False
 DEFAULT_DONT_SETPROD = False
 DEFAULT_DONT_VOTE = False
@@ -86,31 +84,32 @@ HELP_ADDR = "IP address of launcher service"
 HELP_PORT = "Listening port of launcher service"
 HELP_WDIR = "Working directory"
 HELP_FILE = "Path to local launcher service file"
+HELP_GENE = "Path to genesis file"
 HELP_START = "Always start a new launcher service"
 HELP_KILL = "Kill existing launcher services (if any)"
 # cluster-related help
-HELP_CONTRACTS_DIR = "Directory of eosio smart contracts"
+HELP_CDIR = "Smart contracts directory"
 HELP_CLUSTER_ID = "Cluster ID to launch with"
 HELP_NODE_COUNT = "Number of nodes"
 HELP_PNODE_COUNT = "Number of nodes with producers"
 HELP_PRODUDCER_COUNT = "Number of producers"
 HELP_UNSTARTED_COUNT = "Number of unstarted nodes"
-HELP_SHAPE = "Cluster topology to launch with"
-HELP_CENTER_NODE_ID = "Center node ID for star or bridge"
+HELP_TOPOLOGY = "Cluster topology to launch with"
+HELP_CENTER_NODE_ID = "Center node ID (for bridge or star topology)"
 HELP_EXTRA_CONFIGS = "Extra configs to pass to launcher service"
 HELP_EXTRA_ARGS = "Extra arguments to pass to launcher service"
-HELP_TOTAL_SUPPLY = "Total supply of tokens"
-HELP_REGULAR_LAUNCH = "Launch cluster in a regular (not BIOS) mode"
-HELP_DONT_NEWACCOUNT = "Do not create accounts"
-HELP_DONT_SETPROD = "Do not set producers in bios launch"
+HELP_TOKENS_SUPPLY = "Total supply of tokens (in regular launch)"
+HELP_DONT_BIOS = "Do not BIOS launch (regular launch instead)"
+HELP_DONT_NEWACCOUNT = "Do not create accounts in launch"
+HELP_DONT_SETPROD = "Do not set producers in BIOS launch"
 HELP_DONT_VOTE = "Do not vote for producers in regular launch"
 HELP_HTTP_RETRY = "HTTP connection: max num of retries"
 HELP_HTTP_SLEEP = "HTTP connection: sleep time between retries"
 HELP_VERIFY_ASYNC = "Verify transaction: verify asynchronously"
 HELP_VERIFY_RETRY = "Verify transaction: max num of retries"
 HELP_VERIFY_SLEEP = "Verify transaction: sleep time between retries"
-HELP_SYNC_RETRY = "Check nodes in sync: max num of retries"
-HELP_SYNC_SLEEP = "Check nodes in sync: sleep time between retries"
+HELP_SYNC_RETRY = "Check sync: max num of retries"
+HELP_SYNC_SLEEP = "Check sync: sleep time between retries"
 # logger-related help
 HELP_LOG_LEVEL = "Stdout logging level (numeric)"
 HELP_LOG_ALL = "Set stdout logging level to ALL (0)"
@@ -174,23 +173,25 @@ class SyncError(BlockchainError):
 class CommandLineArguments:
     def __init__(self):
         cla = self.parse()
+        # service-related options
         self.addr = cla.addr
         self.port = cla.port
         self.wdir = cla.wdir
         self.file = cla.file
+        self.gene = cla.gene
         self.start = cla.start
         self.kill = cla.kill
-
-        self.contracts_dir = cla.contracts_dir
-        self.total_supply = cla.total_supply
+        # cluster-related options
+        self.cdir = cla.cdir
         self.cluster_id = cla.cluster_id
         self.node_count = cla.node_count
         self.pnode_count = cla.pnode_count
         self.producer_count = cla.producer_count
         self.unstarted_count = cla.unstarted_count
-        self.shape = cla.shape
+        self.topology = cla.topology
         self.center_node_id = cla.center_node_id
-        self.launch_mode = cla.launch_mode
+        self.tokens_supply = cla.tokens_supply
+        self.dont_bios = cla.dont_bios
         self.dont_newaccount = cla.dont_newaccount
         self.dont_setprod = cla.dont_setprod
         self.dont_vote = cla.dont_vote
@@ -201,7 +202,7 @@ class CommandLineArguments:
         self.verify_sleep = cla.verify_sleep
         self.sync_retry = cla.sync_retry
         self.sync_sleep = cla.sync_sleep
-
+        # logger-related options
         self.threshold = cla.threshold
         self.buffered = cla.buffered
         self.monochrome = cla.monochrome
@@ -214,45 +215,62 @@ class CommandLineArguments:
         self.show_log_level = cla.show_log_level
         self.hide_all = cla.hide_all
 
-
     @staticmethod
     def parse():
         desc = color.decorate("Launcher Service-based EOSIO Testing Framework", style="underline", fcolor="green")
         left = 5
         form = lambda text, value=None: "{} ({})".format(helper.pad(text, left=left, total=55), value)
-        parser = argparse.ArgumentParser(description=desc, add_help=False, formatter_class=lambda prog: argparse.RawTextHelpFormatter(prog, max_help_position=50))
+        parser = argparse.ArgumentParser(description=desc, add_help=False,
+                 formatter_class=lambda prog: argparse.RawTextHelpFormatter(prog, max_help_position=50))
         parser.add_argument("-h", "--help", action="help", help=" " * left + HELP_HELP)
         # service-related options
         parser.add_argument("-a", "--addr", type=str, metavar="IP", help=form(HELP_ADDR, DEFAULT_ADDR))
         parser.add_argument("-o", "--port", type=int, help=form(HELP_PORT, DEFAULT_PORT))
         parser.add_argument("-w", "--wdir", type=str, metavar="PATH", help=form(HELP_WDIR, DEFAULT_WDIR))
         parser.add_argument("-f", "--file", type=str, metavar="PATH", help=form(HELP_FILE, DEFAULT_FILE))
+        parser.add_argument("-g", "--gene", type=str, metavar="PATH", help=form(HELP_GENE, DEFAULT_GENE))
         parser.add_argument("-s", "--start", action="store_true", default=None, help=form(HELP_START, DEFAULT_START))
         parser.add_argument("-k", "--kill", action="store_true", default=None, help=form(HELP_KILL, DEFAULT_KILL))
         # cluster-related options
-        parser.add_argument("-d", "--contracts-dir", metavar="PATH", help=form(HELP_CONTRACTS_DIR, DEFAULT_CONTRACTS_DIR))
-        parser.add_argument("-i", "--cluster-id", dest="cluster_id", type=int, metavar="ID", help=form(HELP_CLUSTER_ID, DEFAULT_CLUSTER_ID))
-        parser.add_argument("-n", "--node-count", type=int, metavar="NUM", help=form(HELP_NODE_COUNT, DEFAULT_NODE_COUNT))
-        parser.add_argument("-p", "--pnode-count", type=int, metavar="NUM", help=form(HELP_PNODE_COUNT, DEFAULT_PNODE_COUNT))
-        parser.add_argument("-q", "--producer-count", type=int, metavar="NUM", help=form(HELP_PRODUDCER_COUNT, DEFAULT_PRODUDCER_COUNT))
-        parser.add_argument("-u", "--unstarted-count", type=int, metavar="NUM", help=form(HELP_UNSTARTED_COUNT, DEFAULT_UNSTARTED_COUNT))
-        parser.add_argument("-t", "--shape", type=str, metavar="TOPOLOGY", help=form(HELP_SHAPE, DEFAULT_SHAPE), choices={"mesh", "star", "bridge", "line", "ring", "tree"})
-        parser.add_argument("-c", "--center-node-id", type=int, metavar="ID", help=form(HELP_CENTER_NODE_ID, DEFAULT_CENTER_NODE_ID))
-        parser.add_argument("-g", "--total-supply", metavar="NUM", help=form(HELP_TOTAL_SUPPLY, "{:g}".format(DEFAULT_TOTAL_SUPPLY)))
-        parser.add_argument("-r", "--regular-launch", dest="launch_mode", action="store_const", const="regular", default=None, help=form(HELP_REGULAR_LAUNCH, DEFAULT_REGULAR_LAUNCH))
-        parser.add_argument("-xn", "--dont-newaccount", action="store_true", default=None, help=form(HELP_DONT_NEWACCOUNT, DEFAULT_DONT_NEWACCOUNT))
-        parser.add_argument("-xs", "--dont-setprod", action="store_true", default=None, help=form(HELP_DONT_SETPROD, DEFAULT_DONT_SETPROD))
-        parser.add_argument("-xv", "--dont-vote", action="store_true", default=None, help=form(HELP_DONT_VOTE, DEFAULT_DONT_VOTE))
+        parser.add_argument("-c", "--cdir", metavar="PATH", help=form(HELP_CDIR, DEFAULT_CDIR))
+        parser.add_argument("-i", "--cluster-id", dest="cluster_id", type=int, metavar="ID",
+                            help=form(HELP_CLUSTER_ID, DEFAULT_CLUSTER_ID))
+        parser.add_argument("-n", "--node-count", type=int, metavar="NUM",
+                            help=form(HELP_NODE_COUNT, DEFAULT_NODE_COUNT))
+        parser.add_argument("-p", "--pnode-count", type=int, metavar="NUM",
+                            help=form(HELP_PNODE_COUNT, DEFAULT_PNODE_COUNT))
+        parser.add_argument("-q", "--producer-count", type=int, metavar="NUM",
+                            help=form(HELP_PRODUDCER_COUNT, DEFAULT_PRODUDCER_COUNT))
+        parser.add_argument("-u", "--unstarted-count", type=int, metavar="NUM",
+                            help=form(HELP_UNSTARTED_COUNT, DEFAULT_UNSTARTED_COUNT))
+        parser.add_argument("-t", "--topology", type=str, metavar="SHAPE", help=form(HELP_TOPOLOGY, DEFAULT_TOPOLOGY),
+                            choices={"mesh", "bridge", "line", "ring", "star","tree"})
+        parser.add_argument("-x", "--center-node-id", type=int, metavar="ID",
+                            help=form(HELP_CENTER_NODE_ID, DEFAULT_CENTER_NODE_ID))
+        parser.add_argument("-y", "--tokens-supply", metavar="NUM",
+                            help=form(HELP_TOKENS_SUPPLY, "{:g}".format(DEFAULT_TOKENS_SUPPLY)))
+        parser.add_argument("-r", "-dbios", "--dont-bios", action="store_true", default=None,
+                            help=form(HELP_DONT_BIOS, DEFAULT_DONT_BIOS))
+        parser.add_argument("-dnewa", "--dont-newaccount", action="store_true", default=None,
+                            help=form(HELP_DONT_NEWACCOUNT, DEFAULT_DONT_NEWACCOUNT))
+        parser.add_argument("-dsetp", "--dont-setprod", action="store_true", default=None,
+                            help=form(HELP_DONT_SETPROD, DEFAULT_DONT_SETPROD))
+        parser.add_argument("-dvote", "--dont-vote", action="store_true", default=None,
+                            help=form(HELP_DONT_VOTE, DEFAULT_DONT_VOTE))
         parser.add_argument("--http-retry", type=int, metavar="NUM", help=form(HELP_HTTP_RETRY, DEFAULT_HTTP_RETRY))
         parser.add_argument("--http-sleep", type=float, metavar="TIME", help=form(HELP_HTTP_SLEEP, DEFAULT_HTTP_SLEEP))
-        parser.add_argument("--verify-async", action="store_true", default=None, help=form(HELP_VERIFY_ASYNC, DEFAULT_VERIFY_ASYNC))
-        parser.add_argument("--verify-retry", type=int, metavar="NUM", help=form(HELP_VERIFY_RETRY, DEFAULT_VERIFY_RETRY))
-        parser.add_argument("--verify-sleep", type=float, metavar="TIME", help=form(HELP_VERIFY_SLEEP, DEFAULT_VERIFY_SLEEP))
+        parser.add_argument("-va", "--verify-async", action="store_true", default=None,
+                            help=form(HELP_VERIFY_ASYNC, DEFAULT_VERIFY_ASYNC))
+        parser.add_argument("--verify-retry", type=int, metavar="NUM",
+                            help=form(HELP_VERIFY_RETRY, DEFAULT_VERIFY_RETRY))
+        parser.add_argument("--verify-sleep", type=float, metavar="TIME",
+                            help=form(HELP_VERIFY_SLEEP, DEFAULT_VERIFY_SLEEP))
         parser.add_argument("--sync-retry", type=int, metavar="NUM", help=form(HELP_SYNC_RETRY, DEFAULT_SYNC_RETRY))
         parser.add_argument("--sync-sleep", type=float, metavar="TIME", help=form(HELP_SYNC_SLEEP, DEFAULT_SYNC_SLEEP))
         # logger-related options
         threshold = parser.add_mutually_exclusive_group()
-        threshold.add_argument("-l", "--log-level", dest="threshold", type=int, metavar="LEVEL", action="store", help=form(HELP_LOG_LEVEL))
+        threshold.add_argument("-l", "--log-level", dest="threshold", type=int, metavar="LEVEL", action="store",
+                               help=form(HELP_LOG_LEVEL))
         threshold.add_argument("--all", dest="threshold", action="store_const", const="all", help=form(HELP_LOG_ALL))
         threshold.add_argument("--trace", dest="threshold", action="store_const", const="trace", help=form(HELP_TRACE))
         threshold.add_argument("--debug", dest="threshold", action="store_const", const="debug", help=form(HELP_DEBUG))
@@ -262,22 +280,34 @@ class CommandLineArguments:
         threshold.add_argument("--fatal", dest="threshold", action="store_const", const="fatal", help=form(HELP_FATAL))
         threshold.add_argument("--flag", dest="threshold", action="store_const", const="flag", help=form(HELP_FLAG))
         threshold.add_argument("--off", dest="threshold", action="store_const", const="off", help=form(HELP_LOG_OFF))
-        parser.add_argument("-m", "--monochrome", action="store_true", default=None, help=form(HELP_MONOCHROME, DEFAULT_MONOCHROME))
-        parser.add_argument("-dbu", "--dont-buffer", dest="buffered", action="store_false", default=None, help=form(HELP_DONT_BUFFER, not DEFAULT_BUFFERED))
-        parser.add_argument("-hct", "--hide-clock-time", dest="show_clock_time", action="store_false", default=None, help=form(HELP_HIDE_CLOCK_TIME, not DEFAULT_SHOW_CLOCK_TIME))
-        parser.add_argument("-het", "--hide-elapsed-time", dest="show_elapsed_time", action="store_false", default=None, help=form(HELP_HIDE_ELAPSED_TIME, not DEFAULT_SHOW_ELAPSED_TIME))
-        parser.add_argument("-hfi", "--hide-filename", dest="show_filename", action="store_false", default=None, help=form(HELP_HIDE_FILENAME, not DEFAULT_SHOW_FILENAME))
-        parser.add_argument("-hln", "--hide-lineno", dest="show_lineno", action="store_false", default=None, help=form(HELP_HIDE_LINENO, not DEFAULT_SHOW_LINENO))
-        parser.add_argument("-hfn", "--hide-function", dest="show_function", action="store_false", default=None, help=form(HELP_HIDE_FUNCTION, not DEFAULT_SHOW_FUNCTION))
-        parser.add_argument("-hth", "--hide-thread", dest="show_thread", action="store_false", default=None, help=form(HELP_HIDE_THREAD, not DEFAULT_SHOW_THREAD))
-        parser.add_argument("-hll", "--hide-log-level", dest="show_log_level", action="store_false", default=None, help=form(HELP_HIDE_LOG_LEVEL, not DEFAULT_SHOW_LOG_LEVEL))
-        parser.add_argument("-hall", "--hide-all", action="store_true", default=False, help=form(HELP_HIDE_ALL, DEFAULT_HIDE_ALL))
+        parser.add_argument("-dcolo", "--monochrome", action="store_true", default=None,
+                            help=form(HELP_MONOCHROME, DEFAULT_MONOCHROME))
+        parser.add_argument("-dbuff", "--dont-buffer", dest="buffered", action="store_false", default=None,
+                            help=form(HELP_DONT_BUFFER, not DEFAULT_BUFFERED))
+        parser.add_argument("-hct", "--hide-clock-time", dest="show_clock_time", action="store_false", default=None,
+                            help=form(HELP_HIDE_CLOCK_TIME, not DEFAULT_SHOW_CLOCK_TIME))
+        parser.add_argument("-het", "--hide-elapsed-time", dest="show_elapsed_time", action="store_false",
+                            default=None, help=form(HELP_HIDE_ELAPSED_TIME, not DEFAULT_SHOW_ELAPSED_TIME))
+        parser.add_argument("-hfi", "--hide-filename", dest="show_filename", action="store_false", default=None,
+                            help=form(HELP_HIDE_FILENAME, not DEFAULT_SHOW_FILENAME))
+        parser.add_argument("-hli", "--hide-lineno", dest="show_lineno", action="store_false", default=None,
+                            help=form(HELP_HIDE_LINENO, not DEFAULT_SHOW_LINENO))
+        parser.add_argument("-hfu", "--hide-function", dest="show_function", action="store_false", default=None,
+                            help=form(HELP_HIDE_FUNCTION, not DEFAULT_SHOW_FUNCTION))
+        parser.add_argument("-hth", "--hide-thread", dest="show_thread", action="store_false", default=None,
+                            help=form(HELP_HIDE_THREAD, not DEFAULT_SHOW_THREAD))
+        parser.add_argument("-hll", "--hide-log-level", dest="show_log_level", action="store_false", default=None,
+                            help=form(HELP_HIDE_LOG_LEVEL, not DEFAULT_SHOW_LOG_LEVEL))
+        parser.add_argument("-hall", "--hide-all", action="store_true", default=False,
+                            help=form(HELP_HIDE_ALL, DEFAULT_HIDE_ALL))
 
         return parser.parse_args()
 
+# =============== END OF SERVICE CLASS ================================================================================
 
 class Service:
-    def __init__(self, addr=None, port=None, wdir=None, file=None, start=None, kill=None, logger=None, dont_connect=False):
+    def __init__(self, logger, addr=None, port=None, wdir=None, file=None, gene=None, start=None, kill=None,
+                 dont_connect=False):
         # read command-line arguments
         self.cla = CommandLineArguments()
         # configure service
@@ -285,6 +315,7 @@ class Service:
         self.port  = helper.override(DEFAULT_PORT,  port,  self.cla.port)
         self.wdir  = helper.override(DEFAULT_WDIR,  wdir,  self.cla.wdir)
         self.file  = helper.override(DEFAULT_FILE,  file,  self.cla.file)
+        self.gene  = helper.override(DEFAULT_GENE,  gene,  self.cla.gene)
         self.start = helper.override(DEFAULT_START, start, self.cla.start)
         self.kill  = helper.override(DEFAULT_KILL,  kill,  self.cla.kill)
         # change working dir
@@ -310,7 +341,8 @@ class Service:
                 self.buffered = w.buffered = helper.override(DEFAULT_BUFFERED, w.buffered, self.cla.buffered)
                 self.monochrome = w.monochrome = helper.override(DEFAULT_MONOCHROME, w.monochrome, self.cla.monochrome)
                 if self.cla.hide_all:
-                      w.show_clock_time = w.show_elapsed_time = w.show_filename = w.show_lineno = w.show_function = w.show_thread = w.show_log_level = False
+                      w.show_clock_time = w.show_elapsed_time = w.show_filename = w.show_lineno = w.show_function = \
+                      w.show_thread = w.show_log_level = False
                 else:
                     w.show_clock_time = helper.override(DEFAULT_SHOW_CLOCK_TIME, w.show_clock_time, self.cla.show_clock_time)
                     w.show_elapsed_time = helper.override(DEFAULT_SHOW_ELAPSED_TIME, w.show_elapsed_time, self.cla.show_elapsed_time)
@@ -358,19 +390,20 @@ class Service:
     def print_config(self):
         self.print_header("service configuration")
         # print service config
-        self.print_formatted_config("-a: addr", HELP_ADDR,  self.addr,  DEFAULT_ADDR)
-        self.print_formatted_config("-o: port", HELP_PORT,  self.port,  DEFAULT_PORT)
-        self.print_formatted_config("-w: wdir", HELP_WDIR,  self.wdir,  DEFAULT_WDIR)
-        self.print_formatted_config("-f: file", HELP_FILE,  self.file,  DEFAULT_FILE)
-        self.print_formatted_config("-s: start",HELP_START, self.start, DEFAULT_START)
-        self.print_formatted_config("-k: kill", HELP_KILL,  self.kill,  DEFAULT_KILL)
+        self.print_config_helper("-a: addr",  HELP_ADDR,  self.addr,  DEFAULT_ADDR)
+        self.print_config_helper("-o: port",  HELP_PORT,  self.port,  DEFAULT_PORT)
+        self.print_config_helper("-w: wdir",  HELP_WDIR,  self.wdir,  DEFAULT_WDIR)
+        self.print_config_helper("-f: file",  HELP_FILE,  self.file,  DEFAULT_FILE)
+        self.print_config_helper("-g: gene",  HELP_GENE,  self.gene,  DEFAULT_GENE)
+        self.print_config_helper("-s: start", HELP_START, self.start, DEFAULT_START)
+        self.print_config_helper("-k: kill",  HELP_KILL,  self.kill,  DEFAULT_KILL)
         # print stdout logger config
         name = str(self.threshold)
         ival = str(int(self.threshold))
         text = "{} ({})".format(name, ival) if name != ival else "{}".format(name)
-        self.print_formatted_config("-l: log-level", HELP_LOG_LEVEL, text)
-        self.print_formatted_config("-m: monochrome", HELP_MONOCHROME, self.monochrome, DEFAULT_MONOCHROME)
-        self.print_formatted_config("-dbu: dont-buffer", HELP_DONT_BUFFER, not self.buffered, not DEFAULT_BUFFERED)
+        self.print_config_helper("-l: log-level", HELP_LOG_LEVEL, text)
+        self.print_config_helper("-dcolo: monochrome", HELP_MONOCHROME, self.monochrome, DEFAULT_MONOCHROME)
+        self.print_config_helper("-dbuff: dont-buffer", HELP_DONT_BUFFER, not self.buffered, not DEFAULT_BUFFERED)
 
     def connect_to_local_service(self):
         self.print_header("connect to local service")
@@ -408,7 +441,7 @@ class Service:
             fillchar = "⎯"
         self.log(helper.pad(colorize(text), total=100, left=20, char=fillchar, sep=sep, textlen=len(text)), level=level, buffer=buffer)
 
-    def print_formatted_config(self, label, help, value, default_value=None):
+    def print_config_helper(self, label, help, value, default_value=None):
         different = value is not None and value != default_value
         squeezed = helper.squeeze(str(value if value is not None else default_value), maxlen=30)
         highlighted = color.blue(squeezed) if different else squeezed
@@ -458,7 +491,11 @@ class Service:
         self.debug(color.green("Starting a new launcher service."))
         with open(PROGRAM_LOG, "w") as f:
             pass
-        os.system("{} --http-server-address=0.0.0.0:{} --http-threads=4 >{} 2>&1 &".format(self.file, self.port, PROGRAM_LOG))
+        os.system(f"{self.file} "
+                  f"--http-server-address=0.0.0.0:{self.port} "
+                  f"--http-threads=4 "
+                  f"--genesis-file={self.gene} "
+                  f">{PROGRAM_LOG}  2>&1 &")
         time.sleep(1)
         with open(PROGRAM_LOG, "r") as f:
             msg = ""
@@ -473,25 +510,28 @@ class Service:
             self.error(msg)
             raise LauncherServiceError(msg)
 
+# =============== END OF SERVICE CLASS ================================================================================
+
+# =============== BEGIN OF SERVICE CLASS ==============================================================================
 
 class Cluster:
     def __init__(self,
                  service,
-                 contracts_dir=None,
+                 cdir=None,
                  cluster_id=None,
                  node_count=None,
                  pnode_count=None,
                  producer_count=None,
                  unstarted_count=None,
-                 shape=None,
+                 topology=None,
                  center_node_id=None,
                  extra_configs: typing.List[str]=None,
                  extra_args: str=None,
-                 launch_mode=None,
+                 dont_bios=None,
                  dont_newaccount=None,
                  dont_setprod=None,
                  dont_vote=None,
-                 total_supply=None,
+                 tokens_supply=None,
                  http_retry=None,
                  http_sleep=None,
                  verify_async=None,
@@ -513,22 +553,21 @@ class Cluster:
         self.flag = service.flag
         self.flush = service.flush
         self.print_header = service.print_header
-        self.print_formatted_config= service.print_formatted_config
+        self.print_config_helper= service.print_config_helper
         self.verify_threads = []
-
         # configure cluster
-        self.contracts_dir   = helper.override(DEFAULT_CONTRACTS_DIR,   contracts_dir,   self.cla.contracts_dir)
+        self.cdir            = helper.override(DEFAULT_CDIR,            cdir,            self.cla.cdir)
         self.cluster_id      = helper.override(DEFAULT_CLUSTER_ID,      cluster_id,      self.cla.cluster_id)
         self.node_count      = helper.override(DEFAULT_NODE_COUNT,      node_count,      self.cla.node_count)
         self.pnode_count     = helper.override(DEFAULT_PNODE_COUNT,     pnode_count,     self.cla.pnode_count)
         self.producer_count  = helper.override(DEFAULT_PRODUDCER_COUNT, producer_count,  self.cla.producer_count)
         self.unstarted_count = helper.override(DEFAULT_UNSTARTED_COUNT, unstarted_count, self.cla.unstarted_count)
-        self.shape           = helper.override(DEFAULT_SHAPE,           shape,           self.cla.shape)
+        self.topology        = helper.override(DEFAULT_TOPOLOGY,        topology,        self.cla.topology)
         self.center_node_id  = helper.override(DEFAULT_CENTER_NODE_ID,  center_node_id,  self.cla.center_node_id)
         self.extra_configs   = helper.override(DEFAULT_EXTRA_CONFIGS,   extra_configs)
         self.extra_args      = helper.override(DEFAULT_EXTRA_ARGS,      extra_args)
-        self.total_supply    = helper.override(DEFAULT_TOTAL_SUPPLY,    total_supply,    self.cla.total_supply)
-        self.launch_mode     = helper.override(DEFAULT_LAUNCH_MODE,     launch_mode,     self.cla.launch_mode)
+        self.tokens_supply   = helper.override(DEFAULT_TOKENS_SUPPLY,   tokens_supply,   self.cla.tokens_supply)
+        self.dont_bios       = helper.override(DEFAULT_DONT_BIOS,       dont_bios,       self.cla.dont_bios)
         self.dont_newaccount = helper.override(DEFAULT_DONT_NEWACCOUNT, dont_newaccount, self.cla.dont_newaccount)
         self.dont_setprod    = helper.override(DEFAULT_DONT_SETPROD,    dont_setprod,    self.cla.dont_setprod)
         self.dont_vote       = helper.override(DEFAULT_DONT_VOTE,       dont_vote,       self.cla.dont_vote)
@@ -542,7 +581,7 @@ class Cluster:
 
         # check for logical errors in config
         self.check_config()
-
+        # establish mappings between nodes and producers
         # Example
         # -------
         # Given 4 nodes, 2 producer nodes and 3 (non-eosio) producers, the
@@ -557,8 +596,6 @@ class Cluster:
         # self.producers = ["defproducera", "defproducerb", "defproducerc"]
         # self.producer_to_node = {"defproducera": 0, "defproducerb": 0, "defproducerc": 1}
         # self.node_to_producers = {0: ["defproducera", "defproducerb"], 1: ["defproducerc"]}
-
-        # establish mappings between nodes and producers
         self.nodes = []
         self.producers = []
         self.producer_to_node = {}
@@ -574,16 +611,11 @@ class Cluster:
             self.nodes[i] += [{"producers": (prod if i else ["eosio"] + prod)}]
             self.producers += prod
             self.node_to_producers[i] = prod
-
-
         # launch cluster
-        if self.launch_mode == "bios":
+        if not self.dont_bios:
             self.bios_launch(dont_newaccount=self.dont_newaccount, dont_setprod=self.dont_setprod)
-        elif self.launch_mode == "regular":
-            self.regular_launch(dont_newaccount=self.dont_newaccount, dont_vote=self.dont_vote)
         else:
-            raise ValueError(f"Unknown launch_mode {self.launch_mode}")
-
+            self.regular_launch(dont_newaccount=self.dont_newaccount, dont_vote=self.dont_vote)
 
     def __enter__(self):
         return self
@@ -598,12 +630,12 @@ class Cluster:
         bassert(self.node_count >= self.pnode_count + self.unstarted_count,
                 f"node_count ({self.node_count}) must be greater than "
                 f"pnode_count ({self.pnode_count}) + unstarted_count ({self.unstarted_count}).")
-        if self.shape in ("star", "bridge"):
-            bassert(self.center_node_id is not None, f"center_node_id is not specified when shape is \"{self.shape}\".")
-        if self.shape == "bridge":
+        if self.topology in ("bridge", "star"):
+            bassert(self.center_node_id is not None, f"center_node_id is not specified when topology is \"{self.topology}\".")
+        if self.topology == "bridge":
             bassert(self.center_node_id not in (0, self.node_count-1),
                     f"center_node_id ({self.center_node_id}) cannot be 0 or {self.node_count-1} "
-                    f"when shape is \"bridge\" and node_count is {self.node_count}.")
+                    f"when topology is \"bridge\" and node_count is {self.node_count}.")
 
 
     def bios_launch(self, dont_newaccount=False, dont_setprod=False):
@@ -671,14 +703,15 @@ class Cluster:
                                             "eosio.token",
                                             "eosio.upay"])
         self.set_token_contract()
-        self.create_tokens(maximum_supply=self.total_supply)
-        self.issue_tokens(quantity=self.total_supply)
+        self.create_tokens(maximum_supply=self.tokens_supply)
+        self.issue_tokens(quantity=self.tokens_supply)
         self.set_system_contract()
         self.init_system_contract()
         if not dont_newaccount:
             self.create_and_register_producers_in_parallel()
             if not dont_vote:
-                self.vote_for_producers(voter="defproducera", voted_producers=list(self.producer_to_node.keys())[:min(21, len(self.producer_to_node))])
+                self.vote_for_producers(voter="defproducera",
+                                        voted_producers=list(self.producer_to_node)[:min(21, len(self.producer_to_node))])
                 self.check_head_block_producer()
         self.check_sync()
         for t in self.verify_threads:
@@ -688,26 +721,28 @@ class Cluster:
 
     def print_config(self):
         self.print_header("cluster configuration")
-        self.print_formatted_config("-d: contracts_dir",   HELP_CONTRACTS_DIR,   self.contracts_dir,    DEFAULT_CONTRACTS_DIR)
-        self.print_formatted_config("-i: cluster_id",      HELP_CLUSTER_ID,      self.cluster_id,       DEFAULT_CLUSTER_ID)
-        self.print_formatted_config("-n: node_count",      HELP_NODE_COUNT,      self.node_count,       DEFAULT_NODE_COUNT)
-        self.print_formatted_config("-m: pnode_count",     HELP_PNODE_COUNT,     self.pnode_count,      DEFAULT_PNODE_COUNT)
-        self.print_formatted_config("-p: producer_count",  HELP_PRODUDCER_COUNT, self.producer_count,   DEFAULT_PRODUDCER_COUNT)
-        self.print_formatted_config("-u: unstarted_count", HELP_UNSTARTED_COUNT, self.unstarted_count,  DEFAULT_UNSTARTED_COUNT)
-        self.print_formatted_config("-t: shape",           HELP_SHAPE,           self.shape,            DEFAULT_SHAPE)
-        self.print_formatted_config("-c: center_node_id",  HELP_CENTER_NODE_ID,  self.center_node_id,   DEFAULT_CENTER_NODE_ID)
-        self.print_formatted_config("... extra_configs",   HELP_EXTRA_CONFIGS,   self.extra_configs,    DEFAULT_EXTRA_CONFIGS)
-        self.print_formatted_config("-r: regular_launch",  HELP_REGULAR_LAUNCH,  self.launch_mode == "regular", DEFAULT_REGULAR_LAUNCH)
-        self.print_formatted_config("-xn: dont_newaccount",HELP_DONT_NEWACCOUNT, self.dont_newaccount,  DEFAULT_DONT_NEWACCOUNT)
-        self.print_formatted_config("-xs: dont_setprod",   HELP_DONT_SETPROD,    self.dont_setprod,     DEFAULT_DONT_SETPROD)
-        self.print_formatted_config("-xv: dont_vote",      HELP_DONT_VOTE,       self.dont_vote,        DEFAULT_DONT_VOTE)
-        self.print_formatted_config("--http-retry",        HELP_HTTP_RETRY,      self.http_retry,       DEFAULT_HTTP_RETRY)
-        self.print_formatted_config("--http-sleep",        HELP_HTTP_SLEEP,      self.http_sleep,       DEFAULT_HTTP_SLEEP)
-        self.print_formatted_config("--verify-async",      HELP_VERIFY_ASYNC,    self.verify_async,     DEFAULT_VERIFY_ASYNC)
-        self.print_formatted_config("--verify-retry",      HELP_VERIFY_RETRY,    self.verify_retry,     DEFAULT_VERIFY_RETRY)
-        self.print_formatted_config("--verify-sleep",      HELP_VERIFY_SLEEP,    self.verify_sleep,     DEFAULT_VERIFY_SLEEP)
-        self.print_formatted_config("--sync-retry",        HELP_SYNC_RETRY,      self.sync_retry,       DEFAULT_SYNC_RETRY)
-        self.print_formatted_config("--sync-sleep",        HELP_SYNC_SLEEP,      self.sync_sleep,       DEFAULT_SYNC_SLEEP)
+        self.print_config_helper("-d: cdir",                HELP_CDIR,            self.cdir,            DEFAULT_CDIR)
+        self.print_config_helper("-i: cluster_id",          HELP_CLUSTER_ID,      self.cluster_id,      DEFAULT_CLUSTER_ID)
+        self.print_config_helper("-n: node_count",          HELP_NODE_COUNT,      self.node_count,      DEFAULT_NODE_COUNT)
+        self.print_config_helper("-p: pnode_count",         HELP_PNODE_COUNT,     self.pnode_count,     DEFAULT_PNODE_COUNT)
+        self.print_config_helper("-q: producer_count",      HELP_PRODUDCER_COUNT, self.producer_count,  DEFAULT_PRODUDCER_COUNT)
+        self.print_config_helper("-u: unstarted_count",     HELP_UNSTARTED_COUNT, self.unstarted_count, DEFAULT_UNSTARTED_COUNT)
+        self.print_config_helper("-t: topology",            HELP_TOPOLOGY,        self.topology,        DEFAULT_TOPOLOGY)
+        self.print_config_helper("-x: center_node_id",      HELP_CENTER_NODE_ID,  self.center_node_id,  DEFAULT_CENTER_NODE_ID)
+        self.print_config_helper("... extra_configs",       HELP_EXTRA_CONFIGS,   self.extra_configs,   DEFAULT_EXTRA_CONFIGS)
+        self.print_config_helper("... extra_args",          HELP_EXTRA_ARGS,      self.extra_args,      DEFAULT_EXTRA_ARGS)
+        self.print_config_helper("-y: tokens_supply",       HELP_TOKENS_SUPPLY,   self.tokens_supply,   DEFAULT_TOKENS_SUPPLY)
+        self.print_config_helper("-dbios: dont-bios",       HELP_DONT_BIOS,       self.dont_bios,       DEFAULT_DONT_BIOS)
+        self.print_config_helper("-dnewa: dont-newaccount", HELP_DONT_NEWACCOUNT, self.dont_newaccount, DEFAULT_DONT_NEWACCOUNT)
+        self.print_config_helper("-dsetp: dont-setprod",    HELP_DONT_SETPROD,    self.dont_setprod,    DEFAULT_DONT_SETPROD)
+        self.print_config_helper("-dvote: dont-vote",       HELP_DONT_VOTE,       self.dont_vote,       DEFAULT_DONT_VOTE)
+        self.print_config_helper("--http-retry",            HELP_HTTP_RETRY,      self.http_retry,      DEFAULT_HTTP_RETRY)
+        self.print_config_helper("--http-sleep",            HELP_HTTP_SLEEP,      self.http_sleep,      DEFAULT_HTTP_SLEEP)
+        self.print_config_helper("--verify-async",          HELP_VERIFY_ASYNC,    self.verify_async,    DEFAULT_VERIFY_ASYNC)
+        self.print_config_helper("--verify-retry",          HELP_VERIFY_RETRY,    self.verify_retry,    DEFAULT_VERIFY_RETRY)
+        self.print_config_helper("--verify-sleep",          HELP_VERIFY_SLEEP,    self.verify_sleep,    DEFAULT_VERIFY_SLEEP)
+        self.print_config_helper("--sync-retry",            HELP_SYNC_RETRY,      self.sync_retry,      DEFAULT_SYNC_RETRY)
+        self.print_config_helper("--sync-sleep",            HELP_SYNC_SLEEP,      self.sync_sleep,      DEFAULT_SYNC_SLEEP)
 
 
     """
@@ -720,7 +755,7 @@ class Cluster:
         return self.call("launch_cluster",
                          nodes=self.nodes,
                          node_count=self.node_count,
-                         shape=self.shape,
+                         shape=self.topology,
                          center_node_id=self.center_node_id,
                          extra_configs=self.extra_configs,
                          extra_args=self.extra_args,
@@ -919,7 +954,7 @@ class Cluster:
                 self.log("All {} nodes are ready.".format(len(nodes)), level=level)
                 return True
             if retry > 0:
-                self.log("Nodes that are not ready: {}. {} retries remain. Sleep for {}s.".format(error_nodes, retry, sleep), level=level)
+                self.log(f"Nodes that are not ready: {error_nodes}. {retry} retries remain. Sleep for {sleep}s.", level=level)
                 time.sleep(sleep)
                 retry -= 1
             else:
@@ -1001,7 +1036,8 @@ class Cluster:
         def report(channel, thread_id, message):
             channel[thread_id] = message
         for ac in accounts:
-            t = ExceptionThread(channel, report, target=self.bios_create_accounts, args=(ac,), kwargs={"buffer": True, "verify_key": verify_key})
+            t = ExceptionThread(channel, report, target=self.bios_create_accounts, args=(ac,),
+                                kwargs={"buffer": True, "verify_key": verify_key})
             threads.append(t)
             t.start()
         for t in threads:
@@ -1058,7 +1094,8 @@ class Cluster:
         return self.push_actions(actions=actions, header="init system contract")
 
 
-    def create_account(self, creator, name, stake_cpu, stake_net, buy_ram_bytes, transfer, node_id=0, verify_key="irreversible", buffer=False):
+    def create_account(self, creator, name, stake_cpu, stake_net, buy_ram_bytes, transfer, node_id=0,
+                       verify_key="irreversible", buffer=False):
         newaccount  = {"account": "eosio",
                        "action": "newaccount",
                        "permissions": [{"actor": "eosio",
@@ -1108,7 +1145,7 @@ class Cluster:
 
 
     def create_and_register_producers_in_parallel(self):
-        amount = self.total_supply * 0.075
+        amount = self.tokens_supply * 0.075
         threads = []
         channel = {}
         def report(channel, thread_id, message):
@@ -1146,7 +1183,8 @@ class Cluster:
 
 
     def vote_for_producers(self, voter, voted_producers: typing.List[str],  buffer=False):
-        assert len(voted_producers) <= 30, "An account cannot votes for more than 30 producers. {} voted for {} producers.".format(voter, len(voted_producers))
+        bassert(len(voted_producers) <= 30,
+                f"An account cannot votes for more than 30 producers. {voter} voted for {len(voted_producers)} producers.")
         actions = [{"account": "eosio",
                     "action": "voteproducer",
                     "permissions": [{"actor": "{}".format(voter),
@@ -1155,8 +1193,6 @@ class Cluster:
                              "proxy": "",
                              "producers": voted_producers}}]
         return self.push_actions(actions=actions, header="votes for producers", buffer=buffer)
-
-
 
     def wait_get_block(self, block_num, node_id=0, **call_kwargs) -> dict:
         """Get block information by block num. If that block has not been produced, wait for it."""
@@ -1176,30 +1212,14 @@ class Cluster:
         return self.wait_get_block(block_num=block_num, node_id=node_id, **call_kwargs)["producer"]
 
 
-    def check_head_block_producer(self, retry=None, sleep=None, dont_raise=False):
-        if retry is None: retry = 100
-        if sleep is None: sleep = 1.0
-        self.print_header("check head block producer")
-        for __ in range(retry + 1):
-            head_block_producer = self.get_head_block_producer(level="trace")
-            if head_block_producer == "eosio":
-                self.debug(color.yellow("Head block producer is still \"eosio\"."))
-            else:
-                self.debug(color.green(f"Head block producer is now \"{head_block_producer}\", no longer eosio."))
-                break
-            time.sleep(sleep)
-        else:
-            msg = f"Head block producer is still \"eosio\" after {retry} {helper.plural(('retry', 'retries'), count=retry)}."
-            self.error(msg)
-            if not dont_raise:
-                raise BlockchainError(msg)
+# --------------- auxiliary -------------------------------------------------------------------------------------------
 
     def get_wasm_file(self, contract):
-        return os.path.join(self.contracts_dir, contract, contract + ".wasm")
+        return os.path.join(self.cdir, contract, contract + ".wasm")
 
 
     def get_abi_file(self, contract):
-        return os.path.join(self.contracts_dir, contract, contract + ".abi")
+        return os.path.join(self.cdir, contract, contract + ".abi")
 
 
     @staticmethod
@@ -1222,6 +1242,8 @@ class Cluster:
             return res
         # 8031810176 = 26 ** 7 is integer for "baaaaaaa" in base26
         return "defproducer" + string.ascii_lowercase[num] if num < 26 else "defpr" + int_to_base26(8031810176 + num)[1:]
+
+# --------------- check and verify ------------------------------------------------------------------------------------
 
     def verify(self,
                transaction_id,
@@ -1259,6 +1281,24 @@ class Cluster:
         if not verified and not dont_raise:
             raise BlockchainError(f"{transaction_id} cannot be verified")
         return verified
+
+    def check_head_block_producer(self, retry=None, sleep=None, dont_raise=False):
+        if retry is None: retry = 100
+        if sleep is None: sleep = 1.0
+        self.print_header("check head block producer")
+        for __ in range(retry + 1):
+            head_block_producer = self.get_head_block_producer(level="trace")
+            if head_block_producer == "eosio":
+                self.debug(color.yellow("Head block producer is still \"eosio\"."))
+            else:
+                self.debug(color.green(f"Head block producer is now \"{head_block_producer}\", no longer eosio."))
+                break
+            time.sleep(sleep)
+        else:
+            msg = f"Head block producer is still \"eosio\" after {retry} {helper.plural(('retry', 'retries'), count=retry)}."
+            self.error(msg)
+            if not dont_raise:
+                raise BlockchainError(msg)
 
     def check_sync(self, retry=None, sleep=None, min_sync_count=None, max_block_lag=None, dont_raise=False, level="debug"):
         @dataclasses.dataclass
@@ -1324,7 +1364,6 @@ class Cluster:
             self.log(color.black_on_yellow(msg), level=level)
         return SyncResult(False, sync_count, min_block_num, max_block_num)
 
-
     def check_production_round(self, expected_producers: typing.List[str], level="debug", dont_raise=False):
         self.print_header("check production round", level=level)
         # list expected producers
@@ -1382,6 +1421,7 @@ class Cluster:
                 raise BlockchainError(msg)
             return False
 
+# --------------- call ------------------------------------------------------------------------------------------------
 
     """
     ====================
@@ -1541,18 +1581,23 @@ class Cluster:
             self.flush()
         return cx
 
+# =============== END OF CLUSTER CLASS ================================================================================
 
-def main():
+def _init_cluster():
     logger = Logger(ScreenWriter(threshold="debug"),
                     FileWriter(filename="service-info.log", threshold="info", monochrome=True),
                     FileWriter(filename="service-debug.log", threshold="debug", monochrome=True),
                     FileWriter(filename="service-trace.log", threshold="trace", monochrome=True))
     service = Service(logger=logger)
     cluster = Cluster(service=service)
+    return cluster
 
+def _main():
+    with _init_cluster() as clus:
+        pass
 
 if __name__ == "__main__":
-    main()
+    _main()
 
 
 
