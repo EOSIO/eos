@@ -52,39 +52,39 @@ class kv_tester : public tester {
       return base_tester::push_action(std::move(act), N(kvtest).to_uint64_t());
    }
 
-   void erase(const char* error, uint64_t db, name contract, const char* k) {
+   void erase(const char* error, name db, name contract, const char* k) {
       BOOST_REQUIRE_EQUAL(error, push_action(N(erase), mvo()("db", db)("contract", contract)("k", k)));
    }
 
    template <typename V>
-   void get(const char* error, uint64_t db, name contract, const char* k, V v) {
+   void get(const char* error, name db, name contract, const char* k, V v) {
       BOOST_REQUIRE_EQUAL(error, push_action(N(get), mvo()("db", db)("contract", contract)("k", k)("v", v)));
    }
 
    template <typename V>
-   void set(const char* error, uint64_t db, name contract, const char* k, V v) {
+   void set(const char* error, name db, name contract, const char* k, V v) {
       BOOST_REQUIRE_EQUAL(error, push_action(N(set), mvo()("db", db)("contract", contract)("k", k)("v", v)));
    }
 
-   void setmany(const char* error, uint64_t db, name contract, const std::vector<kv>& kvs) {
+   void setmany(const char* error, name db, name contract, const std::vector<kv>& kvs) {
       BOOST_REQUIRE_EQUAL(error, push_action(N(setmany), mvo()("db", db)("contract", contract)("kvs", kvs)));
    }
 
    template <typename T>
-   void scan(const char* error, uint64_t db, name contract, const char* prefix, T lower,
+   void scan(const char* error, name db, name contract, const char* prefix, T lower,
              const std::vector<kv>& expected) {
       BOOST_REQUIRE_EQUAL(error, push_action(N(scan), mvo()("db", db)("contract", contract)("prefix", prefix)(
                                                             "lower", lower)("expected", expected)));
    }
 
    template <typename T>
-   void scanrev(const char* error, uint64_t db, name contract, const char* prefix, T lower,
+   void scanrev(const char* error, name db, name contract, const char* prefix, T lower,
                 const std::vector<kv>& expected) {
       BOOST_REQUIRE_EQUAL(error, push_action(N(scanrev), mvo()("db", db)("contract", contract)("prefix", prefix)(
                                                                "lower", lower)("expected", expected)));
    }
 
-   void test_basic(uint64_t db) {
+   void test_basic(name db) {
       get("", db, N(kvtest), "", nullptr);
       set("", db, N(kvtest), "", "");
       get("", db, N(kvtest), "", "");
@@ -109,7 +109,7 @@ class kv_tester : public tester {
       get("", db, N(kvtest), "01020304", "aabbccddee");
    }
 
-   void test_scan(uint64_t db) {
+   void test_scan(name db) {
       setmany("", db, N(kvtest),
               {
                     kv{ {}, { 0x12 } },
@@ -204,7 +204,7 @@ class kv_tester : public tester {
       scan("", db, N(kvtest), "44", "2233", {});
    } // test_scan
 
-   void test_scanrev(uint64_t db) {
+   void test_scanrev(name db) {
       setmany("", db, N(kvtest),
               {
                     kv{ {}, { 0x12 } },
@@ -282,20 +282,19 @@ class kv_tester : public tester {
 BOOST_AUTO_TEST_SUITE(kv_tests)
 
 BOOST_FIXTURE_TEST_CASE(kv_basic, kv_tester) try {
-   BOOST_REQUIRE_EQUAL("Bad key-value database ID", push_action(N(itlifetime), mvo()("db", 2)));
-   BOOST_REQUIRE_EQUAL("Bad key-value database ID", push_action(N(itlifetime), mvo()("db", 3)));
-   BOOST_REQUIRE_EQUAL("", push_action(N(itlifetime), mvo()("db", 0)));
-   test_basic(0);
+   BOOST_REQUIRE_EQUAL("Bad key-value database ID", push_action(N(itlifetime), mvo()("db", N(oops))));
+   BOOST_REQUIRE_EQUAL("", push_action(N(itlifetime), mvo()("db", N(eosio.kvram))));
+   test_basic(N(eosio.kvram));
 }
 FC_LOG_AND_RETHROW()
 
 BOOST_FIXTURE_TEST_CASE(kv_scan, kv_tester) try { //
-   test_scan(0);
+   test_scan(N(eosio.kvram));
 }
 FC_LOG_AND_RETHROW()
 
 BOOST_FIXTURE_TEST_CASE(kv_scanrev, kv_tester) try { //
-   test_scanrev(0);
+   test_scanrev(N(eosio.kvram));
 }
 FC_LOG_AND_RETHROW()
 

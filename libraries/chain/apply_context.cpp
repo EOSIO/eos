@@ -49,7 +49,7 @@ apply_context::apply_context(controller& con, transaction_context& trx_ctx, uint
    receiver = trace.receiver;
    context_free = trace.context_free;
    if (!context_free)
-      kv_contexts.push_back(create_kv_chainbase_context(db, 0, receiver));
+      kv_ram = create_kv_chainbase_context(db, 0, receiver);
 }
 
 void apply_context::exec_one()
@@ -850,28 +850,24 @@ int apply_context::db_end_i64( name code, name scope, name table ) {
 }
 
 void apply_context::kv_erase(uint64_t db, uint64_t contract, const char* key, uint32_t key_size) {
-   kv_check_db(db);
-   return kv_contexts[db]->kv_erase(contract, key, key_size);
+   return kv_get_db(db).kv_erase(contract, key, key_size);
 }
 
 void apply_context::kv_set(uint64_t db, uint64_t contract, const char* key, uint32_t key_size, const char* value, uint32_t value_size) {
-   kv_check_db(db);
-   return kv_contexts[db]->kv_set(contract, key, key_size, value, value_size);
+   return kv_get_db(db).kv_set(contract, key, key_size, value, value_size);
 }
 
 bool apply_context::kv_get(uint64_t db, uint64_t contract, const char* key, uint32_t key_size, uint32_t& value_size) {
-   kv_check_db(db);
-   return kv_contexts[db]->kv_get(contract, key, key_size, value_size);
+   return kv_get_db(db).kv_get(contract, key, key_size, value_size);
 }
 
 uint32_t apply_context::kv_get_data(uint64_t db, uint32_t offset, char* data, uint32_t data_size) {
-   kv_check_db(db);
-   return kv_contexts[db]->kv_get_data(offset, data, data_size);
+   return kv_get_db(db).kv_get_data(offset, data, data_size);
 }
 
 uint32_t apply_context::kv_it_create(uint64_t db, uint64_t contract, const char* prefix, uint32_t size) {
    // KV-TODO: limit number of iterators
-   kv_check_db(db);
+   auto& kdb = kv_get_db(db);
    uint32_t itr;
    if (!kv_destroyed_iterators.empty()) {
       itr = kv_destroyed_iterators.back();
@@ -880,7 +876,7 @@ uint32_t apply_context::kv_it_create(uint64_t db, uint64_t contract, const char*
       itr = kv_iterators.size();
       kv_iterators.emplace_back();
    }
-   kv_iterators[itr] = kv_contexts[db]->kv_it_create(contract, prefix, size);
+   kv_iterators[itr] = kdb.kv_it_create(contract, prefix, size);
    return itr;
 }
 
@@ -936,8 +932,11 @@ int32_t apply_context::kv_it_value(uint32_t itr, uint32_t offset, char* dest, ui
    return static_cast<int32_t>(kv_iterators[itr]->kv_it_value(offset, dest, size, actual_size));
 }
 
-void apply_context::kv_check_db(uint64_t db) {
-   EOS_ASSERT(db < kv_contexts.size(), kv_bad_db_id, "Bad key-value database ID");
+kv_context& apply_context::kv_get_db(uint64_t db) {
+   static constexpr name kvram_name = N(eosio.kvram);
+   if (db == kvram_name.to_uint64_t())
+      return *kv_ram;
+   EOS_ASSERT(false, kv_bad_db_id, "Bad key-value database ID");
 }
 
 void apply_context::kv_check_iterator(uint32_t itr) {
