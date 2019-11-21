@@ -54,7 +54,7 @@ def start_gen(clus, begin):
 
 def stop_gen(clus):
     try:
-        clus.call("send_raw", url=STOP_URL, node_id=1)
+        clus.call("send_raw", url=STOP_URL, node_id=1, error_level="info")
     except LauncherServiceError as e:
         if "\"code\": 14," in str(e):
             clus.warn("Captured fc::invalid_operation_exception_code (14). Generation should have stopped.")

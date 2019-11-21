@@ -935,16 +935,15 @@ class Cluster:
 
 # --------------- bios-launch-related ---------------------------------------------------------------------------------
 
-    def set_bios_contract(self, verify_key="irreversible", **call_kwargs):
+    def set_bios_contract(self, **call_kwargs):
         contract = "eosio.bios"
         return self.set_contract(account="eosio",
                                  contract_file=self.make_wasm_name(contract),
                                  abi_file=self.make_abi_name(contract),
-                                 verify_key=verify_key,
                                  name=contract,
                                  **call_kwargs)
 
-    def bios_create_accounts(self, accounts: typing.Union[str, list], node_id=0, verify_key="irreversible", **call_kwargs):
+    def bios_create_accounts(self, accounts: typing.Union[str, list], node_id=0, **call_kwargs):
         actions = []
         accounts = [accounts] if isinstance(accounts, str) else accounts
         for name in accounts:
@@ -966,16 +965,17 @@ class Cluster:
                                           "waits": []}}}]
         header = "bios create "
         header += f"\"{accounts[0]}\" account" if len(accounts) == 1 else f"{len(actions)} accounts"
-        return self.push_actions(actions=actions, node_id=node_id, verify_key=verify_key, header=header, **call_kwargs)
+        return self.push_actions(actions=actions, node_id=node_id, header=header, **call_kwargs)
 
-    def bios_create_accounts_in_parallel(self, accounts, verify_key="irreversible", dont_raise=False):
+    def bios_create_accounts_in_parallel(self, accounts, dont_raise=False, **call_kwargs):
         threads = []
         channel = {}
         def report(channel, thread_id, message):
             channel[thread_id] = message
+        call_kwargs.update({"buffer": True})
         for ac in accounts:
             t = ExceptionThread(channel, report, target=self.bios_create_accounts, args=(ac,),
-                                kwargs={"verify_key": verify_key, "buffer": True})
+                                kwargs=call_kwargs)
             threads.append(t)
             t.start()
         for t in threads:
@@ -991,7 +991,7 @@ class Cluster:
             if not dont_raise:
                 raise BlockchainError(msg)
 
-    def set_producers(self, producers:list=None, verify_key="irreversible", **call_kwargs):
+    def set_producers(self, producers:list=None, **call_kwargs):
         if producers is None: producers = self.producers
         prod_keys = []
         for p in sorted(producers):
@@ -1000,53 +1000,49 @@ class Cluster:
                     "action": "setprods",
                     "permissions": [{"actor": "eosio", "permission": "active"}],
                     "data": { "schedule": prod_keys}}]
-        return self.push_actions(actions=actions, header="set producers", verify_key=verify_key, **call_kwargs)
+        return self.push_actions(actions=actions, header="set producers", **call_kwargs)
 
 # --------------- regular-launch-related ------------------------------------------------------------------------------
 
-    def set_token_contract(self, verify_key="irreversible", **call_kwargs):
+    def set_token_contract(self, **call_kwargs):
         contract = "eosio.token"
         return self.set_contract(account=contract,
                                  contract_file=self.make_wasm_name(contract),
                                  abi_file=self.make_abi_name(contract),
-                                 verify_key=verify_key,
                                  name=contract,
                                  **call_kwargs)
 
-    def set_system_contract(self, verify_key="irreversible", **call_kwargs):
+    def set_system_contract(self, **call_kwargs):
         contract = "eosio.system"
         return self.set_contract(account="eosio",
                                  contract_file=self.make_wasm_name(contract),
                                  abi_file=self.make_abi_name(contract),
-                                 verify_key=verify_key,
                                  name=contract,
                                  **call_kwargs)
 
-    def create_tokens(self, maximum_supply):
-        formatted = helper.format_tokens(maximum_supply)
+    def create_tokens(self, maximum_supply, **call_kwargs):
+        tokens = helper.format_tokens(maximum_supply)
         actions = [{"account": "eosio.token",
                     "action": "create",
                     "permissions": [{"actor": "eosio.token",
                                      "permission": "active"}],
                     "data": {"issuer": "eosio",
-                             "maximum_supply": formatted,
+                             "maximum_supply": tokens,
                              "can_freeze": 0,
                              "can_recall": 0,
                              "can_whitelist":0}}]
-        return self.push_actions(actions=actions, header="create tokens")
+        return self.push_actions(actions=actions, header="create tokens", **call_kwargs)
 
-
-    def issue_tokens(self, quantity):
-        formatted = helper.format_tokens(quantity)
+    def issue_tokens(self, quantity, **call_kwargs):
+        tokens = helper.format_tokens(quantity)
         actions = [{"account": "eosio.token",
                     "action": "issue",
                     "permissions": [{"actor": "eosio",
                                     "permission": "active"}],
                     "data": {"to": "eosio",
-                             "quantity": formatted,
+                             "quantity": tokens,
                              "memo": "hi"}}]
-        return self.push_actions(actions=actions, header="issue tokens")
-
+        return self.push_actions(actions=actions, header="issue tokens", **call_kwargs)
 
     def init_system_contract(self):
         actions = [{"account": "eosio",
