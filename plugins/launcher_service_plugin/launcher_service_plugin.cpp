@@ -969,7 +969,17 @@ fc::variant launcher_service_plugin::verify_transaction(launcher_service::verify
 }
 
 fc::variant launcher_service_plugin::set_contract(launcher_service::set_contract_param param) {
-   return _my->set_contract(param);
+   try {
+      return _my->set_contract(param);
+   } catch (fc::exception &e) {
+      elog("FC exception: code ${code}, cluster ${cluster}, node ${node}, details: ${d}",
+           ("code", e.code())("cluster", param.cluster_id)("node", param.node_id)("d", e.to_detail_string()));
+      throw;
+   } catch (std::exception &e) {
+      elog("STD exception: cluster ${cluster}, node ${node}, details: ${d}",
+           ("cluster", param.cluster_id)("node", param.node_id)("d", e.what()));
+      throw;
+   }
 }
 
 fc::variant launcher_service_plugin::import_keys(launcher_service::import_keys_param param) {
@@ -981,7 +991,17 @@ fc::variant launcher_service_plugin::generate_key(launcher_service::generate_key
 }
 
 fc::variant launcher_service_plugin::push_actions(launcher_service::push_actions_param param) {
-   return _my->push_actions(param);
+   try {
+      return _my->push_actions(param);
+   } catch (fc::exception &e) {
+      elog("FC exception: code ${code}, cluster ${cluster}, node ${node}, details: ${d}",
+           ("code", e.code())("cluster", param.cluster_id)("node", param.node_id)("d", e.to_detail_string()));
+      throw;
+   } catch (std::exception &e) {
+      elog("STD exception: cluster ${cluster}, node ${node}, details: ${d}",
+           ("cluster", param.cluster_id)("node", param.node_id)("d", e.what()));
+      throw;
+   }
 }
 
 fc::variant launcher_service_plugin::get_log_data(launcher_service::get_log_data_param param) {
@@ -989,7 +1009,17 @@ fc::variant launcher_service_plugin::get_log_data(launcher_service::get_log_data
 }
 
 fc::variant launcher_service_plugin::send_raw(launcher_service::send_raw_param param) {
-   return _my->send_raw(param);
+   try {
+      return _my->send_raw(param);
+   } catch (fc::exception &e) {
+      elog("FC exception: code ${code}, cluster ${cluster}, node ${node}, details: ${d}",
+           ("code", e.code())("cluster", param.cluster_id)("node", param.node_id)("d", e.to_detail_string()));
+      throw;
+   } catch (std::exception &e) {
+      elog("STD exception: cluster ${cluster}, node ${node}, details: ${d}",
+           ("cluster", param.cluster_id)("node", param.node_id)("d", e.what()));
+      throw;
+   }
 }
 
 std::string launcher_service_plugin::generate_node_config(const launcher_service::launcher_config &_config, launcher_service::cluster_def &def, int node_id) {
