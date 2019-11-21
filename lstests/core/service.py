@@ -982,7 +982,7 @@ class Cluster:
             t.join()
         error_count = len(channel)
         if error_count:
-            msg = f"{error_count} expcetions occurred in bios creating accounts."
+            msg = f"{error_count} {helper.plural('exception', cnt)} occurred in bios creating accounts."
             cnt = min(error_count, 10)
             msg += f"\nReporting first {cnt} {helper.plural('exception', cnt)}:"
             for i in range(cnt):
@@ -1044,18 +1044,16 @@ class Cluster:
                              "memo": "hi"}}]
         return self.push_actions(actions=actions, header="issue tokens", **call_kwargs)
 
-    def init_system_contract(self):
+    def init_system_contract(self, **call_kwargs):
         actions = [{"account": "eosio",
                     "action": "init",
                     "permissions": [{"actor": "eosio",
                                      "permission": "active"}],
                     "data": {"version": 0,
                              "core": "4,SYS"}}]
-        return self.push_actions(actions=actions, header="init system contract")
+        return self.push_actions(actions=actions, header="init system contract", **call_kwargs)
 
-
-    def create_account(self, creator, name, stake_cpu, stake_net, buy_ram_bytes, transfer, node_id=0,
-                       verify_key="irreversible", buffer=False):
+    def create_account(self, creator, name, stake_cpu, stake_net, buy_ram_bytes, transfer, node_id=0, **call_kwargs):
         newaccount  = {"account": "eosio",
                        "action": "newaccount",
                        "permissions": [{"actor": "eosio",
@@ -1089,10 +1087,9 @@ class Cluster:
                                 "stake_net_quantity": stake_net,
                                 "transfer": transfer}}
         actions = [newaccount, buyrambytes, delegatebw]
-        return self.push_actions(actions=actions, header=f"create \"{name}\" account", verify_key=verify_key, buffer=buffer)
+        return self.push_actions(node_id=node_id, actions=actions, header=f"create \"{name}\" account", **call_kwargs)
 
-
-    def register_producer(self, producer, buffer=False):
+    def register_producer(self, producer, node_id=0, **call_kwargs):
         actions = [{"account": "eosio",
                     "action": "regproducer",
                     "permissions": [{"actor": "{}".format(producer),
@@ -1101,15 +1098,15 @@ class Cluster:
                              "producer_key": PRODUCER_KEY,
                              "url": "www.test.com",
                              "location": 0}}]
-        return self.push_actions(actions=actions, header="register \"{}\" producer".format(producer), buffer=buffer)
+        return self.push_actions(node_id=node_id, actions=actions, header=f"register \"{producer}\" producer", **call_kwargs)
 
-
-    def create_and_register_producers_in_parallel(self):
+    def create_and_register_producers_in_parallel(self, dont_raise=False, **call_kwargs):
         amount = self.tokens_supply * 0.075
         threads = []
         channel = {}
         def report(channel, thread_id, message):
             channel[thread_id] = message
+        call_kwargs.update({"buffer": True})
         for p in self.producer_to_node:
             def create_and_register_producers(amount):
                 # CAUTION
@@ -1117,32 +1114,33 @@ class Cluster:
                 # Must keep p's value in a local variable (producer),
                 # since p may change in multithreading
                 producer = p
-                formatted = helper.format_tokens(amount)
+                tokens = helper.format_tokens(amount)
                 self.create_account(creator="eosio",
                                     name=producer,
-                                    stake_cpu=formatted,
-                                    stake_net=formatted,
+                                    stake_cpu=tokens,
+                                    stake_net=tokens,
                                     buy_ram_bytes=1048576,
                                     transfer=True,
-                                    buffer=True)
-                self.register_producer(producer=producer, buffer=True)
+                                    **call_kwargs)
+                self.register_producer(producer=producer, **call_kwargs)
             t = ExceptionThread(channel, report, target=create_and_register_producers, args=(amount,))
             amount = max(amount / 2, 100)
             threads.append(t)
             t.start()
         for t in threads:
             t.join()
-        if len(channel) != 0:
-            self.logger.error("{} exception(s) occurred in creating and registering producers.".format(len(channel)))
-            count = 0
-            for thread_id in channel:
-                self.logger.error(channel[thread_id])
-                count += 1
-                if count == 5:
-                    break
+        error_count = len(channel)
+        if error_count:
+            msg = f"{error_count} {helper.plural('exception', cnt)} occurred in creating and registering producers."
+            cnt = min(error_count, 10)
+            msg += f"\nReporting first {cnt} {helper.plural('exception', cnt)}:"
+            for i in range(cnt):
+                msg += f"\n[{i}] {channel[i]}"
+            self.error(msg)
+            if not dont_raise:
+                raise BlockchainError(msg)
 
-
-    def vote_for_producers(self, voter, voted_producers: typing.List[str],  buffer=False):
+    def vote_for_producers(self, voter, voted_producers: typing.List[str],  **call_kwargs):
         bassert(len(voted_producers) <= 30,
                 f"An account cannot votes for more than 30 producers. {voter} voted for {len(voted_producers)} producers.")
         actions = [{"account": "eosio",
@@ -1152,7 +1150,7 @@ class Cluster:
                     "data": {"voter": "{}".format(voter),
                              "proxy": "",
                              "producers": voted_producers}}]
-        return self.push_actions(actions=actions, header="votes for producers", buffer=buffer)
+        return self.push_actions(actions=actions, header="votes for producers", **call_kwargs)
 
 # --------------- auxiliary -------------------------------------------------------------------------------------------
 
