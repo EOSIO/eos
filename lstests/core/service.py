@@ -1004,7 +1004,7 @@ class Cluster:
                           name=contract)
 
 
-    def bios_create_accounts(self, accounts: typing.Union[str, typing.List[str]], node_id=0, verify_key="irreversible", buffer=False):
+    def bios_create_accounts(self, accounts: typing.Union[str, typing.List[str]], node_id=0, verify_key="irreversible", **call_kwargs):
         actions = []
         accounts = [accounts] if isinstance(accounts, str) else accounts
         for name in accounts:
@@ -1027,7 +1027,7 @@ class Cluster:
 
         header = "bios create "
         header += f"\"{accounts[0]}\" account" if len(accounts) == 1 else f"{len(actions)} accounts"
-        return self.push_actions(actions=actions, node_id=node_id, header=header, verify_key=verify_key, buffer=buffer)
+        return self.push_actions(actions=actions, node_id=node_id, header=header, verify_key=verify_key, **call_kwargs)
 
 
     def bios_create_accounts_in_parallel(self, accounts, verify_key="irreversible"):
@@ -1398,7 +1398,7 @@ class Cluster:
             if curr_prod != last_prod and last_prod != entr_prod and counter[last_prod] != 12:
                 count = counter[last_prod]
                 msg = (f"Producer changes to \"{curr_prod}\" after last producer \"{last_prod}\" "
-                       f"produces {count} {helper.plural('block'), count}.")
+                       f"produces {count} {helper.plural('block', count)}.")
                 self.error(msg)
                 if not dont_raise:
                     raise BlockchainError(msg)

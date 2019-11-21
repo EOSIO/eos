@@ -50,7 +50,7 @@ def main():
             for i in range(0, num):
                 acco.append(Cluster.get_defproducer_name(account_count))
                 account_count += 1
-            clus.bios_create_accounts(accounts=acco, verify_key="")
+            clus.bios_create_accounts(accounts=acco, verify_key="", level="trace")
 
         clus.info(">>> [DB Guard Test] --------------------- BEGIN ------------------------------------------")
         clus.info(f">>> [DB Guard Test] Step 0: Set Up Database Guard")
