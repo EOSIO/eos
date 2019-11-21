@@ -621,7 +621,7 @@ namespace eosio {
       static void _close( connection* self, bool reconnect ); // for easy capture
    public:
 
-      void populate_handshake( handshake_message& hello );
+      bool populate_handshake( handshake_message& hello );
 
       bool resolve_and_connect();
       void connect( const std::shared_ptr<tcp::resolver>& resolver, tcp::resolver::results_type endpoints );
@@ -1031,17 +1031,18 @@ namespace eosio {
    void connection::send_handshake() {
       strand.post( [c = shared_from_this()]() {
          std::unique_lock<std::mutex> g_conn( c->conn_mtx );
-         c->populate_handshake( c->last_handshake_sent );
-         static_assert( std::is_same_v<decltype(c->sent_handshake_count), int16_t>, "INT16_MAX based on int16_t" );
-         if( c->sent_handshake_count == INT16_MAX ) c->sent_handshake_count = 1; // do not wrap
-         c->last_handshake_sent.generation = ++c->sent_handshake_count;
-         auto last_handshake_sent = c->last_handshake_sent;
-         g_conn.unlock();
-         fc_ilog( logger, "Sending handshake generation ${g} to ${ep}, lib ${lib}, head ${head}, id ${id}",
-                  ("g", last_handshake_sent.generation)("ep", c->peer_name())
-                  ("lib", last_handshake_sent.last_irreversible_block_num)
-                  ("head", last_handshake_sent.head_num)("id", last_handshake_sent.head_id.str().substr(8,16)) );
-         c->enqueue( last_handshake_sent );
+         if( c->populate_handshake( c->last_handshake_sent ) ) {
+            static_assert( std::is_same_v<decltype( c->sent_handshake_count ), int16_t>, "INT16_MAX based on int16_t" );
+            if( c->sent_handshake_count == INT16_MAX ) c->sent_handshake_count = 1; // do not wrap
+            c->last_handshake_sent.generation = ++c->sent_handshake_count;
+            auto last_handshake_sent = c->last_handshake_sent;
+            g_conn.unlock();
+            fc_ilog( logger, "Sending handshake generation ${g} to ${ep}, lib ${lib}, head ${head}, id ${id}",
+                     ("g", last_handshake_sent.generation)( "ep", c->peer_name())
+                     ("lib", last_handshake_sent.last_irreversible_block_num)
+                     ("head", last_handshake_sent.head_num)("id", last_handshake_sent.head_id.str().substr(8,16)) );
+            c->enqueue( last_handshake_sent );
+         }
       });
    }
 
@@ -2386,6 +2387,8 @@ namespace eosio {
                pending_message_buffer.advance_read_ptr( message_length );
                return true;
             }
+            fc_ilog( logger, "${p} received block ${num}, id ${id}...",
+                     ("p", peer_name())("num", bh.block_num())("id", blk_id.str().substr(8,16)) );
 
             auto ds = pending_message_buffer.create_datastream();
             fc::raw::unpack( ds, which ); // throw away
@@ -3123,13 +3126,24 @@ namespace eosio {
    }
 
    // call from connection strand
-   void connection::populate_handshake( handshake_message& hello ) {
+   bool connection::populate_handshake( handshake_message& hello ) {
       namespace sc = std::chrono;
+      bool send = false;
       if( no_retry == wrong_version ) {
          hello.network_version = net_version_base + proto_explicit_sync; // try previous version
+         send = true;
       } else {
          hello.network_version = net_version_base + net_version;
       }
+      uint32_t lib, head;
+      std::tie( lib, std::ignore, head,
+                hello.last_irreversible_block_id, std::ignore, hello.head_id ) = my_impl->get_chain_info();
+      // only send handshake if state has changed since last handshake
+      send |= lib != hello.last_irreversible_block_num;
+      send |= head != hello.head_num;
+      if( !send ) return false;
+      hello.last_irreversible_block_num = lib;
+      hello.head_num = head;
       hello.chain_id = my_impl->chain_id;
       hello.node_id = my_impl->node_id;
       hello.key = my_impl->get_authentication_key();
@@ -3154,8 +3168,7 @@ namespace eosio {
 #endif
       hello.agent = my_impl->user_agent_name;
 
-      std::tie( hello.last_irreversible_block_num, std::ignore, hello.head_num,
-                hello.last_irreversible_block_id, std::ignore, hello.head_id ) = my_impl->get_chain_info();
+      return true;
    }
 
    net_plugin::net_plugin()
