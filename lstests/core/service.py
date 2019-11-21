@@ -70,6 +70,7 @@ DEFAULT_SYNC_SLEEP = 1
 # logger-related defaults
 DEFAULT_MONOCHROME = False
 DEFAULT_BUFFERED = True
+DEFAULT_DONT_RENAME = False
 DEFAULT_SHOW_CLOCK_TIME = True
 DEFAULT_SHOW_ELAPSED_TIME = True
 DEFAULT_SHOW_FILENAME = True
@@ -123,6 +124,7 @@ HELP_FLAG = "Set stdout logging level to FLAG (90)"
 HELP_LOG_OFF = "Set stdout logging level to OFF (100)"
 HELP_MONOCHROME = "Do not print in colors for stdout logging"
 HELP_DONT_BUFFER = "Do not buffer for stdout logging"
+HELP_DONT_RENAME = "Do not rename log file(s) by cluster ID"
 HELP_HIDE_CLOCK_TIME = "Hide clock time in stdout logging"
 HELP_HIDE_ELAPSED_TIME = "Hide elapsed time in stdout logging"
 HELP_HIDE_FILENAME = "Hide filename in stdout logging"
@@ -204,8 +206,9 @@ class CommandLineArguments:
         self.sync_sleep = cla.sync_sleep
         # logger-related options
         self.threshold = cla.threshold
-        self.buffered = cla.buffered
         self.monochrome = cla.monochrome
+        self.buffered = cla.buffered
+        self.dont_rename = cla.dont_rename
         self.show_clock_time = cla.show_clock_time
         self.show_elapsed_time = cla.show_elapsed_time
         self.show_filename = cla.show_filename
@@ -284,6 +287,8 @@ class CommandLineArguments:
                             help=form(HELP_MONOCHROME, DEFAULT_MONOCHROME))
         parser.add_argument("-dbuff", "--dont-buffer", dest="buffered", action="store_false", default=None,
                             help=form(HELP_DONT_BUFFER, not DEFAULT_BUFFERED))
+        parser.add_argument("-drena", "--dont-rename", action="store_true", default=None,
+                            help=form(HELP_DONT_RENAME, DEFAULT_DONT_RENAME))
         parser.add_argument("-hct", "--hide-clock-time", dest="show_clock_time", action="store_false", default=None,
                             help=form(HELP_HIDE_CLOCK_TIME, not DEFAULT_SHOW_CLOCK_TIME))
         parser.add_argument("-het", "--hide-elapsed-time", dest="show_elapsed_time", action="store_false",
@@ -353,6 +358,9 @@ class Service:
                     w.show_log_level = helper.override(DEFAULT_SHOW_LOG_LEVEL, w.show_log_level, self.cla.show_log_level)
             # empty log files
             elif isinstance(w, FileWriter):
+                if not self.cla.dont_rename and self.cla.cluster_id is not None:
+                    bas, ext = os.path.splitext(w.filename)
+                    w.filename = f"{bas}-{self.cla.cluster_id}{ext}"
                 with open(w.filename, "w"):
                     pass
         # register for shorter names
@@ -626,7 +634,7 @@ class Cluster:
 
 
     def check_config(self):
-        bassert(self.cluster_id >= 0, f"Invalid cluster_id ({self.cluster_id}). Valid range is [0, 29].")
+        bassert(0 <= self.cluster_id < 30, f"Invalid cluster_id ({self.cluster_id}). Valid range is [0, 29].")
         bassert(self.node_count >= self.pnode_count + self.unstarted_count,
                 f"node_count ({self.node_count}) must be greater than "
                 f"pnode_count ({self.pnode_count}) + unstarted_count ({self.unstarted_count}).")
@@ -932,6 +940,7 @@ class Cluster:
         return self.set_contract(account="eosio",
                                  contract_file=self.make_wasm_name(contract),
                                  abi_file=self.make_abi_name(contract),
+                                 verify_key=verify_key,
                                  name=contract,
                                  **call_kwargs)
 
@@ -995,22 +1004,23 @@ class Cluster:
 
 # --------------- regular-launch-related ------------------------------------------------------------------------------
 
-    def set_token_contract(self):
+    def set_token_contract(self, verify_key="irreversible", **call_kwargs):
         contract = "eosio.token"
         return self.set_contract(account=contract,
                                  contract_file=self.make_wasm_name(contract),
                                  abi_file=self.make_abi_name(contract),
-                                 name=contract)
+                                 verify_key=verify_key,
+                                 name=contract,
+                                 **call_kwargs)
 
-
-    def set_system_contract(self):
+    def set_system_contract(self, verify_key="irreversible", **call_kwargs):
         contract = "eosio.system"
-        self.set_contract(contract_file=self.make_wasm_name(contract),
-                          abi_file=self.make_abi_name(contract),
-                          account="eosio",
-                          name=contract)
-
-
+        return self.set_contract(account="eosio",
+                                 contract_file=self.make_wasm_name(contract),
+                                 abi_file=self.make_abi_name(contract),
+                                 verify_key=verify_key,
+                                 name=contract,
+                                 **call_kwargs)
 
     def create_tokens(self, maximum_supply):
         formatted = helper.format_tokens(maximum_supply)
