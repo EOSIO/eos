@@ -14,7 +14,7 @@ def init_cluster():
                     FileWriter(filename=f"{test}-debug.log", threshold="debug", monochrome=True),
                     FileWriter(filename=f"{test}-trace.log", threshold="trace", monochrome=True))
     service = Service(logger=logger)
-    cluster = Cluster(service=service, node_count=4, pnode_count=4, producer_count=4, dont_newaccount=True)
+    cluster = Cluster(service=service, node_count=4, pnode_count=4, producer_count=4, dont_newacco=True)
     return cluster
 
 
@@ -48,9 +48,9 @@ def main():
             global account_count
             acco = []
             for i in range(0, num):
-                acco.append(Cluster.get_defproducer_name(account_count))
+                acco.append(Cluster.make_defproducer_name(account_count))
                 account_count += 1
-            clus.bios_create_accounts(accounts=acco, verify_key="", level="trace")
+            clus.bios_create_accounts(accounts=acco, verify_key=None, level="trace")
 
         clus.info(">>> [DB Guard Test] --------------------- BEGIN ------------------------------------------")
         clus.info(f">>> [DB Guard Test] Step 0: Set Up Database Guard")

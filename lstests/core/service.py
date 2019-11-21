@@ -57,7 +57,7 @@ DEFAULT_EXTRA_CONFIGS = []
 DEFAULT_EXTRA_ARGS = ""
 DEFAULT_TOKENS_SUPPLY = 1e9
 DEFAULT_DONT_BIOS = False
-DEFAULT_DONT_NEWACCOUNT = False
+DEFAULT_DONT_NEWACCO = False
 DEFAULT_DONT_SETPROD = False
 DEFAULT_DONT_VOTE = False
 DEFAULT_HTTP_RETRY = 100
@@ -100,7 +100,7 @@ HELP_EXTRA_CONFIGS = "Extra configs to pass to launcher service"
 HELP_EXTRA_ARGS = "Extra arguments to pass to launcher service"
 HELP_TOKENS_SUPPLY = "Total supply of tokens (in regular launch)"
 HELP_DONT_BIOS = "Do not BIOS launch (regular launch instead)"
-HELP_DONT_NEWACCOUNT = "Do not create accounts in launch"
+HELP_DONT_NEWACCO = "Do not create accounts in launch"
 HELP_DONT_SETPROD = "Do not set producers in BIOS launch"
 HELP_DONT_VOTE = "Do not vote for producers in regular launch"
 HELP_HTTP_RETRY = "HTTP connection: max num of retries"
@@ -192,7 +192,7 @@ class CommandLineArguments:
         self.center_node_id = cla.center_node_id
         self.tokens_supply = cla.tokens_supply
         self.dont_bios = cla.dont_bios
-        self.dont_newaccount = cla.dont_newaccount
+        self.dont_newacco = cla.dont_newacco
         self.dont_setprod = cla.dont_setprod
         self.dont_vote = cla.dont_vote
         self.http_retry = cla.http_retry
@@ -251,8 +251,8 @@ class CommandLineArguments:
                             help=form(HELP_TOKENS_SUPPLY, "{:g}".format(DEFAULT_TOKENS_SUPPLY)))
         parser.add_argument("-r", "-dbios", "--dont-bios", action="store_true", default=None,
                             help=form(HELP_DONT_BIOS, DEFAULT_DONT_BIOS))
-        parser.add_argument("-dnewa", "--dont-newaccount", action="store_true", default=None,
-                            help=form(HELP_DONT_NEWACCOUNT, DEFAULT_DONT_NEWACCOUNT))
+        parser.add_argument("-dnewa", "--dont-newacco", action="store_true", default=None,
+                            help=form(HELP_DONT_NEWACCO, DEFAULT_DONT_NEWACCO))
         parser.add_argument("-dsetp", "--dont-setprod", action="store_true", default=None,
                             help=form(HELP_DONT_SETPROD, DEFAULT_DONT_SETPROD))
         parser.add_argument("-dvote", "--dont-vote", action="store_true", default=None,
@@ -303,7 +303,7 @@ class CommandLineArguments:
 
         return parser.parse_args()
 
-# =============== END OF SERVICE CLASS ================================================================================
+# =============== BEGIN OF SERVICE CLASS ==============================================================================
 
 class Service:
     def __init__(self, logger, addr=None, port=None, wdir=None, file=None, gene=None, start=None, kill=None,
@@ -512,7 +512,7 @@ class Service:
 
 # =============== END OF SERVICE CLASS ================================================================================
 
-# =============== BEGIN OF SERVICE CLASS ==============================================================================
+# =============== BEGIN OF CLUSTER CLASS ==============================================================================
 
 class Cluster:
     def __init__(self,
@@ -528,7 +528,7 @@ class Cluster:
                  extra_configs: typing.List[str]=None,
                  extra_args: str=None,
                  dont_bios=None,
-                 dont_newaccount=None,
+                 dont_newacco=None,
                  dont_setprod=None,
                  dont_vote=None,
                  tokens_supply=None,
@@ -568,7 +568,7 @@ class Cluster:
         self.extra_args      = helper.override(DEFAULT_EXTRA_ARGS,      extra_args)
         self.tokens_supply   = helper.override(DEFAULT_TOKENS_SUPPLY,   tokens_supply,   self.cla.tokens_supply)
         self.dont_bios       = helper.override(DEFAULT_DONT_BIOS,       dont_bios,       self.cla.dont_bios)
-        self.dont_newaccount = helper.override(DEFAULT_DONT_NEWACCOUNT, dont_newaccount, self.cla.dont_newaccount)
+        self.dont_newacco    = helper.override(DEFAULT_DONT_NEWACCO,    dont_newacco,    self.cla.dont_newacco)
         self.dont_setprod    = helper.override(DEFAULT_DONT_SETPROD,    dont_setprod,    self.cla.dont_setprod)
         self.dont_vote       = helper.override(DEFAULT_DONT_VOTE,       dont_vote,       self.cla.dont_vote)
         self.http_retry      = helper.override(DEFAULT_HTTP_RETRY,      http_retry,      self.cla.http_retry)
@@ -605,7 +605,7 @@ class Cluster:
             self.nodes += [[i]]
             prod = []
             for j in range(i * q + r if i else 0, (i + 1) * q + r):
-                name = self.get_defproducer_name(j)
+                name = self.make_defproducer_name(j)
                 prod.append(name)
                 self.producer_to_node[name] = i
             self.nodes[i] += [{"producers": (prod if i else ["eosio"] + prod)}]
@@ -613,9 +613,9 @@ class Cluster:
             self.node_to_producers[i] = prod
         # launch cluster
         if not self.dont_bios:
-            self.bios_launch(dont_newaccount=self.dont_newaccount, dont_setprod=self.dont_setprod)
+            self.bios_launch(dont_newacco=self.dont_newacco, dont_setprod=self.dont_setprod)
         else:
-            self.regular_launch(dont_newaccount=self.dont_newaccount, dont_vote=self.dont_vote)
+            self.regular_launch(dont_newacco=self.dont_newacco, dont_vote=self.dont_vote)
 
     def __enter__(self):
         return self
@@ -637,8 +637,32 @@ class Cluster:
                     f"center_node_id ({self.center_node_id}) cannot be 0 or {self.node_count-1} "
                     f"when topology is \"bridge\" and node_count is {self.node_count}.")
 
+    def print_config(self):
+        self.print_header("cluster configuration")
+        self.print_config_helper("-c: cdir",             HELP_CDIR,            self.cdir,            DEFAULT_CDIR)
+        self.print_config_helper("-i: cluster_id",       HELP_CLUSTER_ID,      self.cluster_id,      DEFAULT_CLUSTER_ID)
+        self.print_config_helper("-n: node_count",       HELP_NODE_COUNT,      self.node_count,      DEFAULT_NODE_COUNT)
+        self.print_config_helper("-p: pnode_count",      HELP_PNODE_COUNT,     self.pnode_count,     DEFAULT_PNODE_COUNT)
+        self.print_config_helper("-q: producer_count",   HELP_PRODUDCER_COUNT, self.producer_count,  DEFAULT_PRODUDCER_COUNT)
+        self.print_config_helper("-u: unstarted_count",  HELP_UNSTARTED_COUNT, self.unstarted_count, DEFAULT_UNSTARTED_COUNT)
+        self.print_config_helper("-t: topology",         HELP_TOPOLOGY,        self.topology,        DEFAULT_TOPOLOGY)
+        self.print_config_helper("-x: center_node_id",   HELP_CENTER_NODE_ID,  self.center_node_id,  DEFAULT_CENTER_NODE_ID)
+        self.print_config_helper("... extra_configs",    HELP_EXTRA_CONFIGS,   self.extra_configs,   DEFAULT_EXTRA_CONFIGS)
+        self.print_config_helper("... extra_args",       HELP_EXTRA_ARGS,      self.extra_args,      DEFAULT_EXTRA_ARGS)
+        self.print_config_helper("-y: tokens_supply",    HELP_TOKENS_SUPPLY,   self.tokens_supply,   DEFAULT_TOKENS_SUPPLY)
+        self.print_config_helper("-dbios: dont_bios",    HELP_DONT_BIOS,       self.dont_bios,       DEFAULT_DONT_BIOS)
+        self.print_config_helper("-dnewa: dont_newacco", HELP_DONT_NEWACCO,    self.dont_newacco,    DEFAULT_DONT_NEWACCO)
+        self.print_config_helper("-dsetp: dont_setprod", HELP_DONT_SETPROD,    self.dont_setprod,    DEFAULT_DONT_SETPROD)
+        self.print_config_helper("-dvote: dont_vote",    HELP_DONT_VOTE,       self.dont_vote,       DEFAULT_DONT_VOTE)
+        self.print_config_helper("--http-retry",         HELP_HTTP_RETRY,      self.http_retry,      DEFAULT_HTTP_RETRY)
+        self.print_config_helper("--http-sleep",         HELP_HTTP_SLEEP,      self.http_sleep,      DEFAULT_HTTP_SLEEP)
+        self.print_config_helper("--verify-async",       HELP_VERIFY_ASYNC,    self.verify_async,    DEFAULT_VERIFY_ASYNC)
+        self.print_config_helper("--verify-retry",       HELP_VERIFY_RETRY,    self.verify_retry,    DEFAULT_VERIFY_RETRY)
+        self.print_config_helper("--verify-sleep",       HELP_VERIFY_SLEEP,    self.verify_sleep,    DEFAULT_VERIFY_SLEEP)
+        self.print_config_helper("--sync-retry",         HELP_SYNC_RETRY,      self.sync_retry,      DEFAULT_SYNC_RETRY)
+        self.print_config_helper("--sync-sleep",         HELP_SYNC_SLEEP,      self.sync_sleep,      DEFAULT_SYNC_SLEEP)
 
-    def bios_launch(self, dont_newaccount=False, dont_setprod=False):
+    def bios_launch(self, dont_newacco=False, dont_setprod=False):
         """
         Launch without Bootstrap
         ---------
@@ -654,10 +678,10 @@ class Cluster:
         self.info(">>> [BIOS Launch] ----------------------- BEGIN ----------------------------------------------------")
         self.print_config()
         self.launch_cluster()
-        bassert(self.wait_nodes_ready())
+        self.wait_nodes_ready()
         self.schedule_protocol_feature_activations()
         self.set_bios_contract()
-        if not dont_newaccount:
+        if not dont_newacco:
             self.bios_create_accounts_in_parallel(accounts=self.producers)
             if not dont_setprod:
                 self.set_producers()
@@ -667,7 +691,7 @@ class Cluster:
         self.info(">>> [BIOS Launch] ----------------------- END ------------------------------------------------------")
 
 
-    def regular_launch(self, dont_newaccount=False, dont_vote=False):
+    def regular_launch(self, dont_newacco=False, dont_vote=False):
         """
         Bootstrap
         ---------
@@ -690,7 +714,7 @@ class Cluster:
         self.info(">>> [Regular Launch] -------------------- BEGIN ------------------------------------------")
         self.print_config()
         self.launch_cluster()
-        self.get_cluster_info(level="debug", response_text_level="debug")
+        self.wait_nodes_ready()
         self.schedule_protocol_feature_activations()
         self.bios_create_accounts_in_parallel(accounts=["eosio.bpay",
                                             "eosio.msig",
@@ -707,7 +731,7 @@ class Cluster:
         self.issue_tokens(quantity=self.tokens_supply)
         self.set_system_contract()
         self.init_system_contract()
-        if not dont_newaccount:
+        if not dont_newacco:
             self.create_and_register_producers_in_parallel()
             if not dont_vote:
                 self.vote_for_producers(voter="defproducera",
@@ -718,258 +742,81 @@ class Cluster:
             t.join()
         self.info(">>> [Regular Launch] -------------------- END --------------------------------------------")
 
-
-    def print_config(self):
-        self.print_header("cluster configuration")
-        self.print_config_helper("-d: cdir",                HELP_CDIR,            self.cdir,            DEFAULT_CDIR)
-        self.print_config_helper("-i: cluster_id",          HELP_CLUSTER_ID,      self.cluster_id,      DEFAULT_CLUSTER_ID)
-        self.print_config_helper("-n: node_count",          HELP_NODE_COUNT,      self.node_count,      DEFAULT_NODE_COUNT)
-        self.print_config_helper("-p: pnode_count",         HELP_PNODE_COUNT,     self.pnode_count,     DEFAULT_PNODE_COUNT)
-        self.print_config_helper("-q: producer_count",      HELP_PRODUDCER_COUNT, self.producer_count,  DEFAULT_PRODUDCER_COUNT)
-        self.print_config_helper("-u: unstarted_count",     HELP_UNSTARTED_COUNT, self.unstarted_count, DEFAULT_UNSTARTED_COUNT)
-        self.print_config_helper("-t: topology",            HELP_TOPOLOGY,        self.topology,        DEFAULT_TOPOLOGY)
-        self.print_config_helper("-x: center_node_id",      HELP_CENTER_NODE_ID,  self.center_node_id,  DEFAULT_CENTER_NODE_ID)
-        self.print_config_helper("... extra_configs",       HELP_EXTRA_CONFIGS,   self.extra_configs,   DEFAULT_EXTRA_CONFIGS)
-        self.print_config_helper("... extra_args",          HELP_EXTRA_ARGS,      self.extra_args,      DEFAULT_EXTRA_ARGS)
-        self.print_config_helper("-y: tokens_supply",       HELP_TOKENS_SUPPLY,   self.tokens_supply,   DEFAULT_TOKENS_SUPPLY)
-        self.print_config_helper("-dbios: dont-bios",       HELP_DONT_BIOS,       self.dont_bios,       DEFAULT_DONT_BIOS)
-        self.print_config_helper("-dnewa: dont-newaccount", HELP_DONT_NEWACCOUNT, self.dont_newaccount, DEFAULT_DONT_NEWACCOUNT)
-        self.print_config_helper("-dsetp: dont-setprod",    HELP_DONT_SETPROD,    self.dont_setprod,    DEFAULT_DONT_SETPROD)
-        self.print_config_helper("-dvote: dont-vote",       HELP_DONT_VOTE,       self.dont_vote,       DEFAULT_DONT_VOTE)
-        self.print_config_helper("--http-retry",            HELP_HTTP_RETRY,      self.http_retry,      DEFAULT_HTTP_RETRY)
-        self.print_config_helper("--http-sleep",            HELP_HTTP_SLEEP,      self.http_sleep,      DEFAULT_HTTP_SLEEP)
-        self.print_config_helper("--verify-async",          HELP_VERIFY_ASYNC,    self.verify_async,    DEFAULT_VERIFY_ASYNC)
-        self.print_config_helper("--verify-retry",          HELP_VERIFY_RETRY,    self.verify_retry,    DEFAULT_VERIFY_RETRY)
-        self.print_config_helper("--verify-sleep",          HELP_VERIFY_SLEEP,    self.verify_sleep,    DEFAULT_VERIFY_SLEEP)
-        self.print_config_helper("--sync-retry",            HELP_SYNC_RETRY,      self.sync_retry,      DEFAULT_SYNC_RETRY)
-        self.print_config_helper("--sync-sleep",            HELP_SYNC_SLEEP,      self.sync_sleep,      DEFAULT_SYNC_SLEEP)
-
-
-    """
-    =====================
-    cluster-related calls
-    =====================
-    """
+# --------------- start-up and shut-down ------------------------------------------------------------------------------
 
     def launch_cluster(self, **call_kwargs):
         return self.call("launch_cluster",
-                         nodes=self.nodes,
                          node_count=self.node_count,
+                         nodes=self.nodes,
                          shape=self.topology,
                          center_node_id=self.center_node_id,
                          extra_configs=self.extra_configs,
                          extra_args=self.extra_args,
                          **call_kwargs)
 
-
     def stop_cluster(self, **call_kwargs):
         return self.call("stop_cluster", **call_kwargs)
 
-
     def clean_cluster(self, **call_kwargs):
-        return self.call("clean_cluster")
-
+        return self.call("clean_cluster", **call_kwargs)
 
     def start_node(self, node_id, extra_args=None, **call_kwargs):
         return self.call("start_node", node_id=node_id, extra_args=extra_args, **call_kwargs)
-
 
     def stop_node(self, node_id, kill_sig=15, **call_kwargs):
         """kill_sig: 15 for soft kill, 9 for hard kill"""
         return self.call("stop_node", node_id=node_id, kill_sig=kill_sig, **call_kwargs)
 
-
     def stop_all_nodes(self, kill_sig=15, **call_kwargs):
         for node_id in self.node_count:
             return self.call("stop_nodes", node_id=node_id, kill_sig=kill_sig, **call_kwargs)
 
-
-    """
-    =====================
-    queries
-    =====================
-    """
-    def get_cluster_info(self, **call_kwargs):
-        return self.call("get_cluster_info", **call_kwargs)
-
+# --------------- simple query ----------------------------------------------------------------------------------------
 
     def get_cluster_running_state(self, **call_kwargs):
         return self.call("get_cluster_running_state", **call_kwargs)
 
+    def get_cluster_info(self, **call_kwargs):
+        return self.call("get_cluster_info", **call_kwargs)
 
     def get_info(self, node_id, **call_kwargs):
         return self.call("get_info", node_id=node_id, **call_kwargs)
 
-
     def get_block(self, block_num_or_id, node_id=0, **call_kwargs):
         return self.call("get_block", node_id=node_id, block_num_or_id=block_num_or_id, **call_kwargs)
-
 
     def get_account(self, name, node_id=0, **call_kwargs):
         return call("get_account", node_id=node_id, name=name, **call_kwargs)
 
-
     def get_protocol_features(self, node_id=0, **call_kwargs):
         return call("get_protocol_features", node_id=node_id, **call_kwargs)
 
+    def get_log_data(self, offset, node_id=0, length=10000, filename="stderr_0.txt", **call_kwargs):
+        return self.call("get_log_data", node_id=node_id, offset=offset, length=length, filename=filename, **call_kwargs)
 
-    def get_log(self, node_id) -> str:
-        log = ""
-        offset = 0
-        length = 10000
-        while True:
-            response = self.get_log_data(node_id=node_id, offset=offset, length=length).response_dict
-            log += base64.b64decode(response["data"]).decode("utf-8")
-            if response["offset"] + length > response["filesize"]:
-                break
-            offset += length
-        return log
-
-
-    def get_log_data(self, node_id, offset, length=10000, filename="stderr_0.txt", **call_kwargs):
-        return self.call("get_log_data",
-                         node_id=node_id,
-                         offset=offset,
-                         length=length,
-                         filename=filename)
-
-
-    def verify_transaction(self, transaction_id, verify_key=None, **call_kwargs):
-        assert verify_key in ["irreversible", "contained"], "Verify key must be either \"irreversible\" or \"contained\"."
-        cx = self.call("verify_transaction", transaction_id=transaction_id, verify_key=None, dont_flush=True, **call_kwargs)
+    def verify_transaction(self, transaction_id, verify_key=None, node_id=0, **call_kwargs):
+        cx = self.call("verify_transaction", node_id=node_id, transaction_id=transaction_id,
+                        verify_key=None, dont_flush=True, **call_kwargs)
         return helper.extract(cx.response, key=verify_key, fallback=False)
 
+# --------------- composite query -------------------------------------------------------------------------------------
 
-    """
-    =====================
-    transactions
-    =====================
-    """
-    def schedule_protocol_feature_activations(self, **call_kwargs):
-        return self.call("schedule_protocol_feature_activations",
-                         protocol_features_to_activate=[PREACTIVATE_FEATURE],
-                         **call_kwargs)
-
-
-    def set_contract(self,
-                     account,
-                     contract_file,
-                     abi_file,
-                     node_id=0,
-                     verify_key="irreversible",
-                     name=None,
-                     **call_kwargs):
-        return self.call("set_contract",
-                         node_id=node_id,
-                         account=account,
-                         contract_file=contract_file,
-                         abi_file=abi_file,
-                         verify_key=verify_key,
-                         header=f"set <{name}> contract" if name else None,
-                         **call_kwargs)
-
-
-    def push_actions(self,
-                     actions,
-                     node_id=0,
-                     verify_key="irreversible",
-                     **call_kwargs):
-        return self.call("push_actions",
-                         node_id=node_id,
-                         actions=actions,
-                         verify_key=verify_key,
-                         **call_kwargs)
-
-    """
-    =====================
-    miscellaneous
-    =====================
-    """
-    def send_raw(self,
-                 url,
-                 string_data: str="",
-                 json_data: dict={},
-                 node_id=0,
-                 **call_kwargs):
-        return self.call("send_raw",
-                         url=url,
-                         string_data=string_data,
-                         json_data=json_data,
-                         **call_kwargs)
-
-
-    def pause_node_production(self, node_id):
-        return send_raw(url="/v1/producer/pause",
-                        node_id=node_id)
-
-
-    def resume_node_production(self, node_id):
-        return send_raw(url="/v1/producer/resume",
-                        node_id=node_id)
-
-
-    def get_greylist(self, node_id=0):
-        return send_raw(url="/v1/producer/get_greylist",
-                        node_id=node_id)
-
-
-    def add_greylist_accounts(self, accounts:list, node_id=0):
-        return send_raw(url="/v1/producer/add_greylist_accounts",
-                        node_id=node_id,
-                        json_data={"accounts": accounts})
-
-
-    def remove_greylist_accounts(self, accounts:list, node_id=0):
-        return send_raw(url="/v1/producer/remove_greylist_accounts",
-                        node_id=node_id,
-                        json_data={"accounts": accounts})
-
-
-
-    """
-    ======================
-    composite
-    ======================
-    """
-    def get_node_pid(self, node_id, **call_kwargs) ->bool:
+    def get_node_pid(self, node_id, **call_kwargs):
         return self.get_cluster_running_state(**call_kwargs).response_dict["result"]["nodes"][node_id][1]["pid"]
-
 
     def is_node_down(self, node_id, **call_kwargs):
         return self.get_node_pid(node_id, **call_kwargs) == 0
 
-
     def is_node_ready(self, node_id, **call_kwargs):
         return "error" not in self.get_cluster_info(**call_kwargs).response_dict["result"][node_id][1]
-
-
-    def wait_nodes_ready(self, nodes=None, retry=10, sleep=1, level="debug", sublevel="trace"):
-        if nodes is None:
-            nodes = list(range(self.node_count))
-        self.print_header("wait for nodes to get ready", level=level)
-        while True:
-            result = self.get_cluster_info(level=sublevel).response_dict["result"]
-            error_nodes = [x[0] for x in result if x[0] in nodes and "error" in x[1]]
-            if len(error_nodes) == 0:
-                self.log("All {} nodes are ready.".format(len(nodes)), level=level)
-                return True
-            if retry > 0:
-                self.log(f"Nodes that are not ready: {error_nodes}. {retry} retries remain. Sleep for {sleep}s.", level=level)
-                time.sleep(sleep)
-                retry -= 1
-            else:
-                return False
-
 
     def get_head_block_number(self, node_id=0, **call_kwargs):
         """Get head block number by node id."""
         return self.get_cluster_info(**call_kwargs).response_dict["result"][node_id][1]["head_block_num"]
 
-
     def get_head_block_producer(self, node_id=0, **call_kwargs):
         """Get head block producer by node id."""
         return self.get_cluster_info(**call_kwargs).response_dict["result"][node_id][1]["head_block_producer"]
-
 
     def get_running_nodes(self, **call_kwargs):
         cluster_result = self.get_cluster_info(**call_kwargs).response_dict["result"]
@@ -979,30 +826,113 @@ class Cluster:
                 count += 1
         return count
 
+    def get_log(self, node_id=0, length=10000, filename="stderr_0.txt", **call_kwargs):
+        log = ""
+        offset = 0
+        while True:
+            response = self.get_log_data(node_id=node_id, offset=offset, length=length, filename=filename, **call_kwargs).response_dict
+            log += base64.b64decode(response["data"]).decode("utf-8")
+            if response["offset"] + length > response["filesize"]:
+                break
+            offset += length
+        return log
+
+    def wait_nodes_ready(self, node_list:list=None, retry=100, sleep=1, dont_raise=False, level="debug", sublevel="trace"):
+        if node_list is None: node_list = list(range(self.node_count))
+        self.print_header("wait for nodes to get ready", level=level)
+        max_wait_time = retry * sleep
+        while True:
+            result = self.get_cluster_info(level=sublevel).response_dict["result"]
+            error_node_list = [x[0] for x in result if x[0] in node_list and "error" in x[1]]
+            error_node_count = len(error_node_list)
+            if error_node_count == 0:
+                self.log(f"All {len(node_list)} nodes are ready.", level=level)
+                return True
+            if retry > 0:
+                self.log(f"Nodes that are not ready: {error_node_list}. "
+                         f"{retry} {helper.plural(['retry', 'retries'], retry)} remain. Sleep for {sleep}s.", level=level)
+                time.sleep(sleep)
+                retry -= 1
+            else:
+                msg = f"After waiting for {max_wait_time}s, there still are nodes that are not ready: {error_node_list}."
+                self.error(msg)
+                if not dont_raise:
+                    raise BlockchainError(msg)
+                return False
+
+    def wait_get_block(self, block_num, node_id=0, retry=10, dont_raise=False, level="debug", sublevel="trace"):
+        """Get block information by block num. If that block has not been produced, wait for it."""
+        for __ in range(10):
+            head_block_num = self.get_head_block_number(level=sublevel)
+            if head_block_num < block_num:
+                time.sleep(0.5 * (block_num - head_block_num))
+            else:
+                return self.get_block(block_num_or_id=block_num, node_id=node_id, level=level).response_dict
+        msg = f"Cannot get block num {block_num}. Current head block num is {head_block_num}."
+        self.error(msg)
+        if not dont_raise:
+            raise BlockchainError(msg)
+
+    def wait_get_producer_by_block(self, block_num, node_id=0, retry=10, dont_raise=False, level="debug", sublevel="trace"):
+        """Get block producer by block num. If that block has not been produced, wait for it."""
+        return self.wait_get_block(block_num=block_num, node_id=node_id, retry=retry, dont_raise=dont_raise,
+                                   level=level, sublevel=sublevel)["producer"]
+
+# --------------- transactions ----------------------------------------------------------------------------------------
+
+    def schedule_protocol_feature_activations(self, **call_kwargs):
+        return self.call("schedule_protocol_feature_activations",
+                         protocol_features_to_activate=[PREACTIVATE_FEATURE],
+                         **call_kwargs)
+
+    def set_contract(self, account, contract_file, abi_file, node_id=0, verify_key="irreversible", name=None, **call_kwargs):
+        return self.call("set_contract",
+                         node_id=node_id,
+                         account=account,
+                         contract_file=contract_file,
+                         abi_file=abi_file,
+                         verify_key=verify_key,
+                         header=f"set <{name}> contract" if name else None,
+                         **call_kwargs)
+
+    def push_actions(self, actions, node_id=0, verify_key="irreversible", **call_kwargs):
+        return self.call("push_actions",
+                         node_id=node_id,
+                         actions=actions,
+                         verify_key=verify_key,
+                         **call_kwargs)
+
+# --------------- send-raw --------------------------------------------------------------------------------------------
+
+    def send_raw(self, url, node_id=0, string_data: str="", json_data: dict={}, **call_kwargs):
+        return self.call("send_raw", url=url, node_id=node_id, string_data=string_data, json_data=json_data, **call_kwargs)
+
+    def pause_node_production(self, node_id, **call_kwargs):
+        return send_raw(url="/v1/producer/pause", node_id=node_id, **call_kwargs)
+
+    def resume_node_production(self, node_id, **call_kwargs):
+        return send_raw(url="/v1/producer/resume",node_id=node_id, **call_kwargs)
+
+    def get_greylist(self, node_id=0, **call_kwargs):
+        return send_raw(url="/v1/producer/get_greylist", node_id=node_id, **call_kwargs)
+
+    def add_greylist_accounts(self, accounts:list, node_id=0, **call_kwargs):
+        return send_raw(url="/v1/producer/add_greylist_accounts", node_id=node_id, json_data={"accounts": accounts}, **call_kwargs)
+
+    def remove_greylist_accounts(self, accounts:list, node_id=0, **call_kwargs):
+        return send_raw(url="/v1/producer/remove_greylist_accounts", node_id=node_id, json_data={"accounts": accounts}, **call_kwargs)
+
+    def get_net_plugin_connections(self, node_id=0, **call_kwargs):
+        return send_raw(url="/v1/net/connections", node_id=node_id, **call_kwargs)
+
+# --------------- bios-launch-related ---------------------------------------------------------------------------------
 
     def set_bios_contract(self):
         contract = "eosio.bios"
         return self.set_contract(account="eosio",
-                                 contract_file=self.get_wasm_file(contract),
-                                 abi_file=self.get_abi_file(contract),
+                                 contract_file=self.make_wasm_name(contract),
+                                 abi_file=self.make_abi_name(contract),
                                  name=contract)
-
-
-    def set_token_contract(self):
-        contract = "eosio.token"
-        return self.set_contract(account=contract,
-                                 contract_file=self.get_wasm_file(contract),
-                                 abi_file=self.get_abi_file(contract),
-                                 name=contract)
-
-
-    def set_system_contract(self):
-        contract = "eosio.system"
-        self.set_contract(contract_file=self.get_wasm_file(contract),
-                          abi_file=self.get_abi_file(contract),
-                          account="eosio",
-                          name=contract)
-
 
     def bios_create_accounts(self, accounts: typing.Union[str, typing.List[str]], node_id=0, verify_key="irreversible", **call_kwargs):
         actions = []
@@ -1056,6 +986,24 @@ class Cluster:
                     "permissions": [{"actor": "eosio", "permission": "active"}],
                     "data": { "schedule": prod_keys}}]
         return self.push_actions(actions=actions, header="set producers", verify_key=verify_key, verify_retry=verify_retry)
+
+# --------------- regular-launch-related ------------------------------------------------------------------------------
+
+    def set_token_contract(self):
+        contract = "eosio.token"
+        return self.set_contract(account=contract,
+                                 contract_file=self.make_wasm_name(contract),
+                                 abi_file=self.make_abi_name(contract),
+                                 name=contract)
+
+
+    def set_system_contract(self):
+        contract = "eosio.system"
+        self.set_contract(contract_file=self.make_wasm_name(contract),
+                          abi_file=self.make_abi_name(contract),
+                          account="eosio",
+                          name=contract)
+
 
 
     def create_tokens(self, maximum_supply):
@@ -1194,36 +1142,18 @@ class Cluster:
                              "producers": voted_producers}}]
         return self.push_actions(actions=actions, header="votes for producers", buffer=buffer)
 
-    def wait_get_block(self, block_num, node_id=0, **call_kwargs) -> dict:
-        """Get block information by block num. If that block has not been produced, wait for it."""
-        for __ in range(5):
-            head_block_num = self.get_head_block_number(level="trace")
-            if head_block_num < block_num:
-                time.sleep(0.5 * (block_num - head_block_num))
-            else:
-                return self.get_block(block_num_or_id=block_num, node_id=node_id, **call_kwargs).response_dict
-        msg = f"Cannot get block # {block_num}. Current head block num is {head_block_num}."
-        self.error(msg)
-        raise BlockchainError(msg)
-
-
-    def wait_get_producer_by_block(self, block_num, node_id=0, **call_kwargs) -> str:
-        """Get block producer by block num. If that block has not been produced, wait for it."""
-        return self.wait_get_block(block_num=block_num, node_id=node_id, **call_kwargs)["producer"]
-
-
 # --------------- auxiliary -------------------------------------------------------------------------------------------
 
-    def get_wasm_file(self, contract):
+    def make_wasm_name(self, contract):
         return os.path.join(self.cdir, contract, contract + ".wasm")
 
 
-    def get_abi_file(self, contract):
+    def make_abi_name(self, contract):
         return os.path.join(self.cdir, contract, contract + ".abi")
 
 
     @staticmethod
-    def get_defproducer_name(num):
+    def make_defproducer_name(num):
         def base26_to_int(s: str):
             res = 0
             for c in s:
@@ -1502,9 +1432,9 @@ class Cluster:
         5. log response
         6. verify transaction
         """
+        header = helper.override(api.replace("_", " "), header)
         retry = helper.override(self.http_retry, retry, self.cla.http_retry)
         sleep = helper.override(self.http_sleep, sleep, self.cla.http_sleep)
-        header = helper.override(api.replace("_", " "), header)
         data.setdefault("cluster_id", self.cluster_id)
         data.setdefault("node_id", 0)
 
@@ -1598,33 +1528,3 @@ def _main():
 
 if __name__ == "__main__":
     _main()
-
-
-
-
-    # def bios_create_accounts(self, name, verify_key="irreversible", buffer=False):
-    #     actions = [{"account": "eosio",
-    #                 "action": "newaccount",
-    #                 "permissions":[{"actor": "eosio",
-    #                                 "permission": "active"}],
-    #                 "data":{"creator": "eosio",
-    #                         "name": name,
-    #                         "owner": {"threshold": 1,
-    #                                   "keys": [{"key": PRODUCER_KEY,
-    #                                             "weight":1}],
-    #                                   "accounts": [],
-    #                                   "waits": []},
-    #                         "active":{"threshold": 1,
-    #                                   "keys": [{"key": PRODUCER_KEY,
-    #                                             "weight":1}],
-    #                                   "accounts": [],
-    #                                   "waits": []}}}]
-    #     return self.push_actions(actions=actions, header=f"bios create \"{name}\" account", verify_key=verify_key, buffer=buffer)
-
-
-    # def are_all_nodes_ready(self, node_id_list=None, **call_kwargs):
-    #     node_id_list = helper.override(list(range(self.node_count)), node_id_list)
-    #     result = self.get_cluster_info(**call_kwargs).response_dict["result"]
-    #     error_nodes = [x[0] for x in result if x[0] in node_id_list and "error" in x[1]]
-    #     return len(error_nodes) == 0, error_nodes
-
