@@ -10,6 +10,7 @@ if [[ "$(uname)" == 'Linux' ]]; then
         [[ -f /opt/rh/rh-python36/enable ]] && source /opt/rh/rh-python36/enable
     fi
 fi
+npm install
 cd $GIT_ROOT/build
 # mongoDB
 if [[ ! -z "$(pgrep mongod)" ]]; then
