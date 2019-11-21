@@ -38,3 +38,4 @@ echo "source \$(brew --prefix nvm)/nvm.sh" >> ~/.bash_profile
 cat ~/.bash_profile
 source ~/.bash_profile
 echo $NVM_DIR
+nvm install --lts=dubnium
