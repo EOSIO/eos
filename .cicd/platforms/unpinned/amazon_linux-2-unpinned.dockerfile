@@ -66,8 +66,3 @@ RUN cp ~/.bashrc ~/.bashrc.bak && \
 RUN bash -c '. ~/.bashrc; nvm install --lts=dubnium' && \
     ln -s "/root/.nvm/versions/node/$(ls -p /root/.nvm/versions/node | sort -Vr | head -1)bin/node" /usr/local/bin/node && \
     ln -s "/root/.nvm/versions/node/$(ls -p /root/.nvm/versions/node | sort -Vr | head -1)bin/npm" /usr/local/bin/npm
-RUN npm install eosjs
-RUN npm install commander
-RUN npm install node-fetch
-RUN npm install zlib
-RUN npm install ws
