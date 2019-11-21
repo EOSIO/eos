@@ -927,14 +927,15 @@ class Cluster:
 
 # --------------- bios-launch-related ---------------------------------------------------------------------------------
 
-    def set_bios_contract(self):
+    def set_bios_contract(self, verify_key="irreversible", **call_kwargs):
         contract = "eosio.bios"
         return self.set_contract(account="eosio",
                                  contract_file=self.make_wasm_name(contract),
                                  abi_file=self.make_abi_name(contract),
-                                 name=contract)
+                                 name=contract,
+                                 **call_kwargs)
 
-    def bios_create_accounts(self, accounts: typing.Union[str, typing.List[str]], node_id=0, verify_key="irreversible", **call_kwargs):
+    def bios_create_accounts(self, accounts: typing.Union[str, list], node_id=0, verify_key="irreversible", **call_kwargs):
         actions = []
         accounts = [accounts] if isinstance(accounts, str) else accounts
         for name in accounts:
@@ -954,30 +955,35 @@ class Cluster:
                                                     "weight":1}],
                                           "accounts": [],
                                           "waits": []}}}]
-
         header = "bios create "
         header += f"\"{accounts[0]}\" account" if len(accounts) == 1 else f"{len(actions)} accounts"
-        return self.push_actions(actions=actions, node_id=node_id, header=header, verify_key=verify_key, **call_kwargs)
+        return self.push_actions(actions=actions, node_id=node_id, verify_key=verify_key, header=header, **call_kwargs)
 
-
-    def bios_create_accounts_in_parallel(self, accounts, verify_key="irreversible"):
+    def bios_create_accounts_in_parallel(self, accounts, verify_key="irreversible", dont_raise=False):
         threads = []
         channel = {}
         def report(channel, thread_id, message):
             channel[thread_id] = message
         for ac in accounts:
             t = ExceptionThread(channel, report, target=self.bios_create_accounts, args=(ac,),
-                                kwargs={"buffer": True, "verify_key": verify_key})
+                                kwargs={"verify_key": verify_key, "buffer": True})
             threads.append(t)
             t.start()
         for t in threads:
             t.join()
-        if len(channel) != 0:
-            self.error(f"{len(channel)} expcetions occurred in bios-creating accounts")
+        error_count = len(channel)
+        if error_count:
+            msg = f"{error_count} expcetions occurred in bios creating accounts."
+            cnt = min(error_count, 10)
+            msg += f"\nReporting first {cnt} {helper.plural('exception', cnt)}:"
+            for i in range(cnt):
+                msg += f"\n[{i}] {channel[i]}"
+            self.error(msg)
+            if not dont_raise:
+                raise BlockchainError(msg)
 
-
-    def set_producers(self, producers=None, verify_key="irreversible", verify_retry=None):
-        producers = self.producers if producers is None else producers
+    def set_producers(self, producers:list=None, verify_key="irreversible", **call_kwargs):
+        if producers is None: producers = self.producers
         prod_keys = []
         for p in sorted(producers):
             prod_keys.append({"producer_name": p, "block_signing_key": PRODUCER_KEY})
@@ -985,7 +991,7 @@ class Cluster:
                     "action": "setprods",
                     "permissions": [{"actor": "eosio", "permission": "active"}],
                     "data": { "schedule": prod_keys}}]
-        return self.push_actions(actions=actions, header="set producers", verify_key=verify_key, verify_retry=verify_retry)
+        return self.push_actions(actions=actions, header="set producers", verify_key=verify_key, **call_kwargs)
 
 # --------------- regular-launch-related ------------------------------------------------------------------------------
 

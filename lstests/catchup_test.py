@@ -53,7 +53,14 @@ def start_gen(clus, begin):
 
 
 def stop_gen(clus):
-    clus.call("send_raw", url=STOP_URL, node_id=1)
+    try:
+        clus.call("send_raw", url=STOP_URL, node_id=1)
+    except BlockchainError as e:
+        if "\"code\": 14," in str(e):
+            self.warn("Captured fc::invalid_operation_exception_code (14). Generation should have stopped.")
+            pass
+        else:
+            raise
     stop = clus.check_sync().block_num
     clus.info(f"Generation stops at block num {stop}")
     return stop
