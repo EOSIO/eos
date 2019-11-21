@@ -3,7 +3,7 @@
 import time
 
 from core.logger import ScreenWriter, FileWriter, Logger
-from core.service import Service, Cluster, BlockchainError, SyncError
+from core.service import Service, Cluster, LauncherServiceError, BlockchainError, SyncError
 
 TEST_PLUGIN = "eosio::txn_test_gen_plugin"
 CREATE_URL = "/v1/txn_test_gen/create_test_accounts"
@@ -55,9 +55,9 @@ def start_gen(clus, begin):
 def stop_gen(clus):
     try:
         clus.call("send_raw", url=STOP_URL, node_id=1)
-    except BlockchainError as e:
+    except LauncherServiceError as e:
         if "\"code\": 14," in str(e):
-            self.warn("Captured fc::invalid_operation_exception_code (14). Generation should have stopped.")
+            clus.warn("Captured fc::invalid_operation_exception_code (14). Generation should have stopped.")
             pass
         else:
             raise
