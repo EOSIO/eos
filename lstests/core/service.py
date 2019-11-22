@@ -1040,9 +1040,11 @@ class Cluster:
         return self.call("get_log_data", node_id=node_id, offset=offset, length=length, filename=filename, **call_kwargs)
 
     def verify_transaction(self, transaction_id, verify_key=None, node_id=0, **call_kwargs):
-        cx = self.call("verify_transaction", node_id=node_id, transaction_id=transaction_id,
-                        verify_key=None, dont_flush=True, **call_kwargs)
-        return helper.extract(cx.response, key=verify_key, fallback=False)
+        try:
+            return self.call("verify_transaction", node_id=node_id, transaction_id=transaction_id,
+                             verify_key=None, dont_flush=True, **call_kwargs).response_dict[verify_key]
+        except KeyError:
+            return False
 
 # --------------- composite queries: queries that are dependent on simple queries -------------------------------------
 

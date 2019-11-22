@@ -35,12 +35,6 @@ def override(*args):
             return x
     return None
 
-def extract(resp: typing.TypeVar("requests.models.Response"), key: str, fallback):
-    try:
-        return json.loads(resp.text)[key]
-    except KeyError:
-        return fallback
-
 # --------------- format ----------------------------------------------------------------------------------------------
 
 def get_time(date=True, precision=3, local_time=False, time_zone=False):
@@ -134,13 +128,13 @@ def trim(data: typing.Union[dict, list], maxlen=79):
 
 # --------------- subprocess ------------------------------------------------------------------------------------------
 
-def get_cmd_and_args_by_pid(pid: typing.Union[int, str]) -> str:
-    return subprocess.run(["ps", "-p", str(pid), "-o", "command="], capture_output=True, text=True).stdout
-
-
 def get_pid_list_by_pattern(pattern: str) -> typing.List[int]:
     out = subprocess.run(["pgrep", "-f", pattern], capture_output=True, text=True).stdout.splitlines()
     return [int(x) for x in out]
+
+
+def get_cmd_and_args_by_pid(pid: typing.Union[int, str]) -> str:
+    return subprocess.run(["ps", "-p", str(pid), "-o", "command="], capture_output=True, text=True).stdout
 
 
 def terminate(pid: typing.Union[int, str]):
