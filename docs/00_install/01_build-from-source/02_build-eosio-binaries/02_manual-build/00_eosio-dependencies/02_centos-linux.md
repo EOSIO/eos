@@ -178,5 +178,5 @@ export CCACHE_PATH="/opt/rh/devtoolset-8/root/usr/bin"
 
 <!--
 # Build EOSIO
-bash -c "mkdir -p eos/build && cd eos/build && export PATH=/usr/lib64/ccache:\$PATH && cmake -DCMAKE_BUILD_TYPE='Release' -DBUILD_MONGO_DB_PLUGIN=true -DCMAKE_TOOLCHAIN_FILE=~/eosio/eos/.cicd/helpers/clang.make -DCMAKE_CXX_COMPILER_LAUNCHER=ccache .. && make"
+bash -c "mkdir -p ~/eosio/eos/build && cd ~/eosio/eos/build && export PATH=/usr/lib64/ccache:\$PATH && cmake -DCMAKE_BUILD_TYPE='Release' -DBUILD_MONGO_DB_PLUGIN=true -DCMAKE_TOOLCHAIN_FILE=~/eosio/eos/.cicd/helpers/clang.make -DCMAKE_CXX_COMPILER_LAUNCHER=ccache .. && make"
 -->
