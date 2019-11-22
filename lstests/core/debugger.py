@@ -1,5 +1,12 @@
 #! /usr/bin/env python3
 
+"""core.debugger - Hassle-free debugger for interactive Python environment
+
+Just "from core.debugger import *" (or "from debugger import *" if in already
+core) to dump all the functions and use them to query the current status of
+launcher service and/or clusters.
+"""
+
 # standard libraries
 import base64
 import subprocess
