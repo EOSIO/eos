@@ -13,6 +13,7 @@ This section describes how to set up a producing node within the EOSIO network. 
 * Know how to pass [Nodeos options](../../02_usage/00_nodeos-options.md) to enable or disable functionality.
 
 ## Steps
+
 Please follow the steps below to set up a producing node:
 
 1. [Register your account as a producer](#1-register-your-account-as-a-producer)

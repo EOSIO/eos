@@ -10,6 +10,7 @@ This section describes how to set up a non-producing node within the EOSIO netwo
 * Know how to pass [Nodeos options](../../02_usage/00_nodeos-options.md) to enable or disable functionality.
 
 ## Steps
+
 To setup a non-producing node is simple. 
 
 1. [Set Peers](#1-set-peers)
