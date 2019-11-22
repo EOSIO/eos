@@ -39,9 +39,3 @@ cat ~/.bash_profile
 source ~/.bash_profile
 echo $NVM_DIR
 nvm install --lts=dubnium
-npm install -g eosjs
-npm install -g commander
-npm install -g node-fetch
-npm install -g zlib
-npm install -g ws
-npm ls
