@@ -9,7 +9,6 @@ import queue
 import threading
 import time
 import typing
-
 # user-defined modules
 if __package__:
     from . import color

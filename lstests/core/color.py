@@ -1,8 +1,8 @@
 #! /usr/bin/env python3
 
-from typing import Optional, List, Union
-
+# standard libraries
 import re
+import typing
 
 
 _STYLES = {"bold":          1,
@@ -11,8 +11,6 @@ _STYLES = {"bold":          1,
            "underline":     4,
            "reverse":       7,
            "strikethrough": 9}
-
-
 _COLORS = {"black":         0,
            "red":           1,
            "green":         2,
@@ -21,10 +19,8 @@ _COLORS = {"black":         0,
            "magenta":       5,
            "cyan":          6,
            "white":         7}
-
 RESET = "\033[0m"
-
-REGEX = re.compile(r'\033\[[0-9]+(;[0-9]+)?m')
+REGEX = re.compile(r"\033\[[0-9]+(;[0-9]+)?m")
 
 
 def vanilla(text):
@@ -148,9 +144,9 @@ def black_on_white(text):
 
 
 def decorate(text,
-             style:  Optional[Union[str, List[str]]] = None,
-             fcolor: Optional[str]                   = None,
-             bcolor: Optional[str]                   = None):
+             style:  typing.Optional[typing.Union[str, typing.List[str]]]=None,
+             fcolor: typing.Optional[str] =None,
+             bcolor: typing.Optional[str] =None):
     attr = _concat(style, fcolor, bcolor)
     return "\033[{}m{}\033[0m".format(attr, text) if attr else text
 
@@ -178,3 +174,4 @@ def _concat(style, fcolor, bcolor):
 if __name__ == '__main__':
     import doctest
     doctest.testmod()
+    print("Pass -v in command line for details of doctest.")

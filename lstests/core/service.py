@@ -1,5 +1,13 @@
 #! /usr/bin/env python3
 
+"""core.service - Core functions to allow tests to run on launcher service
+
+This module provides a Service class and a Cluster class that work together to
+allow Python test scripts to run on launcher service. The Service class
+connects to the launcher service. The Cluster class then launches a cluster of
+nodes.
+"""
+
 # standard libraries
 import argparse
 import base64
@@ -13,10 +21,6 @@ import string
 import threading
 import time
 import typing
-
-# third-party libraries
-import requests
-
 # user-defined modules
 if __package__:
     from .logger import LogLevel, Logger, ScreenWriter, FileWriter
@@ -29,13 +33,12 @@ else:
     import color
     import helper
 
-
+# constants
 PROGRAM = "launcher-service"
 PROGRAM_LOG = "launcher-service.log"
 PRODUCER_KEY = "EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"
 PREACTIVATE_FEATURE = "0ec7e080177b2c02b278d5088611686b49d739925a92d9bfcacd7fc6b74053bd"
 PACKAGE_DIR = os.path.dirname(os.path.abspath(__file__))
-
 # service-related defaults
 DEFAULT_ADDR = "127.0.0.1"
 DEFAULT_PORT = 1234
@@ -53,9 +56,9 @@ DEFAULT_PRODUDCER_COUNT = 4
 DEFAULT_UNSTARTED_COUNT = 0
 DEFAULT_TOPOLOGY = "mesh"
 DEFAULT_CENTER_NODE_ID = None
+DEFAULT_TOKENS_SUPPLY = 1e9
 DEFAULT_EXTRA_CONFIGS = []
 DEFAULT_EXTRA_ARGS = ""
-DEFAULT_TOKENS_SUPPLY = 1e9
 DEFAULT_DONT_BIOS = False
 DEFAULT_DONT_NEWACCO = False
 DEFAULT_DONT_SETPROD = False
@@ -79,7 +82,7 @@ DEFAULT_SHOW_FUNCTION = True
 DEFAULT_SHOW_THREAD = True
 DEFAULT_SHOW_LOG_LEVEL = True
 DEFAULT_HIDE_ALL = False
-# service-related help
+# service-related help text
 HELP_HELP = "Show this message and exit"
 HELP_ADDR = "IP address of launcher service"
 HELP_PORT = "Listening port of launcher service"
@@ -88,7 +91,7 @@ HELP_FILE = "Path to local launcher service file"
 HELP_GENE = "Path to genesis file"
 HELP_START = "Always start a new launcher service"
 HELP_KILL = "Kill existing launcher services (if any)"
-# cluster-related help
+# cluster-related help text
 HELP_CDIR = "Smart contracts directory"
 HELP_CLUSTER_ID = "Cluster ID to launch with"
 HELP_NODE_COUNT = "Number of nodes"
@@ -97,9 +100,9 @@ HELP_PRODUDCER_COUNT = "Number of producers"
 HELP_UNSTARTED_COUNT = "Number of unstarted nodes"
 HELP_TOPOLOGY = "Cluster topology to launch with"
 HELP_CENTER_NODE_ID = "Center node ID (for bridge or star topology)"
+HELP_TOKENS_SUPPLY = "Total supply of tokens (in regular launch)"
 HELP_EXTRA_CONFIGS = "Extra configs to pass to launcher service"
 HELP_EXTRA_ARGS = "Extra arguments to pass to launcher service"
-HELP_TOKENS_SUPPLY = "Total supply of tokens (in regular launch)"
 HELP_DONT_BIOS = "Do not BIOS launch (regular launch instead)"
 HELP_DONT_NEWACCO = "Do not create accounts in launch"
 HELP_DONT_SETPROD = "Do not set producers in BIOS launch"
@@ -111,7 +114,7 @@ HELP_VERIFY_RETRY = "Verify transaction: max num of retries"
 HELP_VERIFY_SLEEP = "Verify transaction: sleep time between retries"
 HELP_SYNC_RETRY = "Check sync: max num of retries"
 HELP_SYNC_SLEEP = "Check sync: sleep time between retries"
-# logger-related help
+# logger-related help text
 HELP_LOG_LEVEL = "Stdout logging level (numeric)"
 HELP_LOG_ALL = "Set stdout logging level to ALL (0)"
 HELP_TRACE = "Set stdout logging level to TRACE (10)"
@@ -135,16 +138,52 @@ HELP_HIDE_LOG_LEVEL = "Hide log level in stdout logging"
 HELP_HIDE_ALL = "Hide all the above in stdout logging"
 
 
-class ExceptionThread(threading.Thread):
-    id = 0
+class LauncherServiceError(RuntimeError):
+    """Launcher service-related runtime error.
 
+    For example, a LauncherServiceError may be raised when a Service object
+    failed to connect to launcher service in initialization.
+    """
+    def __init__(self, message):
+        super().__init__(message)
+
+
+class BlockchainError(RuntimeError):
+    """Blockchain-related runtime error.
+
+    For example, a BlockchainError may be raised when nodes still failed to get
+    ready after many retries."""
+    def __init__(self, message):
+        super().__init__(message)
+
+
+class SyncError(BlockchainError):
+    """Blockchain error when nodes out of sync."""
+    def __init__(self, message):
+        super().__init__(message)
+
+
+def bassert(condition, message=None):
+    """A helper function to raise BlockchainError.
+
+    A BlockchainError with message will be raised when condition is not met."""
+    if not condition:
+        raise BlockchainError(message=message)
+
+
+class ExceptionThread(threading.Thread):
+    """A thread that reports exceptions to a public channel.
+
+    By checking the channel, which could be a list or a dict, it is possible to
+    tell which threads have met exceptions.
+    """
+    id = 0
     def __init__(self, channel, report, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.id = ExceptionThread.id
         self.channel = channel
         self.report = report
         ExceptionThread.id += 1
-
     def run(self):
         try:
             super().run()
@@ -152,27 +191,12 @@ class ExceptionThread(threading.Thread):
             self.report(self.channel, self.id, str(e))
 
 
-class LauncherServiceError(RuntimeError):
-    def __init__(self, message):
-        super().__init__(message)
-
-
-class BlockchainError(RuntimeError):
-    def __init__(self, message):
-        super().__init__(message)
-
-
-def bassert(cond, message=None):
-    if not cond:
-        raise BlockchainError(message=message)
-
-
-class SyncError(BlockchainError):
-    def __init__(self, message):
-        super().__init__(message)
-
-
 class CommandLineArguments:
+    """Command-line arguments to pass to Service and Cluster.
+
+    Command-line arguments have the highest priority, which override in-script
+    arguments, which override default values.
+    """
     def __init__(self):
         cla = self.parse()
         # service-related options
@@ -220,6 +244,9 @@ class CommandLineArguments:
 
     @staticmethod
     def parse():
+        """Parse for command-line arguments for Logger, Service, Cluster.
+
+        Appending "-h/--help" to any test script will show help information."""
         desc = color.decorate("Launcher Service-based EOSIO Testing Framework", style="underline", fcolor="green")
         left = 5
         form = lambda text, value=None: "{} ({})".format(helper.pad(text, left=left, total=55), value)
@@ -235,7 +262,8 @@ class CommandLineArguments:
         parser.add_argument("-s", "--start", action="store_true", default=None, help=form(HELP_START, DEFAULT_START))
         parser.add_argument("-k", "--kill", action="store_true", default=None, help=form(HELP_KILL, DEFAULT_KILL))
         # cluster-related options
-        parser.add_argument("-c", "--cdir", metavar="PATH", help=form(HELP_CDIR, DEFAULT_CDIR))
+        parser.add_argument("-c", "--cdir", metavar="PATH",
+                            help=form(HELP_CDIR, DEFAULT_CDIR))
         parser.add_argument("-i", "--cluster-id", dest="cluster_id", type=int, metavar="ID",
                             help=form(HELP_CLUSTER_ID, DEFAULT_CLUSTER_ID))
         parser.add_argument("-n", "--node-count", type=int, metavar="NUM",
@@ -247,7 +275,7 @@ class CommandLineArguments:
         parser.add_argument("-u", "--unstarted-count", type=int, metavar="NUM",
                             help=form(HELP_UNSTARTED_COUNT, DEFAULT_UNSTARTED_COUNT))
         parser.add_argument("-t", "--topology", type=str, metavar="SHAPE", help=form(HELP_TOPOLOGY, DEFAULT_TOPOLOGY),
-                            choices={"mesh", "bridge", "line", "ring", "star","tree"})
+                            choices={"mesh", "bridge", "line", "ring", "star", "tree"})
         parser.add_argument("-x", "--center-node-id", type=int, metavar="ID",
                             help=form(HELP_CENTER_NODE_ID, DEFAULT_CENTER_NODE_ID))
         parser.add_argument("-y", "--tokens-supply", metavar="NUM",
@@ -260,16 +288,20 @@ class CommandLineArguments:
                             help=form(HELP_DONT_SETPROD, DEFAULT_DONT_SETPROD))
         parser.add_argument("-dvote", "--dont-vote", action="store_true", default=None,
                             help=form(HELP_DONT_VOTE, DEFAULT_DONT_VOTE))
-        parser.add_argument("--http-retry", type=int, metavar="NUM", help=form(HELP_HTTP_RETRY, DEFAULT_HTTP_RETRY))
-        parser.add_argument("--http-sleep", type=float, metavar="TIME", help=form(HELP_HTTP_SLEEP, DEFAULT_HTTP_SLEEP))
+        parser.add_argument("--http-retry", type=int, metavar="NUM",
+                            help=form(HELP_HTTP_RETRY, DEFAULT_HTTP_RETRY))
+        parser.add_argument("--http-sleep", type=float, metavar="TIME",
+                            help=form(HELP_HTTP_SLEEP, DEFAULT_HTTP_SLEEP))
         parser.add_argument("-va", "--verify-async", action="store_true", default=None,
                             help=form(HELP_VERIFY_ASYNC, DEFAULT_VERIFY_ASYNC))
         parser.add_argument("--verify-retry", type=int, metavar="NUM",
                             help=form(HELP_VERIFY_RETRY, DEFAULT_VERIFY_RETRY))
         parser.add_argument("--verify-sleep", type=float, metavar="TIME",
                             help=form(HELP_VERIFY_SLEEP, DEFAULT_VERIFY_SLEEP))
-        parser.add_argument("--sync-retry", type=int, metavar="NUM", help=form(HELP_SYNC_RETRY, DEFAULT_SYNC_RETRY))
-        parser.add_argument("--sync-sleep", type=float, metavar="TIME", help=form(HELP_SYNC_SLEEP, DEFAULT_SYNC_SLEEP))
+        parser.add_argument("--sync-retry", type=int, metavar="NUM",
+                            help=form(HELP_SYNC_RETRY, DEFAULT_SYNC_RETRY))
+        parser.add_argument("--sync-sleep", type=float, metavar="TIME",
+                            help=form(HELP_SYNC_SLEEP, DEFAULT_SYNC_SLEEP))
         # logger-related options
         threshold = parser.add_mutually_exclusive_group()
         threshold.add_argument("-l", "--log-level", dest="threshold", type=int, metavar="LEVEL", action="store",
@@ -305,14 +337,73 @@ class CommandLineArguments:
                             help=form(HELP_HIDE_LOG_LEVEL, not DEFAULT_SHOW_LOG_LEVEL))
         parser.add_argument("-hall", "--hide-all", action="store_true", default=False,
                             help=form(HELP_HIDE_ALL, DEFAULT_HIDE_ALL))
-
         return parser.parse_args()
 
 # =============== BEGIN OF SERVICE CLASS ==============================================================================
 
 class Service:
-    def __init__(self, logger, addr=None, port=None, wdir=None, file=None, gene=None, start=None, kill=None,
-                 dont_connect=False):
+    """Establish and maintain connection with launcher service. Manage logging.
+
+    A Service object must have a Logger object registered to it at
+    initialization. It is possible that the Service object may *modify* the
+    settings in the Logger object.
+
+    --- Configuration --
+    A Service object is configured at creation, with values from 3 sources:
+    (1) defaults,
+    (2) in-script arguments, and
+    (3) command-line arguments,
+    with the latter capable of overriding the former.
+
+    --- Connect --------
+    After configuration, the Service will change the working directory,
+    register (and possibly *modify*) the Logger, and then connect to launcher
+    service.  Currently, it is only possible to connect to a local launcher
+    service. If there is already an existing launcher service running in the
+    background, the Service will by default connect to it (without starting a
+    new one). It is possible to override this default by requesting to always
+    start a new launcher service and/or to kill all the existing launcher
+    service(s).
+    """
+    def __init__(self, logger, addr=None, port=None, wdir=None, file=None, gene=None, start=None, kill=None):
+        """Create a Service object to connect to launcher service.
+
+        Parameters
+        ----------
+        logger : Logger
+            Logger object which controls logging behavior.
+        addr : str
+            IP address of launcher service.
+            Currently, only local launcher service is supported. That is, only
+            default value "127.0.0.1" is supported.
+        port : int
+            Listening port of launcher service.
+            If there are multiple launcher service running in the background,
+            they must have different listening ports.
+            Default is 1234.
+        wdir : str
+            Working directory.
+            Default is the build folder.
+        file : str
+            Path to local launcher service file.
+            Can be either absolute or relative to the working directory.
+        gene : str
+            Path to the genesis file.
+            Can be either absolute or relative to the working directory.
+        start : bool
+            Always start a new launcher service.
+            Note that if to start a new instance alongside the existing ones,
+            make sure the listening ports are different. Otherwise, the
+            new launcher service will issue an error.
+            Default is False (will not start a new one if there is an existing
+            launcher service running in the background).
+        kill : bool
+            Kill existing launcher services (if any).
+            Kill all the existing launcher services running in the background
+            (and freshly start a new one).
+            Default is False (will not kill existing launcher services; instead
+            will connect to an existing launcher service).
+        """
         # read command-line arguments
         self.cla = CommandLineArguments()
         # configure service
@@ -328,13 +419,13 @@ class Service:
         # register logger
         self.register_logger(logger)
         # connect
-        if not dont_connect:
-            self.connect()
+        self.connect()
 
     def __enter__(self):
         return self
 
     def __exit__(self, exception_type, exception_value, exception_traceback):
+        """Flush all buffered logging information in case Service crashes"""
         self.flush()
 
     def register_logger(self, logger):
@@ -523,6 +614,62 @@ class Service:
 # =============== BEGIN OF CLUSTER CLASS ==============================================================================
 
 class Cluster:
+    """A cluster of nodes running on launcher service.
+
+    Major proxy for tests to communicate with launcher service. A Cluster
+    object must have a Service object registered to it at initialization.
+
+    --- Configuration --
+    A Cluster object is configured at creation, with values from 3 sources:
+    (1) defaults,
+    (2) in-script arguments, and
+    (3) command-line arguments,
+    with the latter capable of overriding the former.
+
+    --- Launch ---------
+    After configuration, the node cluster will be launched in one of two modes:
+    (1) BIOS mode, using "eosio.bios" to set producers;
+    (2) regular mode, using "eosio.token" to create and issue tokens, and using
+        "eosio.system" to vote.
+    By default, the cluster is launched in BIOS mode.
+
+    --- Test -----------
+    After the node cluster is successfully launched, all the test actions can
+    be performed on the cluster, with main API listed below.
+
+    Main API
+    --------
+    - Start up and shut down
+        - launch_cluster()
+        - stop_cluster()
+        - start_node()
+        - stop_node()
+        - stop_all_nodes()
+    - Queries
+        - get_cluster_running_state()
+        - get_cluster_info()
+        - get_info()
+        - get_block()
+        - get_account()
+        - get_protocal_features()
+        - get_log()
+    - Transactions
+        - schedule_protocol_feature_activations()
+        - set_contract()
+        - push_action()
+    - Check and Verify
+        - verify()
+        - check_sync()
+        - check_production_round()
+    - Miscallaneous
+        - send_raw()
+        - pause_node_production()
+        - resume_node_production()
+        - get_greylist()
+        - add_greylist_accounts()
+        - remove_greylist_accounts()
+        - get_net_plugin_connections()
+    """
     def __init__(self,
                  service,
                  cdir=None,
@@ -533,13 +680,13 @@ class Cluster:
                  unstarted_count=None,
                  topology=None,
                  center_node_id=None,
+                 tokens_supply=None,
                  extra_configs: typing.List[str]=None,
                  extra_args: str=None,
                  dont_bios=None,
                  dont_newacco=None,
                  dont_setprod=None,
                  dont_vote=None,
-                 tokens_supply=None,
                  http_retry=None,
                  http_sleep=None,
                  verify_async=None,
@@ -547,6 +694,91 @@ class Cluster:
                  verify_sleep=None,
                  sync_retry=None,
                  sync_sleep=None):
+        """Create a Cluster object to launch a cluster of nodes.
+
+        The node cluster is the plaform on which a test will be performed.
+
+        Parameters
+        ----------
+        service : Service
+            Launcher service object on which the node cluster will run
+        cidr : str
+            Smart contracts directory.
+            Can be either absolute or relative to service's working directory.
+        cluster_id : int
+            Cluster ID to launch with.
+            Tests with different cluster IDs can be run in parallel.
+            Valid range is [0, 30). Default is 0.
+        node_count : int
+            Number of nodes in the cluster.
+            Default is 4.
+        pnode_count : int
+            Number of nodes with at least one producer.
+            Default is 4.
+        producer_count : int
+            Number of producers in the cluster.
+            Default is 4.
+        unstarted_count : int
+            Number of unstarted nodes.
+            Default is 0.
+        topology : str
+            Cluster topology to launch with.
+            Valid choices are "mesh", "bridge", "line", "ring", "star", "tree".
+            Default is "mesh".
+        center_node_id : int
+            Center node ID (for bridge or star topology).
+            If topology is bridge, center node ID cannot be 0 or last one.
+            No default value.
+        tokens_supply : float
+            Total supply of tokens in regular launch mode.
+            Default is 1000000000 (1e9).
+        extra_configs : list
+            Extra configs to pass to launcher service.
+            e.g. ["plugin=SOME_EXTRA_PLUGIN"]
+            No default value.
+        extra_args : str
+            Extra arguments to pass to launcher service.
+            e.g. "--delete-all-blocks"
+            No default value.
+        dont_bios : bool
+            Do not launch in BIOS mode. Launch in regular mode instead.
+            Default is False (will launch in BIOS mode).
+        dont_newacco : bool
+            Do not create accounts in launch.
+            Default is False (will create producer accounts).
+        dont_setprod : bool
+            Do not set producers in BIOS launch mode.
+            Default is False (will set producers).
+        dont_vote: bool
+            Do not vote in regular launch mode.
+            Default is False (will vote for producers).
+        http_retry : int
+            Max number of retries in HTTP connection.
+            Default is 100.
+        http_sleep : float
+            Sleep time (in seconds) between HTTP connection retries.
+            Default is 0.25.
+        verify_async : bool
+            Verify transactions asynchronously.
+            Start a separate thread for transaction verfication. Do not wait
+            for a transaction to be verified before making next transaction.
+            Default is False (will wait for verification result).
+        verify_retry : int
+            Max number of retries in transaction verfication.
+            Default is 100.
+        verify_sleep : float
+            Sleep time (in seconds) between verfication retries.
+            Default is 0.25.
+        sync_retry : int
+            Max number of retries in checking if nodes are in sync.
+            Default is 100.
+        sync_sleep : float
+            Sleep time (in seconds) between check-sync retries.
+            Default is 0.25.
+
+        * Note that all the above in-script arguments can be overridden by
+        command-line arguments (except for extra_configs and extra_args).
+        """
         # register service
         self.service = service
         self.cla = service.cla
@@ -586,7 +818,6 @@ class Cluster:
         self.verify_sleep    = helper.override(DEFAULT_VERIFY_SLEEP,    verify_sleep,    self.cla.verify_sleep)
         self.sync_retry      = helper.override(DEFAULT_SYNC_RETRY,      sync_retry,      self.cla.sync_retry)
         self.sync_sleep      = helper.override(DEFAULT_SYNC_SLEEP,      sync_sleep,      self.cla.sync_sleep)
-
         # check for logical errors in config
         self.check_config()
         # establish mappings between nodes and producers
@@ -628,13 +859,13 @@ class Cluster:
     def __enter__(self):
         return self
 
-
     def __exit__(self, exception_type, exception_value, exception_traceback):
+        """Flush all buffered logging information in case a Cluster crashes."""
         self.flush()
 
 
     def check_config(self):
-        bassert(0 <= self.cluster_id < 30, f"Invalid cluster_id ({self.cluster_id}). Valid range is [0, 29].")
+        bassert(0 <= self.cluster_id < 30, f"Invalid cluster_id ({self.cluster_id}). Valid range is [0, 30).")
         bassert(self.node_count >= self.pnode_count + self.unstarted_count,
                 f"node_count ({self.node_count}) must be greater than "
                 f"pnode_count ({self.pnode_count}) + unstarted_count ({self.unstarted_count}).")
@@ -655,9 +886,9 @@ class Cluster:
         self.print_config_helper("-u: unstarted_count",  HELP_UNSTARTED_COUNT, self.unstarted_count, DEFAULT_UNSTARTED_COUNT)
         self.print_config_helper("-t: topology",         HELP_TOPOLOGY,        self.topology,        DEFAULT_TOPOLOGY)
         self.print_config_helper("-x: center_node_id",   HELP_CENTER_NODE_ID,  self.center_node_id,  DEFAULT_CENTER_NODE_ID)
+        self.print_config_helper("-y: tokens_supply",    HELP_TOKENS_SUPPLY,   self.tokens_supply,   DEFAULT_TOKENS_SUPPLY)
         self.print_config_helper("... extra_configs",    HELP_EXTRA_CONFIGS,   self.extra_configs,   DEFAULT_EXTRA_CONFIGS)
         self.print_config_helper("... extra_args",       HELP_EXTRA_ARGS,      self.extra_args,      DEFAULT_EXTRA_ARGS)
-        self.print_config_helper("-y: tokens_supply",    HELP_TOKENS_SUPPLY,   self.tokens_supply,   DEFAULT_TOKENS_SUPPLY)
         self.print_config_helper("-dbios: dont_bios",    HELP_DONT_BIOS,       self.dont_bios,       DEFAULT_DONT_BIOS)
         self.print_config_helper("-dnewa: dont_newacco", HELP_DONT_NEWACCO,    self.dont_newacco,    DEFAULT_DONT_NEWACCO)
         self.print_config_helper("-dsetp: dont_setprod", HELP_DONT_SETPROD,    self.dont_setprod,    DEFAULT_DONT_SETPROD)
@@ -671,17 +902,20 @@ class Cluster:
         self.print_config_helper("--sync-sleep",         HELP_SYNC_SLEEP,      self.sync_sleep,      DEFAULT_SYNC_SLEEP)
 
     def bios_launch(self, dont_newacco=False, dont_setprod=False):
-        """
-        Launch without Bootstrap
-        ---------
+        """Launch in BIOS mode.
+
+        Steps to take for a launch in BIOS mode
+        ---------------------------------------
         0. print config
         1. launch a cluster
-        2. get cluster info
+        2. wait for all the nodes to get ready
         3. schedule protocol feature activations
-        4. set eosio.bios contract ---> for setprod, not required for newaccount
-        5. bios-create accounts
+        4. set eosio.bios contract --> for setprod, not required for newaccount
+        5. create accounts using eosio.bios
         6. set producers
         7. check if nodes are in sync
+        8. if verfication is done asynchronously, make sure all transactions
+           have been verified
         """
         self.info(">>> [BIOS Launch] ----------------------- BEGIN ----------------------------------------------------")
         self.print_config()
@@ -700,12 +934,13 @@ class Cluster:
 
 
     def regular_launch(self, dont_newacco=False, dont_vote=False):
-        """
-        Bootstrap
-        ---------
+        """Launch in regular mode.
+
+        Steps to take for a launch in regular mode
+        ------------------------------------------
         0. print config
         1. launch a cluster
-        2. get cluster info
+        2. wait for all the nodes to get ready
         3. schedule protocol feature activations
         4. bios-create eosio.token, eosio.system accounts
         5. set eosio.token contract    <--- depends on 4
@@ -717,7 +952,9 @@ class Cluster:
         11. register producers         <--- depends on 8,9
         12. vote for producers         <--- depends on 8,9
         13. check if nodes are in sync
-        14. verify production schedule change
+        14. make sure production schedule changes (producer no longer eosio)
+        15. if transaction verfication is done asynchronously, make sure all
+            transactions have been verified
         """
         self.info(">>> [Regular Launch] -------------------- BEGIN ------------------------------------------")
         self.print_config()
@@ -779,7 +1016,7 @@ class Cluster:
         for node_id in self.node_count:
             return self.call("stop_nodes", node_id=node_id, kill_sig=kill_sig, **call_kwargs)
 
-# --------------- simple query ----------------------------------------------------------------------------------------
+# --------------- simple queries: queries that are made directly via call() -------------------------------------------
 
     def get_cluster_running_state(self, **call_kwargs):
         return self.call("get_cluster_running_state", **call_kwargs)
@@ -807,7 +1044,7 @@ class Cluster:
                         verify_key=None, dont_flush=True, **call_kwargs)
         return helper.extract(cx.response, key=verify_key, fallback=False)
 
-# --------------- composite query -------------------------------------------------------------------------------------
+# --------------- composite queries: queries that are dependent on simple queries -------------------------------------
 
     def get_node_pid(self, node_id, **call_kwargs):
         return self.get_cluster_running_state(**call_kwargs).response_dict["result"]["nodes"][node_id][1]["pid"]
@@ -888,9 +1125,9 @@ class Cluster:
 
 # --------------- transactions ----------------------------------------------------------------------------------------
 
-    def schedule_protocol_feature_activations(self, **call_kwargs):
+    def schedule_protocol_feature_activations(self, features=[PREACTIVATE_FEATURE], **call_kwargs):
         return self.call("schedule_protocol_feature_activations",
-                         protocol_features_to_activate=[PREACTIVATE_FEATURE],
+                         protocol_features_to_activate=features,
                          **call_kwargs)
 
     def set_contract(self, account, contract_file, abi_file, node_id=0, verify_key="irreversible", name=None, **call_kwargs):
@@ -948,21 +1185,21 @@ class Cluster:
         accounts = [accounts] if isinstance(accounts, str) else accounts
         for name in accounts:
             actions += [{"account": "eosio",
-                        "action": "newaccount",
-                        "permissions":[{"actor": "eosio",
-                                        "permission": "active"}],
-                        "data":{"creator": "eosio",
-                                "name": name,
-                                "owner": {"threshold": 1,
-                                          "keys": [{"key": PRODUCER_KEY,
-                                                    "weight":1}],
-                                          "accounts": [],
-                                          "waits": []},
-                                "active":{"threshold": 1,
-                                          "keys": [{"key": PRODUCER_KEY,
-                                                    "weight":1}],
-                                          "accounts": [],
-                                          "waits": []}}}]
+                         "action": "newaccount",
+                         "permissions":[{"actor": "eosio",
+                                         "permission": "active"}],
+                          "data":{"creator": "eosio",
+                                  "name": name,
+                                  "owner": {"threshold": 1,
+                                            "keys": [{"key": PRODUCER_KEY,
+                                                      "weight":1}],
+                                            "accounts": [],
+                                            "waits": []},
+                                  "active":{"threshold": 1,
+                                            "keys": [{"key": PRODUCER_KEY,
+                                                      "weight":1}],
+                                            "accounts": [],
+                                            "waits": []}}}]
         header = "bios create "
         header += f"\"{accounts[0]}\" account" if len(accounts) == 1 else f"{len(actions)} accounts"
         return self.push_actions(actions=actions, node_id=node_id, header=header, **call_kwargs)
@@ -1021,7 +1258,7 @@ class Cluster:
                                  **call_kwargs)
 
     def create_tokens(self, maximum_supply, **call_kwargs):
-        tokens = helper.format_tokens(maximum_supply)
+        tokens = helper.make_tokens(maximum_supply)
         actions = [{"account": "eosio.token",
                     "action": "create",
                     "permissions": [{"actor": "eosio.token",
@@ -1034,7 +1271,7 @@ class Cluster:
         return self.push_actions(actions=actions, header="create tokens", **call_kwargs)
 
     def issue_tokens(self, quantity, **call_kwargs):
-        tokens = helper.format_tokens(quantity)
+        tokens = helper.make_tokens(quantity)
         actions = [{"account": "eosio.token",
                     "action": "issue",
                     "permissions": [{"actor": "eosio",
@@ -1114,7 +1351,7 @@ class Cluster:
                 # Must keep p's value in a local variable (producer),
                 # since p may change in multithreading
                 producer = p
-                tokens = helper.format_tokens(amount)
+                tokens = helper.make_tokens(amount)
                 self.create_account(creator="eosio",
                                     name=producer,
                                     stake_cpu=tokens,
@@ -1155,10 +1392,12 @@ class Cluster:
 # --------------- auxiliary -------------------------------------------------------------------------------------------
 
     def make_wasm_name(self, contract):
+        """Make a wasm filename given the contract name."""
         return os.path.join(self.cdir, contract, contract + ".wasm")
 
 
     def make_abi_name(self, contract):
+        """Make an abi filename given the contract name."""
         return os.path.join(self.cdir, contract, contract + ".abi")
 
 
@@ -1363,45 +1602,6 @@ class Cluster:
 
 # --------------- call ------------------------------------------------------------------------------------------------
 
-    """
-    ====================
-    Launcher Service API
-    ====================
-    @ plugins/launcher_service_plugin/include/eosio/launcher_service_plugin/launcher_service_plugin.hpp
-
-    -- cluster-related calls ----------------
-    1. launch_cluster
-    2. stop_cluster
-    3. stop_all_clusters
-    4. clean_cluster
-    5. start_node
-    6. stop_node
-
-    --- wallet-related calls ----------------
-    7. generate_key
-    8. import_keys
-
-    --- queries -----------------------------
-    9. get_cluster_info
-    10. get_cluster_running_state
-    11. get_info
-    12. get_block
-    13. get_account
-    14. get_code_hash
-    15. get_protocol_features
-    16. get_table_rows
-    17. get_log_data
-    18. verify_transaction
-
-    --- transactions ------------------------
-    19. schedule_protocol_feature_activations
-    20. set_contract
-    21. push_actions
-
-    --- miscellaneous------------------------
-    22. send_raw
-    """
-
     def call(self,
              api: str,
              retry=None,
@@ -1432,15 +1632,47 @@ class Cluster:
              buffer=False,
              dont_flush=False,
              **data) -> Connection:
-        """
-        call
-        ----
+        """Call launcher service API. Post HTTP request and get response.
+
+        Steps to take to make a call
+        ----------------------------
         1. print header
-        2. establish connection
+        2. establish HTTP connection
         3. log url and request of connection
         4. retry connection if response not ok
         5. log response
         6. verify transaction
+
+        Launcher service API
+        --------------------
+        @ plugins/launcher_service_plugin/include/eosio/launcher_service_plugin/launcher_service_plugin.hpp
+        --- cluster-related calls ---------------
+        1. launch_cluster
+        2. stop_cluster
+        3. stop_all_clusters
+        4. clean_cluster
+        5. start_node
+        6. stop_node
+        --- wallet-related calls ----------------
+        7. generate_key
+        8. import_keys
+        --- queries -----------------------------
+        9. get_cluster_info
+        10. get_cluster_running_state
+        11. get_info
+        12. get_block
+        13. get_account
+        14. get_code_hash
+        15. get_protocol_features
+        16. get_table_rows
+        17. get_log_data
+        18. verify_transaction
+        --- transactions ------------------------
+        19. schedule_protocol_feature_activations
+        20. set_contract
+        21. push_actions
+        --- miscellaneous------------------------
+        22. send_raw
         """
         header = helper.override(api.replace("_", " "), header)
         retry = helper.override(self.http_retry, retry, self.cla.http_retry)
