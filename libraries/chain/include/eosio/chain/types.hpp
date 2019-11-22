@@ -143,10 +143,9 @@ namespace eosio { namespace chain {
       static_assert(
          std::is_same_v<std::decay_t<decltype(*b.data())>, char> ||
          std::is_same_v<std::decay_t<decltype(*b.data())>, unsigned char>);
-
-      auto r = std::char_traits<unsigned char>::compare(
-         reinterpret_cast<const unsigned char*>(a.data()),
-         reinterpret_cast<const unsigned char*>(b.data()),
+      auto r = memcmp(
+         a.data(),
+         b.data(),
          std::min(a.size(), b.size()));
       if (r)
          return r;

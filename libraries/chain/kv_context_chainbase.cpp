@@ -7,27 +7,23 @@ namespace eosio { namespace chain {
    struct kv_iterator_chainbase : kv_iterator {
       using index_type = std::decay_t<decltype(std::declval<chainbase::database>().get_index<kv_index, by_kv_key>())>;
 
-      chainbase::database&             db;
-      const index_type&                idx = db.get_index<kv_index, by_kv_key>();
-      name                             database_id;
-      name                             contract;
-      std::vector<char>                prefix;
-      std::optional<std::vector<char>> next_prefix;
-      std::optional<shared_blob>       kv_key;
+      chainbase::database&       db;
+      const index_type&          idx = db.get_index<kv_index, by_kv_key>();
+      name                       database_id;
+      name                       contract;
+      std::vector<char>          prefix;
+      std::vector<char>          next_prefix;
+      std::optional<shared_blob> kv_key;
 
       kv_iterator_chainbase(chainbase::database& db, name database_id, name contract, std::vector<char> prefix)
           : db{ db }, database_id{ database_id }, contract{ contract }, prefix{ std::move(prefix) } {
 
-         next_prefix.emplace(this->prefix);
-         bool have_next = false;
-         for (auto it = next_prefix->rbegin(); it != next_prefix->rend(); ++it) {
-            if (++*it) {
-               have_next = true;
+         next_prefix = this->prefix;
+         while (!next_prefix.empty()) {
+            if (++next_prefix.back())
                break;
-            }
+            next_prefix.pop_back();
          }
-         if (!have_next)
-            next_prefix.reset();
       }
 
       ~kv_iterator_chainbase() override {}
@@ -101,8 +97,8 @@ namespace eosio { namespace chain {
          std::decay_t<decltype(idx.end())> it;
          if (kv_key)
             it = idx.lower_bound(boost::make_tuple(database_id, contract, *kv_key));
-         else if (next_prefix)
-            it = idx.lower_bound(boost::make_tuple(database_id, contract, *next_prefix));
+         else if (!next_prefix.empty())
+            it = idx.lower_bound(boost::make_tuple(database_id, contract, next_prefix));
          else
             it = idx.end();
          if (it != idx.begin())

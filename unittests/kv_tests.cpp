@@ -71,8 +71,7 @@ class kv_tester : public tester {
    }
 
    template <typename T>
-   void scan(const char* error, name db, name contract, const char* prefix, T lower,
-             const std::vector<kv>& expected) {
+   void scan(const char* error, name db, name contract, const char* prefix, T lower, const std::vector<kv>& expected) {
       BOOST_REQUIRE_EQUAL(error, push_action(N(scan), mvo()("db", db)("contract", contract)("prefix", prefix)(
                                                             "lower", lower)("expected", expected)));
    }
@@ -276,6 +275,21 @@ class kv_tester : public tester {
       scanrev("", db, N(kvtest), "33", nullptr, {});
    } // test_scanrev
 
+   void test_scanrev2(name db) {
+      setmany("", db, N(kvtest),
+              {
+                    kv{ { 0x00, char(0xFF), char(0xFF) }, { 0x10 } },
+                    kv{ { 0x01 }, { 0x20 } },
+                    kv{ { 0x01, 0x00 }, { 0x30 } },
+              });
+
+      // prefix = "00FFFF", no lower bound
+      scanrev("", db, N(kvtest), "00FFFF", nullptr,
+              {
+                    kv{ { 0x00, char(0xFF), char(0xFF) }, { 0x10 } },
+              });
+   } // test_scanrev2
+
    abi_serializer abi_ser;
 };
 
@@ -295,6 +309,11 @@ FC_LOG_AND_RETHROW()
 
 BOOST_FIXTURE_TEST_CASE(kv_scanrev, kv_tester) try { //
    test_scanrev(N(eosio.kvram));
+}
+FC_LOG_AND_RETHROW()
+
+BOOST_FIXTURE_TEST_CASE(kv_scanrev2, kv_tester) try { //
+   test_scanrev2(N(eosio.kvram));
 }
 FC_LOG_AND_RETHROW()
 
