@@ -86,5 +86,4 @@ var/lib/node_*
 *.iws
 .DS_Store
 
-package-lock.json
 node_modules
