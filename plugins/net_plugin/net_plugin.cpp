@@ -978,13 +978,15 @@ namespace eosio {
 
       block_id_type lib_id = last_handshake_recv.last_irreversible_block_id;
       g_conn.unlock();
+      auto lib_num = block_header::num_from_id(lib_id);
+      if( lib_num == 0 ) return; // if last_irreversible_block_id is null (we have not received handshake or reset)
 
       if( !peer_requested ) {
-         peer_requested = peer_sync_state( block_header::num_from_id(lib_id)+1,
+         peer_requested = peer_sync_state( lib_num+1,
                                            block_header::num_from_id(head_id),
-                                           block_header::num_from_id(lib_id) );
+                                           lib_num );
       } else {
-         uint32_t start = std::min( peer_requested->last + 1, block_header::num_from_id(lib_id)+1 );
+         uint32_t start = std::min( peer_requested->last + 1, lib_num+1 );
          uint32_t end   = std::max( peer_requested->end_block, block_header::num_from_id(head_id) );
          peer_requested = peer_sync_state( start, end, start - 1 );
       }
@@ -1030,7 +1032,7 @@ namespace eosio {
    }
 
    void connection::send_handshake() {
-      strand.post( [c = shared_from_this()]() {
+      strand.dispatch( [c = shared_from_this()]() {
          std::unique_lock<std::mutex> g_conn( c->conn_mtx );
          if( c->populate_handshake( c->last_handshake_sent ) ) {
             static_assert( std::is_same_v<decltype( c->sent_handshake_count ), int16_t>, "INT16_MAX based on int16_t" );
