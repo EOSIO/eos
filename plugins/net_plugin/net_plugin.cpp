@@ -989,9 +989,10 @@ namespace eosio {
          peer_requested = peer_sync_state( start, end, start - 1 );
       }
       if( peer_requested->start_block <= peer_requested->end_block ) {
-         fc_dlog( logger, "enqueue ${s} - ${e}", ("s", peer_requested->start_block)( "e", peer_requested->end_block ) );
+         fc_ilog( logger, "enqueue ${s} - ${e} to ${p}", ("s", peer_requested->start_block)("e", peer_requested->end_block)("p", peer_name()) );
          enqueue_sync_block();
       } else {
+         fc_ilog( logger, "nothing to enqueue ${p} to ${p}", ("p", peer_name()) );
          peer_requested.reset();
       }
    }
@@ -1132,7 +1133,7 @@ namespace eosio {
          break;
       }
       default:
-         fc_dlog(logger, "sending empty request but not calling sync wait on ${p}", ("p",peer_address()));
+         fc_ilog(logger, "sending empty request but not calling sync wait on ${p}", ("p",peer_address()));
          enqueue( ( sync_request_message ) {0,0} );
       }
    }
@@ -1147,6 +1148,7 @@ namespace eosio {
       bool trigger_send = true;
       if(num == peer_requested->end_block) {
          peer_requested.reset();
+         fc_ilog( logger, "done enqueue_sync_block ${num} to ${p}", ("num", num)("p", peer_name()) );
       }
       connection_wptr weak = shared_from_this();
       app().post( priority::medium, [num, trigger_send, weak{std::move(weak)}]() {
@@ -2376,8 +2378,8 @@ namespace eosio {
             fc::raw::unpack( peek_ds, bh );
 
             block_id_type blk_id = bh.id();
+            uint32_t blk_num = bh.block_num();
             if( my_impl->dispatcher->have_block( blk_id ) ) {
-               uint32_t blk_num = bh.block_num();
                fc_ilog( logger, "canceling wait on ${p}, already received block ${num}, id ${id}...",
                         ("p", peer_name())("num", blk_num)("id", blk_id.str().substr(8,16)) );
                if( my_impl->sync_master->syncing_with_peer() )
@@ -2389,6 +2391,18 @@ namespace eosio {
             }
             fc_ilog( logger, "${p} received block ${num}, id ${id}...",
                      ("p", peer_name())("num", bh.block_num())("id", blk_id.str().substr(8,16)) );
+            if( !my_impl->sync_master->syncing_with_peer() ) { // guard against peer thinking it needs to send us old blocks
+               uint32_t lib = 0;
+               std::tie( lib, std::ignore, std::ignore, std::ignore, std::ignore, std::ignore ) = my_impl->get_chain_info();
+               if( blk_num < lib ) {
+                  enqueue( ( sync_request_message ) {0,0} );
+                  send_handshake();
+                  cancel_wait();
+
+                  pending_message_buffer.advance_read_ptr( message_length );
+                  return true;
+               }
+            }
 
             auto ds = pending_message_buffer.create_datastream();
             fc::raw::unpack( ds, which ); // throw away
