@@ -286,7 +286,7 @@ def myTest(transWillEnterBlock):
         wasmFile="currency.wasm"
         abiFile="currency.abi"
         Print("Publish contract")
-        trans=node.publishContract(currencyAccount.name, wasmFile, abiFile, waitForTransBlock=True)
+        trans=node.publishContract(currencyAccount, wasmFile, abiFile, waitForTransBlock=True)
         if trans is None:
             error("Failed to publish contract.")
             return False

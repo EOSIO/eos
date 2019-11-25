@@ -2,6 +2,7 @@
 
 from core_symbol import CORE_SYMBOL
 from Cluster import Cluster
+from Cluster import NamedAccounts
 from WalletMgr import WalletMgr
 from Node import Node
 from TestHelper import TestHelper
@@ -25,39 +26,6 @@ import re
 
 Print=Utils.Print
 errorExit=Utils.errorExit
-
-class NamedAccounts:
-
-    def __init__(self, cluster, numAccounts):
-        Print("NamedAccounts %d" % (numAccounts))
-        self.numAccounts=numAccounts
-        self.accounts=cluster.createAccountKeys(numAccounts)
-        if self.accounts is None:
-            errorExit("FAILURE - create keys")
-        accountNum = 0
-        for account in self.accounts:
-            Print("NamedAccounts Name for %d" % (accountNum))
-            account.name=self.setName(accountNum)
-            accountNum+=1
-
-    def setName(self, num):
-        retStr="test"
-        digits=[]
-        maxDigitVal=5
-        maxDigits=8
-        temp=num
-        while len(digits) < maxDigits:
-            digit=(num % maxDigitVal)+1
-            num=int(num/maxDigitVal)
-            digits.append(digit)
-
-        digits.reverse()
-        for digit in digits:
-            retStr=retStr+str(digit)
-
-        Print("NamedAccounts Name for %d is %s" % (temp, retStr))
-        return retStr
-
 
 args = TestHelper.parse_args({"--dump-error-details","--keep-logs","-v","--leave-running","--clean-run","--wallet-port"})
 Utils.Debug=args.v
@@ -144,7 +112,7 @@ try:
     wasmFile="integration_test.wasm"
     abiFile="integration_test.abi"
     Print("Publish contract")
-    trans=nodes[0].publishContract(contractAccount.name, contractDir, wasmFile, abiFile, waitForTransBlock=True)
+    trans=nodes[0].publishContract(contractAccount, contractDir, wasmFile, abiFile, waitForTransBlock=True)
     if trans is None:
         Utils.cmdError("%s set contract %s" % (ClientName, contractAccount.name))
         errorExit("Failed to publish contract.")

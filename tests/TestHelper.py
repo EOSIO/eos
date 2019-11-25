@@ -58,13 +58,15 @@ class TestHelper(object):
             parser.add_argument("-s", type=str, help="topology", choices=["mesh"], default="mesh")
         if "-c" in includeArgs:
             parser.add_argument("-c", type=str, help="chain strategy",
-                    choices=[Utils.SyncResyncTag, Utils.SyncNoneTag, Utils.SyncHardReplayTag],
+                    choices=[Utils.SyncResyncTag, Utils.SyncReplayTag, Utils.SyncNoneTag, Utils.SyncHardReplayTag],
                     default=Utils.SyncResyncTag)
         if "--kill-sig" in includeArgs:
             parser.add_argument("--kill-sig", type=str, choices=[Utils.SigKillTag, Utils.SigTermTag], help="kill signal.",
                     default=Utils.SigKillTag)
         if "--kill-count" in includeArgs:
             parser.add_argument("--kill-count", type=int, help="nodeos instances to kill", default=-1)
+        if "--terminate-at-block" in includeArgs:
+            parser.add_argument("--terminate-at-block", type=int, help="block to terminate on when replaying", default=0)
         if "--seed" in includeArgs:
             parser.add_argument("--seed", type=int, help="random seed", default=1)
 
@@ -72,7 +74,7 @@ class TestHelper(object):
             parser.add_argument("-h", "--host", type=str, help="%s host name" % (Utils.EosServerName),
                                      default=TestHelper.LOCAL_HOST)
         if "--port" in includeArgs:
-            parser.add_argument("-p", "--port", type=int, help="%s host port" % Utils.EosServerName,
+            parser.add_argument("--port", type=int, help="%s host port" % Utils.EosServerName,
                                      default=TestHelper.DEFAULT_PORT)
         if "--wallet-host" in includeArgs:
             parser.add_argument("--wallet-host", type=str, help="%s host" % Utils.EosWalletName,
