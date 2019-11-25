@@ -41,7 +41,7 @@ The Launcher Service-based EOSIO Testing Framework aims to provide a more manage
 
 At the very high level, a typical Python test script consists of only two steps:
 
-1. sInitialize a cluster
+1. Initialize a cluster
 2. Test on the cluster
 
 In order to initialize cluster, three sub-steps are needed:
