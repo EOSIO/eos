@@ -1665,7 +1665,11 @@ namespace eosio {
                   ("s", stage_str( sync_state ))("fhn", num)("lib", sync_known_lib_num)
                   ("ne", sync_next_expected_num)("id", id.str().substr(8,16))("p", c->peer_name()) );
          g.unlock();
-         if( sync_state == lib_catchup )
+         uint32_t lib;
+         block_id_type head_id;
+         std::tie( lib, std::ignore, std::ignore,
+                   std::ignore, std::ignore, head_id ) = my_impl->get_chain_info();
+         if( sync_state == lib_catchup || num < lib )
             return false;
          set_state( head_catchup );
          {
@@ -1674,9 +1678,6 @@ namespace eosio {
             c->fork_head_num = num;
          }
 
-         block_id_type head_id;
-         std::tie( std::ignore, std::ignore, std::ignore,
-                   std::ignore, std::ignore, head_id ) = my_impl->get_chain_info();
          req.req_blocks.ids.emplace_back( head_id );
       } else {
          fc_ilog( logger, "none notice while in ${s}, fork head num = ${fhn}, id ${id}..., peer ${p}",
