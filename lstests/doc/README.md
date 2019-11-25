@@ -268,7 +268,7 @@ in the files `debug.log` and `trace.log`, because the log level of this line, wh
 However, this line will not show up on the screen, because `DEBUG` is lower than `INFO`, the threshold of the `ScreenWriter`.
 
 
-####Writer Settings
+#### Writer Settings
 
 In general, for a writer, the settings include
 
