@@ -1644,6 +1644,7 @@ class Cluster:
         4. retry connection if response not ok
         5. log response
         6. verify transaction
+        7. return the result as a Connection object
 
         Launcher service API
         --------------------
