@@ -188,7 +188,7 @@ if [ "$ARCH" == "Darwin" ]; then
    # EOSIO_INSTALL_DIR/lib/cmake: mongo_db_plugin.cpp:25:10: fatal error: 'bsoncxx/builder/basic/kvp.hpp' file not found
    CMAKE_PREFIX_PATHS="/usr/local/opt/gettext;${EOSIO_INSTALL_DIR}"
    FILE="${SCRIPT_DIR}/eosio_build_darwin.sh"
-   OPENSSL_ROOT_DIR=/usr/local/opt/openssl
+   OPENSSL_ROOT_DIR=/usr/local/opt/openssl@1.1
    export CMAKE=${CMAKE}
 fi
 
