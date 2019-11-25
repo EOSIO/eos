@@ -2,7 +2,7 @@
 set -eo pipefail
 VERSION=1
 brew update
-brew install git cmake python@2 python libtool libusb graphviz automake wget gmp pkgconfig doxygen openssl jq || :
+brew install git cmake python@2 python libtool libusb graphviz automake wget gmp pkgconfig doxygen openssl@1.1 jq || :
 # install llvm 4 from source
 git clone --depth 1 --single-branch --branch release_40 https://github.com/llvm-mirror/llvm.git llvm
 cd llvm
