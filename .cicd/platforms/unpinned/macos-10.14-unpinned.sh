@@ -10,7 +10,7 @@ mkdir build
 cd build
 cmake -G 'Unix Makefiles' -DCMAKE_INSTALL_PREFIX='/usr/local' -DLLVM_TARGETS_TO_BUILD='host' -DLLVM_BUILD_TOOLS=false -DLLVM_ENABLE_RTTI=1 -DCMAKE_BUILD_TYPE=Release ..
 make -j $(getconf _NPROCESSORS_ONLN)
-make install
+sudo make install
 cd ../..
 rm -rf llvm
 # install mongoDB
