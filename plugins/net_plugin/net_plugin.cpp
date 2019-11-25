@@ -662,7 +662,8 @@ namespace eosio {
 
       const string peer_name();
 
-      void blk_send_branch();
+      void blk_send_branch( const block_id_type& msg_head_id );
+      void blk_send_branch_impl( uint32_t msg_head_num, uint32_t lib_num, uint32_t head_num );
       void blk_send(const block_id_type& blkid);
       void stop_send();
 
@@ -956,11 +957,10 @@ namespace eosio {
       }
    }
 
-   void connection::blk_send_branch() {
+   void connection::blk_send_branch( const block_id_type& msg_head_id ) {
       uint32_t head_num = 0;
-      block_id_type head_id;
       std::tie( std::ignore, std::ignore, head_num,
-                std::ignore, std::ignore, head_id ) = my_impl->get_chain_info();
+                std::ignore, std::ignore, std::ignore ) = my_impl->get_chain_info();
 
       fc_dlog(logger, "head_num = ${h}",("h",head_num));
       if(head_num == 0) {
@@ -981,14 +981,30 @@ namespace eosio {
       auto lib_num = block_header::num_from_id(lib_id);
       if( lib_num == 0 ) return; // if last_irreversible_block_id is null (we have not received handshake or reset)
 
+      app().post( priority::medium, [chain_plug = my_impl->chain_plug, c = shared_from_this(),
+            lib_num, head_num, msg_head_id]() {
+         auto msg_head_num = block_header::num_from_id(msg_head_id);
+         bool on_fork = msg_head_num == 0;
+         try {
+            controller& cc = chain_plug->chain();
+            on_fork = on_fork || cc.get_block_id_for_num( block_header::num_from_id(msg_head_id) ) != msg_head_id;
+         } catch( ... ) {}
+         if( on_fork ) msg_head_num = 0;
+         // if peer on fork, start at their last lib, otherwise we can start at msg_head+1
+         c->strand.post( [c, msg_head_num, lib_num, head_num]() {
+            c->blk_send_branch_impl( msg_head_num, lib_num, head_num );
+         } );
+      } );
+   }
+
+   void connection::blk_send_branch_impl( uint32_t msg_head_num, uint32_t lib_num, uint32_t head_num ) {
       if( !peer_requested ) {
-         peer_requested = peer_sync_state( lib_num+1,
-                                           block_header::num_from_id(head_id),
-                                           lib_num );
+         auto last = msg_head_num != 0 ? msg_head_num : lib_num;
+         peer_requested = peer_sync_state( last+1, head_num, last );
       } else {
-         uint32_t start = std::min( peer_requested->last + 1, lib_num+1 );
-         uint32_t end   = std::max( peer_requested->end_block, block_header::num_from_id(head_id) );
-         peer_requested = peer_sync_state( start, end, start - 1 );
+         auto last = msg_head_num != 0 ? msg_head_num : std::min( peer_requested->last, lib_num );
+         uint32_t end   = std::max( peer_requested->end_block, head_num );
+         peer_requested = peer_sync_state( last+1, end, last );
       }
       if( peer_requested->start_block <= peer_requested->end_block ) {
          fc_ilog( logger, "enqueue ${s} - ${e} to ${p}", ("s", peer_requested->start_block)("e", peer_requested->end_block)("p", peer_name()) );
@@ -1643,11 +1659,12 @@ namespace eosio {
          return true;
       } );
       if( req.req_blocks.mode == catch_up ) {
-         std::lock_guard<std::mutex> g( sync_mtx );
+         std::unique_lock<std::mutex> g( sync_mtx );
          fc_ilog( logger, "catch_up while in ${s}, fork head num = ${fhn} "
                           "target LIB = ${lib} next_expected = ${ne}, id ${id}..., peer ${p}",
                   ("s", stage_str( sync_state ))("fhn", num)("lib", sync_known_lib_num)
                   ("ne", sync_next_expected_num)("id", id.str().substr(8,16))("p", c->peer_name()) );
+         g.unlock();
          if( sync_state == lib_catchup )
             return false;
          set_state( head_catchup );
@@ -1656,6 +1673,11 @@ namespace eosio {
             c->fork_head = id;
             c->fork_head_num = num;
          }
+
+         block_id_type head_id;
+         std::tie( std::ignore, std::ignore, std::ignore,
+                   std::ignore, std::ignore, head_id ) = my_impl->get_chain_info();
+         req.req_blocks.ids.emplace_back( head_id );
       } else {
          fc_ilog( logger, "none notice while in ${s}, fork head num = ${fhn}, id ${id}..., peer ${p}",
                   ("s", stage_str( sync_state ))("fhn", num)
@@ -1706,6 +1728,8 @@ namespace eosio {
          sync_source.reset();
          g.unlock();
          c->close();
+      } else {
+         c->send_handshake();
       }
    }
 
@@ -2736,7 +2760,7 @@ namespace eosio {
       switch (msg.req_blocks.mode) {
       case catch_up :
          peer_dlog( this, "received request_message:catch_up" );
-         blk_send_branch();
+         blk_send_branch( msg.req_blocks.ids.empty() ? block_id_type() : msg.req_blocks.ids.back() );
          break;
       case normal :
          peer_dlog( this, "received request_message:normal" );
