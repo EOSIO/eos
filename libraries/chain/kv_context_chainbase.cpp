@@ -6,17 +6,19 @@ namespace eosio { namespace chain {
 
    struct kv_iterator_chainbase : kv_iterator {
       using index_type = std::decay_t<decltype(std::declval<chainbase::database>().get_index<kv_index, by_kv_key>())>;
+      using tracker_type = std::decay_t<decltype(std::declval<chainbase::database>().get_mutable_index<kv_index>().track_removed())>;
 
       chainbase::database&       db;
       const index_type&          idx = db.get_index<kv_index, by_kv_key>();
+      tracker_type&              tracker;
       name                       database_id;
       name                       contract;
       std::vector<char>          prefix;
       std::vector<char>          next_prefix;
-      std::optional<shared_blob> kv_key;
+      const kv_object*           current = nullptr;
 
-      kv_iterator_chainbase(chainbase::database& db, name database_id, name contract, std::vector<char> prefix)
-          : db{ db }, database_id{ database_id }, contract{ contract }, prefix{ std::move(prefix) } {
+      kv_iterator_chainbase(chainbase::database& db, tracker_type& tracker, name database_id, name contract, std::vector<char> prefix)
+         : db{ db }, tracker{ tracker }, database_id{ database_id }, contract{ contract }, prefix{ std::move(prefix) } {
 
          next_prefix = this->prefix;
          while (!next_prefix.empty()) {
@@ -34,19 +36,18 @@ namespace eosio { namespace chain {
       kv_it_stat move_to(const It& it) {
          if (it != idx.end() && it->database_id == database_id && it->contract == contract &&
              it->kv_key.size() >= prefix.size() && !memcmp(it->kv_key.data(), prefix.data(), prefix.size())) {
-            kv_key.emplace(it->kv_key);
+            current = &*it;
             return kv_it_stat::iterator_ok;
          } else {
-            kv_key.reset();
+            current = nullptr;
             return kv_it_stat::iterator_end;
          }
       }
 
       kv_it_stat kv_it_status() override {
-         if (!kv_key)
+         if (!current)
             return kv_it_stat::iterator_end;
-         auto* kv = db.find<kv_object, by_kv_key>(boost::make_tuple(database_id, contract, *kv_key));
-         if (kv)
+         else if (!tracker.is_removed(*current))
             return kv_it_stat::iterator_ok;
          else
             return kv_it_stat::iterator_erased;
@@ -57,53 +58,55 @@ namespace eosio { namespace chain {
          auto& r = static_cast<const kv_iterator_chainbase&>(rhs);
          EOS_ASSERT(database_id == r.database_id && contract == r.contract, kv_bad_iter,
                     "Incompatible key-value iterators");
-         if (!r.kv_key) {
-            if (!kv_key)
+         EOS_ASSERT(!current || !tracker.is_removed(*current), kv_bad_iter, "Iterator to erased element");
+         EOS_ASSERT(!r.current || !tracker.is_removed(*r.current), kv_bad_iter, "Iterator to erased element");
+         if (!r.current) {
+            if (!current)
                return 0;
-            else
+            else {
                return -1;
+            }
          }
-         if (!kv_key)
+         if (!current) {
             return 1;
-         return compare_blob(*kv_key, *r.kv_key);
+         }
+         return compare_blob(current->kv_key, r.current->kv_key);
       }
 
       int32_t kv_it_key_compare(const char* key, uint32_t size) override {
-         if (!kv_key)
+         if (!current)
             return 1;
-         return compare_blob(*kv_key, std::string_view{ key, size });
+         EOS_ASSERT(!tracker.is_removed(*current), kv_bad_iter, "Iterator to erased element");
+         return compare_blob(current->kv_key, std::string_view{ key, size });
       }
 
       kv_it_stat kv_it_move_to_end() override {
-         kv_key.reset();
+         current = nullptr;
          return kv_it_stat::iterator_end;
       }
 
       kv_it_stat kv_it_next() override {
-         if (kv_key) {
-            auto it = idx.lower_bound(boost::make_tuple(database_id, contract, *kv_key));
-            if (it != idx.end()) {
-               if (it->kv_key == *kv_key)
-                  ++it;
-               return move_to(it);
-            }
-            kv_key.reset();
-            return kv_it_stat::iterator_end;
+         if (current) {
+            EOS_ASSERT(!tracker.is_removed(*current), kv_bad_iter, "Iterator to erased element");
+            auto it = idx.iterator_to(*current);
+            ++it;
+            return move_to(it);
          }
          return move_to(idx.lower_bound(boost::make_tuple(database_id, contract, prefix)));
       }
 
       kv_it_stat kv_it_prev() override {
          std::decay_t<decltype(idx.end())> it;
-         if (kv_key)
-            it = idx.lower_bound(boost::make_tuple(database_id, contract, *kv_key));
-         else if (!next_prefix.empty())
+         if (current) {
+            EOS_ASSERT(!tracker.is_removed(*current), kv_bad_iter, "Iterator to erased element");
+            it = idx.iterator_to(*current);
+         } else if (!next_prefix.empty())
             it = idx.lower_bound(boost::make_tuple(database_id, contract, next_prefix));
          else
             it = idx.end();
          if (it != idx.begin())
             return move_to(--it);
-         kv_key.reset();
+         current = nullptr;
          return kv_it_stat::iterator_end;
       }
 
@@ -112,10 +115,11 @@ namespace eosio { namespace chain {
       }
 
       kv_it_stat kv_it_key(uint32_t offset, char* dest, uint32_t size, uint32_t& actual_size) override {
-         if (kv_key) {
-            if (offset < kv_key->size())
-               memcpy(dest, kv_key->data() + offset, std::min((size_t)size, kv_key->size() - offset));
-            actual_size = kv_key->size();
+         if (current) {
+            EOS_ASSERT(!tracker.is_removed(*current), kv_bad_iter, "Iterator to erased element");
+            if (offset < current->kv_key.size())
+               memcpy(dest, current->kv_key.data() + offset, std::min((size_t)size, current->kv_key.size() - offset));
+            actual_size = current->kv_key.size();
             return kv_it_status();
          } else {
             actual_size = 0;
@@ -124,24 +128,22 @@ namespace eosio { namespace chain {
       }
 
       kv_it_stat kv_it_value(uint32_t offset, char* dest, uint32_t size, uint32_t& actual_size) override {
-         if (!kv_key) {
+         if (!current) {
             actual_size = 0;
             return kv_it_stat::iterator_end;
          }
-         auto* kv = db.find<kv_object, by_kv_key>(boost::make_tuple(database_id, contract, *kv_key));
-         if (!kv) {
-            actual_size = 0;
-            return kv_it_stat::iterator_erased;
-         }
-         if (offset < kv->kv_value.size())
-            memcpy(dest, kv->kv_value.data() + offset, std::min((size_t)size, kv->kv_value.size() - offset));
-         actual_size = kv->kv_value.size();
+         EOS_ASSERT(!tracker.is_removed(*current), kv_bad_iter, "Iterator to erased element");
+         if (offset < current->kv_value.size())
+            memcpy(dest, current->kv_value.data() + offset, std::min((size_t)size, current->kv_value.size() - offset));
+         actual_size = current->kv_value.size();
          return kv_it_stat::iterator_ok;
       }
    }; // kv_iterator_chainbase
 
    struct kv_context_chainbase : kv_context {
+      using tracker_type = std::decay_t<decltype(std::declval<chainbase::database>().get_mutable_index<kv_index>().track_removed())>;
       chainbase::database&       db;
+      tracker_type               tracker = db.get_mutable_index<kv_index>().track_removed();
       name                       database_id;
       name                       receiver;
       std::optional<shared_blob> temp_data_buffer;
@@ -159,7 +161,7 @@ namespace eosio { namespace chain {
                boost::make_tuple(database_id, name{ contract }, std::string_view{ key, key_size }));
          if (!kv)
             return;
-         db.remove(*kv);
+         tracker.remove(*kv);
       }
 
       void kv_set(uint64_t contract, const char* key, uint32_t key_size, const char* value,
@@ -209,7 +211,7 @@ namespace eosio { namespace chain {
       }
 
       std::unique_ptr<kv_iterator> kv_it_create(uint64_t contract, const char* prefix, uint32_t size) override {
-         return std::make_unique<kv_iterator_chainbase>(db, database_id, name{ contract },
+         return std::make_unique<kv_iterator_chainbase>(db, tracker, database_id, name{ contract },
                                                         std::vector<char>{ prefix, prefix + size });
       }
    }; // kv_context_chainbase
