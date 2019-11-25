@@ -218,4 +218,83 @@ class [[eosio::contract("kv_test")]] kvtest : public eosio::contract {
       kv_it_destroy(itr);
    } // scanrev()
 
+   [[eosio::action]] void itstaterased(name db, name contract, const std::vector<char>& prefix,
+                                       const std::vector<char>& k, const std::vector<char>& v,
+                                       int test_id, bool insert, bool reinsert) {
+      if(insert) kv_set(db, contract, k.data(), k.size(), v.data(), v.size());
+      auto it = kv_it_create(db, contract, prefix.data(), prefix.size());
+      it_stat stat = kv_it_lower_bound(it, k.data(), k.size());
+      kv_erase(db, contract, k.data(), k.size());
+      check(kv_it_status(it) == iterator_erased, "iterator should be erased");
+      auto check_status = [&](int test_id) {
+         switch(test_id) {
+            case 0: {
+               uint32_t k_size;
+               char k_buf[1];
+               kv_it_key(it, 0, k_buf, 0, k_size); // abort
+               return;
+            }
+            case 1: {
+               uint32_t v_size;
+               char v_buf[1];
+               kv_it_value(it, 0, v_buf, 0, v_size); // abort
+               return;
+            }
+            case 2: {
+               auto it2 = kv_it_create(db, contract, prefix.data(), prefix.size());
+               kv_it_compare(it, it2); // abort
+               return;
+            }
+            case 3: {
+               auto it2 = kv_it_create(db, contract, prefix.data(), prefix.size());
+               kv_it_compare(it2, it); // abort
+               return;
+            }
+            case 4: {
+               kv_it_compare(it, it); // abort
+               return;
+            }
+            case 5: {
+               kv_it_key_compare(it, k.data(), k.size()); // abort
+               return;
+            }
+            case 6: {
+               kv_it_next(it); // abort
+               return;
+            }
+            case 7: {
+               kv_it_prev(it); // abort
+               return;
+            }
+            case 8: {
+               check(kv_it_move_to_end(it) == iterator_end, "expected end");
+               check(kv_it_status(it) == iterator_end, "expected end");
+               return;
+            }
+            case 9: {
+               // For this test there must be no other elements in range
+               check(kv_it_lower_bound(it, "", 0) == iterator_end, "expected end");
+               check(kv_it_status(it) == iterator_end, "expected end");
+               return;
+            }
+            case 10: {
+               // For this test there must be at least one other element in range
+               check(kv_it_lower_bound(it, "", 0) == iterator_ok, "expected an element");
+               check(kv_it_status(it) == iterator_ok, "expected an element");
+               return;
+            }
+            case 11: {
+               kv_it_destroy(it); // We should be able to destroy iterators successfully
+               return;
+            }
+         }
+      };
+      if(!reinsert) {
+         check_status(test_id);
+         return;
+      }
+      kv_set(db, contract, k.data(), k.size(), v.data(), v.size());
+      check_status(test_id);
+   } // itstaterased
+
 }; // kvtest

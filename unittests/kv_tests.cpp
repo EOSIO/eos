@@ -83,6 +83,12 @@ class kv_tester : public tester {
                                                                "lower", lower)("expected", expected)));
    }
 
+   void itstaterased(const char* error, name db, name contract, const char* prefix, const char* k, const char* v,
+                     int test_id, bool insert, bool reinsert) {
+      BOOST_REQUIRE_EQUAL(error, push_action(N(itstaterased), mvo()("db", db)("contract", contract)("prefix", prefix)(
+                                                                    "k", k)("v", v)("test_id", test_id)("insert", insert)("reinsert", reinsert)));
+   }
+
    void test_basic(name db) {
       get("", db, N(kvtest), "", nullptr);
       set("", db, N(kvtest), "", "");
@@ -290,6 +296,56 @@ class kv_tester : public tester {
               });
    } // test_scanrev2
 
+   void test_iterase(name db) {
+      for(bool reinsert : {false, true}) {
+         // pre-inserted
+         for(bool insert : {false, true}) {
+            for(int i = 0; i < 8; ++i) {
+               setmany("", db, N(kvtest), { kv{ { 0x22 }, { 0x12 } } });
+               produce_block();
+               itstaterased("Iterator to erased element", db, N(kvtest), "", "22", "12", i, insert, reinsert );
+            }
+            setmany("", db, N(kvtest), { kv{ { 0x22 }, { 0x12 } } });
+            produce_block();
+            itstaterased("", db, N(kvtest), "", "22", "12", 8, insert, reinsert );
+            if(!reinsert) {
+               setmany("", db, N(kvtest), { kv{ { 0x22 }, { 0x12 } } });
+               produce_block();
+               itstaterased("", db, N(kvtest), "", "22", "12", 9, insert, reinsert );
+            }
+            setmany("", db, N(kvtest), { kv{ { 0x22 }, { 0x12 } }, kv{ { 0x23 }, { 0x13 } } });
+            produce_block();
+            itstaterased("", db, N(kvtest), "", "22", "12", 10, insert, reinsert );
+            erase("", db, N(kvtest), "23");
+            setmany("", db, N(kvtest), { kv{ { 0x22 }, { 0x12 } } });
+            produce_block();
+            itstaterased("", db, N(kvtest), "", "22", "12", 11, insert, reinsert );
+         }
+         // inserted inside contract
+         for(int i = 0; i < 8; ++i) {
+            erase("", db, N(kvtest), "22");
+            produce_block();
+            itstaterased("Iterator to erased element", db, N(kvtest), "", "22", "12", i, true, reinsert );
+         }
+         erase("", db, N(kvtest), "22");
+         produce_block();
+         itstaterased("", db, N(kvtest), "", "22", "12", 8, true, reinsert );
+         if(!reinsert) {
+            erase("", db, N(kvtest), "22");
+            produce_block();
+            itstaterased("", db, N(kvtest), "", "22", "12", 9, true, reinsert );
+         }
+         erase("", db, N(kvtest), "22");
+         setmany("", db, N(kvtest), { kv{ { 0x23 }, { 0x13 } } });
+         produce_block();
+         itstaterased("", db, N(kvtest), "", "22", "12", 10, true, reinsert );
+         erase("", db, N(kvtest), "23");
+         erase("", db, N(kvtest), "22");
+         produce_block();
+         itstaterased("", db, N(kvtest), "", "22", "12", 11, true, reinsert );
+      }
+   }
+
    abi_serializer abi_ser;
 };
 
@@ -316,5 +372,11 @@ BOOST_FIXTURE_TEST_CASE(kv_scanrev2, kv_tester) try { //
    test_scanrev2(N(eosio.kvram));
 }
 FC_LOG_AND_RETHROW()
+
+BOOST_FIXTURE_TEST_CASE(kv_iterase, kv_tester) try { //
+   test_iterase(N(eosio.kvram));
+}
+FC_LOG_AND_RETHROW()
+
 
 BOOST_AUTO_TEST_SUITE_END()
