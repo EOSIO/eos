@@ -1167,26 +1167,32 @@ launcher_def::write_logging_config_file(tn_node_def &node) {
 
   auto log_config = fc::logging_config::default_config();
   if(gelf_enabled) {
-    log_config.appenders.push_back(
-          fc::appender_config( "net", "gelf",
-              fc::mutable_variant_object()
-                  ( "endpoint", node.gelf_endpoint )
-                  ( "host", instance.name )
-             ) );
-    log_config.loggers.front().appenders.push_back("net");
-
-    fc::logger_config p2p ("net_plugin_impl");
-    p2p.level=fc::log_level::debug;
-    p2p.appenders.push_back ("stderr");
-    p2p.appenders.push_back ("net");
-    log_config.loggers.emplace_back(p2p);
-
-     fc::logger_config http("http_plugin");
-     http.level=fc::log_level::debug;
-     http.appenders.push_back("stderr");
-     http.appenders.push_back("net");
-     log_config.loggers.emplace_back(http);
+     log_config.appenders.push_back(
+           fc::appender_config( "net", "gelf",
+                           fc::mutable_variant_object()
+                                 ( "endpoint", node.gelf_endpoint )
+                                 ( "host", instance.name )
+           ) );
+     log_config.loggers.front().appenders.push_back( "net" );
   }
+
+  fc::logger_config p2p( "net_plugin_impl" );
+  p2p.level = fc::log_level::debug;
+  p2p.appenders.push_back( "stderr" );
+  if( gelf_enabled ) p2p.appenders.push_back( "net" );
+  log_config.loggers.emplace_back( p2p );
+
+  fc::logger_config http( "http_plugin" );
+  http.level = fc::log_level::debug;
+  http.appenders.push_back( "stderr" );
+  if( gelf_enabled ) http.appenders.push_back( "net" );
+  log_config.loggers.emplace_back( http );
+
+  fc::logger_config pp( "producer_plugin" );
+  pp.level = fc::log_level::debug;
+  pp.appenders.push_back( "stderr" );
+  if( gelf_enabled ) pp.appenders.push_back( "net" );
+  log_config.loggers.emplace_back( pp );
 
   auto str = fc::json::to_pretty_string( log_config, fc::json::stringify_large_ints_and_doubles );
   cfg.write( str.c_str(), str.size() );
