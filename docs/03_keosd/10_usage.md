@@ -1,24 +1,25 @@
-For most users, the easiest way to use keosd is to have cleos launch it automatically. Wallet files will also be created in the default directory (`~/eosio-wallet`).
 
-## Launching keosd manually
+[[info | Recommended Usage]]
+| For most users, the easiest way to use `keosd` is to have `cleos` launch it automatically. Wallet files will be created in the default directory (`~/eosio-wallet`).
 
-It is possible to launch `keosd` manually simply with
+## Launching `keosd` manually
 
-```
+`keosd` can be launched manually from the terminal by running:
+
+```sh
 $ keosd
 ```
 
 By default, `keosd` creates the folder `~/eosio-wallet` and populates it with a basic `config.ini` file.  The location of the config file can be specified on the command line using the `--config-dir` argument.  The configuration file contains the HTTP server endpoint for incoming HTTP connections and other parameters for cross-origin resource sharing.
 
-The location of the wallet data folder can be specified on the command line using the --data-dir argument.
+[[info | Wallet Location]]
+| The location of the wallet data folder can be specified on the command line with the `--data-dir` option.
 
 ## Auto-locking
 
-By default, `keosd` is set to lock your wallets after 15 minutes of inactivity. This is configurable in the `config.ini` by setting the timeout seconds in `unlock-timeout`.
+By default, `keosd` is set to lock your wallet after 15 minutes of inactivity. This is configurable in the `config.ini` by setting the timeout seconds in `unlock-timeout`. Setting it to 0 will cause `keosd` to always lock your wallet.
 
-Be aware if you need to disable this feature you will have to set an enormous number -- setting it to 0 will cause keosd to always lock your wallet.
-
-## Stopping keosd
+## Stopping `keosd`
 
 The most effective way to stop `keosd` is to find the keosd process and send a SIGTERM signal to it.
 
@@ -26,8 +27,11 @@ The most effective way to stop `keosd` is to find the keosd process and send a S
 
 For a list of all commands known to `keosd`, simply run it with no arguments:
 
-```bash
-keosd --help
+```sh
+$ keosd --help
+```
+
+```console
 Application Options:
 
 Config Options for eosio::http_plugin:
