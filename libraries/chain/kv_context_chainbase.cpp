@@ -146,35 +146,42 @@ namespace eosio { namespace chain {
       tracker_type               tracker = db.get_mutable_index<kv_index>().track_removed();
       name                       database_id;
       name                       receiver;
+      kv_resource_manager        resource_manager;
       std::optional<shared_blob> temp_data_buffer;
 
-      kv_context_chainbase(chainbase::database& db, name database_id, name receiver)
-          : db{ db }, database_id{ database_id }, receiver{ receiver } {}
+      kv_context_chainbase(chainbase::database& db, name database_id, name receiver,
+                           kv_resource_manager resource_manager)
+         : db{ db }, database_id{ database_id }, receiver{ receiver }, resource_manager{ resource_manager } {}
 
       ~kv_context_chainbase() override {}
 
       void kv_erase(uint64_t contract, const char* key, uint32_t key_size) override {
-         // KV-TODO: resources
          EOS_ASSERT(name{ contract } == receiver, table_operation_not_permitted, "Can not write to this key");
          temp_data_buffer.reset();
          auto* kv = db.find<kv_object, by_kv_key>(
                boost::make_tuple(database_id, name{ contract }, std::string_view{ key, key_size }));
          if (!kv)
             return;
+         resource_manager.update_table_usage(-(static_cast<int64_t>(resource_manager.billable_size) + kv->kv_key.size() + kv->kv_value.size()));
          tracker.remove(*kv);
       }
 
       void kv_set(uint64_t contract, const char* key, uint32_t key_size, const char* value,
                   uint32_t value_size) override {
-         // KV-TODO: resources
          // KV-TODO: restrict key_size, value_size
          EOS_ASSERT(name{ contract } == receiver, table_operation_not_permitted, "Can not write to this key");
          temp_data_buffer.reset();
          auto* kv = db.find<kv_object, by_kv_key>(
                boost::make_tuple(database_id, name{ contract }, std::string_view{ key, key_size }));
          if (kv) {
+            // 64-bit arithmetic cannot overflow, because both the key and value are limited to 32-bits
+            int64_t old_size = static_cast<int64_t>(kv->kv_key.size()) + kv->kv_value.size();
+            int64_t new_size = static_cast<int64_t>(value_size) + key_size;
+            resource_manager.update_table_usage(new_size - old_size);
             db.modify(*kv, [&](auto& obj) { obj.kv_value.assign(value, value_size); });
          } else {
+            int64_t new_size = static_cast<int64_t>(value_size) + key_size;
+            resource_manager.update_table_usage(new_size + resource_manager.billable_size);
             db.create<kv_object>([&](auto& obj) {
                obj.database_id = database_id;
                obj.contract    = name{ contract };
@@ -216,8 +223,9 @@ namespace eosio { namespace chain {
       }
    }; // kv_context_chainbase
 
-   std::unique_ptr<kv_context> create_kv_chainbase_context(chainbase::database& db, name database_id, name receiver) {
-      return std::make_unique<kv_context_chainbase>(db, database_id, receiver);
+   std::unique_ptr<kv_context> create_kv_chainbase_context(chainbase::database& db, name database_id, name receiver,
+                                                           kv_resource_manager resource_manager) {
+      return std::make_unique<kv_context_chainbase>(db, database_id, receiver, resource_manager);
    }
 
 }} // namespace eosio::chain

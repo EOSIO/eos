@@ -1,5 +1,6 @@
 #pragma once
 
+#include <eosio/chain/name.hpp>
 #include <memory>
 #include <stdint.h>
 
@@ -8,6 +9,8 @@ class database;
 }
 
 namespace eosio { namespace chain {
+
+   class apply_context;
 
    inline constexpr name kvram_id  = N(eosio.kvram);
    inline constexpr name kvdisk_id = N(eosio.kvdisk);
@@ -33,6 +36,15 @@ namespace eosio { namespace chain {
       virtual kv_it_stat kv_it_value(uint32_t offset, char* dest, uint32_t size, uint32_t& actual_size) = 0;
    };
 
+   struct kv_resource_manager {
+      void     update_table_usage(int64_t delta) { return _update_table_usage(*_context, delta); }
+      apply_context* _context;
+      uint64_t       billable_size;
+      void (*_update_table_usage)(apply_context&, int64_t delta);
+   };
+
+   kv_resource_manager create_kv_resource_manager_ram(apply_context& context);
+
    struct kv_context {
       virtual ~kv_context() {}
 
@@ -45,6 +57,7 @@ namespace eosio { namespace chain {
       virtual std::unique_ptr<kv_iterator> kv_it_create(uint64_t contract, const char* prefix, uint32_t size) = 0;
    };
 
-   std::unique_ptr<kv_context> create_kv_chainbase_context(chainbase::database& db, name database_id, name receiver);
+   std::unique_ptr<kv_context> create_kv_chainbase_context(chainbase::database& db, name database_id, name receiver,
+                                                           kv_resource_manager resource_manager);
 
 }} // namespace eosio::chain
