@@ -1,5 +1,10 @@
 # Introduction
 
-`keosd` is a key manager for store private keys and sign transactions created by `cleos`. It provides a secure key storage medium so that when the private keys are stored in a wallet file, it will be encrypted at rest. Only when a wallet is unlocked with the wallet password, `cleos` can request `keosd` to sign a transaction with these private keys. `keosd` provides support for hardware-based wallets as well such as Secure Encalve and YubiHSM
+`keosd` is a key manager daemon for storing private keys and signing digital messages. It provides a secure key storage medium for keys to be encrypted at rest in the associated wallet file. `keosd` also defines a secure enclave for signing transaction created by `cleos` or a third part library.
 
-`keosd` is intended to be used by EOSIO developers only
+## Operation
+
+When a wallet is unlocked with the corresponding password, `cleos` can request `keosd` to sign a transaction with the appropriate private keys. Also, `keosd` provides support for hardware-based wallets such as Secure Encalve and YubiHSM.
+
+[[info | Audience]]
+| `keosd` is intended to be used by EOSIO developers only.
