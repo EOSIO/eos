@@ -69,6 +69,9 @@ killWallet=not dontKill
 WalletdName=Utils.EosWalletName
 ClientName="cleos"
 
+maxTransactionAttempts = 2            # max number of attempts to try to send a transaction
+maxTransactionAttemptsNoSend = 1      # max number of attempts to try to create a transaction to be sent as a duplicate
+
 try:
     TestHelper.printSystemInfo("BEGIN")
 
@@ -222,11 +225,11 @@ try:
     #verify nodes are in sync and advancing
     cluster.waitOnClusterSync(blockAdvancing=5)
 
-    nodeOrder = None
+    nodeOrder = []
     if args.send_duplicates:
         # kill bios, since it prevents the ring topography from really being a ring
         cluster.biosNode.kill(signal.SIGTERM)
-        nodeOrder = [ 0 ]
+        nodeOrder.append(0)
         # jump to node furthest in ring from node 0
         next = int((totalNodes + 1) / 2)
         nodeOrder.append(next)
@@ -264,9 +267,9 @@ try:
             node = nonProdNodes[accountIndex % nonProdNodeCount]
             trans = None
             attempts = 0
-            max_attempts = 3 if not args.send_duplicates else 1  # for send_duplicates we are just constructing a transaction, so should never require a second attempt
-            # can try up to max_attempts times to send the transfer
-            while trans is None and attempts < max_attempts:
+            maxAttempts = maxTransactionAttempts if not args.send_duplicates else maxTransactionAttemptsNoSend  # for send_duplicates we are just constructing a transaction, so should never require a second attempt
+            # can try up to maxAttempts times to send the transfer
+            while trans is None and attempts < maxAttempts:
                 if attempts > 0:
                     # delay and see if transfer is accepted now
                     Utils.Print("Transfer rejected, delay 1 second and see if it is then accepted")
@@ -279,9 +282,8 @@ try:
                 trans = None
                 numAccepted = 0
                 attempts = 0
-                while trans is None and attempts < 2:
-                    for nodeNum in nodeOrder:
-                        node = allNodes[nodeNum]
+                while trans is None and attempts < maxTransactionAttempts:
+                    for node in map(lambda ordinal: allNodes[ordinal], nodeOrder):
                         repeatTrans = node.pushTransaction(sendTrans, silentErrors=True)
                         if repeatTrans is not None:
                             if trans is None and repeatTrans[0]:

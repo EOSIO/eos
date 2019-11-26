@@ -1031,7 +1031,7 @@ class Node(object):
             return (False, msg)
 
     # returns tuple with indication if transaction was successfully sent and either the transaction or else the exception output
-    def pushTransaction(self, trans, opts = "--skip-sign", silentErrors=False):
+    def pushTransaction(self, trans, opts="--skip-sign", silentErrors=False):
         assert(isinstance(trans, dict))
         cmd="%s %s push transaction -j" % (Utils.EosClientPath, self.eosClientArgs())
         cmdArr=cmd.split()
