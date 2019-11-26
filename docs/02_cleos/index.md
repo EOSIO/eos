@@ -2,6 +2,10 @@
 
 `cleos` is a command line tool that interfaces with the REST API exposed by `nodeos`. Developers can also use `cleos` to deploy and test EOSIO smart contracts.
 
+## Installation
+
+`cleos` is distributed as part of the [EOSIO software suite](https://github.com/EOSIO/eos/blob/master/README.md). To install `cleos` please visit the [EOSIO Software Installation](../00_install/index.md) section.
+
 ## Using Cleos
 
 To use `cleos`, you need the end point (IP address and port number) of a running `nodeos` instance. Also, the `nodeos` instance must be configured to load the `eosio::chain_api_plugin` when launched. This allows `nodeos` to respond to the RPC requests coming from `cleos`.
