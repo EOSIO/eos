@@ -39,4 +39,4 @@ Config Options for eosio::history_plugin:
 
 ## Dependencies
 
-[`chain_plugin`](../chain_plugin/index.md)
+* [`chain_plugin`](../chain_plugin/index.md)

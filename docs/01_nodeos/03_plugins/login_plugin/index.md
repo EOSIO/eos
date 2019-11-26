@@ -29,8 +29,8 @@ Config Options for eosio::login_plugin:
 
 ## Dependencies
 
-- [`chain_plugin`](../chain_plugin/index.md)
-- [`http_plugin`](../http_plugin/index.md)
+* [`chain_plugin`](../chain_plugin/index.md)
+* [`http_plugin`](../http_plugin/index.md)
 
 ### Load Dependency Examples
 
