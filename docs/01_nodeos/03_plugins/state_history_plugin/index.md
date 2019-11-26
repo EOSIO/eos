@@ -57,7 +57,7 @@ Config Options for eosio::state_history_plugin:
 
 ## Dependencies
 
-[`chain_plugin`](../chain_plugin/index.md)
+* [`chain_plugin`](../chain_plugin/index.md)
 
 ### Load Dependency Examples
 
