@@ -2423,9 +2423,18 @@ namespace eosio {
                uint32_t lib = 0;
                std::tie( lib, std::ignore, std::ignore, std::ignore, std::ignore, std::ignore ) = my_impl->get_chain_info();
                if( blk_num < lib ) {
-                  enqueue( ( sync_request_message ) {0,0} );
-                  send_handshake();
-                  cancel_wait();
+                  std::unique_lock<std::mutex> g( conn_mtx );
+                  const auto last_sent_lib = last_handshake_sent.last_irreversible_block_num;
+                  g.unlock();
+                  if( !peer_requested && blk_num < last_sent_lib ) {
+                     fc_ilog( logger, "received block ${n} less than sent lib ${lib}", ("n", blk_num)("lib", last_sent_lib) );
+                     close();
+                  } else {
+                     fc_ilog( logger, "received block ${n} less than lib ${lib}", ("n", blk_num)("lib", lib) );
+                     enqueue( (sync_request_message) {0, 0} );
+                     send_handshake();
+                     cancel_wait();
+                  }
 
                   pending_message_buffer.advance_read_ptr( message_length );
                   return true;
