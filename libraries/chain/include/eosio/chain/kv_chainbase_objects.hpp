@@ -1,6 +1,7 @@
 #pragma once
 
 #include <chainbase/chainbase.hpp>
+#include <eosio/chain/config.hpp>
 #include <eosio/chain/multi_index_includes.hpp>
 #include <eosio/chain/types.hpp>
 
@@ -26,6 +27,14 @@ namespace eosio { namespace chain {
                                                  member<kv_object, name, &kv_object::contract>,
                                                  member<kv_object, shared_blob, &kv_object::kv_key>>,
                                    composite_key_compare<std::less<name>, std::less<name>, unsigned_blob_less>>>>;
+
+namespace config {
+   template<>
+   struct billable_size<kv_object> {
+      static constexpr uint64_t overhead = overhead_per_row_per_index_ram_bytes * 2;
+      static constexpr uint64_t value = 24 + (8 + 4) * 2 + overhead; ///< 24 for fixed fields 8 for vector data 4 for vector size
+   };
+} // namespace config
 
 }} // namespace eosio::chain
 

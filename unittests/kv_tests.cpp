@@ -1,4 +1,5 @@
 #include <eosio/chain/abi_serializer.hpp>
+#include <eosio/chain/resource_limits.hpp>
 #include <eosio/testing/tester.hpp>
 
 #include <Runtime/Runtime.h>
@@ -87,6 +88,14 @@ class kv_tester : public tester {
                      int test_id, bool insert, bool reinsert) {
       BOOST_REQUIRE_EQUAL(error, push_action(N(itstaterased), mvo()("db", db)("contract", contract)("prefix", prefix)(
                                                                     "k", k)("v", v)("test_id", test_id)("insert", insert)("reinsert", reinsert)));
+   }
+
+   uint64_t get_usage(name db) {
+      if (db == N(eosio.kvram)) {
+         return control->get_resource_limits_manager().get_account_ram_usage(N(kvtest));
+      }
+      BOOST_FAIL("Wrong db");
+      return 0;
    }
 
    void test_basic(name db) {
@@ -346,6 +355,20 @@ class kv_tester : public tester {
       }
    }
 
+   void test_ram_usage(name db) {
+      uint64_t base_usage = get_usage(db);
+      get("", db, N(kvtest), "11", nullptr);
+      BOOST_TEST(get_usage(db) == base_usage);
+      set("", db, N(kvtest), "11", "");
+      BOOST_TEST(get_usage(db) == base_usage + 112 + 1);
+      set("", db, N(kvtest), "11", "1234");
+      BOOST_TEST(get_usage(db) == base_usage + 112 + 1 + 2);
+      set("", db, N(kvtest), "11", "12");
+      BOOST_TEST(get_usage(db) == base_usage + 112 + 1 + 1);
+      erase("", db, N(kvtest), "11");
+      BOOST_TEST(get_usage(db) == base_usage);
+   }
+
    abi_serializer abi_ser;
 };
 
@@ -375,6 +398,11 @@ FC_LOG_AND_RETHROW()
 
 BOOST_FIXTURE_TEST_CASE(kv_iterase, kv_tester) try { //
    test_iterase(N(eosio.kvram));
+}
+FC_LOG_AND_RETHROW()
+
+BOOST_FIXTURE_TEST_CASE(kv_ram_usage, kv_tester) try { //
+   test_ram_usage(N(eosio.kvram));
 }
 FC_LOG_AND_RETHROW()
 
