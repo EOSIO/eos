@@ -978,7 +978,7 @@ namespace eosio {
 
       block_id_type lib_id = last_handshake_recv.last_irreversible_block_id;
       g_conn.unlock();
-      auto lib_num = block_header::num_from_id(lib_id);
+      const auto lib_num = block_header::num_from_id(lib_id);
       if( lib_num == 0 ) return; // if last_irreversible_block_id is null (we have not received handshake or reset)
 
       app().post( priority::medium, [chain_plug = my_impl->chain_plug, c = shared_from_this(),
@@ -986,8 +986,8 @@ namespace eosio {
          auto msg_head_num = block_header::num_from_id(msg_head_id);
          bool on_fork = msg_head_num == 0;
          try {
-            controller& cc = chain_plug->chain();
-            on_fork = on_fork || cc.get_block_id_for_num( block_header::num_from_id(msg_head_id) ) != msg_head_id;
+            const controller& cc = chain_plug->chain();
+            on_fork = on_fork || cc.get_block_id_for_num( msg_head_num ) != msg_head_id;
          } catch( ... ) {}
          if( on_fork ) msg_head_num = 0;
          // if peer on fork, start at their last lib, otherwise we can start at msg_head+1
@@ -1166,7 +1166,7 @@ namespace eosio {
       bool trigger_send = true;
       if(num == peer_requested->end_block) {
          peer_requested.reset();
-         fc_ilog( logger, "done enqueue_sync_block ${num} to ${p}", ("num", num)("p", peer_name()) );
+         fc_ilog( logger, "completing enqueue_sync_block ${num} to ${p}", ("num", num)("p", peer_name()) );
       }
       connection_wptr weak = shared_from_this();
       app().post( priority::medium, [num, trigger_send, weak{std::move(weak)}]() {
@@ -1659,12 +1659,13 @@ namespace eosio {
          return true;
       } );
       if( req.req_blocks.mode == catch_up ) {
-         std::unique_lock<std::mutex> g( sync_mtx );
-         fc_ilog( logger, "catch_up while in ${s}, fork head num = ${fhn} "
-                          "target LIB = ${lib} next_expected = ${ne}, id ${id}..., peer ${p}",
-                  ("s", stage_str( sync_state ))("fhn", num)("lib", sync_known_lib_num)
-                  ("ne", sync_next_expected_num)("id", id.str().substr(8,16))("p", c->peer_name()) );
-         g.unlock();
+         {
+            std::lock_guard<std::mutex> g( sync_mtx );
+            fc_ilog( logger, "catch_up while in ${s}, fork head num = ${fhn} "
+                             "target LIB = ${lib} next_expected = ${ne}, id ${id}..., peer ${p}",
+                     ("s", stage_str( sync_state ))("fhn", num)("lib", sync_known_lib_num)
+                     ("ne", sync_next_expected_num)("id", id.str().substr( 8, 16 ))("p", c->peer_name()) );
+         }
          uint32_t lib;
          block_id_type head_id;
          std::tie( lib, std::ignore, std::ignore,
@@ -2404,8 +2405,8 @@ namespace eosio {
             block_header bh;
             fc::raw::unpack( peek_ds, bh );
 
-            block_id_type blk_id = bh.id();
-            uint32_t blk_num = bh.block_num();
+            const block_id_type blk_id = bh.id();
+            const uint32_t blk_num = bh.block_num();
             if( my_impl->dispatcher->have_block( blk_id ) ) {
                fc_dlog( logger, "canceling wait on ${p}, already received block ${num}, id ${id}...",
                         ("p", peer_name())("num", blk_num)("id", blk_id.str().substr(8,16)) );
@@ -2903,20 +2904,20 @@ namespace eosio {
          my_impl->update_chain_info();
          reason = no_reason;
       } catch( const unlinkable_block_exception &ex) {
-         peer_elog(c, "bad signed_block ${n} : ${m}", ("n", blk_num)("m",ex.what()));
+         peer_elog(c, "bad signed_block ${n} ${id}...: ${m}", ("n", blk_num)("id", blk_id.str().substr(8,16))("m",ex.what()));
          reason = unlinkable;
       } catch( const block_validate_exception &ex) {
-         peer_elog(c, "bad signed_block ${n} : ${m}", ("n", blk_num)("m",ex.what()));
+         peer_elog(c, "bad signed_block ${n} ${id}...: ${m}", ("n", blk_num)("id", blk_id.str().substr(8,16))("m",ex.what()));
          fc_elog( logger, "block_validate_exception accept block #${n} syncing from ${p}",("n",blk_num)("p",c->peer_name()) );
          reason = validation;
       } catch( const assert_exception &ex) {
-         peer_elog(c, "bad signed_block ${n} : ${m}", ("n", blk_num)("m",ex.what()));
+         peer_elog(c, "bad signed_block ${n} ${id}...: ${m}", ("n", blk_num)("id", blk_id.str().substr(8,16))("m",ex.what()));
          fc_elog( logger, "unable to accept block on assert exception ${n} from ${p}",("n",ex.to_string())("p",c->peer_name()));
       } catch( const fc::exception &ex) {
-         peer_elog(c, "bad signed_block ${n} : ${m}", ("n", blk_num)("m",ex.what()));
+         peer_elog(c, "bad signed_block ${n} ${id}...: ${m}", ("n", blk_num)("id", blk_id.str().substr(8,16))("m",ex.what()));
          fc_elog( logger, "accept_block threw a non-assert exception ${x} from ${p}",( "x",ex.to_string())("p",c->peer_name()));
       } catch( ...) {
-         peer_elog(c, "bad signed_block ${n} : unknown exception", ("n", blk_num));
+         peer_elog(c, "bad signed_block ${n} ${id}...: unknown exception", ("n", blk_num)("id", blk_id.str().substr(8,16)));
          fc_elog( logger, "handle sync block caught something else from ${p}",("p",c->peer_name()));
       }
 
