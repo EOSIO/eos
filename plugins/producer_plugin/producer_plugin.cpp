@@ -395,7 +395,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                  ("p",block->producer)("id",id.str().substr(8,16))("n",blk_num)("t",block->timestamp)
                  ("count",block->transactions.size())("lib",chain.last_irreversible_block_num())
                  ("confs", block->confirmed)("latency", (fc::time_point::now() - block->timestamp).count()/1000 ) );
-            if( chain.get_read_mode() != db_read_mode::IRREVERSIBLE && hbs->id != id ) { // not applied to head
+            if( chain.get_read_mode() != db_read_mode::IRREVERSIBLE && hbs->id != id && hbs->block != nullptr ) { // not applied to head
                ilog("Block not applied to head ${id}... #${n} @ ${t} signed by ${p} [trxs: ${count}, dpos: ${dpos}, conf: ${confs}, latency: ${latency} ms]",
                     ("p",hbs->block->producer)("id",hbs->id.str().substr(8,16))("n",hbs->block_num)("t",hbs->block->timestamp)
                     ("count",hbs->block->transactions.size())("dpos", hbs->dpos_irreversible_blocknum)
