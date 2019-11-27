@@ -13,18 +13,17 @@ The `net_api_plugin` provides four RPC API endpoints:
 
 See [Net section of RPC API](https://developers.eos.io/eosio-nodeos/reference).
 
-[[warning]]
-| This plugin exposes endpoints that allow management of p2p connections, running this plugin on a publicly accessible node is not recommended as it can be exploited.
+[[caution | Caution]]
+| This plugin exposes endpoints that allow management of p2p connections. Running this plugin on a publicly accessible node is not recommended as it can be exploited.
 
 ## Usage
 
 ```sh
 # config.ini
 plugin = eosio::net_api_plugin
-[options]
 
 # command-line
-$ nodeos ... -- plugin eosio::net_api_plugin [options]
+$ nodeos ... -- plugin eosio::net_api_plugin
 ```
 
 ## Options
