@@ -2,7 +2,7 @@
 
 ## Description
 
-The `http_plugin` is a core plugin required to enable any RPC API on an EOSIO node.
+The `http_plugin` is a core plugin supported by both `nodeos` and `keosd`. The plugin is required to enable any RPC API functionality provided by a `nodeos` or `keosd` instance.
 
 ## Usage
 
@@ -13,16 +13,19 @@ plugin = eosio::http_plugin
 
 # command-line
 $ nodeos ... --plugin eosio::http_plugin [options]
+$ keosd ... --plugin eosio::http_plugin [options]
 ```
 
 ## Options
 
-These can be specified from both the `nodeos` command-line or the `config.ini` file:
+These can be specified from both the command-line or the `config.ini` file:
 
 ```console
 Config Options for eosio::http_plugin:
-
-  --http-server-address arg (=127.0.0.1:8888)
+  --unix-socket-path arg                The filename (relative to data-dir) to 
+                                        create a unix socket for HTTP RPC; set 
+                                        blank to disable (=keosd.sock for keosd)
+  --http-server-address arg (=127.0.0.1:8888 for nodeos)
                                         The local IP and port to listen for 
                                         incoming http connections; set blank to
                                         disable.
