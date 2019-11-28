@@ -1,7 +1,7 @@
 ## Dependencies - Manual Install - CentOS 7 and higher
 
 [[info | Download EOSIO Software]]
-| This section assumes you already have the EOSIO source code. If not, please [Download the EOSIO source](../../../../01_build-from-source/01_download-eosio-source.md).
+| This section assumes you already have the EOSIO source code. If not, just [Download the EOSIO source](../../../../01_build-from-source/01_download-eosio-source.md).
 
 <!--
 # download and run base docker image

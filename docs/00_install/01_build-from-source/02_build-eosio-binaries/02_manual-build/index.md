@@ -1,7 +1,7 @@
 # EOSIO Manual Build
 
 [[info]]
-| These manual instructions are intended for advanced developers. The [Build Script](../00_build-script.md) should be the preferred method to build EOSIO from source. If the script fails or your platform is not supported, please continue with the instructions below.
+| These manual instructions are intended for advanced developers. The [Build Script](../00_build-script.md) should be the preferred method to build EOSIO from source. If the script fails or your platform is not supported, just continue with the instructions below.
 
 The following instructions will build the EOSIO binaries manually by invoking commands on the shell. The following prerequisites must be met before building the EOSIO binaries:
 

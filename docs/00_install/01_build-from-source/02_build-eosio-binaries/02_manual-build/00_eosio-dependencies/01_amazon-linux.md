@@ -1,7 +1,7 @@
 ## Dependencies - Manual Install - Amazon Linux 2017.09 or Higher
 
 [[info | Download EOSIO Software]]
-| This section assumes you already have the EOSIO source code. If not, please [Download the EOSIO source](../../../../01_build-from-source/01_download-eosio-source.md).
+| This section assumes you already have the EOSIO source code. If not, just [Download the EOSIO source](../../../../01_build-from-source/01_download-eosio-source.md).
 
 <!--
 # download and run base docker image
