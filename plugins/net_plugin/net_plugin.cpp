@@ -873,9 +873,10 @@ namespace eosio {
       }
 
       if( peer_requested->start_block <= peer_requested->end_block ) {
-         fc_dlog( logger, "enqueue ${s} - ${e}", ("s", peer_requested->start_block)( "e", peer_requested->end_block ) );
+         fc_ilog( logger, "enqueue ${s} - ${e} to ${p}", ("s", peer_requested->start_block)("e", peer_requested->end_block)("p", peer_name()) );
          enqueue_sync_block();
       } else {
+         fc_ilog( logger, "nothing to enqueue ${p} to ${p}", ("p", peer_name()) );
          peer_requested.reset();
       }
 
@@ -1025,7 +1026,7 @@ namespace eosio {
          break;
       }
       default:
-         fc_dlog(logger, "sending empty request but not calling sync wait on ${p}", ("p",peer_name()));
+         fc_ilog(logger, "sending empty request but not calling sync wait on ${p}", ("p",peer_name()));
          enqueue( ( sync_request_message ) {0,0} );
       }
    }
@@ -1037,6 +1038,7 @@ namespace eosio {
       bool trigger_send = num == peer_requested->start_block;
       if(num == peer_requested->end_block) {
          peer_requested.reset();
+         fc_ilog( logger, "completing enqueue_sync_block ${num} to ${p}", ("num", num)("p", peer_name()) );
       }
       try {
          controller& cc = my_impl->chain_plug->chain();
@@ -2157,6 +2159,17 @@ namespace eosio {
             controller& cc = chain_plug->chain();
             block_id_type blk_id = bh.id();
             uint32_t blk_num = bh.block_num();
+            if( !sync_master->syncing_with_peer() ) {
+               uint32_t lib = cc.last_irreversible_block_num();
+               if( blk_num < lib ) {
+                  conn->enqueue( ( sync_request_message ) {0,0} );
+                  conn->send_handshake();
+                  conn->cancel_wait();
+
+                  conn->pending_message_buffer.advance_read_ptr( message_length );
+                  return true;
+               }
+            }
             if( cc.fetch_block_by_id( blk_id ) ) {
                if( sync_master->syncing_with_peer() ) {
                   sync_master->recv_block( conn, blk_id, blk_num );
