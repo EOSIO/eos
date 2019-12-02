@@ -842,13 +842,10 @@ namespace eosio {
       }
       block_id_type head_id;
       block_id_type lib_id;
-      block_id_type remote_head_id;
-      uint32_t remote_head_num = 0;
       try {
          if (last_handshake_recv.generation >= 1) {
-            remote_head_id = last_handshake_recv.head_id;
-            remote_head_num = block_header::num_from_id(remote_head_id);
-            fc_dlog(logger, "maybe truncating branch at  = ${h}:${id}",("h",remote_head_num)("id",remote_head_id));
+            fc_dlog( logger, "maybe truncating branch at = ${h}:${id}",
+                     ("h", block_header::num_from_id(last_handshake_recv.head_id))("id", last_handshake_recv.head_id) );
          }
 
          lib_id = last_handshake_recv.last_irreversible_block_id;
@@ -1502,7 +1499,6 @@ namespace eosio {
          }
          return;
       }
-      fc_elog( logger, "sync check failed to resolve status" );
    }
 
    bool sync_manager::verify_catchup(const connection_ptr& c, uint32_t num, const block_id_type& id) {
