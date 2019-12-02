@@ -841,26 +841,12 @@ namespace eosio {
          enqueue(note);
          return;
       }
-      block_id_type head_id;
-      block_id_type lib_id;
-      try {
-         if (last_handshake_recv.generation >= 1) {
-            fc_dlog( logger, "maybe truncating branch at = ${h}:${id}",
-                     ("h", block_header::num_from_id(last_handshake_recv.head_id))("id", last_handshake_recv.head_id) );
-         }
+      if (last_handshake_recv.generation >= 1) {
+         fc_dlog( logger, "maybe truncating branch at = ${h}:${id}",
+                  ("h", block_header::num_from_id(last_handshake_recv.head_id))("id", last_handshake_recv.head_id) );
+      }
 
-         lib_id = last_handshake_recv.last_irreversible_block_id;
-         head_id = cc.fork_db_pending_head_block_id();
-      }
-      catch (const assert_exception& ex) {
-         fc_elog( logger, "unable to retrieve block info: ${n} for ${p}",("n",ex.to_string())("p",peer_name()) );
-         enqueue(note);
-         return;
-      }
-      catch (const fc::exception& ex) {
-      }
-      catch (...) {
-      }
+      const auto lib_id = last_handshake_recv.last_irreversible_block_id;
 
       auto msg_head_num = block_header::num_from_id(msg_head_id);
       bool on_fork = msg_head_num == 0;
@@ -868,7 +854,7 @@ namespace eosio {
          on_fork = on_fork || cc.get_block_id_for_num( msg_head_num ) != msg_head_id;
       } catch( ... ) {}
       if( on_fork ) msg_head_num = 0;
-      auto lib_num = block_header::num_from_id(lib_id);
+      const auto lib_num = block_header::num_from_id(lib_id);
 
       if( !peer_requested ) {
          auto last = msg_head_num != 0 ? msg_head_num : lib_num;
@@ -1673,6 +1659,7 @@ namespace eosio {
          bool has_block = cp->last_handshake_recv.last_irreversible_block_num >= bnum;
          if( !has_block ) {
             if( !cp->add_peer_block( pbstate ) ) {
+               fc_dlog( logger, "not bcast block ${b} to ${p}", ("b", bnum)("p", cp->peer_name()) );
                continue;
             }
             if( !send_buffer ) {
@@ -2170,8 +2157,8 @@ namespace eosio {
             fc::raw::unpack( peek_ds, bh );
 
             controller& cc = chain_plug->chain();
-            block_id_type blk_id = bh.id();
-            uint32_t blk_num = bh.block_num();
+            const block_id_type blk_id = bh.id();
+            const uint32_t blk_num = bh.block_num();
             if( !sync_master->syncing_with_peer() ) {
                uint32_t lib = cc.last_irreversible_block_num();
                if( blk_num < lib ) {
@@ -2612,20 +2599,20 @@ namespace eosio {
          chain_plug->accept_block(msg); //, sync_master->is_active(c));
          reason = no_reason;
       } catch( const unlinkable_block_exception &ex) {
-         peer_elog(c, "bad signed_block ${n} : ${m}", ("n", blk_num)("m",ex.what()));
+         peer_elog(c, "bad signed_block ${n} ${id}...: ${m}", ("n", blk_num)("id", blk_id.str().substr(8,16))("m",ex.what()));
          reason = unlinkable;
       } catch( const block_validate_exception &ex) {
-         peer_elog(c, "bad signed_block ${n} : ${m}", ("n", blk_num)("m",ex.what()));
+         peer_elog(c, "bad signed_block ${n} ${id}...: ${m}", ("n", blk_num)("id", blk_id.str().substr(8,16))("m",ex.what()));
          fc_elog( logger, "block_validate_exception accept block #${n} syncing from ${p}",("n",blk_num)("p",c->peer_name()) );
          reason = validation;
       } catch( const assert_exception &ex) {
-         peer_elog(c, "bad signed_block ${n} : ${m}", ("n", blk_num)("m",ex.what()));
+         peer_elog(c, "bad signed_block ${n} ${id}...: ${m}", ("n", blk_num)("id", blk_id.str().substr(8,16))("m",ex.what()));
          fc_elog( logger, "unable to accept block on assert exception ${n} from ${p}",("n",ex.to_string())("p",c->peer_name()));
       } catch( const fc::exception &ex) {
-         peer_elog(c, "bad signed_block ${n} : ${m}", ("n", blk_num)("m",ex.what()));
+         peer_elog(c, "bad signed_block ${n} ${id}...: ${m}", ("n", blk_num)("id", blk_id.str().substr(8,16))("m",ex.what()));
          fc_elog( logger, "accept_block threw a non-assert exception ${x} from ${p}",( "x",ex.to_string())("p",c->peer_name()));
       } catch( ...) {
-         peer_elog(c, "bad signed_block ${n} : unknown exception", ("n", blk_num));
+         peer_elog(c, "bad signed_block ${n} ${id}...: unknown exception", ("n", blk_num)("id", blk_id.str().substr(8,16)));
          fc_elog( logger, "handle sync block caught something else from ${p}",("num",blk_num)("p",c->peer_name()));
       }
 
