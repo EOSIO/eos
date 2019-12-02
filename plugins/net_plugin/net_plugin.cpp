@@ -988,7 +988,9 @@ namespace eosio {
          try {
             const controller& cc = chain_plug->chain();
             on_fork = on_fork || cc.get_block_id_for_num( msg_head_num ) != msg_head_id;
-         } catch( ... ) {}
+         } catch( ... ) {
+            on_fork = true;
+         }
          if( on_fork ) msg_head_num = 0;
          // if peer on fork, start at their last lib, otherwise we can start at msg_head+1
          c->strand.post( [c, msg_head_num, lib_num, head_num]() {
