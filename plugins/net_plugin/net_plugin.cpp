@@ -3188,12 +3188,14 @@ namespace eosio {
       } else {
          hello.network_version = net_version_base + net_version;
       }
+      const auto prev_head_id = hello.head_id;
       uint32_t lib, head;
       std::tie( lib, std::ignore, head,
                 hello.last_irreversible_block_id, std::ignore, hello.head_id ) = my_impl->get_chain_info();
       // only send handshake if state has changed since last handshake
       send |= lib != hello.last_irreversible_block_num;
       send |= head != hello.head_num;
+      send |= head_id != prev_head_id;
       if( !send ) return false;
       hello.last_irreversible_block_num = lib;
       hello.head_num = head;
