@@ -1501,7 +1501,7 @@ namespace eosio {
             note.known_blocks.ids.push_back(head_id);
             c->enqueue( note );
          }
-         c->syncing = true;
+         c->syncing = false;
          bool on_fork = true;
          try {
             on_fork = cc.get_block_id_for_num( msg.head_num ) != msg.head_id;
@@ -1586,7 +1586,6 @@ namespace eosio {
          source.reset();
          my_impl->close(c);
          set_state(in_sync);
-         send_handshakes();
       }
    }
    void sync_manager::recv_block(const connection_ptr& c, const block_id_type& blk_id, uint32_t blk_num) {
@@ -1626,7 +1625,6 @@ namespace eosio {
          if( blk_num == sync_known_lib_num ) {
             fc_dlog( logger, "All caught up with last known last irreversible block resending handshake");
             set_state(in_sync);
-            send_handshakes();
          }
          else if (blk_num == sync_last_requested_num) {
             request_next_chunk();
