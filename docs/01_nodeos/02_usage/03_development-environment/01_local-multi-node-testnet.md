@@ -66,8 +66,11 @@ Without password imported keys will not be retrievable.
 
 The private blockchain launched in the steps above is created with a default initial key which must be loaded into the wallet.
 
-```
+```sh
 $ cleos --wallet-url http://127.0.0.1:8899 wallet import --private-key 5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3
+```
+
+```console
 imported private key for: EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV
 ```
 
@@ -92,6 +95,9 @@ $ cleos --wallet-url http://127.0.0.1:8899 set contract eosio build/contracts/eo
 
 We will create an account to become a producer, using the account name `inita`.  To create the account, we need to generate keys to associate with the account, and import those into our wallet.
 
+[[warning | Warning]]
+| The command line instructions that follow use the private/public keys shown below. In order to be able to cut-and-paste the command line instructions directly from this tutorial, use those keys instead of the ones that you generate from the `cleos create key` command below. If you still want to use your newly generated keys, you will need to replace the key values with yours in the commands.
+
 Run the create key command:
 
 ```sh
@@ -99,8 +105,6 @@ $ cleos create key
 ```
 
 This will report newly generated public and private keypairs that will look similar to the following.
-
-**IMPORTANT:  The command line instructions that follow use the keys shown below.  In order to be able to cut-and-paste the command line instructions directly from this tutorial, do NOT use the keys that you just generated.  If, instead, you want to use your newly generated keys, you will need to replace the key values with yours in the commands.**
 
 ```console
 Private key: 5JgbL2ZnoEAhTudReWH1RnMuQS6DBeLZt4ucV6t8aymVEuYg7sr
@@ -111,6 +115,9 @@ Now import the private key portion into your wallet. If successful, the matching
 
 ```sh
 $ cleos --wallet-url http://127.0.0.1:8899 wallet import 5JgbL2ZnoEAhTudReWH1RnMuQS6DBeLZt4ucV6t8aymVEuYg7sr
+```
+
+```console
 imported private key for: EOS6hMjoWRF2L8x9YpeqtUEcsDKAyxSuM1APicxgRU1E3oyV5sDEg
 ```
 
@@ -118,6 +125,9 @@ Create the `inita` account that we will use to become a producer. The `create ac
 
 ```sh
 $ cleos --wallet-url http://127.0.0.1:8899 create account eosio inita EOS6hMjoWRF2L8x9YpeqtUEcsDKAyxSuM1APicxgRU1E3oyV5sDEg EOS6hMjoWRF2L8x9YpeqtUEcsDKAyxSuM1APicxgRU1E3oyV5sDEg
+```
+
+```console
 executed transaction: d1ea511977803d2d88f46deb554f5b6cce355b9cc3174bec0da45fc16fe9d5f3  352 bytes  102400 cycles
 #         eosio <= eosio::newaccount            {"creator":"eosio","name":"inita","owner":{"threshold":1,"keys":[{"key":"EOS6hMjoWRF2L8x9YpeqtUEcsDK...
 ```
@@ -148,7 +158,9 @@ At this point, the second `nodeos` is an idle producer. To turn it into an activ
 
 ```sh
 $ cleos --wallet-url http://127.0.0.1:8899 push action eosio setprods "{ \"schedule\": [{\"producer_name\": \"inita\",\"block_signing_key\": \"EOS6hMjoWRF2L8x9YpeqtUEcsDKAyxSuM1APicxgRU1E3oyV5sDEg\"}]}" -p eosio@active
+```
 
+```console
 executed transaction: 2cff4d96814752aefaf9908a7650e867dab74af02253ae7d34672abb9c58235a  272 bytes  105472 cycles
 #         eosio <= eosio::setprods              {"version":1,"producers":[{"producer_name":"inita","block_signing_key":"EOS6hMjoWRF2L8x9YpeqtUEcsDKA...
 ```
