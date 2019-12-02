@@ -333,7 +333,7 @@ public:
             bfs::path pid_file_path = node_path / "pid.txt";
             bfs::ofstream pidout(pid_file_path);
 
-            std::string cmd = _config.nodeos_cmd;
+            std::string cmd = node_config.nodeos_cmd.length() ? node_config.nodeos_cmd : _config.nodeos_cmd;
             cmd += " --config-dir=" + node_path.string();
             cmd += " --data-dir=" + node_path.string() + "/data";
             if (!restart) {

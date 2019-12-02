@@ -52,6 +52,7 @@ namespace launcher_service {
       std::vector<string>            producers;
       std::vector<private_key_type>  producing_keys;
       std::vector<string>            extra_configs;
+      std::string                    nodeos_cmd; // override
 
       uint16_t                       assigned_http_port = 0;
       uint16_t                       assigned_p2p_port = 0;
@@ -262,7 +263,7 @@ private:
 
 }
 
-FC_REFLECT(eosio::launcher_service::node_def, (producers)(producing_keys)(extra_configs)(dont_start) )
+FC_REFLECT(eosio::launcher_service::node_def, (producers)(producing_keys)(extra_configs)(dont_start)(nodeos_cmd) )
 FC_REFLECT(eosio::launcher_service::cluster_def, (shape)(center_node_id)(cluster_id)(node_count)(auto_port)(nodes)(extra_configs)(extra_args)(log_level)(special_log_levels) )
 FC_REFLECT(eosio::launcher_service::empty_param, )
 FC_REFLECT(eosio::launcher_service::get_block_param, (cluster_id)(node_id)(block_num_or_id))
