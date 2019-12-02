@@ -2162,9 +2162,16 @@ namespace eosio {
             if( !sync_master->syncing_with_peer() ) {
                uint32_t lib = cc.last_irreversible_block_num();
                if( blk_num < lib ) {
-                  conn->enqueue( ( sync_request_message ) {0,0} );
-                  conn->send_handshake();
-                  conn->cancel_wait();
+                  const auto last_sent_lib = conn->last_handshake_sent.last_irreversible_block_num;
+                  if( !conn->peer_requested && blk_num < last_sent_lib ) {
+                     fc_ilog( logger, "received block ${n} less than sent lib ${lib}", ("n", blk_num)("lib", last_sent_lib) );
+                     close( conn );
+                  } else {
+                     fc_ilog( logger, "received block ${n} less than lib ${lib}", ("n", blk_num)("lib", lib) );
+                     conn->enqueue( (sync_request_message) {0, 0} );
+                     conn->send_handshake();
+                     conn->cancel_wait();
+                  }
 
                   conn->pending_message_buffer.advance_read_ptr( message_length );
                   return true;
