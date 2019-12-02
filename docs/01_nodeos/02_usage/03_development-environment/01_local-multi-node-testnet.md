@@ -97,14 +97,14 @@ $ cleos --wallet-url http://127.0.0.1:8899 set contract eosio build/contracts/eo
 
 We will create an account to become a producer, using the account name `inita`.  To create the account, we need to generate keys to associate with the account, and import those into our wallet.
 
-[[warning | Warning]]
-| The command line instructions that follow use the private/public keys shown below. In order to be able to cut-and-paste the command line instructions directly from this tutorial, use those keys instead of the ones that you generate from the `cleos create key` command below. If you still want to use your newly generated keys, you will need to replace the key values with yours in the commands.
-
 Run the create key command:
 
 ```sh
 $ cleos create key
 ```
+
+[[caution | Caution]]
+| The command line instructions that follow use the private/public keys shown below. In order to be able to cut-and-paste the command line instructions directly from this tutorial, use those keys instead of the ones generated from your `cleos create key` command. If you still want to use your newly generated keys, you need to replace the key values with yours in the commands that follow.
 
 This will report newly generated public and private keypairs that will look similar to the following.
 
