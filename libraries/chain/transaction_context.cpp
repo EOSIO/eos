@@ -78,7 +78,6 @@ namespace eosio { namespace chain {
    void transaction_context::init(uint64_t initial_net_usage)
    {
       EOS_ASSERT( !is_initialized, transaction_exception, "cannot initialize twice" );
-      const static int64_t large_number_no_overflow = std::numeric_limits<int64_t>::max()/2;
 
       const auto& cfg = control.get_global_properties().configuration;
       auto& rl = control.get_mutable_resource_limits_manager();
