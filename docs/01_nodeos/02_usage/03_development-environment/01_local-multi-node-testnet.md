@@ -23,6 +23,7 @@ Open four "terminal" windows and perform the following steps:
 6. [Get Nodes Info](#6-get-nodes-info)
 
 ### 1. Start the Wallet Manager
+
 In the first terminal window, start `keosd`, the wallet management application:
 
 ```sh
@@ -75,6 +76,7 @@ imported private key for: EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV
 ```
 
 ### 4. Start the First Producer Node
+
 We can now start the first producer node. In the third terminal window run:
 
 ```sh
