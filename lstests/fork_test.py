@@ -35,7 +35,7 @@ def assert_out_of_sync(clus, res):
 
 def kill_and_verify(clus):
     clus.info("Kill bridge node...")
-    clus.stop_node(node_id=1, kill_sig=9)
+    clus.stop_node(node_id=1, kill_sig=15)
     time.sleep(1)
     res = clus.check_sync(min_sync_count=2, max_block_lag=2, dont_raise=True)
     assert_out_of_sync(clus, res)
@@ -71,11 +71,11 @@ def restart_and_verify(clus, last_block_in_sync):
 
 def main():
     with init_cluster() as clus:
-        clus.info(">>> [Fork Test] ------------------------- BEGIN ------------------------------------------")
+        clus.info(">>> [Fork Test] ------------------------- BEGIN ----------------------------------------------------")
         last_block_in_sync = set_and_verify(clus)
         kill_and_verify(clus)
         restart_and_verify(clus, last_block_in_sync)
-        clus.info(">>> [Fork Test] ------------------------- END --------------------------------------------")
+        clus.info(">>> [Fork Test] ------------------------- END ------------------------------------------------------")
 
 
 if __name__ == "__main__":
