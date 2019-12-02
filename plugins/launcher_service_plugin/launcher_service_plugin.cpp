@@ -22,12 +22,6 @@
 #include <appbase/application.hpp>
 #include <eosio/chain/exceptions.hpp>
 
-#define EOS_ASSERT( expr, exception, FORMAT, ... )                \
-   FC_MULTILINE_MACRO_BEGIN                                           \
-   if( !(expr) )                                                      \
-      FC_THROW_EXCEPTION( exception, FORMAT, __VA_ARGS__ );            \
-   FC_MULTILINE_MACRO_END
-
 namespace eosio {
    static appbase::abstract_plugin& _launcher_service_plugin = app().register_plugin<launcher_service_plugin>();
 
@@ -814,8 +808,13 @@ void launcher_service_plugin::plugin_initialize(const variables_map& options) {
       EOS_ASSERT((int)_my->_config.max_nodes_per_cluster * _my->_config.node_span <= _my->_config.cluster_span, chain::plugin_config_exception, "cluster-port-span should not less than node-port-span * max-nodes-per-cluster");
 
       EOS_ASSERT(bfs::exists(_my->_config.genesis_file), chain::plugin_config_exception,"genesis-file ${path} not exist", ("path", _my->_config.genesis_file));
+   } catch (fc::exception& er) {
+      elog( "${details}", ("details",er.to_detail_string()) );
+      throw er;
+   } catch (std::exception& er) {
+      elog( "${details}", ("details",er.what()) );
+      throw er;
    }
-   FC_LOG_AND_RETHROW()
 }
 
 void launcher_service_plugin::plugin_startup() {
