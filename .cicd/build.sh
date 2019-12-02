@@ -7,6 +7,7 @@ if [[ "$(uname)" == 'Darwin' ]]; then
     # You can't use chained commands in execute
     if [[ "$TRAVIS" == 'true' ]]; then
         export PINNED=false
+        brew reinstall openssl@1.1 # Fixes issue where builds in Travis cannot find libcrypto.
         ccache -s
         CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_CXX_COMPILER_LAUNCHER=ccache"
     else
