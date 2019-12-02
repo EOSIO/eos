@@ -2,7 +2,7 @@
 [[info | Recommended Usage]]
 | For most users, the easiest way to use `keosd` is to have `cleos` launch it automatically. Wallet files will be created in the default directory (`~/eosio-wallet`).
 
-## Launching `keosd` manually
+## Launching keosd manually
 
 `keosd` can be launched manually from the terminal by running:
 
@@ -19,7 +19,7 @@ By default, `keosd` creates the folder `~/eosio-wallet` and populates it with a 
 
 By default, `keosd` is set to lock your wallet after 15 minutes of inactivity. This is configurable in the `config.ini` by setting the timeout seconds in `unlock-timeout`. Setting it to 0 will cause `keosd` to always lock your wallet.
 
-## Stopping `keosd`
+## Stopping keosd
 
 The most effective way to stop `keosd` is to find the keosd process and send a SIGTERM signal to it.
 
