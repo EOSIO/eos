@@ -2180,11 +2180,9 @@ namespace eosio {
                }
             }
             if( cc.fetch_block_by_id( blk_id ) ) {
-               if( sync_master->syncing_with_peer() ) {
+               if( sync_master->syncing_with_peer() )
                   sync_master->recv_block( conn, blk_id, blk_num );
-               } else {
-                  conn->cancel_wait();
-               }
+               conn->cancel_wait();
                conn->pending_message_buffer.advance_read_ptr( message_length );
                return true;
             }
@@ -2586,11 +2584,9 @@ namespace eosio {
 
       try {
          if( cc.fetch_block_by_id(blk_id)) {
-            if( sync_master->syncing_with_peer() ) {
+            if( sync_master->syncing_with_peer() )
                sync_master->recv_block( c, blk_id, blk_num );
-            } else {
-               c->cancel_wait();
-            }
+            c->cancel_wait();
             return;
          }
       } catch( ...) {
