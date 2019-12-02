@@ -564,7 +564,7 @@ namespace eosio {
       void txn_send_pending(const vector<transaction_id_type>& ids);
       void txn_send(const vector<transaction_id_type>& txn_lis);
 
-      void blk_send_branch();
+      void blk_send_branch( const block_id_type& msg_head_id );
       void blk_send(const block_id_type& blkid);
       void stop_send();
 
@@ -830,7 +830,7 @@ namespace eosio {
       }
    }
 
-   void connection::blk_send_branch() {
+   void connection::blk_send_branch( const block_id_type& msg_head_id ) {
       controller& cc = my_impl->chain_plug->chain();
       uint32_t head_num = cc.fork_db_pending_head_block_num();
       notice_message note;
@@ -862,14 +862,21 @@ namespace eosio {
       catch (...) {
       }
 
+      auto msg_head_num = block_header::num_from_id(msg_head_id);
+      bool on_fork = msg_head_num == 0;
+      try {
+         on_fork = on_fork || cc.get_block_id_for_num( msg_head_num ) != msg_head_id;
+      } catch( ... ) {}
+      if( on_fork ) msg_head_num = 0;
+      auto lib_num = block_header::num_from_id(lib_id);
+
       if( !peer_requested ) {
-         peer_requested = peer_sync_state( block_header::num_from_id(lib_id)+1,
-                                           block_header::num_from_id(head_id),
-                                           block_header::num_from_id(lib_id) );
+         auto last = msg_head_num != 0 ? msg_head_num : lib_num;
+         peer_requested = peer_sync_state( last+1, head_num, last );
       } else {
-         uint32_t start = std::min( peer_requested->last + 1, block_header::num_from_id(lib_id)+1 );
-         uint32_t end   = std::max( peer_requested->end_block, block_header::num_from_id(head_id) );
-         peer_requested = peer_sync_state( start, end, start - 1 );
+         auto last = msg_head_num != 0 ? msg_head_num : std::min( peer_requested->last, lib_num );
+         uint32_t end = std::max( peer_requested->end_block, head_num );
+         peer_requested = peer_sync_state( last+1, end, last );
       }
 
       if( peer_requested->start_block <= peer_requested->end_block ) {
@@ -1539,6 +1546,9 @@ namespace eosio {
          set_state(head_catchup);
          c->fork_head = id;
          c->fork_head_num = num;
+         controller& cc = chain_plug->chain();
+         block_id_type head_id = cc.fork_db_pending_head_block_id();
+         req.req_blocks.ids.emplace_back( head_id );
       }
       else {
          fc_ilog( logger, "none notice while in ${s}, fork head num = ${fhn}, id ${id}..., peer ${p}",
@@ -1589,6 +1599,8 @@ namespace eosio {
          source.reset();
          my_impl->close(c);
          set_state(in_sync);
+      } else {
+         c->send_handshake();
       }
    }
    void sync_manager::recv_block(const connection_ptr& c, const block_id_type& blk_id, uint32_t blk_num) {
@@ -2475,7 +2487,7 @@ namespace eosio {
       switch (msg.req_blocks.mode) {
       case catch_up :
          peer_ilog(c,  "received request_message:catch_up");
-         c->blk_send_branch();
+         c->blk_send_branch( msg.req_blocks.ids.empty() ? block_id_type() : msg.req_blocks.ids.back() );
          break;
       case normal :
          peer_ilog(c, "received request_message:normal");
