@@ -676,6 +676,7 @@ namespace eosio {
       void set_state(stages s);
       bool sync_required();
       void send_handshakes();
+      bool syncing_with_peer() const { return state == lib_catchup; }
       bool is_active(const connection_ptr& conn);
       void reset_lib_num(const connection_ptr& conn);
       void request_next_chunk(const connection_ptr& conn = connection_ptr());
@@ -2140,7 +2141,8 @@ namespace eosio {
             block_id_type blk_id = bh.id();
             uint32_t blk_num = bh.block_num();
             if( cc.fetch_block_by_id( blk_id ) ) {
-               sync_master->recv_block( conn, blk_id, blk_num );
+               if( sync_master->syncing_with_peer() )
+                  sync_master->recv_block( conn, blk_id, blk_num );
                conn->pending_message_buffer.advance_read_ptr( message_length );
                return true;
             }
@@ -2541,7 +2543,8 @@ namespace eosio {
 
       try {
          if( cc.fetch_block_by_id(blk_id)) {
-            sync_master->recv_block(c, blk_id, blk_num);
+            if( sync_master->syncing_with_peer() )
+               sync_master->recv_block(c, blk_id, blk_num);
             return;
          }
       } catch( ...) {
