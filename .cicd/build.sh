@@ -7,6 +7,8 @@ if [[ "$(uname)" == 'Darwin' ]]; then
     # You can't use chained commands in execute
     if [[ "$TRAVIS" == 'true' ]]; then
         export PINNED=false
+        brew install https://raw.githubusercontent.com/Homebrew/homebrew-core/1d91e94e8ecdf6877ad2c24a7cda1114e50f2a14/Formula/llvm@4.rb # Workaround for Travis cannot build LLVM4 from source.
+        brew reinstall openssl@1.1 # Fixes issue where builds in Travis cannot find libcrypto.
         ccache -s
         CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_CXX_COMPILER_LAUNCHER=ccache"
     else
