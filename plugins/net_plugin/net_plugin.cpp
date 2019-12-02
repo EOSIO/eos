@@ -1586,6 +1586,7 @@ namespace eosio {
          source.reset();
          my_impl->close(c);
          set_state(in_sync);
+         send_handshakes();
       } else {
          c->send_handshake();
       }
@@ -1627,6 +1628,7 @@ namespace eosio {
          if( blk_num == sync_known_lib_num ) {
             fc_dlog( logger, "All caught up with last known last irreversible block resending handshake");
             set_state(in_sync);
+            send_handshakes();
          }
          else if (blk_num == sync_last_requested_num) {
             request_next_chunk();
