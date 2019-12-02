@@ -3195,7 +3195,7 @@ namespace eosio {
       // only send handshake if state has changed since last handshake
       send |= lib != hello.last_irreversible_block_num;
       send |= head != hello.head_num;
-      send |= head_id != prev_head_id;
+      send |= prev_head_id != hello.head_id;
       if( !send ) return false;
       hello.last_irreversible_block_num = lib;
       hello.head_num = head;
