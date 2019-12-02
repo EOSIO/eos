@@ -374,8 +374,8 @@ namespace eosio {
    /**
     * Index by start_block_num
     */
-   struct sync_state {
-      sync_state(uint32_t start = 0, uint32_t end = 0, uint32_t last_acted = 0)
+   struct peer_sync_state {
+      explicit peer_sync_state(uint32_t start = 0, uint32_t end = 0, uint32_t last_acted = 0)
          :start_block( start ), end_block( end ), last( last_acted ),
           start_time(time_point::now())
       {}
@@ -479,7 +479,7 @@ namespace eosio {
 
       peer_block_state_index  blk_state;
       transaction_state_index trx_state;
-      optional<sync_state>    peer_requested;  // this peer is requesting info from us
+      optional<peer_sync_state>    peer_requested;  // this peer is requesting info from us
       boost::asio::io_context&                  server_ioc;
       boost::asio::io_context::strand           strand;
       socket_ptr                                socket;
@@ -865,13 +865,13 @@ namespace eosio {
       }
 
       if( !peer_requested ) {
-         peer_requested = sync_state( block_header::num_from_id(lib_id)+1,
-                                      block_header::num_from_id(head_id),
-                                      block_header::num_from_id(lib_id) );
+         peer_requested = peer_sync_state( block_header::num_from_id(lib_id)+1,
+                                           block_header::num_from_id(head_id),
+                                           block_header::num_from_id(lib_id) );
       } else {
          uint32_t start = std::min( peer_requested->last + 1, block_header::num_from_id(lib_id)+1 );
          uint32_t end   = std::max( peer_requested->end_block, block_header::num_from_id(head_id) );
-         peer_requested = sync_state( start, end, start - 1 );
+         peer_requested = peer_sync_state( start, end, start - 1 );
       }
 
       if( peer_requested->start_block <= peer_requested->end_block ) {
@@ -2475,7 +2475,7 @@ namespace eosio {
          c->peer_requested.reset();
          c->flush_queues();
       } else {
-         c->peer_requested = sync_state( msg.start_block,msg.end_block,msg.start_block-1);
+         c->peer_requested = peer_sync_state( msg.start_block,msg.end_block,msg.start_block-1);
          c->enqueue_sync_block();
       }
    }
