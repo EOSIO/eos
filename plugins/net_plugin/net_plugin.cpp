@@ -2410,11 +2410,9 @@ namespace eosio {
             if( my_impl->dispatcher->have_block( blk_id ) ) {
                fc_dlog( logger, "canceling wait on ${p}, already received block ${num}, id ${id}...",
                         ("p", peer_name())("num", blk_num)("id", blk_id.str().substr(8,16)) );
-               if( my_impl->sync_master->syncing_with_peer() ) {
+               if( my_impl->sync_master->syncing_with_peer() )
                   my_impl->sync_master->sync_recv_block( shared_from_this(), blk_id, blk_num );
-               } else {
-                  cancel_wait();
-               }
+               cancel_wait();
 
                pending_message_buffer.advance_read_ptr( message_length );
                return true;
