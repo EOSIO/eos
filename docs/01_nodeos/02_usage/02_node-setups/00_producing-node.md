@@ -24,12 +24,10 @@ Please follow the steps below to set up a producing node:
 
 ### 1. Register your account as a producer
 
-In order for your account to be eligible as a producer, you will need to register the account as a producer
-
-#### Example using `cleos system regproducer`
+In order for your account to be eligible as a producer, you will need to register the account as a producer:
 
 ```sh
-cleos system regproducer accountname1 EOS1234534... http://producer.site Antarctica
+$ cleos system regproducer accountname1 EOS1234534... http://producer.site Antarctica
 ```
 
 ### 2. Set Producer Name
