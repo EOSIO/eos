@@ -103,7 +103,7 @@ namespace eosio { namespace chain {
          } else if (!next_prefix.empty())
             it = idx.lower_bound(boost::make_tuple(database_id, contract, next_prefix));
          else
-            it = idx.end();
+            it = idx.upper_bound(boost::make_tuple(database_id, contract));
          if (it != idx.begin())
             return move_to(--it);
          current = nullptr;

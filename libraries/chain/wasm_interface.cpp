@@ -199,6 +199,17 @@ class privileged_api : public context_aware_api {
          context.control.get_resource_limits_manager().get_account_limits( account, ram_bytes, net_weight, cpu_weight);
       }
 
+      void set_disk_limit( account_name account, int64_t disk_limit ) {
+         EOS_ASSERT(disk_limit >= -1, wasm_execution_error, "invalid value for disk resource limit expected [-1,INT64_MAX]");
+         if( context.control.get_mutable_resource_limits_manager().set_account_disk_limit( account, disk_limit ) ) {
+            context.trx_context.validate_disk_usage.insert( account );
+         }
+      }
+
+      int64_t get_disk_limit( account_name account ) {
+         return context.control.get_resource_limits_manager().get_account_disk_limit( account );
+      }
+
       int64_t set_proposed_producers_common( vector<producer_authority> && producers, bool validate_keys ) {
          EOS_ASSERT(producers.size() <= config::max_producers, wasm_execution_error, "Producer schedule exceeds the maximum producer count for this chain");
          EOS_ASSERT( producers.size() > 0
@@ -1914,6 +1925,8 @@ REGISTER_INTRINSICS(privileged_api,
    (activate_feature,                 void(int64_t)                         )
    (get_resource_limits,              void(int64_t,int,int,int)             )
    (set_resource_limits,              void(int64_t,int64_t,int64_t,int64_t) )
+   (get_disk_limit,                   int64_t(int64_t)                      )
+   (set_disk_limit,                   void(int64_t, int64_t)                )
    (set_proposed_producers,           int64_t(int,int)                      )
    (set_proposed_producers_ex,        int64_t(int64_t, int, int)            )
    (get_blockchain_parameters_packed, int(int, int)                         )

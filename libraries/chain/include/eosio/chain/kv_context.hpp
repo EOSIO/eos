@@ -44,6 +44,7 @@ namespace eosio { namespace chain {
    };
 
    kv_resource_manager create_kv_resource_manager_ram(apply_context& context);
+   kv_resource_manager create_kv_resource_manager_disk(apply_context& context);
 
    struct kv_context {
       virtual ~kv_context() {}

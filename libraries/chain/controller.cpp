@@ -3296,6 +3296,9 @@ void controller_impl::on_activation<builtin_protocol_feature_t::kv_database>() {
       add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "kv_it_lower_bound" );
       add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "kv_it_key" );
       add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "kv_it_value" );
+      // DISK resource
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "set_disk_limit" );
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "get_disk_limit" );
    } );
 }
 
