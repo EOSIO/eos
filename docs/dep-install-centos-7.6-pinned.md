@@ -12,7 +12,7 @@ yum update -y && \
     python python-devel rh-python36 file libusbx-devel \
     libcurl-devel patch vim-common jq
 export EOSIO_LOCATION=$HOME/eosio && git clone https://github.com/EOSIO/eos.git -b master $EOSIO_INSTALL_LOCATION
-export EOSIO_INSTALL_LOCATION=$EOSIO_LOCATION/install && mkdir $EOSIO_INSTALL_LOCATION
+export EOSIO_INSTALL_LOCATION=$EOSIO_LOCATION/install && mkdir -p $EOSIO_INSTALL_LOCATION
 cd $EOSIO_INSTALL_LOCATION
 curl -LO https://cmake.org/files/v3.13/cmake-3.13.2.tar.gz && \
     source /opt/rh/devtoolset-8/enable && \

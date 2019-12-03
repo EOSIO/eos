@@ -4,7 +4,7 @@ The following commands will install all of the necessary dependencies for source
 Therefore, COPY and other Dockerfile-isms are not permitted. -->
 ```
 export EOSIO_LOCATION=$HOME/eosio && git clone https://github.com/EOSIO/eos.git -b master $EOSIO_INSTALL_LOCATION
-export EOSIO_INSTALL_LOCATION=$EOSIO_LOCATION/install && mkdir $EOSIO_INSTALL_LOCATION
+export EOSIO_INSTALL_LOCATION=$EOSIO_LOCATION/install && mkdir -p $EOSIO_INSTALL_LOCATION
 brew update
 brew install git cmake python@2 python libtool libusb graphviz automake wget gmp pkgconfig doxygen openssl@1.1 jq || :
 git clone --single-branch --branch release_80 https://git.llvm.org/git/llvm.git clang8 && cd clang8 && git checkout 18e41dc && \

@@ -10,7 +10,7 @@ apt-get update && \
     python2.7 python2.7-dev python3 python3-dev autoconf libtool curl zlib1g-dev \
     sudo ruby libusb-1.0-0-dev libcurl4-gnutls-dev pkg-config apt-transport-https vim-common jq
 export EOSIO_LOCATION=$HOME/eosio && git clone https://github.com/EOSIO/eos.git -b master $EOSIO_INSTALL_LOCATION
-export EOSIO_INSTALL_LOCATION=$EOSIO_LOCATION/install && mkdir $EOSIO_INSTALL_LOCATION
+export EOSIO_INSTALL_LOCATION=$EOSIO_LOCATION/install && mkdir -p $EOSIO_INSTALL_LOCATION
 cd $EOSIO_INSTALL_LOCATION
 curl -LO https://cmake.org/files/v3.13/cmake-3.13.2.tar.gz && \
     tar -xzf cmake-3.13.2.tar.gz && \
