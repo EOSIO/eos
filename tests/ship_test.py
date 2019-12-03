@@ -1,24 +1,20 @@
 #!/usr/bin/env python3
 
 from testUtils import Utils
-import testUtils
 from datetime import datetime
+from datetime import timedelta
 import time
 from Cluster import Cluster
-from core_symbol import CORE_SYMBOL
 from WalletMgr import WalletMgr
-from Node import BlockType
-from Node import Node
 from TestHelper import TestHelper
 from TestHelper import AppArgs
 
-import decimal
 import json
-import math
 import os
 import re
 import shutil
 import signal
+import sys
 
 ###############################################################
 # ship_test
@@ -32,8 +28,6 @@ import signal
 ###############################################################
 
 Print=Utils.Print
-
-from core_symbol import CORE_SYMBOL
 
 appArgs = AppArgs()
 extraArgs = appArgs.add(flag="--num-requests", type=int, help="How many requests that each ship_client requests", default=1)
@@ -95,9 +89,9 @@ try:
     if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
     clients = []
     files = []
-    shipTempDir = "%s/ship/" % (Utils.DataDir)
+    shipTempDir = os.path.join(Utils.DataDir, "ship")
     os.makedirs(shipTempDir, exist_ok = True)
-    shipClientFilePrefix = "%s/client" % (shipTempDir)
+    shipClientFilePrefix = os.path.join(shipTempDir, "client")
 
     starts = []
     for i in range(0, args.num_clients):
@@ -113,22 +107,19 @@ try:
 
     Print("Stopping all %d clients" % (args.num_clients))
 
-    index = 0
-    for popen, _ in clients:
+    for index, (popen, _), (out, err), start in zip(range(len(clients)), clients, files, starts):
         popen.wait()
-        Print("Stopped client %d.  Ran for %s seconds." % (index, time.perf_counter() - starts[index]))
-        filePair = files[index]
-        filePair[0].close()
-        filePair[1].close()
-        index += 1
+        Print("Stopped client %d.  Ran for %.3f seconds." % (index, time.perf_counter() - start))
+        out.close()
+        err.close()
 
     Print("Shutdown state_history_plugin nodeos")
     shipNode.kill(signal.SIGTERM)
 
     files = None
 
-    maxFirstBN = None
-    minLastBN = None
+    maxFirstBN = -1
+    minLastBN = sys.maxsize
     for index in range(0, len(clients)):
         done = False
         shipClientErrorFile = "%s%d.err" % (shipClientFilePrefix, i)
@@ -154,14 +145,8 @@ try:
                     done = True
                     firstBlockNum = status["first_block_num"]
                     lastBlockNum = status["last_block_num"]
-                    if maxFirstBN is None:
-                        # initialize both
-                        maxFirstBN = firstBlockNum
-                        minLastBN = lastBlockNum
-                    else:
-                        maxFirstBN = max(maxFirstBN, firstBlockNum)
-                        minLastBN = min(minLastBN, lastBlockNum)
-                    break
+                    maxFirstBN = max(maxFirstBN, firstBlockNum)
+                    minLastBN = min(minLastBN, lastBlockNum)
                 if statusDesc == "error":
                     Utils.errorExit("javascript client reporting error see: %s." % (shipClientErrorFile))
 
@@ -170,8 +155,8 @@ try:
     Print("All clients active from block num: %s to block_num: %s." % (maxFirstBN, minLastBN))
 
     stderrFile=Utils.getNodeDataDir(shipNodeNum, "stderr.txt")
-    biggestDeltaSeconds = 0.0
-    totalDeltaSeconds = 0.0
+    biggestDelta = timedelta(seconds=0)
+    totalDelta = timedelta(seconds=0)
     timeCount = 0
     with open(stderrFile, 'r') as f:
         line = f.readline()
@@ -185,49 +170,43 @@ try:
                 if blockNum > maxFirstBN:
                     # ship requests can only affect time after clients started
                     timeFmt = '%Y-%m-%dT%H:%M:%S.%f'
-                    rcvTime = datetime.strptime(rcvTimeStr, '%Y-%m-%dT%H:%M:%S.%f')
+                    rcvTime = datetime.strptime(rcvTimeStr, timeFmt)
                     prodTime = datetime.strptime(prodTimeStr, timeFmt)
                     delta = rcvTime - prodTime
-                    deltaSeconds = delta.total_seconds()
-                    if deltaSeconds > biggestDeltaSeconds:
-                        biggestDeltaSeconds = deltaSeconds
+                    biggestDelta = max(delta, biggestDelta)
 
-                    totalDeltaSeconds += deltaSeconds
+                    totalDelta += delta
                     timeCount += 1
-                    assert deltaSeconds < 0.100, Print("ERROR: block_num: %s took more than %.3f seconds to be received." % (blockNum, deltaSeconds))
+                    assert delta.total_seconds() < 0.100, Print("ERROR: block_num: %s took more than %.3f seconds to be received." % (blockNum, deltaSeconds))
 
             line = f.readline()
 
-    avg = totalDeltaSeconds / timeCount if timeCount > 0 else 0.0
-    Print("Greatest delay time: %s seconds, average delay time: %s seconds" % (biggestDeltaSeconds, avg))
+    avg = totalDelta.total_seconds() / timeCount if timeCount > 0 else 0.0
+    Print("Greatest delay time: %.3f seconds, average delay time: %.3f seconds" % (biggestDelta.total_seconds(), avg))
 
     testSuccessful = True
 finally:
     TestHelper.shutdown(cluster, walletMgr, testSuccessful=testSuccessful, killEosInstances=killEosInstances, killWallet=killWallet, keepLogs=keepLogs, cleanRun=killAll, dumpErrorDetails=dumpErrorDetails)
     if shipTempDir is not None:
         if dumpErrorDetails and not testSuccessful:
-            for index in range(0, args.num_clients):
+            def printTruncatedFile(filename, maxLines):
                 Print(Utils.FileDivider)
-                shipClientErrorFile = "%s%d.err" % (shipClientFilePrefix, i)
-                with open(shipClientErrorFile, "r") as f:
-                    Print("Contents of %s" % (shipClientErrorFile))
+                with open(filename, "r") as f:
+                    Print("Contents of %s" % (filename))
                     line = f.readline()
-                    while line:
-                        Print(line)
-                        line = f.readline()
-                Print(Utils.FileDivider)
-                lineCount = 0
-                shipClientOutputFile = "%s%d.out" % (shipClientFilePrefix, i)
-                with open(shipClientOutputFile, "r") as f:
-                    Print("Contents of %s" % (shipClientOutputFile))
-                    line = f.readline()
-                    maxLines = 20000
+                    lineCount = 0
                     while line and lineCount < maxLines:
                         Print(line)
                         lineCount += 1
                         line = f.readline()
                     if line:
                         Print("...       CONTENT TRUNCATED AT %d lines" % (maxLines))
+
+            for index in range(0, args.num_clients):
+                # error file should not contain much content, so if there are lots of lines it is likely useless
+                printTruncatedFile("%s%d.err" % (shipClientFilePrefix, i), maxLines=1000)
+                # output file should have lots of output, but if user passes in a huge number of requests, these could go on forever
+                printTruncatedFile("%s%d.out" % (shipClientFilePrefix, i), maxLines=20000)
 
         if not keepLogs:
             shutil.rmtree(shipTempDir, ignore_errors=True)
