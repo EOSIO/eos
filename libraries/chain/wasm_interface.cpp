@@ -180,6 +180,7 @@ class privileged_api : public context_aware_api {
       /**
        * update the resource limits associated with an account.  Note these new values will not take effect until the
        * next resource "tick" which is currently defined as a cycle boundary inside a block.
+       * Deprecated in favor of set_resource_limit.
        *
        * @param account - the account whose limits are being modified
        * @param ram_bytes - the limit for ram bytes
@@ -199,15 +200,61 @@ class privileged_api : public context_aware_api {
          context.control.get_resource_limits_manager().get_account_limits( account, ram_bytes, net_weight, cpu_weight);
       }
 
-      void set_disk_limit( account_name account, int64_t disk_limit ) {
-         EOS_ASSERT(disk_limit >= -1, wasm_execution_error, "invalid value for disk resource limit expected [-1,INT64_MAX]");
-         if( context.control.get_mutable_resource_limits_manager().set_account_disk_limit( account, disk_limit ) ) {
-            context.trx_context.validate_disk_usage.insert( account );
+      /**
+       * update a single resource limit associated with an account.  Note the new value will not take effect until the
+       * next resource "tick" which is currently defined as a cycle boundary inside a block.
+       *
+       * @param account - the account whose limits are being modified
+       * @param resource - the resource to update, which should be either ram, disk, cpu, or net.
+       * @param limit - the new limit.  A value of -1 means unlimited.
+       *
+       * @pre limit >= -1
+       */
+      void set_resource_limit( account_name account, name resource, int64_t limit ) {
+         EOS_ASSERT(limit >= -1, wasm_execution_error, "invalid value for {resource} resource limit expected [-1,INT64_MAX]", ("resource", resource));
+         auto& manager = context.control.get_mutable_resource_limits_manager();
+         if( resource == N(ram) ) {
+            int64_t ram, net, cpu;
+            manager.get_account_limits(account, ram, net, cpu);
+            if( manager.set_account_limits( account, limit, net, cpu ) ) {
+               context.trx_context.validate_ram_usage.insert( account );
+            }
+         } else if( resource == N(net) ) {
+            int64_t ram, net, cpu;
+            manager.get_account_limits(account, ram, net, cpu);
+            manager.set_account_limits( account, ram, limit, cpu );
+         } else if( resource == N(cpu) ) {
+            int64_t ram, net, cpu;
+            manager.get_account_limits(account, ram, net, cpu);
+            manager.set_account_limits( account, ram, net, limit );
+         } else if( resource == N(disk) ) {
+            if( context.control.get_mutable_resource_limits_manager().set_account_disk_limit( account, limit ) ) {
+               context.trx_context.validate_disk_usage.insert( account );
+            }
+         } else {
+            EOS_ASSERT(false, wasm_execution_error, "unknown resource {resource}", ("resource", resource));
          }
       }
 
-      int64_t get_disk_limit( account_name account ) {
-         return context.control.get_resource_limits_manager().get_account_disk_limit( account );
+      int64_t get_resource_limit( account_name account, name resource ) {
+         const auto& manager = context.control.get_resource_limits_manager();
+         if( resource == N(ram) ) {
+            int64_t ram, net, cpu;
+            manager.get_account_limits( account, ram, net, cpu );
+            return ram;
+         } else if( resource == N(net) ) {
+            int64_t ram, net, cpu;
+            manager.get_account_limits( account, ram, net, cpu );
+            return net;
+         } else if( resource == N(cpu) ) {
+            int64_t ram, net, cpu;
+            manager.get_account_limits( account, ram, net, cpu );
+            return cpu;
+         } else if( resource == N(disk) ) {
+            return context.control.get_resource_limits_manager().get_account_disk_limit( account );
+         } else {
+            EOS_ASSERT(false, wasm_execution_error, "unknown resource {resource}", ("resource", resource));
+         }
       }
 
       int64_t set_proposed_producers_common( vector<producer_authority> && producers, bool validate_keys ) {
@@ -1925,8 +1972,8 @@ REGISTER_INTRINSICS(privileged_api,
    (activate_feature,                 void(int64_t)                         )
    (get_resource_limits,              void(int64_t,int,int,int)             )
    (set_resource_limits,              void(int64_t,int64_t,int64_t,int64_t) )
-   (get_disk_limit,                   int64_t(int64_t)                      )
-   (set_disk_limit,                   void(int64_t, int64_t)                )
+   (get_resource_limit,               int64_t(int64_t, int64_t)             )
+   (set_resource_limit,               void(int64_t, int64_t, int64_t)       )
    (set_proposed_producers,           int64_t(int,int)                      )
    (set_proposed_producers_ex,        int64_t(int64_t, int, int)            )
    (get_blockchain_parameters_packed, int(int, int)                         )
