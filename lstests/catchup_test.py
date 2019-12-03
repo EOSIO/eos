@@ -52,20 +52,6 @@ def start_gen(clus, begin):
     return end
 
 
-def stop_gen(clus):
-    try:
-        clus.call("send_raw", url=STOP_URL, node_id=1, error_level="info")
-    except LauncherServiceError as e:
-        if "\"code\": 14," in str(e):
-            clus.warn("Captured fc::invalid_operation_exception_code (14). Generation should have stopped.")
-            pass
-        else:
-            raise
-    stop = clus.check_sync().block_num
-    clus.info(f"Generation stops at block num {stop}")
-    return stop
-
-
 def count_gen(clus, begin, end):
     total = 0
     for i in range(begin + 1, end + 1):
@@ -119,10 +105,9 @@ def main():
         clus.info(">>> [Catch-up Test] --------------------- BEGIN ----------------------------------------------------")
         begin = create_accounts(clus)
         end = start_gen(clus, begin)
-        stop = stop_gen(clus)
         count_gen(clus, begin, end)
         for i in range(CATCHUP_ROUNDS):
-            stop = catchup(clus, stop, i+1)
+            end = catchup(clus, end, i+1)
         clus.info(">>> [Catch-up Test] --------------------- END ------------------------------------------------------")
 
 
