@@ -3300,6 +3300,8 @@ void controller_impl::on_activation<builtin_protocol_feature_t::kv_database>() {
       // resource management
       add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "set_resource_limit" );
       add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "get_resource_limit" );
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "set_kv_parameters_packed" );
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "get_kv_parameters_packed" );
    } );
 }
 

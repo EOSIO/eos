@@ -80,13 +80,30 @@ class kv_tester : public tester {
       } else if(db == N(eosio.kvram)) {
          name = N(setramlimit);
       } else {
-         BOOST_FAIL("Wring database id");
+         BOOST_FAIL("Wrong database id");
       }
       string action_type_name = sys_abi_ser.get_action_type(name);
       action act;
       act.account = config::system_account_name;
       act.name    = name;
       act.data    = sys_abi_ser.variant_to_binary(action_type_name, mvo()("account", account)("limit", limit), abi_serializer_max_time);
+      return base_tester::push_action(std::move(act), config::system_account_name.to_uint64_t());
+   }
+
+   action_result set_kv_limits(name db, uint32_t klimit, uint32_t vlimit) {
+      action_name name;
+      if(db == N(eosio.kvdisk)) {
+         name = N(diskkvlimits);
+      } else if(db == N(eosio.kvram)) {
+         name = N(ramkvlimits);
+      } else {
+         BOOST_FAIL("Wrong database id");
+      }
+      string action_type_name = sys_abi_ser.get_action_type(name);
+      action act;
+      act.account = config::system_account_name;
+      act.name    = name;
+      act.data    = sys_abi_ser.variant_to_binary(action_type_name, mvo()("k", klimit)("v", vlimit), abi_serializer_max_time);
       return base_tester::push_action(std::move(act), config::system_account_name.to_uint64_t());
    }
 
@@ -448,6 +465,15 @@ class kv_tester : public tester {
       k.resize(2*1024);
       v.push_back('a');
       BOOST_TEST("Value too large" == set(db, N(kvtest), k.c_str(), v));
+      BOOST_TEST_REQUIRE(set_kv_limits(db, 4, 4) == "");
+      k.resize(5*2);
+      v.resize(4);
+      BOOST_TEST("Key too large" == set(db, N(kvtest), k.c_str(), v));
+      k.resize(4*2);
+      BOOST_TEST_REQUIRE(set_kv_limits(db, 4, 4) == "");
+      v.push_back('a');
+      BOOST_TEST("Value too large" == set(db, N(kvtest), k.c_str(), v));
+      BOOST_TEST_REQUIRE(set_kv_limits(db, 1024, 256*1024) == "");
    }
 
    abi_serializer abi_ser;
