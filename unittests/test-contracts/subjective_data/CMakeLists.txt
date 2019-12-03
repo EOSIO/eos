@@ -1,0 +1,6 @@
+if( EOSIO_COMPILE_TEST_CONTRACTS )
+   add_contract( subjective_data subjective_data subjective_data.cpp )
+else()
+   configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/subjective_data.wasm ${CMAKE_CURRENT_BINARY_DIR}/subjective_data.wasm COPYONLY )
+   configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/subjective_data.abi  ${CMAKE_CURRENT_BINARY_DIR}/subjective_data.abi  COPYONLY )
+endif()

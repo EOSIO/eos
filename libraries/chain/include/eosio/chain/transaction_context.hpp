@@ -135,6 +135,8 @@ namespace eosio { namespace chain {
          bool                          explicit_billed_cpu_time = false;
 
          transaction_checktime_timer   transaction_timer;
+         subjective_data<transaction_context>
+                                       trx_subjective_data = subjective_data(*this);
 
       private:
          bool                          is_initialized = false;

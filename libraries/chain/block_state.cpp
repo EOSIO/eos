@@ -5,6 +5,7 @@ namespace eosio { namespace chain {
 
    namespace {
       constexpr auto additional_sigs_eid = additional_block_signatures_extension::extension_id();
+      constexpr auto subjective_data_eid = subjective_data_extension::extension_id();
 
       /**
        * Given a complete signed block, extract the validated additional signatures if present;
@@ -22,7 +23,7 @@ namespace eosio { namespace chain {
          auto exts = b->validate_and_extract_extensions();
 
          if ( exts.count(additional_sigs_eid) > 0 ) {
-            auto& additional_sigs = exts.lower_bound(additional_sigs_eid)->second.get<additional_block_signatures_extension>();
+            auto& additional_sigs = std::get<additional_block_signatures_extension>(exts.lower_bound(additional_sigs_eid)->second);
 
             return std::move(additional_sigs.signatures);
          }
@@ -30,6 +31,22 @@ namespace eosio { namespace chain {
          return {};
       }
 
+      /**
+       * Given a complete signed block, extract the subjective data if present;
+       *
+       * @param b complete signed block
+       * @return the bytes of subjective data
+       */
+      vector<uint8_t> extract_subjective_data( const signed_block_ptr& b)
+      {
+         auto exts = b->validate_and_extract_extensions();
+
+         if ( exts.count(subjective_data_eid) > 0 ) {
+            return std::move(std::get<subjective_data_extension>(exts.lower_bound(subjective_data_eid)->second).bytes);
+         }
+
+         return {};
+      }
       /**
        * Given a pending block header state, wrap the promotion to a block header state such that additional signatures
        * can be allowed based on activations *prior* to the promoted block and properly injected into the signed block
@@ -72,7 +89,13 @@ namespace eosio { namespace chain {
          return result;
       }
 
-   }
+      block_header_state handle_subjective_data(block_header_state&& bhs, signed_block& b) {
+         if (!bhs.subjective_data.empty()) {
+            emplace_extension(b.block_extensions, subjective_data_eid, fc::raw::pack(bhs.subjective_data));
+         }
+         return bhs;
+      }
+   } // namespace
 
    block_state::block_state( const block_header_state& prev,
                              signed_block_ptr b,
@@ -82,7 +105,7 @@ namespace eosio { namespace chain {
                                                        const vector<digest_type>& )>& validator,
                              bool skip_validate_signee
                            )
-   :block_header_state( prev.next( *b, extract_additional_signatures(b, pfs, prev.activated_protocol_features), pfs, validator, skip_validate_signee ) )
+   :block_header_state( prev.next( *b, extract_additional_signatures(b, pfs, prev.activated_protocol_features), extract_subjective_data(b), pfs, validator, skip_validate_signee ) )
    ,block( std::move(b) )
    {}
 
@@ -95,7 +118,10 @@ namespace eosio { namespace chain {
                                                        const vector<digest_type>& )>& validator,
                              const signer_callback_type& signer
                            )
-   :block_header_state( inject_additional_signatures( std::move(cur), *b, pfs, validator, signer ) )
+   :block_header_state(
+         handle_subjective_data(
+            inject_additional_signatures( std::move(cur), *b, pfs, validator, signer ),
+            *b))
    ,block( std::move(b) )
    ,_pub_keys_recovered( true ) // called by produce_block so signature recovery of trxs must have been done
    ,_cached_trxs( std::move(trx_metas) )

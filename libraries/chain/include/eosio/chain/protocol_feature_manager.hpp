@@ -24,6 +24,7 @@ enum class builtin_protocol_feature_t : uint32_t {
    webauthn_key,
    wtmsig_block_signatures,
    contract_pay_trx_costs,
+   subjective_data,
 };
 
 struct protocol_feature_subjective_restrictions {

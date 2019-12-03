@@ -317,6 +317,7 @@ struct controller_impl {
       set_activation_handler<builtin_protocol_feature_t::webauthn_key>();
       set_activation_handler<builtin_protocol_feature_t::wtmsig_block_signatures>();
       set_activation_handler<builtin_protocol_feature_t::contract_pay_trx_costs>();
+      set_activation_handler<builtin_protocol_feature_t::subjective_data>();
 
       self.irreversible_block.connect([this](const block_state_ptr& bsp) {
          wasmif.current_lib(bsp->block_num);
@@ -1095,6 +1096,20 @@ struct controller_impl {
       return fc::make_scoped_exit( std::move(callback) );
    }
 
+   void add_subjective_data(const transaction_context& trx_ctx) {
+      auto& pbhs = pending->_block_stage.get<building_block>()._pending_block_header_state;
+      EOS_ASSERT(trx_ctx.trx_subjective_data.validate_trx_cpu(trx_ctx.billed_cpu_time_us),
+            subjective_data_exception,
+            "subjective data trx cpu time invalid");
+      EOS_ASSERT(trx_ctx.trx_subjective_data.validate_wall_time(pbhs.timestamp.to_time_point().time_since_epoch()),
+            subjective_data_exception,
+            "subjective data wall time invalid");
+
+      pbhs.subjective_data.insert(pbhs.subjective_data.end(),
+                                  trx_ctx.trx_subjective_data.data.begin(),
+                                  trx_ctx.trx_subjective_data.data.end());
+   }
+
    transaction_trace_ptr apply_onerror( const generated_transaction& gtrx,
                                         fc::time_point deadline,
                                         fc::time_point start,
@@ -1284,6 +1299,7 @@ struct controller_impl {
          undo_session.squash();
 
          restore.cancel();
+         add_subjective_data(trx_context);
 
          return trace;
       } catch( const disallowed_transaction_extensions_bad_block_exception& ) {
@@ -1479,6 +1495,8 @@ struct controller_impl {
                restore.cancel();
                trx_context.squash();
             }
+
+            add_subjective_data(trx_context);
 
             return trace;
          } catch( const disallowed_transaction_extensions_bad_block_exception& ) {
@@ -3285,7 +3303,14 @@ void controller_impl::on_activation<builtin_protocol_feature_t::contract_pay_trx
    } );
 }
 
-
+template<>
+void controller_impl::on_activation<builtin_protocol_feature_t::subjective_data>() {
+   db.modify( db.get<protocol_state_object>(), [&]( auto& ps ) {
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "get_trx_cpu_bill" );
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "get_wall_time" );
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "get_random" );
+   } );
+}
 
 /// End of protocol feature activation handlers
 

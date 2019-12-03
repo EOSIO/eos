@@ -58,6 +58,7 @@ namespace detail {
       flat_map<account_name,uint32_t>   producer_to_last_implied_irb;
       block_signing_authority           valid_block_signing_authority;
       vector<uint8_t>                   confirm_count;
+      vector<uint8_t>                   subjective_data;
    };
 
    struct schedule_info {
@@ -89,6 +90,7 @@ struct pending_block_header_state : public detail::block_header_state_common {
 
    block_header_state  finish_next( const signed_block_header& h,
                                     vector<signature_type>&& additional_signatures,
+                                    vector<uint8_t>&& subjective_data,
                                     const protocol_feature_set& pfs,
                                     const std::function<void( block_timestamp_type,
                                                               const flat_set<digest_type>&,
@@ -137,6 +139,7 @@ struct block_header_state : public detail::block_header_state_common {
 
    block_header_state   next( const signed_block_header& h,
                               vector<signature_type>&& additional_signatures,
+                              vector<uint8_t>&& subjective_data,
                               const protocol_feature_set& pfs,
                               const std::function<void( block_timestamp_type,
                                                         const flat_set<digest_type>&,
@@ -169,6 +172,7 @@ FC_REFLECT( eosio::chain::detail::block_header_state_common,
             (producer_to_last_implied_irb)
             (valid_block_signing_authority)
             (confirm_count)
+            (subjective_data)
 )
 
 FC_REFLECT( eosio::chain::detail::schedule_info,

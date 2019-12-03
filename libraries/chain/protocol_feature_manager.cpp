@@ -197,6 +197,17 @@ Allows a contract to accept CPU and NET billing costs of all actions in a transa
 */
             {}
          } )
+         (  builtin_protocol_feature_t::subjective_data, builtin_protocol_feature_spec{
+            "SUBJECTIVE_DATA",
+            fc::variant("93a445ebb40ddd963aef21ae035ffaf7508a7b1dbcc1bb12e067fbf902520e63").as<digest_type>(),
+            // SHA256 hash of the raw message below within the comment delimiters (do not modify message below).
+/*
+Builtin protocol feature: SUBJECTIVE_DATA
+
+Adds support for contracts to access subjective data throught the intrinsics `get_trx_cpu_bill`, `get_wall_time` and `get_random`.
+*/
+            {}
+         } )
 
    ;
 

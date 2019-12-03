@@ -1,0 +1,42 @@
+{
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT ",
+    "version": "eosio::abi/1.1",
+    "types": [],
+    "structs": [
+        {
+            "name": "trxcpu",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "trxcpu2",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "walltime",
+            "base": "",
+            "fields": []
+        }
+    ],
+    "actions": [
+        {
+            "name": "trxcpu",
+            "type": "trxcpu",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "trxcpu2",
+            "type": "trxcpu2",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "walltime",
+            "type": "walltime",
+            "ricardian_contract": ""
+        }
+    ],
+    "tables": [],
+    "ricardian_clauses": [],
+    "variants": []
+}

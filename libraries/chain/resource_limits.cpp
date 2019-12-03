@@ -272,7 +272,6 @@ bool resource_limits_manager::set_account_limits( const account_name& account, i
       pending_limits.cpu_weight = cpu_weight;
    });
 
-   std::cout << "set_account_limits " << is_transient << " " << net_weight << " " << cpu_weight << "\n";
    return decreased_limit;
 }
 

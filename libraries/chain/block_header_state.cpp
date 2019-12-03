@@ -319,6 +319,7 @@ namespace eosio { namespace chain {
    block_header_state pending_block_header_state::finish_next(
                                  const signed_block_header& h,
                                  vector<signature_type>&& additional_signatures,
+                                 vector<uint8_t>&& subjective_data,
                                  const protocol_feature_set& pfs,
                                  const std::function<void( block_timestamp_type,
                                                            const flat_set<digest_type>&,
@@ -332,10 +333,18 @@ namespace eosio { namespace chain {
          EOS_ASSERT(wtmsig_enabled, producer_schedule_exception, "Block contains multiple signatures before WTMsig block signatures are enabled" );
       }
 
+      if( !subjective_data.empty() ) {
+         bool subjective_data_enabled = detail::is_builtin_activated(prev_activated_protocol_features, pfs, builtin_protocol_feature_t::subjective_data);
+         EOS_ASSERT(subjective_data_enabled, subjective_data_exception, "Block contains subjective data before enabling the subjective_data feature" );
+      }
+
       auto result = std::move(*this)._finish_next( h, pfs, validator );
 
       if( !additional_signatures.empty() ) {
          result.additional_signatures = std::move(additional_signatures);
+      }
+      if( !subjective_data.empty() ) {
+         result.subjective_data = std::move(subjective_data);
       }
 
       // ASSUMPTION FROM controller_impl::apply_block = all untrusted blocks will have their signatures pre-validated here
@@ -380,13 +389,14 @@ namespace eosio { namespace chain {
    block_header_state block_header_state::next(
                         const signed_block_header& h,
                         vector<signature_type>&& _additional_signatures,
+                        vector<uint8_t>&& _subjective_data,
                         const protocol_feature_set& pfs,
                         const std::function<void( block_timestamp_type,
                                                   const flat_set<digest_type>&,
                                                   const vector<digest_type>& )>& validator,
                         bool skip_validate_signee )const
    {
-      return next( h.timestamp, h.confirmed ).finish_next( h, std::move(_additional_signatures), pfs, validator, skip_validate_signee );
+      return next( h.timestamp, h.confirmed ).finish_next( h, std::move(_additional_signatures), std::move(_subjective_data), pfs, validator, skip_validate_signee );
    }
 
    digest_type   block_header_state::sig_digest()const {

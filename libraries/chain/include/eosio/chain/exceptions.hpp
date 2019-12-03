@@ -608,6 +608,8 @@ namespace eosio { namespace chain {
                                  3210002, "Charged cost net error" )
 
 
+   FC_DECLARE_DERIVED_EXCEPTION( subjective_data_exception, chain_exception,
+                                 3211000, "Subjective data exception" )
 
    FC_DECLARE_DERIVED_EXCEPTION( mongo_db_exception, chain_exception,
                                  3220000, "Mongo DB exception" )

@@ -1,6 +1,9 @@
 #pragma once
 #include <eosio/chain/block_header.hpp>
 #include <eosio/chain/transaction.hpp>
+#include <eosio/chain/subjective_data.hpp>
+
+#include <variant>
 
 namespace eosio { namespace chain {
 
@@ -70,16 +73,38 @@ namespace eosio { namespace chain {
       vector<signature_type> signatures;
    };
 
+   // forward declaration
+   class transaction_context;
+
+   struct subjective_data_extension {
+      static constexpr uint16_t extension_id() { return 3; }
+      static constexpr bool     enforce_unique() { return true; }
+
+      subjective_data_extension() = default;
+
+      subjective_data_extension( const subjective_data<transaction_context>& data )
+      :bytes(data.data), sd(&data)
+      {}
+
+      subjective_data_extension( subjective_data<transaction_context>&& data )
+      :bytes(std::move(data.data)), sd(&data)
+      {}
+
+      vector<uint8_t> bytes;
+      const subjective_data<transaction_context>* sd = nullptr; // only needed for final validation
+   };
+
    namespace detail {
       template<typename... Ts>
       struct block_extension_types {
-         using block_extension_t = fc::static_variant< Ts... >;
+         using block_extension_t = std::variant< Ts... >;
          using decompose_t = decompose< Ts... >;
       };
    }
 
    using block_extension_types = detail::block_extension_types<
-         additional_block_signatures_extension
+         additional_block_signatures_extension,
+         subjective_data_extension
    >;
 
    using block_extension = block_extension_types::block_extension_t;
@@ -118,4 +143,5 @@ FC_REFLECT_ENUM( eosio::chain::transaction_receipt::status_enum,
 FC_REFLECT(eosio::chain::transaction_receipt_header, (status)(cpu_usage_us)(net_usage_words) )
 FC_REFLECT_DERIVED(eosio::chain::transaction_receipt, (eosio::chain::transaction_receipt_header), (trx) )
 FC_REFLECT(eosio::chain::additional_block_signatures_extension, (signatures));
+FC_REFLECT(eosio::chain::subjective_data_extension, (bytes));
 FC_REFLECT_DERIVED(eosio::chain::signed_block, (eosio::chain::signed_block_header), (transactions)(block_extensions) )

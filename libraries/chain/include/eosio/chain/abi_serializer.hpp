@@ -527,12 +527,21 @@ namespace impl {
          mvo("producer_signature", block.producer_signature);
          add(mvo, "transactions", block.transactions, resolver, ctx);
 
+
          // process contents of block.block_extensions
          auto block_exts = block.validate_and_extract_extensions();
-         if ( block_exts.count(additional_block_signatures_extension::extension_id()) > 0) {
-            const auto& additional_signatures = block_exts.lower_bound(additional_block_signatures_extension::extension_id())->second.get<additional_block_signatures_extension>();
-            mvo("additional_signatures", additional_signatures);
-         }
+
+         const auto& create_mvo = [&](const std::string& s, auto v) {
+            using ext_t = decltype(v);
+            const auto id = ext_t::extension_id();
+            if (block_exts.count(id) > 0) {
+               const auto& ext = std::get<ext_t>(block_exts.lower_bound(id)->second);
+               mvo(s, ext);
+            }
+         };
+
+         create_mvo("additional_signatures", additional_block_signatures_extension{});
+         create_mvo("subjective_data", subjective_data_extension{});
 
          out(name, std::move(mvo));
       }

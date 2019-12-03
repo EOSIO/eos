@@ -3,6 +3,8 @@
 #include <eosio/chain/generated_transaction_object.hpp>
 #include <eosio/testing/tester.hpp>
 
+#include <chrono>
+
 #include <Runtime/Runtime.h>
 
 #include <fc/variant_object.hpp>
@@ -1838,5 +1840,225 @@ BOOST_AUTO_TEST_CASE( contracts_pay_transaction_costs) { try {
    BOOST_CHECK(nw == 100000);
    BOOST_CHECK(cw == 100000);
 } FC_LOG_AND_RETHROW() }
+
+BOOST_AUTO_TEST_CASE(subjective_data_test) { try {
+   tester c( setup_policy::preactivate_feature_and_new_bios );
+
+   const auto& pfm = c.control->get_protocol_feature_manager();
+   const auto& d = pfm.get_builtin_digest(builtin_protocol_feature_t::subjective_data);
+   BOOST_REQUIRE(d);
+
+   c.produce_blocks(2);
+
+   // sync a remote node into this chain
+   tester remote( setup_policy::none );
+   push_blocks(c, remote);
+
+
+   // activate the feature
+   c.preactivate_protocol_features( {*d} );
+   remote.push_block(c.produce_block());
+
+
+   auto last_legacy_block = c.produce_block();
+
+   { // ensure subjective_data_extension is rejected
+      const auto& hbs = remote.control->head_block_state();
+
+      // create a bad block that has the subjective data extension before the feature upgrade
+      auto bad_block = std::make_shared<signed_block>(last_legacy_block->clone());
+      emplace_extension(
+              bad_block->block_extensions,
+              subjective_data_extension::extension_id(),
+              fc::raw::pack(std::vector<uint8_t>{0,0,0})
+      );
+
+      // ensure it is rejected as an unknown extension
+      BOOST_REQUIRE_EXCEPTION(
+         remote.push_block(bad_block), subjective_data_exception,
+         fc_exception_message_is( "Block contains subjective data before enabling the subjective_data feature" )
+      );
+   }
+
+   {
+      const account_name acnt("acnt");
+      c.create_accounts( {acnt} );
+      c.set_code( acnt, contracts::subjective_data_wasm() );
+      c.set_abi( acnt, contracts::subjective_data_abi().data() );
+      c.produce_block();
+
+      // check walltime
+      {
+         auto pre_block_time = std::chrono::high_resolution_clock::now();
+         c.push_action(acnt, name("walltime"), acnt, fc::mutable_variant_object());
+
+         // test out that subjective data is part of the block
+         auto b = c.produce_block();
+         auto exts = b->validate_and_extract_extensions();
+         if (exts.count(subjective_data_extension::extension_id()) > 0) {
+            auto& subj_data = std::get<subjective_data_extension>(exts.lower_bound(subjective_data_extension::extension_id())->second);
+            auto post_block_time = std::chrono::high_resolution_clock::now();
+            uint64_t lower_bound = std::chrono::duration_cast<std::chrono::microseconds>(pre_block_time.time_since_epoch()).count();
+            uint64_t upper_bound = std::chrono::duration_cast<std::chrono::microseconds>(post_block_time.time_since_epoch()).count();
+            uint64_t subjective_time = 0;
+            memcpy(&subjective_time, subj_data.bytes.data(), 8);
+            BOOST_REQUIRE(subj_data.bytes.size() == 16);
+            BOOST_REQUIRE(lower_bound <= subjective_time);
+            BOOST_REQUIRE(subjective_time <= upper_bound);
+
+            uint64_t subjective_time2 = 0;
+            memcpy(&subjective_time2, subj_data.bytes.data()+4, 8);
+            BOOST_REQUIRE(subjective_time <= subjective_time2);
+            BOOST_REQUIRE(lower_bound <= subjective_time2);
+            BOOST_REQUIRE(subjective_time2 <= upper_bound);
+         }
+      }
+      // check trxcpu
+      {
+         auto pre_block_time = std::chrono::high_resolution_clock::now();
+         c.push_action(acnt, name("trxcpu2"), acnt, fc::mutable_variant_object());
+
+         // test out that subjective data is part of the block
+         auto b = c.produce_block();
+         auto exts = b->validate_and_extract_extensions();
+         if (exts.count(subjective_data_extension::extension_id()) > 0) {
+            auto& subj_data = std::get<subjective_data_extension>(exts.lower_bound(subjective_data_extension::extension_id())->second);
+            auto post_block_time = std::chrono::high_resolution_clock::now();
+            uint32_t lower_bound = std::chrono::duration_cast<std::chrono::microseconds>(pre_block_time.time_since_epoch()).count();
+            uint32_t upper_bound = std::chrono::duration_cast<std::chrono::microseconds>(post_block_time.time_since_epoch()).count();
+            uint32_t cpu  = 0;
+            uint32_t cpu2 = 0;
+            BOOST_REQUIRE(subj_data.bytes.size() == 8);
+            memcpy(&cpu, subj_data.bytes.data(), 4);
+            memcpy(&cpu2, subj_data.bytes.data()+4, 4);
+            /*
+            BOOST_REQUIRE(lower_bound <= subjective_time);
+            BOOST_REQUIRE(subjective_time <= upper_bound);
+            */
+         }
+      }
+
+   }
+
+} FC_LOG_AND_RETHROW() }
+
+#if 0
+BOOST_AUTO_TEST_CASE( producer_schedule_change_extension_test ) { try {
+   tester c( setup_policy::preactivate_feature_and_new_bios );
+
+   const auto& pfm = c.control->get_protocol_feature_manager();
+   const auto& d = pfm.get_builtin_digest(builtin_protocol_feature_t::wtmsig_block_signatures);
+   BOOST_REQUIRE(d);
+
+   c.produce_blocks(2);
+
+   // sync a remote node into this chain
+   tester remote( setup_policy::none );
+   push_blocks(c, remote);
+
+   // activate the feature
+   // there is a 1 block delay before header-only validation (which is responsible for extension validation) can be
+   // aware of the activation.  So the expectation is that if it is activated in the _state_ at block N, block N + 1
+   // will bear an extension making header-only validators aware of it, and therefore block N + 2 is the first block
+   // where a block may bear a downstream extension.
+   c.preactivate_protocol_features( {*d} );
+   remote.push_block(c.produce_block());
+
+   auto last_legacy_block = c.produce_block();
+
+
+   { // ensure producer_schedule_change_extension is rejected
+      const auto& hbs = remote.control->head_block_state();
+
+      // create a bad block that has the producer schedule change extension before the feature upgrade
+      auto bad_block = std::make_shared<signed_block>(last_legacy_block->clone());
+      emplace_extension(
+              bad_block->header_extensions,
+              producer_schedule_change_extension::extension_id(),
+              fc::raw::pack(std::make_pair(hbs->active_schedule.version + 1, std::vector<char>{}))
+      );
+
+      // re-sign the bad block
+      auto header_bmroot = digest_type::hash( std::make_pair( bad_block->digest(), remote.control->head_block_state()->blockroot_merkle ) );
+      auto sig_digest = digest_type::hash( std::make_pair(header_bmroot, remote.control->head_block_state()->pending_schedule.schedule_hash) );
+      bad_block->producer_signature = remote.get_private_key(N(eosio), "active").sign(sig_digest);
+
+      // ensure it is rejected as an unknown extension
+      BOOST_REQUIRE_EXCEPTION(
+         remote.push_block(bad_block), producer_schedule_exception,
+         fc_exception_message_is( "Block header producer_schedule_change_extension before activation of WTMsig Block Signatures" )
+      );
+   }
+
+   { // ensure that non-null new_producers is accepted (and fails later in validation)
+      const auto& hbs = remote.control->head_block_state();
+
+      // create a bad block that has the producer schedule change extension before the feature upgrade
+      auto bad_block = std::make_shared<signed_block>(last_legacy_block->clone());
+      bad_block->new_producers = legacy::producer_schedule_type{hbs->active_schedule.version + 1, {}};
+
+      // re-sign the bad block
+      auto header_bmroot = digest_type::hash( std::make_pair( bad_block->digest(), remote.control->head_block_state()->blockroot_merkle ) );
+      auto sig_digest = digest_type::hash( std::make_pair(header_bmroot, remote.control->head_block_state()->pending_schedule.schedule_hash) );
+      bad_block->producer_signature = remote.get_private_key(N(eosio), "active").sign(sig_digest);
+
+      // ensure it is accepted (but rejected because it doesn't match expected state)
+      BOOST_REQUIRE_EXCEPTION(
+         remote.push_block(bad_block), wrong_signing_key,
+         fc_exception_message_is( "block signed by unexpected key" )
+      );
+   }
+
+   remote.push_block(last_legacy_block);
+
+   // propagate header awareness of the activation.
+   auto first_new_block = c.produce_block();
+
+   {
+      const auto& hbs = remote.control->head_block_state();
+
+      // create a bad block that has the producer schedule change extension that is valid but not warranted by actions in the block
+      auto bad_block = std::make_shared<signed_block>(first_new_block->clone());
+      emplace_extension(
+              bad_block->header_extensions,
+              producer_schedule_change_extension::extension_id(),
+              fc::raw::pack(std::make_pair(hbs->active_schedule.version + 1, std::vector<char>{}))
+      );
+
+      // re-sign the bad block
+      auto header_bmroot = digest_type::hash( std::make_pair( bad_block->digest(), remote.control->head_block_state()->blockroot_merkle ) );
+      auto sig_digest = digest_type::hash( std::make_pair(header_bmroot, remote.control->head_block_state()->pending_schedule.schedule_hash) );
+      bad_block->producer_signature = remote.get_private_key(N(eosio), "active").sign(sig_digest);
+
+      // ensure it is rejected because it doesn't match expected state (but the extention was accepted)
+      BOOST_REQUIRE_EXCEPTION(
+         remote.push_block(bad_block), wrong_signing_key,
+         fc_exception_message_is( "block signed by unexpected key" )
+      );
+   }
+
+   { // ensure that non-null new_producers is rejected
+      const auto& hbs = remote.control->head_block_state();
+
+      // create a bad block that has the producer schedule change extension before the feature upgrade
+      auto bad_block = std::make_shared<signed_block>(first_new_block->clone());
+      bad_block->new_producers = legacy::producer_schedule_type{hbs->active_schedule.version + 1, {}};
+
+      // re-sign the bad block
+      auto header_bmroot = digest_type::hash( std::make_pair( bad_block->digest(), remote.control->head_block_state()->blockroot_merkle ) );
+      auto sig_digest = digest_type::hash( std::make_pair(header_bmroot, remote.control->head_block_state()->pending_schedule.schedule_hash) );
+      bad_block->producer_signature = remote.get_private_key(N(eosio), "active").sign(sig_digest);
+
+      // ensure it is rejected because the new_producers field is not null
+      BOOST_REQUIRE_EXCEPTION(
+         remote.push_block(bad_block), producer_schedule_exception,
+         fc_exception_message_is( "Block header contains legacy producer schedule outdated by activation of WTMsig Block Signatures" )
+      );
+   }
+
+   remote.push_block(first_new_block);
+   remote.push_block(c.produce_block());
+} FC_LOG_AND_RETHROW() }
+#endif
 
 BOOST_AUTO_TEST_SUITE_END()
