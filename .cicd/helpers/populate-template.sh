@@ -12,5 +12,5 @@ else # Mac OSX
     FILE_EXTENSION=".sh"
 fi
 echo "$DOCKER_COMMANDS" > /tmp/docker-commands
-awk 'NR==4{print;system("cat /tmp/docker-commands");next} 1' .cicd/platform-templates/${FILE:-$IMAGE_TAG}${FILE_EXTENSION} > /tmp/$POP_FILE_NAME
+awk 'NR==4{print;system("cat /tmp/docker-commands");next} 1' .cicd/platform-templates/${FILE:-"${IMAGE_TAG}$FILE_EXTENSION"}> /tmp/$POP_FILE_NAME
 chmod +x /tmp/$POP_FILE_NAME
