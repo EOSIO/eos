@@ -11,3 +11,4 @@ else # Mac OSX
 fi
 echo "$DOCKER_COMMANDS" > /tmp/docker-commands
 awk 'NR==4{print;system("cat /tmp/docker-commands");next} 1' .cicd/platform-templates/$PLATFORM_TYPE/$FILE > /tmp/$POP_FILE_NAME
+chmod +x /tmp/$POP_FILE_NAME
