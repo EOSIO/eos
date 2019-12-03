@@ -31,7 +31,7 @@ auto next( unapplied_transaction_queue& q ) {
    return trx;
 }
 
-auto create_test_block_state( std::vector<transaction_metadata_ptr> trx_metas ) {
+auto create_test_block_state( deque<transaction_metadata_ptr> trx_metas ) {
    signed_block_ptr block = std::make_shared<signed_block>();
    for( auto& trx_meta : trx_metas ) {
       block->transactions.emplace_back( *trx_meta->packed_trx() );

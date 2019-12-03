@@ -65,7 +65,6 @@ namespace eosio { namespace chain {
       trace->block_num = c.head_block_num() + 1;
       trace->block_time = c.pending_block_time();
       trace->producer_block_id = c.pending_producer_block_id();
-      executed.reserve( trx.total_actions() );
    }
 
    void transaction_context::disallow_transaction_extensions( const char* error_msg )const {
@@ -149,7 +148,7 @@ namespace eosio { namespace chain {
 
       eager_net_limit = net_limit;
 
-      // Possible lower eager_net_limit to what the billed accounts can pay plus some (objective) leeway
+      // Possibly lower eager_net_limit to what the billed accounts can pay plus some (objective) leeway
       auto new_eager_net_limit = std::min( eager_net_limit, static_cast<uint64_t>(account_net_limit + cfg.net_usage_leeway) );
       if( new_eager_net_limit < eager_net_limit ) {
          eager_net_limit = new_eager_net_limit;
