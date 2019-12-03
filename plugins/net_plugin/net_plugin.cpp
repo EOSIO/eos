@@ -1525,7 +1525,7 @@ namespace eosio {
          }
       }
       if( req.req_blocks.mode == catch_up ) {
-         controller& cc = chain_plug->chain();
+         const controller& cc = chain_plug->chain();
          const auto lib = cc.last_irreversible_block_num();
          fc_ilog( logger, "catch_up while in ${s}, fork head num = ${fhn} "
                           "target LIB = ${lib} next_expected = ${ne}, id ${id}..., peer ${p}",
@@ -2160,7 +2160,7 @@ namespace eosio {
             block_header bh;
             fc::raw::unpack( peek_ds, bh );
 
-            controller& cc = chain_plug->chain();
+            const controller& cc = chain_plug->chain();
             const block_id_type blk_id = bh.id();
             const uint32_t blk_num = bh.block_num();
             if( !sync_master->syncing_with_peer() ) {
