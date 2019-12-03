@@ -62,7 +62,7 @@ for FILE in $(ls $CICD_DIR/platform-templates/); do
     [[ $FILE_NAME =~ 'centos' ]] && export ICON=':centos:'
     [[ $FILE_NAME =~ 'macos' ]] && export ICON=':darwin:'
     . $HELPERS_DIR/populate-template.sh # Prepare the platform-template with contents from the documentation
-    . $HELPERS_DIR/file-hash.sh /tmp/$POP_FILE_NAME # returns HASHED_IMAGE_TAG, etc
+    . $HELPERS_DIR/file-hash.sh /tmp/${FILE_NAME:-$IMAGE_TAG} # returns HASHED_IMAGE_TAG, etc
     export PLATFORMS_JSON_ARRAY=$(echo $PLATFORMS_JSON_ARRAY | jq -c '. += [{ 
         "FILE_NAME": env.FILE_NAME, 
         "PLATFORM_NAME": env.PLATFORM_NAME,

@@ -56,7 +56,7 @@ else # Linux
         COMMANDS="ccache -s && $BUILD_COMMANDS"
     fi
     . $HELPERS_DIR/populate-template.sh # Prepare the platform-template with contents from the documentation
-    . $HELPERS_DIR/file-hash.sh /tmp/$POP_FILE_NAME # returns HASHED_IMAGE_TAG, etc
+    . $HELPERS_DIR/file-hash.sh /tmp/$IMAGE_TAG # returns HASHED_IMAGE_TAG, etc
     COMMANDS="$PRE_COMMANDS && $COMMANDS"
     echo "$ docker run $ARGS $(buildkite-intrinsics) $FULL_TAG bash -c \"$COMMANDS\""
     eval docker run $ARGS $(buildkite-intrinsics) $FULL_TAG bash -c \"$COMMANDS\"
