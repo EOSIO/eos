@@ -1,6 +1,7 @@
 #!/bin/bash
 set -eo pipefail
 export POP_FILE_NAME="populated-$(echo ${FILE_NAME:-$IMAGE_TAG})"
+export FILE_NAME=${FILE_NAME:-$IMAGE_TAG}
 # Collect commands from code block, add RUN before the start of commands, and add it to temporary template
 DOC_CODE_BLOCK=$(cat docs/dep-install-${FILE_NAME:-$IMAGE_TAG}.md | sed -n '/```/,/```/p')
 SANITIZED_COMMANDS=$(echo "$DOC_CODE_BLOCK" | grep -v -e '```' -e '\#.*' -e '^$')
