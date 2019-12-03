@@ -1036,6 +1036,7 @@ struct controller_impl {
       genesis.initial_configuration.validate();
       db.create<global_property_object>([&genesis,&chain_id=this->chain_id](auto& gpo ){
          gpo.configuration = genesis.initial_configuration;
+         gpo.kv_configuration = genesis.initial_kv_configuration;
          gpo.chain_id = chain_id;
       });
 

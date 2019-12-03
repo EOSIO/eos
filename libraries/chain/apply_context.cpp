@@ -49,8 +49,8 @@ apply_context::apply_context(controller& con, transaction_context& trx_ctx, uint
    receiver = trace.receiver;
    context_free = trace.context_free;
    if (!context_free) {
-      kv_ram = create_kv_chainbase_context(db, kvram_id, receiver, create_kv_resource_manager_ram(*this));
-      kv_disk = create_kv_chainbase_context(db, kvdisk_id, receiver, create_kv_resource_manager_disk(*this));
+      kv_ram = create_kv_chainbase_context(db, kvram_id, receiver, create_kv_resource_manager_ram(*this), control.get_global_properties().kv_configuration.kvram);
+      kv_disk = create_kv_chainbase_context(db, kvdisk_id, receiver, create_kv_resource_manager_disk(*this), control.get_global_properties().kv_configuration.kvdisk);
    }
 }
 

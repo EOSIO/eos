@@ -6,6 +6,7 @@
 #include <eosio/chain/block_timestamp.hpp>
 #include <eosio/chain/chain_config.hpp>
 #include <eosio/chain/chain_snapshot.hpp>
+#include <eosio/chain/kv_config.hpp>
 #include <eosio/chain/producer_schedule.hpp>
 #include <eosio/chain/incremental_merkle.hpp>
 #include <eosio/chain/snapshot.hpp>
@@ -46,6 +47,7 @@ namespace eosio { namespace chain {
       shared_producer_authority_schedule  proposed_schedule;
       chain_config                        configuration;
       chain_id_type                       chain_id;
+      kv_config                           kv_configuration;
 
       void initalize_from( const legacy::snapshot_global_property_object_v2& legacy, const chain_id_type& chain_id_val ) {
          proposed_schedule_block_num = legacy.proposed_schedule_block_num;
@@ -70,6 +72,7 @@ namespace eosio { namespace chain {
       producer_authority_schedule         proposed_schedule;
       chain_config                        configuration;
       chain_id_type                       chain_id;
+      kv_config                           kv_configuration;
    };
 
    namespace detail {

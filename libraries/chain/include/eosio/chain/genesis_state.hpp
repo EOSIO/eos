@@ -1,6 +1,7 @@
 #pragma once
 
 #include <eosio/chain/chain_config.hpp>
+#include <eosio/chain/kv_config.hpp>
 #include <eosio/chain/types.hpp>
 
 #include <fc/crypto/sha256.hpp>
@@ -37,6 +38,11 @@ struct genesis_state {
       .max_authority_depth                  = config::default_max_auth_depth,
    };
 
+   kv_config initial_kv_configuration = {
+      { config::default_max_kv_key_size, config::default_max_kv_value_size },
+      { config::default_max_kv_key_size, config::default_max_kv_value_size }
+   };
+
    time_point                               initial_timestamp;
    public_key_type                          initial_key;
 
@@ -60,4 +66,4 @@ struct genesis_state {
 
 
 FC_REFLECT(eosio::chain::genesis_state,
-           (initial_timestamp)(initial_key)(initial_configuration))
+           (initial_timestamp)(initial_key)(initial_configuration)(initial_kv_configuration))

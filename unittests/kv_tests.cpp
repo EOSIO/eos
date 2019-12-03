@@ -439,6 +439,17 @@ class kv_tester : public tester {
       erase("", db, N(kvtest), "11");
    }
 
+   void test_key_value_limit(name db) {
+      std::string k(2*1024, '1');
+      std::vector<char> v(256*1024, 'a');
+      BOOST_TEST("" == set(db, N(kvtest), k.c_str(), v));
+      k += "11";
+      BOOST_TEST("Key too large" == set(db, N(kvtest), k.c_str(), v));
+      k.resize(2*1024);
+      v.push_back('a');
+      BOOST_TEST("Value too large" == set(db, N(kvtest), k.c_str(), v));
+   }
+
    abi_serializer abi_ser;
    abi_serializer sys_abi_ser;
 };
@@ -528,5 +539,10 @@ BOOST_FIXTURE_TEST_CASE(kv_resource_limit, kv_tester) try { //
 }
 FC_LOG_AND_RETHROW()
 
+BOOST_FIXTURE_TEST_CASE(kv_key_value_limit, kv_tester) try { //
+   test_key_value_limit(N(eosio.kvram));
+   test_key_value_limit(N(eosio.kvdisk));
+}
+FC_LOG_AND_RETHROW()
 
 BOOST_AUTO_TEST_SUITE_END()

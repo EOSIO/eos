@@ -148,11 +148,12 @@ namespace eosio { namespace chain {
       name                       database_id;
       name                       receiver;
       kv_resource_manager        resource_manager;
+      const kv_database_config&  limits;
       std::optional<shared_blob> temp_data_buffer;
 
       kv_context_chainbase(chainbase::database& db, name database_id, name receiver,
-                           kv_resource_manager resource_manager)
-         : db{ db }, database_id{ database_id }, receiver{ receiver }, resource_manager{ resource_manager } {}
+                           kv_resource_manager resource_manager, const kv_database_config& limits)
+         : db{ db }, database_id{ database_id }, receiver{ receiver }, resource_manager{ resource_manager }, limits{limits} {}
 
       ~kv_context_chainbase() override {}
 
@@ -169,8 +170,9 @@ namespace eosio { namespace chain {
 
       void kv_set(uint64_t contract, const char* key, uint32_t key_size, const char* value,
                   uint32_t value_size) override {
-         // KV-TODO: restrict key_size, value_size
          EOS_ASSERT(name{ contract } == receiver, table_operation_not_permitted, "Can not write to this key");
+         EOS_ASSERT(key_size <= limits.max_key_size, kv_limit_exceeded, "Key too large");
+         EOS_ASSERT(value_size <= limits.max_value_size, kv_limit_exceeded, "Value too large");
          temp_data_buffer.reset();
          auto* kv = db.find<kv_object, by_kv_key>(
                boost::make_tuple(database_id, name{ contract }, std::string_view{ key, key_size }));
@@ -225,8 +227,8 @@ namespace eosio { namespace chain {
    }; // kv_context_chainbase
 
    std::unique_ptr<kv_context> create_kv_chainbase_context(chainbase::database& db, name database_id, name receiver,
-                                                           kv_resource_manager resource_manager) {
-      return std::make_unique<kv_context_chainbase>(db, database_id, receiver, resource_manager);
+                                                           kv_resource_manager resource_manager, const kv_database_config& limits) {
+      return std::make_unique<kv_context_chainbase>(db, database_id, receiver, resource_manager, limits);
    }
 
 }} // namespace eosio::chain

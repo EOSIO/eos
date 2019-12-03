@@ -543,6 +543,8 @@ namespace eosio { namespace chain {
                                     3160011, "Bad key-value database ID" )
       FC_DECLARE_DERIVED_EXCEPTION( kv_bad_iter,          contract_exception,
                                     3160012, "Bad key-value iterator" )
+      FC_DECLARE_DERIVED_EXCEPTION( kv_limit_exceeded,          contract_exception,
+                                    3160013, "The key or value is too large" )
 
    FC_DECLARE_DERIVED_EXCEPTION( producer_exception,           chain_exception,
                                  3170000, "Producer exception" )
