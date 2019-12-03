@@ -76,6 +76,8 @@ for FILE in $(ls $CICD_DIR/platform-templates/); do
         "ICON": env.ICON
     }]')
 done
+
+exit 
 # set build_source whether triggered or not
 if [[ ! -z ${BUILDKITE_TRIGGERED_FROM_BUILD_ID} ]]; then
     export BUILD_SOURCE="--build \$BUILDKITE_TRIGGERED_FROM_BUILD_ID"
