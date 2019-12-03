@@ -253,8 +253,15 @@ class kv_tester : public tester {
            });
 
       // prefix = "44", lower bound = "2233"
-      // kv_it_lower_bound finds "2233", which is out of the prefix range
-      scan("", db, account, "44", "2233", {});
+      // lower_bound over the whole table would find "2233", which is out of the prefix range,
+      // and should not affect the result.
+      scan("", db, account, "44", "2233",
+           {
+                 kv{ { 0x44 }, { 0x76 } },
+                 kv{ { 0x44, 0x00 }, { 0x11, 0x22, 0x33 } },
+                 kv{ { 0x44, 0x01 }, { 0x33, 0x22, 0x11 } },
+                 kv{ { 0x44, 0x02 }, { 0x78, 0x04 } },
+           });
    } // test_scan
 
    void test_scanrev(name db, name account) {

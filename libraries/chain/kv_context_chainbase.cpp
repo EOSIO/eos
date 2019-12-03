@@ -111,7 +111,8 @@ namespace eosio { namespace chain {
       }
 
       kv_it_stat kv_it_lower_bound(const char* key, uint32_t size) override {
-         return move_to(idx.lower_bound(boost::make_tuple(database_id, contract, std::string_view{ key, size })));
+         auto clamped_key = std::max(std::string_view{ key, size }, std::string_view{ prefix.data(), prefix.size() }, unsigned_blob_less{});
+         return move_to(idx.lower_bound(boost::make_tuple(database_id, contract, clamped_key)));
       }
 
       kv_it_stat kv_it_key(uint32_t offset, char* dest, uint32_t size, uint32_t& actual_size) override {
