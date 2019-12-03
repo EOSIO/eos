@@ -3,8 +3,6 @@ The following commands will install all of the necessary dependencies for source
 <!-- The code within the following block is used in our CI/CD. It will be converted line by line into RUN statements inside of a temporary Dockerfile and used to build our docker tag for this OS. 
 Therefore, COPY and other Dockerfile-isms are not permitted. -->
 ```
-export EOSIO_LOCATION=$HOME/eosio && git clone git@github.com:EOSIO/eos.git -b develop $EOSIO_INSTALL_LOCATION
-export EOSIO_INSTALL_LOCATION=$EOSIO_LOCATION/install && mkdir $EOSIO_INSTALL_LOCATION
 apt-get update && \
     apt-get upgrade -y && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y git make \
@@ -12,6 +10,9 @@ apt-get update && \
     autotools-dev libicu-dev python2.7 python2.7-dev python3 python3-dev \
     autoconf libtool g++ gcc curl zlib1g-dev sudo ruby libusb-1.0-0-dev \
     libcurl4-gnutls-dev pkg-config patch vim-common jq
+export EOSIO_LOCATION=$HOME/eosio && git clone git@github.com:EOSIO/eos.git -b develop $EOSIO_INSTALL_LOCATION
+export EOSIO_INSTALL_LOCATION=$EOSIO_LOCATION/install && mkdir $EOSIO_INSTALL_LOCATION
+cd $EOSIO_INSTALL_LOCATION
 curl -LO https://cmake.org/files/v3.13/cmake-3.13.2.tar.gz && \
     tar -xzf cmake-3.13.2.tar.gz && \
     cd cmake-3.13.2 && \

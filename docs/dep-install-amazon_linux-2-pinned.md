@@ -3,13 +3,14 @@ The following commands will install all of the necessary dependencies for source
 <!-- The code within the following block is used in our CI/CD. It will be converted line by line into statements inside of a temporary Dockerfile and used to build our docker tag for this OS. 
 Therefore, COPY and other Dockerfile-isms are not permitted. -->
 ```
-export EOSIO_LOCATION=$HOME/eosio && git clone git@github.com:EOSIO/eos.git -b develop $EOSIO_INSTALL_LOCATION
-export EOSIO_INSTALL_LOCATION=$EOSIO_LOCATION/install && mkdir $EOSIO_INSTALL_LOCATION
 yum update -y && \
     yum install -y which git sudo procps-ng util-linux autoconf automake \
     libtool make bzip2 bzip2-devel openssl-devel gmp-devel libstdc++ libcurl-devel \
     libusbx-devel python3 python3-devel python-devel libedit-devel doxygen \
     graphviz patch gcc gcc-c++ vim-common jq
+export EOSIO_LOCATION=$HOME/eosio && git clone git@github.com:EOSIO/eos.git -b develop $EOSIO_INSTALL_LOCATION
+export EOSIO_INSTALL_LOCATION=$EOSIO_LOCATION/install && mkdir $EOSIO_INSTALL_LOCATION
+cd $EOSIO_INSTALL_LOCATION
 curl -LO https://cmake.org/files/v3.13/cmake-3.13.2.tar.gz && \
     tar -xzf cmake-3.13.2.tar.gz && \
     cd cmake-3.13.2 && \
