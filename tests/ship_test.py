@@ -177,7 +177,7 @@ try:
 
                     totalDelta += delta
                     timeCount += 1
-                    assert delta.total_seconds() < 0.100, Print("ERROR: block_num: %s took more than %.3f seconds to be received." % (blockNum, deltaSeconds))
+                    assert delta < timedelta(seconds=0.100), Print("ERROR: block_num: %s took more than %.3f seconds to be received." % (blockNum, delta.total_seconds()))
 
             line = f.readline()
 
