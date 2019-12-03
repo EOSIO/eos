@@ -31,7 +31,7 @@ matrix:
       services: docker
       env:
         - PLATFORM_TYPE='pinned'
-        - IMAGE_TAG='centos-7.6-pinned'
+        - IMAGE_TAG='centos-7.7-pinned'
     - os: osx
       osx_image: xcode10.2
       addons:
