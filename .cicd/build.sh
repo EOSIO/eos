@@ -12,7 +12,7 @@ if [[ "$(uname)" == 'Darwin' ]]; then
     else
         CMAKE_EXTRAS="$CMAKE_EXTRAS -DBUILD_MONGO_DB_PLUGIN=true"
     fi
-    [[ ! "$PINNED" == 'false' ]] && CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_TOOLCHAIN_FILE=$HELPERS_DIR/clang.make"
+    [[ ! "$PINNED" == 'false' ]] && CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_TOOLCHAIN_FILE=$ROOT_DIR/scripts/pinned_toolchain.cmake"
     cd $BUILD_DIR
     echo "cmake $CMAKE_EXTRAS .."
     cmake $CMAKE_EXTRAS ..
@@ -24,7 +24,7 @@ else # Linux
     PRE_COMMANDS="cd $MOUNTED_DIR/build"
     # PRE_COMMANDS: Executed pre-cmake
     # CMAKE_EXTRAS: Executed within and right before the cmake path (cmake CMAKE_EXTRAS ..)
-    [[ ! "$IMAGE_TAG" =~ 'unpinned' ]] && CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_TOOLCHAIN_FILE=$MOUNTED_DIR/.cicd/helpers/clang.make -DCMAKE_CXX_COMPILER_LAUNCHER=ccache"
+    [[ ! "$IMAGE_TAG" =~ 'unpinned' ]] && CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_TOOLCHAIN_FILE=$MOUNTED_DIR/scripts/pinned_toolchain.cmake -DCMAKE_CXX_COMPILER_LAUNCHER=ccache"
     if [[ $IMAGE_TAG == 'amazon_linux-2-pinned' ]]; then
         PRE_COMMANDS="$PRE_COMMANDS && export PATH=/usr/lib64/ccache:\\\$PATH"
     elif [[ "$IMAGE_TAG" == 'centos-7.6-pinned' ]]; then
