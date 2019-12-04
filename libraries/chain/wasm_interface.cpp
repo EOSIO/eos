@@ -361,27 +361,38 @@ class privileged_api : public context_aware_api {
          });
       }
 
-      uint32_t get_kv_parameters_packed( array_ptr<char> packed_kv_parameters, uint32_t buffer_size ) {
-         auto& gpo = context.control.get_global_properties();
+      auto kv_parameters_impl(name db) {
+         if ( db == kvram_id ) {
+            return &kv_config::kvram;
+         } else if ( db == kvdisk_id ) {
+            return &kv_config::kvdisk;
+         } else {
+            EOS_THROW(kv_bad_db_id, "Bad key-value database ID");
+         }
+      }
 
-         auto s = fc::raw::pack_size( gpo.kv_configuration );
+      uint32_t get_kv_parameters_packed( name db, array_ptr<char> packed_kv_parameters, uint32_t buffer_size ) {
+         auto& gpo = context.control.get_global_properties();
+         auto& params = gpo.kv_configuration.*kv_parameters_impl( db );
+
+         auto s = fc::raw::pack_size( params );
          if( buffer_size == 0 ) return s;
 
          if ( s <= buffer_size ) {
             datastream<char*> ds( packed_kv_parameters, s );
-            fc::raw::pack(ds, gpo.kv_configuration);
+            fc::raw::pack(ds, params);
             return s;
          }
          return 0;
       }
 
-      void set_kv_parameters_packed( array_ptr<const char> packed_kv_parameters, uint32_t datalen) {
+      void set_kv_parameters_packed( name db, array_ptr<const char> packed_kv_parameters, uint32_t datalen) {
          datastream<const char*> ds( packed_kv_parameters, datalen );
-         chain::kv_config cfg;
+         chain::kv_database_config cfg;
          fc::raw::unpack(ds, cfg);
          context.db.modify( context.control.get_global_properties(),
             [&]( auto& gprops ) {
-                 gprops.kv_configuration = cfg;
+                 gprops.kv_configuration.*kv_parameters_impl( db ) = cfg;
          });
       }
 
@@ -2002,8 +2013,8 @@ REGISTER_INTRINSICS(privileged_api,
    (set_proposed_producers_ex,        int64_t(int64_t, int, int)            )
    (get_blockchain_parameters_packed, int(int, int)                         )
    (set_blockchain_parameters_packed, void(int,int)                         )
-   (get_kv_parameters_packed,         int(int, int)                         )
-   (set_kv_parameters_packed,         void(int,int)                         )
+   (get_kv_parameters_packed,         int(int64_t, int, int)                )
+   (set_kv_parameters_packed,         void(int64_t, int,int)                )
    (is_privileged,                    int(int64_t)                          )
    (set_privileged,                   void(int64_t, int)                    )
    (preactivate_feature,              void(int)                             )
