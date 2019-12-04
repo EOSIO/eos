@@ -75,8 +75,25 @@ void resource_limits_manager::add_to_snapshot( const snapshot_writer_ptr& snapsh
    });
 }
 
-void resource_limits_manager::read_from_snapshot( const snapshot_reader_ptr& snapshot ) {
-   resource_index_set::walk_indices([this, &snapshot]( auto utils ){
+void resource_limits_manager::read_from_snapshot( const snapshot_reader_ptr& snapshot, uint32_t version ) {
+   resource_index_set::walk_indices([this, &snapshot, version]( auto utils ){
+      using value_t = typename decltype(utils)::index_t::value_type;
+      if constexpr ( !std::is_same_v<typename value_t::v3, value_t> ) {
+         using v3 = typename value_t::v3;
+         if ( v3::minimum_version <= version && version <= v3::maximum_version ) {
+            snapshot->read_section<typename decltype(utils)::index_t::value_type>([this]( auto& section ) {
+               bool more = !section.empty();
+               while(more) {
+                  decltype(utils)::create(_db, [this, &section, &more]( auto &row ) {
+                     v3 legacy_row;
+                     more = section.read_row(legacy_row, _db);
+                     row.initialize_from(legacy_row);
+                  });
+               }
+            });
+            return;
+         }
+      }
       snapshot->read_section<typename decltype(utils)::index_t::value_type>([this]( auto& section ) {
          bool more = !section.empty();
          while(more) {

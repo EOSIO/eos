@@ -872,7 +872,9 @@ struct controller_impl {
       if (std::clamp(version, v2::minimum_version, v2::maximum_version) == version ) {
          genesis.emplace();
          snapshot.read_section<genesis_state>([&genesis=*genesis]( auto &section ){
-            section.read_row(genesis);
+            legacy::snapshot_genesis_state_v3 legacy_genesis;
+            section.read_row(legacy_genesis);
+            genesis.initialize_from(legacy_genesis);
          });
       }
       return genesis;
@@ -932,6 +934,7 @@ struct controller_impl {
          // special case for in-place upgrade of global_property_object
          if (std::is_same<value_t, global_property_object>::value) {
             using v2 = legacy::snapshot_global_property_object_v2;
+            using v3 = legacy::snapshot_global_property_object_v3;
 
             if (std::clamp(header.version, v2::minimum_version, v2::maximum_version) == header.version ) {
                fc::optional<genesis_state> genesis = extract_legacy_genesis_state(*snapshot, header.version);
@@ -943,11 +946,29 @@ struct controller_impl {
                   section.read_row(legacy_global_properties, db);
 
                   db.create<global_property_object>([&legacy_global_properties,&gs_chain_id](auto& gpo ){
-                     gpo.initalize_from(legacy_global_properties, gs_chain_id);
+                     gpo.initalize_from(legacy_global_properties, gs_chain_id, genesis_state{}.initial_kv_configuration);
                   });
                });
                return; // early out to avoid default processing
             }
+
+            if (std::clamp(header.version, v3::minimum_version, v3::maximum_version) == header.version ) {
+               snapshot->read_section<global_property_object>([&db=this->db]( auto &section ) {
+                  v3 legacy_global_properties;
+                  section.read_row(legacy_global_properties, db);
+
+                  db.create<global_property_object>([&legacy_global_properties](auto& gpo ){
+                  gpo.initalize_from(legacy_global_properties, genesis_state{}.initial_kv_configuration);
+                  });
+               });
+               return; // early out to avoid default processing
+            }
+         }
+
+         // skip the kv index if the snapshot doesn't contain it
+         if constexpr (std::is_same_v<value_t, kv_object>) {
+            if ( header.version < kv_object::minimum_snapshot_version )
+               return;
          }
 
          snapshot->read_section<value_t>([this]( auto& section ) {
@@ -963,7 +984,7 @@ struct controller_impl {
       read_contract_tables_from_snapshot(snapshot);
 
       authorization.read_from_snapshot(snapshot);
-      resource_limits.read_from_snapshot(snapshot);
+      resource_limits.read_from_snapshot(snapshot, header.version);
 
       db.set_revision( head->block_num );
       db.create<database_header_object>([](const auto& header){

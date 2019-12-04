@@ -16,11 +16,24 @@ namespace eosio { namespace chain {
       std::uint32_t max_key_size;   ///< the maximum size in bytes of a key
       std::uint32_t max_value_size; ///< the maximum size in bytes of a value
    };
+   inline bool operator==(const kv_database_config& lhs, const kv_database_config& rhs) {
+      return lhs.max_key_size == rhs.max_key_size && lhs.max_value_size == rhs.max_value_size;
+   }
+   inline bool operator!=(const kv_database_config& lhs, const kv_database_config& rhs) {
+      return !(lhs == rhs);
+   }
 
    struct kv_config {
       kv_database_config kvram;
       kv_database_config kvdisk;
    };
+
+   inline bool operator==(const kv_config& lhs, const kv_config& rhs) {
+      return lhs.kvram == rhs.kvram && lhs.kvdisk == rhs.kvdisk;
+   }
+   inline bool operator!=(const kv_config& lhs, const kv_config& rhs) {
+      return !(lhs == rhs);
+   }
 
 }}
 
