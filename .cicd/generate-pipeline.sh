@@ -61,8 +61,8 @@ for FILE in $(ls $CICD_DIR/platform-templates/); do
     [[ $FILE_NAME =~ 'ubuntu' ]] && export ICON=':ubuntu:'
     [[ $FILE_NAME =~ 'centos' ]] && export ICON=':centos:'
     [[ $FILE_NAME =~ 'macos' ]] && export ICON=':darwin:'
-    . $HELPERS_DIR/populate-template.sh # Prepare the platform-template with contents from the documentation
-    . $HELPERS_DIR/file-hash.sh /tmp/${FILE_NAME:-$IMAGE_TAG} # returns HASHED_IMAGE_TAG, etc
+    set -- # Clears $1 and $2
+    . $HELPERS_DIR/populate-template-and-hash.sh # Obtain the hash from the populated template
     export PLATFORMS_JSON_ARRAY=$(echo $PLATFORMS_JSON_ARRAY | jq -c '. += [{ 
         "FILE_NAME": env.FILE_NAME, 
         "PLATFORM_NAME": env.PLATFORM_NAME,
@@ -144,7 +144,7 @@ EOF
       TEMPLATE: $MOJAVE_ANKA_TEMPLATE_NAME
       TEMPLATE_TAG: $MOJAVE_ANKA_TAG_BASE
       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
-      TAG_COMMANDS: "sleep 10; git clone ${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO} eos && cd eos && $GIT_FETCH git checkout -f $BUILDKITE_COMMIT && git submodule update --init --recursive && export IMAGE_TAG=$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME) && export BUILDKITE_BRANCH=$BUILDKITE_BRANCH && . ./.cicd/helpers/populate-template.sh && . /tmp/$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME) && cd ~/eos && cd .. && rm -rf eos"
+      TAG_COMMANDS: "sleep 10; git clone ${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO} eos && cd eos && $GIT_FETCH git checkout -f $BUILDKITE_COMMIT && git submodule update --init --recursive && export IMAGE_TAG=$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME) && export BUILDKITE_BRANCH=$BUILDKITE_BRANCH && . ./.cicd/helpers/populate-template-and-hash.sh && . /tmp/$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME) && cd ~/eos && cd .. && rm -rf eos"
       PROJECT_TAG: $(echo "$PLATFORM_JSON" | jq -r .HASHED_IMAGE_TAG)
     timeout: ${TIMEOUT:-180}
     agents: "queue=mac-anka-large-node-fleet"

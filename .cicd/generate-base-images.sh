@@ -1,8 +1,7 @@
 #!/bin/bash
 set -eo pipefail
 . ./.cicd/helpers/general.sh
-. $HELPERS_DIR/populate-template.sh # Prepare the platform-template with contents from the documentation
-. $HELPERS_DIR/file-hash.sh /tmp/$IMAGE_TAG # returns HASHED_IMAGE_TAG, etc
+. $HELPERS_DIR/populate-template-and-hash.sh # Generate template + Obtain the hash from the populated template 
 # look for Docker image
 echo "+++ :mag_right: Looking for $FULL_TAG"
 ORG_REPO=$(echo $FULL_TAG | cut -d: -f1)
