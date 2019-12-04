@@ -557,7 +557,7 @@ After the node cluster is successfully launched, all the test actions can be per
         - get_info()
         - get_block()
         - get_account()
-        - get_protocal_features()
+        - get_protocol_features()
         - get_log()
     - Transactions
         - schedule_protocol_feature_activations()
@@ -567,7 +567,7 @@ After the node cluster is successfully launched, all the test actions can be per
         - verify()
         - check_sync()
         - check_production_round()
-    - Miscallaneous
+    - Miscellaneous
         - send_raw()
         - pause_node_production()
         - resume_node_production()
