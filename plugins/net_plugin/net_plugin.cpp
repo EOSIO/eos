@@ -1183,6 +1183,7 @@ namespace eosio {
          } else {
             c->strand.post( [c, num]() {
                peer_ilog( c, "enqueue sync, unable to fetch block ${num}", ("num", num) );
+               c->send_handshake();
             });
          }
       });
