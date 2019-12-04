@@ -8,7 +8,7 @@ yum update -y && \
     libtool make bzip2 bzip2-devel openssl-devel gmp-devel libstdc++ libcurl-devel \
     libusbx-devel python3 python3-devel python-devel libedit-devel doxygen \
     graphviz patch gcc gcc-c++ vim-common jq
-export EOSIO_LOCATION=$HOME/eosio && git clone https://github.com/EOSIO/eos.git -b master $EOSIO_INSTALL_LOCATION
+export EOSIO_LOCATION=$HOME/eosio && git clone https://github.com/EOSIO/eos.git -b master $EOSIO_LOCATION
 export EOSIO_INSTALL_LOCATION=$EOSIO_LOCATION/install && mkdir -p $EOSIO_INSTALL_LOCATION
 cd $EOSIO_INSTALL_LOCATION
 curl -LO https://cmake.org/files/v3.13/cmake-3.13.2.tar.gz && \
@@ -34,7 +34,7 @@ git clone --single-branch --branch release_80 https://git.llvm.org/git/llvm.git 
     make install && \
     cd $EOSIO_INSTALL_LOCATION && \
     rm -rf clang8
-cp -rfp $EOSIO_LOCATION/scripts/pinned_toolchain.cmake $EOSIO_INSTALL_LOCATION/pinned_toolchain.cmake
+cp -f $EOSIO_LOCATION/scripts/pinned_toolchain.cmake $EOSIO_INSTALL_LOCATION/pinned_toolchain.cmake
 git clone --depth 1 --single-branch --branch release_80 https://github.com/llvm-mirror/llvm.git llvm && \
     cd llvm && \
     mkdir build && \

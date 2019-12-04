@@ -9,7 +9,7 @@ apt-get update && \
     libbz2-dev libssl-dev doxygen graphviz libgmp3-dev autotools-dev libicu-dev \
     python2.7 python2.7-dev python3 python3-dev autoconf libtool curl zlib1g-dev \
     sudo ruby libusb-1.0-0-dev libcurl4-gnutls-dev pkg-config apt-transport-https vim-common jq
-export EOSIO_LOCATION=$HOME/eosio && git clone https://github.com/EOSIO/eos.git -b master $EOSIO_INSTALL_LOCATION
+export EOSIO_LOCATION=$HOME/eosio && git clone https://github.com/EOSIO/eos.git -b master $EOSIO_LOCATION
 export EOSIO_INSTALL_LOCATION=$EOSIO_LOCATION/install && mkdir -p $EOSIO_INSTALL_LOCATION
 cd $EOSIO_INSTALL_LOCATION
 curl -LO https://cmake.org/files/v3.13/cmake-3.13.2.tar.gz && \
@@ -35,7 +35,7 @@ git clone --single-branch --branch release_80 https://git.llvm.org/git/llvm.git 
     make install && \
     cd $EOSIO_INSTALL_LOCATION && \
     rm -rf clang8
-cp -rfp $EOSIO_LOCATION/scripts/pinned_toolchain.cmake $EOSIO_INSTALL_LOCATION/pinned_toolchain.cmake
+cp -f $EOSIO_LOCATION/scripts/pinned_toolchain.cmake $EOSIO_INSTALL_LOCATION/pinned_toolchain.cmake
 git clone --depth 1 --single-branch --branch release_80 https://github.com/llvm-mirror/llvm.git llvm && \
     cd llvm && \
     mkdir build && cd build && \

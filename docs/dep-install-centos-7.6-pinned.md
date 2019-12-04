@@ -11,7 +11,7 @@ yum update -y && \
     graphviz bzip2-devel openssl-devel gmp-devel ocaml libicu-devel \
     python python-devel rh-python36 file libusbx-devel \
     libcurl-devel patch vim-common jq
-export EOSIO_LOCATION=$HOME/eosio && git clone https://github.com/EOSIO/eos.git -b master $EOSIO_INSTALL_LOCATION
+export EOSIO_LOCATION=$HOME/eosio && git clone https://github.com/EOSIO/eos.git -b master $EOSIO_LOCATION
 export EOSIO_INSTALL_LOCATION=$EOSIO_LOCATION/install && mkdir -p $EOSIO_INSTALL_LOCATION
 cd $EOSIO_INSTALL_LOCATION
 curl -LO https://cmake.org/files/v3.13/cmake-3.13.2.tar.gz && \
@@ -24,7 +24,7 @@ curl -LO https://cmake.org/files/v3.13/cmake-3.13.2.tar.gz && \
     make install && \
     cd $EOSIO_INSTALL_LOCATION && \
     rm -rf cmake-3.13.2.tar.gz cmake-3.13.2
-cp -rfp ./scripts/clang-devtoolset8-support.patch /tmp/clang-devtoolset8-support.patch
+cp -f ./scripts/clang-devtoolset8-support.patch /tmp/clang-devtoolset8-support.patch
 git clone --single-branch --branch release_80 https://git.llvm.org/git/llvm.git clang8 && cd clang8 && git checkout 18e41dc && \
     cd tools && git clone --single-branch --branch release_80 https://git.llvm.org/git/lld.git && cd lld && git checkout d60a035 && \
     cd ../ && git clone --single-branch --branch release_80 https://git.llvm.org/git/polly.git && cd polly && git checkout 1bc06e5 && \
@@ -43,7 +43,7 @@ git clone --single-branch --branch release_80 https://git.llvm.org/git/llvm.git 
     make install && \
     cd $EOSIO_INSTALL_LOCATION && \
     rm -rf clang8
-cp -rfp $EOSIO_LOCATION/scripts/pinned_toolchain.cmake $EOSIO_INSTALL_LOCATION/pinned_toolchain.cmake
+cp -f $EOSIO_LOCATION/scripts/pinned_toolchain.cmake $EOSIO_INSTALL_LOCATION/pinned_toolchain.cmake
 git clone --depth 1 --single-branch --branch release_80 https://github.com/llvm-mirror/llvm.git llvm && \
     cd llvm && \
     mkdir build && \

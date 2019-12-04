@@ -3,7 +3,7 @@ The following commands will install all of the necessary dependencies for source
 <!-- The code within the following block is used in our CI/CD. It will be converted line by line into RUN statements inside of a temporary Dockerfile and used to build our docker tag for this OS. 
 Therefore, COPY and other Dockerfile-isms are not permitted. -->
 ```
-export EOSIO_LOCATION=$HOME/eosio && git clone https://github.com/EOSIO/eos.git -b master $EOSIO_INSTALL_LOCATION
+export EOSIO_LOCATION=$HOME/eosio && git clone https://github.com/EOSIO/eos.git -b master $EOSIO_LOCATION
 export EOSIO_INSTALL_LOCATION=$EOSIO_LOCATION/install && mkdir -p $EOSIO_INSTALL_LOCATION
 brew update
 brew install git cmake python@2 python libtool libusb graphviz automake wget gmp pkgconfig doxygen openssl@1.1 jq || :
