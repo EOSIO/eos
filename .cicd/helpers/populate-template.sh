@@ -6,7 +6,7 @@ SANITIZED_COMMANDS=$(echo "$DOC_CODE_BLOCK" | grep -v -e '```' -e '\#.*' -e '^$'
 if [[ ! ${IMAGE_TAG:-$FILE_NAME} =~ 'macos' ]]; then # Linux / Docker
     DOCKER_COMMANDS=$(echo "$SANITIZED_COMMANDS" | awk '{if ( $0 ~ /^[ ].*/ ) { print $0 } else if ( $0 ~ /^PATH/ ) { print "ENV " $0 } else { print "RUN " $0 } }')
     FILE_EXTENSION=".dockerfile"
-    APPEND_LINE=6
+    APPEND_LINE=5
 else # Mac OSX
     DOCKER_COMMANDS=$(echo "$SANITIZED_COMMANDS")
     FILE_EXTENSION=".sh"
