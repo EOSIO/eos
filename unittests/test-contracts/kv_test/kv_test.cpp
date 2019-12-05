@@ -33,6 +33,10 @@ struct kv {
    std::vector<char> v;
 };
 
+#define STR_I(x) #x
+#define STR(x) STR_I(x)
+#define TEST(condition) check(condition, "kv_test.cpp:" STR(__LINE__) ": " #condition) 
+
 class [[eosio::contract("kv_test")]] kvtest : public eosio::contract {
  public:
    using eosio::contract::contract;
@@ -88,6 +92,59 @@ class [[eosio::contract("kv_test")]] kvtest : public eosio::contract {
    [[eosio::action]] void setmany(name db, name contract, const std::vector<kv>& kvs) {
       for (auto& kv : kvs) //
          kv_set(db, contract, kv.k.data(), kv.k.size(), kv.v.data(), kv.v.size());
+   }
+
+   [[eosio::action]] void getdata(name db) {
+      const std::vector<char> orig_buf(1024, '\xcc');
+      std::vector<char> buf = orig_buf;
+      // The buffer starts empty
+      TEST(kv_get_data(db, 0, buf.data(), 0) == 0);
+      TEST(buf == orig_buf); // unchanged
+      TEST(kv_get_data(db, 0, buf.data(), 1024) == 0);
+      TEST(buf == orig_buf); // unchanged
+      TEST(kv_get_data(db, 0xFFFFFFFFu, buf.data(), 0) == 0);
+      TEST(buf == orig_buf); // unchanged
+      TEST(kv_get_data(db, 0xFFFFFFFFu, buf.data(), 1024) == 0);
+      TEST(buf == orig_buf); // unchanged
+      // Add a value and load it into the temporary buffer
+      kv_set(db, get_self(), "key", 3, "value", 5);
+      TEST(kv_get_data(db, 0, nullptr, 0) == 0);
+      uint32_t value_size = 0xffffffff;
+      kv_get(db, get_self(), "key", 3, value_size);
+      // Test different offsets
+      TEST(kv_get_data(db, 0, nullptr, 0) == 5);
+      TEST(kv_get_data(db, 0, buf.data(), 1024) == 5);
+      TEST(memcmp(buf.data(), "value\xcc\xcc\xcc", 8) == 0);
+      buf = orig_buf;
+      TEST(kv_get_data(db, 0xFFFFFFFFu, buf.data(), 1024) == 5);
+      TEST(buf == orig_buf);
+      TEST(kv_get_data(db, 1, buf.data(), 1024) == 5);
+      TEST(memcmp(buf.data(), "alue\xcc\xcc\xcc\xcc", 8) == 0);
+      buf = orig_buf;
+      TEST(kv_get_data(db, 5, buf.data(), 1024) == 5);
+      TEST(buf == orig_buf);
+      TEST(kv_get_data(db, 4, buf.data(), 1024) == 5);
+      TEST(memcmp(buf.data(), "e\xcc\xcc\xcc\xcc\xcc\xcc\xcc", 8) == 0);
+      buf = orig_buf;
+      // kv_get with missing key clears buffer
+      kv_get(db, get_self(), "", 0, value_size);
+      // kv_set clears the buffer
+      kv_get(db, get_self(), "key", 3, value_size);
+      kv_set(db, get_self(), "key2", 4, "", 0); // set another key
+      TEST(kv_get_data(db, 0, buf.data(), 1024) == 0);
+      kv_get(db, get_self(), "key", 3, value_size);
+      kv_set(db, get_self(), "key", 3, "value", 5); // same key
+      TEST(kv_get_data(db, 0, buf.data(), 1024) == 0);
+      // kv_erase clears the buffer
+      kv_get(db, get_self(), "key", 3, value_size);
+      kv_erase(db, get_self(), "", 0); // key does not exist
+      TEST(kv_get_data(db, 0, buf.data(), 1024) == 0);
+      kv_get(db, get_self(), "key", 3, value_size);
+      kv_erase(db, get_self(), "key2", 4); // other key
+      TEST(kv_get_data(db, 0, buf.data(), 1024) == 0);
+      kv_get(db, get_self(), "key", 3, value_size);
+      kv_erase(db, get_self(), "key", 3); // this key
+      TEST(kv_get_data(db, 0, buf.data(), 1024) == 0);
    }
 
    [[eosio::action]] void scan(name db, name contract, const std::vector<char>& prefix,

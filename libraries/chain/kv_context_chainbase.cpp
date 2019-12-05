@@ -216,7 +216,7 @@ namespace eosio { namespace chain {
             temp_size = temp_data_buffer->size();
          }
          if (offset < temp_size)
-            memcpy(data + offset, temp, std::min(data_size, temp_size - offset));
+            memcpy(data, temp + offset, std::min(data_size, temp_size - offset));
          return temp_size;
       }
 

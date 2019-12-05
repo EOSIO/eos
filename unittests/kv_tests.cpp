@@ -188,7 +188,11 @@ class kv_tester : public tester {
       get("", db, N(kvtest), "01020304", "aabbccddee");
    }
 
-  void test_scan(name db, name account = N(kvtest)) {
+   void test_get_data(name db) {
+      BOOST_TEST(push_action(N(getdata), mvo()("db", db)) == "");
+   }
+
+   void test_scan(name db, name account = N(kvtest)) {
       setmany("", db, account,
               {
                     kv{ {}, { 0x12 } },
@@ -659,6 +663,11 @@ FC_LOG_AND_RETHROW()
 
 BOOST_DATA_TEST_CASE_F(kv_tester, kv_dec_limit_and_usage, bdata::make(databases), db) try { //
    test_kv_dec_limit_and_usage(db);
+}
+FC_LOG_AND_RETHROW()
+
+BOOST_DATA_TEST_CASE_F(kv_tester, get_data, bdata::make(databases), db) try { //
+   test_get_data(db);
 }
 FC_LOG_AND_RETHROW()
 
