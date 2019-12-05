@@ -13,7 +13,8 @@ export EOSIO_INSTALL_LOCATION=$EOSIO_LOCATION/install && mkdir -p $EOSIO_INSTALL
 ```
 brew install cmake python@2 python libtool libusb graphviz automake wget gmp pkgconfig doxygen openssl@1.1 jq || :
 PATH=$EOSIO_INSTALL_LOCATION/bin:$PATH
-SDKROOT="$(xcrun --sdk macosx --show-sdk-path)" # Boost Fix: eosio/install/bin/../include/c++/v1/stdlib.h:94:15: fatal error: 'stdlib.h' file not found
+# Boost Fix: eosio/install/bin/../include/c++/v1/stdlib.h:94:15: fatal error: 'stdlib.h' file not found
+SDKROOT="$(xcrun --sdk macosx --show-sdk-path)"
 cd $EOSIO_INSTALL_LOCATION && git clone --single-branch --branch release_80 https://git.llvm.org/git/llvm.git clang8 && cd clang8 && git checkout 18e41dc && \
     cd tools && git clone --single-branch --branch release_80 https://git.llvm.org/git/lld.git && cd lld && git checkout d60a035 && \
     cd ../ && git clone --single-branch --branch release_80 https://git.llvm.org/git/polly.git && cd polly && git checkout 1bc06e5 && \
