@@ -56,10 +56,8 @@ DEFAULT_PRODUDCER_COUNT = 4
 DEFAULT_UNSTARTED_COUNT = 0
 DEFAULT_TOPOLOGY = "mesh"
 DEFAULT_CENTER_NODE_ID = None
-DEFAULT_TOKENS_SUPPLY = 1e9
 DEFAULT_EXTRA_CONFIGS = []
 DEFAULT_EXTRA_ARGS = ""
-DEFAULT_DONT_BIOS = False
 DEFAULT_DONT_NEWACCO = False
 DEFAULT_DONT_SETPROD = False
 DEFAULT_DONT_VOTE = False
@@ -100,13 +98,10 @@ HELP_PRODUDCER_COUNT = "Number of producers"
 HELP_UNSTARTED_COUNT = "Number of unstarted nodes"
 HELP_TOPOLOGY = "Cluster topology to launch with"
 HELP_CENTER_NODE_ID = "Center node ID (for bridge or star topology)"
-HELP_TOKENS_SUPPLY = "Total supply of tokens (in regular launch)"
 HELP_EXTRA_CONFIGS = "Extra configs to pass to launcher service"
 HELP_EXTRA_ARGS = "Extra arguments to pass to launcher service"
-HELP_DONT_BIOS = "Do not BIOS launch (regular launch instead)"
 HELP_DONT_NEWACCO = "Do not create accounts in launch"
-HELP_DONT_SETPROD = "Do not set producers in BIOS launch"
-HELP_DONT_VOTE = "Do not vote for producers in regular launch"
+HELP_DONT_SETPROD = "Do not set producers in launch"
 HELP_HTTP_RETRY = "HTTP connection: max num of retries"
 HELP_HTTP_SLEEP = "HTTP connection: sleep time between retries"
 HELP_VERIFY_ASYNC = "Verify transaction: verify asynchronously"
@@ -216,11 +211,8 @@ class CommandLineArguments:
         self.unstarted_count = cla.unstarted_count
         self.topology = cla.topology
         self.center_node_id = cla.center_node_id
-        self.tokens_supply = cla.tokens_supply
-        self.dont_bios = cla.dont_bios
         self.dont_newacco = cla.dont_newacco
         self.dont_setprod = cla.dont_setprod
-        self.dont_vote = cla.dont_vote
         self.http_retry = cla.http_retry
         self.http_sleep = cla.http_sleep
         self.verify_async = cla.verify_async
@@ -278,16 +270,10 @@ class CommandLineArguments:
                             choices={"mesh", "bridge", "line", "ring", "star", "tree"})
         parser.add_argument("-x", "--center-node-id", type=int, metavar="ID",
                             help=form(HELP_CENTER_NODE_ID, DEFAULT_CENTER_NODE_ID))
-        parser.add_argument("-y", "--tokens-supply", metavar="NUM",
-                            help=form(HELP_TOKENS_SUPPLY, "{:g}".format(DEFAULT_TOKENS_SUPPLY)))
-        parser.add_argument("-r", "-dbios", "--dont-bios", action="store_true", default=None,
-                            help=form(HELP_DONT_BIOS, DEFAULT_DONT_BIOS))
         parser.add_argument("-dnewa", "--dont-newacco", action="store_true", default=None,
                             help=form(HELP_DONT_NEWACCO, DEFAULT_DONT_NEWACCO))
         parser.add_argument("-dsetp", "--dont-setprod", action="store_true", default=None,
                             help=form(HELP_DONT_SETPROD, DEFAULT_DONT_SETPROD))
-        parser.add_argument("-dvote", "--dont-vote", action="store_true", default=None,
-                            help=form(HELP_DONT_VOTE, DEFAULT_DONT_VOTE))
         parser.add_argument("--http-retry", type=int, metavar="NUM",
                             help=form(HELP_HTTP_RETRY, DEFAULT_HTTP_RETRY))
         parser.add_argument("--http-sleep", type=float, metavar="TIME",
@@ -392,9 +378,9 @@ class Service:
             Can be either absolute or relative to the working directory.
         start : bool
             Always start a new launcher service.
-            Note that if to start a new instance alongside the existing ones,
-            make sure the listening ports are different. Otherwise, the
-            new launcher service will issue an error.
+            To start a new instance alongside the existing ones, make sure the
+            listening ports are different. Otherwise, the new launcher service
+            will issue an error.
             Default is False (will not start a new one if there is an existing
             launcher service running in the background).
         kill : bool
@@ -627,11 +613,8 @@ class Cluster:
     with the latter capable of overriding the former.
 
     --- Launch ---------
-    After configuration, the node cluster will be launched in one of two modes:
-    (1) BIOS mode, using "eosio.bios" to set producers;
-    (2) regular mode, using "eosio.token" to create and issue tokens, and using
-        "eosio.system" to vote.
-    By default, the cluster is launched in BIOS mode.
+    After configuration, the node cluster will be launched using "eosio.bios"
+    contract.
 
     --- Test -----------
     After the node cluster is successfully launched, all the test actions can
@@ -683,10 +666,8 @@ class Cluster:
                  tokens_supply=None,
                  extra_configs: typing.List[str]=None,
                  extra_args: str=None,
-                 dont_bios=None,
                  dont_newacco=None,
                  dont_setprod=None,
-                 dont_vote=None,
                  http_retry=None,
                  http_sleep=None,
                  verify_async=None,
@@ -729,9 +710,6 @@ class Cluster:
             Center node ID (for bridge or star topology).
             If topology is bridge, center node ID cannot be 0 or last one.
             No default value.
-        tokens_supply : float
-            Total supply of tokens in regular launch mode.
-            Default is 1000000000 (1e9).
         extra_configs : list
             Extra configs to pass to launcher service.
             e.g. ["plugin=SOME_EXTRA_PLUGIN"]
@@ -740,18 +718,12 @@ class Cluster:
             Extra arguments to pass to launcher service.
             e.g. "--delete-all-blocks"
             No default value.
-        dont_bios : bool
-            Do not launch in BIOS mode. Launch in regular mode instead.
-            Default is False (will launch in BIOS mode).
         dont_newacco : bool
             Do not create accounts in launch.
             Default is False (will create producer accounts).
         dont_setprod : bool
             Do not set producers in BIOS launch mode.
             Default is False (will set producers).
-        dont_vote: bool
-            Do not vote in regular launch mode.
-            Default is False (will vote for producers).
         http_retry : int
             Max number of retries in HTTP connection.
             Default is 100.
@@ -806,11 +778,8 @@ class Cluster:
         self.center_node_id  = helper.override(DEFAULT_CENTER_NODE_ID,  center_node_id,  self.cla.center_node_id)
         self.extra_configs   = helper.override(DEFAULT_EXTRA_CONFIGS,   extra_configs)
         self.extra_args      = helper.override(DEFAULT_EXTRA_ARGS,      extra_args)
-        self.tokens_supply   = helper.override(DEFAULT_TOKENS_SUPPLY,   tokens_supply,   self.cla.tokens_supply)
-        self.dont_bios       = helper.override(DEFAULT_DONT_BIOS,       dont_bios,       self.cla.dont_bios)
         self.dont_newacco    = helper.override(DEFAULT_DONT_NEWACCO,    dont_newacco,    self.cla.dont_newacco)
         self.dont_setprod    = helper.override(DEFAULT_DONT_SETPROD,    dont_setprod,    self.cla.dont_setprod)
-        self.dont_vote       = helper.override(DEFAULT_DONT_VOTE,       dont_vote,       self.cla.dont_vote)
         self.http_retry      = helper.override(DEFAULT_HTTP_RETRY,      http_retry,      self.cla.http_retry)
         self.http_sleep      = helper.override(DEFAULT_HTTP_SLEEP,      http_sleep,      self.cla.http_sleep)
         self.verify_async    = helper.override(DEFAULT_VERIFY_ASYNC,    verify_async,    self.cla.verify_async)
@@ -850,11 +819,7 @@ class Cluster:
             self.nodes[i] += [{"producers": (prod if i else ["eosio"] + prod)}]
             self.producers += prod
             self.node_to_producers[i] = prod
-        # launch cluster
-        if not self.dont_bios:
-            self.bios_launch(dont_newacco=self.dont_newacco, dont_setprod=self.dont_setprod)
-        else:
-            self.regular_launch(dont_newacco=self.dont_newacco, dont_vote=self.dont_vote)
+        self.launch(dont_newacco=self.dont_newacco, dont_setprod=self.dont_setprod)
 
     def __enter__(self):
         return self
@@ -886,13 +851,10 @@ class Cluster:
         self.print_config_helper("-u: unstarted_count",  HELP_UNSTARTED_COUNT, self.unstarted_count, DEFAULT_UNSTARTED_COUNT)
         self.print_config_helper("-t: topology",         HELP_TOPOLOGY,        self.topology,        DEFAULT_TOPOLOGY)
         self.print_config_helper("-x: center_node_id",   HELP_CENTER_NODE_ID,  self.center_node_id,  DEFAULT_CENTER_NODE_ID)
-        self.print_config_helper("-y: tokens_supply",    HELP_TOKENS_SUPPLY,   self.tokens_supply,   DEFAULT_TOKENS_SUPPLY)
         self.print_config_helper("... extra_configs",    HELP_EXTRA_CONFIGS,   self.extra_configs,   DEFAULT_EXTRA_CONFIGS)
         self.print_config_helper("... extra_args",       HELP_EXTRA_ARGS,      self.extra_args,      DEFAULT_EXTRA_ARGS)
-        self.print_config_helper("-dbios: dont_bios",    HELP_DONT_BIOS,       self.dont_bios,       DEFAULT_DONT_BIOS)
         self.print_config_helper("-dnewa: dont_newacco", HELP_DONT_NEWACCO,    self.dont_newacco,    DEFAULT_DONT_NEWACCO)
         self.print_config_helper("-dsetp: dont_setprod", HELP_DONT_SETPROD,    self.dont_setprod,    DEFAULT_DONT_SETPROD)
-        self.print_config_helper("-dvote: dont_vote",    HELP_DONT_VOTE,       self.dont_vote,       DEFAULT_DONT_VOTE)
         self.print_config_helper("--http-retry",         HELP_HTTP_RETRY,      self.http_retry,      DEFAULT_HTTP_RETRY)
         self.print_config_helper("--http-sleep",         HELP_HTTP_SLEEP,      self.http_sleep,      DEFAULT_HTTP_SLEEP)
         self.print_config_helper("--verify-async",       HELP_VERIFY_ASYNC,    self.verify_async,    DEFAULT_VERIFY_ASYNC)
@@ -901,10 +863,8 @@ class Cluster:
         self.print_config_helper("--sync-retry",         HELP_SYNC_RETRY,      self.sync_retry,      DEFAULT_SYNC_RETRY)
         self.print_config_helper("--sync-sleep",         HELP_SYNC_SLEEP,      self.sync_sleep,      DEFAULT_SYNC_SLEEP)
 
-    def bios_launch(self, dont_newacco=False, dont_setprod=False):
-        """Launch in BIOS mode.
-
-        Steps to take for a launch in BIOS mode
+    def launch(self, dont_newacco=False, dont_setprod=False):
+        """Steps to take for a launch
         ---------------------------------------
         0. print config
         1. launch a cluster
@@ -931,61 +891,6 @@ class Cluster:
         for t in self.verify_threads:
             t.join()
         self.info(">>> [BIOS Launch] ----------------------- END ------------------------------------------------------")
-
-
-    def regular_launch(self, dont_newacco=False, dont_vote=False):
-        """Launch in regular mode.
-
-        Steps to take for a launch in regular mode
-        ------------------------------------------
-        0. print config
-        1. launch a cluster
-        2. wait for all the nodes to get ready
-        3. schedule protocol feature activations
-        4. bios-create eosio.token, eosio.system accounts
-        5. set eosio.token contract    <--- depends on 4
-        6. create tokens               <--- depends on 5
-        7. issue tokens                <--- depends on 5
-        8. set eosio.system contract   <--- depends on 4
-        9. init eosio.system contract  <--- depends on 6,7
-        10. create producer accounts   <--- depends on 8,9
-        11. register producers         <--- depends on 8,9
-        12. vote for producers         <--- depends on 8,9
-        13. check if nodes are in sync
-        14. make sure production schedule changes (producer no longer eosio)
-        15. if transaction verfication is done asynchronously, make sure all
-            transactions have been verified
-        """
-        self.info(">>> [Regular Launch] -------------------- BEGIN ------------------------------------------")
-        self.print_config()
-        self.launch_cluster()
-        self.wait_nodes_ready()
-        self.schedule_protocol_feature_activations()
-        self.bios_create_accounts_in_parallel(accounts=["eosio.bpay",
-                                            "eosio.msig",
-                                            "eosio.names",
-                                            "eosio.ram",
-                                            "eosio.ramfee",
-                                            "eosio.rex",
-                                            "eosio.saving",
-                                            "eosio.stake",
-                                            "eosio.token",
-                                            "eosio.upay"])
-        self.set_token_contract()
-        self.create_tokens(maximum_supply=self.tokens_supply)
-        self.issue_tokens(quantity=self.tokens_supply)
-        self.set_system_contract()
-        self.init_system_contract()
-        if not dont_newacco:
-            self.create_and_register_producers_in_parallel()
-            if not dont_vote:
-                self.vote_for_producers(voter="defproducera",
-                                        voted_producers=list(self.producer_to_node)[:min(21, len(self.producer_to_node))])
-                self.check_head_block_producer()
-        self.check_sync()
-        for t in self.verify_threads:
-            t.join()
-        self.info(">>> [Regular Launch] -------------------- END --------------------------------------------")
 
 # --------------- start-up and shut-down ------------------------------------------------------------------------------
 
@@ -1021,31 +926,6 @@ class Cluster:
                     raise BlockchainError(f"Node {node_id} cannot be properly stopped by singal {kill_sig}.")
         else:
             return cx
-
-    def stop_all_nodes(self, kill_sig=15, **call_kwargs):
-        threads = []
-        channel = {}
-        def report(channel, thread_id, message):
-            channel[thread_id] = message
-        call_kwargs.update({"buffer": True})
-        kwargs = call_kwargs
-        kwargs.update({"kill_sig": kill_sig})
-        for node_id in self.node_count:
-            t = ExceptionThread(channel, report, target=self.stop_node, args=(node_id,), kwargs=kwargs)
-            threads.append(t)
-            t.start()
-        for t in threads:
-            t.join()
-        error_count = len(channel)
-        if error_count:
-            msg = f"{error_count} {helper.plural('exception', cnt)} occurred in stopping nodes."
-            cnt = min(error_count, 10)
-            msg += f"\nReporting first {cnt} {helper.plural('exception', cnt)}:"
-            for i in range(cnt):
-                msg += f"\n[{i}] {channel[i]}"
-            self.error(msg)
-            if not dont_raise:
-                raise BlockchainError(msg)
 
 # --------------- simple queries: queries that are made directly via call() -------------------------------------------
 
@@ -1272,156 +1152,6 @@ class Cluster:
                     "data": { "schedule": prod_keys}}]
         return self.push_actions(actions=actions, header="set producers", **call_kwargs)
 
-# --------------- regular-launch-related ------------------------------------------------------------------------------
-
-    def set_token_contract(self, **call_kwargs):
-        contract = "eosio.token"
-        return self.set_contract(account=contract,
-                                 contract_file=self.make_wasm_name(contract),
-                                 abi_file=self.make_abi_name(contract),
-                                 name=contract,
-                                 **call_kwargs)
-
-    def set_system_contract(self, **call_kwargs):
-        contract = "eosio.system"
-        return self.set_contract(account="eosio",
-                                 contract_file=self.make_wasm_name(contract),
-                                 abi_file=self.make_abi_name(contract),
-                                 name=contract,
-                                 **call_kwargs)
-
-    def create_tokens(self, maximum_supply, **call_kwargs):
-        tokens = helper.make_tokens(maximum_supply)
-        actions = [{"account": "eosio.token",
-                    "action": "create",
-                    "permissions": [{"actor": "eosio.token",
-                                     "permission": "active"}],
-                    "data": {"issuer": "eosio",
-                             "maximum_supply": tokens,
-                             "can_freeze": 0,
-                             "can_recall": 0,
-                             "can_whitelist":0}}]
-        return self.push_actions(actions=actions, header="create tokens", **call_kwargs)
-
-    def issue_tokens(self, quantity, **call_kwargs):
-        tokens = helper.make_tokens(quantity)
-        actions = [{"account": "eosio.token",
-                    "action": "issue",
-                    "permissions": [{"actor": "eosio",
-                                    "permission": "active"}],
-                    "data": {"to": "eosio",
-                             "quantity": tokens,
-                             "memo": "hi"}}]
-        return self.push_actions(actions=actions, header="issue tokens", **call_kwargs)
-
-    def init_system_contract(self, **call_kwargs):
-        actions = [{"account": "eosio",
-                    "action": "init",
-                    "permissions": [{"actor": "eosio",
-                                     "permission": "active"}],
-                    "data": {"version": 0,
-                             "core": "4,SYS"}}]
-        return self.push_actions(actions=actions, header="init system contract", **call_kwargs)
-
-    def create_account(self, creator, name, stake_cpu, stake_net, buy_ram_bytes, transfer, node_id=0, **call_kwargs):
-        newaccount  = {"account": "eosio",
-                       "action": "newaccount",
-                       "permissions": [{"actor": "eosio",
-                                        "permission": "active"}],
-                       "data": {"creator": "eosio",
-                                "name": name,
-                                "owner": {"threshold": 1,
-                                          "keys": [{"key": PRODUCER_KEY,
-                                                    "weight": 1}],
-                                          "accounts": [],
-                                          "waits": []},
-                                "active": {"threshold": 1,
-                                           "keys": [{"key": PRODUCER_KEY,
-                                                     "weight": 1}],
-                                           "accounts": [],
-                                           "waits": []}}}
-        buyrambytes = {"account": "eosio",
-                       "action": "buyrambytes",
-                       "permissions": [{"actor": "eosio",
-                                        "permission": "active"}],
-                       "data": {"payer": "eosio",
-                                "receiver": name,
-                                "bytes": buy_ram_bytes}}
-        delegatebw  = {"account": "eosio",
-                       "action": "delegatebw",
-                       "permissions": [{"actor": "eosio",
-                                        "permission": "active"}],
-                       "data": {"from": "eosio",
-                                "receiver": name,
-                                "stake_cpu_quantity": stake_cpu,
-                                "stake_net_quantity": stake_net,
-                                "transfer": transfer}}
-        actions = [newaccount, buyrambytes, delegatebw]
-        return self.push_actions(node_id=node_id, actions=actions, header=f"create \"{name}\" account", **call_kwargs)
-
-    def register_producer(self, producer, node_id=0, **call_kwargs):
-        actions = [{"account": "eosio",
-                    "action": "regproducer",
-                    "permissions": [{"actor": "{}".format(producer),
-                                    "permission": "active"}],
-                    "data": {"producer": "{}".format(producer),
-                             "producer_key": PRODUCER_KEY,
-                             "url": "www.test.com",
-                             "location": 0}}]
-        return self.push_actions(node_id=node_id, actions=actions, header=f"register \"{producer}\" producer", **call_kwargs)
-
-    def create_and_register_producers_in_parallel(self, dont_raise=False, **call_kwargs):
-        amount = self.tokens_supply * 0.075
-        threads = []
-        channel = {}
-        def report(channel, thread_id, message):
-            channel[thread_id] = message
-        call_kwargs.update({"buffer": True})
-        for p in self.producer_to_node:
-            def create_and_register_producers(amount):
-                # CAUTION
-                # -------
-                # Must keep p's value in a local variable (producer),
-                # since p may change in multithreading
-                producer = p
-                tokens = helper.make_tokens(amount)
-                self.create_account(creator="eosio",
-                                    name=producer,
-                                    stake_cpu=tokens,
-                                    stake_net=tokens,
-                                    buy_ram_bytes=1048576,
-                                    transfer=True,
-                                    **call_kwargs)
-                self.register_producer(producer=producer, **call_kwargs)
-            t = ExceptionThread(channel, report, target=create_and_register_producers, args=(amount,))
-            amount = max(amount / 2, 100)
-            threads.append(t)
-            t.start()
-        for t in threads:
-            t.join()
-        error_count = len(channel)
-        if error_count:
-            msg = f"{error_count} {helper.plural('exception', cnt)} occurred in creating and registering producers."
-            cnt = min(error_count, 10)
-            msg += f"\nReporting first {cnt} {helper.plural('exception', cnt)}:"
-            for i in range(cnt):
-                msg += f"\n[{i}] {channel[i]}"
-            self.error(msg)
-            if not dont_raise:
-                raise BlockchainError(msg)
-
-    def vote_for_producers(self, voter, voted_producers: typing.List[str],  **call_kwargs):
-        bassert(len(voted_producers) <= 30,
-                f"An account cannot votes for more than 30 producers. {voter} voted for {len(voted_producers)} producers.")
-        actions = [{"account": "eosio",
-                    "action": "voteproducer",
-                    "permissions": [{"actor": "{}".format(voter),
-                                     "permission": "active"}],
-                    "data": {"voter": "{}".format(voter),
-                             "proxy": "",
-                             "producers": voted_producers}}]
-        return self.push_actions(actions=actions, header="votes for producers", **call_kwargs)
-
 # --------------- auxiliary -------------------------------------------------------------------------------------------
 
     def make_wasm_name(self, contract):
@@ -1493,24 +1223,6 @@ class Cluster:
         if not verified and not dont_raise:
             raise BlockchainError(f"{transaction_id} cannot be verified")
         return verified
-
-    def check_head_block_producer(self, retry=None, sleep=None, dont_raise=False):
-        if retry is None: retry = 100
-        if sleep is None: sleep = 1.0
-        self.print_header("check head block producer")
-        for __ in range(retry + 1):
-            head_block_producer = self.get_head_block_producer(level="trace")
-            if head_block_producer == "eosio":
-                self.debug(color.yellow("Head block producer is still \"eosio\"."))
-            else:
-                self.debug(color.green(f"Head block producer is now \"{head_block_producer}\", no longer eosio."))
-                break
-            time.sleep(sleep)
-        else:
-            msg = f"Head block producer is still \"eosio\" after {retry} {helper.plural(('retry', 'retries'), count=retry)}."
-            self.error(msg)
-            if not dont_raise:
-                raise BlockchainError(msg)
 
     def check_sync(self, retry=None, sleep=None, min_sync_count=None, max_block_lag=None, dont_raise=False, level="debug"):
         @dataclasses.dataclass

@@ -44,7 +44,7 @@ At the very high level, a typical Python test script consists of only two steps:
 1. Initialize a cluster
 2. Test on the cluster
 
-In order to initialize cluster, three sub-steps are needed:
+In order to initialize a cluster, three sub-steps are needed:
 
 (1) create a `Logger` object
 
@@ -136,7 +136,7 @@ The `Logger`,  `Service` and `Cluster` objects are all configured at their creat
 
 ### Hierarchy
 
-While there are many arguments, the values in general come from three sources, with the latter capable of override the former:
+While there are many arguments, the values in general come from three sources, with the later items, if specified, overriding the earlier items in the list:
 
 1. default values
 2. in-script arguments, and
@@ -308,7 +308,7 @@ clus.log("{}: first half.".format(thread_name), level="debug", buffer=True)
 clus.log("{}: second half.".format(thread_name), level="debug")
 ```
 
-setting `buffered=True` will guarantee that the log file will be looking like
+setting `buffered=True` will guarantee that the log file will either look like
 
 ```
 thread-1: first half
@@ -381,7 +381,7 @@ A `Service` object represents the connection with the launcher service running i
 
 After configuration, the `Service` will change the working directory, register (and possibly *modify*) the Logger, and then connect to launcher service. *Currently, it is only possible to connect to a local launcher service.*
 
-If there is already an existing launcher service running in the background, the `Service` object will by default connect to it (without starting a ew one). It is possible to override this default behavior by requesting to always start a new launcher service and/or to kill all the existing launcher service(s).
+If there is already an existing launcher service running in the background, the `Service` object will by default connect to it (without starting a new one). It is possible to override this default behavior by requesting to always start a new launcher service and/or to kill all the existing launcher service(s).
 
 A detailed explanation of the parameters to initialize a `Service` object can be found in its docstring.
 
@@ -409,9 +409,9 @@ A detailed explanation of the parameters to initialize a `Service` object can be
         Can be either absolute or relative to the working directory.
     start : bool
         Always start a new launcher service.
-        Note that if to start a new instance alongside the existing ones,
-        make sure the listening ports are different. Otherwise, the
-        new launcher service will issue an error.
+        To start a new instance alongside the existing ones, make sure the
+        listening ports are different. Otherwise, the new launcher service
+        will issue an error.
         Default is False (will not start a new one if there is an existing
         launcher service running in the background).
     kill : bool

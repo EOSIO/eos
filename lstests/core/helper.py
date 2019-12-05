@@ -79,7 +79,7 @@ def singular(word, count, suffix="s"):
 
 
 def pad(text, total, left=0, char=" ", sep="", textlen=None) -> str:
-    """textlen is a hint for visable length of text"""
+    """textlen is a hint for visible length of text"""
     textlen = vislen(text) if textlen is None else textlen
     offset = len(text) - textlen
     return (char * left + sep + text + sep).ljust(total + offset, char)
