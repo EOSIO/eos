@@ -188,6 +188,15 @@ class kv_tester : public tester {
       get("", db, N(kvtest), "01020304", "aabbccddee");
    }
 
+   void test_other_contract(name db) {
+      get("", db, N(missing), "", nullptr);
+      get("", db, N(kvtest1), "", nullptr);
+      BOOST_TEST(set(db, N(missing), "", "") == "Can not write to this key");
+      BOOST_TEST(set(db, N(kvtest1), "", "") == "Can not write to this key");
+      erase("Can not write to this key", db, N(missing), "");
+      erase("Can not write to this key", db, N(kvtest1), "");
+   }
+
    void test_get_data(name db) {
       BOOST_TEST(push_action(N(getdata), mvo()("db", db)) == "");
    }
@@ -668,6 +677,11 @@ FC_LOG_AND_RETHROW()
 
 BOOST_DATA_TEST_CASE_F(kv_tester, get_data, bdata::make(databases), db) try { //
    test_get_data(db);
+}
+FC_LOG_AND_RETHROW()
+
+BOOST_DATA_TEST_CASE_F(kv_tester, other_contract, bdata::make(databases), db) try { //
+   test_other_contract(db);
 }
 FC_LOG_AND_RETHROW()
 
