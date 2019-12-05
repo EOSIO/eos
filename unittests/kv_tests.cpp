@@ -7,6 +7,8 @@
 #include <fc/variant_object.hpp>
 
 #include <boost/test/unit_test.hpp>
+#include <boost/test/data/test_case.hpp>
+#include <boost/test/data/monomorphic.hpp>
 
 #include <contracts.hpp>
 
@@ -16,6 +18,7 @@ using namespace eosio::chain;
 using namespace eosio::testing;
 using namespace fc;
 using namespace std;
+namespace bdata = boost::unit_test::data;
 
 using mvo = fc::mutable_variant_object;
 
@@ -459,21 +462,86 @@ class kv_tester : public tester {
    void test_key_value_limit(name db) {
       std::string k(2*1024, '1');
       std::vector<char> v(256*1024, 'a');
-      BOOST_TEST("" == set(db, N(kvtest), k.c_str(), v));
-      k += "11";
-      BOOST_TEST("Key too large" == set(db, N(kvtest), k.c_str(), v));
-      k.resize(2*1024);
-      v.push_back('a');
-      BOOST_TEST("Value too large" == set(db, N(kvtest), k.c_str(), v));
+      // Default limits 1KiB/256KiB
+      setmany("", db, N(kvtest), {{bytes(1024, 'a'), bytes(256*1024, 'a')}});
+      setmany("Key too large", db, N(kvtest), {{bytes(1024 + 1, 'a'), bytes()}});
+      setmany("Value too large", db, N(kvtest), {{bytes(), bytes(256*1024 + 1, 'a')}});
       BOOST_TEST_REQUIRE(set_kv_limits(db, 4, 4) == "");
-      k.resize(5*2);
-      v.resize(4);
-      BOOST_TEST("Key too large" == set(db, N(kvtest), k.c_str(), v));
-      k.resize(4*2);
-      BOOST_TEST_REQUIRE(set_kv_limits(db, 4, 4) == "");
-      v.push_back('a');
-      BOOST_TEST("Value too large" == set(db, N(kvtest), k.c_str(), v));
-      BOOST_TEST_REQUIRE(set_kv_limits(db, 1024, 256*1024) == "");
+      setmany("", db, N(kvtest), {{bytes(4, 'a'), bytes(4, 'a')}});
+      setmany("Key too large", db, N(kvtest), {{bytes(4 + 1, 'a'), bytes()}});
+      setmany("Value too large", db, N(kvtest), {{bytes(), bytes(4 + 1, 'a')}});
+
+      // The check happens at the point of calling set.  Changing the bad value later doesn't bypass errors.
+      setmany("Value too large", db, N(kvtest), {{bytes(4, 'b'), bytes(5, 'b')}, {bytes(4, 'b'), {}}});
+
+      // The key is checked even if it already exists
+      setmany("Key too large", db, N(kvtest), {{bytes(1024, 'a'), {}}});
+   }
+
+   action make_set_action(name db, std::size_t size) {
+      std::vector<char> k;
+      std::vector<char> v(size, 'a');
+      action act;
+      act.account = N(kvtest);
+      act.name    = N(set);
+      act.data    = abi_ser.variant_to_binary("set", mvo()("db", db)("contract", N(kvtest))("k", k)("v", v), abi_serializer_max_time);
+      act.authorization = vector<permission_level>{{N(kvtest), config::active_name}};
+      return act;
+   }
+
+   action make_set_limit_action(name db, int64_t limit) {
+      action act;
+      act.account = N(eosio);
+      act.name    = db == N(eosio.kvram)?N(setramlimit):N(setdisklimit);
+      act.data    = sys_abi_ser.variant_to_binary(act.name.to_string(), mvo()("account", N(kvtest))("limit", limit), abi_serializer_max_time);
+      act.authorization = vector<permission_level>{{N(kvtest), config::active_name}};
+      return act;
+   }
+
+   // Go over the limit and back in one transaction, with two separate actions
+   void test_kv_inc_dec_usage(name db) {
+      BOOST_TEST_REQUIRE(set_limit(db, get_usage(db) + 256) == "");
+      produce_block();
+      signed_transaction trx;
+      trx.actions.push_back(make_set_action(db, 512));
+      trx.actions.push_back(make_set_action(db, 0));
+      set_transaction_headers(trx);
+      trx.sign(get_private_key(N(kvtest), "active"), control->get_chain_id());
+      push_transaction(trx);
+      produce_block();
+   }
+
+   // Increase usage and then the limit in two actions in the same transaction.
+   void test_kv_inc_usage_and_limit(name db) {
+      auto base_usage = get_usage(db);
+      BOOST_TEST_REQUIRE(set_limit(db, base_usage + 256) == "");
+      produce_block();
+      signed_transaction trx;
+      {
+         trx.actions.push_back(make_set_action(db, 512));
+         trx.actions.push_back(make_set_limit_action(db, base_usage + 624));
+      }
+      set_transaction_headers(trx);
+      trx.sign(get_private_key(N(kvtest), "active"), control->get_chain_id());
+      push_transaction(trx);
+      produce_block();
+   }
+
+   // Decrease limit and then usage in two separate actions in the same transaction
+   void test_kv_dec_limit_and_usage(name db) {
+      auto base_usage = get_usage(db);
+      BOOST_TEST_REQUIRE(set_limit(db, base_usage + 1024) == "");
+      BOOST_TEST_REQUIRE(set(db, N(kvtest), "", std::vector<char>(512, 'a')) == "");
+      produce_block();
+      signed_transaction trx;
+      {
+         trx.actions.push_back(make_set_limit_action(db, base_usage + 256));
+         trx.actions.push_back(make_set_action(db, 0));
+      }
+      set_transaction_headers(trx);
+      trx.sign(get_private_key(N(kvtest), "active"), control->get_chain_id());
+      push_transaction(trx);
+      produce_block();
    }
 
    abi_serializer abi_ser;
@@ -568,6 +636,23 @@ FC_LOG_AND_RETHROW()
 BOOST_FIXTURE_TEST_CASE(kv_key_value_limit, kv_tester) try { //
    test_key_value_limit(N(eosio.kvram));
    test_key_value_limit(N(eosio.kvdisk));
+}
+FC_LOG_AND_RETHROW()
+
+constexpr name databases[] = { N(eosio.kvram), N(eosio.kvdisk) };
+
+BOOST_DATA_TEST_CASE_F(kv_tester, kv_inc_dec_usage, bdata::make(databases), db) try { //
+   test_kv_inc_dec_usage(db);
+}
+FC_LOG_AND_RETHROW()
+
+BOOST_DATA_TEST_CASE_F(kv_tester, kv_inc_usage_and_limit, bdata::make(databases), db) try { //
+   test_kv_inc_usage_and_limit(db);
+}
+FC_LOG_AND_RETHROW()
+
+BOOST_DATA_TEST_CASE_F(kv_tester, kv_dec_limit_and_usage, bdata::make(databases), db) try { //
+   test_kv_dec_limit_and_usage(db);
 }
 FC_LOG_AND_RETHROW()
 
