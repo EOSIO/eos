@@ -4,7 +4,7 @@ The following commands will install all of the necessary dependencies for source
 Therefore, COPY and other Dockerfile-isms are not permitted. -->
 ## Clone EOSIO Repository
 ```
-apt-get update && apt-get upgrade -y && DEBIAN_FRONTEND=noninteractive apt-get install git
+apt-get update && apt-get upgrade -y && DEBIAN_FRONTEND=noninteractive apt-get install -y git
 export EOSIO_LOCATION=$HOME/eosio && git clone https://github.com/EOSIO/eos.git $EOSIO_LOCATION
 export EOSIO_INSTALL_LOCATION=$EOSIO_LOCATION/install && mkdir -p $EOSIO_INSTALL_LOCATION
 ```
