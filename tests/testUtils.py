@@ -152,10 +152,21 @@ class Utils:
 
     @staticmethod
     def checkOutput(cmd, ignoreError=False):
+        popen = Utils.delayedCheckOutput(cmd)
+        return Utils.checkDelayedOutput(popen, cmd, ignoreError=ignoreError)
+
+    @staticmethod
+    def delayedCheckOutput(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE):
         if (isinstance(cmd, list)):
-            popen=subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            popen=subprocess.Popen(cmd, stdout=stdout, stderr=stderr)
         else:
-            popen=subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+            popen=subprocess.Popen(cmd, stdout=stdout, stderr=stderr, shell=True)
+        return popen
+
+    @staticmethod
+    def checkDelayedOutput(popen, cmd, ignoreError=False):
+        assert isinstance(popen, subprocess.Popen)
+        assert isinstance(cmd, (str,list))
         (output,error)=popen.communicate()
         Utils.CheckOutputDeque.append((output,error,cmd))
         if popen.returncode != 0 and not ignoreError:
@@ -258,7 +269,6 @@ class Utils:
     def runCmdReturnStr(cmd, trace=False):
         cmdArr=shlex.split(cmd)
         return Utils.runCmdArrReturnStr(cmdArr)
-
 
     @staticmethod
     def runCmdArrReturnStr(cmdArr, trace=False):

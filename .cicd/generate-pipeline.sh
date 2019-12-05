@@ -486,24 +486,24 @@ cat <<EOF
   - wait
 
     # packaging
-  - label: ":centos: CentOS 7.6 - Package Builder"
+  - label: ":centos: CentOS 7.7 - Package Builder"
     command:
       - "ssh-keyscan -H github.com >> ~/.ssh/known_hosts"
       - "git clone \$BUILDKITE_REPO ."
       - "$GIT_FETCH git checkout -f \$BUILDKITE_COMMIT"
-      - "buildkite-agent artifact download build.tar.gz . --step ':centos: CentOS 7.6 - Build' && tar -xzf build.tar.gz"
+      - "buildkite-agent artifact download build.tar.gz . --step ':centos: CentOS 7.7 - Build' && tar -xzf build.tar.gz"
       - "./.cicd/package.sh"
     plugins:
       - thedyrt/skip-checkout#v0.1.1:
           cd: ~
     env:
-      IMAGE_TAG: "centos-7.6-$PLATFORM_TYPE"
+      IMAGE_TAG: "centos-7.7-$PLATFORM_TYPE"
       OS: "el7" # OS and PKGTYPE required for lambdas
       PKGTYPE: "rpm"
     agents:
       queue: "$BUILDKITE_TEST_AGENT_QUEUE"
     timeout: ${TIMEOUT:-10}
-    skip: ${SKIP_CENTOS_7_6}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
+    skip: ${SKIP_CENTOS_7_7}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
 
   - label: ":ubuntu: Ubuntu 16.04 - Package Builder"
     command:

@@ -1,4 +1,4 @@
-FROM centos:7.6.1810
+FROM centos:7.7.1908
 ENV EOSIO_LOCATION=/root/eosio
 ENV EOSIO_INSTALL_LOCATION=/root/eosio/install
 ENV VERSION 1
