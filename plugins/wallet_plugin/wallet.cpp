@@ -15,7 +15,6 @@
 #include <fc/io/json.hpp>
 #include <fc/crypto/aes.hpp>
 #include <fc/crypto/hex.hpp>
-#include <fc/smart_ref_impl.hpp>
 
 #include <boost/range/adaptor/map.hpp>
 #include <boost/range/algorithm/copy.hpp>

@@ -1,4 +1,4 @@
-FROM centos:7.6.1810
+FROM centos:7.7.1908
 ENV VERSION 1
 # install dependencies.
 RUN yum update -y && \
@@ -7,7 +7,7 @@ RUN yum update -y && \
     yum --enablerepo=extras install -y devtoolset-8 && \
     yum --enablerepo=extras install -y which git autoconf automake libtool make bzip2 doxygen \
     graphviz bzip2-devel openssl-devel gmp-devel ocaml libicu-devel \
-    python python-devel rh-python36 gettext-devel file libusbx-devel \
+    python python-devel rh-python36 file libusbx-devel \
     libcurl-devel patch vim-common jq llvm-toolset-7.0-llvm-devel llvm-toolset-7.0-llvm-static
 # build cmake.
 RUN curl -LO https://cmake.org/files/v3.13/cmake-3.13.2.tar.gz && \
@@ -69,3 +69,14 @@ RUN curl -LO http://download-ib01.fedoraproject.org/pub/epel/7/x86_64/Packages/c
 # fix ccache for centos
 RUN cd /usr/lib64/ccache && ln -s ../../bin/ccache c++
 ENV CCACHE_PATH="/opt/rh/devtoolset-8/root/usr/bin"
+# install nvm
+RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.0/install.sh | bash
+# load nvm in non-interactive shells
+RUN cp ~/.bashrc ~/.bashrc.bak && \
+    cat ~/.bashrc.bak | tail -3 > ~/.bashrc && \
+    cat ~/.bashrc.bak | head -n '-3' >> ~/.bashrc && \
+    rm ~/.bashrc.bak
+# install node 10
+RUN bash -c '. ~/.bashrc; nvm install --lts=dubnium' && \
+    ln -s "/root/.nvm/versions/node/$(ls -p /root/.nvm/versions/node | sort -Vr | head -1)bin/node" /usr/local/bin/node
+RUN yum install -y nodejs

@@ -505,7 +505,7 @@ namespace eosio { namespace testing {
             if( num_blocks_to_producer_before_shutdown > 0 )
                produce_blocks( num_blocks_to_producer_before_shutdown );
             if (!skip_validate)
-               BOOST_REQUIRE_EQUAL( validate(), true );
+               BOOST_CHECK_EQUAL( validate(), true );
          } catch( const fc::exception& e ) {
             wdump((e.to_detail_string()));
          }
@@ -539,10 +539,10 @@ namespace eosio { namespace testing {
          unique_ptr<controller> validating_node = std::make_unique<controller>(vcfg, make_protocol_feature_set(), genesis.compute_chain_id());
          validating_node->add_indices();
          if (use_genesis) {
-            validating_node->startup( []() { return false; }, genesis );
+            validating_node->startup( [](){}, []() { return false; }, genesis );
          }
          else {
-            validating_node->startup( []() { return false; } );
+            validating_node->startup( [](){}, []() { return false; } );
          }
          return validating_node;
       }
@@ -622,7 +622,7 @@ namespace eosio { namespace testing {
         validating_node.reset();
         validating_node = std::make_unique<controller>(vcfg, make_protocol_feature_set(), control->get_chain_id());
         validating_node->add_indices();
-        validating_node->startup( []() { return false; } );
+        validating_node->startup( [](){}, []() { return false; } );
 
         return ok;
       }

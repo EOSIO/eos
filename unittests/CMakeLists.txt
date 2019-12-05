@@ -1,5 +1,3 @@
-find_package( Gperftools QUIET )
-
 ### Build contracts with cdt if available ###
 include(ExternalProject)
 
@@ -22,11 +20,6 @@ if( EOSIO_COMPILE_TEST_CONTRACTS )
 else()
   message( STATUS "Not building contracts in directory `eos/unittests/test-contracts/`" )
   add_subdirectory(test-contracts)
-endif()
-
-if( GPERFTOOLS_FOUND )
-   message( STATUS "Found gperftools; compiling tests with TCMalloc" )
-   list( APPEND PLATFORM_SPECIFIC_LIBS tcmalloc )
 endif()
 
 add_subdirectory(contracts)

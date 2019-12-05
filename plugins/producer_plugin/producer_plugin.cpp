@@ -9,7 +9,6 @@
 
 #include <fc/io/json.hpp>
 #include <fc/log/logger_config.hpp>
-#include <fc/smart_ref_impl.hpp>
 #include <fc/scoped_exit.hpp>
 
 #include <boost/asio.hpp>
@@ -37,7 +36,6 @@ using boost::multi_index_container;
 
 using std::string;
 using std::vector;
-using std::deque;
 using boost::signals2::scoped_connection;
 
 #undef FC_LOG_AND_DROP
@@ -183,7 +181,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       void schedule_production_loop();
       void produce_block();
       bool maybe_produce_block();
-      bool remove_expired_persisted_trxs( const fc::time_point& deadline );
+      bool remove_expired_trxs( const fc::time_point& deadline );
       bool remove_expired_blacklisted_trxs( const fc::time_point& deadline );
       bool process_unapplied_trxs( const fc::time_point& deadline );
       bool process_scheduled_and_incoming_trxs( const fc::time_point& deadline, size_t& pending_incoming_process_limit );
@@ -266,7 +264,11 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       }
 
       void on_block( const block_state_ptr& bsp ) {
+         auto before = _unapplied_transactions.size();
          _unapplied_transactions.clear_applied( bsp );
+         fc_dlog( _log, "Removed applied transactions before: ${before}, after: ${after}",
+                  ("before", before)("after", _unapplied_transactions.size()) );
+
       }
 
       void on_block_header( const block_state_ptr& bsp ) {
@@ -383,62 +385,24 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
             return;
          }
 
-         if( chain.head_block_state()->header.timestamp.next().to_time_point() >= fc::time_point::now() ) {
+         const auto& hbs = chain.head_block_state();
+         if( hbs->header.timestamp.next().to_time_point() >= fc::time_point::now() ) {
             _production_enabled = true;
          }
-
 
          if( fc::time_point::now() - block->timestamp < fc::minutes(5) || (blk_num % 1000 == 0) ) {
             ilog("Received block ${id}... #${n} @ ${t} signed by ${p} [trxs: ${count}, lib: ${lib}, conf: ${confs}, latency: ${latency} ms]",
                  ("p",block->producer)("id",id.str().substr(8,16))("n",blk_num)("t",block->timestamp)
                  ("count",block->transactions.size())("lib",chain.last_irreversible_block_num())
                  ("confs", block->confirmed)("latency", (fc::time_point::now() - block->timestamp).count()/1000 ) );
+            if( chain.get_read_mode() != db_read_mode::IRREVERSIBLE && hbs->id != id && hbs->block != nullptr ) { // not applied to head
+               ilog("Block not applied to head ${id}... #${n} @ ${t} signed by ${p} [trxs: ${count}, dpos: ${dpos}, conf: ${confs}, latency: ${latency} ms]",
+                    ("p",hbs->block->producer)("id",hbs->id.str().substr(8,16))("n",hbs->block_num)("t",hbs->block->timestamp)
+                    ("count",hbs->block->transactions.size())("dpos", hbs->dpos_irreversible_blocknum)
+                    ("confs", hbs->block->confirmed)("latency", (fc::time_point::now() - hbs->block->timestamp).count()/1000 ) );
+            }
          }
       }
-
-      class incoming_transaction_queue {
-         uint64_t max_incoming_transaction_queue_size = 0;
-         uint64_t size_in_bytes = 0;
-         std::deque<std::tuple<transaction_metadata_ptr, bool, next_function<transaction_trace_ptr>>> _incoming_transactions;
-
-      private:
-         static uint64_t calc_size( const transaction_metadata_ptr& trx ) {
-            return trx->packed_trx()->get_unprunable_size() + trx->packed_trx()->get_prunable_size() + sizeof( *trx );
-         }
-
-         void add_size( const transaction_metadata_ptr& trx ) {
-            auto size = calc_size( trx );
-            EOS_ASSERT( size_in_bytes + size < max_incoming_transaction_queue_size, tx_resource_exhaustion, "Transaction exceeded producer resource limit" );
-            size_in_bytes += size;
-         }
-
-      public:
-         void set_max_incoming_transaction_queue_size( uint64_t v ) { max_incoming_transaction_queue_size = v; }
-
-         void add( const transaction_metadata_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next ) {
-            add_size( trx );
-            _incoming_transactions.emplace_back( trx, persist_until_expired, std::move( next ) );
-         }
-
-         void add_front( const transaction_metadata_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next ) {
-            add_size( trx );
-            _incoming_transactions.emplace_front( trx, persist_until_expired, std::move( next ) );
-         }
-
-         auto pop_front() {
-            EOS_ASSERT( !_incoming_transactions.empty(), producer_exception, "logic error, front() called on empty incoming_transactions" );
-            auto intrx = _incoming_transactions.front();
-            _incoming_transactions.pop_front();
-            const transaction_metadata_ptr& trx = std::get<0>( intrx );
-            size_in_bytes -= calc_size( trx );
-            return intrx;
-         }
-
-         bool empty()const { return _incoming_transactions.empty(); }
-         size_t size()const { return _incoming_transactions.size(); }
-      };
-
-      incoming_transaction_queue _pending_incoming_transactions;
 
       void on_incoming_transaction_async(const packed_transaction_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next) {
          chain::controller& chain = chain_plug->chain();
@@ -510,7 +474,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
             }
 
             if( !chain.is_building_block()) {
-               _pending_incoming_transactions.add( trx, persist_until_expired, next );
+               _unapplied_transactions.add_incoming( trx, persist_until_expired, next );
                return;
             }
 
@@ -526,7 +490,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
             auto trace = chain.push_transaction( trx, deadline );
             if( trace->except ) {
                if( failure_is_subjective( *trace->except, deadline_is_subjective )) {
-                  _pending_incoming_transactions.add( trx, persist_until_expired, next );
+                  _unapplied_transactions.add_incoming( trx, persist_until_expired, next );
                   if( _pending_block_mode == pending_block_mode::producing ) {
                      fc_dlog( _trx_trace_log, "[TRX_TRACE] Block ${block_num} for producer ${prod} COULD NOT FIT, tx: ${txid} RETRYING ",
                               ("block_num", chain.head_block_num() + 1)
@@ -812,7 +776,7 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
    EOS_ASSERT( max_incoming_transaction_queue_size > 0, plugin_config_exception,
                "incoming-transaction-queue-size-mb ${mb} must be greater than 0", ("mb", max_incoming_transaction_queue_size) );
 
-   my->_pending_incoming_transactions.set_max_incoming_transaction_queue_size( max_incoming_transaction_queue_size );
+   my->_unapplied_transactions.set_max_transaction_queue_size( max_incoming_transaction_queue_size );
 
    my->_incoming_defer_ratio = options.at("incoming-defer-ratio").as<double>();
 
@@ -1010,7 +974,12 @@ producer_plugin::runtime_options producer_plugin::get_runtime_options() const {
       my->_max_irreversible_block_age_us.count() < 0 ? -1 : my->_max_irreversible_block_age_us.count() / 1'000'000,
       my->_produce_time_offset_us,
       my->_last_block_time_offset_us,
-      my->_max_scheduled_transaction_time_per_block_ms
+      my->_max_scheduled_transaction_time_per_block_ms,
+      my->chain_plug->chain().get_subjective_cpu_leeway() ?
+            my->chain_plug->chain().get_subjective_cpu_leeway()->count() :
+            fc::optional<int32_t>(),
+      my->_incoming_defer_ratio,
+      my->chain_plug->chain().get_greylist_limit()
    };
 }
 
@@ -1348,10 +1317,16 @@ fc::time_point producer_plugin_impl::calculate_block_deadline( const fc::time_po
 producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
    chain::controller& chain = chain_plug->chain();
 
-   if( chain.get_read_mode() == chain::db_read_mode::READ_ONLY )
+   if( chain.in_immutable_mode() )
       return start_block_result::waiting;
 
    const auto& hbs = chain.head_block_state();
+
+   if( chain.get_terminate_at_block() > 0 && chain.get_terminate_at_block() < hbs->block_num ) {
+      ilog("Reached configured maximum block ${num}; terminating", ("num", chain.get_terminate_at_block()));
+      app().quit();
+      return start_block_result::failed;
+   }
 
    //Schedule for the next second's tick regardless of chain state
    // If we would wait less than 50ms (1/10 of block_interval), wait for the whole block interval.
@@ -1482,13 +1457,13 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
       }
 
       try {
-         if( !remove_expired_persisted_trxs( preprocess_deadline ) )
+         if( !remove_expired_trxs( preprocess_deadline ) )
             return start_block_result::exhausted;
          if( !remove_expired_blacklisted_trxs( preprocess_deadline ) )
             return start_block_result::exhausted;
 
          // limit execution of pending incoming to once per block
-         size_t pending_incoming_process_limit = _pending_incoming_transactions.size();
+         size_t pending_incoming_process_limit = _unapplied_transactions.incoming_size();
 
          if( !process_unapplied_trxs( preprocess_deadline ) )
             return start_block_result::exhausted;
@@ -1529,7 +1504,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
    return start_block_result::failed;
 }
 
-bool producer_plugin_impl::remove_expired_persisted_trxs( const fc::time_point& deadline )
+bool producer_plugin_impl::remove_expired_trxs( const fc::time_point& deadline )
 {
    chain::controller& chain = chain_plug->chain();
    auto pending_block_time = chain.pending_block_time();
@@ -1605,10 +1580,11 @@ bool producer_plugin_impl::process_unapplied_trxs( const fc::time_point& deadlin
       chain::controller& chain = chain_plug->chain();
       int num_applied = 0, num_failed = 0, num_processed = 0;
       auto unapplied_trxs_size = _unapplied_transactions.size();
+      // unapplied and persisted do not have a next method to call
       auto itr     = (_pending_block_mode == pending_block_mode::producing) ?
-                     _unapplied_transactions.begin() : _unapplied_transactions.persisted_begin();
+                     _unapplied_transactions.unapplied_begin() : _unapplied_transactions.persisted_begin();
       auto end_itr = (_pending_block_mode == pending_block_mode::producing) ?
-                     _unapplied_transactions.end()   : _unapplied_transactions.persisted_end();
+                     _unapplied_transactions.unapplied_end()   : _unapplied_transactions.persisted_end();
       while( itr != end_itr ) {
          if( deadline <= fc::time_point::now() ) {
             exhausted = true;
@@ -1635,13 +1611,17 @@ bool producer_plugin_impl::process_unapplied_trxs( const fc::time_point& deadlin
                } else {
                   // this failed our configured maximum transaction time, we don't want to replay it
                   ++num_failed;
+                  if( itr->next ) itr->next( trace );
                   itr = _unapplied_transactions.erase( itr );
                   continue;
                }
             } else {
                ++num_applied;
-               itr = _unapplied_transactions.erase( itr );
-               continue;
+               if( itr->trx_type != trx_enum_type::persisted ) {
+                  if( itr->next ) itr->next( trace );
+                  itr = _unapplied_transactions.erase( itr );
+                  continue;
+               }
             }
          } LOG_AND_DROP();
          ++itr;
@@ -1665,6 +1645,8 @@ bool producer_plugin_impl::process_scheduled_and_incoming_trxs( const fc::time_p
    auto& blacklist_by_id = _blacklisted_transactions.get<by_id>();
    chain::controller& chain = chain_plug->chain();
    time_point pending_block_time = chain.pending_block_time();
+   auto itr = _unapplied_transactions.incoming_begin();
+   auto end = _unapplied_transactions.incoming_end();
    const auto& sch_idx = chain.db().get_index<generated_transaction_multi_index,by_delay>();
    const auto scheduled_trxs_size = sch_idx.size();
    auto sch_itr = sch_idx.begin();
@@ -1693,16 +1675,20 @@ bool producer_plugin_impl::process_scheduled_and_incoming_trxs( const fc::time_p
       num_processed++;
 
       // configurable ratio of incoming txns vs deferred txns
-      while (incoming_trx_weight >= 1.0 && pending_incoming_process_limit && _pending_incoming_transactions.size()) {
+      while (incoming_trx_weight >= 1.0 && pending_incoming_process_limit && itr != end ) {
          if (deadline <= fc::time_point::now()) {
             exhausted = true;
             break;
          }
 
-         auto e = _pending_incoming_transactions.pop_front();
          --pending_incoming_process_limit;
          incoming_trx_weight -= 1.0;
-         process_incoming_transaction_async(std::get<0>(e), std::get<1>(e), std::get<2>(e));
+
+         auto trx_meta = itr->trx_meta;
+         auto next = itr->next;
+         bool persist_until_expired = itr->trx_type == trx_enum_type::incoming_persisted;
+         itr = _unapplied_transactions.erase( itr );
+         process_incoming_transaction_async( trx_meta, persist_until_expired, next );
       }
 
       if (deadline <= fc::time_point::now()) {
@@ -1753,20 +1739,25 @@ bool producer_plugin_impl::process_scheduled_and_incoming_trxs( const fc::time_p
 bool producer_plugin_impl::process_incoming_trxs( const fc::time_point& deadline, size_t& pending_incoming_process_limit )
 {
    bool exhausted = false;
-   if (!_pending_incoming_transactions.empty()) {
+   if( pending_incoming_process_limit ) {
       size_t processed = 0;
-      fc_dlog(_log, "Processing ${n} pending transactions", ("n", pending_incoming_process_limit));
-      while (pending_incoming_process_limit && _pending_incoming_transactions.size()) {
+      fc_dlog( _log, "Processing ${n} pending transactions", ("n", pending_incoming_process_limit) );
+      auto itr = _unapplied_transactions.incoming_begin();
+      auto end = _unapplied_transactions.incoming_end();
+      while( pending_incoming_process_limit && itr != end ) {
          if (deadline <= fc::time_point::now()) {
             exhausted = true;
             break;
          }
-         auto e = _pending_incoming_transactions.pop_front();
          --pending_incoming_process_limit;
-         process_incoming_transaction_async(std::get<0>(e), std::get<1>(e), std::get<2>(e));
+         auto trx_meta = itr->trx_meta;
+         auto next = itr->next;
+         bool persist_until_expired = itr->trx_type == trx_enum_type::incoming_persisted;
+         itr = _unapplied_transactions.erase( itr );
+         process_incoming_transaction_async( trx_meta, persist_until_expired, next );
          ++processed;
       }
-      fc_dlog(_log, "Processed ${n} pending transactions, ${p} left", ("n", processed)("p", _pending_incoming_transactions.size()));
+      fc_dlog( _log, "Processed ${n} pending transactions, ${p} left", ("n", processed)("p", _unapplied_transactions.incoming_size()) );
    }
    return !exhausted;
 }
@@ -1913,9 +1904,7 @@ void producer_plugin_impl::produce_block() {
    //ilog("produce_block ${t}", ("t", fc::time_point::now())); // for testing _produce_time_offset_us
    EOS_ASSERT(_pending_block_mode == pending_block_mode::producing, producer_exception, "called produce_block while not actually producing");
    chain::controller& chain = chain_plug->chain();
-   const auto& hbs = chain.head_block_state();
    EOS_ASSERT(chain.is_building_block(), missing_pending_block_state, "pending_block_state does not exist but it should, another plugin may have corrupted it");
-
 
    const auto& auth = chain.pending_block_signing_authority();
    std::vector<std::reference_wrapper<const signature_provider_type>> relevant_providers;
@@ -1954,7 +1943,7 @@ void producer_plugin_impl::produce_block() {
    block_state_ptr new_bs = chain.head_block_state();
 
    ilog("Produced block ${id}... #${n} @ ${t} signed by ${p} [trxs: ${count}, lib: ${lib}, confirmed: ${confs}]",
-        ("p",new_bs->header.producer)("id",new_bs->id.str().substr(0,16))
+        ("p",new_bs->header.producer)("id",new_bs->id.str().substr(8,16))
         ("n",new_bs->block_num)("t",new_bs->header.timestamp)
         ("count",new_bs->block->transactions.size())("lib",chain.last_irreversible_block_num())("confs", new_bs->header.confirmed));
 

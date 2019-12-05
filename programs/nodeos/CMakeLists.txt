@@ -4,12 +4,6 @@ if( UNIX AND NOT APPLE )
   set(rt_library rt )
 endif()
 
-find_package( Gperftools QUIET )
-if( GPERFTOOLS_FOUND )
-    message( STATUS "Found gperftools; compiling ${NODE_EXECUTABLE_NAME} with TCMalloc")
-    list( APPEND PLATFORM_SPECIFIC_LIBS tcmalloc )
-endif()
-
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../../.git)
   find_package(Git)
   if(GIT_FOUND)
