@@ -60,7 +60,6 @@ DEFAULT_EXTRA_CONFIGS = []
 DEFAULT_EXTRA_ARGS = ""
 DEFAULT_DONT_NEWACCO = False
 DEFAULT_DONT_SETPROD = False
-DEFAULT_DONT_VOTE = False
 DEFAULT_HTTP_RETRY = 100
 DEFAULT_HTTP_SLEEP = 0.25
 DEFAULT_VERIFY_ASYNC = False
@@ -877,7 +876,7 @@ class Cluster:
         8. if verfication is done asynchronously, make sure all transactions
            have been verified
         """
-        self.info(">>> [BIOS Launch] ----------------------- BEGIN ----------------------------------------------------")
+        self.info(">>> [Launch] ----------------------- BEGIN ---------------------------------------------------------")
         self.print_config()
         self.launch_cluster()
         self.wait_nodes_ready()
@@ -890,7 +889,7 @@ class Cluster:
         self.check_sync()
         for t in self.verify_threads:
             t.join()
-        self.info(">>> [BIOS Launch] ----------------------- END ------------------------------------------------------")
+        self.info(">>> [Launch] ----------------------- END -----------------------------------------------------------")
 
 # --------------- start-up and shut-down ------------------------------------------------------------------------------
 

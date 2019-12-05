@@ -141,28 +141,28 @@ While there are many arguments, the values in general come from three sources, w
 2. in-script arguments, and
 3. command-line arguments.
 
-For example, the default value for the number of nodes in a cluster is 4
+For example, the default value for a cluster ID is 0
 
 ```python
-DEFAULT_NODE_COUNT = 4
+DEFAULT_CLUSTER_ID = 0
 ```
 
 which can be overridden in the script when creating a cluster
 
 ```python
-cluster = Cluster(service=service, node_count=5)
+cluster = Cluster(service=service, cluster_id=2)
 ```
 
-which can be again overridden from the command line. When running the test script, the number of nodes can be changed to 6, by specifying
+which can be again overridden from the command line. When running the test script, the user may require that the cluster be launched with cluster ID 6, by specifying
 
 ```bash
-./script.py --node-count=6
+./script.py --cluster-id=6
 ```
 
 or simply
 
 ```bash
-./script.py -n 6
+./script.py -i 6
 ```
 
 The purpose of the design is to allow flexibility in the testing. It allows users to temporarily change the testing behavior without modifying the script. For example, if the user pass `--debug` at the command line, the logger will print out all the logging information at or above `debug` level on the screen, regardless of the original threshold for the log level.
@@ -192,11 +192,8 @@ For command-line configuration, pass `-h` or `--help` will list all the settings
   -u NUM, --unstarted-count NUM Number of unstarted nodes
   -t SHAPE, --topology SHAPE    Cluster topology to launch with
   -x ID, --center-node-id ID    Center node ID (for bridge or star topology)
-  -y NUM, --tokens-supply NUM   Total supply of tokens (in regular launch)
-  -r, -dbios, --dont-bios       Do not BIOS launch (regular launch instead)
   -dnewa, --dont-newacco        Do not create accounts in launch
-  -dsetp, --dont-setprod        Do not set producers in BIOS launch
-  -dvote, --dont-vote           Do not vote for producers in regular launch
+  -dsetp, --dont-setprod        Do not set producers in launch
   --http-retry NUM              HTTP connection: max num of retries
   --http-sleep TIME             HTTP connection: sleep time between retries
   -va, --verify-async           Verify transaction: verify asynchronously
