@@ -1008,13 +1008,44 @@ class Cluster:
     def start_node(self, node_id, extra_args=None, **call_kwargs):
         return self.call("start_node", node_id=node_id, extra_args=extra_args, **call_kwargs)
 
-    def stop_node(self, node_id, kill_sig=15, **call_kwargs):
+    def stop_node(self, node_id, kill_sig=15, check=True, dont_raise=False, **call_kwargs):
         """kill_sig: 15 for soft kill, 9 for hard kill"""
-        return self.call("stop_node", node_id=node_id, kill_sig=kill_sig, **call_kwargs)
+        cx = self.call("stop_node", node_id=node_id, kill_sig=kill_sig, **call_kwargs)
+        if check:
+            for _ in range(10):
+                if self.is_node_down(node_id=node_id):
+                    return cx
+                time.sleep(1)
+            else:
+                if not dont_raise:
+                    raise BlockchainError(f"Node {node_id} cannot be properly stopped by singal {kill_sig}.")
+        else:
+            return cx
 
     def stop_all_nodes(self, kill_sig=15, **call_kwargs):
+        threads = []
+        channel = {}
+        def report(channel, thread_id, message):
+            channel[thread_id] = message
+        call_kwargs.update({"buffer": True})
+        kwargs = call_kwargs
+        kwargs.update({"kill_sig": kill_sig})
         for node_id in self.node_count:
-            return self.call("stop_nodes", node_id=node_id, kill_sig=kill_sig, **call_kwargs)
+            t = ExceptionThread(channel, report, target=self.stop_node, args=(node_id,), kwargs=kwargs)
+            threads.append(t)
+            t.start()
+        for t in threads:
+            t.join()
+        error_count = len(channel)
+        if error_count:
+            msg = f"{error_count} {helper.plural('exception', cnt)} occurred in stopping nodes."
+            cnt = min(error_count, 10)
+            msg += f"\nReporting first {cnt} {helper.plural('exception', cnt)}:"
+            for i in range(cnt):
+                msg += f"\n[{i}] {channel[i]}"
+            self.error(msg)
+            if not dont_raise:
+                raise BlockchainError(msg)
 
 # --------------- simple queries: queries that are made directly via call() -------------------------------------------
 
