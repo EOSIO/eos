@@ -667,10 +667,10 @@ namespace eosio {
       void blk_send(const block_id_type& blkid);
       void stop_send();
 
-      void enqueue( const net_message &msg, bool trigger_send = true );
-      void enqueue_block( const signed_block_ptr& sb, bool trigger_send = true, bool to_sync_queue = false);
+      void enqueue( const net_message &msg );
+      void enqueue_block( const signed_block_ptr& sb, bool to_sync_queue = false);
       void enqueue_buffer( const std::shared_ptr<std::vector<char>>& send_buffer,
-                           bool trigger_send, int priority, go_away_reason close_after_send,
+                           int priority, go_away_reason close_after_send,
                            bool to_sync_queue = false);
       void cancel_sync(go_away_reason);
       void flush_queues();
@@ -684,7 +684,6 @@ namespace eosio {
       void fetch_timeout(boost::system::error_code ec);
 
       void queue_write(const std::shared_ptr<vector<char>>& buff,
-                       bool trigger_send,
                        int priority,
                        std::function<void(boost::system::error_code, std::size_t)> callback,
                        bool to_sync_queue = false);
@@ -1085,7 +1084,6 @@ namespace eosio {
    }
 
    void connection::queue_write(const std::shared_ptr<vector<char>>& buff,
-                                bool trigger_send,
                                 int priority,
                                 std::function<void(boost::system::error_code, std::size_t)> callback,
                                 bool to_sync_queue) {
@@ -1095,9 +1093,7 @@ namespace eosio {
          close();
          return;
       }
-      if( buffer_queue.is_out_queue_empty() && trigger_send) {
-         do_queue_write( priority );
-      }
+      do_queue_write( priority );
    }
 
    void connection::do_queue_write(int priority) {
@@ -1112,6 +1108,7 @@ namespace eosio {
          boost::asio::async_write( *c->socket, bufs,
             boost::asio::bind_executor( c->strand, [c, socket=c->socket, priority]( boost::system::error_code ec, std::size_t w ) {
             try {
+               c->buffer_queue.clear_out_queue();
                fc_dlog( logger, "${peer} wrote priority: ${p}", ("peer", c->peer_name())("p", priority) );
                // May have closed connection and cleared buffer_queue
                if( !c->socket_is_open() || socket != c->socket ) {
@@ -1119,8 +1116,6 @@ namespace eosio {
                            ("r", c->socket_is_open() ? "changed" : "closed")("p", c->peer_name()) );
                   return;
                }
-
-               c->buffer_queue.out_callback( ec, w );
 
                if( ec ) {
                   if( ec.value() != boost::asio::error::eof ) {
@@ -1131,7 +1126,9 @@ namespace eosio {
                   c->close();
                   return;
                }
-               c->buffer_queue.clear_out_queue();
+
+               c->buffer_queue.out_callback( ec, w );
+
                c->enqueue_sync_block();
                c->do_queue_write( priority );
             } catch( const std::exception& ex ) {
@@ -1170,20 +1167,19 @@ namespace eosio {
          fc_dlog( logger, "enqueue sync block ${num}", ("num", peer_requested->last + 1) );
       }
       uint32_t num = ++peer_requested->last;
-      bool trigger_send = true;
       if(num == peer_requested->end_block) {
          peer_requested.reset();
          fc_ilog( logger, "completing enqueue_sync_block ${num} to ${p}", ("num", num)("p", peer_name()) );
       }
       connection_wptr weak = shared_from_this();
-      app().post( priority::medium, [num, trigger_send, weak{std::move(weak)}]() {
+      app().post( priority::medium, [num, weak{std::move(weak)}]() {
          connection_ptr c = weak.lock();
          if( !c ) return;
          controller& cc = my_impl->chain_plug->chain();
          signed_block_ptr sb = cc.fetch_block_by_number( num );
          if( sb ) {
-            c->strand.post( [c, sb{std::move(sb)}, trigger_send]() {
-               c->enqueue_block( sb, trigger_send, true );
+            c->strand.post( [c, sb{std::move(sb)}]() {
+               c->enqueue_block( sb, true );
             });
          } else {
             c->strand.post( [c, num]() {
@@ -1196,7 +1192,7 @@ namespace eosio {
       return true;
    }
 
-   void connection::enqueue( const net_message& m, bool trigger_send ) {
+   void connection::enqueue( const net_message& m ) {
       verify_strand_in_this_thread( strand, __func__, __LINE__ );
       go_away_reason close_after_send = no_reason;
       if (m.contains<go_away_message>()) {
@@ -1222,7 +1218,7 @@ namespace eosio {
       }
 
       fc_dlog( logger, "${peer} enqueue priority ${p}", ("peer", peer_name())("p", priority) );
-      enqueue_buffer( send_buffer, trigger_send, priority, close_after_send );
+      enqueue_buffer( send_buffer, priority, close_after_send );
    }
 
    template< typename T>
@@ -1258,19 +1254,20 @@ namespace eosio {
       return create_send_buffer( packed_transaction_which, trx );
    }
 
-   void connection::enqueue_block( const signed_block_ptr& sb, bool trigger_send, bool to_sync_queue) {
+   void connection::enqueue_block( const signed_block_ptr& sb, bool to_sync_queue) {
       fc_dlog( logger, "enqueue block ${num}", ("num", sb->block_num()) );
       verify_strand_in_this_thread( strand, __func__, __LINE__ );
-      enqueue_buffer( create_send_buffer( sb ), trigger_send, priority::medium, no_reason, to_sync_queue);
+      enqueue_buffer( create_send_buffer( sb ), priority::medium, no_reason, to_sync_queue);
    }
 
    void connection::enqueue_buffer( const std::shared_ptr<std::vector<char>>& send_buffer,
-                                    bool trigger_send, int priority, go_away_reason close_after_send,
+                                    int priority, go_away_reason close_after_send,
                                     bool to_sync_queue)
    {
       connection_ptr self = shared_from_this();
-      queue_write(send_buffer,trigger_send, priority,
+      queue_write(send_buffer, priority,
                   [conn{std::move(self)}, close_after_send](boost::system::error_code ec, std::size_t ) {
+                        if (ec) return;
                         if (close_after_send != no_reason) {
                            fc_ilog( logger, "sent a go away message: ${r}, closing connection to ${p}",
                                     ("r", reason_str(close_after_send))("p", conn->peer_name()) );
@@ -1973,7 +1970,7 @@ namespace eosio {
                   return;
                }
                fc_dlog( logger, "bcast block ${b} to ${p}", ("b", bnum)("p", cp->peer_name()) );
-               cp->enqueue_buffer( send_buffer, true, priority::medium, no_reason );
+               cp->enqueue_buffer( send_buffer, priority::medium, no_reason );
             }
          });
          return true;
@@ -2048,7 +2045,7 @@ namespace eosio {
 
          cp->strand.post( [cp, send_buffer]() {
             fc_dlog( logger, "sending trx to ${n}", ("n", cp->peer_name()) );
-            cp->enqueue_buffer( send_buffer, true, priority::low, no_reason );
+            cp->enqueue_buffer( send_buffer, priority::low, no_reason );
          } );
          return true;
       } );
