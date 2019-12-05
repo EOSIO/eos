@@ -61,7 +61,9 @@ else # Mac OSX
 fi
 echo "$COMMANDS" > /tmp/commands
 awk "NR==$APPEND_LINE{print;system(\"cat /tmp/commands\");next} 1" .cicd/platform-templates/${FILE:-"${IMAGE_TAG}$FILE_EXTENSION"} > /tmp/$POPULATED_FILE_NAME
-. ./.cicd/helpers/file-hash.sh /tmp/$POPULATED_FILE_NAME # We need to get the hash of the file using `-b master` or else there will be a different hash for every single branch, even if nothing changes in the docs
+export DETERMINED_HASH=$(sha1sum /tmp/$POPULATED_FILE_NAME | awk '{ print $1 }')
+export HASHED_IMAGE_TAG="eos-$(basename ${FILE_NAME:-$IMAGE_TAG} | awk '{split($0,a,/\.(d|s)/); print a[1] }')-${DETERMINED_HASH}"
+export FULL_TAG="eosio/ci:$HASHED_IMAGE_TAG"
 sed -i -e "s/eos.git \$EOSIO_LOCATION/eos.git \$EOSIO_LOCATION \&\& cd \$EOSIO_LOCATION \&\& git pull \&\& git checkout -f $BUILDKITE_COMMIT/g" /tmp/$POPULATED_FILE_NAME
 chmod +x /tmp/$POPULATED_FILE_NAME
 if [[ $ONLYHASH == true ]]; then
