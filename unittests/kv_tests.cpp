@@ -132,13 +132,19 @@ class kv_tester : public tester {
    void scan(const char* error, name db, name contract, const char* prefix, T lower, const std::vector<kv>& expected) {
       BOOST_REQUIRE_EQUAL(error, push_action(N(scan), mvo()("db", db)("contract", contract)("prefix", prefix)(
                                                             "lower", lower)("expected", expected)));
+      BOOST_REQUIRE_EQUAL(error, push_action(N(scan), mvo()("db", db)("contract", contract)("prefix", prefix)(
+                                                            "lower", lower)("expected", expected), contract));
    }
 
    template <typename T>
    action_result scanrev(name db, name contract, const char* prefix, T lower,
                 const std::vector<kv>& expected) {
-      return push_action(N(scanrev), mvo()("db", db)("contract", contract)("prefix", prefix)(
+      auto result1 = push_action(N(scanrev), mvo()("db", db)("contract", contract)("prefix", prefix)(
                                            "lower", lower)("expected", expected));
+      auto result2 = push_action(N(scanrev), mvo()("db", db)("contract", contract)("prefix", prefix)(
+                                           "lower", lower)("expected", expected), contract);
+      BOOST_TEST(result1 == result2);
+      return result1;
    }
 
    void itstaterased(const char* error, name db, name contract, const char* prefix, const char* k, const char* v,
