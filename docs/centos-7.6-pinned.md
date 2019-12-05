@@ -6,6 +6,7 @@ Therefore, COPY and other Dockerfile-isms are not permitted. -->
 ```
 yum update -y && yum install -y git
 export EOSIO_LOCATION=$HOME/eosio && git clone https://github.com/EOSIO/eos.git $EOSIO_LOCATION
+cd $EOSIO_LOCATION && git submodule update --init --recursive
 export EOSIO_INSTALL_LOCATION=$EOSIO_LOCATION/install && mkdir -p $EOSIO_INSTALL_LOCATION
 ```
 ## Install Dependencies
@@ -17,6 +18,7 @@ yum update -y && \
     yum --enablerepo=extras install -y which autoconf automake libtool make bzip2 doxygen \
     graphviz bzip2-devel openssl-devel gmp-devel ocaml libicu-devel python python-devel \
     rh-python36 file libusbx-devel libcurl-devel patch vim-common jq
+PATH=$EOSIO_INSTALL_LOCATION/bin:$PATH
 cd $EOSIO_INSTALL_LOCATION && curl -LO https://cmake.org/files/v3.13/cmake-3.13.2.tar.gz && \
     source /opt/rh/devtoolset-8/enable && \
     source /opt/rh/rh-python36/enable && \
@@ -40,7 +42,7 @@ cd $EOSIO_INSTALL_LOCATION && git clone --single-branch --branch release_80 http
     mkdir $EOSIO_INSTALL_LOCATION/clang8/build && cd $EOSIO_INSTALL_LOCATION/clang8/build && \
     source /opt/rh/devtoolset-8/enable && \
     source /opt/rh/rh-python36/enable && \
-    $EOSIO_INSTALL_LOCATION/bin/cmake -G 'Unix Makefiles' -DCMAKE_INSTALL_PREFIX=$EOSIO_INSTALL_LOCATION -DLLVM_BUILD_EXTERNAL_COMPILER_RT=ON -DLLVM_BUILD_LLVM_DYLIB=ON -DLLVM_ENABLE_LIBCXX=ON -DLLVM_ENABLE_RTTI=ON -DLLVM_INCLUDE_DOCS=OFF -DLLVM_OPTIMIZED_TABLEGEN=ON -DLLVM_TARGETS_TO_BUILD=X86 -DCMAKE_BUILD_TYPE=Release .. && \
+    cmake -G 'Unix Makefiles' -DCMAKE_INSTALL_PREFIX=$EOSIO_INSTALL_LOCATION -DLLVM_BUILD_EXTERNAL_COMPILER_RT=ON -DLLVM_BUILD_LLVM_DYLIB=ON -DLLVM_ENABLE_LIBCXX=ON -DLLVM_ENABLE_RTTI=ON -DLLVM_INCLUDE_DOCS=OFF -DLLVM_OPTIMIZED_TABLEGEN=ON -DLLVM_TARGETS_TO_BUILD=X86 -DCMAKE_BUILD_TYPE=Release .. && \
     make -j $(nproc) && \
     make install && \
     rm -rf $EOSIO_INSTALL_LOCATION/clang8
@@ -48,7 +50,7 @@ cd $EOSIO_INSTALL_LOCATION && git clone --depth 1 --single-branch --branch relea
     cd llvm && \
     mkdir build && \
     cd build && \
-    $EOSIO_INSTALL_LOCATION/bin/cmake -G 'Unix Makefiles' -DLLVM_TARGETS_TO_BUILD=host -DLLVM_BUILD_TOOLS=false -DLLVM_ENABLE_RTTI=1 -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$EOSIO_INSTALL_LOCATION -DCMAKE_TOOLCHAIN_FILE=$EOSIO_LOCATION/scripts/pinned_toolchain.cmake -DCMAKE_EXE_LINKER_FLAGS=-pthread -DCMAKE_SHARED_LINKER_FLAGS=-pthread -DLLVM_ENABLE_PIC=NO .. && \
+    cmake -G 'Unix Makefiles' -DLLVM_TARGETS_TO_BUILD=host -DLLVM_BUILD_TOOLS=false -DLLVM_ENABLE_RTTI=1 -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$EOSIO_INSTALL_LOCATION -DCMAKE_TOOLCHAIN_FILE=$EOSIO_LOCATION/scripts/pinned_toolchain.cmake -DCMAKE_EXE_LINKER_FLAGS=-pthread -DCMAKE_SHARED_LINKER_FLAGS=-pthread -DLLVM_ENABLE_PIC=NO .. && \
     make -j$(nproc) && \
     make install && \
     rm -rf $EOSIO_INSTALL_LOCATION/llvm

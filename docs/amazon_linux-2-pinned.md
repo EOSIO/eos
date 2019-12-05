@@ -6,6 +6,7 @@ Therefore, COPY and other Dockerfile-isms are not permitted. -->
 ```
 yum update -y && yum install -y git
 export EOSIO_LOCATION=$HOME/eosio && git clone https://github.com/EOSIO/eos.git $EOSIO_LOCATION
+cd $EOSIO_LOCATION && git submodule update --init --recursive
 export EOSIO_INSTALL_LOCATION=$EOSIO_LOCATION/install && mkdir -p $EOSIO_INSTALL_LOCATION
 ```
 ## Install Dependencies
@@ -14,6 +15,7 @@ yum install -y which sudo procps-ng util-linux autoconf automake \
     libtool make bzip2 bzip2-devel openssl-devel gmp-devel libstdc++ libcurl-devel \
     libusbx-devel python3 python3-devel python-devel libedit-devel doxygen \
     graphviz patch gcc gcc-c++ vim-common jq
+PATH=$EOSIO_INSTALL_LOCATION/bin:$PATH
 cd $EOSIO_INSTALL_LOCATION && curl -LO https://cmake.org/files/v3.13/cmake-3.13.2.tar.gz && \
     tar -xzf cmake-3.13.2.tar.gz && \
     cd cmake-3.13.2 && \
@@ -31,7 +33,7 @@ cd $EOSIO_INSTALL_LOCATION && git clone --single-branch --branch release_80 http
     cd ../ && git clone --single-branch --branch release_80 https://git.llvm.org/git/libunwind.git && cd libunwind && git checkout 57f6739 && \
     cd ../ && git clone --single-branch --branch release_80 https://git.llvm.org/git/compiler-rt.git && cd compiler-rt && git checkout 5bc7979 && \
     mkdir $EOSIO_INSTALL_LOCATION/clang8/build && cd $EOSIO_INSTALL_LOCATION/clang8/build && \
-    $EOSIO_INSTALL_LOCATION/bin/cmake -G 'Unix Makefiles' -DCMAKE_INSTALL_PREFIX=$EOSIO_INSTALL_LOCATION -DLLVM_BUILD_EXTERNAL_COMPILER_RT=ON -DLLVM_BUILD_LLVM_DYLIB=ON -DLLVM_ENABLE_LIBCXX=ON -DLLVM_ENABLE_RTTI=ON -DLLVM_INCLUDE_DOCS=OFF -DLLVM_OPTIMIZED_TABLEGEN=ON -DLLVM_TARGETS_TO_BUILD=X86 -DCMAKE_BUILD_TYPE=Release .. && \
+    cmake -G 'Unix Makefiles' -DCMAKE_INSTALL_PREFIX=$EOSIO_INSTALL_LOCATION -DLLVM_BUILD_EXTERNAL_COMPILER_RT=ON -DLLVM_BUILD_LLVM_DYLIB=ON -DLLVM_ENABLE_LIBCXX=ON -DLLVM_ENABLE_RTTI=ON -DLLVM_INCLUDE_DOCS=OFF -DLLVM_OPTIMIZED_TABLEGEN=ON -DLLVM_TARGETS_TO_BUILD=X86 -DCMAKE_BUILD_TYPE=Release .. && \
     make -j $(nproc) && \
     make install && \
     rm -rf $EOSIO_INSTALL_LOCATION/clang8
@@ -39,7 +41,7 @@ cd $EOSIO_INSTALL_LOCATION && git clone --depth 1 --single-branch --branch relea
     cd llvm && \
     mkdir build && \
     cd build && \
-    $EOSIO_INSTALL_LOCATION/bin/cmake -G 'Unix Makefiles' -DLLVM_TARGETS_TO_BUILD=host -DLLVM_BUILD_TOOLS=false -DLLVM_ENABLE_RTTI=1 -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$EOSIO_INSTALL_LOCATION -DCMAKE_TOOLCHAIN_FILE=$EOSIO_LOCATION/scripts/pinned_toolchain.cmake -DCMAKE_EXE_LINKER_FLAGS=-pthread -DCMAKE_SHARED_LINKER_FLAGS=-pthread -DLLVM_ENABLE_PIC=NO .. && \
+    cmake -G 'Unix Makefiles' -DLLVM_TARGETS_TO_BUILD=host -DLLVM_BUILD_TOOLS=false -DLLVM_ENABLE_RTTI=1 -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$EOSIO_INSTALL_LOCATION -DCMAKE_TOOLCHAIN_FILE=$EOSIO_LOCATION/scripts/pinned_toolchain.cmake -DCMAKE_EXE_LINKER_FLAGS=-pthread -DCMAKE_SHARED_LINKER_FLAGS=-pthread -DLLVM_ENABLE_PIC=NO .. && \
     make -j$(nproc) && \
     make install && \
     rm -rf $EOSIO_INSTALL_LOCATION/llvm
@@ -54,7 +56,7 @@ cd $EOSIO_INSTALL_LOCATION && curl -LO https://dl.bintray.com/boostorg/release/1
 <!-- BUILD -->
 ```
 mkdir -p $EOSIO_LOCATION/build && cd $EOSIO_LOCATION/build
-cmake -DCMAKE_BUILD_TYPE='Release' -DCMAKE_TOOLCHAIN_FILE=$EOSIO_LOCATION/scripts/pinned_toolchain.cmake -DCMAKE_INSTALL_PREFIX=$EOSIO_INSTALL_LOCATION ..
+$EOSIO_INSTALL_LOCATION/bin/cmake -DCMAKE_BUILD_TYPE='Release' -DCMAKE_TOOLCHAIN_FILE=$EOSIO_LOCATION/scripts/pinned_toolchain.cmake -DCMAKE_INSTALL_PREFIX=$EOSIO_INSTALL_LOCATION ..
 make -j$(nproc)
 ```
 <!-- BUILD -->

@@ -59,7 +59,7 @@ fi
 echo "$COMMANDS" > /tmp/commands
 awk "NR==$APPEND_LINE{print;system(\"cat /tmp/commands\");next} 1" .cicd/platform-templates/${FILE:-"${IMAGE_TAG}$FILE_EXTENSION"} > /tmp/$POPULATED_FILE_NAME
 . ./.cicd/helpers/file-hash.sh /tmp/$POPULATED_FILE_NAME # We need to get the hash of the file using `-b master` or else there will be a different hash for every single branch, even if nothing changes in the docs
-sed -i -e "s/eos.git \$EOSIO_LOCATION/eos.git \$EOSIO_LOCATION \&\& cd \$EOSIO_LOCATION \&\& git pull \&\& git checkout $BUILDKITE_COMMIT/g" /tmp/$POPULATED_FILE_NAME
+sed -i -e "s/eos.git \$EOSIO_LOCATION/eos.git \$EOSIO_LOCATION \&\& cd \$EOSIO_LOCATION \&\& git pull \&\& git checkout -f $BUILDKITE_COMMIT/g" /tmp/$POPULATED_FILE_NAME
 chmod +x /tmp/$POPULATED_FILE_NAME
 if [[ $ONLYHASH == true ]]; then
   rm -f /tmp/$POPULATED_FILE_NAME && export POPULATED_FILE_NAME=${FILE_NAME:-$IMAGE_TAG}
