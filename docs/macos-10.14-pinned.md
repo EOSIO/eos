@@ -39,7 +39,7 @@ cd $EOSIO_INSTALL_LOCATION && curl -LO https://dl.bintray.com/boostorg/release/1
 <!-- BUILD -->
 ```
 mkdir -p $EOSIO_LOCATION/build && cd $EOSIO_LOCATION/build
-$EOSIO_INSTALL_LOCATION/bin/cmake -DCMAKE_BUILD_TYPE='Release' -DCMAKE_TOOLCHAIN_FILE=$EOSIO_LOCATION/scripts/pinned_toolchain.cmake -DCMAKE_INSTALL_PREFIX=$EOSIO_INSTALL_LOCATION ..
+cmake -DCMAKE_BUILD_TYPE='Release' -DCMAKE_TOOLCHAIN_FILE=$EOSIO_LOCATION/scripts/pinned_toolchain.cmake -DCMAKE_INSTALL_PREFIX=$EOSIO_INSTALL_LOCATION ..
 make -j$(getconf _NPROCESSORS_ONLN)
 ```
 <!-- BUILD END -->
