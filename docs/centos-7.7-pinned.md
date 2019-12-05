@@ -64,9 +64,7 @@ cd $EOSIO_INSTALL_LOCATION && curl -LO https://dl.bintray.com/boostorg/release/1
 ## Build EOSIO
 <!-- BUILD -->
 ```
-mkdir -p $EOSIO_LOCATION/build && cd $EOSIO_LOCATION/build
-cmake -DCMAKE_BUILD_TYPE='Release' -DCMAKE_TOOLCHAIN_FILE=$EOSIO_LOCATION/scripts/pinned_toolchain.cmake -DCMAKE_INSTALL_PREFIX=$EOSIO_INSTALL_LOCATION ..
-make -j$(nproc)
+mkdir -p $EOSIO_LOCATION/build && cd $EOSIO_LOCATION/build && cmake -DCMAKE_BUILD_TYPE='Release' -DCMAKE_TOOLCHAIN_FILE=$EOSIO_LOCATION/scripts/pinned_toolchain.cmake -DCMAKE_INSTALL_PREFIX=$EOSIO_INSTALL_LOCATION .. && make -j$(nproc)
 ```
 <!-- BUILD -->
 
