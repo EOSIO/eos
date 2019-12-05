@@ -114,9 +114,13 @@ struct variant_snapshot_suite {
       return std::make_shared<reader>(buffer);
    }
 
-   template<typename Snapshot>
-   static snapshot_t load_from_file() {
-      return Snapshot::json();
+   static snapshot_t load_from_file(const std::string& name) {
+      return snapshots::json(name);
+   }
+
+   static void write_to_file( const std::string& basename, const snapshot_t& snapshot ) {
+     std::ofstream file( basename + ".json", std::ios_base::binary );
+     fc::json::to_stream( file, snapshot );
    }
 };
 
@@ -161,9 +165,13 @@ struct buffered_snapshot_suite {
       return std::make_shared<reader>(std::make_shared<read_storage_t>(buffer));
    }
 
-   template<typename Snapshot>
-   static snapshot_t load_from_file() {
-      return Snapshot::bin();
+   static snapshot_t load_from_file(const std::string& filename) {
+      return snapshots::bin(filename);
+   }
+
+   static void write_to_file( const std::string& basename, const snapshot_t& snapshot ) {
+     std::ofstream file( basename + ".bin", std::ios_base::binary );
+     file.write( snapshot.data(), snapshot.size() );
    }
 };
 
@@ -429,6 +437,16 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_chain_id_in_snapshot, SNAPSHOT_SUITE, snapsho
    verify_integrity_hash<SNAPSHOT_SUITE>(*chain.control, *snap_chain.control);
 }
 
+bool should_write_snapshot() {
+   auto compute = [] {
+      auto argc = boost::unit_test::framework::master_test_suite().argc;
+      auto argv = boost::unit_test::framework::master_test_suite().argv;
+      return std::find(argv, argv + argc, std::string("--save-snapshot")) != (argv + argc);
+   };
+   static bool result = compute();
+   return result;
+}
+
 BOOST_AUTO_TEST_CASE_TEMPLATE(test_compatible_versions, SNAPSHOT_SUITE, snapshot_suites)
 {
    tester chain(setup_policy::preactivate_feature_and_new_bios);
@@ -442,10 +460,12 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_compatible_versions, SNAPSHOT_SUITE, snapshot
    chain.produce_blocks(1);
    chain.control->abort_block();
 
+   int ordinal = 0;
+   for(std::string version : {"v2", "v3", "v4"})
    {
       static_assert(chain_snapshot_header::minimum_compatible_version <= 2, "version 2 unit test is no longer needed.  Please clean up data files");
-      auto v2 = SNAPSHOT_SUITE::template load_from_file<snapshots::snap_v2>();
-      int ordinal = 0;
+      auto v2 = SNAPSHOT_SUITE::load_from_file("snap_" + version);
+      BOOST_TEST_CHECKPOINT("loading snapshot: " << version);
       snapshotted_tester v2_tester(chain.get_config(), SNAPSHOT_SUITE::get_reader(v2), ordinal++);
       verify_integrity_hash<SNAPSHOT_SUITE>(*chain.control, *v2_tester.control);
 
@@ -457,6 +477,18 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_compatible_versions, SNAPSHOT_SUITE, snapshot
       // load the latest snapshot
       snapshotted_tester latest_tester(chain.get_config(), SNAPSHOT_SUITE::get_reader(latest), ordinal++);
       verify_integrity_hash<SNAPSHOT_SUITE>(*v2_tester.control, *latest_tester.control);
+   }
+   // This isn't quite fully automated.  The snapshots still need to be gzipped and moved to
+   // the correct place in the source tree.
+   if (should_write_snapshot())
+   {
+      std::string version = "v4";
+      // create a latest snapshot
+      auto latest_writer = SNAPSHOT_SUITE::get_writer();
+      chain.control->write_snapshot(latest_writer);
+      auto latest = SNAPSHOT_SUITE::finalize(latest_writer);
+
+      SNAPSHOT_SUITE::write_to_file("snap_" + version, latest);
    }
 }
 
@@ -488,7 +520,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_pending_schedule_snapshot, SNAPSHOT_SUITE, sn
    BOOST_REQUIRE_EQUAL(gpo.proposed_schedule.producers[0].producer_name.to_string(), "snapshot");
 
    static_assert(chain_snapshot_header::minimum_compatible_version <= 2, "version 2 unit test is no longer needed.  Please clean up data files");
-   auto v2 = SNAPSHOT_SUITE::template load_from_file<snapshots::snap_v2_prod_sched>();
+   auto v2 = SNAPSHOT_SUITE::load_from_file("snap_v2_prod_sched");
    int ordinal = 0;
 
    ////////////////////////////////////////////////////////////////////////

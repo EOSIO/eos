@@ -17,6 +17,10 @@ namespace eosio {
 
 namespace chain {
 
+   namespace legacy {
+      struct snapshot_global_property_object_v3;
+   }
+
    struct chain_id_type : public fc::sha256 {
       using fc::sha256::sha256;
 
@@ -51,6 +55,7 @@ namespace chain {
          friend struct controller_impl;
          friend class global_property_object;
          friend struct snapshot_global_property_object;
+         friend struct legacy::snapshot_global_property_object_v3;
    };
 
 } }  // namespace eosio::chain

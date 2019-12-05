@@ -1,6 +1,7 @@
 #pragma once
 
 #include <eosio/chain/name.hpp>
+#include <eosio/chain/kv_config.hpp>
 #include <memory>
 #include <stdint.h>
 
@@ -44,6 +45,7 @@ namespace eosio { namespace chain {
    };
 
    kv_resource_manager create_kv_resource_manager_ram(apply_context& context);
+   kv_resource_manager create_kv_resource_manager_disk(apply_context& context);
 
    struct kv_context {
       virtual ~kv_context() {}
@@ -58,6 +60,6 @@ namespace eosio { namespace chain {
    };
 
    std::unique_ptr<kv_context> create_kv_chainbase_context(chainbase::database& db, name database_id, name receiver,
-                                                           kv_resource_manager resource_manager);
+                                                           kv_resource_manager resource_manager, const kv_database_config& limits);
 
 }} // namespace eosio::chain

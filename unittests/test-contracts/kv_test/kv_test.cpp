@@ -177,7 +177,9 @@ class [[eosio::contract("kv_test")]] kvtest : public eosio::contract {
       else
          stat = kv_it_prev(itr);
       for (auto& exp : expected) {
-         check(stat == iterator_ok, "missing kv pairs");
+         std::string message = "missing kv pairs: ";
+         message.append(exp.k.data(), exp.k.size());
+         check(stat == iterator_ok, message.c_str());
          check(stat == kv_it_status(itr), "status mismatch (a)");
 
          // check kv_it_key

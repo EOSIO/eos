@@ -48,8 +48,10 @@ apply_context::apply_context(controller& con, transaction_context& trx_ctx, uint
    act = &trace.act;
    receiver = trace.receiver;
    context_free = trace.context_free;
-   if (!context_free)
-      kv_ram = create_kv_chainbase_context(db, kvram_id, receiver, create_kv_resource_manager_ram(*this));
+   if (!context_free) {
+      kv_ram = create_kv_chainbase_context(db, kvram_id, receiver, create_kv_resource_manager_ram(*this), control.get_global_properties().kv_configuration.kvram);
+      kv_disk = create_kv_chainbase_context(db, kvdisk_id, receiver, create_kv_resource_manager_disk(*this), control.get_global_properties().kv_configuration.kvdisk);
+   }
 }
 
 void apply_context::exec_one()
@@ -935,6 +937,8 @@ int32_t apply_context::kv_it_value(uint32_t itr, uint32_t offset, char* dest, ui
 kv_context& apply_context::kv_get_db(uint64_t db) {
    if (db == kvram_id.to_uint64_t())
       return *kv_ram;
+   else if (db == kvdisk_id.to_uint64_t())
+      return *kv_disk;
    EOS_ASSERT(false, kv_bad_db_id, "Bad key-value database ID");
 }
 
@@ -971,6 +975,10 @@ void apply_context::add_ram_usage( account_name account, int64_t ram_delta ) {
    if( !p.second ) {
       p.first->delta += ram_delta;
    }
+}
+
+void apply_context::add_disk_usage( account_name account, int64_t disk_delta ) {
+   trx_context.add_disk_usage( account, disk_delta );
 }
 
 action_name apply_context::get_sender() const {

@@ -12,6 +12,8 @@ namespace eosio { namespace chain {
    struct kv_object : public chainbase::object<kv_object_type, kv_object> {
       OBJECT_CTOR(kv_object, (kv_key)(kv_value))
 
+      static constexpr uint32_t minimum_snapshot_version = 4;
+
       id_type     id;
       name        database_id;
       name        contract;
