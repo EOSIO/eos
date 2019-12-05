@@ -1112,8 +1112,13 @@ namespace eosio {
          boost::asio::async_write( *c->socket, bufs,
             boost::asio::bind_executor( c->strand, [c, socket=c->socket, priority]( boost::system::error_code ec, std::size_t w ) {
             try {
+               fc_dlog( logger, "${peer} wrote priority: ${p}", ("peer", c->peer_name())("p", priority) );
                // May have closed connection and cleared buffer_queue
-               if( !c->socket_is_open() || socket != c->socket ) return;
+               if( !c->socket_is_open() || socket != c->socket ) {
+                  fc_wlog( logger, "async write socket ${r} before callback: ${p}",
+                           ("r", c->socket_is_open() ? "changed" : "closed")("p", c->peer_name()) );
+                  return;
+               }
 
                c->buffer_queue.out_callback( ec, w );
 
@@ -1210,7 +1215,14 @@ namespace eosio {
       ds.write( header, header_size );
       fc::raw::pack( ds, m );
 
-      enqueue_buffer( send_buffer, trigger_send, priority::low, close_after_send );
+      static int current = 0;
+      int priority = (m.which() * 10000) + (++current);
+      if (m.contains<handshake_message>()) {
+         priority = 500 + current;
+      }
+
+      fc_dlog( logger, "${peer} enqueue priority ${p}", ("peer", peer_name())("p", priority) );
+      enqueue_buffer( send_buffer, trigger_send, priority, close_after_send );
    }
 
    template< typename T>
