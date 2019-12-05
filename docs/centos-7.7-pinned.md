@@ -1,4 +1,4 @@
-# Centos 7.6
+# Centos 7.7
 The following commands will install all of the necessary dependencies for source installing EOSIO.
 <!-- The code within the following block is used in our CI/CD. It will be converted line by line into statements inside of a temporary Dockerfile and used to build our docker tag for this OS. 
 Therefore, COPY and other Dockerfile-isms are not permitted. -->
