@@ -613,8 +613,8 @@ class Cluster:
     with the latter capable of overriding the former.
 
     --- Launch ---------
-    After configuration, the node cluster will be launched using "eosio.bios"
-    contract.
+    After configuration, the node cluster will be launched with the help of
+    "eosio.bios" contract.
 
     --- Test -----------
     After the node cluster is successfully launched, all the test actions can

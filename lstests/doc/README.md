@@ -11,7 +11,6 @@ The Launcher Service-based EOSIO Testing Framework aims to provide a more manage
 - **Fully-Customizable** -- With launcher service, it is now possible to specify
   - number of nodes/producers, network topology, and many other parameters for a cluster of nodes, either within the test script or via command-line arguments
   - specific options for an individual node in the cluster
-  - different bootstrapping options, e.g. using bios contract or system contract to set up accounts
   - queries to a particular node's endpoint, including a node's port number, process ID, log data, etc
   - queries to the whole cluster state with a single API, useful for checking if all the nodes are in sync, the head block number, etc
   - different signals (`SIGTERM`, `SIGKILL`, etc.) to a specific node in cluster
@@ -424,14 +423,7 @@ A detailed explanation of the parameters to initialize a `Service` object can be
 
 A `Cluster` object represents a cluster of nodes running on launcher service. It is the major proxy for tests to communicate with launcher service. A `Cluster` object must have a `Service` object registered to it at initialization.
 
- After configuration, the node cluster will be launched in one of two modes:
-
-1. BIOS mode, using `eosio.bios` to set producers;
-
-2. regular mode, using `eosio.token` to create and issue tokens, and using
-   `eosio.system` to vote.
-
-By default, a cluster is launched in the BIOS mode.
+After configuration, the node cluster will be launched with the help of `eosio.bios` contract.
 
 A detailed explanation of the parameters to initialize a `Cluster` object can be found in its docstring.
 
@@ -467,9 +459,6 @@ center_node_id : int
     Center node ID (for bridge or star topology).
     If topology is bridge, center node ID cannot be 0 or last one.
     No default value.
-tokens_supply : float
-    Total supply of tokens in regular launch mode.
-    Default is 1000000000 (1e9).
 extra_configs : list
     Extra configs to pass to launcher service.
     e.g. ["plugin=SOME_EXTRA_PLUGIN"]
@@ -478,18 +467,12 @@ extra_args : str
     Extra arguments to pass to launcher service.
     e.g. "--delete-all-blocks"
     No default value.
-dont_bios : bool
-    Do not launch in BIOS mode. Launch in regular mode instead.
-    Default is False (will launch in BIOS mode).
 dont_newacco : bool
     Do not create accounts in launch.
     Default is False (will create producer accounts).
 dont_setprod : bool
-    Do not set producers in BIOS launch mode.
+    Do not set producers in launch.
     Default is False (will set producers).
-dont_vote: bool
-    Do not vote in regular launch mode.
-    Default is False (will vote for producers).
 http_retry : int
     Max number of retries in HTTP connection.
     Default is 100.
