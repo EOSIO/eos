@@ -892,7 +892,7 @@ class crypto_api : public context_aware_api {
             p_y = fc::bigint(p_y_bytes, 32);
             q_y = fc::bigint(q_y_bytes, 32);
          }
-         fc::ecc::ec_point::curve_t curve = is_r1(tag) ? fc::ecc::ec_point::r1_curve : fc::ecc::ec_point::k1_curve;
+         uint64_t curve = is_r1(tag) ? fc::ecc::ec_point::r1_curve : fc::ecc::ec_point::k1_curve;
          p = fc::ecc::ec_point(p_x, p_y, curve);
          q = fc::ecc::ec_point(q_x, q_y, curve);
 
@@ -901,6 +901,15 @@ class crypto_api : public context_aware_api {
          return {};
       }
 
+      //int64_t ec_add_r1(bool compressed, fc::ecc:ec_point p, fc::ecc:ec_point q, fc::ecc:ec_point& r) {
+      //}
+
+      int64_t ec_add(const fc::ecc::ec_point& p, const fc::ecc::ec_point& q, fc::ecc::ec_point& r) {
+         uint64_t curve = p.get_curve();
+         r = p.add(q);
+         return 0;
+      }
+      /*
       int64_t ec_add(uint64_t tag, array_ptr<char> input, uint32_t input_len, array_ptr<char> output, uint32_t output_len) {
          uint32_t input_len_lb = 0;
          uint32_t p_y_offset = 0;
@@ -943,6 +952,7 @@ class crypto_api : public context_aware_api {
          ret->to_bin((uint8_t*)output.value, 64);
          return 64;
       }
+      */
 
       template<class Encoder> auto encode(char* data, uint32_t datalen) {
          Encoder e;

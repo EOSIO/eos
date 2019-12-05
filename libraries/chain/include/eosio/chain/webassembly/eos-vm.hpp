@@ -54,7 +54,7 @@ namespace eosio { namespace vm {
    struct wasm_type_converter<eosio::chain::array_ptr<T>> : linear_memory_access {
       auto from_wasm(void* ptr, uint32_t size) {
          validate_ptr<T>(ptr, size);
-         return aligned_array_wrapper<T, alignof(T)>(ptr, size);
+         return eosio::vm::aligned_array_wrapper<T, alignof(T)>(ptr, size);
       }
    };
 
@@ -106,6 +106,57 @@ namespace eosio { namespace vm {
          return eosio::chain::null_terminated_ptr{ static_cast<char*>(ptr) };
       }
    };
+
+   // specialization type for auto unpacking types and writing them back when finished
+   template <typename T>
+   void unpacked_copy(T& v, void* p) {
+      fc::datastream<char*> ds((char*)p, sizeof(T));
+      fc::raw::unpack(ds, v);
+      std::cout << "unpacking\n";
+   }
+
+   template <typename T>
+   void unpacked_write_back(void* p, const T& v) {
+      fc::datastream<char*> ds((char*)p, sizeof(T));
+      fc::raw::pack(ds, v);
+      std::cout << "packing\n";
+   }
+
+   template <typename T>
+   using unpacked_wrapper = write_back_wrapper<T, write_back_pred_true, unpacked_copy<T>, unpacked_write_back<T>>;
+
+   template <typename T>
+   struct unpacked_ty {
+      unpacked_ty(const unpacked_wrapper<T>& w) : _ptr(w) {
+      }
+      operator T*()const { return _ptr; }
+      T* _ptr;
+   };
+
+#define UNPACK_WRAP_TYPE(TY)                                      \
+   template <>                                                    \
+   struct wasm_type_converter<TY> : linear_memory_access {        \
+      auto from_wasm(void* ptr) {                                 \
+         validate_ptr<char>(ptr, sizeof(TY));                     \
+         return unpacked_wrapper<TY>(ptr);                        \
+      }                                                           \
+   };                                                             \
+   template <>                                                    \
+   struct wasm_type_converter<TY&> : linear_memory_access {       \
+      auto from_wasm(void* ptr) {                                 \
+         validate_ptr<char>(ptr, sizeof(TY));                     \
+         return unpacked_wrapper<TY>(ptr);                        \
+      }                                                           \
+   };                                                             \
+   template <>                                                    \
+   struct wasm_type_converter<const TY&> : linear_memory_access { \
+      auto from_wasm(void* ptr) {                                 \
+         validate_ptr<char>(ptr, sizeof(TY));                     \
+         return unpacked_wrapper<TY>(ptr);                        \
+      }                                                           \
+   };
+
+   UNPACK_WRAP_TYPE(fc::ecc::ec_point);
 
 }} // ns eosio::vm
 
