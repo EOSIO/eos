@@ -1050,7 +1050,7 @@ namespace eosio {
    }
 
    void connection::send_handshake() {
-      strand.dispatch( [c = shared_from_this()]() {
+      strand.post( [c = shared_from_this()]() {
          std::unique_lock<std::mutex> g_conn( c->conn_mtx );
          if( c->populate_handshake( c->last_handshake_sent ) ) {
             static_assert( std::is_same_v<decltype( c->sent_handshake_count ), int16_t>, "INT16_MAX based on int16_t" );
@@ -1108,12 +1108,12 @@ namespace eosio {
       std::vector<boost::asio::const_buffer> bufs;
       buffer_queue.fill_out_buffer( bufs );
 
-      strand.dispatch( [c{std::move(c)}, bufs{std::move(bufs)}, priority]() {
+      strand.post( [c{std::move(c)}, bufs{std::move(bufs)}, priority]() {
          boost::asio::async_write( *c->socket, bufs,
             boost::asio::bind_executor( c->strand, [c, socket=c->socket, priority]( boost::system::error_code ec, std::size_t w ) {
             try {
                // May have closed connection and cleared buffer_queue
-               if( !c->socket_is_open() ) return;
+               if( !c->socket_is_open() || socket != c->socket ) return;
 
                c->buffer_queue.out_callback( ec, w );
 
@@ -2204,7 +2204,7 @@ namespace eosio {
       boost::asio::async_connect( *socket, endpoints,
          boost::asio::bind_executor( strand,
                [resolver, c = shared_from_this(), socket=socket]( const boost::system::error_code& err, const tcp::endpoint& endpoint ) {
-            if( !err && socket->is_open() ) {
+            if( !err && socket->is_open() && socket == c->socket ) {
                if( c->start_session() ) {
                   c->send_handshake();
                }
@@ -2316,7 +2316,7 @@ namespace eosio {
             boost::asio::bind_executor( strand,
               [conn = shared_from_this(), socket=socket]( boost::system::error_code ec, std::size_t bytes_transferred ) {
                // may have closed connection and cleared pending_message_buffer
-               if( !conn->socket_is_open() ) return;
+               if( !conn->socket_is_open() || socket != conn->socket ) return;
 
                bool close_connection = false;
                try {
@@ -2429,7 +2429,7 @@ namespace eosio {
                   std::unique_lock<std::mutex> g( conn_mtx );
                   const auto last_sent_lib = last_handshake_sent.last_irreversible_block_num;
                   g.unlock();
-                  if( !peer_requested && blk_num < last_sent_lib ) {
+                  if( blk_num < last_sent_lib ) {
                      fc_ilog( logger, "received block ${n} less than sent lib ${lib}", ("n", blk_num)("lib", last_sent_lib) );
                      close();
                   } else {
@@ -2704,6 +2704,12 @@ namespace eosio {
                                      ("o", offset)( "us", offset / NsecPerUsec ) ) );
       org = 0;
       rec = 0;
+
+      std::unique_lock<std::mutex> g_conn( conn_mtx );
+      if( last_handshake_recv.generation == 0 ) {
+         g_conn.unlock();
+         send_handshake();
+      }
    }
 
    void connection::handle_message( const notice_message& msg ) {
