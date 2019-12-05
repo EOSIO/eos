@@ -2,13 +2,14 @@
 set -eo pipefail
 . ./.cicd/helpers/general.sh
 [[ $ENABLE_INSTALL == true ]] && . ./.cicd/helpers/populate-template-and-hash.sh '<!-- BUILD -->' '<!-- INSTALL END' || . ./.cicd/helpers/populate-template-and-hash.sh '<!-- BUILD'
+sed -i -e "s/# Commands from the documentation are inserted right below this line/cd \$EOSIO_LOCATION \&\& git pull \&\& git checkout $BUILDKITE_COMMIT/g" /tmp/$POPULATED_FILE_NAME
+
 if [[ "$(uname)" == 'Darwin' ]]; then
     # You can't use chained commands in execute
     if [[ $TRAVIS == true ]]; then
         ccache -s
         sed -i -e 's/^cmake /cmake -DCMAKE_CXX_COMPILER_LAUNCHER=ccache /g' /tmp/$POPULATED_FILE_NAME
     fi
-    sed -i -e "s/# Commands from the documentation are inserted right below this line/cd \$EOSIO_LOCATION \&\& git pull \&\& git checkout $BUILDKITE_COMMIT/g" /tmp/$POPULATED_FILE_NAME
     /tmp/$POPULATED_FILE_NAME # This file is populated from the platform's build documentation code block
 else # Linux
     ARGS=${ARGS:-"--rm --init -v /tmp/$POPULATED_FILE_NAME:/build-script"}
@@ -43,8 +44,6 @@ else # Linux
         COMMANDS="ccache -s && $BUILD_COMMANDS"
     fi
     . $HELPERS_DIR/populate-template-and-hash.sh -h # obtain $FULL_TAG (and don't overwrite existing file)
-    # Add git commands to /tmp/$POPULATED_FILE_NAME that git pull and checkout the commit
-    sed -i -e "s/# Commands from the documentation are inserted right below this line/cd \$EOSIO_LOCATION \&\& git pull \&\& git checkout $BUILDKITE_COMMIT/g" /tmp/$POPULATED_FILE_NAME
     COMMANDS="$PRE_COMMANDS && $COMMANDS"
     echo "$ docker run $ARGS $(buildkite-intrinsics) $FULL_TAG bash -c \"$COMMANDS\""
     eval docker run $ARGS $(buildkite-intrinsics) $FULL_TAG bash -c \"$COMMANDS\"
