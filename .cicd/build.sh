@@ -2,7 +2,7 @@
 set -eo pipefail
 . ./.cicd/helpers/general.sh
 [[ $ENABLE_INSTALL == true ]] && . ./.cicd/helpers/populate-template-and-hash.sh '<!-- BUILD -->' '<!-- INSTALL END' || . ./.cicd/helpers/populate-template-and-hash.sh '<!-- BUILD'
-sed -i -e "s/# Commands from the documentation are inserted right below this line/cd \$EOSIO_LOCATION \&\& git pull \&\& git checkout -f $BUILDKITE_COMMIT/g" /tmp/$POPULATED_FILE_NAME
+sed -i -e "s/# Commands from the documentation are inserted right below this line/cd \$EOSIO_LOCATION \&\& git pull \&\& git checkout -f $BUILDKITE_COMMIT && git submodule update --init --recursive/g" /tmp/$POPULATED_FILE_NAME
 
 if [[ "$(uname)" == 'Darwin' ]]; then
     # You can't use chained commands in execute
