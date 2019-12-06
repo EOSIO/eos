@@ -77,3 +77,11 @@ make -j$(nproc)
 make install
 ```
 <!-- INSTALL END -->
+
+## Uninstall EOSIO
+<!-- UNINSTALL -->
+```
+xargs rm < $EOSIO_LOCATION/build/install_manifest.txt
+rm -rf $EOSIO_LOCATION/build
+```
+<!-- UNINSTALL END -->
