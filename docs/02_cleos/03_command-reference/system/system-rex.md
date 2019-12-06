@@ -1,4 +1,9 @@
+## Description
+
+Actions related to REX (the resource exchange).
+
 ## Subcommands
+
 - [deposit](system-rex-deposit) - Deposit into owner's REX fund by transfering from owner's liquid token balance
 - [withdraw](system-rex-withdraw) - Withdraw from owner's REX fund by transfering to owner's liquid token balance
 - [buyrex](system-rex-buyrex) - Buy REX using tokens in owner's REX fund
@@ -16,5 +21,5 @@
 - [defundnetloan](system-rex-defundnetloan) - Withdraw from a Network loan fund
 - [consolidate](system-rex-consolidate) - Consolidate REX maturity buckets into one that matures in 4 days
 - [updaterex](system-rex-updaterex) - Update REX owner vote stake and vote weight
-- [rexexec](system-rex-rexexec) - Perform REX maintenance by processing expired loans and
+- [rexexec](system-rex-rexexec) - Perform REX maintenance by processing expired loans and unfilled sell orders
 - [closerex](system-rex-closerex) - Delete unused REX-related user table entries
