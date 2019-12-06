@@ -107,7 +107,7 @@ def trim(data: typing.Union[dict, list], maxlen=79):
     """
     Summary
     -------
-    A helper function for json formatting. This function recursively look
+    A helper function for json formatting. This function recursively looks
     into a nested dict or list that could be converted to a json string,
     and replace strings that are too long with three dots (...).
     """

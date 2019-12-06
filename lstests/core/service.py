@@ -52,7 +52,7 @@ DEFAULT_CDIR = "../unittests/contracts/old_versions/v1.6.0-rc3"
 DEFAULT_CLUSTER_ID = 0
 DEFAULT_NODE_COUNT = 4
 DEFAULT_PNODE_COUNT = 4
-DEFAULT_PRODUDCER_COUNT = 4
+DEFAULT_PRODUCER_COUNT = 4
 DEFAULT_UNSTARTED_COUNT = 0
 DEFAULT_TOPOLOGY = "mesh"
 DEFAULT_CENTER_NODE_ID = None
@@ -84,7 +84,7 @@ HELP_HELP = "Show this message and exit"
 HELP_ADDR = "IP address of launcher service"
 HELP_PORT = "Listening port of launcher service"
 HELP_WDIR = "Working directory"
-HELP_FILE = "Path to local launcher service file"
+HELP_FILE = "Path to executable file of launcher service"
 HELP_GENE = "Path to genesis file"
 HELP_START = "Always start a new launcher service"
 HELP_KILL = "Kill existing launcher services (if any)"
@@ -93,7 +93,7 @@ HELP_CDIR = "Smart contracts directory"
 HELP_CLUSTER_ID = "Cluster ID to launch with"
 HELP_NODE_COUNT = "Number of nodes"
 HELP_PNODE_COUNT = "Number of nodes with producers"
-HELP_PRODUDCER_COUNT = "Number of producers"
+HELP_PRODUCER_COUNT = "Number of producers"
 HELP_UNSTARTED_COUNT = "Number of unstarted nodes"
 HELP_TOPOLOGY = "Cluster topology to launch with"
 HELP_CENTER_NODE_ID = "Center node ID (for bridge or star topology)"
@@ -262,7 +262,7 @@ class CommandLineArguments:
         parser.add_argument("-p", "--pnode-count", type=int, metavar="NUM",
                             help=form(HELP_PNODE_COUNT, DEFAULT_PNODE_COUNT))
         parser.add_argument("-q", "--producer-count", type=int, metavar="NUM",
-                            help=form(HELP_PRODUDCER_COUNT, DEFAULT_PRODUDCER_COUNT))
+                            help=form(HELP_PRODUCER_COUNT, DEFAULT_PRODUCER_COUNT))
         parser.add_argument("-u", "--unstarted-count", type=int, metavar="NUM",
                             help=form(HELP_UNSTARTED_COUNT, DEFAULT_UNSTARTED_COUNT))
         parser.add_argument("-t", "--topology", type=str, metavar="SHAPE", help=form(HELP_TOPOLOGY, DEFAULT_TOPOLOGY),
@@ -363,7 +363,7 @@ class Service:
             default value "127.0.0.1" is supported.
         port : int
             Listening port of launcher service.
-            If there are multiple launcher service running in the background,
+            If there are multiple launcher services running in the background,
             they must have different listening ports.
             Default is 1234.
         wdir : str
@@ -535,7 +535,7 @@ class Service:
         """Returns a list of 0, 1, or more process IDs"""
         pid_list = helper.get_pid_list_by_pattern(PROGRAM)
         if len(pid_list) == 0:
-            self.debug(color.yellow("No launcher is running currently."))
+            self.debug(color.yellow("No launcher service is currently running."))
         elif len(pid_list) == 1:
             self.debug(color.green("Launcher service is running with process ID [{}].".format(pid_list[0])))
         else:
@@ -544,7 +544,7 @@ class Service:
 
     def kill_local_services(self, pid_list):
         for x in pid_list:
-            self.debug(color.yellow("Killing exisiting launcher service with process ID [{}].".format(x)))
+            self.debug(color.yellow("Killing existing launcher service with process ID [{}].".format(x)))
             helper.terminate(x)
 
     def connect_to_existing_local_service(self, pid):
@@ -771,7 +771,7 @@ class Cluster:
         self.cluster_id      = helper.override(DEFAULT_CLUSTER_ID,      cluster_id,      self.cla.cluster_id)
         self.node_count      = helper.override(DEFAULT_NODE_COUNT,      node_count,      self.cla.node_count)
         self.pnode_count     = helper.override(DEFAULT_PNODE_COUNT,     pnode_count,     self.cla.pnode_count)
-        self.producer_count  = helper.override(DEFAULT_PRODUDCER_COUNT, producer_count,  self.cla.producer_count)
+        self.producer_count  = helper.override(DEFAULT_PRODUCER_COUNT,  producer_count,  self.cla.producer_count)
         self.unstarted_count = helper.override(DEFAULT_UNSTARTED_COUNT, unstarted_count, self.cla.unstarted_count)
         self.topology        = helper.override(DEFAULT_TOPOLOGY,        topology,        self.cla.topology)
         self.center_node_id  = helper.override(DEFAULT_CENTER_NODE_ID,  center_node_id,  self.cla.center_node_id)
@@ -846,7 +846,7 @@ class Cluster:
         self.print_config_helper("-i: cluster_id",       HELP_CLUSTER_ID,      self.cluster_id,      DEFAULT_CLUSTER_ID)
         self.print_config_helper("-n: node_count",       HELP_NODE_COUNT,      self.node_count,      DEFAULT_NODE_COUNT)
         self.print_config_helper("-p: pnode_count",      HELP_PNODE_COUNT,     self.pnode_count,     DEFAULT_PNODE_COUNT)
-        self.print_config_helper("-q: producer_count",   HELP_PRODUDCER_COUNT, self.producer_count,  DEFAULT_PRODUDCER_COUNT)
+        self.print_config_helper("-q: producer_count",   HELP_PRODUCER_COUNT,  self.producer_count,  DEFAULT_PRODUCER_COUNT)
         self.print_config_helper("-u: unstarted_count",  HELP_UNSTARTED_COUNT, self.unstarted_count, DEFAULT_UNSTARTED_COUNT)
         self.print_config_helper("-t: topology",         HELP_TOPOLOGY,        self.topology,        DEFAULT_TOPOLOGY)
         self.print_config_helper("-x: center_node_id",   HELP_CENTER_NODE_ID,  self.center_node_id,  DEFAULT_CENTER_NODE_ID)

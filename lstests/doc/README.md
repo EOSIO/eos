@@ -156,7 +156,7 @@ cluster = Cluster(service=service, cluster_id=2)
 which can be again overridden from the command line. When running the test script, the user may require that the cluster be launched with cluster ID 6, by specifying
 
 ```bash
-./script.py --cluster-id=6
+./script.py --cluster-id 6
 ```
 
 or simply
@@ -381,8 +381,8 @@ If there is already an existing launcher service running in the background, the 
 
 A detailed explanation of the parameters to initialize a `Service` object can be found in its docstring.
 
-     Parameters
-     ----------
+    Parameters
+    ----------
     logger : Logger
         Logger object which controls logging behavior.
     addr : str
@@ -391,14 +391,14 @@ A detailed explanation of the parameters to initialize a `Service` object can be
         default value "127.0.0.1" is supported.
     port : int
         Listening port of launcher service.
-        If there are multiple launcher service running in the background,
+        If there are multiple launcher services running in the background,
         they must have different listening ports.
         Default is 1234.
     wdir : str
         Working directory.
         Default is the build folder.
     file : str
-        Path to local launcher service file.
+        Path to executable file of launcher service.
         Can be either absolute or relative to the working directory.
     gene : str
         Path to the genesis file.
