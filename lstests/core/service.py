@@ -97,7 +97,7 @@ HELP_PRODUCER_COUNT = "Number of producers"
 HELP_UNSTARTED_COUNT = "Number of unstarted nodes"
 HELP_TOPOLOGY = "Cluster topology to launch with"
 HELP_CENTER_NODE_ID = "Center node ID (for bridge or star topology)"
-HELP_EXTRA_CONFIGS = "Extra configs to pass to launcher service"
+HELP_EXTRA_CONFIGS = "Extra configs to pass to nodeos"
 HELP_EXTRA_ARGS = "Extra arguments to pass to launcher service"
 HELP_DONT_NEWACCO = "Do not create accounts in launch"
 HELP_DONT_SETPROD = "Do not set producers in launch"
@@ -368,7 +368,7 @@ class Service:
             Default is 1234.
         wdir : str
             Working directory.
-            Default is the build folder.
+            Default is the current working directory.
         file : str
             Path to local launcher service file.
             Can be either absolute or relative to the working directory.
@@ -550,25 +550,33 @@ class Service:
 
     def connect_to_existing_local_service(self, pid):
         cmd_and_args = helper.get_cmd_and_args_by_pid(pid)
+        existing_port = existing_gene = ""
         for ind, val in enumerate(shlex.split(cmd_and_args)):
             if ind == 0:
                 existing_file = val
             elif val.startswith("--http-server-address"):
                 existing_port = int(val.split(":")[-1])
-                break
-        else:
+            elif val.startswith("--genesis-file"):
+                existing_gene = val.split("=")[-1]
+        if not existing_port:
             self.error("ERROR: Failed to extract \"--http-server-address\" from \"{}\" (process ID {})!".format(cmd_and_args, pid))
         self.debug(color.green("Connecting to existing launcher service with process ID [{}].".format(pid)))
         self.debug(color.green("No new launcher service will be started."))
         self.debug("Configuration of existing launcher service:")
         self.debug("--- Listening port: [{}]".format(color.blue(existing_port)))
-        self.debug("--- Path to file: [{}]".format(color.blue(existing_file)))
+        self.debug("--- Path to executable file: [{}]".format(color.blue(existing_file)))
+        if existing_gene:
+            self.debug("--- Path to genesis file: [{}]".format(color.blue(existing_gene)))
         if self.port != existing_port:
             self.warn("WARNING: Port setting (port={}) is ignored.".format(self.port))
             self.port = existing_port
         if self.file != existing_file:
-            self.warn("WARNING: File setting (file={}) is ignored.".format(self.file))
+            self.warn("WARNING: Executable file setting (file={}) is ignored.".format(self.file))
             self.file = existing_file
+        if existing_gene and self.gene != existing_gene:
+            self.warn("WARNING: Genesis file setting (gene={}) is ignored.".format(self.gene))
+            self.gene = existing_gene
+
         self.debug("To always start a new launcher service, pass {} or {}.".format(color.yellow("-s"), color.yellow("--start")))
         self.debug("To kill existing launcher services, pass {} or {}.".format(color.yellow("-k"), color.yellow("--kill")))
 
@@ -711,7 +719,7 @@ class Cluster:
             If topology is bridge, center node ID cannot be 0 or last one.
             No default value.
         extra_configs : list
-            Extra configs to pass to launcher service.
+            Extra configs to pass to nodeos via launcher service.
             e.g. ["plugin=SOME_EXTRA_PLUGIN"]
             No default value.
         extra_args : str
