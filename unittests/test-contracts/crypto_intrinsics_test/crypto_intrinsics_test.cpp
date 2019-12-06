@@ -7,6 +7,12 @@ extern "C"
 	struct checksum {
 		uint8_t hash[32];
 	};
+
+   struct ec_point {
+      uint16_t curve;
+      uint8_t  point[64];
+   };
+
 	__attribute__((eosio_wasm_import))
 	void keccak(const char*, uint32_t, checksum*);
 	__attribute__((eosio_wasm_import))
@@ -16,8 +22,11 @@ extern "C"
 	__attribute__((eosio_wasm_import))
 	void assert_sha3(const char*, uint32_t, const checksum*);
 	__attribute__((eosio_wasm_import))
-	int64_t ec_add(uint64_t, const char*, uint32_t, const char*, uint32_t);
+	int64_t ec_add(const ec_point*, const ec_point*, ec_point*);
 }
+
+static constexpr uint16_t r1_curve = 415;
+static constexpr uint16_t k1_curve = 714;
 
 class[[eosio::contract]] crypto_intrinsics_test : public eosio::contract
 {
@@ -55,27 +64,14 @@ public:
 		from_hex(expected, (char*)test.hash, 32);
 		::assert_keccak(s.c_str(), s.size(), &test);
 	}
-	enum ec_add_tags {
-		r1_v1_compressed = 0,
-		r1_v1_uncompressed = 1,
-		k1_v1_compressed = 2,
-		k1_v1_uncompressed = 3
-	};
 
-	[[eosio::action]] void ecadd(uint32_t type, std::vector<char> p, std::vector<char> q, std::vector<char> e) {
-		std::vector<char> r;
-		r.resize(64);
-		std::array<char, 128> buff;
-		if (type == 0 || type == 2) {
-			memcpy(buff.data(), p.data(), 33);
-			memcpy(buff.data()+33, q.data(), 33);
-		} else {
-			memcpy(buff.data(), p.data(), 64);
-			memcpy(buff.data()+64, q.data(), 64);
-		}
+	[[eosio::action]] void ecaddr1(std::vector<char> p, std::vector<char> q, std::vector<char> e) {
+      ec_point a, b, r;
+      memcpy(&a, p.data(), p.size());
+      memcpy(&b, q.data(), q.size());
 
-		int64_t res = ec_add(type, (const char*)buff.data(), type == 0 || type == 2 ? 66 : 128, (const char*)r.data(), 64);
+		int64_t res = ec_add(&a, &b, &r);
 		eosio::check(res != -1, "ec_add failure");
-		eosio::check(!memcmp(r.data(), e.data(), 64), "expected failure");
+		eosio::check(!memcmp(&r, e.data(), e.size()), "expected failure");
 	}
 };

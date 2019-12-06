@@ -4,13 +4,9 @@
     "types": [],
     "structs": [
         {
-            "name": "ecadd",
+            "name": "ecaddr1",
             "base": "",
             "fields": [
-                {
-                    "name": "type",
-                    "type": "uint32"
-                },
                 {
                     "name": "p",
                     "type": "bytes"
@@ -56,8 +52,8 @@
     ],
     "actions": [
         {
-            "name": "ecadd",
-            "type": "ecadd",
+            "name": "ecaddr1",
+            "type": "ecaddr1",
             "ricardian_contract": ""
         },
         {
