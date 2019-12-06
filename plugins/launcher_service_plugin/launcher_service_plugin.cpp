@@ -331,7 +331,9 @@ public:
             cmd += " --config-dir=" + node_path.string();
             cmd += " --data-dir=" + node_path.string() + "/data";
             if (!restart) {
-               cmd += " --genesis-json=" + _config.genesis_file;
+               if (def.extra_args.find("--genesis-json") == string::npos && extra_args.find("--genesis-json") == string::npos) {
+                  cmd += " --genesis-json=" + _config.genesis_file;
+               }
                cmd += " --delete-all-blocks";
             }
             if (def.extra_args.length()) {
@@ -350,7 +352,7 @@ public:
                continue;
             }
 
-            ilog("start to execute:${c}...", ("c", cmd));
+            ilog("start to execute:\"${c}\"", ("c", cmd));
             state.child.reset(new bp::child(cmd, bp::std_out > stdout_path, bp::std_err > stderr_path));
 
             state.pid = state.child->id();
@@ -366,7 +368,7 @@ public:
          }
          stop_cluster(def.cluster_id);
          setup_cluster(def);
-         launch_nodes(def, -1, true);
+         launch_nodes(def, -1, false);
       }
       void start_node(int cluster_id, int node_id, std::string extra_args) {
          if (_running_clusters.find(cluster_id) == _running_clusters.end()) {
