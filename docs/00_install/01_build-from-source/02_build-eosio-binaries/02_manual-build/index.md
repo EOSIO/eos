@@ -9,16 +9,16 @@ When performing a manual build, it is necessary to install specific software pac
 
 ## Instructions
 
-The following steps will build the EOSIO binaries manually by invoking commands on the shell:
+The following instructions will build the EOSIO dependencies and EOSIO binaries manually by invoking commands on the shell:
 
-1. [Manual Install of EOSIO Dependencies](00_eosio-dependencies/index.md)
-2. [Manual Build of EOSIO Binaries](01_eosio-manual-build.md)
+1. [Manual Install EOSIO Dependencies](00_eosio-dependencies/index.md)
+2. [Manual Build EOSIO Binaries](01_eosio-manual-build.md)
 
 ## Out-of-source Builds
 
 While building dependencies and EOSIO binaries, out-of-source builds are also supported. Refer to the `cmake` help for more information.
 
-# Other Compilers
+## Other Compilers
 
 To override `clang`'s default compiler toolchain, add these flags to the `cmake` command within the above instructions:
 
