@@ -40,5 +40,5 @@ else # Linux
     fi
     . $HELPERS_DIR/populate-template-and-hash.sh -h # obtain $FULL_TAG (and don't overwrite existing file)
     echo "$ docker run $ARGS $(buildkite-intrinsics) $FULL_TAG bash -c \"$PRE_COMMANDS && $BUILD_COMMANDS\""
-    eval docker run $ARGS $(buildkite-intrinsics) $FULL_TAG bash -c \"$PRE_COMMANDS && $BUILD_COMMANDS\"
+    eval docker run $ARGS $(buildkite-intrinsics) $FULL_TAG bash -c \"$PRE_COMMANDS \&\& $BUILD_COMMANDS\"
 fi
