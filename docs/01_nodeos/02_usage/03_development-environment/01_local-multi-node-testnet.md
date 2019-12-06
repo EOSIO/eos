@@ -87,7 +87,7 @@ This creates a special producer, known as the "bios" producer. Assuming everythi
 
 ### 5. Start the Second Producer Node
 
-The following commands assume that you are running this tutorial from your `${EOSIO_SOURCE}` directory, from which you ran `./eosio_build.sh` to build.  See [Getting the Code](Local-Environment#1-getting-the-code) for more information if this is not clear.
+The following commands assume that you are running this tutorial from the `eos\build` directory, from which you ran `./eosio_build.sh` to build the EOSIO binaries.
 
 To start additional nodes, you must first load the `eosio.bios` contract. This contract enables you to have direct control over the resource allocation of other accounts and to access other privileged API calls. Return to the second terminal window and run the following command to load the contract:
 

@@ -2,7 +2,7 @@
 [[info | Shell Scripts]]
 | The build script is one of various automated shell scripts provided in the EOSIO repository for building, installing, and optionally uninstalling the EOSIO software and its dependencies. They are available in the `eos/scripts` folder.
 
-The build script first installs all dependencies and then builds EOSIO. The script supports these [Operating Systems](../../../../../README.md#supported-operating-systems). To run it, first change to the `~/eosio/eos` folder, then launch the script:
+The build script first installs all dependencies and then builds EOSIO. The script supports these [Operating Systems](../../index.md#supported-operating-systems). To run it, first change to the `~/eosio/eos` folder, then launch the script:
 
 ```sh
 $ cd ~/eosio/eos
