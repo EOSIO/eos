@@ -407,7 +407,7 @@ A detailed explanation of the parameters to initialize a `Service` object can be
         Always start a new launcher service.
         To start a new instance alongside the existing ones, make sure the
         listening ports are different. Otherwise, the new launcher service
-        will issue an error.
+        will issue an error and exit.
         Default is False (will not start a new one if there is an existing
         launcher service running in the background).
     kill : bool

@@ -42,7 +42,7 @@ PACKAGE_DIR = os.path.dirname(os.path.abspath(__file__))
 # service-related defaults
 DEFAULT_ADDR = "127.0.0.1"
 DEFAULT_PORT = 1234
-DEFAULT_WDIR = os.path.join(PACKAGE_DIR, "../../build")
+DEFAULT_WDIR = "."
 DEFAULT_FILE = os.path.join(".", "programs", PROGRAM, PROGRAM)
 DEFAULT_GENE = os.path.join(".", "genesis.json")
 DEFAULT_START = False
@@ -379,7 +379,7 @@ class Service:
             Always start a new launcher service.
             To start a new instance alongside the existing ones, make sure the
             listening ports are different. Otherwise, the new launcher service
-            will issue an error.
+            will issue an error and exit.
             Default is False (will not start a new one if there is an existing
             launcher service running in the background).
         kill : bool
@@ -400,7 +400,8 @@ class Service:
         self.start = helper.override(DEFAULT_START, start, self.cla.start)
         self.kill  = helper.override(DEFAULT_KILL,  kill,  self.cla.kill)
         # change working dir
-        os.chdir(self.wdir)
+        if self.wdir != ".":
+            os.chdir(self.wdir)
         # register logger
         self.register_logger(logger)
         # connect
