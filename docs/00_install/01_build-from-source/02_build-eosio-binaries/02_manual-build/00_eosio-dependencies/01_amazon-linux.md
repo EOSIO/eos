@@ -1,21 +1,7 @@
 ## Dependencies - Manual Install - Amazon Linux 2017.09 or Higher
 
-[[info | Download EOSIO Software]]
+[[info | Reminder]]
 | This section assumes you already have the EOSIO source code. If not, just [Download the EOSIO source](../../../../01_build-from-source/01_download-eosio-source.md).
-
-<!--
-# download and run base docker image
-```
-docker pull amazonlinux:2.0.20190508
-docker run -it amazonlinux:2.0.20190508
-```
-
-# download eosio
-```
-mkdir -p ~/eosio && cd ~/eosio
-git clone --recursive --single-branch -b release/2.0.x https://github.com/EOSIO/eos.git
-```
--->
 
 ## Steps
 
@@ -24,15 +10,22 @@ Please follow the steps below to build EOSIO on your selected OS:
 1. [Change to EOSIO folder](#1-change-to-eosio-folder)
 2. [Install dependencies](#2-install-dependencies)
 3. [Build cmake](#3-build-cmake)
-4. [Build clang8](#5-build-clang8)
-5. [Copy clang8 cmake file](#6-copy-clang8-cmake-file)
-6. [Build llvm8](#7-build-llvm8)
-7. [Build boost](#8-build-boost)
-8. [Build mongodb](#9-build-mongodb)
-9. [Build mongodb C driver](#10-build-mongodb-c-driver)
-10. [Build mongodb CXX driver](#11-build-mongodb-cxx-driver)
-11. [Add mongodb to PATH](#12-add-mongodb-to-path)
-12. [Install ccache](#13-install-ccache)
+4. [Build clang8](#4-build-clang8) <!-- 5. [Copy clang8 cmake file](#5-copy-clang8-cmake-file) -->
+5. [Build llvm8](#5-build-llvm8)
+6. [Build boost](#6-build-boost)
+7. [Build mongodb](#7-build-mongodb)
+8. [Build mongodb C driver](#8-build-mongodb-c-driver)
+9. [Build mongodb CXX driver](#9-build-mongodb-cxx-driver)
+10. [Add mongodb to PATH](#10-add-mongodb-to-path)
+11. [Install ccache](#11-install-ccache)
+
+<!--
+### 0. download and run base docker image
+```sh
+docker pull amazonlinux:2.0.20190508
+docker run -it amazonlinux:2.0.20190508
+```
+-->
 
 ### 1. Change to EOSIO folder
 ```sh
@@ -48,6 +41,14 @@ $ yum update -y && \
     graphviz patch gcc gcc-c++ vim-common jq
 ```
 
+<!--
+### 3. download eosio
+```sh
+mkdir -p ~/eosio && cd ~/eosio
+git clone --recursive --single-branch -b release/2.0.x https://github.com/EOSIO/eos.git
+```
+-->
+
 ### 3. Build cmake
 ```sh
 $ curl -LO https://cmake.org/files/v3.13/cmake-3.13.2.tar.gz && \
@@ -58,6 +59,7 @@ $ curl -LO https://cmake.org/files/v3.13/cmake-3.13.2.tar.gz && \
     make install && \
     cd ~/eosio && \
     rm -rf cmake-3.13.2.tar.gz cmake-3.13.2
+```
 
 ### 4. Build clang8
 ```sh
@@ -71,32 +73,34 @@ $ git clone --single-branch --branch release_80 https://git.llvm.org/git/llvm.gi
     cd ../ && git clone --single-branch --branch release_80 https://git.llvm.org/git/libunwind.git && cd libunwind && git checkout 57f6739 && \
     cd ../ && git clone --single-branch --branch release_80 https://git.llvm.org/git/compiler-rt.git && cd compiler-rt && git checkout 5bc7979 && \
     mkdir ~/eosio/clang8/build && cd ~/eosio/clang8/build && \
-    cmake -G 'Unix Makefiles' -DCMAKE_INSTALL_PREFIX='/usr/local' -DLLVM_BUILD_EXTERNAL_COMPILER_RT=ON -DLLVM_BUILD_LLVM_DYLIB=ON -DLLVM_ENABLE_LIBCXX=ON -DLLVM_ENABLE_RTTI=ON -DLLVM_INCLUDE_DOCS=OFF -DLLVM_OPTIMIZED_TABLEGEN=ON -DLLVM_TARGETS_TO_BUILD=X86 -DCMAKE_BUILD_TYPE=Release .. && \
+    cmake -DCMAKE_INSTALL_PREFIX='/usr/local' -DLLVM_BUILD_EXTERNAL_COMPILER_RT=ON -DLLVM_BUILD_LLVM_DYLIB=ON -DLLVM_ENABLE_LIBCXX=ON -DLLVM_ENABLE_RTTI=ON -DLLVM_INCLUDE_DOCS=OFF -DLLVM_OPTIMIZED_TABLEGEN=ON -DLLVM_TARGETS_TO_BUILD=X86 -DCMAKE_BUILD_TYPE=Release .. && \
     make -j $(nproc) && \
     make install && \
     cd ~/eosio && \
     rm -rf clang8
 ```
 
+<!--
 ### 5. Copy clang8 cmake file
 ```sh
 $ cp eos/.cicd/helpers/clang.make /tmp/clang.cmake
 ```
+-->
 
-### 6. Build llvm8
+### 5. Build llvm8
 ```sh
 $ git clone --depth 1 --single-branch --branch release_80 https://github.com/llvm-mirror/llvm.git llvm && \
     cd llvm && \
     mkdir build && \
     cd build && \
-    cmake -G 'Unix Makefiles' -DLLVM_TARGETS_TO_BUILD=host -DLLVM_BUILD_TOOLS=false -DLLVM_ENABLE_RTTI=1 -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_TOOLCHAIN_FILE='/tmp/clang.cmake' -DCMAKE_EXE_LINKER_FLAGS=-pthread -DCMAKE_SHARED_LINKER_FLAGS=-pthread -DLLVM_ENABLE_PIC=NO .. && \
+    cmake -DLLVM_TARGETS_TO_BUILD=host -DLLVM_BUILD_TOOLS=false -DLLVM_ENABLE_RTTI=1 -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_TOOLCHAIN_FILE='~/eosio/eos/.cicd/helpers/clang.make' -DCMAKE_EXE_LINKER_FLAGS=-pthread -DCMAKE_SHARED_LINKER_FLAGS=-pthread -DLLVM_ENABLE_PIC=NO .. && \
     make -j$(nproc) && \
     make install && \
     cd ~/eosio && \
     rm -rf llvm
 ```
 
-### 7. Build boost
+### 6. Build boost
 ```sh
 $ curl -LO https://dl.bintray.com/boostorg/release/1.71.0/source/boost_1_71_0.tar.bz2 && \
     tar -xjf boost_1_71_0.tar.bz2 && \
@@ -107,28 +111,28 @@ $ curl -LO https://dl.bintray.com/boostorg/release/1.71.0/source/boost_1_71_0.ta
     rm -rf boost_1_71_0.tar.bz2 boost_1_71_0
 ```
 
-### 8. Build mongodb
+### 7. Build mongodb
 ```sh
 $ curl -LO https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-amazon-3.6.3.tgz && \
     tar -xzf mongodb-linux-x86_64-amazon-3.6.3.tgz && \
     rm -f mongodb-linux-x86_64-amazon-3.6.3.tgz
 ```
 
-### 9. Build mongodb C driver
+### 8. Build mongodb C driver
 ```sh
 $ curl -LO https://github.com/mongodb/mongo-c-driver/releases/download/1.13.0/mongo-c-driver-1.13.0.tar.gz && \
     tar -xzf mongo-c-driver-1.13.0.tar.gz && \
     cd mongo-c-driver-1.13.0 && \
     mkdir -p build && \
     cd build && \
-    cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local -DENABLE_BSON=ON -DENABLE_SSL=OPENSSL -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF -DENABLE_STATIC=ON -DENABLE_ICU=OFF -DENABLE_SNAPPY=OFF  -DCMAKE_TOOLCHAIN_FILE='/tmp/clang.cmake' .. && \
+    cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local -DENABLE_BSON=ON -DENABLE_SSL=OPENSSL -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF -DENABLE_STATIC=ON -DENABLE_ICU=OFF -DENABLE_SNAPPY=OFF  -DCMAKE_TOOLCHAIN_FILE='~/eosio/eos/.cicd/helpers/clang.make' .. && \
     make -j$(nproc) && \
     make install && \
     cd ~/eosio && \
     rm -rf mongo-c-driver-1.13.0.tar.gz mongo-c-driver-1.13.0
 ```
 
-### 10. Build mongodb CXX driver
+### 9. Build mongodb CXX driver
 ```sh
 $ curl -L https://github.com/mongodb/mongo-cxx-driver/archive/r3.4.0.tar.gz -o mongo-cxx-driver-r3.4.0.tar.gz && \
     tar -xzf mongo-cxx-driver-r3.4.0.tar.gz && \
@@ -136,25 +140,30 @@ $ curl -L https://github.com/mongodb/mongo-cxx-driver/archive/r3.4.0.tar.gz -o m
     sed -i 's/\"maxAwaitTimeMS\", count/\"maxAwaitTimeMS\", static_cast<int64_t>(count)/' src/mongocxx/options/change_stream.cpp && \
     sed -i 's/add_subdirectory(test)//' src/mongocxx/CMakeLists.txt src/bsoncxx/CMakeLists.txt && \
     cd build && \
-    cmake -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local  -DCMAKE_TOOLCHAIN_FILE='/tmp/clang.cmake' .. && \
+    cmake -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local  -DCMAKE_TOOLCHAIN_FILE='~/eosio/eos/.cicd/helpers/clang.make' .. && \
     make -j$(nproc) && \
     make install && \
     cd ~/eosio && \
     rm -rf mongo-cxx-driver-r3.4.0.tar.gz mongo-cxx-driver-r3.4.0
 ```
 
-### 11. Add mongodb to PATH
+### 10. Add mongodb to PATH
 ```sh
 $ export PATH=${PATH}:/mongodb-linux-x86_64-amazon-3.6.3/bin
 ```
 
-### 12. Install ccache
+### 11. Install ccache
 ```sh
 $ curl -LO http://download-ib01.fedoraproject.org/pub/epel/7/x86_64/Packages/c/ccache-3.3.4-1.el7.x86_64.rpm && \
     yum install -y ccache-3.3.4-1.el7.x86_64.rpm
 ```
 
 <!--
-# build eosio (not part of the final instructions)
-bash -c "mkdir -p ~/eosio/eos/build && cd ~/eosio/eos/build && export PATH=/usr/lib64/ccache:\$PATH && cmake -DCMAKE_BUILD_TYPE='Release' -DBUILD_MONGO_DB_PLUGIN=true -DCMAKE_TOOLCHAIN_FILE=~/eosio/eos/.cicd/helpers/clang.make -DCMAKE_CXX_COMPILER_LAUNCHER=ccache .. && make"
+### 12. build eosio
+```sh
+$ bash -c "mkdir -p ~/eosio/eos/build && cd ~/eosio/eos/build && export PATH=/usr/lib64/ccache:\$PATH && cmake -DCMAKE_BUILD_TYPE='Release' -DBUILD_MONGO_DB_PLUGIN=true -DCMAKE_TOOLCHAIN_FILE=~/eosio/eos/.cicd/helpers/clang.make -DCMAKE_CXX_COMPILER_LAUNCHER=ccache .. && make -j$(nproc)"
+```
 -->
+
+[[info | What's Next?]]
+| The EOSIO dependencies are now installed. Next, you can [Manually Build the EOSIO Binaries](../01_eosio-manual-build.md).
