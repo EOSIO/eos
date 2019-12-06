@@ -646,6 +646,61 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T &, Inputs...>> {
    }
 };
 
+/**
+ * Specialization for transcribing fc::ec_point
+ * Once we move away from WABT and use eos-vm for eos-vm-oc we can clean up a lot of this
+ *
+ * @tparam Ret - the return type of the native method
+ * @tparam Inputs - the remaining native parameters to transcribe
+ */
+template<typename Ret, typename... Inputs>
+struct intrinsic_invoker_impl<Ret, std::tuple<fc::ecc::r1_ec_point&, Inputs...>> {
+   using next_step = intrinsic_invoker_impl<Ret, std::tuple<Inputs...>>;
+   using then_type = Ret(*)(wabt_apply_instance_vars&, fc::ecc::r1_ec_point&, Inputs..., const TypedValues&, int);
+
+   template<then_type Then>
+   static auto translate_one(wabt_apply_instance_vars& vars, Inputs... rest, const TypedValues& args, int offset) {
+      uint32_t ptr = args.at((uint32_t)offset - 1).get_i32();
+      size_t length = sizeof(fc::ecc::r1_ec_point);
+      char* base = array_ptr_impl<char>(vars, ptr, length);
+      fc::datastream<char*> ds((char*)base, length);
+      fc::ecc::r1_ec_point tmp{};
+      fc::raw::unpack(ds, tmp);
+      std::cout << "Transcribing ec_point\n";
+
+      Ret ret = Then(vars, tmp, rest..., args, (uint32_t)offset - 2);
+      fc::raw::pack(ds, tmp);
+      return ret;
+   };
+
+   template<then_type Then>
+   static const auto fn() {
+      return next_step::template fn<translate_one<Then>>();
+   }
+};
+template<typename Ret, typename... Inputs>
+struct intrinsic_invoker_impl<Ret, std::tuple<const fc::ecc::r1_ec_point&, Inputs...>> {
+   using next_step = intrinsic_invoker_impl<Ret, std::tuple<Inputs...>>;
+   using then_type = Ret(*)(wabt_apply_instance_vars&, const fc::ecc::r1_ec_point&, Inputs..., const TypedValues&, int);
+
+   template<then_type Then>
+   static auto translate_one(wabt_apply_instance_vars& vars, Inputs... rest, const TypedValues& args, int offset) {
+      uint32_t ptr = args.at((uint32_t)offset - 1).get_i32();
+      size_t length = sizeof(fc::ecc::r1_ec_point);
+      char* base = array_ptr_impl<char>(vars, ptr, length);
+      fc::datastream<char*> ds((char*)base, length);
+      fc::ecc::r1_ec_point tmp{};
+      fc::raw::unpack(ds, tmp);
+      std::cout << "Transcribing const ec_point\n";
+
+      return Then(vars, tmp, rest..., args, (uint32_t)offset - 2);
+   };
+
+   template<then_type Then>
+   static const auto fn() {
+      return next_step::template fn<translate_one<Then>>();
+   }
+};
 extern apply_context* fixme_context;
 
 /**
@@ -704,7 +759,7 @@ using void_ret_wrapper_t = typename void_ret_wrapper<T>::type;
 template<typename Cls, typename Ret, typename... Params>
 struct intrinsic_function_invoker_wrapper<Ret (Cls::*)(Params...)> {
    static_assert( !(std::is_pointer_v<Ret> && alignof(std::remove_pointer_t<void_ret_wrapper_t<Ret>>) != 1) &&
-                  !(std::is_lvalue_reference_v<Ret> && alignof(std::remove_reference_t<void_ret_wrapper_t<Ret>>) != 1), 
+                  !(std::is_lvalue_reference_v<Ret> && alignof(std::remove_reference_t<void_ret_wrapper_t<Ret>>) != 1),
                   "intrinsics should only return a reference or pointer with single byte alignment");
    using type = intrinsic_function_invoker<Ret, Ret (Cls::*)(Params...), Cls, Params...>;
 };
@@ -712,7 +767,7 @@ struct intrinsic_function_invoker_wrapper<Ret (Cls::*)(Params...)> {
 template<typename Cls, typename Ret, typename... Params>
 struct intrinsic_function_invoker_wrapper<Ret (Cls::*)(Params...) const> {
    static_assert( !(std::is_pointer_v<Ret> && alignof(std::remove_pointer_t<void_ret_wrapper_t<Ret>>) != 1) &&
-                  !(std::is_lvalue_reference_v<Ret> && alignof(std::remove_reference_t<void_ret_wrapper_t<Ret>>) != 1), 
+                  !(std::is_lvalue_reference_v<Ret> && alignof(std::remove_reference_t<void_ret_wrapper_t<Ret>>) != 1),
                   "intrinsics should only return a reference or pointer with single byte alignment");
    using type = intrinsic_function_invoker<Ret, Ret (Cls::*)(Params...) const, Cls, Params...>;
 };
@@ -720,7 +775,7 @@ struct intrinsic_function_invoker_wrapper<Ret (Cls::*)(Params...) const> {
 template<typename Cls, typename Ret, typename... Params>
 struct intrinsic_function_invoker_wrapper<Ret (Cls::*)(Params...) volatile> {
    static_assert( !(std::is_pointer_v<Ret> && alignof(std::remove_pointer_t<void_ret_wrapper_t<Ret>>) != 1) &&
-                  !(std::is_lvalue_reference_v<Ret> && alignof(std::remove_reference_t<void_ret_wrapper_t<Ret>>) != 1), 
+                  !(std::is_lvalue_reference_v<Ret> && alignof(std::remove_reference_t<void_ret_wrapper_t<Ret>>) != 1),
                   "intrinsics should only return a reference or pointer with single byte alignment");
    using type = intrinsic_function_invoker<Ret, Ret (Cls::*)(Params...) volatile, Cls, Params...>;
 };

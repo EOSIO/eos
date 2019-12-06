@@ -871,6 +871,7 @@ class crypto_api : public context_aware_api {
          k1_v1_uncompressed = 3
       };
 
+      /*
       template <bool IsCompressed>
       static std::optional<fc::ecc::ec_point> ec_add_impl(uint64_t tag, const char* p_x_bytes, const char* p_y_bytes, const char* q_x_bytes, const char* q_y_bytes) {
          using y_type = std::conditional_t<IsCompressed, int, fc::bigint>;
@@ -900,15 +901,14 @@ class crypto_api : public context_aware_api {
             return p.add(q);
          return {};
       }
+      */
 
-      //int64_t ec_add_r1(bool compressed, fc::ecc:ec_point p, fc::ecc:ec_point q, fc::ecc:ec_point& r) {
-      //}
-
-      int64_t ec_add(const fc::ecc::ec_point& p, const fc::ecc::ec_point& q, fc::ecc::ec_point& r) {
+      int64_t ec_add(const fc::ecc::r1_ec_point& p, const fc::ecc::r1_ec_point& q, fc::ecc::r1_ec_point& r) {
          uint64_t curve = p.get_curve();
          r = p.add(q);
          return 0;
       }
+
       /*
       int64_t ec_add(uint64_t tag, array_ptr<char> input, uint32_t input_len, array_ptr<char> output, uint32_t output_len) {
          uint32_t input_len_lb = 0;
@@ -2050,7 +2050,7 @@ REGISTER_INTRINSICS( database_api,
 REGISTER_INTRINSICS(crypto_api,
    (assert_recover_key,     void(int, int, int, int, int)                )
    (recover_key,            int(int, int, int, int, int)                 )
-   (ec_add,                 int64_t(int64_t, int, int, int, int) )
+   (ec_add,                 int64_t(int, int, int)                       ) //int64_t, int, int, int, int) )
    (assert_sha256,          void(int, int, int)                          )
    (assert_sha1,            void(int, int, int)                          )
    (assert_sha512,          void(int, int, int)                          )

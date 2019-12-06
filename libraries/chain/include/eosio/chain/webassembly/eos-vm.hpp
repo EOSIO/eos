@@ -125,6 +125,7 @@ namespace eosio { namespace vm {
    template <typename T>
    using unpacked_wrapper = write_back_wrapper<T, write_back_pred_true, unpacked_copy<T>, unpacked_write_back<T>>;
 
+   /*
    template <typename T>
    struct unpacked_ty {
       unpacked_ty(const unpacked_wrapper<T>& w) : _ptr(w) {
@@ -132,6 +133,7 @@ namespace eosio { namespace vm {
       operator T*()const { return _ptr; }
       T* _ptr;
    };
+   */
 
 #define UNPACK_WRAP_TYPE(TY)                                      \
    template <>                                                    \
@@ -156,7 +158,8 @@ namespace eosio { namespace vm {
       }                                                           \
    };
 
-   UNPACK_WRAP_TYPE(fc::ecc::ec_point);
+   UNPACK_WRAP_TYPE(fc::ecc::r1_ec_point);
+   UNPACK_WRAP_TYPE(fc::ecc::k1_ec_point);
 
 }} // ns eosio::vm
 
