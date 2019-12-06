@@ -33,7 +33,7 @@ else # Linux
         PRE_COMMANDS="export PATH=/usr/lib/ccache:\\\$PATH"
         CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_CXX_COMPILER='clang++-7' -DCMAKE_C_COMPILER='clang-7' -DLLVM_DIR='/usr/lib/llvm-7/lib/cmake/llvm'"
     fi
-    BUILD_COMMANDS="BUILDKITE_COMMIT=$BUILDKITE_COMMIT ./build-script"
+    BUILD_COMMANDS="ls -alht && pwd && ./build-script"
     if [[ $TRAVIS == true ]]; then
         ARGS="$ARGS -v /usr/lib/ccache -v $HOME/.ccache:/opt/.ccache -e JOBS -e TRAVIS -e CCACHE_DIR=/opt/.ccache"
         BUILD_COMMANDS="ccache -s && $BUILD_COMMANDS"
