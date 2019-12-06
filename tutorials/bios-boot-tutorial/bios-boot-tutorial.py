@@ -314,8 +314,8 @@ def stepSetSystemContract():
     # # GET_SENDER
     # retry(args.cleos + 'push action eosio activate \'["f0af56d2c5a48d60a4a5b5c903edfb7db3a736a94ed589d0b797df33ff9d3e1d"]\' -p eosio')
     # sleep(1)
-    # retry(args.cleos + 'push action eosio activate \'["2652f5f96006294109b3dd0bbde63693f55324af452b799ee137a81a905eed25"]\' -p eosio')
     # # FORWARD_SETCODE
+    # retry(args.cleos + 'push action eosio activate \'["2652f5f96006294109b3dd0bbde63693f55324af452b799ee137a81a905eed25"]\' -p eosio')
     # sleep(1)
     # # ONLY_BILL_FIRST_AUTHORIZER
     # retry(args.cleos + 'push action eosio activate \'["8ba52fe7a3956c5cd3a656a3174b931d3bb2abb45578befc59f283ecd816a405"]\' -p eosio')
