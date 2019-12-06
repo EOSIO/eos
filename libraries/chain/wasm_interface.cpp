@@ -213,21 +213,21 @@ class privileged_api : public context_aware_api {
       void set_resource_limit( account_name account, name resource, int64_t limit ) {
          EOS_ASSERT(limit >= -1, wasm_execution_error, "invalid value for {resource} resource limit expected [-1,INT64_MAX]", ("resource", resource));
          auto& manager = context.control.get_mutable_resource_limits_manager();
-         if( resource == N(ram) ) {
+         if( resource == string_to_name("ram") ) {
             int64_t ram, net, cpu;
             manager.get_account_limits(account, ram, net, cpu);
             if( manager.set_account_limits( account, limit, net, cpu ) ) {
                context.trx_context.validate_ram_usage.insert( account );
             }
-         } else if( resource == N(net) ) {
+         } else if( resource == string_to_name("net") ) {
             int64_t ram, net, cpu;
             manager.get_account_limits(account, ram, net, cpu);
             manager.set_account_limits( account, ram, limit, cpu );
-         } else if( resource == N(cpu) ) {
+         } else if( resource == string_to_name("cpu") ) {
             int64_t ram, net, cpu;
             manager.get_account_limits(account, ram, net, cpu);
             manager.set_account_limits( account, ram, net, limit );
-         } else if( resource == N(disk) ) {
+         } else if( resource == string_to_name("disk") ) {
             if( context.control.get_mutable_resource_limits_manager().set_account_disk_limit( account, limit ) ) {
                context.trx_context.validate_disk_usage.insert( account );
             }
@@ -238,19 +238,19 @@ class privileged_api : public context_aware_api {
 
       int64_t get_resource_limit( account_name account, name resource ) {
          const auto& manager = context.control.get_resource_limits_manager();
-         if( resource == N(ram) ) {
+         if( resource == string_to_name("ram") ) {
             int64_t ram, net, cpu;
             manager.get_account_limits( account, ram, net, cpu );
             return ram;
-         } else if( resource == N(net) ) {
+         } else if( resource == string_to_name("net") ) {
             int64_t ram, net, cpu;
             manager.get_account_limits( account, ram, net, cpu );
             return net;
-         } else if( resource == N(cpu) ) {
+         } else if( resource == string_to_name("cpu") ) {
             int64_t ram, net, cpu;
             manager.get_account_limits( account, ram, net, cpu );
             return cpu;
-         } else if( resource == N(disk) ) {
+         } else if( resource == string_to_name("disk") ) {
             return context.control.get_resource_limits_manager().get_account_disk_limit( account );
          } else {
             EOS_ASSERT(false, wasm_execution_error, "unknown resource {resource}", ("resource", resource));
