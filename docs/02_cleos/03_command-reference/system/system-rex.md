@@ -17,5 +17,4 @@
 - [consolidate](system-rex-consolidate) - Consolidate REX maturity buckets into one that matures in 4 days
 - [updaterex](system-rex-updaterex) - Update REX owner vote stake and vote weight
 - [rexexec](system-rex-rexexec) - Perform REX maintenance by processing expired loans and
-- [unfilled](system-rex-unfilled) - unfilled orders
 - [closerex](system-rex-closerex) - Delete unused REX-related user table entries
