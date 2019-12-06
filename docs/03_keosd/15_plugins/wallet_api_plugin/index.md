@@ -5,7 +5,7 @@
 The `wallet_api_plugin` exposes functionality from the [`wallet_plugin`](../wallet_plugin/index.md) to the RPC API interface managed by the [`http_plugin`](../http_plugin/index.md).
 
 [[caution | Caution]]
-| This plugin exposes wallets and so running this plugin on a publicly accessible node is not recommended. As of 1.2.0, `nodeos` will no longer allow the `wallet_api_plugin`.
+| This plugin exposes wallets. Therefore, running this plugin on a publicly accessible node is not recommended. As of 1.2.0, `nodeos` will no longer allow the `wallet_api_plugin`.
 
 ## Usage
 
