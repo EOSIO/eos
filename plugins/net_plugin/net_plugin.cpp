@@ -2733,7 +2733,7 @@ namespace eosio {
          break;
       case last_irr_catch_up: {
          std::unique_lock<std::mutex> g_conn( conn_mtx );
-         last_handshake_recv.head_num = msg.known_trx.pending;
+         last_handshake_recv.head_num = msg.known_blocks.pending;
          g_conn.unlock();
          break;
       }
