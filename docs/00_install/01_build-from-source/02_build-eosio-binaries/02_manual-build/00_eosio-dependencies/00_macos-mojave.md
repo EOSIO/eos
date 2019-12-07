@@ -24,8 +24,7 @@ $ cd ~/eosio
 ### 2. Install Homebrew
 
 ```sh
-$ which brew && (brew doctor && brew cask doctor && \
-    echo 'brew already installed') || /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+$ which brew && echo 'brew already installed' || /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
 ```
 
 ### 3. Install dependencies
