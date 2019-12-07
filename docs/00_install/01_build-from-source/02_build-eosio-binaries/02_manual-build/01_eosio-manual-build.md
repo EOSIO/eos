@@ -1,6 +1,5 @@
-# EOSIO Manual Build
 
-[[warning | Reminder]]
+[[info | Reminder]]
 | This section assumes that you have already installed the EOSIO dependencies manually. If not, visit the [Manual Installation of EOSIO Dependencies](00_eosio-dependencies/index.md#manual-installation-of-dependencies) section.
 
 ## Instructions
