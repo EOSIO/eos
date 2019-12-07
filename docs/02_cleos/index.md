@@ -1,4 +1,6 @@
-# Introduction
+# Cleos
+
+## Introduction
 
 `cleos` is a command line tool that interfaces with the REST API exposed by `nodeos`. Developers can also use `cleos` to deploy and test EOSIO smart contracts.
 
