@@ -6,7 +6,7 @@ EOSIO is the next-generation blockchain platform for creating and deploying smar
 * [Cleos](02_cleos/index.md) (cli + eos = cleos) - command line interface to interact with the blockchain (via `nodeos`) and manage wallets (via `keosd`).
 * [Keosd](03_keosd/index.md) (key + eos = keosd) - component that manages EOSIO keys in wallets and provides a secure enclave for digital signing.
 
-The basic relationship between these components is illustrated in the following diagram.
+The basic relationship between these components is illustrated in the diagram below.
 
 ![EOSIO components](eosio_components.png)
 
