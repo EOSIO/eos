@@ -10,4 +10,4 @@ WORKDIR ${EOSIO_LOCATION}
 ENV PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 ## install ccache
 RUN curl -LO http://download-ib01.fedoraproject.org/pub/epel/7/x86_64/Packages/c/ccache-3.3.4-1.el7.x86_64.rpm && \
-    yum install -y ccache-3.3.4-1.el7.x86_64.rpm && ccache-3.3.4-1.el7.x86_64.rpm
+    yum install -y ccache-3.3.4-1.el7.x86_64.rpm && rm ccache-3.3.4-1.el7.x86_64.rpm

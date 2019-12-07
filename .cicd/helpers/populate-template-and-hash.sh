@@ -2,6 +2,7 @@
 set -eo pipefail
 
 ONLYHASH=false
+DOCKERIZATION=${DOCKERIZATION:-true}
 
 function usage() {
   printf "Usage: \\n
@@ -48,7 +49,7 @@ PATTERN_TWO=${2:-$PATTERN_ONE}
 DOC_CODE_BLOCKS=$(cat docs/${IMAGE_TAG:-$FILE_NAME}.md | sed -n "/$PATTERN_ONE/,/$PATTERN_TWO/p")
 SANITIZED_COMMANDS=$(echo "$DOC_CODE_BLOCKS" | grep -v -e "$PATTERN_ONE" -e "$PATTERN_TWO" -e '<!--' -e '```' -e '\#.*' -e '^$')
 if [[ ! ${IMAGE_TAG:-$FILE_NAME} =~ 'macos' ]]; then # Linux / Docker
-    COMMANDS=$(echo "$SANITIZED_COMMANDS" | awk '{if ( $0 ~ /^[ ].*/ ) { print $0 } \
+    [[ $DOCKERIZATION == true ]] && COMMANDS=$(echo "$SANITIZED_COMMANDS" | awk '{if ( $0 ~ /^[ ].*/ ) { print $0 } \
     else if ( $0 ~ /^PATH/ ) { print "ENV " $0 } \
     else if ( $0 ~ /^cd[ ].*build$/ ) { gsub(/cd /,"",$0); print "WORKDIR " $0 } \
     else { print "RUN " $0 } }')
