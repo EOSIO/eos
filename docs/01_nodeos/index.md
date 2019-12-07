@@ -6,7 +6,7 @@
 
 ## Installation
 
-`nodeos` is distributed as part of the [EOSIO software suite](https://github.com/EOSIO/eos/blob/master/README.md). To install `nodeos` just visit the [EOSIO Software Installation](../00_install/index.md) section.
+`nodeos` is distributed as part of the [EOSIO software suite](https://github.com/EOSIO/eos/blob/master/README.md). To install `nodeos`, visit the [EOSIO Software Installation](../00_install/index.md) section.
 
 ## Explore
 
