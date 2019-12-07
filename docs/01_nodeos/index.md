@@ -1,21 +1,18 @@
-# Nodeos Overview
+# Nodeos
 
-EOSIO comes with a number of programs.  The primary ones that you will use, and the ones that are covered here, are:
+## Introduction
 
-* `nodeos` (node + eos = nodeos)  - the core EOSIO node daemon that can be configured with plugins to run a node. Example uses are block production, dedicated API endpoints, and local development. 
-* `cleos` (cli + eos = cleos) - command line interface to interact with the blockchain and to manage wallets.
-* `keosd` (key + eos = keosd) - component that securely stores EOSIO keys in wallets. 
+`nodeos` is the core service daemon that runs on every EOSIO node. It can be configured to execute and validate transactions, produce blocks with valid transactions, and confirm those blocks to record them on the blockchain.
 
-The basic relationship between these components is illustrated in the following diagram.
+## Installation
 
-![EOSIO components](eosio_components.png)
+`nodeos` is distributed as part of the [EOSIO software suite](https://github.com/EOSIO/eos/blob/master/README.md). To install `nodeos` just visit the [EOSIO Software Installation](../00_install/index.md) section.
 
-[[info | EOSIO Software Installation]]
-| Please [Install EOSIO](../00_install/index.md) before proceeding to the sections below.
+## Explore
 
-Please navigate the sections below to use `nodeos` in various network configurations, and learn how to setup `nodeos` instances for supporting EOSIO blockchain applications.
+Please navigate the sections below to configure and use `nodeos`.
 
-* [Usage](02_usage/index.md) - Using `nodeos`, config options, node setups/environments.
+* [Usage](02_usage/index.md) - Configuring and using `nodeos`, node setups/environments.
 * [Plugins](03_plugins/index.md) - Using plugins, plugin options, mandatory vs. optional.
 * [Replays](04_replays/index.md) - Replaying the chain from a snapshot or a blocks.log file.
 * [Logging](06_logging/index.md) - Logging config/usage, loggers, appenders, logging levels.
