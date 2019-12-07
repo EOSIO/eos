@@ -42,6 +42,8 @@ Below are instructions to install the EOSIO dependencies manually on various pla
 * [CentOS Linux](02_centos-linux.md)
 * [Ubuntu Linux](03_ubuntu-linux.md)
 
+### Other Platforms
+
 EOSIO dependencies can also be built and installed manually by reproducing the same commands invoked by the [Build Script](../../00_build-script.md). The actual commands can be generated from the script directly by exporting specific environment variables and CLI parameters to the script when invoked:
 
 ```sh
