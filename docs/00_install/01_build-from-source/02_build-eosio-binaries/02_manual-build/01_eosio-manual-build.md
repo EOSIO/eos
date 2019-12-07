@@ -39,4 +39,4 @@ $ bash -c "mkdir -p ~/eosio/eos/build && cd ~/eosio/eos/build && export PATH=/us
 ```
 
 [[info | What's Next?]]
-| [Install EOSIO binaries manually](../../03_install-eosio-binaries.md#using-make-install)
+| [Install EOSIO binaries manually](../../03_install-eosio-binaries.md#eosio-manual-install)
