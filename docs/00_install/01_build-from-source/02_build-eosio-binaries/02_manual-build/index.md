@@ -11,7 +11,7 @@ When performing a manual build, it is necessary to install specific software pac
 
 The following instructions will build the EOSIO dependencies and EOSIO binaries manually by invoking commands on the shell:
 
-1. [Manual Install EOSIO Dependencies](00_eosio-dependencies/index.md)
+1. [Manual Install EOSIO Dependencies](00_eosio-dependencies/index.md#manual-installation-of-dependencies)
 2. [Manual Build EOSIO Binaries](01_eosio-manual-build.md)
 
 ## Out-of-source Builds
