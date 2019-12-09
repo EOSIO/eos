@@ -44,24 +44,30 @@ fi
 
 PATTERN_ONE=${1:-'```'}
 PATTERN_TWO=${2:-$PATTERN_ONE}
-[[ $ONLYHASH == true ]] && POPULATED_FILE_NAME=tmpfile || export POPULATED_FILE_NAME=${FILE_NAME:-$IMAGE_TAG}
+# If we're running this script a second time (with ONLYHASH), set a tmpfile name
+[[ ${POPULATED_FILE_NAME:-false} == false ]] && export POPULATED_FILE_NAME=${FILE_NAME:-$IMAGE_TAG} || POPULATED_FILE_NAME="tmpfile"
 # Collect commands from code block, add RUN before the start of commands, and add it to temporary template
 DOC_CODE_BLOCKS=$(cat docs/${IMAGE_TAG:-$FILE_NAME}.md | sed -n "/$PATTERN_ONE/,/$PATTERN_TWO/p")
-SANITIZED_COMMANDS=$(echo "$DOC_CODE_BLOCKS" | grep -v -e "$PATTERN_ONE" -e "$PATTERN_TWO" -e '<!--' -e '```' -e '\#.*' -e '^$')
+COMMANDS=$(echo "$DOC_CODE_BLOCKS" | grep -v -e "$PATTERN_ONE" -e "$PATTERN_TWO" -e '<!--' -e '```' -e '\#.*' -e '^$')
 if [[ ! ${IMAGE_TAG:-$FILE_NAME} =~ 'macos' ]]; then # Linux / Docker
-    [[ $DOCKERIZATION == true ]] && COMMANDS=$(echo "$SANITIZED_COMMANDS" | awk '{if ( $0 ~ /^[ ].*/ ) { print $0 } \
-    else if ( $0 ~ /^PATH/ ) { print "ENV " $0 } \
-    else if ( $0 ~ /^cd[ ].*build$/ ) { gsub(/cd /,"",$0); print "WORKDIR " $0 } \
-    else { print "RUN " $0 } }')
-    export FILE_EXTENSION=".dockerfile"
-    export APPEND_LINE=5
+  ( [[ $DOCKERIZATION == true ]] || [[ $ONLYHASH == true ]] ) && COMMANDS=$(echo "$COMMANDS" | awk '{if ( $0 ~ /^[ ].*/ ) { print $0 } \
+  else if ( $0 ~ /^PATH/ ) { print "ENV " $0 } \
+  else if ( $0 ~ /^cd[ ].*build$/ ) { gsub(/cd /,"",$0); print "WORKDIR " $0 } \
+  else { print "RUN " $0 } }')
+  export FILE_EXTENSION=".dockerfile"
+  export APPEND_LINE=5
 else # Mac OSX
-    COMMANDS=$(echo "$SANITIZED_COMMANDS")
-    export FILE_EXTENSION=".sh"
-    export APPEND_LINE=6
+  export FILE_EXTENSION=".sh"
+  export APPEND_LINE=6
 fi
-echo "$COMMANDS" > /tmp/commands
-awk "NR==$APPEND_LINE{print;system(\"cat /tmp/commands\");next} 1" .cicd/platform-templates/${FILE:-"${IMAGE_TAG}$FILE_EXTENSION"} > /tmp/$POPULATED_FILE_NAME
+rm -f /tmp/$POPULATED_FILE_NAME
+rm -rf /tmp/commands
+if ( [[ $DOCKERIZATION == false ]] && [[ $ONLYHASH == false ]] ); then
+  echo "$COMMANDS" > /tmp/$POPULATED_FILE_NAME
+else
+  echo "$COMMANDS" > /tmp/commands
+  awk "NR==$APPEND_LINE { print; getline < \"/tmp/commands\"; } END { close(getline) } 1" .cicd/platform-templates/${FILE:-"${IMAGE_TAG}$FILE_EXTENSION"} > /tmp/$POPULATED_FILE_NAME
+fi
 export DETERMINED_HASH=$(sha1sum /tmp/$POPULATED_FILE_NAME | awk '{ print $1 }')
 export HASHED_IMAGE_TAG="eos-$(basename ${FILE_NAME:-$IMAGE_TAG} | awk '{split($0,a,/\.(d|s)/); print a[1] }')-${DETERMINED_HASH}"
 export FULL_TAG="eosio/ci:$HASHED_IMAGE_TAG"
