@@ -1,6 +1,14 @@
 #!/bin/bash
 set -eo pipefail
 . ./.cicd/helpers/general.sh
+
+function cleanup() {
+    echo "[Cleaning up docker container]"
+    echo " - docker container kill $BUILDKITE_JOB_ID"
+    docker container kill $BUILDKITE_JOB_ID || true # -v and --mount don't work quite well when it's docker in docker, so we need to use docker's cp command to move the build script in
+}
+trap cleanup 0
+
 export DOCKERIZATION=false
 [[ $ENABLE_INSTALL == true ]] && . ./.cicd/helpers/populate-template-and-hash.sh '<!-- BUILD -->' '<!-- INSTALL END' || . ./.cicd/helpers/populate-template-and-hash.sh '<!-- BUILD'
 sed -i -e "s/# Commands from the documentation are inserted right below this line/cd \$EOSIO_LOCATION \&\& git pull \&\& git checkout -f $BUILDKITE_COMMIT && git submodule update --init --recursive/g" /tmp/$POPULATED_FILE_NAME
@@ -13,7 +21,8 @@ if [[ "$(uname)" == 'Darwin' ]]; then
     fi
     . ./tmp/$POPULATED_FILE_NAME # This file is populated from the platform's build documentation code block
 else # Linux
-    ARGS=${ARGS:-"--rm --init -v /tmp/$POPULATED_FILE_NAME:/build-script"}
+    ARGS=${ARGS:-"--rm -t -d --name $BUILDKITE_JOB_ID -v $(pwd):/root/eosio"}
+    # sed -i '1s;^;#!/bin/bash\nexport PATH=$EOSIO_INSTALL_LOCATION/bin:$PATH\n;' /tmp/$POPULATED_FILE_NAME # /build-script: line 3: cmake: command not found
     # PRE_COMMANDS: Executed pre-cmake
     [[ ! $IMAGE_TAG =~ 'unpinned' ]] && CMAKE_EXTRAS="-DCMAKE_CXX_COMPILER_LAUNCHER=ccache"
     if [[ $IMAGE_TAG == 'amazon_linux-2-pinned' ]]; then
@@ -34,13 +43,16 @@ else # Linux
         PRE_COMMANDS="export PATH=/usr/lib/ccache:\\\$PATH"
         CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_CXX_COMPILER='clang++-7' -DCMAKE_C_COMPILER='clang-7' -DLLVM_DIR='/usr/lib/llvm-7/lib/cmake/llvm'"
     fi
-    BUILD_COMMANDS="/build-script"
+    BUILD_COMMANDS="/$POPULATED_FILE_NAME"
     if [[ $TRAVIS == true ]]; then
         ARGS="$ARGS -v /usr/lib/ccache -v $HOME/.ccache:/opt/.ccache -e JOBS -e TRAVIS -e CCACHE_DIR=/opt/.ccache"
         BUILD_COMMANDS="ccache -s && $BUILD_COMMANDS"
     fi
     . $HELPERS_DIR/populate-template-and-hash.sh -h # obtain $FULL_TAG (and don't overwrite existing file)
-    echo "------------------------"
-    echo "$ docker run $ARGS $(buildkite-intrinsics) $FULL_TAG bash -c \"$PRE_COMMANDS && $BUILD_COMMANDS\""
-    eval docker run $ARGS $(buildkite-intrinsics) $FULL_TAG bash -c \"$PRE_COMMANDS \&\& $BUILD_COMMANDS\"
+    echo "$ docker run $ARGS $(buildkite-intrinsics) $FULL_TAG"
+    eval docker run $ARGS $(buildkite-intrinsics) $FULL_TAG
+    echo "$ docker cp /tmp/$POPULATED_FILE_NAME $BUILDKITE_JOB_ID:/$POPULATED_FILE_NAME"
+    docker cp /tmp/$POPULATED_FILE_NAME $BUILDKITE_JOB_ID:/$POPULATED_FILE_NAME
+    echo "$ docker exec $BUILDKITE_JOB_ID bash -c \"$PRE_COMMANDS \&\& $BUILD_COMMANDS\""
+    eval docker exec $BUILDKITE_JOB_ID bash -c \"$PRE_COMMANDS \&\& $BUILD_COMMANDS\"
 fi

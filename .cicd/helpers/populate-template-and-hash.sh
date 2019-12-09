@@ -51,6 +51,7 @@ DOC_CODE_BLOCKS=$(cat docs/${IMAGE_TAG:-$FILE_NAME}.md | sed -n "/$PATTERN_ONE/,
 COMMANDS=$(echo "$DOC_CODE_BLOCKS" | grep -v -e "$PATTERN_ONE" -e "$PATTERN_TWO" -e '<!--' -e '```' -e '\#.*' -e '^$')
 if [[ ! ${IMAGE_TAG:-$FILE_NAME} =~ 'macos' ]]; then # Linux / Docker
   ( [[ $DOCKERIZATION == true ]] || [[ $ONLYHASH == true ]] ) && COMMANDS=$(echo "$COMMANDS" | awk '{if ( $0 ~ /^[ ].*/ ) { print $0 } \
+  else if ( $0 ~ /^export EOSIO_INSTALL_LOCATION=/ ) { print "RUN mkdir -p $EOSIO_INSTALL_LOCATION" } \
   else if ( $0 ~ /^PATH/ ) { print "ENV " $0 } \
   else if ( $0 ~ /^cd[ ].*build$/ ) { gsub(/cd /,"",$0); print "WORKDIR " $0 } \
   else { print "RUN " $0 } }')
@@ -60,18 +61,16 @@ else # Mac OSX
   export FILE_EXTENSION=".sh"
   export APPEND_LINE=6
 fi
-rm -f /tmp/$POPULATED_FILE_NAME
-rm -rf /tmp/commands
 if ( [[ $DOCKERIZATION == false ]] && [[ $ONLYHASH == false ]] ); then
   echo "$COMMANDS" > /tmp/$POPULATED_FILE_NAME
 else
   echo "$COMMANDS" > /tmp/commands
-  awk "NR==$APPEND_LINE { print; getline < \"/tmp/commands\"; } END { close(getline) } 1" .cicd/platform-templates/${FILE:-"${IMAGE_TAG}$FILE_EXTENSION"} > /tmp/$POPULATED_FILE_NAME
+  awk "NR==$APPEND_LINE{print;system(\"cat /tmp/commands\");next} 1" .cicd/platform-templates/${FILE:-"${IMAGE_TAG}$FILE_EXTENSION"} > /tmp/$POPULATED_FILE_NAME
 fi
 export DETERMINED_HASH=$(sha1sum /tmp/$POPULATED_FILE_NAME | awk '{ print $1 }')
 export HASHED_IMAGE_TAG="eos-$(basename ${FILE_NAME:-$IMAGE_TAG} | awk '{split($0,a,/\.(d|s)/); print a[1] }')-${DETERMINED_HASH}"
 export FULL_TAG="eosio/ci:$HASHED_IMAGE_TAG"
-sed -i -e "s/eos.git \$EOSIO_LOCATION/eos.git \$EOSIO_LOCATION \&\& cd \$EOSIO_LOCATION \&\& git pull \&\& git checkout -f $BUILDKITE_COMMIT/g" /tmp/$POPULATED_FILE_NAME
+sed -i -e "s/eos.git \$EOSIO_LOCATION/eos.git \$EOSIO_LOCATION \&\& cd \$EOSIO_LOCATION \&\& git pull \&\& git checkout -f $BUILDKITE_COMMIT/g" /tmp/$POPULATED_FILE_NAME # MUST BE AFTER WE GENERATE THE HASH
 chmod +x /tmp/$POPULATED_FILE_NAME
 if [[ $ONLYHASH == true ]]; then
   rm -f /tmp/$POPULATED_FILE_NAME && export POPULATED_FILE_NAME=${FILE_NAME:-$IMAGE_TAG}
