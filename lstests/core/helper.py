@@ -2,7 +2,9 @@
 
 # standard libraries
 import copy
+import dataclasses
 import json
+import shlex
 import subprocess
 import time
 import typing
@@ -128,17 +130,29 @@ def trim(data: typing.Union[dict, list], maxlen=79):
 
 # --------------- subprocess ------------------------------------------------------------------------------------------
 
-def get_pid_list_by_cmd(cmd: str) -> typing.List[int]:
-    return [int(x) for x in run(f"pgrep -f {cmd}")]
+@dataclasses.dataclass
+class ServiceInfo:
+    pid: int
+    file: str
+    port: int
+    gene: str
 
 
-def get_pid_by_cmd_and_port(cmd: str, port: int) -> typing.Optional[int]:
-    out = run(f"lsof -c{cmd[:15]} -iTCP:{port} -sTCP:LISTEN -nP -a")
-    return int(out[1].split(" ")[1]) if out else None
-
-
-def get_cmd_and_args_by_pid(pid: int) -> str:
-    return run(f"ps -p {pid} -o command=")[0]
+def get_service_list_by_cmd(cmd: str) -> typing.List[ServiceInfo]:
+    pid_list = [int(x) for x in run(f"pgrep -f {cmd}")]
+    service_list = []
+    for pid in pid_list:
+        cmd_and_args = run(f"ps -p {pid} -o command=")[0]
+        file = port = gene = None
+        for ind, val in enumerate(shlex.split(cmd_and_args)):
+            if ind == 0:
+                file = val
+            elif val.startswith("--http-server-address"):
+                port = int(val.split(":")[-1])
+            elif val.startswith("--genesis-file"):
+                gene = val.split("=")[-1]
+        service_list.append(ServiceInfo(pid, file, port, gene))
+    return service_list
 
 
 def terminate(pid: typing.Union[int, str]):

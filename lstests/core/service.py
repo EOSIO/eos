@@ -492,13 +492,18 @@ class Service:
 
     def connect_to_local_service(self):
         self.print_header("connect to local service")
-        pid_list = self.get_local_services()
+        service_list = self.get_local_services()
         if self.kill:
-            self.kill_local_services(pid_list)
-            pid_list.clear()
-        if pid_list and not self.start:
-            pid = helper.override(pid_list[0], helper.get_pid_by_cmd_and_port(cmd=PROGRAM, port=self.port))
-            self.connect_to_existing_local_service(pid)
+            self.kill_local_services(service_list)
+            service_list.clear()
+        if service_list and not self.start:
+            for x in service_list:
+                if x.port == self.port:
+                    service = x
+                    break
+            else:
+                service = service_list[0]
+            self.connect_to_existing_local_service(service)
         else:
             self.start_local_service()
 
@@ -533,52 +538,41 @@ class Service:
         highlighted = color.blue(squeezed) if different else squeezed
         self.debug("{:31}{:48}{}".format(color.yellow(label), help, highlighted))
 
-    def get_local_services(self) -> typing.List[int]:
+    def get_local_services(self) -> typing.List[typing.TypeVar("ServiceInfo")]:
         """Returns a list of 0, 1, or more process IDs"""
-        pid_list = helper.get_pid_list_by_cmd(PROGRAM)
-        if len(pid_list) == 0:
+        service_list = helper.get_service_list_by_cmd(PROGRAM)
+        if len(service_list) == 0:
             self.debug(color.yellow("No launcher service is currently running."))
-        elif len(pid_list) == 1:
-            self.debug(color.green("Launcher service is running with process ID [{}].".format(pid_list[0])))
         else:
-            self.debug(color.green("Multiple launcher services are running with process IDs {}".format(pid_list)))
-        return pid_list
+            pid_list = [x.pid for x in service_list]
+            if len(service_list) == 1:
+                self.debug(color.green("Launcher service is running with process ID {}.".format(pid_list)))
+            else:
+                self.debug(color.green("Multiple launcher services are running with process IDs {}".format(pid_list)))
+        return service_list
 
-    def kill_local_services(self, pid_list):
-        for x in pid_list:
-            self.debug(color.yellow("Killing existing launcher service with process ID [{}].".format(x)))
-            helper.terminate(x)
+    def kill_local_services(self, service_list: typing.List[typing.TypeVar("ServiceInfo")]):
+        for x in service_list:
+            self.debug(color.yellow("Killing existing launcher service with process ID [{}].".format(x.pid)))
+            helper.terminate(x.pid)
 
-    def connect_to_existing_local_service(self, pid):
-        cmd_and_args = helper.get_cmd_and_args_by_pid(pid)
-        existing_port = existing_gene = ""
-        for ind, val in enumerate(shlex.split(cmd_and_args)):
-            if ind == 0:
-                existing_file = val
-            elif val.startswith("--http-server-address"):
-                existing_port = int(val.split(":")[-1])
-            elif val.startswith("--genesis-file"):
-                existing_gene = val.split("=")[-1]
-        if not existing_port:
-            msg = "Failed to extract \"--http-server-address\" from \"{}\" (process ID {})!".format(cmd_and_args, pid)
-            self.error("ERROR: {}".format(msg))
-            raise LauncherServiceError(msg)
-        self.debug(color.green("Connecting to existing launcher service with process ID [{}].".format(pid)))
+    def connect_to_existing_local_service(self, service: typing.TypeVar("ServiceInfo")):
+        self.debug(color.green("Connecting to existing launcher service with process ID [{}].".format(service.pid)))
         self.debug(color.green("No new launcher service will be started."))
         self.debug("Configuration of existing launcher service:")
-        self.debug("--- Listening port: [{}]".format(color.blue(existing_port)))
-        self.debug("--- Path to executable file: [{}]".format(color.blue(existing_file)))
-        if existing_gene:
-            self.debug("--- Path to genesis file: [{}]".format(color.blue(existing_gene)))
-        if self.port != existing_port:
+        self.debug("--- Listening port: [{}]".format(color.blue(service.port)))
+        self.debug("--- Path to executable file: [{}]".format(color.blue(service.file)))
+        if service.gene:
+            self.debug("--- Path to genesis file: [{}]".format(color.blue(service.gene)))
+        if self.port != service.port:
             self.warn("WARNING: Port setting (port={}) is ignored.".format(self.port))
-            self.port = existing_port
-        if self.file != existing_file:
+            self.port = service.port
+        if self.file != service.file:
             self.warn("WARNING: Executable file setting (file={}) is ignored.".format(self.file))
-            self.file = existing_file
-        if existing_gene and self.gene != existing_gene:
+            self.file = service.file
+        if service.gene and self.gene != service.gene:
             self.warn("WARNING: Genesis file setting (gene={}) is ignored.".format(self.gene))
-            self.gene = existing_gene
+            self.gene = service.gene
         self.debug("To always start a new launcher service, pass {} or {}.".format(color.yellow("-s"), color.yellow("--start")))
         self.debug("To kill existing launcher services, pass {} or {}.".format(color.yellow("-k"), color.yellow("--kill")))
 
