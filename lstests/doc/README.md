@@ -396,7 +396,7 @@ A detailed explanation of the parameters to initialize a `Service` object can be
         Default is 1234.
     wdir : str
         Working directory.
-        Default is the build folder.
+        Default is the current working directory.
     file : str
         Path to executable file of launcher service.
         Can be either absolute or relative to the working directory.
@@ -407,7 +407,7 @@ A detailed explanation of the parameters to initialize a `Service` object can be
         Always start a new launcher service.
         To start a new instance alongside the existing ones, make sure the
         listening ports are different. Otherwise, the new launcher service
-        will issue an error.
+        will issue an error and exit.
         Default is False (will not start a new one if there is an existing
         launcher service running in the background).
     kill : bool
@@ -416,6 +416,7 @@ A detailed explanation of the parameters to initialize a `Service` object can be
         (and freshly start a new one).
         Default is False (will not kill existing launcher services; instead
         will connect to an existing launcher service).
+
 ### `Cluster`
 
 A `Cluster` object represents a cluster of nodes running on launcher service. It is the major proxy for tests to communicate with launcher service. A `Cluster` object must have a `Service` object registered to it at initialization.
@@ -457,7 +458,7 @@ center_node_id : int
     If topology is bridge, center node ID cannot be 0 or last one.
     No default value.
 extra_configs : list
-    Extra configs to pass to launcher service.
+    Extra configs to pass to nodeos.
     e.g. ["plugin=SOME_EXTRA_PLUGIN"]
     No default value.
 extra_args : str
@@ -494,6 +495,24 @@ sync_sleep : float
     Sleep time (in seconds) between check-sync retries.
     Default is 0.25.
 ```
+
+For `extra_configs`, the user may refer to the help text that `programs/nodeos/nodeos -h` offers.
+
+For `extra_args`, the user may refer to the help text that `programs/launcher-service/launcher-service -h` offers.
+
+For example, by launcher service's help text
+
+```bash
+--genesis-json arg (=genesis.json)    path of genesis file
+```
+
+the user may create a cluster with a specific genesis file.
+
+```python
+clus = Cluster(service=service, extra_args="--genesis-json=gene.json")
+```
+
+This specifies `gene.json` as the genesis file for the cluster, which overrides the service-level setting.
 
 ## Testing
 

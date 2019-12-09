@@ -2,7 +2,9 @@
 
 # standard libraries
 import copy
+import dataclasses
 import json
+import shlex
 import subprocess
 import time
 import typing
@@ -128,17 +130,39 @@ def trim(data: typing.Union[dict, list], maxlen=79):
 
 # --------------- subprocess ------------------------------------------------------------------------------------------
 
-def get_pid_list_by_pattern(pattern: str) -> typing.List[int]:
-    out = subprocess.run(["pgrep", "-f", pattern], capture_output=True, text=True).stdout.splitlines()
-    return [int(x) for x in out]
+@dataclasses.dataclass
+class ServiceInfo:
+    pid: int
+    file: str
+    port: int
+    gene: str
 
 
-def get_cmd_and_args_by_pid(pid: typing.Union[int, str]) -> str:
-    return subprocess.run(["ps", "-p", str(pid), "-o", "command="], capture_output=True, text=True).stdout
+def get_service_list_by_cmd(cmd: str) -> typing.List[ServiceInfo]:
+    pid_list = [int(x) for x in run(f"pgrep -f {cmd}")]
+    service_list = []
+    for pid in pid_list:
+        cmd_and_args = run(f"ps -p {pid} -o command=")[0]
+        file = port = gene = None
+        for ind, val in enumerate(shlex.split(cmd_and_args)):
+            if ind == 0:
+                file = val
+            elif val.startswith("--http-server-address"):
+                port = int(val.split(":")[-1])
+            elif val.startswith("--genesis-file"):
+                gene = val.split("=")[-1]
+        service_list.append(ServiceInfo(pid, file, port, gene))
+    return service_list
 
 
 def terminate(pid: typing.Union[int, str]):
-    subprocess.run(["kill", "-SIGTERM", str(pid)])
+    return run(f"kill -SIGTERM {pid}")
+
+
+def run(args: typing.Union[str, typing.List[str]]):
+    if isinstance(args, str):
+        args = args.split(" ")
+    return subprocess.run(args, capture_output=True, text=True).stdout.splitlines()
 
 # --------------- doctest ---------------------------------------------------------------------------------------------
 
