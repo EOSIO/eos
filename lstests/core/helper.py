@@ -142,7 +142,13 @@ def get_service_list_by_cmd(cmd: str) -> typing.List[ServiceInfo]:
     pid_list = [int(x) for x in run(f"pgrep -f {cmd}")]
     service_list = []
     for pid in pid_list:
-        cmd_and_args = run(f"ps -p {pid} -o command=")[0]
+        try:
+            cmd_and_args = run(f"ps -p {pid} -o command=")[0]
+        except IndexError:
+            print(f"pid list: {pid_list}")
+            print("fpgrep: ", run(f"pgrep -f {cmd}"))
+            print("ps -p: ", run(f"ps -p {pid} -o command="))
+            raise
         file = port = gene = None
         for ind, val in enumerate(shlex.split(cmd_and_args)):
             if ind == 0:
