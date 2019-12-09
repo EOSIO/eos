@@ -101,7 +101,9 @@ int main(int argc, char** argv)
          return INITIALIZE_FAIL;
       }
       initialize_logging();
-      ilog("${name} version ${ver}", ("name", nodeos::config::node_executable_name)("ver", app().version_string()));
+      ilog( "${name} version ${ver} ${fv}",
+            ("name", nodeos::config::node_executable_name)("ver", app().version_string())
+            ("fv", app().version_string() == app().full_version_string() ? "" : app().full_version_string()) );
       ilog("${name} using configuration file ${c}", ("name", nodeos::config::node_executable_name)("c", app().full_config_file_path().string()));
       ilog("${name} data directory is ${d}", ("name", nodeos::config::node_executable_name)("d", app().data_dir().string()));
       app().startup();
