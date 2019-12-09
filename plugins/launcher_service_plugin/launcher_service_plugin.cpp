@@ -18,7 +18,7 @@
 #include <fc/exception/exception.hpp>
 
 #include <eosio/launcher_service_plugin/launcher_service_plugin.hpp>
-#include <eosio/chain_plugin/chain_plugin.hpp>
+#include <eosio/chain/abi_serializer.hpp>
 #include <appbase/application.hpp>
 #include <eosio/chain/exceptions.hpp>
 
@@ -28,9 +28,40 @@ namespace eosio {
    namespace bfs = boost::filesystem;
    namespace bp = boost::process;
    namespace bpo = boost::program_options;
+   using chain::abi_serializer;
    using namespace chain;
 
    namespace launcher_service {
+
+      // same as chain_plugin
+      struct get_info_results {
+         string                  server_version;
+         fc::sha256              chain_id;
+         uint32_t                head_block_num = 0;
+         uint32_t                last_irreversible_block_num = 0;
+         block_id_type           last_irreversible_block_id;
+         block_id_type           head_block_id;
+         fc::time_point          head_block_time;
+         account_name            head_block_producer;
+
+         uint64_t                virtual_block_cpu_limit = 0;
+         uint64_t                virtual_block_net_limit = 0;
+
+         uint64_t                block_cpu_limit = 0;
+         uint64_t                block_net_limit = 0;
+
+         optional<string>        server_version_string;
+         optional<uint32_t>              fork_db_head_block_num;
+         optional<block_id_type>  fork_db_head_block_id;
+         optional<string>        server_full_version_string;
+      };
+
+      // same as chain_plugin
+      struct get_abi_results {
+         name                   account_name;
+         optional<abi_def>      abi;
+      };
+
       action create_setabi(const name& account, const bytes& abi) {
          return action {
             vector<chain::permission_level>{{account, N(active)}},
@@ -70,7 +101,7 @@ public:
          std::map<name, fc::optional<abi_serializer> >  abi_cache;
          fc::time_point                                 abi_cache_time;
 
-         eosio::chain_apis::read_only::get_info_results get_info_cache;
+         get_info_results                               get_info_cache;
          fc::time_point                                 get_info_cache_time;
       };
       struct cluster_state {
@@ -161,10 +192,14 @@ public:
                for (int peer = 0; peer < node_id; ++peer) {
                   cfg << "p2p-peer-address = " << _config.host_name << ":" << def.get_node_def(peer).p2p_port(_config, def.cluster_id, peer) << "\n";
                }
+               if (node_id == def.center_node_id - 1)
+                  cfg << "p2p-peer-address = " << _config.host_name << ":" << def.get_node_def(def.center_node_id).p2p_port(_config, def.cluster_id, def.center_node_id) << "\n";
             } else if (node_id > def.center_node_id) {
                for (int peer = def.center_node_id + 1; peer < node_id; ++peer) {
                   cfg << "p2p-peer-address = " << _config.host_name << ":" << def.get_node_def(peer).p2p_port(_config, def.cluster_id, peer) << "\n";
                }
+               if (node_id == def.center_node_id + 1)
+                  cfg << "p2p-peer-address = " << _config.host_name << ":" << def.get_node_def(def.center_node_id).p2p_port(_config, def.cluster_id, def.center_node_id) << "\n";
             } else {
                cfg << "p2p-peer-address = " << _config.host_name << ":" << def.get_node_def(node_id - 1).p2p_port(_config, def.cluster_id, node_id - 1) << "\n";
                cfg << "p2p-peer-address = " << _config.host_name << ":" << def.get_node_def(node_id + 1).p2p_port(_config, def.cluster_id, node_id + 1) << "\n";
@@ -496,7 +531,7 @@ public:
          auto it = abi_cache.find( account );
          if ( it == abi_cache.end() ) {
             auto result = call(cluster_id, node_id, "/v1/chain/get_abi", fc::mutable_variant_object("account_name", account));
-            auto abi_results = result.as<eosio::chain_apis::read_only::get_abi_results>();
+            auto abi_results = result.as<get_abi_results>();
             fc::optional<abi_serializer> abis;
             if( abi_results.abi.valid() ) {
                abis.emplace( *abi_results.abi, _config.abi_serializer_max_time );
@@ -536,7 +571,7 @@ public:
          auto &info = _running_clusters[cluster_id].nodes[node_id].get_info_cache;
          if (fc::time_point::now() >= _running_clusters[cluster_id].nodes[node_id].get_info_cache_time + fc::milliseconds(500)) {
             fc::variant info_ = get_info(cluster_id, node_id);
-            info = info_.as<eosio::chain_apis::read_only::get_info_results>();
+            info = info_.as<get_info_results>();
             _running_clusters[cluster_id].nodes[node_id].get_info_cache_time = fc::time_point::now();
          }
 
@@ -561,7 +596,7 @@ public:
             for (const public_key_type &pub_key : sign_keys) {
                if (_running_clusters[cluster_id].imported_keys.find(pub_key) != _running_clusters[cluster_id].imported_keys.end()) {
                   private_key_type pri_key = _running_clusters[cluster_id].imported_keys[pub_key];
-                  trx.sign(pri_key, info.chain_id);
+                  trx.sign(pri_key, *(chain_id_type *)&(info.chain_id));
                   has_key = true;
                } else {
                   throw std::runtime_error("private key of \"" + (std::string)pub_key + "\" not imported");
@@ -573,7 +608,7 @@ public:
             for (const fc::variant &k : keys.get_array()) {
                public_key_type pub_key = public_key_type(k.as_string());
                private_key_type pri_key = _running_clusters[cluster_id].imported_keys[pub_key];
-               trx.sign(pri_key, info.chain_id);
+               trx.sign(pri_key, *(chain_id_type *)&(info.chain_id));
                has_key = true;
             }
             if (!has_key) {
@@ -658,7 +693,7 @@ public:
             txn_block_num = itr->second;
          }
          fc::variant info_ = get_info(param.cluster_id, param.node_id);
-         eosio::chain_apis::read_only::get_info_results info = info_.as<eosio::chain_apis::read_only::get_info_results>();
+         get_info_results info = info_.as<get_info_results>();
          uint32_t head_block_num = info.head_block_num;
          uint32_t lib_num = info.last_irreversible_block_num;
          uint32_t contained_blocknum = 0;
@@ -763,7 +798,7 @@ void launcher_service_plugin::set_program_options(options_description&, options_
          "listen address of incoming p2p connection of nodeos")
          ("nodeos-cmd", bpo::value<string>()->default_value("./programs/nodeos/nodeos"),
          "nodeos executable command")
-         ("genesis-file", bpo::value<string>()->default_value("genesis.json"),
+         ("genesis-json", bpo::value<string>()->default_value("genesis.json"),
          "path of genesis file")
          ("abi-serializer-max-time", bpo::value<uint32_t>()->default_value(1000000),
          "abi serializer max time(in us)")
@@ -794,7 +829,7 @@ void launcher_service_plugin::plugin_initialize(const variables_map& options) {
       _my->_config.host_name = options.at("host-name").as<std::string>();
       _my->_config.p2p_listen_addr = options.at("p2p-listen-address").as<std::string>();
       _my->_config.nodeos_cmd = options.at("nodeos-cmd").as<std::string>();
-      _my->_config.genesis_file = options.at("genesis-file").as<std::string>();
+      _my->_config.genesis_file = options.at("genesis-json").as<std::string>();
       _my->_config.abi_serializer_max_time = fc::microseconds(options.at("abi-serializer-max-time").as<uint32_t>());
       _my->_config.log_file_rotate_max = options.at("log-file-max").as<uint16_t>();
       _my->_config.default_key = private_key_type(options.at("default-key").as<std::string>());
@@ -1031,3 +1066,9 @@ std::string launcher_service_plugin::generate_node_config(const launcher_service
 
 FC_REFLECT(eosio::launcher_service_plugin_impl::node_state, (id)(pid)(http_port)(p2p_port)(is_bios)(stdout_path)(stderr_path))
 FC_REFLECT(eosio::launcher_service_plugin_impl::cluster_state, (nodes))
+FC_REFLECT(eosio::launcher_service::get_info_results,
+           (server_version)(chain_id)(head_block_num)(last_irreversible_block_num)(last_irreversible_block_id)
+           (head_block_id)(head_block_time)(head_block_producer)
+           (virtual_block_cpu_limit)(virtual_block_net_limit)(block_cpu_limit)(block_net_limit)
+           (server_version_string)(fork_db_head_block_num)(fork_db_head_block_id)(server_full_version_string) )
+FC_REFLECT(eosio::launcher_service::get_abi_results, (account_name)(abi) )
