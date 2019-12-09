@@ -298,7 +298,7 @@ def stepCreateTokens():
 def stepSetSystemContract():
     # Nearly all of the protocol upgrade features introduced in v1.8 first require a special protocol 
     # feature (codename PREACTIVATE_FEATURE) to be activated and for an updated version of the system 
-    # contract that utilizes the functionality introduced by that feature to be deployed. 
+    # contract that makes use of the functionality introduced by that feature to be deployed. 
 
     # activate PREACTIVATE_FEATURE before installing eosio.bios
     retry('curl -X POST http://127.0.0.1:%d' % args.http_port + 
