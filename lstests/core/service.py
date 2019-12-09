@@ -497,7 +497,8 @@ class Service:
             self.kill_local_services(pid_list)
             pid_list.clear()
         if pid_list and not self.start:
-            self.connect_to_existing_local_service(pid_list[0])
+            pid = helper.override(pid_list[0], helper.get_pid_by_cmd_and_port(cmd=PROGRAM, port=self.port))
+            self.connect_to_existing_local_service(pid)
         else:
             self.start_local_service()
 
@@ -534,7 +535,7 @@ class Service:
 
     def get_local_services(self) -> typing.List[int]:
         """Returns a list of 0, 1, or more process IDs"""
-        pid_list = helper.get_pid_list_by_pattern(PROGRAM)
+        pid_list = helper.get_pid_list_by_cmd(PROGRAM)
         if len(pid_list) == 0:
             self.debug(color.yellow("No launcher service is currently running."))
         elif len(pid_list) == 1:
@@ -559,7 +560,9 @@ class Service:
             elif val.startswith("--genesis-file"):
                 existing_gene = val.split("=")[-1]
         if not existing_port:
-            self.error("ERROR: Failed to extract \"--http-server-address\" from \"{}\" (process ID {})!".format(cmd_and_args, pid))
+            msg = "Failed to extract \"--http-server-address\" from \"{}\" (process ID {})!".format(cmd_and_args, pid)
+            self.error("ERROR: {}".format(msg))
+            raise LauncherServiceError(msg)
         self.debug(color.green("Connecting to existing launcher service with process ID [{}].".format(pid)))
         self.debug(color.green("No new launcher service will be started."))
         self.debug("Configuration of existing launcher service:")
@@ -576,7 +579,6 @@ class Service:
         if existing_gene and self.gene != existing_gene:
             self.warn("WARNING: Genesis file setting (gene={}) is ignored.".format(self.gene))
             self.gene = existing_gene
-
         self.debug("To always start a new launcher service, pass {} or {}.".format(color.yellow("-s"), color.yellow("--start")))
         self.debug("To kill existing launcher services, pass {} or {}.".format(color.yellow("-k"), color.yellow("--kill")))
 

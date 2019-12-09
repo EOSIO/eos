@@ -128,17 +128,27 @@ def trim(data: typing.Union[dict, list], maxlen=79):
 
 # --------------- subprocess ------------------------------------------------------------------------------------------
 
-def get_pid_list_by_pattern(pattern: str) -> typing.List[int]:
-    out = subprocess.run(["pgrep", "-f", pattern], capture_output=True, text=True).stdout.splitlines()
-    return [int(x) for x in out]
+def get_pid_list_by_cmd(cmd: str) -> typing.List[int]:
+    return [int(x) for x in run(f"pgrep -f {cmd}")]
 
 
-def get_cmd_and_args_by_pid(pid: typing.Union[int, str]) -> str:
-    return subprocess.run(["ps", "-p", str(pid), "-o", "command="], capture_output=True, text=True).stdout
+def get_pid_by_cmd_and_port(cmd: str, port: int) -> typing.Optional[int]:
+    out = run(f"lsof -c{cmd[:15]} -iTCP:{port} -sTCP:LISTEN -nP -a")
+    return int(out[1].split(" ")[1]) if out else None
+
+
+def get_cmd_and_args_by_pid(pid: int) -> str:
+    return run(f"ps -p {pid} -o command=")[0]
 
 
 def terminate(pid: typing.Union[int, str]):
-    subprocess.run(["kill", "-SIGTERM", str(pid)])
+    return run(f"kill -SIGTERM {pid}")
+
+
+def run(args: typing.Union[str, typing.List[str]]):
+    if isinstance(args, str):
+        args = args.split(" ")
+    return subprocess.run(args, capture_output=True, text=True).stdout.splitlines()
 
 # --------------- doctest ---------------------------------------------------------------------------------------------
 
