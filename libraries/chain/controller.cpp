@@ -220,7 +220,7 @@ struct controller_impl {
    // LLVM sets the new handler, we need to reset this to throw a bad_alloc exception so we can possibly exit cleanly
    // and not just abort.
    struct reset_new_handler {
-      reset_new_handler() { /* std::set_new_handler([](){ throw std::bad_alloc(); });*/ }
+      reset_new_handler() { std::set_new_handler([](){ throw std::bad_alloc(); }); }
    };
 
    reset_new_handler              rnh; // placed here to allow for this to be set before constructing the other fields
