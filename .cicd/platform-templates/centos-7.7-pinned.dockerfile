@@ -14,3 +14,14 @@ RUN cd /usr/lib64/ccache && ln -s ../../bin/ccache c++
 ENV CCACHE_PATH="/opt/rh/devtoolset-8/root/usr/bin"
 ## Cleanup eosio directory (~ 600MB)
 RUN rm -rf ${EOSIO_LOCATION}
+## install nvm
+RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.0/install.sh | bash
+## load nvm in non-interactive shells
+RUN cp ~/.bashrc ~/.bashrc.bak && \
+    cat ~/.bashrc.bak | tail -3 > ~/.bashrc && \
+    cat ~/.bashrc.bak | head -n '-3' >> ~/.bashrc && \
+    rm ~/.bashrc.bak
+## install node 10
+RUN bash -c '. ~/.bashrc; nvm install --lts=dubnium' && \
+    ln -s "/root/.nvm/versions/node/$(ls -p /root/.nvm/versions/node | sort -Vr | head -1)bin/node" /usr/local/bin/node
+RUN yum install -y nodejs
