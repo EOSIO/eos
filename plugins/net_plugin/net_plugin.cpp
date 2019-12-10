@@ -923,7 +923,7 @@ namespace eosio {
       boost::system::error_code ec;
       if( self->socket->is_open() ) {
          self->socket->shutdown( tcp::socket::shutdown_both, ec );
-         self->socket->close();
+         self->socket->close( ec );
       }
       self->socket.reset( new tcp::socket( my_impl->thread_pool->get_executor() ) );
       self->flush_queues();
@@ -2257,8 +2257,9 @@ namespace eosio {
                         fc_elog( logger, "Error max_client_count ${m} exceeded", ("m", max_client_count));
                      }
                      // new_connection never added to connections and start_session not called, lifetime will end
-                     socket->shutdown( tcp::socket::shutdown_both );
-                     socket->close();
+                     boost::system::error_code ec;
+                     socket->shutdown( tcp::socket::shutdown_both, ec );
+                     socket->close( ec );
                   }
                }
             } else {
@@ -2292,7 +2293,11 @@ namespace eosio {
             const size_t max_socket_read_watermark = 4096;
             std::size_t socket_read_watermark = std::min<std::size_t>(minimum_read, max_socket_read_watermark);
             boost::asio::socket_base::receive_low_watermark read_watermark_opt(socket_read_watermark);
-            socket->set_option(read_watermark_opt);
+            boost::system::error_code ec;
+            socket->set_option( read_watermark_opt, ec );
+            if( ec ) {
+               fc_elog( logger, "unable to set read watermark ${peer}: ${e1}", ("peer", peer_name())( "e1", ec.message() ) );
+            }
          }
 
          auto completion_handler = [minimum_read](boost::system::error_code ec, std::size_t bytes_transferred) -> std::size_t {
@@ -3412,15 +3417,15 @@ namespace eosio {
       }
 
       if( my->acceptor ) {
-         my->acceptor->open(listen_endpoint.protocol());
-         my->acceptor->set_option(tcp::acceptor::reuse_address(true));
          try {
+           my->acceptor->open(listen_endpoint.protocol());
+           my->acceptor->set_option(tcp::acceptor::reuse_address(true));
            my->acceptor->bind(listen_endpoint);
+           my->acceptor->listen();
          } catch (const std::exception& e) {
            elog( "net_plugin::plugin_startup failed to bind to port ${port}", ("port", listen_endpoint.port()) );
            throw e;
          }
-         my->acceptor->listen();
          fc_ilog( logger, "starting listener, max clients is ${mc}",("mc",my->max_client_count) );
          my->start_listen_loop();
       }
