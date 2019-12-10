@@ -787,7 +787,8 @@ namespace eosio {
 
    void connection::close() {
       if(socket) {
-         socket->close();
+         boost::system::error_code ec;
+         socket->close( ec );
          socket.reset( new tcp::socket( my_impl->thread_pool->get_executor() ) );
       }
       else {
@@ -2009,7 +2010,8 @@ namespace eosio {
                         fc_elog(logger, "Error max_client_count ${m} exceeded",
                                 ( "m", max_client_count) );
                      }
-                     socket->close();
+                     boost::system::error_code ec;
+                     socket->close( ec );
                   }
                }
             } else {
@@ -2046,7 +2048,11 @@ namespace eosio {
             const size_t max_socket_read_watermark = 4096;
             std::size_t socket_read_watermark = std::min<std::size_t>(minimum_read, max_socket_read_watermark);
             boost::asio::socket_base::receive_low_watermark read_watermark_opt(socket_read_watermark);
-            conn->socket->set_option(read_watermark_opt);
+            boost::system::error_code ec;
+            conn->socket->set_option( read_watermark_opt, ec );
+            if( ec ) {
+               fc_elog( logger, "unable to set read watermark ${peer}: ${e1}", ("peer", conn->peer_name())( "e1", ec.message() ) );
+            }
          }
 
          auto completion_handler = [minimum_read](boost::system::error_code ec, std::size_t bytes_transferred) -> std::size_t {
@@ -3094,15 +3100,15 @@ namespace eosio {
       }
 
       if( my->acceptor ) {
-         my->acceptor->open(my->listen_endpoint.protocol());
-         my->acceptor->set_option(tcp::acceptor::reuse_address(true));
          try {
+           my->acceptor->open(my->listen_endpoint.protocol());
+           my->acceptor->set_option(tcp::acceptor::reuse_address(true));
            my->acceptor->bind(my->listen_endpoint);
+           my->acceptor->listen();
          } catch (const std::exception& e) {
            elog( "net_plugin::plugin_startup failed to bind to port ${port}", ("port", my->listen_endpoint.port()));
            throw e;
          }
-         my->acceptor->listen();
          fc_ilog( logger, "starting listener, max clients is ${mc}",("mc",my->max_client_count) );
          my->start_listen_loop();
       }
@@ -3151,8 +3157,9 @@ namespace eosio {
          my->done = true;
          if( my->acceptor ) {
             fc_ilog( logger, "close acceptor" );
-            my->acceptor->cancel();
-            my->acceptor->close();
+            boost::system::error_code ec;
+            my->acceptor->cancel( ec );
+            my->acceptor->close( ec );
 
             fc_ilog( logger, "close ${s} connections",( "s",my->connections.size()) );
             for( auto& con : my->connections ) {
