@@ -840,11 +840,14 @@ void launcher_service_plugin::plugin_initialize(const variables_map& options) {
       _my->_config.max_clusters = options.at("max-clusters").as<uint16_t>();
 
       // ephemeral port range starts from 32768 in linux, 49152 on mac
-      EOS_ASSERT((int)_my->_config.base_port + (int)_my->_config.cluster_span <= 32768, chain::plugin_config_exception, "base-port + cluster-port-span should not greater than 32768");
+      EOS_ASSERT((int)_my->_config.base_port + (int)_my->_config.cluster_span <= 32768, chain::plugin_config_exception, "base-port + cluster-port-span should not be greater than 32768");
+      EOS_ASSERT(_my->_config.node_span >= 2, chain::plugin_config_exception, "node-port-span must at least 2");
       EOS_ASSERT((int)_my->_config.base_port + (int)_my->_config.cluster_span * _my->_config.max_clusters <= 32768, chain::plugin_config_exception, "max-clusters too large, cluster port numbers would exceed 32767");
       EOS_ASSERT((int)_my->_config.max_nodes_per_cluster * _my->_config.node_span <= _my->_config.cluster_span, chain::plugin_config_exception, "cluster-port-span should not less than node-port-span * max-nodes-per-cluster");
 
       EOS_ASSERT(bfs::exists(_my->_config.genesis_file), chain::plugin_config_exception,"genesis-file ${path} not exist", ("path", _my->_config.genesis_file));
+
+      EOS_ASSERT(options.count("http-server-address"), chain::plugin_config_exception, "http-server-address must be set");
    } catch (fc::exception& er) {
       elog( "${details}", ("details",er.to_detail_string()) );
       throw er;

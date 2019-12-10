@@ -21,13 +21,36 @@
 #include <fc/network/platform_root_ca.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/http_plugin/http_plugin.hpp>
-#include <eosio/chain_plugin/chain_plugin.hpp>
+
+
+#include <eosio/chain/asset.hpp>
+#include <eosio/chain/authority.hpp>
+#include <eosio/chain/account_object.hpp>
+#include <eosio/chain/block.hpp>
+#include <eosio/chain/controller.hpp>
+#include <eosio/chain/contract_table_objects.hpp>
+#include <eosio/chain/resource_limits.hpp>
+#include <eosio/chain/transaction.hpp>
+#include <eosio/chain/abi_serializer.hpp>
+#include <eosio/chain/types.hpp>
+#include <eosio/chain/fixed_bytes.hpp>
+
+#include <boost/container/flat_set.hpp>
+#include <boost/multiprecision/cpp_int.hpp>
+
+#include <fc/static_variant.hpp>
+
+
 #include <boost/asio/ssl/rfc2818_verification.hpp>
 #include <eosio/launcher_service_plugin/httpc.hpp>
 
 using boost::asio::ip::tcp;
 using namespace eosio::chain;
-namespace eosio { namespace client { namespace http {
+namespace eosio {
+
+   using fc::optional;
+
+   namespace client { namespace http {
 
    namespace detail {
       class http_context_impl {
