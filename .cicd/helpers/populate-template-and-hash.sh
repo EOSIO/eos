@@ -59,7 +59,7 @@ if [[ ! ${IMAGE_TAG:-$FILE_NAME} =~ 'macos' ]]; then # Linux / Docker
   export APPEND_LINE=5
 else # Mac OSX
   COMMANDS=$(echo "$COMMANDS" | awk '{if ( $0 ~ /^export EOSIO_INSTALL_LOCATION=/ ) { print "mkdir -p $EOSIO_INSTALL_LOCATION" } \
-  else { print "RUN " $0 } }')
+  else { print $0 } }')
   export FILE_EXTENSION=".sh"
   export APPEND_LINE=6
 fi
