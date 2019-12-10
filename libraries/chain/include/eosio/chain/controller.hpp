@@ -59,7 +59,6 @@ namespace eosio { namespace chain {
 
    class controller {
       public:
-
          struct config {
             flat_set<account_name>   sender_bypass_whiteblacklist;
             flat_set<account_name>   actor_whitelist;

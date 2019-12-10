@@ -1110,6 +1110,16 @@ BOOST_AUTO_TEST_CASE(stable_priority_queue_test) {
   } FC_LOG_AND_RETHROW()
 }
 
+// test that std::bad_alloc is being thrown
+BOOST_AUTO_TEST_CASE(bad_alloc_test) {
+   tester t; // force a controller to be constructed and set the new_handler
+   int* ptr = nullptr;
+   const auto fail = [&]() {
+      ptr = new int[std::numeric_limits<int64_t>::max()/16];
+   };
+   BOOST_CHECK_THROW( fail(), std::bad_alloc );
+   BOOST_CHECK( ptr == nullptr );
+}
 
 BOOST_AUTO_TEST_SUITE_END()
 
