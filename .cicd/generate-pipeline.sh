@@ -25,7 +25,7 @@ if [[ $PINNED == false ]]; then
 else
     export PLATFORM_TYPE="pinned"
 fi
-for FILE in $(ls $CICD_DIR/platform-templates/*$PLATFORM_TYPE | grep $PLATFORM_TYPE); do
+for FILE in $(ls $CICD_DIR/platform-templates/* | grep $PLATFORM_TYPE); do
     # skip mac or linux by not even creating the json block
     ( [[ $SKIP_MAC == true ]] && [[ $FILE =~ 'macos' ]] ) && continue
     ( [[ $SKIP_LINUX == true ]] && [[ ! $FILE =~ 'macos' ]] ) && continue
@@ -61,7 +61,7 @@ for FILE in $(ls $CICD_DIR/platform-templates/*$PLATFORM_TYPE | grep $PLATFORM_T
     [[ $FILE_NAME =~ 'ubuntu' ]] && export ICON=':ubuntu:'
     [[ $FILE_NAME =~ 'centos' ]] && export ICON=':centos:'
     [[ $FILE_NAME =~ 'macos' ]] && export ICON=':darwin:'
-    set -- # Clears $1 and $2
+    set -- # Clears $1 and $2 so they're not passed into other scripts this one calls
     . $HELPERS_DIR/populate-template-and-hash.sh # Obtain the hash from the populated template
     export PLATFORMS_JSON_ARRAY=$(echo $PLATFORMS_JSON_ARRAY | jq -c '. += [{ 
         "FILE_NAME": env.FILE_NAME, 
