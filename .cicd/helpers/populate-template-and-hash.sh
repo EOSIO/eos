@@ -47,6 +47,8 @@ PATTERN_TWO=${2:-$PATTERN_ONE}
 # If we're running this script a second time (with ONLYHASH), set a tmpfile name
 [[ ${POPULATED_FILE_NAME:-false} == false ]] && export POPULATED_FILE_NAME=${FILE_NAME:-$IMAGE_TAG} || POPULATED_FILE_NAME="tmpfile"
 # Collect commands from code block, add RUN before the start of commands, and add it to temporary template
+echo $IMAGE_TAG
+echo $FILE_NAME
 DOC_CODE_BLOCKS=$(cat docs/${IMAGE_TAG:-$FILE_NAME}.md | sed -n "/$PATTERN_ONE/,/$PATTERN_TWO/p")
 COMMANDS=$(echo "$DOC_CODE_BLOCKS" | grep -v -e "$PATTERN_ONE" -e "$PATTERN_TWO" -e '<!--' -e '```' -e '\#.*' -e '^$')
 if [[ ! ${IMAGE_TAG:-$FILE_NAME} =~ 'macos' ]]; then # Linux / Docker

@@ -63,7 +63,7 @@ for FILE in $(ls $CICD_DIR/platform-templates/* | grep $PLATFORM_TYPE); do
     [[ $FILE_NAME =~ 'centos' ]] && export ICON=':centos:'
     [[ $FILE_NAME =~ 'macos' ]] && export ICON=':darwin:'
     set -- # Clears $1 and $2 so they're not passed into other scripts this one calls
-    . $HELPERS_DIR/populate-template-and-hash.sh # Obtain the hash from the populated template
+    . $HELPERS_DIR/populate-template-and-hash.sh -h # Obtain the hash from the populated template
     export PLATFORMS_JSON_ARRAY=$(echo $PLATFORMS_JSON_ARRAY | jq -c '. += [{ 
         "FILE_NAME": env.FILE_NAME, 
         "PLATFORM_NAME": env.PLATFORM_NAME,
