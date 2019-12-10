@@ -139,7 +139,7 @@ class ServiceInfo:
 
 
 def get_service_list_by_cmd(cmd: str) -> typing.List[ServiceInfo]:
-    pid_list = [int(x) for x in run(f"pgrep -x {cmd}")]
+    pid_list = [int(x) for x in run(f"pgrep -f {cmd}")]
     service_list = []
     for pid in pid_list:
         try:
