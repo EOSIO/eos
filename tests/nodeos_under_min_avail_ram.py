@@ -197,19 +197,19 @@ try:
         errorExit("Incorrect number of store actions sent")
 
     # Make sure all the nodes are shutdown (may take a little while for this to happen, so making multiple passes)
-    allDone=False
     count=0
-    while not allDone:
+    while True:
         allDone=True
         for node in nodes:
             if node.verifyAlive():
                 allDone=False
-        if not allDone:
-            time.sleep(5)
+        if allDone:
+            break
         count+=1
         if count>5:
             Utils.cmdError("All Nodes should have died")
             errorExit("Failure - All Nodes should have died")
+        time.sleep(5)
 
     for i in range(numNodes):
         f = open(Utils.getNodeDataDir(i) + "/stderr.txt")
@@ -300,7 +300,6 @@ try:
     addSwapFlags={}
 
     time.sleep(10)
-    allDone=True
     for node in nodes:
         if not node.verifyAlive():
             Utils.cmdError("All Nodes should be alive")
@@ -337,7 +336,6 @@ try:
 
     time.sleep(10)
     Print("Check nodes are alive")
-    allDone=True
     for node in nodes:
         if not node.verifyAlive():
             Utils.cmdError("All Nodes should be alive")
