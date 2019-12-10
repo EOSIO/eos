@@ -72,5 +72,5 @@ ENV CCACHE_PATH="/opt/rh/devtoolset-8/root/usr/bin"
 # install python 3.7 for launcher service
 RUN yum -y update && yum -y install wget && yum -y install gcc && yum -y install zlib* && yum -y install openssl-devel && \
     yum -y install libffi-devel && wget https://www.python.org/ftp/python/3.7.4/Python-3.7.4.tgz && tar xzf Python-3.7.4.tgz && \
-    ./configure --enable-optimizations && make altinstall && cd ..
+    cd Python-3.7.4 && ./configure --enable-optimizations && make altinstall && cd ..
 
