@@ -526,7 +526,7 @@ public:
          auto it = abi_cache.find( account );
          if ( it == abi_cache.end() ) {
             auto result = call(cluster_id, node_id, "/v1/chain/get_abi", fc::mutable_variant_object("account_name", account));
-            auto abi_results = result.as<eosio::chain_apis::read_only::get_abi_results>();
+            auto abi_results = result.as<get_abi_results>();
             fc::optional<abi_serializer> abis;
             if( abi_results.abi.valid() ) {
                abis.emplace( *abi_results.abi, _config.abi_serializer_max_time );
