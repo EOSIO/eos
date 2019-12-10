@@ -139,7 +139,7 @@ class ServiceInfo:
 
 
 def get_service_list_by_cmd(cmd: str) -> typing.List[ServiceInfo]:
-    pid_list = sorted([int(x) for x in run(f"pgrep {cmd}")])
+    pid_list = sorted([int(x) for x in run(f"pgrep -f {cmd}")])
     service_list = []
     port_set = set()
     for pid in pid_list:
