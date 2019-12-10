@@ -103,7 +103,7 @@ def startNode(nodeIndex, account):
     cmd = (
         args.nodeos +
         '    --max-irreversible-block-age -1'
-        '    --max-transaction-time=5000'
+        '    --max-transaction-time=1000'
         '    --contracts-console'
         '    --genesis-json ' + os.path.abspath(args.genesis) +
         '    --blocks-dir ' + os.path.abspath(dir) + '/blocks'
@@ -300,7 +300,7 @@ def stepSetSystemContract():
     # feature (codename PREACTIVATE_FEATURE) to be activated and for an updated version of the system 
     # contract that makes use of the functionality introduced by that feature to be deployed. 
 
-    # activate PREACTIVATE_FEATURE before installing eosio.bios
+    # activate PREACTIVATE_FEATURE before installing eosio.system
     retry('curl -X POST http://127.0.0.1:%d' % args.http_port + 
         '/v1/producer/schedule_protocol_feature_activations ' +
         '-d \'{"protocol_features_to_activate": ["0ec7e080177b2c02b278d5088611686b49d739925a92d9bfcacd7fc6b74053bd"]}\'')
