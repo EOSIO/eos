@@ -1,4 +1,4 @@
-# MacOS 10.14
+# MacOS 10.14 (Pinned Compiler)
 The following commands will install all of the necessary dependencies for source installing EOSIO.
 <!-- The code within the following block is used in our CI/CD. It will be converted line by line into RUN statements inside of a temporary Dockerfile and used to build our docker tag for this OS. 
 Therefore, COPY and other Dockerfile-isms are not permitted. -->
