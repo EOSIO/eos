@@ -192,11 +192,11 @@ For command-line configuration, pass `-h` or `--help` will list all the settings
   -u NUM, --unstarted-count NUM Number of unstarted nodes
   -t SHAPE, --topology SHAPE    Cluster topology to launch with
   -x ID, --center-node-id ID    Center node ID (for bridge or star topology)
-  -dnewa, --dont-newacco        Do not create accounts in launch
-  -dsetp, --dont-setprod        Do not set producers in launch
+  --dont-newacco                Do not create accounts in launch
+  --dont-setprod                Do not set producers in launch
   --http-retry NUM              HTTP connection: max num of retries
   --http-sleep TIME             HTTP connection: sleep time between retries
-  -va, --verify-async           Verify transaction: verify asynchronously
+  -v, --verify-async            Verify transaction: verify asynchronously
   --verify-retry NUM            Verify transaction: max num of retries
   --verify-sleep TIME           Verify transaction: sleep time between retries
   --sync-retry NUM              Check sync: max num of retries
@@ -212,9 +212,9 @@ For command-line configuration, pass `-h` or `--help` will list all the settings
   --fatal                       Set stdout logging level to FATAL (60)
   --flag                        Set stdout logging level to FLAG (90)
   --off                         Set stdout logging level to OFF (100)
-  -dcolo, --monochrome          Do not print in colors for stdout logging
-  -dbuff, --dont-buffer         Do not buffer for stdout logging
-  -drena, --dont-rename         Do not rename log file(s) by cluster ID
+  --monochrome                  Do not print in colors for stdout logging
+  --dont-buffer                 Do not buffer for stdout logging
+  --dont-rename                 Do not rename log file(s) by cluster ID
   -hct, --hide-clock-time       Hide clock time in stdout logging
   -het, --hide-elapsed-time     Hide elapsed time in stdout logging
   -hfi, --hide-filename         Hide filename in stdout logging
@@ -375,7 +375,12 @@ This line will be written to any logging destination with a threshold at or lowe
 
 A `Service` object represents the connection with the launcher service running in the background. Once a `Service` object is created, it will try to connect the launcher service automatically.
 
-After configuration, the `Service` will change the working directory, register (and possibly *modify*) the Logger, and then connect to launcher service. *Currently, it is only possible to connect to a local launcher service.*
+After configuration, the `Service` may override the settings according to the command-line arguments, including:
+
+1. change working directory
+2. change `stdout` logging behavior
+
+Then it will try connecting to the launcher service. *Currently, it is only possible to connect to a local launcher service.*
 
 If there is already an existing launcher service running in the background, the `Service` object will by default connect to it (without starting a new one). It is possible to override this default behavior by requesting to always start a new launcher service and/or to kill all the existing launcher service(s).
 
