@@ -269,15 +269,15 @@ class CommandLineArguments:
                             choices={"mesh", "bridge", "line", "ring", "star", "tree"})
         parser.add_argument("-x", "--center-node-id", type=int, metavar="ID",
                             help=form(HELP_CENTER_NODE_ID, DEFAULT_CENTER_NODE_ID))
-        parser.add_argument("-dnewa", "--dont-newacco", action="store_true", default=None,
+        parser.add_argument("--dont-newacco", action="store_true", default=None,
                             help=form(HELP_DONT_NEWACCO, DEFAULT_DONT_NEWACCO))
-        parser.add_argument("-dsetp", "--dont-setprod", action="store_true", default=None,
+        parser.add_argument("--dont-setprod", action="store_true", default=None,
                             help=form(HELP_DONT_SETPROD, DEFAULT_DONT_SETPROD))
         parser.add_argument("--http-retry", type=int, metavar="NUM",
                             help=form(HELP_HTTP_RETRY, DEFAULT_HTTP_RETRY))
         parser.add_argument("--http-sleep", type=float, metavar="TIME",
                             help=form(HELP_HTTP_SLEEP, DEFAULT_HTTP_SLEEP))
-        parser.add_argument("-va", "--verify-async", action="store_true", default=None,
+        parser.add_argument("-v", "--verify-async", action="store_true", default=None,
                             help=form(HELP_VERIFY_ASYNC, DEFAULT_VERIFY_ASYNC))
         parser.add_argument("--verify-retry", type=int, metavar="NUM",
                             help=form(HELP_VERIFY_RETRY, DEFAULT_VERIFY_RETRY))
@@ -300,11 +300,11 @@ class CommandLineArguments:
         threshold.add_argument("--fatal", dest="threshold", action="store_const", const="fatal", help=form(HELP_FATAL))
         threshold.add_argument("--flag", dest="threshold", action="store_const", const="flag", help=form(HELP_FLAG))
         threshold.add_argument("--off", dest="threshold", action="store_const", const="off", help=form(HELP_LOG_OFF))
-        parser.add_argument("-dcolo", "--monochrome", action="store_true", default=None,
+        parser.add_argument("--monochrome", action="store_true", default=None,
                             help=form(HELP_MONOCHROME, DEFAULT_MONOCHROME))
-        parser.add_argument("-dbuff", "--dont-buffer", dest="buffered", action="store_false", default=None,
+        parser.add_argument("--dont-buffer", dest="buffered", action="store_false", default=None,
                             help=form(HELP_DONT_BUFFER, not DEFAULT_BUFFERED))
-        parser.add_argument("-drena", "--dont-rename", action="store_true", default=None,
+        parser.add_argument("--dont-rename", action="store_true", default=None,
                             help=form(HELP_DONT_RENAME, DEFAULT_DONT_RENAME))
         parser.add_argument("-hct", "--hide-clock-time", dest="show_clock_time", action="store_false", default=None,
                             help=form(HELP_HIDE_CLOCK_TIME, not DEFAULT_SHOW_CLOCK_TIME))
@@ -370,7 +370,7 @@ class Service:
             Working directory.
             Default is the current working directory.
         file : str
-            Path to local launcher service file.
+            Path to executable file of launcher service.
             Can be either absolute or relative to the working directory.
         gene : str
             Path to the genesis file.
@@ -487,8 +487,8 @@ class Service:
         ival = str(int(self.threshold))
         text = "{} ({})".format(name, ival) if name != ival else "{}".format(name)
         self.print_config_helper("-l: log-level", HELP_LOG_LEVEL, text)
-        self.print_config_helper("-dcolo: monochrome", HELP_MONOCHROME, self.monochrome, DEFAULT_MONOCHROME)
-        self.print_config_helper("-dbuff: dont-buffer", HELP_DONT_BUFFER, not self.buffered, not DEFAULT_BUFFERED)
+        self.print_config_helper("--monochrome: monochrome", HELP_MONOCHROME, self.monochrome, DEFAULT_MONOCHROME)
+        self.print_config_helper("--dont-buffer: dont-buffer", HELP_DONT_BUFFER, not self.buffered, not DEFAULT_BUFFERED)
 
     def connect_to_local_service(self):
         self.print_header("connect to local service")
@@ -583,7 +583,7 @@ class Service:
         os.system(f"{self.file} "
                   f"--http-server-address=0.0.0.0:{self.port} "
                   f"--http-threads=4 "
-                  f"--genesis-file={self.gene} "
+                  f"--genesis-json={self.gene} "
                   f">{PROGRAM_LOG}  2>&1 &")
         time.sleep(1)
         with open(PROGRAM_LOG, "r") as f:
@@ -857,11 +857,11 @@ class Cluster:
         self.print_config_helper("-x: center_node_id",   HELP_CENTER_NODE_ID,  self.center_node_id,  DEFAULT_CENTER_NODE_ID)
         self.print_config_helper("... extra_configs",    HELP_EXTRA_CONFIGS,   self.extra_configs,   DEFAULT_EXTRA_CONFIGS)
         self.print_config_helper("... extra_args",       HELP_EXTRA_ARGS,      self.extra_args,      DEFAULT_EXTRA_ARGS)
-        self.print_config_helper("-dnewa: dont_newacco", HELP_DONT_NEWACCO,    self.dont_newacco,    DEFAULT_DONT_NEWACCO)
-        self.print_config_helper("-dsetp: dont_setprod", HELP_DONT_SETPROD,    self.dont_setprod,    DEFAULT_DONT_SETPROD)
+        self.print_config_helper("... dont_newacco",     HELP_DONT_NEWACCO,    self.dont_newacco,    DEFAULT_DONT_NEWACCO)
+        self.print_config_helper("... dont_setprod",     HELP_DONT_SETPROD,    self.dont_setprod,    DEFAULT_DONT_SETPROD)
         self.print_config_helper("--http-retry",         HELP_HTTP_RETRY,      self.http_retry,      DEFAULT_HTTP_RETRY)
         self.print_config_helper("--http-sleep",         HELP_HTTP_SLEEP,      self.http_sleep,      DEFAULT_HTTP_SLEEP)
-        self.print_config_helper("--verify-async",       HELP_VERIFY_ASYNC,    self.verify_async,    DEFAULT_VERIFY_ASYNC)
+        self.print_config_helper("-v: verify-async",     HELP_VERIFY_ASYNC,    self.verify_async,    DEFAULT_VERIFY_ASYNC)
         self.print_config_helper("--verify-retry",       HELP_VERIFY_RETRY,    self.verify_retry,    DEFAULT_VERIFY_RETRY)
         self.print_config_helper("--verify-sleep",       HELP_VERIFY_SLEEP,    self.verify_sleep,    DEFAULT_VERIFY_SLEEP)
         self.print_config_helper("--sync-retry",         HELP_SYNC_RETRY,      self.sync_retry,      DEFAULT_SYNC_RETRY)
