@@ -139,10 +139,14 @@ class ServiceInfo:
 
 
 def get_service_list_by_cmd(cmd: str) -> typing.List[ServiceInfo]:
-    pid_list = [int(x) for x in run(f"pgrep -f {cmd}")]
+    pid_list = sorted([int(x) for x in run(f"pgrep -f {cmd}")])
     service_list = []
+    port_set = set()
     for pid in pid_list:
-        cmd_and_args = run(f"ps -p {pid} -o command=")[0]
+        try:
+            cmd_and_args = run(f"ps -p {pid} -o command=")[0]
+        except IndexError:
+            continue
         file = port = gene = None
         for ind, val in enumerate(shlex.split(cmd_and_args)):
             if ind == 0:
@@ -151,7 +155,9 @@ def get_service_list_by_cmd(cmd: str) -> typing.List[ServiceInfo]:
                 port = int(val.split(":")[-1])
             elif val.startswith("--genesis-file"):
                 gene = val.split("=")[-1]
-        service_list.append(ServiceInfo(pid, file, port, gene))
+        if port not in port_set:
+            service_list.append(ServiceInfo(pid, file, port, gene))
+            port_set.add(port)
     return service_list
 
 
