@@ -19,31 +19,6 @@ echo "starting launcher service: ./programs/launcher-service/launcher-service --
 sleep 1
 
 echo "platform ID is $ID"
-if [[ "$ID" == 'centos' ]]; then
-    echo "installing wget"
-    yum -y update && yum -y install wget
-    echo "installing gcc"
-    yum -y install gcc
-    echo "installing zlib*"
-    yum -y install zlib*
-    echo "installing openssl"
-    yum -y install openssl-devel
-    echo "installing libffi-devel"
-    yum -y install libffi-devel
-    echo "wget python 3.7"
-    wget https://www.python.org/ftp/python/3.7.4/Python-3.7.4.tgz
-    echo "installing Python-3.7.4.tgz"
-    tar xzf Python-3.7.4.tgz
-    cd Python-3.7.4
-    ./configure --enable-optimizations
-    make altinstall
-    cd ..
-fi
-
-if [[ "$ID" == 'ubuntu' ]]; then
-    echo "try to install python3.7 on ubuntu"
-    apt-get update && apt -y install software-properties-common && add-apt-repository -y ppa:deadsnakes/ppa && apt update && apt-get update && apt -y install python3 python3-pip python3.7
-fi
 
 python3.7 -m pip install requests
 python3.7 -m pip install dataclasses
