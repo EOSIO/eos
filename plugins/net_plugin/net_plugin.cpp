@@ -1361,6 +1361,7 @@ namespace eosio {
          return;
       }
 
+      bool request_sent = false;
       if( sync_last_requested_num != sync_known_lib_num ) {
          uint32_t start = sync_next_expected_num;
          uint32_t end = start + sync_req_span - 1;
@@ -1369,9 +1370,13 @@ namespace eosio {
          if( end > 0 && end >= start ) {
             fc_ilog(logger, "requesting range ${s} to ${e}, from ${n}",
                     ("n",source->peer_name())("s",start)("e",end));
+            request_sent = true;
             source->request_sync_blocks(start, end);
             sync_last_requested_num = end;
          }
+      }
+      if( !request_sent ) {
+         source->send_handshake();
       }
    }
 
