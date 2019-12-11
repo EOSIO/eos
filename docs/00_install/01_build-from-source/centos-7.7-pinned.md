@@ -3,13 +3,16 @@ The following commands will install all of the necessary dependencies for source
 <!-- The code within the following block is used in our CI/CD. It will be converted line by line into statements inside of a temporary Dockerfile and used to build our docker tag for this OS. 
 Therefore, COPY and other Dockerfile-isms are not permitted. -->
 ## Clone EOSIO Repository
+<!-- CLONE -->
 ```
 yum update -y && yum install -y git
 export EOSIO_LOCATION=$HOME/eosio && git clone https://github.com/EOSIO/eos.git $EOSIO_LOCATION
 cd $EOSIO_LOCATION && git submodule update --init --recursive
 export EOSIO_INSTALL_LOCATION=$EOSIO_LOCATION/install && mkdir -p $EOSIO_INSTALL_LOCATION
 ```
+<!-- CLONE END -->
 ## Install Dependencies
+<!-- DEPS -->
 ```
 yum update -y && \
     yum install -y epel-release && \
@@ -61,6 +64,7 @@ cd $EOSIO_INSTALL_LOCATION && curl -LO https://dl.bintray.com/boostorg/release/1
     ./b2 toolset=clang cxxflags='-stdlib=libc++ -D__STRICT_ANSI__ -nostdinc++ -I$EOSIO_INSTALL_LOCATION/include/c++/v1 -D_FORTIFY_SOURCE=2 -fstack-protector-strong -fpie' linkflags='-stdlib=libc++ -pie' link=static threading=multi --with-iostreams --with-date_time --with-filesystem --with-system --with-program_options --with-chrono --with-test -q -j$(nproc) install && \
     rm -rf $EOSIO_INSTALL_LOCATION/boost_1_71_0.tar.bz2 $EOSIO_INSTALL_LOCATION/boost_1_71_0
 ```
+<!-- DEPS END -->
 ## Build EOSIO
 <!-- BUILD -->
 ```
@@ -70,14 +74,18 @@ cmake -DCMAKE_BUILD_TYPE='Release' -DCMAKE_TOOLCHAIN_FILE=$EOSIO_LOCATION/script
 make -j$(nproc)
 ```
 <!-- BUILD -->
-
 ## Install EOSIO
 <!-- INSTALL -->
 ```
 make install
 ```
 <!-- INSTALL END -->
-
+## Test EOSIO
+<!-- TEST -->
+```
+make test
+```
+<!-- TEST END -->
 ## Uninstall EOSIO
 <!-- UNINSTALL -->
 ```

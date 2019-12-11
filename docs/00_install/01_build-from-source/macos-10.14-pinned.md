@@ -49,21 +49,18 @@ cmake -DCMAKE_BUILD_TYPE='Release' -DCMAKE_TOOLCHAIN_FILE=$EOSIO_LOCATION/script
 make -j$(getconf _NPROCESSORS_ONLN)
 ```
 <!-- BUILD END -->
-
 ## Install EOSIO
 <!-- INSTALL -->
 ```
 make install
 ```
 <!-- INSTALL END -->
-
 ## Test EOSIO
 <!-- TEST -->
 ```
 make test
 ```
 <!-- TEST END -->
-
 ## Uninstall EOSIO
 <!-- UNINSTALL -->
 ```
