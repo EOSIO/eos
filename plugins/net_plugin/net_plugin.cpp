@@ -539,8 +539,6 @@ namespace eosio {
 
       bool socket_is_open() const { return socket_open.load(); } // thread safe, atomic
       const string& peer_address() const { return peer_addr; } // thread safe, const
-      // thread safe, not updated after start_session()
-      const string& remote_address() const { return socket_open.load() ? remote_endpoint_ip : unknown; }
 
       void set_connection_type( const string& peer_addr );
       bool is_transactions_only_connection()const { return connection_type == transactions_only; }
@@ -556,11 +554,6 @@ namespace eosio {
       std::atomic<bool>                         socket_open{false};
 
       const string            peer_addr;
-      string                  remote_endpoint_ip;     // not updated after start
-      string                  remote_endpoint_port;   // not updated after start
-      string                  local_endpoint_ip;      // not updated after start
-      string                  local_endpoint_port;    // not updated after start
-
       enum connection_types : char {
          both,
          transactions_only,
@@ -579,7 +572,6 @@ namespace eosio {
       queued_buffer           buffer_queue;
 
       std::atomic<uint32_t>   trx_in_progress_size{0};
-      fc::sha256              node_id;
       const uint32_t          connection_id;
       int16_t                 sent_handshake_count = 0;
       std::atomic<bool>       connecting{true};
@@ -593,13 +585,18 @@ namespace eosio {
 
       std::atomic<go_away_reason>           no_retry{no_reason};
 
-      mutable std::mutex          conn_mtx; //< mtx for last_req, last_handshake_recv, last_handshake_sent, fork_head, fork_head_num, last_close
+      mutable std::mutex          conn_mtx; //< mtx for last_req .. local_endpoint_port
       optional<request_message>   last_req;
       handshake_message           last_handshake_recv;
       handshake_message           last_handshake_sent;
       block_id_type               fork_head;
       uint32_t                    fork_head_num{0};
       fc::time_point              last_close;
+      fc::sha256                  conn_node_id;
+      string                      remote_endpoint_ip;
+      string                      remote_endpoint_port;
+      string                      local_endpoint_ip;
+      string                      local_endpoint_port;
 
       connection_status get_status()const;
 
@@ -718,20 +715,17 @@ namespace eosio {
 
       void process_signed_block( const block_id_type& id, signed_block_ptr msg );
 
-      fc::optional<fc::variant_object> _logger_variant;
-      const fc::variant_object& get_logger_variant()  {
-         if (!_logger_variant) {
-            _logger_variant.emplace(fc::mutable_variant_object()
-               ("_name", peer_name())
-               ("_id", node_id)
-               ("_sid", ((string)node_id).substr(0, 7))
-               ("_ip", remote_endpoint_ip)
-               ("_port", remote_endpoint_port)
-               ("_lip", local_endpoint_ip)
-               ("_lport", local_endpoint_port)
-            );
-         }
-         return *_logger_variant;
+      fc::variant_object get_logger_variant()  {
+         fc::mutable_variant_object mvo;
+         mvo( "_name", peer_name());
+         std::lock_guard<std::mutex> g_conn( conn_mtx );
+         mvo( "_id", conn_node_id )
+            ( "_sid", conn_node_id.str().substr( 0, 7 ) )
+            ( "_ip", remote_endpoint_ip )
+            ( "_port", remote_endpoint_port )
+            ( "_lip", local_endpoint_ip )
+            ( "_lport", local_endpoint_port );
+         return mvo;
       }
    };
 
@@ -819,7 +813,6 @@ namespace eosio {
         last_handshake_sent()
    {
       fc_ilog( logger, "creating connection to ${n}", ("n", endpoint) );
-      node_id.data()[0] = 0;
    }
 
    connection::connection()
@@ -832,18 +825,18 @@ namespace eosio {
         last_handshake_sent()
    {
       fc_ilog( logger, "accepted network connection" );
-      node_id.data()[0] = 0;
    }
 
    void connection::update_endpoints() {
       boost::system::error_code ec;
+      boost::system::error_code ec2;
       auto rep = socket->remote_endpoint(ec);
+      auto lep = socket->local_endpoint(ec2);
+      std::lock_guard<std::mutex> g_conn( conn_mtx );
       remote_endpoint_ip = ec ? unknown : rep.address().to_string();
       remote_endpoint_port = ec ? unknown : std::to_string(rep.port());
-
-      auto lep = socket->local_endpoint(ec);
-      local_endpoint_ip = ec ? unknown : lep.address().to_string();
-      local_endpoint_port = ec ? unknown : std::to_string(lep.port());
+      local_endpoint_ip = ec2 ? unknown : lep.address().to_string();
+      local_endpoint_port = ec2 ? unknown : std::to_string(lep.port());
    }
 
    void connection::set_connection_type( const string& peer_add ) {
@@ -938,13 +931,13 @@ namespace eosio {
          self->last_handshake_recv = handshake_message();
          self->last_handshake_sent = handshake_message();
          self->last_close = fc::time_point::now();
+         self->conn_node_id = fc::sha256();
       }
       if( has_last_req ) {
          my_impl->dispatcher->retry_fetch( self->shared_from_this() );
       }
       self->peer_requested.reset();
       self->sent_handshake_count = 0;
-      self->node_id = fc::sha256();
       my_impl->sync_master->sync_reset_lib_num( self->shared_from_this() );
       fc_ilog( logger, "closing '${a}', ${p}", ("a", self->peer_address())("p", self->peer_name()) );
       fc_dlog( logger, "canceling wait on ${p}", ("p", self->peer_name()) ); // peer_name(), do not hold conn_mtx
@@ -1308,11 +1301,10 @@ namespace eosio {
 
    // locks conn_mtx, do not call while holding conn_mtx
    const string connection::peer_name() {
-      std::unique_lock<std::mutex> g_conn( conn_mtx );
+      std::lock_guard<std::mutex> g_conn( conn_mtx );
       if( !last_handshake_recv.p2p_address.empty() ) {
          return last_handshake_recv.p2p_address;
       }
-      g_conn.unlock();
       if( !peer_address().empty() ) {
          return peer_address();
       }
@@ -2242,7 +2234,8 @@ namespace eosio {
                      if( conn->socket_is_open()) {
                         if( conn->peer_address().empty()) {
                            ++visitors;
-                           if( paddr_str == conn->remote_address()) {
+                           std::lock_guard<std::mutex> g_conn( conn->conn_mtx );
+                           if( paddr_str == conn->remote_endpoint_ip ) {
                               ++from_addr;
                            }
                         }
@@ -2552,7 +2545,7 @@ namespace eosio {
       connecting = false;
       if (msg.generation == 1) {
          if( msg.node_id == my_impl->node_id) {
-            fc_elog( logger, "Self connection detected node_id ${id}. Closing connection", ("id", node_id) );
+            fc_elog( logger, "Self connection detected node_id ${id}. Closing connection", ("id", msg.node_id) );
             enqueue( go_away_message( self ) );
             return;
          }
@@ -2586,7 +2579,9 @@ namespace eosio {
                   g_cnts.unlock();
                   fc_dlog( logger, "sending go_away duplicate to ${ep}", ("ep",msg.p2p_address) );
                   go_away_message gam(duplicate);
-                  gam.node_id = node_id;
+                  g_conn.lock();
+                  gam.node_id = conn_node_id;
+                  g_conn.unlock();
                   enqueue(gam);
                   no_retry = duplicate;
                   return;
@@ -2609,9 +2604,11 @@ namespace eosio {
                      ("nv", net_version)( "mnv", protocol_version ) );
          }
 
-         if( node_id != msg.node_id ) {
-            node_id = msg.node_id;
+         g_conn.lock();
+         if( conn_node_id != msg.node_id ) {
+            conn_node_id = msg.node_id;
          }
+         g_conn.unlock();
 
          if( !my_impl->authenticate_peer( msg ) ) {
             fc_elog( logger, "Peer not authenticated.  Closing connection." );
@@ -2665,7 +2662,6 @@ namespace eosio {
       std::unique_lock<std::mutex> g_conn( conn_mtx );
       last_handshake_recv = msg;
       g_conn.unlock();
-      _logger_variant.reset();
       my_impl->sync_master->recv_handshake( shared_from_this(), msg );
    }
 
@@ -2674,7 +2670,8 @@ namespace eosio {
       bool retry = no_retry == no_reason; // if no previous go away message
       no_retry = msg.reason;
       if( msg.reason == duplicate ) {
-         node_id = msg.node_id;
+         std::lock_guard<std::mutex> g_conn( conn_mtx );
+         conn_node_id = msg.node_id;
       }
       if( msg.reason == wrong_version ) {
          if( !retry ) no_retry = fatal_other; // only retry once on wrong version
