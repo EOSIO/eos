@@ -3,9 +3,11 @@ set -eo pipefail
 . ./.cicd/helpers/general.sh
 
 function cleanup() {
-    echo "[Cleaning up docker container]"
-    echo " - docker container kill $BUILDKITE_JOB_ID"
-    docker container kill $BUILDKITE_JOB_ID || true # -v and --mount don't work quite well when it's docker in docker, so we need to use docker's cp command to move the build script in
+    if [[ "$(uname)" != 'Darwin' ]]; then
+        echo "[Cleaning up docker container]"
+        echo " - docker container kill $BUILDKITE_JOB_ID"
+        docker container kill $BUILDKITE_JOB_ID || true # -v and --mount don't work quite well when it's docker in docker, so we need to use docker's cp command to move the build script in
+    fi
 }
 trap cleanup 0
 
@@ -19,7 +21,10 @@ if [[ "$(uname)" == 'Darwin' ]]; then
         brew reinstall openssl@1.1 # Fixes issue where builds in Travis cannot find libcrypto.
         sed -i -e 's/^cmake /cmake -DCMAKE_CXX_COMPILER_LAUNCHER=ccache /g' /tmp/$POPULATED_FILE_NAME
     fi
-    . ./tmp/$POPULATED_FILE_NAME # This file is populated from the platform's build documentation code block
+    . $HELPERS_DIR/populate-template-and-hash.sh -h # obtain $FULL_TAG (and don't overwrite existing file)
+    env
+    cat /tmp/$POPULATED_FILE_NAME
+    . /tmp/$POPULATED_FILE_NAME # This file is populated from the platform's build documentation code block
 else # Linux
     ARGS=${ARGS:-"--rm -t -d --name $BUILDKITE_JOB_ID -v $(pwd):/root/eosio"}
     # sed -i '1s;^;#!/bin/bash\nexport PATH=$EOSIO_INSTALL_LOCATION/bin:$PATH\n;' /tmp/$POPULATED_FILE_NAME # /build-script: line 3: cmake: command not found

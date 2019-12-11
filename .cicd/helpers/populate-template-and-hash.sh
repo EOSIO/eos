@@ -63,10 +63,17 @@ else # Mac OSX
   export FILE_EXTENSION=".sh"
   export APPEND_LINE=6
 fi
+echo "$COMMANDS" > /tmp/commands
 if ( [[ $DOCKERIZATION == false ]] && [[ $ONLYHASH == false ]] ); then
-  echo "$COMMANDS" > /tmp/$POPULATED_FILE_NAME
+  if [[ "$(uname)" == 'Darwin' ]]; then # Mac needs to use the template fr envs
+    cat .cicd/platform-templates/${FILE:-"${IMAGE_TAG}$FILE_EXTENSION"} > /tmp/$POPULATED_FILE_NAME
+    # Remove anything below "# Anything below here is exclusive to our CI/CD"
+    sed -i -e '/Anything below here is exclusive to our CI\/CD/,$d' /tmp/$POPULATED_FILE_NAME
+    echo "$COMMANDS" >> /tmp/$POPULATED_FILE_NAME
+  else
+    echo "$COMMANDS" > /tmp/$POPULATED_FILE_NAME
+  fi
 else
-  echo "$COMMANDS" > /tmp/commands
   awk "NR==$APPEND_LINE{print;system(\"cat /tmp/commands\");next} 1" .cicd/platform-templates/${FILE:-"${IMAGE_TAG}$FILE_EXTENSION"} > /tmp/$POPULATED_FILE_NAME
 fi
 export DETERMINED_HASH=$(sha1sum /tmp/$POPULATED_FILE_NAME | awk '{ print $1 }')
