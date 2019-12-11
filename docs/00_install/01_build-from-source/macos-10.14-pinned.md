@@ -3,13 +3,16 @@ The following commands will install all of the necessary dependencies for source
 <!-- The code within the following block is used in our CI/CD. It will be converted line by line into RUN statements inside of a temporary Dockerfile and used to build our docker tag for this OS. 
 Therefore, COPY and other Dockerfile-isms are not permitted. -->
 ## Clone EOSIO Repository
+<!-- CLONE -->
 ```
 brew update && brew install git
 export EOSIO_LOCATION=$HOME/eosio && git clone https://github.com/EOSIO/eos.git $EOSIO_LOCATION
 cd $EOSIO_LOCATION && git submodule update --init --recursive
 export EOSIO_INSTALL_LOCATION=$EOSIO_LOCATION/install && mkdir -p $EOSIO_INSTALL_LOCATION
 ```
+<!-- CLONE END -->
 ## Install Dependencies
+<!-- DEPS -->
 ```
 brew install cmake python@2 python libtool libusb graphviz automake wget gmp pkgconfig doxygen openssl@1.1 jq || :
 PATH=$EOSIO_INSTALL_LOCATION/bin:$PATH
@@ -36,6 +39,7 @@ cd $EOSIO_INSTALL_LOCATION && curl -LO https://dl.bintray.com/boostorg/release/1
     SDKROOT="$SDKROOT" ./b2 toolset=clang cxxflags='-stdlib=libc++ -D__STRICT_ANSI__ -nostdinc++ -I$EOSIO_INSTALL_LOCATION/include/c++/v1 -D_FORTIFY_SOURCE=2 -fstack-protector-strong -fpie' linkflags='-stdlib=libc++ -pie' link=static threading=multi --with-iostreams --with-date_time --with-filesystem --with-system --with-program_options --with-chrono --with-test -q -j$(getconf _NPROCESSORS_ONLN) install && \
     rm -rf $EOSIO_INSTALL_LOCATION/boost_1_71_0.tar.bz2 $EOSIO_INSTALL_LOCATION/boost_1_71_0
 ```
+<!-- DEPS END -->
 ## Build EOSIO
 <!-- BUILD -->
 ```
@@ -52,6 +56,13 @@ make -j$(getconf _NPROCESSORS_ONLN)
 make install
 ```
 <!-- INSTALL END -->
+
+## Test EOSIO
+<!-- TEST -->
+```
+make test
+```
+<!-- TEST END -->
 
 ## Uninstall EOSIO
 <!-- UNINSTALL -->

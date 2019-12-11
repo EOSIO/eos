@@ -12,7 +12,7 @@ function cleanup() {
 trap cleanup 0
 
 export DOCKERIZATION=false
-[[ $ENABLE_INSTALL == true ]] && . ./.cicd/helpers/populate-template-and-hash.sh '<!-- BUILD -->' '<!-- INSTALL' || . ./.cicd/helpers/populate-template-and-hash.sh '<!-- BUILD'
+[[ $ENABLE_INSTALL == true ]] && . ./.cicd/helpers/populate-template-and-hash.sh '<!-- BUILD' '<!-- INSTALL' || . ./.cicd/helpers/populate-template-and-hash.sh '<!-- BUILD'
 if [[ "$(uname)" == 'Darwin' ]]; then
     # You can't use chained commands in execute
     if [[ $TRAVIS == true ]]; then
