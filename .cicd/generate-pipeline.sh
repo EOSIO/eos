@@ -145,7 +145,7 @@ EOF
       TEMPLATE: $MOJAVE_ANKA_TEMPLATE_NAME
       TEMPLATE_TAG: $MOJAVE_ANKA_TAG_BASE
       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
-      TAG_COMMANDS: "sleep 10; git clone ${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO} eos && cd eosio && $GIT_FETCH git checkout -f $BUILDKITE_COMMIT && git submodule update --init --recursive && export IMAGE_TAG=$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME) && export BUILDKITE_COMMIT=$BUILDKITE_COMMIT && . ./.cicd/helpers/populate-template-and-hash.sh && echo $? && . /tmp/$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME) && cd ~/eos && cd .. && rm -rf eos"
+      TAG_COMMANDS: "sleep 10; git clone ${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO} eos && cd eosio && $GIT_FETCH git checkout -f $BUILDKITE_COMMIT && git submodule update --init --recursive && export IMAGE_TAG=$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME) && export BUILDKITE_COMMIT=$BUILDKITE_COMMIT && . ./.cicd/helpers/populate-template-and-hash.sh && echo \$? && . /tmp/$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME) && cd ~/eos && cd .. && rm -rf eos"
       PROJECT_TAG: $(echo "$PLATFORM_JSON" | jq -r .HASHED_IMAGE_TAG)
     timeout: ${TIMEOUT:-180}
     agents: "queue=mac-anka-large-node-fleet"
