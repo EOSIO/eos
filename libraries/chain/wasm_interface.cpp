@@ -1134,6 +1134,13 @@ class action_api : public context_aware_api {
       name current_receiver() {
          return context.get_receiver();
       }
+
+      void set_action_return_value( array_ptr<char> packed_variant, uint32_t datalen ) {
+         datastream<const char*> ds( packed_variant, datalen );
+         fc::variant v;
+         fc::raw::unpack(ds, v);
+         //todo set v
+      }
 };
 
 class console_api : public context_aware_api {
@@ -1964,6 +1971,7 @@ REGISTER_INTRINSICS(action_api,
    (read_action_data,       int(int, int)  )
    (action_data_size,       int()          )
    (current_receiver,       int64_t()      )
+   (set_action_return_value,void(int, int) )
 );
 
 REGISTER_INTRINSICS(authorization_api,
