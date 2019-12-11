@@ -48,7 +48,7 @@ fi
 COMMANDS=""
 for PATTERN in "$@"; do
   COMMANDS="$COMMANDS
-$(cat docs/${IMAGE_TAG:-$FILE_NAME}.md | sed -n "/$PATTERN/,/$PATTERN/p" | grep -v -e "$PATTERN" -e "$PATTERN" -e '<!--' -e '```' -e '\#.*' -e '^$')"
+$(cat docs/00_install/01_build-from-source/${IMAGE_TAG:-$FILE_NAME}.md | sed -n "/$PATTERN/,/$PATTERN/p" | grep -v -e "$PATTERN" -e "$PATTERN" -e '<!--' -e '```' -e '\#.*' -e '^$')"
 done
 COMMANDS=$(echo "$COMMANDS" | grep -v -e '^$')
 if [[ ! ${IMAGE_TAG:-$FILE_NAME} =~ 'macos' ]]; then # Linux / Docker
