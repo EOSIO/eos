@@ -117,9 +117,9 @@ EOF
         cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build"
     command:
-      - "git clone \$BUILDKITE_REPO eos && cd eos && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT && git submodule update --init --recursive"
-      - "cd eos && ./.cicd/build.sh"
-      - "cd eos && tar -pczf build.tar.gz build && buildkite-agent artifact upload build.tar.gz"
+      - "git clone \$BUILDKITE_REPO eos && cd eosio && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT && git submodule update --init --recursive"
+      - "cd eosio && ./.cicd/build.sh"
+      - "cd eosio && tar -pczf build.tar.gz build && buildkite-agent artifact upload build.tar.gz"
     plugins:
       - chef/anka#v0.5.5:
           no-volume: true

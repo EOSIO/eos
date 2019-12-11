@@ -13,7 +13,6 @@ trap cleanup 0
 
 export DOCKERIZATION=false
 [[ $ENABLE_INSTALL == true ]] && . ./.cicd/helpers/populate-template-and-hash.sh '<!-- BUILD -->' '<!-- INSTALL END' || . ./.cicd/helpers/populate-template-and-hash.sh '<!-- BUILD'
-sed -i -e "s/# Commands from the documentation are inserted right below this line/cd \$EOSIO_LOCATION \&\& git pull \&\& git checkout -f $BUILDKITE_COMMIT && git submodule update --init --recursive/g" /tmp/$POPULATED_FILE_NAME
 if [[ "$(uname)" == 'Darwin' ]]; then
     # You can't use chained commands in execute
     if [[ $TRAVIS == true ]]; then
@@ -22,7 +21,6 @@ if [[ "$(uname)" == 'Darwin' ]]; then
         sed -i -e 's/^cmake /cmake -DCMAKE_CXX_COMPILER_LAUNCHER=ccache /g' /tmp/$POPULATED_FILE_NAME
     fi
     . $HELPERS_DIR/populate-template-and-hash.sh -h # obtain $FULL_TAG (and don't overwrite existing file)
-    env
     cat /tmp/$POPULATED_FILE_NAME
     . /tmp/$POPULATED_FILE_NAME # This file is populated from the platform's build documentation code block
 else # Linux
