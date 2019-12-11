@@ -10,6 +10,7 @@ import inspect
 import json
 import shlex
 import socket
+from datetime import datetime
 from sys import stdout
 from sys import exit
 import traceback
@@ -76,6 +77,7 @@ class Utils:
     def Print(*args, **kwargs):
         stackDepth=len(inspect.stack())-2
         s=' '*stackDepth
+        stdout.write(datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%f "))
         stdout.write(s)
         print(*args, **kwargs)
 
