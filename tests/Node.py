@@ -1295,10 +1295,10 @@ class Node(object):
             if logStatus: Utils.Print("Determined node(formerly pid=%s) is killed" % (pid))
             return False
         except PermissionError as ex:
-            if logStatus: Utils.Print("Determined node(formerly pid=%s) is killed" % (pid))
+            if logStatus: Utils.Print("Determined node(formerly pid=%s) is alive" % (pid))
             return True
 
-        if logStatus: Utils.Print("Determined node(pid=%s) is alive (kill command executed)" % (self.pid))
+        if logStatus: Utils.Print("Determined node(pid=%s) is alive" % (self.pid))
         return True
 
     def getBlockProducerByNum(self, blockNum, timeout=None, waitForBlock=True, exitOnError=True):
