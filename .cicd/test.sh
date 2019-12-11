@@ -10,7 +10,7 @@ if [[ $(uname) == 'Darwin' ]]; then # macOS
     EXIT_STATUS=$?
 else # Linux
     COMMANDS="$MOUNTED_DIR/$@"
-    . $HELPERS_DIR/populate-template-and-hash.sh # Obtain the hash from the populated template 
+    . $HELPERS_DIR/populate-template-and-hash.sh -h # Obtain the hash from the populated template 
     echo "$ docker run --rm --init -v $(pwd):$MOUNTED_DIR $(buildkite-intrinsics) -e JOBS $FULL_TAG bash -c \"$COMMANDS\""
     set +e # defer error handling to end
     eval docker run --rm --init -v $(pwd):$MOUNTED_DIR $(buildkite-intrinsics) -e JOBS $FULL_TAG bash -c \"$COMMANDS\"
