@@ -538,6 +538,17 @@ static const char table_init_oob_no_table_wast[] = R"=====(
 )
 )=====";
 
+static const char table_init_oob_empty_wast[] = R"=====(
+(module
+ (type $mahsig (func (param i64) (param i64) (param i64)))
+ (table 1024 anyfunc)
+ (export "apply" (func $apply))
+ (func $apply (param $0 i64) (param $1 i64) (param $2 i64)
+ )
+ (elem (i32.const 1025))
+)
+)=====";
+
 static const char global_protection_none_get_wast[] = R"=====(
 (module
  (export "apply" (func $apply))

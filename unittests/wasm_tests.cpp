@@ -733,6 +733,11 @@ BOOST_FIXTURE_TEST_CASE( table_init_oob, TESTER ) try {
    //an elem w/o a table is a setcode fail though
    BOOST_CHECK_THROW(set_code("tableinitoob"_n, table_init_oob_no_table_wast), eosio::chain::wasm_exception);
 
+   set_code(N(tableinitoob), table_init_oob_empty_wast);
+   produce_block();
+   pushit_and_expect_fail();
+   pushit_and_expect_fail();
+
 } FC_LOG_AND_RETHROW()
 
 BOOST_FIXTURE_TEST_CASE( memory_init_border, TESTER ) try {
