@@ -14,6 +14,10 @@
                 {
                     "name": "v",
                     "type": "uint32"
+                },
+                {
+                    "name": "i",
+                    "type": "uint32"
                 }
             ]
         },
@@ -27,6 +31,10 @@
                 },
                 {
                     "name": "v",
+                    "type": "uint32"
+                },
+                {
+                    "name": "i",
                     "type": "uint32"
                 }
             ]

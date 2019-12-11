@@ -11,15 +11,17 @@ namespace eosio { namespace chain {
       chainbase::database&       db;
       const index_type&          idx = db.get_index<kv_index, by_kv_key>();
       tracker_type&              tracker;
+      uint32_t&                  itr_count;
       name                       database_id;
       name                       contract;
       std::vector<char>          prefix;
       std::vector<char>          next_prefix;
       const kv_object*           current = nullptr;
 
-      kv_iterator_chainbase(chainbase::database& db, tracker_type& tracker, name database_id, name contract, std::vector<char> prefix)
-         : db{ db }, tracker{ tracker }, database_id{ database_id }, contract{ contract }, prefix{ std::move(prefix) } {
+      kv_iterator_chainbase(chainbase::database& db, tracker_type& tracker, uint32_t& itr_count, name database_id, name contract, std::vector<char> prefix)
+         : db{ db }, tracker{ tracker }, itr_count(itr_count), database_id{ database_id }, contract{ contract }, prefix{ std::move(prefix) } {
 
+         ++itr_count;
          next_prefix = this->prefix;
          while (!next_prefix.empty()) {
             if (++next_prefix.back())
@@ -28,7 +30,7 @@ namespace eosio { namespace chain {
          }
       }
 
-      ~kv_iterator_chainbase() override {}
+      ~kv_iterator_chainbase() override { --itr_count; }
 
       bool is_kv_chainbase_context_iterator() const override { return true; }
 
@@ -149,6 +151,7 @@ namespace eosio { namespace chain {
       name                       receiver;
       kv_resource_manager        resource_manager;
       const kv_database_config&  limits;
+      uint32_t                   num_iterators = 0;
       std::optional<shared_blob> temp_data_buffer;
 
       kv_context_chainbase(chainbase::database& db, name database_id, name receiver,
@@ -221,7 +224,8 @@ namespace eosio { namespace chain {
       }
 
       std::unique_ptr<kv_iterator> kv_it_create(uint64_t contract, const char* prefix, uint32_t size) override {
-         return std::make_unique<kv_iterator_chainbase>(db, tracker, database_id, name{ contract },
+         EOS_ASSERT(num_iterators < limits.max_iterators, kv_bad_iter, "Too many iterators");
+         return std::make_unique<kv_iterator_chainbase>(db, tracker, num_iterators, database_id, name{ contract },
                                                         std::vector<char>{ prefix, prefix + size });
       }
    }; // kv_context_chainbase

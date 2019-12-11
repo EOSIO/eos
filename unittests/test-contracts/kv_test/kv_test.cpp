@@ -33,6 +33,12 @@ struct kv {
    std::vector<char> v;
 };
 
+struct itparam {
+   name db;
+   uint32_t count;
+   bool erase;
+};
+
 #define STR_I(x) #x
 #define STR(x) STR_I(x)
 #define TEST(condition) check(condition, "kv_test.cpp:" STR(__LINE__) ": " #condition) 
@@ -64,6 +70,39 @@ class [[eosio::contract("kv_test")]] kvtest : public eosio::contract {
       check(kv_it_status(5) == iterator_end, "itlifetime p");
       check(kv_it_status(6) == iterator_end, "itlifetime q");
       check(kv_it_status(7) == iterator_end, "itlifetime r");
+   }
+
+   [[eosio::action]] void itlimit(std::vector<itparam> params) {
+      bool has_erase = false;
+      for(auto& itop : params) {
+         if(itop.erase) {
+            has_erase = true;
+            break;
+         }
+      }
+      if(!has_erase) {
+         for(auto itop : params) {
+            for(uint32_t i = 0; i < itop.count; ++i) {
+               kv_it_create(itop.db, ""_n, nullptr, 0);
+            }
+         }
+      } else {
+         std::map<name, std::vector<int>> iterators;
+         for(auto itop : params) {
+            auto& iters = iterators[itop.db];
+            if(itop.erase) {
+               auto& iters = iterators[itop.db];
+               for(uint32_t i = 0; i < itop.count; ++i) {
+                  kv_it_destroy(iters.back());
+                  iters.pop_back();
+               }
+            } else {
+               for(uint32_t i = 0; i < itop.count; ++i) {
+                  iters.push_back(kv_it_create(itop.db, ""_n, nullptr, 0));
+               }
+            }
+         }
+      }
    }
 
    [[eosio::action]] void erase(name db, name contract, const std::vector<char>& k) {

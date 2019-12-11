@@ -868,13 +868,14 @@ uint32_t apply_context::kv_get_data(uint64_t db, uint32_t offset, char* data, ui
 }
 
 uint32_t apply_context::kv_it_create(uint64_t db, uint64_t contract, const char* prefix, uint32_t size) {
-   // KV-TODO: limit number of iterators
    auto& kdb = kv_get_db(db);
    uint32_t itr;
    if (!kv_destroyed_iterators.empty()) {
       itr = kv_destroyed_iterators.back();
       kv_destroyed_iterators.pop_back();
    } else {
+      // Sanity check in case the per-database limits are set poorly
+      EOS_ASSERT(kv_iterators.size() <= 0xFFFFFFFFu, kv_bad_iter, "Too many iterators");
       itr = kv_iterators.size();
       kv_iterators.emplace_back();
    }

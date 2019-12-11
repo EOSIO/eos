@@ -64,6 +64,34 @@
             ]
         },
         {
+            "name": "itlimit",
+            "base": "",
+            "fields": [
+                {
+                    "name": "params",
+                    "type": "itparam[]"
+                }
+            ]
+        },
+        {
+            "name": "itparam",
+            "base": "",
+            "fields": [
+                {
+                    "name": "db",
+                    "type": "name"
+                },
+                {
+                    "name": "count",
+                    "type": "uint32"
+                },
+                {
+                    "name": "erase",
+                    "type": "bool"
+                }
+            ]
+        },
+        {
             "name": "itstaterased",
             "base": "",
             "fields": [
@@ -227,6 +255,11 @@
         {
             "name": "itlifetime",
             "type": "itlifetime",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "itlimit",
+            "type": "itlimit",
             "ricardian_contract": ""
         },
         {

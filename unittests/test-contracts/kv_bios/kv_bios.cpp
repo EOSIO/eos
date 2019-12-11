@@ -8,8 +8,8 @@ extern "C" __attribute__((eosio_wasm_import)) void set_kv_parameters_packed(uint
 
 using namespace eosio;
 
-// A simplified system contract for controlling resources
-class [[eosio::contract]] resources : eosio::contract {
+// Manages resources used by the kv-store
+class [[eosio::contract]] kv_bios : eosio::contract {
  public:
    using contract::contract;
    [[eosio::action]] void setdisklimit(name account, int64_t limit) {
@@ -18,30 +18,34 @@ class [[eosio::contract]] resources : eosio::contract {
    [[eosio::action]] void setramlimit(name account, int64_t limit) {
       set_resource_limit(account.value, "ram"_n.value, limit);
    }
-   [[eosio::action]] void ramkvlimits(uint32_t k, uint32_t v) {
-      uint32_t limits[2];
+   [[eosio::action]] void ramkvlimits(uint32_t k, uint32_t v, uint32_t i) {
+      uint32_t limits[3];
       limits[0] = k;
       limits[1] = v;
+      limits[2] = i;
       set_kv_parameters_packed("eosio.kvram"_n.value, limits, sizeof(limits));
       int sz = get_kv_parameters_packed("eosio.kvram"_n.value, nullptr, 0);
       limits[0] = limits[1] = 0xFFFFFFFF;
-      check(sz == 8, "wrong kv parameters size");
+      check(sz == 12, "wrong kv parameters size");
       sz = get_kv_parameters_packed("eosio.kvram"_n.value, limits, sizeof(limits));
-      check(sz == 8, "wrong kv parameters result");
+      check(sz == 12, "wrong kv parameters result");
       check(limits[0] == k, "wrong key");
       check(limits[1] == v, "wrong value");
+      check(limits[2] == i, "wrong iter limit");
    }
-   [[eosio::action]] void diskkvlimits(uint32_t k, uint32_t v) {
-      uint32_t limits[2];
+   [[eosio::action]] void diskkvlimits(uint32_t k, uint32_t v, uint32_t i) {
+      uint32_t limits[3];
       limits[0] = k;
       limits[1] = v;
+      limits[2] = i;
       set_kv_parameters_packed("eosio.kvdisk"_n.value, limits, sizeof(limits));
       int sz = get_kv_parameters_packed("eosio.kvdisk"_n.value, nullptr, 0);
       limits[0] = limits[1] = 0xFFFFFFFF;
-      check(sz == 8, "wrong kv parameters size");
+      check(sz == 12, "wrong kv parameters size");
       sz = get_kv_parameters_packed("eosio.kvdisk"_n.value, limits, sizeof(limits));
-      check(sz == 8, "wrong kv parameters result");
+      check(sz == 12, "wrong kv parameters result");
       check(limits[0] == k, "wrong key");
       check(limits[1] == v, "wrong value");
+      check(limits[2] == i, "wrong iter limit");
    }
 };

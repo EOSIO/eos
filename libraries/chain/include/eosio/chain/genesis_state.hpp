@@ -53,8 +53,8 @@ struct genesis_state {
    };
 
    static constexpr kv_config default_initial_kv_configuration = {
-      { config::default_max_kv_key_size, config::default_max_kv_value_size },
-      { config::default_max_kv_key_size, config::default_max_kv_value_size }
+      { config::default_max_kv_key_size, config::default_max_kv_value_size, config::default_max_kv_iterators },
+      { config::default_max_kv_key_size, config::default_max_kv_value_size, config::default_max_kv_iterators }
    };
 
    kv_config initial_kv_configuration = default_initial_kv_configuration;

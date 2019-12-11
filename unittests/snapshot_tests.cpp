@@ -459,10 +459,12 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_compatible_versions, SNAPSHOT_SUITE, snapshot
    chain.set_abi(N(snapshot), contracts::snapshot_test_abi().data());
    chain.produce_blocks(1);
    chain.control->abort_block();
+   std::string current_version = "v4";
 
    int ordinal = 0;
    for(std::string version : {"v2", "v3", "v4"})
    {
+      if(should_write_snapshot() && version == current_version) continue;
       static_assert(chain_snapshot_header::minimum_compatible_version <= 2, "version 2 unit test is no longer needed.  Please clean up data files");
       auto v2 = SNAPSHOT_SUITE::load_from_file("snap_" + version);
       BOOST_TEST_CHECKPOINT("loading snapshot: " << version);
@@ -482,13 +484,12 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_compatible_versions, SNAPSHOT_SUITE, snapshot
    // the correct place in the source tree.
    if (should_write_snapshot())
    {
-      std::string version = "v4";
       // create a latest snapshot
       auto latest_writer = SNAPSHOT_SUITE::get_writer();
       chain.control->write_snapshot(latest_writer);
       auto latest = SNAPSHOT_SUITE::finalize(latest_writer);
 
-      SNAPSHOT_SUITE::write_to_file("snap_" + version, latest);
+      SNAPSHOT_SUITE::write_to_file("snap_" + current_version, latest);
    }
 }
 

@@ -28,6 +28,13 @@ struct kv {
 };
 FC_REFLECT(kv, (k)(v))
 
+struct itparam {
+   name db;
+   uint32_t count;
+   bool erase;
+};
+FC_REFLECT(itparam, (db)(count)(erase))
+
 class kv_tester : public tester {
  public:
    kv_tester() {
@@ -41,8 +48,8 @@ class kv_tester : public tester {
          set_abi(account, contracts::kv_test_abi().data());
       }
 
-      set_code(config::system_account_name, contracts::resources_wasm());
-      set_abi(config::system_account_name, contracts::resources_abi().data());
+      set_code(config::system_account_name, contracts::kv_bios_wasm());
+      set_abi(config::system_account_name, contracts::kv_bios_abi().data());
 
       produce_blocks();
 
@@ -93,7 +100,7 @@ class kv_tester : public tester {
       return base_tester::push_action(std::move(act), config::system_account_name.to_uint64_t());
    }
 
-   action_result set_kv_limits(name db, uint32_t klimit, uint32_t vlimit) {
+   action_result set_kv_limits(name db, uint32_t klimit, uint32_t vlimit, uint32_t ilimit = 256) {
       action_name name;
       if(db == N(eosio.kvdisk)) {
          name = N(diskkvlimits);
@@ -106,7 +113,7 @@ class kv_tester : public tester {
       action act;
       act.account = config::system_account_name;
       act.name    = name;
-      act.data    = sys_abi_ser.variant_to_binary(action_type_name, mvo()("k", klimit)("v", vlimit), abi_serializer_max_time);
+      act.data    = sys_abi_ser.variant_to_binary(action_type_name, mvo()("k", klimit)("v", vlimit)("i", ilimit), abi_serializer_max_time);
       return base_tester::push_action(std::move(act), config::system_account_name.to_uint64_t());
    }
 
@@ -122,6 +129,10 @@ class kv_tester : public tester {
    template <typename V>
    action_result set(name db, name contract, const char* k, V v) {
       return push_action(N(set), mvo()("db", db)("contract", contract)("k", k)("v", v));
+   }
+
+   action_result iterlimit(const std::vector<itparam>& params) {
+      return push_action(N(itlimit), mvo()("params", params));
    }
 
    void setmany(const char* error, name db, name contract, const std::vector<kv>& kvs) {
@@ -563,6 +574,35 @@ class kv_tester : public tester {
       produce_block();
    }
 
+   void test_max_iterators() {
+      BOOST_TEST_REQUIRE(set_kv_limits(N(eosio.kvram), 1024, 1024, 5) == "");
+      BOOST_TEST_REQUIRE(set_kv_limits(N(eosio.kvdisk), 1024, 1024, 7) == "");
+      // individual limits
+      BOOST_TEST(iterlimit({{N(eosio.kvram), 5, false}}) == "");
+      BOOST_TEST(iterlimit({{N(eosio.kvram), 6, false}}) == "Too many iterators");
+      BOOST_TEST(iterlimit({{N(eosio.kvdisk), 7, false}}) == "");
+      BOOST_TEST(iterlimit({{N(eosio.kvdisk), 2000, false}}) == "Too many iterators");
+      // both limits together
+      BOOST_TEST(iterlimit({{N(eosio.kvram), 5, false}, {N(eosio.kvdisk), 7, false}}) == "");
+      BOOST_TEST(iterlimit({{N(eosio.kvram), 6, false}, {N(eosio.kvdisk), 7, false}}) == "Too many iterators");
+      BOOST_TEST(iterlimit({{N(eosio.kvram), 5, false}, {N(eosio.kvdisk), 8, false}}) == "Too many iterators");
+      // erase iterators and create more
+      BOOST_TEST(iterlimit({{N(eosio.kvram), 4, false}, {N(eosio.kvdisk), 6, false},
+                            {N(eosio.kvram), 2, true}, {N(eosio.kvdisk), 2, true},
+                            {N(eosio.kvram), 3, false}, {N(eosio.kvdisk), 3, false}}) == "");
+      BOOST_TEST(iterlimit({{N(eosio.kvram), 4, false}, {N(eosio.kvdisk), 6, false},
+                            {N(eosio.kvram), 2, true}, {N(eosio.kvdisk), 2, true},
+                            {N(eosio.kvram), 3, false}, {N(eosio.kvdisk), 4, false}}) == "Too many iterators");
+      BOOST_TEST(iterlimit({{N(eosio.kvram), 4, false}, {N(eosio.kvdisk), 6, false},
+                            {N(eosio.kvram), 2, true}, {N(eosio.kvdisk), 2, true},
+                            {N(eosio.kvram), 4, false}, {N(eosio.kvdisk), 3, false}}) == "Too many iterators");
+      // fallback limit - testing this is impractical because it uses too much memory
+      // This many iterators would consume at least 400 GiB.
+      // BOOST_TEST_REQUIRE(set_kv_limits(N(eosio.kvram), 1024, 1024, 0xFFFFFFFF) == "");
+      // BOOST_TEST_REQUIRE(set_kv_limits(N(eosio.kvdisk), 1024, 1024, 0xFFFFFFFF) == "");
+      // BOOST_TEST(iterlimit({{N(eosio.kvram), 0xFFFFFFFF, false}, {N(eosio.kvdisk), 1, false}}) == "Too many iterators");
+   }
+
    abi_serializer abi_ser;
    abi_serializer sys_abi_ser;
 };
@@ -682,6 +722,11 @@ FC_LOG_AND_RETHROW()
 
 BOOST_DATA_TEST_CASE_F(kv_tester, other_contract, bdata::make(databases), db) try { //
    test_other_contract(db);
+}
+FC_LOG_AND_RETHROW()
+
+BOOST_FIXTURE_TEST_CASE(max_iterators, kv_tester) try { //
+   test_max_iterators();
 }
 FC_LOG_AND_RETHROW()
 
