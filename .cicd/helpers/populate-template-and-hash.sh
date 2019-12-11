@@ -42,13 +42,15 @@ if [ $# -ne 0 ]; then
   shift $((OPTIND -1))
 fi
 
-PATTERN_ONE=${1:-'```'}
-PATTERN_TWO=${2:-$PATTERN_ONE}
 # If we're running this script a second time (with ONLYHASH), set a tmpfile name
 [[ ${POPULATED_FILE_NAME:-false} == false ]] && export POPULATED_FILE_NAME=${FILE_NAME:-$IMAGE_TAG} || POPULATED_FILE_NAME="tmpfile"
 # Collect commands from code block, add RUN before the start of commands, and add it to temporary template
-DOC_CODE_BLOCKS=$(cat docs/${IMAGE_TAG:-$FILE_NAME}.md | sed -n "/$PATTERN_ONE/,/$PATTERN_TWO/p")
-COMMANDS=$(echo "$DOC_CODE_BLOCKS" | grep -v -e "$PATTERN_ONE" -e "$PATTERN_TWO" -e '<!--' -e '```' -e '\#.*' -e '^$')
+COMMANDS=""
+for PATTERN in "$@"; do
+  COMMANDS="$COMMANDS
+$(cat docs/${IMAGE_TAG:-$FILE_NAME}.md | sed -n "/$PATTERN/,/$PATTERN/p" | grep -v -e "$PATTERN" -e "$PATTERN" -e '<!--' -e '```' -e '\#.*' -e '^$')"
+done
+COMMANDS=$(echo "$COMMANDS" | grep -v -e '^$')
 if [[ ! ${IMAGE_TAG:-$FILE_NAME} =~ 'macos' ]]; then # Linux / Docker
   ( [[ $DOCKERIZATION == true ]] || [[ $ONLYHASH == true ]] ) && COMMANDS=$(echo "$COMMANDS" | awk '{if ( $0 ~ /^[ ].*/ ) { print $0 } \
   else if ( $0 ~ /^export EOSIO_INSTALL_LOCATION=/ ) { print "RUN mkdir -p $EOSIO_INSTALL_LOCATION" } \
