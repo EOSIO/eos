@@ -47,6 +47,7 @@ DEFAULT_FILE = os.path.join(".", "programs", PROGRAM, PROGRAM)
 DEFAULT_GENE = os.path.join(".", "genesis.json")
 DEFAULT_START = False
 DEFAULT_KILL = False
+DEFAULT_EXTRA_SERVICE_ARGS = ""
 # cluster-related defaults
 DEFAULT_CDIR = "../unittests/contracts/old_versions/v1.6.0-rc3"
 DEFAULT_CLUSTER_ID = 0
@@ -56,8 +57,8 @@ DEFAULT_PRODUCER_COUNT = 4
 DEFAULT_UNSTARTED_COUNT = 0
 DEFAULT_TOPOLOGY = "mesh"
 DEFAULT_CENTER_NODE_ID = None
-DEFAULT_EXTRA_CONFIGS = []
 DEFAULT_EXTRA_ARGS = ""
+DEFAULT_EXTRA_CONFIGS = []
 DEFAULT_DONT_NEWACCO = False
 DEFAULT_DONT_SETPROD = False
 DEFAULT_HTTP_RETRY = 100
@@ -88,6 +89,7 @@ HELP_FILE = "Path to executable file of launcher service"
 HELP_GENE = "Path to genesis file"
 HELP_START = "Always start a new launcher service"
 HELP_KILL = "Kill existing launcher services (if any)"
+HELP_EXTRA_SERVICE_ARGS = "Extra arguments to pass to launcher service"
 # cluster-related help text
 HELP_CDIR = "Smart contracts directory"
 HELP_CLUSTER_ID = "Cluster ID to launch with"
@@ -97,8 +99,8 @@ HELP_PRODUCER_COUNT = "Number of producers"
 HELP_UNSTARTED_COUNT = "Number of unstarted nodes"
 HELP_TOPOLOGY = "Cluster topology to launch with"
 HELP_CENTER_NODE_ID = "Center node ID (for bridge or star topology)"
+HELP_EXTRA_ARGS = "Extra arguments to pass to nodeos"
 HELP_EXTRA_CONFIGS = "Extra configs to pass to nodeos"
-HELP_EXTRA_ARGS = "Extra arguments to pass to launcher service"
 HELP_DONT_NEWACCO = "Do not create accounts in launch"
 HELP_DONT_SETPROD = "Do not set producers in launch"
 HELP_HTTP_RETRY = "HTTP connection: max num of retries"
@@ -201,6 +203,7 @@ class CommandLineArguments:
         self.gene = cla.gene
         self.start = cla.start
         self.kill = cla.kill
+        self.extra_service_args = cla.extra_service_args
         # cluster-related options
         self.cdir = cla.cdir
         self.cluster_id = cla.cluster_id
@@ -210,6 +213,10 @@ class CommandLineArguments:
         self.unstarted_count = cla.unstarted_count
         self.topology = cla.topology
         self.center_node_id = cla.center_node_id
+        self.extra_args = cla.extra_args
+        self.extra_configs = cla.extra_configs
+        if self.extra_configs:
+            self.extra_configs = self.extra_configs.split(" ")
         self.dont_newacco = cla.dont_newacco
         self.dont_setprod = cla.dont_setprod
         self.http_retry = cla.http_retry
@@ -252,10 +259,12 @@ class CommandLineArguments:
         parser.add_argument("-g", "--gene", type=str, metavar="PATH", help=form(HELP_GENE, DEFAULT_GENE))
         parser.add_argument("-s", "--start", action="store_true", default=None, help=form(HELP_START, DEFAULT_START))
         parser.add_argument("-k", "--kill", action="store_true", default=None, help=form(HELP_KILL, DEFAULT_KILL))
+        parser.add_argument("--extra-service-args", type=str, metavar="ARGS",
+                            help=form(HELP_EXTRA_SERVICE_ARGS, DEFAULT_EXTRA_SERVICE_ARGS))
         # cluster-related options
         parser.add_argument("-c", "--cdir", metavar="PATH",
                             help=form(HELP_CDIR, DEFAULT_CDIR))
-        parser.add_argument("-i", "--cluster-id", dest="cluster_id", type=int, metavar="ID",
+        parser.add_argument("-i", "--cluster-id", type=int, metavar="ID",
                             help=form(HELP_CLUSTER_ID, DEFAULT_CLUSTER_ID))
         parser.add_argument("-n", "--node-count", type=int, metavar="NUM",
                             help=form(HELP_NODE_COUNT, DEFAULT_NODE_COUNT))
@@ -267,8 +276,12 @@ class CommandLineArguments:
                             help=form(HELP_UNSTARTED_COUNT, DEFAULT_UNSTARTED_COUNT))
         parser.add_argument("-t", "--topology", type=str, metavar="SHAPE", help=form(HELP_TOPOLOGY, DEFAULT_TOPOLOGY),
                             choices={"mesh", "bridge", "line", "ring", "star", "tree"})
-        parser.add_argument("-x", "--center-node-id", type=int, metavar="ID",
+        parser.add_argument("-r", "--center-node-id", type=int, metavar="ID",
                             help=form(HELP_CENTER_NODE_ID, DEFAULT_CENTER_NODE_ID))
+        parser.add_argument("--extra-args", type=str, metavar="ARGS",
+                            help=form(HELP_EXTRA_ARGS, DEFAULT_EXTRA_ARGS))
+        parser.add_argument("--extra-configs", type=str, metavar="CONFIGS",
+                            help=form(HELP_EXTRA_CONFIGS, DEFAULT_EXTRA_CONFIGS))
         parser.add_argument("--dont-newacco", action="store_true", default=None,
                             help=form(HELP_DONT_NEWACCO, DEFAULT_DONT_NEWACCO))
         parser.add_argument("--dont-setprod", action="store_true", default=None,
@@ -300,7 +313,7 @@ class CommandLineArguments:
         threshold.add_argument("--fatal", dest="threshold", action="store_const", const="fatal", help=form(HELP_FATAL))
         threshold.add_argument("--flag", dest="threshold", action="store_const", const="flag", help=form(HELP_FLAG))
         threshold.add_argument("--off", dest="threshold", action="store_const", const="off", help=form(HELP_LOG_OFF))
-        parser.add_argument("--monochrome", action="store_true", default=None,
+        parser.add_argument("-m", "--monochrome", action="store_true", default=None,
                             help=form(HELP_MONOCHROME, DEFAULT_MONOCHROME))
         parser.add_argument("--dont-buffer", dest="buffered", action="store_false", default=None,
                             help=form(HELP_DONT_BUFFER, not DEFAULT_BUFFERED))
@@ -350,7 +363,8 @@ class Service:
     start a new launcher service and/or to kill all the existing launcher
     service(s).
     """
-    def __init__(self, logger, addr=None, port=None, wdir=None, file=None, gene=None, start=None, kill=None):
+    def __init__(self, logger, addr=None, port=None, wdir=None, file=None, gene=None, start=None, kill=None,
+                 extra_args=None):
         """Create a Service object to connect to launcher service.
 
         Parameters
@@ -388,6 +402,8 @@ class Service:
             (and freshly start a new one).
             Default is False (will not kill existing launcher services; instead
             will connect to an existing launcher service).
+        extra_args : str
+            Extra arguments to pass to launcher service.
         """
         # read command-line arguments
         self.cla = CommandLineArguments()
@@ -399,6 +415,7 @@ class Service:
         self.gene  = helper.override(DEFAULT_GENE,  gene,  self.cla.gene)
         self.start = helper.override(DEFAULT_START, start, self.cla.start)
         self.kill  = helper.override(DEFAULT_KILL,  kill,  self.cla.kill)
+        self.extra_args  = helper.override(DEFAULT_EXTRA_SERVICE_ARGS,  extra_args,  self.cla.extra_service_args)
         # change working dir
         if self.wdir != ".":
             os.chdir(self.wdir)
@@ -474,21 +491,25 @@ class Service:
 
     def print_config(self):
         self.print_header("service configuration")
-        # print service config
-        self.print_config_helper("-a: addr",  HELP_ADDR,  self.addr,  DEFAULT_ADDR)
-        self.print_config_helper("-o: port",  HELP_PORT,  self.port,  DEFAULT_PORT)
-        self.print_config_helper("-w: wdir",  HELP_WDIR,  self.wdir,  DEFAULT_WDIR)
-        self.print_config_helper("-f: file",  HELP_FILE,  self.file,  DEFAULT_FILE)
-        self.print_config_helper("-g: gene",  HELP_GENE,  self.gene,  DEFAULT_GENE)
-        self.print_config_helper("-s: start", HELP_START, self.start, DEFAULT_START)
-        self.print_config_helper("-k: kill",  HELP_KILL,  self.kill,  DEFAULT_KILL)
-        # print stdout logger config
+        self.print_config_helper("-a, --addr",  HELP_ADDR,  self.addr,  DEFAULT_ADDR)
+        self.print_config_helper("-o, --port",  HELP_PORT,  self.port,  DEFAULT_PORT)
+        self.print_config_helper("-w, --wdir",  HELP_WDIR,  self.wdir,  DEFAULT_WDIR)
+        self.print_config_helper("-f, --file",  HELP_FILE,  self.file,  DEFAULT_FILE)
+        self.print_config_helper("-g, --gene",  HELP_GENE,  self.gene,  DEFAULT_GENE)
+        self.print_config_helper("-s, --start", HELP_START, self.start, DEFAULT_START)
+        self.print_config_helper("-k, --kill",  HELP_KILL,  self.kill,  DEFAULT_KILL)
+        self.print_config_helper("--extra-service-args",  HELP_EXTRA_SERVICE_ARGS,  self.extra_args,  DEFAULT_EXTRA_SERVICE_ARGS)
+        self.print_logger_config()
+
+    def print_logger_config(self):
+        self.print_header("logger configuration")
         name = str(self.threshold)
         ival = str(int(self.threshold))
         text = "{} ({})".format(name, ival) if name != ival else "{}".format(name)
-        self.print_config_helper("-l: log-level", HELP_LOG_LEVEL, text)
-        self.print_config_helper("--monochrome: monochrome", HELP_MONOCHROME, self.monochrome, DEFAULT_MONOCHROME)
-        self.print_config_helper("--dont-buffer: dont-buffer", HELP_DONT_BUFFER, not self.buffered, not DEFAULT_BUFFERED)
+        self.print_config_helper("-l, --log-level", HELP_LOG_LEVEL, text)
+        self.print_config_helper("-m, --monochrome", HELP_MONOCHROME, self.monochrome, DEFAULT_MONOCHROME)
+        self.print_config_helper("--dont-buffer", HELP_DONT_BUFFER, not self.buffered, not DEFAULT_BUFFERED)
+        self.print_config_helper("--dont-rename", HELP_DONT_RENAME, self.cla.dont_rename, DEFAULT_DONT_RENAME)
 
     def connect_to_local_service(self):
         self.print_header("connect to local service")
@@ -565,14 +586,16 @@ class Service:
         if service.gene:
             self.debug("--- Path to genesis file: [{}]".format(color.blue(service.gene)))
         if self.port != service.port:
-            self.warn("WARNING: Port setting (port={}) is ignored.".format(self.port))
+            self.warn("WARNING: Port setting (port={}) is ignored.".format(color.yellow(self.port)))
             self.port = service.port
         if self.file != service.file:
-            self.warn("WARNING: Executable file setting (file={}) is ignored.".format(self.file))
+            self.warn("WARNING: Executable file setting (file={}) is ignored.".format(color.yellow(self.file)))
             self.file = service.file
         if service.gene and self.gene != service.gene:
-            self.warn("WARNING: Genesis file setting (gene={}) is ignored.".format(self.gene))
+            self.warn("WARNING: Genesis file setting (gene={}) is ignored.".format(color.yellow(self.gene)))
             self.gene = service.gene
+        if self.extra_args:
+            self.warn("WARNING: Extra service arguments ({}) are ignored.".format(color.yellow(self.extra_args)))
         self.debug("To always start a new launcher service, pass {} or {}.".format(color.yellow("-s"), color.yellow("--start")))
         self.debug("To kill existing launcher services, pass {} or {}.".format(color.yellow("-k"), color.yellow("--kill")))
 
@@ -583,7 +606,8 @@ class Service:
         os.system(f"{self.file} "
                   f"--http-server-address=0.0.0.0:{self.port} "
                   f"--http-threads=4 "
-                  f"--genesis-json={self.gene} "
+                  f"--genesis-json={self.gene} " +
+                  self.extra_args + " " +
                   f">{PROGRAM_LOG}  2>&1 &")
         time.sleep(1)
         with open(PROGRAM_LOG, "r") as f:
@@ -714,14 +738,14 @@ class Cluster:
             Center node ID (for bridge or star topology).
             If topology is bridge, center node ID cannot be 0 or last one.
             No default value.
-        extra_configs : list
-            Extra configs to pass to nodeos via launcher service.
-            e.g. ["plugin=SOME_EXTRA_PLUGIN"]
-            No default value.
         extra_args : str
             Extra arguments to pass to launcher service.
             e.g. "--delete-all-blocks"
-            No default value.
+            Default is "".
+        extra_configs : list
+            Extra configs to pass to nodeos via launcher service.
+            e.g. ["plugin=SOME_EXTRA_PLUGIN"]
+            Default is [].
         dont_newacco : bool
             Do not create accounts in launch.
             Default is False (will create producer accounts).
@@ -751,9 +775,6 @@ class Cluster:
         sync_sleep : float
             Sleep time (in seconds) between check-sync retries.
             Default is 0.25.
-
-        * Note that all the above in-script arguments can be overridden by
-        command-line arguments (except for extra_configs and extra_args).
         """
         # register service
         self.service = service
@@ -780,8 +801,8 @@ class Cluster:
         self.unstarted_count = helper.override(DEFAULT_UNSTARTED_COUNT, unstarted_count, self.cla.unstarted_count)
         self.topology        = helper.override(DEFAULT_TOPOLOGY,        topology,        self.cla.topology)
         self.center_node_id  = helper.override(DEFAULT_CENTER_NODE_ID,  center_node_id,  self.cla.center_node_id)
-        self.extra_configs   = helper.override(DEFAULT_EXTRA_CONFIGS,   extra_configs)
-        self.extra_args      = helper.override(DEFAULT_EXTRA_ARGS,      extra_args)
+        self.extra_configs   = helper.override(DEFAULT_EXTRA_CONFIGS,   extra_configs,   self.cla.extra_configs)
+        self.extra_args      = helper.override(DEFAULT_EXTRA_ARGS,      extra_args,      self.cla.extra_args)
         self.dont_newacco    = helper.override(DEFAULT_DONT_NEWACCO,    dont_newacco,    self.cla.dont_newacco)
         self.dont_setprod    = helper.override(DEFAULT_DONT_SETPROD,    dont_setprod,    self.cla.dont_setprod)
         self.http_retry      = helper.override(DEFAULT_HTTP_RETRY,      http_retry,      self.cla.http_retry)
@@ -847,25 +868,25 @@ class Cluster:
 
     def print_config(self):
         self.print_header("cluster configuration")
-        self.print_config_helper("-c: cdir",             HELP_CDIR,            self.cdir,            DEFAULT_CDIR)
-        self.print_config_helper("-i: cluster_id",       HELP_CLUSTER_ID,      self.cluster_id,      DEFAULT_CLUSTER_ID)
-        self.print_config_helper("-n: node_count",       HELP_NODE_COUNT,      self.node_count,      DEFAULT_NODE_COUNT)
-        self.print_config_helper("-p: pnode_count",      HELP_PNODE_COUNT,     self.pnode_count,     DEFAULT_PNODE_COUNT)
-        self.print_config_helper("-q: producer_count",   HELP_PRODUCER_COUNT,  self.producer_count,  DEFAULT_PRODUCER_COUNT)
-        self.print_config_helper("-u: unstarted_count",  HELP_UNSTARTED_COUNT, self.unstarted_count, DEFAULT_UNSTARTED_COUNT)
-        self.print_config_helper("-t: topology",         HELP_TOPOLOGY,        self.topology,        DEFAULT_TOPOLOGY)
-        self.print_config_helper("-x: center_node_id",   HELP_CENTER_NODE_ID,  self.center_node_id,  DEFAULT_CENTER_NODE_ID)
-        self.print_config_helper("... extra_configs",    HELP_EXTRA_CONFIGS,   self.extra_configs,   DEFAULT_EXTRA_CONFIGS)
-        self.print_config_helper("... extra_args",       HELP_EXTRA_ARGS,      self.extra_args,      DEFAULT_EXTRA_ARGS)
-        self.print_config_helper("... dont_newacco",     HELP_DONT_NEWACCO,    self.dont_newacco,    DEFAULT_DONT_NEWACCO)
-        self.print_config_helper("... dont_setprod",     HELP_DONT_SETPROD,    self.dont_setprod,    DEFAULT_DONT_SETPROD)
-        self.print_config_helper("--http-retry",         HELP_HTTP_RETRY,      self.http_retry,      DEFAULT_HTTP_RETRY)
-        self.print_config_helper("--http-sleep",         HELP_HTTP_SLEEP,      self.http_sleep,      DEFAULT_HTTP_SLEEP)
-        self.print_config_helper("-v: verify-async",     HELP_VERIFY_ASYNC,    self.verify_async,    DEFAULT_VERIFY_ASYNC)
-        self.print_config_helper("--verify-retry",       HELP_VERIFY_RETRY,    self.verify_retry,    DEFAULT_VERIFY_RETRY)
-        self.print_config_helper("--verify-sleep",       HELP_VERIFY_SLEEP,    self.verify_sleep,    DEFAULT_VERIFY_SLEEP)
-        self.print_config_helper("--sync-retry",         HELP_SYNC_RETRY,      self.sync_retry,      DEFAULT_SYNC_RETRY)
-        self.print_config_helper("--sync-sleep",         HELP_SYNC_SLEEP,      self.sync_sleep,      DEFAULT_SYNC_SLEEP)
+        self.print_config_helper("-c, --cdir",             HELP_CDIR,            self.cdir,            DEFAULT_CDIR)
+        self.print_config_helper("-i, --cluster-id",       HELP_CLUSTER_ID,      self.cluster_id,      DEFAULT_CLUSTER_ID)
+        self.print_config_helper("-n, --node-count",       HELP_NODE_COUNT,      self.node_count,      DEFAULT_NODE_COUNT)
+        self.print_config_helper("-p, --pnode-count",      HELP_PNODE_COUNT,     self.pnode_count,     DEFAULT_PNODE_COUNT)
+        self.print_config_helper("-q, --producer-count",   HELP_PRODUCER_COUNT,  self.producer_count,  DEFAULT_PRODUCER_COUNT)
+        self.print_config_helper("-u, --unstarted-count",  HELP_UNSTARTED_COUNT, self.unstarted_count, DEFAULT_UNSTARTED_COUNT)
+        self.print_config_helper("-t, --topology",         HELP_TOPOLOGY,        self.topology,        DEFAULT_TOPOLOGY)
+        self.print_config_helper("-r, --center-node-id",   HELP_CENTER_NODE_ID,  self.center_node_id,  DEFAULT_CENTER_NODE_ID)
+        self.print_config_helper("--extra-args",           HELP_EXTRA_ARGS,      self.extra_args,      DEFAULT_EXTRA_ARGS)
+        self.print_config_helper("--extra-configs",        HELP_EXTRA_CONFIGS,   self.extra_configs,   DEFAULT_EXTRA_CONFIGS)
+        self.print_config_helper("--dont-newacco",         HELP_DONT_NEWACCO,    self.dont_newacco,    DEFAULT_DONT_NEWACCO)
+        self.print_config_helper("--dont-setprod",         HELP_DONT_SETPROD,    self.dont_setprod,    DEFAULT_DONT_SETPROD)
+        self.print_config_helper("--http-retry",           HELP_HTTP_RETRY,      self.http_retry,      DEFAULT_HTTP_RETRY)
+        self.print_config_helper("--http-sleep",           HELP_HTTP_SLEEP,      self.http_sleep,      DEFAULT_HTTP_SLEEP)
+        self.print_config_helper("-v, --verify-async",     HELP_VERIFY_ASYNC,    self.verify_async,    DEFAULT_VERIFY_ASYNC)
+        self.print_config_helper("--verify-retry",         HELP_VERIFY_RETRY,    self.verify_retry,    DEFAULT_VERIFY_RETRY)
+        self.print_config_helper("--verify-sleep",         HELP_VERIFY_SLEEP,    self.verify_sleep,    DEFAULT_VERIFY_SLEEP)
+        self.print_config_helper("--sync-retry",           HELP_SYNC_RETRY,      self.sync_retry,      DEFAULT_SYNC_RETRY)
+        self.print_config_helper("--sync-sleep",           HELP_SYNC_SLEEP,      self.sync_sleep,      DEFAULT_SYNC_SLEEP)
 
     def launch(self, dont_newacco=False, dont_setprod=False):
         """Steps to take for a launch
