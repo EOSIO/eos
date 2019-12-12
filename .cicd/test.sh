@@ -23,6 +23,8 @@ if [[ "$BUILDKITE" == 'true' ]]; then
     echo '+++ :arrow_up: Uploading Artifacts'
     echo 'Compressing core dumps...'
     [[ $((`ls -1 core.* 2>/dev/null | wc -l`)) != 0 ]] && tar czf core.tar.gz core.* || : # collect core dumps
+    echo 'Compressing ls-tests logs...'
+    [[ $((`ls -1 data-dir/cluster*/node*/std*.txt 2>/dev/null | wc -l`)) != 0 ]] && tar czf ls_tests_logs.tar.gz data-dir/cluster*/node*/std*.txt
     echo 'Exporting xUnit XML'
     mv -f ./Testing/$(ls ./Testing/ | grep '2' | tail -n 1)/Test.xml test-results.xml
     echo 'Uploading artifacts'
