@@ -3,8 +3,8 @@ set -eo pipefail
 # variables
 . ./.cicd/helpers/general.sh
 # tests
+export PATH=$PATH:$(cat .cicd/platform-templates/$IMAGE_TAG.sh | grep EOSIO_INSTALL_LOCATION= | cut -d= -f2)/bin
 if [[ $(uname) == 'Darwin' ]]; then # macOS
-    export PATH=$PATH:~/mongodb/bin
     set +e # defer error handling to end
     source ~/.bash_profile && ./"$@"
     EXIT_STATUS=$?
