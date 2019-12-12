@@ -6,7 +6,7 @@ set -eo pipefail
 if [[ $(uname) == 'Darwin' ]]; then # macOS
     export PATH=$PATH:~/mongodb/bin
     set +e # defer error handling to end
-    ./"$@"
+    source ~/.bash_profile && ./"$@"
     EXIT_STATUS=$?
 else # Linux
     COMMANDS="$MOUNTED_DIR/$@"

@@ -11,20 +11,21 @@ class AppArgs:
         self.args=[]
 
     class AppArg:
-        def __init__(self, flag, type, help, default, choices=None):
+        def __init__(self, flag, help, type=None, default=None, choices=None, action=None):
             self.flag=flag
             self.type=type
             self.help=help
             self.default=default
             self.choices=choices
+            self.action=action
 
     def add(self, flag, type, help, default, choices=None):
-        arg=self.AppArg(flag, type, help, default, choices)
+        arg=self.AppArg(flag, help, type=type, default=default, choices=choices)
         self.args.append(arg)
 
 
     def add_bool(self, flag, help, action='store_true'):
-        arg=self.AppArg(flag=flag, help=help, action=action)
+        arg=self.AppArg(flag, help, action=action)
         self.args.append(arg)
 
 # pylint: disable=too-many-instance-attributes
@@ -58,13 +59,15 @@ class TestHelper(object):
             parser.add_argument("-s", type=str, help="topology", choices=["mesh"], default="mesh")
         if "-c" in includeArgs:
             parser.add_argument("-c", type=str, help="chain strategy",
-                    choices=[Utils.SyncResyncTag, Utils.SyncNoneTag, Utils.SyncHardReplayTag],
+                    choices=[Utils.SyncResyncTag, Utils.SyncReplayTag, Utils.SyncNoneTag, Utils.SyncHardReplayTag],
                     default=Utils.SyncResyncTag)
         if "--kill-sig" in includeArgs:
             parser.add_argument("--kill-sig", type=str, choices=[Utils.SigKillTag, Utils.SigTermTag], help="kill signal.",
                     default=Utils.SigKillTag)
         if "--kill-count" in includeArgs:
             parser.add_argument("--kill-count", type=int, help="nodeos instances to kill", default=-1)
+        if "--terminate-at-block" in includeArgs:
+            parser.add_argument("--terminate-at-block", type=int, help="block to terminate on when replaying", default=0)
         if "--seed" in includeArgs:
             parser.add_argument("--seed", type=int, help="random seed", default=1)
 
@@ -72,7 +75,7 @@ class TestHelper(object):
             parser.add_argument("-h", "--host", type=str, help="%s host name" % (Utils.EosServerName),
                                      default=TestHelper.LOCAL_HOST)
         if "--port" in includeArgs:
-            parser.add_argument("-p", "--port", type=int, help="%s host port" % Utils.EosServerName,
+            parser.add_argument("--port", type=int, help="%s host port" % Utils.EosServerName,
                                      default=TestHelper.DEFAULT_PORT)
         if "--wallet-host" in includeArgs:
             parser.add_argument("--wallet-host", type=str, help="%s host" % Utils.EosWalletName,
@@ -112,7 +115,10 @@ class TestHelper(object):
             parser.add_argument("--alternate-version-labels-file", type=str, help="Provide a file to define the labels that can be used in the test and the path to the version installation associated with that.")
 
         for arg in applicationSpecificArgs.args:
-            parser.add_argument(arg.flag, type=arg.type, help=arg.help, choices=arg.choices, default=arg.default)
+            if arg.type is not None:
+                parser.add_argument(arg.flag, type=arg.type, help=arg.help, choices=arg.choices, default=arg.default)
+            else:
+                parser.add_argument(arg.flag, help=arg.help, action=arg.action)
 
         args = parser.parse_args()
         return args

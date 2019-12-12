@@ -2,7 +2,7 @@
 set -eo pipefail
 VERSION=1
 brew update
-brew install git cmake python@2 python libtool libusb graphviz automake wget gmp pkgconfig doxygen openssl jq boost || :
+brew install git cmake python@2 python libtool libusb graphviz automake wget gmp pkgconfig doxygen openssl@1.1 jq boost || :
 # install mongoDB
 cd ~
 curl -OL https://fastdl.mongodb.org/osx/mongodb-osx-ssl-x86_64-3.6.3.tgz
@@ -31,3 +31,11 @@ make -j $(getconf _NPROCESSORS_ONLN) VERBOSE=1
 sudo make install
 cd ../..
 rm -f mongo-cxx-driver-r3.4.0.tar.gz
+brew install nvm
+mkdir ~/.nvm
+echo "export NVM_DIR=~/.nvm" >> ~/.bash_profile
+echo "source \$(brew --prefix nvm)/nvm.sh" >> ~/.bash_profile
+cat ~/.bash_profile
+source ~/.bash_profile
+echo $NVM_DIR
+nvm install --lts=dubnium

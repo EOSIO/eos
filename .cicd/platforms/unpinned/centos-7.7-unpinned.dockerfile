@@ -1,4 +1,4 @@
-FROM centos:7.6.1810
+FROM centos:7.7.1908
 ENV VERSION 1
 # install dependencies.
 RUN yum update -y && \
@@ -73,4 +73,14 @@ ENV CCACHE_PATH="/opt/rh/devtoolset-8/root/usr/bin"
 RUN yum -y update && yum -y install wget && yum -y install gcc && yum -y install zlib* && yum -y install openssl-devel && \
     yum -y install libffi-devel && wget https://www.python.org/ftp/python/3.7.4/Python-3.7.4.tgz && tar xzf Python-3.7.4.tgz && \
     cd Python-3.7.4 && ./configure --enable-optimizations && make altinstall && cd ..
-
+# install nvm
+RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.0/install.sh | bash
+# load nvm in non-interactive shells
+RUN cp ~/.bashrc ~/.bashrc.bak && \
+    cat ~/.bashrc.bak | tail -3 > ~/.bashrc && \
+    cat ~/.bashrc.bak | head -n '-3' >> ~/.bashrc && \
+    rm ~/.bashrc.bak
+# install node 10
+RUN bash -c '. ~/.bashrc; nvm install --lts=dubnium' && \
+    ln -s "/root/.nvm/versions/node/$(ls -p /root/.nvm/versions/node | sort -Vr | head -1)bin/node" /usr/local/bin/node
+RUN yum install -y nodejs

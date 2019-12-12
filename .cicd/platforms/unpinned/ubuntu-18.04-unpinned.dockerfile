@@ -56,4 +56,15 @@ RUN curl -L https://github.com/mongodb/mongo-cxx-driver/archive/r3.4.0.tar.gz -o
 ENV PATH=${PATH}:/mongodb-linux-x86_64-ubuntu1804-4.1.1/bin
 # install python 3.7
 RUN apt-get update && apt -y install software-properties-common && add-apt-repository -y ppa:deadsnakes/ppa && apt update && apt-get update && apt -y install python3 python3-pip python3.7
-
+# install nvm
+RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.0/install.sh | bash
+# load nvm in non-interactive shells
+RUN cp ~/.bashrc ~/.bashrc.bak && \
+    cat ~/.bashrc.bak | tail -3 > ~/.bashrc && \
+    cat ~/.bashrc.bak | head -n '-3' >> ~/.bashrc && \
+    rm ~/.bashrc.bak
+# install node 10
+RUN bash -c '. ~/.bashrc; nvm install --lts=dubnium' && \
+    ln -s "/root/.nvm/versions/node/$(ls -p /root/.nvm/versions/node | sort -Vr | head -1)bin/node" /usr/local/bin/node
+RUN curl -sL https://deb.nodesource.com/setup_13.x | sudo -E bash -
+RUN sudo apt-get install -y nodejs
