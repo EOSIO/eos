@@ -6,9 +6,11 @@ Therefore, COPY and other Dockerfile-isms are not permitted. -->
 <!-- CLONE -->
 ```
 brew update && brew install git
-export EOSIO_LOCATION=$HOME/eosio && git clone https://github.com/EOSIO/eos.git $EOSIO_LOCATION
+export EOSIO_LOCATION=$HOME/eosio
+git clone https://github.com/EOSIO/eos.git $EOSIO_LOCATION
 cd $EOSIO_LOCATION && git submodule update --init --recursive
-export EOSIO_INSTALL_LOCATION=$EOSIO_LOCATION/install && mkdir -p $EOSIO_INSTALL_LOCATION
+export EOSIO_INSTALL_LOCATION=$EOSIO_LOCATION/install
+mkdir -p $EOSIO_INSTALL_LOCATION
 ```
 <!-- CLONE END -->
 ## Install Dependencies
