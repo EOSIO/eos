@@ -308,6 +308,9 @@ EOF
       PLATFORM_TYPE: $PLATFORM_TYPE
     agents:
       queue: "$BUILDKITE_TEST_AGENT_QUEUE"
+    retry:
+      manual:
+        permit_on_passed: true
     timeout: ${TIMEOUT:-20}
     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_SERIAL_TESTS}
 
@@ -336,8 +339,11 @@ EOF
           pre-execute-sleep: 10
       - thedyrt/skip-checkout#v0.1.1:
           cd: ~
-    timeout: ${TIMEOUT:-60}
     agents: "queue=mac-anka-node-fleet"
+    retry:
+      manual:
+        permit_on_passed: true
+    timeout: ${TIMEOUT:-60}
     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_SERIAL_TESTS}
 EOF
             fi
@@ -376,6 +382,9 @@ EOF
       PLATFORM_TYPE: $PLATFORM_TYPE
     agents:
       queue: "$BUILDKITE_TEST_AGENT_QUEUE"
+    retry:
+      manual:
+        permit_on_passed: true
     timeout: ${TIMEOUT:-180}
     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_LONG_RUNNING_TESTS:-true}
 
@@ -404,8 +413,11 @@ EOF
           pre-execute-sleep: 10
       - thedyrt/skip-checkout#v0.1.1:
           cd: ~
-    timeout: ${TIMEOUT:-180}
     agents: "queue=mac-anka-node-fleet"
+    retry:
+      manual:
+        permit_on_passed: true
+    timeout: ${TIMEOUT:-180}
     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_LONG_RUNNING_TESTS:-true}
 EOF
             fi
