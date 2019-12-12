@@ -45,15 +45,15 @@ def kill_and_verify(clus):
         res = clus.check_sync(min_sync_count=2, max_block_lag=2, dont_raise=True)
         min2, max2 = res.min_block_num, res.max_block_num
         assert_out_of_sync(clus, res)
-        if max2 >= min2 + 13 and min2 > min1 and max2 > max1:
+        if max2 >= min2 + 13 and min2 > min1 and min2 > max1 + 5 * 12:
             return
         time.sleep(1)
-    raise BlockchainError(f"Chain stops advancing at block num {res.max_block_num}")
+    raise BlockchainError(f"Failed to have two diverse chains, max block_num is {res.max_block_num}")
 
 
 def restart_and_verify(clus, last_block_in_sync):
-    clus.info("Freshly restart bridge node...")
-    clus.start_node(node_id=1, extra_args="--delete-all-blocks")
+    clus.info("Restart bridge node...")
+    clus.start_node(node_id=1)
     res = clus.check_sync()
     if res.block_num <= last_block_in_sync:
         raise BlockchainError(f"Chain stops advancing at block num {res.block_num}")
