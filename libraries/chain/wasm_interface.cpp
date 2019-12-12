@@ -1137,9 +1137,7 @@ class action_api : public context_aware_api {
 
       void set_action_return_value( array_ptr<char> packed_variant, uint32_t datalen ) {
          datastream<const char*> ds( packed_variant, datalen );
-         fc::variant v;
-         fc::raw::unpack(ds, v);
-         //todo set v
+         fc::raw::unpack(ds, context.action_return_value);
       }
 };
 

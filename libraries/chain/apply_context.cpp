@@ -57,6 +57,7 @@ void apply_context::exec_one()
    const account_metadata_object* receiver_account = nullptr;
    try {
       try {
+         action_return_value.clear();
          receiver_account = &db.get<account_metadata_object,by_name>( receiver );
          privileged = receiver_account->is_privileged();
          auto native = control.find_apply_handler( receiver, act->account, act->name );
@@ -143,7 +144,13 @@ void apply_context::exec_one()
       r.auth_sequence[auth.actor] = next_auth_sequence( auth.actor );
    }
 
-   trx_context.executed_action_receipt_digests.emplace_back( r.digest() );
+   uint32_t version = 0;
+   if( control.is_builtin_activated( builtin_protocol_feature_t::action_return_value ) ) {
+      set_field( version, builtin_protocol_feature_t::action_return_value, true );
+      r.return_value.emplace( action_return_value );
+   }
+
+   trx_context.executed_action_receipt_digests.emplace_back( r.digest( version ) );
 
    finalize_trace( trace, start );
 
