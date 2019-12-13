@@ -531,11 +531,11 @@ class Service:
     # TO DO IN FUTURE
     def connect_to_remote_service(self):
         self.print_header("connect to remote service")
-        self.warn("WARNING: File setting (file={}) is ignored.".format(helper.squeeze(self.file, maxlen=30)))
+        self.warn("WARNING: Executable file setting (file={}) ignored.".format(color.yellow(helper.squeeze(self.file, maxlen=30, tail=10))))
         if self.start:
-            self.warn("WARNING: Setting to always start a new launcher service (start={}) is ignored.".format(self.start))
+            self.warn("WARNING: Setting to always start a new launcher service (start={}) ignored.".format(color.yellow(self.start)))
         if self.kill:
-            self.warn("WARNING: Setting to kill existing launcher services (kill={}) is ignored.".format(self.kill))
+            self.warn("WARNING: Setting to kill existing launcher services (kill={}) ignored.".format(color.yellow(self.kill)))
         msg = "Connecting to a remote service is a feature in future."
         self.fatal("FATAL: {}".format(msg))
         raise LauncherServiceError(msg)
@@ -555,7 +555,7 @@ class Service:
 
     def print_config_helper(self, label, help, value, default_value=None):
         different = value is not None and value != default_value
-        squeezed = helper.squeeze(str(value if value is not None else default_value), maxlen=30)
+        squeezed = helper.squeeze(str(value if value is not None else default_value), maxlen=30, tail=10)
         highlighted = color.blue(squeezed) if different else squeezed
         self.debug("{:31}{:48}{}".format(color.yellow(label), help, highlighted))
 
@@ -564,43 +564,44 @@ class Service:
         service_list = helper.get_service_list_by_cmd(PROGRAM)
         if len(service_list) == 0:
             self.debug(color.yellow("No launcher service is currently running."))
+        elif len(service_list) == 1:
+            self.debug(color.green("Launcher service is currently running with process ID {} (port={}).".format(service_list[0].pid, service_list[0].port)))
         else:
-            pid_list = [x.pid for x in service_list]
-            if len(service_list) == 1:
-                self.debug(color.green("Launcher service is running with process ID {}.".format(pid_list)))
-            else:
-                self.debug(color.green("Multiple launcher services are running with process IDs {}".format(pid_list)))
+            self.debug(color.green("Multiple launcher services are currently running."))
+            self.debug(color.green("{:5}{:10}{}".format("#", "PID", "Listening Port")))
+            for i, x in enumerate(service_list):
+                self.debug(color.green("{:<5}{:<10}{}".format(i + 1, x.pid, x.port)))
         return service_list
 
     def kill_local_services(self, service_list: typing.List[typing.TypeVar("ServiceInfo")]):
         for x in service_list:
-            self.debug(color.yellow("Killing existing launcher service with process ID [{}].".format(x.pid)))
+            self.debug(color.yellow("Killing existing launcher service with process ID {} (port={}).".format(x.pid, x.port)))
             helper.terminate(x.pid)
 
     def connect_to_existing_local_service(self, service: typing.TypeVar("ServiceInfo")):
-        self.debug(color.green("Connecting to existing launcher service with process ID [{}].".format(service.pid)))
-        self.debug(color.green("No new launcher service will be started."))
-        self.debug("Configuration of existing launcher service:")
+        self.debug("No new launcher service will be started.")
+        self.debug("Configuration of the launcher service to connect to:")
         self.debug("--- Listening port: [{}]".format(color.blue(service.port)))
         self.debug("--- Path to executable file: [{}]".format(color.blue(service.file)))
         if service.gene:
             self.debug("--- Path to genesis file: [{}]".format(color.blue(service.gene)))
         if self.port != service.port:
-            self.warn("WARNING: Port setting (port={}) is ignored.".format(color.yellow(self.port)))
+            self.warn("WARNING: Port setting (port={}) ignored.".format(color.yellow(self.port)))
             self.port = service.port
         if self.file != service.file:
-            self.warn("WARNING: Executable file setting (file={}) is ignored.".format(color.yellow(self.file)))
+            self.warn("WARNING: Executable file setting (file={}) ignored.".format(color.yellow(self.file)))
             self.file = service.file
         if service.gene and self.gene != service.gene:
-            self.warn("WARNING: Genesis file setting (gene={}) is ignored.".format(color.yellow(self.gene)))
+            self.warn("WARNING: Genesis file setting (gene={}) ignored.".format(color.yellow(self.gene)))
             self.gene = service.gene
         if self.extra_args:
             self.warn("WARNING: Extra service arguments ({}) are ignored.".format(color.yellow(self.extra_args)))
         self.debug("To always start a new launcher service, pass {} or {}.".format(color.yellow("-s"), color.yellow("--start")))
         self.debug("To kill existing launcher services, pass {} or {}.".format(color.yellow("-k"), color.yellow("--kill")))
+        self.debug(color.green("Connected to the launcher service with process ID {} (port={}).".format(service.pid, service.port)))
 
     def start_local_service(self):
-        self.debug(color.green("Starting a new launcher service."))
+        self.debug(color.green("Starting a new launcher service (port={}).".format(self.port)))
         with open(PROGRAM_LOG, "w") as f:
             pass
         os.system(f"{self.file} "
@@ -618,7 +619,12 @@ class Service:
                     self.error("ERROR: {}".format(msg))
             if msg:
                 raise LauncherServiceError(msg)
-        if not self.get_local_services():
+        service_list = self.get_local_services()
+        for x in service_list:
+            if x.port == self.port:
+                self.debug(color.green("Connected to the launcher service with process ID {} (port={}).".format(x.pid, x.port)))
+                return
+        else:
             msg = "ERROR: Launcher service is not started properly!"
             self.error(msg)
             raise LauncherServiceError(msg)
