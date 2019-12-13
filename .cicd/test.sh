@@ -19,7 +19,7 @@ else # Linux
     EXIT_STATUS=$?
 fi
 # buildkite
-if [[ "$BUILDKITE" == 'true' ]]; then
+if [[ $BUILDKITE == true ]]; then
     cd build
     # upload artifacts
     echo '+++ :arrow_up: Uploading Artifacts'
@@ -36,7 +36,7 @@ if [[ "$BUILDKITE" == 'true' ]]; then
     echo 'Done uploading artifacts.'
 fi
 # re-throw
-if [[ "$EXIT_STATUS" != 0 ]]; then
+if [[ $EXIT_STATUS != 0 ]]; then
     echo "Failing due to non-zero exit status from ctest: $EXIT_STATUS"
     exit $EXIT_STATUS
 fi
