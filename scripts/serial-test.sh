@@ -11,7 +11,7 @@ if [[ "$(uname)" == 'Linux' ]]; then
     fi
     cd $GIT_ROOT && npm install
 else
-   [[ -z $(command -v node) ]] && npm install
+   npm install
 fi
 cd $GIT_ROOT/build
 # mongoDB
