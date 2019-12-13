@@ -25,7 +25,7 @@ if [[ "$(uname)" == 'Darwin' ]]; then
     cat /tmp/$POPULATED_FILE_NAME
     . /tmp/$POPULATED_FILE_NAME # This file is populated from the platform's build documentation code block
 else # Linux
-    ARGS=${ARGS:-"--rm -t -d --name $BUILDKITE_JOB_ID -v $(pwd):/root/eosio"}
+    ARGS=${ARGS:-"--rm -t -d --name $BUILDKITE_JOB_ID -v $(pwd):$MOUNTED_DIR"}
     # sed -i '1s;^;#!/bin/bash\nexport PATH=$EOSIO_INSTALL_LOCATION/bin:$PATH\n;' /tmp/$POPULATED_FILE_NAME # /build-script: line 3: cmake: command not found
     # PRE_COMMANDS: Executed pre-cmake
     [[ ! $IMAGE_TAG =~ 'unpinned' ]] && CMAKE_EXTRAS="-DCMAKE_CXX_COMPILER_LAUNCHER=ccache"

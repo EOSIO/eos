@@ -560,7 +560,7 @@ cat <<EOF
 
   - label: ":darwin: macOS 10.14 - Package Builder"
     command:
-      - "git clone \$BUILDKITE_REPO eos && cd eosio && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT"
+      - "git clone \$BUILDKITE_REPO eosio && cd eosio && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT"
       - "cd eosio && buildkite-agent artifact download build.tar.gz . --step ':darwin: macOS 10.14 - Build' && tar -xzf build.tar.gz"
       - "cd eosio && ./.cicd/package.sh"
     plugins:

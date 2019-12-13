@@ -13,9 +13,9 @@ else # Linux
     export PATH=$PATH:$(cat $CICD_DIR/platform-templates/$IMAGE_TAG.dockerfile | grep EOSIO_INSTALL_LOCATION= | cut -d= -f2)/bin
     COMMANDS="$MOUNTED_DIR/$@"
     . $HELPERS_DIR/populate-template-and-hash.sh -h # Obtain the hash from the populated template 
-    echo "$ docker run --rm --init -v $(pwd):/root/eosio $(buildkite-intrinsics) -e JOBS $FULL_TAG bash -c \"$COMMANDS\""
+    echo "$ docker run --rm --init -v $(pwd):$MOUNTED_DIR $(buildkite-intrinsics) -e JOBS $FULL_TAG bash -c \"$COMMANDS\""
     set +e # defer error handling to end
-    eval docker run --rm --init -v $(pwd):/root/eosio $(buildkite-intrinsics) -e JOBS $FULL_TAG bash -c \"$COMMANDS\"
+    eval docker run --rm --init -v $(pwd):$MOUNTED_DIR $(buildkite-intrinsics) -e JOBS $FULL_TAG bash -c \"$COMMANDS\"
     EXIT_STATUS=$?
 fi
 # buildkite
