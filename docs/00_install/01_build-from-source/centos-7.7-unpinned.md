@@ -27,7 +27,6 @@ yum update -y && \
 PATH=$EOSIO_INSTALL_LOCATION/bin:$PATH
 cd $EOSIO_INSTALL_LOCATION && curl -LO https://cmake.org/files/v3.13/cmake-3.13.2.tar.gz && \
     source /opt/rh/devtoolset-8/enable && \
-    source /opt/rh/rh-python36/enable && \
     tar -xzf cmake-3.13.2.tar.gz && \
     cd cmake-3.13.2 && \
     ./bootstrap --prefix=$EOSIO_INSTALL_LOCATION && \
@@ -37,7 +36,6 @@ cd $EOSIO_INSTALL_LOCATION && curl -LO https://cmake.org/files/v3.13/cmake-3.13.
 cp -f $EOSIO_LOCATION/scripts/clang-devtoolset8-support.patch /tmp/clang-devtoolset8-support.patch
 cd $EOSIO_INSTALL_LOCATION && curl -LO https://dl.bintray.com/boostorg/release/1.71.0/source/boost_1_71_0.tar.bz2 && \
     source /opt/rh/devtoolset-8/enable && \
-    source /opt/rh/rh-python36/enable && \
     tar -xjf boost_1_71_0.tar.bz2 && \
     cd boost_1_71_0 && \
     ./bootstrap.sh --prefix=$EOSIO_INSTALL_LOCATION && \
@@ -51,7 +49,6 @@ cd $EOSIO_INSTALL_LOCATION && curl -LO https://fastdl.mongodb.org/linux/mongodb-
 # build mongodb c driver
 cd $EOSIO_INSTALL_LOCATION && curl -LO https://github.com/mongodb/mongo-c-driver/releases/download/1.13.0/mongo-c-driver-1.13.0.tar.gz && \
     source /opt/rh/devtoolset-8/enable && \
-    source /opt/rh/rh-python36/enable && \
     tar -xzf mongo-c-driver-1.13.0.tar.gz && cd mongo-c-driver-1.13.0 && \
     mkdir -p build && cd build && \
     cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$EOSIO_INSTALL_LOCATION -DENABLE_BSON=ON -DENABLE_SSL=OPENSSL -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF -DENABLE_STATIC=ON -DENABLE_ICU=OFF -DENABLE_SNAPPY=OFF .. && \
@@ -61,7 +58,6 @@ cd $EOSIO_INSTALL_LOCATION && curl -LO https://github.com/mongodb/mongo-c-driver
 # build mongodb cxx driver
 cd $EOSIO_INSTALL_LOCATION && curl -L https://github.com/mongodb/mongo-cxx-driver/archive/r3.4.0.tar.gz -o mongo-cxx-driver-r3.4.0.tar.gz && \
     source /opt/rh/devtoolset-8/enable && \
-    source /opt/rh/rh-python36/enable && \
     tar -xzf mongo-cxx-driver-r3.4.0.tar.gz && cd mongo-cxx-driver-r3.4.0 && \
     sed -i 's/\"maxAwaitTimeMS\", count/\"maxAwaitTimeMS\", static_cast<int64_t>(count)/' src/mongocxx/options/change_stream.cpp && \
     sed -i 's/add_subdirectory(test)//' src/mongocxx/CMakeLists.txt src/bsoncxx/CMakeLists.txt && \
@@ -77,6 +73,7 @@ cd $EOSIO_INSTALL_LOCATION && curl -L https://github.com/mongodb/mongo-cxx-drive
 ```
 mkdir -p $EOSIO_LOCATION/build
 cd $EOSIO_LOCATION/build
+source /opt/rh/devtoolset-8/enable
 cmake -DCMAKE_BUILD_TYPE='Release' -DCMAKE_INSTALL_PREFIX=$EOSIO_INSTALL_LOCATION -DBUILD_MONGO_DB_PLUGIN=true ..
 make -j$(nproc)
 ```
@@ -90,6 +87,7 @@ make install
 ## Test EOSIO
 <!-- TEST -->
 ```
+source /opt/rh/rh-python36/enable
 $EOSIO_INSTALL_LOCATION/bin/mongod --fork --logpath $(pwd)/mongod.log --dbpath $(pwd)/mongodata
 make test
 ```
