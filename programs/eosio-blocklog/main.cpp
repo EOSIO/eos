@@ -81,7 +81,7 @@ void blocklog::read_log() {
 
    optional<chainbase::database> reversible_blocks;
    try {
-      elog("opening reversible db");
+      ilog("opening reversible db");
       reversible_blocks.emplace(blocks_dir / config::reversible_blocks_dir_name, chainbase::database::read_only, config::default_reversible_cache_size);
       reversible_blocks->add_index<reversible_block_index>();
       const auto& idx = reversible_blocks->get_index<reversible_block_index,by_num>();
