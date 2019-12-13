@@ -3,10 +3,11 @@ set -eo pipefail
 # variables
 . ./.cicd/helpers/general.sh
 # tests
-export PATH=$PATH:$(cat .cicd/platform-templates/$IMAGE_TAG.sh | grep EOSIO_INSTALL_LOCATION= | cut -d= -f2)/bin
+export PATH=$PATH:$(cat $CICD_DIR/.cicd/platform-templates/$IMAGE_TAG* | grep EOSIO_INSTALL_LOCATION= | cut -d= -f2)/bin
 if [[ $(uname) == 'Darwin' ]]; then # macOS
     set +e # defer error handling to end
-    source ~/.bash_profile && ./"$@"
+    source ~/.bash_profile # Ensure node is enabled for ship_test
+    ./"$@"
     EXIT_STATUS=$?
 else # Linux
     COMMANDS="$MOUNTED_DIR/$@"
