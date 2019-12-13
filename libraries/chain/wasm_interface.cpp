@@ -1136,7 +1136,7 @@ class action_api : public context_aware_api {
       }
 
       void set_action_return_value( array_ptr<char> packed_blob, uint32_t datalen ) {
-         context.action_return_value = std::vector( packed_blob.value, packed_blob.value + datalen );
+         context.action_return_value.assign( packed_blob.value, packed_blob.value + datalen );
       }
 };
 
