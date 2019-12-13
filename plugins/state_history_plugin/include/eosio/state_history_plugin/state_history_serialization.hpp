@@ -544,7 +544,7 @@ datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosi
    fc::raw::pack(ds, as_type<fc::unsigned_int>(obj.obj.code_sequence));
    fc::raw::pack(ds, as_type<fc::unsigned_int>(obj.obj.abi_sequence));
    if (obj.obj.return_value) {
-      fc::raw::pack(ds, as_type<std::vector<char>>(*obj.obj.return_value));
+      fc::raw::pack(ds, as_type<eosio::bytes>(*obj.obj.return_value));
    }
    return ds;
 }

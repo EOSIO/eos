@@ -94,7 +94,7 @@ extern const char* const state_history_plugin_abi = R"({
                 { "name": "auth_sequence", "type": "account_auth_sequence[]" },
                 { "name": "code_sequence", "type": "varuint32" },
                 { "name": "abi_sequence", "type": "varuint32" },
-                { "name": "return_value", "type": "xxx" }
+                { "name": "return_value", "type": "bytes" }
             ]
         },
         {
