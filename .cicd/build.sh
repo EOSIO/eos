@@ -40,7 +40,7 @@ else # Linux
     elif [[ $IMAGE_TAG == 'amazon_linux-2-unpinned' ]]; then
         PRE_COMMANDS="export PATH=/usr/lib64/ccache:\\\$PATH"
     elif [[ "$IMAGE_TAG" == 'centos-7.7-unpinned' ]]; then
-        PRE_COMMANDS="source /opt/rh/devtoolset-8/enable && source /opt/rh/rh-python36/enable && export PATH=/usr/lib64/ccache:\\\$PATH"
+        PRE_COMMANDS="export PATH=/usr/lib64/ccache:\\\$PATH"
     elif [[ $IMAGE_TAG == 'ubuntu-18.04-unpinned' ]]; then
         PRE_COMMANDS="export PATH=/usr/lib/ccache:\\\$PATH"
     fi
