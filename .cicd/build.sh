@@ -21,6 +21,7 @@ if [[ "$(uname)" == 'Darwin' ]]; then
         sed -i -e 's/^cmake /cmake -DCMAKE_CXX_COMPILER_LAUNCHER=ccache /g' /tmp/$POPULATED_FILE_NAME
     fi
     . $HELPERS_DIR/populate-template-and-hash.sh -h # obtain $FULL_TAG (and don't overwrite existing file)
+    source ~/.bash_profile # Make sure node is available for ship_test
     cat /tmp/$POPULATED_FILE_NAME
     . /tmp/$POPULATED_FILE_NAME # This file is populated from the platform's build documentation code block
 else # Linux
