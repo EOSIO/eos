@@ -4,13 +4,13 @@ set -eo pipefail
 . ./.cicd/helpers/general.sh
 # tests
 if [[ $(uname) == 'Darwin' ]]; then # macOS
-    export PATH=$PATH:$(cat $CICD_DIR/.cicd/platform-templates/$IMAGE_TAG.sh | grep EOSIO_INSTALL_LOCATION= | cut -d= -f2)/bin
+    export PATH=$PATH:$(cat $CICD_DIR/platform-templates/$IMAGE_TAG.sh | grep EOSIO_INSTALL_LOCATION= | cut -d= -f2)/bin
     set +e # defer error handling to end
     source ~/.bash_profile # Ensure node is enabled for ship_test
     ./"$@"
     EXIT_STATUS=$?
 else # Linux
-    export PATH=$PATH:$(cat $CICD_DIR/.cicd/platform-templates/$IMAGE_TAG.dockerfile | grep EOSIO_INSTALL_LOCATION= | cut -d= -f2)/bin
+    export PATH=$PATH:$(cat $CICD_DIR/platform-templates/$IMAGE_TAG.dockerfile | grep EOSIO_INSTALL_LOCATION= | cut -d= -f2)/bin
     COMMANDS="$MOUNTED_DIR/$@"
     . $HELPERS_DIR/populate-template-and-hash.sh -h # Obtain the hash from the populated template 
     echo "$ docker run --rm --init -v $(pwd):$MOUNTED_DIR $(buildkite-intrinsics) -e JOBS $FULL_TAG bash -c \"$COMMANDS\""
