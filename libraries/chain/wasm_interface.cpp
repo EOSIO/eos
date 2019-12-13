@@ -1135,9 +1135,8 @@ class action_api : public context_aware_api {
          return context.get_receiver();
       }
 
-      void set_action_return_value( array_ptr<char> packed_variant, uint32_t datalen ) {
-         datastream<const char*> ds( packed_variant, datalen );
-         fc::raw::unpack(ds, context.action_return_value);
+      void set_action_return_value( array_ptr<char> packed_blob, uint32_t datalen ) {
+         context.action_return_value = std::vector( packed_blob.value, packed_blob.value + datalen );
       }
 };
 
