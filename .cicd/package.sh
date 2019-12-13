@@ -1,7 +1,6 @@
 #!/bin/bash
 set -eo pipefail
 . ./.cicd/helpers/general.sh
-mkdir -p $BUILD_DIR
 if [[ $(uname) == 'Darwin' ]]; then
     bash -c "cd build/packages && chmod 755 ./*.sh && ./generate_package.sh brew"
     ARTIFACT='*.rb;*.tar.gz'
@@ -18,7 +17,7 @@ if [[ $(uname) == 'Darwin' ]]; then
     done
 else # Linux
     ARGS=${ARGS:-"--rm --init -v $(pwd):$MOUNTED_DIR"}
-    . $HELPERS_DIR/populate-template-and-hash.sh # Prepare the platform-template with contents from the documentation
+    . $HELPERS_DIR/populate-template-and-hash.sh -h # Prepare the platform-template with contents from the documentation
     PRE_COMMANDS="cd $MOUNTED_DIR/build/packages && chmod 755 ./*.sh"
     if [[ "$IMAGE_TAG" =~ "ubuntu" ]]; then
         ARTIFACT='*.deb'
