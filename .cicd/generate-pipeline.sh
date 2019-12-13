@@ -180,6 +180,9 @@ for ROUND in $(seq 1 $ROUNDS); do
       PLATFORM_TYPE: $PLATFORM_TYPE
     agents:
       queue: "$BUILDKITE_BUILD_AGENT_QUEUE"
+    retry:
+      manual:
+        permit_on_passed: true
     timeout: ${TIMEOUT:-30}
     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_UNIT_TESTS}
 
@@ -206,8 +209,11 @@ EOF
             - 'registry_1'
             - 'registry_2'
           pre-execute-sleep: 10
-    timeout: ${TIMEOUT:-60}
     agents: "queue=mac-anka-node-fleet"
+    retry:
+      manual:
+        permit_on_passed: true
+    timeout: ${TIMEOUT:-60}
     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_UNIT_TESTS}
 
 EOF
@@ -236,6 +242,9 @@ EOF
       PLATFORM_TYPE: $PLATFORM_TYPE
     agents:
       queue: "$BUILDKITE_BUILD_AGENT_QUEUE"
+    retry:
+      manual:
+        permit_on_passed: true
     timeout: ${TIMEOUT:-30}
     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_WASM_SPEC_TESTS}
 
@@ -262,8 +271,11 @@ EOF
             - 'registry_1'
             - 'registry_2'
           pre-execute-sleep: 10
-    timeout: ${TIMEOUT:-60}
     agents: "queue=mac-anka-node-fleet"
+    retry:
+      manual:
+        permit_on_passed: true
+    timeout: ${TIMEOUT:-60}
     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_WASM_SPEC_TESTS}
 
 EOF
@@ -295,6 +307,9 @@ EOF
       PLATFORM_TYPE: $PLATFORM_TYPE
     agents:
       queue: "$BUILDKITE_TEST_AGENT_QUEUE"
+    retry:
+      manual:
+        permit_on_passed: true
     timeout: ${TIMEOUT:-20}
     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_SERIAL_TESTS}
 
@@ -321,8 +336,11 @@ EOF
             - 'registry_1'
             - 'registry_2'
           pre-execute-sleep: 10
-    timeout: ${TIMEOUT:-60}
     agents: "queue=mac-anka-node-fleet"
+    retry:
+      manual:
+        permit_on_passed: true
+    timeout: ${TIMEOUT:-60}
     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_SERIAL_TESTS}
 EOF
             fi
@@ -355,6 +373,9 @@ EOF
       PLATFORM_TYPE: $PLATFORM_TYPE
     agents:
       queue: "$BUILDKITE_TEST_AGENT_QUEUE"
+    retry:
+      manual:
+        permit_on_passed: true
     timeout: ${TIMEOUT:-180}
     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_LONG_RUNNING_TESTS:-true}
 
@@ -381,8 +402,11 @@ EOF
             - 'registry_1'
             - 'registry_2'
           pre-execute-sleep: 10
-    timeout: ${TIMEOUT:-180}
     agents: "queue=mac-anka-node-fleet"
+    retry:
+      manual:
+        permit_on_passed: true
+    timeout: ${TIMEOUT:-180}
     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_LONG_RUNNING_TESTS:-true}
 EOF
             fi
