@@ -16,7 +16,6 @@ import dataclasses
 import math
 import os
 import platform
-import shlex
 import string
 import threading
 import time
@@ -123,7 +122,7 @@ HELP_FLAG = "Set stdout logging level to FLAG (90)"
 HELP_LOG_OFF = "Set stdout logging level to OFF (100)"
 HELP_MONOCHROME = "Do not print in colors for stdout logging"
 HELP_DONT_BUFFER = "Do not buffer for stdout logging"
-HELP_DONT_RENAME = "Do not rename log file(s) by cluster ID"
+HELP_DONT_RENAME = "Do not rename log files by cluster ID"
 HELP_HIDE_CLOCK_TIME = "Hide clock time in stdout logging"
 HELP_HIDE_ELAPSED_TIME = "Hide elapsed time in stdout logging"
 HELP_HIDE_FILENAME = "Hide filename in stdout logging"
@@ -625,7 +624,7 @@ class Service:
                 self.debug(color.green("Connected to the launcher service with process ID {} (port={}).".format(x.pid, x.port)))
                 return
         else:
-            msg = "ERROR: Launcher service is not started properly!"
+            msg = "ERROR: Launcher service (port={}) is not properly started!".format(self.port)
             self.error(msg)
             raise LauncherServiceError(msg)
 
@@ -697,9 +696,8 @@ class Cluster:
                  unstarted_count=None,
                  topology=None,
                  center_node_id=None,
-                 tokens_supply=None,
-                 extra_configs: typing.List[str]=None,
                  extra_args: str=None,
+                 extra_configs: typing.List[str]=None,
                  dont_newacco=None,
                  dont_setprod=None,
                  http_retry=None,
@@ -745,7 +743,7 @@ class Cluster:
             If topology is bridge, center node ID cannot be 0 or last one.
             No default value.
         extra_args : str
-            Extra arguments to pass to launcher service.
+            Extra arguments to pass to nodeos via launcher service.
             e.g. "--delete-all-blocks"
             Default is "".
         extra_configs : list
@@ -1030,18 +1028,23 @@ class Cluster:
         if node_list is None: node_list = list(range(self.node_count))
         self.print_header("wait for nodes to get ready", level=level)
         max_wait_time = retry * sleep
+        begin_time = time.time()
+        self.log(f"Max wait time = {max_wait_time}s ({retry} * {sleep}s)", level=level)
         while True:
+            check_time = time.time()
             result = self.get_cluster_info(level=sublevel).response_dict["result"]
             error_node_list = [x[0] for x in result if x[0] in node_list and "error" in x[1]]
             error_node_count = len(error_node_list)
             if error_node_count == 0:
                 self.log(f"All {len(node_list)} nodes are ready.", level=level)
                 return True
+            retry = int((max_wait_time + begin_time - time.time()) / sleep)
             if retry > 0:
+                time_to_sleep = sleep if time.time() - check_time < sleep else 0
                 self.log(f"Nodes that are not ready: {error_node_list}. "
-                         f"{retry} {helper.plural(['retry', 'retries'], retry)} remain. Sleep for {sleep}s.", level=level)
-                time.sleep(sleep)
-                retry -= 1
+                         f"Max {retry} {helper.plural(['retry', 'retries'], retry)} remain. "
+                         + (f"Sleep for {time_to_sleep}s." if time_to_sleep else ""), level=level)
+                time.sleep(time_to_sleep)
             else:
                 msg = f"After waiting for {max_wait_time}s, there still are nodes that are not ready: {error_node_list}."
                 self.error(msg)
