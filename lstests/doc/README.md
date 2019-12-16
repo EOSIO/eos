@@ -100,7 +100,7 @@ if __name__ == "__main__":
 
 The imports bring into scope the related classes. Note that `Logger` resides in `core.logger` while `Service` and `Cluster` reside in `core.service`. `LauncherServiceError`, `BlockchainError`, `SyncError` represent `RuntimeError` types but are specifically related to the launcher service, blockchain logic, and in particular, the in-sync status of nodes.
 
-A `Logger` object has the full control over the logging behavior through the test. It is created by specifying where to log, and what to log. In this case, the `Logger` has four logging destinations: printing to the screen, plus writing to three log files, at different log levels.
+A `Logger` object has full control over the logging behavior throughout the test. It is created by specifying where to log, and what to log. In this case, the `Logger` has four logging destinations: printing to the screen, plus writing to three log files, at different log levels.
 
 A `Service` object should know the `Logger` and the settings regarding the launcher service. In this case, except for registering the `Logger`, everything is set to default. Normally it is safe to do so. The `Service` object will automatically detect the file and port if there is an existing launcher service running in the background.
 
@@ -115,9 +115,9 @@ A `Cluster` object should know the `Service` and the settings regarding the clus
 
 The first three settings together suggest that the node mapping will be 3 producer accounts in node #0, and 2 producer accounts each in nodes #1 and #2.
 
-Node #1 is going be to the connecting node for the `bridge` network topology.
+Node #1 is going to be the connecting node for the `bridge` network topology.
 
-In the process of bootstrapping, the producer accounts will be created using `newaccount`, but they will *not* be set as producers using `setprods`. This is because there will be customized producer-setting process in the body of testing.
+In the process of bootstrapping, the producer accounts will be created using `newaccount`, but they will *not* be set as producers using `setprods`. This is because there will be a customized producer-setting process in the body of testing.
 
 #### The Context Manager
 
@@ -127,7 +127,7 @@ It is recommended to operate on a `Cluster` object using a context manager, i.e.
 with init_cluster() as clus:
 ```
 
-it is guaranteed that when the program crashes, say because of an unexpected `RuntimeError`, all the buffered information will be flushed.
+it is guaranteed that if the program crashes, say because of an unexpected `RuntimeError`, all the buffered information will be flushed.
 
 ## Configuration
 
@@ -165,64 +165,67 @@ or simply
 ./script.py -i 6
 ```
 
-The purpose of the design is to allow flexibility in the testing. It allows users to temporarily change the testing behavior without modifying the script. For example, if the user pass `--debug` at the command line, the logger will print out all the logging information at or above `debug` level on the screen, regardless of the original threshold for the log level.
+The purpose of the design is to allow flexibility in the testing. It allows users to temporarily change the testing behavior without modifying the script. For example, if the user passes `--debug` at the command line, the logger will print out all the logging information at or above `debug` level on the screen, regardless of the original threshold for the log level.
 
 ### Ask for Help
 
-For command-line configuration, pass `-h` or `--help` will list all the settings. Below is a list made from the list.
+For command-line configuration, passing `-h` or `--help` will list all the settings. Below is the list of settings.
 
 ```
   Launcher Service-based EOSIO Testing Framework
 
-  -h, --help                    Show this message and exit
-  ----- Service options ------------------------------------------------------
-  -a IP, --addr IP              IP address of launcher service
-  -o PORT, --port PORT          Listening port of launcher service
-  -w PATH, --wdir PATH          Working directory
-  -f PATH, --file PATH          Path to local launcher service file
-  -g PATH, --gene PATH          Path to genesis file
-  -s, --start                   Always start a new launcher service
-  -k, --kill                    Kill existing launcher services (if any)
-  ----- Cluster options ------------------------------------------------------
-  -c PATH, --cdir PATH          Smart contracts directory
-  -i ID, --cluster-id ID        Cluster ID to launch with
-  -n NUM, --node-count NUM      Number of nodes
-  -p NUM, --pnode-count NUM     Number of nodes with producers
-  -q NUM, --producer-count NUM  Number of producers
-  -u NUM, --unstarted-count NUM Number of unstarted nodes
-  -t SHAPE, --topology SHAPE    Cluster topology to launch with
-  -x ID, --center-node-id ID    Center node ID (for bridge or star topology)
-  --dont-newacco                Do not create accounts in launch
-  --dont-setprod                Do not set producers in launch
-  --http-retry NUM              HTTP connection: max num of retries
-  --http-sleep TIME             HTTP connection: sleep time between retries
-  -v, --verify-async            Verify transaction: verify asynchronously
-  --verify-retry NUM            Verify transaction: max num of retries
-  --verify-sleep TIME           Verify transaction: sleep time between retries
-  --sync-retry NUM              Check sync: max num of retries
-  --sync-sleep TIME             Check sync: sleep time between retries
-  ----- Logger options -------------------------------------------------------
-  -l LEVEL, --log-level LEVEL   Stdout logging level (numeric)
-  --all                         Set stdout logging level to ALL (0)
-  --trace                       Set stdout logging level to TRACE (10)
-  --debug                       Set stdout logging level to DEBUG (20)
-  --info                        Set stdout logging level to INFO (30)
-  --warn                        Set stdout logging level to WARN (40)
-  --error                       Set stdout logging level to ERROR (50)
-  --fatal                       Set stdout logging level to FATAL (60)
-  --flag                        Set stdout logging level to FLAG (90)
-  --off                         Set stdout logging level to OFF (100)
-  --monochrome                  Do not print in colors for stdout logging
-  --dont-buffer                 Do not buffer for stdout logging
-  --dont-rename                 Do not rename log file(s) by cluster ID
-  -hct, --hide-clock-time       Hide clock time in stdout logging
-  -het, --hide-elapsed-time     Hide elapsed time in stdout logging
-  -hfi, --hide-filename         Hide filename in stdout logging
-  -hli, --hide-lineno           Hide line number in stdout logging
-  -hfu, --hide-function         Hide function name in stdout logging
-  -hth, --hide-thread           Hide thread name in stdout logging
-  -hll, --hide-log-level        Hide log level in stdout logging
-  -hall, --hide-all             Hide all the above in stdout logging
+  -h, --help                     Show this message and exit
+  ----- Service Settings ------------------------------------------------------
+  -a IP, --addr IP               IP address of launcher service
+  -o PORT, --port PORT           Listening port of launcher service
+  -w PATH, --wdir PATH           Working directory
+  -f PATH, --file PATH           Path to executable file of launcher service
+  -g PATH, --gene PATH           Path to genesis file
+  -s, --start                    Always start a new launcher service
+  -k, --kill                     Kill existing launcher services (if any)
+  --extra-service-args ARGS      Extra arguments to pass to launcher service
+  ----- Cluster Settings ------------------------------------------------------
+  -c PATH, --cdir PATH           Smart contracts directory
+  -i ID, --cluster-id ID         Cluster ID to launch with
+  -n NUM, --node-count NUM       Number of nodes
+  -p NUM, --pnode-count NUM      Number of nodes with producers
+  -q NUM, --producer-count NUM   Number of producers
+  -u NUM, --unstarted-count NUM  Number of unstarted nodes
+  -t SHAPE, --topology SHAPE     Cluster topology to launch with
+  -r ID, --center-node-id ID     Center node ID (for bridge or star topology)
+  --extra-args ARGS              Extra arguments to pass to nodeos
+  --extra-configs CONFIGS        Extra configs to pass to nodeos
+  --dont-newacco                 Do not create accounts after launch
+  --dont-setprod                 Do not set producers after launch
+  --http-retry NUM               HTTP connection: max num of retries
+  --http-sleep TIME              HTTP connection: sleep time between retries
+  -v, --verify-async             Verify transaction: verify asynchronously
+  --verify-retry NUM             Verify transaction: max num of retries
+  --verify-sleep TIME            Verify transaction: sleep time between retries
+  --sync-retry NUM               Check sync: max num of retries
+  --sync-sleep TIME              Check sync: sleep time between retries
+  ----- Logger Settings -------------------------------------------------------
+  -l LEVEL, --log-level LEVEL    Stdout logging level (numeric)
+  --all                          Set stdout logging level to ALL (0)
+  --trace                        Set stdout logging level to TRACE (10)
+  --debug                        Set stdout logging level to DEBUG (20)
+  --info                         Set stdout logging level to INFO (30)
+  --warn                         Set stdout logging level to WARN (40)
+  --error                        Set stdout logging level to ERROR (50)
+  --fatal                        Set stdout logging level to FATAL (60)
+  --flag                         Set stdout logging level to FLAG (90)
+  --off                          Set stdout logging level to OFF (100)
+  -m, --monochrome               Do not print in colors for stdout logging
+  --dont-buffer                  Do not buffer for stdout logging
+  --dont-rename                  Do not rename log files by cluster ID
+  -hct, --hide-clock-time        Hide clock time in stdout logging
+  -het, --hide-elapsed-time      Hide elapsed time in stdout logging
+  -hfi, --hide-filename          Hide filename in stdout logging
+  -hli, --hide-lineno            Hide line number in stdout logging
+  -hfu, --hide-function          Hide function name in stdout logging
+  -hth, --hide-thread            Hide thread name in stdout logging
+  -hll, --hide-log-level         Hide log level in stdout logging
+  -hall, --hide-all              Hide all the above in stdout logging
 ```
 
 ### `Logger`
@@ -283,9 +286,9 @@ In general, for a writer, the settings include
 
 Buffering only matters when there are multiple threads, for example, when creating multiple accounts in parallel, or when verifying a transaction asynchronously.
 
-For a writer, if `buffered=True`, it will be possible to keep information organized and make the log result human-readable. If `buffered=False`, logging will take place as soon as a line is ready. Multiple threads may log in an interleaving manner, unaware of others' existence. In general, setting `buffered=False` will *not* reduce the entire logging time, but will keep the lines in a strict chronological order, though the information itself may not be human-readable.
+For a writer, if `buffered=True`, it will be possible to keep information organized and make the log result human-readable. If `buffered=False`, logging will take place as soon as a line is ready. Multiple threads may log in an interleaving manner, unaware of each other's existence. In general, setting `buffered=False` will *not* reduce the entire logging time, but will keep the lines in a strict chronological order, though the information itself may not be human-readable.
 
-Note that, `buffered=True` only provides a possibility to buffer. Buffering does not happen automatically. A line of information will only be buffered when it is explicitly told  to do so.
+Note that, `buffered=True` only provides a possibility to buffer. Buffering does not happen automatically. A line of information will only be buffered when it is explicitly told to do so.
 
 For example, given two threads, both scheduled to execute
 
@@ -373,7 +376,7 @@ This line will be written to any logging destination with a threshold at or lowe
 
 ### `Service`
 
-A `Service` object represents the connection with the launcher service running in the background. Once a `Service` object is created, it will try to connect the launcher service automatically.
+A `Service` object represents the connection with the launcher service running in the background. Once a `Service` object is created, it will try to connect to the launcher service automatically.
 
 After configuration, the `Service` may override the settings according to the command-line arguments, including:
 
@@ -424,9 +427,9 @@ A detailed explanation of the parameters to initialize a `Service` object can be
 
 ### `Cluster`
 
-A `Cluster` object represents a cluster of nodes running on launcher service. It is the major proxy for tests to communicate with launcher service. A `Cluster` object must have a `Service` object registered to it at initialization.
+A `Cluster` object represents a cluster of nodes running on launcher service. It is the major proxy for tests to communicate with the launcher service. A `Cluster` object must have a `Service` object registered to it at initialization.
 
-After configuration, the node cluster will be launched with the help of `eosio.bios` contract.
+After configuration, the node cluster will be launched with the help of the `eosio.bios` contract.
 
 A detailed explanation of the parameters to initialize a `Cluster` object can be found in its docstring.
 
@@ -435,7 +438,7 @@ Parameters
 ----------
 service : Service
     Launcher service object on which the node cluster will run
-cidr : str
+cdir : str
     Smart contracts directory.
     Can be either absolute or relative to service's working directory.
 cluster_id : int
@@ -471,10 +474,10 @@ extra_args : str
     e.g. "--delete-all-blocks"
     No default value.
 dont_newacco : bool
-    Do not create accounts in launch.
+    Do not create accounts after launch.
     Default is False (will create producer accounts).
 dont_setprod : bool
-    Do not set producers in launch.
+    Do not set producers after launch.
     Default is False (will set producers).
 http_retry : int
     Max number of retries in HTTP connection.
@@ -484,14 +487,14 @@ http_sleep : float
     Default is 0.25.
 verify_async : bool
     Verify transactions asynchronously.
-    Start a separate thread for transaction verfication. Do not wait
+    Start a separate thread for transaction verification. Do not wait
     for a transaction to be verified before making next transaction.
     Default is False (will wait for verification result).
 verify_retry : int
-    Max number of retries in transaction verfication.
+    Max number of retries in transaction verification.
     Default is 100.
 verify_sleep : float
-    Sleep time (in seconds) between verfication retries.
+    Sleep time (in seconds) between verification retries.
     Default is 0.25.
 sync_retry : int
     Max number of retries in checking if nodes are in sync.
@@ -541,11 +544,11 @@ Almost all the methods finally passes through or are dependent on the `call()`  
   7. return the result as a Connection object
 ```
 
-The exact actions to take are fully customizable. Refer to `**call_kwargs` for the full control.
+The exact actions to take are fully customizable. Refer to `**call_kwargs` for full control.
 
 ### Main API
 
-After the node cluster is successfully launched, all the test actions can be performed on the cluster, with main API listed below.
+After the node cluster is successfully launched, all the test actions can be performed on the cluster. The main API is listed below.
 
     Main API
     --------
@@ -615,7 +618,7 @@ One special parameter across almost all the methods is `**call_kwargs`, which re
  dont_flush
 ```
 
-These parameters adds to the flexibility of a test script. Consider
+These parameters add to the flexibility of a test script. Consider
 
 ```python
 def get_cluster_info(self, **call_kwargs):
