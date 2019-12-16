@@ -596,14 +596,13 @@ One special parameter across almost all the methods is `**call_kwargs`, which re
  verify_key
  verify_sleep
  verify_retry
- verify_assert
  verify_dont_raise
  header
  level
  header_level
  url_level
  request_text_level
- retry_info_level
+ retry_code_level
  retry_text_level
  response_code_level
  response_text_level
