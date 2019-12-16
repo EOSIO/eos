@@ -13,6 +13,7 @@ import argparse
 import base64
 import collections
 import dataclasses
+import functools
 import math
 import os
 import platform
@@ -988,23 +989,38 @@ class Cluster:
 
 # --------------- composite queries: queries that are dependent on simple queries -------------------------------------
 
+    def log_response_error(func):
+        @functools.wraps(func)
+        def wrapper(self, *args, **kwargs):
+            try:
+                return func(self, *args, **kwargs)
+            except (KeyError, IndexError, TypeError):
+                self.error("Response dictionary may have changed format.")
+                raise
+        return wrapper
+
+    @log_response_error
     def get_node_pid(self, node_id, **call_kwargs):
         return self.get_cluster_running_state(**call_kwargs).response_dict["result"]["nodes"][node_id][1]["pid"]
 
     def is_node_down(self, node_id, **call_kwargs):
         return self.get_node_pid(node_id, **call_kwargs) == 0
 
+    @log_response_error
     def is_node_ready(self, node_id, **call_kwargs):
         return "error" not in self.get_cluster_info(**call_kwargs).response_dict["result"][node_id][1]
 
+    @log_response_error
     def get_head_block_number(self, node_id=0, **call_kwargs):
         """Get head block number by node id."""
         return self.get_cluster_info(**call_kwargs).response_dict["result"][node_id][1]["head_block_num"]
 
+    @log_response_error
     def get_head_block_producer(self, node_id=0, **call_kwargs):
         """Get head block producer by node id."""
         return self.get_cluster_info(**call_kwargs).response_dict["result"][node_id][1]["head_block_producer"]
 
+    @log_response_error
     def get_running_nodes(self, **call_kwargs):
         cluster_result = self.get_cluster_info(**call_kwargs).response_dict["result"]
         count = 0
@@ -1013,6 +1029,7 @@ class Cluster:
                 count += 1
         return count
 
+    @log_response_error
     def get_log(self, node_id=0, length=10000, filename="stderr_0.txt", **call_kwargs):
         log = ""
         offset = 0
@@ -1065,6 +1082,7 @@ class Cluster:
         if not dont_raise:
             raise BlockchainError(msg)
 
+    @log_response_error
     def wait_get_producer_by_block(self, block_num, node_id=0, retry=10, dont_raise=False, level="debug", sublevel="trace"):
         """Get block producer by block num. If that block has not been produced, wait for it."""
         return self.wait_get_block(block_num=block_num, node_id=node_id, retry=retry, dont_raise=dont_raise,
@@ -1223,7 +1241,7 @@ class Cluster:
 
     def verify(self,
                transaction_id,
-               verify_key=None,
+               verify_key,
                verify_async=False,
                dont_raise=False,
                retry=None,
@@ -1232,31 +1250,44 @@ class Cluster:
                retry_level=None,
                error_level=None,
                buffer=None):
-        verify_async = helper.override(self.verify_async, verify_async, self.cla.verify_async)
-        retry = helper.override(self.verify_retry, retry, self.cla.verify_retry)
-        sleep = helper.override(self.verify_sleep, sleep, self.cla.verify_sleep)
-        verified = False
-        for _ in range(retry + 1):
-            if self.verify_transaction(transaction_id=transaction_id, verify_key=verify_key, level=retry_level, buffer=buffer):
-                verified = True
-                break
-            time.sleep(sleep)
+
+        retry = helper.override(self.verify_retry, retry)
+        sleep = helper.override(self.verify_sleep, sleep)
+        level = helper.override("debug", level)
+        retry_level = helper.override("trace", retry_level)
+        error_level = helper.override("error", error_level)
+        buffer = True if verify_async else buffer
+
+        def verify_helper():
+            verified = False
+            for _ in range(retry + 1):
+                if self.verify_transaction(transaction_id=transaction_id, verify_key=verify_key, level=retry_level, buffer=buffer):
+                    verified = True
+                    break
+                time.sleep(sleep)
+            if verify_async:
+                self.print_header("async verify transaction", level=level, buffer=True)
+                if verified:
+                    self.log(color.black_on_green(f"{verify_key.title()}") + f" {transaction_id}", level=level, buffer=True)
+                else:
+                    self.log(color.black_on_red(f"Not {verify_key.title()}") + f" {transaction_id}", level=error_level, buffer=True)
+                self.print_header("", sep="", level=level, buffer=True)
+                self.flush()
+            else:
+                if verified:
+                    self.log(color.black_on_green(f"{verify_key.title()}"), level=level)
+                else:
+                    self.log(color.black_on_red(f"Not {verify_key.title()}"), level=error_level)
+            if not verified and not dont_raise:
+                raise BlockchainError(f"{transaction_id} cannot be verified")
+            return verified
+
         if verify_async:
-            self.print_header("async verify transaction", level=level, buffer=True)
-            if verified:
-                self.log(color.black_on_green(f"{verify_key.title()}") + f" {transaction_id}", level=level, buffer=True)
-            else:
-                self.log(color.black_on_red(f"Not {verify_key.title()}") + f" {transaction_id}", level=error_level, buffer=True)
-            self.print_header("", sep="", level=level, buffer=True)
-            self.flush()
+            t = threading.Thread(target=verify_helper)
+            t.start()
+            self.verify_threads.append(t)
         else:
-            if verified:
-                self.log(color.black_on_green(f"{verify_key.title()}"), level=level)
-            else:
-                self.log(color.black_on_red(f"Not {verify_key.title()}"), level=error_level)
-        if not verified and not dont_raise:
-            raise BlockchainError(f"{transaction_id} cannot be verified")
-        return verified
+            verify_helper()
 
     def check_sync(self, retry=None, sleep=None, min_sync_count=None, max_block_lag=None, dont_raise=False, level="debug"):
         @dataclasses.dataclass
@@ -1386,18 +1417,17 @@ class Cluster:
              retry=None,
              sleep=None,
              dont_raise=False,
-             verify_async=None,
              verify_key=None,
-             verify_sleep=None,
+             verify_async=None,
              verify_retry=None,
-             verify_assert=True,
+             verify_sleep=None,
              verify_dont_raise=None,
              header=None,
              level=None,
              header_level=None,
              url_level=None,
              request_text_level=None,
-             retry_info_level=None,
+             retry_code_level=None,
              retry_text_level=None,
              response_code_level=None,
              response_text_level=None,
@@ -1459,14 +1489,11 @@ class Cluster:
         sleep = helper.override(self.http_sleep, sleep, self.cla.http_sleep)
         data.setdefault("cluster_id", self.cluster_id)
         data.setdefault("node_id", 0)
-
-        verify_async = helper.override(self.verify_async, verify_async, self.cla.verify_async)
-
         level = helper.override("debug", level)
         header_level = helper.override(level, header_level)
         url_level = helper.override(level, url_level)
         request_text_level = helper.override(level, request_text_level)
-        retry_info_level = helper.override("trace", retry_info_level)
+        retry_code_level = helper.override("trace", retry_code_level)
         retry_text_level = helper.override("trace", retry_text_level)
         response_code_level = helper.override(level, response_code_level)
         response_text_level = helper.override("trace", response_text_level)
@@ -1474,19 +1501,15 @@ class Cluster:
         no_transaction_id_level = helper.override(transaction_id_level, no_transaction_id_level)
         error_level = helper.override("error", error_level)
         error_text_level = helper.override(error_level, error_text_level)
-        verify_level = helper.override(level, verify_level)
-        verify_retry_level = helper.override(retry_info_level, verify_retry_level)
-        verify_error_level = helper.override(error_level, verify_error_level)
-
         self.print_header(header, level=header_level, buffer=buffer)
         # communication with launcher service
         cx = Connection(url=f"http://{self.service.addr}:{self.service.port}/v1/launcher/{api}", data=data)
         self.log(cx.url, level=url_level, buffer=buffer)
         self.log(cx.request_text, level=request_text_level, buffer=buffer)
         while not cx.ok and retry > 0:
-            self.log(cx.response_code, level=retry_info_level, buffer=buffer)
+            self.log(cx.response_code, level=retry_code_level, buffer=buffer)
             self.log(cx.response_text, level=retry_text_level, buffer=buffer)
-            self.log(f"{retry} retries remain for http connection. Sleep for {sleep}s.", level=retry_info_level, buffer=buffer)
+            self.log(f"{retry} retries remain for http connection. Sleep for {sleep}s.", level=retry_code_level, buffer=buffer)
             time.sleep(sleep)
             cx.attempt()
             retry -= 1
@@ -1504,31 +1527,16 @@ class Cluster:
                 raise LauncherServiceError(cx.response_text)
         # verification of transaction
         if verify_key:
-            if verify_async:
-                t = threading.Thread(target=self.verify,
-                                     kwargs={"transaction_id": cx.transaction_id,
-                                             "verify_key": verify_key,
-                                             "verify_async": True,
-                                             "dont_raise": verify_dont_raise,
-                                             "retry": verify_retry,
-                                             "sleep":verify_sleep,
-                                             "level": verify_level,
-                                             "retry_level": verify_retry_level,
-                                             "error_level": verify_error_level,
-                                             "buffer": True})
-                t.start()
-                self.verify_threads.append(t)
-            else:
-                self.verify(transaction_id=cx.transaction_id,
-                            verify_key=verify_key,
-                            verify_async=False,
-                            dont_raise=verify_dont_raise,
-                            retry=verify_retry,
-                            sleep=verify_sleep,
-                            level=verify_level,
-                            retry_level=verify_retry_level,
-                            error_level=verify_error_level,
-                            buffer=buffer)
+            self.verify(transaction_id=cx.transaction_id,
+                        verify_key=verify_key,
+                        verify_async=helper.override(self.verify_async, verify_async),
+                        dont_raise=helper.override(dont_raise, verify_dont_raise),
+                        retry=helper.override(self.verify_retry, verify_retry),
+                        sleep=helper.override(self.verify_sleep, verify_sleep),
+                        level=helper.override(level, verify_level),
+                        retry_level=helper.override(retry_code_level, verify_retry_level),
+                        error_level=helper.override(error_level, verify_error_level),
+                        buffer=True if verify_async else buffer)
         if buffer and not dont_flush:
             self.flush()
         return cx
