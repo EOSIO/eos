@@ -389,41 +389,47 @@ If there is already an existing launcher service running in the background, the 
 
 A detailed explanation of the parameters to initialize a `Service` object can be found in its docstring.
 
-    Parameters
-    ----------
-    logger : Logger
-        Logger object which controls logging behavior.
-    addr : str
-        IP address of launcher service.
-        Currently, only local launcher service is supported. That is, only
-        default value "127.0.0.1" is supported.
-    port : int
-        Listening port of launcher service.
-        If there are multiple launcher services running in the background,
-        they must have different listening ports.
-        Default is 1234.
-    wdir : str
-        Working directory.
-        Default is the current working directory.
-    file : str
-        Path to executable file of launcher service.
-        Can be either absolute or relative to the working directory.
-    gene : str
-        Path to the genesis file.
-        Can be either absolute or relative to the working directory.
-    start : bool
-        Always start a new launcher service.
-        To start a new instance alongside the existing ones, make sure the
-        listening ports are different. Otherwise, the new launcher service
-        will issue an error and exit.
-        Default is False (will not start a new one if there is an existing
-        launcher service running in the background).
-    kill : bool
-        Kill existing launcher services (if any).
-        Kill all the existing launcher services running in the background
-        (and freshly start a new one).
-        Default is False (will not kill existing launcher services; instead
-        will connect to an existing launcher service).
+```
+Parameters
+----------
+logger : Logger
+    Logger object which controls logging behavior.
+addr : str
+    IP address of launcher service.
+    Currently, only local launcher service is supported. That is, only
+    default value "127.0.0.1" is supported.
+port : int
+    Listening port of launcher service.
+    If there are multiple launcher services running in the background,
+    they must have different listening ports.
+    Default is 1234.
+wdir : str
+    Working directory.
+    Default is the current working directory.
+file : str
+    Path to executable file of launcher service.
+    Can be either absolute or relative to the working directory.
+gene : str
+    Path to the genesis file.
+    Can be either absolute or relative to the working directory.
+start : bool
+    Always start a new launcher service.
+    To start a new instance alongside the existing ones, make sure the
+    listening ports are different. Otherwise, the new launcher service
+    will issue an error and exit.
+    Default is False (will not start a new one if there is an existing
+    launcher service running in the background).
+kill : bool
+    Kill existing launcher services (if any).
+    Kill all the existing launcher services running in the background
+    (and freshly start a new one).
+    Default is False (will not kill existing launcher services; instead
+    will connect to an existing launcher service).
+extra_args : str
+    Extra arguments to pass to launcher service.
+```
+
+For `extra_args`, the user may refer to the help text that `programs/launcher-service/launcher-service -h` offers.
 
 ### `Cluster`
 
@@ -465,14 +471,14 @@ center_node_id : int
     Center node ID (for bridge or star topology).
     If topology is bridge, center node ID cannot be 0 or last one.
     No default value.
-extra_configs : list
-    Extra configs to pass to nodeos.
-    e.g. ["plugin=SOME_EXTRA_PLUGIN"]
-    No default value.
 extra_args : str
-    Extra arguments to pass to launcher service.
+    Extra arguments to pass to nodeos via launcher service.
     e.g. "--delete-all-blocks"
-    No default value.
+    Default is "".
+extra_configs : list
+    Extra configs to pass to nodeos via launcher service.
+    e.g. ["plugin=SOME_EXTRA_PLUGIN"]
+    Default is [].
 dont_newacco : bool
     Do not create accounts after launch.
     Default is False (will create producer accounts).
@@ -504,14 +510,12 @@ sync_sleep : float
     Default is 0.25.
 ```
 
-For `extra_configs`, the user may refer to the help text that `programs/nodeos/nodeos -h` offers.
+For `extra_args`, the user may refer to the help text that `programs/nodeos/nodeos -h` offers.
 
-For `extra_args`, the user may refer to the help text that `programs/launcher-service/launcher-service -h` offers.
-
-For example, by launcher service's help text
+For example, by the help text of `nodeos`
 
 ```bash
---genesis-json arg (=genesis.json)    path of genesis file
+--genesis-json arg (=genesis.json)    File to read Genesis State from
 ```
 
 the user may create a cluster with a specific genesis file.
