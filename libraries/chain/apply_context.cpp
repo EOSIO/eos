@@ -146,7 +146,7 @@ void apply_context::exec_one()
 
    uint32_t version = 0;
    if( control.is_builtin_activated( builtin_protocol_feature_t::action_return_value ) ) {
-      set_field( version, builtin_protocol_feature_t::action_return_value, true );
+      version = set_field( version, builtin_protocol_feature_t::action_return_value, true );
       r.return_value.emplace( std::move( action_return_value ) );
    }
 

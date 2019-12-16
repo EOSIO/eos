@@ -1119,7 +1119,7 @@ BOOST_AUTO_TEST_CASE(action_receipt_digest) {
                          .abi_sequence = 6 };
       auto d = digest_type::hash(ar);
       uint32_t version = 0;
-      eosio::chain::set_field( version, builtin_protocol_feature_t::action_return_value, true );
+      version = eosio::chain::set_field( version, builtin_protocol_feature_t::action_return_value, true );
       BOOST_REQUIRE_EQUAL( ar.digest(version), d );
       BOOST_REQUIRE_NE( ar.digest(0), d );
 
