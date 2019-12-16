@@ -95,4 +95,3 @@ chmod +x /tmp/$POPULATED_FILE_NAME
 if [[ $ONLYHASH == true ]]; then
   rm -f /tmp/$POPULATED_FILE_NAME && export POPULATED_FILE_NAME=${FILE_NAME:-$IMAGE_TAG}
 fi
-echo "END $?"
