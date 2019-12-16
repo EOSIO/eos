@@ -13,6 +13,7 @@ import argparse
 import base64
 import collections
 import dataclasses
+import functools
 import math
 import os
 import platform
@@ -988,23 +989,38 @@ class Cluster:
 
 # --------------- composite queries: queries that are dependent on simple queries -------------------------------------
 
+    def log_response_error(func):
+        @functools.wraps(func)
+        def wrapper(self, *args, **kwargs):
+            try:
+                return func(self, *args, **kwargs)
+            except (KeyError, IndexError, TypeError):
+                self.error("Response dictionary may have changed format.")
+                raise
+        return wrapper
+
+    @log_response_error
     def get_node_pid(self, node_id, **call_kwargs):
         return self.get_cluster_running_state(**call_kwargs).response_dict["result"]["nodes"][node_id][1]["pid"]
 
     def is_node_down(self, node_id, **call_kwargs):
         return self.get_node_pid(node_id, **call_kwargs) == 0
 
+    @log_response_error
     def is_node_ready(self, node_id, **call_kwargs):
         return "error" not in self.get_cluster_info(**call_kwargs).response_dict["result"][node_id][1]
 
+    @log_response_error
     def get_head_block_number(self, node_id=0, **call_kwargs):
         """Get head block number by node id."""
         return self.get_cluster_info(**call_kwargs).response_dict["result"][node_id][1]["head_block_num"]
 
+    @log_response_error
     def get_head_block_producer(self, node_id=0, **call_kwargs):
         """Get head block producer by node id."""
         return self.get_cluster_info(**call_kwargs).response_dict["result"][node_id][1]["head_block_producer"]
 
+    @log_response_error
     def get_running_nodes(self, **call_kwargs):
         cluster_result = self.get_cluster_info(**call_kwargs).response_dict["result"]
         count = 0
@@ -1013,6 +1029,7 @@ class Cluster:
                 count += 1
         return count
 
+    @log_response_error
     def get_log(self, node_id=0, length=10000, filename="stderr_0.txt", **call_kwargs):
         log = ""
         offset = 0
@@ -1065,6 +1082,7 @@ class Cluster:
         if not dont_raise:
             raise BlockchainError(msg)
 
+    @log_response_error
     def wait_get_producer_by_block(self, block_num, node_id=0, retry=10, dont_raise=False, level="debug", sublevel="trace"):
         """Get block producer by block num. If that block has not been produced, wait for it."""
         return self.wait_get_block(block_num=block_num, node_id=node_id, retry=retry, dont_raise=dont_raise,
