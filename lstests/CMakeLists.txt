@@ -65,7 +65,5 @@ add_test(NAME fork_lstest_24 COMMAND python3.7 lstests/fork_test.py --debug --mo
 set_property(TEST fork_lstest_24 PROPERTY LABELS ls_tests)
 add_test(NAME fork_lstest_25 COMMAND python3.7 lstests/fork_test.py --debug --mono --cluster-id 29 --wdir . WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_property(TEST fork_lstest_25 PROPERTY LABELS ls_tests)
-add_test(NAME fork_lstest_26 COMMAND python3.7 lstests/fork_test.py --debug --mono --cluster-id 30 --wdir . WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-set_property(TEST fork_lstest_26 PROPERTY LABELS ls_tests)
 
 
