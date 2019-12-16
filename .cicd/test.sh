@@ -6,17 +6,14 @@ set -eo pipefail
 if [[ $(uname) == 'Darwin' ]]; then # macOS
     export PATH=$PATH:~/mongodb/bin
     set +e # defer error handling to end
-    ./"$@"
+    source ~/.bash_profile && ./"$@"
     EXIT_STATUS=$?
 else # Linux
     COMMANDS="$MOUNTED_DIR/$@"
     . $HELPERS_DIR/file-hash.sh $CICD_DIR/platforms/$PLATFORM_TYPE/$IMAGE_TAG.dockerfile
-    mkdir -p $(pwd)/../eosio.contracts/
-    mkdir -p $(pwd)/../eosio.contracts/build/
-    ln -s $(pwd)/build/unittests/contracts/ $(pwd)/../eosio.contracts/build/contracts
-    echo "$ docker run --rm --init -v $(pwd):$MOUNTED_DIR -v $(pwd)/../eosio.contracts/:$MOUNTED_DIR/../eosio.contracts/ $(buildkite-intrinsics) -e JOBS $FULL_TAG bash -c \"$COMMANDS\""
+    echo "$ docker run --rm --init -v $(pwd):$MOUNTED_DIR $(buildkite-intrinsics) -e JOBS $FULL_TAG bash -c \"$COMMANDS\""
     set +e # defer error handling to end
-    eval docker run --rm --init -v $(pwd):$MOUNTED_DIR -v $(pwd)/../eosio.contracts/:$MOUNTED_DIR/../eosio.contracts/ $(buildkite-intrinsics) -e JOBS $FULL_TAG bash -c \"$COMMANDS\"
+    eval docker run --rm --init -v $(pwd):$MOUNTED_DIR $(buildkite-intrinsics) -e JOBS $FULL_TAG bash -c \"$COMMANDS\"
     EXIT_STATUS=$?
 fi
 # buildkite
@@ -26,6 +23,8 @@ if [[ "$BUILDKITE" == 'true' ]]; then
     echo '+++ :arrow_up: Uploading Artifacts'
     echo 'Compressing core dumps...'
     [[ $((`ls -1 core.* 2>/dev/null | wc -l`)) != 0 ]] && tar czf core.tar.gz core.* || : # collect core dumps
+    echo 'Compressing ls-tests logs...'
+    [[ $((`ls -1 data-dir/cluster*/node*/std*.txt 2>/dev/null | wc -l`)) != 0 ]] && tar czf ls_tests_logs.tar.gz data-dir/cluster*/node*/std*.txt
     echo 'Exporting xUnit XML'
     mv -f ./Testing/$(ls ./Testing/ | grep '2' | tail -n 1)/Test.xml test-results.xml
     echo 'Uploading artifacts'
@@ -34,6 +33,7 @@ if [[ "$BUILDKITE" == 'true' ]]; then
     [[ -f genesis.json ]] && buildkite-agent artifact upload genesis.json
     [[ -f mongod.log ]] && buildkite-agent artifact upload mongod.log
     [[ -f launcher_service.log ]] && buildkite-agent artifact upload launcher_service.log
+    [[ -f ls_tests_logs.tar.gz ]] && buildkite-agent artifact upload ls_tests_logs.tar.gz
     buildkite-agent artifact upload test-results.xml
     echo 'Done uploading artifacts.'
 fi

@@ -281,19 +281,19 @@ namespace eosio { namespace testing {
       const auto& snapshot_chain_id = controller::extract_chain_id( *snapshot );
       snapshot->return_to_header();
       open(std::move(pfs), snapshot_chain_id, [&snapshot,&control=this->control]() {
-         control->startup([]() { return false; }, snapshot );
+         control->startup( [](){}, []() { return false; }, snapshot );
       });
    }
 
    void base_tester::open( protocol_feature_set&& pfs, const genesis_state& genesis ) {
       open(std::move(pfs), genesis.compute_chain_id(), [&genesis,&control=this->control]() {
-         control->startup( []() { return false; }, genesis );
+         control->startup( [](){}, []() { return false; }, genesis );
       });
    }
 
    void base_tester::open( protocol_feature_set&& pfs, fc::optional<chain_id_type> expected_chain_id ) {
       open(std::move(pfs), expected_chain_id, [&control=this->control]() {
-         control->startup( []() { return false; } );
+         control->startup( [](){}, []() { return false; } );
       });
    }
 
