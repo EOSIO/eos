@@ -29,7 +29,7 @@ def init_cluster():
 
 def create_accounts(clus):
     clus.info(">>> [Catch-up Test] Create Test Accounts")
-    for __ in range(5):
+    for _ in range(5):
         cx = clus.call("send_raw", url=CREATE_URL, string_data=CREATE_STR, node_id=1,
                         retry=0, level="trace", error_level="trace", dont_raise=True)
         if '"name": "account_name_exists_exception"' in cx.response_text:
@@ -71,7 +71,7 @@ def assert_out_of_sync(clus, res):
 
 def assert_in_sync(clus, begin, end):
     if end <= begin:
-        raise BlockchainError(f"Chain stops advancing at block num {end}")
+        raise BlockchainError(f"Chain stopped advancing at block num {end}")
     clus.info(f"Nodes in sync at block num {end}")
 
 
