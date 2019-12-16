@@ -77,6 +77,19 @@ namespace eosio::chain {
       constexpr explicit operator bool()const { return value != 0; }
    };
 
+   namespace detail {
+      template <char... Str>
+      struct to_const_char_arr {
+         static constexpr const char value[] = {Str...};
+      };
+   } // namespace detail
+
+   template <typename T, T... Str>
+   inline name operator""_n() {
+      auto x = name{std::string{detail::to_const_char_arr<Str...>::value, sizeof...(Str)}};
+      return x;
+   }
+
    // Each char of the string is encoded into 5-bit chunk and left-shifted
    // to its 5-bit slot starting with the highest slot for the first char.
    // The 13th char, if str is long enough, is encoded into 4-bit chunk
