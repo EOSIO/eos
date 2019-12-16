@@ -100,8 +100,8 @@ HELP_TOPOLOGY = "Cluster topology to launch with"
 HELP_CENTER_NODE_ID = "Center node ID (for bridge or star topology)"
 HELP_EXTRA_ARGS = "Extra arguments to pass to nodeos"
 HELP_EXTRA_CONFIGS = "Extra configs to pass to nodeos"
-HELP_DONT_NEWACCO = "Do not create accounts in launch"
-HELP_DONT_SETPROD = "Do not set producers in launch"
+HELP_DONT_NEWACCO = "Do not create accounts after launch"
+HELP_DONT_SETPROD = "Do not set producers after launch"
 HELP_HTTP_RETRY = "HTTP connection: max num of retries"
 HELP_HTTP_SLEEP = "HTTP connection: sleep time between retries"
 HELP_VERIFY_ASYNC = "Verify transaction: verify asynchronously"
@@ -715,7 +715,7 @@ class Cluster:
         ----------
         service : Service
             Launcher service object on which the node cluster will run
-        cidr : str
+        cdir : str
             Smart contracts directory.
             Can be either absolute or relative to service's working directory.
         cluster_id : int
@@ -751,10 +751,10 @@ class Cluster:
             e.g. ["plugin=SOME_EXTRA_PLUGIN"]
             Default is [].
         dont_newacco : bool
-            Do not create accounts in launch.
+            Do not create accounts after launch.
             Default is False (will create producer accounts).
         dont_setprod : bool
-            Do not set producers in BIOS launch mode.
+            Do not set producers after launch.
             Default is False (will set producers).
         http_retry : int
             Max number of retries in HTTP connection.
@@ -764,14 +764,14 @@ class Cluster:
             Default is 0.25.
         verify_async : bool
             Verify transactions asynchronously.
-            Start a separate thread for transaction verfication. Do not wait
+            Start a separate thread for transaction verification. Do not wait
             for a transaction to be verified before making next transaction.
             Default is False (will wait for verification result).
         verify_retry : int
-            Max number of retries in transaction verfication.
+            Max number of retries in transaction verification.
             Default is 100.
         verify_sleep : float
-            Sleep time (in seconds) between verfication retries.
+            Sleep time (in seconds) between verification retries.
             Default is 0.25.
         sync_retry : int
             Max number of retries in checking if nodes are in sync.
@@ -903,7 +903,7 @@ class Cluster:
         5. create accounts using eosio.bios
         6. set producers
         7. check if nodes are in sync
-        8. if verfication is done asynchronously, make sure all transactions
+        8. if verification is done asynchronously, make sure all transactions
            have been verified
         """
         self.info(">>> [Launch] ----------------------- BEGIN ---------------------------------------------------------")
@@ -952,7 +952,7 @@ class Cluster:
                 time.sleep(1)
             else:
                 if not dont_raise:
-                    raise BlockchainError(f"Node {node_id} cannot be properly stopped by singal {kill_sig}.")
+                    raise BlockchainError(f"Node {node_id} cannot be properly stopped by signal {kill_sig}.")
         else:
             return cx
 
@@ -1054,7 +1054,7 @@ class Cluster:
 
     def wait_get_block(self, block_num, node_id=0, retry=10, dont_raise=False, level="debug", sublevel="trace"):
         """Get block information by block num. If that block has not been produced, wait for it."""
-        for __ in range(10):
+        for _ in range(10):
             head_block_num = self.get_head_block_number(level=sublevel)
             if head_block_num < block_num:
                 time.sleep(0.5 * (block_num - head_block_num))
@@ -1236,7 +1236,7 @@ class Cluster:
         retry = helper.override(self.verify_retry, retry, self.cla.verify_retry)
         sleep = helper.override(self.verify_sleep, sleep, self.cla.verify_sleep)
         verified = False
-        for __ in range(retry + 1):
+        for _ in range(retry + 1):
             if self.verify_transaction(transaction_id=transaction_id, verify_key=verify_key, level=retry_level, buffer=buffer):
                 verified = True
                 break
@@ -1275,7 +1275,7 @@ class Cluster:
         sleep = helper.override(self.sync_sleep, sleep, self.cla.sync_sleep)
         min_sync_count = helper.override(self.node_count, min_sync_count)
         self.print_header("check sync", level=level)
-        for __ in range(retry + 1):
+        for _ in range(retry + 1):
             cx = self.get_cluster_info(level="trace")
             has_head_block_id = lambda node_id: "head_block_id" in cx.response_dict["result"][node_id][1]
             extract_head_block_id = lambda node_id: cx.response_dict["result"][node_id][1]["head_block_id"]
