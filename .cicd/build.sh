@@ -19,7 +19,7 @@ if [[ "$(uname)" == 'Darwin' ]]; then
         ccache -s
         brew reinstall openssl@1.1 # Fixes issue where builds in Travis cannot find libcrypto.
         sed -i -e 's/^cmake /cmake -DCMAKE_CXX_COMPILER_LAUNCHER=ccache /g' /tmp/$POPULATED_FILE_NAME
-        echo "export NVM_DIR=~/.nvm" >> ~/.bash_profile && echo "source \$(brew --prefix nvm)/nvm.sh" >> ~/.bash_profile && cat ~/.bash_profile && source ~/.bash_profile && echo $NVM_DIR && nvm install --lts=dubnium # Support ship_test
+        echo "export NVM_DIR=~/.nvm" >> ~/.bash_profile && echo "source \$(brew --prefix nvm)/nvm.sh" >> ~/.bash_profile && cat ~/.bash_profile && . ~/.bash_profile && echo $NVM_DIR && nvm install --lts=dubnium # Support ship_test
     else
         source ~/.bash_profile # Make sure node is available for ship_test
     fi
