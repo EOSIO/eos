@@ -96,7 +96,7 @@ def restart_and_verify(clus, last_block_in_sync):
     tries = 120
     while watermark > res.block_num and tries > 0:
         if tries == 120:
-            clus.info("wait until head num(%d) pass the estimated watermark(%d)" % (res.block_num, watermark))
+            clus.info("wait until head num(%d) passes the estimated watermark(%d)" % (res.block_num, watermark))
         time.sleep(1)
         res = clus.check_sync()
         tries -= 1
