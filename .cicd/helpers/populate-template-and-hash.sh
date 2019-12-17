@@ -49,14 +49,14 @@ if [[ ! -z $@ ]]; then
   POP_COMMANDS=""
   for PATTERN in "$@"; do
     POP_COMMANDS="$POP_COMMANDS
-$(cat docs/00_install/01_build-from-source/${IMAGE_TAG:-$FILE_NAME}.md | sed -n "/$PATTERN/,/END -->/p")"
+$(cat docs/00_install/01_build-from-source/platforms/${IMAGE_TAG:-$FILE_NAME}.md | sed -n "/$PATTERN/,/END -->/p")"
     POP_COMMANDS=$(echo "$POP_COMMANDS" | sed '/<!-- TEST/,/<!-- TEST/d') # Remove test block (we run ctest in ci/cd)
     POP_COMMANDS=$(echo "$POP_COMMANDS" | grep -v -e "$PATTERN" -e '<!--' -e '-->' -e '```' -e '\#.*' -e '^$') # Sanitize
   done
   POP_COMMANDS=$(echo "$POP_COMMANDS" | grep -v -e '^$') 
 else
   PATTERN='<!--'
-  POP_COMMANDS=$(cat docs/00_install/01_build-from-source/${IMAGE_TAG:-$FILE_NAME}.md | sed -n "/$PATTERN/,/END -->/p")
+  POP_COMMANDS=$(cat docs/00_install/01_build-from-source/platforms/${IMAGE_TAG:-$FILE_NAME}.md | sed -n "/$PATTERN/,/END -->/p")
   POP_COMMANDS=$(echo "$POP_COMMANDS" | sed '/<!-- TEST/,/<!-- TEST/d') # Remove test block (we run ctest in ci/cd)
   POP_COMMANDS=$(echo "$POP_COMMANDS" | grep -v -e "$PATTERN" -e '<!--' -e '-->' -e '```' -e '\#.*' -e '^$') # Sanitize
 fi
