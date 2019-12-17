@@ -373,7 +373,7 @@ namespace eosio { namespace testing {
          controller::config vcfg;
          vcfg.blocks_dir      = tempdir.path() / std::string("v_").append(config::default_blocks_dir_name);
          vcfg.state_dir  = tempdir.path() /  std::string("v_").append(config::default_state_dir_name);
-         vcfg.state_size = 1024*1024*8;
+         vcfg.state_size = 1024*1024*16;
          vcfg.state_guard_size = 0;
          vcfg.reversible_cache_size = 1024*1024*8;
          vcfg.reversible_guard_size = 0;
