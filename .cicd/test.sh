@@ -5,14 +5,13 @@ set -eo pipefail
 # tests
 export DOCKERIZATION=false
 if [[ $(uname) == 'Darwin' ]]; then # macOS
-    export PATH=$PATH:$(cat $CICD_DIR/platform-templates/$IMAGE_TAG.sh | grep EOSIO_INSTALL_LOCATION= | cut -d= -f2)/bin
-    echo "test.sh PATH: $PATH"
     if [[ $TRAVIS == true ]]; then
         # Support ship_test
         export NVM_DIR="$HOME/.nvm"
         . "/usr/local/opt/nvm/nvm.sh"
         nvm install --lts=dubnium
     else
+        export PATH=$PATH:$(cat $CICD_DIR/platform-templates/$IMAGE_TAG.sh | grep EOSIO_INSTALL_LOCATION= | cut -d= -f2)/bin
         source ~/.bash_profile # Make sure node is available for ship_test
     fi
     set +e # defer error handling to end
