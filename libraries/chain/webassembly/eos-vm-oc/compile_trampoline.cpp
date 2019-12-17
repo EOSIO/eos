@@ -91,7 +91,7 @@ void run_compile(wrapped_fd&& response_sock, wrapped_fd&& wasm_code) noexcept { 
    for(const TableSegment& table_segment : module.tableSegments) {
       struct table_entry* table_index_0 = (struct table_entry*)&*prologue_it;
 
-      if(table_segment.baseOffset.i32 >= module.tables.defs[0].type.size.min)
+      if(table_segment.baseOffset.i32 > module.tables.defs[0].type.size.min)
          return;
 
       for(Uptr i = 0; i < table_segment.indices.size(); ++i) {
