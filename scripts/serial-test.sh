@@ -20,6 +20,8 @@ if [[ ! -z "$(pgrep mongod)" ]]; then
     $(pgrep mongod | xargs kill -9) || :
 fi
 # do not start mongod if it does not exist
+        echo $PATH
+        ls -laht $(cat $CICD_DIR/platform-templates/$IMAGE_TAG.sh | grep EOSIO_INSTALL_LOCATION= |  cut -d\" -f2)/bin/
 if [[ -x $(command -v mongod) ]]; then
     echo "+++ $([[ "$BUILDKITE" == 'true' ]] && echo ':leaves: ')Starting new MongoDB"
     [[ ! -d ~/data/mongodb && ! -d mongodata ]] && mkdir mongodata
