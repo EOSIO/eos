@@ -1,21 +1,37 @@
-# Amazon Linux 2 (Unpinned)
-The following commands will install all of the necessary dependencies for source installing EOSIO.
+---
+content_title: Amazon Linux 2 (unpinned)
+---
+
+[[info | Building EOSIO on another OS?]]
+| Visit the [Build EOSIO from Source](../index.md) section.
+
+Select an EOSIO-related task below for Amazon Linux 2:
+
+* [Download EOSIO Repository](#download-eosio-repository)
+* [Install EOSIO Dependencies](#install-eosio-dependencies)
+* [Build EOSIO](#build-eosio)
+* [Install EOSIO](#install-eosio)
+* [Test EOSIO](#test-eosio)
+* [Uninstall EOSIO](#uninstall-eosio)
+
 <!-- The code within the following block is used in our CI/CD. It will be converted line by line into statements inside of a temporary Dockerfile and used to build our docker tag for this OS. 
 Therefore, COPY and other Dockerfile-isms are not permitted. -->
-## Clone EOSIO Repository
+
+## Download EOSIO Repository
 <!-- CLONE -->
-```
-yum update -y && yum install -y git
+```sh{showUserHost:false}
 export EOSIO_LOCATION=$HOME/eosio
+yum update -y && yum install -y git
 git clone https://github.com/EOSIO/eos.git $EOSIO_LOCATION
 cd $EOSIO_LOCATION && git submodule update --init --recursive
 export EOSIO_INSTALL_LOCATION=$EOSIO_LOCATION/install
 mkdir -p $EOSIO_INSTALL_LOCATION
 ```
 <!-- CLONE END -->
+
 ## Install Dependencies
 <!-- DEPS -->
-```
+```sh{showUserHost:false}
 yum install -y which sudo procps-ng util-linux autoconf automake \
     libtool make bzip2 bzip2-devel openssl-devel gmp-devel libstdc++ libcurl-devel \
     libusbx-devel python3 python3-devel python-devel libedit-devel doxygen \
@@ -59,31 +75,35 @@ cd $EOSIO_INSTALL_LOCATION && curl -L https://github.com/mongodb/mongo-cxx-drive
     rm -rf $EOSIO_INSTALL_LOCATION/mongo-cxx-driver-r3.4.0.tar.gz $EOSIO_INSTALL_LOCATION/mongo-cxx-driver-r3.4.0
 ```
 <!-- DEPS END -->
+
 ## Build EOSIO
 <!-- BUILD -->
-```
+```sh{showUserHost:false}
 mkdir -p $EOSIO_LOCATION/build
 cd $EOSIO_LOCATION/build
 $EOSIO_INSTALL_LOCATION/bin/cmake -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER='clang++' -DCMAKE_C_COMPILER='clang' -DCMAKE_INSTALL_PREFIX=$EOSIO_INSTALL_LOCATION -DBUILD_MONGO_DB_PLUGIN=true ..
 make -j$(nproc)
 ```
 <!-- BUILD -->
+
 ## Install EOSIO
 <!-- INSTALL -->
-```
+```sh{showUserHost:false}
 make install
 ```
 <!-- INSTALL END -->
+
 ## Test EOSIO
 <!-- TEST -->
-```
+```sh{showUserHost:false}
 $EOSIO_INSTALL_LOCATION/bin/mongod --fork --logpath $(pwd)/mongod.log --dbpath $(pwd)/mongodata
 make test
 ```
 <!-- TEST END -->
+
 ## Uninstall EOSIO
 <!-- UNINSTALL -->
-```
+```sh{showUserHost:false}
 xargs rm < $EOSIO_LOCATION/build/install_manifest.txt
 rm -rf $EOSIO_LOCATION/build
 ```
