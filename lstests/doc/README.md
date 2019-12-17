@@ -81,74 +81,65 @@ The `Logger`, `Service` and `Cluster` objects respectively control the logging b
 The following code is an excerpt from a real testing script. The three sub-steps for the cluster initialization are bundled in a `init_cluster()` function. This exemplifies a typical way to start a test script.
 
 ```python
-# fork_test.py
+import random
 import time
+
 from core.logger import ScreenWriter, FileWriter, Logger
-from core.service import Service, Cluster, LauncherServiceError, BlockchainError, SyncError
+from core.service import Service, Cluster, BlockchainError, SyncError
 
 def init_cluster():
     test = "fork"
     logger = Logger(ScreenWriter(threshold="info"),
-                    FileWriter(filename=f"{test}-info.log",
-                               threshold="info",
-                               monochrome=True),
-                    FileWriter(filename=f"{test}-debug.log",
-                               threshold="debug",
-                               monochrome=True),
-                    FileWriter(filename=f"{test}-trace.log",
-                               threshold="trace",
-                               monochrome=True))
+                    FileWriter(filename=f"{test}-info.log", threshold="info", monochrome=True),
+                    FileWriter(filename=f"{test}-debug.log", threshold="debug", monochrome=True),
+                    FileWriter(filename=f"{test}-trace.log", threshold="trace", monochrome=True))
     service = Service(logger=logger)
-    cluster = Cluster(service=service,
-                      node_count=3,
-                      pnode_count=3,
-                      producer_count=7,
-                      topology="bridge",
-                      center_node_id=1,
-                      dont_setprod=True)
+    cluster = Cluster(service=service, node_count=3, pnode_count=3, producer_count=7,
+                      topology="bridge", center_node_id=1, dont_setprod=True)
     return cluster
 
 
 def main():
     with init_cluster() as clus:
-        clus.info(">>> [DB Guard Test] --- BEGIN ---")
+        clus.info(">>> [Fork Test] ---------- BEGIN ---------------------------------------")
         # testing (e.g. set contract, push actions) via clus
-        clus.info(">>> [DB Guard Test] --- END -----")
+        clus.info(">>> [Fork Test] ---------- END -----------------------------------------")
+
 
 if __name__ == "__main__":
     main()
 ```
 
-The imports bring into scope the related classes. Note that `Logger` resides in `core.logger` while `Service` and `Cluster` reside in `core.service`. `LauncherServiceError`, `BlockchainError`, `SyncError` represent `RuntimeError` types but are specifically related to the launcher service, blockchain logic, and in particular, the in-sync status of nodes.
+The imports bring into scope the related classes. Note that `Logger` resides in `core.logger`, while `Service` and `Cluster` reside in `core.service`. `BlockchainError` and `SyncError` represent `RuntimeError` types that are specifically related to the blockchain logic. In particular, `SyncError` inherits from the `BlockchainError` and represents the in-sync status of nodes.
 
-A `Logger` object has full control over the logging behavior throughout the test. It is created by specifying where to log, and what to log. In this case, the `Logger` has four logging destinations: printing to the screen, plus writing to three log files, at different log levels.
+A `Logger` object has full control over the logging behavior throughout the test. It is created by specifying where to log, and what to log. In this case, the `Logger` has 4 logging destinations: printing to the screen, plus writing to three log files, at different log levels.
 
-A `Service` object should know the `Logger` and the settings regarding the launcher service. In this case, except for registering the `Logger`, everything is set to default. Normally it is safe to do so. The `Service` object will automatically detect the file and port if there is an existing launcher service running in the background.
+A `Service` object should know the `Logger` and all the settings regarding the launcher service. In this example, everything is set to default. Normally, it is safe to do so. The `Service` object will automatically detect the executable file and the listening port if there is an existing launcher service running in the background.
 
-A `Cluster` object should know the `Service` and the settings regarding the cluster of nodes. In this case, the settings include:
+A `Cluster` object should know the `Service` and all the settings regarding the cluster of nodes. In this example, the settings include:
 
-1. `node_count=3` : there will be 3 nodes in the cluster
+1. `node_count=3` : there are 3 nodes in the cluster
 2. `pnode_count=3` : the 3 nodes all have producers
-3. `producer_count=7` : there will be 7 producers in the cluster
-4. `topology="bridge"` : the network topology will be `bridge`
-5. `center_node_id=1` : node 1 will be the center node for `bridge` topology
-6. `dont_setprod` : do not set producers (using `setprods`) during bootstrapping
+3. `producer_count=7` : there are 7 producers in the cluster
+4. `topology="bridge"` : the network topology is `bridge`
+5. `center_node_id=1` : node 1 is the center node for `bridge` topology
+6. `dont_setprod=True` : do not set producers (using `setprods`) after launch
 
-The first three settings together suggest that the node mapping will be 3 producer accounts in node #0, and 2 producer accounts each in nodes #1 and #2.
+The first three settings together suggest that the node mapping will be 3 producer accounts in node 0, and 2 producer accounts each in nodes 1 and 2.
 
-Node #1 is going to be the connecting node for the `bridge` network topology.
+Node 1 is going to be the connecting node for the `bridge` network topology.
 
-In the process of bootstrapping, the producer accounts will be created using `newaccount`, but they will *not* be set as producers using `setprods`. This is because there will be a customized producer-setting process in the body of testing.
+After the launch of the cluster, the producer accounts will be created using `newaccount`, but they will *not* be set as producers using `setprods`. This is because there will be a customized producer-setting process in the body of testing.
 
 #### The Context Manager
 
-It is recommended to operate on a `Cluster` object using a context manager, i.e. the `with` statement in the example. With the `with` statement,
+It is recommended to operate on a `Cluster` object using a context manager, i.e. using the `with` statement in the example.
 
 ```python
 with init_cluster() as clus:
 ```
 
-it is guaranteed that if the program crashes, say because of an unexpected `RuntimeError`, all the buffered information will be flushed.
+With the context manager, it is guaranteed that if the program crashes, say because of an unexpected `RuntimeError`, all the buffered information will be flushed.
 
 ## Configuration
 
@@ -196,6 +187,7 @@ For command-line configuration, passing `-h` or `--help` will list all the setti
   Launcher Service-based EOSIO Testing Framework
 
   -h, --help                     Show this message and exit
+  
   ----- Service Settings ------------------------------------------------------
   -a IP, --addr IP               IP address of launcher service
   -o PORT, --port PORT           Listening port of launcher service
@@ -205,6 +197,7 @@ For command-line configuration, passing `-h` or `--help` will list all the setti
   -s, --start                    Always start a new launcher service
   -k, --kill                     Kill existing launcher services (if any)
   --extra-service-args ARGS      Extra arguments to pass to launcher service
+  
   ----- Cluster Settings ------------------------------------------------------
   -c PATH, --cdir PATH           Smart contracts directory
   -i ID, --cluster-id ID         Cluster ID to launch with
@@ -225,6 +218,7 @@ For command-line configuration, passing `-h` or `--help` will list all the setti
   --verify-sleep TIME            Verify transaction: sleep time between retries
   --sync-retry NUM               Check sync: max num of retries
   --sync-sleep TIME              Check sync: sleep time between retries
+  
   ----- Logger Settings -------------------------------------------------------
   -l LEVEL, --log-level LEVEL    Stdout logging level (numeric)
   --all                          Set stdout logging level to ALL (0)
