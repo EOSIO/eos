@@ -612,7 +612,7 @@ public:
          }
          _running_clusters[cluster_id].transaction_blocknum[trx.id()] = info.head_block_num + 1;
 
-         return call(cluster_id, node_id, "/v1/chain/push_transaction", fc::variant(packed_transaction(trx, compression)));
+         return call(cluster_id, node_id, "/v1/chain/send_transaction", fc::variant(packed_transaction(trx, compression)));
       }
 
       fc::variant push_actions(int cluster_id, int node_id, std::vector<chain::action>&& actions,
