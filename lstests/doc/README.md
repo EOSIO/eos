@@ -1,6 +1,27 @@
 # Launcher Service-based EOSIO Testing Framework
 
-[TOC]
+  * [What is It](#what-is-it)
+     * [Features](#features)
+     * [Architecture](#architecture)
+  * [Getting Started](#getting-started)
+     * [High-Level](#high-level)
+     * [A Real Example](#a-real-example)
+        * [The Context Manager](#the-context-manager)
+  * [Configuration](#configuration)
+     * [Hierarchy](#hierarchy)
+     * [Ask for Help](#ask-for-help)
+     * [Logger](#logger)
+        * [A Quick Example](#a-quick-example)
+        * [Writer Settings](#writer-settings)
+           * [More about Buffering](#more-about-buffering)
+        * [Log Levels](#log-levels)
+     * [Service](#service)
+     * [Cluster](#cluster)
+  * [Testing](#testing)
+     * [Mechanism](#mechanism)
+     * [Main API](#main-api)
+     * [**call_kwargs](#call_kwargs)
+  * [Debugging](#debugging)
 
 ## What is It
 
@@ -51,7 +72,7 @@ In order to initialize a cluster, three sub-steps are needed:
 
 (3) create a `Cluster` object, and register the `Service` to it
 
-<img src="./img/high-level.png" style="zoom:30%;" />
+<img src="./img/high-level.png" width="300" />
 
 The `Logger`, `Service` and `Cluster` objects respectively control the logging behavior, the launcher service, and a particular cluster of nodes.
 
