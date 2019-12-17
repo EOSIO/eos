@@ -51,7 +51,7 @@ matrix:
             - nvm
             - md5sha1sum
       env: 
-        - TRAVIS_BUILD_DIR=$EOSIO_LOCATION
+        - TRAVIS_BUILD_DIR=$HOME/eosio
         - IMAGE_TAG='macos-10.14-pinned'
         - PATH="/usr/local/opt/ccache/libexec:$PATH"
 script: "ccache --max-size=1G && if [[ $(uname) == 'Darwin' ]]; then brew link --overwrite md5sha1sum; fi && ./.cicd/build.sh && ./.cicd/test.sh scripts/parallel-test.sh && ./.cicd/test.sh scripts/wasm-spec-test.sh && ./.cicd/test.sh scripts/serial-test.sh && if [[ $(uname) != 'Darwin' ]]; then ./.cicd/submodule-regression-check.sh; fi"
