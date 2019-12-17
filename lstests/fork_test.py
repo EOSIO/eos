@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 
+import random
 import time
 
 from core.logger import ScreenWriter, FileWriter, Logger
 from core.service import Service, Cluster, BlockchainError, SyncError
-from random import randint
+
 
 def init_cluster():
     test = "fork"
@@ -35,39 +36,40 @@ def assert_out_of_sync(clus, res):
 
 
 def kill_and_verify(clus):
-    wait = randint(0, 7) # randomize fork point
-    clus.info("sleep for %d secs then kill bridge node" % (wait))
-    time.sleep(wait)
+    # randomize fork point
+    sleep = random.randint(0, 7)
+    clus.info(f"Sleep for {sleep}s before killing the bridge node")
+    time.sleep(sleep)
     clus.stop_node(node_id=1, kill_sig=15)
     time.sleep(1)
-    timeout = 15 # wait until bridge node fully shutdown
-    while timeout > 0:
+    # sleep until bridge node has fully shut down
+    for _ in range(15):
         res = clus.check_sync(min_sync_count=2, max_block_lag=2, dont_raise=True)
         if not res.in_sync:
             break
-        timeout -= 1
         time.sleep(1)
     assert_out_of_sync(clus, res)
     min1, max1 = res.min_block_num, res.max_block_num
-    wait = randint(1, 45) # randomize fork difference
-    clus.info("Wait for %d secs and until 2 forks have different lengths" % (wait))
-    time.sleep(wait)
+    # Randomize fork difference
+    sleep = random.randint(1, 45)
+    clus.info(f"Sleep for {sleep}s and until 2 forks have different lengths")
+    time.sleep(sleep)
     for _ in range(120):
         res = clus.check_sync(min_sync_count=2, max_block_lag=2, dont_raise=True)
         min2, max2 = res.min_block_num, res.max_block_num
         assert_out_of_sync(clus, res)
         if max2 > max1 and min2 > min1:
-            clus.info("now we have 2 forks, min block num is %d, max block num is %d" % (min2, max2))
+            clus.info(f"Now we have 2 forks: min block num {min2}, max block num {max2}")
             return
         time.sleep(1)
-    msg = f"Failed to have two diverse chains, max block num is {max2} (was {max1}), min block num is {min2} (was {min1})"
+    msg = f"Failed to have two diverse chains: max block num is {max2} (was {max1}), min block num is {min2} (was {min1})"
     clus.error(msg)
     raise BlockchainError(msg)
 
 
 def restart_and_verify(clus, last_block_in_sync):
     res = clus.check_sync(min_sync_count=2, max_block_lag=2, dont_raise=True)
-    _, watermark = res.min_block_num, res.max_block_num
+    watermark = res.max_block_num
     tbeg = time.time()
     clus.info("Restart bridge node...")
     clus.start_node(node_id=1)
@@ -81,26 +83,23 @@ def restart_and_verify(clus, last_block_in_sync):
         raise
     if res.block_num <= last_block_in_sync:
         raise BlockchainError(f"Chain stopped advancing at block num {res.block_num}")
-
-    clus.info("forks resolved with block num %d, verifying blocks..." % (res.block_num))
+    clus.info(f"Forks resolved with block num {res.block_num}, verifying blocks...")
     for block_num in range(last_block_in_sync, res.block_num + 1):
         blk0 = clus.get_block(block_num, node_id=0).response_dict
         blk1 = clus.get_block(block_num, node_id=1).response_dict
         blk2 = clus.get_block(block_num, node_id=2).response_dict
         if not (blk0 == blk1 and blk1 == blk2):
-            msg = f"block verification failed at block {block_num}"
+            msg = f"Block verification failed at block {block_num}"
             clus.error(msg)
             raise BlockchainError(msg)
-
-    res = clus.check_sync()
-    tries = 120
-    while watermark > res.block_num and tries > 0:
-        if tries == 120:
-            clus.info("wait until head num(%d) passes the estimated watermark(%d)" % (res.block_num, watermark))
-        time.sleep(1)
+    clus.info(f"Wait until head num ({res.block_num}) passes the estimated watermark ({watermark:.1f})")
+    for _ in range(120):
         res = clus.check_sync()
-        tries -= 1
+        if res.block_num >= watermark:
+            break
+        time.sleep(1)
     return res.block_num
+
 
 def main():
     with init_cluster() as clus:
