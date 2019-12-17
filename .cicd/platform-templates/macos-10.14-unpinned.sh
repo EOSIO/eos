@@ -1,7 +1,7 @@
 #!/bin/bash
 set -eo pipefail
-export EOSIO_LOCATION=/Users/anka/eosio
-export EOSIO_INSTALL_LOCATION=/Users/anka/install
+export EOSIO_LOCATION=${EOSIO_LOCATION:-"/Users/anka/eosio"}
+export EOSIO_INSTALL_LOCATION=${EOSIO_INSTALL_LOCATION:-"/Users/anka/install"}
 VERSION=1
 # Commands from the documentation are inserted right below this line
 # Anything below here is exclusive to our CI/CD
