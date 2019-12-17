@@ -44,13 +44,13 @@ $ brew remove eosio
 
 #### Ubuntu 18.04 Package Install
 ```sh
-$ wget https://github.com/eosio/eos/releases/download/v2.0.0-rc2/eosio_2.0.0-rc2-ubuntu-18.04_amd64.deb
-$ sudo apt install ./eosio_2.0.0-rc2-ubuntu-18.04_amd64.deb
+$ wget https://github.com/eosio/eos/releases/download/v2.0.0-rc3/eosio_2.0.0-rc3-ubuntu-18.04_amd64.deb
+$ sudo apt install ./eosio_2.0.0-rc3-ubuntu-18.04_amd64.deb
 ```
 #### Ubuntu 16.04 Package Install
 ```sh
-$ wget https://github.com/eosio/eos/releases/download/v2.0.0-rc2/eosio_2.0.0-rc2-ubuntu-16.04_amd64.deb
-$ sudo apt install ./eosio_2.0.0-rc2-ubuntu-16.04_amd64.deb
+$ wget https://github.com/eosio/eos/releases/download/v2.0.0-rc3/eosio_2.0.0-rc3-ubuntu-16.04_amd64.deb
+$ sudo apt install ./eosio_2.0.0-rc3-ubuntu-16.04_amd64.deb
 ```
 #### Ubuntu Package Uninstall
 ```sh
@@ -58,8 +58,8 @@ $ sudo apt remove eosio
 ```
 #### Centos RPM Package Install
 ```sh
-$ wget https://github.com/eosio/eos/releases/download/v2.0.0-rc2/eosio-2.0.0-rc2.el7.x86_64.rpm
-$ sudo yum install ./eosio-2.0.0-rc2.el7.x86_64.rpm
+$ wget https://github.com/eosio/eos/releases/download/v2.0.0-rc3/eosio-2.0.0-rc3.el7.x86_64.rpm
+$ sudo yum install ./eosio-2.0.0-rc3.el7.x86_64.rpm
 ```
 #### Centos RPM Package Uninstall
 ```sh
