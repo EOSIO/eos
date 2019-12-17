@@ -13,6 +13,7 @@ if [[ "$(uname)" == 'Linux' ]]; then
 else
    npm install
 fi
+echo "serial-test.sh PATH: $PATH"
 cd $GIT_ROOT/build
 # mongoDB
 if [[ ! -z "$(pgrep mongod)" ]]; then
