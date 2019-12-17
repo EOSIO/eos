@@ -29,7 +29,7 @@ mkdir -p $EOSIO_INSTALL_LOCATION
 ```
 <!-- CLONE END -->
 
-## Install Dependencies
+## Install EOSIO Dependencies
 <!-- DEPS -->
 ```sh{showUserHost:false}
 yum install -y which sudo procps-ng util-linux autoconf automake \
