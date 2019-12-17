@@ -82,7 +82,7 @@ fi
 export BUILD_SOURCE=${BUILD_SOURCE:---build \$BUILDKITE_BUILD_ID}
 # set trigger_job if master/release/develop branch and webhook
 if [[ $BUILDKITE_BRANCH =~ ^release/[0-9]+\.[0-9]+\.x$ || $BUILDKITE_BRANCH =~ ^master$ || $BUILDKITE_BRANCH =~ ^develop$ ]]; then
-    [[ $BUILDKITE_SOURCE == 'webhook' ]] && export TRIGGER_JOB=true
+    [[ $BUILDKITE_SOURCE != 'scheduled' ]] && export TRIGGER_JOB=true
 fi
 oIFS="$IFS"
 IFS=$''
