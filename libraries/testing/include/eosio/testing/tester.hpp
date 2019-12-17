@@ -392,7 +392,7 @@ namespace eosio { namespace testing {
             controller::config cfg;
             cfg.blocks_dir      = tempdir.path() / config::default_blocks_dir_name;
             cfg.state_dir  = tempdir.path() / config::default_state_dir_name;
-            cfg.state_size = 1024*1024*8;
+            cfg.state_size = 1024*1024*16;
             cfg.state_guard_size = 0;
             cfg.reversible_cache_size = 1024*1024*8;
             cfg.reversible_guard_size = 0;
