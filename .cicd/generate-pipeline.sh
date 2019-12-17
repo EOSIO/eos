@@ -184,6 +184,9 @@ for ROUND in $(seq 1 $ROUNDS); do
       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
     agents:
       queue: "$BUILDKITE_BUILD_AGENT_QUEUE"
+    retry:
+      manual:
+        permit_on_passed: true
     timeout: ${TIMEOUT:-30}
     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_UNIT_TESTS}
 
@@ -214,8 +217,11 @@ EOF
           cd: ~
     env:
       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
-    timeout: ${TIMEOUT:-60}
     agents: "queue=mac-anka-node-fleet"
+    retry:
+      manual:
+        permit_on_passed: true
+    timeout: ${TIMEOUT:-60}
     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_UNIT_TESTS}
 
 EOF
@@ -244,6 +250,9 @@ EOF
       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
     agents:
       queue: "$BUILDKITE_BUILD_AGENT_QUEUE"
+    retry:
+      manual:
+        permit_on_passed: true
     timeout: ${TIMEOUT:-30}
     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_WASM_SPEC_TESTS}
 
@@ -274,8 +283,11 @@ EOF
           cd: ~
     env:
       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
-    timeout: ${TIMEOUT:-60}
     agents: "queue=mac-anka-node-fleet"
+    retry:
+      manual:
+        permit_on_passed: true
+    timeout: ${TIMEOUT:-60}
     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_WASM_SPEC_TESTS}
 
 EOF
@@ -312,6 +324,9 @@ EOF
       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
     agents:
       queue: "$BUILDKITE_TEST_AGENT_QUEUE"
+    retry:
+      manual:
+        permit_on_passed: true
     timeout: ${TIMEOUT:-20}
     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_SERIAL_TESTS}
 
@@ -342,8 +357,11 @@ EOF
           cd: ~
     env:
       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
-    timeout: ${TIMEOUT:-60}
     agents: "queue=mac-anka-node-fleet"
+    retry:
+      manual:
+        permit_on_passed: true
+    timeout: ${TIMEOUT:-60}
     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_SERIAL_TESTS}
 EOF
             fi
@@ -381,6 +399,9 @@ EOF
       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
     agents:
       queue: "$BUILDKITE_TEST_AGENT_QUEUE"
+    retry:
+      manual:
+        permit_on_passed: true
     timeout: ${TIMEOUT:-180}
     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_LONG_RUNNING_TESTS:-true}
 
@@ -411,8 +432,11 @@ EOF
           cd: ~
     env:
       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
-    timeout: ${TIMEOUT:-180}
     agents: "queue=mac-anka-node-fleet"
+    retry:
+      manual:
+        permit_on_passed: true
+    timeout: ${TIMEOUT:-180}
     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_LONG_RUNNING_TESTS:-true}
 EOF
             fi
