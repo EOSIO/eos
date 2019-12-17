@@ -1,21 +1,37 @@
-# Ubuntu 18.04 (Unpinned)
-The following commands will install all of the necessary dependencies for source installing EOSIO.
+---
+content_title: Ubuntu 18.04 (unpinned)
+---
+
+[[info | Building EOSIO on another OS?]]
+| Visit the [Build EOSIO from Source](../index.md) section.
+
+Select an EOSIO-related task below for Ubuntu 18.04:
+
+* [Download EOSIO Repository](#download-eosio-repository)
+* [Install EOSIO Dependencies](#install-eosio-dependencies)
+* [Build EOSIO](#build-eosio)
+* [Install EOSIO](#install-eosio)
+* [Test EOSIO](#test-eosio)
+* [Uninstall EOSIO](#uninstall-eosio)
+
 <!-- The code within the following block is used in our CI/CD. It will be converted line by line into RUN statements inside of a temporary Dockerfile and used to build our docker tag for this OS. 
 Therefore, COPY and other Dockerfile-isms are not permitted. -->
-## Clone EOSIO Repository
+
+## Download EOSIO Repository
 <!-- CLONE -->
-```
-apt-get update && apt-get upgrade -y && DEBIAN_FRONTEND=noninteractive apt-get install -y git
+```sh{showUserHost:false}
 export EOSIO_LOCATION=$HOME/eosio
+apt-get update && apt-get upgrade -y && DEBIAN_FRONTEND=noninteractive apt-get install -y git
 git clone https://github.com/EOSIO/eos.git $EOSIO_LOCATION
 cd $EOSIO_LOCATION && git submodule update --init --recursive
 export EOSIO_INSTALL_LOCATION=$EOSIO_LOCATION/install
 mkdir -p $EOSIO_INSTALL_LOCATION
 ```
 <!-- CLONE END -->
-## Install Dependencies
+
+## Install EOSIO Dependencies
 <!-- DEPS -->
-```
+```sh{showUserHost:false}
 apt-get install -y make bzip2 automake libbz2-dev libssl-dev doxygen graphviz libgmp3-dev \
     autotools-dev libicu-dev python2.7 python2.7-dev python3 python3-dev \
     autoconf libtool curl zlib1g-dev sudo ruby libusb-1.0-0-dev \
@@ -59,31 +75,35 @@ cd $EOSIO_INSTALL_LOCATION && curl -L https://github.com/mongodb/mongo-cxx-drive
     rm -rf $EOSIO_INSTALL_LOCATION/mongo-cxx-driver-r3.4.0.tar.gz $EOSIO_INSTALL_LOCATION/mongo-cxx-driver-r3.4.0
 ```
 <!-- DEPS END -->
+
 ## Build EOSIO
 <!-- BUILD -->
-```
+```sh{showUserHost:false}
 mkdir -p $EOSIO_LOCATION/build
 cd $EOSIO_LOCATION/build
 cmake -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER='clang++-7' -DCMAKE_C_COMPILER='clang-7' -DLLVM_DIR='/usr/lib/llvm-7/lib/cmake/llvm' -DCMAKE_INSTALL_PREFIX=$EOSIO_INSTALL_LOCATION -DBUILD_MONGO_DB_PLUGIN=true ..
 make -j$(nproc)
 ```
 <!-- BUILD -->
+
 ## Install EOSIO
 <!-- INSTALL -->
-```
+```sh{showUserHost:false}
 make install
 ```
 <!-- INSTALL END -->
+
 ## Test EOSIO
 <!-- TEST -->
-```
+```sh{showUserHost:false}
 $EOSIO_INSTALL_LOCATION/bin/mongod --fork --logpath $(pwd)/mongod.log --dbpath $(pwd)/mongodata
 make test
 ```
 <!-- TEST END -->
+
 ## Uninstall EOSIO
 <!-- UNINSTALL -->
-```
+```sh{showUserHost:false}
 xargs rm < $EOSIO_LOCATION/build/install_manifest.txt
 rm -rf $EOSIO_LOCATION/build
 ```
