@@ -40,10 +40,12 @@ mkdir -p $EOSIO_INSTALL_LOCATION
 ## Install EOSIO Dependencies
 <!-- DEPS -->
 ```sh
+# install dependencies
 apt-get install -y make bzip2 automake libbz2-dev libssl-dev doxygen graphviz libgmp3-dev \
     autotools-dev libicu-dev python2.7 python2.7-dev python3 python3-dev \
     autoconf libtool curl zlib1g-dev sudo ruby libusb-1.0-0-dev \
     libcurl4-gnutls-dev pkg-config patch llvm-7-dev clang-7 ccache vim-common jq
+# build cmake
 PATH=$EOSIO_INSTALL_LOCATION/bin:$PATH
 cd $EOSIO_INSTALL_LOCATION && curl -LO https://cmake.org/files/v3.13/cmake-3.13.2.tar.gz && \
     tar -xzf cmake-3.13.2.tar.gz && \
@@ -52,6 +54,7 @@ cd $EOSIO_INSTALL_LOCATION && curl -LO https://cmake.org/files/v3.13/cmake-3.13.
     make -j$(nproc) && \
     make install && \
     rm -rf $EOSIO_INSTALL_LOCATION/cmake-3.13.2.tar.gz $EOSIO_INSTALL_LOCATION/cmake-3.13.2
+# build boost
 cd $EOSIO_INSTALL_LOCATION && curl -LO https://dl.bintray.com/boostorg/release/1.71.0/source/boost_1_71_0.tar.bz2 && \
     tar -xjf boost_1_71_0.tar.bz2 && \
     cd boost_1_71_0 && \

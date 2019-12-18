@@ -40,9 +40,10 @@ mkdir -p $EOSIO_INSTALL_LOCATION
 ## Install Dependencies
 <!-- DEPS -->
 ```sh
+# install dependencies
 brew install cmake python@2 python libtool libusb graphviz automake wget gmp pkgconfig doxygen openssl@1.1 jq boost || :
 PATH=$EOSIO_INSTALL_LOCATION/bin:$PATH
-# install mongoDB
+# install mongodb
 mkdir -p $EOSIO_INSTALL_LOCATION/bin
 cd $EOSIO_INSTALL_LOCATION && curl -OL https://fastdl.mongodb.org/osx/mongodb-osx-ssl-x86_64-3.6.3.tgz
     tar -xzf mongodb-osx-ssl-x86_64-3.6.3.tgz && rm -f mongodb-osx-ssl-x86_64-3.6.3.tgz && \

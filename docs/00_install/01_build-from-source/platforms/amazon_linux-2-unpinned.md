@@ -40,10 +40,12 @@ mkdir -p $EOSIO_INSTALL_LOCATION
 ## Install EOSIO Dependencies
 <!-- DEPS -->
 ```sh
+# install dependencies
 yum install -y which sudo procps-ng util-linux autoconf automake \
     libtool make bzip2 bzip2-devel openssl-devel gmp-devel libstdc++ libcurl-devel \
     libusbx-devel python3 python3-devel python-devel libedit-devel doxygen \
     graphviz clang patch llvm-devel llvm-static vim-common jq
+# build cmake
 PATH=$EOSIO_INSTALL_LOCATION/bin:$PATH
 cd $EOSIO_INSTALL_LOCATION && curl -LO https://cmake.org/files/v3.13/cmake-3.13.2.tar.gz && \
     tar -xzf cmake-3.13.2.tar.gz && \
@@ -52,6 +54,7 @@ cd $EOSIO_INSTALL_LOCATION && curl -LO https://cmake.org/files/v3.13/cmake-3.13.
     make -j$(nproc) && \
     make install && \
     rm -rf $EOSIO_INSTALL_LOCATION/cmake-3.13.2.tar.gz $EOSIO_INSTALL_LOCATION/cmake-3.13.2
+# build boost
 cd $EOSIO_INSTALL_LOCATION && curl -LO https://dl.bintray.com/boostorg/release/1.71.0/source/boost_1_71_0.tar.bz2 && \
     tar -xjf boost_1_71_0.tar.bz2 && \
     cd boost_1_71_0 && \
