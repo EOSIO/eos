@@ -142,6 +142,7 @@ make test
 <!-- TEST END -->
 
 ## Uninstall EOSIO
+These commands uninstall the EOSIO software from the specified OS.
 <!-- UNINSTALL -->
 ```sh
 xargs rm < $EOSIO_LOCATION/build/install_manifest.txt
