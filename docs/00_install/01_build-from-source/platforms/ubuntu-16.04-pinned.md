@@ -23,6 +23,7 @@ Select a manual task below, then copy/paste the shell commands to a Unix termina
 Therefore, COPY and other Dockerfile-isms are not permitted. -->
 
 ## Download EOSIO Repository
+These commands set the EOSIO home directory, install git, and clone the EOSIO repository.
 <!-- CLONE -->
 ```sh
 # set EOSIO home directory
