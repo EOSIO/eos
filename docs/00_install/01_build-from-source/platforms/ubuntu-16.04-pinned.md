@@ -39,7 +39,7 @@ mkdir -p $EOSIO_INSTALL_LOCATION
 <!-- CLONE END -->
 
 ## Install EOSIO Dependencies
-These commands install the EOSIO software dependencies. Make sure to [Download the EOSIO Repository] first and set the EOSIO home directory.
+These commands install the EOSIO software dependencies. Make sure to [Download the EOSIO Repository](#download-eosio-repository) first and set the EOSIO home directory.
 <!-- DEPS -->
 ```sh
 # install dependencies

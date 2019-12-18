@@ -39,7 +39,7 @@ mkdir -p $EOSIO_INSTALL_LOCATION
 <!-- CLONE END -->
 
 ## Install EOSIO Dependencies
-These commands install the EOSIO software dependencies. Make sure to [Download the EOSIO Repository] first and set the EOSIO home directory.
+These commands install the EOSIO software dependencies. Make sure to [Download the EOSIO Repository](#download-eosio-repository) first and set the EOSIO home directory.
 <!-- DEPS -->
 ```sh
 # install dependencies
@@ -114,6 +114,7 @@ cd $EOSIO_INSTALL_LOCATION && curl -L https://github.com/mongodb/mongo-cxx-drive
 <!-- DEPS END -->
 
 ## Build EOSIO
+These commands build the EOSIO software on the specified OS.
 <!-- BUILD -->
 ```sh
 mkdir -p $EOSIO_LOCATION/build
