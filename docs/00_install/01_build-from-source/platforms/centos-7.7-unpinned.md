@@ -25,9 +25,11 @@ Therefore, COPY and other Dockerfile-isms are not permitted. -->
 ## Download EOSIO Repository
 <!-- CLONE -->
 ```sh
+# set EOSIO home directory
 export EOSIO_LOCATION=$HOME/eosio
+# install git
 yum update -y && yum install -y git
-export EOSIO_LOCATION=$HOME/eosio
+# clone EOSIO repository
 git clone https://github.com/EOSIO/eos.git $EOSIO_LOCATION
 cd $EOSIO_LOCATION && git submodule update --init --recursive
 export EOSIO_INSTALL_LOCATION=$EOSIO_LOCATION/install
