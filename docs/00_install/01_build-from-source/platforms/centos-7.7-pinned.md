@@ -135,6 +135,7 @@ make -j$(nproc)
 <!-- BUILD -->
 
 ## Install EOSIO
+This command installs the EOSIO software on the specified OS. Make sure to [Build EOSIO](#build-eosio) first.
 <!-- INSTALL -->
 ```sh
 make install
