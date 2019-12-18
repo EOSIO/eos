@@ -21,6 +21,7 @@
 #include <eosio/chain/abi_serializer.hpp>
 #include <appbase/application.hpp>
 #include <eosio/chain/exceptions.hpp>
+#include <eosio/chain_plugin/chain_plugin.hpp>
 
 namespace eosio {
    static appbase::abstract_plugin& _launcher_service_plugin = app().register_plugin<launcher_service_plugin>();
@@ -32,34 +33,9 @@ namespace eosio {
    using namespace chain;
 
    namespace launcher_service {
-      // same as chain_plugin
-      struct get_info_results {
-         string                  server_version;
-         fc::sha256              chain_id;
-         uint32_t                head_block_num = 0;
-         uint32_t                last_irreversible_block_num = 0;
-         block_id_type           last_irreversible_block_id;
-         block_id_type           head_block_id;
-         fc::time_point          head_block_time;
-         account_name            head_block_producer;
 
-         uint64_t                virtual_block_cpu_limit = 0;
-         uint64_t                virtual_block_net_limit = 0;
-
-         uint64_t                block_cpu_limit = 0;
-         uint64_t                block_net_limit = 0;
-
-         optional<string>        server_version_string;
-         optional<uint32_t>              fork_db_head_block_num;
-         optional<block_id_type>  fork_db_head_block_id;
-         optional<string>        server_full_version_string;
-      };
-
-      // same as chain_plugin
-      struct get_abi_results {
-         name                   account_name;
-         optional<abi_def>      abi;
-      };
+      using get_info_results = chain_apis::read_only::get_info_results;
+      using get_abi_results = chain_apis::read_only::get_abi_results;
 
       action create_setabi(const name& account, const bytes& abi) {
          return action {
@@ -519,7 +495,7 @@ public:
 
       fc::optional<abi_serializer> abi_serializer_resolver(int cluster_id, int node_id, const name& account) {
          auto &abi_cache = _running_clusters[cluster_id].nodes[node_id].abi_cache;
-         if (fc::time_point::now() >= _running_clusters[cluster_id].nodes[node_id].abi_cache_time + fc::milliseconds(500)) {
+         if (fc::time_point::now() >= _running_clusters[cluster_id].nodes[node_id].abi_cache_time + fc::milliseconds(config::block_interval_ms)) {
             _running_clusters[cluster_id].nodes[node_id].abi_cache_time = fc::time_point::now();
             abi_cache.clear();
          }
@@ -531,8 +507,7 @@ public:
             if( abi_results.abi.valid() ) {
                abis.emplace( *abi_results.abi, _config.abi_serializer_max_time );
             }
-            abi_cache.emplace( account, abis );
-            return abis;
+            std::tie( it, std::ignore ) = abi_cache.emplace( account, abis );
          }
          return it->second;
       };
@@ -541,14 +516,13 @@ public:
                                   const fc::variant& action_args_var) {
          auto abis = abi_serializer_resolver(cluster_id, node_id, account);
          if (!abis.valid()) {
-            _running_clusters[cluster_id].nodes[node_id].abi_cache.clear();
-            FC_ASSERT(false, "No ABI found for ${contract}", ("contract", account));
+            _running_clusters[cluster_id].nodes[node_id].abi_cache.erase(account);
+            FC_THROW_EXCEPTION(chain::abi_not_found_exception, "No ABI found for ${contract}", ("contract", account));
          }
 
          auto action_type = abis->get_action_type( action );
          if (action_type.empty()) {
-            _running_clusters[cluster_id].nodes[node_id].abi_cache.clear();
-            FC_ASSERT(false, "Unknown action ${action} in contract ${contract}", ("action", action)( "contract", account ));
+            FC_THROW_EXCEPTION(chain::invalid_ricardian_action_exception, "Unknown action ${action} in contract ${contract}", ("action", action)( "contract", account ));
          }
 
          char temp[512 * 1024];
@@ -564,7 +538,7 @@ public:
                                    packed_transaction::compression_type compression = packed_transaction::compression_type::none) {
          int port = _running_clusters[cluster_id].nodes[node_id].http_port;
          auto &info = _running_clusters[cluster_id].nodes[node_id].get_info_cache;
-         if (fc::time_point::now() >= _running_clusters[cluster_id].nodes[node_id].get_info_cache_time + fc::milliseconds(500)) {
+         if (fc::time_point::now() >= _running_clusters[cluster_id].nodes[node_id].get_info_cache_time + fc::milliseconds(config::block_interval_ms)) {
             fc::variant info_ = get_info(cluster_id, node_id);
             info = info_.as<get_info_results>();
             _running_clusters[cluster_id].nodes[node_id].get_info_cache_time = fc::time_point::now();
@@ -586,13 +560,12 @@ public:
             trx.delay_sec = 0;
          }
 
-         bool has_key = false;
          if (sign_keys.size()) {
             for (const public_key_type &pub_key : sign_keys) {
-               if (_running_clusters[cluster_id].imported_keys.find(pub_key) != _running_clusters[cluster_id].imported_keys.end()) {
-                  private_key_type pri_key = _running_clusters[cluster_id].imported_keys[pub_key];
+               auto itr = _running_clusters[cluster_id].imported_keys.find(pub_key);
+               if (itr != _running_clusters[cluster_id].imported_keys.end()) {
+                  private_key_type pri_key = itr->second;
                   trx.sign(pri_key, *(chain_id_type *)&(info.chain_id));
-                  has_key = true;
                } else {
                   throw std::runtime_error("private key of \"" + (std::string)pub_key + "\" not imported");
                }
@@ -604,10 +577,6 @@ public:
                public_key_type pub_key = public_key_type(k.as_string());
                private_key_type pri_key = _running_clusters[cluster_id].imported_keys[pub_key];
                trx.sign(pri_key, *(chain_id_type *)&(info.chain_id));
-               has_key = true;
-            }
-            if (!has_key) {
-               throw std::runtime_error("failed to determine required keys");
             }
          }
          _running_clusters[cluster_id].transaction_blocknum[trx.id()] = info.head_block_num + 1;
@@ -840,7 +809,7 @@ void launcher_service_plugin::plugin_initialize(const variables_map& options) {
       EOS_ASSERT((int)_my->_config.base_port + (int)_my->_config.cluster_span * _my->_config.max_clusters <= 32768, chain::plugin_config_exception, "max-clusters too large, cluster port numbers would exceed 32767");
       EOS_ASSERT((int)_my->_config.max_nodes_per_cluster * _my->_config.node_span <= _my->_config.cluster_span, chain::plugin_config_exception, "cluster-port-span should not less than node-port-span * max-nodes-per-cluster");
 
-      EOS_ASSERT(bfs::exists(_my->_config.genesis_file), chain::plugin_config_exception,"genesis-json ${path} not exist", ("path", _my->_config.genesis_file));
+      EOS_ASSERT(bfs::exists(_my->_config.genesis_file), chain::plugin_config_exception,"genesis-json ${path} does not exist", ("path", _my->_config.genesis_file));
 
       EOS_ASSERT(options.count("http-server-address"), chain::plugin_config_exception, "http-server-address must be set");
    } catch (fc::exception& er) {
@@ -1064,9 +1033,4 @@ std::string launcher_service_plugin::generate_node_config(const launcher_service
 
 FC_REFLECT(eosio::launcher_service_plugin_impl::node_state, (id)(pid)(http_port)(p2p_port)(is_bios)(stdout_path)(stderr_path))
 FC_REFLECT(eosio::launcher_service_plugin_impl::cluster_state, (nodes))
-FC_REFLECT(eosio::launcher_service::get_info_results,
-           (server_version)(chain_id)(head_block_num)(last_irreversible_block_num)(last_irreversible_block_id)
-           (head_block_id)(head_block_time)(head_block_producer)
-           (virtual_block_cpu_limit)(virtual_block_net_limit)(block_cpu_limit)(block_net_limit)
-           (server_version_string)(fork_db_head_block_num)(fork_db_head_block_id)(server_full_version_string) )
-FC_REFLECT(eosio::launcher_service::get_abi_results, (account_name)(abi) )
+
