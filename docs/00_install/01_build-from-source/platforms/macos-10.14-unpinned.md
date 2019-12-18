@@ -2,7 +2,7 @@
 content_title: MacOS 10.14 (native compiler)
 ---
 
-This section contains shell commands to manually download, install, build, test, and uninstall EOSIO and dependencies on MacOS 10.14.
+This section contains shell commands to manually download, build, install, test, and uninstall EOSIO and dependencies on MacOS 10.14.
 
 [[info | Building EOSIO is for Advanced Developers]]
 | If you are new to EOSIO, it is recommended that you install the [EOSIO Prebuilt Binaries](../../00_install-prebuilt-binaries.md) instead of building from source.
