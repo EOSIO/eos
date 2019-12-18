@@ -613,9 +613,12 @@ namespace eosio {
 
       bool connected();
       bool current();
-      void close( bool reconnect = true );
+
+      /// @param reconnect true if we should try and reconnect immediately after close
+      /// @param shutdown true only if plugin is shutting down
+      void close( bool reconnect = true, bool shutdown = false );
    private:
-      static void _close( connection* self, bool reconnect ); // for easy capture
+      static void _close( connection* self, bool reconnect, bool shutdown ); // for easy capture
    public:
 
       bool populate_handshake( handshake_message& hello );
@@ -905,13 +908,13 @@ namespace eosio {
       buffer_queue.clear_write_queue();
    }
 
-   void connection::close( bool reconnect ) {
-      strand.post( [self = shared_from_this(), reconnect]() {
-         connection::_close( self.get(), reconnect );
+   void connection::close( bool reconnect, bool shutdown ) {
+      strand.post( [self = shared_from_this(), reconnect, shutdown]() {
+         connection::_close( self.get(), reconnect, shutdown );
       });
    }
 
-   void connection::_close( connection* self, bool reconnect ) {
+   void connection::_close( connection* self, bool reconnect, bool shutdown ) {
       self->socket_open = false;
       boost::system::error_code ec;
       if( self->socket->is_open() ) {
@@ -933,17 +936,17 @@ namespace eosio {
          self->last_close = fc::time_point::now();
          self->conn_node_id = fc::sha256();
       }
-      if( has_last_req ) {
+      if( has_last_req && !shutdown ) {
          my_impl->dispatcher->retry_fetch( self->shared_from_this() );
       }
       self->peer_requested.reset();
       self->sent_handshake_count = 0;
-      my_impl->sync_master->sync_reset_lib_num( self->shared_from_this() );
+      if( !shutdown) my_impl->sync_master->sync_reset_lib_num( self->shared_from_this() );
       fc_ilog( logger, "closing '${a}', ${p}", ("a", self->peer_address())("p", self->peer_name()) );
       fc_dlog( logger, "canceling wait on ${p}", ("p", self->peer_name()) ); // peer_name(), do not hold conn_mtx
       self->cancel_wait();
 
-      if( reconnect ) {
+      if( reconnect && !shutdown ) {
          my_impl->start_conn_timer( std::chrono::milliseconds( 100 ), connection_wptr() );
       }
    }
@@ -1739,7 +1742,7 @@ namespace eosio {
    void sync_manager::sync_recv_block(const connection_ptr& c, const block_id_type& blk_id, uint32_t blk_num) {
       fc_dlog( logger, "got block ${bn} from ${p}", ("bn", blk_num)( "p", c->peer_name() ) );
       if( app().is_quiting() ) {
-         c->close( false );
+         c->close( false, true );
          return;
       }
       c->consecutive_rejected_blocks = 0;
@@ -3264,7 +3267,7 @@ namespace eosio {
            "    p2p.trx.eos.io:9876:trx\n"
            "    p2p.blk.eos.io:9876:blk\n")
          ( "p2p-max-nodes-per-host", bpo::value<int>()->default_value(def_max_nodes_per_host), "Maximum number of client nodes from any single IP address")
-         ( "agent-name", bpo::value<string>()->default_value("\"EOS Test Agent\""), "The name supplied to identify this node amongst the peers.")
+         ( "agent-name", bpo::value<string>()->default_value("EOS Test Agent"), "The name supplied to identify this node amongst the peers.")
          ( "allowed-connection", bpo::value<vector<string>>()->multitoken()->default_value({"any"}, "any"), "Can be 'any' or 'producers' or 'specified' or 'none'. If 'specified', peer-key must be specified at least once. If only 'producers', peer-key is not required. 'producers' and 'specified' may be combined.")
          ( "peer-key", bpo::value<vector<string>>()->composing()->multitoken(), "Optional public key of peer allowed to connect.  May be used multiple times.")
          ( "peer-private-key", boost::program_options::value<vector<string>>()->composing()->multitoken(),
@@ -3460,7 +3463,7 @@ namespace eosio {
       }
 
       } catch( ... ) {
-         // always watn plugin_shutdown even on exception
+         // always want plugin_shutdown even on exception
          plugin_shutdown();
          throw;
       }
@@ -3493,7 +3496,7 @@ namespace eosio {
             std::lock_guard<std::shared_mutex> g( my->connections_mtx );
             for( auto& con : my->connections ) {
                fc_dlog( logger, "close: ${p}", ("p", con->peer_name()) );
-               con->close( false );
+               con->close( false, true );
             }
             my->connections.clear();
          }

@@ -55,16 +55,8 @@ class eos_vm_instantiated_module : public wasm_instantiated_module_interface {
       void apply(apply_context& context) override {
          _instantiated_module->set_wasm_allocator(&context.control.get_wasm_allocator());
          _runtime->_bkend = _instantiated_module.get();
-         _runtime->_bkend->initialize(&context);
-         // clamp WASM memory to maximum_linear_memory/wasm_page_size
-         auto& module = _runtime->_bkend->get_module();
-         if (module.memories.size() && 
-               ((module.memories.at(0).limits.maximum > wasm_constraints::maximum_linear_memory / wasm_constraints::wasm_page_size) 
-               || !module.memories.at(0).limits.flags)) {
-            module.memories.at(0).limits.flags = true;
-            module.memories.at(0).limits.maximum = wasm_constraints::maximum_linear_memory / wasm_constraints::wasm_page_size;
-         }
          auto fn = [&]() {
+            _runtime->_bkend->initialize(&context);
             const auto& res = _runtime->_bkend->call(
                 &context, "env", "apply", context.get_receiver().to_uint64_t(),
                 context.get_action().account.to_uint64_t(),
