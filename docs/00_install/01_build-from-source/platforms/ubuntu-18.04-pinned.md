@@ -113,6 +113,7 @@ cd $EOSIO_INSTALL_LOCATION && curl -L https://github.com/mongodb/mongo-cxx-drive
 <!-- DEPS END -->
 
 ## Build EOSIO
+These commands build the EOSIO software on the specified OS. Make sure to [Install the EOSIO Dependencies](#install-eosio-dependencies) first.
 <!-- BUILD -->
 ```sh
 mkdir -p $EOSIO_LOCATION/build
