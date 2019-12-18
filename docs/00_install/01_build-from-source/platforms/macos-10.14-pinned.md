@@ -2,10 +2,12 @@
 content_title: MacOS 10.14 (pinned compiler)
 ---
 
-[[info | Building EOSIO on another OS?]]
-| Visit the [Build EOSIO from Source](../index.md) section.
+This section contains shell commands to manually download, install, build, install, test, and uninstall EOSIO and dependencies on MacOS 10.14.
 
-Select an EOSIO-related task below for MacOS 10.14:
+[[info | Building EOSIO is for Advanced Developers]]
+| If you are new to EOSIO, it is recommended that you install the [EOSIO Prebuilt Binaries](../../00_install-prebuilt-binaries.md) instead of building from source.
+
+Select a manual task below, then copy/paste the shell commands to a Unix terminal to execute directly:
 
 * [Download EOSIO Repository](#download-eosio-repository)
 * [Install EOSIO Dependencies](#install-eosio-dependencies)
@@ -14,12 +16,15 @@ Select an EOSIO-related task below for MacOS 10.14:
 * [Test EOSIO](#test-eosio)
 * [Uninstall EOSIO](#uninstall-eosio)
 
+[[info | Building EOSIO on another OS?]]
+| Visit the [Build EOSIO from Source](../index.md) section.
+
 <!-- The code within the following block is used in our CI/CD. It will be converted line by line into RUN statements inside of a temporary Dockerfile and used to build our docker tag for this OS. 
 Therefore, COPY and other Dockerfile-isms are not permitted. -->
 
 ## Download EOSIO Repository
 <!-- CLONE -->
-```sh{showUserHost:false}
+```sh
 export EOSIO_LOCATION=$HOME/eosio
 brew update && brew install git
 git clone https://github.com/EOSIO/eos.git $EOSIO_LOCATION
@@ -31,7 +36,7 @@ mkdir -p $EOSIO_INSTALL_LOCATION
 
 ## Install EOSIO Dependencies
 <!-- DEPS -->
-```sh{showUserHost:false}
+```sh
 brew install cmake python@2 python libtool libusb graphviz automake wget gmp pkgconfig doxygen openssl@1.1 jq || :
 PATH=$EOSIO_INSTALL_LOCATION/bin:$PATH
 # Boost Fix: eosio/install/bin/../include/c++/v1/stdlib.h:94:15: fatal error: 'stdlib.h' file not found
@@ -80,7 +85,7 @@ cd $EOSIO_INSTALL_LOCATION && curl -L https://github.com/mongodb/mongo-cxx-drive
 
 ## Build EOSIO
 <!-- BUILD -->
-```sh{showUserHost:false}
+```sh
 mkdir -p $EOSIO_LOCATION/build
 cd $EOSIO_LOCATION/build
 cmake -DCMAKE_BUILD_TYPE='Release' -DCMAKE_TOOLCHAIN_FILE=$EOSIO_LOCATION/scripts/pinned_toolchain.cmake -DCMAKE_INSTALL_PREFIX=$EOSIO_INSTALL_LOCATION -DBUILD_MONGO_DB_PLUGIN=true ..
@@ -90,14 +95,14 @@ make -j$(getconf _NPROCESSORS_ONLN)
 
 ## Install EOSIO
 <!-- INSTALL -->
-```sh{showUserHost:false}
+```sh
 make install
 ```
 <!-- INSTALL END -->
 
 ## Test EOSIO
 <!-- TEST -->
-```sh{showUserHost:false}
+```sh
 $EOSIO_INSTALL_LOCATION/bin/mongod --fork --logpath $(pwd)/mongod.log --dbpath $(pwd)/mongodata
 make test
 ```
@@ -105,7 +110,7 @@ make test
 
 ## Uninstall EOSIO
 <!-- UNINSTALL -->
-```sh{showUserHost:false}
+```sh
 xargs rm < $EOSIO_LOCATION/build/install_manifest.txt
 rm -rf $EOSIO_LOCATION/build
 ```

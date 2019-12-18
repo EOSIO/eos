@@ -2,10 +2,12 @@
 content_title: Centos 7.7 (unpinned)
 ---
 
-[[info | Building EOSIO on another OS?]]
-| Visit the [Build EOSIO from Source](../index.md) section.
+This section contains shell commands to manually download, install, build, install, test, and uninstall EOSIO and dependencies on Centos 7.7.
 
-Select an EOSIO-related task below for Centos 7.7:
+[[info | Building EOSIO is for Advanced Developers]]
+| If you are new to EOSIO, it is recommended that you install the [EOSIO Prebuilt Binaries](../../00_install-prebuilt-binaries.md) instead of building from source.
+
+Select a manual task below, then copy/paste the shell commands to a Unix terminal to execute directly:
 
 * [Download EOSIO Repository](#download-eosio-repository)
 * [Install EOSIO Dependencies](#install-eosio-dependencies)
@@ -14,12 +16,15 @@ Select an EOSIO-related task below for Centos 7.7:
 * [Test EOSIO](#test-eosio)
 * [Uninstall EOSIO](#uninstall-eosio)
 
+[[info | Building EOSIO on another OS?]]
+| Visit the [Build EOSIO from Source](../index.md) section.
+
 <!-- The code within the following block is used in our CI/CD. It will be converted line by line into statements inside of a temporary Dockerfile and used to build our docker tag for this OS. 
 Therefore, COPY and other Dockerfile-isms are not permitted. -->
 
 ## Download EOSIO Repository
 <!-- CLONE -->
-```sh{showUserHost:false}
+```sh
 export EOSIO_LOCATION=$HOME/eosio
 yum update -y && yum install -y git
 export EOSIO_LOCATION=$HOME/eosio
@@ -32,7 +37,7 @@ mkdir -p $EOSIO_INSTALL_LOCATION
 
 ## Install EOSIO Dependencies
 <!-- DEPS -->
-```sh{showUserHost:false}
+```sh
 yum update -y && \
     yum install -y epel-release && \
     yum --enablerepo=extras install -y centos-release-scl && \
@@ -88,7 +93,7 @@ cd $EOSIO_INSTALL_LOCATION && curl -L https://github.com/mongodb/mongo-cxx-drive
 
 ## Build EOSIO
 <!-- BUILD -->
-```sh{showUserHost:false}
+```sh
 mkdir -p $EOSIO_LOCATION/build
 cd $EOSIO_LOCATION/build
 source /opt/rh/devtoolset-8/enable && cmake -DCMAKE_BUILD_TYPE='Release' -DLLVM_DIR='/opt/rh/llvm-toolset-7.0/root/usr/lib64/cmake/llvm' -DCMAKE_INSTALL_PREFIX=$EOSIO_INSTALL_LOCATION -DBUILD_MONGO_DB_PLUGIN=true ..
@@ -98,14 +103,14 @@ make -j$(nproc)
 
 ## Install EOSIO
 <!-- INSTALL -->
-```sh{showUserHost:false}
+```sh
 make install
 ```
 <!-- INSTALL END -->
 
 ## Test EOSIO
 <!-- TEST -->
-```sh{showUserHost:false}
+```sh
 source /opt/rh/rh-python36/enable
 $EOSIO_INSTALL_LOCATION/bin/mongod --fork --logpath $(pwd)/mongod.log --dbpath $(pwd)/mongodata
 make test
@@ -114,7 +119,7 @@ make test
 
 ## Uninstall EOSIO
 <!-- UNINSTALL -->
-```sh{showUserHost:false}
+```sh
 xargs rm < $EOSIO_LOCATION/build/install_manifest.txt
 rm -rf $EOSIO_LOCATION/build
 ```
