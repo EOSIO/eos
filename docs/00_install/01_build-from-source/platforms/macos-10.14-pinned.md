@@ -110,6 +110,7 @@ make install
 <!-- INSTALL END -->
 
 ## Test EOSIO
+These commands validate the EOSIO software installation on the specified OS. This task is optional but recommended. Make sure to [Install EOSIO](#install-eosio) first.
 <!-- TEST -->
 ```sh
 $EOSIO_INSTALL_LOCATION/bin/mongod --fork --logpath $(pwd)/mongod.log --dbpath $(pwd)/mongodata
