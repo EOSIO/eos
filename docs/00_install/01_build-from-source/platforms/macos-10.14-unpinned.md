@@ -2,6 +2,8 @@
 content_title: MacOS 10.14 (native compiler)
 ---
 
+<!-- This document is aggregated by our internal documentation tool to generate EOSIO documentation. The code within the codeblocks below is used in our CI/CD. It will be converted line by line into statements inside of a temporary Dockerfile and used to build our docker tag for this OS. Therefore, COPY and other Dockerfile-isms are not permitted. Code changes will update hashes and regenerate new docker images, so use with caution and do not modify unless necessary. -->
+
 This section contains shell commands to manually download, build, install, test, and uninstall EOSIO and dependencies on MacOS 10.14.
 
 [[info | Building EOSIO is for Advanced Developers]]
@@ -18,9 +20,6 @@ Select a manual task below, then copy/paste the shell commands to a Unix termina
 
 [[info | Building EOSIO on another OS?]]
 | Visit the [Build EOSIO from Source](../index.md) section.
-
-<!-- The code within the following block is used in our CI/CD. It will be converted line by line into RUN statements inside of a temporary Dockerfile and used to build our docker tag for this OS. 
-Therefore, COPY and other Dockerfile-isms are not permitted. -->
 
 ## Download EOSIO Repository
 These commands set the EOSIO home directory, install git, and clone the EOSIO repository.
