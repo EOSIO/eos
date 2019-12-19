@@ -2,6 +2,7 @@
 #include <eosio/chain/apply_context.hpp>
 #include <eosio/chain/wasm_eosio_constraints.hpp>
 #include <eosio/chain/wasm_eosio_injection.hpp>
+#include <eosio/chain/global_property_object.hpp>
 
 //wabt includes
 #include <src/interp.h>
@@ -35,6 +36,18 @@ class wabt_instantiated_module : public wasm_instantiated_module_interface {
       }
 
       void apply(apply_context& context) override {
+         // Reset call depth and linear memory
+         uint64_t max_pages = wasm_constraints::maximum_linear_memory/wasm_constraints::wasm_page_size;
+         if(context.control.is_builtin_activated(builtin_protocol_feature_t::configurable_wasm_limits)) {
+            const wasm_config& config = context.control.get_global_properties().wasm_configuration;
+            // Call depth is the last global.  Note that injection does not count apply.
+            _initial_globals.back().second.value.i32 = config.max_call_depth - 1;
+            if(_env->GetMemoryCount()) {
+               EOS_ASSERT(_initial_memory_configuration.initial <= config.max_pages, wasm_execution_error, "Initial memory exceeds current limit.");
+               max_pages = config.max_pages;
+            }
+         }
+
          //reset mutable globals
          for(const auto& mg : _initial_globals)
             mg.first->typed_value = mg.second;
@@ -46,6 +59,12 @@ class wabt_instantiated_module : public wasm_instantiated_module_interface {
          if(_env->GetMemoryCount()) {
             Memory* memory = this_run_vars.memory = _env->GetMemory(0);
             memory->page_limits = _initial_memory_configuration;
+            if(memory->page_limits.has_max) {
+               memory->page_limits.max = std::min(memory->page_limits.max, max_pages);
+            } else {
+               memory->page_limits.max = max_pages;
+               memory->page_limits.has_max = true;
+            }
             memory->data.resize(_initial_memory_configuration.initial * WABT_PAGE_SIZE);
             memcpy(memory->data.data(), _initial_memory.data(), _initial_memory.size());
             memset(memory->data.data() + _initial_memory.size(), 0, memory->data.size() - _initial_memory.size());
@@ -81,7 +100,8 @@ bool wabt_runtime::inject_module(IR::Module& module) {
 }
 
 std::unique_ptr<wasm_instantiated_module_interface> wabt_runtime::instantiate_module(const char* code_bytes, size_t code_size, std::vector<uint8_t> initial_memory,
-                                                                                     const digest_type& code_hash, const uint8_t& vm_type, const uint8_t& vm_version) {
+                                                                                     const digest_type& code_hash, const uint8_t& vm_type, const uint8_t& vm_version,
+                                                                                     const wasm_config& cfg) {
    std::unique_ptr<interp::Environment> env = std::make_unique<interp::Environment>();
    for(auto it = intrinsic_registrator::get_map().begin() ; it != intrinsic_registrator::get_map().end(); ++it) {
       interp::HostModule* host_module = env->AppendHostModule(it->first);

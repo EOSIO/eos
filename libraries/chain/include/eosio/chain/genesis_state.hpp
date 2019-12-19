@@ -3,6 +3,7 @@
 #include <eosio/chain/chain_config.hpp>
 #include <eosio/chain/chain_snapshot.hpp>
 #include <eosio/chain/kv_config.hpp>
+#include <eosio/chain/wasm_config.hpp>
 #include <eosio/chain/types.hpp>
 
 #include <fc/crypto/sha256.hpp>
@@ -57,7 +58,22 @@ struct genesis_state {
       { config::default_max_kv_key_size, config::default_max_kv_value_size, config::default_max_kv_iterators }
    };
 
+   static constexpr wasm_config default_initial_wasm_configuration {
+      .max_mutable_global_bytes = config::default_max_wasm_mutable_global_bytes,
+      .max_table_elements       = config::default_max_wasm_table_elements,
+      .max_section_elements     = config::default_max_wasm_section_elements,
+      .max_linear_memory_init   = config::default_max_wasm_linear_memory_init,
+      .max_func_local_bytes     = config::default_max_wasm_func_local_bytes,
+      .max_nested_structures    = config::default_max_wasm_nested_structures,
+      .max_symbol_bytes         = config::default_max_wasm_symbol_bytes,
+      .max_module_bytes         = config::default_max_wasm_module_bytes,
+      .max_code_bytes           = config::default_max_wasm_code_bytes,
+      .max_pages                = config::default_max_wasm_pages,
+      .max_call_depth           = config::default_max_wasm_call_depth
+   };
+
    kv_config initial_kv_configuration = default_initial_kv_configuration;
+   wasm_config initial_wasm_configuration = default_initial_wasm_configuration;
 
    time_point                               initial_timestamp;
    public_key_type                          initial_key;

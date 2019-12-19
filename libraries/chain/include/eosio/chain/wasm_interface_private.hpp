@@ -13,6 +13,7 @@
 #include <eosio/chain/wasm_eosio_injection.hpp>
 #include <eosio/chain/transaction_context.hpp>
 #include <eosio/chain/code_object.hpp>
+#include <eosio/chain/global_property_object.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <fc/scoped_exit.hpp>
 
@@ -52,7 +53,10 @@ namespace eosio { namespace chain {
 
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
       struct eosvmoc_tier {
-         eosvmoc_tier(const boost::filesystem::path& d, const eosvmoc::config& c, const chainbase::database& db) : cc(d, c, db), exec(cc) {}
+         eosvmoc_tier(const boost::filesystem::path& d, const eosvmoc::config& c, const chainbase::database& db)
+          : cc(d, c, db), exec(cc),
+            // Can't get max_pages from db, because db hasn't been initialized yet.
+            mem(0) {}
          eosvmoc::code_cache_async cc;
          eosvmoc::executor exec;
          eosvmoc::memory mem;
@@ -185,8 +189,9 @@ namespace eosio { namespace chain {
                }
             }
 
+            const auto& cfg = db.get<global_property_object>().wasm_configuration;
             wasm_instantiation_cache.modify(it, [&](auto& c) {
-               c.module = runtime_interface->instantiate_module((const char*)bytes.data(), bytes.size(), parse_initial_memory(module), code_hash, vm_type, vm_version);
+               c.module = runtime_interface->instantiate_module((const char*)bytes.data(), bytes.size(), parse_initial_memory(module), code_hash, vm_type, vm_version, cfg);
             });
          }
          return it->module;

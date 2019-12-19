@@ -9,6 +9,7 @@
 #include <eosio/chain/transaction_context.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/types.hpp>
+#include <eosio/chain/global_property_object.hpp>
 
 #include <fc/scoped_exit.hpp>
 
@@ -147,11 +148,21 @@ executor::executor(const code_cache_base& cc) {
    mapping_is_executable = true;
 }
 
-void executor::execute(const code_descriptor& code, const memory& mem, apply_context& context) {
+void executor::execute(const code_descriptor& code, memory& mem, apply_context& context) {
    if(mapping_is_executable == false) {
       mprotect(code_mapping, code_mapping_size, PROT_EXEC|PROT_READ);
       mapping_is_executable = true;
    }
+
+   uint64_t max_call_depth = eosio::chain::wasm_constraints::maximum_call_depth+1;
+   uint64_t max_pages = eosio::chain::wasm_constraints::maximum_linear_memory/eosio::chain::wasm_constraints::wasm_page_size;
+   if(context.control.is_builtin_activated(builtin_protocol_feature_t::configurable_wasm_limits)) {
+      const wasm_config& config = context.control.get_global_properties().wasm_configuration;
+      max_call_depth = config.max_call_depth;
+      max_pages = config.max_pages;
+   }
+   mem.reset(max_pages);
+   EOS_ASSERT(code.starting_memory_pages <= (int)max_pages, wasm_execution_error, "Initial memory out of range");
 
    //prepare initial memory, mutable globals, and table data
    if(code.starting_memory_pages > 0 ) {
@@ -171,8 +182,9 @@ void executor::execute(const code_descriptor& code, const memory& mem, apply_con
    cb->ctx = &context;
    executors_exception_ptr = nullptr;
    cb->eptr = &executors_exception_ptr;
-   cb->current_call_depth_remaining = eosio::chain::wasm_constraints::maximum_call_depth+2;
+   cb->current_call_depth_remaining = max_call_depth + 1;
    cb->current_linear_memory_pages = code.starting_memory_pages;
+   cb->max_linear_memory_pages = max_pages;
    cb->first_invalid_memory_address = code.starting_memory_pages*64*1024;
    cb->full_linear_memory_start = (char*)mem.full_page_memory_base();
    cb->jmp = &executors_sigjmp_buf;

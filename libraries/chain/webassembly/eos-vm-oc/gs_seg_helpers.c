@@ -12,6 +12,8 @@ int32_t eos_vm_oc_grow_memory(int32_t grow, int32_t max) {
    uint64_t previous_page_count = cb_ptr->current_linear_memory_pages;
    int32_t grow_amount = grow;
    uint64_t max_pages = max;
+   if(max_pages > cb_ptr->max_linear_memory_pages)
+      max_pages = cb_ptr->max_linear_memory_pages;
    if(grow == 0)
       return (int32_t)cb_ptr->current_linear_memory_pages;
    if(previous_page_count + grow_amount > max_pages)
