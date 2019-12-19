@@ -85,11 +85,8 @@ void run_compile(wrapped_fd&& response_sock, wrapped_fd&& wasm_code) noexcept { 
       int64_t func;    //>= 0 means offset to code in wasm; < 0 means intrinsic call at offset address
    };
 
-   if(module.tables.size())
-      prologue_it -= sizeof(table_entry) * module.tables.defs[0].type.size.min;
-
    for(const TableSegment& table_segment : module.tableSegments) {
-      struct table_entry* table_index_0 = (struct table_entry*)&*prologue_it;
+      struct table_entry* table_index_0 = (struct table_entry*)(code.code.data() + code.table_offset);
 
       if(table_segment.baseOffset.i32 > module.tables.defs[0].type.size.min)
          return;
