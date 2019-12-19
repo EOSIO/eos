@@ -15,8 +15,8 @@ function usage() {
     $ %s -h
         - Doesn't generate a /tmp/\${IMAGE_TAG/FILE_NAME} file
         - Populates DETERMINED_HASH and FULL_TAG variables using the file's contents
-    $ %s '<!-- BUILD -->' '<!-- INSTALL END'
-        - Generates /tmp/\${IMAGE_TAG/FILE_NAME} file using the code blocks from the first <!-- BUILD --> all the way to the <!-- INSTALL END -->
+    $ %s '<!-- DAC BUILD -->' '<!-- INSTALL END'
+        - Generates /tmp/\${IMAGE_TAG/FILE_NAME} file using the code blocks from the first <!-- DAC BUILD --> all the way to the <!-- DAC INSTALL END -->
         - Populates DETERMINED_HASH and FULL_TAG variables using the file's contents
     \\n\\n" "$0" "$0" "$0" "$0" 1>&2
    exit 1
@@ -50,14 +50,14 @@ if [[ ! -z $@ ]]; then
   for PATTERN in "$@"; do
     POP_COMMANDS="$POP_COMMANDS
 $(cat docs/00_install/01_build-from-source/${IMAGE_TAG:-$FILE_NAME}.md | sed -n "/$PATTERN/,/END -->/p")"
-    POP_COMMANDS=$(echo "$POP_COMMANDS" | sed '/<!-- TEST/,/<!-- TEST/d') # Remove test block (we run ctest in ci/cd)
+    POP_COMMANDS=$(echo "$POP_COMMANDS" | sed '/<!-- DAC TEST/,/<!-- DAC TEST/d') # Remove test block (we run ctest in ci/cd)
     POP_COMMANDS=$(echo "$POP_COMMANDS" | grep -v -e "$PATTERN" -e '<!--' -e '-->' -e '```' -e '\#.*' -e '^$') # Sanitize
   done
   POP_COMMANDS=$(echo "$POP_COMMANDS" | grep -v -e '^$') 
 else
-  PATTERN='<!--'
+  PATTERN='<!-- DAC'
   POP_COMMANDS=$(cat docs/00_install/01_build-from-source/${IMAGE_TAG:-$FILE_NAME}.md | sed -n "/$PATTERN/,/END -->/p")
-  POP_COMMANDS=$(echo "$POP_COMMANDS" | sed '/<!-- TEST/,/<!-- TEST/d') # Remove test block (we run ctest in ci/cd)
+  POP_COMMANDS=$(echo "$POP_COMMANDS" | sed '/<!-- DAC TEST/,/<!-- DAC TEST/d') # Remove test block (we run ctest in ci/cd)
   POP_COMMANDS=$(echo "$POP_COMMANDS" | grep -v -e "$PATTERN" -e '<!--' -e '-->' -e '```' -e '\#.*' -e '^$') # Sanitize
 fi
 if [[ ! ${IMAGE_TAG:-$FILE_NAME} =~ 'macos' ]]; then # Linux / Docker

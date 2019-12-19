@@ -25,6 +25,8 @@ if [[ -x $(command -v mongod) ]]; then
     [[ ! -d ~/data/mongodb && ! -d mongodata ]] && mkdir mongodata
     echo "$ mongod --fork --logpath $(pwd)/mongod.log $([[ -d ~/data/mongodb ]] && echo '--dbpath ~/data/mongodb' || echo "--dbpath $(pwd)/mongodata") $(if [[ -f ~/etc/mongod.conf ]]; then echo '-f ~/etc/mongod.conf'; elif [[ -f /usr/local/etc/mongod.conf ]]; then echo '-f /usr/local/etc/mongod.conf'; fi)"
     eval mongod --fork --logpath $(pwd)/mongod.log $([[ -d ~/data/mongodb ]] && echo '--dbpath ~/data/mongodb' || echo "--dbpath $(pwd)/mongodata") $(if [[ -f ~/etc/mongod.conf ]]; then echo '-f ~/etc/mongod.conf'; elif [[ -f /usr/local/etc/mongod.conf ]]; then echo '-f /usr/local/etc/mongod.conf'; fi)
+else
+    echo "Could not find mongod binary... Ensure it's in the PATH! Continuing without starting it."
 fi
 # tests
 if [[ -z "$TEST" ]]; then # run all serial tests

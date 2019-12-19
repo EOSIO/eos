@@ -1,21 +1,47 @@
-# Centos 7.7
-The following commands will install all of the necessary dependencies for source installing EOSIO.
-<!-- The code within the following block is used in our CI/CD. It will be converted line by line into statements inside of a temporary Dockerfile and used to build our docker tag for this OS. 
-Therefore, COPY and other Dockerfile-isms are not permitted. -->
-## Clone EOSIO Repository
-<!-- CLONE -->
-```
-yum update -y && yum install -y git
+---
+content_title: Centos 7.7 (pinned)
+---
+
+<!-- This document is aggregated by our internal documentation tool to generate EOSIO documentation. The code within the codeblocks below is used in our CI/CD. It will be converted line by line into statements inside of a temporary Dockerfile and used to build our docker tag for this OS. Therefore, COPY and other Dockerfile-isms are not permitted. Code changes will update hashes and regenerate new docker images, so use with caution and do not modify unless necessary. -->
+
+This section contains shell commands to manually download, build, install, test, and uninstall EOSIO and dependencies on Centos 7.7.
+
+[[info | Building EOSIO is for Advanced Developers]]
+| If you are new to EOSIO, it is recommended that you install the [EOSIO Prebuilt Binaries](../../00_install-prebuilt-binaries.md) instead of building from source.
+
+Select a manual task below, then copy/paste the shell commands to a Unix terminal to execute:
+
+* [Download EOSIO Repository](#download-eosio-repository)
+* [Install EOSIO Dependencies](#install-eosio-dependencies)
+* [Build EOSIO](#build-eosio)
+* [Install EOSIO](#install-eosio)
+* [Test EOSIO](#test-eosio)
+* [Uninstall EOSIO](#uninstall-eosio)
+
+[[info | Building EOSIO on another OS?]]
+| Visit the [Build EOSIO from Source](../index.md) section.
+
+## Download EOSIO Repository
+These commands set the EOSIO directories, install git, and clone the EOSIO repository.
+<!-- DAC CLONE -->
+```sh
+# set EOSIO directories
 export EOSIO_LOCATION=$HOME/eosio
-git clone https://github.com/EOSIO/eos.git $EOSIO_LOCATION
-cd $EOSIO_LOCATION && git submodule update --init --recursive
 export EOSIO_INSTALL_LOCATION=$EOSIO_LOCATION/install
 mkdir -p $EOSIO_INSTALL_LOCATION
+# install git
+yum update -y && yum install -y git
+# clone EOSIO repository
+git clone https://github.com/EOSIO/eos.git $EOSIO_LOCATION
+cd $EOSIO_LOCATION && git submodule update --init --recursive
 ```
-<!-- CLONE END -->
-## Install Dependencies
-<!-- DEPS -->
-```
+<!-- DAC CLONE END -->
+
+## Install EOSIO Dependencies
+These commands install the EOSIO software dependencies. Make sure to [Download the EOSIO Repository](#download-eosio-repository) first and set the EOSIO directories.
+<!-- DAC DEPS -->
+```sh
+# install dependencies
 yum update -y && \
     yum install -y epel-release && \
     yum --enablerepo=extras install -y centos-release-scl && \
@@ -23,6 +49,7 @@ yum update -y && \
     yum --enablerepo=extras install -y which autoconf automake libtool make bzip2 doxygen \
     graphviz bzip2-devel openssl-devel gmp-devel ocaml libicu-devel python python-devel \
     rh-python36 file libusbx-devel libcurl-devel patch vim-common jq
+# build cmake
 PATH=$EOSIO_INSTALL_LOCATION/bin:$PATH
 cd $EOSIO_INSTALL_LOCATION && curl -LO https://cmake.org/files/v3.13/cmake-3.13.2.tar.gz && \
     source /opt/rh/devtoolset-8/enable && \
@@ -33,7 +60,9 @@ cd $EOSIO_INSTALL_LOCATION && curl -LO https://cmake.org/files/v3.13/cmake-3.13.
     make -j$(nproc) && \
     make install && \
     rm -rf $EOSIO_INSTALL_LOCATION/cmake-3.13.2.tar.gz $EOSIO_INSTALL_LOCATION/cmake-3.13.2
+# apply clang patch
 cp -f $EOSIO_LOCATION/scripts/clang-devtoolset8-support.patch /tmp/clang-devtoolset8-support.patch
+# build clang
 cd $EOSIO_INSTALL_LOCATION && git clone --single-branch --branch release_80 https://git.llvm.org/git/llvm.git clang8 && cd clang8 && git checkout 18e41dc && \
     cd tools && git clone --single-branch --branch release_80 https://git.llvm.org/git/lld.git && cd lld && git checkout d60a035 && \
     cd ../ && git clone --single-branch --branch release_80 https://git.llvm.org/git/polly.git && cd polly && git checkout 1bc06e5 && \
@@ -51,6 +80,7 @@ cd $EOSIO_INSTALL_LOCATION && git clone --single-branch --branch release_80 http
     make -j $(nproc) && \
     make install && \
     rm -rf $EOSIO_INSTALL_LOCATION/clang8
+# build llvm
 cd $EOSIO_INSTALL_LOCATION && git clone --depth 1 --single-branch --branch release_80 https://github.com/llvm-mirror/llvm.git llvm && \
     cd llvm && \
     mkdir build && \
@@ -59,6 +89,7 @@ cd $EOSIO_INSTALL_LOCATION && git clone --depth 1 --single-branch --branch relea
     make -j$(nproc) && \
     make install && \
     rm -rf $EOSIO_INSTALL_LOCATION/llvm
+# build boost
 cd $EOSIO_INSTALL_LOCATION && curl -LO https://dl.bintray.com/boostorg/release/1.71.0/source/boost_1_71_0.tar.bz2 && \
     tar -xjf boost_1_71_0.tar.bz2 && \
     cd boost_1_71_0 && \
@@ -89,33 +120,41 @@ cd $EOSIO_INSTALL_LOCATION && curl -L https://github.com/mongodb/mongo-cxx-drive
     make install && \
     rm -rf $EOSIO_INSTALL_LOCATION/mongo-cxx-driver-r3.4.0.tar.gz $EOSIO_INSTALL_LOCATION/mongo-cxx-driver-r3.4.0
 ```
-<!-- DEPS END -->
+<!-- DAC DEPS END -->
+
 ## Build EOSIO
-<!-- BUILD -->
-```
+These commands build the EOSIO software on the specified OS. Make sure to [Install EOSIO Dependencies](#install-eosio-dependencies) first.
+<!-- DAC BUILD -->
+```sh
 mkdir -p $EOSIO_LOCATION/build
 cd $EOSIO_LOCATION/build
 cmake -DCMAKE_BUILD_TYPE='Release' -DCMAKE_TOOLCHAIN_FILE=$EOSIO_LOCATION/scripts/pinned_toolchain.cmake -DCMAKE_INSTALL_PREFIX=$EOSIO_INSTALL_LOCATION -DBUILD_MONGO_DB_PLUGIN=true ..
 make -j$(nproc)
 ```
-<!-- BUILD -->
+<!-- DAC BUILD END -->
+
 ## Install EOSIO
-<!-- INSTALL -->
-```
+This command installs the EOSIO software on the specified OS. Make sure to [Build EOSIO](#build-eosio) first.
+<!-- DAC INSTALL -->
+```sh
 make install
 ```
-<!-- INSTALL END -->
+<!-- DAC INSTALL END -->
+
 ## Test EOSIO
-<!-- TEST -->
-```
+These commands validate the EOSIO software installation on the specified OS. This task is optional but recommended. Make sure to [Install EOSIO](#install-eosio) first.
+<!-- DAC TEST -->
+```sh
 $EOSIO_INSTALL_LOCATION/bin/mongod --fork --logpath $(pwd)/mongod.log --dbpath $(pwd)/mongodata
 make test
 ```
-<!-- TEST END -->
+<!-- DAC TEST END -->
+
 ## Uninstall EOSIO
-<!-- UNINSTALL -->
-```
+These commands uninstall the EOSIO software from the specified OS.
+<!-- DAC UNINSTALL -->
+```sh
 xargs rm < $EOSIO_LOCATION/build/install_manifest.txt
 rm -rf $EOSIO_LOCATION/build
 ```
-<!-- UNINSTALL END -->
+<!-- DAC UNINSTALL END -->

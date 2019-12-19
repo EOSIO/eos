@@ -12,16 +12,19 @@ function cleanup() {
 trap cleanup 0
 
 export DOCKERIZATION=false
-[[ $ENABLE_INSTALL == true ]] && . ./.cicd/helpers/populate-template-and-hash.sh '<!-- BUILD' '<!-- INSTALL' || . ./.cicd/helpers/populate-template-and-hash.sh '<!-- BUILD'
+[[ $ENABLE_INSTALL == true ]] && . ./.cicd/helpers/populate-template-and-hash.sh '<!-- DAC BUILD' '<!-- DAC INSTALL' || . ./.cicd/helpers/populate-template-and-hash.sh '<!-- DAC BUILD'
 if [[ "$(uname)" == 'Darwin' ]]; then
     # You can't use chained commands in execute
     if [[ $TRAVIS == true ]]; then
         ccache -s
         brew reinstall openssl@1.1 # Fixes issue where builds in Travis cannot find libcrypto.
         sed -i -e 's/^cmake /cmake -DCMAKE_CXX_COMPILER_LAUNCHER=ccache /g' /tmp/$POPULATED_FILE_NAME
+        sed -i -e 's/ -DCMAKE_TOOLCHAIN_FILE=$EOSIO_LOCATION\/scripts\/pinned_toolchain.cmake//g' /tmp/$POPULATED_FILE_NAME # We can't use pinned for mac cause building clang8 would take too long
+        sed -i -e 's/ -DBUILD_MONGO_DB_PLUGIN=true//g' /tmp/$POPULATED_FILE_NAME # We can't use pinned for mac cause building clang8 would take too long
+        # Support ship_test
         export NVM_DIR="$HOME/.nvm"
         . "/usr/local/opt/nvm/nvm.sh"
-        nvm install --lts=dubnium # Support ship_test
+        nvm install --lts=dubnium
     else
         source ~/.bash_profile # Make sure node is available for ship_test
     fi
