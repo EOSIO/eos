@@ -589,6 +589,8 @@ cat <<EOF
     env:
       IMAGE_TAG: "ubuntu-18.04-unpinned"
       PLATFORM_TYPE: "unpinned"
+    plugins:
+      - thedyrt/skip-checkout#v0.1.1: ~
     agents:
       queue: "$BUILDKITE_BUILD_AGENT_QUEUE"
     timeout: ${TIMEOUT:-10}
