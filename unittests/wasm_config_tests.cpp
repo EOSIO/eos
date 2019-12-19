@@ -243,6 +243,45 @@ BOOST_DATA_TEST_CASE_F(wasm_config_tester, max_section_elements_export,
    }
 }
 
+static const char max_linear_memory_wast[] = R"=====(
+(module
+  (import "env" "eosio_assert" (func $$eosio_assert (param i32 i32)))
+  (memory 4)
+  (data (i32.const ${OFFSET}) "\11\22\33\44")
+  (func (export "apply") (param i64 i64 i64)
+    (call $$eosio_assert (i32.eq (i32.load (i32.const ${OFFSET})) (i32.const 0x44332211)) (i32.const 0))
+  )
+)
+)=====";
+
+BOOST_DATA_TEST_CASE_F(wasm_config_tester, max_linear_memory_init,
+                       data::make({32768, 65536, 86513, 131072}) * data::make({0, 1}),
+                       n_init, oversize) {
+   produce_blocks(2);
+   create_accounts({N(initdata)});
+   produce_block();
+
+   std::string code = fc::format_string(max_linear_memory_wast, fc::mutable_variant_object("OFFSET", n_init + oversize - 4));
+
+   auto params = genesis_state::default_initial_wasm_configuration;
+   params.max_linear_memory_init = n_init;
+   set_wasm_params(params);
+
+   if(oversize) {
+      BOOST_CHECK_THROW(set_code(N(initdata), code.c_str()), wasm_exception);
+   } else {
+      set_code(N(initdata), code.c_str());
+      push_action(N(initdata));
+      --params.max_linear_memory_init;
+      set_wasm_params(params);
+      produce_block();
+      push_action(N(initdata));
+      produce_block();
+      set_code(N(initdata), vector<uint8_t>{}); // clear existing code
+      BOOST_CHECK_THROW(set_code(N(initdata), code.c_str()), wasm_exception);
+   }
+}
+
 static const std::vector<std::tuple<int, int, bool, bool>> func_local_params = {
    // Default value of max_func_local_bytes
    {8192, 0, false, true}, {4096, 4096, false, true}, {0, 8192, false, true},
