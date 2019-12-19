@@ -478,6 +478,45 @@ BOOST_DATA_TEST_CASE_F(wasm_config_tester, max_table_elements, data::make({512, 
    }
 }
 
+BOOST_DATA_TEST_CASE_F(wasm_config_tester, max_nested_structures,
+                       data::make({512, 1024, 2048}) * data::make({0, 1}),
+                       n_nesting, oversize) {
+   produce_block();
+   create_accounts( { N(nested) } );
+   produce_block();
+
+   std::string code = [&]{
+      std::ostringstream ss;
+      ss << "(module ";
+      ss << " (func (export \"apply\") (param i64 i64 i64) ";
+      for(int i = 0; i < n_nesting + oversize - 1; ++i)
+         ss << "(block ";
+      for(int i = 0; i < n_nesting + oversize - 1; ++i)
+         ss << ")";
+      ss << " )";
+      ss << ")";
+      return ss.str();
+   }();
+
+   auto params = genesis_state::default_initial_wasm_configuration;
+   params.max_nested_structures = n_nesting;
+   set_wasm_params(params);
+
+   if(oversize) {
+      BOOST_CHECK_THROW(set_code(N(nested), code.c_str()), wasm_exception);
+   } else {
+      set_code(N(nested), code.c_str());
+      push_action(N(nested));
+      --params.max_nested_structures;
+      set_wasm_params(params);
+      produce_block();
+      push_action(N(nested));
+      produce_block();
+      set_code(N(nested), vector<uint8_t>{}); // clear existing code
+      BOOST_CHECK_THROW(set_code(N(nested), code.c_str()), wasm_exception);
+   }
+}
+
 BOOST_FIXTURE_TEST_CASE( max_pages, wasm_config_tester ) try {
    produce_blocks(2);
 
