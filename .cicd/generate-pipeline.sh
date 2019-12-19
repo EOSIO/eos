@@ -452,7 +452,7 @@ done
 # trigger eosio-lrt post pr
 if [[ -z $BUILDKITE_TRIGGERED_FROM_BUILD_ID && $TRIGGER_JOB == "true" ]]; then
     if ( [[ ! $PINNED == false ]] ); then
-    cat <<EOF
+        cat <<EOF
   - label: ":pipeline: Trigger Long Running Tests"
     trigger: "eosio-lrt"
     async: true
@@ -474,7 +474,7 @@ fi
 # trigger multiversion post pr
 if [[ -z $BUILDKITE_TRIGGERED_FROM_BUILD_ID && $TRIGGER_JOB = "true" ]]; then
     if ( [[ ! $PINNED == false ]] ); then
-    cat <<EOF
+        cat <<EOF
   - label: ":pipeline: Trigger Multiversion Test"
     trigger: "eos-multiversion-tests"
     async: true
