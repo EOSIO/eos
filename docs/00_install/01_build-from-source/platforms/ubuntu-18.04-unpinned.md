@@ -89,7 +89,7 @@ cd $EOSIO_INSTALL_LOCATION && curl -L https://github.com/mongodb/mongo-cxx-drive
 <!-- DEPS END -->
 
 ## Build EOSIO
-These commands build the EOSIO software on the specified OS. Make sure to [Install the EOSIO Dependencies](#install-eosio-dependencies) first.
+These commands build the EOSIO software on the specified OS. Make sure to [Install EOSIO Dependencies](#install-eosio-dependencies) first.
 <!-- BUILD -->
 ```sh
 mkdir -p $EOSIO_LOCATION/build
@@ -108,7 +108,7 @@ make install
 <!-- INSTALL END -->
 
 ## Test EOSIO
-These commands validate the EOSIO software installation on the specified OS. This task is optional but recommended. Make sure to [Install EOSIO](#install-eosio) first.
+These commands validate the EOSIO software installation on the specified OS. Make sure to [Install EOSIO](#install-eosio) first. (**Note**: This task is optional but recommended.)
 <!-- TEST -->
 ```sh
 $EOSIO_INSTALL_LOCATION/bin/mongod --fork --logpath $(pwd)/mongod.log --dbpath $(pwd)/mongodata
