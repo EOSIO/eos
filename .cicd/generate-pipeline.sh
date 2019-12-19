@@ -505,7 +505,7 @@ fi
 # trigger eosio-sync-from-genesis for every build
 if [[ -z $BUILDKITE_TRIGGERED_FROM_BUILD_ID && -z "${SKIP_INSTALL}${SKIP_LINUX}${SKIP_DOCKER}" ]]; then
     cat <<EOF
-  - label: ":pipeline: Trigger EOSIO Sync-from-Genesis Test"
+  - label: ":chains: Sync-from-Genesis Test"
     trigger: "eosio-sync-from-genesis"
     async: false
     build:
