@@ -168,6 +168,7 @@ namespace eosio { namespace chain {
             try {
                Serialization::MemoryInputStream stream((const U8*)bytes.data(),
                                                        bytes.size());
+               WASM::scoped_skip_checks no_check;
                WASM::serialize(stream, module);
                module.userSections.clear();
             } catch (const Serialization::FatalSerializationException& e) {

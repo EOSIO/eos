@@ -24,6 +24,7 @@ void run_compile(wrapped_fd&& response_sock, wrapped_fd&& wasm_code) noexcept { 
 
    Module module;
    Serialization::MemoryInputStream stream(wasm.data(), wasm.size());
+   WASM::scoped_skip_checks no_check;
    WASM::serialize(stream, module);
    module.userSections.clear();
    wasm_injections::wasm_binary_injection<false> injector(module);

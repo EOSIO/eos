@@ -113,6 +113,136 @@ BOOST_DATA_TEST_CASE_F(wasm_config_tester, max_mutable_global_bytes, data::make(
    }
 }
 
+
+static const char many_funcs_wast[] = R"=====(
+(module
+  (export "apply" (func 0))
+  ${SECTION}
+)
+)=====";
+static const char one_func[] =  "(func (param i64 i64 i64))";
+
+static const char many_types_wast[] = R"=====(
+(module
+  ${SECTION}
+  (export "apply" (func 0))
+  (func (type 0))
+)
+)=====";
+static const char one_type[] =  "(type (func (param i64 i64 i64)))";
+
+static const char many_imports_wast[] = R"=====(
+(module
+  ${SECTION}
+  (func (export "apply") (param i64 i64 i64))
+)
+)=====";
+static const char one_import[] =  "(func (import \"env\" \"abort\"))";
+
+static const char many_globals_wast[] = R"=====(
+(module
+  ${SECTION}
+  (func (export "apply") (param i64 i64 i64))
+)
+)=====";
+static const char one_global[] =  "(global i32 (i32.const 0))";
+
+static const char many_exports_wast[] = R"=====(
+(module
+  ${SECTION}
+  (func (export "apply") (param i64 i64 i64))
+)
+)=====";
+static const char one_export[] =  "(export \"fn${N}\" (func 0))";
+
+static const char many_elem_wast[] = R"=====(
+(module
+  (table 0 anyfunc)
+  ${SECTION}
+  (func (export "apply") (param i64 i64 i64))
+)
+)=====";
+static const char one_elem[] =  "(elem (i32.const 0))";
+
+static const char many_data_wast[] = R"=====(
+(module
+  (memory 1)
+  ${SECTION}
+  (func (export "apply") (param i64 i64 i64))
+)
+)=====";
+static const char one_data[] =  "(data (i32.const 0))";
+
+BOOST_DATA_TEST_CASE_F(wasm_config_tester, max_section_elements,
+                       data::make({1024, 8192, 16384}) * data::make({0, 1}) *
+                       (data::make({many_funcs_wast, many_types_wast, many_imports_wast, many_globals_wast, many_elem_wast, many_data_wast}) ^
+                        data::make({one_func       , one_type       , one_import,        one_global       , one_elem      , one_data})),
+                       n_elements, oversize, wast, one_element) {
+   produce_blocks(2);
+   create_accounts({N(section)});
+   produce_block();
+
+   std::string buf;
+   for(int i = 0; i < n_elements + oversize; ++i) {
+      buf += one_element;
+   }
+   std::string code = fc::format_string(wast, fc::mutable_variant_object("SECTION", buf));
+
+   auto params = genesis_state::default_initial_wasm_configuration;
+   params.max_section_elements = n_elements;
+   set_wasm_params(params);
+
+   if(oversize) {
+      BOOST_CHECK_THROW(set_code(N(section), code.c_str()), wasm_exception);
+   } else {
+      set_code(N(section), code.c_str());
+      push_action(N(section));
+      --params.max_section_elements;
+      set_wasm_params(params);
+      produce_block();
+      push_action(N(section));
+      produce_block();
+      set_code(N(section), vector<uint8_t>{}); // clear existing code
+      BOOST_CHECK_THROW(set_code(N(section), code.c_str()), wasm_exception);
+   }
+}
+
+// export has to be formatted slightly differently because export names
+// must be unique and apply must be one of the exports.
+BOOST_DATA_TEST_CASE_F(wasm_config_tester, max_section_elements_export,
+                       data::make({1024, 8192, 16384}) * data::make({0, 1}),
+                       n_elements, oversize) {
+   produce_blocks(2);
+   create_accounts({N(section)});
+   produce_block();
+
+   std::string buf;
+   for(int i = 0; i < n_elements + oversize - 1; ++i) {
+      buf += "(export \"fn$";
+      buf += std::to_string(i);
+      buf += "\" (func 0))";
+   }
+   std::string code = fc::format_string(many_exports_wast, fc::mutable_variant_object("SECTION", buf));
+
+   auto params = genesis_state::default_initial_wasm_configuration;
+   params.max_section_elements = n_elements;
+   set_wasm_params(params);
+
+   if(oversize) {
+      BOOST_CHECK_THROW(set_code(N(section), code.c_str()), wasm_exception);
+   } else {
+      set_code(N(section), code.c_str());
+      push_action(N(section));
+      --params.max_section_elements;
+      set_wasm_params(params);
+      produce_block();
+      push_action(N(section));
+      produce_block();
+      set_code(N(section), vector<uint8_t>{}); // clear existing code
+      BOOST_CHECK_THROW(set_code(N(section), code.c_str()), wasm_exception);
+   }
+}
+
 static const std::vector<std::tuple<int, int, bool, bool>> func_local_params = {
    // Default value of max_func_local_bytes
    {8192, 0, false, true}, {4096, 4096, false, true}, {0, 8192, false, true},
