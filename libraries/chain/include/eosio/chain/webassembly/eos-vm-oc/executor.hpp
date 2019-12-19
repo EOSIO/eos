@@ -34,6 +34,7 @@ class executor {
       std::exception_ptr executors_exception_ptr;
       sigjmp_buf executors_sigjmp_buf;
       std::list<std::vector<std::byte>> executors_bounce_buffers;
+      std::vector<std::byte> globals_buffer;
 };
 
 }}}

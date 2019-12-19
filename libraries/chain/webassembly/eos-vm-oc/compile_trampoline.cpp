@@ -54,7 +54,7 @@ void run_compile(wrapped_fd&& response_sock, wrapped_fd&& wasm_code) noexcept { 
    if(module.memories.size())
       result_message.starting_memory_pages = module.memories.defs.at(0).type.size.min;
 
-   std::vector<uint8_t> prologue(memory::cb_offset); //getting the control block offset gets us as large as table+globals as possible
+   std::vector<uint8_t> prologue(module.globals.defs.size() * 8); // Large enough to handle all mutable globals
    std::vector<uint8_t>::iterator prologue_it = prologue.end();
 
    //set up mutable globals

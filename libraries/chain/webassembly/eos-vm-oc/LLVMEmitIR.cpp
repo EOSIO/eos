@@ -822,18 +822,28 @@ namespace LLVMJIT
 			auto value = irBuilder.CreateBitCast(pop(),localPointers[imm.variableIndex]->getType()->getPointerElementType());
 			irBuilder.CreateStore(value,localPointers[imm.variableIndex]);
 		}
+		llvm::Value* get_mutable_global_ptr(llvm::Value* global) {
+			if(global->getType()->isStructTy()) {
+			llvm::Value* globalsBasePtr = irBuilder.CreateExtractValue(global, 0);
+			        return CreateInBoundsGEPWAR(irBuilder, irBuilder.CreateLoad(globalsBasePtr), irBuilder.CreateExtractValue(global, 1));
+			} else if(global->getType()->isPointerTy()) {
+			        return global;
+			} else {
+			        return nullptr;
+			}
+	        }
 		void tee_local(GetOrSetVariableImm<false> imm)
 		{
 			WAVM_ASSERT_THROW(imm.variableIndex < localPointers.size());
 			auto value = irBuilder.CreateBitCast(getTopValue(),localPointers[imm.variableIndex]->getType()->getPointerElementType());
-			irBuilder.CreateStore(value,localPointers[imm.variableIndex]);
+			irBuilder.CreateStore(value,get_mutable_global_ptr(localPointers[imm.variableIndex]));
 		}
 		
 		void get_global(GetOrSetVariableImm<true> imm)
 		{
 			WAVM_ASSERT_THROW(imm.variableIndex < moduleContext.globals.size());
-			if(moduleContext.globals[imm.variableIndex]->getType()->isPointerTy())
-				push(irBuilder.CreateLoad(moduleContext.globals[imm.variableIndex]));
+			if(auto* p = get_mutable_global_ptr(moduleContext.globals[imm.variableIndex]))
+				push(irBuilder.CreateLoad(p));
 			else
 				push(moduleContext.globals[imm.variableIndex]);
 		}
@@ -841,7 +851,7 @@ namespace LLVMJIT
 		{
 			WAVM_ASSERT_THROW(imm.variableIndex < moduleContext.globals.size());
 			auto value = irBuilder.CreateBitCast(pop(),moduleContext.globals[imm.variableIndex]->getType()->getPointerElementType());
-			irBuilder.CreateStore(value,moduleContext.globals[imm.variableIndex]);
+			irBuilder.CreateStore(value,get_mutable_global_ptr(moduleContext.globals[imm.variableIndex]));
 		}
 
 		//
@@ -1248,7 +1258,15 @@ namespace LLVMJIT
 
 		for(const GlobalDef& global : module.globals.defs) {
 			if(global.type.isMutable) {
-				globals.push_back(emitLiteralPointer((void*)current_prologue,asLLVMType(global.type.valueType)->getPointerTo(256)));
+			        if(current_prologue >= -(int)memory::max_prologue_size) {
+				        globals.push_back(emitLiteralPointer((void*)current_prologue,asLLVMType(global.type.valueType)->getPointerTo(256)));
+			        } else {
+			                auto baseType = asLLVMType(global.type.valueType)->getPointerTo()->getPointerTo(256);
+				        auto basePtr = emitLiteralPointer((void*)OFFSET_OF_CONTROL_BLOCK_MEMBER(globals), baseType);
+				        auto structTy = llvm::StructType::get(context, {baseType, llvmI64Type});
+				        I64 typeSize = IR::getTypeBitWidth(global.type.valueType)/8;
+				        globals.push_back(llvm::ConstantStruct::get(structTy, {basePtr, emitLiteral((I64)current_prologue/typeSize)}));
+			        }
 				current_prologue -= 8;
 			}
 			else {

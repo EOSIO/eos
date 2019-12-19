@@ -171,7 +171,19 @@ void executor::execute(const code_descriptor& code, memory& mem, apply_context& 
    }
    else
       arch_prctl(ARCH_SET_GS, (unsigned long*)mem.zero_page_memory_base());
-   memcpy(mem.full_page_memory_base() - code.initdata_prologue_size, code_mapping + code.initdata_begin, code.initdata_size);
+
+   void* globals;
+   if(code.initdata_prologue_size > memory::max_prologue_size) {
+      globals_buffer.resize(code.initdata_prologue_size);
+      memcpy(globals_buffer.data(), code_mapping + code.initdata_begin, code.initdata_prologue_size);
+      memcpy(mem.full_page_memory_base() - memory::max_prologue_size,
+             code_mapping + code.initdata_begin + code.initdata_prologue_size - memory::max_prologue_size,
+             code.initdata_size - code.initdata_prologue_size + memory::max_prologue_size);
+      globals = globals_buffer.data() + globals_buffer.size();
+   } else {
+      memcpy(mem.full_page_memory_base() - code.initdata_prologue_size, code_mapping + code.initdata_begin, code.initdata_size);
+      globals = mem.full_page_memory_base();
+   }
 
    control_block* const cb = mem.get_control_block();
    cb->magic = signal_sentinel;
@@ -191,6 +203,7 @@ void executor::execute(const code_descriptor& code, memory& mem, apply_context& 
    cb->bounce_buffers = &executors_bounce_buffers;
    cb->running_code_base = (uintptr_t)(code_mapping + code.code_begin);
    cb->is_running = true;
+   cb->globals = globals;
 
    context.trx_context.transaction_timer.set_expiration_callback([](void* user) {
       executor* self = (executor*)user;

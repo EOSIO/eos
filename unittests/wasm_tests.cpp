@@ -874,7 +874,10 @@ BOOST_FIXTURE_TEST_CASE( nested_limit_test, TESTER ) try {
 } FC_LOG_AND_RETHROW()
 
 
-BOOST_FIXTURE_TEST_CASE( lotso_globals, TESTER ) try {
+BOOST_DATA_TEST_CASE_F( old_wasm_tester, lotso_globals, bdata::make({false, true}), activate_wasm_config ) try {
+   if(activate_wasm_config)
+      preactivate_builtin_protocol_features({builtin_protocol_feature_t::configurable_wasm_limits});
+
    produce_blocks(2);
 
    create_accounts( {N(globals)} );

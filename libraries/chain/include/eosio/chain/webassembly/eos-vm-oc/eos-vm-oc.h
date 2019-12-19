@@ -36,4 +36,5 @@ struct eos_vm_oc_control_block {
    uintptr_t running_code_base;
    int64_t  first_invalid_memory_address;
    unsigned is_running;
+   void* globals;
 };

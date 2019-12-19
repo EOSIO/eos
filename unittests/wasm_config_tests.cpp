@@ -40,6 +40,13 @@ struct wasm_config_tester : TESTER {
       trx.sign(get_private_key(N(eosio), "active"), control->get_chain_id());
       push_transaction(trx);
    }
+   void push_action(account_name account) {
+       signed_transaction trx;
+       trx.actions.push_back({{{account,config::active_name}}, account, name(), {}});
+       set_transaction_headers(trx);
+       trx.sign(get_private_key( account, "active" ), control->get_chain_id());
+       push_transaction(trx);
+   }
    chain::abi_serializer bios_abi_ser;
 };
 struct old_wasm_tester : tester {
@@ -68,6 +75,43 @@ std::string make_locals_wasm(int n_params, int n_locals, int n_stack)
 }
 
 BOOST_AUTO_TEST_SUITE(wasm_config_tests)
+
+BOOST_DATA_TEST_CASE_F(wasm_config_tester, max_mutable_global_bytes, data::make({ 4096, 8192 , 16384 }) * data::make({0, 1}), n_globals, oversize) {
+   produce_block();
+   create_accounts({N(globals)});
+   produce_block();
+
+   auto params = genesis_state::default_initial_wasm_configuration;
+   params.max_mutable_global_bytes = n_globals;
+   set_wasm_params(params);
+
+   std::string code = [&] {
+      std::ostringstream ss;
+      ss << "(module ";
+      ss << " (func $eosio_assert (import \"env\" \"eosio_assert\") (param i32 i32))";
+      ss << " (memory 1)";
+      for(int i = 0; i < n_globals + oversize; i += 4)
+         ss << "(global (mut i32) (i32.const " << i << "))";
+      ss << " (func (export \"apply\") (param i64 i64 i64)";
+      for(int i = 0; i < n_globals + oversize; i += 4)
+         ss << "(call $eosio_assert (i32.eq (get_global " << i/4 << ") (i32.const " << i << ")) (i32.const 0))";
+      ss << " )";
+      ss << ")";
+      return ss.str();
+   }();
+
+   if(oversize) {
+      BOOST_CHECK_THROW(set_code(N(globals), code.c_str()), wasm_exception);
+      produce_block();
+   } else {
+      set_code(N(globals), code.c_str());
+      push_action(N(globals));
+      produce_block();
+      --params.max_mutable_global_bytes;
+      set_wasm_params(params);
+      push_action(N(globals));
+   }
+}
 
 static const std::vector<std::tuple<int, int, bool, bool>> func_local_params = {
    // Default value of max_func_local_bytes
