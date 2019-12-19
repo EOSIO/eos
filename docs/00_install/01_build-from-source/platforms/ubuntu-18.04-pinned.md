@@ -23,7 +23,7 @@ Select a manual task below, then copy/paste the shell commands to a Unix termina
 
 ## Download EOSIO Repository
 These commands set the EOSIO directories, install git, and clone the EOSIO repository.
-<!-- CLONE -->
+<!-- DAC CLONE -->
 ```sh
 # set EOSIO directories
 export EOSIO_LOCATION=$HOME/eosio
@@ -35,11 +35,11 @@ apt-get update && apt-get upgrade -y && DEBIAN_FRONTEND=noninteractive apt-get i
 git clone https://github.com/EOSIO/eos.git $EOSIO_LOCATION
 cd $EOSIO_LOCATION && git submodule update --init --recursive
 ```
-<!-- CLONE END -->
+<!-- DAC CLONE END -->
 
 ## Install EOSIO Dependencies
 These commands install the EOSIO software dependencies. Make sure to [Download the EOSIO Repository](#download-eosio-repository) first and set the EOSIO directories.
-<!-- DEPS -->
+<!-- DAC DEPS -->
 ```sh
 # install dependencies
 apt-get install -y make bzip2 automake libbz2-dev libssl-dev doxygen graphviz libgmp3-dev autotools-dev libicu-dev \
@@ -109,41 +109,41 @@ cd $EOSIO_INSTALL_LOCATION && curl -L https://github.com/mongodb/mongo-cxx-drive
     make install && \
     rm -rf $EOSIO_INSTALL_LOCATION/mongo-cxx-driver-r3.4.0.tar.gz $EOSIO_INSTALL_LOCATION/mongo-cxx-driver-r3.4.0
 ```
-<!-- DEPS END -->
+<!-- DAC DEPS END -->
 
 ## Build EOSIO
 These commands build the EOSIO software on the specified OS. Make sure to [Install EOSIO Dependencies](#install-eosio-dependencies) first.
-<!-- BUILD -->
+<!-- DAC BUILD -->
 ```sh
 mkdir -p $EOSIO_LOCATION/build
 cd $EOSIO_LOCATION/build
 cmake -DCMAKE_BUILD_TYPE='Release' -DCMAKE_TOOLCHAIN_FILE=$EOSIO_LOCATION/scripts/pinned_toolchain.cmake -DCMAKE_INSTALL_PREFIX=$EOSIO_INSTALL_LOCATION -DBUILD_MONGO_DB_PLUGIN=true ..
 make -j$(nproc)
 ```
-<!-- BUILD -->
+<!-- DAC BUILD END -->
 
 ## Install EOSIO
 This command installs the EOSIO software on the specified OS. Make sure to [Build EOSIO](#build-eosio) first.
-<!-- INSTALL -->
+<!-- DAC INSTALL -->
 ```sh
 make install
 ```
-<!-- INSTALL END -->
+<!-- DAC INSTALL END -->
 
 ## Test EOSIO
 These commands validate the EOSIO software installation on the specified OS. This task is optional but recommended. Make sure to [Install EOSIO](#install-eosio) first.
-<!-- TEST -->
+<!-- DAC TEST -->
 ```sh
 $EOSIO_INSTALL_LOCATION/bin/mongod --fork --logpath $(pwd)/mongod.log --dbpath $(pwd)/mongodata
 make test
 ```
-<!-- TEST END -->
+<!-- DAC TEST END -->
 
 ## Uninstall EOSIO
 These commands uninstall the EOSIO software from the specified OS.
-<!-- UNINSTALL -->
+<!-- DAC UNINSTALL -->
 ```sh
 xargs rm < $EOSIO_LOCATION/build/install_manifest.txt
 rm -rf $EOSIO_LOCATION/build
 ```
-<!-- UNINSTALL END -->
+<!-- DAC UNINSTALL END -->
