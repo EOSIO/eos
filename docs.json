@@ -20,7 +20,7 @@
     }
   ],
 	"filters": [
-		{ "name": "master_summary_from_filename" },
+		{ "name": "master_summary_from_filesystem" },
 		{ "name": "remove_extension" },
 		{ "name": "sort" },
 		{ "name": "capitalize" },
