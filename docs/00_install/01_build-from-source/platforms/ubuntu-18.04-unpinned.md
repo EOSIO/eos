@@ -22,23 +22,23 @@ Select a manual task below, then copy/paste the shell commands to a Unix termina
 | Visit the [Build EOSIO from Source](../index.md) section.
 
 ## Download EOSIO Repository
-These commands set the EOSIO home directory, install git, and clone the EOSIO repository.
+These commands set the EOSIO directories, install git, and clone the EOSIO repository.
 <!-- CLONE -->
 ```sh
-# set EOSIO home directory
+# set EOSIO directories
 export EOSIO_LOCATION=$HOME/eosio
+export EOSIO_INSTALL_LOCATION=$EOSIO_LOCATION/install
+mkdir -p $EOSIO_INSTALL_LOCATION
 # install git
 apt-get update && apt-get upgrade -y && DEBIAN_FRONTEND=noninteractive apt-get install -y git
 # clone EOSIO repository
 git clone https://github.com/EOSIO/eos.git $EOSIO_LOCATION
 cd $EOSIO_LOCATION && git submodule update --init --recursive
-export EOSIO_INSTALL_LOCATION=$EOSIO_LOCATION/install
-mkdir -p $EOSIO_INSTALL_LOCATION
 ```
 <!-- CLONE END -->
 
 ## Install EOSIO Dependencies
-These commands install the EOSIO software dependencies. Make sure to [Download the EOSIO Repository](#download-eosio-repository) first and set the EOSIO home directory.
+These commands install the EOSIO software dependencies. Make sure to [Download the EOSIO Repository](#download-eosio-repository) first and set the EOSIO directories.
 <!-- DEPS -->
 ```sh
 # install dependencies
