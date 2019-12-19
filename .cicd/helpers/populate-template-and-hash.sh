@@ -65,7 +65,7 @@ if [[ ! ${IMAGE_TAG:-$FILE_NAME} =~ 'macos' ]]; then # Linux / Docker
   else if ( $0 ~ /^export EOSIO_INSTALL_LOCATION=/ ) { print "RUN mkdir -p $EOSIO_INSTALL_LOCATION" } \
   else if ( $0 ~ /^PATH/ ) { print "ENV " $0 } \
   else if ( $0 ~ /^cd[ ].*build$/ ) { gsub(/cd /,"",$0); print "WORKDIR " $0 } \
-  else { print "RUN " $0 } }')
+  else { print "RUN cd $EOSIO_INSTALL_LOCATION && " $0 } }')
   export FILE_EXTENSION=".dockerfile"
   export APPEND_LINE=5
 else # Mac OSX

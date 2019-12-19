@@ -1,7 +1,7 @@
 FROM amazonlinux:2.0.20190508
-ENV EOSIO_LOCATION=/root/eosio
+ENV EOSIO_LOCATION=/root/eosio/eos
 ARG EOSIO_INSTALL_LOCATION
-ENV EOSIO_INSTALL_LOCATION=/root/install
+ENV EOSIO_INSTALL_LOCATION=/root/eosio/install
 ENV VERSION 1
 # Commands from the documentation are inserted right below this line
 # Anything below here is exclusive to our CI/CD
