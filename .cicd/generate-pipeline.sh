@@ -156,9 +156,21 @@ EOF
 EOF
     fi
 done
-echo
-echo '  - wait'
-echo ''
+cat <<EOF
+
+  - label: ":docker: Docker - Build and Install"
+    command: "./.cicd/installation-build.sh"
+    env:
+      IMAGE_TAG: "ubuntu-18.04-unpinned"
+      PLATFORM_TYPE: "unpinned"
+    agents:
+      queue: "$BUILDKITE_BUILD_AGENT_QUEUE"
+    timeout: ${TIMEOUT:-180}
+    skip: ${SKIP_INSTALL}${SKIP_LINUX}${SKIP_DOCKER}
+
+  - wait
+
+EOF
 # tests
 IFS=$oIFS
 for ROUND in $(seq 1 $ROUNDS); do
@@ -551,15 +563,15 @@ cat <<EOF
     timeout: ${TIMEOUT:-10}
     skip: ${SKIP_MACOS_10_14}${SKIP_PACKAGE_BUILDER}${SKIP_MAC}
 
-  - label: ":ubuntu: Ubuntu 18.04 - Contract Builder"
-    command: "./.cicd/installation-build.sh"
+  - label: ":docker: Docker - Label Container with Git Branch and Git Tag"
+    command: .cicd/docker-tag.sh
     env:
       IMAGE_TAG: "ubuntu-18.04-unpinned"
       PLATFORM_TYPE: "unpinned"
     agents:
       queue: "$BUILDKITE_BUILD_AGENT_QUEUE"
-    timeout: ${TIMEOUT:-30}
-    skip: ${SKIP_CONTRACT_BUILDER}${SKIP_LINUX}
+    timeout: ${TIMEOUT:-10}
+    skip: ${SKIP_INSTALL}${SKIP_LINUX}${SKIP_DOCKER}${SKIP_PACKAGE_BUILDER}
 
   - wait
 
