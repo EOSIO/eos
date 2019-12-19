@@ -7,9 +7,9 @@ content_title: Amazon Linux 2 (unpinned)
 This section contains shell commands to manually download, build, install, test, and uninstall EOSIO and dependencies on Amazon Linux 2.
 
 [[info | Building EOSIO is for Advanced Developers]]
-| If you are new to EOSIO, it is recommended that you install the [EOSIO Prebuilt Binaries](../../00_install-prebuilt-binaries.md) instead of building from source.
+| If you are new to EOSIO, it is recommended that you install the [EOSIO Prebuilt Binaries](../../../../00_install-prebuilt-binaries.md) instead of building from source.
 
-Select a manual task below, then copy/paste the shell commands to a Unix terminal to execute:
+Select a task below, then copy/paste the shell commands to a Unix terminal to execute:
 
 * [Download EOSIO Repository](#download-eosio-repository)
 * [Install EOSIO Dependencies](#install-eosio-dependencies)
@@ -19,7 +19,7 @@ Select a manual task below, then copy/paste the shell commands to a Unix termina
 * [Uninstall EOSIO](#uninstall-eosio)
 
 [[info | Building EOSIO on another OS?]]
-| Visit the [Build EOSIO from Source](../index.md) section.
+| Visit the [Build EOSIO from Source](../../../index.md) section.
 
 ## Download EOSIO Repository
 These commands set the EOSIO directories, install git, and clone the EOSIO repository.
