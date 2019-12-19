@@ -597,7 +597,7 @@ cat <<EOF
           cd: ~
     agents:
       - "queue=mac-anka-node-fleet"
-    timeout: ${TIMEOUT:-60}
+    timeout: ${TIMEOUT:-10}
     skip: ${SKIP_MACOS_10_14}${SKIP_PACKAGE_BUILDER}${SKIP_MAC}
 
   - label: ":ubuntu: Ubuntu 18.04 - Contract Builder"
