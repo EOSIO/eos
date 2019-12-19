@@ -33,23 +33,11 @@ $ cd ~/eosio/eos
 $ ./scripts/eosio_build.sh [-P]
 ```
 
-## Manual Installation of Dependencies
+### Unupported Platforms
 
-Below are instructions to install the EOSIO dependencies manually on various platforms:
-
-* [MacOS Mojave](00_macos-mojave.md)
-* [Amazon Linux](01_amazon-linux.md)
-* [CentOS Linux](02_centos-linux.md)
-* [Ubuntu Linux](03_ubuntu-linux.md)
-
-### Other Platforms
-
-EOSIO dependencies can also be built and installed manually by reproducing the same commands invoked by the [Build Script](../../00_build-script.md). The actual commands can be generated from the script directly by exporting specific environment variables and CLI parameters to the script when invoked:
+EOSIO dependencies can also be built and installed manually by reproducing the same commands invoked by the [Build Script](..//01_shell-scripts/02_build-eosio-binaries.md). The actual commands can be generated from the script directly by exporting specific environment variables and CLI parameters to the script when invoked:
 
 ```sh
 $ cd ~/eosio/eos
 $ export VERBOSE=true && export DRYRUN=true && ./scripts/eosio_build.sh -y [-P]
 ```
-
-[[info | Automatic installation of dependencies]]
-| (#automatic-installation-of-dependencies) should be preferred over manual installation if possible.
