@@ -25,5 +25,5 @@ cd ~/eosio/eos/build
 make test
 ```
 
-[[info | Recommend]]
-| It is strongly suggested to [Install the EOSIO binaries](03_install-eosio-binaries.md) after building EOSIO from source as it makes local development significantly more friendly.
+[[info | What's Next?]]
+| Configure and use [Nodeos](../../../01_nodeos/index.md).
