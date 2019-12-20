@@ -56,14 +56,14 @@ yum update -y && \
     libcurl-devel patch vim-common jq llvm-toolset-7.0-llvm-devel llvm-toolset-7.0-llvm-static
 # build cmake
 export PATH=$EOSIO_INSTALL_LOCATION/bin:$PATH
-cd $EOSIO_INSTALL_LOCATION && curl -LO https://cmake.org/files/v3.13/cmake-3.13.2.tar.gz && \
+cd $EOSIO_INSTALL_LOCATION && curl -LO https://github.com/Kitware/CMake/releases/download/v3.16.2/cmake-3.16.2.tar.gz && \
     source /opt/rh/devtoolset-8/enable && \
-    tar -xzf cmake-3.13.2.tar.gz && \
+    tar -xzf cmake-3.16.2.tar.gz && \
     cd cmake-3.13.2 && \
     ./bootstrap --prefix=$EOSIO_INSTALL_LOCATION && \
     make -j$(nproc) && \
     make install && \
-    rm -rf $EOSIO_INSTALL_LOCATION/cmake-3.13.2.tar.gz $EOSIO_INSTALL_LOCATION/cmake-3.13.2
+    rm -rf $EOSIO_INSTALL_LOCATION/cmake-3.16.2.tar.gz $EOSIO_INSTALL_LOCATION/cmake-3.16.2
 # apply clang patch
 cp -f $EOSIO_LOCATION/scripts/clang-devtoolset8-support.patch /tmp/clang-devtoolset8-support.patch
 # build boost

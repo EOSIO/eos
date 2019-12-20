@@ -1,9 +1,10 @@
 FROM ubuntu:16.04
 ENV VERSION 1
+ENV HOME=/root
 # Commands from the documentation are inserted right below this line
 # Anything below here is exclusive to our CI/CD
 ## Set WORKDIR to location we mount into the container
-WORKDIR /root
+WORKDIR ${HOME}
 ## install ccache
 RUN curl -LO https://github.com/ccache/ccache/releases/download/v3.4.1/ccache-3.4.1.tar.gz && \
     tar -xzf ccache-3.4.1.tar.gz && \

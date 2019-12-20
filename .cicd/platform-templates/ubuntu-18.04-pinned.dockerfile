@@ -1,9 +1,10 @@
 FROM ubuntu:18.04
 ENV VERSION 1
+ENV HOME=/root
 # Commands from the documentation are inserted right below this line
 # Anything below here is exclusive to our CI/CD
 ## Set WORKDIR to location we mount into the container
-WORKDIR /root
+WORKDIR ${HOME}
 ## install ccache
 RUN apt-get install -y ccache
 ## Cleanup eosio directory (~ 600MB)

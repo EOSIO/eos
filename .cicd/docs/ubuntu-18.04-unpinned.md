@@ -52,13 +52,13 @@ apt-get install -y make bzip2 automake libbz2-dev libssl-dev doxygen graphviz li
     libcurl4-gnutls-dev pkg-config patch llvm-7-dev clang-7 vim-common jq
 # build cmake
 export PATH=$EOSIO_INSTALL_LOCATION/bin:$PATH
-cd $EOSIO_INSTALL_LOCATION && curl -LO https://cmake.org/files/v3.13/cmake-3.13.2.tar.gz && \
-    tar -xzf cmake-3.13.2.tar.gz && \
+cd $EOSIO_INSTALL_LOCATION && curl -LO https://github.com/Kitware/CMake/releases/download/v3.16.2/cmake-3.16.2.tar.gz && \
+    tar -xzf cmake-3.16.2.tar.gz && \
     cd cmake-3.13.2 && \
     ./bootstrap --prefix=$EOSIO_INSTALL_LOCATION && \
     make -j$(nproc) && \
     make install && \
-    rm -rf $EOSIO_INSTALL_LOCATION/cmake-3.13.2.tar.gz $EOSIO_INSTALL_LOCATION/cmake-3.13.2
+    rm -rf $EOSIO_INSTALL_LOCATION/cmake-3.16.2.tar.gz $EOSIO_INSTALL_LOCATION/cmake-3.16.2
 # build boost
 cd $EOSIO_INSTALL_LOCATION && curl -LO https://dl.bintray.com/boostorg/release/1.71.0/source/boost_1_71_0.tar.bz2 && \
     tar -xjf boost_1_71_0.tar.bz2 && \
