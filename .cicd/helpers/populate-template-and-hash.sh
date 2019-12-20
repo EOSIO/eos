@@ -10,6 +10,8 @@ function usage() {
   %s [ -h : Only return the hash, don't create the file ] (PATTERN_ONE) (PATTERN_TWO) \\n
   - PATTERN_ONE and _TWO default to three backticks -> \`\`\`
   [ Examples ] \\n
+    $ %s -d
+        - Considered Debug only; Prints out the entire final version of the file with all of the blocks it parsed
     $ %s
         - Generates /tmp/\${IMAGE_TAG/FILE_NAME} file using the documentation's code blocks (all of them)
         - Populates DETERMINED_HASH and FULL_TAG variables using the file's contents
