@@ -1,3 +1,6 @@
+---
+content_title: Uninstall EOSIO
+---
 
 If you have previously built EOSIO from source and now wish to install the prebuilt binaries, or to build from source again, it is recommended to run the `eosio_uninstall.sh` script within the `eos/scripts` folder:
 

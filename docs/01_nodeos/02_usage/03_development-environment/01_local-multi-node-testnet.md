@@ -1,3 +1,6 @@
+---
+content_title: Local Multi-Node Testnet
+---
 
 ## Goal
 

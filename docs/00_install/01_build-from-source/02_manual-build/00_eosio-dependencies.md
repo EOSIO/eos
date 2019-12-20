@@ -1,4 +1,6 @@
-# EOSIO Software Dependencies
+---
+content_title: EOSIO Software Dependencies
+---
 
 The EOSIO software requires specific software dependencies to build the EOSIO binaries. These dependencies can be built from source or installed from binaries directly. Dependencies can be pinned to a specific version release or unpinned to the current version, usually the latest one. The main EOSIO dependencies hosted outside the EOSIO repos are:
 
