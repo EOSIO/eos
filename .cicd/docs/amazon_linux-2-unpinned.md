@@ -7,7 +7,7 @@ content_title: Amazon Linux 2 (unpinned)
 This section contains shell commands to manually download, build, install, test, and uninstall EOSIO and dependencies on Amazon Linux 2.
 
 [[info | Building EOSIO is for Advanced Developers]]
-| If you are new to EOSIO, it is recommended that you install the [EOSIO Prebuilt Binaries](../../../../00_install-prebuilt-binaries.md) instead of building from source.
+| If you are new to EOSIO, it is recommended that you install the [EOSIO Prebuilt Binaries](../../../00_install-prebuilt-binaries.md) instead of building from source.
 
 Select a task below, then copy/paste the shell commands to a Unix terminal to execute:
 
@@ -19,7 +19,7 @@ Select a task below, then copy/paste the shell commands to a Unix terminal to ex
 * [Uninstall EOSIO](#uninstall-eosio)
 
 [[info | Building EOSIO on another OS?]]
-| Visit the [Build EOSIO from Source](../../../index.md) section.
+| Visit the [Build EOSIO from Source](../../index.md) section.
 
 ## Download EOSIO Repository
 These commands set the EOSIO directories, install git, and clone the EOSIO repository.
@@ -47,7 +47,7 @@ yum install -y which sudo procps-ng util-linux autoconf automake \
     libusbx-devel python3 python3-devel python-devel libedit-devel doxygen \
     graphviz clang patch llvm-devel llvm-static vim-common jq
 # build cmake
-PATH=$EOSIO_INSTALL_LOCATION/bin:$PATH
+export PATH=$EOSIO_INSTALL_LOCATION/bin:$PATH
 cd $EOSIO_INSTALL_LOCATION && curl -LO https://cmake.org/files/v3.13/cmake-3.13.2.tar.gz && \
     tar -xzf cmake-3.13.2.tar.gz && \
     cd cmake-3.13.2 && \
@@ -92,10 +92,10 @@ cd $EOSIO_INSTALL_LOCATION && curl -L https://github.com/mongodb/mongo-cxx-drive
 These commands build the EOSIO software on the specified OS. Make sure to [Install EOSIO Dependencies](#install-eosio-dependencies) first.
 <!-- DAC BUILD -->
 ```sh
-mkdir -p $EOSIO_LOCATION/build
-cd $EOSIO_LOCATION/build
-$EOSIO_INSTALL_LOCATION/bin/cmake -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER='clang++' -DCMAKE_C_COMPILER='clang' -DCMAKE_INSTALL_PREFIX=$EOSIO_INSTALL_LOCATION -DBUILD_MONGO_DB_PLUGIN=true ..
-make -j$(nproc)
+export EOSIO_BUILD_LOCATION=$EOSIO_LOCATION/build
+mkdir -p $EOSIO_BUILD_LOCATION
+cd $EOSIO_BUILD_LOCATION && $EOSIO_INSTALL_LOCATION/bin/cmake -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER='clang++' -DCMAKE_C_COMPILER='clang' -DCMAKE_INSTALL_PREFIX=$EOSIO_INSTALL_LOCATION -DBUILD_MONGO_DB_PLUGIN=true ..
+cd $EOSIO_BUILD_LOCATION && make -j$(nproc)
 ```
 <!-- DAC BUILD END -->
 
@@ -103,24 +103,24 @@ make -j$(nproc)
 This command installs the EOSIO software on the specified OS. Make sure to [Build EOSIO](#build-eosio) first.
 <!-- DAC INSTALL -->
 ```sh
-make install
+cd $EOSIO_BUILD_LOCATION && make install
 ```
 <!-- DAC INSTALL END -->
 
 ## Test EOSIO
 These commands validate the EOSIO software installation on the specified OS. This task is optional but recommended. Make sure to [Install EOSIO](#install-eosio) first.
-<!-- DAC TEST -->
+<!-- DAC IGNORE -->
 ```sh
 $EOSIO_INSTALL_LOCATION/bin/mongod --fork --logpath $(pwd)/mongod.log --dbpath $(pwd)/mongodata
-make test
+cd $EOSIO_BUILD_LOCATION && make test
 ```
-<!-- DAC TEST END -->
+<!-- DAC IGNORE END -->
 
 ## Uninstall EOSIO
 These commands uninstall the EOSIO software from the specified OS.
 <!-- DAC UNINSTALL -->
 ```sh
-xargs rm < $EOSIO_LOCATION/build/install_manifest.txt
-rm -rf $EOSIO_LOCATION/build
+xargs rm < $EOSIO_BUILD_LOCATION/install_manifest.txt
+rm -rf $EOSIO_BUILD_LOCATION
 ```
 <!-- DAC UNINSTALL END -->

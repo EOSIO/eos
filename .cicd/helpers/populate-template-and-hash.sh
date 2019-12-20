@@ -50,28 +50,26 @@ if [[ ! -z $@ ]]; then
   for PATTERN in "$@"; do
     POP_COMMANDS="$POP_COMMANDS
 $(cat .cicd/docs/${IMAGE_TAG:-$FILE_NAME}.md | sed -n "/$PATTERN/,/END -->/p")"
-    POP_COMMANDS=$(echo "$POP_COMMANDS" | sed '/<!-- DAC TEST/,/<!-- DAC TEST/d') # Remove test block (we run ctest in ci/cd)
+    POP_COMMANDS=$(echo "$POP_COMMANDS" | sed '/<!-- DAC IGNORE/,/<!-- DAC IGNORE/d') # Remove test block (we run ctest in ci/cd)
     POP_COMMANDS=$(echo "$POP_COMMANDS" | grep -v -e "$PATTERN" -e '<!--' -e '-->' -e '```' -e '\#.*' -e '^$') # Sanitize
   done
   POP_COMMANDS=$(echo "$POP_COMMANDS" | grep -v -e '^$') 
 else
   PATTERN='<!-- DAC'
   POP_COMMANDS=$(cat .cicd/docs/${IMAGE_TAG:-$FILE_NAME}.md | sed -n "/$PATTERN/,/END -->/p")
-  POP_COMMANDS=$(echo "$POP_COMMANDS" | sed '/<!-- DAC TEST/,/<!-- DAC TEST/d') # Remove test block (we run ctest in ci/cd)
+  POP_COMMANDS=$(echo "$POP_COMMANDS" | sed '/<!-- DAC IGNORE/,/<!-- DAC IGNORE/d') # Remove test block (we run ctest in ci/cd)
   POP_COMMANDS=$(echo "$POP_COMMANDS" | grep -v -e "$PATTERN" -e '<!--' -e '-->' -e '```' -e '\#.*' -e '^$') # Sanitize
 fi
 if [[ ! ${IMAGE_TAG:-$FILE_NAME} =~ 'macos' ]]; then # Linux / Docker
-  ( [[ $DOCKERIZATION == true ]] || [[ $ONLYHASH == true ]] ) && POP_COMMANDS=$(echo "$POP_COMMANDS" | awk '{if ( $0 ~ /^[ ].*/ ) { print $0 } \
-  else if ( $0 ~ /^export EOSIO_INSTALL_LOCATION=/ ) { print "RUN mkdir -p $EOSIO_INSTALL_LOCATION" } \
-  else if ( $0 ~ /^PATH/ ) { print "ENV " $0 } \
-  else if ( $0 ~ /^cd[ ].*build$/ ) { gsub(/cd /,"",$0); print "WORKDIR " $0 } \
+  ( [[ $DOCKERIZATION == true ]] || [[ $ONLYHASH == true ]] ) && POP_COMMANDS=$(echo "$POP_COMMANDS" | awk '{ \
+  if ( $0 ~ /^[ ].*/ ) { print $0 } \
+  else if ( $0 ~ /^export.*=([^\s]+)$/gm ) { gsub(/export /,"",$0); print "ENV " $0 } \
   else { print "RUN " $0 } }')
   export FILE_EXTENSION=".dockerfile"
-  export APPEND_LINE=5
+  export APPEND_LINE=3
 else # Mac OSX
-  POP_COMMANDS=$(echo "$POP_COMMANDS" | sed '/export EOSIO_/d')
   export FILE_EXTENSION=".sh"
-  export APPEND_LINE=6
+  export APPEND_LINE=4
 fi
 
 echo "$POP_COMMANDS" > /tmp/commands
@@ -92,6 +90,7 @@ export HASHED_IMAGE_TAG="eos-$(basename ${FILE_NAME:-$IMAGE_TAG} | awk '{split($
 export FULL_TAG="eosio/ci:$HASHED_IMAGE_TAG"
 sed -i -e "s/eos.git \$EOSIO_LOCATION/eos.git \$EOSIO_LOCATION \&\& cd \$EOSIO_LOCATION \&\& git pull \&\& git checkout -f $BUILDKITE_COMMIT/g" /tmp/$POPULATED_FILE_NAME # MUST BE AFTER WE GENERATE THE HASH
 chmod +x /tmp/$POPULATED_FILE_NAME
+[[ "$(uname)" == 'Darwin' ]] && cat /tmp/$POPULATED_FILE_NAME
 if [[ $ONLYHASH == true ]]; then
   rm -f /tmp/$POPULATED_FILE_NAME && export POPULATED_FILE_NAME=${FILE_NAME:-$IMAGE_TAG}
 fi
