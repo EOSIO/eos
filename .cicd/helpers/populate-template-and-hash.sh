@@ -66,10 +66,10 @@ if [[ ! ${IMAGE_TAG:-$FILE_NAME} =~ 'macos' ]]; then # Linux / Docker
   else if ( $0 ~ /^export.*=([^\s]+)$/ ) { gsub(/export /,"",$0); print "ENV " $0 } \
   else { print "RUN " $0 } }')
   export FILE_EXTENSION=".dockerfile"
-  export APPEND_LINE=5
+  export APPEND_LINE=3
 else # Mac OSX
   export FILE_EXTENSION=".sh"
-  export APPEND_LINE=6
+  export APPEND_LINE=4
 fi
 
 echo "$POP_COMMANDS" > /tmp/commands
