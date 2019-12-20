@@ -1,3 +1,6 @@
+---
+content_title: Producing Node Setup
+---
 
 [[info | System contracts required]]
 | These instructions assume you want to launch a producing node on a network with **system contracts loaded**. These instructions will not work on a default development node using native functionality, or one without system contracts loaded.

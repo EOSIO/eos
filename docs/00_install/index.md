@@ -1,4 +1,6 @@
-# EOSIO Software Installation
+---
+content_title: EOSIO Software Installation
+---
 
 There are various ways to install and use the EOSIO software:
 

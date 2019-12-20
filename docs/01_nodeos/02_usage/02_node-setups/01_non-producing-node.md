@@ -1,3 +1,6 @@
+---
+content_title: Non-producing Node Setup
+---
 
 ## Goal
 
