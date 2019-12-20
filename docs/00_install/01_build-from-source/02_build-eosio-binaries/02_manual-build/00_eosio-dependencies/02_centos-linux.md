@@ -59,7 +59,7 @@ $ curl -LO https://cmake.org/files/v3.13/cmake-3.13.2.tar.gz && \
     source /opt/rh/devtoolset-8/enable && \
     source /opt/rh/rh-python36/enable && \
     tar -xzf cmake-3.13.2.tar.gz && \
-    cd cmake-3.13.2 && \
+    cd cmake-3.16.2 && \
     ./bootstrap --prefix=/usr/local && \
     make -j$(nproc) && \
     make install && \

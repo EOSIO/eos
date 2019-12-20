@@ -53,7 +53,7 @@ git clone --recursive --single-branch -b release/2.0.x https://github.com/EOSIO/
 ```sh
 $ curl -LO https://cmake.org/files/v3.13/cmake-3.13.2.tar.gz && \
     tar -xzf cmake-3.13.2.tar.gz && \
-    cd cmake-3.13.2 && \
+    cd cmake-3.16.2 && \
     ./bootstrap --prefix=/usr/local && \
     make -j$(nproc) && \
     make install && \

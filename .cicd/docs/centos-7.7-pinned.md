@@ -58,7 +58,7 @@ export PATH=$EOSIO_INSTALL_LOCATION/bin:$PATH
 cd $EOSIO_INSTALL_LOCATION && curl -LO https://github.com/Kitware/CMake/releases/download/v3.16.2/cmake-3.16.2.tar.gz && \
     source /opt/rh/devtoolset-8/enable && \
     tar -xzf cmake-3.16.2.tar.gz && \
-    cd cmake-3.13.2 && \
+    cd cmake-3.16.2 && \
     ./bootstrap --prefix=$EOSIO_INSTALL_LOCATION && \
     make -j$(nproc) && \
     make install && \
