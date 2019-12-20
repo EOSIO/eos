@@ -9,6 +9,7 @@
 #include <fc/log/logger_config.hpp>
 #include <fc/reflect/variant.hpp>
 #include <fc/io/json.hpp>
+#include <fc/io/raw.hpp>
 #include <fc/crypto/openssl.hpp>
 
 #include <boost/asio.hpp>
@@ -269,6 +270,18 @@ namespace eosio {
             return true;
          }
 
+         template<typename T>
+         bool verify_max_bytes_in_flight( const T& con ) {
+            if( bytes_in_flight > max_bytes_in_flight ) {
+               fc_dlog( logger, "503 - too many bytes in flight: ${bytes}", ("bytes", bytes_in_flight.load()) );
+               error_results results{websocketpp::http::status_code::too_many_requests, "Busy", error_results::error_info()};
+               con->set_body( fc::json::to_string( results ));
+               con->set_status( websocketpp::http::status_code::too_many_requests );
+               return false;
+            }
+            return true;
+         }
+
          template<class T>
          void handle_http_request(typename websocketpp::server<T>::connection_ptr con) {
             try {
@@ -297,13 +310,7 @@ namespace eosio {
 
                con->append_header( "Content-type", "application/json" );
 
-               if( bytes_in_flight > max_bytes_in_flight ) {
-                  fc_dlog( logger, "503 - too many bytes in flight: ${bytes}", ("bytes", bytes_in_flight.load()) );
-                  error_results results{websocketpp::http::status_code::too_many_requests, "Busy", error_results::error_info()};
-                  con->set_body( fc::json::to_string( results ));
-                  con->set_status( websocketpp::http::status_code::too_many_requests );
-                  return;
-               }
+               if( !verify_max_bytes_in_flight( con ) ) return;
 
                std::string body = con->get_request_body();
                std::string resource = con->get_uri()->get_resource();
@@ -312,27 +319,41 @@ namespace eosio {
                   con->defer_http_response();
                   bytes_in_flight += body.size();
                   app().post( appbase::priority::low,
-                              [&ioc = thread_pool->get_executor(), &bytes_in_flight = this->bytes_in_flight, handler_itr,
-                               resource{std::move( resource )}, body{std::move( body )}, con]() {
+                              [&ioc = thread_pool->get_executor(), &bytes_in_flight = this->bytes_in_flight,
+                               handler_itr, this, resource{std::move( resource )}, body{std::move( body )}, con]() mutable {
+                     const size_t body_size = body.size();
+                     if( !verify_max_bytes_in_flight( con ) ) {
+                        con->send_http_response();
+                        bytes_in_flight -= body_size;
+                        return;
+                     }
                      try {
-                        handler_itr->second( resource, body,
-                              [&ioc, &bytes_in_flight, con]( int code, fc::variant response_body ) {
-                           boost::asio::post( ioc, [response_body{std::move( response_body )}, &bytes_in_flight, con, code]() mutable {
-                              std::string json = fc::json::to_string( response_body );
-                              response_body.clear();
-                              const size_t json_size = json.size();
-                              bytes_in_flight += json_size;
-                              con->set_body( std::move( json ) );
-                              con->set_status( websocketpp::http::status_code::value( code ) );
+                        handler_itr->second( std::move( resource ), std::move( body ),
+                                 [&ioc, &bytes_in_flight, con, this]( int code, fc::variant response_body ) {
+                           const size_t response_size = fc::raw::pack_size( response_body );
+                           bytes_in_flight += response_size;
+                           if( !verify_max_bytes_in_flight( con ) ) {
                               con->send_http_response();
-                              bytes_in_flight -= json_size;
-                           } );
+                              bytes_in_flight -= response_size;
+                           } else {
+                              boost::asio::post( ioc,
+                                 [response_body{std::move( response_body )}, response_size, &bytes_in_flight, con, code]() mutable {
+                                 std::string json = fc::json::to_string( response_body );
+                                 response_body.clear();
+                                 const size_t json_size = json.size();
+                                 bytes_in_flight += json_size;
+                                 con->set_body( std::move( json ) );
+                                 con->set_status( websocketpp::http::status_code::value( code ) );
+                                 con->send_http_response();
+                                 bytes_in_flight -= (json_size + response_size);
+                              } );
+                           }
                         });
-                        bytes_in_flight -= body.size();
                      } catch( ... ) {
                         handle_exception<T>( con );
                         con->send_http_response();
                      }
+                     bytes_in_flight -= body_size;
                   } );
 
                } else {
