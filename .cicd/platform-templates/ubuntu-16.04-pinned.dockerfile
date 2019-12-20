@@ -15,7 +15,7 @@ RUN curl -LO https://github.com/ccache/ccache/releases/download/v3.4.1/ccache-3.
     cd / && \
     rm -rf ccache-3.4.1.tar.gz /ccache-3.4.1
 ## Cleanup eosio directory (~ 600MB)
-RUN rm -rf ${EOSIO_LOCATION}
+RUN rm -rf ${EOS_LOCATION}
 ## install nvm
 RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.0/install.sh | bash
 ## load nvm in non-interactive shells

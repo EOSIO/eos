@@ -38,7 +38,7 @@ mkdir -p $EOSIO_INSTALL_LOCATION
 apt-get update && apt-get upgrade -y && DEBIAN_FRONTEND=noninteractive apt-get install -y git
 # clone EOSIO repository
 git clone https://github.com/EOSIO/eos.git $EOS_LOCATION
-cd $EOSIO_LOCATION && git submodule update --init --recursive
+cd $EOS_LOCATION && git submodule update --init --recursive
 ```
 <!-- DAC CLONE END -->
 

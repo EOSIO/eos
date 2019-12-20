@@ -38,7 +38,7 @@ mkdir -p $EOSIO_INSTALL_LOCATION
 brew update && brew install git
 # clone EOSIO repository
 git clone https://github.com/EOSIO/eos.git $EOS_LOCATION
-cd $EOSIO_LOCATION && git submodule update --init --recursive
+cd $EOS_LOCATION && git submodule update --init --recursive
 ```
 <!-- DAC CLONE END -->
 
@@ -57,7 +57,7 @@ cd $EOSIO_INSTALL_LOCATION && git clone --single-branch --branch release_80 http
     cd ../ && git clone --single-branch --branch release_80 https://git.llvm.org/git/polly.git && cd polly && git checkout 1bc06e5 && \
     cd ../ && git clone --single-branch --branch release_80 https://git.llvm.org/git/clang.git clang && cd clang && git checkout a03da8b && \
     cd tools && mkdir extra && cd extra && git clone --single-branch --branch release_80 https://git.llvm.org/git/clang-tools-extra.git && cd clang-tools-extra && git checkout 6b34834 && \
-    mkdir $EOSIO_INSTALL_LOCATION/clang8/projects && cd $EOSIO_INSTALL_LOCATION/clang8/projects && git clone --single-branch --branch release_80 https://git.llvm.org/git/libcxx.git && cd libcxx && git checkout 1853712 && \
+    mkdir -p $EOSIO_INSTALL_LOCATION/clang8/projects && cd $EOSIO_INSTALL_LOCATION/clang8/projects && git clone --single-branch --branch release_80 https://git.llvm.org/git/libcxx.git && cd libcxx && git checkout 1853712 && \
     cd ../ && git clone --single-branch --branch release_80 https://git.llvm.org/git/libcxxabi.git && cd libcxxabi && git checkout d7338a4 && \
     cd ../ && git clone --single-branch --branch release_80 https://git.llvm.org/git/libunwind.git && cd libunwind && git checkout 57f6739 && \
     cd ../ && git clone --single-branch --branch release_80 https://git.llvm.org/git/compiler-rt.git && cd compiler-rt && git checkout 5bc7979 && \
@@ -100,7 +100,7 @@ These commands build the EOSIO software on the specified OS. Make sure to [Insta
 ```sh
 export EOSIO_BUILD_LOCATION=$EOS_LOCATION/build
 mkdir -p $EOSIO_BUILD_LOCATION
-cd $EOSIO_BUILD_LOCATION && cmake -DCMAKE_BUILD_TYPE='Release' -DCMAKE_TOOLCHAIN_FILE=$EOSIO_LOCATION/scripts/pinned_toolchain.cmake -DCMAKE_INSTALL_PREFIX=$EOSIO_INSTALL_LOCATION -DBUILD_MONGO_DB_PLUGIN=true ..
+cd $EOSIO_BUILD_LOCATION && cmake -DCMAKE_BUILD_TYPE='Release' -DCMAKE_TOOLCHAIN_FILE=$EOS_LOCATION/scripts/pinned_toolchain.cmake -DCMAKE_INSTALL_PREFIX=$EOSIO_INSTALL_LOCATION -DBUILD_MONGO_DB_PLUGIN=true ..
 cd $EOSIO_BUILD_LOCATION && make -j$(getconf _NPROCESSORS_ONLN)
 ```
 <!-- DAC BUILD END -->

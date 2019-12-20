@@ -38,7 +38,7 @@ mkdir -p $EOSIO_INSTALL_LOCATION
 brew update && brew install git
 # clone EOSIO repository
 git clone https://github.com/EOSIO/eos.git $EOS_LOCATION
-cd $EOSIO_LOCATION && git submodule update --init --recursive
+cd $EOS_LOCATION && git submodule update --init --recursive
 ```
 <!-- DAC CLONE END -->
 

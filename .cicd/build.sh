@@ -2,24 +2,15 @@
 set -eo pipefail
 . ./.cicd/helpers/general.sh
 
-function cleanup() {
-    if [[ "$(uname)" != 'Darwin' ]]; then
-        echo "[Cleaning up docker container]"
-        echo " - docker container kill $CONTAINER_NAME"
-        docker container kill $CONTAINER_NAME || true # -v and --mount don't work quite well when it's docker in docker, so we need to use docker's cp command to move the build script in
-    fi
-}
-trap cleanup 0
-
 export DOCKERIZATION=false
-[[ $ENABLE_INSTALL == true ]] && . ./.cicd/helpers/populate-template-and-hash.sh '<!-- DAC BUILD' '<!-- DAC INSTALL' || . ./.cicd/helpers/populate-template-and-hash.sh '<!-- DAC BUILD'
+[[ $ENABLE_INSTALL == true ]] && . ./.cicd/helpers/populate-template-and-hash.sh '<!-- DAC CLONE' '<!-- DAC BUILD' '<!-- DAC INSTALL' || . ./.cicd/helpers/populate-template-and-hash.sh '<!-- DAC CLONE' '<!-- DAC BUILD'
 if [[ "$(uname)" == 'Darwin' ]]; then
     # You can't use chained commands in execute
     if [[ $TRAVIS == true ]]; then
         ccache -s
         brew reinstall openssl@1.1 # Fixes issue where builds in Travis cannot find libcrypto.
         sed -i -e 's/^cmake /cmake -DCMAKE_CXX_COMPILER_LAUNCHER=ccache /g' /tmp/$POPULATED_FILE_NAME
-        sed -i -e 's/ -DCMAKE_TOOLCHAIN_FILE=$EOSIO_LOCATION\/scripts\/pinned_toolchain.cmake//g' /tmp/$POPULATED_FILE_NAME # We can't use pinned for mac cause building clang8 would take too long
+        sed -i -e 's/ -DCMAKE_TOOLCHAIN_FILE=$EOS_LOCATION\/scripts\/pinned_toolchain.cmake//g' /tmp/$POPULATED_FILE_NAME # We can't use pinned for mac cause building clang8 would take too long
         sed -i -e 's/ -DBUILD_MONGO_DB_PLUGIN=true//g' /tmp/$POPULATED_FILE_NAME # We can't use pinned for mac cause building clang8 would take too long
         # Support ship_test
         export NVM_DIR="$HOME/.nvm"
@@ -31,6 +22,7 @@ if [[ "$(uname)" == 'Darwin' ]]; then
     . $HELPERS_DIR/populate-template-and-hash.sh -h # obtain $FULL_TAG (and don't overwrite existing file)
     cat /tmp/$POPULATED_FILE_NAME
     . /tmp/$POPULATED_FILE_NAME # This file is populated from the platform's build documentation code block
+    cd $EOS_LOCATION
 else # Linux
     if [[ $TRAVIS == true ]]; then
         ARGS=${ARGS:-"-v /usr/lib/ccache -v $HOME/.ccache:/opt/.ccache -e JOBS -e TRAVIS -e CCACHE_DIR=/opt/.ccache"}
@@ -55,16 +47,15 @@ else # Linux
     else
         export CONTAINER_NAME=$BUILDKITE_JOB_ID
     fi
-    ARGS="$ARGS --rm -t -d --name $CONTAINER_NAME -v $(pwd):$MOUNTED_DIR"
-    # sed -i '1s;^;#!/bin/bash\nexport PATH=$EOSIO_INSTALL_LOCATION/bin:$PATH\n;' /tmp/$POPULATED_FILE_NAME # /build-script: line 3: cmake: command not found
-    # PRE_COMMANDS: Executed pre-cmake
-    BUILD_COMMANDS="$BUILD_COMMANDS/$POPULATED_FILE_NAME"
+    ARGS="$ARGS --rm --init --name $CONTAINER_NAME -v $(pwd):$(pwd) $(buildkite-intrinsics) -e JOBS" # We must mount $(pwd) in as itself to avoid https://stackoverflow.com/questions/31381322/docker-in-docker-cannot-mount-volume
+    BUILD_COMMANDS="cd $(pwd) && $BUILD_COMMANDS./$POPULATED_FILE_NAME"
     . $HELPERS_DIR/populate-template-and-hash.sh -h # obtain $FULL_TAG (and don't overwrite existing file)
-    echo "$ docker run $ARGS $(buildkite-intrinsics) $FULL_TAG"
-    eval docker run $ARGS $(buildkite-intrinsics) $FULL_TAG
-    echo "$ docker cp /tmp/$POPULATED_FILE_NAME $CONTAINER_NAME:/$POPULATED_FILE_NAME"
-    docker cp /tmp/$POPULATED_FILE_NAME $CONTAINER_NAME:/$POPULATED_FILE_NAME
+    echo "mv \$EOSIO_BUILD_LOCATION $(pwd)/build" >> /tmp/$POPULATED_FILE_NAME
     cat /tmp/$POPULATED_FILE_NAME
-    echo "$ docker exec $CONTAINER_NAME bash -c \"$BUILD_COMMANDS\""
-    eval docker exec $CONTAINER_NAME bash -c \"$BUILD_COMMANDS\"
+    mv /tmp/$POPULATED_FILE_NAME ./$POPULATED_FILE_NAME
+    echo "$ docker run $ARGS $FULL_TAG bash -c \"$BUILD_COMMANDS\""
+    eval docker run $ARGS $FULL_TAG bash -c \"$BUILD_COMMANDS\"
 fi
+
+tar -pczf build.tar.gz build && buildkite-agent artifact upload build.tar.gz
+

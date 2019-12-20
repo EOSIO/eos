@@ -38,7 +38,7 @@ mkdir -p $EOSIO_INSTALL_LOCATION
 yum update -y && yum install -y git
 # clone EOSIO repository
 git clone https://github.com/EOSIO/eos.git $EOS_LOCATION
-cd $EOSIO_LOCATION && git submodule update --init --recursive
+cd $EOS_LOCATION && git submodule update --init --recursive
 ```
 <!-- DAC CLONE END -->
 
@@ -66,7 +66,7 @@ cd $EOSIO_INSTALL_LOCATION && curl -LO https://github.com/Kitware/CMake/releases
     make install && \
     rm -rf $EOSIO_INSTALL_LOCATION/cmake-3.16.2.tar.gz $EOSIO_INSTALL_LOCATION/cmake-3.16.2
 # apply clang patch
-cp -f $EOSIO_LOCATION/scripts/clang-devtoolset8-support.patch /tmp/clang-devtoolset8-support.patch
+cp -f $EOS_LOCATION/scripts/clang-devtoolset8-support.patch /tmp/clang-devtoolset8-support.patch
 # build boost
 cd $EOSIO_INSTALL_LOCATION && curl -LO https://dl.bintray.com/boostorg/release/1.71.0/source/boost_1_71_0.tar.bz2 && \
     source /opt/rh/devtoolset-8/enable && \
