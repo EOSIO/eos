@@ -83,7 +83,7 @@ fi
 export BUILD_SOURCE=${BUILD_SOURCE:---build \$BUILDKITE_BUILD_ID}
 # set trigger_job if master/release/develop branch and webhook
 if [[ $BUILDKITE_BRANCH =~ ^release/[0-9]+\.[0-9]+\.x$ || $BUILDKITE_BRANCH =~ ^master$ || $BUILDKITE_BRANCH =~ ^develop$ ]]; then
-    [[ $BUILDKITE_SOURCE == 'webhook' ]] && export TRIGGER_JOB=true
+    [[ $BUILDKITE_SOURCE != 'scheduled' ]] && export TRIGGER_JOB=true
 fi
 oIFS="$IFS"
 IFS=$''
@@ -159,9 +159,21 @@ EOF
 EOF
     fi
 done
-echo
-echo '  - wait'
-echo ''
+cat <<EOF
+
+  - label: ":docker: Docker - Build and Install"
+    command: "./.cicd/installation-build.sh"
+    env:
+      IMAGE_TAG: "ubuntu-18.04-unpinned"
+      PLATFORM_TYPE: "unpinned"
+    agents:
+      queue: "$BUILDKITE_BUILD_AGENT_QUEUE"
+    timeout: ${TIMEOUT:-180}
+    skip: ${SKIP_INSTALL}${SKIP_LINUX}${SKIP_DOCKER}
+
+  - wait
+
+EOF
 # tests
 IFS=$oIFS
 for ROUND in $(seq 1 $ROUNDS); do
@@ -462,18 +474,19 @@ done
 # trigger eosio-lrt post pr
 if [[ -z $BUILDKITE_TRIGGERED_FROM_BUILD_ID && $TRIGGER_JOB == "true" ]]; then
     if ( [[ ! $PINNED == false ]] ); then
-    cat <<EOF
+        cat <<EOF
   - label: ":pipeline: Trigger Long Running Tests"
     trigger: "eosio-lrt"
     async: true
     build:
-      message: "${BUILDKITE_MESSAGE}"
+      message: "Triggered by EOSIO build ${BUILDKITE_BUILD_NUMBER}"
       commit: "${BUILDKITE_COMMIT}"
       branch: "${BUILDKITE_BRANCH}"
       env:
         BUILDKITE_PULL_REQUEST: "${BUILDKITE_PULL_REQUEST}"
         BUILDKITE_PULL_REQUEST_BASE_BRANCH: "${BUILDKITE_PULL_REQUEST_BASE_BRANCH}"
         BUILDKITE_PULL_REQUEST_REPO: "${BUILDKITE_PULL_REQUEST_REPO}"
+        BUILDKITE_TRIGGERED_FROM_BUILD_LINK: "${BUILDKITE_BUILD_URL}"
         SKIP_BUILD: "true"
         SKIP_WASM_SPEC_TESTS: "true"
         PINNED: "${PINNED}"
@@ -484,21 +497,41 @@ fi
 # trigger multiversion post pr
 if [[ -z $BUILDKITE_TRIGGERED_FROM_BUILD_ID && $TRIGGER_JOB = "true" ]]; then
     if ( [[ ! $PINNED == false ]] ); then
-    cat <<EOF
+        cat <<EOF
   - label: ":pipeline: Trigger Multiversion Test"
     trigger: "eos-multiversion-tests"
     async: true
     build:
-      message: "${BUILDKITE_MESSAGE}"
+      message: "Triggered by EOSIO build ${BUILDKITE_BUILD_NUMBER}"
       commit: "${BUILDKITE_COMMIT}"
       branch: "${BUILDKITE_BRANCH}"
       env:
         BUILDKITE_PULL_REQUEST: "${BUILDKITE_PULL_REQUEST}"
         BUILDKITE_PULL_REQUEST_BASE_BRANCH: "${BUILDKITE_PULL_REQUEST_BASE_BRANCH}"
         BUILDKITE_PULL_REQUEST_REPO: "${BUILDKITE_PULL_REQUEST_REPO}"
+        BUILDKITE_TRIGGERED_FROM_BUILD_LINK: "${BUILDKITE_BUILD_URL}"
 
 EOF
     fi
+fi
+# trigger eosio-sync-from-genesis for every build
+if [[ -z $BUILDKITE_TRIGGERED_FROM_BUILD_ID && -z "${SKIP_INSTALL}${SKIP_LINUX}${SKIP_DOCKER}" ]]; then
+    cat <<EOF
+  - label: ":chains: Sync-from-Genesis Test"
+    trigger: "eosio-sync-from-genesis"
+    async: false
+    build:
+      message: "Triggered by EOSIO build ${BUILDKITE_BUILD_NUMBER}"
+      commit: "${BUILDKITE_COMMIT}"
+      branch: "${BUILDKITE_BRANCH}"
+      env:
+        BUILDKITE_TRIGGERED_FROM_BUILD_LINK: "${BUILDKITE_BUILD_URL}"
+        SKIP_JUNGLE: "${SKIP_JUNGLE}"
+        SKIP_KYLIN: "${SKIP_KYLIN}"
+        SKIP_MAIN: "${SKIP_MAIN}"
+        TIMEOUT: "${TIMEOUT}"
+
+EOF
 fi
 # pipeline tail
 cat <<EOF
@@ -604,17 +637,17 @@ cat <<EOF
           cd: ~
     agents:
       - "queue=mac-anka-node-fleet"
-    timeout: ${TIMEOUT:-60}
+    timeout: ${TIMEOUT:-10}
     skip: ${SKIP_MACOS_10_14}${SKIP_PACKAGE_BUILDER}${SKIP_MAC}
 
-  - label: ":ubuntu: Ubuntu 18.04 - Contract Builder"
-    command: "./.cicd/installation-build.sh"
+  - label: ":docker: Docker - Label Container with Git Branch and Git Tag"
+    command: .cicd/docker-tag.sh
     env:
       IMAGE_TAG: "ubuntu-18.04-unpinned"
     agents:
       queue: "$BUILDKITE_BUILD_AGENT_QUEUE"
-    timeout: ${TIMEOUT:-30}
-    skip: ${SKIP_CONTRACT_BUILDER}${SKIP_LINUX}
+    timeout: ${TIMEOUT:-10}
+    skip: ${SKIP_INSTALL}${SKIP_LINUX}${SKIP_DOCKER}${SKIP_PACKAGE_BUILDER}
 
   - wait
 

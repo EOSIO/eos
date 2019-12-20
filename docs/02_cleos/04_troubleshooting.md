@@ -1,3 +1,7 @@
+---
+content_title: Cleos Troubleshooting
+---
+
 ## Cannot connect to RPC endpoint
 
 Check if your local nodeos is running by visiting the following URL in your browser:

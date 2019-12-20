@@ -1,4 +1,6 @@
-# EOSIO Software Dependencies
+---
+content_title: EOSIO Software Dependencies
+---
 
 The EOSIO software requires specific software dependencies to build the EOSIO binaries. These dependencies can be built from source or installed from binaries directly. Dependencies can be pinned to a specific version release or unpinned to the current version, usually the latest one. The main EOSIO dependencies hosted outside the EOSIO repos are:
 
@@ -26,30 +28,18 @@ Regular users or application developers may prefer installing unpinned versions 
 
 ## Automatic Installation of Dependencies
 
-EOSIO dependencies can be built or installed automatically from the [Build Script](../../00_build-script.md) when building EOSIO from source. To build the pinned dependencies, the optional `-P` parameter can be specified when invoking the script. Otherwise, the unpinned dependencies will be installed instead, with the exception of `boost` and `cmake` which are always pinned:
+EOSIO dependencies can be built or installed automatically from the [Build Script](../01_shell-scripts/02_build-eosio-binaries.md) when building EOSIO from source. To build the pinned dependencies, the optional `-P` parameter can be specified when invoking the script. Otherwise, the unpinned dependencies will be installed instead, with the exception of `boost` and `cmake` which are always pinned:
 
 ```sh
 $ cd ~/eosio/eos
 $ ./scripts/eosio_build.sh [-P]
 ```
 
-## Manual Installation of Dependencies
+### Unupported Platforms
 
-Below are instructions to install the EOSIO dependencies manually on various platforms:
-
-* [MacOS Mojave](00_macos-mojave.md)
-* [Amazon Linux](01_amazon-linux.md)
-* [CentOS Linux](02_centos-linux.md)
-* [Ubuntu Linux](03_ubuntu-linux.md)
-
-### Other Platforms
-
-EOSIO dependencies can also be built and installed manually by reproducing the same commands invoked by the [Build Script](../../00_build-script.md). The actual commands can be generated from the script directly by exporting specific environment variables and CLI parameters to the script when invoked:
+EOSIO dependencies can also be built and installed manually by reproducing the same commands invoked by the [Build Script](../01_shell-scripts/02_build-eosio-binaries.md). The actual commands can be generated from the script directly by exporting specific environment variables and CLI parameters to the script when invoked:
 
 ```sh
 $ cd ~/eosio/eos
 $ export VERBOSE=true && export DRYRUN=true && ./scripts/eosio_build.sh -y [-P]
 ```
-
-[[info | Automatic installation of dependencies]]
-| (#automatic-installation-of-dependencies) should be preferred over manual installation if possible.
