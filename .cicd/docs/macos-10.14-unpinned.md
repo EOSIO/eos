@@ -26,7 +26,7 @@ These commands set the EOSIO directories, install git, and clone the 
 <!-- DAC CLONE -->
 ```sh
 # set EOSIO directories
-export EOSIO_LOCATION=$HOME/eosio/eos
+export EOSIO_LOCATION=~/eosio/eos
 export EOSIO_INSTALL_LOCATION=$EOSIO_LOCATION/../install
 mkdir -p $EOSIO_INSTALL_LOCATION
 # install git

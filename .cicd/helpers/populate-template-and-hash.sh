@@ -2,6 +2,7 @@
 set -eo pipefail
 
 ONLYHASH=false
+DEBUG=false
 DOCKERIZATION=${DOCKERIZATION:-true}
 
 function usage() {
@@ -23,10 +24,13 @@ function usage() {
 }
 
 if [ $# -ne 0 ]; then
-  while getopts "h?" opt; do
+  while getopts "hd?" opt; do
     case "${opt}" in
         h)
           ONLYHASH=true
+        ;;
+        d)
+          DEBUG=true
         ;;
         ? )
           usage
@@ -45,7 +49,7 @@ fi
 # If we're running this script a second time (with ONLYHASH), set a tmpfile name
 [[ ${POPULATED_FILE_NAME:-false} == false ]] && export POPULATED_FILE_NAME=${FILE_NAME:-$IMAGE_TAG} || POPULATED_FILE_NAME="tmpfile"
 # Collect commands from code block, add RUN before the start of commands, and add it to temporary template
-if [[ ! -z $@ ]]; then
+if [[ ! -z $@ ]] && [[ $DEBUG == false ]]; then
   POP_COMMANDS=""
   for PATTERN in "$@"; do
     POP_COMMANDS="$POP_COMMANDS
@@ -63,7 +67,7 @@ fi
 if [[ ! ${IMAGE_TAG:-$FILE_NAME} =~ 'macos' ]]; then # Linux / Docker
   ( [[ $DOCKERIZATION == true ]] || [[ $ONLYHASH == true ]] ) && POP_COMMANDS=$(echo "$POP_COMMANDS" | awk '{ \
   if ( $0 ~ /^[ ].*/ ) { print $0 } \
-  else if ( $0 ~ /^export.*=([^\s]+)$/gm ) { gsub(/export /,"",$0); print "ENV " $0 } \
+  else if ( $0 ~ /^export.*=([^\s]+)$/ ) { gsub(/export /,"",$0); print "ENV " $0 } \
   else { print "RUN " $0 } }')
   export FILE_EXTENSION=".dockerfile"
   export APPEND_LINE=3
@@ -90,7 +94,7 @@ export HASHED_IMAGE_TAG="eos-$(basename ${FILE_NAME:-$IMAGE_TAG} | awk '{split($
 export FULL_TAG="eosio/ci:$HASHED_IMAGE_TAG"
 sed -i -e "s/eos.git \$EOSIO_LOCATION/eos.git \$EOSIO_LOCATION \&\& cd \$EOSIO_LOCATION \&\& git pull \&\& git checkout -f $BUILDKITE_COMMIT/g" /tmp/$POPULATED_FILE_NAME # MUST BE AFTER WE GENERATE THE HASH
 chmod +x /tmp/$POPULATED_FILE_NAME
-[[ "$(uname)" == 'Darwin' ]] && cat /tmp/$POPULATED_FILE_NAME
+[[ $DEBUG == true ]] && cat /tmp/$POPULATED_FILE_NAME
 if [[ $ONLYHASH == true ]]; then
   rm -f /tmp/$POPULATED_FILE_NAME && export POPULATED_FILE_NAME=${FILE_NAME:-$IMAGE_TAG}
 fi
