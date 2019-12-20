@@ -2,7 +2,11 @@
 content_title: Centos 7.7 (unpinned)
 ---
 
-<!-- This document is aggregated by our internal documentation tool to generate EOSIO documentation. The code within the codeblocks below is used in our CI/CD. It will be converted line by line into statements inside of a temporary Dockerfile and used to build our docker tag for this OS. Therefore, COPY and other Dockerfile-isms are not permitted. Code changes will update hashes and regenerate new docker images, so use with caution and do not modify unless necessary. -->
+<!-- This document is aggregated by our internal documentation tool to generate EOSIO documentation. 
+The code within the codeblocks below is used in our CI/CD! 
+ - It will be converted line by line into statements inside of a temporary Dockerfile and used to build our docker tag for this OS. Therefore, COPY, RUN, and other Dockerfile-isms are not permitted!
+ - Code changes will update hashes and regenerate new docker images, so use with caution and do not modify unless necessary. However blank lines and # comments will not change the hash and are safe to add and remove
+ - Any export VARNAME, when it's alone on a line, will be converted to ENV VARNAME in the dockerfile -->
 
 This section contains shell commands to manually download, build, install, test, and uninstall EOSIO and dependencies on Centos 7.7.
 
