@@ -63,7 +63,7 @@ fi
 if [[ ! ${IMAGE_TAG:-$FILE_NAME} =~ 'macos' ]]; then # Linux / Docker
   ( [[ $DOCKERIZATION == true ]] || [[ $ONLYHASH == true ]] ) && POP_COMMANDS=$(echo "$POP_COMMANDS" | awk '{ \
   if ( $0 ~ /^[ ].*/ ) { print $0 } \
-  else if ( $0 ~ /^export.*=([^\s]+)$/ ) { gsub(/export /,"",$0); print "ENV " $0 } \
+  else if ( $0 ~ /^export.*=([^\s]+)$/gm ) { gsub(/export /,"",$0); print "ENV " $0 } \
   else { print "RUN " $0 } }')
   export FILE_EXTENSION=".dockerfile"
   export APPEND_LINE=3
