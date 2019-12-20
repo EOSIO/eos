@@ -2,12 +2,16 @@
 content_title: MacOS 10.14 (pinned compiler)
 ---
 
-<!-- This document is aggregated by our internal documentation tool to generate EOSIO documentation. The code within the codeblocks below is used in our CI/CD. It will be converted line by line into statements inside of a temporary Dockerfile and used to build our docker tag for this OS. Therefore, COPY and other Dockerfile-isms are not permitted. Code changes will update hashes and regenerate new docker images, so use with caution and do not modify unless necessary. -->
+<!-- This document is aggregated by our internal documentation tool to generate EOSIO documentation. 
+The code within the codeblocks below is used in our CI/CD! 
+ - It will be converted line by line into statements inside of a temporary Dockerfile and used to build our docker tag for this OS. Therefore, COPY, RUN, and other Dockerfile-isms are not permitted!
+ - Code changes will update hashes and regenerate new docker images, so use with caution and do not modify unless necessary. However blank lines and # comments will not change the hash and are safe to add and remove
+ - Any export VARNAME, when it's alone on a line, will be converted to ENV VARNAME in the dockerfile -->
 
 This section contains shell commands to manually download, build, install, test, and uninstall EOSIO and dependencies on MacOS 10.14.
 
 [[info | Building EOSIO is for Advanced Developers]]
-| If you are new to EOSIO, it is recommended that you install the [EOSIO Prebuilt Binaries](../../../../00_install-prebuilt-binaries.md) instead of building from source.
+| If you are new to EOSIO, it is recommended that you install the [EOSIO Prebuilt Binaries](../../../00_install-prebuilt-binaries.md) instead of building from source.
 
 Select a task below, then copy/paste the shell commands to a Unix terminal to execute:
 
@@ -19,14 +23,14 @@ Select a task below, then copy/paste the shell commands to a Unix terminal to ex
 * [Uninstall EOSIO](#uninstall-eosio)
 
 [[info | Building EOSIO on another OS?]]
-| Visit the [Build EOSIO from Source](../../../index.md) section.
+| Visit the [Build EOSIO from Source](../../index.md) section.
 
 ## Download EOSIO Repository
 These commands set the EOSIO directories, install git, and clone the EOSIO repository.
 <!-- DAC CLONE -->
 ```sh
 # set EOSIO directories
-export EOSIO_LOCATION=$HOME/eosio/eos
+export EOSIO_LOCATION=~/eosio/eos
 export EOSIO_INSTALL_LOCATION=$EOSIO_LOCATION/../install
 mkdir -p $EOSIO_INSTALL_LOCATION
 # install git
