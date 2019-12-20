@@ -109,12 +109,12 @@ cd $EOSIO_BUILD_LOCATION && make install
 
 ## Test EOSIO
 These commands validate the EOSIO software installation on the specified OS. Make sure to [Install EOSIO](#install-eosio) first. (**Note**: This task is optional but recommended.)
-<!-- IGNORE -->
+<!-- DAC IGNORE -->
 ```sh
 $EOSIO_INSTALL_LOCATION/bin/mongod --fork --logpath $(pwd)/mongod.log --dbpath $(pwd)/mongodata
 cd $EOSIO_BUILD_LOCATION && make test
 ```
-<!-- IGNORE END -->
+<!-- DAC IGNORE END -->
 
 ## Uninstall EOSIO
 These commands uninstall the EOSIO software from the specified OS.

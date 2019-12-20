@@ -50,14 +50,14 @@ if [[ ! -z $@ ]]; then
   for PATTERN in "$@"; do
     POP_COMMANDS="$POP_COMMANDS
 $(cat .cicd/docs/${IMAGE_TAG:-$FILE_NAME}.md | sed -n "/$PATTERN/,/END -->/p")"
-    POP_COMMANDS=$(echo "$POP_COMMANDS" | sed '/<!-- IGNORE/,/<!-- IGNORE/d') # Remove test block (we run ctest in ci/cd)
+    POP_COMMANDS=$(echo "$POP_COMMANDS" | sed '/<!-- DAC IGNORE/,/<!-- DAC IGNORE/d') # Remove test block (we run ctest in ci/cd)
     POP_COMMANDS=$(echo "$POP_COMMANDS" | grep -v -e "$PATTERN" -e '<!--' -e '-->' -e '```' -e '\#.*' -e '^$') # Sanitize
   done
   POP_COMMANDS=$(echo "$POP_COMMANDS" | grep -v -e '^$') 
 else
   PATTERN='<!-- DAC'
   POP_COMMANDS=$(cat .cicd/docs/${IMAGE_TAG:-$FILE_NAME}.md | sed -n "/$PATTERN/,/END -->/p")
-  POP_COMMANDS=$(echo "$POP_COMMANDS" | sed '/<!-- IGNORE/,/<!-- IGNORE/d') # Remove test block (we run ctest in ci/cd)
+  POP_COMMANDS=$(echo "$POP_COMMANDS" | sed '/<!-- DAC IGNORE/,/<!-- DAC IGNORE/d') # Remove test block (we run ctest in ci/cd)
   POP_COMMANDS=$(echo "$POP_COMMANDS" | grep -v -e "$PATTERN" -e '<!--' -e '-->' -e '```' -e '\#.*' -e '^$') # Sanitize
 fi
 if [[ ! ${IMAGE_TAG:-$FILE_NAME} =~ 'macos' ]]; then # Linux / Docker
