@@ -23,3 +23,6 @@ When pulling changes, especially after switching branches, the submodules *must*
 $ [git checkout <branch>]  (optional)
 $ git pull --recurse-submodules
 ```
+
+[[info | What's Next?]]
+| [Build EOSIO binaries](02_build-eosio-binaries.md)

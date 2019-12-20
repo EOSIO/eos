@@ -16,3 +16,8 @@ In lieu of the `eosio_install.sh` script, you can install the EOSIO binaries dir
 $ cd ~/eosio/eos/build
 $ sudo make install
 ```
+
+[[info | What's Next?]]
+|
+* Optionally [Test EOSIO binaries](04_test-eosio-binaries.md)
+* Configure and use [Nodeos](../../../01_nodeos/index.md).
