@@ -1,4 +1,6 @@
-# Nodeos
+---
+content_title: Nodeos
+---
 
 ## Introduction
 

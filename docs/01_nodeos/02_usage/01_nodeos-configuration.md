@@ -1,3 +1,6 @@
+---
+content_title: Nodeos Configuration
+---
 
 The plugin-specific options can be configured using either CLI options or a configuration file, `config.ini`. Nodeos-specific options can only be configured from the command line. All CLI options and `config.ini` options can be found by running `$ nodeos --help` as shown above.
 

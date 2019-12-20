@@ -1,3 +1,6 @@
+---
+content_title: Install EOSIO Binaries
+---
 
 ## EOSIO install script
 

@@ -1,3 +1,6 @@
+---
+content_title: Install Prebuilt Binaries
+---
 
 [[info | Previous Builds]]
 | If you have previously installed EOSIO from source using shell scripts, you must first run the [Uninstall Script](01_build-from-source/01_shell-scripts/03_install-eosio-binaries.md) before installing any prebuilt binaries on the same OS.

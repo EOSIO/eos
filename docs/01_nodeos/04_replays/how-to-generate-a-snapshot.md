@@ -1,4 +1,6 @@
-<!-- ## How to generate a snapshot -->
+---
+content_title: How to generate a snapshot
+---
 
 You can force a running `nodeos` instance to create a snapshot by using the `create_snapshot` RPC API call supported by the `producer_api_plugin`. This will create a snapshot file in the `data/snapshots` directory. Snapshot files are written to disk with the name pattern `*snapshot-\<head_block_id_in_hex\>.bin*`.
 

@@ -1,4 +1,6 @@
-# Shell Scripts
+---
+content_title: Shell Scripts
+---
 
 [[info | Did you know?]]
 | Shell scripts automate the process of building, installing, testing, and uninstalling the EOSIO software and dependencies.

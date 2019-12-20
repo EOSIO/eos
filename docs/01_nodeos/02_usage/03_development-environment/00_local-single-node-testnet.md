@@ -1,3 +1,6 @@
+---
+content_title: Local Single-Node Testnet
+---
 
 ## Goal
 
