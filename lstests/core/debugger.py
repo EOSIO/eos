@@ -210,4 +210,4 @@ def ps_launcher_service():
 def run(args: typing.Union[str, typing.List[str]]):
     if isinstance(args, str):
         args = args.split(" ")
-    return subprocess.run(args, capture_output=True, text=True).stdout.splitlines()
+    return subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True).stdout.splitlines()

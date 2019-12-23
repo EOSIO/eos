@@ -2,7 +2,6 @@
 
 # standard libraries
 import copy
-import dataclasses
 import json
 import shlex
 import subprocess
@@ -130,12 +129,12 @@ def trim(data: typing.Union[dict, list], maxlen=79):
 
 # --------------- subprocess ------------------------------------------------------------------------------------------
 
-@dataclasses.dataclass
 class ServiceInfo:
-    pid: int
-    file: str
-    port: int
-    gene: str
+    def __init__(self, pid: int, file: str, port: int, gene: str):
+        self.pid = pid
+        self.file = file
+        self.port = port
+        self.gene = gene
 
 
 def get_service_list_by_cmd(cmd: str) -> typing.List[ServiceInfo]:
@@ -168,7 +167,7 @@ def terminate(pid: typing.Union[int, str]):
 def run(args: typing.Union[str, typing.List[str]]):
     if isinstance(args, str):
         args = args.split(" ")
-    return subprocess.run(args, capture_output=True, text=True).stdout.splitlines()
+    return subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True).stdout.splitlines()
 
 # --------------- doctest ---------------------------------------------------------------------------------------------
 

@@ -2,7 +2,6 @@
 
 # standard libraries
 import abc
-import dataclasses
 import inspect
 import os.path
 import queue
@@ -81,21 +80,28 @@ class _MessageCenter:
             self.writer._raw_write(item)
 
 
-@dataclasses.dataclass
 class _Writer(abc.ABC):
-    threshold: typing.Union[int, str, LogLevel]
-    monochrome: bool
-    buffered: bool
-    show_clock_time: bool
-    show_elapsed_time: bool
-    show_filename: bool
-    show_lineno: bool
-    show_function: bool
-    show_thread: bool
-    show_log_level: bool
-
-    def __post_init__(self):
-        self.threshold = LogLevel(self.threshold)
+    def __init__(self,
+                 threshold: typing.Union[int, str, LogLevel],
+                 monochrome: bool,
+                 buffered: bool,
+                 show_clock_time: bool,
+                 show_elapsed_time: bool,
+                 show_filename: bool,
+                 show_lineno: bool,
+                 show_function: bool,
+                 show_thread: bool,
+                 show_log_level: bool):
+        self.threshold = LogLevel(threshold)
+        self.monochrome = monochrome
+        self.buffered = buffered
+        self.show_clock_time = show_clock_time
+        self.show_elapsed_time = show_elapsed_time
+        self.show_filename = show_filename
+        self.show_lineno = show_lineno
+        self.show_function = show_function
+        self.show_thread = show_thread
+        self.show_log_level = show_log_level
         if self.buffered:
             self._message_center = _MessageCenter(self)
             self._rlock = threading.RLock()

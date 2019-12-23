@@ -12,7 +12,6 @@ nodes.
 import argparse
 import base64
 import collections
-import dataclasses
 import functools
 import math
 import os
@@ -1290,13 +1289,12 @@ class Cluster:
             verify_helper()
 
     def check_sync(self, retry=None, sleep=None, min_sync_count=None, max_block_lag=None, dont_raise=False, level="debug"):
-        @dataclasses.dataclass
         class SyncResult:
-            in_sync: bool
-            sync_count: int
-            min_block_num: int
-            max_block_num: int = None
-            def __post_init__(self):
+            def __init__(self, in_sync: bool, sync_count: int, min_block_num: int, max_block_num: int = None):
+                self.in_sync = in_sync
+                self.sync_count = sync_count
+                self.min_block_num = min_block_num
+                self.max_block_num = max_block_num
                 if self.in_sync:
                     self.block_num = self.max_block_num = self.min_block_num
                 else:
