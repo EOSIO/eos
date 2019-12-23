@@ -52,7 +52,7 @@ def kill_and_verify(clus):
     min1, max1 = res.min_block_num, res.max_block_num
     # Randomize fork difference
     sleep = random.randint(1, 45)
-    clus.info(f"Sleep for {sleep}s and until 2 forks have different lengths")
+    clus.info(f"Sleep for {sleep}s until 2 forks have different lengths")
     time.sleep(sleep)
     for _ in range(120):
         res = clus.check_sync(min_sync_count=2, max_block_lag=2, dont_raise=True)
