@@ -319,21 +319,21 @@ class CommandLineArguments:
                             help=form(HELP_DONT_BUFFER, not DEFAULT_BUFFERED))
         parser.add_argument("--dont-rename", action="store_true", default=None,
                             help=form(HELP_DONT_RENAME, DEFAULT_DONT_RENAME))
-        parser.add_argument("-hct", "--hide-clock-time", dest="show_clock_time", action="store_false", default=None,
+        parser.add_argument("--hide-clock-time", dest="show_clock_time", action="store_false", default=None,
                             help=form(HELP_HIDE_CLOCK_TIME, not DEFAULT_SHOW_CLOCK_TIME))
-        parser.add_argument("-het", "--hide-elapsed-time", dest="show_elapsed_time", action="store_false",
+        parser.add_argument("--hide-elapsed-time", dest="show_elapsed_time", action="store_false",
                             default=None, help=form(HELP_HIDE_ELAPSED_TIME, not DEFAULT_SHOW_ELAPSED_TIME))
-        parser.add_argument("-hfi", "--hide-filename", dest="show_filename", action="store_false", default=None,
+        parser.add_argument("--hide-filename", dest="show_filename", action="store_false", default=None,
                             help=form(HELP_HIDE_FILENAME, not DEFAULT_SHOW_FILENAME))
-        parser.add_argument("-hli", "--hide-lineno", dest="show_lineno", action="store_false", default=None,
+        parser.add_argument("--hide-lineno", dest="show_lineno", action="store_false", default=None,
                             help=form(HELP_HIDE_LINENO, not DEFAULT_SHOW_LINENO))
-        parser.add_argument("-hfu", "--hide-function", dest="show_function", action="store_false", default=None,
+        parser.add_argument("--hide-function", dest="show_function", action="store_false", default=None,
                             help=form(HELP_HIDE_FUNCTION, not DEFAULT_SHOW_FUNCTION))
-        parser.add_argument("-hth", "--hide-thread", dest="show_thread", action="store_false", default=None,
+        parser.add_argument("--hide-thread", dest="show_thread", action="store_false", default=None,
                             help=form(HELP_HIDE_THREAD, not DEFAULT_SHOW_THREAD))
-        parser.add_argument("-hll", "--hide-log-level", dest="show_log_level", action="store_false", default=None,
+        parser.add_argument("--hide-log-level", dest="show_log_level", action="store_false", default=None,
                             help=form(HELP_HIDE_LOG_LEVEL, not DEFAULT_SHOW_LOG_LEVEL))
-        parser.add_argument("-hall", "--hide-all", action="store_true", default=False,
+        parser.add_argument("--hide-all", action="store_true", default=False,
                             help=form(HELP_HIDE_ALL, DEFAULT_HIDE_ALL))
         return parser.parse_args()
 
