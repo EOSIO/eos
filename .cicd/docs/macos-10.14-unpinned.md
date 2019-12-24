@@ -25,15 +25,21 @@ Select a task below, then copy/paste the shell commands to a Unix terminal to ex
 [[info | Building EOSIO on another OS?]]
 | Visit the [Build EOSIO from Source](../../index.md) section.
 
-## Download EOSIO Repository
-These commands set the EOSIO directories, install git, and clone the EOSIO repository.
-<!-- DAC CLONE -->
+## Set EOSIO Environment Variables
+<!-- DAC ENV -->
 ```sh
-# set EOSIO directories
 export EOSIO_LOCATION=$HOME/eosio
 export EOS_LOCATION=$EOSIO_LOCATION/eos
 export EOSIO_INSTALL_LOCATION=$EOSIO_LOCATION/install
 export PATH=$EOSIO_INSTALL_LOCATION/bin:$PATH
+export EOSIO_BUILD_LOCATION=$EOS_LOCATION/build
+```
+<!-- DAC ENV END -->
+## Download EOSIO Repository
+These commands set the EOSIO directories, install git, and clone the EOSIO repository.
+<!-- DAC CLONE -->
+```sh
+# create EOSIO directories
 mkdir -p $EOSIO_INSTALL_LOCATION
 # install git
 brew update && brew install git
@@ -77,7 +83,6 @@ cd $EOSIO_INSTALL_LOCATION && curl -L https://github.com/mongodb/mongo-cxx-drive
 These commands build the EOSIO software on the specified OS. Make sure to [Install EOSIO Dependencies](#install-eosio-dependencies) first.
 <!-- DAC BUILD -->
 ```sh
-export EOSIO_BUILD_LOCATION=$EOS_LOCATION/build
 mkdir -p $EOSIO_BUILD_LOCATION
 cd $EOSIO_BUILD_LOCATION && cmake -DCMAKE_BUILD_TYPE='Release' -DCMAKE_INSTALL_PREFIX=$EOSIO_INSTALL_LOCATION -DBUILD_MONGO_DB_PLUGIN=true ..
 cd $EOSIO_BUILD_LOCATION && make -j$(getconf _NPROCESSORS_ONLN)

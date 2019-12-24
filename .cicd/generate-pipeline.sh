@@ -199,7 +199,7 @@ for ROUND in $(seq 1 $ROUNDS); do
       manual:
         permit_on_passed: true
     timeout: ${TIMEOUT:-30}
-    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_UNIT_TESTS}
+    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_UNIT_TESTS}${SKIP_TESTS}
 
 EOF
         else
@@ -233,7 +233,7 @@ EOF
       manual:
         permit_on_passed: true
     timeout: ${TIMEOUT:-60}
-    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_UNIT_TESTS}
+    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_UNIT_TESTS}${SKIP_TESTS}
 
 EOF
         fi
@@ -265,7 +265,7 @@ EOF
       manual:
         permit_on_passed: true
     timeout: ${TIMEOUT:-30}
-    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_WASM_SPEC_TESTS}
+    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_WASM_SPEC_TESTS}${SKIP_TESTS}
 
 EOF
         else
@@ -299,7 +299,7 @@ EOF
       manual:
         permit_on_passed: true
     timeout: ${TIMEOUT:-60}
-    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_WASM_SPEC_TESTS}
+    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_WASM_SPEC_TESTS}${SKIP_TESTS}
 
 EOF
         fi
@@ -323,13 +323,7 @@ EOF
                 cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - $TEST_NAME"
     command:
-      - "ssh-keyscan -H github.com >> ~/.ssh/known_hosts"
-      - "git clone \$BUILDKITE_REPO ."
-      - "$GIT_FETCH git checkout -f \$BUILDKITE_COMMIT"
       - "./.cicd/test.sh scripts/serial-test.sh $TEST_NAME"
-    plugins:
-      - thedyrt/skip-checkout#v0.1.1:
-          cd: ~
     env:
       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
       PLATFORM_FULL_NAME: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL)"
@@ -339,7 +333,7 @@ EOF
       manual:
         permit_on_passed: true
     timeout: ${TIMEOUT:-20}
-    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_SERIAL_TESTS}
+    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_SERIAL_TESTS}${SKIP_TESTS}
 
 EOF
             else
@@ -373,7 +367,7 @@ EOF
       manual:
         permit_on_passed: true
     timeout: ${TIMEOUT:-60}
-    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_SERIAL_TESTS}
+    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_SERIAL_TESTS}${SKIP_TESTS}
 EOF
             fi
             if [ "$BUILDKITE_SOURCE" = "schedule" ] && [[ $DISABLE_CONCURRENCY != true ]]; then
@@ -398,13 +392,7 @@ EOF
                 cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - $TEST_NAME"
     command:
-      - "ssh-keyscan -H github.com >> ~/.ssh/known_hosts"
-      - "git clone \$BUILDKITE_REPO ."
-      - "$GIT_FETCH git checkout -f \$BUILDKITE_COMMIT"
       - "./.cicd/test.sh scripts/long-running-test.sh $TEST_NAME"
-    plugins:
-      - thedyrt/skip-checkout#v0.1.1:
-          cd: ~
     env:
       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
       PLATFORM_FULL_NAME: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL)"
@@ -514,7 +502,7 @@ EOF
     fi
 fi
 # trigger eosio-sync-from-genesis for every build
-if [[ -z $BUILDKITE_TRIGGERED_FROM_BUILD_ID && -z "${SKIP_INSTALL}${SKIP_LINUX}${SKIP_DOCKER}" ]]; then
+if [[ -z $BUILDKITE_TRIGGERED_FROM_BUILD_ID && -z "${SKIP_TESTS}${SKIP_INSTALL}${SKIP_LINUX}${SKIP_DOCKER}" ]]; then
     cat <<EOF
   - label: ":chains: Sync-from-Genesis Test"
     trigger: "eosio-sync-from-genesis"
@@ -559,14 +547,7 @@ cat <<EOF
     # packaging
   - label: ":centos: CentOS 7.7 - Package Builder"
     command:
-      - "ssh-keyscan -H github.com >> ~/.ssh/known_hosts"
-      - "git clone \$BUILDKITE_REPO ."
-      - "$GIT_FETCH git checkout -f \$BUILDKITE_COMMIT"
-      - "buildkite-agent artifact download build.tar.gz . --step ':centos: CentOS 7.7 - Build' && tar -xzf build.tar.gz"
       - "./.cicd/package.sh"
-    plugins:
-      - thedyrt/skip-checkout#v0.1.1:
-          cd: ~
     env:
       IMAGE_TAG: "centos-7.7-$PLATFORM_TYPE"
       PLATFORM_FULL_NAME: ":centos: CentOS 7.7"
@@ -579,14 +560,7 @@ cat <<EOF
 
   - label: ":ubuntu: Ubuntu 16.04 - Package Builder"
     command:
-      - "ssh-keyscan -H github.com >> ~/.ssh/known_hosts"
-      - "git clone \$BUILDKITE_REPO ."
-      - "$GIT_FETCH git checkout -f \$BUILDKITE_COMMIT"
-      - "buildkite-agent artifact download build.tar.gz . --step ':ubuntu: Ubuntu 16.04 - Build' && tar -xzf build.tar.gz"
       - "./.cicd/package.sh"
-    plugins:
-      - thedyrt/skip-checkout#v0.1.1:
-          cd: ~
     env:
       IMAGE_TAG: "ubuntu-16.04-$PLATFORM_TYPE"
       PLATFORM_FULL_NAME: ":ubuntu: Ubuntu 16.04"
@@ -599,14 +573,7 @@ cat <<EOF
 
   - label: ":ubuntu: Ubuntu 18.04 - Package Builder"
     command:
-      - "ssh-keyscan -H github.com >> ~/.ssh/known_hosts"
-      - "git clone \$BUILDKITE_REPO ."
-      - "$GIT_FETCH git checkout -f \$BUILDKITE_COMMIT"
-      - "buildkite-agent artifact download build.tar.gz . --step ':ubuntu: Ubuntu 18.04 - Build' && tar -xzf build.tar.gz"
       - "./.cicd/package.sh"
-    plugins:
-      - thedyrt/skip-checkout#v0.1.1:
-          cd: ~
     env:
       IMAGE_TAG: "ubuntu-18.04-$PLATFORM_TYPE"
       PLATFORM_FULL_NAME: ":ubuntu: Ubuntu 18.04"
@@ -619,8 +586,9 @@ cat <<EOF
 
   - label: ":darwin: macOS 10.14 - Package Builder"
     command:
-      - "git clone \$BUILDKITE_REPO eos-tmp && cd eos-tmp && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT"
-      - "cd eos-tmp && ./.cicd/package.sh"
+      - "brew install md5sha1sum && brew link --overwrite md5sha1sum"
+      - "git clone \$BUILDKITE_REPO ~/eosio/eos && cd ~/eosio/eos && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT"
+      - "cd ~/eosio/eos && ./.cicd/package.sh"
     plugins:
       - chef/anka#v0.5.4:
           no-volume: true
@@ -639,6 +607,7 @@ cat <<EOF
     agents:
       - "queue=mac-anka-node-fleet"
     env:
+      IMAGE_TAG: "macos-10.14-$PLATFORM_TYPE"
       PLATFORM_FULL_NAME: ":darwin: macOS 10.14"
     timeout: ${TIMEOUT:-10}
     skip: ${SKIP_MACOS_10_14}${SKIP_PACKAGE_BUILDER}${SKIP_MAC}

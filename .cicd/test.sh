@@ -1,13 +1,9 @@
 #!/bin/bash
 set -eo pipefail
-
-# variables
 . ./.cicd/helpers/general.sh
-# tests
 export DOCKERIZATION=false
-
 [[ $TRAVIS != true ]] && buildkite-agent artifact download build.tar.gz . --step "$PLATFORM_FULL_NAME - Build"
-
+. ./.cicd/helpers/populate-template-and-hash.sh '<!-- DAC ENV'
 if [[ $(uname) == 'Darwin' ]]; then # macOS
     if [[ $TRAVIS == true ]]; then
         # Support ship_test
@@ -15,21 +11,28 @@ if [[ $(uname) == 'Darwin' ]]; then # macOS
         . "/usr/local/opt/nvm/nvm.sh"
         nvm install --lts=dubnium
     else
+        . /tmp/$POPULATED_FILE_NAME
+        cp -rfp $(pwd) $EOS_LOCATION
+        cd $EOS_LOCATION
         tar -xzf build.tar.gz
-        export PATH=$PATH:$(cat $CICD_DIR/docs/$IMAGE_TAG.md | grep EOSIO_INSTALL_LOCATION= |  cut -d\" -f2)/bin
         source ~/.bash_profile # Make sure node is available for ship_test
     fi
     set +e # defer error handling to end
     ./"$@"
     EXIT_STATUS=$?
 else # Linux
-    ARGS="-rm --init -v $(pwd):$(pwd) $(buildkite-intrinsics) -e JOBS"
+    ARGS="--rm --init -v $(pwd):$(pwd) $(buildkite-intrinsics) -e JOBS"
     . $HELPERS_DIR/populate-template-and-hash.sh -h # Obtain the hash from the populated template 
-    [[ $TRAVIS != true ]] && TEST_COMMANDS="cd $(pwd) && tar -xzf build.tar.gz &&"
-    TEST_COMMANDS="$TEST_COMMANDS export PATH=\$PATH:/root/eosio/install/bin && $@"
+    echo "cp -rfp $(pwd) \$EOS_LOCATION && cd \$EOS_LOCATION" >> /tmp/$POPULATED_FILE_NAME # We don't need to clone twice
+    [[ $TRAVIS != true ]] && echo "tar -xzf build.tar.gz" >> /tmp/$POPULATED_FILE_NAME
+    echo "$@" >> /tmp/$POPULATED_FILE_NAME
+    echo "cp -rfp \$EOS_LOCATION/build $(pwd)" >> /tmp/$POPULATED_FILE_NAME
+    TEST_COMMANDS="cd $(pwd) && ./$POPULATED_FILE_NAME"
+    cat /tmp/$POPULATED_FILE_NAME
+    mv /tmp/$POPULATED_FILE_NAME ./$POPULATED_FILE_NAME
     echo "$ docker run $ARGS $FULL_TAG bash -c \"$TEST_COMMANDS\""
     set +e # defer error handling to end
-    eval docker run -$ARGS $FULL_TAG bash -c \"$TEST_COMMANDS\"
+    eval docker run $ARGS $FULL_TAG bash -c \"$TEST_COMMANDS\"
     EXIT_STATUS=$?
 fi
 # buildkite
