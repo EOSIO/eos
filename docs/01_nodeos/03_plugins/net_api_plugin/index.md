@@ -11,7 +11,7 @@ The `net_api_plugin` provides four RPC API endpoints:
 * connections
 * status
 
-See [Net section of RPC API](https://developers.eos.io/eosio-nodeos/reference).
+See [Net section of RPC API](https://developers.apifiny.io/apifiny-nodapifiny/reference).
 
 [[caution | Caution]]
 | This plugin exposes endpoints that allow management of p2p connections. Running this plugin on a publicly accessible node is not recommended as it can be exploited.
@@ -20,10 +20,10 @@ See [Net section of RPC API](https://developers.eos.io/eosio-nodeos/reference).
 
 ```sh
 # config.ini
-plugin = eosio::net_api_plugin
+plugin = apifiny::net_api_plugin
 
 # command-line
-$ nodeos ... --plugin eosio::net_api_plugin
+$ nodapifiny ... --plugin apifiny::net_api_plugin
 ```
 
 ## Options
@@ -39,12 +39,12 @@ None
 
 ```sh
 # config.ini
-plugin = eosio::net_plugin
+plugin = apifiny::net_plugin
 [options]
-plugin = eosio::http_plugin
+plugin = apifiny::http_plugin
 [options]
 
 # command-line
-$ nodeos ... --plugin eosio::net_plugin [options]  \
-             --plugin eosio::http_plugin [options]
+$ nodapifiny ... --plugin apifiny::net_plugin [options]  \
+             --plugin apifiny::http_plugin [options]
 ```

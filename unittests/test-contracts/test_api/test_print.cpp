@@ -1,4 +1,4 @@
-#include <eosiolib/eosio.hpp>
+#include <apifinylib/apifiny.hpp>
 
 #include "test_api.hpp"
 
@@ -57,25 +57,25 @@ void test_print::test_printui128() {
 }
 
 void test_print::test_printn() {
-   printn(eosio::name{"1"}.value);
-   printn(eosio::name{"5"}.value);
-   printn(eosio::name{"a"}.value);
-   printn(eosio::name{"z"}.value);
+   printn(apifiny::name{"1"}.value);
+   printn(apifiny::name{"5"}.value);
+   printn(apifiny::name{"a"}.value);
+   printn(apifiny::name{"z"}.value);
 
-   printn(eosio::name{"abc"}.value);
-   printn(eosio::name{"123"}.value);
+   printn(apifiny::name{"abc"}.value);
+   printn(apifiny::name{"123"}.value);
 
-   printn(eosio::name{"abc.123"}.value);
-   printn(eosio::name{"123.abc"}.value);
+   printn(apifiny::name{"abc.123"}.value);
+   printn(apifiny::name{"123.abc"}.value);
 
-   printn(eosio::name{"12345abcdefgj"}.value);
-   printn(eosio::name{"ijklmnopqrstj"}.value);
-   printn(eosio::name{"vwxyz.12345aj"}.value);
+   printn(apifiny::name{"12345abcdefgj"}.value);
+   printn(apifiny::name{"ijklmnopqrstj"}.value);
+   printn(apifiny::name{"vwxyz.12345aj"}.value);
 
-   printn(eosio::name{"111111111111j"}.value);
-   printn(eosio::name{"555555555555j"}.value);
-   printn(eosio::name{"aaaaaaaaaaaaj"}.value);
-   printn(eosio::name{"zzzzzzzzzzzzj"}.value);
+   printn(apifiny::name{"111111111111j"}.value);
+   printn(apifiny::name{"555555555555j"}.value);
+   printn(apifiny::name{"aaaaaaaaaaaaj"}.value);
+   printn(apifiny::name{"zzzzzzzzzzzzj"}.value);
 }
 
 
@@ -117,7 +117,7 @@ void test_print::test_printqf() {
 
 void test_print::test_print_simple() {
     const std::string cvalue = "cvalue";
-    eosio::print(cvalue);
+    apifiny::print(cvalue);
     std::string value = "value";
-    eosio::print(std::move(value));
+    apifiny::print(std::move(value));
 }

@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE
+ *  @copyright defined in apifiny/LICENSE
  */
 #include "get_table_test.hpp"
 

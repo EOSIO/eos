@@ -54,7 +54,7 @@ killEosInstances=not dontKill
 killWallet=not dontKill
 
 WalletdName=Utils.EosWalletName
-ClientName="cleos"
+ClientName="clapifiny"
 shipTempDir=None
 
 try:
@@ -64,16 +64,16 @@ try:
     cluster.killall(allInstances=killAll)
     cluster.cleanup()
     Print("Stand up cluster")
-    specificExtraNodeosArgs={}
+    specificExtraNodapifinyArgs={}
     # non-producing nodes are at the end of the cluster's nodes, so reserving the last one for state_history_plugin
     shipNodeNum = totalNodes - 1
-    specificExtraNodeosArgs[shipNodeNum]="--plugin eosio::state_history_plugin --disable-replay-opts --sync-fetch-span 200 --plugin eosio::net_api_plugin "
+    specificExtraNodapifinyArgs[shipNodeNum]="--plugin apifiny::state_history_plugin --disable-replay-opts --sync-fetch-span 200 --plugin apifiny::net_api_plugin "
 
     if cluster.launch(pnodes=totalProducerNodes,
                       totalNodes=totalNodes, totalProducers=totalProducers,
-                      useBiosBootFile=False, specificExtraNodeosArgs=specificExtraNodeosArgs) is False:
+                      useBiosBootFile=False, specificExtraNodapifinyArgs=specificExtraNodapifinyArgs) is False:
         Utils.cmdError("launcher")
-        Utils.errorExit("Failed to stand up eos cluster.")
+        Utils.errorExit("Failed to stand up apifiny cluster.")
 
     # ***   identify each node (producers and non-producing node)   ***
 
@@ -113,7 +113,7 @@ try:
         out.close()
         err.close()
 
-    Print("Shutdown state_history_plugin nodeos")
+    Print("Shutdown state_history_plugin nodapifiny")
     shipNode.kill(signal.SIGTERM)
 
     files = None

@@ -1,7 +1,7 @@
 #include "ram_restrictions_test.hpp"
-#include <eosio/transaction.hpp>
+#include <apifiny/transaction.hpp>
 
-using namespace eosio;
+using namespace apifiny;
 
 template <typename Table>
 void _setdata(name self, int len, name payer) {
@@ -41,7 +41,7 @@ void ram_restrictions_test::on_notify_setdata( name acctonotify, uint32_t len1, 
 void ram_restrictions_test::senddefer( uint64_t senderid, name payer ) {
    transaction trx;
    trx.actions.emplace_back(
-      std::vector<eosio::permission_level>{{_self, "active"_n}},
+      std::vector<apifiny::permission_level>{{_self, "active"_n}},
       get_self(),
       "noop"_n,
       std::make_tuple()

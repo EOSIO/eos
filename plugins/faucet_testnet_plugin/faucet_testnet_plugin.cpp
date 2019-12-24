@@ -1,5 +1,5 @@
-#include <eosio/faucet_testnet_plugin/faucet_testnet_plugin.hpp>
-#include <eosio/chain_plugin/chain_plugin.hpp>
+#include <apifiny/faucet_testnet_plugin/faucet_testnet_plugin.hpp>
+#include <apifiny/chain_plugin/chain_plugin.hpp>
 
 #include <fc/variant.hpp>
 #include <fc/io/json.hpp>
@@ -12,7 +12,7 @@
 
 #include <utility>
 
-namespace eosio { namespace detail {
+namespace apifiny { namespace detail {
   struct faucet_testnet_empty {};
 
   struct faucet_testnet_keys {
@@ -35,17 +35,17 @@ namespace eosio { namespace detail {
   };
 }}
 
-FC_REFLECT(eosio::detail::faucet_testnet_empty, );
-FC_REFLECT(eosio::detail::faucet_testnet_keys, (owner)(active));
-FC_REFLECT(eosio::detail::faucet_testnet_create_account_params, (account)(keys));
-FC_REFLECT(eosio::detail::faucet_testnet_create_account_alternates_response, (alternates)(message));
-FC_REFLECT(eosio::detail::faucet_testnet_create_account_rate_limited_response, (message));
+FC_REFLECT(apifiny::detail::faucet_testnet_empty, );
+FC_REFLECT(apifiny::detail::faucet_testnet_keys, (owner)(active));
+FC_REFLECT(apifiny::detail::faucet_testnet_create_account_params, (account)(keys));
+FC_REFLECT(apifiny::detail::faucet_testnet_create_account_alternates_response, (alternates)(message));
+FC_REFLECT(apifiny::detail::faucet_testnet_create_account_rate_limited_response, (message));
 
-namespace eosio {
+namespace apifiny {
 
 static appbase::abstract_plugin& _faucet_testnet_plugin = app().register_plugin<faucet_testnet_plugin>();
 
-using namespace eosio::chain;
+using namespace apifiny::chain;
 using public_key_type = chain::public_key_type;
 using key_pair = std::pair<std::string, std::string>;
 using results_pair = std::pair<uint32_t,fc::variant>;
@@ -182,7 +182,7 @@ struct faucet_testnet_plugin_impl {
          suggestion.pop_back();
       }
 
-      const eosio::detail::faucet_testnet_create_account_alternates_response response{
+      const apifiny::detail::faucet_testnet_create_account_alternates_response response{
          names, "Account name is already in use."};
       return { conflict_with_alternates, fc::variant(response) };
    }
@@ -201,7 +201,7 @@ struct faucet_testnet_plugin_impl {
 
       if (_blocking_accounts)
       {
-         eosio::detail::faucet_testnet_create_account_rate_limited_response response{
+         apifiny::detail::faucet_testnet_create_account_rate_limited_response response{
             "Rate limit exceeded, the max is 1 request per " + fc::to_string(_create_interval_msec) +
             " milliseconds. Come back later."};
          return std::make_pair(too_many_requests, fc::variant(response));
@@ -238,11 +238,11 @@ struct faucet_testnet_plugin_impl {
       _timer.expires_from_now(boost::posix_time::microseconds(_create_interval_msec * 1000));
       _timer.async_wait(boost::bind(&faucet_testnet_plugin_impl::timer_fired, this));
 
-      return std::make_pair(account_created, fc::variant(eosio::detail::faucet_testnet_empty()));
+      return std::make_pair(account_created, fc::variant(apifiny::detail::faucet_testnet_empty()));
    }
 
    results_pair create_faucet_account(const std::string& body) {
-      const eosio::detail::faucet_testnet_create_account_params params = fc::json::from_string(body).as<eosio::detail::faucet_testnet_create_account_params>();
+      const apifiny::detail::faucet_testnet_create_account_params params = fc::json::from_string(body).as<apifiny::detail::faucet_testnet_create_account_params>();
       return create_account(params.account, fc::crypto::public_key(params.keys.owner), fc::crypto::public_key(params.keys.active));
    }
 

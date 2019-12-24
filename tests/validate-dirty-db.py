@@ -11,7 +11,7 @@ import signal
 ###############################################################
 # validate-dirty-db
 #
-# Test for validating the dirty db flag sticks repeated nodeos restart attempts
+# Test for validating the dirty db flag sticks repeated nodapifiny restart attempts
 #
 ###############################################################
 
@@ -38,24 +38,24 @@ seed=1
 Utils.Debug=debug
 testSuccessful=False
 
-def runNodeosAndGetOutput(myTimeout=3):
-    """Startup nodeos, wait for timeout (before forced shutdown) and collect output. Stdout, stderr and return code are returned in a dictionary."""
-    Print("Launching nodeos process.")
-    cmd="programs/nodeos/nodeos --config-dir etc/eosio/node_bios --data-dir var/lib/node_bios --verbose-http-errors --http-validate-host=false"
+def runNodapifinyAndGetOutput(myTimeout=3):
+    """Startup nodapifiny, wait for timeout (before forced shutdown) and collect output. Stdout, stderr and return code are returned in a dictionary."""
+    Print("Launching nodapifiny process.")
+    cmd="programs/nodapifiny/nodapifiny --config-dir etc/apifiny/node_bios --data-dir var/lib/node_bios --verbose-http-errors --http-validate-host=false"
     Print("cmd: %s" % (cmd))
     proc=subprocess.Popen(cmd.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    if debug: Print("Nodeos process launched.")
+    if debug: Print("Nodapifiny process launched.")
 
     output={}
     try:
-        if debug: Print("Setting nodeos process timeout.")
+        if debug: Print("Setting nodapifiny process timeout.")
         outs,errs = proc.communicate(timeout=myTimeout)
-        if debug: Print("Nodeos process has exited.")
+        if debug: Print("Nodapifiny process has exited.")
         output["stdout"] = outs.decode("utf-8")
         output["stderr"] = errs.decode("utf-8")
         output["returncode"] = proc.returncode
     except (subprocess.TimeoutExpired) as _:
-        Print("ERROR: Nodeos is running beyond the defined wait time. Hard killing nodeos instance.")
+        Print("ERROR: Nodapifiny is running beyond the defined wait time. Hard killing nodapifiny instance.")
         proc.send_signal(signal.SIGKILL)
         return (False, None)
 
@@ -78,23 +78,23 @@ try:
 
     Print("Stand up cluster")
     if cluster.launch(pnodes=pnodes, totalNodes=total_nodes, topo=topo, delay=delay, dontBootstrap=True) is False:
-        errorExit("Failed to stand up eos cluster.")
+        errorExit("Failed to stand up apifiny cluster.")
 
     node=cluster.getNode(0)
 
     Print("Kill cluster nodes.")
     cluster.killall(allInstances=killAll)
 
-    Print("Restart nodeos repeatedly to ensure dirty database flag sticks.")
+    Print("Restart nodapifiny repeatedly to ensure dirty database flag sticks.")
     timeout=6
 
     for i in range(1,4):
         Print("Attempt %d." % (i))
-        ret = runNodeosAndGetOutput(timeout)
+        ret = runNodapifinyAndGetOutput(timeout)
         assert(ret)
         assert(isinstance(ret, tuple))
         if not ret[0]:
-            errorExit("Failed to startup nodeos successfully on try number %d" % (i))
+            errorExit("Failed to startup nodapifiny successfully on try number %d" % (i))
         assert(ret[1])
         assert(isinstance(ret[1], dict))
         # pylint: disable=unsubscriptable-object

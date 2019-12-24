@@ -28,7 +28,7 @@ Transfer tokens from account to account
 Transfer 1000 SYS from **inita** to **tester**
 
 ```shell
-$ ./cleos transfer inita tester 1000
+$ ./clapifiny transfer inita tester 1000
 ```
 The response will look something like this
 
@@ -47,7 +47,7 @@ The response will look something like this
       "1f22e64240e1e479eee6ccbbd79a29f1a6eb6020384b4cca1a958e7c708d3e562009ae6e60afac96f9a3b89d729a50cd5a7b5a7a647540ba1678831bf970e83312"
     ],
     "messages": [{
-        "code": "eos",
+        "code": "apifiny",
         "type": "transfer",
         "authorization": [{
             "account": "inita",

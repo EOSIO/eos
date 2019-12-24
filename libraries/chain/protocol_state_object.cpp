@@ -1,6 +1,6 @@
-#include <eosio/chain/protocol_state_object.hpp>
+#include <apifiny/chain/protocol_state_object.hpp>
 
-namespace eosio { namespace chain {
+namespace apifiny { namespace chain {
 
    namespace detail {
 

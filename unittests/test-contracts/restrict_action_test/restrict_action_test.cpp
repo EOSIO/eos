@@ -1,7 +1,7 @@
 #include "restrict_action_test.hpp"
-#include <eosio/transaction.hpp>
+#include <apifiny/transaction.hpp>
 
-using namespace eosio;
+using namespace apifiny;
 
 void restrict_action_test::noop( ) {
 

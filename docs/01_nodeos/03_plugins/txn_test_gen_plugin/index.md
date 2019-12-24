@@ -5,25 +5,25 @@
 The `txn_test_gen_plugin` is used for transaction test purposes.
 
 [[info | For More Information]]
-For more information, check the [txn_test_gen_plugin/README.md](https://github.com/EOSIO/eos/blob/develop/plugins/txn_test_gen_plugin/README.md) on the EOSIO/eos repository.
+For more information, check the [txn_test_gen_plugin/README.md](https://github.com/EOSIO/apifiny/blob/develop/plugins/txn_test_gen_plugin/README.md) on the EOSIO/apifiny repository.
 
 ## Usage
 
 ```sh
 # config.ini
-plugin = eosio::txn_test_gen_plugin
+plugin = apifiny::txn_test_gen_plugin
 [options]
 
 # command-line
-$ nodeos ... --plugin eosio::txn_test_gen_plugin [options]
+$ nodapifiny ... --plugin apifiny::txn_test_gen_plugin [options]
 ```
 
 ## Options
 
-These can be specified from both the `nodeos` command-line or the `config.ini` file:
+These can be specified from both the `nodapifiny` command-line or the `config.ini` file:
 
 ```console
-Config Options for eosio::txn_test_gen_plugin:
+Config Options for apifiny::txn_test_gen_plugin:
   --txn-reference-block-lag arg (=0)    Lag in number of blocks from the head 
                                         block when selecting the reference 
                                         block for transactions (-1 means Last 

@@ -5,7 +5,7 @@ Sets or updates the blockchain state.
 Set or update blockchain state
 
 ```shell
-Usage: ./cleos set [OPTIONS] SUBCOMMAND
+Usage: ./clapifiny set [OPTIONS] SUBCOMMAND
 
 Options:
   -h,--help                   Print this help message and exit

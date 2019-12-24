@@ -1,10 +1,10 @@
 #include <boost/test/unit_test.hpp>
-#include <eosio/testing/tester.hpp>
-#include <eosio/chain/unapplied_transaction_queue.hpp>
-#include <eosio/chain/contract_types.hpp>
+#include <apifiny/testing/tester.hpp>
+#include <apifiny/chain/unapplied_transaction_queue.hpp>
+#include <apifiny/chain/contract_types.hpp>
 
-using namespace eosio;
-using namespace eosio::chain;
+using namespace apifiny;
+using namespace apifiny::chain;
 
 BOOST_AUTO_TEST_SUITE(unapplied_transaction_queue_tests)
 
@@ -37,10 +37,10 @@ auto create_test_block_state( deque<transaction_metadata_ptr> trx_metas ) {
       block->transactions.emplace_back( *trx_meta->packed_trx() );
    }
 
-   block->producer = eosio::chain::config::system_account_name;
+   block->producer = apifiny::chain::config::system_account_name;
 
-   auto priv_key = eosio::testing::base_tester::get_private_key( block->producer, "active" );
-   auto pub_key  = eosio::testing::base_tester::get_public_key( block->producer, "active" );
+   auto priv_key = apifiny::testing::base_tester::get_private_key( block->producer, "active" );
+   auto pub_key  = apifiny::testing::base_tester::get_public_key( block->producer, "active" );
 
    auto prev = std::make_shared<block_state>();
    auto header_bmroot = digest_type::hash( std::make_pair( block->digest(), prev->blockroot_merkle.get_root() ) );

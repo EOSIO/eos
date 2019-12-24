@@ -12,7 +12,7 @@ From json action data to packed form
 
 ## Usage
 ```shell
- cleos convert pack_action_data eosio unlinkauth '{"account":"test1", "code":"test2", "type":"eosioeosio"}'
+ clapifiny convert pack_action_data apifiny unlinkauth '{"account":"test1", "code":"test2", "type":"apifinyapifiny"}'
 ```
 
 ## Output

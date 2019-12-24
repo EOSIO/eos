@@ -1,6 +1,6 @@
 {
-    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT Fri Dec  7 11:56:43 2018",
-    "version": "eosio::abi/1.1",
+    "____comment": "This file was generated with apifiny-abigen. DO NOT EDIT Fri Dec  7 11:56:43 2018",
+    "version": "apifiny::abi/1.1",
     "structs": [
         {
             "name": "printentry",

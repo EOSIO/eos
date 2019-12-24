@@ -1,8 +1,8 @@
-#include <eosio/chain/abi_serializer.hpp>
-#include <eosio/chain/abi_serializer.hpp>
-#include <eosio/testing/tester.hpp>
+#include <apifiny/chain/abi_serializer.hpp>
+#include <apifiny/chain/abi_serializer.hpp>
+#include <apifiny/testing/tester.hpp>
 
-#include <eosio/chain/fork_database.hpp>
+#include <apifiny/chain/fork_database.hpp>
 
 #include <Runtime/Runtime.h>
 
@@ -14,8 +14,8 @@
 
 #include "fork_test_utilities.hpp"
 
-using namespace eosio::chain;
-using namespace eosio::testing;
+using namespace apifiny::chain;
+using namespace apifiny::testing;
 
 BOOST_AUTO_TEST_SUITE(forked_tests)
 
@@ -140,26 +140,26 @@ BOOST_AUTO_TEST_CASE( forking ) try {
    wlog("set producer schedule to [dan,sam,pam]");
    c.produce_blocks(30);
 
-   auto r2 = c.create_accounts( {N(eosio.token)} );
+   auto r2 = c.create_accounts( {N(apifiny.token)} );
    wdump((fc::json::to_pretty_string(r2)));
-   c.set_code( N(eosio.token), contracts::eosio_token_wasm() );
-   c.set_abi( N(eosio.token), contracts::eosio_token_abi().data() );
+   c.set_code( N(apifiny.token), contracts::apifiny_token_wasm() );
+   c.set_abi( N(apifiny.token), contracts::apifiny_token_abi().data() );
    c.produce_blocks(10);
 
 
-   auto cr = c.push_action( N(eosio.token), N(create), N(eosio.token), mutable_variant_object()
-              ("issuer",       "eosio" )
+   auto cr = c.push_action( N(apifiny.token), N(create), N(apifiny.token), mutable_variant_object()
+              ("issuer",       "apifiny" )
               ("maximum_supply", core_from_string("10000000.0000"))
       );
 
-   cr = c.push_action( N(eosio.token), N(issue), config::system_account_name, mutable_variant_object()
-              ("to",       "eosio" )
+   cr = c.push_action( N(apifiny.token), N(issue), config::system_account_name, mutable_variant_object()
+              ("to",       "apifiny" )
               ("quantity", core_from_string("100.0000"))
               ("memo", "")
       );
 
-   cr = c.push_action( N(eosio.token), N(transfer), config::system_account_name, mutable_variant_object()
-              ("from",     "eosio")
+   cr = c.push_action( N(apifiny.token), N(transfer), config::system_account_name, mutable_variant_object()
+              ("from",     "apifiny")
               ("to",       "dan" )
               ("quantity", core_from_string("100.0000"))
               ("memo", "")

@@ -1,11 +1,11 @@
-#include <eosio/history_api_plugin/history_api_plugin.hpp>
-#include <eosio/chain/exceptions.hpp>
+#include <apifiny/history_api_plugin/history_api_plugin.hpp>
+#include <apifiny/chain/exceptions.hpp>
 
 #include <fc/io/json.hpp>
 
-namespace eosio {
+namespace apifiny {
 
-using namespace eosio;
+using namespace apifiny;
 
 static appbase::abstract_plugin& _history_api_plugin = app().register_plugin<history_api_plugin>();
 

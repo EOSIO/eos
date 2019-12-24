@@ -1,10 +1,10 @@
-#include <eosio/chain/asset.hpp>
-#include <eosio/chain/authority.hpp>
-#include <eosio/chain/authority_checker.hpp>
-#include <eosio/chain/chain_config.hpp>
-#include <eosio/chain/types.hpp>
-#include <eosio/chain/thread_utils.hpp>
-#include <eosio/testing/tester.hpp>
+#include <apifiny/chain/asset.hpp>
+#include <apifiny/chain/authority.hpp>
+#include <apifiny/chain/authority_checker.hpp>
+#include <apifiny/chain/chain_config.hpp>
+#include <apifiny/chain/types.hpp>
+#include <apifiny/chain/thread_utils.hpp>
+#include <apifiny/testing/tester.hpp>
 
 #include <fc/io/json.hpp>
 #include <fc/log/logger_config.hpp>
@@ -19,8 +19,8 @@
 #define TESTER validating_tester
 #endif
 
-using namespace eosio::chain;
-using namespace eosio::testing;
+using namespace apifiny::chain;
+using namespace apifiny::testing;
 
 #include <boost/random/mersenne_twister.hpp>
 #include <boost/random/uniform_int_distribution.hpp>
@@ -79,7 +79,7 @@ FC_REFLECT( base_reflect, (bv) )
 FC_REFLECT_DERIVED( derived_reflect, (base_reflect), (dv) )
 FC_REFLECT_DERIVED( final_reflect, (derived_reflect), (fv) )
 
-namespace eosio
+namespace apifiny
 {
 using namespace chain;
 using namespace std;
@@ -646,22 +646,22 @@ BOOST_AUTO_TEST_CASE(transaction_test) { try {
    variant pretty_trx = fc::mutable_variant_object()
       ("actions", fc::variants({
          fc::mutable_variant_object()
-            ("account", "eosio")
+            ("account", "apifiny")
             ("name", "reqauth")
             ("authorization", fc::variants({
                fc::mutable_variant_object()
-                  ("actor", "eosio")
+                  ("actor", "apifiny")
                   ("permission", "active")
             }))
             ("data", fc::mutable_variant_object()
-               ("from", "eosio")
+               ("from", "apifiny")
             )
          })
       )
       // lets also push a context free action, the multi chain test will then also include a context free action
       ("context_free_actions", fc::variants({
          fc::mutable_variant_object()
-            ("account", "eosio")
+            ("account", "apifiny")
             ("name", "nonce")
             ("data", fc::raw::pack(std::string("dummy")))
          })
@@ -791,21 +791,21 @@ BOOST_AUTO_TEST_CASE(transaction_metadata_test) { try {
    variant pretty_trx = fc::mutable_variant_object()
       ("actions", fc::variants({
          fc::mutable_variant_object()
-            ("account", "eosio")
+            ("account", "apifiny")
             ("name", "reqauth")
             ("authorization", fc::variants({
                fc::mutable_variant_object()
-                  ("actor", "eosio")
+                  ("actor", "apifiny")
                   ("permission", "active")
             }))
             ("data", fc::mutable_variant_object()
-               ("from", "eosio")
+               ("from", "apifiny")
             )
          })
       )
       ("context_free_actions", fc::variants({
          fc::mutable_variant_object()
-            ("account", "eosio")
+            ("account", "apifiny")
             ("name", "nonce")
             ("data", fc::raw::pack(std::string("dummy data")))
          })
@@ -1112,14 +1112,14 @@ BOOST_AUTO_TEST_CASE(stable_priority_queue_test) {
 
 BOOST_AUTO_TEST_CASE(action_receipt_digest) {
    try {
-      action_receipt ar{ .receiver = eosio::name("hi"), .act_digest = fc::sha256("0101"),
+      action_receipt ar{ .receiver = apifiny::name("hi"), .act_digest = fc::sha256("0101"),
                          .global_sequence = 3, .recv_sequence = 4,
-                         .auth_sequence = {{eosio::name("name"), 13}},
+                         .auth_sequence = {{apifiny::name("name"), 13}},
                          .code_sequence = 5,
                          .abi_sequence = 6 };
       auto d = digest_type::hash(ar);
       uint32_t version = 0;
-      version = eosio::chain::set_field( version, builtin_protocol_feature_t::action_return_value, true );
+      version = apifiny::chain::set_field( version, builtin_protocol_feature_t::action_return_value, true );
       BOOST_REQUIRE_EQUAL( ar.digest(version), d );
       BOOST_REQUIRE_NE( ar.digest(0), d );
 
@@ -1139,4 +1139,4 @@ BOOST_AUTO_TEST_CASE(bad_alloc_test) {
 
 BOOST_AUTO_TEST_SUITE_END()
 
-} // namespace eosio
+} // namespace apifiny

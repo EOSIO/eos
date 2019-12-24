@@ -1,6 +1,6 @@
-#include <eosio/wallet_plugin/se_wallet.hpp>
-#include <eosio/wallet_plugin/macos_user_auth.h>
-#include <eosio/chain/exceptions.hpp>
+#include <apifiny/wallet_plugin/se_wallet.hpp>
+#include <apifiny/wallet_plugin/macos_user_auth.h>
+#include <apifiny/chain/exceptions.hpp>
 
 #include <fc/crypto/openssl.hpp>
 
@@ -11,7 +11,7 @@
 
 #include <future>
 
-namespace eosio { namespace wallet {
+namespace apifiny { namespace wallet {
 
 using namespace fc::crypto::r1;
 

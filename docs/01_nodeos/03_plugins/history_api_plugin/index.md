@@ -15,9 +15,9 @@ It provides four RPC API endpoints:
 * get_controlled_accounts
 
 [[info | More Info]]
-| See HISTORY section of [RPC API](https://developers.eos.io/eosio-nodeos/reference).
+| See HISTORY section of [RPC API](https://developers.apifiny.io/apifiny-nodapifiny/reference).
 
-The four actions listed above are used by the following Cleos commands (matching order):
+The four actions listed above are used by the following Clapifiny commands (matching order):
 
 * get actions
 * get transaction
@@ -28,10 +28,10 @@ The four actions listed above are used by the following Cleos commands (matching
 
 ```sh
 # config.ini
-plugin = eosio::history_api_plugin
+plugin = apifiny::history_api_plugin
 
 # command-line
-$ nodeos ... --plugin eosio::history_api_plugin
+$ nodapifiny ... --plugin apifiny::history_api_plugin
 ```
 
 ## Options
@@ -48,15 +48,15 @@ None
 
 ```sh
 # config.ini
-plugin = eosio::history_plugin
+plugin = apifiny::history_plugin
 [options]
-plugin = eosio::chain_plugin
+plugin = apifiny::chain_plugin
 [options]
-plugin = eosio::http_plugin
+plugin = apifiny::http_plugin
 [options]
 
 # command-line
-$ nodeos ... --plugin eosio::history_plugin [options]  \
-             --plugin eosio::chain_plugin [operations] [options]  \
-             --plugin eosio::http_plugin [options]
+$ nodapifiny ... --plugin apifiny::history_plugin [options]  \
+             --plugin apifiny::chain_plugin [operations] [options]  \
+             --plugin apifiny::http_plugin [options]
 ```

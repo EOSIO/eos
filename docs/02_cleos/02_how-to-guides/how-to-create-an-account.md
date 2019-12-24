@@ -2,7 +2,7 @@
 
 ## Before you begin
 
-* Install the currently supported version of cleos
+* Install the currently supported version of clapifiny
 
 * Understand the following:
   * What is an account
@@ -14,7 +14,7 @@
 ## Steps
 
 ```shell
-cleos create account creator name OwnerKey [ActiveKey]
+clapifiny create account creator name OwnerKey [ActiveKey]
 ```
 
 [[info]]

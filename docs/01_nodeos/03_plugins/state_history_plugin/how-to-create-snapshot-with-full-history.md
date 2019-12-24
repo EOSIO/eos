@@ -7,7 +7,7 @@ This procedure creates a database containing the chain state, with full history 
 ## Before you begin
 
 * Make sure [EOSIO is installed](../../../00_install/index.md).
-* Learn about [Using Nodeos](../../02_usage/index.md).
+* Learn about [Using Nodapifiny](../../02_usage/index.md).
 * Get familiar with [state_history](../../03_plugins/state_history_plugin/index.md) plugin.
 
 ## Steps
@@ -22,12 +22,12 @@ This procedure creates a database containing the chain state, with full history 
 $ curl http://127.0.0.1:8888/v1/producer/create_snapshot | json_pp
 ```
 
-3. Wait for `nodeos` to process several blocks after the snapshot completed. The goal is for the state-history files to contain at least 1 more block than the portable snapshot has, and for the `blocks.log` file to contain the block after it has become irreversible.
+3. Wait for `nodapifiny` to process several blocks after the snapshot completed. The goal is for the state-history files to contain at least 1 more block than the portable snapshot has, and for the `blocks.log` file to contain the block after it has become irreversible.
 
 [[info | Note]]
 | If the block included in the portable snapshot is forked out, then the snapshot will be invalid. Repeat this process if this happens.
 
-4. Stop `nodeos`.
+4. Stop `nodapifiny`.
 
 5. Make backups of:
    * The newly-created portable snapshot (`data/snapshots/snapshot-xxxxxxx.bin`)

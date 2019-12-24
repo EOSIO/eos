@@ -1,16 +1,16 @@
-#include <eosio/history_plugin/history_plugin.hpp>
-#include <eosio/history_plugin/account_control_history_object.hpp>
-#include <eosio/history_plugin/public_key_history_object.hpp>
-#include <eosio/chain/controller.hpp>
-#include <eosio/chain/trace.hpp>
-#include <eosio/chain_plugin/chain_plugin.hpp>
+#include <apifiny/history_plugin/history_plugin.hpp>
+#include <apifiny/history_plugin/account_control_history_object.hpp>
+#include <apifiny/history_plugin/public_key_history_object.hpp>
+#include <apifiny/chain/controller.hpp>
+#include <apifiny/chain/trace.hpp>
+#include <apifiny/chain_plugin/chain_plugin.hpp>
 
 #include <fc/io/json.hpp>
 
 #include <boost/algorithm/string.hpp>
 #include <boost/signals2/connection.hpp>
 
-namespace eosio {
+namespace apifiny {
    using namespace chain;
    using boost::signals2::scoped_connection;
 
@@ -73,12 +73,12 @@ namespace eosio {
       >
    >;
 
-} /// namespace eosio
+} /// namespace apifiny
 
-CHAINBASE_SET_INDEX_TYPE(eosio::account_history_object, eosio::account_history_index)
-CHAINBASE_SET_INDEX_TYPE(eosio::action_history_object, eosio::action_history_index)
+CHAINBASE_SET_INDEX_TYPE(apifiny::account_history_object, apifiny::account_history_index)
+CHAINBASE_SET_INDEX_TYPE(apifiny::action_history_object, apifiny::action_history_index)
 
-namespace eosio {
+namespace apifiny {
 
    template<typename MultiIndex, typename LookupType>
    static void remove(chainbase::database& db, const account_name& account_name, const permission_name& permission)
@@ -315,13 +315,13 @@ namespace eosio {
             for( auto& s : fo ) {
                if( s == "*" || s == "\"*\"" ) {
                   my->bypass_filter = true;
-                  wlog( "--filter-on * enabled. This can fill shared_mem, causing nodeos to stop." );
+                  wlog( "--filter-on * enabled. This can fill shared_mem, causing nodapifiny to stop." );
                   break;
                }
                std::vector<std::string> v;
                boost::split( v, s, boost::is_any_of( ":" ));
                EOS_ASSERT( v.size() == 3, fc::invalid_arg_exception, "Invalid value ${s} for --filter-on", ("s", s));
-               filter_entry fe{eosio::chain::name(v[0]), eosio::chain::name(v[1]), eosio::chain::name(v[2])};
+               filter_entry fe{apifiny::chain::name(v[0]), apifiny::chain::name(v[1]), apifiny::chain::name(v[2])};
                EOS_ASSERT( fe.receiver.to_uint64_t(), fc::invalid_arg_exception,
                            "Invalid value ${s} for --filter-on", ("s", s));
                my->filter_on.insert( fe );
@@ -333,7 +333,7 @@ namespace eosio {
                std::vector<std::string> v;
                boost::split( v, s, boost::is_any_of( ":" ));
                EOS_ASSERT( v.size() == 3, fc::invalid_arg_exception, "Invalid value ${s} for --filter-out", ("s", s));
-               filter_entry fe{eosio::chain::name(v[0]), eosio::chain::name(v[1]), eosio::chain::name(v[2])};
+               filter_entry fe{apifiny::chain::name(v[0]), apifiny::chain::name(v[1]), apifiny::chain::name(v[2])};
                EOS_ASSERT( fe.receiver.to_uint64_t(), fc::invalid_arg_exception,
                            "Invalid value ${s} for --filter-out", ("s", s));
                my->filter_out.insert( fe );
@@ -579,4 +579,4 @@ namespace eosio {
 
 
 
-} /// namespace eosio
+} /// namespace apifiny

@@ -1,11 +1,11 @@
 #pragma once
 
-#include <eosio/eosio.hpp>
+#include <apifiny/apifiny.hpp>
 
-class [[eosio::contract]] payloadless : public eosio::contract {
+class [[apifiny::contract]] payloadless : public apifiny::contract {
 public:
-   using eosio::contract::contract;
+   using apifiny::contract::contract;
 
-   [[eosio::action]]
+   [[apifiny::action]]
    void doit();
 };

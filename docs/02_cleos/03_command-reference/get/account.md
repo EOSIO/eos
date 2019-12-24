@@ -7,10 +7,10 @@ Retrieves an account from the blockchain
 ## Options
 - `-j,--json` - Output in JSON format
 ## Example
-## Get formatted data for user **eosio**
+## Get formatted data for user **apifiny**
 
 ```shell
-$ cleos get account eosio
+$ clapifiny get account apifiny
 privileged: true
 permissions: 
      owner     1:    1 EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV
@@ -30,12 +30,12 @@ cpu bandwidth: (averaged over 3 days)
 
 producers:     <not voted>
 ```
-## Get JSON data for user **eosio**
+## Get JSON data for user **apifiny**
 
 ```shell
-$ cleos get account eosio --json
+$ clapifiny get account apifiny --json
 {
-  "account_name": "eosio",
+  "account_name": "apifiny",
   "privileged": true,
   "last_code_update": "2018-05-23T18:00:25.500",
   "created": "2018-03-02T12:00:00.000",
@@ -84,7 +84,7 @@ $ cleos get account eosio --json
   "total_resources": null,
   "delegated_bandwidth": null,
   "voter_info": {
-    "owner": "eosio",
+    "owner": "apifiny",
     "proxy": "",
     "producers": [],
     "staked": 0,

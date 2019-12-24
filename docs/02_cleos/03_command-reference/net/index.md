@@ -5,15 +5,15 @@ Interact with local p2p network connections.
 
 ```shell
 Interact with local p2p network connections
-Usage: ./cleos net SUBCOMMAND
+Usage: ./clapifiny net SUBCOMMAND
 ```
 
 ## Subcommands
  
- - [cleos net connect](connect) start a new connection to a peer
+ - [clapifiny net connect](connect) start a new connection to a peer
 
- - [cleos net disconnect](disconnect) ` close an existing connection
+ - [clapifiny net disconnect](disconnect) ` close an existing connection
   
- - [cleos net status](status) status of existing connection
+ - [clapifiny net status](status) status of existing connection
   
- - [cleos net peers](peers) status of all existing peers
+ - [clapifiny net peers](peers) status of all existing peers

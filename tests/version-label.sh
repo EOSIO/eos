@@ -1,7 +1,7 @@
 #!/bin/bash
-# The purpose of this test is to ensure that the output of the "nodeos --version" command matches the version string defined by our CMake files
+# The purpose of this test is to ensure that the output of the "nodapifiny --version" command matches the version string defined by our CMake files
 # If the environment variable BUILDKITE_TAG is empty or unset, this test will echo success
-echo '##### Nodeos Version Label Test #####'
+echo '##### Nodapifiny Version Label Test #####'
 if [[ "$BUILDKITE_TAG" == '' || "$BUILDKITE" != 'true' ]]; then
     echo 'This test is only run in Buildkite against tagged builds.'
     [[ "$BUILDKITE" != 'true' ]] && echo 'This is not Buildkite.'
@@ -11,8 +11,8 @@ if [[ "$BUILDKITE_TAG" == '' || "$BUILDKITE" != 'true' ]]; then
 fi
 echo 'Tagged build detected, running test.'
 # orient ourselves
-[[ "$EOSIO_ROOT" == '' ]] && EOSIO_ROOT=$(echo $(pwd)/ | grep -ioe '.*/eos/')
-[[ "$EOSIO_ROOT" == '' ]] && EOSIO_ROOT=$(echo $(pwd)/ | grep -ioe '.*/EOSIO/eosio/')
+[[ "$EOSIO_ROOT" == '' ]] && EOSIO_ROOT=$(echo $(pwd)/ | grep -ioe '.*/apifiny/')
+[[ "$EOSIO_ROOT" == '' ]] && EOSIO_ROOT=$(echo $(pwd)/ | grep -ioe '.*/EOSIO/apifiny/')
 [[ "$EOSIO_ROOT" == '' ]] && EOSIO_ROOT=$(echo $(pwd)/ | grep -ioe '.*/build/' | sed 's,/build/,,')
 echo "Using EOSIO_ROOT=\"$EOSIO_ROOT\"."
 # determine expected value
@@ -61,8 +61,8 @@ if [[ "$EXPECTED" == '' ]]; then
     exit 1
 fi
 echo "Expecting \"$EXPECTED\"..."
-# get nodeos version
-ACTUAL=$($EOSIO_ROOT/build/bin/nodeos --version) || : # nodeos currently returns -1 for --version
+# get nodapifiny version
+ACTUAL=$($EOSIO_ROOT/build/bin/nodapifiny --version) || : # nodapifiny currently returns -1 for --version
 # test
 if [[ "$EXPECTED" == "$ACTUAL" ]]; then
     echo 'Passed with \"$ACTUAL\".'

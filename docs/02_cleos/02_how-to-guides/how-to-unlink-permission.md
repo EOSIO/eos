@@ -4,7 +4,7 @@ Unlink a linked permission level
 
 ## Before you begin
 
-* Install the current supported version of cleos
+* Install the current supported version of clapifiny
 
 * Understand the following:
   * What is an account
@@ -16,5 +16,5 @@ Unlink a linked permission level
 Remove a linked permission level from an action `transfer` of contract `hodlcontract`
 
 ```shell
-cleos set action permission alice hodlcontract transfer NULL
+clapifiny set action permission alice hodlcontract transfer NULL
 ```

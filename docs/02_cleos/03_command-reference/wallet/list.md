@@ -12,7 +12,7 @@ None
 
 
 ```shell
-$ ./cleos wallet list
+$ ./clapifiny wallet list
 ```
 
 ## Outputs

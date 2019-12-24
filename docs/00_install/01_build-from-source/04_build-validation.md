@@ -15,15 +15,15 @@ On MacOS:
 
 then set the build path to EOSIO_HOME:
 ```sh
-export EOSIO_HOME=~/eosio/eos/build
+export EOSIO_HOME=~/apifiny/apifiny/build
 ```
 
 then run `make test` on all platforms:
 
 ```sh
-cd ~/eosio/eos/build
+cd ~/apifiny/apifiny/build
 make test
 ```
 
 [[info | Recommend]]
-| It is strongly suggested to [Install the EOSIO binaries](03_install-eosio-binaries.md) after building EOSIO from source as it makes local development significantly more friendly.
+| It is strongly suggested to [Install the EOSIO binaries](03_install-apifiny-binaries.md) after building EOSIO from source as it makes local development significantly more friendly.

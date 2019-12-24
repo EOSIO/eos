@@ -1,14 +1,14 @@
 #include <algorithm>
 
-#include <eosio/chain/config.hpp>
-#include <eosio/chain/resource_limits.hpp>
-#include <eosio/testing/chainbase_fixture.hpp>
+#include <apifiny/chain/config.hpp>
+#include <apifiny/chain/resource_limits.hpp>
+#include <apifiny/testing/chainbase_fixture.hpp>
 
 #include <boost/test/unit_test.hpp>
 
-using namespace eosio::chain::resource_limits;
-using namespace eosio::testing;
-using namespace eosio::chain;
+using namespace apifiny::chain::resource_limits;
+using namespace apifiny::testing;
+using namespace apifiny::chain;
 
 class resource_limits_fixture: private chainbase_fixture<1024*1024>, public resource_limits_manager
 {

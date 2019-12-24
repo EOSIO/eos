@@ -16,5 +16,5 @@
 
 
 ```text
-cleos system rex sellrex accountname1 "1 REX"
+clapifiny system rex sellrex accountname1 "1 REX"
 ```

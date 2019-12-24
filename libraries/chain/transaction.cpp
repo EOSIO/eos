@@ -7,11 +7,11 @@
 #include <boost/iostreams/device/back_inserter.hpp>
 #include <boost/iostreams/filter/zlib.hpp>
 
-#include <eosio/chain/config.hpp>
-#include <eosio/chain/exceptions.hpp>
-#include <eosio/chain/transaction.hpp>
+#include <apifiny/chain/config.hpp>
+#include <apifiny/chain/exceptions.hpp>
+#include <apifiny/chain/transaction.hpp>
 
-namespace eosio { namespace chain {
+namespace apifiny { namespace chain {
 
 void deferred_transaction_generation_context::reflector_init() {
       static_assert( fc::raw::has_feature_reflector_init_on_unpacked_reflected_types,
@@ -383,4 +383,4 @@ void packed_transaction::local_pack_context_free_data()
 }
 
 
-} } // eosio::chain
+} } // apifiny::chain

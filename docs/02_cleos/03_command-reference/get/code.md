@@ -8,23 +8,23 @@ Retrieves the code and ABI for an account
 - `-a,--abi` _TEXT_ - The name of the file to save the contract _.abi_ to
 - `--wasm` Save contract as wasm
 ## Examples
-Simply output the hash of eosio.token contract 
+Simply output the hash of apifiny.token contract
 
 ```shell
-$ cleos get code eosio.token
+$ clapifiny get code apifiny.token
 code hash: f675e7aeffbf562c033acfaf33eadff255dacb90d002db51c7ad7cbf057eb791
 ```
-Retrieve and save abi for eosio.token contract
+Retrieve and save abi for apifiny.token contract
 
 ```shell
-$ cleos get code eosio.token -a eosio.token.abi
+$ clapifiny get code apifiny.token -a apifiny.token.abi
 code hash: f675e7aeffbf562c033acfaf33eadff255dacb90d002db51c7ad7cbf057eb791
-saving abi to eosio.token.abi
+saving abi to apifiny.token.abi
 ```
-Retrieve and save wast code for eosio.token contract
+Retrieve and save wast code for apifiny.token contract
 
 ```shell
-$ cleos get code eosio.token -c eosio.token.wast
+$ clapifiny get code apifiny.token -c apifiny.token.wast
 code hash: f675e7aeffbf562c033acfaf33eadff255dacb90d002db51c7ad7cbf057eb791
-saving wast to eosio.token.wast
+saving wast to apifiny.token.wast
 ```

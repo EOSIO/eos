@@ -22,5 +22,5 @@ excerpt: "Delete unused REX-related user table entries"
 
 
 ```text
-cleos system rex closerex accountname1
+clapifiny system rex closerex accountname1
 ```

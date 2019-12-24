@@ -22,5 +22,5 @@ excerpt: "Consolidate REX maturity buckets into one that matures in 4 days"
 
 
 ```text
-cleos system rex consolidate accountname1
+clapifiny system rex consolidate accountname1
 ```

@@ -4,14 +4,14 @@ Sets or updates an action's state on the blockchain.
 **Command**
 
 ```shell
-$ ./cleos set action
+$ ./clapifiny set action
 ```
 **Output**
 
 ```shell
 ERROR: RequiredError: Subcommand required
 set or update blockchain action state
-Usage: ./cleos set action [OPTIONS] SUBCOMMAND
+Usage: ./clapifiny set action [OPTIONS] SUBCOMMAND
 
 Options:
   -h,--help                   Print this help message and exit
@@ -22,7 +22,7 @@ Subcommands:
 **Command**
 
 ```shell
-$ ./cleos set action permission
+$ ./clapifiny set action permission
 ```
 
 ## Positionals
@@ -65,8 +65,8 @@ should be used to sign transaction
 
 ```shell
 #Link a `voteproducer` action to the 'voting' permissions
-cleos set action permission sandwichfarm eosio.system voteproducer voting -p sandwichfarm@voting
+clapifiny set action permission sandwichfarm apifiny.system voteproducer voting -p sandwichfarm@voting
 
 #Now can execute the transaction with the previously set permissions. 
-cleos system voteproducer approve sandwichfarm someproducer -p sandwichfarm@voting
+clapifiny system voteproducer approve sandwichfarm someproducer -p sandwichfarm@voting
 ```

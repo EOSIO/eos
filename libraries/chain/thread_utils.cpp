@@ -1,7 +1,7 @@
-#include <eosio/chain/thread_utils.hpp>
+#include <apifiny/chain/thread_utils.hpp>
 #include <fc/log/logger_config.hpp>
 
-namespace eosio { namespace chain {
+namespace apifiny { namespace chain {
 
 
 //
@@ -32,4 +32,4 @@ void named_thread_pool::stop() {
 }
 
 
-} } // eosio::chain
+} } // apifiny::chain

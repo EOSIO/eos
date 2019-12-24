@@ -1,18 +1,18 @@
-#include <eosio/chain/wasm_interface.hpp>
-#include <eosio/chain/apply_context.hpp>
-#include <eosio/chain/controller.hpp>
-#include <eosio/chain/transaction_context.hpp>
-#include <eosio/chain/producer_schedule.hpp>
-#include <eosio/chain/exceptions.hpp>
+#include <apifiny/chain/wasm_interface.hpp>
+#include <apifiny/chain/apply_context.hpp>
+#include <apifiny/chain/controller.hpp>
+#include <apifiny/chain/transaction_context.hpp>
+#include <apifiny/chain/producer_schedule.hpp>
+#include <apifiny/chain/exceptions.hpp>
 #include <boost/core/ignore_unused.hpp>
-#include <eosio/chain/authorization_manager.hpp>
-#include <eosio/chain/resource_limits.hpp>
-#include <eosio/chain/wasm_interface_private.hpp>
-#include <eosio/chain/wasm_eosio_validation.hpp>
-#include <eosio/chain/wasm_eosio_injection.hpp>
-#include <eosio/chain/global_property_object.hpp>
-#include <eosio/chain/protocol_state_object.hpp>
-#include <eosio/chain/account_object.hpp>
+#include <apifiny/chain/authorization_manager.hpp>
+#include <apifiny/chain/resource_limits.hpp>
+#include <apifiny/chain/wasm_interface_private.hpp>
+#include <apifiny/chain/wasm_apifiny_validation.hpp>
+#include <apifiny/chain/wasm_apifiny_injection.hpp>
+#include <apifiny/chain/global_property_object.hpp>
+#include <apifiny/chain/protocol_state_object.hpp>
+#include <apifiny/chain/account_object.hpp>
 #include <fc/exception/exception.hpp>
 #include <fc/crypto/sha256.hpp>
 #include <fc/crypto/sha1.hpp>
@@ -26,14 +26,14 @@
 #include <string.h>
 
 #if defined(EOSIO_EOS_VM_RUNTIME_ENABLED) || defined(EOSIO_EOS_VM_JIT_RUNTIME_ENABLED)
-#include <eosio/vm/allocator.hpp>
+#include <apifiny/vm/allocator.hpp>
 #endif
 
-namespace eosio { namespace chain {
+namespace apifiny { namespace chain {
    using namespace webassembly::common;
 
-   wasm_interface::wasm_interface(vm_type vm, bool eosvmoc_tierup, const chainbase::database& d, const boost::filesystem::path data_dir, const eosvmoc::config& eosvmoc_config)
-     : my( new wasm_interface_impl(vm, eosvmoc_tierup, d, data_dir, eosvmoc_config) ) {}
+   wasm_interface::wasm_interface(vm_type vm, bool apifinyvmoc_tierup, const chainbase::database& d, const boost::filesystem::path data_dir, const apifinyvmoc::config& apifinyvmoc_config)
+     : my( new wasm_interface_impl(vm, apifinyvmoc_tierup, d, data_dir, apifinyvmoc_config) ) {}
 
    wasm_interface::~wasm_interface() {}
 
@@ -75,10 +75,10 @@ namespace eosio { namespace chain {
 
    void wasm_interface::apply( const digest_type& code_hash, const uint8_t& vm_type, const uint8_t& vm_version, apply_context& context ) {
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
-      if(my->eosvmoc) {
-         const chain::eosvmoc::code_descriptor* cd = nullptr;
+      if(my->apifinyvmoc) {
+         const chain::apifinyvmoc::code_descriptor* cd = nullptr;
          try {
-            cd = my->eosvmoc->cc.get_descriptor_for_code(code_hash, vm_version);
+            cd = my->apifinyvmoc->cc.get_descriptor_for_code(code_hash, vm_version);
          }
          catch(...) {
             //swallow errors here, if EOS VM OC has gone in to the weeds we shouldn't bail: continue to try and run baseline
@@ -89,7 +89,7 @@ namespace eosio { namespace chain {
             once_is_enough = true;
          }
          if(cd) {
-            my->eosvmoc->exec.execute(*cd, my->eosvmoc->mem, context);
+            my->apifinyvmoc->exec.execute(*cd, my->apifinyvmoc->mem, context);
             return;
          }
       }
@@ -325,24 +325,24 @@ class softfloat_api : public context_aware_api {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wstrict-aliasing"
       // float binops
-      float _eosio_f32_add( float a, float b ) {
+      float _apifiny_f32_add( float a, float b ) {
          float32_t ret = ::f32_add( to_softfloat32(a), to_softfloat32(b) );
          return *reinterpret_cast<float*>(&ret);
       }
-      float _eosio_f32_sub( float a, float b ) {
+      float _apifiny_f32_sub( float a, float b ) {
          float32_t ret = ::f32_sub( to_softfloat32(a), to_softfloat32(b) );
          return *reinterpret_cast<float*>(&ret);
       }
-      float _eosio_f32_div( float a, float b ) {
+      float _apifiny_f32_div( float a, float b ) {
          float32_t ret = ::f32_div( to_softfloat32(a), to_softfloat32(b) );
          return *reinterpret_cast<float*>(&ret);
       }
-      float _eosio_f32_mul( float a, float b ) {
+      float _apifiny_f32_mul( float a, float b ) {
          float32_t ret = ::f32_mul( to_softfloat32(a), to_softfloat32(b) );
          return *reinterpret_cast<float*>(&ret);
       }
 #pragma GCC diagnostic pop
-      float _eosio_f32_min( float af, float bf ) {
+      float _apifiny_f32_min( float af, float bf ) {
          float32_t a = to_softfloat32(af);
          float32_t b = to_softfloat32(bf);
          if (is_nan(a)) {
@@ -356,7 +356,7 @@ class softfloat_api : public context_aware_api {
          }
          return ::f32_lt(a,b) ? af : bf;
       }
-      float _eosio_f32_max( float af, float bf ) {
+      float _apifiny_f32_max( float af, float bf ) {
          float32_t a = to_softfloat32(af);
          float32_t b = to_softfloat32(bf);
          if (is_nan(a)) {
@@ -370,7 +370,7 @@ class softfloat_api : public context_aware_api {
          }
          return ::f32_lt( a, b ) ? bf : af;
       }
-      float _eosio_f32_copysign( float af, float bf ) {
+      float _apifiny_f32_copysign( float af, float bf ) {
          float32_t a = to_softfloat32(af);
          float32_t b = to_softfloat32(bf);
          uint32_t sign_of_b = b.v >> 31;
@@ -379,24 +379,24 @@ class softfloat_api : public context_aware_api {
          return from_softfloat32(a);
       }
       // float unops
-      float _eosio_f32_abs( float af ) {
+      float _apifiny_f32_abs( float af ) {
          float32_t a = to_softfloat32(af);
          a.v &= ~(1 << 31);
          return from_softfloat32(a);
       }
-      float _eosio_f32_neg( float af ) {
+      float _apifiny_f32_neg( float af ) {
          float32_t a = to_softfloat32(af);
          uint32_t sign = a.v >> 31;
          a.v &= ~(1 << 31);
          a.v |= (!sign << 31);
          return from_softfloat32(a);
       }
-      float _eosio_f32_sqrt( float a ) {
+      float _apifiny_f32_sqrt( float a ) {
          float32_t ret = ::f32_sqrt( to_softfloat32(a) );
          return from_softfloat32(ret);
       }
       // ceil, floor, trunc and nearest are lifted from libc
-      float _eosio_f32_ceil( float af ) {
+      float _apifiny_f32_ceil( float af ) {
          float32_t a = to_softfloat32(af);
          int e = (int)(a.v >> 23 & 0xFF) - 0X7F;
          uint32_t m;
@@ -418,7 +418,7 @@ class softfloat_api : public context_aware_api {
 
          return from_softfloat32(a);
       }
-      float _eosio_f32_floor( float af ) {
+      float _apifiny_f32_floor( float af ) {
          float32_t a = to_softfloat32(af);
          int e = (int)(a.v >> 23 & 0xFF) - 0X7F;
          uint32_t m;
@@ -439,7 +439,7 @@ class softfloat_api : public context_aware_api {
          }
          return from_softfloat32(a);
       }
-      float _eosio_f32_trunc( float af ) {
+      float _apifiny_f32_trunc( float af ) {
          float32_t a = to_softfloat32(af);
          int e = (int)(a.v >> 23 & 0xff) - 0x7f + 9;
          uint32_t m;
@@ -453,7 +453,7 @@ class softfloat_api : public context_aware_api {
          a.v &= ~m;
          return from_softfloat32(a);
       }
-      float _eosio_f32_nearest( float af ) {
+      float _apifiny_f32_nearest( float af ) {
          float32_t a = to_softfloat32(af);
          int e = a.v>>23 & 0xff;
          int s = a.v>>31;
@@ -470,11 +470,11 @@ class softfloat_api : public context_aware_api {
       }
 
       // float relops
-      bool _eosio_f32_eq( float a, float b ) {  return ::f32_eq( to_softfloat32(a), to_softfloat32(b) ); }
-      bool _eosio_f32_ne( float a, float b ) { return !::f32_eq( to_softfloat32(a), to_softfloat32(b) ); }
-      bool _eosio_f32_lt( float a, float b ) { return ::f32_lt( to_softfloat32(a), to_softfloat32(b) ); }
-      bool _eosio_f32_le( float a, float b ) { return ::f32_le( to_softfloat32(a), to_softfloat32(b) ); }
-      bool _eosio_f32_gt( float af, float bf ) {
+      bool _apifiny_f32_eq( float a, float b ) {  return ::f32_eq( to_softfloat32(a), to_softfloat32(b) ); }
+      bool _apifiny_f32_ne( float a, float b ) { return !::f32_eq( to_softfloat32(a), to_softfloat32(b) ); }
+      bool _apifiny_f32_lt( float a, float b ) { return ::f32_lt( to_softfloat32(a), to_softfloat32(b) ); }
+      bool _apifiny_f32_le( float a, float b ) { return ::f32_le( to_softfloat32(a), to_softfloat32(b) ); }
+      bool _apifiny_f32_gt( float af, float bf ) {
          float32_t a = to_softfloat32(af);
          float32_t b = to_softfloat32(bf);
          if (is_nan(a))
@@ -483,7 +483,7 @@ class softfloat_api : public context_aware_api {
             return false;
          return !::f32_le( a, b );
       }
-      bool _eosio_f32_ge( float af, float bf ) {
+      bool _apifiny_f32_ge( float af, float bf ) {
          float32_t a = to_softfloat32(af);
          float32_t b = to_softfloat32(bf);
          if (is_nan(a))
@@ -494,23 +494,23 @@ class softfloat_api : public context_aware_api {
       }
 
       // double binops
-      double _eosio_f64_add( double a, double b ) {
+      double _apifiny_f64_add( double a, double b ) {
          float64_t ret = ::f64_add( to_softfloat64(a), to_softfloat64(b) );
          return from_softfloat64(ret);
       }
-      double _eosio_f64_sub( double a, double b ) {
+      double _apifiny_f64_sub( double a, double b ) {
          float64_t ret = ::f64_sub( to_softfloat64(a), to_softfloat64(b) );
          return from_softfloat64(ret);
       }
-      double _eosio_f64_div( double a, double b ) {
+      double _apifiny_f64_div( double a, double b ) {
          float64_t ret = ::f64_div( to_softfloat64(a), to_softfloat64(b) );
          return from_softfloat64(ret);
       }
-      double _eosio_f64_mul( double a, double b ) {
+      double _apifiny_f64_mul( double a, double b ) {
          float64_t ret = ::f64_mul( to_softfloat64(a), to_softfloat64(b) );
          return from_softfloat64(ret);
       }
-      double _eosio_f64_min( double af, double bf ) {
+      double _apifiny_f64_min( double af, double bf ) {
          float64_t a = to_softfloat64(af);
          float64_t b = to_softfloat64(bf);
          if (is_nan(a))
@@ -521,7 +521,7 @@ class softfloat_api : public context_aware_api {
             return f64_sign_bit(a) ? af : bf;
          return ::f64_lt( a, b ) ? af : bf;
       }
-      double _eosio_f64_max( double af, double bf ) {
+      double _apifiny_f64_max( double af, double bf ) {
          float64_t a = to_softfloat64(af);
          float64_t b = to_softfloat64(bf);
          if (is_nan(a))
@@ -532,7 +532,7 @@ class softfloat_api : public context_aware_api {
             return f64_sign_bit(a) ? bf : af;
          return ::f64_lt( a, b ) ? bf : af;
       }
-      double _eosio_f64_copysign( double af, double bf ) {
+      double _apifiny_f64_copysign( double af, double bf ) {
          float64_t a = to_softfloat64(af);
          float64_t b = to_softfloat64(bf);
          uint64_t sign_of_b = b.v >> 63;
@@ -542,24 +542,24 @@ class softfloat_api : public context_aware_api {
       }
 
       // double unops
-      double _eosio_f64_abs( double af ) {
+      double _apifiny_f64_abs( double af ) {
          float64_t a = to_softfloat64(af);
          a.v &= ~(uint64_t(1) << 63);
          return from_softfloat64(a);
       }
-      double _eosio_f64_neg( double af ) {
+      double _apifiny_f64_neg( double af ) {
          float64_t a = to_softfloat64(af);
          uint64_t sign = a.v >> 63;
          a.v &= ~(uint64_t(1) << 63);
          a.v |= (uint64_t(!sign) << 63);
          return from_softfloat64(a);
       }
-      double _eosio_f64_sqrt( double a ) {
+      double _apifiny_f64_sqrt( double a ) {
          float64_t ret = ::f64_sqrt( to_softfloat64(a) );
          return from_softfloat64(ret);
       }
       // ceil, floor, trunc and nearest are lifted from libc
-      double _eosio_f64_ceil( double af ) {
+      double _apifiny_f64_ceil( double af ) {
          float64_t a = to_softfloat64( af );
          float64_t ret;
          int e = a.v >> 52 & 0x7ff;
@@ -582,7 +582,7 @@ class softfloat_api : public context_aware_api {
          ret = ::f64_add( a, y );
          return from_softfloat64(ret);
       }
-      double _eosio_f64_floor( double af ) {
+      double _apifiny_f64_floor( double af ) {
          float64_t a = to_softfloat64( af );
          float64_t ret;
          int e = a.v >> 52 & 0x7FF;
@@ -608,7 +608,7 @@ class softfloat_api : public context_aware_api {
          ret = ::f64_add( a, y );
          return from_softfloat64(ret);
       }
-      double _eosio_f64_trunc( double af ) {
+      double _apifiny_f64_trunc( double af ) {
          float64_t a = to_softfloat64( af );
          int e = (int)(a.v >> 52 & 0x7ff) - 0x3ff + 12;
          uint64_t m;
@@ -623,7 +623,7 @@ class softfloat_api : public context_aware_api {
          return from_softfloat64(a);
       }
 
-      double _eosio_f64_nearest( double af ) {
+      double _apifiny_f64_nearest( double af ) {
          float64_t a = to_softfloat64( af );
          int e = (a.v >> 52 & 0x7FF);
          int s = a.v >> 63;
@@ -640,11 +640,11 @@ class softfloat_api : public context_aware_api {
       }
 
       // double relops
-      bool _eosio_f64_eq( double a, double b ) { return ::f64_eq( to_softfloat64(a), to_softfloat64(b) ); }
-      bool _eosio_f64_ne( double a, double b ) { return !::f64_eq( to_softfloat64(a), to_softfloat64(b) ); }
-      bool _eosio_f64_lt( double a, double b ) { return ::f64_lt( to_softfloat64(a), to_softfloat64(b) ); }
-      bool _eosio_f64_le( double a, double b ) { return ::f64_le( to_softfloat64(a), to_softfloat64(b) ); }
-      bool _eosio_f64_gt( double af, double bf ) {
+      bool _apifiny_f64_eq( double a, double b ) { return ::f64_eq( to_softfloat64(a), to_softfloat64(b) ); }
+      bool _apifiny_f64_ne( double a, double b ) { return !::f64_eq( to_softfloat64(a), to_softfloat64(b) ); }
+      bool _apifiny_f64_lt( double a, double b ) { return ::f64_lt( to_softfloat64(a), to_softfloat64(b) ); }
+      bool _apifiny_f64_le( double a, double b ) { return ::f64_le( to_softfloat64(a), to_softfloat64(b) ); }
+      bool _apifiny_f64_gt( double af, double bf ) {
          float64_t a = to_softfloat64(af);
          float64_t b = to_softfloat64(bf);
          if (is_nan(a))
@@ -653,7 +653,7 @@ class softfloat_api : public context_aware_api {
             return false;
          return !::f64_le( a, b );
       }
-      bool _eosio_f64_ge( double af, double bf ) {
+      bool _apifiny_f64_ge( double af, double bf ) {
          float64_t a = to_softfloat64(af);
          float64_t b = to_softfloat64(bf);
          if (is_nan(a))
@@ -664,100 +664,100 @@ class softfloat_api : public context_aware_api {
       }
 
       // float and double conversions
-      double _eosio_f32_promote( float a ) {
+      double _apifiny_f32_promote( float a ) {
          return from_softfloat64(f32_to_f64( to_softfloat32(a)) );
       }
-      float _eosio_f64_demote( double a ) {
+      float _apifiny_f64_demote( double a ) {
          return from_softfloat32(f64_to_f32( to_softfloat64(a)) );
       }
-      int32_t _eosio_f32_trunc_i32s( float af ) {
+      int32_t _apifiny_f32_trunc_i32s( float af ) {
          float32_t a = to_softfloat32(af);
-         if (_eosio_f32_ge(af, 2147483648.0f) || _eosio_f32_lt(af, -2147483648.0f))
-            FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f32.convert_s/i32 overflow" );
+         if (_apifiny_f32_ge(af, 2147483648.0f) || _apifiny_f32_lt(af, -2147483648.0f))
+            FC_THROW_EXCEPTION( apifiny::chain::wasm_execution_error, "Error, f32.convert_s/i32 overflow" );
 
          if (is_nan(a))
-            FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f32.convert_s/i32 unrepresentable");
-         return f32_to_i32( to_softfloat32(_eosio_f32_trunc( af )), 0, false );
+            FC_THROW_EXCEPTION( apifiny::chain::wasm_execution_error, "Error, f32.convert_s/i32 unrepresentable");
+         return f32_to_i32( to_softfloat32(_apifiny_f32_trunc( af )), 0, false );
       }
-      int32_t _eosio_f64_trunc_i32s( double af ) {
+      int32_t _apifiny_f64_trunc_i32s( double af ) {
          float64_t a = to_softfloat64(af);
-         if (_eosio_f64_ge(af, 2147483648.0) || _eosio_f64_lt(af, -2147483648.0))
-            FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f64.convert_s/i32 overflow");
+         if (_apifiny_f64_ge(af, 2147483648.0) || _apifiny_f64_lt(af, -2147483648.0))
+            FC_THROW_EXCEPTION( apifiny::chain::wasm_execution_error, "Error, f64.convert_s/i32 overflow");
          if (is_nan(a))
-            FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f64.convert_s/i32 unrepresentable");
-         return f64_to_i32( to_softfloat64(_eosio_f64_trunc( af )), 0, false );
+            FC_THROW_EXCEPTION( apifiny::chain::wasm_execution_error, "Error, f64.convert_s/i32 unrepresentable");
+         return f64_to_i32( to_softfloat64(_apifiny_f64_trunc( af )), 0, false );
       }
-      uint32_t _eosio_f32_trunc_i32u( float af ) {
+      uint32_t _apifiny_f32_trunc_i32u( float af ) {
          float32_t a = to_softfloat32(af);
-         if (_eosio_f32_ge(af, 4294967296.0f) || _eosio_f32_le(af, -1.0f))
-            FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f32.convert_u/i32 overflow");
+         if (_apifiny_f32_ge(af, 4294967296.0f) || _apifiny_f32_le(af, -1.0f))
+            FC_THROW_EXCEPTION( apifiny::chain::wasm_execution_error, "Error, f32.convert_u/i32 overflow");
          if (is_nan(a))
-            FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f32.convert_u/i32 unrepresentable");
-         return f32_to_ui32( to_softfloat32(_eosio_f32_trunc( af )), 0, false );
+            FC_THROW_EXCEPTION( apifiny::chain::wasm_execution_error, "Error, f32.convert_u/i32 unrepresentable");
+         return f32_to_ui32( to_softfloat32(_apifiny_f32_trunc( af )), 0, false );
       }
-      uint32_t _eosio_f64_trunc_i32u( double af ) {
+      uint32_t _apifiny_f64_trunc_i32u( double af ) {
          float64_t a = to_softfloat64(af);
-         if (_eosio_f64_ge(af, 4294967296.0) || _eosio_f64_le(af, -1.0))
-            FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f64.convert_u/i32 overflow");
+         if (_apifiny_f64_ge(af, 4294967296.0) || _apifiny_f64_le(af, -1.0))
+            FC_THROW_EXCEPTION( apifiny::chain::wasm_execution_error, "Error, f64.convert_u/i32 overflow");
          if (is_nan(a))
-            FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f64.convert_u/i32 unrepresentable");
-         return f64_to_ui32( to_softfloat64(_eosio_f64_trunc( af )), 0, false );
+            FC_THROW_EXCEPTION( apifiny::chain::wasm_execution_error, "Error, f64.convert_u/i32 unrepresentable");
+         return f64_to_ui32( to_softfloat64(_apifiny_f64_trunc( af )), 0, false );
       }
-      int64_t _eosio_f32_trunc_i64s( float af ) {
+      int64_t _apifiny_f32_trunc_i64s( float af ) {
          float32_t a = to_softfloat32(af);
-         if (_eosio_f32_ge(af, 9223372036854775808.0f) || _eosio_f32_lt(af, -9223372036854775808.0f))
-            FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f32.convert_s/i64 overflow");
+         if (_apifiny_f32_ge(af, 9223372036854775808.0f) || _apifiny_f32_lt(af, -9223372036854775808.0f))
+            FC_THROW_EXCEPTION( apifiny::chain::wasm_execution_error, "Error, f32.convert_s/i64 overflow");
          if (is_nan(a))
-            FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f32.convert_s/i64 unrepresentable");
-         return f32_to_i64( to_softfloat32(_eosio_f32_trunc( af )), 0, false );
+            FC_THROW_EXCEPTION( apifiny::chain::wasm_execution_error, "Error, f32.convert_s/i64 unrepresentable");
+         return f32_to_i64( to_softfloat32(_apifiny_f32_trunc( af )), 0, false );
       }
-      int64_t _eosio_f64_trunc_i64s( double af ) {
+      int64_t _apifiny_f64_trunc_i64s( double af ) {
          float64_t a = to_softfloat64(af);
-         if (_eosio_f64_ge(af, 9223372036854775808.0) || _eosio_f64_lt(af, -9223372036854775808.0))
-            FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f64.convert_s/i64 overflow");
+         if (_apifiny_f64_ge(af, 9223372036854775808.0) || _apifiny_f64_lt(af, -9223372036854775808.0))
+            FC_THROW_EXCEPTION( apifiny::chain::wasm_execution_error, "Error, f64.convert_s/i64 overflow");
          if (is_nan(a))
-            FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f64.convert_s/i64 unrepresentable");
+            FC_THROW_EXCEPTION( apifiny::chain::wasm_execution_error, "Error, f64.convert_s/i64 unrepresentable");
 
-         return f64_to_i64( to_softfloat64(_eosio_f64_trunc( af )), 0, false );
+         return f64_to_i64( to_softfloat64(_apifiny_f64_trunc( af )), 0, false );
       }
-      uint64_t _eosio_f32_trunc_i64u( float af ) {
+      uint64_t _apifiny_f32_trunc_i64u( float af ) {
          float32_t a = to_softfloat32(af);
-         if (_eosio_f32_ge(af, 18446744073709551616.0f) || _eosio_f32_le(af, -1.0f))
-            FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f32.convert_u/i64 overflow");
+         if (_apifiny_f32_ge(af, 18446744073709551616.0f) || _apifiny_f32_le(af, -1.0f))
+            FC_THROW_EXCEPTION( apifiny::chain::wasm_execution_error, "Error, f32.convert_u/i64 overflow");
          if (is_nan(a))
-            FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f32.convert_u/i64 unrepresentable");
-         return f32_to_ui64( to_softfloat32(_eosio_f32_trunc( af )), 0, false );
+            FC_THROW_EXCEPTION( apifiny::chain::wasm_execution_error, "Error, f32.convert_u/i64 unrepresentable");
+         return f32_to_ui64( to_softfloat32(_apifiny_f32_trunc( af )), 0, false );
       }
-      uint64_t _eosio_f64_trunc_i64u( double af ) {
+      uint64_t _apifiny_f64_trunc_i64u( double af ) {
          float64_t a = to_softfloat64(af);
-         if (_eosio_f64_ge(af, 18446744073709551616.0) || _eosio_f64_le(af, -1.0))
-            FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f64.convert_u/i64 overflow");
+         if (_apifiny_f64_ge(af, 18446744073709551616.0) || _apifiny_f64_le(af, -1.0))
+            FC_THROW_EXCEPTION( apifiny::chain::wasm_execution_error, "Error, f64.convert_u/i64 overflow");
          if (is_nan(a))
-            FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f64.convert_u/i64 unrepresentable");
-         return f64_to_ui64( to_softfloat64(_eosio_f64_trunc( af )), 0, false );
+            FC_THROW_EXCEPTION( apifiny::chain::wasm_execution_error, "Error, f64.convert_u/i64 unrepresentable");
+         return f64_to_ui64( to_softfloat64(_apifiny_f64_trunc( af )), 0, false );
       }
-      float _eosio_i32_to_f32( int32_t a )  {
+      float _apifiny_i32_to_f32( int32_t a )  {
          return from_softfloat32(i32_to_f32( a ));
       }
-      float _eosio_i64_to_f32( int64_t a ) {
+      float _apifiny_i64_to_f32( int64_t a ) {
          return from_softfloat32(i64_to_f32( a ));
       }
-      float _eosio_ui32_to_f32( uint32_t a ) {
+      float _apifiny_ui32_to_f32( uint32_t a ) {
          return from_softfloat32(ui32_to_f32( a ));
       }
-      float _eosio_ui64_to_f32( uint64_t a ) {
+      float _apifiny_ui64_to_f32( uint64_t a ) {
          return from_softfloat32(ui64_to_f32( a ));
       }
-      double _eosio_i32_to_f64( int32_t a ) {
+      double _apifiny_i32_to_f64( int32_t a ) {
          return from_softfloat64(i32_to_f64( a ));
       }
-      double _eosio_i64_to_f64( int64_t a ) {
+      double _apifiny_i64_to_f64( int64_t a ) {
          return from_softfloat64(i64_to_f64( a ));
       }
-      double _eosio_ui32_to_f64( uint32_t a ) {
+      double _apifiny_ui32_to_f64( uint32_t a ) {
          return from_softfloat64(ui32_to_f64( a ));
       }
-      double _eosio_ui64_to_f64( uint64_t a ) {
+      double _apifiny_ui64_to_f64( uint64_t a ) {
          return from_softfloat64(ui64_to_f64( a ));
       }
 
@@ -863,7 +863,7 @@ class crypto_api : public context_aware_api {
 
       template<class Encoder> auto encode(char* data, uint32_t datalen) {
          Encoder e;
-         const size_t bs = eosio::chain::config::hashing_checktime_block_size;
+         const size_t bs = apifiny::chain::config::hashing_checktime_block_size;
          while ( datalen > bs ) {
             e.write( data, bs );
             data += bs;
@@ -1067,35 +1067,35 @@ public:
       EOS_ASSERT( false, abort_called, "abort() called");
    }
 
-   // Kept as intrinsic rather than implementing on WASM side (using eosio_assert_message and strlen) because strlen is faster on native side.
-   void eosio_assert( bool condition, null_terminated_ptr msg ) {
+   // Kept as intrinsic rather than implementing on WASM side (using apifiny_assert_message and strlen) because strlen is faster on native side.
+   void apifiny_assert( bool condition, null_terminated_ptr msg ) {
       if( BOOST_UNLIKELY( !condition ) ) {
          const size_t sz = strnlen( msg, max_assert_message );
          std::string message( msg, sz );
-         EOS_THROW( eosio_assert_message_exception, "assertion failure with message: ${s}", ("s",message) );
+         EOS_THROW( apifiny_assert_message_exception, "assertion failure with message: ${s}", ("s",message) );
       }
    }
 
-   void eosio_assert_message( bool condition, array_ptr<const char> msg, uint32_t msg_len ) {
+   void apifiny_assert_message( bool condition, array_ptr<const char> msg, uint32_t msg_len ) {
       if( BOOST_UNLIKELY( !condition ) ) {
          const size_t sz = msg_len > max_assert_message ? max_assert_message : msg_len;
          std::string message( msg, sz );
-         EOS_THROW( eosio_assert_message_exception, "assertion failure with message: ${s}", ("s",message) );
+         EOS_THROW( apifiny_assert_message_exception, "assertion failure with message: ${s}", ("s",message) );
       }
    }
 
-   void eosio_assert_code( bool condition, uint64_t error_code ) {
+   void apifiny_assert_code( bool condition, uint64_t error_code ) {
       if( BOOST_UNLIKELY( !condition ) ) {
          if( error_code >= static_cast<uint64_t>(system_error_code::generic_system_error) ) {
             restricted_error_code_exception e( FC_LOG_MESSAGE(
                                                    error,
-                                                   "eosio_assert_code called with reserved error code: ${error_code}",
+                                                   "apifiny_assert_code called with reserved error code: ${error_code}",
                                                    ("error_code", error_code)
             ) );
             e.error_code = static_cast<uint64_t>(system_error_code::contract_restricted_error_code);
             throw e;
          } else {
-            eosio_assert_code_exception e( FC_LOG_MESSAGE(
+            apifiny_assert_code_exception e( FC_LOG_MESSAGE(
                                              error,
                                              "assertion failure with error code: ${error_code}",
                                              ("error_code", error_code)
@@ -1106,7 +1106,7 @@ public:
       }
    }
 
-   void eosio_exit(int32_t code) {
+   void apifiny_exit(int32_t code) {
       context.control.get_wasm_interface().exit();
    }
 
@@ -1801,7 +1801,7 @@ class compiler_builtins : public context_aware_api {
 
 
 /*
- * This api will be removed with fix for `eos #2561`
+ * This api will be removed with fix for `apifiny #2561`
  */
 class call_depth_api : public context_aware_api {
    public:
@@ -1958,10 +1958,10 @@ REGISTER_INTRINSICS(system_api,
 
 REGISTER_INTRINSICS(context_free_system_api,
    (abort,                void()              )
-   (eosio_assert,         void(int, int)      )
-   (eosio_assert_message, void(int, int, int) )
-   (eosio_assert_code,    void(int, int64_t)  )
-   (eosio_exit,           void(int)           )
+   (apifiny_assert,         void(int, int)      )
+   (apifiny_assert_message, void(int, int, int) )
+   (apifiny_assert_code,    void(int, int64_t)  )
+   (apifiny_exit,           void(int)           )
 );
 
 REGISTER_INTRINSICS(action_api,
@@ -2021,80 +2021,80 @@ REGISTER_INTRINSICS(memory_api,
 );
 
 REGISTER_INJECTED_INTRINSICS(softfloat_api,
-      (_eosio_f32_add,       float(float, float)    )
-      (_eosio_f32_sub,       float(float, float)    )
-      (_eosio_f32_mul,       float(float, float)    )
-      (_eosio_f32_div,       float(float, float)    )
-      (_eosio_f32_min,       float(float, float)    )
-      (_eosio_f32_max,       float(float, float)    )
-      (_eosio_f32_copysign,  float(float, float)    )
-      (_eosio_f32_abs,       float(float)           )
-      (_eosio_f32_neg,       float(float)           )
-      (_eosio_f32_sqrt,      float(float)           )
-      (_eosio_f32_ceil,      float(float)           )
-      (_eosio_f32_floor,     float(float)           )
-      (_eosio_f32_trunc,     float(float)           )
-      (_eosio_f32_nearest,   float(float)           )
-      (_eosio_f32_eq,        int(float, float)      )
-      (_eosio_f32_ne,        int(float, float)      )
-      (_eosio_f32_lt,        int(float, float)      )
-      (_eosio_f32_le,        int(float, float)      )
-      (_eosio_f32_gt,        int(float, float)      )
-      (_eosio_f32_ge,        int(float, float)      )
-      (_eosio_f64_add,       double(double, double) )
-      (_eosio_f64_sub,       double(double, double) )
-      (_eosio_f64_mul,       double(double, double) )
-      (_eosio_f64_div,       double(double, double) )
-      (_eosio_f64_min,       double(double, double) )
-      (_eosio_f64_max,       double(double, double) )
-      (_eosio_f64_copysign,  double(double, double) )
-      (_eosio_f64_abs,       double(double)         )
-      (_eosio_f64_neg,       double(double)         )
-      (_eosio_f64_sqrt,      double(double)         )
-      (_eosio_f64_ceil,      double(double)         )
-      (_eosio_f64_floor,     double(double)         )
-      (_eosio_f64_trunc,     double(double)         )
-      (_eosio_f64_nearest,   double(double)         )
-      (_eosio_f64_eq,        int(double, double)    )
-      (_eosio_f64_ne,        int(double, double)    )
-      (_eosio_f64_lt,        int(double, double)    )
-      (_eosio_f64_le,        int(double, double)    )
-      (_eosio_f64_gt,        int(double, double)    )
-      (_eosio_f64_ge,        int(double, double)    )
-      (_eosio_f32_promote,    double(float)         )
-      (_eosio_f64_demote,     float(double)         )
-      (_eosio_f32_trunc_i32s, int(float)            )
-      (_eosio_f64_trunc_i32s, int(double)           )
-      (_eosio_f32_trunc_i32u, int(float)            )
-      (_eosio_f64_trunc_i32u, int(double)           )
-      (_eosio_f32_trunc_i64s, int64_t(float)        )
-      (_eosio_f64_trunc_i64s, int64_t(double)       )
-      (_eosio_f32_trunc_i64u, int64_t(float)        )
-      (_eosio_f64_trunc_i64u, int64_t(double)       )
-      (_eosio_i32_to_f32,     float(int32_t)        )
-      (_eosio_i64_to_f32,     float(int64_t)        )
-      (_eosio_ui32_to_f32,    float(int32_t)        )
-      (_eosio_ui64_to_f32,    float(int64_t)        )
-      (_eosio_i32_to_f64,     double(int32_t)       )
-      (_eosio_i64_to_f64,     double(int64_t)       )
-      (_eosio_ui32_to_f64,    double(int32_t)       )
-      (_eosio_ui64_to_f64,    double(int64_t)       )
+      (_apifiny_f32_add,       float(float, float)    )
+      (_apifiny_f32_sub,       float(float, float)    )
+      (_apifiny_f32_mul,       float(float, float)    )
+      (_apifiny_f32_div,       float(float, float)    )
+      (_apifiny_f32_min,       float(float, float)    )
+      (_apifiny_f32_max,       float(float, float)    )
+      (_apifiny_f32_copysign,  float(float, float)    )
+      (_apifiny_f32_abs,       float(float)           )
+      (_apifiny_f32_neg,       float(float)           )
+      (_apifiny_f32_sqrt,      float(float)           )
+      (_apifiny_f32_ceil,      float(float)           )
+      (_apifiny_f32_floor,     float(float)           )
+      (_apifiny_f32_trunc,     float(float)           )
+      (_apifiny_f32_nearest,   float(float)           )
+      (_apifiny_f32_eq,        int(float, float)      )
+      (_apifiny_f32_ne,        int(float, float)      )
+      (_apifiny_f32_lt,        int(float, float)      )
+      (_apifiny_f32_le,        int(float, float)      )
+      (_apifiny_f32_gt,        int(float, float)      )
+      (_apifiny_f32_ge,        int(float, float)      )
+      (_apifiny_f64_add,       double(double, double) )
+      (_apifiny_f64_sub,       double(double, double) )
+      (_apifiny_f64_mul,       double(double, double) )
+      (_apifiny_f64_div,       double(double, double) )
+      (_apifiny_f64_min,       double(double, double) )
+      (_apifiny_f64_max,       double(double, double) )
+      (_apifiny_f64_copysign,  double(double, double) )
+      (_apifiny_f64_abs,       double(double)         )
+      (_apifiny_f64_neg,       double(double)         )
+      (_apifiny_f64_sqrt,      double(double)         )
+      (_apifiny_f64_ceil,      double(double)         )
+      (_apifiny_f64_floor,     double(double)         )
+      (_apifiny_f64_trunc,     double(double)         )
+      (_apifiny_f64_nearest,   double(double)         )
+      (_apifiny_f64_eq,        int(double, double)    )
+      (_apifiny_f64_ne,        int(double, double)    )
+      (_apifiny_f64_lt,        int(double, double)    )
+      (_apifiny_f64_le,        int(double, double)    )
+      (_apifiny_f64_gt,        int(double, double)    )
+      (_apifiny_f64_ge,        int(double, double)    )
+      (_apifiny_f32_promote,    double(float)         )
+      (_apifiny_f64_demote,     float(double)         )
+      (_apifiny_f32_trunc_i32s, int(float)            )
+      (_apifiny_f64_trunc_i32s, int(double)           )
+      (_apifiny_f32_trunc_i32u, int(float)            )
+      (_apifiny_f64_trunc_i32u, int(double)           )
+      (_apifiny_f32_trunc_i64s, int64_t(float)        )
+      (_apifiny_f64_trunc_i64s, int64_t(double)       )
+      (_apifiny_f32_trunc_i64u, int64_t(float)        )
+      (_apifiny_f64_trunc_i64u, int64_t(double)       )
+      (_apifiny_i32_to_f32,     float(int32_t)        )
+      (_apifiny_i64_to_f32,     float(int64_t)        )
+      (_apifiny_ui32_to_f32,    float(int32_t)        )
+      (_apifiny_ui64_to_f32,    float(int64_t)        )
+      (_apifiny_i32_to_f64,     double(int32_t)       )
+      (_apifiny_i64_to_f64,     double(int64_t)       )
+      (_apifiny_ui32_to_f64,    double(int32_t)       )
+      (_apifiny_ui64_to_f64,    double(int64_t)       )
 );
 
 std::istream& operator>>(std::istream& in, wasm_interface::vm_type& runtime) {
    std::string s;
    in >> s;
    if (s == "wabt")
-      runtime = eosio::chain::wasm_interface::vm_type::wabt;
-   else if (s == "eos-vm")
-      runtime = eosio::chain::wasm_interface::vm_type::eos_vm;
-   else if (s == "eos-vm-jit")
-      runtime = eosio::chain::wasm_interface::vm_type::eos_vm_jit;
-   else if (s == "eos-vm-oc")
-      runtime = eosio::chain::wasm_interface::vm_type::eos_vm_oc;
+      runtime = apifiny::chain::wasm_interface::vm_type::wabt;
+   else if (s == "apifiny-vm")
+      runtime = apifiny::chain::wasm_interface::vm_type::apifiny_vm;
+   else if (s == "apifiny-vm-jit")
+      runtime = apifiny::chain::wasm_interface::vm_type::apifiny_vm_jit;
+   else if (s == "apifiny-vm-oc")
+      runtime = apifiny::chain::wasm_interface::vm_type::apifiny_vm_oc;
    else
       in.setstate(std::ios_base::failbit);
    return in;
 }
 
-} } /// eosio::chain
+} } /// apifiny::chain

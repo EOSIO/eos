@@ -1,21 +1,21 @@
-#include <eosio/chain/webassembly/wabt.hpp>
-#include <eosio/chain/apply_context.hpp>
-#include <eosio/chain/wasm_eosio_constraints.hpp>
-#include <eosio/chain/wasm_eosio_injection.hpp>
+#include <apifiny/chain/webassembly/wabt.hpp>
+#include <apifiny/chain/apply_context.hpp>
+#include <apifiny/chain/wasm_apifiny_constraints.hpp>
+#include <apifiny/chain/wasm_apifiny_injection.hpp>
 
 //wabt includes
 #include <src/interp.h>
 #include <src/binary-reader-interp.h>
 #include <src/error-formatter.h>
 
-namespace eosio { namespace chain { namespace webassembly { namespace wabt_runtime {
+namespace apifiny { namespace chain { namespace webassembly { namespace wabt_runtime {
 
 //yep 🤮
 static wabt_apply_instance_vars* static_wabt_vars;
 
 using namespace wabt;
 using namespace wabt::interp;
-namespace wasm_constraints = eosio::chain::wasm_constraints;
+namespace wasm_constraints = apifiny::chain::wasm_constraints;
 
 class wabt_instantiated_module : public wasm_instantiated_module_interface {
    public:

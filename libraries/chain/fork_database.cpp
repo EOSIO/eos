@@ -1,5 +1,5 @@
-#include <eosio/chain/fork_database.hpp>
-#include <eosio/chain/exceptions.hpp>
+#include <apifiny/chain/fork_database.hpp>
+#include <apifiny/chain/exceptions.hpp>
 #include <boost/multi_index_container.hpp>
 #include <boost/multi_index/member.hpp>
 #include <boost/multi_index/ordered_index.hpp>
@@ -10,7 +10,7 @@
 #include <fc/io/fstream.hpp>
 #include <fstream>
 
-namespace eosio { namespace chain {
+namespace apifiny { namespace chain {
    using boost::multi_index_container;
    using namespace boost::multi_index;
 
@@ -491,4 +491,4 @@ namespace eosio { namespace chain {
       return block_state_ptr();
    }
 
-} } /// eosio::chain
+} } /// apifiny::chain

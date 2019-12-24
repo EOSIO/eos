@@ -1,7 +1,7 @@
-#include <eosio/chain/merkle.hpp>
+#include <apifiny/chain/merkle.hpp>
 #include <fc/io/raw.hpp>
 
-namespace eosio { namespace chain {
+namespace apifiny { namespace chain {
 
 /**
  * in order to keep proofs concise, before hashing we set the first bit
@@ -49,4 +49,4 @@ digest_type merkle(deque<digest_type> ids) {
    return ids.front();
 }
 
-} } // eosio::chain
+} } // apifiny::chain

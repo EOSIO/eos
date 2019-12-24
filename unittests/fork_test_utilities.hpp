@@ -1,9 +1,9 @@
 #pragma once
 
-#include <eosio/testing/tester.hpp>
+#include <apifiny/testing/tester.hpp>
 
-using namespace eosio::chain;
-using namespace eosio::testing;
+using namespace apifiny::chain;
+using namespace apifiny::testing;
 
 private_key_type get_private_key( name keyname, string role );
 

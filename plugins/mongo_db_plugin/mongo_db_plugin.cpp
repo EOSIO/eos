@@ -1,10 +1,10 @@
-#include <eosio/mongo_db_plugin/mongo_db_plugin.hpp>
-#include <eosio/mongo_db_plugin/bson.hpp>
-#include <eosio/chain/eosio_contract.hpp>
-#include <eosio/chain/config.hpp>
-#include <eosio/chain/exceptions.hpp>
-#include <eosio/chain/transaction.hpp>
-#include <eosio/chain/types.hpp>
+#include <apifiny/mongo_db_plugin/mongo_db_plugin.hpp>
+#include <apifiny/mongo_db_plugin/bson.hpp>
+#include <apifiny/chain/apifiny_contract.hpp>
+#include <apifiny/chain/config.hpp>
+#include <apifiny/chain/exceptions.hpp>
+#include <apifiny/chain/transaction.hpp>
+#include <apifiny/chain/types.hpp>
 
 #include <fc/io/json.hpp>
 #include <fc/log/logger_config.hpp>
@@ -29,7 +29,7 @@
 
 namespace fc { class variant; }
 
-namespace eosio {
+namespace apifiny {
 
 using chain::account_name;
 using chain::action_name;
@@ -337,7 +337,7 @@ void mongo_db_plugin_impl::applied_transaction( const chain::transaction_trace_p
       // from an incomplete block. This means that traces will not be recorded in speculative read-mode, but
       // users should not be using the mongo_db_plugin in that mode anyway.
       //
-      // Allow logging traces if node is a producer for testing purposes, so a single nodeos can do both for testing.
+      // Allow logging traces if node is a producer for testing purposes, so a single nodapifiny can do both for testing.
       //
       // It is recommended to run mongo_db_plugin in read-mode = read-only.
       //
@@ -621,7 +621,7 @@ optional<abi_serializer> mongo_db_plugin_impl::get_abi_serializer( account_name 
                entry.last_accessed = fc::time_point::now();
                abi_serializer abis;
                if( n == chain::config::system_account_name ) {
-                  // redefine eosio setabi.abi from bytes to abi_def
+                  // redefine apifiny setabi.abi from bytes to abi_def
                   // Done so that abi is stored as abi_def in mongo instead of as bytes
                   auto itr = std::find_if( abi.structs.begin(), abi.structs.end(),
                                            []( const auto& s ) { return s.name == "setabi"; } );
@@ -1496,7 +1496,7 @@ void mongo_db_plugin::set_program_options(options_description& cli, options_desc
 {
    cfg.add_options()
          ("mongodb-queue-size,q", bpo::value<uint32_t>()->default_value(1024),
-         "The target queue size between nodeos and MongoDB plugin thread.")
+         "The target queue size between nodapifiny and MongoDB plugin thread.")
          ("mongodb-abi-cache-size", bpo::value<uint32_t>()->default_value(2048),
           "The maximum size of the abi cache for serializing data.")
          ("mongodb-wipe", bpo::bool_switch()->default_value(false),
@@ -1523,7 +1523,7 @@ void mongo_db_plugin::set_program_options(options_description& cli, options_desc
          ("mongodb-expire-after-seconds", bpo::value<uint32_t>()->default_value(0),
           "Enables expiring data in mongodb after a specified number of seconds.")
          ("mongodb-filter-on", bpo::value<vector<string>>()->composing(),
-          "Track actions which match receiver:action:actor. Receiver, Action, & Actor may be blank to include all. i.e. eosio:: or :transfer:  Use * or leave unspecified to include all.")
+          "Track actions which match receiver:action:actor. Receiver, Action, & Actor may be blank to include all. i.e. apifiny:: or :transfer:  Use * or leave unspecified to include all.")
          ("mongodb-filter-out", bpo::value<vector<string>>()->composing(),
           "Do not track actions which match receiver:action:actor. Receiver, Action, & Actor may be blank to exclude all.")
          ;
@@ -1593,7 +1593,7 @@ void mongo_db_plugin::plugin_initialize(const variables_map& options)
                std::vector<std::string> v;
                boost::split( v, s, boost::is_any_of( ":" ));
                EOS_ASSERT( v.size() == 3, fc::invalid_arg_exception, "Invalid value ${s} for --mongodb-filter-on", ("s", s));
-               filter_entry fe{eosio::chain::name(v[0]), eosio::chain::name(v[1]), eosio::chain::name(v[2])};
+               filter_entry fe{apifiny::chain::name(v[0]), apifiny::chain::name(v[1]), apifiny::chain::name(v[2])};
                my->filter_on.insert( fe );
             }
          } else {
@@ -1605,7 +1605,7 @@ void mongo_db_plugin::plugin_initialize(const variables_map& options)
                std::vector<std::string> v;
                boost::split( v, s, boost::is_any_of( ":" ));
                EOS_ASSERT( v.size() == 3, fc::invalid_arg_exception, "Invalid value ${s} for --mongodb-filter-out", ("s", s));
-               filter_entry fe{eosio::chain::name(v[0]), eosio::chain::name(v[1]), eosio::chain::name(v[2])};
+               filter_entry fe{apifiny::chain::name(v[0]), apifiny::chain::name(v[1]), apifiny::chain::name(v[2])};
                my->filter_out.insert( fe );
             }
          }
@@ -1653,7 +1653,7 @@ void mongo_db_plugin::plugin_initialize(const variables_map& options)
          }
          my->init();
       } else {
-         wlog( "eosio::mongo_db_plugin configured, but no --mongodb-uri specified." );
+         wlog( "apifiny::mongo_db_plugin configured, but no --mongodb-uri specified." );
          wlog( "mongo_db_plugin disabled." );
       }
    } FC_LOG_AND_RETHROW()
@@ -1673,5 +1673,5 @@ void mongo_db_plugin::plugin_shutdown()
    my.reset();
 }
 
-} // namespace eosio
+} // namespace apifiny
 

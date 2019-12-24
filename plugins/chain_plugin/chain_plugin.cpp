@@ -1,19 +1,19 @@
-#include <eosio/chain_plugin/chain_plugin.hpp>
-#include <eosio/chain/fork_database.hpp>
-#include <eosio/chain/block_log.hpp>
-#include <eosio/chain/exceptions.hpp>
-#include <eosio/chain/authorization_manager.hpp>
-#include <eosio/chain/code_object.hpp>
-#include <eosio/chain/config.hpp>
-#include <eosio/chain/wasm_interface.hpp>
-#include <eosio/chain/resource_limits.hpp>
-#include <eosio/chain/reversible_block_object.hpp>
-#include <eosio/chain/controller.hpp>
-#include <eosio/chain/generated_transaction_object.hpp>
-#include <eosio/chain/global_property_object.hpp>
-#include <eosio/chain/snapshot.hpp>
+#include <apifiny/chain_plugin/chain_plugin.hpp>
+#include <apifiny/chain/fork_database.hpp>
+#include <apifiny/chain/block_log.hpp>
+#include <apifiny/chain/exceptions.hpp>
+#include <apifiny/chain/authorization_manager.hpp>
+#include <apifiny/chain/code_object.hpp>
+#include <apifiny/chain/config.hpp>
+#include <apifiny/chain/wasm_interface.hpp>
+#include <apifiny/chain/resource_limits.hpp>
+#include <apifiny/chain/reversible_block_object.hpp>
+#include <apifiny/chain/controller.hpp>
+#include <apifiny/chain/generated_transaction_object.hpp>
+#include <apifiny/chain/global_property_object.hpp>
+#include <apifiny/chain/snapshot.hpp>
 
-#include <eosio/chain/eosio_contract.hpp>
+#include <apifiny/chain/apifiny_contract.hpp>
 
 #include <chainbase/environment.hpp>
 
@@ -33,19 +33,19 @@ FC_REFLECT_ENUM( chainbase::environment::arch_t,
                  (ARCH_X86_64)(ARCH_ARM)(ARCH_RISCV)(ARCH_OTHER) )
 FC_REFLECT(chainbase::environment, (debug)(os)(arch)(boost_version)(compiler) )
 
-namespace eosio {
+namespace apifiny {
 
 //declare operator<< and validate funciton for read_mode in the same namespace as read_mode itself
 namespace chain {
 
-std::ostream& operator<<(std::ostream& osm, eosio::chain::db_read_mode m) {
-   if ( m == eosio::chain::db_read_mode::SPECULATIVE ) {
+std::ostream& operator<<(std::ostream& osm, apifiny::chain::db_read_mode m) {
+   if ( m == apifiny::chain::db_read_mode::SPECULATIVE ) {
       osm << "speculative";
-   } else if ( m == eosio::chain::db_read_mode::HEAD ) {
+   } else if ( m == apifiny::chain::db_read_mode::HEAD ) {
       osm << "head";
-   } else if ( m == eosio::chain::db_read_mode::READ_ONLY ) {
+   } else if ( m == apifiny::chain::db_read_mode::READ_ONLY ) {
       osm << "read-only";
-   } else if ( m == eosio::chain::db_read_mode::IRREVERSIBLE ) {
+   } else if ( m == apifiny::chain::db_read_mode::IRREVERSIBLE ) {
       osm << "irreversible";
    }
 
@@ -54,7 +54,7 @@ std::ostream& operator<<(std::ostream& osm, eosio::chain::db_read_mode m) {
 
 void validate(boost::any& v,
               const std::vector<std::string>& values,
-              eosio::chain::db_read_mode* /* target_type */,
+              apifiny::chain::db_read_mode* /* target_type */,
               int)
 {
   using namespace boost::program_options;
@@ -67,22 +67,22 @@ void validate(boost::any& v,
   std::string const& s = validators::get_single_string(values);
 
   if ( s == "speculative" ) {
-     v = boost::any(eosio::chain::db_read_mode::SPECULATIVE);
+     v = boost::any(apifiny::chain::db_read_mode::SPECULATIVE);
   } else if ( s == "head" ) {
-     v = boost::any(eosio::chain::db_read_mode::HEAD);
+     v = boost::any(apifiny::chain::db_read_mode::HEAD);
   } else if ( s == "read-only" ) {
-     v = boost::any(eosio::chain::db_read_mode::READ_ONLY);
+     v = boost::any(apifiny::chain::db_read_mode::READ_ONLY);
   } else if ( s == "irreversible" ) {
-     v = boost::any(eosio::chain::db_read_mode::IRREVERSIBLE);
+     v = boost::any(apifiny::chain::db_read_mode::IRREVERSIBLE);
   } else {
      throw validation_error(validation_error::invalid_option_value);
   }
 }
 
-std::ostream& operator<<(std::ostream& osm, eosio::chain::validation_mode m) {
-   if ( m == eosio::chain::validation_mode::FULL ) {
+std::ostream& operator<<(std::ostream& osm, apifiny::chain::validation_mode m) {
+   if ( m == apifiny::chain::validation_mode::FULL ) {
       osm << "full";
-   } else if ( m == eosio::chain::validation_mode::LIGHT ) {
+   } else if ( m == apifiny::chain::validation_mode::LIGHT ) {
       osm << "light";
    }
 
@@ -91,7 +91,7 @@ std::ostream& operator<<(std::ostream& osm, eosio::chain::validation_mode m) {
 
 void validate(boost::any& v,
               const std::vector<std::string>& values,
-              eosio::chain::validation_mode* /* target_type */,
+              apifiny::chain::validation_mode* /* target_type */,
               int)
 {
   using namespace boost::program_options;
@@ -104,9 +104,9 @@ void validate(boost::any& v,
   std::string const& s = validators::get_single_string(values);
 
   if ( s == "full" ) {
-     v = boost::any(eosio::chain::validation_mode::FULL);
+     v = boost::any(apifiny::chain::validation_mode::FULL);
   } else if ( s == "light" ) {
-     v = boost::any(eosio::chain::validation_mode::LIGHT);
+     v = boost::any(apifiny::chain::validation_mode::LIGHT);
   } else {
      throw validation_error(validation_error::invalid_option_value);
   }
@@ -114,10 +114,10 @@ void validate(boost::any& v,
 
 }
 
-using namespace eosio;
-using namespace eosio::chain;
-using namespace eosio::chain::config;
-using namespace eosio::chain::plugin_interface;
+using namespace apifiny;
+using namespace apifiny::chain;
+using namespace apifiny::chain::config;
+using namespace apifiny::chain::plugin_interface;
 using vm_type = wasm_interface::vm_type;
 using fc::flat_map;
 
@@ -183,8 +183,8 @@ public:
 
 chain_plugin::chain_plugin()
 :my(new chain_plugin_impl()) {
-   app().register_config_type<eosio::chain::db_read_mode>();
-   app().register_config_type<eosio::chain::validation_mode>();
+   app().register_config_type<apifiny::chain::db_read_mode>();
+   app().register_config_type<apifiny::chain::validation_mode>();
    app().register_config_type<chainbase::pinnable_mapped_file::map_mode>();
 }
 
@@ -198,11 +198,11 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("protocol-features-dir", bpo::value<bfs::path>()->default_value("protocol_features"),
           "the location of the protocol_features directory (absolute path or relative to application config dir)")
          ("checkpoint", bpo::value<vector<string>>()->composing(), "Pairs of [BLOCK_NUM,BLOCK_ID] that should be enforced as checkpoints.")
-         ("wasm-runtime", bpo::value<eosio::chain::wasm_interface::vm_type>()->value_name("runtime")->notifier([](const auto& vm){
+         ("wasm-runtime", bpo::value<apifiny::chain::wasm_interface::vm_type>()->value_name("runtime")->notifier([](const auto& vm){
 #ifndef EOSIO_EOS_VM_OC_DEVELOPER
             //throwing an exception here (like EOS_ASSERT) is just gobbled up with a "Failed to initialize" error :(
-            if(vm == wasm_interface::vm_type::eos_vm_oc) {
-               elog("EOS VM OC is a tier-up compiler and works in conjunction with the configured base WASM runtime. Enable EOS VM OC via 'eos-vm-oc-enable' option");
+            if(vm == wasm_interface::vm_type::apifiny_vm_oc) {
+               elog("EOS VM OC is a tier-up compiler and works in conjunction with the configured base WASM runtime. Enable EOS VM OC via 'apifiny-vm-oc-enable' option");
                EOS_ASSERT(false, plugin_exception, "");
             }
 #endif
@@ -233,14 +233,14 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "Public key added to blacklist of keys that should not be included in authorities (may specify multiple times)")
          ("sender-bypass-whiteblacklist", boost::program_options::value<vector<string>>()->composing()->multitoken(),
           "Deferred transactions sent by accounts in this list do not have any of the subjective whitelist/blacklist checks applied to them (may specify multiple times)")
-         ("read-mode", boost::program_options::value<eosio::chain::db_read_mode>()->default_value(eosio::chain::db_read_mode::SPECULATIVE),
+         ("read-mode", boost::program_options::value<apifiny::chain::db_read_mode>()->default_value(apifiny::chain::db_read_mode::SPECULATIVE),
           "Database read mode (\"speculative\", \"head\", \"read-only\", \"irreversible\").\n"
           "In \"speculative\" mode database contains changes done up to the head block plus changes made by transactions not yet included to the blockchain.\n"
           "In \"head\" mode database contains changes done up to the current head block.\n"
           "In \"read-only\" mode database contains changes done up to the current head block and transactions cannot be pushed to the chain API.\n"
           "In \"irreversible\" mode database contains changes done up to the last irreversible block and transactions cannot be pushed to the chain API.\n"
           )
-         ("validation-mode", boost::program_options::value<eosio::chain::validation_mode>()->default_value(eosio::chain::validation_mode::FULL),
+         ("validation-mode", boost::program_options::value<apifiny::chain::validation_mode>()->default_value(apifiny::chain::validation_mode::FULL),
           "Chain validation mode (\"full\" or \"light\").\n"
           "In \"full\" mode all incoming blocks will be fully validated.\n"
           "In \"light\" mode all incoming blocks headers will be fully validated; transactions in those validated blocks will be trusted \n")
@@ -264,14 +264,14 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
 #endif
 
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
-         ("eos-vm-oc-cache-size-mb", bpo::value<uint64_t>()->default_value(eosvmoc::config().cache_size / (1024u*1024u)), "Maximum size (in MiB) of the EOS VM OC code cache")
-         ("eos-vm-oc-compile-threads", bpo::value<uint64_t>()->default_value(1u)->notifier([](const auto t) {
+         ("apifiny-vm-oc-cache-size-mb", bpo::value<uint64_t>()->default_value(apifinyvmoc::config().cache_size / (1024u*1024u)), "Maximum size (in MiB) of the EOS VM OC code cache")
+         ("apifiny-vm-oc-compile-threads", bpo::value<uint64_t>()->default_value(1u)->notifier([](const auto t) {
                if(t == 0) {
-                  elog("eos-vm-oc-compile-threads must be set to a non-zero value");
+                  elog("apifiny-vm-oc-compile-threads must be set to a non-zero value");
                   EOS_ASSERT(false, plugin_exception, "");
                }
          }), "Number of threads to use for EOS VM OC tier-up")
-         ("eos-vm-oc-enable", bpo::bool_switch(), "Enable EOS VM OC tier-up runtime")
+         ("apifiny-vm-oc-enable", bpo::bool_switch(), "Enable EOS VM OC tier-up runtime")
 #endif
          ;
 
@@ -325,7 +325,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
 if( options.count(op_name) ) { \
    const std::vector<std::string>& ops = options[op_name].as<std::vector<std::string>>(); \
    for( const auto& v : ops ) { \
-      container.emplace( eosio::chain::name( v ) ); \
+      container.emplace( apifiny::chain::name( v ) ); \
    } \
 }
 
@@ -596,7 +596,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          genesis_state gs; // Check if EOSIO_ROOT_KEY is bad
       } catch ( const fc::exception& ) {
          elog( "EOSIO_ROOT_KEY ('${root_key}') is invalid. Recompile with a valid public key.",
-               ("root_key", genesis_state::eosio_root_key));
+               ("root_key", genesis_state::apifiny_root_key));
          throw;
       }
 
@@ -1008,12 +1008,12 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 #endif
 
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
-      if( options.count("eos-vm-oc-cache-size-mb") )
-         my->chain_config->eosvmoc_config.cache_size = options.at( "eos-vm-oc-cache-size-mb" ).as<uint64_t>() * 1024u * 1024u;
-      if( options.count("eos-vm-oc-compile-threads") )
-         my->chain_config->eosvmoc_config.threads = options.at("eos-vm-oc-compile-threads").as<uint64_t>();
-      if( options["eos-vm-oc-enable"].as<bool>() )
-         my->chain_config->eosvmoc_tierup = true;
+      if( options.count("apifiny-vm-oc-cache-size-mb") )
+         my->chain_config->apifinyvmoc_config.cache_size = options.at( "apifiny-vm-oc-cache-size-mb" ).as<uint64_t>() * 1024u * 1024u;
+      if( options.count("apifiny-vm-oc-compile-threads") )
+         my->chain_config->apifinyvmoc_config.threads = options.at("apifiny-vm-oc-compile-threads").as<uint64_t>();
+      if( options["apifiny-vm-oc-enable"].as<bool>() )
+         my->chain_config->apifinyvmoc_tierup = true;
 #endif
 
       my->chain.emplace( *my->chain_config, std::move(pfs), *chain_id );
@@ -1387,20 +1387,20 @@ void chain_plugin::log_guard_exception(const chain::guard_exception&e ) {
 void chain_plugin::handle_guard_exception(const chain::guard_exception& e) {
    log_guard_exception(e);
 
-   elog("database chain::guard_exception, quitting..."); // log string searched for in: tests/nodeos_under_min_avail_ram.py
+   elog("database chain::guard_exception, quitting..."); // log string searched for in: tests/nodapifiny_under_min_avail_ram.py
    // quit the app
    app().quit();
 }
 
 void chain_plugin::handle_db_exhaustion() {
    elog("database memory exhausted: increase chain-state-db-size-mb and/or reversible-blocks-db-size-mb");
-   //return 1 -- it's what programs/nodeos/main.cpp considers "BAD_ALLOC"
+   //return 1 -- it's what programs/nodapifiny/main.cpp considers "BAD_ALLOC"
    std::_Exit(1);
 }
 
 void chain_plugin::handle_bad_alloc() {
    elog("std::bad_alloc - memory exhausted");
-   //return -2 -- it's what programs/nodeos/main.cpp reports for std::exception
+   //return -2 -- it's what programs/nodapifiny/main.cpp reports for std::exception
    std::_Exit(-2);
 }
 
@@ -1570,13 +1570,13 @@ uint64_t convert_to_type(const string& str, const string& desc) {
 
    if (str.find(',') != string::npos) { // fix #6274 only match formats like 4,EOS
       try {
-         auto symb = eosio::chain::symbol::from_string(str);
+         auto symb = apifiny::chain::symbol::from_string(str);
          return symb.value();
       } catch( ... ) { }
    }
 
    try {
-      return ( eosio::chain::string_to_symbol( 0, str.c_str() ) >> 8 );
+      return ( apifiny::chain::string_to_symbol( 0, str.c_str() ) >> 8 );
    } catch( ... ) {
       EOS_ASSERT( false, chain_type_exception, "Could not convert ${desc} string '${str}' to any of the following: "
                         "uint64_t, valid name, or valid symbol (with or without the precision)",
@@ -1653,7 +1653,7 @@ string get_table_type( const abi_def& abi, const name& table_name ) {
 }
 
 read_only::get_table_rows_result read_only::get_table_rows( const read_only::get_table_rows_params& p )const {
-   const abi_def abi = eosio::chain_apis::get_abi( db, p.code );
+   const abi_def abi = apifiny::chain_apis::get_abi( db, p.code );
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wstrict-aliasing"
    bool primary = false;
@@ -1768,7 +1768,7 @@ read_only::get_table_by_scope_result read_only::get_table_by_scope( const read_o
 
 vector<asset> read_only::get_currency_balance( const read_only::get_currency_balance_params& p )const {
 
-   const abi_def abi = eosio::chain_apis::get_abi( db, p.code );
+   const abi_def abi = apifiny::chain_apis::get_abi( db, p.code );
    (void)get_table_type( abi, name("accounts") );
 
    vector<asset> results;
@@ -1795,10 +1795,10 @@ vector<asset> read_only::get_currency_balance( const read_only::get_currency_bal
 fc::variant read_only::get_currency_stats( const read_only::get_currency_stats_params& p )const {
    fc::mutable_variant_object results;
 
-   const abi_def abi = eosio::chain_apis::get_abi( db, p.code );
+   const abi_def abi = apifiny::chain_apis::get_abi( db, p.code );
    (void)get_table_type( abi, name("stat") );
 
-   uint64_t scope = ( eosio::chain::string_to_symbol( 0, boost::algorithm::to_upper_copy(p.symbol).c_str() ) >> 8 );
+   uint64_t scope = ( apifiny::chain::string_to_symbol( 0, boost::algorithm::to_upper_copy(p.symbol).c_str() ) >> 8 );
 
    walk_key_value_table(p.code, name(scope), N(stat), [&](const key_value_object& obj){
       EOS_ASSERT( obj.value.size() >= sizeof(read_only::get_currency_stats_result), chain::asset_type_exception, "Invalid data on table");
@@ -1834,7 +1834,7 @@ fc::variant get_global_row( const database& db, const abi_def& abi, const abi_se
 }
 
 read_only::get_producers_result read_only::get_producers( const read_only::get_producers_params& p ) const try {
-   const abi_def abi = eosio::chain_apis::get_abi(db, config::system_account_name);
+   const abi_def abi = apifiny::chain_apis::get_abi(db, config::system_account_name);
    const auto table_type = get_table_type(abi, N(producers));
    const abi_serializer abis{ abi, abi_serializer_max_time };
    EOS_ASSERT(table_type == KEYi64, chain::contract_table_query_exception, "Invalid table type ${type} for table producers", ("type",table_type));
@@ -2365,7 +2365,7 @@ read_only::get_account_results read_only::get_account( const get_account_params&
    if( abi_serializer::to_abi(code_account.abi, abi) ) {
       abi_serializer abis( abi, abi_serializer_max_time );
 
-      const auto token_code = N(eosio.token);
+      const auto token_code = N(apifiny.token);
 
       auto core_symbol = extract_core_symbol();
 
@@ -2518,12 +2518,12 @@ namespace detail {
 chain::symbol read_only::extract_core_symbol()const {
    symbol core_symbol(0);
 
-   // The following code makes assumptions about the contract deployed on eosio account (i.e. the system contract) and how it stores its data.
+   // The following code makes assumptions about the contract deployed on apifiny account (i.e. the system contract) and how it stores its data.
    const auto& d = db.db();
-   const auto* t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( N(eosio), N(eosio), N(rammarket) ));
+   const auto* t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( N(apifiny), N(apifiny), N(rammarket) ));
    if( t_id != nullptr ) {
       const auto &idx = d.get_index<key_value_index, by_scope_primary>();
-      auto it = idx.find(boost::make_tuple( t_id->id, eosio::chain::string_to_symbol_c(4,"RAMCORE") ));
+      auto it = idx.find(boost::make_tuple( t_id->id, apifiny::chain::string_to_symbol_c(4,"RAMCORE") ));
       if( it != idx.end() ) {
          detail::ram_market_exchange_state_t ram_market_exchange_state;
 
@@ -2545,6 +2545,6 @@ chain::symbol read_only::extract_core_symbol()const {
 }
 
 } // namespace chain_apis
-} // namespace eosio
+} // namespace apifiny
 
-FC_REFLECT( eosio::chain_apis::detail::ram_market_exchange_state_t, (ignore1)(ignore2)(ignore3)(core_symbol)(ignore4) )
+FC_REFLECT( apifiny::chain_apis::detail::ram_market_exchange_state_t, (ignore1)(ignore2)(ignore3)(core_symbol)(ignore4) )

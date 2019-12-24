@@ -12,17 +12,17 @@ from testUtils import Utils
 Wallet=namedtuple("Wallet", "name password host port")
 # pylint: disable=too-many-instance-attributes
 class WalletMgr(object):
-    __walletLogOutFile="test_keosd_out.log"
-    __walletLogErrFile="test_keosd_err.log"
+    __walletLogOutFile="test_kapifinyd_out.log"
+    __walletLogErrFile="test_kapifinyd_err.log"
     __walletDataDir="test_wallet_0"
     __MaxPort=9999
 
     # pylint: disable=too-many-arguments
-    # walletd [True|False] True=Launch wallet(keosd) process; False=Manage launch process externally.
-    def __init__(self, walletd, nodeosPort=8888, nodeosHost="localhost", port=9899, host="localhost"):
+    # walletd [True|False] True=Launch wallet(kapifinyd) process; False=Manage launch process externally.
+    def __init__(self, walletd, nodapifinyPort=8888, nodapifinyHost="localhost", port=9899, host="localhost"):
         self.walletd=walletd
-        self.nodeosPort=nodeosPort
-        self.nodeosHost=nodeosHost
+        self.nodapifinyPort=nodapifinyPort
+        self.nodapifinyHost=nodapifinyHost
         self.port=port
         self.host=host
         self.wallets={}
@@ -35,7 +35,7 @@ class WalletMgr(object):
         return " --wallet-url http://%s:%d" % (self.host, self.port)
 
     def getArgs(self):
-        return " --url http://%s:%d%s %s" % (self.nodeosHost, self.nodeosPort, self.getWalletEndpointArgs(), Utils.MiscEosClientArgs)
+        return " --url http://%s:%d%s %s" % (self.nodapifinyHost, self.nodapifinyPort, self.getWalletEndpointArgs(), Utils.MiscEosClientArgs)
 
     def isLaunched(self):
         return self.__walletPid is not None
@@ -56,7 +56,7 @@ class WalletMgr(object):
 
     def launch(self):
         if not self.walletd:
-            Utils.Print("ERROR: Wallet Manager wasn't configured to launch keosd")
+            Utils.Print("ERROR: Wallet Manager wasn't configured to launch kapifinyd")
             return False
 
         if self.isLaunched():
@@ -87,7 +87,7 @@ class WalletMgr(object):
             popen=subprocess.Popen(cmd.split(), stdout=sout, stderr=serr)
             self.__walletPid=popen.pid
 
-        # Give keosd time to warm up
+        # Give kapifinyd time to warm up
         time.sleep(2)
 
         try:
@@ -284,7 +284,7 @@ class WalletMgr(object):
                 shutil.copyfileobj(f, sys.stdout)
 
     def killall(self, allInstances=False):
-        """Kill keos instances. allInstances will kill all keos instances running on the system."""
+        """Kill kapifiny instances. allInstances will kill all kapifiny instances running on the system."""
         if self.__walletPid:
             Utils.Print("Killing wallet manager process %d" % (self.__walletPid))
             os.kill(self.__walletPid, signal.SIGKILL)

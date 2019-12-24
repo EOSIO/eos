@@ -1,7 +1,7 @@
-The `logging.json` file is usually located in the specified `--config-dir`, the same directory as the `config.ini` file. This path can be explicitly defined using the `-l` or `--logconf` options when starting `nodeos`.
+The `logging.json` file is usually located in the specified `--config-dir`, the same directory as the `config.ini` file. This path can be explicitly defined using the `-l` or `--logconf` options when starting `nodapifiny`.
  
 ```sh
-./nodeos --help
+./nodapifiny --help
   ...
   Application Command Line Options:
   ...

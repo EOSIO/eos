@@ -12,7 +12,7 @@ import re
 ###############################################################
 # launcher-test
 #
-# Specifically tests using the bios bootstrap script that is created by eosio-launcher
+# Specifically tests using the bios bootstrap script that is created by apifiny-launcher
 #
 ###############################################################
 
@@ -39,7 +39,7 @@ killEosInstances=not dontKill
 killWallet=not dontKill
 
 WalletdName=Utils.EosWalletName
-ClientName="cleos"
+ClientName="clapifiny"
 timeout = .5 * 12 * 2 + 60 # time for finalization with 1 producer + 60 seconds padding
 Utils.setIrreversibleTimeout(timeout)
 
@@ -55,7 +55,7 @@ try:
         pnodes=4
         if cluster.launch(pnodes=pnodes, totalNodes=pnodes) is False:
             cmdError("launcher")
-            errorExit("Failed to stand up eos cluster.")
+            errorExit("Failed to stand up apifiny cluster.")
     else:
         walletMgr.killall(allInstances=killAll)
         walletMgr.cleanup()
@@ -65,7 +65,7 @@ try:
         print("Stand up walletd")
         if walletMgr.launch() is False:
             cmdError("%s" % (WalletdName))
-            errorExit("Failed to stand up eos walletd.")
+            errorExit("Failed to stand up apifiny walletd.")
 
     Print("Validating system accounts after bootstrap")
     cluster.validateAccounts(None)
@@ -95,7 +95,7 @@ try:
 
     testWalletName="test"
     Print("Creating wallet \"%s\"." % (testWalletName))
-    testWallet=walletMgr.create(testWalletName, [cluster.eosioAccount,cluster.defproduceraAccount])
+    testWallet=walletMgr.create(testWalletName, [cluster.apifinyAccount,cluster.defproduceraAccount])
 
     Print("Wallet \"%s\" password=%s." % (testWalletName, testWallet.password.encode("utf-8")))
 
@@ -123,15 +123,15 @@ try:
     Print("Validating accounts before user accounts creation")
     cluster.validateAccounts(None)
 
-    # create accounts via eosio as otherwise a bid is needed 
-    Print("Create new account %s via %s" % (testeraAccount.name, cluster.eosioAccount.name))
-    transId=node.createInitializeAccount(testeraAccount, cluster.eosioAccount, stakedDeposit=0, waitForTransBlock=False, exitOnError=True)
+    # create accounts via apifiny as otherwise a bid is needed
+    Print("Create new account %s via %s" % (testeraAccount.name, cluster.apifinyAccount.name))
+    transId=node.createInitializeAccount(testeraAccount, cluster.apifinyAccount, stakedDeposit=0, waitForTransBlock=False, exitOnError=True)
 
-    Print("Create new account %s via %s" % (currencyAccount.name, cluster.eosioAccount.name))
-    transId=node.createInitializeAccount(currencyAccount, cluster.eosioAccount, buyRAM=1000000, stakedDeposit=5000, exitOnError=True)
+    Print("Create new account %s via %s" % (currencyAccount.name, cluster.apifinyAccount.name))
+    transId=node.createInitializeAccount(currencyAccount, cluster.apifinyAccount, buyRAM=1000000, stakedDeposit=5000, exitOnError=True)
 
-    Print("Create new account %s via %s" % (exchangeAccount.name, cluster.eosioAccount.name))
-    transId=node.createInitializeAccount(exchangeAccount, cluster.eosioAccount, buyRAM=1000000, waitForTransBlock=True, exitOnError=True)
+    Print("Create new account %s via %s" % (exchangeAccount.name, cluster.apifinyAccount.name))
+    transId=node.createInitializeAccount(exchangeAccount, cluster.apifinyAccount, buyRAM=1000000, waitForTransBlock=True, exitOnError=True)
 
     Print("Validating accounts after user accounts creation")
     accounts=[testeraAccount, currencyAccount, exchangeAccount]
@@ -212,17 +212,17 @@ try:
     Print("Bouncing nodes #00 and #01")
     if cluster.bounce("00,01") is False:
         cmdError("launcher bounce")
-        errorExit("Failed to bounce eos node.")
+        errorExit("Failed to bounce apifiny node.")
 
     Print("Taking down node #02")
     if cluster.down("02") is False:
         cmdError("launcher down command")
-        errorExit("Failed to take down eos node.")
+        errorExit("Failed to take down apifiny node.")
 
     Print("Using bounce option to re-launch node #02")
     if cluster.bounce("02") is False:
         cmdError("launcher bounce")
-        errorExit("Failed to bounce eos node.")
+        errorExit("Failed to bounce apifiny node.")
 
     p = re.compile('Assert')
     errFileName="var/lib/node_00/stderr.txt"

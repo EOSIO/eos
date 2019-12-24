@@ -4,7 +4,7 @@ Link a permission to an action of a contract
 
 ## Before you begin
 
-* Install the currently supported version of cleos
+* Install the currently supported version of clapifiny
 
 * Understand the following:
   * What is an account
@@ -16,5 +16,5 @@ Link a permission to an action of a contract
 Link a permission level `permlvl` to the action `transfer` of contract `hodlcontract`
 
 ```shell
-cleos set action permission alice hodlcontract transfer permlvl
+clapifiny set action permission alice hodlcontract transfer permlvl
 ```

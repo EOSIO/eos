@@ -13,9 +13,9 @@ Retrieve the balance of an account for a given currency
 There are no options for this subcommand
 
 ## Example
-Get balance of eosio from eosio.token contract for SYS symbol. 
+Get balance of apifiny from apifiny.token contract for SYS symbol.
 
 ```text
-$ cleos get currency balance eosio.token eosio SYS
+$ clapifiny get currency balance apifiny.token apifiny SYS
 999999920.0000 SYS
 ```

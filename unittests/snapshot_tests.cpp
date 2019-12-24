@@ -1,9 +1,9 @@
 #include <sstream>
 
-#include <eosio/chain/block_log.hpp>
-#include <eosio/chain/global_property_object.hpp>
-#include <eosio/chain/snapshot.hpp>
-#include <eosio/testing/tester.hpp>
+#include <apifiny/chain/block_log.hpp>
+#include <apifiny/chain/global_property_object.hpp>
+#include <apifiny/chain/snapshot.hpp>
+#include <apifiny/testing/tester.hpp>
 
 #include <boost/mpl/list.hpp>
 #include <boost/test/unit_test.hpp>
@@ -11,7 +11,7 @@
 #include <contracts.hpp>
 #include <snapshots.hpp>
 
-using namespace eosio;
+using namespace apifiny;
 using namespace testing;
 using namespace chain;
 

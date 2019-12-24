@@ -5,24 +5,24 @@
 The `producer_plugin` loads functionality required for a node to produce blocks.
 
 [[info]]
-| Additional configuration is required to produce blocks. Please read [Configuring Block Producing Node](https://developers.eos.io/eosio-nodeos/docs/environment-producing-node).
+| Additional configuration is required to produce blocks. Please read [Configuring Block Producing Node](https://developers.apifiny.io/apifiny-nodapifiny/docs/environment-producing-node).
 
 ## Usage
 
 ```sh
 # config.ini
-plugin = eosio::producer_plugin [options]
+plugin = apifiny::producer_plugin [options]
 
-# nodeos startup params
-$ nodeos ... -- plugin eosio::producer_plugin [options]
+# nodapifiny startup params
+$ nodapifiny ... -- plugin apifiny::producer_plugin [options]
 ```
 
 ## Options
 
-These can be specified from both the `nodeos` command-line or the `config.ini` file:
+These can be specified from both the `nodapifiny` command-line or the `config.ini` file:
 
 ```console
-Config Options for eosio::producer_plugin:
+Config Options for apifiny::producer_plugin:
 
   -e [ --enable-stale-production ]      Enable block production, even if the 
                                         chain is stale.
@@ -65,13 +65,13 @@ Config Options for eosio::producer_plugin:
                                                            public key
                                         
                                            KEOSD:<data>    is the URL where 
-                                                           keosd is available 
+                                                           kapifinyd is available
                                                            and the approptiate 
                                                            wallet(s) are 
                                                            unlocked
-  --keosd-provider-timeout arg (=5)     Limits the maximum time (in 
+  --kapifinyd-provider-timeout arg (=5)     Limits the maximum time (in
                                         milliseconds) that is allowed for 
-                                        sending blocks to a keosd provider for 
+                                        sending blocks to a kapifinyd provider for
                                         signing
   --greylist-account arg                account that can not access to extended
                                         CPU/NET virtual resources
@@ -109,8 +109,8 @@ Config Options for eosio::producer_plugin:
 
 ```sh
 # config.ini
-plugin = eosio::chain_plugin [operations] [options]
+plugin = apifiny::chain_plugin [operations] [options]
 
 # command-line
-$ nodeos ... --plugin eosio::chain_plugin [operations] [options]
+$ nodapifiny ... --plugin apifiny::chain_plugin [operations] [options]
 ```

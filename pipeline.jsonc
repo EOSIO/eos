@@ -1,5 +1,5 @@
 {
-    "eos-multiversion-tests":
+    "apifiny-multiversion-tests":
     {
         "environment":
         {
@@ -10,14 +10,14 @@
             "170=v1.7.0"
         ]
     },
-    "eosio-docker-builds":
+    "apifiny-docker-builds":
     {
         "environment":
         {
             "BUILDER_TAG": "v2.0.0"
         }
     },
-    "eosio-sync-tests":
+    "apifiny-sync-tests":
     {
         "environment":
         {
@@ -26,7 +26,7 @@
             "SKIP_V200": "false"
         }
     },
-    "eosio-replay-tests":
+    "apifiny-replay-tests":
     {
         "environment":
         {

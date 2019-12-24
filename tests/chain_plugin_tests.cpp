@@ -1,13 +1,13 @@
 #include <boost/test/unit_test.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 
-#include <eosio/testing/tester.hpp>
-#include <eosio/chain/abi_serializer.hpp>
-#include <eosio/chain/wasm_eosio_constraints.hpp>
-#include <eosio/chain/resource_limits.hpp>
-#include <eosio/chain/exceptions.hpp>
-#include <eosio/chain/wast_to_wasm.hpp>
-#include <eosio/chain_plugin/chain_plugin.hpp>
+#include <apifiny/testing/tester.hpp>
+#include <apifiny/chain/abi_serializer.hpp>
+#include <apifiny/chain/wasm_apifiny_constraints.hpp>
+#include <apifiny/chain/resource_limits.hpp>
+#include <apifiny/chain/exceptions.hpp>
+#include <apifiny/chain/wast_to_wasm.hpp>
+#include <apifiny/chain_plugin/chain_plugin.hpp>
 
 #include <contracts.hpp>
 
@@ -27,9 +27,9 @@
 #define TESTER validating_tester
 #endif
 
-using namespace eosio;
-using namespace eosio::chain;
-using namespace eosio::testing;
+using namespace apifiny;
+using namespace apifiny::chain;
+using namespace apifiny::testing;
 using namespace fc;
 
 BOOST_AUTO_TEST_SUITE(chain_plugin_tests)

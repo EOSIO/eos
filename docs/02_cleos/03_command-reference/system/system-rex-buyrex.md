@@ -23,5 +23,5 @@ excerpt: "Buy REX using tokens in owner's REX fund"
 
 
 ```text
-cleos system rex buyrex accountname1 "1 REX"
+clapifiny system rex buyrex accountname1 "1 REX"
 ```

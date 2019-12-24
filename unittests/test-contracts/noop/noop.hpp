@@ -1,13 +1,13 @@
 #pragma once
 
-#include <eosio/eosio.hpp>
+#include <apifiny/apifiny.hpp>
 
-class [[eosio::contract]] noop : public eosio::contract {
+class [[apifiny::contract]] noop : public apifiny::contract {
 public:
-   using eosio::contract::contract;
+   using apifiny::contract::contract;
 
-   [[eosio::action]]
-   void anyaction( eosio::name                       from,
-                   const eosio::ignore<std::string>& type,
-                   const eosio::ignore<std::string>& data );
+   [[apifiny::action]]
+   void anyaction( apifiny::name                       from,
+                   const apifiny::ignore<std::string>& type,
+                   const apifiny::ignore<std::string>& data );
 };

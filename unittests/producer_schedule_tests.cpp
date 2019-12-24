@@ -1,5 +1,5 @@
-#include <eosio/chain/global_property_object.hpp>
-#include <eosio/testing/tester.hpp>
+#include <apifiny/chain/global_property_object.hpp>
+#include <apifiny/testing/tester.hpp>
 
 #include <boost/test/unit_test.hpp>
 
@@ -11,8 +11,8 @@
 #define TESTER validating_tester
 #endif
 
-using namespace eosio::testing;
-using namespace eosio::chain;
+using namespace apifiny::testing;
+using namespace apifiny::chain;
 using mvo = fc::mutable_variant_object;
 
 BOOST_AUTO_TEST_SUITE(producer_schedule_tests)

@@ -1,7 +1,7 @@
-#include <eosio/chain/block_state.hpp>
-#include <eosio/chain/exceptions.hpp>
+#include <apifiny/chain/block_state.hpp>
+#include <apifiny/chain/exceptions.hpp>
 
-namespace eosio { namespace chain {
+namespace apifiny { namespace chain {
 
    namespace {
       constexpr auto additional_sigs_eid = additional_block_signatures_extension::extension_id();
@@ -101,4 +101,4 @@ namespace eosio { namespace chain {
    ,_cached_trxs( std::move(trx_metas) )
    {}
 
-} } /// eosio::chain
+} } /// apifiny::chain

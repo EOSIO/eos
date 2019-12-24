@@ -10,9 +10,9 @@ set parameters dealing with account permissions
 
 `-h,--help` Print this help message and exit
 
-`--add-code` [code] add 'eosio.code' permission to specified permission authority
+`--add-code` [code] add 'apifiny.code' permission to specified permission authority
 
-`--remove-code` [code] remove 'eosio.code' permission from specified permission authority
+`--remove-code` [code] remove 'apifiny.code' permission from specified permission authority
 
 `-x,--expiration` _TEXT_ - set the time in seconds before a transaction expires, defaults to 30s
 
@@ -38,17 +38,17 @@ To modify the permissions of an account, you must have the authority over the ac
 The first example associates a new key to the active permissions of an account.
 
 ```shell
-$ ./cleos set account permission test active '{"threshold" : 1, "keys" : [{"permission":{"key":"EOS8X7Mp7apQWtL6T2sfSZzBcQNUqZB7tARFEm9gA9Tn9nbMdsvBB","permission":"active"},"weight":1}], "accounts" : [{"permission":{"account":"acc2","permission":"active"},"weight":50}]}' owner
+$ ./clapifiny set account permission test active '{"threshold" : 1, "keys" : [{"permission":{"key":"EOS8X7Mp7apQWtL6T2sfSZzBcQNUqZB7tARFEm9gA9Tn9nbMdsvBB","permission":"active"},"weight":1}], "accounts" : [{"permission":{"account":"acc2","permission":"active"},"weight":50}]}' owner
 ```
 This second example modifies the same account permission, but removes the key set in the last example, and grants active authority of the @test account to another account.
 
 ```shell
-$ ./cleos set account permission test active '{"threshold" : 1, "keys" : [], "accounts" : [{"permission":{"account":"sandwich","permission":"active"},"weight":1},{"permission":{"account":"acc1","permission":"active"},"weight":50}]}' owner
+$ ./clapifiny set account permission test active '{"threshold" : 1, "keys" : [], "accounts" : [{"permission":{"account":"sandwich","permission":"active"},"weight":1},{"permission":{"account":"acc1","permission":"active"},"weight":50}]}' owner
 ```
 The third example demonstrates how to setup permissions for multisig.
 
 ```shell
-$ ./cleos set account permission test active '{"threshold" : 100, "keys" : [{"permission":{"key":"EOS8X7Mp7apQWtL6T2sfSZzBcQNUqZB7tARFEm9gA9Tn9nbMdsvBB","permission":"active"},"weight":25}], "accounts" : [{"permission":{"account":"@sandwich","permission":"active"},"weight":75}]}' owner
+$ ./clapifiny set account permission test active '{"threshold" : 100, "keys" : [{"permission":{"key":"EOS8X7Mp7apQWtL6T2sfSZzBcQNUqZB7tARFEm9gA9Tn9nbMdsvBB","permission":"active"},"weight":25}], "accounts" : [{"permission":{"account":"@sandwich","permission":"active"},"weight":75}]}' owner
 ```
 The JSON object used in this command is actually composed of two different types of objects
 

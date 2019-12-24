@@ -1,8 +1,8 @@
-# Nodeos Plugins
+# Nodapifiny Plugins
 
 ## Overview
 
-Plugins extend the core functionality implemented in `nodeos`. Some plugins are mandatory, such as `chain_plugin`, `net_plugin`, and `producer_plugin`, which reflect the modular design of `nodeos`. The other plugins are optional as they provide nice to have features, but non-essential for the nodes operation.
+Plugins extend the core functionality implemented in `nodapifiny`. Some plugins are mandatory, such as `chain_plugin`, `net_plugin`, and `producer_plugin`, which reflect the modular design of `nodapifiny`. The other plugins are optional as they provide nice to have features, but non-essential for the nodes operation.
 
 For information on specific plugins, just select from the list below:
 
@@ -23,5 +23,5 @@ For information on specific plugins, just select from the list below:
 * [`test_control_plugin`](test_control_plugin/index.md)
 * [`txn_test_gen_plugin`](txn_test_gen_plugin/index.md)
 
-[[info | Nodeos is modular]]
-| Plugins add incremental functionality to `nodeos`. Unlike runtime plugins, `nodeos` plugins are built at compile-time.
+[[info | Nodapifiny is modular]]
+| Plugins add incremental functionality to `nodapifiny`. Unlike runtime plugins, `nodapifiny` plugins are built at compile-time.

@@ -1,9 +1,9 @@
 #include <sstream>
 
-#include <eosio/chain/block_log.hpp>
-#include <eosio/chain/global_property_object.hpp>
-#include <eosio/chain/snapshot.hpp>
-#include <eosio/testing/tester.hpp>
+#include <apifiny/chain/block_log.hpp>
+#include <apifiny/chain/global_property_object.hpp>
+#include <apifiny/chain/snapshot.hpp>
+#include <apifiny/testing/tester.hpp>
 
 #include <boost/mpl/list.hpp>
 #include <boost/test/unit_test.hpp>
@@ -11,7 +11,7 @@
 #include <contracts.hpp>
 #include <snapshots.hpp>
 
-using namespace eosio;
+using namespace apifiny;
 using namespace testing;
 using namespace chain;
 
@@ -73,7 +73,7 @@ BOOST_AUTO_TEST_CASE(test_restart_with_different_chain_id)
    other.close();
    genesis_state genesis;
    genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:01.000");
-   genesis.initial_key = eosio::testing::base_tester::get_public_key( config::system_account_name, "active" );
+   genesis.initial_key = apifiny::testing::base_tester::get_public_key( config::system_account_name, "active" );
    fc::optional<chain_id_type> chain_id = genesis.compute_chain_id();
    BOOST_REQUIRE_EXCEPTION(other.open(chain_id), chain_id_type_exception, fc_exception_message_starts_with("chain ID in state "));
 }

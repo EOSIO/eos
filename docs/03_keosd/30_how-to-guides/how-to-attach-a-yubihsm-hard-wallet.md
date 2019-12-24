@@ -4,7 +4,7 @@ Attach a YubiHSM as a hard wallet
 
 ## Before you begin
 
-* Install the currently supported version of `keosd`
+* Install the currently supported version of `kapifinyd`
 
 * Install YubiHSM2 Software Toolkit (YubiHSM2 SDK)
 
@@ -21,25 +21,25 @@ Attach a YubiHSM as a hard wallet
 
 ## Steps
 
-### Configure `keosd`
+### Configure `kapifinyd`
 
-   There are two options to connect `keosd` to YubiHSM:
+   There are two options to connect `kapifinyd` to YubiHSM:
 
    #### Using a YubiHSM connector
 
-   By default, `keosd` will connect to the YubiHSM connector on the default host and port. If a non-default URL is used, set the `--yubihsm-url` option or `yubihsm-url` in `config.ini` with the correct connector URL
+   By default, `kapifinyd` will connect to the YubiHSM connector on the default host and port. If a non-default URL is used, set the `--yubihsm-url` option or `yubihsm-url` in `config.ini` with the correct connector URL
 
    #### Directly connect via USB
 
-   `keosd` also can directly connect to YubiHSM via USB protocol
+   `kapifinyd` also can directly connect to YubiHSM via USB protocol
 
-   If this option is used, set `keosd` startup option as the below:
+   If this option is used, set `kapifinyd` startup option as the below:
 
    ```shell
    --yubihsm-url=ysb://
    ```
 
-### Start `keosd` with AuthKey:
+### Start `kapifinyd` with AuthKey:
 
    ```shell
    --yubihsm-authkey Your_AuthKey_Object_Number
@@ -62,7 +62,7 @@ Attach a YubiHSM as a hard wallet
 ### Unlock YubiHSM wallet with the password of AuthKey using the following option:
 
    ```bash
-   cleos wallet unlock -n YubiHSM --password YOUR_AUTHKEY_PASSWORD
+   clapifiny wallet unlock -n YubiHSM --password YOUR_AUTHKEY_PASSWORD
    ```
 
-After unlocking the wallet, you can use `cleos wallet` commands as usual. Beware as a part of security mechanism, some wallet subcommands, such as retrieve private keys, or remove a key, are not supported when a YubiHSM is used
+After unlocking the wallet, you can use `clapifiny wallet` commands as usual. Beware as a part of security mechanism, some wallet subcommands, such as retrieve private keys, or remove a key, are not supported when a YubiHSM is used

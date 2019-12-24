@@ -20,5 +20,5 @@
 
 
 ```text
-cleos system rex rentcpu accountname1 accountname2 "1 EOS" 0
+clapifiny system rex rentcpu accountname1 accountname2 "1 EOS" 0
 ```

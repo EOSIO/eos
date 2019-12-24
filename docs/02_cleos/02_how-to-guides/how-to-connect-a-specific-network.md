@@ -1,25 +1,25 @@
 ## Goal
 
-Connect to a specific `nodeos` or `keosd` host
+Connect to a specific `nodapifiny` or `kapifinyd` host
 
-`cleos` and `keosd` can connecte to a specific node by using the `-H, --host` and `-p, --port` optional arguments.
+`clapifiny` and `kapifinyd` can connecte to a specific node by using the `-H, --host` and `-p, --port` optional arguments.
 
 [[info]]
-| If no optional arguments are used (i.e. -H and -p), `cleos` automatically tries to connect to a locally running `nodeos` and `keosd` node on the default port
+| If no optional arguments are used (i.e. -H and -p), `clapifiny` automatically tries to connect to a locally running `nodapifiny` and `kapifinyd` node on the default port
 
 ## Before you begin
 
-* Install the currently supported version of cleos
+* Install the currently supported version of clapifiny
 
 ## Steps
-### Connecting to Nodeos
+### Connecting to Nodapifiny
 
 ```bash
-  cleos -url http://nodeos-host:8888 ${subcommand}
+  clapifiny -url http://nodapifiny-host:8888 ${subcommand}
 ```
 
-### Connecting to Keosd
+### Connecting to Kapifinyd
 
 ```bash
-  cleos --wallet-url http://keosd-host:8888 ${subcommand}
+  clapifiny --wallet-url http://kapifinyd-host:8888 ${subcommand}
 ```

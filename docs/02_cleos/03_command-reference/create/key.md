@@ -5,7 +5,7 @@ Creates a new keypair and prints the public and private keys
 ## Usage
 
 ```shell
-Usage: cleos create key [OPTIONS]
+Usage: clapifiny create key [OPTIONS]
 
 Options:
   -h,--help                   Print this help message and exit
@@ -17,7 +17,7 @@ Options:
 ## Command
 
 ```shell
-$ ./cleos create key -f passwd
+$ ./clapifiny create key -f passwd
 ```
 
 ## Output

@@ -18,5 +18,5 @@
 
 
 ```text
-cleos system rex updaterex accountname1
+clapifiny system rex updaterex accountname1
 ```

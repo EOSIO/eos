@@ -18,7 +18,7 @@ if(BUILD_MONGO_DB_PLUGIN)
   endif()
 
   # This needs to be after the else/return in the situation that libmongoc isn't found and we need to avoid building mongo :: 'bsoncxx/builder/basic/kvp.hpp' file not found
-  file(GLOB HEADERS "include/eosio/mongo_db_plugin/*.hpp")
+  file(GLOB HEADERS "include/apifiny/mongo_db_plugin/*.hpp")
   add_library( mongo_db_plugin
                mongo_db_plugin.cpp
                ${HEADERS} )
@@ -55,7 +55,7 @@ if(BUILD_MONGO_DB_PLUGIN)
   endforeach()
 
   target_link_libraries(mongo_db_plugin
-          PUBLIC chain_plugin eosio_chain appbase
+          PUBLIC chain_plugin apifiny_chain appbase
           ${LIBMONGOCXX_STATIC_LIBRARY_PATH} ${LIBBSONCXX_STATIC_LIBRARY_PATH}
           ${MONGOC_STATIC_LIBRARY} ${BSON_STATIC_LIBRARY}
           resolv ${LINK_SASL} ${LINK_ICU} ${LINK_SNAPPY}

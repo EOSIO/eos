@@ -4,7 +4,7 @@
 
 #include "version_impl.hpp"
 
-namespace eosio { namespace version {
+namespace apifiny { namespace version {
 
    const std::string version_major {"@_VERSION_MAJOR_@" };
    const std::string version_minor {"@_VERSION_MINOR_@" };

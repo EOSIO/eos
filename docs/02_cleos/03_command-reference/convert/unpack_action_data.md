@@ -13,7 +13,7 @@ From packed to json action data form
 
 
 ```text
- cleos convert unpack_action_data eosio unlinkauth 000000008090b1ca000000000091b1ca000075982aea3055
+ clapifiny convert unpack_action_data apifiny unlinkauth 000000008090b1ca000000000091b1ca000075982aea3055
 ```
 
 ## Output
@@ -23,6 +23,6 @@ From packed to json action data form
 {
   "account": "test1",
   "code": "test2",
-  "type": "eosioeosio"
+  "type": "apifinyapifiny"
 }
 ```

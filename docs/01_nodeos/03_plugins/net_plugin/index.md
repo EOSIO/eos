@@ -8,19 +8,19 @@ The `net_plugin` provides an authenticated p2p protocol to persistently synchron
 
 ```sh
 # config.ini
-plugin = eosio::net_plugin
+plugin = apifiny::net_plugin
 [options]
 
 # command-line
-$ nodeos ... --plugin eosio::net_plugin [options]
+$ nodapifiny ... --plugin apifiny::net_plugin [options]
 ```
 
 ## Options
 
-These can be specified from both the `nodeos` command-line or the `config.ini` file:
+These can be specified from both the `nodapifiny` command-line or the `config.ini` file:
 
 ```console
-Config Options for eosio::net_plugin:
+Config Options for apifiny::net_plugin:
 
   --p2p-listen-endpoint arg (=0.0.0.0:9876)
                                         The actual host:port used to listen for

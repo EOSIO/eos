@@ -1,5 +1,5 @@
 {
-	"name": "eos",
+	"name": "apifiny",
 	"generators": [
     {
 			"name": "collate_markdown",

@@ -1,10 +1,10 @@
 ## Goal
 
-Create a keosd wallet
+Create a kapifinyd wallet
 
 ## Before you begin
 
-* Install the currently supported version of cleos
+* Install the currently supported version of clapifiny
 
 * Understand the following:
   * What is an account
@@ -15,7 +15,7 @@ Create a keosd wallet
 Create a wallet and save the password to a file:
 
 ```shell
-cleos wallet create --file password.pwd
+clapifiny wallet create --file password.pwd
 ```
 
 You should see something like below. Note here the wallet is named as `default`
@@ -30,7 +30,7 @@ saving password to password.pwd
 Alternatively, you can name a wallet with `-n` option:
 
 ```shell
-cleos wallet create -n named_wallet -f passwd
+clapifiny wallet create -n named_wallet -f passwd
 ```
 
 You will see something like below:

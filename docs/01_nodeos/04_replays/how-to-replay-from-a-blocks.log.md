@@ -15,10 +15,10 @@ data/blocks/reversible  | shared_memory.meta | Remove
 You can use `blocks-dir = "blocks"` in the `config.ini` file, or use the `--blocks-dir` command line option, to specify where to find the `blocks.log` file to replay.
 
 ```sh
-$ nodeos --replay-blockchain \
-  -e -p eosio \
-  --plugin eosio::producer_plugin  \
-  --plugin eosio::chain_api_plugin \
-  --plugin eosio::http_plugin      \
-  >> nodeos.log 2>&1 &
+$ nodapifiny --replay-blockchain \
+  -e -p apifiny \
+  --plugin apifiny::producer_plugin  \
+  --plugin apifiny::chain_api_plugin \
+  --plugin apifiny::http_plugin      \
+  >> nodapifiny.log 2>&1 &
 ```

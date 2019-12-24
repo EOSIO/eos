@@ -38,5 +38,5 @@ Sets or updates an account's code on the blockchain.
 * `--delay-sec` _UINT_ - set the delay_sec seconds, defaults to 0s
 
 ```shell
-cleos set code someaccount1 ./path/to/wasm
+clapifiny set code someaccount1 ./path/to/wasm
 ```

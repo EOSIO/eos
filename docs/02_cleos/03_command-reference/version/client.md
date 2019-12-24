@@ -7,5 +7,5 @@ none
 ## Usage
 
 ```shell
-$ ./cleos version client
+$ ./clapifiny version client
 ```

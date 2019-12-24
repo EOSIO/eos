@@ -11,9 +11,9 @@ None
 
 
 ```shell
-$ cleos wallet lock
+$ clapifiny wallet lock
 or
-$ ./cleos wallet lock -n second-wallet
+$ ./clapifiny wallet lock -n second-wallet
 ```
 
 ## Outputs

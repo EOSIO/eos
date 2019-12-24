@@ -23,5 +23,5 @@ excerpt: "Move REX tokens out of savings bucket"
 
 
 ```text
-cleos system rex mvfromsavings accountname1 "1 REX"
+clapifiny system rex mvfromsavings accountname1 "1 REX"
 ```

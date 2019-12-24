@@ -9,13 +9,13 @@ From plain signed json to packed form
 ## Options
 
 - `-h,--help` - Print this help message and exit
-- `--pack-action-data` - Pack all action data within transaction, needs interaction with nodeos
+- `--pack-action-data` - Pack all action data within transaction, needs interaction with nodapifiny
 
 ## Usage
 
 
 ```shell
-cleos convert pack_transaction '{
+clapifiny convert pack_transaction '{
   "expiration": "2018-08-02T20:24:36",
   "ref_block_num": 14207,
   "ref_block_prefix": 1438248607,
@@ -24,10 +24,10 @@ cleos convert pack_transaction '{
   "delay_sec": 0,
   "context_free_actions": [],
   "actions": [{
-      "account": "eosio",
+      "account": "apifiny",
       "name": "newaccount",
       "authorization": [{
-          "actor": "eosio",
+          "actor": "apifiny",
           "permission": "active"
         }
       ],

@@ -19,5 +19,5 @@
 
 
 ```text
-cleos system rex rexexec accountname1 10
+clapifiny system rex rexexec accountname1 10
 ```

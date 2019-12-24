@@ -4,16 +4,16 @@
 
 The `test_control_plugin` is designed to cause a graceful shutdown when reaching a particular block in a sequence of blocks produced by a specific block producer. It can be invoked to either shutdown on the **head block** or the **last irreversible block**.
 
-This is intended for testing, to determine exactly when a nodeos instance will shutdown.
+This is intended for testing, to determine exactly when a nodapifiny instance will shutdown.
 
 ## Usage
 
 ```sh
 # config.ini
-plugin = eosio::test_control_plugin
+plugin = apifiny::test_control_plugin
 
 # command-line
-$ nodeos ... --plugin eosio::test_control_plugin
+$ nodapifiny ... --plugin apifiny::test_control_plugin
 ```
 
 ## Options
@@ -28,9 +28,9 @@ None
 
 ```sh
 # config.ini
-plugin = eosio::chain_plugin
+plugin = apifiny::chain_plugin
 [options]
 
 # command-line
-$ nodeos ... --plugin eosio::chain_plugin [operations] [options]
+$ nodapifiny ... --plugin apifiny::chain_plugin [operations] [options]
 ```

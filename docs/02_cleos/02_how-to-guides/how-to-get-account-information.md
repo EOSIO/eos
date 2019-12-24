@@ -4,7 +4,7 @@ Query infomation of an EOSIO account
 
 ## Before you begin
 
-* Install the currently supported version of cleos
+* Install the currently supported version of clapifiny
 
 * Understand the following:
   * What is an account
@@ -14,7 +14,7 @@ Query infomation of an EOSIO account
 Execute the command below:
 
 ```shell
-cleos get account ACCOUNT_NAME
+clapifiny get account ACCOUNT_NAME
 ```
 
 You should be see something like below:

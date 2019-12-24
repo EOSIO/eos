@@ -1,7 +1,7 @@
 set(VENDOR "block.one")
-set(PROJECT_NAME "eosio")
+set(PROJECT_NAME "apifiny")
 set(DESC "Software for the EOS.IO network")
-set(URL "https://github.com/eosio/eos")
+set(URL "https://github.com/apifiny/apifiny")
 set(EMAIL "support@block.one")
 
 configure_file(${CMAKE_SOURCE_DIR}/scripts/generate_package.sh.in ${CMAKE_BINARY_DIR}/packages/generate_package.sh @ONLY)

@@ -1,4 +1,4 @@
-macro(eosio_additional_plugin)
+macro(apifiny_additional_plugin)
     set(ADDITIONAL_PLUGINS_TARGET "${ADDITIONAL_PLUGINS_TARGET};${ARGN}" PARENT_SCOPE)
 endmacro()
 
@@ -9,5 +9,5 @@ foreach(ADDITIONAL_PLUGIN_SOURCE_DIR ${EOSIO_ADDITIONAL_PLUGINS})
 endforeach()
 
 foreach(ADDITIONAL_PLUGIN_TARGET ${ADDITIONAL_PLUGINS_TARGET})
-    target_link_libraries( nodeos PRIVATE -Wl,${whole_archive_flag} ${ADDITIONAL_PLUGIN_TARGET} -Wl,${no_whole_archive_flag} )
+    target_link_libraries( nodapifiny PRIVATE -Wl,${whole_archive_flag} ${ADDITIONAL_PLUGIN_TARGET} -Wl,${no_whole_archive_flag} )
 endforeach()

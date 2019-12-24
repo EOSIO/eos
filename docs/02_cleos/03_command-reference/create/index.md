@@ -7,7 +7,7 @@ Create various items, on and off the blockchain
 
 ```text
 Create various items, on and off the blockchain
-Usage: ./cleos create SUBCOMMAND
+Usage: ./clapifiny create SUBCOMMAND
 
 Subcommands:
   key                         Create a new keypair and print the public and private keys

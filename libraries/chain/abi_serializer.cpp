@@ -1,10 +1,10 @@
-#include <eosio/chain/abi_serializer.hpp>
-#include <eosio/chain/contract_types.hpp>
-#include <eosio/chain/authority.hpp>
-#include <eosio/chain/chain_config.hpp>
-#include <eosio/chain/transaction.hpp>
-#include <eosio/chain/asset.hpp>
-#include <eosio/chain/exceptions.hpp>
+#include <apifiny/chain/abi_serializer.hpp>
+#include <apifiny/chain/contract_types.hpp>
+#include <apifiny/chain/authority.hpp>
+#include <apifiny/chain/chain_config.hpp>
+#include <apifiny/chain/transaction.hpp>
+#include <apifiny/chain/asset.hpp>
+#include <apifiny/chain/exceptions.hpp>
 #include <fc/io/raw.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 #include <fc/io/varint.hpp>
@@ -12,7 +12,7 @@
 using namespace boost;
 
 
-namespace eosio { namespace chain {
+namespace apifiny { namespace chain {
 
    const size_t abi_serializer::max_recursion_depth;
 
@@ -103,7 +103,7 @@ namespace eosio { namespace chain {
    void abi_serializer::set_abi(const abi_def& abi, const fc::microseconds& max_serialization_time) {
       impl::abi_traverse_context ctx(max_serialization_time);
 
-      EOS_ASSERT(starts_with(abi.version, "eosio::abi/1."), unsupported_abi_version_exception, "ABI has an unsupported version");
+      EOS_ASSERT(starts_with(abi.version, "apifiny::abi/1."), unsupported_abi_version_exception, "ABI has an unsupported version");
 
       typedefs.clear();
       structs.clear();

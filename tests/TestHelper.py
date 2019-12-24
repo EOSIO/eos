@@ -65,7 +65,7 @@ class TestHelper(object):
             parser.add_argument("--kill-sig", type=str, choices=[Utils.SigKillTag, Utils.SigTermTag], help="kill signal.",
                     default=Utils.SigKillTag)
         if "--kill-count" in includeArgs:
-            parser.add_argument("--kill-count", type=int, help="nodeos instances to kill", default=-1)
+            parser.add_argument("--kill-count", type=int, help="nodapifiny instances to kill", default=-1)
         if "--terminate-at-block" in includeArgs:
             parser.add_argument("--terminate-at-block", type=int, help="block to terminate on when replaying", default=0)
         if "--seed" in includeArgs:
@@ -93,7 +93,7 @@ class TestHelper(object):
             parser.add_argument("--mongodb", help="Configure a MongoDb instance", action='store_true')
         if "--dump-error-details" in includeArgs:
             parser.add_argument("--dump-error-details",
-                                     help="Upon error print etc/eosio/node_*/config.ini and var/lib/node_*/stderr.log to stdout",
+                                     help="Upon error print etc/apifiny/node_*/config.ini and var/lib/node_*/stderr.log to stdout",
                                      action='store_true')
         if "--dont-launch" in includeArgs:
             parser.add_argument("--dont-launch", help="Don't launch own node. Assume node is already running.",
@@ -108,9 +108,9 @@ class TestHelper(object):
         if "--only-bios" in includeArgs:
             parser.add_argument("--only-bios", help="Limit testing to bios node.", action='store_true')
         if "--clean-run" in includeArgs:
-            parser.add_argument("--clean-run", help="Kill all nodeos and kleos instances", action='store_true')
+            parser.add_argument("--clean-run", help="Kill all nodapifiny and klapifiny instances", action='store_true')
         if "--sanity-test" in includeArgs:
-            parser.add_argument("--sanity-test", help="Validates nodeos and kleos are in path and can be started up.", action='store_true')
+            parser.add_argument("--sanity-test", help="Validates nodapifiny and klapifiny are in path and can be started up.", action='store_true')
         if "--alternate-version-labels-file" in includeArgs:
             parser.add_argument("--alternate-version-labels-file", type=str, help="Provide a file to define the labels that can be used in the test and the path to the version installation associated with that.")
 

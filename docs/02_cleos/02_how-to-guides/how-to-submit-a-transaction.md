@@ -4,7 +4,7 @@ Push a transaction
 
 ## Before you begin
 
-* Install the currently supported version of cleos
+* Install the currently supported version of clapifiny
 
 * Understand the following:
   * What is a transaction
@@ -24,7 +24,7 @@ Push a transaction
   "delay_sec": 0,
   "context_free_actions": [],
   "actions": [{
-      "account": "eosio.token",
+      "account": "apifiny.token",
       "name": "transfer",
       "authorization": [{
           "actor": "han",
@@ -42,7 +42,7 @@ Push a transaction
 * You can also create a JSON snippet that uses clear text JSON for `data` field.
 
 [[info]]
-| Be aware that if a clear text `data` field is used, cleos need to fetch copies of required ABIs using `nodeos` API. That operation has a performance overhead on `nodeos`
+| Be aware that if a clear text `data` field is used, clapifiny need to fetch copies of required ABIs using `nodapifiny` API. That operation has a performance overhead on `nodapifiny`
 
 ```JSON
 {
@@ -54,7 +54,7 @@ Push a transaction
   "delay_sec": 0,
   "context_free_actions": [],
   "actions": [{
-      "account": "eosio.token",
+      "account": "apifiny.token",
       "name": "transfer",
       "authorization": [{
           "actor": "han",
@@ -63,7 +63,7 @@ Push a transaction
       ],
       "data": {
         "from": "han",
-        "to": "eosio",
+        "to": "apifiny",
         "quantity": "0.0001 SYS",
         "memo": "m"
       }
@@ -77,13 +77,13 @@ Push a transaction
 * Execute the following command:
 
 ```shell
-cleos push transaction TRX_FILE.json
+clapifiny push transaction TRX_FILE.json
 ```
 
 * Submit a transction from a JSON:
 
 ```shell
-cleos push transaction JSON
+clapifiny push transaction JSON
 ```
 
 <!---

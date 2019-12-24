@@ -1,5 +1,5 @@
-#include <eosio/chain/platform_timer.hpp>
-#include <eosio/chain/platform_timer_accuracy.hpp>
+#include <apifiny/chain/platform_timer.hpp>
+#include <apifiny/chain/platform_timer_accuracy.hpp>
 
 #include <fc/time.hpp>
 #include <fc/fwd_impl.hpp>
@@ -11,7 +11,7 @@
 
 #include <sys/event.h>
 
-namespace eosio { namespace chain {
+namespace apifiny { namespace chain {
 
 //a kqueue & thread is shared for all platform_timer_macos instances
 static std::mutex timer_ref_mutex;

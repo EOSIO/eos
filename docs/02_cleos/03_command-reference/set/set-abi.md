@@ -20,5 +20,5 @@ Create or update the abi on an account
 ## Usage
 
 ```shell
-cleos set abi someaccount1 ./path/to/abi.abi
+clapifiny set abi someaccount1 ./path/to/abi.abi
 ```

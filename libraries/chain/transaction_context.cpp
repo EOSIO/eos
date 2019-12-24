@@ -1,11 +1,11 @@
-#include <eosio/chain/apply_context.hpp>
-#include <eosio/chain/transaction_context.hpp>
-#include <eosio/chain/authorization_manager.hpp>
-#include <eosio/chain/exceptions.hpp>
-#include <eosio/chain/resource_limits.hpp>
-#include <eosio/chain/generated_transaction_object.hpp>
-#include <eosio/chain/transaction_object.hpp>
-#include <eosio/chain/global_property_object.hpp>
+#include <apifiny/chain/apply_context.hpp>
+#include <apifiny/chain/transaction_context.hpp>
+#include <apifiny/chain/authorization_manager.hpp>
+#include <apifiny/chain/exceptions.hpp>
+#include <apifiny/chain/resource_limits.hpp>
+#include <apifiny/chain/generated_transaction_object.hpp>
+#include <apifiny/chain/transaction_object.hpp>
+#include <apifiny/chain/global_property_object.hpp>
 
 #pragma push_macro("N")
 #undef N
@@ -19,7 +19,7 @@
 
 #include <chrono>
 
-namespace eosio { namespace chain {
+namespace apifiny { namespace chain {
 
    transaction_checktime_timer::transaction_checktime_timer(platform_timer& timer)
          : expired(timer.expired), _timer(timer) {
@@ -655,4 +655,4 @@ namespace eosio { namespace chain {
    }
 
 
-} } /// eosio::chain
+} } /// apifiny::chain

@@ -11,19 +11,19 @@ The `history_plugin` provides a cache layer to obtain historical data about the 
 
 ```sh
 # config.ini
-plugin = eosio::history_plugin
+plugin = apifiny::history_plugin
 [options]
 
 # command-line
-$ nodeos ... --plugin eosio::history_plugin [options]
+$ nodapifiny ... --plugin apifiny::history_plugin [options]
 ```
 
 ## Options
 
-These can be specified from both the `nodeos` command-line or the `config.ini` file:
+These can be specified from both the `nodapifiny` command-line or the `config.ini` file:
 
 ```console
-Config Options for eosio::history_plugin:
+Config Options for apifiny::history_plugin:
   -f [ --filter-on ] arg                Track actions which match 
                                         receiver:action:actor. Actor may be 
                                         blank to include all. Action and Actor 

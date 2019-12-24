@@ -2,18 +2,18 @@
 
 ## Description
 
-The `http_plugin` is a core plugin supported by both `nodeos` and `keosd`. The plugin is required to enable any RPC API functionality provided by a `nodeos` or `keosd` instance.
+The `http_plugin` is a core plugin supported by both `nodapifiny` and `kapifinyd`. The plugin is required to enable any RPC API functionality provided by a `nodapifiny` or `kapifinyd` instance.
 
 ## Usage
 
 ```sh
 # config.ini
-plugin = eosio::http_plugin
+plugin = apifiny::http_plugin
 [options]
 
 # command-line
-$ nodeos ... --plugin eosio::http_plugin [options]
-$ keosd ... --plugin eosio::http_plugin [options]
+$ nodapifiny ... --plugin apifiny::http_plugin [options]
+$ kapifinyd ... --plugin apifiny::http_plugin [options]
 ```
 
 ## Options
@@ -21,11 +21,11 @@ $ keosd ... --plugin eosio::http_plugin [options]
 These can be specified from both the command-line or the `config.ini` file:
 
 ```console
-Config Options for eosio::http_plugin:
+Config Options for apifiny::http_plugin:
   --unix-socket-path arg                The filename (relative to data-dir) to 
                                         create a unix socket for HTTP RPC; set 
-                                        blank to disable (=keosd.sock for keosd)
-  --http-server-address arg (=127.0.0.1:8888 for nodeos)
+                                        blank to disable (=kapifinyd.sock for kapifinyd)
+  --http-server-address arg (=127.0.0.1:8888 for nodapifiny)
                                         The local IP and port to listen for 
                                         incoming http connections; set blank to
                                         disable.

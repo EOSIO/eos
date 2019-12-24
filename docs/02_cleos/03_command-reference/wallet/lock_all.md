@@ -10,7 +10,7 @@ None
 
 
 ```shell
-$ ./cleos wallet lock_all
+$ ./clapifiny wallet lock_all
 ```
 
 ## Outputs

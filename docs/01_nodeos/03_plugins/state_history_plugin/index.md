@@ -2,35 +2,35 @@
 
 ## Description
 
-The `state_history_plugin` is useful for capturing historical data about the blockchain state. The plugin receives blockchain data from other connected nodes and caches the data into files. The plugin listens on a socket for applications to connect and sends blockchain data back based on the plugin options specified when starting `nodeos`.
+The `state_history_plugin` is useful for capturing historical data about the blockchain state. The plugin receives blockchain data from other connected nodes and caches the data into files. The plugin listens on a socket for applications to connect and sends blockchain data back based on the plugin options specified when starting `nodapifiny`.
 
 ## Usage
 
 ```sh
 # config.ini
-plugin = eosio::state_history_plugin
+plugin = apifiny::state_history_plugin
 [options]
 
 # command-line
-$ nodeos ... --plugin eosio::state_history_plugin [operations] [options]
+$ nodapifiny ... --plugin apifiny::state_history_plugin [operations] [options]
 ```
 
 ## Operations
 
-These can only be specified from the `nodeos` command-line:
+These can only be specified from the `nodapifiny` command-line:
 
 ```console
-Command Line Options for eosio::state_history_plugin:
+Command Line Options for apifiny::state_history_plugin:
 
   --delete-state-history                clear state history files
 ```
 
 ## Options
 
-These can be specified from both the `nodeos` command-line or the `config.ini` file:
+These can be specified from both the `nodapifiny` command-line or the `config.ini` file:
 
 ```console
-Config Options for eosio::state_history_plugin:
+Config Options for apifiny::state_history_plugin:
 
   --state-history-dir arg (="state-history")
                                         the location of the state-history 
@@ -50,13 +50,13 @@ Config Options for eosio::state_history_plugin:
 
 ### JavaScript Example
 
-  * [Source code](https://github.com/EOSIO/eos/blob/state-history-docs/docs/state-history-plugin/js-example.md)
+  * [Source code](https://github.com/EOSIO/apifiny/blob/state-history-docs/docs/state-history-plugin/js-example.md)
 
 ### history-tools
 
   * [Source code](https://github.com/EOSIO/history-tools/)
-  * [Documentation](https://eosio.github.io/history-tools/)
-  * [Protocol](https://github.com/EOSIO/eos/blob/state-history-docs/docs/state-history-plugin/protocol.md)
+  * [Documentation](https://apifiny.github.io/history-tools/)
+  * [Protocol](https://github.com/EOSIO/apifiny/blob/state-history-docs/docs/state-history-plugin/protocol.md)
 
 ## Dependencies
 
@@ -66,10 +66,10 @@ Config Options for eosio::state_history_plugin:
 
 ```sh
 # config.ini
-plugin = eosio::chain_plugin --disable-replay-opts
+plugin = apifiny::chain_plugin --disable-replay-opts
 
 # command-line
-$ nodeos ... --plugin eosio::chain_plugin --disable-replay-opts
+$ nodapifiny ... --plugin apifiny::chain_plugin --disable-replay-opts
 ```
 
 ## How-To Guides

@@ -1,13 +1,13 @@
-#include <eosio/chain/protocol_feature_manager.hpp>
-#include <eosio/chain/protocol_state_object.hpp>
-#include <eosio/chain/exceptions.hpp>
+#include <apifiny/chain/protocol_feature_manager.hpp>
+#include <apifiny/chain/protocol_state_object.hpp>
+#include <apifiny/chain/exceptions.hpp>
 
 #include <fc/scoped_exit.hpp>
 
 #include <algorithm>
 #include <boost/assign/list_of.hpp>
 
-namespace eosio { namespace chain {
+namespace apifiny { namespace chain {
 
    const std::unordered_map<builtin_protocol_feature_t, builtin_protocol_feature_spec, enum_hash<builtin_protocol_feature_t>>
    builtin_protocol_feature_codenames =
@@ -68,7 +68,7 @@ Also allows a contract to send a deferred transaction in a manner that enables t
 /*
 Builtin protocol feature: FIX_LINKAUTH_RESTRICTION
 
-Removes the restriction on eosio::linkauth for non-native actions named one of the five special action names:
+Removes the restriction on apifiny::linkauth for non-native actions named one of the five special action names:
 updateauth, deleteauth, linkauth, unlinkauth, or canceldelay.
 */
             {}
@@ -115,7 +115,7 @@ Adds CPU and network bandwidth usage to only the first authorizer of a transacti
 /*
 Builtin protocol feature: FORWARD_SETCODE
 
-Forward eosio::setcode actions to the WebAssembly code deployed on the eosio account.
+Forward apifiny::setcode actions to the WebAssembly code deployed on the apifiny account.
 */
             {}
          } )
@@ -709,4 +709,4 @@ Enables new `set_action_return_value` intrinsic which sets a value that is inclu
       }
    }
 
-} }  // eosio::chain
+} }  // apifiny::chain

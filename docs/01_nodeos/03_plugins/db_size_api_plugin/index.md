@@ -28,12 +28,12 @@ None
 
 ```sh
 # config.ini
-plugin = eosio::chain_plugin
+plugin = apifiny::chain_plugin
 [options]
-plugin = eosio::http_plugin
+plugin = apifiny::http_plugin
 [options]
 
 # command-line
-$ nodeos ... --plugin eosio::chain_plugin [operations] [options]  \
-             --plugin eosio::http_plugin [options]
+$ nodapifiny ... --plugin apifiny::chain_plugin [operations] [options]  \
+             --plugin apifiny::http_plugin [options]
 ```

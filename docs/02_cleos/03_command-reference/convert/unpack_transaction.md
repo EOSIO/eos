@@ -9,12 +9,12 @@ From packed to plain signed json form
 ## Options
 
 - `-h,--help` - Print this help message and exit
-- `--unpack-action-data` - Unpack all action data within transaction, needs interaction with nodeos
+- `--unpack-action-data` - Unpack all action data within transaction, needs interaction with nodapifiny
 
 ## Usage
 
 ```text
-cleos convert unpack_transaction '{
+clapifiny convert unpack_transaction '{
   "signatures": [
     "SIG_K1_KmRbWahefwxs6uyCGNR6wNRjw7cntEeFQhNCbyg8S92Kbp7zdSSVGTD2QS7pNVWgcU126zpxaBp9CwUxFpRwSnfkjd46bS"
   ],
@@ -37,10 +37,10 @@ cleos convert unpack_transaction '{
   "delay_sec": 0,
   "context_free_actions": [],
   "actions": [{
-      "account": "eosio",
+      "account": "apifiny",
       "name": "newaccount",
       "authorization": [{
-          "actor": "eosio",
+          "actor": "apifiny",
           "permission": "active"
         }
       ],

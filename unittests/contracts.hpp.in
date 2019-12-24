@@ -1,6 +1,6 @@
 #pragma once
 
-#include <eosio/testing/tester.hpp>
+#include <apifiny/testing/tester.hpp>
 
 #define CORE_SYM_NAME "${CORE_SYMBOL_NAME}"
 #define CORE_SYM_PRECISION 4
@@ -9,11 +9,11 @@
 #define _STRINGIZE2(x) _STRINGIZE1(x)
 
 #define CORE_SYM_STR ( _STRINGIZE2(CORE_SYM_PRECISION) "," CORE_SYM_NAME )
-#define CORE_SYM  ( ::eosio::chain::string_to_symbol_c( CORE_SYM_PRECISION, CORE_SYM_NAME ) )
+#define CORE_SYM  ( ::apifiny::chain::string_to_symbol_c( CORE_SYM_PRECISION, CORE_SYM_NAME ) )
 
 struct core_sym {
-   static inline eosio::chain::asset from_string(const std::string& s) {
-      return eosio::chain::asset::from_string(s + " " CORE_SYM_NAME);
+   static inline apifiny::chain::asset from_string(const std::string& s) {
+      return apifiny::chain::asset::from_string(s + " " CORE_SYM_NAME);
    }
 };
 
@@ -22,20 +22,20 @@ struct core_sym {
    static std::vector<uint8_t> CN ## _wasm() { return read_wasm("${CMAKE_BINARY_DIR}/unittests/" #D "/" #C "/" #C ".wasm"); } \
    static std::vector<char> CN ## _abi() { return read_abi("${CMAKE_BINARY_DIR}/unittests/" #D "/" #C "/" #C ".abi"); }
 
-namespace eosio {
+namespace apifiny {
    namespace testing {
       struct contracts {
-         // Contracts in `eos/unittests/contracts' directory
-         MAKE_READ_WASM_ABI(eosio_bios,   eosio.bios, contracts)
-         MAKE_READ_WASM_ABI(eosio_msig,   eosio.msig, contracts)
-         MAKE_READ_WASM_ABI(eosio_system, eosio.system, contracts)
-         MAKE_READ_WASM_ABI(eosio_token,  eosio.token,  contracts)
-         MAKE_READ_WASM_ABI(eosio_wrap,   eosio.wrap,   contracts)
+         // Contracts in `apifiny/unittests/contracts' directory
+         MAKE_READ_WASM_ABI(apifiny_bios,   apifiny.bios, contracts)
+         MAKE_READ_WASM_ABI(apifiny_msig,   apifiny.msig, contracts)
+         MAKE_READ_WASM_ABI(apifiny_system, apifiny.system, contracts)
+         MAKE_READ_WASM_ABI(apifiny_token,  apifiny.token,  contracts)
+         MAKE_READ_WASM_ABI(apifiny_wrap,   apifiny.wrap,   contracts)
 
-         MAKE_READ_WASM_ABI(before_producer_authority_eosio_bios,   eosio.bios, contracts/old_versions/v1.7.0-develop-preactivate_feature)
-         MAKE_READ_WASM_ABI(before_preactivate_eosio_bios,          eosio.bios, contracts/old_versions/v1.6.0-rc3)
+         MAKE_READ_WASM_ABI(before_producer_authority_apifiny_bios,   apifiny.bios, contracts/old_versions/v1.7.0-develop-preactivate_feature)
+         MAKE_READ_WASM_ABI(before_preactivate_apifiny_bios,          apifiny.bios, contracts/old_versions/v1.6.0-rc3)
 
-         // Contracts in `eos/unittests/unittests/test-contracts' directory
+         // Contracts in `apifiny/unittests/unittests/test-contracts' directory
          MAKE_READ_WASM_ABI(asserter,              asserter,              test-contracts)
          MAKE_READ_WASM_ABI(deferred_test,         deferred_test,         test-contracts)
          MAKE_READ_WASM_ABI(get_sender_test,       get_sender_test,       test-contracts)
@@ -52,5 +52,5 @@ namespace eosio {
          MAKE_READ_WASM_ABI(test_api_multi_index,  test_api_multi_index,  test-contracts)
          MAKE_READ_WASM_ABI(test_ram_limit,        test_ram_limit,        test-contracts)
       };
-   } /// eosio::testing
-}  /// eosio
+   } /// apifiny::testing
+}  /// apifiny

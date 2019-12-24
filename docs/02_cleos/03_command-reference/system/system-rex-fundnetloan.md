@@ -22,5 +22,5 @@ excerpt: "Deposit into a Network loan fund"
 
 
 ```text
-cleos system rex fundnetloan accountname1 abc123 "1 EOS"
+clapifiny system rex fundnetloan accountname1 abc123 "1 EOS"
 ```

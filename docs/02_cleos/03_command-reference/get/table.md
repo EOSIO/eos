@@ -21,10 +21,10 @@ Retrieves the contents of a database table
 `-U,--upper` _TEXT_ - JSON representation of upper bound value value of key, defaults to last
 
 ## Example
-Get the data from the accounts table for the eosio.token contract, for user eosio,
+Get the data from the accounts table for the apifiny.token contract, for user apifiny,
 
 ```shell
-$ cleos get table eosio.token eosio accounts
+$ clapifiny get table apifiny.token apifiny accounts
 {
   "rows": [{
       "balance": "999999920.0000 SYS"

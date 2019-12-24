@@ -6,12 +6,12 @@
        static std::string bin()  { return read_binary_snapshot("${CMAKE_BINARY_DIR}/unittests/snapshots/" #NAME ".bin.gz" ); } \
    };\
 
-namespace eosio {
+namespace apifiny {
    namespace testing {
       struct snapshots {
          // v2
          MAKE_READ_SNAPSHOT(snap_v2)
          MAKE_READ_SNAPSHOT(snap_v2_prod_sched)
       };
-   } /// eosio::testing
-}  /// eosio
+   } /// apifiny::testing
+}  /// apifiny

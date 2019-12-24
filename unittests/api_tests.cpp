@@ -14,14 +14,14 @@
 #include <boost/iostreams/stream_buffer.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 
-#include <eosio/testing/tester.hpp>
-#include <eosio/chain/exceptions.hpp>
-#include <eosio/chain/account_object.hpp>
-#include <eosio/chain/contract_table_objects.hpp>
-#include <eosio/chain/block_summary_object.hpp>
-#include <eosio/chain/global_property_object.hpp>
-#include <eosio/chain/generated_transaction_object.hpp>
-#include <eosio/chain/resource_limits.hpp>
+#include <apifiny/testing/tester.hpp>
+#include <apifiny/chain/exceptions.hpp>
+#include <apifiny/chain/account_object.hpp>
+#include <apifiny/chain/contract_table_objects.hpp>
+#include <apifiny/chain/block_summary_object.hpp>
+#include <apifiny/chain/global_property_object.hpp>
+#include <apifiny/chain/generated_transaction_object.hpp>
+#include <apifiny/chain/resource_limits.hpp>
 
 #include <fc/crypto/digest.hpp>
 #include <fc/exception/exception.hpp>
@@ -50,10 +50,10 @@ static constexpr unsigned long long WASM_TEST_ACTION(const char* cls, const char
 }
 
 struct dummy_action {
-   static eosio::chain::name get_name() {
+   static apifiny::chain::name get_name() {
       return N(dummyaction);
    }
-   static eosio::chain::name get_account() {
+   static apifiny::chain::name get_account() {
       return N(testapi);
    }
 
@@ -67,10 +67,10 @@ struct u128_action {
 };
 
 struct cf_action {
-   static eosio::chain::name get_name() {
+   static apifiny::chain::name get_name() {
       return N(cfaction);
    }
-   static eosio::chain::name get_account() {
+   static apifiny::chain::name get_account() {
       return N(testapi);
    }
 
@@ -113,8 +113,8 @@ FC_REFLECT( invalid_access_action, (code)(val)(index)(store) )
 #define TESTER validating_tester
 #endif
 
-using namespace eosio;
-using namespace eosio::testing;
+using namespace apifiny;
+using namespace apifiny::testing;
 using namespace chain;
 using namespace fc;
 
@@ -255,7 +255,7 @@ bool is_access_violation(fc::unhandled_exception const & e) {
    try {
       std::rethrow_exception(e.get_inner_exception());
     }
-    catch (const eosio::chain::wasm_execution_error& e) {
+    catch (const apifiny::chain::wasm_execution_error& e) {
        return true;
     } catch (...) {
 
@@ -267,7 +267,7 @@ bool is_access_violation(const Runtime::Exception& e) { return true; }
 bool is_assert_exception(fc::assert_exception const & e) { return true; }
 bool is_page_memory_error(page_memory_error const &e) { return true; }
 bool is_unsatisfied_authorization(unsatisfied_authorization const & e) { return true;}
-bool is_wasm_execution_error(eosio::chain::wasm_execution_error const& e) {return true;}
+bool is_wasm_execution_error(apifiny::chain::wasm_execution_error const& e) {return true;}
 bool is_tx_net_usage_exceeded(const tx_net_usage_exceeded& e) { return true; }
 bool is_block_net_usage_exceeded(const tx_cpu_usage_exceeded& e) { return true; }
 bool is_tx_cpu_usage_exceeded(const tx_cpu_usage_exceeded& e) { return true; }
@@ -381,10 +381,10 @@ BOOST_FIXTURE_TEST_CASE(action_receipt_tests, TESTER) { try {
       BOOST_CHECK_EQUAL( m.begin()->second, base_test_auth_seq_num + 4 );
    } );
 
-   set_code( config::system_account_name, contracts::eosio_bios_wasm() );
+   set_code( config::system_account_name, contracts::apifiny_bios_wasm() );
 
-   set_code( N(test), contracts::eosio_bios_wasm() );
-   set_abi( N(test), contracts::eosio_bios_abi().data() );
+   set_code( N(test), contracts::apifiny_bios_wasm() );
+   set_abi( N(test), contracts::apifiny_bios_abi().data() );
 	set_code( N(test), contracts::payloadless_wasm() );
 
    call_doit_and_check( N(test), N(test), [&]( const transaction_trace_ptr& res ) {
@@ -420,7 +420,7 @@ BOOST_FIXTURE_TEST_CASE(action_tests, TESTER) { try {
 
    //test assert_false
    BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( *this, "test_action", "assert_false", {} ),
-                          eosio_assert_message_exception, eosio_assert_message_is("test_action::assert_false") );
+                          apifiny_assert_message_exception, apifiny_assert_message_is("test_action::assert_false") );
 
    // test read_action_normal
    dummy_action dummy13{DUMMY_ACTION_DEFAULT_A, DUMMY_ACTION_DEFAULT_B, DUMMY_ACTION_DEFAULT_C};
@@ -432,8 +432,8 @@ BOOST_FIXTURE_TEST_CASE(action_tests, TESTER) { try {
 
    // test read_action_to_0
    raw_bytes.resize((1<<16)+1);
-   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_action", "read_action_to_0", raw_bytes), eosio::chain::wasm_execution_error,
-         [](const eosio::chain::wasm_execution_error& e) {
+   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_action", "read_action_to_0", raw_bytes), apifiny::chain::wasm_execution_error,
+         [](const apifiny::chain::wasm_execution_error& e) {
             return expect_assert_message(e, "access violation");
          }
       );
@@ -444,8 +444,8 @@ BOOST_FIXTURE_TEST_CASE(action_tests, TESTER) { try {
 
    // test read_action_to_64k
    raw_bytes.resize(3);
-	BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_action", "read_action_to_64k", raw_bytes ), eosio::chain::wasm_execution_error,
-         [](const eosio::chain::wasm_execution_error& e) {
+	BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_action", "read_action_to_64k", raw_bytes ), apifiny::chain::wasm_execution_error,
+         [](const apifiny::chain::wasm_execution_error& e) {
             return expect_assert_message(e, "access violation");
          }
       );
@@ -529,7 +529,7 @@ BOOST_FIXTURE_TEST_CASE(action_tests, TESTER) { try {
    // test current_time
    produce_block();
    BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( *this, "test_action", "test_current_time", fc::raw::pack(now) ),
-                          eosio_assert_message_exception, eosio_assert_message_is("tmp == current_time()")     );
+                          apifiny_assert_message_exception, apifiny_assert_message_is("tmp == current_time()")     );
 
    // test test_current_receiver
    CALL_TEST_FUNCTION( *this, "test_action", "test_current_receiver", fc::raw::pack(N(testapi)));
@@ -714,8 +714,8 @@ BOOST_FIXTURE_TEST_CASE(cf_action_tests, TESTER) { try {
       BOOST_CHECK_EQUAL(ttrace->action_traces[1].act.authorization.size(), 0);
 
       BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( *this, "test_transaction", "send_cf_action_fail", {} ),
-                             eosio_assert_message_exception,
-                             eosio_assert_message_is("context free actions cannot have authorizations") );
+                             apifiny_assert_message_exception,
+                             apifiny_assert_message_is("context free actions cannot have authorizations") );
 
       BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW() }
@@ -1068,8 +1068,8 @@ BOOST_FIXTURE_TEST_CASE(transaction_tests, TESTER) { try {
 
    // test send_action_inline_fail
    BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION(*this, "test_transaction", "send_action_inline_fail", {}),
-                          eosio_assert_message_exception,
-                          eosio_assert_message_is("test_action::assert_false")                          );
+                          apifiny_assert_message_exception,
+                          apifiny_assert_message_is("test_action::assert_false")                          );
 
    //   test send_transaction
       CALL_TEST_FUNCTION(*this, "test_transaction", "send_transaction", {});
@@ -1114,8 +1114,8 @@ BOOST_FIXTURE_TEST_CASE(transaction_tests, TESTER) { try {
    CALL_TEST_FUNCTION(*this, "test_transaction", "test_tapos_block_prefix", fc::raw::pack(control->head_block_id()._hash[1]) );
 
    // test send_action_recurse
-   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION(*this, "test_transaction", "send_action_recurse", {}), eosio::chain::transaction_exception,
-         [](const eosio::chain::transaction_exception& e) {
+   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION(*this, "test_transaction", "send_action_recurse", {}), apifiny::chain::transaction_exception,
+         [](const apifiny::chain::transaction_exception& e) {
             return expect_assert_message(e, "max inline action depth per transaction reached");
          }
       );
@@ -1264,7 +1264,7 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
       dtt_act2.delay_sec = 5;
 
       auto auth = authority(get_public_key(name("testapi"), name(dtt_act2.permission_name).to_string()), 10);
-      auth.accounts.push_back( permission_level_weight{{N(testapi), config::eosio_code_name}, 1} );
+      auth.accounts.push_back( permission_level_weight{{N(testapi), config::apifiny_code_name}, 1} );
 
       push_action(config::system_account_name, updateauth::get_name(), name("testapi"), fc::mutable_variant_object()
               ("account", "testapi")
@@ -1285,7 +1285,7 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
 
       // If the deferred tx receiver == this tx receiver, the authorization checking would originally be bypassed.
       // But not anymore. With the RESTRICT_ACTION_TO_SELF protocol feature activated, it should now objectively
-      // fail because testapi@additional permission is not unilaterally satisfied by testapi@eosio.code.
+      // fail because testapi@additional permission is not unilaterally satisfied by testapi@apifiny.code.
       dtt_action dtt_act3;
       dtt_act3.deferred_account = N(testapi).to_uint64_t();
       dtt_act3.permission_name = N(additional).to_uint64_t();
@@ -1390,8 +1390,8 @@ BOOST_AUTO_TEST_CASE(more_deferred_transaction_tests) { try {
    trx.sign( chain.get_private_key( test_account, "active" ), chain.control->get_chain_id() );
    BOOST_REQUIRE_EXCEPTION(
       chain.push_transaction( trx ),
-      eosio_assert_message_exception,
-      eosio_assert_message_is("fail")
+      apifiny_assert_message_exception,
+      apifiny_assert_message_is("fail")
    );
 
    BOOST_REQUIRE_EQUAL(1, index.size());
@@ -1482,8 +1482,8 @@ BOOST_AUTO_TEST_CASE(more_deferred_transaction_tests) { try {
    trx2.sign( chain.get_private_key( test_account, "active" ), chain.control->get_chain_id() );
    BOOST_REQUIRE_EXCEPTION(
       chain.push_transaction( trx2 ),
-      eosio_assert_message_exception,
-      eosio_assert_message_is("fail")
+      apifiny_assert_message_exception,
+      apifiny_assert_message_is("fail")
    );
 
    BOOST_REQUIRE_EQUAL(3, index.size());
@@ -1672,8 +1672,8 @@ BOOST_FIXTURE_TEST_CASE(multi_index_tests, TESTER) { try {
 
    auto check_failure = [this]( action_name a, const char* expected_error_msg ) {
       BOOST_CHECK_EXCEPTION(  push_action( N(testapi), a, N(testapi), {} ),
-                              eosio_assert_message_exception,
-                              eosio_assert_message_is( expected_error_msg )
+                              apifiny_assert_message_exception,
+                              apifiny_assert_message_is( expected_error_msg )
       );
    };
 
@@ -2153,7 +2153,7 @@ BOOST_FIXTURE_TEST_CASE(permission_usage_tests, TESTER) { try {
                                        N(testapi), config::active_name,
                                        control->head_block_time() + fc::milliseconds(config::block_interval_ms)
                                      })
-   ), eosio_assert_message_exception );
+   ), apifiny_assert_message_exception );
 
    produce_blocks(5);
 
@@ -2161,7 +2161,7 @@ BOOST_FIXTURE_TEST_CASE(permission_usage_tests, TESTER) { try {
 
    push_action(config::system_account_name, linkauth::get_name(), N(bob), fc::mutable_variant_object()
            ("account", "bob")
-           ("code", "eosio")
+           ("code", "apifiny")
            ("type", "reqauth")
            ("requirement", "perm1")
    );
@@ -2195,7 +2195,7 @@ BOOST_FIXTURE_TEST_CASE(permission_usage_tests, TESTER) { try {
                                                             N(bob), N(perm1),
                                                             permission_creation_time
                                           })
-   ), eosio_assert_message_exception );
+   ), apifiny_assert_message_exception );
 
    CALL_TEST_FUNCTION( *this, "test_permission", "test_permission_last_used",
                        fc::raw::pack(test_permission_last_used_action{
@@ -2237,9 +2237,9 @@ BOOST_FIXTURE_TEST_CASE(account_creation_time_tests, TESTER) { try {
 } FC_LOG_AND_RETHROW() }
 
 /*************************************************************************************
- * eosio_assert_code_tests test cases
+ * apifiny_assert_code_tests test cases
  *************************************************************************************/
-BOOST_FIXTURE_TEST_CASE(eosio_assert_code_tests, TESTER) { try {
+BOOST_FIXTURE_TEST_CASE(apifiny_assert_code_tests, TESTER) { try {
    produce_block();
    create_account( N(testapi) );
    produce_block();
@@ -2247,7 +2247,7 @@ BOOST_FIXTURE_TEST_CASE(eosio_assert_code_tests, TESTER) { try {
 
    const char* abi_string = R"=====(
 {
-   "version": "eosio::abi/1.0",
+   "version": "apifiny::abi/1.0",
    "types": [],
    "structs": [],
    "actions": [],
@@ -2269,7 +2269,7 @@ BOOST_FIXTURE_TEST_CASE(eosio_assert_code_tests, TESTER) { try {
    produce_blocks(10);
 
    BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( *this, "test_action", "test_assert_code", fc::raw::pack((uint64_t)42) ),
-                          eosio_assert_code_exception, eosio_assert_code_is(42)                                        );
+                          apifiny_assert_code_exception, apifiny_assert_code_is(42)                                        );
 
 
    auto trace = CALL_TEST_FUNCTION_NO_THROW( *this, "test_action", "test_assert_code", fc::raw::pack((uint64_t)42) );

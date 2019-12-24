@@ -1,10 +1,10 @@
-#include <eosio/chain/block.hpp>
-#include <eosio/chain/merkle.hpp>
+#include <apifiny/chain/block.hpp>
+#include <apifiny/chain/merkle.hpp>
 #include <fc/io/raw.hpp>
 #include <fc/bitutil.hpp>
 #include <algorithm>
 
-namespace eosio { namespace chain {
+namespace apifiny { namespace chain {
    digest_type block_header::digest()const
    {
       return digest_type::hash(*this);

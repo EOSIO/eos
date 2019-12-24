@@ -4,12 +4,12 @@ status of existing connection
 **Command**
 
 ```shell
-$ ./cleos net status
+$ ./clapifiny net status
 ```
 **Output**
 
 ```shell
-Usage: ./cleos net status host
+Usage: ./clapifiny net status host
 
 Positionals:
   host TEXT                   The hostname:port to query status of connection

@@ -8,10 +8,10 @@ The `producer_api_plugin` exposes a number of endpoints for the [`producer_plugi
 
 ```sh
 # config.ini
-plugin = eosio::producer_api_plugin
+plugin = apifiny::producer_api_plugin
 
-# nodeos startup params
-$ nodeos ... --plugin eosio::producer_api_plugin
+# nodapifiny startup params
+$ nodapifiny ... --plugin apifiny::producer_api_plugin
 ```
 
 ## Options
@@ -28,15 +28,15 @@ None
 
 ```sh
 # config.ini
-plugin = eosio::producer_plugin
+plugin = apifiny::producer_plugin
 [options]
-plugin = eosio::chain_plugin
+plugin = apifiny::chain_plugin
 [options]
-plugin = eosio::http_plugin
+plugin = apifiny::http_plugin
 [options]
 
 # command-line
-$ nodeos ... --plugin eosio::producer_plugin [options]  \
-             --plugin eosio::chain_plugin [operations] [options]  \
-             --plugin eosio::http_plugin [options]
+$ nodapifiny ... --plugin apifiny::producer_plugin [options]  \
+             --plugin apifiny::chain_plugin [operations] [options]  \
+             --plugin apifiny::http_plugin [options]
 ```

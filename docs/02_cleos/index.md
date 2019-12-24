@@ -1,38 +1,38 @@
-# Cleos
+# Clapifiny
 
 ## Introduction
 
-`cleos` is a command line tool that interfaces with the REST API exposed by `nodeos`. Developers can also use `cleos` to deploy and test EOSIO smart contracts.
+`clapifiny` is a command line tool that interfaces with the REST API exposed by `nodapifiny`. Developers can also use `clapifiny` to deploy and test EOSIO smart contracts.
 
 ## Installation
 
-`cleos` is distributed as part of the [EOSIO software suite](https://github.com/EOSIO/eos/blob/master/README.md). To install `cleos` just visit the [EOSIO Software Installation](../00_install/index.md) section.
+`clapifiny` is distributed as part of the [EOSIO software suite](https://github.com/EOSIO/apifiny/blob/master/README.md). To install `clapifiny` just visit the [EOSIO Software Installation](../00_install/index.md) section.
 
-## Using Cleos
+## Using Clapifiny
 
-To use `cleos`, you need the end point (IP address and port number) of a running `nodeos` instance. Also, the `nodeos` instance must be configured to load the `eosio::chain_api_plugin` when launched. This allows `nodeos` to respond to the RPC requests coming from `cleos`.
+To use `clapifiny`, you need the end point (IP address and port number) of a running `nodapifiny` instance. Also, the `nodapifiny` instance must be configured to load the `apifiny::chain_api_plugin` when launched. This allows `nodapifiny` to respond to the RPC requests coming from `clapifiny`.
 
-### Cleos Commands
+### Clapifiny Commands
 
-For a list of all `cleos` commands, run:
+For a list of all `clapifiny` commands, run:
 
 ```sh
-$ cleos --help
+$ clapifiny --help
 ```
 
 ```console
 Command Line Interface to EOSIO Client
-Usage: cleos [OPTIONS] SUBCOMMAND
+Usage: clapifiny [OPTIONS] SUBCOMMAND
 
 Options:
   -h,--help                   Print this help message and exit
   -u,--url TEXT=http://127.0.0.1:8888/
-                              the http/https URL where nodeos is running
-  --wallet-url TEXT=unix:///Users/username/eosio-wallet/keosd.sock
-                              the http/https URL where keosd is running
+                              the http/https URL where nodapifiny is running
+  --wallet-url TEXT=unix:///Users/username/apifiny-wallet/kapifinyd.sock
+                              the http/https URL where kapifinyd is running
   -r,--header                 pass specific HTTP header; repeat this option to pass multiple headers
   -n,--no-verify              don't verify peer certificate when using HTTPS
-  --no-auto-keosd             don't automatically launch a keosd if one is not currently running
+  --no-auto-kapifinyd             don't automatically launch a kapifinyd if one is not currently running
   -v,--verbose                output verbose errors and action console output
   --print-request             print HTTP request to STDERR
   --print-response            print HTTP response to STDERR
@@ -50,20 +50,20 @@ Subcommands:
   push                        Push arbitrary transactions to the blockchain
   multisig                    Multisig contract commands
   wrap                        Wrap contract commands
-  system                      Send eosio.system contract action to the blockchain.
+  system                      Send apifiny.system contract action to the blockchain.
 ```
 
-### Cleos Subcommands
+### Clapifiny Subcommands
 
-To get help with any particular subcommand, run `cleos SUBCOMMAND --help`. For instance:
+To get help with any particular subcommand, run `clapifiny SUBCOMMAND --help`. For instance:
 
 ```sh
-$ cleos create --help
+$ clapifiny create --help
 ```
 
 ```console
 Create various items, on and off the blockchain
-Usage: cleos create SUBCOMMAND
+Usage: clapifiny create SUBCOMMAND
 
 Subcommands:
   key                         Create a new keypair and print the public and private keys
@@ -71,15 +71,15 @@ Subcommands:
                               (assumes system contract does not restrict RAM usage)
 ```
 
-`cleos` can also provide usage help for subcommands within subcommands. For instance:
+`clapifiny` can also provide usage help for subcommands within subcommands. For instance:
 
 ```sh
-$ cleos create account --help
+$ clapifiny create account --help
 ```
 
 ```console
 Create a new account on the blockchain (assumes system contract does not restrict RAM usage)
-Usage: cleos create account [OPTIONS] creator name OwnerKey [ActiveKey]
+Usage: clapifiny create account [OPTIONS] creator name OwnerKey [ActiveKey]
 
 Positionals:
   creator TEXT                The name of the account creating the new account (required)
@@ -104,12 +104,12 @@ Options:
   --delay-sec UINT            set the delay_sec seconds, defaults to 0s
 ```
 
-## Cleos Example
+## Clapifiny Example
 
-The following `cleos` command creates a local wallet named `mywallet` and displays the password to the screen:
+The following `clapifiny` command creates a local wallet named `mywallet` and displays the password to the screen:
 
 ```sh
-$ cleos wallet create -n mywallet --to-console
+$ clapifiny wallet create -n mywallet --to-console
 ```
 
 ```console

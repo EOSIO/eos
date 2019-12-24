@@ -11,10 +11,10 @@ The `wallet_plugin` adds access to wallet functionality from a node.
 
 ```sh
 # config.ini
-plugin = eosio::wallet_plugin
+plugin = apifiny::wallet_plugin
 
 # command-line
-$ nodeos ... --plugin eosio::wallet_plugin
+$ nodapifiny ... --plugin apifiny::wallet_plugin
 ```
 
 ## Options
@@ -30,12 +30,12 @@ None
 
 ```sh
 # config.ini
-plugin = eosio::wallet_plugin
+plugin = apifiny::wallet_plugin
 [options]
-plugin = eosio::http_plugin
+plugin = apifiny::http_plugin
 [options]
 
 # command-line
-$ nodeos ... --plugin eosio::wallet_plugin [options]  \
-             --plugin eosio::http_plugin [options]
+$ nodapifiny ... --plugin apifiny::wallet_plugin [options]  \
+             --plugin apifiny::http_plugin [options]
 ```

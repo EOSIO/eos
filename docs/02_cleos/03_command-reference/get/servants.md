@@ -6,12 +6,12 @@ Retrieve accounts which are servants of a given account
 **Command**
 
 ```shell
-$ ./cleos get servants
+$ ./clapifiny get servants
 ```
 **Output**
 
 ```shell
-Usage: ./cleos get servants account
+Usage: ./clapifiny get servants account
 
 Positionals:
   account TEXT                The name of the controlling account
@@ -21,7 +21,7 @@ Positionals:
 
 
 ```shell
-$ ./cleos get servants inita
+$ ./clapifiny get servants inita
 ```
 
 ## Output

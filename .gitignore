@@ -46,17 +46,17 @@ libraries/wasm-jit/Source/Programs/Disassemble
 libraries/wasm-jit/Source/Programs/Test
 libraries/wasm-jit/Source/Programs/wavm
 
-programs/cleos/cleos
+programs/clapifiny/clapifiny
 programs/js_operation_serializer/js_operation_serializer
 programs/data-dir
-programs/eosio-abigen/eosio-abigen
-programs/cleos/config.hpp
-programs/eosio-applesedemo/eosio-applesedemo
-programs/eosio-launcher/config.hpp
-programs/eosio-launcher/eosio-launcher
-programs/keosd/keosd
-programs/nodeos/config.hpp
-programs/nodeos/nodeos
+programs/apifiny-abigen/apifiny-abigen
+programs/clapifiny/config.hpp
+programs/apifiny-applesedemo/apifiny-applesedemo
+programs/apifiny-launcher/config.hpp
+programs/apifiny-launcher/apifiny-launcher
+programs/kapifinyd/kapifinyd
+programs/nodapifiny/config.hpp
+programs/nodapifiny/nodapifiny
 
 scripts/tn_init.sh
 
@@ -64,7 +64,7 @@ tests/plugin_test
 unittests/unit_test
 
 doxygen
-eos.doxygen
+apifiny.doxygen
 
 wallet.json
 witness_node_data_dir
@@ -79,7 +79,7 @@ build.tar.gz
 build/*
 build-debug/*
 
-etc/eosio/node_*
+etc/apifiny/node_*
 var/lib/node_*
 .vscode
 .idea/

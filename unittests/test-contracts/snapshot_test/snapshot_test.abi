@@ -1,6 +1,6 @@
 {
-    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT ",
-    "version": "eosio::abi/1.1",
+    "____comment": "This file was generated with apifiny-abigen. DO NOT EDIT ",
+    "version": "apifiny::abi/1.1",
     "types": [],
     "structs": [
         {

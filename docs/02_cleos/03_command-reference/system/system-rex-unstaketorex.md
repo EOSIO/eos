@@ -20,5 +20,5 @@
 
 
 ```text
-cleos system rex unstaketorex accountname1 accountname2 "1 EOS" 0
+clapifiny system rex unstaketorex accountname1 accountname2 "1 EOS" 0
 ```

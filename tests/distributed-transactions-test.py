@@ -65,7 +65,7 @@ try:
         walletMgr.cleanup()
         print("Stand up walletd")
         if walletMgr.launch() is False:
-            errorExit("Failed to stand up keosd.")
+            errorExit("Failed to stand up kapifinyd.")
     else:
         cluster.killall(allInstances=killAll)
         cluster.cleanup()
@@ -75,7 +75,7 @@ try:
 
         Print("Stand up cluster")
         if cluster.launch(pnodes=pnodes, totalNodes=total_nodes, topo=topo, delay=delay) is False:
-            errorExit("Failed to stand up eos cluster.")
+            errorExit("Failed to stand up apifiny cluster.")
 
         Print ("Wait for Cluster stabilization")
         # wait for cluster to start producing blocks
@@ -87,7 +87,7 @@ try:
     Print("Creating wallet %s if one doesn't already exist." % walletName)
     walletAccounts=[cluster.defproduceraAccount,cluster.defproducerbAccount]
     if not dontLaunch:
-        walletAccounts.append(cluster.eosioAccount)
+        walletAccounts.append(cluster.apifinyAccount)
     wallet=walletMgr.create(walletName, walletAccounts)
     if wallet is None:
         errorExit("Failed to create wallet %s" % (walletName))
@@ -98,10 +98,10 @@ try:
 
     defproduceraAccount=cluster.defproduceraAccount
     defproducerbAccount=cluster.defproducerbAccount
-    eosioAccount=cluster.eosioAccount
+    apifinyAccount=cluster.apifinyAccount
 
     Print("Create accounts.")
-    if not cluster.createAccounts(eosioAccount):
+    if not cluster.createAccounts(apifinyAccount):
         errorExit("Accounts creation failed.")
 
     Print("Spread funds and validate")

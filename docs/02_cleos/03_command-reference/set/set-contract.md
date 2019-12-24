@@ -38,7 +38,7 @@ Creates or updates the contract on an account.
 Here we deploy the standard currency contract. 
 
 ```shell
-$ ./cleos set contract currency ../../../contracts/currency/currency.wast ../../../contracts/currency/currency.abi
+$ ./clapifiny set contract currency ../../../contracts/currency/currency.wast ../../../contracts/currency/currency.abi
 ```
 This will output something similar to...
 
@@ -54,11 +54,11 @@ Publishing contract...
     "expiration": "2017-08-24T18:29:52",
     "scope": [
       "currency",
-      "eos"
+      "apifiny"
     ],
     "signatures": [],
     "messages": [{
-        "code": "eos",
+        "code": "apifiny",
         "type": "setcode",
         "authorization": [{
             "account": "currency",

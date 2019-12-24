@@ -1,5 +1,5 @@
-#include <eosio/chain/block_log.hpp>
-#include <eosio/chain/exceptions.hpp>
+#include <apifiny/chain/block_log.hpp>
+#include <apifiny/chain/exceptions.hpp>
 #include <fstream>
 #include <fc/bitutil.hpp>
 #include <fc/io/cfile.hpp>
@@ -20,7 +20,7 @@
 #define FC_FOPEN(p, m) _wfopen(p, FC_PREL(m))
 #endif
 
-namespace eosio { namespace chain {
+namespace apifiny { namespace chain {
 
    const uint32_t block_log::min_supported_version = 1;
 
@@ -1184,4 +1184,4 @@ namespace eosio { namespace chain {
       return block_n_pos;
    }
 
-   } } /// eosio::chain
+   } } /// apifiny::chain

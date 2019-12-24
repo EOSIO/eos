@@ -8,10 +8,10 @@ The `faucet_testnet_plugin` provides an interface that assists in the automation
 
 ```sh
 # config.ini
-plugin = eosio::faucet_testnet_plugin
+plugin = apifiny::faucet_testnet_plugin
 
 # command-line
-$ nodeos ... --plugin eosio::faucet_testnet_plugin
+$ nodapifiny ... --plugin apifiny::faucet_testnet_plugin
 ```
 
 ## Options

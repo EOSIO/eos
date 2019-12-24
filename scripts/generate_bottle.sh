@@ -17,7 +17,7 @@ fi
 
 NAME="${PROJECT}-${VERSION}.${MAC_VERSION}.bottle"
 
-mkdir -p ${PROJECT}/${VERSION}/opt/eosio/lib/cmake
+mkdir -p ${PROJECT}/${VERSION}/opt/apifiny/lib/cmake
 
 PREFIX="${PROJECT}/${VERSION}"
 SPREFIX="\/usr\/local"
@@ -37,7 +37,7 @@ echo "class Eosio < Formula
 
    homepage \"${URL}\"
    revision 0
-   url \"https://github.com/eosio/eos/archive/v${VERSION}.tar.gz\"
+   url \"https://github.com/apifiny/apifiny/archive/v${VERSION}.tar.gz\"
    version \"${VERSION}\"
 
    option :universal
@@ -49,13 +49,13 @@ echo "class Eosio < Formula
    depends_on :arch =>  :intel
 
    bottle do
-      root_url \"https://github.com/eosio/eos/releases/download/v${VERSION}\"
+      root_url \"https://github.com/apifiny/apifiny/releases/download/v${VERSION}\"
       sha256 \"${hash}\" => :${MAC_VERSION}
    end
    def install
       raise \"Error, only supporting binary packages at this time\"
    end
 end
-__END__" &> eosio.rb
+__END__" &> apifiny.rb
 
 rm -r ${PROJECT} || exit 1

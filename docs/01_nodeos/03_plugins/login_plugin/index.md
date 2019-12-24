@@ -8,19 +8,19 @@ The `login_plugin` supports the concept of applications authenticating with the 
 
 ```sh
 # config.ini
-plugin = eosio::login_plugin
+plugin = apifiny::login_plugin
 [options]
 
 # command-line
-$ nodeos ... --plugin eosio::login_plugin [options]
+$ nodapifiny ... --plugin apifiny::login_plugin [options]
 ```
 
 ## Options
 
-These can be specified from both the `nodeos` command-line or the `config.ini` file:
+These can be specified from both the `nodapifiny` command-line or the `config.ini` file:
 
 ```console
-Config Options for eosio::login_plugin:
+Config Options for apifiny::login_plugin:
   --max-login-requests arg (=1000000)   The maximum number of pending login 
                                         requests
   --max-login-timeout arg (=60)         The maximum timeout for pending login 
@@ -36,12 +36,12 @@ Config Options for eosio::login_plugin:
 
 ```sh
 # config.ini
-plugin = eosio::chain_plugin
+plugin = apifiny::chain_plugin
 [options]
-plugin = eosio::http_plugin 
+plugin = apifiny::http_plugin
 [options]
 
 # command-line
-$ nodeos ... --plugin eosio::chain_plugin [options]  \
-             --plugin eosio::http_plugin [options]
+$ nodapifiny ... --plugin apifiny::chain_plugin [options]  \
+             --plugin apifiny::http_plugin [options]
 ```

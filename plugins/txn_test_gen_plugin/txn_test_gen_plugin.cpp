@@ -1,7 +1,7 @@
-#include <eosio/txn_test_gen_plugin/txn_test_gen_plugin.hpp>
-#include <eosio/chain_plugin/chain_plugin.hpp>
-#include <eosio/chain/wast_to_wasm.hpp>
-#include <eosio/chain/thread_utils.hpp>
+#include <apifiny/txn_test_gen_plugin/txn_test_gen_plugin.hpp>
+#include <apifiny/chain_plugin/chain_plugin.hpp>
+#include <apifiny/chain/wast_to_wasm.hpp>
+#include <apifiny/chain/thread_utils.hpp>
 
 #include <fc/variant.hpp>
 #include <fc/io/json.hpp>
@@ -21,23 +21,23 @@
 
 #include <contracts.hpp>
 
-using namespace eosio::testing;
+using namespace apifiny::testing;
 
-namespace eosio { namespace detail {
+namespace apifiny { namespace detail {
   struct txn_test_gen_empty {};
   struct txn_test_gen_status {
      string status;
   };
 }}
 
-FC_REFLECT(eosio::detail::txn_test_gen_empty, );
-FC_REFLECT(eosio::detail::txn_test_gen_status, (status));
+FC_REFLECT(apifiny::detail::txn_test_gen_empty, );
+FC_REFLECT(apifiny::detail::txn_test_gen_status, (status));
 
-namespace eosio {
+namespace apifiny {
 
 static appbase::abstract_plugin& _txn_test_gen_plugin = app().register_plugin<txn_test_gen_plugin>();
 
-using namespace eosio::chain;
+using namespace apifiny::chain;
 
 #define CALL(api_name, api_handle, call_name, INVOKE, http_response_code) \
 {std::string("/v1/" #api_name "/" #call_name), \
@@ -54,16 +54,16 @@ using namespace eosio::chain;
 #define INVOKE_V_R_R_R(api_handle, call_name, in_param0, in_param1, in_param2) \
      const auto& vs = fc::json::json::from_string(body).as<fc::variants>(); \
      auto status = api_handle->call_name(vs.at(0).as<in_param0>(), vs.at(1).as<in_param1>(), vs.at(2).as<in_param2>()); \
-     eosio::detail::txn_test_gen_status result = { status };
+     apifiny::detail::txn_test_gen_status result = { status };
 
 #define INVOKE_V_R_R(api_handle, call_name, in_param0, in_param1) \
      const auto& vs = fc::json::json::from_string(body).as<fc::variants>(); \
      api_handle->call_name(vs.at(0).as<in_param0>(), vs.at(1).as<in_param1>()); \
-     eosio::detail::txn_test_gen_empty result;
+     apifiny::detail::txn_test_gen_empty result;
 
 #define INVOKE_V_V(api_handle, call_name) \
      api_handle->call_name(); \
-     eosio::detail::txn_test_gen_empty result;
+     apifiny::detail::txn_test_gen_empty result;
 
 #define CALL_ASYNC(api_name, api_handle, call_name, INVOKE, http_response_code) \
 {std::string("/v1/" #api_name "/" #call_name), \
@@ -80,7 +80,7 @@ using namespace eosio::chain;
                http_plugin::handle_exception(#api_name, #call_name, body, cb);\
             }\
          } else {\
-            cb(http_response_code, fc::variant(eosio::detail::txn_test_gen_empty())); \
+            cb(http_response_code, fc::variant(apifiny::detail::txn_test_gen_empty())); \
          }\
       };\
       INVOKE \
@@ -97,7 +97,7 @@ struct txn_test_gen_plugin_impl {
    uint64_t _txcount = 0;
 
    uint16_t                                             thread_pool_size;
-   fc::optional<eosio::chain::named_thread_pool>        thread_pool;
+   fc::optional<apifiny::chain::named_thread_pool>        thread_pool;
    std::shared_ptr<boost::asio::high_resolution_timer>  timer;
    name                                                 newaccountA;
    name                                                 newaccountB;
@@ -135,13 +135,13 @@ struct txn_test_gen_plugin_impl {
       try {
          name creator(init_name);
 
-         abi_def currency_abi_def = fc::json::from_string(contracts::eosio_token_abi().data()).as<abi_def>();
+         abi_def currency_abi_def = fc::json::from_string(contracts::apifiny_token_abi().data()).as<abi_def>();
 
          controller& cc = app().get_plugin<chain_plugin>().chain();
          auto chainid = app().get_plugin<chain_plugin>().get_chain_id();
          auto abi_serializer_max_time = app().get_plugin<chain_plugin>().get_abi_serializer_max_time();
 
-         abi_serializer eosio_token_serializer{fc::json::from_string(contracts::eosio_token_abi().data()).as<abi_def>(), abi_serializer_max_time};
+         abi_serializer apifiny_token_serializer{fc::json::from_string(contracts::apifiny_token_abi().data()).as<abi_def>(), abi_serializer_max_time};
 
          fc::crypto::private_key txn_test_receiver_A_priv_key = fc::crypto::private_key::regenerate(fc::sha256(std::string(64, 'a')));
          fc::crypto::private_key txn_test_receiver_B_priv_key = fc::crypto::private_key::regenerate(fc::sha256(std::string(64, 'b')));
@@ -157,22 +157,22 @@ struct txn_test_gen_plugin_impl {
 
             //create "A" account
             {
-            auto owner_auth   = eosio::chain::authority{1, {{txn_text_receiver_A_pub_key, 1}}, {}};
-            auto active_auth  = eosio::chain::authority{1, {{txn_text_receiver_A_pub_key, 1}}, {}};
+            auto owner_auth   = apifiny::chain::authority{1, {{txn_text_receiver_A_pub_key, 1}}, {}};
+            auto active_auth  = apifiny::chain::authority{1, {{txn_text_receiver_A_pub_key, 1}}, {}};
 
             trx.actions.emplace_back(vector<chain::permission_level>{{creator,name("active")}}, newaccount{creator, newaccountA, owner_auth, active_auth});
             }
             //create "B" account
             {
-            auto owner_auth   = eosio::chain::authority{1, {{txn_text_receiver_B_pub_key, 1}}, {}};
-            auto active_auth  = eosio::chain::authority{1, {{txn_text_receiver_B_pub_key, 1}}, {}};
+            auto owner_auth   = apifiny::chain::authority{1, {{txn_text_receiver_B_pub_key, 1}}, {}};
+            auto active_auth  = apifiny::chain::authority{1, {{txn_text_receiver_B_pub_key, 1}}, {}};
 
             trx.actions.emplace_back(vector<chain::permission_level>{{creator,name("active")}}, newaccount{creator, newaccountB, owner_auth, active_auth});
             }
             //create "T" account
             {
-            auto owner_auth   = eosio::chain::authority{1, {{txn_text_receiver_C_pub_key, 1}}, {}};
-            auto active_auth  = eosio::chain::authority{1, {{txn_text_receiver_C_pub_key, 1}}, {}};
+            auto owner_auth   = apifiny::chain::authority{1, {{txn_text_receiver_C_pub_key, 1}}, {}};
+            auto active_auth  = apifiny::chain::authority{1, {{txn_text_receiver_C_pub_key, 1}}, {}};
 
             trx.actions.emplace_back(vector<chain::permission_level>{{creator,name("active")}}, newaccount{creator, newaccountT, owner_auth, active_auth});
             }
@@ -183,11 +183,11 @@ struct txn_test_gen_plugin_impl {
             trxs.emplace_back(std::move(trx));
          }
 
-         //set newaccountT contract to eosio.token & initialize it
+         //set newaccountT contract to apifiny.token & initialize it
          {
             signed_transaction trx;
 
-            vector<uint8_t> wasm = contracts::eosio_token_wasm();
+            vector<uint8_t> wasm = contracts::apifiny_token_wasm();
 
             setcode handler;
             handler.account = newaccountT;
@@ -198,7 +198,7 @@ struct txn_test_gen_plugin_impl {
             {
                setabi handler;
                handler.account = newaccountT;
-               handler.abi = fc::raw::pack(json::from_string(contracts::eosio_token_abi().data()).as<abi_def>());
+               handler.abi = fc::raw::pack(json::from_string(contracts::apifiny_token_abi().data()).as<abi_def>());
                trx.actions.emplace_back( vector<chain::permission_level>{{newaccountT,name("active")}}, handler);
             }
 
@@ -207,7 +207,7 @@ struct txn_test_gen_plugin_impl {
                act.account = newaccountT;
                act.name = N(create);
                act.authorization = vector<permission_level>{{newaccountT,config::active_name}};
-               act.data = eosio_token_serializer.variant_to_binary("create",
+               act.data = apifiny_token_serializer.variant_to_binary("create",
                                                                    fc::json::from_string(fc::format_string("{\"issuer\":\"${issuer}\",\"maximum_supply\":\"1000000000.0000 CUR\"}}",
                                                                    fc::mutable_variant_object()("issuer",newaccountT.to_string()))),
                                                                    abi_serializer_max_time);
@@ -218,7 +218,7 @@ struct txn_test_gen_plugin_impl {
                act.account = newaccountT;
                act.name = N(issue);
                act.authorization = vector<permission_level>{{newaccountT,config::active_name}};
-               act.data = eosio_token_serializer.variant_to_binary("issue",
+               act.data = apifiny_token_serializer.variant_to_binary("issue",
                                                                    fc::json::from_string(fc::format_string("{\"to\":\"${to}\",\"quantity\":\"60000.0000 CUR\",\"memo\":\"\"}",
                                                                    fc::mutable_variant_object()("to",newaccountT.to_string()))),
                                                                    abi_serializer_max_time);
@@ -229,7 +229,7 @@ struct txn_test_gen_plugin_impl {
                act.account = newaccountT;
                act.name = N(transfer);
                act.authorization = vector<permission_level>{{newaccountT,config::active_name}};
-               act.data = eosio_token_serializer.variant_to_binary("transfer",
+               act.data = apifiny_token_serializer.variant_to_binary("transfer",
                                                                    fc::json::from_string(fc::format_string("{\"from\":\"${from}\",\"to\":\"${to}\",\"quantity\":\"20000.0000 CUR\",\"memo\":\"\"}",
                                                                    fc::mutable_variant_object()("from",newaccountT.to_string())("to",newaccountA.to_string()))),
                                                                    abi_serializer_max_time);
@@ -240,7 +240,7 @@ struct txn_test_gen_plugin_impl {
                act.account = newaccountT;
                act.name = N(transfer);
                act.authorization = vector<permission_level>{{newaccountT,config::active_name}};
-               act.data = eosio_token_serializer.variant_to_binary("transfer",
+               act.data = apifiny_token_serializer.variant_to_binary("transfer",
                                                                    fc::json::from_string(fc::format_string("{\"from\":\"${from}\",\"to\":\"${to}\",\"quantity\":\"20000.0000 CUR\",\"memo\":\"\"}",
                                                                    fc::mutable_variant_object()("from",newaccountT.to_string())("to",newaccountB.to_string()))),
                                                                    abi_serializer_max_time);
@@ -277,12 +277,12 @@ struct txn_test_gen_plugin_impl {
 
       controller& cc = app().get_plugin<chain_plugin>().chain();
       auto abi_serializer_max_time = app().get_plugin<chain_plugin>().get_abi_serializer_max_time();
-      abi_serializer eosio_token_serializer{fc::json::from_string(contracts::eosio_token_abi().data()).as<abi_def>(), abi_serializer_max_time};
+      abi_serializer apifiny_token_serializer{fc::json::from_string(contracts::apifiny_token_abi().data()).as<abi_def>(), abi_serializer_max_time};
       //create the actions here
       act_a_to_b.account = newaccountT;
       act_a_to_b.name = N(transfer);
       act_a_to_b.authorization = vector<permission_level>{{newaccountA,config::active_name}};
-      act_a_to_b.data = eosio_token_serializer.variant_to_binary("transfer",
+      act_a_to_b.data = apifiny_token_serializer.variant_to_binary("transfer",
                                                                   fc::json::from_string(fc::format_string("{\"from\":\"${from}\",\"to\":\"${to}\",\"quantity\":\"1.0000 CUR\",\"memo\":\"${l}\"}",
                                                                   fc::mutable_variant_object()("from",newaccountA.to_string())("to",newaccountB.to_string())("l", salt))),
                                                                   abi_serializer_max_time);
@@ -290,7 +290,7 @@ struct txn_test_gen_plugin_impl {
       act_b_to_a.account = newaccountT;
       act_b_to_a.name = N(transfer);
       act_b_to_a.authorization = vector<permission_level>{{newaccountB,config::active_name}};
-      act_b_to_a.data = eosio_token_serializer.variant_to_binary("transfer",
+      act_b_to_a.data = apifiny_token_serializer.variant_to_binary("transfer",
                                                                   fc::json::from_string(fc::format_string("{\"from\":\"${from}\",\"to\":\"${to}\",\"quantity\":\"1.0000 CUR\",\"memo\":\"${l}\"}",
                                                                   fc::mutable_variant_object()("from",newaccountB.to_string())("to",newaccountA.to_string())("l", salt))),
                                                                   abi_serializer_max_time);
@@ -429,9 +429,9 @@ void txn_test_gen_plugin::plugin_initialize(const variables_map& options) {
       my->txn_reference_block_lag = options.at( "txn-reference-block-lag" ).as<int32_t>();
       my->thread_pool_size = options.at( "txn-test-gen-threads" ).as<uint16_t>();
       const std::string thread_pool_account_prefix = options.at( "txn-test-gen-account-prefix" ).as<std::string>();
-      my->newaccountA = eosio::chain::name(thread_pool_account_prefix + "a");
-      my->newaccountB = eosio::chain::name(thread_pool_account_prefix + "b");
-      my->newaccountT = eosio::chain::name(thread_pool_account_prefix + "t");
+      my->newaccountA = apifiny::chain::name(thread_pool_account_prefix + "a");
+      my->newaccountB = apifiny::chain::name(thread_pool_account_prefix + "b");
+      my->newaccountT = apifiny::chain::name(thread_pool_account_prefix + "t");
       EOS_ASSERT( my->thread_pool_size > 0, chain::plugin_config_exception,
                   "txn-test-gen-threads ${num} must be greater than 0", ("num", my->thread_pool_size) );
    } FC_LOG_AND_RETHROW()

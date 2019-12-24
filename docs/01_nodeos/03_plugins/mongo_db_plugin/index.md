@@ -5,7 +5,7 @@
 
 ## Description
 
-The optional `eosio::mongo_db_plugin` provides archiving of blockchain data into a MongoDB. It is recommended that the plugin be added to a non-producing node as it is designed to shut down on any failed insert into the MongoDB and it is resource intensive. For best results dedicate a `nodeos` instance to running this one plugin. The rationale behind this shutdown on error is so that any issues with connectivity or the mongo database can be fixed and `nodeos` can be restarted without having to resync or replay.
+The optional `apifiny::mongo_db_plugin` provides archiving of blockchain data into a MongoDB. It is recommended that the plugin be added to a non-producing node as it is designed to shut down on any failed insert into the MongoDB and it is resource intensive. For best results dedicate a `nodapifiny` instance to running this one plugin. The rationale behind this shutdown on error is so that any issues with connectivity or the mongo database can be fixed and `nodapifiny` can be restarted without having to resync or replay.
 
 ## Important Notes
 
@@ -15,8 +15,8 @@ The optional `eosio::mongo_db_plugin` provides archiving of blockchain data into
 
 ## Recommendations
 
-* It is recommended that a large `--abi-serializer-max-time-ms` value be passed into the `nodeos` running the `mongo_db_plugin` as the default ABI serializer time limit is not large enough to serialize large blocks.
-* Read-only mode should be used to avoid speculative execution. See [Nodeos Read Modes](../../02_usage/05_nodeos-implementation.md#nodeos-read-modes). Forked data is still recorded (data that never becomes irreversible) but speculative transaction processing and signaling is avoided, minimizing the transaction_traces/action_traces stored.
+* It is recommended that a large `--abi-serializer-max-time-ms` value be passed into the `nodapifiny` running the `mongo_db_plugin` as the default ABI serializer time limit is not large enough to serialize large blocks.
+* Read-only mode should be used to avoid speculative execution. See [Nodapifiny Read Modes](../../02_usage/05_nodapifiny-implementation.md#nodapifiny-read-modes). Forked data is still recorded (data that never becomes irreversible) but speculative transaction processing and signaling is avoided, minimizing the transaction_traces/action_traces stored.
 
 ## Options
 
@@ -24,7 +24,7 @@ These can be specified from both the command-line or the `config.ini` file:
 
 ```console
   -q [ --mongodb-queue-size ] arg (=256)
-                                        The target queue size between nodeos
+                                        The target queue size between nodapifiny
                                         and MongoDB plugin thread.
   --mongodb-abi-cache-size              The maximum size of the abi cache for
                                         serializing data.
@@ -78,7 +78,7 @@ These can be specified from both the command-line or the `config.ini` file:
 ## Example Filters
 
 ```console
-mongodb-filter-out = eosio:onblock:
+mongodb-filter-out = apifiny:onblock:
 mongodb-filter-out = gu2tembqgage::
 mongodb-filter-out = blocktwitter:: 
 ```
@@ -91,35 +91,35 @@ mongodb-filter-out = blocktwitter::
 * `accounts` - created on applied transaction. Always updated even if `mongodb-store-action-traces=false`.
   * Currently limited to just name and ABI if contract abi on account
   * Mostly for internal use as the stored ABI is used to convert action data into JSON for storage as associated actions on contract are processed.
-  * Invalid ABI on account will prevent conversion of action data into JSON for storage resulting in just the action data being stored as hex. For example, the original eosio.system contract did not provide ABI for the `onblock` action and therefore all `onblock` action data is stored as hex until the time `onblock` ABI is added to the eosio.system contract.
+  * Invalid ABI on account will prevent conversion of action data into JSON for storage resulting in just the action data being stored as hex. For example, the original apifiny.system contract did not provide ABI for the `onblock` action and therefore all `onblock` action data is stored as hex until the time `onblock` ABI is added to the apifiny.system contract.
 
 * `action_traces` - created on applied transaction
-  * `receipt` - action_trace action_receipt - see `eosio::chain::action_receipt`
+  * `receipt` - action_trace action_receipt - see `apifiny::chain::action_receipt`
   * `trx_id` - transaction id
-  * `act` - action - see `eosio::chain::action`
+  * `act` - action - see `apifiny::chain::action`
   * `elapsed` - time in microseconds to execute action
   * `console` - console output of action. Always empty unless `contracts-console = true` option specified.
 
 * `block_states` - created on accepted block
   * `block_num`
   * `block_id`
-  * `block_header_state` - see `eosio::chain::block_header_state`
+  * `block_header_state` - see `apifiny::chain::block_header_state`
   * `validated`
   * `in_current_chain`
 
 * `blocks` - created on accepted block
   * `block_num`
   * `block_id`
-  * `block` - signed block - see `eosio::chain::signed_block`
+  * `block` - signed block - see `apifiny::chain::signed_block`
   * `validated` - added on irreversible block
   * `in_current_chain` - added on irreversible block
   * `irreversible=true` - added on irreversible block
 
 * `transaction_traces` - created on applied transaction
-  * see `chain::eosio::transaction_trace`
+  * see `chain::apifiny::transaction_trace`
 
 * `transactions` - created on accepted transaction - does not include inline actions
-  * see `eosio::chain::signed_transaction`. In addition to signed_transaction data the following are also stored.
+  * see `apifiny::chain::signed_transaction`. In addition to signed_transaction data the following are also stored.
   * `trx_id` - transaction id
   * `irreversible=true` - added on irreversible block
   * `block_id` - added on irreversble block

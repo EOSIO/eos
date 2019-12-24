@@ -1,7 +1,7 @@
-#include <eosio/chain/genesis_state.hpp>
+#include <apifiny/chain/genesis_state.hpp>
 
-namespace eosio { namespace chain {
+namespace apifiny { namespace chain {
 
-const string genesis_state::eosio_root_key = "${EOSIO_ROOT_KEY}";
+const string genesis_state::apifiny_root_key = "${EOSIO_ROOT_KEY}";
 
-} } // namespace eosio::chain
+} } // namespace apifiny::chain

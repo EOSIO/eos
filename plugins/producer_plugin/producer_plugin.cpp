@@ -1,11 +1,11 @@
-#include <eosio/producer_plugin/producer_plugin.hpp>
-#include <eosio/chain/plugin_interface.hpp>
-#include <eosio/chain/global_property_object.hpp>
-#include <eosio/chain/generated_transaction_object.hpp>
-#include <eosio/chain/snapshot.hpp>
-#include <eosio/chain/transaction_object.hpp>
-#include <eosio/chain/thread_utils.hpp>
-#include <eosio/chain/unapplied_transaction_queue.hpp>
+#include <apifiny/producer_plugin/producer_plugin.hpp>
+#include <apifiny/chain/plugin_interface.hpp>
+#include <apifiny/chain/global_property_object.hpp>
+#include <apifiny/chain/generated_transaction_object.hpp>
+#include <apifiny/chain/snapshot.hpp>
+#include <apifiny/chain/transaction_object.hpp>
+#include <apifiny/chain/thread_utils.hpp>
+#include <apifiny/chain/unapplied_transaction_queue.hpp>
 
 #include <fc/io/json.hpp>
 #include <fc/log/logger_config.hpp>
@@ -68,12 +68,12 @@ fc::logger _log;
 const fc::string trx_trace_logger_name("transaction_tracing");
 fc::logger _trx_trace_log;
 
-namespace eosio {
+namespace apifiny {
 
 static appbase::abstract_plugin& _producer_plugin = app().register_plugin<producer_plugin>();
 
-using namespace eosio::chain;
-using namespace eosio::chain::plugin_interface;
+using namespace apifiny::chain;
+using namespace apifiny::chain::plugin_interface;
 
 namespace {
    bool failure_is_subjective(const fc::exception& e, bool deadline_is_subjective) {
@@ -206,7 +206,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       int32_t                                                   _last_block_time_offset_us = 0;
       int32_t                                                   _max_scheduled_transaction_time_per_block_ms = 0;
       fc::time_point                                            _irreversible_block_time;
-      fc::microseconds                                          _keosd_provider_timeout_us;
+      fc::microseconds                                          _kapifinyd_provider_timeout_us;
 
       std::vector<chain::digest_type>                           _protocol_features_to_activate;
       bool                                                      _protocol_features_signaled = false; // to mark whether it has been signaled in start_block
@@ -550,7 +550,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       void schedule_delayed_production_loop(const std::weak_ptr<producer_plugin_impl>& weak_this, const block_timestamp_type& current_block_time);
 };
 
-void new_chain_banner(const eosio::chain::controller& db)
+void new_chain_banner(const apifiny::chain::controller& db)
 {
    std::cerr << "\n"
       "*******************************\n"
@@ -605,9 +605,9 @@ void producer_plugin::set_program_options(
           "   <provider-spec> \tis a string in the form <provider-type>:<data>\n\n"
           "   <provider-type> \tis KEY, or KEOSD\n\n"
           "   KEY:<data>      \tis a string form of a valid EOSIO private key which maps to the provided public key\n\n"
-          "   KEOSD:<data>    \tis the URL where keosd is available and the approptiate wallet(s) are unlocked")
-         ("keosd-provider-timeout", boost::program_options::value<int32_t>()->default_value(5),
-          "Limits the maximum time (in milliseconds) that is allowed for sending blocks to a keosd provider for signing")
+          "   KEOSD:<data>    \tis the URL where kapifinyd is available and the approptiate wallet(s) are unlocked")
+         ("kapifinyd-provider-timeout", boost::program_options::value<int32_t>()->default_value(5),
+          "Limits the maximum time (in milliseconds) that is allowed for sending blocks to a kapifinyd provider for signing")
          ("greylist-account", boost::program_options::value<vector<string>>()->composing()->multitoken(),
           "account that can not access to extended CPU/NET virtual resources")
          ("greylist-limit", boost::program_options::value<uint32_t>()->default_value(1000),
@@ -662,7 +662,7 @@ T dejsonify(const string& s) {
 if( options.count(op_name) ) { \
    const std::vector<std::string>& ops = options[op_name].as<std::vector<std::string>>(); \
    for( const auto& v : ops ) { \
-      container.emplace( eosio::chain::name( v ) ); \
+      container.emplace( apifiny::chain::name( v ) ); \
    } \
 }
 
@@ -674,23 +674,23 @@ make_key_signature_provider(const private_key_type& key) {
 }
 
 static producer_plugin_impl::signature_provider_type
-make_keosd_signature_provider(const std::shared_ptr<producer_plugin_impl>& impl, const string& url_str, const public_key_type pubkey) {
-   fc::url keosd_url;
+make_kapifinyd_signature_provider(const std::shared_ptr<producer_plugin_impl>& impl, const string& url_str, const public_key_type pubkey) {
+   fc::url kapifinyd_url;
    if(boost::algorithm::starts_with(url_str, "unix://"))
       //send the entire string after unix:// to http_plugin. It'll auto-detect which part
       // is the unix socket path, and which part is the url to hit on the server
-      keosd_url = fc::url("unix", url_str.substr(7), ostring(), ostring(), ostring(), ostring(), ovariant_object(), fc::optional<uint16_t>());
+      kapifinyd_url = fc::url("unix", url_str.substr(7), ostring(), ostring(), ostring(), ostring(), ovariant_object(), fc::optional<uint16_t>());
    else
-      keosd_url = fc::url(url_str);
+      kapifinyd_url = fc::url(url_str);
    std::weak_ptr<producer_plugin_impl> weak_impl = impl;
 
-   return [weak_impl, keosd_url, pubkey]( const chain::digest_type& digest ) {
+   return [weak_impl, kapifinyd_url, pubkey]( const chain::digest_type& digest ) {
       auto impl = weak_impl.lock();
       if (impl) {
          fc::variant params;
          fc::to_variant(std::make_pair(digest, pubkey), params);
-         auto deadline = impl->_keosd_provider_timeout_us.count() >= 0 ? fc::time_point::now() + impl->_keosd_provider_timeout_us : fc::time_point::maximum();
-         return app().get_plugin<http_client_plugin>().get_client().post_sync(keosd_url, params, deadline).as<chain::signature_type>();
+         auto deadline = impl->_kapifinyd_provider_timeout_us.count() >= 0 ? fc::time_point::now() + impl->_kapifinyd_provider_timeout_us : fc::time_point::maximum();
+         return app().get_plugin<http_client_plugin>().get_client().post_sync(kapifinyd_url, params, deadline).as<chain::signature_type>();
       } else {
          return signature_type();
       }
@@ -746,7 +746,7 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
             if (spec_type_str == "KEY") {
                my->_signature_providers[pubkey] = make_key_signature_provider(private_key_type(spec_data));
             } else if (spec_type_str == "KEOSD") {
-               my->_signature_providers[pubkey] = make_keosd_signature_provider(my, spec_data, pubkey);
+               my->_signature_providers[pubkey] = make_kapifinyd_signature_provider(my, spec_data, pubkey);
             }
 
          } catch (...) {
@@ -755,7 +755,7 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
       }
    }
 
-   my->_keosd_provider_timeout_us = fc::milliseconds(options.at("keosd-provider-timeout").as<int32_t>());
+   my->_kapifinyd_provider_timeout_us = fc::milliseconds(options.at("kapifinyd-provider-timeout").as<int32_t>());
 
    my->_produce_time_offset_us = options.at("produce-time-offset-us").as<int32_t>();
 
@@ -1949,4 +1949,4 @@ void producer_plugin_impl::produce_block() {
 
 }
 
-} // namespace eosio
+} // namespace apifiny

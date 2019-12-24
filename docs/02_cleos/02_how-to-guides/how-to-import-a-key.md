@@ -4,7 +4,7 @@ Import an key pair
 
 ## Before you begin
 
-* Install the currently supported version of cleos
+* Install the currently supported version of clapifiny
 
 * Understand the following:
   * What is a public and private key pair
@@ -12,7 +12,7 @@ Import an key pair
 ## Steps
 
 ```bash
-cleos wallet import
+clapifiny wallet import
 ```
 
 Type your private key. You should see something like below:

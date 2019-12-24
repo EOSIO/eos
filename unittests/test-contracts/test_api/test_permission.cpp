@@ -1,20 +1,20 @@
 #include <limits>
 
-#include <eosiolib/action.hpp>
-#include <eosiolib/db.h>
-#include <eosiolib/eosio.hpp>
-#include <eosiolib/permission.h>
-#include <eosiolib/print.hpp>
-#include <eosiolib/serialize.hpp>
+#include <apifinylib/action.hpp>
+#include <apifinylib/db.h>
+#include <apifinylib/apifiny.hpp>
+#include <apifinylib/permission.h>
+#include <apifinylib/print.hpp>
+#include <apifinylib/serialize.hpp>
 
 #include "test_api.hpp"
 
 
 
 struct check_auth_msg {
-   eosio::name                    account;
-   eosio::name                    permission;
-   std::vector<eosio::public_key> pubkeys;
+   apifiny::name                    account;
+   apifiny::name                    permission;
+   std::vector<apifiny::public_key> pubkeys;
 
    EOSLIB_SERIALIZE( check_auth_msg, (account)(permission)(pubkeys)  )
 };
@@ -22,7 +22,7 @@ struct check_auth_msg {
 void test_permission::check_authorization( uint64_t receiver, uint64_t code, uint64_t action ) {
    (void)code;
    (void)action;
-   using namespace eosio;
+   using namespace apifiny;
 
    auto self = receiver;
    auto params = unpack_action_data<check_auth_msg>();
@@ -43,8 +43,8 @@ void test_permission::check_authorization( uint64_t receiver, uint64_t code, uin
 }
 
 struct test_permission_last_used_msg {
-   eosio::name account;
-   eosio::name permission;
+   apifiny::name account;
+   apifiny::name permission;
    int64_t     last_used_time;
 
    EOSLIB_SERIALIZE( test_permission_last_used_msg, (account)(permission)(last_used_time) )
@@ -53,19 +53,19 @@ struct test_permission_last_used_msg {
 void test_permission::test_permission_last_used( uint64_t /* receiver */, uint64_t code, uint64_t action ) {
    (void)code;
    (void)action;
-   using namespace eosio;
+   using namespace apifiny;
 
    auto params = unpack_action_data<test_permission_last_used_msg>();
 
-   eosio_assert( get_permission_last_used(params.account.value, params.permission.value) == params.last_used_time, "unexpected last used permission time" );
+   apifiny_assert( get_permission_last_used(params.account.value, params.permission.value) == params.last_used_time, "unexpected last used permission time" );
 }
 
 void test_permission::test_account_creation_time( uint64_t /* receiver */, uint64_t code, uint64_t action ) {
    (void)code;
    (void)action;
-   using namespace eosio;
+   using namespace apifiny;
 
    auto params = unpack_action_data<test_permission_last_used_msg>();
 
-   eosio_assert( get_account_creation_time(params.account.value) == params.last_used_time, "unexpected account creation time" );
+   apifiny_assert( get_account_creation_time(params.account.value) == params.last_used_time, "unexpected account creation time" );
 }

@@ -1,5 +1,5 @@
 extern const char* const state_history_plugin_abi = R"({
-    "version": "eosio::abi/1.1",
+    "version": "apifiny::abi/1.1",
     "structs": [
         {
             "name": "get_status_request_v0", "fields": []

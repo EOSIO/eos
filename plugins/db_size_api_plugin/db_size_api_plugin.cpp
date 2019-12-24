@@ -1,12 +1,12 @@
 #include <fc/variant.hpp>
 #include <fc/io/json.hpp>
-#include <eosio/db_size_api_plugin/db_size_api_plugin.hpp>
+#include <apifiny/db_size_api_plugin/db_size_api_plugin.hpp>
 
-namespace eosio {
+namespace apifiny {
 
 static appbase::abstract_plugin& _db_size_api_plugin = app().register_plugin<db_size_api_plugin>();
 
-using namespace eosio;
+using namespace apifiny;
 
 #define CALL(api_name, api_handle, call_name, INVOKE, http_response_code) \
 {std::string("/v1/" #api_name "/" #call_name), \

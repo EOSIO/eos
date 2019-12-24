@@ -1,14 +1,14 @@
 #pragma once
 
-#include <eosio/eosio.hpp>
+#include <apifiny/apifiny.hpp>
 
-class [[eosio::contract]] asserter : public eosio::contract {
+class [[apifiny::contract]] asserter : public apifiny::contract {
 public:
-   using eosio::contract::contract;
+   using apifiny::contract::contract;
 
-   [[eosio::action]]
+   [[apifiny::action]]
    void procassert( int8_t condition, std::string message );
 
-   [[eosio::action]]
+   [[apifiny::action]]
    void provereset();
 };

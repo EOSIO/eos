@@ -14,7 +14,7 @@ from TestHelper import TestHelper
 
 ###############################################################
 # block_log_util_test
-#  Test verifies that the blockLogUtil is still compatible with nodeos
+#  Test verifies that the blockLogUtil is still compatible with nodapifiny
 ###############################################################
 
 Print=Utils.Print
@@ -25,7 +25,7 @@ from core_symbol import CORE_SYMBOL
 def verifyBlockLog(expected_block_num, trimmedBlockLog):
     firstBlockNum = expected_block_num
     for block in trimmedBlockLog:
-        assert 'block_num' in block, print("ERROR: eosio-blocklog didn't return block output")
+        assert 'block_num' in block, print("ERROR: apifiny-blocklog didn't return block output")
         block_num = block['block_num']
         assert block_num == expected_block_num
         expected_block_num += 1
@@ -51,7 +51,7 @@ killEosInstances=not dontKill
 killWallet=not dontKill
 
 WalletdName=Utils.EosWalletName
-ClientName="cleos"
+ClientName="clapifiny"
 
 try:
     TestHelper.printSystemInfo("BEGIN")
@@ -61,7 +61,7 @@ try:
     cluster.cleanup()
     Print("Stand up cluster")
     if cluster.launch(prodCount=prodCount, onlyBios=False, pnodes=pnodes, totalNodes=totalNodes, totalProducers=pnodes*prodCount, useBiosBootFile=False) is False:
-        Utils.errorExit("Failed to stand up eos cluster.")
+        Utils.errorExit("Failed to stand up apifiny cluster.")
 
     Print("Validating system accounts after bootstrap")
     cluster.validateAccounts(None)

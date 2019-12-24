@@ -1,6 +1,6 @@
-#include <eosio/chain/config.hpp>
-#include <eosio/state_history_plugin/state_history_log.hpp>
-#include <eosio/state_history_plugin/state_history_serialization.hpp>
+#include <apifiny/chain/config.hpp>
+#include <apifiny/state_history_plugin/state_history_log.hpp>
+#include <apifiny/state_history_plugin/state_history_serialization.hpp>
 
 #include <boost/asio/bind_executor.hpp>
 #include <boost/asio/ip/host_name.hpp>
@@ -18,7 +18,7 @@ namespace ws = boost::beast::websocket;
 
 extern const char* const state_history_plugin_abi;
 
-namespace eosio {
+namespace apifiny {
 using namespace chain;
 using boost::signals2::scoped_connection;
 
@@ -63,20 +63,20 @@ bool include_delta(const T& old, const T& curr) {
    return true;
 }
 
-bool include_delta(const eosio::chain::table_id_object& old, const eosio::chain::table_id_object& curr) {
+bool include_delta(const apifiny::chain::table_id_object& old, const apifiny::chain::table_id_object& curr) {
    return old.payer != curr.payer;
 }
 
-bool include_delta(const eosio::chain::resource_limits::resource_limits_object& old,
-                   const eosio::chain::resource_limits::resource_limits_object& curr) {
+bool include_delta(const apifiny::chain::resource_limits::resource_limits_object& old,
+                   const apifiny::chain::resource_limits::resource_limits_object& curr) {
    return                                   //
        old.net_weight != curr.net_weight || //
        old.cpu_weight != curr.cpu_weight || //
        old.ram_bytes != curr.ram_bytes;
 }
 
-bool include_delta(const eosio::chain::resource_limits::resource_limits_state_object& old,
-                   const eosio::chain::resource_limits::resource_limits_state_object& curr) {
+bool include_delta(const apifiny::chain::resource_limits::resource_limits_state_object& old,
+                   const apifiny::chain::resource_limits::resource_limits_state_object& curr) {
    return                                                                                       //
        old.average_block_net_usage.last_ordinal != curr.average_block_net_usage.last_ordinal || //
        old.average_block_net_usage.value_ex != curr.average_block_net_usage.value_ex ||         //
@@ -91,8 +91,8 @@ bool include_delta(const eosio::chain::resource_limits::resource_limits_state_ob
        old.virtual_cpu_limit != curr.virtual_cpu_limit;
 }
 
-bool include_delta(const eosio::chain::account_metadata_object& old,
-                   const eosio::chain::account_metadata_object& curr) {
+bool include_delta(const apifiny::chain::account_metadata_object& old,
+                   const apifiny::chain::account_metadata_object& curr) {
    return                                               //
        old.name != curr.name ||                         //
        old.is_privileged() != curr.is_privileged() ||   //
@@ -102,11 +102,11 @@ bool include_delta(const eosio::chain::account_metadata_object& old,
        old.code_hash != curr.code_hash;
 }
 
-bool include_delta(const eosio::chain::code_object& old, const eosio::chain::code_object& curr) { //
+bool include_delta(const apifiny::chain::code_object& old, const apifiny::chain::code_object& curr) { //
    return false;
 }
 
-bool include_delta(const eosio::chain::protocol_state_object& old, const eosio::chain::protocol_state_object& curr) {
+bool include_delta(const apifiny::chain::protocol_state_object& old, const apifiny::chain::protocol_state_object& curr) {
    return old.activated_protocol_features != curr.activated_protocol_features;
 }
 
@@ -397,12 +397,12 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       if (p->action_traces.size() != 1)
          return false;
       auto& act = p->action_traces[0].act;
-      if (act.account != eosio::chain::config::system_account_name || act.name != N(onblock) ||
+      if (act.account != apifiny::chain::config::system_account_name || act.name != N(onblock) ||
           act.authorization.size() != 1)
          return false;
       auto& auth = act.authorization[0];
-      return auth.actor == eosio::chain::config::system_account_name &&
-             auth.permission == eosio::chain::config::active_name;
+      return auth.actor == apifiny::chain::config::system_account_name &&
+             auth.permission == apifiny::chain::config::active_name;
    }
 
    void on_applied_transaction(const transaction_trace_ptr& p, const signed_transaction& t) {
@@ -639,4 +639,4 @@ void state_history_plugin::plugin_shutdown() {
    my->stopping = true;
 }
 
-} // namespace eosio
+} // namespace apifiny

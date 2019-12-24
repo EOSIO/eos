@@ -10,7 +10,7 @@ None.
 
 
 ```shell
-$ ./cleos wallet keys
+$ ./clapifiny wallet keys
 ```
 
 ## Outputs

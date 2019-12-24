@@ -5,14 +5,14 @@ Retrieve version information
 ## Command
 
 ```shell
-$ ./cleos version
+$ ./clapifiny version
 ```
 
 ## Subcommands
 [client](client) - Retrieve version information of the client
 
 ```shell
-$ ./cleos version client
+$ ./clapifiny version client
 ```
 
 ## Output

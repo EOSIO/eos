@@ -2,7 +2,7 @@
 
 ## Before you begin
 
-* Install the currently supported version of cleos
+* Install the currently supported version of clapifiny
 
 * Understand the following:
   * What is a public and private key pair
@@ -12,11 +12,11 @@
 To output the key pair to the console
 
 ```shell
-cleos create key --to-console
+clapifiny create key --to-console
 ```
 
 To save the key pair to file
 
 ```shell
-cleos create key --file FILE_TO_SAVEKEY
+clapifiny create key --file FILE_TO_SAVEKEY
 ```

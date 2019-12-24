@@ -30,11 +30,11 @@ done
 
 EOSIO_STUFF_DIR=$(mktemp -d)
 trap "rm -rf $EOSIO_STUFF_DIR" EXIT
-NODEOS_LAUNCH_PARAMS="./programs/nodeos/nodeos -d $EOSIO_STUFF_DIR --config-dir $EOSIO_STUFF_DIR \
+NODEOS_LAUNCH_PARAMS="./programs/nodapifiny/nodapifiny -d $EOSIO_STUFF_DIR --config-dir $EOSIO_STUFF_DIR \
 --chain-state-db-size-mb 8 --chain-state-db-guard-size-mb 0 --reversible-blocks-db-size-mb 1 \
---reversible-blocks-db-guard-size-mb 0 -e -peosio"
+--reversible-blocks-db-guard-size-mb 0 -e -papifiny"
 
-run_nodeos() {
+run_nodapifiny() {
    if (( $VERBOSE == 0 )); then
       $NODEOS_LAUNCH_PARAMS --http-server-address '' --p2p-listen-endpoint '' "$@" 2>/dev/null &
    else
@@ -43,7 +43,7 @@ run_nodeos() {
 }
 
 run_expect_success() {
-   run_nodeos "$@"
+   run_nodapifiny "$@"
    local NODEOS_PID=$!
    sleep 10
    kill $NODEOS_PID
@@ -51,7 +51,7 @@ run_expect_success() {
 }
 
 run_and_kill() {
-   run_nodeos "$@"
+   run_nodapifiny "$@"
    local NODEOS_PID=$!
    sleep 10
    kill -KILL $NODEOS_PID
@@ -59,7 +59,7 @@ run_and_kill() {
 }
 
 run_expect_failure() {
-   run_nodeos "$@"
+   run_nodapifiny "$@"
    local NODEOS_PID=$!
    MYPID=$$
    (sleep 20; kill -ALRM $MYPID) & local TIMER_PID=$!

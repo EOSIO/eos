@@ -19,5 +19,5 @@
 
 
 ```text
-cleos system rex withdraw accountname1 "1 SYS"
+clapifiny system rex withdraw accountname1 "1 SYS"
 ```

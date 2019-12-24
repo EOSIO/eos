@@ -4,7 +4,7 @@ List all key pairs
 
 ## Before you begin
 
-* Install the currently supported version of cleos
+* Install the currently supported version of clapifiny
 
 * Understand the following:
   * What is a public and private key pair
@@ -14,19 +14,19 @@ List all key pairs
 Unlock your wallet
 
 ```bash
-cleos wallet unlock
+clapifiny wallet unlock
 ```
 
 List all public keys:
 
 ```bash
-cleos wallet keys
+clapifiny wallet keys
 ```
 
 List all private keys:
 
 ```bash
-cleos wallet private_keys
+clapifiny wallet private_keys
 
 ```
 

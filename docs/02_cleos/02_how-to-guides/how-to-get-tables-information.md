@@ -4,7 +4,7 @@ Query infomation of a table
 
 ## Before you begin
 
-* Install the currently supported version of cleos
+* Install the currently supported version of clapifiny
 
 * Understand the following:
   * What is an account
@@ -14,5 +14,5 @@ Query infomation of a table
 ## Steps
 
 ```shell
-cleos get table ACCOUNT SCOPE TABLE
+clapifiny get table ACCOUNT SCOPE TABLE
 ```

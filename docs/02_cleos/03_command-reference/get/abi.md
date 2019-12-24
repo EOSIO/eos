@@ -8,10 +8,10 @@ Retrieves the ABI for an account
 - `-f,--file` _TEXT_ - The name of the file to save the contract .abi to instead of writing to console
 
 ## Examples
-Retrieve and save abi for eosio.token contract
+Retrieve and save abi for apifiny.token contract
 
 ```shell
-$ cleos get abi eosio.token -f eosio.token.abi
+$ clapifiny get abi apifiny.token -f apifiny.token.abi
 
-saving abi to eosio.token.abi
+saving abi to apifiny.token.abi
 ```

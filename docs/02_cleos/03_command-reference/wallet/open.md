@@ -10,9 +10,9 @@ None
 
 
 ```shell
-$ cleos wallet open
+$ clapifiny wallet open
 or
-$ cleos wallet open -n second-wallet
+$ clapifiny wallet open -n second-wallet
 ```
 
 ## Outputs

@@ -1,30 +1,30 @@
 #pragma once
 
-#include <eosio/eosio.hpp>
+#include <apifiny/apifiny.hpp>
 
-class [[eosio::contract]] restrict_action_test : public eosio::contract {
+class [[apifiny::contract]] restrict_action_test : public apifiny::contract {
 public:
-   using eosio::contract::contract;
+   using apifiny::contract::contract;
 
-   [[eosio::action]]
+   [[apifiny::action]]
    void noop( );
 
-   [[eosio::action]]
-   void sendinline( eosio::name authorizer );
+   [[apifiny::action]]
+   void sendinline( apifiny::name authorizer );
 
-   [[eosio::action]]
-   void senddefer( eosio::name authorizer, uint32_t senderid );
+   [[apifiny::action]]
+   void senddefer( apifiny::name authorizer, uint32_t senderid );
 
 
-   [[eosio::action]]
-   void notifyinline( eosio::name acctonotify, eosio::name authorizer );
+   [[apifiny::action]]
+   void notifyinline( apifiny::name acctonotify, apifiny::name authorizer );
 
-   [[eosio::action]]
-   void notifydefer( eosio::name acctonotify, eosio::name authorizer, uint32_t senderid );
+   [[apifiny::action]]
+   void notifydefer( apifiny::name acctonotify, apifiny::name authorizer, uint32_t senderid );
 
-   [[eosio::on_notify("testacc::notifyinline")]]
-   void on_notify_inline( eosio::name acctonotify, eosio::name authorizer );
+   [[apifiny::on_notify("testacc::notifyinline")]]
+   void on_notify_inline( apifiny::name acctonotify, apifiny::name authorizer );
 
-   [[eosio::on_notify("testacc::notifydefer")]]
-   void on_notify_defer( eosio::name acctonotify, eosio::name authorizer, uint32_t senderid );
+   [[apifiny::on_notify("testacc::notifydefer")]]
+   void on_notify_defer( apifiny::name acctonotify, apifiny::name authorizer, uint32_t senderid );
 };

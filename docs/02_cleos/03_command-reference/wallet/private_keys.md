@@ -14,7 +14,7 @@ None
 
 
 ```javascript
-cleos wallet private_keys
+clapifiny wallet private_keys
 ```
 
 ## Outputs

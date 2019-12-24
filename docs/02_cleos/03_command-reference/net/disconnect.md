@@ -4,14 +4,14 @@ close an existing connection
 **Command**
 
 ```shell
-$ ./cleos net disconnect
+$ ./clapifiny net disconnect
 ```
 
 **Output**
 
 ```shell
 close an existing connection
-Usage: ./cleos net disconnect host
+Usage: ./clapifiny net disconnect host
 
 Positionals:
   host TEXT                   The hostname:port to disconnect from.

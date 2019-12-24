@@ -101,10 +101,10 @@ p2p-peer-address = localhost:9877
 required-participation = true
 private-key = ["EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV","5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3"]
 producer-name = initu
-plugin = eosio::producer_plugin
-plugin = eosio::chain_api_plugin
-plugin = eosio::history_plugin
-plugin = eosio::history_api_plugin"""
+plugin = apifiny::producer_plugin
+plugin = apifiny::chain_api_plugin
+plugin = apifiny::history_plugin
+plugin = apifiny::history_api_plugin"""
 
 
 config01="""genesis-json = ./genesis.json
@@ -121,10 +121,10 @@ p2p-peer-address = localhost:9876
 required-participation = true
 private-key = ["EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV","5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3"]
 producer-name = defproducerb
-plugin = eosio::producer_plugin
-plugin = eosio::chain_api_plugin
-plugin = eosio::history_plugin
-plugin = eosio::history_api_plugin"""
+plugin = apifiny::producer_plugin
+plugin = apifiny::chain_api_plugin
+plugin = apifiny::history_plugin
+plugin = apifiny::history_api_plugin"""
 
 
 producers="""producer-name = defproducerd
@@ -181,7 +181,7 @@ def stageScenario(stagedNodeInfos):
     os.makedirs(stagingDir)
     count=0
     for stagedNodeInfo in stagedNodeInfos:
-        configPath=os.path.join(stagingDir, "etc/eosio/node_%02d" % (count))
+        configPath=os.path.join(stagingDir, "etc/apifiny/node_%02d" % (count))
         os.makedirs(configPath)
         with open(os.path.join(configPath, "config.ini"), "w") as textFile:
             print(stagedNodeInfo.config,file=textFile)
@@ -203,7 +203,7 @@ parser.add_argument("-t", "--tests", type=str, help="1|2|3 1=run no malicious pr
 parser.add_argument("-w", type=int, help="system wait time", default=testUtils.Utils.systemWaitTimeout)
 parser.add_argument("-v", help="verbose logging", action='store_true')
 parser.add_argument("--dump-error-details",
-                    help="Upon error print etc/eosio/node_*/config.ini and var/lib/node_*/stderr.log to stdout",
+                    help="Upon error print etc/apifiny/node_*/config.ini and var/lib/node_*/stderr.log to stdout",
                     action='store_true')
 parser.add_argument("--keep-logs", help="Don't delete var/lib/node_* folders upon test completion",
                     action='store_true')
@@ -247,7 +247,7 @@ def myTest(transWillEnterBlock):
         delay=0
         Print("Stand up cluster")
         if cluster.launch(pnodes=pnodes, totalNodes=total_nodes, topo=topo, delay=delay) is False:
-            error("Failed to stand up eos cluster.")
+            error("Failed to stand up apifiny cluster.")
             return False
 
         accounts=testUtils.Cluster.createAccountKeys(1)

@@ -1,41 +1,41 @@
 
 [[info | Recommended Usage]]
-| For most users, the easiest way to use `keosd` is to have `cleos` launch it automatically. Wallet files will be created in the default directory (`~/eosio-wallet`).
+| For most users, the easiest way to use `kapifinyd` is to have `clapifiny` launch it automatically. Wallet files will be created in the default directory (`~/apifiny-wallet`).
 
-## Launching keosd manually
+## Launching kapifinyd manually
 
-`keosd` can be launched manually from the terminal by running:
+`kapifinyd` can be launched manually from the terminal by running:
 
 ```sh
-$ keosd
+$ kapifinyd
 ```
 
-By default, `keosd` creates the folder `~/eosio-wallet` and populates it with a basic `config.ini` file.  The location of the config file can be specified on the command line using the `--config-dir` argument.  The configuration file contains the HTTP server endpoint for incoming HTTP connections and other parameters for cross-origin resource sharing.
+By default, `kapifinyd` creates the folder `~/apifiny-wallet` and populates it with a basic `config.ini` file.  The location of the config file can be specified on the command line using the `--config-dir` argument.  The configuration file contains the HTTP server endpoint for incoming HTTP connections and other parameters for cross-origin resource sharing.
 
 [[info | Wallet Location]]
 | The location of the wallet data folder can be specified on the command line with the `--data-dir` option.
 
 ## Auto-locking
 
-By default, `keosd` is set to lock your wallet after 15 minutes of inactivity. This is configurable in the `config.ini` by setting the timeout seconds in `unlock-timeout`. Setting it to 0 will cause `keosd` to always lock your wallet.
+By default, `kapifinyd` is set to lock your wallet after 15 minutes of inactivity. This is configurable in the `config.ini` by setting the timeout seconds in `unlock-timeout`. Setting it to 0 will cause `kapifinyd` to always lock your wallet.
 
-## Stopping keosd
+## Stopping kapifinyd
 
-The most effective way to stop `keosd` is to find the keosd process and send a SIGTERM signal to it.
+The most effective way to stop `kapifinyd` is to find the kapifinyd process and send a SIGTERM signal to it.
 
 ## Other options
 
-For a list of all commands known to `keosd`, simply run it with no arguments:
+For a list of all commands known to `kapifinyd`, simply run it with no arguments:
 
 ```sh
-$ keosd --help
+$ kapifinyd --help
 ```
 
 ```console
 Application Options:
 
-Config Options for eosio::http_plugin:
-  --unix-socket-path arg (=keosd.sock)  The filename (relative to data-dir) to
+Config Options for apifiny::http_plugin:
+  --unix-socket-path arg (=kapifinyd.sock)  The filename (relative to data-dir) to
                                         create a unix socket for HTTP RPC; set
                                         blank to disable.
   --http-server-address arg             The local IP and port to listen for
@@ -78,7 +78,7 @@ Config Options for eosio::http_plugin:
   --http-threads arg (=2)               Number of worker threads in http thread
                                         pool
 
-Config Options for eosio::wallet_plugin:
+Config Options for apifiny::wallet_plugin:
   --wallet-dir arg (=".")               The path of the wallet files (absolute
                                         path or relative to application data
                                         dir)

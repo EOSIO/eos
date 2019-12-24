@@ -24,5 +24,5 @@ Place a bid on "premium" usernames (account names less than 12 characters)
 
 
 ```shell
-cleos system bidname accountname1 bob "10 SYS"
+clapifiny system bidname accountname1 bob "10 SYS"
 ```

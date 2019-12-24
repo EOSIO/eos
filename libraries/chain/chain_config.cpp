@@ -1,7 +1,7 @@
-#include <eosio/chain/chain_config.hpp>
-#include <eosio/chain/exceptions.hpp>
+#include <apifiny/chain/chain_config.hpp>
+#include <apifiny/chain/exceptions.hpp>
 
-namespace eosio { namespace chain {
+namespace apifiny { namespace chain {
 
    void chain_config::validate()const {
       EOS_ASSERT( target_block_net_usage_pct <= config::percent_100, action_validate_exception,
@@ -38,4 +38,4 @@ namespace eosio { namespace chain {
                   "max authority depth should be at least 1" );
 }
 
-} } // namespace eosio::chain
+} } // namespace apifiny::chain

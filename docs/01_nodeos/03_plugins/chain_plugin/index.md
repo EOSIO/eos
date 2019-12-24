@@ -8,19 +8,19 @@ The `chain_plugin` is a core plugin required to process and aggregate chain data
 
 ```sh
 # config.ini
-plugin = eosio::chain_plugin
+plugin = apifiny::chain_plugin
 [options]
 
 # command-line
-$ nodeos ... --plugin eosio::chain_plugin [operations] [options]
+$ nodapifiny ... --plugin apifiny::chain_plugin [operations] [options]
 ```
 
 ## Operations
 
-These can only be specified from the `nodeos` command-line:
+These can only be specified from the `nodapifiny` command-line:
 
 ```console
-Command Line Options for eosio::chain_plugin:
+Command Line Options for apifiny::chain_plugin:
 
   --genesis-json arg                    File to read Genesis State from
   --genesis-timestamp arg               override the initial timestamp in the 
@@ -58,10 +58,10 @@ Command Line Options for eosio::chain_plugin:
 
 ## Options
 
-These can be specified from both the `nodeos` command-line or the `config.ini` file:
+These can be specified from both the `nodapifiny` command-line or the `config.ini` file:
 
 ```console
-Config Options for eosio::chain_plugin:
+Config Options for apifiny::chain_plugin:
 
   --blocks-dir arg (="blocks")          the location of the blocks directory 
                                         (absolute path or relative to 

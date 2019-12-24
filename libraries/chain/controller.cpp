@@ -1,30 +1,30 @@
-#include <eosio/chain/controller.hpp>
-#include <eosio/chain/transaction_context.hpp>
+#include <apifiny/chain/controller.hpp>
+#include <apifiny/chain/transaction_context.hpp>
 
-#include <eosio/chain/block_log.hpp>
-#include <eosio/chain/fork_database.hpp>
-#include <eosio/chain/exceptions.hpp>
+#include <apifiny/chain/block_log.hpp>
+#include <apifiny/chain/fork_database.hpp>
+#include <apifiny/chain/exceptions.hpp>
 
-#include <eosio/chain/account_object.hpp>
-#include <eosio/chain/code_object.hpp>
-#include <eosio/chain/block_summary_object.hpp>
-#include <eosio/chain/eosio_contract.hpp>
-#include <eosio/chain/global_property_object.hpp>
-#include <eosio/chain/protocol_state_object.hpp>
-#include <eosio/chain/contract_table_objects.hpp>
-#include <eosio/chain/generated_transaction_object.hpp>
-#include <eosio/chain/transaction_object.hpp>
-#include <eosio/chain/reversible_block_object.hpp>
-#include <eosio/chain/genesis_intrinsics.hpp>
-#include <eosio/chain/whitelisted_intrinsics.hpp>
-#include <eosio/chain/database_header_object.hpp>
+#include <apifiny/chain/account_object.hpp>
+#include <apifiny/chain/code_object.hpp>
+#include <apifiny/chain/block_summary_object.hpp>
+#include <apifiny/chain/apifiny_contract.hpp>
+#include <apifiny/chain/global_property_object.hpp>
+#include <apifiny/chain/protocol_state_object.hpp>
+#include <apifiny/chain/contract_table_objects.hpp>
+#include <apifiny/chain/generated_transaction_object.hpp>
+#include <apifiny/chain/transaction_object.hpp>
+#include <apifiny/chain/reversible_block_object.hpp>
+#include <apifiny/chain/genesis_intrinsics.hpp>
+#include <apifiny/chain/whitelisted_intrinsics.hpp>
+#include <apifiny/chain/database_header_object.hpp>
 
-#include <eosio/chain/protocol_feature_manager.hpp>
-#include <eosio/chain/authorization_manager.hpp>
-#include <eosio/chain/resource_limits.hpp>
-#include <eosio/chain/chain_snapshot.hpp>
-#include <eosio/chain/thread_utils.hpp>
-#include <eosio/chain/platform_timer.hpp>
+#include <apifiny/chain/protocol_feature_manager.hpp>
+#include <apifiny/chain/authorization_manager.hpp>
+#include <apifiny/chain/resource_limits.hpp>
+#include <apifiny/chain/chain_snapshot.hpp>
+#include <apifiny/chain/thread_utils.hpp>
+#include <apifiny/chain/platform_timer.hpp>
 
 #include <chainbase/chainbase.hpp>
 #include <fc/io/json.hpp>
@@ -34,7 +34,7 @@
 
 #include <new>
 
-namespace eosio { namespace chain {
+namespace apifiny { namespace chain {
 
 using resource_limits::resource_limits_manager;
 
@@ -308,7 +308,7 @@ struct controller_impl {
         cfg.reversible_cache_size, false, cfg.db_map_mode, cfg.db_hugepage_paths ),
     blog( cfg.blocks_dir ),
     fork_db( cfg.state_dir ),
-    wasmif( cfg.wasm_runtime, cfg.eosvmoc_tierup, db, cfg.state_dir, cfg.eosvmoc_config ),
+    wasmif( cfg.wasm_runtime, cfg.apifinyvmoc_tierup, db, cfg.state_dir, cfg.apifinyvmoc_config ),
     resource_limits( db ),
     authorization( s, db ),
     protocol_features( std::move(pfs) ),
@@ -339,20 +339,20 @@ struct controller_impl {
    set_apply_handler( account_name(#receiver), account_name(#contract), action_name(#action), \
                       &BOOST_PP_CAT(apply_, BOOST_PP_CAT(contract, BOOST_PP_CAT(_,action) ) ) )
 
-   SET_APP_HANDLER( eosio, eosio, newaccount );
-   SET_APP_HANDLER( eosio, eosio, setcode );
-   SET_APP_HANDLER( eosio, eosio, setabi );
-   SET_APP_HANDLER( eosio, eosio, updateauth );
-   SET_APP_HANDLER( eosio, eosio, deleteauth );
-   SET_APP_HANDLER( eosio, eosio, linkauth );
-   SET_APP_HANDLER( eosio, eosio, unlinkauth );
+   SET_APP_HANDLER( apifiny, apifiny, newaccount );
+   SET_APP_HANDLER( apifiny, apifiny, setcode );
+   SET_APP_HANDLER( apifiny, apifiny, setabi );
+   SET_APP_HANDLER( apifiny, apifiny, updateauth );
+   SET_APP_HANDLER( apifiny, apifiny, deleteauth );
+   SET_APP_HANDLER( apifiny, apifiny, linkauth );
+   SET_APP_HANDLER( apifiny, apifiny, unlinkauth );
 /*
-   SET_APP_HANDLER( eosio, eosio, postrecovery );
-   SET_APP_HANDLER( eosio, eosio, passrecovery );
-   SET_APP_HANDLER( eosio, eosio, vetorecovery );
+   SET_APP_HANDLER( apifiny, apifiny, postrecovery );
+   SET_APP_HANDLER( apifiny, apifiny, passrecovery );
+   SET_APP_HANDLER( apifiny, apifiny, vetorecovery );
 */
 
-   SET_APP_HANDLER( eosio, eosio, canceldelay );
+   SET_APP_HANDLER( apifiny, apifiny, canceldelay );
    }
 
    /**
@@ -1006,9 +1006,9 @@ struct controller_impl {
          a.creation_date = initial_timestamp;
 
          if( name == config::system_account_name ) {
-            // The initial eosio ABI value affects consensus; see  https://github.com/EOSIO/eos/issues/7794
+            // The initial apifiny ABI value affects consensus; see  https://github.com/EOSIO/apifiny/issues/7794
             // TODO: This doesn't charge RAM; a fix requires a consensus upgrade.
-            a.abi.assign(eosio_abi_bin, sizeof(eosio_abi_bin));
+            a.abi.assign(apifiny_abi_bin, sizeof(apifiny_abi_bin));
          }
       });
       db.create<account_metadata_object>([&](auto & a) {
@@ -2484,7 +2484,7 @@ void controller::preactivate_feature( const digest_type& feature_digest ) {
    // But it is still possible for a producer to retire a deferred transaction that deals with this subjective
    // information. If they recognized the feature, they would retire it successfully, but a validator that
    // does not recognize the feature should reject the entire block (not just fail the deferred transaction).
-   // Even if they don't recognize the feature, the producer could change their nodeos code to treat it like an
+   // Even if they don't recognize the feature, the producer could change their nodapifiny code to treat it like an
    // objective failure thus leading the deferred transaction to retire with soft_fail or hard_fail.
    // In this case, validators that don't recognize the feature would reject the whole block immediately, and
    // validators that do recognize the feature would likely lead to a different retire status which would
@@ -3324,4 +3324,4 @@ void controller_impl::on_activation<builtin_protocol_feature_t::action_return_va
 
 /// End of protocol feature activation handlers
 
-} } /// eosio::chain
+} } /// apifiny::chain

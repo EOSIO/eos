@@ -1,8 +1,8 @@
 
 # EOSIO - The Most Powerful Infrastructure for Decentralized Applications
 
-[![Build status](https://badge.buildkite.com/370fe5c79410f7d695e4e34c500b4e86e3ac021c6b1f739e20.svg?branch=master)](https://buildkite.com/EOSIO/eosio)
-[![Release](https://img.shields.io/github/v/release/eosio/eos.svg)](https://github.com/eosio/eos/releases)
+[![Build status](https://badge.buildkite.com/370fe5c79410f7d695e4e34c500b4e86e3ac021c6b1f739e20.svg?branch=master)](https://buildkite.com/EOSIO/apifiny)
+[![Release](https://img.shields.io/github/v/release/apifiny/apifiny.svg)](https://github.com/apifiny/apifiny/releases)
 
 Welcome to the EOSIO source code repository! This software enables businesses to rapidly build and deploy high-performance and high-security blockchain-based applications.
 
@@ -72,41 +72,41 @@ Prebuilt software packages are available for the EOSIO [supported operating syst
 
 #### Mac OS X Brew Install
 ```sh
-$ brew tap eosio/eosio
-$ brew install eosio
+$ brew tap apifiny/apifiny
+$ brew install apifiny
 ```
 #### Mac OS X Brew Uninstall
 ```sh
-$ brew remove eosio
+$ brew remove apifiny
 ```
 
 ### Ubuntu Linux:
 
 #### Ubuntu 18.04 Package Install
 ```sh
-$ wget https://github.com/eosio/eos/releases/download/v1.8.0-rc1/eosio_1.8.0-rc1-ubuntu-18.04_amd64.deb
-$ sudo apt install ./eosio_1.8.0-rc1-ubuntu-18.04_amd64.deb
+$ wget https://github.com/apifiny/apifiny/releases/download/v1.8.0-rc1/apifiny_1.8.0-rc1-ubuntu-18.04_amd64.deb
+$ sudo apt install ./apifiny_1.8.0-rc1-ubuntu-18.04_amd64.deb
 ```
 #### Ubuntu 16.04 Package Install
 ```sh
-$ wget https://github.com/eosio/eos/releases/download/v1.8.0-rc1/eosio_1.8.0-rc1-ubuntu-16.04_amd64.deb
-$ sudo apt install ./eosio_1.8.0-rc1-ubuntu-16.04_amd64.deb
+$ wget https://github.com/apifiny/apifiny/releases/download/v1.8.0-rc1/apifiny_1.8.0-rc1-ubuntu-16.04_amd64.deb
+$ sudo apt install ./apifiny_1.8.0-rc1-ubuntu-16.04_amd64.deb
 ```
 #### Ubuntu Package Uninstall
 ```sh
-$ sudo apt remove eosio
+$ sudo apt remove apifiny
 ```
 
 ### RPM-based (CentOS, Amazon Linux, etc.):
 
 #### RPM Package Install
 ```sh
-$ wget https://github.com/eosio/eos/releases/download/v1.8.0-rc1/eosio-1.8.0-rc1.el7.x86_64.rpm
-$ sudo yum install ./eosio-1.8.0-rc1.el7.x86_64.rpm
+$ wget https://github.com/apifiny/apifiny/releases/download/v1.8.0-rc1/apifiny-1.8.0-rc1.el7.x86_64.rpm
+$ sudo yum install ./apifiny-1.8.0-rc1.el7.x86_64.rpm
 ```
 #### RPM Package Uninstall
 ```sh
-$ sudo yum remove eosio
+$ sudo yum remove apifiny
 ```
 
 ## Shell Scripts
@@ -124,28 +124,28 @@ Check the **Build from Source** section in the documentation for more informatio
 ### Build Script
 To build the EOSIO binaries and install dependencies, run:
 ```sh
-git clone --recursive https://github.com/eosio/eos
-cd eos
-./scripts/eosio_build.sh
+git clone --recursive https://github.com/apifiny/apifiny
+cd apifiny
+./scripts/apifiny_build.sh
 ```
 
 ### Install Script
 To install the EOSIO built binaries, run:
 ```sh
-./scripts/eosio_install.sh
+./scripts/apifiny_install.sh
 ```
 
 ### Uninstall Script
 To uninstall the EOSIO built/installed binaries and dependencies, run:
 ```sh
-./scripts/eosio_uninstall.sh
+./scripts/apifiny_uninstall.sh
 ```
 
 ## Resources
-1. [Website](https://eos.io)
-1. [Blog](https://medium.com/eosio)
-1. [Developer Portal](https://developers.eos.io)
-1. [StackExchange for Q&A](https://eosio.stackexchange.com/)
+1. [Website](https://apifiny.io)
+1. [Blog](https://medium.com/apifiny)
+1. [Developer Portal](https://developers.apifiny.io)
+1. [StackExchange for Q&A](https://apifiny.stackexchange.com/)
 1. [Community Telegram Group](https://t.me/EOSProject)
 1. [Developer Telegram Group](https://t.me/joinchat/EaEnSUPktgfoI-XPfMYtcQ)
 1. [White Paper](https://github.com/EOSIO/Documentation/blob/master/TechnicalWhitePaper.md)
@@ -153,7 +153,7 @@ To uninstall the EOSIO built/installed binaries and dependencies, run:
 
 <a name="gettingstarted"></a>
 ## Getting Started
-Instructions detailing the process of getting the software, building it, running a simple test network that produces blocks, account creation and uploading a sample contract to the blockchain can be found in [Getting Started](https://developers.eos.io/eosio-home/docs) on the [EOSIO Developer Portal](https://developers.eos.io).
+Instructions detailing the process of getting the software, building it, running a simple test network that produces blocks, account creation and uploading a sample contract to the blockchain can be found in [Getting Started](https://developers.apifiny.io/apifiny-home/docs) on the [EOSIO Developer Portal](https://developers.apifiny.io).
 
 ## Contributing
 
