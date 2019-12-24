@@ -69,8 +69,8 @@ void blocklog::read_log() {
    report_time rt("reading log");
    block_log block_logger(blocks_dir);
    const auto end = block_logger.read_head();
-   EOS_ASSERT( end, block_log_exception, "No blocks found in block log" );
-   EOS_ASSERT( end->block_num() > 1, block_log_exception, "Only one block found in block log" );
+   APIFINY_ASSERT( end, block_log_exception, "No blocks found in block log" );
+   APIFINY_ASSERT( end->block_num() > 1, block_log_exception, "Only one block found in block log" );
 
    //fix message below, first block might not be 1, first_block_num is not set yet
    ilog( "existing block log contains block num ${first} through block num ${n}",
@@ -245,17 +245,17 @@ void smoke_test(bfs::path block_dir) {
    cout << "\nSmoke test of blocks.log and blocks.index in directory " << block_dir << '\n';
    trim_data td(block_dir);
    auto status = fseek(td.blk_in, -sizeof(uint64_t), SEEK_END);             //get last_block from blocks.log, compare to from blocks.index
-   EOS_ASSERT( status == 0, block_log_exception, "cannot seek to ${file} ${pos} from beginning of file", ("file", td.block_file_name.string())("pos", sizeof(uint64_t)) );
+   APIFINY_ASSERT( status == 0, block_log_exception, "cannot seek to ${file} ${pos} from beginning of file", ("file", td.block_file_name.string())("pos", sizeof(uint64_t)) );
    uint64_t file_pos;
    auto size = fread((void*)&file_pos, sizeof(uint64_t), 1, td.blk_in);
-   EOS_ASSERT( size == 1, block_log_exception, "${file} read fails", ("file", td.block_file_name.string()) );
+   APIFINY_ASSERT( size == 1, block_log_exception, "${file} read fails", ("file", td.block_file_name.string()) );
    status = fseek(td.blk_in, file_pos + trim_data::blknum_offset, SEEK_SET);
-   EOS_ASSERT( status == 0, block_log_exception, "cannot seek to ${file} ${pos} from beginning of file", ("file", td.block_file_name.string())("pos", file_pos + trim_data::blknum_offset) );
+   APIFINY_ASSERT( status == 0, block_log_exception, "cannot seek to ${file} ${pos} from beginning of file", ("file", td.block_file_name.string())("pos", file_pos + trim_data::blknum_offset) );
    uint32_t bnum;
    size = fread((void*)&bnum, sizeof(uint32_t), 1, td.blk_in);
-   EOS_ASSERT( size == 1, block_log_exception, "${file} read fails", ("file", td.block_file_name.string()) );
+   APIFINY_ASSERT( size == 1, block_log_exception, "${file} read fails", ("file", td.block_file_name.string()) );
    bnum = endian_reverse_u32(bnum) + 1;                       //convert from big endian to little endian and add 1
-   EOS_ASSERT( td.last_block == bnum, block_log_exception, "blocks.log says last block is ${lb} which disagrees with blocks.index", ("lb", bnum) );
+   APIFINY_ASSERT( td.last_block == bnum, block_log_exception, "blocks.log says last block is ${lb} which disagrees with blocks.index", ("lb", bnum) );
    cout << "blocks.log and blocks.index agree on number of blocks\n";
    uint32_t delta = (td.last_block + 8 - td.first_block) >> 3;
    if (delta < 1)

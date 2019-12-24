@@ -5,7 +5,7 @@
 The `txn_test_gen_plugin` is used for transaction test purposes.
 
 [[info | For More Information]]
-For more information, check the [txn_test_gen_plugin/README.md](https://github.com/EOSIO/apifiny/blob/develop/plugins/txn_test_gen_plugin/README.md) on the EOSIO/apifiny repository.
+For more information, check the [txn_test_gen_plugin/README.md](https://github.com/APIFINY/apifiny/blob/develop/plugins/txn_test_gen_plugin/README.md) on the APIFINY/apifiny repository.
 
 ## Usage
 

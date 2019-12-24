@@ -3,7 +3,7 @@
 #include <apifiny/chain/types.hpp>
 #include <apifiny/chain/whitelisted_intrinsics.hpp>
 #include <apifiny/chain/exceptions.hpp>
-#if defined(EOSIO_EOS_VM_RUNTIME_ENABLED) || defined(EOSIO_EOS_VM_JIT_RUNTIME_ENABLED)
+#if defined(APIFINY_APIFINY_VM_RUNTIME_ENABLED) || defined(APIFINY_APIFINY_VM_JIT_RUNTIME_ENABLED)
 #include <apifiny/vm/allocator.hpp>
 #endif
 #include "Runtime/Linker.h"
@@ -46,7 +46,7 @@ namespace apifiny { namespace chain {
             if( whitelisted_intrinsics != nullptr ) {
                // Protect access to "private" injected functions; so for now just simply allow "env" since injected
                // functions are in a different module.
-               EOS_ASSERT( mod_name == "env", wasm_exception,
+               APIFINY_ASSERT( mod_name == "env", wasm_exception,
                            "importing from module that is not 'env': ${module}.${export}",
                            ("module",mod_name)("export",export_name) );
 
@@ -59,7 +59,7 @@ namespace apifiny { namespace chain {
                return true;
             }
 
-            EOS_THROW( wasm_exception, "${module}.${export} unresolveable",
+            APIFINY_THROW( wasm_exception, "${module}.${export} unresolveable",
                       ("module",mod_name)("export",export_name) );
             return false;
          } FC_CAPTURE_AND_RETHROW( (mod_name)(export_name) ) }
@@ -88,7 +88,7 @@ namespace apifiny { namespace chain {
          //call before dtor to skip what can be minutes of dtor overhead with some runtimes; can cause leaks
          void indicate_shutting_down();
 
-         //validates code -- does a WASM validation pass and checks the wasm against EOSIO specific constraints
+         //validates code -- does a WASM validation pass and checks the wasm against APIFINY specific constraints
          static void validate(const controller& control, const bytes& code);
 
          //indicate that a particular code probably won't be used after given block_num

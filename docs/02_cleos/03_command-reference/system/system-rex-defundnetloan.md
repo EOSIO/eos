@@ -25,5 +25,5 @@ Withdraw from a Network loan fund
 
 
 ```text
-clapifiny system rex defundnetloan accountname1 abc123 "1 EOS"
+clapifiny system rex defundnetloan accountname1 abc123 "1 APIFINY"
 ```

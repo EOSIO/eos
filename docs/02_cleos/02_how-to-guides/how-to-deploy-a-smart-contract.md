@@ -1,6 +1,6 @@
 ## Goal
 
-Deploy an EOSIO contract
+Deploy an APIFINY contract
 
 ## Before you begin
 

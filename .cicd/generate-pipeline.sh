@@ -135,7 +135,7 @@ EOF
             - 'registry_2'
           pre-execute-sleep: 10
           pre-commands: 
-            - "rm -rf mac-anka-fleet; git clone git@github.com:EOSIO/mac-anka-fleet.git && cd mac-anka-fleet && . ./ensure-tag.bash -u 12 -r 25G -a '-n'"
+            - "rm -rf mac-anka-fleet; git clone git@github.com:APIFINY/mac-anka-fleet.git && cd mac-anka-fleet && . ./ensure-tag.bash -u 12 -r 25G -a '-n'"
       - thedyrt/skip-checkout#v0.1.1:
           cd: ~
     env:
@@ -469,7 +469,7 @@ if [[ -z $BUILDKITE_TRIGGERED_FROM_BUILD_ID && $TRIGGER_JOB == "true" ]]; then
     trigger: "apifiny-lrt"
     async: true
     build:
-      message: "Triggered by EOSIO build ${BUILDKITE_BUILD_NUMBER}"
+      message: "Triggered by APIFINY build ${BUILDKITE_BUILD_NUMBER}"
       commit: "${BUILDKITE_COMMIT}"
       branch: "${BUILDKITE_BRANCH}"
       env:
@@ -492,7 +492,7 @@ if [[ -z $BUILDKITE_TRIGGERED_FROM_BUILD_ID && $TRIGGER_JOB = "true" ]]; then
     trigger: "apifiny-multiversion-tests"
     async: true
     build:
-      message: "Triggered by EOSIO build ${BUILDKITE_BUILD_NUMBER}"
+      message: "Triggered by APIFINY build ${BUILDKITE_BUILD_NUMBER}"
       commit: "${BUILDKITE_COMMIT}"
       branch: "${BUILDKITE_BRANCH}"
       env:
@@ -511,7 +511,7 @@ if [[ -z $BUILDKITE_TRIGGERED_FROM_BUILD_ID && -z "${SKIP_INSTALL}${SKIP_LINUX}$
     trigger: "apifiny-sync-from-genesis"
     async: false
     build:
-      message: "Triggered by EOSIO build ${BUILDKITE_BUILD_NUMBER}"
+      message: "Triggered by APIFINY build ${BUILDKITE_BUILD_NUMBER}"
       commit: "${BUILDKITE_COMMIT}"
       branch: "${BUILDKITE_BRANCH}"
       env:

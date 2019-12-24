@@ -1,10 +1,10 @@
 cmake_minimum_required( VERSION 3.5 )
-message(STATUS "Setting up Eosio Tester @VERSION_FULL@ at @EOS_ROOT_DIR@")
+message(STATUS "Setting up Apifiny Tester @VERSION_FULL@ at @APIFINY_ROOT_DIR@")
 
 set(CMAKE_CXX_COMPILER @CMAKE_CXX_COMPILER@)
 set(CMAKE_C_COMPILER   @CMAKE_C_COMPILER@)
 
-set(EOSIO_VERSION "@VERSION_FULL@")
+set(APIFINY_VERSION "@VERSION_FULL@")
 
 enable_testing()
 
@@ -75,8 +75,8 @@ find_library(GMP_LIBRARIES NAMES libgmp.a gmp.lib gmp libgmp-10 mpir
     DOC "Path to the GMP library"
 )
 
-set(EOSIO_WASM_RUNTIMES @EOSIO_WASM_RUNTIMES@)
-if("apifiny-vm-oc" IN_LIST EOSIO_WASM_RUNTIMES)
+set(APIFINY_WASM_RUNTIMES @APIFINY_WASM_RUNTIMES@)
+if("apifiny-vm-oc" IN_LIST APIFINY_WASM_RUNTIMES)
    set(WRAP_MAIN "-Wl,-wrap=main")
 endif()
 

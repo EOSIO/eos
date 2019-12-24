@@ -2,7 +2,7 @@ namespace apifiny { namespace chain {
 
 // Initial value for apifiny ABI. This value affects consensus; if different
 // nodapifiny versions have different versions of the initial apifiny ABI, then
-// they could potentially fork. See https://github.com/EOSIO/apifiny/issues/7794
+// they could potentially fork. See https://github.com/APIFINY/apifiny/issues/7794
 //
 // This is a capture of the ABI produced by versions 1.7 and 1.8.
 

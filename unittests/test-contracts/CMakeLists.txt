@@ -1,5 +1,5 @@
-if( EOSIO_COMPILE_TEST_CONTRACTS )
-   set(EOSIO_WASM_OLD_BEHAVIOR "Off")
+if( APIFINY_COMPILE_TEST_CONTRACTS )
+   set(APIFINY_WASM_OLD_BEHAVIOR "Off")
    find_package( apifiny.cdt REQUIRED )
 endif()
 

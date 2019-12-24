@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# apifiny-tn_roll is used to have all of the instances of the EOS daemon on a host brought down
+# apifiny-tn_roll is used to have all of the instances of the APIFINY daemon on a host brought down
 # so that the underlying executable image file (the "text file") can be replaced. Then
 # all instances are restarted.
 # usage: apifiny-tn_roll.sh [arglist]
@@ -13,23 +13,23 @@
 # In most cases, simply running ./apifiny-tn_roll.sh is sufficient.
 #
 
-if [ -z "$EOSIO_HOME" ]; then
-    echo EOSIO_HOME not set - $0 unable to proceed.
+if [ -z "$APIFINY_HOME" ]; then
+    echo APIFINY_HOME not set - $0 unable to proceed.
     exit -1
 fi
 
-cd $EOSIO_HOME
+cd $APIFINY_HOME
 
-if [ -z "$EOSIO_NODE" ]; then
+if [ -z "$APIFINY_NODE" ]; then
     DD=`ls -d var/lib/node_[012]?`
     ddcount=`echo $DD | wc -w`
     if [ $ddcount -gt 1 ]; then
         DD="all"
     fi
     OFS=$((${#DD}-2))
-    export EOSIO_NODE=${DD:$OFS}
+    export APIFINY_NODE=${DD:$OFS}
 else
-    DD=var/lib/node_$EOSIO_NODE
+    DD=var/lib/node_$APIFINY_NODE
     if [ ! \( -d $DD \) ]; then
         echo no directory named $PWD/$DD
         cd -
@@ -76,17 +76,17 @@ fi
 
 echo DD = $DD
 
-bash $EOSIO_HOME/scripts/apifiny-tn_down.sh
+bash $APIFINY_HOME/scripts/apifiny-tn_down.sh
 
 cp $SDIR/$RD/$prog $RD/$prog
 
 if [ $DD = "all" ]; then
-    for EOSIO_RESTART_DATA_DIR in `ls -d var/lib/node_??`; do
-        bash $EOSIO_HOME/scripts/apifiny-tn_up.sh "$*"
+    for APIFINY_RESTART_DATA_DIR in `ls -d var/lib/node_??`; do
+        bash $APIFINY_HOME/scripts/apifiny-tn_up.sh "$*"
     done
 else
-    bash $EOSIO_HOME/scripts/apifiny-tn_up.sh "$*"
+    bash $APIFINY_HOME/scripts/apifiny-tn_up.sh "$*"
 fi
-unset EOSIO_RESTART_DATA_DIR
+unset APIFINY_RESTART_DATA_DIR
 
 cd -

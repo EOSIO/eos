@@ -13,11 +13,11 @@ This is the go-to option for smart contract developers, aspiring Block Producers
 While this option can technically be used for smart contract development, it may be overkill. This is most beneficial for those who are working on aspects of core development, such as benchmarking, optimization and experimentation. It's also a good option for hands-on learning and concept proofing.
 
 * [Configure Nodapifiny as a Local Two-Node Testnet](01_local-multi-node-testnet.md)
-* [Configure Nodapifiny as a Local 21-Node Testnet](https://github.com/EOSIO/apifiny/blob/master/tutorials/bios-boot-tutorial/README.md)
+* [Configure Nodapifiny as a Local 21-Node Testnet](https://github.com/APIFINY/apifiny/blob/master/tutorials/bios-boot-tutorial/README.md)
 
 ## Third-Party Testnets
 
-The following third-party testnets are available for testing EOSIO dApps and smart contracts:
+The following third-party testnets are available for testing APIFINY dApps and smart contracts:
 
 * Jungle Testnet [monitor](https://monitor.jungletestnet.io/), [website](https://jungletestnet.io/)
 * [CryptoKylin Testnet](https://www.cryptokylin.io/)

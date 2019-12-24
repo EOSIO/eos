@@ -25,7 +25,7 @@ class apifinyvmoc_instantiated_module : public wasm_instantiated_module_interfac
 
       void apply(apply_context& context) override {
          const code_descriptor* const cd = _apifinyvmoc_runtime.cc.get_descriptor_for_code_sync(_code_hash, _vm_version);
-         EOS_ASSERT(cd, wasm_execution_error, "EOS VM OC instantiation failed");
+         APIFINY_ASSERT(cd, wasm_execution_error, "APIFINY VM OC instantiation failed");
 
          _apifinyvmoc_runtime.exec.execute(*cd, _apifinyvmoc_runtime.mem, context);
       }
@@ -48,7 +48,7 @@ std::unique_ptr<wasm_instantiated_module_interface> apifinyvmoc_runtime::instant
    return std::make_unique<apifinyvmoc_instantiated_module>(code_hash, vm_type, *this);
 }
 
-//never called. EOS VM OC overrides apifiny_exit to its own implementation
+//never called. APIFINY VM OC overrides apifiny_exit to its own implementation
 void apifinyvmoc_runtime::immediately_exit_currently_running_module() {}
 
 }}}}

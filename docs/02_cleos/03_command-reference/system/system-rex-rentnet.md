@@ -20,5 +20,5 @@
 
 
 ```text
-clapifiny system rex rentnet accountname1 accountname2 "1 EOS" 0
+clapifiny system rex rentnet accountname1 accountname2 "1 APIFINY" 0
 ```

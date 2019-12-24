@@ -1,9 +1,9 @@
-if(EOSIO_ROOT STREQUAL "" OR NOT EOSIO_ROOT)
-   set(EOSIO_ROOT "@EOS_ROOT_DIR@")
+if(APIFINY_ROOT STREQUAL "" OR NOT APIFINY_ROOT)
+   set(APIFINY_ROOT "@APIFINY_ROOT_DIR@")
 endif()
-list(APPEND CMAKE_MODULE_PATH ${EOSIO_ROOT}/lib/cmake/apifiny)
-list(APPEND CMAKE_MODULE_PATH ${EOSIO_ROOT}/lib64/cmake/apifiny)
-include(EosioTester)
+list(APPEND CMAKE_MODULE_PATH ${APIFINY_ROOT}/lib/cmake/apifiny)
+list(APPEND CMAKE_MODULE_PATH ${APIFINY_ROOT}/lib64/cmake/apifiny)
+include(ApifinyTester)
 
 function(EXTRACT_MAJOR_MINOR_FROM_VERSION version success major minor)
    string(REGEX REPLACE "^([0-9]+)\\..+$" "\\1" _major "${version}")
@@ -23,7 +23,7 @@ function(EXTRACT_MAJOR_MINOR_FROM_VERSION version success major minor)
    set(${success} TRUE      PARENT_SCOPE)
 endfunction(EXTRACT_MAJOR_MINOR_FROM_VERSION)
 
-function(EOSIO_CHECK_VERSION output version hard_min soft_max hard_max) # optional 6th argument for error message
+function(APIFINY_CHECK_VERSION output version hard_min soft_max hard_max) # optional 6th argument for error message
    set(${output} "INVALID" PARENT_SCOPE)
 
    EXTRACT_MAJOR_MINOR_FROM_VERSION("${version}" success major minor)
@@ -94,4 +94,4 @@ function(EOSIO_CHECK_VERSION output version hard_min soft_max hard_max) # option
    endif()
 
    set(${output} "MATCH" PARENT_SCOPE)
-endfunction(EOSIO_CHECK_VERSION)
+endfunction(APIFINY_CHECK_VERSION)

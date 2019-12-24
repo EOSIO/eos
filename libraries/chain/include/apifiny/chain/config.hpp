@@ -127,11 +127,11 @@ constexpr uint64_t billable_size_v = ((billable_size<T>::value + billable_alignm
 
 } } } // namespace apifiny::chain::config
 
-constexpr uint64_t EOS_PERCENT(uint64_t value, uint32_t percentage) {
+constexpr uint64_t APIFINY_PERCENT(uint64_t value, uint32_t percentage) {
    return (value * percentage) / apifiny::chain::config::percent_100;
 }
 
 template<typename Number>
-Number EOS_PERCENT_CEIL(Number value, uint32_t percentage) {
+Number APIFINY_PERCENT_CEIL(Number value, uint32_t percentage) {
    return ((value * percentage) + apifiny::chain::config::percent_100 - apifiny::chain::config::percent_1)  / apifiny::chain::config::percent_100;
 }

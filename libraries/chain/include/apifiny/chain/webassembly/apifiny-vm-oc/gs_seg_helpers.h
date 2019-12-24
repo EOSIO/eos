@@ -15,8 +15,8 @@
 //This is really rather unfortunate, but on the upside it does allow a static assert to know if
 //the values ever slide which would be a PIC breaking event we'd want to know about at compile
 //time.
-#define EOS_VM_OC_CONTROL_BLOCK_OFFSET (-18944)
-#define EOS_VM_OC_MEMORY_STRIDE (UINT64_C(4329598976))
+#define APIFINY_VM_OC_CONTROL_BLOCK_OFFSET (-18944)
+#define APIFINY_VM_OC_MEMORY_STRIDE (UINT64_C(4329598976))
 
 #ifdef __cplusplus
 extern "C" {

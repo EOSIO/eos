@@ -4,7 +4,7 @@ Buy RAM
 ## Positional Arguments
 - `payer` _TEXT_  - Theaccount paying for RAM
 - `receiver` _TEXT_ - The account receiving bought RAM
-- `amount` _TEXT_ - The amount of EOS to pay for RAM
+- `amount` _TEXT_ - The amount of APIFINY to pay for RAM
 
 ## Options
 - `-h,--help` Print this help message and exit

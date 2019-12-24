@@ -3,10 +3,10 @@
 #include <apifiny/chain/wasm_interface.hpp>
 #include <apifiny/chain/webassembly/wavm.hpp>
 #include <apifiny/chain/webassembly/wabt.hpp>
-#ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
+#ifdef APIFINY_APIFINY_VM_OC_RUNTIME_ENABLED
 #include <apifiny/chain/webassembly/apifiny-vm-oc.hpp>
 #else
-#define _REGISTER_EOSVMOC_INTRINSIC(CLS, MOD, METHOD, WASM_SIG, NAME, SIG)
+#define _REGISTER_APIFINYVMOC_INTRINSIC(CLS, MOD, METHOD, WASM_SIG, NAME, SIG)
 #endif
 #include <apifiny/chain/webassembly/apifiny-vm.hpp>
 #include <apifiny/chain/webassembly/runtime_interface.hpp>
@@ -22,7 +22,7 @@
 #include "WAST/WAST.h"
 #include "IR/Validate.h"
 
-#if defined(EOSIO_EOS_VM_RUNTIME_ENABLED) || defined(EOSIO_EOS_VM_JIT_RUNTIME_ENABLED)
+#if defined(APIFINY_APIFINY_VM_RUNTIME_ENABLED) || defined(APIFINY_APIFINY_VM_JIT_RUNTIME_ENABLED)
 #include <apifiny/vm/allocator.hpp>
 #endif
 
@@ -50,7 +50,7 @@ namespace apifiny { namespace chain {
       struct by_first_block_num;
       struct by_last_block_num;
 
-#ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
+#ifdef APIFINY_APIFINY_VM_OC_RUNTIME_ENABLED
       struct apifinyvmoc_tier {
          apifinyvmoc_tier(const boost::filesystem::path& d, const apifinyvmoc::config& c, const chainbase::database& db) : cc(d, c, db), exec(cc) {}
          apifinyvmoc::code_cache_async cc;
@@ -62,24 +62,24 @@ namespace apifiny { namespace chain {
       wasm_interface_impl(wasm_interface::vm_type vm, bool apifinyvmoc_tierup, const chainbase::database& d, const boost::filesystem::path data_dir, const apifinyvmoc::config& apifinyvmoc_config) : db(d), wasm_runtime_time(vm) {
          if(vm == wasm_interface::vm_type::wabt)
             runtime_interface = std::make_unique<webassembly::wabt_runtime::wabt_runtime>();
-#ifdef EOSIO_EOS_VM_RUNTIME_ENABLED
+#ifdef APIFINY_APIFINY_VM_RUNTIME_ENABLED
          if(vm == wasm_interface::vm_type::apifiny_vm)
             runtime_interface = std::make_unique<webassembly::apifiny_vm_runtime::apifiny_vm_runtime<apifiny::vm::interpreter>>();
 #endif
-#ifdef EOSIO_EOS_VM_JIT_RUNTIME_ENABLED
+#ifdef APIFINY_APIFINY_VM_JIT_RUNTIME_ENABLED
          if(vm == wasm_interface::vm_type::apifiny_vm_jit)
             runtime_interface = std::make_unique<webassembly::apifiny_vm_runtime::apifiny_vm_runtime<apifiny::vm::jit>>();
 #endif
-#ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
+#ifdef APIFINY_APIFINY_VM_OC_RUNTIME_ENABLED
          if(vm == wasm_interface::vm_type::apifiny_vm_oc)
             runtime_interface = std::make_unique<webassembly::apifinyvmoc::apifinyvmoc_runtime>(data_dir, apifinyvmoc_config, d);
 #endif
          if(!runtime_interface)
-            EOS_THROW(wasm_exception, "${r} wasm runtime not supported on this platform and/or configuration", ("r", vm));
+            APIFINY_THROW(wasm_exception, "${r} wasm runtime not supported on this platform and/or configuration", ("r", vm));
 
-#ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
+#ifdef APIFINY_APIFINY_VM_OC_RUNTIME_ENABLED
          if(apifinyvmoc_tierup) {
-            EOS_ASSERT(vm != wasm_interface::vm_type::apifiny_vm_oc, wasm_exception, "You can't use EOS VM OC as the base runtime when tier up is activated");
+            APIFINY_ASSERT(vm != wasm_interface::vm_type::apifiny_vm_oc, wasm_exception, "You can't use APIFINY VM OC as the base runtime when tier up is activated");
             apifinyvmoc.emplace(data_dir, apifinyvmoc_config, d);
          }
 #endif
@@ -97,8 +97,8 @@ namespace apifiny { namespace chain {
          std::vector<uint8_t> mem_image;
 
          for(const DataSegment& data_segment : module.dataSegments) {
-            EOS_ASSERT(data_segment.baseOffset.type == InitializerExpression::Type::i32_const, wasm_exception, "");
-            EOS_ASSERT(module.memories.defs.size(), wasm_exception, "");
+            APIFINY_ASSERT(data_segment.baseOffset.type == InitializerExpression::Type::i32_const, wasm_exception, "");
+            APIFINY_ASSERT(module.memories.defs.size(), wasm_exception, "");
             const U32 base_offset = data_segment.baseOffset.i32;
             const Uptr memory_size = (module.memories.defs[0].type.size.min << IR::numBytesPerPageLog2);
             if(base_offset >= memory_size || base_offset + data_segment.data.size() > memory_size)
@@ -123,7 +123,7 @@ namespace apifiny { namespace chain {
          //anything last used before or on the LIB can be evicted
          const auto first_it = wasm_instantiation_cache.get<by_last_block_num>().begin();
          const auto last_it  = wasm_instantiation_cache.get<by_last_block_num>().upper_bound(lib);
-#ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
+#ifdef APIFINY_APIFINY_VM_OC_RUNTIME_ENABLED
          if(apifinyvmoc) for(auto it = first_it; it != last_it; it++)
             apifinyvmoc->cc.free_code(it->code_hash, it->vm_version);
 #endif
@@ -167,9 +167,9 @@ namespace apifiny { namespace chain {
                WASM::serialize(stream, module);
                module.userSections.clear();
             } catch (const Serialization::FatalSerializationException& e) {
-               EOS_ASSERT(false, wasm_serialization_error, e.message.c_str());
+               APIFINY_ASSERT(false, wasm_serialization_error, e.message.c_str());
             } catch (const IR::ValidationException& e) {
-               EOS_ASSERT(false, wasm_serialization_error, e.message.c_str());
+               APIFINY_ASSERT(false, wasm_serialization_error, e.message.c_str());
             }
             if (runtime_interface->inject_module(module)) {
                try {
@@ -177,10 +177,10 @@ namespace apifiny { namespace chain {
                   WASM::serialize(outstream, module);
                   bytes = outstream.getBytes();
                } catch (const Serialization::FatalSerializationException& e) {
-                  EOS_ASSERT(false, wasm_serialization_error,
+                  APIFINY_ASSERT(false, wasm_serialization_error,
                              e.message.c_str());
                } catch (const IR::ValidationException& e) {
-                  EOS_ASSERT(false, wasm_serialization_error,
+                  APIFINY_ASSERT(false, wasm_serialization_error,
                              e.message.c_str());
                }
             }
@@ -214,7 +214,7 @@ namespace apifiny { namespace chain {
       const chainbase::database& db;
       const wasm_interface::vm_type wasm_runtime_time;
 
-#ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
+#ifdef APIFINY_APIFINY_VM_OC_RUNTIME_ENABLED
       fc::optional<apifinyvmoc_tier> apifinyvmoc;
 #endif
    };
@@ -228,8 +228,8 @@ namespace apifiny { namespace chain {
 #define _REGISTER_INTRINSIC_EXPLICIT(CLS, MOD, METHOD, WASM_SIG, NAME, SIG)\
    _REGISTER_WAVM_INTRINSIC(CLS, MOD, METHOD, WASM_SIG, NAME, SIG)         \
    _REGISTER_WABT_INTRINSIC(CLS, MOD, METHOD, WASM_SIG, NAME, SIG)         \
-   _REGISTER_EOS_VM_INTRINSIC(CLS, MOD, METHOD, WASM_SIG, NAME, SIG)       \
-   _REGISTER_EOSVMOC_INTRINSIC(CLS, MOD, METHOD, WASM_SIG, NAME, SIG)
+   _REGISTER_APIFINY_VM_INTRINSIC(CLS, MOD, METHOD, WASM_SIG, NAME, SIG)       \
+   _REGISTER_APIFINYVMOC_INTRINSIC(CLS, MOD, METHOD, WASM_SIG, NAME, SIG)
 
 #define _REGISTER_INTRINSIC4(CLS, MOD, METHOD, WASM_SIG, NAME, SIG)\
    _REGISTER_INTRINSIC_EXPLICIT(CLS, MOD, METHOD, WASM_SIG, NAME, SIG )
@@ -258,7 +258,7 @@ namespace apifiny { namespace chain {
    BOOST_PP_SEQ_FOR_EACH(_REGISTER_INTRINSIC, CLS, _WRAPPED_SEQ(MEMBERS))
 
 #define _REGISTER_INJECTED_INTRINSIC(R, CLS, INFO)\
-   BOOST_PP_CAT(BOOST_PP_OVERLOAD(_REGISTER_INTRINSIC, _UNWRAP_SEQ INFO) _EXPAND_ARGS(CLS, EOSIO_INJECTED_MODULE_NAME, INFO), BOOST_PP_EMPTY())
+   BOOST_PP_CAT(BOOST_PP_OVERLOAD(_REGISTER_INTRINSIC, _UNWRAP_SEQ INFO) _EXPAND_ARGS(CLS, APIFINY_INJECTED_MODULE_NAME, INFO), BOOST_PP_EMPTY())
 
 #define REGISTER_INJECTED_INTRINSICS(CLS, MEMBERS)\
    BOOST_PP_SEQ_FOR_EACH(_REGISTER_INJECTED_INTRINSIC, CLS, _WRAPPED_SEQ(MEMBERS))

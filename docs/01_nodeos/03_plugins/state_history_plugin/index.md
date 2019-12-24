@@ -50,13 +50,13 @@ Config Options for apifiny::state_history_plugin:
 
 ### JavaScript Example
 
-  * [Source code](https://github.com/EOSIO/apifiny/blob/state-history-docs/docs/state-history-plugin/js-example.md)
+  * [Source code](https://github.com/APIFINY/apifiny/blob/state-history-docs/docs/state-history-plugin/js-example.md)
 
 ### history-tools
 
-  * [Source code](https://github.com/EOSIO/history-tools/)
+  * [Source code](https://github.com/APIFINY/history-tools/)
   * [Documentation](https://apifiny.github.io/history-tools/)
-  * [Protocol](https://github.com/EOSIO/apifiny/blob/state-history-docs/docs/state-history-plugin/protocol.md)
+  * [Protocol](https://github.com/APIFINY/apifiny/blob/state-history-docs/docs/state-history-plugin/protocol.md)
 
 ## Dependencies
 

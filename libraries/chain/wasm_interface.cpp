@@ -25,7 +25,7 @@
 #include <fstream>
 #include <string.h>
 
-#if defined(EOSIO_EOS_VM_RUNTIME_ENABLED) || defined(EOSIO_EOS_VM_JIT_RUNTIME_ENABLED)
+#if defined(APIFINY_APIFINY_VM_RUNTIME_ENABLED) || defined(APIFINY_APIFINY_VM_JIT_RUNTIME_ENABLED)
 #include <apifiny/vm/allocator.hpp>
 #endif
 
@@ -43,9 +43,9 @@ namespace apifiny { namespace chain {
          Serialization::MemoryInputStream stream((U8*)code.data(), code.size());
          WASM::serialize(stream, module);
       } catch(const Serialization::FatalSerializationException& e) {
-         EOS_ASSERT(false, wasm_serialization_error, e.message.c_str());
+         APIFINY_ASSERT(false, wasm_serialization_error, e.message.c_str());
       } catch(const IR::ValidationException& e) {
-         EOS_ASSERT(false, wasm_serialization_error, e.message.c_str());
+         APIFINY_ASSERT(false, wasm_serialization_error, e.message.c_str());
       }
 
       wasm_validations::wasm_binary_validation validator(control, module);
@@ -74,18 +74,18 @@ namespace apifiny { namespace chain {
    }
 
    void wasm_interface::apply( const digest_type& code_hash, const uint8_t& vm_type, const uint8_t& vm_version, apply_context& context ) {
-#ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
+#ifdef APIFINY_APIFINY_VM_OC_RUNTIME_ENABLED
       if(my->apifinyvmoc) {
          const chain::apifinyvmoc::code_descriptor* cd = nullptr;
          try {
             cd = my->apifinyvmoc->cc.get_descriptor_for_code(code_hash, vm_version);
          }
          catch(...) {
-            //swallow errors here, if EOS VM OC has gone in to the weeds we shouldn't bail: continue to try and run baseline
-            //In the future, consider moving bits of EOS VM that can fire exceptions and such out of this call path
+            //swallow errors here, if APIFINY VM OC has gone in to the weeds we shouldn't bail: continue to try and run baseline
+            //In the future, consider moving bits of APIFINY VM that can fire exceptions and such out of this call path
             static bool once_is_enough;
             if(!once_is_enough)
-               elog("EOS VM OC has encountered an unexpected failure");
+               elog("APIFINY VM OC has encountered an unexpected failure");
             once_is_enough = true;
          }
          if(cd) {
@@ -114,7 +114,7 @@ class context_aware_api {
       :context(ctx)
       {
          if( context.is_context_free() )
-            EOS_ASSERT( context_free, unaccessible_api, "only context free api's can be used in this context" );
+            APIFINY_ASSERT( context_free, unaccessible_api, "only context free api's can be used in this context" );
       }
 
       void checktime() {
@@ -131,7 +131,7 @@ class context_free_api : public context_aware_api {
       context_free_api( apply_context& ctx )
       :context_aware_api(ctx, true) {
          /* the context_free_data is not available during normal application because it is prunable */
-         EOS_ASSERT( context.is_context_free(), unaccessible_api, "this API may only be called from context_free apply" );
+         APIFINY_ASSERT( context.is_context_free(), unaccessible_api, "this API may only be called from context_free apply" );
       }
 
       int get_context_free_data( uint32_t index, array_ptr<char> buffer, uint32_t buffer_size )const {
@@ -144,7 +144,7 @@ class privileged_api : public context_aware_api {
       privileged_api( apply_context& ctx )
       :context_aware_api(ctx)
       {
-         EOS_ASSERT( context.is_privileged(), unaccessible_api, "${code} does not have permission to call this API", ("code",context.get_receiver()) );
+         APIFINY_ASSERT( context.is_privileged(), unaccessible_api, "${code} does not have permission to call this API", ("code",context.get_receiver()) );
       }
 
       /**
@@ -165,7 +165,7 @@ class privileged_api : public context_aware_api {
        *  Feature name should be base32 encoded name.
        */
       void activate_feature( int64_t feature_name ) {
-         EOS_ASSERT( false, unsupported_feature, "Unsupported Hardfork Detected" );
+         APIFINY_ASSERT( false, unsupported_feature, "Unsupported Hardfork Detected" );
       }
 
       /**
@@ -187,9 +187,9 @@ class privileged_api : public context_aware_api {
        * @param cpu_weight - the weight for determining share of compute capacity
        */
       void set_resource_limits( account_name account, int64_t ram_bytes, int64_t net_weight, int64_t cpu_weight) {
-         EOS_ASSERT(ram_bytes >= -1, wasm_execution_error, "invalid value for ram resource limit expected [-1,INT64_MAX]");
-         EOS_ASSERT(net_weight >= -1, wasm_execution_error, "invalid value for net resource weight expected [-1,INT64_MAX]");
-         EOS_ASSERT(cpu_weight >= -1, wasm_execution_error, "invalid value for cpu resource weight expected [-1,INT64_MAX]");
+         APIFINY_ASSERT(ram_bytes >= -1, wasm_execution_error, "invalid value for ram resource limit expected [-1,INT64_MAX]");
+         APIFINY_ASSERT(net_weight >= -1, wasm_execution_error, "invalid value for net resource weight expected [-1,INT64_MAX]");
+         APIFINY_ASSERT(cpu_weight >= -1, wasm_execution_error, "invalid value for cpu resource weight expected [-1,INT64_MAX]");
          if( context.control.get_mutable_resource_limits_manager().set_account_limits(account, ram_bytes, net_weight, cpu_weight) ) {
             context.trx_context.validate_ram_usage.insert( account );
          }
@@ -200,8 +200,8 @@ class privileged_api : public context_aware_api {
       }
 
       int64_t set_proposed_producers_common( vector<producer_authority> && producers, bool validate_keys ) {
-         EOS_ASSERT(producers.size() <= config::max_producers, wasm_execution_error, "Producer schedule exceeds the maximum producer count for this chain");
-         EOS_ASSERT( producers.size() > 0
+         APIFINY_ASSERT(producers.size() <= config::max_producers, wasm_execution_error, "Producer schedule exceeds the maximum producer count for this chain");
+         APIFINY_ASSERT( producers.size() > 0
                      || !context.control.is_builtin_activated( builtin_protocol_feature_t::disallow_empty_producer_schedule ),
                      wasm_execution_error,
                      "Producer schedule cannot be empty"
@@ -212,17 +212,17 @@ class privileged_api : public context_aware_api {
          // check that producers are unique
          std::set<account_name> unique_producers;
          for (const auto& p: producers) {
-            EOS_ASSERT( context.is_account(p.producer_name), wasm_execution_error, "producer schedule includes a nonexisting account" );
+            APIFINY_ASSERT( context.is_account(p.producer_name), wasm_execution_error, "producer schedule includes a nonexisting account" );
 
             p.authority.visit([&p, num_supported_key_types, validate_keys](const auto& a) {
                uint32_t sum_weights = 0;
                std::set<public_key_type> unique_keys;
                for (const auto& kw: a.keys ) {
-                  EOS_ASSERT( kw.key.which() < num_supported_key_types, unactivated_key_type,
+                  APIFINY_ASSERT( kw.key.which() < num_supported_key_types, unactivated_key_type,
                               "Unactivated key type used in proposed producer schedule");
 
                   if( validate_keys ) {
-                     EOS_ASSERT( kw.key.valid(), wasm_execution_error, "producer schedule includes an invalid key" );
+                     APIFINY_ASSERT( kw.key.valid(), wasm_execution_error, "producer schedule includes an invalid key" );
                   }
 
                   if (std::numeric_limits<uint32_t>::max() - sum_weights <= kw.weight) {
@@ -234,15 +234,15 @@ class privileged_api : public context_aware_api {
                   unique_keys.insert(kw.key);
                }
 
-               EOS_ASSERT( a.keys.size() == unique_keys.size(), wasm_execution_error, "producer schedule includes a duplicated key for ${account}", ("account", p.producer_name));
-               EOS_ASSERT( a.threshold > 0, wasm_execution_error, "producer schedule includes an authority with a threshold of 0 for ${account}", ("account", p.producer_name));
-               EOS_ASSERT( sum_weights >= a.threshold, wasm_execution_error, "producer schedule includes an unsatisfiable authority for ${account}", ("account", p.producer_name));
+               APIFINY_ASSERT( a.keys.size() == unique_keys.size(), wasm_execution_error, "producer schedule includes a duplicated key for ${account}", ("account", p.producer_name));
+               APIFINY_ASSERT( a.threshold > 0, wasm_execution_error, "producer schedule includes an authority with a threshold of 0 for ${account}", ("account", p.producer_name));
+               APIFINY_ASSERT( sum_weights >= a.threshold, wasm_execution_error, "producer schedule includes an unsatisfiable authority for ${account}", ("account", p.producer_name));
             });
 
 
             unique_producers.insert(p.producer_name);
          }
-         EOS_ASSERT( producers.size() == unique_producers.size(), wasm_execution_error, "duplicate producer name in producer schedule" );
+         APIFINY_ASSERT( producers.size() == unique_producers.size(), wasm_execution_error, "duplicate producer name in producer schedule" );
 
          return context.control.set_proposed_producers( std::move(producers) );
       }
@@ -274,7 +274,7 @@ class privileged_api : public context_aware_api {
             fc::raw::unpack(ds, producers);
             return set_proposed_producers_common(std::move(producers), false);
          } else {
-            EOS_THROW(wasm_execution_error, "Producer schedule is in an unknown format!");
+            APIFINY_THROW(wasm_execution_error, "Producer schedule is in an unknown format!");
          }
       }
 
@@ -812,17 +812,17 @@ class crypto_api : public context_aware_api {
          fc::raw::unpack(ds, s);
          fc::raw::unpack(pubds, p);
 
-         EOS_ASSERT(s.which() < context.db.get<protocol_state_object>().num_supported_key_types, unactivated_signature_type,
+         APIFINY_ASSERT(s.which() < context.db.get<protocol_state_object>().num_supported_key_types, unactivated_signature_type,
            "Unactivated signature type used during assert_recover_key");
-         EOS_ASSERT(p.which() < context.db.get<protocol_state_object>().num_supported_key_types, unactivated_key_type,
+         APIFINY_ASSERT(p.which() < context.db.get<protocol_state_object>().num_supported_key_types, unactivated_key_type,
            "Unactivated key type used when creating assert_recover_key");
 
          if(context.control.is_producing_block())
-            EOS_ASSERT(s.variable_size() <= context.control.configured_subjective_signature_length_limit(),
+            APIFINY_ASSERT(s.variable_size() <= context.control.configured_subjective_signature_length_limit(),
                        sig_variable_size_limit_exception, "signature variable length component size greater than subjective maximum");
 
          auto check = fc::crypto::public_key( s, digest, false );
-         EOS_ASSERT( check == p, crypto_api_exception, "Error expected key different than recovered key" );
+         APIFINY_ASSERT( check == p, crypto_api_exception, "Error expected key different than recovered key" );
       }
 
       int recover_key( const fc::sha256& digest,
@@ -832,11 +832,11 @@ class crypto_api : public context_aware_api {
          datastream<const char*> ds( sig, siglen );
          fc::raw::unpack(ds, s);
 
-         EOS_ASSERT(s.which() < context.db.get<protocol_state_object>().num_supported_key_types, unactivated_signature_type,
+         APIFINY_ASSERT(s.which() < context.db.get<protocol_state_object>().num_supported_key_types, unactivated_signature_type,
                     "Unactivated signature type used during recover_key");
 
          if(context.control.is_producing_block())
-            EOS_ASSERT(s.variable_size() <= context.control.configured_subjective_signature_length_limit(),
+            APIFINY_ASSERT(s.variable_size() <= context.control.configured_subjective_signature_length_limit(),
                        sig_variable_size_limit_exception, "signature variable length component size greater than subjective maximum");
 
 
@@ -844,7 +844,7 @@ class crypto_api : public context_aware_api {
 
          // the key types newer than the first 2 may be varible in length
          if (s.which() >= config::genesis_num_supported_key_types ) {
-            EOS_ASSERT(publen >= 33, wasm_execution_error,
+            APIFINY_ASSERT(publen >= 33, wasm_execution_error,
                        "destination buffer must at least be able to hold an ECC public key");
             auto packed_pubkey = fc::raw::pack(recovered);
             auto copy_size = std::min<size_t>(publen, packed_pubkey.size());
@@ -876,22 +876,22 @@ class crypto_api : public context_aware_api {
 
       void assert_sha256(array_ptr<char> data, uint32_t datalen, const fc::sha256& hash_val) {
          auto result = encode<fc::sha256::encoder>( data, datalen );
-         EOS_ASSERT( result == hash_val, crypto_api_exception, "hash mismatch" );
+         APIFINY_ASSERT( result == hash_val, crypto_api_exception, "hash mismatch" );
       }
 
       void assert_sha1(array_ptr<char> data, uint32_t datalen, const fc::sha1& hash_val) {
          auto result = encode<fc::sha1::encoder>( data, datalen );
-         EOS_ASSERT( result == hash_val, crypto_api_exception, "hash mismatch" );
+         APIFINY_ASSERT( result == hash_val, crypto_api_exception, "hash mismatch" );
       }
 
       void assert_sha512(array_ptr<char> data, uint32_t datalen, const fc::sha512& hash_val) {
          auto result = encode<fc::sha512::encoder>( data, datalen );
-         EOS_ASSERT( result == hash_val, crypto_api_exception, "hash mismatch" );
+         APIFINY_ASSERT( result == hash_val, crypto_api_exception, "hash mismatch" );
       }
 
       void assert_ripemd160(array_ptr<char> data, uint32_t datalen, const fc::ripemd160& hash_val) {
          auto result = encode<fc::ripemd160::encoder>( data, datalen );
-         EOS_ASSERT( result == hash_val, crypto_api_exception, "hash mismatch" );
+         APIFINY_ASSERT( result == hash_val, crypto_api_exception, "hash mismatch" );
       }
 
       void sha1(array_ptr<char> data, uint32_t datalen, fc::sha1& hash_val) {
@@ -950,7 +950,7 @@ class permission_api : public context_aware_api {
                                            uint64_t delay_us
                                          )
       {
-         EOS_ASSERT( delay_us <= static_cast<uint64_t>(std::numeric_limits<int64_t>::max()),
+         APIFINY_ASSERT( delay_us <= static_cast<uint64_t>(std::numeric_limits<int64_t>::max()),
                      action_validate_exception, "provided delay is too large" );
 
          flat_set<public_key_type> provided_keys;
@@ -983,7 +983,7 @@ class permission_api : public context_aware_api {
 
       int64_t get_account_creation_time( account_name account ) {
          auto* acct = context.db.find<account_object, by_name>(account);
-         EOS_ASSERT( acct != nullptr, action_validate_exception,
+         APIFINY_ASSERT( acct != nullptr, action_validate_exception,
                      "account '${account}' does not exist", ("account", account) );
          return time_point(acct->creation_date).time_since_epoch().count();
       }
@@ -1064,7 +1064,7 @@ public:
    :context_aware_api(ctx,true){}
 
    void abort() {
-      EOS_ASSERT( false, abort_called, "abort() called");
+      APIFINY_ASSERT( false, abort_called, "abort() called");
    }
 
    // Kept as intrinsic rather than implementing on WASM side (using apifiny_assert_message and strlen) because strlen is faster on native side.
@@ -1072,7 +1072,7 @@ public:
       if( BOOST_UNLIKELY( !condition ) ) {
          const size_t sz = strnlen( msg, max_assert_message );
          std::string message( msg, sz );
-         EOS_THROW( apifiny_assert_message_exception, "assertion failure with message: ${s}", ("s",message) );
+         APIFINY_THROW( apifiny_assert_message_exception, "assertion failure with message: ${s}", ("s",message) );
       }
    }
 
@@ -1080,7 +1080,7 @@ public:
       if( BOOST_UNLIKELY( !condition ) ) {
          const size_t sz = msg_len > max_assert_message ? max_assert_message : msg_len;
          std::string message( msg, sz );
-         EOS_THROW( apifiny_assert_message_exception, "assertion failure with message: ${s}", ("s",message) );
+         APIFINY_THROW( apifiny_assert_message_exception, "assertion failure with message: ${s}", ("s",message) );
       }
    }
 
@@ -1310,14 +1310,14 @@ class console_api : public context_aware_api {
 
 #define DB_API_METHOD_WRAPPERS_ARRAY_SECONDARY(IDX, ARR_SIZE, ARR_ELEMENT_TYPE)\
       int db_##IDX##_store( uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, array_ptr<const ARR_ELEMENT_TYPE> data, uint32_t data_len) {\
-         EOS_ASSERT( data_len == ARR_SIZE,\
+         APIFINY_ASSERT( data_len == ARR_SIZE,\
                     db_api_exception,\
                     "invalid size of secondary key array for " #IDX ": given ${given} bytes but expected ${expected} bytes",\
                     ("given",data_len)("expected",ARR_SIZE) );\
          return context.IDX.store(scope, table, account_name(payer), id, data.value);\
       }\
       void db_##IDX##_update( int iterator, uint64_t payer, array_ptr<const ARR_ELEMENT_TYPE> data, uint32_t data_len ) {\
-         EOS_ASSERT( data_len == ARR_SIZE,\
+         APIFINY_ASSERT( data_len == ARR_SIZE,\
                     db_api_exception,\
                     "invalid size of secondary key array for " #IDX ": given ${given} bytes but expected ${expected} bytes",\
                     ("given",data_len)("expected",ARR_SIZE) );\
@@ -1327,28 +1327,28 @@ class console_api : public context_aware_api {
          return context.IDX.remove(iterator);\
       }\
       int db_##IDX##_find_secondary( uint64_t code, uint64_t scope, uint64_t table, array_ptr<const ARR_ELEMENT_TYPE> data, uint32_t data_len, uint64_t& primary ) {\
-         EOS_ASSERT( data_len == ARR_SIZE,\
+         APIFINY_ASSERT( data_len == ARR_SIZE,\
                     db_api_exception,\
                     "invalid size of secondary key array for " #IDX ": given ${given} bytes but expected ${expected} bytes",\
                     ("given",data_len)("expected",ARR_SIZE) );\
          return context.IDX.find_secondary(code, scope, table, data, primary);\
       }\
       int db_##IDX##_find_primary( uint64_t code, uint64_t scope, uint64_t table, array_ptr<ARR_ELEMENT_TYPE> data, uint32_t data_len, uint64_t primary ) {\
-         EOS_ASSERT( data_len == ARR_SIZE,\
+         APIFINY_ASSERT( data_len == ARR_SIZE,\
                     db_api_exception,\
                     "invalid size of secondary key array for " #IDX ": given ${given} bytes but expected ${expected} bytes",\
                     ("given",data_len)("expected",ARR_SIZE) );\
          return context.IDX.find_primary(code, scope, table, data.value, primary);\
       }\
       int db_##IDX##_lowerbound( uint64_t code, uint64_t scope, uint64_t table, array_ptr<ARR_ELEMENT_TYPE> data, uint32_t data_len, uint64_t& primary ) {\
-         EOS_ASSERT( data_len == ARR_SIZE,\
+         APIFINY_ASSERT( data_len == ARR_SIZE,\
                     db_api_exception,\
                     "invalid size of secondary key array for " #IDX ": given ${given} bytes but expected ${expected} bytes",\
                     ("given",data_len)("expected",ARR_SIZE) );\
          return context.IDX.lowerbound_secondary(code, scope, table, data.value, primary);\
       }\
       int db_##IDX##_upperbound( uint64_t code, uint64_t scope, uint64_t table, array_ptr<ARR_ELEMENT_TYPE> data, uint32_t data_len, uint64_t& primary ) {\
-         EOS_ASSERT( data_len == ARR_SIZE,\
+         APIFINY_ASSERT( data_len == ARR_SIZE,\
                     db_api_exception,\
                     "invalid size of secondary key array for " #IDX ": given ${given} bytes but expected ${expected} bytes",\
                     ("given",data_len)("expected",ARR_SIZE) );\
@@ -1366,29 +1366,29 @@ class console_api : public context_aware_api {
 
 #define DB_API_METHOD_WRAPPERS_FLOAT_SECONDARY(IDX, TYPE)\
       int db_##IDX##_store( uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, const TYPE& secondary ) {\
-         EOS_ASSERT( !softfloat_api::is_nan( secondary ), transaction_exception, "NaN is not an allowed value for a secondary key" );\
+         APIFINY_ASSERT( !softfloat_api::is_nan( secondary ), transaction_exception, "NaN is not an allowed value for a secondary key" );\
          return context.IDX.store( scope, table, account_name(payer), id, secondary );\
       }\
       void db_##IDX##_update( int iterator, uint64_t payer, const TYPE& secondary ) {\
-         EOS_ASSERT( !softfloat_api::is_nan( secondary ), transaction_exception, "NaN is not an allowed value for a secondary key" );\
+         APIFINY_ASSERT( !softfloat_api::is_nan( secondary ), transaction_exception, "NaN is not an allowed value for a secondary key" );\
          return context.IDX.update( iterator, account_name(payer), secondary );\
       }\
       void db_##IDX##_remove( int iterator ) {\
          return context.IDX.remove( iterator );\
       }\
       int db_##IDX##_find_secondary( uint64_t code, uint64_t scope, uint64_t table, const TYPE& secondary, uint64_t& primary ) {\
-         EOS_ASSERT( !softfloat_api::is_nan( secondary ), transaction_exception, "NaN is not an allowed value for a secondary key" );\
+         APIFINY_ASSERT( !softfloat_api::is_nan( secondary ), transaction_exception, "NaN is not an allowed value for a secondary key" );\
          return context.IDX.find_secondary(code, scope, table, secondary, primary);\
       }\
       int db_##IDX##_find_primary( uint64_t code, uint64_t scope, uint64_t table, TYPE& secondary, uint64_t primary ) {\
          return context.IDX.find_primary(code, scope, table, secondary, primary);\
       }\
       int db_##IDX##_lowerbound( uint64_t code, uint64_t scope, uint64_t table,  TYPE& secondary, uint64_t& primary ) {\
-         EOS_ASSERT( !softfloat_api::is_nan( secondary ), transaction_exception, "NaN is not an allowed value for a secondary key" );\
+         APIFINY_ASSERT( !softfloat_api::is_nan( secondary ), transaction_exception, "NaN is not an allowed value for a secondary key" );\
          return context.IDX.lowerbound_secondary(code, scope, table, secondary, primary);\
       }\
       int db_##IDX##_upperbound( uint64_t code, uint64_t scope, uint64_t table,  TYPE& secondary, uint64_t& primary ) {\
-         EOS_ASSERT( !softfloat_api::is_nan( secondary ), transaction_exception, "NaN is not an allowed value for a secondary key" );\
+         APIFINY_ASSERT( !softfloat_api::is_nan( secondary ), transaction_exception, "NaN is not an allowed value for a secondary key" );\
          return context.IDX.upperbound_secondary(code, scope, table, secondary, primary);\
       }\
       int db_##IDX##_end( uint64_t code, uint64_t scope, uint64_t table ) {\
@@ -1449,7 +1449,7 @@ class memory_api : public context_aware_api {
       :context_aware_api(ctx,true){}
 
       char* memcpy( array_ptr<char> dest, array_ptr<const char> src, uint32_t length) {
-         EOS_ASSERT((size_t)(std::abs((ptrdiff_t)dest.value - (ptrdiff_t)src.value)) >= length,
+         APIFINY_ASSERT((size_t)(std::abs((ptrdiff_t)dest.value - (ptrdiff_t)src.value)) >= length,
                overlapping_memory_error, "memcpy can only accept non-aliasing pointers");
          return (char *)::memcpy(dest, src, length);
       }
@@ -1478,7 +1478,7 @@ class transaction_api : public context_aware_api {
 
       void send_inline( array_ptr<char> data, uint32_t data_len ) {
          //TODO: Why is this limit even needed? And why is it not consistently checked on actions in input or deferred transactions
-         EOS_ASSERT( data_len < context.control.get_global_properties().configuration.max_inline_action_size, inline_action_too_big,
+         APIFINY_ASSERT( data_len < context.control.get_global_properties().configuration.max_inline_action_size, inline_action_too_big,
                     "inline action too big" );
 
          action act;
@@ -1488,7 +1488,7 @@ class transaction_api : public context_aware_api {
 
       void send_context_free_inline( array_ptr<char> data, uint32_t data_len ) {
          //TODO: Why is this limit even needed? And why is it not consistently checked on actions in input or deferred transactions
-         EOS_ASSERT( data_len < context.control.get_global_properties().configuration.max_inline_action_size, inline_action_too_big,
+         APIFINY_ASSERT( data_len < context.control.get_global_properties().configuration.max_inline_action_size, inline_action_too_big,
                    "inline action too big" );
 
          action act;
@@ -1587,7 +1587,7 @@ class compiler_builtins : public context_aware_api {
          rhs <<= 64;
          rhs |=  lb;
 
-         EOS_ASSERT(rhs != 0, arithmetic_exception, "divide by zero");
+         APIFINY_ASSERT(rhs != 0, arithmetic_exception, "divide by zero");
 
          lhs /= rhs;
 
@@ -1604,7 +1604,7 @@ class compiler_builtins : public context_aware_api {
          rhs <<= 64;
          rhs |=  lb;
 
-         EOS_ASSERT(rhs != 0, arithmetic_exception, "divide by zero");
+         APIFINY_ASSERT(rhs != 0, arithmetic_exception, "divide by zero");
 
          lhs /= rhs;
          ret = lhs;
@@ -1634,7 +1634,7 @@ class compiler_builtins : public context_aware_api {
          rhs <<= 64;
          rhs |=  lb;
 
-         EOS_ASSERT(rhs != 0, arithmetic_exception, "divide by zero");
+         APIFINY_ASSERT(rhs != 0, arithmetic_exception, "divide by zero");
 
          lhs %= rhs;
          ret = lhs;
@@ -1650,7 +1650,7 @@ class compiler_builtins : public context_aware_api {
          rhs <<= 64;
          rhs |=  lb;
 
-         EOS_ASSERT(rhs != 0, arithmetic_exception, "divide by zero");
+         APIFINY_ASSERT(rhs != 0, arithmetic_exception, "divide by zero");
 
          lhs %= rhs;
          ret = lhs;

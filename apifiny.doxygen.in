@@ -4,8 +4,8 @@
 # Project related configuration options
 #---------------------------------------------------------------------------
 DOXYFILE_ENCODING      = UTF-8
-PROJECT_NAME           = "EOS.IO"
-PROJECT_NUMBER         = "EOSIO ${DOXY_EOS_VERSION}"
+PROJECT_NAME           = "APIFINY.IO"
+PROJECT_NUMBER         = "APIFINY ${DOXY_APIFINY_VERSION}"
 PROJECT_BRIEF          =
 PROJECT_LOGO           = apifiny-logo.png
 OUTPUT_DIRECTORY       =

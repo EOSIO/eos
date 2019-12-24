@@ -69,15 +69,15 @@ namespace apifiny { namespace chain {
 
    void transaction_context::disallow_transaction_extensions( const char* error_msg )const {
       if( control.is_producing_block() ) {
-         EOS_THROW( subjective_block_production_exception, error_msg );
+         APIFINY_THROW( subjective_block_production_exception, error_msg );
       } else {
-         EOS_THROW( disallowed_transaction_extensions_bad_block_exception, error_msg );
+         APIFINY_THROW( disallowed_transaction_extensions_bad_block_exception, error_msg );
       }
    }
 
    void transaction_context::init(uint64_t initial_net_usage)
    {
-      EOS_ASSERT( !is_initialized, transaction_exception, "cannot initialize twice" );
+      APIFINY_ASSERT( !is_initialized, transaction_exception, "cannot initialize twice" );
 
       const auto& cfg = control.get_global_properties().configuration;
       auto& rl = control.get_mutable_resource_limits_manager();
@@ -254,7 +254,7 @@ namespace apifiny { namespace chain {
    }
 
    void transaction_context::exec() {
-      EOS_ASSERT( is_initialized, transaction_exception, "must first initialize" );
+      APIFINY_ASSERT( is_initialized, transaction_exception, "must first initialize" );
 
       if( apply_context_free ) {
          for( const auto& act : trx.context_free_actions ) {
@@ -280,7 +280,7 @@ namespace apifiny { namespace chain {
    }
 
    void transaction_context::finalize() {
-      EOS_ASSERT( is_initialized, transaction_exception, "must first initialize" );
+      APIFINY_ASSERT( is_initialized, transaction_exception, "must first initialize" );
 
       if( is_input ) {
          auto& am = control.get_mutable_authorization_manager();
@@ -346,15 +346,15 @@ namespace apifiny { namespace chain {
       if (!control.skip_trx_checks()) {
          if( BOOST_UNLIKELY(net_usage > eager_net_limit) ) {
             if ( net_limit_due_to_block ) {
-               EOS_THROW( block_net_usage_exceeded,
+               APIFINY_THROW( block_net_usage_exceeded,
                           "not enough space left in block: ${net_usage} > ${net_limit}",
                           ("net_usage", net_usage)("net_limit", eager_net_limit) );
             }  else if (net_limit_due_to_greylist) {
-               EOS_THROW( greylist_net_usage_exceeded,
+               APIFINY_THROW( greylist_net_usage_exceeded,
                           "greylisted transaction net usage is too high: ${net_usage} > ${net_limit}",
                           ("net_usage", net_usage)("net_limit", eager_net_limit) );
             } else {
-               EOS_THROW( tx_net_usage_exceeded,
+               APIFINY_THROW( tx_net_usage_exceeded,
                           "transaction net usage is too high: ${net_usage} > ${net_limit}",
                           ("net_usage", net_usage)("net_limit", eager_net_limit) );
             }
@@ -368,29 +368,29 @@ namespace apifiny { namespace chain {
 
       auto now = fc::time_point::now();
       if( explicit_billed_cpu_time || deadline_exception_code == deadline_exception::code_value ) {
-         EOS_THROW( deadline_exception, "deadline exceeded ${billing_timer}us",
+         APIFINY_THROW( deadline_exception, "deadline exceeded ${billing_timer}us",
                      ("billing_timer", now - pseudo_start)("now", now)("deadline", _deadline)("start", start) );
       } else if( deadline_exception_code == block_cpu_usage_exceeded::code_value ) {
-         EOS_THROW( block_cpu_usage_exceeded,
+         APIFINY_THROW( block_cpu_usage_exceeded,
                      "not enough time left in block to complete executing transaction ${billing_timer}us",
                      ("now", now)("deadline", _deadline)("start", start)("billing_timer", now - pseudo_start) );
       } else if( deadline_exception_code == tx_cpu_usage_exceeded::code_value ) {
          if (cpu_limit_due_to_greylist) {
-            EOS_THROW( greylist_cpu_usage_exceeded,
+            APIFINY_THROW( greylist_cpu_usage_exceeded,
                      "greylisted transaction was executing for too long ${billing_timer}us",
                      ("now", now)("deadline", _deadline)("start", start)("billing_timer", now - pseudo_start) );
          } else {
-            EOS_THROW( tx_cpu_usage_exceeded,
+            APIFINY_THROW( tx_cpu_usage_exceeded,
                      "transaction was executing for too long ${billing_timer}us",
                      ("now", now)("deadline", _deadline)("start", start)("billing_timer", now - pseudo_start) );
          }
       } else if( deadline_exception_code == leeway_deadline_exception::code_value ) {
-         EOS_THROW( leeway_deadline_exception,
+         APIFINY_THROW( leeway_deadline_exception,
                      "the transaction was unable to complete by deadline, "
                      "but it is possible it could have succeeded if it were allowed to run to completion ${billing_timer}",
                      ("now", now)("deadline", _deadline)("start", start)("billing_timer", now - pseudo_start) );
       }
-      EOS_ASSERT( false,  transaction_exception, "unexpected deadline exception code ${code}", ("code", deadline_exception_code) );
+      APIFINY_ASSERT( false,  transaction_exception, "unexpected deadline exception code ${code}", ("code", deadline_exception_code) );
    }
 
    void transaction_context::pause_billing_timer() {
@@ -422,27 +422,27 @@ namespace apifiny { namespace chain {
       if (!control.skip_trx_checks()) {
          if( check_minimum ) {
             const auto& cfg = control.get_global_properties().configuration;
-            EOS_ASSERT( billed_us >= cfg.min_transaction_cpu_usage, transaction_exception,
+            APIFINY_ASSERT( billed_us >= cfg.min_transaction_cpu_usage, transaction_exception,
                         "cannot bill CPU time less than the minimum of ${min_billable} us",
                         ("min_billable", cfg.min_transaction_cpu_usage)("billed_cpu_time_us", billed_us)
                       );
          }
 
          if( billing_timer_exception_code == block_cpu_usage_exceeded::code_value ) {
-            EOS_ASSERT( billed_us <= objective_duration_limit.count(),
+            APIFINY_ASSERT( billed_us <= objective_duration_limit.count(),
                         block_cpu_usage_exceeded,
                         "billed CPU time (${billed} us) is greater than the billable CPU time left in the block (${billable} us)",
                         ("billed", billed_us)("billable", objective_duration_limit.count())
                       );
          } else {
             if (cpu_limit_due_to_greylist) {
-               EOS_ASSERT( billed_us <= objective_duration_limit.count(),
+               APIFINY_ASSERT( billed_us <= objective_duration_limit.count(),
                            greylist_cpu_usage_exceeded,
                            "billed CPU time (${billed} us) is greater than the maximum greylisted billable CPU time for the transaction (${billable} us)",
                            ("billed", billed_us)("billable", objective_duration_limit.count())
                );
             } else {
-               EOS_ASSERT( billed_us <= objective_duration_limit.count(),
+               APIFINY_ASSERT( billed_us <= objective_duration_limit.count(),
                            tx_cpu_usage_exceeded,
                            "billed CPU time (${billed} us) is greater than the maximum billable CPU time for the transaction (${billable} us)",
                            ("billed", billed_us)("billable", objective_duration_limit.count())
@@ -506,7 +506,7 @@ namespace apifiny { namespace chain {
    }
 
    action_trace& transaction_context::get_action_trace( uint32_t action_ordinal ) {
-      EOS_ASSERT( 0 < action_ordinal && action_ordinal <= trace->action_traces.size() ,
+      APIFINY_ASSERT( 0 < action_ordinal && action_ordinal <= trace->action_traces.size() ,
                   transaction_exception,
                   "action_ordinal ${ordinal} is outside allowed range [1,${max}]",
                   ("ordinal", action_ordinal)("max", trace->action_traces.size())
@@ -515,7 +515,7 @@ namespace apifiny { namespace chain {
    }
 
    const action_trace& transaction_context::get_action_trace( uint32_t action_ordinal )const {
-      EOS_ASSERT( 0 < action_ordinal && action_ordinal <= trace->action_traces.size() ,
+      APIFINY_ASSERT( 0 < action_ordinal && action_ordinal <= trace->action_traces.size() ,
                   transaction_exception,
                   "action_ordinal ${ordinal} is outside allowed range [1,${max}]",
                   ("ordinal", action_ordinal)("max", trace->action_traces.size())
@@ -611,7 +611,7 @@ namespace apifiny { namespace chain {
       } catch( const boost::interprocess::bad_alloc& ) {
          throw;
       } catch ( ... ) {
-          EOS_ASSERT( false, tx_duplicate,
+          APIFINY_ASSERT( false, tx_duplicate,
                      "duplicate transaction ${id}", ("id", id ) );
       }
    } /// record_transaction
@@ -622,9 +622,9 @@ namespace apifiny { namespace chain {
 
       for( const auto& a : trx.context_free_actions ) {
          auto* code = db.find<account_object, by_name>(a.account);
-         EOS_ASSERT( code != nullptr, transaction_exception,
+         APIFINY_ASSERT( code != nullptr, transaction_exception,
                      "action's code account '${account}' does not exist", ("account", a.account) );
-         EOS_ASSERT( a.authorization.size() == 0, transaction_exception,
+         APIFINY_ASSERT( a.authorization.size() == 0, transaction_exception,
                      "context-free actions cannot have authorizations" );
       }
 
@@ -633,21 +633,21 @@ namespace apifiny { namespace chain {
       bool one_auth = false;
       for( const auto& a : trx.actions ) {
          auto* code = db.find<account_object, by_name>(a.account);
-         EOS_ASSERT( code != nullptr, transaction_exception,
+         APIFINY_ASSERT( code != nullptr, transaction_exception,
                      "action's code account '${account}' does not exist", ("account", a.account) );
          for( const auto& auth : a.authorization ) {
             one_auth = true;
             auto* actor = db.find<account_object, by_name>(auth.actor);
-            EOS_ASSERT( actor  != nullptr, transaction_exception,
+            APIFINY_ASSERT( actor  != nullptr, transaction_exception,
                         "action's authorizing actor '${account}' does not exist", ("account", auth.actor) );
-            EOS_ASSERT( auth_manager.find_permission(auth) != nullptr, transaction_exception,
+            APIFINY_ASSERT( auth_manager.find_permission(auth) != nullptr, transaction_exception,
                         "action's authorizations include a non-existent permission: {permission}",
                         ("permission", auth) );
             if( enforce_actor_whitelist_blacklist )
                actors.insert( auth.actor );
          }
       }
-      EOS_ASSERT( one_auth, tx_no_auths, "transaction must have at least one authorization" );
+      APIFINY_ASSERT( one_auth, tx_no_auths, "transaction must have at least one authorization" );
 
       if( enforce_actor_whitelist_blacklist ) {
          control.check_actor_list( actors );

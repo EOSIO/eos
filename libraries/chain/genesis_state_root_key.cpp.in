@@ -2,6 +2,6 @@
 
 namespace apifiny { namespace chain {
 
-const string genesis_state::apifiny_root_key = "${EOSIO_ROOT_KEY}";
+const string genesis_state::apifiny_root_key = "${APIFINY_ROOT_KEY}";
 
 } } // namespace apifiny::chain

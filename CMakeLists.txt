@@ -1,6 +1,6 @@
 cmake_minimum_required( VERSION 3.8 )
 
-project( EOSIO )
+project( APIFINY )
 include(CTest) # suppresses DartConfiguration.tcl error
 enable_testing()
 
@@ -14,7 +14,7 @@ include( GNUInstallDirs )
 include( InstallDirectoryPermissions )
 include( MASSigning )
 
-set( BLOCKCHAIN_NAME "EOSIO" )
+set( BLOCKCHAIN_NAME "APIFINY" )
 set( CMAKE_CXX_STANDARD 17 )
 set( CMAKE_CXX_EXTENSIONS ON )
 set( CXX_STANDARD_REQUIRED ON)
@@ -59,25 +59,25 @@ if(APPLE AND UNIX AND "${OPENSSL_ROOT_DIR}" STREQUAL "")
 endif()
 
 # WASM runtimes to enable. Each runtime in this list will have:
-#  * definition EOSIO_<RUNTIME>_RUNTIME_ENABLED defined in public libchain interface
+#  * definition APIFINY_<RUNTIME>_RUNTIME_ENABLED defined in public libchain interface
 #  * ctest entries with --runtime
-list(APPEND EOSIO_WASM_RUNTIMES wabt)   #always enable wabt; it works everywhere and parts of apifiny still assume it's always available
+list(APPEND APIFINY_WASM_RUNTIMES wabt)   #always enable wabt; it works everywhere and parts of apifiny still assume it's always available
 if(CMAKE_SIZEOF_VOID_P EQUAL 8 AND NOT WIN32)
    if("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux" AND "${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
-      list(APPEND EOSIO_WASM_RUNTIMES apifiny-vm-oc)
-      # EOS VM OC requires LLVM, but move the check up here to a central location so that the EosioTester.cmakes
+      list(APPEND APIFINY_WASM_RUNTIMES apifiny-vm-oc)
+      # APIFINY VM OC requires LLVM, but move the check up here to a central location so that the ApifinyTester.cmakes
       # can be created with the exact version found
       find_package(LLVM REQUIRED CONFIG)
       if(LLVM_VERSION_MAJOR VERSION_LESS 7 OR LLVM_VERSION_MAJOR VERSION_GREATER 9)
-	      message(FATAL_ERROR "EOSIO requires an LLVM version 7.0 to 9.0")
+	      message(FATAL_ERROR "APIFINY requires an LLVM version 7.0 to 9.0")
       endif()
    endif()
 endif()
 
 if(CMAKE_SIZEOF_VOID_P EQUAL 8 AND NOT WIN32)
-   list(APPEND EOSIO_WASM_RUNTIMES apifiny-vm)
+   list(APPEND APIFINY_WASM_RUNTIMES apifiny-vm)
    if(CMAKE_SYSTEM_PROCESSOR STREQUAL x86_64)
-      list(APPEND EOSIO_WASM_RUNTIMES apifiny-vm-jit)
+      list(APPEND APIFINY_WASM_RUNTIMES apifiny-vm-jit)
    endif()
 endif()
 
@@ -101,12 +101,12 @@ find_package(Boost 1.67 REQUIRED COMPONENTS program_options unit_test_framework)
 
 if( APPLE AND UNIX )
 # Apple Specific Options Here
-    message( STATUS "Configuring EOSIO on macOS" )
+    message( STATUS "Configuring APIFINY on macOS" )
     set( CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -Wall -Wno-deprecated-declarations" )
     set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-deprecated-declarations" )
 else()
     # Linux Specific Options Here
-    message( STATUS "Configuring EOSIO on Linux" )
+    message( STATUS "Configuring APIFINY on Linux" )
     set( CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -Wall" )
     set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall" )
     if ( FULL_STATIC_BUILD )
@@ -124,7 +124,7 @@ endif()
 # uncomment this line to tell GDB about macros (slows compile times)
 # set( CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -gdwarf-2 -g3" )
 
-set(ENABLE_COVERAGE_TESTING FALSE CACHE BOOL "Build EOSIO for code coverage analysis")
+set(ENABLE_COVERAGE_TESTING FALSE CACHE BOOL "Build APIFINY for code coverage analysis")
 
 if(ENABLE_COVERAGE_TESTING)
   SET(CMAKE_C_FLAGS   "--coverage ${CMAKE_C_FLAGS}")
@@ -148,15 +148,15 @@ endif()
 
 message( STATUS "Using '${CORE_SYMBOL_NAME}' as CORE symbol name" )
 
-if ("${EOSIO_ROOT_KEY}" STREQUAL "")
-   set(EOSIO_ROOT_KEY "EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV")
+if ("${APIFINY_ROOT_KEY}" STREQUAL "")
+   set(APIFINY_ROOT_KEY "APIFINY6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV")
 endif()
 
-message( STATUS "Using '${EOSIO_ROOT_KEY}' as public key for 'apifiny' account" )
+message( STATUS "Using '${APIFINY_ROOT_KEY}' as public key for 'apifiny' account" )
 
 find_package( Gperftools QUIET )
 if( GPERFTOOLS_FOUND )
-    message( STATUS "Found gperftools; compiling EOSIO with TCMalloc")
+    message( STATUS "Found gperftools; compiling APIFINY with TCMalloc")
     #if doing this by the book, simply link_libraries( ${GPERFTOOLS_TCMALLOC} ) here. That will
     #give the performance benefits of tcmalloc but since it won't be linked last
     #the heap profiler & checker may not be accurate. This here is rather undocumented behavior
@@ -189,15 +189,15 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/testnet.template ${CMAKE_CURRENT_BINA
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/apifiny.version.in ${CMAKE_CURRENT_BINARY_DIR}/apifiny.version.hpp)
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/apifiny.version.hpp DESTINATION ${CMAKE_INSTALL_FULL_INCLUDEDIR})
 
-set(EOS_ROOT_DIR ${CMAKE_BINARY_DIR})
+set(APIFINY_ROOT_DIR ${CMAKE_BINARY_DIR})
 configure_file(${CMAKE_SOURCE_DIR}/CMakeModules/apifiny-config.cmake.in ${CMAKE_BINARY_DIR}/lib/cmake/apifiny/apifiny-config.cmake @ONLY)
-configure_file(${CMAKE_SOURCE_DIR}/CMakeModules/EosioTesterBuild.cmake.in ${CMAKE_BINARY_DIR}/lib/cmake/apifiny/EosioTester.cmake @ONLY)
+configure_file(${CMAKE_SOURCE_DIR}/CMakeModules/ApifinyTesterBuild.cmake.in ${CMAKE_BINARY_DIR}/lib/cmake/apifiny/ApifinyTester.cmake @ONLY)
 
-set(EOS_ROOT_DIR ${CMAKE_INSTALL_PREFIX})
+set(APIFINY_ROOT_DIR ${CMAKE_INSTALL_PREFIX})
 configure_file(${CMAKE_SOURCE_DIR}/CMakeModules/apifiny-config.cmake.in ${CMAKE_BINARY_DIR}/modules/apifiny-config.cmake @ONLY)
 install(FILES ${CMAKE_BINARY_DIR}/modules/apifiny-config.cmake DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}/cmake/apifiny)
-configure_file(${CMAKE_SOURCE_DIR}/CMakeModules/EosioTester.cmake.in ${CMAKE_BINARY_DIR}/modules/EosioTester.cmake @ONLY)
-install(FILES ${CMAKE_BINARY_DIR}/modules/EosioTester.cmake DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}/cmake/apifiny)
+configure_file(${CMAKE_SOURCE_DIR}/CMakeModules/ApifinyTester.cmake.in ${CMAKE_BINARY_DIR}/modules/ApifinyTester.cmake @ONLY)
+install(FILES ${CMAKE_BINARY_DIR}/modules/ApifinyTester.cmake DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}/cmake/apifiny)
 
 configure_file(${CMAKE_SOURCE_DIR}/LICENSE
                ${CMAKE_BINARY_DIR}/licenses/apifiny/LICENSE COPYONLY)

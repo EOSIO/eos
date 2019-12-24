@@ -67,7 +67,7 @@ namespace apifiny { namespace chain { namespace wasm_injections {
             int actual_index;
             get_next_indices( module, index, actual_index );
             registered_injected.emplace( func_name, index );
-            decltype(module.functions.imports) new_import = { {{func_type_index}, EOSIO_INJECTED_MODULE_NAME, std::move(func_name)} };
+            decltype(module.functions.imports) new_import = { {{func_type_index}, APIFINY_INJECTED_MODULE_NAME, std::move(func_name)} };
             // prepend to the head of the imports
             module.functions.imports.insert( module.functions.imports.begin()+(registered_injected.size()-1), new_import.begin(), new_import.end() ); 
             injected_index_mapping.emplace( index, actual_index ); 
@@ -800,7 +800,7 @@ namespace apifiny { namespace chain { namespace wasm_injections {
                injector_utils::add_import<ResultType::none>( *_module, u8"checktime", checktime_injection::chktm_idx );
 
             for ( auto& fd : _module->functions.defs ) {
-               wasm_ops::EOSIO_OperatorDecoderStream<std::conditional_t<full_injection, pre_op_full_injectors, pre_op_injectors>> pre_decoder(fd.code);
+               wasm_ops::APIFINY_OperatorDecoderStream<std::conditional_t<full_injection, pre_op_full_injectors, pre_op_injectors>> pre_decoder(fd.code);
                wasm_ops::instruction_stream pre_code(fd.code.size()*2);
 
                while ( pre_decoder ) {
@@ -818,7 +818,7 @@ namespace apifiny { namespace chain { namespace wasm_injections {
                fd.code = pre_code.get();
             }
             for ( auto& fd : _module->functions.defs ) {
-               wasm_ops::EOSIO_OperatorDecoderStream<std::conditional_t<full_injection, post_op_full_injectors, post_op_injectors>> post_decoder(fd.code);
+               wasm_ops::APIFINY_OperatorDecoderStream<std::conditional_t<full_injection, post_op_full_injectors, post_op_injectors>> post_decoder(fd.code);
                wasm_ops::instruction_stream post_code(fd.code.size()*2);
 
                if constexpr (full_injection) {

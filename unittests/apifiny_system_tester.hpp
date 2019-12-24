@@ -434,7 +434,7 @@ public:
    }
 
    vector<name> active_and_vote_producers() {
-      //stake more than 15% of total EOS supply to activate chain
+      //stake more than 15% of total APIFINY supply to activate chain
       transfer( name("apifiny"), name("alice1111111"), core_from_string("650000000.0000"), name("apifiny") );
       BOOST_REQUIRE_EQUAL( success(), stake( name("alice1111111"), name("alice1111111"), core_from_string("300000000.0000"), core_from_string("300000000.0000") ) );
 

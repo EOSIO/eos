@@ -1,13 +1,13 @@
 ## Dependencies - Manual Install - MacOS Mojave 10.14 or Higher
 
 [[info | Reminder]]
-| This section assumes you already have the EOSIO source code. If not, just [Download the EOSIO source](../../../../01_build-from-source/01_download-apifiny-source.md).
+| This section assumes you already have the APIFINY source code. If not, just [Download the APIFINY source](../../../../01_build-from-source/01_download-apifiny-source.md).
 
 ## Steps
 
-Please follow the steps below to build EOSIO on your selected OS:
+Please follow the steps below to build APIFINY on your selected OS:
 
-1. [Change to EOSIO folder](#1-change-to-apifiny-folder)
+1. [Change to APIFINY folder](#1-change-to-apifiny-folder)
 2. [Install Homebrew](#2-install-homebrew)
 3. [Install dependencies](#3-install-dependencies)
 4. [Build clang8](#4-build-clang8)
@@ -16,7 +16,7 @@ Please follow the steps below to build EOSIO on your selected OS:
 7. [Build mongodb C driver](#7-build-mongodb-c-driver)
 8. [Build mongodb CXX driver](#8-build-mongodb-cxx-driver)
 
-### 1. Change to EOSIO folder
+### 1. Change to APIFINY folder
 ```sh
 $ cd ~/apifiny
 ```
@@ -38,7 +38,7 @@ $ brew update && brew install git cmake python@2 python libtool libusb \
 ### 4. download apifiny
 ```sh
 mkdir -p ~/apifiny && cd ~/apifiny
-git clone --recursive --single-branch -b release/2.0.x https://github.com/EOSIO/apifiny.git
+git clone --recursive --single-branch -b release/2.0.x https://github.com/APIFINY/apifiny.git
 ```
 -->
 
@@ -115,4 +115,4 @@ $ bash -c "mkdir -p ~/apifiny/apifiny/build && cd ~/apifiny/apifiny/build && cma
 -->
 
 [[info | What's Next?]]
-| The EOSIO dependencies are now installed. Next, you can [Manually Build the EOSIO Binaries](../01_apifiny-manual-build.md).
+| The APIFINY dependencies are now installed. Next, you can [Manually Build the APIFINY Binaries](../01_apifiny-manual-build.md).

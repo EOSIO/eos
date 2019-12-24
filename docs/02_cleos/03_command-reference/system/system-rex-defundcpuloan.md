@@ -22,5 +22,5 @@ excerpt: "Withdraw from a CPU loan fund"
 ## Examples
 
 ```text
-clapifiny system rex defundcpuloan accountname1 abc123 "1 EOS"
+clapifiny system rex defundcpuloan accountname1 abc123 "1 APIFINY"
 ```

@@ -40,7 +40,7 @@ void wallet_manager::set_timeout(const std::chrono::seconds& t) {
    timeout = t;
    auto now = std::chrono::system_clock::now();
    timeout_time = now + timeout;
-   EOS_ASSERT(timeout_time >= now && timeout_time.time_since_epoch().count() > 0, invalid_lock_timeout_exception, "Overflow on timeout_time, specified ${t}, now ${now}, timeout_time ${timeout_time}",
+   APIFINY_ASSERT(timeout_time >= now && timeout_time.time_since_epoch().count() > 0, invalid_lock_timeout_exception, "Overflow on timeout_time, specified ${t}, now ${now}, timeout_time ${timeout_time}",
              ("t", t.count())("now", now.time_since_epoch().count())("timeout_time", timeout_time.time_since_epoch().count()));
 }
 
@@ -57,12 +57,12 @@ void wallet_manager::check_timeout() {
 std::string wallet_manager::create(const std::string& name) {
    check_timeout();
 
-   EOS_ASSERT(valid_filename(name), wallet_exception, "Invalid filename, path not allowed in wallet name ${n}", ("n", name));
+   APIFINY_ASSERT(valid_filename(name), wallet_exception, "Invalid filename, path not allowed in wallet name ${n}", ("n", name));
 
    auto wallet_filename = dir / (name + file_ext);
 
    if (fc::exists(wallet_filename)) {
-      EOS_THROW(chain::wallet_exist_exception, "Wallet with name: '${n}' already exists at ${path}", ("n", name)("path",fc::path(wallet_filename)));
+      APIFINY_THROW(chain::wallet_exist_exception, "Wallet with name: '${n}' already exists at ${path}", ("n", name)("path",fc::path(wallet_filename)));
    }
 
    std::string password = gen_password();
@@ -91,14 +91,14 @@ std::string wallet_manager::create(const std::string& name) {
 void wallet_manager::open(const std::string& name) {
    check_timeout();
 
-   EOS_ASSERT(valid_filename(name), wallet_exception, "Invalid filename, path not allowed in wallet name ${n}", ("n", name));
+   APIFINY_ASSERT(valid_filename(name), wallet_exception, "Invalid filename, path not allowed in wallet name ${n}", ("n", name));
 
    wallet_data d;
    auto wallet = std::make_unique<soft_wallet>(d);
    auto wallet_filename = dir / (name + file_ext);
    wallet->set_wallet_filename(wallet_filename.string());
    if (!wallet->load_wallet_file()) {
-      EOS_THROW(chain::wallet_nonexistent_exception, "Unable to open file: ${f}", ("f", wallet_filename.string()));
+      APIFINY_THROW(chain::wallet_nonexistent_exception, "Unable to open file: ${f}", ("f", wallet_filename.string()));
    }
 
    // If we have name in our map then remove it since we want the emplace below to replace.
@@ -127,17 +127,17 @@ map<public_key_type,private_key_type> wallet_manager::list_keys(const string& na
    check_timeout();
 
    if (wallets.count(name) == 0)
-      EOS_THROW(chain::wallet_nonexistent_exception, "Wallet not found: ${w}", ("w", name));
+      APIFINY_THROW(chain::wallet_nonexistent_exception, "Wallet not found: ${w}", ("w", name));
    auto& w = wallets.at(name);
    if (w->is_locked())
-      EOS_THROW(chain::wallet_locked_exception, "Wallet is locked: ${w}", ("w", name));
+      APIFINY_THROW(chain::wallet_locked_exception, "Wallet is locked: ${w}", ("w", name));
    w->check_password(pw); //throws if bad password
    return w->list_keys();
 }
 
 flat_set<public_key_type> wallet_manager::get_public_keys() {
    check_timeout();
-   EOS_ASSERT(!wallets.empty(), wallet_not_available_exception, "You don't have any wallet!");
+   APIFINY_ASSERT(!wallets.empty(), wallet_not_available_exception, "You don't have any wallet!");
    flat_set<public_key_type> result;
    bool is_all_wallet_locked = true;
    for (const auto& i : wallets) {
@@ -146,7 +146,7 @@ flat_set<public_key_type> wallet_manager::get_public_keys() {
       }
       is_all_wallet_locked &= i.second->is_locked();
    }
-   EOS_ASSERT(!is_all_wallet_locked, wallet_locked_exception, "You don't have any unlocked wallet!");
+   APIFINY_ASSERT(!is_all_wallet_locked, wallet_locked_exception, "You don't have any unlocked wallet!");
    return result;
 }
 
@@ -163,7 +163,7 @@ void wallet_manager::lock_all() {
 void wallet_manager::lock(const std::string& name) {
    check_timeout();
    if (wallets.count(name) == 0) {
-      EOS_THROW(chain::wallet_nonexistent_exception, "Wallet not found: ${w}", ("w", name));
+      APIFINY_THROW(chain::wallet_nonexistent_exception, "Wallet not found: ${w}", ("w", name));
    }
    auto& w = wallets.at(name);
    if (w->is_locked()) {
@@ -179,7 +179,7 @@ void wallet_manager::unlock(const std::string& name, const std::string& password
    }
    auto& w = wallets.at(name);
    if (!w->is_locked()) {
-      EOS_THROW(chain::wallet_unlocked_exception, "Wallet is already unlocked: ${w}", ("w", name));
+      APIFINY_THROW(chain::wallet_unlocked_exception, "Wallet is already unlocked: ${w}", ("w", name));
       return;
    }
    w->unlock(password);
@@ -188,11 +188,11 @@ void wallet_manager::unlock(const std::string& name, const std::string& password
 void wallet_manager::import_key(const std::string& name, const std::string& wif_key) {
    check_timeout();
    if (wallets.count(name) == 0) {
-      EOS_THROW(chain::wallet_nonexistent_exception, "Wallet not found: ${w}", ("w", name));
+      APIFINY_THROW(chain::wallet_nonexistent_exception, "Wallet not found: ${w}", ("w", name));
    }
    auto& w = wallets.at(name);
    if (w->is_locked()) {
-      EOS_THROW(chain::wallet_locked_exception, "Wallet is locked: ${w}", ("w", name));
+      APIFINY_THROW(chain::wallet_locked_exception, "Wallet is locked: ${w}", ("w", name));
    }
    w->import_key(wif_key);
 }
@@ -200,11 +200,11 @@ void wallet_manager::import_key(const std::string& name, const std::string& wif_
 void wallet_manager::remove_key(const std::string& name, const std::string& password, const std::string& key) {
    check_timeout();
    if (wallets.count(name) == 0) {
-      EOS_THROW(chain::wallet_nonexistent_exception, "Wallet not found: ${w}", ("w", name));
+      APIFINY_THROW(chain::wallet_nonexistent_exception, "Wallet not found: ${w}", ("w", name));
    }
    auto& w = wallets.at(name);
    if (w->is_locked()) {
-      EOS_THROW(chain::wallet_locked_exception, "Wallet is locked: ${w}", ("w", name));
+      APIFINY_THROW(chain::wallet_locked_exception, "Wallet is locked: ${w}", ("w", name));
    }
    w->check_password(password); //throws if bad password
    w->remove_key(key);
@@ -213,11 +213,11 @@ void wallet_manager::remove_key(const std::string& name, const std::string& pass
 string wallet_manager::create_key(const std::string& name, const std::string& key_type) {
    check_timeout();
    if (wallets.count(name) == 0) {
-      EOS_THROW(chain::wallet_nonexistent_exception, "Wallet not found: ${w}", ("w", name));
+      APIFINY_THROW(chain::wallet_nonexistent_exception, "Wallet not found: ${w}", ("w", name));
    }
    auto& w = wallets.at(name);
    if (w->is_locked()) {
-      EOS_THROW(chain::wallet_locked_exception, "Wallet is locked: ${w}", ("w", name));
+      APIFINY_THROW(chain::wallet_locked_exception, "Wallet is locked: ${w}", ("w", name));
    }
 
    string upper_key_type = boost::to_upper_copy<std::string>(key_type);
@@ -242,7 +242,7 @@ wallet_manager::sign_transaction(const chain::signed_transaction& txn, const fla
          }
       }
       if (!found) {
-         EOS_THROW(chain::wallet_missing_pub_key_exception, "Public key not found in unlocked wallets ${k}", ("k", pk));
+         APIFINY_THROW(chain::wallet_missing_pub_key_exception, "Public key not found in unlocked wallets ${k}", ("k", pk));
       }
    }
 
@@ -263,12 +263,12 @@ wallet_manager::sign_digest(const chain::digest_type& digest, const public_key_t
       }
    } FC_LOG_AND_RETHROW();
 
-   EOS_THROW(chain::wallet_missing_pub_key_exception, "Public key not found in unlocked wallets ${k}", ("k", key));
+   APIFINY_THROW(chain::wallet_missing_pub_key_exception, "Public key not found in unlocked wallets ${k}", ("k", key));
 }
 
 void wallet_manager::own_and_use_wallet(const string& name, std::unique_ptr<wallet_api>&& wallet) {
    if(wallets.find(name) != wallets.end())
-      EOS_THROW(wallet_exception, "Tried to use wallet name that already exists.");
+      APIFINY_THROW(wallet_exception, "Tried to use wallet name that already exists.");
    wallets.emplace(name, std::move(wallet));
 }
 
@@ -282,7 +282,7 @@ void wallet_manager::start_lock_watch(std::shared_ptr<boost::asio::deadline_time
       if(ec != boost::system::error_code()) {
          if(rc.type() == bfs::file_not_found) {
             appbase::app().quit();
-            EOS_THROW(wallet_exception, "Lock file removed while kapifinyd still running.  Terminating.");
+            APIFINY_THROW(wallet_exception, "Lock file removed while kapifinyd still running.  Terminating.");
          }
       }
       t->expires_from_now(boost::posix_time::seconds(1));
@@ -296,12 +296,12 @@ void wallet_manager::initialize_lock() {
    lock_path = dir / "wallet.lock";
    {
       std::ofstream x(lock_path.string());
-      EOS_ASSERT(!x.fail(), wallet_exception, "Failed to open wallet lock file at ${f}", ("f", lock_path.string()));
+      APIFINY_ASSERT(!x.fail(), wallet_exception, "Failed to open wallet lock file at ${f}", ("f", lock_path.string()));
    }
    wallet_dir_lock = std::make_unique<boost::interprocess::file_lock>(lock_path.string().c_str());
    if(!wallet_dir_lock->try_lock()) {
       wallet_dir_lock.reset();
-      EOS_THROW(wallet_exception, "Failed to lock access to wallet directory; is another kapifinyd running?");
+      APIFINY_THROW(wallet_exception, "Failed to lock access to wallet directory; is another kapifinyd running?");
    }
    auto timer = std::make_shared<boost::asio::deadline_timer>(appbase::app().get_io_service(), boost::posix_time::seconds(1));
    start_lock_watch(timer);

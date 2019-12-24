@@ -1,22 +1,22 @@
-# EOSIO Manual Build
+# APIFINY Manual Build
 
 [[info | Manual Builds are for Advanced Developers]]
-| These manual instructions are intended for advanced developers. The [Build Script](../00_build-script.md) should be the preferred method to build EOSIO from source. If the script fails or your platform is not supported, continue with the instructions below.
+| These manual instructions are intended for advanced developers. The [Build Script](../00_build-script.md) should be the preferred method to build APIFINY from source. If the script fails or your platform is not supported, continue with the instructions below.
 
-## EOSIO Dependencies
+## APIFINY Dependencies
 
-When performing a manual build, it is necessary to install specific software packages that the EOSIO software depends on. To learn more about these dependencies, visit the [EOSIO Software Dependencies](00_apifiny-dependencies/index.md) section.
+When performing a manual build, it is necessary to install specific software packages that the APIFINY software depends on. To learn more about these dependencies, visit the [APIFINY Software Dependencies](00_apifiny-dependencies/index.md) section.
 
 ## Instructions
 
-The following instructions will build the EOSIO dependencies and EOSIO binaries manually by invoking commands on the shell:
+The following instructions will build the APIFINY dependencies and APIFINY binaries manually by invoking commands on the shell:
 
-1. [Manual Install EOSIO Dependencies](00_apifiny-dependencies/index.md#manual-installation-of-dependencies)
-2. [Manual Build EOSIO Binaries](01_apifiny-manual-build.md)
+1. [Manual Install APIFINY Dependencies](00_apifiny-dependencies/index.md#manual-installation-of-dependencies)
+2. [Manual Build APIFINY Binaries](01_apifiny-manual-build.md)
 
 ## Out-of-source Builds
 
-While building dependencies and EOSIO binaries, out-of-source builds are also supported. Refer to the `cmake` help for more information.
+While building dependencies and APIFINY binaries, out-of-source builds are also supported. Refer to the `cmake` help for more information.
 
 ## Other Compilers
 

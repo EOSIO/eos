@@ -1,13 +1,13 @@
 ## Dependencies - Manual Install - Ubuntu 16.04 or higher and Linux Mint 18
 
 [[info | Reminder]]
-| This section assumes you already have the EOSIO source code. If not, just [Download the EOSIO source](../../../../01_build-from-source/01_download-apifiny-source.md).
+| This section assumes you already have the APIFINY source code. If not, just [Download the APIFINY source](../../../../01_build-from-source/01_download-apifiny-source.md).
 
 ## Steps
 
-Please follow the steps below to build EOSIO on your selected OS:
+Please follow the steps below to build APIFINY on your selected OS:
 
-1. [Change to EOSIO folder](#1-change-to-apifiny-folder)
+1. [Change to APIFINY folder](#1-change-to-apifiny-folder)
 2. [Install dependencies](#2-install-dependencies)
 3. [Build cmake](#3-build-cmake)
 4. [Build clang8](#4-build-clang8) <!-- 5. [Copy clang8 cmake file](#5-copy-clang8-cmake-file) -->
@@ -30,7 +30,7 @@ docker run -it ubuntu:18.04
 ```
 -->
 
-### 1. Change to EOSIO folder
+### 1. Change to APIFINY folder
 ```sh
 $ cd ~/apifiny
 ```
@@ -62,7 +62,7 @@ apt-get update && \
 ### 3. download apifiny
 ```sh
 mkdir -p ~/apifiny && cd ~/apifiny
-git clone --recursive --single-branch -b release/2.0.x https://github.com/EOSIO/apifiny.git
+git clone --recursive --single-branch -b release/2.0.x https://github.com/APIFINY/apifiny.git
 ```
 -->
 
@@ -205,4 +205,4 @@ $ bash -c "mkdir -p ~/apifiny/apifiny/build && cd ~/apifiny/apifiny/build && exp
 -->
 
 [[info | What's Next?]]
-| The EOSIO dependencies are now installed. Next, you can [Manually Build the EOSIO Binaries](../01_apifiny-manual-build.md).
+| The APIFINY dependencies are now installed. Next, you can [Manually Build the APIFINY Binaries](../01_apifiny-manual-build.md).

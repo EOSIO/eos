@@ -17,7 +17,7 @@ constexpr auto intrinsic_table = boost::hana::make_tuple(
    "apifinyvmoc_internal.indirect_call_mismatch"_s,
    "apifinyvmoc_internal.indirect_call_oob"_s,
    "apifinyvmoc_internal.depth_assert"_s,
-   "apifiny_injection.call_depth_assert"_s,  //these two are never used by EOS VM OC but all intrinsics
+   "apifiny_injection.call_depth_assert"_s,  //these two are never used by APIFINY VM OC but all intrinsics
    "apifiny_injection.checktime"_s,          //must be mapped
    "env.__ashlti3"_s,
    "env.__ashrti3"_s,

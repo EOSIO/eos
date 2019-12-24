@@ -1,5 +1,5 @@
 ## Positional Arguments
-- `account` _TEXT_ - The account to receive EOS for sold RAM
+- `account` _TEXT_ - The account to receive APIFINY for sold RAM
 - `bytes` _UINT_  - Number of RAM bytes to sell
 ## Options
 - `-h,--help` Print this help message and exit

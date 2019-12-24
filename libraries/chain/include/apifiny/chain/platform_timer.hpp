@@ -28,7 +28,7 @@ struct platform_timer {
       auto reset_busy = fc::make_scoped_exit([this]() {
          _callback_variables_busy.store(false, std::memory_order_release);
       });
-      EOS_ASSERT(!(func && _expiration_callback), misc_exception, "Setting a platform_timer callback when one already exists");
+      APIFINY_ASSERT(!(func && _expiration_callback), misc_exception, "Setting a platform_timer callback when one already exists");
 
       _expiration_callback = func;
       _expiration_callback_data = user;

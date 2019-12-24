@@ -28,7 +28,7 @@ You should see something below:
 ```shell
 executed transaction: 5487afafd67bf459a20fcc2dbc5d0c2f0d1f10e33123eaaa07088046fd18e3ae  192 bytes  503 us
 #         apifiny <= apifiny::delegatebw            {"from":"bob","receiver":"alice","stake_net_quantity":"0.0000 SYS","stake_cpu_quanti...
-#   apifiny.token <= apifiny.token::transfer        {"from":"bob","to":"apifiny.stake","quantity":"0.0010 EOS","memo":"stake bandwidth"}
+#   apifiny.token <= apifiny.token::transfer        {"from":"bob","to":"apifiny.stake","quantity":"0.0010 APIFINY","memo":"stake bandwidth"}
 #  bob <= apifiny.token::transfer        {"from":"bob","to":"apifiny.stake","quantity":"0.0010 SYS","memo":"stake bandwidth"}
 #   apifiny.stake <= apifiny.token::transfer        {"from":"bob","to":"apifiny.stake","quantity":"0.0010 SYS","memo":"stake bandwidth"}
 ```

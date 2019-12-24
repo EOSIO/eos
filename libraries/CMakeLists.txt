@@ -21,7 +21,7 @@ set(ENABLE_TESTS OFF CACHE BOOL "Build tests")
 set(ENABLE_ADDRESS_SANITIZER OFF CACHE BOOL "Use address sanitizer")
 set(ENABLE_UNDEFINED_BEHAVIOR_SANITIZER OFF CACHE BOOL "Use UB sanitizer")
 set(ENABLE_PROFILE OFF CACHE BOOL "Enable for profile builds")
-if(apifiny-vm IN_LIST EOSIO_WASM_RUNTIMES OR apifiny-vm-jit IN_LIST EOSIO_WASM_RUNTIMES)
+if(apifiny-vm IN_LIST APIFINY_WASM_RUNTIMES OR apifiny-vm-jit IN_LIST APIFINY_WASM_RUNTIMES)
 add_subdirectory( apifiny-vm )
 endif()
 

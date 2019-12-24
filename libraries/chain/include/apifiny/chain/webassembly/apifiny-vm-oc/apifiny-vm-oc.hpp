@@ -40,10 +40,10 @@ struct code_descriptor {
 };
 
 enum apifinyvmoc_exitcode : int {
-   EOSVMOC_EXIT_CLEAN_EXIT = 1,
-   EOSVMOC_EXIT_CHECKTIME_FAIL,
-   EOSVMOC_EXIT_SEGV,
-   EOSVMOC_EXIT_EXCEPTION
+   APIFINYVMOC_EXIT_CLEAN_EXIT = 1,
+   APIFINYVMOC_EXIT_CHECKTIME_FAIL,
+   APIFINYVMOC_EXIT_SEGV,
+   APIFINYVMOC_EXIT_EXCEPTION
 };
 
 }}}
@@ -53,4 +53,4 @@ FC_REFLECT(apifiny::chain::apifinyvmoc::code_offset, (offset));
 FC_REFLECT(apifiny::chain::apifinyvmoc::intrinsic_ordinal, (ordinal));
 FC_REFLECT(apifiny::chain::apifinyvmoc::code_descriptor, (code_hash)(vm_version)(codegen_version)(code_begin)(start)(apply_offset)(starting_memory_pages)(initdata_begin)(initdata_size)(initdata_prologue_size));
 
-#define EOSVMOC_INTRINSIC_INIT_PRIORITY __attribute__((init_priority(198)))
+#define APIFINYVMOC_INTRINSIC_INIT_PRIORITY __attribute__((init_priority(198)))

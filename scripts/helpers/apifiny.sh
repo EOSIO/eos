@@ -7,15 +7,15 @@ if [[ -z "${NAME}" ]]; then
         # Obtain OS NAME, and VERSION
         . /etc/os-release
     elif [[ $ARCH == "Darwin" ]]; then export NAME=$(sw_vers -productName)
-    else echo " ${COLOR_RED}- EOSIO is not supported for your Architecture!${COLOR_NC}" && exit 1
+    else echo " ${COLOR_RED}- APIFINY is not supported for your Architecture!${COLOR_NC}" && exit 1
     fi
 fi
 
 # Setup yum and apt variables
 if [[ $NAME =~ "Amazon Linux" ]] || [[ $NAME == "CentOS Linux" ]]; then
-    if ! YUM=$( command -v yum 2>/dev/null ); then echo "${COLOR_RED}YUM must be installed to compile EOSIO${COLOR_NC}" && exit 1; fi
+    if ! YUM=$( command -v yum 2>/dev/null ); then echo "${COLOR_RED}YUM must be installed to compile APIFINY${COLOR_NC}" && exit 1; fi
 elif [[ $NAME == "Ubuntu" ]]; then
-    if ! APTGET=$( command -v apt-get 2>/dev/null ); then echo "${COLOR_RED}APT-GET must be installed to compile EOSIO${COLOR_NC}" && exit 1; fi
+    if ! APTGET=$( command -v apt-get 2>/dev/null ); then echo "${COLOR_RED}APT-GET must be installed to compile APIFINY${COLOR_NC}" && exit 1; fi
 fi
 
 # Obtain dependency versions; Must come first in the script
@@ -32,7 +32,7 @@ function setup() {
         echo "CORE_SYMBOL_NAME: ${CORE_SYMBOL_NAME}"
         echo "BOOST_LOCATION: ${BOOST_LOCATION}"
         echo "BUILD_DIR: ${BUILD_DIR}"
-        echo "EOSIO_INSTALL_DIR: ${EOSIO_INSTALL_DIR}"
+        echo "APIFINY_INSTALL_DIR: ${APIFINY_INSTALL_DIR}"
         echo "NONINTERACTIVE: ${NONINTERACTIVE}"
         echo "PROCEED: ${PROCEED}"
         echo "ENABLE_COVERAGE_TESTING: ${ENABLE_COVERAGE_TESTING}"
@@ -61,7 +61,7 @@ function setup() {
 function ensure-which() {
   if ! which ls &>/dev/null; then
     while true; do
-      [[ $NONINTERACTIVE == false ]] && printf "${COLOR_YELLOW}EOSIO compiler checks require the 'which' package: Would you like for us to install it? (y/n)?${COLOR_NC}" && read -p " " PROCEED
+      [[ $NONINTERACTIVE == false ]] && printf "${COLOR_YELLOW}APIFINY compiler checks require the 'which' package: Would you like for us to install it? (y/n)?${COLOR_NC}" && read -p " " PROCEED
       echo ""
       case $PROCEED in
           "" ) echo "What would you like to do?";;
@@ -76,9 +76,9 @@ function ensure-which() {
 # Prompt user for installation directory.
 function install-directory-prompt() {
     if [[ -z $INSTALL_LOCATION ]]; then
-        echo "No installation location was specified. Please provide the location where EOSIO is installed."
+        echo "No installation location was specified. Please provide the location where APIFINY is installed."
         while true; do
-            [[ $NONINTERACTIVE == false ]] && printf "${COLOR_YELLOW}Do you wish to use the default location? ${EOSIO_INSTALL_DIR}? (y/n)${COLOR_NC}" && read -p " " PROCEED
+            [[ $NONINTERACTIVE == false ]] && printf "${COLOR_YELLOW}Do you wish to use the default location? ${APIFINY_INSTALL_DIR}? (y/n)${COLOR_NC}" && read -p " " PROCEED
             echo ""
             case $PROCEED in
                 "" )
@@ -86,24 +86,24 @@ function install-directory-prompt() {
                 0 | true | [Yy]* )
                 break;;
                 1 | false | [Nn]* )
-                printf "Enter the desired installation location." && read -p " " EOSIO_INSTALL_DIR;
-                export EOSIO_INSTALL_DIR;
+                printf "Enter the desired installation location." && read -p " " APIFINY_INSTALL_DIR;
+                export APIFINY_INSTALL_DIR;
                 break;;
                 * ) echo "Please type 'y' for yes or 'n' for no.";;
             esac
         done
     else
-        # Support relative paths : https://github.com/EOSIO/apifiny/issues/7560
+        # Support relative paths : https://github.com/APIFINY/apifiny/issues/7560
         [[ ! $INSTALL_LOCATION =~ ^\/ ]] && export INSTALL_LOCATION="${CURRENT_WORKING_DIR}/$INSTALL_LOCATION"
-        export EOSIO_INSTALL_DIR="$INSTALL_LOCATION"
+        export APIFINY_INSTALL_DIR="$INSTALL_LOCATION"
     fi
     . ./scripts/.build_vars
-    echo "EOSIO will be installed to: ${EOSIO_INSTALL_DIR}"
+    echo "APIFINY will be installed to: ${APIFINY_INSTALL_DIR}"
 }
 
 function previous-install-prompt() {
-  if [[ -d $EOSIO_INSTALL_DIR ]]; then
-    echo "EOSIO has already been installed into ${EOSIO_INSTALL_DIR}... It's suggested that you apifiny_uninstall.sh before re-running this script."
+  if [[ -d $APIFINY_INSTALL_DIR ]]; then
+    echo "APIFINY has already been installed into ${APIFINY_INSTALL_DIR}... It's suggested that you apifiny_uninstall.sh before re-running this script."
     while true; do
       [[ $NONINTERACTIVE == false ]] && printf "${COLOR_YELLOW}Do you wish to proceed anyway? (y/n)${COLOR_NC}" && read -p " " PROCEED
       echo ""
@@ -118,14 +118,14 @@ function previous-install-prompt() {
 }
 
 function resources() {
-    echo "${COLOR_CYAN}EOSIO website:${COLOR_NC} https://apifiny.io"
-    echo "${COLOR_CYAN}EOSIO Telegram channel:${COLOR_NC} https://t.me/EOSProject"
-    echo "${COLOR_CYAN}EOSIO resources:${COLOR_NC} https://apifiny.io/resources/"
-    echo "${COLOR_CYAN}EOSIO Stack Exchange:${COLOR_NC} https://apifiny.stackexchange.com"
+    echo "${COLOR_CYAN}APIFINY website:${COLOR_NC} https://apifiny.io"
+    echo "${COLOR_CYAN}APIFINY Telegram channel:${COLOR_NC} https://t.me/APIFINYProject"
+    echo "${COLOR_CYAN}APIFINY resources:${COLOR_NC} https://apifiny.io/resources/"
+    echo "${COLOR_CYAN}APIFINY Stack Exchange:${COLOR_NC} https://apifiny.stackexchange.com"
 }
 
 function print_supported_linux_distros_and_exit() {
-   echo "On Linux the EOSIO build script only supports Amazon, Centos, and Ubuntu."
+   echo "On Linux the APIFINY build script only supports Amazon, Centos, and Ubuntu."
    echo "Please install on a supported version of one of these Linux distributions."
    echo "https://aws.amazon.com/amazon-linux-ami/"
    echo "https://www.centos.org/"
@@ -182,9 +182,9 @@ function ensure-compiler() {
         else
             ## Check for c++ version 7 or higher
             [[ $( $(which $CXX) -dumpversion | cut -d '.' -f 1 ) -lt 7 ]] && export NO_CPP17=true
-            if [[ $NO_CPP17 == false ]]; then # https://github.com/EOSIO/apifiny/issues/7402
+            if [[ $NO_CPP17 == false ]]; then # https://github.com/APIFINY/apifiny/issues/7402
                 while true; do
-                    echo "${COLOR_YELLOW}WARNING: Your GCC compiler ($CXX) is less performant than clang (https://github.com/EOSIO/apifiny/issues/7402). We suggest running the build script with -P or install your own clang and try again.${COLOR_NC}"
+                    echo "${COLOR_YELLOW}WARNING: Your GCC compiler ($CXX) is less performant than clang (https://github.com/APIFINY/apifiny/issues/7402). We suggest running the build script with -P or install your own clang and try again.${COLOR_NC}"
                     [[ $NONINTERACTIVE == false ]] && printf "${COLOR_YELLOW}Do you wish to proceed anyway? (y/n)?${COLOR_NC}" && read -p " " PROCEED
                     case $PROCEED in
                         "" ) echo "What would you like to do?";;
@@ -226,7 +226,7 @@ function ensure-cmake() {
         curl -LO https://cmake.org/files/v${CMAKE_VERSION_MAJOR}.${CMAKE_VERSION_MINOR}/cmake-${CMAKE_VERSION}.tar.gz \
         && tar -xzf cmake-${CMAKE_VERSION}.tar.gz \
         && cd cmake-${CMAKE_VERSION} \
-        && ./bootstrap --prefix=${EOSIO_INSTALL_DIR} \
+        && ./bootstrap --prefix=${APIFINY_INSTALL_DIR} \
         && make -j${JOBS} \
         && make install \
         && cd .. \

@@ -1,10 +1,10 @@
 
 [[info | Previous Builds]]
-| If you have previously installed EOSIO from source using shell scripts, you must first run the [Uninstall Script](01_build-from-source/05_uninstall-apifiny.md) before installing any prebuilt binaries on the same OS.
+| If you have previously installed APIFINY from source using shell scripts, you must first run the [Uninstall Script](01_build-from-source/05_uninstall-apifiny.md) before installing any prebuilt binaries on the same OS.
 
 ## Prebuilt Binaries
 
-EOSIO prebuilt binary packages are available for specific [Operating Systems](index.md#supported-operating-systems). Find the instructions below for your given OS:
+APIFINY prebuilt binary packages are available for specific [Operating Systems](index.md#supported-operating-systems). Find the instructions below for your given OS:
 
 ### Mac OS X:
 
@@ -47,15 +47,15 @@ $ sudo yum install ./apifiny-1.8.0-rc1.el7.x86_64.rpm
 $ sudo yum remove apifiny
 ```
 
-## Location of EOSIO binaries
+## Location of APIFINY binaries
 
-After installing the prebuilt binaries, the actual EOSIO binaries will be located under the `~/apifiny/x.y/bin` folder, where `x.y` is the EOSIO release version that was installed.
+After installing the prebuilt binaries, the actual APIFINY binaries will be located under the `~/apifiny/x.y/bin` folder, where `x.y` is the APIFINY release version that was installed.
 
 ## Previous Versions
 
-To install previous versions of the EOSIO prebuilt binaries:
+To install previous versions of the APIFINY prebuilt binaries:
 
-1. Browse to https://github.com/EOSIO/apifiny/tags and select the actual version of the EOSIO software you need to install.
+1. Browse to https://github.com/APIFINY/apifiny/tags and select the actual version of the APIFINY software you need to install.
 
 2. Scroll down past the `Release Notes` and download the package or archive that you need for your OS.
 

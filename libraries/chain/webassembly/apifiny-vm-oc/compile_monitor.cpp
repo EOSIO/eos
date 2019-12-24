@@ -265,7 +265,7 @@ void launch_compile_monitor(int nodapifiny_fd) {
       compile_monitor monitor(ctx, std::move(nodapifiny_socket), std::move(trampoline_socket));
       ctx.run();
       if(monitor._compile_sessions.size())
-         std::cerr << "ERROR: EOS VM OC compiler monitor exiting with active sessions" << std::endl;
+         std::cerr << "ERROR: APIFINY VM OC compiler monitor exiting with active sessions" << std::endl;
    }
    
    _exit(0);
@@ -298,7 +298,7 @@ extern "C" int __wrap_main(int argc, char* argv[]) {
 }
 
 wrapped_fd get_connection_to_compile_monitor(int cache_fd) {
-   FC_ASSERT(the_compile_monitor_trampoline.compile_manager_pid >= 0, "EOS VM oop connection doesn't look active");
+   FC_ASSERT(the_compile_monitor_trampoline.compile_manager_pid >= 0, "APIFINY VM oop connection doesn't look active");
 
    int socks[2]; //0: our socket to compile_manager_session, 1: socket we'll give to compile_maanger_session
    socketpair(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0, socks);
@@ -317,9 +317,9 @@ wrapped_fd get_connection_to_compile_monitor(int cache_fd) {
    write_message_with_fds(the_compile_monitor_trampoline.compile_manager_fd, initialize_message(), fds_to_pass);
 
    auto [success, message, fds] = read_message_with_fds(the_compile_monitor_trampoline.compile_manager_fd);
-   EOS_ASSERT(success, misc_exception, "failed to read response from monitor process");
-   EOS_ASSERT(message.contains<initalize_response_message>(), misc_exception, "unexpected response from monitor process");
-   EOS_ASSERT(!message.get<initalize_response_message>().error_message, misc_exception, "Error message from monitor process: ${e}", ("e", *message.get<initalize_response_message>().error_message));
+   APIFINY_ASSERT(success, misc_exception, "failed to read response from monitor process");
+   APIFINY_ASSERT(message.contains<initalize_response_message>(), misc_exception, "unexpected response from monitor process");
+   APIFINY_ASSERT(!message.get<initalize_response_message>().error_message, misc_exception, "Error message from monitor process: ${e}", ("e", *message.get<initalize_response_message>().error_message));
    return socket_to_monitor_session;
 }
 

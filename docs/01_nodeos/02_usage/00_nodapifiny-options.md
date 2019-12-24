@@ -272,7 +272,7 @@ Config Options for apifiny::net_plugin:
                                         
   --p2p-max-nodes-per-host arg (=1)     Maximum number of client nodes from any
                                         single IP address
-  --agent-name arg (="EOS Test Agent")  The name supplied to identify this node
+  --agent-name arg (="APIFINY Test Agent")  The name supplied to identify this node
                                         amongst the peers.
   --allowed-connection arg (=any)       Can be 'any' or 'producers' or 
                                         'specified' or 'none'. If 'specified', 
@@ -345,27 +345,27 @@ Config Options for apifiny::producer_plugin:
                                         instead) Tuple of [public key, WIF 
                                         private key] (may specify multiple 
                                         times)
-  --signature-provider arg (=EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV=KEY:5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3)
+  --signature-provider arg (=APIFINY6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV=KEY:5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3)
                                         Key=Value pairs in the form 
                                         <public-key>=<provider-spec>
                                         Where:
                                            <public-key>    is a string form of 
-                                                           a vaild EOSIO public
+                                                           a vaild APIFINY public
                                                            key
                                         
                                            <provider-spec> is a string in the 
                                                            form <provider-type>
                                                            :<data>
                                         
-                                           <provider-type> is KEY, or KEOSD
+                                           <provider-type> is KEY, or KAPIFINYD
                                         
                                            KEY:<data>      is a string form of 
-                                                           a valid EOSIO 
+                                                           a valid APIFINY
                                                            private key which 
                                                            maps to the provided
                                                            public key
                                         
-                                           KEOSD:<data>    is the URL where 
+                                           KAPIFINYD:<data>    is the URL where
                                                            kapifinyd is available
                                                            and the approptiate 
                                                            wallet(s) are 

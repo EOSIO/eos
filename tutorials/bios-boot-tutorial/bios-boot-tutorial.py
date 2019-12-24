@@ -350,8 +350,8 @@ commands = [
     ('l', 'log',                stepLog,                    True,    "Show tail of node's log"),
 ]
 
-parser.add_argument('--public-key', metavar='', help="EOSIO Public Key", default='EOS8Znrtgwt8TfpmbVpTKvA2oB8Nqey625CLN8bCN3TEbgx86Dsvr', dest="public_key")
-parser.add_argument('--private-Key', metavar='', help="EOSIO Private Key", default='5K463ynhZoCDDa4RDcr63cUwWLTnKqmdcoTKTHBjqoKfv4u5V7p', dest="private_key")
+parser.add_argument('--public-key', metavar='', help="APIFINY Public Key", default='APIFINY8Znrtgwt8TfpmbVpTKvA2oB8Nqey625CLN8bCN3TEbgx86Dsvr', dest="public_key")
+parser.add_argument('--private-Key', metavar='', help="APIFINY Private Key", default='5K463ynhZoCDDa4RDcr63cUwWLTnKqmdcoTKTHBjqoKfv4u5V7p', dest="private_key")
 parser.add_argument('--clapifiny', metavar='', help="Clapifiny command", default='../../build/programs/clapifiny/clapifiny --wallet-url http://127.0.0.1:6666 ')
 parser.add_argument('--nodapifiny', metavar='', help="Path to nodapifiny binary", default='../../build/programs/nodapifiny/nodapifiny')
 parser.add_argument('--kapifinyd', metavar='', help="Path to kapifinyd binary", default='../../build/programs/kapifinyd/kapifinyd')

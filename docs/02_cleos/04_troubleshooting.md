@@ -18,4 +18,4 @@ Replace API_ENDPOINT and PORT with your remote nodapifiny API endpoint detail
 
 ## “Missing Authorizations"
 
-That means you are not using the required authorizations. Most likely you are not using correct EOSIO account or permission level to sign the transaction
+That means you are not using the required authorizations. Most likely you are not using correct APIFINY account or permission level to sign the transaction

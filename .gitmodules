@@ -11,10 +11,10 @@
 	url = https://github.com/apifiny/berkeley-softfloat-3
 [submodule "libraries/fc"]
 	path = libraries/fc
-	url = https://github.com/EOSIO/fc
+	url = https://github.com/APIFINY/fc
 [submodule "libraries/wabt"]
 	path = libraries/wabt
-	url = https://github.com/EOSIO/wabt
+	url = https://github.com/APIFINY/wabt
 [submodule "libraries/yubihsm"]
 	path = libraries/yubihsm
 	url = https://github.com/Yubico/yubihsm-shell
@@ -23,4 +23,4 @@
 	url = https://github.com/apifiny/apifiny-vm
 [submodule "apifiny-wasm-spec-tests"]
 	path = apifiny-wasm-spec-tests
-	url = https://github.com/EOSIO/apifiny-wasm-spec-tests
+	url = https://github.com/APIFINY/apifiny-wasm-spec-tests

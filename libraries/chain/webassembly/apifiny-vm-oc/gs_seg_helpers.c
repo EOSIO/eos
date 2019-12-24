@@ -5,10 +5,10 @@
 
 int arch_prctl(int code, unsigned long* addr);
 
-#define EOSVMOC_MEMORY_PTR_cb_ptr GS_PTR struct apifiny_vm_oc_control_block* const cb_ptr = ((GS_PTR struct apifiny_vm_oc_control_block* const)(EOS_VM_OC_CONTROL_BLOCK_OFFSET));
+#define APIFINYVMOC_MEMORY_PTR_cb_ptr GS_PTR struct apifiny_vm_oc_control_block* const cb_ptr = ((GS_PTR struct apifiny_vm_oc_control_block* const)(APIFINY_VM_OC_CONTROL_BLOCK_OFFSET));
 
 int32_t apifiny_vm_oc_grow_memory(int32_t grow, int32_t max) {
-   EOSVMOC_MEMORY_PTR_cb_ptr;
+   APIFINYVMOC_MEMORY_PTR_cb_ptr;
    uint64_t previous_page_count = cb_ptr->current_linear_memory_pages;
    int32_t grow_amount = grow;
    uint64_t max_pages = max;
@@ -19,7 +19,7 @@ int32_t apifiny_vm_oc_grow_memory(int32_t grow, int32_t max) {
 
    uint64_t current_gs;
    arch_prctl(ARCH_GET_GS, &current_gs);
-   current_gs += grow_amount * EOS_VM_OC_MEMORY_STRIDE;
+   current_gs += grow_amount * APIFINY_VM_OC_MEMORY_STRIDE;
    arch_prctl(ARCH_SET_GS, (unsigned long*)current_gs);
    cb_ptr->current_linear_memory_pages += grow_amount;
    cb_ptr->first_invalid_memory_address += grow_amount*64*1024;
@@ -31,16 +31,16 @@ int32_t apifiny_vm_oc_grow_memory(int32_t grow, int32_t max) {
 }
 
 sigjmp_buf* apifiny_vm_oc_get_jmp_buf() {
-   EOSVMOC_MEMORY_PTR_cb_ptr;
+   APIFINYVMOC_MEMORY_PTR_cb_ptr;
    return cb_ptr->jmp;
 }
 
 void* apifiny_vm_oc_get_exception_ptr() {
-   EOSVMOC_MEMORY_PTR_cb_ptr;
+   APIFINYVMOC_MEMORY_PTR_cb_ptr;
    return cb_ptr->eptr;
 }
 
 void* apifiny_vm_oc_get_bounce_buffer_list() {
-   EOSVMOC_MEMORY_PTR_cb_ptr;
+   APIFINYVMOC_MEMORY_PTR_cb_ptr;
    return cb_ptr->bounce_buffers;
 }

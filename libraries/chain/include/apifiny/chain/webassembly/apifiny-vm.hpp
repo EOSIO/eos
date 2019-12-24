@@ -1,6 +1,6 @@
 #pragma once
 
-#if defined(EOSIO_EOS_VM_RUNTIME_ENABLED) || defined(EOSIO_EOS_VM_JIT_RUNTIME_ENABLED)
+#if defined(APIFINY_APIFINY_VM_RUNTIME_ENABLED) || defined(APIFINY_APIFINY_VM_JIT_RUNTIME_ENABLED)
 
 #include <apifiny/chain/webassembly/common.hpp>
 #include <apifiny/chain/webassembly/runtime_interface.hpp>
@@ -43,7 +43,7 @@ namespace apifiny { namespace vm {
    template<typename T>
    struct wasm_type_converter<T&> : linear_memory_access {
       auto from_wasm(uint32_t val) {
-         EOS_VM_ASSERT( val != 0, wasm_memory_exception, "references cannot be created for null pointers" );
+         APIFINY_VM_ASSERT( val != 0, wasm_memory_exception, "references cannot be created for null pointers" );
          void* ptr = get_ptr(val);
          validate_ptr<T>(ptr, 1);
          return apifiny::vm::aligned_ref_wrapper<T, alignof(T)>{ptr};
@@ -137,14 +137,14 @@ class apifiny_vm_runtime : public apifiny::chain::wasm_runtime_interface {
 
 } } } }// apifiny::chain::webassembly::wabt_runtime
 
-#define __EOS_VM_INTRINSIC_NAME(LBL, SUF) LBL##SUF
-#define _EOS_VM_INTRINSIC_NAME(LBL, SUF) __INTRINSIC_NAME(LBL, SUF)
+#define __APIFINY_VM_INTRINSIC_NAME(LBL, SUF) LBL##SUF
+#define _APIFINY_VM_INTRINSIC_NAME(LBL, SUF) __INTRINSIC_NAME(LBL, SUF)
 
-#define _REGISTER_EOS_VM_INTRINSIC(CLS, MOD, METHOD, WASM_SIG, NAME, SIG) \
-   apifiny::vm::registered_function<apifiny::chain::apply_context, CLS, &CLS::METHOD> _EOS_VM_INTRINSIC_NAME(__apifiny_vm_intrinsic_fn, __COUNTER__)(std::string(MOD), std::string(NAME));
+#define _REGISTER_APIFINY_VM_INTRINSIC(CLS, MOD, METHOD, WASM_SIG, NAME, SIG) \
+   apifiny::vm::registered_function<apifiny::chain::apply_context, CLS, &CLS::METHOD> _APIFINY_VM_INTRINSIC_NAME(__apifiny_vm_intrinsic_fn, __COUNTER__)(std::string(MOD), std::string(NAME));
 
 #else
 
-#define _REGISTER_EOS_VM_INTRINSIC(CLS, MOD, METHOD, WASM_SIG, NAME, SIG)
+#define _REGISTER_APIFINY_VM_INTRINSIC(CLS, MOD, METHOD, WASM_SIG, NAME, SIG)
 
 #endif

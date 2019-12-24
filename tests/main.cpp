@@ -4,7 +4,7 @@
 #include <fc/log/logger.hpp>
 #include <apifiny/chain/exceptions.hpp>
 
-//extern uint32_t EOS_TESTING_GENESIS_TIMESTAMP;
+//extern uint32_t APIFINY_TESTING_GENESIS_TIMESTAMP;
 
 void translate_fc_exception(const fc::exception &e) {
    std::cerr << "\033[33m" <<  e.to_detail_string() << "\033[0m" << std::endl;
@@ -30,12 +30,12 @@ boost::unit_test::test_suite* init_unit_test_suite(int argc, char* argv[]) {
    std::srand(time(NULL));
    std::cout << "Random number generator seeded to " << time(NULL) << std::endl;
    /*
-   const char* genesis_timestamp_str = getenv("EOS_TESTING_GENESIS_TIMESTAMP");
+   const char* genesis_timestamp_str = getenv("APIFINY_TESTING_GENESIS_TIMESTAMP");
    if( genesis_timestamp_str != nullptr )
    {
-      EOS_TESTING_GENESIS_TIMESTAMP = std::stoul( genesis_timestamp_str );
+      APIFINY_TESTING_GENESIS_TIMESTAMP = std::stoul( genesis_timestamp_str );
    }
-   std::cout << "EOS_TESTING_GENESIS_TIMESTAMP is " << EOS_TESTING_GENESIS_TIMESTAMP << std::endl;
+   std::cout << "APIFINY_TESTING_GENESIS_TIMESTAMP is " << APIFINY_TESTING_GENESIS_TIMESTAMP << std::endl;
    */
    return nullptr;
 }

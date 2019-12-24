@@ -2,8 +2,8 @@
 set -eo pipefail
 VERSION=2.1
 ##########################################################################
-# This is the EOSIO automated install script for Linux and Mac OS.
-# This file was downloaded from https://github.com/EOSIO/apifiny
+# This is the APIFINY automated install script for Linux and Mac OS.
+# This file was downloaded from https://github.com/APIFINY/apifiny
 #
 # Copyright (c) 2017, Respective Authors all rights reserved.
 #
@@ -29,7 +29,7 @@ VERSION=2.1
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 #
-# https://github.com/EOSIO/apifiny/blob/master/LICENSE.txt
+# https://github.com/APIFINY/apifiny/blob/master/LICENSE.txt
 ##########################################################################
 
 # Ensure we're in the repo root and not inside of scripts
@@ -42,7 +42,7 @@ cd $( dirname "${BASH_SOURCE[0]}" )/..
 
 [[ ! -f ${BUILD_DIR}/CMakeCache.txt ]] && printf "${COLOR_RED}Please run ${SCRIPT_DIR}/apifiny_build.sh first!${COLOR_NC}" && exit 1
 echo "${COLOR_CYAN}====================================================================================="
-echo "========================== ${COLOR_WHITE}Starting EOSIO Installation${COLOR_CYAN} ==============================${COLOR_NC}"
+echo "========================== ${COLOR_WHITE}Starting APIFINY Installation${COLOR_CYAN} ==============================${COLOR_NC}"
 execute cd $BUILD_DIR
 execute make install
 execute cd ..
@@ -60,7 +60,7 @@ printf "    \\  \\::/       \\  \\::/        /__/:/        \\__\\/      \\  \\::
 printf "     \\__\\/         \\__\\/         \\__\\/                     \\__\\/ \n\n${COLOR_NC}"
 
 printf "==============================================================================================\\n"
-printf "${COLOR_GREEN}EOSIO has been installed into ${CACHED_INSTALL_PATH}/bin${COLOR_NC}"
+printf "${COLOR_GREEN}APIFINY has been installed into ${CACHED_INSTALL_PATH}/bin${COLOR_NC}"
 printf "\\n${COLOR_YELLOW}Uninstall with: ${SCRIPT_DIR}/apifiny_uninstall.sh${COLOR_NC}\\n"
 printf "==============================================================================================\\n\\n"
 resources

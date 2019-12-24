@@ -4,7 +4,7 @@ Logging for `nodapifiny` is controlled by the `logging.json` file. CLI options c
 
 ## Appenders
 
-The logging library built into EOSIO supports two appender types:
+The logging library built into APIFINY supports two appender types:
 
 - [Console](#console)
 - [GELF](#gelf) (Graylog Extended Log Format)
@@ -72,7 +72,7 @@ Example:
 
 ## Loggers
 
-The logging library built into EOSIO currently supports five loggers:
+The logging library built into APIFINY currently supports five loggers:
 
 - `default` - the default logger, always enabled.
 - `net_plugin_impl` - detailed logging for the net plugin.

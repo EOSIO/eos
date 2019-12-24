@@ -6,11 +6,11 @@
 
 ## Installation
 
-`kapifinyd` is distributed as part of the [EOSIO software suite](https://github.com/EOSIO/apifiny/blob/master/README.md). To install `kapifinyd` just visit the [EOSIO Software Installation](../00_install/index.md) section.
+`kapifinyd` is distributed as part of the [APIFINY software suite](https://github.com/APIFINY/apifiny/blob/master/README.md). To install `kapifinyd` just visit the [APIFINY Software Installation](../00_install/index.md) section.
 
 ## Operation
 
 When a wallet is unlocked with the corresponding password, `clapifiny` can request `kapifinyd` to sign a transaction with the appropriate private keys. Also, `kapifinyd` provides support for hardware-based wallets such as Secure Encalve and YubiHSM.
 
 [[info | Audience]]
-| `kapifinyd` is intended to be used by EOSIO developers only.
+| `kapifinyd` is intended to be used by APIFINY developers only.

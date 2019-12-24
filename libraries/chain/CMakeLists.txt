@@ -16,8 +16,8 @@ else()
    endif()
 endif()
 
-if("apifiny-vm-oc" IN_LIST EOSIO_WASM_RUNTIMES)
-   set(CHAIN_EOSVMOC_SOURCES webassembly/apifiny-vm-oc/code_cache.cpp
+if("apifiny-vm-oc" IN_LIST APIFINY_WASM_RUNTIMES)
+   set(CHAIN_APIFINYVMOC_SOURCES webassembly/apifiny-vm-oc/code_cache.cpp
                              webassembly/apifiny-vm-oc/executor.cpp
                              webassembly/apifiny-vm-oc/memory.cpp
                              webassembly/apifiny-vm-oc/intrinsic.cpp
@@ -31,21 +31,21 @@ if("apifiny-vm-oc" IN_LIST EOSIO_WASM_RUNTIMES)
 
    if(LLVM_VERSION VERSION_LESS 7.1 AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
       enable_language(ASM-LLVMWAR)
-      list(APPEND CHAIN_EOSVMOC_SOURCES webassembly/apifiny-vm-oc/llvmWARshim.llvmwar)
+      list(APPEND CHAIN_APIFINYVMOC_SOURCES webassembly/apifiny-vm-oc/llvmWARshim.llvmwar)
    else()
-      list(APPEND CHAIN_EOSVMOC_SOURCES webassembly/apifiny-vm-oc/llvmWARshim.cpp)
+      list(APPEND CHAIN_APIFINYVMOC_SOURCES webassembly/apifiny-vm-oc/llvmWARshim.cpp)
    endif()
 
    llvm_map_components_to_libnames(LLVM_LIBS support core passes mcjit native orcjit)
    include_directories(${LLVM_INCLUDE_DIRS})
    add_definitions(${LLVM_DEFINITIONS})
 
-   option(EOSVMOC_ENABLE_DEVELOPER_OPTIONS "enable developer options for EOS VM OC" OFF)
+   option(APIFINYVMOC_ENABLE_DEVELOPER_OPTIONS "enable developer options for APIFINY VM OC" OFF)
 endif()
 
-if("apifiny-vm" IN_LIST EOSIO_WASM_RUNTIMES OR "apifiny-vm-jit" IN_LIST EOSIO_WASM_RUNTIMES)
-   set(CHAIN_EOSVM_SOURCES "webassembly/apifiny-vm.cpp")
-   set(CHAIN_EOSVM_LIBRARIES apifiny-vm)
+if("apifiny-vm" IN_LIST APIFINY_WASM_RUNTIMES OR "apifiny-vm-jit" IN_LIST APIFINY_WASM_RUNTIMES)
+   set(CHAIN_APIFINYVM_SOURCES "webassembly/apifiny-vm.cpp")
+   set(CHAIN_APIFINYVM_LIBRARIES apifiny-vm)
 endif()
 
 ## SORT .cpp by most likely to change / break compile
@@ -83,8 +83,8 @@ add_library( apifiny_chain
               snapshot.cpp
 
              webassembly/wabt.cpp
-             ${CHAIN_EOSVMOC_SOURCES}
-             ${CHAIN_EOSVM_SOURCES}
+             ${CHAIN_APIFINYVMOC_SOURCES}
+             ${CHAIN_APIFINYVM_SOURCES}
 
 #             get_config.cpp
 #
@@ -105,7 +105,7 @@ add_library( apifiny_chain
              )
 
 target_link_libraries( apifiny_chain fc chainbase Logging IR WAST WASM Runtime
-                       softfloat builtins wabt ${CHAIN_EOSVM_LIBRARIES} ${LLVM_LIBS}
+                       softfloat builtins wabt ${CHAIN_APIFINYVM_LIBRARIES} ${LLVM_LIBS}
                      )
 target_include_directories( apifiny_chain
                             PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_BINARY_DIR}/include"
@@ -115,19 +115,19 @@ target_include_directories( apifiny_chain
                                    "${CMAKE_BINARY_DIR}/libraries/wabt"
                             )
 
-if("apifiny-vm-oc" IN_LIST EOSIO_WASM_RUNTIMES)
+if("apifiny-vm-oc" IN_LIST APIFINY_WASM_RUNTIMES)
    target_link_libraries(apifiny_chain "-Wl,-wrap=main")
 endif()
 
-foreach(RUNTIME ${EOSIO_WASM_RUNTIMES})
+foreach(RUNTIME ${APIFINY_WASM_RUNTIMES})
    string(TOUPPER "${RUNTIME}" RUNTIMEUC)
    string(REPLACE "-" "_" RUNTIMEUC ${RUNTIMEUC})
-   target_compile_definitions(apifiny_chain PUBLIC "EOSIO_${RUNTIMEUC}_RUNTIME_ENABLED")
+   target_compile_definitions(apifiny_chain PUBLIC "APIFINY_${RUNTIMEUC}_RUNTIME_ENABLED")
 endforeach()
 
-if(EOSVMOC_ENABLE_DEVELOPER_OPTIONS)
-   message(WARNING "EOS VM OC Developer Options are enabled; these are NOT supported")
-   target_compile_definitions(apifiny_chain PUBLIC EOSIO_EOS_VM_OC_DEVELOPER)
+if(APIFINYVMOC_ENABLE_DEVELOPER_OPTIONS)
+   message(WARNING "APIFINY VM OC Developer Options are enabled; these are NOT supported")
+   target_compile_definitions(apifiny_chain PUBLIC APIFINY_APIFINY_VM_OC_DEVELOPER)
 endif()
 
 install( TARGETS apifiny_chain

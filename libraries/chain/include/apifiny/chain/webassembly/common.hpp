@@ -3,7 +3,7 @@
 #include <apifiny/chain/wasm_interface.hpp>
 #include <apifiny/chain/wasm_apifiny_constraints.hpp>
 
-#define EOSIO_INJECTED_MODULE_NAME "apifiny_injection"
+#define APIFINY_INJECTED_MODULE_NAME "apifiny_injection"
 
 using namespace fc;
 

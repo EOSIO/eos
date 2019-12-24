@@ -2,11 +2,11 @@
 
 ## Introduction
 
-`clapifiny` is a command line tool that interfaces with the REST API exposed by `nodapifiny`. Developers can also use `clapifiny` to deploy and test EOSIO smart contracts.
+`clapifiny` is a command line tool that interfaces with the REST API exposed by `nodapifiny`. Developers can also use `clapifiny` to deploy and test APIFINY smart contracts.
 
 ## Installation
 
-`clapifiny` is distributed as part of the [EOSIO software suite](https://github.com/EOSIO/apifiny/blob/master/README.md). To install `clapifiny` just visit the [EOSIO Software Installation](../00_install/index.md) section.
+`clapifiny` is distributed as part of the [APIFINY software suite](https://github.com/APIFINY/apifiny/blob/master/README.md). To install `clapifiny` just visit the [APIFINY Software Installation](../00_install/index.md) section.
 
 ## Using Clapifiny
 
@@ -21,7 +21,7 @@ $ clapifiny --help
 ```
 
 ```console
-Command Line Interface to EOSIO Client
+Command Line Interface to APIFINY Client
 Usage: clapifiny [OPTIONS] SUBCOMMAND
 
 Options:

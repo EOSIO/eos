@@ -1,5 +1,5 @@
 
-Optionally, a set of tests can be run against your build to perform some basic validation of the EOSIO software installation.
+Optionally, a set of tests can be run against your build to perform some basic validation of the APIFINY software installation.
 
 To run the test suite after building, start `mongod`:
 
@@ -13,9 +13,9 @@ On MacOS:
 /usr/local/bin/mongod -f /usr/local/etc/mongod.conf &
 ```
 
-then set the build path to EOSIO_HOME:
+then set the build path to APIFINY_HOME:
 ```sh
-export EOSIO_HOME=~/apifiny/apifiny/build
+export APIFINY_HOME=~/apifiny/apifiny/build
 ```
 
 then run `make test` on all platforms:
@@ -26,4 +26,4 @@ make test
 ```
 
 [[info | Recommend]]
-| It is strongly suggested to [Install the EOSIO binaries](03_install-apifiny-binaries.md) after building EOSIO from source as it makes local development significantly more friendly.
+| It is strongly suggested to [Install the APIFINY binaries](03_install-apifiny-binaries.md) after building APIFINY from source as it makes local development significantly more friendly.

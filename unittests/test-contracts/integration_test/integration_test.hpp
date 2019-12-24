@@ -15,7 +15,7 @@ public:
 
       uint64_t primary_key()const { return key; }
 
-      EOSLIB_SERIALIZE( payload, (key)(data) )
+      APIFINYLIB_SERIALIZE( payload, (key)(data) )
    };
 
    using payloads_table = apifiny::multi_index< "payloads"_n,  payload >;

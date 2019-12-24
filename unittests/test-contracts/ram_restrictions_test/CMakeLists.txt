@@ -1,4 +1,4 @@
-if( EOSIO_COMPILE_TEST_CONTRACTS )
+if( APIFINY_COMPILE_TEST_CONTRACTS )
    add_contract( ram_restrictions_test ram_restrictions_test ram_restrictions_test.cpp )
 else()
    configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/ram_restrictions_test.wasm ${CMAKE_CURRENT_BINARY_DIR}/ram_restrictions_test.wasm COPYONLY )

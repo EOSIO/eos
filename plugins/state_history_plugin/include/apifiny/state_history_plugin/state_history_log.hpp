@@ -71,9 +71,9 @@ class state_history_log {
       log.read(bytes, sizeof(bytes));
       fc::datastream<const char*> ds(bytes, sizeof(bytes));
       fc::raw::unpack(ds, header);
-      EOS_ASSERT(!ds.remaining(), chain::plugin_exception, "state_history_log_header_serial_size mismatch");
+      APIFINY_ASSERT(!ds.remaining(), chain::plugin_exception, "state_history_log_header_serial_size mismatch");
       if (assert_version)
-         EOS_ASSERT(is_ship(header.magic) && is_ship_supported_version(header.magic), chain::plugin_exception,
+         APIFINY_ASSERT(is_ship(header.magic) && is_ship_supported_version(header.magic), chain::plugin_exception,
                     "corrupt ${name}.log (0)", ("name", name));
    }
 
@@ -81,24 +81,24 @@ class state_history_log {
       char                  bytes[state_history_log_header_serial_size];
       fc::datastream<char*> ds(bytes, sizeof(bytes));
       fc::raw::pack(ds, header);
-      EOS_ASSERT(!ds.remaining(), chain::plugin_exception, "state_history_log_header_serial_size mismatch");
+      APIFINY_ASSERT(!ds.remaining(), chain::plugin_exception, "state_history_log_header_serial_size mismatch");
       log.write(bytes, sizeof(bytes));
    }
 
    template <typename F>
    void write_entry(const state_history_log_header& header, const chain::block_id_type& prev_id, F write_payload) {
       auto block_num = chain::block_header::num_from_id(header.block_id);
-      EOS_ASSERT(_begin_block == _end_block || block_num <= _end_block, chain::plugin_exception,
+      APIFINY_ASSERT(_begin_block == _end_block || block_num <= _end_block, chain::plugin_exception,
                  "missed a block in ${name}.log", ("name", name));
 
       if (_begin_block != _end_block && block_num > _begin_block) {
          if (block_num == _end_block) {
-            EOS_ASSERT(prev_id == last_block_id, chain::plugin_exception, "missed a fork change in ${name}.log",
+            APIFINY_ASSERT(prev_id == last_block_id, chain::plugin_exception, "missed a fork change in ${name}.log",
                        ("name", name));
          } else {
             state_history_log_header prev;
             get_entry(block_num - 1, prev);
-            EOS_ASSERT(prev_id == prev.block_id, chain::plugin_exception, "missed a fork change in ${name}.log",
+            APIFINY_ASSERT(prev_id == prev.block_id, chain::plugin_exception, "missed a fork change in ${name}.log",
                        ("name", name));
          }
       }
@@ -110,7 +110,7 @@ class state_history_log {
       write_header(header);
       write_payload(log);
       uint64_t end = log.tellp();
-      EOS_ASSERT(end == pos + state_history_log_header_serial_size + header.payload_size, chain::plugin_exception,
+      APIFINY_ASSERT(end == pos + state_history_log_header_serial_size + header.payload_size, chain::plugin_exception,
                  "wrote payload with incorrect size to ${name}.log", ("name", name));
       log.write((char*)&pos, sizeof(pos));
 
@@ -124,7 +124,7 @@ class state_history_log {
 
    // returns cfile positioned at payload
    fc::cfile& get_entry(uint32_t block_num, state_history_log_header& header) {
-      EOS_ASSERT(block_num >= _begin_block && block_num < _end_block, chain::plugin_exception,
+      APIFINY_ASSERT(block_num >= _begin_block && block_num < _end_block, chain::plugin_exception,
                  "read non-existing block in ${name}.log", ("name", name));
       log.seek(get_pos(block_num));
       read_header(header);
@@ -176,7 +176,7 @@ class state_history_log {
          uint64_t suffix;
          if (!is_ship(header.magic) || !is_ship_supported_version(header.magic) || header.payload_size > size ||
              pos + state_history_log_header_serial_size + header.payload_size + sizeof(suffix) > size) {
-            EOS_ASSERT(!is_ship(header.magic) || is_ship_supported_version(header.magic), chain::plugin_exception,
+            APIFINY_ASSERT(!is_ship(header.magic) || is_ship_supported_version(header.magic), chain::plugin_exception,
                        "${name}.log has an unsupported version", ("name", name));
             break;
          }
@@ -193,7 +193,7 @@ class state_history_log {
       log.flush();
       boost::filesystem::resize_file(log_filename, pos);
       log.flush();
-      EOS_ASSERT(get_last_block(pos), chain::plugin_exception, "recover ${name}.log failed", ("name", name));
+      APIFINY_ASSERT(get_last_block(pos), chain::plugin_exception, "recover ${name}.log failed", ("name", name));
    }
 
    void open_log() {
@@ -205,7 +205,7 @@ class state_history_log {
          state_history_log_header header;
          log.seek(0);
          read_header(header, false);
-         EOS_ASSERT(is_ship(header.magic) && is_ship_supported_version(header.magic) &&
+         APIFINY_ASSERT(is_ship(header.magic) && is_ship_supported_version(header.magic) &&
                         state_history_log_header_serial_size + header.payload_size + sizeof(uint64_t) <= size,
                     chain::plugin_exception, "corrupt ${name}.log (1)", ("name", name));
          _begin_block  = chain::block_header::num_from_id(header.block_id);
@@ -214,7 +214,7 @@ class state_history_log {
             recover_blocks(size);
          ilog("${name}.log has blocks ${b}-${e}", ("name", name)("b", _begin_block)("e", _end_block - 1));
       } else {
-         EOS_ASSERT(!size, chain::plugin_exception, "corrupt ${name}.log (5)", ("name", name));
+         APIFINY_ASSERT(!size, chain::plugin_exception, "corrupt ${name}.log (5)", ("name", name));
          ilog("${name}.log is empty", ("name", name));
       }
    }
@@ -235,20 +235,20 @@ class state_history_log {
       uint32_t num_found = 0;
       while (pos < size) {
          state_history_log_header header;
-         EOS_ASSERT(pos + state_history_log_header_serial_size <= size, chain::plugin_exception,
+         APIFINY_ASSERT(pos + state_history_log_header_serial_size <= size, chain::plugin_exception,
                     "corrupt ${name}.log (6)", ("name", name));
          log.seek(pos);
          read_header(header, false);
          uint64_t suffix_pos = pos + state_history_log_header_serial_size + header.payload_size;
          uint64_t suffix;
-         EOS_ASSERT(is_ship(header.magic) && is_ship_supported_version(header.magic) &&
+         APIFINY_ASSERT(is_ship(header.magic) && is_ship_supported_version(header.magic) &&
                         suffix_pos + sizeof(suffix) <= size,
                     chain::plugin_exception, "corrupt ${name}.log (7)", ("name", name));
          log.seek(suffix_pos);
          log.read((char*)&suffix, sizeof(suffix));
          // ilog("block ${b} at ${pos}-${end} suffix=${suffix} file_size=${fs}",
          //      ("b", header.block_num)("pos", pos)("end", suffix_pos + sizeof(suffix))("suffix", suffix)("fs", size));
-         EOS_ASSERT(suffix == pos, chain::plugin_exception, "corrupt ${name}.log (8)", ("name", name));
+         APIFINY_ASSERT(suffix == pos, chain::plugin_exception, "corrupt ${name}.log (8)", ("name", name));
 
          index.write((char*)&pos, sizeof(pos));
          pos = suffix_pos + sizeof(suffix);

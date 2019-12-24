@@ -28,7 +28,7 @@ Command Line Options for apifiny::chain_plugin:
 
 Start `nodapifiny` with `--shared-memory-size-mb 1024`. A 1 GB shared memory file allows approximately half a million transactions.
 
-### What version of EOSIO am I running/connecting to?
+### What version of APIFINY am I running/connecting to?
 
 If defaults can be used, then `clapifiny get info` will output a block that contains a field called `server_version`.  If your `nodapifiny` is not using the defaults, then you need to know the URL of the `nodapifiny`. In that case, use the following with your `nodapifiny` URL:
 

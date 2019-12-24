@@ -9,7 +9,7 @@ This section describes how to set up a single-node blockchain configuration runn
 
 ## Before you begin
 
-* [Install the EOSIO software](../../../00_install/index.md) before starting this section.
+* [Install the APIFINY software](../../../00_install/index.md) before starting this section.
 * It is assumed that `nodapifiny`, `clapifiny`, and `kapifinyd` are accessible through the path. If you built from source, make sure to run the [install script](../../../00_install/01_build-from-source/03_install-apifiny-binaries.md).
 * Know how to pass [Nodapifiny options](../../02_usage/00_nodapifiny-options.md) to enable or disable functionality.
 

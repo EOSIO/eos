@@ -236,7 +236,7 @@ private:
       auto size = calc_size( itr->trx_meta );
       if( itr->trx_type == trx_enum_type::incoming || itr->trx_type == trx_enum_type::incoming_persisted ) {
          ++incoming_count;
-         EOS_ASSERT( size_in_bytes + size < max_transaction_queue_size, tx_resource_exhaustion,
+         APIFINY_ASSERT( size_in_bytes + size < max_transaction_queue_size, tx_resource_exhaustion,
                      "Transaction ${id}, size ${s} bytes would exceed configured "
                      "incoming-transaction-queue-size-mb ${qs}, current queue size ${cs} bytes",
                      ("id", itr->trx_meta->id())("s", size)("qs", max_transaction_queue_size/(1024*1024))

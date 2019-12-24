@@ -18,5 +18,5 @@ clapifiny wallet import
 Type your private key. You should see something like below:
 
 ```shell
-private key: imported private key for: EOS8FBXJUfbANf3xeDWPoJxnip3Ych9HjzLBr1VaXRQFdkVAxwLE7
+private key: imported private key for: APIFINY8FBXJUfbANf3xeDWPoJxnip3Ych9HjzLBr1VaXRQFdkVAxwLE7
 ```

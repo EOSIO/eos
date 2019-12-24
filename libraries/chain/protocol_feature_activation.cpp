@@ -10,7 +10,7 @@ namespace apifiny { namespace chain {
                      "protocol_feature_activation expects FC to support reflector_init" );
 
 
-      EOS_ASSERT( protocol_features.size() > 0, ill_formed_protocol_feature_activation,
+      APIFINY_ASSERT( protocol_features.size() > 0, ill_formed_protocol_feature_activation,
                   "Protocol feature activation extension must have at least one protocol feature digest",
       );
 
@@ -18,7 +18,7 @@ namespace apifiny { namespace chain {
 
       for( const auto& d : protocol_features ) {
          auto res = s.insert( d );
-         EOS_ASSERT( res.second, ill_formed_protocol_feature_activation,
+         APIFINY_ASSERT( res.second, ill_formed_protocol_feature_activation,
                      "Protocol feature digest ${d} was repeated in the protocol feature activation extension",
                      ("d", d)
          );
@@ -41,7 +41,7 @@ namespace apifiny { namespace chain {
 
       std::set_union( s1.cbegin(), s1.cend(), s2.cbegin(), s2.cend(), end_inserter( protocol_features ) );
 
-      EOS_ASSERT( !enforce_disjoint || protocol_features.size() == expected_size,
+      APIFINY_ASSERT( !enforce_disjoint || protocol_features.size() == expected_size,
                   invalid_block_header_extension,
                   "duplication of protocol feature digests"
       );

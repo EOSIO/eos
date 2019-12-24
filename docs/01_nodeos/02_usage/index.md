@@ -7,4 +7,4 @@ This section explains how to use `nodapifiny`, lists its configuration options, 
 * [Node Setups](02_node-setups/index.md) - Producing vs. non-producing nodes setup.
 * [Development Environment](03_development-environment/index.md) - Setting up a development/test environment.
 * [Nodapifiny Implementation](05_nodapifiny-implementation.md) - Blockchain state and storage, `nodapifiny` read modes.
-* [Deprecation Notices](https://github.com/EOSIO/apifiny/issues/7597) - Lists `nodapifiny` deprecated functionality.
+* [Deprecation Notices](https://github.com/APIFINY/apifiny/issues/7597) - Lists `nodapifiny` deprecated functionality.

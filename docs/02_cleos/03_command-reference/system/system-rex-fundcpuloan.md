@@ -23,5 +23,5 @@ excerpt: "Deposit into a CPU loan fund"
 ## Examples
 
 ```text
-clapifiny system rex fundcpuloan accountname1 abc123 "1 EOS"
+clapifiny system rex fundcpuloan accountname1 abc123 "1 APIFINY"
 ```

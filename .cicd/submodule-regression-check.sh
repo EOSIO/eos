@@ -7,7 +7,7 @@ if ${TRAVIS:-false}; then
     [[ -z $TRAVIS_PULL_REQUEST_BRANCH ]] && echo "Unable to find TRAVIS_PULL_REQUEST_BRANCH ENV. Skipping submodule regression check." && exit 0
     BASE_BRANCH=$TRAVIS_BRANCH
     CURRENT_BRANCH=$TRAVIS_PULL_REQUEST_BRANCH
-    [[ ! -z $TRAVIS_PULL_REQUEST_SLUG ]] && CURRENT_BRANCH=$TRAVIS_COMMIT # When we're not running from a PR, the slug is not set. When we are, we need to use the TRAVIS_COMMIT to be sure we're supporting the Forked PR's merge/code that's in the EOS repo. This is needed for the git log below.
+    [[ ! -z $TRAVIS_PULL_REQUEST_SLUG ]] && CURRENT_BRANCH=$TRAVIS_COMMIT # When we're not running from a PR, the slug is not set. When we are, we need to use the TRAVIS_COMMIT to be sure we're supporting the Forked PR's merge/code that's in the APIFINY repo. This is needed for the git log below.
 else
     [[ -z $BUILDKITE_PULL_REQUEST_BASE_BRANCH ]] && echo "Unable to find BUILDKITE_PULL_REQUEST_BASE_BRANCH ENV. Skipping submodule regression check." && exit 0
     BASE_BRANCH=$BUILDKITE_PULL_REQUEST_BASE_BRANCH

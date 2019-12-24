@@ -11,16 +11,16 @@ if [[ "$BUILDKITE_TAG" == '' || "$BUILDKITE" != 'true' ]]; then
 fi
 echo 'Tagged build detected, running test.'
 # orient ourselves
-[[ "$EOSIO_ROOT" == '' ]] && EOSIO_ROOT=$(echo $(pwd)/ | grep -ioe '.*/apifiny/')
-[[ "$EOSIO_ROOT" == '' ]] && EOSIO_ROOT=$(echo $(pwd)/ | grep -ioe '.*/EOSIO/apifiny/')
-[[ "$EOSIO_ROOT" == '' ]] && EOSIO_ROOT=$(echo $(pwd)/ | grep -ioe '.*/build/' | sed 's,/build/,,')
-echo "Using EOSIO_ROOT=\"$EOSIO_ROOT\"."
+[[ "$APIFINY_ROOT" == '' ]] && APIFINY_ROOT=$(echo $(pwd)/ | grep -ioe '.*/apifiny/')
+[[ "$APIFINY_ROOT" == '' ]] && APIFINY_ROOT=$(echo $(pwd)/ | grep -ioe '.*/APIFINY/apifiny/')
+[[ "$APIFINY_ROOT" == '' ]] && APIFINY_ROOT=$(echo $(pwd)/ | grep -ioe '.*/build/' | sed 's,/build/,,')
+echo "Using APIFINY_ROOT=\"$APIFINY_ROOT\"."
 # determine expected value
-CMAKE_CACHE="$EOSIO_ROOT/build/CMakeCache.txt"
-CMAKE_LISTS="$EOSIO_ROOT/CMakeLists.txt"
-if [[ -f "$CMAKE_CACHE" && $(cat "$CMAKE_CACHE" | grep -c 'DOXY_EOS_VERSION') > 0 ]]; then
+CMAKE_CACHE="$APIFINY_ROOT/build/CMakeCache.txt"
+CMAKE_LISTS="$APIFINY_ROOT/CMakeLists.txt"
+if [[ -f "$CMAKE_CACHE" && $(cat "$CMAKE_CACHE" | grep -c 'DOXY_APIFINY_VERSION') > 0 ]]; then
     echo "Parsing \"$CMAKE_CACHE\"..."
-    EXPECTED="v$(cat "$CMAKE_CACHE" | grep 'DOXY_EOS_VERSION' | cut -d '=' -f 2)"
+    EXPECTED="v$(cat "$CMAKE_CACHE" | grep 'DOXY_APIFINY_VERSION' | cut -d '=' -f 2)"
 elif [[ -f "$CMAKE_LISTS" ]]; then
     echo "Parsing \"$CMAKE_LISTS\"..."
     export $(cat $CMAKE_LISTS | grep -ie 'set *( *VERSION_MAJOR' | cut -d '(' -f 2 | cut -d ')' -f 1 | awk '{print $1"="$2}')
@@ -40,7 +40,7 @@ fi
 if [[ "$EXPECTED" == '' ]]; then
     echo 'ERROR: Could not determine expected value for version label!'
     set +e
-    echo "EOSIO_ROOT=\"$EOSIO_ROOT\""
+    echo "APIFINY_ROOT=\"$APIFINY_ROOT\""
     echo "CMAKE_CACHE=\"$CMAKE_CACHE\""
     echo "CMAKE_LISTS=\"$CMAKE_LISTS\""
     echo ''
@@ -50,19 +50,19 @@ if [[ "$EXPECTED" == '' ]]; then
     echo "VERSION_SUFFIX=\"$VERSION_SUFFIX\""
     echo "VERSION_FULL=\"$VERSION_FULL\""
     echo ''
-    echo '$ cat "$CMAKE_CACHE" | grep "DOXY_EOS_VERSION"'
-    cat "$CMAKE_CACHE" | grep "DOXY_EOS_VERSION"
+    echo '$ cat "$CMAKE_CACHE" | grep "DOXY_APIFINY_VERSION"'
+    cat "$CMAKE_CACHE" | grep "DOXY_APIFINY_VERSION"
     echo '$ pwd'
     pwd
-    echo '$ ls -la "$EOSIO_ROOT"'
-    ls -la "$EOSIO_ROOT"
-    echo '$ ls -la "$EOSIO_ROOT/build"'
-    ls -la "$EOSIO_ROOT/build"
+    echo '$ ls -la "$APIFINY_ROOT"'
+    ls -la "$APIFINY_ROOT"
+    echo '$ ls -la "$APIFINY_ROOT/build"'
+    ls -la "$APIFINY_ROOT/build"
     exit 1
 fi
 echo "Expecting \"$EXPECTED\"..."
 # get nodapifiny version
-ACTUAL=$($EOSIO_ROOT/build/bin/nodapifiny --version) || : # nodapifiny currently returns -1 for --version
+ACTUAL=$($APIFINY_ROOT/build/bin/nodapifiny --version) || : # nodapifiny currently returns -1 for --version
 # test
 if [[ "$EXPECTED" == "$ACTUAL" ]]; then
     echo 'Passed with \"$ACTUAL\".'

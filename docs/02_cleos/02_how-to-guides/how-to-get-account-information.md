@@ -1,6 +1,6 @@
 ## Goal
 
-Query infomation of an EOSIO account
+Query infomation of an APIFINY account
 
 ## Before you begin
 
@@ -23,8 +23,8 @@ You should be see something like below:
 created: 2018-06-01T12:00:00.000
 privileged: true
 permissions:
-     owner     1:    1 EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV
-        active     1:    1 EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV
+     owner     1:    1 APIFINY6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV
+        active     1:    1 APIFINY6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV
 memory:
      quota:       unlimited  used:     3.004 KiB
 
@@ -40,4 +40,4 @@ cpu bandwidth:
 ```
 
 [[info]]
-| Depends on the EOSIO network you are connected, you might see different fields associated with an account. That depends on which system contract has been deployed tp the network.
+| Depends on the APIFINY network you are connected, you might see different fields associated with an account. That depends on which system contract has been deployed tp the network.

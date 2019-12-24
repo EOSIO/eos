@@ -10,7 +10,7 @@ The optional `apifiny::mongo_db_plugin` provides archiving of blockchain data in
 ## Important Notes
 
 * Documents stored in mongo by `mongo_db_plugin` which contain empty field/struct names will be stored with the field/struct name of `empty_field_name` / `empty_struct_name`.
-* Action data is stored on chain as raw bytes. This plugin attempts to use associated ABI on accounts to deserialize the raw bytes into expanded `abi_def` form for storage into mongo. Note that invalid or missing ABI on a contract will result in the action data being stored as raw bytes. For example the EOSIO system contract does not provide ABI for the `onblock` action so it is stored as raw bytes.
+* Action data is stored on chain as raw bytes. This plugin attempts to use associated ABI on accounts to deserialize the raw bytes into expanded `abi_def` form for storage into mongo. Note that invalid or missing ABI on a contract will result in the action data being stored as raw bytes. For example the APIFINY system contract does not provide ABI for the `onblock` action so it is stored as raw bytes.
 * The `mongo_db_plugin` does slow down replay/resync as the conversion of block data to JSON and insertion into MongoDB is resource intensive. The plugin does use a worker thread for processing the block data, but this does not help much when replaying/resyncing.
 
 ## Recommendations
@@ -41,9 +41,9 @@ These can be specified from both the command-line or the `config.ini` file:
                                         https://docs.mongodb.com/master/referen
                                         ce/connection-string/. If not specified
                                         then plugin is disabled. Default
-                                        database 'EOS' is used if not specified
+                                        database 'APIFINY' is used if not specified
                                         in URI. Example: mongodb://127.0.0.1:27
-                                        017/EOS
+                                        017/APIFINY
   --mongodb-update-via-block-num arg (=0)
                                         Update blocks/block_state with latest
                                         via block number so that duplicates are
@@ -146,7 +146,7 @@ The equivalent of `/v1/history/get_controlled_acounts` with mongo: `db.account_c
 The mongodb equivalent of `/v1/history/get_key_accounts` RPC API endpoint:
 
 ```console
-db.pub_keys.find({"public_key":"EOS7EarnUhcyYqmdnPon8rm7mBCTnBoot6o7fE2WzjvEX2TdggbL3"}).pretty()
+db.pub_keys.find({"public_key":"APIFINY7EarnUhcyYqmdnPon8rm7mBCTnBoot6o7fE2WzjvEX2TdggbL3"}).pretty()
 ```
 
 ## Dependencies

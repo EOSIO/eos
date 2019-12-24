@@ -32,7 +32,7 @@ uint128_t transaction_id_to_sender_id( const transaction_id_type& tid ) {
 void validate_authority_precondition( const apply_context& context, const authority& auth ) {
    for(const auto& a : auth.accounts) {
       auto* acct = context.db.find<account_object, by_name>(a.permission.actor);
-      EOS_ASSERT( acct != nullptr, action_validate_exception,
+      APIFINY_ASSERT( acct != nullptr, action_validate_exception,
                   "account '${account}' does not exist",
                   ("account", a.permission.actor)
                 );
@@ -46,7 +46,7 @@ void validate_authority_precondition( const apply_context& context, const author
       try {
          context.control.get_authorization_manager().get_permission({a.permission.actor, a.permission.permission});
       } catch( const permission_query_exception& ) {
-         EOS_THROW( action_validate_exception,
+         APIFINY_THROW( action_validate_exception,
                     "permission '${perm}' does not exist",
                     ("perm", a.permission)
                   );
@@ -70,25 +70,25 @@ void apply_apifiny_newaccount(apply_context& context) {
 //   context.require_write_lock( config::apifiny_auth_scope );
    auto& authorization = context.control.get_mutable_authorization_manager();
 
-   EOS_ASSERT( validate(create.owner), action_validate_exception, "Invalid owner authority");
-   EOS_ASSERT( validate(create.active), action_validate_exception, "Invalid active authority");
+   APIFINY_ASSERT( validate(create.owner), action_validate_exception, "Invalid owner authority");
+   APIFINY_ASSERT( validate(create.active), action_validate_exception, "Invalid active authority");
 
    auto& db = context.db;
 
    auto name_str = name(create.name).to_string();
 
-   EOS_ASSERT( !create.name.empty(), action_validate_exception, "account name cannot be empty" );
-   EOS_ASSERT( name_str.size() <= 12, action_validate_exception, "account names can only be 12 chars long" );
+   APIFINY_ASSERT( !create.name.empty(), action_validate_exception, "account name cannot be empty" );
+   APIFINY_ASSERT( name_str.size() <= 12, action_validate_exception, "account names can only be 12 chars long" );
 
    // Check if the creator is privileged
    const auto &creator = db.get<account_metadata_object, by_name>(create.creator);
    if( !creator.is_privileged() ) {
-      EOS_ASSERT( name_str.find( "apifiny." ) != 0, action_validate_exception,
+      APIFINY_ASSERT( name_str.find( "apifiny." ) != 0, action_validate_exception,
                   "only privileged accounts can have names that start with 'apifiny.'" );
    }
 
    auto existing_account = db.find<account_object, by_name>(create.name);
-   EOS_ASSERT(existing_account == nullptr, account_name_exists_exception,
+   APIFINY_ASSERT(existing_account == nullptr, account_name_exists_exception,
               "Cannot create account named ${name}, as that name is already taken",
               ("name", create.name));
 
@@ -128,8 +128,8 @@ void apply_apifiny_setcode(apply_context& context) {
    auto  act = context.get_action().data_as<setcode>();
    context.require_authorization(act.account);
 
-   EOS_ASSERT( act.vmtype == 0, invalid_contract_vm_type, "code should be 0" );
-   EOS_ASSERT( act.vmversion == 0, invalid_contract_vm_version, "version should be 0" );
+   APIFINY_ASSERT( act.vmtype == 0, invalid_contract_vm_type, "code should be 0" );
+   APIFINY_ASSERT( act.vmversion == 0, invalid_contract_vm_version, "version should be 0" );
 
    fc::sha256 code_hash; /// default is the all zeros hash
 
@@ -143,14 +143,14 @@ void apply_apifiny_setcode(apply_context& context) {
    const auto& account = db.get<account_metadata_object,by_name>(act.account);
    bool existing_code = (account.code_hash != digest_type());
 
-   EOS_ASSERT( code_size > 0 || existing_code, set_exact_code, "contract is already cleared" );
+   APIFINY_ASSERT( code_size > 0 || existing_code, set_exact_code, "contract is already cleared" );
 
    int64_t old_size  = 0;
    int64_t new_size  = code_size * config::setcode_ram_bytes_multiplier;
 
    if( existing_code ) {
       const code_object& old_code_entry = db.get<code_object, by_code_hash>(boost::make_tuple(account.code_hash, account.vm_type, account.vm_version));
-      EOS_ASSERT( old_code_entry.code_hash != code_hash, set_exact_code,
+      APIFINY_ASSERT( old_code_entry.code_hash != code_hash, set_exact_code,
                   "contract is already running this version of code" );
       old_size  = (int64_t)old_code_entry.code.size() * config::setcode_ram_bytes_multiplier;
       if( old_code_entry.code_ref_count == 1 ) {
@@ -230,23 +230,23 @@ void apply_apifiny_updateauth(apply_context& context) {
    auto& authorization = context.control.get_mutable_authorization_manager();
    auto& db = context.db;
 
-   EOS_ASSERT(!update.permission.empty(), action_validate_exception, "Cannot create authority with empty name");
-   EOS_ASSERT( update.permission.to_string().find( "apifiny." ) != 0, action_validate_exception,
+   APIFINY_ASSERT(!update.permission.empty(), action_validate_exception, "Cannot create authority with empty name");
+   APIFINY_ASSERT( update.permission.to_string().find( "apifiny." ) != 0, action_validate_exception,
                "Permission names that start with 'apifiny.' are reserved" );
-   EOS_ASSERT(update.permission != update.parent, action_validate_exception, "Cannot set an authority as its own parent");
+   APIFINY_ASSERT(update.permission != update.parent, action_validate_exception, "Cannot set an authority as its own parent");
    db.get<account_object, by_name>(update.account);
-   EOS_ASSERT(validate(update.auth), action_validate_exception,
+   APIFINY_ASSERT(validate(update.auth), action_validate_exception,
               "Invalid authority: ${auth}", ("auth", update.auth));
    if( update.permission == config::active_name )
-      EOS_ASSERT(update.parent == config::owner_name, action_validate_exception, "Cannot change active authority's parent from owner", ("update.parent", update.parent) );
+      APIFINY_ASSERT(update.parent == config::owner_name, action_validate_exception, "Cannot change active authority's parent from owner", ("update.parent", update.parent) );
    if (update.permission == config::owner_name)
-      EOS_ASSERT(update.parent.empty(), action_validate_exception, "Cannot change owner authority's parent");
+      APIFINY_ASSERT(update.parent.empty(), action_validate_exception, "Cannot change owner authority's parent");
    else
-      EOS_ASSERT(!update.parent.empty(), action_validate_exception, "Only owner permission can have empty parent" );
+      APIFINY_ASSERT(!update.parent.empty(), action_validate_exception, "Only owner permission can have empty parent" );
 
    if( update.auth.waits.size() > 0 ) {
       auto max_delay = context.control.get_global_properties().configuration.max_transaction_delay;
-      EOS_ASSERT( update.auth.waits.back().wait_sec <= max_delay, action_validate_exception,
+      APIFINY_ASSERT( update.auth.waits.back().wait_sec <= max_delay, action_validate_exception,
                   "Cannot set delay longer than max_transacton_delay, which is ${max_delay} seconds",
                   ("max_delay", max_delay) );
    }
@@ -266,7 +266,7 @@ void apply_apifiny_updateauth(apply_context& context) {
    }
 
    if( permission ) {
-      EOS_ASSERT(parent_id == permission->parent, action_validate_exception,
+      APIFINY_ASSERT(parent_id == permission->parent, action_validate_exception,
                  "Changing parent authority is not currently supported");
 
 
@@ -292,8 +292,8 @@ void apply_apifiny_deleteauth(apply_context& context) {
    auto remove = context.get_action().data_as<deleteauth>();
    context.require_authorization(remove.account); // only here to mark the single authority on this action as used
 
-   EOS_ASSERT(remove.permission != config::active_name, action_validate_exception, "Cannot delete active authority");
-   EOS_ASSERT(remove.permission != config::owner_name, action_validate_exception, "Cannot delete owner authority");
+   APIFINY_ASSERT(remove.permission != config::active_name, action_validate_exception, "Cannot delete active authority");
+   APIFINY_ASSERT(remove.permission != config::owner_name, action_validate_exception, "Cannot delete owner authority");
 
    auto& authorization = context.control.get_mutable_authorization_manager();
    auto& db = context.db;
@@ -303,7 +303,7 @@ void apply_apifiny_deleteauth(apply_context& context) {
    { // Check for links to this permission
       const auto& index = db.get_index<permission_link_index, by_permission_name>();
       auto range = index.equal_range(boost::make_tuple(remove.account, remove.permission));
-      EOS_ASSERT(range.first == range.second, action_validate_exception,
+      APIFINY_ASSERT(range.first == range.second, action_validate_exception,
                  "Cannot delete a linked authority. Unlink the authority first. This authority is linked to ${code}::${type}.",
                  ("code", range.first->code)("type", range.first->message_type));
    }
@@ -322,16 +322,16 @@ void apply_apifiny_linkauth(apply_context& context) {
 
    auto requirement = context.get_action().data_as<linkauth>();
    try {
-      EOS_ASSERT(!requirement.requirement.empty(), action_validate_exception, "Required permission cannot be empty");
+      APIFINY_ASSERT(!requirement.requirement.empty(), action_validate_exception, "Required permission cannot be empty");
 
       context.require_authorization(requirement.account); // only here to mark the single authority on this action as used
 
       auto& db = context.db;
       const auto *account = db.find<account_object, by_name>(requirement.account);
-      EOS_ASSERT(account != nullptr, account_query_exception,
+      APIFINY_ASSERT(account != nullptr, account_query_exception,
                  "Failed to retrieve account: ${account}", ("account", requirement.account)); // Redundant?
       const auto *code = db.find<account_object, by_name>(requirement.code);
-      EOS_ASSERT(code != nullptr, account_query_exception,
+      APIFINY_ASSERT(code != nullptr, account_query_exception,
                  "Failed to retrieve code for account: ${account}", ("account", requirement.code));
       if( requirement.requirement != config::apifiny_any_name ) {
          const permission_object* permission = nullptr;
@@ -343,7 +343,7 @@ void apply_apifiny_linkauth(apply_context& context) {
             permission = db.find<permission_object, by_name>(requirement.requirement);
          }
 
-         EOS_ASSERT(permission != nullptr, permission_query_exception,
+         APIFINY_ASSERT(permission != nullptr, permission_query_exception,
                     "Failed to retrieve permission: ${permission}", ("permission", requirement.requirement));
       }
 
@@ -351,7 +351,7 @@ void apply_apifiny_linkauth(apply_context& context) {
       auto link = db.find<permission_link_object, by_action_name>(link_key);
 
       if( link ) {
-         EOS_ASSERT(link->required_permission != requirement.requirement, action_validate_exception,
+         APIFINY_ASSERT(link->required_permission != requirement.requirement, action_validate_exception,
                     "Attempting to update required authority, but new requirement is same as old");
          db.modify(*link, [requirement = requirement.requirement](permission_link_object& link) {
              link.required_permission = requirement;
@@ -383,7 +383,7 @@ void apply_apifiny_unlinkauth(apply_context& context) {
 
    auto link_key = boost::make_tuple(unlink.account, unlink.code, unlink.type);
    auto link = db.find<permission_link_object, by_action_name>(link_key);
-   EOS_ASSERT(link != nullptr, action_validate_exception, "Attempting to unlink authority, but no link found");
+   APIFINY_ASSERT(link != nullptr, action_validate_exception, "Attempting to unlink authority, but no link found");
    context.add_ram_usage(
       link->account,
       -(int64_t)(config::billable_size_v<permission_link_object>)

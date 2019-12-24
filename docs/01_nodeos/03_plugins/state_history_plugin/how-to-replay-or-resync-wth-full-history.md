@@ -6,7 +6,7 @@ This procedure records the entire chain history.
 
 ## Before you begin
 
-* Make sure [EOSIO is installed](../../../00_install/index.md).
+* Make sure [APIFINY is installed](../../../00_install/index.md).
 * Learn about [Using Nodapifiny](../../02_usage/index.md).
 * Get familiar with [state_history](../../03_plugins/state_history_plugin/index.md) plugin.
 

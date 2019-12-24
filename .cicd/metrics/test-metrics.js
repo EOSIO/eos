@@ -49,7 +49,7 @@ async function download(url)
 async function getBuild(pipeline, buildNumber)
 {
     if (debug) console.log(`getBuild(${pipeline}, ${buildNumber})`); // DEBUG
-    const httpResponse = await fetch(`https://api.buildkite.com/v2/organizations/EOSIO/pipelines/${pipeline}/builds/${buildNumber}${buildkiteAccessToken}`);
+    const httpResponse = await fetch(`https://api.buildkite.com/v2/organizations/APIFINY/pipelines/${pipeline}/builds/${buildNumber}${buildkiteAccessToken}`);
     return httpResponse.json();
 }
 
@@ -318,7 +318,7 @@ async function testMetrics(buildkiteObject)
         }
         // get test metrics
         const env = await getEnvironment(job);
-        env.BUILDKITE_REPO = env.BUILDKITE_REPO.replace(new RegExp('^git@github.com:(EOSIO/)?'), '').replace(new RegExp('.git$'), '');
+        env.BUILDKITE_REPO = env.BUILDKITE_REPO.replace(new RegExp('^git@github.com:(APIFINY/)?'), '').replace(new RegExp('.git$'), '');
         const metrics = [];
         const os = getOS(env);
         testResults.forEach((result) =>

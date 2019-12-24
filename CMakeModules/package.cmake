@@ -1,6 +1,6 @@
 set(VENDOR "block.one")
 set(PROJECT_NAME "apifiny")
-set(DESC "Software for the EOS.IO network")
+set(DESC "Software for the APIFINY.IO network")
 set(URL "https://github.com/apifiny/apifiny")
 set(EMAIL "support@block.one")
 

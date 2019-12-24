@@ -9,11 +9,11 @@ Create an account, buy ram, stake for bandwidth for the account
 - `ActiveKey` _TEXT_  - The active public key for the new account
 ## Options
 - `-h,--help` Print this help message and exit
-- `--stake-net` _TEXT_ - The amount of EOS delegated for net bandwidth
-- `--stake-cpu` _TEXT_  - The amount of EOS delegated for CPU bandwidth
+- `--stake-net` _TEXT_ - The amount of APIFINY delegated for net bandwidth
+- `--stake-cpu` _TEXT_  - The amount of APIFINY delegated for CPU bandwidth
 - `--buy-ram-bytes` _UINT_ - The amount of RAM bytes to purchase for the new account in kilobytes KiB, default is 8 KiB
-- `--buy-ram-EOS` _TEXT_ - The amount of RAM bytes to purchase for the new account in EOS
-- `--transfer` - Transfer voting power and right to unstake EOS to receiver
+- `--buy-ram-APIFINY` _TEXT_ - The amount of RAM bytes to purchase for the new account in APIFINY
+- `--transfer` - Transfer voting power and right to unstake APIFINY to receiver
 - `-x,--expiration` _TEXT_ - set the time in seconds before a transaction expires, defaults to 30s
 - `-f,--force-unique` - force the transaction to be unique. this will consume extra bandwidth and remove any protections against accidently issuing the same transaction multiple times
 - `-s,--skip-sign` Specify if unlocked wallet keys should be used to sign transaction

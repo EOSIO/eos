@@ -646,7 +646,7 @@ launcher_def::initialize (const variables_map &vmap) {
     }
   }
 
-  char* erd_env_var = getenv ("EOSIO_HOME");
+  char* erd_env_var = getenv ("APIFINY_HOME");
   if (erd_env_var == nullptr || std::string(erd_env_var).empty()) {
      erd_env_var = getenv ("PWD");
   }
@@ -659,7 +659,7 @@ launcher_def::initialize (const variables_map &vmap) {
 
   stage = bfs::path(erd);
   if (!bfs::exists(stage)) {
-    cerr << "\"" << erd << "\" is not a valid path. Please ensure environment variable EOSIO_HOME is set to the build path." << endl;
+    cerr << "\"" << erd << "\" is not a valid path. Please ensure environment variable APIFINY_HOME is set to the build path." << endl;
     exit (-1);
   }
   stage /= bfs::path("staging");
@@ -1784,7 +1784,7 @@ launcher_def::bounce (const string& node_numbers) {
          }
       }
 
-      do_command(host, node.name, { { "EOSIO_HOME", host.apifiny_home }, { "EOSIO_NODE", node_num } }, cmd);
+      do_command(host, node.name, { { "APIFINY_HOME", host.apifiny_home }, { "APIFINY_NODE", node_num } }, cmd);
    }
 }
 
@@ -1798,7 +1798,7 @@ launcher_def::down (const string& node_numbers) {
       cout << "Taking down " << node.name << endl;
       string cmd = "./scripts/apifiny-tn_down.sh ";
       do_command(host, node.name,
-                 { { "EOSIO_HOME", host.apifiny_home }, { "EOSIO_NODE", node_num }, { "EOSIO_TN_RESTART_CONFIG_DIR", node.config_dir_name } },
+                 { { "APIFINY_HOME", host.apifiny_home }, { "APIFINY_NODE", node_num }, { "APIFINY_TN_RESTART_CONFIG_DIR", node.config_dir_name } },
                  cmd);
    }
 }
@@ -1811,7 +1811,7 @@ launcher_def::roll (const string& host_names) {
       cout << "Rolling " << host_name << endl;
       auto host = find_host_by_name_or_address(host_name);
       string cmd = "./scripts/apifiny-tn_roll.sh ";
-      do_command(*host, host_name, { { "EOSIO_HOME", host->apifiny_home } }, cmd);
+      do_command(*host, host_name, { { "APIFINY_HOME", host->apifiny_home } }, cmd);
    }
 }
 

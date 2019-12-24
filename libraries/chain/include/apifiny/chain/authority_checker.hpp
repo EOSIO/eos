@@ -58,7 +58,7 @@ namespace detail {
          ,provided_delay(provided_delay)
          ,recursion_depth_limit(recursion_depth_limit)
          {
-            EOS_ASSERT( static_cast<bool>(checktime), authorization_exception, "checktime cannot be empty" );
+            APIFINY_ASSERT( static_cast<bool>(checktime), authorization_exception, "checktime cannot be empty" );
          }
 
          enum permission_cache_status {
