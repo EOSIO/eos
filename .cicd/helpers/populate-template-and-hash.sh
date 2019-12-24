@@ -84,6 +84,7 @@ if ( [[ $DOCKERIZATION == false ]] && [[ $ONLYHASH == false ]] ); then
   if [[ "$(uname)" == 'Darwin' ]]; then # Mac needs to use the template fr envs
     cat .cicd/platform-templates/${FILE:-"${IMAGE_TAG}$FILE_EXTENSION"} > /tmp/$POPULATED_FILE_NAME
     [[ $TRAVIS == true ]] && sed -i -e 's/^HOME=\/Users\/anka/HOME=\/Users\/travis/g' /tmp/$POPULATED_FILE_NAME
+    [[ $TRAVIS == true ]] && sed -i -e 's/&& brew install git//g' /tmp/$POPULATED_FILE_NAME
     # Remove anything below "# Anything below here is exclusive to our CI/CD"
     sed -i -e '/Anything below here is exclusive to our CI\/CD/,$d' /tmp/$POPULATED_FILE_NAME
     echo "$POP_COMMANDS" >> /tmp/$POPULATED_FILE_NAME

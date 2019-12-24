@@ -35,7 +35,7 @@ else # Linux
     
     echo "docker run $ARGS $FULL_TAG bash -c \"$PACKAGE_COMMANDS\""
     set +e # defer error handling to end
-    eval docker run -$ARGS $FULL_TAG bash -c \"$PACKAGE_COMMANDS\"
+    eval docker run $ARGS $FULL_TAG bash -c \"$PACKAGE_COMMANDS\"
     EXIT_STATUS=$?
     cd build/packages
     [[ -d x86_64 ]] && cd 'x86_64' # backwards-compatibility with release/1.6.x
