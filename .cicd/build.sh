@@ -47,7 +47,7 @@ else # Linux
     else
         export CONTAINER_NAME=$BUILDKITE_JOB_ID
     fi
-    ARGS="$ARGS --rm --init --name $CONTAINER_NAME -v $(pwd):$(pwd) $(buildkite-intrinsics) -e JOBS" # We must mount $(pwd) in as itself to avoid https://stackoverflow.com/questions/31381322/docker-in-docker-cannot-mount-volume
+    ARGS=${ARGS:-"$ARGS --rm --init --name $CONTAINER_NAME -v $(pwd):$(pwd) $(buildkite-intrinsics) -e JOBS"} # We must mount $(pwd) in as itself to avoid https://stackoverflow.com/questions/31381322/docker-in-docker-cannot-mount-volume
     BUILD_COMMANDS="cd $(pwd) && $BUILD_COMMANDS./$POPULATED_FILE_NAME"
     . $HELPERS_DIR/populate-template-and-hash.sh -h # obtain $FULL_TAG (and don't overwrite existing file)
     echo "mv \$EOSIO_BUILD_LOCATION $(pwd)/build" >> /tmp/$POPULATED_FILE_NAME
