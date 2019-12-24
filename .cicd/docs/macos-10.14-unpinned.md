@@ -33,6 +33,7 @@ These commands set the EOSIO directories, install git, and clone the 
 export EOSIO_LOCATION=$HOME/eosio
 export EOS_LOCATION=$EOSIO_LOCATION/eos
 export EOSIO_INSTALL_LOCATION=$EOSIO_LOCATION/install
+export PATH=$EOSIO_INSTALL_LOCATION/bin:$PATH
 mkdir -p $EOSIO_INSTALL_LOCATION
 # install git
 brew update && brew install git

@@ -33,6 +33,7 @@ These commands set the EOSIO directories, install git, and clone the E
 export EOSIO_LOCATION=$HOME/eosio
 export EOS_LOCATION=$EOSIO_LOCATION/eos
 export EOSIO_INSTALL_LOCATION=$EOSIO_LOCATION/install
+export PATH=$EOSIO_INSTALL_LOCATION/bin:$PATH
 mkdir -p $EOSIO_INSTALL_LOCATION
 # install git
 yum update -y && yum install -y git
@@ -52,7 +53,6 @@ yum install -y which sudo procps-ng util-linux autoconf automake \
     libusbx-devel python3 python3-devel python-devel libedit-devel doxygen \
     graphviz patch gcc gcc-c++ vim-common jq
 # build cmake
-export PATH=$EOSIO_INSTALL_LOCATION/bin:$PATH
 cd $EOSIO_INSTALL_LOCATION && curl -LO https://github.com/Kitware/CMake/releases/download/v3.16.2/cmake-3.16.2.tar.gz && \
     tar -xzf cmake-3.16.2.tar.gz && \
     cd cmake-3.16.2 && \
