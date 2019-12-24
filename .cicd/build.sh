@@ -57,5 +57,5 @@ else # Linux
     eval docker run $ARGS $FULL_TAG bash -c \"$BUILD_COMMANDS\"
 fi
 
-tar -pczf build.tar.gz build && buildkite-agent artifact upload build.tar.gz
+[[ $TRAVIS != true ]] && tar -pczf build.tar.gz build && buildkite-agent artifact upload build.tar.gz
 
