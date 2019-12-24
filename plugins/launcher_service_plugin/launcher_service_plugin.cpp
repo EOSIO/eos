@@ -575,8 +575,13 @@ public:
             const fc::variant &keys = required_keys["required_keys"];
             for (const fc::variant &k : keys.get_array()) {
                public_key_type pub_key = public_key_type(k.as_string());
-               private_key_type pri_key = _running_clusters[cluster_id].imported_keys[pub_key];
-               trx.sign(pri_key, *(chain_id_type *)&(info.chain_id));
+               auto itr = _running_clusters[cluster_id].imported_keys.find(pub_key);
+               if (itr != _running_clusters[cluster_id].imported_keys.end()) {
+                  private_key_type pri_key = itr->second;
+                  trx.sign(pri_key, *(chain_id_type *)&(info.chain_id));
+               } else {
+                  throw std::runtime_error("private key of \"" + (std::string)pub_key + "\" not imported");
+               }
             }
          }
          _running_clusters[cluster_id].transaction_blocknum[trx.id()] = info.head_block_num + 1;
