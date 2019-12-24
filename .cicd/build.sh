@@ -1,13 +1,15 @@
 #!/bin/bash
 set -eo pipefail
 . ./.cicd/helpers/general.sh
-
+echo '+++ Executed Build Script'
 export DOCKERIZATION=false
 [[ $ENABLE_INSTALL == true ]] && . ./.cicd/helpers/populate-template-and-hash.sh '<!-- DAC CLONE' '<!-- DAC BUILD' '<!-- DAC INSTALL' || . ./.cicd/helpers/populate-template-and-hash.sh '<!-- DAC CLONE' '<!-- DAC BUILD'
+[[ $TRAVIS == true ]] && mkdir -p ~/eosio && cd ../.. && mv EOSIO/eos ~/eosio/ && cd ~/eosio/eos # Move the cloned travis directory to ~/eosio/eos, allowing us to skip a second clone
 if [[ "$(uname)" == 'Darwin' ]]; then
     # You can't use chained commands in execute
     if [[ $TRAVIS == true ]]; then
         ccache -s
+        brew link --overwrite md5sha1sum
         brew reinstall openssl@1.1 # Fixes issue where builds in Travis cannot find libcrypto.
         sed -i -e 's/^cmake /cmake -DCMAKE_CXX_COMPILER_LAUNCHER=ccache /g' /tmp/$POPULATED_FILE_NAME
         sed -i -e 's/ -DCMAKE_TOOLCHAIN_FILE=$EOS_LOCATION\/scripts\/pinned_toolchain.cmake//g' /tmp/$POPULATED_FILE_NAME # We can't use pinned for mac cause building clang8 would take too long
@@ -44,10 +46,11 @@ else # Linux
             PRE_COMMANDS="export PATH=/usr/lib/ccache:\\\$PATH"
         fi
         BUILD_COMMANDS="ccache -s && $PRE_COMMANDS && "
+    else
+        echo "mv \$EOSIO_BUILD_LOCATION $(pwd)/build" >> /tmp/$POPULATED_FILE_NAME
     fi
     BUILD_COMMANDS="cd $(pwd) && $BUILD_COMMANDS./$POPULATED_FILE_NAME"
     . $HELPERS_DIR/populate-template-and-hash.sh -h # obtain $FULL_TAG (and don't overwrite existing file)
-    echo "mv \$EOSIO_BUILD_LOCATION $(pwd)/build" >> /tmp/$POPULATED_FILE_NAME
     cat /tmp/$POPULATED_FILE_NAME
     mv /tmp/$POPULATED_FILE_NAME ./$POPULATED_FILE_NAME
     echo "$ docker run $ARGS $FULL_TAG bash -c \"$BUILD_COMMANDS\""
