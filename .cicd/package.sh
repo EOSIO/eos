@@ -5,6 +5,7 @@ set -eo pipefail
 buildkite-agent artifact download build.tar.gz . --step "$PLATFORM_FULL_NAME - Build"
 
 if [[ $(uname) == 'Darwin' ]]; then
+    tar -xzf build.tar.gz
     bash -c "cd build/packages && chmod 755 ./*.sh && ./generate_package.sh brew"
     ARTIFACT='*.rb;*.tar.gz'
     cd build/packages
