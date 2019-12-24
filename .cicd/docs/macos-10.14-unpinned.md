@@ -49,7 +49,6 @@ These commands install the EOSIO software dependencies. Make sure to [Download
 ```sh
 # install dependencies
 brew install cmake python@2 python libtool libusb graphviz automake wget gmp pkgconfig doxygen openssl@1.1 jq boost || :
-export PATH=$EOSIO_INSTALL_LOCATION/bin:$PATH
 # install mongodb
 mkdir -p $EOSIO_INSTALL_LOCATION/bin
 cd $EOSIO_INSTALL_LOCATION && curl -OL https://fastdl.mongodb.org/osx/mongodb-osx-ssl-x86_64-3.6.3.tgz
