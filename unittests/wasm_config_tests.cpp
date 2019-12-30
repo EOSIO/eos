@@ -40,6 +40,7 @@ struct wasm_config_tester : TESTER {
       trx.sign(get_private_key(N(eosio), "active"), control->get_chain_id());
       push_transaction(trx);
    }
+   // Pushes an empty action
    void push_action(account_name account) {
        signed_transaction trx;
        trx.actions.push_back({{{account,config::active_name}}, account, name(), {}});
@@ -515,6 +516,91 @@ BOOST_DATA_TEST_CASE_F(wasm_config_tester, max_nested_structures,
       set_code(N(nested), vector<uint8_t>{}); // clear existing code
       BOOST_CHECK_THROW(set_code(N(nested), code.c_str()), wasm_exception);
    }
+}
+
+static const char max_symbol_func_wast[] = R"=====(
+(module
+  (func (export "apply") (param i64 i64 i64))
+  (func (export "${NAME}"))
+)
+)=====";
+
+static const char max_symbol_global_wast[] = R"=====(
+(module
+  (global (export "${NAME}") i32 (i32.const 0))
+  (func (export "apply") (param i64 i64 i64))
+)
+)=====";
+
+static const char max_symbol_memory_wast[] = R"=====(
+(module
+  (memory (export "${NAME}") 0)
+  (func (export "apply") (param i64 i64 i64))
+)
+)=====";
+
+static const char max_symbol_table_wast[] = R"=====(
+(module
+  (table (export "${NAME}") 0 anyfunc)
+  (func (export "apply") (param i64 i64 i64))
+)
+)=====";
+
+BOOST_DATA_TEST_CASE_F( wasm_config_tester, max_symbol_bytes_export, data::make({4096, 8192, 16384}) * data::make({0, 1}) *
+                        data::make({max_symbol_func_wast, max_symbol_global_wast, max_symbol_memory_wast, max_symbol_table_wast}),
+                        n_symbol, oversize, wast ) {
+   produce_blocks(2);
+
+   create_accounts({N(bigname)});
+
+   std::string name(n_symbol + oversize, 'x');
+   std::string code = fc::format_string(wast, fc::mutable_variant_object("NAME", name));
+
+   auto params = genesis_state::default_initial_wasm_configuration;
+   params.max_symbol_bytes = n_symbol;
+   set_wasm_params(params);
+
+   if(oversize) {
+      BOOST_CHECK_THROW(set_code(N(bigname), code.c_str()), wasm_exception);
+   } else {
+      set_code(N(bigname), code.c_str());
+      push_action(N(bigname));
+      --params.max_symbol_bytes;
+      set_wasm_params(params);
+      produce_block();
+      push_action(N(bigname));
+      produce_block();
+      set_code(N(bigname), vector<uint8_t>{}); // clear existing code
+      BOOST_CHECK_THROW(set_code(N(bigname), code.c_str()), wasm_exception);
+   }
+}
+
+static const char max_symbol_import_wast[] = R"=====(
+(module
+  (func (import "env" "eosio_assert") (param i32 i32))
+  (func (export "apply") (param i64 i64 i64))
+)
+)=====";
+
+BOOST_FIXTURE_TEST_CASE( max_symbol_bytes_import, wasm_config_tester ) {
+   produce_blocks(2);
+   create_accounts({N(bigname)});
+
+   constexpr int n_symbol = 12;
+
+   auto params = genesis_state::default_initial_wasm_configuration;
+   params.max_symbol_bytes = n_symbol;
+   set_wasm_params(params);
+
+   set_code(N(bigname), max_symbol_import_wast);
+   push_action(N(bigname));
+   --params.max_symbol_bytes;
+   set_wasm_params(params);
+   produce_block();
+   push_action(N(bigname));
+   produce_block();
+   set_code(N(bigname), vector<uint8_t>{}); // clear existing code
+   BOOST_CHECK_THROW(set_code(N(bigname), max_symbol_import_wast), wasm_exception);
 }
 
 BOOST_FIXTURE_TEST_CASE( max_pages, wasm_config_tester ) try {
