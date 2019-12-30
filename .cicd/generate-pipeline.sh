@@ -83,7 +83,7 @@ fi
 export BUILD_SOURCE=${BUILD_SOURCE:---build \$BUILDKITE_BUILD_ID}
 # set trigger_job if master/release/develop branch and webhook
 if [[ $BUILDKITE_BRANCH =~ ^release/[0-9]+\.[0-9]+\.x$ || $BUILDKITE_BRANCH =~ ^master$ || $BUILDKITE_BRANCH =~ ^develop$ ]]; then
-    [[ $BUILDKITE_SOURCE == 'webhook' ]] && export TRIGGER_JOB=true
+    [[ $BUILDKITE_SOURCE != 'scheduled' ]] && export TRIGGER_JOB=true
 fi
 oIFS="$IFS"
 IFS=$''
@@ -102,9 +102,9 @@ echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | while read -r PLATFORM_JSON; do
     command:
       - "./.cicd/generate-base-images.sh"
       - "./.cicd/build.sh"
-      - "tar -pczf build.tar.gz build && buildkite-agent artifact upload build.tar.gz"
     env:
       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
+      PLATFORM_FULL_NAME: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL)"
     agents:
       queue: "$BUILDKITE_BUILD_AGENT_QUEUE"
     timeout: ${TIMEOUT:-180}
@@ -117,9 +117,8 @@ EOF
         cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build"
     command:
-      - "git clone \$BUILDKITE_REPO eosio/eos && cd eosio/eos && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT && git submodule update --init --recursive"
-      - "cd eosio/eos && ./.cicd/build.sh"
-      - "cd eosio/eos && tar -pczf build.tar.gz build && buildkite-agent artifact upload build.tar.gz"
+      - "git clone \$BUILDKITE_REPO eos-tmp && cd eos-tmp && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT && git submodule update --init --recursive"
+      - "cd eos-tmp && ./.cicd/build.sh"
     plugins:
       - chef/anka#v0.5.5:
           no-volume: true
@@ -145,7 +144,7 @@ EOF
       TEMPLATE: $MOJAVE_ANKA_TEMPLATE_NAME
       TEMPLATE_TAG: $MOJAVE_ANKA_TAG_BASE
       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
-      TAG_COMMANDS: "sleep 10; brew install md5sha1sum && git clone ${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO} eos-tmp && cd eos-tmp && $GIT_FETCH git checkout -f $BUILDKITE_COMMIT && git submodule update --init --recursive && export IMAGE_TAG=$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME) && export BUILDKITE_COMMIT=$BUILDKITE_COMMIT && . ./.cicd/helpers/populate-template-and-hash.sh && cat /tmp/$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME) && . /tmp/$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME) && cd .. && rm -rf eos-tmp"
+      TAG_COMMANDS: "sleep 10; brew install md5sha1sum && git clone ${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO} ~/eos-tmp && cd ~/eos-tmp && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT && git submodule update --init --recursive && export IMAGE_TAG=$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME) && export BUILDKITE_COMMIT=\$BUILDKITE_COMMIT && . ./.cicd/helpers/populate-template-and-hash.sh && cat /tmp/$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME) && . /tmp/$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME) && rm -rf ~/eos-tmp"
       PROJECT_TAG: $(echo "$PLATFORM_JSON" | jq -r .HASHED_IMAGE_TAG)
     timeout: ${TIMEOUT:-180}
     agents: "queue=mac-anka-large-node-fleet"
@@ -159,9 +158,21 @@ EOF
 EOF
     fi
 done
-echo
-echo '  - wait'
-echo ''
+cat <<EOF
+
+  - label: ":docker: Docker - Build and Install"
+    command: "./.cicd/installation-build.sh"
+    env:
+      IMAGE_TAG: "ubuntu-18.04-unpinned"
+      PLATFORM_TYPE: "unpinned"
+    agents:
+      queue: "$BUILDKITE_BUILD_AGENT_QUEUE"
+    timeout: ${TIMEOUT:-180}
+    skip: ${SKIP_INSTALL}${SKIP_LINUX}${SKIP_DOCKER}
+
+  - wait
+
+EOF
 # tests
 IFS=$oIFS
 for ROUND in $(seq 1 $ROUNDS); do
@@ -178,17 +189,17 @@ for ROUND in $(seq 1 $ROUNDS); do
             cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Unit Tests"
     command:
-      - "buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' && tar -xzf build.tar.gz"
       - "./.cicd/test.sh scripts/parallel-test.sh"
     env:
       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
+      PLATFORM_FULL_NAME: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL)"
     agents:
       queue: "$BUILDKITE_BUILD_AGENT_QUEUE"
     retry:
       manual:
         permit_on_passed: true
     timeout: ${TIMEOUT:-30}
-    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_UNIT_TESTS}
+    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_UNIT_TESTS}${SKIP_TESTS}
 
 EOF
         else
@@ -197,9 +208,8 @@ EOF
             cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Unit Tests"
     command:
-      - "git clone \$BUILDKITE_REPO eosio/eos && cd eosio/eos && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT && git submodule update --init --recursive"
-      - "cd eosio/eos && buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' && tar -xzf build.tar.gz"
-      - "cd eosio/eos && ./.cicd/test.sh scripts/parallel-test.sh"
+      - "git clone \$BUILDKITE_REPO eos-tmp && cd eos-tmp && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT && git submodule update --init --recursive"
+      - "cd eos-tmp && ./.cicd/test.sh scripts/parallel-test.sh"
     plugins:
       - chef/anka#v0.5.4:
           no-volume: true
@@ -217,12 +227,13 @@ EOF
           cd: ~
     env:
       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
+      PLATFORM_FULL_NAME: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL)"
     agents: "queue=mac-anka-node-fleet"
     retry:
       manual:
         permit_on_passed: true
     timeout: ${TIMEOUT:-60}
-    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_UNIT_TESTS}
+    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_UNIT_TESTS}${SKIP_TESTS}
 
 EOF
         fi
@@ -244,17 +255,17 @@ EOF
             cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - WASM Spec Tests"
     command:
-      - "buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' && tar -xzf build.tar.gz"
       - "./.cicd/test.sh scripts/wasm-spec-test.sh"
     env:
       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
+      PLATFORM_FULL_NAME: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL)"
     agents:
       queue: "$BUILDKITE_BUILD_AGENT_QUEUE"
     retry:
       manual:
         permit_on_passed: true
     timeout: ${TIMEOUT:-30}
-    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_WASM_SPEC_TESTS}
+    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_WASM_SPEC_TESTS}${SKIP_TESTS}
 
 EOF
         else
@@ -263,9 +274,8 @@ EOF
             cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - WASM Spec Tests"
     command:
-      - "git clone \$BUILDKITE_REPO eosio/eos && cd eosio/eos && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT && git submodule update --init --recursive"
-      - "cd eosio/eos && buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' && tar -xzf build.tar.gz"
-      - "cd eosio/eos && ./.cicd/test.sh scripts/wasm-spec-test.sh"
+      - "git clone \$BUILDKITE_REPO eos-tmp && cd eos-tmp && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT && git submodule update --init --recursive"
+      - "cd eos-tmp && ./.cicd/test.sh scripts/wasm-spec-test.sh"
     plugins:
       - chef/anka#v0.5.4:
           no-volume: true
@@ -283,12 +293,13 @@ EOF
           cd: ~
     env:
       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
+      PLATFORM_FULL_NAME: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL)"
     agents: "queue=mac-anka-node-fleet"
     retry:
       manual:
         permit_on_passed: true
     timeout: ${TIMEOUT:-60}
-    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_WASM_SPEC_TESTS}
+    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_WASM_SPEC_TESTS}${SKIP_TESTS}
 
 EOF
         fi
@@ -312,23 +323,17 @@ EOF
                 cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - $TEST_NAME"
     command:
-      - "ssh-keyscan -H github.com >> ~/.ssh/known_hosts"
-      - "git clone \$BUILDKITE_REPO ."
-      - "$GIT_FETCH git checkout -f \$BUILDKITE_COMMIT"
-      - "buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' && tar -xzf build.tar.gz"
       - "./.cicd/test.sh scripts/serial-test.sh $TEST_NAME"
-    plugins:
-      - thedyrt/skip-checkout#v0.1.1:
-          cd: ~
     env:
       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
+      PLATFORM_FULL_NAME: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL)"
     agents:
       queue: "$BUILDKITE_TEST_AGENT_QUEUE"
     retry:
       manual:
         permit_on_passed: true
     timeout: ${TIMEOUT:-20}
-    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_SERIAL_TESTS}
+    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_SERIAL_TESTS}${SKIP_TESTS}
 
 EOF
             else
@@ -337,9 +342,8 @@ EOF
                 cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - $TEST_NAME"
     command:
-      - "git clone \$BUILDKITE_REPO eosio/eos && cd eosio/eos && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT && git submodule update --init --recursive"
-      - "cd eosio/eos && buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' && tar -xzf build.tar.gz"
-      - "cd eosio/eos && ./.cicd/test.sh scripts/serial-test.sh $TEST_NAME"
+      - "git clone \$BUILDKITE_REPO eos-tmp && cd eos-tmp && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT && git submodule update --init --recursive"
+      - "cd eos-tmp && ./.cicd/test.sh scripts/serial-test.sh $TEST_NAME"
     plugins:
       - chef/anka#v0.5.4:
           no-volume: true
@@ -357,12 +361,13 @@ EOF
           cd: ~
     env:
       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
+      PLATFORM_FULL_NAME: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL)"
     agents: "queue=mac-anka-node-fleet"
     retry:
       manual:
         permit_on_passed: true
     timeout: ${TIMEOUT:-60}
-    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_SERIAL_TESTS}
+    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_SERIAL_TESTS}${SKIP_TESTS}
 EOF
             fi
             if [ "$BUILDKITE_SOURCE" = "schedule" ] && [[ $DISABLE_CONCURRENCY != true ]]; then
@@ -387,16 +392,10 @@ EOF
                 cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - $TEST_NAME"
     command:
-      - "ssh-keyscan -H github.com >> ~/.ssh/known_hosts"
-      - "git clone \$BUILDKITE_REPO ."
-      - "$GIT_FETCH git checkout -f \$BUILDKITE_COMMIT"
-      - "buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' ${BUILD_SOURCE} && tar -xzf build.tar.gz"
       - "./.cicd/test.sh scripts/long-running-test.sh $TEST_NAME"
-    plugins:
-      - thedyrt/skip-checkout#v0.1.1:
-          cd: ~
     env:
       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
+      PLATFORM_FULL_NAME: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL)"
     agents:
       queue: "$BUILDKITE_TEST_AGENT_QUEUE"
     retry:
@@ -412,9 +411,8 @@ EOF
                 cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - $TEST_NAME"
     command:
-      - "git clone \$BUILDKITE_REPO eosio/eos && cd eosio/eos && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT && git submodule update --init --recursive"
-      - "cd eosio/eos && buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' ${BUILD_SOURCE} && tar -xzf build.tar.gz"
-      - "cd eosio/eos && ./.cicd/test.sh scripts/long-running-test.sh $TEST_NAME"
+      - "git clone \$BUILDKITE_REPO eos-tmp && cd eos-tmp && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT && git submodule update --init --recursive"
+      - "cd eos-tmp && ./.cicd/test.sh scripts/long-running-test.sh $TEST_NAME"
     plugins:
       - chef/anka#v0.5.4:
           no-volume: true
@@ -432,6 +430,7 @@ EOF
           cd: ~
     env:
       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
+      PLATFORM_FULL_NAME: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL)"
     agents: "queue=mac-anka-node-fleet"
     retry:
       manual:
@@ -462,18 +461,19 @@ done
 # trigger eosio-lrt post pr
 if [[ -z $BUILDKITE_TRIGGERED_FROM_BUILD_ID && $TRIGGER_JOB == "true" ]]; then
     if ( [[ ! $PINNED == false ]] ); then
-    cat <<EOF
+        cat <<EOF
   - label: ":pipeline: Trigger Long Running Tests"
     trigger: "eosio-lrt"
     async: true
     build:
-      message: "${BUILDKITE_MESSAGE}"
+      message: "Triggered by EOSIO build ${BUILDKITE_BUILD_NUMBER}"
       commit: "${BUILDKITE_COMMIT}"
       branch: "${BUILDKITE_BRANCH}"
       env:
         BUILDKITE_PULL_REQUEST: "${BUILDKITE_PULL_REQUEST}"
         BUILDKITE_PULL_REQUEST_BASE_BRANCH: "${BUILDKITE_PULL_REQUEST_BASE_BRANCH}"
         BUILDKITE_PULL_REQUEST_REPO: "${BUILDKITE_PULL_REQUEST_REPO}"
+        BUILDKITE_TRIGGERED_FROM_BUILD_LINK: "${BUILDKITE_BUILD_URL}"
         SKIP_BUILD: "true"
         SKIP_WASM_SPEC_TESTS: "true"
         PINNED: "${PINNED}"
@@ -484,21 +484,41 @@ fi
 # trigger multiversion post pr
 if [[ -z $BUILDKITE_TRIGGERED_FROM_BUILD_ID && $TRIGGER_JOB = "true" ]]; then
     if ( [[ ! $PINNED == false ]] ); then
-    cat <<EOF
+        cat <<EOF
   - label: ":pipeline: Trigger Multiversion Test"
     trigger: "eos-multiversion-tests"
     async: true
     build:
-      message: "${BUILDKITE_MESSAGE}"
+      message: "Triggered by EOSIO build ${BUILDKITE_BUILD_NUMBER}"
       commit: "${BUILDKITE_COMMIT}"
       branch: "${BUILDKITE_BRANCH}"
       env:
         BUILDKITE_PULL_REQUEST: "${BUILDKITE_PULL_REQUEST}"
         BUILDKITE_PULL_REQUEST_BASE_BRANCH: "${BUILDKITE_PULL_REQUEST_BASE_BRANCH}"
         BUILDKITE_PULL_REQUEST_REPO: "${BUILDKITE_PULL_REQUEST_REPO}"
+        BUILDKITE_TRIGGERED_FROM_BUILD_LINK: "${BUILDKITE_BUILD_URL}"
 
 EOF
     fi
+fi
+# trigger eosio-sync-from-genesis for every build
+if [[ -z $BUILDKITE_TRIGGERED_FROM_BUILD_ID && -z "${SKIP_TESTS}${SKIP_INSTALL}${SKIP_LINUX}${SKIP_DOCKER}" ]]; then
+    cat <<EOF
+  - label: ":chains: Sync-from-Genesis Test"
+    trigger: "eosio-sync-from-genesis"
+    async: false
+    build:
+      message: "Triggered by EOSIO build ${BUILDKITE_BUILD_NUMBER}"
+      commit: "${BUILDKITE_COMMIT}"
+      branch: "${BUILDKITE_BRANCH}"
+      env:
+        BUILDKITE_TRIGGERED_FROM_BUILD_LINK: "${BUILDKITE_BUILD_URL}"
+        SKIP_JUNGLE: "${SKIP_JUNGLE}"
+        SKIP_KYLIN: "${SKIP_KYLIN}"
+        SKIP_MAIN: "${SKIP_MAIN}"
+        TIMEOUT: "${TIMEOUT}"
+
+EOF
 fi
 # pipeline tail
 cat <<EOF
@@ -527,16 +547,10 @@ cat <<EOF
     # packaging
   - label: ":centos: CentOS 7.7 - Package Builder"
     command:
-      - "ssh-keyscan -H github.com >> ~/.ssh/known_hosts"
-      - "git clone \$BUILDKITE_REPO ."
-      - "$GIT_FETCH git checkout -f \$BUILDKITE_COMMIT"
-      - "buildkite-agent artifact download build.tar.gz . --step ':centos: CentOS 7.7 - Build' && tar -xzf build.tar.gz"
       - "./.cicd/package.sh"
-    plugins:
-      - thedyrt/skip-checkout#v0.1.1:
-          cd: ~
     env:
       IMAGE_TAG: "centos-7.7-$PLATFORM_TYPE"
+      PLATFORM_FULL_NAME: ":centos: CentOS 7.7"
       OS: "el7" # OS and PKGTYPE required for lambdas
       PKGTYPE: "rpm"
     agents:
@@ -546,16 +560,10 @@ cat <<EOF
 
   - label: ":ubuntu: Ubuntu 16.04 - Package Builder"
     command:
-      - "ssh-keyscan -H github.com >> ~/.ssh/known_hosts"
-      - "git clone \$BUILDKITE_REPO ."
-      - "$GIT_FETCH git checkout -f \$BUILDKITE_COMMIT"
-      - "buildkite-agent artifact download build.tar.gz . --step ':ubuntu: Ubuntu 16.04 - Build' && tar -xzf build.tar.gz"
       - "./.cicd/package.sh"
-    plugins:
-      - thedyrt/skip-checkout#v0.1.1:
-          cd: ~
     env:
       IMAGE_TAG: "ubuntu-16.04-$PLATFORM_TYPE"
+      PLATFORM_FULL_NAME: ":ubuntu: Ubuntu 16.04"
       OS: "ubuntu-16.04" # OS and PKGTYPE required for lambdas
       PKGTYPE: "deb"
     agents:
@@ -565,16 +573,10 @@ cat <<EOF
 
   - label: ":ubuntu: Ubuntu 18.04 - Package Builder"
     command:
-      - "ssh-keyscan -H github.com >> ~/.ssh/known_hosts"
-      - "git clone \$BUILDKITE_REPO ."
-      - "$GIT_FETCH git checkout -f \$BUILDKITE_COMMIT"
-      - "buildkite-agent artifact download build.tar.gz . --step ':ubuntu: Ubuntu 18.04 - Build' && tar -xzf build.tar.gz"
       - "./.cicd/package.sh"
-    plugins:
-      - thedyrt/skip-checkout#v0.1.1:
-          cd: ~
     env:
       IMAGE_TAG: "ubuntu-18.04-$PLATFORM_TYPE"
+      PLATFORM_FULL_NAME: ":ubuntu: Ubuntu 18.04"
       OS: "ubuntu-18.04" # OS and PKGTYPE required for lambdas
       PKGTYPE: "deb"
     agents:
@@ -584,9 +586,9 @@ cat <<EOF
 
   - label: ":darwin: macOS 10.14 - Package Builder"
     command:
-      - "git clone \$BUILDKITE_REPO eosio/eos && cd eosio/eos && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT"
-      - "cd eosio/eos && buildkite-agent artifact download build.tar.gz . --step ':darwin: macOS 10.14 - Build' && tar -xzf build.tar.gz"
-      - "cd eosio/eos && ./.cicd/package.sh"
+      - "brew install md5sha1sum && brew link --overwrite md5sha1sum"
+      - "git clone \$BUILDKITE_REPO ~/eosio/eos && cd ~/eosio/eos && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT"
+      - "cd ~/eosio/eos && ./.cicd/package.sh"
     plugins:
       - chef/anka#v0.5.4:
           no-volume: true
@@ -604,17 +606,20 @@ cat <<EOF
           cd: ~
     agents:
       - "queue=mac-anka-node-fleet"
-    timeout: ${TIMEOUT:-60}
+    env:
+      IMAGE_TAG: "macos-10.14-$PLATFORM_TYPE"
+      PLATFORM_FULL_NAME: ":darwin: macOS 10.14"
+    timeout: ${TIMEOUT:-10}
     skip: ${SKIP_MACOS_10_14}${SKIP_PACKAGE_BUILDER}${SKIP_MAC}
 
-  - label: ":ubuntu: Ubuntu 18.04 - Contract Builder"
-    command: "./.cicd/installation-build.sh"
+  - label: ":docker: Docker - Label Container with Git Branch and Git Tag"
+    command: .cicd/docker-tag.sh
     env:
       IMAGE_TAG: "ubuntu-18.04-unpinned"
     agents:
       queue: "$BUILDKITE_BUILD_AGENT_QUEUE"
-    timeout: ${TIMEOUT:-30}
-    skip: ${SKIP_CONTRACT_BUILDER}${SKIP_LINUX}
+    timeout: ${TIMEOUT:-10}
+    skip: ${SKIP_INSTALL}${SKIP_LINUX}${SKIP_DOCKER}${SKIP_PACKAGE_BUILDER}
 
   - wait
 

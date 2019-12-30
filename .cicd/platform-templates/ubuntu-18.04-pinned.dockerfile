@@ -1,13 +1,14 @@
 FROM ubuntu:18.04
 ENV VERSION 1
+ENV HOME=/root
 # Commands from the documentation are inserted right below this line
 # Anything below here is exclusive to our CI/CD
 ## Set WORKDIR to location we mount into the container
-WORKDIR /root
+WORKDIR ${HOME}
 ## install ccache
 RUN apt-get install -y ccache
 ## Cleanup eosio directory (~ 600MB)
-RUN rm -rf ${EOSIO_LOCATION}
+RUN rm -rf ${EOS_LOCATION}
 ## install nvm
 RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.0/install.sh | bash
 ## load nvm in non-interactive shells

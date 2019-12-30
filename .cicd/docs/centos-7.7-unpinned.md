@@ -25,19 +25,27 @@ Select a task below, then copy/paste the shell commands to a Unix terminal to ex
 [[info | Building EOSIO on another OS?]]
 | Visit the [Build EOSIO from Source](../../index.md) section.
 
+## Set EOSIO Environment Variables
+<!-- DAC ENV -->
+```sh
+export EOSIO_LOCATION=$HOME/eosio
+export EOS_LOCATION=$EOSIO_LOCATION/eos
+export EOSIO_INSTALL_LOCATION=$EOSIO_LOCATION/install
+export PATH=$EOSIO_INSTALL_LOCATION/bin:$PATH
+export EOSIO_BUILD_LOCATION=$EOS_LOCATION/build
+```
+<!-- DAC ENV END -->
 ## Download EOSIO Repository
-These commands set the EOSIO directories, install git, and clone the EOSIO repository.
+These commands set the EOSIO directories, install git, and clone the EOSIO repository.
 <!-- DAC CLONE -->
 ```sh
-# set EOSIO directories
-export EOSIO_LOCATION=~/eosio/eos
-export EOSIO_INSTALL_LOCATION=$EOSIO_LOCATION/../install
+# create EOSIO directories
 mkdir -p $EOSIO_INSTALL_LOCATION
 # install git
 yum update -y && yum install -y git
 # clone EOSIO repository
-git clone https://github.com/EOSIO/eos.git $EOSIO_LOCATION
-cd $EOSIO_LOCATION && git submodule update --init --recursive
+git clone https://github.com/EOSIO/eos.git $EOS_LOCATION
+cd $EOS_LOCATION && git submodule update --init --recursive
 ```
 <!-- DAC CLONE END -->
 
@@ -55,17 +63,16 @@ yum update -y && \
     python python-devel rh-python36 file libusbx-devel \
     libcurl-devel patch vim-common jq llvm-toolset-7.0-llvm-devel llvm-toolset-7.0-llvm-static
 # build cmake
-export PATH=$EOSIO_INSTALL_LOCATION/bin:$PATH
-cd $EOSIO_INSTALL_LOCATION && curl -LO https://cmake.org/files/v3.13/cmake-3.13.2.tar.gz && \
+cd $EOSIO_INSTALL_LOCATION && curl -LO https://github.com/Kitware/CMake/releases/download/v3.16.2/cmake-3.16.2.tar.gz && \
     source /opt/rh/devtoolset-8/enable && \
-    tar -xzf cmake-3.13.2.tar.gz && \
-    cd cmake-3.13.2 && \
+    tar -xzf cmake-3.16.2.tar.gz && \
+    cd cmake-3.16.2 && \
     ./bootstrap --prefix=$EOSIO_INSTALL_LOCATION && \
     make -j$(nproc) && \
     make install && \
-    rm -rf $EOSIO_INSTALL_LOCATION/cmake-3.13.2.tar.gz $EOSIO_INSTALL_LOCATION/cmake-3.13.2
+    rm -rf $EOSIO_INSTALL_LOCATION/cmake-3.16.2.tar.gz $EOSIO_INSTALL_LOCATION/cmake-3.16.2
 # apply clang patch
-cp -f $EOSIO_LOCATION/scripts/clang-devtoolset8-support.patch /tmp/clang-devtoolset8-support.patch
+cp -f $EOS_LOCATION/scripts/clang-devtoolset8-support.patch /tmp/clang-devtoolset8-support.patch
 # build boost
 cd $EOSIO_INSTALL_LOCATION && curl -LO https://dl.bintray.com/boostorg/release/1.71.0/source/boost_1_71_0.tar.bz2 && \
     source /opt/rh/devtoolset-8/enable && \
@@ -106,7 +113,6 @@ cd $EOSIO_INSTALL_LOCATION && curl -L https://github.com/mongodb/mongo-cxx-drive
 These commands build the EOSIO software on the specified OS. Make sure to [Install EOSIO Dependencies](#install-eosio-dependencies) first.
 <!-- DAC BUILD -->
 ```sh
-export EOSIO_BUILD_LOCATION=$EOSIO_LOCATION/build
 mkdir -p $EOSIO_BUILD_LOCATION
 cd $EOSIO_BUILD_LOCATION && source /opt/rh/devtoolset-8/enable && cmake -DCMAKE_BUILD_TYPE='Release' -DLLVM_DIR='/opt/rh/llvm-toolset-7.0/root/usr/lib64/cmake/llvm' -DCMAKE_INSTALL_PREFIX=$EOSIO_INSTALL_LOCATION -DBUILD_MONGO_DB_PLUGIN=true ..
 cd $EOSIO_BUILD_LOCATION && make -j$(nproc)
