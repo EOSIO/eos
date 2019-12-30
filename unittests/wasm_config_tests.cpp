@@ -603,6 +603,56 @@ BOOST_FIXTURE_TEST_CASE( max_symbol_bytes_import, wasm_config_tester ) {
    BOOST_CHECK_THROW(set_code(N(bigname), max_symbol_import_wast), wasm_exception);
 }
 
+static const std::vector<uint8_t> small_contract_wasm{
+   0x00, 'a', 's', 'm', 0x01, 0x00, 0x00, 0x00,
+   0x01, 0x07, 0x01, 0x60, 0x03, 0x7e, 0x7e, 0x7e, 0x00,
+   0x03, 0x02, 0x01, 0x00,
+   0x07, 0x09, 0x01, 0x05, 'a', 'p', 'p', 'l', 'y', 0x00, 0x00,
+   0x0a, 0x04, 0x01, 0x02, 0x00, 0x0b
+};
+
+BOOST_FIXTURE_TEST_CASE( max_module_bytes, wasm_config_tester ) {
+   produce_blocks(2);
+   create_accounts({N(bigmodule)});
+
+   constexpr int n_module = 38;
+
+   auto params = genesis_state::default_initial_wasm_configuration;
+   params.max_module_bytes = n_module;
+   set_wasm_params(params);
+
+   set_code(N(bigmodule), small_contract_wasm);
+   push_action(N(bigmodule));
+   --params.max_module_bytes;
+   set_wasm_params(params);
+   produce_block();
+   push_action(N(bigmodule));
+   produce_block();
+   set_code(N(bigmodule), vector<uint8_t>{}); // clear existing code
+   BOOST_CHECK_THROW(set_code(N(bigmodule), small_contract_wasm), wasm_exception);
+}
+
+BOOST_FIXTURE_TEST_CASE( max_code_bytes, wasm_config_tester ) {
+   produce_blocks(2);
+   create_accounts({N(bigcode)});
+
+   constexpr int n_code = 2;
+
+   auto params = genesis_state::default_initial_wasm_configuration;
+   params.max_code_bytes = n_code;
+   set_wasm_params(params);
+
+   set_code(N(bigcode), small_contract_wasm);
+   push_action(N(bigcode));
+   --params.max_code_bytes;
+   set_wasm_params(params);
+   produce_block();
+   push_action(N(bigcode));
+   produce_block();
+   set_code(N(bigcode), vector<uint8_t>{}); // clear existing code
+   BOOST_CHECK_THROW(set_code(N(bigcode), small_contract_wasm), wasm_exception);
+}
+
 BOOST_FIXTURE_TEST_CASE( max_pages, wasm_config_tester ) try {
    produce_blocks(2);
 
