@@ -12,6 +12,8 @@ namespace eosio { namespace version {
    const std::string version_suffix{"@_VERSION_SUFFIX_@"};
    const std::string version_hash  {"@_VERSION_HASH_@"  };
    const bool        version_dirty { @_VERSION_DIRTY_@  };
+   const std::string version_arch     {"@_VERSION_ARCH_@"    };
+   const std::string version_compiler {"@_VERSION_COMPILER_@"};
 
    std::string _version_client() {
       if( version_major == "unknown" || version_major.empty() || version_minor == "unknown" || version_minor.empty()) {
@@ -33,6 +35,8 @@ namespace eosio { namespace version {
          if( !version_suffix.empty() ) version += '-' + version_suffix;
          if( !version_hash.empty() )   version += '-' + version_hash;
          if( version_dirty )           version += "-dirty";
+         if( version_arch.size() )     version += '/' + version_arch;
+         if( version_compiler.size() ) version += '/' + version_compiler;
          return version;
       }
    }

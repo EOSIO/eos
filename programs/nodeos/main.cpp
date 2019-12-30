@@ -84,7 +84,7 @@ int main(int argc, char** argv)
    try {
       app().set_version(eosio::nodeos::config::version);
       app().set_version_string(eosio::version::version_client());
-      app().set_full_version_string(eosio::version::version_full());
+      app().set_full_version_string(bfs::path(argv[0]).filename().generic_string() + "/" + eosio::version::version_full());
 
       auto root = fc::app_path();
       app().set_default_data_dir(root / "eosio" / nodeos::config::node_executable_name / "data" );

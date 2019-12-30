@@ -8,6 +8,8 @@ set(_VERSION_PATCH_  "")
 set(_VERSION_SUFFIX_ "")
 set(_VERSION_HASH_   "")
 set(_VERSION_DIRTY_  "")
+set(_VERSION_ARCH_ "")
+set(_VERSION_COMPILER_ "")
 
 # Construct the library target.
 add_library(
@@ -20,6 +22,11 @@ target_include_directories(
    version
    PUBLIC  "${CMAKE_CURRENT_SOURCE_DIR}/include/"
    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src/" )
+
+set(VERSION_ARCH ${CMAKE_SYSTEM_NAME}-${CMAKE_SYSTEM_PROCESSOR})
+set(VERSION_COMPILER ${CMAKE_CXX_COMPILER_ID}-${CMAKE_CXX_COMPILER_VERSION})
+string(TOLOWER ${VERSION_ARCH} VERSION_ARCH)
+string(TOLOWER ${VERSION_COMPILER} VERSION_COMPILER)
 
 # Create a custom target to update the version metadata upon every build.
 find_package(Git)
@@ -34,6 +41,8 @@ if(EXISTS ${CMAKE_SOURCE_DIR}/.git AND ${GIT_FOUND})
                                -DV_MINOR=${VERSION_MINOR}
                                -DV_PATCH=${VERSION_PATCH}
                                -DV_SUFFIX=${VERSION_SUFFIX}
+                               -DV_ARCH=${VERSION_ARCH}
+                               -DV_COMPILER=${VERSION_COMPILER}
                                -P ${CMAKE_SOURCE_DIR}/CMakeModules/VersionUtils.cmake
       BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/src/version_impl.cpp
       COMMENT "Updating version metadata..." VERBATIM )

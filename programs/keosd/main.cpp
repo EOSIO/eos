@@ -35,7 +35,7 @@ int main(int argc, char** argv)
 {
    try {
       app().set_version_string(eosio::version::version_client());
-      app().set_full_version_string(eosio::version::version_full());
+      app().set_full_version_string(bfs::path(argv[0]).filename().generic_string() + "/" + eosio::version::version_full());
       bfs::path home = determine_home_directory();
       app().set_default_data_dir(home / "eosio-wallet");
       app().set_default_config_dir(home / "eosio-wallet");
