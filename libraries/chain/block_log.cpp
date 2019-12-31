@@ -31,8 +31,9 @@ namespace eosio { namespace chain {
     *            this is in the form of an first_block_num that is written immediately after the version
     * Version 3: improvement on version 2 to not require the genesis state be provided when not starting
     *            from block 1
+    * Version 4: additional fields added to genesis state
     */
-   const uint32_t block_log::max_supported_version = 3;
+   const uint32_t block_log::max_supported_version = 4;
 
    namespace detail {
       using unique_file = std::unique_ptr<FILE, decltype(&fclose)>;
@@ -578,11 +579,19 @@ namespace eosio { namespace chain {
       }
 
       if (contains_genesis_state(version, first_block_num)) {
-         genesis_state gs;
-         fc::raw::unpack(old_block_stream, gs);
+         if(version >= 4) {
+            genesis_state gs;
+            fc::raw::unpack(old_block_stream, gs);
 
-         auto data = fc::raw::pack( gs );
-         new_block_stream.write( data.data(), data.size() );
+            auto data = fc::raw::pack( gs );
+            new_block_stream.write( data.data(), data.size() );
+         } else {
+            legacy::snapshot_genesis_state_v3 gs;
+            fc::raw::unpack(old_block_stream, gs);
+
+            auto data = fc::raw::pack( gs );
+            new_block_stream.write( data.data(), data.size() );
+         }
       }
       else if (contains_chain_id(version, first_block_num)) {
          chain_id_type chain_id;
@@ -723,12 +732,23 @@ namespace eosio { namespace chain {
       return lambda(block_stream, version, first_block_num);
    }
 
+   template<typename DataStream>
+   static genesis_state read_genesis_state( DataStream& block_stream, uint32_t version ) {
+      genesis_state gs;
+      if (version >= 4) {
+         fc::raw::unpack(block_stream, gs);
+      } else {
+         legacy::snapshot_genesis_state_v3 legacy_genesis;
+         fc::raw::unpack(block_stream, legacy_genesis);
+         gs.initialize_from(legacy_genesis);
+      }
+      return gs;
+   }
+
    fc::optional<genesis_state> block_log::extract_genesis_state( const fc::path& data_dir ) {
       return detail::block_log_impl::extract_chain_context<genesis_state>(data_dir, [](std::fstream& block_stream, uint32_t version, uint32_t first_block_num ) -> fc::optional<genesis_state> {
          if (contains_genesis_state(version, first_block_num)) {
-            genesis_state gs;
-            fc::raw::unpack(block_stream, gs);
-            return gs;
+            return read_genesis_state( block_stream, version );
          }
 
          // current versions only have a genesis state if they start with block number 1
@@ -740,9 +760,7 @@ namespace eosio { namespace chain {
       return *(detail::block_log_impl::extract_chain_context<chain_id_type>(data_dir, [](std::fstream& block_stream, uint32_t version, uint32_t first_block_num ) -> fc::optional<chain_id_type> {
          // supported versions either contain a genesis state, or else the chain id only
          if (contains_genesis_state(version, first_block_num)) {
-            genesis_state gs;
-            fc::raw::unpack(block_stream, gs);
-            return gs.compute_chain_id();
+            return read_genesis_state(block_stream, version).compute_chain_id();
          }
          EOS_ASSERT( contains_chain_id(version, first_block_num), block_log_exception,
                      "Block log error! version: ${version} with first_block_num: ${num} does not contain a "
@@ -985,8 +1003,8 @@ namespace eosio { namespace chain {
       new_block_file.close();
       new_block_file.open( LOG_RW_C );
 
-      static_assert( block_log::max_supported_version == 3,
-                     "Code was written to support version 3 format, need to update this code for latest format." );
+      static_assert( block_log::max_supported_version == 4,
+                     "Code was written to support version 3/4 format, need to update this code for latest format." );
       uint32_t version = block_log::max_supported_version;
       new_block_file.seek(0);
       new_block_file.write((char*)&version, sizeof(version));
@@ -1084,18 +1102,14 @@ namespace eosio { namespace chain {
       detail::fileptr_datastream ds(blk_in, block_file_name.string());
       if (version == 1) {
          first_block = 1;
-         genesis_state gs;
-         fc::raw::unpack(ds, gs);
-         chain_id = gs.compute_chain_id();
+         chain_id = read_genesis_state(ds, version).compute_chain_id();
       }
       else {
          size = fread((void *) &first_block, sizeof(first_block), 1, blk_in);
          EOS_ASSERT(size == 1, block_log_exception, "invalid format for file ${file}",
                     ("file", block_file_name.string()));
          if (block_log::contains_genesis_state(version, first_block)) {
-            genesis_state gs;
-            fc::raw::unpack(ds, gs);
-            chain_id = gs.compute_chain_id();
+            chain_id = read_genesis_state(ds, version).compute_chain_id();
          }
          else if (block_log::contains_chain_id(version, first_block)) {
             ds >> chain_id;
