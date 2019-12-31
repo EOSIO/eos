@@ -89,7 +89,7 @@ if ( [[ $DOCKERIZATION == false ]] && [[ $ONLYHASH == false ]] ); then
     echo "$POP_COMMANDS" > /tmp/$POPULATED_FILE_NAME
   fi
 else
-  awk "NR==$APPEND_LINE{print;system(\"cat /tmp/commands\");next} 1" .cicd/platform-templates/${FILE:-"${IMAGE_TAG}$FILE_EXTENSION"} >> /tmp/$POPULATED_FILE_NAME
+  awk "NR==$APPEND_LINE{print;system(\"cat /tmp/commands\");next} 1" .cicd/platform-templates/${FILE:-"${IMAGE_TAG}$FILE_EXTENSION"} > /tmp/$POPULATED_FILE_NAME
 fi
 export DETERMINED_HASH=$(sha1sum /tmp/$POPULATED_FILE_NAME | awk '{ print $1 }')
 export HASHED_IMAGE_TAG="$(basename $(git rev-parse --show-toplevel) | sed 's/\./_/g')-$(basename ${FILE_NAME:-$IMAGE_TAG} | awk '{split($0,a,/\.(d|s)/); print a[1] }')-${DETERMINED_HASH}"
@@ -100,7 +100,7 @@ if [[ $TRAVIS == true ]]; then
 else
   COMMIT_ID=$BUILDKITE_COMMIT
 fi
-[[ $DOCKERIZATION == false ]] && echo -e "#!/bin/bash\nset -eo pipefail" > /tmp/$POPULATED_FILE_NAME
+[[ $DOCKERIZATION == false ]] && echo -e "#!/bin/bash\nset -eo pipefail" >> /tmp/$POPULATED_FILE_NAME
 sed -i -e 's/&& brew install git/&& brew install git || true/g' /tmp/$POPULATED_FILE_NAME
 sed -i -e "s/\.git \$EOS_LOCATION/\.git \$EOS_LOCATION \&\& cd \$EOS_LOCATION \&\& git pull \&\& git checkout -f $COMMIT_ID/g" /tmp/$POPULATED_FILE_NAME # MUST BE AFTER WE GENERATE THE HASH
 chmod +x /tmp/$POPULATED_FILE_NAME
