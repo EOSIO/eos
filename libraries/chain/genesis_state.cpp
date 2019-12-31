@@ -9,7 +9,17 @@ genesis_state::genesis_state() {
 
 chain::chain_id_type genesis_state::compute_chain_id() const {
    digest_type::encoder enc;
-   fc::raw::pack( enc, *this );
+
+   // These fields were in the original genesis state and should just be encoded directly.
+   fc::raw::pack( enc, initial_timestamp );
+   fc::raw::pack( enc, initial_key );
+   fc::raw::pack( enc, initial_configuration );
+
+   // If initial_protocol_features is empty, it should not be included in the digest.
+   for(const digest_type& feature_digest : initial_protocol_features) {
+      fc::raw::pack( enc, feature_digest );
+   }
+
    return chain_id_type{enc.result()};
 }
 

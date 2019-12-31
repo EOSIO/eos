@@ -467,6 +467,17 @@ struct controller_impl {
       head->block = std::make_shared<signed_block>(genheader.header);
       db.set_revision( head->block_num );
       initialize_database(genesis);
+      // protocol_features.init happens after this, and will pick up pso.activated_protocol_features.
+      if(genesis.initial_protocol_features.size()) {
+         *head->activated_protocol_features = protocol_feature_activation_set(*head->activated_protocol_features, genesis.initial_protocol_features);
+         const auto& pfs = protocol_features.get_protocol_feature_set();
+         for( const auto& feature_digest : genesis.initial_protocol_features ) {
+            const auto& f = pfs.get_protocol_feature( feature_digest );
+            if( f.builtin_feature ) {
+               trigger_activation_handler( *f.builtin_feature );
+            }
+         }
+      }
    }
 
    void replay(std::function<bool()> check_shutdown) {
@@ -886,7 +897,9 @@ struct controller_impl {
       if (std::clamp(version, v2::minimum_version, v2::maximum_version) == version ) {
          genesis.emplace();
          snapshot.read_section<genesis_state>([&genesis=*genesis]( auto &section ){
-            section.read_row(genesis);
+            legacy::snapshot_genesis_state_v3 legacy_genesis;
+            section.read_row(legacy_genesis);
+            genesis.initialize_from(legacy_genesis);
          });
       }
       return genesis;
@@ -1057,6 +1070,9 @@ struct controller_impl {
          pso.num_supported_key_types = config::genesis_num_supported_key_types;
          for( const auto& i : genesis_intrinsics ) {
             add_intrinsic_to_whitelist( pso.whitelisted_intrinsics, i );
+         }
+         for( const auto& feature_digest : genesis.initial_protocol_features ) {
+            pso.activated_protocol_features.emplace_back( feature_digest, 0 );
          }
       });
 

@@ -988,6 +988,15 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
                ilog( "Starting fresh blockchain state using default genesis state." );
                my->genesis.emplace();
+               for( const protocol_feature& f : pfs ) {
+                  if( pfs.is_recognized( f.feature_digest, my->genesis->initial_timestamp ) == protocol_feature_set::recognized_t::ready &&
+                      std::none_of(f.dependencies.begin(), f.dependencies.end(), [&](auto& d) {
+                         return std::find( my->genesis->initial_protocol_features.begin(), my->genesis->initial_protocol_features.end(), d ) == my->genesis->initial_protocol_features.end();
+                                                                                 } ) ) {
+                     ilog( "genesis protocol feature: ${digest}", ("digest", f.feature_digest) );
+                     my->genesis->initial_protocol_features.push_back( f.feature_digest );
+                  }
+               }
                chain_id = my->genesis->compute_chain_id();
             }
          }
