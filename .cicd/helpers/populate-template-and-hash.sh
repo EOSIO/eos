@@ -78,16 +78,15 @@ else # Mac OSX
   export FILE_EXTENSION=".sh"
   export APPEND_LINE=4
 fi
-[[ $DOCKERIZATION == false ]] && echo -e "#!/bin/bash\nset -eo pipefail" > /tmp/$POPULATED_FILE_NAME
 echo "$POP_COMMANDS" > /tmp/commands
 if ( [[ $DOCKERIZATION == false ]] && [[ $ONLYHASH == false ]] ); then
   if [[ "$(uname)" == 'Darwin' ]]; then # Mac needs to use the template fr envs
-    cat .cicd/platform-templates/${FILE:-"${IMAGE_TAG}$FILE_EXTENSION"} >> /tmp/$POPULATED_FILE_NAME
+    cat .cicd/platform-templates/${FILE:-"${IMAGE_TAG}$FILE_EXTENSION"} > /tmp/$POPULATED_FILE_NAME
     # Remove anything below "# Anything below here is exclusive to our CI/CD"
     sed -i -e '/Anything below here is exclusive to our CI\/CD/,$d' /tmp/$POPULATED_FILE_NAME
     echo "$POP_COMMANDS" >> /tmp/$POPULATED_FILE_NAME
   else
-    echo "$POP_COMMANDS" >> /tmp/$POPULATED_FILE_NAME
+    echo "$POP_COMMANDS" > /tmp/$POPULATED_FILE_NAME
   fi
 else
   awk "NR==$APPEND_LINE{print;system(\"cat /tmp/commands\");next} 1" .cicd/platform-templates/${FILE:-"${IMAGE_TAG}$FILE_EXTENSION"} >> /tmp/$POPULATED_FILE_NAME
@@ -101,6 +100,7 @@ if [[ $TRAVIS == true ]]; then
 else
   COMMIT_ID=$BUILDKITE_COMMIT
 fi
+[[ $DOCKERIZATION == false ]] && echo -e "#!/bin/bash\nset -eo pipefail" > /tmp/$POPULATED_FILE_NAME
 sed -i -e 's/&& brew install git/&& brew install git || true/g' /tmp/$POPULATED_FILE_NAME
 sed -i -e "s/\.git \$EOS_LOCATION/\.git \$EOS_LOCATION \&\& cd \$EOS_LOCATION \&\& git pull \&\& git checkout -f $COMMIT_ID/g" /tmp/$POPULATED_FILE_NAME # MUST BE AFTER WE GENERATE THE HASH
 chmod +x /tmp/$POPULATED_FILE_NAME
