@@ -53,14 +53,7 @@ else # Linux
     cat /tmp/$POPULATED_FILE_NAME
     mv /tmp/$POPULATED_FILE_NAME ./$POPULATED_FILE_NAME
     echo "$ docker run $ARGS $FULL_TAG bash -c \"$BUILD_COMMANDS\""
-    set +e # defer error handling to end
     eval docker run $ARGS $FULL_TAG bash -c \"$BUILD_COMMANDS\"
-    EXIT_STATUS=$?
-fi
-# re-throw
-if [[ $EXIT_STATUS != 0 ]]; then
-    echo "Failing due to non-zero exit status: $EXIT_STATUS"
-    exit $EXIT_STATUS
 fi
 if [[ $TRAVIS != true ]]; then
     [[ $(uname) == 'Darwin' ]] && cd $EOS_LOCATION
