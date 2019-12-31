@@ -100,7 +100,7 @@ if [[ $TRAVIS == true ]]; then
 else
   COMMIT_ID=$BUILDKITE_COMMIT
 fi
-[[ $DOCKERIZATION == false ]] && sed -i -e 's/^/#!\/bin\/bash \
+[[ $DOCKERIZATION == false ]] && sed -i -e '1s/^/#!\/bin\/bash \
 set -eo pipefail \
 /' /tmp/$POPULATED_FILE_NAME
 sed -i -e 's/&& brew install git/&& brew install git || true/g' /tmp/$POPULATED_FILE_NAME
