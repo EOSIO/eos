@@ -100,7 +100,9 @@ if [[ $TRAVIS == true ]]; then
 else
   COMMIT_ID=$BUILDKITE_COMMIT
 fi
-[[ $DOCKERIZATION == false ]] && echo -e "#!/bin/bash\nset -eo pipefail" >> /tmp/$POPULATED_FILE_NAME
+[[ $DOCKERIZATION == false ]] && sed -i -e 's/^/#!\/bin\/bash \
+set -eo pipefail \
+/' /tmp/$POPULATED_FILE_NAME
 sed -i -e 's/&& brew install git/&& brew install git || true/g' /tmp/$POPULATED_FILE_NAME
 sed -i -e "s/\.git \$EOS_LOCATION/\.git \$EOS_LOCATION \&\& cd \$EOS_LOCATION \&\& git pull \&\& git checkout -f $COMMIT_ID/g" /tmp/$POPULATED_FILE_NAME # MUST BE AFTER WE GENERATE THE HASH
 chmod +x /tmp/$POPULATED_FILE_NAME
