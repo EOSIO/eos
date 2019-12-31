@@ -78,7 +78,7 @@ else # Mac OSX
   export FILE_EXTENSION=".sh"
   export APPEND_LINE=4
 fi
-[[ $DOCKERIZATION == false ]] && echo "#\!/bin/bash\nset -eo pipefail" > /tmp/$POPULATED_FILE_NAME
+[[ $DOCKERIZATION == false ]] && echo -e "#!/bin/bash\nset -eo pipefail" > /tmp/$POPULATED_FILE_NAME
 echo "$POP_COMMANDS" > /tmp/commands
 if ( [[ $DOCKERIZATION == false ]] && [[ $ONLYHASH == false ]] ); then
   if [[ "$(uname)" == 'Darwin' ]]; then # Mac needs to use the template fr envs
