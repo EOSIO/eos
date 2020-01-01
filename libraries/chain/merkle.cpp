@@ -74,13 +74,13 @@ vector<digest_type> generate_merkle_proof(size_t index, vector<digest_type> ids)
    return proof;
 }
 
-vector<digest_type> generate_merkle_proof(digest_type id, vector<digest_type> ids) {
+vector<digest_type> generate_merkle_proof(const digest_type& id, const vector<digest_type>& ids) {
    auto it = std::find(ids.begin(), ids.end(), id);
    FC_ASSERT(it != ids.end(), "id is not found in merkle tree");
    return generate_merkle_proof(std::distance(ids.begin(), it), ids);
 }
 
-bool verify_merkle_proof(vector<digest_type> proof) {
+bool verify_merkle_proof(const vector<digest_type>& proof) {
    auto node = proof.front();
    for (auto i = 1; i < proof.size() - 1; i++) {
       if( proof[i]._hash[0] & 0x80ULL ) {

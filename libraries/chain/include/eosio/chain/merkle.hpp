@@ -22,11 +22,11 @@ namespace eosio { namespace chain {
    /**
     * Generates a merkle proof, a set of digests from leaf to root
     */
-   vector<digest_type> generate_merkle_proof( digest_type id, vector<digest_type> ids );
+   vector<digest_type> generate_merkle_proof( const digest_type& id, const vector<digest_type>& ids );
 
    /**
     * Verifies a merkle proof
     */
-   bool verify_merkle_proof( vector<digest_type> proof );
+   bool verify_merkle_proof( const vector<digest_type>& proof );
 
 } } /// eosio::chain
