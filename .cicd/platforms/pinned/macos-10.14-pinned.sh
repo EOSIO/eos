@@ -59,8 +59,7 @@ sudo rm -rf boost_1_71_0.tar.bz2 boost_1_71_0
 # install mongodb
 cd ~ && curl -OL https://fastdl.mongodb.org/osx/mongodb-osx-ssl-x86_64-3.6.3.tgz
 tar -xzf mongodb-osx-ssl-x86_64-3.6.3.tgz && rm -f mongodb-osx-ssl-x86_64-3.6.3.tgz && \
-mv ~/mongodb-osx-x86_64-3.6.3/bin ~/mongodb/bin && \
-rm -rf ~/mongodb-osx-x86_64-3.6.3
+ln -s ~/mongodb-osx-x86_64-3.6.3 ~/mongodb
 # install mongo-c-driver from source
 cd ~ && curl -LO https://github.com/mongodb/mongo-c-driver/releases/download/1.13.0/mongo-c-driver-1.13.0.tar.gz && \
 tar -xzf mongo-c-driver-1.13.0.tar.gz && cd mongo-c-driver-1.13.0 && \
