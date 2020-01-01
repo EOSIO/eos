@@ -78,7 +78,6 @@ else # Mac OSX
   export FILE_EXTENSION=".sh"
   export APPEND_LINE=4
 fi
-
 echo "$POP_COMMANDS" > /tmp/commands
 if ( [[ $DOCKERIZATION == false ]] && [[ $ONLYHASH == false ]] ); then
   if [[ "$(uname)" == 'Darwin' ]]; then # Mac needs to use the template fr envs
@@ -101,8 +100,11 @@ if [[ $TRAVIS == true ]]; then
 else
   COMMIT_ID=$BUILDKITE_COMMIT
 fi
+[[ $DOCKERIZATION == false ]] && sed -i -e '1s/^/#!\/bin\/bash \
+set -eo pipefail \
+/' /tmp/$POPULATED_FILE_NAME
 sed -i -e 's/&& brew install git/&& brew install git || true/g' /tmp/$POPULATED_FILE_NAME
-sed -i -e "s/eos.git \$EOS_LOCATION/eos.git \$EOS_LOCATION \&\& cd \$EOS_LOCATION \&\& git pull \&\& git checkout -f $COMMIT_ID/g" /tmp/$POPULATED_FILE_NAME # MUST BE AFTER WE GENERATE THE HASH
+sed -i -e "s/\.git \$EOS_LOCATION/\.git \$EOS_LOCATION \&\& cd \$EOS_LOCATION \&\& git pull \&\& git checkout -f $COMMIT_ID/g" /tmp/$POPULATED_FILE_NAME # MUST BE AFTER WE GENERATE THE HASH
 chmod +x /tmp/$POPULATED_FILE_NAME
 [[ $DEBUG == true ]] && cat /tmp/$POPULATED_FILE_NAME
 if [[ $ONLYHASH == true ]]; then
