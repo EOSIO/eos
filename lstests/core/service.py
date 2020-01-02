@@ -971,10 +971,10 @@ class Cluster:
         return self.call("get_block", node_id=node_id, block_num_or_id=block_num_or_id, **call_kwargs)
 
     def get_account(self, name, node_id=0, **call_kwargs):
-        return call("get_account", node_id=node_id, name=name, **call_kwargs)
+        return self.call("get_account", node_id=node_id, name=name, **call_kwargs)
 
     def get_protocol_features(self, node_id=0, **call_kwargs):
-        return call("get_protocol_features", node_id=node_id, **call_kwargs)
+        return self.call("get_protocol_features", node_id=node_id, **call_kwargs)
 
     def get_log_data(self, offset, node_id=0, length=10000, filename="stderr_0.txt", **call_kwargs):
         return self.call("get_log_data", node_id=node_id, offset=offset, length=length, filename=filename, **call_kwargs)
@@ -1288,7 +1288,7 @@ class Cluster:
         else:
             verify_helper()
 
-    def check_sync(self, retry=None, sleep=None, min_sync_count=None, max_block_lag=None, dont_raise=False, level="debug"):
+    def check_sync_no_advance(self, retry=None, sleep=None, min_sync_count=None, max_block_lag=None, dont_raise=False, level="debug"):
         class SyncResult:
             def __init__(self, in_sync: bool, sync_count: int, min_block_num: int, max_block_num: int = None):
                 self.in_sync = in_sync
@@ -1350,6 +1350,25 @@ class Cluster:
         else:
             self.log(color.black_on_yellow(msg), level=level)
         return SyncResult(False, sync_count, min_block_num, max_block_num)
+
+    def check_sync(self, retry=None, sleep=None, min_sync_count=None, max_block_lag=None, dont_raise=False, level="debug", require_advance=True):
+        r0 = self.check_sync_no_advance(retry=retry, sleep=sleep, min_sync_count=min_sync_count, max_block_lag=max_block_lag, dont_raise=dont_raise, level=level)
+        if (not r0.in_sync) or (not require_advance):
+            return r0 # not in-sync or not require to check advance
+        retry = helper.override(self.sync_retry, retry, self.cla.sync_retry)
+        for _ in range(retry + 1):
+            time.sleep(0.5)
+            r1 = self.check_sync_no_advance(retry=retry, sleep=sleep, min_sync_count=min_sync_count, max_block_lag=max_block_lag, dont_raise=dont_raise, level=level)
+            if not r1.in_sync:
+                return r1 # not in-sync
+            if r1.block_num > r0.block_num:
+                self.log(color.black_on_green(f"Nodes in sync and advanced from {r0.block_num} to {r1.block_num}"), level=level)
+                return r1 # ok, in-sync & advancing
+        msg = "Nodeos not advancing"
+        if not dont_raise:
+            self.error(color.black_on_red(msg))
+            raise SyncError(msg)
+        return r1
 
     def check_production_round(self, expected_producers: typing.List[str], level="debug", dont_raise=False):
         self.print_header("check production round", level=level)

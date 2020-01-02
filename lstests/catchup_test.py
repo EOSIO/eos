@@ -12,6 +12,7 @@ STOP_URL = "/v1/txn_test_gen/stop_generation"
 PRIVATE_KEY = "5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3"
 CREATE_STR = f"[\"eosio\", \"{PRIVATE_KEY}\"]"
 START_STR = "[\"salt\",10,10]"
+REQUIRED_AVG = 400
 CATCHUP_ROUNDS = 3
 
 
@@ -59,6 +60,9 @@ def count_gen(clus, begin, end):
         clus.info(f"Block {i} has {n} transactions.")
         total += n
     clus.info(f"There are {total} transactions in {end - begin} blocks.")
+    avg = total / (end - begin)
+    if avg < REQUIRED_AVG:
+        raise BlockchainError(f"The average number of transactions per block ({avg}) is less than required ({REQUIRED_AVG})")
     return total
 
 
