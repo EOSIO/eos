@@ -1128,7 +1128,7 @@ BOOST_AUTO_TEST_CASE(merkle_proof_test) {
 
       auto gen_proof = generate_merkle_proof(tx_digest, ids);
 
-      BOOST_CHECK(std::equal(gen_proof.begin(), gen_proof.end(), proof.begin(), proof.end()));
+      BOOST_TEST(gen_proof == proof);
 
       BOOST_CHECK(verify_merkle_proof(gen_proof));
 
