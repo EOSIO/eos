@@ -50,7 +50,7 @@ cd $EOS_LOCATION && git submodule update --init --recursive
 ```
 <!-- DAC CLONE END -->
 
-## Install Dependencies
+## Install EOSIO Dependencies
 These commands install the EOSIO software dependencies. Make sure to [Download the EOSIO Repository](#download-eosio-repository) first.
 <!-- DAC DEPS -->
 ```sh
