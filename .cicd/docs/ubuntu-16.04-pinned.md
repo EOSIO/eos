@@ -15,6 +15,7 @@ This section contains shell commands to manually download, build, install, test,
 
 Select a task below, then copy/paste the shell commands to a Unix terminal to execute:
 
+* [Set EOSIO Environment](#set-eosio-environment)
 * [Download EOSIO Repository](#download-eosio-repository)
 * [Install EOSIO Dependencies](#install-eosio-dependencies)
 * [Build EOSIO](#build-eosio)
@@ -25,7 +26,8 @@ Select a task below, then copy/paste the shell commands to a Unix terminal to ex
 [[info | Building EOSIO on another OS?]]
 | Visit the [Build EOSIO from Source](../../index.md) section.
 
-## Set EOSIO Environment Variables
+## Set EOSIO Environment
+These commands set the EOSIO environment.
 <!-- DAC ENV -->
 ```sh
 export EOSIO_LOCATION=$HOME/eosio
@@ -35,12 +37,11 @@ export PATH=$EOSIO_INSTALL_LOCATION/bin:$PATH
 export EOSIO_BUILD_LOCATION=$EOS_LOCATION/build
 ```
 <!-- DAC ENV END -->
+
 ## Download EOSIO Repository
-These commands set the EOSIO directories, install git, and clone the EOSIO repository.
+These commands install git and clone the EOSIO repository. Make sure to [Set the EOSIO Environment](#set-eosio-environment) first.
 <!-- DAC CLONE -->
 ```sh
-# create EOSIO directories
-mkdir -p $EOSIO_INSTALL_LOCATION
 # install git
 apt-get update && apt-get upgrade -y && DEBIAN_FRONTEND=noninteractive apt-get install -y git
 # clone EOSIO repository
@@ -50,9 +51,11 @@ cd $EOS_LOCATION && git submodule update --init --recursive
 <!-- DAC CLONE END -->
 
 ## Install EOSIO Dependencies
-These commands install the EOSIO software dependencies. Make sure to [Download the EOSIO Repository](#download-eosio-repository) first and set the EOSIO directories.
+These commands install the EOSIO software dependencies. Make sure to [Download the EOSIO Repository](#download-eosio-repository) first.
 <!-- DAC DEPS -->
 ```sh
+# create install directory
+mkdir -p $EOSIO_INSTALL_LOCATION
 # install dependencies
 apt-get install -y build-essential automake \
     libbz2-dev libssl-dev doxygen graphviz libgmp3-dev autotools-dev libicu-dev python2.7 python2.7-dev \
