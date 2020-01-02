@@ -34,5 +34,17 @@
             "SKIP_V180": "true",
             "SKIP_V200": "false"
         }
+    },
+    "eosio-resume-from-state":
+    {
+        "test":
+        [
+            {
+                "tag": "v2.0.0-rc2"
+            },
+            {
+                "tag": "v2.0.0-rc3"
+            }
+        ]
     }
 }
