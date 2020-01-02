@@ -27,7 +27,7 @@ Select a task below, then copy/paste the shell commands to a Unix terminal to ex
 | Visit the [Build EOSIO from Source](../../index.md) section.
 
 ## Set EOSIO Environment
-These commands set the EOSIO environment.
+These commands set EOSIO environment variables required for building EOSIO.
 <!-- DAC ENV -->
 ```sh
 export EOSIO_LOCATION=$HOME/eosio
