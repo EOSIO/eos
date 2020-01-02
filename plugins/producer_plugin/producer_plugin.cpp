@@ -378,7 +378,6 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          });
 
          // push the new block
-         bool except = false;
          try {
             chain.push_block( bsf );
          } catch ( const guard_exception& e ) {
@@ -386,16 +385,12 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
             return;
          } catch( const fc::exception& e ) {
             elog((e.to_detail_string()));
-            except = true;
+            app().get_channel<channels::rejected_block>().publish( priority::medium, block );
+            throw;
          } catch ( const std::bad_alloc& ) {
             chain_plugin::handle_bad_alloc();
          } catch ( boost::interprocess::bad_alloc& ) {
             chain_plugin::handle_db_exhaustion();
-         }
-
-         if( except ) {
-            app().get_channel<channels::rejected_block>().publish( priority::medium, block );
-            return;
          }
 
          const auto& hbs = chain.head_block_state();
