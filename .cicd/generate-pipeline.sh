@@ -469,7 +469,7 @@ if [[ -z $BUILDKITE_TRIGGERED_FROM_BUILD_ID && $TRIGGER_JOB == "true" ]]; then
     trigger: "eosio-lrt"
     async: true
     build:
-      message: "Triggered by EOSIO build ${BUILDKITE_BUILD_NUMBER}"
+      message: "Triggered by $BUILDKITE_PIPELINE_SLUG build $BUILDKITE_BUILD_NUMBER"
       commit: "${BUILDKITE_COMMIT}"
       branch: "${BUILDKITE_BRANCH}"
       env:
@@ -492,7 +492,7 @@ if [[ -z $BUILDKITE_TRIGGERED_FROM_BUILD_ID && $TRIGGER_JOB = "true" ]]; then
     trigger: "eos-multiversion-tests"
     async: true
     build:
-      message: "Triggered by EOSIO build ${BUILDKITE_BUILD_NUMBER}"
+      message: "Triggered by $BUILDKITE_PIPELINE_SLUG build $BUILDKITE_BUILD_NUMBER"
       commit: "${BUILDKITE_COMMIT}"
       branch: "${BUILDKITE_BRANCH}"
       env:
@@ -511,7 +511,7 @@ if [[ "$BUILDKITE_PIPELINE_SLUG" == 'eosio' && -z "${SKIP_INSTALL}${SKIP_LINUX}$
     trigger: "eosio-sync-from-genesis"
     async: false
     build:
-      message: "Triggered by EOSIO build ${BUILDKITE_BUILD_NUMBER}"
+      message: "Triggered by $BUILDKITE_PIPELINE_SLUG build $BUILDKITE_BUILD_NUMBER"
       commit: "${BUILDKITE_COMMIT}"
       branch: "${BUILDKITE_BRANCH}"
       env:
