@@ -161,6 +161,7 @@ namespace eosio {
       void sync_reassign_fetch( const connection_ptr& c, go_away_reason reason );
       void rejected_block( const connection_ptr& c, uint32_t blk_num );
       void sync_recv_block( const connection_ptr& c, const block_id_type& blk_id, uint32_t blk_num );
+      void sync_update_expected( const connection_ptr& c, const block_id_type& blk_id, uint32_t blk_num );
       void recv_handshake( const connection_ptr& c, const handshake_message& msg );
       void sync_recv_notice( const connection_ptr& c, const notice_message& msg );
    };
@@ -1739,17 +1740,9 @@ namespace eosio {
    }
 
    // called from connection strand
-   void sync_manager::sync_recv_block(const connection_ptr& c, const block_id_type& blk_id, uint32_t blk_num) {
-      fc_dlog( logger, "got block ${bn} from ${p}", ("bn", blk_num)( "p", c->peer_name() ) );
-      if( app().is_quiting() ) {
-         c->close( false, true );
-         return;
-      }
-      c->consecutive_rejected_blocks = 0;
+   void sync_manager::sync_update_expected( const connection_ptr& c, const block_id_type& blk_id, uint32_t blk_num ) {
       std::unique_lock<std::mutex> g_sync( sync_mtx );
-      stages state = sync_state;
-      fc_dlog( logger, "state ${s}", ("s", stage_str( state )) );
-      if( state == lib_catchup ) {
+      if( blk_num <= sync_last_requested_num ) {
          fc_dlog( logger, "sync_last_requested_num: ${r}, sync_next_expected_num: ${e}, sync_known_lib_num: ${k}, sync_req_span: ${s}",
                   ("r", sync_last_requested_num)("e", sync_next_expected_num)("k", sync_known_lib_num)("s", sync_req_span) );
          if (blk_num != sync_next_expected_num) {
@@ -1761,6 +1754,20 @@ namespace eosio {
          }
          sync_next_expected_num = blk_num + 1;
       }
+   }
+
+   // called from connection strand
+   void sync_manager::sync_recv_block(const connection_ptr& c, const block_id_type& blk_id, uint32_t blk_num) {
+      fc_dlog( logger, "got block ${bn} from ${p}", ("bn", blk_num)( "p", c->peer_name() ) );
+      if( app().is_quiting() ) {
+         c->close( false, true );
+         return;
+      }
+      c->consecutive_rejected_blocks = 0;
+      sync_update_expected( c, blk_id, blk_num );
+      std::unique_lock<std::mutex> g_sync( sync_mtx );
+      stages state = sync_state;
+      fc_dlog( logger, "state ${s}", ("s", stage_str( state )) );
       if( state == head_catchup ) {
          fc_dlog( logger, "sync_manager in head_catchup state" );
          sync_source.reset();
@@ -2421,8 +2428,7 @@ namespace eosio {
             if( my_impl->dispatcher->have_block( blk_id ) ) {
                fc_dlog( logger, "canceling wait on ${p}, already received block ${num}, id ${id}...",
                         ("p", peer_name())("num", blk_num)("id", blk_id.str().substr(8,16)) );
-               if( my_impl->sync_master->syncing_with_peer() )
-                  my_impl->sync_master->sync_recv_block( shared_from_this(), blk_id, blk_num );
+               my_impl->sync_master->sync_recv_block( shared_from_this(), blk_id, blk_num );
                cancel_wait();
 
                pending_message_buffer.advance_read_ptr( message_length );
