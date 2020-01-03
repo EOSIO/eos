@@ -2565,7 +2565,7 @@ int main( int argc, char** argv ) {
    getCode->add_option("-a,--abi",abiFilename, localized("The name of the file to save the contract .abi to") );
    getCode->add_flag("--wasm", code_as_wasm, localized("Save contract as wasm"));
    getCode->set_callback([&] {
-      uint64_t code_seq, abi_seq = 0;
+      uint64_t code_seq = 0, abi_seq = 0;
       string code_hash, wasm, wast, abi;
       try {
          const auto result = call(get_raw_code_and_abi_func, fc::mutable_variant_object("account_name", accountName));
