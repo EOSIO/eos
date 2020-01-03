@@ -40,14 +40,7 @@
         "test":
         [
             {
-                "tag": "v1.8.7"
-            },
-            {
-                "commit": "9bd102691350d1bad49c77e10af21d0474343583" // v2.0.0-rc2
-            },
-            {
-                "branch": "v2.0.0-rc3",
-                "tag": "v2.0.0-rc3"
+                "branch": "develop"
             }
         ]
     }
