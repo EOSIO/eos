@@ -482,7 +482,7 @@ EOF
     fi
 fi
 # trigger eosio-sync-from-genesis for every build
-if [[ -z $BUILDKITE_TRIGGERED_FROM_BUILD_ID && -z "${SKIP_INSTALL}${SKIP_LINUX}${SKIP_DOCKER}" ]]; then
+if [[ "$BUILDKITE_PIPELINE_SLUG" == 'eosio' && -z "${SKIP_INSTALL}${SKIP_LINUX}${SKIP_DOCKER}" ]]; then
     cat <<EOF
   - label: ":chains: Sync-from-Genesis Test"
     trigger: "eosio-sync-from-genesis"
