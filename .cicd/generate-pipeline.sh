@@ -500,6 +500,25 @@ if [[ "$BUILDKITE_PIPELINE_SLUG" == 'eosio' && -z "${SKIP_INSTALL}${SKIP_LINUX}$
 
 EOF
 fi
+# trigger eosio-resume-from-state for every build
+if [[ "$BUILDKITE_PIPELINE_SLUG" == 'eosio' && -z "${SKIP_INSTALL}${SKIP_LINUX}${SKIP_DOCKER}${SKIP_SYNC_TESTS}" ]]; then
+    cat <<EOF
+  - label: ":outbox_tray: Resume from State Test"
+    trigger: "eosio-resume-from-state"
+    async: false
+    build:
+      message: "Triggered by $BUILDKITE_PIPELINE_SLUG build $BUILDKITE_BUILD_NUMBER"
+      commit: "${BUILDKITE_COMMIT}"
+      branch: "${BUILDKITE_BRANCH}"
+      env:
+        BUILDKITE_TRIGGERED_FROM_BUILD_URL: "${BUILDKITE_BUILD_URL}"
+        SKIP_JUNGLE: "${SKIP_JUNGLE}"
+        SKIP_KYLIN: "${SKIP_KYLIN}"
+        SKIP_MAIN: "${SKIP_MAIN}"
+        TIMEOUT: "${TIMEOUT}"
+
+EOF
+fi
 # pipeline tail
 cat <<EOF
   - wait:
