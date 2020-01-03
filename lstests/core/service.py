@@ -1370,7 +1370,7 @@ class Cluster:
             raise SyncError(msg)
         return r1
 
-    def check_production_round(self, expected_producers: typing.List[str], level="debug", dont_raise=False):
+    def check_production_round(self, expected_producers: typing.List[str], new_producers={}, level="debug", dont_raise=False):
         self.print_header("check production round", level=level)
         # list expected producers
         self.log("Expected producers:", level=level)
@@ -1379,8 +1379,10 @@ class Cluster:
         # skip unexpected producers
         begin_block_num = self.get_head_block_number(level="trace")
         curr_prod = self.wait_get_producer_by_block(begin_block_num, level="trace")
-        while curr_prod not in expected_producers:
-            self.log(f"Block #{begin_block_num}: {curr_prod} is not among expected producers. "
+        if len(new_producers) == 0:
+           new_producers = expected_producers
+        while curr_prod not in new_producers:
+            self.log(f"Block #{begin_block_num}: {curr_prod} is not among new producers. "
                      "Waiting for schedule change.", level=level)
             begin_block_num += 1
             curr_prod = self.wait_get_producer_by_block(begin_block_num, level="trace")

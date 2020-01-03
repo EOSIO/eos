@@ -15,22 +15,22 @@ def init_cluster():
     return cluster
 
 
-def test_round(clus, round, verify_key="irreversible"):
+def test_round(clus, round, prods, new_prods, verify_key="irreversible"):
         clus.info(f">>> [Production Schedule Test] Round {round}: Set Producers")
         clus.info(">>> Producers to set:")
-        prod = clus.node_to_producers[round]
-        for i, v in enumerate(prod):
+        for i, v in enumerate(prods):
             clus.info(f"[{i}] {v}")
-        clus.set_producers(prod, verify_key=verify_key)
+        clus.set_producers(prods, verify_key=verify_key)
         clus.info(f">>> [Production Schedule Test] Round {round}: Verify Production Round")
-        clus.check_production_round(prod)
+        clus.check_production_round(expected_producers=prods, new_producers=new_prods)
 
 
 def main():
     with init_cluster() as clus:
         clus.info(">>> [Production Schedule Test] ---------- BEGIN ------------------------------------------")
-        test_round(clus, round=1, verify_key="irreversible")
-        test_round(clus, round=2, verify_key="irreversible")
+        test_round(clus, round=1, prods=clus.node_to_producers[1], new_prods=clus.node_to_producers[1], verify_key="irreversible")
+        test_round(clus, round=2, prods=clus.node_to_producers[2], new_prods=clus.node_to_producers[2], verify_key="irreversible")
+        test_round(clus, round=3, prods=clus.node_to_producers[1] + clus.node_to_producers[2], new_prods=clus.node_to_producers[1], verify_key="irreversible")
         clus.info(">>> [Production Schedule Test] ---------- END --------------------------------------------")
 
 
