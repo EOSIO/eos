@@ -18,5 +18,5 @@ docker push "$REPO:$PREFIX-$SANITIZED_BRANCH"
 [[ -z "$BUILDKITE_TAG" ]] || docker push "$REPO:$PREFIX-$SANITIZED_TAG"
 echo '+++ :put_litter_in_its_place: Cleaning Up'
 docker rmi "$REPO:$PREFIX-$SANITIZED_BRANCH"
-[[ -z "$BUILDKITE_TAG" ]] || docker rmi "$REPO:$PREFIX-$SANITIZED_TAG"
+[[ -z "$BUILDKITE_TAG" || "$SANITIZED_BRANCH" == "$SANITIZED_TAG" ]] || docker rmi "$REPO:$PREFIX-$SANITIZED_TAG"
 docker rmi "$IMAGE"
