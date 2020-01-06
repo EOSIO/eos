@@ -2162,7 +2162,7 @@ namespace eosio {
 
       connection_ptr c = shared_from_this();
 
-      if( consecutive_immediate_connection_close > def_max_consecutive_immediate_connection_close ) {
+      if( consecutive_immediate_connection_close > def_max_consecutive_immediate_connection_close || no_retry == benign_other ) {
          auto connector_period_us = std::chrono::duration_cast<std::chrono::microseconds>( my_impl->connector_period );
          std::lock_guard<std::mutex> g( c->conn_mtx );
          if( last_close == fc::time_point() || last_close > fc::time_point::now() - fc::microseconds( connector_period_us.count() ) ) {
@@ -2656,6 +2656,7 @@ namespace eosio {
                         c->enqueue( go_away_message( forked ) );
                      } else if( unknown_block ) {
                         peer_ilog( c, "Peer asked for unknown block, sending: benign_other go away" );
+                        c->no_retry = benign_other;
                         c->enqueue( go_away_message( benign_other ) );
                      }
                   } );
