@@ -372,8 +372,9 @@ protected:
 FC_REFLECT(eosio::chain::protocol_feature_subjective_restrictions,
                (earliest_allowed_activation_time)(preactivation_required)(enabled))
 
+// @ignore _type
 FC_REFLECT(eosio::chain::protocol_feature_base,
-               (protocol_feature_type)(dependencies)(description_digest)(subjective_restrictions))
+               (protocol_feature_type)(description_digest)(dependencies)(subjective_restrictions))
 
 FC_REFLECT_DERIVED(eosio::chain::builtin_protocol_feature, (eosio::chain::protocol_feature_base),
                      (builtin_feature_codename))

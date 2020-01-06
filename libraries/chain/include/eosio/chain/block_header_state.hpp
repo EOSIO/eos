@@ -177,6 +177,7 @@ FC_REFLECT( eosio::chain::detail::schedule_info,
             (schedule)
 )
 
+// @ignore header_exts
 FC_REFLECT_DERIVED(  eosio::chain::block_header_state, (eosio::chain::detail::block_header_state_common),
                      (id)
                      (header)
@@ -187,24 +188,24 @@ FC_REFLECT_DERIVED(  eosio::chain::block_header_state, (eosio::chain::detail::bl
 
 
 FC_REFLECT( eosio::chain::legacy::snapshot_block_header_state_v2::schedule_info,
-          ( schedule_lib_num )
-          ( schedule_hash )
-          ( schedule )
+          (schedule_lib_num)
+          (schedule_hash)
+          (schedule)
 )
 
 
 FC_REFLECT( eosio::chain::legacy::snapshot_block_header_state_v2,
-          ( block_num )
-          ( dpos_proposed_irreversible_blocknum )
-          ( dpos_irreversible_blocknum )
-          ( active_schedule )
-          ( blockroot_merkle )
-          ( producer_to_last_produced )
-          ( producer_to_last_implied_irb )
-          ( block_signing_key )
-          ( confirm_count )
-          ( id )
-          ( header )
-          ( pending_schedule )
-          ( activated_protocol_features )
+          (block_num)
+          (dpos_proposed_irreversible_blocknum)
+          (dpos_irreversible_blocknum)
+          (active_schedule)
+          (blockroot_merkle)
+          (producer_to_last_produced)
+          (producer_to_last_implied_irb)
+          (block_signing_key)
+          (confirm_count)
+          (id)
+          (header)
+          (pending_schedule)
+          (activated_protocol_features)
 )
