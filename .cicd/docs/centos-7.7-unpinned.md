@@ -114,7 +114,7 @@ These commands build the EOSIO software on the specified OS. Make sure to [Insta
 <!-- DAC BUILD -->
 ```sh
 mkdir -p $EOSIO_BUILD_LOCATION
-cd $EOSIO_BUILD_LOCATION && source /opt/rh/devtoolset-8/enable && cmake -DCMAKE_BUILD_TYPE='Release' -DLLVM_DIR='/opt/rh/llvm-toolset-7.0/root/usr/lib64/cmake/llvm' -DCMAKE_INSTALL_PREFIX=$EOSIO_INSTALL_LOCATION -DBUILD_MONGO_DB_PLUGIN=true ..
+cd $EOSIO_BUILD_LOCATION && source /opt/rh/devtoolset-8/enable && cmake -DCMAKE_BUILD_TYPE='Release' -DLLVM_DIR='/opt/rh/llvm-toolset-7.0/root/usr/lib64/cmake/llvm' -DCMAKE_INSTALL_PREFIX=$EOSIO_INSTALL_LOCATION -DBUILD_MONGO_DB_PLUGIN=true -DENABLE_MULTIVERSION_PROTOCOL_TEST=true ..
 cd $EOSIO_BUILD_LOCATION && make -j$(nproc)
 ```
 <!-- DAC BUILD END -->
