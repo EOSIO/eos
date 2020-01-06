@@ -15,6 +15,7 @@ This section contains shell commands to manually download, build, install, test,
 
 Select a task below, then copy/paste the shell commands to a Unix terminal to execute:
 
+* [Set EOSIO Environment](#set-eosio-environment)
 * [Download EOSIO Repository](#download-eosio-repository)
 * [Install EOSIO Dependencies](#install-eosio-dependencies)
 * [Build EOSIO](#build-eosio)
@@ -25,7 +26,8 @@ Select a task below, then copy/paste the shell commands to a Unix terminal to ex
 [[info | Building EOSIO on another OS?]]
 | Visit the [Build EOSIO from Source](../../index.md) section.
 
-## Set EOSIO Environment Variables
+## Set EOSIO Environment
+These commands set EOSIO environment variables required for building EOSIO.
 <!-- DAC ENV -->
 ```sh
 export EOSIO_LOCATION=$HOME/eosio
@@ -35,12 +37,11 @@ export PATH=$EOSIO_INSTALL_LOCATION/bin:$PATH
 export EOSIO_BUILD_LOCATION=$EOS_LOCATION/build
 ```
 <!-- DAC ENV END -->
+
 ## Download EOSIO Repository
-These commands set the EOSIO directories, install git, and clone the EOSIO repository.
+These commands install git and clone the EOSIO repository. Make sure to [Set the EOSIO Environment](#set-eosio-environment) first.
 <!-- DAC CLONE -->
 ```sh
-# create EOSIO directories
-mkdir -p $EOSIO_INSTALL_LOCATION
 # install git
 brew update && brew install git
 # clone EOSIO repository
@@ -50,9 +51,11 @@ cd $EOS_LOCATION && git submodule update --init --recursive
 <!-- DAC CLONE END -->
 
 ## Install EOSIO Dependencies
-These commands install the EOSIO software dependencies. Make sure to [Download the EOSIO Repository](#download-eosio-repository) first and set the EOSIO directories.
+These commands install the EOSIO software dependencies. Make sure to [Download the EOSIO Repository](#download-eosio-repository) first.
 <!-- DAC DEPS -->
 ```sh
+# create install directory
+mkdir -p $EOSIO_INSTALL_LOCATION
 # install dependencies
 brew install cmake python@2 python libtool libusb graphviz automake wget gmp pkgconfig doxygen openssl@1.1 jq || :
 # Boost Fix: eosio/install/bin/../include/c++/v1/stdlib.h:94:15: fatal error: 'stdlib.h' file not found
