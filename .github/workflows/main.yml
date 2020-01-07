@@ -2,7 +2,7 @@ name: Forked PR
 on: [push]
 
 jobs:
-  ubuntu-18.04:
+  ubuntu-1804:
     name: Build
     runs-on: ubuntu-latest
     steps:
@@ -16,7 +16,7 @@ jobs:
         env:
           IMAGE_TAG: ubuntu-18.04-pinned
           PLATFORM_TYPE: pinned
-  macos-10.15:
+  macos-1015:
     name: Build
     runs-on: macos-latest
     steps:
