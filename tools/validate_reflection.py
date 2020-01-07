@@ -360,7 +360,7 @@ class ClassStruct(EmptyScope):
         return new_scope
 
 class Namespace(ClassStruct):
-    namespace_class_pattern = re.compile(r'(%s|%s|%s|%s(?:\s+class)?)\s+(\w+)(?:\s+final)?\s*(:\s*(public\s+)?([^<\s]+)[^{]*)?\s*\{' % (EmptyScope.namespace_str, EmptyScope.struct_str, EmptyScope.class_str, EmptyScope.enum_str), re.MULTILINE | re.DOTALL)
+    namespace_class_pattern = re.compile(r'((?<!using\s)%s|%s|%s|%s(?:\s+class)?)\s+(\w+)(?:\s+final)?\s*(:\s*(public\s+)?([^<\s]+)[^{]*)?\s*\{' % (EmptyScope.namespace_str, EmptyScope.struct_str, EmptyScope.class_str, EmptyScope.enum_str), re.MULTILINE | re.DOTALL)
 
     def __init__(self, name, inherit, start, content, parent_scope):
         if inherit is not None:
