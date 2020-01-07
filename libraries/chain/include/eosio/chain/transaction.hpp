@@ -216,5 +216,5 @@ FC_REFLECT_DERIVED( eosio::chain::transaction, (eosio::chain::transaction_header
 FC_REFLECT_DERIVED( eosio::chain::signed_transaction, (eosio::chain::transaction), (signatures)(context_free_data) )
 FC_REFLECT_ENUM( eosio::chain::packed_transaction::compression_type, (none)(zlib))
 
-// @ignore unpacked_trx trx_id 
-FC_REFLECT( eosio::chain::packed_transaction, (signatures)(compression)(packed_context_free_data)(packed_trx) )
+FC_REFLECT(eosio::chain::packed_transaction, (signatures)(compression)(packed_context_free_data)(packed_trx))
+
