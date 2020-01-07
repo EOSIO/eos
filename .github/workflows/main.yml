@@ -335,6 +335,7 @@ jobs:
       - name: Build
         run: | 
           git submodule update --init --recursive --force
+          ./.cicd/platforms/unpinned/macos-10.14-unpinned.sh
           ./.cicd/build.sh
           tar -pczf build.tar.gz build
       - name: Upload Build Artifact
