@@ -698,6 +698,7 @@ class Cluster:
                  center_node_id=None,
                  extra_args: str=None,
                  extra_configs: typing.List[str]=None,
+                 special_log_levels=None,
                  dont_newacco=None,
                  dont_setprod=None,
                  http_retry=None,
@@ -816,6 +817,7 @@ class Cluster:
         self.verify_sleep    = helper.override(DEFAULT_VERIFY_SLEEP,    verify_sleep,    self.cla.verify_sleep)
         self.sync_retry      = helper.override(DEFAULT_SYNC_RETRY,      sync_retry,      self.cla.sync_retry)
         self.sync_sleep      = helper.override(DEFAULT_SYNC_SLEEP,      sync_sleep,      self.cla.sync_sleep)
+        self.special_log_levels = special_log_levels
         # check for logical errors in config
         self.check_config()
         # establish mappings between nodes and producers
@@ -931,6 +933,7 @@ class Cluster:
                          center_node_id=self.center_node_id,
                          extra_configs=self.extra_configs,
                          extra_args=self.extra_args,
+                         special_log_levels=self.special_log_levels,
                          **call_kwargs)
 
     def stop_cluster(self, **call_kwargs):
