@@ -6,6 +6,9 @@ jobs:
     name: Build AmazonLinux-2
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v1
+        with:
+          submodules: recursive
       - name: Build
         run: | 
           git submodule update --init --recursive --force
@@ -17,9 +20,9 @@ jobs:
     name: Build Centos-7.7
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v1
         with:
-          depth: 0
+          submodules: recursive
       - name: Build
         run: | 
           git submodule update --init --recursive --force
@@ -31,9 +34,9 @@ jobs:
     name: Build Ubuntu-16
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v1
         with:
-          depth: 0
+          submodules: recursive
       - name: Build
         run: | 
           git submodule update --init --recursive --force
@@ -45,9 +48,9 @@ jobs:
     name: Build Ubuntu-18
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v1
         with:
-          depth: 0
+          submodules: recursive
       - name: Build
         run: | 
           git submodule update --init --recursive --force
@@ -59,9 +62,9 @@ jobs:
     name: Build MacOS-10.15
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v1
         with:
-          depth: 0
+          submodules: recursive
       - name: Build
         run: | 
           git submodule update --init --recursive --force
