@@ -7,7 +7,6 @@ if [[ "$(uname)" == 'Darwin' ]]; then
     # You can't use chained commands in execute
     if [[ "$GITHUB_ACTIONS" == 'true' ]]; then
         export PINNED=false
-        brew reinstall openssl@1.1 # Fixes issue where builds in Travis cannot find libcrypto.
     else
         CMAKE_EXTRAS="$CMAKE_EXTRAS -DBUILD_MONGO_DB_PLUGIN=true"
     fi
