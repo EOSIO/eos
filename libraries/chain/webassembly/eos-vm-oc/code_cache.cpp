@@ -49,7 +49,7 @@ code_cache_async::code_cache_async(const bfs::path data_dir, const eosvmoc::conf
    wait_on_compile_monitor_message();
 
    _monitor_reply_thread = std::thread([this]() {
-      fc::set_thread_name("oc-monitor");
+      fc::set_os_thread_name("oc-monitor");
       _ctx.run();
    });
 }
