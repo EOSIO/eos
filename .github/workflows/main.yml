@@ -2,8 +2,8 @@ name: Forked PR
 on: [push]
 
 jobs:
-  build:
-    name: Ubuntu 18.04
+  ubuntu-18.04:
+    name: Build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -16,3 +16,14 @@ jobs:
         env:
           IMAGE_TAG: ubuntu-18.04-pinned
           PLATFORM_TYPE: pinned
+  macos-10.15:
+    name: Build
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          clean: ''
+      - name: Build
+        run: | 
+          git submodule update --init --recursive --force
+          ./.cicd/build.sh

@@ -5,7 +5,7 @@ mkdir -p $BUILD_DIR
 CMAKE_EXTRAS="-DCMAKE_BUILD_TYPE='Release' -DENABLE_MULTIVERSION_PROTOCOL_TEST=true"
 if [[ "$(uname)" == 'Darwin' ]]; then
     # You can't use chained commands in execute
-    if [[ "$TRAVIS" == 'true' ]]; then
+    if [[ "$GITHUB_ACTIONS" == 'true' ]]; then
         export PINNED=false
         brew reinstall openssl@1.1 # Fixes issue where builds in Travis cannot find libcrypto.
         ccache -s
@@ -53,7 +53,7 @@ else # Linux
         [[ "$ENABLE_INSTALL" == 'true' ]] && COMMANDS="cp -r $MOUNTED_DIR /root/eosio && cd /root/eosio/build &&"
         COMMANDS="$COMMANDS $BUILD_COMMANDS"
         [[ "$ENABLE_INSTALL" == 'true' ]] && COMMANDS="$COMMANDS && make install"
-    else
+    elif [[ "$GITHUB_ACTIONS" == 'true' ]]; then
         ARGS="$ARGS -v /usr/lib/ccache -v $HOME/.ccache:/opt/.ccache -e JOBS -e TRAVIS -e CCACHE_DIR=/opt/.ccache"
         COMMANDS="ccache -s && $BUILD_COMMANDS"
     fi
