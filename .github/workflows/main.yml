@@ -7,8 +7,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+        with:
+          clean: ''
+
       - name: Build
-        run: ./.cicd/build.sh
+        run:
+        - git submodule update --init --recursive --force
+        - ./.cicd/build.sh
         env:
           IMAGE_TAG: ubuntu-18.04-pinned
           PLATFORM_TYPE: pinned
