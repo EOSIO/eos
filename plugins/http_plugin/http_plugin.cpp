@@ -339,7 +339,10 @@ namespace eosio {
                      try {
                         handler_itr->second( std::move( resource ), std::move( body ),
                                  [&ioc, &bytes_in_flight, con, this]( int code, fc::variant response_body ) {
-                           const size_t response_size = fc::raw::pack_size( response_body );
+                           size_t response_size = 0;
+                           try {
+                              response_size = fc::raw::pack_size( response_body );
+                           } catch(...) {}
                            bytes_in_flight += response_size;
                            if( !verify_max_bytes_in_flight( con ) ) {
                               con->send_http_response();
