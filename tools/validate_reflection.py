@@ -224,7 +224,7 @@ def create_scope(type, name, inherit, start, content, parent_scope):
         return Namespace(name, inherit, start, content, parent_scope)
     elif type == EmptyScope.class_str or type == EmptyScope.struct_str:
         return ClassStruct(name, inherit, start, content, parent_scope, is_enum = False)
-    elif type == EmptyScope.enum_str:
+    elif type.startswith(EmptyScope.enum_str):
         return ClassStruct(name, inherit, start, content, parent_scope, is_enum = True)
     else:
         assert False, "Script does not account for type = \"%s\" found in \"%s\"" % (type, content[start:])
@@ -232,7 +232,7 @@ def create_scope(type, name, inherit, start, content, parent_scope):
 class ClassStruct(EmptyScope):
     field_pattern = re.compile(r'\n\s*?(?:mutable\s+)?(%s\w[\w:]*(?:\s*<\s*%s\w[\w:]*\s*(?:\s*<\s*%s\w[\w:]*\s*(?:\s*<\s*%s\w[\w:]*\s*(?:,\s*%s\w[\w:]*\s*)*>\s*)?(?:,\s*%s\w[\w:]*\s*(?:\s*<\s*%s\w[\w:]*\s*(?:,\s*%s\w[\w:]*\s*)*>\s*)?)?>\s*)?(?:,\s*%s\w[\w:]*\s*(?:\s*<\s*%s\w[\w:]*\s*(?:\s*<\s*%s\w[\w:]*\s*(?:,\s*%s\w[\w:]*\s*)*>\s*)?(?:,\s*%s\w[\w:]*\s*(?:\s*<\s*%s\w[\w:]*\s*(?:,\s*%s\w[\w:]*\s*)*>\s*)?)?>\s*)?)?>\s*)?)(?:\*\s+|\s+\*|\s+)(\w+)\s*(?:;|=\s*[-]?\w[\w:]*(?:\s*[-/\*\+]\s*[-]?\w[\w:]*)*\s*;|=\s*(?:\w[\w:]*(?:<[^\n;]>)?)?(?:{|(?:\([^\)]*\)?|(?:\"[^\"]*\")?)\s*;)|\s*{[^\}]*}\s*;)' % (EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern), re.MULTILINE | re.DOTALL)
     enum_field_pattern = re.compile(r'[,\{]\s*?(\w+)\s*(?:=\s*[^,}\s]+)?\s*(?:,|})', re.MULTILINE | re.DOTALL)
-    class_pattern = re.compile(r'(%s|%s|%s)\s+(\w+)(?:\s+final)?\s*(:\s*(public\s+)?([^<\s]+)[^{]*)?\s*\{' % (EmptyScope.struct_str, EmptyScope.class_str, EmptyScope.enum_str), re.MULTILINE | re.DOTALL)
+    class_pattern = re.compile(r'(%s|%s|%s(?:\s+class)?)\s+(\w+)(?:\s+final)?\s*(:\s*(public\s+)?([^<\s]+)[^{]*)?\s*\{' % (EmptyScope.struct_str, EmptyScope.class_str, EmptyScope.enum_str), re.MULTILINE | re.DOTALL)
     cb_obj_pattern = re.compile(r'chainbase::object$')
     obj_pattern = re.compile(r'^object$')
     using_pattern = re.compile(r'\n\s*?using\s+(\w+)\s*=\s*([\w:]+)(?:<.*>)?;')
@@ -360,7 +360,7 @@ class ClassStruct(EmptyScope):
         return new_scope
 
 class Namespace(ClassStruct):
-    namespace_class_pattern = re.compile(r'(%s|%s|%s|%s)\s+(\w+)(?:\s+final)?\s*(:\s*(public\s+)?([^<\s]+)[^{]*)?\s*\{' % (EmptyScope.namespace_str, EmptyScope.struct_str, EmptyScope.class_str, EmptyScope.enum_str), re.MULTILINE | re.DOTALL)
+    namespace_class_pattern = re.compile(r'(%s|%s|%s|%s(?:\s+class)?)\s+(\w+)(?:\s+final)?\s*(:\s*(public\s+)?([^<\s]+)[^{]*)?\s*\{' % (EmptyScope.namespace_str, EmptyScope.struct_str, EmptyScope.class_str, EmptyScope.enum_str), re.MULTILINE | re.DOTALL)
 
     def __init__(self, name, inherit, start, content, parent_scope):
         if inherit is not None:
@@ -679,7 +679,8 @@ def validate_file(file):
                 fwd_swapped.remove(field)
                 f_index += 1
             else:
-                assert reflect_field == field, "Reflection for %s should have field %s instead of %s or else it should indicate if the field should be ignored (%s) or swapped (%s)" %(reflection_name, field, reflect_field, ignore_str, swap_str)
+                if reflect_field != field:
+                    assert reflect_field == field, "Reflection for %s should have field %s instead of %s or else it should indicate if the field should be ignored (%s) or swapped (%s)" %(reflection_name, field, reflect_field, ignore_str, swap_str)
                 f_index += 1
                 rf_index += 1
             debug("rf_index=%s, rf_len=%s, f_index=%s, f_len=%s" % (rf_index, rf_len, f_index, f_len))
@@ -694,7 +695,8 @@ def validate_file(file):
             else:
                 unused_reflect_fields.append(reflect_field)
             rf_index += 1
-        assert len(unused_reflect_fields) == 0, "Reflection for %s has fields not in definition for class/struct - \"%s\"" % (reflection_name, ",".join(unused_reflect_fields))
+        if len(unused_reflect_fields) != 0:
+            assert len(unused_reflect_fields) == 0, "Reflection for %s has fields not in definition for class/struct - \"%s\"" % (reflection_name, ",".join(unused_reflect_fields))
         assert len(reflection.swapped) == 0, "Reflection for %s has erroneous swaps - \"%s\"" % (reflection_name, ",".join(reflection.swapped))
         assert len(back_swapped) == 0, "Reflection for %s indicated swapped fields that were never provided - \"%s\"" % (reflection_name, ",".join(back_swapped))
         assert len(fwd_swapped) == 0, "Reflection for %s indicated and provided swapped fields that are not in the class - \"%s\"" % (reflection_name, ",".join(fwd_swapped))
