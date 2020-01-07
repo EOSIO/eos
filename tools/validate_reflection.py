@@ -232,7 +232,7 @@ def create_scope(type, name, inherit, start, content, parent_scope):
 class ClassStruct(EmptyScope):
     field_pattern = re.compile(r'\n\s*?(?:mutable\s+)?(%s\w[\w:]*(?:\s*<\s*%s\w[\w:]*\s*(?:\s*<\s*%s\w[\w:]*\s*(?:\s*<\s*%s\w[\w:]*\s*(?:,\s*%s\w[\w:]*\s*)*>\s*)?(?:,\s*%s\w[\w:]*\s*(?:\s*<\s*%s\w[\w:]*\s*(?:,\s*%s\w[\w:]*\s*)*>\s*)?)?>\s*)?(?:,\s*%s\w[\w:]*\s*(?:\s*<\s*%s\w[\w:]*\s*(?:\s*<\s*%s\w[\w:]*\s*(?:,\s*%s\w[\w:]*\s*)*>\s*)?(?:,\s*%s\w[\w:]*\s*(?:\s*<\s*%s\w[\w:]*\s*(?:,\s*%s\w[\w:]*\s*)*>\s*)?)?>\s*)?)?>\s*)?)(?:\*\s+|\s+\*|\s+)(\w+)\s*(?:;|=\s*[-]?\w[\w:]*(?:\s*[-/\*\+]\s*[-]?\w[\w:]*)*\s*;|=\s*(?:\w[\w:]*(?:<[^\n;]>)?)?(?:{|(?:\([^\)]*\)?|(?:\"[^\"]*\")?)\s*;)|\s*{[^\}]*}\s*;)' % (EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern), re.MULTILINE | re.DOTALL)
     enum_field_pattern = re.compile(r'[,\{]\s*?(\w+)\s*(?:=\s*[^,}\s]+)?\s*(?:,|})', re.MULTILINE | re.DOTALL)
-    class_pattern = re.compile(r'(%s|%s|%s)\s+(\w+)\s*(:\s*(public\s+)?([^<\s]+)[^{]*)?\s*\{' % (EmptyScope.struct_str, EmptyScope.class_str, EmptyScope.enum_str), re.MULTILINE | re.DOTALL)
+    class_pattern = re.compile(r'(%s|%s|%s)\s+(\w+)(?:\s+final)?\s*(:\s*(public\s+)?([^<\s]+)[^{]*)?\s*\{' % (EmptyScope.struct_str, EmptyScope.class_str, EmptyScope.enum_str), re.MULTILINE | re.DOTALL)
     cb_obj_pattern = re.compile(r'chainbase::object$')
     obj_pattern = re.compile(r'^object$')
     using_pattern = re.compile(r'\n\s*?using\s+(\w+)\s*=\s*([\w:]+)(?:<.*>)?;')
@@ -360,10 +360,11 @@ class ClassStruct(EmptyScope):
         return new_scope
 
 class Namespace(ClassStruct):
-    namespace_class_pattern = re.compile(r'(%s|%s|%s|%s)\s+(\w+)\s*(:\s*(public\s+)?([^<\s]+)[^{]*)?\s*\{' % (EmptyScope.namespace_str, EmptyScope.struct_str, EmptyScope.class_str, EmptyScope.enum_str), re.MULTILINE | re.DOTALL)
+    namespace_class_pattern = re.compile(r'(%s|%s|%s|%s)\s+(\w+)(?:\s+final)?\s*(:\s*(public\s+)?([^<\s]+)[^{]*)?\s*\{' % (EmptyScope.namespace_str, EmptyScope.struct_str, EmptyScope.class_str, EmptyScope.enum_str), re.MULTILINE | re.DOTALL)
 
     def __init__(self, name, inherit, start, content, parent_scope):
-        assert inherit is None, "namespace %s should not inherit from %s" % (name, inherit)
+        if inherit is not None:
+            assert inherit is None, "namespace %s should not inherit from %s" % (name, inherit)
         ClassStruct.__init__(self, name, None, start, content, parent_scope, is_enum = False)
         debug("%sNamespace.__init__ %s %d" % (self.indent, name, start))
         self.namespaces = {}
