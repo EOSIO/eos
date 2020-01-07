@@ -3,7 +3,7 @@ on: [push]
 
 jobs:
   ubuntu-1804:
-    name: Build
+    name: Build Ubuntu18
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -17,7 +17,7 @@ jobs:
           IMAGE_TAG: ubuntu-18.04-pinned
           PLATFORM_TYPE: pinned
   macos-1015:
-    name: Build
+    name: Build MacOS
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v2
@@ -26,4 +26,5 @@ jobs:
       - name: Build
         run: | 
           git submodule update --init --recursive --force
+          ./.cicd/platforms/unpinned/macos-10.14-unpinned.sh
           ./.cicd/build.sh
