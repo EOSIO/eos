@@ -8,7 +8,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
         with:
-          clean: ''
+          depth: 0
       - name: Build
         run: | 
           git submodule update --init --recursive --force
@@ -22,7 +22,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
         with:
-          clean: ''
+          depth: 0
       - name: Build
         run: | 
           git submodule update --init --recursive --force
@@ -36,7 +36,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
         with:
-          clean: ''
+          depth: 0
       - name: Build
         run: | 
           git submodule update --init --recursive --force
@@ -50,7 +50,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
         with:
-          clean: ''
+          depth: 0
       - name: Build
         run: | 
           git submodule update --init --recursive --force
@@ -64,7 +64,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
         with:
-          clean: ''
+          depth: 0
       - name: Build
         run: | 
           git submodule update --init --recursive --force
