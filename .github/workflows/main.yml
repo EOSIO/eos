@@ -6,9 +6,6 @@ jobs:
     name: Build AmazonLinux-2
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-        with:
-          depth: 0
       - name: Build
         run: | 
           git submodule update --init --recursive --force
