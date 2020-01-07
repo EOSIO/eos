@@ -245,7 +245,7 @@ jobs:
           IMAGE_TAG: ubuntu-16.04-pinned
           PLATFORM_TYPE: pinned
 
-
+  ubuntu-1804-build:
     name: Ubuntu 18.04 | Build
     runs-on: ubuntu-latest
     steps:
