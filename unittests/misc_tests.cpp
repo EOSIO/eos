@@ -1110,6 +1110,32 @@ BOOST_AUTO_TEST_CASE(stable_priority_queue_test) {
   } FC_LOG_AND_RETHROW()
 }
 
+BOOST_AUTO_TEST_CASE(action_receipt_digest) {
+   try {
+      action_receipt ar{ .receiver = eosio::name("hi"), .act_digest = fc::sha256("0101"),
+                         .global_sequence = 3, .recv_sequence = 4,
+                         .auth_sequence = {{eosio::name("name"), 13}},
+                         .code_sequence = 5,
+                         .abi_sequence = 6 };
+      auto d = digest_type::hash(ar);
+      uint32_t version = 0;
+      version = eosio::chain::set_field( version, builtin_protocol_feature_t::action_return_value, true );
+      BOOST_REQUIRE_EQUAL( ar.digest(version), d );
+      BOOST_REQUIRE_NE( ar.digest(0), d );
+
+   } FC_LOG_AND_RETHROW()
+}
+
+// test that std::bad_alloc is being thrown
+BOOST_AUTO_TEST_CASE(bad_alloc_test) {
+   tester t; // force a controller to be constructed and set the new_handler
+   int* ptr = nullptr;
+   const auto fail = [&]() {
+      ptr = new int[std::numeric_limits<int64_t>::max()/16];
+   };
+   BOOST_CHECK_THROW( fail(), std::bad_alloc );
+   BOOST_CHECK( ptr == nullptr );
+}
 
 BOOST_AUTO_TEST_SUITE_END()
 
