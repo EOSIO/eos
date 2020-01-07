@@ -8,8 +8,6 @@ if [[ "$(uname)" == 'Darwin' ]]; then
     if [[ "$GITHUB_ACTIONS" == 'true' ]]; then
         export PINNED=false
         brew reinstall openssl@1.1 # Fixes issue where builds in Travis cannot find libcrypto.
-        ccache -s
-        CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_CXX_COMPILER_LAUNCHER=ccache"
     else
         CMAKE_EXTRAS="$CMAKE_EXTRAS -DBUILD_MONGO_DB_PLUGIN=true"
     fi
