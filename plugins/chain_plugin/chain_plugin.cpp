@@ -310,6 +310,8 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "clear chain state database and block log")
          ("truncate-at-block", bpo::value<uint32_t>()->default_value(0),
           "stop hard replay / block log recovery at this block number (if set to non-zero number)")
+         ("terminate-at-block", bpo::value<uint32_t>()->default_value(0),
+          "terminate after reaching this block number (if set to a non-zero number)")
          ("import-reversible-blocks", bpo::value<bfs::path>(),
           "replace reversible block database with blocks imported from specified file and then exit")
          ("export-reversible-blocks", bpo::value<bfs::path>(),
@@ -731,6 +733,9 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       my->chain_config->allow_ram_billing_in_notify = options.at( "disable-ram-billing-notify-checks" ).as<bool>();
       my->chain_config->maximum_variable_signature_length = options.at( "maximum-variable-signature-length" ).as<uint32_t>();
 
+      if( options.count( "terminate-at-block" ))
+         my->chain_config->terminate_at_block = options.at( "terminate-at-block" ).as<uint32_t>();
+
       if( options.count( "extract-genesis-json" ) || options.at( "print-genesis-json" ).as<bool>()) {
          fc::optional<genesis_state> gs;
 
@@ -1078,16 +1083,17 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 void chain_plugin::plugin_startup()
 { try {
    try {
-      auto shutdown = [](){ return app().is_quiting(); };
+      auto shutdown = [](){ return app().quit(); };
+      auto check_shutdown = [](){ return app().is_quiting(); };
       if (my->snapshot_path) {
          auto infile = std::ifstream(my->snapshot_path->generic_string(), (std::ios::in | std::ios::binary));
          auto reader = std::make_shared<istream_snapshot_reader>(infile);
-         my->chain->startup(shutdown, reader);
+         my->chain->startup(shutdown, check_shutdown, reader);
          infile.close();
       } else if( my->genesis ) {
-         my->chain->startup(shutdown, *my->genesis);
+         my->chain->startup(shutdown, check_shutdown, *my->genesis);
       } else {
-         my->chain->startup(shutdown);
+         my->chain->startup(shutdown, check_shutdown);
       }
    } catch (const database_guard_exception& e) {
       log_guard_exception(e);
@@ -1130,7 +1136,7 @@ chain_apis::read_write::read_write(controller& db, const fc::microseconds& abi_s
 }
 
 void chain_apis::read_write::validate() const {
-   EOS_ASSERT( db.get_read_mode() != chain::db_read_mode::READ_ONLY, missing_chain_api_plugin_exception, "Not allowed, node in read-only mode" );
+   EOS_ASSERT( !db.in_immutable_mode(), missing_chain_api_plugin_exception, "Not allowed, node in read-only mode" );
 }
 
 void chain_plugin::accept_block(const signed_block_ptr& block ) {
@@ -1381,7 +1387,7 @@ void chain_plugin::log_guard_exception(const chain::guard_exception&e ) {
 void chain_plugin::handle_guard_exception(const chain::guard_exception& e) {
    log_guard_exception(e);
 
-   elog("database chain::guard_exception, quiting..."); // log string searched for in: tests/nodeos_under_min_avail_ram.py
+   elog("database chain::guard_exception, quitting..."); // log string searched for in: tests/nodeos_under_min_avail_ram.py
    // quit the app
    app().quit();
 }
