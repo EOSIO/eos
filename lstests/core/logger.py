@@ -197,7 +197,7 @@ class ScreenWriter(_Writer):
                          show_log_level)
 
     def _raw_write(self, msg):
-        print(msg)
+        print(msg, flush=True)
 
 
 class FileWriter(_Writer):
@@ -227,7 +227,7 @@ class FileWriter(_Writer):
 
     def _raw_write(self, msg):
         with open(self.filename, "a") as f:
-            print(msg, file=f)
+            print(msg, file=f, flush=True)
 
 
 class Logger:
