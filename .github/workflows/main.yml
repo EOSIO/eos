@@ -419,21 +419,3 @@ jobs:
           ./.cicd/platforms/unpinned/macos-10.14-unpinned.sh
           tar -xzf macos-1015-build/build.tar.gz
           ./.cicd/test.sh scripts/serial-test.sh
-  macos-1015-long-running-test:
-    name: MacOS 10.15 | Long Running Test
-    runs-on: macos-latest
-    needs: macos-1015-build
-    steps:
-      - name: Checkout
-        uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
-        with:
-          submodules: recursive
-      - name: Download Build Artifact
-        uses: actions/download-artifact@v1
-        with:
-          name: macos-1015-build
-      - name: Long Running Test
-        run: | 
-          ./.cicd/platforms/unpinned/macos-10.14-unpinned.sh
-          tar -xzf macos-1015-build/build.tar.gz
-          ./.cicd/test.sh scripts/long-running-test.sh
