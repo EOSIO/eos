@@ -25,6 +25,7 @@ if [[ "$BUILDKITE" == 'true' ]]; then
     [[ $((`ls -1 core.* 2>/dev/null | wc -l`)) != 0 ]] && tar czf core.tar.gz core.* || : # collect core dumps
     echo 'Compressing ls-tests logs...'
     [[ $((`ls -1 data-dir/cluster*/node*/std*.txt 2>/dev/null | wc -l`)) != 0 ]] && tar czf ls_tests_logs.tar.gz data-dir/cluster*/node*/std*.txt
+    [[ $((`ls -1 *debug*.log 2>/dev/null | wc -l`)) != 0 ]] && tar czf debug_logs.tar.gz *debug*.log
     echo 'Exporting xUnit XML'
     mv -f ./Testing/$(ls ./Testing/ | grep '2' | tail -n 1)/Test.xml test-results.xml
     echo 'Uploading artifacts'
@@ -34,6 +35,7 @@ if [[ "$BUILDKITE" == 'true' ]]; then
     [[ -f mongod.log ]] && buildkite-agent artifact upload mongod.log
     [[ -f launcher_service.log ]] && buildkite-agent artifact upload launcher_service.log
     [[ -f ls_tests_logs.tar.gz ]] && buildkite-agent artifact upload ls_tests_logs.tar.gz
+    [[ -f debug_logs.tar.gz ]] && buildkite-agent artifact upload debug_logs.tar.gz
     buildkite-agent artifact upload test-results.xml
     echo 'Done uploading artifacts.'
 fi
