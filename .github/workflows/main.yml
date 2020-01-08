@@ -2,8 +2,8 @@ name: Forked PR
 on: [push]
 
 jobs:
-  if: github.event.pull_request.base.repo.id == github.event.pull_request.head.repo.id
   amazon_linux-2-build:
+    if: github.event.pull_request.base.repo.id == github.event.pull_request.head.repo.id
     name: Amazon_Linux 2 | Build
     runs-on: ubuntu-latest
     steps:
@@ -84,8 +84,8 @@ jobs:
           PLATFORM_TYPE: pinned
 
 
-  if: github.event.pull_request.base.repo.id == github.event.pull_request.head.repo.id
   centos-77-build:
+    if: github.event.pull_request.base.repo.id == github.event.pull_request.head.repo.id
     name: CentOS 7.7 | Build
     runs-on: ubuntu-latest
     steps:
@@ -166,8 +166,8 @@ jobs:
           PLATFORM_TYPE: pinned
 
 
-  if: github.event.pull_request.base.repo.id == github.event.pull_request.head.repo.id  
   ubuntu-1604-build:
+    if: github.event.pull_request.base.repo.id == github.event.pull_request.head.repo.id  
     name: Ubuntu 16.04 | Build
     runs-on: ubuntu-latest
     steps:
@@ -248,8 +248,8 @@ jobs:
           PLATFORM_TYPE: pinned
 
 
-  if: github.event.pull_request.base.repo.id == github.event.pull_request.head.repo.id
   ubuntu-1804-build:
+    if: github.event.pull_request.base.repo.id == github.event.pull_request.head.repo.id
     name: Ubuntu 18.04 | Build
     runs-on: ubuntu-latest
     steps:
@@ -330,8 +330,8 @@ jobs:
           PLATFORM_TYPE: pinned
 
 
-  if: github.event.pull_request.base.repo.id == github.event.pull_request.head.repo.id
   macos-1015-build:
+    if: github.event.pull_request.base.repo.id == github.event.pull_request.head.repo.id
     name: MacOS 10.15 | Build
     runs-on: macos-latest
     steps:
