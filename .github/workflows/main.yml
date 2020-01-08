@@ -2,17 +2,25 @@ name: Forked PR
 on: [push]
 
 jobs:
+  start-job:
+    name: Job
+    runs-on: ubuntu-latest
+    steps:
+      - name: Start Job
+        run: echo "Start Job."
+
   amazon_linux-2-build:
     if: github.event.pull_request.base.repo.id != github.event.pull_request.head.repo.id
     name: Amazon_Linux 2 | Build
     runs-on: ubuntu-latest
+    needs: start-job
     steps:
-      - uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
+      - name: Checkout
+        uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
         with:
           submodules: recursive
       - name: Build
         run: | 
-          git submodule update --init --recursive --force
           ./.cicd/build.sh
           tar -pczf build.tar.gz build
         env:
@@ -28,7 +36,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: amazon_linux-2-build
     steps:
-      - uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
+      - name: Checkout
+        uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
         with:
           submodules: recursive
       - name: Download Build Artifact
@@ -37,7 +46,6 @@ jobs:
           name: amazon_linux-2-build
       - name: Parallel Test
         run: | 
-          git submodule update --init --recursive --force
           tar -xzf amazon_linux-2-build/build.tar.gz
           ./.cicd/test.sh scripts/parallel-test.sh
         env:
@@ -48,7 +56,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: amazon_linux-2-build
     steps:
-      - uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
+      - name: Checkout
+        uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
         with:
           submodules: recursive
       - name: Download Build Artifact
@@ -57,7 +66,6 @@ jobs:
           name: amazon_linux-2-build
       - name: WASM Spec Test
         run: | 
-          git submodule update --init --recursive --force
           tar -xzf amazon_linux-2-build/build.tar.gz
           ./.cicd/test.sh scripts/wasm-spec-test.sh
         env:
@@ -68,7 +76,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: amazon_linux-2-build
     steps:
-      - uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
+      - name: Checkout
+        uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
         with:
           submodules: recursive
       - name: Download Build Artifact
@@ -88,13 +97,14 @@ jobs:
     if: github.event.pull_request.base.repo.id != github.event.pull_request.head.repo.id
     name: CentOS 7.7 | Build
     runs-on: ubuntu-latest
+    needs: start-job
     steps:
-      - uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
+      - name: Checkout
+        uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
         with:
           submodules: recursive
       - name: Build
         run: | 
-          git submodule update --init --recursive --force
           ./.cicd/build.sh
           tar -pczf build.tar.gz build
         env:
@@ -110,7 +120,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: centos-77-build
     steps:
-      - uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
+      - name: Checkout
+        uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
         with:
           submodules: recursive
       - name: Download Build Artifact
@@ -119,7 +130,6 @@ jobs:
           name: centos-77-build
       - name: Parallel Test
         run: | 
-          git submodule update --init --recursive --force
           tar -xzf centos-77-build/build.tar.gz
           ./.cicd/test.sh scripts/parallel-test.sh
         env:
@@ -130,7 +140,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: centos-77-build
     steps:
-      - uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
+      - name: Checkout
+        uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
         with:
           submodules: recursive
       - name: Download Build Artifact
@@ -139,7 +150,6 @@ jobs:
           name: centos-77-build
       - name: WASM Spec Test
         run: | 
-          git submodule update --init --recursive --force
           tar -xzf centos-77-build/build.tar.gz
           ./.cicd/test.sh scripts/wasm-spec-test.sh
         env:
@@ -150,7 +160,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: centos-77-build
     steps:
-      - uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
+      - name: Checkout
+        uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
         with:
           submodules: recursive
       - name: Download Build Artifact
@@ -170,13 +181,14 @@ jobs:
     if: github.event.pull_request.base.repo.id != github.event.pull_request.head.repo.id  
     name: Ubuntu 16.04 | Build
     runs-on: ubuntu-latest
+    needs: start-job
     steps:
-      - uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
+      - name: Checkout
+        uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
         with:
           submodules: recursive
       - name: Build
         run: | 
-          git submodule update --init --recursive --force
           ./.cicd/build.sh
           tar -pczf build.tar.gz build
         env:
@@ -192,7 +204,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: ubuntu-1604-build
     steps:
-      - uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
+      - name: Checkout
+        uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
         with:
           submodules: recursive
       - name: Download Build Artifact
@@ -201,7 +214,6 @@ jobs:
           name: ubuntu-1604-build
       - name: Parallel Test
         run: | 
-          git submodule update --init --recursive --force
           tar -xzf ubuntu-1604-build/build.tar.gz
           ./.cicd/test.sh scripts/parallel-test.sh
         env:
@@ -212,7 +224,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: ubuntu-1604-build
     steps:
-      - uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
+      - name: Checkout
+        uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
         with:
           submodules: recursive
       - name: Download Build Artifact
@@ -221,7 +234,6 @@ jobs:
           name: ubuntu-1604-build
       - name: WASM Spec Test
         run: | 
-          git submodule update --init --recursive --force
           tar -xzf ubuntu-1604-build/build.tar.gz
           ./.cicd/test.sh scripts/wasm-spec-test.sh
         env:
@@ -232,7 +244,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: ubuntu-1604-build
     steps:
-      - uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
+      - name: Checkout
+        uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
         with:
           submodules: recursive
       - name: Download Build Artifact
@@ -252,13 +265,14 @@ jobs:
     if: github.event.pull_request.base.repo.id != github.event.pull_request.head.repo.id
     name: Ubuntu 18.04 | Build
     runs-on: ubuntu-latest
+    needs: start-job
     steps:
-      - uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
+      - name: Checkout
+        uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
         with:
           submodules: recursive
       - name: Build
         run: | 
-          git submodule update --init --recursive --force
           ./.cicd/build.sh
           tar -pczf build.tar.gz build
         env:
@@ -274,7 +288,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: ubuntu-1804-build
     steps:
-      - uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
+      - name: Checkout
+        uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
         with:
           submodules: recursive
       - name: Download Build Artifact
@@ -283,7 +298,6 @@ jobs:
           name: ubuntu-1804-build
       - name: Parallel Test
         run: | 
-          git submodule update --init --recursive --force
           tar -xzf ubuntu-1804-build/build.tar.gz
           ./.cicd/test.sh scripts/parallel-test.sh
         env:
@@ -294,7 +308,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: ubuntu-1804-build
     steps:
-      - uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
+      - name: Checkout
+        uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
         with:
           submodules: recursive
       - name: Download Build Artifact
@@ -303,7 +318,6 @@ jobs:
           name: ubuntu-1804-build
       - name: WASM Spec Test
         run: | 
-          git submodule update --init --recursive --force
           tar -xzf ubuntu-1804-build/build.tar.gz
           ./.cicd/test.sh scripts/wasm-spec-test.sh
         env:
@@ -314,7 +328,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: ubuntu-1804-build
     steps:
-      - uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
+      - name: Checkout
+        uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
         with:
           submodules: recursive
       - name: Download Build Artifact
@@ -334,13 +349,14 @@ jobs:
     if: github.event.pull_request.base.repo.id != github.event.pull_request.head.repo.id
     name: MacOS 10.15 | Build
     runs-on: macos-latest
+    needs: start-job
     steps:
-      - uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
+      - name: Checkout
+        uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
         with:
           submodules: recursive
       - name: Build
         run: | 
-          git submodule update --init --recursive --force
           ./.cicd/platforms/unpinned/macos-10.14-unpinned.sh
           ./.cicd/build.sh
           tar -pczf build.tar.gz build
@@ -354,7 +370,8 @@ jobs:
     runs-on: macos-latest
     needs: macos-1015-build
     steps:
-      - uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
+      - name: Checkout
+        uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
         with:
           submodules: recursive
       - name: Download Build Artifact
@@ -363,7 +380,6 @@ jobs:
           name: macos-1015-build
       - name: Parallel Test
         run: | 
-          git submodule update --init --recursive --force
           ./.cicd/platforms/unpinned/macos-10.14-unpinned.sh
           tar -xzf macos-1015-build/build.tar.gz
           ./.cicd/test.sh scripts/parallel-test.sh
@@ -372,7 +388,8 @@ jobs:
     runs-on: macos-latest
     needs: macos-1015-build
     steps:
-      - uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
+      - name: Checkout
+        uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
         with:
           submodules: recursive
       - name: Download Build Artifact
@@ -381,7 +398,6 @@ jobs:
           name: macos-1015-build
       - name: WASM Spec Test
         run: | 
-          git submodule update --init --recursive --force
           ./.cicd/platforms/unpinned/macos-10.14-unpinned.sh
           tar -xzf macos-1015-build/build.tar.gz
           ./.cicd/test.sh scripts/wasm-spec-test.sh
@@ -390,7 +406,8 @@ jobs:
     runs-on: macos-latest
     needs: macos-1015-build
     steps:
-      - uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
+      - name: Checkout
+        uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
         with:
           submodules: recursive
       - name: Download Build Artifact
@@ -407,7 +424,8 @@ jobs:
     runs-on: macos-latest
     needs: macos-1015-build
     steps:
-      - uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
+      - name: Checkout
+        uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
         with:
           submodules: recursive
       - name: Download Build Artifact
