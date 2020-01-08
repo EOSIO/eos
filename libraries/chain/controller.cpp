@@ -454,7 +454,7 @@ struct controller_impl {
       block_header_state genheader;
       genheader.active_schedule                = initial_schedule;
       genheader.pending_schedule.schedule      = initial_schedule;
-      // NOTE: if wtmsig block signatures are enabled at genesis time this should be the hash of a producer authority schedule
+      // NOTE: if wtmsig block signatures are enabled at genesis time this will be updated to the hash of a producer authority schedule
       genheader.pending_schedule.schedule_hash = fc::sha256::hash(initial_legacy_schedule);
       genheader.header.timestamp               = genesis.initial_timestamp;
       genheader.header.action_mroot            = genesis.compute_chain_id();
@@ -475,6 +475,9 @@ struct controller_impl {
             const auto& f = pfs.get_protocol_feature( feature_digest );
             if( f.builtin_feature ) {
                trigger_activation_handler( *f.builtin_feature );
+               if ( *f.builtin_feature == builtin_protocol_feature_t::wtmsig_block_signatures ) {
+                  genheader.pending_schedule.schedule_hash = fc::sha256::hash(initial_schedule);
+               }
             }
          }
       }
