@@ -624,8 +624,6 @@ def validate_file(file):
                     continue
         class_struct_num_fields = len(class_struct.fields) if class_struct is not None else None 
         debug("reflection_name=%s, class field count=%s, reflection field count=%s, ingore count=%s, swap count=%s" % (reflection_name, class_struct_num_fields, len(reflection.fields), len(reflection.ignored), len(reflection.swapped)))
-        if not isinstance(class_struct, ClassStruct):
-            debug("failed")
         assert isinstance(class_struct, ClassStruct), "could not find a %s/%s/%s for %s" % (EmptyScope.class_str, EmptyScope.struct_str, EmptyScope.enum_str, reflection_name)
         if class_struct.ignore_id:
             id_field = "id"
@@ -695,8 +693,7 @@ def validate_file(file):
             else:
                 unused_reflect_fields.append(reflect_field)
             rf_index += 1
-        if len(unused_reflect_fields) != 0:
-            assert len(unused_reflect_fields) == 0, "Reflection for %s has fields not in definition for class/struct - \"%s\"" % (reflection_name, ",".join(unused_reflect_fields))
+        assert len(unused_reflect_fields) == 0, "Reflection for %s has fields not in definition for class/struct - \"%s\"" % (reflection_name, ",".join(unused_reflect_fields))
         assert len(reflection.swapped) == 0, "Reflection for %s has erroneous swaps - \"%s\"" % (reflection_name, ",".join(reflection.swapped))
         assert len(back_swapped) == 0, "Reflection for %s indicated swapped fields that were never provided - \"%s\"" % (reflection_name, ",".join(back_swapped))
         assert len(fwd_swapped) == 0, "Reflection for %s indicated and provided swapped fields that are not in the class - \"%s\"" % (reflection_name, ",".join(fwd_swapped))
