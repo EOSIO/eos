@@ -109,4 +109,5 @@ FC_REFLECT(eosio::chain::account_object, (name)(creation_date)(abi))
 // @ignore id
 FC_REFLECT(eosio::chain::account_metadata_object, (name)(recv_sequence)(auth_sequence)(code_sequence)(abi_sequence)
                                                   (code_hash)(last_code_update)(flags)(vm_type)(vm_version))
+// @ignore id
 FC_REFLECT(eosio::chain::account_ram_correction_object, (name)(ram_correction))

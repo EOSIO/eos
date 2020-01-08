@@ -47,4 +47,5 @@ namespace eosio { namespace chain {
 
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::transaction_object, eosio::chain::transaction_multi_index)
 
+// @ignore id
 FC_REFLECT(eosio::chain::transaction_object, (expiration)(trx_id))

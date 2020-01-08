@@ -133,6 +133,7 @@ FC_REFLECT(eosio::chain::snapshot_global_property_object,
             (proposed_schedule_block_num)(proposed_schedule)(configuration)(chain_id)
           )
 
+// @ignore id
 FC_REFLECT(eosio::chain::dynamic_global_property_object,
             (global_action_sequence)
           )
