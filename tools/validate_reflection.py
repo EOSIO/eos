@@ -363,8 +363,7 @@ class Namespace(ClassStruct):
     namespace_class_pattern = re.compile(r'((?<!using\s)%s|%s|%s|%s(?:\s+class)?)\s+(\w+)(?:\s+final)?\s*(:\s*(public\s+)?([^<\s]+)[^{]*)?\s*\{' % (EmptyScope.namespace_str, EmptyScope.struct_str, EmptyScope.class_str, EmptyScope.enum_str), re.MULTILINE | re.DOTALL)
 
     def __init__(self, name, inherit, start, content, parent_scope):
-        if inherit is not None:
-            assert inherit is None, "namespace %s should not inherit from %s" % (name, inherit)
+        assert inherit is None, "namespace %s should not inherit from %s" % (name, inherit)
         ClassStruct.__init__(self, name, None, start, content, parent_scope, is_enum = False)
         debug("%sNamespace.__init__ %s %d" % (self.indent, name, start))
         self.namespaces = {}
@@ -677,8 +676,7 @@ def validate_file(file):
                 fwd_swapped.remove(field)
                 f_index += 1
             else:
-                if reflect_field != field:
-                    assert reflect_field == field, "Reflection for %s should have field %s instead of %s or else it should indicate if the field should be ignored (%s) or swapped (%s)" %(reflection_name, field, reflect_field, ignore_str, swap_str)
+                assert reflect_field == field, "Reflection for %s should have field %s instead of %s or else it should indicate if the field should be ignored (%s) or swapped (%s)" %(reflection_name, field, reflect_field, ignore_str, swap_str)
                 f_index += 1
                 rf_index += 1
             debug("rf_index=%s, rf_len=%s, f_index=%s, f_len=%s" % (rf_index, rf_len, f_index, f_len))
