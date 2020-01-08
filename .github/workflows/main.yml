@@ -7,7 +7,7 @@ jobs:
     name: Amazon_Linux 2 | Build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
         with:
           submodules: recursive
       - name: Build
@@ -28,7 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: amazon_linux-2-build
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
         with:
           submodules: recursive
       - name: Download Build Artifact
@@ -48,7 +48,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: amazon_linux-2-build
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
         with:
           submodules: recursive
       - name: Download Build Artifact
@@ -68,7 +68,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: amazon_linux-2-build
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
         with:
           submodules: recursive
       - name: Download Build Artifact
@@ -88,7 +88,7 @@ jobs:
     name: CentOS 7.7 | Build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
         with:
           submodules: recursive
       - name: Build
@@ -109,7 +109,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: centos-77-build
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
         with:
           submodules: recursive
       - name: Download Build Artifact
@@ -129,7 +129,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: centos-77-build
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
         with:
           submodules: recursive
       - name: Download Build Artifact
@@ -149,7 +149,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: centos-77-build
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
         with:
           submodules: recursive
       - name: Download Build Artifact
@@ -169,7 +169,7 @@ jobs:
     name: Ubuntu 16.04 | Build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
         with:
           submodules: recursive
       - name: Build
@@ -190,7 +190,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: ubuntu-1604-build
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
         with:
           submodules: recursive
       - name: Download Build Artifact
@@ -210,7 +210,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: ubuntu-1604-build
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
         with:
           submodules: recursive
       - name: Download Build Artifact
@@ -230,7 +230,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: ubuntu-1604-build
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
         with:
           submodules: recursive
       - name: Download Build Artifact
@@ -245,11 +245,12 @@ jobs:
           IMAGE_TAG: ubuntu-16.04-pinned
           PLATFORM_TYPE: pinned
 
+
   ubuntu-1804-build:
     name: Ubuntu 18.04 | Build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
         with:
           submodules: recursive
       - name: Build
@@ -270,7 +271,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: ubuntu-1804-build
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
         with:
           submodules: recursive
       - name: Download Build Artifact
@@ -290,7 +291,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: ubuntu-1804-build
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
         with:
           submodules: recursive
       - name: Download Build Artifact
@@ -310,7 +311,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: ubuntu-1804-build
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
         with:
           submodules: recursive
       - name: Download Build Artifact
@@ -325,11 +326,12 @@ jobs:
           IMAGE_TAG: ubuntu-18.04-pinned
           PLATFORM_TYPE: pinned
 
+
   macos-1015-build:
     name: MacOS 10.15 | Build
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
         with:
           submodules: recursive
       - name: Build
@@ -348,7 +350,7 @@ jobs:
     runs-on: macos-latest
     needs: macos-1015-build
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
         with:
           submodules: recursive
       - name: Download Build Artifact
@@ -366,7 +368,7 @@ jobs:
     runs-on: macos-latest
     needs: macos-1015-build
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
         with:
           submodules: recursive
       - name: Download Build Artifact
@@ -384,7 +386,7 @@ jobs:
     runs-on: macos-latest
     needs: macos-1015-build
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
         with:
           submodules: recursive
       - name: Download Build Artifact
@@ -401,7 +403,7 @@ jobs:
     runs-on: macos-latest
     needs: macos-1015-build
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
         with:
           submodules: recursive
       - name: Download Build Artifact
