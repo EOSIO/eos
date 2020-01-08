@@ -28,22 +28,6 @@ Block.one is neither launching nor operating any initial public blockchains base
 
 There is no public testnet running currently.
 
-## Supported Operating Systems
-
-EOSIO currently supports the following operating systems:  
-
-1. Amazon Linux 2
-2. CentOS 7
-3. Ubuntu 16.04
-4. Ubuntu 18.04
-5. MacOS 10.14 (Mojave)
-
----
-
-**Note: It may be possible to install EOSIO on other Unix-based operating systems. This is not officially supported, though.**
-
----
-
 ## Software Installation
 
 There are currently two methods to install the EOSIO software:
@@ -61,7 +45,7 @@ Installing EOSIO from prebuilt binaries is recommended for most users. Building 
 
 ## Prebuilt Binaries
 
-Prebuilt software packages are available for the EOSIO [supported operating systems](#supported-operating-systems) above. Find the instructions below for your OS.
+EOSIO prebuilt software packages are available for the operating systems below. Find and follow the instructions for your given OS:
 
 ### Mac OS X:
 
