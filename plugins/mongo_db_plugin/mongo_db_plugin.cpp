@@ -764,7 +764,7 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
    } catch( bsoncxx::exception& e) {
       elog( "Unable to convert transaction to BSON: ${e}", ("e", e.what()) );
       try {
-         elog( "  JSON: ${j}", ("j", fc::json::to_string( v, fc::time_point::now() + fc::milliseconds( 10 ) )) );
+         elog( "  JSON: ${j}", ("j", fc::json::to_string( v, fc::time_point::now() + fc::exception::format_time_limit )) );
       } catch(...) {}
    }
 
@@ -788,7 +788,7 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
       } catch( bsoncxx::exception& e ) {
          elog( "Unable to convert signing keys to BSON: ${e}", ("e", e.what()) );
          try {
-            elog( "  JSON: ${j}", ("j", fc::json::to_string( signing_keys, fc::time_point::now() + fc::milliseconds( 10 ) )) );
+            elog( "  JSON: ${j}", ("j", fc::json::to_string( signing_keys, fc::time_point::now() + fc::exception::format_time_limit )) );
          } catch(...) {}
       }
    }
@@ -840,7 +840,7 @@ mongo_db_plugin_impl::add_action_trace( mongocxx::bulk_write& bulk_action_traces
       } catch( bsoncxx::exception& e ) {
          elog( "Unable to convert action trace to BSON: ${e}", ("e", e.what()) );
          try {
-            elog( "  JSON: ${j}", ("j", fc::json::to_string( v, fc::time_point::now() + fc::milliseconds(10) )) );
+            elog( "  JSON: ${j}", ("j", fc::json::to_string( v, fc::time_point::now() + fc::exception::format_time_limit )) );
          } catch(...) {}
       }
       if( t->receipt.valid() ) {
@@ -893,7 +893,7 @@ void mongo_db_plugin_impl::_process_applied_transaction( const chain::transactio
          } catch( bsoncxx::exception& e ) {
             elog( "Unable to convert transaction to BSON: ${e}", ("e", e.what()) );
             try {
-               elog( "  JSON: ${j}", ("j", fc::json::to_string( v, fc::time_point::now() + fc::milliseconds(10) )) );
+               elog( "  JSON: ${j}", ("j", fc::json::to_string( v, fc::time_point::now() + fc::exception::format_time_limit )) );
             } catch(...) {}
          }
          trans_traces_doc.append( kvp( "createdAt", b_date{now} ) );
@@ -955,7 +955,7 @@ void mongo_db_plugin_impl::_process_accepted_block( const chain::block_state_ptr
       } catch( bsoncxx::exception& e ) {
          elog( "Unable to convert block_header_state to BSON: ${e}", ("e", e.what()) );
          try {
-            elog( "  JSON: ${j}", ("j", fc::json::to_string( bhs, fc::time_point::now() + fc::milliseconds(10) )) );
+            elog( "  JSON: ${j}", ("j", fc::json::to_string( bhs, fc::time_point::now() + fc::exception::format_time_limit )) );
          } catch(...) {}
       }
       block_state_doc.append( kvp( "createdAt", b_date{now} ) );
@@ -988,7 +988,7 @@ void mongo_db_plugin_impl::_process_accepted_block( const chain::block_state_ptr
       } catch( bsoncxx::exception& e ) {
          elog( "Unable to convert block to BSON: ${e}", ("e", e.what()) );
          try {
-            elog( "  JSON: ${j}", ("j", fc::json::to_string( v, fc::time_point::now() + fc::milliseconds(10) )) );
+            elog( "  JSON: ${j}", ("j", fc::json::to_string( v, fc::time_point::now() + fc::exception::format_time_limit )) );
          } catch(...) {}
       }
       block_doc.append( kvp( "createdAt", b_date{now} ) );
@@ -1300,7 +1300,7 @@ void mongo_db_plugin_impl::update_account(const chain::action& act)
             } catch( bsoncxx::exception& e ) {
                elog( "Unable to convert abi JSON to BSON: ${e}", ("e", e.what()));
                try {
-                  elog( "  JSON: ${j}", ("j", fc::json::to_string( v, fc::time_point::now() + fc::milliseconds(10) )) );
+                  elog( "  JSON: ${j}", ("j", fc::json::to_string( v, fc::time_point::now() + fc::exception::format_time_limit )) );
                } catch(...) {}
             }
          }

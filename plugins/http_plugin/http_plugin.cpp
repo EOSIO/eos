@@ -228,7 +228,7 @@ namespace eosio {
          template<class T>
          static void handle_exception(typename websocketpp::server<T>::connection_ptr con) {
             string err = "Internal Service error, http: ";
-            const auto deadline = fc::time_point::now() + fc::milliseconds(10);
+            const auto deadline = fc::time_point::now() + fc::exception::format_time_limit;
             try {
                con->set_status( websocketpp::http::status_code::internal_server_error );
                try {
