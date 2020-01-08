@@ -52,7 +52,13 @@ $ sudo yum remove eosio
 
 ## Location of EOSIO binaries
 
-After installing the prebuilt binaries, the actual EOSIO binaries will be located under the `~/eosio/x.y/bin` folder, where `x.y` is the EOSIO release version that was installed.
+After installing the prebuilt packages, the actual EOSIO binaries will be located under:
+* `/usr/opt/eosio/<version-string>/bin` (Linux-based); or
+* `/usr/local/Cellar/eosio/<version-string>/bin` (MacOS )
+
+where `version-string` is the EOSIO version that was installed; e.g. `2.0.0-rc2`.
+
+Also, soft links for each EOSIO program (`nodeos`, `cleos`, `keosd`, etc.) will be created under `usr/bin` or `usr/local/bin` to allow them to be executed from any directory.
 
 ## Previous Versions
 
