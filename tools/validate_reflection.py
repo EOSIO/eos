@@ -395,7 +395,7 @@ class Reflections:
         self.classes = OrderedDict()
         self.with_2_comments = re.compile(r'(//\s*(%s|%s)\s+([^/\n]*?)\s*\n\s*//\s*(%s|%s)\s+([^/]*?)\s*\n\s*(%s%s\s*\(\s*(\w[^\s<]*))(?:\s*<[^>]*>)?\s*,)' % (ignore_str, swap_str, ignore_str, swap_str, fc_reflect_str, fc_reflect_possible_enum_or_derived_ext), re.MULTILINE | re.DOTALL)
         self.with_comment = re.compile(r'(//\s*(%s|%s)\s+([^/]*?)\s*\n\s*(%s%s\s*\(\s*(\w[^\s<]*))(?:\s*<[^>]*>)?\s*,)' % (ignore_str, swap_str, fc_reflect_str, fc_reflect_possible_enum_or_derived_ext), re.MULTILINE | re.DOTALL)
-        self.reflect_pattern = re.compile(r'(\b(%s%s\s*\(\s*(\w[^\s<]*)(?:\s*<[^>]*>)?\s*)(,|,\s*\([^\(\)]+\)\s*,)\s*(\([^,]*?\))\s*\))[^\)]*%s%s\b' % (fc_reflect_str, fc_reflect_possible_enum_or_derived_ext, fc_reflect_str, fc_reflect_possible_enum_or_derived_ext), re.MULTILINE | re.DOTALL)
+        self.reflect_pattern = re.compile(r'(\b(%s%s\s*\(\s*(\w[^\s<]*)(?:\s*<[^>]*>)?\s*)(,|,\s*\([^\(\)]+\)\s*,)\s*(\([^,]*?\))\s*\))' % (fc_reflect_str, fc_reflect_possible_enum_or_derived_ext), re.MULTILINE | re.DOTALL)
         self.reflect_derived_pattern = re.compile(r',\s*\(\s*(.*)\s*\)\s*,', re.MULTILINE | re.DOTALL)
         self.field_pattern = re.compile(r'\(\s*(\w+)\s*\)', re.MULTILINE | re.DOTALL)
         self.ignore_swap_pattern = re.compile(r'\b([\w\d]+)\b', re.MULTILINE | re.DOTALL)
@@ -676,7 +676,8 @@ def validate_file(file):
                 fwd_swapped.remove(field)
                 f_index += 1
             else:
-                assert reflect_field == field, "Reflection for %s should have field %s instead of %s or else it should indicate if the field should be ignored (%s) or swapped (%s)" %(reflection_name, field, reflect_field, ignore_str, swap_str)
+                if reflect_field != field:
+                    assert reflect_field == field, "Reflection for %s should have field %s instead of %s or else it should indicate if the field should be ignored (%s) or swapped (%s)" %(reflection_name, field, reflect_field, ignore_str, swap_str)
                 f_index += 1
                 rf_index += 1
             debug("rf_index=%s, rf_len=%s, f_index=%s, f_len=%s" % (rf_index, rf_len, f_index, f_len))
