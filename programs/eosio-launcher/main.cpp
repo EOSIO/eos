@@ -1143,6 +1143,7 @@ launcher_def::write_config_file (tn_node_def &node) {
   }
   cfg << "plugin = eosio::net_plugin\n";
   cfg << "plugin = eosio::chain_api_plugin\n"
+      << "plugin = eosio::chain_api_v2_plugin\n"
       << "plugin = eosio::history_api_plugin\n";
   cfg.close();
 }
