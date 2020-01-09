@@ -158,11 +158,18 @@ class apply_context {
       };
 
    public:
+
+      struct read_only_context {
+         explicit constexpr read_only_context(const chainbase::database& db) : db{const_cast<chainbase::database&>(db)} {}
+         const table_id_object* find_table( name code, name scope, name table );
+         chainbase::database& db;
+      };
+
       template<typename ObjectType,
                typename SecondaryKeyProxy = typename std::add_lvalue_reference<typename ObjectType::secondary_key_type>::type,
                typename SecondaryKeyProxyConst = typename std::add_lvalue_reference<
                                                    typename std::add_const<typename ObjectType::secondary_key_type>::type>::type >
-      class generic_index
+      class generic_index_read_only
       {
          public:
             typedef typename ObjectType::secondary_key_type secondary_key_type;
@@ -171,77 +178,7 @@ class apply_context {
 
             using secondary_key_helper_t = secondary_key_helper<secondary_key_type, secondary_key_proxy_type, secondary_key_proxy_const_type>;
 
-            generic_index( apply_context& c ):context(c){}
-
-            int store( uint64_t scope, uint64_t table, const account_name& payer,
-                       uint64_t id, secondary_key_proxy_const_type value )
-            {
-               EOS_ASSERT( payer != account_name(), invalid_table_payer, "must specify a valid account to pay for new record" );
-
-//               context.require_write_lock( scope );
-
-               const auto& tab = context.find_or_create_table( context.receiver, name(scope), name(table), payer );
-
-               const auto& obj = context.db.create<ObjectType>( [&]( auto& o ){
-                  o.t_id          = tab.id;
-                  o.primary_key   = id;
-                  secondary_key_helper_t::set(o.secondary_key, value);
-                  o.payer         = payer;
-               });
-
-               context.db.modify( tab, [&]( auto& t ) {
-                 ++t.count;
-               });
-
-               context.update_db_usage( payer, config::billable_size_v<ObjectType> );
-
-               itr_cache.cache_table( tab );
-               return itr_cache.add( obj );
-            }
-
-            void remove( int iterator ) {
-               const auto& obj = itr_cache.get( iterator );
-               context.update_db_usage( obj.payer, -( config::billable_size_v<ObjectType> ) );
-
-               const auto& table_obj = itr_cache.get_table( obj.t_id );
-               EOS_ASSERT( table_obj.code == context.receiver, table_access_violation, "db access violation" );
-
-//               context.require_write_lock( table_obj.scope );
-
-               context.db.modify( table_obj, [&]( auto& t ) {
-                  --t.count;
-               });
-               context.db.remove( obj );
-
-               if (table_obj.count == 0) {
-                  context.remove_table(table_obj);
-               }
-
-               itr_cache.remove( iterator );
-            }
-
-            void update( int iterator, account_name payer, secondary_key_proxy_const_type secondary ) {
-               const auto& obj = itr_cache.get( iterator );
-
-               const auto& table_obj = itr_cache.get_table( obj.t_id );
-               EOS_ASSERT( table_obj.code == context.receiver, table_access_violation, "db access violation" );
-
-//               context.require_write_lock( table_obj.scope );
-
-               if( payer == account_name() ) payer = obj.payer;
-
-               int64_t billing_size =  config::billable_size_v<ObjectType>;
-
-               if( obj.payer != payer ) {
-                  context.update_db_usage( obj.payer, -(billing_size) );
-                  context.update_db_usage( payer, +(billing_size) );
-               }
-
-               context.db.modify( obj, [&]( auto& o ) {
-                 secondary_key_helper_t::set(o.secondary_key, secondary);
-                 o.payer = payer;
-               });
-            }
+            generic_index_read_only( const chainbase::database& db ): context{db} {}
 
             int find_secondary( uint64_t code, uint64_t scope, uint64_t table, secondary_key_proxy_const_type secondary, uint64_t& primary ) {
                auto tab = context.find_table( name(code), name(scope), name(table) );
@@ -440,11 +377,99 @@ class apply_context {
                secondary_key_helper_t::get(secondary, obj.secondary_key);
             }
 
-         private:
-            apply_context&              context;
+         protected:
+            read_only_context           context;
             iterator_cache<ObjectType>  itr_cache;
-      }; /// class generic_index
+      }; /// class generic_index_read_only
 
+      template<typename ObjectType,
+               typename SecondaryKeyProxy = typename std::add_lvalue_reference<typename ObjectType::secondary_key_type>::type,
+               typename SecondaryKeyProxyConst = typename std::add_lvalue_reference<
+                                                   typename std::add_const<typename ObjectType::secondary_key_type>::type>::type >
+      class generic_index : public generic_index_read_only<ObjectType, SecondaryKeyProxy, SecondaryKeyProxyConst>
+      {
+         public:
+            typedef typename ObjectType::secondary_key_type secondary_key_type;
+            typedef SecondaryKeyProxy      secondary_key_proxy_type;
+            typedef SecondaryKeyProxyConst secondary_key_proxy_const_type;
+
+            using secondary_key_helper_t = secondary_key_helper<secondary_key_type, secondary_key_proxy_type, secondary_key_proxy_const_type>;
+
+            generic_index( apply_context& c ): generic_index_read_only<ObjectType, SecondaryKeyProxy, SecondaryKeyProxyConst>(c.db), context(c){}
+
+            int store( uint64_t scope, uint64_t table, const account_name& payer,
+                       uint64_t id, secondary_key_proxy_const_type value )
+            {
+               EOS_ASSERT( payer != account_name(), invalid_table_payer, "must specify a valid account to pay for new record" );
+
+//               context.require_write_lock( scope );
+
+               const auto& tab = context.find_or_create_table( context.receiver, name(scope), name(table), payer );
+
+               const auto& obj = context.db.create<ObjectType>( [&]( auto& o ){
+                  o.t_id          = tab.id;
+                  o.primary_key   = id;
+                  secondary_key_helper_t::set(o.secondary_key, value);
+                  o.payer         = payer;
+               });
+
+               context.db.modify( tab, [&]( auto& t ) {
+                 ++t.count;
+               });
+
+               context.update_db_usage( payer, config::billable_size_v<ObjectType> );
+
+               itr_cache.cache_table( tab );
+               return itr_cache.add( obj );
+            }
+
+            void remove( int iterator ) {
+               const auto& obj = itr_cache.get( iterator );
+               context.update_db_usage( obj.payer, -( config::billable_size_v<ObjectType> ) );
+
+               const auto& table_obj = itr_cache.get_table( obj.t_id );
+               EOS_ASSERT( table_obj.code == context.receiver, table_access_violation, "db access violation" );
+
+//               context.require_write_lock( table_obj.scope );
+
+               context.db.modify( table_obj, [&]( auto& t ) {
+                  --t.count;
+               });
+               context.db.remove( obj );
+
+               if (table_obj.count == 0) {
+                  context.remove_table(table_obj);
+               }
+
+               itr_cache.remove( iterator );
+            }
+
+            void update( int iterator, account_name payer, secondary_key_proxy_const_type secondary ) {
+               const auto& obj = itr_cache.get( iterator );
+
+               const auto& table_obj = itr_cache.get_table( obj.t_id );
+               EOS_ASSERT( table_obj.code == context.receiver, table_access_violation, "db access violation" );
+
+//               context.require_write_lock( table_obj.scope );
+
+               if( payer == account_name() ) payer = obj.payer;
+
+               int64_t billing_size =  config::billable_size_v<ObjectType>;
+
+               if( obj.payer != payer ) {
+                  context.update_db_usage( obj.payer, -(billing_size) );
+                  context.update_db_usage( payer, +(billing_size) );
+               }
+
+               context.db.modify( obj, [&]( auto& o ) {
+                 secondary_key_helper_t::set(o.secondary_key, secondary);
+                 o.payer = payer;
+               });
+            }
+         private:
+            using generic_index_read_only<ObjectType, SecondaryKeyProxy, SecondaryKeyProxyConst>::itr_cache;
+            apply_context& context;
+      }; /// class generic_index
 
    /// Constructor
    public:
@@ -507,6 +532,19 @@ class apply_context {
 
    /// Database methods:
    public:
+
+      class primary_index_read_only : public read_only_context {
+       public:
+         primary_index_read_only( const chainbase::database& db ) : read_only_context{db} {}
+         int  db_get_i64( int iterator, char* buffer, size_t buffer_size );
+         int  db_next_i64( int iterator, uint64_t& primary );
+         int  db_previous_i64( int iterator, uint64_t& primary );
+         int  db_find_i64( name code, name scope, name table, uint64_t id );
+         int  db_lowerbound_i64( name code, name scope, name table, uint64_t id );
+         int  db_upperbound_i64( name code, name scope, name table, uint64_t id );
+         int  db_end_i64( name code, name scope, name table );
+         iterator_cache<key_value_object>    keyval_cache;
+      };
 
       void update_db_usage( const account_name& payer, int64_t delta );
 
@@ -577,10 +615,10 @@ class apply_context {
       generic_index<index256_object, uint128_t*, const uint128_t*>   idx256;
       generic_index<index_double_object>                             idx_double;
       generic_index<index_long_double_object>                        idx_long_double;
+      primary_index_read_only                                        idx_primary;
 
    private:
 
-      iterator_cache<key_value_object>    keyval_cache;
       vector< std::pair<account_name, uint32_t> > _notified; ///< keeps track of new accounts to be notifed of current message
       vector<uint32_t>                    _inline_actions; ///< action_ordinals of queued inline actions
       vector<uint32_t>                    _cfa_inline_actions; ///< action_ordinals of queued inline context-free actions

@@ -42,6 +42,7 @@ apply_context::apply_context(controller& con, transaction_context& trx_ctx, uint
 ,idx256(*this)
 ,idx_double(*this)
 ,idx_long_double(*this)
+,idx_primary(db)
 {
    action_trace& trace = trx_ctx.get_action_trace(action_ordinal);
    act = &trace.act;
@@ -567,6 +568,10 @@ const table_id_object* apply_context::find_table( name code, name scope, name ta
    return db.find<table_id_object, by_code_scope_table>(boost::make_tuple(code, scope, table));
 }
 
+const table_id_object* apply_context::read_only_context::find_table( name code, name scope, name table ) {
+   return db.find<table_id_object, by_code_scope_table>(boost::make_tuple(code, scope, table));
+}
+
 const table_id_object& apply_context::find_or_create_table( name code, name scope, name table, const account_name &payer ) {
    const auto* existing_tid =  db.find<table_id_object, by_code_scope_table>(boost::make_tuple(code, scope, table));
    if (existing_tid != nullptr) {
@@ -663,6 +668,8 @@ int apply_context::db_store_i64( name scope, name table, const account_name& pay
 }
 
 int apply_context::db_store_i64( name code, name scope, name table, const account_name& payer, uint64_t id, const char* buffer, size_t buffer_size ) {
+   auto& keyval_cache = idx_primary.keyval_cache;
+
 //   require_write_lock( scope );
    const auto& tab = find_or_create_table( code, scope, table, payer );
    auto tableid = tab.id;
@@ -688,6 +695,8 @@ int apply_context::db_store_i64( name code, name scope, name table, const accoun
 }
 
 void apply_context::db_update_i64( int iterator, account_name payer, const char* buffer, size_t buffer_size ) {
+   auto& keyval_cache = idx_primary.keyval_cache;
+
    const key_value_object& obj = keyval_cache.get( iterator );
 
    const auto& table_obj = keyval_cache.get_table( obj.t_id );
@@ -718,6 +727,8 @@ void apply_context::db_update_i64( int iterator, account_name payer, const char*
 }
 
 void apply_context::db_remove_i64( int iterator ) {
+   auto& keyval_cache = idx_primary.keyval_cache;
+
    const key_value_object& obj = keyval_cache.get( iterator );
 
    const auto& table_obj = keyval_cache.get_table( obj.t_id );
@@ -739,7 +750,15 @@ void apply_context::db_remove_i64( int iterator ) {
    keyval_cache.remove( iterator );
 }
 
-int apply_context::db_get_i64( int iterator, char* buffer, size_t buffer_size ) {
+int apply_context::db_get_i64( int iterator, char* buffer, size_t buffer_size ) { return idx_primary.db_get_i64(iterator, buffer, buffer_size); }
+int apply_context::db_next_i64( int iterator, uint64_t& primary ) { return idx_primary.db_next_i64(iterator, primary); }
+int apply_context::db_previous_i64( int iterator, uint64_t& primary ) { return idx_primary.db_previous_i64(iterator, primary); }
+int apply_context::db_find_i64( name code, name scope, name table, uint64_t id ) { return idx_primary.db_find_i64(code, scope, table, id); }
+int apply_context::db_lowerbound_i64( name code, name scope, name table, uint64_t id ) { return idx_primary.db_lowerbound_i64(code, scope, table, id); }
+int apply_context::db_upperbound_i64( name code, name scope, name table, uint64_t id ) { return idx_primary.db_upperbound_i64(code, scope, table, id); }
+int apply_context::db_end_i64( name code, name scope, name table ) { return idx_primary.db_end_i64(code, scope, table); }
+
+int apply_context::primary_index_read_only::db_get_i64( int iterator, char* buffer, size_t buffer_size ) {
    const key_value_object& obj = keyval_cache.get( iterator );
 
    auto s = obj.value.size();
@@ -751,7 +770,7 @@ int apply_context::db_get_i64( int iterator, char* buffer, size_t buffer_size ) 
    return copy_size;
 }
 
-int apply_context::db_next_i64( int iterator, uint64_t& primary ) {
+int apply_context::primary_index_read_only::db_next_i64( int iterator, uint64_t& primary ) {
    if( iterator < -1 ) return -1; // cannot increment past end iterator of table
 
    const auto& obj = keyval_cache.get( iterator ); // Check for iterator != -1 happens in this call
@@ -766,7 +785,7 @@ int apply_context::db_next_i64( int iterator, uint64_t& primary ) {
    return keyval_cache.add( *itr );
 }
 
-int apply_context::db_previous_i64( int iterator, uint64_t& primary ) {
+int apply_context::primary_index_read_only::db_previous_i64( int iterator, uint64_t& primary ) {
    const auto& idx = db.get_index<key_value_index, by_scope_primary>();
 
    if( iterator < -1 ) // is end iterator
@@ -798,7 +817,7 @@ int apply_context::db_previous_i64( int iterator, uint64_t& primary ) {
    return keyval_cache.add(*itr);
 }
 
-int apply_context::db_find_i64( name code, name scope, name table, uint64_t id ) {
+int apply_context::primary_index_read_only::db_find_i64( name code, name scope, name table, uint64_t id ) {
    //require_read_lock( code, scope ); // redundant?
 
    const auto* tab = find_table( code, scope, table );
@@ -812,7 +831,7 @@ int apply_context::db_find_i64( name code, name scope, name table, uint64_t id )
    return keyval_cache.add( *obj );
 }
 
-int apply_context::db_lowerbound_i64( name code, name scope, name table, uint64_t id ) {
+int apply_context::primary_index_read_only::db_lowerbound_i64( name code, name scope, name table, uint64_t id ) {
    //require_read_lock( code, scope ); // redundant?
 
    const auto* tab = find_table( code, scope, table );
@@ -828,7 +847,7 @@ int apply_context::db_lowerbound_i64( name code, name scope, name table, uint64_
    return keyval_cache.add( *itr );
 }
 
-int apply_context::db_upperbound_i64( name code, name scope, name table, uint64_t id ) {
+int apply_context::primary_index_read_only::db_upperbound_i64( name code, name scope, name table, uint64_t id ) {
    //require_read_lock( code, scope ); // redundant?
 
    const auto* tab = find_table( code, scope, table );
@@ -844,7 +863,7 @@ int apply_context::db_upperbound_i64( name code, name scope, name table, uint64_
    return keyval_cache.add( *itr );
 }
 
-int apply_context::db_end_i64( name code, name scope, name table ) {
+int apply_context::primary_index_read_only::db_end_i64( name code, name scope, name table ) {
    //require_read_lock( code, scope ); // redundant?
 
    const auto* tab = find_table( code, scope, table );
