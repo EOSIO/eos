@@ -366,16 +366,18 @@ struct controller_impl {
       try {
          s( std::forward<Arg>( a ));
       } catch (std::bad_alloc& e) {
-         wlog( "std::bad_alloc" );
+         wlog( "std::bad_alloc: ${w}", ("w", e.what()) );
          throw e;
       } catch (boost::interprocess::bad_alloc& e) {
-         wlog( "bad alloc" );
+         wlog( "boost::interprocess::bad alloc: ${w}", ("w", e.what()) );
          throw e;
       } catch ( controller_emit_signal_exception& e ) {
-         wlog( "${details}", ("details", e.to_detail_string()) );
+         wlog( "controller_emit_signal_exception: ${details}", ("details", e.to_detail_string()) );
          throw e;
       } catch ( fc::exception& e ) {
-         wlog( "${details}", ("details", e.to_detail_string()) );
+         wlog( "fc::exception: ${details}", ("details", e.to_detail_string()) );
+      } catch ( std::exception& e ) {
+         wlog( "std::exception: ${details}", ("details", e.what()) );
       } catch ( ... ) {
          wlog( "signal handler threw exception" );
       }
