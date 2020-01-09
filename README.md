@@ -56,7 +56,7 @@ If you are new to EOSIO, it is recommended that you install the [EOSIO Prebuilt 
 
 ## Prebuilt Binaries
 
-Prebuilt software packages are available for the EOSIO [supported operating systems](#supported-operating-systems) above. Find the instructions below for your OS.
+Prebuilt EOSIO software packages are available for the operating systems below. Find and follow the instructions for your OS:
 
 ### Mac OS X:
 
