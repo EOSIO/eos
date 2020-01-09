@@ -7,7 +7,7 @@ content_title: Install Prebuilt Binaries
 
 ## Prebuilt Binaries
 
-EOSIO prebuilt software packages are available for the operating systems below. Find and follow the instructions for your OS:
+EOSIO prebuilt binary packages are available for specific [Operating Systems](index.md#supported-operating-systems). Find the instructions below for your given OS:
 
 ### Mac OS X:
 
