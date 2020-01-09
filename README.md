@@ -46,7 +46,7 @@ EOSIO currently supports the following operating systems:
 
 ## Software Installation
 
-If you are new to EOSIO, it is recommended that you install the [EOSIO Prebuilt Binaries](#prebuilt-binaries), then proceed to the [Getting Started](https://eosio.github.io/getting-started) section of the [EOSIO Developer Portal](https://eosio.github.io). If you are an advanced developer, a block producer, or no binaries are available for your platform, you may need to [Build EOSIO from source](https://eosio.github.io/eos/latest/install/build-from-source).
+If you are new to EOSIO, it is recommended that you install the [EOSIO Prebuilt Binaries](#prebuilt-binaries), then proceed to the [Getting Started](https://developers.eos.io/eosio-home/docs) walkthrough. If you are an advanced developer, a block producer, or no binaries are available for your platform, you may need to [Build EOSIO from source](https://eosio.github.io/eos/latest/install/build-from-source).
 
 ---
 
@@ -131,6 +131,15 @@ To uninstall the EOSIO built/installed binaries and dependencies, run:
 ./scripts/eosio_uninstall.sh
 ```
 
+## Documentation 
+1. [Nodeos](http://eosio.github.io/eos/nodeos/)
+    - [Usage](http://eosio.github.io/eos/nodeos/usage/index)
+    - [Replays](http://eosio.github.io/eos/nodeos/replays/index)
+    - [Chain API Reference](http://eosio.github.io/eos/nodeos/plugins/chain_api_plugin/api-reference/index)
+    - [Troubleshooting](http://eosio.github.io/eos/nodeos/troubleshooting/index)
+1. [Cleos](http://eosio.github.io/eos/cleos/)
+1. [Keosd](http://eosio.github.io/eos/keosd/)
+
 ## Resources
 1. [Website](https://eos.io)
 1. [Blog](https://medium.com/eosio)
@@ -143,7 +152,7 @@ To uninstall the EOSIO built/installed binaries and dependencies, run:
 
 <a name="gettingstarted"></a>
 ## Getting Started
-Instructions detailing the process of getting the software, building it, running a simple test network that produces blocks, account creation and uploading a sample contract to the blockchain can be found in [Getting Started](https://developers.eos.io/eosio-home/docs) on the [EOSIO Developer Portal](https://developers.eos.io).
+Instructions detailing the process of getting the software, building it, running a simple test network that produces blocks, account creation and uploading a sample contract to the blockchain can be found in the [Getting Started](https://developers.eos.io/eosio-home/docs) walkthrough. 
 
 ## Contributing
 
