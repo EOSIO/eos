@@ -1,7 +1,3 @@
-/**
- * @file
- * @copyright defined in eos/LICENSE
- */
 #include <vector>
 
 #include <eosiolib/crypto.h>

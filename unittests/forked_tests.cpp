@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE.txt
- */
 #include <eosio/chain/abi_serializer.hpp>
 #include <eosio/chain/abi_serializer.hpp>
 #include <eosio/testing/tester.hpp>
@@ -28,11 +24,7 @@ BOOST_AUTO_TEST_CASE( irrblock ) try {
    c.produce_blocks(10);
    auto r = c.create_accounts( {N(dan),N(sam),N(pam),N(scott)} );
    auto res = c.set_producers( {N(dan),N(sam),N(pam),N(scott)} );
-   vector<producer_key> sch = { {N(dan),get_public_key(N(dan), "active")},
-                                {N(sam),get_public_key(N(sam), "active")},
-                                {N(scott),get_public_key(N(scott), "active")},
-                                {N(pam),get_public_key(N(pam), "active")}
-                              };
+
    wlog("set producer schedule to [dan,sam,pam]");
    c.produce_blocks(50);
 
@@ -53,10 +45,10 @@ BOOST_AUTO_TEST_CASE( fork_with_bad_block ) try {
    auto res = bios.set_producers( {N(a),N(b),N(c),N(d),N(e)} );
 
    // run until the producers are installed and its the start of "a's" round
-   BOOST_REQUIRE( produce_empty_blocks_until( bios, N(e), N(a) ) );
+   BOOST_REQUIRE( produce_until_transition( bios, N(e), N(a) ) );
 
    // sync remote node
-   tester remote;
+   tester remote(setup_policy::none);
    push_blocks(bios, remote);
 
    // produce 6 blocks on bios
@@ -143,9 +135,7 @@ BOOST_AUTO_TEST_CASE( forking ) try {
    wdump((fc::json::to_pretty_string(r)));
    c.produce_block();
    auto res = c.set_producers( {N(dan),N(sam),N(pam)} );
-   vector<producer_key> sch = { {N(dan),get_public_key(N(dan), "active")},
-                                {N(sam),get_public_key(N(sam), "active")},
-                                {N(pam),get_public_key(N(pam), "active")}};
+
    wdump((fc::json::to_pretty_string(res)));
    wlog("set producer schedule to [dan,sam,pam]");
    c.produce_blocks(30);
@@ -176,7 +166,7 @@ BOOST_AUTO_TEST_CASE( forking ) try {
       );
 
 
-   tester c2;
+   tester c2(setup_policy::none);
    wlog( "push c1 blocks to c2" );
    push_blocks(c, c2);
    wlog( "end push c1 blocks to c2" );
@@ -278,9 +268,9 @@ BOOST_AUTO_TEST_CASE( forking ) try {
    bad_block.transaction_mroot = bad_block.previous;
    auto bad_block_bs = c.control->create_block_state_future( std::make_shared<signed_block>(std::move(bad_block)) );
    c.control->abort_block();
-   BOOST_REQUIRE_EXCEPTION(c.control->push_block( bad_block_bs ), fc::exception,
+   BOOST_REQUIRE_EXCEPTION(c.control->push_block( bad_block_bs, forked_branch_callback{}, trx_meta_cache_lookup{} ), fc::exception,
       [] (const fc::exception &ex)->bool {
-         return ex.to_detail_string().find("block not signed by expected key") != std::string::npos;
+         return ex.to_detail_string().find("block signed by unexpected key") != std::string::npos;
       });
 } FC_LOG_AND_RETHROW()
 
@@ -299,7 +289,7 @@ BOOST_AUTO_TEST_CASE( prune_remove_branch ) try {
    wlog("set producer schedule to [dan,sam,pam,scott]");
    c.produce_blocks(50);
 
-   tester c2;
+   tester c2(setup_policy::none);
    wlog( "push c1 blocks to c2" );
    push_blocks(c, c2);
 
@@ -352,9 +342,9 @@ BOOST_AUTO_TEST_CASE( prune_remove_branch ) try {
  */
 BOOST_AUTO_TEST_CASE( validator_accepts_valid_blocks ) try {
 
-   tester n1;
-   tester n2;
-   tester n3;
+   tester n1(setup_policy::none);
+   tester n2(setup_policy::none);
+   tester n3(setup_policy::none);
 
    n1.produce_block();
 
@@ -371,7 +361,7 @@ BOOST_AUTO_TEST_CASE( validator_accepts_valid_blocks ) try {
    BOOST_CHECK_EQUAL( n2.control->head_block_id(), id );
 
    BOOST_REQUIRE( first_block );
-   first_block->verify_signee( first_block->signee() );
+   first_block->verify_signee();
    BOOST_CHECK_EQUAL( first_block->header.id(), first_block->block->id() );
    BOOST_CHECK( first_block->header.producer_signature == first_block->block->producer_signature );
 
@@ -395,7 +385,7 @@ BOOST_AUTO_TEST_CASE( read_modes ) try {
    auto head_block_num = c.control->head_block_num();
    auto last_irreversible_block_num = c.control->last_irreversible_block_num();
 
-   tester head(setup_policy::old_bios_only, db_read_mode::HEAD);
+   tester head(setup_policy::none, db_read_mode::HEAD);
    push_blocks(c, head);
    BOOST_CHECK_EQUAL(head_block_num, head.control->fork_db_head_block_num());
    BOOST_CHECK_EQUAL(head_block_num, head.control->head_block_num());
@@ -405,7 +395,7 @@ BOOST_AUTO_TEST_CASE( read_modes ) try {
    BOOST_CHECK_EQUAL(head_block_num, read_only.control->fork_db_head_block_num());
    BOOST_CHECK_EQUAL(head_block_num, read_only.control->head_block_num());
 
-   tester irreversible(setup_policy::old_bios_only, db_read_mode::IRREVERSIBLE);
+   tester irreversible(setup_policy::none, db_read_mode::IRREVERSIBLE);
    push_blocks(c, irreversible);
    BOOST_CHECK_EQUAL(head_block_num, irreversible.control->fork_db_pending_head_block_num());
    BOOST_CHECK_EQUAL(last_irreversible_block_num, irreversible.control->fork_db_head_block_num());
@@ -426,27 +416,27 @@ BOOST_AUTO_TEST_CASE( irreversible_mode ) try {
    main.produce_block();
    main.set_producers( {N(producer1), N(producer2)} );
    main.produce_block();
-   BOOST_REQUIRE( produce_empty_blocks_until( main, N(producer1), N(producer2), 26) );
+   BOOST_REQUIRE( produce_until_transition( main, N(producer1), N(producer2), 26) );
 
    main.create_accounts( {N(alice)} );
    main.produce_block();
    auto hbn1 = main.control->head_block_num();
    auto lib1 = main.control->last_irreversible_block_num();
 
-   BOOST_REQUIRE( produce_empty_blocks_until( main, N(producer2), N(producer1), 11) );
+   BOOST_REQUIRE( produce_until_transition( main, N(producer2), N(producer1), 11) );
 
    auto hbn2 = main.control->head_block_num();
    auto lib2 = main.control->last_irreversible_block_num();
 
    BOOST_REQUIRE( lib2 < hbn1 );
 
-   tester other;
+   tester other(setup_policy::none);
 
    push_blocks( main, other );
    BOOST_CHECK_EQUAL( other.control->head_block_num(), hbn2 );
 
-   BOOST_REQUIRE( produce_empty_blocks_until( main, N(producer1), N(producer2), 12) );
-   BOOST_REQUIRE( produce_empty_blocks_until( main, N(producer2), N(producer1), 12) );
+   BOOST_REQUIRE( produce_until_transition( main, N(producer1), N(producer2), 12) );
+   BOOST_REQUIRE( produce_until_transition( main, N(producer2), N(producer1), 12) );
 
    auto hbn3 = main.control->head_block_num();
    auto lib3 = main.control->last_irreversible_block_num();
@@ -463,15 +453,15 @@ BOOST_AUTO_TEST_CASE( irreversible_mode ) try {
    auto fork_first_block_id = other.control->head_block_id();
    wlog( "{w}", ("w", fork_first_block_id));
 
-   BOOST_REQUIRE( produce_empty_blocks_until( other, N(producer2), N(producer1), 11) ); // finish producer2's round
+   BOOST_REQUIRE( produce_until_transition( other, N(producer2), N(producer1), 11) ); // finish producer2's round
    BOOST_REQUIRE_EQUAL( other.control->pending_block_producer().to_string(), "producer1" );
 
    // Repeat two more times to ensure other has a longer chain than main
    other.produce_block( fc::milliseconds( 13 * config::block_interval_ms ) ); // skip over producer1's round
-   BOOST_REQUIRE( produce_empty_blocks_until( other, N(producer2), N(producer1), 11) ); // finish producer2's round
+   BOOST_REQUIRE( produce_until_transition( other, N(producer2), N(producer1), 11) ); // finish producer2's round
 
    other.produce_block( fc::milliseconds( 13 * config::block_interval_ms ) ); // skip over producer1's round
-   BOOST_REQUIRE( produce_empty_blocks_until( other, N(producer2), N(producer1), 11) ); // finish producer2's round
+   BOOST_REQUIRE( produce_until_transition( other, N(producer2), N(producer1), 11) ); // finish producer2's round
 
    auto hbn4 = other.control->head_block_num();
    auto lib4 = other.control->last_irreversible_block_num();
@@ -535,11 +525,11 @@ BOOST_AUTO_TEST_CASE( reopen_forkdb ) try {
 
    BOOST_REQUIRE_EQUAL( c1.control->active_producers().version, 1u );
 
-   produce_empty_blocks_until( c1, N(carol), N(alice) );
+   produce_until_transition( c1, N(carol), N(alice) );
    c1.produce_block();
-   produce_empty_blocks_until( c1, N(carol), N(alice) );
+   produce_until_transition( c1, N(carol), N(alice) );
 
-   tester c2;
+   tester c2(setup_policy::none);
 
    push_blocks( c1, c2 );
 
@@ -573,8 +563,156 @@ BOOST_AUTO_TEST_CASE( reopen_forkdb ) try {
 
    c1.close();
 
-   c1.open( nullptr );
+   c1.open();
 
 } FC_LOG_AND_RETHROW()
+
+BOOST_AUTO_TEST_CASE( push_block_returns_forked_transactions ) try {
+   tester c;
+   while (c.control->head_block_num() < 3) {
+      c.produce_block();
+   }
+   auto r = c.create_accounts( {N(dan),N(sam),N(pam)} );
+   c.produce_block();
+   auto res = c.set_producers( {N(dan),N(sam),N(pam)} );
+   wlog("set producer schedule to [dan,sam,pam]");
+   c.produce_blocks(40);
+
+   tester c2(setup_policy::none);
+   wlog( "push c1 blocks to c2" );
+   push_blocks(c, c2);
+
+   wlog( "c1 blocks:" );
+   signed_block_ptr cb;
+   c.produce_blocks(3);
+   signed_block_ptr b;
+   cb = b = c.produce_block();
+   account_name expected_producer = N(dan);
+   BOOST_REQUIRE_EQUAL( b->producer.to_string(), expected_producer.to_string() );
+
+   b = c.produce_block();
+   expected_producer = N(sam);
+   BOOST_REQUIRE_EQUAL( b->producer.to_string(), expected_producer.to_string() );
+   c.produce_blocks(10);
+   c.create_accounts( {N(cam)} );
+   c.set_producers( {N(dan),N(sam),N(pam),N(cam)} );
+   wlog("set producer schedule to [dan,sam,pam,cam]");
+   c.produce_block();
+   // The next block should be produced by pam.
+
+   // Sync second chain with first chain.
+   wlog( "push c1 blocks to c2" );
+   push_blocks(c, c2);
+   wlog( "end push c1 blocks to c2" );
+
+   // Now sam and pam go on their own fork while dan is producing blocks by himself.
+
+   wlog( "sam and pam go off on their own fork on c2 while dan produces blocks by himself in c1" );
+   auto fork_block_num = c.control->head_block_num();
+
+   wlog( "c2 blocks:" );
+   c2.produce_blocks(12); // pam produces 12 blocks
+   b = c2.produce_block( fc::milliseconds(config::block_interval_ms * 13) ); // sam skips over dan's blocks
+   expected_producer = N(sam);
+   BOOST_REQUIRE_EQUAL( b->producer.to_string(), expected_producer.to_string() );
+   c2.produce_blocks(11 + 12);
+
+
+   wlog( "c1 blocks:" );
+   b = c.produce_block( fc::milliseconds(config::block_interval_ms * 13) ); // dan skips over pam's blocks
+   expected_producer = N(dan);
+   BOOST_REQUIRE_EQUAL( b->producer.to_string(), expected_producer.to_string() );
+   // create accounts on c1 which will be forked out
+   c.produce_block();
+
+   transaction_trace_ptr trace1, trace2, trace3;
+   { // create account the hard way so we can set reference block and expiration
+      signed_transaction trx;
+      authority active_auth( get_public_key( N(test1), "active" ) );
+      authority owner_auth( get_public_key( N(test1), "owner" ) );
+      trx.actions.emplace_back( vector<permission_level>{{config::system_account_name,config::active_name}},
+                                newaccount{
+                                      .creator  = config::system_account_name,
+                                      .name     = N(test1),
+                                      .owner    = owner_auth,
+                                      .active   = active_auth,
+                                });
+      trx.expiration = c.control->head_block_time() + fc::seconds( 60 );
+      trx.set_reference_block( cb->id() );
+      trx.sign( get_private_key( config::system_account_name, "active" ), c.control->get_chain_id()  );
+      trace1 = c.push_transaction( trx );
+   }
+   c.produce_block();
+   {
+      signed_transaction trx;
+      authority active_auth( get_public_key( N(test2), "active" ) );
+      authority owner_auth( get_public_key( N(test2), "owner" ) );
+      trx.actions.emplace_back( vector<permission_level>{{config::system_account_name,config::active_name}},
+                                newaccount{
+                                      .creator  = config::system_account_name,
+                                      .name     = N(test2),
+                                      .owner    = owner_auth,
+                                      .active   = active_auth,
+                                });
+      trx.expiration = c.control->head_block_time() + fc::seconds( 60 );
+      trx.set_reference_block( cb->id() );
+      trx.sign( get_private_key( config::system_account_name, "active" ), c.control->get_chain_id()  );
+      trace2 = c.push_transaction( trx );
+   }
+   {
+      signed_transaction trx;
+      authority active_auth( get_public_key( N(test3), "active" ) );
+      authority owner_auth( get_public_key( N(test3), "owner" ) );
+      trx.actions.emplace_back( vector<permission_level>{{config::system_account_name,config::active_name}},
+                                newaccount{
+                                      .creator  = config::system_account_name,
+                                      .name     = N(test3),
+                                      .owner    = owner_auth,
+                                      .active   = active_auth,
+                                });
+      trx.expiration = c.control->head_block_time() + fc::seconds( 60 );
+      trx.set_reference_block( cb->id() );
+      trx.sign( get_private_key( config::system_account_name, "active" ), c.control->get_chain_id()  );
+      trace3 = c.push_transaction( trx );
+   }
+   c.produce_block();
+   c.produce_blocks(9);
+
+   // dan on chain 1 now gets all of the blocks from chain 2 which should cause fork switch
+   wlog( "push c2 blocks to c1" );
+   for( uint32_t start = fork_block_num + 1, end = c2.control->head_block_num(); start <= end; ++start ) {
+      auto fb = c2.control->fetch_block_by_number( start );
+      c.push_block( fb );
+   }
+
+   // verify transaction on fork is reported by push_block in order
+   BOOST_REQUIRE_EQUAL( 3, c.get_unapplied_transaction_queue().size() );
+   BOOST_REQUIRE_EQUAL( trace1->id, c.get_unapplied_transaction_queue().begin()->id() );
+   BOOST_REQUIRE_EQUAL( trace2->id, (++c.get_unapplied_transaction_queue().begin())->id() );
+   BOOST_REQUIRE_EQUAL( trace3->id, (++(++c.get_unapplied_transaction_queue().begin()))->id() );
+
+   BOOST_REQUIRE_EXCEPTION(c.control->get_account( N(test1) ), fc::exception,
+                           [a=N(test1)] (const fc::exception& e)->bool {
+                              return std::string( e.what() ).find( a.to_string() ) != std::string::npos;
+                           }) ;
+   BOOST_REQUIRE_EXCEPTION(c.control->get_account( N(test2) ), fc::exception,
+                           [a=N(test2)] (const fc::exception& e)->bool {
+                              return std::string( e.what() ).find( a.to_string() ) != std::string::npos;
+                           }) ;
+   BOOST_REQUIRE_EXCEPTION(c.control->get_account( N(test3) ), fc::exception,
+                           [a=N(test3)] (const fc::exception& e)->bool {
+                              return std::string( e.what() ).find( a.to_string() ) != std::string::npos;
+                           }) ;
+
+   // produce block which will apply the unapplied transactions
+   c.produce_block();
+
+   // verify unapplied transactions ran
+   BOOST_REQUIRE_EQUAL( c.control->get_account( N(test1) ).name,  N(test1) );
+   BOOST_REQUIRE_EQUAL( c.control->get_account( N(test2) ).name,  N(test2) );
+   BOOST_REQUIRE_EQUAL( c.control->get_account( N(test3) ).name,  N(test3) );
+
+} FC_LOG_AND_RETHROW()
+
 
 BOOST_AUTO_TEST_SUITE_END()

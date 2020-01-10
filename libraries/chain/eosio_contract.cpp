@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
 #include <eosio/chain/eosio_contract.hpp>
 #include <eosio/chain/contract_table_objects.hpp>
 
@@ -313,7 +309,7 @@ void apply_eosio_deleteauth(apply_context& context) {
       auto range = index.equal_range(boost::make_tuple(remove.account, remove.permission));
       EOS_ASSERT(range.first == range.second, action_validate_exception,
                  "Cannot delete a linked authority. Unlink the authority first. This authority is linked to ${code}::${type}.",
-                 ("code", string(range.first->code))("type", string(range.first->message_type)));
+                 ("code", range.first->code)("type", range.first->message_type));
    }
 
    const auto& permission = authorization.get_permission({remove.account, remove.permission});

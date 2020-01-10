@@ -15,6 +15,7 @@ import json
 from core_symbol import CORE_SYMBOL
 from testUtils import Utils
 from testUtils import Account
+from testUtils import BlockLogAction
 from Node import BlockType
 from Node import Node
 from WalletMgr import WalletMgr
@@ -386,8 +387,8 @@ class Cluster(object):
 
         Cluster.__LauncherCmdArr = cmdArr.copy()
 
-        s=" ".join(cmdArr)
-        Utils.Print("cmd: %s" % (s))
+        s=" ".join([("'{0}'".format(element) if (' ' in element) else element) for element in cmdArr.copy()])
+        if Utils.Debug: Utils.Print("cmd: %s" % (s))
         if 0 != subprocess.call(cmdArr):
             Utils.Print("ERROR: Launcher failed to launch. failed cmd: %s" % (s))
             return False
@@ -953,7 +954,7 @@ class Cluster(object):
             "FEATURE_DIGESTS": ""
         }
         if PFSetupPolicy.hasPreactivateFeature(pfSetupPolicy):
-            env["BIOS_CONTRACT_PATH"] = "unittests/contracts/eosio.bios"
+            env["BIOS_CONTRACT_PATH"] = "unittests/contracts/old_versions/v1.7.0-develop-preactivate_feature/eosio.bios"
 
         if pfSetupPolicy == PFSetupPolicy.FULL:
             allBuiltinProtocolFeatureDigests = biosNode.getAllBuiltinFeatureDigestsToPreactivate()
@@ -964,7 +965,7 @@ class Cluster(object):
             if not silent: Utils.Print("Launcher failed to shut down eos cluster.")
             return None
 
-        p = re.compile('error', re.IGNORECASE)
+        p = re.compile(r"\berror\b", re.IGNORECASE)
         with open(Cluster.__bootlog) as bootFile:
             for line in bootFile:
                 if p.search(line):
@@ -1071,7 +1072,7 @@ class Cluster(object):
         contract="eosio.bios"
         contractDir="unittests/contracts/%s" % (contract)
         if PFSetupPolicy.hasPreactivateFeature(pfSetupPolicy):
-            contractDir="unittests/contracts/%s" % (contract)
+            contractDir="unittests/contracts/old_versions/v1.7.0-develop-preactivate_feature/%s" % (contract)
         else:
             contractDir="unittests/contracts/old_versions/v1.6.0-rc3/%s" % (contract)
         wasmFile="%s.wasm" % (contract)
@@ -1606,9 +1607,9 @@ class Cluster(object):
 
         self.printBlockLog()
 
-    def getBlockLog(self, nodeExtension):
+    def getBlockLog(self, nodeExtension, blockLogAction=BlockLogAction.return_blocks, outputFile=None, first=None, last=None, throwException=False, silentErrors=False, exitOnError=False):
         blockLogDir=Utils.getNodeDataDir(nodeExtension, "blocks")
-        return Utils.getBlockLog(blockLogDir, exitOnError=False)
+        return Utils.getBlockLog(blockLogDir, blockLogAction=blockLogAction, outputFile=outputFile, first=first, last=last,  throwException=throwException, silentErrors=silentErrors, exitOnError=exitOnError)
 
     def printBlockLog(self):
         blockLogBios=self.getBlockLog("bios")

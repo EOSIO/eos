@@ -1,8 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
-
 #pragma once
 
 #include <eosio/chain_plugin/chain_plugin.hpp>
@@ -114,7 +109,7 @@ public:
    fc::variants get_supported_protocol_features( const get_supported_protocol_features_params& params ) const;
 
    get_account_ram_corrections_result  get_account_ram_corrections( const get_account_ram_corrections_params& params ) const;
-   
+
 private:
    std::shared_ptr<class producer_plugin_impl> my;
 };

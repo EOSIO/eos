@@ -1,8 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- *  @brief launch testnet nodes
- **/
 #include <string>
 #include <vector>
 #include <math.h>
@@ -505,7 +500,7 @@ launcher_def::set_options (bpo::options_description &cfg) {
     ("servers",bpo::value<string>(),"a file containing ip addresses and names of individual servers to deploy as producers or non-producers ")
     ("per-host",bpo::value<int>(&per_host)->default_value(0),("specifies how many " + string(node_executable_name) + " instances will run on a single host. Use 0 to indicate all on one.").c_str())
     ("network-name",bpo::value<string>(&network.name)->default_value("testnet_"),"network name prefix used in GELF logging source")
-    ("enable-gelf-logging",bpo::value<bool>(&gelf_enabled)->default_value(true),"enable gelf logging appender in logging configuration file")
+    ("enable-gelf-logging",bpo::value<bool>(&gelf_enabled)->default_value(false),"enable gelf logging appender in logging configuration file")
     ("gelf-endpoint",bpo::value<string>(&gelf_endpoint)->default_value("10.160.11.21:12201"),"hostname:port or ip:port of GELF endpoint")
     ("template",bpo::value<string>(&start_temp)->default_value("testnet.template"),"the startup script template")
     ("script",bpo::value<string>(&start_script)->default_value("bios_boot.sh"),"the generated startup script name")

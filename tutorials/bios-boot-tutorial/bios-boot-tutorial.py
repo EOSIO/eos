@@ -304,11 +304,11 @@ def stepSetSystemContract():
     retry('curl -X POST http://127.0.0.1:%d' % args.http_port + 
         '/v1/producer/schedule_protocol_feature_activations ' +
         '-d \'{"protocol_features_to_activate": ["0ec7e080177b2c02b278d5088611686b49d739925a92d9bfcacd7fc6b74053bd"]}\'')
-    sleep(5)
+    sleep(3)
 
-    # install eosio.system
-    retry(args.cleos + 'set contract eosio ' + args.contracts_dir + '/eosio.system/')
-    sleep(1)
+    # install eosio.system the older version first
+    retry(args.cleos + 'set contract eosio ' + args.old_contracts_dir + '/eosio.system/')
+    sleep(3)
 
     # activate remaining features
     # GET_SENDER
@@ -318,20 +318,30 @@ def stepSetSystemContract():
     # ONLY_BILL_FIRST_AUTHORIZER
     retry(args.cleos + 'push action eosio activate \'["8ba52fe7a3956c5cd3a656a3174b931d3bb2abb45578befc59f283ecd816a405"]\' -p eosio')
     # RESTRICT_ACTION_TO_SELF
-    retry(args.cleos + 'push action eosio activate \'["ad9e3d8f650687709fd68f4b90b41f7d825a365b02c23a636cef88ac2ac00c43"]\' -p eosio')
+    retry(args.cleos + 'push action eosio activate \'["ad9e3d8f650687709fd68f4b90b41f7d825a365b02c23a636cef88ac2ac00c43"]\' -p eosio@active')
     # DISALLOW_EMPTY_PRODUCER_SCHEDULE
-    retry(args.cleos + 'push action eosio activate \'["68dcaa34c0517d19666e6b33add67351d8c5f69e999ca1e37931bc410a297428"]\' -p eosio')
+    retry(args.cleos + 'push action eosio activate \'["68dcaa34c0517d19666e6b33add67351d8c5f69e999ca1e37931bc410a297428"]\' -p eosio@active')
      # FIX_LINKAUTH_RESTRICTION
-    retry(args.cleos + 'push action eosio activate \'["e0fb64b1085cc5538970158d05a009c24e276fb94e1a0bf6a528b48fbc4ff526"]\' -p eosio')
+    retry(args.cleos + 'push action eosio activate \'["e0fb64b1085cc5538970158d05a009c24e276fb94e1a0bf6a528b48fbc4ff526"]\' -p eosio@active')
      # REPLACE_DEFERRED
-    retry(args.cleos + 'push action eosio activate \'["ef43112c6543b88db2283a2e077278c315ae2c84719a8b25f25cc88565fbea99"]\' -p eosio')
+    retry(args.cleos + 'push action eosio activate \'["ef43112c6543b88db2283a2e077278c315ae2c84719a8b25f25cc88565fbea99"]\' -p eosio@active')
     # NO_DUPLICATE_DEFERRED_ID
-    retry(args.cleos + 'push action eosio activate \'["4a90c00d55454dc5b059055ca213579c6ea856967712a56017487886a4d4cc0f"]\' -p eosio')
+    retry(args.cleos + 'push action eosio activate \'["4a90c00d55454dc5b059055ca213579c6ea856967712a56017487886a4d4cc0f"]\' -p eosio@active')
     # ONLY_LINK_TO_EXISTING_PERMISSION
-    retry(args.cleos + 'push action eosio activate \'["1a99a59d87e06e09ec5b028a9cbb7749b4a5ad8819004365d02dc4379a8b7241"]\' -p eosio')
+    retry(args.cleos + 'push action eosio activate \'["1a99a59d87e06e09ec5b028a9cbb7749b4a5ad8819004365d02dc4379a8b7241"]\' -p eosio@active')
     # RAM_RESTRICTIONS
-    retry(args.cleos + 'push action eosio activate \'["4e7bf348da00a945489b2a681749eb56f5de00b900014e137ddae39f48f69d67"]\' -p eosio')
+    retry(args.cleos + 'push action eosio activate \'["4e7bf348da00a945489b2a681749eb56f5de00b900014e137ddae39f48f69d67"]\' -p eosio@active')
+    # WEBAUTHN_KEY
+    retry(args.cleos + 'push action eosio activate \'["4fca8bd82bbd181e714e283f83e1b45d95ca5af40fb89ad3977b653c448f78c2"]\' -p eosio@active')
+    # WTMSIG_BLOCK_SIGNATURES
+    retry(args.cleos + 'push action eosio activate \'["299dcb6af692324b899b39f16d5a530a33062804e41f09dc97e9f156b4476707"]\' -p eosio@active')
+    sleep(1)
+
     run(args.cleos + 'push action eosio setpriv' + jsonArg(['eosio.msig', 1]) + '-p eosio@active')
+
+    # install eosio.system latest version
+    retry(args.cleos + 'set contract eosio ' + args.contracts_dir + '/eosio.system/')
+    sleep(3)
 
 def stepInitSystemContract():
     run(args.cleos + 'push action eosio init' + jsonArg(['0', '4,' + args.symbol]) + '-p eosio@active')
@@ -392,7 +402,8 @@ parser.add_argument('--private-Key', metavar='', help="EOSIO Private Key", defau
 parser.add_argument('--cleos', metavar='', help="Cleos command", default='../../build/programs/cleos/cleos --wallet-url http://127.0.0.1:6666 ')
 parser.add_argument('--nodeos', metavar='', help="Path to nodeos binary", default='../../build/programs/nodeos/nodeos')
 parser.add_argument('--keosd', metavar='', help="Path to keosd binary", default='../../build/programs/keosd/keosd')
-parser.add_argument('--contracts-dir', metavar='', help="Path to contracts directory", default='../../build/contracts/')
+parser.add_argument('--contracts-dir', metavar='', help="Path to latest contracts directory", default='../../build/contracts/')
+parser.add_argument('--old-contracts-dir', metavar='', help="Path to 1.8.x contracts directory", default='../../build/contracts/')
 parser.add_argument('--nodes-dir', metavar='', help="Path to nodes directory", default='./nodes/')
 parser.add_argument('--genesis', metavar='', help="Path to genesis.json", default="./genesis.json")
 parser.add_argument('--wallet-dir', metavar='', help="Path to wallet directory", default='./wallet/')

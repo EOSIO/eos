@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
 #include <boost/test/unit_test.hpp>
 #include <eosio/testing/tester.hpp>
 
@@ -43,7 +39,7 @@ BOOST_AUTO_TEST_CASE(block_with_invalid_tx_test)
    tester validator;
    auto bs = validator.control->create_block_state_future( copy_b );
    validator.control->abort_block();
-   BOOST_REQUIRE_EXCEPTION(validator.control->push_block( bs ), fc::exception ,
+   BOOST_REQUIRE_EXCEPTION(validator.control->push_block( bs, forked_branch_callback{}, trx_meta_cache_lookup{} ), fc::exception ,
    [] (const fc::exception &e)->bool {
       return e.code() == account_name_exists_exception::code_value ;
    }) ;
@@ -188,7 +184,94 @@ BOOST_AUTO_TEST_CASE(broadcasted_block_test)
   bytes bcasted_blk_by_prod_node_packed = fc::raw::pack(*bcasted_blk_by_prod_node);
   bytes bcasted_blk_by_recv_node_packed = fc::raw::pack(*bcasted_blk_by_recv_node);
   BOOST_CHECK(std::equal(bcasted_blk_by_prod_node_packed.begin(), bcasted_blk_by_prod_node_packed.end(), bcasted_blk_by_recv_node_packed.begin()));
-
 }
+
+/**
+ * Verify abort block returns applied transactions in block
+ */
+BOOST_FIXTURE_TEST_CASE( abort_block_transactions, validating_tester) { try {
+
+      produce_blocks(2);
+      signed_transaction trx;
+
+      account_name a = N(newco);
+      account_name creator = config::system_account_name;
+
+      // account does not exist before test
+      BOOST_REQUIRE_EXCEPTION(control->get_account( a ), fc::exception,
+                              [a] (const fc::exception& e)->bool {
+                                 return std::string( e.what() ).find( a.to_string() ) != std::string::npos;
+                              }) ;
+
+      auto owner_auth = authority( get_public_key( a, "owner" ) );
+      trx.actions.emplace_back( vector<permission_level>{{creator,config::active_name}},
+                                newaccount{
+                                      .creator  = creator,
+                                      .name     = a,
+                                      .owner    = owner_auth,
+                                      .active   = authority( get_public_key( a, "active" ) )
+                                });
+      set_transaction_headers(trx);
+      trx.sign( get_private_key( creator, "active" ), control->get_chain_id()  );
+      auto trace = push_transaction( trx );
+
+      control->get_account( a ); // throws if it does not exist
+
+      vector<transaction_metadata_ptr> unapplied_trxs = control->abort_block();
+
+      // verify transaction returned from abort_block()
+      BOOST_REQUIRE_EQUAL( 1,  unapplied_trxs.size() );
+      BOOST_REQUIRE_EQUAL( trx.id(), unapplied_trxs.at(0)->id() );
+
+      // account does not exist block was aborted which had transaction
+      BOOST_REQUIRE_EXCEPTION(control->get_account( a ), fc::exception,
+                              [a] (const fc::exception& e)->bool {
+                                 return std::string( e.what() ).find( a.to_string() ) != std::string::npos;
+                              }) ;
+
+      produce_blocks(1);
+
+   } FC_LOG_AND_RETHROW() }
+
+/**
+ * Verify abort block returns applied transactions in block
+ */
+BOOST_FIXTURE_TEST_CASE( abort_block_transactions_tester, validating_tester) { try {
+
+      produce_blocks(2);
+      signed_transaction trx;
+
+      account_name a = N(newco);
+      account_name creator = config::system_account_name;
+
+      // account does not exist before test
+      BOOST_REQUIRE_EXCEPTION(control->get_account( a ), fc::exception,
+                              [a] (const fc::exception& e)->bool {
+                                 return std::string( e.what() ).find( a.to_string() ) != std::string::npos;
+                              }) ;
+
+      auto owner_auth = authority( get_public_key( a, "owner" ) );
+      trx.actions.emplace_back( vector<permission_level>{{creator,config::active_name}},
+                                newaccount{
+                                      .creator  = creator,
+                                      .name     = a,
+                                      .owner    = owner_auth,
+                                      .active   = authority( get_public_key( a, "active" ) )
+                                });
+      set_transaction_headers(trx);
+      trx.sign( get_private_key( creator, "active" ), control->get_chain_id()  );
+      auto trace = push_transaction( trx );
+
+      control->get_account( a ); // throws if it does not exist
+
+      produce_block( fc::milliseconds(config::block_interval_ms*2) ); // aborts block, tester should reapply trx
+
+      control->get_account( a ); // throws if it does not exist
+
+      vector<transaction_metadata_ptr> unapplied_trxs = control->abort_block(); // should be empty now
+
+      BOOST_REQUIRE_EQUAL( 0,  unapplied_trxs.size() );
+
+   } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_SUITE_END()

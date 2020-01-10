@@ -1,8 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE.txt
- */
-
 #include <eosio/chain/thread_utils.hpp>
 #include <fc/log/logger_config.hpp>
 

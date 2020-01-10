@@ -33,24 +33,24 @@ RUN git clone --single-branch --branch release_80 https://git.llvm.org/git/llvm.
     cd / && \
     rm -rf /clang8
 COPY ./.cicd/helpers/clang.make /tmp/clang.cmake
-# build llvm
-RUN git clone --depth 1 --single-branch --branch release_40 https://github.com/llvm-mirror/llvm.git llvm && \
+# build llvm8
+RUN git clone --depth 1 --single-branch --branch release_80 https://github.com/llvm-mirror/llvm.git llvm && \
     cd llvm && \
     mkdir build && \
     cd build && \
-    cmake -DLLVM_TARGETS_TO_BUILD=host -DLLVM_BUILD_TOOLS=false -DLLVM_ENABLE_RTTI=1 -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_TOOLCHAIN_FILE='/tmp/clang.cmake' .. && \
+    cmake -DLLVM_TARGETS_TO_BUILD=host -DLLVM_BUILD_TOOLS=false -DLLVM_ENABLE_RTTI=1 -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_TOOLCHAIN_FILE='/tmp/clang.cmake' -DCMAKE_EXE_LINKER_FLAGS=-pthread -DCMAKE_SHARED_LINKER_FLAGS=-pthread -DLLVM_ENABLE_PIC=NO .. && \
     make -j$(nproc) && \
     make install && \
     cd / && \
     rm -rf /llvm
 # build boost
-RUN curl -LO https://dl.bintray.com/boostorg/release/1.70.0/source/boost_1_70_0.tar.bz2 && \
-    tar -xjf boost_1_70_0.tar.bz2 && \
-    cd boost_1_70_0 && \
+RUN curl -LO https://dl.bintray.com/boostorg/release/1.71.0/source/boost_1_71_0.tar.bz2 && \
+    tar -xjf boost_1_71_0.tar.bz2 && \
+    cd boost_1_71_0 && \
     ./bootstrap.sh --with-toolset=clang --prefix=/usr/local && \
-    ./b2 toolset=clang cxxflags='-stdlib=libc++ -D__STRICT_ANSI__ -nostdinc++ -I/usr/local/include/c++/v1' linkflags='-stdlib=libc++' link=static threading=multi --with-iostreams --with-date_time --with-filesystem --with-system --with-program_options --with-chrono --with-test -q -j$(nproc) install && \
+    ./b2 toolset=clang cxxflags='-stdlib=libc++ -D__STRICT_ANSI__ -nostdinc++ -I/usr/local/include/c++/v1 -D_FORTIFY_SOURCE=2 -fstack-protector-strong -fpie' linkflags='-stdlib=libc++ -pie' link=static threading=multi --with-iostreams --with-date_time --with-filesystem --with-system --with-program_options --with-chrono --with-test -q -j$(nproc) install && \
     cd / && \
-    rm -rf boost_1_70_0.tar.bz2 /boost_1_70_0   
+    rm -rf boost_1_71_0.tar.bz2 /boost_1_71_0
 # build mongodb
 RUN curl -LO http://downloads.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-3.6.3.tgz && \
     tar -xzf mongodb-linux-x86_64-ubuntu1604-3.6.3.tgz && \

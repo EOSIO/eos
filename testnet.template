@@ -14,7 +14,14 @@ fi
 
 bioscontractpath=$BIOS_CONTRACT_PATH
 if [ -z "$bioscontractpath" ]; then
-    bioscontractpath="unittests/contracts/eosio.bios"
+    # this is defaulted to the version of bios that only requires the preactivate_feature
+    # newer versions may require 
+    bioscontractpath="unittests/contracts/old_versions/v1.7.0-develop-preactivate_feature/eosio.bios"
+fi
+
+bioscurrencysymbol=$BIOS_CURRENCY_SYMBOL
+if [ -z "$bioscurrencysymbol" ]; then
+    bioscurrencysymbol="SYS"
 fi
 
 wddir=eosio-ignition-wd
@@ -63,7 +70,7 @@ wcmd () {
 }
 
 cacmd () {
-    programs/cleos/cleos  --wallet-url $wdurl --url http://$bioshost:$biosport system newaccount --transfer --stake-net "10000000.0000 SYS" --stake-cpu "10000000.0000 SYS"  --buy-ram "10000000.0000 SYS" eosio $* >> $logfile 2>&1
+    programs/cleos/cleos  --wallet-url $wdurl --url http://$bioshost:$biosport system newaccount --transfer --stake-net "10000000.0000 "$bioscurrencysymbol --stake-cpu "10000000.0000 "$bioscurrencysymbol  --buy-ram "10000000.0000 "$bioscurrencysymbol eosio $* >> $logfile 2>&1
     ecmd system regproducer $1 $2
     ecmd system voteproducer prods $1 $1
 }
@@ -81,7 +88,8 @@ wcmd create --to-console -n ignition
 # where $BIOSKEY is replaced by the private key for the bios node
 # ------ DO NOT ALTER THE NEXT LINE -------
 ###INSERT prodkeys
-
+echo "Activated Features Check:" >> $logfile
+curl http://$bioshost:$biosport/v1/chain/get_activated_protocol_features >> $logfile
 ecmd set contract eosio $bioscontractpath eosio.bios.wasm eosio.bios.abi
 
 # Preactivate all digests
@@ -112,16 +120,16 @@ ecmd set contract eosio.msig unittests/contracts/eosio.msig eosio.msig.wasm eosi
 ecmd set contract eosio.wrap unittests/contracts/eosio.wrap eosio.wrap.wasm eosio.wrap.abi
 
 echo ===== Start: $step ============ >> $logfile
-echo executing: cleos --wallet-url $wdurl --url http://$bioshost:$biosport push action eosio.token create '[ "eosio", "10000000000.0000 SYS" ]' -p eosio.token | tee -a $logfile
-echo executing: cleos --wallet-url $wdurl --url http://$bioshost:$biosport push action eosio.token issue '[ "eosio", "1000000000.0000 SYS", "memo" ]' -p eosio | tee -a $logfile
+echo executing: cleos --wallet-url $wdurl --url http://$bioshost:$biosport push action eosio.token create '[ "eosio", "10000000000.0000 '$bioscurrencysymbol'" ]' -p eosio.token | tee -a $logfile
+echo executing: cleos --wallet-url $wdurl --url http://$bioshost:$biosport push action eosio.token issue '[ "eosio", "1000000000.0000 '$bioscurrencysymbol'", "memo" ]' -p eosio | tee -a $logfile
 echo ----------------------- >> $logfile
-programs/cleos/cleos --wallet-url $wdurl --url http://$bioshost:$biosport push action eosio.token create '[ "eosio", "10000000000.0000 SYS" ]' -p eosio.token >> $logfile 2>&1
-programs/cleos/cleos --wallet-url $wdurl --url http://$bioshost:$biosport push action eosio.token issue '[ "eosio", "1000000000.0000 SYS", "memo" ]' -p eosio >> $logfile 2>&1
+programs/cleos/cleos --wallet-url $wdurl --url http://$bioshost:$biosport push action eosio.token create '[ "eosio", "10000000000.0000 '$bioscurrencysymbol'" ]' -p eosio.token >> $logfile 2>&1
+programs/cleos/cleos --wallet-url $wdurl --url http://$bioshost:$biosport push action eosio.token issue '[ "eosio", "1000000000.0000 '$bioscurrencysymbol'", "memo" ]' -p eosio >> $logfile 2>&1
 echo ==== End: $step ============== >> $logfile
 step=$(($step + 1))
 
 ecmd set contract eosio unittests/contracts/eosio.system eosio.system.wasm eosio.system.abi
-programs/cleos/cleos --wallet-url $wdurl --url http://$bioshost:$biosport push action eosio init '[0, "4,SYS"]' -p eosio >> $logfile 2>&1
+programs/cleos/cleos --wallet-url $wdurl --url http://$bioshost:$biosport push action eosio init '[0, "4,'$bioscurrencysymbol'"]' -p eosio >> $logfile 2>&1
 
 # Manual deployers, add a series of lines below this block that looks like:
 #    cacmd $PRODNAME[0] $OWNERKEY[0] $ACTIVEKEY[0]

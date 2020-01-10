@@ -49,7 +49,7 @@ function usage() {
 
 TIME_BEGIN=$( date -u +%s )
 if [ $# -ne 0 ]; then
-   while getopts "o:s:b:i:ycdhmPf" opt; do
+   while getopts "o:s:b:i:ycdhmP" opt; do
       case "${opt}" in
          o )
             options=( "Debug" "Release" "RelWithDebInfo" "MinSizeRel" )
@@ -78,9 +78,6 @@ if [ $# -ne 0 ]; then
             NONINTERACTIVE=true
             PROCEED=true
          ;;
-         f ) 
-            echo "DEPRECATION NOTICE: -f will be removed in the next release..."
-         ;; # Needs to be removed in 1.9
          c )
             ENABLE_COVERAGE_TESTING=true
          ;;
@@ -134,7 +131,7 @@ ensure-sudo
 ensure-which
 # Prevent a non-git clone from running
 ensure-git-clone
-# Prompt user for installation path.
+# Prompt user for installation path (Set EOSIO_INSTALL_DIR)
 install-directory-prompt
 # If the same version has already been installed...
 previous-install-prompt
@@ -246,7 +243,7 @@ if $ENABLE_MONGO; then
    echo "${BIN_DIR}/mongod --dbpath ${MONGODB_DATA_DIR} -f ${MONGODB_CONF} --logpath ${MONGODB_LOG_DIR}/mongod.log &"
    PATH_TO_USE=" PATH=\$PATH:$OPT_DIR/mongodb/bin"
 fi
-echo "cd ${BUILD_DIR} && ${PATH_TO_USE} make test" # PATH is set as currently 'mongo' binary is required for the mongodb test
+echo "cd ${BUILD_DIR} &&${PATH_TO_USE} make test" # PATH is set as currently 'mongo' binary is required for the mongodb test
 
 echo ""
 resources

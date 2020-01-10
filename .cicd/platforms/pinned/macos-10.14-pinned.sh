@@ -2,7 +2,7 @@
 set -eo pipefail
 VERSION=1
 brew update
-brew install git cmake python@2 python libtool libusb graphviz automake wget gmp pkgconfig doxygen openssl@1.1 jq || :
+brew install git cmake python@2 python libtool libusb graphviz automake wget gmp llvm@7 pkgconfig doxygen openssl@1.1 jq || :
 # install clang from source
 git clone --single-branch --branch release_80 https://git.llvm.org/git/llvm.git clang8
 cd clang8
@@ -48,24 +48,14 @@ make -j $(getconf _NPROCESSORS_ONLN)
 sudo make install
 cd ../..
 rm -rf clang8
-# install llvm 4 from source
-git clone --depth 1 --single-branch --branch release_40 https://github.com/llvm-mirror/llvm.git llvm
-cd llvm
-mkdir build
-cd build
-cmake -G 'Unix Makefiles' -DCMAKE_INSTALL_PREFIX='/usr/local' -DLLVM_TARGETS_TO_BUILD='host' -DLLVM_BUILD_TOOLS=false -DLLVM_ENABLE_RTTI=1 -DCMAKE_BUILD_TYPE=Release ..
-make -j $(getconf _NPROCESSORS_ONLN)
-sudo make install
-cd ../..
-rm -rf llvm
 # install boost from source
-curl -LO https://dl.bintray.com/boostorg/release/1.70.0/source/boost_1_70_0.tar.bz2
-tar -xjf boost_1_70_0.tar.bz2
-cd boost_1_70_0
+curl -LO https://dl.bintray.com/boostorg/release/1.71.0/source/boost_1_71_0.tar.bz2
+tar -xjf boost_1_71_0.tar.bz2
+cd boost_1_71_0
 ./bootstrap.sh --prefix=/usr/local
 sudo ./b2 --with-iostreams --with-date_time --with-filesystem --with-system --with-program_options --with-chrono --with-test -q -j$(getconf _NPROCESSORS_ONLN) install
 cd ..
-sudo rm -rf boost_1_70_0.tar.bz2 boost_1_70_0  
+sudo rm -rf boost_1_71_0.tar.bz2 boost_1_71_0
 # install mongoDB
 cd ~
 curl -OL https://fastdl.mongodb.org/osx/mongodb-osx-ssl-x86_64-3.6.3.tgz

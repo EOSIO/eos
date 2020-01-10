@@ -10,16 +10,15 @@ echo 'asserts. This test checks that debug flag. Anyone intending to build and i
 echo 'nodeos from source should perform a "release build" which excludes asserts and'
 echo 'debugging symbols, and performs compiler optimizations.'
 echo ''
-# check for xxd
-if ! $(xxd --version 2>/dev/null); then
-    echo 'ERROR: Test requires xxd, but xxd was not found in your PATH!'
+# check for jq
+if ! $(jq --version 1>/dev/null); then
+    echo 'ERROR: Test requires jq, but jq was not found in your PATH!'
     echo ''
-    echo 'The xxd hex dump tool can be installed as part of the vim-common package on most operating systems.'
     exit 1
 fi
 # find nodeos
-[[ $(git --version) ]] && cd "$(git rev-parse --show-toplevel)/build" || cd "$(dirname "${BASH_SOURCE[0]}")/.."
-if [[ ! -f programs/nodeos/nodeos ]]; then
+[[ $(git --version) ]] && cd "$(git rev-parse --show-toplevel)/build/programs/nodeos" || cd "$(dirname "${BASH_SOURCE[0]}")/../programs/nodeos"
+if [[ ! -f nodeos ]]; then
     echo 'ERROR: nodeos binary not found!'
     echo ''
     echo 'I looked here...'
@@ -31,36 +30,29 @@ if [[ ! -f programs/nodeos/nodeos ]]; then
     echo '$ echo "$(dirname "${BASH_SOURCE[0]}")/.."'
     echo "$(dirname "${BASH_SOURCE[0]}")/.."
     echo 'Release build test not run.'
-    exit 2
+    exit 1
 fi
 # run nodeos to generate state files
-mkdir release-build-test
-programs/nodeos/nodeos --config-dir "$(pwd)/release-build-test/config" --data-dir "$(pwd)/release-build-test/data" 1>/dev/null 2>/dev/null &
-sleep 10
-kill $! # kill nodeos gracefully, by PID
-if [[ ! -f release-build-test/data/state/shared_memory.bin ]]; then
-    echo 'ERROR: nodeos state not found!'
+./nodeos --extract-build-info build-info.json 1>/dev/null 2>/dev/null
+if [[ ! -f build-info.json ]]; then
+    echo 'ERROR: Build info JSON file not found!'
     echo ''
-    echo 'Looked for shared_memory.bin in the following places:'
-    echo "$ ls -la \"$(pwd)/release-build-test/data/state\""
-    ls -la "$(pwd)/release-build-test/data/state"
+    echo 'Looked in the following places:'
+    echo "$ ls -la \"$(pwd)\""
+    ls -la "$(pwd)"
     echo 'Release build test not run.'
-    rm -rf release-build-test
-    exit 3
+    exit 2
 fi
 # test state files for debug flag
-export DEBUG_BYTE="$(xxd -seek 9 -l 1 release-build-test/data/state/shared_memory.bin | awk '{print $2}')"
-if [[ "$DEBUG_BYTE" == '00' ]]; then
+if [[ "$(cat build-info.json | jq .debug)" == 'false' ]]; then
     echo 'PASS: Debug flag is not set.'
     echo ''
-    rm -rf release-build-test
+    rm build-info.json
     exit 0
 fi
 echo 'FAIL: Debug flag is set!'
-echo "Debug Byte = 0x$DEBUG_BYTE"
 echo ''
-echo 'First kilobyte of shared_memory.bin:'
-echo '$ xxd -l 1024 shared_memory.bin'
-xxd -l 1024 release-build-test/data/state/shared_memory.bin
-rm -rf release-build-test
-exit 4
+echo '$ cat build-info.json | jq .'
+cat build-info.json | jq .
+rm build-info.json
+exit 3
