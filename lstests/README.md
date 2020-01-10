@@ -53,7 +53,7 @@ The Launcher Service-based EOSIO Testing Framework aims to provide a more manage
 
 ### Architecture
 
-![architecture](./img/architecture.png)
+![architecture](./doc/architecture.png)
 
 ## Getting Started
 
@@ -72,7 +72,7 @@ In order to initialize a cluster, three sub-steps are needed:
 
 (3) create a `Cluster` object, and register the `Service` to it
 
-<img src="./img/high-level.png" width="300" />
+<img src="./doc/high-level.png" width="300" />
 
 The `Logger`, `Service` and `Cluster` objects respectively control the logging behavior, the launcher service, and a particular cluster of nodes.
 
