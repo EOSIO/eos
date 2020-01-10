@@ -76,12 +76,12 @@ def restart_and_verify(clus, last_block_in_sync):
     clus.start_node(node_id=1)
     try:
         res = clus.check_sync()
-        tend = time.time()
-        watermark += (tend - tbeg) * 2 + 1
     except SyncError:
         clus.get_cluster_info(level="flag", response_text_level="flag")
         clus.get_cluster_running_state(level="flag", response_text_level="flag")
         raise
+    tend = time.time()
+    watermark += (tend - tbeg) * 2 + 1
     if res.block_num <= last_block_in_sync:
         raise BlockchainError(f"Chain stopped advancing at block num {res.block_num}")
     clus.info(f"Forks resolved with block num {res.block_num}, verifying blocks...")
