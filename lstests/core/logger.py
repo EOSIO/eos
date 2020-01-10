@@ -16,10 +16,7 @@ else:
     import color
     import helper
 
-try:
-    VERTICAL_BAR = "│"
-except UnicodeEncodeError:
-    VERTICAL_BAR = "|"
+VERTICAL_BAR = "|"
 
 
 class LogLevel(int):
