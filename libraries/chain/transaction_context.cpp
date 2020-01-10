@@ -78,7 +78,6 @@ namespace eosio { namespace chain {
    void transaction_context::init(uint64_t initial_net_usage)
    {
       EOS_ASSERT( !is_initialized, transaction_exception, "cannot initialize twice" );
-      const static int64_t large_number_no_overflow = std::numeric_limits<int64_t>::max()/2;
 
       const auto& cfg = control.get_global_properties().configuration;
       auto& rl = control.get_mutable_resource_limits_manager();
@@ -148,7 +147,7 @@ namespace eosio { namespace chain {
 
       eager_net_limit = net_limit;
 
-      // Possible lower eager_net_limit to what the billed accounts can pay plus some (objective) leeway
+      // Possibly lower eager_net_limit to what the billed accounts can pay plus some (objective) leeway
       auto new_eager_net_limit = std::min( eager_net_limit, static_cast<uint64_t>(account_net_limit + cfg.net_usage_leeway) );
       if( new_eager_net_limit < eager_net_limit ) {
          eager_net_limit = new_eager_net_limit;

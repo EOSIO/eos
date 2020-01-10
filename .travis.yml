@@ -31,7 +31,7 @@ matrix:
       services: docker
       env:
         - PLATFORM_TYPE='pinned'
-        - IMAGE_TAG='centos-7.6-pinned'
+        - IMAGE_TAG='centos-7.7-pinned'
     - os: osx
       osx_image: xcode10.2
       addons:
@@ -51,7 +51,7 @@ matrix:
             - gmp
             - pkgconfig
             - doxygen
-            - openssl
+            - openssl@1.1
       env: 
         - PATH="/usr/local/opt/ccache/libexec:$PATH"
 script: "ccache --max-size=1G && ./.cicd/build.sh && ./.cicd/test.sh scripts/parallel-test.sh && ./.cicd/test.sh scripts/wasm-spec-test.sh && ./.cicd/test.sh scripts/serial-test.sh && if [[ $(uname) != 'Darwin' ]]; then ./.cicd/submodule-regression-check.sh; fi"
