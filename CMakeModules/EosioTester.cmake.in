@@ -63,8 +63,10 @@ find_library(libplatform Platform @CMAKE_INSTALL_PREFIX@/lib64 @CMAKE_INSTALL_PR
 find_library(liblogging Logging @CMAKE_INSTALL_PREFIX@/lib64 @CMAKE_INSTALL_PREFIX@/lib NO_DEFAULT_PATH)
 find_library(libruntime Runtime @CMAKE_INSTALL_PREFIX@/lib64 @CMAKE_INSTALL_PREFIX@/lib NO_DEFAULT_PATH)
 find_library(libsoftfloat softfloat @CMAKE_INSTALL_PREFIX@/lib64 @CMAKE_INSTALL_PREFIX@/lib NO_DEFAULT_PATH)
-find_library(liboscrypto crypto @OPENSSL_ROOT_DIR@/lib NO_DEFAULT_PATH)
-find_library(libosssl ssl @OPENSSL_ROOT_DIR@/lib NO_DEFAULT_PATH)
+get_filename_component(cryptodir @OPENSSL_CRYPTO_LIBRARY@ DIRECTORY)
+find_library(liboscrypto crypto "${cryptodir}" NO_DEFAULT_PATH)
+get_filename_component(ssldir @OPENSSL_SSL_LIBRARY@ DIRECTORY)
+find_library(libosssl ssl "${ssldir}" NO_DEFAULT_PATH)
 find_library(libchainbase chainbase @CMAKE_INSTALL_PREFIX@/lib64 @CMAKE_INSTALL_PREFIX@/lib NO_DEFAULT_PATH)
 find_library(libbuiltins builtins @CMAKE_INSTALL_PREFIX@/lib64 @CMAKE_INSTALL_PREFIX@/lib NO_DEFAULT_PATH)
 find_library(GMP_LIBRARIES NAMES libgmp.a gmp.lib gmp libgmp-10 mpir
