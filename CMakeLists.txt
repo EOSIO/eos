@@ -28,7 +28,7 @@ set( CXX_STANDARD_REQUIRED ON)
 
 set(VERSION_MAJOR 1)
 set(VERSION_MINOR 8)
-set(VERSION_PATCH 8)
+set(VERSION_PATCH 9)
 #set(VERSION_SUFFIX develop)
 
 if(VERSION_SUFFIX)
@@ -64,6 +64,7 @@ endif()
 set(CMAKE_EXPORT_COMPILE_COMMANDS "ON")
 set(BUILD_DOXYGEN FALSE CACHE BOOL "Build doxygen documentation on every make")
 set(BUILD_MONGO_DB_PLUGIN FALSE CACHE BOOL "Build mongo database plugin")
+set(ENABLE_MULTIVERSION_PROTOCOL_TEST FALSE CACHE BOOL "Enable nodeos multiversion protocol test")
 
 # add defaults for openssl
 if ("${OPENSSL_ROOT_DIR}" STREQUAL "")

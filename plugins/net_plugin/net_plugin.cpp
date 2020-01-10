@@ -684,7 +684,8 @@ namespace eosio {
       void reassign_fetch(const connection_ptr& c, go_away_reason reason);
       bool verify_catchup(const connection_ptr& c, uint32_t num, const block_id_type& id);
       void rejected_block(const connection_ptr& c, uint32_t blk_num);
-      void recv_block(const connection_ptr& c, const block_id_type& blk_id, uint32_t blk_num);
+      void recv_block(const connection_ptr& c, const block_id_type& blk_id, uint32_t blk_num, bool blk_applied);
+      void sync_update_expected(const connection_ptr& c, const block_id_type& blk_id, uint32_t blk_num, bool blk_applied);
       void recv_handshake(const connection_ptr& c, const handshake_message& msg);
       void recv_notice(const connection_ptr& c, const notice_message& msg);
    };
@@ -1598,16 +1599,23 @@ namespace eosio {
          c->send_handshake();
       }
    }
-   void sync_manager::recv_block(const connection_ptr& c, const block_id_type& blk_id, uint32_t blk_num) {
-      fc_dlog(logger, "got block ${bn} from ${p}",("bn",blk_num)("p",c->peer_name()));
-      if (state == lib_catchup) {
-         if (blk_num != sync_next_expected_num) {
-            fc_wlog( logger, "expected block ${ne} but got ${bn}, from connection: ${p}",
-                     ("ne",sync_next_expected_num)("bn",blk_num)("p",c->peer_name()) );
+
+   void sync_manager::sync_update_expected(const connection_ptr& c, const block_id_type& blk_id, uint32_t blk_num, bool blk_applied) {
+      if( blk_num <= sync_last_requested_num ) {
+         fc_dlog( logger, "sync_last_requested_num: ${r}, sync_next_expected_num: ${e}, sync_known_lib_num: ${k}, sync_req_span: ${s}",
+                  ("r", sync_last_requested_num)("e", sync_next_expected_num)("k", sync_known_lib_num)("s", sync_req_span) );
+         if (blk_num != sync_next_expected_num && !blk_applied) {
+            fc_dlog( logger, "expected block ${ne} but got ${bn}, from connection: ${p}",
+                     ("ne", sync_next_expected_num)( "bn", blk_num )( "p", c->peer_name() ) );
             return;
          }
          sync_next_expected_num = blk_num + 1;
       }
+   }
+
+   void sync_manager::recv_block(const connection_ptr& c, const block_id_type& blk_id, uint32_t blk_num, bool blk_applied) {
+      fc_dlog(logger, "got block ${bn} from ${p}",("bn",blk_num)("p",c->peer_name()));
+      sync_update_expected(c, blk_id, blk_num, blk_applied);
       if (state == head_catchup) {
          fc_dlog(logger, "sync_manager in head_catchup state");
          set_state(in_sync);
@@ -2192,8 +2200,7 @@ namespace eosio {
                }
             }
             if( cc.fetch_block_by_id( blk_id ) ) {
-               if( sync_master->syncing_with_peer() )
-                  sync_master->recv_block( conn, blk_id, blk_num );
+               sync_master->recv_block( conn, blk_id, blk_num, false );
                conn->cancel_wait();
                conn->pending_message_buffer.advance_read_ptr( message_length );
                return true;
@@ -2595,8 +2602,7 @@ namespace eosio {
 
       try {
          if( cc.fetch_block_by_id(blk_id)) {
-            if( sync_master->syncing_with_peer() )
-               sync_master->recv_block( c, blk_id, blk_num );
+            sync_master->recv_block( c, blk_id, blk_num, false );
             c->cancel_wait();
             return;
          }
@@ -2645,7 +2651,7 @@ namespace eosio {
                c->trx_state.modify( ctx, ubn );
             }
          }
-         sync_master->recv_block(c, blk_id, blk_num);
+         sync_master->recv_block(c, blk_id, blk_num, true);
       }
       else {
          sync_master->rejected_block(c, blk_num);

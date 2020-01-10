@@ -36,28 +36,31 @@ struct abi_serializer {
    abi_serializer( const abi_def& abi, const fc::microseconds& max_serialization_time );
    void set_abi(const abi_def& abi, const fc::microseconds& max_serialization_time);
 
-   type_name resolve_type(const type_name& t)const;
-   bool      is_array(const type_name& type)const;
-   bool      is_optional(const type_name& type)const;
-   bool      is_type(const type_name& type, const fc::microseconds& max_serialization_time)const;
-   bool      is_builtin_type(const type_name& type)const;
-   bool      is_integer(const type_name& type) const;
-   int       get_integer_size(const type_name& type) const;
-   bool      is_struct(const type_name& type)const;
-   type_name fundamental_type(const type_name& type)const;
+   /// @return string_view of `t` or internal string type
+   std::string_view resolve_type(const std::string_view& t)const;
+   bool      is_array(const std::string_view& type)const;
+   bool      is_optional(const std::string_view& type)const;
+   bool      is_type(const std::string_view& type, const fc::microseconds& max_serialization_time)const;
+   bool      is_builtin_type(const std::string_view& type)const;
+   bool      is_integer(const std::string_view& type) const;
+   int       get_integer_size(const std::string_view& type) const;
+   bool      is_struct(const std::string_view& type)const;
 
-   const struct_def& get_struct(const type_name& type)const;
+   /// @return string_view of `type`
+   std::string_view fundamental_type(const std::string_view& type)const;
+
+   const struct_def& get_struct(const std::string_view& type)const;
 
    type_name get_action_type(name action)const;
    type_name get_table_type(name action)const;
 
    optional<string>  get_error_message( uint64_t error_code )const;
 
-   fc::variant binary_to_variant( const type_name& type, const bytes& binary, const fc::microseconds& max_serialization_time, bool short_path = false )const;
-   fc::variant binary_to_variant( const type_name& type, fc::datastream<const char*>& binary, const fc::microseconds& max_serialization_time, bool short_path = false )const;
+   fc::variant binary_to_variant( const std::string_view& type, const bytes& binary, const fc::microseconds& max_serialization_time, bool short_path = false )const;
+   fc::variant binary_to_variant( const std::string_view& type, fc::datastream<const char*>& binary, const fc::microseconds& max_serialization_time, bool short_path = false )const;
 
-   bytes       variant_to_binary( const type_name& type, const fc::variant& var, const fc::microseconds& max_serialization_time, bool short_path = false )const;
-   void        variant_to_binary( const type_name& type, const fc::variant& var, fc::datastream<char*>& ds, const fc::microseconds& max_serialization_time, bool short_path = false )const;
+   bytes       variant_to_binary( const std::string_view& type, const fc::variant& var, const fc::microseconds& max_serialization_time, bool short_path = false )const;
+   void        variant_to_binary( const std::string_view& type, const fc::variant& var, fc::datastream<char*>& ds, const fc::microseconds& max_serialization_time, bool short_path = false )const;
 
    template<typename T, typename Resolver>
    static void to_variant( const T& o, fc::variant& vo, Resolver resolver, const fc::microseconds& max_serialization_time );
@@ -91,27 +94,27 @@ struct abi_serializer {
 
 private:
 
-   map<type_name, type_name>     typedefs;
-   map<type_name, struct_def>    structs;
-   map<name,type_name>           actions;
-   map<name,type_name>           tables;
-   map<uint64_t, string>         error_messages;
-   map<type_name, variant_def>   variants;
+   map<type_name, type_name, std::less<>>     typedefs;
+   map<type_name, struct_def, std::less<>>    structs;
+   map<name,type_name>                        actions;
+   map<name,type_name>                        tables;
+   map<uint64_t, string>                      error_messages;
+   map<type_name, variant_def, std::less<>>   variants;
 
-   map<type_name, pair<unpack_function, pack_function>> built_in_types;
+   map<type_name, pair<unpack_function, pack_function>, std::less<>> built_in_types;
    void configure_built_in_types();
 
-   fc::variant _binary_to_variant( const type_name& type, const bytes& binary, impl::binary_to_variant_context& ctx )const;
-   fc::variant _binary_to_variant( const type_name& type, fc::datastream<const char*>& binary, impl::binary_to_variant_context& ctx )const;
-   void        _binary_to_variant( const type_name& type, fc::datastream<const char*>& stream,
+   fc::variant _binary_to_variant( const std::string_view& type, const bytes& binary, impl::binary_to_variant_context& ctx )const;
+   fc::variant _binary_to_variant( const std::string_view& type, fc::datastream<const char*>& binary, impl::binary_to_variant_context& ctx )const;
+   void        _binary_to_variant( const std::string_view& type, fc::datastream<const char*>& stream,
                                    fc::mutable_variant_object& obj, impl::binary_to_variant_context& ctx )const;
 
-   bytes       _variant_to_binary( const type_name& type, const fc::variant& var, impl::variant_to_binary_context& ctx )const;
-   void        _variant_to_binary( const type_name& type, const fc::variant& var,
+   bytes       _variant_to_binary( const std::string_view& type, const fc::variant& var, impl::variant_to_binary_context& ctx )const;
+   void        _variant_to_binary( const std::string_view& type, const fc::variant& var,
                                    fc::datastream<char*>& ds, impl::variant_to_binary_context& ctx )const;
 
-   static type_name _remove_bin_extension(const type_name& type);
-   bool _is_type( const type_name& type, impl::abi_traverse_context& ctx )const;
+   static std::string_view _remove_bin_extension(const std::string_view& type);
+   bool _is_type( const std::string_view& type, impl::abi_traverse_context& ctx )const;
 
    void validate( impl::abi_traverse_context& ctx )const;
 
@@ -184,25 +187,25 @@ namespace impl {
    using path_item = static_variant<empty_path_item, array_index_path_item, field_path_item, variant_path_item>;
 
    struct abi_traverse_context_with_path : public abi_traverse_context {
-      abi_traverse_context_with_path( const abi_serializer& abis, fc::microseconds max_serialization_time, const type_name& type )
+      abi_traverse_context_with_path( const abi_serializer& abis, fc::microseconds max_serialization_time, const std::string_view& type )
       : abi_traverse_context( max_serialization_time ), abis(abis)
       {
          set_path_root(type);
       }
 
-      abi_traverse_context_with_path( const abi_serializer& abis, fc::microseconds max_serialization_time, fc::time_point deadline, const type_name& type )
+      abi_traverse_context_with_path( const abi_serializer& abis, fc::microseconds max_serialization_time, fc::time_point deadline, const std::string_view& type )
       : abi_traverse_context( max_serialization_time, deadline ), abis(abis)
       {
          set_path_root(type);
       }
 
-      abi_traverse_context_with_path( const abi_serializer& abis, const abi_traverse_context& ctx, const type_name& type )
+      abi_traverse_context_with_path( const abi_serializer& abis, const abi_traverse_context& ctx, const std::string_view& type )
       : abi_traverse_context(ctx), abis(abis)
       {
          set_path_root(type);
       }
 
-      void set_path_root( const type_name& type );
+      void set_path_root( const std::string_view& type );
 
       fc::scoped_exit<std::function<void()>> push_to_path( const path_item& item );
 
@@ -213,7 +216,7 @@ namespace impl {
 
       string get_path_string()const;
 
-      string maybe_shorten( const string& str );
+      string maybe_shorten( const std::string_view& str );
 
    protected:
       const abi_serializer&  abis;
@@ -237,6 +240,9 @@ namespace impl {
    protected:
       bool                   allow_extensions = true;
    };
+
+   /// limits the string size to default max_length of output_name
+   string limit_size( const std::string_view& str );
 
    /**
     * Determine if a type contains ABI related info, perhaps deeply nested

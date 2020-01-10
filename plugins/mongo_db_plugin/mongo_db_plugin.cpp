@@ -763,7 +763,7 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
    trans_doc.append( kvp( "trx_id", trx_id_str ) );
 
    auto v = to_variant_with_abi( trx );
-   string trx_json = fc::json::to_string( v );
+   string trx_json = fc::json::to_string( v, fc::time_point::maximum() );
 
    try {
       const auto& trx_value = bsoncxx::from_json( trx_json );
@@ -782,12 +782,12 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
 
    string signing_keys_json;
    if( t->signing_keys_future.valid() ) {
-      signing_keys_json = fc::json::to_string( std::get<2>( t->signing_keys_future.get() ) );
+      signing_keys_json = fc::json::to_string( std::get<2>( t->signing_keys_future.get() ), fc::time_point::maximum() );
    } else {
       flat_set<public_key_type> keys;
       trx.get_signature_keys( *chain_id, fc::time_point::maximum(), keys, false );
       if( !keys.empty() ) {
-         signing_keys_json = fc::json::to_string( keys );
+         signing_keys_json = fc::json::to_string( keys, fc::time_point::maximum() );
       }
    }
 
@@ -844,7 +844,7 @@ mongo_db_plugin_impl::add_action_trace( mongocxx::bulk_write& bulk_action_traces
       action_traces_doc.append( kvp( "_id", make_custom_oid() ) );
 
       auto v = to_variant_with_abi( atrace );
-      string json = fc::json::to_string( v );
+      string json = fc::json::to_string( v, fc::time_point::maximum() );
       try {
          const auto& value = bsoncxx::from_json( json );
          action_traces_doc.append( bsoncxx::builder::concatenate_doc{value.view()} );
@@ -904,7 +904,7 @@ void mongo_db_plugin_impl::_process_applied_transaction( const chain::transactio
    if( store_transaction_traces && write_ttrace ) {
       try {
          auto v = to_variant_with_abi( *t );
-         string json = fc::json::to_string( v );
+         string json = fc::json::to_string( v, fc::time_point::maximum() );
          try {
             const auto& value = bsoncxx::from_json( json );
             trans_traces_doc.append( bsoncxx::builder::concatenate_doc{value.view()} );
@@ -973,7 +973,7 @@ void mongo_db_plugin_impl::_process_accepted_block( const chain::block_state_ptr
 
       const chain::block_header_state& bhs = *bs;
 
-      auto json = fc::json::to_string( bhs );
+      auto json = fc::json::to_string( bhs, fc::time_point::maximum() );
       try {
          const auto& value = bsoncxx::from_json( json );
          block_state_doc.append( kvp( "block_header_state", value ) );
@@ -1013,7 +1013,7 @@ void mongo_db_plugin_impl::_process_accepted_block( const chain::block_state_ptr
                         kvp( "block_id", block_id_str ) );
 
       auto v = to_variant_with_abi( *bs->block );
-      auto json = fc::json::to_string( v );
+      auto json = fc::json::to_string( v, fc::time_point::maximum() );
       try {
          const auto& value = bsoncxx::from_json( json );
          block_doc.append( kvp( "block", value ) );
@@ -1321,7 +1321,7 @@ void mongo_db_plugin_impl::update_account(const chain::action& act)
          }
          if( account ) {
             abi_def abi_def = fc::raw::unpack<chain::abi_def>( setabi.abi );
-            const string json_str = fc::json::to_string( abi_def );
+            const string json_str = fc::json::to_string( abi_def, fc::time_point::maximum() );
 
             try{
                auto update_from = make_document(
