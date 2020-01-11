@@ -16,6 +16,8 @@ if [[ "$(uname)" == 'Darwin' ]]; then
     [[ ! "$PINNED" == 'false' ]] && CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_TOOLCHAIN_FILE=$HELPERS_DIR/clang.make"
     cd $BUILD_DIR
     if [[ $TRAVIS == true ]]; then
+        ccache -s
+        brew link --overwrite python
         # Support ship_test
         export NVM_DIR="$HOME/.nvm"
         . "/usr/local/opt/nvm/nvm.sh"
