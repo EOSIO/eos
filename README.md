@@ -105,14 +105,14 @@ To uninstall the EOSIO built/installed binaries and dependencies, run:
 ./scripts/eosio_uninstall.sh
 ```
 
-## Documentation 
-1. [Nodeos](http://eosio.github.io/eos/nodeos/)
-    - [Usage](http://eosio.github.io/eos/nodeos/usage/index)
-    - [Replays](http://eosio.github.io/eos/nodeos/replays/index)
-    - [Chain API Reference](http://eosio.github.io/eos/nodeos/plugins/chain_api_plugin/api-reference/index)
-    - [Troubleshooting](http://eosio.github.io/eos/nodeos/troubleshooting/index)
-1. [Cleos](http://eosio.github.io/eos/cleos/)
-1. [Keosd](http://eosio.github.io/eos/keosd/)
+## Documentation
+1. [Nodeos](http://eosio.github.io/eos/latest/nodeos/)
+    - [Usage](http://eosio.github.io/eos/latest/nodeos/usage/index)
+    - [Replays](http://eosio.github.io/eos/latest/nodeos/replays/index)
+    - [Chain API Reference](http://eosio.github.io/eos/latest/nodeos/plugins/chain_api_plugin/api-reference/index)
+    - [Troubleshooting](http://eosio.github.io/eos/latest/nodeos/troubleshooting/index)
+1. [Cleos](http://eosio.github.io/eos/latest/cleos/)
+1. [Keosd](http://eosio.github.io/eos/latest/keosd/)
 
 ## Resources
 1. [Website](https://eos.io)
@@ -126,7 +126,7 @@ To uninstall the EOSIO built/installed binaries and dependencies, run:
 
 <a name="gettingstarted"></a>
 ## Getting Started
-Instructions detailing the process of getting the software, building it, running a simple test network that produces blocks, account creation and uploading a sample contract to the blockchain can be found in the [Getting Started](https://developers.eos.io/eosio-home/docs) walkthrough. 
+Instructions detailing the process of getting the software, building it, running a simple test network that produces blocks, account creation and uploading a sample contract to the blockchain can be found in the [Getting Started](https://developers.eos.io/eosio-home/docs) walkthrough.
 
 ## Contributing
 
