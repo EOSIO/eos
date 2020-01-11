@@ -9,6 +9,9 @@ The `db_size_api_plugin` retrieves analytics about the blockchain.
 * size
 * indices
 
+## Reference Documentation
+[`db_size_api_plugin` reference documents](./api-reference/)
+
 ## Usage
 
 ```console

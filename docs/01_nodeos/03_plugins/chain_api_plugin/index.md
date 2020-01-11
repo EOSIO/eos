@@ -4,6 +4,10 @@
 
 The `chain_api_plugin` exposes functionality from the [`chain_plugin`](../chain_plugin/index.md) to the RPC API interface managed by the [`http_plugin`](../http_plugin/index.md).
 
+## Reference Documentation
+[`chain_api_plugin` reference documents](./api-reference/)
+
+
 ## Usage
 
 ```sh

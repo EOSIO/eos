@@ -4,6 +4,10 @@
 
 The `producer_api_plugin` exposes a number of endpoints for the [`producer_plugin`](../producer_plugin/index.md) to the RPC API interface managed by the [`http_plugin`](../http_plugin/index.md).
 
+## Reference Documentation
+[`producer_api_plugin` reference documents](./api-reference/)
+
+
 ## Usage
 
 ```sh

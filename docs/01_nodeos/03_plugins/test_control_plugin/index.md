@@ -6,6 +6,8 @@ The `test_control_plugin` is designed to cause a graceful shutdown when reaching
 
 This is intended for testing, to determine exactly when a nodeos instance will shutdown.
 
+See [test_control_api_plugin](../test_control_api_plugin) for this plugin's API.
+
 ## Usage
 
 ```sh

@@ -11,10 +11,11 @@ The `net_api_plugin` provides four RPC API endpoints:
 * connections
 * status
 
-See [Net section of RPC API](https://developers.eos.io/eosio-nodeos/reference).
-
 [[caution | Caution]]
 | This plugin exposes endpoints that allow management of p2p connections. Running this plugin on a publicly accessible node is not recommended as it can be exploited.
+
+## Reference Documentation
+[`net_api_plugin` reference documents](./api-reference/)
 
 ## Usage
 

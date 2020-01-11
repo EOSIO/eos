@@ -14,9 +14,6 @@ It provides four RPC API endpoints:
 * get_key_accounts
 * get_controlled_accounts
 
-[[info | More Info]]
-| See HISTORY section of [RPC API](https://developers.eos.io/eosio-nodeos/reference).
-
 The four actions listed above are used by the following Cleos commands (matching order):
 
 * get actions

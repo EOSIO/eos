@@ -13,11 +13,11 @@ Every `nodeos` instance creates some internal files to housekeep the blockchain 
 
 ## Nodeos Read Modes
 
-EOSIO provides a set of [services and interfaces](https://developers.eos.io/eosio-cpp/docs/db-api) that enable contract developers to persist state across action, and consequently transaction, boundaries. Contracts may use these services and interfaces for different purposes. For example, `eosio.token` contract keeps balances for all users in the database.
+EOSIO provides a set of [services and interfaces](https://eosio.github.io/eosio.cdt/latest/modules) that enable contract developers to persist state across action, and consequently transaction, boundaries. Contracts may use these services and interfaces for different purposes. For example, `eosio.token` contract keeps balances for all users in the database.
 
 Each instance of `nodeos` keeps the database in memory, so contracts can read and write data.   `nodeos` also provides access to this data over HTTP RPC API for reading the database.
 
-However, at any given time there can be multiple correct ways to query that data: 
+However, at any given time there can be multiple correct ways to query that data:
 - `speculative`: this includes the side effects of confirmed and unconfirmed transactions.
 - `head`: this only includes the side effects of confirmed transactions, this mode processes unconfirmed transactions but does not include them.
 - `read-only`: this only includes the side effects of confirmed transactions.
@@ -31,7 +31,7 @@ Clients such as `cleos` and the RPC API, will see database state as of the curre
 
 Speculative mode is low latency but fragile, there is no guarantee that the transactions reflected in the state will be included in the chain OR that they will reflected in the same order the state implies.  
 
-This mode features the lowest latency, but is the least consistent. 
+This mode features the lowest latency, but is the least consistent.
 
 In speculative mode `nodeos` is able to execute transactions which have TaPoS (Transaction as Proof of Stake) pointing to any valid block in a fork considered to be the best fork by this node.
 
@@ -49,7 +49,7 @@ Clients such as `cleos` and the RPC API will see database state as of the curren
 
 ### Irreversible Mode
 
-When `nodeos` is configured to be in irreversible read mode, it will still track the most up-to-date blocks in the fork database, but the state will lag behind the current best head block, sometimes referred to as the fork DB head, to always reflect the state of the last irreversible block. 
+When `nodeos` is configured to be in irreversible read mode, it will still track the most up-to-date blocks in the fork database, but the state will lag behind the current best head block, sometimes referred to as the fork DB head, to always reflect the state of the last irreversible block.
 
 Clients such as `cleos` and the RPC API will see database state as of the current head block of the chain. It **will not** include changes made by transactions known to this node but not included in the chain, such as unconfirmed transactions.
 
