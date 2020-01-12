@@ -60,10 +60,6 @@ namespace eosio { namespace chain {
 #endif
 
       wasm_interface_impl(wasm_interface::vm_type vm, bool eosvmoc_tierup, const chainbase::database& d, const boost::filesystem::path data_dir, const eosvmoc::config& eosvmoc_config) : db(d), wasm_runtime_time(vm) {
-#ifdef EOSIO_WAVM_RUNTIME_ENABLED
-         if(vm == wasm_interface::vm_type::wavm)
-            runtime_interface = std::make_unique<webassembly::wavm::wavm_runtime>();
-#endif
          if(vm == wasm_interface::vm_type::wabt)
             runtime_interface = std::make_unique<webassembly::wabt_runtime::wabt_runtime>();
 #ifdef EOSIO_EOS_VM_RUNTIME_ENABLED
@@ -83,7 +79,6 @@ namespace eosio { namespace chain {
 
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
          if(eosvmoc_tierup) {
-            EOS_ASSERT(vm != wasm_interface::vm_type::wavm, wasm_exception, "WAVM is incompatible with EOS VM OC");
             EOS_ASSERT(vm != wasm_interface::vm_type::eos_vm_oc, wasm_exception, "You can't use EOS VM OC as the base runtime when tier up is activated");
             eosvmoc.emplace(data_dir, eosvmoc_config, d);
          }
