@@ -18,11 +18,15 @@ echo "starting launcher service: ./programs/launcher-service/launcher-service --
 
 sleep 1
 
+echo "IMAGE_TAG is $IMAGE_TAG"
+if [["$(IMAGE_TAG)" == 'ubuntu-16.04-pinned']]; then
+    alias python3=python3.6
+    echo "Done aliasing."
+fi
 echo "platform ID is $ID"
-
-echo $(python3 --version)
-python3 -m pip3 install requests
-python3 -m pip3 install dataclasses
+echo "Python3 version is $(python3 --version)"
+python3 -m pip install requests
+python3 -m pip install dataclasses
 
 set +e # defer ctest error handling to end
 
