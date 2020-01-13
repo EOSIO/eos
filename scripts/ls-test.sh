@@ -21,15 +21,17 @@ sleep 1
 echo "IMAGE_TAG is $IMAGE_TAG"
 echo "platform ID is $ID"
 echo "Python3 version is $(python3 --version)"
-echo "Python3.6 version is $(python3.6 --version)"
+# echo "Python3.6 version is $(python3.6 --version)"
 
-if [[ "$(python3 --version)" < "Python3.6" ]]; then
-    alias python3=python3.6
-    echo "Done aliasing. Python3 version is $(python3 --version)"
+if [[ $(python3 --version) < Python3.6 ]]; then
+    export PYTHON3=python3.6;
+else
+    export PYTHON3=python3;
 fi
+echo "Done aliasing. PYTHON3 is $PYTHON3"
 
 
-python3 -m pip install requests
+$PYTHON3 -m pip install requests
 
 set +e # defer ctest error handling to end
 
