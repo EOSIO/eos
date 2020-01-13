@@ -19,7 +19,7 @@ echo "starting launcher service: ./programs/launcher-service/launcher-service --
 sleep 1
 
 echo "IMAGE_TAG is $IMAGE_TAG"
-if [["$IMAGE_TAG" == 'ubuntu-16.04-pinned']]; then
+if [[ "$IMAGE_TAG" == 'ubuntu-16.04-pinned' ]]; then
     alias python3=python3.6
     echo "Done aliasing."
 fi
