@@ -21,7 +21,6 @@ sleep 1
 echo "platform ID is $ID"
 
 python3.7 -m pip install requests
-python3.7 -m pip install dataclasses
 
 set +e # defer ctest error handling to end
 
