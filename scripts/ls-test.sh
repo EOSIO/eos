@@ -21,6 +21,8 @@ sleep 1
 echo "IMAGE_TAG is $IMAGE_TAG"
 if [[ "$IMAGE_TAG" == 'ubuntu-16.04-pinned' ]]; then
     alias python3=python3.6
+    echo "Python3.6 version is $(python3.6 --version)"
+    echo "Python3 version is $(python3 --version)"
     echo "Done aliasing."
 fi
 echo "platform ID is $ID"
