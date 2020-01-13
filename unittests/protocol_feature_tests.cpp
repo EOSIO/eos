@@ -92,7 +92,7 @@ BOOST_AUTO_TEST_CASE( activate_and_restart ) try {
    BOOST_CHECK( c.control->is_builtin_activated( builtin_protocol_feature_t::preactivate_feature ) );
 
    c.close();
-   c.open( std::move( pfs ), nullptr );
+   c.open( std::move( pfs ) );
 
    BOOST_CHECK_EQUAL( head_block_num, c.control->head_block_num() );
 
@@ -266,7 +266,7 @@ BOOST_AUTO_TEST_CASE( subjective_restrictions_test ) try {
 
    auto restart_with_new_pfs = [&c]( protocol_feature_set&& pfs ) {
       c.close();
-      c.open(std::move(pfs), nullptr);
+      c.open(std::move(pfs));
    };
 
    auto get_builtin_digest = [&pfm]( builtin_protocol_feature_t codename ) -> digest_type {
@@ -408,7 +408,7 @@ BOOST_AUTO_TEST_CASE( replace_deferred_test ) try {
    c.close();
    auto cfg = c.get_config();
    cfg.disable_all_subjective_mitigations = true;
-   c.init( cfg, nullptr );
+   c.init( cfg );
 
    BOOST_CHECK_EQUAL( c.control->get_resource_limits_manager().get_account_ram_usage( N(alice) ), alice_ram_usage0 );
 
@@ -451,7 +451,7 @@ BOOST_AUTO_TEST_CASE( replace_deferred_test ) try {
 
    c.close();
    cfg.disable_all_subjective_mitigations = false;
-   c.init( cfg, nullptr );
+   c.init( cfg );
 
    const auto& pfm = c.control->get_protocol_feature_manager();
 
@@ -881,17 +881,17 @@ BOOST_AUTO_TEST_CASE( only_bill_to_first_authorizer ) { try {
       trx.sign(get_private_key(tester_account2, "active"), chain.control->get_chain_id());
 
 
-      auto tester_cpu_limit0  = mgr.get_account_cpu_limit_ex(tester_account);
-      auto tester2_cpu_limit0 = mgr.get_account_cpu_limit_ex(tester_account2);
-      auto tester_net_limit0  = mgr.get_account_net_limit_ex(tester_account);
-      auto tester2_net_limit0 = mgr.get_account_net_limit_ex(tester_account2);
+      auto tester_cpu_limit0  = mgr.get_account_cpu_limit_ex(tester_account).first;
+      auto tester2_cpu_limit0 = mgr.get_account_cpu_limit_ex(tester_account2).first;
+      auto tester_net_limit0  = mgr.get_account_net_limit_ex(tester_account).first;
+      auto tester2_net_limit0 = mgr.get_account_net_limit_ex(tester_account2).first;
 
       chain.push_transaction(trx);
 
-      auto tester_cpu_limit1  = mgr.get_account_cpu_limit_ex(tester_account);
-      auto tester2_cpu_limit1 = mgr.get_account_cpu_limit_ex(tester_account2);
-      auto tester_net_limit1  = mgr.get_account_net_limit_ex(tester_account);
-      auto tester2_net_limit1 = mgr.get_account_net_limit_ex(tester_account2);
+      auto tester_cpu_limit1  = mgr.get_account_cpu_limit_ex(tester_account).first;
+      auto tester2_cpu_limit1 = mgr.get_account_cpu_limit_ex(tester_account2).first;
+      auto tester_net_limit1  = mgr.get_account_net_limit_ex(tester_account).first;
+      auto tester2_net_limit1 = mgr.get_account_net_limit_ex(tester_account2).first;
 
       BOOST_CHECK(tester_cpu_limit1.used > tester_cpu_limit0.used);
       BOOST_CHECK(tester2_cpu_limit1.used > tester2_cpu_limit0.used);
@@ -925,17 +925,17 @@ BOOST_AUTO_TEST_CASE( only_bill_to_first_authorizer ) { try {
       trx.sign(get_private_key(tester_account, "active"), chain.control->get_chain_id());
       trx.sign(get_private_key(tester_account2, "active"), chain.control->get_chain_id());
 
-      auto tester_cpu_limit0  = mgr.get_account_cpu_limit_ex(tester_account);
-      auto tester2_cpu_limit0 = mgr.get_account_cpu_limit_ex(tester_account2);
-      auto tester_net_limit0  = mgr.get_account_net_limit_ex(tester_account);
-      auto tester2_net_limit0 = mgr.get_account_net_limit_ex(tester_account2);
+      auto tester_cpu_limit0  = mgr.get_account_cpu_limit_ex(tester_account).first;
+      auto tester2_cpu_limit0 = mgr.get_account_cpu_limit_ex(tester_account2).first;
+      auto tester_net_limit0  = mgr.get_account_net_limit_ex(tester_account).first;
+      auto tester2_net_limit0 = mgr.get_account_net_limit_ex(tester_account2).first;
 
       chain.push_transaction(trx);
 
-      auto tester_cpu_limit1  = mgr.get_account_cpu_limit_ex(tester_account);
-      auto tester2_cpu_limit1 = mgr.get_account_cpu_limit_ex(tester_account2);
-      auto tester_net_limit1  = mgr.get_account_net_limit_ex(tester_account);
-      auto tester2_net_limit1 = mgr.get_account_net_limit_ex(tester_account2);
+      auto tester_cpu_limit1  = mgr.get_account_cpu_limit_ex(tester_account).first;
+      auto tester2_cpu_limit1 = mgr.get_account_cpu_limit_ex(tester_account2).first;
+      auto tester_net_limit1  = mgr.get_account_net_limit_ex(tester_account).first;
+      auto tester2_net_limit1 = mgr.get_account_net_limit_ex(tester_account2).first;
 
       BOOST_CHECK(tester_cpu_limit1.used > tester_cpu_limit0.used);
       BOOST_CHECK(tester2_cpu_limit1.used == tester2_cpu_limit0.used);
@@ -1176,7 +1176,7 @@ BOOST_AUTO_TEST_CASE( ram_restrictions_test ) { try {
    c.close();
    auto cfg = c.get_config();
    cfg.disable_all_subjective_mitigations = true;
-   c.init( cfg, nullptr );
+   c.init( cfg );
 
    c.produce_block();
 
@@ -1201,7 +1201,7 @@ BOOST_AUTO_TEST_CASE( ram_restrictions_test ) { try {
    // Re-enable the subjective mitigation
    c.close();
    cfg.disable_all_subjective_mitigations = false;
-   c.init( cfg, nullptr );
+   c.init( cfg );
 
    c.produce_block();
 
@@ -1739,6 +1739,48 @@ BOOST_AUTO_TEST_CASE( wtmsig_block_signing_inflight_extension_test ) { try {
 
 } FC_LOG_AND_RETHROW() }
 
+static const char import_set_action_return_value_wast[] = R"=====(
+(module
+ (import "env" "set_action_return_value" (func $set_action_return_value (param i32 i32)))
+ (memory $0 1)
+ (export "apply" (func $apply))
+ (func $apply (param $0 i64) (param $1 i64) (param $2 i64)
+   (call $set_action_return_value
+     (i32.const 0)
+     (i32.const 43)
+   )
+ )
+ (data (i32.const 8) "\01\00\00\00\00\00\85\5C\34\00\03\EB\CF\44\B4\5A\71\D4\F2\25\76\8F\60\2D\1E\2E\2B\25\EF\77\9E\E9\89\7F\E7\44\BF\1A\16\E8\54\23\D5")
+)
+)=====";
+
+BOOST_AUTO_TEST_CASE( set_action_return_value_test ) { try {
+   tester c( setup_policy::preactivate_feature_and_new_bios );
+
+   const auto& pfm = c.control->get_protocol_feature_manager();
+   const auto& d = pfm.get_builtin_digest(builtin_protocol_feature_t::action_return_value);
+   BOOST_REQUIRE(d);
+
+   const auto& alice_account = account_name("alice");
+   c.create_accounts( {alice_account} );
+   c.produce_block();
+
+   BOOST_CHECK_EXCEPTION(  c.set_code( alice_account, import_set_action_return_value_wast ),
+                           wasm_exception,
+                           fc_exception_message_is( "env.set_action_return_value unresolveable" ) );
+
+   c.preactivate_protocol_features( {*d} );
+   c.produce_block();
+
+   // ensure it now resolves
+   c.set_code( alice_account, import_set_action_return_value_wast );
+
+   // ensure it can be called
+   BOOST_REQUIRE_EQUAL(c.push_action(action({{ alice_account, permission_name("active") }}, alice_account, action_name(), {} ), alice_account.to_uint64_t()), c.success());
+
+   c.produce_block();
+} FC_LOG_AND_RETHROW() }
+
 BOOST_AUTO_TEST_CASE( code_version_test ) { try {
    tester c( setup_policy::preactivate_feature_and_new_bios );
 
@@ -1801,7 +1843,6 @@ BOOST_AUTO_TEST_CASE( code_version_test ) { try {
    );
 
    c.produce_block();
-
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_SUITE_END()

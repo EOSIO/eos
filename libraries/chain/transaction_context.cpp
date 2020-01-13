@@ -65,7 +65,6 @@ namespace eosio { namespace chain {
       trace->block_num = c.head_block_num() + 1;
       trace->block_time = c.pending_block_time();
       trace->producer_block_id = c.pending_producer_block_id();
-      executed.reserve( trx.total_actions() );
    }
 
    void transaction_context::disallow_transaction_extensions( const char* error_msg )const {
@@ -79,7 +78,6 @@ namespace eosio { namespace chain {
    void transaction_context::init(uint64_t initial_net_usage)
    {
       EOS_ASSERT( !is_initialized, transaction_exception, "cannot initialize twice" );
-      const static int64_t large_number_no_overflow = std::numeric_limits<int64_t>::max()/2;
 
       const auto& cfg = control.get_global_properties().configuration;
       auto& rl = control.get_mutable_resource_limits_manager();
@@ -149,7 +147,7 @@ namespace eosio { namespace chain {
 
       eager_net_limit = net_limit;
 
-      // Possible lower eager_net_limit to what the billed accounts can pay plus some (objective) leeway
+      // Possibly lower eager_net_limit to what the billed accounts can pay plus some (objective) leeway
       auto new_eager_net_limit = std::min( eager_net_limit, static_cast<uint64_t>(account_net_limit + cfg.net_usage_leeway) );
       if( new_eager_net_limit < eager_net_limit ) {
          eager_net_limit = new_eager_net_limit;
@@ -481,17 +479,26 @@ namespace eosio { namespace chain {
       int64_t account_cpu_limit = large_number_no_overflow;
       bool greylisted_net = false;
       bool greylisted_cpu = false;
+
+      uint32_t specified_greylist_limit = control.get_greylist_limit();
       for( const auto& a : bill_to_accounts ) {
-         bool elastic = force_elastic_limits || !(control.is_producing_block() && control.is_resource_greylisted(a));
-         auto net_limit = rl.get_account_net_limit(a, elastic);
+         uint32_t greylist_limit = config::maximum_elastic_resource_multiplier;
+         if( !force_elastic_limits && control.is_producing_block() ) {
+            if( control.is_resource_greylisted(a) ) {
+               greylist_limit = 1;
+            } else {
+               greylist_limit = specified_greylist_limit;
+            }
+         }
+         auto [net_limit, net_was_greylisted] = rl.get_account_net_limit(a, greylist_limit);
          if( net_limit >= 0 ) {
             account_net_limit = std::min( account_net_limit, net_limit );
-            if (!elastic) greylisted_net = true;
+            greylisted_net |= net_was_greylisted;
          }
-         auto cpu_limit = rl.get_account_cpu_limit(a, elastic);
+         auto [cpu_limit, cpu_was_greylisted] = rl.get_account_cpu_limit(a, greylist_limit);
          if( cpu_limit >= 0 ) {
             account_cpu_limit = std::min( account_cpu_limit, cpu_limit );
-            if (!elastic) greylisted_cpu = true;
+            greylisted_cpu |= cpu_was_greylisted;
          }
       }
 

@@ -3,6 +3,7 @@
 #include <eosio/http_plugin/http_plugin.hpp>
 #include <eosio/wallet_plugin/wallet_plugin.hpp>
 #include <eosio/wallet_api_plugin/wallet_api_plugin.hpp>
+#include <eosio/version/version.hpp>
 
 #include <fc/log/logger_config.hpp>
 #include <fc/exception/exception.hpp>
@@ -33,6 +34,8 @@ bfs::path determine_home_directory()
 int main(int argc, char** argv)
 {
    try {
+      app().set_version_string(eosio::version::version_client());
+      app().set_full_version_string(eosio::version::version_full());
       bfs::path home = determine_home_directory();
       app().set_default_data_dir(home / "eosio-wallet");
       app().set_default_config_dir(home / "eosio-wallet");

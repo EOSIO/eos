@@ -19,3 +19,5 @@ file,rpm -qa
 libusbx-devel,rpm -qa
 libcurl-devel,rpm -qa
 patch,rpm -qa
+llvm-toolset-7.0-llvm-devel,rpm -qa
+llvm-toolset-7.0-llvm-static,rpm -qa

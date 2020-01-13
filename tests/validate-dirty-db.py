@@ -103,7 +103,7 @@ try:
         expectedRetCode=2
         if retCode != expectedRetCode:
             errorExit("Expected return code to be %d, but instead received %d." % (expectedRetCode, retCode))
-        db_dirty_msg="database dirty flag set"
+        db_dirty_msg="atabase dirty flag set"
         if db_dirty_msg not in stderr:
             errorExit("stderr should have contained \"%s\" but it did not. stderr=\n%s" % (db_dirty_msg, stderr))
 

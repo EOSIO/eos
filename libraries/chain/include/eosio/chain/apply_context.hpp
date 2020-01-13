@@ -533,6 +533,7 @@ class apply_context {
    /// Misc methods:
    public:
 
+
       int get_action( uint32_t type, uint32_t index, char* buffer, size_t buffer_size )const;
       int get_context_free_data( uint32_t index, char* buffer, size_t buffer_size )const;
       vector<account_name> get_active_producers() const;
@@ -570,6 +571,7 @@ class apply_context {
       bool                          context_free = false;
 
    public:
+      std::vector<char>             action_return_value;
       generic_index<index64_object>                                  idx64;
       generic_index<index128_object>                                 idx128;
       generic_index<index256_object, uint128_t*, const uint128_t*>   idx256;

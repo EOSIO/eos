@@ -21,7 +21,7 @@ namespace eosio { namespace chain {
             result in an exception. Use nullptr to disable a previously set callback. */
          void set_expiration_callback(void(*func)(void*), void* user);
 
-         volatile sig_atomic_t& expired;
+         std::atomic_bool& expired;
       private:
          platform_timer& _timer;
 
@@ -113,7 +113,7 @@ namespace eosio { namespace chain {
          fc::time_point                published;
 
 
-         vector<action_receipt>        executed;
+         deque<digest_type>            executed_action_receipt_digests;
          flat_set<account_name>        bill_to_accounts;
          flat_set<account_name>        validate_ram_usage;
 
@@ -126,7 +126,7 @@ namespace eosio { namespace chain {
          bool                          enforce_whiteblacklist = true;
 
          fc::time_point                deadline = fc::time_point::maximum();
-         fc::microseconds              leeway = fc::microseconds(3000);
+         fc::microseconds              leeway = fc::microseconds( config::default_subjective_cpu_leeway_us );
          int64_t                       billed_cpu_time_us = 0;
          bool                          explicit_billed_cpu_time = false;
 

@@ -138,8 +138,8 @@ def confirmHeadLibAndForkDbHeadOfSpecMode(nodeToTest, headLibAndForkDbHeadBefore
       assert forkDbHead == forkDbHeadBeforeSwitchMode, \
          "Fork db head ({}) should be equal to fork db head before switch mode ({}) ".format(forkDbHead, forkDbHeadBeforeSwitchMode)
 
-def relaunchNode(node: Node, nodeId, chainArg="", addOrSwapFlags=None, relaunchAssertMessage="Fail to relaunch"):
-   isRelaunchSuccess = node.relaunch(nodeId, chainArg=chainArg, addOrSwapFlags=addOrSwapFlags, timeout=relaunchTimeout, cachePopen=True)
+def relaunchNode(node: Node, nodeId, chainArg="", addSwapFlags=None, relaunchAssertMessage="Fail to relaunch"):
+   isRelaunchSuccess = node.relaunch(nodeId, chainArg=chainArg, addSwapFlags=addSwapFlags, timeout=relaunchTimeout, cachePopen=True)
    time.sleep(1) # Give a second to replay or resync if needed
    assert isRelaunchSuccess, relaunchAssertMessage
    return isRelaunchSuccess
@@ -188,18 +188,22 @@ try:
    # This wrapper function will resurrect the node to be tested, and shut it down by the end of the test
    def executeTest(nodeIdOfNodeToTest, runTestScenario):
       testResult = False
+      resultDesc = None
       try:
          # Relaunch killed node so it can be used for the test
          nodeToTest = cluster.getNode(nodeIdOfNodeToTest)
+         Utils.Print("Re-launch node #{} to excute test scenario: {}".format(nodeIdOfNodeToTest, runTestScenario.__name__))
          relaunchNode(nodeToTest, nodeIdOfNodeToTest, relaunchAssertMessage="Fail to relaunch before running test scenario")
 
          # Run test scenario
          runTestScenario(nodeIdOfNodeToTest, nodeToTest)
-         testResultMsgs.append("!!!TEST CASE #{} ({}) IS SUCCESSFUL".format(nodeIdOfNodeToTest, runTestScenario.__name__))
+         resultDesc = "!!!TEST CASE #{} ({}) IS SUCCESSFUL".format(nodeIdOfNodeToTest, runTestScenario.__name__)
          testResult = True
       except Exception as e:
-         testResultMsgs.append("!!!BUG IS CONFIRMED ON TEST CASE #{} ({}): {}".format(nodeIdOfNodeToTest, runTestScenario.__name__, e))
+         resultDesc = "!!!BUG IS CONFIRMED ON TEST CASE #{} ({}): {}".format(nodeIdOfNodeToTest, runTestScenario.__name__, e)
       finally:
+         Utils.Print(resultDesc)
+         testResultMsgs.append(resultDesc)
          # Kill node after use
          if not nodeToTest.killed: nodeToTest.kill(signal.SIGTERM)
       return testResult
@@ -252,7 +256,7 @@ try:
 
       # Kill and relaunch in speculative mode
       nodeToTest.kill(signal.SIGTERM)
-      relaunchNode(nodeToTest, nodeIdOfNodeToTest, addOrSwapFlags={"--read-mode": "speculative"})
+      relaunchNode(nodeToTest, nodeIdOfNodeToTest, addSwapFlags={"--read-mode": "speculative"})
 
       # Ensure the node condition is as expected after relaunch
       confirmHeadLibAndForkDbHeadOfSpecMode(nodeToTest, headLibAndForkDbHeadBeforeSwitchMode)
@@ -287,7 +291,7 @@ try:
          # Kill and relaunch in irreversible mode
          nodeToTest.kill(signal.SIGTERM)
          waitForBlksProducedAndLibAdvanced() # Wait for some blks to be produced and lib advance)
-         relaunchNode(nodeToTest, nodeIdOfNodeToTest, addOrSwapFlags={"--read-mode": "speculative"})
+         relaunchNode(nodeToTest, nodeIdOfNodeToTest, addSwapFlags={"--read-mode": "speculative"})
 
          # Ensure the node condition is as expected after relaunch
          ensureHeadLibAndForkDbHeadIsAdvancing(nodeToTest)
@@ -353,7 +357,7 @@ try:
          # Start from clean data dir, recover back up blocks, and then relaunch with irreversible snapshot
          removeState(nodeIdOfNodeToTest)
          recoverBackedupBlksDir(nodeIdOfNodeToTest) # this function will delete the existing blocks dir first
-         relaunchNode(nodeToTest, nodeIdOfNodeToTest, chainArg=" --snapshot {}".format(getLatestSnapshot(nodeIdOfNodeToTest)), addOrSwapFlags={"--read-mode": "speculative"})
+         relaunchNode(nodeToTest, nodeIdOfNodeToTest, chainArg=" --snapshot {}".format(getLatestSnapshot(nodeIdOfNodeToTest)), addSwapFlags={"--read-mode": "speculative"})
          confirmHeadLibAndForkDbHeadOfSpecMode(nodeToTest)
          # Ensure it automatically replays "reversible blocks", i.e. head lib and fork db should be the same
          headLibAndForkDbHeadAfterRelaunch = getHeadLibAndForkDbHead(nodeToTest)
@@ -380,22 +384,23 @@ try:
          stopProdNode()
 
    # Start executing test cases here
-   testResults = []
-   testResults.append( executeTest(1, replayInIrrModeWithRevBlks) )
-   testResults.append( executeTest(2, replayInIrrModeWithoutRevBlks) )
-   testResults.append( executeTest(3, switchSpecToIrrMode) )
-   testResults.append( executeTest(4, switchIrrToSpecMode) )
-   testResults.append( executeTest(5, switchSpecToIrrModeWithConnectedToProdNode) )
-   testResults.append( executeTest(6, switchIrrToSpecModeWithConnectedToProdNode) )
-   testResults.append( executeTest(7, replayInIrrModeWithRevBlksAndConnectedToProdNode) )
-   testResults.append( executeTest(8, replayInIrrModeWithoutRevBlksAndConnectedToProdNode) )
-   testResults.append( executeTest(9, switchToSpecModeWithIrrModeSnapshot) )
+   testSuccessful = executeTest(1, replayInIrrModeWithRevBlks)
+   testSuccessful = testSuccessful and executeTest(2, replayInIrrModeWithoutRevBlks)
+   testSuccessful = testSuccessful and executeTest(3, switchSpecToIrrMode)
+   testSuccessful = testSuccessful and executeTest(4, switchIrrToSpecMode)
+   testSuccessful = testSuccessful and executeTest(5, switchSpecToIrrModeWithConnectedToProdNode)
+   testSuccessful = testSuccessful and executeTest(6, switchIrrToSpecModeWithConnectedToProdNode)
+   testSuccessful = testSuccessful and executeTest(7, replayInIrrModeWithRevBlksAndConnectedToProdNode)
+   testSuccessful = testSuccessful and executeTest(8, replayInIrrModeWithoutRevBlksAndConnectedToProdNode)
+   testSuccessful = testSuccessful and executeTest(9, switchToSpecModeWithIrrModeSnapshot)
 
-   testSuccessful = all(testResults)
 finally:
    TestHelper.shutdown(cluster, walletMgr, testSuccessful, killEosInstances, killWallet, keepLogs, killAll, dumpErrorDetails)
    # Print test result
-   for msg in testResultMsgs: Print(msg)
+   for msg in testResultMsgs:
+      Print(msg)
+   if not testSuccessful and len(testResultMsgs) < 9:
+      Print("Subsequent tests were not run after failing test scenario.")
 
 exitCode = 0 if testSuccessful else 1
 exit(exitCode)

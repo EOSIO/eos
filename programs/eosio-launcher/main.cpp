@@ -500,7 +500,7 @@ launcher_def::set_options (bpo::options_description &cfg) {
     ("servers",bpo::value<string>(),"a file containing ip addresses and names of individual servers to deploy as producers or non-producers ")
     ("per-host",bpo::value<int>(&per_host)->default_value(0),("specifies how many " + string(node_executable_name) + " instances will run on a single host. Use 0 to indicate all on one.").c_str())
     ("network-name",bpo::value<string>(&network.name)->default_value("testnet_"),"network name prefix used in GELF logging source")
-    ("enable-gelf-logging",bpo::value<bool>(&gelf_enabled)->default_value(true),"enable gelf logging appender in logging configuration file")
+    ("enable-gelf-logging",bpo::value<bool>(&gelf_enabled)->default_value(false),"enable gelf logging appender in logging configuration file")
     ("gelf-endpoint",bpo::value<string>(&gelf_endpoint)->default_value("10.160.11.21:12201"),"hostname:port or ip:port of GELF endpoint")
     ("template",bpo::value<string>(&start_temp)->default_value("testnet.template"),"the startup script template")
     ("script",bpo::value<string>(&start_script)->default_value("bios_boot.sh"),"the generated startup script name")
@@ -1167,26 +1167,32 @@ launcher_def::write_logging_config_file(tn_node_def &node) {
 
   auto log_config = fc::logging_config::default_config();
   if(gelf_enabled) {
-    log_config.appenders.push_back(
-          fc::appender_config( "net", "gelf",
-              fc::mutable_variant_object()
-                  ( "endpoint", node.gelf_endpoint )
-                  ( "host", instance.name )
-             ) );
-    log_config.loggers.front().appenders.push_back("net");
-
-    fc::logger_config p2p ("net_plugin_impl");
-    p2p.level=fc::log_level::debug;
-    p2p.appenders.push_back ("stderr");
-    p2p.appenders.push_back ("net");
-    log_config.loggers.emplace_back(p2p);
-
-     fc::logger_config http("http_plugin");
-     http.level=fc::log_level::debug;
-     http.appenders.push_back("stderr");
-     http.appenders.push_back("net");
-     log_config.loggers.emplace_back(http);
+     log_config.appenders.push_back(
+           fc::appender_config( "net", "gelf",
+                           fc::mutable_variant_object()
+                                 ( "endpoint", node.gelf_endpoint )
+                                 ( "host", instance.name )
+           ) );
+     log_config.loggers.front().appenders.push_back( "net" );
   }
+
+  fc::logger_config p2p( "net_plugin_impl" );
+  p2p.level = fc::log_level::debug;
+  p2p.appenders.push_back( "stderr" );
+  if( gelf_enabled ) p2p.appenders.push_back( "net" );
+  log_config.loggers.emplace_back( p2p );
+
+  fc::logger_config http( "http_plugin" );
+  http.level = fc::log_level::debug;
+  http.appenders.push_back( "stderr" );
+  if( gelf_enabled ) http.appenders.push_back( "net" );
+  log_config.loggers.emplace_back( http );
+
+  fc::logger_config pp( "producer_plugin" );
+  pp.level = fc::log_level::debug;
+  pp.appenders.push_back( "stderr" );
+  if( gelf_enabled ) pp.appenders.push_back( "net" );
+  log_config.loggers.emplace_back( pp );
 
   auto str = fc::json::to_pretty_string( log_config, fc::json::stringify_large_ints_and_doubles );
   cfg.write( str.c_str(), str.size() );

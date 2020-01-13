@@ -95,7 +95,7 @@ namespace eosio { namespace chain {
       std::set<std::string> s;
 
       for( const auto& p : whitelisted_intrinsics ) {
-         s.emplace( p.second.c_str(), p.second.size() );
+         s.emplace( p.second.data(), p.second.size() );
       }
 
       return s;
