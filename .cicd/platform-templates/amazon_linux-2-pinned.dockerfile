@@ -6,8 +6,7 @@ ENV HOME=/root
 ## Set WORKDIR to location we mount into the container
 WORKDIR ${HOME}
 ## install ccache
-RUN curl -LO http://download-ib01.fedoraproject.org/pub/epel/7/x86_64/Packages/c/ccache-3.7.6-1.el7.x86_64.rpm && \
-    yum install -y ccache-3.7.6-1.el7.x86_64.rpm  && rm ccache-3.7.6-1.el7.x86_64.rpm 
+RUN yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm && yum install -y ccache
 ## Cleanup eosio directory (~ 600MB)
 RUN rm -rf ${EOS_LOCATION}
 ## install nvm
