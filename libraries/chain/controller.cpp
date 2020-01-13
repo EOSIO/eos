@@ -1101,10 +1101,6 @@ struct controller_impl {
       EOS_ASSERT(trx_ctx.trx_subjective_data.validate_trx_cpu(trx_ctx.billed_cpu_time_us),
             subjective_data_exception,
             "subjective data trx cpu time invalid");
-      EOS_ASSERT(trx_ctx.trx_subjective_data.validate_wall_time(pbhs.timestamp.to_time_point().time_since_epoch()),
-            subjective_data_exception,
-            "subjective data wall time invalid");
-
       pbhs.subjective_data.insert(pbhs.subjective_data.end(),
                                   trx_ctx.trx_subjective_data.data.begin(),
                                   trx_ctx.trx_subjective_data.data.end());
@@ -3307,7 +3303,7 @@ template<>
 void controller_impl::on_activation<builtin_protocol_feature_t::subjective_data>() {
    db.modify( db.get<protocol_state_object>(), [&]( auto& ps ) {
       add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "get_trx_cpu_bill" );
-      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "get_wall_time" );
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "get_wallclock_time" );
       add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "get_random" );
    } );
 }

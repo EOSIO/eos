@@ -18,8 +18,9 @@ namespace eosio { namespace chain {
             uint32_t trx_cpu = static_cast<uint32_t>(_ctx.billed_cpu_time_us);
             EOS_ASSERT(trx_cpu >= _trx_cpu, subjective_data_exception, "billed cpu time should be greater than last call");
             _trx_cpu = trx_cpu;
-            data.resize(data.size()+sizeof(trx_cpu));
-            memcpy(data.data() + data.size(), &trx_cpu, sizeof(trx_cpu));
+            size_t old_size = data.size();
+            data.resize(old_size+sizeof(trx_cpu));
+            memcpy(data.data() + old_size, &trx_cpu, sizeof(trx_cpu));
             return trx_cpu;
          }
          uint64_t get_time() {
@@ -27,14 +28,16 @@ namespace eosio { namespace chain {
             uint64_t time_us = duration_cast<std::chrono::microseconds>(high_resolution_clock::now().time_since_epoch()).count();
             EOS_ASSERT(time_us >= _time_us, subjective_data_exception, "wall clock time should be greater than last call");
             _time_us = time_us;
-            data.resize(data.size()+sizeof(time_us));
-            memcpy(data.data() + data.size(), &time_us, sizeof(time_us));
+            size_t old_size = data.size();
+            data.resize(old_size+sizeof(time_us));
+            memcpy(data.data() + old_size, &time_us, sizeof(time_us));
             return time_us;
          }
          void get_random(char* bytes, uint32_t size) {
             RAND_bytes((uint8_t*)bytes, size);
-            data.resize(data.size()+size);
-            memcpy(data.data() + data.size(), bytes, size);
+            size_t old_size = data.size();
+            data.resize(old_size+size);
+            memcpy(data.data() + old_size, bytes, size);
          }
          inline bool validate_trx_cpu(uint32_t final_billed_cpu)const { return final_billed_cpu >= _trx_cpu; }
          inline bool validate_wall_time(const fc::microseconds& block_time)const {

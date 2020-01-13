@@ -93,7 +93,7 @@ namespace eosio { namespace chain {
          if (!bhs.subjective_data.empty()) {
             emplace_extension(b.block_extensions, subjective_data_eid, fc::raw::pack(bhs.subjective_data));
          }
-         return bhs;
+         return std::move(bhs);
       }
    } // namespace
 

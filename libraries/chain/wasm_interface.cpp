@@ -122,8 +122,7 @@ class context_aware_api {
       }
 
    protected:
-      apply_context&             context;
-
+      apply_context& context;
 };
 
 class context_free_api : public context_aware_api {
@@ -1860,7 +1859,7 @@ class subjective_api : public context_aware_api {
       uint32_t get_trx_cpu_bill() {
          return context.trx_context.trx_subjective_data.get_trx_cpu();
       }
-      uint64_t get_wall_time() {
+      uint64_t get_wallclock_time() {
          return context.trx_context.trx_subjective_data.get_time();
       }
       void get_random(array_ptr<char> dest, uint32_t size) {
@@ -2063,8 +2062,8 @@ REGISTER_INTRINSICS(transaction_api,
    (send_context_free_inline,  void(int, int)                        )
    (send_deferred,             void(int, int64_t, int, int, int32_t) )
    (cancel_deferred,           int(int)                              )
-   (accept_charges,            int(int, int)          )
-   (get_accepted_charges,      void(int, int, int) )
+   (accept_charges,            int(int, int)                         )
+   (get_accepted_charges,      void(int, int, int)                   )
 );
 
 REGISTER_INTRINSICS(context_free_api,
@@ -2072,15 +2071,15 @@ REGISTER_INTRINSICS(context_free_api,
 )
 
 REGISTER_INTRINSICS(memory_api,
-   (memcpy,                 int(int, int, int)  )
-   (memmove,                int(int, int, int)  )
-   (memcmp,                 int(int, int, int)  )
-   (memset,                 int(int, int, int)  )
+   (memcpy,                 int(int, int, int) )
+   (memmove,                int(int, int, int) )
+   (memcmp,                 int(int, int, int) )
+   (memset,                 int(int, int, int) )
 );
 
 REGISTER_INTRINSICS(subjective_api,
    (get_trx_cpu_bill,    int()          )
-   (get_wall_time,       int64_t()          )
+   (get_wallclock_time,  int64_t()      )
    (get_random,          void(int, int) )
 );
 

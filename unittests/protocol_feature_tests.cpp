@@ -3,6 +3,12 @@
 #include <eosio/chain/generated_transaction_object.hpp>
 #include <eosio/testing/tester.hpp>
 
+#include <eosio/chain/config.hpp>
+#include <eosio/chain/resource_limits.hpp>
+#include <eosio/testing/chainbase_fixture.hpp>
+#include <eosio/chain/transaction_context.hpp>
+
+
 #include <chrono>
 
 #include <Runtime/Runtime.h>
@@ -1754,7 +1760,7 @@ BOOST_AUTO_TEST_CASE( contracts_pay_transaction_costs) { try {
    c.preactivate_protocol_features( {*d} );
    c.produce_block();
 
-   auto rlm = c.control->get_resource_limits_manager();
+   auto& rlm = c.control->get_mutable_resource_limits_manager();
    const account_name payer("payer");
    const account_name client("client");
 
@@ -1763,8 +1769,15 @@ BOOST_AUTO_TEST_CASE( contracts_pay_transaction_costs) { try {
    c.set_abi( payer, contracts::contract_pays_abi().data() );
    c.produce_block();
 
-   rlm.set_account_limits(payer, 1000000, 9, 9);
-   rlm.set_account_limits(client, 0, 0, 0);
+   const auto& set_account_lim = [&](auto n, int64_t ram, int64_t net, int64_t cpu) {
+      c.push_action(name("eosio"), name("setalimits"), name("eosio"), fc::mutable_variant_object()
+            ("account", n)
+            ("ram_bytes", ram)
+            ("net_weight", net)
+            ("cpu_weight", cpu));
+   };
+   set_account_lim(payer, 1000000, 9, 9);
+   set_account_lim(client, 0, 0, 0);
    c.produce_block();
 
    BOOST_REQUIRE_EXCEPTION(c.push_action(payer, name("accept"), payer, fc::mutable_variant_object()
@@ -1781,8 +1794,7 @@ BOOST_AUTO_TEST_CASE( contracts_pay_transaction_costs) { try {
          charged_costs_cpu_error,
          fc_exception_message_is("not enough cpu staked to cover accepting charges"));
 
-   rlm.set_account_limits(payer, 1000000, 100000, 100000);
-   rlm.process_account_limit_updates();
+   set_account_lim(payer, 1000000, 100000, 100000);
 
    c.push_action(payer, name("accept"), payer, fc::mutable_variant_object()
          ("net", 112)
@@ -1806,7 +1818,6 @@ BOOST_AUTO_TEST_CASE( contracts_pay_transaction_costs) { try {
       trx.sign( c.get_private_key(payer, active.to_string()), c.control->get_chain_id() );
       return c.push_transaction(trx);
    };
-   rlm.process_account_limit_updates();
 
    c.produce_block();
 
@@ -1825,7 +1836,7 @@ BOOST_AUTO_TEST_CASE( contracts_pay_transaction_costs) { try {
 
    c.produce_block();
 
-   rlm.set_account_limits(client, 0, 100, 1);
+   set_account_lim(client, 0, 100, 1);
    c.produce_block();
 
    c.push_action(payer, name("eatcpu"), client, fc::mutable_variant_object()
@@ -1835,7 +1846,7 @@ BOOST_AUTO_TEST_CASE( contracts_pay_transaction_costs) { try {
          ("iters", 100)), tx_net_usage_exceeded, fc_exception_message_is("transaction net usage is too high: 96 > 0"));
 */
    int64_t rb = 0, nw = 0, cw = 0;
-   rlm.get_account_limits(payer, rb, nw, cw);
+   c.control->get_resource_limits_manager().get_account_limits(payer, rb, nw, cw);
    BOOST_CHECK(rb == 1000000);
    BOOST_CHECK(nw == 100000);
    BOOST_CHECK(cw == 100000);
@@ -1890,7 +1901,7 @@ BOOST_AUTO_TEST_CASE(subjective_data_test) { try {
       // check walltime
       {
          auto pre_block_time = std::chrono::high_resolution_clock::now();
-         c.push_action(acnt, name("walltime"), acnt, fc::mutable_variant_object());
+         auto trace = c.push_action(acnt, name("walltime"), acnt, fc::mutable_variant_object());
 
          // test out that subjective data is part of the block
          auto b = c.produce_block();
@@ -1907,34 +1918,39 @@ BOOST_AUTO_TEST_CASE(subjective_data_test) { try {
             BOOST_REQUIRE(subjective_time <= upper_bound);
 
             uint64_t subjective_time2 = 0;
-            memcpy(&subjective_time2, subj_data.bytes.data()+4, 8);
+            memcpy(&subjective_time2, subj_data.bytes.data()+8, 8);
             BOOST_REQUIRE(subjective_time <= subjective_time2);
             BOOST_REQUIRE(lower_bound <= subjective_time2);
             BOOST_REQUIRE(subjective_time2 <= upper_bound);
+
+            // check that the net usage is reflected, default is 96 bytes and 2 uint64_t values
+            BOOST_REQUIRE(trace->net_usage == 96 + 16);
          }
       }
+
       // check trxcpu
       {
          auto pre_block_time = std::chrono::high_resolution_clock::now();
-         c.push_action(acnt, name("trxcpu2"), acnt, fc::mutable_variant_object());
+         auto trace = c.push_action(acnt, name("trxcpu"), acnt, fc::mutable_variant_object());
 
          // test out that subjective data is part of the block
          auto b = c.produce_block();
          auto exts = b->validate_and_extract_extensions();
          if (exts.count(subjective_data_extension::extension_id()) > 0) {
             auto& subj_data = std::get<subjective_data_extension>(exts.lower_bound(subjective_data_extension::extension_id())->second);
-            auto post_block_time = std::chrono::high_resolution_clock::now();
-            uint32_t lower_bound = std::chrono::duration_cast<std::chrono::microseconds>(pre_block_time.time_since_epoch()).count();
-            uint32_t upper_bound = std::chrono::duration_cast<std::chrono::microseconds>(post_block_time.time_since_epoch()).count();
             uint32_t cpu  = 0;
             uint32_t cpu2 = 0;
             BOOST_REQUIRE(subj_data.bytes.size() == 8);
             memcpy(&cpu, subj_data.bytes.data(), 4);
             memcpy(&cpu2, subj_data.bytes.data()+4, 4);
-            /*
-            BOOST_REQUIRE(lower_bound <= subjective_time);
-            BOOST_REQUIRE(subjective_time <= upper_bound);
-            */
+
+            uint32_t upper_bound = fc::time_point(trace->elapsed).sec_since_epoch();
+
+            wdump((trace->elapsed));
+            std::cout << "elapsed " << upper_bound << " cpu " << cpu << " cpu2 " << cpu2 << "\n";
+            BOOST_REQUIRE(cpu <= upper_bound);
+            BOOST_REQUIRE(cpu <= cpu2);
+            BOOST_REQUIRE(cpu2 <= upper_bound);
          }
       }
 

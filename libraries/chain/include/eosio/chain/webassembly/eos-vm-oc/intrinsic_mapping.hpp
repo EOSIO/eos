@@ -253,7 +253,7 @@ constexpr auto intrinsic_table = boost::hana::make_tuple(
    "env.get_accepted_charges"_s,
    "env.get_num_actions"_s,
    "env.get_trx_cpu_bill"_s,
-   "env.get_wall_time"_s,
+   "env.get_wallclock_time"_s,
    "env.get_random"_s
 );
 

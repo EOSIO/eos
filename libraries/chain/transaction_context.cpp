@@ -322,6 +322,10 @@ namespace eosio { namespace chain {
          billing_timer_exception_code = tx_cpu_usage_exceeded::code_value;
       }
 
+      // add subjective_data usage to net
+      std::cout << "Hello " << net_usage << "\n";
+      net_usage += trx_subjective_data.data.size();
+      std::cout << "Hello2 " << net_usage << "\n";
       net_usage = ((net_usage + 7)/8)*8; // Round up to nearest multiple of word size (8 bytes)
 
       eager_net_limit = net_limit;

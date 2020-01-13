@@ -339,7 +339,6 @@ public:
 
    const_iterator upper_bound( uint32_t block_num )const;
 
-
    bool is_builtin_activated( builtin_protocol_feature_t feature_codename, uint32_t current_block_num )const;
 
    void activate_feature( const digest_type& feature_digest, uint32_t current_block_num );
@@ -353,7 +352,7 @@ protected:
    };
 
    struct builtin_protocol_feature_entry {
-      static constexpr size_t   no_previous =  std::numeric_limits<size_t>::max();
+      static constexpr size_t   no_previous = std::numeric_limits<size_t>::max();
       static constexpr uint32_t not_active  = std::numeric_limits<uint32_t>::max();
 
       size_t                               previous = no_previous;

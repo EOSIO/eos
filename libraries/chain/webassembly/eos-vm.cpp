@@ -47,19 +47,23 @@ template<typename Impl>
 class eos_vm_instantiated_module : public wasm_instantiated_module_interface {
       using backend_t = backend<apply_context, Impl>;
    public:
-      
+
       eos_vm_instantiated_module(eos_vm_runtime<Impl>* runtime, std::unique_ptr<backend_t> mod) :
          _runtime(runtime),
          _instantiated_module(std::move(mod)) {}
 
-      void apply(apply_context& context) override {
+      void apply(apply_context& context) override { //, bool validate_linkage=false) override {
          _instantiated_module->set_wasm_allocator(&context.control.get_wasm_allocator());
          _runtime->_bkend = _instantiated_module.get();
          _runtime->_bkend->initialize(&context);
          // clamp WASM memory to maximum_linear_memory/wasm_page_size
          auto& module = _runtime->_bkend->get_module();
-         if (module.memories.size() && 
-               ((module.memories.at(0).limits.maximum > wasm_constraints::maximum_linear_memory / wasm_constraints::wasm_page_size) 
+/*
+         if (validate_linkage) {
+         }
+*/
+         if (module.memories.size() &&
+               ((module.memories.at(0).limits.maximum > wasm_constraints::maximum_linear_memory / wasm_constraints::wasm_page_size)
                || !module.memories.at(0).limits.flags)) {
             module.memories.at(0).limits.flags = true;
             module.memories.at(0).limits.maximum = wasm_constraints::maximum_linear_memory / wasm_constraints::wasm_page_size;
@@ -86,7 +90,7 @@ class eos_vm_instantiated_module : public wasm_instantiated_module_interface {
 
    private:
       eos_vm_runtime<Impl>*            _runtime;
-      std::unique_ptr<backend_t> _instantiated_module;
+      std::unique_ptr<backend_t>       _instantiated_module;
 };
 
 template<typename Impl>

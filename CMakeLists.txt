@@ -119,6 +119,7 @@ else()
         endif()
     endif()
 endif()
+set(CMAKE_CXX_FLAGS "-fsanitize=address -fno-omit-frame-pointer")
 
 # based on http://www.delorie.com/gnu/docs/gdb/gdb_70.html
 # uncomment this line to tell GDB about macros (slows compile times)

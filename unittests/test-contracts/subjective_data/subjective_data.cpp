@@ -5,7 +5,7 @@ extern "C" {
       __attribute__((eosio_wasm_import))
       uint32_t get_trx_cpu_bill();
       __attribute__((eosio_wasm_import))
-      uint64_t get_wall_time();
+      uint64_t get_wallclock_time();
       __attribute__((eosio_wasm_import))
       void get_random(char*, uint32_t);
    }}
@@ -18,15 +18,11 @@ public:
    [[eosio::action]]
    void trxcpu() {
       uint32_t cpu = eosio::internal_use_do_not_use::get_trx_cpu_bill();
-   }
-   [[eosio::action]]
-   void trxcpu2() {
-      uint32_t cpu = eosio::internal_use_do_not_use::get_trx_cpu_bill();
       cpu = eosio::internal_use_do_not_use::get_trx_cpu_bill();
    }
    [[eosio::action]]
    void walltime() {
-      uint64_t walltime = eosio::internal_use_do_not_use::get_wall_time();
-      walltime = eosio::internal_use_do_not_use::get_wall_time();
+      uint64_t walltime = eosio::internal_use_do_not_use::get_wallclock_time();
+      walltime = eosio::internal_use_do_not_use::get_wallclock_time();
    }
 };

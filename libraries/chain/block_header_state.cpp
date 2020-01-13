@@ -329,7 +329,6 @@ namespace eosio { namespace chain {
    {
       if( !additional_signatures.empty() ) {
          bool wtmsig_enabled = detail::is_builtin_activated(prev_activated_protocol_features, pfs, builtin_protocol_feature_t::wtmsig_block_signatures);
-
          EOS_ASSERT(wtmsig_enabled, producer_schedule_exception, "Block contains multiple signatures before WTMsig block signatures are enabled" );
       }
 
