@@ -23,7 +23,7 @@ echo "platform ID is $ID"
 echo "Python3 version is $(python3 --version)"
 # echo "Python3.6 version is $(python3.6 --version)"
 
-if [[ $(python3 --version) < Python3.6 ]]; then
+if [[ $(python3 --version) < Python 3.6 ]]; then
     export PYTHON3=python3.6;
 else
     export PYTHON3=python3;
