@@ -20,8 +20,9 @@ sleep 1
 
 echo "platform ID is $ID"
 
-python3 -m pip install requests
-python3 -m pip install dataclasses
+echo $(python3 --version)
+python3 -m pip3 install requests
+python3 -m pip3 install dataclasses
 
 set +e # defer ctest error handling to end
 
