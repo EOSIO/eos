@@ -12,7 +12,7 @@
                     "type": "name"
                 },
                 {
-                    "name": "last_code_update",
+                    "name": "last_updated",
                     "type": "time_point"
                 }
             ]

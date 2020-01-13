@@ -1770,7 +1770,7 @@ BOOST_AUTO_TEST_CASE( code_version_test ) { try {
                                              ("name", tester1_account)
                                              ("version", empty_version.str()) ),
                            eosio_assert_message_exception,
-                           eosio_assert_message_is( "code version not match" ) );
+                           eosio_assert_message_is( "code version doesn't match the expected value" ) );
 
    BOOST_CHECK_EXCEPTION(  c.push_action( tester1_account, N(reqversion), tester1_account, mutable_variant_object()
                                              ("name", N(nonexisting).to_string())
@@ -1790,14 +1790,14 @@ BOOST_AUTO_TEST_CASE( code_version_test ) { try {
 
    BOOST_CHECK_EXCEPTION(  c.push_action( tester1_account, N(reqtime), tester1_account, mutable_variant_object()
                                              ("name", tester1_account)
-                                             ("last_code_update", time_point()) ),
+                                             ("last_updated", time_point()) ),
                            eosio_assert_message_exception,
-                           eosio_assert_message_is( "last update time not match" ) );
+                           eosio_assert_message_is( "last updated time doesn't match the expected value" ) );
 
    auto acct = c.control->db().get<account_metadata_object,by_name>(tester1_account);
    c.push_action( tester1_account, N(reqtime), tester1_account, mutable_variant_object()
       ("name", tester1_account)
-      ("last_code_update", acct.last_code_update)
+      ("last_updated", acct.last_code_update)
    );
 
    c.produce_block();
