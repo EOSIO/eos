@@ -987,12 +987,21 @@ class authorization_api : public context_aware_api {
       return context.is_account( account );
    }
 
-   void get_code_version( const account_name& account, int64_t& last_code_update_time, fc::sha256& code_hash ) {
+   uint32_t get_code_version( const account_name& account, array_ptr<char> packed_code_version, size_t buffer_size ) {
       auto* acct = context.db.find<account_metadata_object, by_name>(account);
       EOS_ASSERT( acct != nullptr, action_validate_exception,
                   "account '${account}' does not exist", ("account", account) );
-      last_code_update_time = acct->last_code_update.time_since_epoch().count();
-      code_hash = acct->code_hash;
+
+      auto size = sizeof(decltype(acct->code_hash)) + sizeof(decltype(acct->last_code_update));
+      if( buffer_size == 0 ) return size;
+
+      if( size <= buffer_size ) {
+         datastream<char*> ds( packed_code_version, size );
+         fc::raw::pack(ds, acct->code_hash);
+         fc::raw::pack(ds, acct->last_code_update);
+         return size;
+      }
+      return 0;
    }
 };
 
@@ -1936,7 +1945,7 @@ REGISTER_INTRINSICS(authorization_api,
    (require_authorization, void(int64_t, int64_t), "require_auth2", void(authorization_api::*)(const account_name&, const permission_name& permission) )
    (has_authorization,     int(int64_t), "has_auth", bool(authorization_api::*)(const account_name&)const )
    (is_account,            int(int64_t)           )
-   (get_code_version,      void(int64_t, int, int) )
+   (get_code_version,      int(int64_t, int, int) )
 );
 
 REGISTER_INTRINSICS(console_api,
