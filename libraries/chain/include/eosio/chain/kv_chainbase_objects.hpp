@@ -7,6 +7,18 @@
 
 namespace eosio { namespace chain {
 
+   class kv_db_config_object : public chainbase::object<kv_db_config_object_type, kv_db_config_object> {
+      OBJECT_CTOR(kv_db_config_object)
+
+      id_type id;
+      bool    using_rocksdb_for_disk = false;
+   };
+
+   using kv_db_config_multi_index = chainbase::shared_multi_index_container<
+         kv_db_config_object,
+         indexed_by<ordered_unique<tag<by_id>,
+                                   BOOST_MULTI_INDEX_MEMBER(kv_db_config_object, kv_db_config_object::id_type, id)>>>;
+
    struct by_kv_key;
 
    struct kv_object : public chainbase::object<kv_object_type, kv_object> {
@@ -40,5 +52,8 @@ namespace config {
 
 }} // namespace eosio::chain
 
+CHAINBASE_SET_INDEX_TYPE(eosio::chain::kv_db_config_object, eosio::chain::kv_db_config_multi_index)
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::kv_object, eosio::chain::kv_index)
+
+FC_REFLECT(eosio::chain::kv_db_config_object, (using_rocksdb_for_disk))
 FC_REFLECT(eosio::chain::kv_object, (database_id)(contract)(kv_key)(kv_value))

@@ -32,6 +32,7 @@
 #include <fc/log/logger_config.hpp>
 #include <fc/scoped_exit.hpp>
 #include <fc/variant_object.hpp>
+#include <chain_kv/chain_kv.hpp>
 
 #include <new>
 
@@ -229,6 +230,8 @@ struct controller_impl {
    controller&                    self;
    std::function<void()>          shutdown;
    chainbase::database            db;
+   chain_kv::database             kv_database;
+   chain_kv::undo_stack           kv_undo_stack;
    chainbase::database            reversible_blocks; ///< a special database to persist blocks that have successfully been applied but are still reversible
    block_log                      blog;
    optional<pending_state>        pending;
@@ -305,6 +308,8 @@ struct controller_impl {
     db( cfg.state_dir,
         cfg.read_only ? database::read_only : database::read_write,
         cfg.state_size, false, cfg.db_map_mode, cfg.db_hugepage_paths ),
+    kv_database( (cfg.state_dir/"chain-kv").string().c_str(), !cfg.read_only, cfg.rocksdb_threads, cfg.rocksdb_max_open_files ),
+    kv_undo_stack( kv_database, vector<char>{rocksdb_undo_prefix} ),
     reversible_blocks( cfg.blocks_dir/config::reversible_blocks_dir_name,
         cfg.read_only ? database::read_only : database::read_write,
         cfg.reversible_cache_size, false, cfg.db_map_mode, cfg.db_hugepage_paths ),
@@ -544,6 +549,8 @@ struct controller_impl {
 
    void startup(std::function<void()> shutdown, std::function<bool()> check_shutdown, const snapshot_reader_ptr& snapshot) {
       EOS_ASSERT( snapshot, snapshot_exception, "No snapshot reader provided" );
+      EOS_ASSERT( db.revision() == kv_undo_stack.revision(), database_revision_mismatch, 
+                  "chainbase is at revision ${a}, but chain-kv is at revision ${b}", ("a", db.revision())("b", kv_undo_stack.revision()) );
       this->shutdown = shutdown;
       ilog( "Starting initialization from snapshot, this may take a significant amount of time" );
       try {
@@ -572,6 +579,8 @@ struct controller_impl {
 
    void startup(std::function<void()> shutdown, std::function<bool()> check_shutdown, const genesis_state& genesis) {
       EOS_ASSERT( db.revision() < 1, database_exception, "This version of controller::startup only works with a fresh state database." );
+      EOS_ASSERT( db.revision() == kv_undo_stack.revision(), database_revision_mismatch, 
+                  "chainbase is at revision ${a}, but chain-kv is at revision ${b}", ("a", db.revision())("b", kv_undo_stack.revision()) );
       const auto& genesis_chain_id = genesis.compute_chain_id();
       EOS_ASSERT( genesis_chain_id == chain_id, chain_id_type_exception,
                   "genesis state provided to startup corresponds to a chain ID (${genesis_chain_id}) that does not match the chain ID that controller was constructed with (${controller_chain_id})",
@@ -605,6 +614,8 @@ struct controller_impl {
 
    void startup(std::function<void()> shutdown, std::function<bool()> check_shutdown) {
       EOS_ASSERT( db.revision() >= 1, database_exception, "This version of controller::startup does not work with a fresh state database." );
+      EOS_ASSERT( db.revision() == kv_undo_stack.revision(), database_revision_mismatch, 
+                  "chainbase is at revision ${a}, but chain-kv is at revision ${b}", ("a", db.revision())("b", kv_undo_stack.revision()) );
       EOS_ASSERT( fork_db.head(), fork_database_exception, "No existing fork database despite existing chain state. Replay required." );
 
       this->shutdown = shutdown;
@@ -2455,6 +2466,8 @@ void controller::startup(std::function<void()> shutdown, std::function<bool()> c
 const chainbase::database& controller::db()const { return my->db; }
 
 chainbase::database& controller::mutable_db()const { return my->db; }
+chain_kv::database& controller::kv_database() { return my->kv_database; }
+chain_kv::undo_stack& controller::kv_undo_stack() { return my->kv_undo_stack; }
 
 const fork_database& controller::fork_db()const { return my->fork_db; }
 

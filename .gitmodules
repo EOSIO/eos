@@ -24,3 +24,6 @@
 [submodule "eosio-wasm-spec-tests"]
 	path = eosio-wasm-spec-tests
 	url = https://github.com/EOSIO/eosio-wasm-spec-tests
+[submodule "libraries/chain-kv"]
+	path = libraries/chain-kv
+	url = https://github.com/EOSIO/chain-kv.git

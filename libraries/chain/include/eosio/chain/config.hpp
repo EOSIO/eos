@@ -80,6 +80,8 @@ const static uint16_t   default_max_inline_action_depth        = 4;
 const static uint16_t   default_max_auth_depth                 = 6;
 const static uint32_t   default_sig_cpu_bill_pct               = 50 * percent_1; // billable percentage of signature recovery
 const static uint16_t   default_controller_thread_pool_size    = 2;
+const static uint16_t   default_rocksdb_threads                = 1;
+const static int        default_rocksdb_max_open_files         = -1;
 const static uint32_t   default_max_variable_signature_length  = 16384u;
 
 const static uint32_t   default_max_kv_key_size                = 1024;

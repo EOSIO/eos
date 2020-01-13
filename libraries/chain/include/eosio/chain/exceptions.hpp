@@ -318,6 +318,8 @@ namespace eosio { namespace chain {
                                     3060004, "Contract Query Exception" )
       FC_DECLARE_DERIVED_EXCEPTION( bad_database_version_exception, database_exception,
                                     3060005, "Database is an unknown or unsupported version" )
+      FC_DECLARE_DERIVED_EXCEPTION( database_revision_mismatch, database_exception,
+                                    3060006, "chainbase and chain-kv databases are at different revisions" )
 
    FC_DECLARE_DERIVED_EXCEPTION( guard_exception, database_exception,
                                  3060100, "Guard Exception" )

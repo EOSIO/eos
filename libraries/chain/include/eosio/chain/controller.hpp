@@ -18,7 +18,15 @@ namespace boost { namespace asio {
    class thread_pool;
 }}
 
+namespace chain_kv {
+   struct database;
+   class undo_stack;
+}
+
 namespace eosio { namespace chain {
+
+   static const std::vector<char> rocksdb_undo_prefix{ 0x10 };
+   static const std::vector<char> rocksdb_contract_kv_prefix{ 0x11 };
 
    class authorization_manager;
 
@@ -75,6 +83,8 @@ namespace eosio { namespace chain {
             uint64_t                 reversible_guard_size  =  chain::config::default_reversible_guard_size;
             uint32_t                 sig_cpu_bill_pct       =  chain::config::default_sig_cpu_bill_pct;
             uint16_t                 thread_pool_size       =  chain::config::default_controller_thread_pool_size;
+            uint16_t                 rocksdb_threads        =  chain::config::default_rocksdb_threads;
+            int                      rocksdb_max_open_files =  chain::config::default_rocksdb_max_open_files;
             bool                     read_only              =  false;
             bool                     force_all_checks       =  false;
             bool                     disable_replay_opts    =  false;
@@ -352,6 +362,8 @@ namespace eosio { namespace chain {
          friend class transaction_context;
 
          chainbase::database& mutable_db()const;
+         chain_kv::database& kv_database();
+         chain_kv::undo_stack& kv_undo_stack();
 
          std::unique_ptr<controller_impl> my;
 

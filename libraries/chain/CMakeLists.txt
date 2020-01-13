@@ -108,11 +108,13 @@ add_library( eosio_chain
 
 target_link_libraries( eosio_chain fc chainbase Logging IR WAST WASM Runtime
                        softfloat builtins wabt ${CHAIN_EOSVM_LIBRARIES} ${LLVM_LIBS}
+                       rocksdb
                      )
 target_include_directories( eosio_chain
                             PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_BINARY_DIR}/include"
                                    "${CMAKE_CURRENT_SOURCE_DIR}/../wasm-jit/Include"
                                    "${CMAKE_CURRENT_SOURCE_DIR}/libraries/eos-vm/include"
+                                   "${CMAKE_CURRENT_SOURCE_DIR}/../chain-kv/include"
                                    "${CMAKE_SOURCE_DIR}/libraries/wabt"
                                    "${CMAKE_BINARY_DIR}/libraries/wabt"
                             )
