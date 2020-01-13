@@ -13,7 +13,7 @@ if [[ "$(uname)" == 'Darwin' ]]; then
         brew link --overwrite python
         brew reinstall openssl@1.1 # Fixes issue where builds in Travis cannot find libcrypto.
         sed -i -e 's/^cmake /cmake -DCMAKE_CXX_COMPILER_LAUNCHER=ccache /g' /tmp/$POPULATED_FILE_NAME
-        sed -i -e 's/ -DCMAKE_TOOLCHAIN_FILE=$EOS_LOCATION\/scripts\/pinned_toolchain.cmake//g' /tmp/$POPULATED_FILE_NAME # We can't use pinned for mac cause building clang8 would take too long
+        sed -i -e 's/ -DCMAKE_TOOLCHAIN_FILE=$EOS_LOCATION\/scripts\/pinned_toolchain_dac.cmake//g' /tmp/$POPULATED_FILE_NAME # We can't use pinned for mac cause building clang8 would take too long
         sed -i -e 's/ -DBUILD_MONGO_DB_PLUGIN=true -DENABLE_MULTIVERSION_PROTOCOL_TEST=true//g' /tmp/$POPULATED_FILE_NAME # We can't use pinned for mac cause building clang8 would take too long
         # Support ship_test
         export NVM_DIR="$HOME/.nvm"
