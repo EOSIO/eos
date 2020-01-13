@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -i
 set -eo pipefail
 
 [[ -z "$JOBS" ]] && export JOBS=$(getconf _NPROCESSORS_ONLN)
@@ -23,7 +23,13 @@ echo "platform ID is $ID"
 echo "Python3 version is $(python3 --version)"
 echo "Python3.6 version is $(python3.6 --version)"
 
-python3.6 -m pip install requests
+if [[ "$(python3 --version)" < "Python3.6" ]]; then
+    alias python3=python3.6
+    echo "Done aliasing. Python3 version is $(python3 --version)"
+fi
+
+
+python3 -m pip install requests
 
 set +e # defer ctest error handling to end
 
