@@ -18,9 +18,12 @@ echo "starting launcher service: ./programs/launcher-service/launcher-service --
 
 sleep 1
 
+echo "IMAGE_TAG is $IMAGE_TAG"
 echo "platform ID is $ID"
+echo "Python3 version is $(python3 --version)"
+echo "Python3.6 version is $(python3.6 --version)"
 
-python3.7 -m pip install requests
+python3.6 -m pip install requests
 
 set +e # defer ctest error handling to end
 

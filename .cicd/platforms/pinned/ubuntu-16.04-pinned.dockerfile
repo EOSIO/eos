@@ -89,8 +89,8 @@ RUN curl -LO https://github.com/ccache/ccache/releases/download/v3.4.1/ccache-3.
     make install && \
     cd / && \
     rm -rf ccache-3.4.1.tar.gz /ccache-3.4.1
-# install python 3.7
-RUN apt-get update && apt -y install software-properties-common && add-apt-repository -y ppa:deadsnakes/ppa && apt update && apt-get update && apt -y install python3 python3-pip python3.7
+# install python 3.6
+RUN apt-get update && apt -y install software-properties-common && add-apt-repository -y ppa:deadsnakes/ppa && apt update && apt-get update && apt -y install python3 python3-pip python3.6
 # install nvm
 RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.0/install.sh | bash
 # load nvm in non-interactive shells
