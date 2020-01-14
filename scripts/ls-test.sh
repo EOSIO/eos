@@ -32,7 +32,7 @@ echo "Done aliasing. PYTHON3 is $PYTHON3"
 
 
 if [[ "$IMAGE_TAG" == "ubuntu-16.04-pinned" ]]; then
-    update-alternatives  --set python3 /usr/bin/python3.6
+    ln -sf $(which python3.6) $(which python3)
     echo "$(python3 --version)"
 fi
 
