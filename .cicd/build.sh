@@ -10,7 +10,16 @@ if [[ "$(uname)" == 'Darwin' ]]; then
     fi
     [[ ! "$PINNED" == 'false' ]] && CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_TOOLCHAIN_FILE=$HELPERS_DIR/clang.make"
     cd $BUILD_DIR
-    source ~/.bash_profile
+    if [[ $TRAVIS == true ]]; then
+        ccache -s
+        brew link --overwrite python
+        # Support ship_test
+        export NVM_DIR="$HOME/.nvm"
+        . "/usr/local/opt/nvm/nvm.sh"
+        nvm install --lts=dubnium
+    else
+        source ~/.bash_profile # Make sure node is available for ship_test
+    fi
     echo "cmake $CMAKE_EXTRAS .."
     cmake $CMAKE_EXTRAS ..
     echo "make -j$JOBS"

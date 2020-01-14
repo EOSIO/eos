@@ -9,17 +9,15 @@ RUN yum update -y && \
     graphviz bzip2-devel openssl-devel gmp-devel ocaml libicu-devel \
     python python-devel rh-python36 file libusbx-devel \
     libcurl-devel patch vim-common jq
-# build cmake.
-RUN curl -LO https://cmake.org/files/v3.13/cmake-3.13.2.tar.gz && \
+# build cmake
+RUN curl -LO https://github.com/Kitware/CMake/releases/download/v3.16.2/cmake-3.16.2.tar.gz && \
+    tar -xzf cmake-3.16.2.tar.gz && \
+    cd cmake-3.16.2 && \
     source /opt/rh/devtoolset-8/enable && \
-    source /opt/rh/rh-python36/enable && \
-    tar -xzf cmake-3.13.2.tar.gz && \
-    cd cmake-3.13.2 && \
     ./bootstrap --prefix=/usr/local && \
     make -j$(nproc) && \
     make install && \
-    cd / && \
-    rm -rf cmake-3.13.2.tar.gz /cmake-3.13.2
+    rm -rf cmake-3.16.2.tar.gz cmake-3.16.2
 COPY ./scripts/clang-devtoolset8-support.patch /tmp/clang-devtoolset8-support.patch
 # build clang8
 RUN git clone --single-branch --branch release_80 https://git.llvm.org/git/llvm.git clang8 && cd clang8 && git checkout 18e41dc && \
