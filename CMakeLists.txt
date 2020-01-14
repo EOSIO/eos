@@ -1,7 +1,5 @@
 cmake_minimum_required( VERSION 3.8 )
 
-message("Beginning of eos/CMakeLists.txt")
-
 project( EOSIO )
 include(CTest) # suppresses DartConfiguration.tcl error
 enable_testing()
@@ -167,7 +165,6 @@ if( GPERFTOOLS_FOUND )
     set(CMAKE_CXX_STANDARD_LIBRARIES "${CMAKE_CXX_STANDARD_LIBRARIES} ${GPERFTOOLS_TCMALLOC}")
 endif()
 
-message("Beg of eos/CMakeLists.txt/add_subdirectory")
 add_subdirectory( libraries )
 add_subdirectory( plugins )
 add_subdirectory( programs )
@@ -176,7 +173,6 @@ add_subdirectory( unittests )
 add_subdirectory( tests )
 add_subdirectory( lstests )
 add_subdirectory( tools )
-message("End of eos/CMakeLists.txt/add_subdirectory")
 
 option(DISABLE_WASM_SPEC_TESTS "disable building of wasm spec unit tests" OFF)
 
@@ -241,5 +237,3 @@ file(WRITE "${CMAKE_BINARY_DIR}/CTestCustom.cmake" "SET(CTEST_CUSTOM_TESTS_IGNOR
 
 include(package)
 include(doxygen)
-
-message("End of eos/CMakeLists.txt")
