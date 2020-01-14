@@ -74,8 +74,8 @@ class maybe_session {
       {
       }
 
-      explicit maybe_session(database& db) {
-         _session = db.start_undo_session(true);
+      explicit maybe_session(chainbase::database& cb_database, chain_kv::undo_stack& kv_undo_stack) {
+         _session.emplace(cb_database, kv_undo_stack);
       }
 
       maybe_session(const maybe_session&) = delete;
@@ -107,7 +107,7 @@ class maybe_session {
       };
 
    private:
-      optional<database::session>     _session;
+      optional<combined_session>     _session;
 };
 
 struct building_block {
@@ -259,6 +259,39 @@ struct controller_impl {
    map< account_name, map<handler_key, apply_handler> >   apply_handlers;
    unordered_map< builtin_protocol_feature_t, std::function<void(controller_impl&)>, enum_hash<builtin_protocol_feature_t> > protocol_feature_activation_handlers;
 
+   void set_revision(uint64_t revision) {
+      try {
+         try {
+            db.set_revision(revision);
+            kv_undo_stack.set_revision(revision, false);
+         }
+         FC_LOG_AND_RETHROW()
+      }
+      CATCH_AND_EXIT_DB_FAILURE()
+   }
+
+   void undo() {
+      try {
+         try {
+            db.undo();
+            kv_undo_stack.undo(false);
+         }
+         FC_LOG_AND_RETHROW()
+      }
+      CATCH_AND_EXIT_DB_FAILURE()
+   }
+
+   void commit(int64_t revision) {
+      try {
+         try {
+            db.commit(revision);
+            kv_undo_stack.commit(revision);
+         }
+         FC_LOG_AND_RETHROW()
+      }
+      CATCH_AND_EXIT_DB_FAILURE()
+   }
+
    void pop_block() {
       auto prev = fork_db.get_block( head->header.previous );
 
@@ -278,7 +311,7 @@ struct controller_impl {
 
       head = prev;
 
-      db.undo();
+      undo();
 
       protocol_features.popped_blocks_to( prev->block_num );
    }
@@ -428,7 +461,7 @@ struct controller_impl {
 
             emit( self.irreversible_block, *bitr );
 
-            db.commit( (*bitr)->block_num );
+            commit( (*bitr)->block_num );
             root_id = (*bitr)->id;
 
             blog.append( (*bitr)->block );
@@ -446,7 +479,7 @@ struct controller_impl {
          throw;
       }
 
-      //db.commit( fork_head->dpos_irreversible_blocknum ); // redundant
+      //commit( fork_head->dpos_irreversible_blocknum ); // redundant
 
       if( root_id != fork_db.root()->id ) {
          fork_db.advance_root( root_id );
@@ -475,7 +508,7 @@ struct controller_impl {
       static_cast<block_header_state&>(*head) = genheader;
       head->activated_protocol_features = std::make_shared<protocol_feature_activation_set>();
       head->block = std::make_shared<signed_block>(genheader.header);
-      db.set_revision( head->block_num );
+      set_revision( head->block_num );
       initialize_database(genesis);
    }
 
@@ -521,7 +554,7 @@ struct controller_impl {
          // if the irreverible log is played without undo sessions enabled, we need to sync the
          // revision ordinal to the appropriate expected value here.
          if( self.skip_db_sessions( controller::block_status::irreversible ) )
-            db.set_revision( head->block_num );
+            set_revision( head->block_num );
       } else {
          ilog( "no irreversible blocks need to be replayed" );
       }
@@ -692,7 +725,7 @@ struct controller_impl {
                ("db",db.revision())("head",head->block_num) );
       }
       while( db.revision() > head->block_num ) {
-         db.undo();
+         undo();
       }
 
       protocol_features.init( db );
@@ -793,16 +826,6 @@ struct controller_impl {
 
       authorization.add_indices();
       resource_limits.add_indices();
-   }
-
-   void clear_all_undo() {
-      // Rewind the database to the last irreversible block
-      db.undo_all();
-      /*
-      FC_ASSERT(db.revision() == self.head_block_num(),
-                  "Chainbase revision does not match head block num",
-                  ("rev", db.revision())("head_block", self.head_block_num()));
-                  */
    }
 
    void add_contract_tables_to_snapshot( const snapshot_writer_ptr& snapshot ) const {
@@ -1016,7 +1039,7 @@ struct controller_impl {
       authorization.read_from_snapshot(snapshot);
       resource_limits.read_from_snapshot(snapshot, header.version);
 
-      db.set_revision( head->block_num );
+      set_revision( head->block_num );
       db.create<database_header_object>([](const auto& header){
          // nothing to do
       });
@@ -1250,7 +1273,7 @@ struct controller_impl {
    { try {
       maybe_session undo_session;
       if ( !self.skip_db_sessions() )
-         undo_session = maybe_session(db);
+         undo_session = maybe_session(db, kv_undo_stack);
 
       auto gtrx = generated_transaction(gto);
 
@@ -1569,7 +1592,7 @@ struct controller_impl {
          EOS_ASSERT( db.revision() == head->block_num, database_exception, "db revision is not on par with head block",
                      ("db.revision()", db.revision())("controller_head_block", head->block_num)("fork_db_head_block", fork_db.head()->block_num) );
 
-         pending.emplace( maybe_session(db), *head, when, confirm_block_count, new_protocol_feature_activations );
+         pending.emplace( maybe_session(db, kv_undo_stack), *head, when, confirm_block_count, new_protocol_feature_activations );
       } else {
          pending.emplace( maybe_session(), *head, when, confirm_block_count, new_protocol_feature_activations );
       }
@@ -2439,6 +2462,16 @@ controller::controller( const config& cfg, protocol_feature_set&& pfs, const cha
 
 controller::~controller() {
    my->abort_block();
+
+   try {
+      try {
+         my->kv_undo_stack.write_state();
+         my->kv_database.flush(true, true);
+      }
+      FC_LOG_AND_RETHROW()
+   }
+   CATCH_AND_EXIT_DB_FAILURE()
+
    /* Shouldn't be needed anymore.
    //close fork_db here, because it can generate "irreversible" signal to this controller,
    //in case if read-mode == IRREVERSIBLE, we will apply latest irreversible block
