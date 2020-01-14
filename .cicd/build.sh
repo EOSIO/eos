@@ -2,7 +2,7 @@
 set -eo pipefail
 . ./.cicd/helpers/general.sh
 mkdir -p $BUILD_DIR
-CMAKE_EXTRAS="-DCMAKE_BUILD_TYPE='Release'"
+CMAKE_EXTRAS="-DCMAKE_BUILD_TYPE='Release' -DENABLE_MULTIVERSION_PROTOCOL_TEST=true"
 if [[ "$(uname)" == 'Darwin' ]]; then
     # You can't use chained commands in execute
     if [[ "$TRAVIS" == 'true' ]]; then
@@ -15,7 +15,16 @@ if [[ "$(uname)" == 'Darwin' ]]; then
     fi
     [[ ! "$PINNED" == 'false' ]] && CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_TOOLCHAIN_FILE=$HELPERS_DIR/clang.make"
     cd $BUILD_DIR
-    source ~/.bash_profile
+    if [[ $TRAVIS == true ]]; then
+        ccache -s
+        brew link --overwrite python
+        # Support ship_test
+        export NVM_DIR="$HOME/.nvm"
+        . "/usr/local/opt/nvm/nvm.sh"
+        nvm install --lts=dubnium
+    else
+        source ~/.bash_profile # Make sure node is available for ship_test
+    fi
     echo "cmake $CMAKE_EXTRAS .."
     cmake $CMAKE_EXTRAS ..
     echo "make -j$JOBS"

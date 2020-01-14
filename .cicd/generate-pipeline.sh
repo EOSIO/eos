@@ -145,7 +145,7 @@ EOF
       TEMPLATE_TAG: $MOJAVE_ANKA_TAG_BASE
       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
       PLATFORM_TYPE: $PLATFORM_TYPE
-      TAG_COMMANDS: "git clone ${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO} eos && cd eos && $GIT_FETCH git checkout -f $BUILDKITE_COMMIT && git submodule update --init --recursive && export IMAGE_TAG=$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME) && export PLATFORM_TYPE=$PLATFORM_TYPE && . ./.cicd/platforms/$PLATFORM_TYPE/$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME).sh && cd ~/eos && cd .. && rm -rf eos"
+      TAG_COMMANDS: "git clone ${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO} eos && cd eos && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT && git submodule update --init --recursive && export IMAGE_TAG=$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME) && export PLATFORM_TYPE=$PLATFORM_TYPE && . ./.cicd/platforms/$PLATFORM_TYPE/$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME).sh && cd ~/eos && cd .. && rm -rf eos"
       PROJECT_TAG: $(echo "$PLATFORM_JSON" | jq -r .HASHED_IMAGE_TAG)
     timeout: ${TIMEOUT:-180}
     agents: "queue=mac-anka-large-node-fleet"
@@ -469,14 +469,14 @@ if [[ -z $BUILDKITE_TRIGGERED_FROM_BUILD_ID && $TRIGGER_JOB == "true" ]]; then
     trigger: "eosio-lrt"
     async: true
     build:
-      message: "Triggered by EOSIO build ${BUILDKITE_BUILD_NUMBER}"
+      message: "Triggered by $BUILDKITE_PIPELINE_SLUG build $BUILDKITE_BUILD_NUMBER"
       commit: "${BUILDKITE_COMMIT}"
       branch: "${BUILDKITE_BRANCH}"
       env:
         BUILDKITE_PULL_REQUEST: "${BUILDKITE_PULL_REQUEST}"
         BUILDKITE_PULL_REQUEST_BASE_BRANCH: "${BUILDKITE_PULL_REQUEST_BASE_BRANCH}"
         BUILDKITE_PULL_REQUEST_REPO: "${BUILDKITE_PULL_REQUEST_REPO}"
-        BUILDKITE_TRIGGERED_FROM_BUILD_LINK: "${BUILDKITE_BUILD_URL}"
+        BUILDKITE_TRIGGERED_FROM_BUILD_URL: "${BUILDKITE_BUILD_URL}"
         SKIP_BUILD: "true"
         SKIP_WASM_SPEC_TESTS: "true"
         PINNED: "${PINNED}"
@@ -492,30 +492,49 @@ if [[ -z $BUILDKITE_TRIGGERED_FROM_BUILD_ID && $TRIGGER_JOB = "true" ]]; then
     trigger: "eos-multiversion-tests"
     async: true
     build:
-      message: "Triggered by EOSIO build ${BUILDKITE_BUILD_NUMBER}"
+      message: "Triggered by $BUILDKITE_PIPELINE_SLUG build $BUILDKITE_BUILD_NUMBER"
       commit: "${BUILDKITE_COMMIT}"
       branch: "${BUILDKITE_BRANCH}"
       env:
         BUILDKITE_PULL_REQUEST: "${BUILDKITE_PULL_REQUEST}"
         BUILDKITE_PULL_REQUEST_BASE_BRANCH: "${BUILDKITE_PULL_REQUEST_BASE_BRANCH}"
         BUILDKITE_PULL_REQUEST_REPO: "${BUILDKITE_PULL_REQUEST_REPO}"
-        BUILDKITE_TRIGGERED_FROM_BUILD_LINK: "${BUILDKITE_BUILD_URL}"
+        BUILDKITE_TRIGGERED_FROM_BUILD_URL: "${BUILDKITE_BUILD_URL}"
 
 EOF
     fi
 fi
 # trigger eosio-sync-from-genesis for every build
-if [[ -z $BUILDKITE_TRIGGERED_FROM_BUILD_ID && -z "${SKIP_INSTALL}${SKIP_LINUX}${SKIP_DOCKER}" ]]; then
+if [[ "$BUILDKITE_PIPELINE_SLUG" == 'eosio' && -z "${SKIP_INSTALL}${SKIP_LINUX}${SKIP_DOCKER}${SKIP_SYNC_TESTS}" ]]; then
     cat <<EOF
-  - label: ":chains: Sync-from-Genesis Test"
+  - label: ":chains: Sync from Genesis Test"
     trigger: "eosio-sync-from-genesis"
     async: false
     build:
-      message: "Triggered by EOSIO build ${BUILDKITE_BUILD_NUMBER}"
+      message: "Triggered by $BUILDKITE_PIPELINE_SLUG build $BUILDKITE_BUILD_NUMBER"
       commit: "${BUILDKITE_COMMIT}"
       branch: "${BUILDKITE_BRANCH}"
       env:
-        BUILDKITE_TRIGGERED_FROM_BUILD_LINK: "${BUILDKITE_BUILD_URL}"
+        BUILDKITE_TRIGGERED_FROM_BUILD_URL: "${BUILDKITE_BUILD_URL}"
+        SKIP_JUNGLE: "${SKIP_JUNGLE}"
+        SKIP_KYLIN: "${SKIP_KYLIN}"
+        SKIP_MAIN: "${SKIP_MAIN}"
+        TIMEOUT: "${TIMEOUT}"
+
+EOF
+fi
+# trigger eosio-resume-from-state for every build
+if [[ "$BUILDKITE_PIPELINE_SLUG" == 'eosio' && -z "${SKIP_INSTALL}${SKIP_LINUX}${SKIP_DOCKER}${SKIP_SYNC_TESTS}" ]]; then
+    cat <<EOF
+  - label: ":outbox_tray: Resume from State Test"
+    trigger: "eosio-resume-from-state"
+    async: false
+    build:
+      message: "Triggered by $BUILDKITE_PIPELINE_SLUG build $BUILDKITE_BUILD_NUMBER"
+      commit: "${BUILDKITE_COMMIT}"
+      branch: "${BUILDKITE_BRANCH}"
+      env:
+        BUILDKITE_TRIGGERED_FROM_BUILD_URL: "${BUILDKITE_BUILD_URL}"
         SKIP_JUNGLE: "${SKIP_JUNGLE}"
         SKIP_KYLIN: "${SKIP_KYLIN}"
         SKIP_MAIN: "${SKIP_MAIN}"
