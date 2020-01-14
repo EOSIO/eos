@@ -1,4 +1,6 @@
-<!-- ## How to replay from a snapshot -->
+---
+content_title: How to replay from a snapshot
+---
 
 Once you have obtained a copy of a valid snapshot file from which you wish to create a valid chain state, copy it to your data/snapshots directory, backing up (if you wish to keep them) and removing any existing contents of the data directory.
 

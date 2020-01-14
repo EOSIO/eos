@@ -1,3 +1,6 @@
+---
+content_title: Download EOSIO Source
+---
 
 To download the EOSIO source code, clone the `eos` repo and its submodules. It is adviced to create a home `eosio` folder first and download all the EOSIO related software there:
 
@@ -23,3 +26,6 @@ When pulling changes, especially after switching branches, the submodules *must*
 $ [git checkout <branch>]  (optional)
 $ git pull --recurse-submodules
 ```
+
+[[info | What's Next?]]
+| [Build EOSIO binaries](02_build-eosio-binaries.md)

@@ -9,17 +9,15 @@ RUN yum update -y && \
     graphviz bzip2-devel openssl-devel gmp-devel ocaml libicu-devel \
     python python-devel rh-python36 file libusbx-devel \
     libcurl-devel patch vim-common jq llvm-toolset-7.0-llvm-devel llvm-toolset-7.0-llvm-static
-# build cmake.
-RUN curl -LO https://cmake.org/files/v3.13/cmake-3.13.2.tar.gz && \
+# build cmake
+RUN curl -LO https://github.com/Kitware/CMake/releases/download/v3.16.2/cmake-3.16.2.tar.gz && \
+    tar -xzf cmake-3.16.2.tar.gz && \
+    cd cmake-3.16.2 && \
     source /opt/rh/devtoolset-8/enable && \
-    source /opt/rh/rh-python36/enable && \
-    tar -xzf cmake-3.13.2.tar.gz && \
-    cd cmake-3.13.2 && \
     ./bootstrap --prefix=/usr/local && \
     make -j$(nproc) && \
     make install && \
-    cd / && \
-    rm -rf cmake-3.13.2.tar.gz /cmake-3.13.2
+    rm -rf cmake-3.16.2.tar.gz cmake-3.16.2
 # build boost
 RUN curl -LO https://dl.bintray.com/boostorg/release/1.71.0/source/boost_1_71_0.tar.bz2 && \
     source /opt/rh/devtoolset-8/enable && \

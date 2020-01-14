@@ -1,4 +1,6 @@
-# Cleos
+---
+content_title: Cleos
+---
 
 ## Introduction
 
