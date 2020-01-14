@@ -45,6 +45,8 @@ set +e # defer ctest error handling to end
 
 echo "ready to execute: ctest -L ls_tests -V -j 32 -T Test"
 # ctest -L ls_tests --output-on-failure -j 32 -T Test
+export PYTHONIOENCODING=utf-8
+echo "PYTHONIOENCODING is $PYTHONIOENCODING"
 ctest -L ls_tests -V -j 32 -T Test
 
 EXIT_STATUS=$?
