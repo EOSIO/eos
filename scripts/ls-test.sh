@@ -1,4 +1,4 @@
-#!/bin/bash -i
+#!/bin/bash
 set -eo pipefail
 
 [[ -z "$JOBS" ]] && export JOBS=$(getconf _NPROCESSORS_ONLN)
@@ -18,25 +18,17 @@ echo "starting launcher service: ./programs/launcher-service/launcher-service --
 
 sleep 1
 
-echo "IMAGE_TAG is $IMAGE_TAG"
 echo "platform ID is $ID"
-echo "Python3 version is $(python3 --version)"
-# echo "Python3.6 version is $(python3.6 --version)"
-
-if [[ "$(python3 --version)" < "Python 3.6" ]]; then
-    export PYTHON3=python3.6;
-else
-    export PYTHON3=python3;
-fi
-echo "Done aliasing. PYTHON3 is $PYTHON3"
-
+echo "IMAGE_TAG is $IMAGE_TAG"
+echo "python3 version is $(python3 --version)"
 
 if [[ "$IMAGE_TAG" == "ubuntu-16.04-pinned" ]]; then
     ln -sf $(which python3.6) $(which python3)
-    echo "$(python3 --version)"
+    echo "Using python3.6 as python3 for Ubuntu 16.04"
+    echo "python3 version is now $(python3 --version)"
 fi
 
-$PYTHON3 -m pip install requests
+python3 -m pip install requests
 
 set +e # defer ctest error handling to end
 
@@ -45,8 +37,6 @@ set +e # defer ctest error handling to end
 
 echo "ready to execute: ctest -L ls_tests -V -j 32 -T Test"
 # ctest -L ls_tests --output-on-failure -j 32 -T Test
-export PYTHONIOENCODING=utf-8
-echo "PYTHONIOENCODING is $PYTHONIOENCODING"
 ctest -L ls_tests -V -j 32 -T Test
 
 EXIT_STATUS=$?

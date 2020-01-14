@@ -116,9 +116,4 @@ def main():
 
 
 if __name__ == "__main__":
-    import platform
-    try:
-        main()
-    except:
-        print("Python Version: ", platform.python_version())
-        raise RuntimeError("Error with Python Version {}".format(platform.python_version()))
+    main()

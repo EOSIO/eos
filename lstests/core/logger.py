@@ -2,6 +2,7 @@
 
 # standard libraries
 import abc
+import codecs
 import inspect
 import os.path
 import queue
@@ -16,9 +17,6 @@ else:
     import color
     import helper
 
-import codecs
-
-VERTICAL_BAR = "|"
 
 class LogLevel(int):
     _val_of = {
@@ -156,7 +154,7 @@ class _Writer(abc.ABC):
         if pre:
             if not self.monochrome:
                 pre = self._colorize(pre, level)
-            return "\n".join([pre + VERTICAL_BAR + " " + x for x in msg.splitlines()])
+            return "\n".join([pre + "│ " + x for x in msg.splitlines()])
         else:
             return msg
 
