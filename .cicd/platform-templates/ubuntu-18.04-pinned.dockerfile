@@ -5,8 +5,6 @@ ENV HOME=/root
 # Anything below here is exclusive to our CI/CD
 ## Set WORKDIR to location we mount into the container
 WORKDIR ${HOME}
-## install ccache
-RUN apt-get install -y ccache
 ## Cleanup eosio directory (~ 600MB)
 RUN rm -rf ${EOS_LOCATION}
 ## install nvm

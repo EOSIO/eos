@@ -5,11 +5,6 @@ ENV HOME=/root
 # Anything below here is exclusive to our CI/CD
 ## Set WORKDIR to location we mount into the container
 WORKDIR ${HOME}
-## install ccache
-RUN yum install -y ccache
-## fix ccache for centos
-RUN cd /usr/lib64/ccache && ln -s ../../bin/ccache c++
-ENV CCACHE_PATH="/opt/rh/devtoolset-8/root/usr/bin"
 ## Cleanup eosio directory (~ 600MB)
 RUN rm -rf ${EOS_LOCATION}
 ## install nvm

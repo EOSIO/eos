@@ -5,8 +5,6 @@ ENV HOME=/root
 # Anything below here is exclusive to our CI/CD
 ## Set WORKDIR to location we mount into the container
 WORKDIR ${HOME}
-## install ccache
-RUN yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm && yum install -y ccache
 ## Cleanup eosio directory (~ 600MB)
 RUN rm -rf ${EOS_LOCATION}
 ## install nvm
