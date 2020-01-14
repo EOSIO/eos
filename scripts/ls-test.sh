@@ -31,6 +31,11 @@ fi
 echo "Done aliasing. PYTHON3 is $PYTHON3"
 
 
+if [[ "$IMAGE_TAG" == "ubuntu-16.04-pinned" ]]; then
+    update-alternatives  --set python3 /usr/bin/python3.6
+    echo "$(python3 --version)"
+fi
+
 $PYTHON3 -m pip install requests
 
 set +e # defer ctest error handling to end
