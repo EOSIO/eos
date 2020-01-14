@@ -531,7 +531,11 @@ datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosi
 
 template <typename ST>
 datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosio::chain::action_receipt>& obj) {
-   fc::raw::pack(ds, fc::unsigned_int(0));
+   if (!obj.obj.return_value) {
+      fc::raw::pack( ds, fc::unsigned_int( 0 ));
+   } else {
+      fc::raw::pack( ds, fc::unsigned_int( 1 ));
+   }
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.receiver.to_uint64_t()));
    fc::raw::pack(ds, as_type<eosio::chain::digest_type>(obj.obj.act_digest));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.global_sequence));
@@ -539,6 +543,9 @@ datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosi
    history_serialize_container(ds, obj.db, as_type<flat_map<eosio::name, uint64_t>>(obj.obj.auth_sequence));
    fc::raw::pack(ds, as_type<fc::unsigned_int>(obj.obj.code_sequence));
    fc::raw::pack(ds, as_type<fc::unsigned_int>(obj.obj.abi_sequence));
+   if (obj.obj.return_value) {
+      fc::raw::pack(ds, as_type<eosio::bytes>(*obj.obj.return_value));
+   }
    return ds;
 }
 
