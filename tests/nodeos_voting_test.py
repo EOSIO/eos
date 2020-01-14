@@ -13,9 +13,13 @@ import re
 
 ###############################################################
 # nodeos_voting_test
-# --dump-error-details <Upon error print etc/eosio/node_*/config.ini and var/lib/node_*/stderr.log to stdout>
-# --keep-logs <Don't delete var/lib/node_* folders upon test completion>
+#
+# This test sets up multiple producing nodes, each with multiple producers per node. Different combinations of producers
+# are voted into the production schedule and the block production is analyzed to determine if the correct producers are
+# producing blocks and in the right number and order.
+#
 ###############################################################
+
 class ProducerToNode:
     map={}
 

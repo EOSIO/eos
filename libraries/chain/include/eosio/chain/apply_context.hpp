@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
 #pragma once
 #include <eosio/chain/controller.hpp>
 #include <eosio/chain/transaction.hpp>
@@ -184,7 +180,7 @@ class apply_context {
 
 //               context.require_write_lock( scope );
 
-               const auto& tab = context.find_or_create_table( context.receiver, scope, table, payer );
+               const auto& tab = context.find_or_create_table( context.receiver, name(scope), name(table), payer );
 
                const auto& obj = context.db.create<ObjectType>( [&]( auto& o ){
                   o.t_id          = tab.id;
@@ -248,7 +244,7 @@ class apply_context {
             }
 
             int find_secondary( uint64_t code, uint64_t scope, uint64_t table, secondary_key_proxy_const_type secondary, uint64_t& primary ) {
-               auto tab = context.find_table( code, scope, table );
+               auto tab = context.find_table( name(code), name(scope), name(table) );
                if( !tab ) return -1;
 
                auto table_end_itr = itr_cache.cache_table( *tab );
@@ -262,7 +258,7 @@ class apply_context {
             }
 
             int lowerbound_secondary( uint64_t code, uint64_t scope, uint64_t table, secondary_key_proxy_type secondary, uint64_t& primary ) {
-               auto tab = context.find_table( code, scope, table );
+               auto tab = context.find_table( name(code), name(scope), name(table) );
                if( !tab ) return -1;
 
                auto table_end_itr = itr_cache.cache_table( *tab );
@@ -279,7 +275,7 @@ class apply_context {
             }
 
             int upperbound_secondary( uint64_t code, uint64_t scope, uint64_t table, secondary_key_proxy_type secondary, uint64_t& primary ) {
-               auto tab = context.find_table( code, scope, table );
+               auto tab = context.find_table( name(code), name(scope), name(table) );
                if( !tab ) return -1;
 
                auto table_end_itr = itr_cache.cache_table( *tab );
@@ -296,7 +292,7 @@ class apply_context {
             }
 
             int end_secondary( uint64_t code, uint64_t scope, uint64_t table ) {
-               auto tab = context.find_table( code, scope, table );
+               auto tab = context.find_table( name(code), name(scope), name(table) );
                if( !tab ) return -1;
 
                return itr_cache.cache_table( *tab );
@@ -350,7 +346,7 @@ class apply_context {
             }
 
             int find_primary( uint64_t code, uint64_t scope, uint64_t table, secondary_key_proxy_type secondary, uint64_t primary ) {
-               auto tab = context.find_table( code, scope, table );
+               auto tab = context.find_table( name(code), name(scope), name(table) );
                if( !tab ) return -1;
 
                auto table_end_itr = itr_cache.cache_table( *tab );
@@ -363,7 +359,7 @@ class apply_context {
             }
 
             int lowerbound_primary( uint64_t code, uint64_t scope, uint64_t table, uint64_t primary ) {
-               auto tab = context.find_table( code, scope, table );
+               auto tab = context.find_table( name(code), name(scope), name(table) );
                if (!tab) return -1;
 
                auto table_end_itr = itr_cache.cache_table( *tab );
@@ -377,7 +373,7 @@ class apply_context {
             }
 
             int upperbound_primary( uint64_t code, uint64_t scope, uint64_t table, uint64_t primary ) {
-               auto tab = context.find_table( code, scope, table );
+               auto tab = context.find_table( name(code), name(scope), name(table) );
                if ( !tab ) return -1;
 
                auto table_end_itr = itr_cache.cache_table( *tab );
@@ -514,16 +510,16 @@ class apply_context {
 
       void update_db_usage( const account_name& payer, int64_t delta );
 
-      int  db_store_i64( uint64_t scope, uint64_t table, const account_name& payer, uint64_t id, const char* buffer, size_t buffer_size );
+      int  db_store_i64( name scope, name table, const account_name& payer, uint64_t id, const char* buffer, size_t buffer_size );
       void db_update_i64( int iterator, account_name payer, const char* buffer, size_t buffer_size );
       void db_remove_i64( int iterator );
       int  db_get_i64( int iterator, char* buffer, size_t buffer_size );
       int  db_next_i64( int iterator, uint64_t& primary );
       int  db_previous_i64( int iterator, uint64_t& primary );
-      int  db_find_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id );
-      int  db_lowerbound_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id );
-      int  db_upperbound_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id );
-      int  db_end_i64( uint64_t code, uint64_t scope, uint64_t table );
+      int  db_find_i64( name code, name scope, name table, uint64_t id );
+      int  db_lowerbound_i64( name code, name scope, name table, uint64_t id );
+      int  db_upperbound_i64( name code, name scope, name table, uint64_t id );
+      int  db_end_i64( name code, name scope, name table );
 
    private:
 
@@ -531,11 +527,12 @@ class apply_context {
       const table_id_object& find_or_create_table( name code, name scope, name table, const account_name &payer );
       void                   remove_table( const table_id_object& tid );
 
-      int  db_store_i64( uint64_t code, uint64_t scope, uint64_t table, const account_name& payer, uint64_t id, const char* buffer, size_t buffer_size );
+      int  db_store_i64( name code, name scope, name table, const account_name& payer, uint64_t id, const char* buffer, size_t buffer_size );
 
 
    /// Misc methods:
    public:
+
 
       int get_action( uint32_t type, uint32_t index, char* buffer, size_t buffer_size )const;
       int get_context_free_data( uint32_t index, char* buffer, size_t buffer_size )const;

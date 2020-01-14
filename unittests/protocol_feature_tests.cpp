@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE.txt
- */
 #include <eosio/chain/abi_serializer.hpp>
 #include <eosio/chain/resource_limits.hpp>
 #include <eosio/chain/generated_transaction_object.hpp>
@@ -19,6 +15,7 @@
 
 using namespace eosio::chain;
 using namespace eosio::testing;
+using namespace std::literals;
 
 BOOST_AUTO_TEST_SUITE(protocol_feature_tests)
 
@@ -52,8 +49,7 @@ BOOST_AUTO_TEST_CASE( activate_preactivate_feature ) try {
    c.produce_block();
 
    // Now the latest bios contract can be set.
-   c.set_code( config::system_account_name, contracts::eosio_bios_wasm() );
-   c.set_abi( config::system_account_name, contracts::eosio_bios_abi().data() );
+   c.set_before_producer_authority_bios_contract();
 
    c.produce_block();
 
@@ -96,7 +92,7 @@ BOOST_AUTO_TEST_CASE( activate_and_restart ) try {
    BOOST_CHECK( c.control->is_builtin_activated( builtin_protocol_feature_t::preactivate_feature ) );
 
    c.close();
-   c.open( std::move( pfs ), nullptr );
+   c.open( std::move( pfs ) );
 
    BOOST_CHECK_EQUAL( head_block_num, c.control->head_block_num() );
 
@@ -236,7 +232,7 @@ BOOST_AUTO_TEST_CASE( only_link_to_existing_permission_test ) try {
       ("account", "alice")
       ("permission", "test")
       ("parent", "active")
-      ("auth", authority(get_public_key("testapi", "test")))
+      ("auth", authority(get_public_key(name("testapi"), "test")))
    );
 
    c.produce_block();
@@ -270,7 +266,7 @@ BOOST_AUTO_TEST_CASE( subjective_restrictions_test ) try {
 
    auto restart_with_new_pfs = [&c]( protocol_feature_set&& pfs ) {
       c.close();
-      c.open(std::move(pfs), nullptr);
+      c.open(std::move(pfs));
    };
 
    auto get_builtin_digest = [&pfm]( builtin_protocol_feature_t codename ) -> digest_type {
@@ -332,7 +328,7 @@ BOOST_AUTO_TEST_CASE( subjective_restrictions_test ) try {
 
    // Second, test subjective_restrictions on feature that need to be activated WITH preactivation (ONLY_LINK_TO_EXISTING_PERMISSION)
 
-   c.set_bios_contract();
+   c.set_before_producer_authority_bios_contract();
    c.produce_block();
 
    custom_subjective_restrictions = {
@@ -412,7 +408,7 @@ BOOST_AUTO_TEST_CASE( replace_deferred_test ) try {
    c.close();
    auto cfg = c.get_config();
    cfg.disable_all_subjective_mitigations = true;
-   c.init( cfg, nullptr );
+   c.init( cfg );
 
    BOOST_CHECK_EQUAL( c.control->get_resource_limits_manager().get_account_ram_usage( N(alice) ), alice_ram_usage0 );
 
@@ -455,7 +451,7 @@ BOOST_AUTO_TEST_CASE( replace_deferred_test ) try {
 
    c.close();
    cfg.disable_all_subjective_mitigations = false;
-   c.init( cfg, nullptr );
+   c.init( cfg );
 
    const auto& pfm = c.control->get_protocol_feature_manager();
 
@@ -660,7 +656,7 @@ BOOST_AUTO_TEST_CASE( no_duplicate_deferred_id_test ) try {
 
    check_generation_context( index.begin()->packed_trx,
                              trace2->id,
-                             ((static_cast<unsigned __int128>(N(alice)) << 64) | 1),
+                             ((static_cast<unsigned __int128>(N(alice).to_uint64_t()) << 64) | 1),
                              N(test) );
 
    c.produce_block();
@@ -678,7 +674,7 @@ BOOST_AUTO_TEST_CASE( no_duplicate_deferred_id_test ) try {
 
    check_generation_context( index.begin()->packed_trx,
                              trace3->id,
-                             ((static_cast<unsigned __int128>(N(alice)) << 64) | 1),
+                             ((static_cast<unsigned __int128>(N(alice).to_uint64_t()) << 64) | 1),
                              N(test) );
 
    c.produce_block();
@@ -763,21 +759,21 @@ BOOST_AUTO_TEST_CASE( disallow_empty_producer_schedule_test ) { try {
    BOOST_REQUIRE( d );
 
    // Before activation, it is allowed to set empty producer schedule
-   c.set_producers( {} );
+   c.set_producers_legacy( {} );
 
    // After activation, it should not be allowed
    c.preactivate_protocol_features( {*d} );
    c.produce_block();
-   BOOST_REQUIRE_EXCEPTION( c.set_producers( {} ),
+   BOOST_REQUIRE_EXCEPTION( c.set_producers_legacy( {} ),
                             wasm_execution_error,
                             fc_exception_message_is( "Producer schedule cannot be empty" ) );
 
    // Setting non empty producer schedule should still be fine
    vector<name> producer_names = {N(alice),N(bob),N(carol)};
    c.create_accounts( producer_names );
-   c.set_producers( producer_names );
+   c.set_producers_legacy( producer_names );
    c.produce_blocks(2);
-   const auto& schedule = c.get_producer_keys( producer_names );
+   const auto& schedule = c.get_producer_authorities( producer_names );
    BOOST_CHECK( std::equal( schedule.begin(), schedule.end(), c.control->active_producers().producers.begin()) );
 
 } FC_LOG_AND_RETHROW() }
@@ -969,7 +965,7 @@ BOOST_AUTO_TEST_CASE( forward_setcode_test ) { try {
    const auto& pfm = c.control->get_protocol_feature_manager();
    const auto& d = pfm.get_builtin_digest( builtin_protocol_feature_t::forward_setcode );
    BOOST_REQUIRE( d );
-   c.set_bios_contract();
+   c.set_before_producer_authority_bios_contract();
    c.preactivate_protocol_features( {*d} );
    c.produce_block();
    c.set_code( config::system_account_name, contracts::reject_all_wasm() );
@@ -985,7 +981,7 @@ BOOST_AUTO_TEST_CASE( forward_setcode_test ) { try {
    tester c2(setup_policy::none);
    push_blocks( c, c2 ); // make a backup of the chain to enable testing further conditions.
 
-   c.set_bios_contract(); // To allow pushing further actions for setting up the other part of the test.
+   c.set_before_producer_authority_bios_contract(); // To allow pushing further actions for setting up the other part of the test.
    c.create_account( N(rejectall) );
    c.produce_block();
    // The existence of the rejectall account will make the reject_all contract reject all actions with no exception.
@@ -1005,7 +1001,7 @@ BOOST_AUTO_TEST_CASE( forward_setcode_test ) { try {
 
    // However, it should still be possible to set the bios contract because the WASM on eosio is called after the
    // native setcode function completes.
-   c2.set_bios_contract();
+   c2.set_before_producer_authority_bios_contract();
    c2.produce_block();
 } FC_LOG_AND_RETHROW() }
 
@@ -1180,7 +1176,7 @@ BOOST_AUTO_TEST_CASE( ram_restrictions_test ) { try {
    c.close();
    auto cfg = c.get_config();
    cfg.disable_all_subjective_mitigations = true;
-   c.init( cfg, nullptr );
+   c.init( cfg );
 
    c.produce_block();
 
@@ -1205,7 +1201,7 @@ BOOST_AUTO_TEST_CASE( ram_restrictions_test ) { try {
    // Re-enable the subjective mitigation
    c.close();
    cfg.disable_all_subjective_mitigations = false;
-   c.init( cfg, nullptr );
+   c.init( cfg );
 
    c.produce_block();
 
@@ -1324,6 +1320,421 @@ BOOST_AUTO_TEST_CASE( ram_restrictions_test ) { try {
       ("payer", "tester1")
    );
 
+   c.produce_block();
+
+} FC_LOG_AND_RETHROW() }
+
+BOOST_AUTO_TEST_CASE( webauthn_producer ) { try {
+   tester c( setup_policy::preactivate_feature_and_new_bios );
+
+   const auto& pfm = c.control->get_protocol_feature_manager();
+   const auto& d = pfm.get_builtin_digest( builtin_protocol_feature_t::webauthn_key );
+   BOOST_REQUIRE( d );
+
+   c.create_account(N(waprod));
+   c.produce_block();
+
+   vector<legacy::producer_key> waprodsched = {{N(waprod), public_key_type("PUB_WA_WdCPfafVNxVMiW5ybdNs83oWjenQXvSt1F49fg9mv7qrCiRwHj5b38U3ponCFWxQTkDsMC"s)}};
+
+   BOOST_CHECK_THROW(
+      c.push_action(config::system_account_name, N(setprods), config::system_account_name, fc::mutable_variant_object()("schedule", waprodsched)),
+      eosio::chain::unactivated_key_type
+   );
+
+   c.preactivate_protocol_features( {*d} );
+   c.produce_block();
+
+   c.push_action(config::system_account_name, N(setprods), config::system_account_name, fc::mutable_variant_object()("schedule", waprodsched));
+} FC_LOG_AND_RETHROW() }
+
+BOOST_AUTO_TEST_CASE( webauthn_create_account ) { try {
+   tester c( setup_policy::preactivate_feature_and_new_bios );
+
+   const auto& pfm = c.control->get_protocol_feature_manager();
+   const auto& d = pfm.get_builtin_digest(builtin_protocol_feature_t::webauthn_key);
+   BOOST_REQUIRE(d);
+
+   signed_transaction trx;
+   c.set_transaction_headers(trx);
+   authority auth = authority(public_key_type("PUB_WA_WdCPfafVNxVMiW5ybdNs83oWjenQXvSt1F49fg9mv7qrCiRwHj5b38U3ponCFWxQTkDsMC"s));
+
+   trx.actions.emplace_back(vector<permission_level>{{config::system_account_name,config::active_name}},
+                              newaccount{
+                                 .creator  = config::system_account_name,
+                                 .name     = N(waaccount),
+                                 .owner    = auth,
+                                 .active   = auth,
+                              });
+
+   c.set_transaction_headers(trx);
+   trx.sign(get_private_key(config::system_account_name, "active"), c.control->get_chain_id());
+   BOOST_CHECK_THROW(c.push_transaction(trx), eosio::chain::unactivated_key_type);
+
+   c.preactivate_protocol_features( {*d} );
+   c.produce_block();
+   c.push_transaction(trx);
+} FC_LOG_AND_RETHROW() }
+
+BOOST_AUTO_TEST_CASE( webauthn_update_account_auth ) { try {
+   tester c( setup_policy::preactivate_feature_and_new_bios );
+
+   const auto& pfm = c.control->get_protocol_feature_manager();
+   const auto& d = pfm.get_builtin_digest(builtin_protocol_feature_t::webauthn_key);
+   BOOST_REQUIRE(d);
+
+   c.create_account(N(billy));
+   c.produce_block();
+
+   BOOST_CHECK_THROW(c.set_authority(N(billy), config::active_name,
+                        authority(public_key_type("PUB_WA_WdCPfafVNxVMiW5ybdNs83oWjenQXvSt1F49fg9mv7qrCiRwHj5b38U3ponCFWxQTkDsMC"s))),
+                     eosio::chain::unactivated_key_type);
+
+   c.preactivate_protocol_features( {*d} );
+   c.produce_block();
+
+   c.set_authority(N(billy), config::active_name, authority(public_key_type("PUB_WA_WdCPfafVNxVMiW5ybdNs83oWjenQXvSt1F49fg9mv7qrCiRwHj5b38U3ponCFWxQTkDsMC"s)));
+} FC_LOG_AND_RETHROW() }
+
+/*
+   For the following two recover_key wasm tests:
+   Given digest a2256be721c7d090ba13d6c37eee2a06c663473a40950d4f64f0a762dbe13d49
+   And signature SIG_WA_2AAAuLJS3pLPgkQQPqLsehL6VeRBaAZS7NYM91UYRUrSAEfUvzKN7DCSwhjsDqe74cZNWKUU
+                 GAHGG8ddSA7cvUxChbfKxLSrDCpwe6MVUqz4PDdyCt5tXhEJmKekxG1o1ucY3LVj8Vi9rRbzAkKPCzW
+                 qC8cPcUtpLHNG8qUKkQrN4Xuwa9W8rsBiUKwZv1ToLyVhLrJe42pvHYBXicp4E8qec5E4m6SX11KuXE
+                 RFcV48Mhiie2NyaxdtNtNzQ5XZ5hjBkxRujqejpF4SNHvdAGKRBbvhkiPLA25FD3xoCbrN26z72
+   Should recover to pubkey PUB_WA_WdCPfafVNxVMiW5ybdNs83oWjenQXvSt1F49fg9mv7qrCiRwHj5b38U3ponCFWxQTkDsMC
+*/
+
+static const char webauthn_recover_key_wast[] = R"=====(
+(module
+ (import "env" "recover_key" (func $recover_key (param i32 i32 i32 i32 i32) (result i32)))
+ (memory $0 1)
+ (export "apply" (func $apply))
+ (func $apply (param $0 i64) (param $1 i64) (param $2 i64)
+   (drop
+      (call $recover_key
+         (i32.const 8)
+         (i32.const 40)
+         (i32.const 220)
+         (i32.const 1024)
+         (i32.const 1024)
+      )
+   )
+ )
+ (data (i32.const 8) "\a2\25\6b\e7\21\c7\d0\90\ba\13\d6\c3\7e\ee\2a\06\c6\63\47\3a\40\95\0d\4f\64\f0\a7\62\db\e1\3d\49")
+ (data (i32.const 40) "\02\20\D9\13\2B\BD\B2\19\E4\E2\D9\9A\F9\C5\07\E3\59\7F\86\B6\15\81\4F\36\67\2D\50\10\34\86\17\92\BB\CF\21\A4\6D\1A\2E\B1\2B\AC\E4\A2\91\00\B9\42\F9\87\49\4F\3A\EF\C8\EF\B2\D5\AF\4D\4D\8D\E3\E0\87\15\25\AA\14\90\5A\F6\0C\A1\7A\1B\B8\0E\0C\F9\C3\B4\69\08\A0\F1\4F\72\56\7A\2F\14\0C\3A\3B\D2\EF\07\4C\01\00\00\00\6D\73\7B\22\6F\72\69\67\69\6E\22\3A\22\68\74\74\70\73\3A\2F\2F\6B\65\6F\73\64\2E\69\6E\76\61\6C\69\64\22\2C\22\74\79\70\65\22\3A\22\77\65\62\61\75\74\68\6E\2E\67\65\74\22\2C\22\63\68\61\6C\6C\65\6E\67\65\22\3A\22\6F\69\56\72\35\79\48\48\30\4A\43\36\45\39\62\44\66\75\34\71\42\73\5A\6A\52\7A\70\41\6C\51\31\50\5A\50\43\6E\59\74\76\68\50\55\6B\3D\22\7D")
+)
+)=====";
+
+BOOST_AUTO_TEST_CASE( webauthn_recover_key ) { try {
+   tester c( setup_policy::preactivate_feature_and_new_bios );
+
+   const auto& pfm = c.control->get_protocol_feature_manager();
+   const auto& d = pfm.get_builtin_digest(builtin_protocol_feature_t::webauthn_key);
+   BOOST_REQUIRE(d);
+
+   c.create_account(N(bob));
+   c.set_code(N(bob), webauthn_recover_key_wast);
+   c.produce_block();
+
+   signed_transaction trx;
+   action act;
+   act.account = N(bob);
+   act.name = N();
+   act.authorization = vector<permission_level>{{N(bob),config::active_name}};
+   trx.actions.push_back(act);
+
+   c.set_transaction_headers(trx);
+   trx.sign(c.get_private_key( N(bob), "active" ), c.control->get_chain_id());
+   BOOST_CHECK_THROW(c.push_transaction(trx), eosio::chain::unactivated_signature_type);
+
+   c.preactivate_protocol_features( {*d} );
+   c.produce_block();
+   c.push_transaction(trx);
+
+} FC_LOG_AND_RETHROW() }
+
+static const char webauthn_assert_recover_key_wast[] = R"=====(
+(module
+ (import "env" "assert_recover_key" (func $assert_recover_key (param i32 i32 i32 i32 i32)))
+ (memory $0 1)
+ (export "apply" (func $apply))
+ (func $apply (param $0 i64) (param $1 i64) (param $2 i64)
+   (call $assert_recover_key
+      (i32.const 8)
+      (i32.const 40)
+      (i32.const 220)
+      (i32.const 1024)
+      (i32.const 1024)
+   )
+ )
+ (data (i32.const 8) "\a2\25\6b\e7\21\c7\d0\90\ba\13\d6\c3\7e\ee\2a\06\c6\63\47\3a\40\95\0d\4f\64\f0\a7\62\db\e1\3d\49")
+ (data (i32.const 40) "\02\20\D9\13\2B\BD\B2\19\E4\E2\D9\9A\F9\C5\07\E3\59\7F\86\B6\15\81\4F\36\67\2D\50\10\34\86\17\92\BB\CF\21\A4\6D\1A\2E\B1\2B\AC\E4\A2\91\00\B9\42\F9\87\49\4F\3A\EF\C8\EF\B2\D5\AF\4D\4D\8D\E3\E0\87\15\25\AA\14\90\5A\F6\0C\A1\7A\1B\B8\0E\0C\F9\C3\B4\69\08\A0\F1\4F\72\56\7A\2F\14\0C\3A\3B\D2\EF\07\4C\01\00\00\00\6D\73\7B\22\6F\72\69\67\69\6E\22\3A\22\68\74\74\70\73\3A\2F\2F\6B\65\6F\73\64\2E\69\6E\76\61\6C\69\64\22\2C\22\74\79\70\65\22\3A\22\77\65\62\61\75\74\68\6E\2E\67\65\74\22\2C\22\63\68\61\6C\6C\65\6E\67\65\22\3A\22\6F\69\56\72\35\79\48\48\30\4A\43\36\45\39\62\44\66\75\34\71\42\73\5A\6A\52\7A\70\41\6C\51\31\50\5A\50\43\6E\59\74\76\68\50\55\6B\3D\22\7D")
+ (data (i32.const 1024) "\02\02\20\B9\DA\B5\12\E8\92\39\2A\44\A9\F4\1F\94\33\C9\FB\D8\0D\B8\64\E9\DF\58\89\C2\40\7D\B3\AC\BB\9F\01\0D\6B\65\6F\73\64\2E\69\6E\76\61\6C\69\64")
+)
+)=====";
+
+BOOST_AUTO_TEST_CASE( webauthn_assert_recover_key ) { try {
+   tester c( setup_policy::preactivate_feature_and_new_bios );
+
+   const auto& pfm = c.control->get_protocol_feature_manager();
+   const auto& d = pfm.get_builtin_digest(builtin_protocol_feature_t::webauthn_key);
+   BOOST_REQUIRE(d);
+
+   c.create_account(N(bob));
+   c.set_code(N(bob), webauthn_assert_recover_key_wast);
+   c.produce_block();
+
+   signed_transaction trx;
+   action act;
+   act.account = N(bob);
+   act.name = N();
+   act.authorization = vector<permission_level>{{N(bob),config::active_name}};
+   trx.actions.push_back(act);
+
+   c.set_transaction_headers(trx);
+   trx.sign(c.get_private_key( N(bob), "active" ), c.control->get_chain_id());
+   BOOST_CHECK_THROW(c.push_transaction(trx), eosio::chain::unactivated_signature_type);
+
+   c.preactivate_protocol_features( {*d} );
+   c.produce_block();
+   c.push_transaction(trx);
+
+} FC_LOG_AND_RETHROW() }
+
+static const char import_set_proposed_producer_ex_wast[] = R"=====(
+(module
+ (import "env" "set_proposed_producers_ex" (func $set_proposed_producers_ex (param i64 i32 i32) (result i64)))
+ (memory $0 1)
+ (export "apply" (func $apply))
+ (func $apply (param $0 i64) (param $1 i64) (param $2 i64)
+   (drop
+     (call $set_proposed_producers_ex
+       (i64.const 0)
+       (i32.const 0)
+       (i32.const 43)
+     )
+   )
+ )
+ (data (i32.const 8) "\01\00\00\00\00\00\85\5C\34\00\03\EB\CF\44\B4\5A\71\D4\F2\25\76\8F\60\2D\1E\2E\2B\25\EF\77\9E\E9\89\7F\E7\44\BF\1A\16\E8\54\23\D5")
+)
+)=====";
+
+BOOST_AUTO_TEST_CASE( set_proposed_producers_ex_test ) { try {
+   tester c( setup_policy::preactivate_feature_and_new_bios );
+
+   const auto& pfm = c.control->get_protocol_feature_manager();
+   const auto& d = pfm.get_builtin_digest(builtin_protocol_feature_t::wtmsig_block_signatures);
+   BOOST_REQUIRE(d);
+
+   const auto& alice_account = account_name("alice");
+   c.create_accounts( {alice_account} );
+   c.produce_block();
+
+   BOOST_CHECK_EXCEPTION(  c.set_code( alice_account, import_set_proposed_producer_ex_wast ),
+                           wasm_exception,
+                           fc_exception_message_is( "env.set_proposed_producers_ex unresolveable" ) );
+
+   c.preactivate_protocol_features( {*d} );
+   c.produce_block();
+
+   // ensure it now resolves
+   c.set_code( alice_account, import_set_proposed_producer_ex_wast );
+
+   // ensure it requires privilege
+   BOOST_REQUIRE_EQUAL(
+           c.push_action(action({{ alice_account, permission_name("active") }}, alice_account, action_name(), {} ), alice_account.to_uint64_t()),
+           "alice does not have permission to call this API"
+   );
+
+   c.push_action(config::system_account_name, N(setpriv), config::system_account_name,  fc::mutable_variant_object()("account", alice_account)("is_priv", 1));
+
+   //ensure it can be called w/ privilege
+   BOOST_REQUIRE_EQUAL(c.push_action(action({{ alice_account, permission_name("active") }}, alice_account, action_name(), {} ), alice_account.to_uint64_t()), c.success());
+
+   c.produce_block();
+} FC_LOG_AND_RETHROW() }
+
+BOOST_AUTO_TEST_CASE( producer_schedule_change_extension_test ) { try {
+   tester c( setup_policy::preactivate_feature_and_new_bios );
+
+   const auto& pfm = c.control->get_protocol_feature_manager();
+   const auto& d = pfm.get_builtin_digest(builtin_protocol_feature_t::wtmsig_block_signatures);
+   BOOST_REQUIRE(d);
+
+   c.produce_blocks(2);
+
+   // sync a remote node into this chain
+   tester remote( setup_policy::none );
+   push_blocks(c, remote);
+
+   // activate the feature
+   // there is a 1 block delay before header-only validation (which is responsible for extension validation) can be
+   // aware of the activation.  So the expectation is that if it is activated in the _state_ at block N, block N + 1
+   // will bear an extension making header-only validators aware of it, and therefore block N + 2 is the first block
+   // where a block may bear a downstream extension.
+   c.preactivate_protocol_features( {*d} );
+   remote.push_block(c.produce_block());
+
+   auto last_legacy_block = c.produce_block();
+
+
+   { // ensure producer_schedule_change_extension is rejected
+      const auto& hbs = remote.control->head_block_state();
+
+      // create a bad block that has the producer schedule change extension before the feature upgrade
+      auto bad_block = std::make_shared<signed_block>(last_legacy_block->clone());
+      emplace_extension(
+              bad_block->header_extensions,
+              producer_schedule_change_extension::extension_id(),
+              fc::raw::pack(std::make_pair(hbs->active_schedule.version + 1, std::vector<char>{}))
+      );
+
+      // re-sign the bad block
+      auto header_bmroot = digest_type::hash( std::make_pair( bad_block->digest(), remote.control->head_block_state()->blockroot_merkle ) );
+      auto sig_digest = digest_type::hash( std::make_pair(header_bmroot, remote.control->head_block_state()->pending_schedule.schedule_hash) );
+      bad_block->producer_signature = remote.get_private_key(N(eosio), "active").sign(sig_digest);
+
+      // ensure it is rejected as an unknown extension
+      BOOST_REQUIRE_EXCEPTION(
+         remote.push_block(bad_block), producer_schedule_exception,
+         fc_exception_message_is( "Block header producer_schedule_change_extension before activation of WTMsig Block Signatures" )
+      );
+   }
+
+   { // ensure that non-null new_producers is accepted (and fails later in validation)
+      const auto& hbs = remote.control->head_block_state();
+
+      // create a bad block that has the producer schedule change extension before the feature upgrade
+      auto bad_block = std::make_shared<signed_block>(last_legacy_block->clone());
+      bad_block->new_producers = legacy::producer_schedule_type{hbs->active_schedule.version + 1, {}};
+
+      // re-sign the bad block
+      auto header_bmroot = digest_type::hash( std::make_pair( bad_block->digest(), remote.control->head_block_state()->blockroot_merkle ) );
+      auto sig_digest = digest_type::hash( std::make_pair(header_bmroot, remote.control->head_block_state()->pending_schedule.schedule_hash) );
+      bad_block->producer_signature = remote.get_private_key(N(eosio), "active").sign(sig_digest);
+
+      // ensure it is accepted (but rejected because it doesn't match expected state)
+      BOOST_REQUIRE_EXCEPTION(
+         remote.push_block(bad_block), wrong_signing_key,
+         fc_exception_message_is( "block signed by unexpected key" )
+      );
+   }
+
+   remote.push_block(last_legacy_block);
+
+   // propagate header awareness of the activation.
+   auto first_new_block = c.produce_block();
+
+   {
+      const auto& hbs = remote.control->head_block_state();
+
+      // create a bad block that has the producer schedule change extension that is valid but not warranted by actions in the block
+      auto bad_block = std::make_shared<signed_block>(first_new_block->clone());
+      emplace_extension(
+              bad_block->header_extensions,
+              producer_schedule_change_extension::extension_id(),
+              fc::raw::pack(std::make_pair(hbs->active_schedule.version + 1, std::vector<char>{}))
+      );
+
+      // re-sign the bad block
+      auto header_bmroot = digest_type::hash( std::make_pair( bad_block->digest(), remote.control->head_block_state()->blockroot_merkle ) );
+      auto sig_digest = digest_type::hash( std::make_pair(header_bmroot, remote.control->head_block_state()->pending_schedule.schedule_hash) );
+      bad_block->producer_signature = remote.get_private_key(N(eosio), "active").sign(sig_digest);
+
+      // ensure it is rejected because it doesn't match expected state (but the extention was accepted)
+      BOOST_REQUIRE_EXCEPTION(
+         remote.push_block(bad_block), wrong_signing_key,
+         fc_exception_message_is( "block signed by unexpected key" )
+      );
+   }
+
+   { // ensure that non-null new_producers is rejected
+      const auto& hbs = remote.control->head_block_state();
+
+      // create a bad block that has the producer schedule change extension before the feature upgrade
+      auto bad_block = std::make_shared<signed_block>(first_new_block->clone());
+      bad_block->new_producers = legacy::producer_schedule_type{hbs->active_schedule.version + 1, {}};
+
+      // re-sign the bad block
+      auto header_bmroot = digest_type::hash( std::make_pair( bad_block->digest(), remote.control->head_block_state()->blockroot_merkle ) );
+      auto sig_digest = digest_type::hash( std::make_pair(header_bmroot, remote.control->head_block_state()->pending_schedule.schedule_hash) );
+      bad_block->producer_signature = remote.get_private_key(N(eosio), "active").sign(sig_digest);
+
+      // ensure it is rejected because the new_producers field is not null
+      BOOST_REQUIRE_EXCEPTION(
+         remote.push_block(bad_block), producer_schedule_exception,
+         fc_exception_message_is( "Block header contains legacy producer schedule outdated by activation of WTMsig Block Signatures" )
+      );
+   }
+
+   remote.push_block(first_new_block);
+   remote.push_block(c.produce_block());
+} FC_LOG_AND_RETHROW() }
+
+BOOST_AUTO_TEST_CASE( wtmsig_block_signing_inflight_legacy_test ) { try {
+   tester c( setup_policy::preactivate_feature_and_new_bios );
+
+   const auto& pfm = c.control->get_protocol_feature_manager();
+   const auto& d = pfm.get_builtin_digest(builtin_protocol_feature_t::wtmsig_block_signatures);
+   BOOST_REQUIRE(d);
+
+   c.produce_blocks(2);
+
+   // activate the feature, and start an in-flight producer schedule change with the legacy format
+   c.preactivate_protocol_features( {*d} );
+   vector<legacy::producer_key> sched = {{N(eosio), c.get_public_key(N(eosio), "bsk")}};
+   c.push_action(config::system_account_name, N(setprods), config::system_account_name, fc::mutable_variant_object()("schedule", sched));
+   c.produce_block();
+
+   // ensure the last legacy block contains a new_producers
+   auto last_legacy_block = c.produce_block();
+   BOOST_REQUIRE_EQUAL(last_legacy_block->new_producers.valid(), true);
+
+   // promote to active schedule
+   c.produce_block();
+
+   // ensure that the next block is updated to the new schedule
+   BOOST_REQUIRE_EXCEPTION( c.produce_block(), no_block_signatures, fc_exception_message_is( "Signer returned no signatures" ));
+   c.control->abort_block();
+
+   c.block_signing_private_keys.emplace(get_public_key(N(eosio), "bsk"), get_private_key(N(eosio), "bsk"));
+   c.produce_block();
+
+} FC_LOG_AND_RETHROW() }
+
+BOOST_AUTO_TEST_CASE( wtmsig_block_signing_inflight_extension_test ) { try {
+   tester c( setup_policy::preactivate_feature_and_new_bios );
+
+   const auto& pfm = c.control->get_protocol_feature_manager();
+   const auto& d = pfm.get_builtin_digest(builtin_protocol_feature_t::wtmsig_block_signatures);
+   BOOST_REQUIRE(d);
+
+   c.produce_blocks(2);
+
+   // activate the feature
+   c.preactivate_protocol_features( {*d} );
+   c.produce_block();
+
+   // start an in-flight producer schedule change before the activation is availble to header only validators
+   vector<legacy::producer_key> sched = {{N(eosio), c.get_public_key(N(eosio), "bsk")}};
+   c.push_action(config::system_account_name, N(setprods), config::system_account_name, fc::mutable_variant_object()("schedule", sched));
+   c.produce_block();
+
+   // ensure the first possible new block contains a producer_schedule_change_extension
+   auto first_new_block = c.produce_block();
+   BOOST_REQUIRE_EQUAL(first_new_block->new_producers.valid(), false);
+   BOOST_REQUIRE_EQUAL(first_new_block->header_extensions.size(), 1);
+   BOOST_REQUIRE_EQUAL(first_new_block->header_extensions.at(0).first, producer_schedule_change_extension::extension_id());
+
+   // promote to active schedule
+   c.produce_block();
+
+   // ensure that the next block is updated to the new schedule
+   BOOST_REQUIRE_EXCEPTION( c.produce_block(), no_block_signatures, fc_exception_message_is( "Signer returned no signatures" ));
+   c.control->abort_block();
+
+   c.block_signing_private_keys.emplace(get_public_key(N(eosio), "bsk"), get_private_key(N(eosio), "bsk"));
    c.produce_block();
 
 } FC_LOG_AND_RETHROW() }

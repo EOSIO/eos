@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
 #include "test_api_multi_index.hpp"
 
 using namespace eosio;

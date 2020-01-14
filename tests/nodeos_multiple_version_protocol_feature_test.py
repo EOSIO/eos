@@ -13,6 +13,13 @@ import os
 from os.path import join, exists
 from datetime import datetime
 
+###############################################################
+# nodeos_multiple_version_protocol_feature_test
+#
+# Test for verifying that older versions of nodeos can work with newer versions of nodeos.
+#
+###############################################################
+
 # Parse command line arguments
 args = TestHelper.parse_args({"-v","--clean-run","--dump-error-details","--leave-running",
                               "--keep-logs", "--alternate-version-labels-file"})
@@ -29,10 +36,10 @@ walletMgr=WalletMgr(True)
 cluster=Cluster(walletd=True)
 cluster.setWalletMgr(walletMgr)
 
-def restartNode(node: Node, nodeId, chainArg=None, addOrSwapFlags=None, nodeosPath=None):
+def restartNode(node: Node, nodeId, chainArg=None, addSwapFlags=None, nodeosPath=None):
     if not node.killed:
         node.kill(signal.SIGTERM)
-    isRelaunchSuccess = node.relaunch(nodeId, chainArg, addOrSwapFlags=addOrSwapFlags,
+    isRelaunchSuccess = node.relaunch(nodeId, chainArg, addSwapFlags=addSwapFlags,
                                       timeout=5, cachePopen=True, nodeosPath=nodeosPath)
     assert isRelaunchSuccess, "Fail to relaunch"
 

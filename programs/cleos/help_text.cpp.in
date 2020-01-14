@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
 #include "help_text.hpp"
 #include "localize.hpp"
 #include <regex>
@@ -144,8 +140,7 @@ const char* error_advice_authority_type_exception = R"=====(Ensure that your aut
 }
 )=====";
 const char* error_advice_action_type_exception = R"=====(Ensure that your action JSON follows the contract's abi!)=====";
-const char* error_advice_transaction_type_exception = R"=====(Ensure that your transaction JSON follows the right transaction format!
-You can refer to eosio.cdt/libraries/eosiolib/transaction.hpp for reference)=====";
+const char* error_advice_transaction_type_exception = R"=====(Ensure that your transaction JSON follows the right transaction format!)=====";
 const char* error_advice_abi_type_exception =  R"=====(Ensure that your abi JSON follows the following format!
 {
   "types" : [{ "new_type_name":"type_name", "type":"type_name" }],
@@ -290,7 +285,7 @@ bool print_recognized_errors(const fc::exception& e, const bool verbose_errors) 
             explanation += "\n" + localized_with_variant(log.get_format().data(), log.get_data());
          } else if (log.get_data().size() > 0 && verbose_errors) {
             // Show data-only log only if verbose_errors option is enabled
-            explanation += "\n" + fc::json::to_string(log.get_data());
+            explanation += "\n" + fc::json::to_string(log.get_data(), fc::time_point::maximum());
          }
          // Check if there's stack trace to be added
          if (!log.get_context().get_method().empty() && verbose_errors) {

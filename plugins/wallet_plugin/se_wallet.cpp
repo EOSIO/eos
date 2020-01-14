@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
 #include <eosio/wallet_plugin/se_wallet.hpp>
 #include <eosio/wallet_plugin/macos_user_auth.h>
 #include <eosio/chain/exceptions.hpp>
@@ -362,6 +358,7 @@ bool se_wallet::import_key(string wif_key) {
 }
 
 string se_wallet::create_key(string key_type) {
+   EOS_ASSERT(key_type.empty() || key_type == "R1", chain::unsupported_key_type_exception, "Secure Enclave wallet only supports R1 keys");
    return (string)my->create();
 }
 

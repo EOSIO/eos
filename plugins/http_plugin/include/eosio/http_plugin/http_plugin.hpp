@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
 #pragma once
 #include <appbase/application.hpp>
 #include <fc/exception/exception.hpp>
@@ -79,6 +75,7 @@ namespace eosio {
         void plugin_initialize(const variables_map& options);
         void plugin_startup();
         void plugin_shutdown();
+        void handle_sighup() override;
 
         void add_handler(const string& url, const url_handler&);
         void add_api(const api_description& api) {

@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
 #include <algorithm>
 #include <iterator>
 #include <vector>
@@ -65,7 +61,7 @@ BOOST_FIXTURE_TEST_CASE(accounts_exists, tester)
       for (size_t i = 0; i < std::max(active_auth.size(), active_producers.producers.size()); ++i) {
          account_name n1 = i < active_auth.size() ? active_auth[i] : (account_name)0;
          account_name n2 = i < active_producers.producers.size() ? active_producers.producers[i].producer_name : (account_name)0;
-         if (n1 != n2) diff.push_back((uint64_t)n2 - (uint64_t)n1);
+         if (n1 != n2) diff.push_back(name(n2.to_uint64_t() - n1.to_uint64_t()));
       }
 
       BOOST_CHECK_EQUAL(diff.size(), 0);

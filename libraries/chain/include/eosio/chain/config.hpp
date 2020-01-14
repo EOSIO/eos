@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
 #pragma once
 #include <eosio/chain/wasm_interface.hpp>
 #include <fc/time.hpp>
@@ -23,25 +19,26 @@ const static auto default_state_size            = 1*1024*1024*1024ll;
 const static auto default_state_guard_size      =    128*1024*1024ll;
 
 
-const static uint64_t system_account_name    = N(eosio);
-const static uint64_t null_account_name      = N(eosio.null);
-const static uint64_t producers_account_name = N(eosio.prods);
+const static name system_account_name    { N(eosio) };
+const static name null_account_name      { N(eosio.null) };
+const static name producers_account_name { N(eosio.prods) };
 
 // Active permission of producers account requires greater than 2/3 of the producers to authorize
-const static uint64_t majority_producers_permission_name = N(prod.major); // greater than 1/2 of producers needed to authorize
-const static uint64_t minority_producers_permission_name = N(prod.minor); // greater than 1/3 of producers needed to authorize0
+const static name majority_producers_permission_name { N(prod.major) }; // greater than 1/2 of producers needed to authorize
+const static name minority_producers_permission_name { N(prod.minor) }; // greater than 1/3 of producers needed to authorize0
 
-const static uint64_t eosio_auth_scope       = N(eosio.auth);
-const static uint64_t eosio_all_scope        = N(eosio.all);
+const static name eosio_auth_scope       { N(eosio.auth) };
+const static name eosio_all_scope        { N(eosio.all) };
 
-const static uint64_t active_name = N(active);
-const static uint64_t owner_name  = N(owner);
-const static uint64_t eosio_any_name = N(eosio.any);
-const static uint64_t eosio_code_name = N(eosio.code);
+const static name active_name     { N(active) };
+const static name owner_name      { N(owner) };
+const static name eosio_any_name  { N(eosio.any) };
+const static name eosio_code_name { N(eosio.code) };
 
 const static int      block_interval_ms = 500;
 const static int      block_interval_us = block_interval_ms*1000;
 const static uint64_t block_timestamp_epoch = 946684800000ll; // epoch is year 2000.
+const static uint32_t genesis_num_supported_key_types = 2;
 
 /** Percentages are fixed point with a denominator of 10,000 */
 const static int percent_100 = 10000;
@@ -83,6 +80,7 @@ const static uint16_t   default_max_inline_action_depth        = 4;
 const static uint16_t   default_max_auth_depth                 = 6;
 const static uint32_t   default_sig_cpu_bill_pct               = 50 * percent_1; // billable percentage of signature recovery
 const static uint16_t   default_controller_thread_pool_size    = 2;
+const static uint32_t   default_max_variable_signature_length  = 16384u;
 
 const static uint32_t   min_net_usage_delta_between_base_and_max_for_trx  = 10*1024;
 // Should be large enough to allow recovery from badly set blockchain parameters without a hard fork

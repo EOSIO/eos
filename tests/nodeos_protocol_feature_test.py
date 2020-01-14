@@ -11,6 +11,13 @@ import json
 from os.path import join
 from datetime import datetime
 
+###############################################################
+# nodeos_protocol_feature_test
+#
+# Many smaller tests centered around irreversible mode
+#
+###############################################################
+
 # Parse command line arguments
 args = TestHelper.parse_args({"-v","--clean-run","--dump-error-details","--leave-running","--keep-logs"})
 Utils.Debug = args.v
@@ -23,17 +30,16 @@ keepLogs=args.keep_logs
 
 # The following test case will test the Protocol Feature JSON reader of the blockchain
 
-def restartNode(node: Node, nodeId, chainArg=None, addOrSwapFlags=None):
+def restartNode(node: Node, nodeId, chainArg=None, addSwapFlags=None):
     if not node.killed:
         node.kill(signal.SIGTERM)
-    isRelaunchSuccess = node.relaunch(nodeId, chainArg, addOrSwapFlags=addOrSwapFlags, timeout=5, cachePopen=True)
+    isRelaunchSuccess = node.relaunch(nodeId, chainArg, addSwapFlags=addSwapFlags, timeout=5, cachePopen=True)
     assert isRelaunchSuccess, "Fail to relaunch"
 
 walletMgr=WalletMgr(True)
 cluster=Cluster(walletd=True)
 cluster.setWalletMgr(walletMgr)
 
-# List to contain the test result message
 testSuccessful = False
 try:
     TestHelper.printSystemInfo("BEGIN")
