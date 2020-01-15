@@ -4,14 +4,15 @@ set -eo pipefail
 echo '+++ Build Script Started'
 export DOCKERIZATION=false
 [[ $ENABLE_INSTALL == true ]] && . ./.cicd/helpers/populate-template-and-hash.sh '<!-- DAC ENV' '<!-- DAC CLONE' '<!-- DAC BUILD' '<!-- DAC INSTALL' || . ./.cicd/helpers/populate-template-and-hash.sh '<!-- DAC ENV' '<!-- DAC CLONE' '<!-- DAC BUILD'
-sed -i -e 's/git clone https:\/\/github.com\/EOSIO\/eos\.git.*/cp -rfp $(pwd) \$EOS_LOCATION \&\& cd \$EOS_LOCATION/g' /tmp/$POPULATED_FILE_NAME # We don't need to clone twice
+[[ $BUILDKITE == true ]] && CI_PWD="$(pwd)" || CI_PWD="$(GITHUB_WORKSPACE)"
+sed -i -e 's/git clone https:\/\/github.com\/EOSIO\/eos\.git.*/cp -rfp $CI_PWD \$EOS_LOCATION \&\& cd \$EOS_LOCATION/g' /tmp/$POPULATED_FILE_NAME # We don't need to clone twice
 if [[ "$(uname)" == 'Darwin' ]]; then
     # You can't use chained commands in execute
-    # You can't use chained commands in execute
-    if [[ $GITHUB_ACTIONS == true ]]; then
-        export PINNED=false
-    else
+    if [[ $BUILDKITE == true ]]; then
         source ~/.bash_profile # Make sure node is available for ship_test
+    else
+        export PINNED=false
+        brew install md5sha1sum
     fi
     . $HELPERS_DIR/populate-template-and-hash.sh -h # obtain $FULL_TAG (and don't overwrite existing file)
     cat /tmp/$POPULATED_FILE_NAME
