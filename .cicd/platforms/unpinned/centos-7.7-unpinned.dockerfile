@@ -68,8 +68,7 @@ RUN yum -y update && yum -y install wget && yum -y install gcc && yum -y install
     yum -y install libffi-devel && wget https://www.python.org/ftp/python/3.6.9/Python-3.6.9.tgz && tar xzf Python-3.6.9.tgz && \
     cd Python-3.6.9 && ./configure --enable-optimizations && make altinstall && cd ..
 # install ccache
-RUN curl -LO http://download-ib01.fedoraproject.org/pub/epel/7/x86_64/Packages/c/ccache-3.3.4-1.el7.x86_64.rpm && \
-    yum install -y ccache-3.3.4-1.el7.x86_64.rpm
+RUN yum install -y ccache
 # fix ccache for centos
 RUN cd /usr/lib64/ccache && ln -s ../../bin/ccache c++
 ENV CCACHE_PATH="/opt/rh/devtoolset-8/root/usr/bin"
