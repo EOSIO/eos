@@ -22,7 +22,7 @@ if [[ "$(uname)" == 'Darwin' ]]; then
     cat /tmp/$POPULATED_FILE_NAME
     . /tmp/$POPULATED_FILE_NAME # This file is populated from the platform's build documentation code block
 else # Linux
-    ARGS=${ARGS:-"--rm --init -v $(pwd):$(pwd) $(buildkite-intrinsics) -e JOBS"} # We must mount $(pwd) in as itself to avoid https://stackoverflow.com/questions/31381322/docker-in-docker-cannot-mount-volume
+    ARGS=${ARGS:-"--rm --init -v $(pwd):$(pwd) $(buildkite-intrinsics) -e GITHUB_WORKSPACE -e JOBS"} # We must mount $(pwd) in as itself to avoid https://stackoverflow.com/questions/31381322/docker-in-docker-cannot-mount-volume
     echo "cp -rf \$EOS_LOCATION/build $(pwd)" >> /tmp/$POPULATED_FILE_NAME
     BUILD_COMMANDS="cd $(pwd) && ./$POPULATED_FILE_NAME"
     . $HELPERS_DIR/populate-template-and-hash.sh -h # obtain $FULL_TAG (and don't overwrite existing file)
