@@ -1820,6 +1820,13 @@ struct controller_impl {
       }
    }
 
+#define EOS_REPORT(A,B) \
+   if( A != B ) { \
+      auto& bv = A; \
+      auto& abv = B; \
+      edump((bv)(abv)); \
+   }
+
    void apply_block( const block_state_ptr& bsp, controller::block_status s, const trx_meta_cache_lookup& trx_lookup )
    { try {
       try {
@@ -1903,8 +1910,21 @@ struct controller_impl {
          auto& ab = pending->_block_stage.get<assembled_block>();
 
          // this implicitly asserts that all header fields (less the signature) are identical
-         EOS_ASSERT( producer_block_id == ab._id, block_validate_exception, "Block ID does not match",
-                     ("producer_block_id",producer_block_id)("validator_block_id",ab._id) );
+         if( producer_block_id != ab._id ) {
+
+            EOS_REPORT( b->timestamp, ab._unsigned_block->timestamp )
+            EOS_REPORT( b->producer, ab._unsigned_block->producer )
+            EOS_REPORT( b->confirmed, ab._unsigned_block->confirmed )
+            EOS_REPORT( b->previous, ab._unsigned_block->previous )
+            EOS_REPORT( b->transaction_mroot, ab._unsigned_block->transaction_mroot )
+            EOS_REPORT( b->action_mroot, ab._unsigned_block->action_mroot )
+            EOS_REPORT( b->schedule_version, ab._unsigned_block->schedule_version )
+            EOS_REPORT( b->new_producers, ab._unsigned_block->new_producers )
+            EOS_REPORT( b->header_extensions, ab._unsigned_block->header_extensions )
+
+            EOS_ASSERT( producer_block_id == ab._id, block_validate_exception, "Block ID does not match",
+                        ("producer_block_id", producer_block_id)( "validator_block_id", ab._id ) );
+         }
 
          if( !use_bsp_cached ) {
             bsp->set_trxs_metas( std::move( ab._trx_metas ), !skip_auth_checks );
