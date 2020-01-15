@@ -1,7 +1,6 @@
 #pragma once
 
 #include <eosio/chain/types.hpp>
-#include <eosio/chain/protocol_feature_manager.hpp>
 
 namespace eosio { namespace chain {
 
