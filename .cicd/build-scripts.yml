@@ -11,7 +11,7 @@ steps:
       - "./scripts/eosio_build.sh -P -y"
     timeout: 180
     
-  - label: ":centos: CentOS 7.6 - Build Pinned"
+  - label: ":centos: CentOS 7.7 - Build Pinned"
     plugins:
       - docker#v3.3.0:
           image: "centos:7.7.1908"
@@ -85,7 +85,7 @@ steps:
       - "./scripts/eosio_build.sh -y"
     timeout: 180
     
-  - label: ":centos: CentOS 7.6 - Build UnPinned"
+  - label: ":centos: CentOS 7.7 - Build UnPinned"
     plugins:
       - docker#v3.3.0:
           image: "centos:7.7.1908"
