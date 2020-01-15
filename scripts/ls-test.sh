@@ -21,11 +21,19 @@ sleep 1
 echo "platform ID is $ID"
 echo "IMAGE_TAG is $IMAGE_TAG"
 echo "python3 version is $(python3 --version)"
+echo "pip version is $(pip --version)"
+echo "pip2.7 version is $(pip2.7 --version)"
+echo "pip3 version is $(pip3 --version)"
 
 if [[ "$IMAGE_TAG" == "ubuntu-16.04-pinned" ]]; then
     ln -sf $(which python3.6) $(which python3)
     echo "Using python3.6 as python3 for Ubuntu 16.04"
     echo "python3 version is now $(python3 --version)"
+fi
+
+if [[ "$IMAGE_TAG" == "ubuntu-18.04-pinned" ]]; then
+    ln -s $(which pip2.7) /usr/local/bin/python3/pip
+    echo "Try link $(which pip2.7)"
 fi
 
 python3 -m pip install requests
