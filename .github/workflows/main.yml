@@ -7,7 +7,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Start Job
-        run: echo "Start Job."
+        run: echo "Start Job." && env
 
 
   amazon_linux-2-build:
