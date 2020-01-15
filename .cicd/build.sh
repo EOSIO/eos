@@ -6,7 +6,7 @@ export DOCKERIZATION=false
 if [[ $BUILDKITE == true ]]; then
     CI_PWD="\$(pwd)"
 else
-    brew install md5sha1sum
+    [[ "$(uname)" == 'Darwin' ]] && brew install md5sha1sum
     CI_PWD="$GITHUB_WORKSPACE"
 fi
 [[ $ENABLE_INSTALL == true ]] && . ./.cicd/helpers/populate-template-and-hash.sh '<!-- DAC ENV' '<!-- DAC CLONE' '<!-- DAC BUILD' '<!-- DAC INSTALL' || . ./.cicd/helpers/populate-template-and-hash.sh '<!-- DAC ENV' '<!-- DAC CLONE' '<!-- DAC BUILD'

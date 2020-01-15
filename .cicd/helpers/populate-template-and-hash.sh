@@ -100,7 +100,7 @@ else
   sed -i -e 's/^HOME=\/Users\/anka/HOME=\/home\/runner/g' /tmp/$POPULATED_FILE_NAME
   COMMIT_ID=$GITHUB_SHA
 fi
-[[ $DOCKERIZATION == false ]] && sed -i -e '1s/^/#!\/bin\/bash \
+( [[ $DOCKERIZATION == false ]] && [ $(cat /tmp/$POPULATED_FILE_NAME | grep -c "bin/bash") -lt 1 ] ) && sed -i -e '1s/^/#!\/bin\/bash \
 set -eo pipefail \
 /' /tmp/$POPULATED_FILE_NAME
 sed -i -e 's/\&\& brew install git/\&\& brew install git || true/g' /tmp/$POPULATED_FILE_NAME
