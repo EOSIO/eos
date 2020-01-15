@@ -271,8 +271,10 @@ function ensure-boost() {
 }
 
 function ensure-llvm() {
+    echo "${COLOR_CYAN}[Ensuring LLVM support]${COLOR_NC}"
     if $PIN_COMPILER || $BUILD_CLANG; then
         if [[ -d $LLVM_ROOT ]]; then
+            echo "LLVM_ROOT ($LLVM_ROOT) already exists!"
             return
         fi
         LLVM_TEMP_DIR=$(mktemp -d)
@@ -291,7 +293,7 @@ function ensure-llvm() {
     elif [[ $NAME == "Amazon Linux" ]]; then
         execute unlink $LLVM_ROOT || true
     elif [[ $NAME == "CentOS Linux" ]]; then
-        execute ln -snf /opt/rh/llvm-toolset-7.0/root $LLVM_ROOT
+        export LOCAL_CMAKE_FLAGS="${LOCAL_CMAKE_FLAGS} -DLLVM_DIR='/opt/rh/llvm-toolset-7.0/root/usr/lib64/cmake/llvm'"
     fi
 }
 
