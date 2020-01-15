@@ -16,12 +16,10 @@ namespace eosio { namespace chain {
       flat_map<account_name,uint64_t> auth_sequence;
       fc::unsigned_int                code_sequence = 0; ///< total number of setcodes
       fc::unsigned_int                abi_sequence  = 0; ///< total number of setabis
-      fc::optional<std::vector<char>> return_value;      ///< return value of the action
+      fc::optional<std::vector<char>> return_value;      /**< return value of the action; optional is set if action was executed
+                                                              with return value protocol feature enabled */
 
-      /// @param version of digest to calculate
-      ///        0 for original version
-      ///        set_field( version, builtin_protocol_feature_t::action_return_value, true ) for version of digest with return_value
-      digest_type digest(uint32_t version)const {
+      digest_type digest()const {
          digest_type::encoder e;
          fc::raw::pack(e, receiver);
          fc::raw::pack(e, act_digest);
@@ -30,9 +28,8 @@ namespace eosio { namespace chain {
          fc::raw::pack(e, auth_sequence);
          fc::raw::pack(e, code_sequence);
          fc::raw::pack(e, abi_sequence);
-         if( has_field( version, builtin_protocol_feature_t::action_return_value ) ) {
-            fc::raw::pack(e, return_value);
-         }
+         if(return_value)
+            fc::raw::pack(e, *return_value);
          return e.result();
       }
    };
