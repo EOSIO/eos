@@ -4,8 +4,26 @@
     {
 			"name": "collate_markdown",
 			"options": {
-				"docs_dir": "docs"
+				"docs_dir": "docs",
+				"disable_summary_gen": true,
+				"disable_default_filters": true
+			}
+    },
+		{
+			"name": "collate_markdown",
+			"options": {
+				"docs_dir": ".cicd/docs",
+				"output_dir": "00_install/01_build-from-source/02_manual-build/03_platforms",
+				"disable_summary_gen": true,
+				"disable_default_filters": true
 			}
     }
-  ]
+  ],
+	"filters": [
+		{ "name": "master_summary_from_filesystem" },
+		{ "name": "remove_extension" },
+		{ "name": "sort" },
+		{ "name": "capitalize" },
+		{ "name": "sanitize" }
+	]
 }

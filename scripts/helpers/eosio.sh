@@ -283,7 +283,7 @@ function ensure-llvm() {
         execute bash -c "cd '$LLVM_TEMP_DIR' \
         && git clone --depth 1 --single-branch --branch $LLVM_VERSION https://github.com/llvm-mirror/llvm.git llvm && cd llvm \
         && mkdir build && cd build \
-        && ${CMAKE} -DCMAKE_INSTALL_PREFIX='${LLVM_ROOT}' -DLLVM_TARGETS_TO_BUILD=host -DLLVM_BUILD_TOOLS=false -DLLVM_ENABLE_RTTI=1 -DCMAKE_BUILD_TYPE=Release $LLVM_PINNED_CMAKE_ARGS .. \
+        && ${CMAKE} -DCMAKE_INSTALL_PREFIX='${LLVM_ROOT}' -DLLVM_TARGETS_TO_BUILD=host -DLLVM_BUILD_TOOLS=false -DLLVM_ENABLE_RTTI=1 -DCMAKE_BUILD_TYPE=Release -DLLVM_ENABLE_TERMINFO=OFF $LLVM_PINNED_CMAKE_ARGS .. \
         && make -j${JOBS} install"
         echo " - LLVM successfully installed @ ${LLVM_ROOT}"
     elif [[ $NAME == "Ubuntu" ]]; then

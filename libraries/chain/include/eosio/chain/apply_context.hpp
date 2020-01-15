@@ -571,6 +571,7 @@ class apply_context {
       bool                          context_free = false;
 
    public:
+      std::vector<char>             action_return_value;
       generic_index<index64_object>                                  idx64;
       generic_index<index128_object>                                 idx128;
       generic_index<index256_object, uint128_t*, const uint128_t*>   idx256;
