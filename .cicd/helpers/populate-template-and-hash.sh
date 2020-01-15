@@ -97,7 +97,7 @@ export FULL_TAG="eosio/ci:$HASHED_IMAGE_TAG"
 if [[ $BUILDKITE == true ]]; then
   COMMIT_ID=$BUILDKITE_COMMIT
 else
-  sed -i -e 's/^HOME=\/Users\/anka/HOME=\/home\/runner/g' /tmp/$POPULATED_FILE_NAME
+  sed -i -e 's/^HOME=\/Users\/anka/HOME=$GITHUB_WORKSPACE/g' /tmp/$POPULATED_FILE_NAME
   COMMIT_ID=$GITHUB_SHA
 fi
 ( [[ $DOCKERIZATION == false ]] && [ $(cat /tmp/$POPULATED_FILE_NAME | grep -c "bin/bash") -lt 1 ] ) && sed -i -e '1s/^/#!\/bin\/bash \
