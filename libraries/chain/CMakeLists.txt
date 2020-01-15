@@ -102,6 +102,7 @@ add_library( eosio_chain
              platform_timer_accuracy.cpp
              kv_context.cpp
              kv_context_chainbase.cpp
+             kv_context_rocksdb.cpp
              ${PLATFORM_TIMER_IMPL}
              ${HEADERS}
              )

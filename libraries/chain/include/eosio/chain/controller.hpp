@@ -25,6 +25,7 @@ namespace chain_kv {
 
 namespace eosio { namespace chain {
 
+   // chainbase reserves prefixes 0x10 - 0x2F.
    static const std::vector<char> rocksdb_undo_prefix{ 0x10 };
    static const std::vector<char> rocksdb_contract_kv_prefix{ 0x11 };
 

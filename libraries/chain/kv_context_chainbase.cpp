@@ -33,6 +33,7 @@ namespace eosio { namespace chain {
       ~kv_iterator_chainbase() override { --itr_count; }
 
       bool is_kv_chainbase_context_iterator() const override { return true; }
+      bool is_kv_rocksdb_context_iterator() const override { return false; }
 
       template <typename It>
       kv_it_stat move_to(const It& it) {
