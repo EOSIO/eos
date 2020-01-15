@@ -88,10 +88,6 @@ RUN curl -L https://github.com/mongodb/mongo-cxx-driver/archive/r3.4.0.tar.gz -o
     rm -rf mongo-cxx-driver-r3.4.0.tar.gz /mongo-cxx-driver-r3.4.0
 # add mongodb to path
 ENV PATH=${PATH}:/mongodb-linux-x86_64-amazon-3.6.3/bin
-# install Python 3.6 for launcher service
-RUN yum -y update && yum -y install wget && yum -y install gcc && yum -y install zlib* && yum -y install openssl-devel && \
-    yum -y install libffi-devel && wget https://www.python.org/ftp/python/3.6.9/Python-3.6.9.tgz && tar xzf Python-3.6.9.tgz && \
-    cd Python-3.6.9 && ./configure --enable-optimizations && make altinstall && cd ..
 # install ccache
 RUN yum install -y ccache
 # fix ccache for centos
