@@ -3,14 +3,9 @@ set -eo pipefail
 . ./.cicd/helpers/general.sh
 echo '+++ Build Script Started'
 export DOCKERIZATION=false
-if [[ $BUILDKITE == true ]]; then
-    CI_PWD="\$(pwd)"
-else
-    [[ "$(uname)" == 'Darwin' ]] && brew install md5sha1sum
-    CI_PWD="$GITHUB_WORKSPACE"
-fi
+[[ "$(uname)" == 'Darwin' ]] && brew install md5sha1sum
 [[ $ENABLE_INSTALL == true ]] && . ./.cicd/helpers/populate-template-and-hash.sh '<!-- DAC ENV' '<!-- DAC CLONE' '<!-- DAC BUILD' '<!-- DAC INSTALL' || . ./.cicd/helpers/populate-template-and-hash.sh '<!-- DAC ENV' '<!-- DAC CLONE' '<!-- DAC BUILD'
-sed -i -e "s/git clone https:\/\/github.com\/EOSIO\/eos\.git.*/cp -rfp $CI_PWD \$EOS_LOCATION \&\& cd \$EOS_LOCATION/g" /tmp/$POPULATED_FILE_NAME # We don't need to clone twice
+sed -i -e 's/git clone https:\/\/github.com\/EOSIO\/eos\.git.*/cp -rfp \$(pwd) \$EOS_LOCATION \&\& cd \$EOS_LOCATION/g' /tmp/$POPULATED_FILE_NAME # We don't need to clone twice
 if [[ "$(uname)" == 'Darwin' ]]; then
     # You can't use chained commands in execute
     if [[ $BUILDKITE == true ]]; then
@@ -20,6 +15,7 @@ if [[ "$(uname)" == 'Darwin' ]]; then
     fi
     . $HELPERS_DIR/populate-template-and-hash.sh -h # obtain $FULL_TAG (and don't overwrite existing file)
     cat /tmp/$POPULATED_FILE_NAME
+    exit
     . /tmp/$POPULATED_FILE_NAME # This file is populated from the platform's build documentation code block
 else # Linux
     ARGS=${ARGS:-"--rm --init -v $(pwd):$(pwd) $(buildkite-intrinsics) -e JOBS"} # We must mount $(pwd) in as itself to avoid https://stackoverflow.com/questions/31381322/docker-in-docker-cannot-mount-volume
