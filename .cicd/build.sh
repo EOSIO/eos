@@ -4,8 +4,8 @@ set -eo pipefail
 echo '+++ Build Script Started'
 export DOCKERIZATION=false
 [[ $ENABLE_INSTALL == true ]] && . ./.cicd/helpers/populate-template-and-hash.sh '<!-- DAC ENV' '<!-- DAC CLONE' '<!-- DAC BUILD' '<!-- DAC INSTALL' || . ./.cicd/helpers/populate-template-and-hash.sh '<!-- DAC ENV' '<!-- DAC CLONE' '<!-- DAC BUILD'
-[[ $BUILDKITE == true ]] && CI_PWD="$(pwd)" || CI_PWD="$(GITHUB_WORKSPACE)"
-sed -i -e 's/git clone https:\/\/github.com\/EOSIO\/eos\.git.*/cp -rfp $CI_PWD \$EOS_LOCATION \&\& cd \$EOS_LOCATION/g' /tmp/$POPULATED_FILE_NAME # We don't need to clone twice
+[[ $BUILDKITE == true ]] && CI_PWD="\$(pwd)" || CI_PWD="$GITHUB_WORKSPACE"
+sed -i -e "s/git clone https:\/\/github.com\/EOSIO\/eos\.git.*/cp -rfp $CI_PWD \$EOS_LOCATION \&\& cd \$EOS_LOCATION/g" /tmp/$POPULATED_FILE_NAME # We don't need to clone twice
 if [[ "$(uname)" == 'Darwin' ]]; then
     # You can't use chained commands in execute
     if [[ $BUILDKITE == true ]]; then
