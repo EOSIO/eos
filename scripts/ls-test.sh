@@ -28,18 +28,6 @@ if [[ "$IMAGE_TAG" == "ubuntu-16.04-pinned" ]]; then
     echo "python3 version is now $(python3 --version)"
 fi
 
-echo "pip version is $(python3 -m pip --version)"
-echo "pip2.7 version is $(python3 -m pip2.7 --version)"
-echo "pip3 version is $(python3 -m pip3 --version)"
-
-if [[ "$IMAGE_TAG" == "ubuntu-18.04-pinned" ]]; then
-    apt-get update && apt -y install software-properties-common && add-apt-repository -y ppa:deadsnakes/ppa && apt update && apt-get update && apt -y install python3-pip
-    echo "Ubuntu 18.04 special"
-    echo "pip version is $(python3 -m pip --version)"
-    echo "pip2.7 version is $(python3 -m pip2.7 --version)"
-    echo "pip3 version is $(python3 -m pip3 --version)"
-fi
-
 python3 -m pip install requests
 
 set +e # defer ctest error handling to end
