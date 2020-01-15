@@ -94,11 +94,11 @@ fi
 export DETERMINED_HASH=$(sha1sum /tmp/$POPULATED_FILE_NAME | awk '{ print $1 }')
 export HASHED_IMAGE_TAG="eos-$(basename ${FILE_NAME:-$IMAGE_TAG} | awk '{split($0,a,/\.(d|s)/); print a[1] }')-${DETERMINED_HASH}"
 export FULL_TAG="eosio/ci:$HASHED_IMAGE_TAG"
-if [[ $TRAVIS == true ]]; then
-  sed -i -e 's/^HOME=\/Users\/anka/HOME=\/Users\/travis/g' /tmp/$POPULATED_FILE_NAME
-  COMMIT_ID=$TRAVIS_COMMIT
-else
+if [[ $BUILDKITE == true ]]; then
   COMMIT_ID=$BUILDKITE_COMMIT
+else
+  sed -i -e 's/^HOME=\/Users\/anka/HOME=\/home\/runner/g' /tmp/$POPULATED_FILE_NAME
+  COMMIT_ID=$GITHUB_SHA
 fi
 [[ $DOCKERIZATION == false ]] && sed -i -e '1s/^/#!\/bin\/bash \
 set -eo pipefail \
