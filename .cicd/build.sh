@@ -7,9 +7,9 @@ export DOCKERIZATION=false
 sed -i -e 's/git clone https:\/\/github.com\/EOSIO\/eos\.git.*/cp -rfp $(pwd) \$EOS_LOCATION \&\& cd \$EOS_LOCATION/g' /tmp/$POPULATED_FILE_NAME # We don't need to clone twice
 if [[ "$(uname)" == 'Darwin' ]]; then
     # You can't use chained commands in execute
-    # You can't use chained commands in execute
     if [[ $GITHUB_ACTIONS == true ]]; then
         export PINNED=false
+        brew install md5sha1sum
     else
         source ~/.bash_profile # Make sure node is available for ship_test
     fi
