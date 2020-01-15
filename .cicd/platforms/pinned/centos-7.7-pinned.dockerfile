@@ -94,10 +94,10 @@ RUN curl -LO http://download-ib01.fedoraproject.org/pub/epel/7/x86_64/Packages/c
 # fix ccache for centos
 RUN cd /usr/lib64/ccache && ln -s ../../bin/ccache c++
 ENV CCACHE_PATH="/opt/rh/devtoolset-8/root/usr/bin"
-# install python 3.7 for launcher service
+# install Python 3.6 for launcher service
 RUN yum -y update && yum -y install wget && yum -y install gcc && yum -y install zlib* && yum -y install openssl-devel && \
-    yum -y install libffi-devel && wget https://www.python.org/ftp/python/3.7.4/Python-3.7.4.tgz && tar xzf Python-3.7.4.tgz && \
-    cd Python-3.7.4 && ./configure --enable-optimizations && make altinstall && cd ..
+    yum -y install libffi-devel && wget https://www.python.org/ftp/python/3.6.9/Python-3.6.9.tgz && tar xzf Python-3.6.9.tgz && \
+    cd Python-3.6.9 && ./configure --enable-optimizations && make altinstall && cd ..
 # install nvm
 RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.0/install.sh | bash
 # load nvm in non-interactive shells
