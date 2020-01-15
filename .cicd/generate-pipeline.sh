@@ -35,7 +35,7 @@ for FILE in $(ls $CICD_DIR/platform-templates/ | grep "\-$PLATFORM_TYPE"); do
         export SKIP_PACKAGE_BUILDER=${SKIP_PACKAGE_BUILDER:-true}
     fi
     export FILE_NAME="$(echo $FILE | awk '{split($0,a,/\.(d|s)/); print a[1] }')"
-    # macos-10.14-pinned
+    # macos-10.14-unpinned
     # ubuntu-16.04-unpinned
     export PLATFORM_NAME="$(echo $FILE_NAME | cut -d- -f1 | sed 's/os/OS/g')"
     # macOS
