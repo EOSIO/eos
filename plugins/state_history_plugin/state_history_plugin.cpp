@@ -1,8 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
-
 #include <eosio/chain/config.hpp>
 #include <eosio/state_history_plugin/state_history_log.hpp>
 #include <eosio/state_history_plugin/state_history_serialization.hpp>
@@ -99,7 +94,7 @@ bool include_delta(const eosio::chain::resource_limits::resource_limits_state_ob
 bool include_delta(const eosio::chain::account_metadata_object& old,
                    const eosio::chain::account_metadata_object& curr) {
    return                                               //
-       old.name.value != curr.name.value ||             //
+       old.name != curr.name ||                         //
        old.is_privileged() != curr.is_privileged() ||   //
        old.last_code_update != curr.last_code_update || //
        old.vm_type != curr.vm_type ||                   //

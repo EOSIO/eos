@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
 #pragma once
 
 #include <eosio/chain/database_utils.hpp>
@@ -61,7 +57,7 @@ namespace eosio { namespace chain {
       id_type               id;
       table_id              t_id; //< t_id should not be changed within a chainbase modifier lambda
       uint64_t              primary_key; //< primary_key should not be changed within a chainbase modifier lambda
-      account_name          payer = 0;
+      account_name          payer;
       shared_blob           value;
    };
 
@@ -92,7 +88,7 @@ namespace eosio { namespace chain {
          typename chainbase::object<ObjectTypeId,index_object>::id_type       id;
          table_id      t_id; //< t_id should not be changed within a chainbase modifier lambda
          uint64_t      primary_key; //< primary_key should not be changed within a chainbase modifier lambda
-         account_name  payer = 0;
+         account_name  payer;
          SecondaryKey  secondary_key; //< secondary_key should not be changed within a chainbase modifier lambda
       };
 

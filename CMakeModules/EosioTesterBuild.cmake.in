@@ -18,9 +18,11 @@ if( GPERFTOOLS_FOUND )
     list( APPEND PLATFORM_SPECIFIC_LIBS tcmalloc )
 endif()
 
-find_package(LLVM 4.0 REQUIRED CONFIG)
-
-link_directories(${LLVM_LIBRARY_DIR})
+if(NOT "@LLVM_FOUND@" STREQUAL "")
+   find_package(LLVM @LLVM_VERSION@ EXACT REQUIRED CONFIG)
+   llvm_map_components_to_libnames(LLVM_LIBS support core passes mcjit native DebugInfoDWARF orcjit)
+   link_directories(${LLVM_LIBRARY_DIR})
+endif()
 
 set( CMAKE_CXX_STANDARD 17 )
 set( CMAKE_CXX_EXTENSIONS ON )
@@ -43,29 +45,31 @@ find_package(Boost 1.67 REQUIRED COMPONENTS
    iostreams
    unit_test_framework)
 
-find_library(libtester eosio_testing @CMAKE_BINARY_DIR@/libraries/testing)
-find_library(libchain eosio_chain @CMAKE_BINARY_DIR@/libraries/chain)
+find_library(libtester eosio_testing @CMAKE_BINARY_DIR@/libraries/testing NO_DEFAULT_PATH)
+find_library(libchain eosio_chain @CMAKE_BINARY_DIR@/libraries/chain NO_DEFAULT_PATH)
 if ( "${CMAKE_BUILD_TYPE}" STREQUAL "Debug" )
-   find_library(libfc fc_debug @CMAKE_BINARY_DIR@/libraries/fc)
-   find_library(libsecp256k1 secp256k1_debug @CMAKE_BINARY_DIR@/libraries/fc/secp256k1)
-   
+   find_library(libfc fc_debug @CMAKE_BINARY_DIR@/libraries/fc NO_DEFAULT_PATH)
+   find_library(libsecp256k1 secp256k1_debug @CMAKE_BINARY_DIR@/libraries/fc/secp256k1 NO_DEFAULT_PATH)
+
 else()
-   find_library(libfc fc @CMAKE_BINARY_DIR@/libraries/fc)
-   find_library(libsecp256k1 secp256k1 @CMAKE_BINARY_DIR@/libraries/fc/secp256k1)
+   find_library(libfc fc @CMAKE_BINARY_DIR@/libraries/fc NO_DEFAULT_PATH)
+   find_library(libsecp256k1 secp256k1 @CMAKE_BINARY_DIR@/libraries/fc/secp256k1 NO_DEFAULT_PATH)
 endif()
 
-find_library(libwasm WASM @CMAKE_BINARY_DIR@/libraries/wasm-jit/Source/WASM)
-find_library(libwast WAST @CMAKE_BINARY_DIR@/libraries/wasm-jit/Source/WAST)
-find_library(libir IR     @CMAKE_BINARY_DIR@/libraries/wasm-jit/Source/IR)
-find_library(libwabt wabt @CMAKE_BINARY_DIR@/libraries/wabt)
-find_library(libplatform Platform @CMAKE_BINARY_DIR@/libraries/wasm-jit/Source/Platform)
-find_library(liblogging Logging @CMAKE_BINARY_DIR@/libraries/wasm-jit/Source/Logging)
-find_library(libruntime Runtime @CMAKE_BINARY_DIR@/libraries/wasm-jit/Source/Runtime)
-find_library(libsoftfloat softfloat @CMAKE_BINARY_DIR@/libraries/softfloat)
-find_library(liboscrypto crypto @OPENSSL_ROOT_DIR@/lib)
-find_library(libosssl ssl @OPENSSL_ROOT_DIR@/lib)
-find_library(libchainbase chainbase @CMAKE_BINARY_DIR@/libraries/chainbase)
-find_library(libbuiltins builtins @CMAKE_BINARY_DIR@/libraries/builtins)
+find_library(libwasm WASM @CMAKE_BINARY_DIR@/libraries/wasm-jit/Source/WASM NO_DEFAULT_PATH)
+find_library(libwast WAST @CMAKE_BINARY_DIR@/libraries/wasm-jit/Source/WAST NO_DEFAULT_PATH)
+find_library(libir IR     @CMAKE_BINARY_DIR@/libraries/wasm-jit/Source/IR NO_DEFAULT_PATH)
+find_library(libwabt wabt @CMAKE_BINARY_DIR@/libraries/wabt NO_DEFAULT_PATH)
+find_library(libplatform Platform @CMAKE_BINARY_DIR@/libraries/wasm-jit/Source/Platform NO_DEFAULT_PATH)
+find_library(liblogging Logging @CMAKE_BINARY_DIR@/libraries/wasm-jit/Source/Logging NO_DEFAULT_PATH)
+find_library(libruntime Runtime @CMAKE_BINARY_DIR@/libraries/wasm-jit/Source/Runtime NO_DEFAULT_PATH)
+find_library(libsoftfloat softfloat @CMAKE_BINARY_DIR@/libraries/softfloat NO_DEFAULT_PATH)
+get_filename_component(cryptodir @OPENSSL_CRYPTO_LIBRARY@ DIRECTORY)
+find_library(liboscrypto crypto "${cryptodir}" NO_DEFAULT_PATH)
+get_filename_component(ssldir @OPENSSL_SSL_LIBRARY@ DIRECTORY)
+find_library(libosssl ssl "${ssldir}" NO_DEFAULT_PATH)
+find_library(libchainbase chainbase @CMAKE_BINARY_DIR@/libraries/chainbase NO_DEFAULT_PATH)
+find_library(libbuiltins builtins @CMAKE_BINARY_DIR@/libraries/builtins NO_DEFAULT_PATH)
 find_library(GMP_LIBRARIES NAMES libgmp.a gmp.lib gmp libgmp-10 mpir
     HINTS ENV GMP_LIB_DIR
           ENV GMP_DIR
@@ -73,10 +77,14 @@ find_library(GMP_LIBRARIES NAMES libgmp.a gmp.lib gmp libgmp-10 mpir
     DOC "Path to the GMP library"
 )
 
+set(EOSIO_WASM_RUNTIMES @EOSIO_WASM_RUNTIMES@)
+if("eos-vm-oc" IN_LIST EOSIO_WASM_RUNTIMES)
+   set(WRAP_MAIN "-Wl,-wrap=main")
+endif()
+
 macro(add_eosio_test_executable test_name)
    add_executable( ${test_name} ${ARGN} )
    target_link_libraries( ${test_name}
-       ${LLVM}
        ${libtester}
        ${libchain}
        ${libfc}
@@ -95,37 +103,18 @@ macro(add_eosio_test_executable test_name)
        ${libsecp256k1}
        ${GMP_LIBRARIES}
 
-       LLVMX86Disassembler
-       LLVMX86AsmParser
-       LLVMX86AsmPrinter
-       LLVMX86CodeGen
-
-       LLVMSelectionDAG
-
-       LLVMDebugInfoDWARF
-       LLVMAsmPrinter
-       LLVMMCParser
-       LLVMX86Info
-
-       LLVMOrcJIT
-       LLVMExecutionEngine
-
-       LLVMCodeGen
-       LLVMScalarOpts
-       LLVMTransformUtils
-
-       LLVMipo
-       LLVMAnalysis
-       LLVMTarget
-       LLVMMC
-       LLVMCore
-       LLVMSupport
        ${Boost_FILESYSTEM_LIBRARY}
        ${Boost_SYSTEM_LIBRARY}
        ${Boost_CHRONO_LIBRARY}
        ${Boost_IOSTREAMS_LIBRARY}
+       "-lz" # Needed by Boost iostreams
        ${Boost_DATE_TIME_LIBRARY}
+
+       ${LLVM_LIBS}
+
        ${PLATFORM_SPECIFIC_LIBS}
+
+       ${WRAP_MAIN}
       )
 
    target_include_directories( ${test_name} PUBLIC

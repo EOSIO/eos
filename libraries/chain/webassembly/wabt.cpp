@@ -1,6 +1,7 @@
 #include <eosio/chain/webassembly/wabt.hpp>
 #include <eosio/chain/apply_context.hpp>
 #include <eosio/chain/wasm_eosio_constraints.hpp>
+#include <eosio/chain/wasm_eosio_injection.hpp>
 
 //wabt includes
 #include <src/interp.h>
@@ -46,13 +47,13 @@ class wabt_instantiated_module : public wasm_instantiated_module_interface {
             Memory* memory = this_run_vars.memory = _env->GetMemory(0);
             memory->page_limits = _initial_memory_configuration;
             memory->data.resize(_initial_memory_configuration.initial * WABT_PAGE_SIZE);
-            memset(memory->data.data(), 0, memory->data.size());
             memcpy(memory->data.data(), _initial_memory.data(), _initial_memory.size());
+            memset(memory->data.data() + _initial_memory.size(), 0, memory->data.size() - _initial_memory.size());
          }
 
-         _params[0].set_i64(uint64_t(context.get_receiver()));
-         _params[1].set_i64(uint64_t(context.get_action().account));
-         _params[2].set_i64(uint64_t(context.get_action().name));
+         _params[0].set_i64(context.get_receiver().to_uint64_t());
+         _params[1].set_i64(context.get_action().account.to_uint64_t());
+         _params[2].set_i64(context.get_action().name.to_uint64_t());
 
          ExecResult res = _executor.RunStartFunction(_instatiated_module);
          EOS_ASSERT( res.result == interp::Result::Ok, wasm_execution_error, "wabt start function failure (${s})", ("s", ResultToString(res.result)) );
@@ -73,7 +74,14 @@ class wabt_instantiated_module : public wasm_instantiated_module_interface {
 
 wabt_runtime::wabt_runtime() {}
 
-std::unique_ptr<wasm_instantiated_module_interface> wabt_runtime::instantiate_module(const char* code_bytes, size_t code_size, std::vector<uint8_t> initial_memory) {
+bool wabt_runtime::inject_module(IR::Module& module) {
+   wasm_injections::wasm_binary_injection<true> injector(module);
+   injector.inject();
+   return true;
+}
+
+std::unique_ptr<wasm_instantiated_module_interface> wabt_runtime::instantiate_module(const char* code_bytes, size_t code_size, std::vector<uint8_t> initial_memory,
+                                                                                     const digest_type& code_hash, const uint8_t& vm_type, const uint8_t& vm_version) {
    std::unique_ptr<interp::Environment> env = std::make_unique<interp::Environment>();
    for(auto it = intrinsic_registrator::get_map().begin() ; it != intrinsic_registrator::get_map().end(); ++it) {
       interp::HostModule* host_module = env->AppendHostModule(it->first);

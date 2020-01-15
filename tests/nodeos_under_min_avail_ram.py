@@ -13,6 +13,16 @@ import decimal
 import math
 import re
 
+###############################################################
+# nodeos_under_min_avail_ram
+#
+# Sets up 4 producing nodes using --chain-state-db-guard-size-mb and --chain-state-db-size-mb to verify that nodeos will
+# shutdown safely when --chain-state-db-guard-size-mb is reached and restarts the shutdown nodes, with a higher
+# --chain-state-db-size-mb size, to verify that the node can restart and continue till the guard is reached again. The
+# test both verifies all nodes going down and 1 node at a time.
+#
+###############################################################
+
 Print=Utils.Print
 errorExit=Utils.errorExit
 
@@ -48,12 +58,6 @@ class NamedAccounts:
         Print("NamedAccounts Name for %d is %s" % (temp, retStr))
         return retStr
 
-
-###############################################################
-# nodeos_voting_test
-# --dump-error-details <Upon error print etc/eosio/node_*/config.ini and var/lib/node_*/stderr.log to stdout>
-# --keep-logs <Don't delete var/lib/node_* folders upon test completion>
-###############################################################
 
 args = TestHelper.parse_args({"--dump-error-details","--keep-logs","-v","--leave-running","--clean-run","--wallet-port"})
 Utils.Debug=args.v
@@ -111,6 +115,7 @@ try:
     nodes.append(cluster.getNode(1))
     nodes.append(cluster.getNode(2))
     nodes.append(cluster.getNode(3))
+    numNodes=len(nodes)
 
 
     for account in accounts:
@@ -163,15 +168,17 @@ try:
             data="{\"from\":\"%s\",\"to\":\"%s\",\"num\":%d}" % (fromAccount.name, toAccount.name, numAmount)
             opts="--permission %s@active --permission %s@active --expiration 90" % (contract, fromAccount.name)
             try:
-                trans=nodes[0].pushMessage(contract, action, data, opts)
+                trans=nodes[count % numNodes].pushMessage(contract, action, data, opts)
                 if trans is None or not trans[0]:
                     timeOutCount+=1
                     if timeOutCount>=3:
-                       Print("Failed to push create action to eosio contract for %d consecutive times, looks like nodeos already exited." % (timeOutCount))
-                       keepProcessing=False
-                       break
-                    Print("Failed to push create action to eosio contract. sleep for 60 seconds")
-                    time.sleep(60)
+                        Print("Failed to push create action to eosio contract for %d consecutive times, looks like nodeos already exited." % (timeOutCount))
+                        keepProcessing=False
+                        break
+
+                    Print("Failed to push create action to eosio contract. sleep for 5 seconds")
+                    count-=1 # failed attempt shouldn't be counted
+                    time.sleep(5)
                 else:
                     timeOutCount=0
                 time.sleep(1)
@@ -182,43 +189,52 @@ try:
     #spread the actions to all accounts, to use each accounts tps bandwidth
     fromIndexStart=fromIndex+1 if fromIndex+1<namedAccounts.numAccounts else 0
 
-    if count < 5 or count > 15:
-        strMsg="little" if count < 15 else "much"
+    # min and max are subjective, just assigned to make sure that many small changes in nodeos don't 
+    # result in the test not correctly validating behavior
+    if count < 5 or count > 20:
+        strMsg="little" if count < 20 else "much"
         Utils.cmdError("Was able to send %d store actions which was too %s" % (count, strMsg))
         errorExit("Incorrect number of store actions sent")
 
     # Make sure all the nodes are shutdown (may take a little while for this to happen, so making multiple passes)
-    allDone=False
     count=0
-    while not allDone:
+    while True:
         allDone=True
         for node in nodes:
             if node.verifyAlive():
                 allDone=False
-        if not allDone:
-            time.sleep(5)
+        if allDone:
+            break
         count+=1
-        if count>5:
+        if count>12:
             Utils.cmdError("All Nodes should have died")
             errorExit("Failure - All Nodes should have died")
+        time.sleep(5)
+
+    for i in range(numNodes):
+        f = open(Utils.getNodeDataDir(i) + "/stderr.txt")
+        contents = f.read()
+        if contents.find("database chain::guard_exception") == -1:
+            errorExit("Node%d is expected to exit because of database guard_exception, but was not." % (i))
+
+    Print("all nodes exited with expected reason database_guard_exception")
 
     Print("relaunch nodes with new capacity")
-    addOrSwapFlags={}
-    numNodes=len(nodes)
+    addSwapFlags={}
     maxRAMValue+=2
     currentMinimumMaxRAM=maxRAMValue
     enabledStaleProduction=False
     for i in range(numNodes):
-        addOrSwapFlags[maxRAMFlag]=str(maxRAMValue)
-        #addOrSwapFlags["--max-irreversible-block-age"]=str(-1)
+        addSwapFlags[maxRAMFlag]=str(maxRAMValue)
+        #addSwapFlags["--max-irreversible-block-age"]=str(-1)
         nodeIndex=numNodes-i-1
         if not enabledStaleProduction:
-            addOrSwapFlags["--enable-stale-production"]=""   # just enable stale production for the first node
+            addSwapFlags["--enable-stale-production"]=""   # just enable stale production for the first node
             enabledStaleProduction=True
-        if not nodes[nodeIndex].relaunch(nodeIndex, "", newChain=False, addOrSwapFlags=addOrSwapFlags):
+        if not nodes[nodeIndex].relaunch(nodeIndex, "", newChain=False, addSwapFlags=addSwapFlags):
             Utils.cmdError("Failed to restart node0 with new capacity %s" % (maxRAMValue))
             errorExit("Failure - Node should have restarted")
-        addOrSwapFlags={}
+        addSwapFlags={}
         maxRAMValue=currentMinimumMaxRAM+30
 
     time.sleep(20)
@@ -249,7 +265,7 @@ try:
             data="{\"from\":\"%s\",\"to\":\"%s\",\"num\":%d}" % (fromAccount.name, toAccount.name, numAmount)
             opts="--permission %s@active --permission %s@active --expiration 90" % (contract, fromAccount.name)
             try:
-                trans=nodes[0].pushMessage(contract, action, data, opts)
+                trans=nodes[count % numNodes].pushMessage(contract, action, data, opts)
                 if trans is None or not trans[0]:
                     Print("Failed to push create action to eosio contract. sleep for 60 seconds")
                     time.sleep(60)
@@ -272,19 +288,18 @@ try:
             errorExit("Failure - Node should be alive")
 
     Print("relaunch node with even more capacity")
-    addOrSwapFlags={}
+    addSwapFlags={}
 
     time.sleep(10)
     maxRAMValue=currentMinimumMaxRAM+5
     currentMinimumMaxRAM=maxRAMValue
-    addOrSwapFlags[maxRAMFlag]=str(maxRAMValue)
-    if not nodes[len(nodes)-1].relaunch(nodeIndex, "", newChain=False, addOrSwapFlags=addOrSwapFlags):
+    addSwapFlags[maxRAMFlag]=str(maxRAMValue)
+    if not nodes[len(nodes)-1].relaunch(nodeIndex, "", newChain=False, addSwapFlags=addSwapFlags):
         Utils.cmdError("Failed to restart node %d with new capacity %s" % (numNodes-1, maxRAMValue))
         errorExit("Failure - Node should have restarted")
-    addOrSwapFlags={}
+    addSwapFlags={}
 
     time.sleep(10)
-    allDone=True
     for node in nodes:
         if not node.verifyAlive():
             Utils.cmdError("All Nodes should be alive")
@@ -309,7 +324,7 @@ try:
         data="{\"from\":\"%s\",\"to\":\"%s\",\"num\":%d}" % (fromAccount.name, toAccount.name, numAmount)
         opts="--permission %s@active --permission %s@active --expiration 90" % (contract, fromAccount.name)
         try:
-            trans=nodes[0].pushMessage(contract, action, data, opts)
+            trans=node.pushMessage(contract, action, data, opts)
             if trans is None or not trans[0]:
                 Print("Failed to push create action to eosio contract. sleep for 60 seconds")
                 time.sleep(60)
@@ -321,7 +336,6 @@ try:
 
     time.sleep(10)
     Print("Check nodes are alive")
-    allDone=True
     for node in nodes:
         if not node.verifyAlive():
             Utils.cmdError("All Nodes should be alive")

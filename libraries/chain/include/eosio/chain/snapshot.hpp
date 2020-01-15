@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
 #pragma once
 
 #include <eosio/chain/database_utils.hpp>
@@ -283,6 +279,8 @@ namespace eosio { namespace chain {
 
       virtual void validate() const = 0;
 
+      virtual void return_to_header() = 0;
+
       virtual ~snapshot_reader(){};
 
       protected:
@@ -320,6 +318,7 @@ namespace eosio { namespace chain {
          bool read_row( detail::abstract_snapshot_row_reader& row_reader ) override;
          bool empty ( ) override;
          void clear_section() override;
+         void return_to_header() override;
 
       private:
          const fc::variant& snapshot;
@@ -356,6 +355,7 @@ namespace eosio { namespace chain {
          bool read_row( detail::abstract_snapshot_row_reader& row_reader ) override;
          bool empty ( ) override;
          void clear_section() override;
+         void return_to_header() override;
 
       private:
          bool validate_section() const;

@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE.txt
- */
 #include <eosio/chain/generated_transaction_object.hpp>
 #include <eosio/chain/resource_limits.hpp>
 #include <eosio/testing/tester.hpp>
@@ -30,41 +26,17 @@ class whitelist_blacklist_tester {
    public:
       whitelist_blacklist_tester() {}
 
-      static controller::config get_default_chain_configuration( const fc::path& p ) {
-         controller::config cfg;
-         cfg.blocks_dir = p / config::default_blocks_dir_name;
-         cfg.state_dir  = p / config::default_state_dir_name;
-         cfg.state_size = 1024*1024*8;
-         cfg.state_guard_size = 0;
-         cfg.reversible_cache_size = 1024*1024*8;
-         cfg.reversible_guard_size = 0;
-         cfg.contracts_console = true;
-
-         cfg.genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
-         cfg.genesis.initial_key = base_tester::get_public_key( config::system_account_name, "active" );
-
-         for(int i = 0; i < boost::unit_test::framework::master_test_suite().argc; ++i) {
-            if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--wavm"))
-               cfg.wasm_runtime = chain::wasm_interface::vm_type::wavm;
-            else if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--wabt"))
-               cfg.wasm_runtime = chain::wasm_interface::vm_type::wabt;
-         }
-
-         return cfg;
-      }
-
       void init( bool bootstrap = true ) {
          FC_ASSERT( !chain, "chain is already up" );
 
-         auto cfg = get_default_chain_configuration( tempdir.path() );
-         cfg.sender_bypass_whiteblacklist = sender_bypass_whiteblacklist;
-         cfg.actor_whitelist = actor_whitelist;
-         cfg.actor_blacklist = actor_blacklist;
-         cfg.contract_whitelist = contract_whitelist;
-         cfg.contract_blacklist = contract_blacklist;
-         cfg.action_blacklist = action_blacklist;
-
-         chain.emplace(cfg);
+         chain.emplace(tempdir, [&](controller::config& cfg) {
+            cfg.sender_bypass_whiteblacklist = sender_bypass_whiteblacklist;
+            cfg.actor_whitelist = actor_whitelist;
+            cfg.actor_blacklist = actor_blacklist;
+            cfg.contract_whitelist = contract_whitelist;
+            cfg.contract_blacklist = contract_blacklist;
+            cfg.action_blacklist = action_blacklist;
+         }, !shutdown_called);
          wdump((last_produced_block));
          chain->set_last_produced_block_map( last_produced_block );
 
@@ -90,6 +62,7 @@ class whitelist_blacklist_tester {
          last_produced_block = chain->get_last_produced_block_map();
          wdump((last_produced_block));
          chain.reset();
+         shutdown_called = true;
       }
 
       transaction_trace_ptr transfer( account_name from, account_name to, string quantity = "1.00 TOK" ) {
@@ -101,7 +74,9 @@ class whitelist_blacklist_tester {
          );
       }
 
+   private:
       fc::temp_directory                tempdir; // Must come before chain
+   public:
       fc::optional<Tester>              chain;
       flat_set<account_name>            sender_bypass_whiteblacklist;
       flat_set<account_name>            actor_whitelist;
@@ -110,6 +85,7 @@ class whitelist_blacklist_tester {
       flat_set<account_name>            contract_blacklist;
       flat_set< pair<account_name, action_name> >  action_blacklist;
       map<account_name, block_id_type>  last_produced_block;
+      bool                              shutdown_called = false;
 };
 
 struct transfer_args {
@@ -453,7 +429,7 @@ BOOST_AUTO_TEST_CASE( actor_blacklist_inline_deferred ) { try {
    tester1.chain->set_abi( N(charlie),  contracts::deferred_test_abi().data() );
    tester1.chain->produce_blocks();
 
-   auto auth = authority(eosio::testing::base_tester::get_public_key("alice", "active"));
+   auto auth = authority(eosio::testing::base_tester::get_public_key(name("alice"), "active"));
    auth.accounts.push_back( permission_level_weight{{N(alice), config::eosio_code_name}, 1} );
 
    tester1.chain->push_action( N(eosio), N(updateauth), N(alice), mvo()
@@ -463,7 +439,7 @@ BOOST_AUTO_TEST_CASE( actor_blacklist_inline_deferred ) { try {
       ( "auth", auth )
    );
 
-   auth = authority(eosio::testing::base_tester::get_public_key("bob", "active"));
+   auth = authority(eosio::testing::base_tester::get_public_key(name("bob"), "active"));
    auth.accounts.push_back( permission_level_weight{{N(alice), config::eosio_code_name}, 1} );
    auth.accounts.push_back( permission_level_weight{{N(bob), config::eosio_code_name}, 1} );
 
@@ -474,7 +450,7 @@ BOOST_AUTO_TEST_CASE( actor_blacklist_inline_deferred ) { try {
       ( "auth", auth )
    );
 
-   auth = authority(eosio::testing::base_tester::get_public_key("charlie", "active"));
+   auth = authority(eosio::testing::base_tester::get_public_key(name("charlie"), "active"));
    auth.accounts.push_back( permission_level_weight{{N(charlie), config::eosio_code_name}, 1} );
 
    tester1.chain->push_action( N(eosio), N(updateauth), N(charlie), mvo()
@@ -597,7 +573,7 @@ BOOST_AUTO_TEST_CASE( blacklist_sender_bypass ) { try {
    tester1.chain->set_abi( N(charlie),  contracts::deferred_test_abi().data() );
    tester1.chain->produce_blocks();
 
-   auto auth = authority(eosio::testing::base_tester::get_public_key("alice", "active"));
+   auto auth = authority(eosio::testing::base_tester::get_public_key(name("alice"), "active"));
    auth.accounts.push_back( permission_level_weight{{N(alice), config::eosio_code_name}, 1} );
 
    tester1.chain->push_action( N(eosio), N(updateauth), N(alice), mvo()
@@ -607,7 +583,7 @@ BOOST_AUTO_TEST_CASE( blacklist_sender_bypass ) { try {
       ( "auth", auth )
    );
 
-   auth = authority(eosio::testing::base_tester::get_public_key("bob", "active"));
+   auth = authority(eosio::testing::base_tester::get_public_key(name("bob"), "active"));
    auth.accounts.push_back( permission_level_weight{{N(bob), config::eosio_code_name}, 1} );
 
    tester1.chain->push_action( N(eosio), N(updateauth), N(bob), mvo()
@@ -617,7 +593,7 @@ BOOST_AUTO_TEST_CASE( blacklist_sender_bypass ) { try {
       ( "auth", auth )
    );
 
-   auth = authority(eosio::testing::base_tester::get_public_key("charlie", "active"));
+   auth = authority(eosio::testing::base_tester::get_public_key(name("charlie"), "active"));
    auth.accounts.push_back( permission_level_weight{{N(charlie), config::eosio_code_name}, 1} );
 
    tester1.chain->push_action( N(eosio), N(updateauth), N(charlie), mvo()
@@ -738,18 +714,10 @@ BOOST_AUTO_TEST_CASE( blacklist_sender_bypass ) { try {
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_CASE( greylist_limit_tests ) { try {
-   controller::config contrl_config;
-   {
-      // Hack to get the default controller config used in tester (since v1.8.x does not have the base_tester::default_config helper function).
-      tester temp( setup_policy::none );
-      contrl_config = temp.get_config();
-   }
-
    fc::temp_directory tempdir;
-   contrl_config.blocks_dir = tempdir.path() / config::default_blocks_dir_name;
-   contrl_config.state_dir  = tempdir.path() / config::default_state_dir_name;
+   auto conf_genesis = tester::default_config( tempdir );
 
-   auto& cfg = contrl_config.genesis.initial_configuration;
+   auto& cfg = conf_genesis.second.initial_configuration;
 
    cfg.max_block_net_usage        = 128 * 1024; // 64 KiB max block size
    cfg.target_block_net_usage_pct = config::percent_1/10;
@@ -762,13 +730,13 @@ BOOST_AUTO_TEST_CASE( greylist_limit_tests ) { try {
    cfg.min_transaction_cpu_usage  = 100; // Empty blocks (consisting of only onblock) would be below the target.
    // But all it takes is one transaction in the block to be above the target.
 
-   tester c( contrl_config );
+   tester c( conf_genesis.first, conf_genesis.second );
    c.execute_setup_policy( setup_policy::full );
 
    const resource_limits_manager& rm = c.control->get_resource_limits_manager();
 
-   const auto& user_account  = name(N(user));
-   const auto& other_account = name(N(other));
+   const auto& user_account  = N(user);
+   const auto& other_account = N(other);
 
    c.create_accounts( {user_account, other_account} );
 

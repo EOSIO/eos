@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
 #include <eosio/chain/block_timestamp.hpp>
 
 #include <boost/test/unit_test.hpp>

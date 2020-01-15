@@ -19,5 +19,4 @@ export EOSIO_INSTALL_DIR="${HOME}/eosio/${EOSIO_VERSION}"
 export TEMP_DIR="${TEMP_DIR:-${HOME}/tmp}"
 
 [[ -f ${BUILD_DIR}/CMakeCache.txt ]] && export CACHED_INSTALL_PATH=$(grep "CMAKE_INSTALL_PREFIX:PATH" ${BUILD_DIR}/CMakeCache.txt | cut -d= -f2)
-
 . ./scripts/.build_vars

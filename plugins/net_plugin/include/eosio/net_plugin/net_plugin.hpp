@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
 #pragma once
 #include <appbase/application.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
@@ -31,14 +27,11 @@ namespace eosio {
         void plugin_startup();
         void plugin_shutdown();
 
-        void   broadcast_block(const chain::signed_block &sb);
-
         string                       connect( const string& endpoint );
         string                       disconnect( const string& endpoint );
         optional<connection_status>  status( const string& endpoint )const;
         vector<connection_status>    connections()const;
 
-        size_t num_peers() const;
       private:
         std::shared_ptr<class net_plugin_impl> my;
    };

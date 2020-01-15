@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
 #include <eosio/test_control_api_plugin/test_control_api_plugin.hpp>
 #include <eosio/chain/exceptions.hpp>
 

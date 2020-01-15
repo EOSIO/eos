@@ -31,7 +31,6 @@ function setup() {
         echo "CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}"
         echo "CORE_SYMBOL_NAME: ${CORE_SYMBOL_NAME}"
         echo "BOOST_LOCATION: ${BOOST_LOCATION}"
-        echo "INSTALL_LOCATION: ${INSTALL_LOCATION}"
         echo "BUILD_DIR: ${BUILD_DIR}"
         echo "EOSIO_INSTALL_DIR: ${EOSIO_INSTALL_DIR}"
         echo "NONINTERACTIVE: ${NONINTERACTIVE}"
@@ -249,15 +248,17 @@ function ensure-boost() {
         B2_FLAGS="-q -j${JOBS} --with-iostreams --with-date_time --with-filesystem --with-system --with-program_options --with-chrono --with-test install"
         BOOTSTRAP_FLAGS=""
         if [[ $ARCH == "Linux" ]] && $PIN_COMPILER; then
-            B2_FLAGS="toolset=clang cxxflags='-stdlib=libc++ -D__STRICT_ANSI__ -nostdinc++ -I${CLANG_ROOT}/include/c++/v1' linkflags='-stdlib=libc++' link=static threading=multi --with-iostreams --with-date_time --with-filesystem --with-system --with-program_options --with-chrono --with-test -q -j${JOBS} install"
+            B2_FLAGS="toolset=clang cxxflags='-stdlib=libc++ -D__STRICT_ANSI__ -nostdinc++ -I${CLANG_ROOT}/include/c++/v1 -D_FORTIFY_SOURCE=2 -fstack-protector-strong -fpie' linkflags='-stdlib=libc++ -pie' link=static threading=multi --with-iostreams --with-date_time --with-filesystem --with-system --with-program_options --with-chrono --with-test -q -j${JOBS} install"
             BOOTSTRAP_FLAGS="--with-toolset=clang"
+        elif $PIN_COMPILER; then
+            local SDKROOT="$(xcrun --sdk macosx --show-sdk-path)"
         fi
-		execute bash -c "cd $SRC_DIR && \
+        execute bash -c "cd $SRC_DIR && \
         curl -LO https://dl.bintray.com/boostorg/release/$BOOST_VERSION_MAJOR.$BOOST_VERSION_MINOR.$BOOST_VERSION_PATCH/source/boost_$BOOST_VERSION.tar.bz2 \
         && tar -xjf boost_$BOOST_VERSION.tar.bz2 \
         && cd $BOOST_ROOT \
-        && ./bootstrap.sh ${BOOTSTRAP_FLAGS} --prefix=$BOOST_ROOT \
-        && ./b2 ${B2_FLAGS} \
+        && SDKROOT="$SDKROOT" ./bootstrap.sh ${BOOTSTRAP_FLAGS} --prefix=$BOOST_ROOT \
+        && SDKROOT="$SDKROOT" ./b2 ${B2_FLAGS} \
         && cd .. \
         && rm -f boost_$BOOST_VERSION.tar.bz2 \
         && rm -rf $BOOST_LINK_LOCATION"        
@@ -270,35 +271,27 @@ function ensure-boost() {
 }
 
 function ensure-llvm() {
-    echo "${COLOR_CYAN}[Ensuring LLVM 4 support]${COLOR_NC}"
-    if [[ ! -d $LLVM_ROOT ]]; then
-        if [[ $ARCH == "Darwin" ]]; then # Handle brew installed llvm@4
-	        execute ln -s /usr/local/opt/llvm@4 $LLVM_ROOT
-	        echo " - LLVM successfully linked from /usr/local/opt/llvm@4 to ${LLVM_ROOT}"
-        else
-            if $PIN_COMPILER || $BUILD_CLANG; then
-                CMAKE_FLAGS="-DCMAKE_INSTALL_PREFIX='${LLVM_ROOT}' -DLLVM_TARGETS_TO_BUILD=host -DLLVM_BUILD_TOOLS=false -DLLVM_ENABLE_RTTI=1 -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE='${BUILD_DIR}/pinned_toolchain.cmake' .."
-            else
-                if [[ $NAME == "Ubuntu" ]]; then
-                    execute ln -s /usr/lib/llvm-4.0 $LLVM_ROOT
-                    echo " - LLVM successfully linked from /usr/lib/llvm-4.0 to ${LLVM_ROOT}"
-                    return 0
-                fi
-                CMAKE_FLAGS="-G 'Unix Makefiles' -DCMAKE_INSTALL_PREFIX=${LLVM_ROOT} -DLLVM_TARGETS_TO_BUILD='host' -DLLVM_BUILD_TOOLS=false -DLLVM_ENABLE_RTTI=1 -DCMAKE_BUILD_TYPE=Release .."
-            fi
-            execute bash -c "cd ${OPT_DIR} \
-            && git clone --depth 1 --single-branch --branch $LLVM_VERSION https://github.com/llvm-mirror/llvm.git llvm && cd llvm \
-            && mkdir build \
-            && cd build \
-            && ${CMAKE} ${CMAKE_FLAGS} \
-            && make -j${JOBS} \
-            && make install"
-            echo " - LLVM successfully installed @ ${LLVM_ROOT}"
-            echo ""
+    if $PIN_COMPILER || $BUILD_CLANG; then
+        if [[ -d $LLVM_ROOT ]]; then
+            return
         fi
-    else
-        echo " - LLVM found @ ${LLVM_ROOT}."
-        echo ""
+        LLVM_TEMP_DIR=$(mktemp -d)
+        if $PIN_COMPILER || $BUILD_CLANG; then
+            local LLVM_PINNED_CMAKE_ARGS="-DCMAKE_TOOLCHAIN_FILE='${BUILD_DIR}/pinned_toolchain.cmake' -DCMAKE_EXE_LINKER_FLAGS=-pthread -DCMAKE_SHARED_LINKER_FLAGS=-pthread -DLLVM_ENABLE_PIC=NO"
+        fi
+        trap "rm -rf '$LLVM_TEMP_DIR'" EXIT
+        execute bash -c "cd '$LLVM_TEMP_DIR' \
+        && git clone --depth 1 --single-branch --branch $LLVM_VERSION https://github.com/llvm-mirror/llvm.git llvm && cd llvm \
+        && mkdir build && cd build \
+        && ${CMAKE} -DCMAKE_INSTALL_PREFIX='${LLVM_ROOT}' -DLLVM_TARGETS_TO_BUILD=host -DLLVM_BUILD_TOOLS=false -DLLVM_ENABLE_RTTI=1 -DCMAKE_BUILD_TYPE=Release $LLVM_PINNED_CMAKE_ARGS .. \
+        && make -j${JOBS} install"
+        echo " - LLVM successfully installed @ ${LLVM_ROOT}"
+    elif [[ $NAME == "Ubuntu" ]]; then
+        execute ln -snf /usr/lib/llvm-7 $LLVM_ROOT
+    elif [[ $NAME == "Amazon Linux" ]]; then
+        execute unlink $LLVM_ROOT || true
+    elif [[ $NAME == "CentOS Linux" ]]; then
+        execute ln -snf /opt/rh/llvm-toolset-7.0/root $LLVM_ROOT
     fi
 }
 

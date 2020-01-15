@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
 #pragma once
 
 #include <eosio/chain/action.hpp>
@@ -31,7 +27,7 @@ namespace eosio { namespace chain {
    namespace detail {
       template<typename... Ts>
       struct transaction_extension_types {
-         using transaction_extensions_t = fc::static_variant< Ts... >;
+         using transaction_extension_t = fc::static_variant< Ts... >;
          using decompose_t = decompose< Ts... >;
       };
    }
@@ -40,7 +36,7 @@ namespace eosio { namespace chain {
       deferred_transaction_generation_context
    >;
 
-   using transaction_extensions = transaction_extension_types::transaction_extensions_t;
+   using transaction_extension = transaction_extension_types::transaction_extension_t;
 
    /**
     *  The transaction header contains the fixed-sized data
@@ -99,7 +95,7 @@ namespace eosio { namespace chain {
                                                      bool allow_duplicate_keys = false) const;
 
       uint32_t total_actions()const { return context_free_actions.size() + actions.size(); }
-      
+
       account_name first_authorizer()const {
          for( const auto& a : actions ) {
             for( const auto& u : a.authorization )
@@ -108,7 +104,7 @@ namespace eosio { namespace chain {
          return account_name();
       }
 
-      vector<eosio::chain::transaction_extensions> validate_and_extract_extensions()const;
+      flat_multimap<uint16_t, transaction_extension> validate_and_extract_extensions()const;
    };
 
    struct signed_transaction : public transaction
@@ -138,7 +134,7 @@ namespace eosio { namespace chain {
    };
 
    struct packed_transaction : fc::reflect_init {
-      enum compression_type {
+      enum class compression_type {
          none = 0,
          zlib = 1,
       };
@@ -149,15 +145,15 @@ namespace eosio { namespace chain {
       packed_transaction& operator=(const packed_transaction&) = delete;
       packed_transaction& operator=(packed_transaction&&) = default;
 
-      explicit packed_transaction(const signed_transaction& t, compression_type _compression = none)
-      :signatures(t.signatures), compression(_compression), unpacked_trx(t)
+      explicit packed_transaction(const signed_transaction& t, compression_type _compression = compression_type::none)
+      :signatures(t.signatures), compression(_compression), unpacked_trx(t), trx_id(unpacked_trx.id())
       {
          local_pack_transaction();
          local_pack_context_free_data();
       }
 
-      explicit packed_transaction(signed_transaction&& t, compression_type _compression = none)
-      :signatures(t.signatures), compression(_compression), unpacked_trx(std::move(t))
+      explicit packed_transaction(signed_transaction&& t, compression_type _compression = compression_type::none)
+      :signatures(t.signatures), compression(_compression), unpacked_trx(std::move(t)), trx_id(unpacked_trx.id())
       {
          local_pack_transaction();
          local_pack_context_free_data();
@@ -173,7 +169,7 @@ namespace eosio { namespace chain {
 
       digest_type packed_digest()const;
 
-      transaction_id_type id()const { return unpacked_trx.id(); }
+      const transaction_id_type& id()const { return trx_id; }
       bytes               get_raw_transaction()const;
 
       time_point_sec                expiration()const { return unpacked_trx.expiration; }
@@ -204,6 +200,7 @@ namespace eosio { namespace chain {
    private:
       // cache unpacked trx, for thread safety do not modify after construction
       signed_transaction                      unpacked_trx;
+      transaction_id_type                     trx_id;
    };
 
    using packed_transaction_ptr = std::shared_ptr<packed_transaction>;

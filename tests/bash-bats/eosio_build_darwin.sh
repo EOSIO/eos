@@ -30,7 +30,7 @@ export TEST_LABEL="[eosio_build_darwin]"
     [[ ! -z $(echo "${output}" | grep "Starting EOSIO Dependency Install") ]] || exit
     [[ ! -z $(echo "${output}" | grep "Executing: /usr/bin/xcode-select --install") ]] || exit
     [[ -z $(echo "${output}" | grep " -   NOT found") ]] || exit
-    rm -f $CMAKE
+    # rm -f $CMAKE
     [[ ! -z $(echo "${output}" | grep "[Updating HomeBrew]") ]] || exit
     [[ ! -z $(echo "${output}" | grep "brew tap eosio/eosio") ]] || exit
     [[ ! -z $(echo "${output}" | grep "brew install.*llvm@4.*") ]] || exit
