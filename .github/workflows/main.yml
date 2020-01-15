@@ -360,6 +360,9 @@ jobs:
         run: | 
           ./.cicd/build.sh
           tar -pczf build.tar.gz build
+        env:
+          IMAGE_TAG: macos-10.14-unpinned
+          PLATFORM_TYPE: unpinned
       - name: Upload Build Artifact
         uses: actions/upload-artifact@v1
         with:
@@ -382,6 +385,9 @@ jobs:
         run: | 
           tar -xzf macos-1015-build/build.tar.gz
           ./.cicd/test.sh scripts/parallel-test.sh
+        env:
+          IMAGE_TAG: macos-10.14-unpinned
+          PLATFORM_TYPE: unpinned
   macos-1015-wasm-test:
     name: MacOS 10.15 | WASM Spec Test
     runs-on: macos-latest
@@ -399,6 +405,9 @@ jobs:
         run: | 
           tar -xzf macos-1015-build/build.tar.gz
           ./.cicd/test.sh scripts/wasm-spec-test.sh
+        env:
+          IMAGE_TAG: macos-10.14-unpinned
+          PLATFORM_TYPE: unpinned
   macos-1015-serial-test:
     name: MacOS 10.15 | Serial Test
     runs-on: macos-latest
@@ -416,3 +425,6 @@ jobs:
         run: | 
           tar -xzf macos-1015-build/build.tar.gz
           ./.cicd/test.sh scripts/serial-test.sh
+        env:
+          IMAGE_TAG: macos-10.14-unpinned
+          PLATFORM_TYPE: unpinned
