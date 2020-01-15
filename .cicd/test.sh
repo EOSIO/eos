@@ -2,20 +2,20 @@
 set -eo pipefail
 . ./.cicd/helpers/general.sh
 export DOCKERIZATION=false
-[[ $TRAVIS != true ]] && buildkite-agent artifact download build.tar.gz . --step "$PLATFORM_FULL_NAME - Build"
+[[ $BUILDKITE == true ]] && buildkite-agent artifact download build.tar.gz . --step "$PLATFORM_FULL_NAME - Build"
 . ./.cicd/helpers/populate-template-and-hash.sh '<!-- DAC ENV'
 if [[ $(uname) == 'Darwin' ]]; then # macOS
-    if [[ $TRAVIS == true ]]; then
-        # Support ship_test
-        export NVM_DIR="$HOME/.nvm"
-        . "/usr/local/opt/nvm/nvm.sh"
-        nvm install --lts=dubnium
-    else
+    if [[ $BUILDKITE == true ]]; then
         . /tmp/$POPULATED_FILE_NAME
         cp -rfp $(pwd) $EOS_LOCATION
         cd $EOS_LOCATION
         tar -xzf build.tar.gz
         source ~/.bash_profile # Make sure node is available for ship_test
+    else
+        # Support ship_test
+        export NVM_DIR="$HOME/.nvm"
+        . "/usr/local/opt/nvm/nvm.sh"
+        nvm install --lts=dubnium
     fi
     set +e # defer error handling to end
     ./"$@"
@@ -24,7 +24,7 @@ else # Linux
     ARGS="--rm --init -v $(pwd):$(pwd) $(buildkite-intrinsics) -e JOBS"
     . $HELPERS_DIR/populate-template-and-hash.sh -h # Obtain the hash from the populated template 
     echo "cp -rfp $(pwd) \$EOS_LOCATION && cd \$EOS_LOCATION" >> /tmp/$POPULATED_FILE_NAME # We don't need to clone twice
-    [[ $TRAVIS != true ]] && echo "tar -xzf build.tar.gz" >> /tmp/$POPULATED_FILE_NAME
+    [[ $BUILDKITE == true ]]&& echo "tar -xzf build.tar.gz" >> /tmp/$POPULATED_FILE_NAME
     echo "$@" >> /tmp/$POPULATED_FILE_NAME
     echo "cp -rfp \$EOS_LOCATION/build $(pwd)" >> /tmp/$POPULATED_FILE_NAME
     TEST_COMMANDS="cd $(pwd) && ./$POPULATED_FILE_NAME"

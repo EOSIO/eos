@@ -26,7 +26,7 @@ else # Linux
     ARGS=${ARGS:-"--rm --init -v $(pwd):$(pwd) $(buildkite-intrinsics)"}
     . $HELPERS_DIR/populate-template-and-hash.sh -h # Prepare the platform-template with contents from the documentation
     echo "cp -rfp $(pwd) \$EOS_LOCATION && cd \$EOS_LOCATION" >> /tmp/$POPULATED_FILE_NAME # We don't need to clone twice
-    [[ $TRAVIS != true ]] && echo "tar -xzf build.tar.gz" >> /tmp/$POPULATED_FILE_NAME
+    [[ $BUILDKITE == true ]]&& echo "tar -xzf build.tar.gz" >> /tmp/$POPULATED_FILE_NAME
     echo "cd \$EOS_LOCATION/build/packages && chmod 755 ./*.sh" >> /tmp/$POPULATED_FILE_NAME
     if [[ "$IMAGE_TAG" =~ "ubuntu" ]]; then
         ARTIFACT='*.deb'
