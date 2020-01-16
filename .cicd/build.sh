@@ -9,7 +9,8 @@ if [[ $BUILDKITE == true ]]; then # Buildkite uses tags with deps already on the
     sed -i -e 's/git clone https:\/\/github.com\/EOSIO\/eos\.git.*/cp -rf \$(pwd) \$EOS_LOCATION \&\& cd \$EOS_LOCATION/g' /tmp/$POPULATED_FILE_NAME # We don't need to clone twice
 else
     [[ $ENABLE_INSTALL == true ]] && . ./.cicd/helpers/populate-template-and-hash.sh '<!-- DAC ENV' '<!-- DAC CLONE' '<!-- DAC DEPS' '<!-- DAC BUILD' '<!-- DAC INSTALL' || . ./.cicd/helpers/populate-template-and-hash.sh '<!-- DAC ENV' '<!-- DAC CLONE' '<!-- DAC DEPS' '<!-- DAC BUILD'
-    sed -i -e 's/git clone https:\/\/github.com\/EOSIO\/eos\.git.*/export EOS_LOCATION="$(pwd)"/g' /tmp/$POPULATED_FILE_NAME # We don't need to clone twice
+    sed -i -e 's/git clone https:\/\/github.com\/EOSIO\/eos\.git.*/d' /tmp/$POPULATED_FILE_NAME # We don't need to clone twice
+    sed -i -e 's/export EOS_LOCATION=$EOSIO_LOCATION\/eos\/export EOS_LOCATION=$(pwd)/g' /tmp/$POPULATED_FILE_NAME
 fi
 if [[ "$(uname)" == 'Darwin' ]]; then
     # You can't use chained commands in execute
