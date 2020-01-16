@@ -97,12 +97,16 @@ export FULL_TAG="eosio/ci:$HASHED_IMAGE_TAG"
 if [[ $BUILDKITE == true ]]; then
   COMMIT_ID=$BUILDKITE_COMMIT
 else
-  sed -i -e 's/^HOME=\/Users\/anka/HOME=\/home\/runner/g' /tmp/$POPULATED_FILE_NAME
   COMMIT_ID=$GITHUB_SHA
 fi
-[[ $DOCKERIZATION == false ]] && sed -i -e '1s/^/#!\/bin\/bash \
+( [[ $DOCKERIZATION == false ]] && [ $(cat /tmp/$POPULATED_FILE_NAME | grep -c "bin/bash") -lt 1 ] ) && sed -i -e '1s/^/#!\/bin\/bash \
 set -eo pipefail \
 /' /tmp/$POPULATED_FILE_NAME
+if [[ $BUILDKITE != true ]]; then
+  [[ "$(uname)" == 'Darwin' ]] && brew install md5sha1sum
+  sed -i -e 's/export EOS_LOCATION=\$EOSIO_LOCATION\/eos/export EOS_LOCATION=\$(pwd)/g' /tmp/$POPULATED_FILE_NAME
+  sed -i -e 's/HOME=\/Users\/anka/HOME=\$(pwd)/g' /tmp/$POPULATED_FILE_NAME
+fi
 sed -i -e 's/\&\& brew install git/\&\& brew install git || true/g' /tmp/$POPULATED_FILE_NAME
 sed -i -e "s/\.git \$EOS_LOCATION/\.git \$EOS_LOCATION \&\& cd \$EOS_LOCATION \&\& git pull \&\& git checkout -f $COMMIT_ID/g" /tmp/$POPULATED_FILE_NAME # MUST BE AFTER WE GENERATE THE HASH
 chmod +x /tmp/$POPULATED_FILE_NAME
