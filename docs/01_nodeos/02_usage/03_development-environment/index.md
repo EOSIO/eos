@@ -1,4 +1,6 @@
-# Development Environment
+---
+content_title: Development Environment
+---
 
 There are several ways to configure a `nodeos` environment for development and testing. Which option to use largely depends on what the project goals are. Some practical options are provided below.
 
