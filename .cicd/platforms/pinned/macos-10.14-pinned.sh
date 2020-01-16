@@ -3,7 +3,6 @@ set -eo pipefail
 VERSION=1
 brew update
 brew install git cmake python@2 python libtool libusb graphviz automake wget gmp llvm@7 pkgconfig doxygen openssl@1.1 jq || :
-export SDKROOT="$(xcrun --sdk macosx --show-sdk-path)"
 # install clang from source
 git clone --single-branch --branch release_80 https://git.llvm.org/git/llvm.git clang8
 cd clang8
@@ -50,6 +49,8 @@ sudo make install
 cd ../..
 rm -rf clang8
 # install boost from source
+## Boost Fix: eosio/install/bin/../include/c++/v1/stdlib.h:94:15: fatal error: 'stdlib.h' file not found
+export SDKROOT="$(xcrun --sdk macosx --show-sdk-path)"
 curl -LO https://dl.bintray.com/boostorg/release/1.71.0/source/boost_1_71_0.tar.bz2
 tar -xjf boost_1_71_0.tar.bz2
 cd boost_1_71_0
