@@ -236,6 +236,7 @@ class ClassStruct(EmptyScope):
     cb_obj_pattern = re.compile(r'chainbase::object$')
     obj_pattern = re.compile(r'^object$')
     using_pattern = re.compile(r'\n\s*?using\s+(\w+)\s*=\s*([\w:]+)(?:<.*>)?;')
+    typedef_pattern = re.compile(r'\s*typedef\s+([\w:]+)(?:<.*>)?\s+(\w+)\s*;')
 
     def __init__(self, name, inherit, start, content, parent_scope, is_enum):
         EmptyScope.__init__(self, name, start, content, parent_scope)
@@ -281,6 +282,8 @@ class ClassStruct(EmptyScope):
         match = ClassStruct.field_pattern.search(self.content[loc:end + 1])
         if match is None:
             return end
+        if match.group(1) == "using":
+            return end
         field = match.group(2)
         self.fields.append(field)
         all = match.group(0)
@@ -314,6 +317,21 @@ class ClassStruct(EmptyScope):
             debug("%sClassStruct.add_usings - %s (%d)" % (self.indent, using, len(self.usings)))
         debug("%sClassStruct.add_usings done" % (self.indent))
 
+    def add_typedefs(self, start, end):
+        loc = start
+        while loc < end:
+            debug("%sClassStruct.add_typedefs-{\n%s\n}" % (self.indent, self.content[loc:end + 1]))
+            match = ClassStruct.typedef_pattern.search(self.content[loc:end])
+            if match is None:
+                break
+            class_struct = match.group(1)
+            alias_name = match.group(2)
+            self.usings[alias_name] = class_struct;
+            all = match.group(0)
+            loc = self.content.find(all, loc) + len(all)
+            debug("%sClassStruct.add_typedefs- %s (%d)" % (self.indent, alias_name, len(self.usings)))
+        debug("%sClassStruct.add_typedefs done" % (self.indent))
+
     def next_scope(self, end = None):
         new_scope = None
         if end is None:
@@ -341,6 +359,8 @@ class ClassStruct(EmptyScope):
         if start == -1 and generic_scope_start == -1:
             debug("%sClassStruct.next_scope end=%s no scopes add_fields and exit" % (self.indent, end))
             self.add_fields(self.current, end)
+            self.add_usings(self.current, end)
+            self.add_typedefs(self.current, end)
             return None
 
         debug("%sClassStruct.next_scope found \"%s\" - \"%s\" - \"%s\" current=%s, start=%s, end=%s, pattern=%s " % (self.indent, search_str, type, name, self.current, start, end, self.pattern.pattern))
@@ -354,6 +374,7 @@ class ClassStruct(EmptyScope):
 
         self.add_fields(self.current, new_scope.start)
         self.add_usings(self.current, new_scope.start)
+        self.add_typedefs(self.current, new_scope.start)
         new_scope.read()
         self.current = new_scope.end + 1
 
@@ -499,11 +520,6 @@ class Reflections:
         fields = re.findall(self.field_pattern, next_reflect_fields)
         for field in fields:
             self.add_field(next_reflect_class, field)
-        if derived:
-            struct_class = self.classes[derived]
-            assert struct_class is not None, "%s reflection macro indicates it is derived from %s, but that class/struct can not be found" % (next_reflect_class, derived)
-            for field in struct_class.fields:
-                self.add_field(next_reflect_class, field)
         reflect_class = self.find_or_add(next_reflect_class)
         debug("add_fields %s done, fields count=%s, ignored count=%s, swapped count=%s" % (next_reflect_class, len(reflect_class.fields), len(reflect_class.ignored), len(reflect_class.swapped)))
 
@@ -623,7 +639,8 @@ def validate_file(file):
                     continue
         class_struct_num_fields = len(class_struct.fields) if class_struct is not None else None 
         debug("reflection_name=%s, class field count=%s, reflection field count=%s, ingore count=%s, swap count=%s" % (reflection_name, class_struct_num_fields, len(reflection.fields), len(reflection.ignored), len(reflection.swapped)))
-        assert isinstance(class_struct, ClassStruct), "could not find a %s/%s/%s for %s" % (EmptyScope.class_str, EmptyScope.struct_str, EmptyScope.enum_str, reflection_name)
+        if not isinstance(class_struct, ClassStruct):
+            assert isinstance(class_struct, ClassStruct), "could not find a %s/%s/%s for %s" % (EmptyScope.class_str, EmptyScope.struct_str, EmptyScope.enum_str, reflection_name)
         if class_struct.ignore_id:
             id_field = "id"
             if id_field not in reflection.ignored and id_field not in reflection.fields:
