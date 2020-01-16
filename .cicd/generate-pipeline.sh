@@ -98,7 +98,7 @@ echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | while read -r PLATFORM_JSON; do
         cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build"
     command:
-      - "curl -s -o prep.sh https://buildkite-prep-working-directory-script.s3-us-west-2.amazonaws.com/master/$BUILDKITE_PIPELINE_SLUG.sh && chmod +x prep.sh && ./prep.sh"
+      - "curl -s -o prep.sh https://buildkite-prep-working-directory-script.s3-us-west-2.amazonaws.com/master/eosio.sh && chmod +x prep.sh && ./prep.sh"
       - "./.cicd/build.sh"
       - "tar -pczf build.tar.gz build && buildkite-agent artifact upload build.tar.gz"
     env:
@@ -119,7 +119,7 @@ EOF
         cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build"
     command:
-      - "mkdir eos && cd eos && curl -s -o prep.sh https://buildkite-prep-working-directory-script.s3-us-west-2.amazonaws.com/master/$BUILDKITE_PIPELINE_SLUG.sh && chmod +x prep.sh && ./prep.sh"
+      - "mkdir eos && cd eos && curl -s -o prep.sh https://buildkite-prep-working-directory-script.s3-us-west-2.amazonaws.com/master/eosio.sh && chmod +x prep.sh && ./prep.sh"
       - "cd eos && ./.cicd/build.sh"
       - "cd eos && tar -pczf build.tar.gz build && buildkite-agent artifact upload build.tar.gz"
     plugins:
@@ -148,7 +148,7 @@ EOF
       TEMPLATE_TAG: $MOJAVE_ANKA_TAG_BASE
       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
       PLATFORM_TYPE: $PLATFORM_TYPE
-      TAG_COMMANDS: "mkdir eos && cd eos && curl -s -o prep.sh https://buildkite-prep-working-directory-script.s3-us-west-2.amazonaws.com/master/$BUILDKITE_PIPELINE_SLUG.sh && chmod +x prep.sh && ./prep.sh && export IMAGE_TAG=$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME) && export PLATFORM_TYPE=$PLATFORM_TYPE && . ./.cicd/platforms/$PLATFORM_TYPE/$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME).sh && cd ~/eos && cd .. && rm -rf eos"
+      TAG_COMMANDS: "mkdir eos && cd eos && curl -s -o prep.sh https://buildkite-prep-working-directory-script.s3-us-west-2.amazonaws.com/master/eosio.sh && chmod +x prep.sh && ./prep.sh && export IMAGE_TAG=$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME) && export PLATFORM_TYPE=$PLATFORM_TYPE && . ./.cicd/platforms/$PLATFORM_TYPE/$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME).sh && cd ~/eos && cd .. && rm -rf eos"
       PROJECT_TAG: $(echo "$PLATFORM_JSON" | jq -r .HASHED_IMAGE_TAG)
     timeout: ${TIMEOUT:-180}
     agents: "queue=mac-anka-large-node-fleet"
@@ -166,7 +166,7 @@ cat <<EOF
 
   - label: ":docker: Docker - Build and Install"
     command:
-      - "curl -s -o prep.sh https://buildkite-prep-working-directory-script.s3-us-west-2.amazonaws.com/master/$BUILDKITE_PIPELINE_SLUG.sh && chmod +x prep.sh && ./prep.sh"
+      - "curl -s -o prep.sh https://buildkite-prep-working-directory-script.s3-us-west-2.amazonaws.com/master/eosio.sh && chmod +x prep.sh && ./prep.sh"
       - "./.cicd/installation-build.sh"
     env:
       IMAGE_TAG: "ubuntu-18.04-unpinned"
@@ -196,7 +196,7 @@ for ROUND in $(seq 1 $ROUNDS); do
             cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Unit Tests"
     command:
-      - "curl -s -o prep.sh https://buildkite-prep-working-directory-script.s3-us-west-2.amazonaws.com/master/$BUILDKITE_PIPELINE_SLUG.sh && chmod +x prep.sh && ./prep.sh"
+      - "curl -s -o prep.sh https://buildkite-prep-working-directory-script.s3-us-west-2.amazonaws.com/master/eosio.sh && chmod +x prep.sh && ./prep.sh"
       - "buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' && tar -xzf build.tar.gz"
       - "./.cicd/test.sh scripts/parallel-test.sh"
     env:
@@ -220,7 +220,7 @@ EOF
             cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Unit Tests"
     command:
-      - "mkdir eos && cd eos && curl -s -o prep.sh https://buildkite-prep-working-directory-script.s3-us-west-2.amazonaws.com/master/$BUILDKITE_PIPELINE_SLUG.sh && chmod +x prep.sh && ./prep.sh"
+      - "mkdir eos && cd eos && curl -s -o prep.sh https://buildkite-prep-working-directory-script.s3-us-west-2.amazonaws.com/master/eosio.sh && chmod +x prep.sh && ./prep.sh"
       - "cd eos && buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' && tar -xzf build.tar.gz"
       - "cd eos && ./.cicd/test.sh scripts/parallel-test.sh"
     plugins:
@@ -264,7 +264,7 @@ EOF
             cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - WASM Spec Tests"
     command:
-      - "curl -s -o prep.sh https://buildkite-prep-working-directory-script.s3-us-west-2.amazonaws.com/master/$BUILDKITE_PIPELINE_SLUG.sh && chmod +x prep.sh && ./prep.sh"
+      - "curl -s -o prep.sh https://buildkite-prep-working-directory-script.s3-us-west-2.amazonaws.com/master/eosio.sh && chmod +x prep.sh && ./prep.sh"
       - "buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' && tar -xzf build.tar.gz"
       - "./.cicd/test.sh scripts/wasm-spec-test.sh"
     env:
@@ -288,7 +288,7 @@ EOF
             cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - WASM Spec Tests"
     command:
-      - "mkdir eos && cd eos && curl -s -o prep.sh https://buildkite-prep-working-directory-script.s3-us-west-2.amazonaws.com/master/$BUILDKITE_PIPELINE_SLUG.sh && chmod +x prep.sh && ./prep.sh"
+      - "mkdir eos && cd eos && curl -s -o prep.sh https://buildkite-prep-working-directory-script.s3-us-west-2.amazonaws.com/master/eosio.sh && chmod +x prep.sh && ./prep.sh"
       - "cd eos && buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' && tar -xzf build.tar.gz"
       - "cd eos && ./.cicd/test.sh scripts/wasm-spec-test.sh"
     plugins:
@@ -335,7 +335,7 @@ EOF
                 cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - $TEST_NAME"
     command:
-      - "curl -s -o prep.sh https://buildkite-prep-working-directory-script.s3-us-west-2.amazonaws.com/master/$BUILDKITE_PIPELINE_SLUG.sh && chmod +x prep.sh && ./prep.sh"
+      - "curl -s -o prep.sh https://buildkite-prep-working-directory-script.s3-us-west-2.amazonaws.com/master/eosio.sh && chmod +x prep.sh && ./prep.sh"
       - "buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' && tar -xzf build.tar.gz"
       - "./.cicd/test.sh scripts/serial-test.sh $TEST_NAME"
     plugins:
@@ -359,7 +359,7 @@ EOF
                 cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - $TEST_NAME"
     command:
-      - "mkdir eos && cd eos && curl -s -o prep.sh https://buildkite-prep-working-directory-script.s3-us-west-2.amazonaws.com/master/$BUILDKITE_PIPELINE_SLUG.sh && chmod +x prep.sh && ./prep.sh"
+      - "mkdir eos && cd eos && curl -s -o prep.sh https://buildkite-prep-working-directory-script.s3-us-west-2.amazonaws.com/master/eosio.sh && chmod +x prep.sh && ./prep.sh"
       - "cd eos && buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' && tar -xzf build.tar.gz"
       - "cd eos && ./.cicd/test.sh scripts/serial-test.sh $TEST_NAME"
     plugins:
@@ -407,7 +407,7 @@ EOF
                 cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - $TEST_NAME"
     command:
-      - "curl -s -o prep.sh https://buildkite-prep-working-directory-script.s3-us-west-2.amazonaws.com/master/$BUILDKITE_PIPELINE_SLUG.sh && chmod +x prep.sh && ./prep.sh"
+      - "curl -s -o prep.sh https://buildkite-prep-working-directory-script.s3-us-west-2.amazonaws.com/master/eosio.sh && chmod +x prep.sh && ./prep.sh"
       - "buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' ${BUILD_SOURCE} && tar -xzf build.tar.gz"
       - "./.cicd/test.sh scripts/long-running-test.sh $TEST_NAME"
     plugins:
@@ -431,7 +431,7 @@ EOF
                 cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - $TEST_NAME"
     command:
-      - "mkdir eos && cd eos && curl -s -o prep.sh https://buildkite-prep-working-directory-script.s3-us-west-2.amazonaws.com/master/$BUILDKITE_PIPELINE_SLUG.sh && chmod +x prep.sh && ./prep.sh"
+      - "mkdir eos && cd eos && curl -s -o prep.sh https://buildkite-prep-working-directory-script.s3-us-west-2.amazonaws.com/master/eosio.sh && chmod +x prep.sh && ./prep.sh"
       - "cd eos && buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' ${BUILD_SOURCE} && tar -xzf build.tar.gz"
       - "cd eos && ./.cicd/test.sh scripts/long-running-test.sh $TEST_NAME"
     plugins:
@@ -561,7 +561,7 @@ cat <<EOF
 
   - label: ":bar_chart: Test Metrics"
     command:
-      - "curl -s -o prep.sh https://buildkite-prep-working-directory-script.s3-us-west-2.amazonaws.com/master/$BUILDKITE_PIPELINE_SLUG.sh && chmod +x prep.sh && ./prep.sh"
+      - "curl -s -o prep.sh https://buildkite-prep-working-directory-script.s3-us-west-2.amazonaws.com/master/eosio.sh && chmod +x prep.sh && ./prep.sh"
       - "echo '+++ :compression: Extracting Test Metrics Code'"
       - "tar -zxf .cicd/metrics/test-metrics.tar.gz"
       - "echo '+++ :javascript: Running test-metrics.js'"
@@ -579,7 +579,7 @@ cat <<EOF
     # packaging
   - label: ":centos: CentOS 7.7 - Package Builder"
     command:
-      - "curl -s -o prep.sh https://buildkite-prep-working-directory-script.s3-us-west-2.amazonaws.com/master/$BUILDKITE_PIPELINE_SLUG.sh && chmod +x prep.sh && ./prep.sh"
+      - "curl -s -o prep.sh https://buildkite-prep-working-directory-script.s3-us-west-2.amazonaws.com/master/eosio.sh && chmod +x prep.sh && ./prep.sh"
       - "buildkite-agent artifact download build.tar.gz . --step ':centos: CentOS 7.7 - Build' && tar -xzf build.tar.gz"
       - "./.cicd/package.sh"
     plugins:
@@ -597,7 +597,7 @@ cat <<EOF
 
   - label: ":ubuntu: Ubuntu 16.04 - Package Builder"
     command:
-      - "curl -s -o prep.sh https://buildkite-prep-working-directory-script.s3-us-west-2.amazonaws.com/master/$BUILDKITE_PIPELINE_SLUG.sh && chmod +x prep.sh && ./prep.sh"
+      - "curl -s -o prep.sh https://buildkite-prep-working-directory-script.s3-us-west-2.amazonaws.com/master/eosio.sh && chmod +x prep.sh && ./prep.sh"
       - "buildkite-agent artifact download build.tar.gz . --step ':ubuntu: Ubuntu 16.04 - Build' && tar -xzf build.tar.gz"
       - "./.cicd/package.sh"
     plugins:
@@ -615,7 +615,7 @@ cat <<EOF
 
   - label: ":ubuntu: Ubuntu 18.04 - Package Builder"
     command:
-      - "curl -s -o prep.sh https://buildkite-prep-working-directory-script.s3-us-west-2.amazonaws.com/master/$BUILDKITE_PIPELINE_SLUG.sh && chmod +x prep.sh && ./prep.sh"
+      - "curl -s -o prep.sh https://buildkite-prep-working-directory-script.s3-us-west-2.amazonaws.com/master/eosio.sh && chmod +x prep.sh && ./prep.sh"
       - "buildkite-agent artifact download build.tar.gz . --step ':ubuntu: Ubuntu 18.04 - Build' && tar -xzf build.tar.gz"
       - "./.cicd/package.sh"
     plugins:
@@ -633,7 +633,7 @@ cat <<EOF
 
   - label: ":darwin: macOS 10.14 - Package Builder"
     command:
-      - "mkdir eos && cd eos && curl -s -o prep.sh https://buildkite-prep-working-directory-script.s3-us-west-2.amazonaws.com/master/$BUILDKITE_PIPELINE_SLUG.sh && chmod +x prep.sh && ./prep.sh"
+      - "mkdir eos && cd eos && curl -s -o prep.sh https://buildkite-prep-working-directory-script.s3-us-west-2.amazonaws.com/master/eosio.sh && chmod +x prep.sh && ./prep.sh"
       - "cd eos && buildkite-agent artifact download build.tar.gz . --step ':darwin: macOS 10.14 - Build' && tar -xzf build.tar.gz"
       - "cd eos && ./.cicd/package.sh"
     plugins:
@@ -658,7 +658,7 @@ cat <<EOF
 
   - label: ":docker: Docker - Label Container with Git Branch and Git Tag"
     command:
-      - "curl -s -o prep.sh https://buildkite-prep-working-directory-script.s3-us-west-2.amazonaws.com/master/$BUILDKITE_PIPELINE_SLUG.sh && chmod +x prep.sh && ./prep.sh"
+      - "curl -s -o prep.sh https://buildkite-prep-working-directory-script.s3-us-west-2.amazonaws.com/master/eosio.sh && chmod +x prep.sh && ./prep.sh"
       - ".cicd/docker-tag.sh"
     env:
       IMAGE_TAG: "ubuntu-18.04-unpinned"
@@ -675,7 +675,7 @@ cat <<EOF
 
   - label: ":git: Git Submodule Regression Check"
     command:
-      - "curl -s -o prep.sh https://buildkite-prep-working-directory-script.s3-us-west-2.amazonaws.com/master/$BUILDKITE_PIPELINE_SLUG.sh && chmod +x prep.sh && ./prep.sh"
+      - "curl -s -o prep.sh https://buildkite-prep-working-directory-script.s3-us-west-2.amazonaws.com/master/eosio.sh && chmod +x prep.sh && ./prep.sh"
       - "./.cicd/submodule-regression-check.sh"
     plugins:
       - thedyrt/skip-checkout#v0.1.1:
@@ -686,7 +686,7 @@ cat <<EOF
 
   - label: ":beer: Brew Updater"
     command:
-      - "curl -s -o prep.sh https://buildkite-prep-working-directory-script.s3-us-west-2.amazonaws.com/master/$BUILDKITE_PIPELINE_SLUG.sh && chmod +x prep.sh && ./prep.sh"
+      - "curl -s -o prep.sh https://buildkite-prep-working-directory-script.s3-us-west-2.amazonaws.com/master/eosio.sh && chmod +x prep.sh && ./prep.sh"
       - "buildkite-agent artifact download eosio.rb . --step ':darwin: macOS 10.14 - Package Builder'"
       - "buildkite-agent artifact upload eosio.rb"
     plugins:
