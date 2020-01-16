@@ -3,18 +3,19 @@ set -eo pipefail
 VERSION=1
 brew update
 brew install git cmake python@2 python libtool libusb graphviz automake wget gmp pkgconfig doxygen openssl@1.1 jq boost || :
-# install llvm 4 from source
-git clone --depth 1 --single-branch --branch release_40 https://github.com/llvm-mirror/llvm.git llvm
-[[ ! -d llvm ]] && echo "something is wrong" && exit 1
-cd llvm
-mkdir build
-cd build
-cmake -G 'Unix Makefiles' -DCMAKE_INSTALL_PREFIX='/usr/local' -DLLVM_TARGETS_TO_BUILD='host' -DLLVM_BUILD_TOOLS=false -DLLVM_ENABLE_RTTI=1 -DCMAKE_BUILD_TYPE=Release ..
-make -j $(getconf _NPROCESSORS_ONLN)
-sudo make install
-cd ../..
+echo "install llvm 4 from source..."
+git clone --depth 1 --single-branch --branch release_40 https://github.com/llvm-mirror/llvm.git llvm && \
+cd llvm && \
+mkdir -p build && \
+cd build && \
+cmake -G 'Unix Makefiles' -DCMAKE_INSTALL_PREFIX='/usr/local' -DLLVM_TARGETS_TO_BUILD='host' -DLLVM_BUILD_TOOLS=false -DLLVM_ENABLE_RTTI=1 -DCMAKE_BUILD_TYPE=Release .. && \
+make -j $(getconf _NPROCESSORS_ONLN) && \
+sudo make install && \
+cd ../.. && \
 rm -rf llvm
-# install mongoDB
+
+exit 1
+echo "Installing mongodb..."
 cd ~
 curl -OL https://fastdl.mongodb.org/osx/mongodb-osx-ssl-x86_64-3.6.3.tgz
 tar -xzf mongodb-osx-ssl-x86_64-3.6.3.tgz
