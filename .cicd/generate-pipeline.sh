@@ -120,7 +120,7 @@ EOF
       - "cd eos && ./.cicd/build.sh"
       - "cd eos && tar -pczf build.tar.gz build && buildkite-agent artifact upload build.tar.gz"
     plugins:
-      - chef/anka#v0.5.5:
+      - NorseGaud/anka#v0.5.7:
           no-volume: true
           inherit-environment-vars: true
           vm-name: ${MOJAVE_ANKA_TEMPLATE_NAME}
