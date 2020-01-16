@@ -26,9 +26,6 @@ if [[ "$BUILDKITE" == 'true' ]]; then
     echo 'Compressing ls-tests logs...'
     [[ $((`ls -1 data-dir/cluster*/node*/std*.txt 2>/dev/null | wc -l`)) != 0 ]] && tar czf ls_tests_logs.tar.gz data-dir/cluster*/node*/std*.txt data-dir/cluster*/node*/config.ini
     [[ $((`ls -1 *debug*.log 2>/dev/null | wc -l`)) != 0 ]] && tar czf debug_logs.tar.gz *debug*.log
-    echo "Show debug logs at working directory:"
-    ls -1 *debug*.log
-    cat *debug*.log | grep "Python Version"
     echo 'Exporting xUnit XML'
     mv -f ./Testing/$(ls ./Testing/ | grep '2' | tail -n 1)/Test.xml test-results.xml
     echo 'Uploading artifacts'
