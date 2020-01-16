@@ -10,7 +10,10 @@ namespace eosio {
       string            peer;
       bool              connecting = false;
       bool              syncing    = false;
-      handshake_message last_handshake;
+      uint32_t          last_block{0};
+      string            last_status{"never connected"};
+      handshake_message last_handshake_recv;
+      handshake_message last_handshake_sent;
    };
 
    class net_plugin : public appbase::plugin<net_plugin>
@@ -38,4 +41,4 @@ namespace eosio {
 
 }
 
-FC_REFLECT( eosio::connection_status, (peer)(connecting)(syncing)(last_handshake) )
+FC_REFLECT( eosio::connection_status, (peer)(connecting)(syncing)(last_block)(last_status)(last_handshake_recv)(last_handshake_sent) )

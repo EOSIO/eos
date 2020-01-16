@@ -589,6 +589,8 @@ namespace eosio {
       optional<request_message>   last_req;
       handshake_message           last_handshake_recv;
       handshake_message           last_handshake_sent;
+      string                      last_status;
+      uint32_t                    last_block;
       block_id_type               fork_head;
       uint32_t                    fork_head_num{0};
       fc::time_point              last_close;
@@ -872,8 +874,11 @@ namespace eosio {
       stat.peer = peer_addr;
       stat.connecting = connecting;
       stat.syncing = syncing;
+      stat.last_block = last_block;
+      stat.last_status = last_status;
       std::lock_guard<std::mutex> g( conn_mtx );
-      stat.last_handshake = last_handshake_recv;
+      stat.last_handshake_recv = last_handshake_recv;
+      stat.last_handshake_sent = last_handshake_sent;
       return stat;
    }
 
@@ -931,6 +936,7 @@ namespace eosio {
       {
          std::lock_guard<std::mutex> g_conn( self->conn_mtx );
          has_last_req = !!self->last_req;
+         self->last_status = "closed";
          self->last_handshake_recv = handshake_message();
          self->last_handshake_sent = handshake_message();
          self->last_close = fc::time_point::now();
@@ -1021,6 +1027,7 @@ namespace eosio {
             signed_block_ptr b = cc.fetch_block_by_id( blkid );
             if( b ) {
                fc_dlog( logger, "found block for id at num ${n}", ("n", b->block_num()) );
+               c->last_block = b->block_num();
                my_impl->dispatcher->add_peer_block( blkid, c->connection_id );
                c->strand.post( [c, b{std::move(b)}]() {
                   c->enqueue_block( b );
@@ -1050,6 +1057,7 @@ namespace eosio {
             static_assert( std::is_same_v<decltype( c->sent_handshake_count ), int16_t>, "INT16_MAX based on int16_t" );
             if( c->sent_handshake_count == INT16_MAX ) c->sent_handshake_count = 1; // do not wrap
             c->last_handshake_sent.generation = ++c->sent_handshake_count;
+            c->last_status = "handshaking";
             auto last_handshake_sent = c->last_handshake_sent;
             g_conn.unlock();
             fc_ilog( logger, "Sending handshake generation ${g} to ${ep}, lib ${lib}, head ${head}, id ${id}",
@@ -1138,6 +1146,7 @@ namespace eosio {
    void connection::cancel_sync(go_away_reason reason) {
       fc_dlog( logger, "cancel sync reason = ${m}, write queue size ${o} bytes peer ${p}",
                ("m", reason_str( reason ))( "o", buffer_queue.write_queue_size() )( "p", peer_address() ) );
+      last_status = reason_str( reason );
       cancel_wait();
       flush_queues();
       switch (reason) {
@@ -1171,6 +1180,7 @@ namespace eosio {
          controller& cc = my_impl->chain_plug->chain();
          signed_block_ptr sb = cc.fetch_block_by_number( num );
          if( sb ) {
+            c->last_block = num;
             c->strand.post( [c, sb{std::move(sb)}]() {
                c->enqueue_block( sb, true );
             });
@@ -1741,6 +1751,7 @@ namespace eosio {
    // called from connection strand
    void sync_manager::sync_recv_block(const connection_ptr& c, const block_id_type& blk_id, uint32_t blk_num) {
       fc_dlog( logger, "got block ${bn} from ${p}", ("bn", blk_num)( "p", c->peer_name() ) );
+      c->last_block = blk_num;
       if( app().is_quiting() ) {
          c->close( false, true );
          return;
@@ -2201,6 +2212,7 @@ namespace eosio {
             return;
       }
       connecting = true;
+      last_status = "connecting";
       pending_message_buffer.reset();
       buffer_queue.clear_out_queue();
       boost::asio::async_connect( *socket, endpoints,
@@ -2664,12 +2676,14 @@ namespace eosio {
 
       std::unique_lock<std::mutex> g_conn( conn_mtx );
       last_handshake_recv = msg;
+      last_status = "connected";
       g_conn.unlock();
       my_impl->sync_master->recv_handshake( shared_from_this(), msg );
    }
 
    void connection::handle_message( const go_away_message& msg ) {
       peer_wlog( this, "received go_away_message, reason = ${r}", ("r", reason_str( msg.reason )) );
+      last_status = reason_str( msg.reason );
       bool retry = no_retry == no_reason; // if no previous go away message
       no_retry = msg.reason;
       if( msg.reason == duplicate ) {
@@ -2904,6 +2918,8 @@ namespace eosio {
       uint32_t blk_num = msg->block_num();
       // use c in this method instead of this to highlight that all methods called on c-> must be thread safe
       connection_ptr c = shared_from_this();
+
+      c->last_block = blk_num;
 
       // if we have closed connection then stop processing
       if( !c->socket_is_open() )
