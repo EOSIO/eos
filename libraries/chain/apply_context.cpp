@@ -10,6 +10,7 @@
 #include <eosio/chain/account_object.hpp>
 #include <eosio/chain/code_object.hpp>
 #include <eosio/chain/global_property_object.hpp>
+#include <eosio/chain/kv_chainbase_objects.hpp>
 #include <boost/container/flat_set.hpp>
 
 using boost::container::flat_set;
@@ -50,7 +51,10 @@ apply_context::apply_context(controller& con, transaction_context& trx_ctx, uint
    context_free = trace.context_free;
    if (!context_free) {
       kv_ram = create_kv_chainbase_context(db, kvram_id, receiver, create_kv_resource_manager_ram(*this), control.get_global_properties().kv_configuration.kvram);
-      kv_disk = create_kv_chainbase_context(db, kvdisk_id, receiver, create_kv_resource_manager_disk(*this), control.get_global_properties().kv_configuration.kvdisk);
+      if (db.get<kv_db_config_object>().using_rocksdb_for_disk)
+         kv_disk = create_kv_rocksdb_context(control.kv_database(), control.kv_undo_stack(), kvdisk_id, receiver, create_kv_resource_manager_disk(*this), control.get_global_properties().kv_configuration.kvdisk);
+      else
+         kv_disk = create_kv_chainbase_context(db, kvdisk_id, receiver, create_kv_resource_manager_disk(*this), control.get_global_properties().kv_configuration.kvdisk);
    }
 }
 

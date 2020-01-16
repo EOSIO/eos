@@ -7,10 +7,6 @@
 namespace eosio { namespace chain {
 
    struct kv_iterator_rocksdb : kv_iterator {
-      using index_type = std::decay_t<decltype(std::declval<chainbase::database>().get_index<kv_index, by_kv_key>())>;
-      using tracker_type =
-            std::decay_t<decltype(std::declval<chainbase::database>().get_mutable_index<kv_index>().track_removed())>;
-
       uint32_t&                num_iterators;
       chain_kv::view&          view;
       uint64_t                 contract;
@@ -160,8 +156,6 @@ namespace eosio { namespace chain {
    }; // kv_iterator_rocksdb
 
    struct kv_context_rocksdb : kv_context {
-      using tracker_type =
-            std::decay_t<decltype(std::declval<chainbase::database>().get_mutable_index<kv_index>().track_removed())>;
       chain_kv::database&                      database;
       chain_kv::undo_stack&                    undo_stack;
       name                                     database_id;

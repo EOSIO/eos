@@ -211,6 +211,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "Override default maximum ABI serialization time allowed in ms")
          ("chain-state-db-size-mb", bpo::value<uint64_t>()->default_value(config::default_state_size / (1024  * 1024)), "Maximum size (in MiB) of the chain state database")
          ("chain-state-db-guard-size-mb", bpo::value<uint64_t>()->default_value(config::default_state_guard_size / (1024  * 1024)), "Safely shut down node when free space remaining in the chain state database drops below this size (in MiB).")
+         ("use-rocksdb", bpo::bool_switch()->default_value(false), "Use rocksdb for eosio.kvdisk storage")
          ("rocksdb-threads", bpo::value<uint16_t>()->default_value(config::default_rocksdb_threads),
           "Number of rocksdb threads for flush and compaction")
          ("rocksdb-files", bpo::value<int>()->default_value(config::default_rocksdb_max_open_files),
@@ -709,6 +710,8 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
       if( options.count( "chain-state-db-guard-size-mb" ))
          my->chain_config->state_guard_size = options.at( "chain-state-db-guard-size-mb" ).as<uint64_t>() * 1024 * 1024;
+
+      my->chain_config->use_rocksdb_for_disk = options.at( "use-rocksdb" ).as<bool>();
 
       if( options.count( "rocksdb-threads" )) {
          my->chain_config->rocksdb_threads = options.at( "rocksdb-threads" ).as<uint16_t>();
