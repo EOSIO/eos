@@ -17,7 +17,7 @@ BUILDKITE_TEST_AGENT_QUEUE='automation-eks-eos-tester-fleet'
 # Determine if it's a forked PR and make sure to add git fetch so we don't have to git clone the forked repo's url
 if [[ $BUILDKITE_BRANCH =~ ^pull/[0-9]+/head: ]]; then
   PR_ID=$(echo $BUILDKITE_BRANCH | cut -d/ -f2)
-  export GIT_FETCH="git fetch -v --prune origin refs/pull/$PR_ID/head &&"
+  export GIT_FETCH="git fetch -v --prune origin refs/pull/$PR_ID/head"
 fi
 # Determine which dockerfiles/scripts to use for the pipeline.
 if [[ $PINNED == false ]]; then
