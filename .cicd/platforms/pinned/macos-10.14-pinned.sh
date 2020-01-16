@@ -49,11 +49,13 @@ sudo make install
 cd ../..
 rm -rf clang8
 # install boost from source
+# Boost Fix: eosio/install/bin/../include/c++/v1/stdlib.h:94:15: fatal error: 'stdlib.h' file not found
+export SDKROOT="$(xcrun --sdk macosx --show-sdk-path)"
 curl -LO https://dl.bintray.com/boostorg/release/1.71.0/source/boost_1_71_0.tar.bz2
 tar -xjf boost_1_71_0.tar.bz2
 cd boost_1_71_0
 ./bootstrap.sh --prefix=/usr/local
-sudo ./b2 --with-iostreams --with-date_time --with-filesystem --with-system --with-program_options --with-chrono --with-test -q -j$(getconf _NPROCESSORS_ONLN) install
+sudo SDKROOT="$SDKROOT" ./b2 --with-iostreams --with-date_time --with-filesystem --with-system --with-program_options --with-chrono --with-test -q -j$(getconf _NPROCESSORS_ONLN) install
 cd ..
 sudo rm -rf boost_1_71_0.tar.bz2 boost_1_71_0
 # install mongoDB
