@@ -132,7 +132,7 @@ EOF
           failover-registries:
             - 'registry_1'
             - 'registry_2'
-          pre-execute-sleep: 10
+          pre-execute-ping-sleep: "8.8.8.8"
           pre-commands: 
             - "git clone git@github.com:EOSIO/mac-anka-fleet.git && cd mac-anka-fleet && . ./ensure-tag.bash -u 12 -r 25G -a '-n'"
     env:
@@ -220,7 +220,7 @@ EOF
           failover-registries:
             - 'registry_1'
             - 'registry_2'
-          pre-execute-sleep: 10
+          pre-execute-ping-sleep: "8.8.8.8"
     agents: "queue=mac-anka-node-fleet"
     retry:
       manual:
@@ -282,7 +282,7 @@ EOF
           failover-registries:
             - 'registry_1'
             - 'registry_2'
-          pre-execute-sleep: 10
+          pre-execute-ping-sleep: "8.8.8.8"
     agents: "queue=mac-anka-node-fleet"
     retry:
       manual:
@@ -347,7 +347,7 @@ EOF
           failover-registries:
             - 'registry_1'
             - 'registry_2'
-          pre-execute-sleep: 10
+          pre-execute-ping-sleep: "8.8.8.8"
     agents: "queue=mac-anka-node-fleet"
     retry:
       manual:
@@ -413,7 +413,7 @@ EOF
           failover-registries:
             - 'registry_1'
             - 'registry_2'
-          pre-execute-sleep: 10
+          pre-execute-ping-sleep: "8.8.8.8"
     agents: "queue=mac-anka-node-fleet"
     retry:
       manual:
@@ -597,7 +597,7 @@ cat <<EOF
           failover-registries:
             - 'registry_1'
             - 'registry_2'
-          pre-execute-sleep: 10
+          pre-execute-ping-sleep: "8.8.8.8"
     agents:
       - "queue=mac-anka-node-fleet"
     timeout: ${TIMEOUT:-10}
