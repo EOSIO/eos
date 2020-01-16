@@ -104,7 +104,7 @@ set -eo pipefail \
 /' /tmp/$POPULATED_FILE_NAME
 if [[ $BUILDKITE != true ]]; then
   sed -i -e 's/export EOS_LOCATION=\$EOSIO_LOCATION\/eos/export EOS_LOCATION=\$(pwd)/g' /tmp/$POPULATED_FILE_NAME
-  sed -i -e 's/HOME=/Users\/anka/HOME=\$(pwd)/g' /tmp/$POPULATED_FILE_NAME
+  sed -i -e 's/HOME=\/Users\/anka/HOME=\$(pwd)/g' /tmp/$POPULATED_FILE_NAME
 fi
 sed -i -e 's/\&\& brew install git/\&\& brew install git || true/g' /tmp/$POPULATED_FILE_NAME
 sed -i -e "s/\.git \$EOS_LOCATION/\.git \$EOS_LOCATION \&\& cd \$EOS_LOCATION \&\& git pull \&\& git checkout -f $COMMIT_ID/g" /tmp/$POPULATED_FILE_NAME # MUST BE AFTER WE GENERATE THE HASH
