@@ -103,6 +103,7 @@ fi
 set -eo pipefail \
 /' /tmp/$POPULATED_FILE_NAME
 if [[ $BUILDKITE != true ]]; then
+  [[ "$(uname)" == 'Darwin' ]] && brew install md5sha1sum
   sed -i -e 's/export EOS_LOCATION=\$EOSIO_LOCATION\/eos/export EOS_LOCATION=\$(pwd)/g' /tmp/$POPULATED_FILE_NAME
   sed -i -e 's/HOME=\/Users\/anka/HOME=\$(pwd)/g' /tmp/$POPULATED_FILE_NAME
 fi
