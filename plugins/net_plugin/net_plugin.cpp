@@ -590,7 +590,7 @@ namespace eosio {
       handshake_message           last_handshake_recv;
       handshake_message           last_handshake_sent;
       string                      last_status;
-      uint32_t                    last_block;
+      uint32_t                    last_block{0};
       block_id_type               fork_head;
       uint32_t                    fork_head_num{0};
       fc::time_point              last_close;
