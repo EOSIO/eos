@@ -91,6 +91,7 @@ if ( [[ $DOCKERIZATION == false ]] && [[ $ONLYHASH == false ]] ); then
 else
   awk "NR==$APPEND_LINE{print;system(\"cat /tmp/commands\");next} 1" .cicd/platform-templates/${FILE:-"${IMAGE_TAG}$FILE_EXTENSION"} > /tmp/$POPULATED_FILE_NAME
 fi
+[[ $BUILDKITE != true ]] && [[ "$(uname)" == 'Darwin' ]] && brew install md5sha1sum
 export DETERMINED_HASH=$(sha1sum /tmp/$POPULATED_FILE_NAME | awk '{ print $1 }')
 export HASHED_IMAGE_TAG="eos-$(basename ${FILE_NAME:-$IMAGE_TAG} | awk '{split($0,a,/\.(d|s)/); print a[1] }')-${DETERMINED_HASH}"
 export FULL_TAG="eosio/ci:$HASHED_IMAGE_TAG"
@@ -103,7 +104,6 @@ fi
 set -eo pipefail \
 /' /tmp/$POPULATED_FILE_NAME
 if [[ $BUILDKITE != true ]]; then
-  [[ "$(uname)" == 'Darwin' ]] && brew install md5sha1sum
   sed -i -e 's/export EOS_LOCATION=\$EOSIO_LOCATION\/eos/export EOS_LOCATION=\$(pwd)/g' /tmp/$POPULATED_FILE_NAME
   sed -i -e 's/HOME=\/Users\/anka/HOME=\$(pwd)/g' /tmp/$POPULATED_FILE_NAME
 fi

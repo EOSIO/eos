@@ -13,6 +13,7 @@ if [[ $(uname) == 'Darwin' ]]; then # macOS
         source ~/.bash_profile # Make sure node is available for ship_test
     else
         # Support ship_test
+        brew install nvm
         export NVM_DIR="$HOME/.nvm"
         . "/usr/local/opt/nvm/nvm.sh"
         nvm install --lts=dubnium
