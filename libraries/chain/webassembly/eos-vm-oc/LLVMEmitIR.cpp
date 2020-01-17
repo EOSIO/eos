@@ -874,7 +874,7 @@ namespace LLVMJIT
 		//
 		// Load/store operators
 		//
-#if LLVM_VERSION_MAJOR < 9
+#if LLVM_VERSION_MAJOR < 10
 		#define EMIT_LOAD_OP(valueTypeId,name,llvmMemoryType,naturalAlignmentLog2,conversionOp) \
 			void valueTypeId##_##name(LoadOrStoreImm<naturalAlignmentLog2> imm) \
 			{ \
