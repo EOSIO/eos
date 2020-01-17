@@ -874,7 +874,7 @@ namespace LLVMJIT
 		//
 		// Load/store operators
 		//
-
+#if LLVM_VERSION_MAJOR < 9
 		#define EMIT_LOAD_OP(valueTypeId,name,llvmMemoryType,naturalAlignmentLog2,conversionOp) \
 			void valueTypeId##_##name(LoadOrStoreImm<naturalAlignmentLog2> imm) \
 			{ \
@@ -896,7 +896,29 @@ namespace LLVMJIT
 				store->setVolatile(true); \
 				store->setAlignment(1); \
 			}
-			
+#else
+		#define EMIT_LOAD_OP(valueTypeId,name,llvmMemoryType,naturalAlignmentLog2,conversionOp) \
+			void valueTypeId##_##name(LoadOrStoreImm<naturalAlignmentLog2> imm) \
+			{ \
+				auto byteIndex = pop(); \
+				auto pointer = coerceByteIndexToPointer(byteIndex,imm.offset,llvmMemoryType); \
+				auto load = irBuilder.CreateLoad(pointer); \
+				load->setAlignment(llvm::MaybeAlign(1)); \
+				load->setVolatile(true); \
+				push(conversionOp(load,asLLVMType(ValueType::valueTypeId))); \
+			}
+		#define EMIT_STORE_OP(valueTypeId,name,llvmMemoryType,naturalAlignmentLog2,conversionOp) \
+			void valueTypeId##_##name(LoadOrStoreImm<naturalAlignmentLog2> imm) \
+			{ \
+				auto value = pop(); \
+				auto byteIndex = pop(); \
+				auto pointer = coerceByteIndexToPointer(byteIndex,imm.offset,llvmMemoryType); \
+				auto memoryValue = conversionOp(value,llvmMemoryType); \
+				auto store = irBuilder.CreateStore(memoryValue,pointer); \
+				store->setVolatile(true); \
+				store->setAlignment(llvm::MaybeAlign(1)); \
+			}
+#endif
 		llvm::Value* identityConversion(llvm::Value* value,llvm::Type* type) { return value; }
 
 		EMIT_LOAD_OP(i32,load8_s,llvmI8Type,0,irBuilder.CreateSExt)  EMIT_LOAD_OP(i32,load8_u,llvmI8Type,0,irBuilder.CreateZExt)
