@@ -308,7 +308,7 @@ namespace eosio {
                              bool print_response ) {
       std::string postjson;
       if( !postdata.is_null() ) {
-         postjson = print_request ? fc::json::to_pretty_string( postdata ) : fc::json::to_string( postdata );
+         postjson = print_request ? fc::json::to_pretty_string( postdata ) : fc::json::to_string( postdata, fc::time_point::maximum() );
       }
       return do_http_call(cp, postjson, print_request, print_response);
    }

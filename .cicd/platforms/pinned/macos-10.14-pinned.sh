@@ -77,4 +77,4 @@ make -j $(getconf _NPROCESSORS_ONLN) VERBOSE=1 && \
 sudo make install && \
 rm -rf ~/mongo-cxx-driver-r3.4.0.tar.gz ~/mongo-cxx-driver-r3.4.0
 # install nvm for ship_test
-cd ~ && brew install nvm && mkdir -p ~/.nvm && echo 'export NVM_DIR=/Users/anka/.nvm' >> ~/.bash_profile && echo 'source $(brew --prefix nvm)/nvm.sh' >> ~/.bash_profile && cat ~/.bash_profile && source ~/.bash_profile && echo $NVM_DIR && nvm install --lts=dubnium
+cd ~ && brew install nvm && mkdir -p ~/.nvm && echo "export NVM_DIR=$HOME/.nvm" >> ~/.bash_profile && echo 'source $(brew --prefix nvm)/nvm.sh' >> ~/.bash_profile && cat ~/.bash_profile && source ~/.bash_profile && echo $NVM_DIR && nvm install --lts=dubnium

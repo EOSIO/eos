@@ -35,7 +35,7 @@ fc::variant verify_byte_round_trip_conversion( const abi_serializer& abis, const
 
    auto var2 = abis.binary_to_variant(type, bytes, max_serialization_time);
 
-   std::string r = fc::json::to_string(var2);
+   std::string r = fc::json::to_string(var2, fc::time_point::now() + max_serialization_time);
 
    auto bytes2 = abis.variant_to_binary(type, var2, max_serialization_time);
 
@@ -50,7 +50,7 @@ void verify_round_trip_conversion( const abi_serializer& abis, const type_name& 
    auto bytes = abis.variant_to_binary(type, var, max_serialization_time);
    BOOST_REQUIRE_EQUAL(fc::to_hex(bytes), hex);
    auto var2 = abis.binary_to_variant(type, bytes, max_serialization_time);
-   BOOST_REQUIRE_EQUAL(fc::json::to_string(var2), expected_json);
+   BOOST_REQUIRE_EQUAL(fc::json::to_string(var2, fc::time_point::now() + max_serialization_time), expected_json);
    auto bytes2 = abis.variant_to_binary(type, var2, max_serialization_time);
    BOOST_REQUIRE_EQUAL(fc::to_hex(bytes2), hex);
 }
@@ -80,7 +80,7 @@ fc::variant verify_type_round_trip_conversion( const abi_serializer& abis, const
    fc::variant var2;
    abi_serializer::to_variant(obj, var2, get_resolver(), max_serialization_time);
 
-   std::string r = fc::json::to_string(var2);
+   std::string r = fc::json::to_string(var2, fc::time_point::now() + max_serialization_time);
 
 
    auto bytes2 = abis.variant_to_binary(type, var2, max_serialization_time);

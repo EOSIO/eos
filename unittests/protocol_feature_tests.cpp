@@ -1739,4 +1739,46 @@ BOOST_AUTO_TEST_CASE( wtmsig_block_signing_inflight_extension_test ) { try {
 
 } FC_LOG_AND_RETHROW() }
 
+static const char import_set_action_return_value_wast[] = R"=====(
+(module
+ (import "env" "set_action_return_value" (func $set_action_return_value (param i32 i32)))
+ (memory $0 1)
+ (export "apply" (func $apply))
+ (func $apply (param $0 i64) (param $1 i64) (param $2 i64)
+   (call $set_action_return_value
+     (i32.const 0)
+     (i32.const 43)
+   )
+ )
+ (data (i32.const 8) "\01\00\00\00\00\00\85\5C\34\00\03\EB\CF\44\B4\5A\71\D4\F2\25\76\8F\60\2D\1E\2E\2B\25\EF\77\9E\E9\89\7F\E7\44\BF\1A\16\E8\54\23\D5")
+)
+)=====";
+
+BOOST_AUTO_TEST_CASE( set_action_return_value_test ) { try {
+   tester c( setup_policy::preactivate_feature_and_new_bios );
+
+   const auto& pfm = c.control->get_protocol_feature_manager();
+   const auto& d = pfm.get_builtin_digest(builtin_protocol_feature_t::action_return_value);
+   BOOST_REQUIRE(d);
+
+   const auto& alice_account = account_name("alice");
+   c.create_accounts( {alice_account} );
+   c.produce_block();
+
+   BOOST_CHECK_EXCEPTION(  c.set_code( alice_account, import_set_action_return_value_wast ),
+                           wasm_exception,
+                           fc_exception_message_is( "env.set_action_return_value unresolveable" ) );
+
+   c.preactivate_protocol_features( {*d} );
+   c.produce_block();
+
+   // ensure it now resolves
+   c.set_code( alice_account, import_set_action_return_value_wast );
+
+   // ensure it can be called
+   BOOST_REQUIRE_EQUAL(c.push_action(action({{ alice_account, permission_name("active") }}, alice_account, action_name(), {} ), alice_account.to_uint64_t()), c.success());
+
+   c.produce_block();
+} FC_LOG_AND_RETHROW() }
+
 BOOST_AUTO_TEST_SUITE_END()

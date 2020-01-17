@@ -81,6 +81,7 @@ void blocklog::read_log() {
 
    optional<chainbase::database> reversible_blocks;
    try {
+      ilog("opening reversible db");
       reversible_blocks.emplace(blocks_dir / config::reversible_blocks_dir_name, chainbase::database::read_only, config::default_reversible_cache_size);
       reversible_blocks->add_index<reversible_block_index>();
       const auto& idx = reversible_blocks->get_index<reversible_block_index,by_num>();
@@ -92,8 +93,8 @@ void blocklog::read_log() {
          elog( "no blocks available in reversible block database: only block_log blocks are available" );
          reversible_blocks.reset();
       }
-   } catch( const std::runtime_error& e ) {
-      if( std::string(e.what()).find("database dirty flag set") != std::string::npos ) {
+   } catch (const std::system_error&e) {
+      if (chainbase::db_error_code::dirty == e.code().value()) {
          elog( "database dirty flag set (likely due to unclean shutdown): only block_log blocks are available" );
       } else {
          throw;
@@ -134,7 +135,7 @@ void blocklog::read_log() {
                  (pretty_output.get_object());
       fc::variant v(std::move(enhanced_object));
       if (no_pretty_print)
-         fc::json::to_stream(*out, v, fc::json::stringify_large_ints_and_doubles);
+         fc::json::to_stream(*out, v, fc::time_point::maximum(), fc::json::stringify_large_ints_and_doubles);
       else
          *out << fc::json::to_pretty_string(v) << "\n";
    };
