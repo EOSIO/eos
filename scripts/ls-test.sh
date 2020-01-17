@@ -19,15 +19,24 @@ echo "starting launcher service: ./programs/launcher-service/launcher-service --
 sleep 1
 
 echo "platform ID is $ID"
+echo "IMAGE_TAG is $IMAGE_TAG"
+echo "python3 version is $(python3 --version)"
 
-python3.7 -m pip install requests
+if [[ "$IMAGE_TAG" == "ubuntu-16.04-pinned" ]]; then
+    ln -sf $(which python3.6) $(which python3)
+    echo "Using python3.6 as python3 for Ubuntu 16.04"
+    echo "python3 version is now $(python3 --version)"
+fi
+
+echo "pip version is $(python3 -m pip --version)"
+python3 -m pip install --upgrade pip
+python3 -m pip install requests
 
 set +e # defer ctest error handling to end
 
-#echo "ready to execute: ctest -L ls_tests -V -j $JOBS -T Test"
-#ctest -L ls_tests --output-on-failure -j $JOBS -T Test
-
-echo "ready to execute: ctest -L ls_tests -V -j 32 -T Test"
+export PYTHONIOENCODING=UTF-8
+echo "PYTHONIOENCODING is $PYTHONIOENCODING"
+echo "ready to execute: ctest -L ls_tests --output-on-failure -j 32 -T Test"
 ctest -L ls_tests --output-on-failure -j 32 -T Test
 
 EXIT_STATUS=$?

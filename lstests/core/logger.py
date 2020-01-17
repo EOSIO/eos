@@ -2,6 +2,7 @@
 
 # standard libraries
 import abc
+import codecs
 import inspect
 import os.path
 import queue
@@ -16,10 +17,8 @@ else:
     import color
     import helper
 
-try:
-    VERTICAL_BAR = "│"
-except UnicodeEncodeError:
-    VERTICAL_BAR = "|"
+
+VERTICAL_BAR = "│"
 
 
 class LogLevel(int):
@@ -226,7 +225,7 @@ class FileWriter(_Writer):
         self.filename = filename
 
     def _raw_write(self, msg):
-        with open(self.filename, "a") as f:
+        with codecs.open(self.filename, "a", "utf-8") as f:
             print(msg, file=f, flush=True)
 
 

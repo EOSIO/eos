@@ -488,6 +488,7 @@ class Service:
         self.debug("{:22}{}".format("UTC Time", time.strftime("%Y-%m-%d %H:%M:%S %Z", time.gmtime())))
         self.debug("{:22}{}".format("Local Time", time.strftime("%Y-%m-%d %H:%M:%S %Z", time.localtime())))
         self.debug("{:22}{}".format("Platform", platform.platform()))
+        self.debug("{:22}{}".format("Python Version", platform.python_version()))
 
     def print_config(self):
         self.print_header("service configuration")
