@@ -828,7 +828,7 @@ namespace eosio {
         last_handshake_recv(),
         last_handshake_sent()
    {
-      fc_ilog( logger, "accepted network connection" );
+      fc_dlog( logger, "creating new connection object" );
    }
 
    void connection::update_endpoints() {
@@ -2043,7 +2043,7 @@ namespace eosio {
          }
 
          cp->strand.post( [cp, send_buffer]() {
-            fc_dlog( logger, "sending trx to ${n}", ("n", cp->peer_name()) );
+//            fc_dlog( logger, "sending trx to ${n}", ("n", cp->peer_name()) );
             cp->enqueue_buffer( send_buffer, no_reason );
          } );
          return true;
@@ -2051,7 +2051,7 @@ namespace eosio {
    }
 
    void dispatch_manager::rejected_transaction(const packed_transaction_ptr& trx, uint32_t head_blk_num) {
-      fc_dlog( logger, "not sending rejected transaction ${tid}", ("tid", trx->id()) );
+//      fc_dlog( logger, "not sending rejected transaction ${tid}", ("tid", trx->id()) );
       // keep rejected transaction around for awhile so we don't broadcast it
       // update its block number so it will be purged when current block number is lib
       if( trx->expiration() > fc::time_point::now() ) { // no need to update blk_num if already expired
@@ -2869,7 +2869,7 @@ namespace eosio {
       my_impl->dispatcher->add_peer_txn( nts );
 
       if( have_trx ) {
-         fc_dlog( logger, "got a duplicate transaction - dropping ${id}", ("id", tid) );
+//         fc_dlog( logger, "got a duplicate transaction - dropping ${id}", ("id", tid) );
          return;
       }
 
@@ -2879,13 +2879,13 @@ namespace eosio {
             [weak, trx](const static_variant<fc::exception_ptr, transaction_trace_ptr>& result) mutable {
          // next (this lambda) called from application thread
          if (result.contains<fc::exception_ptr>()) {
-            fc_dlog( logger, "bad packed_transaction : ${m}", ("m", result.get<fc::exception_ptr>()->what()) );
+//            fc_dlog( logger, "bad packed_transaction : ${m}", ("m", result.get<fc::exception_ptr>()->what()) );
          } else {
             const transaction_trace_ptr& trace = result.get<transaction_trace_ptr>();
             if( !trace->except ) {
-               fc_dlog( logger, "chain accepted transaction, bcast ${id}", ("id", trace->id) );
+//               fc_dlog( logger, "chain accepted transaction, bcast ${id}", ("id", trace->id) );
             } else {
-               fc_elog( logger, "bad packed_transaction : ${m}", ("m", trace->except->what()));
+//               fc_elog( logger, "bad packed_transaction : ${m}", ("m", trace->except->what()));
             }
          }
          connection_ptr conn = weak.lock();
@@ -3117,13 +3117,13 @@ namespace eosio {
       boost::asio::post( my_impl->thread_pool->get_executor(), [this, results]() {
          const auto& id = results.second->id();
          if (results.first) {
-            fc_dlog( logger, "signaled NACK, trx-id = ${id} : ${why}", ("id", id)( "why", results.first->to_detail_string() ) );
+//            fc_dlog( logger, "signaled NACK, trx-id = ${id} : ${why}", ("id", id)( "why", results.first->to_detail_string() ) );
 
             uint32_t head_blk_num = 0;
             std::tie( std::ignore, head_blk_num, std::ignore, std::ignore, std::ignore, std::ignore ) = get_chain_info();
             dispatcher->rejected_transaction(results.second->packed_trx(), head_blk_num);
          } else {
-            fc_dlog( logger, "signaled ACK, trx-id = ${id}", ("id", id) );
+//            fc_dlog( logger, "signaled ACK, trx-id = ${id}", ("id", id) );
             dispatcher->bcast_transaction(*results.second->packed_trx());
          }
       });
