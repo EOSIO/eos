@@ -2855,7 +2855,7 @@ namespace eosio {
       }
 
       const auto& tid = trx->id();
-      peer_dlog( this, "received packed_transaction ${id}", ("id", tid) );
+//      peer_dlog( this, "received packed_transaction ${id}", ("id", tid) );
 
       uint32_t trx_in_progress_sz = this->trx_in_progress_size.load();
       if( trx_in_progress_sz > def_max_trx_in_progress_size ) {
