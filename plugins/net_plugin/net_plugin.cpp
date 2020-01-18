@@ -3220,12 +3220,12 @@ namespace eosio {
    bool connection::populate_handshake( handshake_message& hello ) {
       namespace sc = std::chrono;
       bool send = false;
-      if( no_retry == wrong_version ) {
-         hello.network_version = net_version_base + proto_explicit_sync; // try previous version
-         send = true;
-      } else {
-         hello.network_version = net_version_base + net_version;
-      }
+//      if( no_retry == wrong_version ) {
+      hello.network_version = net_version_base + proto_explicit_sync; // try previous version
+//         send = true;
+//      } else {
+//         hello.network_version = net_version_base + net_version;
+//      }
       const auto prev_head_id = hello.head_id;
       uint32_t lib, head;
       std::tie( lib, std::ignore, head,
