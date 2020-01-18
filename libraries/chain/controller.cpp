@@ -114,6 +114,7 @@ struct building_block {
                    const vector<digest_type>& new_protocol_feature_activations )
    :_pending_block_header_state( prev.next( when, num_prev_blocks_to_confirm ) )
    ,_new_protocol_feature_activations( new_protocol_feature_activations )
+   ,_trx_mroot_or_receipt_digests( digests_t{} )
    {}
 
    pending_block_header_state            _pending_block_header_state;
@@ -122,9 +123,8 @@ struct building_block {
    size_t                                _num_new_protocol_features_that_have_activated = 0;
    deque<transaction_metadata_ptr>       _pending_trx_metas;
    deque<transaction_receipt>            _pending_trx_receipts; // boost deque in 1.71 with 1024 elements performs better
-   deque<digest_type>                    _pending_trx_receipt_digests;
-   deque<digest_type>                    _action_receipt_digests;
-   optional<checksum256_type>            _transaction_mroot;
+   static_variant<checksum256_type, digests_t> _trx_mroot_or_receipt_digests;
+   digests_t                             _action_receipt_digests;
 };
 
 struct assembled_block {
@@ -1095,7 +1095,8 @@ struct controller_impl {
       auto& bb = pending->_block_stage.get<building_block>();
       auto orig_trx_receipts_size           = bb._pending_trx_receipts.size();
       auto orig_trx_metas_size              = bb._pending_trx_metas.size();
-      auto orig_trx_receipt_digests_size    = bb._pending_trx_receipt_digests.size();
+      auto orig_trx_receipt_digests_size    = bb._trx_mroot_or_receipt_digests.contains<digests_t>() ?
+            bb._trx_mroot_or_receipt_digests.get<digests_t>().size() : 0;
       auto orig_action_receipt_digests_size = bb._action_receipt_digests.size();
 
       std::function<void()> callback = [this,
@@ -1107,7 +1108,8 @@ struct controller_impl {
          auto& bb = pending->_block_stage.get<building_block>();
          bb._pending_trx_receipts.resize(orig_trx_receipts_size);
          bb._pending_trx_metas.resize(orig_trx_metas_size);
-         bb._pending_trx_receipt_digests.resize(orig_trx_receipt_digests_size);
+         if( bb._trx_mroot_or_receipt_digests.contains<digests_t>() )
+            bb._trx_mroot_or_receipt_digests.get<digests_t>().resize(orig_trx_receipt_digests_size);
          bb._action_receipt_digests.resize(orig_action_receipt_digests_size);
       };
 
@@ -1395,7 +1397,9 @@ struct controller_impl {
       r.cpu_usage_us         = cpu_usage_us;
       r.net_usage_words      = net_usage_words;
       r.status               = status;
-      pending->_block_stage.get<building_block>()._pending_trx_receipt_digests.emplace_back( r.digest() );
+      auto& bb = pending->_block_stage.get<building_block>();
+      if( bb._trx_mroot_or_receipt_digests.contains<digests_t>() )
+         bb._trx_mroot_or_receipt_digests.get<digests_t>().emplace_back( r.digest() );
       return r;
    }
 
@@ -1690,8 +1694,10 @@ struct controller_impl {
 
       // Create (unsigned) block:
       auto block_ptr = std::make_shared<signed_block>( pbhs.make_block_header(
-         bb._transaction_mroot ? *bb._transaction_mroot : merkle( std::move( bb._pending_trx_receipt_digests ) ),
-         merkle( std::move( bb._action_receipt_digests ) ),
+         bb._trx_mroot_or_receipt_digests.contains<checksum256_type>() ?
+               bb._trx_mroot_or_receipt_digests.get<checksum256_type>() :
+               merkle( std::move( bb._trx_mroot_or_receipt_digests.get<digests_t>() ) ),
+         merkle( std::move( pending->_block_stage.get<building_block>()._action_receipt_digests ) ),
          bb._new_pending_producer_schedule,
          std::move( bb._new_protocol_feature_activations ),
          protocol_features.get_protocol_feature_set()
@@ -1842,6 +1848,9 @@ struct controller_impl {
          auto producer_block_id = b->id();
          start_block( b->timestamp, b->confirmed, new_protocol_feature_activations, s, producer_block_id);
 
+         // validated in create_block_state_future()
+         pending->_block_stage.get<building_block>()._trx_mroot_or_receipt_digests = b->transaction_mroot;
+
          const bool existing_trxs_metas = !bsp->trxs_metas().empty();
          const bool pub_keys_recovered = bsp->is_pub_keys_recovered();
          const bool skip_auth_checks = self.skip_auth_check();
@@ -1910,9 +1919,6 @@ struct controller_impl {
                         block_validate_exception, "receipt does not match",
                         ("producer_receipt", receipt)("validator_receipt", trx_receipts.back()) );
          }
-
-         // validated in create_block_state_future()
-         pending->_block_stage.get<building_block>()._transaction_mroot = b->transaction_mroot;
 
          finalize_block();
 
