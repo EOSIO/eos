@@ -2072,7 +2072,7 @@ namespace eosio {
       if (msg.known_blocks.mode == normal) {
          // known_blocks.ids is never > 1
          if( !msg.known_blocks.ids.empty() ) {
-            
+
             if( msg.known_blocks.pending == 1 ) { // block id notify
                return;
             }
@@ -2773,8 +2773,10 @@ namespace eosio {
       }
 
       if( msg.known_blocks.mode != none ) {
-         fc_dlog( logger, "this is a ${m} notice with ${n} blocks",
-                  ("m", modes_str( msg.known_blocks.mode ))( "n", msg.known_blocks.pending ) );
+         const block_id_type& blkid = msg.known_blocks.ids.empty() ? block_id_type{} : msg.known_blocks.ids.back();
+         fc_dlog( logger, "this is a ${m} notice with ${n} pending blocks: ${num} ${id}...",
+                  ("m", modes_str( msg.known_blocks.mode ))( "n", msg.known_blocks.pending )
+                  ("num", block_header::num_from_id(blkid))("id", blkid.str().substr(8,16)) );
       }
       switch (msg.known_blocks.mode) {
       case none : {
