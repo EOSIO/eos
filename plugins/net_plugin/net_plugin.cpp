@@ -2445,8 +2445,9 @@ namespace eosio {
                pending_message_buffer.advance_read_ptr( message_length );
                return true;
             }
-            fc_dlog( logger, "${p} received block ${num}, id ${id}...",
-                     ("p", peer_name())("num", bh.block_num())("id", blk_id.str().substr(8,16)) );
+            fc_dlog( logger, "${p} received block ${num}, id ${id}..., latency: ${latency}",
+                     ("p", peer_name())("num", bh.block_num())("id", blk_id.str().substr(8,16))
+                     ("latency", (fc::time_point::now() - bh.timestamp).count()/1000 ));
             if( !my_impl->sync_master->syncing_with_peer() ) { // guard against peer thinking it needs to send us old blocks
                uint32_t lib = 0;
                std::tie( lib, std::ignore, std::ignore, std::ignore, std::ignore, std::ignore ) = my_impl->get_chain_info();
