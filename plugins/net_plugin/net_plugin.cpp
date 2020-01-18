@@ -2334,10 +2334,12 @@ namespace eosio {
             return;
          }
 
+         auto start = fc::time_point::now();
+
          boost::asio::async_read( *socket,
             pending_message_buffer.get_buffer_sequence_for_boost_async_read(), completion_handler,
             boost::asio::bind_executor( strand,
-              [conn = shared_from_this(), socket=socket]( boost::system::error_code ec, std::size_t bytes_transferred ) {
+              [conn = shared_from_this(), socket=socket, start]( boost::system::error_code ec, std::size_t bytes_transferred ) {
                // may have closed connection and cleared pending_message_buffer
                if( !conn->socket_is_open() || socket != conn->socket ) return;
 
@@ -2349,6 +2351,7 @@ namespace eosio {
                                  ("bt",bytes_transferred)("btw",conn->pending_message_buffer.bytes_to_write()) );
                      }
                      EOS_ASSERT(bytes_transferred <= conn->pending_message_buffer.bytes_to_write(), plugin_exception, "");
+                     fc_dlog( logger, "waited ${t}us for async_read", ("t", fc::time_point::now() - start) );
                      conn->pending_message_buffer.advance_write_ptr(bytes_transferred);
                      while (conn->pending_message_buffer.bytes_to_read() > 0) {
                         uint32_t bytes_in_buffer = conn->pending_message_buffer.bytes_to_read();
