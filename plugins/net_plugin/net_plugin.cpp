@@ -1977,6 +1977,9 @@ namespace eosio {
    }
 
    void dispatch_manager::bcast_notice( const block_id_type& id ) {
+
+      return;
+
       if( my_impl->sync_master->syncing_with_peer() ) return;
 
       fc_dlog( logger, "bcast notice ${b}", ("b", block_header::num_from_id( id )) );
@@ -2069,6 +2072,11 @@ namespace eosio {
       if (msg.known_blocks.mode == normal) {
          // known_blocks.ids is never > 1
          if( !msg.known_blocks.ids.empty() ) {
+            
+            if( msg.known_blocks.pending == 1 ) { // block id notify
+               return;
+            }
+
             if( num_entries( c->connection_id ) > def_max_peer_block_ids_per_connection ) {
                fc_elog( logger, "received too many notice_messages, disconnecting" );
                c->close( false );
