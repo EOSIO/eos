@@ -1820,6 +1820,27 @@ struct controller_impl {
       }
    }
 
+   void report_block_header_diff( const block_header& b, const block_header& ab ) {
+
+#define EOS_REPORT(DESC,A,B) \
+   if( A != B ) { \
+      elog("${desc}: ${bv} != ${abv}", ("desc", DESC)("bv", A)("abv", B)); \
+   }
+
+      EOS_REPORT( "timestamp", b.timestamp, ab.timestamp )
+      EOS_REPORT( "producer", b.producer, ab.producer )
+      EOS_REPORT( "confirmed", b.confirmed, ab.confirmed )
+      EOS_REPORT( "previous", b.previous, ab.previous )
+      EOS_REPORT( "transaction_mroot", b.transaction_mroot, ab.transaction_mroot )
+      EOS_REPORT( "action_mroot", b.action_mroot, ab.action_mroot )
+      EOS_REPORT( "schedule_version", b.schedule_version, ab.schedule_version )
+      EOS_REPORT( "new_producers", b.new_producers, ab.new_producers )
+      EOS_REPORT( "header_extensions", b.header_extensions, ab.header_extensions )
+
+#undef EOS_REPORT
+   }
+
+
    void apply_block( const block_state_ptr& bsp, controller::block_status s, const trx_meta_cache_lookup& trx_lookup )
    { try {
       try {
@@ -1902,9 +1923,12 @@ struct controller_impl {
 
          auto& ab = pending->_block_stage.get<assembled_block>();
 
-         // this implicitly asserts that all header fields (less the signature) are identical
-         EOS_ASSERT( producer_block_id == ab._id, block_validate_exception, "Block ID does not match",
-                     ("producer_block_id",producer_block_id)("validator_block_id",ab._id) );
+         if( producer_block_id != ab._id ) {
+            report_block_header_diff( *b, *ab._unsigned_block );
+            // this implicitly asserts that all header fields (less the signature) are identical
+            EOS_ASSERT( producer_block_id == ab._id, block_validate_exception, "Block ID does not match",
+                        ("producer_block_id", producer_block_id)("validator_block_id", ab._id) );
+         }
 
          if( !use_bsp_cached ) {
             bsp->set_trxs_metas( std::move( ab._trx_metas ), !skip_auth_checks );
