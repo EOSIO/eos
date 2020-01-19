@@ -191,10 +191,8 @@ namespace eosio {
       void retry_fetch(const connection_ptr& conn);
 
       bool add_peer_block( const block_id_type& blkid, uint32_t connection_id );
-      bool add_peer_block_id( const block_id_type& blkid, uint32_t connection_id );
       bool peer_has_block(const block_id_type& blkid, uint32_t connection_id) const;
       bool have_block(const block_id_type& blkid) const;
-      size_t num_entries( uint32_t connection_id ) const;
 
       bool add_peer_txn( const node_transaction_state& nts );
       void update_txns_block_num( const signed_block_ptr& sb );
@@ -384,7 +382,6 @@ namespace eosio {
    constexpr auto     def_max_trx_in_progress_size = 100*1024*1024; // 100 MB
    constexpr auto     def_max_consecutive_rejected_blocks = 3; // num of rejected blocks before disconnect
    constexpr auto     def_max_consecutive_immediate_connection_close = 9; // back off if client keeps closing
-   constexpr auto     def_max_peer_block_ids_per_connection = 100*1024; // if we reach this many then the connection is spaming us, disconnect
    constexpr auto     def_max_clients = 25; // 0 for unlimited clients
    constexpr auto     def_max_nodes_per_host = 1;
    constexpr auto     def_conn_retry_wait = 30;
@@ -416,9 +413,9 @@ namespace eosio {
     */
    constexpr uint16_t proto_base = 0;
    constexpr uint16_t proto_explicit_sync = 1;
-   constexpr uint16_t block_id_notify = 2;
+   constexpr uint16_t block_id_notify = 2; // reserved. feature was removed. next net_version should be 3
 
-   constexpr uint16_t net_version = block_id_notify;
+   constexpr uint16_t net_version = proto_explicit_sync;
 
    /**
     * Index by start_block_num
@@ -1831,16 +1828,6 @@ namespace eosio {
       return added;
    }
 
-   bool dispatch_manager::add_peer_block_id( const block_id_type& blkid, uint32_t connection_id) {
-      std::lock_guard<std::mutex> g( blk_state_mtx );
-      auto bptr = blk_state.get<by_id>().find( std::make_tuple( connection_id, std::ref( blkid )));
-      bool added = (bptr == blk_state.end());
-      if( added ) {
-         blk_state.insert( {blkid, block_header::num_from_id( blkid ), connection_id, false} );
-      }
-      return added;
-   }
-
    bool dispatch_manager::peer_has_block( const block_id_type& blkid, uint32_t connection_id ) const {
       std::lock_guard<std::mutex> g(blk_state_mtx);
       const auto blk_itr = blk_state.get<by_id>().find( std::make_tuple( connection_id, std::ref( blkid )));
@@ -1856,11 +1843,6 @@ namespace eosio {
          return blk_itr->have_block;
       }
       return false;
-   }
-
-   size_t dispatch_manager::num_entries( uint32_t connection_id ) const {
-      std::lock_guard<std::mutex> g(blk_state_mtx);
-      return blk_state.get<by_id>().count( connection_id );
    }
 
    bool dispatch_manager::add_peer_txn( const node_transaction_state& nts ) {
@@ -1976,33 +1958,6 @@ namespace eosio {
       } );
    }
 
-   void dispatch_manager::bcast_notice( const block_id_type& id ) {
-      if( my_impl->sync_master->syncing_with_peer() ) return;
-
-      fc_dlog( logger, "bcast notice ${b}", ("b", block_header::num_from_id( id )) );
-      notice_message note;
-      note.known_blocks.mode = normal;
-      note.known_blocks.pending = 1; // 1 indicates this is a block id notice
-      note.known_blocks.ids.emplace_back( id );
-
-      for_each_block_connection( [this, note]( auto& cp ) {
-         if( !cp->current() ) {
-            return true;
-         }
-         cp->strand.post( [this, cp, note]() {
-            // check protocol_version here since only accessed from strand
-            if( cp->protocol_version < block_id_notify ) return;
-            const block_id_type& id = note.known_blocks.ids.back();
-            if( peer_has_block( id, cp->connection_id ) ) {
-               return;
-            }
-            fc_dlog( logger, "bcast block id ${b} to ${p}", ("b", block_header::num_from_id( id ))("p", cp->peer_name()) );
-            cp->enqueue( note );
-         } );
-         return true;
-      } );
-   }
-
    // called from connection strand
    void dispatch_manager::recv_block(const connection_ptr& c, const block_id_type& id, uint32_t bnum) {
       std::unique_lock<std::mutex> g( c->conn_mtx );
@@ -2069,18 +2024,7 @@ namespace eosio {
       if (msg.known_blocks.mode == normal) {
          // known_blocks.ids is never > 1
          if( !msg.known_blocks.ids.empty() ) {
-            if( num_entries( c->connection_id ) > def_max_peer_block_ids_per_connection ) {
-               fc_elog( logger, "received too many notice_messages, disconnecting" );
-               c->close( false );
-            }
-            const block_id_type& blkid = msg.known_blocks.ids.back();
-            if( have_block( blkid )) {
-               add_peer_block( blkid, c->connection_id );
-               return;
-            } else {
-               add_peer_block_id( blkid, c->connection_id );
-            }
-            if( msg.known_blocks.pending == 1 ) { // block id notify
+            if( msg.known_blocks.pending == 1 ) { // block id notify of 2.0.0, ignore
                return;
             }
          }
@@ -2434,8 +2378,9 @@ namespace eosio {
                pending_message_buffer.advance_read_ptr( message_length );
                return true;
             }
-            fc_dlog( logger, "${p} received block ${num}, id ${id}...",
-                     ("p", peer_name())("num", bh.block_num())("id", blk_id.str().substr(8,16)) );
+            fc_dlog( logger, "${p} received block ${num}, id ${id}..., latency: ${latency}",
+                     ("p", peer_name())("num", bh.block_num())("id", blk_id.str().substr(8,16))
+                     ("latency", (fc::time_point::now() - bh.timestamp).count()/1000) );
             if( !my_impl->sync_master->syncing_with_peer() ) { // guard against peer thinking it needs to send us old blocks
                uint32_t lib = 0;
                std::tie( lib, std::ignore, std::ignore, std::ignore, std::ignore, std::ignore ) = my_impl->get_chain_info();
@@ -2744,8 +2689,12 @@ namespace eosio {
          return;
       }
       if( msg.known_trx.mode != none ) {
-         fc_dlog( logger, "this is a ${m} notice with ${n} transactions",
-                  ("m", modes_str( msg.known_trx.mode ))( "n", msg.known_trx.pending ) );
+         if( logger.is_enabled( fc::log_level::debug ) ) {
+            const block_id_type& blkid = msg.known_blocks.ids.empty() ? block_id_type{} : msg.known_blocks.ids.back();
+            fc_dlog( logger, "this is a ${m} notice with ${n} pending blocks: ${num} ${id}...",
+                     ("m", modes_str( msg.known_blocks.mode ))("n", msg.known_blocks.pending)
+                     ("num", block_header::num_from_id( blkid ))("id", blkid.str().substr( 8, 16 )) );
+         }
       }
       switch (msg.known_trx.mode) {
       case none:
@@ -2902,7 +2851,6 @@ namespace eosio {
       app().post(priority::high, [ptr{std::move(ptr)}, id, c = shared_from_this()]() mutable {
          c->process_signed_block( id, std::move( ptr ) );
       });
-      my_impl->dispatcher->bcast_notice( id );
    }
 
    // called from application thread
@@ -3207,12 +3155,7 @@ namespace eosio {
    bool connection::populate_handshake( handshake_message& hello ) {
       namespace sc = std::chrono;
       bool send = false;
-      if( no_retry == wrong_version ) {
-         hello.network_version = net_version_base + proto_explicit_sync; // try previous version
-         send = true;
-      } else {
-         hello.network_version = net_version_base + net_version;
-      }
+      hello.network_version = net_version_base + net_version;
       const auto prev_head_id = hello.head_id;
       uint32_t lib, head;
       std::tie( lib, std::ignore, head,
