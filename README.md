@@ -26,7 +26,7 @@ Block.one is neither launching nor operating any initial public blockchains base
 
 ## Testnets
 
-There is no public testnet running currently.
+[testnet.eos.io](https://testnet.eos.io/)
 
 ## Supported Operating Systems
 
