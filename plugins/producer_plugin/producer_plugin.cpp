@@ -383,7 +383,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
             _production_enabled = true;
          }
 
-         if( fc::time_point::now() - block->timestamp < fc::minutes(5) || (blk_num % 1000 == 0) ) {
+//         if( fc::time_point::now() - block->timestamp < fc::minutes(5) || (blk_num % 1000 == 0) ) {
             ilog("Received block ${id}... #${n} @ ${t} signed by ${p} [trxs: ${count}, lib: ${lib}, conf: ${confs}, latency: ${latency} ms]",
                  ("p",block->producer)("id",id.str().substr(8,16))("n",blk_num)("t",block->timestamp)
                  ("count",block->transactions.size())("lib",chain.last_irreversible_block_num())
@@ -394,7 +394,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                     ("count",hbs->block->transactions.size())("dpos", hbs->dpos_irreversible_blocknum)
                     ("confs", hbs->block->confirmed)("latency", (fc::time_point::now() - hbs->block->timestamp).count()/1000 ) );
             }
-         }
+//         }
       }
 
       class incoming_transaction_queue {
