@@ -1924,6 +1924,7 @@ struct controller_impl {
          auto& ab = pending->_block_stage.get<assembled_block>();
 
          if( producer_block_id != ab._id ) {
+            elog( "Validation block id does not match producer block id" );
             report_block_header_diff( *b, *ab._unsigned_block );
             // this implicitly asserts that all header fields (less the signature) are identical
             EOS_ASSERT( producer_block_id == ab._id, block_validate_exception, "Block ID does not match",
