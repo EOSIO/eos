@@ -14,6 +14,7 @@ if [[ $(uname) == 'Darwin' ]]; then # macOS
     else
         . ./.cicd/helpers/populate-template-and-hash.sh '<!-- DAC ENV' '<!-- DAC DEPS' # Install mongo deps
         . /tmp/$POPULATED_FILE_NAME
+        cd $GITHUB_WORKSPACE
     fi
     set +e # defer error handling to end
     ./"$@"
