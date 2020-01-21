@@ -1027,9 +1027,9 @@ namespace eosio {
             signed_block_ptr b = cc.fetch_block_by_id( blkid );
             if( b ) {
                fc_dlog( logger, "found block for id at num ${n}", ("n", b->block_num()) );
-               c->last_block = b->block_num();
                my_impl->dispatcher->add_peer_block( blkid, c->connection_id );
-               c->strand.post( [c, b{std::move(b)}]() {
+               c->strand.post( [c, num{b->block_num()}, b{std::move(b)}]() {
+                  c->last_block = num;
                   c->enqueue_block( b );
                } );
             } else {
@@ -1146,7 +1146,6 @@ namespace eosio {
    void connection::cancel_sync(go_away_reason reason) {
       fc_dlog( logger, "cancel sync reason = ${m}, write queue size ${o} bytes peer ${p}",
                ("m", reason_str( reason ))( "o", buffer_queue.write_queue_size() )( "p", peer_address() ) );
-      last_status = reason_str( reason );
       cancel_wait();
       flush_queues();
       switch (reason) {
@@ -1159,6 +1158,10 @@ namespace eosio {
       default:
          fc_ilog(logger, "sending empty request but not calling sync wait on ${p}", ("p",peer_address()));
          enqueue( ( sync_request_message ) {0,0} );
+      }
+      {
+         std::lock_guard<std::mutex> g_conn( conn_mtx );
+         last_status = reason_str( reason );
       }
    }
 
@@ -1180,8 +1183,8 @@ namespace eosio {
          controller& cc = my_impl->chain_plug->chain();
          signed_block_ptr sb = cc.fetch_block_by_number( num );
          if( sb ) {
-            c->last_block = num;
-            c->strand.post( [c, sb{std::move(sb)}]() {
+            c->strand.post( [c, num, sb{std::move(sb)}]() {
+               c->last_block = num;
                c->enqueue_block( sb, true );
             });
          } else {
@@ -1751,12 +1754,14 @@ namespace eosio {
    // called from connection strand
    void sync_manager::sync_recv_block(const connection_ptr& c, const block_id_type& blk_id, uint32_t blk_num) {
       fc_dlog( logger, "got block ${bn} from ${p}", ("bn", blk_num)( "p", c->peer_name() ) );
-      c->last_block = blk_num;
       if( app().is_quiting() ) {
          c->close( false, true );
          return;
       }
-      c->consecutive_rejected_blocks = 0;
+      c->strand.post( [c, blk_num]() {
+         c->last_block = blk_num;
+         c->consecutive_rejected_blocks = 0;
+      });
       std::unique_lock<std::mutex> g_sync( sync_mtx );
       stages state = sync_state;
       fc_dlog( logger, "state ${s}", ("s", stage_str( state )) );
@@ -2211,10 +2216,12 @@ namespace eosio {
          default:
             return;
       }
+      std::unique_lock<std::mutex> g_conn( conn_mtx );
       connecting = true;
       last_status = "connecting";
       pending_message_buffer.reset();
       buffer_queue.clear_out_queue();
+      g_conn.unlock();
       boost::asio::async_connect( *socket, endpoints,
          boost::asio::bind_executor( strand,
                [resolver, c = shared_from_this(), socket=socket]( const boost::system::error_code& err, const tcp::endpoint& endpoint ) {
@@ -2683,7 +2690,10 @@ namespace eosio {
 
    void connection::handle_message( const go_away_message& msg ) {
       peer_wlog( this, "received go_away_message, reason = ${r}", ("r", reason_str( msg.reason )) );
-      last_status = reason_str( msg.reason );
+      {
+         std::lock_guard<std::mutex> g_conn( conn_mtx );
+         last_status = reason_str( msg.reason );
+      }
       bool retry = no_retry == no_reason; // if no previous go away message
       no_retry = msg.reason;
       if( msg.reason == duplicate ) {
@@ -2919,7 +2929,10 @@ namespace eosio {
       // use c in this method instead of this to highlight that all methods called on c-> must be thread safe
       connection_ptr c = shared_from_this();
 
-      c->last_block = blk_num;
+      {
+         std::lock_guard<std::mutex> g_conn( conn_mtx );
+         c->last_block = blk_num;
+      }
 
       // if we have closed connection then stop processing
       if( !c->socket_is_open() )
