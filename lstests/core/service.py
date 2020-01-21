@@ -37,7 +37,6 @@ PROGRAM = "launcher-service"
 PROGRAM_LOG = "launcher-service.log"
 PRODUCER_KEY = "EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"
 PREACTIVATE_FEATURE = "0ec7e080177b2c02b278d5088611686b49d739925a92d9bfcacd7fc6b74053bd"
-PACKAGE_DIR = os.path.dirname(os.path.abspath(__file__))
 # service-related defaults
 DEFAULT_ADDR = "127.0.0.1"
 DEFAULT_PORT = 1234
@@ -469,7 +468,7 @@ class Service:
         self.flush = self.logger.flush
 
     def connect(self):
-        self.info(">>> [Connect to Service] ---------------- BEGIN ----------------------------------------------------")
+        self.print_begin("Connect to Service")
         self.print_working_dir()
         self.print_system_info()
         self.print_config()
@@ -477,7 +476,7 @@ class Service:
             self.connect_to_local_service()
         else:
             self.connect_to_remote_service()
-        self.info(">>> [Connect to Service] ---------------- END ------------------------------------------------------")
+        self.print_end("Connect to Service")
 
     def print_working_dir(self):
         self.print_header("working directory")
@@ -540,6 +539,12 @@ class Service:
         msg = "Connecting to a remote service is a feature in future."
         self.fatal("FATAL: {}".format(msg))
         raise LauncherServiceError(msg)
+
+    def print_begin(self, text, level="info", buffer=False):
+        self.log((f">>> [{text}] ".ljust(40, "-") + " BEGIN ").ljust(100, "-"), level=level, buffer=buffer)
+
+    def print_end(self, text, level="info", buffer=False):
+        self.log((f">>> [{text}] ".ljust(40, "-") + " END ").ljust(100, "-"), level=level, buffer=buffer)
 
     def print_header(self, text, level: typing.Union[int, str, LogLevel]="debug", sep=" ", buffer=False):
         level = LogLevel(level)
@@ -796,6 +801,8 @@ class Cluster:
         self.fatal = service.fatal
         self.flag = service.flag
         self.flush = service.flush
+        self.print_begin = service.print_begin
+        self.print_end = service.print_end
         self.print_header = service.print_header
         self.print_config_helper= service.print_config_helper
         self.verify_threads = []
@@ -861,7 +868,6 @@ class Cluster:
         """Flush all buffered logging information in case a Cluster crashes."""
         self.flush()
 
-
     def check_config(self):
         bassert(0 <= self.cluster_id < 30, f"Invalid cluster_id ({self.cluster_id}). Valid range is [0, 30).")
         bassert(self.node_count >= self.pnode_count + self.unstarted_count,
@@ -910,7 +916,7 @@ class Cluster:
         8. if verification is done asynchronously, make sure all transactions
            have been verified
         """
-        self.info(">>> [Launch] ----------------------- BEGIN ---------------------------------------------------------")
+        self.print_begin("Launch a Cluster")
         self.print_config()
         self.launch_cluster()
         self.wait_nodes_ready()
@@ -923,7 +929,7 @@ class Cluster:
         self.check_sync()
         for t in self.verify_threads:
             t.join()
-        self.info(">>> [Launch] ----------------------- END -----------------------------------------------------------")
+        self.print_end("Launch a Cluster")
 
 # --------------- start-up and shut-down ------------------------------------------------------------------------------
 
@@ -1122,22 +1128,22 @@ class Cluster:
         return self.call("send_raw", url=url, node_id=node_id, string_data=string_data, json_data=json_data, **call_kwargs)
 
     def pause_node_production(self, node_id, **call_kwargs):
-        return send_raw(url="/v1/producer/pause", node_id=node_id, **call_kwargs)
+        return self.send_raw(url="/v1/producer/pause", node_id=node_id, **call_kwargs)
 
     def resume_node_production(self, node_id, **call_kwargs):
-        return send_raw(url="/v1/producer/resume",node_id=node_id, **call_kwargs)
+        return self.send_raw(url="/v1/producer/resume",node_id=node_id, **call_kwargs)
 
     def get_greylist(self, node_id=0, **call_kwargs):
-        return send_raw(url="/v1/producer/get_greylist", node_id=node_id, **call_kwargs)
+        return self.send_raw(url="/v1/producer/get_greylist", node_id=node_id, **call_kwargs)
 
     def add_greylist_accounts(self, accounts:list, node_id=0, **call_kwargs):
-        return send_raw(url="/v1/producer/add_greylist_accounts", node_id=node_id, json_data={"accounts": accounts}, **call_kwargs)
+        return self.send_raw(url="/v1/producer/add_greylist_accounts", node_id=node_id, json_data={"accounts": accounts}, **call_kwargs)
 
     def remove_greylist_accounts(self, accounts:list, node_id=0, **call_kwargs):
-        return send_raw(url="/v1/producer/remove_greylist_accounts", node_id=node_id, json_data={"accounts": accounts}, **call_kwargs)
+        return self.send_raw(url="/v1/producer/remove_greylist_accounts", node_id=node_id, json_data={"accounts": accounts}, **call_kwargs)
 
     def get_net_plugin_connections(self, node_id=0, **call_kwargs):
-        return send_raw(url="/v1/net/connections", node_id=node_id, **call_kwargs)
+        return self.send_raw(url="/v1/net/connections", node_id=node_id, **call_kwargs)
 
 # --------------- bios-launch-related ---------------------------------------------------------------------------------
 
@@ -1219,7 +1225,6 @@ class Cluster:
         """Make an abi filename given the contract name."""
         return os.path.join(self.cdir, contract, contract + ".abi")
 
-
     @staticmethod
     def make_defproducer_name(num):
         def base26_to_int(s: str):
@@ -1293,7 +1298,7 @@ class Cluster:
         else:
             verify_helper()
 
-    def check_sync_no_advance(self, retry=None, sleep=None, min_sync_count=None, max_block_lag=None, dont_raise=False, level="debug"):
+    def check_sync(self, retry=None, sleep=None, min_sync_count=None, max_block_lag=None, expect_advance=True, dont_raise=False, level="debug"):
         class SyncResult:
             def __init__(self, in_sync: bool, sync_count: int, min_block_num: int, max_block_num: int = None):
                 self.in_sync = in_sync
@@ -1305,75 +1310,82 @@ class Cluster:
                 else:
                     assert self.min_block_num == math.inf or self.min_block_num <= self.max_block_num
                     self.block_num = -1
+        def get_sync_result():
+            for _ in range(retry + 1):
+                cx = self.get_cluster_info(level="trace")
+                has_head_block_id = lambda node_id: "head_block_id" in cx.response_dict["result"][node_id][1]
+                extract_head_block_id = lambda node_id: cx.response_dict["result"][node_id][1]["head_block_id"]
+                extract_head_block_num = lambda node_id: cx.response_dict["result"][node_id][1]["head_block_num"]
+                counter = collections.defaultdict(int)
+                headless = 0
+                max_block_num, min_block_num = -1, math.inf
+                max_block_node = min_block_node = -1
+                sync_count = 0
+                for node_id in range(self.node_count):
+                    if has_head_block_id(node_id):
+                        block_num = extract_head_block_num(node_id)
+                        if block_num > max_block_num:
+                            max_block_num, max_block_node = block_num, node_id
+                        if block_num < min_block_num:
+                            min_block_num, min_block_node = block_num, node_id
+                        head_id = extract_head_block_id(node_id)
+                        counter[head_id] += 1
+                        if counter[head_id] > sync_count:
+                            sync_count, sync_block, sync_head = counter[head_id], block_num, head_id
+                    else:
+                        headless += 1
+                down_info = f"({headless} {helper.plural('node', headless)} down)"
+                self.log(f"{sync_count}/{self.node_count} {helper.plural('node', sync_count)} in sync: "
+                         f"max block num {max_block_num} from node {max_block_node}, "
+                         f"min block num {min_block_num} from node {min_block_node} "
+                         f"{down_info}", level=level)
+                if sync_count >= min_sync_count:
+                    self.log(color.green(f"<Sync Node Count> {sync_count}"), level=level)
+                    self.log(color.green(f"<Sync Block Num> {sync_block}"), level=level)
+                    self.log(color.green(f"<Sync Block ID> {sync_head}"), level=level)
+                    return SyncResult(True, sync_count, min_block_num)
+                if max_block_lag is not None and max_block_num - min_block_num > max_block_lag:
+                    self.log(f"Lag between min and max block numbers (={max_block_num - min_block_num}) "
+                             f"is larger than tolerance (={max_block_lag}).", level=level)
+                    break
+                time.sleep(sleep)
+            msg = "Nodes out of sync"
+            if not dont_raise:
+                self.error(color.black_on_red(msg))
+                raise SyncError(msg)
+            else:
+                self.log(color.black_on_yellow(msg), level=level)
+            return SyncResult(False, sync_count, min_block_num, max_block_num)
         retry = helper.override(self.sync_retry, retry, self.cla.sync_retry)
         sleep = helper.override(self.sync_sleep, sleep, self.cla.sync_sleep)
         min_sync_count = helper.override(self.node_count, min_sync_count)
-        self.print_header("check sync", level=level)
-        for _ in range(retry + 1):
-            cx = self.get_cluster_info(level="trace")
-            has_head_block_id = lambda node_id: "head_block_id" in cx.response_dict["result"][node_id][1]
-            extract_head_block_id = lambda node_id: cx.response_dict["result"][node_id][1]["head_block_id"]
-            extract_head_block_num = lambda node_id: cx.response_dict["result"][node_id][1]["head_block_num"]
-            counter = collections.defaultdict(int)
-            headless = 0
-            max_block_num, min_block_num = -1, math.inf
-            max_block_node = min_block_node = -1
-            sync_count = 0
-            for node_id in range(self.node_count):
-                if has_head_block_id(node_id):
-                    block_num = extract_head_block_num(node_id)
-                    if block_num > max_block_num:
-                        max_block_num, max_block_node = block_num, node_id
-                    if block_num < min_block_num:
-                        min_block_num, min_block_node = block_num, node_id
-                    head_id = extract_head_block_id(node_id)
-                    counter[head_id] += 1
-                    if counter[head_id] > sync_count:
-                        sync_count, sync_block, sync_head = counter[head_id], block_num, head_id
-                else:
-                    headless += 1
-            down_info = f"({headless} {helper.plural('node', headless)} down)"
-            self.log(f"{sync_count}/{self.node_count} {helper.plural('node', sync_count)} in sync: "
-                     f"max block num {max_block_num} from node {max_block_node}, "
-                     f"min block num {min_block_num} from node {min_block_node} "
-                     f"{down_info}", level=level)
-            if sync_count >= min_sync_count:
-                self.log(color.green(f"<Sync Node Count> {sync_count}"), level=level)
-                self.log(color.green(f"<Sync Block Num> {sync_block}"), level=level)
-                self.log(color.green(f"<Sync Block ID> {sync_head}"), level=level)
-                self.log(color.black_on_green("Nodes in sync"), level=level)
-                return SyncResult(True, sync_count, min_block_num)
-            if max_block_lag is not None and max_block_num - min_block_num > max_block_lag:
-                self.log(f"Lag between min and max block numbers (={max_block_num - min_block_num}) "
-                         f"is larger than tolerance (={max_block_lag}).", level=level)
-                break
-            time.sleep(sleep)
-        msg = "Nodes out of sync"
-        if not dont_raise:
-            self.error(color.black_on_red(msg))
-            raise SyncError(msg)
+        self.print_header("check_sync", level=level)
+        self.log(f"Max {retry} retries. Sleep for {sleep}s between retries.", level=level)
+        if max_block_lag:
+            self.log(f"Max tolerable lag between min and max block numbers = {max_block_lag}.", level=level)
+        self.log(f"Expect at least {min_sync_count} of {self.node_count} nodes in sync.", level=level)
+        if expect_advance:
+            self.log("Expect block numbers to be advancing.", level=level)
+        res = get_sync_result()
+        if not expect_advance:
+            return res
         else:
-            self.log(color.black_on_yellow(msg), level=level)
-        return SyncResult(False, sync_count, min_block_num, max_block_num)
-
-    def check_sync(self, retry=None, sleep=None, min_sync_count=None, max_block_lag=None, dont_raise=False, level="debug", require_advance=True):
-        r0 = self.check_sync_no_advance(retry=retry, sleep=sleep, min_sync_count=min_sync_count, max_block_lag=max_block_lag, dont_raise=dont_raise, level=level)
-        if (not r0.in_sync) or (not require_advance):
-            return r0 # not in-sync or not require to check advance
-        retry = helper.override(self.sync_retry, retry, self.cla.sync_retry)
-        for _ in range(retry + 1):
-            time.sleep(0.5)
-            r1 = self.check_sync_no_advance(retry=retry, sleep=sleep, min_sync_count=min_sync_count, max_block_lag=max_block_lag, dont_raise=dont_raise, level=level)
-            if not r1.in_sync:
-                return r1 # not in-sync
-            if r1.block_num > r0.block_num:
-                self.log(color.black_on_green(f"Nodes in sync and advanced from {r0.block_num} to {r1.block_num}"), level=level)
-                return r1 # ok, in-sync & advancing
-        msg = "Nodeos not advancing"
+            for _ in range(retry):
+                if not res.in_sync:
+                    return res
+                else:
+                    time.sleep(sleep)
+                    old = res
+                    res = get_sync_result()
+                    if res.block_num > old.block_num:
+                        self.log(f"Block number advanced from {old.block_num} to {res.block_num}.", level=level)
+                        self.log(color.black_on_green(f"Node in sync"), level=level)
+                        return res
+        msg = "Nodes not advancing"
         if not dont_raise:
             self.error(color.black_on_red(msg))
             raise SyncError(msg)
-        return r1
+        return res
 
     def check_production_round(self, expected_producers: typing.List[str], new_producers={}, level="debug", dont_raise=False):
         self.print_header("check production round", level=level)
@@ -1577,7 +1589,7 @@ def _init_cluster():
     return cluster
 
 def _main():
-    with _init_cluster() as clus:
+    with _init_cluster():
         pass
 
 if __name__ == "__main__":

@@ -106,13 +106,14 @@ def catchup(clus, begin, round):
 
 def main():
     with init_cluster() as clus:
-        clus.info(">>> [Catch-up Test] --------------------- BEGIN ----------------------------------------------------")
+        testname = "Catch-up Test"
+        clus.print_begin(testname)
         begin = create_accounts(clus)
         end = start_gen(clus, begin)
         count_gen(clus, begin, end)
         for i in range(CATCHUP_ROUNDS):
             end = catchup(clus, end, i+1)
-        clus.info(">>> [Catch-up Test] --------------------- END ------------------------------------------------------")
+        clus.print_end(testname)
 
 
 if __name__ == "__main__":

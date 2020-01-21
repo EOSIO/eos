@@ -104,12 +104,13 @@ def restart_and_verify(clus, last_block_in_sync):
 
 def main():
     with init_cluster() as clus:
-        clus.info(">>> [Fork Test] ------------------------- BEGIN ----------------------------------------------------")
+        testname = "Fork Test"
+        clus.print_begin(testname)
         last_block_in_sync = set_and_verify(clus)
         for _ in range(0, 20):
             kill_and_verify(clus)
             last_block_in_sync = restart_and_verify(clus, last_block_in_sync)
-        clus.info(">>> [Fork Test] ------------------------- END ------------------------------------------------------")
+        clus.print_end(testname)
 
 
 if __name__ == "__main__":

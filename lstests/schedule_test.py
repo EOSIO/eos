@@ -27,11 +27,12 @@ def test_round(clus, round, prods, new_prods, verify_key="irreversible"):
 
 def main():
     with init_cluster() as clus:
-        clus.info(">>> [Production Schedule Test] ---------- BEGIN ------------------------------------------")
+        testname = "Production Schedule Test"
+        clus.print_begin(testname)
         test_round(clus, round=1, prods=clus.node_to_producers[1], new_prods=clus.node_to_producers[1], verify_key="irreversible")
         test_round(clus, round=2, prods=clus.node_to_producers[2], new_prods=clus.node_to_producers[2], verify_key="irreversible")
         test_round(clus, round=3, prods=clus.node_to_producers[1] + clus.node_to_producers[2], new_prods=clus.node_to_producers[1], verify_key="irreversible")
-        clus.info(">>> [Production Schedule Test] ---------- END --------------------------------------------")
+        clus.print_end(testname)
 
 
 if __name__ == "__main__":

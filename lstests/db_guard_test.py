@@ -52,7 +52,8 @@ def main():
                 account_count += 1
             clus.bios_create_accounts(accounts=acco, verify_key=None, level="trace")
 
-        clus.info(">>> [DB Guard Test] --------------------- BEGIN ------------------------------------------")
+        testname = "DB Guard Test"
+        clus.print_begin(testname)
         clus.info(f">>> [DB Guard Test] Step 0: Set Up Database Guard")
         guard = 1002
         cap = 1010
@@ -114,7 +115,7 @@ def main():
         create_accounts(clus, 100)
         time.sleep(1)
         check_sync()
-        clus.info(">>> [DB Guard Test] --------------------- END --------------------------------------------")
+        clus.print_end(testname)
 
 
 if __name__ == "__main__":
