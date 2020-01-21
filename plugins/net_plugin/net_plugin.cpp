@@ -619,7 +619,7 @@ namespace eosio {
       static void _close( connection* self, bool reconnect, bool shutdown ); // for easy capture
    public:
 
-      bool populate_handshake( handshake_message& hello );
+      bool populate_handshake( handshake_message& hello, bool force );
 
       bool resolve_and_connect();
       void connect( const std::shared_ptr<tcp::resolver>& resolver, tcp::resolver::results_type endpoints );
@@ -635,7 +635,7 @@ namespace eosio {
        */
       bool process_next_message(uint32_t message_length);
 
-      void send_handshake();
+      void send_handshake( bool force = false );
 
       /** \name Peer Timestamps
        *  Time message handling
@@ -1041,10 +1041,10 @@ namespace eosio {
       syncing = false;
    }
 
-   void connection::send_handshake() {
-      strand.dispatch( [c = shared_from_this()]() {
+   void connection::send_handshake( bool force ) {
+      strand.dispatch( [force, c = shared_from_this()]() {
          std::unique_lock<std::mutex> g_conn( c->conn_mtx );
-         if( c->populate_handshake( c->last_handshake_sent ) ) {
+         if( c->populate_handshake( c->last_handshake_sent, force ) ) {
             static_assert( std::is_same_v<decltype( c->sent_handshake_count ), int16_t>, "INT16_MAX based on int16_t" );
             if( c->sent_handshake_count == INT16_MAX ) c->sent_handshake_count = 1; // do not wrap
             c->last_handshake_sent.generation = ++c->sent_handshake_count;
@@ -1732,7 +1732,7 @@ namespace eosio {
          g.unlock();
          c->close();
       } else {
-         c->send_handshake();
+         c->send_handshake( true );
       }
    }
 
@@ -3154,9 +3154,9 @@ namespace eosio {
    }
 
    // call from connection strand
-   bool connection::populate_handshake( handshake_message& hello ) {
+   bool connection::populate_handshake( handshake_message& hello, bool force ) {
       namespace sc = std::chrono;
-      bool send = false;
+      bool send = force;
       hello.network_version = net_version_base + net_version;
       const auto prev_head_id = hello.head_id;
       uint32_t lib, head;
