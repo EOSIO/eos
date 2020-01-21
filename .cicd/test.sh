@@ -6,8 +6,9 @@ export DOCKERIZATION=false
 . ./.cicd/helpers/populate-template-and-hash.sh '<!-- DAC ENV'
 if [[ $(uname) == 'Darwin' ]]; then # macOS
     if [[ $BUILDKITE == true ]]; then
-        export PLATFORM_TYPE="unpinned"
         . ./.cicd/helpers/populate-template-and-hash.sh '<!-- DAC ENV' '<!-- DAC DEPS' # Install mongo deps
+        echo "/tmp/$POPULATED_FILE_NAME"
+        cat /tmp/$POPULATED_FILE_NAME
         . /tmp/$POPULATED_FILE_NAME
         cp -rfp $(pwd) $EOS_LOCATION
         cd $EOS_LOCATION
