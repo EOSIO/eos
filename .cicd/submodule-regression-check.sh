@@ -9,8 +9,7 @@ if [[ $BUILDKITE == true ]]; then
     CURRENT_BRANCH=$BUILDKITE_BRANCH
 else
     BASE_BRANCH=$GITHUB_BASE_REF
-    CURRENT_BRANCH=$GITHUB_HEAD_REF
-    [[ ! -z $TRAVIS_PULL_REQUEST_SLUG ]] && CURRENT_BRANCH=$GITHUB_SHA	 # When we're not running from a PR, the slug is not set. When we are, we need to use the GITHUB_SHA to be sure we're supporting the Forked PR's merge/code that's in the EOS repo. This is needed for the git log below.
+    CURRENT_BRANCH=$GITHUB_SHA
 fi
 
 echo "getting submodule info for $CURRENT_BRANCH"
