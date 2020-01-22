@@ -120,7 +120,7 @@ EOF
       - "cd eos && ./.cicd/build.sh"
       - "cd eos && tar -pczf build.tar.gz build && buildkite-agent artifact upload build.tar.gz"
     plugins:
-      - chef/anka#v0.5.5:
+      - EOSIO/anka#v0.5.7:
           no-volume: true
           inherit-environment-vars: true
           vm-name: ${MOJAVE_ANKA_TEMPLATE_NAME}
@@ -133,7 +133,7 @@ EOF
           failover-registries:
             - 'registry_1'
             - 'registry_2'
-          pre-execute-sleep: 10
+          pre-execute-ping-sleep: "8.8.8.8"
           pre-commands:
             - "rm -rf mac-anka-fleet; git clone git@github.com:EOSIO/mac-anka-fleet.git && cd mac-anka-fleet && . ./ensure-tag.bash -u 12 -r 25G -a '-n'"
       - thedyrt/skip-checkout#v0.1.1:
@@ -270,7 +270,7 @@ EOF
       - "cd eos && buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' && tar -xzf build.tar.gz"
       - "cd eos && ./.cicd/test.sh scripts/parallel-test.sh"
     plugins:
-      - chef/anka#v0.5.4:
+      - EOSIO/anka#v0.5.7:
           no-volume: true
           inherit-environment-vars: true
           vm-name: ${MOJAVE_ANKA_TEMPLATE_NAME}
@@ -281,7 +281,7 @@ EOF
           failover-registries:
             - 'registry_1'
             - 'registry_2'
-          pre-execute-sleep: 10
+          pre-execute-ping-sleep: "8.8.8.8"
       - thedyrt/skip-checkout#v0.1.1:
           cd: ~
     agents: "queue=mac-anka-node-fleet"
@@ -334,7 +334,7 @@ EOF
       - "cd eos && buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' && tar -xzf build.tar.gz"
       - "cd eos && ./.cicd/test.sh scripts/wasm-spec-test.sh"
     plugins:
-      - chef/anka#v0.5.4:
+      - EOSIO/anka#v0.5.7:
           no-volume: true
           inherit-environment-vars: true
           vm-name: ${MOJAVE_ANKA_TEMPLATE_NAME}
@@ -345,7 +345,7 @@ EOF
           failover-registries:
             - 'registry_1'
             - 'registry_2'
-          pre-execute-sleep: 10
+          pre-execute-ping-sleep: "8.8.8.8"
       - thedyrt/skip-checkout#v0.1.1:
           cd: ~
     agents: "queue=mac-anka-node-fleet"
@@ -407,7 +407,7 @@ EOF
       - "cd eos && buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' && tar -xzf build.tar.gz"
       - "cd eos && ./.cicd/test.sh scripts/serial-test.sh $TEST_NAME"
     plugins:
-      - chef/anka#v0.5.4:
+      - EOSIO/anka#v0.5.7:
           no-volume: true
           inherit-environment-vars: true
           vm-name: ${MOJAVE_ANKA_TEMPLATE_NAME}
@@ -418,7 +418,7 @@ EOF
           failover-registries:
             - 'registry_1'
             - 'registry_2'
-          pre-execute-sleep: 10
+          pre-execute-ping-sleep: "8.8.8.8"
       - thedyrt/skip-checkout#v0.1.1:
           cd: ~
     agents: "queue=mac-anka-node-fleet"
@@ -481,7 +481,7 @@ EOF
       - "cd eos && buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' ${BUILD_SOURCE} && tar -xzf build.tar.gz"
       - "cd eos && ./.cicd/test.sh scripts/long-running-test.sh $TEST_NAME"
     plugins:
-      - chef/anka#v0.5.4:
+      - EOSIO/anka#v0.5.7:
           no-volume: true
           inherit-environment-vars: true
           vm-name: ${MOJAVE_ANKA_TEMPLATE_NAME}
@@ -492,7 +492,7 @@ EOF
           failover-registries:
             - 'registry_1'
             - 'registry_2'
-          pre-execute-sleep: 10
+          pre-execute-ping-sleep: "8.8.8.8"
       - thedyrt/skip-checkout#v0.1.1:
           cd: ~
     agents: "queue=mac-anka-node-fleet"
@@ -691,7 +691,7 @@ cat <<EOF
       - "cd eos && buildkite-agent artifact download build.tar.gz . --step ':darwin: macOS 10.14 - Build' && tar -xzf build.tar.gz"
       - "cd eos && ./.cicd/package.sh"
     plugins:
-      - chef/anka#v0.5.4:
+      - EOSIO/anka#v0.5.7:
           no-volume: true
           inherit-environment-vars: true
           vm-name: 10.14.6_6C_14G_40G
@@ -702,7 +702,7 @@ cat <<EOF
           failover-registries:
             - 'registry_1'
             - 'registry_2'
-          pre-execute-sleep: 10
+          pre-execute-ping-sleep: "8.8.8.8"
       - thedyrt/skip-checkout#v0.1.1:
           cd: ~
     agents:
