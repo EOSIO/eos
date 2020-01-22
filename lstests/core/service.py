@@ -717,7 +717,7 @@ class Cluster:
                  sync_sleep=None):
         """Create a Cluster object to launch a cluster of nodes.
 
-        The node cluster is the plaform on which a test will be performed.
+        The node cluster is the platform on which a test will be performed.
 
         Parameters
         ----------

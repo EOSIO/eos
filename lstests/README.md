@@ -22,33 +22,44 @@
      * [Main API](#main-api)
      * [**call_kwargs](#call_kwargs)
   * [Debugging](#debugging)
+  * [Troubleshooting](#troubleshooting)
 
 ## What is It
 
-The Launcher Service-based EOSIO Testing Framework aims to provide a more manageable, deterministic and independent nodeos test environment to replace the original python testing framework.
+The Launcher Service-based EOSIO Testing Framework aims to provide a more manageable, deterministic and independent nodeos testing environment to replace the original Python testing framework.
 
 ### Features
 
-- **Fully-Customizable** -- With launcher service, it is now possible to specify
-  - number of nodes/producers, network topology, and many other parameters for a cluster of nodes, either within the test script or via command-line arguments
-  - specific options for an individual node in the cluster
-  - queries to a particular node's endpoint, including a node's port number, process ID, log data, etc
-  - queries to the whole cluster state with a single API, useful for checking if all the nodes are in sync, the head block number, etc
-  - different signals (`SIGTERM`, `SIGKILL`, etc.) to a specific node in cluster
-  - commands to shutdown/restart one or all nodes in a cluster, with auto clean-up
-  - commands to activate any protocol feature
-- **Parallel** -- Allow multiple test cases to run simultaneously without affecting each other.
-  - Each test case runs on a separate cluster of nodes, with a unique cluster ID that can be specified by `cluster_id` in the test script or by `-i/--cluster-id` from the command-line.
-  - Port assignment is managed by the launcher service.
-  - Support up to 30 clusters.
+- **Fully-Customizable**
+
+  With the Launcher Service, it is now possible to
+
+  - specify the numbers of nodes & producers, the network topology, among a variety of parameters for a cluster of nodes, either from the test script or via the command-line arguments;
+  - set up specific options for an individual node in a cluster;
+  - query the entire cluster state with a single API (*useful when checking if all the nodes are in sync, and the head block number that they sync at*);
+  - query a particular node's information, including the node's port number, process ID, log data, etc;
+  - shut down or restart one or all the nodes in a cluster, with clean-up work done automatically;
+  - send specific signals (e.g. `SIGTERM`, `SIGKILL`) to a particular node;
+  - activate any protocol features.
+
+- **Parallel**
+
+  Allow multiple test cases to run simultaneously without interfering with each other.
+
+  - Each test case runs on a separate cluster of nodes, with a unique cluster ID that can be specified by `cluster_id` in the test script or by `-i`  or `--cluster-id` from the command line.
+  - Port assignment is managed by the Launcher Service.
+  - Log files are properly placed / automatically renamed based on the cluster ID.
+  - Support up to 30 clusters by default.
+
 - **Self-Contained**
+
   - Independent from `cleos`
-    - able to send arbitrary actions to arbitrary nodes from the launcher service
+    - Able to push arbitrary actions to arbitrary nodes from the Launcher Service.
   - Independent from `keosd`
-    - key management and key-signing done automatically within the launcher service
-    - able to import keys, generate keys by random seed, and select the right keys to sign any transaction
-  - Transaction verification
-    - able to verify any transaction given transaction ID, without resorting to `history_plugin`
+    - Key management and key-signing done automatically by the Launcher Service.
+    - Able to import keys, to generate keys from a random seed, and to select the right keys to sign any transaction.
+  - Transaction Verification
+    - Able to verify any transaction given transaction ID, without resorting to `history_plugin`.
 
 
 ### Architecture
@@ -59,7 +70,7 @@ The Launcher Service-based EOSIO Testing Framework aims to provide a more manage
 
 ### High-Level
 
-At the very high level, a typical Python test script consists of only two steps:
+At a high level, a typical Python test script has only two steps:
 
 1. Initialize a cluster
 2. Test on the cluster
@@ -74,18 +85,16 @@ In order to initialize a cluster, three sub-steps are needed:
 
 <img src="./doc/flow.png" width="300" />
 
-The `Logger`, `Service` and `Cluster` objects respectively control the logging behavior, the launcher service, and a particular cluster of nodes.
+The `Logger`, `Service` and `Cluster` objects respectively control the logging behavior, the Launcher Service, and a particular cluster of nodes.
 
 ### A Real Example
 
-The following code is an excerpt from a real testing script. The three sub-steps for the cluster initialization are bundled in a `init_cluster()` function. This exemplifies a typical way to start a test script.
+The following code is an excerpt from a real test script. The three sub-steps for the cluster initialization are bundled in a `init_cluster()` function. This exemplifies a typical way to start a test script.
 
 ```python
-import random
-import time
-
 from core.logger import ScreenWriter, FileWriter, Logger
 from core.service import Service, Cluster, BlockchainError, SyncError
+
 
 def init_cluster():
     test = "fork"
@@ -95,26 +104,28 @@ def init_cluster():
                     FileWriter(filename=f"{test}-trace.log", threshold="trace", monochrome=True))
     service = Service(logger=logger)
     cluster = Cluster(service=service, node_count=3, pnode_count=3, producer_count=7,
-                      topology="bridge", center_node_id=1, dont_setprod=True)
+                      topology="bridge", center_node_id=1, dont_setprod=True,
+                      special_log_levels=[["net_plugin_impl", "debug"]])
     return cluster
 
 
 def main():
     with init_cluster() as clus:
-        clus.info(">>> [Fork Test] ---------- BEGIN ---------------------------------------")
-        # testing (e.g. set contract, push actions) via clus
-        clus.info(">>> [Fork Test] ---------- END -----------------------------------------")
+        testname = "Fork Test"
+        clus.print_begin(testname)
+        # carry out test (e.g. set contract, push actions) via clus
+        clus.print_end(testname)
 
 
 if __name__ == "__main__":
     main()
 ```
 
-The imports bring into scope the related classes. Note that `Logger` resides in `core.logger`, while `Service` and `Cluster` reside in `core.service`. `BlockchainError` and `SyncError` represent `RuntimeError` types that are specifically related to the blockchain logic. In particular, `SyncError` inherits from the `BlockchainError` and represents the in-sync status of nodes.
+The imports bring into scope related classes. Note that `Logger` resides in `core.logger`, while `Service` and `Cluster` reside in `core.service`. `BlockchainError` and `SyncError` represent `RuntimeError` types that are specifically related to the blockchain logic. In particular, `SyncError` inherits from the `BlockchainError` and represents the in-sync status of nodes.
 
 A `Logger` object has full control over the logging behavior throughout the test. It is created by specifying where to log, and what to log. In this case, the `Logger` has 4 logging destinations: printing to the screen, plus writing to three log files, at different log levels.
 
-A `Service` object should know the `Logger` and all the settings regarding the launcher service. In this example, everything is set to default. Normally, it is safe to do so. The `Service` object will automatically detect the executable file and the listening port if there is an existing launcher service running in the background.
+A `Service` object should know the `Logger` and all the settings regarding the Launcher Service. In this example, everything is set to default. Normally, it is safe to do so. If there already is a Launcher Service program running in the background, the `Service` object will be able to detect it, and will automatically connect to it by default.
 
 A `Cluster` object should know the `Service` and all the settings regarding the cluster of nodes. In this example, the settings include:
 
@@ -122,8 +133,8 @@ A `Cluster` object should know the `Service` and all the settings regarding the 
 2. `pnode_count=3` : the 3 nodes all have producers
 3. `producer_count=7` : there are 7 producers in the cluster
 4. `topology="bridge"` : the network topology is `bridge`
-5. `center_node_id=1` : node 1 is the center node for `bridge` topology
-6. `dont_setprod=True` : do not set producers (using `setprods`) after launch
+5. `center_node_id=1` : node 1 is the center node for the `bridge` topology
+6. `dont_setprod=True` : do not automatically set producers (using `setprods`) after launch
 
 The first three settings together suggest that the node mapping will be 3 producer accounts in node 0, and 2 producer accounts each in nodes 1 and 2.
 
@@ -133,7 +144,7 @@ After the launch of the cluster, the producer accounts will be created using `ne
 
 #### The Context Manager
 
-It is recommended to operate on a `Cluster` object using a context manager, i.e. using the `with` statement in the example.
+It is highly recommended to use a context manger for a `Cluster` object, i.e. to use the `with` statement as in the example.
 
 ```python
 with init_cluster() as clus:
@@ -147,11 +158,11 @@ The `Logger`,  `Service` and `Cluster` objects are all configured at their creat
 
 ### Hierarchy
 
-While there are many arguments, the values in general come from three sources, with the later items, if specified, overriding the earlier items in the list:
+Configuration in general comes from 3 sources, with the later items, if specified, overriding the earlier items as shown in the list below:
 
-1. default values
-2. in-script arguments, and
-3. command-line arguments.
+1. default values, which can be overridden by
+2. in-script arguments, which can be overridden by
+3. command-line arguments
 
 For example, the default value for a cluster ID is 0
 
@@ -177,17 +188,17 @@ or simply
 ./script.py -i 6
 ```
 
-The purpose of the design is to allow flexibility in the testing. It allows users to temporarily change the testing behavior without modifying the script. For example, if the user passes `--debug` at the command line, the logger will print out all the logging information at or above `debug` level on the screen, regardless of the original threshold for the log level.
+*The purpose of the design is to allow flexibility in the testing. It allows users to temporarily change the testing behavior without modifying the script. For example, if the user passes `--debug` at the command line, the logger will print out all the logging information at or above `debug` level, regardless of the original threshold for the log level.*
 
 ### Ask for Help
 
-For command-line configuration, passing `-h` or `--help` will list all the settings. Below is the list of settings.
+For command-line configuration, passing `-h` or `--help` will list all the settings. Below is a list of the settings.
 
 ```
   Launcher Service-based EOSIO Testing Framework
 
   -h, --help                     Show this message and exit
-  
+
   ----- Service Settings ------------------------------------------------------
   -a IP, --addr IP               IP address of launcher service
   -o PORT, --port PORT           Listening port of launcher service
@@ -197,7 +208,7 @@ For command-line configuration, passing `-h` or `--help` will list all the setti
   -s, --start                    Always start a new launcher service
   -k, --kill                     Kill existing launcher services (if any)
   --extra-service-args ARGS      Extra arguments to pass to launcher service
-  
+
   ----- Cluster Settings ------------------------------------------------------
   -c PATH, --cdir PATH           Smart contracts directory
   -i ID, --cluster-id ID         Cluster ID to launch with
@@ -218,7 +229,7 @@ For command-line configuration, passing `-h` or `--help` will list all the setti
   --verify-sleep TIME            Verify transaction: sleep time between retries
   --sync-retry NUM               Check sync: max num of retries
   --sync-sleep TIME              Check sync: sleep time between retries
-  
+
   ----- Logger Settings -------------------------------------------------------
   -l LEVEL, --log-level LEVEL    Stdout logging level (numeric)
   --all                          Set stdout logging level to ALL (0)
@@ -233,23 +244,23 @@ For command-line configuration, passing `-h` or `--help` will list all the setti
   -m, --monochrome               Do not print in colors for stdout logging
   --dont-buffer                  Do not buffer for stdout logging
   --dont-rename                  Do not rename log files by cluster ID
-  -hct, --hide-clock-time        Hide clock time in stdout logging
-  -het, --hide-elapsed-time      Hide elapsed time in stdout logging
-  -hfi, --hide-filename          Hide filename in stdout logging
-  -hli, --hide-lineno            Hide line number in stdout logging
-  -hfu, --hide-function          Hide function name in stdout logging
-  -hth, --hide-thread            Hide thread name in stdout logging
-  -hll, --hide-log-level         Hide log level in stdout logging
-  -hall, --hide-all              Hide all the above in stdout logging
+  --hide-clock-time              Hide clock time in stdout logging
+  --hide-elapsed-time            Hide elapsed time in stdout logging
+  --hide-filename                Hide filename in stdout logging
+  --hide-lineno                  Hide line number in stdout logging
+  --hide-function                Hide function name in stdout logging
+  --hide-thread                  Hide thread name in stdout logging
+  --hide-log-level               Hide log level in stdout logging
+  --hide-all                     Hide all the above in stdout logging
 ```
 
 ### `Logger`
 
-A `Logger` is a composite of one or multiple writers, which typically include one `ScreenWriter` and several `FileWriter`. One writer corresponds to one logging destination. A `ScreenWriter` writes to the screen (`stdout`) while a `FileWriter` writes to a particular file whose name is given in `filename`.
+A `Logger` is a composite of one or more writers, which typically include one `ScreenWriter` and several `FileWriter` objects. One writer corresponds to one logging destination. A `ScreenWriter` writes to the screen (`stdout`) while a `FileWriter` writes to a file whose name is given by `filename`.
 
 #### A Quick Example
 
-Suppose a `Logger` object
+Given a `Logger` object
 
 ```python
 logger = Logger(ScreenWriter(threshold="info"),
@@ -257,9 +268,7 @@ logger = Logger(ScreenWriter(threshold="info"),
                 FileWriter(threshold="trace", filename="trace.log"))
 ```
 
-has been set properly for a `Cluster` object whose name is `clus`.
-
-Then a line in the Python test script
+Suppose it has been registered to a `Cluster` object, whose name is `clus`. Then a line in the Python test script
 
 ```python
 clus.log("Some debug information.", level="debug")
@@ -271,7 +280,7 @@ or equivalently
 clus.debug("Some debug information.")
 ```
 
-will write down a line such as
+will write down a line
 
 ```
 Some debug information.
@@ -288,9 +297,9 @@ In general, for a writer, the settings include
 
 1. `threshold` : Information at or above the `threshold` will be written to the logging destination.
 2. `monochrome` : If `True`, remove all the style and color codes (e.g. `\033[1;31m` for bold red) when writing the text to the logging destination. Default value is `False`.
-3. `buffered` : If `True`, it will be *possible* to buffer the logging information and flush it in a coordinated manner. This is helpful when there are multiple threads running simultaneously.
-4. `show_clock_time` : Show the clock time in the line. Default value is `True`.
-5. `show_elapsed_time` : Show the elapsed time in the line. Default value is `True`.
+3. `buffered` : If `True`, it will be *possible* to buffer the logging information and flush it in a coordinated manner. This is helpful when there are multiple threads running simultaneously. Default value is `True`.
+4. `show_clock_time` : Show clock time in each line. Default value is `True`.
+5. `show_elapsed_time` : Show elapsed time in each line. Default value is `True`.
 6. `show_filename` : Show the name of the file that invokes the logging. Default value is `True`.
 7. `show_lineno` : Show the line number of the function that invokes the logging. Default value is `True`.
 8. `show_function` : Show the name of the function that invokes the logging. Default value is `True`.
@@ -301,7 +310,7 @@ In general, for a writer, the settings include
 
 Buffering only matters when there are multiple threads, for example, when creating multiple accounts in parallel, or when verifying a transaction asynchronously.
 
-For a writer, if `buffered=True`, it will be possible to keep information organized and make the log result human-readable. If `buffered=False`, logging will take place as soon as a line is ready. Multiple threads may log in an interleaving manner, unaware of each other's existence. In general, setting `buffered=False` will *not* reduce the entire logging time, but will keep the lines in a strict chronological order, though the information itself may not be human-readable.
+For a writer, if `buffered=True`, it will be possible to keep information organized and make the log result human-readable. If `buffered=False`, logging will take place as soon as a line is ready. Multiple threads may log in an interleaving manner, unaware of each other's existence. In general, setting `buffered=False` will *not* reduce the entire logging time, but will keep the lines in a strictly chronological order, though the information itself may not be human-readable.
 
 Note that, `buffered=True` only provides a possibility to buffer. Buffering does not happen automatically. A line of information will only be buffered when it is explicitly told to do so.
 
@@ -363,7 +372,7 @@ thread-2: second half
 | `TRACE` | 10    |
 | `ALL`   | 0     |
 
-The `LogLevel` class accepts either a numeric value or a case-insensitive string for the level. While there are text names given for the level values, all the integers in `[0, 100]` are valid log levels.
+The `LogLevel` class accepts either a numeric value or a case-insensitive string for the level. While there are  level names for given values, all the integers in `[0, 100]` can be valid log levels. For example,
 
 ```python
 clus.log("Some warning information.", level="warn")
@@ -375,7 +384,7 @@ is equivalent to
 clus.log("Some warning information.", level=40)
 ```
 
-or
+which is equivalent to
 
 ```python
 clus.warn("Some warning information.")
@@ -384,23 +393,18 @@ clus.warn("Some warning information.")
 As another example,
 
 ```python
-clus.log("Some info more prominent than INFO but not yet a WARN", level=35)
+clus.log("Some information more prominent than INFO but not yet a WARN", level=35)
 ```
 
-This line will be written to any logging destination with a threshold at or lower than 35. It will be printed out on the screen if the `ScreenWriter` has an `INFO`-level threshold. It will be written to a log file if there is a file writer `FileWriter(threshold=35)`. But it will not appear on the log file that captures only `WARN`-or-higher-level information.
+This line will be written to any logging destination with a logging threshold at or lower than 35. For example, it will be printed on screen given `ScreenWriter(threshold="info")` but will not be written to a file with `FileWriter(threshold="warn", filename="warn.log")`.
 
 ### `Service`
 
-A `Service` object represents the connection with the launcher service running in the background. Once a `Service` object is created, it will try to connect to the launcher service automatically.
+A `Service` object represents the connection with the Launcher Service program running in the background. Once a `Service` object is created, it will try to connect to the Launcher Service automatically.
 
-After configuration, the `Service` may override the settings according to the command-line arguments, including:
+*Currently, it is only possible to connect to a local Launcher Service.*
 
-1. change working directory
-2. change `stdout` logging behavior
-
-Then it will try connecting to the launcher service. *Currently, it is only possible to connect to a local launcher service.*
-
-If there is already an existing launcher service running in the background, the `Service` object will by default connect to it (without starting a new one). It is possible to override this default behavior by requesting to always start a new launcher service and/or to kill all the existing launcher service(s).
+If there already is a Launcher Service running in the background, the `Service` object will by default connect to it without starting a new one. It is possible to override this default behavior by requesting to always start a new Launcher Service program and/or to kill all the existing Launcher Service program(s).
 
 A detailed explanation of the parameters to initialize a `Service` object can be found in its docstring.
 
@@ -448,7 +452,7 @@ For `extra_args`, the user may refer to the help text that `programs/launcher-se
 
 ### `Cluster`
 
-A `Cluster` object represents a cluster of nodes running on launcher service. It is the major proxy for tests to communicate with the launcher service. A `Cluster` object must have a `Service` object registered to it at initialization.
+A `Cluster` object represents a cluster of nodes controlled by the Launcher Service. It is the major proxy for the test scripts to communicate with the Launcher Service. A `Cluster` object must have a `Service` object registered to it at initialization.
 
 After configuration, the node cluster will be launched with the help of the `eosio.bios` contract.
 
@@ -527,16 +531,16 @@ sync_sleep : float
 
 For `extra_args`, the user may refer to the help text that `programs/nodeos/nodeos -h` offers.
 
-For example, by the help text of `nodeos`
+For example, from the help text of `nodeos`
 
 ```bash
 --genesis-json arg (=genesis.json)    File to read Genesis State from
 ```
 
-the user may create a cluster with a specific genesis file.
+the user may create a cluster with a specific genesis file
 
 ```python
-clus = Cluster(service=service, extra_args="--genesis-json=gene.json")
+clus = Cluster(service=serv, extra_args="--genesis-json=gene.json")
 ```
 
 This specifies `gene.json` as the genesis file for the cluster, which overrides the service-level setting.
@@ -547,9 +551,9 @@ The `Cluster` class provides a list of methods, such as `set_contract()` and `pu
 
 ### Mechanism
 
-Behind the scenes, a `Cluster` object communicates with the launcher service via HTTP connection in a request-and-response model.
+Under the hood, a `Cluster` object communicates with the Launcher Service via HTTP connection in a request-and-response model.
 
-Almost all the methods finally passes through or are dependent on the `call()`  method in the `Cluster` class. The standard steps to make a call include
+Almost all the methods finally passes through the `call()`  method in the `Cluster` class. The standard steps to make a call include
 
 ```
   Steps to take to make a call
@@ -567,7 +571,7 @@ The exact actions to take are fully customizable. Refer to `**call_kwargs` for f
 
 ### Main API
 
-After the node cluster is successfully launched, all the test actions can be performed on the cluster. The main API is listed below.
+After the launch of a node cluster, all the test actions can be performed on it. The main API is listed below.
 
     Main API
     --------
@@ -605,7 +609,7 @@ The full specification of the methods can be found in their docstrings.
 
 ### `**call_kwargs`
 
-One special parameter across almost all the methods is `**call_kwargs`, which represents all the controlling keyword arguments in the `call` method, which include
+One special parameter that appears in almost all the methods is `**call_kwargs`, which represents all the controlling keyword arguments in the `call` method, which include
 
 ```
  retry
@@ -643,17 +647,17 @@ def get_cluster_info(self, **call_kwargs):
     return self.call("get_cluster_info", **call_kwargs)
 ```
 
-Assume `clus ` is a `Cluster` object that is properly set up, then a line in the script
+A line in the Python test script
 
 ```python
 cx = clus.get_cluster_info(retry=200, response_text_level="debug")
 ```
 
-will, in getting the cluster information, change the max number of HTTP connection retries to 200 (default is 100) and set the log level for response text at `DEBUG` (default is `TRACE`). Now in a `DEBUG`-level log file, it is possible to view the text of the HTTP response.
+will, in getting the cluster information, change the max number of HTTP connection retries to 200 (default is `100`) and set the log level for response text at `DEBUG` (default is `TRACE`). Now in a `DEBUG`-level log file, it is possible to view the text of the HTTP response.
 
  ## Debugging
 
-The `core` package provides a hassle-free debugger for quick debugging in an interactive Python environment when a cluster has already been launched. The function names are identical with the corresponding query methods in the `Cluster` object, though there is no need to specify logging controls.
+The `core` package provides a hassle-free debugger for quick debugging in an interactive Python environment. It is especially helpful when a cluster has already been launched. The function names are identical with the corresponding query methods in the `Cluster`, and there is no need to specify logging controls.
 
 For example, given a node cluster already launched with cluster ID 0, the user may, for one-time debugging, in the Python interactive environment, enter
 
@@ -711,3 +715,82 @@ http://127.0.0.1:1234/v1/launcher/get_cluster_info
 ```
 
 which may be useful for debugging.
+
+## Troubleshooting
+
+**Scenario 1**
+
+```python
+__main__.LauncherServiceError: {
+    "code": 500,
+    "message": "Internal Service Error",
+    "error": {
+        "code": 0,
+        "name": "exception",
+        "what": "unspecified",
+        "details": [
+            {
+                "message": "connect: Connection refused",
+                "file": "http_plugin.cpp",
+                "line_number": 728,
+                "method": "handle_exception"
+            }
+        ]
+    }
+}
+```
+
+**Diagnosis**
+
+Make sure you have placed the `genesis.json` file in the proper location.
+
+By default, you should place it in the current working directory. If you have placed it elsewhere or have named it differently, make sure the program knows it, by passing `-g` or `--gene`. For example,
+
+```bash
+$ ./test.py --gene=./gene.json
+```
+
+tells the program to look for a `gene.json` in the current working directory and use it as the genesis file.
+
+**Scenario 2**
+
+```python
+__main__.LauncherServiceError: Address already in use
+```
+
+**Diagnosis**
+
+You may have already had a Launcher Service program running at the given port.
+
+Try to assign another port to the current Launcher Service by, for example,
+
+```bash
+$ ../lstests/core/service.py --start --port=1235
+```
+
+or explicitly kill the existing Launcher Service program(s)
+
+```bash
+$ ../lstests/core/service.py --kill
+```
+
+**Scenario 3**
+
+You are experimenting with the Launcher Service. After you change its source code and build it again, the Launcher Service fails to function properly.
+
+**Diagnosis**
+
+The old Launcher Service may still run in the background. Run
+
+```bash
+$ ps aux | grep launcher-service
+```
+
+to examine it, and run
+
+```bash
+$ pkill launcher-service
+```
+
+to kill the existing one.
+
