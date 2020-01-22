@@ -90,7 +90,7 @@ nIFS=$IFS # fix array splitting (\n won't work)
 # start with a wait step
 echo '  - wait'
 echo ''
-build steps
+# build steps
 echo '    # builds'
 echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | while read -r PLATFORM_JSON; do
     if [[ ! "$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)" =~ 'macos' ]]; then
