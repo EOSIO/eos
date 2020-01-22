@@ -10,7 +10,7 @@ This procedure creates a database containing the chain state, with full history 
 
 * Make sure [EOSIO is installed](../../../00_install/index.md).
 * Learn about [Using Nodeos](../../02_usage/index.md).
-* Get familiar with [state_history](../../03_plugins/state_history_plugin/index.md) plugin.
+* Get familiar with [state_history_plugin](../../03_plugins/state_history_plugin/index.md).
 
 ## Steps
 
