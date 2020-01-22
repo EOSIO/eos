@@ -22,10 +22,14 @@ if [[ $(uname) == 'Darwin' ]]; then # macOS
 else # Linux
     ARGS="--rm --init -v $(pwd):$(pwd) $(buildkite-intrinsics) -e JOBS"
     . $HELPERS_DIR/populate-template-and-hash.sh -h # Obtain the hash from the populated template 
-    echo "cp -rfp $(pwd) \$EOS_LOCATION && cd \$EOS_LOCATION" >> /tmp/$POPULATED_FILE_NAME # We don't need to clone twice
-    [[ $BUILDKITE == true ]]&& echo "tar -xzf build.tar.gz" >> /tmp/$POPULATED_FILE_NAME
+    if [[ $BUILDKITE == true ]]; then
+        echo "cp -rfp $(pwd) \$EOS_LOCATION && cd \$EOS_LOCATION" >> /tmp/$POPULATED_FILE_NAME # We don't need to clone twice
+        echo "tar -xzf build.tar.gz" >> /tmp/$POPULATED_FILE_NAME
+    else
+        echo "cd \$EOS_LOCATION" >> /tmp/$POPULATED_FILE_NAME # We don't need to clone twice
+    fi
     echo "$@" >> /tmp/$POPULATED_FILE_NAME
-    echo "cp -rfp \$EOS_LOCATION/build $(pwd)" >> /tmp/$POPULATED_FILE_NAME
+    [[ $BUILDKITE == true ]] && echo "cp -rfp \$EOS_LOCATION/build $(pwd)" >> /tmp/$POPULATED_FILE_NAME
     TEST_COMMANDS="cd $(pwd) && ./$POPULATED_FILE_NAME"
     cat /tmp/$POPULATED_FILE_NAME
     mv /tmp/$POPULATED_FILE_NAME ./$POPULATED_FILE_NAME
@@ -53,6 +57,6 @@ if [[ $BUILDKITE == true ]]; then
 fi
 # re-throw
 if [[ $EXIT_STATUS != 0 ]]; then
-    echo "Failing due to non-zero exit status from ctest: $EXIT_STATUS"
+    echo "Failing due to non-zero exit status: $EXIT_STATUS"
     exit $EXIT_STATUS
 fi
