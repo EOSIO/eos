@@ -251,6 +251,7 @@ namespace eosio {
       chain_plugin*                         chain_plug = nullptr;
       producer_plugin*                      producer_plug = nullptr;
       bool                                  use_socket_read_watermark = false;
+      std::atomic<int>                      exit_after_connect = -1;
       /** @} */
 
       mutable std::shared_mutex             connections_mtx;
@@ -2190,6 +2191,7 @@ namespace eosio {
                   c->connect( resolver, endpoints );
                } else {
                   fc_elog( logger, "Unable to resolve ${add}: ${error}", ("add", c->peer_name())( "error", err.message() ) );
+                  --my_impl->exit_after_connect;
                   ++c->consecutive_immediate_connection_close;
                }
          } ) );
@@ -2219,7 +2221,12 @@ namespace eosio {
                }
             } else {
                fc_elog( logger, "connection failed to ${peer}: ${error}", ("peer", c->peer_name())( "error", err.message()));
+               --my_impl->exit_after_connect;
                c->close( false );
+               if( my_impl->exit_after_connect.load() == 0 ) {
+                  app().quit();
+               }
+
             }
       } ) );
    }
@@ -2553,6 +2560,15 @@ namespace eosio {
 
       connecting = false;
       if (msg.generation == 1) {
+
+         if( my_impl->exit_after_connect.load() > 0 ) {
+            fc_wlog( logger, "handshake: ${p}: ${msg}", ("msg", msg)("p", peer_address()) );
+            --my_impl->exit_after_connect;
+         }
+         if( my_impl->exit_after_connect.load() == 0 ) {
+            app().quit();
+         }
+
          if( msg.node_id == my_impl->node_id) {
             fc_elog( logger, "Self connection detected node_id ${id}. Closing connection", ("id", msg.node_id) );
             enqueue( go_away_message( self ) );
@@ -3285,6 +3301,7 @@ namespace eosio {
            "Number of worker threads in net_plugin thread pool" )
          ( "sync-fetch-span", bpo::value<uint32_t>()->default_value(def_sync_fetch_span), "number of blocks to retrieve in a chunk from any individual peer during synchronization")
          ( "use-socket-read-watermark", bpo::value<bool>()->default_value(false), "Enable expirimental socket read watermark optimization")
+         ( "p2p-exit-after-connect", bpo::value<bool>()->default_value(false), "Report handshake and then exit")
          ( "peer-log-format", bpo::value<string>()->default_value( "[\"${_name}\" ${_ip}:${_port}]" ),
            "The string used to format peers when logging messages about them.  Variables are escaped with ${<variable name>}.\n"
            "Available Variables:\n"
@@ -3318,6 +3335,9 @@ namespace eosio {
          my->max_nodes_per_host = options.at( "p2p-max-nodes-per-host" ).as<int>();
 
          my->use_socket_read_watermark = options.at( "use-socket-read-watermark" ).as<bool>();
+         if( options.at( "p2p-exit-after-connect" ).as<bool>() ) {
+           my->exit_after_connect = 1;
+         }
 
          if( options.count( "p2p-listen-endpoint" ) && options.at("p2p-listen-endpoint").as<string>().length()) {
             my->p2p_address = options.at( "p2p-listen-endpoint" ).as<string>();
@@ -3463,6 +3483,9 @@ namespace eosio {
       my->start_monitors();
 
       my->update_chain_info();
+
+      if( my->exit_after_connect > 0 )
+         my->exit_after_connect = my->supplied_peers.size();
 
       for( const auto& seed_node : my->supplied_peers ) {
          connect( seed_node );
