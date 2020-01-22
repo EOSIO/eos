@@ -951,6 +951,11 @@ namespace eosio {
       if( reconnect && !shutdown ) {
          my_impl->start_conn_timer( std::chrono::milliseconds( 100 ), connection_wptr() );
       }
+      --my_impl->exit_after_connect;
+      if( my_impl->exit_after_connect.load() == 0 ) {
+         app().quit();
+      }
+
    }
 
    void connection::blk_send_branch( const block_id_type& msg_head_id ) {
