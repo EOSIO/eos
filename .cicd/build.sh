@@ -22,7 +22,7 @@ if [[ "$(uname)" == 'Darwin' ]]; then
     . /tmp/$POPULATED_FILE_NAME # This file is populated from the platform's build documentation code block
 else # Linux
     ARGS=${ARGS:-"--rm --init -v $(pwd):$(pwd) $(buildkite-intrinsics) -e GITHUB_WORKSPACE -e JOBS"} # We must mount $(pwd) in as itself to avoid https://stackoverflow.com/questions/31381322/docker-in-docker-cannot-mount-volume
-    echo "cp -rf \$EOS_LOCATION/build $(pwd)" >> /tmp/$POPULATED_FILE_NAME
+    [[ $BUILDKITE == true ]] && echo "cp -rf \$EOS_LOCATION/build $(pwd)" >> /tmp/$POPULATED_FILE_NAME
     BUILD_COMMANDS="cd $(pwd) && ./$POPULATED_FILE_NAME"
     . $HELPERS_DIR/populate-template-and-hash.sh -h # obtain $FULL_TAG (and don't overwrite existing file)
     cat /tmp/$POPULATED_FILE_NAME
@@ -30,7 +30,7 @@ else # Linux
     echo "$ docker run $ARGS $FULL_TAG bash -c \"$BUILD_COMMANDS\""
     eval docker run $ARGS $FULL_TAG bash -c \"$BUILD_COMMANDS\"
 fi
-if [[ $GITHUB_ACTIONS != true ]]; then
+if [[ $BUILDKITE == true ]]; then
     [[ $(uname) == 'Darwin' ]] && cd $EOS_LOCATION
     tar -pczf build.tar.gz build && buildkite-agent artifact upload build.tar.gz
 fi
