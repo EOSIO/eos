@@ -91,7 +91,7 @@ jobs:
         env:
           IMAGE_TAG: amazon_linux-2-pinned
           PLATFORM_TYPE: pinned
-  amazon_linux-2-build:
+  amazon_linux-2-submodule-regression-check:
     if: github.event.pull_request.base.repo.id != github.event.pull_request.head.repo.id
     name: Amazon_Linux 2 | Submodule Regression Check
     runs-on: ubuntu-latest
