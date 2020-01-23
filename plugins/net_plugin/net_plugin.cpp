@@ -2936,7 +2936,7 @@ namespace eosio {
 
       go_away_reason reason = fatal_other;
       try {
-         my_impl->chain_plug->accept_block(msg);
+         my_impl->chain_plug->accept_block(msg, blk_id);
          my_impl->update_chain_info();
          reason = no_reason;
       } catch( const unlinkable_block_exception &ex) {
