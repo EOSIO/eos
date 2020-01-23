@@ -334,13 +334,13 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          }
       };
 
-      void on_incoming_block(const signed_block_ptr& block, const std::optional<block_id_type>& block_id) {
+      bool on_incoming_block(const signed_block_ptr& block, const std::optional<block_id_type>& block_id) {
          auto& chain = chain_plug->chain();
          if ( chain.is_building_block() && _pending_block_mode == pending_block_mode::producing ) {
             fc_wlog( _log, "dropped incoming block #${num} while producing #${pbn} for ${bt}, id: ${id}",
                      ("num", block->block_num())("pbn", chain.head_block_num() + 1)
                      ("bt", chain.pending_block_time())("id", block_id ? (*block_id).str() : "UNKNOWN") );
-            return;
+            return false;
          }
 
          const auto& id = block_id ? *block_id : block->id();
@@ -353,7 +353,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
 
          /* de-dupe here... no point in aborting block if we already know the block */
          auto existing = chain.fetch_block_by_id( id );
-         if( existing ) { return; }
+         if( existing ) { return false; }
 
          // start processing of block
          auto bsf = chain.create_block_state_future( block );
@@ -375,7 +375,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
             } );
          } catch ( const guard_exception& e ) {
             chain_plugin::handle_guard_exception(e);
-            return;
+            return false;
          } catch( const fc::exception& e ) {
             elog((e.to_detail_string()));
             app().get_channel<channels::rejected_block>().publish( priority::medium, block );
@@ -403,6 +403,8 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                     ("confs", hbs->block->confirmed)("latency", (fc::time_point::now() - hbs->block->timestamp).count()/1000 ) );
             }
          }
+
+         return true;
       }
 
       void on_incoming_transaction_async(const packed_transaction_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next) {
@@ -817,7 +819,7 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
 
    my->_incoming_block_sync_provider = app().get_method<incoming::methods::block_sync>().register_provider(
          [this](const signed_block_ptr& block, const std::optional<block_id_type>& block_id) {
-      my->on_incoming_block(block, block_id);
+      return my->on_incoming_block(block, block_id);
    });
 
    my->_incoming_transaction_async_provider = app().get_method<incoming::methods::transaction_async>().register_provider(
