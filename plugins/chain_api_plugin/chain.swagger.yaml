@@ -1,6 +1,6 @@
 openapi: 3.0.0
 info:
-  title: EOSIO API
+  title: Chain API
   description: "OAS 3.0 Nodeos [chain_api_plugin](https://eosio.github.io/eos/latest/nodeos/plugins/chain_api_plugin/index) API Specification\r"
   version: 1.0.0
   license:
