@@ -13,11 +13,17 @@
 #define LOG_RW_C "rb+"
 
 #ifndef _WIN32
-#define FC_FOPEN(p, m) fopen(p, m)
+static FILE* native_fopen(const fc::path& p, const char* const mode) {
+   return fopen(p.generic_string().c_str(), mode);
+}
 #else
-#define FC_CAT(s1, s2) s1 ## s2
-#define FC_PREL(s) FC_CAT(L, s)
-#define FC_FOPEN(p, m) _wfopen(p, FC_PREL(m))
+static FILE* native_fopen(const fc::path& p, const char* const mode) {
+   wchar_t wmode[16] = {};
+   EOS_ASSERT(strlen(mode) < sizeof(wmode)/sizeof(wmode[0]) - 1, eosio::chain::misc_exception, "mode parameter to native_fopen() too long");
+   for(unsigned int i = 0; mode[i] != '\0'; ++i)
+      wmode[i] = mode[i];
+   return _wfopen(p.generic_wstring().c_str(), wmode);
+}
 #endif
 
 namespace eosio { namespace chain {
@@ -761,7 +767,7 @@ namespace eosio { namespace chain {
 
    uint32_t detail::reverse_iterator::open(const fc::path& block_file_name) {
       _block_file_name = block_file_name.generic_string();
-      _file.reset( FC_FOPEN(_block_file_name.c_str(), "r"));
+      _file.reset( native_fopen(_block_file_name.c_str(), "r"));
       EOS_ASSERT( _file, block_log_exception, "Could not open Block log file at '${blocks_log}'", ("blocks_log", _block_file_name) );
       _end_of_buffer_position = _unset_position;
 
@@ -892,7 +898,7 @@ namespace eosio { namespace chain {
 
    void detail::index_writer::prepare_buffer() {
       if (_file == nullptr) {
-         _file.reset(FC_FOPEN(_block_index_name.c_str(), "w"));
+         _file.reset(native_fopen(_block_index_name.c_str(), "w"));
          EOS_ASSERT( _file, block_log_exception, "Could not open Block index file at '${blocks_index}'", ("blocks_index", _block_index_name) );
          // allocate 8 bytes for each block position to store
          const auto full_file_size = buffer_location_to_file_location(_blocks_expected);
@@ -1072,9 +1078,9 @@ namespace eosio { namespace chain {
       using namespace std;
       block_file_name = block_dir / "blocks.log";
       index_file_name = block_dir / "blocks.index";
-      blk_in = FC_FOPEN(block_file_name.generic_string().c_str(), "rb");
+      blk_in = native_fopen(block_file_name.generic_string().c_str(), "rb");
       EOS_ASSERT( blk_in != nullptr, block_log_not_found, "cannot read file ${file}", ("file",block_file_name.string()) );
-      ind_in = FC_FOPEN(index_file_name.generic_string().c_str(), "rb");
+      ind_in = native_fopen(index_file_name.generic_string().c_str(), "rb");
       EOS_ASSERT( ind_in != nullptr, block_log_not_found, "cannot read file ${file}", ("file",index_file_name.string()) );
       auto size = fread((void*)&version,sizeof(version), 1, blk_in);
       EOS_ASSERT( size == 1, block_log_unsupported_version, "invalid format for file ${file}", ("file",block_file_name.string()));
