@@ -87,3 +87,5 @@ var/lib/node_*
 .DS_Store
 
 node_modules
+
+!*swagger*
