@@ -171,7 +171,7 @@ done
 #     timeout: ${TIMEOUT:-180}
 #     skip: ${SKIP_INSTALL}${SKIP_LINUX}${SKIP_DOCKER}
 
-#   - wait
+  - wait
 
 # EOF
 # # tests
