@@ -1918,6 +1918,7 @@ namespace eosio {
                       } else {
                          fc_elog( logger, "Unable to resolve ${peer_addr}: ${error}",
                                   ("peer_addr", c->peer_name())( "error", err.message()) );
+                         c->connecting = false;
                       }
                    } );
          } ) );
@@ -2010,12 +2011,11 @@ namespace eosio {
                   }
                   else {
                      if (from_addr >= max_nodes_per_host) {
-                        fc_elog(logger, "Number of connections (${n}) from ${ra} exceeds limit",
+                        fc_dlog(logger, "Number of connections (${n}) from ${ra} exceeds limit",
                                 ("n", from_addr+1)("ra",paddr.to_string()));
                      }
                      else {
-                        fc_elog(logger, "Error max_client_count ${m} exceeded",
-                                ( "m", max_client_count) );
+                        fc_dlog(logger, "max_client_count ${m} exceeded", ( "m", max_client_count) );
                      }
                      boost::system::error_code ec;
                      socket->close( ec );
@@ -2260,9 +2260,20 @@ namespace eosio {
       if (msg.p2p_address.empty()) {
          fc_wlog( logger, "Handshake message validation: p2p_address is null string" );
          valid = false;
+      } else if( msg.p2p_address.length() > max_handshake_str_length ) {
+         // see max_handshake_str_length comment in protocol.hpp
+         fc_wlog( logger, "Handshake message validation: p2p_address to large: ${p}", ("p", msg.p2p_address.substr(0, max_handshake_str_length) + "...") );
+         valid = false;
       }
       if (msg.os.empty()) {
          fc_wlog( logger, "Handshake message validation: os field is null string" );
+         valid = false;
+      } else if( msg.os.length() > max_handshake_str_length ) {
+         fc_wlog( logger, "Handshake message validation: os field to large: ${p}", ("p", msg.os.substr(0, max_handshake_str_length) + "...") );
+         valid = false;
+      }
+      if( msg.agent.length() > max_handshake_str_length ) {
+         fc_wlog( logger, "Handshake message validation: agent field to large: ${p}", ("p", msg.agent.substr(0, max_handshake_str_length) + "...") );
          valid = false;
       }
       if ((msg.sig != chain::signature_type() || msg.token != sha256()) && (msg.token != fc::sha256::hash(msg.time))) {
@@ -2754,23 +2765,30 @@ namespace eosio {
       auto from = from_connection.lock();
       auto it = (from ? connections.find(from) : connections.begin());
       if (it == connections.end()) it = connections.begin();
+      size_t num_rm = 0, num_clients = 0, num_peers = 0;
       while (it != connections.end()) {
          if (fc::time_point::now() >= max_time) {
             start_conn_timer(std::chrono::milliseconds(1), *it); // avoid exhausting
             return;
          }
+         (*it)->peer_addr.empty() ? ++num_clients : ++num_peers;
          if( !(*it)->socket->is_open() && !(*it)->connecting) {
-            if( (*it)->peer_addr.length() > 0) {
+            if( !(*it)->peer_addr.empty() ) {
                connect(*it);
             }
             else {
                it = connections.erase(it);
+               --num_clients; ++num_rm;
                continue;
             }
          }
          ++it;
       }
       start_conn_timer(connector_period, std::weak_ptr<connection>());
+      if( num_clients > 0 || num_peers > 0 )
+         fc_ilog( logger, "p2p client connections: ${num}/${max}, peer connections: ${pnum}/${pmax}",
+                  ("num", num_clients)("max", max_client_count)("pnum", num_peers)("pmax", supplied_peers.size()) );
+      fc_dlog( logger, "connection monitor, removed ${n} connections", ("n", num_rm) );
    }
 
    void net_plugin_impl::close(const connection_ptr& c) {
@@ -2997,9 +3015,13 @@ namespace eosio {
 
          if( options.count( "p2p-listen-endpoint" ) && options.at("p2p-listen-endpoint").as<string>().length()) {
             my->p2p_address = options.at( "p2p-listen-endpoint" ).as<string>();
+            EOS_ASSERT( my->p2p_address.length() <= max_p2p_address_length, chain::plugin_config_exception,
+                        "p2p-listen-endpoint to long, must be less than ${m}", ("m", max_p2p_address_length) );
          }
          if( options.count( "p2p-server-address" ) ) {
             my->p2p_server_address = options.at( "p2p-server-address" ).as<string>();
+            EOS_ASSERT( my->p2p_server_address.length() <= max_p2p_address_length, chain::plugin_config_exception,
+                        "p2p_server_address to long, must be less than ${m}", ("m", max_p2p_address_length) );
          }
 
          my->thread_pool_size = options.at( "net-threads" ).as<uint16_t>();
@@ -3011,6 +3033,8 @@ namespace eosio {
          }
          if( options.count( "agent-name" )) {
             my->user_agent_name = options.at( "agent-name" ).as<string>();
+            EOS_ASSERT( my->user_agent_name.length() <= max_handshake_str_length, chain::plugin_config_exception,
+                        "agent-name to long, must be less than ${m}", ("m", max_handshake_str_length) );
          }
 
          if( options.count( "allowed-connection" )) {

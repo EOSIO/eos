@@ -34,6 +34,13 @@ BOOST_AUTO_TEST_CASE(block_with_invalid_tx_test)
    auto invalid_packed_tx = packed_transaction(signed_tx);
    copy_b->transactions.back().trx = invalid_packed_tx;
 
+   // Re-calculate the transaction merkle
+   vector<digest_type> trx_digests;
+   const auto& trxs = copy_b->transactions;
+   for( const auto& a : trxs )
+      trx_digests.emplace_back( a.digest() );
+   copy_b->transaction_mroot = merkle( move(trx_digests) );
+
    // Re-sign the block
    auto header_bmroot = digest_type::hash( std::make_pair( copy_b->digest(), main.control->head_block_state()->blockroot_merkle.get_root() ) );
    auto sig_digest = digest_type::hash( std::make_pair(header_bmroot, main.control->head_block_state()->pending_schedule.schedule_hash) );
