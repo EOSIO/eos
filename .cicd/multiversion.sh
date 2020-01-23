@@ -1,12 +1,12 @@
 #!/bin/bash
 set -eo pipefail # exit on failure of any "simple" command (excludes &&, ||, or | chains)
+. ./.cicd/helpers/general.sh
 # variables
-GIT_ROOT="$(dirname $BASH_SOURCE[0])/.."
-cd $GIT_ROOT
+cd $ROOT_DIR
 echo "+++ $([[ "$BUILDKITE" == 'true' ]] && echo ':evergreen_tree: ')Configuring Environment"
 [[ "$PIPELINE_CONFIG" == '' ]] && export PIPELINE_CONFIG='pipeline.json'
 [[ "$RAW_PIPELINE_CONFIG" == '' ]] && export RAW_PIPELINE_CONFIG='pipeline.jsonc'
-[[ ! -d $GIT_ROOT/eos_multiversion_builder ]] && mkdir $GIT_ROOT/eos_multiversion_builder
+[[ ! -d $ROOT_DIR/eos_multiversion_builder ]] && mkdir $ROOT_DIR/eos_multiversion_builder
 # pipeline config
 echo 'Reading pipeline configuration file...'
 [[ -f "$RAW_PIPELINE_CONFIG" ]] && cat "$RAW_PIPELINE_CONFIG" | grep -Po '^[^"/]*("((?<=\\).|[^"])*"[^"/]*)*' | jq -c .\"eos-multiversion-tests\" > "$PIPELINE_CONFIG"
@@ -25,7 +25,7 @@ if [[ -f "$PIPELINE_CONFIG" ]]; then
     for OBJECT in $(cat "$PIPELINE_CONFIG" | jq -r '.configuration | .[] | @base64'); do
         echo "$(echo $OBJECT | base64 --decode)" >> multiversion.conf # outer echo adds '\n'
     done
-    mv -f $GIT_ROOT/multiversion.conf $GIT_ROOT/tests
+    mv -f $ROOT_DIR/multiversion.conf $ROOT_DIR/tests
 elif [[ "$DEBUG" == 'true' ]]; then
     echo 'Pipeline configuration file not found!'
     echo "PIPELINE_CONFIG = \"$PIPELINE_CONFIG\""
@@ -37,12 +37,12 @@ elif [[ "$DEBUG" == 'true' ]]; then
     echo 'Skipping that step...'
 fi
 # multiversion
-cd $GIT_ROOT/eos_multiversion_builder
+cd $ROOT_DIR/eos_multiversion_builder
 echo 'Downloading other versions of nodeos...'
-python2.7 $GIT_ROOT/.cicd/helpers/multi_eos_docker.py
-cd $GIT_ROOT
-cp $GIT_ROOT/tests/multiversion_paths.conf $GIT_ROOT/build/tests
-cd $GIT_ROOT/build
+python2.7 $HELPERS_DIR/multi_eos_docker.py
+cd $ROOT_DIR
+cp $ROOT_DIR/tests/multiversion_paths.conf $ROOT_DIR/build/tests
+cd $BUILD_DIR
 # count tests
 echo "+++ $([[ "$BUILDKITE" == 'true' ]] && echo ':microscope: ')Running Multiversion Test"
 TEST_COUNT=$(ctest -N -L mixed_version_tests | grep -i 'Total Tests: ' | cut -d ':' -f 2 | awk '{print $1}')
