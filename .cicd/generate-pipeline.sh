@@ -457,10 +457,6 @@ EOF
         echo ''
     fi
 done
-<<<<<<< HEAD
-
-
-=======
 # Execute multiversion test
 if ( [[ ! $PINNED == false ]] ); then
         cat <<EOF
@@ -478,7 +474,6 @@ if ( [[ ! $PINNED == false ]] ); then
 
 EOF
 fi
->>>>>>> develop
 # trigger eosio-lrt post pr
 if [[ -z $BUILDKITE_TRIGGERED_FROM_BUILD_ID && $TRIGGER_JOB == "true" ]]; then
     if ( [[ ! $PINNED == false ]] ); then
