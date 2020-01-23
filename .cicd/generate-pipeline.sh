@@ -120,7 +120,7 @@ EOF
       - "git clone \$BUILDKITE_REPO eos-tmp && cd eos-tmp && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT && git submodule update --init --recursive"
       - "cd eos-tmp && ./.cicd/build.sh"
     plugins:
-      - chef/anka#v0.5.5:
+      - EOSIO/anka#v0.5.7:
           no-volume: true
           inherit-environment-vars: true
           vm-name: ${MOJAVE_ANKA_TEMPLATE_NAME}
@@ -133,7 +133,7 @@ EOF
           failover-registries:
             - 'registry_1'
             - 'registry_2'
-          pre-execute-sleep: 10
+          pre-execute-ping-sleep: "8.8.8.8"
           pre-commands: 
             - "rm -rf mac-anka-fleet; git clone git@github.com:EOSIO/mac-anka-fleet.git && cd mac-anka-fleet && . ./ensure-tag.bash -u 12 -r 25G -a '-n'"
       - thedyrt/skip-checkout#v0.1.1:
@@ -212,7 +212,7 @@ EOF
       - "git clone \$BUILDKITE_REPO eos-tmp && cd eos-tmp && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT && git submodule update --init --recursive"
       - "cd eos-tmp && ./.cicd/test.sh scripts/parallel-test.sh"
     plugins:
-      - chef/anka#v0.5.4:
+      - EOSIO/anka#v0.5.7:
           no-volume: true
           inherit-environment-vars: true
           vm-name: ${MOJAVE_ANKA_TEMPLATE_NAME}
@@ -223,7 +223,7 @@ EOF
           failover-registries:
             - 'registry_1'
             - 'registry_2'
-          pre-execute-sleep: 10
+          pre-execute-ping-sleep: "8.8.8.8"
       - thedyrt/skip-checkout#v0.1.1:
           cd: ~
     env:
@@ -278,7 +278,7 @@ EOF
       - "git clone \$BUILDKITE_REPO eos-tmp && cd eos-tmp && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT && git submodule update --init --recursive"
       - "cd eos-tmp && ./.cicd/test.sh scripts/wasm-spec-test.sh"
     plugins:
-      - chef/anka#v0.5.4:
+      - EOSIO/anka#v0.5.7:
           no-volume: true
           inherit-environment-vars: true
           vm-name: ${MOJAVE_ANKA_TEMPLATE_NAME}
@@ -289,7 +289,7 @@ EOF
           failover-registries:
             - 'registry_1'
             - 'registry_2'
-          pre-execute-sleep: 10
+          pre-execute-ping-sleep: "8.8.8.8"
       - thedyrt/skip-checkout#v0.1.1:
           cd: ~
     env:
@@ -346,7 +346,7 @@ EOF
       - "git clone \$BUILDKITE_REPO eos-tmp && cd eos-tmp && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT && git submodule update --init --recursive"
       - "cd eos-tmp && ./.cicd/test.sh scripts/serial-test.sh $TEST_NAME"
     plugins:
-      - chef/anka#v0.5.4:
+      - EOSIO/anka#v0.5.7:
           no-volume: true
           inherit-environment-vars: true
           vm-name: ${MOJAVE_ANKA_TEMPLATE_NAME}
@@ -357,7 +357,7 @@ EOF
           failover-registries:
             - 'registry_1'
             - 'registry_2'
-          pre-execute-sleep: 10
+          pre-execute-ping-sleep: "8.8.8.8"
       - thedyrt/skip-checkout#v0.1.1:
           cd: ~
     env:
@@ -415,7 +415,7 @@ EOF
       - "git clone \$BUILDKITE_REPO eos-tmp && cd eos-tmp && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT && git submodule update --init --recursive"
       - "cd eos-tmp && ./.cicd/test.sh scripts/long-running-test.sh $TEST_NAME"
     plugins:
-      - chef/anka#v0.5.4:
+      - EOSIO/anka#v0.5.7:
           no-volume: true
           inherit-environment-vars: true
           vm-name: ${MOJAVE_ANKA_TEMPLATE_NAME}
@@ -426,7 +426,7 @@ EOF
           failover-registries:
             - 'registry_1'
             - 'registry_2'
-          pre-execute-sleep: 10
+          pre-execute-ping-sleep: "8.8.8.8"
       - thedyrt/skip-checkout#v0.1.1:
           cd: ~
     env:
@@ -610,7 +610,7 @@ cat <<EOF
       - "git clone \$BUILDKITE_REPO ~/eosio/eos && cd ~/eosio/eos && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT"
       - "cd ~/eosio/eos && ./.cicd/package.sh"
     plugins:
-      - chef/anka#v0.5.4:
+      - EOSIO/anka#v0.5.7:
           no-volume: true
           inherit-environment-vars: true
           vm-name: 10.14.6_6C_14G_40G
@@ -621,7 +621,7 @@ cat <<EOF
           failover-registries:
             - 'registry_1'
             - 'registry_2'
-          pre-execute-sleep: 10
+          pre-execute-ping-sleep: "8.8.8.8"
       - thedyrt/skip-checkout#v0.1.1:
           cd: ~
     agents:
