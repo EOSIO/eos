@@ -92,377 +92,377 @@ nIFS=$IFS # fix array splitting (\n won't work)
 echo '  - wait'
 echo ''
 # build steps
-echo '    # builds'
-echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | while read -r PLATFORM_JSON; do
-    if [[ ! "$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)" =~ 'macos' ]]; then
-        CONCURRENCY=$LINUX_CONCURRENCY
-        CONCURRENCY_GROUP=$LINUX_CONCURRENCY_GROUP
-        cat <<EOF
-  - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build"
-    command:
-      - "./.cicd/generate-base-images.sh"
-      - "./.cicd/build.sh"
-    env:
-      IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
-      PLATFORM_FULL_NAME: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL)"
-    agents:
-      queue: "$BUILDKITE_BUILD_AGENT_QUEUE"
-    timeout: ${TIMEOUT:-180}
-    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_BUILD}
+# echo '    # builds'
+# echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | while read -r PLATFORM_JSON; do
+#     if [[ ! "$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)" =~ 'macos' ]]; then
+#         CONCURRENCY=$LINUX_CONCURRENCY
+#         CONCURRENCY_GROUP=$LINUX_CONCURRENCY_GROUP
+#         cat <<EOF
+#   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build"
+#     command:
+#       - "./.cicd/generate-base-images.sh"
+#       - "./.cicd/build.sh"
+#     env:
+#       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
+#       PLATFORM_FULL_NAME: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL)"
+#     agents:
+#       queue: "$BUILDKITE_BUILD_AGENT_QUEUE"
+#     timeout: ${TIMEOUT:-180}
+#     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_BUILD}
 
-EOF
-    else
-        CONCURRENCY=$MAC_CONCURRENCY
-        CONCURRENCY_GROUP=$MAC_CONCURRENCY_GROUP
-        cat <<EOF
-  - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build"
-    command:
-      - "git clone \$BUILDKITE_REPO eos-tmp && cd eos-tmp && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT && git submodule update --init --recursive"
-      - "cd eos-tmp && ./.cicd/build.sh"
-    plugins:
-      - EOSIO/anka#v0.5.7:
-          no-volume: true
-          inherit-environment-vars: true
-          vm-name: ${MOJAVE_ANKA_TEMPLATE_NAME}
-          vm-registry-tag: "${MOJAVE_ANKA_TAG_BASE}::$(echo "$PLATFORM_JSON" | jq -r .HASHED_IMAGE_TAG)"
-          modify-cpu: 12
-          modify-ram: 24
-          always-pull: true
-          debug: true
-          wait-network: true
-          failover-registries:
-            - 'registry_1'
-            - 'registry_2'
-          pre-execute-ping-sleep: "8.8.8.8"
-          pre-commands: 
-            - "rm -rf mac-anka-fleet; git clone git@github.com:EOSIO/mac-anka-fleet.git && cd mac-anka-fleet && . ./ensure-tag.bash -u 12 -r 25G -a '-n'"
-      - thedyrt/skip-checkout#v0.1.1:
-          cd: ~
-    env:
-      REPO: ${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO}
-      REPO_COMMIT: $BUILDKITE_COMMIT
-      TEMPLATE: $MOJAVE_ANKA_TEMPLATE_NAME
-      TEMPLATE_TAG: $MOJAVE_ANKA_TAG_BASE
-      IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
-      PLATFORM_TYPE: $PLATFORM_TYPE
-      TAG_COMMANDS: "sleep 10; brew install md5sha1sum && git clone ${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO} ~/eos-tmp && cd ~/eos-tmp && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT && git submodule update --init --recursive && export IMAGE_TAG=$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME) && export BUILDKITE=\$BUILDKITE && export BUILDKITE_COMMIT=\$BUILDKITE_COMMIT && . ./.cicd/helpers/populate-template-and-hash.sh && cat /tmp/$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME) && . /tmp/$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME) && rm -rf ~/eos-tmp"
-      PROJECT_TAG: $(echo "$PLATFORM_JSON" | jq -r .HASHED_IMAGE_TAG)
-    timeout: ${TIMEOUT:-180}
-    agents: "queue=mac-anka-large-node-fleet"
-    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_BUILD}
-EOF
-    fi
-    if [ "$BUILDKITE_SOURCE" = "schedule" ] && [[ $DISABLE_CONCURRENCY != true ]]; then
-        cat <<EOF
-    concurrency: ${CONCURRENCY}
-    concurrency_group: ${CONCURRENCY_GROUP}
-EOF
-    fi
-done
-cat <<EOF
+# EOF
+#     else
+#         CONCURRENCY=$MAC_CONCURRENCY
+#         CONCURRENCY_GROUP=$MAC_CONCURRENCY_GROUP
+#         cat <<EOF
+#   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build"
+#     command:
+#       - "git clone \$BUILDKITE_REPO eos-tmp && cd eos-tmp && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT && git submodule update --init --recursive"
+#       - "cd eos-tmp && ./.cicd/build.sh"
+#     plugins:
+#       - EOSIO/anka#v0.5.7:
+#           no-volume: true
+#           inherit-environment-vars: true
+#           vm-name: ${MOJAVE_ANKA_TEMPLATE_NAME}
+#           vm-registry-tag: "${MOJAVE_ANKA_TAG_BASE}::$(echo "$PLATFORM_JSON" | jq -r .HASHED_IMAGE_TAG)"
+#           modify-cpu: 12
+#           modify-ram: 24
+#           always-pull: true
+#           debug: true
+#           wait-network: true
+#           failover-registries:
+#             - 'registry_1'
+#             - 'registry_2'
+#           pre-execute-ping-sleep: "8.8.8.8"
+#           pre-commands: 
+#             - "rm -rf mac-anka-fleet; git clone git@github.com:EOSIO/mac-anka-fleet.git && cd mac-anka-fleet && . ./ensure-tag.bash -u 12 -r 25G -a '-n'"
+#       - thedyrt/skip-checkout#v0.1.1:
+#           cd: ~
+#     env:
+#       REPO: ${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO}
+#       REPO_COMMIT: $BUILDKITE_COMMIT
+#       TEMPLATE: $MOJAVE_ANKA_TEMPLATE_NAME
+#       TEMPLATE_TAG: $MOJAVE_ANKA_TAG_BASE
+#       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
+#       PLATFORM_TYPE: $PLATFORM_TYPE
+#       TAG_COMMANDS: "sleep 10; brew install md5sha1sum && git clone ${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO} ~/eos-tmp && cd ~/eos-tmp && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT && git submodule update --init --recursive && export IMAGE_TAG=$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME) && export BUILDKITE=\$BUILDKITE && export BUILDKITE_COMMIT=\$BUILDKITE_COMMIT && . ./.cicd/helpers/populate-template-and-hash.sh && cat /tmp/$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME) && . /tmp/$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME) && rm -rf ~/eos-tmp"
+#       PROJECT_TAG: $(echo "$PLATFORM_JSON" | jq -r .HASHED_IMAGE_TAG)
+#     timeout: ${TIMEOUT:-180}
+#     agents: "queue=mac-anka-large-node-fleet"
+#     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_BUILD}
+# EOF
+#     fi
+#     if [ "$BUILDKITE_SOURCE" = "schedule" ] && [[ $DISABLE_CONCURRENCY != true ]]; then
+#         cat <<EOF
+#     concurrency: ${CONCURRENCY}
+#     concurrency_group: ${CONCURRENCY_GROUP}
+# EOF
+#     fi
+# done
+# cat <<EOF
 
-  - label: ":docker: Docker - Build and Install"
-    command: "./.cicd/installation-build.sh"
-    env:
-      IMAGE_TAG: "ubuntu-18.04-unpinned"
-      PLATFORM_TYPE: "unpinned"
-    agents:
-      queue: "$BUILDKITE_BUILD_AGENT_QUEUE"
-    timeout: ${TIMEOUT:-180}
-    skip: ${SKIP_INSTALL}${SKIP_LINUX}${SKIP_DOCKER}
+#   - label: ":docker: Docker - Build and Install"
+#     command: "./.cicd/installation-build.sh"
+#     env:
+#       IMAGE_TAG: "ubuntu-18.04-unpinned"
+#       PLATFORM_TYPE: "unpinned"
+#     agents:
+#       queue: "$BUILDKITE_BUILD_AGENT_QUEUE"
+#     timeout: ${TIMEOUT:-180}
+#     skip: ${SKIP_INSTALL}${SKIP_LINUX}${SKIP_DOCKER}
 
-  - wait
+#   - wait
 
-EOF
-# tests
-IFS=$oIFS
-for ROUND in $(seq 1 $ROUNDS); do
-    IFS=$''
-    echo "    # round $ROUND of $ROUNDS"
+# EOF
+# # tests
+# IFS=$oIFS
+# for ROUND in $(seq 1 $ROUNDS); do
+#     IFS=$''
+#     echo "    # round $ROUND of $ROUNDS"
 
     
-    # parallel tests
-    echo '    # parallel tests'
-    echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | while read -r PLATFORM_JSON; do
-        if [[ ! "$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)" =~ 'macos' ]]; then
-            CONCURRENCY=$LINUX_CONCURRENCY
-            CONCURRENCY_GROUP=$LINUX_CONCURRENCY_GROUP
-            cat <<EOF
-  - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Unit Tests"
-    command:
-      - "./.cicd/test.sh scripts/parallel-test.sh"
-    env:
-      IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
-      PLATFORM_FULL_NAME: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL)"
-    agents:
-      queue: "$BUILDKITE_BUILD_AGENT_QUEUE"
-    retry:
-      manual:
-        permit_on_passed: true
-    timeout: ${TIMEOUT:-30}
-    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_UNIT_TESTS}${SKIP_TESTS}
+#     # parallel tests
+#     echo '    # parallel tests'
+#     echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | while read -r PLATFORM_JSON; do
+#         if [[ ! "$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)" =~ 'macos' ]]; then
+#             CONCURRENCY=$LINUX_CONCURRENCY
+#             CONCURRENCY_GROUP=$LINUX_CONCURRENCY_GROUP
+#             cat <<EOF
+#   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Unit Tests"
+#     command:
+#       - "./.cicd/test.sh scripts/parallel-test.sh"
+#     env:
+#       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
+#       PLATFORM_FULL_NAME: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL)"
+#     agents:
+#       queue: "$BUILDKITE_BUILD_AGENT_QUEUE"
+#     retry:
+#       manual:
+#         permit_on_passed: true
+#     timeout: ${TIMEOUT:-30}
+#     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_UNIT_TESTS}${SKIP_TESTS}
 
-EOF
-        else
-            CONCURRENCY=$MAC_CONCURRENCY
-            CONCURRENCY_GROUP=$MAC_CONCURRENCY_GROUP
-            cat <<EOF
-  - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Unit Tests"
-    command:
-      - "git clone \$BUILDKITE_REPO eos-tmp && cd eos-tmp && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT && git submodule update --init --recursive"
-      - "cd eos-tmp && ./.cicd/test.sh scripts/parallel-test.sh"
-    plugins:
-      - EOSIO/anka#v0.5.7:
-          no-volume: true
-          inherit-environment-vars: true
-          vm-name: ${MOJAVE_ANKA_TEMPLATE_NAME}
-          vm-registry-tag: "${MOJAVE_ANKA_TAG_BASE}::$(echo "$PLATFORM_JSON" | jq -r .HASHED_IMAGE_TAG)"
-          always-pull: true
-          debug: true
-          wait-network: true
-          failover-registries:
-            - 'registry_1'
-            - 'registry_2'
-          pre-execute-ping-sleep: "8.8.8.8"
-      - thedyrt/skip-checkout#v0.1.1:
-          cd: ~
-    env:
-      IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
-      PLATFORM_FULL_NAME: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL)"
-    agents: "queue=mac-anka-node-fleet"
-    retry:
-      manual:
-        permit_on_passed: true
-    timeout: ${TIMEOUT:-60}
-    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_UNIT_TESTS}${SKIP_TESTS}
+# EOF
+#         else
+#             CONCURRENCY=$MAC_CONCURRENCY
+#             CONCURRENCY_GROUP=$MAC_CONCURRENCY_GROUP
+#             cat <<EOF
+#   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Unit Tests"
+#     command:
+#       - "git clone \$BUILDKITE_REPO eos-tmp && cd eos-tmp && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT && git submodule update --init --recursive"
+#       - "cd eos-tmp && ./.cicd/test.sh scripts/parallel-test.sh"
+#     plugins:
+#       - EOSIO/anka#v0.5.7:
+#           no-volume: true
+#           inherit-environment-vars: true
+#           vm-name: ${MOJAVE_ANKA_TEMPLATE_NAME}
+#           vm-registry-tag: "${MOJAVE_ANKA_TAG_BASE}::$(echo "$PLATFORM_JSON" | jq -r .HASHED_IMAGE_TAG)"
+#           always-pull: true
+#           debug: true
+#           wait-network: true
+#           failover-registries:
+#             - 'registry_1'
+#             - 'registry_2'
+#           pre-execute-ping-sleep: "8.8.8.8"
+#       - thedyrt/skip-checkout#v0.1.1:
+#           cd: ~
+#     env:
+#       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
+#       PLATFORM_FULL_NAME: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL)"
+#     agents: "queue=mac-anka-node-fleet"
+#     retry:
+#       manual:
+#         permit_on_passed: true
+#     timeout: ${TIMEOUT:-60}
+#     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_UNIT_TESTS}${SKIP_TESTS}
 
-EOF
-        fi
-        if [ "$BUILDKITE_SOURCE" = "schedule" ] && [[ $DISABLE_CONCURRENCY != true ]]; then
-            cat <<EOF
-    concurrency: ${CONCURRENCY}
-    concurrency_group: ${CONCURRENCY_GROUP}
-EOF
-        fi
-    echo
-    done
+# EOF
+#         fi
+#         if [ "$BUILDKITE_SOURCE" = "schedule" ] && [[ $DISABLE_CONCURRENCY != true ]]; then
+#             cat <<EOF
+#     concurrency: ${CONCURRENCY}
+#     concurrency_group: ${CONCURRENCY_GROUP}
+# EOF
+#         fi
+#     echo
+#     done
 
-    # wasm spec tests
-    echo '    # wasm spec tests'
-    echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | while read -r PLATFORM_JSON; do
-        if [[ ! "$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)" =~ 'macos' ]]; then
-            CONCURRENCY=$LINUX_CONCURRENCY
-            CONCURRENCY_GROUP=$LINUX_CONCURRENCY_GROUP
-            cat <<EOF
-  - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - WASM Spec Tests"
-    command:
-      - "./.cicd/test.sh scripts/wasm-spec-test.sh"
-    env:
-      IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
-      PLATFORM_FULL_NAME: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL)"
-    agents:
-      queue: "$BUILDKITE_BUILD_AGENT_QUEUE"
-    retry:
-      manual:
-        permit_on_passed: true
-    timeout: ${TIMEOUT:-30}
-    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_WASM_SPEC_TESTS}${SKIP_TESTS}
+#     # wasm spec tests
+#     echo '    # wasm spec tests'
+#     echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | while read -r PLATFORM_JSON; do
+#         if [[ ! "$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)" =~ 'macos' ]]; then
+#             CONCURRENCY=$LINUX_CONCURRENCY
+#             CONCURRENCY_GROUP=$LINUX_CONCURRENCY_GROUP
+#             cat <<EOF
+#   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - WASM Spec Tests"
+#     command:
+#       - "./.cicd/test.sh scripts/wasm-spec-test.sh"
+#     env:
+#       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
+#       PLATFORM_FULL_NAME: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL)"
+#     agents:
+#       queue: "$BUILDKITE_BUILD_AGENT_QUEUE"
+#     retry:
+#       manual:
+#         permit_on_passed: true
+#     timeout: ${TIMEOUT:-30}
+#     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_WASM_SPEC_TESTS}${SKIP_TESTS}
 
-EOF
-        else
-            CONCURRENCY=$MAC_CONCURRENCY
-            CONCURRENCY_GROUP=$MAC_CONCURRENCY_GROUP
-            cat <<EOF
-  - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - WASM Spec Tests"
-    command:
-      - "git clone \$BUILDKITE_REPO eos-tmp && cd eos-tmp && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT && git submodule update --init --recursive"
-      - "cd eos-tmp && ./.cicd/test.sh scripts/wasm-spec-test.sh"
-    plugins:
-      - EOSIO/anka#v0.5.7:
-          no-volume: true
-          inherit-environment-vars: true
-          vm-name: ${MOJAVE_ANKA_TEMPLATE_NAME}
-          vm-registry-tag: "${MOJAVE_ANKA_TAG_BASE}::$(echo "$PLATFORM_JSON" | jq -r .HASHED_IMAGE_TAG)"
-          always-pull: true
-          debug: true
-          wait-network: true
-          failover-registries:
-            - 'registry_1'
-            - 'registry_2'
-          pre-execute-ping-sleep: "8.8.8.8"
-      - thedyrt/skip-checkout#v0.1.1:
-          cd: ~
-    env:
-      IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
-      PLATFORM_FULL_NAME: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL)"
-    agents: "queue=mac-anka-node-fleet"
-    retry:
-      manual:
-        permit_on_passed: true
-    timeout: ${TIMEOUT:-60}
-    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_WASM_SPEC_TESTS}${SKIP_TESTS}
+# EOF
+#         else
+#             CONCURRENCY=$MAC_CONCURRENCY
+#             CONCURRENCY_GROUP=$MAC_CONCURRENCY_GROUP
+#             cat <<EOF
+#   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - WASM Spec Tests"
+#     command:
+#       - "git clone \$BUILDKITE_REPO eos-tmp && cd eos-tmp && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT && git submodule update --init --recursive"
+#       - "cd eos-tmp && ./.cicd/test.sh scripts/wasm-spec-test.sh"
+#     plugins:
+#       - EOSIO/anka#v0.5.7:
+#           no-volume: true
+#           inherit-environment-vars: true
+#           vm-name: ${MOJAVE_ANKA_TEMPLATE_NAME}
+#           vm-registry-tag: "${MOJAVE_ANKA_TAG_BASE}::$(echo "$PLATFORM_JSON" | jq -r .HASHED_IMAGE_TAG)"
+#           always-pull: true
+#           debug: true
+#           wait-network: true
+#           failover-registries:
+#             - 'registry_1'
+#             - 'registry_2'
+#           pre-execute-ping-sleep: "8.8.8.8"
+#       - thedyrt/skip-checkout#v0.1.1:
+#           cd: ~
+#     env:
+#       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
+#       PLATFORM_FULL_NAME: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL)"
+#     agents: "queue=mac-anka-node-fleet"
+#     retry:
+#       manual:
+#         permit_on_passed: true
+#     timeout: ${TIMEOUT:-60}
+#     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_WASM_SPEC_TESTS}${SKIP_TESTS}
 
-EOF
-        fi
-        if [ "$BUILDKITE_SOURCE" = "schedule" ] && [[ $DISABLE_CONCURRENCY != true ]]; then
-            cat <<EOF
-    concurrency: ${CONCURRENCY}
-    concurrency_group: ${CONCURRENCY_GROUP}
-EOF
-        fi
-    echo
-    done
-    # serial tests
-    echo '    # serial tests'
-    echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | while read -r PLATFORM_JSON; do
-        IFS=$oIFS
-        SERIAL_TESTS="$(cat tests/CMakeLists.txt | grep nonparallelizable_tests | grep -v "^#" | awk -F" " '{ print $2 }')"
-        for TEST_NAME in $SERIAL_TESTS; do
-            if [[ ! "$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)" =~ 'macos' ]]; then
-                CONCURRENCY=$LINUX_CONCURRENCY
-                CONCURRENCY_GROUP=$LINUX_CONCURRENCY_GROUP
-                cat <<EOF
-  - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - $TEST_NAME"
-    command:
-      - "./.cicd/test.sh scripts/serial-test.sh $TEST_NAME"
-    env:
-      IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
-      PLATFORM_FULL_NAME: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL)"
-    agents:
-      queue: "$BUILDKITE_TEST_AGENT_QUEUE"
-    retry:
-      manual:
-        permit_on_passed: true
-    timeout: ${TIMEOUT:-20}
-    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_SERIAL_TESTS}${SKIP_TESTS}
+# EOF
+#         fi
+#         if [ "$BUILDKITE_SOURCE" = "schedule" ] && [[ $DISABLE_CONCURRENCY != true ]]; then
+#             cat <<EOF
+#     concurrency: ${CONCURRENCY}
+#     concurrency_group: ${CONCURRENCY_GROUP}
+# EOF
+#         fi
+#     echo
+#     done
+#     # serial tests
+#     echo '    # serial tests'
+#     echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | while read -r PLATFORM_JSON; do
+#         IFS=$oIFS
+#         SERIAL_TESTS="$(cat tests/CMakeLists.txt | grep nonparallelizable_tests | grep -v "^#" | awk -F" " '{ print $2 }')"
+#         for TEST_NAME in $SERIAL_TESTS; do
+#             if [[ ! "$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)" =~ 'macos' ]]; then
+#                 CONCURRENCY=$LINUX_CONCURRENCY
+#                 CONCURRENCY_GROUP=$LINUX_CONCURRENCY_GROUP
+#                 cat <<EOF
+#   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - $TEST_NAME"
+#     command:
+#       - "./.cicd/test.sh scripts/serial-test.sh $TEST_NAME"
+#     env:
+#       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
+#       PLATFORM_FULL_NAME: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL)"
+#     agents:
+#       queue: "$BUILDKITE_TEST_AGENT_QUEUE"
+#     retry:
+#       manual:
+#         permit_on_passed: true
+#     timeout: ${TIMEOUT:-20}
+#     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_SERIAL_TESTS}${SKIP_TESTS}
 
-EOF
-            else
-                CONCURRENCY=$MAC_CONCURRENCY
-                CONCURRENCY_GROUP=$MAC_CONCURRENCY_GROUP
-                cat <<EOF
-  - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - $TEST_NAME"
-    command:
-      - "git clone \$BUILDKITE_REPO eos-tmp && cd eos-tmp && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT && git submodule update --init --recursive"
-      - "cd eos-tmp && ./.cicd/test.sh scripts/serial-test.sh $TEST_NAME"
-    plugins:
-      - EOSIO/anka#v0.5.7:
-          no-volume: true
-          inherit-environment-vars: true
-          vm-name: ${MOJAVE_ANKA_TEMPLATE_NAME}
-          vm-registry-tag: "${MOJAVE_ANKA_TAG_BASE}::$(echo "$PLATFORM_JSON" | jq -r .HASHED_IMAGE_TAG)"
-          always-pull: true
-          debug: true
-          wait-network: true
-          failover-registries:
-            - 'registry_1'
-            - 'registry_2'
-          pre-execute-ping-sleep: "8.8.8.8"
-      - thedyrt/skip-checkout#v0.1.1:
-          cd: ~
-    env:
-      IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
-      PLATFORM_FULL_NAME: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL)"
-    agents: "queue=mac-anka-node-fleet"
-    retry:
-      manual:
-        permit_on_passed: true
-    timeout: ${TIMEOUT:-60}
-    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_SERIAL_TESTS}${SKIP_TESTS}
-EOF
-            fi
-            if [ "$BUILDKITE_SOURCE" = "schedule" ] && [[ $DISABLE_CONCURRENCY != true ]]; then
-                cat <<EOF
-    concurrency: ${CONCURRENCY}
-    concurrency_group: ${CONCURRENCY_GROUP}
-EOF
-            fi
-            echo
-        done
-        IFS=$nIFS
-    done
-    # long-running tests
-    echo '    # long-running tests'
-    echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | while read -r PLATFORM_JSON; do
-        IFS=$oIFS
-        LR_TESTS="$(cat tests/CMakeLists.txt | grep long_running_tests | grep -v "^#" | awk -F" " '{ print $2 }')"
-        for TEST_NAME in $LR_TESTS; do
-            if [[ ! "$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)" =~ 'macos' ]]; then
-                CONCURRENCY=$LINUX_CONCURRENCY
-                CONCURRENCY_GROUP=$LINUX_CONCURRENCY_GROUP
-                cat <<EOF
-  - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - $TEST_NAME"
-    command:
-      - "./.cicd/test.sh scripts/long-running-test.sh $TEST_NAME"
-    env:
-      IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
-      PLATFORM_FULL_NAME: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL)"
-    agents:
-      queue: "$BUILDKITE_TEST_AGENT_QUEUE"
-    retry:
-      manual:
-        permit_on_passed: true
-    timeout: ${TIMEOUT:-180}
-    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_LONG_RUNNING_TESTS:-true}
+# EOF
+#             else
+#                 CONCURRENCY=$MAC_CONCURRENCY
+#                 CONCURRENCY_GROUP=$MAC_CONCURRENCY_GROUP
+#                 cat <<EOF
+#   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - $TEST_NAME"
+#     command:
+#       - "git clone \$BUILDKITE_REPO eos-tmp && cd eos-tmp && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT && git submodule update --init --recursive"
+#       - "cd eos-tmp && ./.cicd/test.sh scripts/serial-test.sh $TEST_NAME"
+#     plugins:
+#       - EOSIO/anka#v0.5.7:
+#           no-volume: true
+#           inherit-environment-vars: true
+#           vm-name: ${MOJAVE_ANKA_TEMPLATE_NAME}
+#           vm-registry-tag: "${MOJAVE_ANKA_TAG_BASE}::$(echo "$PLATFORM_JSON" | jq -r .HASHED_IMAGE_TAG)"
+#           always-pull: true
+#           debug: true
+#           wait-network: true
+#           failover-registries:
+#             - 'registry_1'
+#             - 'registry_2'
+#           pre-execute-ping-sleep: "8.8.8.8"
+#       - thedyrt/skip-checkout#v0.1.1:
+#           cd: ~
+#     env:
+#       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
+#       PLATFORM_FULL_NAME: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL)"
+#     agents: "queue=mac-anka-node-fleet"
+#     retry:
+#       manual:
+#         permit_on_passed: true
+#     timeout: ${TIMEOUT:-60}
+#     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_SERIAL_TESTS}${SKIP_TESTS}
+# EOF
+#             fi
+#             if [ "$BUILDKITE_SOURCE" = "schedule" ] && [[ $DISABLE_CONCURRENCY != true ]]; then
+#                 cat <<EOF
+#     concurrency: ${CONCURRENCY}
+#     concurrency_group: ${CONCURRENCY_GROUP}
+# EOF
+#             fi
+#             echo
+#         done
+#         IFS=$nIFS
+#     done
+#     # long-running tests
+#     echo '    # long-running tests'
+#     echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | while read -r PLATFORM_JSON; do
+#         IFS=$oIFS
+#         LR_TESTS="$(cat tests/CMakeLists.txt | grep long_running_tests | grep -v "^#" | awk -F" " '{ print $2 }')"
+#         for TEST_NAME in $LR_TESTS; do
+#             if [[ ! "$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)" =~ 'macos' ]]; then
+#                 CONCURRENCY=$LINUX_CONCURRENCY
+#                 CONCURRENCY_GROUP=$LINUX_CONCURRENCY_GROUP
+#                 cat <<EOF
+#   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - $TEST_NAME"
+#     command:
+#       - "./.cicd/test.sh scripts/long-running-test.sh $TEST_NAME"
+#     env:
+#       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
+#       PLATFORM_FULL_NAME: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL)"
+#     agents:
+#       queue: "$BUILDKITE_TEST_AGENT_QUEUE"
+#     retry:
+#       manual:
+#         permit_on_passed: true
+#     timeout: ${TIMEOUT:-180}
+#     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_LONG_RUNNING_TESTS:-true}
 
-EOF
-            else
-                CONCURRENCY=$MAC_CONCURRENCY
-                CONCURRENCY_GROUP=$MAC_CONCURRENCY_GROUP
-                cat <<EOF
-  - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - $TEST_NAME"
-    command:
-      - "git clone \$BUILDKITE_REPO eos-tmp && cd eos-tmp && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT && git submodule update --init --recursive"
-      - "cd eos-tmp && ./.cicd/test.sh scripts/long-running-test.sh $TEST_NAME"
-    plugins:
-      - EOSIO/anka#v0.5.7:
-          no-volume: true
-          inherit-environment-vars: true
-          vm-name: ${MOJAVE_ANKA_TEMPLATE_NAME}
-          vm-registry-tag: "${MOJAVE_ANKA_TAG_BASE}::$(echo "$PLATFORM_JSON" | jq -r .HASHED_IMAGE_TAG)"
-          always-pull: true
-          debug: true
-          wait-network: true
-          failover-registries:
-            - 'registry_1'
-            - 'registry_2'
-          pre-execute-ping-sleep: "8.8.8.8"
-      - thedyrt/skip-checkout#v0.1.1:
-          cd: ~
-    env:
-      IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
-      PLATFORM_FULL_NAME: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL)"
-    agents: "queue=mac-anka-node-fleet"
-    retry:
-      manual:
-        permit_on_passed: true
-    timeout: ${TIMEOUT:-180}
-    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_LONG_RUNNING_TESTS:-true}
-EOF
-            fi
-            if [ "$BUILDKITE_SOURCE" = "schedule" ] && [[ $DISABLE_CONCURRENCY != true ]]; then
-                cat <<EOF
-    concurrency: ${CONCURRENCY}
-    concurrency_group: ${CONCURRENCY_GROUP}
-EOF
-            fi
-            echo
-        done
-        IFS=$nIFS
-    done
+# EOF
+#             else
+#                 CONCURRENCY=$MAC_CONCURRENCY
+#                 CONCURRENCY_GROUP=$MAC_CONCURRENCY_GROUP
+#                 cat <<EOF
+#   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - $TEST_NAME"
+#     command:
+#       - "git clone \$BUILDKITE_REPO eos-tmp && cd eos-tmp && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT && git submodule update --init --recursive"
+#       - "cd eos-tmp && ./.cicd/test.sh scripts/long-running-test.sh $TEST_NAME"
+#     plugins:
+#       - EOSIO/anka#v0.5.7:
+#           no-volume: true
+#           inherit-environment-vars: true
+#           vm-name: ${MOJAVE_ANKA_TEMPLATE_NAME}
+#           vm-registry-tag: "${MOJAVE_ANKA_TAG_BASE}::$(echo "$PLATFORM_JSON" | jq -r .HASHED_IMAGE_TAG)"
+#           always-pull: true
+#           debug: true
+#           wait-network: true
+#           failover-registries:
+#             - 'registry_1'
+#             - 'registry_2'
+#           pre-execute-ping-sleep: "8.8.8.8"
+#       - thedyrt/skip-checkout#v0.1.1:
+#           cd: ~
+#     env:
+#       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
+#       PLATFORM_FULL_NAME: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL)"
+#     agents: "queue=mac-anka-node-fleet"
+#     retry:
+#       manual:
+#         permit_on_passed: true
+#     timeout: ${TIMEOUT:-180}
+#     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_LONG_RUNNING_TESTS:-true}
+# EOF
+#             fi
+#             if [ "$BUILDKITE_SOURCE" = "schedule" ] && [[ $DISABLE_CONCURRENCY != true ]]; then
+#                 cat <<EOF
+#     concurrency: ${CONCURRENCY}
+#     concurrency_group: ${CONCURRENCY_GROUP}
+# EOF
+#             fi
+#             echo
+#         done
+#         IFS=$nIFS
+#     done
 
-    IFS=$oIFS
-    if [[ "$ROUND" != "$ROUNDS" ]]; then
-        echo '  - wait'
-        echo ''
-    fi
-done
+#     IFS=$oIFS
+#     if [[ "$ROUND" != "$ROUNDS" ]]; then
+#         echo '  - wait'
+#         echo ''
+#     fi
+# done
 # Execute multiversion test
 if ( [[ ! $PINNED == false ]] ); then
         cat <<EOF
   - label: ":pipeline: Multiversion Test"
     command:
-      - ./.cicd/test.sh .cicd/multiversion.sh
+      - "./.cicd/test.sh .cicd/multiversion.sh"
     env:
       IMAGE_TAG: "ubuntu-18.04-pinned"
       PLATFORM_TYPE: "pinned"

@@ -41,7 +41,7 @@ cd $ROOT_DIR/eos_multiversion_builder
 echo 'Downloading other versions of nodeos...'
 python2.7 $HELPERS_DIR/multi_eos_docker.py
 cd $ROOT_DIR
-cp $ROOT_DIR/tests/multiversion_paths.conf $ROOT_DIR/build/tests
+cp $ROOT_DIR/tests/multiversion_paths.conf $BUILD_DIR/tests
 cd $BUILD_DIR
 # count tests
 echo "+++ $([[ "$BUILDKITE" == 'true' ]] && echo ':microscope: ')Running Multiversion Test"
