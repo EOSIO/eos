@@ -20,7 +20,7 @@ if [[ $(uname) == 'Darwin' ]]; then # macOS
     ./"$@"
     EXIT_STATUS=$?
 else # Linux
-    ARGS="--rm --init -v $(pwd):$(pwd) $(buildkite-intrinsics) -e JOBS"
+    ARGS="--rm --init -v $(pwd):$(pwd) $(buildkite-intrinsics) -e JOBS -e BUILDKITE_API_KEY"
     . $HELPERS_DIR/populate-template-and-hash.sh -h # Obtain the hash from the populated template 
     if [[ $BUILDKITE == true ]]; then
         echo "cp -rfp $(pwd) \$EOS_LOCATION && cd \$EOS_LOCATION" >> /tmp/$POPULATED_FILE_NAME # We don't need to clone twice
