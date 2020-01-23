@@ -12,8 +12,6 @@ else
     BASE_BRANCH=$GITHUB_BASE_REF
     CURRENT_BRANCH=$GITHUB_HEAD_REF
     [[ ! -z $GITHUB_REF ]] && CURRENT_BRANCH=$GITHUB_SHA # When we're not running from a PR, the slug is not set. When we are, we need to use the TRAVIS_COMMIT to be sure we're supporting the Forked PR's merge/code that's in the EOS repo. This is needed for the git log below.
-else
-
 fi
 
 echo "getting submodule info for $CURRENT_BRANCH"
