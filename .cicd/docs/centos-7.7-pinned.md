@@ -167,6 +167,6 @@ These commands uninstall the EOSIO software from the specified OS.
 <!-- DAC UNINSTALL -->
 ```sh
 xargs rm < $EOSIO_BUILD_LOCATION/install_manifest.txt
-cd $EOSIO_LOCATION && rm -rf $EOSIO_BUILD_LOCATION
+rm -rf $EOSIO_BUILD_LOCATION
 ```
 <!-- DAC UNINSTALL END -->

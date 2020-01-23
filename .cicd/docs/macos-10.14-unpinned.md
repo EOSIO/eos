@@ -113,13 +113,7 @@ cd $EOSIO_BUILD_LOCATION && make test
 These commands uninstall the EOSIO software from the specified OS.
 <!-- DAC UNINSTALL -->
 ```sh
-echo "uninstalling"
-echo "cd"
-cd $EOSIO_LOCATION
-echo "xargs rm"
 xargs rm < $EOSIO_BUILD_LOCATION/install_manifest.txt
-echo "rm build_location"
 rm -rf $EOSIO_BUILD_LOCATION
-echo "rm eos_location"
 ```
 <!-- DAC UNINSTALL END -->
