@@ -85,3 +85,10 @@ var/lib/node_*
 .idea/
 *.iws
 .DS_Store
+<<<<<<< HEAD
+=======
+
+node_modules
+
+!*swagger*
+>>>>>>> dbeca8ef0... don't ignore swagger files [*.sw* is a little greedy]
