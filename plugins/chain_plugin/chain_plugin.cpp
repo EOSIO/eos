@@ -1133,8 +1133,8 @@ void chain_apis::read_write::validate() const {
    EOS_ASSERT( db.get_read_mode() != chain::db_read_mode::READ_ONLY, missing_chain_api_plugin_exception, "Not allowed, node in read-only mode" );
 }
 
-void chain_plugin::accept_block(const signed_block_ptr& block, const block_id_type& id ) {
-   my->incoming_block_sync_method(block, id);
+bool chain_plugin::accept_block(const signed_block_ptr& block, const block_id_type& id ) {
+   return my->incoming_block_sync_method(block, id);
 }
 
 void chain_plugin::accept_transaction(const chain::packed_transaction_ptr& trx, next_function<chain::transaction_trace_ptr> next) {
