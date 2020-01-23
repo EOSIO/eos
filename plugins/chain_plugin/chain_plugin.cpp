@@ -1139,8 +1139,8 @@ void chain_apis::read_write::validate() const {
    EOS_ASSERT( !db.in_immutable_mode(), missing_chain_api_plugin_exception, "Not allowed, node in read-only mode" );
 }
 
-void chain_plugin::accept_block(const signed_block_ptr& block ) {
-   my->incoming_block_sync_method(block);
+void chain_plugin::accept_block(const signed_block_ptr& block, const block_id_type& id ) {
+   my->incoming_block_sync_method(block, id);
 }
 
 void chain_plugin::accept_transaction(const chain::packed_transaction_ptr& trx, next_function<chain::transaction_trace_ptr> next) {
@@ -2072,7 +2072,7 @@ fc::variant read_only::get_block_header_state(const get_block_header_state_param
 
 void read_write::push_block(read_write::push_block_params&& params, next_function<read_write::push_block_results> next) {
    try {
-      app().get_method<incoming::methods::block_sync>()(std::make_shared<signed_block>(std::move(params)));
+      app().get_method<incoming::methods::block_sync>()(std::make_shared<signed_block>(std::move(params)), {});
       next(read_write::push_block_results{});
    } catch ( boost::interprocess::bad_alloc& ) {
       chain_plugin::handle_db_exhaustion();
