@@ -461,12 +461,12 @@ done
 if ( [[ ! $PINNED == false ]] ); then
         cat <<EOF
   - label: ":pipeline: Multiversion Test"
-    command: 
-      - "buildkite-agent artifact download build.tar.gz . --step ':ubuntu: Ubuntu 18.04 - Build' && tar -xzf build.tar.gz"
+    command:
       - ./.cicd/test.sh .cicd/multiversion.sh
     env:
       IMAGE_TAG: "ubuntu-18.04-pinned"
       PLATFORM_TYPE: "pinned"
+      PLATFORM_FULL_NAME: ":ubuntu: Ubuntu 18.04"
     agents:
       queue: "$BUILDKITE_TEST_AGENT_QUEUE"
     timeout: ${TIMEOUT:-30}
