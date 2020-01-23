@@ -144,7 +144,7 @@ class Cluster(object):
     # pylint: disable=too-many-branches
     # pylint: disable=too-many-statements
     def launch(self, pnodes=1, unstartedNodes=0, totalNodes=1, prodCount=1, topo="mesh", delay=1, onlyBios=False, dontBootstrap=False,
-               totalProducers=None, sharedProducers=0, extraNodeosArgs=None, useBiosBootFile=True, specificExtraNodeosArgs=None, onlySetProds=False,
+               totalProducers=None, sharedProducers=0, extraNodeosArgs=" --http-max-response-time-ms 990000 ", useBiosBootFile=True, specificExtraNodeosArgs=None, onlySetProds=False,
                pfSetupPolicy=PFSetupPolicy.FULL, alternateVersionLabelsFile=None, associatedNodeLabels=None, loadSystemContract=True):
         """Launch cluster.
         pnodes: producer nodes count
@@ -220,7 +220,7 @@ class Cluster(object):
         if self.staging:
             cmdArr.append("--nogen")
 
-        nodeosArgs="--max-transaction-time -1 --http-max-response-time-ms 9999 --abi-serializer-max-time-ms 990000 --filter-on \"*\" --p2p-max-nodes-per-host %d" % (totalNodes)
+        nodeosArgs="--max-transaction-time -1 --abi-serializer-max-time-ms 990000 --filter-on \"*\" --p2p-max-nodes-per-host %d" % (totalNodes)
         if not self.walletd:
             nodeosArgs += " --plugin eosio::wallet_api_plugin"
         if self.enableMongo:
