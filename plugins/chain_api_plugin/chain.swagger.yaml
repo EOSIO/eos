@@ -8,7 +8,6 @@ info:
     url: https://opensource.org/licenses/MIT
   contact:
     url: https://eos.io
-tags: []
 servers:
   - url: "{protocol}://{host}:{port}/v1/chain"
     variables:
@@ -22,22 +21,18 @@ servers:
       port:
         default: "8080"
 components:
-  securitySchemes: {}
   schemas: {}
-security:
-  - {}
 paths:
   /get_account:
     post:
       summary: get_account
       description: Returns an object containing various details about a specific account on the blockchain.
       operationId: get_account
-      parameters: []
       deprecated: false
       requestBody:
         description: JSON Object with single member "account_name"
         content:
-          ap plication/json:
+          application/json:
             schema:
               type: object
               required:
@@ -61,7 +56,6 @@ paths:
       summary: get_block
       description: Returns an object containing various details about a specific block on the blockchain.
       operationId: get_block
-      parameters: []
       deprecated: false
       requestBody:
         content:
@@ -88,7 +82,6 @@ paths:
       summary: get_info
       description: Returns an object containing various details about the blockchain.
       operationId: get_info
-      parameters: []
       deprecated: false
       security: []
       responses:
@@ -105,7 +98,7 @@ paths:
       summary: push_transaction
       description: This method expects a transaction in JSON format and will attempt to apply it to the blockchain.
       operationId: push_transaction
-      parameters: []
+      deprecated: false
       requestBody:
         content:
           application/json:
@@ -141,7 +134,7 @@ paths:
       summary: send_transaction
       description: This method expects a transaction in JSON format and will attempt to apply it to the blockchain.
       operationId: send_transaction
-      parameters: []
+      deprecated: false
       requestBody:
         content:
           application/json:
@@ -178,7 +171,7 @@ paths:
       summary: push_transactions
       description: This method expects a transaction in JSON format and will attempt to apply it to the blockchain.
       operationId: push_transactions
-      parameters: []
+      deprecated: false
       requestBody:
         content:
           application/json:
@@ -201,7 +194,6 @@ paths:
       summary: get_block_header_state
       description: Retrieves the glock header state
       operationId: get_block_header_state
-      parameters: []
       deprecated: false
       requestBody:
         content:
@@ -230,7 +222,6 @@ paths:
       summary: get_abi
       description: Retrieves the ABI for a contract based on its account name
       operationId: get_abi
-      parameters: []
       deprecated: false
       requestBody:
         content:
@@ -328,7 +319,6 @@ paths:
       summary: get_required_keys
       description: Returns the required keys needed to sign a transaction.
       operationId: get_required_keys
-      parameters: []
       deprecated: false
       requestBody:
         content:
@@ -363,7 +353,7 @@ paths:
       summary: get_producers
       description: Retrieves producers list
       operationId: get_producers
-      parameters: []
+      deprecated: false
       requestBody:
         content:
           application/json:
@@ -399,7 +389,6 @@ paths:
       summary: get_raw_code_and_abi
       description: Retrieves raw code and ABI for a contract based on account name
       operationId: get_raw_code_and_abi
-      parameters: []
       deprecated: false
       requestBody:
         content:
@@ -438,7 +427,7 @@ paths:
       summary: get_scheduled_transaction
       description: Retrieves the scheduled transaction
       operationId: get_scheduled_transaction
-      parameters: []
+      deprecated: false
       requestBody:
         content:
           application/json:
@@ -476,7 +465,7 @@ paths:
       summary: get_table_by_scope
       description: Retrieves table scope
       operationId: get_table_by_scope
-      parameters: []
+      deprecated: false
       requestBody:
         content:
           application/json:
@@ -529,7 +518,7 @@ paths:
       summary: get_table_rows
       description: Returns an object containing rows from the specified table.
       operationId: get_table_rows
-      parameters: []
+      deprecated: false
       requestBody:
         content:
           application/json:
@@ -579,7 +568,7 @@ paths:
       summary: abi_json_to_bin
       description: Returns an object containing rows from the specified table.
       operationId: abi_json_to_bin
-      parameters: []
+      deprecated: false
       requestBody:
         content:
           application/json:
@@ -610,7 +599,7 @@ paths:
       summary: abi_bin_to_json
       description: Returns an object containing rows from the specified table.
       operationId: abi_bin_to_json
-      parameters: []
+      deprecated: false
       requestBody:
         content:
           application/json:
@@ -643,7 +632,7 @@ paths:
       summary: get_code
       description: Returns an object containing rows from the specified table.
       operationId: get_code
-      parameters: []
+      deprecated: false
       requestBody:
         content:
           application/json:
@@ -692,7 +681,7 @@ paths:
       summary: get_raw_abi
       description: Returns an object containing rows from the specified table.
       operationId: get_raw_abi
-      parameters: []
+      deprecated: false
       requestBody:
         content:
           application/json:
@@ -734,7 +723,7 @@ paths:
       summary: get_activated_protocol_features
       description: Retreives the activated protocol features for producer node
       operationId: get_activated_protocol_features
-      parameters: []
+      deprecated: false
       requestBody:
         content:
           application/json:
