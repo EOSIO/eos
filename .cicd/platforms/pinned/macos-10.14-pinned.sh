@@ -49,11 +49,13 @@ sudo make install
 cd ../..
 rm -rf clang8
 # install boost from source
+## Boost Fix: eosio/install/bin/../include/c++/v1/stdlib.h:94:15: fatal error: 'stdlib.h' file not found
+export SDKROOT="$(xcrun --sdk macosx --show-sdk-path)"
 curl -LO https://dl.bintray.com/boostorg/release/1.71.0/source/boost_1_71_0.tar.bz2
 tar -xjf boost_1_71_0.tar.bz2
 cd boost_1_71_0
 ./bootstrap.sh --prefix=/usr/local
-sudo ./b2 --with-iostreams --with-date_time --with-filesystem --with-system --with-program_options --with-chrono --with-test -q -j$(getconf _NPROCESSORS_ONLN) install
+sudo SDKROOT="$SDKROOT" ./b2 --with-iostreams --with-date_time --with-filesystem --with-system --with-program_options --with-chrono --with-test -q -j$(getconf _NPROCESSORS_ONLN) install
 cd ..
 sudo rm -rf boost_1_71_0.tar.bz2 boost_1_71_0
 # install mongodb
@@ -76,4 +78,4 @@ make -j $(getconf _NPROCESSORS_ONLN) VERBOSE=1 && \
 sudo make install && \
 rm -rf ~/mongo-cxx-driver-r3.4.0.tar.gz ~/mongo-cxx-driver-r3.4.0
 # install nvm for ship_test
-cd ~ && brew install nvm && mkdir -p ~/.nvm && echo 'export NVM_DIR=/Users/anka/.nvm' >> ~/.bash_profile && echo 'source $(brew --prefix nvm)/nvm.sh' >> ~/.bash_profile && cat ~/.bash_profile && source ~/.bash_profile && echo $NVM_DIR && nvm install --lts=dubnium
+cd ~ && brew install nvm && mkdir -p ~/.nvm && echo "export NVM_DIR=$HOME/.nvm" >> ~/.bash_profile && echo 'source $(brew --prefix nvm)/nvm.sh' >> ~/.bash_profile && cat ~/.bash_profile && source ~/.bash_profile && echo $NVM_DIR && nvm install --lts=dubnium
