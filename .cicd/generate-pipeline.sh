@@ -631,6 +631,7 @@ cat <<EOF
     command: .cicd/docker-tag.sh
     env:
       IMAGE_TAG: "ubuntu-18.04-unpinned"
+      PLATFORM_TYPE: "unpinned"
     agents:
       queue: "$BUILDKITE_BUILD_AGENT_QUEUE"
     timeout: ${TIMEOUT:-10}
