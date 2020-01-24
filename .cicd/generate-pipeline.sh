@@ -102,6 +102,9 @@ echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | while read -r PLATFORM_JSON; do
       - "$PREP_COMMANDS"
       - "./.cicd/build.sh"
       - "tar -pczf build.tar.gz build && buildkite-agent artifact upload build.tar.gz"
+    plugins:
+      - thedyrt/skip-checkout#v0.1.1:
+          cd: ~
     env:
       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
       PLATFORM_TYPE: $PLATFORM_TYPE
@@ -162,7 +165,12 @@ done
 cat <<EOF
 
   - label: ":docker: Docker - Build and Install"
-    command: "./.cicd/installation-build.sh"
+    command: 
+      - "$PREP_COMMANDS"
+      - "./.cicd/installation-build.sh"
+    plugins:
+      - thedyrt/skip-checkout#v0.1.1:
+          cd: ~
     env:
       IMAGE_TAG: "ubuntu-18.04-unpinned"
       PLATFORM_TYPE: "unpinned"
@@ -191,6 +199,9 @@ for ROUND in $(seq 1 $ROUNDS); do
       - "$PREP_COMMANDS"
       - "buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' && tar -xzf build.tar.gz"
       - "./.cicd/test.sh scripts/parallel-test.sh"
+    plugins:
+      - thedyrt/skip-checkout#v0.1.1:
+          cd: ~
     env:
       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
       PLATFORM_TYPE: $PLATFORM_TYPE
@@ -255,6 +266,9 @@ EOF
       - "$PREP_COMMANDS"
       - "buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' && tar -xzf build.tar.gz"
       - "./.cicd/test.sh scripts/wasm-spec-test.sh"
+    plugins:
+      - thedyrt/skip-checkout#v0.1.1:
+          cd: ~
     env:
       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
       PLATFORM_TYPE: $PLATFORM_TYPE
@@ -463,6 +477,9 @@ if ( [[ ! $PINNED == false ]] ); then
       - "$PREP_COMMANDS"
       - "buildkite-agent artifact download build.tar.gz . --step ':ubuntu: Ubuntu 18.04 - Build' && tar -xzf build.tar.gz"
       - ./.cicd/test.sh .cicd/multiversion.sh
+    plugins:
+      - thedyrt/skip-checkout#v0.1.1:
+          cd: ~
     env:
       IMAGE_TAG: "ubuntu-18.04-pinned"
       PLATFORM_TYPE: "pinned"
@@ -636,7 +653,12 @@ cat <<EOF
     skip: ${SKIP_MACOS_10_14}${SKIP_PACKAGE_BUILDER}${SKIP_MAC}
 
   - label: ":docker: Docker - Label Container with Git Branch and Git Tag"
-    command: .cicd/docker-tag.sh
+    command: 
+      - "$PREP_COMMANDS"
+      - ".cicd/docker-tag.sh"
+    plugins:
+      - thedyrt/skip-checkout#v0.1.1:
+          cd: ~
     env:
       IMAGE_TAG: "ubuntu-18.04-unpinned"
       PLATFORM_TYPE: "unpinned"
@@ -648,7 +670,12 @@ cat <<EOF
   - wait
 
   - label: ":git: Git Submodule Regression Check"
-    command: "./.cicd/submodule-regression-check.sh"
+    command: 
+      - "$PREP_COMMANDS"
+      - "./.cicd/submodule-regression-check.sh"
+    plugins:
+      - thedyrt/skip-checkout#v0.1.1:
+          cd: ~
     agents:
       queue: "automation-basic-builder-fleet"
     timeout: ${TIMEOUT:-5}
