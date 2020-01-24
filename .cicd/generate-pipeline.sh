@@ -463,6 +463,7 @@ if ( [[ ! $PINNED == false ]] ); then
   - wait
   - label: ":pipeline: Multiversion Test"
     command:
+      - "pwd && ls -alht"
       - "./.cicd/test.sh .cicd/multiversion.sh"
     env:
       IMAGE_TAG: "ubuntu-18.04-pinned"
