@@ -2,16 +2,15 @@
 set -eo pipefail
 declare -A PR_MAP
 declare -A BASE_MAP
-# Support Travis and BK
+
 if [[ $BUILDKITE == true ]]; then
     [[ -z $BUILDKITE_PULL_REQUEST_BASE_BRANCH ]] && echo "Unable to find BUILDKITE_PULL_REQUEST_BASE_BRANCH ENV. Skipping submodule regression check." && exit 0
     BASE_BRANCH=$BUILDKITE_PULL_REQUEST_BASE_BRANCH
     CURRENT_BRANCH=$BUILDKITE_BRANCH
 else
-    [[ -z $GITHUB_HEAD_REF ]] && echo "Unable to find GITHUB_HEAD_REF ENV. Skipping submodule regression check." && exit 0
+    [[ -z $GITHUB_BASE_REF ]] && echo "Cannot find \$GITHUB_BASE_REF, so we have nothing to compare submodules to. Skipping submodule regression check." && exit 0
     BASE_BRANCH=$GITHUB_BASE_REF
-    CURRENT_BRANCH=$GITHUB_HEAD_REF
-    [[ ! -z $GITHUB_REF ]] && CURRENT_BRANCH=$GITHUB_SHA # When we're not running from a PR, the slug is not set. When we are, we need to use the TRAVIS_COMMIT to be sure we're supporting the Forked PR's merge/code that's in the EOS repo. This is needed for the git log below.
+    CURRENT_BRANCH=$GITHUB_SHA
 fi
 
 echo "getting submodule info for $CURRENT_BRANCH"
@@ -27,17 +26,14 @@ while read -r a b; do
 done < <(git submodule --quiet foreach --recursive 'echo $path `git log -1 --format=%ct`')
 
 # We need to switch back to the PR ref/head so we can git log properly
-
-if [[ $BUILDKITE == true ]]; then
-    echo "switching back to $CURRENT_BRANCH"
-    git checkout -f $CURRENT_BRANCH 1> /dev/null
-elif [[ ! -z $GITHUB_REF ]]; then
-    echo "git fetch origin +$GITHUB_REF"
-    git fetch origin +$GITHUB_REF: 1> /dev/null
-    echo "switching back to $GITHUB_SHA"
-    echo 'git checkout -qf FETCH_HEAD'
-    git checkout -qf FETCH_HEAD 1> /dev/null
+if [[ $BUILDKITE != true ]]; then
+    echo "git fetch origin +$GITHUB_REF:"
+    git fetch origin +${GITHUB_REF}: 1> /dev/null
 fi
+
+echo "switching back to $CURRENT_BRANCH..."
+echo "git checkout -qf $CURRENT_BRANCH"
+git checkout -qf $CURRENT_BRANCH 1> /dev/null
 
 for k in "${!BASE_MAP[@]}"; do
     base_ts=${BASE_MAP[$k]}
