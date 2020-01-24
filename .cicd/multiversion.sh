@@ -36,8 +36,6 @@ elif [[ "$DEBUG" == 'true' ]]; then
     echo 'Skipping that step...'
 fi
 # multiversion
-pwd 
-ls -laht
 cd $EOS_LOCATION/eos_multiversion_builder
 echo 'Downloading other versions of nodeos...'
 python2.7 $EOS_LOCATION/.cicd/helpers/multi_eos_docker.py

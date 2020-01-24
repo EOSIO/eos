@@ -28,7 +28,6 @@ else # Linux
     else
         echo "cd \$EOS_LOCATION" >> /tmp/$POPULATED_FILE_NAME # We don't need to clone twice
     fi
-    echo "pwd && ls -laht" >> /tmp/$POPULATED_FILE_NAME
     echo "$@" >> /tmp/$POPULATED_FILE_NAME
     [[ $BUILDKITE == true ]] && echo "cp -rfp \$EOS_LOCATION/build $(pwd)" >> /tmp/$POPULATED_FILE_NAME
     TEST_COMMANDS="cd $(pwd) && ./$POPULATED_FILE_NAME"
