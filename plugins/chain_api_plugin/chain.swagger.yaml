@@ -25,10 +25,8 @@ components:
 paths:
   /get_account:
     post:
-      summary: get_account
       description: Returns an object containing various details about a specific account on the blockchain.
       operationId: get_account
-      deprecated: false
       requestBody:
         description: JSON Object with single member "account_name"
         content:
@@ -53,10 +51,8 @@ paths:
                 description: NEEDS DESCRIPTION
   /get_block:
     post:
-      summary: get_block
       description: Returns an object containing various details about a specific block on the blockchain.
       operationId: get_block
-      deprecated: false
       requestBody:
         content:
           application/json:
@@ -79,10 +75,8 @@ paths:
                 description: NEEDS DESCRIPTION
   /get_info:
     post:
-      summary: get_info
       description: Returns an object containing various details about the blockchain.
       operationId: get_info
-      deprecated: false
       security: []
       responses:
         "200":
@@ -95,10 +89,8 @@ paths:
                 description: NEEDS DESCRIPTION
   /push_transaction:
     post:
-      summary: push_transaction
       description: This method expects a transaction in JSON format and will attempt to apply it to the blockchain.
       operationId: push_transaction
-      deprecated: false
       requestBody:
         content:
           application/json:
@@ -131,10 +123,8 @@ paths:
 
   /send_transaction:
     post:
-      summary: send_transaction
       description: This method expects a transaction in JSON format and will attempt to apply it to the blockchain.
       operationId: send_transaction
-      deprecated: false
       requestBody:
         content:
           application/json:
@@ -168,10 +158,8 @@ paths:
 
   /push_transactions:
     post:
-      summary: push_transactions
       description: This method expects a transaction in JSON format and will attempt to apply it to the blockchain.
       operationId: push_transactions
-      deprecated: false
       requestBody:
         content:
           application/json:
@@ -191,10 +179,8 @@ paths:
 
   /get_block_header_state:
     post:
-      summary: get_block_header_state
       description: Retrieves the glock header state
       operationId: get_block_header_state
-      deprecated: false
       requestBody:
         content:
           application/json:
@@ -219,10 +205,8 @@ paths:
 
   /get_abi:
     post:
-      summary: get_abi
       description: Retrieves the ABI for a contract based on its account name
       operationId: get_abi
-      deprecated: false
       requestBody:
         content:
           application/json:
@@ -246,10 +230,8 @@ paths:
                 description: NEEDS DESCRIPTION
   /get_currency_balance:
     post:
-      summary: get_currency_balance
       description: Retrieves the current balance
       operationId: get_currency_balance
-      deprecated: false
       requestBody:
         content:
           application/json:
@@ -287,10 +269,8 @@ paths:
 
   /get_currency_stats:
     post:
-      summary: get_currency_stats
       description: Retrieves currency stats
       operationId: get_currency_stats
-      deprecated: false
       requestBody:
         content:
           application/json:
@@ -316,10 +296,8 @@ paths:
 
   /get_required_keys:
     post:
-      summary: get_required_keys
       description: Returns the required keys needed to sign a transaction.
       operationId: get_required_keys
-      deprecated: false
       requestBody:
         content:
           application/json:
@@ -350,10 +328,8 @@ paths:
 
   /get_producers:
     post:
-      summary: get_producers
       description: Retrieves producers list
       operationId: get_producers
-      deprecated: false
       requestBody:
         content:
           application/json:
@@ -386,10 +362,8 @@ paths:
 
   /get_raw_code_and_abi:
     post:
-      summary: get_raw_code_and_abi
       description: Retrieves raw code and ABI for a contract based on account name
       operationId: get_raw_code_and_abi
-      deprecated: false
       requestBody:
         content:
           application/json:
@@ -424,10 +398,8 @@ paths:
 
   /get_scheduled_transaction:
     post:
-      summary: get_scheduled_transaction
       description: Retrieves the scheduled transaction
       operationId: get_scheduled_transaction
-      deprecated: false
       requestBody:
         content:
           application/json:
@@ -462,10 +434,8 @@ paths:
 
   /get_table_by_scope:
     post:
-      summary: get_table_by_scope
       description: Retrieves table scope
       operationId: get_table_by_scope
-      deprecated: false
       requestBody:
         content:
           application/json:
@@ -493,7 +463,6 @@ paths:
                 reverse:
                   type: boolean
                   description: Reverse the order of returned results
-
       responses:
         "200":
           description: OK
@@ -515,10 +484,8 @@ paths:
 
   /get_table_rows:
     post:
-      summary: get_table_rows
       description: Returns an object containing rows from the specified table.
       operationId: get_table_rows
-      deprecated: false
       requestBody:
         content:
           application/json:
@@ -565,10 +532,8 @@ paths:
 
   /abi_json_to_bin:
     post:
-      summary: abi_json_to_bin
       description: Returns an object containing rows from the specified table.
       operationId: abi_json_to_bin
-      deprecated: false
       requestBody:
         content:
           application/json:
@@ -596,10 +561,8 @@ paths:
 
   /abi_bin_to_json:
     post:
-      summary: abi_bin_to_json
       description: Returns an object containing rows from the specified table.
       operationId: abi_bin_to_json
-      deprecated: false
       requestBody:
         content:
           application/json:
@@ -629,10 +592,8 @@ paths:
 
   /get_code:
     post:
-      summary: get_code
       description: Returns an object containing rows from the specified table.
       operationId: get_code
-      deprecated: false
       requestBody:
         content:
           application/json:
@@ -678,10 +639,8 @@ paths:
 
   /get_raw_abi:
     post:
-      summary: get_raw_abi
       description: Returns an object containing rows from the specified table.
       operationId: get_raw_abi
-      deprecated: false
       requestBody:
         content:
           application/json:
@@ -720,10 +679,8 @@ paths:
 
   /get_activated_protocol_features:
     post:
-      summary: get_activated_protocol_features
       description: Retreives the activated protocol features for producer node
       operationId: get_activated_protocol_features
-      deprecated: false
       requestBody:
         content:
           application/json:
