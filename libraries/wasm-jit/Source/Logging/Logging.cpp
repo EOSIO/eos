@@ -7,7 +7,6 @@
 
 namespace Log
 {
-	static Platform::Mutex* categoryEnabledMutex = Platform::createMutex();
 	static bool categoryEnabled[(Uptr)Category::num] =
 	{
 		true, // error
@@ -20,19 +19,16 @@ namespace Log
 	};
 	void setCategoryEnabled(Category category,bool enable)
 	{
-		Platform::Lock lock(categoryEnabledMutex);
 		WAVM_ASSERT_THROW(category < Category::num);
 		categoryEnabled[(Uptr)category] = enable;
 	}
 	bool isCategoryEnabled(Category category)
 	{
-		Platform::Lock lock(categoryEnabledMutex);
 		WAVM_ASSERT_THROW(category < Category::num);
 		return categoryEnabled[(Uptr)category];
 	}
 	void printf(Category category,const char* format,...)
 	{
-		Platform::Lock lock(categoryEnabledMutex);
 		if(categoryEnabled[(Uptr)category])
 		{
 			va_list varArgs;
