@@ -133,7 +133,6 @@ EOF
           failover-registries:
             - 'registry_1'
             - 'registry_2'
-          pre-execute-ping-sleep: "8.8.8.8"
           pre-commands: 
             - "rm -rf mac-anka-fleet; git clone git@github.com:EOSIO/mac-anka-fleet.git && cd mac-anka-fleet && . ./ensure-tag.bash -u 12 -r 25G -a '-n'"
       - thedyrt/skip-checkout#v0.1.1:
@@ -223,7 +222,6 @@ EOF
           failover-registries:
             - 'registry_1'
             - 'registry_2'
-          pre-execute-ping-sleep: "8.8.8.8"
       - thedyrt/skip-checkout#v0.1.1:
           cd: ~
     agents: "queue=mac-anka-node-fleet"
@@ -287,7 +285,6 @@ EOF
           failover-registries:
             - 'registry_1'
             - 'registry_2'
-          pre-execute-ping-sleep: "8.8.8.8"
       - thedyrt/skip-checkout#v0.1.1:
           cd: ~
     agents: "queue=mac-anka-node-fleet"
@@ -360,7 +357,6 @@ EOF
           failover-registries:
             - 'registry_1'
             - 'registry_2'
-          pre-execute-ping-sleep: "8.8.8.8"
       - thedyrt/skip-checkout#v0.1.1:
           cd: ~
     agents: "queue=mac-anka-node-fleet"
@@ -434,7 +430,6 @@ EOF
           failover-registries:
             - 'registry_1'
             - 'registry_2'
-          pre-execute-ping-sleep: "8.8.8.8"
       - thedyrt/skip-checkout#v0.1.1:
           cd: ~
     agents: "queue=mac-anka-node-fleet"
@@ -641,7 +636,6 @@ cat <<EOF
           failover-registries:
             - 'registry_1'
             - 'registry_2'
-          pre-execute-ping-sleep: "8.8.8.8"
       - thedyrt/skip-checkout#v0.1.1:
           cd: ~
     agents:
