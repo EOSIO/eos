@@ -126,6 +126,7 @@ EOF
     plugins:
       - EOSIO/anka#v0.5.7:
           no-volume: true
+          workdir: "/Users/anka/build"
           inherit-environment-vars: true
           vm-name: ${MOJAVE_ANKA_TEMPLATE_NAME}
           vm-registry-tag: "${MOJAVE_ANKA_TAG_BASE}::$(echo "$PLATFORM_JSON" | jq -r .HASHED_IMAGE_TAG)"
@@ -226,6 +227,7 @@ EOF
     plugins:
       - EOSIO/anka#v0.5.7:
           no-volume: true
+          workdir: "/Users/anka/build"
           inherit-environment-vars: true
           vm-name: ${MOJAVE_ANKA_TEMPLATE_NAME}
           vm-registry-tag: "${MOJAVE_ANKA_TAG_BASE}::$(echo "$PLATFORM_JSON" | jq -r .HASHED_IMAGE_TAG)"
@@ -293,6 +295,7 @@ EOF
     plugins:
       - EOSIO/anka#v0.5.7:
           no-volume: true
+          workdir: "/Users/anka/build"
           inherit-environment-vars: true
           vm-name: ${MOJAVE_ANKA_TEMPLATE_NAME}
           vm-registry-tag: "${MOJAVE_ANKA_TAG_BASE}::$(echo "$PLATFORM_JSON" | jq -r .HASHED_IMAGE_TAG)"
@@ -363,6 +366,7 @@ EOF
     plugins:
       - EOSIO/anka#v0.5.7:
           no-volume: true
+          workdir: "/Users/anka/build"
           inherit-environment-vars: true
           vm-name: ${MOJAVE_ANKA_TEMPLATE_NAME}
           vm-registry-tag: "${MOJAVE_ANKA_TAG_BASE}::$(echo "$PLATFORM_JSON" | jq -r .HASHED_IMAGE_TAG)"
@@ -434,6 +438,7 @@ EOF
     plugins:
       - EOSIO/anka#v0.5.7:
           no-volume: true
+          workdir: "/Users/anka/build"
           inherit-environment-vars: true
           vm-name: ${MOJAVE_ANKA_TEMPLATE_NAME}
           vm-registry-tag: "${MOJAVE_ANKA_TAG_BASE}::$(echo "$PLATFORM_JSON" | jq -r .HASHED_IMAGE_TAG)"
@@ -636,6 +641,7 @@ cat <<EOF
     plugins:
       - EOSIO/anka#v0.5.7:
           no-volume: true
+          workdir: "/Users/anka/build"
           inherit-environment-vars: true
           vm-name: 10.14.6_6C_14G_40G
           vm-registry-tag: "clean::cicd::git-ssh::nas::brew::buildkite-agent"
