@@ -1,7 +1,7 @@
 #!/bin/bash
 set -eo pipefail # exit on failure of any "simple" command (excludes &&, ||, or | chains)
 # variables
-GIT_ROOT="$(dirname $BASH_SOURCE[0])/.."
+GIT_ROOT="$(dirname $BASH_SOURCE[0])/../.."
 cd $GIT_ROOT
 echo "+++ $([[ "$BUILDKITE" == 'true' ]] && echo ':evergreen_tree: ')Configuring Environment"
 [[ "$PIPELINE_CONFIG" == '' ]] && export PIPELINE_CONFIG='pipeline.json'
