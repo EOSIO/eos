@@ -1450,9 +1450,9 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
       if (next_producer_block_time) {
          const auto start_block_time = *next_producer_block_time - fc::microseconds( 2 * config::block_interval_us );
          const fc::time_point deadline = calculate_block_deadline( block_time );
-         fc_dlog(_log, "Next block start: ${bt} deadline: ${dt}", ("bt", start_block_time)("dt", deadline));
+         fc_dlog(_log, "Next block #${n} start: ${bt} deadline: ${dt}", ("n", hbs->block_num + 1)("bt", start_block_time)("dt", deadline));
          if( now < start_block_time && start_block_time < deadline ) {
-            fc_dlog(_log, "Cycle duty off");
+            fc_dlog(_log, "Duty cycle off for ${n}", ("n", hbs->block_num + 1) );
             _cpu_duty_cycle_on = false;
             schedule_delayed_production_loop(weak_from_this(), start_block_time);
             return start_block_result::waiting_for_production;
@@ -1460,7 +1460,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
       }
    }
 
-   fc_dlog(_log, "Starting block ${bt} at ${time}", ("bt", block_time)("time", now));
+   fc_dlog(_log, "Starting block #${n} ${bt} at ${time}", ("n", hbs->block_num + 1)("bt", block_time)("time", now));
 
    try {
       uint16_t blocks_to_confirm = 0;
@@ -1822,6 +1822,12 @@ bool producer_plugin_impl::process_incoming_trxs( const fc::time_point& deadline
    return !exhausted;
 }
 
+// Example:
+// --> Start block A (block time x.500) at time x.000
+// -> start_block()
+// --> deadline, produce block x.500 at time x.400 (assuming 80% duty cycle)
+// -> IDLE: cpu_duty_cycle_on == false
+// --> Start block B (block time y.000) at time x.500
 void producer_plugin_impl::schedule_production_loop() {
    chain::controller& chain = chain_plug->chain();
    _timer.cancel();
