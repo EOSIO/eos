@@ -266,6 +266,13 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       // keep a expected ratio between defer txn and incoming txn
       double _incoming_defer_ratio = 1.0; // 1:1
 
+      // amount of block producing window to use for producing a block
+      uint32_t _cpu_duty_cycle_pct = chain::config::default_cpu_duty_cycle_pct;
+      // calculated from cpu_duty_cycle_pct, negative block offset in us
+      fc::microseconds _cpu_duty_cycle_offset_us;
+      // on when producing a block: _pending_block_mode == pending_block_mode::producing && in cpu_duty_cycle_pct
+      bool _cpu_duty_cycle_on = true;
+
       // path to write the snapshots to
       bfs::path _snapshots_dir;
 
@@ -439,7 +446,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
 
       void process_incoming_transaction_async(const transaction_metadata_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next) {
          chain::controller& chain = chain_plug->chain();
-         if (!chain.is_building_block()) {
+         if (!chain.is_building_block() || !_cpu_duty_cycle_on) {
             _pending_incoming_transactions.emplace_back(trx, persist_until_expired, next);
             return;
          }
@@ -547,7 +554,8 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       enum class start_block_result {
          succeeded,
          failed,
-         waiting,
+         waiting_for_block,
+         waiting_for_production,
          exhausted
       };
 
@@ -631,6 +639,8 @@ void producer_plugin::set_program_options(
           "Time in microseconds allowed for a transaction that starts with insufficient CPU quota to complete and cover its CPU usage.")
          ("incoming-defer-ratio", bpo::value<double>()->default_value(1.0),
           "ratio between incoming transations and deferred transactions when both are exhausted")
+         ("cpu-duty-cycle-pct", bpo::value<uint32_t>()->default_value(config::default_cpu_duty_cycle_pct / config::percent_1),
+          "Percentage of cpu block production time used to produce block. Whole number percentages, e.g. 80 for 80%")
          ("producer-threads", bpo::value<uint16_t>()->default_value(config::default_controller_thread_pool_size),
           "Number of worker threads in producer thread pool")
          ("snapshots-dir", bpo::value<bfs::path>()->default_value("snapshots"),
@@ -772,6 +782,13 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
    my->_max_irreversible_block_age_us = fc::seconds(options.at("max-irreversible-block-age").as<int32_t>());
 
    my->_incoming_defer_ratio = options.at("incoming-defer-ratio").as<double>();
+
+   my->_cpu_duty_cycle_pct = options.at("cpu-duty-cycle-pct").as<uint32_t>();
+   EOS_ASSERT( my->_cpu_duty_cycle_pct >= 0 && my->_cpu_duty_cycle_pct <= 100, plugin_config_exception,
+               "cpu-duty-cycle-pct must be 0 - 100, ${pct}", ("pct", my->_cpu_duty_cycle_pct) );
+   my->_cpu_duty_cycle_pct *= config::percent_1;
+   my->_cpu_duty_cycle_offset_us = fc::microseconds(
+         -EOS_PERCENT( config::block_interval_us, chain::config::percent_100 - my->_cpu_duty_cycle_pct ) );
 
    auto thread_pool_size = options.at( "producer-threads" ).as<uint16_t>();
    EOS_ASSERT( thread_pool_size > 0, plugin_config_exception,
@@ -1303,7 +1320,9 @@ fc::time_point producer_plugin_impl::calculate_pending_block_time() const {
 
 fc::time_point producer_plugin_impl::calculate_block_deadline( const fc::time_point& block_time ) const {
    bool last_block = ((block_timestamp_type(block_time).slot % config::producer_repetitions) == config::producer_repetitions - 1);
-   return block_time + fc::microseconds(last_block ? _last_block_time_offset_us : _produce_time_offset_us);
+   fc::microseconds offset_us( last_block ? _last_block_time_offset_us : _produce_time_offset_us );
+   offset_us = std::min( offset_us, _cpu_duty_cycle_offset_us );
+   return block_time + offset_us;
 }
 
 enum class tx_category {
@@ -1317,9 +1336,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
    chain::controller& chain = chain_plug->chain();
 
    if( chain.get_read_mode() == chain::db_read_mode::READ_ONLY )
-      return start_block_result::waiting;
-
-   fc_dlog(_log, "Starting block at ${time}", ("time", fc::time_point::now()));
+      return start_block_result::waiting_for_block;
 
    const auto& hbs = chain.head_block_state();
 
@@ -1329,6 +1346,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
    const fc::time_point block_time = calculate_pending_block_time();
 
    _pending_block_mode = pending_block_mode::producing;
+   _cpu_duty_cycle_on = true;
 
    // Not our turn
    const auto& scheduled_producer = hbs->get_scheduled_producer(block_time);
@@ -1366,8 +1384,22 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
    if (_pending_block_mode == pending_block_mode::speculating) {
       auto head_block_age = now - chain.head_block_time();
       if (head_block_age > fc::seconds(5))
-         return start_block_result::waiting;
+         return start_block_result::waiting_for_block;
    }
+
+   if (_pending_block_mode == pending_block_mode::producing) {
+      const auto next_producer_block_time = calculate_next_block_time( scheduled_producer.producer_name, block_time );
+      if (next_producer_block_time) {
+         const auto start_block_time = *next_producer_block_time - fc::microseconds( config::block_interval_us );
+         const fc::time_point deadline = calculate_block_deadline( block_time );
+         if( now < start_block_time || now > deadline ) {
+            _cpu_duty_cycle_on = false;
+            return start_block_result::waiting_for_production;
+         }
+      }
+   }
+
+   fc_dlog(_log, "Starting block ${bt} at ${time}", ("bt", block_time)("time", now));
 
    try {
       uint16_t blocks_to_confirm = 0;
@@ -1779,7 +1811,7 @@ void producer_plugin_impl::schedule_production_loop() {
                 self->schedule_production_loop();
              }
           } ) );
-   } else if (result == start_block_result::waiting){
+   } else if (result == start_block_result::waiting_for_block){
       if (!_producers.empty() && !production_disabled_by_policy()) {
          fc_dlog(_log, "Waiting till another block is received and scheduling Speculative/Production Change");
          schedule_delayed_production_loop(weak_this, calculate_pending_block_time());
@@ -1787,6 +1819,10 @@ void producer_plugin_impl::schedule_production_loop() {
          fc_dlog(_log, "Waiting till another block is received");
          // nothing to do until more blocks arrive
       }
+
+   } else if (result == start_block_result::waiting_for_production) {
+      fc_dlog(_log, "Scheduling Production Start");
+      schedule_delayed_production_loop(weak_this, calculate_pending_block_time());
 
    } else if (_pending_block_mode == pending_block_mode::producing) {
 
