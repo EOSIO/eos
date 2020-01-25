@@ -1451,7 +1451,8 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
          const auto start_block_time = *next_producer_block_time - fc::microseconds( 2 * config::block_interval_us );
          const fc::time_point deadline = calculate_block_deadline( block_time );
          fc_dlog(_log, "Next block start: ${bt} deadline: ${dt}", ("bt", start_block_time)("dt", deadline));
-         if( now < start_block_time ) {
+         if( now < start_block_time && start_block_time < deadline ) {
+            fc_dlog(_log, "Cycle duty off");
             _cpu_duty_cycle_on = false;
             schedule_delayed_production_loop(weak_from_this(), start_block_time);
             return start_block_result::waiting_for_production;
@@ -1902,20 +1903,26 @@ void producer_plugin_impl::schedule_production_loop() {
 void producer_plugin_impl::schedule_delayed_production_loop(const std::weak_ptr<producer_plugin_impl>& weak_this, const block_timestamp_type& current_block_time) {
    // if we have any producers then we should at least set a timer for our next available slot
    optional<fc::time_point> wake_up_time;
-   for (const auto&p: _producers) {
+   chain::account_name producer;
+   for (const auto& p : _producers) {
       auto next_producer_block_time = calculate_next_block_time(p, current_block_time);
       if (next_producer_block_time) {
          auto producer_wake_up_time = *next_producer_block_time - fc::microseconds(config::block_interval_us);
          if (wake_up_time) {
-            wake_up_time = std::min<fc::time_point>(*wake_up_time, producer_wake_up_time);
+            // wake up with a full block interval to the deadline
+            if( producer_wake_up_time < *wake_up_time ) {
+               wake_up_time = producer_wake_up_time;
+               producer = p;
+            }
          } else {
             wake_up_time = producer_wake_up_time;
+            producer = p;
          }
       }
    }
 
    if (wake_up_time) {
-      fc_dlog(_log, "Scheduling Speculative/Production Change at ${time}", ("time", wake_up_time));
+      fc_dlog(_log, "Scheduling Speculative/Production Change for ${p} at ${time}", ("p", producer)("time", wake_up_time));
       static const boost::posix_time::ptime epoch(boost::gregorian::date(1970, 1, 1));
       _timer.expires_at(epoch + boost::posix_time::microseconds(wake_up_time->time_since_epoch().count()));
       _timer.async_wait( app().get_priority_queue().wrap( priority::high,
