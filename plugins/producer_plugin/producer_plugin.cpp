@@ -1448,10 +1448,12 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
    if (_pending_block_mode == pending_block_mode::producing) {
       const auto next_producer_block_time = calculate_next_block_time( scheduled_producer.producer_name, block_time );
       if (next_producer_block_time) {
-         const auto start_block_time = *next_producer_block_time - fc::microseconds( config::block_interval_us );
+         const auto start_block_time = *next_producer_block_time - fc::microseconds( 2 * config::block_interval_us );
          const fc::time_point deadline = calculate_block_deadline( block_time );
-         if( now < start_block_time || now > deadline ) {
+         fc_dlog(_log, "Next block start: ${bt} deadline: ${dt}", ("bt", start_block_time)("dt", deadline));
+         if( now < start_block_time ) {
             _cpu_duty_cycle_on = false;
+            schedule_delayed_production_loop(weak_from_this(), start_block_time);
             return start_block_result::waiting_for_production;
          }
       }
@@ -1848,8 +1850,7 @@ void producer_plugin_impl::schedule_production_loop() {
       }
 
    } else if (result == start_block_result::waiting_for_production) {
-      fc_dlog(_log, "Scheduling Production Start");
-      schedule_delayed_production_loop(weak_this, calculate_pending_block_time());
+      // scheduled in start_block()
 
    } else if (_pending_block_mode == pending_block_mode::producing) {
 
