@@ -1,4 +1,6 @@
-<!-- # How to replay or resync with full history -->
+---
+content_title: How to replay or resync with full history
+---
 
 ## Goal
 
