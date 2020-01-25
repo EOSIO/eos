@@ -1,0 +1,101 @@
+#!/usr/bin/env bash
+set -e
+
+count_only_flag=''
+extended_syntax_flag=''
+filter=''
+num_jobs=1
+have_gnu_parallel=
+flags=()
+
+while [[ "$#" -ne 0 ]]; do
+  case "$1" in
+  -c)
+    count_only_flag=1
+    ;;
+  -f)
+    shift
+    filter="$1"
+    flags+=('-f' "$filter")
+    ;;
+  -j)
+    shift
+    num_jobs="$1"
+    ;;
+  -x)
+    extended_syntax_flag='-x'
+    flags+=('-x')
+    ;;
+  *)
+    break
+    ;;
+  esac
+  shift
+done
+
+if ( type -p parallel &>/dev/null ); then
+  have_gnu_parallel=1
+elif [[ "$num_jobs" != 1 ]]; then
+  printf 'bats: cannot execute "%s" jobs without GNU parallel\n' "$num_jobs" >&2
+  exit 1
+fi
+
+trap 'kill 0; exit 1' int
+
+all_tests=()
+for filename in "$@"; do
+  if  [[ ! -f "$filename" ]]; then
+    printf 'bats: %s does not exist\n' "$filename" >&2
+    exit 1
+  fi
+
+  test_names=()
+  test_dupes=()
+  while read -r line; do
+    if [[ ! "$line" =~ ^bats_test_function\  ]]; then
+      continue
+    fi
+    line="${line%$'\r'}"
+    line="${line#* }"
+
+    all_tests+=( "$(printf "%s\t%s" "$filename" "$line")" )
+    if [[ " ${test_names[*]} " == *" $line "* ]]; then
+      test_dupes+=("$line")
+      continue
+    fi
+    test_names+=("$line")
+  done < <(BATS_TEST_FILTER="$filter" bats-preprocess "$filename")
+
+  if [[ "${#test_dupes[@]}" -ne 0 ]]; then
+    printf 'bats warning: duplicate test name(s) in %s: %s\n' "$filename" "${test_dupes[*]}" >&2
+  fi
+done
+
+if [[ -n "$count_only_flag" ]]; then
+  printf '%d\n' "${#all_tests[@]}"
+  exit
+fi
+
+status=0
+printf '1..%d\n' "${#all_tests[@]}"
+
+# No point on continuing if there's no tests.
+if [[ "${#all_tests[@]}" == 0 ]]; then
+  exit
+fi
+
+if [[ "$num_jobs" != 1 ]]; then
+  # Only use GNU parallel when we want parallel execution -- there is a small
+  # amount of overhead using it over a simple loop in the serial case.
+  set -o pipefail
+  printf '%s\n' "${all_tests[@]}" | grep -v '^$' | \
+    parallel -qk -j "$num_jobs" --colsep="\t" -- bats-exec-test "${flags[@]}" '{1}' '{2}' '{#}' || status=1
+else
+  # Just do it serially.
+  test_number=1
+  while IFS=$'\t' read -r filename test_name; do
+    bats-exec-test "${flags[@]}" "$filename" "$test_name" "$test_number" || status=1
+    ((++test_number))
+  done < <(printf '%s\n' "${all_tests[@]}" | grep -v '^$')
+fi
+exit "$status"

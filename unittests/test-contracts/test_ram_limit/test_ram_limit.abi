@@ -1,0 +1,100 @@
+{
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT Fri Dec  7 11:56:43 2018",
+    "version": "eosio::abi/1.1",
+    "structs": [
+        {
+            "name": "printentry",
+            "base": "",
+            "fields": [
+                {
+                    "name": "from",
+                    "type": "uint64"
+                },
+                {
+                    "name": "to",
+                    "type": "uint64"
+                }
+            ]
+        },
+        {
+            "name": "rmentry",
+            "base": "",
+            "fields": [
+                {
+                    "name": "from",
+                    "type": "uint64"
+                },
+                {
+                    "name": "to",
+                    "type": "uint64"
+                }
+            ]
+        },
+        {
+            "name": "setentry",
+            "base": "",
+            "fields": [
+                {
+                    "name": "payer",
+                    "type": "name"
+                },
+                {
+                    "name": "from",
+                    "type": "uint64"
+                },
+                {
+                    "name": "to",
+                    "type": "uint64"
+                },
+                {
+                    "name": "size",
+                    "type": "uint64"
+                }
+            ]
+        },
+        {
+            "name": "test",
+            "base": "",
+            "fields": [
+                {
+                    "name": "key",
+                    "type": "uint64"
+                },
+                {
+                    "name": "data",
+                    "type": "bytes"
+                }
+            ]
+        }
+    ],
+    "types": [],
+    "actions": [
+        {
+            "name": "printentry",
+            "type": "printentry",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "rmentry",
+            "type": "rmentry",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "setentry",
+            "type": "setentry",
+            "ricardian_contract": ""
+        }
+    ],
+    "tables": [
+        {
+            "name": "test.table",
+            "type": "test",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        }
+    ],
+    "ricardian_clauses": [],
+    "variants": [],
+    "abi_extensions": []
+}

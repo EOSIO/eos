@@ -3,20 +3,16 @@
 #include <boost/test/unit_test.hpp>
 #pragma GCC diagnostic pop
 #include <boost/algorithm/string/predicate.hpp>
-#include <arisen/testing/tester.hpp>
-#include <arisen/chain/abi_serializer.hpp>
-#include <arisen/chain/generated_transaction_object.hpp>
-
-#include <arisen.token/arisen.token.wast.hpp>
-#include <arisen.token/arisen.token.abi.hpp>
-
-#include <proxy/proxy.wast.hpp>
-#include <proxy/proxy.abi.hpp>
+#include <eosio/testing/tester.hpp>
+#include <eosio/chain/abi_serializer.hpp>
+#include <eosio/chain/generated_transaction_object.hpp>
 
 #include <Runtime/Runtime.h>
 
 #include <fc/variant_object.hpp>
 #include <fc/io/json.hpp>
+
+#include <contracts.hpp>
 
 #ifdef NON_VALIDATING_TEST
 #define TESTER tester
@@ -24,9 +20,9 @@
 #define TESTER validating_tester
 #endif
 
-using namespace arisen;
-using namespace arisen::chain;
-using namespace arisen::testing;
+using namespace eosio;
+using namespace eosio::chain;
+using namespace eosio::testing;
 using namespace fc;
 
 class currency_tester : public TESTER {
@@ -36,7 +32,7 @@ class currency_tester : public TESTER {
          string action_type_name = abi_ser.get_action_type(name);
 
          action act;
-         act.account = N(arisen.token);
+         act.account = N(eosio.token);
          act.name = name;
          act.authorization = vector<permission_level>{{signer, config::active_name}};
          act.data = abi_ser.variant_to_binary(action_type_name, data, abi_serializer_max_time);
@@ -50,7 +46,7 @@ class currency_tester : public TESTER {
       }
 
       asset get_balance(const account_name& account) const {
-         return get_currency_balance(N(arisen.token), symbol(SY(4,CUR)), account);
+         return get_currency_balance(N(eosio.token), symbol(SY(4,CUR)), account);
       }
 
       auto transfer(const account_name& from, const account_name& to, const std::string& quantity, const std::string& memo = "") {
@@ -65,7 +61,7 @@ class currency_tester : public TESTER {
       }
 
       auto issue(const account_name& to, const std::string& quantity, const std::string& memo = "") {
-         auto trace = push_action(N(arisen.token), N(issue), mutable_variant_object()
+         auto trace = push_action(N(eosio.token), N(issue), mutable_variant_object()
                                   ("to",       to)
                                   ("quantity", quantity)
                                   ("memo",     memo)
@@ -75,13 +71,13 @@ class currency_tester : public TESTER {
       }
 
       currency_tester()
-      :TESTER(),abi_ser(json::from_string(arisen_token_abi).as<abi_def>(), abi_serializer_max_time)
+         :TESTER(),abi_ser(json::from_string(contracts::eosio_token_abi().data()).as<abi_def>(), abi_serializer_max_time)
       {
-         create_account( N(arisen.token));
-         set_code( N(arisen.token), arisen_token_wast );
+         create_account( N(eosio.token));
+         set_code( N(eosio.token), contracts::eosio_token_wasm() );
 
-         auto result = push_action(N(arisen.token), N(create), mutable_variant_object()
-                 ("issuer",       arisen_token)
+         auto result = push_action(N(eosio.token), N(create), mutable_variant_object()
+                 ("issuer",       eosio_token)
                  ("maximum_supply", "1000000000.0000 CUR")
                  ("can_freeze", 0)
                  ("can_recall", 0)
@@ -89,8 +85,8 @@ class currency_tester : public TESTER {
          );
          wdump((result));
 
-         result = push_action(N(arisen.token), N(issue), mutable_variant_object()
-                 ("to",       arisen_token)
+         result = push_action(N(eosio.token), N(issue), mutable_variant_object()
+                 ("to",       eosio_token)
                  ("quantity", "1000000.0000 CUR")
                  ("memo", "gggggggggggg")
          );
@@ -99,17 +95,17 @@ class currency_tester : public TESTER {
       }
 
       abi_serializer abi_ser;
-      static const std::string arisen_token;
+      static const name eosio_token;
 };
 
-const std::string currency_tester::arisen_token = name(N(arisen.token)).to_string();
+const name currency_tester::eosio_token = N(eosio.token);
 
 BOOST_AUTO_TEST_SUITE(currency_tests)
 
 BOOST_AUTO_TEST_CASE( bootstrap ) try {
    auto expected = asset::from_string( "1000000.0000 CUR" );
    currency_tester t;
-   auto actual = t.get_currency_balance(N(arisen.token), expected.get_symbol(), N(arisen.token));
+   auto actual = t.get_currency_balance(N(eosio.token), expected.get_symbol(), N(eosio.token));
    BOOST_REQUIRE_EQUAL(expected, actual);
 } FC_LOG_AND_RETHROW() /// test_api_bootstrap
 
@@ -118,8 +114,8 @@ BOOST_FIXTURE_TEST_CASE( test_transfer, currency_tester ) try {
 
    // make a transfer from the contract to a user
    {
-      auto trace = push_action(N(arisen.token), N(transfer), mutable_variant_object()
-         ("from", arisen_token)
+      auto trace = push_action(N(eosio.token), N(transfer), mutable_variant_object()
+         ("from", eosio_token)
          ("to",   "alice")
          ("quantity", "100.0000 CUR")
          ("memo", "fund Alice")
@@ -135,15 +131,15 @@ BOOST_FIXTURE_TEST_CASE( test_transfer, currency_tester ) try {
 BOOST_FIXTURE_TEST_CASE( test_duplicate_transfer, currency_tester ) {
    create_accounts( {N(alice)} );
 
-   auto trace = push_action(N(arisen.token), N(transfer), mutable_variant_object()
-      ("from", arisen_token)
+   auto trace = push_action(N(eosio.token), N(transfer), mutable_variant_object()
+      ("from", eosio_token)
       ("to",   "alice")
       ("quantity", "100.0000 CUR")
       ("memo", "fund Alice")
    );
 
-   BOOST_REQUIRE_THROW(push_action(N(arisen.token), N(transfer), mutable_variant_object()
-                                    ("from", arisen_token)
+   BOOST_REQUIRE_THROW(push_action(N(eosio.token), N(transfer), mutable_variant_object()
+                                    ("from", eosio_token)
                                     ("to",   "alice")
                                     ("quantity", "100.0000 CUR")
                                     ("memo", "fund Alice")),
@@ -160,8 +156,8 @@ BOOST_FIXTURE_TEST_CASE( test_addtransfer, currency_tester ) try {
 
    // make a transfer from the contract to a user
    {
-      auto trace = push_action(N(arisen.token), N(transfer), mutable_variant_object()
-         ("from", arisen_token)
+      auto trace = push_action(N(eosio.token), N(transfer), mutable_variant_object()
+         ("from", eosio_token)
          ("to",   "alice")
          ("quantity", "100.0000 CUR")
          ("memo", "fund Alice")
@@ -175,8 +171,8 @@ BOOST_FIXTURE_TEST_CASE( test_addtransfer, currency_tester ) try {
 
    // make a transfer from the contract to a user
    {
-      auto trace = push_action(N(arisen.token), N(transfer), mutable_variant_object()
-         ("from", arisen_token)
+      auto trace = push_action(N(eosio.token), N(transfer), mutable_variant_object()
+         ("from", eosio_token)
          ("to",   "alice")
          ("quantity", "10.0000 CUR")
          ("memo", "add Alice")
@@ -195,8 +191,8 @@ BOOST_FIXTURE_TEST_CASE( test_overspend, currency_tester ) try {
 
    // make a transfer from the contract to a user
    {
-      auto trace = push_action(N(arisen.token), N(transfer), mutable_variant_object()
-         ("from", arisen_token)
+      auto trace = push_action(N(eosio.token), N(transfer), mutable_variant_object()
+         ("from", eosio_token)
          ("to",   "alice")
          ("quantity", "100.0000 CUR")
          ("memo", "fund Alice")
@@ -217,7 +213,7 @@ BOOST_FIXTURE_TEST_CASE( test_overspend, currency_tester ) try {
          ("memo", "overspend! Alice");
 
       BOOST_CHECK_EXCEPTION( push_action(N(alice), N(transfer), data),
-                             arisen_assert_message_exception, arisen_assert_message_is("overdrawn balance") );
+                             eosio_assert_message_exception, eosio_assert_message_is("overdrawn balance") );
       produce_block();
 
       BOOST_REQUIRE_EQUAL(get_balance(N(alice)), asset::from_string( "100.0000 CUR" ));
@@ -230,8 +226,8 @@ BOOST_FIXTURE_TEST_CASE( test_fullspend, currency_tester ) try {
 
    // make a transfer from the contract to a user
    {
-      auto trace = push_action(N(arisen.token), N(transfer), mutable_variant_object()
-         ("from", arisen_token)
+      auto trace = push_action(N(eosio.token), N(transfer), mutable_variant_object()
+         ("from", eosio_token)
          ("to",   "alice")
          ("quantity", "100.0000 CUR")
          ("memo", "fund Alice")
@@ -316,13 +312,13 @@ BOOST_FIXTURE_TEST_CASE(test_symbol, TESTER) try {
 
    // invalid - contains lower case characters, no validation
    {
-      BOOST_CHECK_EXCEPTION(symbol malformed(SY(6,RsN)),
-                            symbol_type_exception, fc_exception_message_is("invalid symbol: RsN"));
+      BOOST_CHECK_EXCEPTION(symbol malformed(SY(6,EoS)),
+                            symbol_type_exception, fc_exception_message_is("invalid symbol: EoS"));
    }
 
    // invalid - contains lower case characters, exception thrown
    {
-      BOOST_CHECK_EXCEPTION(symbol(5,"RsN"),
+      BOOST_CHECK_EXCEPTION(symbol(5,"EoS"),
                             symbol_type_exception, fc_exception_message_is("invalid character in symbol name"));
    }
 
@@ -406,10 +402,10 @@ BOOST_FIXTURE_TEST_CASE( test_proxy, currency_tester ) try {
    create_accounts( {N(alice), N(proxy)} );
    produce_block();
 
-   set_code(N(proxy), proxy_wast);
+   set_code(N(proxy), contracts::proxy_wasm());
    produce_blocks(1);
 
-   abi_serializer proxy_abi_ser(json::from_string(proxy_abi).as<abi_def>(), abi_serializer_max_time);
+   abi_serializer proxy_abi_ser(json::from_string(contracts::proxy_abi().data()).as<abi_def>(), abi_serializer_max_time);
 
    // set up proxy owner
    {
@@ -417,7 +413,7 @@ BOOST_FIXTURE_TEST_CASE( test_proxy, currency_tester ) try {
       action setowner_act;
       setowner_act.account = N(proxy);
       setowner_act.name = N(setowner);
-      setowner_act.authorization = vector<permission_level>{{N(alice), config::active_name}};
+      setowner_act.authorization = vector<permission_level>{{N(proxy), config::active_name}};
       setowner_act.data = proxy_abi_ser.variant_to_binary("setowner", mutable_variant_object()
          ("owner", "alice")
          ("delay", 10),
@@ -426,7 +422,7 @@ BOOST_FIXTURE_TEST_CASE( test_proxy, currency_tester ) try {
       trx.actions.emplace_back(std::move(setowner_act));
 
       set_transaction_headers(trx);
-      trx.sign(get_private_key(N(alice), "active"), control->get_chain_id());
+      trx.sign(get_private_key(N(proxy), "active"), control->get_chain_id());
       push_transaction(trx);
       produce_block();
       BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
@@ -435,8 +431,8 @@ BOOST_FIXTURE_TEST_CASE( test_proxy, currency_tester ) try {
    // for now wasm "time" is in seconds, so we have to truncate off any parts of a second that may have applied
    fc::time_point expected_delivery(fc::seconds(control->head_block_time().sec_since_epoch()) + fc::seconds(10));
    {
-      auto trace = push_action(N(arisen.token), N(transfer), mutable_variant_object()
-         ("from", arisen_token)
+      auto trace = push_action(N(eosio.token), N(transfer), mutable_variant_object()
+         ("from", eosio_token)
          ("to",   "proxy")
          ("quantity", "5.0000 CUR")
          ("memo", "fund Proxy")
@@ -461,11 +457,11 @@ BOOST_FIXTURE_TEST_CASE( test_deferred_failure, currency_tester ) try {
    create_accounts( {N(alice), N(bob), N(proxy)} );
    produce_block();
 
-   set_code(N(proxy), proxy_wast);
-   set_code(N(bob), proxy_wast);
+   set_code(N(proxy), contracts::proxy_wasm());
+   set_code(N(bob), contracts::proxy_wasm());
    produce_blocks(1);
 
-   abi_serializer proxy_abi_ser(json::from_string(proxy_abi).as<abi_def>(), abi_serializer_max_time);
+   abi_serializer proxy_abi_ser(json::from_string(contracts::proxy_abi().data()).as<abi_def>(), abi_serializer_max_time);
 
    // set up proxy owner
    {
@@ -473,7 +469,7 @@ BOOST_FIXTURE_TEST_CASE( test_deferred_failure, currency_tester ) try {
       action setowner_act;
       setowner_act.account = N(proxy);
       setowner_act.name = N(setowner);
-      setowner_act.authorization = vector<permission_level>{{N(bob), config::active_name}};
+      setowner_act.authorization = vector<permission_level>{{N(proxy), config::active_name}};
       setowner_act.data = proxy_abi_ser.variant_to_binary("setowner", mutable_variant_object()
          ("owner", "bob")
          ("delay", 10),
@@ -482,7 +478,7 @@ BOOST_FIXTURE_TEST_CASE( test_deferred_failure, currency_tester ) try {
       trx.actions.emplace_back(std::move(setowner_act));
 
       set_transaction_headers(trx);
-      trx.sign(get_private_key(N(bob), "active"), control->get_chain_id());
+      trx.sign(get_private_key(N(proxy), "active"), control->get_chain_id());
       push_transaction(trx);
       produce_block();
       BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
@@ -490,8 +486,8 @@ BOOST_FIXTURE_TEST_CASE( test_deferred_failure, currency_tester ) try {
    const auto& index = control->db().get_index<generated_transaction_multi_index,by_trx_id>();
    BOOST_REQUIRE_EQUAL(0, index.size());
 
-   auto trace = push_action(N(arisen.token), N(transfer), mutable_variant_object()
-      ("from", arisen_token)
+   auto trace = push_action(N(eosio.token), N(transfer), mutable_variant_object()
+      ("from", eosio_token)
       ("to",   "proxy")
       ("quantity", "5.0000 CUR")
       ("memo", "fund Proxy")
@@ -505,7 +501,6 @@ BOOST_FIXTURE_TEST_CASE( test_deferred_failure, currency_tester ) try {
    while( control->pending_block_time() < expected_delivery ) {
       produce_block();
       BOOST_REQUIRE_EQUAL(get_balance( N(proxy)), asset::from_string("5.0000 CUR"));
-      BOOST_REQUIRE_EQUAL(get_balance( N(bob)),   asset::from_string("0.0000 CUR"));
       BOOST_REQUIRE_EQUAL(get_balance( N(bob)),   asset::from_string("0.0000 CUR"));
       BOOST_REQUIRE_EQUAL(1, index.size());
       BOOST_REQUIRE_EQUAL(false, chain_has_transaction(deferred_id));
@@ -525,7 +520,7 @@ BOOST_FIXTURE_TEST_CASE( test_deferred_failure, currency_tester ) try {
       action setowner_act;
       setowner_act.account = N(bob);
       setowner_act.name = N(setowner);
-      setowner_act.authorization = vector<permission_level>{{N(alice), config::active_name}};
+      setowner_act.authorization = vector<permission_level>{{N(bob), config::active_name}};
       setowner_act.data = proxy_abi_ser.variant_to_binary("setowner", mutable_variant_object()
          ("owner", "alice")
          ("delay", 0),
@@ -534,7 +529,7 @@ BOOST_FIXTURE_TEST_CASE( test_deferred_failure, currency_tester ) try {
       trx.actions.emplace_back(std::move(setowner_act));
 
       set_transaction_headers(trx);
-      trx.sign(get_private_key(N(alice), "active"), control->get_chain_id());
+      trx.sign(get_private_key(N(bob), "active"), control->get_chain_id());
       push_transaction(trx);
       produce_block();
       BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
@@ -574,17 +569,16 @@ BOOST_FIXTURE_TEST_CASE( test_input_quantity, currency_tester ) try {
 
    // transfer to alice using right precision
    {
-      auto trace = transfer(arisen_token, N(alice), "100.0000 CUR");
+      auto trace = transfer(eosio_token, N(alice), "100.0000 CUR");
 
       BOOST_CHECK_EQUAL(true, chain_has_transaction(trace->id));
       BOOST_CHECK_EQUAL(asset::from_string( "100.0000 CUR"), get_balance(N(alice)));
       BOOST_CHECK_EQUAL(1000000, get_balance(N(alice)).get_amount());
    }
 
-
    // transfer using different symbol name fails
    {
-      BOOST_REQUIRE_THROW(transfer(N(alice), N(carl), "20.50 USD"), arisen_assert_message_exception);
+      BOOST_REQUIRE_THROW(transfer(N(alice), N(carl), "20.50 USD"), eosio_assert_message_exception);
    }
 
    // issue to alice using right precision

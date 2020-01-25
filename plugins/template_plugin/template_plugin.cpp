@@ -1,10 +1,6 @@
-/**
- *  @file
- *  @copyright defined in arisen/LICENSE.txt
- */
-#include <arisen/template_plugin/template_plugin.hpp>
+#include <eosio/template_plugin/template_plugin.hpp>
 
-namespace arisen {
+namespace eosio {
    static appbase::abstract_plugin& _template_plugin = app().register_plugin<template_plugin>();
 
 class template_plugin_impl {

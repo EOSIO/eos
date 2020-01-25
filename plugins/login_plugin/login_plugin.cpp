@@ -1,18 +1,14 @@
-/**
- *  @file
- *  @copyright defined in arisen/LICENSE.txt
- */
-#include <arisen/chain/authorization_manager.hpp>
-#include <arisen/chain/exceptions.hpp>
-#include <arisen/login_plugin/login_plugin.hpp>
+#include <eosio/chain/authorization_manager.hpp>
+#include <eosio/chain/exceptions.hpp>
+#include <eosio/login_plugin/login_plugin.hpp>
 
 #include <fc/io/json.hpp>
 
-namespace arisen {
+namespace eosio {
 
 static appbase::abstract_plugin& _login_plugin = app().register_plugin<login_plugin>();
 
-using namespace arisen;
+using namespace eosio;
 
 struct login_request {
    chain::private_key_type server_ephemeral_priv_key{};
@@ -68,8 +64,8 @@ void login_plugin::plugin_initialize(const variables_map& options) {
          try {                                                                                                         \
             if (body.empty())                                                                                          \
                body = "{}";                                                                                            \
-            auto result = call_name(fc::json::from_string(body).as<login_plugin::call_name##_params>());               \
-            cb(http_response_code, fc::json::to_string(result));                                                       \
+            fc::variant result( call_name(fc::json::from_string(body).as<login_plugin::call_name##_params>()) );       \
+            cb(http_response_code, std::move(result));                                                                 \
          } catch (...) {                                                                                               \
             http_plugin::handle_exception("login", #call_name, body, cb);                                              \
          }                                                                                                             \
@@ -92,10 +88,10 @@ void login_plugin::plugin_shutdown() {}
 login_plugin::start_login_request_results
 login_plugin::start_login_request(const login_plugin::start_login_request_params& params) {
    my->expire_requests();
-   RSN_ASSERT(params.expiration_time > fc::time_point::now(), fc::timeout_exception,
+   EOS_ASSERT(params.expiration_time > fc::time_point::now(), fc::timeout_exception,
               "Requested expiration time ${expiration_time} is in the past",
               ("expiration_time", params.expiration_time));
-   RSN_ASSERT(my->requests.size() < my->max_login_requests, fc::timeout_exception, "Too many pending login requests");
+   EOS_ASSERT(my->requests.size() < my->max_login_requests, fc::timeout_exception, "Too many pending login requests");
    login_request request;
    request.server_ephemeral_priv_key = chain::private_key_type::generate_r1();
    request.server_ephemeral_pub_key = request.server_ephemeral_priv_key.get_public_key();
@@ -161,4 +157,4 @@ login_plugin::do_not_use_get_secret(const login_plugin::do_not_use_get_secret_pa
    return {params.priv_key.generate_shared_secret(params.pub_key)};
 }
 
-} // namespace arisen
+} // namespace eosio

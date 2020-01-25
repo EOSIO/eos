@@ -1,0 +1,6 @@
+if( EOSIO_COMPILE_TEST_CONTRACTS )
+   add_contract( snapshot_test snapshot_test snapshot_test.cpp )
+else()
+   configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/snapshot_test.wasm ${CMAKE_CURRENT_BINARY_DIR}/snapshot_test.wasm COPYONLY )
+   configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/snapshot_test.abi  ${CMAKE_CURRENT_BINARY_DIR}/snapshot_test.abi  COPYONLY )
+endif()

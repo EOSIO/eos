@@ -8,6 +8,16 @@
 
 namespace Runtime
 {
+	static void causeIntrensicException(Exception::Cause cause) {
+		try {
+		   Platform::immediately_exit(std::make_exception_ptr(Exception{cause, std::vector<std::string>()}));
+		}
+		catch (...) {
+			Platform::immediately_exit(std::current_exception());
+		}
+		__builtin_unreachable();
+	}
+
 	template<typename Float>
 	Float quietNaN(Float value)
 	{
@@ -104,11 +114,11 @@ namespace Runtime
 	{
 		if(sourceValue != sourceValue)
 		{
-			causeException(Exception::Cause::invalidFloatOperation);
+			causeIntrensicException(Exception::Cause::invalidFloatOperation);
 		}
 		else if(sourceValue >= maxValue || (isMinInclusive ? sourceValue <= minValue : sourceValue < minValue))
 		{
-			causeException(Exception::Cause::integerDivideByZeroOrIntegerOverflow);
+			causeIntrensicException(Exception::Cause::integerDivideByZeroOrIntegerOverflow);
 		}
 		return (Dest)sourceValue;
 	}
@@ -125,45 +135,51 @@ namespace Runtime
 
 	DEFINE_INTRINSIC_FUNCTION0(wavmIntrinsics,divideByZeroOrIntegerOverflowTrap,divideByZeroOrIntegerOverflowTrap,none)
 	{
-		causeException(Exception::Cause::integerDivideByZeroOrIntegerOverflow);
+		causeIntrensicException(Exception::Cause::integerDivideByZeroOrIntegerOverflow);
 	}
 
 	DEFINE_INTRINSIC_FUNCTION0(wavmIntrinsics,unreachableTrap,unreachableTrap,none)
 	{
-		causeException(Exception::Cause::reachedUnreachable);
+		causeIntrensicException(Exception::Cause::reachedUnreachable);
 	}
 	
 	DEFINE_INTRINSIC_FUNCTION0(wavmIntrinsics,accessViolationTrap,accessViolationTrap,none)
 	{
-		causeException(Exception::Cause::accessViolation);
+		causeIntrensicException(Exception::Cause::accessViolation);
 	}
 
 	DEFINE_INTRINSIC_FUNCTION3(wavmIntrinsics,indirectCallSignatureMismatch,indirectCallSignatureMismatch,none,i32,index,i64,expectedSignatureBits,i64,tableBits)
 	{
-		TableInstance* table = reinterpret_cast<TableInstance*>(tableBits);
-		void* elementValue = table->baseAddress[index].value;
-		const FunctionType* actualSignature = table->baseAddress[index].type;
-		const FunctionType* expectedSignature = reinterpret_cast<const FunctionType*>((Uptr)expectedSignatureBits);
-		std::string ipDescription = "<unknown>";
-		LLVMJIT::describeInstructionPointer(reinterpret_cast<Uptr>(elementValue),ipDescription);
-		Log::printf(Log::Category::debug,"call_indirect signature mismatch: expected %s at index %u but got %s (%s)\n",
-			asString(expectedSignature).c_str(),
-			index,
-			actualSignature ? asString(actualSignature).c_str() : "nullptr",
-			ipDescription.c_str()
-			);
-		causeException(elementValue == nullptr ? Exception::Cause::undefinedTableElement : Exception::Cause::indirectCallSignatureMismatch);
+		try {
+			TableInstance* table = reinterpret_cast<TableInstance*>(tableBits);
+			void* elementValue = table->baseAddress[index].value;
+			const FunctionType* actualSignature = table->baseAddress[index].type;
+			const FunctionType* expectedSignature = reinterpret_cast<const FunctionType*>((Uptr)expectedSignatureBits);
+			std::string ipDescription = "<unknown>";
+			LLVMJIT::describeInstructionPointer(reinterpret_cast<Uptr>(elementValue),ipDescription);
+			Log::printf(Log::Category::debug,"call_indirect signature mismatch: expected %s at index %u but got %s (%s)\n",
+				asString(expectedSignature).c_str(),
+				index,
+				actualSignature ? asString(actualSignature).c_str() : "nullptr",
+				ipDescription.c_str()
+				);
+			causeIntrensicException(elementValue == nullptr ? Exception::Cause::undefinedTableElement : Exception::Cause::indirectCallSignatureMismatch);
+		}
+		catch (...) {
+			Platform::immediately_exit(std::current_exception());
+		}
 	}
 
 	DEFINE_INTRINSIC_FUNCTION0(wavmIntrinsics,indirectCallIndexOutOfBounds,indirectCallIndexOutOfBounds,none)
 	{
-		causeException(Exception::Cause::undefinedTableElement);
+		causeIntrensicException(Exception::Cause::undefinedTableElement);
 	}
 
 	DEFINE_INTRINSIC_FUNCTION2(wavmIntrinsics,_growMemory,growMemory,i32,i32,deltaPages,i64,memoryBits)
 	{
 		MemoryInstance* memory = reinterpret_cast<MemoryInstance*>(memoryBits);
-		WAVM_ASSERT_THROW(memory);
+		if(!memory)
+			causeIntrensicException(Exception::Cause::outOfMemory);
 		const Iptr numPreviousMemoryPages = growMemory(memory,(Uptr)deltaPages);
 		if(numPreviousMemoryPages + (Uptr)deltaPages > IR::maxMemoryPages) { return -1; }
 		else { return (I32)numPreviousMemoryPages; }
@@ -172,7 +188,8 @@ namespace Runtime
 	DEFINE_INTRINSIC_FUNCTION1(wavmIntrinsics,_currentMemory,currentMemory,i32,i64,memoryBits)
 	{
 		MemoryInstance* memory = reinterpret_cast<MemoryInstance*>(memoryBits);
-		WAVM_ASSERT_THROW(memory);
+		if(!memory)
+			causeIntrensicException(Exception::Cause::outOfMemory);
 		Uptr numMemoryPages = getMemoryNumPages(memory);
 		if(numMemoryPages > UINT32_MAX) { numMemoryPages = UINT32_MAX; }
 		return (U32)numMemoryPages;

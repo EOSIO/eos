@@ -1,7 +1,7 @@
-#include <arisen/chain/merkle.hpp>
+#include <eosio/chain/merkle.hpp>
 #include <fc/io/raw.hpp>
 
-namespace arisen { namespace chain {
+namespace eosio { namespace chain {
 
 /**
  * in order to keep proofs concise, before hashing we set the first bit
@@ -39,7 +39,7 @@ digest_type merkle(vector<digest_type> ids) {
       if( ids.size() % 2 )
          ids.push_back(ids.back());
 
-      for (int i = 0; i < ids.size() / 2; i++) {
+      for (size_t i = 0; i < ids.size() / 2; i++) {
          ids[i] = digest_type::hash(make_canonical_pair(ids[2 * i], ids[(2 * i) + 1]));
       }
 
@@ -49,4 +49,4 @@ digest_type merkle(vector<digest_type> ids) {
    return ids.front();
 }
 
-} } // arisen::chain
+} } // eosio::chain

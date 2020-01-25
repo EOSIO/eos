@@ -1,39 +1,29 @@
-/**
- *  @file api_tests.cpp
- *  @copyright defined in arisen/LICENSE.txt
- */
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wsign-compare"
 #include <boost/test/unit_test.hpp>
 #pragma GCC diagnostic pop
 
-#include <arisen/testing/tester.hpp>
-#include <arisen/chain/exceptions.hpp>
-#include <arisen/chain/resource_limits.hpp>
+#include <eosio/chain/exceptions.hpp>
+#include <eosio/chain/resource_limits.hpp>
+#include <eosio/testing/tester.hpp>
 
 #include <fc/exception/exception.hpp>
 #include <fc/variant_object.hpp>
 
-#include "arisen_system_tester.hpp"
+#include <contracts.hpp>
 
-#include <test_ram_limit/test_ram_limit.abi.hpp>
-#include <test_ram_limit/test_ram_limit.wast.hpp>
-
-#define DISABLE_RSNLIB_SERIALIZE
-#include <test_api/test_api_common.hpp>
+#include "eosio_system_tester.hpp"
 
 /*
  * register test suite `ram_tests`
  */
 BOOST_AUTO_TEST_SUITE(ram_tests)
 
-
-
 /*************************************************************************************
  * ram_tests test case
  *************************************************************************************/
-BOOST_FIXTURE_TEST_CASE(ram_tests, arisen_system::arisen_system_tester) { try {
-   auto init_request_bytes = 80000;
+BOOST_FIXTURE_TEST_CASE(ram_tests, eosio_system::eosio_system_tester) { try {
+   auto init_request_bytes = 80000 + 7110; // `7110' is for table token row
    const auto increment_contract_bytes = 10000;
    const auto table_allocation_bytes = 12000;
    BOOST_REQUIRE_MESSAGE(table_allocation_bytes > increment_contract_bytes, "increment_contract_bytes must be less than table_allocation_bytes for this test setup to work");
@@ -42,12 +32,12 @@ BOOST_FIXTURE_TEST_CASE(ram_tests, arisen_system::arisen_system_tester) { try {
    create_account_with_resources(N(testram11111),config::system_account_name, init_request_bytes + 40);
    create_account_with_resources(N(testram22222),config::system_account_name, init_request_bytes + 1190);
    produce_blocks(10);
-   BOOST_REQUIRE_EQUAL( success(), stake( "arisen.stake", "testram11111", core_from_string("10.0000"), core_from_string("5.0000") ) );
+   BOOST_REQUIRE_EQUAL( success(), stake( name("eosio.stake"), name("testram11111"), core_from_string("10.0000"), core_from_string("5.0000") ) );
    produce_blocks(10);
 
    for (auto i = 0; i < 10; ++i) {
       try {
-         set_code( N(testram11111), test_ram_limit_wast );
+         set_code( N(testram11111), contracts::test_ram_limit_wasm() );
          break;
       } catch (const ram_usage_exceeded&) {
          init_request_bytes += increment_contract_bytes;
@@ -59,7 +49,7 @@ BOOST_FIXTURE_TEST_CASE(ram_tests, arisen_system::arisen_system_tester) { try {
 
    for (auto i = 0; i < 10; ++i) {
       try {
-         set_abi( N(testram11111), test_ram_limit_abi );
+         set_abi( N(testram11111), contracts::test_ram_limit_abi().data() );
          break;
       } catch (const ram_usage_exceeded&) {
          init_request_bytes += increment_contract_bytes;
@@ -68,8 +58,8 @@ BOOST_FIXTURE_TEST_CASE(ram_tests, arisen_system::arisen_system_tester) { try {
       }
    }
    produce_blocks(10);
-   set_code( N(testram22222), test_ram_limit_wast );
-   set_abi( N(testram22222), test_ram_limit_abi );
+   set_code( N(testram22222), contracts::test_ram_limit_wasm() );
+   set_abi( N(testram22222), contracts::test_ram_limit_abi().data() );
    produce_blocks(10);
 
    auto total = get_total_stake( N(testram11111) );
@@ -158,7 +148,7 @@ BOOST_FIXTURE_TEST_CASE(ram_tests, arisen_system::arisen_system_tester) { try {
                         ("from", 3)
                         ("to", 3));
    produce_blocks(1);
-
+   
    // verify that the new entry will exceed the allocation bytes limit
    BOOST_REQUIRE_EXCEPTION(
       tester->push_action( N(testram11111), N(setentry), N(testram11111), mvo()
@@ -216,7 +206,7 @@ BOOST_FIXTURE_TEST_CASE(ram_tests, arisen_system::arisen_system_tester) { try {
                         ("to", 13)
                         ("size", 1720));
    produce_blocks(1);
-
+   
    // verify that new entries for testram22222 exceed the allocation bytes limit
    BOOST_REQUIRE_EXCEPTION(
       tester->push_action( N(testram11111), N(setentry), {N(testram11111),N(testram22222)}, mvo()

@@ -1,18 +1,15 @@
-/**
- *  @file
- *  @copyright defined in arisen/LICENSE.txt
- */
-#include <arisen/chain/chain_config.hpp>
-#include <arisen/chain/authority_checker.hpp>
-#include <arisen/chain/authority.hpp>
-#include <arisen/chain/types.hpp>
-#include <arisen/chain/asset.hpp>
-#include <arisen/testing/tester.hpp>
-
-#include <arisen/utilities/key_conversion.hpp>
-#include <arisen/utilities/rand.hpp>
+#include <eosio/chain/asset.hpp>
+#include <eosio/chain/authority.hpp>
+#include <eosio/chain/authority_checker.hpp>
+#include <eosio/chain/chain_config.hpp>
+#include <eosio/chain/types.hpp>
+#include <eosio/chain/thread_utils.hpp>
+#include <eosio/testing/tester.hpp>
 
 #include <fc/io/json.hpp>
+#include <fc/log/logger_config.hpp>
+#include <appbase/execution_priority_queue.hpp>
+#include <fc/bitutil.hpp>
 
 #include <boost/test/unit_test.hpp>
 
@@ -22,18 +19,73 @@
 #define TESTER validating_tester
 #endif
 
-using namespace arisen::chain;
-using namespace arisen::testing;
+using namespace eosio::chain;
+using namespace eosio::testing;
 
 #include <boost/random/mersenne_twister.hpp>
 #include <boost/random/uniform_int_distribution.hpp>
 
-namespace arisen
+struct base_reflect : fc::reflect_init {
+   int bv = 0;
+   bool base_reflect_initialized = false;
+   int base_reflect_called = 0;
+protected:
+   friend struct fc::reflector<base_reflect>;
+   friend struct fc::reflector_init_visitor<base_reflect>;
+   friend struct fc::has_reflector_init<base_reflect>;
+   void reflector_init() {
+      BOOST_CHECK_EQUAL( bv, 42 ); // should be deserialized before called, set by test
+      ++base_reflect_called;
+      base_reflect_initialized = true;
+   }
+};
+
+struct derived_reflect : public base_reflect {
+   int dv = 0;
+   bool derived_reflect_initialized = false;
+   int derived_reflect_called = 0;
+protected:
+   friend struct fc::reflector<derived_reflect>;
+   friend struct fc::reflector_init_visitor<derived_reflect>;
+   friend struct fc::has_reflector_init<derived_reflect>;
+   void reflector_init() {
+      BOOST_CHECK_EQUAL( bv, 42 ); // should be deserialized before called, set by test
+      BOOST_CHECK_EQUAL( dv, 52 ); // should be deserialized before called, set by test
+      ++derived_reflect_called;
+      base_reflect::reflector_init();
+      derived_reflect_initialized = true;
+   }
+};
+
+struct final_reflect : public derived_reflect {
+   int fv = 0;
+   bool final_reflect_initialized = false;
+   int final_reflect_called = 0;
+private:
+   friend struct fc::reflector<final_reflect>;
+   friend struct fc::reflector_init_visitor<final_reflect>;
+   friend struct fc::has_reflector_init<final_reflect>;
+   void reflector_init() {
+      BOOST_CHECK_EQUAL( bv, 42 ); // should be deserialized before called, set by test
+      BOOST_CHECK_EQUAL( dv, 52 ); // should be deserialized before called, set by test
+      BOOST_CHECK_EQUAL( fv, 62 ); // should be deserialized before called, set by test
+      ++final_reflect_called;
+      derived_reflect::reflector_init();
+      final_reflect_initialized = true;
+   }
+};
+
+FC_REFLECT( base_reflect, (bv) )
+FC_REFLECT_DERIVED( derived_reflect, (base_reflect), (dv) )
+FC_REFLECT_DERIVED( final_reflect, (derived_reflect), (fv) )
+
+namespace eosio
 {
 using namespace chain;
 using namespace std;
 
-static constexpr uint64_t name_suffix( uint64_t n ) {
+static constexpr uint64_t name_suffix( name nv ) {
+   uint64_t n = nv.to_uint64_t();
    uint32_t remaining_bits_after_last_actual_dot = 0;
    uint32_t tmp = 0;
    for( int32_t remaining_bits = 59; remaining_bits >= 4; remaining_bits -= 5 ) { // Note: remaining_bits must remain signed integer
@@ -65,9 +117,17 @@ static constexpr uint64_t name_suffix( uint64_t n ) {
 
 BOOST_AUTO_TEST_SUITE(misc_tests)
 
+BOOST_AUTO_TEST_CASE(reverse_endian_tests)
+{
+    BOOST_CHECK_EQUAL( endian_reverse_u64(0x0123456789abcdef), 0xefcdab8967452301 );
+    BOOST_CHECK_EQUAL( endian_reverse_u64(0x0102030405060708), 0x0807060504030201 );
+    BOOST_CHECK_EQUAL( endian_reverse_u32(0x01234567), 0x67452301 );
+    BOOST_CHECK_EQUAL( endian_reverse_u32(0x01020304), 0x04030201 );
+}
+
 BOOST_AUTO_TEST_CASE(name_suffix_tests)
 {
-   BOOST_CHECK_EQUAL( name{name_suffix(0)}, name{0} );
+   BOOST_CHECK_EQUAL( name{name_suffix(name(0))}, name{0} );
    BOOST_CHECK_EQUAL( name{name_suffix(N(abcdehijklmn))}, name{N(abcdehijklmn)} );
    BOOST_CHECK_EQUAL( name{name_suffix(N(abcdehijklmn1))}, name{N(abcdehijklmn1)} );
    BOOST_CHECK_EQUAL( name{name_suffix(N(abc.def))}, name{N(def)} );
@@ -102,6 +162,33 @@ BOOST_AUTO_TEST_CASE(json_from_string_test)
     exc_found = true;
   }
   BOOST_CHECK_EQUAL(exc_found, true);
+}
+
+BOOST_AUTO_TEST_CASE(variant_format_string_limited)
+{
+   const string format = "${a} ${b} ${c}";
+   {
+      fc::mutable_variant_object mu;
+      mu( "a", string( 1024, 'a' ) );
+      mu( "b", string( 1024, 'b' ) );
+      mu( "c", string( 1024, 'c' ) );
+      string result = fc::format_string( format, mu, true );
+      BOOST_CHECK_EQUAL( result, string( 256, 'a' ) + "... " + string( 256, 'b' ) + "... " + string( 256, 'c' ) + "..." );
+   }
+   {
+      fc::mutable_variant_object mu;
+      signed_block a;
+      blob b;
+      for( int i = 0; i < 1024; ++i)
+         b.data.push_back('b');
+      variants c;
+      c.push_back(variant(a));
+      mu( "a", a );
+      mu( "b", b );
+      mu( "c", c );
+      string result = fc::format_string( format, mu, true );
+      BOOST_CHECK_EQUAL( result, "${a} ${b} ${c}");
+   }
 }
 
 // Test overflow handling in asset::from_string
@@ -196,40 +283,6 @@ BOOST_AUTO_TEST_CASE(asset_from_string_overflow)
    });
 }
 
-/// Test that our deterministic random shuffle algorithm gives the same results in all environments
-BOOST_AUTO_TEST_CASE(deterministic_randomness)
-{ try {
-   utilities::rand::random rng(123454321);
-   vector<string> words = {"infamy", "invests", "estimated", "potters", "memorizes", "hal9000"};
-   rng.shuffle(words);
-   BOOST_TEST(fc::json::to_string(words) ==
-                     fc::json::to_string(vector<string>{"hal9000","infamy","invests","estimated","memorizes","potters"}));
-   rng.shuffle(words);
-   BOOST_TEST(fc::json::to_string(words) ==
-                     fc::json::to_string(vector<string>{"memorizes","infamy","hal9000","potters","estimated","invests"}));
-} FC_LOG_AND_RETHROW() }
-
-BOOST_AUTO_TEST_CASE(deterministic_distributions)
-{ try {
-   utilities::rand::random rng(123454321);
-
-   BOOST_TEST(rng.next() == UINT64_C(13636622732572118961));
-   BOOST_TEST(rng.next() == UINT64_C(8049736256506128729));
-   BOOST_TEST(rng.next() ==  UINT64_C(1224405983932261174));
-
-   std::vector<int> nums = {0, 1, 2};
-
-   rng.shuffle(nums);
-   std::vector<int> a{2, 0, 1};
-   BOOST_TEST(std::equal(nums.begin(), nums.end(), a.begin()));
-   rng.shuffle(nums);
-   std::vector<int> b{0, 2, 1};
-   BOOST_TEST(std::equal(nums.begin(), nums.end(), b.begin()));
-   rng.shuffle(nums);
-   std::vector<int> c{1, 0, 2};
-   BOOST_TEST(std::equal(nums.begin(), nums.end(), c.begin()));
-} FC_LOG_AND_RETHROW() }
-
 struct permission_visitor {
    std::vector<permission_level> permissions;
    std::vector<size_t> size_stack;
@@ -270,9 +323,9 @@ struct permission_visitor {
 BOOST_AUTO_TEST_CASE(authority_checker)
 { try {
    testing::TESTER test;
-   auto a = test.get_public_key("a", "active");
-   auto b = test.get_public_key("b", "active");
-   auto c = test.get_public_key("c", "active");
+   auto a = test.get_public_key(name("a"), "active");
+   auto b = test.get_public_key(name("b"), "active");
+   auto c = test.get_public_key(name("c"), "active");
 
    auto GetNullAuthority = [](auto){abort(); return authority();};
 
@@ -281,31 +334,31 @@ BOOST_AUTO_TEST_CASE(authority_checker)
       auto checker = make_auth_checker(GetNullAuthority, 2, {a, b});
       BOOST_TEST(checker.satisfied(A));
       BOOST_TEST(checker.all_keys_used());
-      BOOST_TEST(checker.used_keys().size() == 2);
-      BOOST_TEST(checker.unused_keys().size() == 0);
+      BOOST_TEST(checker.used_keys().size() == 2u);
+      BOOST_TEST(checker.unused_keys().size() == 0u);
    }
    {
       auto checker = make_auth_checker(GetNullAuthority, 2, {a, c});
       BOOST_TEST(!checker.satisfied(A));
       BOOST_TEST(!checker.all_keys_used());
-      BOOST_TEST(checker.used_keys().size() == 0);
-      BOOST_TEST(checker.unused_keys().size() == 2);
+      BOOST_TEST(checker.used_keys().size() == 0u);
+      BOOST_TEST(checker.unused_keys().size() == 2u);
    }
    {
       auto checker = make_auth_checker(GetNullAuthority, 2, {a, b, c});
       BOOST_TEST(checker.satisfied(A));
       BOOST_TEST(!checker.all_keys_used());
-      BOOST_TEST(checker.used_keys().size() == 2);
-      BOOST_TEST(checker.used_keys().count(a) == 1);
-      BOOST_TEST(checker.used_keys().count(b) == 1);
-      BOOST_TEST(checker.unused_keys().size() == 1);
-      BOOST_TEST(checker.unused_keys().count(c) == 1);
+      BOOST_TEST(checker.used_keys().size() == 2u);
+      BOOST_TEST(checker.used_keys().count(a) == 1u);
+      BOOST_TEST(checker.used_keys().count(b) == 1u);
+      BOOST_TEST(checker.unused_keys().size() == 1u);
+      BOOST_TEST(checker.unused_keys().count(c) == 1u);
    }
    {
       auto checker = make_auth_checker(GetNullAuthority, 2, {b, c});
       BOOST_TEST(!checker.satisfied(A));
       BOOST_TEST(!checker.all_keys_used());
-      BOOST_TEST(checker.used_keys().size() == 0);
+      BOOST_TEST(checker.used_keys().size() == 0u);
    }
 
    A = authority(3, {key_weight{a, 1}, key_weight{b, 1}, key_weight{c, 1}});
@@ -328,7 +381,7 @@ BOOST_AUTO_TEST_CASE(authority_checker)
       return authority(1, {key_weight{c, 1}});
    };
 
-   A = authority(2, {key_weight{a, 2}, key_weight{b, 1}}, {permission_level_weight{{"hello",  "world"}, 1}});
+   A = authority(2, {key_weight{a, 2}, key_weight{b, 1}}, {permission_level_weight{{name("hello"), name("world")}, 1}});
    {
       auto checker = make_auth_checker(GetCAuthority, 2, {a});
       BOOST_TEST(checker.satisfied(A));
@@ -337,38 +390,38 @@ BOOST_AUTO_TEST_CASE(authority_checker)
    {
       auto checker = make_auth_checker(GetCAuthority, 2, {b});
       BOOST_TEST(!checker.satisfied(A));
-      BOOST_TEST(checker.used_keys().size() == 0);
-      BOOST_TEST(checker.unused_keys().size() == 1);
-      BOOST_TEST(checker.unused_keys().count(b) == 1);
+      BOOST_TEST(checker.used_keys().size() == 0u);
+      BOOST_TEST(checker.unused_keys().size() == 1u);
+      BOOST_TEST(checker.unused_keys().count(b) == 1u);
    }
    {
       auto checker = make_auth_checker(GetCAuthority, 2, {c});
       BOOST_TEST(!checker.satisfied(A));
-      BOOST_TEST(checker.used_keys().size() == 0);
-      BOOST_TEST(checker.unused_keys().size() == 1);
-      BOOST_TEST(checker.unused_keys().count(c) == 1);
+      BOOST_TEST(checker.used_keys().size() == 0u);
+      BOOST_TEST(checker.unused_keys().size() == 1u);
+      BOOST_TEST(checker.unused_keys().count(c) == 1u);
    }
    {
       auto checker = make_auth_checker(GetCAuthority, 2, {b, c});
       BOOST_TEST(checker.satisfied(A));
       BOOST_TEST(checker.all_keys_used());
-      BOOST_TEST(checker.used_keys().size() == 2);
-      BOOST_TEST(checker.unused_keys().size() == 0);
-      BOOST_TEST(checker.used_keys().count(b) == 1);
-      BOOST_TEST(checker.used_keys().count(c) == 1);
+      BOOST_TEST(checker.used_keys().size() == 2u);
+      BOOST_TEST(checker.unused_keys().size() == 0u);
+      BOOST_TEST(checker.used_keys().count(b) == 1u);
+      BOOST_TEST(checker.used_keys().count(c) == 1u);
    }
    {
       auto checker = make_auth_checker(GetCAuthority, 2, {b, c, a});
       BOOST_TEST(checker.satisfied(A));
       BOOST_TEST(!checker.all_keys_used());
-      BOOST_TEST(checker.used_keys().size() == 1);
-      BOOST_TEST(checker.used_keys().count(a) == 1);
-      BOOST_TEST(checker.unused_keys().size() == 2);
-      BOOST_TEST(checker.unused_keys().count(b) == 1);
-      BOOST_TEST(checker.unused_keys().count(c) == 1);
+      BOOST_TEST(checker.used_keys().size() == 1u);
+      BOOST_TEST(checker.used_keys().count(a) == 1u);
+      BOOST_TEST(checker.unused_keys().size() == 2u);
+      BOOST_TEST(checker.unused_keys().count(b) == 1u);
+      BOOST_TEST(checker.unused_keys().count(c) == 1u);
    }
 
-   A = authority(3, {key_weight{a, 2}, key_weight{b, 1}}, {permission_level_weight{{"hello",  "world"}, 3}});
+   A = authority(3, {key_weight{a, 2}, key_weight{b, 1}}, {permission_level_weight{{name("hello"), name("world")}, 3}});
    {
       auto checker = make_auth_checker(GetCAuthority, 2, {a, b});
       BOOST_TEST(checker.satisfied(A));
@@ -378,14 +431,14 @@ BOOST_AUTO_TEST_CASE(authority_checker)
       auto checker = make_auth_checker(GetCAuthority, 2, {a, b, c});
       BOOST_TEST(checker.satisfied(A));
       BOOST_TEST(!checker.all_keys_used());
-      BOOST_TEST(checker.used_keys().size() == 1);
-      BOOST_TEST(checker.used_keys().count(c) == 1);
-      BOOST_TEST(checker.unused_keys().size() == 2);
-      BOOST_TEST(checker.unused_keys().count(a) == 1);
-      BOOST_TEST(checker.unused_keys().count(b) == 1);
+      BOOST_TEST(checker.used_keys().size() == 1u);
+      BOOST_TEST(checker.used_keys().count(c) == 1u);
+      BOOST_TEST(checker.unused_keys().size() == 2u);
+      BOOST_TEST(checker.unused_keys().count(a) == 1u);
+      BOOST_TEST(checker.unused_keys().count(b) == 1u);
    }
 
-   A = authority(2, {key_weight{a, 1}, key_weight{b, 1}}, {permission_level_weight{{"hello",  "world"}, 1}});
+   A = authority(2, {key_weight{a, 1}, key_weight{b, 1}}, {permission_level_weight{{name("hello"), name("world")}, 1}});
    BOOST_TEST(!make_auth_checker(GetCAuthority, 2, {a}).satisfied(A));
    BOOST_TEST(!make_auth_checker(GetCAuthority, 2, {b}).satisfied(A));
    BOOST_TEST(!make_auth_checker(GetCAuthority, 2, {c}).satisfied(A));
@@ -396,12 +449,12 @@ BOOST_AUTO_TEST_CASE(authority_checker)
       auto checker = make_auth_checker(GetCAuthority, 2, {a, b, c});
       BOOST_TEST(checker.satisfied(A));
       BOOST_TEST(!checker.all_keys_used());
-      BOOST_TEST(checker.used_keys().size() == 2);
-      BOOST_TEST(checker.unused_keys().size() == 1);
-      BOOST_TEST(checker.unused_keys().count(c) == 1);
+      BOOST_TEST(checker.used_keys().size() == 2u);
+      BOOST_TEST(checker.unused_keys().size() == 1u);
+      BOOST_TEST(checker.unused_keys().count(c) == 1u);
    }
 
-   A = authority(2, {key_weight{a, 1}, key_weight{b, 1}}, {permission_level_weight{{"hello",  "world"}, 2}});
+   A = authority(2, {key_weight{a, 1}, key_weight{b, 1}}, {permission_level_weight{{name("hello"), name("world")}, 2}});
    BOOST_TEST(make_auth_checker(GetCAuthority, 2, {a, b}).satisfied(A));
    BOOST_TEST(make_auth_checker(GetCAuthority, 2, {c}).satisfied(A));
    BOOST_TEST(!make_auth_checker(GetCAuthority, 2, {a}).satisfied(A));
@@ -410,21 +463,21 @@ BOOST_AUTO_TEST_CASE(authority_checker)
       auto checker = make_auth_checker(GetCAuthority, 2, {a, b, c});
       BOOST_TEST(checker.satisfied(A));
       BOOST_TEST(!checker.all_keys_used());
-      BOOST_TEST(checker.used_keys().size() == 1);
-      BOOST_TEST(checker.unused_keys().size() == 2);
-      BOOST_TEST(checker.used_keys().count(c) == 1);
+      BOOST_TEST(checker.used_keys().size() == 1u);
+      BOOST_TEST(checker.unused_keys().size() == 2u);
+      BOOST_TEST(checker.used_keys().count(c) == 1u);
    }
 
-   auto d = test.get_public_key("d", "active");
-   auto e = test.get_public_key("e", "active");
+   auto d = test.get_public_key(name("d"), "active");
+   auto e = test.get_public_key(name("e"), "active");
 
    auto GetAuthority = [d, e] (const permission_level& perm) {
-      if (perm.actor == "top")
-         return authority(2, {key_weight{d, 1}}, {permission_level_weight{{"bottom",  "bottom"}, 1}});
+      if (perm.actor == name("top"))
+         return authority(2, {key_weight{d, 1}}, {permission_level_weight{{name("bottom"), name("bottom")}, 1}});
       return authority{1, {{e, 1}}, {}};
    };
 
-   A = authority(5, {key_weight{a, 2}, key_weight{b, 2}, key_weight{c, 2}}, {permission_level_weight{{"top",  "top"}, 5}});
+   A = authority(5, {key_weight{a, 2}, key_weight{b, 2}, key_weight{c, 2}}, {permission_level_weight{{name("top"), name("top")}, 5}});
    {
       auto checker = make_auth_checker(GetAuthority, 2, {d, e});
       BOOST_TEST(checker.satisfied(A));
@@ -434,20 +487,20 @@ BOOST_AUTO_TEST_CASE(authority_checker)
       auto checker = make_auth_checker(GetAuthority, 2, {a, b, c, d, e});
       BOOST_TEST(checker.satisfied(A));
       BOOST_TEST(!checker.all_keys_used());
-      BOOST_TEST(checker.used_keys().size() == 2);
-      BOOST_TEST(checker.unused_keys().size() == 3);
-      BOOST_TEST(checker.used_keys().count(d) == 1);
-      BOOST_TEST(checker.used_keys().count(e) == 1);
+      BOOST_TEST(checker.used_keys().size() == 2u);
+      BOOST_TEST(checker.unused_keys().size() == 3u);
+      BOOST_TEST(checker.used_keys().count(d) == 1u);
+      BOOST_TEST(checker.used_keys().count(e) == 1u);
    }
    {
       auto checker = make_auth_checker(GetAuthority, 2, {a, b, c, e});
       BOOST_TEST(checker.satisfied(A));
       BOOST_TEST(!checker.all_keys_used());
-      BOOST_TEST(checker.used_keys().size() == 3);
-      BOOST_TEST(checker.unused_keys().size() == 1);
-      BOOST_TEST(checker.used_keys().count(a) == 1);
-      BOOST_TEST(checker.used_keys().count(b) == 1);
-      BOOST_TEST(checker.used_keys().count(c) == 1);
+      BOOST_TEST(checker.used_keys().size() == 3u);
+      BOOST_TEST(checker.unused_keys().size() == 1u);
+      BOOST_TEST(checker.used_keys().count(a) == 1u);
+      BOOST_TEST(checker.used_keys().count(b) == 1u);
+      BOOST_TEST(checker.used_keys().count(c) == 1u);
    }
    BOOST_TEST(make_auth_checker(GetAuthority, 1, {a, b, c}).satisfied(A));
    // Fails due to short recursion depth limit
@@ -479,50 +532,50 @@ BOOST_AUTO_TEST_CASE(authority_checker)
       BOOST_TEST(!validate(F));
 
       BOOST_TEST(!checker.all_keys_used());
-      BOOST_TEST(checker.unused_keys().count(b) == 1);
-      BOOST_TEST(checker.unused_keys().count(a) == 1);
-      BOOST_TEST(checker.unused_keys().count(c) == 1);
+      BOOST_TEST(checker.unused_keys().count(b) == 1u);
+      BOOST_TEST(checker.unused_keys().count(a) == 1u);
+      BOOST_TEST(checker.unused_keys().count(c) == 1u);
       BOOST_TEST(checker.satisfied(A));
       BOOST_TEST(checker.satisfied(B));
       BOOST_TEST(!checker.all_keys_used());
-      BOOST_TEST(checker.unused_keys().count(b) == 0);
-      BOOST_TEST(checker.unused_keys().count(a) == 0);
-      BOOST_TEST(checker.unused_keys().count(c) == 1);
+      BOOST_TEST(checker.unused_keys().count(b) == 0u);
+      BOOST_TEST(checker.unused_keys().count(a) == 0u);
+      BOOST_TEST(checker.unused_keys().count(c) == 1u);
    }
    {
       auto A2 = authority(4, {key_weight{b, 1}, key_weight{a, 1}, key_weight{c, 1}},
-                          { permission_level_weight{{"a",  "world"},     1},
-                            permission_level_weight{{"hello",  "world"}, 1},
-                            permission_level_weight{{"hi",  "world"},    1}
+                          { permission_level_weight{{name("a"), name("world")},     1},
+                            permission_level_weight{{name("hello"), name("world")}, 1},
+                            permission_level_weight{{name("hi"), name("world")},    1}
                           });
       auto B2 = authority(4, {key_weight{b, 1}, key_weight{a, 1}, key_weight{c, 1}},
-                          {permission_level_weight{{"hello",  "world"}, 1}
+                          {permission_level_weight{{name("hello"), name("world")}, 1}
                           });
       auto C2 = authority(4, {key_weight{b, 1}, key_weight{a, 1}, key_weight{c, 1}},
-                          { permission_level_weight{{"hello",  "there"}, 1},
-                            permission_level_weight{{"hello",  "world"}, 1}
+                          { permission_level_weight{{name("hello"), name("there")}, 1},
+                            permission_level_weight{{name("hello"), name("world")}, 1}
                           });
       // invalid: duplicate
       auto D2 = authority(4, {key_weight{b, 1}, key_weight{a, 1}, key_weight{c, 1}},
-                          { permission_level_weight{{"hello",  "world"}, 1},
-                            permission_level_weight{{"hello",  "world"}, 2}
+                          { permission_level_weight{{name("hello"), name("world")}, 1},
+                            permission_level_weight{{name("hello"), name("world")}, 2}
                           });
       // invalid: wrong order
       auto E2 = authority(4, {key_weight{b, 1}, key_weight{a, 1}, key_weight{c, 1}},
-                          { permission_level_weight{{"hello",  "world"}, 2},
-                            permission_level_weight{{"hello",  "there"}, 1}
+                          { permission_level_weight{{name("hello"), name("world")}, 2},
+                            permission_level_weight{{name("hello"), name("there")}, 1}
                           });
       // invalid: wrong order
       auto F2 = authority(4, {key_weight{b, 1}, key_weight{a, 1}, key_weight{c, 1}},
-                          { permission_level_weight{{"hi",  "world"}, 2},
-                            permission_level_weight{{"hello",  "world"}, 1}
+                          { permission_level_weight{{name("hi"), name("world")}, 2},
+                            permission_level_weight{{name("hello"), name("world")}, 1}
                           });
 
       // invalid: insufficient weight
       auto G2 = authority(7, {key_weight{b, 1}, key_weight{a, 1}, key_weight{c, 1}},
-                             { permission_level_weight{{"a",  "world"},     1},
-                               permission_level_weight{{"hello",  "world"}, 1},
-                               permission_level_weight{{"hi",  "world"},    1}
+                             { permission_level_weight{{name("a"), name("world")},     1},
+                               permission_level_weight{{name("hello"), name("world")}, 1},
+                               permission_level_weight{{name("hi"), name("world")},    1}
                              });
 
       BOOST_TEST(validate(A2));
@@ -567,7 +620,7 @@ BOOST_AUTO_TEST_CASE(alphabetic_sort)
   vector<uint64_t> uwords;
   for(const auto w: words) {
     auto n = name(w.c_str());
-    uwords.push_back(n.value);
+    uwords.push_back(n.to_uint64_t());
   }
 
   std::sort(uwords.begin(), uwords.end(), std::less<uint64_t>());
@@ -578,7 +631,7 @@ BOOST_AUTO_TEST_CASE(alphabetic_sort)
     tmp.push_back(str);
   }
 
-  for(int i = 0; i < words.size(); ++i ) {
+  for(size_t i = 0; i < words.size(); ++i ) {
     BOOST_TEST(tmp[i] == words[i]);
   }
 
@@ -593,22 +646,22 @@ BOOST_AUTO_TEST_CASE(transaction_test) { try {
    variant pretty_trx = fc::mutable_variant_object()
       ("actions", fc::variants({
          fc::mutable_variant_object()
-            ("account", "arisen")
+            ("account", "eosio")
             ("name", "reqauth")
             ("authorization", fc::variants({
                fc::mutable_variant_object()
-                  ("actor", "arisen")
+                  ("actor", "eosio")
                   ("permission", "active")
             }))
             ("data", fc::mutable_variant_object()
-               ("from", "arisen")
+               ("from", "eosio")
             )
          })
       )
       // lets also push a context free action, the multi chain test will then also include a context free action
       ("context_free_actions", fc::variants({
          fc::mutable_variant_object()
-            ("account", "arisen")
+            ("account", "eosio")
             ("name", "nonce")
             ("data", fc::raw::pack(std::string("dummy")))
          })
@@ -620,18 +673,18 @@ BOOST_AUTO_TEST_CASE(transaction_test) { try {
 
    trx.expiration = fc::time_point::now();
    trx.validate();
-   BOOST_CHECK_EQUAL(0, trx.signatures.size());
+   BOOST_CHECK_EQUAL(0u, trx.signatures.size());
    ((const signed_transaction &)trx).sign( test.get_private_key( config::system_account_name, "active" ), test.control->get_chain_id());
-   BOOST_CHECK_EQUAL(0, trx.signatures.size());
-   trx.sign( test.get_private_key( config::system_account_name, "active" ), test.control->get_chain_id()  );
-   BOOST_CHECK_EQUAL(1, trx.signatures.size());
+   BOOST_CHECK_EQUAL(0u, trx.signatures.size());
+   auto private_key = test.get_private_key( config::system_account_name, "active" );
+   auto public_key = private_key.get_public_key();
+   trx.sign( private_key, test.control->get_chain_id()  );
+   BOOST_CHECK_EQUAL(1u, trx.signatures.size());
    trx.validate();
 
-   packed_transaction pkt;
-   pkt.set_transaction(trx, packed_transaction::none);
+   packed_transaction pkt(trx, packed_transaction::compression_type::none);
 
-   packed_transaction pkt2;
-   pkt2.set_transaction(trx, packed_transaction::zlib);
+   packed_transaction pkt2(trx, packed_transaction::compression_type::zlib);
 
    BOOST_CHECK_EQUAL(true, trx.expiration ==  pkt.expiration());
    BOOST_CHECK_EQUAL(true, trx.expiration == pkt2.expiration());
@@ -642,9 +695,432 @@ BOOST_AUTO_TEST_CASE(transaction_test) { try {
    bytes raw = pkt.get_raw_transaction();
    bytes raw2 = pkt2.get_raw_transaction();
    BOOST_CHECK_EQUAL(raw.size(), raw2.size());
+   BOOST_CHECK_EQUAL(true, std::equal(raw.begin(), raw.end(), raw2.begin()));
+
+   BOOST_CHECK_EQUAL(pkt.get_signed_transaction().id(), pkt2.get_signed_transaction().id());
+   BOOST_CHECK_EQUAL(pkt.get_signed_transaction().id(), pkt2.id());
+
+   flat_set<public_key_type> keys;
+   auto cpu_time1 = pkt.get_signed_transaction().get_signature_keys(test.control->get_chain_id(), fc::time_point::maximum(), keys);
+   BOOST_CHECK_EQUAL(1u, keys.size());
+   BOOST_CHECK_EQUAL(public_key, *keys.begin());
+   keys.clear();
+   auto cpu_time2 = pkt.get_signed_transaction().get_signature_keys(test.control->get_chain_id(), fc::time_point::maximum(), keys);
+   BOOST_CHECK_EQUAL(1u, keys.size());
+   BOOST_CHECK_EQUAL(public_key, *keys.begin());
+
+   BOOST_CHECK(cpu_time1 > fc::microseconds(0));
+   BOOST_CHECK(cpu_time2 > fc::microseconds(0));
+
+   // pack
+   uint32_t pack_size = fc::raw::pack_size( pkt );
+   vector<char> buf(pack_size);
+   fc::datastream<char*> ds(buf.data(), pack_size);
+
+   fc::raw::pack( ds, pkt );
+   // unpack
+   ds.seekp(0);
+   packed_transaction pkt3;
+   fc::raw::unpack(ds, pkt3);
+   // pack again
+   pack_size = fc::raw::pack_size( pkt3 );
+   fc::datastream<char*> ds2(buf.data(), pack_size);
+   fc::raw::pack( ds2, pkt3 );
+   // unpack
+   ds2.seekp(0);
+   packed_transaction pkt4;
+   fc::raw::unpack(ds2, pkt4);
+   // to/from variant
+   fc::variant pkt_v( pkt3 );
+   packed_transaction pkt5;
+   fc::from_variant(pkt_v, pkt5);
+
+   bytes raw3 = pkt3.get_raw_transaction();
+   bytes raw4 = pkt4.get_raw_transaction();
+   BOOST_CHECK_EQUAL(raw.size(), raw3.size());
+   BOOST_CHECK_EQUAL(raw3.size(), raw4.size());
+   BOOST_CHECK_EQUAL(true, std::equal(raw.begin(), raw.end(), raw3.begin()));
+   BOOST_CHECK_EQUAL(true, std::equal(raw.begin(), raw.end(), raw4.begin()));
+   BOOST_CHECK_EQUAL(pkt.get_signed_transaction().id(), pkt3.get_signed_transaction().id());
+   BOOST_CHECK_EQUAL(pkt.get_signed_transaction().id(), pkt4.get_signed_transaction().id());
+   BOOST_CHECK_EQUAL(pkt.get_signed_transaction().id(), pkt5.get_signed_transaction().id()); // failure indicates reflector_init not working
+   BOOST_CHECK_EQUAL(pkt.id(), pkt4.get_signed_transaction().id());
+   BOOST_CHECK_EQUAL(true, trx.expiration == pkt4.expiration());
+   BOOST_CHECK_EQUAL(true, trx.expiration == pkt4.get_signed_transaction().expiration);
+   keys.clear();
+   pkt4.get_signed_transaction().get_signature_keys(test.control->get_chain_id(), fc::time_point::maximum(), keys);
+   BOOST_CHECK_EQUAL(1u, keys.size());
+   BOOST_CHECK_EQUAL(public_key, *keys.begin());
 
 } FC_LOG_AND_RETHROW() }
 
+
+BOOST_AUTO_TEST_CASE(signed_int_test) { try {
+    char buf[32];
+    fc::datastream<char*> ds(buf,32);
+    signed_int a(47), b((1<<30)+2), c(-47), d(-(1<<30)-2); //small +, big +, small -, big -
+    signed_int ee;
+    fc::raw::pack(ds,a);
+    ds.seekp(0);
+    fc::raw::unpack(ds,ee);
+    ds.seekp(0);
+    BOOST_CHECK_EQUAL(a,ee);
+    fc::raw::pack(ds,b);
+    ds.seekp(0);
+    fc::raw::unpack(ds,ee);
+    ds.seekp(0);
+    BOOST_CHECK_EQUAL(b,ee);
+    fc::raw::pack(ds,c);
+    ds.seekp(0);
+    fc::raw::unpack(ds,ee);
+    ds.seekp(0);
+    BOOST_CHECK_EQUAL(c,ee);
+    fc::raw::pack(ds,d);
+    ds.seekp(0);
+    fc::raw::unpack(ds,ee);
+    ds.seekp(0);
+    BOOST_CHECK_EQUAL(d,ee);
+
+} FC_LOG_AND_RETHROW() }
+
+BOOST_AUTO_TEST_CASE(transaction_metadata_test) { try {
+
+   testing::TESTER test;
+   signed_transaction trx;
+
+   variant pretty_trx = fc::mutable_variant_object()
+      ("actions", fc::variants({
+         fc::mutable_variant_object()
+            ("account", "eosio")
+            ("name", "reqauth")
+            ("authorization", fc::variants({
+               fc::mutable_variant_object()
+                  ("actor", "eosio")
+                  ("permission", "active")
+            }))
+            ("data", fc::mutable_variant_object()
+               ("from", "eosio")
+            )
+         })
+      )
+      ("context_free_actions", fc::variants({
+         fc::mutable_variant_object()
+            ("account", "eosio")
+            ("name", "nonce")
+            ("data", fc::raw::pack(std::string("dummy data")))
+         })
+      );
+
+      abi_serializer::from_variant(pretty_trx, trx, test.get_resolver(), test.abi_serializer_max_time);
+
+      test.set_transaction_headers(trx);
+      trx.expiration = fc::time_point::now();
+
+      auto private_key = test.get_private_key( config::system_account_name, "active" );
+      auto public_key = private_key.get_public_key();
+      trx.sign( private_key, test.control->get_chain_id()  );
+      BOOST_CHECK_EQUAL(1u, trx.signatures.size());
+
+      packed_transaction pkt(trx, packed_transaction::compression_type::none);
+      packed_transaction pkt2(trx, packed_transaction::compression_type::zlib);
+
+      packed_transaction_ptr ptrx = std::make_shared<packed_transaction>( trx, packed_transaction::compression_type::none);
+      packed_transaction_ptr ptrx2 = std::make_shared<packed_transaction>( trx, packed_transaction::compression_type::zlib);
+
+      BOOST_CHECK_EQUAL(trx.id(), pkt.id());
+      BOOST_CHECK_EQUAL(trx.id(), pkt2.id());
+      BOOST_CHECK_EQUAL(trx.id(), ptrx->id());
+      BOOST_CHECK_EQUAL(trx.id(), ptrx2->id());
+
+      named_thread_pool thread_pool( "misc", 5 );
+
+      auto fut = transaction_metadata::start_recover_keys( ptrx, thread_pool.get_executor(), test.control->get_chain_id(), fc::microseconds::maximum() );
+      auto fut2 = transaction_metadata::start_recover_keys( ptrx2, thread_pool.get_executor(), test.control->get_chain_id(), fc::microseconds::maximum() );
+
+      // start another key reovery on same packed_transaction, creates a new future with transaction_metadata, should not interfere with above
+      transaction_metadata::start_recover_keys( ptrx, thread_pool.get_executor(), test.control->get_chain_id(), fc::microseconds::maximum() );
+      transaction_metadata::start_recover_keys( ptrx2, thread_pool.get_executor(), test.control->get_chain_id(), fc::microseconds::maximum() );
+
+      auto mtrx = fut.get();
+      const auto& keys = mtrx->recovered_keys();
+      BOOST_CHECK_EQUAL(1u, keys.size());
+      BOOST_CHECK_EQUAL(public_key, *keys.begin());
+
+      // again, can be called multiple times, current implementation it is just an attribute of transaction_metadata
+      const auto& keys2 = mtrx->recovered_keys();
+      BOOST_CHECK_EQUAL(1u, keys2.size());
+      BOOST_CHECK_EQUAL(public_key, *keys2.begin());
+
+      auto mtrx2 = fut2.get();
+      const auto& keys3 = mtrx2->recovered_keys();
+      BOOST_CHECK_EQUAL(1u, keys3.size());
+      BOOST_CHECK_EQUAL(public_key, *keys3.begin());
+
+      thread_pool.stop();
+
+} FC_LOG_AND_RETHROW() }
+
+BOOST_AUTO_TEST_CASE(reflector_init_test) {
+   try {
+
+      base_reflect br;
+      br.bv = 42;
+      derived_reflect dr;
+      dr.bv = 42;
+      dr.dv = 52;
+      final_reflect fr;
+      fr.bv = 42;
+      fr.dv = 52;
+      fr.fv = 62;
+      BOOST_CHECK_EQUAL( br.base_reflect_initialized, false );
+      BOOST_CHECK_EQUAL( dr.derived_reflect_initialized, false );
+
+      { // base
+         // pack
+         uint32_t pack_size = fc::raw::pack_size( br );
+         vector<char> buf( pack_size );
+         fc::datastream<char*> ds( buf.data(), pack_size );
+
+         fc::raw::pack( ds, br );
+         // unpack
+         ds.seekp( 0 );
+         base_reflect br2;
+         fc::raw::unpack( ds, br2 );
+         // pack again
+         pack_size = fc::raw::pack_size( br2 );
+         fc::datastream<char*> ds2( buf.data(), pack_size );
+         fc::raw::pack( ds2, br2 );
+         // unpack
+         ds2.seekp( 0 );
+         base_reflect br3;
+         fc::raw::unpack( ds2, br3 );
+         // to/from variant
+         fc::variant v( br3 );
+         base_reflect br4;
+         fc::from_variant( v, br4 );
+
+         BOOST_CHECK_EQUAL( br2.bv, 42 );
+         BOOST_CHECK_EQUAL( br2.base_reflect_initialized, true );
+         BOOST_CHECK_EQUAL( br2.base_reflect_called, 1 );
+         BOOST_CHECK_EQUAL( br3.bv, 42 );
+         BOOST_CHECK_EQUAL( br3.base_reflect_initialized, true );
+         BOOST_CHECK_EQUAL( br3.base_reflect_called, 1 );
+         BOOST_CHECK_EQUAL( br4.bv, 42 );
+         BOOST_CHECK_EQUAL( br4.base_reflect_initialized, true );
+         BOOST_CHECK_EQUAL( br4.base_reflect_called, 1 );
+      }
+      { // derived
+         // pack
+         uint32_t pack_size = fc::raw::pack_size( dr );
+         vector<char> buf( pack_size );
+         fc::datastream<char*> ds( buf.data(), pack_size );
+
+         fc::raw::pack( ds, dr );
+         // unpack
+         ds.seekp( 0 );
+         derived_reflect dr2;
+         fc::raw::unpack( ds, dr2 );
+         // pack again
+         pack_size = fc::raw::pack_size( dr2 );
+         fc::datastream<char*> ds2( buf.data(), pack_size );
+         fc::raw::pack( ds2, dr2 );
+         // unpack
+         ds2.seekp( 0 );
+         derived_reflect dr3;
+         fc::raw::unpack( ds2, dr3 );
+         // to/from variant
+         fc::variant v( dr3 );
+         derived_reflect dr4;
+         fc::from_variant( v, dr4 );
+
+         BOOST_CHECK_EQUAL( dr2.bv, 42 );
+         BOOST_CHECK_EQUAL( dr2.base_reflect_initialized, true );
+         BOOST_CHECK_EQUAL( dr2.base_reflect_called, 1 );
+         BOOST_CHECK_EQUAL( dr3.bv, 42 );
+         BOOST_CHECK_EQUAL( dr3.base_reflect_initialized, true );
+         BOOST_CHECK_EQUAL( dr3.base_reflect_called, 1 );
+         BOOST_CHECK_EQUAL( dr4.bv, 42 );
+         BOOST_CHECK_EQUAL( dr4.base_reflect_initialized, true );
+         BOOST_CHECK_EQUAL( dr4.base_reflect_called, 1 );
+
+         BOOST_CHECK_EQUAL( dr2.dv, 52 );
+         BOOST_CHECK_EQUAL( dr2.derived_reflect_initialized, true );
+         BOOST_CHECK_EQUAL( dr2.derived_reflect_called, 1 );
+         BOOST_CHECK_EQUAL( dr3.dv, 52 );
+         BOOST_CHECK_EQUAL( dr3.derived_reflect_initialized, true );
+         BOOST_CHECK_EQUAL( dr3.derived_reflect_called, 1 );
+         BOOST_CHECK_EQUAL( dr4.dv, 52 );
+         BOOST_CHECK_EQUAL( dr4.derived_reflect_initialized, true );
+         BOOST_CHECK_EQUAL( dr4.derived_reflect_called, 1 );
+
+         base_reflect br5;
+         ds2.seekp( 0 );
+         fc::raw::unpack( ds2, br5 );
+         base_reflect br6;
+         fc::from_variant( v, br6 );
+
+         BOOST_CHECK_EQUAL( br5.bv, 42 );
+         BOOST_CHECK_EQUAL( br5.base_reflect_initialized, true );
+         BOOST_CHECK_EQUAL( br5.base_reflect_called, 1 );
+         BOOST_CHECK_EQUAL( br6.bv, 42 );
+         BOOST_CHECK_EQUAL( br6.base_reflect_initialized, true );
+         BOOST_CHECK_EQUAL( br6.base_reflect_called, 1 );
+      }
+      { // final
+         // pack
+         uint32_t pack_size = fc::raw::pack_size( fr );
+         vector<char> buf( pack_size );
+         fc::datastream<char*> ds( buf.data(), pack_size );
+
+         fc::raw::pack( ds, fr );
+         // unpack
+         ds.seekp( 0 );
+         final_reflect fr2;
+         fc::raw::unpack( ds, fr2 );
+         // pack again
+         pack_size = fc::raw::pack_size( fr2 );
+         fc::datastream<char*> ds2( buf.data(), pack_size );
+         fc::raw::pack( ds2, fr2 );
+         // unpack
+         ds2.seekp( 0 );
+         final_reflect fr3;
+         fc::raw::unpack( ds2, fr3 );
+         // to/from variant
+         fc::variant v( fr3 );
+         final_reflect fr4;
+         fc::from_variant( v, fr4 );
+
+         BOOST_CHECK_EQUAL( fr2.bv, 42 );
+         BOOST_CHECK_EQUAL( fr2.base_reflect_initialized, true );
+         BOOST_CHECK_EQUAL( fr2.base_reflect_called, 1 );
+         BOOST_CHECK_EQUAL( fr3.bv, 42 );
+         BOOST_CHECK_EQUAL( fr3.base_reflect_initialized, true );
+         BOOST_CHECK_EQUAL( fr3.base_reflect_called, 1 );
+         BOOST_CHECK_EQUAL( fr4.bv, 42 );
+         BOOST_CHECK_EQUAL( fr4.base_reflect_initialized, true );
+         BOOST_CHECK_EQUAL( fr4.base_reflect_called, 1 );
+
+         BOOST_CHECK_EQUAL( fr2.dv, 52 );
+         BOOST_CHECK_EQUAL( fr2.derived_reflect_initialized, true );
+         BOOST_CHECK_EQUAL( fr2.derived_reflect_called, 1 );
+         BOOST_CHECK_EQUAL( fr3.dv, 52 );
+         BOOST_CHECK_EQUAL( fr3.derived_reflect_initialized, true );
+         BOOST_CHECK_EQUAL( fr3.derived_reflect_called, 1 );
+         BOOST_CHECK_EQUAL( fr4.dv, 52 );
+         BOOST_CHECK_EQUAL( fr4.derived_reflect_initialized, true );
+         BOOST_CHECK_EQUAL( fr4.derived_reflect_called, 1 );
+
+         BOOST_CHECK_EQUAL( fr2.fv, 62 );
+         BOOST_CHECK_EQUAL( fr2.final_reflect_initialized, true );
+         BOOST_CHECK_EQUAL( fr2.final_reflect_called, 1 );
+         BOOST_CHECK_EQUAL( fr3.fv, 62 );
+         BOOST_CHECK_EQUAL( fr3.final_reflect_initialized, true );
+         BOOST_CHECK_EQUAL( fr3.final_reflect_called, 1 );
+         BOOST_CHECK_EQUAL( fr4.fv, 62 );
+         BOOST_CHECK_EQUAL( fr4.final_reflect_initialized, true );
+         BOOST_CHECK_EQUAL( fr4.final_reflect_called, 1 );
+
+         base_reflect br5;
+         ds2.seekp( 0 );
+         fc::raw::unpack( ds2, br5 );
+         base_reflect br6;
+         fc::from_variant( v, br6 );
+
+         BOOST_CHECK_EQUAL( br5.bv, 42 );
+         BOOST_CHECK_EQUAL( br5.base_reflect_initialized, true );
+         BOOST_CHECK_EQUAL( br5.base_reflect_called, 1 );
+         BOOST_CHECK_EQUAL( br6.bv, 42 );
+         BOOST_CHECK_EQUAL( br6.base_reflect_initialized, true );
+         BOOST_CHECK_EQUAL( br6.base_reflect_called, 1 );
+
+         derived_reflect dr7;
+         ds2.seekp( 0 );
+         fc::raw::unpack( ds2, dr7 );
+         derived_reflect dr8;
+         fc::from_variant( v, dr8 );
+
+         BOOST_CHECK_EQUAL( dr7.bv, 42 );
+         BOOST_CHECK_EQUAL( dr7.base_reflect_initialized, true );
+         BOOST_CHECK_EQUAL( dr7.base_reflect_called, 1 );
+         BOOST_CHECK_EQUAL( dr8.bv, 42 );
+         BOOST_CHECK_EQUAL( dr8.base_reflect_initialized, true );
+         BOOST_CHECK_EQUAL( dr8.base_reflect_called, 1 );
+
+         BOOST_CHECK_EQUAL( dr7.dv, 52 );
+         BOOST_CHECK_EQUAL( dr7.derived_reflect_initialized, true );
+         BOOST_CHECK_EQUAL( dr7.derived_reflect_called, 1 );
+         BOOST_CHECK_EQUAL( dr8.dv, 52 );
+         BOOST_CHECK_EQUAL( dr8.derived_reflect_initialized, true );
+         BOOST_CHECK_EQUAL( dr8.derived_reflect_called, 1 );
+      }
+
+   } FC_LOG_AND_RETHROW()
+}
+
+// Verify appbase::execution_priority_queue uses a stable priority queue so that jobs are executed
+// in order, FIFO, as submitted.
+BOOST_AUTO_TEST_CASE(stable_priority_queue_test) {
+  try {
+     using namespace std::chrono_literals;
+
+     appbase::execution_priority_queue pri_queue;
+     auto io_serv = std::make_shared<boost::asio::io_service>();
+     auto work_ptr = std::make_unique<boost::asio::io_service::work>(*io_serv);
+     std::atomic<int> posted{0};
+
+     std::thread t( [io_serv, &pri_queue, &posted]() {
+        while( posted < 100 && io_serv->run_one() ) {
+           ++posted;
+        }
+        bool more = true;
+        while( more || io_serv->run_one() ) {
+           while( io_serv->poll_one() ) {}
+           // execute the highest priority item
+           more = pri_queue.execute_highest();
+        }
+     } );
+     std::atomic<int> ran{0};
+     std::mutex mx;
+     std::vector<int> results;
+     for( int i = 0; i < 50; ++i ) {
+        boost::asio::post(*io_serv, pri_queue.wrap(appbase::priority::low, [io_serv, &mx, &ran, &results, i](){
+           std::lock_guard<std::mutex> g(mx);
+           results.push_back( 50 + i );
+           ++ran;
+        }));
+        boost::asio::post(*io_serv, pri_queue.wrap(appbase::priority::high, [io_serv, &mx, &ran, &results, i](){
+           std::lock_guard<std::mutex> g(mx);
+           results.push_back( i );
+           ++ran;
+        }));
+     }
+
+     while( ran < 100 ) std::this_thread::sleep_for( 5us );
+
+     work_ptr.reset();
+     io_serv->stop();
+     t.join();
+
+     std::lock_guard<std::mutex> g(mx);
+     BOOST_CHECK_EQUAL( 100, results.size() );
+     for( int i = 0; i < 100; ++i ) {
+        BOOST_CHECK_EQUAL( i, results.at( i ) );
+     }
+
+  } FC_LOG_AND_RETHROW()
+}
+
+// test that std::bad_alloc is being thrown
+BOOST_AUTO_TEST_CASE(bad_alloc_test) {
+   tester t; // force a controller to be constructed and set the new_handler
+   int* ptr = nullptr;
+   const auto fail = [&]() {
+      ptr = new int[std::numeric_limits<int64_t>::max()/16];
+   };
+   BOOST_CHECK_THROW( fail(), std::bad_alloc );
+   BOOST_CHECK( ptr == nullptr );
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 
-} // namespace arisen
+} // namespace eosio

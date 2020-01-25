@@ -1,0 +1,96 @@
+{
+  "includes": [],
+  "appenders": [{
+      "name": "stderr",
+      "type": "console",
+      "args": {
+        "stream": "std_error",
+        "level_colors": [{
+            "level": "debug",
+            "color": "green"
+          },{
+            "level": "warn",
+            "color": "brown"
+          },{
+            "level": "error",
+            "color": "red"
+          }
+        ]
+      },
+      "enabled": true
+    },{
+      "name": "stdout",
+      "type": "console",
+      "args": {
+        "stream": "std_out",
+        "level_colors": [{
+            "level": "debug",
+            "color": "green"
+          },{
+            "level": "warn",
+            "color": "brown"
+          },{
+            "level": "error",
+            "color": "red"
+          }
+        ]
+      },
+      "enabled": true
+    },{
+      "name": "net",
+      "type": "gelf",
+      "args": {
+        "endpoint": "10.10.10.10:12201",
+        "host": "host_name"
+      },
+      "enabled": true
+    }
+  ],
+  "loggers": [{
+      "name": "default",
+      "level": "debug",
+      "enabled": true,
+      "additivity": false,
+      "appenders": [
+        "stderr",
+        "net"
+      ]
+    },{
+      "name": "net_plugin_impl",
+      "level": "debug",
+      "enabled": true,
+      "additivity": false,
+      "appenders": [
+        "stderr",
+        "net"
+      ]
+    },{
+      "name": "http_plugin",
+      "level": "debug",
+      "enabled": true,
+      "additivity": false,
+      "appenders": [
+        "stderr",
+        "net"
+      ]
+    },{
+      "name": "producer_plugin",
+      "level": "debug",
+      "enabled": true,
+      "additivity": false,
+      "appenders": [
+        "stderr",
+        "net"
+      ]
+    },{
+      "name": "transaction_tracing",
+      "level": "info",
+      "enabled": true,
+      "additivity": false,
+      "appenders": [
+        "stderr",
+        "net"
+      ]
+    }
+  ]
+}

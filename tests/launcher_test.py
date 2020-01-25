@@ -10,9 +10,10 @@ import decimal
 import re
 
 ###############################################################
-# aos_run_test
-# --dump-error-details <Upon error print etc/arisen/node_*/config.ini and var/lib/node_*/stderr.log to stdout>
-# --keep-logs <Don't delete var/lib/node_* folders upon test completion>
+# launcher-test
+#
+# Specifically tests using the bios bootstrap script that is created by eosio-launcher
+#
 ###############################################################
 
 Print=Utils.Print
@@ -21,7 +22,7 @@ cmdError=Utils.cmdError
 from core_symbol import CORE_SYMBOL
 
 args = TestHelper.parse_args({"--defproducera_prvt_key","--dump-error-details","--dont-launch","--keep-logs",
-                              "-v","--leave-running","--clean-run","--p2p-plugin"})
+                              "-v","--leave-running","--clean-run"})
 debug=args.v
 defproduceraPrvtKey=args.defproducera_prvt_key
 dumpErrorDetails=args.dump_error_details
@@ -29,36 +30,42 @@ keepLogs=args.keep_logs
 dontLaunch=args.dont_launch
 dontKill=args.leave_running
 killAll=args.clean_run
-p2pPlugin=args.p2p_plugin
 
 Utils.Debug=debug
 cluster=Cluster(walletd=True, defproduceraPrvtKey=defproduceraPrvtKey)
 walletMgr=WalletMgr(True)
 testSuccessful=False
-killRsnInstances=not dontKill
+killEosInstances=not dontKill
 killWallet=not dontKill
 
-WalletdName="awallet"
-ClientName="arisecli"
+WalletdName=Utils.EosWalletName
+ClientName="cleos"
 timeout = .5 * 12 * 2 + 60 # time for finalization with 1 producer + 60 seconds padding
 Utils.setIrreversibleTimeout(timeout)
 
 try:
     TestHelper.printSystemInfo("BEGIN")
 
-    walletMgr.killall(allInstances=killAll)
-    walletMgr.cleanup()
+    cluster.setWalletMgr(walletMgr)
 
     if not dontLaunch:
         cluster.killall(allInstances=killAll)
         cluster.cleanup()
         Print("Stand up cluster")
-        if cluster.launch(pnodes=4, dontKill=dontKill, p2pPlugin=p2pPlugin) is False:
+        pnodes=4
+        if cluster.launch(pnodes=pnodes, totalNodes=pnodes) is False:
             cmdError("launcher")
-            errorExit("Failed to stand up ARISEN cluster.")
+            errorExit("Failed to stand up eos cluster.")
     else:
+        walletMgr.killall(allInstances=killAll)
+        walletMgr.cleanup()
         cluster.initializeNodes(defproduceraPrvtKey=defproduceraPrvtKey)
-        killRsnInstances=False
+        killEosInstances=False
+
+        print("Stand up walletd")
+        if walletMgr.launch() is False:
+            cmdError("%s" % (WalletdName))
+            errorExit("Failed to stand up eos walletd.")
 
     Print("Validating system accounts after bootstrap")
     cluster.validateAccounts(None)
@@ -86,16 +93,9 @@ try:
     exchangeAccount.ownerPrivateKey=PRV_KEY2
     exchangeAccount.ownerPublicKey=PUB_KEY2
 
-    Print("Stand up %s" % (WalletdName))
-    walletMgr.killall(allInstances=killAll)
-    walletMgr.cleanup()
-    if walletMgr.launch() is False:
-        cmdError("%s" % (WalletdName))
-        errorExit("Failed to stand up ARISEN walletd.")
-
     testWalletName="test"
     Print("Creating wallet \"%s\"." % (testWalletName))
-    testWallet=walletMgr.create(testWalletName, [cluster.arisenAccount,cluster.defproduceraAccount])
+    testWallet=walletMgr.create(testWalletName, [cluster.eosioAccount,cluster.defproduceraAccount])
 
     Print("Wallet \"%s\" password=%s." % (testWalletName, testWallet.password.encode("utf-8")))
 
@@ -123,15 +123,15 @@ try:
     Print("Validating accounts before user accounts creation")
     cluster.validateAccounts(None)
 
-    # create accounts via arisen as otherwise a bid is needed
-    Print("Create new account %s via %s" % (testeraAccount.name, cluster.arisenAccount.name))
-    transId=node.createInitializeAccount(testeraAccount, cluster.arisenAccount, stakedDeposit=0, waitForTransBlock=False, exitOnError=True)
+    # create accounts via eosio as otherwise a bid is needed 
+    Print("Create new account %s via %s" % (testeraAccount.name, cluster.eosioAccount.name))
+    transId=node.createInitializeAccount(testeraAccount, cluster.eosioAccount, stakedDeposit=0, waitForTransBlock=False, exitOnError=True)
 
-    Print("Create new account %s via %s" % (currencyAccount.name, cluster.arisenAccount.name))
-    transId=node.createInitializeAccount(currencyAccount, cluster.arisenAccount, buyRAM=1000000, stakedDeposit=5000, exitOnError=True)
+    Print("Create new account %s via %s" % (currencyAccount.name, cluster.eosioAccount.name))
+    transId=node.createInitializeAccount(currencyAccount, cluster.eosioAccount, buyRAM=1000000, stakedDeposit=5000, exitOnError=True)
 
-    Print("Create new account %s via %s" % (exchangeAccount.name, cluster.arisenAccount.name))
-    transId=node.createInitializeAccount(exchangeAccount, cluster.arisenAccount, buyRAM=1000000, waitForTransBlock=True, exitOnError=True)
+    Print("Create new account %s via %s" % (exchangeAccount.name, cluster.eosioAccount.name))
+    transId=node.createInitializeAccount(exchangeAccount, cluster.eosioAccount, buyRAM=1000000, waitForTransBlock=True, exitOnError=True)
 
     Print("Validating accounts after user accounts creation")
     accounts=[testeraAccount, currencyAccount, exchangeAccount]
@@ -147,7 +147,7 @@ try:
 
     expectedAmount=transferAmount
     Print("Verify transfer, Expected: %s" % (expectedAmount))
-    actualAmount=node.getAccountRsnBalanceStr(testeraAccount.name)
+    actualAmount=node.getAccountEosBalanceStr(testeraAccount.name)
     if expectedAmount != actualAmount:
         cmdError("FAILURE - transfer failed")
         errorExit("Transfer verification failed. Excepted %s, actual: %s" % (expectedAmount, actualAmount))
@@ -159,7 +159,7 @@ try:
 
     expectedAmount="97.5421 {0}".format(CORE_SYMBOL)
     Print("Verify transfer, Expected: %s" % (expectedAmount))
-    actualAmount=node.getAccountRsnBalanceStr(testeraAccount.name)
+    actualAmount=node.getAccountEosBalanceStr(testeraAccount.name)
     if expectedAmount != actualAmount:
         cmdError("FAILURE - transfer failed")
         errorExit("Transfer verification failed. Excepted %s, actual: %s" % (expectedAmount, actualAmount))
@@ -176,7 +176,7 @@ try:
 
     expectedAmount="98.0311 {0}".format(CORE_SYMBOL) # 5000 initial deposit
     Print("Verify transfer, Expected: %s" % (expectedAmount))
-    actualAmount=node.getAccountRsnBalanceStr(currencyAccount.name)
+    actualAmount=node.getAccountEosBalanceStr(currencyAccount.name)
     if expectedAmount != actualAmount:
         cmdError("FAILURE - transfer failed")
         errorExit("Transfer verification failed. Excepted %s, actual: %s" % (expectedAmount, actualAmount))
@@ -191,7 +191,7 @@ try:
 
     node.waitForTransInBlock(transId)
 
-    transaction=node.getTransaction(trans, exitOnError=True, delayedRetry=False)
+    transaction=node.getTransaction(transId, exitOnError=True, delayedRetry=False)
 
     typeVal=None
     amountVal=None
@@ -212,17 +212,17 @@ try:
     Print("Bouncing nodes #00 and #01")
     if cluster.bounce("00,01") is False:
         cmdError("launcher bounce")
-        errorExit("Failed to bounce ARISEN node.")
+        errorExit("Failed to bounce eos node.")
 
     Print("Taking down node #02")
     if cluster.down("02") is False:
         cmdError("launcher down command")
-        errorExit("Failed to take down ARISEN node.")
+        errorExit("Failed to take down eos node.")
 
     Print("Using bounce option to re-launch node #02")
     if cluster.bounce("02") is False:
         cmdError("launcher bounce")
-        errorExit("Failed to bounce ARISEN node.")
+        errorExit("Failed to bounce eos node.")
 
     p = re.compile('Assert')
     errFileName="var/lib/node_00/stderr.txt"
@@ -244,6 +244,6 @@ try:
 
     testSuccessful=True
 finally:
-    TestHelper.shutdown(cluster, walletMgr, testSuccessful, killRsnInstances, killWallet, keepLogs, killAll, dumpErrorDetails)
+    TestHelper.shutdown(cluster, walletMgr, testSuccessful, killEosInstances, killWallet, keepLogs, killAll, dumpErrorDetails)
 
 exit(0)
