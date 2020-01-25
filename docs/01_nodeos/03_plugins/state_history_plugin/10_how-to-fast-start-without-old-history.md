@@ -1,4 +1,6 @@
-<!-- # How to fast start without history on existing chains -->
+---
+content_title: How to fast start without previous history
+---
 
 ## Goal
 
