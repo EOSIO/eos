@@ -1,4 +1,6 @@
-<!-- # How to create a portable snapshot with full state history -->
+---
+content_title: How to create snapshot with full state history
+---
 
 ## Goal
 
