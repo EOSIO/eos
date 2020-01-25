@@ -352,19 +352,26 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          }
       };
 
-      void on_incoming_block(const signed_block_ptr& block) {
-         auto id = block->id();
+      bool on_incoming_block(const signed_block_ptr& block, const std::optional<block_id_type>& block_id) {
+         auto& chain = chain_plug->chain();
+         if ( chain.is_building_block() && _pending_block_mode == pending_block_mode::producing ) {
+            fc_wlog( _log, "dropped incoming block #${num} while producing #${pbn} for ${bt}, id: ${id}",
+                     ("num", block->block_num())("pbn", chain.head_block_num() + 1)
+                     ("bt", chain.pending_block_time())("id", block_id ? (*block_id).str() : "UNKNOWN") );
+            return false;
+         }
+
+         const auto& id = block_id ? *block_id : block->id();
+         auto blk_num = block->block_num();
 
          fc_dlog(_log, "received incoming block ${id}", ("id", id));
 
          EOS_ASSERT( block->timestamp < (fc::time_point::now() + fc::seconds( 7 )), block_from_the_future,
                      "received a block from the future, ignoring it: ${id}", ("id", id) );
 
-         chain::controller& chain = chain_plug->chain();
-
          /* de-dupe here... no point in aborting block if we already know the block */
          auto existing = chain.fetch_block_by_id( id );
-         if( existing ) { return; }
+         if( existing ) { return false; }
 
          // start processing of block
          auto bsf = chain.create_block_state_future( block );
@@ -382,7 +389,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
             chain.push_block( bsf );
          } catch ( const guard_exception& e ) {
             chain_plugin::handle_guard_exception(e);
-            return;
+            return false;
          } catch( const fc::exception& e ) {
             elog((e.to_detail_string()));
             app().get_channel<channels::rejected_block>().publish( priority::medium, block );
@@ -410,6 +417,8 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                     ("confs", hbs->block->confirmed)("latency", (fc::time_point::now() - hbs->block->timestamp).count()/1000 ) );
             }
          }
+
+         return true;
       }
 
       std::deque<std::tuple<transaction_metadata_ptr, bool, next_function<transaction_trace_ptr>>> _pending_incoming_transactions;
@@ -614,7 +623,7 @@ void producer_plugin::set_program_options(
           "Limit (between 1 and 1000) on the multiple that CPU/NET virtual resources can extend during low usage (only enforced subjectively; use 1000 to not enforce any limit)")
          ("produce-time-offset-us", boost::program_options::value<int32_t>()->default_value(0),
           "offset of non last block producing time in microseconds. Negative number results in blocks to go out sooner, and positive number results in blocks to go out later")
-         ("last-block-time-offset-us", boost::program_options::value<int32_t>()->default_value(0),
+         ("last-block-time-offset-us", boost::program_options::value<int32_t>()->default_value(-200000),
           "offset of last block producing time in microseconds. Negative number results in blocks to go out sooner, and positive number results in blocks to go out later")
          ("max-scheduled-transaction-time-per-block-ms", boost::program_options::value<int32_t>()->default_value(100),
           "Maximum wall-clock time, in milliseconds, spent retiring scheduled transactions in any block before returning to normal transaction processing.")
@@ -786,7 +795,7 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
 
    my->_incoming_block_subscription = app().get_channel<incoming::channels::block>().subscribe([this](const signed_block_ptr& block){
       try {
-         my->on_incoming_block(block);
+         my->on_incoming_block(block, {});
       } LOG_AND_DROP();
    });
 
@@ -796,8 +805,9 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
       } LOG_AND_DROP();
    });
 
-   my->_incoming_block_sync_provider = app().get_method<incoming::methods::block_sync>().register_provider([this](const signed_block_ptr& block){
-      my->on_incoming_block(block);
+   my->_incoming_block_sync_provider = app().get_method<incoming::methods::block_sync>().register_provider(
+         [this](const signed_block_ptr& block, const std::optional<block_id_type>& block_id) {
+      return my->on_incoming_block(block, block_id);
    });
 
    my->_incoming_transaction_async_provider = app().get_method<incoming::methods::transaction_async>().register_provider([this](const transaction_metadata_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next) -> void {
