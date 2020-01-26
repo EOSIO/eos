@@ -1,6 +1,4 @@
----
-content_title: How to restore snapshot with full state history
----
+<!-- # How to restore a portable snapshot with full state history -->
 
 ## Goal
 
