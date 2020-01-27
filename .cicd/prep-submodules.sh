@@ -3,6 +3,7 @@ set -eo pipefail
 [[ $BUILDKITE_LABEL == ':pipeline: Pipeline Upload' ]] && exit 0 # Don't do anything if the step is Pipeline Upload
 echo "[Preparing Submodules]"
 if [[ $BUILDKITE_PIPELINE_SLUG =~ 'eosio-security' ]]; then
+    SUBMODULES=$(git submodule)
     CWD=$(pwd)
     oIFS=$IFS
     IFS=$'\n'
