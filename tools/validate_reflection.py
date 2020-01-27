@@ -420,14 +420,25 @@ class Reflections:
         self.reflect_derived_pattern = re.compile(r',\s*\(\s*(.*)\s*\)\s*,', re.MULTILINE | re.DOTALL)
         self.field_pattern = re.compile(r'\(\s*(\w+)\s*\)', re.MULTILINE | re.DOTALL)
         self.ignore_swap_pattern = re.compile(r'\b([\w\d]+)\b', re.MULTILINE | re.DOTALL)
+        self.define_pattern = re.compile(r'^#define\s+(.*\\\n)*.*$', re.MULTILINE)
 
     def read(self):
         debug("REMOVE reflect_pattern: \"%s\"" % (self.reflect_pattern.pattern))
         while self.current < self.end:
+            match_define = self.define_pattern.search(self.content[self.current:])
             match_2_comments = self.with_2_comments.search(self.content[self.current:])
             match_comment = self.with_comment.search(self.content[self.current:])
             match_reflect = self.reflect_pattern.search(self.content[self.current:])
             match_loc = None
+            if match_define:
+                if match_reflect:
+                    if match_define.span()[0] < match_reflect.span()[0]:
+                        self.current += match_define.span()[1]
+                        continue
+                else:
+                    self.current += match_define.span()[1]
+                    continue
+
             if match_2_comments or match_comment:
                 loc1 = self.content.find(match_2_comments.group(1), self.current) if match_2_comments else self.end 
                 loc2 = self.content.find(match_comment.group(1), self.current) if match_comment else self.end
@@ -667,7 +678,8 @@ def validate_file(file):
                 reflection.swapped.remove(field)
                 back_swapped.append(field)
                 assert field in reflection.fields, "Reflection for %s indicates swapping %s but swapped position is not indicated in the reflection fields. Should it be ignored?" % (reflection_name, field)
-                assert reflect_field != field, "Reflection for %s should not indicate swapping %s since it is in the correct order" % (reflection_name, field)
+                if reflect_field != field:
+                    assert reflect_field != field, "Reflection for %s should not indicate swapping %s since it is in the correct order" % (reflection_name, field)
                 f_index += 1
                 continue
             if reflect_field in reflection.swapped:
@@ -709,7 +721,8 @@ def validate_file(file):
             else:
                 unused_reflect_fields.append(reflect_field)
             rf_index += 1
-        assert len(unused_reflect_fields) == 0, "Reflection for %s has fields not in definition for class/struct - \"%s\"" % (reflection_name, ",".join(unused_reflect_fields))
+        if len(unused_reflect_fields) != 0:
+            assert len(unused_reflect_fields) == 0, "Reflection for %s has fields not in definition for class/struct - \"%s\"" % (reflection_name, ",".join(unused_reflect_fields))
         assert len(reflection.swapped) == 0, "Reflection for %s has erroneous swaps - \"%s\"" % (reflection_name, ",".join(reflection.swapped))
         assert len(back_swapped) == 0, "Reflection for %s indicated swapped fields that were never provided - \"%s\"" % (reflection_name, ",".join(back_swapped))
         assert len(fwd_swapped) == 0, "Reflection for %s indicated and provided swapped fields that are not in the class - \"%s\"" % (reflection_name, ",".join(fwd_swapped))
