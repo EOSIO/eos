@@ -291,7 +291,7 @@ function ensure-llvm() {
     elif [[ $NAME == "Amazon Linux" ]]; then
         execute unlink $LLVM_ROOT || true
     elif [[ $NAME == "CentOS Linux" ]]; then
-        execute ln -snf /opt/rh/llvm-toolset-7.0/root $LLVM_ROOT
+        export LOCAL_CMAKE_FLAGS="${LOCAL_CMAKE_FLAGS} -DLLVM_DIR='/opt/rh/llvm-toolset-7.0/root/usr/lib64/cmake/llvm'"
     fi
 }
 

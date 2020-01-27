@@ -80,8 +80,8 @@ if [[ ! -z ${BUILDKITE_TRIGGERED_FROM_BUILD_ID} ]]; then
 fi
 export BUILD_SOURCE=${BUILD_SOURCE:---build \$BUILDKITE_BUILD_ID}
 # set trigger_job if master/release/develop branch and webhook
-if [[ $BUILDKITE_BRANCH =~ ^release/[0-9]+\.[0-9]+\.x$ || $BUILDKITE_BRANCH =~ ^master$ || $BUILDKITE_BRANCH =~ ^develop$ ]]; then
-    [[ $BUILDKITE_SOURCE != 'scheduled' ]] && export TRIGGER_JOB=true
+if [[ ! $BUILDKITE_PIPELINE_SLUG =~ 'lrt' ]] && [[ $BUILDKITE_BRANCH =~ ^release/[0-9]+\.[0-9]+\.x$ || $BUILDKITE_BRANCH =~ ^master$ || $BUILDKITE_BRANCH =~ ^develop$ ]]; then
+    [[ $BUILDKITE_SOURCE != 'schedule' ]] && export TRIGGER_JOB=true
 fi
 oIFS="$IFS"
 IFS=$''
@@ -438,6 +438,23 @@ EOF
         echo ''
     fi
 done
+# Execute multiversion test
+if ( [[ ! $PINNED == false ]] ); then
+        cat <<EOF
+  - label: ":pipeline: Multiversion Test"
+    command: 
+      - "buildkite-agent artifact download build.tar.gz . --step ':ubuntu: Ubuntu 18.04 - Build' && tar -xzf build.tar.gz"
+      - ./.cicd/test.sh .cicd/multiversion.sh
+    env:
+      IMAGE_TAG: "ubuntu-18.04-pinned"
+      PLATFORM_TYPE: "pinned"
+    agents:
+      queue: "$BUILDKITE_TEST_AGENT_QUEUE"
+    timeout: ${TIMEOUT:-30}
+    skip: ${SKIP_LINUX}${SKIP_UBUNTU_18_04}${SKIP_MULTIVERSION_TEST}
+
+EOF
+fi
 # trigger eosio-lrt post pr
 if [[ -z $BUILDKITE_TRIGGERED_FROM_BUILD_ID && $TRIGGER_JOB == "true" ]]; then
     if ( [[ ! $PINNED == false ]] ); then
@@ -457,26 +474,6 @@ if [[ -z $BUILDKITE_TRIGGERED_FROM_BUILD_ID && $TRIGGER_JOB == "true" ]]; then
         SKIP_BUILD: "true"
         SKIP_WASM_SPEC_TESTS: "true"
         PINNED: "${PINNED}"
-
-EOF
-    fi
-fi
-# trigger multiversion post pr
-if [[ -z $BUILDKITE_TRIGGERED_FROM_BUILD_ID && $TRIGGER_JOB = "true" ]]; then
-    if ( [[ ! $PINNED == false ]] ); then
-        cat <<EOF
-  - label: ":pipeline: Trigger Multiversion Test"
-    trigger: "eos-multiversion-tests"
-    async: true
-    build:
-      message: "Triggered by $BUILDKITE_PIPELINE_SLUG build $BUILDKITE_BUILD_NUMBER"
-      commit: "${BUILDKITE_COMMIT}"
-      branch: "${BUILDKITE_BRANCH}"
-      env:
-        BUILDKITE_PULL_REQUEST: "${BUILDKITE_PULL_REQUEST}"
-        BUILDKITE_PULL_REQUEST_BASE_BRANCH: "${BUILDKITE_PULL_REQUEST_BASE_BRANCH}"
-        BUILDKITE_PULL_REQUEST_REPO: "${BUILDKITE_PULL_REQUEST_REPO}"
-        BUILDKITE_TRIGGERED_FROM_BUILD_URL: "${BUILDKITE_BUILD_URL}"
 
 EOF
     fi

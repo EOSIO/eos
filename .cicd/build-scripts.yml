@@ -1,0 +1,137 @@
+steps:
+
+  - label: ":aws: Amazon_Linux 2 - Build Pinned"
+    plugins:
+      - docker#v3.3.0:
+          image: "amazonlinux:2.0.20190508"
+          always-pull: true
+    agents:
+      queue: "automation-eks-eos-builder-fleet"
+    command:
+      - "./scripts/eosio_build.sh -P -y"
+    timeout: 180
+    
+  - label: ":centos: CentOS 7.7 - Build Pinned"
+    plugins:
+      - docker#v3.3.0:
+          image: "centos:7.7.1908"
+          always-pull: true
+    agents:
+      queue: "automation-eks-eos-builder-fleet"
+    command:
+      - "./scripts/eosio_build.sh -P -y"
+    timeout: 180
+    
+  - label: ":darwin: macOS 10.14 - Build Pinned"
+    env:
+      REPO: "git@github.com:EOSIO/eos.git"
+      TEMPLATE: "10.14.6_6C_14G_40G"
+      TEMPLATE_TAG: "clean::cicd::git-ssh::nas::brew::buildkite-agent"
+    agents: "queue=mac-anka-large-node-fleet"
+    command:
+      - "git clone git@github.com:EOSIO/eos.git eos && cd eos &&  git checkout -f $BUILDKITE_BRANCH && git submodule update --init --recursive"
+      - "cd eos && ./scripts/eosio_build.sh -P -y"
+    plugins:
+      - EOSIO/anka#v0.5.7:
+          debug: true
+          vm-name: "10.14.6_6C_14G_40G"
+          no-volume: true
+          modify-cpu: 12
+          modify-ram: 24
+          always-pull: true
+          wait-network: true
+          vm-registry-tag: "clean::cicd::git-ssh::nas::brew::buildkite-agent"
+          pre-execute-sleep: 10
+          failover-registries:
+          - "registry_1"
+          - "registry_2"
+          inherit-environment-vars: true
+      - thedyrt/skip-checkout#v0.1.1:
+          cd: ~
+    timeout: 180
+    
+  - label: ":ubuntu: Ubuntu 16.04 - Build Pinned"
+    plugins:
+      - docker#v3.3.0:
+          image: "ubuntu:16.04"
+          always-pull: true
+    agents:
+      queue: "automation-eks-eos-builder-fleet"
+    command:
+      - "apt update && apt upgrade -y && apt install -y git"
+      - "./scripts/eosio_build.sh -P -y"
+    timeout: 180
+    
+  - label: ":ubuntu: Ubuntu 18.04 - Build Pinned"
+    plugins:
+      - docker#v3.3.0:
+          image: "ubuntu:18.04"
+          always-pull: true
+    agents:
+      queue: "automation-eks-eos-builder-fleet"
+    command:
+      - "apt update && apt upgrade -y && apt install -y git"
+      - "./scripts/eosio_build.sh -P -y"
+    timeout: 180
+
+  - label: ":aws: Amazon_Linux 2 - Build UnPinned"
+    plugins:
+      - docker#v3.3.0:
+          image: "amazonlinux:2.0.20190508"
+          always-pull: true
+    agents:
+      queue: "automation-eks-eos-builder-fleet"
+    command:
+      - "./scripts/eosio_build.sh -y"
+    timeout: 180
+    
+  - label: ":centos: CentOS 7.7 - Build UnPinned"
+    plugins:
+      - docker#v3.3.0:
+          image: "centos:7.7.1908"
+          always-pull: true
+    agents:
+      queue: "automation-eks-eos-builder-fleet"
+    command:
+      - "./scripts/eosio_build.sh -y"
+    timeout: 180
+    
+  - label: ":darwin: macOS 10.14 - Build UnPinned"
+    env:
+      REPO: "git@github.com:EOSIO/eos.git"
+      TEMPLATE: "10.14.6_6C_14G_40G"
+      TEMPLATE_TAG: "clean::cicd::git-ssh::nas::brew::buildkite-agent"
+    agents: "queue=mac-anka-large-node-fleet"
+    command:
+      - "git clone git@github.com:EOSIO/eos.git eos && cd eos &&  git checkout -f $BUILDKITE_BRANCH && git submodule update --init --recursive"
+      - "cd eos && ./scripts/eosio_build.sh -y"
+    plugins:
+      - EOSIO/anka#v0.5.7:
+          debug: true
+          vm-name: "10.14.6_6C_14G_40G"
+          no-volume: true
+          modify-cpu: 12
+          modify-ram: 24
+          always-pull: true
+          wait-network: true
+          vm-registry-tag: "clean::cicd::git-ssh::nas::brew::buildkite-agent"
+          pre-execute-sleep: 10
+          failover-registries:
+          - "registry_1"
+          - "registry_2"
+          inherit-environment-vars: true
+      - thedyrt/skip-checkout#v0.1.1:
+          cd: ~
+    timeout: 180
+    
+  - label: ":ubuntu: Ubuntu 18.04 - Build UnPinned"
+    plugins:
+      - docker#v3.3.0:
+          image: "ubuntu:18.04"
+          always-pull: true
+    agents:
+      queue: "automation-eks-eos-builder-fleet"
+    command:
+      - "apt update && apt upgrade -y && apt install -y git"
+      - "./scripts/eosio_build.sh -y"
+    timeout: 180
