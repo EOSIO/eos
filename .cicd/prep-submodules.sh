@@ -2,7 +2,6 @@
 set -eo pipefail
 [[ $BUILDKITE_LABEL == ':pipeline: Pipeline Upload' ]] && exit 0 # Don't do anything if the step is Pipeline Upload
 echo "[Preparing Submodules]"
-git submodule foreach --recursive "git clean -ffxdq"
 if [[ $BUILDKITE_PIPELINE_SLUG =~ 'eosio-security' ]]; then
     CWD=$(pwd)
     oIFS=$IFS
@@ -20,5 +19,7 @@ if [[ $BUILDKITE_PIPELINE_SLUG =~ 'eosio-security' ]]; then
     done
     IFS=$oIFS
     cd $CWD
+else
+    echo "Skipped security remote addition for $BUILDKITE_PIPELINE_SLUG..."
 fi
 git submodule update --init --recursive --force # ensure we obtain submodule submodules
