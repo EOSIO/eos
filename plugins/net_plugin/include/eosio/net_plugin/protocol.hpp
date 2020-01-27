@@ -17,6 +17,13 @@ namespace eosio {
       block_id_type              head_id;
    };
 
+   // Longest domain name is 253 characters according to wikipedia.
+   // Addresses include ":port" where max port is 65535, which adds 6 chars.
+   // We also add our own extentions of "[:trx|:blk] - xxxxxxx", which adds 14 chars, total= 273.
+   // Allow for future extentions as well, hence 384.
+   constexpr size_t max_p2p_address_length = 253 + 6;
+   constexpr size_t max_handshake_str_length = 384;
+
    struct handshake_message {
       uint16_t                   network_version = 0; ///< incremental value above a computed base
       chain_id_type              chain_id; ///< used to identify chain
