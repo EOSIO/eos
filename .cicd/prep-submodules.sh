@@ -2,7 +2,7 @@
 set -eo pipefail
 [[ $BUILDKITE_LABEL == ':pipeline: Pipeline Upload' ]] && exit 0 # Don't do anything if the step is Pipeline Upload
 echo "[Preparing Submodules]"
-git submodule update --init --recursive --force || true # We need to get the .git folder in the submodule dir so we can set the remote for security and the || true avoids it failing the script
+git submodule update --init --recursive --force 1>/dev/null || true # We need to get the .git folder in the submodule dir so we can set the remote for security and the || true avoids it failing the script
 if [[ $BUILDKITE_PIPELINE_SLUG =~ 'eosio-security' ]]; then
     SUBMODULES=$(git submodule)
     CWD=$(pwd)
