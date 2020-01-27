@@ -119,4 +119,4 @@ $ nodeos
 A data folder can be specified using the `--data-dir` command line argument to `nodeos`.
 
 [[info | What's next?]]
-| We will explore how to setup and run a [single-host, multi-node testnet](#01_local-multi-node-testnet.md).
+| We will explore how to setup and run a [single-host, multi-node testnet](01_local-multi-node-testnet.md).
