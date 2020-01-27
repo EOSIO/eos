@@ -1,4 +1,6 @@
-# Troubleshooting
+---
+content_title: Nodeos Troubleshooting
+---
 
 ### "Database dirty flag set (likely due to unclean shutdown): replay required"
 
