@@ -26,7 +26,7 @@ Block.one is neither launching nor operating any initial public blockchains base
 
 ## Testnets
 
-There is no public testnet running currently.
+There is no public testnet running currently. 
 
 ## Supported Operating Systems
 
