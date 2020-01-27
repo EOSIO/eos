@@ -15,7 +15,7 @@ if [[ $BUILDKITE_PIPELINE_SLUG =~ 'eosio-security' ]]; then
         SECURITY_REMOTE_URL="git@github.com:EOSIO/$SUBMOD_NAME-security.git"
         echo "Preparing $SUBMOD_NAME [$CWD/$SUBMOD_PATH] with security remote $SECURITY_REMOTE_URL"
         cd $CWD/$SUBMOD_PATH
-        git remote add security $SECURITY_REMOTE_URL
+        git remote add security $SECURITY_REMOTE_URL || true
         git pull security || true
     done
     IFS=$oIFS
