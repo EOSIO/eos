@@ -691,6 +691,8 @@ namespace eosio {
       if( my->thread_pool ) {
          my->thread_pool->stop();
       }
+
+      app().post( 0, [me = my](){} ); // keep my pointer alive until queue is drained
    }
 
    void http_plugin::add_handler(const string& url, const url_handler& handler) {
