@@ -13,15 +13,15 @@ if [[ $BUILDKITE_PIPELINE_SLUG =~ 'eosio-security' ]]; then
         SUBMOD_COMMIT=$(echo $SUBMOD | awk '{print $1}' | sed 's/+//g' | sed 's/-//g')
         SUBMOD_PATH=$(echo $SUBMOD | awk '{print $2}')
         SUBMOD_NAME=$(basename $SUBMOD_PATH)
-        SECURITY_REMOTE_URL="git@github.com:EOSIO/$SUBMOD_NAME-security.git"
-        echo "Preparing $SUBMOD_NAME [$CWD/$SUBMOD_PATH] with security remote $SECURITY_REMOTE_URL"
+        REMOTE_URL=${REMOTE_URL:-"git@github.com:EOSIO/$SUBMOD_NAME-security.git"}
+        echo "Preparing $SUBMOD_NAME [$CWD/$SUBMOD_PATH] with security remote $REMOTE_URL"
         cd $CWD/$SUBMOD_PATH
-        git remote add security $SECURITY_REMOTE_URL || true
-        git pull security || true
+        git remote add remote $REMOTE_URL || true
+        git pull remote || true
     done
     IFS=$oIFS
     cd $CWD
 else
-    echo "Skipped security remote addition for $BUILDKITE_PIPELINE_SLUG..."
+    echo "Skipped remote url addition for $BUILDKITE_PIPELINE_SLUG..."
 fi
 git submodule update --init --recursive --force # ensure we obtain submodule submodules
