@@ -245,10 +245,6 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       // keep a expected ratio between defer txn and incoming txn
       double _incoming_defer_ratio = 1.0; // 1:1
 
-      // amount of block producing window to use for producing a block
-      uint32_t _cpu_duty_cycle_pct = chain::config::default_cpu_duty_cycle_pct;
-      // calculated from cpu_duty_cycle_pct, negative block offset in us
-      fc::microseconds _cpu_duty_cycle_offset_us;
       // on when producing a block: _pending_block_mode == pending_block_mode::producing && in cpu_duty_cycle_pct
       bool _cpu_duty_cycle_on = true;
 
@@ -666,9 +662,13 @@ void producer_plugin::set_program_options(
          ("greylist-limit", boost::program_options::value<uint32_t>()->default_value(1000),
           "Limit (between 1 and 1000) on the multiple that CPU/NET virtual resources can extend during low usage (only enforced subjectively; use 1000 to not enforce any limit)")
          ("produce-time-offset-us", boost::program_options::value<int32_t>()->default_value(0),
-          "offset of non last block producing time in microseconds. Negative number results in blocks to go out sooner, and positive number results in blocks to go out later")
+          "Offset of non last block producing time in microseconds. Valid range 0 .. -block_time.")
          ("last-block-time-offset-us", boost::program_options::value<int32_t>()->default_value(-200000),
-          "offset of last block producing time in microseconds. Negative number results in blocks to go out sooner, and positive number results in blocks to go out later")
+          "Offset of last block producing time in microseconds. Valid range 0 .. -block_time.")
+         ("cpu-duty-cycle-pct", bpo::value<uint32_t>()->default_value(config::default_cpu_duty_cycle_pct / config::percent_1),
+          "Percentage of cpu block production time used to produce block. Whole number percentages, e.g. 80 for 80%")
+         ("last-block-cpu-duty-cycle-pct", bpo::value<uint32_t>()->default_value(config::default_cpu_duty_cycle_pct / config::percent_1),
+          "Percentage of cpu block production time used to produce last block. Whole number percentages, e.g. 80 for 80%")
          ("max-scheduled-transaction-time-per-block-ms", boost::program_options::value<int32_t>()->default_value(100),
           "Maximum wall-clock time, in milliseconds, spent retiring scheduled transactions in any block before returning to normal transaction processing.")
          ("subjective-cpu-leeway-us", boost::program_options::value<int32_t>()->default_value( config::default_subjective_cpu_leeway_us ),
@@ -677,8 +677,6 @@ void producer_plugin::set_program_options(
           "ratio between incoming transations and deferred transactions when both are exhausted")
          ("incoming-transaction-queue-size-mb", bpo::value<uint16_t>()->default_value( 1024 ),
           "Maximum size (in MiB) of the incoming transaction queue. Exceeding this value will subjectively drop transaction with resource exhaustion.")
-         ("cpu-duty-cycle-pct", bpo::value<uint32_t>()->default_value(config::default_cpu_duty_cycle_pct / config::percent_1),
-          "Percentage of cpu block production time used to produce block. Whole number percentages, e.g. 80 for 80%")
          ("producer-threads", bpo::value<uint16_t>()->default_value(config::default_controller_thread_pool_size),
           "Number of worker threads in producer thread pool")
          ("snapshots-dir", bpo::value<bfs::path>()->default_value("snapshots"),
@@ -813,8 +811,29 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
    my->_keosd_provider_timeout_us = fc::milliseconds(options.at("keosd-provider-timeout").as<int32_t>());
 
    my->_produce_time_offset_us = options.at("produce-time-offset-us").as<int32_t>();
+   EOS_ASSERT( my->_produce_time_offset_us <= 0 && my->_produce_time_offset_us >= -config::block_interval_us, plugin_config_exception,
+               "produce-time-offset-us ${o} must be 0 .. -${bi}", ("bi", config::block_interval_us)("o", my->_produce_time_offset_us) );
 
    my->_last_block_time_offset_us = options.at("last-block-time-offset-us").as<int32_t>();
+   EOS_ASSERT( my->_last_block_time_offset_us <= 0 && my->_last_block_time_offset_us >= -config::block_interval_us, plugin_config_exception,
+               "last-block-time-offset-us ${o} must be 0 .. -${bi}", ("bi", config::block_interval_us)("o", my->_last_block_time_offset_us) );
+
+   uint32_t cpu_duty_cycle_pct = options.at("cpu-duty-cycle-pct").as<uint32_t>();
+   EOS_ASSERT( cpu_duty_cycle_pct >= 0 && cpu_duty_cycle_pct <= 100, plugin_config_exception,
+               "cpu-duty-cycle-pct ${pct} must be 0 - 100", ("pct", cpu_duty_cycle_pct) );
+   cpu_duty_cycle_pct *= config::percent_1;
+   int32_t cpu_duty_cycle_offset_us =
+         -EOS_PERCENT( config::block_interval_us, chain::config::percent_100 - cpu_duty_cycle_pct );
+
+   uint32_t last_block_cpu_duty_cycle_pct = options.at("last-block-cpu-duty-cycle-pct").as<uint32_t>();
+   EOS_ASSERT( last_block_cpu_duty_cycle_pct >= 0 && last_block_cpu_duty_cycle_pct <= 100, plugin_config_exception,
+               "last-block-cpu-duty-cycle-pct ${pct} must be 0 - 100", ("pct", last_block_cpu_duty_cycle_pct) );
+   last_block_cpu_duty_cycle_pct *= config::percent_1;
+   int32_t last_block_cpu_duty_cycle_offset_us =
+         -EOS_PERCENT( config::block_interval_us, chain::config::percent_100 - last_block_cpu_duty_cycle_pct );
+
+   my->_produce_time_offset_us = std::min( my->_produce_time_offset_us, cpu_duty_cycle_offset_us );
+   my->_last_block_time_offset_us = std::min( my->_last_block_time_offset_us, last_block_cpu_duty_cycle_offset_us );
 
    my->_max_scheduled_transaction_time_per_block_ms = options.at("max-scheduled-transaction-time-per-block-ms").as<int32_t>();
 
@@ -834,13 +853,6 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
    my->_pending_incoming_transactions.set_max_incoming_transaction_queue_size( max_incoming_transaction_queue_size );
 
    my->_incoming_defer_ratio = options.at("incoming-defer-ratio").as<double>();
-
-   my->_cpu_duty_cycle_pct = options.at("cpu-duty-cycle-pct").as<uint32_t>();
-   EOS_ASSERT( my->_cpu_duty_cycle_pct >= 0 && my->_cpu_duty_cycle_pct <= 100, plugin_config_exception,
-               "cpu-duty-cycle-pct must be 0 - 100, ${pct}", ("pct", my->_cpu_duty_cycle_pct) );
-   my->_cpu_duty_cycle_pct *= config::percent_1;
-   my->_cpu_duty_cycle_offset_us = fc::microseconds(
-         -EOS_PERCENT( config::block_interval_us, chain::config::percent_100 - my->_cpu_duty_cycle_pct ) );
 
    auto thread_pool_size = options.at( "producer-threads" ).as<uint16_t>();
    EOS_ASSERT( thread_pool_size > 0, plugin_config_exception,
@@ -1373,9 +1385,7 @@ fc::time_point producer_plugin_impl::calculate_pending_block_time() const {
 
 fc::time_point producer_plugin_impl::calculate_block_deadline( const fc::time_point& block_time ) const {
    bool last_block = ((block_timestamp_type(block_time).slot % config::producer_repetitions) == config::producer_repetitions - 1);
-   fc::microseconds offset_us( last_block ? _last_block_time_offset_us : _produce_time_offset_us );
-   offset_us = std::min( offset_us, _cpu_duty_cycle_offset_us );
-   return block_time + offset_us;
+   return block_time + fc::microseconds(last_block ? _last_block_time_offset_us : _produce_time_offset_us);
 }
 
 producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
