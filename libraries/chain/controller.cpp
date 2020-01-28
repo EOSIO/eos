@@ -118,6 +118,7 @@ struct building_block {
    vector<transaction_metadata_ptr>   _pending_trx_metas;
    vector<transaction_receipt>        _pending_trx_receipts;
    vector<action_receipt>             _actions;
+   optional<checksum256_type>         _transaction_mroot;
 };
 
 struct assembled_block {
@@ -1168,7 +1169,7 @@ struct controller_impl {
 
       // Only subjective OR soft OR hard failure logic below:
 
-      if( gtrx.sender != account_name() && !failure_is_subjective(*trace->except)) {
+      if( gtrx.sender != account_name() && !(explicit_billed_cpu_time ? failure_is_subjective(*trace->except) : scheduled_failure_is_subjective(*trace->except))) {
          // Attempt error handling for the generated transaction.
 
          auto error_trace = apply_onerror( gtrx, deadline, trx_context.pseudo_start,
@@ -1543,7 +1544,7 @@ struct controller_impl {
 
       // Create (unsigned) block:
       auto block_ptr = std::make_shared<signed_block>( pbhs.make_block_header(
-         calculate_trx_merkle(),
+         bb._transaction_mroot ? *bb._transaction_mroot : calculate_trx_merkle( bb._pending_trx_receipts ),
          calculate_action_merkle(),
          std::move( bb._new_pending_producer_schedule ),
          std::move( bb._new_protocol_feature_activations )
@@ -1742,6 +1743,9 @@ struct controller_impl {
                         ("producer_receipt", receipt)("validator_receipt", trx_receipts.back()) );
          }
 
+         // validated in create_block_state_future()
+         pending->_block_stage.get<building_block>()._transaction_mroot = b->transaction_mroot;
+
          finalize_block();
 
          auto& ab = pending->_block_stage.get<assembled_block>();
@@ -1787,6 +1791,11 @@ struct controller_impl {
 
       return async_thread_pool( thread_pool.get_executor(), [b, prev, control=this]() {
          const bool skip_validate_signee = false;
+
+         auto trx_mroot = calculate_trx_merkle( b->transactions );
+         EOS_ASSERT( b->transaction_mroot == trx_mroot, block_validate_exception,
+                     "invalid block transaction merkle root ${b} != ${c}", ("b", b->transaction_mroot)("c", trx_mroot) );
+
          return std::make_shared<block_state>(
                         *prev,
                         move( b ),
@@ -1974,9 +1983,8 @@ struct controller_impl {
       return merkle( move(action_digests) );
    }
 
-   checksum256_type calculate_trx_merkle() {
+   static checksum256_type calculate_trx_merkle( const vector<transaction_receipt>& trxs ) {
       vector<digest_type> trx_digests;
-      const auto& trxs = pending->_block_stage.get<building_block>()._pending_trx_receipts;
       trx_digests.reserve( trxs.size() );
       for( const auto& a : trxs )
          trx_digests.emplace_back( a.digest() );
