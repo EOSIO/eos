@@ -401,11 +401,11 @@ datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosi
       auto&       index  = obj.db.get_index<eosio::chain::permission_index>();
       const auto* parent = index.find(obj.obj.parent);
       if (!parent) {
-         auto& undo = index.stack().back();
-         auto  it   = undo.removed_values.find(obj.obj.parent);
+         auto undo = index.last_undo_session();
+         auto  it   = std::find_if(undo.removed_values.begin(), undo.removed_values.end(), [&](auto& x){ return x.id._id == obj.obj.parent; });
          EOS_ASSERT(it != undo.removed_values.end(), eosio::chain::plugin_exception,
                     "can not find parent of permission_object");
-         parent = &it->second;
+         parent = &*it;
       }
       fc::raw::pack(ds, as_type<uint64_t>(parent->name.to_uint64_t()));
    } else {
@@ -531,7 +531,11 @@ datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosi
 
 template <typename ST>
 datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosio::chain::action_receipt>& obj) {
-   fc::raw::pack(ds, fc::unsigned_int(0));
+   if (!obj.obj.return_value) {
+      fc::raw::pack( ds, fc::unsigned_int( 0 ));
+   } else {
+      fc::raw::pack( ds, fc::unsigned_int( 1 ));
+   }
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.receiver.to_uint64_t()));
    fc::raw::pack(ds, as_type<eosio::chain::digest_type>(obj.obj.act_digest));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.global_sequence));
@@ -539,6 +543,9 @@ datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosi
    history_serialize_container(ds, obj.db, as_type<flat_map<eosio::name, uint64_t>>(obj.obj.auth_sequence));
    fc::raw::pack(ds, as_type<fc::unsigned_int>(obj.obj.code_sequence));
    fc::raw::pack(ds, as_type<fc::unsigned_int>(obj.obj.abi_sequence));
+   if (obj.obj.return_value) {
+      fc::raw::pack(ds, as_type<eosio::bytes>(*obj.obj.return_value));
+   }
    return ds;
 }
 

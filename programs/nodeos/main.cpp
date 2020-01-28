@@ -101,7 +101,9 @@ int main(int argc, char** argv)
          return INITIALIZE_FAIL;
       }
       initialize_logging();
-      ilog("${name} version ${ver}", ("name", nodeos::config::node_executable_name)("ver", app().version_string()));
+      ilog( "${name} version ${ver} ${fv}",
+            ("name", nodeos::config::node_executable_name)("ver", app().version_string())
+            ("fv", app().version_string() == app().full_version_string() ? "" : app().full_version_string()) );
       ilog("${name} using configuration file ${c}", ("name", nodeos::config::node_executable_name)("c", app().full_config_file_path().string()));
       ilog("${name} data directory is ${d}", ("name", nodeos::config::node_executable_name)("d", app().data_dir().string()));
       app().startup();
@@ -113,13 +115,19 @@ int main(int argc, char** argv)
       return FIXED_REVERSIBLE;
    } catch( const node_management_success& e ) {
       return NODE_MANAGEMENT_SUCCESS;
-   } catch( const fc::exception& e ) {
-      if( e.code() == fc::std_exception_code ) {
-         if( e.top_message().find( "database dirty flag set" ) != std::string::npos ) {
-            elog( "database dirty flag set (likely due to unclean shutdown): replay required" );
+   } catch (const std_exception_wrapper& e) {
+      try {
+         std::rethrow_exception(e.get_inner_exception());
+      } catch (const std::system_error&i) {
+         if (chainbase::db_error_code::dirty == i.code().value()) {
+            elog("Database dirty flag set (likely due to unclean shutdown): replay required" );
             return DATABASE_DIRTY;
          }
-      }
+      } catch (...) { } 
+
+      elog( "${e}", ("e",e.to_detail_string()));
+      return OTHER_FAIL;
+   } catch( const fc::exception& e ) {
       elog( "${e}", ("e", e.to_detail_string()));
       return OTHER_FAIL;
    } catch( const boost::interprocess::bad_alloc& e ) {
@@ -127,14 +135,6 @@ int main(int argc, char** argv)
       return BAD_ALLOC;
    } catch( const boost::exception& e ) {
       elog("${e}", ("e",boost::diagnostic_information(e)));
-      return OTHER_FAIL;
-   } catch( const std::runtime_error& e ) {
-      if( std::string(e.what()).find("database dirty flag set") != std::string::npos ) {
-         elog( "database dirty flag set (likely due to unclean shutdown): replay required" );
-         return DATABASE_DIRTY;
-      } else {
-         elog( "${e}", ("e",e.what()));
-      }
       return OTHER_FAIL;
    } catch( const std::exception& e ) {
       elog("${e}", ("e",e.what()));

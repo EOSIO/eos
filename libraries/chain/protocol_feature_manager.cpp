@@ -186,6 +186,17 @@ may use a new `set_proposed_producers_ex` intrinsic to access extended features.
 */
             {}
          } )
+         (  builtin_protocol_feature_t::action_return_value, builtin_protocol_feature_spec{
+            "ACTION_RETURN_VALUE",
+            fc::variant("69b064c5178e2738e144ed6caa9349a3995370d78db29e494b3126ebd9111966").as<digest_type>(),
+            // SHA256 hash of the raw message below within the comment delimiters (do not modify message below).
+/*
+Builtin protocol feature: ACTION_RETURN_VALUE
+
+Enables new `set_action_return_value` intrinsic which sets a value that is included in action_receipt.
+*/
+            {}
+         } )
    ;
 
 

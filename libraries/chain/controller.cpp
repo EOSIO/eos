@@ -32,6 +32,8 @@
 #include <fc/scoped_exit.hpp>
 #include <fc/variant_object.hpp>
 
+#include <new>
+
 namespace eosio { namespace chain {
 
 using resource_limits::resource_limits_manager;
@@ -118,15 +120,16 @@ struct building_block {
    optional<producer_authority_schedule> _new_pending_producer_schedule;
    vector<digest_type>                   _new_protocol_feature_activations;
    size_t                                _num_new_protocol_features_that_have_activated = 0;
-   vector<transaction_metadata_ptr>      _pending_trx_metas;
-   vector<transaction_receipt>           _pending_trx_receipts;
-   vector<action_receipt>                _actions;
+   deque<transaction_metadata_ptr>       _pending_trx_metas;
+   deque<transaction_receipt>            _pending_trx_receipts; // boost deque in 1.71 with 1024 elements performs better
+   deque<digest_type>                    _pending_trx_receipt_digests;
+   deque<digest_type>                    _action_receipt_digests;
 };
 
 struct assembled_block {
    block_id_type                     _id;
    pending_block_header_state        _pending_block_header_state;
-   vector<transaction_metadata_ptr>  _trx_metas;
+   deque<transaction_metadata_ptr>   _trx_metas;
    signed_block_ptr                  _unsigned_block;
 
    // if the _unsigned_block pre-dates block-signing authorities this may be present.
@@ -161,7 +164,7 @@ struct pending_state {
       return _block_stage.get<assembled_block>()._pending_block_header_state;
    }
 
-   const vector<transaction_receipt>& get_trx_receipts()const {
+   const deque<transaction_receipt>& get_trx_receipts()const {
       if( _block_stage.contains<building_block>() )
          return _block_stage.get<building_block>()._pending_trx_receipts;
 
@@ -171,7 +174,7 @@ struct pending_state {
       return _block_stage.get<completed_block>()._block_state->block->transactions;
    }
 
-   vector<transaction_metadata_ptr> extract_trx_metas() {
+   deque<transaction_metadata_ptr> extract_trx_metas() {
       if( _block_stage.contains<building_block>() )
          return std::move( _block_stage.get<building_block>()._pending_trx_metas );
 
@@ -213,7 +216,16 @@ struct pending_state {
 };
 
 struct controller_impl {
+
+   // LLVM sets the new handler, we need to reset this to throw a bad_alloc exception so we can possibly exit cleanly
+   // and not just abort.
+   struct reset_new_handler {
+      reset_new_handler() { std::set_new_handler([](){ throw std::bad_alloc(); }); }
+   };
+
+   reset_new_handler              rnh; // placed here to allow for this to be set before constructing the other fields
    controller&                    self;
+   std::function<void()>          shutdown;
    chainbase::database            db;
    chainbase::database            reversible_blocks; ///< a special database to persist blocks that have successfully been applied but are still reversible
    block_log                      blog;
@@ -286,7 +298,8 @@ struct controller_impl {
    }
 
    controller_impl( const controller::config& cfg, controller& s, protocol_feature_set&& pfs, const chain_id_type& chain_id )
-   :self(s),
+   :rnh(),
+    self(s),
     db( cfg.state_dir,
         cfg.read_only ? database::read_only : database::read_write,
         cfg.state_size, false, cfg.db_map_mode, cfg.db_hugepage_paths ),
@@ -315,6 +328,7 @@ struct controller_impl {
       set_activation_handler<builtin_protocol_feature_t::get_sender>();
       set_activation_handler<builtin_protocol_feature_t::webauthn_key>();
       set_activation_handler<builtin_protocol_feature_t::wtmsig_block_signatures>();
+      set_activation_handler<builtin_protocol_feature_t::action_return_value>();
 
       self.irreversible_block.connect([this](const block_state_ptr& bsp) {
          wasmif.current_lib(bsp->block_num);
@@ -355,16 +369,18 @@ struct controller_impl {
       try {
          s( std::forward<Arg>( a ));
       } catch (std::bad_alloc& e) {
-         wlog( "std::bad_alloc" );
+         wlog( "std::bad_alloc: ${w}", ("w", e.what()) );
          throw e;
       } catch (boost::interprocess::bad_alloc& e) {
-         wlog( "bad alloc" );
+         wlog( "boost::interprocess::bad alloc: ${w}", ("w", e.what()) );
          throw e;
       } catch ( controller_emit_signal_exception& e ) {
-         wlog( "${details}", ("details", e.to_detail_string()) );
+         wlog( "controller_emit_signal_exception: ${details}", ("details", e.to_detail_string()) );
          throw e;
       } catch ( fc::exception& e ) {
-         wlog( "${details}", ("details", e.to_detail_string()) );
+         wlog( "fc::exception: ${details}", ("details", e.to_detail_string()) );
+      } catch ( std::exception& e ) {
+         wlog( "std::exception: ${details}", ("details", e.what()) );
       } catch ( ... ) {
          wlog( "signal handler threw exception" );
       }
@@ -455,7 +471,7 @@ struct controller_impl {
       initialize_database(genesis);
    }
 
-   void replay(std::function<bool()> shutdown) {
+   void replay(std::function<bool()> check_shutdown) {
       auto blog_head = blog.head();
       auto blog_head_time = blog_head->timestamp.to_time_point();
       replay_head_time = blog_head_time;
@@ -470,9 +486,9 @@ struct controller_impl {
          try {
             while( auto next = blog.read_block_by_num( head->block_num + 1 ) ) {
                replay_push_block( next, controller::block_status::irreversible );
+               if( check_shutdown() ) break;
                if( next->block_num() % 500 == 0 ) {
                   ilog( "${n} of ${head}", ("n", next->block_num())("head", blog_head->block_num()) );
-                  if( shutdown() ) break;
                }
             }
          } catch(  const database_guard_exception& e ) {
@@ -502,9 +518,10 @@ struct controller_impl {
          ilog( "no irreversible blocks need to be replayed" );
       }
 
-      if( !except_ptr && !shutdown() ) {
+      if( !except_ptr && !check_shutdown() ) {
          int rev = 0;
          while( auto obj = reversible_blocks.find<reversible_block_object,by_num>(head->block_num+1) ) {
+            if( check_shutdown() ) break;
             ++rev;
             replay_push_block( obj->get_block(), controller::block_status::validated );
          }
@@ -522,8 +539,9 @@ struct controller_impl {
       }
    }
 
-   void startup(std::function<bool()> shutdown, const snapshot_reader_ptr& snapshot) {
+   void startup(std::function<void()> shutdown, std::function<bool()> check_shutdown, const snapshot_reader_ptr& snapshot) {
       EOS_ASSERT( snapshot, snapshot_exception, "No snapshot reader provided" );
+      this->shutdown = shutdown;
       ilog( "Starting initialization from snapshot, this may take a significant amount of time" );
       try {
          snapshot->validate();
@@ -540,7 +558,7 @@ struct controller_impl {
          const auto hash = calculate_integrity_hash();
          ilog( "database initialized with hash: ${hash}", ("hash", hash) );
 
-         init(shutdown);
+         init(check_shutdown);
       } catch (boost::interprocess::bad_alloc& e) {
          elog( "db storage not configured to have enough storage for the provided snapshot, please increase and retry snapshot" );
          throw e;
@@ -549,7 +567,7 @@ struct controller_impl {
       ilog( "Finished initialization from snapshot" );
    }
 
-   void startup(std::function<bool()> shutdown, const genesis_state& genesis) {
+   void startup(std::function<void()> shutdown, std::function<bool()> check_shutdown, const genesis_state& genesis) {
       EOS_ASSERT( db.revision() < 1, database_exception, "This version of controller::startup only works with a fresh state database." );
       const auto& genesis_chain_id = genesis.compute_chain_id();
       EOS_ASSERT( genesis_chain_id == chain_id, chain_id_type_exception,
@@ -557,6 +575,7 @@ struct controller_impl {
                   ("genesis_chain_id", genesis_chain_id)("controller_chain_id", chain_id)
       );
 
+      this->shutdown = shutdown;
       if( fork_db.head() ) {
          if( read_mode == db_read_mode::IRREVERSIBLE && fork_db.head()->id != fork_db.root()->id ) {
             fork_db.rollback_head_to_root();
@@ -578,13 +597,14 @@ struct controller_impl {
       } else {
          blog.reset( genesis, head->block );
       }
-      init(shutdown);
+      init(check_shutdown);
    }
 
-   void startup(std::function<bool()> shutdown) {
+   void startup(std::function<void()> shutdown, std::function<bool()> check_shutdown) {
       EOS_ASSERT( db.revision() >= 1, database_exception, "This version of controller::startup does not work with a fresh state database." );
       EOS_ASSERT( fork_db.head(), fork_database_exception, "No existing fork database despite existing chain state. Replay required." );
 
+      this->shutdown = shutdown;
       uint32_t lib_num = fork_db.root()->block_num;
       auto first_block_num = blog.first_block_num();
       if( blog.head() ) {
@@ -607,7 +627,7 @@ struct controller_impl {
       }
       head = fork_db.head();
 
-      init(shutdown);
+      init(check_shutdown);
    }
 
 
@@ -624,7 +644,7 @@ struct controller_impl {
       return header_itr;
    }
 
-   void init(std::function<bool()> shutdown) {
+   void init(std::function<bool()> check_shutdown) {
       uint32_t lib_num = (blog.head() ? blog.head()->block_num() : fork_db.root()->block_num);
 
       auto header_itr = validate_db_version( db );
@@ -725,10 +745,10 @@ struct controller_impl {
       }
 
       if( last_block_num > head->block_num ) {
-         replay( shutdown ); // replay any irreversible and reversible blocks ahead of current head
+         replay( check_shutdown ); // replay any irreversible and reversible blocks ahead of current head
       }
 
-      if( shutdown() ) return;
+      if( check_shutdown() ) return;
 
       if( read_mode != db_read_mode::IRREVERSIBLE
           && fork_db.pending_head()->id != fork_db.head()->id
@@ -990,8 +1010,7 @@ struct controller_impl {
          if( name == config::system_account_name ) {
             // The initial eosio ABI value affects consensus; see  https://github.com/EOSIO/eos/issues/7794
             // TODO: This doesn't charge RAM; a fix requires a consensus upgrade.
-            a.abi.resize(sizeof(eosio_abi_bin));
-            memcpy(a.abi.data(), eosio_abi_bin, sizeof(eosio_abi_bin));
+            a.abi.assign(eosio_abi_bin, sizeof(eosio_abi_bin));
          }
       });
       db.create<account_metadata_object>([&](auto & a) {
@@ -1073,19 +1092,22 @@ struct controller_impl {
    // The returned scoped_exit should not exceed the lifetime of the pending which existed when make_block_restore_point was called.
    fc::scoped_exit<std::function<void()>> make_block_restore_point() {
       auto& bb = pending->_block_stage.get<building_block>();
-      auto orig_block_transactions_size = bb._pending_trx_receipts.size();
-      auto orig_state_transactions_size = bb._pending_trx_metas.size();
-      auto orig_state_actions_size      = bb._actions.size();
+      auto orig_trx_receipts_size           = bb._pending_trx_receipts.size();
+      auto orig_trx_metas_size              = bb._pending_trx_metas.size();
+      auto orig_trx_receipt_digests_size    = bb._pending_trx_receipt_digests.size();
+      auto orig_action_receipt_digests_size = bb._action_receipt_digests.size();
 
       std::function<void()> callback = [this,
-                                        orig_block_transactions_size,
-                                        orig_state_transactions_size,
-                                        orig_state_actions_size]()
+            orig_trx_receipts_size,
+            orig_trx_metas_size,
+            orig_trx_receipt_digests_size,
+            orig_action_receipt_digests_size]()
       {
          auto& bb = pending->_block_stage.get<building_block>();
-         bb._pending_trx_receipts.resize(orig_block_transactions_size);
-         bb._pending_trx_metas.resize(orig_state_transactions_size);
-         bb._actions.resize(orig_state_actions_size);
+         bb._pending_trx_receipts.resize(orig_trx_receipts_size);
+         bb._pending_trx_metas.resize(orig_trx_metas_size);
+         bb._pending_trx_receipt_digests.resize(orig_trx_receipt_digests_size);
+         bb._action_receipt_digests.resize(orig_action_receipt_digests_size);
       };
 
       return fc::make_scoped_exit( std::move(callback) );
@@ -1129,7 +1151,8 @@ struct controller_impl {
          auto restore = make_block_restore_point();
          trace->receipt = push_receipt( gtrx.trx_id, transaction_receipt::soft_fail,
                                         trx_context.billed_cpu_time_us, trace->net_usage );
-         fc::move_append( pending->_block_stage.get<building_block>()._actions, move(trx_context.executed) );
+         fc::move_append( pending->_block_stage.get<building_block>()._action_receipt_digests,
+                          std::move(trx_context.executed_action_receipt_digests) );
 
          trx_context.squash();
          restore.cancel();
@@ -1267,7 +1290,8 @@ struct controller_impl {
                                         trx_context.billed_cpu_time_us,
                                         trace->net_usage );
 
-         fc::move_append( pending->_block_stage.get<building_block>()._actions, move(trx_context.executed) );
+         fc::move_append( pending->_block_stage.get<building_block>()._action_receipt_digests,
+                          std::move(trx_context.executed_action_receipt_digests) );
 
          trace->account_ram_delta = account_delta( gtrx.payer, trx_removal_ram_delta );
 
@@ -1370,6 +1394,7 @@ struct controller_impl {
       r.cpu_usage_us         = cpu_usage_us;
       r.net_usage_words      = net_usage_words;
       r.status               = status;
+      pending->_block_stage.get<building_block>()._pending_trx_receipt_digests.emplace_back( r.digest() );
       return r;
    }
 
@@ -1453,7 +1478,8 @@ struct controller_impl {
                trace->receipt = r;
             }
 
-            fc::move_append(pending->_block_stage.get<building_block>()._actions, move(trx_context.executed));
+            fc::move_append( pending->_block_stage.get<building_block>()._action_receipt_digests,
+                             std::move(trx_context.executed_action_receipt_digests) );
 
             // call the accept signal but only once for this transaction
             if (!trx->accepted) {
@@ -1518,7 +1544,6 @@ struct controller_impl {
       auto& bb = pending->_block_stage.get<building_block>();
       const auto& pbhs = bb._pending_block_header_state;
 
-      // modify state of speculative block only if we are in speculative read mode (otherwise we need clean state for head or read-only modes)
       if ( read_mode == db_read_mode::SPECULATIVE || pending->_block_status != controller::block_status::incomplete )
       {
          const auto& pso = db.get<protocol_state_object>();
@@ -1587,7 +1612,7 @@ struct controller_impl {
             });
          }
 
-         const auto& gpo = db.get<global_property_object>();
+         const auto& gpo = self.get_global_properties();
 
          if( gpo.proposed_schedule_block_num.valid() && // if there is a proposed schedule that was proposed in a block ...
              ( *gpo.proposed_schedule_block_num <= pbhs.dpos_irreversible_blocknum ) && // ... that has now become irreversible ...
@@ -1620,7 +1645,7 @@ struct controller_impl {
                   in_trx_requiring_checks = old_value;
                });
             in_trx_requiring_checks = true;
-            push_transaction( onbtrx, fc::time_point::maximum(), self.get_global_properties().configuration.min_transaction_cpu_usage, true );
+            push_transaction( onbtrx, fc::time_point::maximum(), gpo.configuration.min_transaction_cpu_usage, true );
          } catch( const std::bad_alloc& e ) {
             elog( "on block transaction failed due to a std::bad_alloc" );
             throw;
@@ -1664,8 +1689,8 @@ struct controller_impl {
 
       // Create (unsigned) block:
       auto block_ptr = std::make_shared<signed_block>( pbhs.make_block_header(
-         calculate_trx_merkle(),
-         calculate_action_merkle(),
+         merkle( std::move( pending->_block_stage.get<building_block>()._pending_trx_receipt_digests ) ),
+         merkle( std::move( pending->_block_stage.get<building_block>()._action_receipt_digests ) ),
          bb._new_pending_producer_schedule,
          std::move( bb._new_protocol_feature_activations ),
          protocol_features.get_protocol_feature_set()
@@ -1848,8 +1873,8 @@ struct controller_impl {
          transaction_trace_ptr trace;
 
          size_t packed_idx = 0;
+         const auto& trx_receipts = pending->_block_stage.get<building_block>()._pending_trx_receipts;
          for( const auto& receipt : b->transactions ) {
-            const auto& trx_receipts = pending->_block_stage.get<building_block>()._pending_trx_receipts;
             auto num_pending_receipts = trx_receipts.size();
             if( receipt.trx.contains<packed_transaction>() ) {
                const auto& trx_meta = ( use_bsp_cached ? bsp->trxs_metas().at( packed_idx )
@@ -1949,6 +1974,12 @@ struct controller_impl {
          block_state_ptr bsp = block_state_future.get();
          const auto& b = bsp->block;
 
+         if( conf.terminate_at_block > 0 && conf.terminate_at_block < b->block_num() ) {
+            ilog("Reached configured maximum block ${num}; terminating", ("num", conf.terminate_at_block) );
+            shutdown();
+            return;
+         }
+
          emit( self.pre_accepted_block, b );
 
          fork_db.add( bsp );
@@ -1978,6 +2009,13 @@ struct controller_impl {
          EOS_ASSERT( b, block_validate_exception, "trying to push empty block" );
          EOS_ASSERT( (s == controller::block_status::irreversible || s == controller::block_status::validated),
                      block_validate_exception, "invalid block status for replay" );
+
+         if( conf.terminate_at_block > 0 && conf.terminate_at_block < b->block_num() ) {
+            ilog("Reached configured maximum block ${num}; terminating", ("num", conf.terminate_at_block) );
+            shutdown();
+            return;
+         }
+
          emit( self.pre_accepted_block, b );
          const bool skip_validate_signee = !conf.force_all_checks;
 
@@ -2002,7 +2040,7 @@ struct controller_impl {
             apply_block( bsp, s, trx_meta_cache_lookup{} );
             head = bsp;
 
-            // On replay, log_irreversible is not called and so no irreversible_block signal is emittted.
+            // On replay, log_irreversible is not called and so no irreversible_block signal is emitted.
             // So emit it explicitly here.
             emit( self.irreversible_block, bsp );
 
@@ -2093,34 +2131,14 @@ struct controller_impl {
 
    } /// push_block
 
-   vector<transaction_metadata_ptr> abort_block() {
-      vector<transaction_metadata_ptr> applied_trxs;
+   deque<transaction_metadata_ptr> abort_block() {
+      deque<transaction_metadata_ptr> applied_trxs;
       if( pending ) {
          applied_trxs = pending->extract_trx_metas();
          pending.reset();
          protocol_features.popped_blocks_to( head->block_num );
       }
       return applied_trxs;
-   }
-
-   checksum256_type calculate_action_merkle() {
-      vector<digest_type> action_digests;
-      const auto& actions = pending->_block_stage.get<building_block>()._actions;
-      action_digests.reserve( actions.size() );
-      for( const auto& a : actions )
-         action_digests.emplace_back( a.digest() );
-
-      return merkle( move(action_digests) );
-   }
-
-   checksum256_type calculate_trx_merkle() {
-      vector<digest_type> trx_digests;
-      const auto& trxs = pending->_block_stage.get<building_block>()._pending_trx_receipts;
-      trx_digests.reserve( trxs.size() );
-      for( const auto& a : trxs )
-         trx_digests.emplace_back( a.digest() );
-
-      return merkle( move(trx_digests) );
    }
 
    void update_producers_authority() {
@@ -2397,16 +2415,16 @@ void controller::add_indices() {
    my->add_indices();
 }
 
-void controller::startup( std::function<bool()> shutdown, const snapshot_reader_ptr& snapshot ) {
-   my->startup(shutdown, snapshot);
+void controller::startup( std::function<void()> shutdown, std::function<bool()> check_shutdown, const snapshot_reader_ptr& snapshot ) {
+   my->startup(shutdown, check_shutdown, snapshot);
 }
 
-void controller::startup( std::function<bool()> shutdown, const genesis_state& genesis ) {
-   my->startup(shutdown, genesis);
+void controller::startup( std::function<void()> shutdown, std::function<bool()> check_shutdown, const genesis_state& genesis ) {
+   my->startup(shutdown, check_shutdown, genesis);
 }
 
-void controller::startup( std::function<bool()> shutdown ) {
-   my->startup(shutdown);
+void controller::startup(std::function<void()> shutdown, std::function<bool()> check_shutdown) {
+   my->startup(shutdown, check_shutdown);
 }
 
 const chainbase::database& controller::db()const { return my->db; }
@@ -2604,7 +2622,7 @@ void controller::commit_block() {
    my->commit_block(true);
 }
 
-vector<transaction_metadata_ptr> controller::abort_block() {
+deque<transaction_metadata_ptr> controller::abort_block() {
    return my->abort_block();
 }
 
@@ -2767,7 +2785,7 @@ optional<block_id_type> controller::pending_producer_block_id()const {
    return my->pending->_producer_block_id;
 }
 
-const vector<transaction_receipt>& controller::get_pending_trx_receipts()const {
+const deque<transaction_receipt>& controller::get_pending_trx_receipts()const {
    EOS_ASSERT( my->pending, block_validate_exception, "no pending block" );
    return my->pending->get_trx_receipts();
 }
@@ -3015,6 +3033,10 @@ validation_mode controller::get_validation_mode()const {
    return my->conf.block_validation_mode;
 }
 
+uint32_t controller::get_terminate_at_block()const {
+   return my->conf.terminate_at_block;
+}
+
 const apply_handler* controller::find_apply_handler( account_name receiver, account_name scope, action_name act ) const
 {
    auto native_handler_scope = my->apply_handlers.find( receiver );
@@ -3133,6 +3155,10 @@ bool controller::is_known_unexpired_transaction( const transaction_id_type& id) 
 
 void controller::set_subjective_cpu_leeway(fc::microseconds leeway) {
    my->subjective_cpu_leeway = leeway;
+}
+
+fc::optional<fc::microseconds> controller::get_subjective_cpu_leeway() const {
+    return my->subjective_cpu_leeway;
 }
 
 void controller::set_greylist_limit( uint32_t limit ) {
@@ -3286,6 +3312,13 @@ template<>
 void controller_impl::on_activation<builtin_protocol_feature_t::wtmsig_block_signatures>() {
    db.modify( db.get<protocol_state_object>(), [&]( auto& ps ) {
       add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "set_proposed_producers_ex" );
+   } );
+}
+
+template<>
+void controller_impl::on_activation<builtin_protocol_feature_t::action_return_value>() {
+   db.modify( db.get<protocol_state_object>(), [&]( auto& ps ) {
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "set_action_return_value" );
    } );
 }
 

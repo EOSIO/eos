@@ -103,11 +103,16 @@ class Node(object):
         def __contextDesc(self):
             return "%s%s" % (self.desc, self.__keyContext())
 
-        def add(self, newKey):
+        def hasKey(self, newKey, subSection = None):
             assert isinstance(newKey, str), print("ERROR: Trying to use %s as a key" % (newKey))
-            subSection=self.sections[-1]
+            if subSection is None:
+                subSection=self.sections[-1]
             assert isinstance(subSection, dict), print("ERROR: Calling \"add\" method when context is not a dictionary. %s in %s" % (self.__contextDesc(), self.__json()))
-            assert newKey in subSection, print("ERROR: %s%s does not contain key \"%s\". %s" % (self.__contextDesc(), key, self.__json()))
+            return newKey in subSection
+
+        def add(self, newKey):
+            subSection=self.sections[-1]
+            assert self.hasKey(newKey, subSection), print("ERROR: %s does not contain key \"%s\". %s" % (self.__contextDesc(), newKey, self.__json()))
             current=subSection[newKey]
             self.sections.append(current)
             self.keyContext.append(newKey)
@@ -127,16 +132,28 @@ class Node(object):
     @staticmethod
     def getTransStatus(trans):
         cntxt=Node.Context(trans, "trans")
-        cntxt.add("processed")
+        # could be a transaction response
+        if cntxt.hasKey("processed"):
+            cntxt.add("processed")
+            cntxt.add("receipt")
+            return cntxt.add("status")
+
+        # or what the history plugin returns
+        cntxt.add("trx")
         cntxt.add("receipt")
         return cntxt.add("status")
 
     @staticmethod
     def getTransBlockNum(trans):
         cntxt=Node.Context(trans, "trans")
-        cntxt.add("processed")
-        cntxt.add("action_traces")
-        cntxt.index(0)
+        # could be a transaction response
+        if cntxt.hasKey("processed"):
+            cntxt.add("processed")
+            cntxt.add("action_traces")
+            cntxt.index(0)
+            return cntxt.add("block_num")
+
+        # or what the history plugin returns
         return cntxt.add("block_num")
 
 
@@ -510,10 +527,11 @@ class Node(object):
 
 
     # Create & initialize account and return creation transactions. Return transaction json object
-    def createInitializeAccount(self, account, creatorAccount, stakedDeposit=1000, waitForTransBlock=False, stakeNet=100, stakeCPU=100, buyRAM=10000, exitOnError=False):
+    def createInitializeAccount(self, account, creatorAccount, stakedDeposit=1000, waitForTransBlock=False, stakeNet=100, stakeCPU=100, buyRAM=10000, exitOnError=False, sign=False):
+        signStr = Node.__sign_str(sign, [ creatorAccount.activePublicKey ])
         cmdDesc="system newaccount"
-        cmd='%s -j %s %s %s %s --stake-net "%s %s" --stake-cpu "%s %s" --buy-ram "%s %s"' % (
-            cmdDesc, creatorAccount.name, account.name, account.ownerPublicKey,
+        cmd='%s -j %s %s %s %s %s --stake-net "%s %s" --stake-cpu "%s %s" --buy-ram "%s %s"' % (
+            cmdDesc, signStr, creatorAccount.name, account.name, account.ownerPublicKey,
             account.activePublicKey, stakeNet, CORE_SYMBOL, stakeCPU, CORE_SYMBOL, buyRAM, CORE_SYMBOL)
         msg="(creator account=%s, account=%s)" % (creatorAccount.name, account.name);
         trans=self.processCleosCmd(cmd, cmdDesc, silentErrors=False, exitOnError=exitOnError, exitMsg=msg)
@@ -527,12 +545,13 @@ class Node(object):
 
         return self.waitForTransBlockIfNeeded(trans, waitForTransBlock, exitOnError=exitOnError)
 
-    def createAccount(self, account, creatorAccount, stakedDeposit=1000, waitForTransBlock=False, exitOnError=False):
+    def createAccount(self, account, creatorAccount, stakedDeposit=1000, waitForTransBlock=False, exitOnError=False, sign=False):
         """Create account and return creation transactions. Return transaction json object.
         waitForTransBlock: wait on creation transaction id to appear in a block."""
+        signStr = Node.__sign_str(sign, [ creatorAccount.activePublicKey ])
         cmdDesc="create account"
-        cmd="%s -j %s %s %s %s" % (
-            cmdDesc, creatorAccount.name, account.name, account.ownerPublicKey, account.activePublicKey)
+        cmd="%s -j %s %s %s %s %s" % (
+            cmdDesc, signStr, creatorAccount.name, account.name, account.ownerPublicKey, account.activePublicKey)
         msg="(creator account=%s, account=%s)" % (creatorAccount.name, account.name);
         trans=self.processCleosCmd(cmd, cmdDesc, silentErrors=False, exitOnError=exitOnError, exitMsg=msg)
         self.trackCmdTransaction(trans)
@@ -696,16 +715,34 @@ class Node(object):
         return self.waitForBlock(blockNum, timeout=timeout, blockType=blockType)
 
     # Trasfer funds. Returns "transfer" json return object
-    def transferFunds(self, source, destination, amountStr, memo="memo", force=False, waitForTransBlock=False, exitOnError=True):
+    def transferFunds(self, source, destination, amountStr, memo="memo", force=False, waitForTransBlock=False, exitOnError=True, reportStatus=True, sign=False, dontSend=False, expiration=None):
         assert isinstance(amountStr, str)
         assert(source)
         assert(isinstance(source, Account))
         assert(destination)
         assert(isinstance(destination, Account))
+        assert(expiration is None or isinstance(expiration, int))
 
+        dontSendStr = ""
+        if dontSend:
+            dontSendStr = "--dont-broadcast "
+            if expiration is None:
+                # default transaction expiration to be 4 minutes in the future
+                expiration = 240
+
+        expirationStr = ""
+        if expiration is not None:
+            expirationStr = "--expiration %d " % (expiration)
         cmd="%s %s -v transfer -j %s %s" % (
-            Utils.EosClientPath, self.eosClientArgs(), source.name, destination.name)
+            Utils.EosClientPath, self.eosClientArgs(), dontSendStr, expirationStr)
         cmdArr=cmd.split()
+        # not using __sign_str, since cmdArr messes up the string
+        if sign:
+            cmdArr.append("--sign-with")
+            cmdArr.append("[ \"%s\" ]" % (source.activePublicKey))
+
+        cmdArr.append(source.name)
+        cmdArr.append(destination.name)
         cmdArr.append(amountStr)
         cmdArr.append(memo)
         if force:
@@ -719,7 +756,8 @@ class Node(object):
             if Utils.Debug:
                 end=time.perf_counter()
                 Utils.Print("cmd Duration: %.3f sec" % (end-start))
-            self.trackCmdTransaction(trans)
+            if not dontSend:
+                self.trackCmdTransaction(trans, reportStatus=reportStatus)
         except subprocess.CalledProcessError as ex:
             end=time.perf_counter()
             msg=ex.output.decode("utf-8")
@@ -904,8 +942,9 @@ class Node(object):
             return None
 
     # publish contract and return transaction as json object
-    def publishContract(self, account, contractDir, wasmFile, abiFile, waitForTransBlock=False, shouldFail=False):
-        cmd="%s %s -v set contract -j %s %s" % (Utils.EosClientPath, self.eosClientArgs(), account, contractDir)
+    def publishContract(self, account, contractDir, wasmFile, abiFile, waitForTransBlock=False, shouldFail=False, sign=False):
+        signStr = Node.__sign_str(sign, [ account.activePublicKey ])
+        cmd="%s %s -v set contract -j %s %s %s" % (Utils.EosClientPath, self.eosClientArgs(), signStr, account.name, contractDir)
         cmd += "" if wasmFile is None else (" "+ wasmFile)
         cmd += "" if abiFile is None else (" " + abiFile)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
@@ -921,7 +960,7 @@ class Node(object):
             if not shouldFail:
                 end=time.perf_counter()
                 msg=ex.output.decode("utf-8")
-                Utils.Print("ERROR: Exception during code hash retrieval.  cmd Duration: %.3f sec.  %s" % (end-start, msg))
+                Utils.Print("ERROR: Exception during set contract.  cmd Duration: %.3f sec.  %s" % (end-start, msg))
                 return None
             else:
                 retMap={}
@@ -963,15 +1002,18 @@ class Node(object):
         keys=list(row.keys())
         return keys
 
-    # returns tuple with transaction and
-    def pushMessage(self, account, action, data, opts, silentErrors=False):
+    # returns tuple with indication if transaction was successfully sent and either the transaction or else the exception output
+    def pushMessage(self, account, action, data, opts, silentErrors=False, signatures=None):
         cmd="%s %s push action -j %s %s" % (Utils.EosClientPath, self.eosClientArgs(), account, action)
         cmdArr=cmd.split()
+        # not using __sign_str, since cmdArr messes up the string
+        if signatures is not None:
+            cmdArr.append("--sign-with")
+            cmdArr.append("[ \"%s\" ]" % ("\", \"".join(signatures)))
         if data is not None:
             cmdArr.append(data)
         if opts is not None:
             cmdArr += opts.split()
-        s=" ".join(cmdArr)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmdArr))
         start=time.perf_counter()
         try:
@@ -988,55 +1030,98 @@ class Node(object):
                 Utils.Print("ERROR: Exception during push message.  cmd Duration=%.3f sec.  %s" % (end - start, msg))
             return (False, msg)
 
-    def setPermission(self, account, code, pType, requirement, waitForTransBlock=False, exitOnError=False):
+    # returns tuple with indication if transaction was successfully sent and either the transaction or else the exception output
+    def pushTransaction(self, trans, opts="--skip-sign", silentErrors=False):
+        assert(isinstance(trans, dict))
+        cmd="%s %s push transaction -j" % (Utils.EosClientPath, self.eosClientArgs())
+        cmdArr=cmd.split()
+        transStr = json.dumps(trans, separators=(',', ':'))
+        transStr = transStr.replace("'", '"')
+        cmdArr.append(transStr)
+        if opts is not None:
+            cmdArr += opts.split()
+        s=" ".join(cmdArr)
+        if Utils.Debug: Utils.Print("cmd: %s" % (cmdArr))
+        start=time.perf_counter()
+        try:
+            retTrans=Utils.runCmdArrReturnJson(cmdArr)
+            self.trackCmdTransaction(retTrans, ignoreNonTrans=True)
+            if Utils.Debug:
+                end=time.perf_counter()
+                Utils.Print("cmd Duration: %.3f sec" % (end-start))
+            return (True, retTrans)
+        except subprocess.CalledProcessError as ex:
+            msg=ex.output.decode("utf-8")
+            if not silentErrors:
+                end=time.perf_counter()
+                Utils.Print("ERROR: Exception during push message.  cmd Duration=%.3f sec.  %s" % (end - start, msg))
+            return (False, msg)
+
+    @staticmethod
+    def __sign_str(sign, keys):
+        assert(isinstance(sign, bool))
+        assert(isinstance(keys, list))
+        if not sign:
+            return ""
+
+        return "--sign-with '[ \"" + "\", \"".join(keys) + "\" ]'"
+
+    def setPermission(self, account, code, pType, requirement, waitForTransBlock=False, exitOnError=False, sign=False):
+        assert(isinstance(account, Account))
+        assert(isinstance(code, Account))
+        signStr = Node.__sign_str(sign, [ account.activePublicKey ])
         cmdDesc="set action permission"
-        cmd="%s -j %s %s %s %s" % (cmdDesc, account, code, pType, requirement)
+        cmd="%s -j %s %s %s %s %s" % (cmdDesc, signStr, account.name, code.name, pType, requirement)
         trans=self.processCleosCmd(cmd, cmdDesc, silentErrors=False, exitOnError=exitOnError)
         self.trackCmdTransaction(trans)
 
         return self.waitForTransBlockIfNeeded(trans, waitForTransBlock, exitOnError=exitOnError)
 
-    def delegatebw(self, fromAccount, netQuantity, cpuQuantity, toAccount=None, transferTo=False, waitForTransBlock=False, exitOnError=False):
+    def delegatebw(self, fromAccount, netQuantity, cpuQuantity, toAccount=None, transferTo=False, waitForTransBlock=False, exitOnError=False, sign=False, reportStatus=True):
         if toAccount is None:
             toAccount=fromAccount
 
+        signStr = Node.__sign_str(sign, [ fromAccount.activePublicKey ])
         cmdDesc="system delegatebw"
         transferStr="--transfer" if transferTo else ""
-        cmd="%s -j %s %s \"%s %s\" \"%s %s\" %s" % (
-            cmdDesc, fromAccount.name, toAccount.name, netQuantity, CORE_SYMBOL, cpuQuantity, CORE_SYMBOL, transferStr)
+        cmd="%s -j %s %s %s \"%s %s\" \"%s %s\" %s" % (
+            cmdDesc, signStr, fromAccount.name, toAccount.name, netQuantity, CORE_SYMBOL, cpuQuantity, CORE_SYMBOL, transferStr)
         msg="fromAccount=%s, toAccount=%s" % (fromAccount.name, toAccount.name);
         trans=self.processCleosCmd(cmd, cmdDesc, exitOnError=exitOnError, exitMsg=msg)
-        self.trackCmdTransaction(trans)
+        self.trackCmdTransaction(trans, reportStatus=reportStatus)
 
         return self.waitForTransBlockIfNeeded(trans, waitForTransBlock, exitOnError=exitOnError)
 
-    def undelegatebw(self, fromAccount, netQuantity, cpuQuantity, toAccount=None, waitForTransBlock=False, exitOnError=False):
+    def undelegatebw(self, fromAccount, netQuantity, cpuQuantity, toAccount=None, waitForTransBlock=False, exitOnError=False, sign=False):
         if toAccount is None:
             toAccount=fromAccount
 
+        signStr = Node.__sign_str(sign, [ fromAccount.activePublicKey ])
         cmdDesc="system undelegatebw"
-        cmd="%s -j %s %s \"%s %s\" \"%s %s\"" % (
-            cmdDesc, fromAccount.name, toAccount.name, netQuantity, CORE_SYMBOL, cpuQuantity, CORE_SYMBOL)
+        cmd="%s -j %s %s %s \"%s %s\" \"%s %s\"" % (
+            cmdDesc, signStr, fromAccount.name, toAccount.name, netQuantity, CORE_SYMBOL, cpuQuantity, CORE_SYMBOL)
         msg="fromAccount=%s, toAccount=%s" % (fromAccount.name, toAccount.name);
         trans=self.processCleosCmd(cmd, cmdDesc, exitOnError=exitOnError, exitMsg=msg)
         self.trackCmdTransaction(trans)
 
         return self.waitForTransBlockIfNeeded(trans, waitForTransBlock, exitOnError=exitOnError)
 
-    def regproducer(self, producer, url, location, waitForTransBlock=False, exitOnError=False):
+    def regproducer(self, producer, url, location, waitForTransBlock=False, exitOnError=False, sign=False):
+        signStr = Node.__sign_str(sign, [ producer.activePublicKey ])
         cmdDesc="system regproducer"
-        cmd="%s -j %s %s %s %s" % (
-            cmdDesc, producer.name, producer.activePublicKey, url, location)
+        cmd="%s -j %s %s %s %s %s" % (
+            cmdDesc, signStr, producer.name, producer.activePublicKey, url, location)
         msg="producer=%s" % (producer.name);
         trans=self.processCleosCmd(cmd, cmdDesc, exitOnError=exitOnError, exitMsg=msg)
         self.trackCmdTransaction(trans)
 
         return self.waitForTransBlockIfNeeded(trans, waitForTransBlock, exitOnError=exitOnError)
 
-    def vote(self, account, producers, waitForTransBlock=False, exitOnError=False):
+    def vote(self, account, producers, waitForTransBlock=False, exitOnError=False, sign=False):
+        signStr = Node.__sign_str(sign, [ account.activePublicKey ])
         cmdDesc = "system voteproducer prods"
-        cmd="%s -j %s %s" % (
-            cmdDesc, account.name, " ".join(producers))
+        cmd="%s -j %s %s %s" % (
+            cmdDesc, signStr, account.name, " ".join(producers))
         msg="account=%s, producers=[ %s ]" % (account.name, ", ".join(producers));
         trans=self.processCleosCmd(cmd, cmdDesc, exitOnError=exitOnError, exitMsg=msg)
         self.trackCmdTransaction(trans)
@@ -1278,7 +1363,9 @@ class Node(object):
         self.killed=True
 
     def verifyAlive(self, silent=False):
-        if not silent and Utils.Debug: Utils.Print("Checking if node(pid=%s) is alive(killed=%s): %s" % (self.pid, self.killed, self.cmd))
+        logStatus=not silent and Utils.Debug
+        pid=self.pid
+        if logStatus: Utils.Print("Checking if node(pid=%s) is alive(killed=%s): %s" % (self.pid, self.killed, self.cmd))
         if self.killed or self.pid is None:
             self.killed=True
             self.pid=None
@@ -1290,10 +1377,13 @@ class Node(object):
             # mark node as killed
             self.pid=None
             self.killed=True
+            if logStatus: Utils.Print("Determined node(formerly pid=%s) is killed" % (pid))
             return False
         except PermissionError as ex:
+            if logStatus: Utils.Print("Determined node(formerly pid=%s) is alive" % (pid))
             return True
 
+        if logStatus: Utils.Print("Determined node(pid=%s) is alive" % (self.pid))
         return True
 
     def getBlockProducerByNum(self, blockNum, timeout=None, waitForBlock=True, exitOnError=True):
@@ -1396,9 +1486,23 @@ class Node(object):
                 pass
             return False
 
-        isAlive=Utils.waitForBool(isNodeAlive, timeout, sleepTime=1)
+        def didNodeExitGracefully(popen, timeout):
+            try:
+                popen.communicate(timeout=timeout)
+            except TimeoutExpired:
+                return False
+            with open(popen.errfile.name, 'r') as f:
+                if "Reached configured maximum block 10; terminating" in f.read():
+                    return True
+                else:
+                    return False
+
+        if "terminate-at-block" not in cmd:
+            isAlive=Utils.waitForBool(isNodeAlive, timeout, sleepTime=1)
+        else:
+            isAlive=Utils.waitForBoolWithArg(didNodeExitGracefully, self.popenProc, timeout, sleepTime=1)
         if isAlive:
-            Utils.Print("Node relaunch was successfull.")
+            Utils.Print("Node relaunch was successful.")
         else:
             Utils.Print("ERROR: Node relaunch Failed.")
             # Ensure the node process is really killed
@@ -1434,28 +1538,34 @@ class Node(object):
             Utils.Print("cmd: %s" % (cmd))
             popen=subprocess.Popen(cmd.split(), stdout=sout, stderr=serr)
             if cachePopen:
+                popen.outfile=sout
+                popen.errfile=serr
                 self.popenProc=popen
             self.pid=popen.pid
             if Utils.Debug: Utils.Print("start Node host=%s, port=%s, pid=%s, cmd=%s" % (self.host, self.port, self.pid, self.cmd))
 
-    def trackCmdTransaction(self, trans, ignoreNonTrans=False):
+    def trackCmdTransaction(self, trans, ignoreNonTrans=False, reportStatus=True):
         if trans is None:
             if Utils.Debug: Utils.Print("  cmd returned transaction: %s" % (trans))
             return
 
         if ignoreNonTrans and not Node.isTrans(trans):
-            if Utils.Debug: Utils.Print("  cmd returned a non-transaction")
+            if Utils.Debug: Utils.Print("  cmd returned a non-transaction: %s" % (trans))
             return
 
         transId=Node.getTransId(trans)
-        if Utils.Debug:
+        if transId in self.transCache.keys():
+            replaceMsg="replacing previous trans=\n%s" % json.dumps(self.transCache[transId], indent=2, sort_keys=True)
+        else:
+            replaceMsg=""
+
+        if Utils.Debug and reportStatus:
             status=Node.getTransStatus(trans)
             blockNum=Node.getTransBlockNum(trans)
-            if transId in self.transCache.keys():
-                replaceMsg="replacing previous trans=\n%s" % json.dumps(self.transCache[transId], indent=2, sort_keys=True)
-            else:
-                replaceMsg=""
             Utils.Print("  cmd returned transaction id: %s, status: %s, (possible) block num: %s %s" % (transId, status, blockNum, replaceMsg))
+        elif Utils.Debug:
+            Utils.Print("  cmd returned transaction id: %s %s" % (transId, replaceMsg))
+
         self.transCache[transId]=trans
 
     def reportStatus(self):

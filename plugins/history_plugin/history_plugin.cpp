@@ -258,9 +258,10 @@ namespace eosio {
 
                db.create<action_history_object>( [&]( auto& aho ) {
                   auto ps = fc::raw::pack_size( at );
-                  aho.packed_action_trace.resize(ps);
-                  datastream<char*> ds( aho.packed_action_trace.data(), ps );
-                  fc::raw::pack( ds, at );
+                  aho.packed_action_trace.resize_and_fill(ps, [&at](char* data, std::size_t size) {
+                     fc::datastream<char*> ds( data, size );
+                     fc::raw::pack( ds, at );
+                  });
                   aho.action_sequence_num = at.receipt->global_sequence;
                   aho.block_num = chain.head_block_num() + 1;
                   aho.block_time = chain.pending_block_time();
@@ -491,7 +492,7 @@ namespace eosio {
 
             auto blk = chain.fetch_block_by_number( result.block_num );
             if( blk || chain.is_building_block() ) {
-               const vector<transaction_receipt>& receipts = blk ? blk->transactions : chain.get_pending_trx_receipts();
+               const auto& receipts = blk ? blk->transactions : chain.get_pending_trx_receipts();
                for (const auto &receipt: receipts) {
                     if (receipt.trx.contains<packed_transaction>()) {
                         auto &pt = receipt.trx.get<packed_transaction>();

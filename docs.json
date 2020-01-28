@@ -1,0 +1,11 @@
+{
+	"name": "eos",
+	"generators": [
+    {
+			"name": "collate_markdown",
+			"options": {
+				"docs_dir": "docs"
+			}
+    }
+  ]
+}

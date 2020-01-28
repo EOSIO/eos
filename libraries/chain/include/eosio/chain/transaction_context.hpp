@@ -113,7 +113,7 @@ namespace eosio { namespace chain {
          fc::time_point                published;
 
 
-         vector<action_receipt>        executed;
+         deque<digest_type>            executed_action_receipt_digests;
          flat_set<account_name>        bill_to_accounts;
          flat_set<account_name>        validate_ram_usage;
 
