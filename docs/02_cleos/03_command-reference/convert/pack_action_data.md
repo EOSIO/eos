@@ -18,6 +18,6 @@ From json action data to packed form
 ## Output
 
 
-```text
+```console
 000000008090b1ca000000000091b1ca000075982aea3055
 ```
