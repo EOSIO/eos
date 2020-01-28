@@ -21,6 +21,6 @@ excerpt: "Consolidate REX maturity buckets into one that matures in 4 days"
 ## Examples
 
 
-```text
+```sh
 cleos system rex consolidate accountname1
 ```

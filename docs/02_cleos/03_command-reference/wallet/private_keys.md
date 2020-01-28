@@ -16,10 +16,3 @@ None
 ```javascript
 cleos wallet private_keys
 ```
-
-## Outputs
-
-
-```text
-
-```
