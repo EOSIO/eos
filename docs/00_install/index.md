@@ -1,4 +1,6 @@
-# EOSIO Software Installation
+---
+content_title: EOSIO Software Installation
+---
 
 There are various ways to install and use the EOSIO software:
 
@@ -17,3 +19,6 @@ EOSIO currently supports the following operating systems:
 3. Ubuntu 16.04
 4. Ubuntu 18.04
 5. MacOS 10.14 (Mojave)
+
+[[info | Note]]
+| It may be possible to install EOSIO on other Unix-based operating systems. This is not officially supported, though.

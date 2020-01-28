@@ -4,10 +4,13 @@ Retrieves an account from the blockchain
 ## Positional Parameters
 - `name` _TEXT_ - The name of the account to retrieve
 - `core-symbol` _TEXT_ - The expected core symbol of the chain you are querying
+
 ## Options
 - `-j,--json` - Output in JSON format
-## Example
-## Get formatted data for user **eosio**
+
+## Examples
+
+### Get formatted data for user **eosio**
 
 ```shell
 $ cleos get account eosio
@@ -30,7 +33,7 @@ cpu bandwidth: (averaged over 3 days)
 
 producers:     <not voted>
 ```
-## Get JSON data for user **eosio**
+### Get JSON data for user **eosio**
 
 ```shell
 $ cleos get account eosio --json
