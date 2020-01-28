@@ -13,7 +13,7 @@ Query infomation of an EOSIO account
 
 Execute the command below:
 
-```shell
+```sh
 cleos get account ACCOUNT_NAME
 ```
 
@@ -39,5 +39,5 @@ cpu bandwidth:
      limit:              unlimited
 ```
 
-[[info]]
-| Depends on the EOSIO network you are connected, you might see different fields associated with an account. That depends on which system contract has been deployed tp the network.
+[[info | Account Fields]]
+| Depending on the EOSIO network you are connected, you might see different fields associated with an account. That depends on which system contract has been deployed on the network.
