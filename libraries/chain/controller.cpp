@@ -2150,6 +2150,13 @@ struct controller_impl {
       return applied_trxs;
    }
 
+   static checksum256_type calculate_trx_merkle( const deque<transaction_receipt>& trxs ) {
+      deque<digest_type> trx_digests;
+      for( const auto& a : trxs )
+         trx_digests.emplace_back( a.digest() );
+      return merkle( move( trx_digests ) );
+   }
+
    void update_producers_authority() {
       const auto& producers = pending->get_pending_block_header_state().active_schedule.producers;
 

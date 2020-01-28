@@ -31,7 +31,7 @@ BOOST_AUTO_TEST_CASE(block_with_invalid_tx_test)
    copy_b->transactions.back().trx = invalid_packed_tx;
 
    // Re-calculate the transaction merkle
-   vector<digest_type> trx_digests;
+   deque<digest_type> trx_digests;
    const auto& trxs = copy_b->transactions;
    for( const auto& a : trxs )
       trx_digests.emplace_back( a.digest() );
