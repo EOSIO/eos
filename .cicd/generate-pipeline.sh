@@ -622,6 +622,9 @@ cat <<EOF
       - "$PREP_COMMANDS"
       - "buildkite-agent artifact download build.tar.gz . --step ':ubuntu: Ubuntu 18.04 - Build' && tar -xzf build.tar.gz"
       - "./.cicd/package.sh"
+    plugins:
+      - EOSIO/skip-checkout#v0.1.1:
+          cd: ~
     env:
       IMAGE_TAG: "ubuntu-18.04-$PLATFORM_TYPE"
       PLATFORM_TYPE: $PLATFORM_TYPE
