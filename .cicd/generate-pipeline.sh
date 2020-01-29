@@ -35,6 +35,8 @@ for FILE in $(ls $CICD_DIR/platforms/$PLATFORM_TYPE); do
     export FILE_NAME="$(echo $FILE | awk '{split($0,a,/\.(d|s)/); print a[1] }')"
     # macos-10.14
     # ubuntu-16.04
+    # skip Mojave if it's anything but the post-merge build
+    [[ $FILE_NAME =~ 'macos-10.14' ]] && ( [[ $BUILDKITE_SOURCE != 'webhook' ]] || [[ $BUILDKITE_PULL_REQUEST != false ]] || [[ ! $BUILDKITE_MESSAGE =~ 'Merge pull request' ]] ) && continue
     export PLATFORM_NAME="$(echo $FILE_NAME | cut -d- -f1 | sed 's/os/OS/g')"
     # macOS
     # ubuntu
