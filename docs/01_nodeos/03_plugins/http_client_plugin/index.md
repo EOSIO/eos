@@ -6,10 +6,6 @@ The `http_client_plugin`  is an internal utility plugin, providing the `producer
 
 ## Usage
 
-# config.ini
-plugin = eosio::http_client_plugin
-
-
 ```sh
 # config.ini
 plugin = eosio::http_client_plugin
