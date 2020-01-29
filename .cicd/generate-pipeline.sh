@@ -164,7 +164,9 @@ done
 cat <<EOF
 
   - label: ":docker: Docker - Build and Install"
-    command: "./.cicd/installation-build.sh"
+    command: 
+      - "$PREP_COMMANDS"
+      - "./.cicd/installation-build.sh"
     plugins:
       - EOSIO/skip-checkout#v0.1.1:
           cd: ~
