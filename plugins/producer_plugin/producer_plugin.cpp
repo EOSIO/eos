@@ -665,9 +665,9 @@ void producer_plugin::set_program_options(
           "Offset of non last block producing time in microseconds. Valid range 0 .. -block_time.")
          ("last-block-time-offset-us", boost::program_options::value<int32_t>()->default_value(-200000),
           "Offset of last block producing time in microseconds. Valid range 0 .. -block_time.")
-         ("cpu-duty-cycle-pct", bpo::value<uint32_t>()->default_value(config::default_cpu_duty_cycle_pct / config::percent_1),
+         ("cpu-effort-percent", bpo::value<uint32_t>()->default_value(config::default_block_cpu_effort_pct / config::percent_1),
           "Percentage of cpu block production time used to produce block. Whole number percentages, e.g. 80 for 80%")
-         ("last-block-cpu-duty-cycle-pct", bpo::value<uint32_t>()->default_value(config::default_cpu_duty_cycle_pct / config::percent_1),
+         ("last-block-cpu-effort-percent", bpo::value<uint32_t>()->default_value(config::default_block_cpu_effort_pct / config::percent_1),
           "Percentage of cpu block production time used to produce last block. Whole number percentages, e.g. 80 for 80%")
          ("max-scheduled-transaction-time-per-block-ms", boost::program_options::value<int32_t>()->default_value(100),
           "Maximum wall-clock time, in milliseconds, spent retiring scheduled transactions in any block before returning to normal transaction processing.")
@@ -818,22 +818,22 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
    EOS_ASSERT( my->_last_block_time_offset_us <= 0 && my->_last_block_time_offset_us >= -config::block_interval_us, plugin_config_exception,
                "last-block-time-offset-us ${o} must be 0 .. -${bi}", ("bi", config::block_interval_us)("o", my->_last_block_time_offset_us) );
 
-   uint32_t cpu_duty_cycle_pct = options.at("cpu-duty-cycle-pct").as<uint32_t>();
-   EOS_ASSERT( cpu_duty_cycle_pct >= 0 && cpu_duty_cycle_pct <= 100, plugin_config_exception,
-               "cpu-duty-cycle-pct ${pct} must be 0 - 100", ("pct", cpu_duty_cycle_pct) );
-   cpu_duty_cycle_pct *= config::percent_1;
-   int32_t cpu_duty_cycle_offset_us =
-         -EOS_PERCENT( config::block_interval_us, chain::config::percent_100 - cpu_duty_cycle_pct );
+   uint32_t cpu_effort_pct = options.at("cpu-effort-percent").as<uint32_t>();
+   EOS_ASSERT( cpu_effort_pct >= 0 && cpu_effort_pct <= 100, plugin_config_exception,
+               "cpu-effort-percent ${pct} must be 0 - 100", ("pct", cpu_effort_pct) );
+      cpu_effort_pct *= config::percent_1;
+   int32_t cpu_effort_offset_us =
+         -EOS_PERCENT( config::block_interval_us, chain::config::percent_100 - cpu_effort_pct );
 
-   uint32_t last_block_cpu_duty_cycle_pct = options.at("last-block-cpu-duty-cycle-pct").as<uint32_t>();
-   EOS_ASSERT( last_block_cpu_duty_cycle_pct >= 0 && last_block_cpu_duty_cycle_pct <= 100, plugin_config_exception,
-               "last-block-cpu-duty-cycle-pct ${pct} must be 0 - 100", ("pct", last_block_cpu_duty_cycle_pct) );
-   last_block_cpu_duty_cycle_pct *= config::percent_1;
-   int32_t last_block_cpu_duty_cycle_offset_us =
-         -EOS_PERCENT( config::block_interval_us, chain::config::percent_100 - last_block_cpu_duty_cycle_pct );
+   uint32_t last_block_cpu_effort_pct = options.at("last-block-cpu-effort-percent").as<uint32_t>();
+   EOS_ASSERT( last_block_cpu_effort_pct >= 0 && last_block_cpu_effort_pct <= 100, plugin_config_exception,
+               "last-block-cpu-effort-percent ${pct} must be 0 - 100", ("pct", last_block_cpu_effort_pct) );
+      last_block_cpu_effort_pct *= config::percent_1;
+   int32_t last_block_cpu_effort_offset_us =
+         -EOS_PERCENT( config::block_interval_us, chain::config::percent_100 - last_block_cpu_effort_pct );
 
-   my->_produce_time_offset_us = std::min( my->_produce_time_offset_us, cpu_duty_cycle_offset_us );
-   my->_last_block_time_offset_us = std::min( my->_last_block_time_offset_us, last_block_cpu_duty_cycle_offset_us );
+   my->_produce_time_offset_us = std::min( my->_produce_time_offset_us, cpu_effort_offset_us );
+   my->_last_block_time_offset_us = std::min( my->_last_block_time_offset_us, last_block_cpu_effort_offset_us );
 
    my->_max_scheduled_transaction_time_per_block_ms = options.at("max-scheduled-transaction-time-per-block-ms").as<int32_t>();
 
