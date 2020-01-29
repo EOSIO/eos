@@ -76,11 +76,11 @@ Push a transaction
 
 * Execute the following command:
 
-```shell
+```sh
 cleos push transaction TRX_FILE.json
 ```
 
-* Submit a transction from a JSON:
+* Submit a transaction from a JSON:
 
 ```shell
 cleos push transaction JSON
