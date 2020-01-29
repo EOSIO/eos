@@ -74,6 +74,5 @@ $ ./cleos get transaction eb4b94b72718a369af09eb2e7885b3f494dd1d8a20278a6634611d
 }
 ```
 
-[[info]]
-|Important Note
-The above transaction id will not exist on your blockchain
+[[info | Important Note]]
+| The above transaction id will not exist on your blockchain
