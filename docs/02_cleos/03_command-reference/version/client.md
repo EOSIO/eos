@@ -6,6 +6,6 @@ Retrieve version information of the client
 none
 ## Usage
 
-```shell
+```sh
 $ ./cleos version client
 ```

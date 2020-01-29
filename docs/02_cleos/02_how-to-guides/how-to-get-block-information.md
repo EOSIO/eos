@@ -13,6 +13,6 @@ Query infomation of a block
 
 Execute the command below:
 
-```shell
+```sh
 cleos get block BLOCK_NUMBER
 ```

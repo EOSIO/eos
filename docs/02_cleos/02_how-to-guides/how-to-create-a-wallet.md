@@ -14,13 +14,13 @@ Create a keosd wallet
 
 Create a wallet and save the password to a file:
 
-```shell
+```sh
 cleos wallet create --file password.pwd
 ```
 
 You should see something like below. Note here the wallet is named as `default`
 
-```shell
+```console
 Creating wallet: default
 Save password to use in the future to unlock this wallet.
 Without password imported keys will not be retrievable.
@@ -29,13 +29,13 @@ saving password to password.pwd
 
 Alternatively, you can name a wallet with `-n` option:
 
-```shell
+```sh
 cleos wallet create -n named_wallet -f passwd
 ```
 
 You will see something like below:
 
-```shell
+```console
 Creating wallet: named_wallet
 Save password to use in the future to unlock this wallet.
 Without password imported keys will not be retrievable.

@@ -19,7 +19,7 @@ cleos get account ACCOUNT_NAME
 
 You should be see something like below:
 
-```shell
+```console
 created: 2018-06-01T12:00:00.000
 privileged: true
 permissions:

@@ -11,12 +11,12 @@ Import an key pair
 
 ## Steps
 
-```bash
+```sh
 cleos wallet import
 ```
 
 Type your private key. You should see something like below:
 
-```shell
+```console
 private key: imported private key for: EOS8FBXJUfbANf3xeDWPoJxnip3Ych9HjzLBr1VaXRQFdkVAxwLE7
 ```

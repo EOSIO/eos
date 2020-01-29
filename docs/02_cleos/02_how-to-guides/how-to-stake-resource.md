@@ -17,12 +17,12 @@ Stake resource for your account
 
 Stake 0.01 SYS network bandwidth for `alice`
 
-```shell
+```sh
 cleos system delegatebw alice alice "0 SYS" "0.01 SYS"
 ```
 
 Stake 0.01 SYS CPU bandwidth for `alice`:
 
-```shell
+```sh
 cleos system delegatebw alice alice "0.01 SYS" "0 SYS"
 ```

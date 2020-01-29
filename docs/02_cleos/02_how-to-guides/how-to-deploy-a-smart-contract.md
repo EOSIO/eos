@@ -12,7 +12,7 @@ Deploy an EOSIO contract
 
 Execute:
 
-```shell
+```sh
 cleos set contract contract_account contract_directory_path
 ```
 

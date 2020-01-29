@@ -82,7 +82,7 @@ cleos push transaction TRX_FILE.json
 
 * Submit a transaction from a JSON:
 
-```shell
+```sh
 cleos push transaction JSON
 ```
 
