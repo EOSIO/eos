@@ -1,10 +1,9 @@
 ## Description
-Creates a new account on the blockchain
+Create a new account on the blockchain (assumes system contract does not restrict RAM usage)
 
 ## Usage
 
-
-```shell
+```console
 Usage: cleos create account [OPTIONS] creator name OwnerKey [ActiveKey]
 
 Positionals:
@@ -19,9 +18,11 @@ Options:
   -f,--force-unique           force the transaction to be unique. this will consume extra bandwidth and remove any protections against accidently issuing the same transaction multiple times
   -s,--skip-sign              Specify if unlocked wallet keys should be used to sign transaction
   -j,--json                   print result as json
+  --json-file TEXT            save result in json format into a file
   -d,--dont-broadcast         don't broadcast transaction to the network (just print to stdout)
   --return-packed             used in conjunction with --dont-broadcast to get the packed transaction
   -r,--ref-block TEXT         set the reference block num or block id used for TAPOS (Transaction as Proof-of-Stake)
+  --use-old-rpc               use old RPC push_transaction, rather than new RPC send_transaction
   -p,--permission TEXT ...    An account and permission level to authorize, as in 'account@permission' (defaults to 'creator@active')
   --max-cpu-usage-ms UINT     set an upper limit on the milliseconds of cpu usage budget, for the execution of the transaction (defaults to 0 which means no limit)
   --max-net-usage UINT        set an upper limit on the net usage budget, in bytes, for the transaction (defaults to 0 which means no limit)
