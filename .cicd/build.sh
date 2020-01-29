@@ -1,6 +1,7 @@
 #!/bin/bash
 set -eo pipefail
 . ./.cicd/helpers/general.sh
+pwd
 mkdir -p $BUILD_DIR
 CMAKE_EXTRAS="-DCMAKE_BUILD_TYPE='Release' -DENABLE_MULTIVERSION_PROTOCOL_TEST=true"
 if [[ "$(uname)" == 'Darwin' ]]; then
@@ -60,4 +61,9 @@ else # Linux
     COMMANDS="$PRE_COMMANDS && $COMMANDS"
     echo "$ docker run $ARGS $(buildkite-intrinsics) $FULL_TAG bash -c \"$COMMANDS\""
     eval docker run $ARGS $(buildkite-intrinsics) $FULL_TAG bash -c \"$COMMANDS\"
+fi
+
+if [[ $BUILDKITE == true ]]; then
+    [[ $(uname) == 'Darwin' ]] && cd ..
+    tar -pczf build.tar.gz build && buildkite-agent artifact upload build.tar.gz
 fi
