@@ -36,13 +36,7 @@ for FILE in $(ls $CICD_DIR/platforms/$PLATFORM_TYPE); do
     # macos-10.14
     # ubuntu-16.04
     # skip Mojave if it's anything but the post-merge build
-    if [[ $FILE_NAME =~ 'macos-10.14' ]]; then # if it's Mojave
-      if [[ $BUILDKITE_SOURCE != 'webhook' ]]; then # and if it's not a webhook source, just skip it in all situations AND for all branches
-        continue
-      elif ([[ ! $BUILDKITE_BRANCH =~ ^release/[0-9]+\.[0-9]+\.x$ || ! $BUILDKITE_BRANCH =~ ^master$ || ! $BUILDKITE_BRANCH =~ ^develop$ ]]) && [[ ! $BUILDKITE_MESSAGE =~ 'Merge pull request' ]]; then # otherwise, if it's not one of the protected branches, AND if it's a webhook source, AND if it doesn't have message contents of "Merge pull request", skip it
-        continue
-      fi
-    fi
+    [[ $FILE_NAME =~ 'macos-10.14' ]] && ( [[ $BUILDKITE_SOURCE != 'webhook' ]] || [[ $BUILDKITE_PULL_REQUEST != false ]] || [[ ! $BUILDKITE_MESSAGE =~ 'Merge pull request' ]] ) && continue
     export PLATFORM_NAME="$(echo $FILE_NAME | cut -d- -f1 | sed 's/os/OS/g')"
     # macOS
     # ubuntu
