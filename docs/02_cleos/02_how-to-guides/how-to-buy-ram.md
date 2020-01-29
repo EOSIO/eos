@@ -18,6 +18,6 @@ Setup an account that require multiple signatures for signning a transaction
 
 Buys RAM in value of 0.1 SYS tokens for account `alice`:
 
-```shell
+```sh
 cleos system buyram alice alice "0.1 SYS" -p alice@active
 ```

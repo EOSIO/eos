@@ -13,6 +13,6 @@ Query infomation of a table
 
 ## Steps
 
-```shell
+```sh
 cleos get table ACCOUNT SCOPE TABLE
 ```

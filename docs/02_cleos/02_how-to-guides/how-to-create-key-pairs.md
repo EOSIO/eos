@@ -11,12 +11,12 @@
 
 To output the key pair to the console
 
-```shell
+```sh
 cleos create key --to-console
 ```
 
 To save the key pair to file
 
-```shell
+```sh
 cleos create key --file FILE_TO_SAVEKEY
 ```

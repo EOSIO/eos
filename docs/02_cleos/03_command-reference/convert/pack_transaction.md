@@ -14,7 +14,7 @@ From plain signed json to packed form
 ## Usage
 
 
-```shell
+```sh
 cleos convert pack_transaction '{
   "expiration": "2018-08-02T20:24:36",
   "ref_block_num": 14207,
@@ -40,8 +40,7 @@ cleos convert pack_transaction '{
 
 ## Output
 
-
-```shell
+```console
 {
   "signatures": [],
   "compression": "none",

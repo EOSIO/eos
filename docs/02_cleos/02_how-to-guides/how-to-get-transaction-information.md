@@ -12,7 +12,7 @@ Query infomation of a transaction
 
 ## Steps
 
-```shell
+```sh
 cleos get transaction id
 ```
 

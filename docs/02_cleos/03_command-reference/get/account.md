@@ -12,7 +12,7 @@ Retrieves an account from the blockchain
 
 ### Get formatted data for user **eosio**
 
-```shell
+```sh
 $ cleos get account eosio
 privileged: true
 permissions: 
@@ -35,7 +35,7 @@ producers:     <not voted>
 ```
 ### Get JSON data for user **eosio**
 
-```shell
+```sh
 $ cleos get account eosio --json
 {
   "account_name": "eosio",

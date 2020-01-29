@@ -11,7 +11,7 @@ From json action data to packed form
 - `-h,--help` - Print this help message and exit
 
 ## Usage
-```shell
+```sh
  cleos convert pack_action_data eosio unlinkauth '{"account":"test1", "code":"test2", "type":"eosioeosio"}'
 ```
 

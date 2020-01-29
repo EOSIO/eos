@@ -13,7 +13,7 @@
 
 ## Steps
 
-```shell
+```sh
 cleos create account creator name OwnerKey [ActiveKey]
 ```
 

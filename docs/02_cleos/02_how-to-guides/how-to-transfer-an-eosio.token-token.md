@@ -16,6 +16,6 @@ Transfer token created by eosio.token contract
 
 Assume you would like to transfer `0.0001 SYS` token to an account called `bob` from an account called `alice`, execute the following:
 
-```shell
+```sh
 cleos transfer alice bob "0.0001 SYS" "Hodl!" -p alice@active
 ```

@@ -11,7 +11,7 @@ Retrieves all accounts associated with a defined public key
 ## Example
 
 
-```shell
+```sh
 $ cleos get accounts EOS8mUftJXepGzdQ2TaCduNuSPAfXJHf22uex4u41ab1EVv9EAhWt
 {
   "account_names": [

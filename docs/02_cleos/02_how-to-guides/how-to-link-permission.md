@@ -15,6 +15,6 @@ Link a permission to an action of a contract
 
 Link a permission level `permlvl` to the action `transfer` of contract `hodlcontract`
 
-```shell
+```sh
 cleos set action permission alice hodlcontract transfer permlvl
 ```

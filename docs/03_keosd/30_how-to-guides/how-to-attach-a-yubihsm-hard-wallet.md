@@ -35,13 +35,13 @@ Attach a YubiHSM as a hard wallet
 
    If this option is used, set `keosd` startup option as the below:
 
-   ```shell
+   ```sh
    --yubihsm-url=ysb://
    ```
 
 ### Start `keosd` with AuthKey:
 
-   ```shell
+   ```sh
    --yubihsm-authkey Your_AuthKey_Object_Number
    ```
 
