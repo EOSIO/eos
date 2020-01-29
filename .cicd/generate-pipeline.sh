@@ -124,7 +124,7 @@ EOF
       - "./.cicd/build.sh"
       - "tar -pczf build.tar.gz build && buildkite-agent artifact upload build.tar.gz"
     plugins:
-      - EOSIO/anka#v0.5.8-beta:
+      - EOSIO/anka#v0.5.8:
           no-volume: true
           workdir: "/Users/anka/build"
           workdir-create: true
@@ -226,7 +226,7 @@ EOF
       - "buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' && tar -xzf build.tar.gz"
       - "./.cicd/test.sh scripts/parallel-test.sh"
     plugins:
-      - EOSIO/anka#v0.5.8-beta:
+      - EOSIO/anka#v0.5.8:
           no-volume: true
           workdir: "/Users/anka/build"
           workdir-create: true
@@ -295,7 +295,7 @@ EOF
       - "buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' && tar -xzf build.tar.gz"
       - "./.cicd/test.sh scripts/wasm-spec-test.sh"
     plugins:
-      - EOSIO/anka#v0.5.8-beta:
+      - EOSIO/anka#v0.5.8:
           no-volume: true
           workdir: "/Users/anka/build"
           workdir-create: true
@@ -367,7 +367,7 @@ EOF
       - "buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' && tar -xzf build.tar.gz"
       - "./.cicd/test.sh scripts/serial-test.sh $TEST_NAME"
     plugins:
-      - EOSIO/anka#v0.5.8-beta:
+      - EOSIO/anka#v0.5.8:
           no-volume: true
           workdir: "/Users/anka/build"
           workdir-create: true
@@ -440,7 +440,7 @@ EOF
       - "buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' ${BUILD_SOURCE} && tar -xzf build.tar.gz"
       - "./.cicd/test.sh scripts/long-running-test.sh $TEST_NAME"
     plugins:
-      - EOSIO/anka#v0.5.8-beta:
+      - EOSIO/anka#v0.5.8:
           no-volume: true
           workdir: "/Users/anka/build"
           workdir-create: true
@@ -644,7 +644,7 @@ cat <<EOF
       - "buildkite-agent artifact download build.tar.gz . --step ':darwin: macOS 10.14 - Build' && tar -xzf build.tar.gz"
       - "./.cicd/package.sh"
     plugins:
-      - EOSIO/anka#v0.5.8-beta:
+      - EOSIO/anka#v0.5.8:
           no-volume: true
           workdir: "/Users/anka/build"
           workdir-create: true
