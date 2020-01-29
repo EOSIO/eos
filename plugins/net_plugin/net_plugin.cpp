@@ -1105,6 +1105,7 @@ namespace eosio {
                if( !c->socket_is_open() || socket != c->socket ) {
                   fc_ilog( logger, "async write socket ${r} before callback: ${p}",
                            ("r", c->socket_is_open() ? "changed" : "closed")("p", c->peer_name()) );
+                  c->close();
                   return;
                }
 
