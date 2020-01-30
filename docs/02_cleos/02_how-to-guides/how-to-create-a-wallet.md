@@ -18,7 +18,7 @@ Create a wallet and save the password to a file:
 cleos wallet create --file password.pwd
 ```
 
-You should see something like below. Note here the wallet is named as `default`
+This should produce similar output as below. Note the wallet is named `default` if no name is provided.
 
 ```console
 Creating wallet: default
@@ -33,7 +33,7 @@ Alternatively, you can name a wallet with `-n` option:
 cleos wallet create -n named_wallet -f passwd
 ```
 
-You will see something like below:
+You should see something like the output below:
 
 ```console
 Creating wallet: named_wallet
