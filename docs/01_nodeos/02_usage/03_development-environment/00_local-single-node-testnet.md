@@ -58,7 +58,7 @@ cleos get info
 
 This should produce output that looks similar to this:
 
-```console
+```json
 {
   "server_version": "0f9df63e",
   "chain_id": "cf057bbfb72640471fd910bcb67639c22df9f92470936cddc1ade0e2f2e7dc4f",

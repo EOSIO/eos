@@ -27,7 +27,7 @@ cleos convert unpack_transaction '{
 ## Output
 
 
-```console
+```json
 {
   "expiration": "2018-08-02T20:24:36",
   "ref_block_num": 14207,

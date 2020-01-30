@@ -182,7 +182,7 @@ cleos get info
 
 This should produce output that looks similar to this:
 
-```console
+```json
 {
   "server_version": "223565e8",
   "head_block_num": 11412,
@@ -201,7 +201,7 @@ cleos --url http://127.0.0.1:8889 get info
 
 This should produce output that looks similar to this:
 
-```console
+```json
 {
   "server_version": "223565e8",
   "head_block_num": 11438,
