@@ -6,11 +6,12 @@ The `net_plugin` provides an authenticated p2p protocol to persistently synchron
 
 ## Usage
 
-```sh
+```console
 # config.ini
 plugin = eosio::net_plugin
 [options]
-
+```
+```sh
 # command-line
 nodeos ... --plugin eosio::net_plugin [options]
 ```

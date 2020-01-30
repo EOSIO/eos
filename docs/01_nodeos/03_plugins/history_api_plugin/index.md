@@ -26,10 +26,11 @@ The four actions listed above are used by the following Cleos commands (matching
 
 ## Usage
 
-```sh
+```console
 # config.ini
 plugin = eosio::history_api_plugin
-
+```
+```sh
 # command-line
 nodeos ... --plugin eosio::history_api_plugin
 ```
@@ -46,7 +47,7 @@ None
 
 ### Load Dependency Examples
 
-```sh
+```console
 # config.ini
 plugin = eosio::history_plugin
 [options]
@@ -54,7 +55,8 @@ plugin = eosio::chain_plugin
 [options]
 plugin = eosio::http_plugin
 [options]
-
+```
+```sh
 # command-line
 nodeos ... --plugin eosio::history_plugin [options]  \
            --plugin eosio::chain_plugin [operations] [options]  \

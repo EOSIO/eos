@@ -6,11 +6,12 @@ The `login_plugin` supports the concept of applications authenticating with the 
 
 ## Usage
 
-```sh
+```console
 # config.ini
 plugin = eosio::login_plugin
 [options]
-
+```
+```sh
 # command-line
 nodeos ... --plugin eosio::login_plugin [options]
 ```
@@ -34,13 +35,14 @@ Config Options for eosio::login_plugin:
 
 ### Load Dependency Examples
 
-```sh
+```console
 # config.ini
 plugin = eosio::chain_plugin
 [options]
 plugin = eosio::http_plugin 
 [options]
-
+```
+```sh
 # command-line
 nodeos ... --plugin eosio::chain_plugin [options]  \
            --plugin eosio::http_plugin [options]

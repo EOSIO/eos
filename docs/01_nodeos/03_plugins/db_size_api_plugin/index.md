@@ -9,11 +9,13 @@ The `db_size_api_plugin` retrieves analytics about the blockchain.
 * size
 * indices
 
+<!--
 ## Usage
 
 ```console
 # Not available
 ```
+-->
 
 ## Options
 
@@ -26,13 +28,14 @@ None
 
 ### Load Dependency Examples
 
-```sh
+```console
 # config.ini
 plugin = eosio::chain_plugin
 [options]
 plugin = eosio::http_plugin
 [options]
-
+```
+```sh
 # command-line
 nodeos ... --plugin eosio::chain_plugin [operations] [options]  \
            --plugin eosio::http_plugin [options]
