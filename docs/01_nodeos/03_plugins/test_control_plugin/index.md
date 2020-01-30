@@ -8,10 +8,11 @@ This is intended for testing, to determine exactly when a nodeos instance will s
 
 ## Usage
 
-```sh
+```console
 # config.ini
 plugin = eosio::test_control_plugin
-
+```
+```sh
 # command-line
 nodeos ... --plugin eosio::test_control_plugin
 ```
@@ -26,11 +27,12 @@ None
 
 ### Load Dependency Examples
 
-```sh
+```console
 # config.ini
 plugin = eosio::chain_plugin
 [options]
-
+```
+```sh
 # command-line
 nodeos ... --plugin eosio::chain_plugin [operations] [options]
 ```

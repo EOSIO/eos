@@ -6,11 +6,12 @@ The `state_history_plugin` is useful for capturing historical data about the blo
 
 ## Usage
 
-```sh
+```console
 # config.ini
 plugin = eosio::state_history_plugin
 [options]
-
+```
+```sh
 # command-line
 nodeos ... --plugin eosio::state_history_plugin [operations] [options]
 ```
@@ -59,10 +60,11 @@ Config Options for eosio::state_history_plugin:
 
 ### Load Dependency Examples
 
-```sh
+```console
 # config.ini
 plugin = eosio::chain_plugin --disable-replay-opts
-
+```
+```sh
 # command-line
 nodeos ... --plugin eosio::chain_plugin --disable-replay-opts
 ```

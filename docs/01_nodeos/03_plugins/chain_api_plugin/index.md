@@ -6,10 +6,11 @@ The `chain_api_plugin` exposes functionality from the [`chain_plugin`](../chain_
 
 ## Usage
 
-```sh
+```console
 # config.ini
 plugin = eosio::chain_api_plugin
-
+```
+```sh
 # command-line
 nodeos ... --plugin eosio::chain_api_plugin
 ```
@@ -25,13 +26,14 @@ None
 
 ### Load Dependency Examples
 
-```sh
+```console
 # config.ini
 plugin = eosio::chain_plugin
 [options]
 plugin = eosio::http_plugin
 [options]
-
+```
+```sh
 # command-line
 nodeos ... --plugin eosio::chain_plugin [operations] [options]  \
            --plugin eosio::http_plugin [options]

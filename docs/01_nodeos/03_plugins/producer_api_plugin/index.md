@@ -6,10 +6,11 @@ The `producer_api_plugin` exposes a number of endpoints for the [`producer_plugi
 
 ## Usage
 
-```sh
+```console
 # config.ini
 plugin = eosio::producer_api_plugin
-
+```
+```sh
 # nodeos startup params
 nodeos ... --plugin eosio::producer_api_plugin
 ```
@@ -26,7 +27,7 @@ None
 
 ### Load Dependency Examples
 
-```sh
+```console
 # config.ini
 plugin = eosio::producer_plugin
 [options]
@@ -34,7 +35,8 @@ plugin = eosio::chain_plugin
 [options]
 plugin = eosio::http_plugin
 [options]
-
+```
+```sh
 # command-line
 nodeos ... --plugin eosio::producer_plugin [options]  \
            --plugin eosio::chain_plugin [operations] [options]  \

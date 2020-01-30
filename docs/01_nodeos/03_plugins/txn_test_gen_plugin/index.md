@@ -9,11 +9,12 @@ For more information, check the [txn_test_gen_plugin/README.md](https://github.c
 
 ## Usage
 
-```sh
+```console
 # config.ini
 plugin = eosio::txn_test_gen_plugin
 [options]
-
+```
+```sh
 # command-line
 nodeos ... --plugin eosio::txn_test_gen_plugin [options]
 ```
