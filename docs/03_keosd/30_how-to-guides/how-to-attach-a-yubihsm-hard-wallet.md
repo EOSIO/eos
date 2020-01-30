@@ -48,9 +48,9 @@ Attach a YubiHSM as a hard wallet
    if a YubiHSM connector is used, check the YubiHSM connector is up and running by visiting YubiHSM URL:
       http://YubiHSM_HOST:YubiHSM_PORT/connector/status ((Default HOST and Port: http://127.0.0.1:12345)
 
-   You should see something like below:
+   You should see something like this:
 
-   ```json
+   ```console
    status=OK
    serial=*
    version=2.0.0
