@@ -1402,7 +1402,6 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
    const fc::time_point block_time = calculate_pending_block_time();
 
    _pending_block_mode = pending_block_mode::producing;
-   _cpu_duty_cycle_on = true;
 
    // Not our turn
    const auto& scheduled_producer = hbs->get_scheduled_producer(block_time);
@@ -1463,13 +1462,14 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
          fc_dlog(_log, "Next block #${n} start: ${bt} block time: ${dt}",
                  ("n", hbs->block_num + 1)("bt", start_block_time)("dt", *next_producer_block_time));
          if( now < start_block_time && start_block_time < *next_producer_block_time ) {
-            fc_dlog(_log, "Duty cycle off for ${n}", ("n", hbs->block_num + 1) );
+            fc_dlog(_log, "Not producing block, duty cycle off for ${n} ${bt}", ("n", hbs->block_num + 1)("bt", *next_producer_block_time) );
             _cpu_duty_cycle_on = false;
             schedule_delayed_production_loop(weak_from_this(), start_block_time);
             return start_block_result::waiting_for_production;
          }
       }
    }
+   _cpu_duty_cycle_on = true;
 
    fc_dlog(_log, "Starting block #${n} ${bt} at ${time}", ("n", hbs->block_num + 1)("bt", block_time)("time", now));
 
