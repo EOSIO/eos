@@ -10,7 +10,7 @@ This command does not accept any parameters.
 
 
 ```sh
-$ cleos get info
+cleos get info
 ```
 
 This command simply returns the current blockchain state information. 

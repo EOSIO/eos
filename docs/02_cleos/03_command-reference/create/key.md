@@ -17,7 +17,7 @@ Options:
 ## Command
 
 ```sh
-$ cleos create key -f passwd
+cleos create key -f passwd
 ```
 
 ## Output

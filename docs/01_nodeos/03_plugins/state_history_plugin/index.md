@@ -12,7 +12,7 @@ plugin = eosio::state_history_plugin
 [options]
 
 # command-line
-$ nodeos ... --plugin eosio::state_history_plugin [operations] [options]
+nodeos ... --plugin eosio::state_history_plugin [operations] [options]
 ```
 
 ## Operations
@@ -64,7 +64,7 @@ Config Options for eosio::state_history_plugin:
 plugin = eosio::chain_plugin --disable-replay-opts
 
 # command-line
-$ nodeos ... --plugin eosio::chain_plugin --disable-replay-opts
+nodeos ... --plugin eosio::chain_plugin --disable-replay-opts
 ```
 
 ## How-To Guides

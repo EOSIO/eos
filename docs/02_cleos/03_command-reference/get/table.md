@@ -24,7 +24,7 @@ Retrieves the contents of a database table
 Get the data from the accounts table for the eosio.token contract, for user eosio,
 
 ```sh
-$ cleos get table eosio.token eosio accounts
+cleos get table eosio.token eosio accounts
 ```
 ```json
 {

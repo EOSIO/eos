@@ -32,5 +32,5 @@ This command has no options
 
 
 ```sh
-$ cleos push transaction {}
+cleos push transaction {}
 ```

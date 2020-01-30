@@ -38,7 +38,7 @@ Creates or updates the contract on an account.
 Here we deploy the standard currency contract. 
 
 ```sh
-$ cleos set contract currency ../../../contracts/currency/currency.wast ../../../contracts/currency/currency.abi
+cleos set contract currency ../../../contracts/currency/currency.wast ../../../contracts/currency/currency.abi
 ```
 This will output something similar to...
 

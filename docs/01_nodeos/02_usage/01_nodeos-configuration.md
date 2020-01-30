@@ -2,7 +2,7 @@
 content_title: Nodeos Configuration
 ---
 
-The plugin-specific options can be configured using either CLI options or a configuration file, `config.ini`. Nodeos-specific options can only be configured from the command line. All CLI options and `config.ini` options can be found by running `$ nodeos --help` as shown above.
+The plugin-specific options can be configured using either CLI options or a configuration file, `config.ini`. Nodeos-specific options can only be configured from the command line. All CLI options and `config.ini` options can be found by running `nodeos --help` as shown above.
 
 Each `config.ini` option has a corresponding CLI option. However, not all CLI options are available in `config.ini`. For instance, most plugin-specific options that perform actions are not available in `config.ini`, such as `--delete-state-history` from `state_history_plugin`.
 
@@ -21,7 +21,7 @@ A custom `config.ini` file can be set by passing the `nodeos` option `--config p
 The example below shows a typical usage of `nodeos` when starting a block producing node:
 
 ```sh
-$ nodeos --replay-blockchain \
+nodeos --replay-blockchain \
   -e -p eosio \
   --plugin eosio::producer_plugin  \
   --plugin eosio::chain_api_plugin \
@@ -30,7 +30,7 @@ $ nodeos --replay-blockchain \
 ```
 
 ```sh
-$ nodeos \
+nodeos \
   -e -p eosio \
   --data-dir /users/mydir/eosio/data     \
   --config-dir /users/mydir/eosio/config \

@@ -4,7 +4,7 @@ close an existing connection
 **Command**
 
 ```sh
-$ cleos net disconnect
+cleos net disconnect
 ```
 
 **Output**

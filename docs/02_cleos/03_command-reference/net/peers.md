@@ -4,7 +4,7 @@ status of all existing peers
 **Command**
 
 ```sh
-$ cleos net status
+cleos net status
 ```
 **Output**
 

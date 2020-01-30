@@ -11,7 +11,7 @@ The `chain_api_plugin` exposes functionality from the [`chain_plugin`](../chain_
 plugin = eosio::chain_api_plugin
 
 # command-line
-$ nodeos ... --plugin eosio::chain_api_plugin
+nodeos ... --plugin eosio::chain_api_plugin
 ```
 
 ## Options
@@ -33,6 +33,6 @@ plugin = eosio::http_plugin
 [options]
 
 # command-line
-$ nodeos ... --plugin eosio::chain_plugin [operations] [options]  \
-             --plugin eosio::http_plugin [options]
+nodeos ... --plugin eosio::chain_plugin [operations] [options]  \
+           --plugin eosio::http_plugin [options]
 ```

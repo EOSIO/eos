@@ -13,7 +13,7 @@ Creates a key pair within the wallet so that you don't need to manually import i
 ## Usage
 
 ```sh
-$ cleos wallet create_key K1
+cleos wallet create_key K1
 ```
 
 ## Outputs

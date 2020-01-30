@@ -11,7 +11,7 @@ The `producer_api_plugin` exposes a number of endpoints for the [`producer_plugi
 plugin = eosio::producer_api_plugin
 
 # nodeos startup params
-$ nodeos ... --plugin eosio::producer_api_plugin
+nodeos ... --plugin eosio::producer_api_plugin
 ```
 
 ## Options
@@ -36,7 +36,7 @@ plugin = eosio::http_plugin
 [options]
 
 # command-line
-$ nodeos ... --plugin eosio::producer_plugin [options]  \
-             --plugin eosio::chain_plugin [operations] [options]  \
-             --plugin eosio::http_plugin [options]
+nodeos ... --plugin eosio::producer_plugin [options]  \
+           --plugin eosio::chain_plugin [operations] [options]  \
+           --plugin eosio::http_plugin [options]
 ```

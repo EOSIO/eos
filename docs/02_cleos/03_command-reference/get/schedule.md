@@ -12,7 +12,7 @@ Retrieve the producer schedule
 ## Example
 
 ```sh
-$ cleos get schedule
+cleos get schedule
 ```
 
 This command simply returns the current producer schedule. 

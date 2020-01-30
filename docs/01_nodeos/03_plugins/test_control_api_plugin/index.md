@@ -11,7 +11,7 @@ The `test_control_api_plugin` allows to send a control message to the [test_cont
 plugin = eosio::test_control_api_plugin
 
 # command-line
-$ nodeos ... --plugin eosio::test_control_api_plugin
+nodeos ... --plugin eosio::test_control_api_plugin
 ```
 
 ## Options
@@ -40,6 +40,6 @@ plugin = eosio::http_plugin
 [options]
 
 # command-line
-$ nodeos ... --plugin eosio::chain_plugin [operations] [options]  \
-             --plugin eosio::http_plugin [options]
+nodeos ... --plugin eosio::chain_plugin [operations] [options]  \
+           --plugin eosio::http_plugin [options]
 ```

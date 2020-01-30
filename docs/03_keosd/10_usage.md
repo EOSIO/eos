@@ -10,7 +10,7 @@ content_title: Keosd Usage
 `keosd` can be launched manually from the terminal by running:
 
 ```sh
-$ keosd
+keosd
 ```
 
 By default, `keosd` creates the folder `~/eosio-wallet` and populates it with a basic `config.ini` file.  The location of the config file can be specified on the command line using the `--config-dir` argument.  The configuration file contains the HTTP server endpoint for incoming HTTP connections and other parameters for cross-origin resource sharing.
@@ -31,7 +31,7 @@ The most effective way to stop `keosd` is to find the keosd process and send a S
 For a list of all commands known to `keosd`, simply run it with no arguments:
 
 ```sh
-$ keosd --help
+keosd --help
 ```
 
 ```console

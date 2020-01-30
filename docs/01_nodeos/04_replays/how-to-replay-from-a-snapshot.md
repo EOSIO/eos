@@ -12,7 +12,7 @@ data/             | *                          | remove
 You can use `snapshots-dir = "snapshots" ` in the configuration file or using the `--snapshots-dir` command line option, to specify the where to find the the snapshot to replay, use `--snapshot` to specify the name of the snapshot to replay.
 
 ```sh
-$ nodeos --snapshot yoursnapshot.name \
+nodeos --snapshot yoursnapshot.name \
   -e -p eosio \
   --plugin eosio::producer_plugin  \
   --plugin eosio::chain_api_plugin \

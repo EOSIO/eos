@@ -3,7 +3,7 @@ Sign a transaction
 
 ## Usage
 ```sh
-$ cleos sign [OPTIONS] transaction
+cleos sign [OPTIONS] transaction
 ```
 
 ## Positional Parameters

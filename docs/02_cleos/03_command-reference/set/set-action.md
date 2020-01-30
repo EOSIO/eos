@@ -4,7 +4,7 @@ Sets or updates an action's state on the blockchain.
 **Command**
 
 ```sh
-$ cleos set action
+cleos set action
 ```
 **Output**
 
@@ -20,7 +20,7 @@ Subcommands:
 **Command**
 
 ```sh
-$ cleos set action permission
+cleos set action permission
 ```
 
 ## Positionals

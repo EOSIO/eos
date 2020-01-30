@@ -6,7 +6,7 @@ Retrieve accounts which are servants of a given account
 **Command**
 
 ```sh
-$ cleos get servants
+cleos get servants
 ```
 **Output**
 
@@ -20,7 +20,7 @@ Positionals:
 ## Command
 
 ```sh
-$ cleos get servants inita
+cleos get servants inita
 ```
 
 ## Output

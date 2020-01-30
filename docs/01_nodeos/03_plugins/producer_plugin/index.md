@@ -14,7 +14,7 @@ The `producer_plugin` loads functionality required for a node to produce blocks.
 plugin = eosio::producer_plugin [options]
 
 # nodeos startup params
-$ nodeos ... -- plugin eosio::producer_plugin [options]
+nodeos ... -- plugin eosio::producer_plugin [options]
 ```
 
 ## Options
@@ -112,5 +112,5 @@ Config Options for eosio::producer_plugin:
 plugin = eosio::chain_plugin [operations] [options]
 
 # command-line
-$ nodeos ... --plugin eosio::chain_plugin [operations] [options]
+nodeos ... --plugin eosio::chain_plugin [operations] [options]
 ```

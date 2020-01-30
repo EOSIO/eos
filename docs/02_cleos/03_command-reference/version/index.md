@@ -5,14 +5,14 @@ Retrieve version information
 ## Command
 
 ```sh
-$ cleos version
+cleos version
 ```
 
 ## Subcommands
 [client](client) - Retrieve version information of the client
 
 ```sh
-$ cleos version client
+cleos version client
 ```
 
 ## Output
