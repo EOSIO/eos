@@ -40,7 +40,7 @@ cleos convert pack_transaction '{
 
 ## Output
 
-```console
+```json
 {
   "signatures": [],
   "compression": "none",
