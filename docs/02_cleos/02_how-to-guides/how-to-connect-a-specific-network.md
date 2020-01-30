@@ -2,7 +2,7 @@
 
 Connect to a specific `nodeos` or `keosd` host
 
-`cleos` and `keosd` can connecte to a specific node by using the `-H, --host` and `-p, --port` optional arguments.
+`cleos` and `keosd` can connect to a specific node by using the `-H, --host` and `-p, --port` optional arguments.
 
 [[info]]
 | If no optional arguments are used (i.e. -H and -p), `cleos` automatically tries to connect to a locally running `nodeos` and `keosd` node on the default port
