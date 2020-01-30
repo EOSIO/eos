@@ -334,6 +334,7 @@ paths:
         content:
           application/json:
             schema:
+              title: "Schedule"
               type: object
               required:
                 - limit
@@ -355,9 +356,33 @@ paths:
           content:
             application/json:
               schema:
-                allOf:
-                  - $ref: "https://eosio.github.io/schemata/v2.0/oas/ProducerSchedule.yaml"
-                description: NEEDS DESCRIPTION
+                title: "Schedule"
+                type: object
+                additionalProperties: false
+                minProperties:  3
+                required:
+                  - active
+                  - pending
+                  - proposed
+                properties:
+                  active:
+                    type:
+                      - "null"
+                      - array
+                    items:
+                      $ref: "ProducerSchedule.yaml"
+                  pending:
+                    type:
+                      - "null"
+                      - array
+                    items:
+                      $ref: "ProducerSchedule.yaml"
+                  proposed:
+                    type:
+                      - "null"
+                      - array
+                    items:
+                      $ref: "ProducerSchedule.yaml"
 
 
   /get_raw_code_and_abi:
