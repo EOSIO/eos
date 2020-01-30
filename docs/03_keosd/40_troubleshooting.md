@@ -9,5 +9,5 @@ Since `cleos` may auto-launch an instance of `keosd`, it is possible to end up w
 To fix this issue, you can terminate all running `keosd` instances and restart `keosd`. The following command will find and terminate all instances of `keosd` running on the system:
 
 ```sh
-$ pkill keosd
+pkill keosd
 ```

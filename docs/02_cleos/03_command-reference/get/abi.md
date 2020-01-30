@@ -11,7 +11,7 @@ Retrieves the ABI for an account
 Retrieve and save abi for eosio.token contract
 
 ```sh
-$ cleos get abi eosio.token -f eosio.token.abi
+cleos get abi eosio.token -f eosio.token.abi
 ```
 ```console
 saving abi to eosio.token.abi

@@ -12,7 +12,7 @@ plugin = eosio::net_plugin
 [options]
 
 # command-line
-$ nodeos ... --plugin eosio::net_plugin [options]
+nodeos ... --plugin eosio::net_plugin [options]
 ```
 
 ## Options

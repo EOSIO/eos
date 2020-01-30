@@ -13,9 +13,9 @@ https-client-root-cert = "path/to/my/certificate.pem"
 https-client-validate-peers = 1
 
 # command-line
-$ nodeos ... --plugin eosio::http_client_plugin  \
-             --https-client-root-cert "path/to/my/certificate.pem"  \
-             --https-client-validate-peers 1
+nodeos ... --plugin eosio::http_client_plugin  \
+           --https-client-root-cert "path/to/my/certificate.pem"  \
+           --https-client-validate-peers 1
 ```
 
 ## Options

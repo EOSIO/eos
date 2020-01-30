@@ -15,7 +15,7 @@ plugin = eosio::txn_test_gen_plugin
 [options]
 
 # command-line
-$ nodeos ... --plugin eosio::txn_test_gen_plugin [options]
+nodeos ... --plugin eosio::txn_test_gen_plugin [options]
 ```
 
 ## Options

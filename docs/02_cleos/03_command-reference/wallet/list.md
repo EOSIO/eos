@@ -12,7 +12,7 @@ None
 
 
 ```sh
-$ cleos wallet list
+cleos wallet list
 ```
 
 ## Outputs
@@ -24,8 +24,11 @@ Wallets:
   "default *",
   "second-wallet *"
 ]
+```
 
-or when there are no wallets
+or when there are no wallets:
+
+```console
 Wallets:
 [
 ]

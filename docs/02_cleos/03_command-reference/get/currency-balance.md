@@ -16,6 +16,8 @@ There are no options for this subcommand
 Get balance of eosio from eosio.token contract for SYS symbol. 
 
 ```sh
-$ cleos get currency balance eosio.token eosio SYS
+cleos get currency balance eosio.token eosio SYS
+```
+```console
 999999920.0000 SYS
 ```

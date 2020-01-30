@@ -12,8 +12,8 @@ plugin = eosio::http_plugin
 [options]
 
 # command-line
-$ nodeos ... --plugin eosio::http_plugin [options]
-$ keosd ... --plugin eosio::http_plugin [options]
+nodeos ... --plugin eosio::http_plugin [options]
+keosd ... --plugin eosio::http_plugin [options]
 ```
 
 ## Options

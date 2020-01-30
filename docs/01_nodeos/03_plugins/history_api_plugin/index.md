@@ -31,7 +31,7 @@ The four actions listed above are used by the following Cleos commands (matching
 plugin = eosio::history_api_plugin
 
 # command-line
-$ nodeos ... --plugin eosio::history_api_plugin
+nodeos ... --plugin eosio::history_api_plugin
 ```
 
 ## Options
@@ -56,7 +56,7 @@ plugin = eosio::http_plugin
 [options]
 
 # command-line
-$ nodeos ... --plugin eosio::history_plugin [options]  \
-             --plugin eosio::chain_plugin [operations] [options]  \
-             --plugin eosio::http_plugin [options]
+nodeos ... --plugin eosio::history_plugin [options]  \
+           --plugin eosio::chain_plugin [operations] [options]  \
+           --plugin eosio::http_plugin [options]
 ```

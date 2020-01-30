@@ -4,7 +4,7 @@ status of existing connection
 **Command**
 
 ```sh
-$ cleos net status
+cleos net status
 ```
 **Output**
 

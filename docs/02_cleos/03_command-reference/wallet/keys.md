@@ -10,7 +10,7 @@ None.
 
 
 ```sh
-$ cleos wallet keys
+cleos wallet keys
 ```
 
 ## Outputs

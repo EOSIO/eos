@@ -28,7 +28,7 @@ Transfer tokens from account to account
 Transfer 1000 SYS from **inita** to **tester**
 
 ```sh
-$ cleos transfer inita tester 1000
+cleos transfer inita tester 1000
 ```
 The response will look something like this
 

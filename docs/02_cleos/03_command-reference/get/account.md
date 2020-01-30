@@ -13,7 +13,9 @@ Retrieves an account from the blockchain
 ### Get formatted data for user **eosio**
 
 ```sh
-$ cleos get account eosio
+cleos get account eosio
+```
+```console
 privileged: true
 permissions: 
      owner     1:    1 EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV
@@ -36,7 +38,9 @@ producers:     <not voted>
 ### Get JSON data for user **eosio**
 
 ```sh
-$ cleos get account eosio --json
+cleos get account eosio --json
+```
+```json
 {
   "account_name": "eosio",
   "privileged": true,
@@ -99,5 +103,4 @@ $ cleos get account eosio --json
     "unstaking": "0.0000 SYS"
   }
 }
-
 ```

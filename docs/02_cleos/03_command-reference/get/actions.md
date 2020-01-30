@@ -17,7 +17,7 @@ Retrieve all actions with specific account name referenced in authorization or r
 Retrieve and save abi for eosio.token contract
 
 ```sh
-$ cleos get actions eosio.token
+cleos get actions eosio.token
 ```
 ```console
 #  seq  when                              contract::action => receiver      trx id...   args

@@ -13,7 +13,7 @@ This is intended for testing, to determine exactly when a nodeos instance will s
 plugin = eosio::test_control_plugin
 
 # command-line
-$ nodeos ... --plugin eosio::test_control_plugin
+nodeos ... --plugin eosio::test_control_plugin
 ```
 
 ## Options
@@ -32,5 +32,5 @@ plugin = eosio::chain_plugin
 [options]
 
 # command-line
-$ nodeos ... --plugin eosio::chain_plugin [operations] [options]
+nodeos ... --plugin eosio::chain_plugin [operations] [options]
 ```

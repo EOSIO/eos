@@ -15,7 +15,7 @@ plugin = eosio::history_plugin
 [options]
 
 # command-line
-$ nodeos ... --plugin eosio::history_plugin [options]
+nodeos ... --plugin eosio::history_plugin [options]
 ```
 
 ## Options

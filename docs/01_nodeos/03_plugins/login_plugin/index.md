@@ -12,7 +12,7 @@ plugin = eosio::login_plugin
 [options]
 
 # command-line
-$ nodeos ... --plugin eosio::login_plugin [options]
+nodeos ... --plugin eosio::login_plugin [options]
 ```
 
 ## Options
@@ -42,6 +42,6 @@ plugin = eosio::http_plugin
 [options]
 
 # command-line
-$ nodeos ... --plugin eosio::chain_plugin [options]  \
-             --plugin eosio::http_plugin [options]
+nodeos ... --plugin eosio::chain_plugin [options]  \
+           --plugin eosio::http_plugin [options]
 ```

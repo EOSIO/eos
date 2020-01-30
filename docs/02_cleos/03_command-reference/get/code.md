@@ -11,7 +11,7 @@ Retrieves the code and ABI for an account
 Simply output the hash of eosio.token contract 
 
 ```sh
-$ cleos get code eosio.token
+cleos get code eosio.token
 ```
 ```console
 code hash: f675e7aeffbf562c033acfaf33eadff255dacb90d002db51c7ad7cbf057eb791
@@ -20,7 +20,7 @@ code hash: f675e7aeffbf562c033acfaf33eadff255dacb90d002db51c7ad7cbf057eb791
 Retrieve and save abi for eosio.token contract
 
 ```sh
-$ cleos get code eosio.token -a eosio.token.abi
+cleos get code eosio.token -a eosio.token.abi
 ```
 ```console
 code hash: f675e7aeffbf562c033acfaf33eadff255dacb90d002db51c7ad7cbf057eb791
@@ -30,7 +30,7 @@ saving abi to eosio.token.abi
 Retrieve and save wast code for eosio.token contract
 
 ```sh
-$ cleos get code eosio.token -c eosio.token.wast
+cleos get code eosio.token -c eosio.token.wast
 ```
 ```console
 code hash: f675e7aeffbf562c033acfaf33eadff255dacb90d002db51c7ad7cbf057eb791

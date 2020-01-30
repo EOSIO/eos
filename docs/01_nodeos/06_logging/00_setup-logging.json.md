@@ -6,10 +6,11 @@ The `logging.json` file is usually located in the specified `--config-dir`, the 
  
 ```sh
 nodeos --help
-  ...
-  Application Command Line Options:
-  ...
-  --config-dir arg                      Directory containing configuration files such as config.ini
-  -l [ --logconf ] arg (=logging.json)  Logging configuration file name/path for library users
-
+```
+```console
+...
+Application Command Line Options:
+...
+--config-dir arg                      Directory containing configuration files such as config.ini
+-l [ --logconf ] arg (=logging.json)  Logging configuration file name/path for library users
 ```
