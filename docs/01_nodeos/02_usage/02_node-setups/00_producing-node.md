@@ -65,7 +65,7 @@ signature-provider = PUBLIC_SIGNING_KEY=KEY:PRIVATE_SIGNING_KEY
 ```
 
 #### Using Keosd:
-You can also use Keosd instead of hard-defining keys. 
+You can also use `keosd` instead of hard-defining keys. 
 
 ```console
 # config.ini:
