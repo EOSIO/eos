@@ -82,6 +82,7 @@ const static uint32_t   default_max_inline_action_size         = 4 * 1024;   // 
 const static uint16_t   default_max_inline_action_depth        = 4;
 const static uint16_t   default_max_auth_depth                 = 6;
 const static uint32_t   default_sig_cpu_bill_pct               = 50 * percent_1; // billable percentage of signature recovery
+const static uint32_t   default_block_cpu_effort_pct           = 80 * percent_1; // percentage of block time used for producing block
 const static uint16_t   default_controller_thread_pool_size    = 2;
 
 const static uint32_t   min_net_usage_delta_between_base_and_max_for_trx  = 10*1024;
