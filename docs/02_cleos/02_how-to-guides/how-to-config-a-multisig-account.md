@@ -8,7 +8,7 @@ Setup an account that require multiple signatures for signning a transaction
 
 * You have enough resoruces allocated to execute the transaction
 
-* Install the currently supported version of cleos
+* Install the currently supported version of `cleos`
 
 * Understand the following:
   * What is an account

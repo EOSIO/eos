@@ -9,7 +9,7 @@ Connect to a specific `nodeos` or `keosd` host to send COMMAND
 
 ## Before you begin
 
-* Install the currently supported version of cleos
+* Install the currently supported version of `cleos`
 
 ## Steps
 ### Connecting to Nodeos

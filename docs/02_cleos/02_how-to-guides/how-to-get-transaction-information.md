@@ -4,7 +4,7 @@ Query infomation of a transaction
 
 ## Before you begin
 
-* Install the currently supported version of cleos
+* Install the currently supported version of `cleos`
 
 * Understand the following:
 
