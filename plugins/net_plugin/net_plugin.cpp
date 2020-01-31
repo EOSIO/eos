@@ -1042,7 +1042,7 @@ namespace eosio {
    }
 
    void connection::send_handshake( bool force ) {
-      strand.dispatch( [force, c = shared_from_this()]() {
+      strand.post( [force, c = shared_from_this()]() {
          std::unique_lock<std::mutex> g_conn( c->conn_mtx );
          if( c->populate_handshake( c->last_handshake_sent, force ) ) {
             static_assert( std::is_same_v<decltype( c->sent_handshake_count ), int16_t>, "INT16_MAX based on int16_t" );
@@ -1096,7 +1096,7 @@ namespace eosio {
       std::vector<boost::asio::const_buffer> bufs;
       buffer_queue.fill_out_buffer( bufs );
 
-      strand.dispatch( [c{std::move(c)}, bufs{std::move(bufs)}]() {
+      strand.post( [c{std::move(c)}, bufs{std::move(bufs)}]() {
          boost::asio::async_write( *c->socket, bufs,
             boost::asio::bind_executor( c->strand, [c, socket=c->socket]( boost::system::error_code ec, std::size_t w ) {
             try {
