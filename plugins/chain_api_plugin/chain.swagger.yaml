@@ -334,7 +334,7 @@ paths:
         content:
           application/json:
             schema:
-              title: "Schedule"
+              title: "GetProducersRequest"
               type: object
               required:
                 - limit
@@ -356,7 +356,7 @@ paths:
           content:
             application/json:
               schema:
-                title: "Schedule"
+                title: "GetProducersResponse"
                 type: object
                 additionalProperties: false
                 minProperties:  3
