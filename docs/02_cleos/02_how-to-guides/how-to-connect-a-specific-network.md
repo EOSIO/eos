@@ -1,11 +1,11 @@
 ## Goal
 
-Connect to a specific `nodeos` or `keosd` host
+Connect to a specific `nodeos` or `keosd` host to send COMMAND
 
-`cleos` and `keosd` can connect to a specific node by using the `-H, --host` and `-p, --port` optional arguments.
+`cleos` and `keosd` can connect to a specific node by using the `--url` or `--wallet-url` optional arguments, respectively, followed by the http address and port number these services are listening to.
 
-[[info]]
-| If no optional arguments are used (i.e. -H and -p), `cleos` automatically tries to connect to a locally running `nodeos` and `keosd` node on the default port
+[[info | Default address:port]]
+| If no optional arguments are used (i.e. `--url` or `--wallet-url`), `cleos` attempts to connect to a local `nodeos` or `keosd` running at localhost `127.0.0.1` and default port `8888`.
 
 ## Before you begin
 
@@ -15,11 +15,11 @@ Connect to a specific `nodeos` or `keosd` host
 ### Connecting to Nodeos
 
 ```bash
-  cleos -url http://nodeos-host:8888 ${subcommand}
+cleos -url http://nodeos-host:8888 COMMAND
 ```
 
 ### Connecting to Keosd
 
 ```bash
-  cleos --wallet-url http://keosd-host:8888 ${subcommand}
+cleos --wallet-url http://keosd-host:8888 COMMAND
 ```
