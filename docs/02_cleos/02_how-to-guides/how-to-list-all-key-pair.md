@@ -13,19 +13,19 @@ List all key pairs
 
 Unlock your wallet
 
-```bash
+```sh
 cleos wallet unlock
 ```
 
 List all public keys:
 
-```bash
+```sh
 cleos wallet keys
 ```
 
 List all private keys:
 
-```bash
+```sh
 cleos wallet private_keys
 
 ```

@@ -14,12 +14,12 @@ Connect to a specific `nodeos` or `keosd` host to send COMMAND
 ## Steps
 ### Connecting to Nodeos
 
-```bash
+```sh
 cleos -url http://nodeos-host:8888 COMMAND
 ```
 
 ### Connecting to Keosd
 
-```bash
+```sh
 cleos --wallet-url http://keosd-host:8888 COMMAND
 ```
