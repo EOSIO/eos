@@ -1452,8 +1452,8 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
    }
 
    if (_pending_block_mode == pending_block_mode::producing) {
-      const auto current_block_time = block_time - fc::microseconds( config::block_interval_us );
-      const auto next_producer_block_time = calculate_next_block_time( scheduled_producer.producer_name, current_block_time );
+      const auto pending_start_block_time = block_time - fc::microseconds( config::block_interval_us );
+      const auto next_producer_block_time = calculate_next_block_time( scheduled_producer.producer_name, pending_start_block_time );
       if (next_producer_block_time) {
          const auto start_block_time = *next_producer_block_time - fc::microseconds( config::block_interval_us );
          fc_dlog(_log, "Next block #${n} start: ${bt} block time: ${dt}",
