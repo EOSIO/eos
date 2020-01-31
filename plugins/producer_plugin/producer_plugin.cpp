@@ -245,9 +245,6 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       // keep a expected ratio between defer txn and incoming txn
       double _incoming_defer_ratio = 1.0; // 1:1
 
-      // on when producing a block: _pending_block_mode == pending_block_mode::producing && in cpu_duty_cycle_pct
-      bool _cpu_duty_cycle_on = true;
-
       // path to write the snapshots to
       bfs::path _snapshots_dir;
 
@@ -1462,14 +1459,12 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
          fc_dlog(_log, "Next block #${n} start: ${bt} block time: ${dt}",
                  ("n", hbs->block_num + 1)("bt", start_block_time)("dt", *next_producer_block_time));
          if( now < start_block_time && start_block_time < *next_producer_block_time ) {
-            fc_dlog(_log, "Not producing block, duty cycle off for ${n} ${bt}", ("n", hbs->block_num + 1)("bt", *next_producer_block_time) );
-            _cpu_duty_cycle_on = false;
+            fc_dlog(_log, "Not producing block waiting for production window ${n} ${bt}", ("n", hbs->block_num + 1)("bt", *next_producer_block_time) );
             schedule_delayed_production_loop(weak_from_this(), start_block_time);
             return start_block_result::waiting_for_production;
          }
       }
    }
-   _cpu_duty_cycle_on = true;
 
    fc_dlog(_log, "Starting block #${n} ${bt} at ${time}", ("n", hbs->block_num + 1)("bt", block_time)("time", now));
 
@@ -1836,8 +1831,8 @@ bool producer_plugin_impl::process_incoming_trxs( const fc::time_point& deadline
 // Example:
 // --> Start block A (block time x.500) at time x.000
 // -> start_block()
-// --> deadline, produce block x.500 at time x.400 (assuming 80% duty cycle)
-// -> IDLE: cpu_duty_cycle_on == false
+// --> deadline, produce block x.500 at time x.400 (assuming 80% cpu block effort)
+// -> Idle
 // --> Start block B (block time y.000) at time x.500
 void producer_plugin_impl::schedule_production_loop() {
    chain::controller& chain = chain_plug->chain();
