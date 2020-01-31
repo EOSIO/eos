@@ -659,9 +659,9 @@ void producer_plugin::set_program_options(
          ("greylist-limit", boost::program_options::value<uint32_t>()->default_value(1000),
           "Limit (between 1 and 1000) on the multiple that CPU/NET virtual resources can extend during low usage (only enforced subjectively; use 1000 to not enforce any limit)")
          ("produce-time-offset-us", boost::program_options::value<int32_t>()->default_value(0),
-          "Offset of non last block producing time in microseconds. Valid range 0 .. -block_time.")
+          "Offset of non last block producing time in microseconds. Valid range 0 .. -block_time_interval.")
          ("last-block-time-offset-us", boost::program_options::value<int32_t>()->default_value(-200000),
-          "Offset of last block producing time in microseconds. Valid range 0 .. -block_time.")
+          "Offset of last block producing time in microseconds. Valid range 0 .. -block_time_interval.")
          ("cpu-effort-percent", bpo::value<uint32_t>()->default_value(config::default_block_cpu_effort_pct / config::percent_1),
           "Percentage of cpu block production time used to produce block. Whole number percentages, e.g. 80 for 80%")
          ("last-block-cpu-effort-percent", bpo::value<uint32_t>()->default_value(config::default_block_cpu_effort_pct / config::percent_1),
