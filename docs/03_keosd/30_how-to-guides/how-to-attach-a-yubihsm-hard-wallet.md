@@ -61,7 +61,7 @@ Attach a YubiHSM as a hard wallet
 
 ### Unlock YubiHSM wallet with the password of AuthKey using the following option:
 
-   ```bash
+   ```sh
    cleos wallet unlock -n YubiHSM --password YOUR_AUTHKEY_PASSWORD
    ```
 
