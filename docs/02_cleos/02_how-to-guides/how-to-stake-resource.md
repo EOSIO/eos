@@ -4,7 +4,7 @@ Stake resource for your account
 
 ## Before you begin
 
-* Install the currently supported version of cleos
+* Install the currently supported version of `cleos`
 
 * Ensure the reference system contracts from `eosio.contracts` repository is deployed and used to manage system resources
 

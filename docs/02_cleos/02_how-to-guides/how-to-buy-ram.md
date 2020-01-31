@@ -10,7 +10,7 @@ Setup an account that require multiple signatures for signning a transaction
 
 * You have sufficient token allocated to your account
 
-* Install the currently supported version of cleos
+* Install the currently supported version of `cleos`
 
 * Unlock your wallet
 
