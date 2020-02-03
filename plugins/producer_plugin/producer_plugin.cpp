@@ -198,7 +198,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       std::set<chain::account_name>                             _producers;
       boost::asio::deadline_timer                               _timer;
       std::map<chain::account_name, uint32_t>                   _producer_watermarks;
-      pending_block_mode                                        _pending_block_mode;
+      pending_block_mode                                        _pending_block_mode = pending_block_mode::speculating;
       unapplied_transaction_queue                               _unapplied_transactions;
       fc::optional<named_thread_pool>                           _thread_pool;
 
