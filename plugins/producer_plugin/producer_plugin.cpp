@@ -1264,9 +1264,9 @@ optional<fc::time_point> producer_plugin_impl::calculate_next_block_time(const a
          // if I have a watermark block number then I need to wait until after that watermark
          minimum_offset = watermark.first - block_num + 1;
       }
-      if (chain.head_block_state()->block && watermark.second > current_block_time) {
-          // if I have a watermark block timestamp then I need to wait until that watermark timestamp
-          minimum_offset = std::max(minimum_offset, watermark.second.slot - current_block_time.slot);
+      if (watermark.second > current_block_time) {
+          // if I have a watermark block timestamp then I need to wait until after that watermark timestamp
+          minimum_offset = std::max(minimum_offset, watermark.second.slot - current_block_time.slot + 1);
       }
    }
 
