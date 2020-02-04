@@ -1342,7 +1342,7 @@ enum class tx_category {
 producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
    chain::controller& chain = chain_plug->chain();
 
-   if( chain.get_read_mode() == chain::db_read_mode::READ_ONLY )
+   if( chain.in_immutable_mode() )
       return start_block_result::waiting_for_block;
 
    const auto& hbs = chain.head_block_state();
