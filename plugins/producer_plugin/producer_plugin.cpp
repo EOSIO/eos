@@ -1866,7 +1866,7 @@ void producer_plugin_impl::schedule_delayed_production_loop(const std::weak_ptr<
    for (const auto&p: _producers) {
       auto next_producer_block_time = calculate_next_block_time(p, current_block_time);
       if (next_producer_block_time) {
-         auto producer_wake_up_time = *next_producer_block_time;
+         auto producer_wake_up_time = *next_producer_block_time - fc::microseconds(config::block_interval_us);
          if (wake_up_time) {
             wake_up_time = std::min<fc::time_point>(*wake_up_time, producer_wake_up_time);
          } else {
