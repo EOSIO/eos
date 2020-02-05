@@ -4,7 +4,7 @@ content_title: Nodeos Troubleshooting
 
 ### "Database dirty flag set (likely due to unclean shutdown): replay required"
 
-`nodeos` needs to be shut down cleanly. To ensure this is done, send a `SIGTERM`, `SIGQUIT` or `SIGINT` and wait for the process to shutdown. Failing to do this will result in this error. If you get this error, you're only recourse is to replay by starting `nodeos` with `--replay-blockchain` 
+`nodeos` needs to be shut down cleanly. To ensure this is done, send a `SIGTERM`, `SIGQUIT` or `SIGINT` and wait for the process to shutdown. Failing to do this will result in this error. If you get this error, your only recourse is to replay by starting `nodeos` with `--replay-blockchain` 
 
 ### "Memory does not match data" Error at Restart
 

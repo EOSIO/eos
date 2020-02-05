@@ -2237,6 +2237,41 @@ BOOST_FIXTURE_TEST_CASE(account_creation_time_tests, TESTER) { try {
 } FC_LOG_AND_RETHROW() }
 
 /*************************************************************************************
+ * extended_symbol_api_tests test cases
+ *************************************************************************************/
+BOOST_FIXTURE_TEST_CASE(extended_symbol_api_tests, TESTER) { try {
+   name n0{"1"};
+   name n1{"5"};
+   name n2{"a"};
+   name n3{"z"};
+   name n4{"111111111111j"};
+   name n5{"555555555555j"};
+   name n6{"zzzzzzzzzzzzj"};
+
+   symbol s0{4, ""};
+   symbol s1{5, "Z"};
+   symbol s2{10, "AAAAA"};
+   symbol s3{10, "ZZZZZ"};
+
+   // Test comparison operators
+
+   BOOST_REQUIRE( (extended_symbol{s0, n0} == extended_symbol{s0, n0}) );
+   BOOST_REQUIRE( (extended_symbol{s1, n3} == extended_symbol{s1, n3}) );
+   BOOST_REQUIRE( (extended_symbol{s2, n4} == extended_symbol{s2, n4}) );
+   BOOST_REQUIRE( (extended_symbol{s3, n6} == extended_symbol{s3, n6}) );
+
+   BOOST_REQUIRE( (extended_symbol{s0, n0} != extended_symbol{s1, n0}) );
+   BOOST_REQUIRE( (extended_symbol{s0, n0} != extended_symbol{s0, n1}) );
+   BOOST_REQUIRE( (extended_symbol{s1, n1} != extended_symbol{s2, n2}) );
+
+   BOOST_REQUIRE( (extended_symbol{s0, n0} < extended_symbol{s1, n0}) );
+   BOOST_REQUIRE( (extended_symbol{s0, n0} < extended_symbol{s0, n1}) );
+   BOOST_REQUIRE( (extended_symbol{s0, n5} < extended_symbol{s0, n3}) );
+   BOOST_REQUIRE( (extended_symbol{s2, n0} < extended_symbol{s3, n0}) );
+
+} FC_LOG_AND_RETHROW() }
+
+/*************************************************************************************
  * eosio_assert_code_tests test cases
  *************************************************************************************/
 BOOST_FIXTURE_TEST_CASE(eosio_assert_code_tests, TESTER) { try {
