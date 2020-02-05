@@ -67,7 +67,7 @@ for FILE in $(ls $CICD_DIR/platforms/$PLATFORM_TYPE); do
     if [[ $FILE_NAME =~ 'macos-10.14' ]]; then
       export ANKA_TEMPLATE_NAME='10.14.6_6C_14G_40G'
     elif [[ $FILE_NAME =~ 'macos-10.15' ]]; then
-      export ANKA_TEMPLATE_NAME='10.15.1_6C_14G_40G'
+      export ANKA_TEMPLATE_NAME='10.15.3_6C_14G_40G'
     else # Linux
       export ANKA_TAG_BASE=''
       export ANKA_TEMPLATE_NAME=''
@@ -147,7 +147,7 @@ EOF
             - 'registry_2'
           pre-commands: 
             - "rm -rf mac-anka-fleet; git clone git@github.com:EOSIO/mac-anka-fleet.git && cd mac-anka-fleet && . ./ensure-tag.bash -u 12 -r 25G -a '-n'"
-      - thedyrt/skip-checkout#v0.1.1:
+      - EOSIO/skip-checkout#v0.1.1:
           cd: ~
     env:
       REPO: ${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO}
@@ -234,7 +234,7 @@ EOF
           failover-registries:
             - 'registry_1'
             - 'registry_2'
-      - thedyrt/skip-checkout#v0.1.1:
+      - EOSIO/skip-checkout#v0.1.1:
           cd: ~
     agents: "queue=mac-anka-node-fleet"
     retry:
@@ -297,7 +297,7 @@ EOF
           failover-registries:
             - 'registry_1'
             - 'registry_2'
-      - thedyrt/skip-checkout#v0.1.1:
+      - EOSIO/skip-checkout#v0.1.1:
           cd: ~
     agents: "queue=mac-anka-node-fleet"
     retry:
@@ -334,7 +334,7 @@ EOF
       - "buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' && tar -xzf build.tar.gz"
       - "./.cicd/test.sh scripts/serial-test.sh $TEST_NAME"
     plugins:
-      - thedyrt/skip-checkout#v0.1.1:
+      - EOSIO/skip-checkout#v0.1.1:
           cd: ~
     env:
       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
@@ -369,7 +369,7 @@ EOF
           failover-registries:
             - 'registry_1'
             - 'registry_2'
-      - thedyrt/skip-checkout#v0.1.1:
+      - EOSIO/skip-checkout#v0.1.1:
           cd: ~
     agents: "queue=mac-anka-node-fleet"
     retry:
@@ -407,7 +407,7 @@ EOF
       - "buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' ${BUILD_SOURCE} && tar -xzf build.tar.gz"
       - "./.cicd/test.sh scripts/long-running-test.sh $TEST_NAME"
     plugins:
-      - thedyrt/skip-checkout#v0.1.1:
+      - EOSIO/skip-checkout#v0.1.1:
           cd: ~
     env:
       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
@@ -442,7 +442,7 @@ EOF
           failover-registries:
             - 'registry_1'
             - 'registry_2'
-      - thedyrt/skip-checkout#v0.1.1:
+      - EOSIO/skip-checkout#v0.1.1:
           cd: ~
     agents: "queue=mac-anka-node-fleet"
     retry:
@@ -561,7 +561,7 @@ cat <<EOF
       - "echo '+++ :javascript: Running test-metrics.js'"
       - "node --max-old-space-size=32768 test-metrics.js"
     plugins:
-      - thedyrt/skip-checkout#v0.1.1:
+      - EOSIO/skip-checkout#v0.1.1:
           cd: ~
     agents:
       queue: "$BUILDKITE_TEST_AGENT_QUEUE"
@@ -579,7 +579,7 @@ cat <<EOF
       - "buildkite-agent artifact download build.tar.gz . --step ':centos: CentOS 7.7 - Build' && tar -xzf build.tar.gz"
       - "./.cicd/package.sh"
     plugins:
-      - thedyrt/skip-checkout#v0.1.1:
+      - EOSIO/skip-checkout#v0.1.1:
           cd: ~
     env:
       IMAGE_TAG: "centos-7.7-$PLATFORM_TYPE"
@@ -599,7 +599,7 @@ cat <<EOF
       - "buildkite-agent artifact download build.tar.gz . --step ':ubuntu: Ubuntu 16.04 - Build' && tar -xzf build.tar.gz"
       - "./.cicd/package.sh"
     plugins:
-      - thedyrt/skip-checkout#v0.1.1:
+      - EOSIO/skip-checkout#v0.1.1:
           cd: ~
     env:
       IMAGE_TAG: "ubuntu-16.04-$PLATFORM_TYPE"
@@ -619,7 +619,7 @@ cat <<EOF
       - "buildkite-agent artifact download build.tar.gz . --step ':ubuntu: Ubuntu 18.04 - Build' && tar -xzf build.tar.gz"
       - "./.cicd/package.sh"
     plugins:
-      - thedyrt/skip-checkout#v0.1.1:
+      - EOSIO/skip-checkout#v0.1.1:
           cd: ~
     env:
       IMAGE_TAG: "ubuntu-18.04-$PLATFORM_TYPE"
@@ -648,7 +648,7 @@ cat <<EOF
           failover-registries:
             - 'registry_1'
             - 'registry_2'
-      - thedyrt/skip-checkout#v0.1.1:
+      - EOSIO/skip-checkout#v0.1.1:
           cd: ~
     agents:
       - "queue=mac-anka-node-fleet"
@@ -664,7 +664,7 @@ cat <<EOF
       - EOSIO/anka#v0.6.0:
           no-volume: true
           inherit-environment-vars: true
-          vm-name: 10.15.1_6C_14G_40G
+          vm-name: 10.15.3_6C_14G_40G
           vm-registry-tag: "clean::cicd::git-ssh::nas::brew::buildkite-agent"
           always-pull: true
           debug: true
@@ -704,7 +704,7 @@ cat <<EOF
       - "buildkite-agent artifact download eosio.rb . --step ':darwin: macOS 10.14 - Package Builder'"
       - "buildkite-agent artifact upload eosio.rb"
     plugins:
-      - thedyrt/skip-checkout#v0.1.1:
+      - EOSIO/skip-checkout#v0.1.1:
           cd: ~
     agents:
       queue: "automation-basic-builder-fleet"
