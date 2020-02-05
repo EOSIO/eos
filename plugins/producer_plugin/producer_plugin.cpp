@@ -1422,7 +1422,9 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
    } else if (previous_pending_mode == pending_block_mode::producing) {
       // just produced our last block of our round
       const auto start_block_time = block_time - fc::microseconds( config::block_interval_us );
+      fc_dlog(_log, "Not starting speculative block until ${bt}", ("bt", start_block_time) );
       schedule_delayed_production_loop( weak_from_this(), start_block_time);
+      return start_block_result::waiting_for_production;
    }
 
    fc_dlog(_log, "Starting block #${n} ${bt} at ${time}", ("n", hbs->block_num + 1)("bt", block_time)("time", now));
@@ -1905,7 +1907,6 @@ void producer_plugin_impl::schedule_production_loop() {
 optional<fc::time_point> producer_plugin_impl::calculate_producer_wake_up_time( const block_timestamp_type& ref_block_time ) const {
    // if we have any producers then we should at least set a timer for our next available slot
    optional<fc::time_point> wake_up_time;
-   chain::account_name producer;
    for (const auto& p : _producers) {
       auto next_producer_block_time = calculate_next_block_time(p, ref_block_time);
       if (next_producer_block_time) {
@@ -1914,11 +1915,9 @@ optional<fc::time_point> producer_plugin_impl::calculate_producer_wake_up_time( 
             // wake up with a full block interval to the deadline
             if( producer_wake_up_time < *wake_up_time ) {
                wake_up_time = producer_wake_up_time;
-               producer = p;
             }
          } else {
             wake_up_time = producer_wake_up_time;
-            producer = p;
          }
       }
    }
