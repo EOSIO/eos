@@ -595,7 +595,9 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
 
       fc::time_point calculate_pending_block_time() const;
       fc::time_point calculate_block_deadline( const fc::time_point& ) const;
-      void schedule_delayed_production_loop(const std::weak_ptr<producer_plugin_impl>& weak_this, const block_timestamp_type& current_block_time);
+      void schedule_delayed_production_loop(const std::weak_ptr<producer_plugin_impl>& weak_this, optional<fc::time_point> wake_up_time);
+      optional<fc::time_point> calculate_producer_wake_up_time( const block_timestamp_type& ref_block_time ) const;
+
 };
 
 void new_chain_banner(const eosio::chain::controller& db)
@@ -1404,6 +1406,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
    const fc::time_point now = fc::time_point::now();
    const fc::time_point block_time = calculate_pending_block_time();
 
+   pending_block_mode previous_pending_mode = _pending_block_mode;
    _pending_block_mode = pending_block_mode::producing;
 
    // Not our turn
@@ -1470,10 +1473,14 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
       const auto start_block_time = block_time - fc::microseconds( config::block_interval_us );
       if( now < start_block_time ) {
          fc_dlog(_log, "Not producing block waiting for production window ${n} ${bt}", ("n", hbs->block_num + 1)("bt", block_time) );
-         // start_block_time instead of block_time because scheduled_delayed_production_loop calculates next block time from given time
-         schedule_delayed_production_loop(weak_from_this(), start_block_time);
+         // start_block_time instead of block_time because schedule_delayed_production_loop calculates next block time from given time
+         schedule_delayed_production_loop(weak_from_this(), calculate_producer_wake_up_time(start_block_time));
          return start_block_result::waiting_for_production;
       }
+   } else if (previous_pending_mode == pending_block_mode::producing) {
+      // just produced our last block of our round
+      const auto start_block_time = block_time - fc::microseconds( config::block_interval_us );
+      schedule_delayed_production_loop( weak_from_this(), start_block_time);
    }
 
    fc_dlog(_log, "Starting block #${n} ${bt} at ${time}", ("n", hbs->block_num + 1)("bt", block_time)("time", now));
@@ -1866,7 +1873,7 @@ void producer_plugin_impl::schedule_production_loop() {
    } else if (result == start_block_result::waiting_for_block){
       if (!_producers.empty() && !production_disabled_by_policy()) {
          fc_dlog(_log, "Waiting till another block is received and scheduling Speculative/Production Change");
-         schedule_delayed_production_loop(weak_this, calculate_pending_block_time());
+         schedule_delayed_production_loop(weak_this, calculate_producer_wake_up_time(calculate_pending_block_time()));
       } else {
          fc_dlog(_log, "Waiting till another block is received");
          // nothing to do until more blocks arrive
@@ -1916,13 +1923,13 @@ void producer_plugin_impl::schedule_production_loop() {
    } else if (_pending_block_mode == pending_block_mode::speculating && !_producers.empty() && !production_disabled_by_policy()){
       fc_dlog(_log, "Speculative Block Created; Scheduling Speculative/Production Change");
       EOS_ASSERT( chain.is_building_block(), missing_pending_block_state, "speculating without pending_block_state" );
-      schedule_delayed_production_loop(weak_this, chain.pending_block_time());
+      schedule_delayed_production_loop(weak_this, calculate_producer_wake_up_time(chain.pending_block_time()));
    } else {
       fc_dlog(_log, "Speculative Block Created");
    }
 }
 
-void producer_plugin_impl::schedule_delayed_production_loop(const std::weak_ptr<producer_plugin_impl>& weak_this, const block_timestamp_type& ref_block_time) {
+optional<fc::time_point> producer_plugin_impl::calculate_producer_wake_up_time( const block_timestamp_type& ref_block_time ) const {
    // if we have any producers then we should at least set a timer for our next available slot
    optional<fc::time_point> wake_up_time;
    chain::account_name producer;
@@ -1942,9 +1949,16 @@ void producer_plugin_impl::schedule_delayed_production_loop(const std::weak_ptr<
          }
       }
    }
+   if( !wake_up_time ) {
+      fc_dlog(_log, "Not Scheduling Speculative/Production, no local producers had valid wake up times");
+   }
 
+   return wake_up_time;
+}
+
+void producer_plugin_impl::schedule_delayed_production_loop(const std::weak_ptr<producer_plugin_impl>& weak_this, optional<fc::time_point> wake_up_time) {
    if (wake_up_time) {
-      fc_dlog(_log, "Scheduling Speculative/Production Change for ${p} at ${time}", ("p", producer)("time", wake_up_time));
+      fc_dlog(_log, "Scheduling Speculative/Production Change at ${time}", ("time", wake_up_time));
       static const boost::posix_time::ptime epoch(boost::gregorian::date(1970, 1, 1));
       _timer.expires_at(epoch + boost::posix_time::microseconds(wake_up_time->time_since_epoch().count()));
       _timer.async_wait( app().get_priority_queue().wrap( priority::high,
@@ -1954,8 +1968,6 @@ void producer_plugin_impl::schedule_delayed_production_loop(const std::weak_ptr<
                self->schedule_production_loop();
             }
          } ) );
-   } else {
-      fc_dlog(_log, "Not Scheduling Speculative/Production, no local producers had valid wake up times");
    }
 }
 
