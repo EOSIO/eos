@@ -518,9 +518,8 @@ namespace eosio {
             string lipstr = options.at( "http-server-address" ).as<string>();
             string host = lipstr.substr( 0, lipstr.find( ':' ));
             string port = lipstr.substr( host.size() + 1, lipstr.size());
-            tcp::resolver::query query( tcp::v4(), host.c_str(), port.c_str());
             try {
-               my->listen_endpoint = *resolver.resolve( query );
+               my->listen_endpoint = *resolver.resolve( tcp::v4(), host, port );
                ilog( "configured http to listen on ${h}:${p}", ("h", host)( "p", port ));
             } catch ( const boost::system::system_error& ec ) {
                elog( "failed to configure http to listen on ${h}:${p} (${m})",
@@ -557,9 +556,8 @@ namespace eosio {
             string lipstr = options.at( "https-server-address" ).as<string>();
             string host = lipstr.substr( 0, lipstr.find( ':' ));
             string port = lipstr.substr( host.size() + 1, lipstr.size());
-            tcp::resolver::query query( tcp::v4(), host.c_str(), port.c_str());
             try {
-               my->https_listen_endpoint = *resolver.resolve( query );
+               my->https_listen_endpoint = *resolver.resolve( tcp::v4(), host, port );
                ilog( "configured https to listen on ${h}:${p} (TLS configuration will be validated momentarily)",
                      ("h", host)( "p", port ));
                my->https_cert_chain = options.at( "https-certificate-chain-file" ).as<string>();

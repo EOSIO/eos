@@ -2124,12 +2124,11 @@ namespace eosio {
          string port = c->peer_address().substr( colon + 1, colon2 == string::npos ? string::npos : colon2 - (colon + 1));
          idump((host)(port));
          c->set_connection_type( c->peer_address() );
-         tcp::resolver::query query( tcp::v4(), host, port );
-         // Note: need to add support for IPv6 too
 
          auto resolver = std::make_shared<tcp::resolver>( my_impl->thread_pool->get_executor() );
          connection_wptr weak_conn = c;
-         resolver->async_resolve( query, boost::asio::bind_executor( c->strand,
+         // Note: need to add support for IPv6 too
+         resolver->async_resolve( tcp::v4(), host, port, boost::asio::bind_executor( c->strand,
             [resolver, weak_conn]( const boost::system::error_code& err, tcp::resolver::results_type endpoints ) {
                auto c = weak_conn.lock();
                if( !c ) return;
@@ -3375,11 +3374,9 @@ namespace eosio {
       if( my->p2p_address.size() > 0 ) {
          auto host = my->p2p_address.substr( 0, my->p2p_address.find( ':' ));
          auto port = my->p2p_address.substr( host.size() + 1, my->p2p_address.size());
-         tcp::resolver::query query( tcp::v4(), host.c_str(), port.c_str());
-         // Note: need to add support for IPv6 too?
-
          tcp::resolver resolver( my->thread_pool->get_executor() );
-         listen_endpoint = *resolver.resolve( query );
+         // Note: need to add support for IPv6 too?
+         listen_endpoint = *resolver.resolve( tcp::v4(), host, port );
 
          my->acceptor.reset( new tcp::acceptor( my_impl->thread_pool->get_executor() ) );
 
