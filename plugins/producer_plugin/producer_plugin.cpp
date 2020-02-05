@@ -584,7 +584,8 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       enum class start_block_result {
          succeeded,
          failed,
-         waiting,
+         waiting_for_block,
+         waiting_for_production,
          exhausted
       };
 
@@ -658,9 +659,13 @@ void producer_plugin::set_program_options(
          ("greylist-limit", boost::program_options::value<uint32_t>()->default_value(1000),
           "Limit (between 1 and 1000) on the multiple that CPU/NET virtual resources can extend during low usage (only enforced subjectively; use 1000 to not enforce any limit)")
          ("produce-time-offset-us", boost::program_options::value<int32_t>()->default_value(0),
-          "offset of non last block producing time in microseconds. Negative number results in blocks to go out sooner, and positive number results in blocks to go out later")
+          "Offset of non last block producing time in microseconds. Valid range 0 .. -block_time_interval.")
          ("last-block-time-offset-us", boost::program_options::value<int32_t>()->default_value(-200000),
-          "offset of last block producing time in microseconds. Negative number results in blocks to go out sooner, and positive number results in blocks to go out later")
+          "Offset of last block producing time in microseconds. Valid range 0 .. -block_time_interval.")
+         ("cpu-effort-percent", bpo::value<uint32_t>()->default_value(config::default_block_cpu_effort_pct / config::percent_1),
+          "Percentage of cpu block production time used to produce block. Whole number percentages, e.g. 80 for 80%")
+         ("last-block-cpu-effort-percent", bpo::value<uint32_t>()->default_value(config::default_block_cpu_effort_pct / config::percent_1),
+          "Percentage of cpu block production time used to produce last block. Whole number percentages, e.g. 80 for 80%")
          ("max-scheduled-transaction-time-per-block-ms", boost::program_options::value<int32_t>()->default_value(100),
           "Maximum wall-clock time, in milliseconds, spent retiring scheduled transactions in any block before returning to normal transaction processing.")
          ("subjective-cpu-leeway-us", boost::program_options::value<int32_t>()->default_value( config::default_subjective_cpu_leeway_us ),
@@ -803,8 +808,29 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
    my->_keosd_provider_timeout_us = fc::milliseconds(options.at("keosd-provider-timeout").as<int32_t>());
 
    my->_produce_time_offset_us = options.at("produce-time-offset-us").as<int32_t>();
+   EOS_ASSERT( my->_produce_time_offset_us <= 0 && my->_produce_time_offset_us >= -config::block_interval_us, plugin_config_exception,
+               "produce-time-offset-us ${o} must be 0 .. -${bi}", ("bi", config::block_interval_us)("o", my->_produce_time_offset_us) );
 
    my->_last_block_time_offset_us = options.at("last-block-time-offset-us").as<int32_t>();
+   EOS_ASSERT( my->_last_block_time_offset_us <= 0 && my->_last_block_time_offset_us >= -config::block_interval_us, plugin_config_exception,
+               "last-block-time-offset-us ${o} must be 0 .. -${bi}", ("bi", config::block_interval_us)("o", my->_last_block_time_offset_us) );
+
+   uint32_t cpu_effort_pct = options.at("cpu-effort-percent").as<uint32_t>();
+   EOS_ASSERT( cpu_effort_pct >= 0 && cpu_effort_pct <= 100, plugin_config_exception,
+               "cpu-effort-percent ${pct} must be 0 - 100", ("pct", cpu_effort_pct) );
+      cpu_effort_pct *= config::percent_1;
+   int32_t cpu_effort_offset_us =
+         -EOS_PERCENT( config::block_interval_us, chain::config::percent_100 - cpu_effort_pct );
+
+   uint32_t last_block_cpu_effort_pct = options.at("last-block-cpu-effort-percent").as<uint32_t>();
+   EOS_ASSERT( last_block_cpu_effort_pct >= 0 && last_block_cpu_effort_pct <= 100, plugin_config_exception,
+               "last-block-cpu-effort-percent ${pct} must be 0 - 100", ("pct", last_block_cpu_effort_pct) );
+      last_block_cpu_effort_pct *= config::percent_1;
+   int32_t last_block_cpu_effort_offset_us =
+         -EOS_PERCENT( config::block_interval_us, chain::config::percent_100 - last_block_cpu_effort_pct );
+
+   my->_produce_time_offset_us = std::min( my->_produce_time_offset_us, cpu_effort_offset_us );
+   my->_last_block_time_offset_us = std::min( my->_last_block_time_offset_us, last_block_cpu_effort_offset_us );
 
    my->_max_scheduled_transaction_time_per_block_ms = options.at("max-scheduled-transaction-time-per-block-ms").as<int32_t>();
 
@@ -1363,7 +1389,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
    chain::controller& chain = chain_plug->chain();
 
    if( chain.in_immutable_mode() )
-      return start_block_result::waiting;
+      return start_block_result::waiting_for_block;
 
    const auto& hbs = chain.head_block_state();
 
@@ -1422,8 +1448,20 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
    if (_pending_block_mode == pending_block_mode::speculating) {
       auto head_block_age = now - chain.head_block_time();
       if (head_block_age > fc::seconds(5))
-         return start_block_result::waiting;
+         return start_block_result::waiting_for_block;
    }
+
+   if (_pending_block_mode == pending_block_mode::producing) {
+      const auto start_block_time = block_time - fc::microseconds( config::block_interval_us );
+      if( now < start_block_time ) {
+         fc_dlog(_log, "Not producing block waiting for production window ${n} ${bt}", ("n", hbs->block_num + 1)("bt", block_time) );
+         // start_block_time instead of block_time because scheduled_delayed_production_loop calculates next block time from given time
+         schedule_delayed_production_loop(weak_from_this(), start_block_time);
+         return start_block_result::waiting_for_production;
+      }
+   }
+
+   fc_dlog(_log, "Starting block #${n} ${bt} at ${time}", ("n", hbs->block_num + 1)("bt", block_time)("time", now));
 
    try {
       uint16_t blocks_to_confirm = 0;
@@ -1785,6 +1823,12 @@ bool producer_plugin_impl::process_incoming_trxs( const fc::time_point& deadline
    return !exhausted;
 }
 
+// Example:
+// --> Start block A (block time x.500) at time x.000
+// -> start_block()
+// --> deadline, produce block x.500 at time x.400 (assuming 80% cpu block effort)
+// -> Idle
+// --> Start block B (block time y.000) at time x.500
 void producer_plugin_impl::schedule_production_loop() {
    chain::controller& chain = chain_plug->chain();
    _timer.cancel();
@@ -1804,7 +1848,7 @@ void producer_plugin_impl::schedule_production_loop() {
                 self->schedule_production_loop();
              }
           } ) );
-   } else if (result == start_block_result::waiting){
+   } else if (result == start_block_result::waiting_for_block){
       if (!_producers.empty() && !production_disabled_by_policy()) {
          fc_dlog(_log, "Waiting till another block is received and scheduling Speculative/Production Change");
          schedule_delayed_production_loop(weak_this, calculate_pending_block_time());
@@ -1812,6 +1856,9 @@ void producer_plugin_impl::schedule_production_loop() {
          fc_dlog(_log, "Waiting till another block is received");
          // nothing to do until more blocks arrive
       }
+
+   } else if (result == start_block_result::waiting_for_production) {
+      // scheduled in start_block()
 
    } else if (_pending_block_mode == pending_block_mode::producing) {
 
@@ -1860,23 +1907,29 @@ void producer_plugin_impl::schedule_production_loop() {
    }
 }
 
-void producer_plugin_impl::schedule_delayed_production_loop(const std::weak_ptr<producer_plugin_impl>& weak_this, const block_timestamp_type& current_block_time) {
+void producer_plugin_impl::schedule_delayed_production_loop(const std::weak_ptr<producer_plugin_impl>& weak_this, const block_timestamp_type& ref_block_time) {
    // if we have any producers then we should at least set a timer for our next available slot
    optional<fc::time_point> wake_up_time;
-   for (const auto&p: _producers) {
-      auto next_producer_block_time = calculate_next_block_time(p, current_block_time);
+   chain::account_name producer;
+   for (const auto& p : _producers) {
+      auto next_producer_block_time = calculate_next_block_time(p, ref_block_time);
       if (next_producer_block_time) {
          auto producer_wake_up_time = *next_producer_block_time - fc::microseconds(config::block_interval_us);
          if (wake_up_time) {
-            wake_up_time = std::min<fc::time_point>(*wake_up_time, producer_wake_up_time);
+            // wake up with a full block interval to the deadline
+            if( producer_wake_up_time < *wake_up_time ) {
+               wake_up_time = producer_wake_up_time;
+               producer = p;
+            }
          } else {
             wake_up_time = producer_wake_up_time;
+            producer = p;
          }
       }
    }
 
    if (wake_up_time) {
-      fc_dlog(_log, "Scheduling Speculative/Production Change at ${time}", ("time", wake_up_time));
+      fc_dlog(_log, "Scheduling Speculative/Production Change for ${p} at ${time}", ("p", producer)("time", wake_up_time));
       static const boost::posix_time::ptime epoch(boost::gregorian::date(1970, 1, 1));
       _timer.expires_at(epoch + boost::posix_time::microseconds(wake_up_time->time_since_epoch().count()));
       _timer.async_wait( app().get_priority_queue().wrap( priority::high,
