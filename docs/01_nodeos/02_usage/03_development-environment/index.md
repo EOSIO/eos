@@ -17,11 +17,11 @@ While this option can technically be used for smart contract development, it may
 * [Configure Nodeos as a Local Two-Node Testnet](01_local-multi-node-testnet.md)
 * [Configure Nodeos as a Local 21-Node Testnet](https://github.com/EOSIO/eos/blob/master/tutorials/bios-boot-tutorial/README.md)
 
-## Block.one’s official EOSIO Testnet
+## Official Testnet
 
-Test on fully-featured EOSIO stable releases with a browser based GUI on a multi-node network.
+The official testnet is available for testing EOSIO dApps and smart contracts:
 
-* [The official EOSIO Testnet](https://testnet.eos.io/)
+* [testnet.eos.io](https://testnet.eos.io/)
 
 ## Third-Party Testnets
 
