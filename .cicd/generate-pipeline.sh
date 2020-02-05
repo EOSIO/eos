@@ -664,7 +664,7 @@ cat <<EOF
       - EOSIO/anka#v0.6.0:
           no-volume: true
           inherit-environment-vars: true
-          vm-name: 10.15.1_6C_14G_40G
+          vm-name: 10.15.3_6C_14G_40G
           vm-registry-tag: "clean::cicd::git-ssh::nas::brew::buildkite-agent"
           always-pull: true
           debug: true
