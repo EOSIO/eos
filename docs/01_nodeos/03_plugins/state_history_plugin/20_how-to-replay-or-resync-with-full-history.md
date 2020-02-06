@@ -1,4 +1,6 @@
-<!-- # How to replay or resync with full history -->
+---
+content_title: How to replay or resync with full history
+---
 
 ## Goal
 
@@ -8,7 +10,7 @@ This procedure records the entire chain history.
 
 * Make sure [EOSIO is installed](../../../00_install/index.md).
 * Learn about [Using Nodeos](../../02_usage/index.md).
-* Get familiar with [state_history](../../03_plugins/state_history_plugin/index.md) plugin.
+* Get familiar with [state_history_plugin](../../03_plugins/state_history_plugin/index.md).
 
 ## Steps
 
@@ -16,4 +18,4 @@ This procedure records the entire chain history.
 
 2. Make sure `data/state` does not exist, or use the `--replay-blockchain` option
 
-3. Start `nodeos` with the `--snapshot` option, and the options listed in the [`state_history_plugin`]
+3. Start `nodeos` with the options listed in the [`state_history_plugin`](index.md)

@@ -16,9 +16,10 @@ Retrieve all actions with specific account name referenced in authorization or r
 ## Examples
 Retrieve and save abi for eosio.token contract
 
-```shell
-$ cleos get actions eosio.token
-
+```sh
+cleos get actions eosio.token
+```
+```console
 #  seq  when                              contract::action => receiver      trx id...   args
 ================================================================================================================
 #  976   2018-06-01T19:54:05.000     eosio.token::transfer => eosio.token   1d1fe154... {"from":"userae","to":"useraa","quantity":"0.000...

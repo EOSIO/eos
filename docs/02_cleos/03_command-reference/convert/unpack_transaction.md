@@ -9,11 +9,11 @@ From packed to plain signed json form
 ## Options
 
 - `-h,--help` - Print this help message and exit
-- `--unpack-action-data` - Unpack all action data within transaction, needs interaction with nodeos
+- `--unpack-action-data` - Unpack all action data within transaction, needs interaction with `nodeos`
 
 ## Usage
 
-```text
+```sh
 cleos convert unpack_transaction '{
   "signatures": [
     "SIG_K1_KmRbWahefwxs6uyCGNR6wNRjw7cntEeFQhNCbyg8S92Kbp7zdSSVGTD2QS7pNVWgcU126zpxaBp9CwUxFpRwSnfkjd46bS"
@@ -27,7 +27,7 @@ cleos convert unpack_transaction '{
 ## Output
 
 
-```text
+```json
 {
   "expiration": "2018-08-02T20:24:36",
   "ref_block_num": 14207,
