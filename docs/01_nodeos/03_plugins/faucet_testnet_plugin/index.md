@@ -6,12 +6,13 @@ The `faucet_testnet_plugin` provides an interface that assists in the automation
 
 ## Usage
 
-```sh
+```console
 # config.ini
 plugin = eosio::faucet_testnet_plugin
-
+```
+```sh
 # command-line
-$ nodeos ... --plugin eosio::faucet_testnet_plugin
+nodeos ... --plugin eosio::faucet_testnet_plugin
 ```
 
 ## Options

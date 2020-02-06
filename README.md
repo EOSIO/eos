@@ -24,9 +24,9 @@ Some of the groundbreaking features of EOSIO include:
 
 Block.one is neither launching nor operating any initial public blockchains based upon the EOSIO software. This release refers only to version 1.0 of our open source software. We caution those who wish to use blockchains built on EOSIO to carefully vet the companies and organizations launching blockchains based on EOSIO before disclosing any private keys to their derivative software.
 
-## Testnets
+## Official Testnet
 
-There is no public testnet running currently.
+[testnet.eos.io](https://testnet.eos.io/)
 
 ## Supported Operating Systems
 

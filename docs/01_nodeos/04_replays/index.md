@@ -21,7 +21,7 @@ Snapshot files can be created from a running `nodeos` instance. The snapshot con
 
 ## Replay Snapshot-specific Options
 
-Typing `$ nodeos --help` on the command line will show you all the options available for running `nodeos`. The snapshot and replay specific options are:
+Typing `nodeos --help` on the command line will show you all the options available for running `nodeos`. The snapshot and replay specific options are:
 
  - **--force-all-checks**  
 The node operator may not trust the source of the `blocks.log` file and may want to run `nodeos` with `--replay-blockchain --force-all-checks` the first time to make sure the blocks are good. The `--force-all-checks` flag can be passed into `nodeos` to tell it to not skip any checks during replay.

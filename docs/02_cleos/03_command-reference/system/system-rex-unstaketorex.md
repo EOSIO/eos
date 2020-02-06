@@ -19,6 +19,6 @@
 ## Examples
 
 
-```text
+```sh
 cleos system rex unstaketorex accountname1 accountname2 "1 EOS" 0
 ```

@@ -32,7 +32,7 @@ p2p-peer-address = 106.10.42.238:9876
 Or you can include the peer in as a boot flag when running `nodeos`, as follows:
 
 ```sh
-$ nodeos ... --p2p-peer-address=106.10.42.238:9876
+nodeos ... --p2p-peer-address=106.10.42.238:9876
 ```
 
 ### 2. Enable one or more available plugins

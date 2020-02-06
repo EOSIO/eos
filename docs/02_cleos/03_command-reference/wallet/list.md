@@ -11,23 +11,25 @@ None
 ## Usage
 
 
-```shell
-$ ./cleos wallet list
+```sh
+cleos wallet list
 ```
 
 ## Outputs
 
 
-```shell
+```console
 Wallets:
 [
   "default *",
   "second-wallet *"
 ]
+```
 
-or when there are no wallets
+or when there are no wallets:
+
+```console
 Wallets:
 [
 ]
-
 ```

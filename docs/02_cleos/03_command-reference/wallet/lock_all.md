@@ -9,13 +9,13 @@ None
 ## Usage
 
 
-```shell
-$ ./cleos wallet lock_all
+```sh
+cleos wallet lock_all
 ```
 
 ## Outputs
 
 
-```shell
+```console
 Locked All Wallets
 ```
