@@ -344,7 +344,7 @@ paths:
                     type: array
                     nullable: true
                     items:
-                      $ref: "https://eosio.github.io/schemata/v2.0/oas/Schedule.yaml"
+                      $ref: "https://eosio.github.io/schemata/v2.0/oas/ProducerSchedule.yaml"
 
 
   /get_raw_code_and_abi:
