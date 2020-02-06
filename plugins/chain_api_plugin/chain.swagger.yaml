@@ -37,18 +37,14 @@ paths:
                 - account_name
               properties:
                 account_name:
-                  allOf:
-                    - $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
-                  description: NEEDS DESCRIPTION
+                  $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
       responses:
         "200":
           description: OK
           content:
             application/json:
               schema:
-                allOf:
-                  - $ref: "https://eosio.github.io/schemata/v2.0/oas/Account.yaml"
-                description: NEEDS DESCRIPTION
+                $ref: "https://eosio.github.io/schemata/v2.0/oas/Account.yaml"
   /get_block:
     post:
       description: Returns an object containing various details about a specific block on the blockchain.
@@ -70,9 +66,7 @@ paths:
           content:
             application/json:
               schema:
-                allOf:
-                  - $ref: "https://eosio.github.io/schemata/v2.0/oas/Block.yaml"
-                description: NEEDS DESCRIPTION
+                $ref: "https://eosio.github.io/schemata/v2.0/oas/Block.yaml"
   /get_info:
     post:
       description: Returns an object containing various details about the blockchain.
@@ -84,9 +78,8 @@ paths:
           content:
             application/json:
               schema:
-                allOf:
-                  - $ref: "https://eosio.github.io/schemata/v2.0/oas/Info.yaml"
-                description: NEEDS DESCRIPTION
+                $ref: "https://eosio.github.io/schemata/v2.0/oas/Info.yaml"
+
   /push_transaction:
     post:
       description: This method expects a transaction in JSON format and will attempt to apply it to the blockchain.
@@ -101,9 +94,7 @@ paths:
                   type: array
                   description: array of signatures required to authorize transaction
                   items:
-                    allOf:
-                      - $ref: "https://eosio.github.io/schemata/v2.0/oas/Signature.yaml"
-                    description: NEEDS DESCRIPTION
+                    $ref: "https://eosio.github.io/schemata/v2.0/oas/Signature.yaml"
                 compression:
                   type: boolean
                   description: Compression used, usually false
@@ -135,9 +126,7 @@ paths:
                   type: array
                   description: array of signatures required to authorize transaction
                   items:
-                    allOf:
-                      - $ref: "https://eosio.github.io/schemata/v2.0/oas/Signature.yaml"
-                    description: NEEDS DESCRIPTION
+                    $ref: "https://eosio.github.io/schemata/v2.0/oas/Signature.yaml"
                 compression:
                   type: boolean
                   description: Compression used, usually false
@@ -166,9 +155,7 @@ paths:
             schema:
               type: array
               items:
-                allOf:
-                  - $ref: "https://eosio.github.io/schemata/v2.0/oas/Transaction.yaml"
-                description: NEEDS DESCRIPTION
+                $ref: "https://eosio.github.io/schemata/v2.0/oas/Transaction.yaml"
       responses:
         "200":
           description: OK
@@ -199,9 +186,7 @@ paths:
           content:
             application/json:
               schema:
-                allOf:
-                  - $ref: "https://eosio.github.io/schemata/v2.0/oas/BlockHeaderState.yaml"
-                description: NEEDS DESCRIPTION
+                $ref: "https://eosio.github.io/schemata/v2.0/oas/BlockHeaderState.yaml"
 
   /get_abi:
     post:
@@ -216,18 +201,14 @@ paths:
                 - account_name
               properties:
                 account_name:
-                  allOf:
-                    - $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
-                  description: NEEDS DESCRIPTION
+                  $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
       responses:
         "200":
           description: OK
           content:
             application/json:
               schema:
-                allOf:
-                  - $ref: "https://eosio.github.io/schemata/v2.0/oas/Abi.yaml"
-                description: NEEDS DESCRIPTION
+                $ref: "https://eosio.github.io/schemata/v2.0/oas/Abi.yaml"
   /get_currency_balance:
     post:
       description: Retrieves the current balance
@@ -243,17 +224,11 @@ paths:
                 - symbol
               properties:
                 code:
-                  allOf:
-                    - $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
-                  description: NEEDS DESCRIPTION
+                  $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
                 account:
-                  allOf:
-                    - $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
-                  description: NEEDS DESCRIPTION
+                  $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
                 symbol:
-                  allOf:
-                    - $ref: "https://eosio.github.io/schemata/v2.0/oas/Symbol.yaml"
-                  description: NEEDS DESCRIPTION
+                  $ref: "https://eosio.github.io/schemata/v2.0/oas/Symbol.yaml"
 
       responses:
         "200":
@@ -263,9 +238,7 @@ paths:
               schema:
                 type: array
                 items:
-                  allOf:
-                    - $ref: "https://eosio.github.io/schemata/v2.0/oas/Symbol.yaml"
-                  description: NEEDS DESCRIPTION
+                  $ref: "https://eosio.github.io/schemata/v2.0/oas/Symbol.yaml"
 
   /get_currency_stats:
     post:
@@ -278,13 +251,9 @@ paths:
               type: object
               properties:
                 code:
-                  allOf:
-                    - $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
-                  description: NEEDS DESCRIPTION
+                  $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
                 symbol:
-                  allOf:
-                    - $ref: "https://eosio.github.io/schemata/v2.0/oas/Symbol.yaml"
-                  description: NEEDS DESCRIPTION
+                  $ref: "https://eosio.github.io/schemata/v2.0/oas/Symbol.yaml"
 
       responses:
         "200":
@@ -308,16 +277,12 @@ paths:
                 - available_keys
               properties:
                 transaction:
-                  allOf:
-                    - $ref: "https://eosio.github.io/schemata/v2.0/oas/Transaction.yaml"
-                  description: NEEDS DESCRIPTION
+                  $ref: "https://eosio.github.io/schemata/v2.0/oas/Transaction.yaml"
                 available_keys:
                   type: array
                   description: Provide the available keys
                   items:
-                    allOf:
-                      - $ref: "https://eosio.github.io/schemata/v2.0/oas/PublicKey.yaml"
-                    description: NEEDS DESCRIPTION
+                    $ref: "https://eosio.github.io/schemata/v2.0/oas/PublicKey.yaml"
       responses:
         "200":
           description: OK
@@ -366,23 +331,20 @@ paths:
                   - proposed
                 properties:
                   active:
-                    type:
-                      - "null"
-                      - array
+                    type: array
+                    nullable: true
                     items:
-                      $ref: "ProducerSchedule.yaml"
+                      $ref: "https://eosio.github.io/schemata/v2.0/oas/ProducerSchedule.yaml"
                   pending:
-                    type:
-                      - "null"
-                      - array
+                    type: array
+                    nullable: true
                     items:
-                      $ref: "ProducerSchedule.yaml"
+                      $ref: "https://eosio.github.io/schemata/v2.0/oas/ProducerSchedule.yaml"
                   proposed:
-                    type:
-                      - "null"
-                      - array
+                    type: array
+                    nullable: true
                     items:
-                      $ref: "ProducerSchedule.yaml"
+                      $ref: "https://eosio.github.io/schemata/v2.0/oas/Schedule.yaml"
 
 
   /get_raw_code_and_abi:
@@ -398,9 +360,7 @@ paths:
                 - account_name
               properties:
                 account_name:
-                  allOf:
-                    - $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
-                  description: NEEDS DESCRIPTION
+                  $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
 
       responses:
         "200":
@@ -411,9 +371,7 @@ paths:
                 type: object
                 properties:
                   account_name:
-                    allOf:
-                      - $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
-                    description: NEEDS DESCRIPTION
+                    $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
                   wasm:
                     type: string
                     description: base64 encoded wasm
@@ -432,9 +390,7 @@ paths:
               type: object
               properties:
                 lower_bound:
-                  allOf:
-                    - $ref: "https://eosio.github.io/schemata/v2.0/oas/DateTimeSeconds.yaml"
-                  description: NEEDS DESCRIPTION
+                  $ref: "https://eosio.github.io/schemata/v2.0/oas/DateTimeSeconds.yaml"
                 limit:
                   description: The maximum number of transactions to return
                   type: integer
@@ -452,9 +408,7 @@ paths:
                   transactions:
                     type: array
                     items:
-                      allOf:
-                        - $ref: "https://eosio.github.io/schemata/v2.0/oas/Transaction.yaml"
-                      description: NEEDS DESCRIPTION
+                      $ref: "https://eosio.github.io/schemata/v2.0/oas/Transaction.yaml"
 
 
   /get_table_by_scope:
@@ -499,13 +453,9 @@ paths:
                   rows:
                     type: array
                     items:
-                      allOf:
-                        - $ref: "https://eosio.github.io/schemata/v2.0/oas/TableScope.yaml"
-                      description: NEEDS DESCRIPTION
+                      $ref: "https://eosio.github.io/schemata/v2.0/oas/TableScope.yaml"
                   more:
-                    allOf:
-                      - $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
-                    description: NEEDS DESCRIPTION
+                    $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
 
   /get_table_rows:
     post:
@@ -567,9 +517,7 @@ paths:
               title: AbiJsonToBinRequest
               properties:
                 binargs:
-                  allOf:
-                    - $ref: "https://eosio.github.io/schemata/v2.0/oas/Hex.yaml"
-                  description: NEEDS DESCRIPTION
+                  $ref: "https://eosio.github.io/schemata/v2.0/oas/Hex.yaml"
 
       responses:
         "200":
@@ -580,9 +528,7 @@ paths:
                 type: object
                 properties:
                   binargs:
-                    allOf:
-                      - $ref: "https://eosio.github.io/schemata/v2.0/oas/Hex.yaml"
-                    description: NEEDS DESCRIPTION
+                    $ref: "https://eosio.github.io/schemata/v2.0/oas/Hex.yaml"
 
   /abi_bin_to_json:
     post:
@@ -596,17 +542,11 @@ paths:
               title: AbiBinToJsonRequest
               properties:
                 code:
-                  allOf:
-                    - $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
-                  description: NEEDS DESCRIPTION
+                  $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
                 action:
-                  allOf:
-                    - $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
-                  description: NEEDS DESCRIPTION
+                  $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
                 binargs:
-                  allOf:
-                    - $ref: "https://eosio.github.io/schemata/v2.0/oas/Hex.yaml"
-                  description: NEEDS DESCRIPTION
+                  $ref: "https://eosio.github.io/schemata/v2.0/oas/Hex.yaml"
       responses:
         "200":
           description: OK
@@ -629,9 +569,7 @@ paths:
                 - code_as_wasm
               properties:
                 account_name:
-                  allOf:
-                    - $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
-                  description: NEEDS DESCRIPTION
+                  $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
                 code_as_wasm:
                   type: integer
                   default: 1
@@ -646,21 +584,15 @@ paths:
                 title: GetCodeResponse.yaml
                 properties:
                   name:
-                    allOf:
-                      - $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
-                    description: NEEDS DESCRIPTION
+                    $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
                   code_hash:
-                    allOf:
-                      - $ref: "https://eosio.github.io/schemata/v2.0/oas/Sha256.yaml"
-                    description: NEEDS DESCRIPTION
+                    $ref: "https://eosio.github.io/schemata/v2.0/oas/Sha256.yaml"
                   wast:
                     type: string
                   wasm:
                     type: string
                   abi:
-                    allOf:
-                      - $ref: "https://eosio.github.io/schemata/v2.0/oas/Abi.yaml"
-                    description: NEEDS DESCRIPTION
+                    $ref: "https://eosio.github.io/schemata/v2.0/oas/Abi.yaml"
 
   /get_raw_abi:
     post:
@@ -675,9 +607,7 @@ paths:
                 - account_name
               properties:
                 account_name:
-                  allOf:
-                    - $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
-                  description: NEEDS DESCRIPTION
+                  $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
       responses:
         "200":
           description: OK
@@ -687,17 +617,12 @@ paths:
                 type: object
                 properties:
                   account_name:
-                    allOf:
-                      - $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
-                    description: NEEDS DESCRIPTION
+                    $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
                   code_hash:
-                    allOf:
-                      - $ref: "https://eosio.github.io/schemata/v2.0/oas/Sha256.yaml"
-                    description: NEEDS DESCRIPTION
+                    $ref: "https://eosio.github.io/schemata/v2.0/oas/Sha256.yaml"
                   abi_hash:
                     allOf:
                       - $ref: "https://eosio.github.io/schemata/v2.0/oas/Sha256.yaml"
-                    description: NEEDS DESCRIPTION
                   abi:
                     type: string
 
