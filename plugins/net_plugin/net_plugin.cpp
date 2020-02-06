@@ -2411,6 +2411,25 @@ namespace eosio {
             fc::raw::unpack( ds, which ); // throw away
             shared_ptr<signed_block> ptr = std::make_shared<signed_block>();
             fc::raw::unpack( ds, *ptr );
+
+            auto is_webauthn_sig = []( const fc::crypto::signature& s ) {
+               return s.which() == fc::crypto::signature::storage_type::position<fc::crypto::webauthn::signature>();
+            };
+            bool has_webauthn_sig = is_webauthn_sig( ptr->producer_signature );
+
+            constexpr auto additional_sigs_eid = additional_block_signatures_extension::extension_id();
+            auto exts = ptr->validate_and_extract_extensions();
+            if( exts.count( additional_sigs_eid ) ) {
+               const auto &additional_sigs = exts.lower_bound( additional_sigs_eid )->second.get<additional_block_signatures_extension>().signatures;
+               has_webauthn_sig |= std::any_of( additional_sigs.begin(), additional_sigs.end(), is_webauthn_sig );
+            }
+
+            if( has_webauthn_sig ) {
+               fc_dlog( logger, "WebAuthn signed block received from ${p}, closing connection", ("p", peer_name()));
+               close();
+               return false;
+            }
+
             handle_message( blk_id, std::move( ptr ) );
 
          } else if( which == packed_transaction_which ) {
