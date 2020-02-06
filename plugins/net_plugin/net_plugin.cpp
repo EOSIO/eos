@@ -3367,8 +3367,11 @@ namespace eosio {
       chain::controller&cc = my->chain_plug->chain();
       my->db_read_mode = cc.get_read_mode();
       if( cc.in_immutable_mode() && my->p2p_address.size() ) {
-         my->p2p_address.clear();
-         fc_wlog( logger, "node in read-only mode disabling incoming p2p connections" );
+         fc_wlog( logger, "\n"
+               "************************************\n"
+               "*        Read Only Mode            *\n"
+               "* - Transactions not forwarded   - *\n"
+               "************************************\n" );
       }
 
       tcp::endpoint listen_endpoint;
