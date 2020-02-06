@@ -3368,10 +3368,10 @@ namespace eosio {
       my->db_read_mode = cc.get_read_mode();
       if( cc.in_immutable_mode() && my->p2p_address.size() ) {
          fc_wlog( logger, "\n"
-               "************************************\n"
-               "*        Read Only Mode            *\n"
-               "* - Transactions not forwarded   - *\n"
-               "************************************\n" );
+               "**********************************\n"
+               "*         Read Only Mode         *\n"
+               "* - Transactions not forwarded - *\n"
+               "**********************************\n" );
       }
 
       tcp::endpoint listen_endpoint;
