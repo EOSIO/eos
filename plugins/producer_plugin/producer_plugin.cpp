@@ -1373,9 +1373,6 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
    // Not our turn
    const auto& scheduled_producer = hbs->get_scheduled_producer(block_time);
 
-   fc_dlog(_log, "Starting block #${n} at ${time} producer ${p}",
-           ("n", hbs->block_num + 1)("time", now)("p", scheduled_producer.producer_name));
-
    const auto current_watermark = get_watermark(scheduled_producer.producer_name);
 
    size_t num_relevant_signatures = 0;
@@ -1440,7 +1437,8 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
       }
    }
 
-   fc_dlog(_log, "Starting block #${n} ${bt} at ${time}", ("n", hbs->block_num + 1)("bt", block_time)("time", now));
+   fc_dlog(_log, "Starting block #${n} at ${time} producer ${p}",
+           ("n", hbs->block_num + 1)("time", now)("p", scheduled_producer.producer_name));
 
    try {
       uint16_t blocks_to_confirm = 0;
