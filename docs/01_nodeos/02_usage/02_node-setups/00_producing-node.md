@@ -30,7 +30,7 @@ Please follow the steps below to set up a producing node:
 In order for your account to be eligible as a producer, you will need to register the account as a producer:
 
 ```sh
-$ cleos system regproducer accountname1 EOS1234534... http://producer.site Antarctica
+cleos system regproducer accountname1 EOS1234534... http://producer.site Antarctica
 ```
 
 ### 2. Set Producer Name
@@ -65,7 +65,7 @@ signature-provider = PUBLIC_SIGNING_KEY=KEY:PRIVATE_SIGNING_KEY
 ```
 
 #### Using Keosd:
-You can also use Keosd instead of hard-defining keys. 
+You can also use `keosd` instead of hard-defining keys. 
 
 ```console
 # config.ini:

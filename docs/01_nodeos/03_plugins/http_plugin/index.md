@@ -6,14 +6,16 @@ The `http_plugin` is a core plugin supported by both `nodeos` and `keosd`. The p
 
 ## Usage
 
-```sh
+```console
 # config.ini
 plugin = eosio::http_plugin
 [options]
-
+```
+```sh
 # command-line
-$ nodeos ... --plugin eosio::http_plugin [options]
-$ keosd ... --plugin eosio::http_plugin [options]
+nodeos ... --plugin eosio::http_plugin [options]
+ (or)
+keosd ... --plugin eosio::http_plugin [options]
 ```
 
 ## Options

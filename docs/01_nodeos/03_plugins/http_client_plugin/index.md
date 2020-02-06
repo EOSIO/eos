@@ -6,20 +6,17 @@ The `http_client_plugin`  is an internal utility plugin, providing the `producer
 
 ## Usage
 
-# config.ini
-plugin = eosio::http_client_plugin
-
-
-```sh
+```console
 # config.ini
 plugin = eosio::http_client_plugin
 https-client-root-cert = "path/to/my/certificate.pem"
 https-client-validate-peers = 1
-
+```
+```sh
 # command-line
-$ nodeos ... --plugin eosio::http_client_plugin  \
-             --https-client-root-cert "path/to/my/certificate.pem"  \
-             --https-client-validate-peers 1
+nodeos ... --plugin eosio::http_client_plugin  \
+           --https-client-root-cert "path/to/my/certificate.pem"  \
+           --https-client-validate-peers 1
 ```
 
 ## Options

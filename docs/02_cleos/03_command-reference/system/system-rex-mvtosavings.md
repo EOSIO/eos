@@ -23,6 +23,6 @@ excerpt: "Move REX tokens to savings bucket"
 ## Examples
 
 
-```text
+```sh
 cleos system rex mvtosavings accountname1 "1 REX"
 ```
