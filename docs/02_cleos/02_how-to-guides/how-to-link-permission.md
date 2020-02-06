@@ -4,7 +4,7 @@ Link a permission to an action of a contract
 
 ## Before you begin
 
-* Install the currently supported version of cleos
+* Install the currently supported version of `cleos`
 
 * Understand the following:
   * What is an account
@@ -15,6 +15,6 @@ Link a permission to an action of a contract
 
 Link a permission level `permlvl` to the action `transfer` of contract `hodlcontract`
 
-```shell
+```sh
 cleos set action permission alice hodlcontract transfer permlvl
 ```

@@ -6,7 +6,7 @@ content_title: Nodeos Options
 
 ## Nodeos-specific Options
 
-Nodeos-specific options are used mainly for housekeeping purposes, such as setting the directory where the blockchain data resides, specifying the name of the `nodeos` configuraton file, setting the name and path of the logging configuration file, etc. A sample output from running  `$ nodeos --help` is displayed below, showing the nodeos-specific options (Note: the plugin-specific options have been excluded for clarity):
+Nodeos-specific options are used mainly for housekeeping purposes, such as setting the directory where the blockchain data resides, specifying the name of the `nodeos` configuraton file, setting the name and path of the logging configuration file, etc. A sample output from running  `nodeos --help` is displayed below, showing the nodeos-specific options (Note: the plugin-specific options have been excluded for clarity):
 
 ```console
 Application Config Options:
@@ -30,7 +30,7 @@ Application Command Line Options:
 
 ## Plugin-specific Options
 
-Plugin-specific options control the behavior of the nodeos plugins. Every plugin-specific option has a unique name, so it can be specified in any order within the command line or `config.ini` file. When specifying one or more plugin-specific option(s), the applicable plugin(s) must also be enabled using the `--plugin` option or else the corresponding option(s) will be ignored. A sample output from running `$ nodeos --help` is displayed below, showing an excerpt from the plugin-specific options:
+Plugin-specific options control the behavior of the nodeos plugins. Every plugin-specific option has a unique name, so it can be specified in any order within the command line or `config.ini` file. When specifying one or more plugin-specific option(s), the applicable plugin(s) must also be enabled using the `--plugin` option or else the corresponding option(s) will be ignored. A sample output from running `nodeos --help` is displayed below, showing an excerpt from the plugin-specific options:
 
 ```console
 Config Options for eosio::chain_plugin:
