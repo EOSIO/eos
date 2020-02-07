@@ -15,7 +15,6 @@ if [[ "$(uname)" == 'Darwin' ]]; then
     echo "make -j$JOBS"
     make -j$JOBS
 else # Linux
-    CMAKE_EXTRAS="$CMAKE_EXTRAS -DBUILD_MONGO_DB_PLUGIN=true"
     ARGS=${ARGS:-"--rm --init -v $(pwd):$MOUNTED_DIR"}
     PRE_COMMANDS="cd $MOUNTED_DIR/build"
     # PRE_COMMANDS: Executed pre-cmake
