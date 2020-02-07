@@ -80,12 +80,3 @@ RUN curl -L https://github.com/mongodb/mongo-cxx-driver/archive/r3.4.0.tar.gz -o
     rm -rf mongo-cxx-driver-r3.4.0.tar.gz /mongo-cxx-driver-r3.4.0
 # add mongodb to path
 ENV PATH=${PATH}:/mongodb-linux-x86_64-ubuntu1604-3.6.3/bin
-# install ccache
-RUN curl -LO https://github.com/ccache/ccache/releases/download/v3.4.1/ccache-3.4.1.tar.gz && \
-    tar -xzf ccache-3.4.1.tar.gz && \
-    cd ccache-3.4.1 && \
-    ./configure && \
-    make && \
-    make install && \
-    cd / && \
-    rm -rf ccache-3.4.1.tar.gz /ccache-3.4.1
