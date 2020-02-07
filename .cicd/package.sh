@@ -1,6 +1,7 @@
 #!/bin/bash
 set -eo pipefail
 . ./.cicd/helpers/general.sh
+[[ $BUILDKITE == true ]] && buildkite-agent artifact download build.tar.gz . --step "$PLATFORM_NAME_FULL - Build" && tar -xzf build.tar.gz
 mkdir -p $BUILD_DIR
 if [[ $(uname) == 'Darwin' ]]; then
     bash -c "cd build/packages && chmod 755 ./*.sh && ./generate_package.sh brew"
@@ -20,11 +21,11 @@ else # Linux
     ARGS=${ARGS:-"--rm --init -v $(pwd):$MOUNTED_DIR"}
     . $HELPERS_DIR/file-hash.sh $CICD_DIR/platforms/$PLATFORM_TYPE/$IMAGE_TAG.dockerfile
     PRE_COMMANDS="cd $MOUNTED_DIR/build/packages && chmod 755 ./*.sh"
-    if [[ "$IMAGE_TAG" =~ "ubuntu" ]]; then
+    if [[ $IMAGE_TAG =~ "ubuntu" ]]; then
         ARTIFACT='*.deb'
         PACKAGE_TYPE='deb'
         PACKAGE_COMMANDS="./generate_package.sh $PACKAGE_TYPE"
-    elif [[ "$IMAGE_TAG" =~ "centos" ]]; then
+    elif [[ $IMAGE_TAG =~ "centos" ]]; then
         ARTIFACT='*.rpm'
         PACKAGE_TYPE='rpm'
         PACKAGE_COMMANDS="mkdir -p ~/rpmbuild/BUILD && mkdir -p ~/rpmbuild/BUILDROOT && mkdir -p ~/rpmbuild/RPMS && mkdir -p ~/rpmbuild/SOURCES && mkdir -p ~/rpmbuild/SPECS && mkdir -p ~/rpmbuild/SRPMS && yum install -y rpm-build && ./generate_package.sh $PACKAGE_TYPE"
