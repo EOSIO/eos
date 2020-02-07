@@ -28,10 +28,6 @@ if [[ "$IMAGE_TAG" == "ubuntu-16.04-pinned" ]]; then
     echo "python3 version is now $(python3 --version)"
 fi
 
-echo "pip version is $(python3 -m pip --version)"
-python3 -m pip install --upgrade pip
-python3 -m pip install requests
-
 set +e # defer ctest error handling to end
 
 export PYTHONIOENCODING=UTF-8
