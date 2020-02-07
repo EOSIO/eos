@@ -6,8 +6,8 @@ jobs:
     name: Start Job
     runs-on: ubuntu-latest
     steps:
-      - name: Start Job
-        run: echo "Start Job."
+      - name: Start Job.
+        run: echo "PR created. Builds will be triggered here for forked PRs or Buildkite for internal PRs."
 
 
   submodule_regression_check:
