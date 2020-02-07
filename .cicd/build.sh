@@ -2,12 +2,10 @@
 set -eo pipefail
 . ./.cicd/helpers/general.sh
 mkdir -p $BUILD_DIR
-CMAKE_EXTRAS="-DCMAKE_BUILD_TYPE='Release' -DENABLE_MULTIVERSION_PROTOCOL_TEST=true"
+CMAKE_EXTRAS="-DCMAKE_BUILD_TYPE='Release' -DENABLE_MULTIVERSION_PROTOCOL_TEST=true -DBUILD_MONGO_DB_PLUGIN=true"
 if [[ "$(uname)" == 'Darwin' ]]; then
     # You can't use chained commands in execute
-    if [[ $BUILDKITE == true ]]; then
-        CMAKE_EXTRAS="$CMAKE_EXTRAS -DBUILD_MONGO_DB_PLUGIN=true"
-    else
+    if [[ "$GITHUB_ACTIONS" == 'true' ]]; then
         export PINNED=false
     fi
     [[ ! "$PINNED" == 'false' ]] && CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_TOOLCHAIN_FILE=$HELPERS_DIR/clang.make"
@@ -17,7 +15,6 @@ if [[ "$(uname)" == 'Darwin' ]]; then
     echo "make -j$JOBS"
     make -j$JOBS
 else # Linux
-    CMAKE_EXTRAS="$CMAKE_EXTRAS -DBUILD_MONGO_DB_PLUGIN=true"
     ARGS=${ARGS:-"--rm --init -v $(pwd):$MOUNTED_DIR"}
     PRE_COMMANDS="cd $MOUNTED_DIR/build"
     # PRE_COMMANDS: Executed pre-cmake
@@ -33,12 +30,15 @@ else # Linux
     fi
     BUILD_COMMANDS="cmake $CMAKE_EXTRAS .. && make -j$JOBS"
     # Docker Commands
-    if [[ $BUILDKITE == true ]]; then
+    if [[ "$BUILDKITE" == 'true' ]]; then
         # Generate Base Images
         $CICD_DIR/generate-base-images.sh
         [[ "$ENABLE_INSTALL" == 'true' ]] && COMMANDS="cp -r $MOUNTED_DIR /root/eosio && cd /root/eosio/build &&"
         COMMANDS="$COMMANDS $BUILD_COMMANDS"
         [[ "$ENABLE_INSTALL" == 'true' ]] && COMMANDS="$COMMANDS && make install"
+    elif [[ "$GITHUB_ACTIONS" == 'true' ]]; then
+        ARGS="$ARGS -e JOBS"
+        COMMANDS="$BUILD_COMMANDS"
     fi
     . $HELPERS_DIR/file-hash.sh $CICD_DIR/platforms/$PLATFORM_TYPE/$IMAGE_TAG.dockerfile
     COMMANDS="$PRE_COMMANDS && $COMMANDS"
