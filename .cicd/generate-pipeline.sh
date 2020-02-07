@@ -452,6 +452,7 @@ if ( [[ ! $PINNED == false ]] ); then
     env:
       IMAGE_TAG: "ubuntu-18.04-pinned"
       PLATFORM_TYPE: "pinned"
+      PLATFORM_NAME_FULL: ":ubuntu: Ubuntu 18.04"
     agents:
       queue: "$BUILDKITE_TEST_AGENT_QUEUE"
     timeout: ${TIMEOUT:-30}
