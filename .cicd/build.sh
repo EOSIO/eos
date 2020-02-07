@@ -5,13 +5,7 @@ mkdir -p $BUILD_DIR
 CMAKE_EXTRAS="-DCMAKE_BUILD_TYPE='Release' -DENABLE_MULTIVERSION_PROTOCOL_TEST=true -DBUILD_MONGO_DB_PLUGIN=true"
 if [[ "$(uname)" == 'Darwin' ]]; then
     # You can't use chained commands in execute
-<<<<<<< HEAD
-    if [[ $BUILDKITE == true ]]; then
-        CMAKE_EXTRAS="$CMAKE_EXTRAS -DBUILD_MONGO_DB_PLUGIN=true"
-    else
-=======
     if [[ "$GITHUB_ACTIONS" == 'true' ]]; then
->>>>>>> release/1.8.x
         export PINNED=false
     fi
     [[ ! "$PINNED" == 'false' ]] && CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_TOOLCHAIN_FILE=$HELPERS_DIR/clang.make"
@@ -41,12 +35,9 @@ else # Linux
         [[ "$ENABLE_INSTALL" == 'true' ]] && COMMANDS="cp -r $MOUNTED_DIR /root/eosio && cd /root/eosio/build &&"
         COMMANDS="$COMMANDS $BUILD_COMMANDS"
         [[ "$ENABLE_INSTALL" == 'true' ]] && COMMANDS="$COMMANDS && make install"
-<<<<<<< HEAD
-=======
     elif [[ "$GITHUB_ACTIONS" == 'true' ]]; then
         ARGS="$ARGS -e JOBS"
         COMMANDS="$BUILD_COMMANDS"
->>>>>>> release/1.8.x
     fi
     . $HELPERS_DIR/file-hash.sh $CICD_DIR/platforms/$PLATFORM_TYPE/$IMAGE_TAG.dockerfile
     COMMANDS="$PRE_COMMANDS && $COMMANDS"
