@@ -32,11 +32,7 @@ steps:
       - "git clone git@github.com:EOSIO/eos.git eos && cd eos &&  git checkout -f $BUILDKITE_BRANCH && git submodule update --init --recursive"
       - "cd eos && ./scripts/eosio_build.sh -P -y"
     plugins:
-<<<<<<< HEAD
-      - EOSIO/anka#v0.5.8:
-=======
       - EOSIO/anka#v0.6.0:
->>>>>>> develop
           debug: true
           vm-name: "10.14.6_6C_14G_40G"
           no-volume: true
@@ -49,10 +45,6 @@ steps:
           - "registry_1"
           - "registry_2"
           inherit-environment-vars: true
-      - EOSIO/skip-checkout#v0.1.1:
-<<<<<<< HEAD
-=======
-          cd: ~
     timeout: 180
 
 
@@ -79,9 +71,6 @@ steps:
           - "registry_1"
           - "registry_2"
           inherit-environment-vars: true
-      - EOSIO/skip-checkout#v0.1.1:
->>>>>>> develop
-          cd: ~
     timeout: 180
     
   - label: ":ubuntu: Ubuntu 16.04 - Build Pinned"
@@ -142,11 +131,7 @@ steps:
       - "git clone git@github.com:EOSIO/eos.git eos && cd eos &&  git checkout -f $BUILDKITE_BRANCH && git submodule update --init --recursive"
       - "cd eos && ./scripts/eosio_build.sh -y"
     plugins:
-<<<<<<< HEAD
-      - EOSIO/anka#v0.5.8:
-=======
       - EOSIO/anka#v0.6.0:
->>>>>>> develop
           debug: true
           vm-name: "10.14.6_6C_14G_40G"
           no-volume: true
@@ -159,10 +144,6 @@ steps:
           - "registry_1"
           - "registry_2"
           inherit-environment-vars: true
-      - EOSIO/skip-checkout#v0.1.1:
-<<<<<<< HEAD
-=======
-          cd: ~
     timeout: 180
 
   - label: ":darwin: macOS 10.15 - Build UnPinned"
@@ -188,9 +169,6 @@ steps:
           - "registry_1"
           - "registry_2"
           inherit-environment-vars: true
-      - EOSIO/skip-checkout#v0.1.1:
->>>>>>> develop
-          cd: ~
     timeout: 180
     
   - label: ":ubuntu: Ubuntu 18.04 - Build UnPinned"

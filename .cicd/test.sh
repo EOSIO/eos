@@ -2,6 +2,7 @@
 set -eo pipefail
 # variables
 . ./.cicd/helpers/general.sh
+[[ $BUILDKITE == true ]] && buildkite-agent artifact download build.tar.gz . --step "$PLATFORM_NAME_FULL - Build" && tar -xzf build.tar.gz
 # tests
 if [[ $(uname) == 'Darwin' ]]; then # macOS
     export PATH=$PATH:~/mongodb/bin

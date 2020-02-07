@@ -5,21 +5,14 @@ mkdir -p $BUILD_DIR
 CMAKE_EXTRAS="-DCMAKE_BUILD_TYPE='Release' -DENABLE_MULTIVERSION_PROTOCOL_TEST=true -DBUILD_MONGO_DB_PLUGIN=true"
 if [[ "$(uname)" == 'Darwin' ]]; then
     # You can't use chained commands in execute
-    if [[ "$GITHUB_ACTIONS" == 'true' ]]; then
+    if [[ $BUILDKITE == true ]]; then
+        CMAKE_EXTRAS="$CMAKE_EXTRAS -DBUILD_MONGO_DB_PLUGIN=true"
+        source ~/.bash_profile # Make sure node is available for ship_test
+    else
         export PINNED=false
     fi
     [[ ! "$PINNED" == 'false' ]] && CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_TOOLCHAIN_FILE=$HELPERS_DIR/clang.make"
     cd $BUILD_DIR
-    if [[ $TRAVIS == true ]]; then
-        ccache -s
-        brew link --overwrite python
-        # Support ship_test
-        export NVM_DIR="$HOME/.nvm"
-        . "/usr/local/opt/nvm/nvm.sh"
-        nvm install --lts=dubnium
-    else
-        source ~/.bash_profile # Make sure node is available for ship_test
-    fi
     echo "cmake $CMAKE_EXTRAS .."
     cmake $CMAKE_EXTRAS ..
     echo "make -j$JOBS"
@@ -55,3 +48,7 @@ else # Linux
     echo "$ docker run $ARGS $(buildkite-intrinsics) $FULL_TAG bash -c \"$COMMANDS\""
     eval docker run $ARGS $(buildkite-intrinsics) $FULL_TAG bash -c \"$COMMANDS\"
 fi
+if [[ $BUILDKITE == true ]]; then
+    [[ $(uname) == 'Darwin' ]] && cd ..
+    tar -pczf build.tar.gz build && buildkite-agent artifact upload build.tar.gz
+fi  

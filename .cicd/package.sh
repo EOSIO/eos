@@ -1,6 +1,7 @@
 #!/bin/bash
 set -eo pipefail
 . ./.cicd/helpers/general.sh
+[[ $BUILDKITE == true ]] && buildkite-agent artifact download build.tar.gz . --step "$PLATFORM_NAME_FULL - Build" && tar -xzf build.tar.gz
 mkdir -p $BUILD_DIR
 if [[ $(uname) == 'Darwin' ]]; then
     bash -c "cd build/packages && chmod 755 ./*.sh && ./generate_package.sh brew"
