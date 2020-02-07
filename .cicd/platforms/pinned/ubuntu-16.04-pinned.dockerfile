@@ -81,6 +81,7 @@ RUN curl -L https://github.com/mongodb/mongo-cxx-driver/archive/r3.4.0.tar.gz -o
 ENV PATH=${PATH}:/mongodb-linux-x86_64-ubuntu1604-3.6.3/bin
 # install python 3.6
 RUN apt-get update && apt -y install software-properties-common && add-apt-repository -y ppa:deadsnakes/ppa && apt update && apt-get update && apt -y install python3 python3-pip python3.6
+# install python 3.6
 # install nvm
 RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.0/install.sh | bash
 # load nvm in non-interactive shells
