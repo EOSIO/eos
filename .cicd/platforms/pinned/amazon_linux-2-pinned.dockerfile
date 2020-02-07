@@ -13,6 +13,7 @@ RUN curl -LO https://github.com/Kitware/CMake/releases/download/v3.16.2/cmake-3.
     ./bootstrap --prefix=/usr/local && \
     make -j$(nproc) && \
     make install && \
+    cd / && \
     rm -rf cmake-3.16.2.tar.gz cmake-3.16.2
 # build clang8
 RUN git clone --single-branch --branch release_80 https://git.llvm.org/git/llvm.git clang8 && cd clang8 && git checkout 18e41dc && \
