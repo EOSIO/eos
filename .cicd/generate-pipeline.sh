@@ -2,8 +2,6 @@
 set -eo pipefail
 # environment
 . ./.cicd/helpers/general.sh
-export MOJAVE_ANKA_TAG_BASE=${MOJAVE_ANKA_TAG_BASE:-'clean::cicd::git-ssh::nas::brew::buildkite-agent'}
-export MOJAVE_ANKA_TEMPLATE_NAME=${MOJAVE_ANKA_TEMPLATE_NAME:-'10.14.6_6C_14G_40G'}
 export PLATFORMS_JSON_ARRAY='[]'
 [[ -z "$ROUNDS" ]] && export ROUNDS='1'
 DISABLE_CONCURRENCY=${DISABLE_CONCURRENCY:-false}
@@ -37,6 +35,8 @@ for FILE in $(ls $CICD_DIR/platforms/$PLATFORM_TYPE); do
     export FILE_NAME="$(echo $FILE | awk '{split($0,a,/\.(d|s)/); print a[1] }')"
     # macos-10.14
     # ubuntu-16.04
+    # skip Mojave if it's anything but the post-merge build
+    [[ $FILE_NAME =~ 'macos-10.14' ]] && ( [[ $BUILDKITE_SOURCE != 'webhook' ]] || [[ $BUILDKITE_PULL_REQUEST != false ]] || [[ ! $BUILDKITE_MESSAGE =~ 'Merge pull request' ]] ) && export SKIP_MACOS_10_14=true && continue
     export PLATFORM_NAME="$(echo $FILE_NAME | cut -d- -f1 | sed 's/os/OS/g')"
     # macOS
     # ubuntu
@@ -62,6 +62,16 @@ for FILE in $(ls $CICD_DIR/platforms/$PLATFORM_TYPE); do
     [[ $FILE_NAME =~ 'centos' ]] && export ICON=':centos:'
     [[ $FILE_NAME =~ 'macos' ]] && export ICON=':darwin:'
     . $HELPERS_DIR/file-hash.sh $CICD_DIR/platforms/$PLATFORM_TYPE/$FILE # returns HASHED_IMAGE_TAG, etc
+    # Anka Template and Tags
+    export ANKA_TAG_BASE='clean::cicd::git-ssh::nas::brew::buildkite-agent'
+    if [[ $FILE_NAME =~ 'macos-10.14' ]]; then
+      export ANKA_TEMPLATE_NAME='10.14.6_6C_14G_40G'
+    elif [[ $FILE_NAME =~ 'macos-10.15' ]]; then
+      export ANKA_TEMPLATE_NAME='10.15.3_6C_14G_40G'
+    else # Linux
+      export ANKA_TAG_BASE=''
+      export ANKA_TEMPLATE_NAME=''
+    fi
     export PLATFORMS_JSON_ARRAY=$(echo $PLATFORMS_JSON_ARRAY | jq -c '. += [{ 
         "FILE_NAME": env.FILE_NAME, 
         "PLATFORM_NAME": env.PLATFORM_NAME,
@@ -72,7 +82,9 @@ for FILE in $(ls $CICD_DIR/platforms/$PLATFORM_TYPE); do
         "PLATFORM_NAME_FULL": env.PLATFORM_NAME_FULL,
         "DOCKERHUB_FULL_TAG": env.FULL_TAG,
         "HASHED_IMAGE_TAG": env.HASHED_IMAGE_TAG,
-        "ICON": env.ICON
+        "ICON": env.ICON,
+        "ANKA_TAG_BASE": env.ANKA_TAG_BASE,
+        "ANKA_TEMPLATE_NAME": env.ANKA_TEMPLATE_NAME
         }]')
 done
 # set build_source whether triggered or not
@@ -81,8 +93,8 @@ if [[ ! -z ${BUILDKITE_TRIGGERED_FROM_BUILD_ID} ]]; then
 fi
 export BUILD_SOURCE=${BUILD_SOURCE:---build \$BUILDKITE_BUILD_ID}
 # set trigger_job if master/release/develop branch and webhook
-if [[ $BUILDKITE_BRANCH =~ ^release/[0-9]+\.[0-9]+\.x$ || $BUILDKITE_BRANCH =~ ^master$ || $BUILDKITE_BRANCH =~ ^develop$ ]]; then
-    [[ $BUILDKITE_SOURCE != 'scheduled' ]] && export TRIGGER_JOB=true
+if [[ ! $BUILDKITE_PIPELINE_SLUG =~ 'lrt' ]] && [[ $BUILDKITE_BRANCH =~ ^release/[0-9]+\.[0-9]+\.x$ || $BUILDKITE_BRANCH =~ ^master$ || $BUILDKITE_BRANCH =~ ^develop$ ]]; then
+    [[ $BUILDKITE_SOURCE != 'schedule' ]] && export TRIGGER_JOB=true
 fi
 oIFS="$IFS"
 IFS=$''
@@ -124,13 +136,17 @@ EOF
       - "./.cicd/build.sh"
       - "tar -pczf build.tar.gz build && buildkite-agent artifact upload build.tar.gz"
     plugins:
+<<<<<<< HEAD
       - EOSIO/anka#v0.5.8:
+=======
+      - EOSIO/anka#v0.6.0:
+>>>>>>> develop
           no-volume: true
           workdir: "/Users/anka/build"
           workdir-create: true
           inherit-environment-vars: true
-          vm-name: ${MOJAVE_ANKA_TEMPLATE_NAME}
-          vm-registry-tag: "${MOJAVE_ANKA_TAG_BASE}::$(echo "$PLATFORM_JSON" | jq -r .HASHED_IMAGE_TAG)"
+          vm-name: $(echo "$PLATFORM_JSON" | jq -r .ANKA_TEMPLATE_NAME)
+          vm-registry-tag: $(echo "$PLATFORM_JSON" | jq -r .ANKA_TAG_BASE)::$(echo "$PLATFORM_JSON" | jq -r .HASHED_IMAGE_TAG)
           modify-cpu: 12
           modify-ram: 24
           always-pull: true
@@ -146,8 +162,8 @@ EOF
     env:
       REPO: ${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO}
       REPO_COMMIT: $BUILDKITE_COMMIT
-      TEMPLATE: $MOJAVE_ANKA_TEMPLATE_NAME
-      TEMPLATE_TAG: $MOJAVE_ANKA_TAG_BASE
+      TEMPLATE: $(echo "$PLATFORM_JSON" | jq -r .ANKA_TEMPLATE_NAME)
+      TEMPLATE_TAG: $(echo "$PLATFORM_JSON" | jq -r .ANKA_TAG_BASE)
       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
       PLATFORM_TYPE: $PLATFORM_TYPE
       TAG_COMMANDS: "git clone ${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO} eos && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT && git submodule update --init --recursive && export IMAGE_TAG=$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME) && export PLATFORM_TYPE=$PLATFORM_TYPE && . ./.cicd/platforms/$PLATFORM_TYPE/$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME).sh && cd ~/eos && cd .. && rm -rf eos"
@@ -226,13 +242,17 @@ EOF
       - "buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' && tar -xzf build.tar.gz"
       - "./.cicd/test.sh scripts/parallel-test.sh"
     plugins:
+<<<<<<< HEAD
       - EOSIO/anka#v0.5.8:
+=======
+      - EOSIO/anka#v0.6.0:
+>>>>>>> develop
           no-volume: true
           workdir: "/Users/anka/build"
           workdir-create: true
           inherit-environment-vars: true
-          vm-name: ${MOJAVE_ANKA_TEMPLATE_NAME}
-          vm-registry-tag: "${MOJAVE_ANKA_TAG_BASE}::$(echo "$PLATFORM_JSON" | jq -r .HASHED_IMAGE_TAG)"
+          vm-name: $(echo "$PLATFORM_JSON" | jq -r .ANKA_TEMPLATE_NAME)
+          vm-registry-tag: $(echo "$PLATFORM_JSON" | jq -r .ANKA_TAG_BASE)::$(echo "$PLATFORM_JSON" | jq -r .HASHED_IMAGE_TAG)
           always-pull: true
           debug: true
           wait-network: true
@@ -295,13 +315,17 @@ EOF
       - "buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' && tar -xzf build.tar.gz"
       - "./.cicd/test.sh scripts/wasm-spec-test.sh"
     plugins:
+<<<<<<< HEAD
       - EOSIO/anka#v0.5.8:
+=======
+      - EOSIO/anka#v0.6.0:
+>>>>>>> develop
           no-volume: true
           workdir: "/Users/anka/build"
           workdir-create: true
           inherit-environment-vars: true
-          vm-name: ${MOJAVE_ANKA_TEMPLATE_NAME}
-          vm-registry-tag: "${MOJAVE_ANKA_TAG_BASE}::$(echo "$PLATFORM_JSON" | jq -r .HASHED_IMAGE_TAG)"
+          vm-name: $(echo "$PLATFORM_JSON" | jq -r .ANKA_TEMPLATE_NAME)
+          vm-registry-tag: $(echo "$PLATFORM_JSON" | jq -r .ANKA_TAG_BASE)::$(echo "$PLATFORM_JSON" | jq -r .HASHED_IMAGE_TAG)
           always-pull: true
           debug: true
           wait-network: true
@@ -367,13 +391,17 @@ EOF
       - "buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' && tar -xzf build.tar.gz"
       - "./.cicd/test.sh scripts/serial-test.sh $TEST_NAME"
     plugins:
+<<<<<<< HEAD
       - EOSIO/anka#v0.5.8:
+=======
+      - EOSIO/anka#v0.6.0:
+>>>>>>> develop
           no-volume: true
           workdir: "/Users/anka/build"
           workdir-create: true
           inherit-environment-vars: true
-          vm-name: ${MOJAVE_ANKA_TEMPLATE_NAME}
-          vm-registry-tag: "${MOJAVE_ANKA_TAG_BASE}::$(echo "$PLATFORM_JSON" | jq -r .HASHED_IMAGE_TAG)"
+          vm-name: $(echo "$PLATFORM_JSON" | jq -r .ANKA_TEMPLATE_NAME)
+          vm-registry-tag: $(echo "$PLATFORM_JSON" | jq -r .ANKA_TAG_BASE)::$(echo "$PLATFORM_JSON" | jq -r .HASHED_IMAGE_TAG)
           always-pull: true
           debug: true
           wait-network: true
@@ -440,13 +468,17 @@ EOF
       - "buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' ${BUILD_SOURCE} && tar -xzf build.tar.gz"
       - "./.cicd/test.sh scripts/long-running-test.sh $TEST_NAME"
     plugins:
+<<<<<<< HEAD
       - EOSIO/anka#v0.5.8:
+=======
+      - EOSIO/anka#v0.6.0:
+>>>>>>> develop
           no-volume: true
           workdir: "/Users/anka/build"
           workdir-create: true
           inherit-environment-vars: true
-          vm-name: ${MOJAVE_ANKA_TEMPLATE_NAME}
-          vm-registry-tag: "${MOJAVE_ANKA_TAG_BASE}::$(echo "$PLATFORM_JSON" | jq -r .HASHED_IMAGE_TAG)"
+          vm-name: $(echo "$PLATFORM_JSON" | jq -r .ANKA_TEMPLATE_NAME)
+          vm-registry-tag: $(echo "$PLATFORM_JSON" | jq -r .ANKA_TAG_BASE)::$(echo "$PLATFORM_JSON" | jq -r .HASHED_IMAGE_TAG)
           always-pull: true
           debug: true
           wait-network: true
@@ -529,6 +561,7 @@ if [[ "$BUILDKITE_PIPELINE_SLUG" == 'eosio' && -z "${SKIP_INSTALL}${SKIP_LINUX}$
   - label: ":chains: Sync from Genesis Test"
     trigger: "eosio-sync-from-genesis"
     async: false
+    if: build.env("BUILDKITE_TAG") == null
     build:
       message: "Triggered by $BUILDKITE_PIPELINE_SLUG build $BUILDKITE_BUILD_NUMBER"
       commit: "${BUILDKITE_COMMIT}"
@@ -548,6 +581,7 @@ if [[ "$BUILDKITE_PIPELINE_SLUG" == 'eosio' && -z "${SKIP_INSTALL}${SKIP_LINUX}$
   - label: ":outbox_tray: Resume from State Test"
     trigger: "eosio-resume-from-state"
     async: false
+    if: build.env("BUILDKITE_TAG") == null
     build:
       message: "Triggered by $BUILDKITE_PIPELINE_SLUG build $BUILDKITE_BUILD_NUMBER"
       commit: "${BUILDKITE_COMMIT}"
@@ -644,7 +678,11 @@ cat <<EOF
       - "buildkite-agent artifact download build.tar.gz . --step ':darwin: macOS 10.14 - Build' && tar -xzf build.tar.gz"
       - "./.cicd/package.sh"
     plugins:
+<<<<<<< HEAD
       - EOSIO/anka#v0.5.8:
+=======
+      - EOSIO/anka#v0.6.0:
+>>>>>>> develop
           no-volume: true
           workdir: "/Users/anka/build"
           workdir-create: true
@@ -663,6 +701,29 @@ cat <<EOF
       - "queue=mac-anka-node-fleet"
     timeout: ${TIMEOUT:-10}
     skip: ${SKIP_MACOS_10_14}${SKIP_PACKAGE_BUILDER}${SKIP_MAC}
+
+  - label: ":darwin: macOS 10.15 - Package Builder"
+    command:
+      - "git clone \$BUILDKITE_REPO eos && cd eos && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT"
+      - "cd eos && buildkite-agent artifact download build.tar.gz . --step ':darwin: macOS 10.15 - Build' && tar -xzf build.tar.gz"
+      - "cd eos && ./.cicd/package.sh"
+    plugins:
+      - EOSIO/anka#v0.6.0:
+          no-volume: true
+          inherit-environment-vars: true
+          vm-name: 10.15.3_6C_14G_40G
+          vm-registry-tag: "clean::cicd::git-ssh::nas::brew::buildkite-agent"
+          always-pull: true
+          debug: true
+          wait-network: true
+          failover-registries:
+            - 'registry_1'
+            - 'registry_2'
+          pre-execute-sleep: 5
+    agents:
+      - "queue=mac-anka-node-fleet"
+    timeout: ${TIMEOUT:-10}
+    skip: ${SKIP_MACOS_10_15}${SKIP_PACKAGE_BUILDER}${SKIP_MAC}
 
   - label: ":docker: Docker - Label Container with Git Branch and Git Tag"
     command: 

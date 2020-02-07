@@ -4,7 +4,7 @@ List all key pairs
 
 ## Before you begin
 
-* Install the currently supported version of cleos
+* Install the currently supported version of `cleos`
 
 * Understand the following:
   * What is a public and private key pair
@@ -13,19 +13,19 @@ List all key pairs
 
 Unlock your wallet
 
-```bash
+```sh
 cleos wallet unlock
 ```
 
 List all public keys:
 
-```bash
+```sh
 cleos wallet keys
 ```
 
 List all private keys:
 
-```bash
+```sh
 cleos wallet private_keys
 
 ```

@@ -380,7 +380,7 @@ namespace eosio {
    constexpr auto     def_send_buffer_size = 1024*1024*def_send_buffer_size_mb;
    constexpr auto     def_max_write_queue_size = def_send_buffer_size*10;
    constexpr auto     def_max_trx_in_progress_size = 100*1024*1024; // 100 MB
-   constexpr auto     def_max_consecutive_rejected_blocks = 3; // num of rejected blocks before disconnect
+   constexpr auto     def_max_consecutive_rejected_blocks = 13; // num of rejected blocks before disconnect
    constexpr auto     def_max_consecutive_immediate_connection_close = 9; // back off if client keeps closing
    constexpr auto     def_max_clients = 25; // 0 for unlimited clients
    constexpr auto     def_max_nodes_per_host = 1;
@@ -825,7 +825,7 @@ namespace eosio {
         last_handshake_recv(),
         last_handshake_sent()
    {
-      fc_ilog( logger, "accepted network connection" );
+      fc_dlog( logger, "new connection object created" );
    }
 
    void connection::update_endpoints() {
@@ -852,13 +852,13 @@ namespace eosio {
             peer_add.substr( colon2 + 1 ) : peer_add.substr( colon2 + 1, end - (colon2 + 1) );
 
       if( type.empty() ) {
-         fc_ilog( logger, "Setting connection type for: ${peer} to both transactions and blocks", ("peer", peer_add) );
+         fc_dlog( logger, "Setting connection type for: ${peer} to both transactions and blocks", ("peer", peer_add) );
          connection_type = both;
       } else if( type == "trx" ) {
-         fc_ilog( logger, "Setting connection type for: ${peer} to transactions only", ("peer", peer_add) );
+         fc_dlog( logger, "Setting connection type for: ${peer} to transactions only", ("peer", peer_add) );
          connection_type = transactions_only;
       } else if( type == "blk" ) {
-         fc_ilog( logger, "Setting connection type for: ${peer} to blocks only", ("peer", peer_add) );
+         fc_dlog( logger, "Setting connection type for: ${peer} to blocks only", ("peer", peer_add) );
          connection_type = blocks_only;
       } else {
          fc_wlog( logger, "Unknown connection type: ${t}", ("t", type) );
@@ -1042,7 +1042,7 @@ namespace eosio {
    }
 
    void connection::send_handshake( bool force ) {
-      strand.dispatch( [force, c = shared_from_this()]() {
+      strand.post( [force, c = shared_from_this()]() {
          std::unique_lock<std::mutex> g_conn( c->conn_mtx );
          if( c->populate_handshake( c->last_handshake_sent, force ) ) {
             static_assert( std::is_same_v<decltype( c->sent_handshake_count ), int16_t>, "INT16_MAX based on int16_t" );
@@ -1096,7 +1096,7 @@ namespace eosio {
       std::vector<boost::asio::const_buffer> bufs;
       buffer_queue.fill_out_buffer( bufs );
 
-      strand.dispatch( [c{std::move(c)}, bufs{std::move(bufs)}]() {
+      strand.post( [c{std::move(c)}, bufs{std::move(bufs)}]() {
          boost::asio::async_write( *c->socket, bufs,
             boost::asio::bind_executor( c->strand, [c, socket=c->socket]( boost::system::error_code ec, std::size_t w ) {
             try {
@@ -1105,6 +1105,7 @@ namespace eosio {
                if( !c->socket_is_open() || socket != c->socket ) {
                   fc_ilog( logger, "async write socket ${r} before callback: ${p}",
                            ("r", c->socket_is_open() ? "changed" : "closed")("p", c->peer_name()) );
+                  c->close();
                   return;
                }
 
@@ -2123,12 +2124,11 @@ namespace eosio {
          string port = c->peer_address().substr( colon + 1, colon2 == string::npos ? string::npos : colon2 - (colon + 1));
          idump((host)(port));
          c->set_connection_type( c->peer_address() );
-         tcp::resolver::query query( tcp::v4(), host, port );
-         // Note: need to add support for IPv6 too
 
          auto resolver = std::make_shared<tcp::resolver>( my_impl->thread_pool->get_executor() );
          connection_wptr weak_conn = c;
-         resolver->async_resolve( query, boost::asio::bind_executor( c->strand,
+         // Note: need to add support for IPv6 too
+         resolver->async_resolve( tcp::v4(), host, port, boost::asio::bind_executor( c->strand,
             [resolver, weak_conn]( const boost::system::error_code& err, tcp::resolver::results_type endpoints ) {
                auto c = weak_conn.lock();
                if( !c ) return;
@@ -2136,6 +2136,7 @@ namespace eosio {
                   c->connect( resolver, endpoints );
                } else {
                   fc_elog( logger, "Unable to resolve ${add}: ${error}", ("add", c->peer_name())( "error", err.message() ) );
+                  c->connecting = false;
                   ++c->consecutive_immediate_connection_close;
                }
          } ) );
@@ -2207,10 +2208,10 @@ namespace eosio {
 
                   } else {
                      if( from_addr >= max_nodes_per_host ) {
-                        fc_elog( logger, "Number of connections (${n}) from ${ra} exceeds limit ${l}",
+                        fc_dlog( logger, "Number of connections (${n}) from ${ra} exceeds limit ${l}",
                                  ("n", from_addr + 1)( "ra", paddr_str )( "l", max_nodes_per_host ));
                      } else {
-                        fc_elog( logger, "Error max_client_count ${m} exceeded", ("m", max_client_count));
+                        fc_dlog( logger, "max_client_count ${m} exceeded", ("m", max_client_count));
                      }
                      // new_connection never added to connections and start_session not called, lifetime will end
                      boost::system::error_code ec;
@@ -2409,6 +2410,25 @@ namespace eosio {
             fc::raw::unpack( ds, which ); // throw away
             shared_ptr<signed_block> ptr = std::make_shared<signed_block>();
             fc::raw::unpack( ds, *ptr );
+
+            auto is_webauthn_sig = []( const fc::crypto::signature& s ) {
+               return s.which() == fc::crypto::signature::storage_type::position<fc::crypto::webauthn::signature>();
+            };
+            bool has_webauthn_sig = is_webauthn_sig( ptr->producer_signature );
+
+            constexpr auto additional_sigs_eid = additional_block_signatures_extension::extension_id();
+            auto exts = ptr->validate_and_extract_extensions();
+            if( exts.count( additional_sigs_eid ) ) {
+               const auto &additional_sigs = exts.lower_bound( additional_sigs_eid )->second.get<additional_block_signatures_extension>().signatures;
+               has_webauthn_sig |= std::any_of( additional_sigs.begin(), additional_sigs.end(), is_webauthn_sig );
+            }
+
+            if( has_webauthn_sig ) {
+               fc_dlog( logger, "WebAuthn signed block received from ${p}, closing connection", ("p", peer_name()));
+               close();
+               return false;
+            }
+
             handle_message( blk_id, std::move( ptr ) );
 
          } else if( which == packed_transaction_which ) {
@@ -2471,9 +2491,20 @@ namespace eosio {
       if (msg.p2p_address.empty()) {
          fc_wlog( logger, "Handshake message validation: p2p_address is null string" );
          valid = false;
+      } else if( msg.p2p_address.length() > max_handshake_str_length ) {
+         // see max_handshake_str_length comment in protocol.hpp
+         fc_wlog( logger, "Handshake message validation: p2p_address to large: ${p}", ("p", msg.p2p_address.substr(0, max_handshake_str_length) + "...") );
+         valid = false;
       }
       if (msg.os.empty()) {
          fc_wlog( logger, "Handshake message validation: os field is null string" );
+         valid = false;
+      } else if( msg.os.length() > max_handshake_str_length ) {
+         fc_wlog( logger, "Handshake message validation: os field to large: ${p}", ("p", msg.os.substr(0, max_handshake_str_length) + "...") );
+         valid = false;
+      }
+      if( msg.agent.length() > max_handshake_str_length ) {
+         fc_wlog( logger, "Handshake message validation: agent field to large: ${p}", ("p", msg.agent.substr(0, max_handshake_str_length) + "...") );
          valid = false;
       }
       if ((msg.sig != chain::signature_type() || msg.token != sha256()) && (msg.token != fc::sha256::hash(msg.time))) {
@@ -3018,7 +3049,7 @@ namespace eosio {
       std::unique_lock<std::shared_mutex> g( connections_mtx );
       auto it = (from ? connections.find(from) : connections.begin());
       if (it == connections.end()) it = connections.begin();
-      size_t num_rm = 0;
+      size_t num_rm = 0, num_clients = 0, num_peers = 0;
       while (it != connections.end()) {
          if (fc::time_point::now() >= max_time) {
             connection_wptr wit = *it;
@@ -3029,13 +3060,16 @@ namespace eosio {
             }
             return;
          }
+         (*it)->peer_address().empty() ? ++num_clients : ++num_peers;
          if( !(*it)->socket_is_open() && !(*it)->connecting) {
-            if( (*it)->peer_address().length() > 0) {
+            if( !(*it)->peer_address().empty() ) {
                if( !(*it)->resolve_and_connect() ) {
                   it = connections.erase(it);
+                  --num_peers; ++num_rm;
                   continue;
                }
             } else {
+               --num_clients; ++num_rm;
                it = connections.erase(it);
                continue;
             }
@@ -3043,6 +3077,9 @@ namespace eosio {
          ++it;
       }
       g.unlock();
+      if( num_clients > 0 || num_peers > 0 )
+         fc_ilog( logger, "p2p client connections: ${num}/${max}, peer connections: ${pnum}/${pmax}",
+                  ("num", num_clients)("max", max_client_count)("pnum", num_peers)("pmax", supplied_peers.size()) );
       fc_dlog( logger, "connection monitor, removed ${n} connections", ("n", num_rm) );
       if( reschedule ) {
          start_conn_timer( connector_period, std::weak_ptr<connection>());
@@ -3066,7 +3103,7 @@ namespace eosio {
 
    // called from application thread
    void net_plugin_impl::transaction_ack(const std::pair<fc::exception_ptr, transaction_metadata_ptr>& results) {
-      boost::asio::post( my_impl->thread_pool->get_executor(), [this, results]() {
+      dispatcher->strand.post( [this, results]() {
          const auto& id = results.second->id();
          if (results.first) {
             fc_dlog( logger, "signaled NACK, trx-id = ${id} : ${why}", ("id", id)( "why", results.first->to_detail_string() ) );
@@ -3268,9 +3305,13 @@ namespace eosio {
 
          if( options.count( "p2p-listen-endpoint" ) && options.at("p2p-listen-endpoint").as<string>().length()) {
             my->p2p_address = options.at( "p2p-listen-endpoint" ).as<string>();
+            EOS_ASSERT( my->p2p_address.length() <= max_p2p_address_length, chain::plugin_config_exception,
+                        "p2p-listen-endpoint to long, must be less than ${m}", ("m", max_p2p_address_length) );
          }
          if( options.count( "p2p-server-address" ) ) {
             my->p2p_server_address = options.at( "p2p-server-address" ).as<string>();
+            EOS_ASSERT( my->p2p_server_address.length() <= max_p2p_address_length, chain::plugin_config_exception,
+                        "p2p_server_address to long, must be less than ${m}", ("m", max_p2p_address_length) );
          }
 
          my->thread_pool_size = options.at( "net-threads" ).as<uint16_t>();
@@ -3282,6 +3323,8 @@ namespace eosio {
          }
          if( options.count( "agent-name" )) {
             my->user_agent_name = options.at( "agent-name" ).as<string>();
+            EOS_ASSERT( my->user_agent_name.length() <= max_handshake_str_length, chain::plugin_config_exception,
+                        "agent-name to long, must be less than ${m}", ("m", max_handshake_str_length) );
          }
 
          if( options.count( "allowed-connection" )) {
@@ -3342,19 +3385,20 @@ namespace eosio {
       chain::controller&cc = my->chain_plug->chain();
       my->db_read_mode = cc.get_read_mode();
       if( cc.in_immutable_mode() && my->p2p_address.size() ) {
-         my->p2p_address.clear();
-         fc_wlog( logger, "node in read-only mode disabling incoming p2p connections" );
+         fc_wlog( logger, "\n"
+               "**********************************\n"
+               "*         Read Only Mode         *\n"
+               "* - Transactions not forwarded - *\n"
+               "**********************************\n" );
       }
 
       tcp::endpoint listen_endpoint;
       if( my->p2p_address.size() > 0 ) {
          auto host = my->p2p_address.substr( 0, my->p2p_address.find( ':' ));
          auto port = my->p2p_address.substr( host.size() + 1, my->p2p_address.size());
-         tcp::resolver::query query( tcp::v4(), host.c_str(), port.c_str());
-         // Note: need to add support for IPv6 too?
-
          tcp::resolver resolver( my->thread_pool->get_executor() );
-         listen_endpoint = *resolver.resolve( query );
+         // Note: need to add support for IPv6 too?
+         listen_endpoint = *resolver.resolve( tcp::v4(), host, port );
 
          my->acceptor.reset( new tcp::acceptor( my_impl->thread_pool->get_executor() ) );
 
