@@ -557,7 +557,9 @@ namespace eosio { namespace chain {
    {
       uint32_t new_action_ordinal = trace->action_traces.size() + 1;
 
-      trace->action_traces.reserve( new_action_ordinal );
+      if (trace->action_traces.capacity() < new_action_ordinal) {
+         trace->action_traces.reserve( std::max((size_t)new_action_ordinal, trace->action_traces.capacity() * 2 ));
+      }
 
       const action& provided_action = get_action_trace( action_ordinal ).act;
 

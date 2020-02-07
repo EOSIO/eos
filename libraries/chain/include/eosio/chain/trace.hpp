@@ -28,6 +28,8 @@ namespace eosio { namespace chain {
                      uint32_t closest_unnotified_ancestor_action_ordinal );
       action_trace(){}
 
+      action_trace(action_trace &&) = default;
+
       fc::unsigned_int                action_ordinal;
       fc::unsigned_int                creator_action_ordinal;
       fc::unsigned_int                closest_unnotified_ancestor_action_ordinal;
