@@ -1,7 +1,6 @@
 #!/bin/bash
 set -eo pipefail
 . ./.cicd/helpers/general.sh
-pwd
 mkdir -p $BUILD_DIR
 CMAKE_EXTRAS="-DCMAKE_BUILD_TYPE='Release' -DENABLE_MULTIVERSION_PROTOCOL_TEST=true"
 if [[ "$(uname)" == 'Darwin' ]]; then
