@@ -12,12 +12,12 @@ Creates a key pair within the wallet so that you don't need to manually import i
 
 ## Usage
 
-```shell
-$ cleos wallet create_key K1
+```sh
+cleos wallet create_key K1
 ```
 
 ## Outputs
 
-```shell
+```console
 Created new private key with a public key of: "EOS67xHKzQArkWZN6rKLCq7NLvaj8kurwxzRxoTVz6cgDJkiWdGug"
 ```

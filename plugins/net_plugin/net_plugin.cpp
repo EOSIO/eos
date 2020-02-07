@@ -380,7 +380,7 @@ namespace eosio {
    constexpr auto     def_send_buffer_size = 1024*1024*def_send_buffer_size_mb;
    constexpr auto     def_max_write_queue_size = def_send_buffer_size*10;
    constexpr auto     def_max_trx_in_progress_size = 100*1024*1024; // 100 MB
-   constexpr auto     def_max_consecutive_rejected_blocks = 3; // num of rejected blocks before disconnect
+   constexpr auto     def_max_consecutive_rejected_blocks = 13; // num of rejected blocks before disconnect
    constexpr auto     def_max_consecutive_immediate_connection_close = 9; // back off if client keeps closing
    constexpr auto     def_max_clients = 25; // 0 for unlimited clients
    constexpr auto     def_max_nodes_per_host = 1;
@@ -1042,7 +1042,7 @@ namespace eosio {
    }
 
    void connection::send_handshake( bool force ) {
-      strand.dispatch( [force, c = shared_from_this()]() {
+      strand.post( [force, c = shared_from_this()]() {
          std::unique_lock<std::mutex> g_conn( c->conn_mtx );
          if( c->populate_handshake( c->last_handshake_sent, force ) ) {
             static_assert( std::is_same_v<decltype( c->sent_handshake_count ), int16_t>, "INT16_MAX based on int16_t" );
@@ -1096,7 +1096,7 @@ namespace eosio {
       std::vector<boost::asio::const_buffer> bufs;
       buffer_queue.fill_out_buffer( bufs );
 
-      strand.dispatch( [c{std::move(c)}, bufs{std::move(bufs)}]() {
+      strand.post( [c{std::move(c)}, bufs{std::move(bufs)}]() {
          boost::asio::async_write( *c->socket, bufs,
             boost::asio::bind_executor( c->strand, [c, socket=c->socket]( boost::system::error_code ec, std::size_t w ) {
             try {
@@ -1105,6 +1105,7 @@ namespace eosio {
                if( !c->socket_is_open() || socket != c->socket ) {
                   fc_ilog( logger, "async write socket ${r} before callback: ${p}",
                            ("r", c->socket_is_open() ? "changed" : "closed")("p", c->peer_name()) );
+                  c->close();
                   return;
                }
 
@@ -2410,6 +2411,25 @@ namespace eosio {
             fc::raw::unpack( ds, which ); // throw away
             shared_ptr<signed_block> ptr = std::make_shared<signed_block>();
             fc::raw::unpack( ds, *ptr );
+
+            auto is_webauthn_sig = []( const fc::crypto::signature& s ) {
+               return s.which() == fc::crypto::signature::storage_type::position<fc::crypto::webauthn::signature>();
+            };
+            bool has_webauthn_sig = is_webauthn_sig( ptr->producer_signature );
+
+            constexpr auto additional_sigs_eid = additional_block_signatures_extension::extension_id();
+            auto exts = ptr->validate_and_extract_extensions();
+            if( exts.count( additional_sigs_eid ) ) {
+               const auto &additional_sigs = exts.lower_bound( additional_sigs_eid )->second.get<additional_block_signatures_extension>().signatures;
+               has_webauthn_sig |= std::any_of( additional_sigs.begin(), additional_sigs.end(), is_webauthn_sig );
+            }
+
+            if( has_webauthn_sig ) {
+               fc_dlog( logger, "WebAuthn signed block received from ${p}, closing connection", ("p", peer_name()));
+               close();
+               return false;
+            }
+
             handle_message( blk_id, std::move( ptr ) );
 
          } else if( which == packed_transaction_which ) {
@@ -2812,7 +2832,7 @@ namespace eosio {
    }
 
    void connection::handle_message( packed_transaction_ptr trx ) {
-      if( my_impl->db_read_mode == eosio::db_read_mode::READ_ONLY ) {
+      if( db_mode_is_immutable(my_impl->db_read_mode) ) {
          fc_dlog( logger, "got a txn in read-only mode - dropping" );
          return;
       }
@@ -3084,7 +3104,7 @@ namespace eosio {
 
    // called from application thread
    void net_plugin_impl::transaction_ack(const std::pair<fc::exception_ptr, transaction_metadata_ptr>& results) {
-      boost::asio::post( my_impl->thread_pool->get_executor(), [this, results]() {
+      dispatcher->strand.post( [this, results]() {
          const auto& id = results.second->id();
          if (results.first) {
             fc_dlog( logger, "signaled NACK, trx-id = ${id} : ${why}", ("id", id)( "why", results.first->to_detail_string() ) );
@@ -3365,9 +3385,12 @@ namespace eosio {
 
       chain::controller&cc = my->chain_plug->chain();
       my->db_read_mode = cc.get_read_mode();
-      if( my->db_read_mode == chain::db_read_mode::READ_ONLY && my->p2p_address.size() ) {
-         my->p2p_address.clear();
-         fc_wlog( logger, "node in read-only mode disabling incoming p2p connections" );
+      if( cc.in_immutable_mode() && my->p2p_address.size() ) {
+         fc_wlog( logger, "\n"
+               "**********************************\n"
+               "*         Read Only Mode         *\n"
+               "* - Transactions not forwarded - *\n"
+               "**********************************\n" );
       }
 
       tcp::endpoint listen_endpoint;

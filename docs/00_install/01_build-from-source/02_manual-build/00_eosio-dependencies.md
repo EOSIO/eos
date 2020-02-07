@@ -31,8 +31,8 @@ Regular users or application developers may prefer installing unpinned versions 
 EOSIO dependencies can be built or installed automatically from the [Build Script](../01_shell-scripts/02_build-eosio-binaries.md) when building EOSIO from source. To build the pinned dependencies, the optional `-P` parameter can be specified when invoking the script. Otherwise, the unpinned dependencies will be installed instead, with the exception of `boost` and `cmake` which are always pinned:
 
 ```sh
-$ cd ~/eosio/eos
-$ ./scripts/eosio_build.sh [-P]
+cd ~/eosio/eos
+./scripts/eosio_build.sh [-P]
 ```
 
 ### Unupported Platforms
@@ -40,6 +40,6 @@ $ ./scripts/eosio_build.sh [-P]
 EOSIO dependencies can also be built and installed manually by reproducing the same commands invoked by the [Build Script](../01_shell-scripts/02_build-eosio-binaries.md). The actual commands can be generated from the script directly by exporting specific environment variables and CLI parameters to the script when invoked:
 
 ```sh
-$ cd ~/eosio/eos
-$ export VERBOSE=true && export DRYRUN=true && ./scripts/eosio_build.sh -y [-P]
+cd ~/eosio/eos
+export VERBOSE=true && export DRYRUN=true && ./scripts/eosio_build.sh -y [-P]
 ```

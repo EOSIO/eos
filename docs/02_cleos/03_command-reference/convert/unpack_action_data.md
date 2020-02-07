@@ -12,7 +12,7 @@ From packed to json action data form
 ## Usage
 
 
-```text
+```sh
  cleos convert unpack_action_data eosio unlinkauth 000000008090b1ca000000000091b1ca000075982aea3055
 ```
 

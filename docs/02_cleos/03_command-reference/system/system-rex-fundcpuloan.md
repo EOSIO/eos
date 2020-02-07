@@ -22,6 +22,6 @@ excerpt: "Deposit into a CPU loan fund"
 
 ## Examples
 
-```text
+```sh
 cleos system rex fundcpuloan accountname1 abc123 "1 EOS"
 ```

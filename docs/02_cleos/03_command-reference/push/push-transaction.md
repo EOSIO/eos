@@ -31,6 +31,6 @@ This command has no options
 ## Example
 
 
-```text
-$ push transaction {}
+```sh
+cleos push transaction {}
 ```
