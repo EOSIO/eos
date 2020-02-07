@@ -372,7 +372,7 @@ jobs:
           submodules: recursive
       - name: Build
         run: | 
-          ./.cicd/platforms/unpinned/macos-10.14-unpinned.sh
+          ./.cicd/platforms/unpinned/macos-10.15-unpinned.sh
           ./.cicd/build.sh
           tar -pczf build.tar.gz build
       - name: Upload Build Artifact
@@ -395,7 +395,7 @@ jobs:
           name: macos-1015-build
       - name: Parallel Test
         run: | 
-          ./.cicd/platforms/unpinned/macos-10.14-unpinned.sh
+          ./.cicd/platforms/unpinned/macos-10.15-unpinned.sh
           tar -xzf macos-1015-build/build.tar.gz
           ./.cicd/test.sh scripts/parallel-test.sh
   macos-1015-wasm-test:
@@ -413,7 +413,7 @@ jobs:
           name: macos-1015-build
       - name: WASM Spec Test
         run: | 
-          ./.cicd/platforms/unpinned/macos-10.14-unpinned.sh
+          ./.cicd/platforms/unpinned/macos-10.15-unpinned.sh
           tar -xzf macos-1015-build/build.tar.gz
           ./.cicd/test.sh scripts/wasm-spec-test.sh
   macos-1015-serial-test:
@@ -431,6 +431,6 @@ jobs:
           name: macos-1015-build
       - name: Serial Test
         run: | 
-          ./.cicd/platforms/unpinned/macos-10.14-unpinned.sh
+          ./.cicd/platforms/unpinned/macos-10.15-unpinned.sh
           tar -xzf macos-1015-build/build.tar.gz
           ./.cicd/test.sh scripts/serial-test.sh
