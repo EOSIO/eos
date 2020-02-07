@@ -19,7 +19,7 @@ To use `cleos`, you need the end point (IP address and port number) of a running
 For a list of all `cleos` commands, run:
 
 ```sh
-$ cleos --help
+cleos --help
 ```
 
 ```console
@@ -60,7 +60,7 @@ Subcommands:
 To get help with any particular subcommand, run `cleos SUBCOMMAND --help`. For instance:
 
 ```sh
-$ cleos create --help
+cleos create --help
 ```
 
 ```console
@@ -76,7 +76,7 @@ Subcommands:
 `cleos` can also provide usage help for subcommands within subcommands. For instance:
 
 ```sh
-$ cleos create account --help
+cleos create account --help
 ```
 
 ```console
@@ -111,7 +111,7 @@ Options:
 The following `cleos` command creates a local wallet named `mywallet` and displays the password to the screen:
 
 ```sh
-$ cleos wallet create -n mywallet --to-console
+cleos wallet create -n mywallet --to-console
 ```
 
 ```console

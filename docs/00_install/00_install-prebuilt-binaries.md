@@ -13,50 +13,50 @@ Prebuilt EOSIO software packages are available for the operating systems below. 
 
 #### Mac OS X Brew Install
 ```sh
-$ brew tap eosio/eosio
-$ brew install eosio
+brew tap eosio/eosio
+brew install eosio
 ```
 #### Mac OS X Brew Uninstall
 ```sh
-$ brew remove eosio
+brew remove eosio
 ```
 
 ### Ubuntu Linux:
 
 #### Ubuntu 18.04 Package Install
 ```sh
-$ wget https://github.com/eosio/eos/releases/download/v2.0.1/eosio_2.0.1-1-ubuntu-18.04_amd64.deb
-$ sudo apt install ./eosio_2.0.1-1-ubuntu-18.04_amd64.deb
+wget https://github.com/eosio/eos/releases/download/v2.0.2/eosio_2.0.2-1-ubuntu-18.04_amd64.deb
+sudo apt install ./eosio_2.0.2-1-ubuntu-18.04_amd64.deb
 ```
 #### Ubuntu 16.04 Package Install
 ```sh
-$ wget https://github.com/eosio/eos/releases/download/v2.0.1/eosio_2.0.1-1-ubuntu-16.04_amd64.deb
-$ sudo apt install ./eosio_2.0.1-1-ubuntu-16.04_amd64.deb
+wget https://github.com/eosio/eos/releases/download/v2.0.2/eosio_2.0.2-1-ubuntu-16.04_amd64.deb
+sudo apt install ./eosio_2.0.2-1-ubuntu-16.04_amd64.deb
 ```
 #### Ubuntu Package Uninstall
 ```sh
-$ sudo apt remove eosio
+sudo apt remove eosio
 ```
 
 ### RPM-based (CentOS, Amazon Linux, etc.):
 
 #### RPM Package Install
 ```sh
-$ wget https://github.com/eosio/eos/releases/download/v2.0.1/eosio-2.0.1-1.el7.x86_64.rpm
-$ sudo yum install ./eosio-2.0.1-1.el7.x86_64.rpm
+wget https://github.com/eosio/eos/releases/download/v2.0.2/eosio-2.0.2-1.el7.x86_64.rpm
+sudo yum install ./eosio-2.0.2-1.el7.x86_64.rpm
 ```
 #### RPM Package Uninstall
 ```sh
-$ sudo yum remove eosio
+sudo yum remove eosio
 ```
 
 ## Location of EOSIO binaries
 
 After installing the prebuilt packages, the actual EOSIO binaries will be located under:
 * `/usr/opt/eosio/<version-string>/bin` (Linux-based); or
-* `/usr/local/Cellar/eosio/<version-string>/bin` (MacOS )
+* `/usr/local/Cellar/eosio/<version-string>/bin` (MacOS)
 
-where `version-string` is the EOSIO version that was installed; e.g. `2.0.1`.
+where `version-string` is the EOSIO version that was installed.
 
 Also, soft links for each EOSIO program (`nodeos`, `cleos`, `keosd`, etc.) will be created under `usr/bin` or `usr/local/bin` to allow them to be executed from any directory.
 

@@ -8,8 +8,8 @@ content_title: Build EOSIO Binaries
 The build script first installs all dependencies and then builds EOSIO. The script supports these [Operating Systems](../../index.md#supported-operating-systems). To run it, first change to the `~/eosio/eos` folder, then launch the script:
 
 ```sh
-$ cd ~/eosio/eos
-$ ./scripts/eosio_build.sh
+cd ~/eosio/eos
+./scripts/eosio_build.sh
 ```
 
 The build process writes temporary content to the `eos/build` folder. After building, the program binaries can be found at `eos/build/programs`.

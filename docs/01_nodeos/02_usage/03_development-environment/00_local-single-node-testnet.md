@@ -28,7 +28,7 @@ Open one "terminal" window and perform the following steps:
 Start your own single-node blockchain with this single command:
 
 ```sh
-$ nodeos -e -p eosio --plugin eosio::chain_api_plugin --plugin eosio::history_api_plugin
+nodeos -e -p eosio --plugin eosio::chain_api_plugin --plugin eosio::history_api_plugin
 ```
 
 [[info | Nodeos Minimal Options]]
@@ -53,12 +53,12 @@ At this point, `nodeos` is running with a single producer, `eosio`.
 Get info about the producing node:
 
 ```sh
-$ cleos get info
+cleos get info
 ```
 
 This should produce output that looks similar to this:
 
-```console
+```json
 {
   "server_version": "0f9df63e",
   "chain_id": "cf057bbfb72640471fd910bcb67639c22df9f92470936cddc1ade0e2f2e7dc4f",
@@ -108,7 +108,7 @@ The build seeds this folder with a default `genesis.json` file.  A configuration
 Now it should be possible to run `nodeos` and see it begin producing blocks.
 
 ```sh
-$ nodeos
+nodeos
 ```
 
 `nodeos` stores runtime data (e.g., shared memory and log content) in a custom data folder.  The location of this folder is determined by your system.
@@ -119,4 +119,4 @@ $ nodeos
 A data folder can be specified using the `--data-dir` command line argument to `nodeos`.
 
 [[info | What's next?]]
-| We will explore how to setup and run a [single-host, multi-node testnet](#01_local-multi-node-testnet.md).
+| We will explore how to setup and run a [single-host, multi-node testnet](01_local-multi-node-testnet.md).

@@ -9,12 +9,13 @@ The `producer_plugin` loads functionality required for a node to produce blocks.
 
 ## Usage
 
-```sh
+```console
 # config.ini
 plugin = eosio::producer_plugin [options]
-
+```
+```sh
 # nodeos startup params
-$ nodeos ... -- plugin eosio::producer_plugin [options]
+nodeos ... -- plugin eosio::producer_plugin [options]
 ```
 
 ## Options
@@ -107,10 +108,11 @@ Config Options for eosio::producer_plugin:
 
 ### Load Dependency Examples
 
-```sh
+```console
 # config.ini
 plugin = eosio::chain_plugin [operations] [options]
-
+```
+```sh
 # command-line
-$ nodeos ... --plugin eosio::chain_plugin [operations] [options]
+nodeos ... --plugin eosio::chain_plugin [operations] [options]
 ```
