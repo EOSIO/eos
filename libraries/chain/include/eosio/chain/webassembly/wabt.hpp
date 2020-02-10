@@ -68,6 +68,20 @@ class wabt_runtime : public eosio::chain::wasm_runtime_interface {
  * @tparam T
  */
 template<typename T>
+inline legacy_array_ptr<T> legacy_array_ptr_impl (wabt_apply_instance_vars& vars, uint32_t ptr, uint32_t length)
+{
+   EOS_ASSERT( length < INT_MAX/(uint32_t)sizeof(T), binaryen_exception, "length will overflow" );
+   return legacy_array_ptr<T>((T*)(vars.get_validated_pointer(ptr, length * (uint32_t)sizeof(T))));
+}
+
+/**
+ * class to represent an in-wasm-memory array
+ * it is a hint to the transcriber that the next parameter will
+ * be a size (data bytes length) and that the pair are validated together
+ * This triggers the template specialization of intrinsic_invoker_impl
+ * @tparam T
+ */
+template<typename T>
 inline array_ptr<T> array_ptr_impl (wabt_apply_instance_vars& vars, uint32_t ptr, uint32_t length)
 {
    EOS_ASSERT( length < INT_MAX/(uint32_t)sizeof(T), binaryen_exception, "length will overflow" );
@@ -108,6 +122,24 @@ struct is_reference_from_value<fc::time_point_sec> {
 template<typename T>
 constexpr bool is_reference_from_value_v = is_reference_from_value<T>::value;
 
+
+template <typename T>
+inline auto convert_literal_to_native(const TypedValue& v) {
+   template <typename U, typename V>
+   static constexpr same = std::is_same_v<U, V>;
+
+   if constexpr (same<T, double>)
+      return v.get_f64();
+   else if constexpr (same<T, float>)
+      return v.get_f32();
+   else if constexpr (same<T, int64_t> || same<T, uint64_t>)
+      return v.get_i64();
+   else if constexpr (same<T, int32_t> || same<T, uint32_t> || same<T, bool>)
+      return v.get_i32();
+   else if constexpr (same<T, name>)
+      return name{v.get_i64()};
+}
+/*
 template<typename T>
 T convert_literal_to_native(const TypedValue& v);
 
@@ -151,6 +183,7 @@ inline name convert_literal_to_native<name>(const TypedValue& v) {
    int64_t val = v.get_i64();
    return name(val);
 }
+*/
 
 inline auto convert_native_to_literal(const wabt_apply_instance_vars&, const uint32_t &val) {
    TypedValue tv(Type::I32);
@@ -356,7 +389,7 @@ struct intrinsic_invoker_impl<Ret, std::tuple<Input, Inputs...>> {
 };
 
 /**
- * Specialization for transcribing  a array_ptr type in the native method signature
+ * Specialization for transcribing  a legacy_array_ptr type in the native method signature
  * This type transcribes into 2 wasm parameters: a pointer and byte length and checks the validity of that memory
  * range before dispatching to the native method
  *
@@ -368,9 +401,9 @@ struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, uint32_t, Inputs...>
    using next_step = intrinsic_invoker_impl<Ret, std::tuple<Inputs...>>;
    using then_type = Ret(*)(wabt_apply_instance_vars&, array_ptr<T>, uint32_t, Inputs..., const TypedValues&, int);
 
-   template<then_type Then, typename U=T>
-   static auto translate_one(wabt_apply_instance_vars& vars, Inputs... rest, const TypedValues& args, int offset) -> std::enable_if_t<std::is_const<U>::value, Ret> {
-      static_assert(!std::is_pointer<U>::value, "Currently don't support array of pointers");
+   template<then_type Then>
+   static Ret translate_one(wabt_apply_instance_vars& vars, Inputs... rest, const TypedValues& args, int offset) {
+      static_assert(!std::is_pointer<T>::value, "Currently don't support array of pointers");
       uint32_t ptr = args.at((uint32_t)offset - 1).get_i32();
       size_t length = args.at((uint32_t)offset).get_i32();
       T* base = array_ptr_impl<T>(vars, ptr, length);
@@ -380,25 +413,9 @@ struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, uint32_t, Inputs...>
          std::vector<std::remove_const_t<T> > copy(length > 0 ? length : 1);
          T* copy_ptr = &copy[0];
          memcpy( (void*)copy_ptr, (void*)base, length * sizeof(T) );
-         return Then(vars, static_cast<array_ptr<T>>(copy_ptr), length, rest..., args, (uint32_t)offset - 2);
-      }
-      return Then(vars, static_cast<array_ptr<T>>(base), length, rest..., args, (uint32_t)offset - 2);
-   };
-
-   template<then_type Then, typename U=T>
-   static auto translate_one(wabt_apply_instance_vars& vars, Inputs... rest, const TypedValues& args, int offset) -> std::enable_if_t<!std::is_const<U>::value, Ret> {
-      static_assert(!std::is_pointer<U>::value, "Currently don't support array of pointers");
-      uint32_t ptr = args.at((uint32_t)offset - 1).get_i32();
-      size_t length = args.at((uint32_t)offset).get_i32();
-      T* base = array_ptr_impl<T>(vars, ptr, length);
-      if ( reinterpret_cast<uintptr_t>(base) % alignof(T) != 0 ) {
-         if(vars.ctx.control.contracts_console())
-            wlog( "misaligned array of values" );
-         std::vector<std::remove_const_t<T> > copy(length > 0 ? length : 1);
-         T* copy_ptr = &copy[0];
-         memcpy( (void*)copy_ptr, (void*)base, length * sizeof(T) );
          Ret ret = Then(vars, static_cast<array_ptr<T>>(copy_ptr), length, rest..., args, (uint32_t)offset - 2);
-         memcpy( (void*)base, (void*)copy_ptr, length * sizeof(T) );
+         if constexpr (std::is_const_v<T>)
+            memcpy( (void*)base, (void*)copy_ptr, length * sizeof(T) );
          return ret;
       }
       return Then(vars, static_cast<array_ptr<T>>(base), length, rest..., args, (uint32_t)offset - 2);
@@ -410,6 +427,34 @@ struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, uint32_t, Inputs...>
    }
 };
 
+/**
+* Specialization for transcribing  a array_ptr type in the native method signature
+ * This type transcribes into 2 wasm parameters: a pointer and byte length and checks the validity of that memory
+ * range before dispatching to the native method
+ *
+ * @tparam Ret - the return type of the native method
+ * @tparam Inputs - the remaining native parameters to transcribe
+ */
+template<typename T, typename Ret, typename... Inputs>
+struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, uint32_t, Inputs...>> {
+   using next_step = intrinsic_invoker_impl<Ret, std::tuple<Inputs...>>;
+   using then_type = Ret(*)(wabt_apply_instance_vars&, array_ptr<T>, uint32_t, Inputs..., const TypedValues&, int);
+
+   template<then_type Then>
+   static Ret translate_one(wabt_apply_instance_vars& vars, Inputs... rest, const TypedValues& args, int offset) {
+      static_assert(!std::is_pointer<T>::value, "Currently don't support array of pointers");
+      uint32_t ptr = args.at((uint32_t)offset - 1).get_i32();
+      size_t length = args.at((uint32_t)offset).get_i32();
+      T* base = array_ptr_impl<T>(vars, ptr, length);
+      EOS_ASSERT( reinterpret_cast<uintptr_t>(base) % alignof(T) == 0, wasm_execution_error, "alignment constraint not met for WASM array" );
+      return Then(vars, static_cast<array_ptr<T>>(base), length, rest..., args, (uint32_t)offset - 2);
+   };
+
+   template<then_type Then>
+   static const auto fn() {
+      return next_step::template fn<translate_one<Then>>();
+   }
+};
 /**
  * Specialization for transcribing  a null_terminated_ptr type in the native method signature
  * This type transcribes 1 wasm parameters: a char pointer which is validated to contain
@@ -453,7 +498,7 @@ struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, array_ptr<U>, uint32
       uint32_t ptr_t = args.at((uint32_t)offset - 2).get_i32();
       uint32_t ptr_u = args.at((uint32_t)offset - 1).get_i32();
       size_t length = args.at((uint32_t)offset).get_i32();
-      static_assert(std::is_same<std::remove_const_t<T>, char>::value && std::is_same<std::remove_const_t<U>, char>::value, "Currently only support array of (const)chars");
+      static_assert(std::is_same_v<std::remove_const_t<T>, char> && std::is_same_v<std::remove_const_t<U>, char>, "Currently only support array of (const)chars");
       return Then(vars, array_ptr_impl<T>(vars, ptr_t, length), array_ptr_impl<U>(vars, ptr_u, length), length, args, (uint32_t)offset - 3);
    };
 
@@ -497,36 +542,23 @@ struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<char>, int, uint32_t>> {
  * @tparam Inputs - the remaining native parameters to transcribe
  */
 template<typename T, typename Ret, typename... Inputs>
-struct intrinsic_invoker_impl<Ret, std::tuple<T *, Inputs...>> {
+struct intrinsic_invoker_impl<Ret, std::tuple<legacy_ptr<T>, Inputs...>> {
    using next_step = intrinsic_invoker_impl<Ret, std::tuple<Inputs...>>;
-   using then_type = Ret (*)(wabt_apply_instance_vars&, T *, Inputs..., const TypedValues&, int);
-
-   template<then_type Then, typename U=T>
-   static auto translate_one(wabt_apply_instance_vars& vars, Inputs... rest, const TypedValues& args, int offset) -> std::enable_if_t<std::is_const<U>::value, Ret> {
-      uint32_t ptr = args.at((uint32_t)offset).get_i32();
+   using then_type = Ret (*)(wabt_apply_instance_vars&, legacy_ptr<T>, Inputs..., const TypedValues&, int);
       T* base = array_ptr_impl<T>(vars, ptr, 1);
+   template<then_type Then>
+   static Ret translate_one(wabt_apply_instance_vars& vars, Inputs... rest, const TypedValues& args, int offset) {
+      uint32_t ptr = args.at((uint32_t)offset).get_i32();
+      T* base = legacy_array_ptr_impl<T>(vars, ptr, 1);
       if ( reinterpret_cast<uintptr_t>(base) % alignof(T) != 0 ) {
          if(vars.ctx.control.contracts_console())
             wlog( "misaligned const pointer" );
          std::remove_const_t<T> copy;
          T* copy_ptr = &copy;
          memcpy( (void*)copy_ptr, (void*)base, sizeof(T) );
-         return Then(vars, copy_ptr, rest..., args, (uint32_t)offset - 1);
-      }
-      return Then(vars, base, rest..., args, (uint32_t)offset - 1);
-   };
-
-   template<then_type Then, typename U=T>
-   static auto translate_one(wabt_apply_instance_vars& vars, Inputs... rest, const TypedValues& args, int offset) -> std::enable_if_t<!std::is_const<U>::value, Ret> {
-      uint32_t ptr = args.at((uint32_t)offset).get_i32();
-      T* base = array_ptr_impl<T>(vars, ptr, 1);
-      if ( reinterpret_cast<uintptr_t>(base) % alignof(T) != 0 ) {
-         if(vars.ctx.control.contracts_console())
-            wlog( "misaligned pointer" );
-         T copy;
-         memcpy( (void*)&copy, (void*)base, sizeof(T) );
-         Ret ret = Then(vars, &copy, rest..., args, (uint32_t)offset - 1);
-         memcpy( (void*)base, (void*)&copy, sizeof(T) );
+         Ret ret = Then(vars, copy_ptr, rest..., args, (uint32_t)offset - 1);
+         if constexpr (!std::is_const_v<T>)
+            memcpy( (void*)base, (void*)&copy, sizeof(T) );
          return ret;
       }
       return Then(vars, base, rest..., args, (uint32_t)offset - 1);
@@ -704,7 +736,7 @@ using void_ret_wrapper_t = typename void_ret_wrapper<T>::type;
 template<typename Cls, typename Ret, typename... Params>
 struct intrinsic_function_invoker_wrapper<Ret (Cls::*)(Params...)> {
    static_assert( !(std::is_pointer_v<Ret> && alignof(std::remove_pointer_t<void_ret_wrapper_t<Ret>>) != 1) &&
-                  !(std::is_lvalue_reference_v<Ret> && alignof(std::remove_reference_t<void_ret_wrapper_t<Ret>>) != 1), 
+                  !(std::is_lvalue_reference_v<Ret> && alignof(std::remove_reference_t<void_ret_wrapper_t<Ret>>) != 1),
                   "intrinsics should only return a reference or pointer with single byte alignment");
    using type = intrinsic_function_invoker<Ret, Ret (Cls::*)(Params...), Cls, Params...>;
 };
@@ -712,7 +744,7 @@ struct intrinsic_function_invoker_wrapper<Ret (Cls::*)(Params...)> {
 template<typename Cls, typename Ret, typename... Params>
 struct intrinsic_function_invoker_wrapper<Ret (Cls::*)(Params...) const> {
    static_assert( !(std::is_pointer_v<Ret> && alignof(std::remove_pointer_t<void_ret_wrapper_t<Ret>>) != 1) &&
-                  !(std::is_lvalue_reference_v<Ret> && alignof(std::remove_reference_t<void_ret_wrapper_t<Ret>>) != 1), 
+                  !(std::is_lvalue_reference_v<Ret> && alignof(std::remove_reference_t<void_ret_wrapper_t<Ret>>) != 1),
                   "intrinsics should only return a reference or pointer with single byte alignment");
    using type = intrinsic_function_invoker<Ret, Ret (Cls::*)(Params...) const, Cls, Params...>;
 };
@@ -720,7 +752,7 @@ struct intrinsic_function_invoker_wrapper<Ret (Cls::*)(Params...) const> {
 template<typename Cls, typename Ret, typename... Params>
 struct intrinsic_function_invoker_wrapper<Ret (Cls::*)(Params...) volatile> {
    static_assert( !(std::is_pointer_v<Ret> && alignof(std::remove_pointer_t<void_ret_wrapper_t<Ret>>) != 1) &&
-                  !(std::is_lvalue_reference_v<Ret> && alignof(std::remove_reference_t<void_ret_wrapper_t<Ret>>) != 1), 
+                  !(std::is_lvalue_reference_v<Ret> && alignof(std::remove_reference_t<void_ret_wrapper_t<Ret>>) != 1),
                   "intrinsics should only return a reference or pointer with single byte alignment");
    using type = intrinsic_function_invoker<Ret, Ret (Cls::*)(Params...) volatile, Cls, Params...>;
 };

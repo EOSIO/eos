@@ -12,102 +12,26 @@
 #include <eosio/vm/backend.hpp>
 
 // eosio specific specializations
-namespace eosio { namespace vm {
+namespace eosio { namespace chain {
+   template <typename T>
+   using legacy_array_ptr = eosio::vm::reference_proxy<span<T>>;
 
-   template<>
-   struct wasm_type_converter<eosio::chain::name> {
-      static auto from_wasm(uint64_t val) {
-         return eosio::chain::name{val};
-      }
-      static auto to_wasm(eosio::chain::name val) {
-         return val.to_uint64_t();
-      }
+   template <typename T>
+   using legacy_ptr       = eosio::vm::reference_proxy<T>;
+}} // ns eosio::chain
+
+
+namespace eosio { namespace chain { namespace webassembly {
+   struct eosio_type_converter : public eosio::vm::type_converter<> {
+      using base_type = eosio::vm::type_converter<>;
+      using base_type::running_context;
+
+      using elem_type = decltype(std::declval<type_converter>().get_interface().operand_from_back(0));
+
+      EOS_VM_FROM_WASM(T, T*, (elem_type&& ptr) { return reference_proxy<T>{as.value<T*>(std::move(ptr))}; }
+      EOS_VM_FROM_WASM(T, T&, (elem_type&& ptr) { return reference_proxy<T>{as.value<T&>(std::move(ptr))}; }
    };
-
-   template<typename T>
-   struct wasm_type_converter<T*> : linear_memory_access {
-      auto from_wasm(void* val) {
-         validate_ptr<T>(val, 1);
-         return eosio::vm::aligned_ptr_wrapper<T, alignof(T)>{val};
-      }
-   };
-
-   template<>
-   struct wasm_type_converter<char*> : linear_memory_access {
-      void* to_wasm(char* val) {
-         validate_ptr<char>(val, 1);
-         return val;
-      }
-   };
-
-   template<typename T>
-   struct wasm_type_converter<T&> : linear_memory_access {
-      auto from_wasm(uint32_t val) {
-         EOS_VM_ASSERT( val != 0, wasm_memory_exception, "references cannot be created for null pointers" );
-         void* ptr = get_ptr(val);
-         validate_ptr<T>(ptr, 1);
-         return eosio::vm::aligned_ref_wrapper<T, alignof(T)>{ptr};
-      }
-   };
-
-   template<typename T>
-   struct wasm_type_converter<eosio::chain::array_ptr<T>> : linear_memory_access {
-      auto from_wasm(void* ptr, uint32_t size) {
-         validate_ptr<T>(ptr, size);
-         return aligned_array_wrapper<T, alignof(T)>(ptr, size);
-      }
-   };
-
-   template<>
-   struct wasm_type_converter<eosio::chain::array_ptr<char>> : linear_memory_access {
-      auto from_wasm(void* ptr, uint32_t size) {
-         validate_ptr<char>(ptr, size);
-         return eosio::chain::array_ptr<char>((char*)ptr);
-      }
-      // memcpy/memmove
-      auto from_wasm(void* ptr, eosio::chain::array_ptr<const char> /*src*/, uint32_t size) {
-         validate_ptr<char>(ptr, size);
-         return eosio::chain::array_ptr<char>((char*)ptr);
-      }
-      // memset
-      auto from_wasm(void* ptr, int /*val*/, uint32_t size) {
-         validate_ptr<char>(ptr, size);
-         return eosio::chain::array_ptr<char>((char*)ptr);
-      }
-   };
-
-   template<>
-   struct wasm_type_converter<eosio::chain::array_ptr<const char>> : linear_memory_access {
-      auto from_wasm(void* ptr, uint32_t size) {
-         validate_ptr<char>(ptr, size);
-         return eosio::chain::array_ptr<const char>((char*)ptr);
-      }
-      // memcmp
-      auto from_wasm(void* ptr, eosio::chain::array_ptr<const char> /*src*/, uint32_t size) {
-         validate_ptr<char>(ptr, size);
-         return eosio::chain::array_ptr<const char>((char*)ptr);
-      }
-   };
-
-   template <typename Ctx>
-   struct construct_derived<eosio::chain::transaction_context, Ctx> {
-      static auto &value(Ctx& ctx) { return ctx.trx_context; }
-   };
-
-   template <>
-   struct construct_derived<eosio::chain::apply_context, eosio::chain::apply_context> {
-      static auto &value(eosio::chain::apply_context& ctx) { return ctx; }
-   };
-
-   template<>
-   struct wasm_type_converter<eosio::chain::null_terminated_ptr> : linear_memory_access {
-      auto from_wasm(void* ptr) {
-         validate_c_str(ptr);
-         return eosio::chain::null_terminated_ptr{ static_cast<char*>(ptr) };
-      }
-   };
-
-}} // ns eosio::vm
+}}} // ns eosio::chain::webassembly
 
 namespace eosio { namespace chain { namespace webassembly { namespace eos_vm_runtime {
 

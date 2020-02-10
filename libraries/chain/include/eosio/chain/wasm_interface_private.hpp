@@ -2,7 +2,6 @@
 
 #include <eosio/chain/wasm_interface.hpp>
 #include <eosio/chain/webassembly/wavm.hpp>
-#include <eosio/chain/webassembly/wabt.hpp>
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
 #include <eosio/chain/webassembly/eos-vm-oc.hpp>
 #else
@@ -60,8 +59,6 @@ namespace eosio { namespace chain {
 #endif
 
       wasm_interface_impl(wasm_interface::vm_type vm, bool eosvmoc_tierup, const chainbase::database& d, const boost::filesystem::path data_dir, const eosvmoc::config& eosvmoc_config) : db(d), wasm_runtime_time(vm) {
-         if(vm == wasm_interface::vm_type::wabt)
-            runtime_interface = std::make_unique<webassembly::wabt_runtime::wabt_runtime>();
 #ifdef EOSIO_EOS_VM_RUNTIME_ENABLED
          if(vm == wasm_interface::vm_type::eos_vm)
             runtime_interface = std::make_unique<webassembly::eos_vm_runtime::eos_vm_runtime<eosio::vm::interpreter>>();
@@ -227,7 +224,6 @@ namespace eosio { namespace chain {
 
 #define _REGISTER_INTRINSIC_EXPLICIT(CLS, MOD, METHOD, WASM_SIG, NAME, SIG)\
    _REGISTER_WAVM_INTRINSIC(CLS, MOD, METHOD, WASM_SIG, NAME, SIG)         \
-   _REGISTER_WABT_INTRINSIC(CLS, MOD, METHOD, WASM_SIG, NAME, SIG)         \
    _REGISTER_EOS_VM_INTRINSIC(CLS, MOD, METHOD, WASM_SIG, NAME, SIG)       \
    _REGISTER_EOSVMOC_INTRINSIC(CLS, MOD, METHOD, WASM_SIG, NAME, SIG)
 

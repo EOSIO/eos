@@ -17,23 +17,23 @@ else()
 endif()
 
 if("eos-vm-oc" IN_LIST EOSIO_WASM_RUNTIMES)
-   set(CHAIN_EOSVMOC_SOURCES webassembly/eos-vm-oc/code_cache.cpp
-                             webassembly/eos-vm-oc/executor.cpp
-                             webassembly/eos-vm-oc/memory.cpp
-                             webassembly/eos-vm-oc/intrinsic.cpp
-                             webassembly/eos-vm-oc/LLVMJIT.cpp
-                             webassembly/eos-vm-oc/LLVMEmitIR.cpp
-                             webassembly/eos-vm-oc/compile_monitor.cpp
-                             webassembly/eos-vm-oc/compile_trampoline.cpp
-                             webassembly/eos-vm-oc/ipc_helpers.cpp
-                             webassembly/eos-vm-oc/gs_seg_helpers.c
-                             webassembly/eos-vm-oc.cpp)
+   set(CHAIN_EOSVMOC_SOURCES webassembly/runtimes/eos-vm-oc/code_cache.cpp
+                             webassembly/runtimes/eos-vm-oc/executor.cpp
+                             webassembly/runtimes/eos-vm-oc/memory.cpp
+                             webassembly/runtimes/eos-vm-oc/intrinsic.cpp
+                             webassembly/runtimes/eos-vm-oc/LLVMJIT.cpp
+                             webassembly/runtimes/eos-vm-oc/LLVMEmitIR.cpp
+                             webassembly/runtimes/eos-vm-oc/compile_monitor.cpp
+                             webassembly/runtimes/eos-vm-oc/compile_trampoline.cpp
+                             webassembly/runtimes/eos-vm-oc/ipc_helpers.cpp
+                             webassembly/runtimes/eos-vm-oc/gs_seg_helpers.c
+                             webassembly/runtimes/eos-vm-oc.cpp)
 
    if(LLVM_VERSION VERSION_LESS 7.1 AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
       enable_language(ASM-LLVMWAR)
-      list(APPEND CHAIN_EOSVMOC_SOURCES webassembly/eos-vm-oc/llvmWARshim.llvmwar)
+      list(APPEND CHAIN_EOSVMOC_SOURCES webassembly/runtimes/eos-vm-oc/llvmWARshim.llvmwar)
    else()
-      list(APPEND CHAIN_EOSVMOC_SOURCES webassembly/eos-vm-oc/llvmWARshim.cpp)
+      list(APPEND CHAIN_EOSVMOC_SOURCES webassembly/runtimes/eos-vm-oc/llvmWARshim.cpp)
    endif()
 
    llvm_map_components_to_libnames(LLVM_LIBS support core passes mcjit native orcjit)
@@ -44,9 +44,30 @@ if("eos-vm-oc" IN_LIST EOSIO_WASM_RUNTIMES)
 endif()
 
 if("eos-vm" IN_LIST EOSIO_WASM_RUNTIMES OR "eos-vm-jit" IN_LIST EOSIO_WASM_RUNTIMES)
-   set(CHAIN_EOSVM_SOURCES "webassembly/eos-vm.cpp")
+   set(CHAIN_EOSVM_SOURCES "webassembly/runtimes/eos-vm.cpp")
    set(CHAIN_EOSVM_LIBRARIES eos-vm)
 endif()
+
+set(CHAIN_WEBASSEMBLY_SOURCES
+   webassembly/action.cpp
+   webassembly/authorization.cpp
+   webassembly/call_depth.cpp
+   webassembly/cf_system.cpp
+   webassembly/cf_transaction.cpp
+   webassembly/checktime.cpp
+   webassembly/compiler_builtins.cpp
+   webassembly/context_free.cpp
+   webassembly/console.cpp
+   webassembly/crypto.cpp
+   webassembly/database.cpp
+   webassembly/memory.cpp
+   webassembly/permission.cpp
+   webassembly/privileged.cpp
+   webassembly/producer.cpp
+   webassembly/softfloat.cpp
+   webassembly/system.cpp
+   webassembly/transaction.cpp
+)
 
 ## SORT .cpp by most likely to change / break compile
 add_library( eosio_chain
@@ -71,8 +92,6 @@ add_library( eosio_chain
              genesis_state.cpp
              ${CMAKE_CURRENT_BINARY_DIR}/genesis_state_root_key.cpp
 
-#             chain_config.cpp
-#             block_trace.cpp
               wast_to_wasm.cpp
               wasm_interface.cpp
               wasm_eosio_validation.cpp
@@ -82,13 +101,9 @@ add_library( eosio_chain
               asset.cpp
               snapshot.cpp
 
-             webassembly/wabt.cpp
              ${CHAIN_EOSVMOC_SOURCES}
              ${CHAIN_EOSVM_SOURCES}
-
-#             get_config.cpp
-#
-#             contracts/chain_initializer.cpp
+             ${CHAIN_WEBASSEMBLY_SOURCES}
 
              trace.cpp
              transaction_metadata.cpp
@@ -105,14 +120,12 @@ add_library( eosio_chain
              )
 
 target_link_libraries( eosio_chain fc chainbase Logging IR WAST WASM Runtime
-                       softfloat builtins wabt ${CHAIN_EOSVM_LIBRARIES} ${LLVM_LIBS}
+                       softfloat builtins ${CHAIN_EOSVM_LIBRARIES} ${LLVM_LIBS}
                      )
 target_include_directories( eosio_chain
                             PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_BINARY_DIR}/include"
                                    "${CMAKE_CURRENT_SOURCE_DIR}/../wasm-jit/Include"
                                    "${CMAKE_CURRENT_SOURCE_DIR}/libraries/eos-vm/include"
-                                   "${CMAKE_SOURCE_DIR}/libraries/wabt"
-                                   "${CMAKE_BINARY_DIR}/libraries/wabt"
                             )
 
 if("eos-vm-oc" IN_LIST EOSIO_WASM_RUNTIMES)
