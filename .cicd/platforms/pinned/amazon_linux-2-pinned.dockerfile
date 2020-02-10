@@ -13,6 +13,7 @@ RUN curl -LO https://github.com/Kitware/CMake/releases/download/v3.16.2/cmake-3.
     ./bootstrap --prefix=/usr/local && \
     make -j$(nproc) && \
     make install && \
+    cd / && \
     rm -rf cmake-3.16.2.tar.gz cmake-3.16.2
 # build clang8
 RUN git clone --single-branch --branch release_80 https://git.llvm.org/git/llvm.git clang8 && cd clang8 && git checkout 18e41dc && \
@@ -78,6 +79,9 @@ RUN curl -L https://github.com/mongodb/mongo-cxx-driver/archive/r3.4.0.tar.gz -o
     rm -rf mongo-cxx-driver-r3.4.0.tar.gz /mongo-cxx-driver-r3.4.0
 # add mongodb to path
 ENV PATH=${PATH}:/mongodb-linux-x86_64-amazon-3.6.3/bin
+# install pip dependencies.
+RUN python3 -m pip install --upgrade pip && \
+    python3 -m pip install requests
 # install nvm
 RUN touch ~/.bashrc
 RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.0/install.sh | bash

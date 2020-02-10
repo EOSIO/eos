@@ -5,7 +5,7 @@ RUN apt-get update && \
     apt-get upgrade -y && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y git make \
     bzip2 automake libbz2-dev libssl-dev doxygen graphviz libgmp3-dev \
-    autotools-dev libicu-dev python2.7 python2.7-dev python3 python3-dev \
+    autotools-dev libicu-dev python2.7 python2.7-dev python3 python3-dev python3-pip \
     autoconf libtool curl zlib1g-dev sudo ruby libusb-1.0-0-dev \
     libcurl4-gnutls-dev pkg-config patch llvm-7-dev clang-7 ccache vim-common jq
 # build cmake
@@ -15,6 +15,7 @@ RUN curl -LO https://github.com/Kitware/CMake/releases/download/v3.16.2/cmake-3.
     ./bootstrap --prefix=/usr/local && \
     make -j$(nproc) && \
     make install && \
+    cd / && \
     rm -rf cmake-3.16.2.tar.gz cmake-3.16.2
 # build boost
 RUN curl -LO https://dl.bintray.com/boostorg/release/1.71.0/source/boost_1_71_0.tar.bz2 && \
@@ -53,8 +54,9 @@ RUN curl -L https://github.com/mongodb/mongo-cxx-driver/archive/r3.4.0.tar.gz -o
     rm -rf mongo-cxx-driver-r3.4.0.tar.gz /mongo-cxx-driver-r3.4.0
 # add mongodb to path
 ENV PATH=${PATH}:/mongodb-linux-x86_64-ubuntu1804-4.1.1/bin
-# install python3-pip
-RUN apt update && apt -y install python3-pip
+# install pip dependencies.
+RUN python3 -m pip install --upgrade pip && \
+    python3 -m pip install requests
 # install nvm
 RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.0/install.sh | bash
 # load nvm in non-interactive shells

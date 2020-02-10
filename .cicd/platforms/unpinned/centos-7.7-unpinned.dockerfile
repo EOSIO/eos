@@ -17,6 +17,7 @@ RUN curl -LO https://github.com/Kitware/CMake/releases/download/v3.16.2/cmake-3.
     ./bootstrap --prefix=/usr/local && \
     make -j$(nproc) && \
     make install && \
+    cd / && \
     rm -rf cmake-3.16.2.tar.gz cmake-3.16.2
 # build boost
 RUN curl -LO https://dl.bintray.com/boostorg/release/1.71.0/source/boost_1_71_0.tar.bz2 && \
@@ -61,6 +62,10 @@ RUN curl -L https://github.com/mongodb/mongo-cxx-driver/archive/r3.4.0.tar.gz -o
     rm -rf mongo-cxx-driver-r3.4.0.tar.gz /mongo-cxx-driver-r3.4.0
 # add mongodb to path
 ENV PATH=${PATH}:/mongodb-linux-x86_64-amazon-3.6.3/bin
+# install pip dependencies.
+RUN source /opt/rh/rh-python36/enable && \
+    python3 -m pip install --upgrade pip && \
+    python3 -m pip install requests
 # install nvm
 RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.0/install.sh | bash
 # load nvm in non-interactive shells

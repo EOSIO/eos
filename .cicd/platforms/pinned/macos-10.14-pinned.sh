@@ -2,7 +2,7 @@
 set -eo pipefail
 VERSION=1
 brew update
-brew install git cmake python@2 python libtool libusb graphviz automake wget gmp pkgconfig doxygen openssl@1.1 jq || :
+brew install git cmake python libtool libusb graphviz automake wget gmp pkgconfig doxygen openssl@1.1 jq || :
 # install clang from source
 git clone --single-branch --branch release_80 https://git.llvm.org/git/llvm.git clang8
 cd clang8
@@ -77,5 +77,8 @@ cmake -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=
 make -j $(getconf _NPROCESSORS_ONLN) VERBOSE=1 && \
 sudo make install && \
 rm -rf ~/mongo-cxx-driver-r3.4.0.tar.gz ~/mongo-cxx-driver-r3.4.0
+# install pip dependencies.
+cd ~ && python3 -m pip install --upgrade pip
+python3 -m pip install requests
 # install nvm for ship_test
 cd ~ && brew install nvm && mkdir -p ~/.nvm && echo "export NVM_DIR=$HOME/.nvm" >> ~/.bash_profile && echo 'source $(brew --prefix nvm)/nvm.sh' >> ~/.bash_profile && cat ~/.bash_profile && source ~/.bash_profile && echo $NVM_DIR && nvm install --lts=dubnium
