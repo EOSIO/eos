@@ -63,7 +63,8 @@ RUN curl -L https://github.com/mongodb/mongo-cxx-driver/archive/r3.4.0.tar.gz -o
 # add mongodb to path
 ENV PATH=${PATH}:/mongodb-linux-x86_64-amazon-3.6.3/bin
 # install pip dependencies.
-RUN python3 -m pip install --upgrade pip && \
+RUN source /opt/rh/rh-python36/enable && \
+    python3 -m pip install --upgrade pip && \
     python3 -m pip install requests
 # install nvm
 RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.0/install.sh | bash
