@@ -57,8 +57,8 @@ namespace eosio { namespace chain {
     * @tparam T
     */
    template<typename T>
-   struct array_ptr {
-      explicit array_ptr (T * value) : value(value) {}
+   struct legacy_array_ptr {
+      explicit legacy_array_ptr (T * value) : value(value) {}
 
       typename std::add_lvalue_reference<T>::type operator*() const {
          return *value;
@@ -76,24 +76,23 @@ namespace eosio { namespace chain {
    };
 
    /**
+    * class to represent an in-wasm-memory array
+    * it is a hint to the transcriber that the next parameter will
+    * be a size (data bytes length) and that the pair are validated together
+    * This triggers the template specialization of intrinsic_invoker_impl
+    * This is different than the legacy_array_ptr, in that it should assert if alignment isn't maintained for T
+    * @tparam T
+    */
+   template <typename T>
+   struct array_ptr : legacy_array_ptr<T> {
+      explicit array_ptr (T* value) : value(value) {}
+   };
+
+   /**
     * class to represent an in-wasm-memory char array that must be null terminated
     */
-   struct null_terminated_ptr {
+   struct null_terminated_ptr : legacy_array_ptr<char> {
       explicit null_terminated_ptr(char* value) : value(value) {}
-
-      typename std::add_lvalue_reference<char>::type operator*() const {
-         return *value;
-      }
-
-      char *operator->() const noexcept {
-         return value;
-      }
-
-      operator char *() const {
-         return value;
-      }
-
-      char *value;
    };
 
  } } // eosio::chain
