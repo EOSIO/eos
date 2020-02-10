@@ -165,8 +165,10 @@ namespace eosio { namespace chain {
          temp_data_buffer.reset();
          auto* kv = db.find<kv_object, by_kv_key>(
                boost::make_tuple(database_id, name{ contract }, std::string_view{ key, key_size }));
-         if (!kv)
+         if (!kv) {
             return;
+         }
+
          resource_manager.update_table_usage(-(static_cast<int64_t>(resource_manager.billable_size) + kv->kv_key.size() + kv->kv_value.size()));
          tracker.remove(*kv);
       }

@@ -13,6 +13,9 @@
 #include <eosio/chain/types.hpp>
 #include <eosio/chain/fixed_bytes.hpp>
 
+#include <eosio/chain/global_property_object.hpp>
+#include <eosio/chain/kv_context.hpp>
+
 #include <boost/container/flat_set.hpp>
 #include <boost/multiprecision/cpp_int.hpp>
 
@@ -392,6 +395,29 @@ public:
 
    get_scheduled_transactions_result get_scheduled_transactions( const get_scheduled_transactions_params& params ) const;
 
+   struct get_kv_table_rows_params {
+      bool        json = false;
+      name        code;
+      name        table;
+      name        database_id;
+      name        index_name;
+
+      string      lower_bound;
+      string      upper_bound;
+      uint32_t    limit = 10;
+
+      string      encode_type{"dec"}; //dec, hex , default=dec
+      optional<bool>  reverse;
+   };
+
+   struct get_kv_table_rows_result {
+      vector<fc::variant> rows; ///< one row per item, either encoded as hex String or JSON object
+      bool                more = false; ///< true if last element in data is not the end and sizeof data() < limit
+      string              next_key; ///< fill lower_bound with this value to fetch more rows
+   };
+
+   get_kv_table_rows_result get_kv_table_rows( const get_kv_table_rows_params& params )const;
+
    static void copy_inline_row(const chain::key_value_object& obj, vector<char>& data) {
       data.resize( obj.value.size() );
       memcpy( data.data(), obj.value.data(), obj.value.size() );
@@ -584,6 +610,204 @@ public:
       return result;
    }
 
+   struct key_type : private std::string {
+      key_type() : std::string() {}
+      key_type(const char* c, size_t s) : std::string(c, s) {}
+
+      key_type operator+(const key_type& b) const {
+         size_t buffer_size = size() + b.size();
+         void* buffer = buffer_size > 512 ? malloc(buffer_size) : alloca(buffer_size);
+
+         memcpy(buffer, data(), size());
+         memcpy(((char*)buffer) + size(), b.data(), b.size());
+         return {(char*)buffer, buffer_size};
+      }
+
+      using std::string::data;
+      using std::string::size;
+   };
+
+   template <typename T>
+   inline T swap_endian(T val)const {
+      static_assert(sizeof(T) <= 16);
+      if constexpr (sizeof(T) == 1)
+         return val;
+      else if constexpr (sizeof(T) == 2)
+         return (val << 8) | (val >> 8);
+      else if constexpr (sizeof(T) == 4) {
+         T value;
+         auto swapped = __builtin_bswap32(val);
+         memcpy((char*)&value, (char*)&swapped, sizeof(T));
+         return value;
+      } else if constexpr (sizeof(T) == 8) {
+         T value;
+         auto swapped = __builtin_bswap64(val);
+         memcpy((char*)&value, (char*)&swapped, sizeof(T));
+         return value;
+      } else {
+         T value;
+         uint128_t swapped_high = __builtin_bswap64((uint64_t)val);
+         uint64_t swapped_low = __builtin_bswap64((uint64_t)(val >> 64));
+         T swapped = (swapped_high << 64) | swapped_low;
+         memcpy((char*)&value, (char*)&swapped, sizeof(T));
+         return value;
+      }
+   }
+
+   inline key_type table_key(const key_type& prefix, const key_type& key)const {
+      return prefix + key;
+   }
+
+   template <typename I>
+   inline I flip_msb(I val)const {
+      constexpr static size_t bits = sizeof(I) * 8;
+      return val ^ (static_cast<I>(1) << (bits - 1));
+   }
+
+   template <typename I>
+   inline I get_msb(I val)const {
+      constexpr static size_t bits = sizeof(I) * 8;
+      return val >> (bits - 1);
+   }
+
+   template <typename I, typename std::enable_if_t<std::is_integral<I>::value, int> = 0>
+   inline key_type make_key(I val)const {
+      if (std::is_signed<I>::value) {
+         val = flip_msb(val);
+      }
+
+      auto big_endian = swap_endian<I>(val);
+
+      const char* bytes = reinterpret_cast<char*>(&big_endian);
+      constexpr size_t size = sizeof(big_endian);
+      key_type s(bytes, size);
+      return s;
+   }
+
+   inline key_type make_key(eosio::name n)const {
+      return make_key(n.to_uint64_t());
+   }
+
+   inline key_type make_prefix(eosio::name table_name, eosio::name index_name, uint8_t status = 1)const {
+      auto bige_table = swap_endian<uint64_t>(table_name.to_uint64_t());
+      auto bige_index = swap_endian<uint64_t>(index_name.to_uint64_t());
+
+      size_t size_name = sizeof(index_name);
+
+      size_t buffer_size = (2 * size_name) + sizeof(status);
+      void* buffer = buffer_size > 512 ? malloc(buffer_size) : alloca(buffer_size);
+
+      memcpy(buffer, &status, sizeof(status));
+      memcpy(((char*)buffer) + sizeof(status), &bige_table, size_name);
+      memcpy(((char*)buffer) + sizeof(status) + size_name, &bige_index, size_name);
+
+      key_type s((const char*)buffer, buffer_size);
+
+      if (buffer_size > 512) {
+         free(buffer);
+      }
+
+      return s;
+   }
+
+   get_kv_table_rows_result get_kv_table_rows_ex( const read_only::get_kv_table_rows_params& p, const abi_def& abi )const {
+      get_kv_table_rows_result result;
+
+      // TODO: This feels wrong.
+      auto& d = const_cast<chainbase::database&>(db.db());
+
+      auto& gp = db.get_global_properties();
+      auto& kv_config = gp.kv_configuration;
+      auto& limits = kv_config.kvram;
+
+      // TODO: How to determine which config to use??
+
+      // db.mutable_db() is private
+      /*
+      chain::kv_database_config limits {
+         .max_key_size = 100000000,
+         .max_value_size = 100000000,
+         .max_iterators = 100000000
+      };
+      */
+      auto kv_context = chain::create_kv_chainbase_context(d, p.database_id, chain::name{0}, {}, limits);
+
+      abi_serializer abis;
+      abis.set_abi(abi, abi_serializer_max_time);
+
+      auto prefix = make_prefix(p.table, p.index_name);
+
+      key_type lower_bound;
+      key_type upper_bound;
+
+      auto tbl = abis.get_kv_table(p.table);
+
+      chain::kv_index_def index;
+
+      if (tbl.primary_index.name == p.index_name) {
+         index = tbl.primary_index;
+      } else {
+         for (const auto& i : tbl.secondary_indices) {
+            if (i.name == p.index_name) {
+               index = i;
+            }
+         }
+      }
+
+      if( p.lower_bound.size() ) {
+         if (index.type == "name") {
+            name n{p.lower_bound};
+            lower_bound = table_key(prefix, make_key(n));
+         } else if (index.type == "uint32") {
+            uint32_t n{ convert_to_type<uint32_t>(p.lower_bound, "uint32") };
+            lower_bound = table_key(prefix, make_key(n));
+         }
+      }
+
+      if( p.upper_bound.size() ) {
+         if (index.type == "name") {
+            name n{p.upper_bound};
+            upper_bound = table_key(prefix, make_key(n));
+         } else if (index.type == "uint32") {
+            uint32_t n{ convert_to_type<uint32_t>(p.upper_bound, "uint32") };
+            upper_bound = table_key(prefix, make_key(n));
+         }
+      }
+
+      auto lower_itr = kv_context->kv_it_create(p.code.to_uint64_t(), prefix.data(), prefix.size());
+      auto upper_itr = kv_context->kv_it_create(p.code.to_uint64_t(), prefix.data(), prefix.size());
+
+      lower_itr->kv_it_lower_bound(lower_bound.data(), lower_bound.size());
+      upper_itr->kv_it_lower_bound(upper_bound.data(), upper_bound.size());
+
+      uint32_t v;
+      auto i = kv_context->kv_get(p.code.to_uint64_t(), lower_bound.data(), lower_bound.size(), v);
+
+      vector<char> data;
+      auto cmp = lower_itr->kv_it_compare(*upper_itr);
+      while( cmp < 0 ) {
+         uint32_t val_size;
+         uint32_t copy_size;
+
+         lower_itr->kv_it_value(0, nullptr, 0, val_size);
+         data.resize(val_size);
+         lower_itr->kv_it_value(0, data.data(), val_size, copy_size);
+
+         fc::variant data_var;
+         if ( p.json ) {
+            data_var = abis.binary_to_variant( abis.get_kv_table_type(p.table), data, abi_serializer_max_time, shorten_abi_errors );
+         } else {
+            data_var = fc::variant( data );
+         }
+
+         result.rows.emplace_back( std::move(data_var) );
+         lower_itr->kv_it_next();
+         cmp = lower_itr->kv_it_compare(*upper_itr);
+      }
+
+      return result;
+   }
+
    chain::symbol extract_core_symbol()const;
 
    friend struct resolver_factory<read_only>;
@@ -763,6 +987,9 @@ FC_REFLECT( eosio::chain_apis::read_write::push_transaction_results, (transactio
 
 FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_params, (json)(code)(scope)(table)(table_key)(lower_bound)(upper_bound)(limit)(key_type)(index_position)(encode_type)(reverse)(show_payer) )
 FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_result, (rows)(more)(next_key) );
+
+FC_REFLECT( eosio::chain_apis::read_only::get_kv_table_rows_params, (json)(code)(table)(database_id)(index_name)(lower_bound)(upper_bound)(limit)(encode_type)(reverse) )
+FC_REFLECT( eosio::chain_apis::read_only::get_kv_table_rows_result, (rows)(more)(next_key) );
 
 FC_REFLECT( eosio::chain_apis::read_only::get_table_by_scope_params, (code)(table)(lower_bound)(upper_bound)(limit)(reverse) )
 FC_REFLECT( eosio::chain_apis::read_only::get_table_by_scope_result_row, (code)(scope)(table)(payer)(count));

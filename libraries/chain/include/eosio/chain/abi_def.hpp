@@ -70,6 +70,29 @@ struct table_def {
    type_name          type;        // type of binary data stored in this table
 };
 
+struct kv_index_def {
+   kv_index_def() = default;
+   kv_index_def(const chain::name& name, const type_name& type)
+   :name(name), type(type)
+   {}
+
+   chain::name name;
+   type_name   type;
+};
+
+struct kv_table_def {
+   kv_table_def() = default;
+   kv_table_def(const table_name& name, const type_name& type, const chain::name& storage_type, const kv_index_def& primary_index, const vector<kv_index_def>& secondary_indices)
+   :name(name), type(type), storage_type(storage_type), primary_index(primary_index), secondary_indices(secondary_indices)
+   {}
+
+   table_name           name;
+   type_name            type;
+   chain::name          storage_type;
+   kv_index_def         primary_index;
+   vector<kv_index_def> secondary_indices;
+};
+
 struct clause_pair {
    clause_pair() = default;
    clause_pair( const string& id, const string& body )
@@ -102,11 +125,12 @@ struct may_not_exist {
 
 struct abi_def {
    abi_def() = default;
-   abi_def(const vector<type_def>& types, const vector<struct_def>& structs, const vector<action_def>& actions, const vector<table_def>& tables, const vector<clause_pair>& clauses, const vector<error_message>& error_msgs)
+   abi_def(const vector<type_def>& types, const vector<struct_def>& structs, const vector<action_def>& actions, const vector<table_def>& tables, const vector<kv_table_def>& kv_tables, const vector<clause_pair>& clauses, const vector<error_message>& error_msgs)
    :types(types)
    ,structs(structs)
    ,actions(actions)
    ,tables(tables)
+   ,kv_tables(kv_tables)
    ,ricardian_clauses(clauses)
    ,error_messages(error_msgs)
    {}
@@ -116,6 +140,7 @@ struct abi_def {
    vector<struct_def>                  structs;
    vector<action_def>                  actions;
    vector<table_def>                   tables;
+   vector<kv_table_def>                kv_tables;
    vector<clause_pair>                 ricardian_clauses;
    vector<error_message>               error_messages;
    extensions_type                     abi_extensions;
@@ -161,8 +186,10 @@ FC_REFLECT( eosio::chain::field_def                        , (name)(type) )
 FC_REFLECT( eosio::chain::struct_def                       , (name)(base)(fields) )
 FC_REFLECT( eosio::chain::action_def                       , (name)(type)(ricardian_contract) )
 FC_REFLECT( eosio::chain::table_def                        , (name)(index_type)(key_names)(key_types)(type) )
+FC_REFLECT( eosio::chain::kv_index_def                     , (name)(type) )
+FC_REFLECT( eosio::chain::kv_table_def                     , (name)(type)(storage_type)(primary_index)(secondary_indices) )
 FC_REFLECT( eosio::chain::clause_pair                      , (id)(body) )
 FC_REFLECT( eosio::chain::error_message                    , (error_code)(error_msg) )
 FC_REFLECT( eosio::chain::variant_def                      , (name)(types) )
-FC_REFLECT( eosio::chain::abi_def                          , (version)(types)(structs)(actions)(tables)
+FC_REFLECT( eosio::chain::abi_def                          , (version)(types)(structs)(actions)(tables)(kv_tables)
                                                              (ricardian_clauses)(error_messages)(abi_extensions)(variants) )
