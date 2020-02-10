@@ -3,7 +3,7 @@ steps:
 
   - label: ":buildkite: Base Case"
     command: |
-      echo 'Yeet'
+      echo '+++ :radioactive_sign: Yeet'
     plugins:
       - EOSIO/skip-checkout#v0.1.1:
           cd: ~
@@ -13,7 +13,7 @@ steps:
 
   - label: ":buildkite: Set BUILDKITE_AGENT_META_DATA_QUEUE"
     command: |
-      echo 'Yeet'
+      echo '+++ :radioactive_sign: Yeet'
     plugins:
       - EOSIO/skip-checkout#v0.1.1:
           cd: ~
@@ -25,7 +25,7 @@ steps:
 
   - label: ":buildkite: Set BUILDKITE_PIPELINE_SLUG"
     command: |
-      echo 'Yeet'
+      echo '+++ :radioactive_sign: Yeet'
     plugins:
       - EOSIO/skip-checkout#v0.1.1:
           cd: ~
