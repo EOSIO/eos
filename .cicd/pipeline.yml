@@ -1,0 +1,36 @@
+steps:
+  - wait
+
+  - label: ":buildkite: Base Case"
+    command: |
+      echo 'Yeet'
+    plugins:
+      - EOSIO/skip-checkout#v0.1.1:
+          cd: ~
+    agents:
+      queue: "automation-hook-test-fleet"
+    timeout: 5
+
+  - label: ":buildkite: Set BUILDKITE_AGENT_META_DATA_QUEUE"
+    command: |
+      echo 'Yeet'
+    plugins:
+      - EOSIO/skip-checkout#v0.1.1:
+          cd: ~
+    env:
+      BUILDKITE_AGENT_META_DATA_QUEUE: "automation-basic-builder-fleet"
+    agents:
+      queue: "automation-hook-test-fleet"
+    timeout: 5
+
+  - label: ":buildkite: Set BUILDKITE_PIPELINE_SLUG"
+    command: |
+      echo 'Yeet'
+    plugins:
+      - EOSIO/skip-checkout#v0.1.1:
+          cd: ~
+    env:
+      BUILDKITE_PIPELINE_SLUG: "eos-buildkite-pipelines"
+    agents:
+      queue: "automation-hook-test-fleet"
+    timeout: 5
