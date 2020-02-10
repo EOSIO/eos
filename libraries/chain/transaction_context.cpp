@@ -258,6 +258,8 @@ namespace eosio { namespace chain {
    void transaction_context::exec() {
       EOS_ASSERT( is_initialized, transaction_exception, "must first initialize" );
 
+      trace->action_traces.reserve( trx.context_free_actions.size() + trx.actions.size());
+
       if( apply_context_free ) {
          for( const auto& act : trx.context_free_actions ) {
             schedule_action( act, act.account, true, 0, 0 );
