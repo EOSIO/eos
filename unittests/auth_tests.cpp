@@ -1,14 +1,13 @@
 #include <boost/test/unit_test.hpp>
-#include <arisen/testing/tester.hpp>
-#include <arisen/chain/abi_serializer.hpp>
-#include <arisen/chain/permission_object.hpp>
-#include <arisen/chain/authorization_manager.hpp>
+#include <eosio/testing/tester.hpp>
+#include <eosio/chain/abi_serializer.hpp>
+#include <eosio/chain/permission_object.hpp>
+#include <eosio/chain/authorization_manager.hpp>
 
-#include <arisen/chain/resource_limits.hpp>
-#include <arisen/chain/resource_limits_private.hpp>
+#include <eosio/chain/resource_limits.hpp>
+#include <eosio/chain/resource_limits_private.hpp>
 
-#include <arisen/testing/tester_network.hpp>
-#include <arisen/chain/producer_object.hpp>
+#include <eosio/testing/tester_network.hpp>
 
 #ifdef NON_VALIDATING_TEST
 #define TESTER tester
@@ -16,9 +15,9 @@
 #define TESTER validating_tester
 #endif
 
-using namespace arisen;
-using namespace arisen::chain;
-using namespace arisen::testing;
+using namespace eosio;
+using namespace eosio::chain;
+using namespace eosio::testing;
 
 BOOST_AUTO_TEST_SUITE(auth_tests)
 
@@ -119,9 +118,9 @@ try {
       BOOST_TEST(obj->parent == 0);
       owner_id = obj->id;
       auto auth = obj->auth.to_authority();
-      BOOST_TEST(auth.threshold == 1);
-      BOOST_TEST(auth.keys.size() == 1);
-      BOOST_TEST(auth.accounts.size() == 0);
+      BOOST_TEST(auth.threshold == 1u);
+      BOOST_TEST(auth.keys.size() == 1u);
+      BOOST_TEST(auth.accounts.size() == 0u);
       BOOST_TEST(auth.keys[0].key == new_owner_pub_key);
       BOOST_TEST(auth.keys[0].weight == 1);
    }
@@ -140,11 +139,11 @@ try {
       BOOST_TEST(obj->name == "active");
       BOOST_TEST(obj->parent == owner_id);
       auto auth = obj->auth.to_authority();
-      BOOST_TEST(auth.threshold == 1);
-      BOOST_TEST(auth.keys.size() == 1);
-      BOOST_TEST(auth.accounts.size() == 0);
+      BOOST_TEST(auth.threshold == 1u);
+      BOOST_TEST(auth.keys.size() == 1u);
+      BOOST_TEST(auth.accounts.size() == 0u);
       BOOST_TEST(auth.keys[0].key == new_active_pub_key);
-      BOOST_TEST(auth.keys[0].weight == 1);
+      BOOST_TEST(auth.keys[0].weight == 1u);
    }
 
    auto spending_priv_key = chain.get_private_key("alice", "spending");
@@ -240,18 +239,18 @@ BOOST_AUTO_TEST_CASE(link_auths) { try {
 
    // Send req auth action with alice's spending key, it should fail
    BOOST_CHECK_THROW(chain.push_reqauth("alice", { permission_level{N(alice), "spending"} }, { spending_priv_key }), irrelevant_auth_exception);
-   // Link authority for arisen reqauth action with alice's spending key
-   chain.link_authority("alice", "arisen", "spending",  "reqauth");
+   // Link authority for eosio reqauth action with alice's spending key
+   chain.link_authority("alice", "eosio", "spending",  "reqauth");
    // Now, req auth action with alice's spending key should succeed
    chain.push_reqauth("alice", { permission_level{N(alice), "spending"} }, { spending_priv_key });
 
    chain.produce_block();
 
    // Relink the same auth should fail
-   BOOST_CHECK_THROW( chain.link_authority("alice", "arisen", "spending",  "reqauth"), action_validate_exception);
+   BOOST_CHECK_THROW( chain.link_authority("alice", "eosio", "spending",  "reqauth"), action_validate_exception);
 
-   // Unlink alice with arisen reqauth
-   chain.unlink_authority("alice", "arisen", "reqauth");
+   // Unlink alice with eosio reqauth
+   chain.unlink_authority("alice", "eosio", "reqauth");
    // Now, req auth action with alice's spending key should fail
    BOOST_CHECK_THROW(chain.push_reqauth("alice", { permission_level{N(alice), "spending"} }, { spending_priv_key }), irrelevant_auth_exception);
 
@@ -259,8 +258,8 @@ BOOST_AUTO_TEST_CASE(link_auths) { try {
 
    // Send req auth action with scud key, it should fail
    BOOST_CHECK_THROW(chain.push_reqauth("alice", { permission_level{N(alice), "scud"} }, { scud_priv_key }), irrelevant_auth_exception);
-   // Link authority for any arisen action with alice's scud key
-   chain.link_authority("alice", "arisen", "scud");
+   // Link authority for any eosio action with alice's scud key
+   chain.link_authority("alice", "eosio", "scud");
    // Now, req auth action with alice's scud key should succeed
    chain.push_reqauth("alice", { permission_level{N(alice), "scud"} }, { scud_priv_key });
    // req auth action with alice's spending key should also be fine, since it is the parent of alice's scud key
@@ -280,7 +279,7 @@ BOOST_AUTO_TEST_CASE(link_then_update_auth) { try {
 
    chain.set_authority("alice", "first", first_pub_key, "active");
 
-   chain.link_authority("alice", "arisen", "first",  "reqauth");
+   chain.link_authority("alice", "eosio", "first",  "reqauth");
    chain.push_reqauth("alice", { permission_level{N(alice), "first"} }, { first_priv_key });
 
    chain.produce_blocks(13); // Wait at least 6 seconds for first push_reqauth transaction to expire.
@@ -302,18 +301,18 @@ try {
 
    // Verify account created properly
    const auto& joe_owner_authority = chain.get<permission_object, by_owner>(boost::make_tuple("joe", "owner"));
-   BOOST_TEST(joe_owner_authority.auth.threshold == 1);
-   BOOST_TEST(joe_owner_authority.auth.accounts.size() == 1);
-   BOOST_TEST(joe_owner_authority.auth.keys.size() == 1);
+   BOOST_TEST(joe_owner_authority.auth.threshold == 1u);
+   BOOST_TEST(joe_owner_authority.auth.accounts.size() == 1u);
+   BOOST_TEST(joe_owner_authority.auth.keys.size() == 1u);
    BOOST_TEST(string(joe_owner_authority.auth.keys[0].key) == string(chain.get_public_key("joe", "owner")));
-   BOOST_TEST(joe_owner_authority.auth.keys[0].weight == 1);
+   BOOST_TEST(joe_owner_authority.auth.keys[0].weight == 1u);
 
    const auto& joe_active_authority = chain.get<permission_object, by_owner>(boost::make_tuple("joe", "active"));
-   BOOST_TEST(joe_active_authority.auth.threshold == 1);
-   BOOST_TEST(joe_active_authority.auth.accounts.size() == 1);
-   BOOST_TEST(joe_active_authority.auth.keys.size() == 1);
+   BOOST_TEST(joe_active_authority.auth.threshold == 1u);
+   BOOST_TEST(joe_active_authority.auth.accounts.size() == 1u);
+   BOOST_TEST(joe_active_authority.auth.keys.size() == 1u);
    BOOST_TEST(string(joe_active_authority.auth.keys[0].key) == string(chain.get_public_key("joe", "active")));
-   BOOST_TEST(joe_active_authority.auth.keys[0].weight == 1);
+   BOOST_TEST(joe_active_authority.auth.keys[0].weight == 1u);
 
    // Create duplicate name
    BOOST_CHECK_EXCEPTION(chain.create_account("joe"), action_validate_exception,
@@ -324,12 +323,12 @@ try {
                          fc_exception_message_is("account names can only be 12 chars long"));
 
 
-   // Creating account with arisen. prefix with privileged account
-   chain.create_account("arisen.test1");
+   // Creating account with eosio. prefix with privileged account
+   chain.create_account("eosio.test1");
 
-   // Creating account with arisen. prefix with non-privileged account, should fail
-   BOOST_CHECK_EXCEPTION(chain.create_account("arisen.test2", "joe"), action_validate_exception,
-                         fc_exception_message_is("only privileged accounts can have names that start with 'arisen.'"));
+   // Creating account with eosio. prefix with non-privileged account, should fail
+   BOOST_CHECK_EXCEPTION(chain.create_account("eosio.test2", "joe"), action_validate_exception,
+                         fc_exception_message_is("only privileged accounts can have names that start with 'eosio.'"));
 
 } FC_LOG_AND_RETHROW() }
 
@@ -354,10 +353,10 @@ BOOST_AUTO_TEST_CASE( any_auth ) { try {
 
    //test.push_reqauth( N(alice), { permission_level{N(alice),"spending"} }, { spending_priv_key });
 
-   chain.link_authority( "alice", "arisen", "arisen.any", "reqauth" );
-   chain.link_authority( "bob", "arisen", "arisen.any", "reqauth" );
+   chain.link_authority( "alice", "eosio", "eosio.any", "reqauth" );
+   chain.link_authority( "bob", "eosio", "eosio.any", "reqauth" );
 
-   /// this should succeed because arisen::reqauth is linked to any permission
+   /// this should succeed because eosio::reqauth is linked to any permission
    chain.push_reqauth("alice", { permission_level{N(alice), "spending"} }, { spending_priv_key });
 
    /// this should fail because bob cannot authorize for alice, the permission given must be one-of alices
@@ -371,7 +370,8 @@ BOOST_AUTO_TEST_CASE( any_auth ) { try {
 
 BOOST_AUTO_TEST_CASE(no_double_billing) {
 try {
-   TESTER chain;
+   validating_tester chain( validating_tester::default_config() );
+   chain.execute_setup_policy( setup_policy::preactivate_feature_and_new_bios );
 
    chain.produce_block();
 
@@ -383,10 +383,10 @@ try {
    chain.create_account(acc1a);
    chain.produce_block();
 
-   chainbase::database &db = chain.control->db();
+   const chainbase::database &db = chain.control->db();
 
-   using resource_usage_object = arisen::chain::resource_limits::resource_usage_object;
-   using by_owner = arisen::chain::resource_limits::by_owner;
+   using resource_usage_object = eosio::chain::resource_limits::resource_usage_object;
+   using by_owner = eosio::chain::resource_limits::by_owner;
 
    auto create_acc = [&](account_name a) {
 
@@ -419,8 +419,8 @@ try {
 
    const auto &usage2 = db.get<resource_usage_object,by_owner>(acc1a);
 
-   BOOST_TEST(usage.cpu_usage.average() > 0);
-   BOOST_TEST(usage.net_usage.average() > 0);
+   BOOST_TEST(usage.cpu_usage.average() > 0U);
+   BOOST_TEST(usage.net_usage.average() > 0U);
    BOOST_REQUIRE_EQUAL(usage.cpu_usage.average(), usage2.cpu_usage.average());
    BOOST_REQUIRE_EQUAL(usage.net_usage.average(), usage2.net_usage.average());
    chain.produce_block();
@@ -502,11 +502,11 @@ BOOST_AUTO_TEST_CASE( linkauth_special ) { try {
       BOOST_REQUIRE_EXCEPTION(
          chain.push_action(config::system_account_name, linkauth::get_name(), tester_account, fc::mutable_variant_object()
                ("account", "tester")
-               ("code", "arisen")
+               ("code", "eosio")
                ("type", type)
                ("requirement", "first")),
          action_validate_exception,
-         fc_exception_message_is(std::string("Cannot link arisen::") + std::string(type) + std::string(" to a minimum permission"))
+         fc_exception_message_is(std::string("Cannot link eosio::") + std::string(type) + std::string(" to a minimum permission"))
       );
    };
 

@@ -1,8 +1,8 @@
 /**
  *  @file
- *  @copyright defined in arisen/LICENSE.txt
+ *  @copyright defined in eos/LICENSE
  */
-#include <arisen/wallet_plugin/wallet.hpp>
+#include <eosio/wallet_plugin/wallet.hpp>
 
 #include <algorithm>
 #include <cctype>
@@ -27,11 +27,11 @@
 #ifndef WIN32
 # include <sys/types.h>
 # include <sys/stat.h>
-#include <arisen/chain/exceptions.hpp>
+#include <eosio/chain/exceptions.hpp>
 
 #endif
 
-namespace arisen { namespace wallet {
+namespace eosio { namespace wallet {
 
 namespace detail {
 
@@ -120,25 +120,25 @@ public:
 
    string get_wallet_filename() const { return _wallet_filename; }
 
-   optional<private_key_type>  try_get_private_key(const public_key_type& id)const
+   fc::optional<private_key_type>  try_get_private_key(const public_key_type& id)const
    {
       auto it = _keys.find(id);
       if( it != _keys.end() )
          return  it->second;
-      return optional<private_key_type>();
+      return fc::optional<private_key_type>();
    }
 
-   optional<signature_type> try_sign_digest( const digest_type digest, const public_key_type public_key ) {
+   fc::optional<signature_type> try_sign_digest( const digest_type digest, const public_key_type public_key ) {
       auto it = _keys.find(public_key);
       if( it == _keys.end() )
-         return optional<signature_type>{};
+         return fc::optional<signature_type>{};
       return it->second.sign(digest);
    }
 
    private_key_type get_private_key(const public_key_type& id)const
    {
       auto has_key = try_get_private_key( id );
-      RSN_ASSERT( has_key, chain::key_nonexistent_exception, "Key doesn't exist!" );
+      EOS_ASSERT( has_key, chain::key_nonexistent_exception, "Key doesn't exist!" );
       return *has_key;
    }
 
@@ -150,14 +150,14 @@ public:
    bool import_key(string wif_key)
    {
       private_key_type priv(wif_key);
-      arisen::chain::public_key_type wif_pub_key = priv.get_public_key();
+      eosio::chain::public_key_type wif_pub_key = priv.get_public_key();
 
       auto itr = _keys.find(wif_pub_key);
       if( itr == _keys.end() ) {
          _keys[wif_pub_key] = priv;
          return true;
       }
-      RSN_THROW( chain::key_exist_exception, "Key already in wallet" );
+      EOS_THROW( chain::key_exist_exception, "Key already in wallet" );
    }
 
    // Removes a key from the wallet
@@ -171,7 +171,7 @@ public:
          _keys.erase(pub);
          return true;
       }
-      RSN_THROW( chain::key_nonexistent_exception, "Key not in wallet" );
+      EOS_THROW( chain::key_nonexistent_exception, "Key not in wallet" );
    }
 
    string create_key(string key_type)
@@ -185,7 +185,7 @@ public:
       else if(key_type == "R1")
          priv_key = fc::crypto::private_key::generate<fc::crypto::r1::private_key_shim>();
       else
-         RSN_THROW(chain::unsupported_key_type_exception, "Key type \"${kt}\" not supported by software wallet", ("kt", key_type));
+         EOS_THROW(chain::unsupported_key_type_exception, "Key type \"${kt}\" not supported by software wallet", ("kt", key_type));
 
       import_key((string)priv_key);
       return (string)priv_key.get_public_key();
@@ -235,7 +235,7 @@ public:
          ofstream outfile{ wallet_filename };
          if (!outfile) {
             elog("Unable to open file: ${fn}", ("fn", wallet_filename));
-            RSN_THROW(wallet_exception, "Unable to open file: ${fn}", ("fn", wallet_filename));
+            EOS_THROW(wallet_exception, "Unable to open file: ${fn}", ("fn", wallet_filename));
          }
          outfile.write( data.c_str(), data.length() );
          outfile.flush();
@@ -262,11 +262,11 @@ public:
    const string _default_key_type = "K1";
 };
 
-} } } // arisen::wallet::detail
+} } } // eosio::wallet::detail
 
 
 
-namespace arisen { namespace wallet {
+namespace eosio { namespace wallet {
 
 soft_wallet::soft_wallet(const wallet_data& initial_data)
    : my(new detail::soft_wallet_impl(*this, initial_data))
@@ -286,7 +286,7 @@ string soft_wallet::get_wallet_filename() const
 
 bool soft_wallet::import_key(string wif_key)
 {
-   RSN_ASSERT(!is_locked(), wallet_locked_exception, "Unable to import key on a locked wallet");
+   EOS_ASSERT(!is_locked(), wallet_locked_exception, "Unable to import key on a locked wallet");
 
    if( my->import_key(wif_key) )
    {
@@ -298,7 +298,7 @@ bool soft_wallet::import_key(string wif_key)
 
 bool soft_wallet::remove_key(string key)
 {
-   RSN_ASSERT(!is_locked(), wallet_locked_exception, "Unable to remove key from a locked wallet");
+   EOS_ASSERT(!is_locked(), wallet_locked_exception, "Unable to remove key from a locked wallet");
 
    if( my->remove_key(key) )
    {
@@ -310,7 +310,7 @@ bool soft_wallet::remove_key(string key)
 
 string soft_wallet::create_key(string key_type)
 {
-   RSN_ASSERT(!is_locked(), wallet_locked_exception, "Unable to create key on a locked wallet");
+   EOS_ASSERT(!is_locked(), wallet_locked_exception, "Unable to create key on a locked wallet");
 
    string ret = my->create_key(key_type);
    save_wallet_file();
@@ -344,7 +344,7 @@ void soft_wallet::encrypt_keys()
 
 void soft_wallet::lock()
 { try {
-   RSN_ASSERT( !is_locked(), wallet_locked_exception, "Unable to lock a locked wallet" );
+   EOS_ASSERT( !is_locked(), wallet_locked_exception, "Unable to lock a locked wallet" );
    encrypt_keys();
    for( auto key : my->_keys )
       key.second = private_key_type();
@@ -362,7 +362,7 @@ void soft_wallet::unlock(string password)
    FC_ASSERT(pk.checksum == pw);
    my->_keys = std::move(pk.keys);
    my->_checksum = pk.checksum;
-} RSN_RETHROW_EXCEPTIONS(chain::wallet_invalid_password_exception,
+} EOS_RETHROW_EXCEPTIONS(chain::wallet_invalid_password_exception,
                           "Invalid password for wallet: \"${wallet_name}\"", ("wallet_name", get_wallet_filename())) }
 
 void soft_wallet::check_password(string password)
@@ -372,25 +372,25 @@ void soft_wallet::check_password(string password)
    vector<char> decrypted = fc::aes_decrypt(pw, my->_wallet.cipher_keys);
    auto pk = fc::raw::unpack<plain_keys>(decrypted);
    FC_ASSERT(pk.checksum == pw);
-} RSN_RETHROW_EXCEPTIONS(chain::wallet_invalid_password_exception,
+} EOS_RETHROW_EXCEPTIONS(chain::wallet_invalid_password_exception,
                           "Invalid password for wallet: \"${wallet_name}\"", ("wallet_name", get_wallet_filename())) }
 
 void soft_wallet::set_password( string password )
 {
    if( !is_new() )
-      RSN_ASSERT( !is_locked(), wallet_locked_exception, "The wallet must be unlocked before the password can be set" );
+      EOS_ASSERT( !is_locked(), wallet_locked_exception, "The wallet must be unlocked before the password can be set" );
    my->_checksum = fc::sha512::hash( password.c_str(), password.size() );
    lock();
 }
 
 map<public_key_type, private_key_type> soft_wallet::list_keys()
 {
-   RSN_ASSERT(!is_locked(), wallet_locked_exception, "Unable to list public keys of a locked wallet");
+   EOS_ASSERT(!is_locked(), wallet_locked_exception, "Unable to list public keys of a locked wallet");
    return my->_keys;
 }
 
 flat_set<public_key_type> soft_wallet::list_public_keys() {
-   RSN_ASSERT(!is_locked(), wallet_locked_exception, "Unable to list private keys of a locked wallet");
+   EOS_ASSERT(!is_locked(), wallet_locked_exception, "Unable to list private keys of a locked wallet");
    flat_set<public_key_type> keys;
    boost::copy(my->_keys | boost::adaptors::map_keys, std::inserter(keys, keys.end()));
    return keys;
@@ -401,13 +401,13 @@ private_key_type soft_wallet::get_private_key( public_key_type pubkey )const
    return my->get_private_key( pubkey );
 }
 
-optional<signature_type> soft_wallet::try_sign_digest( const digest_type digest, const public_key_type public_key ) {
+fc::optional<signature_type> soft_wallet::try_sign_digest( const digest_type digest, const public_key_type public_key ) {
    return my->try_sign_digest(digest, public_key);
 }
 
 pair<public_key_type,private_key_type> soft_wallet::get_private_key_from_password( string account, string role, string password )const {
    auto seed = account + role + password;
-   RSN_ASSERT( seed.size(), wallet_exception, "seed should not be empty" );
+   EOS_ASSERT( seed.size(), wallet_exception, "seed should not be empty" );
    auto secret = fc::sha256::hash( seed.c_str(), seed.size() );
    auto priv = private_key_type::regenerate<fc::ecc::private_key_shim>( secret );
    return std::make_pair(  priv.get_public_key(), priv );
@@ -418,5 +418,5 @@ void soft_wallet::set_wallet_filename(string wallet_filename)
    my->_wallet_filename = wallet_filename;
 }
 
-} } // arisen::wallet
+} } // eosio::wallet
 

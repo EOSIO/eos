@@ -1,38 +1,31 @@
-#include <boost/test/unit_test.hpp>
-#include <boost/algorithm/string/predicate.hpp>
-
-#include <arisen/testing/tester.hpp>
-#include <arisen/chain/abi_serializer.hpp>
-#include <arisen/chain/wasm_arisen_constraints.hpp>
-#include <arisen/chain/resource_limits.hpp>
-#include <arisen/chain/exceptions.hpp>
-#include <arisen/chain/wast_to_wasm.hpp>
-#include <asserter/asserter.wast.hpp>
-#include <asserter/asserter.abi.hpp>
-
-#include <stltest/stltest.wast.hpp>
-#include <stltest/stltest.abi.hpp>
-
-#include <noop/noop.wast.hpp>
-#include <noop/noop.abi.hpp>
-
-#include <arisen.system/arisen.system.wast.hpp>
-#include <arisen.system/arisen.system.abi.hpp>
-
-#include <fc/io/fstream.hpp>
-
-#include <Runtime/Runtime.h>
-
-#include <fc/variant_object.hpp>
-#include <fc/io/json.hpp>
-
-#include "test_wasts.hpp"
-#include "test_softfloat_wasts.hpp"
-
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #include <array>
 #include <utility>
 
+#include <eosio/chain/abi_serializer.hpp>
+#include <eosio/chain/exceptions.hpp>
+#include <eosio/chain/resource_limits.hpp>
+#include <eosio/chain/wasm_eosio_constraints.hpp>
+#include <eosio/chain/wast_to_wasm.hpp>
+#include <eosio/testing/tester.hpp>
+
+#include <Runtime/Runtime.h>
+
+#include <boost/test/unit_test.hpp>
+#include <boost/algorithm/string/predicate.hpp>
+
+#include <fc/io/fstream.hpp>
+#include <fc/io/json.hpp>
+#include <fc/variant_object.hpp>
+
 #include "incbin.h"
+#include "test_wasts.hpp"
+#include "test_softfloat_wasts.hpp"
+
+#include <contracts.hpp>
 
 #ifdef NON_VALIDATING_TEST
 #define TESTER tester
@@ -40,9 +33,9 @@
 #define TESTER validating_tester
 #endif
 
-using namespace arisen;
-using namespace arisen::chain;
-using namespace arisen::testing;
+using namespace eosio;
+using namespace eosio::chain;
+using namespace eosio::testing;
 using namespace fc;
 
 
@@ -84,7 +77,7 @@ BOOST_FIXTURE_TEST_CASE( basic_test, TESTER ) try {
    create_accounts( {N(asserter)} );
    produce_block();
 
-   set_code(N(asserter), asserter_wast);
+   set_code(N(asserter), contracts::asserter_wasm());
    produce_blocks(1);
 
    transaction_id_type no_assert_id;
@@ -98,11 +91,11 @@ BOOST_FIXTURE_TEST_CASE( basic_test, TESTER ) try {
       trx.sign( get_private_key( N(asserter), "active" ), control->get_chain_id() );
       auto result = push_transaction( trx );
       BOOST_CHECK_EQUAL(result->receipt->status, transaction_receipt::executed);
-      BOOST_CHECK_EQUAL(result->action_traces.size(), 1);
-      BOOST_CHECK_EQUAL(result->action_traces.at(0).receipt.receiver.to_string(),  name(N(asserter)).to_string() );
+      BOOST_CHECK_EQUAL(result->action_traces.size(), 1u);
+      BOOST_CHECK_EQUAL(result->action_traces.at(0).receiver.to_string(),  name(N(asserter)).to_string() );
       BOOST_CHECK_EQUAL(result->action_traces.at(0).act.account.to_string(), name(N(asserter)).to_string() );
       BOOST_CHECK_EQUAL(result->action_traces.at(0).act.name.to_string(),  name(N(procassert)).to_string() );
-      BOOST_CHECK_EQUAL(result->action_traces.at(0).act.authorization.size(),  1 );
+      BOOST_CHECK_EQUAL(result->action_traces.at(0).act.authorization.size(),  1u );
       BOOST_CHECK_EQUAL(result->action_traces.at(0).act.authorization.at(0).actor.to_string(),  name(N(asserter)).to_string() );
       BOOST_CHECK_EQUAL(result->action_traces.at(0).act.authorization.at(0).permission.to_string(),  name(config::active_name).to_string() );
       no_assert_id = trx.id();
@@ -124,7 +117,7 @@ BOOST_FIXTURE_TEST_CASE( basic_test, TESTER ) try {
       trx.sign( get_private_key( N(asserter), "active" ), control->get_chain_id() );
       yes_assert_id = trx.id();
 
-      BOOST_CHECK_THROW(push_transaction( trx ), arisen_assert_message_exception);
+      BOOST_CHECK_THROW(push_transaction( trx ), eosio_assert_message_exception);
    }
 
    produce_blocks(1);
@@ -143,7 +136,7 @@ BOOST_FIXTURE_TEST_CASE( prove_mem_reset, TESTER ) try {
    create_accounts( {N(asserter)} );
    produce_block();
 
-   set_code(N(asserter), asserter_wast);
+   set_code(N(asserter), contracts::asserter_wasm());
    produce_blocks(1);
 
    // repeat the action multiple times, each time the action handler checks for the expected
@@ -173,8 +166,8 @@ BOOST_FIXTURE_TEST_CASE( abi_from_variant, TESTER ) try {
    create_accounts( {N(asserter)} );
    produce_block();
 
-   set_code(N(asserter), asserter_wast);
-   set_abi(N(asserter), asserter_abi);
+   set_code(N(asserter), contracts::asserter_wasm());
+   set_abi(N(asserter), contracts::asserter_abi().data());
    produce_blocks(1);
 
    auto resolver = [&,this]( const account_name& name ) -> optional<abi_serializer> {
@@ -414,7 +407,7 @@ BOOST_FIXTURE_TEST_CASE( f32_f64_overflow_tests, tester ) try {
          BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
          const auto& receipt = get_transaction_receipt(trx.id());
          return true;
-      } catch (arisen::chain::wasm_execution_error &) {
+      } catch (eosio::chain::wasm_execution_error &) {
          return false;
       }
    };
@@ -515,139 +508,6 @@ BOOST_FIXTURE_TEST_CASE(misaligned_tests, tester ) try {
    check_aligned(misaligned_ref_wast);
    check_aligned(aligned_const_ref_wast);
    check_aligned(misaligned_const_ref_wast);
-} FC_LOG_AND_RETHROW()
-
-// test cpu usage
-
-/*  Comment out this test due to not being robust to changes
-BOOST_FIXTURE_TEST_CASE(cpu_usage_tests, tester ) try {
-#warning This test does not appear to be very robust.
-   create_accounts( {N(f_tests)} );
-   bool pass = false;
-
-   std::string code = R"=====(
-(module
-  (import "env" "require_auth" (func $require_auth (param i64)))
-  (import "env" "arisen_assert" (func $arisen_assert (param i32 i32)))
-   (table 0 anyfunc)
-   (memory $0 1)
-   (export "apply" (func $apply))
-   (func $test1 (param $0 i64))
-   (func $test2 (param $0 i64) (result i64) (i64.add (get_local $0) (i64.const 32)))
-   (func $apply (param $0 i64)(param $1 i64)(param $2 i64)
-   )=====";
-   for (int i = 0; i < 1024; ++i) {
-      code += "(call $test1 (call $test2(i64.const 1)))\n";
-   }
-   code += "))";
-
-   produce_blocks(1);
-   set_code(N(f_tests), code.c_str());
-   produce_blocks(10);
-
-   uint32_t start = config::default_per_signature_cpu_usage + config::default_base_per_transaction_cpu_usage;
-   start += 100 * ( config::default_base_per_action_cpu_usage
-                    + config::determine_payers_cpu_overhead_per_authorization
-                    + config::base_check_authorization_cpu_per_authorization );
-   start += config::resource_processing_cpu_overhead_per_billed_account;
-   start /= 1024;
-   start += 3077; // injected checktime amount
-   --start;
-   wdump((start));
-   uint32_t end   = start + 5;
-   uint32_t limit = start;
-   for( limit = start; limit < end; ++limit ) {
-      signed_transaction trx;
-
-      for (int i = 0; i < 100; ++i) {
-         action act;
-         act.account = N(f_tests);
-         act.name = N() + (i * 16);
-         act.authorization = vector<permission_level>{{N(f_tests),config::active_name}};
-         trx.actions.push_back(act);
-      }
-
-      set_transaction_headers(trx);
-      trx.max_cpu_usage_ms = limit++;
-      trx.sign(get_private_key( N(f_tests), "active" ), control->get_chain_id());
-
-      try {
-         push_transaction(trx);
-         produce_blocks(1);
-         BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
-         break;
-      } catch (arisen::chain::tx_cpu_usage_exceeded &) {
-      }
-
-      BOOST_REQUIRE_EQUAL(true, validate());
-   }
-   wdump((limit));
-   BOOST_CHECK_EQUAL(true, start < limit && limit < end);
-} FC_LOG_AND_RETHROW()
-*/
-
-
-// test weighted cpu limit
-BOOST_FIXTURE_TEST_CASE(weighted_cpu_limit_tests, tester ) try {
-// TODO Increase the robustness of this test.
-   resource_limits_manager mgr = control->get_mutable_resource_limits_manager();
-   create_accounts( {N(f_tests)} );
-   create_accounts( {N(acc2)} );
-   bool pass = false;
-
-   std::string code = R"=====(
-(module
-  (import "env" "require_auth" (func $require_auth (param i64)))
-  (import "env" "arisen_assert" (func $arisen_assert (param i32 i32)))
-   (table 0 anyfunc)
-   (memory $0 1)
-   (export "apply" (func $apply))
-   (func $i64_trunc_u_f64 (param $0 f64) (result i64) (i64.trunc_u/f64 (get_local $0)))
-   (func $test (param $0 i64))
-   (func $apply (param $0 i64)(param $1 i64)(param $2 i64)
-   )=====";
-   for (int i = 0; i < 1024; ++i) {
-      code += "(call $test (call $i64_trunc_u_f64 (f64.const 1)))\n";
-   }
-   code += "))";
-
-   produce_blocks(1);
-   set_code(N(f_tests), code.c_str());
-   produce_blocks(10);
-
-   mgr.set_account_limits(N(f_tests), -1, -1, 1);
-   int count = 0;
-   while (count < 4) {
-      signed_transaction trx;
-
-      for (int i = 0; i < 2; ++i) {
-         action act;
-         act.account = N(f_tests);
-         act.name = N() + (i * 16);
-         act.authorization = vector<permission_level>{{N(f_tests),config::active_name}};
-         trx.actions.push_back(act);
-      }
-
-      set_transaction_headers(trx);
-      trx.sign(get_private_key( N(f_tests), "active" ), control->get_chain_id());
-
-      try {
-         push_transaction(trx, fc::time_point::maximum(), 0);
-         produce_block();
-         BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
-         pass = true;
-         count++;
-      } catch( arisen::chain::leeway_deadline_exception& ) {
-         BOOST_REQUIRE_EQUAL(count, 3);
-         break;
-      }
-      BOOST_REQUIRE_EQUAL(true, validate());
-
-      if (count == 2) { // add a big weight on acc2, making f_tests out of resource
-        mgr.set_account_limits(N(acc2), -1, -1, 100000000);
-      }
-   }
-   BOOST_REQUIRE_EQUAL(count, 3);
 } FC_LOG_AND_RETHROW()
 
 /**
@@ -762,45 +622,6 @@ BOOST_FIXTURE_TEST_CASE( check_global_reset, TESTER ) try {
    BOOST_CHECK_EQUAL(transaction_receipt::executed, receipt.status);
 } FC_LOG_AND_RETHROW()
 
-BOOST_FIXTURE_TEST_CASE( stl_test, TESTER ) try {
-    produce_blocks(2);
-
-    create_accounts( {N(stltest), N(alice), N(bob)} );
-    produce_block();
-
-    set_code(N(stltest), stltest_wast);
-    set_abi(N(stltest), stltest_abi);
-    produce_blocks(1);
-
-    const auto& accnt  = control->db().get<account_object,by_name>( N(stltest) );
-    abi_def abi;
-    BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
-    abi_serializer abi_ser(abi, abi_serializer_max_time);
-
-    //send message
-    {
-        signed_transaction trx;
-        action msg_act;
-        msg_act.account = N(stltest);
-        msg_act.name = N(message);
-        msg_act.authorization = {{N(stltest), config::active_name}};
-        msg_act.data = abi_ser.variant_to_binary("message", mutable_variant_object()
-                                             ("from", "bob")
-                                             ("to", "alice")
-                                             ("message","Hi Alice!"),
-                                             abi_serializer_max_time
-                                             );
-        trx.actions.push_back(std::move(msg_act));
-
-        set_transaction_headers(trx);
-        trx.sign(get_private_key(N(stltest), "active"), control->get_chain_id());
-        push_transaction(trx);
-        produce_block();
-
-        BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
-    }
-} FC_LOG_AND_RETHROW() /// stltest
-
 //Make sure we can create a wasm with maximum pages, but not grow it any
 BOOST_FIXTURE_TEST_CASE( big_memory, TESTER ) try {
    produce_blocks(2);
@@ -810,7 +631,7 @@ BOOST_FIXTURE_TEST_CASE( big_memory, TESTER ) try {
    produce_block();
 
    string biggest_memory_wast_f = fc::format_string(biggest_memory_wast, fc::mutable_variant_object(
-                                          "MAX_WASM_PAGES", arisen::chain::wasm_constraints::maximum_linear_memory/(64*1024)));
+                                          "MAX_WASM_PAGES", eosio::chain::wasm_constraints::maximum_linear_memory/(64*1024)));
 
    set_code(N(bigmem), biggest_memory_wast_f.c_str());
    produce_blocks(1);
@@ -830,8 +651,8 @@ BOOST_FIXTURE_TEST_CASE( big_memory, TESTER ) try {
    produce_blocks(1);
 
    string too_big_memory_wast_f = fc::format_string(too_big_memory_wast, fc::mutable_variant_object(
-                                          "MAX_WASM_PAGES_PLUS_ONE", arisen::chain::wasm_constraints::maximum_linear_memory/(64*1024)+1));
-   BOOST_CHECK_THROW(set_code(N(bigmem), too_big_memory_wast_f.c_str()), arisen::chain::wasm_execution_error);
+                                          "MAX_WASM_PAGES_PLUS_ONE", eosio::chain::wasm_constraints::maximum_linear_memory/(64*1024)+1));
+   BOOST_CHECK_THROW(set_code(N(bigmem), too_big_memory_wast_f.c_str()), eosio::chain::wasm_execution_error);
 
 } FC_LOG_AND_RETHROW()
 
@@ -844,7 +665,7 @@ BOOST_FIXTURE_TEST_CASE( table_init_tests, TESTER ) try {
    set_code(N(tableinit), valid_sparse_table);
    produce_blocks(1);
 
-   BOOST_CHECK_THROW(set_code(N(tableinit), too_big_table), arisen::chain::wasm_execution_error);
+   BOOST_CHECK_THROW(set_code(N(tableinit), too_big_table), eosio::chain::wasm_execution_error);
 
 } FC_LOG_AND_RETHROW()
 
@@ -857,8 +678,8 @@ BOOST_FIXTURE_TEST_CASE( memory_init_border, TESTER ) try {
    set_code(N(memoryborder), memory_init_borderline);
    produce_blocks(1);
 
-   BOOST_CHECK_THROW(set_code(N(memoryborder), memory_init_toolong), arisen::chain::wasm_execution_error);
-   BOOST_CHECK_THROW(set_code(N(memoryborder), memory_init_negative), arisen::chain::wasm_execution_error);
+   BOOST_CHECK_THROW(set_code(N(memoryborder), memory_init_toolong), eosio::chain::wasm_execution_error);
+   BOOST_CHECK_THROW(set_code(N(memoryborder), memory_init_negative), eosio::chain::wasm_execution_error);
 
 } FC_LOG_AND_RETHROW()
 
@@ -905,7 +726,7 @@ BOOST_FIXTURE_TEST_CASE( nested_limit_test, TESTER ) try {
       for(unsigned int i = 0; i < 1024; ++i)
          ss << ")";
       ss << "))";
-      BOOST_CHECK_THROW(set_code(N(nested), ss.str().c_str()), arisen::chain::wasm_execution_error);
+      BOOST_CHECK_THROW(set_code(N(nested), ss.str().c_str()), eosio::chain::wasm_execution_error);
    }
 
    // nested blocks
@@ -927,7 +748,7 @@ BOOST_FIXTURE_TEST_CASE( nested_limit_test, TESTER ) try {
       for(unsigned int i = 0; i < 1024; ++i)
          ss << ")";
       ss << "))";
-      BOOST_CHECK_THROW(set_code(N(nested), ss.str().c_str()), arisen::chain::wasm_execution_error);
+      BOOST_CHECK_THROW(set_code(N(nested), ss.str().c_str()), eosio::chain::wasm_execution_error);
    }
    // nested ifs
    {
@@ -948,7 +769,7 @@ BOOST_FIXTURE_TEST_CASE( nested_limit_test, TESTER ) try {
       for(unsigned int i = 0; i < 1024; ++i)
          ss << "))";
       ss << "))";
-      BOOST_CHECK_THROW(set_code(N(nested), ss.str().c_str()), arisen::chain::wasm_execution_error);
+      BOOST_CHECK_THROW(set_code(N(nested), ss.str().c_str()), eosio::chain::wasm_execution_error);
    }
    // mixed nested
    {
@@ -981,7 +802,7 @@ BOOST_FIXTURE_TEST_CASE( nested_limit_test, TESTER ) try {
       for(unsigned int i = 0; i < 224; ++i)
          ss << "))";
       ss << "))";
-      BOOST_CHECK_THROW(set_code(N(nested), ss.str().c_str()), arisen::chain::wasm_execution_error);
+      BOOST_CHECK_THROW(set_code(N(nested), ss.str().c_str()), eosio::chain::wasm_execution_error);
    }
 
 } FC_LOG_AND_RETHROW()
@@ -1012,7 +833,7 @@ BOOST_FIXTURE_TEST_CASE( lotso_globals, TESTER ) try {
    //1028 should fail
    BOOST_CHECK_THROW(set_code(N(globals),
       string(ss.str() + "(global $z (mut i64) (i64.const -12)))")
-   .c_str()), arisen::chain::wasm_execution_error);
+   .c_str()), eosio::chain::wasm_execution_error);
 
 } FC_LOG_AND_RETHROW()
 
@@ -1041,8 +862,8 @@ BOOST_FIXTURE_TEST_CASE( offset_check, TESTER ) try {
 
    for(const string& s : loadops) {
       std::stringstream ss;
-      ss << "(module (memory $0 " << arisen::chain::wasm_constraints::maximum_linear_memory/(64*1024) << ") (func $apply (param $0 i64) (param $1 i64) (param $2 i64)";
-      ss << "(drop (" << s << " offset=" << arisen::chain::wasm_constraints::maximum_linear_memory-2 << " (i32.const 0)))";
+      ss << "(module (memory $0 " << eosio::chain::wasm_constraints::maximum_linear_memory/(64*1024) << ") (func $apply (param $0 i64) (param $1 i64) (param $2 i64)";
+      ss << "(drop (" << s << " offset=" << eosio::chain::wasm_constraints::maximum_linear_memory-2 << " (i32.const 0)))";
       ss << ") (export \"apply\" (func $apply)) )";
 
       set_code(N(offsets), ss.str().c_str());
@@ -1050,8 +871,8 @@ BOOST_FIXTURE_TEST_CASE( offset_check, TESTER ) try {
    }
    for(const vector<string>& o : storeops) {
       std::stringstream ss;
-      ss << "(module (memory $0 " << arisen::chain::wasm_constraints::maximum_linear_memory/(64*1024) << ") (func $apply (param $0 i64) (param $1 i64) (param $2 i64)";
-      ss << "(" << o[0] << " offset=" << arisen::chain::wasm_constraints::maximum_linear_memory-2 << " (i32.const 0) (" << o[1] << ".const 0))";
+      ss << "(module (memory $0 " << eosio::chain::wasm_constraints::maximum_linear_memory/(64*1024) << ") (func $apply (param $0 i64) (param $1 i64) (param $2 i64)";
+      ss << "(" << o[0] << " offset=" << eosio::chain::wasm_constraints::maximum_linear_memory-2 << " (i32.const 0) (" << o[1] << ".const 0))";
       ss << ") (export \"apply\" (func $apply)) )";
 
       set_code(N(offsets), ss.str().c_str());
@@ -1060,20 +881,20 @@ BOOST_FIXTURE_TEST_CASE( offset_check, TESTER ) try {
 
    for(const string& s : loadops) {
       std::stringstream ss;
-      ss << "(module (memory $0 " << arisen::chain::wasm_constraints::maximum_linear_memory/(64*1024) << ") (func $apply (param $0 i64) (param $1 i64) (param $2 i64)";
-      ss << "(drop (" << s << " offset=" << arisen::chain::wasm_constraints::maximum_linear_memory+4 << " (i32.const 0)))";
+      ss << "(module (memory $0 " << eosio::chain::wasm_constraints::maximum_linear_memory/(64*1024) << ") (func $apply (param $0 i64) (param $1 i64) (param $2 i64)";
+      ss << "(drop (" << s << " offset=" << eosio::chain::wasm_constraints::maximum_linear_memory+4 << " (i32.const 0)))";
       ss << ") (export \"apply\" (func $apply)) )";
 
-      BOOST_CHECK_THROW(set_code(N(offsets), ss.str().c_str()), arisen::chain::wasm_execution_error);
+      BOOST_CHECK_THROW(set_code(N(offsets), ss.str().c_str()), eosio::chain::wasm_execution_error);
       produce_block();
    }
    for(const vector<string>& o : storeops) {
       std::stringstream ss;
-      ss << "(module (memory $0 " << arisen::chain::wasm_constraints::maximum_linear_memory/(64*1024) << ") (func $apply (param $0 i64) (param $1 i64) (param $2 i64)";
-      ss << "(" << o[0] << " offset=" << arisen::chain::wasm_constraints::maximum_linear_memory+4 << " (i32.const 0) (" << o[1] << ".const 0))";
+      ss << "(module (memory $0 " << eosio::chain::wasm_constraints::maximum_linear_memory/(64*1024) << ") (func $apply (param $0 i64) (param $1 i64) (param $2 i64)";
+      ss << "(" << o[0] << " offset=" << eosio::chain::wasm_constraints::maximum_linear_memory+4 << " (i32.const 0) (" << o[1] << ".const 0))";
       ss << ") (export \"apply\" (func $apply)) )";
 
-      BOOST_CHECK_THROW(set_code(N(offsets), ss.str().c_str()), arisen::chain::wasm_execution_error);
+      BOOST_CHECK_THROW(set_code(N(offsets), ss.str().c_str()), eosio::chain::wasm_execution_error);
       produce_block();
    }
 
@@ -1085,9 +906,9 @@ BOOST_FIXTURE_TEST_CASE(noop, TESTER) try {
    create_accounts( {N(noop), N(alice)} );
    produce_block();
 
-   set_code(N(noop), noop_wast);
+   set_code(N(noop), contracts::noop_wasm());
 
-   set_abi(N(noop), noop_abi);
+   set_abi(N(noop), contracts::noop_abi().data());
    const auto& accnt  = control->db().get<account_object,by_name>(N(noop));
    abi_def abi;
    BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
@@ -1145,10 +966,10 @@ BOOST_FIXTURE_TEST_CASE(noop, TESTER) try {
 
  } FC_LOG_AND_RETHROW()
 
-// abi_serializer::to_variant failed because arisen_system_abi modified via set_abi.
-// This test also verifies that chain_initializer::rsn_contract_abi() does not conflict
-// with arisen_system_abi as they are not allowed to contain duplicates.
-BOOST_FIXTURE_TEST_CASE(arisen_abi, TESTER) try {
+// abi_serializer::to_variant failed because eosio_system_abi modified via set_abi.
+// This test also verifies that chain_initializer::eos_contract_abi() does not conflict
+// with eosio_system_abi as they are not allowed to contain duplicates.
+BOOST_FIXTURE_TEST_CASE(eosio_abi, TESTER) try {
    produce_blocks(2);
 
    const auto& accnt  = control->db().get<account_object,by_name>(config::system_account_name);
@@ -1171,11 +992,11 @@ BOOST_FIXTURE_TEST_CASE(arisen_abi, TESTER) try {
    auto result = push_transaction( trx );
 
    fc::variant pretty_output;
-   // verify to_variant works on RSN native contract type: newaccount
+   // verify to_variant works on eos native contract type: newaccount
    // see abi_serializer::to_abi()
    abi_serializer::to_variant(*result, pretty_output, get_resolver(), abi_serializer_max_time);
 
-   BOOST_TEST(fc::json::to_string(pretty_output).find("newaccount") != std::string::npos);
+   BOOST_TEST(fc::json::to_string(pretty_output, fc::time_point::now() + abi_serializer_max_time).find("newaccount") != std::string::npos);
 
    produce_block();
 } FC_LOG_AND_RETHROW()
@@ -1316,7 +1137,7 @@ BOOST_FIXTURE_TEST_CASE( check_table_maximum, TESTER ) try {
    trx.sign(get_private_key( N(tbl), "active" ), control->get_chain_id());
 
    //should fail, a check to make sure assert() in wasm is being evaluated correctly
-   BOOST_CHECK_THROW(push_transaction(trx), arisen_assert_message_exception);
+   BOOST_CHECK_THROW(push_transaction(trx), eosio_assert_message_exception);
    }
 
    produce_blocks(1);
@@ -1332,7 +1153,7 @@ BOOST_FIXTURE_TEST_CASE( check_table_maximum, TESTER ) try {
    trx.sign(get_private_key( N(tbl), "active" ), control->get_chain_id());
 
    //should fail, this element index (5) does not exist
-   BOOST_CHECK_THROW(push_transaction(trx), arisen::chain::wasm_execution_error);
+   BOOST_CHECK_THROW(push_transaction(trx), eosio::chain::wasm_execution_error);
    }
 
    produce_blocks(1);
@@ -1340,7 +1161,7 @@ BOOST_FIXTURE_TEST_CASE( check_table_maximum, TESTER ) try {
    {
    signed_transaction trx;
    action act;
-   act.name = arisen::chain::wasm_constraints::maximum_table_elements+54334;
+   act.name = eosio::chain::wasm_constraints::maximum_table_elements+54334;
    act.account = N(tbl);
    act.authorization = vector<permission_level>{{N(tbl),config::active_name}};
    trx.actions.push_back(act);
@@ -1348,7 +1169,7 @@ BOOST_FIXTURE_TEST_CASE( check_table_maximum, TESTER ) try {
    trx.sign(get_private_key( N(tbl), "active" ), control->get_chain_id());
 
    //should fail, this element index is out of range
-   BOOST_CHECK_THROW(push_transaction(trx), arisen::chain::wasm_execution_error);
+   BOOST_CHECK_THROW(push_transaction(trx), eosio::chain::wasm_execution_error);
    }
 
    produce_blocks(1);
@@ -1395,7 +1216,7 @@ BOOST_FIXTURE_TEST_CASE( check_table_maximum, TESTER ) try {
    trx.sign(get_private_key( N(tbl), "active" ), control->get_chain_id());
 
    //an element that is out of range and has no mmap access permission either (should be a trapped segv)
-   BOOST_CHECK_EXCEPTION(push_transaction(trx), arisen::chain::wasm_execution_error, [](const arisen::chain::wasm_execution_error &e) {return true;});
+   BOOST_CHECK_EXCEPTION(push_transaction(trx), eosio::chain::wasm_execution_error, [](const eosio::chain::wasm_execution_error &e) {return true;});
    }
 } FC_LOG_AND_RETHROW()
 
@@ -1897,6 +1718,29 @@ BOOST_FIXTURE_TEST_CASE( getcode_checks, TESTER ) try {
    wasm_to_wast( wasmx.data(), wasmx.size(), true );
 } FC_LOG_AND_RETHROW()
 
+BOOST_FIXTURE_TEST_CASE( big_maligned_host_ptr, TESTER ) try {
+   produce_blocks(2);
+   create_accounts( {N(bigmaligned)} );
+   produce_block();
+
+   string large_maligned_host_ptr_wast_f = fc::format_string(large_maligned_host_ptr, fc::mutable_variant_object()
+                                              ("MAX_WASM_PAGES", eosio::chain::wasm_constraints::maximum_linear_memory/(64*1024))
+                                              ("MAX_NAME_ARRAY", (eosio::chain::wasm_constraints::maximum_linear_memory-1)/sizeof(chain::account_name)));
+
+   set_code(N(bigmaligned), large_maligned_host_ptr_wast_f.c_str());
+   produce_blocks(1);
+
+   signed_transaction trx;
+   action act;
+   act.account = N(bigmaligned);
+   act.name = N();
+   act.authorization = vector<permission_level>{{N(bigmaligned),config::active_name}};
+   trx.actions.push_back(act);
+   set_transaction_headers(trx);
+   trx.sign(get_private_key( N(bigmaligned), "active" ), control->get_chain_id());
+   push_transaction(trx);
+   produce_blocks(1);
+} FC_LOG_AND_RETHROW()
 
 // TODO: restore net_usage_tests
 #if 0
@@ -1909,7 +1753,7 @@ BOOST_FIXTURE_TEST_CASE(net_usage_tests, tester ) try {
       std::string code = R"=====(
    (module
    (import "env" "require_auth" (func $require_auth (param i64)))
-   (import "env" "arisen_assert" (func $arisen_assert (param i32 i32)))
+   (import "env" "eosio_assert" (func $eosio_assert (param i32 i32)))
       (table 0 anyfunc)
       (memory $0 1)
       (export "apply" (func $apply))
@@ -1923,7 +1767,7 @@ BOOST_FIXTURE_TEST_CASE(net_usage_tests, tester ) try {
       code += "))";
       produce_blocks(1);
       signed_transaction trx;
-      auto wasm = ::arisen::chain::wast_to_wasm(code);
+      auto wasm = ::eosio::chain::wast_to_wasm(code);
       trx.actions.emplace_back( vector<permission_level>{{account,config::active_name}},
                               setcode{
                                  .account    = account,
@@ -1960,7 +1804,7 @@ BOOST_FIXTURE_TEST_CASE(weighted_net_usage_tests, tester ) try {
       std::string code = R"=====(
    (module
    (import "env" "require_auth" (func $require_auth (param i64)))
-   (import "env" "arisen_assert" (func $arisen_assert (param i32 i32)))
+   (import "env" "eosio_assert" (func $eosio_assert (param i32 i32)))
       (table 0 anyfunc)
       (memory $0 1)
       (export "apply" (func $apply))
@@ -1976,7 +1820,7 @@ BOOST_FIXTURE_TEST_CASE(weighted_net_usage_tests, tester ) try {
       code += "))"; ver++;
       produce_blocks(1);
       signed_transaction trx;
-      auto wasm = ::arisen::chain::wast_to_wasm(code);
+      auto wasm = ::eosio::chain::wast_to_wasm(code);
       trx.actions.emplace_back( vector<permission_level>{{account,config::active_name}},
                               setcode{
                                  .account    = account,

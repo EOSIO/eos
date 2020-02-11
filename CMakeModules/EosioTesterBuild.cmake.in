@@ -1,0 +1,200 @@
+cmake_minimum_required( VERSION 3.5 )
+message(STATUS "Setting up Eosio Tester @VERSION_FULL@ at @EOS_ROOT_DIR@")
+
+set(CMAKE_CXX_COMPILER @CMAKE_CXX_COMPILER@)
+set(CMAKE_C_COMPILER   @CMAKE_C_COMPILER@)
+
+set(EOSIO_VERSION "@VERSION_FULL@")
+
+enable_testing()
+
+if (LLVM_DIR STREQUAL "" OR NOT LLVM_DIR)
+   set(LLVM_DIR @LLVM_DIR@)
+endif()
+
+find_package( Gperftools QUIET )
+if( GPERFTOOLS_FOUND )
+    message( STATUS "Found gperftools; compiling tests with TCMalloc")
+    list( APPEND PLATFORM_SPECIFIC_LIBS tcmalloc )
+endif()
+
+find_package(LLVM 4.0 REQUIRED CONFIG)
+
+link_directories(${LLVM_LIBRARY_DIR})
+
+set( CMAKE_CXX_STANDARD 17 )
+set( CMAKE_CXX_EXTENSIONS ON )
+set( CXX_STANDARD_REQUIRED ON )
+
+if ( APPLE )
+   set( CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} ${CMAKE_CXX_FLAGS} -Wall -Wno-deprecated-declarations" )
+else ( APPLE )
+   set( CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} ${CMAKE_CXX_FLAGS} -Wall")
+endif ( APPLE )
+
+### Remove after Boost 1.70 CMake fixes are in place
+set( Boost_NO_BOOST_CMAKE ON CACHE STRING "ON or OFF" )
+set( Boost_USE_STATIC_LIBS ON CACHE STRING "ON or OFF" )
+find_package(Boost 1.67 REQUIRED COMPONENTS
+   date_time
+   filesystem
+   system
+   chrono
+   iostreams
+   unit_test_framework)
+
+find_library(libtester eosio_testing @CMAKE_BINARY_DIR@/libraries/testing NO_DEFAULT_PATH)
+find_library(libchain eosio_chain @CMAKE_BINARY_DIR@/libraries/chain NO_DEFAULT_PATH)
+if ( "${CMAKE_BUILD_TYPE}" STREQUAL "Debug" )
+   find_library(libfc fc_debug @CMAKE_BINARY_DIR@/libraries/fc NO_DEFAULT_PATH)
+   find_library(libsecp256k1 secp256k1_debug @CMAKE_BINARY_DIR@/libraries/fc/secp256k1 NO_DEFAULT_PATH)
+
+else()
+   find_library(libfc fc @CMAKE_BINARY_DIR@/libraries/fc NO_DEFAULT_PATH)
+   find_library(libsecp256k1 secp256k1 @CMAKE_BINARY_DIR@/libraries/fc/secp256k1 NO_DEFAULT_PATH)
+endif()
+
+find_library(libwasm WASM @CMAKE_BINARY_DIR@/libraries/wasm-jit/Source/WASM NO_DEFAULT_PATH)
+find_library(libwast WAST @CMAKE_BINARY_DIR@/libraries/wasm-jit/Source/WAST NO_DEFAULT_PATH)
+find_library(libir IR     @CMAKE_BINARY_DIR@/libraries/wasm-jit/Source/IR NO_DEFAULT_PATH)
+find_library(libwabt wabt @CMAKE_BINARY_DIR@/libraries/wabt NO_DEFAULT_PATH)
+find_library(libplatform Platform @CMAKE_BINARY_DIR@/libraries/wasm-jit/Source/Platform NO_DEFAULT_PATH)
+find_library(liblogging Logging @CMAKE_BINARY_DIR@/libraries/wasm-jit/Source/Logging NO_DEFAULT_PATH)
+find_library(libruntime Runtime @CMAKE_BINARY_DIR@/libraries/wasm-jit/Source/Runtime NO_DEFAULT_PATH)
+find_library(libsoftfloat softfloat @CMAKE_BINARY_DIR@/libraries/softfloat NO_DEFAULT_PATH)
+get_filename_component(cryptodir @OPENSSL_CRYPTO_LIBRARY@ DIRECTORY)
+find_library(liboscrypto crypto "${cryptodir}" NO_DEFAULT_PATH)
+get_filename_component(ssldir @OPENSSL_SSL_LIBRARY@ DIRECTORY)
+find_library(libosssl ssl "${ssldir}" NO_DEFAULT_PATH)
+find_library(libchainbase chainbase @CMAKE_BINARY_DIR@/libraries/chainbase NO_DEFAULT_PATH)
+find_library(libbuiltins builtins @CMAKE_BINARY_DIR@/libraries/builtins NO_DEFAULT_PATH)
+find_library(GMP_LIBRARIES NAMES libgmp.a gmp.lib gmp libgmp-10 mpir
+    HINTS ENV GMP_LIB_DIR
+          ENV GMP_DIR
+    PATH_SUFFIXES lib
+    DOC "Path to the GMP library"
+)
+
+macro(add_eosio_test_executable test_name)
+   add_executable( ${test_name} ${ARGN} )
+   target_link_libraries( ${test_name}
+       ${LLVM}
+       ${libtester}
+       ${libchain}
+       ${libfc}
+       ${libwast}
+       ${libwasm}
+       ${libwabt}
+       ${libruntime}
+       ${libplatform}
+       ${libir}
+       ${libsoftfloat}
+       ${liboscrypto}
+       ${libosssl}
+       ${liblogging}
+       ${libchainbase}
+       ${libbuiltins}
+       ${libsecp256k1}
+       ${GMP_LIBRARIES}
+
+       LLVMX86Disassembler
+       LLVMX86AsmParser
+       LLVMX86AsmPrinter
+       LLVMX86CodeGen
+
+       LLVMSelectionDAG
+
+       LLVMDebugInfoDWARF
+       LLVMAsmPrinter
+       LLVMMCParser
+       LLVMX86Info
+
+       LLVMOrcJIT
+       LLVMExecutionEngine
+
+       LLVMCodeGen
+       LLVMScalarOpts
+       LLVMTransformUtils
+
+       LLVMipo
+       LLVMAnalysis
+       LLVMTarget
+       LLVMMC
+       LLVMCore
+       LLVMSupport
+       ${Boost_FILESYSTEM_LIBRARY}
+       ${Boost_SYSTEM_LIBRARY}
+       ${Boost_CHRONO_LIBRARY}
+       ${Boost_IOSTREAMS_LIBRARY}
+       ${Boost_DATE_TIME_LIBRARY}
+       ${PLATFORM_SPECIFIC_LIBS}
+      )
+
+   target_include_directories( ${test_name} PUBLIC
+                               ${Boost_INCLUDE_DIRS}
+                               @OPENSSL_INCLUDE_DIR@
+                               @CMAKE_SOURCE_DIR@/libraries/chain/include
+                               @CMAKE_BINARY_DIR@/libraries/chain/include
+                               @CMAKE_SOURCE_DIR@/libraries/fc/include
+                               @CMAKE_SOURCE_DIR@/libraries/softfloat/source/include
+                               @CMAKE_SOURCE_DIR@/libraries/appbase/include
+                               @CMAKE_SOURCE_DIR@/libraries/chainbase/include
+                               @CMAKE_SOURCE_DIR@/libraries/testing/include
+                               @CMAKE_SOURCE_DIR@/libraries/wasm-jit/Include )
+endmacro()
+
+macro(add_eosio_test test_name)
+   add_eosio_test_executable( ${test_name} ${ARGN} )
+   #This will generate a test with the default runtime
+   add_test(NAME ${test_name} COMMAND ${test_name} --report_level=detailed --color_output)
+   #Manually run unit_test for all supported runtimes
+   #To run unit_test with all log from blockchain displayed, put --verbose after --, i.e. unit_test -- --verbose
+endmacro()
+
+if(ENABLE_COVERAGE_TESTING)
+
+  set(Coverage_NAME ${PROJECT_NAME}_ut_coverage)
+
+  if(NOT LCOV_PATH)
+    message(FATAL_ERROR "lcov not found! Aborting...")
+  endif() # NOT LCOV_PATH
+
+  if(NOT LLVMCOV_PATH)
+    message(FATAL_ERROR "llvm-cov not found! Aborting...")
+  endif() # NOT LCOV_PATH
+
+  if(NOT GENHTML_PATH)
+    message(FATAL_ERROR "genhtml not found! Aborting...")
+  endif() # NOT GENHTML_PATH
+
+  # no spaces allowed within tests list
+  set(ctest_tests 'unit_test_binaryen|unit_test_wavm')
+  set(ctest_exclude_tests '')
+
+  # Setup target
+  add_custom_target(${Coverage_NAME}
+
+    # Cleanup lcov
+    COMMAND ${LCOV_PATH} --directory . --zerocounters
+
+    # Run tests
+    COMMAND ./tools/ctestwrapper.sh -R ${ctest_tests} -E ${ctest_exclude_tests}
+
+    COMMAND ${LCOV_PATH} --directory . --capture --gcov-tool ${CMAKE_SOURCE_DIR}/tools/llvm-gcov.sh --output-file ${Coverage_NAME}.info
+
+    COMMAND ${LCOV_PATH} -remove ${Coverage_NAME}.info '*/boost/*' '/usr/lib/*' '/usr/include/*' '*/externals/*' '*/fc/*' '*/wasm-jit/*' --output-file ${Coverage_NAME}_filtered.info
+
+    COMMAND ${GENHTML_PATH} -o ${Coverage_NAME} ${PROJECT_BINARY_DIR}/${Coverage_NAME}_filtered.info
+
+    COMMAND if [ "$CI" != "true" ]\; then ${CMAKE_COMMAND} -E remove ${Coverage_NAME}.base ${Coverage_NAME}.info ${Coverage_NAME}_filtered.info ${Coverage_NAME}.total ${PROJECT_BINARY_DIR}/${Coverage_NAME}.info.cleaned ${PROJECT_BINARY_DIR}/${Coverage_NAME}_filtered.info.cleaned\; fi
+
+    WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
+    COMMENT "Resetting code coverage counters to zero. Processing code coverage counters and generating report. Report published in ./${Coverage_NAME}"
+    )
+
+  # Show info where to find the report
+  add_custom_command(TARGET ${Coverage_NAME} POST_BUILD
+    COMMAND ;
+    COMMENT "Open ./${Coverage_NAME}/index.html in your browser to view the coverage report."
+    )
+endif()

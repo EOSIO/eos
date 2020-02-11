@@ -2,7 +2,7 @@
 #include "Runtime.h"
 #include "Platform/Platform.h"
 #include "RuntimePrivate.h"
-#include <arisen/chain/wasm_arisen_constraints.hpp>
+#include <eosio/chain/wasm_eosio_constraints.hpp>
 
 namespace Runtime
 {
@@ -18,7 +18,7 @@ namespace Runtime
 	{
 		TableInstance* table = new TableInstance(type);
 
-		const Uptr tableMaxBytes = sizeof(TableInstance::FunctionElement)*arisen::chain::wasm_constraints::maximum_table_elements;
+		const Uptr tableMaxBytes = sizeof(TableInstance::FunctionElement)*eosio::chain::wasm_constraints::maximum_table_elements;
 		
 		const Uptr alignmentBytes = 1U << Platform::getPageSizeLog2();
 		table->baseAddress = (TableInstance::FunctionElement*)allocateVirtualPagesAligned(tableMaxBytes,alignmentBytes,table->reservedBaseAddress,table->reservedNumPlatformPages);

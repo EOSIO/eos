@@ -1,5 +1,0 @@
-add_wast_executable(TARGET infinite
-  INCLUDE_FOLDERS "${STANDARD_INCLUDE_FOLDERS}"
-  LIBRARIES libc++ libc arisenlib
-  DESTINATION_FOLDER ${CMAKE_CURRENT_BINARY_DIR}
-)

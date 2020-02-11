@@ -1,8 +1,8 @@
 /**
  *  @file
- *  @copyright defined in arisen/LICENSE.txt
+ *  @copyright defined in eos/LICENSE
  */
-#include <arisen/chain/wast_to_wasm.hpp>
+#include <eosio/chain/wast_to_wasm.hpp>
 #include <Inline/BasicTypes.h>
 #include <IR/Module.h>
 #include <IR/Validate.h>
@@ -12,9 +12,9 @@
 #include <sstream>
 #include <iomanip>
 #include <fc/exception/exception.hpp>
-#include <arisen/chain/exceptions.hpp>
+#include <eosio/chain/exceptions.hpp>
 
-namespace arisen { namespace chain {
+namespace eosio { namespace chain {
 
    std::vector<uint8_t> wast_to_wasm( const std::string& wast ) 
    { 
@@ -34,7 +34,7 @@ namespace arisen { namespace chain {
             ss << error.locus.sourceLine << std::endl;
             ss << std::setw(error.locus.column(8)) << "^" << std::endl;
          }
-         RSN_ASSERT( false, wasm_exception, "error parsing wast: ${msg}", ("msg",ss.str()) );
+         EOS_ASSERT( false, wasm_exception, "error parsing wast: ${msg}", ("msg",ss.str()) );
       }
 
       for(auto sectionIt = module.userSections.begin();sectionIt != module.userSections.end();++sectionIt)
@@ -53,11 +53,11 @@ namespace arisen { namespace chain {
       {
          ss << "Error serializing WebAssembly binary file:" << std::endl;
          ss << exception.message << std::endl;
-         RSN_ASSERT( false, wasm_exception, "error converting to wasm: ${msg}", ("msg",ss.get()) );
+         EOS_ASSERT( false, wasm_exception, "error converting to wasm: ${msg}", ("msg",ss.get()) );
       } catch(const IR::ValidationException& e) {
          ss << "Error validating WebAssembly binary file:" << std::endl;
          ss << e.message << std::endl;
-         RSN_ASSERT( false, wasm_exception, "error converting to wasm: ${msg}", ("msg",ss.get()) );
+         EOS_ASSERT( false, wasm_exception, "error converting to wasm: ${msg}", ("msg",ss.get()) );
       }
 
    } FC_CAPTURE_AND_RETHROW( (wast) ) }  /// wast_to_wasm
@@ -78,4 +78,4 @@ namespace arisen { namespace chain {
    } FC_CAPTURE_AND_RETHROW() } /// wasm_to_wast
 
 
-} } // arisen::chain
+} } // eosio::chain

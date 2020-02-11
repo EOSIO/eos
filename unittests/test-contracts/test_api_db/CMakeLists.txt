@@ -1,0 +1,6 @@
+if( EOSIO_COMPILE_TEST_CONTRACTS )
+   add_contract( test_api_db test_api_db test_api_db.cpp )
+else()
+   configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/test_api_db.wasm ${CMAKE_CURRENT_BINARY_DIR}/test_api_db.wasm COPYONLY )
+   configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/test_api_db.abi  ${CMAKE_CURRENT_BINARY_DIR}/test_api_db.abi  COPYONLY )
+endif()
