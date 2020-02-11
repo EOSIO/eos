@@ -20,9 +20,24 @@
 
 #include <deep_nested.abi.hpp>
 #include <large_nested.abi.hpp>
+#include <large_sig.dat.hpp>
 
 using namespace eosio;
 using namespace chain;
+
+struct act_sig {
+   eosio::chain::signature_type sig;
+
+   static account_name get_account() {
+      return N(hello);
+   }
+
+   static action_name get_name() {
+      return N(act);
+   }
+};
+FC_REFLECT(act_sig, (sig) )
+
 
 BOOST_AUTO_TEST_SUITE(abi_tests)
 
@@ -2616,6 +2631,63 @@ BOOST_AUTO_TEST_CASE(abi_deep_structs_validate)
       BOOST_CHECK_THROW(
             abi_serializer abis( fc::json::from_string( deep_nested_abi ).as<abi_def>(), abi_serializer::create_yield_function( max_serialization_time ) ),
             fc::exception );
+   } FC_LOG_AND_RETHROW()
+}
+
+// Large signature
+BOOST_AUTO_TEST_CASE(abi_large_signature)
+{
+   try {
+      const char* abi_str = R"=====(
+    {
+    "version": "eosio::abi/1.1",
+    "types": [],
+    "structs": [
+        {
+            "name": "act",
+            "base": "",
+            "fields": [
+                {
+                    "name": "sig",
+                    "type": "signature"
+                }
+            ]
+        }
+    ],
+    "actions": [
+        {
+            "name": "act",
+            "type": "act",
+            "ricardian_contract": ""
+        }
+    ],
+    "tables": [],
+    "ricardian_clauses": [],
+    "variants": []
+    }
+    )=====";
+
+      name a = N(hello);
+      authority owner_auth =  authority( get_public_key( a, "owner" ) );
+      chain::action large_act( vector<permission_level>{{config::system_account_name,config::active_name}},
+                               act_sig{
+                                  .sig = eosio::chain::signature_type(std::string(large_signature))
+                               });
+
+      abi_serializer abis( fc::json::from_string( abi_str ).as<abi_def>(), max_serialization_time );
+      fc::variant var;
+      fc::variant var2;
+      auto start_1 = fc::time_point::now();
+      abi_serializer::to_variant(large_act, var, get_resolver(fc::json::from_string(abi_str).as<abi_def>()), fc::milliseconds(1));
+      auto stop_1 = fc::time_point::now();
+      auto start_2 = fc::time_point::now();
+      abi_serializer::to_variant(large_act, var2, get_resolver(fc::json::from_string(abi_str).as<abi_def>()), fc::milliseconds(50));
+      auto stop_2 = fc::time_point::now();
+      // should take less time since we set a smaller deadline
+      BOOST_CHECK_LE( (stop_1 - start_1).count(), (stop_2 - start_2).count() );
+      // only contains hex_data if it didn't hit the deadline
+      BOOST_CHECK( var.get_object().contains("data") );
+      BOOST_CHECK( !var.get_object().contains("hex_data") );
    } FC_LOG_AND_RETHROW()
 }
 
