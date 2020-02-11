@@ -5,7 +5,7 @@ SCRIPT_LOCATION="scripts/eosio_build.sh"
 TEST_LABEL="[eosio_build]"
 
 ###################################################################
-# ON MAC YOU NEED TO FULLY UNINSTALL EOSIO BEFORE THESE WILL PASS #
+# ON MAC YOU NEED TO FULLY UNINSTALL ARISEN BEFORE THESE WILL PASS #
 ###################################################################
 
 # A helper function is available to show output and status: `debug`
@@ -15,7 +15,7 @@ TEST_LABEL="[eosio_build]"
         # which package isn't installed
         uninstall-package which WETRUN &>/dev/null
         run bash -c "printf \"y\ny\nn\nn\n\" | ./scripts/eosio_build.sh"
-        [[ ! -z $(echo "${output}" | grep "EOSIO compiler checks require the 'which'") ]] || exit
+        [[ ! -z $(echo "${output}" | grep "ARISEN compiler checks require the 'which'") ]] || exit
     fi
 
     if [[ $ARCH == "Linux" ]]; then

@@ -13,5 +13,5 @@ load ../helpers/functions
         ( [[ ! -z $(echo "${output}" | grep "ENABLE_SNAPPY=OFF -DCMAKE_TOOLCHAIN_FILE='$BUILD_DIR/pinned_toolchain.cmake'") ]] ) || exit # MySQL install
     fi
     [[ ! -z $(echo "${output}" | grep "CMAKE_TOOLCHAIN_FILE='$BUILD_DIR/pinned_toolchain.cmake' -DCMAKE_PREFIX_PATH") ]] || exit # cmake build
-    [[ ! -z $(echo "${output}" | grep "EOSIO has been successfully built") ]] || exit
+    [[ ! -z $(echo "${output}" | grep "ARISEN has been successfully built") ]] || exit
 }

@@ -1,6 +1,6 @@
 # Important Notice
 
-We (block.one and its affiliates) make available EOSIO and other software, updates, patches and documentation (collectively, Software) on a voluntary basis as a member of the EOSIO community.  A condition of you accessing any Software, websites, articles, media, publications, documents or other material (collectively, Material) is your acceptance of the terms of this important notice.
+We (block.one and its affiliates) make available ARISEN and other software, updates, patches and documentation (collectively, Software) on a voluntary basis as a member of the ARISEN community.  A condition of you accessing any Software, websites, articles, media, publications, documents or other material (collectively, Material) is your acceptance of the terms of this important notice.
 
 ## Software
 We are not responsible for ensuring the overall performance of Software or any related applications.  Any test results or performance figures are indicative and will not reflect performance under all conditions.  Software may contain components that are open sourced and subject to their own licenses; you are responsible for ensuring your compliance with those licenses.
@@ -14,13 +14,13 @@ Material is not made available to any person or entity that is the subject of sa
 Any person using or offering Software in connection with providing software, goods or services to third parties shall advise such third parties of this important notice, including all limitations, restrictions and exclusions of liability.
 
 ## Trademarks
-Block.one, EOSIO, EOS, the heptahedron and associated logos and related marks are our trademarks.  Other trademarks referenced in Material are the property of their respective owners.
+Block.one, ARISEN, EOS, the heptahedron and associated logos and related marks are our trademarks.  Other trademarks referenced in Material are the property of their respective owners.
 
 ## Third parties
 Any reference in Material to any third party or third-party product, resource or service is not an endorsement or recommendation by Block.one.  We are not responsible for, and disclaim any and all responsibility and liability for, your use of or reliance on any of these resources. Third-party resources may be updated, changed or terminated at any time, so information in Material may be out of date or inaccurate.
 
 ## Forward-looking statements
-Please note that in making statements expressing Block.one’s vision, we do not guarantee anything, and all aspects of our vision are subject to change at any time and in all respects at Block.one’s sole discretion, with or without notice. We call these “forward-looking statements”, which includes statements on our website and in other Material, other than statements of historical facts, such as statements regarding EOSIO’s development, expected performance, and future features, or our business strategy, plans, prospects, developments and objectives. These statements are only predictions and reflect Block.one’s current beliefs and expectations with respect to future events; they are based on assumptions and are subject to risk, uncertainties and change at any time.
+Please note that in making statements expressing Block.one’s vision, we do not guarantee anything, and all aspects of our vision are subject to change at any time and in all respects at Block.one’s sole discretion, with or without notice. We call these “forward-looking statements”, which includes statements on our website and in other Material, other than statements of historical facts, such as statements regarding ARISEN’s development, expected performance, and future features, or our business strategy, plans, prospects, developments and objectives. These statements are only predictions and reflect Block.one’s current beliefs and expectations with respect to future events; they are based on assumptions and are subject to risk, uncertainties and change at any time.
 
 We operate in a rapidly changing environment and new risks emerge from time to time. Given these risks and uncertainties, you are cautioned not to rely on these forward-looking statements. Actual results, performance or events may differ materially from what is predicted in the forward-looking statements. Some of the factors that could cause actual results, performance or events to differ materially from the forward-looking statements include, without limitation: technical feasibility and barriers; market trends and volatility; continued availability of capital, financing and personnel; product acceptance; the commercial success of any new products or technologies; competition; government regulation and laws; and general economic, market or business conditions.
 

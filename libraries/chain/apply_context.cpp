@@ -122,7 +122,7 @@ void apply_context::exec_one()
    // Note: It should not be possible for receiver_account to be invalidated because:
    //    * a pointer to an object in a chainbase index is not invalidated if other objects in that index are modified, removed, or added;
    //    * a pointer to an object in a chainbase index is not invalidated if the fields of that object are modified;
-   //    * and, the *receiver_account object itself cannot be removed because accounts cannot be deleted in EOSIO.
+   //    * and, the *receiver_account object itself cannot be removed because accounts cannot be deleted in ARISEN.
 
    r.global_sequence  = next_global_sequence();
    r.recv_sequence    = next_recv_sequence( *receiver_account );

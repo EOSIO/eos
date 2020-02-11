@@ -2,8 +2,8 @@
 set -eo pipefail
 SCRIPT_VERSION=3.1 # Build script version (change this to re-build the CICD image)
 ##########################################################################
-# This is the EOSIO automated install script for Linux and Mac OS.
-# This file was downloaded from https://github.com/EOSIO/eos
+# This is the ARISEN automated install script for Linux and Mac OS.
+# This file was downloaded from https://github.com/ARISEN/eos
 #
 # Copyright (c) 2017, Respective Authors all rights reserved.
 #
@@ -29,7 +29,7 @@ SCRIPT_VERSION=3.1 # Build script version (change this to re-build the CICD imag
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 #
-# https://github.com/EOSIO/eos/blob/master/LICENSE
+# https://github.com/ARISEN/eos/blob/master/LICENSE
 ##########################################################################
 
 function usage() {
@@ -38,7 +38,7 @@ function usage() {
   -o TYPE     Build <Debug|Release|RelWithDebInfo|MinSizeRel> (default: Release)
   -s NAME     Core Symbol Name <1-7 characters> (default: SYS)
   -b DIR      Use pre-built boost in DIR
-  -i DIR      Directory to use for installing dependencies & EOSIO (default: $HOME)
+  -i DIR      Directory to use for installing dependencies & ARISEN (default: $HOME)
   -y          Noninteractive mode (answers yes to every prompt)
   -c          Enable Code Coverage
   -d          Generate Doxygen
@@ -120,7 +120,7 @@ cd $( dirname "${BASH_SOURCE[0]}" )/..
 . ./scripts/helpers/eosio.sh
 
 $VERBOSE && echo "Build Script Version: ${SCRIPT_VERSION}"
-echo "EOSIO Version: ${EOSIO_VERSION_FULL}"
+echo "ARISEN Version: ${EOSIO_VERSION_FULL}"
 echo "$( date -u )"
 echo "User: ${CURRENT_USER}"
 # echo "git head id: %s" "$( cat .git/refs/heads/master )"
@@ -183,7 +183,7 @@ if [[ $ARCH == "Linux" ]]; then
 fi
 
 if [ "$ARCH" == "Darwin" ]; then
-   # opt/gettext: cleos requires Intl, which requires gettext; it's keg only though and we don't want to force linking: https://github.com/EOSIO/eos/issues/2240#issuecomment-396309884
+   # opt/gettext: cleos requires Intl, which requires gettext; it's keg only though and we don't want to force linking: https://github.com/ARISEN/eos/issues/2240#issuecomment-396309884
    # EOSIO_INSTALL_DIR/lib/cmake: mongo_db_plugin.cpp:25:10: fatal error: 'bsoncxx/builder/basic/kvp.hpp' file not found
    CMAKE_PREFIX_PATHS="/usr/local/opt/gettext;${EOSIO_INSTALL_DIR}"
    FILE="${SCRIPT_DIR}/eosio_build_darwin.sh"
@@ -194,7 +194,7 @@ fi
 execute bash -c "sed -e 's~@~$OPT_DIR~g' $SCRIPT_DIR/pinned_toolchain.cmake &> $BUILD_DIR/pinned_toolchain.cmake"
 
 echo "${COLOR_CYAN}====================================================================================="
-echo "======================= ${COLOR_WHITE}Starting EOSIO Dependency Install${COLOR_CYAN} ===========================${COLOR_NC}"
+echo "======================= ${COLOR_WHITE}Starting ARISEN Dependency Install${COLOR_CYAN} ===========================${COLOR_NC}"
 execute cd $SRC_DIR
 set_system_vars # JOBS, Memory, disk space available, etc
 echo "Architecture: ${ARCH}"
@@ -203,7 +203,7 @@ execute cd $REPO_ROOT
 
 echo ""
 echo "${COLOR_CYAN}========================================================================"
-echo "======================= ${COLOR_WHITE}Starting EOSIO Build${COLOR_CYAN} ===========================${COLOR_NC}"
+echo "======================= ${COLOR_WHITE}Starting ARISEN Build${COLOR_CYAN} ===========================${COLOR_NC}"
 if $VERBOSE; then
    echo "CXX: $CXX"
    echo "CC: $CC"
@@ -236,7 +236,7 @@ echo "| (____/\| (___) |/\____) |___) (___| (___) |"
 echo "(_______/(_______)\_______)\_______/(_______)"
 echo "=============================================${COLOR_NC}"
 
-echo "${COLOR_GREEN}EOSIO has been successfully built. $(($TIME_END/3600)):$(($TIME_END%3600/60)):$(($TIME_END%60))"
+echo "${COLOR_GREEN}ARISEN has been successfully built. $(($TIME_END/3600)):$(($TIME_END%3600/60)):$(($TIME_END%60))"
 echo "${COLOR_GREEN}You can now install using: ${SCRIPT_DIR}/eosio_install.sh${COLOR_NC}"
 echo "${COLOR_YELLOW}Uninstall with: ${SCRIPT_DIR}/eosio_uninstall.sh${COLOR_NC}"
 

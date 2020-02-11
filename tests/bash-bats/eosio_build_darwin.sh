@@ -27,7 +27,7 @@ export TEST_LABEL="[eosio_build_darwin]"
     run bash -c "printf \"y\n%.0s\" {1..100} | ./$SCRIPT_LOCATION -i /NEWPATH"
     [[ ! -z $(echo "${output}" | grep "Executing: make -j${JOBS}") ]] || exit
     ### Make sure deps are loaded properly
-    [[ ! -z $(echo "${output}" | grep "Starting EOSIO Dependency Install") ]] || exit
+    [[ ! -z $(echo "${output}" | grep "Starting ARISEN Dependency Install") ]] || exit
     [[ ! -z $(echo "${output}" | grep "Executing: /usr/bin/xcode-select --install") ]] || exit
     [[ -z $(echo "${output}" | grep " -   NOT found") ]] || exit
     rm -f $CMAKE
@@ -36,7 +36,7 @@ export TEST_LABEL="[eosio_build_darwin]"
     [[ ! -z $(echo "${output}" | grep "brew install.*llvm@4.*") ]] || exit
     [[ ! -z $(echo "${output}" | grep "LLVM successfully linked from /usr/local/opt/llvm@4") ]] || exit
     [[ ! -z $(echo "${output}" | grep /NEWPATH.*/src/boost) ]] || exit
-    [[ ! -z $(echo "${output}" | grep "Starting EOSIO Build") ]] || exit
+    [[ ! -z $(echo "${output}" | grep "Starting ARISEN Build") ]] || exit
     [[ ! -z $(echo "${output}" | grep " --with-iostreams --with-date_time") ]] || exit # BOOST
-    [[ ! -z $(echo "${output}" | grep "EOSIO has been successfully built") ]] || exit
+    [[ ! -z $(echo "${output}" | grep "ARISEN has been successfully built") ]] || exit
 }

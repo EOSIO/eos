@@ -51,7 +51,7 @@ TEST_LABEL="[helpers]"
   # Exists, prompt
   mkdir -p $EOSIO_INSTALL_DIR
   run previous-install-prompt
-  [[ ! -z $(echo "${output}" | grep "EOSIO has already been installed into ${EOSIO_INSTALL_DIR}") ]] || exit
+  [[ ! -z $(echo "${output}" | grep "ARISEN has already been installed into ${EOSIO_INSTALL_DIR}") ]] || exit
   rm -rf $EOSIO_INSTALL_DIR
 }
 

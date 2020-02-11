@@ -32,15 +32,15 @@ export TEST_LABEL="[eosio_build_centos]"
     [[ ! -z $(echo "${output}" | grep "devtoolset-8.* found") ]] || exit
     [[ ! -z $(echo "${output}" | grep "Executing: source /opt/rh/devtoolset-8/enable") ]] || exit
     [[ ! -z $(echo "${output}" | grep "Executing: make -j${JOBS}") ]] || exit
-    [[ ! -z $(echo "${output}" | grep "Starting EOSIO Dependency Install") ]] || exit
+    [[ ! -z $(echo "${output}" | grep "Starting ARISEN Dependency Install") ]] || exit
     [[ ! -z $(echo "${output}" | grep "Executing: eval /usr/bin/yum -y update") ]] || exit
     [[ ! -z $(echo "${output}" | grep "Python36 successfully enabled") ]] || exit
     [[ -z $(echo "${output}" | grep "-   NOT found") ]] || exit
     [[ ! -z $(echo "${output}" | grep "Ensuring CMAKE") ]] || exit
     [[ ! -z $(echo "${output}" | grep /NEWPATH.*/src/boost) ]] || exit
-    [[ ! -z $(echo "${output}" | grep "Starting EOSIO Build") ]] || exit
+    [[ ! -z $(echo "${output}" | grep "Starting ARISEN Build") ]] || exit
     [[ ! -z $(echo "${output}" | grep "make -j${CPU_CORES}") ]] || exit
-    [[ ! -z $(echo "${output}" | grep "EOSIO has been successfully built") ]] || exit
+    [[ ! -z $(echo "${output}" | grep "ARISEN has been successfully built") ]] || exit
     uninstall-package devtoolset-8* WETRUN &>/dev/null
     uninstall-package centos-release-scl WETRUN &>/dev/null
 }

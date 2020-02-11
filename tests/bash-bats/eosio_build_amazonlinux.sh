@@ -27,7 +27,7 @@ export TEST_LABEL="[eosio_build_amazonlinux]"
     [[ ! -z $(echo "${output}" | grep "Executing: make -j${JOBS}") ]] || exit
     ### Make sure deps are loaded properly
     [[ ! -z $(echo "${output}" | grep "Executing: cd /NEWPATH/src") ]] || exit
-    [[ ! -z $(echo "${output}" | grep "Starting EOSIO Dependency Install") ]] || exit
+    [[ ! -z $(echo "${output}" | grep "Starting ARISEN Dependency Install") ]] || exit
     [[ ! -z $(echo "${output}" | grep "Executing: eval /usr/bin/yum -y update") ]] || exit
     if [[ $NAME == "Amazon Linux" ]]; then
         [[ ! -z $(echo "${output}" | grep "libstdc++") ]] || exit
@@ -37,7 +37,7 @@ export TEST_LABEL="[eosio_build_amazonlinux]"
     [[ ! -z $(echo "${output}" | grep "sudo.*NOT.*found") ]] || exit
     [[ -z $(echo "${output}" | grep "-   NOT found.") ]] || exit
     [[ ! -z $(echo "${output}" | grep /NEWPATH*/src/boost) ]] || exit
-    [[ ! -z $(echo "${output}" | grep "Starting EOSIO Build") ]] || exit
+    [[ ! -z $(echo "${output}" | grep "Starting ARISEN Build") ]] || exit
     [[ ! -z $(echo "${output}" | grep "make -j${CPU_CORES}") ]] || exit
     [[ -z $(echo "${output}" | grep "MongoDB C++ driver successfully installed") ]] || exit # Mongo is off
     # Ensure PIN_COMPILER=false uses proper flags for the various installs
