@@ -10,8 +10,10 @@ import os
 
 ###############################################################
 # distributed-transactions-remote-test
+#
 #  Tests remote capability of the distributed-transactions-test. Test will setup cluster and pass nodes info to distributed-transactions-test. E.g.
 #  distributed-transactions-remote-test.py -v --clean-run --dump-error-detail
+#
 ###############################################################
 
 Print=Utils.Print
@@ -26,7 +28,7 @@ killAll=args.clean_run
 
 Utils.Debug=debug
 
-killRsnInstances=not dontKill
+killEosInstances=not dontKill
 topo="mesh"
 delay=1
 prodCount=1 # producers per producer node
@@ -40,14 +42,14 @@ clusterMapJsonTemplate="""{
         "defproducerbPrivateKey": "%s"
     },
     "nodes": [
-        {"port": 6620, "host": "localhost"},
+        {"port": 8888, "host": "localhost"},
         {"port": 8889, "host": "localhost"},
         {"port": 8890, "host": "localhost"}
     ]
 }
 """
 
-cluster=Cluster()
+cluster=Cluster(walletd=True)
 
 (fd, nodesFile) = tempfile.mkstemp()
 try:
@@ -58,8 +60,8 @@ try:
     Print ("producing nodes: %s, non-producing nodes: %d, topology: %s, delay between nodes launch(seconds): %d" %
            (pnodes, total_nodes-pnodes, topo, delay))
     Print("Stand up cluster")
-    if cluster.launch(pnodes, total_nodes, prodCount, topo, delay) is False:
-        errorExit("Failed to stand up ARISEN cluster.")
+    if cluster.launch(pnodes=pnodes, totalNodes=total_nodes, prodCount=prodCount, topo=topo, delay=delay) is False:
+        errorExit("Failed to stand up eos cluster.")
 
     Print ("Wait for Cluster stabilization")
     # wait for cluster to start producing blocks
@@ -76,7 +78,7 @@ try:
     tfile.write(clusterMapJson)
     tfile.close()
 
-    cmd="%s --nodes-file %s %s %s" % (actualTest, nodesFile, "-v" if debug else "", "--dont-kill" if dontKill else "")
+    cmd="%s --nodes-file %s %s %s" % (actualTest, nodesFile, "-v" if debug else "", "--leave-running" if dontKill else "")
     Print("Starting up distributed transactions test: %s" % (actualTest))
     Print("cmd: %s\n" % (cmd))
     if 0 != subprocess.call(cmd, shell=True):
@@ -86,6 +88,6 @@ try:
     Print("\nEND")
 finally:
     os.remove(nodesFile)
-    TestHelper.shutdown(cluster, None, testSuccessful, killRsnInstances, False, False, killAll, dumpErrorDetails)
+    TestHelper.shutdown(cluster, None, testSuccessful, killEosInstances, False, False, killAll, dumpErrorDetails)
 
 exit(0)

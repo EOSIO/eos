@@ -1,28 +1,31 @@
-/**
- *  @file
- *  @copyright defined in arisen/LICENSE.txt
- */
-#include <arisen/producer_api_plugin/producer_api_plugin.hpp>
-#include <arisen/chain/exceptions.hpp>
+#include <eosio/producer_api_plugin/producer_api_plugin.hpp>
+#include <eosio/chain/exceptions.hpp>
 
 #include <fc/variant.hpp>
 #include <fc/io/json.hpp>
 
 #include <chrono>
 
-namespace arisen { namespace detail {
+namespace eosio { namespace detail {
   struct producer_api_plugin_response {
      std::string result;
   };
 }}
 
-FC_REFLECT(arisen::detail::producer_api_plugin_response, (result));
+FC_REFLECT(eosio::detail::producer_api_plugin_response, (result));
 
-namespace arisen {
+namespace eosio {
 
 static appbase::abstract_plugin& _producer_api_plugin = app().register_plugin<producer_api_plugin>();
 
-using namespace arisen;
+using namespace eosio;
+
+struct async_result_visitor : public fc::visitor<fc::variant> {
+   template<typename T>
+   fc::variant operator()(const T& v) const {
+      return fc::variant(v);
+   }
+};
 
 #define CALL(api_name, api_handle, call_name, INVOKE, http_response_code) \
 {std::string("/v1/" #api_name "/" #call_name), \
@@ -30,11 +33,30 @@ using namespace arisen;
           try { \
              if (body.empty()) body = "{}"; \
              INVOKE \
-             cb(http_response_code, fc::json::to_string(result)); \
+             cb(http_response_code, fc::variant(result)); \
           } catch (...) { \
              http_plugin::handle_exception(#api_name, #call_name, body, cb); \
           } \
        }}
+
+#define CALL_ASYNC(api_name, api_handle, call_name, call_result, INVOKE, http_response_code) \
+{std::string("/v1/" #api_name "/" #call_name), \
+   [&api_handle](string, string body, url_response_callback cb) mutable { \
+      if (body.empty()) body = "{}"; \
+      auto next = [cb, body](const fc::static_variant<fc::exception_ptr, call_result>& result){\
+         if (result.contains<fc::exception_ptr>()) {\
+            try {\
+               result.get<fc::exception_ptr>()->dynamic_rethrow_exception();\
+            } catch (...) {\
+               http_plugin::handle_exception(#api_name, #call_name, body, cb);\
+            }\
+         } else {\
+            cb(http_response_code, result.visit(async_result_visitor()));\
+         }\
+      };\
+      INVOKE\
+   }\
+}
 
 #define INVOKE_R_R(api_handle, call_name, in_param) \
      auto result = api_handle.call_name(fc::json::from_string(body).as<in_param>());
@@ -46,18 +68,21 @@ using namespace arisen;
 #define INVOKE_R_V(api_handle, call_name) \
      auto result = api_handle.call_name();
 
+#define INVOKE_R_V_ASYNC(api_handle, call_name)\
+     api_handle.call_name(next);
+
 #define INVOKE_V_R(api_handle, call_name, in_param) \
      api_handle.call_name(fc::json::from_string(body).as<in_param>()); \
-     arisen::detail::producer_api_plugin_response result{"ok"};
+     eosio::detail::producer_api_plugin_response result{"ok"};
 
 #define INVOKE_V_R_R(api_handle, call_name, in_param0, in_param1) \
      const auto& vs = fc::json::json::from_string(body).as<fc::variants>(); \
      api_handle.call_name(vs.at(0).as<in_param0>(), vs.at(1).as<in_param1>()); \
-     arisen::detail::producer_api_plugin_response result{"ok"};
+     eosio::detail::producer_api_plugin_response result{"ok"};
 
 #define INVOKE_V_V(api_handle, call_name) \
      api_handle.call_name(); \
-     arisen::detail::producer_api_plugin_response result{"ok"};
+     eosio::detail::producer_api_plugin_response result{"ok"};
 
 
 void producer_api_plugin::plugin_startup() {
@@ -79,13 +104,26 @@ void producer_api_plugin::plugin_startup() {
        CALL(producer, producer, add_greylist_accounts,
             INVOKE_V_R(producer, add_greylist_accounts, producer_plugin::greylist_params), 201),
        CALL(producer, producer, remove_greylist_accounts,
-            INVOKE_V_R(producer, remove_greylist_accounts, producer_plugin::greylist_params), 201), 
+            INVOKE_V_R(producer, remove_greylist_accounts, producer_plugin::greylist_params), 201),
        CALL(producer, producer, get_greylist,
-            INVOKE_R_V(producer, get_greylist), 201),                 
+            INVOKE_R_V(producer, get_greylist), 201),
        CALL(producer, producer, get_whitelist_blacklist,
             INVOKE_R_V(producer, get_whitelist_blacklist), 201),
-       CALL(producer, producer, set_whitelist_blacklist, 
-            INVOKE_V_R(producer, set_whitelist_blacklist, producer_plugin::whitelist_blacklist), 201),   
+       CALL(producer, producer, set_whitelist_blacklist,
+            INVOKE_V_R(producer, set_whitelist_blacklist, producer_plugin::whitelist_blacklist), 201),
+       CALL(producer, producer, get_integrity_hash,
+            INVOKE_R_V(producer, get_integrity_hash), 201),
+       CALL_ASYNC(producer, producer, create_snapshot, producer_plugin::snapshot_information,
+            INVOKE_R_V_ASYNC(producer, create_snapshot), 201),
+       CALL(producer, producer, get_scheduled_protocol_feature_activations,
+            INVOKE_R_V(producer, get_scheduled_protocol_feature_activations), 201),
+       CALL(producer, producer, schedule_protocol_feature_activations,
+            INVOKE_V_R(producer, schedule_protocol_feature_activations, producer_plugin::scheduled_protocol_feature_activations), 201),
+       CALL(producer, producer, get_supported_protocol_features,
+            INVOKE_R_R(producer, get_supported_protocol_features,
+                                 producer_plugin::get_supported_protocol_features_params), 201),
+       CALL(producer, producer, get_account_ram_corrections,
+            INVOKE_R_R(producer, get_account_ram_corrections, producer_plugin::get_account_ram_corrections_params), 201),
    });
 }
 

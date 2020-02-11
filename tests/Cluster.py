@@ -4,7 +4,6 @@ import time
 import glob
 import shutil
 import os
-import platform
 import re
 import string
 import signal
@@ -12,15 +11,29 @@ import datetime
 import sys
 import random
 import json
-import socket
-import errno
 
 from core_symbol import CORE_SYMBOL
 from testUtils import Utils
 from testUtils import Account
+from testUtils import BlockLogAction
 from Node import BlockType
 from Node import Node
 from WalletMgr import WalletMgr
+
+# Protocol Feature Setup Policy
+class PFSetupPolicy:
+    NONE = 0
+    PREACTIVATE_FEATURE_ONLY = 1
+    FULL = 2 # This will only happen if the cluster is bootstrapped (i.e. dontBootstrap == False)
+    @staticmethod
+    def hasPreactivateFeature(policy):
+        return policy == PFSetupPolicy.PREACTIVATE_FEATURE_ONLY or \
+                policy == PFSetupPolicy.FULL
+    @staticmethod
+    def isValid(policy):
+        return policy == PFSetupPolicy.NONE or \
+               policy == PFSetupPolicy.PREACTIVATE_FEATURE_ONLY or \
+               policy == PFSetupPolicy.FULL
 
 # pylint: disable=too-many-instance-attributes
 # pylint: disable=too-many-public-methods
@@ -32,19 +45,20 @@ class Cluster(object):
     __BiosHost="localhost"
     __BiosPort=8788
     __LauncherCmdArr=[]
+    __bootlog="eosio-ignition-wd/bootlog.txt"
 
     # pylint: disable=too-many-arguments
-    # walletd [True|False] Is awallet running. If not load the wallet plugin
-    def __init__(self, walletd=False, localCluster=True, host="localhost", port=12618, walletHost="localhost", walletPort=12518, enableMongo=False
-                 , mongoHost="localhost", mongoPort=27017, mongoDb="RSNtest", defproduceraPrvtKey=None, defproducerbPrvtKey=None, staging=False):
+    # walletd [True|False] Is keosd running. If not load the wallet plugin
+    def __init__(self, walletd=False, localCluster=True, host="localhost", port=8888, walletHost="localhost", walletPort=9899, enableMongo=False
+                 , mongoHost="localhost", mongoPort=27017, mongoDb="EOStest", defproduceraPrvtKey=None, defproducerbPrvtKey=None, staging=False):
         """Cluster container.
-        walletd [True|False] Is wallet awallet running. If not load the wallet plugin
+        walletd [True|False] Is wallet keosd running. If not load the wallet plugin
         localCluster [True|False] Is cluster local to host.
-        host: ARISEN server host
-        port: ARISEN server port
-        walletHost: ARISEN wallet host
+        host: eos server host
+        port: eos server port
+        walletHost: eos wallet host
         walletPort: wos wallet port
-        enableMongo: Include mongoDb support, configures ARISEN mongo plugin
+        enableMongo: Include mongoDb support, configures eos mongo plugin
         mongoHost: MongoDB host
         mongoPort: MongoDB port
         defproduceraPrvtKey: Defproducera account private key
@@ -52,6 +66,7 @@ class Cluster(object):
         """
         self.accounts={}
         self.nodes={}
+        self.unstartedNodes=[]
         self.localCluster=localCluster
         self.wallet=None
         self.walletd=walletd
@@ -64,9 +79,6 @@ class Cluster(object):
         self.port=port
         self.walletHost=walletHost
         self.walletPort=walletPort
-        self.walletEndpointArgs=""
-        if self.walletd:
-            self.walletEndpointArgs += " --wallet-url http://%s:%d" % (self.walletHost, self.walletPort)
         self.mongoEndpointArgs=""
         self.mongoUri=""
         if self.enableMongo:
@@ -77,12 +89,16 @@ class Cluster(object):
         self.defProducerAccounts={}
         self.defproduceraAccount=self.defProducerAccounts["defproducera"]= Account("defproducera")
         self.defproducerbAccount=self.defProducerAccounts["defproducerb"]= Account("defproducerb")
-        self.arisenAccount=self.defProducerAccounts["arisen"]= Account("arisen")
+        self.eosioAccount=self.defProducerAccounts["eosio"]= Account("eosio")
 
         self.defproduceraAccount.ownerPrivateKey=defproduceraPrvtKey
         self.defproduceraAccount.activePrivateKey=defproduceraPrvtKey
         self.defproducerbAccount.ownerPrivateKey=defproducerbPrvtKey
         self.defproducerbAccount.activePrivateKey=defproducerbPrvtKey
+
+        self.useBiosBootFile=False
+        self.filesToCleanup=[]
+        self.alternateVersionLabels=Cluster.__defaultAlternateVersionLabels()
 
 
     def setChainStrategy(self, chainSyncStrategy=Utils.SyncReplayTag):
@@ -93,82 +109,160 @@ class Cluster(object):
     def setWalletMgr(self, walletMgr):
         self.walletMgr=walletMgr
 
+    @staticmethod
+    def __defaultAlternateVersionLabels():
+        """Return a labels dictionary with just the "current" label to path set."""
+        labels={}
+        labels["current"]="./"
+        return labels
+
+    def setAlternateVersionLabels(self, file):
+        """From the provided file return a dictionary of labels to paths."""
+        Utils.Print("alternate file=%s" % (file))
+        self.alternateVersionLabels=Cluster.__defaultAlternateVersionLabels()
+        if file is None:
+            # only have "current"
+            return
+        if not os.path.exists(file):
+            Utils.errorExit("Alternate Version Labels file \"%s\" does not exist" % (file))
+        with open(file, 'r') as f:
+            content=f.read()
+            p=re.compile(r'^\s*(\w+)\s*=\s*([^\s](?:.*[^\s])?)\s*$', re.MULTILINE)
+            all=p.findall(content)
+            for match in all:
+                label=match[0]
+                path=match[1]
+                if label=="current":
+                    Utils.Print("ERROR: cannot overwrite default label %s with path=%s" % (label, path))
+                    continue
+                self.alternateVersionLabels[label]=path
+                if Utils.Debug: Utils.Print("Version label \"%s\" maps to \"%s\"" % (label, path))
+
     # launch local nodes and set self.nodes
     # pylint: disable=too-many-locals
     # pylint: disable=too-many-return-statements
     # pylint: disable=too-many-branches
     # pylint: disable=too-many-statements
-    def launch(self, pnodes=1, totalNodes=1, prodCount=1, topo="mesh", p2pPlugin="net", delay=1, onlyBios=False, dontKill=False
-               , dontBootstrap=False, totalProducers=None, extraAosArgs=None, useBiosBootFile=True, specificExtraAosArgs=None):
+    def launch(self, pnodes=1, unstartedNodes=0, totalNodes=1, prodCount=1, topo="mesh", delay=1, onlyBios=False, dontBootstrap=False,
+               totalProducers=None, sharedProducers=0, extraNodeosArgs=" --http-max-response-time-ms 990000 ", useBiosBootFile=True, specificExtraNodeosArgs=None, onlySetProds=False,
+               pfSetupPolicy=PFSetupPolicy.FULL, alternateVersionLabelsFile=None, associatedNodeLabels=None, loadSystemContract=True):
         """Launch cluster.
         pnodes: producer nodes count
-        totalNodes: producer + non-producer nodes count
+        unstartedNodes: non-producer nodes that are configured into the launch, but not started.  Should be included in totalNodes.
+        totalNodes: producer + non-producer nodes + unstarted non-producer nodes count
         prodCount: producers per producer node count
         topo: cluster topology (as defined by launcher, and "bridge" shape that is specific to this launch method)
         delay: delay between individual nodes launch (as defined by launcher)
           delay 0 exposes a bootstrap bug where producer handover may have a large gap confusing nodes and bringing system to a halt.
         onlyBios: When true, only loads the bios contract (and not more full bootstrapping).
-        dontBootstrap: When true, don't do any bootstrapping at all.
-        extraAosArgs: string of arguments to pass through to each nodoes instance (via --aos flag on launcher)
+        dontBootstrap: When true, don't do any bootstrapping at all. (even bios is not uploaded)
+        extraNodeosArgs: string of arguments to pass through to each nodoes instance (via --nodeos flag on launcher)
         useBiosBootFile: determines which of two bootstrap methods is used (when both dontBootstrap and onlyBios are false).
           The default value of true uses the bios_boot.sh file generated by the launcher.
           A value of false uses manual bootstrapping in this script, which does not do things like stake votes for producers.
-        specificExtraAosArgs: dictionary of arguments to pass to a specific node (via --specific-num and
-                                 --specific-aos flags on launcher), example: { "5" : "--plugin arisen::test_control_api_plugin" }
+        specificExtraNodeosArgs: dictionary of arguments to pass to a specific node (via --specific-num and
+                                 --specific-nodeos flags on launcher), example: { "5" : "--plugin eosio::test_control_api_plugin" }
+        onlySetProds: Stop the bootstrap process after setting the producers (only if useBiosBootFile is false)
+        pfSetupPolicy: determine the protocol feature setup policy (none, preactivate_feature_only, or full)
+        alternateVersionLabelsFile: Supply an alternate version labels file to use with associatedNodeLabels.
+        associatedNodeLabels: Supply a dictionary of node numbers to use an alternate label for a specific node.
+        loadSystemContract: indicate whether the eosio.system contract should be loaded (setting this to False causes useBiosBootFile to be treated as False)
         """
         assert(isinstance(topo, str))
+        assert PFSetupPolicy.isValid(pfSetupPolicy)
+        if alternateVersionLabelsFile is not None:
+            assert(isinstance(alternateVersionLabelsFile, str))
+        elif associatedNodeLabels is not None:
+            associatedNodeLabels=None    # need to supply alternateVersionLabelsFile to use labels
+
+        if associatedNodeLabels is not None:
+            assert(isinstance(associatedNodeLabels, dict))
+            Utils.Print("associatedNodeLabels size=%s" % (len(associatedNodeLabels)))
+        Utils.Print("alternateVersionLabelsFile=%s" % (alternateVersionLabelsFile))
 
         if not self.localCluster:
-            Utils.Print("WARNING: Cluster not local, not launching %s." % (Utils.RsnServerName))
+            Utils.Print("WARNING: Cluster not local, not launching %s." % (Utils.EosServerName))
             return True
 
         if len(self.nodes) > 0:
             raise RuntimeError("Cluster already running.")
+
+        if pnodes > totalNodes:
+            raise RuntimeError("totalNodes (%d) must be equal to or greater than pnodes(%d)." % (totalNodes, pnodes))
+        if pnodes + unstartedNodes > totalNodes:
+            raise RuntimeError("totalNodes (%d) must be equal to or greater than pnodes(%d) + unstartedNodes(%d)." % (totalNodes, pnodes, unstartedNodes))
+
+        if self.walletMgr is None:
+            self.walletMgr=WalletMgr(True)
 
         producerFlag=""
         if totalProducers:
             assert(isinstance(totalProducers, (str,int)))
             producerFlag="--producers %s" % (totalProducers)
 
+        if sharedProducers > 0:
+            producerFlag += (" --shared-producers %d" % (sharedProducers))
+
+        self.setAlternateVersionLabels(alternateVersionLabelsFile)
+
         tries = 30
-        while not Cluster.arePortsAvailable(set(range(self.port, self.port+totalNodes+1))):
-            Utils.Print("ERROR: Another process is listening on aOS default port. wait...")
+        while not Utils.arePortsAvailable(set(range(self.port, self.port+totalNodes+1))):
+            Utils.Print("ERROR: Another process is listening on nodeos default port. wait...")
             if tries == 0:
                 return False
             tries = tries - 1
             time.sleep(2)
 
-        cmd="%s -p %s -n %s -d %s -i %s -f --p2p-plugin %s %s" % (
-            Utils.RsnLauncherPath, pnodes, totalNodes, delay, datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3],
-            p2pPlugin, producerFlag)
+        cmd="%s -p %s -n %s -d %s -i %s -f %s --unstarted-nodes %s" % (
+            Utils.EosLauncherPath, pnodes, totalNodes, delay, datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3],
+            producerFlag, unstartedNodes)
         cmdArr=cmd.split()
         if self.staging:
             cmdArr.append("--nogen")
 
-        aosArgs="--max-transaction-time 990000 --abi-serializer-max-time-ms 990000 --filter-on * --p2p-max-nodes-per-host %d" % (totalNodes)
+        nodeosArgs="--max-transaction-time -1 --abi-serializer-max-time-ms 990000 --filter-on \"*\" --p2p-max-nodes-per-host %d" % (totalNodes)
         if not self.walletd:
-            aosArgs += " --plugin arisen::wallet_api_plugin"
+            nodeosArgs += " --plugin eosio::wallet_api_plugin"
         if self.enableMongo:
-            aosArgs += " --plugin arisen::mongo_db_plugin --mongodb-wipe --delete-all-blocks --mongodb-uri %s" % self.mongoUri
-        if extraAosArgs is not None:
-            assert(isinstance(extraAosArgs, str))
-            aosArgs += extraAosArgs
+            nodeosArgs += " --plugin eosio::mongo_db_plugin --mongodb-wipe --delete-all-blocks --mongodb-uri %s" % self.mongoUri
+        if extraNodeosArgs is not None:
+            assert(isinstance(extraNodeosArgs, str))
+            nodeosArgs += extraNodeosArgs
         if Utils.Debug:
-            aosArgs += " --contracts-console"
+            nodeosArgs += " --contracts-console"
+        if PFSetupPolicy.hasPreactivateFeature(pfSetupPolicy):
+            nodeosArgs += " --plugin eosio::producer_api_plugin"
 
-        if aosArgs:
-            cmdArr.append("--aos")
-            cmdArr.append(aosArgs)
+        if nodeosArgs:
+            cmdArr.append("--nodeos")
+            cmdArr.append(nodeosArgs)
 
-        if specificExtraAosArgs is not None:
-            assert(isinstance(specificExtraAosArgs, dict))
-            for nodeNum,arg in specificExtraAosArgs.items():
+        if specificExtraNodeosArgs is not None:
+            assert(isinstance(specificExtraNodeosArgs, dict))
+            for nodeNum,arg in specificExtraNodeosArgs.items():
                 assert(isinstance(nodeNum, (str,int)))
                 assert(isinstance(arg, str))
                 cmdArr.append("--specific-num")
                 cmdArr.append(str(nodeNum))
-                cmdArr.append("--specific-aos")
+                cmdArr.append("--specific-nodeos")
                 cmdArr.append(arg)
+
+        cmdArr.append("--max-block-cpu-usage")
+        cmdArr.append(str(160000000))
+        cmdArr.append("--max-transaction-cpu-usage")
+        cmdArr.append(str(150000000))
+
+        if associatedNodeLabels is not None:
+            for nodeNum,label in associatedNodeLabels.items():
+                assert(isinstance(nodeNum, (str,int)))
+                assert(isinstance(label, str))
+                path=self.alternateVersionLabels.get(label)
+                if path is None:
+                    Utils.errorExit("associatedNodeLabels passed in indicates label %s for node num %s, but it was not identified in %s" % (label, nodeNum, alternateVersionLabelsFile))
+                cmdArr.append("--spcfc-inst-num")
+                cmdArr.append(str(nodeNum))
+                cmdArr.append("--spcfc-inst-nodeos")
+                cmdArr.append(path)
 
         # must be last cmdArr.append before subprocess.call, so that everything is on the command line
         # before constructing the shape.json file for "bridge"
@@ -194,7 +288,7 @@ class Cluster(object):
             # of two entries - [ <first>, <second> ] with first being the name and second being the node definition
             shapeFileNodes = shapeFileObject["nodes"]
 
-            numProducers=totalProducers if totalProducers is not None else totalNodes
+            numProducers=totalProducers if totalProducers is not None else (totalNodes - unstartedNodes)
             maxProducers=ord('z')-ord('a')+1
             assert numProducers<maxProducers, \
                    "ERROR: topo of %s assumes names of \"defproducera\" to \"defproducerz\", so must have at most %d producers" % \
@@ -262,7 +356,7 @@ class Cluster(object):
                                 producerGroup2.append(nodeName)
                                 Utils.Print("Group2 grouping producerIndex=%s, secondGroupStart=%s" % (producerIndex,secondGroupStart))
                         if group!=prodGroup:
-                            errorExit("Node configuration not consistent with \"bridge\" topology. Node %s has producers that fall into both halves of the bridged network" % (nodeName))
+                            Utils.errorExit("Node configuration not consistent with \"bridge\" topology. Node %s has producers that fall into both halves of the bridged network" % (nodeName))
 
             for _,bridgeNode in bridgeNodes.items():
                 bridgeNode["peers"]=[]
@@ -293,29 +387,32 @@ class Cluster(object):
 
         Cluster.__LauncherCmdArr = cmdArr.copy()
 
-        s=" ".join(cmdArr)
+        s=" ".join([("'{0}'".format(element) if (' ' in element) else element) for element in cmdArr.copy()])
         if Utils.Debug: Utils.Print("cmd: %s" % (s))
         if 0 != subprocess.call(cmdArr):
             Utils.Print("ERROR: Launcher failed to launch. failed cmd: %s" % (s))
             return False
 
-        self.nodes=list(range(totalNodes)) # placeholder for cleanup purposes only
+        startedNodes=totalNodes-unstartedNodes
+        self.nodes=list(range(startedNodes)) # placeholder for cleanup purposes only
 
-        nodes=self.discoverLocalNodes(totalNodes, timeout=Utils.systemWaitTimeout)
-        if nodes is None or totalNodes != len(nodes):
+        nodes=self.discoverLocalNodes(startedNodes, timeout=Utils.systemWaitTimeout)
+        if nodes is None or startedNodes != len(nodes):
             Utils.Print("ERROR: Unable to validate %s instances, expected: %d, actual: %d" %
-                          (Utils.RsnServerName, totalNodes, len(nodes)))
+                          (Utils.EosServerName, startedNodes, len(nodes)))
             return False
 
         self.nodes=nodes
 
-        if onlyBios:
-            biosNode=Node(Cluster.__BiosHost, Cluster.__BiosPort)
-            biosNode.setWalletEndpointArgs(self.walletEndpointArgs)
-            if not biosNode.checkPulse():
-                Utils.Print("ERROR: Bios node doesn't appear to be running...")
-                return False
+        if unstartedNodes > 0:
+            self.unstartedNodes=self.discoverUnstartedLocalNodes(unstartedNodes, totalNodes)
 
+        biosNode=self.discoverBiosNode(timeout=Utils.systemWaitTimeout)
+        if not biosNode or not Utils.waitForBool(biosNode.checkPulse, Utils.systemWaitTimeout):
+            Utils.Print("ERROR: Bios node doesn't appear to be running...")
+            return False
+
+        if onlyBios:
             self.nodes=[biosNode]
 
         # ensure cluster node are inter-connected by ensuring everyone has block 1
@@ -324,23 +421,33 @@ class Cluster(object):
             Utils.Print("ERROR: Cluster doesn't seem to be in sync. Some nodes missing block 1")
             return False
 
+        if PFSetupPolicy.hasPreactivateFeature(pfSetupPolicy):
+            Utils.Print("Activate Preactivate Feature.")
+            biosNode.activatePreactivateFeature()
+
         if dontBootstrap:
             Utils.Print("Skipping bootstrap.")
+            self.biosNode=biosNode
             return True
 
         Utils.Print("Bootstrap cluster.")
+        if not loadSystemContract:
+            useBiosBootFile=False  #ensure we use Cluster.bootstrap
         if onlyBios or not useBiosBootFile:
-            self.biosNode=Cluster.bootstrap(totalNodes, prodCount, totalProducers, Cluster.__BiosHost, Cluster.__BiosPort, dontKill, onlyBios)
+            self.biosNode=self.bootstrap(biosNode, startedNodes, prodCount + sharedProducers, totalProducers, pfSetupPolicy, onlyBios, onlySetProds, loadSystemContract)
             if self.biosNode is None:
                 Utils.Print("ERROR: Bootstrap failed.")
                 return False
         else:
-            self.biosNode=Cluster.bios_bootstrap(totalNodes, Cluster.__BiosHost, Cluster.__BiosPort, dontKill)
+            self.useBiosBootFile=True
+            self.biosNode=self.bios_bootstrap(biosNode, startedNodes, pfSetupPolicy)
             if self.biosNode is None:
                 Utils.Print("ERROR: Bootstrap failed.")
                 return False
 
-        self.discoverBiosNodePid()
+        if self.biosNode is None:
+            Utils.Print("ERROR: Bootstrap failed.")
+            return False
 
         # validate iniX accounts can be retrieved
 
@@ -360,46 +467,17 @@ class Cluster(object):
             initAccountKeys(account, producerKeys[name])
             self.defProducerAccounts[name] = account
 
-        self.arisenAccount=self.defProducerAccounts["arisen"]
+        self.eosioAccount=self.defProducerAccounts["eosio"]
         self.defproduceraAccount=self.defProducerAccounts["defproducera"]
         self.defproducerbAccount=self.defProducerAccounts["defproducerb"]
 
         return True
 
-    @staticmethod
-    def arePortsAvailable(ports):
-        """Check if specified ports are available for listening on."""
-        assert(ports)
-        assert(isinstance(ports, set))
-
-        for port in ports:
-            if Utils.Debug: Utils.Print("Checking if port %d is available." % (port))
-            assert(isinstance(port, int))
-            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-
-            try:
-                s.bind(("127.0.0.1", port))
-            except socket.error as e:
-                if e.errno == errno.EADDRINUSE:
-                    Utils.Print("ERROR: Port %d is already in use" % (port))
-                else:
-                    # something else raised the socket.error exception
-                    Utils.Print("ERROR: Unknown exception while trying to listen on port %d" % (port))
-                    Utils.Print(e)
-                return False
-            finally:
-                s.close()
-
-        return True
-
-
     # Initialize the default nodes (at present just the root node)
     def initializeNodes(self, defproduceraPrvtKey=None, defproducerbPrvtKey=None, onlyBios=False):
         port=Cluster.__BiosPort if onlyBios else self.port
         host=Cluster.__BiosHost if onlyBios else self.host
-        node=Node(host, port, enableMongo=self.enableMongo, mongoHost=self.mongoHost, mongoPort=self.mongoPort, mongoDb=self.mongoDb)
-        node.setWalletEndpointArgs(self.walletEndpointArgs)
+        node=Node(host, port, walletMgr=self.walletMgr, enableMongo=self.enableMongo, mongoHost=self.mongoHost, mongoPort=self.mongoPort, mongoDb=self.mongoDb)
         if Utils.Debug: Utils.Print("Node: %s", str(node))
 
         node.checkPulse(exitOnError=True)
@@ -438,8 +516,7 @@ class Cluster(object):
         for n in nArr:
             port=n["port"]
             host=n["host"]
-            node=Node(host, port)
-            node.setWalletEndpointArgs(self.walletEndpointArgs)
+            node=Node(host, port, walletMgr=self.walletMgr)
             if Utils.Debug: Utils.Print("Node:", node)
 
             node.checkPulse(exitOnError=True)
@@ -471,18 +548,28 @@ class Cluster(object):
         """Wait for all nodes to have targetBlockNum finalized."""
         assert(self.nodes)
 
-        def doNodesHaveBlockNum(nodes, targetBlockNum, blockType):
+        def doNodesHaveBlockNum(nodes, targetBlockNum, blockType, printCount):
+            ret=True
             for node in nodes:
                 try:
                     if (not node.killed) and (not node.isBlockPresent(targetBlockNum, blockType=blockType)):
-                        return False
+                        ret=False
+                        break
                 except (TypeError) as _:
                     # This can happen if client connects before server is listening
-                    return False
+                    ret=False
+                    break
 
-            return True
+            printCount+=1
+            if Utils.Debug and not ret and printCount%5==0:
+                blockNums=[]
+                for i in range(0, len(nodes)):
+                    blockNums.append(nodes[i].getBlockNum())
+                Utils.Print("Cluster still not in sync, head blocks for nodes: [ %s ]" % (", ".join(blockNums)))
+            return ret
 
-        lam = lambda: doNodesHaveBlockNum(self.nodes, targetBlockNum, blockType)
+        printCount=0
+        lam = lambda: doNodesHaveBlockNum(self.nodes, targetBlockNum, blockType, printCount)
         ret=Utils.waitForBool(lam, timeout)
         return ret
 
@@ -491,7 +578,7 @@ class Cluster(object):
         """Returns client version (string)"""
         p = re.compile(r'^Build version:\s(\w+)\n$')
         try:
-            cmd="%s version client" % (Utils.RsnClientPath)
+            cmd="%s version client" % (Utils.EosClientPath)
             if verbose: Utils.Print("cmd: %s" % (cmd))
             response=Utils.checkOutput(cmd.split())
             assert(response)
@@ -515,7 +602,7 @@ class Cluster(object):
         p = re.compile('Private key: (.+)\nPublic key: (.+)\n', re.MULTILINE)
         for _ in range(0, count):
             try:
-                cmd="%s create key --to-console" % (Utils.RsnClientPath)
+                cmd="%s create key --to-console" % (Utils.EosClientPath)
                 if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
                 keyStr=Utils.checkOutput(cmd.split())
                 m=p.search(keyStr)
@@ -526,7 +613,7 @@ class Cluster(object):
                 ownerPrivate=m.group(1)
                 ownerPublic=m.group(2)
 
-                cmd="%s create key --to-console" % (Utils.RsnClientPath)
+                cmd="%s create key --to-console" % (Utils.EosClientPath)
                 if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
                 keyStr=Utils.checkOutput(cmd.split())
                 m=p.match(keyStr)
@@ -603,6 +690,16 @@ class Cluster(object):
     def getNodes(self):
         return self.nodes
 
+    def launchUnstarted(self, numToLaunch=1, cachePopen=False):
+        assert(isinstance(numToLaunch, int))
+        assert(numToLaunch>0)
+        launchList=self.unstartedNodes[:numToLaunch]
+        del self.unstartedNodes[:numToLaunch]
+        for node in launchList:
+            # the node number is indexed off of the started nodes list
+            node.launchUnstarted(len(self.nodes), cachePopen=cachePopen)
+            self.nodes.append(node)
+
     # Spread funds across accounts with transactions spread through cluster nodes.
     #  Validate transactions are synchronized on root node
     def spreadFunds(self, source, accounts, amount=1):
@@ -619,7 +716,7 @@ class Cluster(object):
         node=self.nodes[0]
         fromm=source
         to=accounts[0]
-        Utils.Print("Transfer %s units from account %s to %s on ARISEN server port %d" % (
+        Utils.Print("Transfer %s units from account %s to %s on eos server port %d" % (
             transferAmountStr, fromm.name, to.name, node.port))
         trans=node.transferFunds(fromm, to, transferAmountStr)
         transId=Node.getTransId(trans)
@@ -628,15 +725,15 @@ class Cluster(object):
 
         if Utils.Debug: Utils.Print("Funds transfered on transaction id %s." % (transId))
 
-        nextRsnIdx=-1
+        nextEosIdx=-1
         for i in range(0, count):
             account=accounts[i]
             nextInstanceFound=False
             for _ in range(0, count):
-                #Utils.Print("nextRsnIdx: %d, n: %d" % (nextRsnIdx, n))
-                nextRsnIdx=(nextRsnIdx + 1)%count
-                if not self.nodes[nextRsnIdx].killed:
-                    #Utils.Print("nextRsnIdx: %d" % (nextRsnIdx))
+                #Utils.Print("nextEosIdx: %d, n: %d" % (nextEosIdx, n))
+                nextEosIdx=(nextEosIdx + 1)%count
+                if not self.nodes[nextEosIdx].killed:
+                    #Utils.Print("nextEosIdx: %d" % (nextEosIdx))
                     nextInstanceFound=True
                     break
 
@@ -644,8 +741,8 @@ class Cluster(object):
                 Utils.Print("ERROR: No active nodes found.")
                 return False
 
-            #Utils.Print("nextRsnIdx: %d, count: %d" % (nextRsnIdx, count))
-            node=self.nodes[nextRsnIdx]
+            #Utils.Print("nextEosIdx: %d, count: %d" % (nextEosIdx, count))
+            node=self.nodes[nextEosIdx]
             if Utils.Debug: Utils.Print("Wait for transaction id %s on node port %d" % (transId, node.port))
             if node.waitForTransInBlock(transId) is False:
                 Utils.Print("ERROR: Failed to validate transaction %s got rolled into a block on server port %d." % (transId, node.port))
@@ -655,7 +752,7 @@ class Cluster(object):
             transferAmountStr=Node.currencyIntToStr(transferAmount, CORE_SYMBOL)
             fromm=account
             to=accounts[i+1] if i < (count-1) else source
-            Utils.Print("Transfer %s units from account %s to %s on ARISEN server port %d." %
+            Utils.Print("Transfer %s units from account %s to %s on eos server port %d." %
                     (transferAmountStr, fromm.name, to.name, node.port))
 
             trans=node.transferFunds(fromm, to, transferAmountStr)
@@ -691,10 +788,10 @@ class Cluster(object):
                 continue
 
             if Utils.Debug: Utils.Print("Validate funds on %s server port %d." %
-                                        (Utils.RsnServerName, node.port))
+                                        (Utils.EosServerName, node.port))
 
             if node.validateFunds(initialBalances, transferAmount, source, accounts) is False:
-                Utils.Print("ERROR: Failed to validate funds on ARISEN node port: %d" % (node.port))
+                Utils.Print("ERROR: Failed to validate funds on eos node port: %d" % (node.port))
                 return False
 
         return True
@@ -704,7 +801,7 @@ class Cluster(object):
         receiving transferAmount*n SYS and forwarding x-transferAmount funds. Transfer actions are spread round-robin across the cluster to vaidate system cohesiveness."""
 
         if Utils.Debug: Utils.Print("Get initial system balances.")
-        initialBalances=self.nodes[0].getRsnBalances([self.defproduceraAccount] + self.accounts)
+        initialBalances=self.nodes[0].getEosBalances([self.defproduceraAccount] + self.accounts)
         assert(initialBalances)
         assert(isinstance(initialBalances, dict))
 
@@ -726,7 +823,7 @@ class Cluster(object):
 
         myAccounts = []
         if testSysAccounts:
-            myAccounts += [self.arisenAccount, self.defproduceraAccount, self.defproducerbAccount]
+            myAccounts += [self.eosioAccount, self.defproduceraAccount, self.defproducerbAccount]
         if accounts:
             assert(isinstance(accounts, list))
             myAccounts += accounts
@@ -769,7 +866,6 @@ class Cluster(object):
         m=re.search(r"node_([\d]+)", name)
         return int(m.group(1))
 
-
     @staticmethod
     def parseProducerKeys(configFile, nodeName):
         """Parse node config file for producer keys. Returns dictionary. (Keys: account name; Values: dictionary objects (Keys: ["name", "node", "private","public"]; Values: account name, node id returned by nodeNameToId(nodeName), private key(string)and public key(string)))."""
@@ -807,8 +903,7 @@ class Cluster(object):
     def parseProducers(nodeNum):
         """Parse node config file for producers."""
 
-        node="node_%02d" % (nodeNum)
-        configFile="etc/arisen/%s/config.ini" % (node)
+        configFile=Utils.getNodeConfigDir(nodeNum, "config.ini")
         if Utils.Debug: Utils.Print("Parsing config file %s" % configFile)
         configStr=None
         with open(configFile, 'r') as f:
@@ -826,48 +921,55 @@ class Cluster(object):
     def parseClusterKeys(totalNodes):
         """Parse cluster config file. Updates producer keys data members."""
 
-        node="node_bios"
-        configFile="etc/arisen/%s/config.ini" % (node)
+        configFile=Utils.getNodeConfigDir("bios", "config.ini")
         if Utils.Debug: Utils.Print("Parsing config file %s" % configFile)
-        producerKeys=Cluster.parseProducerKeys(configFile, node)
+        nodeName=Utils.nodeExtensionToName("bios")
+        producerKeys=Cluster.parseProducerKeys(configFile, nodeName)
         if producerKeys is None:
-            Utils.Print("ERROR: Failed to parse arisen private keys from cluster config files.")
+            Utils.Print("ERROR: Failed to parse eosio private keys from cluster config files.")
             return None
 
         for i in range(0, totalNodes):
-            node="node_%02d" % (i)
-            configFile="etc/arisen/%s/config.ini" % (node)
+            configFile=Utils.getNodeConfigDir(i, "config.ini")
             if Utils.Debug: Utils.Print("Parsing config file %s" % configFile)
 
-            keys=Cluster.parseProducerKeys(configFile, node)
+            nodeName=Utils.nodeExtensionToName(i)
+            keys=Cluster.parseProducerKeys(configFile, nodeName)
             if keys is not None:
                 producerKeys.update(keys)
             keyMsg="None" if keys is None else len(keys)
 
         return producerKeys
 
-    @staticmethod
-    def bios_bootstrap(totalNodes, biosHost, biosPort, dontKill=False):
-        """Bootstrap cluster using the bios_boot.sh script generated by arisen-launcher."""
+    def bios_bootstrap(self, biosNode, totalNodes, pfSetupPolicy, silent=False):
+        """Bootstrap cluster using the bios_boot.sh script generated by eosio-launcher."""
 
         Utils.Print("Starting cluster bootstrap.")
-        biosNode=Node(biosHost, biosPort)
-        if not biosNode.checkPulse():
-            Utils.Print("ERROR: Bios node doesn't appear to be running...")
-            return None
+        assert PFSetupPolicy.isValid(pfSetupPolicy)
 
         cmd="bash bios_boot.sh"
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
-        if 0 != subprocess.call(cmd.split(), stdout=Utils.FNull):
-            if not silent: Utils.Print("Launcher failed to shut down ARISEN cluster.")
+        env = {
+            "BIOS_CONTRACT_PATH": "unittests/contracts/old_versions/v1.6.0-rc3/eosio.bios",
+            "FEATURE_DIGESTS": ""
+        }
+        if PFSetupPolicy.hasPreactivateFeature(pfSetupPolicy):
+            env["BIOS_CONTRACT_PATH"] = "unittests/contracts/old_versions/v1.7.0-develop-preactivate_feature/eosio.bios"
+
+        if pfSetupPolicy == PFSetupPolicy.FULL:
+            allBuiltinProtocolFeatureDigests = biosNode.getAllBuiltinFeatureDigestsToPreactivate()
+            env["FEATURE_DIGESTS"] = " ".join(allBuiltinProtocolFeatureDigests)
+            Utils.Print("Set FEATURE_DIGESTS to: %s" % env["FEATURE_DIGESTS"])
+
+        if 0 != subprocess.call(cmd.split(), stdout=Utils.FNull, env=env):
+            if not silent: Utils.Print("Launcher failed to shut down eos cluster.")
             return None
 
-        p = re.compile('error', re.IGNORECASE)
-        bootlog="arisen-ignition-wd/bootlog.txt"
-        with open(bootlog) as bootFile:
+        p = re.compile(r"\berror\b", re.IGNORECASE)
+        with open(Cluster.__bootlog) as bootFile:
             for line in bootFile:
                 if p.search(line):
-                    Utils.Print("ERROR: bios_boot.sh script resulted in errors. See %s" % (bootlog))
+                    Utils.Print("ERROR: bios_boot.sh script resulted in errors. See %s" % (Cluster.__bootlog))
                     Utils.Print(line)
                     return None
 
@@ -877,77 +979,65 @@ class Cluster(object):
             Utils.Print("ERROR: Failed to parse private keys from cluster config files.")
             return None
 
-        walletMgr=WalletMgr(True)
-        walletMgr.killall()
-        walletMgr.cleanup()
+        self.walletMgr.killall()
+        self.walletMgr.cleanup()
 
-        if not walletMgr.launch():
+        if not self.walletMgr.launch():
             Utils.Print("ERROR: Failed to launch bootstrap wallet.")
             return None
-        biosNode.setWalletEndpointArgs(walletMgr.walletEndpointArgs)
 
-        try:
-            ignWallet=walletMgr.create("ignition")
-            if ignWallet is None:
-                Utils.Print("ERROR: Failed to create ignition wallet.")
-                return None
+        ignWallet=self.walletMgr.create("ignition")
+        if ignWallet is None:
+            Utils.Print("ERROR: Failed to create ignition wallet.")
+            return None
 
-            arisenName="arisen"
-            arisenKeys=producerKeys[arisenName]
-            arisenAccount=Account(arisenName)
-            arisenAccount.ownerPrivateKey=arisenKeys["private"]
-            arisenAccount.ownerPublicKey=arisenKeys["public"]
-            arisenAccount.activePrivateKey=arisenKeys["private"]
-            arisenAccount.activePublicKey=arisenKeys["public"]
-            producerKeys.pop(arisenName)
+        eosioName="eosio"
+        eosioKeys=producerKeys[eosioName]
+        eosioAccount=Account(eosioName)
+        eosioAccount.ownerPrivateKey=eosioKeys["private"]
+        eosioAccount.ownerPublicKey=eosioKeys["public"]
+        eosioAccount.activePrivateKey=eosioKeys["private"]
+        eosioAccount.activePublicKey=eosioKeys["public"]
+        producerKeys.pop(eosioName)
 
-            if not walletMgr.importKey(arisenAccount, ignWallet):
-                Utils.Print("ERROR: Failed to import %s account keys into ignition wallet." % (arisenName))
-                return None
+        if not self.walletMgr.importKey(eosioAccount, ignWallet):
+            Utils.Print("ERROR: Failed to import %s account keys into ignition wallet." % (eosioName))
+            return None
 
-            initialFunds="1000000.0000 {0}".format(CORE_SYMBOL)
-            Utils.Print("Transfer initial fund %s to individual accounts." % (initialFunds))
-            trans=None
-            contract="arisen.token"
-            action="transfer"
-            for name, keys in producerKeys.items():
-                data="{\"from\":\"arisen\",\"to\":\"%s\",\"quantity\":\"%s\",\"memo\":\"%s\"}" % (name, initialFunds, "init transfer")
-                opts="--permission arisen@active"
-                if name != "arisen":
-                    trans=biosNode.pushMessage(contract, action, data, opts)
-                    if trans is None or not trans[0]:
-                        Utils.Print("ERROR: Failed to transfer funds from arisen.token to %s." % (name))
-                        return None
+        initialFunds="1000000.0000 {0}".format(CORE_SYMBOL)
+        Utils.Print("Transfer initial fund %s to individual accounts." % (initialFunds))
+        trans=None
+        contract="eosio.token"
+        action="transfer"
+        for name, keys in producerKeys.items():
+            data="{\"from\":\"eosio\",\"to\":\"%s\",\"quantity\":\"%s\",\"memo\":\"%s\"}" % (name, initialFunds, "init eosio transfer")
+            opts="--permission eosio@active"
+            if name != "eosio":
+                trans=biosNode.pushMessage(contract, action, data, opts)
+                if trans is None or not trans[0]:
+                    Utils.Print("ERROR: Failed to transfer funds from eosio.token to %s." % (name))
+                    return None
 
-                Node.validateTransaction(trans[1])
+            Node.validateTransaction(trans[1])
 
-            Utils.Print("Wait for last transfer transaction to become finalized.")
-            transId=Node.getTransId(trans[1])
-            if not biosNode.waitForTransInBlock(transId):
-                Utils.Print("ERROR: Failed to validate transaction %s got rolled into a block on server port %d." % (transId, biosNode.port))
-                return None
+        Utils.Print("Wait for last transfer transaction to become finalized.")
+        transId=Node.getTransId(trans[1])
+        if not biosNode.waitForTransInBlock(transId):
+            Utils.Print("ERROR: Failed to validate transaction %s got rolled into a block on server port %d." % (transId, biosNode.port))
+            return None
 
-            Utils.Print("Cluster bootstrap done.")
-        finally:
-            if not dontKill:
-                walletMgr.killall()
-                walletMgr.cleanup()
+        Utils.Print("Cluster bootstrap done.")
 
         return biosNode
 
-    @staticmethod
-    def bootstrap(totalNodes, prodCount, totalProducers, biosHost, biosPort, dontKill=False, onlyBios=False):
+    def bootstrap(self, biosNode, totalNodes, prodCount, totalProducers, pfSetupPolicy, onlyBios=False, onlySetProds=False, loadSystemContract=True):
         """Create 'prodCount' init accounts and deposits 10000000000 SYS in each. If prodCount is -1 will initialize all possible producers.
         Ensure nodes are inter-connected prior to this call. One way to validate this will be to check if every node has block 1."""
 
         Utils.Print("Starting cluster bootstrap.")
+        assert PFSetupPolicy.isValid(pfSetupPolicy)
         if totalProducers is None:
             totalProducers=totalNodes
-
-        biosNode=Node(biosHost, biosPort)
-        if not biosNode.checkPulse():
-            Utils.Print("ERROR: Bios node doesn't appear to be running...")
-            return None
 
         producerKeys=Cluster.parseClusterKeys(totalNodes)
         # should have totalNodes node plus bios node
@@ -958,258 +1048,263 @@ class Cluster(object):
             Utils.Print("ERROR: Failed to parse %d producer keys from cluster config files, only found %d." % (totalProducers+1,len(producerKeys)))
             return None
 
-        walletMgr=WalletMgr(True)
-        walletMgr.killall()
-        walletMgr.cleanup()
+        self.walletMgr.killall()
+        self.walletMgr.cleanup()
 
-        if not walletMgr.launch():
+        if not self.walletMgr.launch():
             Utils.Print("ERROR: Failed to launch bootstrap wallet.")
             return None
-        biosNode.setWalletEndpointArgs(walletMgr.walletEndpointArgs)
 
-        try:
-            ignWallet=walletMgr.create("ignition")
+        ignWallet=self.walletMgr.create("ignition")
 
-            arisenName="arisen"
-            arisenKeys=producerKeys[arisenName]
-            arisenAccount=Account(arisenName)
-            arisenAccount.ownerPrivateKey=arisenKeys["private"]
-            arisenAccount.ownerPublicKey=arisenKeys["public"]
-            arisenAccount.activePrivateKey=arisenKeys["private"]
-            arisenAccount.activePublicKey=arisenKeys["public"]
+        eosioName="eosio"
+        eosioKeys=producerKeys[eosioName]
+        eosioAccount=Account(eosioName)
+        eosioAccount.ownerPrivateKey=eosioKeys["private"]
+        eosioAccount.ownerPublicKey=eosioKeys["public"]
+        eosioAccount.activePrivateKey=eosioKeys["private"]
+        eosioAccount.activePublicKey=eosioKeys["public"]
 
-            if not walletMgr.importKey(arisenAccount, ignWallet):
-                Utils.Print("ERROR: Failed to import %s account keys into ignition wallet." % (arisenName))
-                return None
+        if not self.walletMgr.importKey(eosioAccount, ignWallet):
+            Utils.Print("ERROR: Failed to import %s account keys into ignition wallet." % (eosioName))
+            return None
 
-            contract="arisen.bios"
-            contractDir="contracts/%s" % (contract)
-            wasmFile="%s.wasm" % (contract)
-            abiFile="%s.abi" % (contract)
-            Utils.Print("Publish %s contract" % (contract))
-            trans=biosNode.publishContract(arisenAccount.name, contractDir, wasmFile, abiFile, waitForTransBlock=True)
+        contract="eosio.bios"
+        contractDir="unittests/contracts/%s" % (contract)
+        if PFSetupPolicy.hasPreactivateFeature(pfSetupPolicy):
+            contractDir="unittests/contracts/old_versions/v1.7.0-develop-preactivate_feature/%s" % (contract)
+        else:
+            contractDir="unittests/contracts/old_versions/v1.6.0-rc3/%s" % (contract)
+        wasmFile="%s.wasm" % (contract)
+        abiFile="%s.abi" % (contract)
+        Utils.Print("Publish %s contract" % (contract))
+        trans=biosNode.publishContract(eosioAccount.name, contractDir, wasmFile, abiFile, waitForTransBlock=True)
+        if trans is None:
+            Utils.Print("ERROR: Failed to publish contract %s." % (contract))
+            return None
+
+        if pfSetupPolicy == PFSetupPolicy.FULL:
+            biosNode.preactivateAllBuiltinProtocolFeature()
+
+        Node.validateTransaction(trans)
+
+        Utils.Print("Creating accounts: %s " % ", ".join(producerKeys.keys()))
+        producerKeys.pop(eosioName)
+        accounts=[]
+        for name, keys in producerKeys.items():
+            initx = None
+            initx = Account(name)
+            initx.ownerPrivateKey=keys["private"]
+            initx.ownerPublicKey=keys["public"]
+            initx.activePrivateKey=keys["private"]
+            initx.activePublicKey=keys["public"]
+            trans=biosNode.createAccount(initx, eosioAccount, 0)
             if trans is None:
-                Utils.Print("ERROR: Failed to publish contract %s." % (contract))
+                Utils.Print("ERROR: Failed to create account %s" % (name))
                 return None
-
             Node.validateTransaction(trans)
+            accounts.append(initx)
 
-            Utils.Print("Creating accounts: %s " % ", ".join(producerKeys.keys()))
-            producerKeys.pop(arisenName)
-            accounts=[]
-            for name, keys in producerKeys.items():
-                initx = None
-                initx = Account(name)
-                initx.ownerPrivateKey=keys["private"]
-                initx.ownerPublicKey=keys["public"]
-                initx.activePrivateKey=keys["private"]
-                initx.activePublicKey=keys["public"]
-                trans=biosNode.createAccount(initx, arisenAccount, 0)
-                if trans is None:
-                    Utils.Print("ERROR: Failed to create account %s" % (name))
-                    return None
-                Node.validateTransaction(trans)
-                accounts.append(initx)
+        transId=Node.getTransId(trans)
+        if not biosNode.waitForTransInBlock(transId):
+            Utils.Print("ERROR: Failed to validate transaction %s got rolled into a block on server port %d." % (transId, biosNode.port))
+            return None
 
-            transId=Node.getTransId(trans)
-            if not biosNode.waitForTransInBlock(transId):
-                Utils.Print("ERROR: Failed to validate transaction %s got rolled into a block on server port %d." % (transId, biosNode.port))
-                return None
+        Utils.Print("Validating system accounts within bootstrap")
+        biosNode.validateAccounts(accounts)
 
-            Utils.Print("Validating system accounts within bootstrap")
-            biosNode.validateAccounts(accounts)
+        if not onlyBios:
+            if prodCount == -1:
+                setProdsFile="setprods.json"
+                if Utils.Debug: Utils.Print("Reading in setprods file %s." % (setProdsFile))
+                with open(setProdsFile, "r") as f:
+                    setProdsStr=f.read()
 
-            if not onlyBios:
-                if prodCount == -1:
-                    setProdsFile="setprods.json"
-                    if Utils.Debug: Utils.Print("Reading in setprods file %s." % (setProdsFile))
-                    with open(setProdsFile, "r") as f:
-                        setProdsStr=f.read()
-
-                        Utils.Print("Setting producers.")
-                        opts="--permission arisen@active"
-                        myTrans=biosNode.pushMessage("arisen", "setprods", setProdsStr, opts)
-                        if myTrans is None or not myTrans[0]:
-                            Utils.Print("ERROR: Failed to set producers.")
-                            return None
-                else:
-                    counts=dict.fromkeys(range(totalNodes), 0) #initialize node prods count to 0
-                    setProdsStr='{"schedule": ['
-                    firstTime=True
-                    prodNames=[]
-                    for name, keys in producerKeys.items():
-                        if counts[keys["node"]] >= prodCount:
-                            continue
-                        if firstTime:
-                            firstTime = False
-                        else:
-                            setProdsStr += ','
-
-                        setProdsStr += ' { "producer_name": "%s", "block_signing_key": "%s" }' % (keys["name"], keys["public"])
-                        prodNames.append(keys["name"])
-                        counts[keys["node"]] += 1
-
-                    setProdsStr += ' ] }'
-                    if Utils.Debug: Utils.Print("setprods: %s" % (setProdsStr))
-                    Utils.Print("Setting producers: %s." % (", ".join(prodNames)))
-                    opts="--permission arisen@active"
-                    # pylint: disable=redefined-variable-type
-                    trans=biosNode.pushMessage("arisen", "setprods", setProdsStr, opts)
-                    if trans is None or not trans[0]:
-                        Utils.Print("ERROR: Failed to set producer %s." % (keys["name"]))
+                    Utils.Print("Setting producers.")
+                    opts="--permission eosio@active"
+                    myTrans=biosNode.pushMessage("eosio", "setprods", setProdsStr, opts)
+                    if myTrans is None or not myTrans[0]:
+                        Utils.Print("ERROR: Failed to set producers.")
                         return None
+            else:
+                counts=dict.fromkeys(range(totalNodes), 0) #initialize node prods count to 0
+                setProdsStr='{"schedule": ['
+                firstTime=True
+                prodNames=[]
+                for name, keys in producerKeys.items():
+                    if counts[keys["node"]] >= prodCount:
+                        continue
+                    if firstTime:
+                        firstTime = False
+                    else:
+                        setProdsStr += ','
 
-                trans=trans[1]
-                transId=Node.getTransId(trans)
-                if not biosNode.waitForTransInBlock(transId):
-                    Utils.Print("ERROR: Failed to validate transaction %s got rolled into a block on server port %d." % (transId, biosNode.port))
+                    setProdsStr += ' { "producer_name": "%s", "block_signing_key": "%s" }' % (keys["name"], keys["public"])
+                    prodNames.append(keys["name"])
+                    counts[keys["node"]] += 1
+
+                setProdsStr += ' ] }'
+                if Utils.Debug: Utils.Print("setprods: %s" % (setProdsStr))
+                Utils.Print("Setting producers: %s." % (", ".join(prodNames)))
+                opts="--permission eosio@active"
+                # pylint: disable=redefined-variable-type
+                trans=biosNode.pushMessage("eosio", "setprods", setProdsStr, opts)
+                if trans is None or not trans[0]:
+                    Utils.Print("ERROR: Failed to set producer %s." % (keys["name"]))
                     return None
 
-                # wait for block production handover (essentially a block produced by anyone but arisen).
-                lam = lambda: biosNode.getInfo(exitOnError=True)["head_block_producer"] != "arisen"
-                ret=Utils.waitForBool(lam)
-                if not ret:
-                    Utils.Print("ERROR: Block production handover failed.")
-                    return None
-
-            arisenTokenAccount=copy.deepcopy(arisenAccount)
-            arisenTokenAccount.name="arisen.token"
-            trans=biosNode.createAccount(arisenTokenAccount, arisenAccount, 0)
-            if trans is None:
-                Utils.Print("ERROR: Failed to create account %s" % (arisenTokenAccount.name))
-                return None
-
-            arisenRamAccount=copy.deepcopy(arisenAccount)
-            arisenRamAccount.name="arisen.ram"
-            trans=biosNode.createAccount(arisenRamAccount, arisenAccount, 0)
-            if trans is None:
-                Utils.Print("ERROR: Failed to create account %s" % (arisenRamAccount.name))
-                return None
-
-            arisenRamfeeAccount=copy.deepcopy(arisenAccount)
-            arisenRamfeeAccount.name="arisen.ramfee"
-            trans=biosNode.createAccount(arisenRamfeeAccount, arisenAccount, 0)
-            if trans is None:
-                Utils.Print("ERROR: Failed to create account %s" % (arisenRamfeeAccount.name))
-                return None
-
-            arisenStakeAccount=copy.deepcopy(arisenAccount)
-            arisenStakeAccount.name="arisen.stake"
-            trans=biosNode.createAccount(arisenStakeAccount, arisenAccount, 0)
-            if trans is None:
-                Utils.Print("ERROR: Failed to create account %s" % (arisenStakeAccount.name))
-                return None
-
-            Node.validateTransaction(trans)
+            trans=trans[1]
             transId=Node.getTransId(trans)
             if not biosNode.waitForTransInBlock(transId):
                 Utils.Print("ERROR: Failed to validate transaction %s got rolled into a block on server port %d." % (transId, biosNode.port))
                 return None
 
-            contract="arisen.token"
-            contractDir="contracts/%s" % (contract)
+            # wait for block production handover (essentially a block produced by anyone but eosio).
+            lam = lambda: biosNode.getInfo(exitOnError=True)["head_block_producer"] != "eosio"
+            ret=Utils.waitForBool(lam)
+            if not ret:
+                Utils.Print("ERROR: Block production handover failed.")
+                return None
+
+        if onlySetProds: return biosNode
+
+        eosioTokenAccount=copy.deepcopy(eosioAccount)
+        eosioTokenAccount.name="eosio.token"
+        trans=biosNode.createAccount(eosioTokenAccount, eosioAccount, 0)
+        if trans is None:
+            Utils.Print("ERROR: Failed to create account %s" % (eosioTokenAccount.name))
+            return None
+
+        eosioRamAccount=copy.deepcopy(eosioAccount)
+        eosioRamAccount.name="eosio.ram"
+        trans=biosNode.createAccount(eosioRamAccount, eosioAccount, 0)
+        if trans is None:
+            Utils.Print("ERROR: Failed to create account %s" % (eosioRamAccount.name))
+            return None
+
+        eosioRamfeeAccount=copy.deepcopy(eosioAccount)
+        eosioRamfeeAccount.name="eosio.ramfee"
+        trans=biosNode.createAccount(eosioRamfeeAccount, eosioAccount, 0)
+        if trans is None:
+            Utils.Print("ERROR: Failed to create account %s" % (eosioRamfeeAccount.name))
+            return None
+
+        eosioStakeAccount=copy.deepcopy(eosioAccount)
+        eosioStakeAccount.name="eosio.stake"
+        trans=biosNode.createAccount(eosioStakeAccount, eosioAccount, 0)
+        if trans is None:
+            Utils.Print("ERROR: Failed to create account %s" % (eosioStakeAccount.name))
+            return None
+
+        Node.validateTransaction(trans)
+        transId=Node.getTransId(trans)
+        if not biosNode.waitForTransInBlock(transId):
+            Utils.Print("ERROR: Failed to validate transaction %s got rolled into a block on server port %d." % (transId, biosNode.port))
+            return None
+
+        contract="eosio.token"
+        contractDir="unittests/contracts/%s" % (contract)
+        wasmFile="%s.wasm" % (contract)
+        abiFile="%s.abi" % (contract)
+        Utils.Print("Publish %s contract" % (contract))
+        trans=biosNode.publishContract(eosioTokenAccount.name, contractDir, wasmFile, abiFile, waitForTransBlock=True)
+        if trans is None:
+            Utils.Print("ERROR: Failed to publish contract %s." % (contract))
+            return None
+
+        # Create currency0000, followed by issue currency0000
+        contract=eosioTokenAccount.name
+        Utils.Print("push create action to %s contract" % (contract))
+        action="create"
+        data="{\"issuer\":\"%s\",\"maximum_supply\":\"1000000000.0000 %s\"}" % (eosioAccount.name, CORE_SYMBOL)
+        opts="--permission %s@active" % (contract)
+        trans=biosNode.pushMessage(contract, action, data, opts)
+        if trans is None or not trans[0]:
+            Utils.Print("ERROR: Failed to push create action to eosio contract.")
+            return None
+
+        Node.validateTransaction(trans[1])
+        transId=Node.getTransId(trans[1])
+        if not biosNode.waitForTransInBlock(transId):
+            Utils.Print("ERROR: Failed to validate transaction %s got rolled into a block on server port %d." % (transId, biosNode.port))
+            return None
+
+        contract=eosioTokenAccount.name
+        Utils.Print("push issue action to %s contract" % (contract))
+        action="issue"
+        data="{\"to\":\"%s\",\"quantity\":\"1000000000.0000 %s\",\"memo\":\"initial issue\"}" % (eosioAccount.name, CORE_SYMBOL)
+        opts="--permission %s@active" % (eosioAccount.name)
+        trans=biosNode.pushMessage(contract, action, data, opts)
+        if trans is None or not trans[0]:
+            Utils.Print("ERROR: Failed to push issue action to eosio contract.")
+            return None
+
+        Node.validateTransaction(trans[1])
+        Utils.Print("Wait for issue action transaction to become finalized.")
+        transId=Node.getTransId(trans[1])
+        # biosNode.waitForTransInBlock(transId)
+        # guesstimating block finalization timeout. Two production rounds of 12 blocks per node, plus 60 seconds buffer
+        timeout = .5 * 12 * 2 * len(producerKeys) + 60
+        if not biosNode.waitForTransFinalization(transId, timeout=timeout):
+            Utils.Print("ERROR: Failed to validate transaction %s got rolled into a finalized block on server port %d." % (transId, biosNode.port))
+            return None
+
+        expectedAmount="1000000000.0000 {0}".format(CORE_SYMBOL)
+        Utils.Print("Verify eosio issue, Expected: %s" % (expectedAmount))
+        actualAmount=biosNode.getAccountEosBalanceStr(eosioAccount.name)
+        if expectedAmount != actualAmount:
+            Utils.Print("ERROR: Issue verification failed. Excepted %s, actual: %s" %
+                        (expectedAmount, actualAmount))
+            return None
+
+        if loadSystemContract:
+            contract="eosio.system"
+            contractDir="unittests/contracts/%s" % (contract)
             wasmFile="%s.wasm" % (contract)
             abiFile="%s.abi" % (contract)
             Utils.Print("Publish %s contract" % (contract))
-            trans=biosNode.publishContract(arisenTokenAccount.name, contractDir, wasmFile, abiFile, waitForTransBlock=True)
-            if trans is None:
-                Utils.Print("ERROR: Failed to publish contract %s." % (contract))
-                return None
-
-            # Create currency0000, followed by issue currency0000
-            contract=arisenTokenAccount.name
-            Utils.Print("push create action to %s contract" % (contract))
-            action="create"
-            data="{\"issuer\":\"%s\",\"maximum_supply\":\"1000000000.0000 %s\",\"can_freeze\":\"0\",\"can_recall\":\"0\",\"can_whitelist\":\"0\"}" % (arisenTokenAccount.name, CORE_SYMBOL)
-            opts="--permission %s@active" % (contract)
-            trans=biosNode.pushMessage(contract, action, data, opts)
-            if trans is None or not trans[0]:
-                Utils.Print("ERROR: Failed to push create action to arisen contract.")
-                return None
-
-            Node.validateTransaction(trans[1])
-            transId=Node.getTransId(trans[1])
-            if not biosNode.waitForTransInBlock(transId):
-                Utils.Print("ERROR: Failed to validate transaction %s got rolled into a block on server port %d." % (transId, biosNode.port))
-                return None
-
-            contract=arisenTokenAccount.name
-            Utils.Print("push issue action to %s contract" % (contract))
-            action="issue"
-            data="{\"to\":\"%s\",\"quantity\":\"1000000000.0000 %s\",\"memo\":\"initial issue\"}" % (arisenAccount.name, CORE_SYMBOL)
-            opts="--permission %s@active" % (contract)
-            trans=biosNode.pushMessage(contract, action, data, opts)
-            if trans is None or not trans[0]:
-                Utils.Print("ERROR: Failed to push issue action to arisen contract.")
-                return None
-
-            Node.validateTransaction(trans[1])
-            Utils.Print("Wait for issue action transaction to become finalized.")
-            transId=Node.getTransId(trans[1])
-            # biosNode.waitForTransInBlock(transId)
-            # guesstimating block finalization timeout. Two production rounds of 12 blocks per node, plus 60 seconds buffer
-            timeout = .5 * 12 * 2 * len(producerKeys) + 60
-            if not biosNode.waitForTransFinalization(transId, timeout=timeout):
-                Utils.Print("ERROR: Failed to validate transaction %s got rolled into a finalized block on server port %d." % (transId, biosNode.port))
-                return None
-
-            expectedAmount="1000000000.0000 {0}".format(CORE_SYMBOL)
-            Utils.Print("Verify arisen issue, Expected: %s" % (expectedAmount))
-            actualAmount=biosNode.getAccountRsnBalanceStr(arisenAccount.name)
-            if expectedAmount != actualAmount:
-                Utils.Print("ERROR: Issue verification failed. Excepted %s, actual: %s" %
-                            (expectedAmount, actualAmount))
-                return None
-
-            contract="arisen.system"
-            contractDir="contracts/%s" % (contract)
-            wasmFile="%s.wasm" % (contract)
-            abiFile="%s.abi" % (contract)
-            Utils.Print("Publish %s contract" % (contract))
-            trans=biosNode.publishContract(arisenAccount.name, contractDir, wasmFile, abiFile, waitForTransBlock=True)
+            trans=biosNode.publishContract(eosioAccount.name, contractDir, wasmFile, abiFile, waitForTransBlock=True)
             if trans is None:
                 Utils.Print("ERROR: Failed to publish contract %s." % (contract))
                 return None
 
             Node.validateTransaction(trans)
 
-            initialFunds="1000000.0000 {0}".format(CORE_SYMBOL)
-            Utils.Print("Transfer initial fund %s to individual accounts." % (initialFunds))
-            trans=None
-            contract=arisenTokenAccount.name
-            action="transfer"
-            for name, keys in producerKeys.items():
-                data="{\"from\":\"%s\",\"to\":\"%s\",\"quantity\":\"%s\",\"memo\":\"%s\"}" % (arisenAccount.name, name, initialFunds, "init transfer")
-                opts="--permission %s@active" % (arisenAccount.name)
-                trans=biosNode.pushMessage(contract, action, data, opts)
-                if trans is None or not trans[0]:
-                    Utils.Print("ERROR: Failed to transfer funds from %s to %s." % (arisenTokenAccount.name, name))
-                    return None
-
-                Node.validateTransaction(trans[1])
-
-            Utils.Print("Wait for last transfer transaction to become finalized.")
-            transId=Node.getTransId(trans[1])
-            if not biosNode.waitForTransInBlock(transId):
-                Utils.Print("ERROR: Failed to validate transaction %s got rolled into a block on server port %d." % (transId, biosNode.port))
+        initialFunds="1000000.0000 {0}".format(CORE_SYMBOL)
+        Utils.Print("Transfer initial fund %s to individual accounts." % (initialFunds))
+        trans=None
+        contract=eosioTokenAccount.name
+        action="transfer"
+        for name, keys in producerKeys.items():
+            data="{\"from\":\"%s\",\"to\":\"%s\",\"quantity\":\"%s\",\"memo\":\"%s\"}" % (eosioAccount.name, name, initialFunds, "init transfer")
+            opts="--permission %s@active" % (eosioAccount.name)
+            trans=biosNode.pushMessage(contract, action, data, opts)
+            if trans is None or not trans[0]:
+                Utils.Print("ERROR: Failed to transfer funds from %s to %s." % (eosioTokenAccount.name, name))
                 return None
 
-            Utils.Print("Cluster bootstrap done.")
-        finally:
-            if not dontKill:
-                walletMgr.killall()
-                walletMgr.cleanup()
+            Node.validateTransaction(trans[1])
+
+        Utils.Print("Wait for last transfer transaction to become finalized.")
+        transId=Node.getTransId(trans[1])
+        if not biosNode.waitForTransInBlock(transId):
+            Utils.Print("ERROR: Failed to validate transaction %s got rolled into a block on server port %d." % (transId, biosNode.port))
+            return None
+
+        # Only call init if the system contract is loaded
+        if loadSystemContract:
+            action="init"
+            data="{\"version\":0,\"core\":\"4,%s\"}" % (CORE_SYMBOL)
+            opts="--permission %s@active" % (eosioAccount.name)
+            trans=biosNode.pushMessage(eosioAccount.name, action, data, opts)
+
+        Utils.Print("Cluster bootstrap done.")
 
         return biosNode
 
     @staticmethod
-    def pgrepRsnServers(timeout=None):
-        pgrepOpts="-fl"
-        # pylint: disable=deprecated-method
-        if platform.linux_distribution()[0] in ["Ubuntu", "LinuxMint", "Fedora","CentOS Linux","arch"]:
-            pgrepOpts="-a"
-
-        cmd="pgrep %s %s" % (pgrepOpts, Utils.RsnServerName)
+    def pgrepEosServers(timeout=None):
+        cmd=Utils.pgrepCmd(Utils.EosServerName)
 
         def myFunc():
             psOut=None
@@ -1226,18 +1321,15 @@ class Cluster(object):
         return Utils.waitForObj(myFunc, timeout)
 
     @staticmethod
-    def pgrepRsnServerPattern(nodeInstance):
-        if isinstance(nodeInstance, str):
-            return r"[\n]?(\d+) (.* --data-dir var/lib/node_%s .*)\n" % nodeInstance
-        else:
-            nodeInstanceStr="%02d" % nodeInstance
-            return Cluster.pgrepRsnServerPattern(nodeInstanceStr)
+    def pgrepEosServerPattern(nodeInstance):
+        dataLocation=Utils.getNodeDataDir(nodeInstance)
+        return r"[\n]?(\d+) (.* --data-dir %s .*)\n" % (dataLocation)
 
-    # Populates list of RsnInstanceInfo objects, matched to actual running instances
+    # Populates list of EosInstanceInfo objects, matched to actual running instances
     def discoverLocalNodes(self, totalNodes, timeout=None):
         nodes=[]
 
-        psOut=Cluster.pgrepRsnServers(timeout)
+        psOut=Cluster.pgrepEosServers(timeout)
         if psOut is None:
             Utils.Print("ERROR: No nodes discovered.")
             return nodes
@@ -1248,35 +1340,47 @@ class Cluster(object):
             psOutDisplay=psOut[:6660]+"..."
         if Utils.Debug: Utils.Print("pgrep output: \"%s\"" % psOutDisplay)
         for i in range(0, totalNodes):
-            pattern=Cluster.pgrepRsnServerPattern(i)
-            m=re.search(pattern, psOut, re.MULTILINE)
-            if m is None:
-                Utils.Print("ERROR: Failed to find %s pid. Pattern %s" % (Utils.RsnServerName, pattern))
+            instance=self.discoverLocalNode(i, psOut, timeout)
+            if instance is None:
                 break
-            instance=Node(self.host, self.port + i, pid=int(m.group(1)), cmd=m.group(2), enableMongo=self.enableMongo, mongoHost=self.mongoHost, mongoPort=self.mongoPort, mongoDb=self.mongoDb)
-            instance.setWalletEndpointArgs(self.walletEndpointArgs)
-            if Utils.Debug: Utils.Print("Node>", instance)
             nodes.append(instance)
 
         if Utils.Debug: Utils.Print("Found %d nodes" % (len(nodes)))
         return nodes
 
-    def discoverBiosNodePid(self, timeout=None):
-        psOut=Cluster.pgrepRsnServers(timeout=timeout)
-        pattern=Cluster.pgrepRsnServerPattern("bios")
+    # Populate a node matched to actual running instance
+    def discoverLocalNode(self, nodeNum, psOut=None, timeout=None):
+        if psOut is None:
+            psOut=Cluster.pgrepEosServers(timeout)
+        if psOut is None:
+            Utils.Print("ERROR: No nodes discovered.")
+            return None
+        pattern=Cluster.pgrepEosServerPattern(nodeNum)
+        m=re.search(pattern, psOut, re.MULTILINE)
+        if m is None:
+            Utils.Print("ERROR: Failed to find %s pid. Pattern %s" % (Utils.EosServerName, pattern))
+            return None
+        instance=Node(self.host, self.port + nodeNum, pid=int(m.group(1)), cmd=m.group(2), walletMgr=self.walletMgr, enableMongo=self.enableMongo, mongoHost=self.mongoHost, mongoPort=self.mongoPort, mongoDb=self.mongoDb)
+        if Utils.Debug: Utils.Print("Node>", instance)
+        return instance
+
+    def discoverBiosNode(self, timeout=None):
+        psOut=Cluster.pgrepEosServers(timeout=timeout)
+        pattern=Cluster.pgrepEosServerPattern("bios")
         Utils.Print("pattern={\n%s\n}, psOut=\n%s\n" % (pattern,psOut))
         m=re.search(pattern, psOut, re.MULTILINE)
         if m is None:
-            Utils.Print("ERROR: Failed to find %s pid. Pattern %s" % (Utils.RsnServerName, pattern))
+            Utils.Print("ERROR: Failed to find %s pid. Pattern %s" % (Utils.EosServerName, pattern))
+            return None
         else:
-            self.biosNode.pid=int(m.group(1))
+            return Node(Cluster.__BiosHost, Cluster.__BiosPort, pid=int(m.group(1)), cmd=m.group(2), walletMgr=self.walletMgr)
 
-    # Kills a percentange of Rsn instances starting from the tail and update rsnInstanceInfos state
-    def killSomeRsnInstances(self, killCount, killSignalStr=Utils.SigKillTag):
+    # Kills a percentange of Eos instances starting from the tail and update eosInstanceInfos state
+    def killSomeEosInstances(self, killCount, killSignalStr=Utils.SigKillTag):
         killSignal=signal.SIGKILL
         if killSignalStr == Utils.SigTermTag:
             killSignal=signal.SIGTERM
-        Utils.Print("Kill %d %s instances with signal %s." % (killCount, Utils.RsnServerName, killSignal))
+        Utils.Print("Kill %d %s instances with signal %s." % (killCount, Utils.EosServerName, killSignal))
 
         killedCount=0
         for node in reversed(self.nodes):
@@ -1290,21 +1394,21 @@ class Cluster(object):
         time.sleep(1) # Give processes time to stand down
         return True
 
-    def relaunchRsnInstances(self):
+    def relaunchEosInstances(self, cachePopen=False):
 
         chainArg=self.__chainSyncStrategy.arg
 
         newChain= False if self.__chainSyncStrategy.name in [Utils.SyncHardReplayTag, Utils.SyncNoneTag] else True
         for i in range(0, len(self.nodes)):
             node=self.nodes[i]
-            if node.killed and not node.relaunch(i, chainArg, newChain=newChain):
+            if node.killed and not node.relaunch(i, chainArg, newChain=newChain, cachePopen=cachePopen):
                 return False
 
         return True
 
     @staticmethod
     def dumpErrorDetailImpl(fileName):
-        Utils.Print("=================================================================")
+        Utils.Print(Utils.FileDivider)
         Utils.Print("Contents of %s:" % (fileName))
         if os.path.exists(fileName):
             with open(fileName, "r") as f:
@@ -1312,31 +1416,53 @@ class Cluster(object):
         else:
             Utils.Print("File %s not found." % (fileName))
 
+    @staticmethod
+    def __findFiles(path):
+        files=[]
+        it=os.scandir(path)
+        for entry in it:
+            if entry.is_file(follow_symlinks=False):
+                match=re.match("stderr\..+\.txt", entry.name)
+                if match:
+                    files.append(os.path.join(path, entry.name))
+        files.sort()
+        return files
+
     def dumpErrorDetails(self):
-        fileName="etc/arisen/node_bios/config.ini"
+        fileName=Utils.getNodeConfigDir("bios", "config.ini")
         Cluster.dumpErrorDetailImpl(fileName)
-        fileName="var/lib/node_bios/stderr.txt"
-        Cluster.dumpErrorDetailImpl(fileName)
+        path=Utils.getNodeDataDir("bios")
+        fileNames=Cluster.__findFiles(path)
+        for fileName in fileNames:
+            Cluster.dumpErrorDetailImpl(fileName)
 
         for i in range(0, len(self.nodes)):
-            fileName="etc/arisen/node_%02d/config.ini" % (i)
+            configLocation=Utils.getNodeConfigDir(i)
+            fileName=os.path.join(configLocation, "config.ini")
             Cluster.dumpErrorDetailImpl(fileName)
-            fileName="var/lib/node_%02d/stderr.txt" % (i)
+            fileName=os.path.join(configLocation, "genesis.json")
             Cluster.dumpErrorDetailImpl(fileName)
+            path=Utils.getNodeDataDir(i)
+            fileNames=Cluster.__findFiles(path)
+            for fileName in fileNames:
+                Cluster.dumpErrorDetailImpl(fileName)
+
+        if self.useBiosBootFile:
+            Cluster.dumpErrorDetailImpl(Cluster.__bootlog)
 
     def killall(self, silent=True, allInstances=False):
-        """Kill cluster aOS instances. allInstances will kill all aOS instances running on the system."""
-        cmd="%s -k 9" % (Utils.RsnLauncherPath)
+        """Kill cluster nodeos instances. allInstances will kill all nodeos instances running on the system."""
+        cmd="%s -k 9" % (Utils.EosLauncherPath)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         if 0 != subprocess.call(cmd.split(), stdout=Utils.FNull):
-            if not silent: Utils.Print("Launcher failed to shut down ARISEN cluster.")
+            if not silent: Utils.Print("Launcher failed to shut down eos cluster.")
 
         if allInstances:
-            # ocassionally the launcher cannot kill the ARISEN server
-            cmd="pkill -9 %s" % (Utils.RsnServerName)
+            # ocassionally the launcher cannot kill the eos server
+            cmd="pkill -9 %s" % (Utils.EosServerName)
             if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
             if 0 != subprocess.call(cmd.split(), stdout=Utils.FNull):
-                if not silent: Utils.Print("Failed to shut down ARISEN cluster.")
+                if not silent: Utils.Print("Failed to shut down eos cluster.")
 
         # another explicit nodes shutdown
         for node in self.nodes:
@@ -1347,7 +1473,7 @@ class Cluster(object):
                 pass
 
     def bounce(self, nodes, silent=True):
-        """Bounces aOS instances as indicated by parameter nodes.
+        """Bounces nodeos instances as indicated by parameter nodes.
         nodes should take the form of a comma-separated list as accepted by the launcher --bounce command (e.g. '00' or '00,01')"""
         cmdArr = Cluster.__LauncherCmdArr.copy()
         cmdArr.append("--bounce")
@@ -1360,7 +1486,7 @@ class Cluster(object):
         return True
 
     def down(self, nodes, silent=True):
-        """Brings down aOS instances as indicated by parameter nodes.
+        """Brings down nodeos instances as indicated by parameter nodes.
         nodes should take the form of a comma-separated list as accepted by the launcher --bounce command (e.g. '00' or '00,01')"""
         cmdArr = Cluster.__LauncherCmdArr.copy()
         cmdArr.append("--down")
@@ -1390,10 +1516,13 @@ class Cluster(object):
         return node.waitForNextBlock(timeout)
 
     def cleanup(self):
-        for f in glob.glob("var/lib/node_*"):
+        for f in glob.glob(Utils.DataDir + "node_*"):
             shutil.rmtree(f)
-        for f in glob.glob("etc/arisen/node_*"):
+        for f in glob.glob(Utils.ConfigDir + "node_*"):
             shutil.rmtree(f)
+
+        for f in self.filesToCleanup:
+            os.remove(f)
 
         if self.enableMongo:
             cmd="%s %s" % (Utils.MongoPath, self.mongoEndpointArgs)
@@ -1428,6 +1557,23 @@ class Cluster(object):
 
         return True
 
+    def discoverUnstartedLocalNodes(self, unstartedNodes, totalNodes):
+        unstarted=[]
+        firstUnstartedNode=totalNodes-unstartedNodes
+        for nodeId in range(firstUnstartedNode, totalNodes):
+            unstarted.append(self.discoverUnstartedLocalNode(nodeId))
+        return unstarted
+
+    def discoverUnstartedLocalNode(self, nodeId):
+        startFile=Node.unstartedFile(nodeId)
+        with open(startFile, 'r') as file:
+            cmd=file.read()
+            Utils.Print("unstarted local node cmd: %s" % (cmd))
+        p=re.compile(r'^\s*(\w+)\s*=\s*([^\s](?:.*[^\s])?)\s*$')
+        instance=Node(self.host, port=self.port+nodeId, pid=None, cmd=cmd, walletMgr=self.walletMgr, enableMongo=self.enableMongo, mongoHost=self.mongoHost, mongoPort=self.mongoPort, mongoDb=self.mongoDb)
+        if Utils.Debug: Utils.Print("Unstarted Node>", instance)
+        return instance
+
     def getInfos(self, silentErrors=False, exitOnError=False):
         infos=[]
         for node in self.nodes:
@@ -1444,3 +1590,133 @@ class Cluster(object):
                     node.reportStatus()
                 except:
                     Utils.Print("No reportStatus")
+
+    def printBlockLogIfNeeded(self):
+        printBlockLog=False
+        if hasattr(self, "nodes") and self.nodes is not None:
+            for node in self.nodes:
+                if node.missingTransaction:
+                    printBlockLog=True
+                    break
+
+        if hasattr(self, "biosNode") and self.biosNode is not None and self.biosNode.missingTransaction:
+            printBlockLog=True
+
+        if not printBlockLog:
+            return
+
+        self.printBlockLog()
+
+    def getBlockLog(self, nodeExtension, blockLogAction=BlockLogAction.return_blocks, outputFile=None, first=None, last=None, throwException=False, silentErrors=False, exitOnError=False):
+        blockLogDir=Utils.getNodeDataDir(nodeExtension, "blocks")
+        return Utils.getBlockLog(blockLogDir, blockLogAction=blockLogAction, outputFile=outputFile, first=first, last=last,  throwException=throwException, silentErrors=silentErrors, exitOnError=exitOnError)
+
+    def printBlockLog(self):
+        blockLogBios=self.getBlockLog("bios")
+        Utils.Print(Utils.FileDivider)
+        Utils.Print("Block log from %s:\n%s" % ("bios", json.dumps(blockLogBios, indent=1)))
+
+        if not hasattr(self, "nodes"):
+            return
+
+        numNodes=len(self.nodes)
+        for i in range(numNodes):
+            node=self.nodes[i]
+            blockLog=self.getBlockLog(i)
+            Utils.Print(Utils.FileDivider)
+            Utils.Print("Block log from node %s:\n%s" % (i, json.dumps(blockLog, indent=1)))
+
+
+    def compareBlockLogs(self):
+        blockLogs=[]
+        blockNameExtensions=[]
+        lowestMaxes=[]
+
+        def back(arr):
+            return arr[len(arr)-1]
+
+        def sortLowest(maxes,max):
+            for i in range(len(maxes)):
+                if max < maxes[i]:
+                    maxes.insert(i, max)
+                    return
+
+            maxes.append(max)
+
+        i="bios"
+        blockLog=self.getBlockLog(i)
+        if blockLog is None:
+            Utils.errorExit("Node %s does not have a block log, all nodes must have a block log" % (i))
+        blockLogs.append(blockLog)
+        blockNameExtensions.append(i)
+        sortLowest(lowestMaxes,back(blockLog)["block_num"])
+
+        if not hasattr(self, "nodes"):
+            Utils.errorExit("There are not multiple nodes to compare, this method assumes that two nodes or more are expected")
+
+        numNodes=len(self.nodes)
+        for i in range(numNodes):
+            node=self.nodes[i]
+            blockLog=self.getBlockLog(i)
+            if blockLog is None:
+                Utils.errorExit("Node %s does not have a block log, all nodes must have a block log" % (i))
+            blockLogs.append(blockLog)
+            blockNameExtensions.append(i)
+            sortLowest(lowestMaxes,back(blockLog)["block_num"])
+
+        numNodes=len(blockLogs)
+
+        if numNodes < 2:
+            Utils.errorExit("There are not multiple nodes to compare, this method assumes that two nodes or more are expected")
+
+        if lowestMaxes[0] < 2:
+            Utils.errorExit("One or more nodes only has %d blocks, if that is a valid scenario, then compareBlockLogs shouldn't be called" % (lowestMaxes[0]))
+
+        # create a list of block logs and name extensions for the given common block number span
+        def identifyCommon(blockLogs, blockNameExtensions, first, last):
+            commonBlockLogs=[]
+            commonBlockNameExtensions=[]
+            for i in range(numNodes):
+                if (len(blockLogs[i]) >= last):
+                    commonBlockLogs.append(blockLogs[i][first:last])
+                    commonBlockNameExtensions.append(blockNameExtensions[i])
+            return (commonBlockLogs,commonBlockNameExtensions)
+
+        # compare the contents of the blockLogs for the given common block number span
+        def compareCommon(blockLogs, blockNameExtensions, first, last):
+            if Utils.Debug: Utils.Print("comparing block num %s through %s" % (first, last))
+            commonBlockLogs=None
+            commonBlockNameExtensions=None
+            (commonBlockLogs,commonBlockNameExtensions) = identifyCommon(blockLogs, blockNameExtensions, first, last)
+            numBlockLogs=len(commonBlockLogs)
+            if numBlockLogs < 2:
+                return False
+
+            ret=None
+            for i in range(1,numBlockLogs):
+                context="<comparing block logs for node[%s] and node[%s]>" % (commonBlockNameExtensions[0], commonBlockNameExtensions[i])
+                if Utils.Debug: Utils.Print("context=%s" % (context))
+                ret=Utils.compare(commonBlockLogs[0], commonBlockLogs[i], context)
+                if ret is not None:
+                    blockLogDir1=Utils.DataDir + Utils.nodeExtensionToName(commonBlockNameExtensions[0]) + "/blocks/"
+                    blockLogDir2=Utils.DataDir + Utils.nodeExtensionToName(commonBlockNameExtensions[i]) + "/blocks/"
+                    Utils.Print(Utils.FileDivider)
+                    Utils.Print("Block log from %s:\n%s" % (blockLogDir1, json.dumps(commonBlockLogs[0], indent=1)))
+                    Utils.Print(Utils.FileDivider)
+                    Utils.Print("Block log from %s:\n%s" % (blockLogDir2, json.dumps(commonBlockLogs[i], indent=1)))
+                    Utils.Print(Utils.FileDivider)
+                    Utils.errorExit("Block logs do not match, difference description -> %s" % (ret))
+
+            return True
+
+        def stripValues(lowestMaxes,greaterThan):
+            newLowest=[]
+            for low in lowestMaxes:
+                if low > greaterThan:
+                    newLowest.append(low)
+            return newLowest
+
+        first=0
+        while len(lowestMaxes)>0 and compareCommon(blockLogs, blockNameExtensions, first, lowestMaxes[0]):
+            first=lowestMaxes[0]+1
+            lowestMaxes=stripValues(lowestMaxes,lowestMaxes[0])

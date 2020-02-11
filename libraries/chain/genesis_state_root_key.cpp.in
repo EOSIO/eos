@@ -1,12 +1,7 @@
-/**
- *  @file
- *  @copyright defined in arisen/LICENSE.txt
- */
+#include <eosio/chain/genesis_state.hpp>
 
-#include <arisen/chain/genesis_state.hpp>
+namespace eosio { namespace chain {
 
-namespace arisen { namespace chain {
+const string genesis_state::eosio_root_key = "${EOSIO_ROOT_KEY}";
 
-const string genesis_state::arisen_root_key = "${ARISEN_ROOT_KEY}";
-
-} } // namespace arisen::chain
+} } // namespace eosio::chain

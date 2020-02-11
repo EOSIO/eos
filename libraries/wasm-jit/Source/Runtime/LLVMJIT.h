@@ -5,31 +5,13 @@
 #include "RuntimePrivate.h"
 #include "Intrinsics.h"
 
-#ifdef _WIN32
-	#pragma warning(push)
-	#pragma warning (disable:4267)
-	#pragma warning (disable:4800)
-	#pragma warning (disable:4291)
-	#pragma warning (disable:4244)
-	#pragma warning (disable:4351)
-	#pragma warning (disable:4065)
-	#pragma warning (disable:4624)
-	#pragma warning (disable:4245)	// conversion from 'int' to 'unsigned int', signed/unsigned mismatch
-	#pragma warning(disable:4146) // unary minus operator applied to unsigned type, result is still unsigned
-	#pragma warning(disable:4458) // declaration of 'x' hides class member
-	#pragma warning(disable:4510) // default constructor could not be generated
-	#pragma warning(disable:4610) // struct can never be instantiated - user defined constructor required
-	#pragma warning(disable:4324) // structure was padded due to alignment specifier
-	#pragma warning(disable:4702) // unreachable code
-#endif
-
 #include "llvm/Analysis/Passes.h"
 #include "llvm/ExecutionEngine/ExecutionEngine.h"
 #include "llvm/ExecutionEngine/RTDyldMemoryManager.h"
 #include "llvm/ExecutionEngine/Orc/CompileUtils.h"
 #include "llvm/ExecutionEngine/Orc/IRCompileLayer.h"
 #include "llvm/ExecutionEngine/Orc/LambdaResolver.h"
-#include "llvm/ExecutionEngine/Orc/ObjectLinkingLayer.h"
+#include "llvm/ExecutionEngine/Orc/RTDyldObjectLinkingLayer.h"
 #include "llvm/IR/DataLayout.h"
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/IRBuilder.h"
@@ -49,18 +31,13 @@
 #include "llvm/Support/DynamicLibrary.h"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/IR/DIBuilder.h"
-#include "llvm/DebugInfo/DIContext.h"
-#include "llvm/DebugInfo/DWARF/DWARFContext.h"
+#include "llvm/Transforms/InstCombine/InstCombine.h"
+#include "llvm/Transforms/Utils.h"
+#include "llvm/ExecutionEngine/Orc/NullResolver.h"
+#include "llvm/ExecutionEngine/Orc/Core.h"
 #include <cctype>
 #include <string>
 #include <vector>
-
-#ifdef _WIN32
-	#undef and
-	#undef or
-	#undef xor
-	#pragma warning(pop)
-#endif
 
 namespace LLVMJIT
 {

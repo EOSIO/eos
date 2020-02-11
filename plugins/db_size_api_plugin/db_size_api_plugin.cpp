@@ -1,16 +1,12 @@
-/**
- *  @file
- *  @copyright defined in arisen/LICENSE.txt
- */
 #include <fc/variant.hpp>
 #include <fc/io/json.hpp>
-#include <arisen/db_size_api_plugin/db_size_api_plugin.hpp>
+#include <eosio/db_size_api_plugin/db_size_api_plugin.hpp>
 
-namespace arisen {
+namespace eosio {
 
 static appbase::abstract_plugin& _db_size_api_plugin = app().register_plugin<db_size_api_plugin>();
 
-using namespace arisen;
+using namespace eosio;
 
 #define CALL(api_name, api_handle, call_name, INVOKE, http_response_code) \
 {std::string("/v1/" #api_name "/" #call_name), \
@@ -18,7 +14,7 @@ using namespace arisen;
           try { \
              if (body.empty()) body = "{}"; \
              INVOKE \
-             cb(http_response_code, fc::json::to_string(result)); \
+             cb(http_response_code, fc::variant(result)); \
           } catch (...) { \
              http_plugin::handle_exception(#api_name, #call_name, body, cb); \
           } \
@@ -36,7 +32,7 @@ void db_size_api_plugin::plugin_startup() {
 }
 
 db_size_stats db_size_api_plugin::get() {
-   chainbase::database& db = app().get_plugin<chain_plugin>().chain().db();
+   const chainbase::database& db = app().get_plugin<chain_plugin>().chain().db();
    db_size_stats ret;
 
    ret.free_bytes = db.get_segment_manager()->get_free_memory();

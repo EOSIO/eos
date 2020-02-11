@@ -1,16 +1,16 @@
-#include <arisen/history_plugin/history_plugin.hpp>
-#include <arisen/history_plugin/account_control_history_object.hpp>
-#include <arisen/history_plugin/public_key_history_object.hpp>
-#include <arisen/chain/controller.hpp>
-#include <arisen/chain/trace.hpp>
-#include <arisen/chain_plugin/chain_plugin.hpp>
+#include <eosio/history_plugin/history_plugin.hpp>
+#include <eosio/history_plugin/account_control_history_object.hpp>
+#include <eosio/history_plugin/public_key_history_object.hpp>
+#include <eosio/chain/controller.hpp>
+#include <eosio/chain/trace.hpp>
+#include <eosio/chain_plugin/chain_plugin.hpp>
 
 #include <fc/io/json.hpp>
 
 #include <boost/algorithm/string.hpp>
 #include <boost/signals2/connection.hpp>
 
-namespace arisen {
+namespace eosio {
    using namespace chain;
    using boost::signals2::scoped_connection;
 
@@ -73,12 +73,12 @@ namespace arisen {
       >
    >;
 
-} /// namespace arisen
+} /// namespace eosio
 
-CHAINBASE_SET_INDEX_TYPE(arisen::account_history_object, arisen::account_history_index)
-CHAINBASE_SET_INDEX_TYPE(arisen::action_history_object, arisen::action_history_index)
+CHAINBASE_SET_INDEX_TYPE(eosio::account_history_object, eosio::account_history_index)
+CHAINBASE_SET_INDEX_TYPE(eosio::action_history_object, eosio::action_history_index)
 
-namespace arisen {
+namespace eosio {
 
    template<typename MultiIndex, typename LookupType>
    static void remove(chainbase::database& db, const account_name& account_name, const permission_name& permission)
@@ -148,34 +148,34 @@ namespace arisen {
             if (bypass_filter) {
               pass_on = true;
             }
-            if (filter_on.find({ act.receipt.receiver, 0, 0 }) != filter_on.end()) {
+            if (filter_on.find({ act.receiver, {}, {} }) != filter_on.end()) {
               pass_on = true;
             }
-            if (filter_on.find({ act.receipt.receiver, act.act.name, 0 }) != filter_on.end()) {
+            if (filter_on.find({ act.receiver, act.act.name, {} }) != filter_on.end()) {
               pass_on = true;
             }
             for (const auto& a : act.act.authorization) {
-              if (filter_on.find({ act.receipt.receiver, 0, a.actor }) != filter_on.end()) {
+              if (filter_on.find({ act.receiver, {}, a.actor }) != filter_on.end()) {
                 pass_on = true;
               }
-              if (filter_on.find({ act.receipt.receiver, act.act.name, a.actor }) != filter_on.end()) {
+              if (filter_on.find({ act.receiver, act.act.name, a.actor }) != filter_on.end()) {
                 pass_on = true;
               }
             }
 
             if (!pass_on) {  return false;  }
 
-            if (filter_out.find({ act.receipt.receiver, 0, 0 }) != filter_out.end()) {
+            if (filter_out.find({ act.receiver, {}, {} }) != filter_out.end()) {
               return false;
             }
-            if (filter_out.find({ act.receipt.receiver, act.act.name, 0 }) != filter_out.end()) {
+            if (filter_out.find({ act.receiver, act.act.name, {} }) != filter_out.end()) {
               return false;
             }
             for (const auto& a : act.act.authorization) {
-              if (filter_out.find({ act.receipt.receiver, 0, a.actor }) != filter_out.end()) {
+              if (filter_out.find({ act.receiver, {}, a.actor }) != filter_out.end()) {
                 return false;
               }
-              if (filter_out.find({ act.receipt.receiver, act.act.name, a.actor }) != filter_out.end()) {
+              if (filter_out.find({ act.receiver, act.act.name, a.actor }) != filter_out.end()) {
                 return false;
               }
             }
@@ -186,17 +186,17 @@ namespace arisen {
          set<account_name> account_set( const action_trace& act ) {
             set<account_name> result;
 
-            result.insert( act.receipt.receiver );
+            result.insert( act.receiver );
             for( const auto& a : act.act.authorization ) {
                if( bypass_filter ||
-                   filter_on.find({ act.receipt.receiver, 0, 0}) != filter_on.end() ||
-                   filter_on.find({ act.receipt.receiver, 0, a.actor}) != filter_on.end() ||
-                   filter_on.find({ act.receipt.receiver, act.act.name, 0}) != filter_on.end() ||
-                   filter_on.find({ act.receipt.receiver, act.act.name, a.actor }) != filter_on.end() ) {
-                 if ((filter_out.find({ act.receipt.receiver, 0, 0 }) == filter_out.end()) &&
-                     (filter_out.find({ act.receipt.receiver, 0, a.actor }) == filter_out.end()) &&
-                     (filter_out.find({ act.receipt.receiver, act.act.name, 0 }) == filter_out.end()) &&
-                     (filter_out.find({ act.receipt.receiver, act.act.name, a.actor }) == filter_out.end())) {
+                   filter_on.find({ act.receiver, {}, {}}) != filter_on.end() ||
+                   filter_on.find({ act.receiver, {}, a.actor}) != filter_on.end() ||
+                   filter_on.find({ act.receiver, act.act.name, {}}) != filter_on.end() ||
+                   filter_on.find({ act.receiver, act.act.name, a.actor }) != filter_on.end() ) {
+                 if ((filter_out.find({ act.receiver, {}, {} }) == filter_out.end()) &&
+                     (filter_out.find({ act.receiver, {}, a.actor }) == filter_out.end()) &&
+                     (filter_out.find({ act.receiver, act.act.name, {} }) == filter_out.end()) &&
+                     (filter_out.find({ act.receiver, act.act.name, a.actor }) == filter_out.end())) {
                    result.insert( a.actor );
                  }
                }
@@ -204,30 +204,28 @@ namespace arisen {
             return result;
          }
 
-         void record_account_action( account_name n, const base_action_trace& act ) {
+         void record_account_action( account_name n, const action_trace& act ) {
             auto& chain = chain_plug->chain();
-            auto& db = chain.db();
+            chainbase::database& db = const_cast<chainbase::database&>( chain.db() ); // Override read-only access to state DB (highly unrecommended practice!)
 
             const auto& idx = db.get_index<account_history_index, by_account_action_seq>();
-            auto itr = idx.lower_bound( boost::make_tuple( name(n.value+1), 0 ) );
+            auto itr = idx.lower_bound( boost::make_tuple( name(n.to_uint64_t()+1), 0 ) );
 
             uint64_t asn = 0;
             if( itr != idx.begin() ) --itr;
             if( itr->account == n )
                asn = itr->account_sequence_num + 1;
 
-            //idump((n)(act.receipt.global_sequence)(asn));
             const auto& a = db.create<account_history_object>( [&]( auto& aho ) {
               aho.account = n;
-              aho.action_sequence_num = act.receipt.global_sequence;
+              aho.action_sequence_num = act.receipt->global_sequence;
               aho.account_sequence_num = asn;
             });
-            //idump((a.account)(a.action_sequence_num)(a.action_sequence_num));
          }
 
          void on_system_action( const action_trace& at ) {
             auto& chain = chain_plug->chain();
-            auto& db = chain.db();
+            chainbase::database& db = const_cast<chainbase::database&>( chain.db() ); // Override read-only access to state DB (highly unrecommended practice!)
             if( at.act.name == N(newaccount) )
             {
                const auto create = at.act.data_as<chain::newaccount>();
@@ -256,15 +254,15 @@ namespace arisen {
             if( filter( at ) ) {
                //idump((fc::json::to_pretty_string(at)));
                auto& chain = chain_plug->chain();
-               auto& db = chain.db();
+               chainbase::database& db = const_cast<chainbase::database&>( chain.db() ); // Override read-only access to state DB (highly unrecommended practice!)
 
                db.create<action_history_object>( [&]( auto& aho ) {
                   auto ps = fc::raw::pack_size( at );
                   aho.packed_action_trace.resize(ps);
                   datastream<char*> ds( aho.packed_action_trace.data(), ps );
                   fc::raw::pack( ds, at );
-                  aho.action_sequence_num = at.receipt.global_sequence;
-                  aho.block_num = chain.pending_block_state()->block_num;
+                  aho.action_sequence_num = at.receipt->global_sequence;
+                  aho.block_num = chain.head_block_num() + 1;
                   aho.block_time = chain.pending_block_time();
                   aho.trx_id     = at.trx_id;
                });
@@ -274,15 +272,16 @@ namespace arisen {
                   record_account_action( a, at );
                }
             }
-            if( at.receipt.receiver == chain::config::system_account_name )
+            if( at.receiver == chain::config::system_account_name )
                on_system_action( at );
-            for( const auto& iline : at.inline_traces ) {
-               on_action_trace( iline );
-            }
          }
 
          void on_applied_transaction( const transaction_trace_ptr& trace ) {
+            if( !trace->receipt || (trace->receipt->status != transaction_receipt_header::executed &&
+                  trace->receipt->status != transaction_receipt_header::soft_fail) )
+               return;
             for( const auto& atrace : trace->action_traces ) {
+               if( !atrace.receipt ) continue;
                on_action_trace( atrace );
             }
          }
@@ -315,14 +314,14 @@ namespace arisen {
             for( auto& s : fo ) {
                if( s == "*" || s == "\"*\"" ) {
                   my->bypass_filter = true;
-                  wlog( "--filter-on * enabled. This can fill shared_mem, causing aOS to stop." );
+                  wlog( "--filter-on * enabled. This can fill shared_mem, causing nodeos to stop." );
                   break;
                }
                std::vector<std::string> v;
                boost::split( v, s, boost::is_any_of( ":" ));
-               RSN_ASSERT( v.size() == 3, fc::invalid_arg_exception, "Invalid value ${s} for --filter-on", ("s", s));
-               filter_entry fe{v[0], v[1], v[2]};
-               RSN_ASSERT( fe.receiver.value, fc::invalid_arg_exception,
+               EOS_ASSERT( v.size() == 3, fc::invalid_arg_exception, "Invalid value ${s} for --filter-on", ("s", s));
+               filter_entry fe{eosio::chain::name(v[0]), eosio::chain::name(v[1]), eosio::chain::name(v[2])};
+               EOS_ASSERT( fe.receiver.to_uint64_t(), fc::invalid_arg_exception,
                            "Invalid value ${s} for --filter-on", ("s", s));
                my->filter_on.insert( fe );
             }
@@ -332,26 +331,28 @@ namespace arisen {
             for( auto& s : fo ) {
                std::vector<std::string> v;
                boost::split( v, s, boost::is_any_of( ":" ));
-               RSN_ASSERT( v.size() == 3, fc::invalid_arg_exception, "Invalid value ${s} for --filter-out", ("s", s));
-               filter_entry fe{v[0], v[1], v[2]};
-               RSN_ASSERT( fe.receiver.value, fc::invalid_arg_exception,
+               EOS_ASSERT( v.size() == 3, fc::invalid_arg_exception, "Invalid value ${s} for --filter-out", ("s", s));
+               filter_entry fe{eosio::chain::name(v[0]), eosio::chain::name(v[1]), eosio::chain::name(v[2])};
+               EOS_ASSERT( fe.receiver.to_uint64_t(), fc::invalid_arg_exception,
                            "Invalid value ${s} for --filter-out", ("s", s));
                my->filter_out.insert( fe );
             }
          }
 
          my->chain_plug = app().find_plugin<chain_plugin>();
-         RSN_ASSERT( my->chain_plug, chain::missing_chain_plugin_exception, ""  );
+         EOS_ASSERT( my->chain_plug, chain::missing_chain_plugin_exception, ""  );
          auto& chain = my->chain_plug->chain();
 
-         chain.db().add_index<account_history_index>();
-         chain.db().add_index<action_history_index>();
-         chain.db().add_index<account_control_history_multi_index>();
-         chain.db().add_index<public_key_history_multi_index>();
+         chainbase::database& db = const_cast<chainbase::database&>( chain.db() ); // Override read-only access to state DB (highly unrecommended practice!)
+         // TODO: Use separate chainbase database for managing the state of the history_plugin (or remove deprecated history_plugin entirely)
+         db.add_index<account_history_index>();
+         db.add_index<action_history_index>();
+         db.add_index<account_control_history_multi_index>();
+         db.add_index<public_key_history_multi_index>();
 
          my->applied_transaction_connection.emplace(
-               chain.applied_transaction.connect( [&]( const transaction_trace_ptr& p ) {
-                  my->on_applied_transaction( p );
+               chain.applied_transaction.connect( [&]( std::tuple<const transaction_trace_ptr&, const signed_transaction&> t ) {
+                  my->on_applied_transaction( std::get<0>(t) );
                } ));
       } FC_LOG_AND_RETHROW()
    }
@@ -382,7 +383,7 @@ namespace arisen {
         auto n = params.account_name;
         idump((pos));
         if( pos == -1 ) {
-            auto itr = idx.lower_bound( boost::make_tuple( name(n.value+1), 0 ) );
+            auto itr = idx.lower_bound( boost::make_tuple( name(n.to_uint64_t()+1), 0 ) );
             if( itr == idx.begin() ) {
                if( itr->account == n )
                   pos = itr->account_sequence_num+1;
@@ -402,7 +403,7 @@ namespace arisen {
            if( start > pos ) start = 0;
            end   = pos;
         }
-        RSN_ASSERT( end >= start, chain::plugin_exception, "end position is earlier than start position" );
+        EOS_ASSERT( end >= start, chain::plugin_exception, "end position is earlier than start position" );
 
         idump((start)(end));
 
@@ -447,7 +448,7 @@ namespace arisen {
             FC_ASSERT( input_id_length <= 64, "hex string is too long to represent an actual transaction id" );
             FC_ASSERT( input_id_length >= 8,  "hex string representing transaction id should be at least 8 characters long to avoid excessive collisions" );
             input_id = transaction_id_type(p.id);
-         } RSN_RETHROW_EXCEPTIONS(transaction_id_type_exception, "Invalid transaction ID: ${transaction_id}", ("transaction_id", p.id))
+         } EOS_RETHROW_EXCEPTIONS(transaction_id_type_exception, "Invalid transaction ID: ${transaction_id}", ("transaction_id", p.id))
 
          auto txn_id_matched = [&input_id, input_id_size = input_id_length/2, no_half_byte_at_end = (input_id_length % 2 == 0)]
                                ( const transaction_id_type &id ) -> bool // hex prefix comparison
@@ -467,7 +468,7 @@ namespace arisen {
          bool in_history = (itr != idx.end() && txn_id_matched(itr->trx_id) );
 
          if( !in_history && !p.block_num_hint ) {
-            RSN_THROW(tx_not_found, "Transaction ${id} not found in history and no block hint was given", ("id",p.id));
+            EOS_THROW(tx_not_found, "Transaction ${id} not found in history and no block hint was given", ("id",p.id));
          }
 
          get_transaction_result result;
@@ -489,20 +490,14 @@ namespace arisen {
             }
 
             auto blk = chain.fetch_block_by_number( result.block_num );
-            if( blk == nullptr ) { // still in pending
-                auto blk_state = chain.pending_block_state();
-                if( blk_state != nullptr ) {
-                    blk = blk_state->block;
-                }
-            }
-            if( blk != nullptr ) {
-                for (const auto &receipt: blk->transactions) {
+            if( blk || chain.is_building_block() ) {
+               const vector<transaction_receipt>& receipts = blk ? blk->transactions : chain.get_pending_trx_receipts();
+               for (const auto &receipt: receipts) {
                     if (receipt.trx.contains<packed_transaction>()) {
                         auto &pt = receipt.trx.get<packed_transaction>();
-                        auto mtrx = transaction_metadata(pt);
-                        if (mtrx.id == result.id) {
+                        if (pt.id() == result.id) {
                             fc::mutable_variant_object r("receipt", receipt);
-                            r("trx", chain.to_variant_with_abi(mtrx.trx, abi_serializer_max_time));
+                            r("trx", chain.to_variant_with_abi(pt.get_signed_transaction(), abi_serializer_max_time));
                             result.trx = move(r);
                             break;
                         }
@@ -514,7 +509,7 @@ namespace arisen {
                             break;
                         }
                     }
-                }
+               }
             }
          } else {
             auto blk = chain.fetch_block_by_number(*p.block_num_hint);
@@ -523,14 +518,14 @@ namespace arisen {
                for (const auto& receipt: blk->transactions) {
                   if (receipt.trx.contains<packed_transaction>()) {
                      auto& pt = receipt.trx.get<packed_transaction>();
-                     auto mtrx = transaction_metadata(pt);
-                     if( txn_id_matched(mtrx.id) ) {
-                        result.id = mtrx.id;
+                     const auto& id = pt.id();
+                     if( txn_id_matched(id) ) {
+                        result.id = id;
                         result.last_irreversible_block = chain.last_irreversible_block_num();
                         result.block_num = *p.block_num_hint;
                         result.block_time = blk->timestamp;
                         fc::mutable_variant_object r("receipt", receipt);
-                        r("trx", chain.to_variant_with_abi(mtrx.trx, abi_serializer_max_time));
+                        r("trx", chain.to_variant_with_abi(pt.get_signed_transaction(), abi_serializer_max_time));
                         result.trx = move(r);
                         found = true;
                         break;
@@ -552,7 +547,7 @@ namespace arisen {
             }
 
             if (!found) {
-               RSN_THROW(tx_not_found, "Transaction ${id} not found in history or in block number ${n}", ("id",p.id)("n", *p.block_num_hint));
+               EOS_THROW(tx_not_found, "Transaction ${id} not found in history or in block number ${n}", ("id",p.id)("n", *p.block_num_hint));
             }
          }
 
@@ -583,4 +578,4 @@ namespace arisen {
 
 
 
-} /// namespace arisen
+} /// namespace eosio

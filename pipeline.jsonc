@@ -1,0 +1,50 @@
+{
+    "eos-multiversion-tests":
+    {
+        "environment":
+        {
+            "IMAGE_TAG": "_1-8-0-rc2"
+        },
+        "configuration":
+        [
+            "170=v1.7.0"
+        ]
+    },
+    "eosio-docker-builds":
+    {
+        "environment":
+        {
+            "BUILDER_TAG": "v2.0.0"
+        }
+    },
+    "eosio-sync-tests":
+    {
+        "environment":
+        {
+            "SKIP_PRE_V180": "true",
+            "SKIP_V180": "true",
+            "SKIP_V200": "false"
+        }
+    },
+    "eosio-replay-tests":
+    {
+        "environment":
+        {
+            "SKIP_PRE_V180": "true",
+            "SKIP_V180": "true",
+            "SKIP_V200": "false"
+        }
+    },
+    "eosio-resume-from-state":
+    {
+        "test":
+        [
+            {
+                "tag": "v2.0.0-rc2"
+            },
+            {
+                "tag": "v2.0.0-rc3"
+            }
+        ]
+    }
+}

@@ -7,18 +7,31 @@ from TestHelper import TestHelper
 
 import random
 
+###############################################################
+# distributed-transactions-test
+#
+# Performs currency transfers between N accounts sent to http endpoints of
+# N nodes and verifies, after a steady state is reached, that the accounts
+# balances are correct
+# if called with --nodes-file it will will load a json description of nodes
+# that are already running and run distributed test against them (not
+# currently testing this feature)
+#
+###############################################################
+
 Print=Utils.Print
 errorExit=Utils.errorExit
 
 args=TestHelper.parse_args({"-p","-n","-d","-s","--nodes-file","--seed"
-                              ,"--dump-error-details","-v","--leave-running","--clean-run","--keep-logs"})
+                           ,"--dump-error-details","-v","--leave-running","--clean-run","--keep-logs"})
 
 pnodes=args.p
 topo=args.s
 delay=args.d
-total_nodes = pnodes if args.n == 0 else args.n
+total_nodes = pnodes if args.n < pnodes else args.n
 debug=args.v
 nodesFile=args.nodes_file
+dontLaunch=nodesFile is not None
 seed=args.seed
 dontKill=args.leave_running
 dumpErrorDetails=args.dump_error_details
@@ -26,9 +39,9 @@ killAll=args.clean_run
 keepLogs=args.keep_logs
 
 killWallet=not dontKill
-killRsnInstances=not dontKill
+killEosInstances=not dontKill
 if nodesFile is not None:
-    killRsnInstances=False
+    killEosInstances=False
 
 Utils.Debug=debug
 testSuccessful=False
@@ -40,41 +53,42 @@ walletMgr=WalletMgr(True)
 try:
     cluster.setWalletMgr(walletMgr)
 
-    if nodesFile is not None:
+    if dontLaunch: # run test against remote cluster
         jsonStr=None
         with open(nodesFile, "r") as f:
             jsonStr=f.read()
         if not cluster.initializeNodesFromJson(jsonStr):
             errorExit("Failed to initilize nodes from Json string.")
         total_nodes=len(cluster.getNodes())
+
+        walletMgr.killall(allInstances=killAll)
+        walletMgr.cleanup()
+        print("Stand up walletd")
+        if walletMgr.launch() is False:
+            errorExit("Failed to stand up keosd.")
     else:
         cluster.killall(allInstances=killAll)
         cluster.cleanup()
-        walletMgr.killall(allInstances=killAll)
-        walletMgr.cleanup()
 
         Print ("producing nodes: %s, non-producing nodes: %d, topology: %s, delay between nodes launch(seconds): %d" %
                (pnodes, total_nodes-pnodes, topo, delay))
 
         Print("Stand up cluster")
-        if cluster.launch(pnodes, total_nodes, topo=topo, delay=delay) is False:
-            errorExit("Failed to stand up ARISEN cluster.")
+        if cluster.launch(pnodes=pnodes, totalNodes=total_nodes, topo=topo, delay=delay) is False:
+            errorExit("Failed to stand up eos cluster.")
 
         Print ("Wait for Cluster stabilization")
         # wait for cluster to start producing blocks
         if not cluster.waitOnClusterBlockNumSync(3):
             errorExit("Cluster never stabilized")
 
-    Print("Stand up aWallet wallet awallet")
-    walletMgr.killall(allInstances=killAll)
-    walletMgr.cleanup()
-    if walletMgr.launch() is False:
-        errorExit("Failed to stand up awallet.")
-
     accountsCount=total_nodes
     walletName="MyWallet-%d" % (random.randrange(10000))
     Print("Creating wallet %s if one doesn't already exist." % walletName)
-    wallet=walletMgr.create(walletName, [cluster.arisenAccount,cluster.defproduceraAccount,cluster.defproducerbAccount])
+    walletAccounts=[cluster.defproduceraAccount,cluster.defproducerbAccount]
+    if not dontLaunch:
+        walletAccounts.append(cluster.eosioAccount)
+    wallet=walletMgr.create(walletName, walletAccounts)
     if wallet is None:
         errorExit("Failed to create wallet %s" % (walletName))
 
@@ -84,10 +98,10 @@ try:
 
     defproduceraAccount=cluster.defproduceraAccount
     defproducerbAccount=cluster.defproducerbAccount
-    arisenAccount=cluster.arisenAccount
+    eosioAccount=cluster.eosioAccount
 
     Print("Create accounts.")
-    if not cluster.createAccounts(arisenAccount):
+    if not cluster.createAccounts(eosioAccount):
         errorExit("Accounts creation failed.")
 
     Print("Spread funds and validate")
@@ -96,8 +110,15 @@ try:
 
     print("Funds spread validated")
 
+    if not dontKill:
+        cluster.killall(allInstances=killAll)
+    else:
+        print("NOTE: Skip killing nodes, block log verification will be limited")
+
+    cluster.compareBlockLogs()
+
     testSuccessful=True
 finally:
-    TestHelper.shutdown(cluster, walletMgr, testSuccessful, killRsnInstances, killWallet, keepLogs, killAll, dumpErrorDetails)
+    TestHelper.shutdown(cluster, walletMgr, testSuccessful, killEosInstances, killWallet, keepLogs, killAll, dumpErrorDetails)
 
 exit(0)

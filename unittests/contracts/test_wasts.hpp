@@ -1,5 +1,5 @@
 #pragma once
-#include <arisen/chain/webassembly/common.hpp>
+#include <eosio/chain/webassembly/common.hpp>
 
 static const char huge_tables_wast[] = R"=====(
 (module
@@ -111,7 +111,7 @@ static const char misaligned_const_ref_wast[] = R"=====(
 static const char entry_wast[] = R"=====(
 (module
  (import "env" "require_auth" (func $require_auth (param i64)))
- (import "env" "arisen_assert" (func $arisen_assert (param i32 i32)))
+ (import "env" "eosio_assert" (func $eosio_assert (param i32 i32)))
  (import "env" "current_time" (func $current_time (result i64)))
  (table 0 anyfunc)
  (memory $0 1)
@@ -129,7 +129,7 @@ static const char entry_wast[] = R"=====(
  (func $apply (param $0 i64) (param $1 i64) (param $2 i64)
   (block
    (call $require_auth (i64.const 6121376101093867520))
-   (call $arisen_assert
+   (call $eosio_assert
     (i64.eq
      (i64.load offset=4
       (i32.const 0)
@@ -147,7 +147,7 @@ static const char entry_wast[] = R"=====(
 static const char entry_wast_2[] = R"=====(
 (module
  (import "env" "require_auth" (func $require_auth (param i64)))
- (import "env" "arisen_assert" (func $arisen_assert (param i32 i32)))
+ (import "env" "eosio_assert" (func $eosio_assert (param i32 i32)))
  (import "env" "current_time" (func $current_time (result i64)))
  (table 0 anyfunc)
  (memory $0 1)
@@ -157,7 +157,7 @@ static const char entry_wast_2[] = R"=====(
  (func $apply (param $0 i64) (param $1 i64) (param $2 i64)
   (block
    (call $require_auth (i64.const 6121376101093867520))
-   (call $arisen_assert
+   (call $eosio_assert
     (i64.eq
      (i64.load offset=4
       (i32.const 0)
@@ -176,6 +176,15 @@ static const char entry_wast_2[] = R"=====(
    )
   )
  )
+)
+)=====";
+
+static const char entry_import_wast[] = R"=====(
+(module
+ (import "env" "abort" (func $abort))
+ (export "apply" (func $apply))
+ (start $abort)
+ (func $apply (param $0 i64) (param $1 i64) (param $2 i64))
 )
 )=====";
 
@@ -201,7 +210,7 @@ static const char simple_no_memory_wast[] = R"=====(
 static const char mutable_global_wast[] = R"=====(
 (module
  (import "env" "require_auth" (func $require_auth (param i64)))
- (import "env" "arisen_assert" (func $arisen_assert (param i32 i32)))
+ (import "env" "eosio_assert" (func $eosio_assert (param i32 i32)))
  (table 0 anyfunc)
  (memory $0 1)
  (export "memory" (memory $0))
@@ -213,10 +222,10 @@ static const char mutable_global_wast[] = R"=====(
     (return)
   ))
   (if (i64.eq (get_local $2) (i64.const 1)) (then
-    (call $arisen_assert (i64.eq (get_global $g0) (i64.const 2)) (i32.const 0))
+    (call $eosio_assert (i64.eq (get_global $g0) (i64.const 2)) (i32.const 0))
     (return)
   ))
-  (call $arisen_assert (i32.const 0) (i32.const 0))
+  (call $eosio_assert (i32.const 0) (i32.const 0))
  )
  (global $g0 (mut i64) (i64.const 2))
 )
@@ -224,7 +233,7 @@ static const char mutable_global_wast[] = R"=====(
 
 static const char biggest_memory_wast[] = R"=====(
 (module
- (import "env" "arisen_assert" (func $$arisen_assert (param i32 i32)))
+ (import "env" "eosio_assert" (func $$eosio_assert (param i32 i32)))
  (import "env" "require_auth" (func $$require_auth (param i64)))
  (table 0 anyfunc)
  (memory $$0 ${MAX_WASM_PAGES})
@@ -232,7 +241,7 @@ static const char biggest_memory_wast[] = R"=====(
  (export "apply" (func $$apply))
  (func $$apply (param $$0 i64) (param $$1 i64) (param $$2 i64)
   (call $$require_auth (i64.const 4294504710842351616))
-  (call $$arisen_assert
+  (call $$eosio_assert
    (i32.eq
      (grow_memory (i32.const 1))
      (i32.const -1)
@@ -312,7 +321,7 @@ static const char memory_table_import[] = R"=====(
 static const char table_checker_wast[] = R"=====(
 (module
  (import "env" "require_auth" (func $require_auth (param i64)))
- (import "env" "arisen_assert" (func $assert (param i32 i32)))
+ (import "env" "eosio_assert" (func $assert (param i32 i32)))
  (type $SIG$vj (func (param i64)))
  (table 1024 anyfunc)
  (memory $0 1)
@@ -355,7 +364,7 @@ static const char table_checker_wast[] = R"=====(
 static const char table_checker_proper_syntax_wast[] = R"=====(
 (module
  (import "env" "require_auth" (func $require_auth (param i64)))
- (import "env" "arisen_assert" (func $assert (param i32 i32)))
+ (import "env" "eosio_assert" (func $assert (param i32 i32)))
  (import "env" "printi" (func $printi (param i64)))
  (type $SIG$vj (func (param i64)))
  (table 1024 anyfunc)
@@ -399,7 +408,7 @@ static const char table_checker_proper_syntax_wast[] = R"=====(
 static const char table_checker_small_wast[] = R"=====(
 (module
  (import "env" "require_auth" (func $require_auth (param i64)))
- (import "env" "arisen_assert" (func $assert (param i32 i32)))
+ (import "env" "eosio_assert" (func $assert (param i32 i32)))
  (import "env" "printi" (func $printi (param i64)))
  (type $SIG$vj (func (param i64)))
  (table 128 anyfunc)
@@ -427,6 +436,38 @@ static const char table_checker_small_wast[] = R"=====(
    )
  )
  (elem (i32.const 0) $apple)
+)
+)=====";
+
+static const char table_init_oob_wast[] = R"=====(
+(module
+ (type $mahsig (func (param i64) (param i64) (param i64)))
+ (table 1024 anyfunc)
+ (export "apply" (func $apply))
+ (func $apply (param $0 i64) (param $1 i64) (param $2 i64)
+ )
+ (elem (i32.const 1024) $apply)
+)
+)=====";
+
+static const char table_init_oob_smaller_wast[] = R"=====(
+(module
+ (type $mahsig (func (param i64) (param i64) (param i64)))
+ (table 620 anyfunc)
+ (export "apply" (func $apply))
+ (func $apply (param $0 i64) (param $1 i64) (param $2 i64)
+ )
+ (elem (i32.const 700) $apply)
+)
+)=====";
+
+static const char table_init_oob_no_table_wast[] = R"=====(
+(module
+ (type $mahsig (func (param i64) (param i64) (param i64)))
+ (export "apply" (func $apply))
+ (func $apply (param $0 i64) (param $1 i64) (param $2 i64)
+ )
+ (elem (i32.const 0) $apply)
 )
 )=====";
 
@@ -593,7 +634,7 @@ static const char apply_wrong_signature_wast[] = R"=====(
 static const char import_injected_wast[] =                                            \
 "(module"                                                                             \
 " (export \"apply\" (func $apply))"                                                   \
-" (import \"" ARISEN_INJECTED_MODULE_NAME "\" \"checktime\" (func $inj (param i32)))"  \
+" (import \"" EOSIO_INJECTED_MODULE_NAME "\" \"checktime\" (func $inj (param i32)))"  \
 " (func $apply (param $0 i64) (param $1 i64) (param $2 i64))"                         \
 ")";
 
@@ -612,18 +653,18 @@ static const char memory_growth_memset_store[] = R"=====(
 static const char memory_growth_memset_test[] = R"=====(
 (module
  (export "apply" (func $apply))
- (import "env" "arisen_assert" (func $arisen_assert (param i32 i32)))
+ (import "env" "eosio_assert" (func $eosio_assert (param i32 i32)))
  (memory $0 1)
  (func $apply (param $0 i64)(param $1 i64)(param $2 i64)
    (drop (grow_memory (i32.const 2)))
-   (call $arisen_assert
+   (call $eosio_assert
      (i32.eq
        (i32.load offset=80000 (i32.const 0))
        (i32.const 0)
      )
      (i32.const 0)
    )
-   (call $arisen_assert
+   (call $eosio_assert
      (i32.eq
        (i32.load offset=140000 (i32.const 0))
        (i32.const 0)
@@ -633,3 +674,104 @@ static const char memory_growth_memset_test[] = R"=====(
  )
 )
 )=====";
+
+static const char large_maligned_host_ptr[] = R"=====(
+(module
+ (export "apply" (func $$apply))
+ (import "env" "get_active_producers" (func $$get_active_producers (param i32 i32) (result i32)))
+ (memory $$0 ${MAX_WASM_PAGES})
+ (func $$apply (param i64) (param i64) (param i64)
+   (drop (call $$get_active_producers
+     (i32.const 1)
+     (i32.const ${MAX_NAME_ARRAY})
+   ))
+ )
+)
+)=====";
+
+static const char depth_assert_wasm[] = R"=====(
+(module
+ (export "apply" (func $$apply))
+ (func $$apply (param $$0 i64) (param $$1 i64) (param $$2 i64)
+  (if (i64.eq (get_global $$depth) (i64.const 0)) (then
+    (return)
+  ))
+  (set_global $$depth
+   (i64.sub
+    (get_global $$depth)
+    (i64.const 1)
+   )
+  )
+  (call $$apply
+   (get_local $$0)
+   (get_local $$1)
+   (get_local $$2)
+  )
+ )
+ (global $$depth (mut i64) (i64.const ${MAX_DEPTH}))
+)
+)=====";
+
+static const char depth_assert_intrinsic[] = R"=====(
+(module
+ (import "env" "current_time" (func $$current_time (result i64)))
+ (export "apply" (func $$apply))
+ (func $$apply (param $$0 i64) (param $$1 i64) (param $$2 i64)
+  (if (i64.eq (get_global $$depth) (i64.const 1)) (then
+    (drop (call $$current_time))
+    (return)
+  ))
+  (set_global $$depth
+   (i64.sub
+    (get_global $$depth)
+    (i64.const 1)
+   )
+  )
+  (call $$apply
+   (get_local $$0)
+   (get_local $$1)
+   (get_local $$2)
+  )
+ )
+ (global $$depth (mut i64) (i64.const ${MAX_DEPTH}))
+)
+)=====";
+
+static const char depth_assert_wasm_float[] = R"=====(
+(module
+ (export "apply" (func $$apply))
+ (func $$apply (param $$0 i64) (param $$1 i64) (param $$2 i64)
+  (set_global $$mcfloaty
+   (f64.mul
+    (get_global $$mcfloaty)
+    (f64.const 3.1415)
+   )
+  )
+  (if (i64.eq (get_global $$depth) (i64.const 0)) (then
+    (return)
+  ))
+  (set_global $$depth
+   (i64.sub
+    (get_global $$depth)
+    (i64.const 1)
+   )
+  )
+  (call $$apply
+   (get_local $$0)
+   (get_local $$1)
+   (get_local $$2)
+  )
+ )
+ (global $$depth (mut i64) (i64.const ${MAX_DEPTH}))
+ (global $$mcfloaty (mut f64) (f64.const 3.14))
+)
+)=====";
+
+static const std::vector<uint8_t> varuint_memory_flags{
+  0x00, 'a', 's', 'm', 0x01, 0x00, 0x00, 0x00,
+  0x01, 0x07, 0x01, 0x60, 0x03, 0x7e, 0x7e, 0x7e, 0x00, // types
+  0x03, 0x02, 0x01, 0x00, // functions
+  0x04, 0x08, 0x01, 0x70, 0x80, 0x02, 0x80, 0x80, 0x80, 0x00, // memory with flags varuint(0x80 0x02) -> 0x2
+  0x07, 0x09, 0x01, 0x05, 'a', 'p', 'p', 'l', 'y', 0x00, 0x00, // exports
+  0x0a, 0x04, 0x01, 0x02, 0x00, 0x0b // code
+};
