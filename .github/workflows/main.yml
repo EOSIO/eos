@@ -511,7 +511,7 @@ jobs:
           name: macos-1015-build
       - name: LS Test
         run: | 
-          ./.cicd/platforms/unpinned/macos-10.14-unpinned.sh
+          ./.cicd/platforms/unpinned/macos-10.15-unpinned.sh
           tar -xzf macos-1015-build/build.tar.gz
           ./.cicd/test.sh scripts/ls-test.sh
   macos-1015-serial-test:
