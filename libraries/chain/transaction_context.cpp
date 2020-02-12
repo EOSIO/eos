@@ -174,7 +174,7 @@ namespace eosio { namespace chain {
 
       if( !explicit_billed_cpu_time ) {
          if( account_cpu_limit < billed_cpu_time_us ) { // if account no longer has enough cpu to exec trx, don't try
-            EOS_THROW( deadline_exception, "account cpu ${cpu} not sufficient for trx ${t}us",
+            EOS_THROW( tx_cpu_usage_exceeded, "account cpu ${cpu} not sufficient for trx ${t}us",
                        ("cpu", account_cpu_limit)( "t", billed_cpu_time_us ) );
          }
       }
