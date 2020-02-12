@@ -20,7 +20,6 @@
 
 #include <deep_nested.abi.hpp>
 #include <large_nested.abi.hpp>
-#include <large_sig.dat.hpp>
 
 using namespace eosio;
 using namespace chain;
@@ -2667,27 +2666,43 @@ BOOST_AUTO_TEST_CASE(abi_large_signature)
     }
     )=====";
 
+      std::string big_json(1 << 18, 'a');
+      signature_type::storage_type webauth_sig = fc::crypto::webauthn::signature(fc::crypto::r1::compact_signature(), {}, big_json);
+      signature_type sig;
+
+      // signature( storage_type&& other_storage ) is private, pack/unpack as a way to convert from webauthn sig
+      auto size = big_json.size() + 1024;
+      std::vector<char> buff( size );
+      datastream<char*> ds(&buff[0], size);
+      fc::raw::pack(ds, webauth_sig);
+      ds.seekp(0);
+      fc::raw::unpack(ds, sig);
+
       name a = N(hello);
       authority owner_auth =  authority( get_public_key( a, "owner" ) );
       chain::action large_act( vector<permission_level>{{config::system_account_name,config::active_name}},
                                act_sig{
-                                  .sig = eosio::chain::signature_type(std::string(large_signature))
+                                  .sig = sig
                                });
 
-      abi_serializer abis( fc::json::from_string( abi_str ).as<abi_def>(), max_serialization_time );
       fc::variant var;
-      fc::variant var2;
-      auto start_1 = fc::time_point::now();
-      abi_serializer::to_variant(large_act, var, get_resolver(fc::json::from_string(abi_str).as<abi_def>()), fc::milliseconds(1));
-      auto stop_1 = fc::time_point::now();
-      auto start_2 = fc::time_point::now();
-      abi_serializer::to_variant(large_act, var2, get_resolver(fc::json::from_string(abi_str).as<abi_def>()), fc::milliseconds(50));
-      auto stop_2 = fc::time_point::now();
-      // should take less time since we set a smaller deadline
-      BOOST_CHECK_LE( (stop_1 - start_1).count(), (stop_2 - start_2).count() );
+      auto start = fc::time_point::now();
+      bool check_data = true;
+      try {
+         abi_serializer::to_variant( large_act, var, get_resolver( fc::json::from_string( abi_str ).as<abi_def>() ),
+                                     fc::milliseconds( 1 ) );
+      } catch( abi_serialization_deadline_exception& ) {
+         // can be thrown if check_deadline is tripped after deadline in to_base58 is tripped
+         check_data = false;
+      }
+      auto stop = fc::time_point::now();
+      // Give it a leaway of 50ms
+      BOOST_CHECK_LE( (stop - start).count(), 51*1000 );
       // only contains hex_data if it didn't hit the deadline
-      BOOST_CHECK( var.get_object().contains("data") );
-      BOOST_CHECK( !var.get_object().contains("hex_data") );
+      if( check_data ) {
+         BOOST_CHECK( var.get_object().contains( "data" ) );
+         BOOST_CHECK( !var.get_object().contains( "hex_data" ) );
+      }
    } FC_LOG_AND_RETHROW()
 }
 
