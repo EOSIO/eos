@@ -146,7 +146,8 @@ namespace eosio { namespace chain {
          /**
           *
           */
-         transaction_trace_ptr push_transaction( const transaction_metadata_ptr& trx, fc::time_point deadline, uint32_t billed_cpu_time_us = 0 );
+         transaction_trace_ptr push_transaction( const transaction_metadata_ptr& trx, fc::time_point deadline,
+                                                 uint32_t billed_cpu_time_us, bool explicit_billed_cpu_time );
 
          /**
           * Attempt to execute a specific transaction in our deferred trx database
