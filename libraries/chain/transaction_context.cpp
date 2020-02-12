@@ -121,7 +121,7 @@ namespace eosio { namespace chain {
 
       initial_objective_duration_limit = objective_duration_limit;
 
-      if( billed_cpu_time_us > 0 ) // could also call on explicit_billed_cpu_time but it would be redundant
+      if( explicit_billed_cpu_time )
          validate_cpu_usage_to_bill( billed_cpu_time_us, false ); // Fail early if the amount to be billed is too high
 
       // Record accounts to be billed for network and CPU usage
@@ -170,6 +170,13 @@ namespace eosio { namespace chain {
          deadline_exception_code = deadline_exception::code_value;
       } else {
          deadline_exception_code = billing_timer_exception_code;
+      }
+
+      if( !explicit_billed_cpu_time ) {
+         if( account_cpu_limit < billed_cpu_time_us ) { // if account no longer has enough cpu to exec trx, don't try
+            EOS_THROW( deadline_exception, "account cpu ${cpu} not sufficient for trx ${t}us",
+                       ("cpu", account_cpu_limit)( "t", billed_cpu_time_us ) );
+         }
       }
 
       eager_net_limit = (eager_net_limit/8)*8; // Round down to nearest multiple of word size (8 bytes) so check_net_usage can be efficient
