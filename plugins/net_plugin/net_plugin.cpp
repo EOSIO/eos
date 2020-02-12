@@ -123,9 +123,9 @@ namespace eosio {
       unique_ptr<boost::asio::steady_timer> connector_check;
       unique_ptr<boost::asio::steady_timer> transaction_check;
       unique_ptr<boost::asio::steady_timer> keepalive_timer;
-      boost::asio::steady_timer::duration   connector_period;
-      boost::asio::steady_timer::duration   txn_exp_period;
-      boost::asio::steady_timer::duration   resp_expected_period;
+      boost::asio::steady_timer::duration   connector_period{0};
+      boost::asio::steady_timer::duration   txn_exp_period{0};
+      boost::asio::steady_timer::duration   resp_expected_period{0};
       boost::asio::steady_timer::duration   keepalive_interval{std::chrono::seconds{32}};
       int                           max_cleanup_time_ms = 0;
 
@@ -349,7 +349,7 @@ namespace eosio {
     */
    struct peer_block_state {
       block_id_type id;
-      uint32_t      block_num;
+      uint32_t      block_num{0};
    };
 
    typedef multi_index_container<
@@ -362,7 +362,7 @@ namespace eosio {
 
 
    struct update_block_num {
-      uint32_t new_bnum;
+      uint32_t new_bnum{0};
       update_block_num(uint32_t bnum) : new_bnum(bnum) {}
       void operator() (node_transaction_state& nts) {
          nts.block_num = new_bnum;
@@ -380,9 +380,9 @@ namespace eosio {
          :start_block( start ), end_block( end ), last( last_acted ),
           start_time(time_point::now())
       {}
-      uint32_t     start_block;
-      uint32_t     end_block;
-      uint32_t     last; ///< last sent or received
+      uint32_t     start_block{0};
+      uint32_t     end_block{0};
+      uint32_t     last{0}; ///< last sent or received
       time_point   start_time; ///< time request made or received
    };
 
@@ -530,7 +530,7 @@ namespace eosio {
       double                         offset{0};       //!< peer offset
 
       static const size_t            ts_buffer_size{32};
-      char                           ts[ts_buffer_size];          //!< working buffer for making human readable timestamps
+      char                           ts[ts_buffer_size]{};          //!< working buffer for making human readable timestamps
       /** @} */
 
       bool connected();
@@ -661,12 +661,12 @@ namespace eosio {
          in_sync
       };
 
-      uint32_t       sync_known_lib_num;
-      uint32_t       sync_last_requested_num;
-      uint32_t       sync_next_expected_num;
-      uint32_t       sync_req_span;
+      uint32_t       sync_known_lib_num{0};
+      uint32_t       sync_last_requested_num{0};
+      uint32_t       sync_next_expected_num{0};
+      uint32_t       sync_req_span{0};
       connection_ptr source;
-      stages         state;
+      stages         state{in_sync};
 
       chain_plugin* chain_plug = nullptr;
 
