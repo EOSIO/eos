@@ -181,6 +181,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
 
       optional<fc::time_point> calculate_next_block_time(const account_name& producer_name, const block_timestamp_type& current_block_time) const;
       void schedule_production_loop();
+      void schedule_maybe_produce_block( bool exhausted );
       void produce_block();
       bool maybe_produce_block();
       bool remove_expired_persisted_trxs( const fc::time_point& deadline );
@@ -543,6 +544,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                               ("block_num", chain.head_block_num() + 1)
                               ("prod", chain.pending_block_producer())
                               ("txid", trx->id()));
+                     schedule_maybe_produce_block( true );
                   } else {
                      fc_dlog( _trx_trace_log, "[TRX_TRACE] Speculative execution COULD NOT FIT tx: ${txid} RETRYING",
                               ("txid", trx->id()));
@@ -1854,9 +1856,7 @@ bool producer_plugin_impl::process_incoming_trxs( const fc::time_point& deadline
 // -> Idle
 // --> Start block B (block time y.000) at time x.500
 void producer_plugin_impl::schedule_production_loop() {
-   chain::controller& chain = chain_plug->chain();
    _timer.cancel();
-   std::weak_ptr<producer_plugin_impl> weak_this = shared_from_this();
 
    auto result = start_block();
 
@@ -1866,7 +1866,7 @@ void producer_plugin_impl::schedule_production_loop() {
 
       // we failed to start a block, so try again later?
       _timer.async_wait( app().get_priority_queue().wrap( priority::high,
-          [weak_this, cid = ++_timer_corelation_id]( const boost::system::error_code& ec ) {
+          [weak_this = weak_from_this(), cid = ++_timer_corelation_id]( const boost::system::error_code& ec ) {
              auto self = weak_this.lock();
              if( self && ec != boost::asio::error::operation_aborted && cid == self->_timer_corelation_id ) {
                 self->schedule_production_loop();
@@ -1875,7 +1875,7 @@ void producer_plugin_impl::schedule_production_loop() {
    } else if (result == start_block_result::waiting_for_block){
       if (!_producers.empty() && !production_disabled_by_policy()) {
          fc_dlog(_log, "Waiting till another block is received and scheduling Speculative/Production Change");
-         schedule_delayed_production_loop(weak_this, calculate_producer_wake_up_time(calculate_pending_block_time()));
+         schedule_delayed_production_loop(weak_from_this(), calculate_producer_wake_up_time(calculate_pending_block_time()));
       } else {
          fc_dlog(_log, "Waiting till another block is received");
          // nothing to do until more blocks arrive
@@ -1885,50 +1885,58 @@ void producer_plugin_impl::schedule_production_loop() {
       // scheduled in start_block()
 
    } else if (_pending_block_mode == pending_block_mode::producing) {
+      schedule_maybe_produce_block( result == start_block_result::exhausted );
 
-      // we succeeded but block may be exhausted
-      static const boost::posix_time::ptime epoch(boost::gregorian::date(1970, 1, 1));
-      auto deadline = calculate_block_deadline(chain.pending_block_time());
-
-      if (deadline > fc::time_point::now()) {
-         // ship this block off no later than its deadline
-         EOS_ASSERT( chain.is_building_block(), missing_pending_block_state, "producing without pending_block_state, start_block succeeded" );
-         _timer.expires_at( epoch + boost::posix_time::microseconds( deadline.time_since_epoch().count() ));
-         fc_dlog(_log, "Scheduling Block Production on Normal Block #${num} for ${time}",
-                       ("num", chain.head_block_num()+1)("time",deadline));
-      } else {
-         EOS_ASSERT( chain.is_building_block(), missing_pending_block_state, "producing without pending_block_state" );
-         auto expect_time = chain.pending_block_time() - fc::microseconds(config::block_interval_us);
-         // ship this block off up to 1 block time earlier or immediately
-         if (fc::time_point::now() >= expect_time) {
-            _timer.expires_from_now( boost::posix_time::microseconds( 0 ));
-            fc_dlog(_log, "Scheduling Block Production on Exhausted Block #${num} immediately",
-                          ("num", chain.head_block_num()+1));
-         } else {
-            _timer.expires_at(epoch + boost::posix_time::microseconds(expect_time.time_since_epoch().count()));
-            fc_dlog(_log, "Scheduling Block Production on Exhausted Block #${num} at ${time}",
-                          ("num", chain.head_block_num()+1)("time",expect_time));
-         }
-      }
-
-      _timer.async_wait( app().get_priority_queue().wrap( priority::high,
-            [&chain,weak_this,cid=++_timer_corelation_id](const boost::system::error_code& ec) {
-               auto self = weak_this.lock();
-               if( self && ec != boost::asio::error::operation_aborted && cid == self->_timer_corelation_id ) {
-                  // pending_block_state expected, but can't assert inside async_wait
-                  auto block_num = chain.is_building_block() ? chain.head_block_num() + 1 : 0;
-                  fc_dlog( _log, "Produce block timer for ${num} running at ${time}", ("num", block_num)("time", fc::time_point::now()) );
-                  auto res = self->maybe_produce_block();
-                  fc_dlog( _log, "Producing Block #${num} returned: ${res}", ("num", block_num)( "res", res ) );
-               }
-            } ) );
    } else if (_pending_block_mode == pending_block_mode::speculating && !_producers.empty() && !production_disabled_by_policy()){
+      chain::controller& chain = chain_plug->chain();
       fc_dlog(_log, "Speculative Block Created; Scheduling Speculative/Production Change");
       EOS_ASSERT( chain.is_building_block(), missing_pending_block_state, "speculating without pending_block_state" );
-      schedule_delayed_production_loop(weak_this, calculate_producer_wake_up_time(chain.pending_block_time()));
+      schedule_delayed_production_loop(weak_from_this(), calculate_producer_wake_up_time(chain.pending_block_time()));
    } else {
       fc_dlog(_log, "Speculative Block Created");
    }
+}
+
+void producer_plugin_impl::schedule_maybe_produce_block( bool exhausted ) {
+   chain::controller& chain = chain_plug->chain();
+
+   // we succeeded but block may be exhausted
+   static const boost::posix_time::ptime epoch( boost::gregorian::date( 1970, 1, 1 ) );
+   auto deadline = calculate_block_deadline( chain.pending_block_time() );
+
+   if( !exhausted && deadline > fc::time_point::now() ) {
+      // ship this block off no later than its deadline
+      EOS_ASSERT( chain.is_building_block(), missing_pending_block_state,
+                  "producing without pending_block_state, start_block succeeded" );
+      _timer.expires_at( epoch + boost::posix_time::microseconds( deadline.time_since_epoch().count() ) );
+      fc_dlog( _log, "Scheduling Block Production on Normal Block #${num} for ${time}",
+               ("num", chain.head_block_num() + 1)( "time", deadline ) );
+   } else {
+      EOS_ASSERT( chain.is_building_block(), missing_pending_block_state, "producing without pending_block_state" );
+      auto expect_time = chain.pending_block_time() - fc::microseconds( config::block_interval_us );
+      // ship this block off up to 1 block time earlier or immediately
+      if( exhausted || fc::time_point::now() >= expect_time ) {
+         _timer.expires_from_now( boost::posix_time::microseconds( 0 ) );
+         fc_dlog( _log, "Scheduling Block Production on Exhausted Block #${num} immediately",
+                  ("num", chain.head_block_num() + 1) );
+      } else {
+         _timer.expires_at( epoch + boost::posix_time::microseconds( expect_time.time_since_epoch().count() ) );
+         fc_dlog( _log, "Scheduling Block Production on Exhausted Block #${num} at ${time}",
+                  ("num", chain.head_block_num() + 1)( "time", expect_time ) );
+      }
+   }
+
+   _timer.async_wait( app().get_priority_queue().wrap( priority::high,
+         [&chain, weak_this = weak_from_this(), cid=++_timer_corelation_id](const boost::system::error_code& ec) {
+            auto self = weak_this.lock();
+            if( self && ec != boost::asio::error::operation_aborted && cid == self->_timer_corelation_id ) {
+               // pending_block_state expected, but can't assert inside async_wait
+               auto block_num = chain.is_building_block() ? chain.head_block_num() + 1 : 0;
+               fc_dlog( _log, "Produce block timer for ${num} running at ${time}", ("num", block_num)("time", fc::time_point::now()) );
+               auto res = self->maybe_produce_block();
+               fc_dlog( _log, "Producing Block #${num} returned: ${res}", ("num", block_num)( "res", res ) );
+            }
+         } ) );
 }
 
 optional<fc::time_point> producer_plugin_impl::calculate_producer_wake_up_time( const block_timestamp_type& ref_block_time ) const {
