@@ -35,7 +35,7 @@ fc::variant verify_byte_round_trip_conversion( const abi_serializer& abis, const
 
    auto var2 = abis.binary_to_variant(type, bytes, max_serialization_time);
 
-   std::string r = fc::json::to_string(var2);
+   std::string r = fc::json::to_string(var2, fc::time_point::now() + max_serialization_time);
 
    auto bytes2 = abis.variant_to_binary(type, var2, max_serialization_time);
 
@@ -50,7 +50,7 @@ void verify_round_trip_conversion( const abi_serializer& abis, const type_name& 
    auto bytes = abis.variant_to_binary(type, var, max_serialization_time);
    BOOST_REQUIRE_EQUAL(fc::to_hex(bytes), hex);
    auto var2 = abis.binary_to_variant(type, bytes, max_serialization_time);
-   BOOST_REQUIRE_EQUAL(fc::json::to_string(var2), expected_json);
+   BOOST_REQUIRE_EQUAL(fc::json::to_string(var2, fc::time_point::now() + max_serialization_time), expected_json);
    auto bytes2 = abis.variant_to_binary(type, var2, max_serialization_time);
    BOOST_REQUIRE_EQUAL(fc::to_hex(bytes2), hex);
 }
@@ -80,7 +80,7 @@ fc::variant verify_type_round_trip_conversion( const abi_serializer& abis, const
    fc::variant var2;
    abi_serializer::to_variant(obj, var2, get_resolver(), max_serialization_time);
 
-   std::string r = fc::json::to_string(var2);
+   std::string r = fc::json::to_string(var2, fc::time_point::now() + max_serialization_time);
 
 
    auto bytes2 = abis.variant_to_binary(type, var2, max_serialization_time);
@@ -892,9 +892,9 @@ BOOST_AUTO_TEST_CASE(updateauth_test)
    BOOST_TEST(2147483145u == updauth.auth.threshold);
 
    BOOST_TEST_REQUIRE(2u == updauth.auth.keys.size());
-   BOOST_TEST("EOS65rXebLhtk2aTTzP4e9x1AQZs7c5NNXJp89W8R3HyaA6Zyd4im" == (std::string)updauth.auth.keys[0].key);
+   BOOST_TEST("EOS65rXebLhtk2aTTzP4e9x1AQZs7c5NNXJp89W8R3HyaA6Zyd4im" == updauth.auth.keys[0].key.to_string());
    BOOST_TEST(57005u == updauth.auth.keys[0].weight);
-   BOOST_TEST("EOS5eVr9TVnqwnUBNwf9kwMTbrHvX5aPyyEG97dz2b2TNeqWRzbJf" == (std::string)updauth.auth.keys[1].key);
+   BOOST_TEST("EOS5eVr9TVnqwnUBNwf9kwMTbrHvX5aPyyEG97dz2b2TNeqWRzbJf" == updauth.auth.keys[1].key.to_string());
    BOOST_TEST(57605u == updauth.auth.keys[1].weight);
 
    BOOST_TEST_REQUIRE(2u == updauth.auth.accounts.size());
@@ -996,9 +996,9 @@ BOOST_AUTO_TEST_CASE(newaccount_test)
    BOOST_TEST(2147483145u == newacct.owner.threshold);
 
    BOOST_TEST_REQUIRE(2u == newacct.owner.keys.size());
-   BOOST_TEST("EOS65rXebLhtk2aTTzP4e9x1AQZs7c5NNXJp89W8R3HyaA6Zyd4im" == (std::string)newacct.owner.keys[0].key);
+   BOOST_TEST("EOS65rXebLhtk2aTTzP4e9x1AQZs7c5NNXJp89W8R3HyaA6Zyd4im" == newacct.owner.keys[0].key.to_string());
    BOOST_TEST(57005u == newacct.owner.keys[0].weight);
-   BOOST_TEST("EOS5eVr9TVnqwnUBNwf9kwMTbrHvX5aPyyEG97dz2b2TNeqWRzbJf" == (std::string)newacct.owner.keys[1].key);
+   BOOST_TEST("EOS5eVr9TVnqwnUBNwf9kwMTbrHvX5aPyyEG97dz2b2TNeqWRzbJf" == newacct.owner.keys[1].key.to_string());
    BOOST_TEST(57605u == newacct.owner.keys[1].weight);
 
    BOOST_TEST_REQUIRE(2u == newacct.owner.accounts.size());
@@ -1012,9 +1012,9 @@ BOOST_AUTO_TEST_CASE(newaccount_test)
    BOOST_TEST(2146483145u == newacct.active.threshold);
 
    BOOST_TEST_REQUIRE(2u == newacct.active.keys.size());
-   BOOST_TEST("EOS65rXebLhtk2aTTzP4e9x1AQZs7c5NNXJp89W8R3HyaA6Zyd4im" == (std::string)newacct.active.keys[0].key);
+   BOOST_TEST("EOS65rXebLhtk2aTTzP4e9x1AQZs7c5NNXJp89W8R3HyaA6Zyd4im" == newacct.active.keys[0].key.to_string());
    BOOST_TEST(57005u == newacct.active.keys[0].weight);
-   BOOST_TEST("EOS5eVr9TVnqwnUBNwf9kwMTbrHvX5aPyyEG97dz2b2TNeqWRzbJf" == (std::string)newacct.active.keys[1].key);
+   BOOST_TEST("EOS5eVr9TVnqwnUBNwf9kwMTbrHvX5aPyyEG97dz2b2TNeqWRzbJf" == newacct.active.keys[1].key.to_string());
    BOOST_TEST(57605u == newacct.active.keys[1].weight);
 
    BOOST_TEST_REQUIRE(2u == newacct.active.accounts.size());

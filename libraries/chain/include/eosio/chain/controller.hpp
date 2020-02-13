@@ -171,6 +171,7 @@ namespace eosio { namespace chain {
          boost::asio::io_context& get_thread_pool();
 
          const chainbase::database& db()const;
+         const chainbase::database& reversible_db() const;
 
          const fork_database& fork_db()const;
 
