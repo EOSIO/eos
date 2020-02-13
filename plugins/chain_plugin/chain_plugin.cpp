@@ -288,6 +288,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
    cli.add_options()
          ("genesis-json", bpo::value<bfs::path>(), "File to read Genesis State from")
          ("genesis-timestamp", bpo::value<string>(), "override the initial timestamp in the Genesis State file")
+         ("activate-all-features", bpo::bool_switch()->default_value(false), "Activate all known protocol features at genesis")
          ("print-genesis-json", bpo::bool_switch()->default_value(false),
           "extract genesis_state from blocks.log as JSON, print to console, and exit")
          ("extract-genesis-json", bpo::value<bfs::path>(),
@@ -856,6 +857,9 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          EOS_ASSERT( options.count( "genesis-json" ) == 0,
                      plugin_config_exception,
                      "--snapshot is incompatible with --genesis-json as the snapshot contains genesis information");
+         EOS_ASSERT( !options.at( "activate-all-features" ).as<bool>(),
+                     plugin_config_exception,
+                     "--activate-all-features can only be used when starting a fresh chain");
 
          auto shared_mem_path = my->chain_config->state_dir / "shared_memory.bin";
          EOS_ASSERT( !fc::is_regular_file(shared_mem_path),
@@ -923,6 +927,9 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
                         plugin_config_exception,
                        "Specified genesis file '${genesis}' does not exist.",
                        ("genesis", genesis_file.generic_string()));
+            EOS_ASSERT( !options.at( "activate-all-features" ).as<bool>(),
+                        plugin_config_exception,
+                        "--activate-all-features is incompatible with --genesis-json");
 
             genesis_state provided_genesis = fc::json::from_file( genesis_file ).as<genesis_state>();
 
@@ -973,6 +980,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
                         "--genesis-timestamp is only valid if also passed in with --genesis-json");
          }
 
+         bool is_default_genesis = false;
          if( !chain_id ) {
             if( my->genesis ) {
                // Uninitialized state database and genesis state extracted from block log
@@ -988,18 +996,24 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
                ilog( "Starting fresh blockchain state using default genesis state." );
                my->genesis.emplace();
-               for( const protocol_feature& f : pfs ) {
-                  if( pfs.is_recognized( f.feature_digest, my->genesis->initial_timestamp ) == protocol_feature_set::recognized_t::ready &&
-                      std::none_of(f.dependencies.begin(), f.dependencies.end(), [&](auto& d) {
-                         return std::find( my->genesis->initial_protocol_features.begin(), my->genesis->initial_protocol_features.end(), d ) == my->genesis->initial_protocol_features.end();
-                                                                                 } ) ) {
-                     ilog( "genesis protocol feature: ${digest}", ("digest", f.feature_digest) );
-                     my->genesis->initial_protocol_features.push_back( f.feature_digest );
+               is_default_genesis = true;
+               if ( options.at( "activate-all-features" ).as<bool>() ) {
+                  for( const protocol_feature& f : pfs ) {
+                     if( pfs.is_recognized( f.feature_digest, my->genesis->initial_timestamp ) == protocol_feature_set::recognized_t::ready &&
+                         std::none_of(f.dependencies.begin(), f.dependencies.end(), [&](auto& d) {
+                            return std::find( my->genesis->initial_protocol_features.begin(), my->genesis->initial_protocol_features.end(), d ) == my->genesis->initial_protocol_features.end();
+                                                                                    } ) ) {
+                        ilog( "genesis protocol feature: ${digest}", ("digest", f.feature_digest) );
+                        my->genesis->initial_protocol_features.push_back( f.feature_digest );
+                     }
                   }
                }
                chain_id = my->genesis->compute_chain_id();
             }
          }
+         EOS_ASSERT( is_default_genesis || !options.at( "activate-all-features" ).as<bool>(),
+                     plugin_config_exception,
+                     "--activate-all-features can only be used when starting a fresh chain");
       }
 
       if ( options.count("read-mode") ) {
