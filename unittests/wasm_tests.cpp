@@ -1893,6 +1893,65 @@ BOOST_AUTO_TEST_CASE( code_size )  try {
 
 } FC_LOG_AND_RETHROW()
 
+BOOST_AUTO_TEST_CASE( billed_cpu_test ) try {
+
+   fc::temp_directory tempdir;
+   tester chain( tempdir, true );
+   chain.execute_setup_policy( setup_policy::full );
+
+   const resource_limits_manager& mgr = chain.control->get_resource_limits_manager();
+
+   account_name acc = N( asserter );
+   account_name user = N( user );
+   chain.create_accounts( {acc, user} );
+
+   transaction_trace_ptr trace;
+   auto check = [&](uint32_t billed_cpu_time_us) -> bool {
+      chain.produce_blocks( 1 );
+      signed_transaction trx;
+      trx.actions.emplace_back( vector<permission_level>{{acc, config::active_name}},
+                                assertdef {1, "Should Not Assert!"} );
+      chain.set_transaction_headers( trx );
+      trx.sign( chain.get_private_key( acc, "active" ), chain.control->get_chain_id() );
+      try {
+         packed_transaction ptrx( trx );
+         trace = chain.push_transaction( ptrx, fc::time_point::maximum(), billed_cpu_time_us );
+         chain.produce_blocks( 1 );
+         return true;
+      } catch( tx_cpu_usage_exceeded& ) {
+         return false;
+      }
+   };
+
+   BOOST_REQUIRE_EQUAL(true, check(0)); // no limits, should pass
+
+   chain.push_action( config::system_account_name, N(setalimits), config::system_account_name, fc::mutable_variant_object()
+         ("account", user)
+         ("ram_bytes", -1)
+         ("net_weight", 1)
+         ("cpu_weight", 1)
+   );
+   chain.push_action( config::system_account_name, N(setalimits), config::system_account_name, fc::mutable_variant_object()
+         ("account", acc)
+         ("ram_bytes", -1)
+         ("net_weight", 249'999'999)
+         ("cpu_weight", 249'999'999)
+   );
+
+   chain.produce_block();
+
+   auto cpu_limit = mgr.get_account_cpu_limit_ex(acc, 1).first.max;
+
+   wdump((cpu_limit));
+   BOOST_REQUIRE_EQUAL(true, check(0));
+
+   // say it is going to take 1 more than we have
+   BOOST_REQUIRE_EQUAL(false, check(cpu_limit+1));
+
+} FC_LOG_AND_RETHROW()
+
+
+
 // TODO: restore net_usage_tests
 #if 0
 BOOST_FIXTURE_TEST_CASE(net_usage_tests, tester ) try {
