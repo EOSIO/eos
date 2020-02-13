@@ -1771,7 +1771,7 @@ bool producer_plugin_impl::process_scheduled_and_incoming_trxs( const fc::time_p
             trx_deadline = deadline;
          }
 
-         auto trace = chain.push_scheduled_transaction(trx_id, trx_deadline);
+         auto trace = chain.push_scheduled_transaction(trx_id, trx_deadline, 0, false);
          if (trace->except) {
             if (failure_is_subjective(*trace->except, deadline_is_subjective)) {
                exhausted = true;
