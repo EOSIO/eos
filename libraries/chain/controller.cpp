@@ -2684,11 +2684,12 @@ transaction_trace_ptr controller::push_transaction( const transaction_metadata_p
    return my->push_transaction(trx, deadline, billed_cpu_time_us, explicit_billed_cpu_time );
 }
 
-transaction_trace_ptr controller::push_scheduled_transaction( const transaction_id_type& trxid, fc::time_point deadline, uint32_t billed_cpu_time_us )
+transaction_trace_ptr controller::push_scheduled_transaction( const transaction_id_type& trxid, fc::time_point deadline,
+                                                              uint32_t billed_cpu_time_us, bool explicit_billed_cpu_time )
 {
    EOS_ASSERT( !in_immutable_mode(), transaction_type_exception, "push scheduled transaction not allowed in read-only mode" );
    validate_db_available_size();
-   return my->push_scheduled_transaction( trxid, deadline, billed_cpu_time_us, billed_cpu_time_us > 0 );
+   return my->push_scheduled_transaction( trxid, deadline, billed_cpu_time_us, explicit_billed_cpu_time );
 }
 
 const flat_set<account_name>& controller::get_actor_whitelist() const {
