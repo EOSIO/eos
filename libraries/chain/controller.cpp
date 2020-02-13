@@ -1308,8 +1308,9 @@ struct controller_impl {
       trx_context.undo();
 
       // Only subjective OR soft OR hard failure logic below:
+      const bool validating = !self.is_producing_block();
 
-      if( gtrx.sender != account_name() && !(explicit_billed_cpu_time ? failure_is_subjective(*trace->except) : scheduled_failure_is_subjective(*trace->except))) {
+      if( gtrx.sender != account_name() && !(validating ? failure_is_subjective(*trace->except) : scheduled_failure_is_subjective(*trace->except))) {
          // Attempt error handling for the generated transaction.
 
          auto error_trace = apply_onerror( gtrx, deadline, trx_context.pseudo_start,
@@ -1331,7 +1332,7 @@ struct controller_impl {
 
       // subjectivity changes based on producing vs validating
       bool subjective  = false;
-      if (explicit_billed_cpu_time) {
+      if (validating) {
          subjective = failure_is_subjective(*trace->except);
       } else {
          subjective = scheduled_failure_is_subjective(*trace->except);
@@ -1340,7 +1341,7 @@ struct controller_impl {
       if ( !subjective ) {
          // hard failure logic
 
-         if( !explicit_billed_cpu_time ) {
+         if( !validating ) {
             auto& rl = self.get_mutable_resource_limits_manager();
             rl.update_account_usage( trx_context.bill_to_accounts, block_timestamp_type(self.pending_block_time()).slot );
             int64_t account_cpu_limit = 0;
