@@ -333,7 +333,7 @@ namespace eosio { namespace testing {
          vector<transaction_id_type> scheduled_trxs;
          while ((scheduled_trxs = get_scheduled_transactions()).size() > 0 ) {
             for( const auto& trx : scheduled_trxs ) {
-               auto trace = control->push_scheduled_transaction( trx, fc::time_point::maximum(), DEFAULT_BILLED_CPU_TIME_US );
+               auto trace = control->push_scheduled_transaction( trx, fc::time_point::maximum(), DEFAULT_BILLED_CPU_TIME_US, false );
                if( trace->except ) {
                   trace->except->dynamic_rethrow_exception();
                }
