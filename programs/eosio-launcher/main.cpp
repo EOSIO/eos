@@ -1115,9 +1115,9 @@ launcher_def::write_config_file (tn_node_def &node) {
     }
     if (allowed_connections & PC_SPECIFIED) {
       cfg << "allowed-connection = specified\n";
-      cfg << "peer-key = \"" << string(node.keys.begin()->get_public_key()) << "\"\n";
-      cfg << "peer-private-key = [\"" << string(node.keys.begin()->get_public_key())
-          << "\",\"" << string(*node.keys.begin()) << "\"]\n";
+      cfg << "peer-key = \"" << node.keys.begin()->get_public_key().to_string() << "\"\n";
+      cfg << "peer-private-key = [\"" << node.keys.begin()->get_public_key().to_string()
+          << "\",\"" << node.keys.begin()->to_string() << "\"]\n";
     }
   }
 
@@ -1130,8 +1130,8 @@ launcher_def::write_config_file (tn_node_def &node) {
   }
   if (instance.has_db || node.producers.size()) {
     for (const auto &kp : node.keys ) {
-       cfg << "private-key = [\"" << string(kp.get_public_key())
-           << "\",\"" << string(kp) << "\"]\n";
+       cfg << "private-key = [\"" << kp.get_public_key().to_string()
+           << "\",\"" << kp.to_string() << "\"]\n";
     }
     for (auto &p : node.producers) {
       cfg << "producer-name = " << p << "\n";
@@ -1207,7 +1207,7 @@ launcher_def::init_genesis () {
       eosio::chain::genesis_state default_genesis;
       fc::json::save_to_file( default_genesis, genesis_path, true );
    }
-   string bioskey = string(network.nodes["bios"].keys[0].get_public_key());
+   string bioskey = network.nodes["bios"].keys[0].get_public_key().to_string();
 
    fc::json::from_file(genesis_path).as<eosio::chain::genesis_state>(genesis_from_file);
    genesis_from_file.initial_key = public_key_type(bioskey);
@@ -1277,7 +1277,7 @@ launcher_def::write_bios_boot () {
          }
          else if (key == "prodkeys" ) {
             for (auto &node : network.nodes) {
-               brb << "wcmd import -n ignition --private-key " << string(node.second.keys[0]) << "\n";
+               brb << "wcmd import -n ignition --private-key " << node.second.keys[0].to_string() << "\n";
             }
          }
          else if (key == "cacmd") {
@@ -1286,7 +1286,7 @@ launcher_def::write_bios_boot () {
                   continue;
                }
                brb << "cacmd " << p.producer_name
-                   << " " << string(p.block_signing_key) << " " << string(p.block_signing_key) << "\n";
+                   << " " << p.block_signing_key.to_string() << " " << p.block_signing_key.to_string() << "\n";
             }
          }
       }
