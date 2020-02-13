@@ -2149,7 +2149,7 @@ void get_account( const string& accountName, const string& coresym, bool json_fo
          std::cout << indent << std::string(depth*3, ' ') << name << ' ' << std::setw(5) << p.required_auth.threshold << ":    ";
          const char *sep = "";
          for ( auto it = p.required_auth.keys.begin(); it != p.required_auth.keys.end(); ++it ) {
-            std::cout << sep << it->weight << ' ' << string(it->key);
+            std::cout << sep << it->weight << ' ' << it->key.to_string();
             sep = ", ";
          }
          for ( auto& acc : p.required_auth.accounts ) {
@@ -2444,8 +2444,8 @@ int main( int argc, char** argv ) {
       }
 
       auto pk    = r1 ? private_key_type::generate_r1() : private_key_type::generate();
-      auto privs = string(pk);
-      auto pubs  = string(pk.get_public_key());
+      auto privs = pk.to_string();
+      auto pubs  = pk.get_public_key().to_string();
       if (print_console) {
          std::cout << localized("Private key: ${key}", ("key",  privs) ) << std::endl;
          std::cout << localized("Public key: ${key}", ("key", pubs ) ) << std::endl;
@@ -3290,7 +3290,7 @@ int main( int argc, char** argv ) {
 
       fc::variants vs = {fc::variant(wallet_name), fc::variant(wallet_key)};
       call(wallet_url, wallet_import_key, vs);
-      std::cout << localized("imported private key for: ${pubkey}", ("pubkey", std::string(pubkey))) << std::endl;
+      std::cout << localized("imported private key for: ${pubkey}", ("pubkey", pubkey.to_string())) << std::endl;
    });
 
    // remove keys from wallet
