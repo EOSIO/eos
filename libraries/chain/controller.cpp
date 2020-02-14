@@ -1203,6 +1203,13 @@ struct controller_impl {
 
    transaction_trace_ptr push_scheduled_transaction( const generated_transaction_object& gto, fc::time_point deadline, uint32_t billed_cpu_time_us, bool explicit_billed_cpu_time = false )
    { try {
+
+      const bool validating = !self.is_producing_block();
+      if( validating ) {
+         EOS_ASSERT( explicit_billed_cpu_time && billed_cpu_time_us > 0, transaction_exception,
+                     "validating requires explicit billing" );
+      }
+
       maybe_session undo_session;
       if ( !self.skip_db_sessions() )
          undo_session = maybe_session(db);
@@ -1308,7 +1315,6 @@ struct controller_impl {
       trx_context.undo();
 
       // Only subjective OR soft OR hard failure logic below:
-      const bool validating = !self.is_producing_block();
 
       if( gtrx.sender != account_name() && !(validating ? failure_is_subjective(*trace->except) : scheduled_failure_is_subjective(*trace->except))) {
          // Attempt error handling for the generated transaction.
@@ -1399,6 +1405,9 @@ struct controller_impl {
                                            bool explicit_billed_cpu_time )
    {
       EOS_ASSERT(deadline != fc::time_point(), transaction_exception, "deadline cannot be uninitialized");
+      if( explicit_billed_cpu_time ) {
+         EOS_ASSERT( billed_cpu_time_us > 0, transaction_exception, "no billed_cpu_time_us provided");
+      }
 
       transaction_trace_ptr trace;
       try {
