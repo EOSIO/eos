@@ -1210,9 +1210,12 @@ struct controller_impl {
             int64_t account_cpu_limit = 0;
             std::tie( std::ignore, account_cpu_limit, std::ignore, std::ignore ) = trx_context.max_bandwidth_billed_accounts_can_pay( true );
 
-            cpu_time_to_bill_us = static_cast<uint32_t>( std::min( std::min( static_cast<int64_t>(cpu_time_to_bill_us),
-                                                                             account_cpu_limit                          ),
-                                                                   trx_context.initial_objective_duration_limit.count()    ) );
+            uint32_t limited_cpu_time_to_bill_us = static_cast<uint32_t>( std::min(
+                  std::min( static_cast<int64_t>(cpu_time_to_bill_us), account_cpu_limit ),
+                  trx_context.initial_objective_duration_limit.count() ) );
+            EOS_ASSERT( !explicit_billed_cpu_time || (cpu_time_to_bill_us == limited_cpu_time_to_bill_us),
+                        transaction_exception, "cpu to bill ${cpu} != limited ${limit}", ("cpu", cpu_time_to_bill_us)("limit", limited_cpu_time_to_bill_us) );
+            cpu_time_to_bill_us = limited_cpu_time_to_bill_us;
          }
 
          resource_limits.add_transaction_usage( trx_context.bill_to_accounts, cpu_time_to_bill_us, 0,
