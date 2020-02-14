@@ -14,6 +14,51 @@
 // eosio specific specializations
 namespace eosio { namespace vm {
 
+   namespace detail {
+      // template helpers to determine if argument pair is an array_ptr and size pair
+      template <typename...>
+      struct array_ptr_type_checker;
+
+      template <typename T>
+      struct array_ptr_type_checker<eosio::chain::array_ptr<T>, uint32_t> {
+         constexpr array_ptr_type_checker(eosio::chain::array_ptr<T>, uint32_t) {}
+         static constexpr bool value = true;
+      };
+
+      template <typename T, typename U>
+      struct array_ptr_type_checker<T, U> {
+         constexpr array_ptr_type_checker(T&&, U&&) {}
+         static constexpr bool value = false;
+      };
+
+      template <typename T>
+      struct array_ptr_type_checker<T> {
+         constexpr array_ptr_type_checker(T&&) {}
+         static constexpr bool value = false;
+      };
+
+      template <typename T, typename U, typename... Args>
+      struct array_ptr_type_checker<T, U, Args...> {
+         constexpr array_ptr_type_checker(T&& t, U&& u, Args&&... args) {}
+         static constexpr bool value = array_ptr_type_checker<T, U>::value &&
+                                       decltype(detail::array_ptr_type_checker<Args...>(std::declval<Args>()...))::value;
+      };
+
+      struct array_ptr_filter {
+         constexpr array_ptr_filter( void* ap, uint32_t len ) : ptr(ap), len(len) {}
+         static array_ptr_filter create(void* ap, uint32_t l) { return {ap, l}; }
+         void* ptr;
+         uint32_t      len;
+      };
+
+      constexpr bool is_aliasing(const array_ptr_filter& a, const array_ptr_filter& b) {
+         if (a.ptr < b.ptr)
+            return a.ptr + a.len >= b.ptr;
+         return b.ptr + b.len >=
+         return is_aliasing(std::forward<T>(p1), sz1, std::forward<U>(p2), sz2) && is_aliasing(std::forward<Args>(args)...);
+      }
+   }
+
    template<>
    struct wasm_type_converter<eosio::chain::name> {
       static auto from_wasm(uint64_t val) {
@@ -25,10 +70,26 @@ namespace eosio { namespace vm {
    };
 
    template<typename T>
-   struct wasm_type_converter<T*> : linear_memory_access {
+   struct wasm_type_converter<eosio::chain::legacy_ptr<T>> : linear_memory_access {
       auto from_wasm(void* val) {
          validate_ptr<T>(val, 1);
          return eosio::vm::aligned_ptr_wrapper<T, alignof(T)>{val};
+      }
+   };
+
+   template<typename T>
+   struct wasm_type_converter<eosio::chain::legacy_ref<T>> : linear_memory_access {
+      auto from_wasm(void* val) {
+         validate_ptr<T>(val, 1);
+         return eosio::vm::aligned_ref_wrapper<T, alignof(T)>{val};
+      }
+   };
+
+   template<typename T>
+   struct wasm_type_converter<T*> : linear_memory_access {
+      auto from_wasm(void* val) {
+         validate_ptr<T>(val, 1);
+         return eosio::vm::copied_ptr_wrapper<T>{val};
       }
    };
 
@@ -46,7 +107,15 @@ namespace eosio { namespace vm {
          EOS_VM_ASSERT( val != 0, wasm_memory_exception, "references cannot be created for null pointers" );
          void* ptr = get_ptr(val);
          validate_ptr<T>(ptr, 1);
-         return eosio::vm::aligned_ref_wrapper<T, alignof(T)>{ptr};
+         return eosio::vm::copied_ref_wrapper<T>{ptr};
+      }
+   };
+
+   template<typename T>
+   struct wasm_type_converter<eosio::chain::legacy_array_ptr<T>> : linear_memory_access {
+      auto from_wasm(void* ptr, uint32_t size) {
+         validate_ptr<T>(ptr, size);
+         return aligned_array_wrapper<T, alignof(T)>(ptr, size);
       }
    };
 
@@ -54,7 +123,8 @@ namespace eosio { namespace vm {
    struct wasm_type_converter<eosio::chain::array_ptr<T>> : linear_memory_access {
       auto from_wasm(void* ptr, uint32_t size) {
          validate_ptr<T>(ptr, size);
-         return aligned_array_wrapper<T, alignof(T)>(ptr, size);
+         EOS_VM_ASSERT( reinterpret_cast<std::uintptr_t>(ptr) % alignof(T) != 0, wasm_memory_exception, "WASM arrays must be aligned to type T" );
+         return filtered_wrapper<&is_aliasing>((reinterpret_cast<T*>(ptr)));
       }
    };
 
