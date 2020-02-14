@@ -1205,10 +1205,7 @@ struct controller_impl {
    { try {
 
       const bool validating = !self.is_producing_block();
-      if( validating ) {
-         EOS_ASSERT( explicit_billed_cpu_time && billed_cpu_time_us > 0, transaction_exception,
-                     "validating requires explicit billing" );
-      }
+      EOS_ASSERT( !validating || (explicit_billed_cpu_time && billed_cpu_time_us > 0), transaction_exception, "validating requires explicit billing" );
 
       maybe_session undo_session;
       if ( !self.skip_db_sessions() )
@@ -1405,9 +1402,7 @@ struct controller_impl {
                                            bool explicit_billed_cpu_time )
    {
       EOS_ASSERT(deadline != fc::time_point(), transaction_exception, "deadline cannot be uninitialized");
-      if( explicit_billed_cpu_time ) {
-         EOS_ASSERT( billed_cpu_time_us > 0, transaction_exception, "no billed_cpu_time_us provided");
-      }
+      EOS_ASSERT( !explicit_billed_cpu_time || (billed_cpu_time_us > 0), transaction_exception, "no billed_cpu_time_us provided for explicit billing");
 
       transaction_trace_ptr trace;
       try {
