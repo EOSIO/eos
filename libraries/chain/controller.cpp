@@ -1205,7 +1205,7 @@ struct controller_impl {
    { try {
 
       const bool validating = !self.is_producing_block();
-      EOS_ASSERT( !validating || (explicit_billed_cpu_time && billed_cpu_time_us > 0), transaction_exception, "validating requires explicit billing" );
+      EOS_ASSERT( !validating || explicit_billed_cpu_time, transaction_exception, "validating requires explicit billing" );
 
       maybe_session undo_session;
       if ( !self.skip_db_sessions() )
