@@ -460,21 +460,25 @@ namespace eosio { namespace chain {
    }
 
    void transaction_context::validate_account_cpu_usage( int64_t billed_cpu_time_us, int64_t account_cpu_limit )const {
-      if( account_cpu_limit < billed_cpu_time_us && !control.skip_trx_checks() ) {
-         if( billing_timer_exception_code == block_cpu_usage_exceeded::code_value ) {
+      if( (billed_cpu_time_us > 0) && !control.skip_trx_checks() ) {
+         const bool cpu_limited_by_account = (account_cpu_limit <= objective_duration_limit.count());
+
+         if( !cpu_limited_by_account && (billing_timer_exception_code == block_cpu_usage_exceeded::code_value) ) {
             EOS_ASSERT( billed_cpu_time_us <= objective_duration_limit.count(),
                         block_cpu_usage_exceeded,
                         "estimated CPU time (${billed} us) is greater than the billable CPU time left in the block (${billable} us)",
                         ("billed", billed_cpu_time_us)( "billable", objective_duration_limit.count() )
             );
          } else {
-            if( cpu_limit_due_to_greylist ) {
-               EOS_ASSERT( false, greylist_cpu_usage_exceeded,
+            if( cpu_limited_by_account && cpu_limit_due_to_greylist ) {
+               EOS_ASSERT( billed_cpu_time_us <= account_cpu_limit, greylist_cpu_usage_exceeded,
                            "estimated CPU time (${billed} us) is greater than the maximum greylisted billable CPU time for the transaction (${billable} us)",
                            ("billed", billed_cpu_time_us)( "billable", account_cpu_limit )
                );
             } else {
-               EOS_ASSERT( false, tx_cpu_usage_exceeded,
+               // exceeds trx.max_cpu_usage_ms or cfg.max_transaction_cpu_usage if objective_duration_limit is greater
+               const int64_t cpu_limit = (cpu_limited_by_account ? account_cpu_limit : objective_duration_limit.count());
+               EOS_ASSERT( billed_cpu_time_us <= cpu_limit, tx_cpu_usage_exceeded,
                            "estimated CPU time (${billed} us) is greater than the maximum billable CPU time for the transaction (${billable} us)",
                            ("billed", billed_cpu_time_us)( "billable", account_cpu_limit )
                );
