@@ -1421,7 +1421,6 @@ struct controller_impl {
                                            bool explicit_billed_cpu_time )
    {
       EOS_ASSERT(deadline != fc::time_point(), transaction_exception, "deadline cannot be uninitialized");
-      EOS_ASSERT( !explicit_billed_cpu_time || (billed_cpu_time_us > 0), transaction_exception, "no billed_cpu_time_us provided for explicit billing");
 
       transaction_trace_ptr trace;
       try {
