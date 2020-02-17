@@ -1715,13 +1715,13 @@ bool producer_plugin_impl::process_scheduled_and_incoming_trxs( const fc::time_p
    auto sch_itr = sch_idx.begin();
    while( sch_itr != sch_idx.end() ) {
       if( sch_itr->delay_until > pending_block_time) break;    // not scheduled yet
-      if( sch_itr->published >= pending_block_time ) {
-         ++sch_itr;
-         continue; // do not allow schedule and execute in same block
-      }
       if( deadline <= fc::time_point::now() ) {
          exhausted = true;
          break;
+      }
+      if( sch_itr->published >= pending_block_time ) {
+         ++sch_itr;
+         continue; // do not allow schedule and execute in same block
       }
 
       const transaction_id_type trx_id = sch_itr->trx_id; // make copy since reference could be invalidated
