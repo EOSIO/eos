@@ -537,6 +537,9 @@ namespace eosio { namespace chain {
          }
       }
 
+      EOS_ASSERT( (!force_elastic_limits && control.is_producing_block()) || (!greylisted_cpu && !greylisted_net),
+                  transaction_exception, "greylisted when not producing block" );
+
       return std::make_tuple(account_net_limit, account_cpu_limit, greylisted_net, greylisted_cpu);
    }
 
