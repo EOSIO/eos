@@ -323,7 +323,7 @@ namespace eosio { namespace testing {
 
       if( !skip_pending_trxs ) {
          for( auto itr = unapplied_transactions.begin(); itr != unapplied_transactions.end();  ) {
-            auto trace = control->push_transaction( itr->trx_meta, fc::time_point::maximum(), DEFAULT_BILLED_CPU_TIME_US, true );
+            auto trace = control->push_transaction( itr->trx_meta, fc::time_point::maximum(), itr->trx_meta->billed_cpu_time_us, false );
             if(trace->except) {
                trace->except->dynamic_rethrow_exception();
             }
@@ -333,7 +333,7 @@ namespace eosio { namespace testing {
          vector<transaction_id_type> scheduled_trxs;
          while ((scheduled_trxs = get_scheduled_transactions()).size() > 0 ) {
             for( const auto& trx : scheduled_trxs ) {
-               auto trace = control->push_scheduled_transaction( trx, fc::time_point::maximum(), DEFAULT_BILLED_CPU_TIME_US, false );
+               auto trace = control->push_scheduled_transaction( trx, fc::time_point::maximum(), 0, false );
                if( trace->except ) {
                   trace->except->dynamic_rethrow_exception();
                }
