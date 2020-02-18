@@ -248,7 +248,7 @@ namespace eosio { namespace testing {
       if( !skip_pending_trxs ) {
          unapplied_transactions_type unapplied_trxs = control->get_unapplied_transactions(); // make copy of map
          for (const auto& entry : unapplied_trxs ) {
-            auto trace = control->push_transaction(entry.second, fc::time_point::maximum(), entry.second->billed_cpu_time_us, false );
+            auto trace = control->push_transaction(entry.second, fc::time_point::maximum(), DEFAULT_BILLED_CPU_TIME_US, true );
             if(trace->except) {
                trace->except->dynamic_rethrow_exception();
             }
@@ -257,7 +257,7 @@ namespace eosio { namespace testing {
          vector<transaction_id_type> scheduled_trxs;
          while( (scheduled_trxs = get_scheduled_transactions() ).size() > 0 ) {
             for (const auto& trx : scheduled_trxs ) {
-               auto trace = control->push_scheduled_transaction(trx, fc::time_point::maximum(), 0, false);
+               auto trace = control->push_scheduled_transaction(trx, fc::time_point::maximum(), DEFAULT_BILLED_CPU_TIME_US, true);
                if(trace->except) {
                   trace->except->dynamic_rethrow_exception();
                }
