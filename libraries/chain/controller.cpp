@@ -1096,7 +1096,7 @@ struct controller_impl {
             add_intrinsic_to_whitelist( pso.whitelisted_intrinsics, i );
          }
          for( const auto& feature_digest : genesis.initial_protocol_features ) {
-            pso.activated_protocol_features.emplace_back( feature_digest, 0 );
+            pso.activated_protocol_features.emplace_back( feature_digest, 1 );
          }
       });
 
