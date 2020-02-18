@@ -73,7 +73,7 @@ Config Options for eosio::chain_plugin:
                                         application config dir)
   --checkpoint arg                      Pairs of [BLOCK_NUM,BLOCK_ID] that 
                                         should be enforced as checkpoints.
-  --wasm-runtime wavm/wabt              Override default WASM runtime
+  --wasm-runtime                        Override default WASM runtime
   --abi-serializer-max-time-ms arg (=15000)
                                         Override default maximum ABI 
                                         serialization time allowed in ms
