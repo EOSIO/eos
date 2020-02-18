@@ -634,13 +634,13 @@ optional<abi_serializer> mongo_db_plugin_impl::get_abi_serializer( account_name 
                            // unpack setabi.abi as abi_def instead of as bytes
                            abis.add_specialized_unpack_pack( "abi_def",
                                  std::make_pair<abi_serializer::unpack_function, abi_serializer::pack_function>(
-                                       []( fc::datastream<const char*>& stream, bool is_array, bool is_optional ) -> fc::variant {
+                                       []( fc::datastream<const char*>& stream, bool is_array, bool is_optional, const fc::time_point& deadline ) -> fc::variant {
                                           EOS_ASSERT( !is_array && !is_optional, chain::mongo_db_exception, "unexpected abi_def");
                                           chain::bytes temp;
                                           fc::raw::unpack( stream, temp );
                                           return fc::variant( fc::raw::unpack<abi_def>( temp ) );
                                        },
-                                       []( const fc::variant& var, fc::datastream<char*>& ds, bool is_array, bool is_optional ) {
+                                       []( const fc::variant& var, fc::datastream<char*>& ds, bool is_array, bool is_optional, const fc::time_point& deadline ) {
                                           EOS_ASSERT( false, chain::mongo_db_exception, "never called" );
                                        }
                                  ) );
@@ -1110,7 +1110,7 @@ void mongo_db_plugin_impl::add_pub_keys( const vector<chain::key_weight>& keys, 
       auto find_doc = bsoncxx::builder::basic::document();
 
       find_doc.append( kvp( "account", name.to_string()),
-                       kvp( "public_key", pub_key_weight.key.operator string()),
+                       kvp( "public_key", pub_key_weight.key.to_string()),
                        kvp( "permission", permission.to_string()) );
 
       auto update_doc = make_document( kvp( "$set", make_document( bsoncxx::builder::concatenate_doc{find_doc.view()},

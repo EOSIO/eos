@@ -26,23 +26,50 @@ namespace eosio { namespace chain {
    }
 
    template <typename T>
+   inline fc::variant variant_from_stream(fc::datastream<const char*>& stream, const fc::time_point& deadline) {
+      T temp;
+      fc::raw::unpack( stream, temp );
+      FC_CHECK_DEADLINE(deadline);
+      return fc::variant( temp, deadline );
+   }
+
+   template <typename T>
+   auto pack_function() {
+      return []( const fc::variant& var, fc::datastream<char*>& ds, bool is_array, bool is_optional, const fc::time_point& deadline ){
+         if( is_array )
+            fc::raw::pack( ds, var.as<vector<T>>() );
+         else if ( is_optional )
+            fc::raw::pack( ds, var.as<optional<T>>() );
+         else
+            fc::raw::pack( ds,  var.as<T>());
+      };
+   }
+
+   template <typename T>
    auto pack_unpack() {
       return std::make_pair<abi_serializer::unpack_function, abi_serializer::pack_function>(
-         []( fc::datastream<const char*>& stream, bool is_array, bool is_optional) -> fc::variant  {
+         []( fc::datastream<const char*>& stream, bool is_array, bool is_optional, const fc::time_point& deadline) -> fc::variant  {
             if( is_array )
                return variant_from_stream<vector<T>>(stream);
             else if ( is_optional )
                return variant_from_stream<optional<T>>(stream);
             return variant_from_stream<T>(stream);
          },
-         []( const fc::variant& var, fc::datastream<char*>& ds, bool is_array, bool is_optional ){
+         pack_function<T>()
+      );
+   }
+
+   template <typename T>
+   auto pack_unpack_deadline() {
+      return std::make_pair<abi_serializer::unpack_function, abi_serializer::pack_function>(
+         []( fc::datastream<const char*>& stream, bool is_array, bool is_optional, const fc::time_point& deadline) -> fc::variant  {
             if( is_array )
-               fc::raw::pack( ds, var.as<vector<T>>() );
+               return variant_from_stream<vector<T>>(stream);
             else if ( is_optional )
-               fc::raw::pack( ds, var.as<optional<T>>() );
-            else
-               fc::raw::pack( ds,  var.as<T>());
-         }
+               return variant_from_stream<optional<T>>(stream);
+            return variant_from_stream<T>(stream, deadline);
+         },
+         pack_function<T>()
       );
    }
 
@@ -90,8 +117,8 @@ namespace eosio { namespace chain {
       built_in_types.emplace("checksum256",               pack_unpack<checksum256_type>());
       built_in_types.emplace("checksum512",               pack_unpack<checksum512_type>());
 
-      built_in_types.emplace("public_key",                pack_unpack<public_key_type>());
-      built_in_types.emplace("signature",                 pack_unpack<signature_type>());
+      built_in_types.emplace("public_key",                pack_unpack_deadline<public_key_type>());
+      built_in_types.emplace("signature",                 pack_unpack_deadline<signature_type>());
 
       built_in_types.emplace("symbol",                    pack_unpack<symbol>());
       built_in_types.emplace("symbol_code",               pack_unpack<symbol_code>());
@@ -318,7 +345,7 @@ namespace eosio { namespace chain {
       auto btype = built_in_types.find(ftype );
       if( btype != built_in_types.end() ) {
          try {
-            return btype->second.first(stream, is_array(rtype), is_optional(rtype));
+            return btype->second.first(stream, is_array(rtype), is_optional(rtype), ctx.get_deadline());
          } EOS_RETHROW_EXCEPTIONS( unpack_exception, "Unable to unpack ${class} type '${type}' while processing '${p}'",
                                    ("class", is_array(rtype) ? "array of built-in" : is_optional(rtype) ? "optional of built-in" : "built-in")
                                    ("type", impl::limit_size(ftype))("p", ctx.get_path_string()) )
@@ -403,7 +430,7 @@ namespace eosio { namespace chain {
 
       auto btype = built_in_types.find(fundamental_type(rtype));
       if( btype != built_in_types.end() ) {
-         btype->second.second(var, ds, is_array(rtype), is_optional(rtype));
+         btype->second.second(var, ds, is_array(rtype), is_optional(rtype), ctx.get_deadline());
       } else if ( is_array(rtype) ) {
          ctx.hint_array_type_if_in_array();
          vector<fc::variant> vars = var.get_array();
