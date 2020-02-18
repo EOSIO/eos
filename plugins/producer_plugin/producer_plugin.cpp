@@ -183,6 +183,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       void produce_block();
       bool maybe_produce_block();
       bool remove_expired_trxs( const fc::time_point& deadline );
+      bool block_is_exhausted() const;
       bool remove_expired_blacklisted_trxs( const fc::time_point& deadline );
       bool process_unapplied_trxs( const fc::time_point& deadline );
       bool process_scheduled_and_incoming_trxs( const fc::time_point& deadline, size_t& pending_incoming_process_limit );
@@ -206,6 +207,8 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       fc::microseconds                                          _max_irreversible_block_age_us;
       int32_t                                                   _produce_time_offset_us = 0;
       int32_t                                                   _last_block_time_offset_us = 0;
+      uint32_t                                                  _max_block_cpu_usage_threshold_us = 0;
+      uint32_t                                                  _max_block_net_usage_threshold_bytes = 0;
       int32_t                                                   _max_scheduled_transaction_time_per_block_ms = 0;
       fc::time_point                                            _irreversible_block_time;
       fc::microseconds                                          _keosd_provider_timeout_us;
@@ -502,7 +505,9 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                               ("block_num", chain.head_block_num() + 1)
                               ("prod", chain.pending_block_producer())
                               ("txid", trx->id()));
-                     schedule_maybe_produce_block( true );
+                     if( block_is_exhausted() ) {
+                        schedule_maybe_produce_block( true );
+                     }
                   } else {
                      fc_dlog( _trx_trace_log, "[TRX_TRACE] Speculative execution COULD NOT FIT tx: ${txid} RETRYING",
                               ("txid", trx->id()));
@@ -554,7 +559,8 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       start_block_result start_block();
 
       fc::time_point calculate_pending_block_time() const;
-      fc::time_point calculate_block_deadline( const fc::time_point& ) const;
+      uint32_t calculate_block_offset( const fc::time_point& block_time ) const;
+      fc::time_point calculate_block_deadline( const fc::time_point& block_time ) const;
       void schedule_delayed_production_loop(const std::weak_ptr<producer_plugin_impl>& weak_this, optional<fc::time_point> wake_up_time);
       optional<fc::time_point> calculate_producer_wake_up_time( const block_timestamp_type& ref_block_time ) const;
 
@@ -632,6 +638,10 @@ void producer_plugin::set_program_options(
           "Percentage of cpu block production time used to produce block. Whole number percentages, e.g. 80 for 80%")
          ("last-block-cpu-effort-percent", bpo::value<uint32_t>()->default_value(config::default_block_cpu_effort_pct / config::percent_1),
           "Percentage of cpu block production time used to produce last block. Whole number percentages, e.g. 80 for 80%")
+         ("max-block-cpu-usage-threshold-us", bpo::value<uint32_t>()->default_value( 1000 ),
+          "Threshold of cpu block production to consider block full; when within threshold of max-block-cpu-usage no additional transactions will be attempted")
+         ("max-block-net-usage-threshold-bytes", bpo::value<uint32_t>()->default_value( 1024 ),
+          "Threshold of net block production to consider block full; when within threshold of max-block-net-usage no additional transactions will be attempted")
          ("max-scheduled-transaction-time-per-block-ms", boost::program_options::value<int32_t>()->default_value(100),
           "Maximum wall-clock time, in milliseconds, spent retiring scheduled transactions in any block before returning to normal transaction processing.")
          ("subjective-cpu-leeway-us", boost::program_options::value<int32_t>()->default_value( config::default_subjective_cpu_leeway_us ),
@@ -797,6 +807,12 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
 
    my->_produce_time_offset_us = std::min( my->_produce_time_offset_us, cpu_effort_offset_us );
    my->_last_block_time_offset_us = std::min( my->_last_block_time_offset_us, last_block_cpu_effort_offset_us );
+
+   my->_max_block_cpu_usage_threshold_us = options.at( "max-block-cpu-usage-threshold-us" ).as<uint32_t>();
+   EOS_ASSERT( my->_max_block_cpu_usage_threshold_us < config::block_interval_us, plugin_config_exception,
+               "max-block-cpu-usage-threshold-us ${t} must be 0 .. ${bi}", ("bi", config::block_interval_us)("t", my->_max_block_cpu_usage_threshold_us) );
+
+   my->_max_block_net_usage_threshold_bytes = options.at( "max-block-net-usage-threshold-bytes" ).as<uint32_t>();
 
    my->_max_scheduled_transaction_time_per_block_ms = options.at("max-scheduled-transaction-time-per-block-ms").as<int32_t>();
 
@@ -1350,9 +1366,13 @@ fc::time_point producer_plugin_impl::calculate_pending_block_time() const {
    return block_time;
 }
 
-fc::time_point producer_plugin_impl::calculate_block_deadline( const fc::time_point& block_time ) const {
+uint32_t producer_plugin_impl::calculate_block_offset( const fc::time_point& block_time ) const {
    bool last_block = ((block_timestamp_type(block_time).slot % config::producer_repetitions) == config::producer_repetitions - 1);
-   return block_time + fc::microseconds(last_block ? _last_block_time_offset_us : _produce_time_offset_us);
+   return last_block ? _last_block_time_offset_us : _produce_time_offset_us;
+}
+
+fc::time_point producer_plugin_impl::calculate_block_deadline( const fc::time_point& block_time ) const {
+   return block_time + fc::microseconds( calculate_block_offset( block_time ) );
 }
 
 producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
@@ -1544,7 +1564,8 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
                );
             }
             // may exhaust scheduled_trx_deadline but not preprocess_deadline, exhausted preprocess_deadline checked below
-            process_scheduled_and_incoming_trxs( scheduled_trx_deadline, pending_incoming_process_limit );
+            if( !process_scheduled_and_incoming_trxs( scheduled_trx_deadline, pending_incoming_process_limit ) )
+               return start_block_result::exhausted;
          }
 
          if( app().is_quiting() ) // db guard exception above in LOG_AND_DROP could have called app().quit()
@@ -1672,9 +1693,11 @@ bool producer_plugin_impl::process_unapplied_trxs( const fc::time_point& deadlin
             auto trace = chain.push_transaction( trx, trx_deadline );
             if( trace->except ) {
                if( failure_is_subjective( *trace->except, deadline_is_subjective ) ) {
-                  exhausted = true;
-                  // don't erase, subjective failure so try again next time
-                  break;
+                  if( block_is_exhausted() ) {
+                     exhausted = true;
+                     // don't erase, subjective failure so try again next time
+                     break;
+                  }
                } else {
                   // this failed our configured maximum transaction time, we don't want to replay it
                   ++num_failed;
@@ -1774,8 +1797,10 @@ bool producer_plugin_impl::process_scheduled_and_incoming_trxs( const fc::time_p
          auto trace = chain.push_scheduled_transaction(trx_id, trx_deadline);
          if (trace->except) {
             if (failure_is_subjective(*trace->except, deadline_is_subjective)) {
-               exhausted = true;
-               break;
+               if( block_is_exhausted() ) {
+                  exhausted = true;
+                  break;
+               }
             } else {
                auto expiration = fc::time_point::now() + fc::seconds(chain.get_global_properties().configuration.deferred_trx_expiration_window);
                // this failed our configured maximum transaction time, we don't want to replay it add it to a blacklist
@@ -1827,6 +1852,18 @@ bool producer_plugin_impl::process_incoming_trxs( const fc::time_point& deadline
       fc_dlog( _log, "Processed ${n} pending transactions, ${p} left", ("n", processed)("p", _unapplied_transactions.incoming_size()) );
    }
    return !exhausted;
+}
+
+bool producer_plugin_impl::block_is_exhausted() const {
+   const chain::controller& chain = chain_plug->chain();
+   const auto& rl = chain.get_resource_limits_manager();
+   const uint32_t offset = calculate_block_offset( chain.pending_block_time() );
+
+   const uint64_t cpu_limit = rl.get_block_cpu_limit();
+   if( (cpu_limit + offset) < _max_block_cpu_usage_threshold_us ) return true;
+   const uint64_t net_limit = rl.get_block_net_limit();
+   if( net_limit < _max_block_net_usage_threshold_bytes ) return true;
+   return false;
 }
 
 // Example:
