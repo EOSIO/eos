@@ -201,6 +201,56 @@ BOOST_AUTO_TEST_CASE( require_preactivation_test ) try {
 
 } FC_LOG_AND_RETHROW()
 
+BOOST_AUTO_TEST_CASE( genesis_activation ) try {
+   // Yeah, creating a whole tester just for the protocol_feature_manager is wasteful...
+   tester c0;
+   auto pfm = c0.control->get_protocol_feature_manager();
+
+   {
+      // preactivate_feature missing
+      fc::temp_directory dir;
+      auto [config, genesis] = tester::default_config(dir);
+      genesis.initial_protocol_features.push_back( *pfm.get_builtin_digest( builtin_protocol_feature_t::only_link_to_existing_permission ) );
+      BOOST_CHECK_THROW(tester(config, genesis), protocol_feature_exception);
+   }
+
+   {
+      // missing dependency replace_deferred
+      fc::temp_directory dir;
+      auto [config, genesis] = tester::default_config(dir);
+      genesis.initial_protocol_features.push_back( *pfm.get_builtin_digest( builtin_protocol_feature_t::preactivate_feature ) );
+      genesis.initial_protocol_features.push_back( *pfm.get_builtin_digest( builtin_protocol_feature_t::no_duplicate_deferred_id ) );
+      BOOST_CHECK_THROW(tester(config, genesis), protocol_feature_exception);
+   }
+
+   {
+      // In order activation
+      fc::temp_directory dir;
+      auto [config, genesis] = tester::default_config(dir);
+      genesis.initial_protocol_features.push_back( *pfm.get_builtin_digest( builtin_protocol_feature_t::preactivate_feature ) );
+      genesis.initial_protocol_features.push_back( *pfm.get_builtin_digest( builtin_protocol_feature_t::only_link_to_existing_permission ) );
+      genesis.initial_protocol_features.push_back( *pfm.get_builtin_digest( builtin_protocol_feature_t::replace_deferred ) );
+      genesis.initial_protocol_features.push_back( *pfm.get_builtin_digest( builtin_protocol_feature_t::no_duplicate_deferred_id ) );
+      tester c(config, genesis);
+      BOOST_TEST( c.control->is_builtin_activated( builtin_protocol_feature_t::preactivate_feature ) );
+      BOOST_TEST( c.control->is_builtin_activated( builtin_protocol_feature_t::no_duplicate_deferred_id ) );
+      BOOST_TEST( !c.control->is_builtin_activated( builtin_protocol_feature_t::get_sender ) );
+   }
+   {
+      // Reverse order activation.  We don't care about the order as long as all dependencies are satisfied.
+      fc::temp_directory dir;
+      auto [config, genesis] = tester::default_config(dir);
+      genesis.initial_protocol_features.push_back( *pfm.get_builtin_digest( builtin_protocol_feature_t::no_duplicate_deferred_id ) );
+      genesis.initial_protocol_features.push_back( *pfm.get_builtin_digest( builtin_protocol_feature_t::replace_deferred ) );
+      genesis.initial_protocol_features.push_back( *pfm.get_builtin_digest( builtin_protocol_feature_t::only_link_to_existing_permission ) );
+      genesis.initial_protocol_features.push_back( *pfm.get_builtin_digest( builtin_protocol_feature_t::preactivate_feature ) );
+      tester c(config, genesis);
+      BOOST_TEST( c.control->is_builtin_activated( builtin_protocol_feature_t::preactivate_feature ) );
+      BOOST_TEST( c.control->is_builtin_activated( builtin_protocol_feature_t::no_duplicate_deferred_id ) );
+      BOOST_TEST( !c.control->is_builtin_activated( builtin_protocol_feature_t::get_sender ) );
+   }
+} FC_LOG_AND_RETHROW()
+
 BOOST_AUTO_TEST_CASE( only_link_to_existing_permission_test ) try {
    tester c( setup_policy::preactivate_feature_and_new_bios );
    const auto& pfm = c.control->get_protocol_feature_manager();
