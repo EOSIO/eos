@@ -1890,6 +1890,7 @@ bool producer_plugin_impl::block_is_exhausted() const {
    const auto offset = calculate_block_offset( chain.pending_block_time() );
 
    const auto cpu_limit = rl.get_block_cpu_limit();
+   fc_dlog( _log, "is_exhausted cpu_limit ${cl} offset ${o} max ${m}", ("cl", cpu_limit)("o", offset)("m", _max_block_cpu_usage_threshold_us) );
    if( (cpu_limit + offset) < _max_block_cpu_usage_threshold_us ) return true;
    const auto net_limit = rl.get_block_net_limit();
    if( net_limit < _max_block_net_usage_threshold_bytes ) return true;
