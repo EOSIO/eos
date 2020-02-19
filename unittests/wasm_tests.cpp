@@ -2009,11 +2009,11 @@ BOOST_AUTO_TEST_CASE( billed_cpu_test ) try {
 
    ptrx = create_trx(0);
    BOOST_CHECK_LT( cpu_limit_after_update, max_cpu_time_us ); // needs to be less or this just tests the same thing as max_cpu_time_us test above
-   // indicate non-explicit billing at our account cpu limit, will allow this trx to run
+   // indicate non-explicit billing at our account cpu limit, will allow this trx to run, but only bills for actual use
    push_trx( ptrx, fc::time_point::maximum(), cpu_limit_after_update, false );
 
    ptrx = create_trx(0);
-   // indicate explicit billing at over our account cpu limit, not allowed sinze explicit billing is objective
+   // indicate explicit billing at over our account cpu limit, not allowed
    cpu_limit_after_update = mgr.get_account_cpu_limit(acc).first;
    BOOST_CHECK_THROW( push_trx( ptrx, fc::time_point::maximum(), cpu_limit_after_update+1, true ), tx_cpu_usage_exceeded );
 
