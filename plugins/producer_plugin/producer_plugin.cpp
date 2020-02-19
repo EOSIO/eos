@@ -443,11 +443,12 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          });
       }
 
-      void process_incoming_transaction_async(const transaction_metadata_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next) {
+      bool process_incoming_transaction_async(const transaction_metadata_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next) {
+         bool exhausted = false;
          chain::controller& chain = chain_plug->chain();
          if (!chain.is_building_block()) {
             _pending_incoming_transactions.emplace_back(trx, persist_until_expired, next);
-            return;
+            return true;
          }
 
          auto block_time = chain.pending_block_time();
@@ -484,12 +485,12 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          const auto& id = trx->id;
          if( fc::time_point(trx->packed_trx->expiration()) < block_time ) {
             send_response(std::static_pointer_cast<fc::exception>(std::make_shared<expired_tx_exception>(FC_LOG_MESSAGE(error, "expired transaction ${id}", ("id", id)) )));
-            return;
+            return true;
          }
 
          if( chain.is_known_unexpired_transaction(id) ) {
             send_response(std::static_pointer_cast<fc::exception>(std::make_shared<tx_duplicate>(FC_LOG_MESSAGE(error, "duplicate transaction ${id}", ("id", id)) )));
-            return;
+            return true;
          }
 
          auto deadline = fc::time_point::now() + fc::milliseconds(_max_transaction_time_ms);
@@ -512,6 +513,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                              ("txid", trx->id));
                      if( block_is_exhausted() ) {
                         schedule_maybe_produce_block( true );
+                        exhausted = true;
                      }
                   } else {
                      fc_dlog(_trx_trace_log, "[TRX_TRACE] Speculative execution COULD NOT FIT tx: ${txid} RETRYING",
@@ -537,6 +539,8 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          } catch ( std::bad_alloc& ) {
             chain_plugin::handle_bad_alloc();
          } CATCH_AND_CALL(send_response);
+
+         return !exhausted;
       }
 
 
@@ -642,7 +646,7 @@ void producer_plugin::set_program_options(
           "Percentage of cpu block production time used to produce block. Whole number percentages, e.g. 80 for 80%")
          ("last-block-cpu-effort-percent", bpo::value<uint32_t>()->default_value(config::default_block_cpu_effort_pct / config::percent_1),
           "Percentage of cpu block production time used to produce last block. Whole number percentages, e.g. 80 for 80%")
-         ("max-block-cpu-usage-threshold-us", bpo::value<uint32_t>()->default_value( 1000 ),
+         ("max-block-cpu-usage-threshold-us", bpo::value<uint32_t>()->default_value( 5000 ),
           "Threshold of cpu block production to consider block full; when within threshold of max-block-cpu-usage no additional transactions will be attempted")
          ("max-block-net-usage-threshold-bytes", bpo::value<uint32_t>()->default_value( 1024 ),
           "Threshold of net block production to consider block full; when within threshold of max-block-net-usage no additional transactions will be attempted")
@@ -1751,7 +1755,7 @@ bool producer_plugin_impl::process_scheduled_and_incoming_trxs( const fc::time_p
          ++sch_itr;
          continue; // do not allow schedule and execute in same block
       }
-      if( deadline <= fc::time_point::now() ) {
+      if( exhausted || deadline <= fc::time_point::now() ) {
          exhausted = true;
          break;
       }
@@ -1780,10 +1784,13 @@ bool producer_plugin_impl::process_scheduled_and_incoming_trxs( const fc::time_p
          _pending_incoming_transactions.pop_front();
          --pending_incoming_process_limit;
          incoming_trx_weight -= 1.0;
-         process_incoming_transaction_async(std::get<0>(e), std::get<1>(e), std::get<2>(e));
+         if( !process_incoming_transaction_async(std::get<0>(e), std::get<1>(e), std::get<2>(e)) ) {
+            exhausted = true;
+            break;
+         }
       }
 
-      if (deadline <= fc::time_point::now()) {
+      if (exhausted || deadline <= fc::time_point::now()) {
          exhausted = true;
          break;
       }
@@ -1841,7 +1848,10 @@ bool producer_plugin_impl::process_incoming_trxs( const fc::time_point& deadline
          auto e = _pending_incoming_transactions.front();
          _pending_incoming_transactions.pop_front();
          --pending_incoming_process_limit;
-         process_incoming_transaction_async(std::get<0>(e), std::get<1>(e), std::get<2>(e));
+         if( !process_incoming_transaction_async(std::get<0>(e), std::get<1>(e), std::get<2>(e)) ) {
+            exhausted = true;
+            break;
+         }
       }
    }
    return !exhausted;
