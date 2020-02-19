@@ -68,6 +68,20 @@ class wabt_runtime : public eosio::chain::wasm_runtime_interface {
  * @tparam T
  */
 template<typename T>
+inline legacy_array_ptr<T> legacy_array_ptr_impl (wabt_apply_instance_vars& vars, uint32_t ptr, uint32_t length)
+{
+   EOS_ASSERT( length < INT_MAX/(uint32_t)sizeof(T), binaryen_exception, "length will overflow" );
+   return legacy_array_ptr<T>((T*)(vars.get_validated_pointer(ptr, length * (uint32_t)sizeof(T))));
+}
+
+/**
+ * class to represent an in-wasm-memory array
+ * it is a hint to the transcriber that the next parameter will
+ * be a size (data bytes length) and that the pair are validated together
+ * This triggers the template specialization of intrinsic_invoker_impl
+ * @tparam T
+ */
+template<typename T>
 inline array_ptr<T> array_ptr_impl (wabt_apply_instance_vars& vars, uint32_t ptr, uint32_t length)
 {
    EOS_ASSERT( length < INT_MAX/(uint32_t)sizeof(T), binaryen_exception, "length will overflow" );
@@ -108,6 +122,24 @@ struct is_reference_from_value<fc::time_point_sec> {
 template<typename T>
 constexpr bool is_reference_from_value_v = is_reference_from_value<T>::value;
 
+
+template <typename T>
+inline auto convert_literal_to_native(const TypedValue& v) {
+   template <typename U, typename V>
+   static constexpr same = std::is_same_v<U, V>;
+
+   if constexpr (same<T, double>)
+      return v.get_f64();
+   else if constexpr (same<T, float>)
+      return v.get_f32();
+   else if constexpr (same<T, int64_t> || same<T, uint64_t>)
+      return v.get_i64();
+   else if constexpr (same<T, int32_t> || same<T, uint32_t> || same<T, bool>)
+      return v.get_i32();
+   else if constexpr (same<T, name>)
+      return name{v.get_i64()};
+}
+/*
 template<typename T>
 T convert_literal_to_native(const TypedValue& v);
 
@@ -151,6 +183,7 @@ inline name convert_literal_to_native<name>(const TypedValue& v) {
    int64_t val = v.get_i64();
    return name(val);
 }
+*/
 
 inline auto convert_native_to_literal(const wabt_apply_instance_vars&, const uint32_t &val) {
    TypedValue tv(Type::I32);
@@ -403,9 +436,9 @@ struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, uint32_t, Inputs...>
  * @tparam Inputs - the remaining native parameters to transcribe
  */
 template<typename T, typename Ret, typename... Inputs>
-struct intrinsic_invoker_impl<Ret, std::tuple<legacy_array_ptr<T>, uint32_t, Inputs...>> {
+struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, uint32_t, Inputs...>> {
    using next_step = intrinsic_invoker_impl<Ret, std::tuple<Inputs...>>;
-   using then_type = Ret(*)(wabt_apply_instance_vars&, legacy_array_ptr<T>, uint32_t, Inputs..., const TypedValues&, int);
+   using then_type = Ret(*)(wabt_apply_instance_vars&, array_ptr<T>, uint32_t, Inputs..., const TypedValues&, int);
 
    template<then_type Then>
    static Ret translate_one(wabt_apply_instance_vars& vars, Inputs... rest, const TypedValues& args, int offset) {
@@ -414,7 +447,7 @@ struct intrinsic_invoker_impl<Ret, std::tuple<legacy_array_ptr<T>, uint32_t, Inp
       size_t length = args.at((uint32_t)offset).get_i32();
       T* base = array_ptr_impl<T>(vars, ptr, length);
       EOS_ASSERT( reinterpret_cast<uintptr_t>(base) % alignof(T) == 0, wasm_execution_error, "alignment constraint not met for WASM array" );
-      return Then(vars, static_cast<legacy_array_ptr<T>>(base), length, rest..., args, (uint32_t)offset - 2);
+      return Then(vars, static_cast<array_ptr<T>>(base), length, rest..., args, (uint32_t)offset - 2);
    };
 
    template<then_type Then>
@@ -512,11 +545,11 @@ template<typename T, typename Ret, typename... Inputs>
 struct intrinsic_invoker_impl<Ret, std::tuple<legacy_ptr<T>, Inputs...>> {
    using next_step = intrinsic_invoker_impl<Ret, std::tuple<Inputs...>>;
    using then_type = Ret (*)(wabt_apply_instance_vars&, legacy_ptr<T>, Inputs..., const TypedValues&, int);
-
+      T* base = array_ptr_impl<T>(vars, ptr, 1);
    template<then_type Then>
    static Ret translate_one(wabt_apply_instance_vars& vars, Inputs... rest, const TypedValues& args, int offset) {
       uint32_t ptr = args.at((uint32_t)offset).get_i32();
-      T* base = array_ptr_impl<T>(vars, ptr, 1);
+      T* base = legacy_array_ptr_impl<T>(vars, ptr, 1);
       if ( reinterpret_cast<uintptr_t>(base) % alignof(T) != 0 ) {
          if(vars.ctx.control.contracts_console())
             wlog( "misaligned const pointer" );

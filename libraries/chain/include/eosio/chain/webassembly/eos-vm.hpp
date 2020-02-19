@@ -45,17 +45,17 @@ namespace eosio { namespace vm {
       };
 
       struct array_ptr_filter {
-         constexpr array_ptr_filter( void* ap, uint32_t len ) : ptr(ap), len(len) {}
-         static array_ptr_filter create(void* ap, uint32_t l) { return {ap, l}; }
-         void* ptr;
-         uint32_t      len;
+         constexpr array_ptr_filter( void* ap, uint32_t len ) : value(static_cast<char*>(ap)), len(len) {}
+         static array_ptr_filter create(void* ap, uint32_t l) { return {static_cast<char*>(ap), l}; }
+         char*    value;
+         uint32_t len;
       };
 
       constexpr bool is_aliasing(const array_ptr_filter& a, const array_ptr_filter& b) {
-         if (a.ptr < b.ptr)
-            return a.ptr + a.len >= b.ptr;
-         return b.ptr + b.len >=
-         return is_aliasing(std::forward<T>(p1), sz1, std::forward<U>(p2), sz2) && is_aliasing(std::forward<Args>(args)...);
+         if (a.value < b.value)
+            return a.value + a.len >= b.value;
+         return b.value + b.len >= a.value;
+         //return is_aliasing(std::forward<T>(p1), sz1, std::forward<U>(p2), sz2) && is_aliasing(std::forward<Args>(args)...);
       }
    }
 
@@ -119,12 +119,43 @@ namespace eosio { namespace vm {
       }
    };
 
+   template<>
+   struct wasm_type_converter<eosio::chain::legacy_array_ptr<char>> : linear_memory_access {
+      auto from_wasm(void* ptr, uint32_t size) {
+         validate_ptr<char>(ptr, size);
+         return eosio::chain::array_ptr<char>((char*)ptr);
+      }
+      // memcpy/memmove
+      auto from_wasm(void* ptr, eosio::chain::legacy_array_ptr<const char> /*src*/, uint32_t size) {
+         validate_ptr<char>(ptr, size);
+         return eosio::chain::array_ptr<char>((char*)ptr);
+      }
+      // memset
+      auto from_wasm(void* ptr, int /*val*/, uint32_t size) {
+         validate_ptr<char>(ptr, size);
+         return eosio::chain::array_ptr<char>((char*)ptr);
+      }
+   };
+
+   template<>
+   struct wasm_type_converter<eosio::chain::legacy_array_ptr<const char>> : linear_memory_access {
+      auto from_wasm(void* ptr, uint32_t size) {
+         validate_ptr<char>(ptr, size);
+         return eosio::chain::array_ptr<const char>((char*)ptr);
+      }
+      // memcmp
+      auto from_wasm(void* ptr, eosio::chain::legacy_array_ptr<const char> /*src*/, uint32_t size) {
+         validate_ptr<char>(ptr, size);
+         return eosio::chain::array_ptr<const char>((char*)ptr);
+      }
+   };
+
    template<typename T>
    struct wasm_type_converter<eosio::chain::array_ptr<T>> : linear_memory_access {
       auto from_wasm(void* ptr, uint32_t size) {
          validate_ptr<T>(ptr, size);
          EOS_VM_ASSERT( reinterpret_cast<std::uintptr_t>(ptr) % alignof(T) != 0, wasm_memory_exception, "WASM arrays must be aligned to type T" );
-         return filtered_wrapper<&is_aliasing>((reinterpret_cast<T*>(ptr)));
+         return filtered_wrapper<&detail::is_aliasing, detail::array_ptr_filter>(detail::array_ptr_filter(ptr, size));
       }
    };
 
