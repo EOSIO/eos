@@ -516,18 +516,18 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                      std::make_shared<expired_tx_exception>(
                            FC_LOG_MESSAGE( error, "expired transaction ${id}, expiration ${e}, block time ${bt}",
                                            ("id", id)("e", trx->packed_trx()->expiration())( "bt", bt )))));
-               return exhausted;
+               return true;
             }
 
             if( chain.is_known_unexpired_transaction( id )) {
                send_response( std::static_pointer_cast<fc::exception>( std::make_shared<tx_duplicate>(
                      FC_LOG_MESSAGE( error, "duplicate transaction ${id}", ("id", id)))) );
-               return exhausted;
+               return true;
             }
 
             if( !chain.is_building_block()) {
                _pending_incoming_transactions.add( trx, persist_until_expired, next );
-               return exhausted;
+               return true;
             }
 
             auto deadline = fc::time_point::now() + fc::milliseconds( _max_transaction_time_ms );
@@ -577,7 +577,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
             chain_plugin::handle_bad_alloc();
          } CATCH_AND_CALL(send_response);
 
-         return exhausted;
+         return !exhausted;
       }
 
 
