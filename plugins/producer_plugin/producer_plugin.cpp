@@ -1867,11 +1867,12 @@ bool producer_plugin_impl::process_incoming_trxs( const fc::time_point& deadline
 bool producer_plugin_impl::block_is_exhausted() const {
    const chain::controller& chain = chain_plug->chain();
    const auto& rl = chain.get_resource_limits_manager();
-   const auto offset = calculate_block_offset( chain.pending_block_time() );
+   const int64_t offset = calculate_block_offset( chain.pending_block_time() );
 
-   const auto cpu_limit = rl.get_block_cpu_limit();
-   if( (cpu_limit + offset) < _max_block_cpu_usage_threshold_us ) return true;
-   const auto net_limit = rl.get_block_net_limit();
+   const uint64_t cpu_limit = rl.get_block_cpu_limit();
+   const int64_t cpu_usage = static_cast<int64_t>(cpu_limit) + offset;
+   if( cpu_usage < static_cast<int64_t>(_max_block_cpu_usage_threshold_us) ) return true;
+   const uint64_t net_limit = rl.get_block_net_limit();
    if( net_limit < _max_block_net_usage_threshold_bytes ) return true;
    return false;
 }
