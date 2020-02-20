@@ -1007,7 +1007,8 @@ void ensure_keosd_running(CLI::App* app) {
             std::string keos_msg;
             constexpr size_t TOTOAL_RETRIES = 10;
             constexpr size_t KEOS_WAIT_TIME_MS = 200;
-            for(size_t tries=0; tries<TOTOAL_RETRIES; ++tries)
+            size_t tries = 0;
+            for(; tries<TOTOAL_RETRIES; ++tries)
             {
                std::this_thread::sleep_for(std::chrono::milliseconds(KEOS_WAIT_TIME_MS));
                std::getline(keos_out, keos_msg);
@@ -1016,8 +1017,14 @@ void ensure_keosd_running(CLI::App* app) {
                   break;
                }
             }
-            keos.detach();
-            try_local_port(2000);
+            if (tries < TOTOAL_RETRIES)
+            {
+               keos.detach();
+               try_local_port(2000);
+            } else {
+               keos.terminate();
+               std::cerr << "Failed to launch " << binPath << std::endl;
+            }
         } else {
             std::cerr << "No wallet service listening on " << wallet_url << ". Failed to launch " << binPath << std::endl;
         }
