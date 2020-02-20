@@ -43,3 +43,7 @@ To focus only on the version line within the block:
 ```sh
 cleos --url http://localhost:8888 get info | grep server_version
 ```
+
+### Error 3070000: WASM Exception Error
+
+If you try to deploy the `eosio.bios` contract or `eosio.system` contract in the attempt to boot an EOSIO based blockchain and you get an error like this `Publishing contract... Error 3070000: WASM Exception Error Details: env.set_proposed_producers_ex unresolveable` it is because you have to activate the `PREACTIATE_FEATURE` protocol first. More details about it and how to do it can be found in the [Bios boot Sequence Tutorial](https://developers.eos.io/welcome/latest/tutorials/bios-boot-sequence/#112-set-the-eosiosystem-contract).
