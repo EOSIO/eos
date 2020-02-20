@@ -138,6 +138,32 @@ class kv_tester : public tester {
       return push_action(N(itlimit), mvo()("params", params));
    }
 
+   action make_setmany_action(name db, name contract, const std::vector<kv>& kvs) {
+      action act;
+      act.account = contract;
+      act.name = N(setmany);
+      act.data = abi_ser.variant_to_binary("setmany", mvo()("db", db)("contract", contract)("kvs", kvs), abi_serializer_max_time);
+      act.authorization = vector<permission_level>{{N(kvtest), config::active_name}};
+      return act;
+   }
+
+   action make_erase_action(name db, name contract, const char* k) {
+      action act;
+      act.account = contract;
+      act.name = N(erase);
+      act.data = abi_ser.variant_to_binary("erase", mvo()("db", db)("contract", contract)("k", k), abi_serializer_max_time);
+      act.authorization = vector<permission_level>{{N(kvtest), config::active_name}};
+      return act;
+   }
+
+   action make_fail_action(name db, name contract) {
+      action act;
+      act.account = contract;
+      act.name = N(fail);
+      act.authorization = vector<permission_level>{{N(kvtest), config::active_name}};
+      return act;
+   }
+
    void setmany(const char* error, name db, name contract, const std::vector<kv>& kvs) {
       BOOST_REQUIRE_EQUAL(error, push_action(N(setmany), mvo()("db", db)("contract", contract)("kvs", kvs), contract));
    }
@@ -606,6 +632,32 @@ class kv_tester : public tester {
       // BOOST_TEST(iterlimit({{N(eosio.kvram), 0xFFFFFFFF, false}, {N(eosio.kvdisk), 1, false}}) == "Too many iterators");
    }
 
+   // Make sure that a failed transaction correctly rolls back changes to the database,
+   // for both rocksdb and chainbase.
+   void test_undo(name db) {
+      setmany("", db, N(kvtest),
+              {
+                    kv{ { 0x11 }, { 0x11 } },
+                    kv{ { 0x22 }, { 0x11, 0x11 } }
+              });
+
+      signed_transaction trx;
+      {
+         trx.actions.push_back(make_setmany_action(db, N(kvtest), { kv{ { 0x11 }, { 0x33 } }, kv{ { 0x44 }, { 0x55 } } } ));
+         trx.actions.push_back(make_erase_action(db, N(kvtest), "22"));
+         trx.actions.push_back(make_fail_action(db, N(kvtest)));
+      }
+      set_transaction_headers(trx);
+      trx.sign(get_private_key(N(kvtest), "active"), control->get_chain_id());
+      BOOST_CHECK_THROW(push_transaction(trx), eosio_assert_code_exception);
+
+      scan("", db, N(kvtest), "", nullptr,
+              {
+                    kv{ { 0x11 }, { 0x11 } },
+                    kv{ { 0x22 }, { 0x11, 0x11 } }
+              });
+   }
+
    abi_serializer abi_ser;
    abi_serializer sys_abi_ser;
 };
@@ -869,6 +921,13 @@ FC_LOG_AND_RETHROW()
 BOOST_FIXTURE_TEST_CASE(max_iterators_rocksdb, kv_tester) try { //
    use_rocksdb();
    test_max_iterators();
+}
+FC_LOG_AND_RETHROW()
+
+BOOST_DATA_TEST_CASE_F(kv_tester, undo, bdata::make(databases) * bdata::make({false, true}), db, rocks) try { //
+   if(rocks)
+      use_rocksdb();
+   test_undo(db);
 }
 FC_LOG_AND_RETHROW()
 
