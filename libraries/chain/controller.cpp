@@ -913,6 +913,11 @@ struct controller_impl {
             return;
          }
 
+         // skip the kv_db_config as it only determines where the kv-database is stored
+         if (std::is_same_v<value_t, kv_db_config_object>) {
+            return;
+         }
+
          snapshot->write_section<value_t>([this]( auto& section ){
             decltype(utils)::walk(db, [this, &section]( const auto &row ) {
                section.add_row(row, db);
@@ -947,6 +952,14 @@ struct controller_impl {
          section.read_row(header, db);
          header.validate();
       });
+
+      db.create<kv_db_config_object>([](auto&){});
+      if (conf.use_rocksdb_for_disk)
+         use_rocksdb_for_disk(db);
+      if (db.get<kv_db_config_object>().using_rocksdb_for_disk)
+         ilog("using rocksdb for eosio.kvdisk");
+      else
+         ilog("using chainbase for eosio.kvdisk");
 
       { /// load and upgrade the block header state
          block_header_state head_header_state;
@@ -989,6 +1002,11 @@ struct controller_impl {
 
          // skip the database_header as it is only relevant to in-memory database
          if (std::is_same<value_t, database_header_object>::value) {
+            return;
+         }
+
+         // skip the kv_db_config as it only determines where the kv-database is stored
+         if (std::is_same_v<value_t, kv_db_config_object>) {
             return;
          }
 
