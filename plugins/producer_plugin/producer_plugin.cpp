@@ -506,13 +506,13 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                               ("block_num", chain.head_block_num() + 1)
                               ("prod", chain.pending_block_producer())
                               ("txid", trx->id()));
-                     if( block_is_exhausted() ) {
-                        schedule_maybe_produce_block( true );
-                        exhausted = true;
-                     }
                   } else {
                      fc_dlog( _trx_trace_log, "[TRX_TRACE] Speculative execution COULD NOT FIT tx: ${txid} RETRYING",
                               ("txid", trx->id()));
+                  }
+                  if( block_is_exhausted() ) {
+                     schedule_maybe_produce_block( true );
+                     exhausted = true;
                   }
                } else {
                   auto e_ptr = trace->except->dynamic_copy_exception();
