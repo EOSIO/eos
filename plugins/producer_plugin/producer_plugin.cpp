@@ -605,8 +605,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       start_block_result start_block();
 
       fc::time_point calculate_pending_block_time() const;
-      int32_t calculate_block_offset( const fc::time_point& block_time ) const;
-      fc::time_point calculate_block_deadline( const fc::time_point& block_time ) const;
+      fc::time_point calculate_block_deadline( const fc::time_point& ) const;
       void schedule_delayed_production_loop(const std::weak_ptr<producer_plugin_impl>& weak_this, optional<fc::time_point> wake_up_time);
       optional<fc::time_point> calculate_producer_wake_up_time( const block_timestamp_type& ref_block_time ) const;
 
@@ -1412,13 +1411,9 @@ fc::time_point producer_plugin_impl::calculate_pending_block_time() const {
    return block_time;
 }
 
-int32_t producer_plugin_impl::calculate_block_offset( const fc::time_point& block_time ) const {
-   bool last_block = ((block_timestamp_type(block_time).slot % config::producer_repetitions) == config::producer_repetitions - 1);
-   return last_block ? _last_block_time_offset_us : _produce_time_offset_us;
-}
-
 fc::time_point producer_plugin_impl::calculate_block_deadline( const fc::time_point& block_time ) const {
-   return block_time + fc::microseconds( calculate_block_offset( block_time ) );
+   bool last_block = ((block_timestamp_type(block_time).slot % config::producer_repetitions) == config::producer_repetitions - 1);
+   return block_time + fc::microseconds(last_block ? _last_block_time_offset_us : _produce_time_offset_us);
 }
 
 producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
