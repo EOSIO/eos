@@ -37,7 +37,7 @@ cd $EOSIO_LOCATION && git submodule update --init --recursive
 These commands install the EOSIO software dependencies. Make sure to [Download the EOSIO Repository](#download-eosio-repository) first and set the EOSIO directories.
 ```sh
 # install dependencies
-brew install cmake python@2 python libtool libusb graphviz automake wget gmp pkgconfig doxygen openssl@1.1 jq boost || :
+brew install cmake python libtool libusb graphviz automake wget gmp pkgconfig doxygen openssl@1.1 jq boost || :
 export PATH=$EOSIO_INSTALL_LOCATION/bin:$PATH
 # install mongodb
 mkdir -p $EOSIO_INSTALL_LOCATION/bin

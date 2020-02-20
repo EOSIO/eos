@@ -77,16 +77,16 @@ namespace eosio {
   }
 
   struct go_away_message {
-    go_away_message (go_away_reason r = no_reason) : reason(r), node_id() {}
-    go_away_reason reason;
+    go_away_message(go_away_reason r = no_reason) : reason(r), node_id() {}
+    go_away_reason reason{no_reason};
     fc::sha256 node_id; ///< for duplicate notification
   };
 
   struct time_message {
-            tstamp  org;       //!< origin timestamp
-            tstamp  rec;       //!< receive timestamp
-            tstamp  xmt;       //!< transmit timestamp
-    mutable tstamp  dst;       //!< destination timestamp
+            tstamp  org{0};       //!< origin timestamp
+            tstamp  rec{0};       //!< receive timestamp
+            tstamp  xmt{0};       //!< transmit timestamp
+    mutable tstamp  dst{0};       //!< destination timestamp
   };
 
   enum id_list_modes {
@@ -108,9 +108,9 @@ namespace eosio {
 
   template<typename T>
   struct select_ids {
-    select_ids () : mode(none),pending(0),ids() {}
-    id_list_modes  mode;
-    uint32_t       pending;
+    select_ids() : mode(none),pending(0),ids() {}
+    id_list_modes  mode{none};
+    uint32_t       pending{0};
     vector<T>      ids;
     bool           empty () const { return (mode == none || ids.empty()); }
   };
@@ -119,20 +119,20 @@ namespace eosio {
   using ordered_blk_ids = select_ids<block_id_type>;
 
   struct notice_message {
-    notice_message () : known_trx(), known_blocks() {}
+    notice_message() : known_trx(), known_blocks() {}
     ordered_txn_ids known_trx;
     ordered_blk_ids known_blocks;
   };
 
   struct request_message {
-    request_message () : req_trx(), req_blocks() {}
+    request_message() : req_trx(), req_blocks() {}
     ordered_txn_ids req_trx;
     ordered_blk_ids req_blocks;
   };
 
    struct sync_request_message {
-      uint32_t start_block;
-      uint32_t end_block;
+      uint32_t start_block{0};
+      uint32_t end_block{0};
    };
 
    using net_message = static_variant<handshake_message,

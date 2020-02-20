@@ -892,9 +892,9 @@ BOOST_AUTO_TEST_CASE(updateauth_test)
    BOOST_TEST(2147483145u == updauth.auth.threshold);
 
    BOOST_TEST_REQUIRE(2u == updauth.auth.keys.size());
-   BOOST_TEST("EOS65rXebLhtk2aTTzP4e9x1AQZs7c5NNXJp89W8R3HyaA6Zyd4im" == (std::string)updauth.auth.keys[0].key);
+   BOOST_TEST("EOS65rXebLhtk2aTTzP4e9x1AQZs7c5NNXJp89W8R3HyaA6Zyd4im" == updauth.auth.keys[0].key.to_string());
    BOOST_TEST(57005u == updauth.auth.keys[0].weight);
-   BOOST_TEST("EOS5eVr9TVnqwnUBNwf9kwMTbrHvX5aPyyEG97dz2b2TNeqWRzbJf" == (std::string)updauth.auth.keys[1].key);
+   BOOST_TEST("EOS5eVr9TVnqwnUBNwf9kwMTbrHvX5aPyyEG97dz2b2TNeqWRzbJf" == updauth.auth.keys[1].key.to_string());
    BOOST_TEST(57605u == updauth.auth.keys[1].weight);
 
    BOOST_TEST_REQUIRE(2u == updauth.auth.accounts.size());
@@ -996,9 +996,9 @@ BOOST_AUTO_TEST_CASE(newaccount_test)
    BOOST_TEST(2147483145u == newacct.owner.threshold);
 
    BOOST_TEST_REQUIRE(2u == newacct.owner.keys.size());
-   BOOST_TEST("EOS65rXebLhtk2aTTzP4e9x1AQZs7c5NNXJp89W8R3HyaA6Zyd4im" == (std::string)newacct.owner.keys[0].key);
+   BOOST_TEST("EOS65rXebLhtk2aTTzP4e9x1AQZs7c5NNXJp89W8R3HyaA6Zyd4im" == newacct.owner.keys[0].key.to_string());
    BOOST_TEST(57005u == newacct.owner.keys[0].weight);
-   BOOST_TEST("EOS5eVr9TVnqwnUBNwf9kwMTbrHvX5aPyyEG97dz2b2TNeqWRzbJf" == (std::string)newacct.owner.keys[1].key);
+   BOOST_TEST("EOS5eVr9TVnqwnUBNwf9kwMTbrHvX5aPyyEG97dz2b2TNeqWRzbJf" == newacct.owner.keys[1].key.to_string());
    BOOST_TEST(57605u == newacct.owner.keys[1].weight);
 
    BOOST_TEST_REQUIRE(2u == newacct.owner.accounts.size());
@@ -1012,9 +1012,9 @@ BOOST_AUTO_TEST_CASE(newaccount_test)
    BOOST_TEST(2146483145u == newacct.active.threshold);
 
    BOOST_TEST_REQUIRE(2u == newacct.active.keys.size());
-   BOOST_TEST("EOS65rXebLhtk2aTTzP4e9x1AQZs7c5NNXJp89W8R3HyaA6Zyd4im" == (std::string)newacct.active.keys[0].key);
+   BOOST_TEST("EOS65rXebLhtk2aTTzP4e9x1AQZs7c5NNXJp89W8R3HyaA6Zyd4im" == newacct.active.keys[0].key.to_string());
    BOOST_TEST(57005u == newacct.active.keys[0].weight);
-   BOOST_TEST("EOS5eVr9TVnqwnUBNwf9kwMTbrHvX5aPyyEG97dz2b2TNeqWRzbJf" == (std::string)newacct.active.keys[1].key);
+   BOOST_TEST("EOS5eVr9TVnqwnUBNwf9kwMTbrHvX5aPyyEG97dz2b2TNeqWRzbJf" == newacct.active.keys[1].key.to_string());
    BOOST_TEST(57605u == newacct.active.keys[1].weight);
 
    BOOST_TEST_REQUIRE(2u == newacct.active.accounts.size());
