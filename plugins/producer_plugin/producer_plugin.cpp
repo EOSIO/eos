@@ -81,7 +81,7 @@ using namespace eosio::chain;
 using namespace eosio::chain::plugin_interface;
 
 namespace {
-   bool block_is_exhausted(const fc::exception& e, bool deadline_is_subjective) {
+   bool exception_is_exhausted(const fc::exception& e, bool deadline_is_subjective) {
       auto code = e.code();
       return (code == block_cpu_usage_exceeded::code_value) ||
              (code == block_net_usage_exceeded::code_value) ||
@@ -499,7 +499,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          try {
             auto trace = chain.push_transaction( trx, deadline, trx->billed_cpu_time_us, false );
             if (trace->except) {
-               if (block_is_exhausted(*trace->except, deadline_is_subjective)) {
+               if (exception_is_exhausted(*trace->except, deadline_is_subjective)) {
                   _pending_incoming_transactions.emplace_back(trx, persist_until_expired, next);
                   if (_pending_block_mode == pending_block_mode::producing) {
                      fc_dlog(_trx_trace_log, "[TRX_TRACE] Block ${block_num} for producer ${prod} COULD NOT FIT, tx: ${txid} RETRYING ",
@@ -1679,7 +1679,7 @@ bool producer_plugin_impl::process_unapplied_trxs( const fc::time_point& deadlin
 
                   auto trace = chain.push_transaction( trx, trx_deadline, trx->billed_cpu_time_us, false );
                   if (trace->except) {
-                     if (block_is_exhausted(*trace->except, deadline_is_subjective)) {
+                     if (exception_is_exhausted(*trace->except, deadline_is_subjective)) {
                         exhausted = true;
                         break;
                      } else {
@@ -1773,7 +1773,7 @@ bool producer_plugin_impl::process_scheduled_and_incoming_trxs( const fc::time_p
 
          auto trace = chain.push_scheduled_transaction(trx_id, trx_deadline, 0, false);
          if (trace->except) {
-            if (block_is_exhausted(*trace->except, deadline_is_subjective)) {
+            if (exception_is_exhausted(*trace->except, deadline_is_subjective)) {
                // do not blacklist
             } else {
                auto expiration = fc::time_point::now() + fc::seconds(chain.get_global_properties().configuration.deferred_trx_expiration_window);
