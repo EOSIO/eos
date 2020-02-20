@@ -445,13 +445,12 @@ auto abi_serializer_resolver = [](const name& account) -> fc::optional<abi_seria
    static unordered_map<account_name, fc::optional<abi_serializer> > abi_cache;
    auto it = abi_cache.find( account );
    if ( it == abi_cache.end() ) {
-      auto result = call(get_abi_func, fc::mutable_variant_object("account_name", account));
-      auto abi_results = result.as<eosio::chain_apis::read_only::get_abi_results>();
-
-      fc::optional<abi_serializer> abis;
-      if( abi_results.abi.valid() ) {
-         abis.emplace( *abi_results.abi, abi_serializer_max_time );
-      } else {
+       fc::optional<abi_serializer> abis;
+       auto raw_result = call(get_raw_abi_func, fc::mutable_variant_object("account_name", account));
+       if (!raw_result["abi"].is_null()) {
+           auto abi_result = fc::raw::unpack<abi_def>(raw_result["abi"].as_blob().data);
+           abis.emplace(abi_result, abi_serializer_max_time);
+       } else {
          std::cerr << "ABI for contract " << account.to_string() << " not found. Action data will be shown in hex only." << std::endl;
       }
       abi_cache.emplace( account, abis );
@@ -2673,9 +2672,10 @@ int main( int argc, char** argv ) {
    getAbi->add_option("name", accountName, localized("The name of the account whose abi should be retrieved"))->required();
    getAbi->add_option("-f,--file",filename, localized("The name of the file to save the contract .abi to instead of writing to console") );
    getAbi->set_callback([&] {
-      auto result = call(get_abi_func, fc::mutable_variant_object("account_name", accountName));
+      auto raw_abi_result = call(get_raw_abi_func, fc::mutable_variant_object("account_name", accountName));
+      auto abi_result = fc::raw::unpack<abi_def>(raw_abi_result["abi"].as_blob().data);
 
-      auto abi  = fc::json::to_pretty_string( result["abi"] );
+      auto abi  = fc::json::to_pretty_string( abi_result );
       if( filename.size() ) {
          std::cerr << localized("saving abi to ${filename}", ("filename", filename)) << std::endl;
          std::ofstream abiout( filename.c_str() );
