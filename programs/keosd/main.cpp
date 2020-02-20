@@ -49,6 +49,7 @@ int main(int argc, char** argv)
       auto& http = app().get_plugin<http_plugin>();
       http.add_handler("/v1/" + keosd::config::key_store_executable_name + "/stop", [&a=app()](string, string, url_response_callback cb) { cb(200, fc::variant(fc::variant_object())); a.quit(); } );
       app().startup();
+      std::cout << keosd::config::keosd_started_msg << std::endl;
       app().exec();
    } catch (const fc::exception& e) {
       elog("${e}", ("e",e.to_detail_string()));

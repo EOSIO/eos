@@ -69,6 +69,7 @@ Options:
 #include <vector>
 #include <regex>
 #include <iostream>
+#include <thread>
 #include <fc/crypto/hex.hpp>
 #include <fc/variant.hpp>
 #include <fc/io/datastream.hpp>
@@ -995,12 +996,26 @@ void ensure_keosd_running(CLI::App* app) {
         pargs.push_back("--unix-socket-path");
         pargs.push_back(string(key_store_executable_name) + ".sock");
 
+        bp::pstream keos_out;
         ::boost::process::child keos(binPath, pargs,
                                      bp::std_in.close(),
-                                     bp::std_out > bp::null,
+                                     bp::std_out > keos_out,
                                      bp::std_err > bp::null);
         if (keos.running()) {
             std::cerr << binPath << " launched" << std::endl;
+
+            std::string keos_msg;
+            constexpr size_t TOTOAL_RETRIES = 10;
+            constexpr size_t KEOS_WAIT_TIME_MS = 200;
+            for(size_t tries=0; tries<TOTOAL_RETRIES; ++tries)
+            {
+               std::this_thread::sleep_for(std::chrono::milliseconds(KEOS_WAIT_TIME_MS));
+               std::getline(keos_out, keos_msg);
+               if (keos_msg == keosd_started_msg)
+               {
+                  break;
+               }
+            }
             keos.detach();
             try_local_port(2000);
         } else {
