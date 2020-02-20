@@ -1933,17 +1933,9 @@ void producer_plugin_impl::schedule_maybe_produce_block( bool exhausted ) {
                ("num", chain.head_block_num() + 1)( "time", deadline ) );
    } else {
       EOS_ASSERT( chain.is_building_block(), missing_pending_block_state, "producing without pending_block_state" );
-      auto expect_time = chain.pending_block_time() - fc::microseconds( config::block_interval_us );
-      // ship this block off up to 1 block time earlier or immediately
-      if( exhausted || fc::time_point::now() >= expect_time ) {
          _timer.expires_from_now( boost::posix_time::microseconds( 0 ) );
-         fc_dlog( _log, "Scheduling Block Production on Exhausted Block #${num} immediately",
-                  ("num", chain.head_block_num() + 1) );
-      } else {
-         _timer.expires_at( epoch + boost::posix_time::microseconds( expect_time.time_since_epoch().count() ) );
-         fc_dlog( _log, "Scheduling Block Production on Exhausted Block #${num} at ${time}",
-                  ("num", chain.head_block_num() + 1)( "time", expect_time ) );
-      }
+      fc_dlog( _log, "Scheduling Block Production on Exhausted Block #${num} immediately",
+               ("num", chain.head_block_num() + 1) );
    }
 
    _timer.async_wait( app().get_priority_queue().wrap( priority::high,
