@@ -446,9 +446,10 @@ auto abi_serializer_resolver = [](const name& account) -> fc::optional<abi_seria
    auto it = abi_cache.find( account );
    if ( it == abi_cache.end() ) {
        fc::optional<abi_serializer> abis;
-       auto raw_result = call(get_raw_abi_func, fc::mutable_variant_object("account_name", account));
-       if (!raw_result["abi"].is_null()) {
-           auto abi_result = fc::raw::unpack<abi_def>(raw_result["abi"].as_blob().data);
+       auto raw_abi_result = call(get_raw_abi_func, fc::mutable_variant_object("account_name", account));
+       auto raw_abi_blob = raw_abi_result["abi"].as_blob().data;
+       if (raw_abi_blob.size() != 0) {
+           auto abi_result = fc::raw::unpack<abi_def>(raw_abi_blob);
            abis.emplace(abi_result, abi_serializer_max_time);
        } else {
          std::cerr << "ABI for contract " << account.to_string() << " not found. Action data will be shown in hex only." << std::endl;
@@ -2673,15 +2674,21 @@ int main( int argc, char** argv ) {
    getAbi->add_option("-f,--file",filename, localized("The name of the file to save the contract .abi to instead of writing to console") );
    getAbi->set_callback([&] {
       auto raw_abi_result = call(get_raw_abi_func, fc::mutable_variant_object("account_name", accountName));
-      auto abi_result = fc::raw::unpack<abi_def>(raw_abi_result["abi"].as_blob().data);
-
-      auto abi  = fc::json::to_pretty_string( abi_result );
-      if( filename.size() ) {
-         std::cerr << localized("saving abi to ${filename}", ("filename", filename)) << std::endl;
-         std::ofstream abiout( filename.c_str() );
-         abiout << abi;
-      } else {
-         std::cout << abi << "\n";
+      auto raw_abi_blob = raw_abi_result["abi"].as_blob().data;
+      if (raw_abi_blob.size() != 0) {
+          auto abi_result = fc::raw::unpack<abi_def>(raw_abi_result["abi"].as_blob().data);
+          std::cout << "789\n";
+          auto abi = fc::json::to_pretty_string(abi_result);
+          if (filename.size()) {
+              std::cerr << localized("saving abi to ${filename}", ("filename", filename)) << std::endl;
+              std::ofstream abiout(filename.c_str());
+              abiout << abi;
+          } else {
+              std::cout << abi << "\n";
+          }
+      } else
+      {
+        FC_THROW_EXCEPTION(key_not_found_exception, "Key ${key}", ("key", "abi"));
       }
    });
 
