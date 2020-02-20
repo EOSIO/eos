@@ -188,7 +188,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       bool remove_expired_persisted_trxs( const fc::time_point& deadline );
       bool remove_expired_blacklisted_trxs( const fc::time_point& deadline );
       bool process_unapplied_trxs( const fc::time_point& deadline );
-      bool process_scheduled_and_incoming_trxs( const fc::time_point& deadline, size_t& pending_incoming_process_limit );
+      void process_scheduled_and_incoming_trxs( const fc::time_point& deadline, size_t& pending_incoming_process_limit );
       bool process_incoming_trxs( const fc::time_point& deadline, size_t& pending_incoming_process_limit );
 
       boost::program_options::variables_map _options;
@@ -1752,7 +1752,7 @@ bool producer_plugin_impl::process_unapplied_trxs( const fc::time_point& deadlin
    return !exhausted;
 }
 
-bool producer_plugin_impl::process_scheduled_and_incoming_trxs( const fc::time_point& deadline, size_t& pending_incoming_process_limit )
+void producer_plugin_impl::process_scheduled_and_incoming_trxs( const fc::time_point& deadline, size_t& pending_incoming_process_limit )
 {
    // scheduled transactions
    int num_applied = 0;
@@ -1850,8 +1850,6 @@ bool producer_plugin_impl::process_scheduled_and_incoming_trxs( const fc::time_p
                "Processed ${m} of ${n} scheduled transactions, Applied ${applied}, Failed/Dropped ${failed}",
                ( "m", num_processed )( "n", scheduled_trxs_size )( "applied", num_applied )( "failed", num_failed ) );
    }
-
-   return !exhausted;
 }
 
 bool producer_plugin_impl::process_incoming_trxs( const fc::time_point& deadline, size_t& pending_incoming_process_limit )
@@ -1953,9 +1951,9 @@ void producer_plugin_impl::schedule_maybe_produce_block( bool exhausted ) {
                ("num", chain.head_block_num() + 1)( "time", deadline ) );
    } else {
       EOS_ASSERT( chain.is_building_block(), missing_pending_block_state, "producing without pending_block_state" );
-         _timer.expires_from_now( boost::posix_time::microseconds( 0 ) );
-      fc_dlog( _log, "Scheduling Block Production on Exhausted Block #${num} immediately",
-               ("num", chain.head_block_num() + 1) );
+      _timer.expires_from_now( boost::posix_time::microseconds( 0 ) );
+      fc_dlog( _log, "Scheduling Block Production on ${desc} Block #${num} immediately",
+               ("num", chain.head_block_num() + 1)("desc", block_is_exhausted() ? "Exhausted" : "Deadline exceeded") );
    }
 
    _timer.async_wait( app().get_priority_queue().wrap( priority::high,
