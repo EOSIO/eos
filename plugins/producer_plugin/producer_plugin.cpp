@@ -467,7 +467,11 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                future.wait();
                app().post( priority::low, [self, future{std::move(future)}, persist_until_expired, next{std::move( next )}]() mutable {
                   try {
-                     self->process_incoming_transaction_async( future.get(), persist_until_expired, std::move( next ) );
+                     if( !self->process_incoming_transaction_async( future.get(), persist_until_expired, std::move( next ) ) ) {
+                        if( self->_pending_block_mode == pending_block_mode::producing ) {
+                           self->schedule_maybe_produce_block( true );
+                        }
+                     }
                   } CATCH_AND_CALL(next);
                } );
             }
@@ -552,12 +556,8 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                      fc_dlog( _trx_trace_log, "[TRX_TRACE] Speculative execution COULD NOT FIT tx: ${txid} RETRYING",
                               ("txid", trx->id()));
                   }
-                  if( block_is_exhausted() ) {
-                     if( _pending_block_mode == pending_block_mode::producing ) {
-                        schedule_maybe_produce_block( true );
-                     }
-                     exhausted = true;
-                  }
+                  if( !exhausted )
+                     exhausted = block_is_exhausted();
                } else {
                   auto e_ptr = trace->except->dynamic_copy_exception();
                   send_response( e_ptr );
@@ -686,9 +686,9 @@ void producer_plugin::set_program_options(
          ("last-block-cpu-effort-percent", bpo::value<uint32_t>()->default_value(config::default_block_cpu_effort_pct / config::percent_1),
           "Percentage of cpu block production time used to produce last block. Whole number percentages, e.g. 80 for 80%")
          ("max-block-cpu-usage-threshold-us", bpo::value<uint32_t>()->default_value( 5000 ),
-          "Threshold of cpu block production to consider block full; when within threshold of max-block-cpu-usage no additional transactions will be attempted")
+          "Threshold of CPU block production to consider block full; when within threshold of max-block-cpu-usage block can be produced immediately")
          ("max-block-net-usage-threshold-bytes", bpo::value<uint32_t>()->default_value( 1024 ),
-          "Threshold of net block production to consider block full; when within threshold of max-block-net-usage no additional transactions will be attempted")
+          "Threshold of NET block production to consider block full; when within threshold of max-block-net-usage block can be produced immediately")
          ("max-scheduled-transaction-time-per-block-ms", boost::program_options::value<int32_t>()->default_value(100),
           "Maximum wall-clock time, in milliseconds, spent retiring scheduled transactions in any block before returning to normal transaction processing.")
          ("subjective-cpu-leeway-us", boost::program_options::value<int32_t>()->default_value( config::default_subjective_cpu_leeway_us ),
