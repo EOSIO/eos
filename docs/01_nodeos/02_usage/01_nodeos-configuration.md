@@ -21,15 +21,6 @@ A custom `config.ini` file can be set by passing the `nodeos` option `--config p
 The example below shows a typical usage of `nodeos` when starting a block producing node:
 
 ```sh
-nodeos --replay-blockchain \
-  -e -p eosio \
-  --plugin eosio::producer_plugin  \
-  --plugin eosio::chain_api_plugin \
-  --plugin eosio::http_plugin      \
-  >> nodeos.log 2>&1 &
-```
-
-```sh
 nodeos \
   -e -p eosio \
   --data-dir /users/mydir/eosio/data     \
