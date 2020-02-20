@@ -160,6 +160,7 @@ namespace eosio {
          string                   https_cert_chain;
          string                   https_key;
          https_ecdh_curve_t       https_ecdh_curve = SECP384R1;
+         uint16_t                 http_request_priority = appbase::priority::low;
 
          websocket_server_tls_type https_server;
 
@@ -327,7 +328,7 @@ namespace eosio {
                if( handler_itr != url_handlers.end()) {
                   con->defer_http_response();
                   bytes_in_flight += body.size();
-                  app().post( appbase::priority::low,
+                  app().post( http_request_priority,
                               [&ioc = thread_pool->get_executor(), &bytes_in_flight = this->bytes_in_flight,
                                handler_itr, this, resource{std::move( resource )}, body{std::move( body )}, con]() mutable {
                      const size_t body_size = body.size();
@@ -434,7 +435,7 @@ namespace eosio {
       else
          cfg.add_options()
             ("unix-socket-path", bpo::value<string>(),
-             "The filename (relative to data-dir) to create a unix socket for HTTP RPC; set blank to disable.");   
+             "The filename (relative to data-dir) to create a unix socket for HTTP RPC; set blank to disable.");
 #endif
 
       if(current_http_plugin_defaults.default_http_port)
@@ -502,6 +503,8 @@ namespace eosio {
              "Additionaly acceptable values for the \"Host\" header of incoming HTTP requests, can be specified multiple times.  Includes http/s_server_address by default.")
             ("http-threads", bpo::value<uint16_t>()->default_value( my->thread_pool_size ),
              "Number of worker threads in http thread pool")
+            ("http-request-priority", bpo::value<uint16_t>()->default_value( (int)appbase::priority::low ),
+             "Priority of handling http request, higher value results in higher priority ")
             ;
    }
 
@@ -581,6 +584,11 @@ namespace eosio {
          my->thread_pool_size = options.at( "http-threads" ).as<uint16_t>();
          EOS_ASSERT( my->thread_pool_size > 0, chain::plugin_config_exception,
                      "http-threads ${num} must be greater than 0", ("num", my->thread_pool_size));
+
+         my->http_request_priority = options.at("http-request-priority").as<uint16_t>();
+         EOS_ASSERT( my->http_request_priority >= appbase::priority::low && my->http_request_priority <= appbase::priority::high,
+                     chain::plugin_config_exception,
+                     "http-request-priority must between ${low} and ${high}", ("low", appbase::priority::low)("high", appbase::priority::high));
 
          my->max_bytes_in_flight = options.at( "http-max-bytes-in-flight-mb" ).as<uint32_t>() * 1024 * 1024;
          my->max_response_time = fc::microseconds( options.at("http-max-response-time-ms").as<uint32_t>() * 1000 );
