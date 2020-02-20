@@ -526,6 +526,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
             }
 
             if( !chain.is_building_block()) {
+               fc_dlog( _log, "add to pending" );
                _pending_incoming_transactions.add( trx, persist_until_expired, next );
                return true;
             }
@@ -1604,13 +1605,12 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
                );
             }
             // may exhaust scheduled_trx_deadline but not preprocess_deadline, exhausted preprocess_deadline checked below
-            if( !process_scheduled_and_incoming_trxs( scheduled_trx_deadline, pending_incoming_process_limit ) )
-               return start_block_result::exhausted;
+            process_scheduled_and_incoming_trxs( scheduled_trx_deadline, pending_incoming_process_limit );
          }
 
          if( app().is_quiting() ) // db guard exception above in LOG_AND_DROP could have called app().quit()
             return start_block_result::failed;
-         if (preprocess_deadline <= fc::time_point::now()) {
+         if (preprocess_deadline <= fc::time_point::now() || block_is_exhausted()) {
             return start_block_result::exhausted;
          } else {
             if( !process_incoming_trxs( preprocess_deadline, pending_incoming_process_limit ) )
@@ -1890,7 +1890,6 @@ bool producer_plugin_impl::block_is_exhausted() const {
    const int64_t offset = calculate_block_offset( chain.pending_block_time() );
 
    const uint64_t cpu_limit = rl.get_block_cpu_limit();
-   fc_dlog( _log, "is_exhausted cpu_limit ${cl} offset ${o} max ${m}", ("cl", cpu_limit)("o", offset)("m", _max_block_cpu_usage_threshold_us) );
    const int64_t cpu_usage = static_cast<int64_t>(cpu_limit) + offset;
    if( cpu_usage < static_cast<int64_t>(_max_block_cpu_usage_threshold_us) ) return true;
    const uint64_t net_limit = rl.get_block_net_limit();
