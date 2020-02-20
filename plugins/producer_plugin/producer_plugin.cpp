@@ -1546,13 +1546,12 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
                );
             }
             // may exhaust scheduled_trx_deadline but not preprocess_deadline, exhausted preprocess_deadline checked below
-            if( !process_scheduled_and_incoming_trxs( scheduled_trx_deadline, pending_incoming_process_limit ) )
-               return start_block_result::exhausted;
+            process_scheduled_and_incoming_trxs( scheduled_trx_deadline, pending_incoming_process_limit );
          }
 
          if( app().is_quiting() ) // db guard exception above in LOG_AND_DROP could have called app().quit()
             return start_block_result::failed;
-         if( preprocess_deadline <= fc::time_point::now() ) {
+         if (preprocess_deadline <= fc::time_point::now() || block_is_exhausted()) {
             return start_block_result::exhausted;
          } else {
             if( !process_incoming_trxs( preprocess_deadline, pending_incoming_process_limit ) )
