@@ -516,7 +516,9 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                              ("txid", trx->id));
                   }
                   if( block_is_exhausted() ) {
-                     schedule_maybe_produce_block( true );
+                     if( _pending_block_mode == pending_block_mode::producing ) {
+                        schedule_maybe_produce_block( true );
+                     }
                      exhausted = true;
                   }
                } else {
