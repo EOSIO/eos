@@ -337,9 +337,8 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       bool on_incoming_block(const signed_block_ptr& block, const std::optional<block_id_type>& block_id) {
          auto& chain = chain_plug->chain();
          if ( _pending_block_mode == pending_block_mode::producing ) {
-            fc_wlog( _log, "dropped incoming block #${num} while producing #${pbn}, id: ${id}",
-                     ("num", block->block_num())("pbn", chain.head_block_num() + 1)
-                     ("id", block_id ? (*block_id).str() : "UNKNOWN") );
+            fc_wlog( _log, "dropped incoming block #${num} id: ${id}",
+                     ("num", block->block_num())("id", block_id ? (*block_id).str() : "UNKNOWN") );
             return false;
          }
 
