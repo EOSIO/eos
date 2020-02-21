@@ -339,7 +339,8 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          if ( _pending_block_mode == pending_block_mode::producing ) {
             fc_wlog( _log, "dropped incoming block #${num} while producing #${pbn} for ${bt}, id: ${id}",
                      ("num", block->block_num())("pbn", chain.head_block_num() + 1)
-                     ("bt", chain.pending_block_time())("id", block_id ? (*block_id).str() : "UNKNOWN") );
+                     ("bt", chain.head_block_time() + fc::milliseconds(config::block_interval_ms))
+                     ("id", block_id ? (*block_id).str() : "UNKNOWN") );
             return false;
          }
 
