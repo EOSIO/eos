@@ -1,3 +1,5 @@
+#include <eosio/chain/webassembly/cxxtimer.hpp>
+#include <eosio/chain/webassembly/logger.hpp>
 #include <eosio/chain/webassembly/wabt.hpp>
 #include <eosio/chain/apply_context.hpp>
 #include <eosio/chain/wasm_eosio_constraints.hpp>
@@ -34,7 +36,9 @@ class wabt_instantiated_module : public wasm_instantiated_module_interface {
             _initial_memory_configuration = _env->GetMemory(0)->page_limits;
       }
 
+      
       void apply(apply_context& context) override {
+         timer.start();
          //reset mutable globals
          for(const auto& mg : _initial_globals)
             mg.first->typed_value = mg.second;
@@ -60,9 +64,22 @@ class wabt_instantiated_module : public wasm_instantiated_module_interface {
 
          res = _executor.RunExportByName(_instatiated_module, "apply", _params);
          EOS_ASSERT( res.result == interp::Result::Ok, wasm_execution_error, "wabt execution failure (${s})", ("s", ResultToString(res.result)) );
+         
+         timer.stop();
+         name key{context.get_action().name};
+         if (logs.count(key) > 0) {
+            logs.at(key).log_latency(timer.count<std::chrono::nanoseconds>());
+         } else {
+            logs.insert( key, std::pair<name, jd::logger>(jd::logger{key.to_string()}) );
+            logs[key].log_latency(timer.count<std::chrono::nanoseconds>());
+         }
+         timer.reset();
       }
 
    private:
+      cxxtimer::Timer timer;
+      std::map<std::tuple<name>, jd::logger> logs;
+    
       std::unique_ptr<interp::Environment>              _env;
       DefinedModule*                                    _instatiated_module;  //this is owned by the Environment
       std::vector<uint8_t>                              _initial_memory;
