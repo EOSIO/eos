@@ -170,6 +170,7 @@ const fc::microseconds abi_serializer_max_time = fc::seconds(10); // No risk to 
 string tx_ref_block_num_or_id;
 bool   tx_force_unique = false;
 bool   tx_dont_broadcast = false;
+bool   tx_unpack_data = false;
 bool   tx_return_packed = false;
 bool   tx_skip_sign = false;
 bool   tx_print_json = false;
@@ -206,6 +207,7 @@ void add_standard_transaction_options(CLI::App* cmd, string default_permission =
    cmd->add_flag("-j,--json", tx_print_json, localized("Print result as JSON"));
    cmd->add_option("--json-file", tx_json_save_file, localized("Save result in JSON format into a file"));
    cmd->add_flag("-d,--dont-broadcast", tx_dont_broadcast, localized("Don't broadcast transaction to the network (just print to stdout)"));
+   cmd->add_flag("-u,--unpack-action-data", tx_unpack_data, localized("Unpack all action data within transaction, needs interaction with ${n}. Used in conjunction with --dont-broadcast.", ("n", node_executable_name)));
    cmd->add_flag("--return-packed", tx_return_packed, localized("Used in conjunction with --dont-broadcast to get the packed transaction"));
    cmd->add_option("-r,--ref-block", tx_ref_block_num_or_id, (localized("Set the reference block num or block id used for TAPOS (Transaction as Proof-of-Stake)")));
    cmd->add_flag("--use-old-rpc", tx_use_old_rpc, localized("Use old RPC push_transaction, rather than new RPC send_transaction"));
@@ -321,6 +323,28 @@ chain::action generate_nonce_action() {
    return chain::action( {}, config::null_account_name, name("nonce"), fc::raw::pack(fc::time_point::now().time_since_epoch().count()));
 }
 
+//resolver for ABI serializer to decode actions in proposed transaction in multisig contract
+auto abi_serializer_resolver = [](const name& account) -> fc::optional<abi_serializer> {
+   static unordered_map<account_name, fc::optional<abi_serializer> > abi_cache;
+   auto it = abi_cache.find( account );
+   if ( it == abi_cache.end() ) {
+      auto result = call(get_abi_func, fc::mutable_variant_object("account_name", account));
+      auto abi_results = result.as<eosio::chain_apis::read_only::get_abi_results>();
+
+      fc::optional<abi_serializer> abis;
+      if( abi_results.abi.valid() ) {
+         abis.emplace( *abi_results.abi, abi_serializer_max_time );
+      } else {
+         std::cerr << "ABI for contract " << account.to_string() << " not found. Action data will be shown in hex only." << std::endl;
+      }
+      abi_cache.emplace( account, abis );
+
+      return abis;
+   }
+
+   return it->second;
+};
+
 void prompt_for_wallet_password(string& pw, const string& name) {
    if(pw.size() == 0 && name != "SecureEnclave") {
       std::cout << localized("password: ");
@@ -399,7 +423,13 @@ fc::variant push_transaction( signed_transaction& trx, const std::vector<public_
       }
    } else {
       if (!tx_return_packed) {
-        return fc::variant(trx);
+         if (tx_unpack_data) {
+            fc::variant unpacked_data_trx;
+            abi_serializer::to_variant(trx, unpacked_data_trx, abi_serializer_resolver, abi_serializer_max_time);
+            return unpacked_data_trx;
+         } else {
+            return fc::variant(trx);
+         }
       } else {
         return fc::variant(packed_transaction(trx, compression));
       }
@@ -439,28 +469,6 @@ void print_action( const fc::variant& at ) {
       }
    }
 }
-
-//resolver for ABI serializer to decode actions in proposed transaction in multisig contract
-auto abi_serializer_resolver = [](const name& account) -> fc::optional<abi_serializer> {
-   static unordered_map<account_name, fc::optional<abi_serializer> > abi_cache;
-   auto it = abi_cache.find( account );
-   if ( it == abi_cache.end() ) {
-      auto result = call(get_abi_func, fc::mutable_variant_object("account_name", account));
-      auto abi_results = result.as<eosio::chain_apis::read_only::get_abi_results>();
-
-      fc::optional<abi_serializer> abis;
-      if( abi_results.abi.valid() ) {
-         abis.emplace( *abi_results.abi, abi_serializer_max_time );
-      } else {
-         std::cerr << "ABI for contract " << account.to_string() << " not found. Action data will be shown in hex only." << std::endl;
-      }
-      abi_cache.emplace( account, abis );
-
-      return abis;
-   }
-
-   return it->second;
-};
 
 bytes variant_to_bin( const account_name& account, const action_name& action, const fc::variant& action_args_var ) {
    auto abis = abi_serializer_resolver( account );
