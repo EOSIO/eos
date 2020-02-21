@@ -116,6 +116,7 @@ struct building_block {
                    const vector<digest_type>& new_protocol_feature_activations )
    :_pending_block_header_state( prev.next( when, num_prev_blocks_to_confirm ) )
    ,_new_protocol_feature_activations( new_protocol_feature_activations )
+   ,_trx_mroot_or_receipt_digests( digests_t{} )
    {}
 
    pending_block_header_state            _pending_block_header_state;
@@ -124,8 +125,8 @@ struct building_block {
    size_t                                _num_new_protocol_features_that_have_activated = 0;
    deque<transaction_metadata_ptr>       _pending_trx_metas;
    deque<transaction_receipt>            _pending_trx_receipts; // boost deque in 1.71 with 1024 elements performs better
-   deque<digest_type>                    _pending_trx_receipt_digests;
-   deque<digest_type>                    _action_receipt_digests;
+   static_variant<checksum256_type, digests_t> _trx_mroot_or_receipt_digests;
+   digests_t                             _action_receipt_digests;
 };
 
 struct assembled_block {
@@ -1119,7 +1120,8 @@ struct controller_impl {
       auto& bb = pending->_block_stage.get<building_block>();
       auto orig_trx_receipts_size           = bb._pending_trx_receipts.size();
       auto orig_trx_metas_size              = bb._pending_trx_metas.size();
-      auto orig_trx_receipt_digests_size    = bb._pending_trx_receipt_digests.size();
+      auto orig_trx_receipt_digests_size    = bb._trx_mroot_or_receipt_digests.contains<digests_t>() ?
+            bb._trx_mroot_or_receipt_digests.get<digests_t>().size() : 0;
       auto orig_action_receipt_digests_size = bb._action_receipt_digests.size();
 
       std::function<void()> callback = [this,
@@ -1131,7 +1133,8 @@ struct controller_impl {
          auto& bb = pending->_block_stage.get<building_block>();
          bb._pending_trx_receipts.resize(orig_trx_receipts_size);
          bb._pending_trx_metas.resize(orig_trx_metas_size);
-         bb._pending_trx_receipt_digests.resize(orig_trx_receipt_digests_size);
+         if( bb._trx_mroot_or_receipt_digests.contains<digests_t>() )
+            bb._trx_mroot_or_receipt_digests.get<digests_t>().resize(orig_trx_receipt_digests_size);
          bb._action_receipt_digests.resize(orig_action_receipt_digests_size);
       };
 
@@ -1344,7 +1347,7 @@ struct controller_impl {
 
       // Only subjective OR soft OR hard failure logic below:
 
-      if( gtrx.sender != account_name() && !failure_is_subjective(*trace->except)) {
+      if( gtrx.sender != account_name() && !(explicit_billed_cpu_time ? failure_is_subjective(*trace->except) : scheduled_failure_is_subjective(*trace->except))) {
          // Attempt error handling for the generated transaction.
 
          auto error_trace = apply_onerror( gtrx, deadline, trx_context.pseudo_start,
@@ -1419,7 +1422,9 @@ struct controller_impl {
       r.cpu_usage_us         = cpu_usage_us;
       r.net_usage_words      = net_usage_words;
       r.status               = status;
-      pending->_block_stage.get<building_block>()._pending_trx_receipt_digests.emplace_back( r.digest() );
+      auto& bb = pending->_block_stage.get<building_block>();
+      if( bb._trx_mroot_or_receipt_digests.contains<digests_t>() )
+         bb._trx_mroot_or_receipt_digests.get<digests_t>().emplace_back( r.digest() );
       return r;
    }
 
@@ -1714,7 +1719,9 @@ struct controller_impl {
 
       // Create (unsigned) block:
       auto block_ptr = std::make_shared<signed_block>( pbhs.make_block_header(
-         merkle( std::move( pending->_block_stage.get<building_block>()._pending_trx_receipt_digests ) ),
+         bb._trx_mroot_or_receipt_digests.contains<checksum256_type>() ?
+               bb._trx_mroot_or_receipt_digests.get<checksum256_type>() :
+               merkle( std::move( bb._trx_mroot_or_receipt_digests.get<digests_t>() ) ),
          merkle( std::move( pending->_block_stage.get<building_block>()._action_receipt_digests ) ),
          bb._new_pending_producer_schedule,
          std::move( bb._new_protocol_feature_activations ),
@@ -1866,6 +1873,9 @@ struct controller_impl {
          auto producer_block_id = b->id();
          start_block( b->timestamp, b->confirmed, new_protocol_feature_activations, s, producer_block_id);
 
+         // validated in create_block_state_future()
+         pending->_block_stage.get<building_block>()._trx_mroot_or_receipt_digests = b->transaction_mroot;
+
          const bool existing_trxs_metas = !bsp->trxs_metas().empty();
          const bool pub_keys_recovered = bsp->is_pub_keys_recovered();
          const bool skip_auth_checks = self.skip_auth_check();
@@ -1973,6 +1983,11 @@ struct controller_impl {
 
       return async_thread_pool( thread_pool.get_executor(), [b, prev, control=this]() {
          const bool skip_validate_signee = false;
+
+         auto trx_mroot = calculate_trx_merkle( b->transactions );
+         EOS_ASSERT( b->transaction_mroot == trx_mroot, block_validate_exception,
+                     "invalid block transaction merkle root ${b} != ${c}", ("b", b->transaction_mroot)("c", trx_mroot) );
+
          return std::make_shared<block_state>(
                         *prev,
                         move( b ),
@@ -2164,6 +2179,13 @@ struct controller_impl {
          protocol_features.popped_blocks_to( head->block_num );
       }
       return applied_trxs;
+   }
+
+   static checksum256_type calculate_trx_merkle( const deque<transaction_receipt>& trxs ) {
+      deque<digest_type> trx_digests;
+      for( const auto& a : trxs )
+         trx_digests.emplace_back( a.digest() );
+      return merkle( move( trx_digests ) );
    }
 
    void update_producers_authority() {
@@ -2457,6 +2479,8 @@ const chainbase::database& controller::db()const { return my->db; }
 chainbase::database& controller::mutable_db()const { return my->db; }
 
 const fork_database& controller::fork_db()const { return my->fork_db; }
+
+const chainbase::database& controller::reversible_db()const { return my->reversible_blocks; }
 
 void controller::preactivate_feature( const digest_type& feature_digest ) {
    const auto& pfs = my->protocol_features.get_protocol_feature_set();

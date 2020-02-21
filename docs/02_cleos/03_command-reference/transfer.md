@@ -27,12 +27,12 @@ Transfer tokens from account to account
 ## Example
 Transfer 1000 SYS from **inita** to **tester**
 
-```shell
-$ ./cleos transfer inita tester 1000
+```sh
+cleos transfer inita tester 1000
 ```
-The response will look something like this
+The response should look something like this:
 
-```shell
+```json
 {
   "transaction_id": "eb4b94b72718a369af09eb2e7885b3f494dd1d8a20278a6634611d5edd76b703",
   "processed": {

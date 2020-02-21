@@ -15,6 +15,6 @@
 ## Examples
 
 
-```text
+```sh
 cleos system rex sellrex accountname1 "1 REX"
 ```

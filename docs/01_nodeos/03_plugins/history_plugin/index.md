@@ -9,13 +9,14 @@ The `history_plugin` provides a cache layer to obtain historical data about the 
 
 ## Usage
 
-```sh
+```console
 # config.ini
 plugin = eosio::history_plugin
 [options]
-
+```
+```sh
 # command-line
-$ nodeos ... --plugin eosio::history_plugin [options]
+nodeos ... --plugin eosio::history_plugin [options]
 ```
 
 ## Options

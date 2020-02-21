@@ -10,8 +10,10 @@ There are no options for this subcommand
 ## Example
 Get stats of the SYS token from the eosio.token contract. 
 
-```text
-$ cleos get currency stats eosio.token SYS
+```sh
+cleos get currency stats eosio.token SYS
+```
+```json
 {
   "SYS": {
     "supply": "1000000000.0000 SYS",
