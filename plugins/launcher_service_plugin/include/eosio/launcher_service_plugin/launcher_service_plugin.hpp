@@ -258,7 +258,7 @@ public:
    static std::string generate_node_config(const launcher_service::launcher_config &_config, launcher_service::cluster_def &def, int node_id);
 
 private:
-   std::unique_ptr<class launcher_service_plugin_impl>  _my;
+   std::shared_ptr<class launcher_service_plugin_impl>  _my;
 };
 
 }

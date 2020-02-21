@@ -60,9 +60,11 @@ namespace eosio {
    }
 
    using namespace launcher_service;
-   class launcher_service_plugin_impl {
+   class launcher_service_plugin_impl : public std::enable_shared_from_this<launcher_service_plugin_impl> {
 
 public:
+      launcher_service_plugin_impl(boost::asio::io_service& io) : _timer(io) {}
+
       struct node_state {
          int                        id = 0;
          int                        pid = 0;
@@ -88,8 +90,12 @@ public:
          std::map<transaction_id_type, uint32_t>     transaction_blocknum;
       };
 
-      launcher_config                _config;
-      std::map<int, cluster_state>   _running_clusters;
+      launcher_config                           _config;
+      std::map<int, cluster_state>              _running_clusters;
+      optional<boost::posix_time::microseconds> _idle_timeout;
+      boost::asio::deadline_timer               _timer;
+      uint32_t                                  _timer_correlation_id = 0;
+      static constexpr uint64_t                 _minutes = 60 * 1'000'000;
 
    public:
       static std::string cluster_to_string(int id) {
@@ -751,9 +757,29 @@ public:
             return call_strdata(param.cluster_id, param.node_id, param.url, param.string_data);
          }
       }
+
+      void schedule_timeout() {
+          if (_idle_timeout) {
+              ilog("schedule_timeout");
+              _timer.cancel();
+              _timer.expires_from_now( *_idle_timeout);
+              std::weak_ptr<launcher_service_plugin_impl> weak_this = weak_from_this();
+
+              _timer.async_wait( app().get_priority_queue().wrap( priority::high,
+                                                                  [weak_this, cid = ++_timer_correlation_id, timeout = _idle_timeout->total_microseconds()]( const boost::system::error_code& ec ) {
+                                                                      auto self = weak_this.lock();
+                                                                      dlog("schedule_timeout timeout fired");
+                                                                      if( self && ec != boost::asio::error::operation_aborted && cid == self->_timer_correlation_id ) {
+                                                                          ilog("No requests made in ${timeout} minutes, shutting down service.",("timeout", timeout/launcher_service_plugin_impl::_minutes));
+                                                                          app().quit();
+                                                                      }
+                                                                  } ) );
+          }
+
+      }
    };
 
-launcher_service_plugin::launcher_service_plugin():_my(new launcher_service_plugin_impl()){}
+launcher_service_plugin::launcher_service_plugin():_my(new launcher_service_plugin_impl(app().get_io_service())){}
 launcher_service_plugin::~launcher_service_plugin(){}
 
 void launcher_service_plugin::set_program_options(options_description&, options_description& cfg) {
@@ -788,6 +814,8 @@ void launcher_service_plugin::set_program_options(options_description&, options_
          "max nodes per cluster")
          ("max-clusters", bpo::value<uint16_t>()->default_value(30),
          "max number of clusters")
+         ("idle-shutdown", bpo::value<uint16_t>(),
+         "timeout in minutes to wait between launcher service requests before automatically shutting down the launcher service")
          ;
 }
 
@@ -807,6 +835,13 @@ void launcher_service_plugin::plugin_initialize(const variables_map& options) {
       _my->_config.node_span = options.at("node-port-span").as<uint16_t>();
       _my->_config.max_nodes_per_cluster = options.at("max-nodes-per-cluster").as<uint16_t>();
       _my->_config.max_clusters = options.at("max-clusters").as<uint16_t>();
+      if (options.count("idle-shutdown")) {
+          const auto timeout = options.at("idle-shutdown").as<uint16_t>();
+          EOS_ASSERT(timeout > 0, chain::plugin_config_exception, "if passing \"idle-shutdown\" it must be greater than 0.");
+          ilog("setting \"idle-shutdown\" timeout to ${timeout} seconds",("timeout", timeout));
+          _my->_idle_timeout = boost::posix_time::microseconds(timeout * launcher_service_plugin_impl::_minutes);
+          _my->schedule_timeout();
+      }
 
       // ephemeral port range starts from 32768 in linux, 49152 on mac
       EOS_ASSERT((int)_my->_config.base_port + (int)_my->_config.cluster_span <= 32768, chain::plugin_config_exception, "base-port + cluster-port-span should not be greater than 32768");
@@ -833,6 +868,8 @@ void launcher_service_plugin::plugin_startup() {
 void launcher_service_plugin::plugin_shutdown() {
    ilog("launcher_service_plugin::plugin_shutdown()");
    _my->stop_all_clusters();
+   _my->_idle_timeout.reset();
+   _my->_timer.cancel();
 }
 
 fc::variant launcher_service_plugin::get_cluster_info(launcher_service::cluster_id_param param)
@@ -900,6 +937,7 @@ fc::variant launcher_service_plugin::get_cluster_info(launcher_service::cluster_
 
 fc::variant launcher_service_plugin::get_cluster_running_state(launcher_service::cluster_id_param param)
 {
+   _my->schedule_timeout();
    if (_my->_running_clusters.find(param.cluster_id) == _my->_running_clusters.end()) {
       throw std::runtime_error("cluster is not running");
    }
@@ -914,70 +952,85 @@ fc::variant launcher_service_plugin::get_cluster_running_state(launcher_service:
 }
 
 fc::variant launcher_service_plugin::get_info(launcher_service::node_id_param param) {
+   _my->schedule_timeout();
    return _my->get_info(param.cluster_id, param.node_id);
 }
 
 fc::variant launcher_service_plugin::launch_cluster(launcher_service::cluster_def def)
 {
+   _my->schedule_timeout();
    _my->launch_cluster(def);
    return fc::mutable_variant_object("result", _my->_running_clusters[def.cluster_id]);
 }
 
 fc::variant launcher_service_plugin::stop_all_clusters(launcher_service::empty_param) {
+   _my->schedule_timeout();
    _my->stop_all_clusters();
    return fc::mutable_variant_object("result", "OK");
 }
 
 fc::variant launcher_service_plugin::stop_cluster(launcher_service::cluster_id_param param) {
+   _my->schedule_timeout();
    _my->stop_cluster(param.cluster_id);
    return fc::mutable_variant_object("result", "OK");
 }
 
 fc::variant launcher_service_plugin::clean_cluster(launcher_service::cluster_id_param param) {
+   _my->schedule_timeout();
    _my->clean_cluster(param.cluster_id);
    return fc::mutable_variant_object("result", "OK");
 }
 
 fc::variant launcher_service_plugin::start_node(launcher_service::start_node_param param) {
+   _my->schedule_timeout();
    _my->start_node(param.cluster_id, param.node_id, param.extra_args);
    return fc::mutable_variant_object("result", "OK");
 }
 
 fc::variant launcher_service_plugin::stop_node(launcher_service::stop_node_param param) {
+   _my->schedule_timeout();
    _my->stop_node(param.cluster_id, param.node_id, param.kill_sig);
    return fc::mutable_variant_object("result", "OK");
 }
 
 fc::variant launcher_service_plugin::get_protocol_features(launcher_service::node_id_param param) {
+   _my->schedule_timeout();
    return _my->get_protocol_features(param.cluster_id, param.node_id);
 }
 
 fc::variant launcher_service_plugin::schedule_protocol_feature_activations(launcher_service::schedule_protocol_feature_activations_param param) {
+   _my->schedule_timeout();
    return _my->schedule_protocol_feature_activations(param);
 }
 
 fc::variant launcher_service_plugin::get_block(launcher_service::get_block_param param) {
+   _my->schedule_timeout();
    return _my->get_block(param.cluster_id, param.node_id, param.block_num_or_id);
 }
 
 fc::variant launcher_service_plugin::get_account(launcher_service::get_account_param param) {
+   _my->schedule_timeout();
    return _my->get_account(param);
 }
 
 fc::variant launcher_service_plugin::get_code_hash(launcher_service::get_account_param param) {
+   _my->schedule_timeout();
    return _my->get_code_hash(param);
 }
 
 fc::variant launcher_service_plugin::get_table_rows(launcher_service::get_table_rows_param param) {
+   _my->schedule_timeout();
    return _my->get_table_rows(param);
 }
 
 fc::variant launcher_service_plugin::verify_transaction(launcher_service::verify_transaction_param param) {
+   _my->schedule_timeout();
    return _my->verify_transaction(param);
 }
 
 fc::variant launcher_service_plugin::set_contract(launcher_service::set_contract_param param) {
    try {
+      _my->schedule_timeout();
       return _my->set_contract(param);
    } catch (fc::exception &e) {
       elog("FC exception: code ${code}, cluster ${cluster}, node ${node}, details: ${d}",
@@ -991,15 +1044,18 @@ fc::variant launcher_service_plugin::set_contract(launcher_service::set_contract
 }
 
 fc::variant launcher_service_plugin::import_keys(launcher_service::import_keys_param param) {
+   _my->schedule_timeout();
    return _my->import_keys(param);
 }
 
 fc::variant launcher_service_plugin::generate_key(launcher_service::generate_key_param param) {
+   _my->schedule_timeout();
    return _my->generate_key(param);
 }
 
 fc::variant launcher_service_plugin::push_actions(launcher_service::push_actions_param param) {
    try {
+      _my->schedule_timeout();
       return _my->push_actions(param);
    } catch (fc::exception &e) {
       elog("FC exception: code ${code}, cluster ${cluster}, node ${node}, details: ${d}",
@@ -1013,11 +1069,13 @@ fc::variant launcher_service_plugin::push_actions(launcher_service::push_actions
 }
 
 fc::variant launcher_service_plugin::get_log_data(launcher_service::get_log_data_param param) {
+   _my->schedule_timeout();
    return _my->get_log_data(param);
 }
 
 fc::variant launcher_service_plugin::send_raw(launcher_service::send_raw_param param) {
    try {
+      _my->schedule_timeout();
       return _my->send_raw(param);
    } catch (fc::exception &e) {
       elog("FC exception: code ${code}, cluster ${cluster}, node ${node}, details: ${d}",

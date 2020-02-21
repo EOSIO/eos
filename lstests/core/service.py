@@ -45,6 +45,7 @@ DEFAULT_FILE = os.path.join(".", "programs", PROGRAM, PROGRAM)
 DEFAULT_GENE = os.path.join(".", "genesis.json")
 DEFAULT_START = False
 DEFAULT_KILL = False
+DEFAULT_LAUNCHER_MAXIMUM_IDLE_TIME = 10
 DEFAULT_EXTRA_SERVICE_ARGS = ""
 # cluster-related defaults
 DEFAULT_CDIR = "../unittests/contracts/old_versions/v1.6.0-rc3"
@@ -88,6 +89,7 @@ HELP_FILE = "Path to executable file of launcher service"
 HELP_GENE = "Path to genesis file"
 HELP_START = "Always start a new launcher service"
 HELP_KILL = "Kill existing launcher services (if any)"
+HELP_LAUNCHER_MAXIMUM_IDLE_TIME = "Maximum time to allow a newly launched launcher-service to remain idle before shutting down"
 HELP_EXTRA_SERVICE_ARGS = "Extra arguments to pass to launcher service"
 # cluster-related help text
 HELP_CDIR = "Smart contracts directory"
@@ -202,6 +204,7 @@ class CommandLineArguments:
         self.gene = cla.gene
         self.start = cla.start
         self.kill = cla.kill
+        self.launcher_maximum_idle_time = cla.launcher_maximum_idle_time
         self.extra_service_args = cla.extra_service_args
         # cluster-related options
         self.cdir = cla.cdir
@@ -258,6 +261,7 @@ class CommandLineArguments:
         parser.add_argument("-g", "--gene", type=str, metavar="PATH", help=form(HELP_GENE, DEFAULT_GENE))
         parser.add_argument("-s", "--start", action="store_true", default=None, help=form(HELP_START, DEFAULT_START))
         parser.add_argument("-k", "--kill", action="store_true", default=None, help=form(HELP_KILL, DEFAULT_KILL))
+        parser.add_argument("--launcher-maximum-idle-time", type=int, default=None, help=form(HELP_LAUNCHER_MAXIMUM_IDLE_TIME, DEFAULT_LAUNCHER_MAXIMUM_IDLE_TIME))
         parser.add_argument("--extra-service-args", type=str, metavar="ARGS",
                             help=form(HELP_EXTRA_SERVICE_ARGS, DEFAULT_EXTRA_SERVICE_ARGS))
         # cluster-related options
@@ -363,7 +367,7 @@ class Service:
     service(s).
     """
     def __init__(self, logger, addr=None, port=None, wdir=None, file=None, gene=None, start=None, kill=None,
-                 extra_args=None):
+                 launcher_maximum_idle_time=None, extra_args=None):
         """Create a Service object to connect to launcher service.
 
         Parameters
@@ -401,6 +405,10 @@ class Service:
             (and freshly start a new one).
             Default is False (will not kill existing launcher services; instead
             will connect to an existing launcher service).
+        launcher_maximum_idle_time : int
+            Time (in minutes) that is the maximum length of time the test will
+            take between each call to the launcher-service.  It is used for
+            the idle-shutdown passed to the launcher-service if it is launched.
         extra_args : str
             Extra arguments to pass to launcher service.
         """
@@ -414,6 +422,7 @@ class Service:
         self.gene  = helper.override(DEFAULT_GENE,  gene,  self.cla.gene)
         self.start = helper.override(DEFAULT_START, start, self.cla.start)
         self.kill  = helper.override(DEFAULT_KILL,  kill,  self.cla.kill)
+        self.launcher_maximum_idle_time = helper.override(DEFAULT_LAUNCHER_MAXIMUM_IDLE_TIME, launcher_maximum_idle_time,  self.cla.launcher_maximum_idle_time)
         self.extra_args  = helper.override(DEFAULT_EXTRA_SERVICE_ARGS,  extra_args,  self.cla.extra_service_args)
         # change working dir
         if self.wdir != ".":
@@ -498,6 +507,7 @@ class Service:
         self.print_config_helper("-g, --gene",  HELP_GENE,  self.gene,  DEFAULT_GENE)
         self.print_config_helper("-s, --start", HELP_START, self.start, DEFAULT_START)
         self.print_config_helper("-k, --kill",  HELP_KILL,  self.kill,  DEFAULT_KILL)
+        self.print_config_helper("--launcher-maximum-idle-time", HELP_LAUNCHER_MAXIMUM_IDLE_TIME, self.launcher_maximum_idle_time, DEFAULT_LAUNCHER_MAXIMUM_IDLE_TIME)
         self.print_config_helper("--extra-service-args",  HELP_EXTRA_SERVICE_ARGS,  self.extra_args,  DEFAULT_EXTRA_SERVICE_ARGS)
         self.print_logger_config()
 
@@ -610,12 +620,14 @@ class Service:
         self.debug(color.green("Starting a new launcher service (port={}).".format(self.port)))
         with open(PROGRAM_LOG, "w") as f:
             pass
-        os.system(f"{self.file} "
-                  f"--http-server-address=0.0.0.0:{self.port} "
-                  f"--http-threads=4 "
-                  f"--genesis-json={self.gene} " +
-                  self.extra_args + " " +
-                  f">{PROGRAM_LOG}  2>&1 &")
+        idle_timeout_flag = ""
+        if self.launcher_maximum_idle_time is not None:
+            self.debug(color.green(f"generating {self.gene}"))
+            idle_timeout_flag = f"--idle-shutdown={self.launcher_maximum_idle_time}"
+        cmdStr =  f"{self.file} --http-server-address=0.0.0.0:{self.port} --http-threads=4 --genesis-json={self.gene} " + \
+                  f"{generate_genesis_flag} {idle_timeout_flag} {self.extra_args} >{PROGRAM_LOG}  2>&1 &"
+        self.debug(color.green("Running: {}".format(cmdStr)))
+        os.system(cmdStr)
         time.sleep(1)
         with open(PROGRAM_LOG, "r") as f:
             msg = ""
@@ -804,7 +816,7 @@ class Cluster:
         self.print_begin = service.print_begin
         self.print_end = service.print_end
         self.print_header = service.print_header
-        self.print_config_helper= service.print_config_helper
+        self.print_config_helper = service.print_config_helper
         self.verify_threads = []
         # configure cluster
         self.cdir            = helper.override(DEFAULT_CDIR,            cdir,            self.cla.cdir)
@@ -1538,6 +1550,11 @@ class Cluster:
         error_level = helper.override("error", error_level)
         error_text_level = helper.override(error_level, error_text_level)
         self.print_header(header, level=header_level, buffer=buffer)
+
+        # let logger know that we are communicating with launcher-service
+        if self.service.launcher_maximum_idle_time is not None:
+            self.logger.reset_launcher_maximum_idle_time(self.service.launcher_maximum_idle_time)
+
         # communication with launcher service
         cx = Connection(url=f"http://{self.service.addr}:{self.service.port}/v1/launcher/{api}", data=data)
         self.log(cx.url, level=url_level, buffer=buffer)

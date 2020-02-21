@@ -232,6 +232,8 @@ class FileWriter(_Writer):
 class Logger:
     def __init__(self, *writers: typing.Tuple[_Writer]):
         self.writers = writers
+        self.launcher_idle_time_deadline = None
+        self.percent_reduction = 10
         now = time.time()
         for w in self.writers:
             w._start_time = now
@@ -274,6 +276,26 @@ class Logger:
         for w in self.writers:
             w.flush()
 
+    def check_duration(self):
+        if self.launcher_idle_time_deadline is None:
+            return
+        remaining_duration = time.time() - self.launcher_idle_time_deadline
+        if remaining_duration.total_seconds() <= 0.0:
+            self.warn(f"Within {self.percent_reduction} % of declared maximum launcher-service idle time.  "
+                      "launcher-service may shutdown.  Test should increase launcher_maximum_idle_time passed "
+                      "to service.")
+            # only report once
+            self.launcher_idle_time_deadline = None
+
+    def reset_launcher_maximum_idle_time(self, idle_time_minutes):
+        self.launcher_idle_time_deadline = idle_time_minutes
+        if self.launcher_idle_time_deadline is not None:
+            minutes_to_seconds = 60
+            self.launcher_idle_time_deadline *= minutes_to_seconds
+            self.launcher_idle_time_deadline *= (100 - self.percent_reduction) / 100
+            self.launcher_idle_time_deadline += time.time()
+
+        self.warn(f"reset_launcher_maximum_idle_time: {self.launcher_idle_time_deadline}")
 
 # ----------------- test ------------------------------------------------------
 
