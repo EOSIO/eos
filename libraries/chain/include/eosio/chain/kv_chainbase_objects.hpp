@@ -22,6 +22,14 @@ namespace eosio { namespace chain {
 
    struct by_kv_key;
 
+   struct kv_object_view {
+      name database_id;
+      name contract;
+      // TODO: Use non-owning memory
+      fc::blob kv_key;
+      fc::blob kv_value;
+   };
+
    struct kv_object : public chainbase::object<kv_object_type, kv_object> {
       OBJECT_CTOR(kv_object, (kv_key)(kv_value))
 
@@ -67,4 +75,5 @@ CHAINBASE_SET_INDEX_TYPE(eosio::chain::kv_db_config_object, eosio::chain::kv_db_
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::kv_object, eosio::chain::kv_index)
 
 FC_REFLECT(eosio::chain::kv_db_config_object, (using_rocksdb_for_disk))
+FC_REFLECT(eosio::chain::kv_object_view, (database_id)(contract)(kv_key)(kv_value))
 FC_REFLECT(eosio::chain::kv_object, (database_id)(contract)(kv_key)(kv_value))
