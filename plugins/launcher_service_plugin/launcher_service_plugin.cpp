@@ -814,6 +814,8 @@ void launcher_service_plugin::set_program_options(options_description&, options_
          "max nodes per cluster")
          ("max-clusters", bpo::value<uint16_t>()->default_value(30),
          "max number of clusters")
+         ("create-default-genesis", bpo::bool_switch()->default_value(false),
+         "create the \"genesis-json\" file, using a default genesis")
          ("idle-shutdown", bpo::value<uint16_t>(),
          "timeout in minutes to wait between launcher service requests before automatically shutting down the launcher service")
          ;
@@ -849,7 +851,17 @@ void launcher_service_plugin::plugin_initialize(const variables_map& options) {
       EOS_ASSERT((int)_my->_config.base_port + (int)_my->_config.cluster_span * _my->_config.max_clusters <= 32768, chain::plugin_config_exception, "max-clusters too large, cluster port numbers would exceed 32767");
       EOS_ASSERT((int)_my->_config.max_nodes_per_cluster * _my->_config.node_span <= _my->_config.cluster_span, chain::plugin_config_exception, "cluster-port-span should not less than node-port-span * max-nodes-per-cluster");
 
-      EOS_ASSERT(bfs::exists(_my->_config.genesis_file), chain::plugin_config_exception,"genesis-json ${path} does not exist", ("path", _my->_config.genesis_file));
+      if (options.at("create-default-genesis").as<bool>()) {
+          auto genesis_file = bfs::path(_my->_config.genesis_file);
+          auto genesis_file_parent_path = genesis_file.parent_path();
+          EOS_ASSERT(bfs::exists(genesis_file_parent_path), chain::plugin_config_exception,"genesis-json parent path: ${path} does not exist", ("path", genesis_file_parent_path.string()));
+          private_key_type kp(string("5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3"));
+          eosio::chain::genesis_state default_genesis;
+          default_genesis.initial_key = kp.get_public_key();
+          fc::json::save_to_file( default_genesis, _my->_config.genesis_file, true );
+      } else {
+          EOS_ASSERT(bfs::exists(_my->_config.genesis_file), chain::plugin_config_exception,"genesis-json ${path} does not exist", ("path", _my->_config.genesis_file));
+      }
 
       EOS_ASSERT(options.count("http-server-address"), chain::plugin_config_exception, "http-server-address must be set");
    } catch (fc::exception& er) {

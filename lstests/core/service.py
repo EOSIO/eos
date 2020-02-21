@@ -620,6 +620,10 @@ class Service:
         self.debug(color.green("Starting a new launcher service (port={}).".format(self.port)))
         with open(PROGRAM_LOG, "w") as f:
             pass
+        generate_genesis_flag = ""
+        if not os.path.isfile(self.gene):
+            self.debug(color.green(f"Generating genesis-json file {self.gene}"))
+            generate_genesis_flag = " --create-default-genesis"
         idle_timeout_flag = ""
         if self.launcher_maximum_idle_time is not None:
             self.debug(color.green(f"generating {self.gene}"))
