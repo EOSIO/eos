@@ -6,13 +6,14 @@ The `state_history_plugin` is useful for capturing historical data about the blo
 
 ## Usage
 
-```sh
+```console
 # config.ini
 plugin = eosio::state_history_plugin
 [options]
-
+```
+```sh
 # command-line
-$ nodeos ... --plugin eosio::state_history_plugin [operations] [options]
+nodeos ... --plugin eosio::state_history_plugin [operations] [options]
 ```
 
 ## Operations
@@ -48,15 +49,10 @@ Config Options for eosio::state_history_plugin:
 
 ## Examples
 
-### JavaScript Example
-
-  * [Source code](https://github.com/EOSIO/eos/blob/state-history-docs/docs/state-history-plugin/js-example.md)
-
 ### history-tools
 
   * [Source code](https://github.com/EOSIO/history-tools/)
   * [Documentation](https://eosio.github.io/history-tools/)
-  * [Protocol](https://github.com/EOSIO/eos/blob/state-history-docs/docs/state-history-plugin/protocol.md)
 
 ## Dependencies
 
@@ -64,17 +60,18 @@ Config Options for eosio::state_history_plugin:
 
 ### Load Dependency Examples
 
-```sh
+```console
 # config.ini
 plugin = eosio::chain_plugin --disable-replay-opts
-
+```
+```sh
 # command-line
-$ nodeos ... --plugin eosio::chain_plugin --disable-replay-opts
+nodeos ... --plugin eosio::chain_plugin --disable-replay-opts
 ```
 
 ## How-To Guides
 
-* [How to fast start without history on existing chains](how-to-fast-start-without-old-history.md)
-* [How to create a portable snapshot with full state history](how-to-create-snapshot-with-full-history.md)
-* [How to restore a portable snapshot with full state history](how-to-restore-snapshot-with-full-history.md)
-* [How to replay or resync with full history](how-to-replay-or-resync-wth-full-history.md)
+* [How to fast start without history on existing chains](10_how-to-fast-start-without-old-history.md)
+* [How to replay or resync with full history](20_how-to-replay-or-resync-with-full-history.md)
+* [How to create a portable snapshot with full state history](30_how-to-create-snapshot-with-full-history.md)
+* [How to restore a portable snapshot with full state history](40_how-to-restore-snapshot-with-full-history.md)

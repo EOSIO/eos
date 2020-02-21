@@ -4,20 +4,20 @@ Retrieve version information
 
 ## Command
 
-```shell
-$ ./cleos version
+```sh
+cleos version
 ```
 
 ## Subcommands
 [client](client) - Retrieve version information of the client
 
-```shell
-$ ./cleos version client
+```sh
+cleos version client
 ```
 
 ## Output
 
 
-```shell
+```console
 Build version: 7f854a61
 ```

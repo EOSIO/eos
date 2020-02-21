@@ -1117,11 +1117,9 @@ BOOST_AUTO_TEST_CASE(action_receipt_digest) {
                          .auth_sequence = {{eosio::name("name"), 13}},
                          .code_sequence = 5,
                          .abi_sequence = 6 };
-      auto d = digest_type::hash(ar);
-      uint32_t version = 0;
-      version = eosio::chain::set_field( version, builtin_protocol_feature_t::action_return_value, true );
-      BOOST_REQUIRE_EQUAL( ar.digest(version), d );
-      BOOST_REQUIRE_NE( ar.digest(0), d );
+      auto d = ar.digest();
+      ar.return_value.emplace();
+      BOOST_REQUIRE_NE( ar.digest(), d );
 
    } FC_LOG_AND_RETHROW()
 }

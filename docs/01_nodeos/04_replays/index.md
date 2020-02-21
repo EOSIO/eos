@@ -1,4 +1,6 @@
-# Nodeos Replays
+---
+content_title: Nodeos Replays
+---
 
 Nodeos provides various options for replaying blockchain blocks. This can be useful if, for example, a node has downloaded a `blocks.log` file from the internet (as a faster alternative to synchronizing from the p2p network) and the node wants to use it to quickly catch up with the network, or if you want to know the chain state at specified points in a blockchain's life.
 
@@ -19,7 +21,7 @@ Snapshot files can be created from a running `nodeos` instance. The snapshot con
 
 ## Replay Snapshot-specific Options
 
-Typing `$ nodeos --help` on the command line will show you all the options available for running `nodeos`. The snapshot and replay specific options are:
+Typing `nodeos --help` on the command line will show you all the options available for running `nodeos`. The snapshot and replay specific options are:
 
  - **--force-all-checks**  
 The node operator may not trust the source of the `blocks.log` file and may want to run `nodeos` with `--replay-blockchain --force-all-checks` the first time to make sure the blocks are good. The `--force-all-checks` flag can be passed into `nodeos` to tell it to not skip any checks during replay.

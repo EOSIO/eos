@@ -14,7 +14,7 @@ The `wallet_plugin` adds access to wallet functionality from a node.
 plugin = eosio::wallet_plugin
 
 # command-line
-$ nodeos ... --plugin eosio::wallet_plugin
+nodeos ... --plugin eosio::wallet_plugin
 ```
 
 ## Options
@@ -36,6 +36,6 @@ plugin = eosio::http_plugin
 [options]
 
 # command-line
-$ nodeos ... --plugin eosio::wallet_plugin [options]  \
-             --plugin eosio::http_plugin [options]
+nodeos ... --plugin eosio::wallet_plugin [options]  \
+           --plugin eosio::http_plugin [options]
 ```

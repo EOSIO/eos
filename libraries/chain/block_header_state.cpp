@@ -408,6 +408,15 @@ namespace eosio { namespace chain {
    }
 
    void block_header_state::verify_signee( )const {
+
+      size_t num_keys_in_authority = valid_block_signing_authority.visit([](const auto &a){ return a.keys.size(); });
+      EOS_ASSERT(1 + additional_signatures.size() <= num_keys_in_authority, wrong_signing_key,
+                 "number of block signatures (${num_block_signatures}) exceeds number of keys in block signing authority (${num_keys})",
+                 ("num_block_signatures", 1 + additional_signatures.size())
+                 ("num_keys", num_keys_in_authority)
+                 ("authority", valid_block_signing_authority)
+      );
+
       std::set<public_key_type> keys;
       auto digest = sig_digest();
       keys.emplace(fc::crypto::public_key( header.producer_signature, digest, true ));

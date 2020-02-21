@@ -148,7 +148,7 @@ public:
    fc::optional<genesis_state>      genesis;
    //txn_msg_rate_limits              rate_limits;
    fc::optional<vm_type>            wasm_runtime;
-   fc::microseconds                 abi_serializer_max_time_ms;
+   fc::microseconds                 abi_serializer_max_time_us;
    fc::optional<bfs::path>          snapshot_path;
 
 
@@ -207,7 +207,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
             }
 #endif
          }), "Override default WASM runtime")
-         ("abi-serializer-max-time-ms", bpo::value<uint32_t>()->default_value(config::default_abi_serializer_max_time_ms),
+         ("abi-serializer-max-time-ms", bpo::value<uint32_t>()->default_value(config::default_abi_serializer_max_time_us / 1000),
           "Override default maximum ABI serialization time allowed in ms")
          ("chain-state-db-size-mb", bpo::value<uint64_t>()->default_value(config::default_state_size / (1024  * 1024)), "Maximum size (in MiB) of the chain state database")
          ("chain-state-db-guard-size-mb", bpo::value<uint64_t>()->default_value(config::default_state_guard_size / (1024  * 1024)), "Safely shut down node when free space remaining in the chain state database drops below this size (in MiB).")
@@ -694,7 +694,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          my->wasm_runtime = options.at( "wasm-runtime" ).as<vm_type>();
 
       if(options.count("abi-serializer-max-time-ms"))
-         my->abi_serializer_max_time_ms = fc::microseconds(options.at("abi-serializer-max-time-ms").as<uint32_t>() * 1000);
+         my->abi_serializer_max_time_us = fc::microseconds(options.at("abi-serializer-max-time-ms").as<uint32_t>() * 1000);
 
       my->chain_config->blocks_dir = my->blocks_dir;
       my->chain_config->state_dir = app().data_dir() / config::default_state_dir_name;
@@ -1139,8 +1139,8 @@ void chain_apis::read_write::validate() const {
    EOS_ASSERT( !db.in_immutable_mode(), missing_chain_api_plugin_exception, "Not allowed, node in read-only mode" );
 }
 
-void chain_plugin::accept_block(const signed_block_ptr& block ) {
-   my->incoming_block_sync_method(block);
+bool chain_plugin::accept_block(const signed_block_ptr& block, const block_id_type& id ) {
+   return my->incoming_block_sync_method(block, id);
 }
 
 void chain_plugin::accept_transaction(const chain::packed_transaction_ptr& trx, next_function<chain::transaction_trace_ptr> next) {
@@ -1369,7 +1369,7 @@ chain::chain_id_type chain_plugin::get_chain_id()const {
 }
 
 fc::microseconds chain_plugin::get_abi_serializer_max_time() const {
-   return my->abi_serializer_max_time_ms;
+   return my->abi_serializer_max_time_us;
 }
 
 void chain_plugin::log_guard_exception(const chain::guard_exception&e ) {
@@ -1817,7 +1817,7 @@ fc::variant read_only::get_currency_stats( const read_only::get_currency_stats_p
    return results;
 }
 
-fc::variant get_global_row( const database& db, const abi_def& abi, const abi_serializer& abis, const fc::microseconds& abi_serializer_max_time_ms, bool shorten_abi_errors ) {
+fc::variant get_global_row( const database& db, const abi_def& abi, const abi_serializer& abis, const fc::microseconds& abi_serializer_max_time_us, bool shorten_abi_errors ) {
    const auto table_type = get_table_type(abi, N(global));
    EOS_ASSERT(table_type == read_only::KEYi64, chain::contract_table_query_exception, "Invalid table type ${type} for table global", ("type",table_type));
 
@@ -1830,7 +1830,7 @@ fc::variant get_global_row( const database& db, const abi_def& abi, const abi_se
 
    vector<char> data;
    read_only::copy_inline_row(*it, data);
-   return abis.binary_to_variant(abis.get_table_type(N(global)), data, abi_serializer_max_time_ms, shorten_abi_errors );
+   return abis.binary_to_variant(abis.get_table_type(N(global)), data, abi_serializer_max_time_us, shorten_abi_errors );
 }
 
 read_only::get_producers_result read_only::get_producers( const read_only::get_producers_params& p ) const try {
@@ -2072,7 +2072,7 @@ fc::variant read_only::get_block_header_state(const get_block_header_state_param
 
 void read_write::push_block(read_write::push_block_params&& params, next_function<read_write::push_block_results> next) {
    try {
-      app().get_method<incoming::methods::block_sync>()(std::make_shared<signed_block>(std::move(params)));
+      app().get_method<incoming::methods::block_sync>()(std::make_shared<signed_block>(std::move(params)), {});
       next(read_write::push_block_results{});
    } catch ( boost::interprocess::bad_alloc& ) {
       chain_plugin::handle_db_exhaustion();
