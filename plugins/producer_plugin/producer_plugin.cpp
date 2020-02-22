@@ -1680,8 +1680,7 @@ bool producer_plugin_impl::process_unapplied_trxs( const fc::time_point& deadlin
                   auto trace = chain.push_transaction( trx, trx_deadline, trx->billed_cpu_time_us, false );
                   if (trace->except) {
                      if (exception_is_exhausted(*trace->except, deadline_is_subjective)) {
-                        exhausted = true;
-                        break;
+                        // don't erase, block exhausted failure so try again next time
                      } else {
                         // this failed our configured maximum transaction time, we don't want to replay it
                         // chain.plus_transactions can modify unapplied_trxs, so erase by id
