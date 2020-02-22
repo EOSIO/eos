@@ -338,7 +338,7 @@ namespace eosio {
                         return;
                      }
                      try {
-                        handler_itr->second( std::move( resource ), std::move( body ),
+                        handler_itr->second.second( std::move( resource ), std::move( body ),
                                  [&ioc, &bytes_in_flight, con, this]( int code, fc::variant response_body ) {
                            size_t response_size = 0;
                            try {
