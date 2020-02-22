@@ -1,3 +1,7 @@
+---
+content_title: Keosd Security
+---
+
 ### How does `keosd` Locking/Unlocking works and what are the security implications?
 
 From a user's perspective, when a wallet is created, it remains in an `unlocked` state. Depending on the way `keosd` is launched, it may remain `unlocked` until the process is restarted. When a wallet is locked (either by timeout or process restart) the password is required to unlock it.

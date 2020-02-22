@@ -98,7 +98,7 @@ namespace eosio {
         get_supported_apis_result get_supported_apis()const;
 
       private:
-        std::unique_ptr<class http_plugin_impl> my;
+        std::shared_ptr<class http_plugin_impl> my;
    };
 
    /**

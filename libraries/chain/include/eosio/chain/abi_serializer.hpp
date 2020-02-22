@@ -81,8 +81,8 @@ struct abi_serializer {
       return false;
    }
 
-   typedef std::function<fc::variant(fc::datastream<const char*>&, bool, bool)>  unpack_function;
-   typedef std::function<void(const fc::variant&, fc::datastream<char*>&, bool, bool)>  pack_function;
+   typedef std::function<fc::variant(fc::datastream<const char*>&, bool, bool, const fc::time_point&)>  unpack_function;
+   typedef std::function<void(const fc::variant&, fc::datastream<char*>&, bool, bool, const fc::time_point&)>  pack_function;
 
    void add_specialized_unpack_pack( const string& name, std::pair<abi_serializer::unpack_function, abi_serializer::pack_function> unpack_pack );
 
@@ -139,6 +139,7 @@ namespace impl {
       {}
 
       void check_deadline()const;
+      const fc::time_point& get_deadline()const { return deadline; }
 
       fc::scoped_exit<std::function<void()>> enter_scope();
 

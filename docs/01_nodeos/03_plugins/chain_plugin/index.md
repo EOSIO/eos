@@ -6,13 +6,14 @@ The `chain_plugin` is a core plugin required to process and aggregate chain data
 
 ## Usage
 
-```sh
+```console
 # config.ini
 plugin = eosio::chain_plugin
 [options]
-
+```
+```sh
 # command-line
-$ nodeos ... --plugin eosio::chain_plugin [operations] [options]
+nodeos ... --plugin eosio::chain_plugin [operations] [options]
 ```
 
 ## Operations

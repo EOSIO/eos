@@ -19,6 +19,6 @@ Create or update the abi on an account
 * `--delay-sec` _UINT_ - set the delay_sec seconds, defaults to 0s
 ## Usage
 
-```shell
+```sh
 cleos set abi someaccount1 ./path/to/abi.abi
 ```

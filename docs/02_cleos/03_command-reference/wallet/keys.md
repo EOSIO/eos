@@ -9,14 +9,14 @@ None.
 ## Usage
 
 
-```shell
-$ ./cleos wallet keys
+```sh
+cleos wallet keys
 ```
 
 ## Outputs
 
 
-```shell
+```console
 [[
     "EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
     "5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3"

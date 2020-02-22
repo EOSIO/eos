@@ -60,7 +60,6 @@ find_library(libwasm WASM @CMAKE_BINARY_DIR@/libraries/wasm-jit/Source/WASM NO_D
 find_library(libwast WAST @CMAKE_BINARY_DIR@/libraries/wasm-jit/Source/WAST NO_DEFAULT_PATH)
 find_library(libir IR     @CMAKE_BINARY_DIR@/libraries/wasm-jit/Source/IR NO_DEFAULT_PATH)
 find_library(libwabt wabt @CMAKE_BINARY_DIR@/libraries/wabt NO_DEFAULT_PATH)
-find_library(libplatform Platform @CMAKE_BINARY_DIR@/libraries/wasm-jit/Source/Platform NO_DEFAULT_PATH)
 find_library(liblogging Logging @CMAKE_BINARY_DIR@/libraries/wasm-jit/Source/Logging NO_DEFAULT_PATH)
 find_library(libruntime Runtime @CMAKE_BINARY_DIR@/libraries/wasm-jit/Source/Runtime NO_DEFAULT_PATH)
 find_library(libsoftfloat softfloat @CMAKE_BINARY_DIR@/libraries/softfloat NO_DEFAULT_PATH)
@@ -92,7 +91,6 @@ macro(add_eosio_test_executable test_name)
        ${libwasm}
        ${libwabt}
        ${libruntime}
-       ${libplatform}
        ${libir}
        ${libsoftfloat}
        ${liboscrypto}
