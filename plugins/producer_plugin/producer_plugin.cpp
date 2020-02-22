@@ -78,7 +78,7 @@ using namespace eosio::chain;
 using namespace eosio::chain::plugin_interface;
 
 namespace {
-   bool failure_is_subjective(const fc::exception& e, bool deadline_is_subjective) {
+   bool exception_is_exhausted(const fc::exception& e, bool deadline_is_subjective) {
       auto code = e.code();
       return (code == block_cpu_usage_exceeded::code_value) ||
              (code == block_net_usage_exceeded::code_value) ||
@@ -543,9 +543,9 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                deadline = block_deadline;
             }
 
-            auto trace = chain.push_transaction( trx, deadline );
+            auto trace = chain.push_transaction( trx, deadline, trx->billed_cpu_time_us, false );
             if( trace->except ) {
-               if( failure_is_subjective( *trace->except, deadline_is_subjective )) {
+               if( exception_is_exhausted( *trace->except, deadline_is_subjective )) {
                   _pending_incoming_transactions.add( trx, persist_until_expired, next );
                   if( _pending_block_mode == pending_block_mode::producing ) {
                      fc_dlog( _trx_trace_log, "[TRX_TRACE] Block ${block_num} for producer ${prod} COULD NOT FIT, tx: ${txid} RETRYING ",
@@ -1725,9 +1725,9 @@ bool producer_plugin_impl::process_unapplied_trxs( const fc::time_point& deadlin
                trx_deadline = deadline;
             }
 
-            auto trace = chain.push_transaction( trx, trx_deadline );
+            auto trace = chain.push_transaction( trx, trx_deadline, trx->billed_cpu_time_us, false );
             if( trace->except ) {
-               if( failure_is_subjective( *trace->except, deadline_is_subjective ) ) {
+               if( exception_is_exhausted( *trace->except, deadline_is_subjective ) ) {
                   if( block_is_exhausted() ) {
                      exhausted = true;
                      // don't erase, subjective failure so try again next time
@@ -1771,13 +1771,13 @@ void producer_plugin_impl::process_scheduled_and_incoming_trxs( const fc::time_p
    auto sch_itr = sch_idx.begin();
    while( sch_itr != sch_idx.end() ) {
       if( sch_itr->delay_until > pending_block_time) break;    // not scheduled yet
-      if( sch_itr->published >= pending_block_time ) {
-         ++sch_itr;
-         continue; // do not allow schedule and execute in same block
-      }
       if( exhausted || deadline <= fc::time_point::now() ) {
          exhausted = true;
          break;
+      }
+      if( sch_itr->published >= pending_block_time ) {
+         ++sch_itr;
+         continue; // do not allow schedule and execute in same block
       }
 
       const transaction_id_type trx_id = sch_itr->trx_id; // make copy since reference could be invalidated
@@ -1822,9 +1822,9 @@ void producer_plugin_impl::process_scheduled_and_incoming_trxs( const fc::time_p
             trx_deadline = deadline;
          }
 
-         auto trace = chain.push_scheduled_transaction(trx_id, trx_deadline);
+         auto trace = chain.push_scheduled_transaction(trx_id, trx_deadline, 0, false);
          if (trace->except) {
-            if (failure_is_subjective(*trace->except, deadline_is_subjective)) {
+            if (exception_is_exhausted(*trace->except, deadline_is_subjective)) {
                if( block_is_exhausted() ) {
                   exhausted = true;
                   break;
