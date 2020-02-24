@@ -6,7 +6,6 @@ CMAKE_EXTRAS="-DCMAKE_BUILD_TYPE='Release' -DENABLE_MULTIVERSION_PROTOCOL_TEST=t
 if [[ "$(uname)" == 'Darwin' ]]; then
     # You can't use chained commands in execute
     if [[ $BUILDKITE == true ]]; then
-        CMAKE_EXTRAS="$CMAKE_EXTRAS -DBUILD_MONGO_DB_PLUGIN=true"
         source ~/.bash_profile # Make sure node is available for ship_test
     else
         export PINNED=false
