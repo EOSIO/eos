@@ -109,17 +109,17 @@ Config Options for eosio::producer_plugin:
 
 ## The priority of transaction
 
-You can configure the priority between transaction types, when the `producer` plugin has a queue of transactions to process.
+You can give one of the transaction types priority over another when the producer plugin has a queue of transactions pending.
 
-The option below sets the priority between the ordinary transaction and the deferred transaction:
+The option below sets the ratio between the incoming transaction and the deferred transaction:
 
 ```console
   --incoming-defer-ratio arg (=1)       
 ```
 
-By the default value of `1`, the `producer` plugin processes one incoming transaction per one deferred transaction. Respectively set `arg` to `10`, the `producer` plugin processes 10 incoming transactions per each deferred transaction. 
+By default value of `1`, the `producer` plugin processes one incoming transaction per each deferred transaction. When `arg` sets to `10`, the `producer` plugin processes 10 incoming transactions per each deferred transaction. 
 
-When the option is set to a sufficiently large number, the plugin always process the incoming transaction first until the queue of incoming transaction is empty. Respectively, if the `arg` is 0, the `producer`  processes the deferred transaction queue first.
+If the `arg` is set to a sufficiently large number, the plugin always processes the incoming transaction first until the queue of the incoming transaction is empty. Respectively, if the `arg` is 0, the `producer` plugin processes the deferred transaction queue first.
 
 
 ### Load Dependency Examples
