@@ -119,7 +119,7 @@ The option below sets the ratio between the incoming transaction and the deferre
 
 By default value of `1`, the `producer` plugin processes one incoming transaction per each deferred transaction. When `arg` sets to `10`, the `producer` plugin processes 10 incoming transactions per each deferred transaction. 
 
-If the `arg` is set to a sufficiently large number, the plugin always processes the incoming transaction first until the queue of the incoming transaction is empty. Respectively, if the `arg` is 0, the `producer` plugin processes the deferred transaction queue first.
+If the `arg` is set to a sufficiently large number, the plugin always processes the incoming transaction first until the queue of the incoming transactions is empty. Respectively, if the `arg` is 0, the `producer` plugin processes the deferred transactions queue first.
 
 
 ### Load Dependency Examples
