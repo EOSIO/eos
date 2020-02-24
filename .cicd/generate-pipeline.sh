@@ -96,10 +96,6 @@ export BUILD_SOURCE=${BUILD_SOURCE:---build \$BUILDKITE_BUILD_ID}
 if [[ ! $BUILDKITE_PIPELINE_SLUG =~ 'lrt' ]] && [[ $BUILDKITE_BRANCH =~ ^release/[0-9]+\.[0-9]+\.x$ || $BUILDKITE_BRANCH =~ ^master$ || $BUILDKITE_BRANCH =~ ^develop$ ]]; then
     [[ $BUILDKITE_SOURCE != 'schedule' ]] && export TRIGGER_JOB=true
 fi
-if [[ "$BUILDKITE_PIPELINE_SLUG" == 'eosio-base-images' ]]; then
-    export FORCE_BASE_IMAGE=true
-fi
-export FORCE_BASE_IMAGE=${FORCE_BASE_IMAGE:-false}
 oIFS="$IFS"
 IFS=$''
 nIFS=$IFS # fix array splitting (\n won't work)
@@ -150,7 +146,7 @@ EOF
             - 'registry_1'
             - 'registry_2'
           pre-commands: 
-            - "rm -rf mac-anka-fleet; git clone git@github.com:EOSIO/mac-anka-fleet.git -b anka-base-images && cd mac-anka-fleet && . ./ensure-tag.bash -u 12 -r 25G -a '-n'"
+            - "rm -rf mac-anka-fleet; git clone git@github.com:EOSIO/mac-anka-fleet.git && cd mac-anka-fleet && . ./ensure-tag.bash -u 12 -r 25G -a '-n'"
       - EOSIO/skip-checkout#v0.1.1:
           cd: ~
     env:
