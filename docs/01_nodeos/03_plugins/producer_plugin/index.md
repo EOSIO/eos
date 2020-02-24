@@ -92,9 +92,10 @@ Config Options for eosio::producer_plugin:
                                         transactions in any block before 
                                         returning to normal transaction 
                                         processing.
-  --incoming-defer-ratio arg (=1)       ratio between incoming transations and 
+  --incoming-defer-ratio arg (=1)       ratio between incoming transactions and 
                                         deferred transactions when both are 
-                                        exhausted
+                                        exhausted                                        
+                                                                            
   --producer-threads arg (=2)           Number of worker threads in producer 
                                         thread pool
   --snapshots-dir arg (="snapshots")    the location of the snapshots directory
@@ -105,6 +106,21 @@ Config Options for eosio::producer_plugin:
 ## Dependencies
 
 * [`chain_plugin`](../chain_plugin/index.md)
+
+## The priority of transaction
+
+You can configure the priority between transaction types, when the `producer` plugin has a queue of transactions to process.
+
+The option below sets the priority between the ordinary transaction and the deferred transaction:
+
+```console
+  --incoming-defer-ratio arg (=1)       
+```
+
+By the default value of `1`, the `producer` plugin processes one incoming transaction per one deferred transaction. Respectively set `arg` to `10`, the `producer` plugin processes 10 incoming transactions per each deferred transaction. 
+
+When the option is set to a sufficiently large number, the plugin always process the incoming transaction first until the queue of incoming transaction is empty. Respectively, if the `arg` is 0, the `producer`  processes the deferred transaction queue first.
+
 
 ### Load Dependency Examples
 
