@@ -4,7 +4,6 @@ set(Sources
 	LLVMJIT.h
 	ObjectGC.cpp
 	RuntimePrivate.h
-	WAVMIntrinsics.cpp
   )
 
 set(PublicHeaders
@@ -21,7 +20,7 @@ add_definitions(-DRUNTIME_API=DLL_EXPORT)
 target_include_directories( Runtime PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../../../chain/include )
 
 # Link against the LLVM libraries
-target_link_libraries(Runtime Platform Logging IR)
+target_link_libraries(Runtime Logging IR)
 
 install(TARGETS Runtime 
    LIBRARY DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}

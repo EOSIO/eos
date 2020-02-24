@@ -79,12 +79,13 @@ struct block_position {
 struct get_status_request_v0 {};
 
 struct get_status_result_v0 {
-   block_position head                    = {};
-   block_position last_irreversible       = {};
-   uint32_t       trace_begin_block       = 0;
-   uint32_t       trace_end_block         = 0;
-   uint32_t       chain_state_begin_block = 0;
-   uint32_t       chain_state_end_block   = 0;
+   block_position       head                    = {};
+   block_position       last_irreversible       = {};
+   uint32_t             trace_begin_block       = 0;
+   uint32_t             trace_end_block         = 0;
+   uint32_t             chain_state_begin_block = 0;
+   uint32_t             chain_state_end_block   = 0;
+   fc::sha256           chain_id                = {};
 };
 
 struct get_blocks_request_v0 {
@@ -138,7 +139,7 @@ class state_history_plugin : public plugin<state_history_plugin> {
 FC_REFLECT(eosio::table_delta, (struct_version)(name)(rows));
 FC_REFLECT(eosio::block_position, (block_num)(block_id));
 FC_REFLECT_EMPTY(eosio::get_status_request_v0);
-FC_REFLECT(eosio::get_status_result_v0, (head)(last_irreversible)(trace_begin_block)(trace_end_block)(chain_state_begin_block)(chain_state_end_block));
+FC_REFLECT(eosio::get_status_result_v0, (head)(last_irreversible)(trace_begin_block)(trace_end_block)(chain_state_begin_block)(chain_state_end_block)(chain_id));
 FC_REFLECT(eosio::get_blocks_request_v0, (start_block_num)(end_block_num)(max_messages_in_flight)(have_positions)(irreversible_only)(fetch_block)(fetch_traces)(fetch_deltas));
 FC_REFLECT(eosio::get_blocks_ack_request_v0, (num_messages));
 // clang-format on
