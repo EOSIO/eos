@@ -635,7 +635,7 @@ void producer_plugin::set_program_options(
          ("subjective-cpu-leeway-us", boost::program_options::value<int32_t>()->default_value( config::default_subjective_cpu_leeway_us ),
           "Time in microseconds allowed for a transaction that starts with insufficient CPU quota to complete and cover its CPU usage.")
          ("incoming-defer-ratio", bpo::value<double>()->default_value(1.0),
-          "ratio between incoming transations and deferred transactions when both are exhausted")
+          "ratio between incoming transactions and deferred transactions when both are queued for execution")
          ("incoming-transaction-queue-size-mb", bpo::value<uint16_t>()->default_value( 1024 ),
           "Maximum size (in MiB) of the incoming transaction queue. Exceeding this value will subjectively drop transaction with resource exhaustion.")
          ("producer-threads", bpo::value<uint16_t>()->default_value(config::default_controller_thread_pool_size),
