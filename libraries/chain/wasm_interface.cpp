@@ -929,6 +929,7 @@ class permission_api : public context_aware_api {
          unpack_provided_permissions( provided_permissions, perms_data, perms_size );
 
          try {
+            wdump((trx));
             context.control
                    .get_authorization_manager()
                    .check_authorization( trx.actions,
