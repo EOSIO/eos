@@ -99,6 +99,7 @@ fi
 if [[ "$BUILDKITE_PIPELINE_SLUG" == 'eosio-base-images' ]]; then
     export FORCE_BASE_IMAGE=true
 fi
+export FORCE_BASE_IMAGE=${FORCE_BASE_IMAGE:false}
 oIFS="$IFS"
 IFS=$''
 nIFS=$IFS # fix array splitting (\n won't work)
