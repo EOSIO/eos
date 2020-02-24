@@ -2,19 +2,10 @@ name: Pull Request
 on: [pull_request]
 
 jobs:
-  start-job:
-    name: Start Job
-    runs-on: ubuntu-latest
-    steps:
-      - name: Start Job.
-        run: echo "PR created. Builds will be triggered here for forked PRs or Buildkite for internal PRs."
-
-
   submodule_regression_check:
     if: github.event.pull_request.base.repo.id != github.event.pull_request.head.repo.id
     name: Submodule Regression Check
     runs-on: ubuntu-latest
-    needs: start-job
     steps:
       - name: Checkout
         uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
@@ -28,7 +19,6 @@ jobs:
     if: github.event.pull_request.base.repo.id != github.event.pull_request.head.repo.id
     name: Amazon_Linux 2 | Build
     runs-on: ubuntu-latest
-    needs: start-job
     steps:
       - name: Checkout
         uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
@@ -112,7 +102,6 @@ jobs:
     if: github.event.pull_request.base.repo.id != github.event.pull_request.head.repo.id
     name: CentOS 7.7 | Build
     runs-on: ubuntu-latest
-    needs: start-job
     steps:
       - name: Checkout
         uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
@@ -196,7 +185,6 @@ jobs:
     if: github.event.pull_request.base.repo.id != github.event.pull_request.head.repo.id  
     name: Ubuntu 16.04 | Build
     runs-on: ubuntu-latest
-    needs: start-job
     steps:
       - name: Checkout
         uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
@@ -280,7 +268,6 @@ jobs:
     if: github.event.pull_request.base.repo.id != github.event.pull_request.head.repo.id
     name: Ubuntu 18.04 | Build
     runs-on: ubuntu-latest
-    needs: start-job
     steps:
       - name: Checkout
         uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
@@ -364,7 +351,6 @@ jobs:
     if: github.event.pull_request.base.repo.id != github.event.pull_request.head.repo.id
     name: MacOS 10.15 | Build
     runs-on: macos-latest
-    needs: start-job
     steps:
       - name: Checkout
         uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
