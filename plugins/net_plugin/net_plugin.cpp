@@ -267,7 +267,6 @@ namespace eosio {
       std::atomic<bool>                     in_shutdown{false};
 
       compat::channels::transaction_ack::channel_type::handle  incoming_transaction_ack_subscription;
-      channels::irreversible_block::channel_type::handle       incoming_irreversible_block_subscription;
 
       uint16_t                                  thread_pool_size = 2;
       optional<eosio::chain::named_thread_pool> thread_pool;
@@ -289,6 +288,7 @@ namespace eosio {
       void start_listen_loop();
 
       void on_accepted_block( const block_state_ptr& bs );
+      void on_accepted_block_header( const block_state_ptr& bs );
       void transaction_ack(const std::pair<fc::exception_ptr, transaction_metadata_ptr>&);
       void on_irreversible_block( const block_state_ptr& blk );
 
@@ -3086,10 +3086,25 @@ namespace eosio {
    // called from application thread
    void net_plugin_impl::on_accepted_block(const block_state_ptr& block) {
       update_chain_info();
-      dispatcher->strand.post( [this, block]() {
-         fc_dlog( logger, "signaled, blk num = ${num}, id = ${id}", ("num", block->block_num)("id", block->id) );
-         dispatcher->bcast_block( block );
-      });
+      controller& cc = chain_plug->chain();
+      if( !cc.skip_auth_check() ) {
+         dispatcher->strand.post( [this, block]() {
+            fc_dlog( logger, "signaled accepted_block, blk num = ${num}, id = ${id}", ("num", block->block_num)("id", block->id) );
+            dispatcher->bcast_block( block );
+         });
+      }
+   }
+
+   // called from application thread
+   void net_plugin_impl::on_accepted_block_header(const block_state_ptr& block) {
+      update_chain_info();
+      controller& cc = chain_plug->chain();
+      if( cc.skip_auth_check() ) {
+         dispatcher->strand.post( [this, block]() {
+            fc_dlog( logger, "signaled accepted_block_header, blk num = ${num}, id = ${id}", ("num", block->block_num)("id", block->id) );
+            dispatcher->bcast_block( block );
+         });
+      }
    }
 
    // called from application thread
@@ -3435,6 +3450,9 @@ namespace eosio {
       {
          cc.accepted_block.connect( [my = my]( const block_state_ptr& s ) {
             my->on_accepted_block( s );
+         } );
+         cc.accepted_block_header.connect( [my = my]( const block_state_ptr& s ) {
+            my->on_accepted_block_header( s );
          } );
          cc.irreversible_block.connect( [my = my]( const block_state_ptr& s ) {
             my->on_irreversible_block( s );
