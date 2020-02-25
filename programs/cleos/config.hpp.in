@@ -8,5 +8,4 @@ namespace eosio { namespace client { namespace config {
    constexpr char locale_domain[]            {"${LOCALEDOMAIN}"             };
    constexpr char key_store_executable_name[]{"${KEY_STORE_EXECUTABLE_NAME}"};
    constexpr char node_executable_name[]     {"${NODE_EXECUTABLE_NAME}"     };
-   constexpr char keosd_started_msg[]        {"KEOSD STARTED"               };
 } } }

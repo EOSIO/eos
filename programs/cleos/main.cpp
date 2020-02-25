@@ -69,7 +69,6 @@ Options:
 #include <vector>
 #include <regex>
 #include <iostream>
-#include <thread>
 #include <fc/crypto/hex.hpp>
 #include <fc/variant.hpp>
 #include <fc/io/datastream.hpp>
@@ -78,6 +77,7 @@ Options:
 #include <fc/exception/exception.hpp>
 #include <fc/variant_object.hpp>
 #include <fc/static_variant.hpp>
+#include <thread>
 
 #include <eosio/chain/name.hpp>
 #include <eosio/chain/config.hpp>
@@ -130,6 +130,8 @@ using namespace eosio::client::localize;
 using namespace eosio::client::config;
 using namespace boost::filesystem;
 using auth_type = fc::static_variant<public_key_type, permission_level>;
+
+cleos::KeosdSignalHndl::state cleos::KeosdSignalHndl::ready_signal_received;
 
 FC_DECLARE_EXCEPTION( explained_exception, 9000000, "explained exception, see error log" );
 FC_DECLARE_EXCEPTION( localized_exception, 10000000, "an error occured" );
@@ -940,18 +942,7 @@ bool local_port_used() {
     boost::system::error_code ec;
     socket.connect(endpoint, ec);
 
-    return !ec;
-}
-
-void try_local_port(uint32_t duration) {
-   using namespace std::chrono;
-   auto start_time = duration_cast<std::chrono::milliseconds>( system_clock::now().time_since_epoch() ).count();
-   while ( !local_port_used()) {
-      if (duration_cast<std::chrono::milliseconds>( system_clock::now().time_since_epoch()).count() - start_time > duration ) {
-         std::cerr << "Unable to connect to " << key_store_executable_name << ", if " << key_store_executable_name << " is running please kill the process and try again.\n";
-         throw connection_exception(fc::log_messages{FC_LOG_MESSAGE(error, "Unable to connect to ${k}", ("k", key_store_executable_name))});
-      }
-   }
+   return !ec;
 }
 
 void ensure_keosd_running(CLI::App* app) {
@@ -988,7 +979,12 @@ void ensure_keosd_running(CLI::App* app) {
         namespace bp = boost::process;
         binPath = boost::filesystem::canonical(binPath);
 
+        cleos::KeosdSignalHndl::init();
         vector<std::string> pargs;
+        // has to set the parent pid at the begining of parameters for other plugin initialization
+        pargs.push_back("--parent_pid");
+        pargs.push_back(std::to_string(getpid()));
+
         pargs.push_back("--http-server-address");
         pargs.push_back("");
         pargs.push_back("--https-server-address");
@@ -996,35 +992,18 @@ void ensure_keosd_running(CLI::App* app) {
         pargs.push_back("--unix-socket-path");
         pargs.push_back(string(key_store_executable_name) + ".sock");
 
-        bp::pstream keos_out;
         ::boost::process::child keos(binPath, pargs,
                                      bp::std_in.close(),
-                                     bp::std_out > keos_out,
+                                     bp::std_out > bp::null,
                                      bp::std_err > bp::null);
         if (keos.running()) {
             std::cerr << binPath << " launched" << std::endl;
+            keos.detach();
 
-            std::string keos_msg;
-            constexpr size_t TOTOAL_RETRIES = 10;
-            constexpr size_t KEOS_WAIT_TIME_MS = 200;
-            size_t tries = 0;
-            for(; tries<TOTOAL_RETRIES; ++tries)
-            {
-               std::this_thread::sleep_for(std::chrono::milliseconds(KEOS_WAIT_TIME_MS));
-               std::getline(keos_out, keos_msg);
-               if (keos_msg == keosd_started_msg)
-               {
-                  break;
-               }
-            }
-            if (tries < TOTOAL_RETRIES)
-            {
-               keos.detach();
-               try_local_port(2000);
-            } else {
-               keos.terminate();
-               std::cerr << "Failed to launch " << binPath << std::endl;
-            }
+           if (!cleos::KeosdSignalHndl::wait_keosd_start())
+           {
+              std::cerr << "Failed to launch " << binPath << std::endl;
+           }
         } else {
             std::cerr << "No wallet service listening on " << wallet_url << ". Failed to launch " << binPath << std::endl;
         }

@@ -2434,3 +2434,40 @@ struct AppFriend {
 } // namespace detail
 
 } // namespace CLI
+
+namespace eosio {
+   namespace cleos {
+   struct KeosdSignalHndl {
+      enum state : size_t
+      {
+         KEOSD_NOT_READY = 0,
+         KEOSD_READY = 1
+      };
+
+      static void init() {
+         ready_signal_received = KEOSD_NOT_READY;
+         std::signal(SIGUSR1, handle_keosd_start_signal);
+      }
+
+      static void handle_keosd_start_signal(int) {
+         ready_signal_received = KEOSD_READY;
+      }
+
+      static bool wait_keosd_start() {
+         using namespace std::chrono;
+         const auto start_time = duration_cast<std::chrono::milliseconds>(
+               system_clock::now().time_since_epoch()).count();
+         while (ready_signal_received != KEOSD_READY) {
+            if (duration_cast<std::chrono::milliseconds>(system_clock::now().time_since_epoch()).count() - start_time >
+                WAIT_DURATION_MS) {
+               break;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(WAIT_DURATION_MS / 100));
+         }
+         return (ready_signal_received == KEOSD_READY);
+      }
+      static state ready_signal_received;
+      static constexpr uint32_t WAIT_DURATION_MS = 8000;
+   };
+}  // cleos
+}  // eosio
