@@ -150,7 +150,6 @@ EOF
       - EOSIO/skip-checkout#v0.1.1:
           cd: ~
     env:
-      FORCE_BASE_IMAGE: ${FORCE_BASE_IMAGE}
       REPO: ${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO}
       REPO_COMMIT: $BUILDKITE_COMMIT
       TEMPLATE: $(echo "$PLATFORM_JSON" | jq -r .ANKA_TEMPLATE_NAME)
