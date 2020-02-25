@@ -1173,7 +1173,7 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
       auto dtrxs = get_scheduled_transactions();
       BOOST_CHECK_EQUAL(dtrxs.size(), 1);
       for (const auto& trx: dtrxs) {
-         control->push_scheduled_transaction(trx, fc::time_point::maximum());
+         control->push_scheduled_transaction(trx, fc::time_point::maximum(), 0, false);
       }
       BOOST_CHECK_EQUAL(1, count);
       BOOST_REQUIRE(trace);
@@ -1196,10 +1196,11 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
       produce_blocks( 3 );
 
       //check that only one deferred transaction executed
+      auto billed_cpu_time_us = control->get_global_properties().configuration.min_transaction_cpu_usage;
       auto dtrxs = get_scheduled_transactions();
       BOOST_CHECK_EQUAL(dtrxs.size(), 1);
       for (const auto& trx: dtrxs) {
-         control->push_scheduled_transaction(trx, fc::time_point::maximum());
+         control->push_scheduled_transaction(trx, fc::time_point::maximum(), billed_cpu_time_us, true);
       }
       BOOST_CHECK_EQUAL(1, count);
       BOOST_CHECK(trace);
