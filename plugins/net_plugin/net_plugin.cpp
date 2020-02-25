@@ -2805,8 +2805,17 @@ namespace eosio {
    }
 
    void net_plugin_impl::accepted_block(const block_state_ptr& block) {
-      fc_dlog(logger,"signaled, id = ${id}",("id", block->id));
-      dispatcher->bcast_block(block);
+      if( !cc.skip_auth_check() ) {
+         fc_dlog(logger,"signaled accepted_block, id = ${id}",("id", block->id));
+         dispatcher->bcast_block(block);
+      }
+   }
+
+   void net_plugin_impl::accepted_block_header(const block_state_ptr& block) {
+      if( cc.skip_auth_check() ) {
+         fc_dlog(logger,"signaled accepted_block_header, id = ${id}",("id", block->id));
+         dispatcher->bcast_block(block);
+      }
    }
 
    void net_plugin_impl::transaction_ack(const std::pair<fc::exception_ptr, transaction_metadata_ptr>& results) {
@@ -3135,6 +3144,7 @@ namespace eosio {
       chain::controller&cc = my->chain_plug->chain();
       {
          cc.accepted_block.connect(  boost::bind(&net_plugin_impl::accepted_block, my.get(), _1));
+         cc.accepted_block_header.connect( boost::bind(&net_plugin_impl::accepted_block, my.get(), _1) );
       }
 
       my->keepalive_timer.reset( new boost::asio::steady_timer( my->thread_pool->get_executor() ) );
