@@ -242,7 +242,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "In \"speculative\" mode database contains changes done up to the head block plus changes made by transactions not yet included to the blockchain.\n"
           "In \"head\" mode database contains changes done up to the current head block.\n"
           "In \"read-only\" mode database contains changes done up to the current head block and transactions cannot be pushed to the chain API.\n"
-          "In \"api-read-only\" mode database contains changes done up to the head block plus changes made by api transactions but not p2p transactions. \n"
+          "In \"api-read-only\" mode database contains changes done up to the head block; only api transactions are speculatively executed.\n"
           "In \"irreversible\" mode database contains changes done up to the last irreversible block and transactions cannot be pushed to the chain API.\n"
           )
          ("validation-mode", boost::program_options::value<eosio::chain::validation_mode>()->default_value(eosio::chain::validation_mode::FULL),
