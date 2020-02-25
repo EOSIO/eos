@@ -102,7 +102,7 @@ Config Options for eosio::producer_plugin:
                                         processing.
   --incoming-defer-ratio arg (=1)       ratio between incoming transactions and 
                                         deferred transactions when both are 
-                                        exhausted                                        
+                                        queued for execution                                        
                                                                             
   --producer-threads arg (=2)           Number of worker threads in producer 
                                         thread pool
