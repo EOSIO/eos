@@ -262,35 +262,26 @@ struct controller_impl {
 
    void set_revision(uint64_t revision) {
       try {
-         try {
-            db.set_revision(revision);
-            kv_undo_stack.set_revision(revision, false);
-         }
-         FC_LOG_AND_RETHROW()
+         kv_undo_stack.set_revision(revision, false);
+         db.set_revision(revision);
       }
-      CATCH_AND_EXIT_DB_FAILURE()
+      FC_LOG_AND_RETHROW()
    }
 
    void undo() {
       try {
-         try {
-            db.undo();
-            kv_undo_stack.undo(false);
-         }
-         FC_LOG_AND_RETHROW()
+         kv_undo_stack.undo(false);
+         db.undo(); // noexcept
       }
-      CATCH_AND_EXIT_DB_FAILURE()
+      FC_LOG_AND_RETHROW()
    }
 
    void commit(int64_t revision) {
       try {
-         try {
-            db.commit(revision);
-            kv_undo_stack.commit(revision);
-         }
-         FC_LOG_AND_RETHROW()
+         db.commit(revision);
+         kv_undo_stack.commit(revision);
       }
-      CATCH_AND_EXIT_DB_FAILURE()
+      FC_LOG_AND_RETHROW()
    }
 
    void pop_block() {
@@ -822,6 +813,14 @@ struct controller_impl {
    }
 
    ~controller_impl() {
+      try {
+         try {
+            kv_database.close();
+         }
+         FC_LOG_AND_RETHROW()
+      } catch(...) {
+         db.modify(db.get<kv_config_object>(), [](auto& cfg){ cfg.rocksdb_okay = false; });
+      }
       thread_pool.stop();
       pending.reset();
    }

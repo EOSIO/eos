@@ -21,20 +21,21 @@ namespace eosio { namespace chain {
       combined_session(chainbase::database& cb_database, chain_kv::undo_stack& kv_undo_stack)
           : kv_undo_stack{ &kv_undo_stack } {
          try {
-            try {
-               cb_session = std::make_unique<chainbase::database::session>(cb_database.start_undo_session(true));
-               kv_undo_stack.push(false);
-            }
-            FC_LOG_AND_RETHROW()
+            cb_session = std::make_unique<chainbase::database::session>(cb_database.start_undo_session(true));
+            // If this fails chainbase will roll back safely.
+            kv_undo_stack.push(false);
+            EOS_ASSERT(cb_database.revision() == kv_undo_stack->revision(), database_revision_mismatch_exception, "");
          }
-         CATCH_AND_EXIT_DB_FAILURE()
+         FC_LOG_AND_RETHROW()
       }
 
       combined_session()                        = default;
       combined_session(const combined_session&) = delete;
       combined_session(combined_session&& src) { *this = std::move(src); }
 
-      ~combined_session() { undo(); }
+      ~combined_session() {
+         undo();
+      }
 
       combined_session& operator=(combined_session&& src) {
          cb_session        = std::move(src.cb_session);
@@ -43,47 +44,40 @@ namespace eosio { namespace chain {
          return *this;
       }
 
-      void push() {
-         try {
-            try {
-               if (cb_session)
-                  cb_session->push();
-               cb_session    = nullptr;
-               kv_undo_stack = nullptr;
-            }
-            FC_LOG_AND_RETHROW()
-         }
-         CATCH_AND_EXIT_DB_FAILURE()
+      void push() noexcept {
+         if (cb_session)
+            cb_session->push();
+         cb_session    = nullptr;
+         kv_undo_stack = nullptr;
       }
 
       void squash() {
          try {
-            try {
-               if (cb_session)
-                  cb_session->squash();
-               if (kv_undo_stack)
-                  kv_undo_stack->squash(false);
-               cb_session    = nullptr;
-               kv_undo_stack = nullptr;
-            }
-            FC_LOG_AND_RETHROW()
+            if (kv_undo_stack)
+               kv_undo_stack->squash(false);
+            if (cb_session)
+               cb_session->squash();
+            cb_session    = nullptr;
+            kv_undo_stack = nullptr;
          }
-         CATCH_AND_EXIT_DB_FAILURE()
+         FC_LOG_AND_RETHROW()
       }
 
-      void undo() {
-         try {
+      void undo() noexcept {
+         if (cb_session)
+            cb_session->undo();
+         if (kv_undo_stack) {
             try {
-               if (cb_session)
-                  cb_session->undo();
-               if (kv_undo_stack)
-                  kv_undo_stack->undo(false);
-               cb_session    = nullptr;
-               kv_undo_stack = nullptr;
+               kv_undo_stack->undo(false);
+            } catch(...) {
+               // Revision is out-of-sync with chainbase
+               db.modify(db.get<kv_db_config_object>(), [this](auto& cfg) {
+                  cfg.rocksdb_revision = kv_undo_stack->revision();
+               });
             }
-            FC_LOG_AND_RETHROW()
          }
-         CATCH_AND_EXIT_DB_FAILURE()
+         cb_session    = nullptr;
+         kv_undo_stack = nullptr;
       }
    };
 

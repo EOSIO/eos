@@ -13,6 +13,14 @@ namespace eosio { namespace chain {
 
       id_type id;
       bool    using_rocksdb_for_disk = false;
+      // A value of -1 is normal.  A non-negative value must be
+      // greater than the chainbase revision and must be the same as
+      // the  revision of rocksdb.  rocksdb can be synchronized with
+      // chainbase by applying undo until its revision matches chainbase.
+      int64_t rocksdb_revision = -1;
+      // Last resort for detecting failure.  If false, indicates that rocksdb
+      // failed to close cleanly and may not be in sync with chainbase.
+      bool    rocksdb_okay = true;
    };
 
    using kv_db_config_index = chainbase::shared_multi_index_container<
