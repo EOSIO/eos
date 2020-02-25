@@ -588,6 +588,8 @@ namespace eosio {
    }
 
    void http_plugin::plugin_startup() {
+
+      handle_sighup(); // setup logging
       app().post(appbase::priority::high, [this] ()
       {
          my->thread_pool.emplace( "http", my->thread_pool_size );
