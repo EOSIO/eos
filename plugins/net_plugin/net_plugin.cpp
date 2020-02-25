@@ -2805,14 +2805,14 @@ namespace eosio {
    }
 
    void net_plugin_impl::accepted_block(const block_state_ptr& block) {
-      if( !cc.skip_auth_check() ) {
+      if( !cc.light_validation_mode() ) {
          fc_dlog(logger,"signaled accepted_block, id = ${id}",("id", block->id));
          dispatcher->bcast_block(block);
       }
    }
 
    void net_plugin_impl::accepted_block_header(const block_state_ptr& block) {
-      if( cc.skip_auth_check() ) {
+      if( cc.light_validation_mode() ) {
          fc_dlog(logger,"signaled accepted_block_header, id = ${id}",("id", block->id));
          dispatcher->bcast_block(block);
       }
