@@ -892,9 +892,7 @@ struct controller_impl {
       if (std::clamp(version, v2::minimum_version, v2::maximum_version) == version ) {
          genesis.emplace();
          snapshot.read_section<genesis_state>([&genesis=*genesis]( auto &section ){
-            legacy::snapshot_genesis_state_v3 legacy_genesis;
-            section.read_row(legacy_genesis);
-            genesis.initialize_from(legacy_genesis);
+            section.read_row(genesis);
          });
       }
       return genesis;
@@ -966,7 +964,7 @@ struct controller_impl {
                   section.read_row(legacy_global_properties, db);
 
                   db.create<global_property_object>([&legacy_global_properties,&gs_chain_id](auto& gpo ){
-                     gpo.initalize_from(legacy_global_properties, gs_chain_id, genesis_state{}.initial_kv_configuration);
+                     gpo.initalize_from(legacy_global_properties, gs_chain_id, kv_config{});
                   });
                });
                return; // early out to avoid default processing
@@ -978,7 +976,7 @@ struct controller_impl {
                   section.read_row(legacy_global_properties, db);
 
                   db.create<global_property_object>([&legacy_global_properties](auto& gpo ){
-                  gpo.initalize_from(legacy_global_properties, genesis_state{}.initial_kv_configuration);
+                     gpo.initalize_from(legacy_global_properties, kv_config{});
                   });
                });
                return; // early out to avoid default processing
@@ -1077,7 +1075,7 @@ struct controller_impl {
       genesis.initial_configuration.validate();
       db.create<global_property_object>([&genesis,&chain_id=this->chain_id](auto& gpo ){
          gpo.configuration = genesis.initial_configuration;
-         gpo.kv_configuration = genesis.initial_kv_configuration;
+         gpo.kv_configuration = kv_config{};
          gpo.chain_id = chain_id;
       });
 
