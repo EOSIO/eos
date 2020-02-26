@@ -18,7 +18,8 @@ namespace eosio { namespace chain {
       std::uint32_t max_iterators;  ///< the maximum number of iterators that a contract can have simultaneously.
    };
    inline bool operator==(const kv_database_config& lhs, const kv_database_config& rhs) {
-      return lhs.max_key_size == rhs.max_key_size && lhs.max_value_size == rhs.max_value_size;
+      return std::tie(lhs.max_key_size, lhs.max_value_size, lhs.max_iterators)
+          == std::tie(rhs.max_key_size, rhs.max_value_size, rhs.max_iterators);
    }
    inline bool operator!=(const kv_database_config& lhs, const kv_database_config& rhs) {
       return !(lhs == rhs);
@@ -30,7 +31,8 @@ namespace eosio { namespace chain {
    };
 
    inline bool operator==(const kv_config& lhs, const kv_config& rhs) {
-      return lhs.kvram == rhs.kvram && lhs.kvdisk == rhs.kvdisk;
+      return std::tie(lhs.kvram, lhs.kvdisk)
+          == std::tie(rhs.kvram, rhs.kvdisk);
    }
    inline bool operator!=(const kv_config& lhs, const kv_config& rhs) {
       return !(lhs == rhs);
