@@ -71,6 +71,8 @@ class kv_tester : public tester {
       BOOST_TEST_REQUIRE(set_limit(N(eosio.kvdisk), -1, N(kvtest2)) == "");
       BOOST_TEST_REQUIRE(set_limit(N(eosio.kvdisk), -1, N(kvtest3)) == "");
       BOOST_TEST_REQUIRE(set_limit(N(eosio.kvdisk), -1, N(kvtest4)) == "");
+      BOOST_TEST_REQUIRE(set_kv_limits(N(eosio.kvram), 1024, 1024*1024) == "");
+      BOOST_TEST_REQUIRE(set_kv_limits(N(eosio.kvdisk), 1024, 1024*1024) == "");
       produce_block();
    }
 
@@ -490,12 +492,6 @@ class kv_tester : public tester {
    }
 
    void test_key_value_limit(name db) {
-      std::string k(2*1024, '1');
-      std::vector<char> v(256*1024, 'a');
-      // Default limits 1KiB/256KiB
-      setmany("", db, N(kvtest), {{bytes(1024, 'a'), bytes(256*1024, 'a')}});
-      setmany("Key too large", db, N(kvtest), {{bytes(1024 + 1, 'a'), bytes()}});
-      setmany("Value too large", db, N(kvtest), {{bytes(), bytes(256*1024 + 1, 'a')}});
       BOOST_TEST_REQUIRE(set_kv_limits(db, 4, 4) == "");
       setmany("", db, N(kvtest), {{bytes(4, 'a'), bytes(4, 'a')}});
       setmany("Key too large", db, N(kvtest), {{bytes(4 + 1, 'a'), bytes()}});
