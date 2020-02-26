@@ -1922,7 +1922,7 @@ namespace eosio {
    void dispatch_manager::bcast_block(const signed_block_ptr& b, const block_id_type& id) {
       fc_dlog( logger, "bcast block ${b}", ("b", b->block_num()) );
 
-      if( my_impl->sync_master->syncing_with_peer() || my_impl->db_read_mode == db_read_mode::API_READ_ONLY ) return;
+      if( my_impl->sync_master->syncing_with_peer() ) return;
       
       bool have_connection = false;
       for_each_block_connection( [&have_connection]( auto& cp ) {
