@@ -983,6 +983,14 @@ class Cluster:
         else:
             return cx
 
+    def cleanup(self):
+        self.print_begin("Shutdown cluster")
+        self.stop_cluster()
+        self.print_end("Shutdown cluster")
+        self.print_begin("Cleanup cluster")
+        self.clean_cluster()
+        self.print_end("Cleanup cluster")
+
 # --------------- simple queries: queries that are made directly via call() -------------------------------------------
 
     def get_cluster_running_state(self, **call_kwargs):
