@@ -82,6 +82,7 @@ void chain_api_plugin::plugin_startup() {
       CHAIN_RO_CALL(get_info, 200l),
       CHAIN_RO_CALL(get_activated_protocol_features, 200),
       CHAIN_RO_CALL(get_block, 200),
+      CHAIN_RO_CALL(get_block_header, 200),
       CHAIN_RO_CALL(get_block_header_state, 200),
       CHAIN_RO_CALL(get_account, 200),
       CHAIN_RO_CALL(get_code, 200),
