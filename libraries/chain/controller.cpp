@@ -3025,14 +3025,12 @@ bool controller::light_validation_allowed(bool replay_opts_disabled_by_policy) c
    const bool consider_skipping_on_replay = (pb_status == block_status::irreversible || pb_status == block_status::validated) && !replay_opts_disabled_by_policy;
 
    // OR in a signed block and in light validation mode
-   const bool consider_skipping_on_validate = pb_status == block_status::complete && light_validation_mode();
+   const bool consider_skipping_on_validate = (pb_status == block_status::complete &&
+         (my->conf.block_validation_mode == validation_mode::LIGHT || my->trusted_producer_light_validation));
 
    return consider_skipping_on_replay || consider_skipping_on_validate;
 }
 
-bool controller::light_validation_mode() const {
-   return my->conf.block_validation_mode == validation_mode::LIGHT || my->trusted_producer_light_validation;
-}
 
 bool controller::skip_auth_check() const {
    return light_validation_allowed(my->conf.force_all_checks);

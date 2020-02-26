@@ -3087,7 +3087,7 @@ namespace eosio {
    void net_plugin_impl::on_accepted_block(const block_state_ptr& block) {
       update_chain_info();
       controller& cc = chain_plug->chain();
-      if( !cc.light_validation_mode() ) {
+      if( !cc.skip_auth_check() ) {
          dispatcher->strand.post( [this, block]() {
             fc_dlog( logger, "signaled accepted_block, blk num = ${num}, id = ${id}", ("num", block->block_num)("id", block->id) );
             dispatcher->bcast_block( block );
@@ -3099,7 +3099,7 @@ namespace eosio {
    void net_plugin_impl::on_accepted_block_header(const block_state_ptr& block) {
       update_chain_info();
       controller& cc = chain_plug->chain();
-      if( cc.light_validation_mode() ) {
+      if( cc.skip_auth_check() ) {
          dispatcher->strand.post( [this, block]() {
             fc_dlog( logger, "signaled accepted_block_header, blk num = ${num}, id = ${id}", ("num", block->block_num)("id", block->id) );
             dispatcher->bcast_block( block );

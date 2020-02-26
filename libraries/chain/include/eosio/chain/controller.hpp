@@ -273,7 +273,6 @@ namespace eosio { namespace chain {
          int64_t set_proposed_producers( vector<producer_authority> producers );
 
          bool light_validation_allowed(bool replay_opts_disabled_by_policy) const;
-         bool light_validation_mode() const;
          bool skip_auth_check()const;
          bool skip_db_sessions( )const;
          bool skip_db_sessions( block_status bs )const;
