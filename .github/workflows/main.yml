@@ -1,6 +1,9 @@
 name: Pull Request
 on: [pull_request]
 
+env:
+  PR_NUMBER: ${{ toJson(github.event.number) }}
+
 jobs:
   submodule_regression_check:
     if: github.event.pull_request.base.repo.id != github.event.pull_request.head.repo.id
@@ -8,9 +11,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
-        with:
-          submodules: recursive
+        run: |
+          git clone https://github.com/${GITHUB_REPOSITORY} .
+          git fetch -v --prune origin +refs/pull/${PR_NUMBER}/merge:refs/remotes/pull/${PR_NUMBER}/merge
+          git checkout --force --progress refs/remotes/pull/${PR_NUMBER}/merge
+          git submodule sync --recursive
+          git submodule update --init --force --recursive
       - name: Submodule Regression Check
         run: ./.cicd/submodule-regression-check.sh
 
@@ -21,9 +27,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
-        with:
-          submodules: recursive
+        run: |
+          git clone https://github.com/${GITHUB_REPOSITORY} .
+          git fetch -v --prune origin +refs/pull/${PR_NUMBER}/merge:refs/remotes/pull/${PR_NUMBER}/merge
+          git checkout --force --progress refs/remotes/pull/${PR_NUMBER}/merge
+          git submodule sync --recursive
+          git submodule update --init --force --recursive
       - name: Build
         run: | 
           ./.cicd/build.sh
@@ -42,9 +51,12 @@ jobs:
     needs: amazon_linux-2-build
     steps:
       - name: Checkout
-        uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
-        with:
-          submodules: recursive
+        run: |
+          git clone https://github.com/${GITHUB_REPOSITORY} .
+          git fetch -v --prune origin +refs/pull/${PR_NUMBER}/merge:refs/remotes/pull/${PR_NUMBER}/merge
+          git checkout --force --progress refs/remotes/pull/${PR_NUMBER}/merge
+          git submodule sync --recursive
+          git submodule update --init --force --recursive
       - name: Download Build Artifact
         uses: actions/download-artifact@v1
         with:
@@ -62,9 +74,12 @@ jobs:
     needs: amazon_linux-2-build
     steps:
       - name: Checkout
-        uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
-        with:
-          submodules: recursive
+        run: |
+          git clone https://github.com/${GITHUB_REPOSITORY} .
+          git fetch -v --prune origin +refs/pull/${PR_NUMBER}/merge:refs/remotes/pull/${PR_NUMBER}/merge
+          git checkout --force --progress refs/remotes/pull/${PR_NUMBER}/merge
+          git submodule sync --recursive
+          git submodule update --init --force --recursive
       - name: Download Build Artifact
         uses: actions/download-artifact@v1
         with:
@@ -84,9 +99,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
-        with:
-          submodules: recursive
+        run: |
+          git clone https://github.com/${GITHUB_REPOSITORY} .
+          git fetch -v --prune origin +refs/pull/${PR_NUMBER}/merge:refs/remotes/pull/${PR_NUMBER}/merge
+          git checkout --force --progress refs/remotes/pull/${PR_NUMBER}/merge
+          git submodule sync --recursive
+          git submodule update --init --force --recursive
       - name: Build
         run: | 
           ./.cicd/build.sh
@@ -105,9 +123,12 @@ jobs:
     needs: centos-77-build
     steps:
       - name: Checkout
-        uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
-        with:
-          submodules: recursive
+        run: |
+          git clone https://github.com/${GITHUB_REPOSITORY} .
+          git fetch -v --prune origin +refs/pull/${PR_NUMBER}/merge:refs/remotes/pull/${PR_NUMBER}/merge
+          git checkout --force --progress refs/remotes/pull/${PR_NUMBER}/merge
+          git submodule sync --recursive
+          git submodule update --init --force --recursive
       - name: Download Build Artifact
         uses: actions/download-artifact@v1
         with:
@@ -125,9 +146,12 @@ jobs:
     needs: centos-77-build
     steps:
       - name: Checkout
-        uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
-        with:
-          submodules: recursive
+        run: |
+          git clone https://github.com/${GITHUB_REPOSITORY} .
+          git fetch -v --prune origin +refs/pull/${PR_NUMBER}/merge:refs/remotes/pull/${PR_NUMBER}/merge
+          git checkout --force --progress refs/remotes/pull/${PR_NUMBER}/merge
+          git submodule sync --recursive
+          git submodule update --init --force --recursive
       - name: Download Build Artifact
         uses: actions/download-artifact@v1
         with:
@@ -147,9 +171,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
-        with:
-          submodules: recursive
+        run: |
+          git clone https://github.com/${GITHUB_REPOSITORY} .
+          git fetch -v --prune origin +refs/pull/${PR_NUMBER}/merge:refs/remotes/pull/${PR_NUMBER}/merge
+          git checkout --force --progress refs/remotes/pull/${PR_NUMBER}/merge
+          git submodule sync --recursive
+          git submodule update --init --force --recursive
       - name: Build
         run: | 
           ./.cicd/build.sh
@@ -168,9 +195,12 @@ jobs:
     needs: ubuntu-1604-build
     steps:
       - name: Checkout
-        uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
-        with:
-          submodules: recursive
+        run: |
+          git clone https://github.com/${GITHUB_REPOSITORY} .
+          git fetch -v --prune origin +refs/pull/${PR_NUMBER}/merge:refs/remotes/pull/${PR_NUMBER}/merge
+          git checkout --force --progress refs/remotes/pull/${PR_NUMBER}/merge
+          git submodule sync --recursive
+          git submodule update --init --force --recursive
       - name: Download Build Artifact
         uses: actions/download-artifact@v1
         with:
@@ -188,9 +218,12 @@ jobs:
     needs: ubuntu-1604-build
     steps:
       - name: Checkout
-        uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
-        with:
-          submodules: recursive
+        run: |
+          git clone https://github.com/${GITHUB_REPOSITORY} .
+          git fetch -v --prune origin +refs/pull/${PR_NUMBER}/merge:refs/remotes/pull/${PR_NUMBER}/merge
+          git checkout --force --progress refs/remotes/pull/${PR_NUMBER}/merge
+          git submodule sync --recursive
+          git submodule update --init --force --recursive
       - name: Download Build Artifact
         uses: actions/download-artifact@v1
         with:
@@ -210,9 +243,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
-        with:
-          submodules: recursive
+        run: |
+          git clone https://github.com/${GITHUB_REPOSITORY} .
+          git fetch -v --prune origin +refs/pull/${PR_NUMBER}/merge:refs/remotes/pull/${PR_NUMBER}/merge
+          git checkout --force --progress refs/remotes/pull/${PR_NUMBER}/merge
+          git submodule sync --recursive
+          git submodule update --init --force --recursive
       - name: Build
         run: | 
           ./.cicd/build.sh
@@ -231,9 +267,12 @@ jobs:
     needs: ubuntu-1804-build
     steps:
       - name: Checkout
-        uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
-        with:
-          submodules: recursive
+        run: |
+          git clone https://github.com/${GITHUB_REPOSITORY} .
+          git fetch -v --prune origin +refs/pull/${PR_NUMBER}/merge:refs/remotes/pull/${PR_NUMBER}/merge
+          git checkout --force --progress refs/remotes/pull/${PR_NUMBER}/merge
+          git submodule sync --recursive
+          git submodule update --init --force --recursive
       - name: Download Build Artifact
         uses: actions/download-artifact@v1
         with:
@@ -251,9 +290,12 @@ jobs:
     needs: ubuntu-1804-build
     steps:
       - name: Checkout
-        uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
-        with:
-          submodules: recursive
+        run: |
+          git clone https://github.com/${GITHUB_REPOSITORY} .
+          git fetch -v --prune origin +refs/pull/${PR_NUMBER}/merge:refs/remotes/pull/${PR_NUMBER}/merge
+          git checkout --force --progress refs/remotes/pull/${PR_NUMBER}/merge
+          git submodule sync --recursive
+          git submodule update --init --force --recursive
       - name: Download Build Artifact
         uses: actions/download-artifact@v1
         with:
@@ -273,9 +315,12 @@ jobs:
     runs-on: macos-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
-        with:
-          submodules: recursive
+        run: |
+          git clone https://github.com/${GITHUB_REPOSITORY} .
+          git fetch -v --prune origin +refs/pull/${PR_NUMBER}/merge:refs/remotes/pull/${PR_NUMBER}/merge
+          git checkout --force --progress refs/remotes/pull/${PR_NUMBER}/merge
+          git submodule sync --recursive
+          git submodule update --init --force --recursive
       - name: Build
         run: | 
           ./.cicd/platforms/unpinned/macos-10.14-unpinned.sh
@@ -292,9 +337,12 @@ jobs:
     needs: macos-1015-build
     steps:
       - name: Checkout
-        uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
-        with:
-          submodules: recursive
+        run: |
+          git clone https://github.com/${GITHUB_REPOSITORY} .
+          git fetch -v --prune origin +refs/pull/${PR_NUMBER}/merge:refs/remotes/pull/${PR_NUMBER}/merge
+          git checkout --force --progress refs/remotes/pull/${PR_NUMBER}/merge
+          git submodule sync --recursive
+          git submodule update --init --force --recursive
       - name: Download Build Artifact
         uses: actions/download-artifact@v1
         with:
@@ -310,9 +358,12 @@ jobs:
     needs: macos-1015-build
     steps:
       - name: Checkout
-        uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
-        with:
-          submodules: recursive
+        run: |
+          git clone https://github.com/${GITHUB_REPOSITORY} .
+          git fetch -v --prune origin +refs/pull/${PR_NUMBER}/merge:refs/remotes/pull/${PR_NUMBER}/merge
+          git checkout --force --progress refs/remotes/pull/${PR_NUMBER}/merge
+          git submodule sync --recursive
+          git submodule update --init --force --recursive
       - name: Download Build Artifact
         uses: actions/download-artifact@v1
         with:
