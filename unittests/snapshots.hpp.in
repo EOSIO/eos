@@ -1,17 +1,20 @@
 #pragma once
 
-#define MAKE_READ_SNAPSHOT(NAME) \
-   struct NAME {\
-       static fc::variant json() { return read_json_snapshot  ("${CMAKE_BINARY_DIR}/unittests/snapshots/" #NAME ".json.gz"); } \
-       static std::string bin()  { return read_binary_snapshot("${CMAKE_BINARY_DIR}/unittests/snapshots/" #NAME ".bin.gz" ); } \
-   };\
+#include <eosio/testing/tester.hpp>
 
 namespace eosio {
    namespace testing {
+      inline constexpr const char* eos_snapshot_path = "${CMAKE_BINARY_DIR}/unittests/snapshots/";
       struct snapshots {
-         // v2
-         MAKE_READ_SNAPSHOT(snap_v2)
-         MAKE_READ_SNAPSHOT(snap_v2_prod_sched)
+         static auto read_json(const std::string& name) { return eosio::testing::read_json_snapshot(std::string(std::string(eos_snapshot_path) + name + ".json.gz").c_str()); }
+         static auto read_bin(const std::string& name)  { return eosio::testing::read_binary_snapshot(std::string(std::string(eos_snapshot_path) + name + ".bin.gz").c_str()); }
+         template <typename Snapshot>
+         static auto write_json(const std::string& name, const Snapshot& snapshot) { 
+            return eosio::testing::write_json_snapshot(std::string(std::string(eos_snapshot_path) + name + ".json.gz").c_str(), snapshot); 
+         }
+         static auto write_bin(const std::string& name, const std::string& snapshot) {
+            return eosio::testing::write_binary_snapshot(std::string(std::string(eos_snapshot_path) + name + ".bin.gz").c_str(), snapshot);
+         }
       };
    } /// eosio::testing
 }  /// eosio

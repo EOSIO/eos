@@ -531,11 +531,6 @@ datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosi
 
 template <typename ST>
 datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosio::chain::action_receipt>& obj) {
-   if (!obj.obj.return_value) {
-      fc::raw::pack( ds, fc::unsigned_int( 0 ));
-   } else {
-      fc::raw::pack( ds, fc::unsigned_int( 1 ));
-   }
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.receiver.to_uint64_t()));
    fc::raw::pack(ds, as_type<eosio::chain::digest_type>(obj.obj.act_digest));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.global_sequence));
@@ -543,9 +538,6 @@ datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosi
    history_serialize_container(ds, obj.db, as_type<flat_map<eosio::name, uint64_t>>(obj.obj.auth_sequence));
    fc::raw::pack(ds, as_type<fc::unsigned_int>(obj.obj.code_sequence));
    fc::raw::pack(ds, as_type<fc::unsigned_int>(obj.obj.abi_sequence));
-   if (obj.obj.return_value) {
-      fc::raw::pack(ds, as_type<eosio::bytes>(*obj.obj.return_value));
-   }
    return ds;
 }
 
@@ -574,35 +566,43 @@ inline fc::optional<uint64_t> cap_error_code( const fc::optional<uint64_t>& erro
 
 template <typename ST>
 datastream<ST>& operator<<(datastream<ST>& ds, const history_context_wrapper<bool, eosio::chain::action_trace>& obj) {
+   const auto& trace = obj.obj;
+   if (!trace.return_value) {
+      fc::raw::pack( ds, fc::unsigned_int( 0 ));
+   } else {
+      fc::raw::pack( ds, fc::unsigned_int( 1 ));
+   }
    bool  debug_mode = obj.context;
    fc::raw::pack(ds, fc::unsigned_int(0));
-   fc::raw::pack(ds, as_type<fc::unsigned_int>(obj.obj.action_ordinal));
-   fc::raw::pack(ds, as_type<fc::unsigned_int>(obj.obj.creator_action_ordinal));
-   fc::raw::pack(ds, bool(obj.obj.receipt));
-   if (obj.obj.receipt) {
-      fc::raw::pack(ds, make_history_serial_wrapper(obj.db, as_type<eosio::chain::action_receipt>(*obj.obj.receipt)));
+   fc::raw::pack(ds, as_type<fc::unsigned_int>(trace.action_ordinal));
+   fc::raw::pack(ds, as_type<fc::unsigned_int>(trace.creator_action_ordinal));
+   fc::raw::pack(ds, bool(trace.receipt));
+   if (trace.receipt) {
+      fc::raw::pack(ds, make_history_serial_wrapper(obj.db, as_type<eosio::chain::action_receipt>(*trace.receipt)));
    }
-   fc::raw::pack(ds, as_type<uint64_t>(obj.obj.receiver.to_uint64_t()));
-   fc::raw::pack(ds, make_history_serial_wrapper(obj.db, as_type<eosio::chain::action>(obj.obj.act)));
-   fc::raw::pack(ds, as_type<bool>(obj.obj.context_free));
-   fc::raw::pack(ds, as_type<int64_t>(debug_mode ? obj.obj.elapsed.count() : 0));
+   fc::raw::pack(ds, as_type<uint64_t>(trace.receiver.to_uint64_t()));
+   fc::raw::pack(ds, make_history_serial_wrapper(obj.db, as_type<eosio::chain::action>(trace.act)));
+   fc::raw::pack(ds, as_type<bool>(trace.context_free));
+   fc::raw::pack(ds, as_type<int64_t>(debug_mode ? trace.elapsed.count() : 0));
    if (debug_mode)
-      fc::raw::pack(ds, as_type<std::string>(obj.obj.console));
+      fc::raw::pack(ds, as_type<std::string>(trace.console));
    else
       fc::raw::pack(ds, std::string{});
-   history_serialize_container(ds, obj.db, as_type<flat_set<eosio::chain::account_delta>>(obj.obj.account_ram_deltas));
+   history_serialize_container(ds, obj.db, as_type<flat_set<eosio::chain::account_delta>>(trace.account_ram_deltas));
 
    fc::optional<std::string> e;
-   if (obj.obj.except) {
+   if (trace.except) {
       if (debug_mode)
-         e = obj.obj.except->to_string();
+         e = trace.except->to_string();
       else
          e = "Y";
    }
    fc::raw::pack(ds, as_type<fc::optional<std::string>>(e));
-   fc::raw::pack(ds, as_type<fc::optional<uint64_t>>(debug_mode ? obj.obj.error_code
-                                                                : cap_error_code(obj.obj.error_code)));
-
+   fc::raw::pack(ds, as_type<fc::optional<uint64_t>>(debug_mode ? trace.error_code
+                                                                : cap_error_code(trace.error_code)));
+   if (trace.return_value) {
+      fc::raw::pack(ds, as_type<eosio::bytes>(*trace.return_value));
+   }
    return ds;
 }
 

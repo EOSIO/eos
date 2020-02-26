@@ -72,6 +72,9 @@ namespace eosio { namespace testing {
    std::string          read_binary_snapshot( const char* fn );
    fc::variant          read_json_snapshot( const char* fn );
 
+   void                 write_binary_snapshot( const char* fn, const std::string& s );
+   void                 write_json_snapshot( const char* fn, const fc::variant& s );
+
    using namespace eosio::chain;
 
    fc::variant_object filter_fields(const fc::variant_object& filter, const fc::variant_object& value);

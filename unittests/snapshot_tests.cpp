@@ -77,95 +77,74 @@ public:
    bool validate() { return true; }
 };
 
-struct variant_snapshot_suite {
+struct variant_snapshot_config {
    using writer_t = variant_snapshot_writer;
    using reader_t = variant_snapshot_reader;
+   struct null_reader_storage {};
    using write_storage_t = fc::mutable_variant_object;
-   using snapshot_t = fc::variant;
-
-   struct writer : public writer_t {
-      writer( const std::shared_ptr<write_storage_t>& storage )
-      :writer_t(*storage)
-      ,storage(storage)
-      {
-
-      }
-
-      std::shared_ptr<write_storage_t> storage;
-   };
-
-   struct reader : public reader_t {
-      explicit reader(const snapshot_t& storage)
-      :reader_t(storage)
-      {}
-   };
-
-
-   static auto get_writer() {
-      return std::make_shared<writer>(std::make_shared<write_storage_t>());
-   }
-
-   static auto finalize(const std::shared_ptr<writer>& w) {
-      w->finalize();
-      return snapshot_t(*w->storage);
-   }
-
-   static auto get_reader( const snapshot_t& buffer) {
-      return std::make_shared<reader>(buffer);
-   }
-
-   template<typename Snapshot>
-   static snapshot_t load_from_file() {
-      return Snapshot::json();
-   }
+   using read_storage_t  = null_reader_storage;
+   using snapshot_t      = fc::variant;
+   snapshot_t(*load_func)(const std::string&) = &snapshots::read_json;
+   void(*store_func)(const std::string&, const snapshot_t&) = &snapshots::write_json;
+   snapshot_t(*storage_return_func)(const write_storage_t&) = [](const write_storage_t& ws) { return snapshot_t(ws); };
 };
 
-struct buffered_snapshot_suite {
+struct buffered_snapshot_config {
    using writer_t = ostream_snapshot_writer;
    using reader_t = istream_snapshot_reader;
    using write_storage_t = std::ostringstream;
-   using snapshot_t = std::string;
-   using read_storage_t = std::istringstream;
+   using read_storage_t  = std::istringstream;
+   using snapshot_t      = std::string;
+   snapshot_t(*load_func)(const std::string&) = &snapshots::read_bin;
+   void(*store_func)(const std::string&, const snapshot_t&) = &snapshots::write_bin;
+   snapshot_t(*storage_return_func)(const write_storage_t&) = [](const write_storage_t& ws) { return ws.str(); };
+};
 
-   struct writer : public writer_t {
-      writer( const std::shared_ptr<write_storage_t>& storage )
-      :writer_t(*storage)
-      ,storage(storage)
-      {
-
-      }
-
-      std::shared_ptr<write_storage_t> storage;
-   };
-
-   struct reader : public reader_t {
-      explicit reader(const std::shared_ptr<read_storage_t>& storage)
-      :reader_t(*storage)
-      ,storage(storage)
+template <typename Config>
+struct snapshot_suite {
+   struct writer : public Config::writer_t {
+      writer ( const std::shared_ptr<typename Config::write_storage_t>& storage )
+         : Config::writer_t(*storage),
+           storage(storage)
       {}
 
-      std::shared_ptr<read_storage_t> storage;
+      std::shared_ptr<typename Config::write_storage_t> storage;
    };
 
+   struct reader : public Config::reader_t {
+      explicit reader(const std::shared_ptr<typename Config::read_storage_t>& storage)
+         : Config::reader_t(*storage),
+           storage(storage)
+      {}
+      std::shared_ptr<typename Config::read_storage_t> storage;
+   };
 
    static auto get_writer() {
-      return std::make_shared<writer>(std::make_shared<write_storage_t>());
+      return std::make_shared<writer>(std::make_shared<typename Config::write_storage_t>());
    }
-
    static auto finalize(const std::shared_ptr<writer>& w) {
       w->finalize();
-      return w->storage->str();
+      return config.storage_return_func(w->storage);
    }
 
-   static auto get_reader( const snapshot_t& buffer) {
-      return std::make_shared<reader>(std::make_shared<read_storage_t>(buffer));
+   static auto get_reader(const typename Config::snapshot_t& s) {
+      return std::make_shared<reader>(std::make_shared<typename Config::read_storage_t>(s));
    }
 
-   template<typename Snapshot>
-   static snapshot_t load_from_file() {
-      return Snapshot::bin();
+   static auto load_from_file(const std::string& fn) {
+      return config.load_func(fn);
    }
+
+   template <typename Snapshot>
+   static void write_to_file( const std::string& fn, const Snapshot& s) {
+      config.store_func(fn, s);
+   }
+
+   static Config config;
 };
+
+using variant_snapshot_suite = snapshot_suite<variant_snapshot_config>;
+using buffered_snapshot_suite = snapshot_suite<buffered_snapshot_config>;
 
 BOOST_AUTO_TEST_SUITE(snapshot_tests)
 
@@ -442,21 +421,36 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_compatible_versions, SNAPSHOT_SUITE, snapshot
    chain.produce_blocks(1);
    chain.control->abort_block();
 
-   {
+
+   std::vector<std::string> versions = { "v2", "v3", "v4" };
+   std::string current_version = versions.back();
+
+   int ordinal = 0;
+   for (const auto& version : versions) {
+      if (should_write_snapshot() && version == current_version)
+         continue;
+
       static_assert(chain_snapshot_header::minimum_compatible_version <= 2, "version 2 unit test is no longer needed.  Please clean up data files");
-      auto v2 = SNAPSHOT_SUITE::template load_from_file<snapshots::snap_v2>();
-      int ordinal = 0;
-      snapshotted_tester v2_tester(chain.get_config(), SNAPSHOT_SUITE::get_reader(v2), ordinal++);
-      verify_integrity_hash<SNAPSHOT_SUITE>(*chain.control, *v2_tester.control);
+      auto vN = SNAPSHOT_SUITE::template load_from_file("snap_" + version);
+      BOOST_TEST_CHECKPOINT("loading snapshot: " << version);
+      snapshotted_tester vN_tester(chain.get_config(), SNAPSHOT_SUITE::get_reader(vN), ordinal++);
+      verify_integrity_hash<SNAPSHOT_SUITE>(*chain.control, *vN_tester.control);
 
       // create a latest snapshot
       auto latest_writer = SNAPSHOT_SUITE::get_writer();
-      v2_tester.control->write_snapshot(latest_writer);
+      vN_tester.control->write_snapshot(latest_writer);
       auto latest = SNAPSHOT_SUITE::finalize(latest_writer);
 
       // load the latest snapshot
       snapshotted_tester latest_tester(chain.get_config(), SNAPSHOT_SUITE::get_reader(latest), ordinal++);
       verify_integrity_hash<SNAPSHOT_SUITE>(*v2_tester.control, *latest_tester.control);
+   }
+
+   if (should_write_snapshot()) {
+      // create a latest snapshot
+      auto latest_writer = SNAPSHOT_SUITE::get_writer();
+      chain.control->write_snapshot(latest_writer);
+      auto latest = SNAPSHOT_SUITE::finalize(latest_writer);
    }
 }
 
@@ -488,7 +482,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_pending_schedule_snapshot, SNAPSHOT_SUITE, sn
    BOOST_REQUIRE_EQUAL(gpo.proposed_schedule.producers[0].producer_name.to_string(), "snapshot");
 
    static_assert(chain_snapshot_header::minimum_compatible_version <= 2, "version 2 unit test is no longer needed.  Please clean up data files");
-   auto v2 = SNAPSHOT_SUITE::template load_from_file<snapshots::snap_v2_prod_sched>();
+   auto v2 = SNAPSHOT_SUITE::load_from_file(snapshots::snap_v2_prod_sched>();
    int ordinal = 0;
 
    ////////////////////////////////////////////////////////////////////////
