@@ -592,8 +592,8 @@ namespace eosio {
       handle_sighup(); // setup logging
       app().post(appbase::priority::high, [this] ()
       {
-         my->thread_pool.emplace( "http", my->thread_pool_size );
          try {
+            my->thread_pool.emplace( "http", my->thread_pool_size );
             if(my->listen_endpoint) {
                try {
                   my->create_server_for_endpoint(*my->listen_endpoint, my->server);
