@@ -172,6 +172,7 @@ namespace eosio {
       void send_transaction_to_all( const std::shared_ptr<std::vector<char>>& send_buffer, VerifierFunc verify );
 
       void accepted_block(const block_state_ptr&);
+      void pre_accepted_block(const signed_block_ptr&);
       void transaction_ack(const std::pair<fc::exception_ptr, transaction_metadata_ptr>&);
 
       bool is_valid( const handshake_message &msg);
@@ -698,7 +699,7 @@ namespace eosio {
 
       void bcast_transaction(const transaction_metadata_ptr& trx);
       void rejected_transaction(const transaction_id_type& msg);
-      void bcast_block(const block_state_ptr& bs);
+      void bcast_block(const signed_block_ptr& b, const block_id_type& id);
       void rejected_block(const block_id_type& id);
 
       void recv_block(const connection_ptr& conn, const block_id_type& msg, uint32_t bnum);
@@ -1661,16 +1662,16 @@ namespace eosio {
 
    //------------------------------------------------------------------------
 
-   void dispatch_manager::bcast_block(const block_state_ptr& bs) {
+   void dispatch_manager::bcast_block(const signed_block_ptr& b, const block_id_type& id) {
       std::set<connection_ptr> skips;
-      auto range = received_blocks.equal_range(bs->id);
+      auto range = received_blocks.equal_range(id);
       for (auto org = range.first; org != range.second; ++org) {
          skips.insert(org->second);
       }
       received_blocks.erase(range.first, range.second);
 
-      uint32_t bnum = bs->block_num;
-      peer_block_state pbstate{bs->id, bnum};
+      uint32_t bnum = b->block_num();
+      peer_block_state pbstate{id, bnum};
 
       std::shared_ptr<std::vector<char>> send_buffer;
       for( auto& cp : my_impl->connections ) {
@@ -1684,7 +1685,7 @@ namespace eosio {
                continue;
             }
             if( !send_buffer ) {
-               send_buffer = create_send_buffer( bs->block );
+               send_buffer = create_send_buffer( b );
             }
             fc_dlog(logger, "bcast block ${b} to ${p}", ("b", bnum)("p", cp->peer_name()));
             cp->enqueue_buffer( send_buffer, true, no_reason );
@@ -2805,16 +2806,17 @@ namespace eosio {
    }
 
    void net_plugin_impl::accepted_block(const block_state_ptr& block) {
-      if( !cc.light_validation_mode() ) {
-         fc_dlog(logger,"signaled accepted_block, id = ${id}",("id", block->id));
-         dispatcher->bcast_block(block);
-      }
+      controller& cc = chain_plug->chain();
+      fc_dlog(logger,"signaled accepted_block, id = ${id}",("id", block->id));
+      dispatcher->bcast_block(block->block, block->id);
    }
 
-   void net_plugin_impl::accepted_block_header(const block_state_ptr& block) {
-      if( cc.light_validation_mode() ) {
-         fc_dlog(logger,"signaled accepted_block_header, id = ${id}",("id", block->id));
-         dispatcher->bcast_block(block);
+   void net_plugin_impl::pre_accepted_block(const signed_block_ptr& block) {
+      controller& cc = chain_plug->chain();
+      if( cc.is_trusted_producer(block->producer) ) {
+         auto id = block->id();
+         fc_dlog(logger,"signaled accepted_block_header, id = ${id}",("id", id));
+         dispatcher->bcast_block(block, id);
       }
    }
 
@@ -3144,7 +3146,7 @@ namespace eosio {
       chain::controller&cc = my->chain_plug->chain();
       {
          cc.accepted_block.connect(  boost::bind(&net_plugin_impl::accepted_block, my.get(), _1));
-         cc.accepted_block_header.connect( boost::bind(&net_plugin_impl::accepted_block, my.get(), _1) );
+         cc.pre_accepted_block.connect( boost::bind(&net_plugin_impl::pre_accepted_block, my.get(), _1) );
       }
 
       my->keepalive_timer.reset( new boost::asio::steady_timer( my->thread_pool->get_executor() ) );
