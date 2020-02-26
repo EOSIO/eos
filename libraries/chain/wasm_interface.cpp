@@ -211,7 +211,7 @@ class privileged_api : public context_aware_api {
        * @pre limit >= -1
        */
       void set_resource_limit( account_name account, name resource, int64_t limit ) {
-         EOS_ASSERT(limit >= -1, wasm_execution_error, "invalid value for {resource} resource limit expected [-1,INT64_MAX]", ("resource", resource));
+         EOS_ASSERT(limit >= -1, wasm_execution_error, "invalid value for ${resource} resource limit expected [-1,INT64_MAX]", ("resource", resource));
          auto& manager = context.control.get_mutable_resource_limits_manager();
          if( resource == string_to_name("ram") ) {
             int64_t ram, net, cpu;
@@ -228,11 +228,11 @@ class privileged_api : public context_aware_api {
             manager.get_account_limits(account, ram, net, cpu);
             manager.set_account_limits( account, ram, net, limit );
          } else if( resource == string_to_name("disk") ) {
-            if( context.control.get_mutable_resource_limits_manager().set_account_disk_limit( account, limit ) ) {
+            if( manager.set_account_disk_limit( account, limit ) ) {
                context.trx_context.validate_disk_usage.insert( account );
             }
          } else {
-            EOS_ASSERT(false, wasm_execution_error, "unknown resource {resource}", ("resource", resource));
+            EOS_THROW(wasm_execution_error, "unknown resource ${resource}", ("resource", resource));
          }
       }
 
@@ -251,9 +251,9 @@ class privileged_api : public context_aware_api {
             manager.get_account_limits( account, ram, net, cpu );
             return cpu;
          } else if( resource == string_to_name("disk") ) {
-            return context.control.get_resource_limits_manager().get_account_disk_limit( account );
+            return manager.get_account_disk_limit( account );
          } else {
-            EOS_ASSERT(false, wasm_execution_error, "unknown resource {resource}", ("resource", resource));
+            EOS_THROW(wasm_execution_error, "unknown resource ${resource}", ("resource", resource));
          }
       }
 
@@ -372,8 +372,8 @@ class privileged_api : public context_aware_api {
       }
 
       uint32_t get_kv_parameters_packed( name db, array_ptr<char> packed_kv_parameters, uint32_t buffer_size ) {
-         auto& gpo = context.control.get_global_properties();
-         auto& params = gpo.kv_configuration.*kv_parameters_impl( db );
+         const auto& gpo = context.control.get_global_properties();
+         const auto& params = gpo.kv_configuration.*kv_parameters_impl( db );
 
          auto s = fc::raw::pack_size( params );
          if( buffer_size == 0 ) return s;

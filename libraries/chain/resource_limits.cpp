@@ -337,7 +337,6 @@ bool resource_limits_manager::set_account_disk_limit( const account_name& accoun
 }
 
 int64_t resource_limits_manager::get_account_disk_limit( const account_name& account ) const {
-   const auto* pending_buo = _db.find<resource_limits_object,by_owner>( boost::make_tuple(true, account) );
    return get_account_limits(account).disk_bytes;
 }
 
