@@ -371,24 +371,27 @@ class privileged_api : public context_aware_api {
          }
       }
 
-      uint32_t get_kv_parameters_packed( name db, array_ptr<char> packed_kv_parameters, uint32_t buffer_size ) {
+      uint32_t get_kv_parameters_packed( name db, array_ptr<char> packed_kv_parameters, uint32_t buffer_size, uint32_t max_version ) {
          const auto& gpo = context.control.get_global_properties();
          const auto& params = gpo.kv_configuration.*kv_parameters_impl( db );
+         uint32_t version = std::min( max_version, uint32_t(0) );
 
-         auto s = fc::raw::pack_size( params );
-         if( buffer_size == 0 ) return s;
+         auto s = fc::raw::pack_size( version ) + fc::raw::pack_size( params );
 
          if ( s <= buffer_size ) {
             datastream<char*> ds( packed_kv_parameters, s );
+            fc::raw::pack(ds, version);
             fc::raw::pack(ds, params);
-            return s;
          }
-         return 0;
+         return s;
       }
 
-      void set_kv_parameters_packed( name db, array_ptr<const char> packed_kv_parameters, uint32_t datalen) {
+      void set_kv_parameters_packed( name db, array_ptr<const char> packed_kv_parameters, uint32_t datalen ) {
          datastream<const char*> ds( packed_kv_parameters, datalen );
+         uint32_t version;
          chain::kv_database_config cfg;
+         fc::raw::unpack(ds, version);
+         EOS_ASSERT(version == 0, kv_unknown_parameters_version, "set_kv_parameters_packed: Unknown version: ${version}", ("version", version));
          fc::raw::unpack(ds, cfg);
          context.db.modify( context.control.get_global_properties(),
             [&]( auto& gprops ) {
@@ -2017,7 +2020,7 @@ REGISTER_INTRINSICS(privileged_api,
    (set_proposed_producers_ex,        int64_t(int64_t, int, int)            )
    (get_blockchain_parameters_packed, int(int, int)                         )
    (set_blockchain_parameters_packed, void(int,int)                         )
-   (get_kv_parameters_packed,         int(int64_t, int, int)                )
+   (get_kv_parameters_packed,         int(int64_t, int, int, int)           )
    (set_kv_parameters_packed,         void(int64_t, int,int)                )
    (is_privileged,                    int(int64_t)                          )
    (set_privileged,                   void(int64_t, int)                    )
