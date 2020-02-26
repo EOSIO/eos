@@ -76,7 +76,7 @@ using namespace eosio::chain;
 using namespace eosio::chain::plugin_interface;
 
 namespace {
-   bool failure_is_subjective(const fc::exception& e, bool deadline_is_subjective) {
+   bool exception_is_exhausted(const fc::exception& e, bool deadline_is_subjective) {
       auto code = e.code();
       return (code == block_cpu_usage_exceeded::code_value) ||
              (code == block_net_usage_exceeded::code_value) ||
@@ -501,9 +501,9 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                deadline = block_deadline;
             }
 
-            auto trace = chain.push_transaction( trx, deadline );
+            auto trace = chain.push_transaction( trx, deadline, trx->billed_cpu_time_us, false );
             if( trace->except ) {
-               if( failure_is_subjective( *trace->except, deadline_is_subjective )) {
+               if( exception_is_exhausted( *trace->except, deadline_is_subjective )) {
                   _unapplied_transactions.add_incoming( trx, persist_until_expired, next );
                   if( _pending_block_mode == pending_block_mode::producing ) {
                      fc_dlog( _trx_trace_log, "[TRX_TRACE] Block ${block_num} for producer ${prod} COULD NOT FIT, tx: ${txid} RETRYING ",
@@ -652,7 +652,7 @@ void producer_plugin::set_program_options(
          ("subjective-cpu-leeway-us", boost::program_options::value<int32_t>()->default_value( config::default_subjective_cpu_leeway_us ),
           "Time in microseconds allowed for a transaction that starts with insufficient CPU quota to complete and cover its CPU usage.")
          ("incoming-defer-ratio", bpo::value<double>()->default_value(1.0),
-          "ratio between incoming transations and deferred transactions when both are exhausted")
+          "ratio between incoming transactions and deferred transactions when both are queued for execution")
          ("incoming-transaction-queue-size-mb", bpo::value<uint16_t>()->default_value( 1024 ),
           "Maximum size (in MiB) of the incoming transaction queue. Exceeding this value will subjectively drop transaction with resource exhaustion.")
          ("producer-threads", bpo::value<uint16_t>()->default_value(config::default_controller_thread_pool_size),
@@ -1690,14 +1690,15 @@ bool producer_plugin_impl::process_unapplied_trxs( const fc::time_point& deadlin
                trx_deadline = deadline;
             }
 
-            auto trace = chain.push_transaction( trx, trx_deadline );
+            auto trace = chain.push_transaction( trx, trx_deadline, trx->billed_cpu_time_us, false );
             if( trace->except ) {
-               if( failure_is_subjective( *trace->except, deadline_is_subjective ) ) {
+               if( exception_is_exhausted( *trace->except, deadline_is_subjective ) ) {
                   if( block_is_exhausted() ) {
                      exhausted = true;
                      // don't erase, subjective failure so try again next time
                      break;
                   }
+                  // don't erase, subjective failure so try again next time
                } else {
                   // this failed our configured maximum transaction time, we don't want to replay it
                   ++num_failed;
@@ -1742,13 +1743,13 @@ void producer_plugin_impl::process_scheduled_and_incoming_trxs( const fc::time_p
    auto sch_itr = sch_idx.begin();
    while( sch_itr != sch_idx.end() ) {
       if( sch_itr->delay_until > pending_block_time) break;    // not scheduled yet
-      if( sch_itr->published >= pending_block_time ) {
-         ++sch_itr;
-         continue; // do not allow schedule and execute in same block
-      }
       if( exhausted || deadline <= fc::time_point::now() ) {
          exhausted = true;
          break;
+      }
+      if( sch_itr->published >= pending_block_time ) {
+         ++sch_itr;
+         continue; // do not allow schedule and execute in same block
       }
 
       const transaction_id_type trx_id = sch_itr->trx_id; // make copy since reference could be invalidated
@@ -1797,13 +1798,14 @@ void producer_plugin_impl::process_scheduled_and_incoming_trxs( const fc::time_p
             trx_deadline = deadline;
          }
 
-         auto trace = chain.push_scheduled_transaction(trx_id, trx_deadline);
+         auto trace = chain.push_scheduled_transaction(trx_id, trx_deadline, 0, false);
          if (trace->except) {
-            if (failure_is_subjective(*trace->except, deadline_is_subjective)) {
+            if (exception_is_exhausted(*trace->except, deadline_is_subjective)) {
                if( block_is_exhausted() ) {
                   exhausted = true;
                   break;
                }
+               // do not blacklist
             } else {
                auto expiration = fc::time_point::now() + fc::seconds(chain.get_global_properties().configuration.deferred_trx_expiration_window);
                // this failed our configured maximum transaction time, we don't want to replay it add it to a blacklist
