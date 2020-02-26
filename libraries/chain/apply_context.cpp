@@ -167,6 +167,9 @@ void apply_context::finalize_trace( action_trace& trace, const fc::time_point& s
    trace.account_ram_deltas = std::move( _account_ram_deltas );
    _account_ram_deltas.clear();
 
+   trace.account_disk_deltas = std::move( _account_disk_deltas );
+   _account_disk_deltas.clear();
+
    trace.console = std::move( _pending_console_output );
    _pending_console_output.clear();
 
@@ -985,6 +988,11 @@ void apply_context::add_ram_usage( account_name account, int64_t ram_delta ) {
 
 void apply_context::add_disk_usage( account_name account, int64_t disk_delta ) {
    trx_context.add_disk_usage( account, disk_delta );
+
+   auto p = _account_disk_deltas.emplace( account, disk_delta );
+   if( !p.second ) {
+      p.first->delta += disk_delta;
+   }
 }
 
 action_name apply_context::get_sender() const {
