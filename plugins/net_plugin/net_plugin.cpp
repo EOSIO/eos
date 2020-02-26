@@ -1922,7 +1922,7 @@ namespace eosio {
    void dispatch_manager::bcast_block(const block_state_ptr& bs) {
       fc_dlog( logger, "bcast block ${b}", ("b", bs->block_num) );
 
-      if( my_impl->sync_master->syncing_with_peer() ) return;
+      if( my_impl->sync_master->syncing_with_peer() || my_impl->db_read_mode == db_read_mode::API_READ_ONLY ) return;
       
       bool have_connection = false;
       for_each_block_connection( [&have_connection]( auto& cp ) {
@@ -2832,8 +2832,8 @@ namespace eosio {
    }
 
    void connection::handle_message( packed_transaction_ptr trx ) {
-      if( db_mode_is_immutable(my_impl->db_read_mode) ) {
-         fc_dlog( logger, "got a txn in read-only mode - dropping" );
+      if( db_mode_is_immutable(my_impl->db_read_mode) || my_impl->db_read_mode == db_read_mode::API_READ_ONLY ) {
+         fc_dlog( logger, "got a txn in read only mode - dropping" );
          return;
       }
 
