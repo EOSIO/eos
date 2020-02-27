@@ -117,7 +117,7 @@ try:
         for node in allNodes:
             if not node.killed: node.processCurlCmd("producer", "resume", "")
 
-    def shouldNodesBeInSync(nodes:[Node]):
+    def areNodesInSync(nodes:[Node]):
         # Pause all block production to ensure the head is not moving
         pauseBlockProductions()
         time.sleep(1) # Wait for some time to ensure all blocks are propagated
@@ -129,7 +129,7 @@ try:
         return len(set(headBlockIds)) == 1
 
     # Before everything starts, all nodes (new version and old version) should be in sync
-    assert shouldNodesBeInSync(allNodes), "Nodes are not in sync before preactivation"
+    assert areNodesInSync(allNodes), "Nodes are not in sync before preactivation"
 
     # First, we are going to test the case where:
     # - 1st node has valid earliest_allowed_activation_time
@@ -147,13 +147,13 @@ try:
     assert shouldNodeContainPreactivateFeature(newNodes[0]), "1st node should contain PREACTIVATE FEATURE"
     assert not (shouldNodeContainPreactivateFeature(newNodes[1]) or shouldNodeContainPreactivateFeature(newNodes[2])), \
            "2nd and 3rd node should not contain PREACTIVATE FEATURE"
-    assert shouldNodesBeInSync([newNodes[1], newNodes[2], oldNode]), "2nd, 3rd and 4th node should be in sync"
-    assert not shouldNodesBeInSync(allNodes), "1st node should be out of sync with the rest nodes"
+    assert areNodesInSync([newNodes[1], newNodes[2], oldNode]), "2nd, 3rd and 4th node should be in sync"
+    assert not areNodesInSync(allNodes), "1st node should be out of sync with the rest nodes"
 
     waitForOneRound()
 
     assert not shouldNodeContainPreactivateFeature(newNodes[0]), "PREACTIVATE_FEATURE should be dropped"
-    assert shouldNodesBeInSync(allNodes), "All nodes should be in sync"
+    assert areNodesInSync(allNodes), "All nodes should be in sync"
 
     # Then we set the earliest_allowed_activation_time of 2nd node and 3rd node with valid value
     # Once the 1st node activate PREACTIVATE_FEATURE, all of them should have PREACTIVATE_FEATURE activated in the next block
@@ -167,8 +167,8 @@ try:
     libBeforePreactivation = newNodes[0].getIrreversibleBlockNum()
     newNodes[0].activatePreactivateFeature()
 
-    assert shouldNodesBeInSync(newNodes), "New nodes should be in sync"
-    assert not shouldNodesBeInSync(allNodes), "Nodes should not be in sync after preactivation"
+    assert areNodesInSync(newNodes), "New nodes should be in sync"
+    assert not areNodesInSync(allNodes), "Nodes should not be in sync after preactivation"
     for node in newNodes: assert shouldNodeContainPreactivateFeature(node), "New node should contain PREACTIVATE_FEATURE"
 
     activatedBlockNum = newNodes[0].getHeadBlockNum() # The PREACTIVATE_FEATURE should have been activated before or at this block num
@@ -195,7 +195,7 @@ try:
     restartNode(oldNode, oldNodeId, chainArg="--replay", nodeosPath="programs/nodeos/nodeos")
     time.sleep(2) # Give some time to replay
 
-    assert shouldNodesBeInSync(allNodes), "All nodes should be in sync"
+    assert areNodesInSync(allNodes), "All nodes should be in sync"
     assert shouldNodeContainPreactivateFeature(oldNode), "4th node should contain PREACTIVATE_FEATURE"
 
     testSuccessful = True
