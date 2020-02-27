@@ -2830,7 +2830,7 @@ namespace eosio {
    }
 
    void connection::handle_message( packed_transaction_ptr trx ) {
-      if( db_mode_is_immutable(my_impl->db_read_mode) || my_impl->db_read_mode == db_read_mode::API_READ_ONLY ) {
+      if( db_mode_is_immutable(my_impl->db_read_mode) || my_impl->db_read_mode == db_read_mode::API ) {
          fc_dlog( logger, "got a txn in read only mode - dropping" );
          return;
       }

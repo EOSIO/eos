@@ -47,7 +47,7 @@ namespace eosio { namespace chain {
       SPECULATIVE,
       HEAD,
       READ_ONLY,
-      API_READ_ONLY,
+      API,
       IRREVERSIBLE
    };
 
