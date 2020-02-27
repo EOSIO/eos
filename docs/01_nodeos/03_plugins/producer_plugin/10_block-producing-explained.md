@@ -35,7 +35,7 @@ digraph {
     newrank=true  #allows ranks inside subgraphs (important!)
     compound=true  #allows edges connecting nodes with subgraphs
     graph [rankdir=LR]
-    node [style=filled, fillcolor=lightgray, shape=square, fixedsize=true, width=.70, fontsize=11]
+    node [style=filled, fillcolor=lightgray, shape=square, fixedsize=true, width=.55, fontsize=10]
     edge [dir=both, arrowsize=.6, weight=100]
     splines=false
 
@@ -43,7 +43,7 @@ digraph {
         label="Block Producers Peers"; labelloc="b"
         graph [color=invis]
         b0 [label="...", color=invis, style=""]
-        b1 [label="BP-A"]; b2 [label="`BP-A-Peer`"]; b3 [label="`BP-B-Peer`"]; b4 [label="BP-B"]
+        b1 [label="BP-A"]; b2 [label="BP-A\nPeer"]; b3 [label="BP-B\nPeer"]; b4 [label="BP-B"]
         b5 [label="...", color=invis, style=""]
         b0 -> b1 -> b2 -> b3 -> b4 -> b5
     } //cluster_chain
