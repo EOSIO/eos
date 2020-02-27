@@ -586,7 +586,8 @@ inline fc::optional<uint64_t> cap_error_code( const fc::optional<uint64_t>& erro
 template <typename ST>
 datastream<ST>& operator<<(datastream<ST>& ds, const history_context_wrapper<bool, eosio::chain::action_trace>& obj) {
    bool  debug_mode = obj.context;
-   fc::raw::pack(ds, fc::unsigned_int(0));
+   unsigned int version = (obj.obj.account_disk_deltas.size() != 0) ? 1 : 0;
+   fc::raw::pack(ds, fc::unsigned_int(version));
    fc::raw::pack(ds, as_type<fc::unsigned_int>(obj.obj.action_ordinal));
    fc::raw::pack(ds, as_type<fc::unsigned_int>(obj.obj.creator_action_ordinal));
    fc::raw::pack(ds, bool(obj.obj.receipt));
@@ -602,6 +603,9 @@ datastream<ST>& operator<<(datastream<ST>& ds, const history_context_wrapper<boo
    else
       fc::raw::pack(ds, std::string{});
    history_serialize_container(ds, obj.db, as_type<flat_set<eosio::chain::account_delta>>(obj.obj.account_ram_deltas));
+   if (version >= 1) {
+      history_serialize_container(ds, obj.db, as_type<flat_set<eosio::chain::account_delta>>(obj.obj.account_disk_deltas));
+   }
 
    fc::optional<std::string> e;
    if (obj.obj.except) {
