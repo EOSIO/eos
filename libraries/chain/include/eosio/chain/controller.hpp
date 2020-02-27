@@ -277,6 +277,7 @@ namespace eosio { namespace chain {
          bool skip_db_sessions( )const;
          bool skip_db_sessions( block_status bs )const;
          bool skip_trx_checks()const;
+         bool is_trusted_producer( const account_name& producer) const;
 
          bool contracts_console()const;
 
