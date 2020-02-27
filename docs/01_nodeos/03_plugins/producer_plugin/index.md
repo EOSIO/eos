@@ -116,3 +116,5 @@ plugin = eosio::chain_plugin [operations] [options]
 # command-line
 nodeos ... --plugin eosio::chain_plugin [operations] [options]
 ```
+
+For details about how blocks are produced please read the following [block producing explainer](10_block-producing-explained.md).
