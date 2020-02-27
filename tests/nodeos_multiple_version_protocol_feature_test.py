@@ -113,7 +113,7 @@ try:
     def areNodesInSync(nodes:[Node]):
         # Pause all block production to ensure the head is not moving
         pauseBlockProductions()
-        time.sleep(1) # Wait for some time to ensure all blocks are propagated
+        time.sleep(2) # Wait for some time to ensure all blocks are propagated
         headBlockIds = []
         for node in nodes:
             headBlockId = node.getInfo()["head_block_id"]
