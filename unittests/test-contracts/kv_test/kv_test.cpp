@@ -11,8 +11,8 @@ enum it_stat : int32_t {
 #define IMPORT extern "C" __attribute__((eosio_wasm_import))
 
 // clang-format off
-IMPORT void     kv_erase(name db, name contract, const char* key, uint32_t key_size);
-IMPORT void     kv_set(name db, name contract, const char* key, uint32_t key_size, const char* value, uint32_t value_size);
+IMPORT int64_t  kv_erase(name db, name contract, const char* key, uint32_t key_size);
+IMPORT int64_t  kv_set(name db, name contract, const char* key, uint32_t key_size, const char* value, uint32_t value_size);
 IMPORT bool     kv_get(name db, name contract, const char* key, uint32_t key_size, uint32_t& value_size);
 IMPORT uint32_t kv_get_data(name db, uint32_t offset, char* data, uint32_t data_size);
 IMPORT uint32_t kv_it_create(name db, name contract, const char* prefix, uint32_t size);

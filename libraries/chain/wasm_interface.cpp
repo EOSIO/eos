@@ -1543,10 +1543,10 @@ class kv_database_api : public context_aware_api {
    public:
       using context_aware_api::context_aware_api;
 
-      void kv_erase(uint64_t db, uint64_t contract, array_ptr<const char> key, uint32_t key_size) {
+      int64_t kv_erase(uint64_t db, uint64_t contract, array_ptr<const char> key, uint32_t key_size) {
          return context.kv_erase(db, contract, key, key_size);
       }
-      void kv_set(uint64_t db, uint64_t contract, array_ptr<const char> key, uint32_t key_size, array_ptr<const char> value, uint32_t value_size) {
+      int64_t kv_set(uint64_t db, uint64_t contract, array_ptr<const char> key, uint32_t key_size, array_ptr<const char> value, uint32_t value_size) {
          return context.kv_set(db, contract, key, key_size, value, value_size);
       }
       bool kv_get(uint64_t db, uint64_t contract, array_ptr<const char> key, uint32_t key_size, uint32_t& value_size) {
@@ -2079,21 +2079,21 @@ REGISTER_INTRINSICS( database_api,
 );
 
 REGISTER_INTRINSICS( kv_database_api,
-   (kv_erase,           void(int64_t,int64_t,int,int)          )
-   (kv_set,             void(int64_t,int64_t,int,int,int,int)  )
-   (kv_get,             int(int64_t,int64_t,int,int,int)       )
-   (kv_get_data,        int(int64_t,int,int,int)               )
-   (kv_it_create,       int(int64_t,int64_t,int,int)           )
-   (kv_it_destroy,      void(int)                              )
-   (kv_it_status,       int(int)                               )
-   (kv_it_compare,      int(int,int)                           )
-   (kv_it_key_compare,  int(int,int,int)                       )
-   (kv_it_move_to_end,  int(int)                               )
-   (kv_it_next,         int(int)                               )
-   (kv_it_prev,         int(int)                               )
-   (kv_it_lower_bound,  int(int,int,int)                       )
-   (kv_it_key,          int(int,int,int,int,int)               )
-   (kv_it_value,        int(int,int,int,int,int)               )
+   (kv_erase,           int64_t(int64_t,int64_t,int,int)         )
+   (kv_set,             int64_t(int64_t,int64_t,int,int,int,int) )
+   (kv_get,             int(int64_t,int64_t,int,int,int)         )
+   (kv_get_data,        int(int64_t,int,int,int)                 )
+   (kv_it_create,       int(int64_t,int64_t,int,int)             )
+   (kv_it_destroy,      void(int)                                )
+   (kv_it_status,       int(int)                                 )
+   (kv_it_compare,      int(int,int)                             )
+   (kv_it_key_compare,  int(int,int,int)                         )
+   (kv_it_move_to_end,  int(int)                                 )
+   (kv_it_next,         int(int)                                 )
+   (kv_it_prev,         int(int)                                 )
+   (kv_it_lower_bound,  int(int,int,int)                         )
+   (kv_it_key,          int(int,int,int,int,int)                 )
+   (kv_it_value,        int(int,int,int,int,int)                 )
 );
 
 REGISTER_INTRINSICS(crypto_api,

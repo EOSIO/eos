@@ -532,8 +532,8 @@ class apply_context {
 
    /// KV Database methods:
    public:
-      void     kv_erase(uint64_t db, uint64_t contract, const char* key, uint32_t key_size);
-      void     kv_set(uint64_t db, uint64_t contract, const char* key, uint32_t key_size, const char* value, uint32_t value_size);
+      int64_t  kv_erase(uint64_t db, uint64_t contract, const char* key, uint32_t key_size);
+      int64_t  kv_set(uint64_t db, uint64_t contract, const char* key, uint32_t key_size, const char* value, uint32_t value_size);
       bool     kv_get(uint64_t db, uint64_t contract, const char* key, uint32_t key_size, uint32_t& value_size);
       uint32_t kv_get_data(uint64_t db, uint32_t offset, char* data, uint32_t data_size);
       uint32_t kv_it_create(uint64_t db, uint64_t contract, const char* prefix, uint32_t size);

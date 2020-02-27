@@ -160,19 +160,21 @@ namespace eosio { namespace chain {
 
       ~kv_context_chainbase() override {}
 
-      void kv_erase(uint64_t contract, const char* key, uint32_t key_size) override {
+      int64_t kv_erase(uint64_t contract, const char* key, uint32_t key_size) override {
          EOS_ASSERT(name{ contract } == receiver, table_operation_not_permitted, "Can not write to this key");
          temp_data_buffer.reset();
          auto* kv = db.find<kv_object, by_kv_key>(
                boost::make_tuple(database_id, name{ contract }, std::string_view{ key, key_size }));
          if (!kv)
-            return;
-         resource_manager.update_table_usage(-(static_cast<int64_t>(resource_manager.billable_size) + kv->kv_key.size() + kv->kv_value.size()));
+            return 0;
+         int64_t resource_delta = -(static_cast<int64_t>(resource_manager.billable_size) + kv->kv_key.size() + kv->kv_value.size());
+         resource_manager.update_table_usage(resource_delta);
          tracker.remove(*kv);
+         return resource_delta;
       }
 
-      void kv_set(uint64_t contract, const char* key, uint32_t key_size, const char* value,
-                  uint32_t value_size) override {
+      int64_t kv_set(uint64_t contract, const char* key, uint32_t key_size, const char* value,
+                     uint32_t value_size) override {
          EOS_ASSERT(name{ contract } == receiver, table_operation_not_permitted, "Can not write to this key");
          EOS_ASSERT(key_size <= limits.max_key_size, kv_limit_exceeded, "Key too large");
          EOS_ASSERT(value_size <= limits.max_value_size, kv_limit_exceeded, "Value too large");
@@ -183,17 +185,21 @@ namespace eosio { namespace chain {
             // 64-bit arithmetic cannot overflow, because both the key and value are limited to 32-bits
             int64_t old_size = static_cast<int64_t>(kv->kv_key.size()) + kv->kv_value.size();
             int64_t new_size = static_cast<int64_t>(value_size) + key_size;
-            resource_manager.update_table_usage(new_size - old_size);
+            int64_t resource_delta = new_size - old_size;
+            resource_manager.update_table_usage(resource_delta);
             db.modify(*kv, [&](auto& obj) { obj.kv_value.assign(value, value_size); });
+            return resource_delta;
          } else {
             int64_t new_size = static_cast<int64_t>(value_size) + key_size;
-            resource_manager.update_table_usage(new_size + resource_manager.billable_size);
+            int64_t resource_delta = new_size + resource_manager.billable_size;
+            resource_manager.update_table_usage(resource_delta);
             db.create<kv_object>([&](auto& obj) {
                obj.database_id = database_id;
                obj.contract    = name{ contract };
                obj.kv_key.assign(key, key_size);
                obj.kv_value.assign(value, value_size);
             });
+            return resource_delta;
          }
       }
 

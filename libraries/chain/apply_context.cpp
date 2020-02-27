@@ -859,11 +859,11 @@ int apply_context::db_end_i64( name code, name scope, name table ) {
    return keyval_cache.cache_table( *tab );
 }
 
-void apply_context::kv_erase(uint64_t db, uint64_t contract, const char* key, uint32_t key_size) {
+int64_t apply_context::kv_erase(uint64_t db, uint64_t contract, const char* key, uint32_t key_size) {
    return kv_get_db(db).kv_erase(contract, key, key_size);
 }
 
-void apply_context::kv_set(uint64_t db, uint64_t contract, const char* key, uint32_t key_size, const char* value, uint32_t value_size) {
+int64_t apply_context::kv_set(uint64_t db, uint64_t contract, const char* key, uint32_t key_size, const char* value, uint32_t value_size) {
    return kv_get_db(db).kv_set(contract, key, key_size, value, value_size);
 }
 
