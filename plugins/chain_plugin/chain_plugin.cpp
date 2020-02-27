@@ -2049,19 +2049,11 @@ fc::variant read_only::get_block(const read_only::get_block_params& params) cons
 
 fc::variant read_only::get_block_info(const read_only::get_block_info_params& params) const {
 
-   EOS_ASSERT( !params.block_num.empty() && params.block_num.size() <= 10,
-               chain::block_num_type_exception,
-               "Invalid block num, must be greater than 0 and less than or equal to 10 characters (unsigned int32)"
-   );
+   EOS_ASSERT( params.block_num > 0, chain::block_num_type_exception, "Invalid block num, must be greater than 0");
 
    signed_block_ptr block;
-   optional<uint64_t> block_num;
-
    try {
-      block_num = fc::to_uint64(params.block_num);
-      if( block_num.valid() ) {
-         block = db.fetch_block_by_number( *block_num );
-      }
+         block = db.fetch_block_by_number( params.block_num );
    } EOS_RETHROW_EXCEPTIONS(chain::block_num_type_exception, "Invalid block num: ${block_num}", ("block_num", params.block_num));
 
 

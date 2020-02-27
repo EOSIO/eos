@@ -281,7 +281,7 @@ public:
    fc::variant get_block(const get_block_params& params) const;
 
    struct get_block_info_params {
-      string block_num;
+      uint32_t block_num;
    };
 
    fc::variant get_block_info(const get_block_info_params& params) const;

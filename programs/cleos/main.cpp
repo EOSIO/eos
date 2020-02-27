@@ -2592,16 +2592,22 @@ int main( int argc, char** argv ) {
    getBlock->add_flag("--info", get_binfo, localized("Get block info from the blockchain by block num only") );
    if (!get_bhs || !get_binfo) {
       getBlock->set_callback([&blockArg, &get_bhs, &get_binfo] {
+         if (get_binfo) {
+            fc::optional<int64_t> block_num;
+            try {
+               block_num = fc::to_int64(blockArg);
+            } catch (...) { /* error is handled in assert below */ }
 
-         const auto arg = (get_binfo ?
-                             fc::mutable_variant_object("block_num", blockArg) :
-                             fc::mutable_variant_object("block_num_or_id", blockArg));
-         if (get_bhs) {
-            std::cout << fc::json::to_pretty_string(call(get_block_header_state_func, arg)) << std::endl;
-         } else if (get_binfo) {
+            EOS_ASSERT( block_num.valid() && (*block_num > 0), chain::block_num_type_exception, "Invalid block num: ${block_num}", ("block_num", blockArg));
+            const auto arg = fc::mutable_variant_object("block_num", static_cast<uint32_t>(*block_num));
             std::cout << fc::json::to_pretty_string(call(get_block_info_func, arg)) << std::endl;
          } else {
-            std::cout << fc::json::to_pretty_string(call(get_block_func, arg)) << std::endl;
+            const auto arg = fc::mutable_variant_object("block_num_or_id", blockArg);
+            if (get_bhs) {
+               std::cout << fc::json::to_pretty_string(call(get_block_header_state_func, arg)) << std::endl;
+            } else {
+               std::cout << fc::json::to_pretty_string(call(get_block_func, arg)) << std::endl;
+            }
          }
       });
    }
