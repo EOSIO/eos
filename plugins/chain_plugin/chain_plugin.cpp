@@ -2047,31 +2047,29 @@ fc::variant read_only::get_block(const read_only::get_block_params& params) cons
            ("ref_block_prefix", ref_block_prefix);
 }
 
-fc::variant read_only::get_block_header(const read_only::get_block_header_params& params) const {
+fc::variant read_only::get_block_info(const read_only::get_block_info_params& params) const {
+
+   EOS_ASSERT( !params.block_num.empty() && params.block_num.size() <= 10,
+               chain::block_num_type_exception,
+               "Invalid block num, must be greater than 0 and less than or equal to 10 characters (unsigned int32)"
+   );
+
    signed_block_ptr block;
    optional<uint64_t> block_num;
 
-   EOS_ASSERT( !params.block_num_or_id.empty() && params.block_num_or_id.size() <= 64,
-               chain::block_id_type_exception,
-               "Invalid Block number or ID, must be greater than 0 and less than 64 characters"
-   );
-
    try {
-      block_num = fc::to_uint64(params.block_num_or_id);
-   } catch( ... ) {}
+      block_num = fc::to_uint64(params.block_num);
+      if( block_num.valid() ) {
+         block = db.fetch_block_by_number( *block_num );
+      }
+   } EOS_RETHROW_EXCEPTIONS(chain::block_num_type_exception, "Invalid block num: ${block_num}", ("block_num", params.block_num));
 
-   if( block_num.valid() ) {
-      block = db.fetch_block_by_number( *block_num );
-   } else {
-      try {
-         block = db.fetch_block_by_id( fc::variant(params.block_num_or_id).as<block_id_type>() );
-      } EOS_RETHROW_EXCEPTIONS(chain::block_id_type_exception, "Invalid block ID: ${block_num_or_id}", ("block_num_or_id", params.block_num_or_id))
-   }
 
-   EOS_ASSERT( block, unknown_block_exception, "Could not find block: ${block}", ("block", params.block_num_or_id));
+   EOS_ASSERT( block, unknown_block_exception, "Could not find block: ${block}", ("block", params.block_num));
 
    return fc::mutable_variant_object ()
          ("block_num", block->block_num())
+         ("ref_block_num", static_cast<uint16_t>(block->block_num()))
          ("id", block->id())
          ("timestamp", block->timestamp)
          ("producer", block->producer)

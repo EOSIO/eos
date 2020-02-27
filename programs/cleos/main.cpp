@@ -2585,18 +2585,21 @@ int main( int argc, char** argv ) {
    // get block
    string blockArg;
    bool get_bhs = false;
-   bool get_bh = false;
+   bool get_binfo = false;
    auto getBlock = get->add_subcommand("block", localized("Retrieve a full block from the blockchain"), false);
    getBlock->add_option("block", blockArg, localized("The number or ID of the block to retrieve"))->required();
    getBlock->add_flag("--header-state", get_bhs, localized("Get block header state from fork database instead") );
-   getBlock->add_flag("--header", get_bh, localized("Get block header from the blockchain") );
-   if (!get_bhs || !get_bh) {
-      getBlock->set_callback([&blockArg, &get_bhs, &get_bh] {
-         auto arg = fc::mutable_variant_object("block_num_or_id", blockArg);
+   getBlock->add_flag("--info", get_binfo, localized("Get block info from the blockchain by block num only") );
+   if (!get_bhs || !get_binfo) {
+      getBlock->set_callback([&blockArg, &get_bhs, &get_binfo] {
+
+         const auto arg = (get_binfo ?
+                             fc::mutable_variant_object("block_num", blockArg) :
+                             fc::mutable_variant_object("block_num_or_id", blockArg));
          if (get_bhs) {
             std::cout << fc::json::to_pretty_string(call(get_block_header_state_func, arg)) << std::endl;
-         } else if (get_bh) {
-            std::cout << fc::json::to_pretty_string(call(get_block_header_func, arg)) << std::endl;
+         } else if (get_binfo) {
+            std::cout << fc::json::to_pretty_string(call(get_block_info_func, arg)) << std::endl;
          } else {
             std::cout << fc::json::to_pretty_string(call(get_block_func, arg)) << std::endl;
          }
