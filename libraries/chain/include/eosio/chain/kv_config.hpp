@@ -13,9 +13,9 @@ namespace eosio { namespace chain {
     * below existing database entries.
     */
    struct kv_database_config {
-      std::uint32_t max_key_size;   ///< the maximum size in bytes of a key
-      std::uint32_t max_value_size; ///< the maximum size in bytes of a value
-      std::uint32_t max_iterators;  ///< the maximum number of iterators that a contract can have simultaneously.
+      std::uint32_t max_key_size   = 0; ///< the maximum size in bytes of a key
+      std::uint32_t max_value_size = 0; ///< the maximum size in bytes of a value
+      std::uint32_t max_iterators  = 0; ///< the maximum number of iterators that a contract can have simultaneously.
    };
    inline bool operator==(const kv_database_config& lhs, const kv_database_config& rhs) {
       return std::tie(lhs.max_key_size, lhs.max_value_size, lhs.max_iterators)
