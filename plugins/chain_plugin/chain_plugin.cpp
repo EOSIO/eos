@@ -45,8 +45,8 @@ std::ostream& operator<<(std::ostream& osm, eosio::chain::db_read_mode m) {
       osm << "head";
    } else if ( m == eosio::chain::db_read_mode::READ_ONLY ) {
       osm << "read-only";
-   } else if ( m == eosio::chain::db_read_mode::API_READ_ONLY ) {
-      osm << "api-read-only";
+   } else if ( m == eosio::chain::db_read_mode::API ) {
+      osm << "api";
    } else if ( m == eosio::chain::db_read_mode::IRREVERSIBLE ) {
       osm << "irreversible";
    }
@@ -74,8 +74,8 @@ void validate(boost::any& v,
      v = boost::any(eosio::chain::db_read_mode::HEAD);
   } else if ( s == "read-only" ) {
      v = boost::any(eosio::chain::db_read_mode::READ_ONLY);
-  } else if ( s == "api-read-only" ) {
-     v = boost::any(eosio::chain::db_read_mode::API_READ_ONLY);
+  } else if ( s == "api" ) {
+     v = boost::any(eosio::chain::db_read_mode::API);
   } else if ( s == "irreversible" ) {
      v = boost::any(eosio::chain::db_read_mode::IRREVERSIBLE);
   } else {
@@ -242,7 +242,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "In \"speculative\" mode database contains changes done up to the head block plus changes made by transactions not yet included to the blockchain.\n"
           "In \"head\" mode database contains changes done up to the current head block.\n"
           "In \"read-only\" mode database contains changes done up to the current head block and transactions cannot be pushed to the chain API.\n"
-          "In \"api-read-only\" mode database contains changes done up to the head block; only api transactions are speculatively executed.\n"
+          "In \"api\" mode database contains changes done up to the head block; only api transactions are speculatively executed.\n"
           "In \"irreversible\" mode database contains changes done up to the last irreversible block and transactions cannot be pushed to the chain API.\n"
           )
          ("validation-mode", boost::program_options::value<eosio::chain::validation_mode>()->default_value(eosio::chain::validation_mode::FULL),
