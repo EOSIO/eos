@@ -1831,7 +1831,7 @@ struct controller_impl {
 
          fork_db.add( bsp );
 
-         if (conf.trusted_producers.count(b->producer)) {
+         if (self.is_trusted_producer(b->producer)) {
             trusted_producer_light_validation = true;
          };
 
@@ -2884,6 +2884,10 @@ bool controller::skip_db_sessions( ) const {
 
 bool controller::skip_trx_checks() const {
    return light_validation_allowed(my->conf.disable_replay_opts);
+}
+
+bool controller::is_trusted_producer( const account_name& producer) const {
+   return get_validation_mode() == chain::validation_mode::LIGHT || my->conf.trusted_producers.count(producer);
 }
 
 bool controller::contracts_console()const {
