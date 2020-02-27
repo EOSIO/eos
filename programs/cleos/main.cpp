@@ -2599,10 +2599,10 @@ int main( int argc, char** argv ) {
             } catch (...) { /* error is handled in assert below */ }
 
             EOS_ASSERT( block_num.valid() && (*block_num > 0), chain::block_num_type_exception, "Invalid block num: ${block_num}", ("block_num", blockArg));
-            const auto arg = fc::mutable_variant_object("block_num", static_cast<uint32_t>(*block_num));
+            const auto arg = fc::variant_object("block_num", static_cast<uint32_t>(*block_num));
             std::cout << fc::json::to_pretty_string(call(get_block_info_func, arg)) << std::endl;
          } else {
-            const auto arg = fc::mutable_variant_object("block_num_or_id", blockArg);
+            const auto arg = fc::variant_object("block_num_or_id", blockArg);
             if (get_bhs) {
                std::cout << fc::json::to_pretty_string(call(get_block_header_state_func, arg)) << std::endl;
             } else {
