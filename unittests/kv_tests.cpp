@@ -502,6 +502,9 @@ class kv_tester : public tester {
 
       // The key is checked even if it already exists
       setmany("Key too large", db, N(kvtest), {{bytes(1024, 'a'), {}}});
+
+      scan("", db, N(kvtest), "00000000", "", {});
+      scan("Prefix too large", db, N(kvtest), "0000000000", "", {});
    }
 
    action make_set_action(name db, std::size_t size) {

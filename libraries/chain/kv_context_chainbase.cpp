@@ -230,6 +230,7 @@ namespace eosio { namespace chain {
 
       std::unique_ptr<kv_iterator> kv_it_create(uint64_t contract, const char* prefix, uint32_t size) override {
          EOS_ASSERT(num_iterators < limits.max_iterators, kv_bad_iter, "Too many iterators");
+         EOS_ASSERT(size <= limits.max_key_size, kv_bad_iter, "Prefix too large");
          return std::make_unique<kv_iterator_chainbase>(db, tracker, num_iterators, database_id, name{ contract },
                                                         std::vector<char>{ prefix, prefix + size });
       }
