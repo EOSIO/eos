@@ -32,7 +32,13 @@
 #include <fc/scoped_exit.hpp>
 #include <fc/variant_object.hpp>
 
+#include <boost/typeof/typeof.hpp>
+#include <boost/function_types/function_type.hpp>
+#include <boost/function_types/parameter_types.hpp>
+#include <boost/function_types/function_arity.hpp>
+
 #include <new>
+#include <string_view>
 
 namespace eosio { namespace chain {
 
@@ -330,6 +336,7 @@ struct controller_impl {
       set_activation_handler<builtin_protocol_feature_t::webauthn_key>();
       set_activation_handler<builtin_protocol_feature_t::wtmsig_block_signatures>();
       set_activation_handler<builtin_protocol_feature_t::action_return_value>();
+      set_activation_handler<builtin_protocol_feature_t::require_key>();
 
       self.irreversible_block.connect([this](const block_state_ptr& bsp) {
          wasmif.current_lib(bsp->block_num);
@@ -3306,62 +3313,49 @@ fc::optional<chain_id_type> controller::extract_chain_id_from_db( const path& st
 }
 
 /// Protocol feature activation handlers:
-
-template<>
-void controller_impl::on_activation<builtin_protocol_feature_t::preactivate_feature>() {
-   db.modify( db.get<protocol_state_object>(), [&]( auto& ps ) {
-      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "preactivate_feature" );
-      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "is_feature_activated" );
-   } );
-}
-
-template<>
-void controller_impl::on_activation<builtin_protocol_feature_t::get_sender>() {
-   db.modify( db.get<protocol_state_object>(), [&]( auto& ps ) {
-      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "get_sender" );
-   } );
-}
-
-template<>
-void controller_impl::on_activation<builtin_protocol_feature_t::replace_deferred>() {
-   const auto& indx = db.get_index<account_ram_correction_index, by_id>();
-   for( auto itr = indx.begin(); itr != indx.end(); itr = indx.begin() ) {
-      int64_t current_ram_usage = resource_limits.get_account_ram_usage( itr->name );
-      int64_t ram_delta = -static_cast<int64_t>(itr->ram_correction);
-      if( itr->ram_correction > static_cast<uint64_t>(current_ram_usage) ) {
-         ram_delta = -current_ram_usage;
-         elog( "account ${name} was to be reduced by ${adjust} bytes of RAM despite only using ${current} bytes of RAM",
-               ("name", itr->name)("adjust", itr->ram_correction)("current", current_ram_usage) );
-      }
-
-      resource_limits.add_pending_ram_usage( itr->name, ram_delta );
-      db.remove( *itr );
+#define EOS_PROTO_FEATURE_ON_ACTIVATION(PF, FUNC)                          \
+   template<>                                                              \
+   void controller_impl::on_activation<builtin_protocol_feature_t::PF>() { \
+      db.modify( db.get<protocol_state_object>(), FUNC );                  \
    }
-}
 
-template<>
-void controller_impl::on_activation<builtin_protocol_feature_t::webauthn_key>() {
-   db.modify( db.get<protocol_state_object>(), [&]( auto& ps ) {
-      ps.num_supported_key_types = 3;
-   } );
-}
+#define EOS_PROTO_FEATURE_ON_ACTIVATION_EX(PF, FUNC)                       \
+   template<>                                                              \
+   void controller_impl::on_activation<builtin_protocol_feature_t::PF>() { \
+      FUNC();                                                              \
+   }
 
-template<>
-void controller_impl::on_activation<builtin_protocol_feature_t::wtmsig_block_signatures>() {
-   db.modify( db.get<protocol_state_object>(), [&]( auto& ps ) {
-      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "set_proposed_producers_ex" );
-   } );
-}
+template <typename... Args>
+inline auto whitelister(Args&&... args) { return [&]( auto& ps ) { add_intrinsics_to_whitelist(ps.whitelisted_intrinsics, std::forward<Args>(args)...); }; }
 
-template<>
-void controller_impl::on_activation<builtin_protocol_feature_t::action_return_value>() {
-   db.modify( db.get<protocol_state_object>(), [&]( auto& ps ) {
-      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "set_action_return_value" );
-   } );
-}
+EOS_PROTO_FEATURE_ON_ACTIVATION(preactivate_feature, whitelister("preactivate_feature", "is_feature_activated"))
+EOS_PROTO_FEATURE_ON_ACTIVATION(get_sender,          whitelister("get_sender"))
+EOS_PROTO_FEATURE_ON_ACTIVATION_EX(replace_deferred,
+   ([&]() {
+      const auto& indx = db.get_index<account_ram_correction_index, by_id>();
+      for( auto itr = indx.begin(); itr != indx.end(); itr = indx.begin() ) {
+         int64_t current_ram_usage = resource_limits.get_account_ram_usage( itr->name );
+         int64_t ram_delta = -static_cast<int64_t>(itr->ram_correction);
+         if( itr->ram_correction > static_cast<uint64_t>(current_ram_usage) ) {
+            ram_delta = -current_ram_usage;
+            elog( "account ${name} was to be reduced by ${adjust} bytes of RAM despite only using ${current} bytes of RAM",
+                  ("name", itr->name)("adjust", itr->ram_correction)("current", current_ram_usage) );
+         }
 
+         resource_limits.add_pending_ram_usage( itr->name, ram_delta );
+         db.remove( *itr );
+      }
+   })
+)
 
+EOS_PROTO_FEATURE_ON_ACTIVATION(webauthn_key,            [](auto& ps) { ps.num_supported_key_types = 3; })
+EOS_PROTO_FEATURE_ON_ACTIVATION(wtmsig_block_signatures, whitelister("set_proposed_producers_ex"))
+EOS_PROTO_FEATURE_ON_ACTIVATION(action_return_value,     whitelister("set_action_return_value"))
+EOS_PROTO_FEATURE_ON_ACTIVATION(require_key,             whitelister("require_key"))
 
 /// End of protocol feature activation handlers
 
 } } /// eosio::chain
+
+#undef EOS_PROTO_FEATURE_ON_ACTIVATION
+#undef EOS_PROTO_FEATURE_ON_ACTIVATION_EX

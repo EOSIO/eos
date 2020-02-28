@@ -197,6 +197,17 @@ Enables new `set_action_return_value` intrinsic which sets a value that is inclu
 */
             {}
          } )
+         (  builtin_protocol_feature_t::require_key, builtin_protocol_feature_spec{
+            "REQUIRE_KEY",
+            fc::variant("9e3ce0560789afbbc8d5d9bb3004603bf3a44435bcff5ab9130c0cc641fcd109").as<digest_type>(),
+            // SHA256 hash of the raw message below within the comment delimiters (do not modify message below).
+/*
+Builtin protocol feature: REQUIRE_KEY
+
+Enables new `require_key` intrinsic and changes semantics of unnecessary signatures of a transaction (makes them available to require_key).
+*/
+            {}
+         } )
    ;
 
 
