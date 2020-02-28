@@ -11,24 +11,13 @@
 
 #include <eosio/trace_api_plugin/data_log.hpp>
 #include <eosio/trace_api_plugin/metadata_log.hpp>
+#include <eosio/trace_api_plugin/test_common.hpp>
 
 using namespace eosio;
 using namespace eosio::trace_api_plugin;
+using namespace eosio::trace_api_plugin::test_common;
 
 namespace {
-   fc::sha256 operator"" _h(const char* input, std::size_t) {
-      return fc::sha256(input);
-   }
-
-   chain::name operator"" _n(const char* input, std::size_t) {
-      return chain::name(input);
-   }
-
-   chain::asset operator"" _t(const char* input, std::size_t) {
-      return chain::asset::from_string(input);
-   }
-
-
    chain::transaction_trace_ptr make_transaction_trace( chain::transaction_id_type&& id, uint32_t block_number, uint32_t slot, chain::transaction_receipt_header::status_enum status, std::vector<chain::action_trace> && actions ) {
       return std::make_shared<chain::transaction_trace>(chain::transaction_trace{
          std::move(id),
@@ -274,7 +263,9 @@ BOOST_AUTO_TEST_SUITE(block_extraction)
          }
       };
       BOOST_REQUIRE_EQUAL(max_lib, 0);
+      BOOST_REQUIRE(block_entry_for_height.count(1) > 0);
       BOOST_REQUIRE_EQUAL(block_entry_for_height.at(1), expected_entry);
+      BOOST_REQUIRE(data_log.size() >= expected_entry.offset);
       BOOST_REQUIRE(data_log.at(expected_entry.offset).contains<block_trace_v0>());
       BOOST_REQUIRE_EQUAL(data_log.at(expected_entry.offset).get<block_trace_v0>(), expected_trace);
    }
