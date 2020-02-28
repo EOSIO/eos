@@ -43,7 +43,7 @@ apply_context::apply_context(controller& con, transaction_context& trx_ctx, uint
 ,idx_double(*this)
 ,idx_long_double(*this)
 {
-   kv_iterators.emplace_back();
+   kv_iterators.emplace_back(); // the iterator handle with value 0 is reserved
    action_trace& trace = trx_ctx.get_action_trace(action_ordinal);
    act = &trace.act;
    receiver = trace.receiver;

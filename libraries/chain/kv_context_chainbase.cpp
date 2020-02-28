@@ -118,16 +118,15 @@ namespace eosio { namespace chain {
       }
 
       kv_it_stat kv_it_key(uint32_t offset, char* dest, uint32_t size, uint32_t& actual_size) override {
-         if (current) {
-            EOS_ASSERT(!tracker.is_removed(*current), kv_bad_iter, "Iterator to erased element");
-            if (offset < current->kv_key.size())
-               memcpy(dest, current->kv_key.data() + offset, std::min((size_t)size, current->kv_key.size() - offset));
-            actual_size = current->kv_key.size();
-            return kv_it_status();
-         } else {
+         if (!current) {
             actual_size = 0;
             return kv_it_stat::iterator_end;
          }
+         EOS_ASSERT(!tracker.is_removed(*current), kv_bad_iter, "Iterator to erased element");
+         if (offset < current->kv_key.size())
+            memcpy(dest, current->kv_key.data() + offset, std::min((size_t)size, current->kv_key.size() - offset));
+         actual_size = current->kv_key.size();
+         return kv_it_stat::iterator_ok;
       }
 
       kv_it_stat kv_it_value(uint32_t offset, char* dest, uint32_t size, uint32_t& actual_size) override {
