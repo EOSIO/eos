@@ -726,4 +726,77 @@ BOOST_FIXTURE_TEST_CASE(max_iterators, kv_tester) try { //
 }
 FC_LOG_AND_RETHROW()
 
+// Initializes a kv_database configuration to usable values.
+// Must be set on a privileged account
+static const char kv_setup_wast[] =  R"=====(
+(module
+ (func $kv_set_parameters_packed (import "env" "set_kv_parameters_packed") (param i64 i32 i32))
+ (func $set_resource_limit (import "env" "set_resource_limit") (param i64 i64 i64))
+ (memory 1)
+ (func (export "apply") (param i64 i64 i64)
+   (call $kv_set_parameters_packed (get_local 2) (i32.const 0) (i32.const 16))
+   (call $set_resource_limit (i64.const 11327368866104868864) (i64.const 5454140623722381312) (i64.const -1))
+   (call $set_resource_limit (i64.const 11327368596746665984) (i64.const 5454140623722381312) (i64.const -1))
+ )
+ (data (i32.const 4) "\00\04\00\00")
+ (data (i32.const 8) "\00\00\10\00")
+ (data (i32.const 12) "\80\00\00\00")
+)
+)=====";
+
+// Call iterator intrinsics that create native state
+// and then notify another contract.  The kv context should
+// not affect recipient.
+// State tested:
+// - iterator id (including re-use of destroyed iterators)
+// - temporary buffer for kv_get
+// - access checking for write
+static const char kv_notify_wast[] = R"=====(
+(module
+ (func $kv_it_create (import "env" "kv_it_create") (param i64 i64 i32 i32) (result i32))
+ (func $kv_it_destroy (import "env" "kv_it_destroy") (param i32))
+ (func $kv_get (import "env" "kv_get") (param i64 i64 i32 i32 i32) (result i32))
+ (func $kv_set (import "env" "kv_set") (param i64 i64 i32 i32 i32 i32) (result i64))
+ (func $require_recipient (import "env" "require_recipient") (param i64))
+ (memory 1)
+ (func (export "apply") (param i64 i64 i64)
+  (drop (call $kv_it_create (get_local 2) (get_local 0) (i32.const 0) (i32.const 0)))
+  (drop (call $kv_it_create (get_local 2) (get_local 0) (i32.const 0) (i32.const 0)))
+  (call $kv_it_destroy (i32.const 2))
+  (drop (call $kv_set (get_local 2) (get_local 0) (i32.const 0) (i32.const 0) (i32.const 0) (i32.const 1)))
+  (drop (call $kv_get (get_local 2) (get_local 0) (i32.const 0) (i32.const 0) (i32.const 8)))
+  (call $require_recipient (i64.const 11327368596746665984))
+ )
+)
+)=====";
+
+static const char kv_notified_wast[] = R"=====(
+(module
+ (func $kv_it_create (import "env" "kv_it_create")(param i64 i64 i32 i32) (result i32))
+ (func $kv_get_data (import "env" "kv_get_data") (param i64 i32 i32 i32) (result i32))
+ (func $kv_set (import "env" "kv_set") (param i64 i64 i32 i32 i32 i32) (result i64))
+ (func $eosio_assert (import "env" "eosio_assert") (param i32 i32))
+ (memory 1)
+ (func (export "apply") (param i64 i64 i64)
+  (call $eosio_assert (i32.eq (call $kv_it_create (get_local 2) (get_local 0) (i32.const 0) (i32.const 0)) (i32.const 1)) (i32.const 80))
+  (call $eosio_assert (i32.eq (call $kv_get_data (get_local 2) (i32.const 0) (i32.const 0) (i32.const 0)) (i32.const 0)) (i32.const 160))
+  (drop (call $kv_set (get_local 2) (get_local 0) (i32.const 0) (i32.const 0) (i32.const 0) (i32.const 1)))
+ )
+ (data (i32.const 80) "Wrong iterator value")
+ (data (i32.const 160) "Temporary data buffer not empty")
+)
+)=====";
+
+BOOST_DATA_TEST_CASE_F(tester, notify, bdata::make(databases), db) {
+   create_accounts({ N(setup), N(notified), N(notify) });
+   set_code( N(setup), kv_setup_wast );
+   push_action( N(eosio), N(setpriv), N(eosio), mutable_variant_object()("account", N(setup))("is_priv", 1));
+   BOOST_TEST_REQUIRE(push_action( action({}, N(setup), db, {}), N(setup).to_uint64_t() ) == "");
+
+   set_code( N(notify), kv_notify_wast );
+   set_code( N(notified), kv_notified_wast );
+
+   BOOST_TEST_REQUIRE(push_action( action({}, N(notify), db, {}), N(notify).to_uint64_t() ) == "");
+}
+
 BOOST_AUTO_TEST_SUITE_END()

@@ -48,10 +48,6 @@ apply_context::apply_context(controller& con, transaction_context& trx_ctx, uint
    act = &trace.act;
    receiver = trace.receiver;
    context_free = trace.context_free;
-   if (!context_free) {
-      kv_ram = create_kv_chainbase_context(db, kvram_id, receiver, create_kv_resource_manager_ram(*this), control.get_global_properties().kv_configuration.kvram);
-      kv_disk = create_kv_chainbase_context(db, kvdisk_id, receiver, create_kv_resource_manager_disk(*this), control.get_global_properties().kv_configuration.kvdisk);
-   }
 }
 
 void apply_context::exec_one()
@@ -63,6 +59,12 @@ void apply_context::exec_one()
    try {
       try {
          action_return_value.clear();
+         kv_iterators.resize(1);
+         kv_destroyed_iterators.clear();
+         if (!context_free) {
+            kv_ram = create_kv_chainbase_context(db, kvram_id, receiver, create_kv_resource_manager_ram(*this), control.get_global_properties().kv_configuration.kvram);
+            kv_disk = create_kv_chainbase_context(db, kvdisk_id, receiver, create_kv_resource_manager_disk(*this), control.get_global_properties().kv_configuration.kvdisk);
+         }
          receiver_account = &db.get<account_metadata_object,by_name>( receiver );
          privileged = receiver_account->is_privileged();
          auto native = control.find_apply_handler( receiver, act->account, act->name );
