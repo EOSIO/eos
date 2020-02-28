@@ -277,6 +277,8 @@ namespace eosio { namespace chain {
                                     3040017, "Transaction includes disallowed extensions (invalid block)" )
       FC_DECLARE_DERIVED_EXCEPTION( tx_resource_exhaustion, transaction_exception,
                                     3040018, "Transaction exceeded transient resource limit" )
+      FC_DECLARE_DERIVED_EXCEPTION( deferred_tx_detected, transaction_exception,
+                                    3040018, "Deferred transaction detected" )
 
 
    FC_DECLARE_DERIVED_EXCEPTION( action_validate_exception, chain_exception,
