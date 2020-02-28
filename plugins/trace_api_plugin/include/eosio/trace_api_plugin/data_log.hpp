@@ -6,8 +6,8 @@
 
 namespace eosio { namespace trace_api_plugin {
 
-   using data_log_entry = fc::variant<
-      block_trace
+   using data_log_entry = fc::static_variant<
+      block_trace_v0
    >;
 
 }}

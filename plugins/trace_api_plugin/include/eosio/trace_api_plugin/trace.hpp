@@ -1,4 +1,4 @@
-#pramga once
+#pragma once
 
 #include <eosio/chain/types.hpp>
 #include <eosio/chain/block.hpp>
@@ -30,10 +30,15 @@ namespace eosio { namespace trace_api_plugin {
    struct block_trace_v0 {
       chain::block_id_type               id = {};
       uint64_t                           number = {};
-      chain::block_ud_type               previous_id = {};
-      chain::block_timestamp_type        timestamp = {};
+      chain::block_id_type               previous_id = {};
+      chain::block_timestamp_type        timestamp = chain::block_timestamp_type(0);
       chain::name                        producer = {};
       std::vector<transaction_trace_v0>  transactions = {};
    };
 
 } }
+
+FC_REFLECT(eosio::trace_api_plugin::authorization_trace_v0, (account)(permission))
+FC_REFLECT(eosio::trace_api_plugin::action_trace_v0, (global_sequence)(receiver)(account)(action)(authorization)(data))
+FC_REFLECT(eosio::trace_api_plugin::transaction_trace_v0, (id)(status)(actions))
+FC_REFLECT(eosio::trace_api_plugin::block_trace_v0, (id)(number)(previous_id)(timestamp)(producer)(transactions))
