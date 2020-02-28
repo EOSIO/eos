@@ -239,8 +239,6 @@ struct controller_impl {
    const chain_id_type            chain_id; // read by thread_pool threads, value will not be changed
    optional<fc::time_point>       replay_head_time;
    db_read_mode                   read_mode = db_read_mode::SPECULATIVE;
-   bool                           p2p_accept_transactions = true; ///< if false, trx over p2p network are not processed
-   bool                           api_accept_transactions = true; ///< if false, trx from api are not processed
    bool                           in_trx_requiring_checks = false; ///< if true, checks that are normally skipped on replay (e.g. auth checks) cannot be skipped
    optional<fc::microseconds>     subjective_cpu_leeway;
    bool                           trusted_producer_light_validation = false;
