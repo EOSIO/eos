@@ -239,6 +239,8 @@ struct controller_impl {
    const chain_id_type            chain_id; // read by thread_pool threads, value will not be changed
    optional<fc::time_point>       replay_head_time;
    db_read_mode                   read_mode = db_read_mode::SPECULATIVE;
+   bool                           p2p_accept_transactions = true; ///< if false, trx over p2p network are not processed
+   bool                           api_accept_transactions = true; ///< if false, trx from api are not processed
    bool                           in_trx_requiring_checks = false; ///< if true, checks that are normally skipped on replay (e.g. auth checks) cannot be skipped
    optional<fc::microseconds>     subjective_cpu_leeway;
    bool                           trusted_producer_light_validation = false;
@@ -2678,14 +2680,10 @@ void controller::push_block( std::future<block_state_ptr>& block_state_future,
    my->push_block( block_state_future, forked_branch_cb, trx_lookup );
 }
 
-bool controller::in_immutable_mode()const{
-   return (db_mode_is_immutable(get_read_mode()));
-}
-
 transaction_trace_ptr controller::push_transaction( const transaction_metadata_ptr& trx, fc::time_point deadline,
                                                     uint32_t billed_cpu_time_us, bool explicit_billed_cpu_time ) {
    validate_db_available_size();
-   EOS_ASSERT( !in_immutable_mode(), transaction_type_exception, "push transaction not allowed in read-only mode" );
+   EOS_ASSERT( get_read_mode() != db_read_mode::IRREVERSIBLE, transaction_type_exception, "push transaction not allowed in irreversible mode" );
    EOS_ASSERT( trx && !trx->implicit && !trx->scheduled, transaction_type_exception, "Implicit/Scheduled transaction not allowed" );
    return my->push_transaction(trx, deadline, billed_cpu_time_us, explicit_billed_cpu_time );
 }
@@ -2693,7 +2691,7 @@ transaction_trace_ptr controller::push_transaction( const transaction_metadata_p
 transaction_trace_ptr controller::push_scheduled_transaction( const transaction_id_type& trxid, fc::time_point deadline,
                                                               uint32_t billed_cpu_time_us, bool explicit_billed_cpu_time )
 {
-   EOS_ASSERT( !in_immutable_mode(), transaction_type_exception, "push scheduled transaction not allowed in read-only mode" );
+   EOS_ASSERT( get_read_mode() != db_read_mode::IRREVERSIBLE, transaction_type_exception, "push scheduled transaction not allowed in irreversible mode" );
    validate_db_available_size();
    return my->push_scheduled_transaction( trxid, deadline, billed_cpu_time_us, explicit_billed_cpu_time );
 }

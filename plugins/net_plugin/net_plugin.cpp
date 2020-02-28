@@ -246,7 +246,6 @@ namespace eosio {
       fc::sha256                            node_id;
       string                                user_agent_name;
 
-      eosio::db_read_mode                   db_read_mode = eosio::db_read_mode::SPECULATIVE;
       chain_plugin*                         chain_plug = nullptr;
       producer_plugin*                      producer_plug = nullptr;
       bool                                  use_socket_read_watermark = false;
@@ -2434,6 +2433,12 @@ namespace eosio {
             handle_message( blk_id, std::move( ptr ) );
 
          } else if( which == packed_transaction_which ) {
+            if( !my_impl->p2p_accept_transactions ) {
+               fc_dlog( logger, "p2p-accept-transaction=false - dropping txn" );
+               pending_message_buffer.advance_read_ptr( message_length );
+               return true;
+            }
+
             auto ds = pending_message_buffer.create_datastream();
             fc::raw::unpack( ds, which ); // throw away
             shared_ptr<packed_transaction> ptr = std::make_shared<packed_transaction>();
@@ -2833,11 +2838,6 @@ namespace eosio {
    }
 
    void connection::handle_message( packed_transaction_ptr trx ) {
-      if( db_mode_is_immutable(my_impl->db_read_mode) || my_impl->db_read_mode == db_read_mode::API ) {
-         fc_dlog( logger, "got a txn in read only mode - dropping" );
-         return;
-      }
-
       const auto& tid = trx->id();
       peer_dlog( this, "received packed_transaction ${id}", ("id", tid) );
 
@@ -3255,7 +3255,6 @@ namespace eosio {
            "    p2p.trx.eos.io:9876:trx\n"
            "    p2p.blk.eos.io:9876:blk\n")
          ( "p2p-max-nodes-per-host", bpo::value<int>()->default_value(def_max_nodes_per_host), "Maximum number of client nodes from any single IP address")
-         ( "p2p-accept-transactions", bpo::value<bool>()->default_value(true), "Allow transactions received over p2p network to be evaluated and relayed if valid.")
          ( "agent-name", bpo::value<string>()->default_value("\"EOS Test Agent\""), "The name supplied to identify this node amongst the peers.")
          ( "allowed-connection", bpo::value<vector<string>>()->multitoken()->default_value({"any"}, "any"), "Can be 'any' or 'producers' or 'specified' or 'none'. If 'specified', peer-key must be specified at least once. If only 'producers', peer-key is not required. 'producers' and 'specified' may be combined.")
          ( "peer-key", bpo::value<vector<string>>()->composing()->multitoken(), "Optional public key of peer allowed to connect.  May be used multiple times.")
@@ -3299,7 +3298,6 @@ namespace eosio {
          my->resp_expected_period = def_resp_expected_wait;
          my->max_client_count = options.at( "max-clients" ).as<int>();
          my->max_nodes_per_host = options.at( "p2p-max-nodes-per-host" ).as<int>();
-         my->p2p_accept_transactions = options.at( "p2p-accept-transactions" ).as<bool>();
 
          my->use_socket_read_watermark = options.at( "use-socket-read-watermark" ).as<bool>();
 
@@ -3366,6 +3364,7 @@ namespace eosio {
          EOS_ASSERT( my->chain_plug, chain::missing_chain_plugin_exception, ""  );
          my->chain_id = my->chain_plug->get_chain_id();
          fc::rand_pseudo_bytes( my->node_id.data(), my->node_id.data_size());
+         my->p2p_accept_transactions = my->chain_plug->p2p_accept_transactions();
 
       } FC_LOG_AND_RETHROW()
    }
@@ -3382,17 +3381,12 @@ namespace eosio {
 
       my->dispatcher.reset( new dispatch_manager( my_impl->thread_pool->get_executor() ) );
 
-      chain::controller&cc = my->chain_plug->chain();
-      my->db_read_mode = cc.get_read_mode();
-      if( my->db_read_mode == db_read_mode::READ_ONLY ) {
-         my->p2p_accept_transactions = false;
-      }
       if( !my->p2p_accept_transactions && my->p2p_address.size() ) {
-         fc_wlog( logger, "\n"
-               "**********************************\n"
-               "*      p2p-accept-transactions         *\n"
-               "* - Transactions not forwarded - *\n"
-               "**********************************\n" );
+         fc_ilog( logger, "\n"
+               "***********************************\n"
+               "* p2p-accept-transactions = false *\n"
+               "*    Transactions not forwarded   *\n"
+               "***********************************\n" );
       }
 
       tcp::endpoint listen_endpoint;
@@ -3439,6 +3433,7 @@ namespace eosio {
          my->start_listen_loop();
       }
       {
+         chain::controller& cc = my->chain_plug->chain();
          cc.accepted_block.connect( [my = my]( const block_state_ptr& s ) {
             my->on_accepted_block( s );
          } );
