@@ -285,6 +285,26 @@ void resource_limits_manager::get_account_limits( const account_name& account, i
    }
 }
 
+std::tuple<optional<account_resource_usage>, optional<account_resource_usage>>
+resource_limits_manager::get_account_current_usages( const account_name& account) const {
+   const auto* usage = _db.find<resource_usage_object, by_owner>(account);
+   if (usage)
+   {
+      const block_timestamp_type net_last_timestamp(usage->net_usage.last_ordinal);
+      const block_timestamp_type cpu_last_timestamp(usage->cpu_usage.last_ordinal);
+
+      auto get_current_usage = [](const uint32_t time_slot, const uint32_t usage_avg_window, const usage_accumulator& history_usg)
+      {
+         usage_accumulator current_usg = history_usg;
+         current_usg.add(0, time_slot, usage_avg_window);
+         return current_usg.average();
+      };
+      const auto& config = _db.get<resource_limits_config_object>();
+      return std::make_tuple(account_resource_usage{net_last_timestamp, get_current_usage(net_last_timestamp.slot, config.account_net_usage_average_window, usage->net_usage)},
+                             account_resource_usage{cpu_last_timestamp, get_current_usage(cpu_last_timestamp.slot, config.account_cpu_usage_average_window, usage->cpu_usage)});
+   }
+   return {};
+}
 
 void resource_limits_manager::process_account_limit_updates() {
    auto& multi_index = _db.get_mutable_index<resource_limits_index>();
