@@ -15,9 +15,12 @@ namespace eosio { namespace trace_api_plugin {
       uint64_t               lib;
    };
 
-   using metadata_log_entry = fc::variant<
+   using metadata_log_entry = fc::static_variant<
       block_entry_v0,
       lib_entry_v0
    >;
 
 }}
+
+FC_REFLECT(eosio::trace_api_plugin::block_entry_v0, (id)(number)(offset));
+FC_REFLECT(eosio::trace_api_plugin::lib_entry_v0, (lib));
