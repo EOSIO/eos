@@ -1,0 +1,8 @@
+/**
+ * \warning This file is machine generated. DO NOT EDIT.  See config.hpp.in for changes.
+ */
+#pragma once
+
+namespace eosio { namespace nodeos_sectl { namespace config {
+  const std::string node_executable_name = "${NODE_EXECUTABLE_NAME}";
+}}}
