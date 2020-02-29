@@ -1,16 +1,11 @@
 #define BOOST_TEST_MODULE trace_data_extraction
 #include <boost/test/included/unit_test.hpp>
 
-#include <fc/io/json.hpp>
-
 #include <eosio/chain/trace.hpp>
 #include <eosio/chain/transaction.hpp>
 #include <eosio/chain/block.hpp>
 #include <eosio/chain/block_state.hpp>
-#include <eosio/chain/asset.hpp>
 
-#include <eosio/trace_api_plugin/data_log.hpp>
-#include <eosio/trace_api_plugin/metadata_log.hpp>
 #include <eosio/trace_api_plugin/test_common.hpp>
 
 using namespace eosio;
@@ -65,60 +60,12 @@ namespace {
       }
       return result;
    }
-}
-namespace eosio::trace_api_plugin {
-   // TODO: promote these to the main files?
-   // I prefer not to have these operators but they are convenient for BOOST TEST integration
-   //
 
-   bool operator==(const authorization_trace_v0& lhs, const authorization_trace_v0& rhs) {
-      return
-         lhs.account == rhs.account &&
-         lhs.permission == rhs.permission;
-   }
-
-   bool operator==(const action_trace_v0& lhs, const action_trace_v0& rhs) {
-      return
-         lhs.global_sequence == rhs.global_sequence &&
-         lhs.receiver == rhs.receiver &&
-         lhs.account == rhs.account &&
-         lhs.action == rhs.action &&
-         lhs.authorization == rhs.authorization &&
-         lhs.data == rhs.data;
-   }
-
-   bool operator==(const transaction_trace_v0& lhs,  const transaction_trace_v0& rhs) {
-      return
-         lhs.id == rhs.id &&
-         lhs.status == rhs.status &&
-         lhs.actions == rhs.actions;
-   }
-
-   bool operator==(const block_trace_v0 &lhs, const block_trace_v0 &rhs) {
-      return
-         lhs.id == rhs.id &&
-         lhs.number == rhs.number &&
-         lhs.previous_id == rhs.previous_id &&
-         lhs.timestamp == rhs.timestamp &&
-         lhs.producer == rhs.producer &&
-         lhs.transactions == rhs.transactions;
-   }
-
-   std::ostream& operator<<(std::ostream &os, const block_trace_v0 &bt) {
-      os << fc::json::to_string( bt, fc::time_point::maximum() );
-      return os;
-   }
-
-   bool operator==(const block_entry_v0& lhs, const block_entry_v0& rhs) {
-      return
-         lhs.id == rhs.id &&
-         lhs.number == rhs.number &&
-         lhs.offset == rhs.offset;
-   }
-
-   std::ostream& operator<<(std::ostream &os, const block_entry_v0 &be) {
-      os << fc::json::to_string(be, fc::time_point::maximum());
-      return os;
+   chain::block_state_ptr make_block_state( chain::block_id_type id, chain::block_id_type previous, uint32_t height, uint32_t slot, chain::name producer, std::vector<std::tuple<chain::transaction_id_type, chain::transaction_receipt_header::status_enum>> transactions ) {
+      // TODO: it was going to be very complicated to produce a proper block_state_ptr, this can probably be changed
+      // to some sort of intermediate form that a shim interface can extract from a block_state_ptr to make testing
+      // and refactoring easier.
+      return {};
    }
 }
 
@@ -137,8 +84,8 @@ struct extraction_test_fixture {
        * @param entry : the entry to append
        * @return the offset in the log where that entry is written
        */
-      uint64_t append_data_log( data_log_entry&& entry ) {
-         fixture.data_log.emplace_back(std::move(entry));
+      uint64_t append_data_log( const data_log_entry& entry ) {
+         fixture.data_log.emplace_back(entry);
          return fixture.data_log.size() - 1;
       }
 
@@ -148,7 +95,7 @@ struct extraction_test_fixture {
        * @param entry
        * @return
        */
-      uint64_t append_metadata_log( metadata_log_entry&& entry ) {
+      uint64_t append_metadata_log( const metadata_log_entry& entry ) {
          if (entry.contains<block_entry_v0>()) {
             const auto& b = entry.get<block_entry_v0>();
             fixture.block_entry_for_height[b.number] = b;
@@ -174,12 +121,12 @@ struct extraction_test_fixture {
    }
 
    void signal_applied_transaction( const chain::transaction_trace_ptr& trace, const chain::signed_transaction& strx ) {
-      // route to extraction system
+      // TODO: route to extraction system
       // extraction_impl.on_applied_transaction(trace, strx);
    }
 
    void signal_accepted_block( const chain::block_state_ptr& bsp ) {
-      // route to extraction system
+      // TODO: route to extraction system
       // extraction_impl.on_accepted_block(bsp);
    }
 
@@ -219,6 +166,19 @@ BOOST_AUTO_TEST_SUITE(block_extraction)
       
       // accept the block with one transaction
       //
+
+      signal_accepted_block(
+         make_block_state(
+            "b000000000000000000000000000000000000000000000000000000000000001"_h,
+            "0000000000000000000000000000000000000000000000000000000000000000"_h,
+            1,
+            1,
+            "bp.one"_n,
+            {
+               { "0000000000000000000000000000000000000000000000000000000000000001"_h, chain::transaction_receipt_header::executed }
+            }
+         )
+      );
       
       // Verify that the blockheight and LIB are correct
       //
