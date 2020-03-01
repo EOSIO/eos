@@ -3312,6 +3312,7 @@ namespace eosio {
          my->resp_expected_period = def_resp_expected_wait;
          my->max_client_count = options.at( "max-clients" ).as<int>();
          my->max_nodes_per_host = options.at( "p2p-max-nodes-per-host" ).as<int>();
+         my->p2p_accept_transactions = options.at( "p2p-accept-transactions" ).as<bool>();
 
          my->use_socket_read_watermark = options.at( "use-socket-read-watermark" ).as<bool>();
 
@@ -3378,7 +3379,18 @@ namespace eosio {
          EOS_ASSERT( my->chain_plug, chain::missing_chain_plugin_exception, ""  );
          my->chain_id = my->chain_plug->get_chain_id();
          fc::rand_pseudo_bytes( my->node_id.data(), my->node_id.data_size());
-         my->p2p_accept_transactions = my->chain_plug->p2p_accept_transactions();
+         const controller& cc = my->chain_plug->chain();
+
+         if( cc.get_read_mode() == db_read_mode::IRREVERSIBLE || cc.get_read_mode() == db_read_mode::READ_ONLY ) {
+            if( my->p2p_accept_transactions ) {
+               my->p2p_accept_transactions = false;
+               string m = cc.get_read_mode() == db_read_mode::IRREVERSIBLE ? "irreversible" : "read-only";
+               wlog( "p2p-accept-transactions set to false due to read-mode: ${m}", ("m", m) );
+            }
+         }
+         if( my->p2p_accept_transactions ) {
+            my->chain_plug->enable_accept_transactions();
+         }
 
       } FC_LOG_AND_RETHROW()
    }

@@ -734,9 +734,10 @@ public:
 
    chain::chain_id_type get_chain_id() const;
    fc::microseconds get_abi_serializer_max_time() const;
-   bool p2p_accept_transactions() const;
    bool api_accept_transactions() const;
-   bool no_transactions() const { return !p2p_accept_transactions() && !api_accept_transactions(); }
+   // set true by other plugins if any plugin allows transactions
+   bool accept_transactions() const;
+   void enable_accept_transactions();
 
    static void handle_guard_exception(const chain::guard_exception& e);
    void do_hard_replay(const variables_map& options);
