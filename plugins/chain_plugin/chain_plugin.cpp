@@ -140,7 +140,7 @@ public:
    bfs::path                        blocks_dir;
    bool                             readonly = false;
    flat_map<uint32_t,block_id_type> loaded_checkpoints;
-   bool                             p2p_accept_transactions = true;
+   bool                             accept_transactions = false;
    bool                             api_accept_transactions = true;
 
 
@@ -243,7 +243,6 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "In \"read-only\" mode: (DEPRECATED: see p2p-accept-transactions & api-accept-transactions) database contains state changes by only transactions in the blockchain up to the head block; transactions received via the P2P network are not relayed and transactions cannot be pushed via the chain API.\n"
           "In \"irreversible\" mode: database contains state changes by only transactions in the blockchain up to the last irreversible block; transactions received via the P2P network are not relayed and transactions cannot be pushed via the chain API.\n"
           )
-         ( "p2p-accept-transactions", bpo::value<bool>()->default_value(true), "Allow transactions received over p2p network to be evaluated and relayed if valid.")
          ( "api-accept-transactions", bpo::value<bool>()->default_value(true), "Allow API transactions to be evaluated and relayed if valid.")
          ("validation-mode", boost::program_options::value<eosio::chain::validation_mode>()->default_value(eosio::chain::validation_mode::FULL),
           "Chain validation mode (\"full\" or \"light\").\n"
@@ -996,24 +995,20 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       if ( options.count("read-mode") ) {
          my->chain_config->read_mode = options.at("read-mode").as<db_read_mode>();
       }
-      my->p2p_accept_transactions = options.at( "p2p-accept-transactions" ).as<bool>();
       my->api_accept_transactions = options.at( "api-accept-transactions" ).as<bool>();
 
       if( my->chain_config->read_mode == db_read_mode::IRREVERSIBLE || my->chain_config->read_mode == db_read_mode::READ_ONLY ) {
          if( my->chain_config->read_mode == db_read_mode::READ_ONLY ) {
             wlog( "read-mode = read-only is deprecated use p2p-accept-transactions = false, api-accept-transactions = false instead." );
          }
-         if( my->p2p_accept_transactions ) {
-            my->p2p_accept_transactions = false;
-            std::stringstream ss; ss << my->chain_config->read_mode;
-            wlog( "p2p-accept-transactions set to false due to read-mode: ${m}", ("m", ss.str()) );
-         }
          if( my->api_accept_transactions ) {
             my->api_accept_transactions = false;
             std::stringstream ss; ss << my->chain_config->read_mode;
             wlog( "api-accept-transactions set to false due to read-mode: ${m}", ("m", ss.str()) );
          }
-         EOS_ASSERT( no_transactions(), plugin_config_exception, "IRREVERSIBLE should configure no_transactions" );
+      }
+      if( my->api_accept_transactions ) {
+         enable_accept_transactions();
       }
 
       if ( options.count("validation-mode") ) {
@@ -1101,6 +1096,8 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
 void chain_plugin::plugin_startup()
 { try {
+   EOS_ASSERT( my->chain_config->read_mode != db_read_mode::IRREVERSIBLE || !accept_transactions(), plugin_config_exception,
+               "read-mode = irreversible. transactions should not be enabled by enable_accept_transactions" );
    try {
       auto shutdown = [](){ return app().is_quiting(); };
       if (my->snapshot_path) {
@@ -1392,13 +1389,18 @@ fc::microseconds chain_plugin::get_abi_serializer_max_time() const {
    return my->abi_serializer_max_time_us;
 }
 
-bool chain_plugin::p2p_accept_transactions() const {
-   return my->p2p_accept_transactions;
-}
-
 bool chain_plugin::api_accept_transactions() const{
    return my->api_accept_transactions;
 }
+
+bool chain_plugin::accept_transactions() const {
+   return my->accept_transactions;
+}
+
+void chain_plugin::enable_accept_transactions() {
+   my->accept_transactions = true;
+}
+
 
 void chain_plugin::log_guard_exception(const chain::guard_exception&e ) {
    if (e.code() == chain::database_guard_exception::code_value) {
