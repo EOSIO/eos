@@ -2597,16 +2597,11 @@ int main( int argc, char** argv ) {
          try {
             block_num = fc::to_int64(blockArg);
          } catch (...) {
-            // error is handled in assertion below 
+            // error is handled in assertion below
          }
-
-         if (block_num.valid() && (*block_num > 0)) {
-            const auto arg = fc::variant_object("block_num", static_cast<uint32_t>(*block_num));
-            std::cout << fc::json::to_pretty_string(call(get_block_info_func, arg)) << std::endl;
-         } else {
-            std::cerr << "Invalid block num: " << blockArg << std::endl;
-            return;
-         }
+         EOSC_ASSERT( block_num.valid() && (*block_num > 0), "Invalid block enum: ${block_num}", ("block_num", blockArg) );
+         const auto arg = fc::variant_object("block_num", static_cast<uint32_t>(*block_num));
+         std::cout << fc::json::to_pretty_string(call(get_block_info_func, arg)) << std::endl;
       } else {
          const auto arg = fc::variant_object("block_num_or_id", blockArg);
          if (get_bhs) {
