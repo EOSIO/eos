@@ -15,19 +15,12 @@ namespace eosio { namespace chain {
       name                       database_id;
       name                       contract;
       std::vector<char>          prefix;
-      std::vector<char>          next_prefix;
       const kv_object*           current = nullptr;
 
       kv_iterator_chainbase(chainbase::database& db, tracker_type& tracker, uint32_t& itr_count, name database_id, name contract, std::vector<char> prefix)
          : db{ db }, tracker{ tracker }, itr_count(itr_count), database_id{ database_id }, contract{ contract }, prefix{ std::move(prefix) } {
 
          ++itr_count;
-         next_prefix = this->prefix;
-         while (!next_prefix.empty()) {
-            if (++next_prefix.back())
-               break;
-            next_prefix.pop_back();
-         }
       }
 
       ~kv_iterator_chainbase() override { --itr_count; }
@@ -102,10 +95,8 @@ namespace eosio { namespace chain {
          if (current) {
             EOS_ASSERT(!tracker.is_removed(*current), kv_bad_iter, "Iterator to erased element");
             it = idx.iterator_to(*current);
-         } else if (!next_prefix.empty())
-            it = idx.lower_bound(boost::make_tuple(database_id, contract, next_prefix));
-         else
-            it = idx.upper_bound(boost::make_tuple(database_id, contract));
+         } else
+            it = idx.upper_bound(boost::make_tuple(database_id, contract, blob_prefix{{prefix.data(), prefix.size()}}));
          if (it != idx.begin())
             return move_to(--it);
          current = nullptr;

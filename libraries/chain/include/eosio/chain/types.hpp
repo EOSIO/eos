@@ -132,6 +132,13 @@ namespace eosio { namespace chain {
          {}
    };
 
+   /* Compares equivalent to any blob that has this as a prefix. */
+   struct blob_prefix {
+      std::string_view _data;
+      const char* data() const { return _data.data(); }
+      std::size_t size() const { return _data.size(); }
+   };
+
    /**
     * Compare vector, string, string_view, shared_blob (unsigned)
     */
@@ -156,24 +163,37 @@ namespace eosio { namespace chain {
       return 0;
    }
 
+   template<typename A>
+   inline int compare_blob(const A& a, const blob_prefix& b) {
+      static_assert(
+         std::is_same_v<std::decay_t<decltype(*a.data())>, char> ||
+         std::is_same_v<std::decay_t<decltype(*a.data())>, unsigned char>);
+      int r = std::memcmp(a.data(), b.data(), std::min(a.size(), b.size()));
+      if (r) return r;
+      if (a.size() < b.size())
+         return -1;
+      return 0;
+   }
+
+   template<typename B>
+   inline int compare_blob(const blob_prefix& a, const B& b) {
+      static_assert(
+         std::is_same_v<std::decay_t<decltype(*b.data())>, char> ||
+         std::is_same_v<std::decay_t<decltype(*b.data())>, unsigned char>);
+      int r = std::memcmp(a.data(), b.data(), std::min(a.size(), b.size()));
+      if (r) return r;
+      if (a.size() > b.size())
+         return 1;
+      return 0;
+   }
+
    /**
     * Compare vector, string, string_view, shared_blob (unsigned)
     */
    struct unsigned_blob_less {
       template<typename A, typename B>
       bool operator()(const A& a, const B& b) const {
-         static_assert(
-            std::is_same_v<std::decay_t<decltype(*a.data())>, char> ||
-            std::is_same_v<std::decay_t<decltype(*a.data())>, unsigned char>);
-         static_assert(
-            std::is_same_v<std::decay_t<decltype(*b.data())>, char> ||
-            std::is_same_v<std::decay_t<decltype(*b.data())>, unsigned char>);
-
-         return std::lexicographical_compare(
-            reinterpret_cast<const unsigned char*>(a.data()),
-            reinterpret_cast<const unsigned char*>(a.data() + a.size()),
-            reinterpret_cast<const unsigned char*>(b.data()),
-            reinterpret_cast<const unsigned char*>(b.data() + b.size()));
+         return compare_blob(a, b) < 0;
       }
    };
 
