@@ -1005,6 +1005,7 @@ void producer_plugin::handle_sighup() {
 }
 
 void producer_plugin::pause() {
+   fc_ilog(_log, "Producer paused.");
    my->_pause_production = true;
 }
 
@@ -1016,7 +1017,10 @@ void producer_plugin::resume() {
    if (my->_pending_block_mode == pending_block_mode::speculating) {
       chain::controller& chain = my->chain_plug->chain();
       my->_unapplied_transactions.add_aborted( chain.abort_block() );
+      fc_ilog(_log, "Producer resumed. Scheduling production.");
       my->schedule_production_loop();
+   } else {
+      fc_ilog(_log, "Producer resumed.");
    }
 }
 
