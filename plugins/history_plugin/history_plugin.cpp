@@ -15,6 +15,7 @@ namespace eosio {
    using boost::signals2::scoped_connection;
 
    static appbase::abstract_plugin& _history_plugin = app().register_plugin<history_plugin>();
+   static int32_t prune_timeout = 100000;
 
 
    struct account_history_object : public chainbase::object<account_history_object_type, account_history_object>  {
@@ -142,6 +143,7 @@ namespace eosio {
          std::set<filter_entry> filter_out;
          chain_plugin*          chain_plug = nullptr;
          fc::optional<scoped_connection> applied_transaction_connection;
+         int64_t last_id_pruned = 0;
 
           bool filter(const action_trace& act) {
             bool pass_on = false;
@@ -306,6 +308,10 @@ namespace eosio {
             ("filter-out,F", bpo::value<vector<string>>()->composing(),
              "Do not track actions which match receiver:action:actor. Action and Actor both blank excludes all from Reciever. Actor blank excludes all from reciever:action. Receiver may not be blank.")
             ;
+      cfg.add_options()
+            ("history-plugin-prune-timeout-us", bpo::value<int32_t>()->composing(),
+             "Timeout for prune history request (microseconds).")
+            ;
    }
 
    void history_plugin::plugin_initialize(const variables_map& options) {
@@ -339,6 +345,10 @@ namespace eosio {
                my->filter_out.insert( fe );
             }
          }
+
+        if( options.count( "history-plugin-prune-timeout-us" )) {
+            prune_timeout = options.at( "history-plugin-prune-timeout-us" ).as<int32_t>();
+        }
 
          my->chain_plug = app().find_plugin<chain_plugin>();
          EOS_ASSERT( my->chain_plug, chain::missing_chain_plugin_exception, ""  );
@@ -438,6 +448,42 @@ namespace eosio {
         return result;
       }
 
+      read_write::prune_history_result read_write::prune_history( const read_write::prune_history_params& params ) const {
+         auto& chain = history->chain_plug->chain();
+         chainbase::database& db = const_cast<chainbase::database&>( chain.db() ); // Override read-only access to state DB (highly unrecommended practice!)
+
+         prune_history_result result{-1, false};
+
+         if(chain.irreversible_read_mode()) {
+            auto start_time = fc::time_point::now();
+
+            const auto& idx = db.get_index<action_history_index, by_id>();
+            auto itr = idx.lower_bound(history->last_id_pruned);
+
+            while( itr != idx.end() &&  itr->block_num <= params.height ) {
+               fc::datastream<const char*> ds( itr->packed_action_trace.data(), itr->packed_action_trace.size() );
+               action_trace t;
+               fc::raw::unpack( ds, t );
+
+               auto &a = db.get<account_history_object, by_account_action_seq>(boost::make_tuple(t.receipt->receiver, t.receipt->recv_sequence));
+               db.remove(a);
+
+               auto itr_copy = itr;
+               itr++;
+               db.remove(*itr_copy);
+
+               result.last_id = itr->id._id;
+
+               auto now = fc::time_point::now();
+               if( now - start_time > fc::microseconds(prune_timeout) ) {
+                  result.time_limit_exceeded_error = true;
+                  break;
+               }
+            }
+         }
+
+         return result;
+      }
 
       read_only::get_transaction_result read_only::get_transaction( const read_only::get_transaction_params& p )const {
          auto& chain = history->chain_plug->chain();

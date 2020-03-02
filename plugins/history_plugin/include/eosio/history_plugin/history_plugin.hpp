@@ -18,6 +18,25 @@ namespace eosio {
 
 namespace history_apis {
 
+class read_write {
+   history_const_ptr history;
+
+   public:
+      read_write(history_const_ptr&& history)
+        : history(history) {}
+
+      struct prune_history_params {
+        int32_t             height;     // height of the last block we want to prune data of
+      };
+
+      struct prune_history_result {
+        int64_t             last_id;   // last id pruned
+        bool                time_limit_exceeded_error;
+      };
+
+      prune_history_result prune_history( const prune_history_params& )const;
+};
+
 class read_only {
    history_const_ptr history;
 
@@ -126,6 +145,7 @@ class history_plugin : public plugin<history_plugin> {
       void plugin_shutdown();
 
       history_apis::read_only  get_read_only_api()const { return history_apis::read_only(history_const_ptr(my)); }
+      history_apis::read_write get_read_write_api() { return history_apis::read_write(history_const_ptr(my)); }
 
    private:
       history_ptr my;
@@ -138,7 +158,9 @@ FC_REFLECT( eosio::history_apis::read_only::get_actions_result, (actions)(last_i
 FC_REFLECT( eosio::history_apis::read_only::ordered_action_result, (global_action_seq)(account_action_seq)(block_num)(block_time)(action_trace) )
 
 FC_REFLECT( eosio::history_apis::read_only::get_transaction_params, (id)(block_num_hint) )
+FC_REFLECT( eosio::history_apis::read_write::prune_history_params, (height) )
 FC_REFLECT( eosio::history_apis::read_only::get_transaction_result, (id)(trx)(block_time)(block_num)(last_irreversible_block)(traces) )
+FC_REFLECT( eosio::history_apis::read_write::prune_history_result, (last_id)(time_limit_exceeded_error) )
 /*
 FC_REFLECT(eosio::history_apis::read_only::get_transaction_params, (transaction_id) )
 FC_REFLECT(eosio::history_apis::read_only::get_transaction_results, (transaction_id)(transaction) )
