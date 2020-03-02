@@ -2597,7 +2597,7 @@ int main( int argc, char** argv ) {
          try {
             block_num = fc::to_int64(blockArg);
          } catch (...) {
-            /* error is handled in assertion below */
+            // error is handled in assertion below 
          }
 
          if (block_num.valid() && (*block_num > 0)) {

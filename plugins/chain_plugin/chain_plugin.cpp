@@ -2052,7 +2052,9 @@ fc::variant read_only::get_block_info(const read_only::get_block_info_params& pa
    signed_block_ptr block;
    try {
          block = db.fetch_block_by_number( params.block_num );
-   } catch (...)   {  /* assert below will handle the invalid block num */  }
+   } catch (...)   {
+      // assert below will handle the invalid block num
+   }
 
    EOS_ASSERT( block, unknown_block_exception, "Could not find block: ${block}", ("block", params.block_num));
 
