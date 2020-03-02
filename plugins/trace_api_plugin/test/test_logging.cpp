@@ -87,8 +87,9 @@ struct logfile_test_fixture {
     */
     std::vector<metadata_log_entry> inspect_metadata_log( uint32_t block_height ) {
        std::vector<metadata_log_entry> result;
-       scan_metadata_log_from(block_height, 0, [&result](const metadata_log_entry& e){
+       scan_metadata_log_from(block_height, 0, [&result](const metadata_log_entry& e) -> bool {
           result.emplace_back(e);
+          return true;
        });
 
        return result;
