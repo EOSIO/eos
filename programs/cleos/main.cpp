@@ -2599,7 +2599,7 @@ int main( int argc, char** argv ) {
          } catch (...) {
             // error is handled in assertion below
          }
-         EOSC_ASSERT( block_num.valid() && (*block_num > 0), "Invalid block enum: ${block_num}", ("block_num", blockArg) );
+         EOSC_ASSERT( block_num.valid() && (*block_num > 0), "Invalid block num: ${block_num}", ("block_num", blockArg) );
          const auto arg = fc::variant_object("block_num", static_cast<uint32_t>(*block_num));
          std::cout << fc::json::to_pretty_string(call(get_block_info_func, arg)) << std::endl;
       } else {
