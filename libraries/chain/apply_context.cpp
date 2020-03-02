@@ -147,12 +147,9 @@ void apply_context::exec_one()
    auto input_hash = digest_type::hash(act->data);
    if( control.is_builtin_activated( builtin_protocol_feature_t::action_return_value ) ) {
       auto output_hash = digest_type::hash(action_return_value);
-      r.inout_digest = merkle({input_hash, output_hash});
+      r.act_digest = merkle({r.act_digest, output_hash});
       trace.return_value.emplace( std::move( action_return_value ) );
-   } else {
-      r.inout_digest = std::move(input_hash);
    }
-
    trx_context.executed_action_receipt_digests.emplace_back( r.digest() );
 
    finalize_trace( trace, start );
