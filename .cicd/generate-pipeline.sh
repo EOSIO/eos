@@ -328,14 +328,8 @@ EOF
                 cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - $TEST_NAME"
     command:
-      - "ssh-keyscan -H github.com >> ~/.ssh/known_hosts"
-      - "git clone \$BUILDKITE_REPO ."
-      - "$GIT_FETCH git checkout -f \$BUILDKITE_COMMIT"
       - "buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' && tar -xzf build.tar.gz"
       - "./.cicd/test.sh scripts/serial-test.sh $TEST_NAME"
-    plugins:
-      - EOSIO/skip-checkout#v0.1.1:
-          cd: ~
     env:
       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
       PLATFORM_TYPE: $PLATFORM_TYPE
@@ -401,14 +395,8 @@ EOF
                 cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - $TEST_NAME"
     command:
-      - "ssh-keyscan -H github.com >> ~/.ssh/known_hosts"
-      - "git clone \$BUILDKITE_REPO ."
-      - "$GIT_FETCH git checkout -f \$BUILDKITE_COMMIT"
       - "buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' ${BUILD_SOURCE} && tar -xzf build.tar.gz"
       - "./.cicd/test.sh scripts/long-running-test.sh $TEST_NAME"
-    plugins:
-      - EOSIO/skip-checkout#v0.1.1:
-          cd: ~
     env:
       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
       PLATFORM_TYPE: $PLATFORM_TYPE
@@ -575,14 +563,8 @@ cat <<EOF
     # packaging
   - label: ":centos: CentOS 7.7 - Package Builder"
     command:
-      - "ssh-keyscan -H github.com >> ~/.ssh/known_hosts"
-      - "git clone \$BUILDKITE_REPO ."
-      - "$GIT_FETCH git checkout -f \$BUILDKITE_COMMIT"
       - "buildkite-agent artifact download build.tar.gz . --step ':centos: CentOS 7.7 - Build' && tar -xzf build.tar.gz"
       - "./.cicd/package.sh"
-    plugins:
-      - EOSIO/skip-checkout#v0.1.1:
-          cd: ~
     env:
       IMAGE_TAG: "centos-7.7-$PLATFORM_TYPE"
       PLATFORM_TYPE: $PLATFORM_TYPE
@@ -595,14 +577,8 @@ cat <<EOF
 
   - label: ":ubuntu: Ubuntu 16.04 - Package Builder"
     command:
-      - "ssh-keyscan -H github.com >> ~/.ssh/known_hosts"
-      - "git clone \$BUILDKITE_REPO ."
-      - "$GIT_FETCH git checkout -f \$BUILDKITE_COMMIT"
       - "buildkite-agent artifact download build.tar.gz . --step ':ubuntu: Ubuntu 16.04 - Build' && tar -xzf build.tar.gz"
       - "./.cicd/package.sh"
-    plugins:
-      - EOSIO/skip-checkout#v0.1.1:
-          cd: ~
     env:
       IMAGE_TAG: "ubuntu-16.04-$PLATFORM_TYPE"
       PLATFORM_TYPE: $PLATFORM_TYPE
@@ -615,14 +591,8 @@ cat <<EOF
 
   - label: ":ubuntu: Ubuntu 18.04 - Package Builder"
     command:
-      - "ssh-keyscan -H github.com >> ~/.ssh/known_hosts"
-      - "git clone \$BUILDKITE_REPO ."
-      - "$GIT_FETCH git checkout -f \$BUILDKITE_COMMIT"
       - "buildkite-agent artifact download build.tar.gz . --step ':ubuntu: Ubuntu 18.04 - Build' && tar -xzf build.tar.gz"
       - "./.cicd/package.sh"
-    plugins:
-      - EOSIO/skip-checkout#v0.1.1:
-          cd: ~
     env:
       IMAGE_TAG: "ubuntu-18.04-$PLATFORM_TYPE"
       PLATFORM_TYPE: $PLATFORM_TYPE
@@ -700,14 +670,8 @@ cat <<EOF
 
   - label: ":beer: Brew Updater"
     command:
-      - "ssh-keyscan -H github.com >> ~/.ssh/known_hosts"
-      - "git clone \$BUILDKITE_REPO ."
-      - "$GIT_FETCH git checkout -f \$BUILDKITE_COMMIT"
       - "buildkite-agent artifact download eosio.rb . --step ':darwin: macOS 10.14 - Package Builder'"
       - "buildkite-agent artifact upload eosio.rb"
-    plugins:
-      - EOSIO/skip-checkout#v0.1.1:
-          cd: ~
     agents:
       queue: "automation-basic-builder-fleet"
     timeout: "${TIMEOUT:-5}"
