@@ -2590,8 +2590,8 @@ int main( int argc, char** argv ) {
    getBlock->add_option("block", blockArg, localized("The number or ID of the block to retrieve"))->required();
    getBlock->add_flag("--header-state", get_bhs, localized("Get block header state from fork database instead") );
    getBlock->add_flag("--info", get_binfo, localized("Get block info from the blockchain by block num only") );
-   if (!get_bhs || !get_binfo) {
-      getBlock->set_callback([&blockArg, &get_bhs, &get_binfo] {
+   getBlock->set_callback([&blockArg, &get_bhs, &get_binfo] {
+      if (!get_bhs || !get_binfo) {
          if (get_binfo) {
             fc::optional<int64_t> block_num;
             try {
@@ -2600,8 +2600,7 @@ int main( int argc, char** argv ) {
                /* error is handled in assertion below */
             }
 
-            if ( block_num.valid() && (*block_num > 0) )
-            {
+            if (block_num.valid() && (*block_num > 0)) {
                const auto arg = fc::variant_object("block_num", static_cast<uint32_t>(*block_num));
                std::cout << fc::json::to_pretty_string(call(get_block_info_func, arg)) << std::endl;
             } else {
@@ -2616,8 +2615,11 @@ int main( int argc, char** argv ) {
                std::cout << fc::json::to_pretty_string(call(get_block_func, arg)) << std::endl;
             }
          }
-      });
-   }
+      } else {
+         std::cerr << "Error, only one flag should be entered." << std::endl;
+         return;
+      }
+   });
 
    // get account
    string accountName;
