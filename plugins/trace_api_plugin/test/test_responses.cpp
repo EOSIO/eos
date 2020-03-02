@@ -57,6 +57,7 @@ namespace std {
 }
 
 struct response_test_fixture {
+
    /**
     * MOCK implementation of the logfile input API
     */
@@ -122,7 +123,7 @@ struct response_test_fixture {
     * TODO: initialize extraction implementation here with `mock_logfile_provider` as template param
     */
    response_test_fixture()
-   : response_impl(mock_logfile_provider(*this), fc::time_point::now)
+   : response_impl(mock_logfile_provider(*this), [this]()->fc::time_point { return mock_now(); })
    {
 
    }
@@ -134,6 +135,7 @@ struct response_test_fixture {
    // fixture data and methods
    std::vector<fc::static_variant<std::exception_ptr, metadata_log_entry>> metadata_log = {};
    std::map<uint64_t, fc::static_variant<std::exception_ptr, data_log_entry>> data_log = {};
+   std::function<fc::time_point()> mock_now = []() -> fc::time_point { return fc::time_point::now(); };
 
    response_impl_type<mock_logfile_provider> response_impl;
 
@@ -409,6 +411,53 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
       fc::variant null_response = get_block_trace( 1 );
 
       BOOST_TEST(null_response.is_null());
+   }
+
+   BOOST_FIXTURE_TEST_CASE(deadline_throws, response_test_fixture)
+   {
+      metadata_log = decltype(metadata_log){
+         metadata_log_entry { block_entry_v0 { "b000000000000000000000000000000000000000000000000000000000000001"_h, 1, 0 } }
+      };
+
+      data_log = decltype(data_log) {
+         {
+            0,
+            data_log_entry{ block_trace_v0 {
+               "b000000000000000000000000000000000000000000000000000000000000001"_h,
+               1,
+               "0000000000000000000000000000000000000000000000000000000000000000"_h,
+               chain::block_timestamp_type(0),
+               "bp.one"_n,
+               {
+                  {
+                     "0000000000000000000000000000000000000000000000000000000000000001"_h,
+                     chain::transaction_receipt_header::executed,
+                     {
+                        {
+                           0,
+                           "receiver"_n, "contract"_n, "action"_n,
+                           {{ "alice"_n, "active"_n }},
+                           { 0x00, 0x01, 0x02, 0x03 }
+                        }
+                     }
+                  }
+               }
+            }}
+         }
+      };
+
+      auto deadline = fc::time_point(fc::microseconds(1));
+      int countdown = 3;
+      mock_now = [&]() -> fc::time_point {
+         if (countdown-- == 0) {
+            return deadline;
+         } else {
+            return fc::time_point();
+         }
+      };
+
+
+      BOOST_REQUIRE_THROW(get_block_trace( 1, deadline ), deadline_exceeded);
    }
 
 BOOST_AUTO_TEST_SUITE_END()
