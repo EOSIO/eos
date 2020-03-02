@@ -3,6 +3,7 @@
 
 #include <fc/variant_object.hpp>
 
+#include <eosio/trace_api_plugin/request_handler.hpp>
 #include <eosio/trace_api_plugin/test_common.hpp>
 
 using namespace eosio;
@@ -21,7 +22,7 @@ struct placeholder_impl {
 };
 
 template<typename LogfileImpl>
-using response_impl_type = placeholder_impl<LogfileImpl>;
+using response_impl_type = request_handler<LogfileImpl>;
 
 namespace {
    void to_kv_helper(const fc::variant& v, std::function<void(const std::string&, const std::string&)>&& append){
@@ -107,11 +108,15 @@ struct response_test_fixture {
        */
       template<typename Fn>
       uint64_t scan_metadata_log_from( uint32_t block_height, uint64_t offset, Fn&& fn ) {
-         for (const auto& entry: fixture.metadata_log) {
+         uint64_t cur = offset;
+         for (; cur < fixture.metadata_log.size(); cur++) {
+            const auto& entry = fixture.metadata_log.at(cur);
             if (! fn(entry) ) {
                break;
             }
          }
+
+         return cur;
       }
 
 
@@ -122,13 +127,13 @@ struct response_test_fixture {
     * TODO: initialize extraction implementation here with `mock_logfile_provider` as template param
     */
    response_test_fixture()
-   : response_impl(mock_logfile_provider(*this))
+   : response_impl(mock_logfile_provider(*this), fc::time_point::now)
    {
 
    }
 
-   fc::variant get_block_trace( uint32_t block_height ) {
-      return response_impl.get_block_trace(block_height);
+   fc::variant get_block_trace( uint32_t block_height, const fc::time_point& deadline = fc::time_point::maximum() ) {
+      return response_impl.get_block_trace( block_height, deadline );
    }
 
    // fixture data and methods
@@ -153,7 +158,7 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
                "b000000000000000000000000000000000000000000000000000000000000001"_h,
                1,
                "0000000000000000000000000000000000000000000000000000000000000000"_h,
-               chain::block_timestamp_type(1),
+               chain::block_timestamp_type(0),
                "bp.one"_n,
                {}
             }}
