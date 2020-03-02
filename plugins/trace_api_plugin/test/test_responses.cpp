@@ -233,4 +233,166 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
       BOOST_TEST(to_kv(expected_response) == to_kv(actual_response), boost::test_tools::per_element());
    }
 
+   BOOST_FIXTURE_TEST_CASE(lib_edge_response, response_test_fixture)
+   {
+      metadata_log = decltype(metadata_log){
+         block_entry_v0 { "b000000000000000000000000000000000000000000000000000000000000001"_h, 1, 0 }
+      };
+
+      data_log = decltype(data_log) {
+         {
+            0,
+            data_log_entry{ block_trace_v0 {
+               "b000000000000000000000000000000000000000000000000000000000000001"_h,
+               1,
+               "0000000000000000000000000000000000000000000000000000000000000000"_h,
+               chain::block_timestamp_type(0),
+               "bp.one"_n,
+               {}
+            }}
+         }
+      };
+
+      fc::variant expected_pending_response = fc::mutable_variant_object()
+         ("id", "b000000000000000000000000000000000000000000000000000000000000001")
+         ("number", 1)
+         ("previous_id", "0000000000000000000000000000000000000000000000000000000000000000")
+         ("status", "pending")
+         ("timestamp", "2000-01-01T00:00:00.000Z")
+         ("producer", "bp.one")
+         ("transactions", fc::variants() )
+      ;
+
+      fc::variant expected_irreversible_response = fc::mutable_variant_object()
+         ("id", "b000000000000000000000000000000000000000000000000000000000000001")
+         ("number", 1)
+         ("previous_id", "0000000000000000000000000000000000000000000000000000000000000000")
+         ("status", "irreversible")
+         ("timestamp", "2000-01-01T00:00:00.000Z")
+         ("producer", "bp.one")
+         ("transactions", fc::variants() )
+      ;
+
+      fc::variant pending_response = get_block_trace( 1 );
+      BOOST_TEST(to_kv(expected_pending_response) == to_kv(pending_response), boost::test_tools::per_element());
+
+      // push an entry to the metadata log that marks that block as LIB
+      metadata_log.emplace_back(lib_entry_v0{ 1 });
+
+      fc::variant irreversible_response = get_block_trace( 1 );
+      BOOST_TEST(to_kv(expected_irreversible_response) == to_kv(irreversible_response), boost::test_tools::per_element());
+
+   }
+
+   BOOST_FIXTURE_TEST_CASE(better_block_edge_response, response_test_fixture)
+   {
+      metadata_log = decltype(metadata_log){
+         block_entry_v0 { "b000000000000000000000000000000000000000000000000000000000000001"_h, 1, 0 }
+      };
+
+      data_log = decltype(data_log) {
+         {
+            0,
+            data_log_entry{ block_trace_v0 {
+               "b000000000000000000000000000000000000000000000000000000000000001"_h,
+               1,
+               "0000000000000000000000000000000000000000000000000000000000000000"_h,
+               chain::block_timestamp_type(0),
+               "bp.one"_n,
+               {}
+            }}
+         }
+      };
+
+      fc::variant expected_original_response = fc::mutable_variant_object()
+         ("id", "b000000000000000000000000000000000000000000000000000000000000001")
+         ("number", 1)
+         ("previous_id", "0000000000000000000000000000000000000000000000000000000000000000")
+         ("status", "pending")
+         ("timestamp", "2000-01-01T00:00:00.000Z")
+         ("producer", "bp.one")
+         ("transactions", fc::variants() )
+      ;
+
+      fc::variant expected_updated_response = fc::mutable_variant_object()
+         ("id", "b000000000000000000000000000000000000000000000000000000000000002")
+         ("number", 1)
+         ("previous_id", "0000000000000000000000000000000000000000000000000000000000000000")
+         ("status", "pending")
+         ("timestamp", "2000-01-01T00:00:00.500Z")
+         ("producer", "bp.two")
+         ("transactions", fc::variants() )
+      ;
+
+      fc::variant original_response = get_block_trace( 1 );
+      BOOST_TEST(to_kv(expected_original_response) == to_kv(original_response), boost::test_tools::per_element());
+
+      // add more data
+      const uint64_t updated_block_offset = 2;
+      data_log[updated_block_offset] = {
+         data_log_entry{ block_trace_v0 {
+            "b000000000000000000000000000000000000000000000000000000000000002"_h,
+            1,
+            "0000000000000000000000000000000000000000000000000000000000000000"_h,
+            chain::block_timestamp_type(1),
+            "bp.two"_n,
+            {}
+         }}
+      };
+
+      // push an entry to the metadata log that marks that block as LIB
+      metadata_log.emplace_back(block_entry_v0 { "b000000000000000000000000000000000000000000000000000000000000002"_h, 1, updated_block_offset });
+
+      fc::variant irreversible_response = get_block_trace( 1 );
+      BOOST_TEST(to_kv(expected_updated_response) == to_kv(irreversible_response), boost::test_tools::per_element());
+   }
+
+   BOOST_FIXTURE_TEST_CASE(corrupt_block_response, response_test_fixture)
+   {
+      metadata_log = decltype(metadata_log){
+         block_entry_v0 { "b000000000000000000000000000000000000000000000000000000000000001"_h, 1, 0 }
+      };
+
+      data_log = decltype(data_log) {
+         {
+            0,
+            std::make_exception_ptr(std::runtime_error("DIE"))
+         }
+      };
+
+      BOOST_REQUIRE_THROW(get_block_trace( 1 ), bad_data_exception);
+   }
+
+   BOOST_FIXTURE_TEST_CASE(missing_block_data, response_test_fixture)
+   {
+      metadata_log = decltype(metadata_log){
+         block_entry_v0 { "b000000000000000000000000000000000000000000000000000000000000001"_h, 1, 0 }
+      };
+
+      fc::variant null_response = get_block_trace( 1 );
+
+      BOOST_TEST(null_response.is_null());
+   }
+
+   BOOST_FIXTURE_TEST_CASE(missing_block_metadata, response_test_fixture)
+   {
+      data_log = decltype(data_log) {
+         {
+            0,
+            data_log_entry{ block_trace_v0 {
+               "b000000000000000000000000000000000000000000000000000000000000001"_h,
+               1,
+               "0000000000000000000000000000000000000000000000000000000000000000"_h,
+               chain::block_timestamp_type(0),
+               "bp.one"_n,
+               {}
+            }}
+         }
+      };
+
+      fc::variant null_response = get_block_trace( 1 );
+
+      BOOST_TEST(null_response.is_null());
+   }
+
 BOOST_AUTO_TEST_SUITE_END()

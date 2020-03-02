@@ -61,26 +61,30 @@ namespace eosio::trace_api_plugin {
          bool deadline_past = false;
 
          // scan for the block offset and latest LIB
-         logfile_provider.scan_metadata_log_from(block_height, 0, [&](const metadata_log_entry& e) -> bool {
-            if (e.contains<block_entry_v0>()) {
-               const auto& block = e.get<block_entry_v0>();
-               if (block.number == block_height) {
-                  block_offset = block.offset;
+         try {
+            logfile_provider.scan_metadata_log_from(block_height, 0, [&](const metadata_log_entry& e) -> bool {
+               if (e.contains<block_entry_v0>()) {
+                  const auto& block = e.get<block_entry_v0>();
+                  if (block.number == block_height) {
+                     block_offset = block.offset;
+                  }
+               } else if (e.contains<lib_entry_v0>()) {
+                  best_lib = e.get<lib_entry_v0>();
+                  if (best_lib->lib > block_height) {
+                     return false;
+                  }
                }
-            } else if (e.contains<lib_entry_v0>()) {
-               best_lib = e.get<lib_entry_v0>();
-               if (best_lib->lib > block_height) {
+
+               if (now() >= deadline) {
+                  deadline_past = true;
                   return false;
                }
-            }
 
-            if (now() >= deadline) {
-               deadline_past = true;
-               return false;
-            }
-
-            return true;
-         });
+               return true;
+            });
+         } catch ( const std::exception& e ) {
+            throw bad_data_exception( e.what() );
+         }
 
          if (deadline_past) {
             throw deadline_exceeded("Provided deadline exceeded while parsing metadata");
@@ -92,7 +96,14 @@ namespace eosio::trace_api_plugin {
          }
 
          // fetch the block entry
-         auto data_entry = logfile_provider.read_data_log(block_height, *block_offset);
+         auto data_entry = ([&](){
+            try {
+               return logfile_provider.read_data_log(block_height, *block_offset);
+            } catch (const std::exception& e) {
+               throw bad_data_exception( e.what() );
+            }
+         })();
+
          if (now() >= deadline) {
             throw deadline_exceeded("Provided deadline exceeded while fetching block data");
          }
