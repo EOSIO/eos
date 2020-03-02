@@ -76,7 +76,6 @@ namespace eosio { namespace chain {
    class wasm_interface {
       public:
          enum class vm_type {
-            wabt,
             eos_vm,
             eos_vm_jit,
             eos_vm_oc
@@ -114,4 +113,4 @@ namespace eosio{ namespace chain {
    std::istream& operator>>(std::istream& in, wasm_interface::vm_type& runtime);
 }}
 
-FC_REFLECT_ENUM( eosio::chain::wasm_interface::vm_type, (wabt)(eos_vm)(eos_vm_jit)(eos_vm_oc) )
+FC_REFLECT_ENUM( eosio::chain::wasm_interface::vm_type, (eos_vm)(eos_vm_jit)(eos_vm_oc) )

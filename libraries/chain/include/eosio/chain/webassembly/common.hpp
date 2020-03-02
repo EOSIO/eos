@@ -72,11 +72,11 @@ namespace eosio { namespace chain {
       static_assert(is_whitelisted_legacy_type_v<T>);
       explicit legacy_ptr (T * value) : value(value) {}
 
-      typename std::add_lvalue_reference<T>::type operator*() const {
+      T& operator*() const {
          return *value;
       }
 
-      T *operator->() const noexcept {
+      T* operator->() const noexcept {
          return value;
       }
 
@@ -84,7 +84,7 @@ namespace eosio { namespace chain {
          return value;
       }
 
-      T *value;
+      T* value;
    };
 
    template <typename T>
@@ -92,7 +92,7 @@ namespace eosio { namespace chain {
       static_assert(is_whitelisted_legacy_type_v<T>);
       explicit legacy_ref (T* value) : value(&value) {}
 
-      typename std::add_lvalue_reference<T>::type operator*() const {
+      T& operator*() const {
          return *value;
       }
 

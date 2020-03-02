@@ -73,7 +73,7 @@ namespace eosio { namespace vm {
    struct wasm_type_converter<eosio::chain::legacy_ptr<T>> : linear_memory_access {
       auto from_wasm(void* val) {
          validate_ptr<T>(val, 1);
-         return eosio::vm::aligned_ptr_wrapper<T, alignof(T)>{val};
+         return eosio::vm::aligned_ptr_wrapper<T>{val};
       }
    };
 
@@ -81,7 +81,7 @@ namespace eosio { namespace vm {
    struct wasm_type_converter<eosio::chain::legacy_ref<T>> : linear_memory_access {
       auto from_wasm(void* val) {
          validate_ptr<T>(val, 1);
-         return eosio::vm::aligned_ref_wrapper<T, alignof(T)>{val};
+         return eosio::vm::aligned_ref_wrapper<T>{val};
       }
    };
 
@@ -115,7 +115,7 @@ namespace eosio { namespace vm {
    struct wasm_type_converter<eosio::chain::legacy_array_ptr<T>> : linear_memory_access {
       auto from_wasm(void* ptr, uint32_t size) {
          validate_ptr<T>(ptr, size);
-         return aligned_array_wrapper<T, alignof(T)>(ptr, size);
+         return aligned_array_wrapper<T>(ptr, size);
       }
    };
 

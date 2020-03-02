@@ -8,12 +8,12 @@ add_subdirectory( chain )
 add_subdirectory( testing )
 add_subdirectory( version )
 
-#turn tools&tests off; not needed for library build
-set(BUILD_TESTS OFF CACHE BOOL "Build GTest-based tests")
-set(BUILD_TOOLS OFF CACHE BOOL "Build wabt tools")
-set(RUN_RE2C OFF CACHE BOOL "Run re2c")
-set(WITH_EXCEPTIONS ON CACHE BOOL "Build with exceptions enabled" FORCE)
-add_subdirectory( wabt )
+##turn tools&tests off; not needed for library build
+#set(BUILD_TESTS OFF CACHE BOOL "Build GTest-based tests")
+#set(BUILD_TOOLS OFF CACHE BOOL "Build wabt tools")
+#set(RUN_RE2C OFF CACHE BOOL "Run re2c")
+#set(WITH_EXCEPTIONS ON CACHE BOOL "Build with exceptions enabled" FORCE)
+#add_subdirectory( wabt )
 
 set(USE_EXISTING_SOFTFLOAT ON CACHE BOOL "use pre-exisiting softfloat lib")
 set(ENABLE_TOOLS OFF CACHE BOOL "Build tools")

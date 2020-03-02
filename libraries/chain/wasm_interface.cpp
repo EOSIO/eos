@@ -1,3 +1,4 @@
+#include <eosio/chain/webassembly/interface.hpp>
 #include <eosio/chain/wasm_interface.hpp>
 #include <eosio/chain/apply_context.hpp>
 #include <eosio/chain/controller.hpp>
@@ -802,8 +803,8 @@ class crypto_api : public context_aware_api {
        * no possible side effects other than "passing".
        */
       void assert_recover_key( const fc::sha256& digest,
-                        array_ptr<char> sig, uint32_t siglen,
-                        array_ptr<char> pub, uint32_t publen ) {
+                        legacy_array_ptr<char> sig, uint32_t siglen,
+                        legacy_array_ptr<char> pub, uint32_t publen ) {
          fc::crypto::signature s;
          fc::crypto::public_key p;
          datastream<const char*> ds( sig, siglen );
@@ -2084,9 +2085,7 @@ REGISTER_INJECTED_INTRINSICS(softfloat_api,
 std::istream& operator>>(std::istream& in, wasm_interface::vm_type& runtime) {
    std::string s;
    in >> s;
-   if (s == "wabt")
-      runtime = eosio::chain::wasm_interface::vm_type::wabt;
-   else if (s == "eos-vm")
+   if (s == "eos-vm")
       runtime = eosio::chain::wasm_interface::vm_type::eos_vm;
    else if (s == "eos-vm-jit")
       runtime = eosio::chain::wasm_interface::vm_type::eos_vm_jit;

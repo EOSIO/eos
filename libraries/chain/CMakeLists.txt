@@ -82,7 +82,6 @@ add_library( eosio_chain
               asset.cpp
               snapshot.cpp
 
-             webassembly/wabt.cpp
              ${CHAIN_EOSVMOC_SOURCES}
              ${CHAIN_EOSVM_SOURCES}
 
@@ -105,14 +104,12 @@ add_library( eosio_chain
              )
 
 target_link_libraries( eosio_chain fc chainbase Logging IR WAST WASM Runtime
-                       softfloat builtins wabt ${CHAIN_EOSVM_LIBRARIES} ${LLVM_LIBS}
+                       softfloat builtins ${CHAIN_EOSVM_LIBRARIES} ${LLVM_LIBS}
                      )
 target_include_directories( eosio_chain
                             PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_BINARY_DIR}/include"
                                    "${CMAKE_CURRENT_SOURCE_DIR}/../wasm-jit/Include"
                                    "${CMAKE_CURRENT_SOURCE_DIR}/libraries/eos-vm/include"
-                                   "${CMAKE_SOURCE_DIR}/libraries/wabt"
-                                   "${CMAKE_BINARY_DIR}/libraries/wabt"
                             )
 
 if("eos-vm-oc" IN_LIST EOSIO_WASM_RUNTIMES)
