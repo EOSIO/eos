@@ -2049,13 +2049,10 @@ fc::variant read_only::get_block(const read_only::get_block_params& params) cons
 
 fc::variant read_only::get_block_info(const read_only::get_block_info_params& params) const {
 
-   EOS_ASSERT( params.block_num > 0, chain::block_num_type_exception, "Invalid block num, must be greater than 0");
-
    signed_block_ptr block;
    try {
          block = db.fetch_block_by_number( params.block_num );
-   } EOS_RETHROW_EXCEPTIONS(chain::block_num_type_exception, "Invalid block num: ${block_num}", ("block_num", params.block_num));
-
+   } catch (...)   {  /* assert below will handle the invalid block num */  }
 
    EOS_ASSERT( block, unknown_block_exception, "Could not find block: ${block}", ("block", params.block_num));
 

@@ -2596,11 +2596,18 @@ int main( int argc, char** argv ) {
             fc::optional<int64_t> block_num;
             try {
                block_num = fc::to_int64(blockArg);
-            } catch (...) { /* error is handled in assert below */ }
+            } catch (...) {
+               /* error is handled in assertion below */
+            }
 
-            EOS_ASSERT( block_num.valid() && (*block_num > 0), chain::block_num_type_exception, "Invalid block num: ${block_num}", ("block_num", blockArg));
-            const auto arg = fc::variant_object("block_num", static_cast<uint32_t>(*block_num));
-            std::cout << fc::json::to_pretty_string(call(get_block_info_func, arg)) << std::endl;
+            if ( block_num.valid() && (*block_num > 0) )
+            {
+               const auto arg = fc::variant_object("block_num", static_cast<uint32_t>(*block_num));
+               std::cout << fc::json::to_pretty_string(call(get_block_info_func, arg)) << std::endl;
+            } else {
+               std::cerr << "Invalid block num: " << blockArg << std::endl;
+               return;
+            }
          } else {
             const auto arg = fc::variant_object("block_num_or_id", blockArg);
             if (get_bhs) {
