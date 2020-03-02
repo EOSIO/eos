@@ -414,8 +414,7 @@ fc::variant push_actions(std::vector<chain::action>&& actions, packed_transactio
 }
 
 void print_action( const fc::variant& at ) {
-   const auto& receipt = at["receipt"];
-   auto receiver = receipt["receiver"].as_string();
+   auto receiver = at["receiver"].as_string();
    const auto& act = at["act"].get_object();
    auto code = act["account"].as_string();
    auto func = act["name"].as_string();
