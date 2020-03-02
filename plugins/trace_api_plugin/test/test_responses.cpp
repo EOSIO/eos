@@ -11,17 +11,6 @@ using namespace eosio::trace_api_plugin;
 using namespace eosio::trace_api_plugin::test_common;
 
 template<typename LogfileImpl>
-struct placeholder_impl {
-   explicit placeholder_impl( LogfileImpl&& logfile_impl )
-   {
-   }
-
-   fc::variant get_block_trace( uint32_t block_height ) {
-      return {};
-   }
-};
-
-template<typename LogfileImpl>
 using response_impl_type = request_handler<LogfileImpl>;
 
 namespace {
@@ -145,7 +134,7 @@ struct response_test_fixture {
 };
 
 BOOST_AUTO_TEST_SUITE(trace_responses)
-   BOOST_FIXTURE_TEST_CASE(basic_response, response_test_fixture)
+   BOOST_FIXTURE_TEST_CASE(basic_empty_block_response, response_test_fixture)
    {
       metadata_log = decltype(metadata_log){
          block_entry_v0 { "b000000000000000000000000000000000000000000000000000000000000001"_h, 1, 0 }
@@ -180,5 +169,68 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
       BOOST_TEST(to_kv(expected_response) == to_kv(actual_response), boost::test_tools::per_element());
    }
 
+   BOOST_FIXTURE_TEST_CASE(basic_block_response, response_test_fixture)
+   {
+      metadata_log = decltype(metadata_log){
+         block_entry_v0 { "b000000000000000000000000000000000000000000000000000000000000001"_h, 1, 0 }
+      };
+
+      data_log = decltype(data_log) {
+         {
+            0,
+            data_log_entry{ block_trace_v0 {
+               "b000000000000000000000000000000000000000000000000000000000000001"_h,
+               1,
+               "0000000000000000000000000000000000000000000000000000000000000000"_h,
+               chain::block_timestamp_type(0),
+               "bp.one"_n,
+               {
+                  {
+                     "0000000000000000000000000000000000000000000000000000000000000001"_h,
+                     chain::transaction_receipt_header::executed,
+                     {
+                        {
+                           0,
+                           "receiver"_n, "contract"_n, "action"_n,
+                           {{ "alice"_n, "active"_n }},
+                           { 0x00, 0x01, 0x02, 0x03 }
+                        }
+                     }
+                  }
+               }
+            }}
+         }
+      };
+
+      fc::variant expected_response = fc::mutable_variant_object()
+         ("id", "b000000000000000000000000000000000000000000000000000000000000001")
+         ("number", 1)
+         ("previous_id", "0000000000000000000000000000000000000000000000000000000000000000")
+         ("status", "pending")
+         ("timestamp", "2000-01-01T00:00:00.000Z")
+         ("producer", "bp.one")
+         ("transactions", fc::variants({
+            fc::mutable_variant_object()
+               ("id", "0000000000000000000000000000000000000000000000000000000000000001")
+               ("status", "executed")
+               ("actions", fc::variants({
+                  fc::mutable_variant_object()
+                     ("receiver", "receiver")
+                     ("account", "contract")
+                     ("action", "action")
+                     ("authorization", fc::variants({
+                        fc::mutable_variant_object()
+                           ("account", "alice")
+                           ("permission", "active")
+                     }))
+                     ("data", "AAECAw==")
+               }))
+         }))
+      ;
+
+      fc::variant actual_response = get_block_trace( 1 );
+
+      BOOST_TEST(to_kv(expected_response) == to_kv(actual_response), boost::test_tools::per_element());
+   }
 
 BOOST_AUTO_TEST_SUITE_END()
