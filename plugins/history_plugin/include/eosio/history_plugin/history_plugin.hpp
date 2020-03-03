@@ -34,7 +34,7 @@ class read_write {
         bool                time_limit_exceeded_error;
       };
 
-      prune_history_result prune_history( const prune_history_params& )const;
+      prune_history_result prune_history( const prune_history_params& );
 };
 
 class read_only {
@@ -145,7 +145,7 @@ class history_plugin : public plugin<history_plugin> {
       void plugin_shutdown();
 
       history_apis::read_only  get_read_only_api()const { return history_apis::read_only(history_const_ptr(my)); }
-      history_apis::read_write get_read_write_api() { return history_apis::read_write(std::move(my)); }
+      history_apis::read_write get_read_write_api() { return history_apis::read_write(history_ptr(my)); }
 
    private:
       history_ptr my;

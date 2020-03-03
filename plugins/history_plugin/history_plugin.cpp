@@ -314,7 +314,7 @@ namespace eosio {
              "Do not track actions which match receiver:action:actor. Action and Actor both blank excludes all from Reciever. Actor blank excludes all from reciever:action. Receiver may not be blank.")
             ;
       cfg.add_options()
-            ("history-api-timeout-us", bpo::value<int32_t>()->composing(),
+            ("history-api-timeout-us", bpo::value<int32_t>()->default_value( my->history_api_timeout_us.count() ),
              "Timeout for history API calls (microseconds).")
             ;
    }
@@ -351,9 +351,7 @@ namespace eosio {
             }
          }
 
-        if( options.count( "history-api-timeout-us" )) {
-            my->history_api_timeout_us = fc::microseconds(options.at( "history-api-timeout-us" ).as<int32_t>());
-        }
+         my->history_api_timeout_us = fc::microseconds(options.at( "history-api-timeout-us" ).as<int32_t>());
 
          my->chain_plug = app().find_plugin<chain_plugin>();
          EOS_ASSERT( my->chain_plug, chain::missing_chain_plugin_exception, ""  );
@@ -453,7 +451,7 @@ namespace eosio {
         return result;
       }
 
-      read_write::prune_history_result read_write::prune_history( const read_write::prune_history_params& params ) const {
+      read_write::prune_history_result read_write::prune_history( const read_write::prune_history_params& params ) {
          auto& chain = history->chain_plug->chain();
 
          EOS_ASSERT( chain.get_read_mode() == db_read_mode::IRREVERSIBLE, chain::plugin_exception, "attempting to call prune history while NOT in irreversible read mode" );
@@ -480,12 +478,13 @@ namespace eosio {
                result.records_removed++;
              }
 
+             history->last_id_pruned = itr_action->id._id;
+
              auto itr_action_copy = itr_action;
              itr_action++;
              db.remove(*itr_action_copy);
 
              result.records_removed++;
-             history->last_id_pruned = itr_action->id._id;
            } else {
              itr_action++;
            }
