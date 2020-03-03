@@ -953,6 +953,9 @@ void producer_plugin::plugin_startup()
    EOS_ASSERT( my->_producers.empty() || chain.get_validation_mode() == chain::validation_mode::FULL, plugin_config_exception,
               "node cannot have any producer-name configured because block production is not safe when validation_mode is not \"full\"" );
 
+   EOS_ASSERT( my->_producers.empty() || my->chain_plug->accept_transactions(), plugin_config_exception,
+              "node cannot have any producer-name configured because no block production is possible with no [api|p2p]-accepted-transactions" );
+
    my->_accepted_block_connection.emplace(chain.accepted_block.connect( [this]( const auto& bsp ){ my->on_block( bsp ); } ));
    my->_accepted_block_header_connection.emplace(chain.accepted_block_header.connect( [this]( const auto& bsp ){ my->on_block_header( bsp ); } ));
    my->_irreversible_block_connection.emplace(chain.irreversible_block.connect( [this]( const auto& bsp ){ my->on_irreversible_block( bsp->block ); } ));
@@ -1419,7 +1422,7 @@ fc::time_point producer_plugin_impl::calculate_block_deadline( const fc::time_po
 producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
    chain::controller& chain = chain_plug->chain();
 
-   if( chain.in_immutable_mode() )
+   if( !chain_plug->accept_transactions() )
       return start_block_result::waiting_for_block;
 
    const auto& hbs = chain.head_block_state();
