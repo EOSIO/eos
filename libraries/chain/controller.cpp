@@ -2834,10 +2834,6 @@ block_id_type controller::last_irreversible_block_id() const {
    return get_block_id_for_num( lib_num );
 }
 
-bool controller::irreversible_read_mode() const {
-   return my->read_mode == db_read_mode::IRREVERSIBLE;
-}
-
 const dynamic_global_property_object& controller::get_dynamic_global_properties()const {
   return my->db.get<dynamic_global_property_object>();
 }

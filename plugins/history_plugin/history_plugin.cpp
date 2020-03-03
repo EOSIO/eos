@@ -15,7 +15,6 @@ namespace eosio {
    using boost::signals2::scoped_connection;
 
    static appbase::abstract_plugin& _history_plugin = app().register_plugin<history_plugin>();
-   static int32_t prune_timeout = 100000;
 
 
    struct account_history_object : public chainbase::object<account_history_object_type, account_history_object>  {
@@ -69,6 +68,12 @@ namespace eosio {
             composite_key< account_history_object,
                member<account_history_object, account_name, &account_history_object::account >,
                member<account_history_object, int32_t, &account_history_object::account_sequence_num >
+            >
+         >,
+         ordered_unique<tag<by_action_sequence_num>,
+            composite_key< account_history_object,
+               member<account_history_object, uint64_t, &account_history_object::action_sequence_num >,
+               member<account_history_object, account_history_object::id_type, &account_history_object::id>
             >
          >
       >
@@ -143,6 +148,7 @@ namespace eosio {
          std::set<filter_entry> filter_out;
          chain_plugin*          chain_plug = nullptr;
          fc::optional<scoped_connection> applied_transaction_connection;
+         fc::microseconds history_api_timeout_us = fc::microseconds(100000);
          int64_t last_id_pruned = 0;
 
           bool filter(const action_trace& act) {
@@ -309,8 +315,8 @@ namespace eosio {
              "Do not track actions which match receiver:action:actor. Action and Actor both blank excludes all from Reciever. Actor blank excludes all from reciever:action. Receiver may not be blank.")
             ;
       cfg.add_options()
-            ("history-plugin-prune-timeout-us", bpo::value<int32_t>()->composing(),
-             "Timeout for prune history request (microseconds).")
+            ("history-api-timeout-us", bpo::value<int32_t>()->composing(),
+             "Timeout for history API calls (microseconds).")
             ;
    }
 
@@ -346,8 +352,8 @@ namespace eosio {
             }
          }
 
-        if( options.count( "history-plugin-prune-timeout-us" )) {
-            prune_timeout = options.at( "history-plugin-prune-timeout-us" ).as<int32_t>();
+        if( options.count( "history-api-timeout-us" )) {
+            my->history_api_timeout_us = fc::microseconds(options.at( "history-api-timeout-us" ).as<int32_t>());
         }
 
          my->chain_plug = app().find_plugin<chain_plugin>();
@@ -439,7 +445,7 @@ namespace eosio {
                                  });
 
            end_time = fc::time_point::now();
-           if( end_time - start_time > fc::microseconds(100000) ) {
+           if( end_time - start_time > history->history_api_timeout_us ) {
               result.time_limit_exceeded_error = true;
               break;
            }
@@ -450,36 +456,50 @@ namespace eosio {
 
       read_write::prune_history_result read_write::prune_history( const read_write::prune_history_params& params ) const {
          auto& chain = history->chain_plug->chain();
+
+         EOS_ASSERT( chain.get_read_mode() == db_read_mode::IRREVERSIBLE, chain::plugin_exception, "attempting to call prune history while NOT in irreversible read mode" );
+
          chainbase::database& db = const_cast<chainbase::database&>( chain.db() ); // Override read-only access to state DB (highly unrecommended practice!)
 
-         prune_history_result result{-1, false};
+         prune_history_result result{0, false};
 
-         if(chain.irreversible_read_mode()) {
-            auto start_time = fc::time_point::now();
+         auto start_time = fc::time_point::now();
 
-            const auto& idx = db.get_index<action_history_index, by_id>();
-            auto itr = idx.lower_bound(history->last_id_pruned);
+         const auto& action_idx = db.get_index<action_history_index, by_id>();
+         auto itr_action = action_idx.lower_bound(history->last_id_pruned);
 
-            while( itr != idx.end() &&  itr->block_num <= params.height ) {
-               fc::datastream<const char*> ds( itr->packed_action_trace.data(), itr->packed_action_trace.size() );
-               action_trace t;
-               fc::raw::unpack( ds, t );
+         while( itr_action != action_idx.end() ) {
+           if(itr_action->block_num <= params.height) {
+             const auto& account_idx = db.get_index<account_history_index, by_action_sequence_num>();
+             auto itr_account = account_idx.lower_bound( boost::make_tuple( itr_action->action_sequence_num, 0 ) );
 
-               auto &a = db.get<account_history_object, by_account_action_seq>(boost::make_tuple(t.receipt->receiver, t.receipt->recv_sequence));
-               db.remove(a);
+             while(itr_account != account_idx.end() && itr_account->action_sequence_num == itr_action->action_sequence_num) {
+               auto itr_account_copy = itr_account;
+               itr_account++;
+               db.remove(*itr_account_copy);
 
-               auto itr_copy = itr;
-               itr++;
-               db.remove(*itr_copy);
+               result.records_removed++;
+             }
 
-               result.last_id = itr->id._id;
+             auto itr_action_copy = itr_action;
+             itr_action++;
+             db.remove(*itr_action_copy);
 
-               auto now = fc::time_point::now();
-               if( now - start_time > fc::microseconds(prune_timeout) ) {
-                  result.time_limit_exceeded_error = true;
-                  break;
-               }
-            }
+             result.records_removed++;
+             history->last_id_pruned = itr_action->id._id;
+           } else {
+             itr_action++;
+           }
+
+           auto now = fc::time_point::now();
+           if( now - start_time > history->history_api_timeout_us ) {
+             result.time_limit_exceeded_error = true;
+             break;
+           }
+         }
+
+         if (!result.time_limit_exceeded_error) {
+           history->last_id_pruned = 0;
          }
 
          return result;
