@@ -52,11 +52,8 @@ namespace eosio { namespace chain { namespace resource_limits {
       int64_t used = 0; ///< quantity used in current window
       int64_t available = 0; ///< quantity available in current window (based upon fractional reserve)
       int64_t max = 0; ///< max per window under current congestion
-   };
-
-   struct account_resource_usage {
-      chain::block_timestamp_type last_usage_update_time; ///< the time of the block of the account was last updated
-      uint64_t current_used; ///< the current resource usage value would be for current head block time
+      fc::optional<block_timestamp_type> last_updated_time_stamp; ///< last updated timestamp, optional for backward compatibility in Json
+      fc::optional<uint64_t> current_used;  ///< current usage according to the given timestamp, optional for backward compatibility in Json
    };
 
    class resource_limits_manager {
@@ -94,13 +91,13 @@ namespace eosio { namespace chain { namespace resource_limits {
          uint64_t get_block_cpu_limit() const;
          uint64_t get_block_net_limit() const;
 
-         // return <optional<net>, optional<cpu>>
-         std::tuple<optional<account_resource_usage>, optional<account_resource_usage>> get_account_current_usages( const account_name& account) const;
          std::pair<int64_t, bool> get_account_cpu_limit( const account_name& name, uint32_t greylist_limit = config::maximum_elastic_resource_multiplier ) const;
          std::pair<int64_t, bool> get_account_net_limit( const account_name& name, uint32_t greylist_limit = config::maximum_elastic_resource_multiplier ) const;
 
-         std::pair<account_resource_limit, bool> get_account_cpu_limit_ex( const account_name& name, uint32_t greylist_limit = config::maximum_elastic_resource_multiplier ) const;
-         std::pair<account_resource_limit, bool> get_account_net_limit_ex( const account_name& name, uint32_t greylist_limit = config::maximum_elastic_resource_multiplier ) const;
+         std::pair<account_resource_limit, bool>
+         get_account_cpu_limit_ex( const account_name& name, uint32_t greylist_limit = config::maximum_elastic_resource_multiplier, const fc::optional<time_point>& time_slot={} ) const;
+         std::pair<account_resource_limit, bool>
+         get_account_net_limit_ex( const account_name& name, uint32_t greylist_limit = config::maximum_elastic_resource_multiplier, const fc::optional<time_point>& time_slot={} ) const;
 
          int64_t get_account_ram_usage( const account_name& name ) const;
 
@@ -109,7 +106,6 @@ namespace eosio { namespace chain { namespace resource_limits {
    };
 } } } /// eosio::chain
 
-FC_REFLECT( eosio::chain::resource_limits::account_resource_limit, (used)(available)(max) )
-FC_REFLECT( eosio::chain::resource_limits::account_resource_usage, (last_usage_update_time)(current_used) )
+FC_REFLECT( eosio::chain::resource_limits::account_resource_limit, (used)(available)(max)(last_updated_time_stamp)(current_used) )
 FC_REFLECT( eosio::chain::resource_limits::ratio, (numerator)(denominator))
 FC_REFLECT( eosio::chain::resource_limits::elastic_limit_parameters, (target)(max)(periods)(max_multiplier)(contract_rate)(expand_rate))

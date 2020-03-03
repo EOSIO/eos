@@ -12,7 +12,6 @@
 #include <eosio/chain/plugin_interface.hpp>
 #include <eosio/chain/types.hpp>
 #include <eosio/chain/fixed_bytes.hpp>
-#include <eosio/chain/resource_limits.hpp>
 
 #include <boost/container/flat_set.hpp>
 #include <boost/multiprecision/cpp_int.hpp>
@@ -139,13 +138,6 @@ public:
 
    using account_resource_limit = chain::resource_limits::account_resource_limit;
 
-   struct account_resource_info
-   {
-      chain::resource_limits::account_resource_limit limit;
-      // optional for backward compatibility
-      optional<chain::resource_limits::account_resource_usage> usage;
-   };
-
    struct get_account_results {
       name                       account_name;
       uint32_t                   head_block_num = 0;
@@ -161,8 +153,8 @@ public:
       int64_t                    net_weight = 0;
       int64_t                    cpu_weight = 0;
 
-      account_resource_info      net_info;
-      account_resource_info      cpu_info;
+      account_resource_limit     net_limit;
+      account_resource_limit     cpu_limit;
       int64_t                    ram_usage = 0;
 
       vector<permission>         permissions;
@@ -789,10 +781,9 @@ FC_REFLECT( eosio::chain_apis::read_only::get_producer_schedule_result, (active)
 FC_REFLECT( eosio::chain_apis::read_only::get_scheduled_transactions_params, (json)(lower_bound)(limit) )
 FC_REFLECT( eosio::chain_apis::read_only::get_scheduled_transactions_result, (transactions)(more) );
 
-FC_REFLECT( eosio::chain_apis::read_only::account_resource_info, (limit)(usage))
 FC_REFLECT( eosio::chain_apis::read_only::get_account_results,
             (account_name)(head_block_num)(head_block_time)(privileged)(last_code_update)(created)
-            (core_liquid_balance)(ram_quota)(net_weight)(cpu_weight)(net_info)(cpu_info)(ram_usage)(permissions)
+            (core_liquid_balance)(ram_quota)(net_weight)(cpu_weight)(net_limit)(cpu_limit)(ram_usage)(permissions)
             (total_resources)(self_delegated_bandwidth)(refund_request)(voter_info)(rex_info) )
 // @swap code_hash
 FC_REFLECT( eosio::chain_apis::read_only::get_code_results, (account_name)(code_hash)(wast)(wasm)(abi) )
