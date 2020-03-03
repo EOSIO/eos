@@ -1,6 +1,7 @@
 #pragma once
 
 #include <eosio/chain/account_object.hpp>
+#include <eosio/chain/contract_table_objects.hpp>
 #include <eosio/chain/controller.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/generated_transaction_object.hpp>
@@ -13,7 +14,6 @@
 #include <eosio/chain/resource_limits_private.hpp>
 #include <eosio/chain/trace.hpp>
 #include <eosio/state_history/types.hpp>
-#include <eosio/state_history_plugin/state_history_plugin.hpp>
 
 #include <type_traits>
 
@@ -36,8 +36,8 @@ struct history_context_wrapper {
 };
 
 template <typename P, typename T>
-history_context_wrapper<std::decay_t<P>, std::decay_t<T>>
-make_history_context_wrapper(const chainbase::database& db, const P& context, const T& obj) {
+history_context_wrapper<std::decay_t<P>, std::decay_t<T>> make_history_context_wrapper(const chainbase::database& db,
+                                                                                       const P& context, const T& obj) {
    return {db, context, obj};
 }
 
@@ -259,9 +259,9 @@ operator<<(datastream<ST>&                                                      
 }
 
 template <typename ST>
-datastream<ST>& operator<<(
-    datastream<ST>&                                                                                       ds,
-    const history_context_wrapper<eosio::chain::table_id_object, eosio::chain::index_long_double_object>& obj) {
+datastream<ST>&
+operator<<(datastream<ST>&                                                                                       ds,
+           const history_context_wrapper<eosio::chain::table_id_object, eosio::chain::index_long_double_object>& obj) {
    return serialize_secondary_index(ds, obj.context, obj.obj);
 }
 
@@ -276,27 +276,27 @@ datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosi
 }
 
 template <typename ST>
-datastream<ST>& operator<<(datastream<ST>& ds,
+datastream<ST>& operator<<(datastream<ST>&                                                                ds,
                            const history_serial_wrapper<eosio::chain::shared_block_signing_authority_v0>& obj) {
    fc::raw::pack(ds, as_type<uint32_t>(obj.obj.threshold));
    history_serialize_container(ds, obj.db,
                                as_type<eosio::chain::shared_vector<eosio::chain::shared_key_weight>>(obj.obj.keys));
-
 }
 
 template <typename ST>
-datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosio::chain::shared_producer_authority>& obj) {
+datastream<ST>& operator<<(datastream<ST>&                                                        ds,
+                           const history_serial_wrapper<eosio::chain::shared_producer_authority>& obj) {
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.producer_name.to_uint64_t()));
    fc::raw::pack(ds, as_type<eosio::chain::shared_block_signing_authority>(obj.obj.authority));
    return ds;
 }
 
 template <typename ST>
-datastream<ST>& operator<<(datastream<ST>&                                                            ds,
+datastream<ST>& operator<<(datastream<ST>&                                                                 ds,
                            const history_serial_wrapper<eosio::chain::shared_producer_authority_schedule>& obj) {
    fc::raw::pack(ds, as_type<uint32_t>(obj.obj.version));
-   history_serialize_container(ds, obj.db,
-                               as_type<eosio::chain::shared_vector<eosio::chain::shared_producer_authority>>(obj.obj.producers));
+   history_serialize_container(
+       ds, obj.db, as_type<eosio::chain::shared_vector<eosio::chain::shared_producer_authority>>(obj.obj.producers));
    return ds;
 }
 
@@ -413,7 +413,8 @@ datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosi
       const auto* parent = index.find(obj.obj.parent);
       if (!parent) {
          auto undo = index.last_undo_session();
-         auto  it   = std::find_if(undo.removed_values.begin(), undo.removed_values.end(), [&](auto& x){ return x.id._id == obj.obj.parent; });
+         auto it   = std::find_if(undo.removed_values.begin(), undo.removed_values.end(),
+                                [&](auto& x) { return x.id._id == obj.obj.parent; });
          EOS_ASSERT(it != undo.removed_values.end(), eosio::chain::plugin_exception,
                     "can not find parent of permission_object");
          parent = &*it;
@@ -536,26 +537,26 @@ datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosi
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.account.to_uint64_t()));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.name.to_uint64_t()));
    history_serialize_container(ds, obj.db, as_type<std::vector<eosio::chain::permission_level>>(obj.obj.authorization));
-   fc::raw::pack(ds, as_type<eosio::bytes>(obj.obj.data));
+   fc::raw::pack(ds, as_type<eosio::chain::bytes>(obj.obj.data));
    return ds;
 }
 
 template <typename ST>
 datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosio::chain::action_receipt>& obj) {
    if (!obj.obj.return_value) {
-      fc::raw::pack( ds, fc::unsigned_int( 0 ));
+      fc::raw::pack(ds, fc::unsigned_int(0));
    } else {
-      fc::raw::pack( ds, fc::unsigned_int( 1 ));
+      fc::raw::pack(ds, fc::unsigned_int(1));
    }
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.receiver.to_uint64_t()));
    fc::raw::pack(ds, as_type<eosio::chain::digest_type>(obj.obj.act_digest));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.global_sequence));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.recv_sequence));
-   history_serialize_container(ds, obj.db, as_type<flat_map<eosio::name, uint64_t>>(obj.obj.auth_sequence));
+   history_serialize_container(ds, obj.db, as_type<flat_map<eosio::chain::name, uint64_t>>(obj.obj.auth_sequence));
    fc::raw::pack(ds, as_type<fc::unsigned_int>(obj.obj.code_sequence));
    fc::raw::pack(ds, as_type<fc::unsigned_int>(obj.obj.abi_sequence));
    if (obj.obj.return_value) {
-      fc::raw::pack(ds, as_type<eosio::bytes>(*obj.obj.return_value));
+      fc::raw::pack(ds, as_type<eosio::chain::bytes>(*obj.obj.return_value));
    }
    return ds;
 }
@@ -567,10 +568,11 @@ datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosi
    return ds;
 }
 
-inline fc::optional<uint64_t> cap_error_code( const fc::optional<uint64_t>& error_code ) {
+inline fc::optional<uint64_t> cap_error_code(const fc::optional<uint64_t>& error_code) {
    fc::optional<uint64_t> result;
 
-   if (!error_code) return result;
+   if (!error_code)
+      return result;
 
    const uint64_t upper_limit = static_cast<uint64_t>(eosio::chain::system_error_code::generic_system_error);
 
@@ -585,7 +587,7 @@ inline fc::optional<uint64_t> cap_error_code( const fc::optional<uint64_t>& erro
 
 template <typename ST>
 datastream<ST>& operator<<(datastream<ST>& ds, const history_context_wrapper<bool, eosio::chain::action_trace>& obj) {
-   bool  debug_mode = obj.context;
+   bool debug_mode = obj.context;
    fc::raw::pack(ds, fc::unsigned_int(1));
    fc::raw::pack(ds, as_type<fc::unsigned_int>(obj.obj.action_ordinal));
    fc::raw::pack(ds, as_type<fc::unsigned_int>(obj.obj.creator_action_ordinal));
@@ -612,8 +614,8 @@ datastream<ST>& operator<<(datastream<ST>& ds, const history_context_wrapper<boo
          e = "Y";
    }
    fc::raw::pack(ds, as_type<fc::optional<std::string>>(e));
-   fc::raw::pack(ds, as_type<fc::optional<uint64_t>>(debug_mode ? obj.obj.error_code
-                                                                : cap_error_code(obj.obj.error_code)));
+   fc::raw::pack(ds,
+                 as_type<fc::optional<uint64_t>>(debug_mode ? obj.obj.error_code : cap_error_code(obj.obj.error_code)));
 
    return ds;
 }
@@ -658,8 +660,7 @@ datastream<ST>& operator<<(
          e = "Y";
    }
    fc::raw::pack(ds, as_type<fc::optional<std::string>>(e));
-   fc::raw::pack(ds, as_type<fc::optional<uint64_t>>(debug_mode ? trace.error_code
-                                                                : cap_error_code(trace.error_code)));
+   fc::raw::pack(ds, as_type<fc::optional<uint64_t>>(debug_mode ? trace.error_code : cap_error_code(trace.error_code)));
 
    fc::raw::pack(ds, bool(trace.failed_dtrx_trace));
    if (trace.failed_dtrx_trace) {
@@ -686,7 +687,7 @@ datastream<ST>& operator<<(
       fc::raw::pack(ds, as_type<fc::unsigned_int>(partial.delay_sec));
       fc::raw::pack(ds, as_type<eosio::chain::extensions_type>(partial.transaction_extensions));
       fc::raw::pack(ds, as_type<std::vector<eosio::chain::signature_type>>(partial.signatures));
-      fc::raw::pack(ds, as_type<std::vector<eosio::bytes>>(partial.context_free_data));
+      fc::raw::pack(ds, as_type<std::vector<eosio::chain::bytes>>(partial.context_free_data));
    }
 
    return ds;
