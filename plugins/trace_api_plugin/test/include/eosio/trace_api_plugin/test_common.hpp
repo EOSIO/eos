@@ -25,6 +25,37 @@ namespace eosio::trace_api_plugin {
       chain::asset operator"" _t(const char* input, std::size_t) {
          return chain::asset::from_string(input);
       }
+
+      void to_kv_helper(const fc::variant& v, std::function<void(const std::string&, const std::string&)>&& append){
+         if (v.is_object() ) {
+            const auto& obj = v.get_object();
+            static const std::string sep = ".";
+
+            for (const auto& entry: obj) {
+               to_kv_helper( entry.value(), [&append, &entry](const std::string& path, const std::string& value){
+                  append(sep + entry.key() + path, value);
+               });
+            }
+         } else if (v.is_array()) {
+            const auto& arr = v.get_array();
+            for (size_t idx = 0; idx < arr.size(); idx++) {
+               const auto& entry = arr.at(idx);
+               to_kv_helper( entry, [&append, idx](const std::string& path, const std::string& value){
+                  append(std::string("[") + std::to_string(idx) + std::string("]") + path, value);
+               });
+            }
+         } else if (!v.is_null()) {
+            append("", v.as_string());
+         }
+      }
+
+      auto to_kv(const fc::variant& v) {
+         std::map<std::string, std::string> result;
+         to_kv_helper(v, [&result](const std::string& k, const std::string& v){
+            result.emplace(k, v);
+         });
+         return result;
+      }
    }
 
    // TODO: promote these to the main files?
@@ -104,6 +135,16 @@ namespace fc {
    template<typename ...Ts>
    std::ostream& operator<<(std::ostream &os, const fc::static_variant<Ts...>& v ) {
       os << fc::json::to_string(v, fc::time_point::maximum());
+      return os;
+   }
+}
+
+namespace std {
+   /*
+    * operator for printing to_kv entries
+    */
+   ostream& operator<<(ostream& os, const pair<string, string>& entry) {
+      os << entry.first + "=" + entry.second;
       return os;
    }
 }

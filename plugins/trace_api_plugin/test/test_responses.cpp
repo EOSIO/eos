@@ -4,57 +4,12 @@
 #include <fc/variant_object.hpp>
 
 #include <eosio/trace_api_plugin/request_handler.hpp>
+#include <eosio/trace_api_plugin/base64_data_handler.hpp>
 #include <eosio/trace_api_plugin/test_common.hpp>
 
 using namespace eosio;
 using namespace eosio::trace_api_plugin;
 using namespace eosio::trace_api_plugin::test_common;
-
-template<typename LogfileImpl>
-using response_impl_type = request_handler<LogfileImpl>;
-
-namespace {
-   void to_kv_helper(const fc::variant& v, std::function<void(const std::string&, const std::string&)>&& append){
-      if (v.is_object() ) {
-         const auto& obj = v.get_object();
-         static const std::string sep = ".";
-
-         for (const auto& entry: obj) {
-            to_kv_helper( entry.value(), [&append, &entry](const std::string& path, const std::string& value){
-               append(sep + entry.key() + path, value);
-            });
-         }
-      } else if (v.is_array()) {
-         const auto& arr = v.get_array();
-         for (size_t idx = 0; idx < arr.size(); idx++) {
-            const auto& entry = arr.at(idx);
-            to_kv_helper( entry, [&append, idx](const std::string& path, const std::string& value){
-               append(std::string("[") + std::to_string(idx) + std::string("]") + path, value);
-            });
-         }
-      } else if (!v.is_null()) {
-         append("", v.as_string());
-      }
-   }
-
-   auto to_kv(const fc::variant& v) {
-      std::map<std::string, std::string> result;
-      to_kv_helper(v, [&result](const std::string& k, const std::string& v){
-         result.emplace(k, v);
-      });
-      return result;
-   }
-}
-
-namespace std {
-   /*
-    * operator for printing to_kv entries
-    */
-   ostream& operator<<(ostream& os, const pair<string, string>& entry) {
-      os << entry.first + "=" + entry.second;
-      return os;
-   }
-}
 
 struct response_test_fixture {
 
@@ -119,11 +74,18 @@ struct response_test_fixture {
       response_test_fixture& fixture;
    };
 
+   struct mock_data_handler_provider {>
+      fc::variant process_data(const action_trace_v0& action, const fc::time_point&) {
+         return fc::to_hex(action.data.data(), action.data.size());
+      }
+   };
+
+   using response_impl_type = request_handler<mock_logfile_provider, mock_data_handler_provider>;
    /**
     * TODO: initialize extraction implementation here with `mock_logfile_provider` as template param
     */
    response_test_fixture()
-   : response_impl(mock_logfile_provider(*this), [this]()->fc::time_point { return mock_now(); })
+   : response_impl(mock_logfile_provider(*this), mock_data_handler_provider(), [this]()->fc::time_point { return mock_now(); })
    {
 
    }
@@ -137,7 +99,7 @@ struct response_test_fixture {
    std::map<uint64_t, fc::static_variant<std::exception_ptr, data_log_entry>> data_log = {};
    std::function<fc::time_point()> mock_now = []() -> fc::time_point { return fc::time_point::now(); };
 
-   response_impl_type<mock_logfile_provider> response_impl;
+   response_impl_type response_impl;
 
 };
 
@@ -231,7 +193,7 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
                            ("account", "alice")
                            ("permission", "active")
                      }))
-                     ("data", "AAECAw==")
+                     ("data", "00010203")
                }))
          }))
       ;

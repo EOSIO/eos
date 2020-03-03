@@ -7,11 +7,12 @@
 namespace eosio::trace_api_plugin {
 
    using now_function = std::function<fc::time_point()>;
+   using data_handler_function = std::function<fc::variant(const action_trace_v0&)>;
 
    namespace detail {
       class response_formatter {
       public:
-         static fc::variant process_block( const block_trace_v0& trace, const  std::optional<lib_entry_v0>& best_lib, const now_function& now, const fc::time_point& deadline );
+         static fc::variant process_block( const block_trace_v0& trace, const  std::optional<lib_entry_v0>& best_lib, const data_handler_function& data_handler, const now_function& now, const fc::time_point& deadline );
       };
    }
 
@@ -36,11 +37,12 @@ namespace eosio::trace_api_plugin {
       {}
    };
 
-   template<typename LogfileProvider>
+   template<typename LogfileProvider, typename DataHandlerProvider>
    class request_handler {
    public:
-      request_handler(LogfileProvider&& logfile_provider, const now_function& now)
+      request_handler(LogfileProvider&& logfile_provider, DataHandlerProvider&& data_handler_provider, const now_function& now)
       :logfile_provider(logfile_provider)
+      ,data_handler_provider(data_handler_provider)
       ,now(now)
       {
       }
@@ -54,6 +56,7 @@ namespace eosio::trace_api_plugin {
        * @return a properly formatted variant representing the trace for the given block height if it exists, an
        * empty variant otherwise.
        * @throws deadline_exceeded when the processing of the request cannot be completed by the provided time.
+       * @throws bad_data_exception when there are issues with the underlying data preventing processing.
        */
       fc::variant get_block_trace( uint32_t block_height, const fc::time_point& deadline ) {
          std::optional<uint64_t> block_offset;
@@ -117,11 +120,16 @@ namespace eosio::trace_api_plugin {
             throw bad_data_exception("Expected block_trace_v0 from data log at offset " + std::to_string(*block_offset));
          }
 
-         return detail::response_formatter::process_block(data_entry->template get<block_trace_v0>(), best_lib, now, deadline);
+         auto data_handler = [this, &deadline](const action_trace_v0& action) -> fc::variant {
+            return data_handler_provider.process_data(action, deadline);
+         };
+
+         return detail::response_formatter::process_block(data_entry->template get<block_trace_v0>(), best_lib, data_handler, now, deadline);
       }
 
    private:
       LogfileProvider logfile_provider;
+      DataHandlerProvider data_handler_provider;
       now_function now;
    };
 
