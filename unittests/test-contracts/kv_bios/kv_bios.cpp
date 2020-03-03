@@ -19,7 +19,7 @@ class [[eosio::contract]] kv_bios : eosio::contract {
       set_resource_limit(account.value, "ram"_n.value, limit);
    }
    [[eosio::action]] void ramkvlimits(uint32_t k, uint32_t v, uint32_t i) {
-      kvlimits_impl("eosio."_n "k"_n "vram"_n, k, v, i);
+      kvlimits_impl("eosio.kvram"_n, k, v, i);
    }
    [[eosio::action]] void diskkvlimits(uint32_t k, uint32_t v, uint32_t i) {
       kvlimits_impl("eosio.kvdisk"_n, k, v, i);
