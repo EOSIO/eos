@@ -12,6 +12,8 @@
 using namespace eosio;
 using namespace eosio::trace_api_plugin;
 using namespace eosio::trace_api_plugin::test_common;
+using eosio::chain::name;
+using eosio::chain::digest_type;
 
 namespace {
    chain::transaction_trace_ptr make_transaction_trace( chain::transaction_id_type&& id, uint32_t block_number, uint32_t slot, chain::transaction_receipt_header::status_enum status, std::vector<chain::action_trace> && actions ) {
@@ -62,7 +64,64 @@ namespace {
       return result;
    }
 
-   chain::block_state_ptr make_block_state( chain::block_id_type id, chain::block_id_type previous, uint32_t height, uint32_t slot, chain::name producer, std::vector<std::tuple<chain::transaction_id_type, chain::transaction_receipt_header::status_enum>> transactions ) {
+   auto get_private_key( name keyname, std::string role = "owner" ) {
+      auto secret = fc::sha256::hash( keyname.to_string() + role );
+      return chain::private_key_type::regenerate<fc::ecc::private_key_shim>( secret );
+   }
+
+   auto get_public_key( name keyname, std::string role = "owner" ) {
+      return get_private_key( keyname, role ).get_public_key();
+   }
+
+   auto create_test_block_state( std::vector<chain::transaction_metadata_ptr> trx_metas ) {
+      chain::signed_block_ptr block = std::make_shared<chain::signed_block>();
+      for( auto& trx_meta : trx_metas ) {
+         block->transactions.emplace_back( *trx_meta->packed_trx());
+      }
+
+      block->producer = eosio::chain::config::system_account_name;
+
+      auto priv_key = get_private_key( block->producer, "active" );
+      auto pub_key = get_public_key( block->producer, "active" );
+
+      auto prev = std::make_shared<chain::block_state>();
+      auto header_bmroot = digest_type::hash( std::make_pair( block->digest(), prev->blockroot_merkle.get_root()));
+      auto sig_digest = digest_type::hash( std::make_pair( header_bmroot, prev->pending_schedule.schedule_hash ));
+      block->producer_signature = priv_key.sign( sig_digest );
+
+      std::vector<chain::private_key_type> signing_keys;
+      signing_keys.emplace_back( std::move( priv_key ));
+
+      auto signer = [&]( digest_type d ) {
+         std::vector<chain::signature_type> result;
+         result.reserve( signing_keys.size());
+         for( const auto& k: signing_keys )
+            result.emplace_back( k.sign( d ));
+         return result;
+      };
+      chain::pending_block_header_state pbhs;
+      pbhs.producer = block->producer;
+      chain::producer_authority_schedule schedule = {0, {chain::producer_authority{block->producer,
+                                                                     chain::block_signing_authority_v0{1, {{pub_key, 1}}}}}};
+      pbhs.active_schedule = schedule;
+      pbhs.valid_block_signing_authority = chain::block_signing_authority_v0{1, {{pub_key, 1}}};
+      auto bsp = std::make_shared<chain::block_state>(
+            std::move( pbhs ),
+            std::move( block ),
+            std::move( trx_metas ),
+            chain::protocol_feature_set(),
+            []( chain::block_timestamp_type timestamp,
+                const fc::flat_set<digest_type>& cur_features,
+                const std::vector<digest_type>& new_features ) {},
+            signer
+      );
+
+      return bsp;
+   }
+
+   chain::block_state_ptr make_block_state( chain::block_id_type id, chain::block_id_type previous, uint32_t height,
+         uint32_t slot, chain::name producer,
+         std::vector<std::tuple<chain::transaction_id_type, chain::transaction_receipt_header::status_enum>> transactions ) {
       // TODO: it was going to be very complicated to produce a proper block_state_ptr, this can probably be changed
       // to some sort of intermediate form that a shim interface can extract from a block_state_ptr to make testing
       // and refactoring easier.
@@ -74,8 +133,8 @@ struct extraction_test_fixture {
    /**
     * MOCK implementation of the logfile input API
     */
-   struct mock_logfile_provider {
-      mock_logfile_provider(extraction_test_fixture& fixture)
+   struct mock_logfile_provider_type {
+      mock_logfile_provider_type(extraction_test_fixture& fixture)
       :fixture(fixture)
       {}
 
@@ -116,19 +175,16 @@ struct extraction_test_fixture {
     * TODO: initialize extraction implementation here with `mock_logfile_provider` as template param
     */
    extraction_test_fixture()
-   // : extraction_impl(mock_logfile_provider(this))
+   : extraction_impl(mock_logfile_provider_type(*this), [](std::exception_ptr eptr) {})
    {
-
    }
 
    void signal_applied_transaction( const chain::transaction_trace_ptr& trace, const chain::signed_transaction& strx ) {
-      // TODO: route to extraction system
-      // extraction_impl.on_applied_transaction(trace, strx);
+      extraction_impl.signal_applied_transaction(trace, strx);
    }
 
    void signal_accepted_block( const chain::block_state_ptr& bsp ) {
-      // TODO: route to extraction system
-      // extraction_impl.on_accepted_block(bsp);
+      extraction_impl.signal_accepted_block(bsp);
    }
 
 
@@ -138,8 +194,7 @@ struct extraction_test_fixture {
    uint64_t max_lib = 0;
    std::vector<data_log_entry> data_log = {};
 
-   // TODO: declare extraction implementation here with `mock_logfile_provider` as template param
-   // extraction_impl_type<mock_logfile_provider> extraction_impl;
+   chain_extraction_impl_type<mock_logfile_provider_type> extraction_impl;
    
 };
 
