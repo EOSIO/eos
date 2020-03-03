@@ -152,10 +152,12 @@ void apply_context::exec_one()
       r.auth_sequence[auth.actor] = next_auth_sequence( auth.actor );
    }
 
+   auto input_hash = digest_type::hash(act->data);
    if( control.is_builtin_activated( builtin_protocol_feature_t::action_return_value ) ) {
-      r.return_value.emplace( std::move( action_return_value ) );
+      auto output_hash = digest_type::hash(action_return_value);
+      r.act_digest = merkle({r.act_digest, output_hash});
+      trace.return_value.emplace( std::move( action_return_value ) );
    }
-
    trx_context.executed_action_receipt_digests.emplace_back( r.digest() );
 
    finalize_trace( trace, start );
