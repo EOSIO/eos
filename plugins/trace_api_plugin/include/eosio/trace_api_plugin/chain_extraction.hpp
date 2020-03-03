@@ -16,13 +16,12 @@ public:
    /**
     * Chain Extractor for capturing transaction traces, action traces, and block info.
     * @param store provider of append_data_log & append_metadata_log
-    * @param logger called when exceptions should be logged
+    * @param except_handler called on exceptions, logging if any is left to the user
     * @param shutdown called when this class determines application should shutdown because of fatal error
     */
-   chain_extraction_impl_type( StoreProvider& store, std::function<void(std::exception_ptr)> logger, std::function<void()> shutdown )
+   chain_extraction_impl_type( StoreProvider& store, std::function<void(std::exception_ptr)> except_handler )
    : store(store)
-   , log(std::move(logger))
-   , shutdown(std::move(shutdown))
+   , except_handler(std::move(except_handler))
    {}
 
    /// connect to chain controller applied_transaction signal
@@ -103,8 +102,7 @@ private:
          store.append_metadata_log( block_entry_v0{.id = block_state->id, .number = block_state->block_num, .offset = offset} );
 
       } catch( ... ) {
-         log( std::current_exception() );
-         shutdown();
+         except_handler( std::current_exception() );
       }
    }
 
@@ -112,15 +110,13 @@ private:
       try {
          store.append_metadata_log( lib_entry_v0{ .lib = bsp->block_num } );
       } catch( ... ) {
-         log( std::current_exception() );
-         shutdown();
+         except_handler( std::current_exception() );
       }
    }
 
 private:
    StoreProvider&                                               store;
-   std::function<void(std::exception_ptr)>                      log;
-   std::function<void()>                                        shutdown; // call to shutdown application
+   std::function<void(std::exception_ptr)>                      except_handler;
    std::map<transaction_id_type, chain::transaction_trace_ptr>  cached_traces;
    fc::optional<chain::transaction_trace_ptr>                   onblock_trace;
 
