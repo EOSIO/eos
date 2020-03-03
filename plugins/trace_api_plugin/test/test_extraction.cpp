@@ -7,6 +7,7 @@
 #include <eosio/chain/block_state.hpp>
 
 #include <eosio/trace_api_plugin/test_common.hpp>
+#include <eosio/trace_api_plugin/chain_extraction.hpp>
 
 using namespace eosio;
 using namespace eosio::trace_api_plugin;
