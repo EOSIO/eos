@@ -19,18 +19,18 @@ namespace eosio {
 namespace history_apis {
 
 class read_write {
-   history_const_ptr history;
+   history_ptr history;
 
    public:
-      read_write(history_const_ptr&& history)
+      explicit read_write(history_ptr&& history)
         : history(history) {}
 
       struct prune_history_params {
-        int32_t             height;     // height of the last block we want to prune data of
+        int32_t             height;            // height of the last block we want to prune data of
       };
 
       struct prune_history_result {
-        int64_t             last_id;   // last id pruned
+        int64_t             records_removed;   // # of records removed
         bool                time_limit_exceeded_error;
       };
 
@@ -145,7 +145,7 @@ class history_plugin : public plugin<history_plugin> {
       void plugin_shutdown();
 
       history_apis::read_only  get_read_only_api()const { return history_apis::read_only(history_const_ptr(my)); }
-      history_apis::read_write get_read_write_api() { return history_apis::read_write(history_const_ptr(my)); }
+      history_apis::read_write get_read_write_api() { return history_apis::read_write(std::move(my)); }
 
    private:
       history_ptr my;
@@ -160,7 +160,7 @@ FC_REFLECT( eosio::history_apis::read_only::ordered_action_result, (global_actio
 FC_REFLECT( eosio::history_apis::read_only::get_transaction_params, (id)(block_num_hint) )
 FC_REFLECT( eosio::history_apis::read_write::prune_history_params, (height) )
 FC_REFLECT( eosio::history_apis::read_only::get_transaction_result, (id)(trx)(block_time)(block_num)(last_irreversible_block)(traces) )
-FC_REFLECT( eosio::history_apis::read_write::prune_history_result, (last_id)(time_limit_exceeded_error) )
+FC_REFLECT( eosio::history_apis::read_write::prune_history_result, (records_removed)(time_limit_exceeded_error) )
 /*
 FC_REFLECT(eosio::history_apis::read_only::get_transaction_params, (transaction_id) )
 FC_REFLECT(eosio::history_apis::read_only::get_transaction_results, (transaction_id)(transaction) )
