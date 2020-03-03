@@ -74,7 +74,7 @@ struct response_test_fixture {
       response_test_fixture& fixture;
    };
 
-   struct mock_data_handler_provider {>
+   struct mock_data_handler_provider {
       fc::variant process_data(const action_trace_v0& action, const fc::time_point&) {
          return fc::to_hex(action.data.data(), action.data.size());
       }

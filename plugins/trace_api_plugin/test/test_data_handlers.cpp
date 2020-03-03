@@ -67,7 +67,62 @@ BOOST_AUTO_TEST_SUITE(abi_data_handler_tests)
 
       BOOST_TEST(to_kv(expected) == to_kv(actual), boost::test_tools::per_element());
    }
-   
+
+   BOOST_AUTO_TEST_CASE(basic_abi_wrong_type)
+   {
+      auto action = action_trace_v0 {
+            0, "alice"_n, "alice"_n, "foo"_n, {}, {0x00, 0x01, 0x02, 0x03}
+      };
+
+      auto abi = chain::abi_def ( {},
+         {
+            { "foo", "", { {"a", "varuint32"}, {"b", "varuint32"}, {"c", "varuint32"}, {"d", "varuint32"} } }
+         },
+         {
+            { "bar"_n, "foo", ""}
+         },
+         {}, {}, {}
+      );
+      abi.version = "eosio::abi/1.";
+
+      abi_data_handler handler;
+      handler.add_abi("alice"_n, abi);
+
+      auto expected = fc::variant("00010203");
+
+      auto actual = handler.process_data(action, fc::time_point::maximum());
+
+      BOOST_TEST(to_kv(expected) == to_kv(actual), boost::test_tools::per_element());
+   }
+
+   BOOST_AUTO_TEST_CASE(basic_abi_insufficient_data)
+   {
+      auto action = action_trace_v0 {
+            0, "alice"_n, "alice"_n, "foo"_n, {}, {0x00, 0x01, 0x02}
+      };
+
+      auto abi = chain::abi_def ( {},
+         {
+            { "foo", "", { {"a", "varuint32"}, {"b", "varuint32"}, {"c", "varuint32"}, {"d", "varuint32"} } }
+         },
+         {
+            { "foo"_n, "foo", ""}
+         },
+         {}, {}, {}
+      );
+      abi.version = "eosio::abi/1.";
+
+      bool log_called = false;
+      abi_data_handler handler([&log_called](const std::exception_ptr& ){log_called = true;});
+      handler.add_abi("alice"_n, abi);
+
+      auto expected = fc::variant("000102");
+
+      auto actual = handler.process_data(action, fc::time_point::maximum());
+
+      BOOST_TEST(to_kv(expected) == to_kv(actual), boost::test_tools::per_element());
+      BOOST_TEST(log_called);
+   }
 
 BOOST_AUTO_TEST_SUITE_END()
 

@@ -9,12 +9,19 @@ namespace eosio::trace_api_plugin {
    }
 
    fc::variant abi_data_handler::process_data(const action_trace_v0& action, const fc::time_point& deadline) {
-      if (abi_serializer_by_account.count(action.account) == 0) {
-         return fc::to_hex(action.data.data(), action.data.size());
+      if (abi_serializer_by_account.count(action.account) > 0) {
+         const auto& serializer_p = abi_serializer_by_account.at(action.account);
+         auto type_name = serializer_p->get_action_type(action.action);
+
+         if (!type_name.empty()) {
+            try {
+               return serializer_p->binary_to_variant(type_name, action.data, fc::microseconds::maximum());
+            } catch (...) {
+               if (log) log(std::current_exception());
+            }
+         }
       }
 
-      const auto& serializer_p = abi_serializer_by_account.at(action.account);
-      auto type_name = serializer_p->get_action_type(action.action);
-      return serializer_p->binary_to_variant( type_name, action.data, fc::microseconds::maximum() );
+      return fc::to_hex(action.data.data(), action.data.size());
    }
 }
