@@ -56,14 +56,14 @@ namespace eosio { namespace trace_api_plugin {
    }
 
    /// @return transaction_trace_v0 with populated action_trace_v0
-   inline transaction_trace_v0 to_transaction_trace_v0( const chain::transaction_trace& t ) {
+   inline transaction_trace_v0 to_transaction_trace_v0( const chain::transaction_trace_ptr& t ) {
       transaction_trace_v0 r;
-      r.id = t.id;
-      if( t.receipt ) { // if no receipt leave as default hard_fail
-         r.status = t.receipt->status;
+      r.id = t->id;
+      if( t->receipt ) { // if no receipt leave as default hard_fail
+         r.status = t->receipt->status;
       }
-      r.actions.reserve( t.action_traces.size());
-      for( const auto& at : t.action_traces ) {
+      r.actions.reserve( t->action_traces.size());
+      for( const auto& at : t->action_traces ) {
          r.actions.emplace_back( to_action_trace_v0( at ));
       }
       return r;
