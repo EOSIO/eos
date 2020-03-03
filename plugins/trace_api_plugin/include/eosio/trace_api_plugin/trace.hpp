@@ -1,5 +1,6 @@
 #pragma once
 
+#include <eosio/chain/trace.hpp>
 #include <eosio/chain/types.hpp>
 #include <eosio/chain/block.hpp>
 
@@ -35,6 +36,37 @@ namespace eosio { namespace trace_api_plugin {
       chain::name                        producer = {};
       std::vector<transaction_trace_v0>  transactions = {};
    };
+
+   action_trace_v0 to_action_trace_v0( const chain::action_trace& at ) {
+      action_trace_v0 r;
+      r.receiver = at.receiver;
+      r.account = at.act.account;
+      r.action = at.act.name;
+      r.data = at.act.data;
+      if( at.receipt ) {
+         r.global_sequence = at.receipt->global_sequence;
+      }
+      r.authorization.reserve( at.act.authorization.size());
+      for( const auto& auth : at.act.authorization ) {
+         r.authorization.emplace_back( authorization_trace_v0{auth.actor, auth.permission} );
+      }
+      return r;
+   }
+
+   transaction_trace_v0 to_transaction_trace_v0( const chain::transaction_trace& t ) {
+      transaction_trace_v0 r;
+      r.id = t.id;
+      if( t.receipt ) {
+         r.status = t.receipt->status;
+      } else {
+         r.status = eosio::chain::transaction_receipt_header::status_enum::hard_fail; // not really, but better than other values
+      }
+      r.actions.reserve( t.action_traces.size());
+      for( const auto& at : t.action_traces ) {
+         r.actions.emplace_back( to_action_trace_v0( at ));
+      }
+      return r;
+   }
 
 } }
 
