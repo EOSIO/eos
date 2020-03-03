@@ -3,6 +3,7 @@
 #include <eosio/chain/trace.hpp>
 #include <eosio/chain/types.hpp>
 #include <eosio/chain/block.hpp>
+#include <eosio/chain/block_state.hpp>
 
 namespace eosio { namespace trace_api_plugin {
 
@@ -24,7 +25,7 @@ namespace eosio { namespace trace_api_plugin {
       using status_type = chain::transaction_receipt_header::status_enum;
 
       chain::transaction_id_type    id = {};
-      status_type                   status = {};
+      status_type                   status = status_type::hard_fail;
       std::vector<action_trace_v0>  actions = {};
    };
 
@@ -65,6 +66,17 @@ namespace eosio { namespace trace_api_plugin {
       for( const auto& at : t.action_traces ) {
          r.actions.emplace_back( to_action_trace_v0( at ));
       }
+      return r;
+   }
+
+   /// @return block_trace_v0 without any transaction_trace_v0
+   block_trace_v0 create_block_trace_v0( const chain::block_state_ptr& bsp ) {
+      block_trace_v0 r;
+      r.id = bsp->id;
+      r.number = bsp->block_num;
+      r.previous_id = bsp->block->previous;
+      r.timestamp = bsp->block->timestamp;
+      r.producer = bsp->block->producer;
       return r;
    }
 
