@@ -12,7 +12,7 @@
 #include <eosio/chain/resource_limits.hpp>
 #include <eosio/chain/resource_limits_private.hpp>
 #include <eosio/chain/trace.hpp>
-#include <eosio/chain_plugin/chain_plugin.hpp>
+#include <eosio/state_history/types.hpp>
 #include <eosio/state_history_plugin/state_history_plugin.hpp>
 
 #include <type_traits>
@@ -78,7 +78,7 @@ datastream<ST>& history_context_serialize_container(datastream<ST>& ds, const ch
 }
 
 template <typename ST, typename T>
-datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_big_vector_wrapper<T>& obj) {
+datastream<ST>& operator<<(datastream<ST>& ds, const eosio::state_history::big_vector_wrapper<T>& obj) {
    FC_ASSERT(obj.obj.size() <= 1024 * 1024 * 1024);
    fc::raw::pack(ds, unsigned_int((uint32_t)obj.obj.size()));
    for (auto& x : obj.obj)
@@ -619,10 +619,10 @@ datastream<ST>& operator<<(datastream<ST>& ds, const history_context_wrapper<boo
 }
 
 template <typename ST>
-datastream<ST>& operator<<(datastream<ST>&                                                    ds,
-                           const history_context_wrapper<std::pair<uint8_t, bool>,
-                                                         eosio::augmented_transaction_trace>& obj) {
-   auto& trace = *obj.obj.trace;
+datastream<ST>& operator<<(
+    datastream<ST>&                                                                                             ds,
+    const history_context_wrapper<std::pair<uint8_t, bool>, eosio::state_history::augmented_transaction_trace>& obj) {
+   auto& trace      = *obj.obj.trace;
    bool  debug_mode = obj.context.second;
    fc::raw::pack(ds, fc::unsigned_int(0));
    fc::raw::pack(ds, as_type<eosio::chain::transaction_id_type>(trace.id));
@@ -669,7 +669,8 @@ datastream<ST>& operator<<(datastream<ST>&                                      
       std::pair<uint8_t, bool> context = std::make_pair(stat, debug_mode);
       fc::raw::pack( //
           ds, make_history_context_wrapper(
-                  obj.db, context, eosio::augmented_transaction_trace{trace.failed_dtrx_trace, obj.obj.partial}));
+                  obj.db, context,
+                  eosio::state_history::augmented_transaction_trace{trace.failed_dtrx_trace, obj.obj.partial}));
    }
 
    bool include_partial = obj.obj.partial && !trace.failed_dtrx_trace;
@@ -692,15 +693,16 @@ datastream<ST>& operator<<(datastream<ST>&                                      
 }
 
 template <typename ST>
-datastream<ST>& operator<<(datastream<ST>&                                                           ds,
-                           const history_context_wrapper<bool, eosio::augmented_transaction_trace>&  obj) {
+datastream<ST>&
+operator<<(datastream<ST>&                                                                         ds,
+           const history_context_wrapper<bool, eosio::state_history::augmented_transaction_trace>& obj) {
    std::pair<uint8_t, bool> context = std::make_pair(eosio::chain::transaction_receipt_header::hard_fail, obj.context);
    ds << make_history_context_wrapper(obj.db, context, obj.obj);
    return ds;
 }
 
 template <typename ST>
-datastream<ST>& operator<<(datastream<ST>& ds, const eosio::get_blocks_result_v0& obj) {
+datastream<ST>& operator<<(datastream<ST>& ds, const eosio::state_history::get_blocks_result_v0& obj) {
    fc::raw::pack(ds, obj.head);
    fc::raw::pack(ds, obj.last_irreversible);
    fc::raw::pack(ds, obj.this_block);

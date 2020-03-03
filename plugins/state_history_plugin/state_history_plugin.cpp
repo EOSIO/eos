@@ -20,6 +20,7 @@ extern const char* const state_history_plugin_abi;
 
 namespace eosio {
 using namespace chain;
+using namespace state_history;
 using boost::signals2::scoped_connection;
 
 static appbase::abstract_plugin& _state_history_plugin = app().register_plugin<state_history_plugin>();
