@@ -1,6 +1,8 @@
 #pragma once
 
 #include <eosio/trace_api_plugin/trace.hpp>
+#incldue <exception>
+#include <functional>
 #include <map>
 
 namespace eosio { namespace trace_api_plugin {
@@ -11,13 +13,24 @@ using chain::packed_transaction;
 template <typename StoreProvider>
 class chain_extraction_impl_type {
 public:
-   explicit chain_extraction_impl_type( StoreProvider& store )
-   : store(store) {}
+   /**
+    * Chain Extractor for capturing transaction traces, action traces, and block info.
+    * @param store provider of append_data_log & append_metadata_log
+    * @param logger called when exceptions should be logged
+    * @param shutdown called when this class determines application should shutdown because of fatal error
+    */
+   chain_extraction_impl_type( StoreProvider& store, std::function<void(std::exception_ptr)> logger, std::function<void()> shutdown )
+   : store(store)
+   , log(std::move(logger))
+   , shutdown(std::move(shutdown))
+   {}
 
+   /// connect to chain controller applied_transaction signal
    void signal_applied_transaction( const chain::transaction_trace_ptr& trace, const chain::signed_transaction& strx ) {
       on_applied_transaction( trace, strx );
    }
 
+   /// connect to chain controller accepted_block signal
    void signal_accepted_block( const chain::block_state_ptr& bsp ) {
       on_accepted_block( bsp );
    }
@@ -78,19 +91,18 @@ private:
          onblock_trace.reset();
 
          uint64_t offset = store.append_data_log( std::move( bt ));
-
          store.append_metadata_log( {.id = block_state->id, .number = block_state->block_num, .offset = offset} );
-      } catch( const fc::exception& e ) {
-         // todo log
-      } catch( const std::exception& e ) {
-         // todo log
+
       } catch( ... ) {
-         //todo shutdown, log
+         log( std::current_exception() );
+         shutdown();
       }
    }
 
 private:
    StoreProvider&                                               store;
+   std::function<void(std::exception_ptr)>                      log;
+   std::function<void()>                                        shutdown; // call to shutdown application
    std::map<transaction_id_type, chain::transaction_trace_ptr>  cached_traces;
    fc::optional<chain::transaction_trace_ptr>                   onblock_trace;
 
