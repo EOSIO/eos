@@ -1,7 +1,7 @@
 #pragma once
 
 #include <eosio/trace_api_plugin/trace.hpp>
-#incldue <exception>
+#include <exception>
 #include <functional>
 #include <map>
 
@@ -35,6 +35,11 @@ public:
       on_accepted_block( bsp );
    }
 
+   /// connect to chain controller irreversible_block signal
+   void signal_irreversible_block( const chain::block_state_ptr& bsp ) {
+      on_irreversible_block( bsp );
+   }
+
 private:
    static bool is_onblock(const chain::transaction_trace_ptr& p) {
       if (p->action_traces.size() != 1)
@@ -64,6 +69,10 @@ private:
       store_block_trace( block_state );
    }
 
+   void on_irreversible_block( const chain::block_state_ptr& block_state ) {
+      store_lib( block_state );
+   }
+
    void store_block_trace( const chain::block_state_ptr& block_state ) {
       try {
          block_trace_v0 bt = create_block_trace_v0( block_state );
@@ -91,8 +100,17 @@ private:
          onblock_trace.reset();
 
          uint64_t offset = store.append_data_log( std::move( bt ));
-         store.append_metadata_log( {.id = block_state->id, .number = block_state->block_num, .offset = offset} );
+         store.append_metadata_log( block_entry_v0{.id = block_state->id, .number = block_state->block_num, .offset = offset} );
 
+      } catch( ... ) {
+         log( std::current_exception() );
+         shutdown();
+      }
+   }
+
+   void store_lib( const chain::block_state_ptr& bsp ) {
+      try {
+         store.append_metadata_log( lib_entry_v0{ .lib = bsp->block_num } );
       } catch( ... ) {
          log( std::current_exception() );
          shutdown();
