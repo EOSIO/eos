@@ -2,6 +2,7 @@ file(GLOB HEADERS "include/eosio/state-history/*.hpp")
 
 add_library( state_history
              abi.cpp
+             trace_converter.cpp
              ${HEADERS}
            )
 

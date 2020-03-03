@@ -1,6 +1,7 @@
 #include <eosio/chain/config.hpp>
 #include <eosio/state_history/log.hpp>
 #include <eosio/state_history/serialization.hpp>
+#include <eosio/state_history/trace_converter.hpp>
 #include <eosio/state_history_plugin/state_history_plugin.hpp>
 
 #include <boost/asio/bind_executor.hpp>
@@ -123,8 +124,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
    string                                                     endpoint_address = "0.0.0.0";
    uint16_t                                                   endpoint_port    = 8080;
    std::unique_ptr<tcp::acceptor>                             acceptor;
-   std::map<transaction_id_type, augmented_transaction_trace> cached_traces;
-   fc::optional<augmented_transaction_trace>                  onblock_trace;
+   trace_converter                                            trace_converter;
 
    void get_log_entry(state_history_log& log, uint32_t block_num, fc::optional<bytes>& result) {
       if (block_num < log.begin_block() || block_num >= log.end_block())
@@ -396,27 +396,9 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       });
    }
 
-   static bool is_onblock(const transaction_trace_ptr& p) {
-      if (p->action_traces.size() != 1)
-         return false;
-      auto& act = p->action_traces[0].act;
-      if (act.account != eosio::chain::config::system_account_name || act.name != N(onblock) ||
-          act.authorization.size() != 1)
-         return false;
-      auto& auth = act.authorization[0];
-      return auth.actor == eosio::chain::config::system_account_name &&
-             auth.permission == eosio::chain::config::active_name;
-   }
-
    void on_applied_transaction(const transaction_trace_ptr& p, const signed_transaction& t) {
-      if (p->receipt && trace_log) {
-         if (is_onblock(p))
-            onblock_trace.emplace(p, t);
-         else if (p->failed_dtrx_trace)
-            cached_traces[p->failed_dtrx_trace->id] = augmented_transaction_trace{p, t};
-         else
-            cached_traces[p->id] = augmented_transaction_trace{p, t};
-      }
+      if (trace_log)
+         trace_converter.add_transaction(p, t);
    }
 
    void on_accepted_block(const block_state_ptr& block_state) {
@@ -435,25 +417,8 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
    void store_traces(const block_state_ptr& block_state) {
       if (!trace_log)
          return;
-      std::vector<augmented_transaction_trace> traces;
-      if (onblock_trace)
-         traces.push_back(*onblock_trace);
-      for (auto& r : block_state->block->transactions) {
-         transaction_id_type id;
-         if (r.trx.contains<transaction_id_type>())
-            id = r.trx.get<transaction_id_type>();
-         else
-            id = r.trx.get<packed_transaction>().id();
-         auto it = cached_traces.find(id);
-         EOS_ASSERT(it != cached_traces.end() && it->second.trace->receipt, plugin_exception,
-                    "missing trace for transaction ${id}", ("id", id));
-         traces.push_back(it->second);
-      }
-      cached_traces.clear();
-      onblock_trace.reset();
-
-      auto& db         = chain_plug->chain().db();
-      auto  traces_bin = zlib_compress_bytes(fc::raw::pack(make_history_context_wrapper(db, trace_debug_mode, traces)));
+      auto traces_bin =
+          zlib_compress_bytes(trace_converter.pack(chain_plug->chain().db(), trace_debug_mode, block_state));
       EOS_ASSERT(traces_bin.size() == (uint32_t)traces_bin.size(), plugin_exception, "traces is too big");
 
       state_history_log_header header{.magic        = ship_magic(ship_current_version),
