@@ -38,7 +38,8 @@ namespace eosio { namespace trace_api_plugin {
       std::vector<transaction_trace_v0>  transactions = {};
    };
 
-   action_trace_v0 to_action_trace_v0( const chain::action_trace& at ) {
+   /// Used by to_transaction_trace_v0 for creation of action_trace_v0
+   inline action_trace_v0 to_action_trace_v0( const chain::action_trace& at ) {
       action_trace_v0 r;
       r.receiver = at.receiver;
       r.account = at.act.account;
@@ -54,13 +55,12 @@ namespace eosio { namespace trace_api_plugin {
       return r;
    }
 
-   transaction_trace_v0 to_transaction_trace_v0( const chain::transaction_trace& t ) {
+   /// @return transaction_trace_v0 with populated action_trace_v0
+   inline transaction_trace_v0 to_transaction_trace_v0( const chain::transaction_trace& t ) {
       transaction_trace_v0 r;
       r.id = t.id;
-      if( t.receipt ) {
+      if( t.receipt ) { // if no receipt leave as default hard_fail
          r.status = t.receipt->status;
-      } else {
-         r.status = eosio::chain::transaction_receipt_header::status_enum::hard_fail; // not really, but better than other values
       }
       r.actions.reserve( t.action_traces.size());
       for( const auto& at : t.action_traces ) {
@@ -70,7 +70,7 @@ namespace eosio { namespace trace_api_plugin {
    }
 
    /// @return block_trace_v0 without any transaction_trace_v0
-   block_trace_v0 create_block_trace_v0( const chain::block_state_ptr& bsp ) {
+   inline block_trace_v0 create_block_trace_v0( const chain::block_state_ptr& bsp ) {
       block_trace_v0 r;
       r.id = bsp->id;
       r.number = bsp->block_num;
