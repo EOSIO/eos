@@ -5,7 +5,7 @@
 The `producer_plugin` loads functionality required for a node to produce blocks.
 
 [[info]]
-| Additional configuration is required to produce blocks. Please read [Configuring Block Producing Node](https://developers.eos.io/eosio-nodeos/docs/environment-producing-node).
+| Additional configuration is required to produce blocks. Please read [Configuring Block Producing Node](../../02_usage/02_node-setups/00_producing-node.md).
 
 ## Usage
 
@@ -92,9 +92,10 @@ Config Options for eosio::producer_plugin:
                                         transactions in any block before 
                                         returning to normal transaction 
                                         processing.
-  --incoming-defer-ratio arg (=1)       ratio between incoming transations and 
+  --incoming-defer-ratio arg (=1)       ratio between incoming transactions and 
                                         deferred transactions when both are 
-                                        exhausted
+                                        queued for execution                                        
+                                                                            
   --producer-threads arg (=2)           Number of worker threads in producer 
                                         thread pool
   --snapshots-dir arg (="snapshots")    the location of the snapshots directory
@@ -105,6 +106,21 @@ Config Options for eosio::producer_plugin:
 ## Dependencies
 
 * [`chain_plugin`](../chain_plugin/index.md)
+
+## The priority of transaction
+
+You can give one of the transaction types priority over another when the producer plugin has a queue of transactions pending.
+
+The option below sets the ratio between the incoming transaction and the deferred transaction:
+
+```console
+  --incoming-defer-ratio arg (=1)       
+```
+
+By default value of `1`, the `producer` plugin processes one incoming transaction per deferred transaction. When `arg` sets to `10`, the `producer` plugin processes 10 incoming transactions per deferred transaction. 
+
+If the `arg` is set to a sufficiently large number, the plugin always processes the incoming transaction first until the queue of the incoming transactions is empty. Respectively, if the `arg` is 0, the `producer` plugin processes the deferred transactions queue first.
+
 
 ### Load Dependency Examples
 
