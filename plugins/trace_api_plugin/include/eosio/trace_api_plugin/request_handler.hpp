@@ -41,8 +41,8 @@ namespace eosio::trace_api_plugin {
    class request_handler {
    public:
       request_handler(LogfileProvider&& logfile_provider, DataHandlerProvider&& data_handler_provider, const now_function& now)
-      :logfile_provider(logfile_provider)
-      ,data_handler_provider(data_handler_provider)
+      :logfile_provider(std::move(logfile_provider))
+      ,data_handler_provider(std::move(data_handler_provider))
       ,now(now)
       {
       }
