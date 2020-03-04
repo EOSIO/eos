@@ -387,13 +387,17 @@ resource_limits_manager::get_account_cpu_limit_ex( const account_name& name, uin
    account_resource_limit arl;
 
    uint128_t window_size = config.account_cpu_usage_average_window;
-   uint64_t  greylisted_virtual_cpu_limit = config.cpu_limit_parameters.max * greylist_limit;
 
    bool greylisted = false;
    uint128_t virtual_cpu_capacity_in_window = window_size;
-   if( greylisted_virtual_cpu_limit < state.virtual_cpu_limit ) {
-      virtual_cpu_capacity_in_window *= greylisted_virtual_cpu_limit;
-      greylisted = true;
+   if( greylist_limit < config::maximum_elastic_resource_multiplier ) {
+      uint64_t greylisted_virtual_cpu_limit = config.cpu_limit_parameters.max * greylist_limit;
+      if( greylisted_virtual_cpu_limit < state.virtual_cpu_limit ) {
+         virtual_cpu_capacity_in_window *= greylisted_virtual_cpu_limit;
+         greylisted = true;
+      } else {
+         virtual_cpu_capacity_in_window *= state.virtual_cpu_limit;
+      }
    } else {
       virtual_cpu_capacity_in_window *= state.virtual_cpu_limit;
    }
@@ -445,13 +449,17 @@ resource_limits_manager::get_account_net_limit_ex( const account_name& name, uin
    account_resource_limit arl;
 
    uint128_t window_size = config.account_net_usage_average_window;
-   uint64_t  greylisted_virtual_net_limit = config.net_limit_parameters.max * greylist_limit;
 
    bool greylisted = false;
    uint128_t virtual_network_capacity_in_window = window_size;
-   if( greylisted_virtual_net_limit < state.virtual_net_limit ) {
-      virtual_network_capacity_in_window *= greylisted_virtual_net_limit;
-      greylisted = true;
+   if( greylist_limit < config::maximum_elastic_resource_multiplier ) {
+      uint64_t greylisted_virtual_net_limit = config.net_limit_parameters.max * greylist_limit;
+      if( greylisted_virtual_net_limit < state.virtual_net_limit ) {
+         virtual_network_capacity_in_window *= greylisted_virtual_net_limit;
+         greylisted = true;
+      } else {
+         virtual_network_capacity_in_window *= state.virtual_net_limit;
+      }
    } else {
       virtual_network_capacity_in_window *= state.virtual_net_limit;
    }

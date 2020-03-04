@@ -50,8 +50,6 @@ namespace eosio { namespace chain {
       IRREVERSIBLE
    };
 
-   inline bool db_mode_is_immutable(db_read_mode m) {return db_read_mode::READ_ONLY == m || db_read_mode::IRREVERSIBLE ==m;}
-
    enum class validation_mode {
       FULL,
       LIGHT
@@ -145,13 +143,15 @@ namespace eosio { namespace chain {
          /**
           *
           */
-         transaction_trace_ptr push_transaction( const transaction_metadata_ptr& trx, fc::time_point deadline, uint32_t billed_cpu_time_us = 0 );
+         transaction_trace_ptr push_transaction( const transaction_metadata_ptr& trx, fc::time_point deadline,
+                                                 uint32_t billed_cpu_time_us, bool explicit_billed_cpu_time );
 
          /**
           * Attempt to execute a specific transaction in our deferred trx database
           *
           */
-         transaction_trace_ptr push_scheduled_transaction( const transaction_id_type& scheduled, fc::time_point deadline, uint32_t billed_cpu_time_us = 0 );
+         transaction_trace_ptr push_scheduled_transaction( const transaction_id_type& scheduled, fc::time_point deadline,
+                                                           uint32_t billed_cpu_time_us, bool explicit_billed_cpu_time );
 
          block_state_ptr finalize_block( const signer_callback_type& signer_callback );
          void sign_block( const signer_callback_type& signer_callback );
@@ -277,6 +277,7 @@ namespace eosio { namespace chain {
          bool skip_db_sessions( )const;
          bool skip_db_sessions( block_status bs )const;
          bool skip_trx_checks()const;
+         bool is_trusted_producer( const account_name& producer) const;
 
          bool contracts_console()const;
 

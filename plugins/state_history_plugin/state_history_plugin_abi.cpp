@@ -17,7 +17,8 @@ extern const char* const state_history_plugin_abi = R"({
                 { "name": "trace_begin_block", "type": "uint32" },
                 { "name": "trace_end_block", "type": "uint32" },
                 { "name": "chain_state_begin_block", "type": "uint32" },
-                { "name": "chain_state_end_block", "type": "uint32" }
+                { "name": "chain_state_end_block", "type": "uint32" },
+                { "name": "chain_id", "type": "checksum256$" }
             ]
         },
         {
