@@ -1,6 +1,7 @@
 file(GLOB HEADERS "include/eosio/trace_api_plugin/*.hpp")
 add_library( trace_api_plugin
              request_handler.cpp
+             abi_data_handler.cpp
              trace_api_plugin.cpp
              ${HEADERS} )
 

@@ -45,7 +45,7 @@ namespace {
    }
 
    template<typename Yield>
-   fc::variants process_actions(const std::vector<action_trace_v0>& actions, Yield&& yield ) {
+   fc::variants process_actions(const std::vector<action_trace_v0>& actions, const data_handler_function& data_handler, Yield&& yield ) {
       fc::variants result;
       result.reserve(actions.size());
       for ( const auto& a: actions) {
@@ -56,7 +56,7 @@ namespace {
             ("account", a.account.to_string())
             ("action", a.action.to_string())
             ("authorization", process_authorizations(a.authorization, std::forward<Yield>(yield)))
-            ("data", fc::base64_encode(a.data.data(), a.data.size()))
+            ("data", data_handler(a))
          );
       }
 
@@ -65,7 +65,7 @@ namespace {
    }
 
    template<typename Yield>
-   fc::variants process_transactions(const std::vector<transaction_trace_v0>& transactions, Yield&& yield  ) {
+   fc::variants process_transactions(const std::vector<transaction_trace_v0>& transactions, const data_handler_function& data_handler, Yield&& yield  ) {
       fc::variants result;
       result.reserve(transactions.size());
       for ( const auto& t: transactions) {
@@ -74,7 +74,7 @@ namespace {
          result.emplace_back(fc::mutable_variant_object()
             ("id", t.id.str())
             ("status", to_status_string(t.status))
-            ("actions", process_actions(t.actions, std::forward<Yield>(yield)))
+            ("actions", process_actions(t.actions, data_handler, std::forward<Yield>(yield)))
          );
       }
 
@@ -84,7 +84,7 @@ namespace {
 }
 
 namespace eosio::trace_api_plugin::detail {
-   fc::variant response_formatter::process_block( const block_trace_v0& trace, const  std::optional<lib_entry_v0>& best_lib, const now_function& now, const fc::time_point& deadline ) {
+   fc::variant response_formatter::process_block( const block_trace_v0& trace, const  std::optional<lib_entry_v0>& best_lib, const data_handler_function& data_handler, const now_function& now, const fc::time_point& deadline ) {
       bool final = best_lib && (best_lib->lib >= trace.number);
 
       auto yield = [&now, &deadline]() {
@@ -100,6 +100,6 @@ namespace eosio::trace_api_plugin::detail {
          ("status", final ? "irreversible" : "pending" )
          ("timestamp", to_iso8601_datetime(trace.timestamp))
          ("producer", trace.producer.to_string())
-         ("transactions", process_transactions(trace.transactions, yield ));
+         ("transactions", process_transactions(trace.transactions, data_handler, yield ));
    }
 }
