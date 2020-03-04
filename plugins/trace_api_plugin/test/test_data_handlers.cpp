@@ -113,7 +113,7 @@ BOOST_AUTO_TEST_SUITE(abi_data_handler_tests)
       abi.version = "eosio::abi/1.";
 
       bool log_called = false;
-      abi_data_handler handler([&log_called](const std::exception_ptr& ){log_called = true;});
+      abi_data_handler handler([&log_called](const exception_with_context& ){log_called = true;});
       handler.add_abi("alice"_n, abi);
 
       auto expected = fc::variant("000102");
