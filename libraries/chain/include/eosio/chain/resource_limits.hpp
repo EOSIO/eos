@@ -53,7 +53,7 @@ namespace eosio { namespace chain { namespace resource_limits {
       int64_t available = 0; ///< quantity available in current window (based upon fractional reserve)
       int64_t max = 0; ///< max per window under current congestion
       fc::optional<block_timestamp_type> last_updated_time_stamp; ///< last updated timestamp, optional for backward compatibility in Json
-      fc::optional<uint64_t> current_used;  ///< current usage according to the given timestamp, optional for backward compatibility in Json
+      fc::optional<int64_t> current_used;  ///< current usage according to the given timestamp, optional for backward compatibility in Json
    };
 
    class resource_limits_manager {
