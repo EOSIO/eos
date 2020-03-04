@@ -1,4 +1,5 @@
 #include <eosio/chain/config.hpp>
+#include <eosio/state_history/compression.hpp>
 #include <eosio/state_history/create_deltas.hpp>
 #include <eosio/state_history/log.hpp>
 #include <eosio/state_history/serialization.hpp>
@@ -11,9 +12,6 @@
 #include <boost/asio/strand.hpp>
 #include <boost/beast/core.hpp>
 #include <boost/beast/websocket.hpp>
-#include <boost/iostreams/device/back_inserter.hpp>
-#include <boost/iostreams/filter/zlib.hpp>
-#include <boost/iostreams/filtering_stream.hpp>
 #include <boost/signals2/connection.hpp>
 
 using tcp    = boost::asio::ip::tcp;
@@ -41,27 +39,6 @@ auto catch_and_log(F f) {
    }
 }
 
-namespace bio = boost::iostreams;
-static bytes zlib_compress_bytes(bytes in) {
-   bytes                  out;
-   bio::filtering_ostream comp;
-   comp.push(bio::zlib_compressor(bio::zlib::default_compression));
-   comp.push(bio::back_inserter(out));
-   bio::write(comp, in.data(), in.size());
-   bio::close(comp);
-   return out;
-}
-
-static bytes zlib_decompress(const bytes& in) {
-   bytes                  out;
-   bio::filtering_ostream decomp;
-   decomp.push(bio::zlib_decompressor());
-   decomp.push(bio::back_inserter(out));
-   bio::write(decomp, in.data(), in.size());
-   bio::close(decomp);
-   return out;
-}
-
 struct state_history_plugin_impl : std::enable_shared_from_this<state_history_plugin_impl> {
    chain_plugin*                                              chain_plug = nullptr;
    fc::optional<state_history_log>                            trace_log;
@@ -85,7 +62,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       bytes compressed(s);
       if (s)
          stream.read(compressed.data(), s);
-      result = zlib_decompress(compressed);
+      result = state_history::zlib_decompress(compressed);
    }
 
    void get_block(uint32_t block_num, fc::optional<bytes>& result) {
@@ -367,7 +344,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       if (!trace_log)
          return;
       auto traces_bin =
-          zlib_compress_bytes(trace_converter.pack(chain_plug->chain().db(), trace_debug_mode, block_state));
+          state_history::zlib_compress_bytes(trace_converter.pack(chain_plug->chain().db(), trace_debug_mode, block_state));
       EOS_ASSERT(traces_bin.size() == (uint32_t)traces_bin.size(), plugin_exception, "traces is too big");
 
       state_history_log_header header{.magic        = ship_magic(ship_current_version),
@@ -389,7 +366,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          ilog("Placing initial state in block ${n}", ("n", block_state->block->block_num()));
 
       std::vector<table_delta> deltas = state_history::create_deltas(chain_plug->chain().db(), fresh);
-      auto deltas_bin = zlib_compress_bytes(fc::raw::pack(deltas));
+      auto deltas_bin = state_history::zlib_compress_bytes(fc::raw::pack(deltas));
       EOS_ASSERT(deltas_bin.size() == (uint32_t)deltas_bin.size(), plugin_exception, "deltas is too big");
       state_history_log_header header{.magic        = ship_magic(ship_current_version),
                                       .block_id     = block_state->block->id(),

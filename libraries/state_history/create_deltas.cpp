@@ -1,5 +1,4 @@
 #include <eosio/state_history/create_deltas.hpp>
-
 #include <eosio/state_history/serialization.hpp>
 
 namespace eosio {
