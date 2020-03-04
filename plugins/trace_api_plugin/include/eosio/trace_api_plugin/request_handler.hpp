@@ -3,10 +3,9 @@
 #include <fc/variant.hpp>
 #include <eosio/trace_api_plugin/metadata_log.hpp>
 #include <eosio/trace_api_plugin/data_log.hpp>
+#include <eosio/trace_api_plugin/common.hpp>
 
 namespace eosio::trace_api_plugin {
-
-   using now_function = std::function<fc::time_point()>;
    using data_handler_function = std::function<fc::variant(const action_trace_v0&)>;
 
    namespace detail {
@@ -15,27 +14,6 @@ namespace eosio::trace_api_plugin {
          static fc::variant process_block( const block_trace_v0& trace, const  std::optional<lib_entry_v0>& best_lib, const data_handler_function& data_handler, const now_function& now, const fc::time_point& deadline );
       };
    }
-
-   class deadline_exceeded : public std::runtime_error {
-   public:
-      explicit deadline_exceeded(const char* what_arg)
-      :std::runtime_error(what_arg)
-      {}
-      explicit deadline_exceeded(const std::string& what_arg)
-            :std::runtime_error(what_arg)
-      {}
-   };
-
-   class bad_data_exception : public std::runtime_error {
-   public:
-      explicit bad_data_exception(const char* what_arg)
-      :std::runtime_error(what_arg)
-      {}
-
-      explicit bad_data_exception(const std::string& what_arg)
-      :std::runtime_error(what_arg)
-      {}
-   };
 
    template<typename LogfileProvider, typename DataHandlerProvider>
    class request_handler {

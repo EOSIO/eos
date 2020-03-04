@@ -1,6 +1,5 @@
 #include <eosio/trace_api_plugin/abi_data_handler.hpp>
 #include <eosio/chain/abi_serializer.hpp>
-#include <eosio/trace_api_plugin/request_handler.hpp>
 
 namespace eosio::trace_api_plugin {
 
@@ -17,7 +16,7 @@ namespace eosio::trace_api_plugin {
             try {
                return serializer_p->binary_to_variant(type_name, action.data, fc::microseconds::maximum());
             } catch (...) {
-               if (log) log(std::current_exception());
+               if (log) log(MAKE_EXCEPTION_WITH_CONTEXT(std::current_exception()));
             }
          }
       }
