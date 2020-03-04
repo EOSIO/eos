@@ -91,7 +91,6 @@ class [[eosio::contract("kv_test")]] kvtest : public eosio::contract {
          for(auto itop : params) {
             auto& iters = iterators[itop.db];
             if(itop.erase) {
-               auto& iters = iterators[itop.db];
                for(uint32_t i = 0; i < itop.count; ++i) {
                   kv_it_destroy(iters.back());
                   iters.pop_back();
@@ -167,6 +166,7 @@ class [[eosio::contract("kv_test")]] kvtest : public eosio::contract {
       buf = orig_buf;
       // kv_get with missing key clears buffer
       kv_get(db, get_self(), "", 0, value_size);
+      TEST(kv_get_data(db, 0, buf.data(), 1024) == 0);
       // kv_set clears the buffer
       kv_get(db, get_self(), "key", 3, value_size);
       kv_set(db, get_self(), "key2", 4, "", 0); // set another key
