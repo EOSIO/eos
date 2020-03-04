@@ -1,4 +1,5 @@
 #include <eosio/chain/config.hpp>
+#include <eosio/state_history/create_deltas.hpp>
 #include <eosio/state_history/log.hpp>
 #include <eosio/state_history/serialization.hpp>
 #include <eosio/state_history/trace_converter.hpp>
@@ -59,58 +60,6 @@ static bytes zlib_decompress(const bytes& in) {
    bio::write(decomp, in.data(), in.size());
    bio::close(decomp);
    return out;
-}
-
-template <typename T>
-bool include_delta(const T& old, const T& curr) {
-   return true;
-}
-
-bool include_delta(const eosio::chain::table_id_object& old, const eosio::chain::table_id_object& curr) {
-   return old.payer != curr.payer;
-}
-
-bool include_delta(const eosio::chain::resource_limits::resource_limits_object& old,
-                   const eosio::chain::resource_limits::resource_limits_object& curr) {
-   return                                   //
-       old.net_weight != curr.net_weight || //
-       old.cpu_weight != curr.cpu_weight || //
-       old.ram_bytes != curr.ram_bytes;
-}
-
-bool include_delta(const eosio::chain::resource_limits::resource_limits_state_object& old,
-                   const eosio::chain::resource_limits::resource_limits_state_object& curr) {
-   return                                                                                       //
-       old.average_block_net_usage.last_ordinal != curr.average_block_net_usage.last_ordinal || //
-       old.average_block_net_usage.value_ex != curr.average_block_net_usage.value_ex ||         //
-       old.average_block_net_usage.consumed != curr.average_block_net_usage.consumed ||         //
-       old.average_block_cpu_usage.last_ordinal != curr.average_block_cpu_usage.last_ordinal || //
-       old.average_block_cpu_usage.value_ex != curr.average_block_cpu_usage.value_ex ||         //
-       old.average_block_cpu_usage.consumed != curr.average_block_cpu_usage.consumed ||         //
-       old.total_net_weight != curr.total_net_weight ||                                         //
-       old.total_cpu_weight != curr.total_cpu_weight ||                                         //
-       old.total_ram_bytes != curr.total_ram_bytes ||                                           //
-       old.virtual_net_limit != curr.virtual_net_limit ||                                       //
-       old.virtual_cpu_limit != curr.virtual_cpu_limit;
-}
-
-bool include_delta(const eosio::chain::account_metadata_object& old,
-                   const eosio::chain::account_metadata_object& curr) {
-   return                                               //
-       old.name != curr.name ||                         //
-       old.is_privileged() != curr.is_privileged() ||   //
-       old.last_code_update != curr.last_code_update || //
-       old.vm_type != curr.vm_type ||                   //
-       old.vm_version != curr.vm_version ||             //
-       old.code_hash != curr.code_hash;
-}
-
-bool include_delta(const eosio::chain::code_object& old, const eosio::chain::code_object& curr) { //
-   return false;
-}
-
-bool include_delta(const eosio::chain::protocol_state_object& old, const eosio::chain::protocol_state_object& curr) {
-   return old.activated_protocol_features != curr.activated_protocol_features;
 }
 
 struct state_history_plugin_impl : std::enable_shared_from_this<state_history_plugin_impl> {
@@ -439,84 +388,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       if (fresh)
          ilog("Placing initial state in block ${n}", ("n", block_state->block->block_num()));
 
-      std::vector<table_delta> deltas;
-      auto&                    db = chain_plug->chain().db();
-
-      const auto&                                table_id_index = db.get_index<table_id_multi_index>();
-      std::map<uint64_t, const table_id_object*> removed_table_id;
-      for (auto& rem : table_id_index.last_undo_session().removed_values)
-         removed_table_id[rem.id._id] = &rem;
-
-      auto get_table_id = [&](uint64_t tid) -> const table_id_object& {
-         auto obj = table_id_index.find(tid);
-         if (obj)
-            return *obj;
-         auto it = removed_table_id.find(tid);
-         EOS_ASSERT(it != removed_table_id.end(), chain::plugin_exception, "can not found table id ${tid}",
-                    ("tid", tid));
-         return *it->second;
-      };
-
-      auto pack_row          = [&](auto& row) { return fc::raw::pack(make_history_serial_wrapper(db, row)); };
-      auto pack_contract_row = [&](auto& row) {
-         return fc::raw::pack(make_history_context_wrapper(db, get_table_id(row.t_id._id), row));
-      };
-
-      auto process_table = [&](auto* name, auto& index, auto& pack_row) {
-         if (fresh) {
-            if (index.indices().empty())
-               return;
-            deltas.push_back({});
-            auto& delta = deltas.back();
-            delta.name  = name;
-            for (auto& row : index.indices())
-               delta.rows.obj.emplace_back(true, pack_row(row));
-         } else {
-            auto undo = index.last_undo_session();
-            if (undo.old_values.empty() && undo.new_values.empty() && undo.removed_values.empty())
-               return;
-            deltas.push_back({});
-            auto& delta = deltas.back();
-            delta.name  = name;
-            for (auto& old : undo.old_values) {
-               auto& row = index.get(old.id);
-               if (include_delta(old, row))
-                  delta.rows.obj.emplace_back(true, pack_row(row));
-            }
-            for (auto& old : undo.removed_values)
-               delta.rows.obj.emplace_back(false, pack_row(old));
-            for (auto& row : undo.new_values) {
-               delta.rows.obj.emplace_back(true, pack_row(row));
-            }
-         }
-      };
-
-      process_table("account", db.get_index<account_index>(), pack_row);
-      process_table("account_metadata", db.get_index<account_metadata_index>(), pack_row);
-      process_table("code", db.get_index<code_index>(), pack_row);
-
-      process_table("contract_table", db.get_index<table_id_multi_index>(), pack_row);
-      process_table("contract_row", db.get_index<key_value_index>(), pack_contract_row);
-      process_table("contract_index64", db.get_index<index64_index>(), pack_contract_row);
-      process_table("contract_index128", db.get_index<index128_index>(), pack_contract_row);
-      process_table("contract_index256", db.get_index<index256_index>(), pack_contract_row);
-      process_table("contract_index_double", db.get_index<index_double_index>(), pack_contract_row);
-      process_table("contract_index_long_double", db.get_index<index_long_double_index>(), pack_contract_row);
-
-      process_table("key_value", db.get_index<kv_index>(), pack_row);
-
-      process_table("global_property", db.get_index<global_property_multi_index>(), pack_row);
-      process_table("generated_transaction", db.get_index<generated_transaction_multi_index>(), pack_row);
-      process_table("protocol_state", db.get_index<protocol_state_multi_index>(), pack_row);
-
-      process_table("permission", db.get_index<permission_index>(), pack_row);
-      process_table("permission_link", db.get_index<permission_link_index>(), pack_row);
-
-      process_table("resource_limits", db.get_index<resource_limits::resource_limits_index>(), pack_row);
-      process_table("resource_usage", db.get_index<resource_limits::resource_usage_index>(), pack_row);
-      process_table("resource_limits_state", db.get_index<resource_limits::resource_limits_state_index>(), pack_row);
-      process_table("resource_limits_config", db.get_index<resource_limits::resource_limits_config_index>(), pack_row);
-
+      std::vector<table_delta> deltas = state_history::create_deltas(chain_plug->chain().db(), fresh);
       auto deltas_bin = zlib_compress_bytes(fc::raw::pack(deltas));
       EOS_ASSERT(deltas_bin.size() == (uint32_t)deltas_bin.size(), plugin_exception, "deltas is too big");
       state_history_log_header header{.magic        = ship_magic(ship_current_version),
