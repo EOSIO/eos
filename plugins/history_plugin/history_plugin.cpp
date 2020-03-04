@@ -112,7 +112,9 @@ namespace eosio {
 
    static void add(chainbase::database& db, const vector<permission_level_weight>& controlling_accounts, const account_name& account_name, const permission_name& permission)
    {
-      for (auto controlling_account : controlling_accounts ) {
+      std::set<permission_level_weight> controlling_accounts_set(controlling_accounts.begin(), controlling_accounts.end());
+
+      for (auto controlling_account : controlling_accounts_set ) {
          db.create<account_control_history_object>([&](account_control_history_object& obj) {
             obj.controlled_account = account_name;
             obj.controlled_permission = permission;

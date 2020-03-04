@@ -84,6 +84,10 @@ struct permission_level_weight {
    friend bool operator == ( const permission_level_weight& lhs, const permission_level_weight& rhs ) {
       return tie( lhs.permission, lhs.weight ) == tie( rhs.permission, rhs.weight );
    }
+
+   friend bool operator < ( const permission_level_weight& lhs, const permission_level_weight& rhs ) {
+      return tie( lhs.permission, lhs.weight ) < tie( rhs.permission, rhs.weight );
+   }
 };
 
 struct key_weight {
