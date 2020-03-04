@@ -32,7 +32,7 @@ class [[eosio::contract]] kv_bios : eosio::contract {
       limits[3] = i;
       set_kv_parameters_packed(db.value, limits, sizeof(limits));
       int sz = get_kv_parameters_packed(db.value, nullptr, 0, 0);
-      limits[0] = limits[1] = 0xFFFFFFFF;
+      std::fill_n(limits, sizeof(limits)/sizeof(limits[0]), 0xFFFFFFFFu);
       check(sz == 16, "wrong kv parameters size");
       sz = get_kv_parameters_packed(db.value, limits, sizeof(limits), 0);
       check(sz == 16, "wrong kv parameters result");
