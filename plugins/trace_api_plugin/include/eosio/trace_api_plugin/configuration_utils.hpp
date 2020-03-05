@@ -10,48 +10,6 @@ namespace eosio::trace_api_plugin::configuration_utils {
    using namespace eosio;
 
    /**
-    * Give a string, parse a quantity of microseconds from it where the string is either
-    *  - a number of seconds
-    *  - a number with a suffix indicating Seconds, Minutes, Hours, Days, or Weeks
-    *  - "-1" meaning maximum
-    *
-    * @param str - the input string
-    * @return the indicated number of microseconds
-    * @throws plugin_config_exception if the string is not in one of the above forms
-    */
-   fc::microseconds parse_microseconds(const std::string& str) {
-      if (str == "-1") {
-         return fc::microseconds::maximum();
-      }
-
-      std::regex r("^([0-9]+)([smhdw])?$");
-      std::smatch m;
-      std::regex_search(str, m, r);
-
-      EOS_ASSERT(!m.empty(), chain::plugin_config_exception, "string is not a positive number with an optional suffix OR -1");
-      int64_t number = std::stoll(m[1]);
-      int64_t mult = 1'000'000;
-
-      if (m.size() == 3 && m[2].length() != 0) {
-         auto suffix = m[2].str();
-         if (suffix == "m") {
-            mult *= 60;
-         } else if (suffix == "h") {
-            mult *= 60 * 60;
-         } else if (suffix == "d") {
-            mult *= 60 * 60 * 24;
-         } else if (suffix == "w") {
-            mult *= 60 * 60 * 24 * 7;
-         }
-      }
-
-      auto final = number * mult;
-      EOS_ASSERT(final / mult == number, chain::plugin_config_exception, "specified time overflows, use \"-1\" to represent infinite time");
-
-      return fc::microseconds(final);
-   }
-
-   /**
     * Give a string which is either a JSON-encoded ABI or a path (absolute) to a file that contains a
     * JSON-encoded ABI, return the parsed ABI
     *
