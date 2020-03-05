@@ -1,6 +1,7 @@
 #pragma once
 
 #include <eosio/chain/types.hpp>
+#include <eosio/chain/action.hpp>
 
 namespace eosio { namespace chain {
 
@@ -15,6 +16,37 @@ namespace eosio { namespace chain {
       flat_map<account_name,uint64_t> auth_sequence;
       fc::unsigned_int                code_sequence = 0; ///< total number of setcodes
       fc::unsigned_int                abi_sequence  = 0; ///< total number of setabis
+
+      static digest_type encode(char* bytes, uint32_t len) {
+         digest_type::encoder enc;
+         enc.write(bytes, len);
+         return enc.result();
+      }
+
+      template <typename Encode, typename Extra>
+      void generate_action_digest(Encode&& enc, const action& act, const Extra& extra, bool legacy=true) {
+         if (legacy) {
+            act_digest = digest_type::hash(act);
+         } else {
+            const action_base* base = &act;
+            const auto action_size = fc::raw::pack_size(act);
+            const auto extra_size  = fc::raw::pack_size(extra);
+            std::vector<char> buff(action_size + extra_size);
+            fc::datastream<char*> ds(buff.data(), action_size + extra_size);
+            fc::raw::pack(ds, act);
+            fc::raw::pack(ds, extra);
+            digest_type hashes[2];
+            const size_t lhs_size = fc::raw::pack_size(*base);
+            hashes[0]  = enc(buff.data(), lhs_size);
+            hashes[1]  = enc(buff.data() + lhs_size, fc::raw::pack_size(act.data) + extra_size);
+            act_digest = enc((char*)&hashes[0], sizeof(hashes));
+         }
+      }
+
+      template <typename Extra>
+      void generate_action_digest(const action& act, const Extra& extra, bool legacy=true) {
+         generate_action_digest(encode, act, extra, legacy);
+      }
 
       digest_type digest()const {
          digest_type::encoder e;
