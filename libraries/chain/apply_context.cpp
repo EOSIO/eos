@@ -350,7 +350,13 @@ void apply_context::execute_context_free_inline( action&& a ) {
 
 
 void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, account_name payer, transaction&& trx, bool replace_existing ) {
-   EOS_ASSERT( control.is_builtin_activated( builtin_protocol_feature_t::deprecate_deferred_transactions ), deferred_tx_detected, "deferred transactions are not currently allowed" );
+  if ( control.is_builtin_activated(builtin_protocol_feature_t::stop_deferred_transactions) ) {
+     if (!replace_existing) {
+        return;
+     }
+  }
+
+   // EOS_ASSERT( control.is_builtin_activated( builtin_protocol_feature_t::deprecate_deferred_transactions ), deferred_tx_detected, "deferred transactions are disabled" );
    EOS_ASSERT( trx.context_free_actions.size() == 0, cfa_inside_generated_tx, "context free actions are not currently allowed in generated transactions" );
 
    bool enforce_actor_whitelist_blacklist = trx_context.enforce_whiteblacklist && control.is_producing_block()
@@ -401,6 +407,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
    trx_context.add_net_usage( static_cast<uint64_t>(cfg.base_per_transaction_net_usage)
                                + static_cast<uint64_t>(config::transaction_id_net_usage) ); // Will exit early if net usage cannot be payed.
 
+   EOS_ASSERT( fc::seconds(trx.delay_sec) == fc::seconds(0), delay_seconds_tx, "delay seconds must be 0" );
    auto delay = fc::seconds(trx.delay_sec);
 
    bool ram_restrictions_activated = control.is_builtin_activated( builtin_protocol_feature_t::ram_restrictions );
@@ -489,6 +496,9 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
          control.add_to_ram_correction( ptr->payer, orig_trx_ram_bytes );
       }
 
+      //////////////////////////////////////////////
+      // Might need to come back to this code later.
+      //////////////////////////////////////////////
       transaction_id_type trx_id_for_new_obj;
       if( replace_deferred_activated ) {
          trx_id_for_new_obj = trx.id();
@@ -533,7 +543,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
 }
 
 bool apply_context::cancel_deferred_transaction( const uint128_t& sender_id, account_name sender ) {
-   EOS_ASSERT( control.is_builtin_activated( builtin_protocol_feature_t::deprecate_deferred_transactions ), deferred_tx_detected, "deferred transactions are not currently allowed" );
+   EOS_ASSERT( control.is_builtin_activated( builtin_protocol_feature_t::stop_deferred_transactions ), stop_deferred_tx, "deferred transactions are disabled" );
    auto& generated_transaction_idx = db.get_mutable_index<generated_transaction_multi_index>();
    const auto* gto = db.find<generated_transaction_object,by_sender_id>(boost::make_tuple(sender, sender_id));
    if ( gto ) {

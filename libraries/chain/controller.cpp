@@ -330,7 +330,7 @@ struct controller_impl {
       set_activation_handler<builtin_protocol_feature_t::webauthn_key>();
       set_activation_handler<builtin_protocol_feature_t::wtmsig_block_signatures>();
       set_activation_handler<builtin_protocol_feature_t::action_return_value>();
-      set_activation_handler<builtin_protocol_feature_t::deprecate_deferred_transactions>();
+      set_activation_handler<builtin_protocol_feature_t::stop_deferred_transactions>();
 
       self.irreversible_block.connect([this](const block_state_ptr& bsp) {
          wasmif.current_lib(bsp->block_num);
@@ -1241,7 +1241,7 @@ struct controller_impl {
       trx->accepted = true;
 
       transaction_trace_ptr trace;
-      if( gtrx.expiration < self.pending_block_time() ) {
+      if( gtrx.expiration < self.pending_block_time() ) { // Or has the protocol feature been activated (STOP_DEFERRED)
          trace = std::make_shared<transaction_trace>();
          trace->id = gtrx.trx_id;
          trace->block_num = self.head_block_num() + 1;
@@ -1256,6 +1256,10 @@ struct controller_impl {
          return trace;
       }
 
+      if ( self.is_builtin_activated( builtin_protocol_feature_t::stop_deferred_transactions ) ) {
+         return trace;
+      }
+      
       auto reset_in_trx_requiring_checks = fc::make_scoped_exit([old_value=in_trx_requiring_checks,this](){
          in_trx_requiring_checks = old_value;
       });
@@ -3348,7 +3352,7 @@ void controller_impl::on_activation<builtin_protocol_feature_t::action_return_va
 }
 
 template<>
-void controller_impl::on_activation<builtin_protocol_feature_t::deprecate_deferred_transactions>() {
+void controller_impl::on_activation<builtin_protocol_feature_t::stop_deferred_transactions>() {
    db.modify( db.get<protocol_state_object>(), [&]( auto& ps ) {
       add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "set_deprecate_deferred_transactions" );
    } );

@@ -2386,5 +2386,32 @@ BOOST_FIXTURE_TEST_CASE( delay_expired, validating_tester) { try {
 
 } FC_LOG_AND_RETHROW() }
 
+BOOST_FIXTURE_TEST_CASE( stop_deferred_transactions_protocol_feature, validating_tester) { try {
+
+   // Check that the deferred transaction queue is 0.
+   // const auto* gto = db.find<generated_transaction_object,by_sender_id>(boost::make_tuple(sender, sender_id));
+   bool is_deferred_trx_queue_occupied = db.find<generated_transaction_object>();
+   // BOOST_REQUIRE_EQUAL(  );
+   // 
+   // Add a deferred transaction.
+   // 
+   // Check that the deferred transaction queue is 1.
+   // 
+   // Activate stop deferred transaction protocol feature.
+   // 
+   // Add a deferred transaction.
+   // 
+   // Check that the deferred transaction queue is 1.
+
+} FC_LOG_AND_RETHROW() }
+
+BOOST_FIXTURE_TEST_CASE( stop_deferred_transactions_protocol_feature_check_delay_sec, validating_tester) { try {
+
+   // Check that a user-sent transaction with a `delay_sec` of > 0 asserts.
+   // 
+   // Check that a contract-sent transaction with a `delay_sec` of > 0 asserts.
+
+} FC_LOG_AND_RETHROW() }
+
 
 BOOST_AUTO_TEST_SUITE_END()

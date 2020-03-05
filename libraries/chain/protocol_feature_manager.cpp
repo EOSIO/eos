@@ -198,14 +198,14 @@ Enables new `set_action_return_value` intrinsic which sets a value that is inclu
             {}
          } )
 
-         (  builtin_protocol_feature_t::deprecate_deferred_transactions, builtin_protocol_feature_spec{
+         (  builtin_protocol_feature_t::stop_deferred_transactions, builtin_protocol_feature_spec{
             "DEPRECATE_DEFERRED_TRANSACTIONS",
-            fc::variant("aac4603d4771ea2ac454f7641327e35e53fa8988dcedb0015d581008207125d0").as<digest_type>(),
+            fc::variant("8b3d91df64471bdcf4b0f14edaf4a1cf7e082e36902a1e26516c81f6c7f658d7").as<digest_type>(),
             // SHA256 hash of the raw message below within the comment delimiters (do not modify message below).
 /*
 Builtin protocol feature: DEPRECATE_DEFERRED_TRANSACTIONS
 
-Eradicates the ability to perform a deferred transaction.
+Stops the ability to perform a deferred transaction.
 */
             {}
          } )

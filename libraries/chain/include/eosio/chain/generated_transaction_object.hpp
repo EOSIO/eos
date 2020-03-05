@@ -9,7 +9,11 @@
 #include <boost/multi_index/mem_fun.hpp>
 
 #include "multi_index_includes.hpp"
-
+/////////////////////////////////
+/////////////////////////////////
+// Delete this table once proto feature is activated
+/////////////////////////////////
+/////////////////////////////////
 namespace eosio { namespace chain {
    using boost::multi_index_container;
    using namespace boost::multi_index;
