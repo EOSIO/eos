@@ -25,6 +25,18 @@ namespace eosio::trace_api_plugin {
       chain::asset operator"" _t(const char* input, std::size_t) {
          return chain::asset::from_string(input);
       }
+
+      chain::bytes make_transfer_data( chain::name from, chain::name to, chain::asset quantity, std::string&& memo) {
+         fc::datastream<size_t> ps;
+         fc::raw::pack(ps, from, to, quantity, memo);
+         chain::bytes result(ps.tellp());
+
+         if( result.size() ) {
+            fc::datastream<char*>  ds( result.data(), size_t(result.size()) );
+            fc::raw::pack(ds, from, to, quantity, memo);
+         }
+         return result;
+      }
    }
 
    // TODO: promote these to the main files?
@@ -59,7 +71,7 @@ namespace eosio::trace_api_plugin {
          lhs.id == rhs.id &&
          lhs.number == rhs.number &&
          lhs.previous_id == rhs.previous_id &&
-         lhs.timestamp == rhs.timestamp &&
+            lhs.timestamp == rhs.timestamp &&
          lhs.producer == rhs.producer &&
          lhs.transactions == rhs.transactions;
    }

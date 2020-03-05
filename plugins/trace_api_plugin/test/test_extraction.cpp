@@ -50,18 +50,6 @@ namespace {
       return result;
    }
 
-   chain::bytes make_transfer_data( chain::name from, chain::name to, chain::asset quantity, std::string&& memo) {
-      fc::datastream<size_t> ps;
-      fc::raw::pack(ps, from, to, quantity, memo);
-      chain::bytes result(ps.tellp());
-
-      if( result.size() ) {
-         fc::datastream<char*>  ds( result.data(), size_t(result.size()) );
-         fc::raw::pack(ds, from, to, quantity, memo);
-      }
-      return result;
-   }
-
    chain::block_state_ptr make_block_state( chain::block_id_type id, chain::block_id_type previous, uint32_t height, uint32_t slot, chain::name producer, std::vector<std::tuple<chain::transaction_id_type, chain::transaction_receipt_header::status_enum>> transactions ) {
       // TODO: it was going to be very complicated to produce a proper block_state_ptr, this can probably be changed
       // to some sort of intermediate form that a shim interface can extract from a block_state_ptr to make testing
