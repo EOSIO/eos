@@ -209,56 +209,33 @@ struct extraction_test_fixture {
 
 
 BOOST_AUTO_TEST_SUITE(block_extraction)
+
    BOOST_FIXTURE_TEST_CASE(basic_single_transaction_block, extraction_test_fixture)
    {
       auto act1 = make_transfer_action( "alice"_n, "bob"_n, "0.0001 SYS"_t, "Memo!" );
       auto act2 = make_transfer_action( "alice"_n, "bob"_n, "0.0001 SYS"_t, "Memo!" );
       auto act3 = make_transfer_action( "alice"_n, "bob"_n, "0.0001 SYS"_t, "Memo!" );
       auto actt1 = make_action_trace( 0, act1, "eosio.token"_n );
-      auto actt2 = make_action_trace( 1, act1, "alice"_n );
-      auto actt3 = make_action_trace( 2, act1, "bob"_n );
+      auto actt2 = make_action_trace( 1, act2, "alice"_n );
+      auto actt3 = make_action_trace( 2, act3, "bob"_n );
       auto ptrx1 = make_packed_trx( { act1, act2, act3 } );
 
       // apply a basic transfer
-      //
       signal_applied_transaction(
-            make_transaction_trace(
-                  ptrx1.id(),
-                  1,
-                  1,
-                  chain::transaction_receipt_header::executed,
-                  { actt1, actt2, actt3 }
-                  ),
-                  {
-                    // I don't think we will need any data from here?
-                  }
-      );
+            make_transaction_trace( ptrx1.id(), 1, 1, chain::transaction_receipt_header::executed,
+                  { actt1, actt2, actt3 } ),
+            ptrx1.get_signed_transaction() );
       
       // accept the block with one transaction
-
-      auto bsp1 = make_block_state(
-            chain::block_id_type(),
-            1,
-            1,
-            "bp.one"_n,
+      auto bsp1 = make_block_state( chain::block_id_type(), 1, 1, "bp.one"_n,
             { chain::packed_transaction(ptrx1) } );
       signal_accepted_block( bsp1 );
       
       // Verify that the blockheight and LIB are correct
-      //
       const uint64_t expected_lib = 0;
-      const block_entry_v0 expected_entry {
-         bsp1->id,
-         1,
-         0
-      };
+      const block_entry_v0 expected_entry { bsp1->id, 1, 0 };
 
-      const block_trace_v0 expected_trace {
-         bsp1->id,
-         1,
-         bsp1->prev(),
-         chain::block_timestamp_type(1),
-         "bp.one"_n,
+      const block_trace_v0 expected_trace { bsp1->id, 1, bsp1->prev(), chain::block_timestamp_type(1), "bp.one"_n,
          {
             {
                ptrx1.id(),
@@ -281,6 +258,88 @@ BOOST_AUTO_TEST_SUITE(block_extraction)
                      "bob"_n, "eosio.token"_n, "transfer"_n,
                      {{ "alice"_n, "active"_n }},
                      make_transfer_data( "alice"_n, "bob"_n, "0.0001 SYS"_t, "Memo!" )
+                  }
+               }
+            }
+         }
+      };
+
+      BOOST_REQUIRE_EQUAL(max_lib, 0);
+      BOOST_REQUIRE(block_entry_for_height.count(1) > 0);
+      BOOST_REQUIRE_EQUAL(block_entry_for_height.at(1), expected_entry);
+      BOOST_REQUIRE(data_log.size() >= expected_entry.offset);
+      BOOST_REQUIRE(data_log.at(expected_entry.offset).contains<block_trace_v0>());
+      BOOST_REQUIRE_EQUAL(data_log.at(expected_entry.offset).get<block_trace_v0>(), expected_trace);
+   }
+
+   BOOST_FIXTURE_TEST_CASE(basic_multi_transaction_block, extraction_test_fixture) {
+      auto act1 = make_transfer_action( "alice"_n, "bob"_n, "0.0001 SYS"_t, "Memo!" );
+      auto act2 = make_transfer_action( "bob"_n, "alice"_n, "0.0001 SYS"_t, "Memo!" );
+      auto act3 = make_transfer_action( "fred"_n, "bob"_n, "0.0001 SYS"_t, "Memo!" );
+      auto actt1 = make_action_trace( 0, act1, "eosio.token"_n );
+      auto actt2 = make_action_trace( 1, act2, "bob"_n );
+      auto actt3 = make_action_trace( 2, act3, "fred"_n );
+      auto ptrx1 = make_packed_trx( { act1 } );
+      auto ptrx2 = make_packed_trx( { act2 } );
+      auto ptrx3 = make_packed_trx( { act3 } );
+
+      signal_applied_transaction(
+            make_transaction_trace( ptrx1.id(), 1, 1, chain::transaction_receipt_header::executed,
+                  { actt1 } ),
+            ptrx1.get_signed_transaction() );
+      signal_applied_transaction(
+            make_transaction_trace( ptrx2.id(), 1, 1, chain::transaction_receipt_header::executed,
+                  { actt2 } ),
+            ptrx2.get_signed_transaction() );
+      signal_applied_transaction(
+            make_transaction_trace( ptrx3.id(), 1, 1, chain::transaction_receipt_header::executed,
+                  { actt3 } ),
+            ptrx3.get_signed_transaction() );
+
+      // accept the block with three transaction
+      auto bsp1 = make_block_state( chain::block_id_type(), 1, 1, "bp.one"_n,
+            { chain::packed_transaction(ptrx1), chain::packed_transaction(ptrx2), chain::packed_transaction(ptrx3) } );
+      signal_accepted_block( bsp1 );
+
+      // Verify that the blockheight and LIB are correct
+      const uint64_t expected_lib = 0;
+      const block_entry_v0 expected_entry { bsp1->id, 1, 0 };
+
+      const block_trace_v0 expected_trace { bsp1->id, 1, bsp1->prev(), chain::block_timestamp_type(1), "bp.one"_n,
+         {
+            {
+               ptrx1.id(),
+               chain::transaction_receipt_header::executed,
+               {
+                  {
+                     0,
+                     "eosio.token"_n, "eosio.token"_n, "transfer"_n,
+                     {{ "alice"_n, "active"_n }},
+                     make_transfer_data( "alice"_n, "bob"_n, "0.0001 SYS"_t, "Memo!" )
+                  }
+               }
+            },
+            {
+               ptrx2.id(),
+               chain::transaction_receipt_header::executed,
+               {
+                  {
+                     1,
+                     "bob"_n, "eosio.token"_n, "transfer"_n,
+                     {{ "bob"_n, "active"_n }},
+                     make_transfer_data( "bob"_n, "alice"_n, "0.0001 SYS"_t, "Memo!" )
+                  }
+               }
+            },
+            {
+               ptrx3.id(),
+               chain::transaction_receipt_header::executed,
+               {
+                  {
+                     2,
+                     "fred"_n, "eosio.token"_n, "transfer"_n,
+                     {{ "fred"_n, "active"_n }},
+                     make_transfer_data( "fred"_n, "bob"_n, "0.0001 SYS"_t, "Memo!" )
                   }
                }
             }
