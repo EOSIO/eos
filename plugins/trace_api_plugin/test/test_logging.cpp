@@ -102,39 +102,39 @@ struct logfile_test_fixture {
 BOOST_AUTO_TEST_SUITE(logfile_access)
    BOOST_FIXTURE_TEST_CASE(single_slice_write, logfile_test_fixture)
    {
-//      auto block_1_data_entry = data_log_entry {
-//         block_trace_v0 {
-//            "b000000000000000000000000000000000000000000000000000000000000001"_h,
-//            1,
-//            "0000000000000000000000000000000000000000000000000000000000000000"_h,
-//            chain::block_timestamp_type(1),
-//            "bp.one"_n,
-//            {}
-//         }
-//      };
-//
-//      // write the data
-//      auto block_1_offset = append_data_log(block_1_data_entry);
-//
-//      auto block_1_metadata_entry = metadata_log_entry {
-//         block_entry_v0 {
-//            "b000000000000000000000000000000000000000000000000000000000000001"_h,
-//            1,
-//            block_1_offset
-//         }
-//      };
-//
-//      // write the metadata
-//      //
-//      append_metadata_log(block_1_metadata_entry);
-//
-//      auto expected_metadata_log = std::vector<metadata_log_entry> { block_1_metadata_entry };
-//      auto actual_metadata_log = inspect_metadata_log(1);
-//      BOOST_REQUIRE_EQUAL_COLLECTIONS(actual_metadata_log.begin(), actual_metadata_log.end(), expected_metadata_log.begin(), expected_metadata_log.end());
-//
-//      auto actual_block_1_data_entry_opt = read_data_log(1, block_1_offset);
-//      BOOST_REQUIRE(actual_block_1_data_entry_opt);
-//      BOOST_REQUIRE_EQUAL(*actual_block_1_data_entry_opt, block_1_data_entry);
+      auto block_1_data_entry = data_log_entry {
+         block_trace_v0 {
+            "b000000000000000000000000000000000000000000000000000000000000001"_h,
+            1,
+            "0000000000000000000000000000000000000000000000000000000000000000"_h,
+            chain::block_timestamp_type(1),
+            "bp.one"_n,
+            {}
+         }
+      };
+
+      // write the data
+      auto block_1_offset = append_data_log(block_1_data_entry);
+
+      auto block_1_metadata_entry = metadata_log_entry {
+         block_entry_v0 {
+            "b000000000000000000000000000000000000000000000000000000000000001"_h,
+            1,
+            block_1_offset
+         }
+      };
+
+      // write the metadata
+      //
+      append_metadata_log(block_1_metadata_entry);
+
+      auto actual_metadata_log = inspect_metadata_log(1);
+      BOOST_REQUIRE_EQUAL(actual_metadata_log.size(), 1);
+      BOOST_REQUIRE(actual_metadata_log[0] == block_1_metadata_entry);
+
+      auto actual_block_1_data_entry_opt = read_data_log(1, block_1_offset);
+      BOOST_REQUIRE(actual_block_1_data_entry_opt);
+      BOOST_REQUIRE(*actual_block_1_data_entry_opt == block_1_data_entry);
    }
 
 BOOST_AUTO_TEST_SUITE_END()

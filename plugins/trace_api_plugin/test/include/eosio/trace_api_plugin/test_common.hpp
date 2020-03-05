@@ -71,7 +71,7 @@ namespace eosio::trace_api_plugin {
          lhs.id == rhs.id &&
          lhs.number == rhs.number &&
          lhs.previous_id == rhs.previous_id &&
-            lhs.timestamp == rhs.timestamp &&
+         lhs.timestamp == rhs.timestamp &&
          lhs.producer == rhs.producer &&
          lhs.transactions == rhs.transactions;
    }

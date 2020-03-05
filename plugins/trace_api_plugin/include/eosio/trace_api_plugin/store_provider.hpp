@@ -5,7 +5,7 @@
 #include <fc/variant.hpp>
 #include <eosio/trace_api_plugin/metadata_log.hpp>
 #include <eosio/trace_api_plugin/data_log.hpp>
-#include <stdio.h>
+#include <ios>
 
 namespace eosio::trace_api_plugin {
    using namespace boost::filesystem;
