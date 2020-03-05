@@ -358,38 +358,56 @@ BOOST_AUTO_TEST_SUITE(resource_limits_test)
          initialize_account(test_account);
          set_account_limits(test_account, unlimited, unlimited, unlimited);
          process_account_limit_updates();
+         const block_timestamp_type timestamp_now(fc::time_point::now());
          // unlimited
-         const auto ret_unlimited_wo_time_stamp =  get_account_limit_ex(*this, test_account, 0, {});
-         const auto ret_unlimited_with_time_stamp =  get_account_limit_ex(*this, test_account, 0, fc::time_point::now());
-         BOOST_CHECK_EQUAL(*ret_unlimited_wo_time_stamp.first.current_used, (int64_t)-1 );
-         BOOST_CHECK_EQUAL(*ret_unlimited_with_time_stamp.first.current_used, (int64_t)-1);
-         BOOST_CHECK_EQUAL(ret_unlimited_wo_time_stamp.first.last_updated_time_stamp->slot, ret_unlimited_with_time_stamp.first.last_updated_time_stamp->slot);
-         // limited no usage
+         {
+            const auto ret_unlimited_wo_time_stamp = get_account_limit_ex(*this, test_account, 0, {});
+            const auto ret_unlimited_with_time_stamp = get_account_limit_ex(*this, test_account, 0,
+                                                                            timestamp_now.to_time_point());
+            BOOST_CHECK_EQUAL(*ret_unlimited_wo_time_stamp.first.current_used, (int64_t) -1);
+            BOOST_CHECK_EQUAL(*ret_unlimited_with_time_stamp.first.current_used, (int64_t) -1);
+            BOOST_CHECK_EQUAL(ret_unlimited_wo_time_stamp.first.last_updated_time_stamp->slot,
+                              ret_unlimited_with_time_stamp.first.last_updated_time_stamp->slot);\
+
+         }
          const int64_t cpu_limit = 2048;
          const int64_t net_limit = 1024;
-         const block_timestamp_type timestamp_now(fc::time_point::now());
          set_account_limits(test_account, -1, net_limit, cpu_limit);
          process_account_limit_updates();
-         const auto ret_limited_init_wo_time_stamp =  get_account_limit_ex(*this, test_account, 0, {});
-         const auto ret_limited_init_with_time_stamp =  get_account_limit_ex(*this, test_account, 0, timestamp_now.to_time_point());
-         BOOST_CHECK_EQUAL(*ret_limited_init_wo_time_stamp.first.current_used, ret_limited_init_wo_time_stamp.first.used );
-         BOOST_CHECK_EQUAL(*ret_limited_init_with_time_stamp.first.current_used, ret_limited_init_with_time_stamp.first.used);
-         BOOST_CHECK_EQUAL(ret_unlimited_wo_time_stamp.first.last_updated_time_stamp->slot, 0 );
-         BOOST_CHECK_EQUAL( ret_unlimited_with_time_stamp.first.last_updated_time_stamp->slot, 0 );
-         // limited with some usages
+         // limited, with no usage, current time stamp
+         {
+            const auto ret_limited_init_wo_time_stamp =  get_account_limit_ex(*this, test_account, 0, {});
+            const auto ret_limited_init_with_time_stamp =  get_account_limit_ex(*this, test_account, 0, timestamp_now.to_time_point());
+            BOOST_CHECK_EQUAL(*ret_limited_init_wo_time_stamp.first.current_used, ret_limited_init_wo_time_stamp.first.used );
+            BOOST_CHECK_EQUAL(*ret_limited_init_with_time_stamp.first.current_used, ret_limited_init_with_time_stamp.first.used);
+            BOOST_CHECK_EQUAL(ret_limited_init_wo_time_stamp.first.last_updated_time_stamp->slot, 0 );
+            BOOST_CHECK_EQUAL( ret_limited_init_with_time_stamp.first.last_updated_time_stamp->slot, 0 );
+         }
+         const uint32_t update_slot = timestamp_now.slot - delta_slot;
          const int64_t cpu_usage = 100;
          const int64_t net_usage = 200;
-         const uint32_t update_slot = timestamp_now.slot - delta_slot;
-
          add_transaction_usage({test_account}, cpu_usage, net_usage, update_slot );
-         const auto ret_limited_1st_usg_wo_time_stamp =  get_account_limit_ex(*this, test_account, 0, {});
-         const auto ret_limited_1st_usg_with_time_stamp =  get_account_limit_ex(*this, test_account, 0, timestamp_now.to_time_point());
-         BOOST_CHECK_EQUAL(*ret_limited_1st_usg_wo_time_stamp.first.current_used, ret_limited_1st_usg_wo_time_stamp.first.used );
-         BOOST_CHECK_LT(*ret_limited_1st_usg_with_time_stamp.first.current_used, ret_limited_1st_usg_with_time_stamp.first.used);
-         BOOST_CHECK_EQUAL(*ret_limited_1st_usg_with_time_stamp.first.current_used,
-                           ret_limited_1st_usg_with_time_stamp.first.used * (window - delta_slot) / window);
-         BOOST_CHECK_EQUAL(ret_limited_1st_usg_wo_time_stamp.first.last_updated_time_stamp->slot, update_slot);
-         BOOST_CHECK_EQUAL(ret_limited_1st_usg_with_time_stamp.first.last_updated_time_stamp->slot, update_slot);
+         // limited, with some usages, current time stamp
+         {
+            const auto ret_limited_1st_usg_wo_time_stamp =  get_account_limit_ex(*this, test_account, 0, {});
+            const auto ret_limited_1st_usg_with_time_stamp =  get_account_limit_ex(*this, test_account, 0, timestamp_now.to_time_point());
+            BOOST_CHECK_EQUAL(*ret_limited_1st_usg_wo_time_stamp.first.current_used, ret_limited_1st_usg_wo_time_stamp.first.used );
+            BOOST_CHECK_LT(*ret_limited_1st_usg_with_time_stamp.first.current_used, ret_limited_1st_usg_with_time_stamp.first.used);
+            BOOST_CHECK_EQUAL(*ret_limited_1st_usg_with_time_stamp.first.current_used,
+                              ret_limited_1st_usg_with_time_stamp.first.used * (window - delta_slot) / window);
+            BOOST_CHECK_EQUAL(ret_limited_1st_usg_wo_time_stamp.first.last_updated_time_stamp->slot, update_slot);
+            BOOST_CHECK_EQUAL(ret_limited_1st_usg_with_time_stamp.first.last_updated_time_stamp->slot, update_slot);
+         }
+         // limited, with some usages, earlier time stamp
+         const block_timestamp_type ealier_time_stamp(timestamp_now.slot - delta_slot - 1);
+         {
+            const auto ret_limited_wo_time_stamp =  get_account_limit_ex(*this, test_account, 0, {});
+            const auto ret_limited_with_ealier_time_stamp =  get_account_limit_ex(*this, test_account, 0, ealier_time_stamp.to_time_point());
+            BOOST_CHECK_EQUAL(*ret_limited_with_ealier_time_stamp.first.current_used, ret_limited_with_ealier_time_stamp.first.used );
+            BOOST_CHECK_EQUAL(*ret_limited_wo_time_stamp.first.current_used, ret_limited_wo_time_stamp.first.used );
+            BOOST_CHECK_EQUAL(ret_limited_wo_time_stamp.first.last_updated_time_stamp->slot, update_slot);
+            BOOST_CHECK_EQUAL(ret_limited_with_ealier_time_stamp.first.last_updated_time_stamp->slot, update_slot);
+         }
       };
       test_get_account_limit_ex(net_test_account, net_window, &resource_limits_manager::get_account_net_limit_ex);
       test_get_account_limit_ex(cpu_test_account, cpu_window, &resource_limits_manager::get_account_cpu_limit_ex);
