@@ -1,11 +1,12 @@
 #include <eosio/trace_api_plugin/trace_api_plugin.hpp>
 
-#include <regex>
-#include <fc/io/json.hpp>
 #include <eosio/trace_api_plugin/abi_data_handler.hpp>
 #include <eosio/trace_api_plugin/request_handler.hpp>
 
+#include <eosio/trace_api_plugin/configuration_utils.hpp>
+
 using namespace eosio::trace_api_plugin;
+using namespace eosio::trace_api_plugin::configuration_utils;
 
 namespace {
    const std::string logger_name("trace_api");
@@ -87,43 +88,18 @@ struct trace_api_rpc_plugin_impl {
                   );
    }
 
-   static chain::abi_def abi_def_from_file_or_str(const string& file_or_str)
-   {
-      fc::variant abi_variant;
-      std::regex r("^[ \t]*[\{\[]");
-      if ( !std::regex_search(file_or_str, r) && fc::is_regular_file(file_or_str) ) {
-         try {
-            abi_variant = fc::json::from_file(file_or_str);
-         } EOS_RETHROW_EXCEPTIONS(chain::json_parse_exception, "Fail to parse JSON from file: ${file}", ("file", file_or_str));
-
-      } else {
-         try {
-            abi_variant = fc::json::from_string(file_or_str);
-         } EOS_RETHROW_EXCEPTIONS(chain::json_parse_exception, "Fail to parse JSON from string: ${string}", ("string", file_or_str));
-      }
-
-      chain::abi_def result;
-      fc::from_variant(abi_variant, result);
-      return result;
-   }
-
    void plugin_initialize(const appbase::variables_map& options) {
       data_handler = std::make_shared<abi_data_handler>([](const exception_with_context& e){
-         log_exception(exception_with_context, fc::log_level::debug);
+         log_exception(e, fc::log_level::debug);
       });
 
       if( options.count("trace-rpc-abi") ) {
          const std::vector<std::string> key_value_pairs = options["trace-rpc-abi"].as<std::vector<std::string>>();
          for (const auto& entry : key_value_pairs) {
             try {
-               auto delim = entry.find("=");
-               EOS_ASSERT(delim != std::string::npos, chain::plugin_config_exception, "Missing \"=\"");
-               auto account_str = entry.substr(0, delim);
-               auto abi_json_or_path = entry.substr(delim + 1);
-
-               auto account = chain::name(account_str);
-               auto abi = abi_def_from_file_or_str(abi_json_or_path);
-
+               auto kv = parse_kv_pairs(entry);
+               auto account = chain::name(kv.first);
+               auto abi = abi_def_from_file_or_str(kv.second);
                data_handler->add_abi(account, abi);
             } catch (...) {
                elog("Malformed trace-rpc-abi provider: \"${val}\", ignoring!", ("val", entry));
@@ -161,6 +137,15 @@ struct trace_api_plugin_impl {
    }
 
    void plugin_initialize(const appbase::variables_map& options) {
+      if( options.count("minimum-irreversible-trace-history") ) {
+         auto value = options.at("minimum-irreversible-trace-history").as<std::string>();
+         try {
+            minimum_irreversible_trace_history = parse_microseconds(value);
+         } catch (...) {
+            elog("Malformed minimum-irreversible-trace-history: \"${val}\"!", ("val", value));
+            throw;
+         }
+      }
    }
 
    void plugin_startup() {
@@ -170,21 +155,22 @@ struct trace_api_plugin_impl {
    }
 
    std::shared_ptr<trace_api_common_impl> common;
+   fc::microseconds minimum_irreversible_trace_history = fc::microseconds::maximum();
 };
 
-trace_api_plugin::trace_api_plugin()
+_trace_api_plugin::_trace_api_plugin()
 {}
 
-trace_api_plugin::~trace_api_plugin()
+_trace_api_plugin::~_trace_api_plugin()
 {}
 
-void trace_api_plugin::set_program_options(appbase::options_description& cli, appbase::options_description& cfg) {
+void _trace_api_plugin::set_program_options(appbase::options_description& cli, appbase::options_description& cfg) {
    trace_api_common_impl::set_program_options(cli, cfg);
    trace_api_plugin_impl::set_program_options(cli, cfg);
    trace_api_rpc_plugin_impl::set_program_options(cli, cfg);
 }
 
-void trace_api_plugin::plugin_initialize(const appbase::variables_map& options) {
+void _trace_api_plugin::plugin_initialize(const appbase::variables_map& options) {
    auto common = std::make_shared<trace_api_common_impl>();
    common->plugin_initialize(options);
 
@@ -195,17 +181,17 @@ void trace_api_plugin::plugin_initialize(const appbase::variables_map& options) 
    rpc->plugin_initialize(options);
 }
 
-void trace_api_plugin::plugin_startup() {
+void _trace_api_plugin::plugin_startup() {
    my->plugin_startup();
    rpc->plugin_startup();
 }
 
-void trace_api_plugin::plugin_shutdown() {
+void _trace_api_plugin::plugin_shutdown() {
    my->plugin_shutdown();
    rpc->plugin_shutdown();
 }
 
-void trace_api_plugin::handle_sighup() {
+void _trace_api_plugin::handle_sighup() {
    fc::logger::update( logger_name, _log );
 }
 
