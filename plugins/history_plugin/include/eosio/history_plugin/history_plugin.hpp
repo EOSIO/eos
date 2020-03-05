@@ -23,14 +23,14 @@ class read_write {
 
    public:
       explicit read_write(history_ptr&& history)
-        : history(history) {}
+        : history(std::move(history)) {}
 
       struct prune_history_params {
-        int32_t             height;            // height of the last block we want to prune data of
+        uint32_t            height;            // height of the last block we want to prune data of
       };
 
       struct prune_history_result {
-        int64_t             records_removed;   // # of records removed
+        uint64_t            records_removed;   // # of records removed
         bool                time_limit_exceeded_error;
       };
 

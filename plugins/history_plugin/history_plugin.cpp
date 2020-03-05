@@ -466,29 +466,35 @@ namespace eosio {
          const auto& action_idx = db.get_index<action_history_index, by_id>();
          auto itr_action = action_idx.lower_bound(history->last_id_pruned);
 
-         while( itr_action != action_idx.end() ) {
-           if(itr_action->block_num <= params.height) {
-             const auto& account_idx = db.get_index<account_history_index, by_action_sequence_num>();
-             auto itr_account = account_idx.lower_bound( boost::make_tuple( itr_action->action_sequence_num, 0 ) );
+         while( itr_action != action_idx.end() && itr_action->block_num <= params.height ) {
+           const auto& account_idx = db.get_index<account_history_index, by_action_sequence_num>();
+           auto itr_account = account_idx.lower_bound( boost::make_tuple( itr_action->action_sequence_num, 0 ) );
 
-             while(itr_account != account_idx.end() && itr_account->action_sequence_num == itr_action->action_sequence_num) {
-               auto itr_account_copy = itr_account;
-               itr_account++;
-               db.remove(*itr_account_copy);
-
-               result.records_removed++;
-             }
-
-             history->last_id_pruned = itr_action->id._id;
-
-             auto itr_action_copy = itr_action;
-             itr_action++;
-             db.remove(*itr_action_copy);
+           while(itr_account != account_idx.end() && itr_account->action_sequence_num == itr_action->action_sequence_num) {
+             auto itr_account_copy = itr_account;
+             itr_account++;
+             db.remove(*itr_account_copy);
 
              result.records_removed++;
-           } else {
-             itr_action++;
+
+             auto now = fc::time_point::now();
+             if( now - start_time > history->history_api_timeout_us ) {
+               result.time_limit_exceeded_error = true;
+               break;
+             }
            }
+
+           if(result.time_limit_exceeded_error) {
+             break;
+           }
+
+           history->last_id_pruned = itr_action->id._id;
+
+           auto itr_action_copy = itr_action;
+           itr_action++;
+           db.remove(*itr_action_copy);
+
+           result.records_removed++;
 
            auto now = fc::time_point::now();
            if( now - start_time > history->history_api_timeout_us ) {
