@@ -4,6 +4,7 @@
 #include <eosio/chain/resource_limits.hpp>
 #include <eosio/chain/config.hpp>
 #include <eosio/testing/chainbase_fixture.hpp>
+
 #include <boost/test/unit_test.hpp>
 
 using namespace eosio::chain::resource_limits;
@@ -362,12 +363,11 @@ BOOST_AUTO_TEST_SUITE(resource_limits_test)
          // unlimited
          {
             const auto ret_unlimited_wo_time_stamp = get_account_limit_ex(*this, test_account, 0, {});
-            const auto ret_unlimited_with_time_stamp = get_account_limit_ex(*this, test_account, 0,
-                                                                            timestamp_now.to_time_point());
+            const auto ret_unlimited_with_time_stamp = get_account_limit_ex(*this, test_account, 0, timestamp_now.to_time_point());
             BOOST_CHECK_EQUAL(*ret_unlimited_wo_time_stamp.first.current_used, (int64_t) -1);
             BOOST_CHECK_EQUAL(*ret_unlimited_with_time_stamp.first.current_used, (int64_t) -1);
             BOOST_CHECK_EQUAL(ret_unlimited_wo_time_stamp.first.last_updated_time_stamp->slot,
-                              ret_unlimited_with_time_stamp.first.last_updated_time_stamp->slot);\
+                              ret_unlimited_with_time_stamp.first.last_updated_time_stamp->slot);
 
          }
          const int64_t cpu_limit = 2048;
