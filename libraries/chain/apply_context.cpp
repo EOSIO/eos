@@ -136,16 +136,17 @@ void apply_context::exec_one()
    const auto& encode_action = [&](const action& act, action_receipt& r) {
       if (control.is_builtin_activated( builtin_protocol_feature_t::action_return_value )) {
          const action_base* base = &act; // downcast to get only the action_base packed size
-         auto act_ret_val_size = fc::raw::pack_size(action_return_value);
-         auto act_pack_size    = fc::raw::pack_size(act);
+         const auto act_ret_val_size = fc::raw::pack_size(action_return_value) + 1; // + 1 for optional
+         const auto act_pack_size    = fc::raw::pack_size(act);
          std::vector<char> buff(act_pack_size + act_ret_val_size);
          datastream<char*> ds(buff.data(), act_pack_size + act_ret_val_size);
          fc::raw::pack(ds, act);
+         fc::raw::pack(ds, (uint8_t)1);
          fc::raw::pack(ds, action_return_value);
          sha256 hashes[2];
          const size_t lhs_size = fc::raw::pack_size(*base);
-         hashes[0]    = encode(buff.data(), lhs_size);
-         hashes[1]    = encode(buff.data() + lhs_size, fc::raw::pack_size(act.data) + act_ret_val_size);
+         hashes[0] = encode(buff.data(), lhs_size);
+         hashes[1] = encode(buff.data() + lhs_size, fc::raw::pack_size(act.data) + act_ret_val_size);
          r.act_digest = encode((char*)&hashes[0], sizeof(hashes));
       } else {
          r.act_digest = digest_type::hash(act);
