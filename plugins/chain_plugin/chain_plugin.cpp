@@ -43,7 +43,7 @@ std::ostream& operator<<(std::ostream& osm, eosio::chain::db_read_mode m) {
       osm << "speculative";
    } else if ( m == eosio::chain::db_read_mode::HEAD ) {
       osm << "head";
-   } else if ( m == eosio::chain::db_read_mode::READ_ONLY ) {
+   } else if ( m == eosio::chain::db_read_mode::READ_ONLY ) { // deprecated
       osm << "read-only";
    } else if ( m == eosio::chain::db_read_mode::IRREVERSIBLE ) {
       osm << "irreversible";
@@ -140,6 +140,9 @@ public:
    bfs::path                        blocks_dir;
    bool                             readonly = false;
    flat_map<uint32_t,block_id_type> loaded_checkpoints;
+   bool                             accept_transactions = false;
+   bool                             api_accept_transactions = true;
+
 
    fc::optional<fork_database>      fork_db;
    fc::optional<block_log>          block_logger;
@@ -148,7 +151,7 @@ public:
    fc::optional<genesis_state>      genesis;
    //txn_msg_rate_limits              rate_limits;
    fc::optional<vm_type>            wasm_runtime;
-   fc::microseconds                 abi_serializer_max_time_ms;
+   fc::microseconds                 abi_serializer_max_time_us;
    fc::optional<bfs::path>          snapshot_path;
 
 
@@ -207,7 +210,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
             }
 #endif
          }), "Override default WASM runtime")
-         ("abi-serializer-max-time-ms", bpo::value<uint32_t>()->default_value(config::default_abi_serializer_max_time_ms),
+         ("abi-serializer-max-time-ms", bpo::value<uint32_t>()->default_value(config::default_abi_serializer_max_time_us / 1000),
           "Override default maximum ABI serialization time allowed in ms")
          ("chain-state-db-size-mb", bpo::value<uint64_t>()->default_value(config::default_state_size / (1024  * 1024)), "Maximum size (in MiB) of the chain state database")
          ("chain-state-db-guard-size-mb", bpo::value<uint64_t>()->default_value(config::default_state_guard_size / (1024  * 1024)), "Safely shut down node when free space remaining in the chain state database drops below this size (in MiB).")
@@ -235,11 +238,12 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "Deferred transactions sent by accounts in this list do not have any of the subjective whitelist/blacklist checks applied to them (may specify multiple times)")
          ("read-mode", boost::program_options::value<eosio::chain::db_read_mode>()->default_value(eosio::chain::db_read_mode::SPECULATIVE),
           "Database read mode (\"speculative\", \"head\", \"read-only\", \"irreversible\").\n"
-          "In \"speculative\" mode database contains changes done up to the head block plus changes made by transactions not yet included to the blockchain.\n"
-          "In \"head\" mode database contains changes done up to the current head block.\n"
-          "In \"read-only\" mode database contains changes done up to the current head block and transactions cannot be pushed to the chain API.\n"
-          "In \"irreversible\" mode database contains changes done up to the last irreversible block and transactions cannot be pushed to the chain API.\n"
+          "In \"speculative\" mode: database contains state changes by transactions in the blockchain up to the head block as well as some transactions not yet included in the blockchain.\n"
+          "In \"head\" mode: database contains state changes by only transactions in the blockchain up to the head block; transactions received by the node are relayed if valid.\n"
+          "In \"read-only\" mode: (DEPRECATED: see p2p-accept-transactions & api-accept-transactions) database contains state changes by only transactions in the blockchain up to the head block; transactions received via the P2P network are not relayed and transactions cannot be pushed via the chain API.\n"
+          "In \"irreversible\" mode: database contains state changes by only transactions in the blockchain up to the last irreversible block; transactions received via the P2P network are not relayed and transactions cannot be pushed via the chain API.\n"
           )
+         ( "api-accept-transactions", bpo::value<bool>()->default_value(true), "Allow API transactions to be evaluated and relayed if valid.")
          ("validation-mode", boost::program_options::value<eosio::chain::validation_mode>()->default_value(eosio::chain::validation_mode::FULL),
           "Chain validation mode (\"full\" or \"light\").\n"
           "In \"full\" mode all incoming blocks will be fully validated.\n"
@@ -692,7 +696,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          my->wasm_runtime = options.at( "wasm-runtime" ).as<vm_type>();
 
       if(options.count("abi-serializer-max-time-ms"))
-         my->abi_serializer_max_time_ms = fc::microseconds(options.at("abi-serializer-max-time-ms").as<uint32_t>() * 1000);
+         my->abi_serializer_max_time_us = fc::microseconds(options.at("abi-serializer-max-time-ms").as<uint32_t>() * 1000);
 
       my->chain_config->blocks_dir = my->blocks_dir;
       my->chain_config->state_dir = app().data_dir() / config::default_state_dir_name;
@@ -991,6 +995,21 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       if ( options.count("read-mode") ) {
          my->chain_config->read_mode = options.at("read-mode").as<db_read_mode>();
       }
+      my->api_accept_transactions = options.at( "api-accept-transactions" ).as<bool>();
+
+      if( my->chain_config->read_mode == db_read_mode::IRREVERSIBLE || my->chain_config->read_mode == db_read_mode::READ_ONLY ) {
+         if( my->chain_config->read_mode == db_read_mode::READ_ONLY ) {
+            wlog( "read-mode = read-only is deprecated use p2p-accept-transactions = false, api-accept-transactions = false instead." );
+         }
+         if( my->api_accept_transactions ) {
+            my->api_accept_transactions = false;
+            std::stringstream ss; ss << my->chain_config->read_mode;
+            wlog( "api-accept-transactions set to false due to read-mode: ${m}", ("m", ss.str()) );
+         }
+      }
+      if( my->api_accept_transactions ) {
+         enable_accept_transactions();
+      }
 
       if ( options.count("validation-mode") ) {
          my->chain_config->block_validation_mode = options.at("validation-mode").as<validation_mode>();
@@ -1077,6 +1096,8 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
 void chain_plugin::plugin_startup()
 { try {
+   EOS_ASSERT( my->chain_config->read_mode != db_read_mode::IRREVERSIBLE || !accept_transactions(), plugin_config_exception,
+               "read-mode = irreversible. transactions should not be enabled by enable_accept_transactions" );
    try {
       auto shutdown = [](){ return app().is_quiting(); };
       if (my->snapshot_path) {
@@ -1123,14 +1144,16 @@ void chain_plugin::plugin_shutdown() {
    my->chain.reset();
 }
 
-chain_apis::read_write::read_write(controller& db, const fc::microseconds& abi_serializer_max_time)
+chain_apis::read_write::read_write(controller& db, const fc::microseconds& abi_serializer_max_time, bool api_accept_transactions)
 : db(db)
 , abi_serializer_max_time(abi_serializer_max_time)
+, api_accept_transactions(api_accept_transactions)
 {
 }
 
 void chain_apis::read_write::validate() const {
-   EOS_ASSERT( !db.in_immutable_mode(), missing_chain_api_plugin_exception, "Not allowed, node in read-only mode" );
+   EOS_ASSERT( api_accept_transactions, missing_chain_api_plugin_exception,
+               "Not allowed, node has api-accept-transactions = false" );
 }
 
 bool chain_plugin::accept_block(const signed_block_ptr& block, const block_id_type& id ) {
@@ -1363,8 +1386,21 @@ chain::chain_id_type chain_plugin::get_chain_id()const {
 }
 
 fc::microseconds chain_plugin::get_abi_serializer_max_time() const {
-   return my->abi_serializer_max_time_ms;
+   return my->abi_serializer_max_time_us;
 }
+
+bool chain_plugin::api_accept_transactions() const{
+   return my->api_accept_transactions;
+}
+
+bool chain_plugin::accept_transactions() const {
+   return my->accept_transactions;
+}
+
+void chain_plugin::enable_accept_transactions() {
+   my->accept_transactions = true;
+}
+
 
 void chain_plugin::log_guard_exception(const chain::guard_exception&e ) {
    if (e.code() == chain::database_guard_exception::code_value) {
@@ -1811,7 +1847,7 @@ fc::variant read_only::get_currency_stats( const read_only::get_currency_stats_p
    return results;
 }
 
-fc::variant get_global_row( const database& db, const abi_def& abi, const abi_serializer& abis, const fc::microseconds& abi_serializer_max_time_ms, bool shorten_abi_errors ) {
+fc::variant get_global_row( const database& db, const abi_def& abi, const abi_serializer& abis, const fc::microseconds& abi_serializer_max_time_us, bool shorten_abi_errors ) {
    const auto table_type = get_table_type(abi, N(global));
    EOS_ASSERT(table_type == read_only::KEYi64, chain::contract_table_query_exception, "Invalid table type ${type} for table global", ("type",table_type));
 
@@ -1824,7 +1860,7 @@ fc::variant get_global_row( const database& db, const abi_def& abi, const abi_se
 
    vector<char> data;
    read_only::copy_inline_row(*it, data);
-   return abis.binary_to_variant(abis.get_table_type(N(global)), data, abi_serializer_max_time_ms, shorten_abi_errors );
+   return abis.binary_to_variant(abis.get_table_type(N(global)), data, abi_serializer_max_time_us, shorten_abi_errors );
 }
 
 read_only::get_producers_result read_only::get_producers( const read_only::get_producers_params& p ) const try {

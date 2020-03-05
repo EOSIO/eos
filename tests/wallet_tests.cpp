@@ -32,12 +32,12 @@ BOOST_AUTO_TEST_CASE(wallet_test)
 
    auto priv = fc::crypto::private_key::generate();
    auto pub = priv.get_public_key();
-   auto wif = (std::string)priv;
+   auto wif = priv.to_string();
    wallet.import_key(wif);
    BOOST_CHECK_EQUAL(1u, wallet.list_keys().size());
 
    auto privCopy = wallet.get_private_key(pub);
-   BOOST_CHECK_EQUAL(wif, (std::string)privCopy);
+   BOOST_CHECK_EQUAL(wif, privCopy.to_string());
 
    wallet.lock();
    BOOST_CHECK(wallet.is_locked());
@@ -57,7 +57,7 @@ BOOST_AUTO_TEST_CASE(wallet_test)
    BOOST_CHECK_EQUAL(1u, wallet2.list_keys().size());
 
    auto privCopy2 = wallet2.get_private_key(pub);
-   BOOST_CHECK_EQUAL(wif, (std::string)privCopy2);
+   BOOST_CHECK_EQUAL(wif, privCopy2.to_string());
 
    fc::remove("wallet_test.json");
 } FC_LOG_AND_RETHROW() }
@@ -115,7 +115,7 @@ BOOST_AUTO_TEST_CASE(wallet_manager_test)
    // key3 was not automatically imported
    BOOST_CHECK(std::find(keys.cbegin(), keys.cend(), pub_pri_pair(key3)) == keys.cend());
 
-   wm.remove_key("test", pw, string(pub_pri_pair(key2).first));
+   wm.remove_key("test", pw, pub_pri_pair(key2).first.to_string());
    BOOST_CHECK_EQUAL(1u, wm.get_public_keys().size());
    keys = wm.list_keys("test", pw);
    BOOST_CHECK(std::find(keys.cbegin(), keys.cend(), pub_pri_pair(key2)) == keys.cend());
@@ -123,9 +123,9 @@ BOOST_AUTO_TEST_CASE(wallet_manager_test)
    BOOST_CHECK_EQUAL(2u, wm.get_public_keys().size());
    keys = wm.list_keys("test", pw);
    BOOST_CHECK(std::find(keys.cbegin(), keys.cend(), pub_pri_pair(key2)) != keys.cend());
-   BOOST_CHECK_THROW(wm.remove_key("test", pw, string(pub_pri_pair(key3).first)), fc::exception);
+   BOOST_CHECK_THROW(wm.remove_key("test", pw, pub_pri_pair(key3).first.to_string()), fc::exception);
    BOOST_CHECK_EQUAL(2u, wm.get_public_keys().size());
-   BOOST_CHECK_THROW(wm.remove_key("test", "PWnogood", string(pub_pri_pair(key2).first)), wallet_invalid_password_exception);
+   BOOST_CHECK_THROW(wm.remove_key("test", "PWnogood", pub_pri_pair(key2).first.to_string()), wallet_invalid_password_exception);
    BOOST_CHECK_EQUAL(2u, wm.get_public_keys().size());
 
    wm.lock("test");
@@ -198,7 +198,7 @@ BOOST_AUTO_TEST_CASE(wallet_manager_test)
       //now pluck out the private key from the wallet and see if the public key of said
       // private key matches what was returned earlier from the create_key() call
       private_key_type create_key_priv(wm.list_keys("testgen", pw).cbegin()->second);
-      BOOST_CHECK_EQUAL((string)create_key_pub, (string)create_key_priv.get_public_key());
+      BOOST_CHECK_EQUAL(create_key_pub.to_string(), create_key_priv.get_public_key().to_string());
 
       wm.lock("testgen");
       BOOST_CHECK(fc::exists("testgen.wallet"));
