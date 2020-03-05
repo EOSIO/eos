@@ -25,10 +25,10 @@ namespace {
                e.what());
          return fce.to_detail_string();
       } catch (...) {
-         fc::unhandled_exception e(
+         fc::unhandled_exception ue(
                FC_LOG_MESSAGE(warn, "unknown: ",),
                std::current_exception());
-         return e.to_detail_string();
+         return ue.to_detail_string();
       }
    }
 
@@ -51,7 +51,7 @@ struct trace_api_common_impl {
       auto cfg_options = cfg.add_options();
       cfg_options("trace-dir", bpo::value<bfs::path>()->default_value("traces"),
                   "the location of the trace directory (absolute path or relative to application data dir)");
-      cfg_options("slice-stride", bpo::value<uint32_t>()->default_value(10'000),
+      cfg_options("trace-slice-stride", bpo::value<uint32_t>()->default_value(10'000),
                   "the number of blocks each \"slice\" of trace data will contain on the filesystem");
    }
 
@@ -62,7 +62,7 @@ struct trace_api_common_impl {
       else
          trace_dir = dir_option;
 
-      slice_stride = options.at("slice-stride").as<uint32_t>();
+      slice_stride = options.at("trace-slice-stride").as<uint32_t>();
    }
 
    // common configuration paramters
@@ -86,6 +86,7 @@ struct trace_api_rpc_plugin_impl {
                   "   an absolute path to a file containing a valid JSON-encoded ABI\n"
                   "   a relative path from `data-dir` to a file containing a valid JSON-encoded ABI\n"
                   );
+      cfg_options("trace-no-abis", "Suppress warning about ABIs when non are congigured");
    }
 
    void plugin_initialize(const appbase::variables_map& options) {
@@ -102,9 +103,12 @@ struct trace_api_rpc_plugin_impl {
                auto abi = abi_def_from_file_or_str(kv.second);
                data_handler->add_abi(account, abi);
             } catch (...) {
-               elog("Malformed trace-rpc-abi provider: \"${val}\", ignoring!", ("val", entry));
+               elog("Malformed trace-rpc-abi provider: \"${val}\"", ("val", entry));
+               throw;
             }
          }
+      } else if (options.count("trace-no-abis") == 0 ) {
+         wlog("Trace API is not configured with ABIs.  Data in actions will appear as hex-encoded blobs in the RPC responses.  Use trace-no-abis=true to suppress this warning.");
       }
    }
 
@@ -124,26 +128,22 @@ struct trace_api_plugin_impl {
 
    static void set_program_options(appbase::options_description& cli, appbase::options_description& cfg) {
       auto cfg_options = cfg.add_options();
-      cfg_options("minimum-irreversible-trace-history", bpo::value<std::string>()->default_value("-1"),
+      cfg_options("trace-minimum-irreversible-history-us", bpo::value<uint64_t>()->default_value(-1),
                   "the minimum amount of history, as defined by time, this node will keep after it becomes irreversible\n"
-                  "this value can be specified as a number of seconds or using the following suffixes:\n"
-                  "  \"s\" : the value is in seconds\n"
-                  "  \"m\" : the value is in minutes\n"
-                  "  \"h\" : the value is in hours\n"
-                  "  \"d\" : the value is in days\n"
-                  "  \"w\" : the value is in weeks\n"
+                  "this value can be specified as a number of microseconds or\n"
                   "a value of \"-1\" will disable automatic maintenance of the trace slice files\n"
                   );
    }
 
    void plugin_initialize(const appbase::variables_map& options) {
-      if( options.count("minimum-irreversible-trace-history") ) {
-         auto value = options.at("minimum-irreversible-trace-history").as<std::string>();
-         try {
-            minimum_irreversible_trace_history = parse_microseconds(value);
-         } catch (...) {
-            elog("Malformed minimum-irreversible-trace-history: \"${val}\"!", ("val", value));
-            throw;
+      if( options.count("trace-minimum-irreversible-history-us") ) {
+         auto value = options.at("trace-minimum-irreversible-history-us").as<uint64_t>();
+         if ( value == -1 ) {
+            minimum_irreversible_trace_history = fc::microseconds::maximum();
+         } else if (value >= 0) {
+            minimum_irreversible_trace_history = fc::microseconds(value);
+         } else {
+            EOS_THROW(chain::plugin_config_exception, "trace-minimum-irreversible-history-us must be either a positive number or -1");
          }
       }
    }

@@ -34,38 +34,6 @@ struct temp_file_fixture {
 };
 
 BOOST_AUTO_TEST_SUITE(configuration_utils_tests)
-   BOOST_AUTO_TEST_CASE(parse_microseconds_test)
-   {
-      // basic tests
-      BOOST_TEST( parse_microseconds("-1") == fc::microseconds::maximum() );
-      BOOST_TEST( parse_microseconds("0")  == fc::microseconds(0) );
-      BOOST_TEST( parse_microseconds("1")  == fc::microseconds(1'000'000) );
-      BOOST_TEST( parse_microseconds("1s") == fc::microseconds(1'000'000) );
-      BOOST_TEST( parse_microseconds("1m") == fc::microseconds(60'000'000) );
-      BOOST_TEST( parse_microseconds("1h") == fc::microseconds(3'600'000'000) );
-      BOOST_TEST( parse_microseconds("1d") == fc::microseconds(86'400'000'000) );
-      BOOST_TEST( parse_microseconds("1w") == fc::microseconds(604'800'000'000) );
-
-      // leading zeros OK!
-      BOOST_TEST( parse_microseconds("0001s") == fc::microseconds(1'000'000) );
-
-      // negatives other than -1 not OK!
-      BOOST_REQUIRE_THROW(parse_microseconds("-2"), chain::plugin_config_exception);
-
-      // decimals not OK!
-      BOOST_REQUIRE_THROW(parse_microseconds("1.0s"), chain::plugin_config_exception);
-
-      // bad suffix not OK
-      BOOST_REQUIRE_THROW(parse_microseconds("1y"), chain::plugin_config_exception);
-
-      // letters not OK
-      BOOST_REQUIRE_THROW(parse_microseconds("xyz"), chain::plugin_config_exception);
-
-      // Overflow not OK
-      BOOST_REQUIRE_THROW(parse_microseconds("15250285w"), chain::plugin_config_exception);
-
-   }
-
    BOOST_AUTO_TEST_CASE(parse_kv_pairs_test)
    {
       using spair = std::pair<std::string, std::string>;
