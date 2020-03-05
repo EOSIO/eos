@@ -144,8 +144,8 @@ void apply_context::exec_one()
          fc::raw::pack(ds, action_return_value);
          sha256 hashes[2];
          const size_t lhs_size = fc::raw::pack_size(*base);
-         hashes[0] = encode(buff.data(), lhs_size);
-         hashes[1] = encode(buff.data() + lhs_size, fc::raw::pack_size(act.data) + act_ret_val_size);
+         hashes[0]    = encode(buff.data(), lhs_size);
+         hashes[1]    = encode(buff.data() + lhs_size, fc::raw::pack_size(act.data) + act_ret_val_size);
          r.act_digest = encode((char*)&hashes[0], sizeof(hashes));
       } else {
          r.act_digest = digest_type::hash(act);
