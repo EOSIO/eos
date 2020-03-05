@@ -1,6 +1,7 @@
 #pragma once
 
 #include <eosio/trace_api_plugin/trace.hpp>
+#include <eosio/trace_api_plugin/extract_util.hpp>
 #include <exception>
 #include <functional>
 #include <map>
@@ -19,8 +20,8 @@ public:
     * @param except_handler called on exceptions, logging if any is left to the user
     * @param shutdown called when this class determines application should shutdown because of fatal error
     */
-   chain_extraction_impl_type( StoreProvider& store, std::function<void(std::exception_ptr)> except_handler )
-   : store(store)
+   chain_extraction_impl_type( StoreProvider store, std::function<void(std::exception_ptr)> except_handler )
+   : store(std::move(store))
    , except_handler(std::move(except_handler))
    {}
 
@@ -115,7 +116,7 @@ private:
    }
 
 private:
-   StoreProvider&                                               store;
+   StoreProvider                                                store;
    std::function<void(std::exception_ptr)>                      except_handler;
    std::map<transaction_id_type, chain::transaction_trace_ptr>  cached_traces;
    fc::optional<chain::transaction_trace_ptr>                   onblock_trace;
