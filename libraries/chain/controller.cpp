@@ -473,20 +473,20 @@ struct controller_impl {
       // protocol_features.init happens after this, and will pick up pso.activated_protocol_features.
       if(genesis.initial_protocol_features.size()) {
          *head->activated_protocol_features = protocol_feature_activation_set(*head->activated_protocol_features, genesis.initial_protocol_features);
-         auto dependency_checker =  [&]( const digest_type& d ) -> bool {
-            // This checks head->activated_protocol_features and therefore doesn't care about order.
-            const auto& activated_features = head->activated_protocol_features->protocol_features;
-            return activated_features.find( d ) != activated_features.end();
-         };
          const auto& pfs = protocol_features.get_protocol_feature_set();
          bool has_preactivate_feature = false;
-         bool requires_preactivate_feature = false;
-         for( const auto& feature_digest : genesis.initial_protocol_features ) {
+         for( auto iter = genesis.initial_protocol_features.begin(), end = genesis.initial_protocol_features.end(); iter != end; ++iter ) {
+            const auto& feature_digest = *iter;
+            auto dependency_checker =  [&]( const digest_type& d ) -> bool {
+               return std::find(genesis.initial_protocol_features.begin(), iter, d) != iter;
+            };
             EOS_ASSERT( pfs.validate_dependencies( feature_digest, dependency_checker ), protocol_feature_exception,
                         "not all dependencies of protocol feature with digest '${digest} have been activated'");
             const auto& f = pfs.get_protocol_feature( feature_digest );
             if ( f.preactivation_required ) {
-               requires_preactivate_feature = true;
+               EOS_ASSERT( has_preactivate_feature,
+                           protocol_feature_exception,
+                           "preactivate_feature is required for genesis protocol feature activation" );
             }
             if( f.builtin_feature ) {
                if( *f.builtin_feature == builtin_protocol_feature_t::preactivate_feature ) {
@@ -498,9 +498,6 @@ struct controller_impl {
                }
             }
          }
-         EOS_ASSERT( has_preactivate_feature || !requires_preactivate_feature,
-                     protocol_feature_exception,
-                     "preactivate_feature is required for genesis protocol feature activation" );
       }
    }
 

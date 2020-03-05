@@ -224,6 +224,25 @@ BOOST_AUTO_TEST_CASE( genesis_activation ) try {
    }
 
    {
+      // preactivate_feature activated too late
+      fc::temp_directory dir;
+      auto [config, genesis] = tester::default_config(dir);
+      genesis.initial_protocol_features.push_back( *pfm.get_builtin_digest( builtin_protocol_feature_t::only_link_to_existing_permission ) );
+      genesis.initial_protocol_features.push_back( *pfm.get_builtin_digest( builtin_protocol_feature_t::preactivate_feature ) );
+      BOOST_CHECK_THROW(tester(config, genesis), protocol_feature_exception);
+   }
+
+   {
+      // dependency replace_deferred activated too late
+      fc::temp_directory dir;
+      auto [config, genesis] = tester::default_config(dir);
+      genesis.initial_protocol_features.push_back( *pfm.get_builtin_digest( builtin_protocol_feature_t::preactivate_feature ) );
+      genesis.initial_protocol_features.push_back( *pfm.get_builtin_digest( builtin_protocol_feature_t::no_duplicate_deferred_id ) );
+      genesis.initial_protocol_features.push_back( *pfm.get_builtin_digest( builtin_protocol_feature_t::replace_deferred ) );
+      BOOST_CHECK_THROW(tester(config, genesis), protocol_feature_exception);
+   }
+
+   {
       // In order activation
       fc::temp_directory dir;
       auto [config, genesis] = tester::default_config(dir);
@@ -231,19 +250,6 @@ BOOST_AUTO_TEST_CASE( genesis_activation ) try {
       genesis.initial_protocol_features.push_back( *pfm.get_builtin_digest( builtin_protocol_feature_t::only_link_to_existing_permission ) );
       genesis.initial_protocol_features.push_back( *pfm.get_builtin_digest( builtin_protocol_feature_t::replace_deferred ) );
       genesis.initial_protocol_features.push_back( *pfm.get_builtin_digest( builtin_protocol_feature_t::no_duplicate_deferred_id ) );
-      tester c(config, genesis);
-      BOOST_TEST( c.control->is_builtin_activated( builtin_protocol_feature_t::preactivate_feature ) );
-      BOOST_TEST( c.control->is_builtin_activated( builtin_protocol_feature_t::no_duplicate_deferred_id ) );
-      BOOST_TEST( !c.control->is_builtin_activated( builtin_protocol_feature_t::get_sender ) );
-   }
-   {
-      // Reverse order activation.  We don't care about the order as long as all dependencies are satisfied.
-      fc::temp_directory dir;
-      auto [config, genesis] = tester::default_config(dir);
-      genesis.initial_protocol_features.push_back( *pfm.get_builtin_digest( builtin_protocol_feature_t::no_duplicate_deferred_id ) );
-      genesis.initial_protocol_features.push_back( *pfm.get_builtin_digest( builtin_protocol_feature_t::replace_deferred ) );
-      genesis.initial_protocol_features.push_back( *pfm.get_builtin_digest( builtin_protocol_feature_t::only_link_to_existing_permission ) );
-      genesis.initial_protocol_features.push_back( *pfm.get_builtin_digest( builtin_protocol_feature_t::preactivate_feature ) );
       tester c(config, genesis);
       BOOST_TEST( c.control->is_builtin_activated( builtin_protocol_feature_t::preactivate_feature ) );
       BOOST_TEST( c.control->is_builtin_activated( builtin_protocol_feature_t::no_duplicate_deferred_id ) );
