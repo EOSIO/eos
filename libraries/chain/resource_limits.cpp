@@ -381,7 +381,7 @@ resource_limits_manager::get_account_cpu_limit_ex( const account_name& name, uin
    get_account_limits( name, x, y, cpu_weight );
 
    if( cpu_weight < 0 || state.total_cpu_weight == 0 ) {
-      return {{ -1, -1, -1, block_timestamp_type(usage.cpu_usage.last_ordinal),-1 }, false};
+      return {{ -1, -1, -1, block_timestamp_type(usage.cpu_usage.last_ordinal), -1 }, false};
    }
 
    account_resource_limit arl;
@@ -443,7 +443,7 @@ resource_limits_manager::get_account_net_limit_ex( const account_name& name, uin
    get_account_limits( name, x, net_weight, y );
 
    if( net_weight < 0 || state.total_net_weight == 0) {
-      return {{ -1, -1, -1, block_timestamp_type(usage.cpu_usage.last_ordinal), -1 }, false};
+      return {{ -1, -1, -1, block_timestamp_type(usage.net_usage.last_ordinal), -1 }, false};
    }
 
    account_resource_limit arl;
