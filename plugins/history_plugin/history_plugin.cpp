@@ -115,7 +115,7 @@ namespace eosio {
       const auto& idx = db.get_index<account_control_history_multi_index, by_controlled_authority>();
 
       for (auto controlling_account : controlling_accounts ) {
-         auto itr = idx.lower_bound( boost::make_tuple( account_name, permission, controlling_account.permission.actor ) );
+         auto itr = idx.find( boost::make_tuple( account_name, permission, controlling_account.permission.actor ) );
 
          if(itr == idx.end()) {
            db.create<account_control_history_object>([&](account_control_history_object &obj) {
