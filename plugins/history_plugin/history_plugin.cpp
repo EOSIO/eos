@@ -112,14 +112,18 @@ namespace eosio {
 
    static void add(chainbase::database& db, const vector<permission_level_weight>& controlling_accounts, const account_name& account_name, const permission_name& permission)
    {
-      std::set<permission_level_weight> controlling_accounts_set(controlling_accounts.begin(), controlling_accounts.end());
+      const auto& idx = db.get_index<account_control_history_multi_index, by_controlled_authority>();
 
-      for (auto controlling_account : controlling_accounts_set ) {
-         db.create<account_control_history_object>([&](account_control_history_object& obj) {
-            obj.controlled_account = account_name;
-            obj.controlled_permission = permission;
-            obj.controlling_account = controlling_account.permission.actor;
-         });
+      for (auto controlling_account : controlling_accounts ) {
+         auto itr = idx.lower_bound( boost::make_tuple( account_name, permission, controlling_account.permission.actor ) );
+
+         if(itr == idx.end()) {
+           db.create<account_control_history_object>([&](account_control_history_object &obj) {
+                 obj.controlled_account = account_name;
+                 obj.controlled_permission = permission;
+                 obj.controlling_account = controlling_account.permission.actor;
+           });
+         }
       }
    }
 
