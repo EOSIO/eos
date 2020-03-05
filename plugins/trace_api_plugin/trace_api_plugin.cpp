@@ -73,7 +73,8 @@ struct trace_api_common_impl {
 /**
  * Interface with the RPC process
  */
-struct trace_api_rpc_plugin_impl {
+struct trace_api_rpc_plugin_impl : public std::enable_shared_from_this<trace_api_rpc_plugin_impl>
+{
    trace_api_rpc_plugin_impl( const std::shared_ptr<trace_api_common_impl>& common )
    :common(common) {}
 
@@ -109,6 +110,49 @@ struct trace_api_rpc_plugin_impl {
    }
 
    void plugin_startup() {
+      auto& http = app().get_plugin<http_plugin>();
+      http.add_handler("/v1/trace_api/get_block", [wthis=weak_from_this()](std::string, std::string body, url_response_callback cb){
+         auto that = wthis.lock();
+         if (!that) {
+            return;
+         }
+
+         auto block_number = ([&body]() -> std::optional<uint32_t> {
+            if (body.empty()) {
+               return {};
+            }
+
+            try {
+               auto input = fc::json::from_string(body);
+               auto block_num = input.get_object()["block_num"].as_uint64();
+               if (block_num > std::numeric_limits<uint32_t>::max()) {
+                  return {};
+               }
+               return block_num;
+            } catch (...) {
+               return {};
+            }
+         })();
+
+         if (!block_number) {
+            error_results results{400, "Bad or missing block_num"};
+            cb( 400, fc::variant( results ));
+            return;
+         }
+
+         try {
+
+            auto resp = fc::variant(); // connect to response formatter
+            if (resp.is_null()) {
+               error_results results{404, "Block trace missing"};
+               cb( 404, fc::variant( results ));
+            } else {
+               cb( 200, resp );
+            }
+         } catch (...) {
+            http_plugin::handle_exception("trace_api", "get_block", body, cb);
+         }
+      });
    }
 
    void plugin_shutdown() {
