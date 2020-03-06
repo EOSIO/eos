@@ -73,14 +73,6 @@ namespace eosio::trace_api_plugin {
 
       const boost::filesystem::path _slice_dir;
       const uint32_t _width;
-
-      static constexpr uint32_t _current_version = 1;
-
-      static constexpr uint _slice_size = 10;
-      static constexpr uint _null_term_size = 1;
-      static constexpr const char* _trace_prefix = "trace_";
-      static constexpr const char* _trace_index_prefix = "trace_index_";
-      static constexpr uint _max_file_size = 12 + 10 + 1 + 10 + 4 + 1; // "trace_index_" + 10-digits + '-' + 10-digits + ".log" + null-char
    };
 
    class store_provider {

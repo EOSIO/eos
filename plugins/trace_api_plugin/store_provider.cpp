@@ -3,6 +3,14 @@
 #include <fc/variant_object.hpp>
 #include <fc/crypto/base64.hpp>
 
+namespace {
+      static constexpr uint32_t _current_version = 1;
+      static constexpr const char* _trace_prefix = "trace_";
+      static constexpr const char* _trace_index_prefix = "trace_index_";
+      static constexpr const char* _trace_ext = ".log";
+      static constexpr uint _max_filename_size = std::char_traits<char>::length(_trace_index_prefix) + 10 + 1 + 10 + std::char_traits<char>::length(_trace_ext) + 1; // "trace_index_" + 10-digits + '-' + 10-digits + ".log" + null-char
+}
+
 namespace eosio::trace_api_plugin {
    namespace bfs = boost::filesystem;
    store_provider::store_provider(const bfs::path& slice_dir, uint32_t width)
@@ -71,9 +79,17 @@ namespace eosio::trace_api_plugin {
    }
 
    bool slice_provider::find_slice(const char* slice_prefix, uint32_t slice_number, fc::cfile& slice_file) const {
-      char filename[_max_file_size] = {};
+      char filename[_max_filename_size] = {};
       const uint32_t slice_start = slice_number * _width;
-      snprintf(filename, _max_file_size, "%s%010d-%010d.log", slice_prefix, slice_start, (slice_start + _width));
+      const int size_written = snprintf(filename, _max_filename_size, "%s%010d-%010d%s", slice_prefix, slice_start, (slice_start + _width), _trace_ext);
+      // assert that _max_filename_size is correct
+      if ( size_written >= _max_filename_size ) {
+         const std::string max_size_str = std::to_string(_max_filename_size - 1); // dropping null character from size
+         const std::string size_written_str = std::to_string(size_written);
+         throw std::runtime_error("Could not write the complete filename.  Anticipated the max filename characters to be: " +
+            max_size_str + " or less, but wrote: " + size_written_str + " characters.  This is likely because the file "
+            "format was changed and the code was not updated accordingly. Filename created: " + filename);
+      }
       const path slice_path = _slice_dir / filename;
       slice_file.set_file_path(slice_path);
       const bool file_exists = exists(slice_path);
