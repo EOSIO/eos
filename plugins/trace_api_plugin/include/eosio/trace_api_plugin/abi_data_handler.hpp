@@ -2,6 +2,7 @@
 
 #include <eosio/chain/abi_def.hpp>
 #include <eosio/trace_api_plugin/trace.hpp>
+#include <eosio/trace_api_plugin/common.hpp>
 
 namespace eosio {
    namespace chain {
@@ -17,7 +18,7 @@ namespace eosio {
     */
    class abi_data_handler {
    public:
-      explicit abi_data_handler(std::function<void(const std::exception_ptr&)> log = {})
+      explicit abi_data_handler(std::function<void(const exception_with_context&)> log = {})
       :log(log)
       {
       }
@@ -56,6 +57,6 @@ namespace eosio {
 
    private:
       std::map<chain::name, std::shared_ptr<chain::abi_serializer>> abi_serializer_by_account;
-      std::function<void(const std::exception_ptr&)> log;
+      std::function<void(const exception_with_context&)> log;
    };
 } }
