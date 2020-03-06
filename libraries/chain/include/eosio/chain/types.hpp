@@ -26,6 +26,9 @@
 #include <deque>
 #include <cstdint>
 
+#define ramEventId( FORMAT, ... ) \
+   fc::format_string( FORMAT, fc::mutable_variant_object()__VA_ARGS__ )
+
 #define OBJECT_CTOR1(NAME) \
     NAME() = delete; \
     public: \

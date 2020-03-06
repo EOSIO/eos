@@ -113,7 +113,7 @@ namespace eosio { namespace chain {
          void startup( std::function<void()> shutdown, std::function<bool()> check_shutdown, const genesis_state& genesis);
          void startup( std::function<void()> shutdown, std::function<bool()> check_shutdown);
 
-         void preactivate_feature( const digest_type& feature_digest );
+         void preactivate_feature( uint32_t action_id, const digest_type& feature_digest );
 
          vector<digest_type> get_preactivated_protocol_features()const;
 
@@ -294,7 +294,7 @@ namespace eosio { namespace chain {
          void set_greylist_limit( uint32_t limit );
          uint32_t get_greylist_limit()const;
 
-         void add_to_ram_correction( account_name account, uint64_t ram_bytes );
+         void add_to_ram_correction( account_name account, uint64_t ram_bytes, uint32_t action_id, const char* event_id );
          bool all_subjective_mitigations_disabled()const;
 
 #if defined(EOSIO_EOS_VM_RUNTIME_ENABLED) || defined(EOSIO_EOS_VM_JIT_RUNTIME_ENABLED)

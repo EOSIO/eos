@@ -133,6 +133,7 @@ namespace eosio { namespace chain {
                                                                       permission_name name,
                                                                       permission_id_type parent,
                                                                       const authority& auth,
+                                                                      uint32_t action_id,
                                                                       time_point initial_creation_time
                                                                     )
    {
@@ -156,6 +157,13 @@ namespace eosio { namespace chain {
          p.name         = name;
          p.last_updated = creation_time;
          p.auth         = auth;
+
+         if (eosio::chain::chain_config::deep_mind_enabled) {
+            dmlog("PERM_OP INS ${action_id} ${data}",
+               ("action_id", action_id)
+               ("data", p)
+            );
+         }
       });
       return perm;
    }
@@ -164,6 +172,7 @@ namespace eosio { namespace chain {
                                                                       permission_name name,
                                                                       permission_id_type parent,
                                                                       authority&& auth,
+                                                                      uint32_t action_id,
                                                                       time_point initial_creation_time
                                                                     )
    {
@@ -187,28 +196,55 @@ namespace eosio { namespace chain {
          p.name         = name;
          p.last_updated = creation_time;
          p.auth         = std::move(auth);
+
+         if (eosio::chain::chain_config::deep_mind_enabled) {
+            dmlog("PERM_OP INS ${action_id} ${data}",
+               ("action_id", action_id)
+               ("data", p)
+            );
+         }
       });
       return perm;
    }
 
-   void authorization_manager::modify_permission( const permission_object& permission, const authority& auth ) {
+   void authorization_manager::modify_permission( const permission_object& permission, const authority& auth, uint32_t action_id ) {
       for(const key_weight& k: auth.keys)
          EOS_ASSERT(k.key.which() < _db.get<protocol_state_object>().num_supported_key_types, unactivated_key_type,
            "Unactivated key type used when modifying permission");
 
       _db.modify( permission, [&](permission_object& po) {
+         const permission_object old_permission(po);
+
          po.auth = auth;
          po.last_updated = _control.pending_block_time();
+
+         if (eosio::chain::chain_config::deep_mind_enabled) {
+            dmlog("PERM_OP UPD ${action_id} ${data}",
+               ("action_id", action_id)
+               ("data", fc::mutable_variant_object()
+                  ("old", old_permission)
+                  ("new", po)
+               )
+            );
+         }
       });
    }
 
-   void authorization_manager::remove_permission( const permission_object& permission ) {
+   void authorization_manager::remove_permission( const permission_object& permission, uint32_t action_id) {
       const auto& index = _db.template get_index<permission_index, by_parent>();
       auto range = index.equal_range(permission.id);
       EOS_ASSERT( range.first == range.second, action_validate_exception,
                   "Cannot remove a permission which has children. Remove the children first.");
 
       _db.get_mutable_index<permission_usage_index>().remove_object( permission.usage_id._id );
+
+      if (eosio::chain::chain_config::deep_mind_enabled) {
+         dmlog("PERM_OP REM ${action_id} ${data}",
+              ("action_id", action_id)
+              ("data", permission)
+         );
+      }
+
       _db.remove( permission );
    }
 

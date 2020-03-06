@@ -1,4 +1,5 @@
 add_subdirectory( fc )
+add_subdirectory( dm )
 add_subdirectory( builtins )
 add_subdirectory( softfloat )
 add_subdirectory( chainbase )

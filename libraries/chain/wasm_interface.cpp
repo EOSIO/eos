@@ -174,7 +174,7 @@ class privileged_api : public context_aware_api {
        *  Also fails if the feature was already activated or pre-activated.
        */
       void preactivate_feature( const digest_type& feature_digest ) {
-         context.control.preactivate_feature( feature_digest );
+         context.control.preactivate_feature( context.trx_context.action_id.current(), feature_digest );
       }
 
       /**
@@ -1131,7 +1131,7 @@ class console_api : public context_aware_api {
    public:
       console_api( apply_context& ctx )
       : context_aware_api(ctx,true)
-      , ignore(!ctx.control.contracts_console()) {}
+      , ignore(!eosio::chain::chain_config::deep_mind_console_enabled) {}
 
       // Kept as intrinsic rather than implementing on WASM side (using prints_l and strlen) because strlen is faster on native side.
       void prints(null_terminated_ptr str) {

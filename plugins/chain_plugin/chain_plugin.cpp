@@ -222,6 +222,12 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "Number of worker threads in controller thread pool")
          ("contracts-console", bpo::bool_switch()->default_value(false),
           "print contract's output to console")
+         ("deep-mind", bpo::bool_switch()->default_value(false),
+          "print deeper information about eosio software")
+         ("deep-mind-console", bpo::bool_switch()->default_value(false),
+          "add smart contract console logging to deep mind")
+         ("deep-mind-subjective-mitigations-disabled", bpo::bool_switch()->default_value(false),
+          "disable all subjectives mitigations so you can still create now impossible transaction")
          ("actor-whitelist", boost::program_options::value<vector<string>>()->composing()->multitoken(),
           "Account added to actor whitelist (may specify multiple times)")
          ("actor-blacklist", boost::program_options::value<vector<string>>()->composing()->multitoken(),
@@ -603,6 +609,10 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
                ("root_key", genesis_state::eosio_root_key));
          throw;
       }
+
+      eosio::chain::chain_config::deep_mind_enabled = options.at( "deep-mind" ).as<bool>();
+      eosio::chain::chain_config::deep_mind_console_enabled = options.at( "deep-mind-console" ).as<bool>();
+      eosio::chain::chain_config::deep_mind_subjective_mitigations_disabled = options.at( "deep-mind-subjective-mitigations-disabled" ).as<bool>();
 
       my->chain_config = controller::config();
 
@@ -1077,6 +1087,13 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
             } );
 
       my->accepted_block_connection = my->chain->accepted_block.connect( [this]( const block_state_ptr& blk ) {
+         if (eosio::chain::chain_config::deep_mind_enabled) {
+            dmlog("ACCEPTED_BLOCK ${num} ${blk}",
+               ("num", blk->block_num)
+               ("blk", chain().to_variant_with_abi(blk, fc::microseconds(5000000)))
+            );
+         }
+
          my->accepted_block_channel.publish( priority::high, blk );
       } );
 
@@ -1091,6 +1108,13 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
       my->applied_transaction_connection = my->chain->applied_transaction.connect(
             [this]( std::tuple<const transaction_trace_ptr&, const signed_transaction&> t ) {
+               if (eosio::chain::chain_config::deep_mind_enabled) {
+                  dmlog("APPLIED_TRANSACTION ${block} ${traces}",
+                     ("block", chain().head_block_num() + 1)
+                     ("traces", chain().to_variant_with_abi(std::get<0>(t), fc::microseconds(5000000)))
+                  );
+               }
+
                my->applied_transaction_channel.publish( priority::low, std::get<0>(t) );
             } );
 

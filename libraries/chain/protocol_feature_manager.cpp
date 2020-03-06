@@ -1,6 +1,7 @@
 #include <eosio/chain/protocol_feature_manager.hpp>
 #include <eosio/chain/protocol_state_object.hpp>
 #include <eosio/chain/exceptions.hpp>
+#include <eosio/chain/chain_config.hpp>
 
 #include <fc/scoped_exit.hpp>
 
@@ -683,6 +684,13 @@ Enables new `set_action_return_value` intrinsic which sets a value that is inclu
                   "cannot activate already activated builtin feature with digest: ${digest}",
                   ("digest", feature_digest)
       );
+
+      if (eosio::chain::chain_config::deep_mind_enabled) {
+         dmlog("FEATURE_OP ACTIVATE ${feature_digest} ${feature}",
+            ("feature_digest", feature_digest)
+            ("feature", itr->to_variant())
+         );
+      }
 
       _activated_protocol_features.push_back( protocol_feature_entry{itr, current_block_num} );
       _builtin_protocol_features[indx].previous = _head_of_builtin_activation_list;

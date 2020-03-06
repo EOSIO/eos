@@ -467,9 +467,9 @@ namespace eosio { namespace chain {
       }
    }
 
-   void transaction_context::add_ram_usage( account_name account, int64_t ram_delta ) {
+   void transaction_context::add_ram_usage( account_name account, int64_t ram_delta, const char* event_id, const char* family, const char* operation, const char* legacy_tag ) {
       auto& rl = control.get_mutable_resource_limits_manager();
-      rl.add_pending_ram_usage( account, ram_delta );
+      rl.add_pending_ram_usage( account, ram_delta, action_id.current(), event_id, family, operation, legacy_tag );
       if( ram_delta > 0 ) {
          validate_ram_usage.insert( account );
       }
@@ -588,6 +588,13 @@ namespace eosio { namespace chain {
 
    void transaction_context::execute_action( uint32_t action_ordinal, uint32_t recurse_depth ) {
       apply_context acontext( control, *this, action_ordinal, recurse_depth );
+
+      if (eosio::chain::chain_config::deep_mind_enabled && recurse_depth == 0) {
+         dmlog("CREATION_OP ROOT ${action_id}",
+            ("action_id", action_id.current())
+         );
+      }
+
       acontext.exec();
    }
 
@@ -603,6 +610,7 @@ namespace eosio { namespace chain {
 
       auto first_auth = trx.first_authorizer();
 
+      fc::string event_id;
       uint32_t trx_size = 0;
       const auto& cgto = control.mutable_db().create<generated_transaction_object>( [&]( auto& gto ) {
         gto.trx_id      = id;
@@ -613,10 +621,26 @@ namespace eosio { namespace chain {
         gto.delay_until = gto.published + delay;
         gto.expiration  = gto.delay_until + fc::seconds(control.get_global_properties().configuration.deferred_trx_expiration_window);
         trx_size = gto.set( trx );
+
+        if (eosio::chain::chain_config::deep_mind_enabled) {
+            event_id = ramEventId("${id}", ("id", gto.id));
+
+            dmlog("DTRX_OP PUSH_CREATE ${action_id} ${sender} ${sender_id} ${payer} ${published} ${delay} ${expiration} ${trx_id} ${trx}",
+               ("action_id", action_id.current())
+               ("sender", gto.sender)
+               ("sender_id", gto.sender_id)
+               ("payer", gto.payer)
+               ("published", gto.published)
+               ("delay", gto.delay_until)
+               ("expiration", gto.expiration)
+               ("trx_id", trx.id())
+               ("trx", control.to_variant_with_abi(trx, fc::microseconds(5000000)))
+            );
+         }
       });
 
       int64_t ram_delta = (config::billable_size_v<generated_transaction_object> + trx_size);
-      add_ram_usage( cgto.payer, ram_delta );
+      add_ram_usage( cgto.payer, ram_delta, event_id.c_str(), "deferred_trx", "push", "deferred_trx_pushed" );
       trace->account_ram_delta = account_delta( cgto.payer, ram_delta );
    }
 

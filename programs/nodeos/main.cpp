@@ -1,11 +1,14 @@
 #include <appbase/application.hpp>
 
+#include <dfuse/dm/log_appender.hpp>
+
 #include <eosio/chain_plugin/chain_plugin.hpp>
 #include <eosio/http_plugin/http_plugin.hpp>
 #include <eosio/net_plugin/net_plugin.hpp>
 #include <eosio/producer_plugin/producer_plugin.hpp>
 #include <eosio/version/version.hpp>
 
+#include <fc/log/logger.hpp>
 #include <fc/log/logger_config.hpp>
 #include <fc/log/appender.hpp>
 #include <fc/exception/exception.hpp>
@@ -60,9 +63,31 @@ void logging_conf_handler()
 
 void initialize_logging()
 {
+   auto success = fc::log_config::register_appender<dfuse::dm::log_appender>( "deep-mind" );
+   if (!success) {
+      throw std::runtime_error("Unable to correcty register deep mind log appender");
+   }
+
    auto config_path = app().get_logging_conf();
    if(fc::exists(config_path))
      fc::configure_logging(config_path); // intentionally allowing exceptions to escape
+   else {
+      auto cfg = fc::logging_config::default_config();
+      cfg.appenders.push_back(
+         fc::appender_config( "deep-mind", "deep-mind" )
+      );
+
+      fc::logger_config dmlc;
+      dmlc.name = "deep-mind";
+      dmlc.level = log_level::debug;
+      dmlc.enabled = true;
+      dmlc.appenders.push_back("deep-mind");
+
+      cfg.loggers.push_back( dmlc );
+
+      fc::configure_logging(cfg);
+   }
+
    fc::log_config::initialize_appenders( app().get_io_service() );
 
    app().set_sighup_callback(logging_conf_handler);
