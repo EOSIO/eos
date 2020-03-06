@@ -145,10 +145,11 @@ namespace eosio::trace_api_plugin {
          const uint64_t end = file_size(index.get_file_path());
          offset = index.tellp();
          uint64_t last_read_offset = offset;
-         bool cont = true;
-         while (offset < end && cont) {
+         while (offset < end) {
             const auto metadata = extract_store<metadata_log_entry>(index);
-            cont = fn(metadata);
+            if(! fn(metadata)) {
+               break;
+            }
             last_read_offset = offset;
             offset = index.tellp();
          }
