@@ -35,7 +35,7 @@ namespace eosio {
        *
        * @param action - trace of the action including metadata necessary for finding the ABI
        * @param deadline - deadline for processing
-       * @return variant representing the `data` field of the action
+       * @return variant representing the `data` field of the action interpreted by known ABIs OR an empty variant
        */
       fc::variant process_data( const action_trace_v0& action, const fc::time_point& deadline);
 

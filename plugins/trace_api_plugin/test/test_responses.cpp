@@ -74,10 +74,21 @@ struct response_test_fixture {
       response_test_fixture& fixture;
    };
 
+   constexpr static auto default_mock_data_handler = [](const action_trace_v0& a, const fc::time_point&) -> fc::variant {
+      return fc::mutable_variant_object()("hex" , fc::to_hex(a.data.data(), a.data.size()));
+   };
+
+
    struct mock_data_handler_provider {
-      fc::variant process_data(const action_trace_v0& action, const fc::time_point&) {
-         return fc::to_hex(action.data.data(), action.data.size());
+      mock_data_handler_provider(response_test_fixture& fixture)
+      :fixture(fixture)
+      {}
+
+      fc::variant process_data(const action_trace_v0& action, const fc::time_point& deadline) {
+         return fixture.mock_data_handler(action, deadline);
       }
+
+      response_test_fixture& fixture;
    };
 
    using response_impl_type = request_handler<mock_logfile_provider, mock_data_handler_provider>;
@@ -85,7 +96,7 @@ struct response_test_fixture {
     * TODO: initialize extraction implementation here with `mock_logfile_provider` as template param
     */
    response_test_fixture()
-   : response_impl(mock_logfile_provider(*this), mock_data_handler_provider(), [this]()->fc::time_point { return mock_now(); })
+   : response_impl(mock_logfile_provider(*this), mock_data_handler_provider(*this), [this]()->fc::time_point { return mock_now(); })
    {
 
    }
@@ -98,6 +109,7 @@ struct response_test_fixture {
    std::vector<fc::static_variant<std::exception_ptr, metadata_log_entry>> metadata_log = {};
    std::map<uint64_t, fc::static_variant<std::exception_ptr, data_log_entry>> data_log = {};
    std::function<fc::time_point()> mock_now = []() -> fc::time_point { return fc::time_point::now(); };
+   std::function<fc::variant(const action_trace_v0&, const fc::time_point&)> mock_data_handler = default_mock_data_handler;
 
    response_impl_type response_impl;
 
@@ -192,9 +204,80 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
                            ("permission", "active")
                      }))
                      ("data", "00010203")
+                     ("params", fc::mutable_variant_object()
+                           ("hex", "00010203"))
                }))
          }))
       ;
+
+      fc::variant actual_response = get_block_trace( 1 );
+
+      BOOST_TEST(to_kv(expected_response) == to_kv(actual_response), boost::test_tools::per_element());
+   }
+
+   BOOST_FIXTURE_TEST_CASE(basic_block_response_no_params, response_test_fixture)
+   {
+      metadata_log = decltype(metadata_log){
+         metadata_log_entry { block_entry_v0 { "b000000000000000000000000000000000000000000000000000000000000001"_h, 1, 0 } }
+      };
+
+      data_log = decltype(data_log) {
+         {
+            0,
+            data_log_entry{ block_trace_v0 {
+               "b000000000000000000000000000000000000000000000000000000000000001"_h,
+               1,
+               "0000000000000000000000000000000000000000000000000000000000000000"_h,
+               chain::block_timestamp_type(0),
+               "bp.one"_n,
+               {
+                  {
+                     "0000000000000000000000000000000000000000000000000000000000000001"_h,
+                     chain::transaction_receipt_header::executed,
+                     {
+                        {
+                           0,
+                           "receiver"_n, "contract"_n, "action"_n,
+                           {{ "alice"_n, "active"_n }},
+                           { 0x00, 0x01, 0x02, 0x03 }
+                        }
+                     }
+                  }
+               }
+            }}
+         }
+      };
+
+      fc::variant expected_response = fc::mutable_variant_object()
+         ("id", "b000000000000000000000000000000000000000000000000000000000000001")
+         ("number", 1)
+         ("previous_id", "0000000000000000000000000000000000000000000000000000000000000000")
+         ("status", "pending")
+         ("timestamp", "2000-01-01T00:00:00.000Z")
+         ("producer", "bp.one")
+         ("transactions", fc::variants({
+            fc::mutable_variant_object()
+               ("id", "0000000000000000000000000000000000000000000000000000000000000001")
+               ("status", "executed")
+               ("actions", fc::variants({
+                  fc::mutable_variant_object()
+                     ("receiver", "receiver")
+                     ("account", "contract")
+                     ("action", "action")
+                     ("authorization", fc::variants({
+                        fc::mutable_variant_object()
+                           ("account", "alice")
+                           ("permission", "active")
+                     }))
+                     ("data", "00010203")
+               }))
+         }))
+      ;
+
+      // simulate an inability to parse the parameters
+      mock_data_handler = [](const action_trace_v0&, const fc::time_point&) -> fc::variant {
+         return {};
+      };
 
       fc::variant actual_response = get_block_trace( 1 );
 
