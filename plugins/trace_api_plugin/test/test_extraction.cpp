@@ -258,7 +258,6 @@ BOOST_AUTO_TEST_SUITE(block_extraction)
          {
             {
                ptrx1.id(),
-               chain::transaction_receipt_header::executed,
                {
                   {
                      0,
@@ -328,7 +327,6 @@ BOOST_AUTO_TEST_SUITE(block_extraction)
          {
             {
                ptrx1.id(),
-               chain::transaction_receipt_header::executed,
                {
                   {
                      0,
@@ -340,7 +338,6 @@ BOOST_AUTO_TEST_SUITE(block_extraction)
             },
             {
                ptrx2.id(),
-               chain::transaction_receipt_header::executed,
                {
                   {
                      1,
@@ -352,7 +349,6 @@ BOOST_AUTO_TEST_SUITE(block_extraction)
             },
             {
                ptrx3.id(),
-               chain::transaction_receipt_header::executed,
                {
                   {
                      2,
@@ -401,8 +397,7 @@ BOOST_AUTO_TEST_SUITE(block_extraction)
       const block_trace_v0 expected_trace { bsp1->id, 1, bsp1->prev(), chain::block_timestamp_type(1), "bp.one"_n,
          {
             {
-               ptrx1.id(),
-               chain::transaction_receipt_header::executed,
+               transfer_trx.id(), // transfer_trx.id() because that is the trx id known to the user
                {
                   {
                      0,

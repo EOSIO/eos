@@ -10,23 +10,6 @@ namespace {
       return (std::string)t + "Z";
    }
 
-   std::string to_status_string( transaction_trace_v0::status_type status ) {
-      switch (status) {
-         case transaction_trace_v0::status_type::executed :
-            return "executed";
-         case transaction_trace_v0::status_type::delayed :
-            return "delayed";
-         case transaction_trace_v0::status_type::expired :
-            return "expired";
-         case transaction_trace_v0::status_type::hard_fail :
-            return "hard_fail";
-         case transaction_trace_v0::status_type::soft_fail :
-            return "soft_fail";
-         default:
-            throw bad_data_exception(std::string("Encountered unknown status type in data: ") + std::to_string(status));
-      }
-   }
-
    template<typename Yield>
    fc::variants process_authorizations(const std::vector<authorization_trace_v0>& authorizations, Yield&& yield ) {
       fc::variants result;
@@ -73,7 +56,6 @@ namespace {
 
          result.emplace_back(fc::mutable_variant_object()
             ("id", t.id.str())
-            ("status", to_status_string(t.status))
             ("actions", process_actions(t.actions, data_handler, std::forward<Yield>(yield)))
          );
       }

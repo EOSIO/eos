@@ -24,7 +24,6 @@ namespace eosio { namespace trace_api_plugin {
       using status_type = chain::transaction_receipt_header::status_enum;
 
       chain::transaction_id_type    id = {};
-      status_type                   status = status_type::hard_fail;
       std::vector<action_trace_v0>  actions = {};
    };
 
@@ -41,5 +40,5 @@ namespace eosio { namespace trace_api_plugin {
 
 FC_REFLECT(eosio::trace_api_plugin::authorization_trace_v0, (account)(permission))
 FC_REFLECT(eosio::trace_api_plugin::action_trace_v0, (global_sequence)(receiver)(account)(action)(authorization)(data))
-FC_REFLECT(eosio::trace_api_plugin::transaction_trace_v0, (id)(status)(actions))
+FC_REFLECT(eosio::trace_api_plugin::transaction_trace_v0, (id)(actions))
 FC_REFLECT(eosio::trace_api_plugin::block_trace_v0, (id)(number)(previous_id)(timestamp)(producer)(transactions))
