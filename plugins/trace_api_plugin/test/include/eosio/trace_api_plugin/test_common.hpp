@@ -1,7 +1,9 @@
 #pragma once
 
 #include <fc/io/json.hpp>
+#include <fc/io/raw.hpp>
 
+#include <eosio/chain/abi_def.hpp>
 #include <eosio/chain/asset.hpp>
 #include <eosio/chain/name.hpp>
 
@@ -135,6 +137,27 @@ namespace fc {
    template<typename ...Ts>
    std::ostream& operator<<(std::ostream &os, const fc::static_variant<Ts...>& v ) {
       os << fc::json::to_string(v, fc::time_point::maximum());
+      return os;
+   }
+
+   std::ostream& operator<<(std::ostream &os, const fc::microseconds& t ) {
+      os << t.count();
+      return os;
+   }
+
+}
+
+namespace eosio::chain {
+   bool operator==(const abi_def& lhs, const abi_def& rhs) {
+      return fc::raw::pack(lhs) == fc::raw::pack(rhs);
+   }
+
+   bool operator!=(const abi_def& lhs, const abi_def& rhs) {
+      return !(lhs == rhs);
+   }
+
+   std::ostream& operator<<(std::ostream& os, const abi_def& abi) {
+      os << fc::json::to_string(abi, fc::time_point::maximum());
       return os;
    }
 }
