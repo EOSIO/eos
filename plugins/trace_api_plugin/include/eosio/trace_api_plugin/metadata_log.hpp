@@ -20,19 +20,6 @@ namespace eosio { namespace trace_api_plugin {
       lib_entry_v0
    >;
 
-   /**
-    * extract an entry from the metadata log
-    *
-    * @param slice : the slice to extract entry from
-    * @return the extracted metadata log
-    */
-   template<typename Slice>
-   metadata_log_entry extract_metadata_log( uint64_t offset, Slice& slice ) {
-      metadata_log_entry entry;
-      auto ds = slice.create_datastream();
-      fc::raw::unpack(ds, entry);
-      return entry;
-   }
 }}
 
 FC_REFLECT(eosio::trace_api_plugin::block_entry_v0, (id)(number)(offset));

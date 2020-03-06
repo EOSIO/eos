@@ -162,60 +162,60 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
    BOOST_FIXTURE_TEST_CASE(write_data_trace, test_fixture)
    {
       vslice vs;
-      const auto offset = append_data_log( bt, vs );
+      const auto offset = store_provider::append_store( bt, vs );
       BOOST_REQUIRE_EQUAL(offset,0);
 
       const auto expected_offset = vs._pos;
-      const auto offset2 = append_data_log( bt2, vs );
+      const auto offset2 = store_provider::append_store( bt2, vs );
       BOOST_REQUIRE_EQUAL(offset2, expected_offset);
 
       vs._pos = offset;
-      const auto bt_returned = extract_data_log<block_trace_v0>( vs );
+      const auto bt_returned = store_provider::extract_store<block_trace_v0>( vs );
       BOOST_REQUIRE(bt_returned == bt);
 
       vs._pos = offset2;
-      const auto bt_returned2 = extract_data_log<block_trace_v0>( vs );
+      const auto bt_returned2 = store_provider::extract_store<block_trace_v0>( vs );
       BOOST_REQUIRE(bt_returned2 == bt2);
    }
 
    BOOST_FIXTURE_TEST_CASE(write_metadata_trace, test_fixture)
    {
       vslice vs;
-      const auto offset = append_data_log( be1, vs );
+      const auto offset = store_provider::append_store( be1, vs );
       BOOST_REQUIRE_EQUAL(offset, 0);
       auto next_offset = vs._pos;
-      const auto offset2 = append_data_log( le1, vs );
+      const auto offset2 = store_provider::append_store( le1, vs );
       BOOST_REQUIRE_EQUAL(offset2, next_offset);
       next_offset = vs._pos;
-      const auto offset3 = append_data_log( be2, vs );
+      const auto offset3 = store_provider::append_store( be2, vs );
       BOOST_REQUIRE_EQUAL(offset3, next_offset);
       next_offset = vs._pos;
-      const auto offset4 = append_data_log( le2, vs );
+      const auto offset4 = store_provider::append_store( le2, vs );
       BOOST_REQUIRE_EQUAL(offset4, next_offset);
 
       vs._pos = offset;
-      const auto be_returned1 = extract_data_log<metadata_log_entry>( vs );
+      const auto be_returned1 = store_provider::extract_store<metadata_log_entry>( vs );
       BOOST_REQUIRE(be_returned1.contains<block_entry_v0>());
       const auto real_be_returned1 = be_returned1.get<block_entry_v0>();
       const auto real_be1 = be1.get<block_entry_v0>();
       BOOST_REQUIRE(real_be_returned1 == real_be1);
 
       vs._pos = offset2;
-      const auto le_returned1 = extract_data_log<metadata_log_entry>( vs );
+      const auto le_returned1 = store_provider::extract_store<metadata_log_entry>( vs );
       BOOST_REQUIRE(le_returned1.contains<lib_entry_v0>());
       const auto real_le_returned1 = le_returned1.get<lib_entry_v0>();
       const auto real_le1 = le1.get<lib_entry_v0>();
       BOOST_REQUIRE(real_le_returned1 == real_le1);
 
       vs._pos = offset3;
-      const auto be_returned2 = extract_data_log<metadata_log_entry>( vs );
+      const auto be_returned2 = store_provider::extract_store<metadata_log_entry>( vs );
       BOOST_REQUIRE(be_returned2.contains<block_entry_v0>());
       const auto real_be_returned2 = be_returned2.get<block_entry_v0>();
       const auto real_be2 = be2.get<block_entry_v0>();
       BOOST_REQUIRE(real_be_returned2 == real_be2);
 
       vs._pos = offset4;
-      const auto le_returned2 = extract_data_log<metadata_log_entry>( vs );
+      const auto le_returned2 = store_provider::extract_store<metadata_log_entry>( vs );
       BOOST_REQUIRE(le_returned2.contains<lib_entry_v0>());
       const auto real_le_returned2 = le_returned2.get<lib_entry_v0>();
       const auto real_le2 = le2.get<lib_entry_v0>();
