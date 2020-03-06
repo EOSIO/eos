@@ -16,6 +16,15 @@ using namespace eosio;
 using namespace eosio::chain;
 using namespace eosio::testing;
 
+// class select_protocol_features_tester : public TESTER {
+//    select_protocol_features_tester( builtin_protocol_feature_t feature ) {
+//        setup_policy policy = setup_policy::full;
+//        db_read_mode read_mode = db_read_mode::SPECULATIVE;
+//        init(policy, read_mode);
+//    }
+// 
+//     base_tester::init(const setup_policy policy = setup_policy::full, db_read_mode read_mode = db_read_mode::SPECULATIVE);
+// };
 
 BOOST_AUTO_TEST_SUITE(delay_tests)
 
@@ -2386,23 +2395,52 @@ BOOST_FIXTURE_TEST_CASE( delay_expired, validating_tester) { try {
 
 } FC_LOG_AND_RETHROW() }
 
-BOOST_FIXTURE_TEST_CASE( stop_deferred_transactions_protocol_feature, validating_tester) { try {
+BOOST_AUTO_TEST_CASE( stop_deferred_transactions_protocol_feature ) { try {
+   tester chain{setup_policy::preactivate_feature_and_new_bios};
+   const auto& tester_account = N(tester);
+   const auto& pfm = chain.control->get_protocol_feature_manager();
+   const auto& d = pfm.get_builtin_digest(builtin_protocol_feature_t::stop_deferred_transactions);
+   
+   chain.produce_block();
+
+   chain.create_account(N(eosio.token));
+   chain.set_code(N(eosio.token), contracts::eosio_token_wasm());
+   chain.set_abi(N(eosio.token), contracts::eosio_token_abi().data());
+   chain.create_account(N(tester));
+   chain.produce_blocks();
 
    // Check that the deferred transaction queue is 0.
-   // const auto* gto = db.find<generated_transaction_object,by_sender_id>(boost::make_tuple(sender, sender_id));
-   bool is_deferred_trx_queue_occupied = db.find<generated_transaction_object>();
-   // BOOST_REQUIRE_EQUAL(  );
-   // 
+   auto gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
+   BOOST_REQUIRE_EQUAL( gen_size, 0 );
+   
    // Add a deferred transaction.
-   // 
-   // Check that the deferred transaction queue is 1.
-   // 
+   auto trace = chain.push_action(N(eosio.token), name("transfer"), N(tester), fc::mutable_variant_object()
+                                   ("from", "tester")
+                                   ("to", "eosio.token")
+                                   ("quantity", "9.0000 CUR")
+                                   ("memo", "" ), 120, 60);
+   chain.produce_blocks();
+   
+   // Check that the number deferred transactions is 1.
+   gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
+   BOOST_REQUIRE_EQUAL( gen_size, 1 );
+   
    // Activate stop deferred transaction protocol feature.
-   // 
+   chain.preactivate_protocol_features( {*d} );
+   chain.produce_block();
+   
    // Add a deferred transaction.
-   // 
-   // Check that the deferred transaction queue is 1.
-
+   trace = chain.push_action(N(eosio.token), name("transfer"), N(tester), fc::mutable_variant_object()
+                              ("from", "tester")
+                              ("to", "eosio.token")
+                              ("quantity", "9.0000 CUR")
+                              ("memo", "" ), 120, 60);
+   
+   chain.produce_blocks();
+   
+   // Check that the number deferred transactions is 1, due to the activation of the protocol feature.
+   gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
+   BOOST_REQUIRE_EQUAL( gen_size, 1 );
 } FC_LOG_AND_RETHROW() }
 
 BOOST_FIXTURE_TEST_CASE( stop_deferred_transactions_protocol_feature_check_delay_sec, validating_tester) { try {
