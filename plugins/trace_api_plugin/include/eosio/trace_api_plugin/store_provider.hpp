@@ -60,16 +60,60 @@ namespace eosio::trace_api_plugin {
       };
       slice_provider(const boost::filesystem::path& slice_dir, uint32_t width);
 
+      /**
+       * Return the slice number that would include the passed in block_height
+       *
+       * @param block_height : height of the requested data
+       * @return the slice number for the block_height
+       */
       uint32_t slice_number(uint32_t block_height) const {
          return block_height / _width;
       }
 
-      bool find_index_slice(uint32_t slice_number, bool append, fc::cfile& slice_file) const;
-      bool find_trace_slice(uint32_t slice_number, bool append, fc::cfile& slice_file) const;
+      /**
+       * Find or create the index file associated with the indicated slice_number
+       *
+       * @param slice_number : slice number of the requested slice file
+       * @param append : indicate if the file is going to be appended (or read)
+       * @param index_file : the cfile that will be set to the appropriate slice filename
+       *                     and opened to that file
+       * @return the true if file was found (i.e. already existed)
+       */
+      bool find_or_create_index_slice(uint32_t slice_number, bool append, fc::cfile& index_file) const;
+
+      /**
+       * Find the index file associated with the indicated slice_number
+       *
+       * @param slice_number : slice number of the requested slice file
+       * @param append : indicate if the file is going to be appended (or read)
+       * @param index_file : the cfile that will be set to the appropriate slice filename (always)
+       *                     and opened to that file (if it was found)
+       * @return the true if file was found (i.e. already existed), if not found index_file
+       *         is set to the appropriate file, but not open
+       */
+      bool find_index_slice(uint32_t slice_number, bool append, fc::cfile& index_file) const;
+
+      /**
+       * Find or create the index file associated with the indicated slice_number
+       *
+       * @param slice_number : slice number of the requested slice file
+       * @param append : indicate if the file is going to be appended (or read)
+       * @param index_file : the cfile that will be set to the appropriate slice filename
+       *                     and opened to that file
+       * @return the true if file was found (i.e. already existed)
+       */
+      bool find_or_create_trace_slice(uint32_t slice_number, bool append, fc::cfile& trace_file) const;
 
    private:
-      // returns true if slice is created
+      // returns true if slice is found, slice_file will always be set to the appropriate path for
+      // the slice_prefix and slice_number, but will only be opened if found
       bool find_slice(const char* slice_prefix, uint32_t slice_number, fc::cfile& slice_file) const;
+
+      // take an index file that is initialized to a file and open it and write its header
+      void create_new_index_slice_file(fc::cfile& index_file) const;
+
+      // take an open index slice file and verify its header is valid and prepare the file to be appended to (or read from)
+      void validate_existing_index_slice_file(fc::cfile& index_file, bool append) const;
 
       const boost::filesystem::path _slice_dir;
       const uint32_t _width;
@@ -97,7 +141,7 @@ namespace eosio::trace_api_plugin {
          offset = 0;
          fc::cfile index;
          const uint32_t slice_number = _slice_provider.slice_number(block_height);
-         _slice_provider.find_index_slice(slice_number, false, index);
+         const bool found = _slice_provider.find_index_slice(slice_number, false, index);
          const uint64_t end = file_size(index.get_file_path());
          offset = index.tellp();
          uint64_t last_read_offset = offset;
@@ -122,7 +166,7 @@ namespace eosio::trace_api_plugin {
       std::optional<data_log_entry> read_data_log( uint32_t block_height, uint64_t offset ) {
          const uint32_t slice_number = _slice_provider.slice_number(block_height);
          fc::cfile trace;
-         if (_slice_provider.find_trace_slice(slice_number, false, trace)) {
+         if (_slice_provider.find_or_create_trace_slice(slice_number, false, trace)) {
             const std::string offset_str = boost::lexical_cast<std::string>(offset);
             const std::string bh_str = boost::lexical_cast<std::string>(block_height);
             throw malformed_slice_file("Requested offset: " + offset_str + " to retrieve block number: " + bh_str + " but this trace file is new, so there are no traces present.");
@@ -142,34 +186,36 @@ namespace eosio::trace_api_plugin {
        * append an entry to the store
        *
        * @param entry : the entry to append
-       * @param slice : the slice to append entry to
-       * @return the offset in the slice where that entry is written
+       * @param file : the file to append entry to
+       * @return the offset in the file where that entry is written
        */
-      template<typename DataEntry, typename Slice>
-      static uint64_t append_store(const DataEntry &entry, Slice &slice) {
+      template<typename DataEntry, typename File>
+      static uint64_t append_store(const DataEntry &entry, File &file) {
          auto data = fc::raw::pack(entry);
-         const auto offset = slice.tellp();
-         slice.write(data.data(), data.size());
-         slice.flush();
-         slice.sync();
+         const auto offset = file.tellp();
+         file.write(data.data(), data.size());
+         file.flush();
+         file.sync();
          return offset;
       }
 
       /**
        * extract an entry from the data log
        *
-       * @param slice : the slice to extract entry from
+       * @param file : the file to extract entry from
        * @return the extracted data log
        */
-      template<typename DataEntry, typename Slice>
-      static DataEntry extract_store( Slice& slice ) {
+      template<typename DataEntry, typename File>
+      static DataEntry extract_store( File& file ) {
          DataEntry entry;
-         auto ds = slice.create_datastream();
+         auto ds = file.create_datastream();
          fc::raw::unpack(ds, entry);
          return entry;
       }
    private:
-      void find_slice_pair(uint32_t block_height, bool append, fc::cfile& trace, fc::cfile& index);
+      void find_or_create_slice_pair(uint32_t block_height, bool append, fc::cfile& trace, fc::cfile& index);
+      void initialize_new_index_slice_file(fc::cfile& index);
+      void validate_existing_index_slice_file(fc::cfile& index, bool append);
       slice_provider _slice_provider;
    };
 

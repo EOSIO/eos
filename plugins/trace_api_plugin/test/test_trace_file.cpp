@@ -247,11 +247,11 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       const bool append_file = true;
       // create trace slices
       for (uint i = 0; i < 9; ++i) {
-         bool new_file = sp.find_trace_slice(i, append_file, slice);
-         BOOST_REQUIRE(new_file);
+         bool found = sp.find_or_create_trace_slice(i, append_file, slice);
+         BOOST_REQUIRE(!found);
          bfs::path fp = slice.get_file_path();
          BOOST_REQUIRE_EQUAL(fp.parent_path().generic_string(), tempdir.path().generic_string());
-         const std::string expected_filename = "trace_0000000" + boost::lexical_cast<std::string>(i) + "00-0000000" + boost::lexical_cast<std::string>(i+1) + "00.log";
+         const std::string expected_filename = "trace_0000000" + std::to_string(i) + "00-0000000" + std::to_string(i+1) + "00.log";
          BOOST_REQUIRE_EQUAL(fp.filename().generic_string(), expected_filename);
          BOOST_REQUIRE(slice.is_open());
          BOOST_REQUIRE_EQUAL(bfs::file_size(fp), 0);
@@ -261,11 +261,11 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
 
       // create trace index slices
       for (uint i = 0; i < 9; ++i) {
-         bool new_file = sp.find_index_slice(i, append_file, slice);
-         BOOST_REQUIRE(new_file);
+         bool found = sp.find_or_create_index_slice(i, append_file, slice);
+         BOOST_REQUIRE(!found);
          fc::path fp = slice.get_file_path();
          BOOST_REQUIRE_EQUAL(fp.parent_path().generic_string(), tempdir.path().generic_string());
-         const std::string expected_filename = "trace_index_0000000" + boost::lexical_cast<std::string>(i) + "00-0000000" + boost::lexical_cast<std::string>(i+1) + "00.log";
+         const std::string expected_filename = "trace_index_0000000" + std::to_string(i) + "00-0000000" + std::to_string(i+1) + "00.log";
          BOOST_REQUIRE_EQUAL(fp.filename().generic_string(), expected_filename);
          BOOST_REQUIRE(slice.is_open());
          slice_provider::index_header h;
@@ -276,8 +276,8 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       }
 
       // reopen trace slice for append
-      bool new_file = sp.find_trace_slice(0, append_file, slice);
-      BOOST_REQUIRE(!new_file);
+      bool found = sp.find_or_create_trace_slice(0, append_file, slice);
+      BOOST_REQUIRE(found);
       fc::path fp = slice.get_file_path();
       BOOST_REQUIRE_EQUAL(fp.parent_path().generic_string(), tempdir.path().generic_string());
       std::string expected_filename = "trace_0000000000-0000000100.log";
@@ -295,8 +295,8 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       slice.close();
 
       // open same file for read
-      new_file = sp.find_trace_slice(0, read_file, slice);
-      BOOST_REQUIRE(!new_file);
+      found = sp.find_or_create_trace_slice(0, read_file, slice);
+      BOOST_REQUIRE(found);
       fp = slice.get_file_path();
       BOOST_REQUIRE_EQUAL(fp.filename().generic_string(), expected_filename);
       BOOST_REQUIRE(slice.is_open());
@@ -305,8 +305,8 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       slice.close();
 
       // open same file for append again
-      new_file = sp.find_trace_slice(0, append_file, slice);
-      BOOST_REQUIRE(!new_file);
+      found = sp.find_or_create_trace_slice(0, append_file, slice);
+      BOOST_REQUIRE(found);
       fp = slice.get_file_path();
       BOOST_REQUIRE_EQUAL(fp.filename().generic_string(), expected_filename);
       BOOST_REQUIRE(slice.is_open());
@@ -315,8 +315,8 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       slice.close();
 
       // reopen trace index slice for append
-      new_file = sp.find_index_slice(1, append_file, slice);
-      BOOST_REQUIRE(!new_file);
+      found = sp.find_or_create_index_slice(1, append_file, slice);
+      BOOST_REQUIRE(found);
       fp = slice.get_file_path();
       BOOST_REQUIRE_EQUAL(fp.parent_path().generic_string(), tempdir.path().generic_string());
       expected_filename = "trace_index_0000000100-0000000200.log";
@@ -336,8 +336,8 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       uint64_t index_file_size = bfs::file_size(fp);
       slice.close();
 
-      new_file = sp.find_index_slice(1, read_file, slice);
-      BOOST_REQUIRE(!new_file);
+      found = sp.find_or_create_index_slice(1, read_file, slice);
+      BOOST_REQUIRE(found);
       fp = slice.get_file_path();
       BOOST_REQUIRE_EQUAL(fp.filename().generic_string(), expected_filename);
       BOOST_REQUIRE(slice.is_open());
@@ -345,8 +345,8 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       BOOST_REQUIRE_EQUAL(slice.tellp(), header_size);
       slice.close();
 
-      new_file = sp.find_index_slice(1, append_file, slice);
-      BOOST_REQUIRE(!new_file);
+      found = sp.find_or_create_index_slice(1, append_file, slice);
+      BOOST_REQUIRE(found);
       fp = slice.get_file_path();
       BOOST_REQUIRE_EQUAL(fp.filename().generic_string(), expected_filename);
       BOOST_REQUIRE(slice.is_open());
@@ -360,8 +360,8 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       BOOST_REQUIRE_EQUAL(bfs::file_size(fp), slice.tellp());
       slice.close();
 
-      new_file = sp.find_index_slice(1, read_file, slice);
-      BOOST_REQUIRE(!new_file);
+      found = sp.find_or_create_index_slice(1, read_file, slice);
+      BOOST_REQUIRE(found);
       fp = slice.get_file_path();
       BOOST_REQUIRE_EQUAL(fp.filename().generic_string(), expected_filename);
       BOOST_REQUIRE(slice.is_open());
