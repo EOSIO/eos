@@ -15,5 +15,5 @@ curl --request POST \
   --header 'content-type: application/x-www-form-urlencoded; charset=UTF-8'
 ```
 
-[[info | Other `blocks.log` files]]
+[[info | Getting other `blocks.log` files]]
 | You can also download a `blocks.log` file from third party providers.
