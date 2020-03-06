@@ -21,6 +21,6 @@ namespace eosio::trace_api_plugin {
          }
       }
 
-      return fc::to_hex(action.data.data(), action.data.size());
+      return {};
    }
 }

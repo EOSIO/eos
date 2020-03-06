@@ -51,13 +51,19 @@ namespace {
       for ( const auto& a: actions) {
          yield();
 
-         result.emplace_back(fc::mutable_variant_object()
-            ("receiver", a.receiver.to_string())
-            ("account", a.account.to_string())
-            ("action", a.action.to_string())
-            ("authorization", process_authorizations(a.authorization, std::forward<Yield>(yield)))
-            ("data", data_handler(a))
-         );
+         auto action_variant = fc::mutable_variant_object()
+               ("receiver", a.receiver.to_string())
+               ("account", a.account.to_string())
+               ("action", a.action.to_string())
+               ("authorization", process_authorizations(a.authorization, std::forward<Yield>(yield)))
+               ("data", fc::to_hex(a.data.data(), a.data.size()));
+
+         auto params = data_handler(a);
+         if (!params.is_null()) {
+            action_variant("params", params);
+         }
+
+         result.emplace_back( std::move(action_variant) );
       }
 
       return result;
