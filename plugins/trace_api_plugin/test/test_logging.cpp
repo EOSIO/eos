@@ -130,7 +130,10 @@ BOOST_AUTO_TEST_SUITE(logfile_access)
 
       auto actual_metadata_log = inspect_metadata_log(1);
       BOOST_REQUIRE_EQUAL(actual_metadata_log.size(), 1);
-      BOOST_REQUIRE(actual_metadata_log[0] == block_1_metadata_entry);
+      BOOST_REQUIRE(actual_metadata_log[0].contains<block_entry_v0>());
+      const auto actual_block_entry = actual_metadata_log[0].get<block_entry_v0>();
+      const auto expected_block_entry = block_1_metadata_entry.get<block_entry_v0>();
+      BOOST_REQUIRE( actual_block_entry == expected_block_entry );
 
       auto actual_block_1_data_entry_opt = read_data_log(1, block_1_offset);
       BOOST_REQUIRE(actual_block_1_data_entry_opt);
