@@ -80,13 +80,19 @@ struct trace_api_rpc_plugin_impl {
    static void set_program_options(appbase::options_description& cli, appbase::options_description& cfg) {
       auto cfg_options = cfg.add_options();
       cfg_options("trace-rpc-abi", bpo::value<vector<string>>()->composing(),
-                  "ABIs used when decoding trace RPC responses, specified as \"Key=Value\" pairs in the form <account-name>=<abi-def>\n"
+                  "ABIs used when decoding trace RPC responses.\n"
+                  "There must be at least one ABI specified OR the flag trace-no-abis must be used.\n"
+                  "ABIs are specified as \"Key=Value\" pairs in the form <account-name>=<abi-def>\n"
                   "Where <abi-def> can be:\n"
                   "   a valid JSON-encoded ABI as a string\n"
                   "   an absolute path to a file containing a valid JSON-encoded ABI\n"
                   "   a relative path from `data-dir` to a file containing a valid JSON-encoded ABI\n"
                   );
-      cfg_options("trace-no-abis", "Suppress warning about ABIs when non are congigured");
+      cfg_options("trace-no-abis",
+            "Use to indicate that the RPC responses will not use ABIs.\n"
+            "Failure to specify this option when there are no trace-rpc-abi configuations will result in an Error.\n"
+            "This option is mutually exclusive with trace-rpc-api"
+      );
    }
 
    void plugin_initialize(const appbase::variables_map& options) {
@@ -95,6 +101,8 @@ struct trace_api_rpc_plugin_impl {
       });
 
       if( options.count("trace-rpc-abi") ) {
+         EOS_ASSERT(options.count("trace-no-abis") == 0, chain::plugin_config_exception,
+                    "Trace API is configured with ABIs however trace-no-abis is set");
          const std::vector<std::string> key_value_pairs = options["trace-rpc-abi"].as<std::vector<std::string>>();
          for (const auto& entry : key_value_pairs) {
             try {
@@ -107,8 +115,9 @@ struct trace_api_rpc_plugin_impl {
                throw;
             }
          }
-      } else if (options.count("trace-no-abis") == 0 ) {
-         wlog("Trace API is not configured with ABIs.  Data in actions will appear as hex-encoded blobs in the RPC responses.  Use trace-no-abis=true to suppress this warning.");
+      } else {
+         EOS_ASSERT(options.count("trace-no-abis") != 0, chain::plugin_config_exception,
+                    "Trace API is not configured with ABIs and trace-no-abis is not set");
       }
    }
 
