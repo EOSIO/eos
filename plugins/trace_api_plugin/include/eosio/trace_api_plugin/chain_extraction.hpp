@@ -18,7 +18,6 @@ public:
     * Chain Extractor for capturing transaction traces, action traces, and block info.
     * @param store provider of append_data_log & append_metadata_log
     * @param except_handler called on exceptions, logging if any is left to the user
-    * @param shutdown called when this class determines application should shutdown because of fatal error
     */
    chain_extraction_impl_type( StoreProvider store, std::function<void(std::exception_ptr)> except_handler )
    : store(std::move(store))
@@ -99,7 +98,7 @@ private:
          cached_traces.clear();
          onblock_trace.reset();
 
-         uint64_t offset = store.append_data_log( std::move( bt ));
+         uint64_t offset = store.append_data_log( std::move( bt ) );
          store.append_metadata_log( block_entry_v0{.id = block_state->id, .number = block_state->block_num, .offset = offset} );
 
       } catch( ... ) {
