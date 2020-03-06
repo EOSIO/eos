@@ -52,15 +52,19 @@ private:
              auth.permission == eosio::chain::config::active_name;
    }
 
-   void on_applied_transaction(const chain::transaction_trace_ptr& p, const chain::signed_transaction& t) {
-      if (p->receipt) {
-         if( is_onblock( p )) {
-            onblock_trace.emplace( p );
-         } else if (p->failed_dtrx_trace) {
-            cached_traces[p->failed_dtrx_trace->id] = p;
-         } else {
-            cached_traces[p->id] = p;
-         }
+   void on_applied_transaction(const chain::transaction_trace_ptr& trace, const chain::signed_transaction& t) {
+      if( !trace->receipt ) return;
+      // include only executed transactions; soft_fail included so that onerror (and any inlines via onerror) are included
+      if((trace->receipt->status != chain::transaction_receipt_header::executed &&
+          trace->receipt->status != chain::transaction_receipt_header::soft_fail)) {
+         return;
+      }
+      if( is_onblock( trace )) {
+         onblock_trace.emplace( trace );
+      } else if( trace->failed_dtrx_trace ) {
+         cached_traces[trace->failed_dtrx_trace->id] = trace;
+      } else {
+         cached_traces[trace->id] = trace;
       }
    }
 
@@ -88,11 +92,8 @@ private:
                id = r.trx.get<packed_transaction>().id();
             }
             const auto it = cached_traces.find( id );
-            // could assert, go with best effort
             if( it != cached_traces.end() ) {
                traces.emplace_back( to_transaction_trace_v0( it->second ));
-            } else {
-               traces.emplace_back( transaction_trace_v0{ .id = id } );
             }
          }
          cached_traces.clear();

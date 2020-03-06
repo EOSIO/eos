@@ -157,7 +157,6 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
                {
                   {
                      "0000000000000000000000000000000000000000000000000000000000000001"_h,
-                     chain::transaction_receipt_header::executed,
                      {
                         {
                            0,
@@ -182,7 +181,6 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
          ("transactions", fc::variants({
             fc::mutable_variant_object()
                ("id", "0000000000000000000000000000000000000000000000000000000000000001")
-               ("status", "executed")
                ("actions", fc::variants({
                   fc::mutable_variant_object()
                      ("receiver", "receiver")
@@ -393,7 +391,6 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
                {
                   {
                      "0000000000000000000000000000000000000000000000000000000000000001"_h,
-                     chain::transaction_receipt_header::executed,
                      {
                         {
                            0,
