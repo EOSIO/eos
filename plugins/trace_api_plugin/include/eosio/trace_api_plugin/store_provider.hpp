@@ -142,6 +142,9 @@ namespace eosio::trace_api_plugin {
          fc::cfile index;
          const uint32_t slice_number = _slice_provider.slice_number(block_height);
          const bool found = _slice_provider.find_index_slice(slice_number, false, index);
+         if( !found ) {
+            return 0;
+         }
          const uint64_t end = file_size(index.get_file_path());
          offset = index.tellp();
          uint64_t last_read_offset = offset;
