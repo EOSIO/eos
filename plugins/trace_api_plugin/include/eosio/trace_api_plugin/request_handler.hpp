@@ -11,7 +11,7 @@ namespace eosio::trace_api_plugin {
    namespace detail {
       class response_formatter {
       public:
-         static fc::variant process_block( const block_trace_v0& trace, const  std::optional<lib_entry_v0>& best_lib, const data_handler_function& data_handler, const now_function& now, const fc::time_point& deadline );
+         static fc::variant process_block( const block_trace_v0& trace, bool irreversible, const data_handler_function& data_handler, const now_function& now, const fc::time_point& deadline );
       };
    }
 
@@ -37,72 +37,19 @@ namespace eosio::trace_api_plugin {
        * @throws bad_data_exception when there are issues with the underlying data preventing processing.
        */
       fc::variant get_block_trace( uint32_t block_height, const fc::time_point& deadline ) {
-         std::optional<uint64_t> block_offset;
-         std::optional<lib_entry_v0> best_lib;
-         bool deadline_past = false;
-
-         // scan for the block offset and latest LIB
-         try {
-            logfile_provider.scan_metadata_log_from(block_height, 0, [&](const metadata_log_entry& e) -> bool {
-               if (e.contains<block_entry_v0>()) {
-                  const auto& block = e.get<block_entry_v0>();
-                  if (block.number == block_height) {
-                     block_offset = block.offset;
-                  }
-               } else if (e.contains<lib_entry_v0>()) {
-                  best_lib = e.get<lib_entry_v0>();
-                  if (best_lib->lib > block_height) {
-                     return false;
-                  }
-               }
-
-               if (now() >= deadline) {
-                  deadline_past = true;
-                  return false;
-               }
-
-               return true;
-            });
-         } catch ( const std::exception& e ) {
-            throw bad_data_exception( e.what() );
-         }
-
-         if (deadline_past) {
-            throw deadline_exceeded("Provided deadline exceeded while parsing metadata");
-         }
-
-         // failed to find a metadata entry for the requested block
-         if (!block_offset) {
+         auto data = logfile_provider.get_block(block_height);
+         if (!data) {
             return {};
          }
-
-         // fetch the block entry
-         auto data_entry = ([&](){
-            try {
-               return logfile_provider.read_data_log(block_height, *block_offset);
-            } catch (const std::exception& e) {
-               throw bad_data_exception( e.what() );
-            }
-         })();
 
          if (now() >= deadline) {
-            throw deadline_exceeded("Provided deadline exceeded while fetching block data");
+            throw deadline_exceeded("Provided deadline exceeded while parsing metadata");
          }
-
-         // data expected but missing
-         if (!data_entry) {
-            return {};
-         }
-
-         if (!data_entry->template contains<block_trace_v0>()) {
-            throw bad_data_exception("Expected block_trace_v0 from data log at offset " + std::to_string(*block_offset));
-         }
-
          auto data_handler = [this, &deadline](const action_trace_v0& action) -> fc::variant {
             return data_handler_provider.process_data(action, deadline);
          };
 
-         return detail::response_formatter::process_block(data_entry->template get<block_trace_v0>(), best_lib, data_handler, now, deadline);
+         return detail::response_formatter::process_block(std::get<0>(*data), std::get<1>(*data), data_handler, now, deadline);
       }
 
    private:

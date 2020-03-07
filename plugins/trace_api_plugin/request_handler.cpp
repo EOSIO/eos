@@ -72,9 +72,7 @@ namespace {
 }
 
 namespace eosio::trace_api_plugin::detail {
-   fc::variant response_formatter::process_block( const block_trace_v0& trace, const  std::optional<lib_entry_v0>& best_lib, const data_handler_function& data_handler, const now_function& now, const fc::time_point& deadline ) {
-      bool final = best_lib && (best_lib->lib >= trace.number);
-
+   fc::variant response_formatter::process_block( const block_trace_v0& trace, bool irreversible, const data_handler_function& data_handler, const now_function& now, const fc::time_point& deadline ) {
       auto yield = [&now, &deadline]() {
          if (now() >= deadline) {
             throw deadline_exceeded("Provided deadline exceeded while processing transaction data");
@@ -85,7 +83,7 @@ namespace eosio::trace_api_plugin::detail {
          ("id", trace.id.str() )
          ("number", trace.number )
          ("previous_id", trace.previous_id.str() )
-         ("status", final ? "irreversible" : "pending" )
+         ("status", irreversible ? "irreversible" : "pending" )
          ("timestamp", to_iso8601_datetime(trace.timestamp))
          ("producer", trace.producer.to_string())
          ("transactions", process_transactions(trace.transactions, data_handler, yield ));
