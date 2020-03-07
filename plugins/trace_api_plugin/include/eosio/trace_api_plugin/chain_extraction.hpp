@@ -99,8 +99,7 @@ private:
          cached_traces.clear();
          onblock_trace.reset();
 
-         uint64_t offset = store.append_data_log( std::move( bt ) );
-         store.append_metadata_log( block_entry_v0{.id = block_state->id, .number = block_state->block_num, .offset = offset} );
+         store.append( std::move( bt ) );
 
       } catch( ... ) {
          except_handler( std::current_exception() );
@@ -109,7 +108,7 @@ private:
 
    void store_lib( const chain::block_state_ptr& bsp ) {
       try {
-         store.append_metadata_log( lib_entry_v0{ .lib = bsp->block_num } );
+         store.append_lib( bsp->block_num );
       } catch( ... ) {
          except_handler( std::current_exception() );
       }

@@ -172,33 +172,16 @@ struct extraction_test_fixture {
       {}
 
       /**
-       * append an entry to the end of the data log
+       * append an entry to the data store
        *
        * @param entry : the entry to append
-       * @return the offset in the log where that entry is written
        */
-      uint64_t append_data_log( const data_log_entry& entry ) {
+      void append( const data_log_entry& entry ) {
          fixture.data_log.emplace_back(entry);
-         return fixture.data_log.size() - 1;
       }
 
-      /**
-       * Append an entry to the metadata log
-       *
-       * @param entry
-       * @return
-       */
-      uint64_t append_metadata_log( const metadata_log_entry& entry ) {
-         if (entry.contains<block_entry_v0>()) {
-            const auto& b = entry.get<block_entry_v0>();
-            fixture.block_entry_for_height[b.number] = b;
-         } else if (entry.contains<lib_entry_v0>()) {
-            const auto& lib = entry.get<lib_entry_v0>();
-            fixture.max_lib = std::max(fixture.max_lib, lib.lib);
-         } else {
-            BOOST_FAIL("Unknown metadata log entry emitted");
-         }
-         return fixture.metadata_offset++;
+      void append_lib( uint32_t lib ) {
+         fixture.max_lib = std::max(fixture.max_lib, lib);
       }
 
       extraction_test_fixture& fixture;
@@ -218,9 +201,7 @@ struct extraction_test_fixture {
    }
 
    // fixture data and methods
-   std::map<uint64_t, block_entry_v0> block_entry_for_height = {};
-   uint64_t metadata_offset = 0;
-   uint64_t max_lib = 0;
+   uint32_t max_lib = 0;
    std::vector<data_log_entry> data_log = {};
 
    chain_extraction_impl_type<mock_logfile_provider_type> extraction_impl;
@@ -250,10 +231,7 @@ BOOST_AUTO_TEST_SUITE(block_extraction)
             { chain::packed_transaction(ptrx1) } );
       signal_accepted_block( bsp1 );
       
-      // Verify that the blockheight and LIB are correct
       const uint64_t expected_lib = 0;
-      const block_entry_v0 expected_entry { bsp1->id, 1, 0 };
-
       const block_trace_v0 expected_trace { bsp1->id, 1, bsp1->prev(), chain::block_timestamp_type(1), "bp.one"_n,
          {
             {
@@ -283,11 +261,9 @@ BOOST_AUTO_TEST_SUITE(block_extraction)
       };
 
       BOOST_REQUIRE_EQUAL(max_lib, 0);
-      BOOST_REQUIRE(block_entry_for_height.count(1) > 0);
-      BOOST_REQUIRE_EQUAL(block_entry_for_height.at(1), expected_entry);
-      BOOST_REQUIRE(data_log.size() >= expected_entry.offset);
-      BOOST_REQUIRE(data_log.at(expected_entry.offset).contains<block_trace_v0>());
-      BOOST_REQUIRE_EQUAL(data_log.at(expected_entry.offset).get<block_trace_v0>(), expected_trace);
+      BOOST_REQUIRE(data_log.size() == 1);
+      BOOST_REQUIRE(data_log.at(0).contains<block_trace_v0>());
+      BOOST_REQUIRE_EQUAL(data_log.at(0).get<block_trace_v0>(), expected_trace);
    }
 
    BOOST_FIXTURE_TEST_CASE(basic_multi_transaction_block, extraction_test_fixture) {
@@ -319,10 +295,7 @@ BOOST_AUTO_TEST_SUITE(block_extraction)
             { chain::packed_transaction(ptrx1), chain::packed_transaction(ptrx2), chain::packed_transaction(ptrx3) } );
       signal_accepted_block( bsp1 );
 
-      // Verify that the blockheight and LIB are correct
       const uint64_t expected_lib = 0;
-      const block_entry_v0 expected_entry { bsp1->id, 1, 0 };
-
       const block_trace_v0 expected_trace { bsp1->id, 1, bsp1->prev(), chain::block_timestamp_type(1), "bp.one"_n,
          {
             {
@@ -362,11 +335,9 @@ BOOST_AUTO_TEST_SUITE(block_extraction)
       };
 
       BOOST_REQUIRE_EQUAL(max_lib, 0);
-      BOOST_REQUIRE(block_entry_for_height.count(1) > 0);
-      BOOST_REQUIRE_EQUAL(block_entry_for_height.at(1), expected_entry);
-      BOOST_REQUIRE(data_log.size() >= expected_entry.offset);
-      BOOST_REQUIRE(data_log.at(expected_entry.offset).contains<block_trace_v0>());
-      BOOST_REQUIRE_EQUAL(data_log.at(expected_entry.offset).get<block_trace_v0>(), expected_trace);
+      BOOST_REQUIRE(data_log.size() == 1);
+      BOOST_REQUIRE(data_log.at(0).contains<block_trace_v0>());
+      BOOST_REQUIRE_EQUAL(data_log.at(0).get<block_trace_v0>(), expected_trace);
    }
 
    BOOST_FIXTURE_TEST_CASE(onerror_transaction_block, extraction_test_fixture)
@@ -392,8 +363,6 @@ BOOST_AUTO_TEST_SUITE(block_extraction)
       signal_accepted_block( bsp1 );
 
       const uint64_t expected_lib = 0;
-      const block_entry_v0 expected_entry { bsp1->id, 1, 0 };
-
       const block_trace_v0 expected_trace { bsp1->id, 1, bsp1->prev(), chain::block_timestamp_type(1), "bp.one"_n,
          {
             {
@@ -411,11 +380,9 @@ BOOST_AUTO_TEST_SUITE(block_extraction)
       };
 
       BOOST_REQUIRE_EQUAL(max_lib, 0);
-      BOOST_REQUIRE(block_entry_for_height.count(1) > 0);
-      BOOST_REQUIRE_EQUAL(block_entry_for_height.at(1), expected_entry);
-      BOOST_REQUIRE(data_log.size() >= expected_entry.offset);
-      BOOST_REQUIRE(data_log.at(expected_entry.offset).contains<block_trace_v0>());
-      BOOST_REQUIRE_EQUAL(data_log.at(expected_entry.offset).get<block_trace_v0>(), expected_trace);
+      BOOST_REQUIRE(data_log.size() == 1);
+      BOOST_REQUIRE(data_log.at(0).contains<block_trace_v0>());
+      BOOST_REQUIRE_EQUAL(data_log.at(0).get<block_trace_v0>(), expected_trace);
    }
 
 BOOST_AUTO_TEST_SUITE_END()
