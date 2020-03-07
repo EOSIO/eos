@@ -326,14 +326,14 @@ BOOST_AUTO_TEST_CASE(pre_dev) {
                      const flat_set<permission_level>& provided_permissions,
                      const flat_set<public_key_type>& provided_keys)
       {
-         fc::log_message log;
-         EOS_ASSERT( false, unsatisfied_authorization,
-                     "transaction declares authority '${auth}', "
-                     "provided permissions ${provided_permissions}, provided keys ${provided_keys}, ",
+//         EOS_ASSERT( false, unsatisfied_authorization,
+         fc::log_message log(fc::log_context(), "transaction declares authority '${auth}', "
+                     "provided permissions ${provided_permissions}, provided keys ${provided_keys}, ",fc::mutable_variant_object()
                      ("auth", permission)
                      ("provided_permissions", provided_permissions)
                      ("provided_keys", provided_keys)
          );
+         std::cout << "\n--------------: " << log.get_limited_message() << std::endl;
       };
       try {
          func(permission_level{name{"abc"}, name{"def"}}, provided_permissions, provided_keys);
