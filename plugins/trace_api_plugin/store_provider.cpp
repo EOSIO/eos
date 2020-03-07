@@ -21,7 +21,9 @@ namespace eosio::trace_api_plugin {
       fc::cfile trace;
       fc::cfile index;
       find_or_create_slice_pair(bt.number, true, trace, index);
-      const uint64_t offset = append_store(bt, trace);
+      // storing as static_variant to allow adding other data types to the trace file in the future
+      const uint64_t offset = append_store(data_log_entry { bt }, trace);
+
       auto be = metadata_log_entry { block_entry_v0 { .id = bt.id, .number = bt.number, .offset = offset }};
       append_store(be, index);
    }
@@ -86,7 +88,7 @@ namespace eosio::trace_api_plugin {
    }
 
    bool slice_provider::find_or_create_trace_slice(uint32_t slice_number, bool append, fc::cfile& trace_file) const {
-      const bool found = find_slice(_trace_prefix, slice_number, trace_file);
+      const bool found = find_trace_slice(slice_number, append, trace_file);
 
       if( !found ) {
          trace_file.open(fc::cfile::create_or_update_rw_mode);
@@ -94,7 +96,21 @@ namespace eosio::trace_api_plugin {
       else if( append ) {
          trace_file.seek_end(0);
       }
+
       return found;
+   }
+
+   bool slice_provider::find_trace_slice(uint32_t slice_number, bool append, fc::cfile& trace_file) const {
+      const bool found = find_slice(_trace_prefix, slice_number, trace_file);
+
+      if( !found ) {
+         return false;
+      }
+
+      if( append ) {
+         trace_file.seek_end(0);
+      }
+      return true;
    }
 
    bool slice_provider::find_slice(const char* slice_prefix, uint32_t slice_number, fc::cfile& slice_file) const {

@@ -94,15 +94,27 @@ namespace eosio::trace_api_plugin {
       bool find_index_slice(uint32_t slice_number, bool append, fc::cfile& index_file) const;
 
       /**
-       * Find or create the index file associated with the indicated slice_number
+       * Find or create the trace file associated with the indicated slice_number
        *
        * @param slice_number : slice number of the requested slice file
        * @param append : indicate if the file is going to be appended (or read)
-       * @param index_file : the cfile that will be set to the appropriate slice filename
+       * @param trace_file : the cfile that will be set to the appropriate slice filename
        *                     and opened to that file
        * @return the true if file was found (i.e. already existed)
        */
       bool find_or_create_trace_slice(uint32_t slice_number, bool append, fc::cfile& trace_file) const;
+
+      /**
+       * Find the trace file associated with the indicated slice_number
+       *
+       * @param slice_number : slice number of the requested slice file
+       * @param append : indicate if the file is going to be appended (or read)
+       * @param trace_file : the cfile that will be set to the appropriate slice filename (always)
+       *                     and opened to that file (if it was found)
+       * @return the true if file was found (i.e. already existed), if not found index_file
+       *         is set to the appropriate file, but not open
+       */
+      bool find_trace_slice(uint32_t slice_number, bool append, fc::cfile& trace_file) const;
 
    private:
       // returns true if slice is found, slice_file will always be set to the appropriate path for
@@ -170,13 +182,13 @@ namespace eosio::trace_api_plugin {
       std::optional<data_log_entry> read_data_log( uint32_t block_height, uint64_t offset ) {
          const uint32_t slice_number = _slice_provider.slice_number(block_height);
          fc::cfile trace;
-         if (_slice_provider.find_or_create_trace_slice(slice_number, false, trace)) {
+         if( !_slice_provider.find_trace_slice(slice_number, false, trace) ) {
             const std::string offset_str = boost::lexical_cast<std::string>(offset);
             const std::string bh_str = boost::lexical_cast<std::string>(block_height);
             throw malformed_slice_file("Requested offset: " + offset_str + " to retrieve block number: " + bh_str + " but this trace file is new, so there are no traces present.");
          }
          const uint64_t end = file_size(trace.get_file_path());
-         if (offset >= end) {
+         if( offset >= end ) {
             const std::string offset_str = boost::lexical_cast<std::string>(offset);
             const std::string bh_str = boost::lexical_cast<std::string>(block_height);
             const std::string end_str = boost::lexical_cast<std::string>(end);
