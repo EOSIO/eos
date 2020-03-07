@@ -63,10 +63,10 @@ namespace llvm { namespace orc {
 }}
 #endif
 
-#define DUMP_UNOPTIMIZED_MODULE 0
-#define VERIFY_MODULE 0
-#define DUMP_OPTIMIZED_MODULE 0
-#define PRINT_DISASSEMBLY 0
+#define DUMP_UNOPTIMIZED_MODULE 1
+#define VERIFY_MODULE 1
+#define DUMP_OPTIMIZED_MODULE 1
+#define PRINT_DISASSEMBLY 1
 
 #if PRINT_DISASSEMBLY
 #include "llvm-c/Disassembler.h"
@@ -289,6 +289,7 @@ namespace LLVMJIT
 		}
 
 		// Emit LLVM IR for the module.
+		///sleep(15);
 		auto llvmModule = emitModule(module);
 
 		// Construct the JIT compilation pipeline for this module.

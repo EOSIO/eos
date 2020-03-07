@@ -36,4 +36,6 @@ class executor {
       std::list<std::vector<std::byte>> executors_bounce_buffers;
 };
 
+extern thread_local char** memory_ptr_ptr;
+
 }}}

@@ -98,13 +98,14 @@ namespace LLVMJIT
 	// Converts a WebAssembly function type to a LLVM type.
 	inline llvm::FunctionType* asLLVMType(const FunctionType* functionType)
 	{
-		auto llvmArgTypes = (llvm::Type**)alloca(sizeof(llvm::Type*) * functionType->parameters.size());
+		auto llvmArgTypes = (llvm::Type**)alloca(sizeof(llvm::Type*) * functionType->parameters.size() + 1);
+		llvmArgTypes[0] = llvmI8PtrType->getPointerTo(0);
 		for(Uptr argIndex = 0;argIndex < functionType->parameters.size();++argIndex)
 		{
-			llvmArgTypes[argIndex] = asLLVMType(functionType->parameters[argIndex]);
+			llvmArgTypes[argIndex + 1] = asLLVMType(functionType->parameters[argIndex]);
 		}
 		auto llvmResultType = asLLVMType(functionType->ret);
-		return llvm::FunctionType::get(llvmResultType,llvm::ArrayRef<llvm::Type*>(llvmArgTypes,functionType->parameters.size()),false);
+		return llvm::FunctionType::get(llvmResultType,llvm::ArrayRef<llvm::Type*>(llvmArgTypes,functionType->parameters.size()+1),false);
 	}
 
 	// Overloaded functions that compile a literal value to a LLVM constant of the right type.
@@ -121,6 +122,11 @@ namespace LLVMJIT
 		return llvm::Constant::getIntegerValue(type,pointerInt);
 	}
 
+	struct global_type_and_offset {
+	   llvm::Type* type;
+	   uint64_t offset;
+	};
+
 	// The LLVM IR for a module.
 	struct EmitModuleContext
 	{
@@ -129,7 +135,7 @@ namespace LLVMJIT
 		llvm::Module* llvmModule;
 		std::vector<llvm::Function*> functionDefs;
 		std::vector<size_t> importedFunctionOffsets;
-		std::vector<llvm::Constant*> globals;
+		std::vector<std::variant<llvm::Constant*, global_type_and_offset>> globals;
 		llvm::Constant* defaultTablePointer;
 		llvm::Constant* defaultTableMaxElementIndex;
 		llvm::Constant* defaultMemoryBase;
@@ -201,6 +207,9 @@ namespace LLVMJIT
 		std::vector<ControlContext> controlStack;
 		std::vector<BranchTarget> branchTargetStack;
 		std::vector<llvm::Value*> stack;
+
+		//llvm::Value* memoryBasePtr;
+		llvm::Argument* memoryBasePtrPtr;
 
 		EmitFunctionContext(EmitModuleContext& inEmitModuleContext,const Module& inModule,const FunctionDef& inFunctionDef,llvm::Function* inLLVMFunction)
 		: moduleContext(inEmitModuleContext)
@@ -318,9 +327,9 @@ namespace LLVMJIT
 			}
 
 			// Cast the pointer to the appropriate type.
-			auto bytePointer = CreateInBoundsGEPWAR(irBuilder, moduleContext.defaultMemoryBase, byteIndex);
+			auto bytePointer = CreateInBoundsGEPWAR(irBuilder, irBuilder.CreateLoad(llvmI8PtrType, memoryBasePtrPtr), byteIndex);
 
-			return irBuilder.CreatePointerCast(bytePointer,memoryType->getPointerTo(256));
+			return irBuilder.CreatePointerCast(bytePointer,memoryType->getPointerTo());
 		}
 
 		// Traps a divide-by-zero
@@ -354,9 +363,18 @@ namespace LLVMJIT
 		llvm::Value* emitRuntimeIntrinsic(const char* intrinsicName,const FunctionType* intrinsicType,const std::initializer_list<llvm::Value*>& args)
 		{
 			const eosio::chain::eosvmoc::intrinsic_entry& ie = eosio::chain::eosvmoc::get_intrinsic_map().at(intrinsicName);
-			llvm::Value* ic = irBuilder.CreateLoad( emitLiteralPointer((void*)(OFFSET_OF_FIRST_INTRINSIC-ie.ordinal*8), llvmI64Type->getPointerTo(256)) );
+         auto bytePointer = CreateInBoundsGEPWAR(irBuilder, irBuilder.CreateLoad(llvmI8PtrType, memoryBasePtrPtr), emitLiteral(OFFSET_OF_FIRST_INTRINSIC-ie.ordinal*8));
+         auto cast = irBuilder.CreatePointerCast(bytePointer, llvmI64Type->getPointerTo());
+			llvm::Value* ic = irBuilder.CreateLoad(cast, llvmI64Type->getPointerTo() );
 			llvm::Value* itp = irBuilder.CreateIntToPtr(ic, asLLVMType(ie.type)->getPointerTo());
-			return irBuilder.CreateCall(itp,llvm::ArrayRef<llvm::Value*>(args.begin(),args.end()));
+
+			llvm::Value* a[args.size() + 1];
+			a[0] = memoryBasePtrPtr;
+         auto it = args.begin();
+			for(size_t i = 1; it != args.end(); ++it,++i)
+			   a[i] = *it;
+
+			return irBuilder.CreateCall(itp,llvm::ArrayRef<llvm::Value*>(a, args.size() + 1));
 		}
 
 		// A helper function to emit a conditional call to a non-returning intrinsic function.
@@ -691,7 +709,9 @@ namespace LLVMJIT
 			if(imm.functionIndex < moduleContext.importedFunctionOffsets.size())
 			{
 				calleeType = module.types[module.functions.imports[imm.functionIndex].type.index];
-				llvm::Value* ic = irBuilder.CreateLoad( emitLiteralPointer((void*)(OFFSET_OF_FIRST_INTRINSIC-moduleContext.importedFunctionOffsets[imm.functionIndex]*8), llvmI64Type->getPointerTo(256)) );
+            auto bytePointer = CreateInBoundsGEPWAR(irBuilder, irBuilder.CreateLoad(llvmI8PtrType, memoryBasePtrPtr), emitLiteral(OFFSET_OF_FIRST_INTRINSIC-moduleContext.importedFunctionOffsets[imm.functionIndex]*8));
+            auto cast = irBuilder.CreatePointerCast(bytePointer, llvmI64Type->getPointerTo());
+            llvm::Value* ic = irBuilder.CreateLoad(cast, llvmI64Type->getPointerTo() );
 				callee = irBuilder.CreateIntToPtr(ic, asLLVMType(calleeType)->getPointerTo());
 				isExit = module.functions.imports[imm.functionIndex].moduleName == "env" && module.functions.imports[imm.functionIndex].exportName == "eosio_exit";
 			}
@@ -703,11 +723,12 @@ namespace LLVMJIT
 			}
 
 			// Pop the call arguments from the operand stack.
-			auto llvmArgs = (llvm::Value**)alloca(sizeof(llvm::Value*) * calleeType->parameters.size());
-			popMultiple(llvmArgs,calleeType->parameters.size());
+			auto llvmArgs = (llvm::Value**)alloca(sizeof(llvm::Value*) * (calleeType->parameters.size() + 1));
+			llvmArgs[0] = memoryBasePtrPtr;
+			popMultiple(llvmArgs+1,calleeType->parameters.size());
 
 			// Call the function.
-			auto result = irBuilder.CreateCall(callee,llvm::ArrayRef<llvm::Value*>(llvmArgs,calleeType->parameters.size()));
+			auto result = irBuilder.CreateCall(callee,llvm::ArrayRef<llvm::Value*>(llvmArgs,calleeType->parameters.size()+1));
 			if(isExit) {
 				irBuilder.CreateUnreachable();
 				enterUnreachable();
@@ -727,8 +748,9 @@ namespace LLVMJIT
 			auto tableElementIndex = pop();
 			
 			// Compile the call arguments.
-			auto llvmArgs = (llvm::Value**)alloca(sizeof(llvm::Value*) * calleeType->parameters.size());
-			popMultiple(llvmArgs,calleeType->parameters.size());
+			auto llvmArgs = (llvm::Value**)alloca(sizeof(llvm::Value*) * (calleeType->parameters.size())+1);
+         llvmArgs[0] = memoryBasePtrPtr;
+			popMultiple(llvmArgs+1,calleeType->parameters.size());
 
 			// Zero extend the function index to the pointer size.
 			auto functionIndexZExt = irBuilder.CreateZExt(tableElementIndex, llvmI64Type);
@@ -739,8 +761,10 @@ namespace LLVMJIT
 				"eosvmoc_internal.indirect_call_oob",FunctionType::get(),{});
 
 			// Load the type for this table entry.
-			auto functionTypePointerPointer = CreateInBoundsGEPWAR(irBuilder, moduleContext.defaultTablePointer, functionIndexZExt, emitLiteral((U32)0));
-			auto functionTypePointer = irBuilder.CreateLoad(functionTypePointerPointer);
+         auto tableElementType = llvm::StructType::get(context,{llvmI8PtrType, llvmI64Type});
+         auto firstTableOffset = irBuilder.CreatePointerCast(CreateInBoundsGEPWAR(irBuilder, irBuilder.CreateLoad(llvmI8PtrType, memoryBasePtrPtr), moduleContext.defaultTablePointer),tableElementType->getPointerTo());
+         auto functionTypePointerPointer = CreateInBoundsGEPWAR(irBuilder, firstTableOffset, functionIndexZExt, emitLiteral((U32)0));
+         auto functionTypePointer = irBuilder.CreateLoad(functionTypePointerPointer);
 			auto llvmCalleeType = emitLiteralPointer(calleeType,llvmI8PtrType);
 			
 			// If the function type doesn't match, trap.
@@ -753,18 +777,23 @@ namespace LLVMJIT
 			//If the WASM only contains table elements to function definitions internal to the wasm, we can take a
 			// simple and approach
 			if(moduleContext.tableOnlyHasDefinedFuncs) {
-				auto functionPointerPointer = CreateInBoundsGEPWAR(irBuilder, moduleContext.defaultTablePointer, functionIndexZExt, emitLiteral((U32)1));
+				auto functionPointerPointer = CreateInBoundsGEPWAR(irBuilder, firstTableOffset, functionIndexZExt, emitLiteral((U32)1));
 				auto functionInfo = irBuilder.CreateLoad(functionPointerPointer);  //offset of code
-				llvm::Value* running_code_start = irBuilder.CreateLoad(emitLiteralPointer((void*)OFFSET_OF_CONTROL_BLOCK_MEMBER(running_code_base), llvmI64Type->getPointerTo(256)));
-				llvm::Value* offset_from_start = irBuilder.CreateAdd(running_code_start, functionInfo);
+            auto offset = emitLiteral((I32)OFFSET_OF_CONTROL_BLOCK_MEMBER(running_code_base));
+            auto bytePointer = CreateInBoundsGEPWAR(irBuilder, irBuilder.CreateLoad(llvmI8PtrType, memoryBasePtrPtr), offset);
+            auto ptrTo = irBuilder.CreatePointerCast(bytePointer,llvmI64Type->getPointerTo());
+            auto load = irBuilder.CreateLoad(ptrTo);
+
+            llvm::Value* offset_from_start = irBuilder.CreateAdd(functionInfo, load);
+
 				llvm::Value* ptr_cast = irBuilder.CreateIntToPtr(offset_from_start, functionPointerType);
-				auto result = irBuilder.CreateCall(ptr_cast,llvm::ArrayRef<llvm::Value*>(llvmArgs,calleeType->parameters.size()));
+				auto result = irBuilder.CreateCall(ptr_cast,llvm::ArrayRef<llvm::Value*>(llvmArgs,calleeType->parameters.size()+1));
 
 				// Push the result on the operand stack.
 				if(calleeType->ret != ResultType::none) { push(result); }
 			}
 			else {
-				auto functionPointerPointer = CreateInBoundsGEPWAR(irBuilder, moduleContext.defaultTablePointer, functionIndexZExt, emitLiteral((U32)1));
+				auto functionPointerPointer = CreateInBoundsGEPWAR(irBuilder, firstTableOffset, functionIndexZExt, emitLiteral((U32)1));
 				auto functionInfo = irBuilder.CreateLoad(functionPointerPointer);  //offset of code
 
 				auto is_intrnsic = irBuilder.CreateICmpSLT(functionInfo, typedZeroConstants[(Uptr)ValueType::i64]);
@@ -776,15 +805,22 @@ namespace LLVMJIT
 				irBuilder.CreateCondBr(is_intrnsic, is_intrinsic_block, is_code_offset_block, moduleContext.likelyFalseBranchWeights);
 
 				irBuilder.SetInsertPoint(is_intrinsic_block);
-				llvm::Value* intrinsic_start = emitLiteral((I64)OFFSET_OF_FIRST_INTRINSIC);
+            llvm::Value* intrinsic_start = emitLiteral((I64)OFFSET_OF_FIRST_INTRINSIC);
 				llvm::Value* intrinsic_offset = irBuilder.CreateAdd(intrinsic_start, functionInfo);
-				llvm::Value* intrinsic_ptr = irBuilder.CreateLoad(irBuilder.CreateIntToPtr(intrinsic_offset, llvmI64Type->getPointerTo(256)));
+            auto bytePointer = CreateInBoundsGEPWAR(irBuilder, irBuilder.CreateLoad(llvmI8PtrType, memoryBasePtrPtr), intrinsic_offset);
+            auto cast = irBuilder.CreatePointerCast(bytePointer, llvmI64Type->getPointerTo());
+				llvm::Value* intrinsic_ptr = irBuilder.CreateLoad(cast, llvmI64Type->getPointerTo());
 				irBuilder.CreateBr(continuation_block);
 
 				llvmFunction->getBasicBlockList().push_back(is_code_offset_block);
 				irBuilder.SetInsertPoint(is_code_offset_block);
-				llvm::Value* running_code_start = irBuilder.CreateLoad(emitLiteralPointer((void*)OFFSET_OF_CONTROL_BLOCK_MEMBER(running_code_base), llvmI64Type->getPointerTo(256)));
-				llvm::Value* offset_from_start = irBuilder.CreateAdd(running_code_start, functionInfo);
+
+            auto offset = emitLiteral((I64)OFFSET_OF_CONTROL_BLOCK_MEMBER(running_code_base));
+            auto bp = CreateInBoundsGEPWAR(irBuilder, irBuilder.CreateLoad(llvmI8PtrType, memoryBasePtrPtr), offset);
+            auto ptrTo = irBuilder.CreatePointerCast(bp,llvmI64Type->getPointerTo());
+            auto load = irBuilder.CreateLoad(ptrTo);
+            llvm::Value* offset_from_start = irBuilder.CreateAdd(functionInfo, load);
+
 				irBuilder.CreateBr(continuation_block);
 
 				llvmFunction->getBasicBlockList().push_back(continuation_block);
@@ -795,7 +831,7 @@ namespace LLVMJIT
 				PN->addIncoming(offset_from_start, is_code_offset_block);
 
 				llvm::Value* ptr_cast = irBuilder.CreateIntToPtr(PN, functionPointerType);
-				auto result = irBuilder.CreateCall(ptr_cast,llvm::ArrayRef<llvm::Value*>(llvmArgs,calleeType->parameters.size()));
+				auto result = irBuilder.CreateCall(ptr_cast,llvm::ArrayRef<llvm::Value*>(llvmArgs,calleeType->parameters.size()+1));
 
 				// Push the result on the operand stack.
 				if(calleeType->ret != ResultType::none) { push(result); }
@@ -827,16 +863,27 @@ namespace LLVMJIT
 		void get_global(GetOrSetVariableImm<true> imm)
 		{
 			WAVM_ASSERT_THROW(imm.variableIndex < moduleContext.globals.size());
-			if(moduleContext.globals[imm.variableIndex]->getType()->isPointerTy())
-				push(irBuilder.CreateLoad(moduleContext.globals[imm.variableIndex]));
-			else
-				push(moduleContext.globals[imm.variableIndex]);
+			std::visit(overloaded {
+            [this](llvm::Constant* constant) {
+               push(constant);
+            },
+            [this](const global_type_and_offset& go) {
+               auto bytePointer = CreateInBoundsGEPWAR(irBuilder, irBuilder.CreateLoad(llvmI8PtrType, memoryBasePtrPtr), emitLiteral(go.offset));
+               auto cast = irBuilder.CreatePointerCast(bytePointer, go.type->getPointerTo());
+               push(irBuilder.CreateLoad(cast));
+            }
+			}, moduleContext.globals[imm.variableIndex]);
 		}
 		void set_global(GetOrSetVariableImm<true> imm)
 		{
 			WAVM_ASSERT_THROW(imm.variableIndex < moduleContext.globals.size());
-			auto value = irBuilder.CreateBitCast(pop(),moduleContext.globals[imm.variableIndex]->getType()->getPointerElementType());
-			irBuilder.CreateStore(value,moduleContext.globals[imm.variableIndex]);
+
+			auto& go = std::get<global_type_and_offset>(moduleContext.globals[imm.variableIndex]);
+         //auto value = irBuilder.CreateBitCast(pop(),go.type->getPointerTo());
+         auto value = pop();
+         auto bytePointer = CreateInBoundsGEPWAR(irBuilder, irBuilder.CreateLoad(llvmI8PtrType, memoryBasePtrPtr), emitLiteral(go.offset));
+         auto cast = irBuilder.CreatePointerCast(bytePointer, go.type->getPointerTo());
+         irBuilder.CreateStore(value,cast);
 		}
 
 		//
@@ -856,9 +903,9 @@ namespace LLVMJIT
 		}
 		void current_memory(MemoryImm)
 		{
-			auto offset = emitLiteral((I32)OFFSET_OF_CONTROL_BLOCK_MEMBER(current_linear_memory_pages));
-			auto bytePointer = CreateInBoundsGEPWAR(irBuilder, moduleContext.defaultMemoryBase, offset);
-			auto ptrTo = irBuilder.CreatePointerCast(bytePointer,llvmI32Type->getPointerTo(256));
+ 			auto offset = emitLiteral((I32)OFFSET_OF_CONTROL_BLOCK_MEMBER(current_linear_memory_pages));
+			auto bytePointer = CreateInBoundsGEPWAR(irBuilder, irBuilder.CreateLoad(llvmI8PtrType, memoryBasePtrPtr), offset);
+			auto ptrTo = irBuilder.CreatePointerCast(bytePointer,llvmI32Type->getPointerTo());
 			auto load = irBuilder.CreateLoad(ptrTo);
 			push(load);
 		}
@@ -1173,6 +1220,10 @@ namespace LLVMJIT
 
 		// Create and initialize allocas for all the locals and parameters.
 		auto llvmArgIt = llvmFunction->arg_begin();
+
+      memoryBasePtrPtr = (llvm::Argument*)&(*llvmArgIt);
+      ++llvmArgIt;
+
 		for(Uptr localIndex = 0;localIndex < functionType->parameters.size() + functionDef.nonParameterLocalTypes.size();++localIndex)
 		{
 			auto localType = localIndex < functionType->parameters.size()
@@ -1196,9 +1247,13 @@ namespace LLVMJIT
 
 		llvm::LoadInst* depth_loadinst;
 		llvm::StoreInst* depth_storeinst;
-		llvm::Value* depth = depth_loadinst = irBuilder.CreateLoad(moduleContext.depthCounter);
+
+      auto depthGEP = CreateInBoundsGEPWAR(irBuilder, irBuilder.CreateLoad(llvmI8PtrType, memoryBasePtrPtr), emitLiteral(OFFSET_OF_CONTROL_BLOCK_MEMBER(current_call_depth_remaining)));
+      auto depthGEPptr = irBuilder.CreatePointerCast(depthGEP,llvmI32Type->getPointerTo(0));
+
+		llvm::Value* depth = depth_loadinst = irBuilder.CreateLoad(depthGEPptr);
 		depth = irBuilder.CreateSub(depth, emitLiteral((I32)1));
-		depth_storeinst = irBuilder.CreateStore(depth, moduleContext.depthCounter);
+		depth_storeinst = irBuilder.CreateStore(depth, depthGEPptr);
 		emitConditionalTrapIntrinsic(irBuilder.CreateICmpEQ(depth, emitLiteral((I32)0)), "eosvmoc_internal.depth_assert", FunctionType::get(), {});
 		depth_loadinst->setVolatile(true);
 		depth_storeinst->setVolatile(true);
@@ -1220,9 +1275,9 @@ namespace LLVMJIT
 		};
 		WAVM_ASSERT_THROW(irBuilder.GetInsertBlock() == returnBlock);
 
-		depth = depth_loadinst = irBuilder.CreateLoad(moduleContext.depthCounter);
+		depth = depth_loadinst = irBuilder.CreateLoad(depthGEPptr);
 		depth = irBuilder.CreateAdd(depth, emitLiteral((I32)1));
-		depth_storeinst = irBuilder.CreateStore(depth, moduleContext.depthCounter);
+		depth_storeinst = irBuilder.CreateStore(depth, depthGEPptr);
 		depth_loadinst->setVolatile(true);
 		depth_storeinst->setVolatile(true);
 
@@ -1248,15 +1303,15 @@ namespace LLVMJIT
 
 		for(const GlobalDef& global : module.globals.defs) {
 			if(global.type.isMutable) {
-				globals.push_back(emitLiteralPointer((void*)current_prologue,asLLVMType(global.type.valueType)->getPointerTo(256)));
+			   globals.emplace_back(global_type_and_offset{asLLVMType(global.type.valueType), (uint64_t)current_prologue});
 				current_prologue -= 8;
 			}
 			else {
 				switch(global.type.valueType) {
-					case ValueType::i32: globals.push_back(emitLiteral(global.initializer.i32)); break;
-					case ValueType::i64: globals.push_back(emitLiteral(global.initializer.i64)); break;
-					case ValueType::f32: globals.push_back(emitLiteral(global.initializer.f32)); break;
-					case ValueType::f64: globals.push_back(emitLiteral(global.initializer.f64)); break;
+					case ValueType::i32: globals.emplace_back<llvm::Constant*>(emitLiteral(global.initializer.i32)); break;
+					case ValueType::i64: globals.emplace_back<llvm::Constant*>(emitLiteral(global.initializer.i64)); break;
+					case ValueType::f32: globals.emplace_back<llvm::Constant*>(emitLiteral(global.initializer.f32)); break;
+					case ValueType::f64: globals.emplace_back<llvm::Constant*>(emitLiteral(global.initializer.f64)); break;
 					default: break; //impossible
 				}
 			}
@@ -1266,7 +1321,7 @@ namespace LLVMJIT
 			current_prologue -= 8; //now pointing to LAST element
 			current_prologue -= 16*(module.tables.defs[0].type.size.min-1); //now pointing to FIRST element
 			auto tableElementType = llvm::StructType::get(context,{llvmI8PtrType, llvmI64Type});
-			defaultTablePointer = emitLiteralPointer((void*)current_prologue,tableElementType->getPointerTo(256));
+			defaultTablePointer = emitLiteral((U64)current_prologue);
 			defaultTableMaxElementIndex = emitLiteral((U64)module.tables.defs[0].type.size.min);
 
 			for(const TableSegment& table_segment : module.tableSegments)

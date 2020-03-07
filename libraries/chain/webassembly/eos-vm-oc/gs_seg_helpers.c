@@ -3,6 +3,7 @@
 #include <asm/prctl.h>
 #include <sys/prctl.h>
 
+#if 0
 int arch_prctl(int code, unsigned long* addr);
 
 #define EOSVMOC_MEMORY_PTR_cb_ptr GS_PTR struct eos_vm_oc_control_block* const cb_ptr = ((GS_PTR struct eos_vm_oc_control_block* const)(EOS_VM_OC_CONTROL_BLOCK_OFFSET));
@@ -44,3 +45,4 @@ void* eos_vm_oc_get_bounce_buffer_list() {
    EOSVMOC_MEMORY_PTR_cb_ptr;
    return cb_ptr->bounce_buffers;
 }
+#endif

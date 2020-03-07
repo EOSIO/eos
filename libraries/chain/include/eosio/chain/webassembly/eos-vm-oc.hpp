@@ -53,26 +53,13 @@ class eosvmoc_runtime : public eosio::chain::wasm_runtime_interface {
 template<typename T>
 inline array_ptr<T> array_ptr_impl (size_t ptr, size_t length)
 {
-   constexpr int cb_full_linear_memory_start_segment_offset = OFFSET_OF_CONTROL_BLOCK_MEMBER(full_linear_memory_start);
-   constexpr int cb_first_invalid_memory_address_segment_offset = OFFSET_OF_CONTROL_BLOCK_MEMBER(first_invalid_memory_address);
+   eos_vm_oc_control_block* cb = (eos_vm_oc_control_block*)((*memory_ptr_ptr)-memory::cb_offset);
 
    size_t end = ptr + length*sizeof(T);
+   if(end > cb->first_invalid_memory_address)
+      throw wasm_execution_error(FC_LOG_MESSAGE(error, "Access violation"));
 
-   asm volatile("cmp %%gs:%c[firstInvalidMemory], %[End]\n"
-                "jle 1f\n"
-                "mov %%gs:%c[maximumEosioWasmMemory], %[Ptr]\n"      //always invalid address
-                "1:\n"
-                "add %%gs:%c[linearMemoryStart], %[Ptr]\n"
-                : [Ptr] "+r" (ptr),
-                  [End] "+r" (end)
-                : [linearMemoryStart] "i" (cb_full_linear_memory_start_segment_offset),
-                  [firstInvalidMemory] "i" (cb_first_invalid_memory_address_segment_offset),
-                  [maximumEosioWasmMemory] "i" (wasm_constraints::maximum_linear_memory)
-                : "cc"
-               );
-
-
-   return array_ptr<T>((T*)ptr);
+   return array_ptr<T>((T*)(ptr+cb->full_linear_memory_start));
 }
 
 /**
@@ -80,32 +67,17 @@ inline array_ptr<T> array_ptr_impl (size_t ptr, size_t length)
  */
 inline null_terminated_ptr null_terminated_ptr_impl(uint64_t ptr)
 {
-   constexpr int cb_full_linear_memory_start_segment_offset = OFFSET_OF_CONTROL_BLOCK_MEMBER(full_linear_memory_start);
-   constexpr int cb_first_invalid_memory_address_segment_offset = OFFSET_OF_CONTROL_BLOCK_MEMBER(first_invalid_memory_address);
+   volatile char* memory = *memory_ptr_ptr;
+   eos_vm_oc_control_block* cb = (eos_vm_oc_control_block*)(memory-memory::cb_offset);
 
-   char dumpster;
-   uint64_t scratch;
+   char dumpster = memory[ptr];  //probe first byte for valid memory location
+   if(memory[cb->first_invalid_memory_address-1] == '\0')
+      return null_terminated_ptr(ptr+cb->full_linear_memory_start);
 
-   asm volatile("mov %%gs:(%[Ptr]), %[Dumpster]\n"                   //probe memory location at ptr to see if valid
-                "mov %%gs:%c[firstInvalidMemory], %[Scratch]\n"      //get first invalid memory address
-                "cmpb $0, %%gs:-1(%[Scratch])\n"                     //is last byte in valid linear memory 0?
-                "je 2f\n"                                            //if so, this will be a null terminated string one way or another
-                "mov %[Ptr],%[Scratch]\n"
-                "1:\n"                                               //start loop looking for either 0, or until we SEGV
-                "inc %[Scratch]\n"
-                "cmpb   $0,%%gs:(%[Scratch])\n"
-                "jne 1b\n"
-                "2:\n"
-                "add %%gs:%c[linearMemoryStart], %[Ptr]\n"           //add address of linear memory 0 to ptr
-                : [Ptr] "+r" (ptr),
-                  [Dumpster] "=r" (dumpster),
-                  [Scratch] "=r" (scratch)
-                : [linearMemoryStart] "i" (cb_full_linear_memory_start_segment_offset),
-                  [firstInvalidMemory] "i" (cb_first_invalid_memory_address_segment_offset)
-                : "cc"
-               );
+   for(uint64_t p = ptr;; ++p)
+      dumpster = memory[p];
 
-   return null_terminated_ptr((char*)ptr);
+   return null_terminated_ptr(ptr+cb->full_linear_memory_start);
 }
 
 template<typename T>
@@ -205,13 +177,8 @@ inline auto convert_native_to_wasm(const fc::time_point_sec& val) {
 }
 
 inline auto convert_native_to_wasm(char* ptr) {
-   constexpr int cb_full_linear_memory_start_offset = OFFSET_OF_CONTROL_BLOCK_MEMBER(full_linear_memory_start);
-   char* full_linear_memory_start;
-   asm("mov %%gs:%c[fullLinearMemOffset], %[fullLinearMem]\n"
-      : [fullLinearMem] "=r" (full_linear_memory_start)
-      : [fullLinearMemOffset] "i" (cb_full_linear_memory_start_offset)
-      );
-   U64 delta = (U64)(ptr - full_linear_memory_start);
+   eos_vm_oc_control_block* cb = (eos_vm_oc_control_block*)((*memory_ptr_ptr)-memory::cb_offset);
+   U64 delta = (U64)(ptr - cb->full_linear_memory_start);
    array_ptr_impl<char>(delta, 1);
    return (U32)delta;
 }
@@ -350,26 +317,20 @@ struct intrinsic_invoker_impl<is_injected, Ret, std::tuple<>, std::tuple<Transla
    using next_method_type        = Ret (*)(Translated...);
 
    template<next_method_type Method>
-   static native_to_wasm_t<Ret> invoke(Translated... translated) {
+   static native_to_wasm_t<Ret> invoke(char** f, Translated... translated) {
+      memory_ptr_ptr = f;
+      eos_vm_oc_control_block* cb = (eos_vm_oc_control_block*)((*memory_ptr_ptr)-memory::cb_offset);
       try {
          if constexpr(!is_injected) {
-            constexpr int cb_current_call_depth_remaining_segment_offset = OFFSET_OF_CONTROL_BLOCK_MEMBER(current_call_depth_remaining);
-            constexpr int depth_assertion_intrinsic_offset = OFFSET_OF_FIRST_INTRINSIC - (int)boost::hana::index_if(intrinsic_table, ::boost::hana::equal.to(BOOST_HANA_STRING("eosvmoc_internal.depth_assert"))).value()*8;
-            asm volatile("cmpl   $1,%%gs:%c[callDepthRemainOffset]\n"
-                         "jne    1f\n"
-                         "callq  *%%gs:%c[depthAssertionIntrinsicOffset]\n"
-                         "1:\n"
-                        :
-                        : [callDepthRemainOffset] "i" (cb_current_call_depth_remaining_segment_offset),
-                          [depthAssertionIntrinsicOffset] "i" (depth_assertion_intrinsic_offset)
-                        : "cc");
+            if(cb->current_call_depth_remaining == 1)
+               throw wasm_execution_error(FC_LOG_MESSAGE(error, "Exceeded maximum wasm depth limit"));
          }
          return convert_native_to_wasm(Method(translated...));
       }
       catch(...) {
-         *reinterpret_cast<std::exception_ptr*>(eos_vm_oc_get_exception_ptr()) = std::current_exception();
+         *cb->eptr = std::current_exception();
       }
-      siglongjmp(*eos_vm_oc_get_jmp_buf(), EOSVMOC_EXIT_EXCEPTION);
+      siglongjmp(*cb->jmp, EOSVMOC_EXIT_EXCEPTION);
       __builtin_unreachable();
    }
 
@@ -388,27 +349,21 @@ struct intrinsic_invoker_impl<is_injected, void_type, std::tuple<>, std::tuple<T
    using next_method_type        = void_type (*)(Translated...);
 
    template<next_method_type Method>
-   static void invoke(Translated... translated) {
+   static void invoke(char** f, Translated... translated) {
+      memory_ptr_ptr = f;
+      eos_vm_oc_control_block* cb = (eos_vm_oc_control_block*)((*memory_ptr_ptr)-memory::cb_offset);
       try {
          if constexpr(!is_injected) {
-            constexpr int cb_current_call_depth_remaining_segment_offset = OFFSET_OF_CONTROL_BLOCK_MEMBER(current_call_depth_remaining);
-            constexpr int depth_assertion_intrinsic_offset = OFFSET_OF_FIRST_INTRINSIC - (int)boost::hana::index_if(intrinsic_table, ::boost::hana::equal.to(BOOST_HANA_STRING("eosvmoc_internal.depth_assert"))).value()*8;
-            asm volatile("cmpl   $1,%%gs:%c[callDepthRemainOffset]\n"
-                         "jne    1f\n"
-                         "callq  *%%gs:%c[depthAssertionIntrinsicOffset]\n"
-                         "1:\n"
-                        :
-                        : [callDepthRemainOffset] "i" (cb_current_call_depth_remaining_segment_offset),
-                          [depthAssertionIntrinsicOffset] "i" (depth_assertion_intrinsic_offset)
-                        : "cc");
+            if(cb->current_call_depth_remaining == 1)
+               throw wasm_execution_error(FC_LOG_MESSAGE(error, "Exceeded maximum wasm depth limit"));
          }
          Method(translated...);
          return;
       }
       catch(...) {
-         *reinterpret_cast<std::exception_ptr*>(eos_vm_oc_get_exception_ptr()) = std::current_exception();
+         *cb->eptr = std::current_exception();
       }
-      siglongjmp(*eos_vm_oc_get_jmp_buf(), EOSVMOC_EXIT_EXCEPTION);
+      siglongjmp(*cb->jmp, EOSVMOC_EXIT_EXCEPTION);
       __builtin_unreachable();
    }
 
@@ -463,7 +418,8 @@ struct intrinsic_invoker_impl<is_injected, Ret, std::tuple<array_ptr<T>, uint32_
       const auto length = size_t((U32)size);
       T* base = array_ptr_impl<T>((U32)ptr, length);
       if ( reinterpret_cast<uintptr_t>(base) % alignof(T) != 0 ) {
-         std::vector<std::byte>& copy = reinterpret_cast<std::list<std::vector<std::byte>>*>(eos_vm_oc_get_bounce_buffer_list())->emplace_back(length > 0 ? length*sizeof(T) : 1);
+         eos_vm_oc_control_block* cb = (eos_vm_oc_control_block*)((*memory_ptr_ptr)-memory::cb_offset);
+         std::vector<std::byte>& copy = reinterpret_cast<std::list<std::vector<std::byte>>*>(cb->bounce_buffers)->emplace_back(length > 0 ? length*sizeof(T) : 1);
          T* copy_ptr = (T*)&copy[0];
          memcpy( (void*)copy.data(), (void*)base, length * sizeof(T) );
          return Then(static_cast<array_ptr<T>>(copy_ptr), length, rest..., translated...);
@@ -477,7 +433,8 @@ struct intrinsic_invoker_impl<is_injected, Ret, std::tuple<array_ptr<T>, uint32_
       const auto length = size_t((U32)size);
       T* base = array_ptr_impl<T>((U32)ptr, length);
       if ( reinterpret_cast<uintptr_t>(base) % alignof(T) != 0 ) {
-         std::vector<std::byte>& copy = reinterpret_cast<std::list<std::vector<std::byte>>*>(eos_vm_oc_get_bounce_buffer_list())->emplace_back(length > 0 ? length*sizeof(T) : 1);
+         eos_vm_oc_control_block* cb = (eos_vm_oc_control_block*)((*memory_ptr_ptr)-memory::cb_offset);
+         std::vector<std::byte>& copy = reinterpret_cast<std::list<std::vector<std::byte>>*>(cb->bounce_buffers)->emplace_back(length > 0 ? length*sizeof(T) : 1);
          T* copy_ptr = (T*)&copy[0];
          memcpy( (void*)copy.data(), (void*)base, length * sizeof(T) );
          Ret ret = Then(static_cast<array_ptr<T>>(copy_ptr), length, rest..., translated...);
@@ -700,21 +657,16 @@ struct intrinsic_function_invoker {
 
    template<MethodSig Method>
    static Ret wrapper(Params... params) {
-      constexpr int cb_ctx_ptr_offset = OFFSET_OF_CONTROL_BLOCK_MEMBER(ctx);
-      apply_context* ctx;
-      asm("mov %%gs:%c[applyContextOffset], %[cPtr]\n"
-         : [cPtr] "=r" (ctx)
-         : [applyContextOffset] "i" (cb_ctx_ptr_offset)
-         );
-      return (class_from_wasm<Cls>::value(*ctx).*Method)(params...);
+      eos_vm_oc_control_block* cb = (eos_vm_oc_control_block*)((*memory_ptr_ptr)-memory::cb_offset);
+      return (class_from_wasm<Cls>::value(*cb->ctx).*Method)(params...);
    }
 
    template<MethodSig Method>
    static const WasmSig *fn() {
       auto fn = impl::template fn<wrapper<Method>>();
-      static_assert(std::is_same<WasmSig *, decltype(fn)>::value,
-                    "Intrinsic function signature does not match the ABI");
-      return fn;
+//      static_assert(std::is_same<WasmSig *, decltype(fn)>::value,
+//                    "Intrinsic function signature does not match the ABI");
+      return (WasmSig*)fn;
    }
 };
 
@@ -724,22 +676,17 @@ struct intrinsic_function_invoker<is_injected, WasmSig, void, MethodSig, Cls, Pa
 
    template<MethodSig Method>
    static void_type wrapper(Params... params) {
-      constexpr int cb_ctx_ptr_offset = OFFSET_OF_CONTROL_BLOCK_MEMBER(ctx);
-      apply_context* ctx;
-      asm("mov %%gs:%c[applyContextOffset], %[cPtr]\n"
-         : [cPtr] "=r" (ctx)
-         : [applyContextOffset] "i" (cb_ctx_ptr_offset)
-         );
-      (class_from_wasm<Cls>::value(*ctx).*Method)(params...);
+      eos_vm_oc_control_block* cb = (eos_vm_oc_control_block*)((*memory_ptr_ptr)-memory::cb_offset);
+      (class_from_wasm<Cls>::value(*cb->ctx).*Method)(params...);
       return void_type();
    }
 
    template<MethodSig Method>
    static const WasmSig *fn() {
       auto fn = impl::template fn<wrapper<Method>>();
-      static_assert(std::is_same<WasmSig *, decltype(fn)>::value,
-                    "Intrinsic function signature does not match the ABI");
-      return fn;
+//      static_assert(std::is_same<WasmSig *, decltype(fn)>::value,
+//                    "Intrinsic function signature does not match the ABI");
+      return (WasmSig*)fn;
    }
 };
 

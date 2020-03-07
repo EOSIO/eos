@@ -30,17 +30,13 @@ namespace eosio { namespace chain { namespace eosvmoc {
 
 static constexpr auto signal_sentinel = 0x4D56534F45534559ul;
 
+thread_local char** memory_ptr_ptr;
+
 static void(*chained_handler)(int,siginfo_t*,void*);
 static void segv_handler(int sig, siginfo_t* info, void* ctx)  {
    control_block* cb_in_main_segment;
 
-   //a 0 GS value is an indicator an executor hasn't been active on this thread recently
-   uint64_t current_gs;
-   syscall(SYS_arch_prctl, ARCH_GET_GS, &current_gs);
-   if(current_gs == 0)
-      goto notus;
-
-   cb_in_main_segment = reinterpret_cast<control_block*>(current_gs - memory::cb_offset);
+   cb_in_main_segment = reinterpret_cast<control_block*>(*memory_ptr_ptr - memory::cb_offset);
 
    //as a double check that the control block pointer is what we expect, look for the magic
    if(cb_in_main_segment->magic != signal_sentinel)
@@ -70,6 +66,27 @@ notus:
    __builtin_unreachable();
 }
 
+int32_t eos_vm_oc_grow_memory(char** p, int32_t grow, int32_t max) {
+   eos_vm_oc_control_block* cb = (eos_vm_oc_control_block*)((*memory_ptr_ptr)-memory::cb_offset);
+   uint64_t previous_page_count = cb->current_linear_memory_pages;
+   int32_t grow_amount = grow;
+   uint64_t max_pages = max;
+   if(grow == 0)
+      return (int32_t)cb->current_linear_memory_pages;
+   idump((previous_page_count)(grow_amount)(max_pages));
+   if(previous_page_count + grow_amount > max_pages)
+      return (int32_t)-1;
+
+   *memory_ptr_ptr = *memory_ptr_ptr + grow_amount * EOS_VM_OC_MEMORY_STRIDE;
+   cb->current_linear_memory_pages += grow_amount;
+   cb->first_invalid_memory_address += grow_amount*64*1024;
+
+   if(grow_amount > 0)
+      memset(cb->full_linear_memory_start + previous_page_count*64u*1024u, 0, grow_amount*64u*1024u);
+
+   return (int32_t)previous_page_count;
+}
+
 static intrinsic grow_memory_intrinsic EOSVMOC_INTRINSIC_INIT_PRIORITY("eosvmoc_internal.grow_memory", IR::FunctionType::get(IR::ResultType::i32,{IR::ValueType::i32,IR::ValueType::i32}),
   (void*)&eos_vm_oc_grow_memory,
   boost::hana::index_if(intrinsic_table, ::boost::hana::equal.to(BOOST_HANA_STRING("eosvmoc_internal.grow_memory"))).value()
@@ -77,7 +94,8 @@ static intrinsic grow_memory_intrinsic EOSVMOC_INTRINSIC_INIT_PRIORITY("eosvmoc_
 
 //This is effectively overriding the eosio_exit intrinsic in wasm_interface
 static void eosio_exit(int32_t code) {
-   siglongjmp(*eos_vm_oc_get_jmp_buf(), EOSVMOC_EXIT_CLEAN_EXIT);
+   eos_vm_oc_control_block* cb = (eos_vm_oc_control_block*)((*memory_ptr_ptr)-memory::cb_offset);
+   siglongjmp(*cb->jmp, EOSVMOC_EXIT_CLEAN_EXIT);
    __builtin_unreachable();
 }
 static intrinsic eosio_exit_intrinsic("env.eosio_exit", IR::FunctionType::get(IR::ResultType::none,{IR::ValueType::i32}), (void*)&eosio_exit,
@@ -85,8 +103,9 @@ static intrinsic eosio_exit_intrinsic("env.eosio_exit", IR::FunctionType::get(IR
 );
 
 static void throw_internal_exception(const char* const s) {
-   *reinterpret_cast<std::exception_ptr*>(eos_vm_oc_get_exception_ptr()) = std::make_exception_ptr(wasm_execution_error(FC_LOG_MESSAGE(error, s)));
-   siglongjmp(*eos_vm_oc_get_jmp_buf(), EOSVMOC_EXIT_EXCEPTION);
+   eos_vm_oc_control_block* cb = (eos_vm_oc_control_block*)((*memory_ptr_ptr)-memory::cb_offset);
+   *reinterpret_cast<std::exception_ptr*>(cb->eptr) = std::make_exception_ptr(wasm_execution_error(FC_LOG_MESSAGE(error, s)));
+   siglongjmp(*cb->jmp, EOSVMOC_EXIT_EXCEPTION);
    __builtin_unreachable();
 }
 
@@ -135,10 +154,6 @@ executor::executor(const code_cache_base& cc) {
    //if we're the first executor created, go setup the signal handling. For now we'll just leave this attached forever
    static executor_signal_init the_executor_signal_init;
 
-   uint64_t current_gs;
-   if(arch_prctl(ARCH_GET_GS, &current_gs) || current_gs)
-      wlog("x86_64 GS register is not set as expected. EOS VM OC may not run correctly on this platform");
-
    struct stat s;
    FC_ASSERT(fstat(cc.fd(), &s) == 0, "executor failed to get code cache size");
    code_mapping = (uint8_t*)mmap(nullptr, s.st_size, PROT_EXEC|PROT_READ, MAP_SHARED, cc.fd(), 0);
@@ -153,13 +168,16 @@ void executor::execute(const code_descriptor& code, const memory& mem, apply_con
       mapping_is_executable = true;
    }
 
+   char* loc;
+   memory_ptr_ptr = &loc;
+
    //prepare initial memory, mutable globals, and table data
    if(code.starting_memory_pages > 0 ) {
-      arch_prctl(ARCH_SET_GS, (unsigned long*)(mem.zero_page_memory_base()+code.starting_memory_pages*memory::stride));
+     loc = (char*)mem.zero_page_memory_base()+code.starting_memory_pages*memory::stride;
       memset(mem.full_page_memory_base(), 0, 64u*1024u*code.starting_memory_pages);
    }
    else
-      arch_prctl(ARCH_SET_GS, (unsigned long*)mem.zero_page_memory_base());
+      loc = (char*)mem.zero_page_memory_base();
    memcpy(mem.full_page_memory_base() - code.initdata_prologue_size, code_mapping + code.initdata_begin, code.initdata_size);
 
    control_block* const cb = mem.get_control_block();
@@ -193,22 +211,22 @@ void executor::execute(const code_descriptor& code, const memory& mem, apply_con
       tt.set_expiration_callback(nullptr, nullptr);
    });
 
-   void(*apply_func)(uint64_t, uint64_t, uint64_t) = (void(*)(uint64_t, uint64_t, uint64_t))(cb->running_code_base + code.apply_offset);
+   void(*apply_func)(char**, uint64_t, uint64_t, uint64_t) = (void(*)(char**, uint64_t, uint64_t, uint64_t))(cb->running_code_base + code.apply_offset);
 
    switch(sigsetjmp(*cb->jmp, 0)) {
       case 0:
          code.start.visit(overloaded {
             [&](const no_offset&) {},
             [&](const intrinsic_ordinal& i) {
-               void(*start_func)() = (void(*)())(*(uintptr_t*)((uintptr_t)mem.zero_page_memory_base() - memory::first_intrinsic_offset - i.ordinal*8));
-               start_func();
+               void(*start_func)(char**) = (void(*)(char**))(*(uintptr_t*)((uintptr_t)mem.zero_page_memory_base() - memory::first_intrinsic_offset - i.ordinal*8));
+               start_func(&loc);
             },
             [&](const code_offset& offs) {
-               void(*start_func)() = (void(*)())(cb->running_code_base + offs.offset);
-               start_func();
+               void(*start_func)(char**) = (void(*)(char**))(cb->running_code_base + offs.offset);
+               start_func(&loc);
             }
          });
-         apply_func(context.get_receiver().to_uint64_t(), context.get_action().account.to_uint64_t(), context.get_action().name.to_uint64_t());
+         apply_func(&loc, context.get_receiver().to_uint64_t(), context.get_action().account.to_uint64_t(), context.get_action().name.to_uint64_t());
          break;
       //case 1: clean eosio_exit
       case EOSVMOC_EXIT_CHECKTIME_FAIL:
