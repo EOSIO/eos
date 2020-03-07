@@ -49,7 +49,7 @@ namespace {
 
       const block_trace_v0 bt2 {
          "0000000000000000000000000000000000000000000000000000000000000002"_h,
-         1,
+         5,
          "0000000000000000000000000000000000000000000000000000000000000005"_h,
          chain::block_timestamp_type(2),
          "bp.two"_n,
@@ -165,9 +165,8 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       const auto offset = store_provider::append_store( bt, vs );
       BOOST_REQUIRE_EQUAL(offset,0);
 
-      const auto expected_offset = vs._pos;
       const auto offset2 = store_provider::append_store( bt2, vs );
-      BOOST_REQUIRE_EQUAL(offset2, expected_offset);
+      BOOST_REQUIRE(offset < offset2);
 
       vs._pos = offset;
       const auto bt_returned = store_provider::extract_store<block_trace_v0>( vs );
@@ -182,16 +181,19 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
    {
       vslice vs;
       const auto offset = store_provider::append_store( be1, vs );
-      BOOST_REQUIRE_EQUAL(offset, 0);
       auto next_offset = vs._pos;
+      BOOST_REQUIRE(offset < next_offset);
       const auto offset2 = store_provider::append_store( le1, vs );
-      BOOST_REQUIRE_EQUAL(offset2, next_offset);
+      BOOST_REQUIRE(next_offset <= offset2);
+      BOOST_REQUIRE(offset2 < vs._pos);
       next_offset = vs._pos;
       const auto offset3 = store_provider::append_store( be2, vs );
-      BOOST_REQUIRE_EQUAL(offset3, next_offset);
+      BOOST_REQUIRE(next_offset <= offset3);
+      BOOST_REQUIRE(offset3 < vs._pos);
       next_offset = vs._pos;
       const auto offset4 = store_provider::append_store( le2, vs );
-      BOOST_REQUIRE_EQUAL(offset4, next_offset);
+      BOOST_REQUIRE(next_offset <= offset4);
+      BOOST_REQUIRE(offset4 < vs._pos);
 
       vs._pos = offset;
       const auto be_returned1 = store_provider::extract_store<metadata_log_entry>( vs );
@@ -378,11 +380,10 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       sp.append(bt);
       sp.append_lib(54);
       sp.append(bt2);
-      uint64_t internal_offset = 0;
-      uint64_t bt_bn = bt.number;
+      const uint64_t bt_bn = bt.number;
       bool found_block = false;
       bool lib_seen = false;
-      uint64_t offset = sp.scan_metadata_log_from(9, 0, [&](const metadata_log_entry& e) -> bool {
+      const uint64_t first_offset = sp.scan_metadata_log_from(9, 0, [&](const metadata_log_entry& e) -> bool {
          if (e.contains<block_entry_v0>()) {
             const auto& block = e.get<block_entry_v0>();
             if (block.number == bt_bn) {
@@ -400,6 +401,39 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       });
       BOOST_REQUIRE(found_block);
       BOOST_REQUIRE(lib_seen);
+
+      uint64_t block_offset = 0;
+      std::vector<uint32_t> block_nums;
+      std::vector<uint64_t> block_offsets;
+      lib_seen = false;
+      uint64_t offset = sp.scan_metadata_log_from(9, 0, [&](const metadata_log_entry& e) -> bool {
+         if (e.contains<block_entry_v0>()) {
+            const auto& block = e.get<block_entry_v0>();
+            block_nums.push_back(block.number);
+            block_offsets.push_back(block.offset);
+         } else if (e.contains<lib_entry_v0>()) {
+            auto best_lib = e.get<lib_entry_v0>();
+            BOOST_REQUIRE(!lib_seen);
+            BOOST_REQUIRE_EQUAL(best_lib.lib, 54);
+            lib_seen = true;
+         }
+         return true;
+      });
+      BOOST_REQUIRE(lib_seen);
+      BOOST_REQUIRE_EQUAL(block_nums.size(), 2);
+      BOOST_REQUIRE_EQUAL(block_nums[0], bt.number);
+      BOOST_REQUIRE_EQUAL(block_nums[1], bt2.number);
+      BOOST_REQUIRE_EQUAL(block_offsets.size(), 2);
+      BOOST_REQUIRE(block_offsets[0] < block_offsets[1]);
+      BOOST_REQUIRE(first_offset < offset);
+
+      std::optional<data_log_entry> bt_data = sp.read_data_log(block_nums[0], block_offsets[0]);
+      BOOST_REQUIRE(bt_data);
+      BOOST_REQUIRE_EQUAL(*bt_data, bt);
+
+      bt_data = sp.read_data_log(block_nums[1], block_offsets[1]);
+      BOOST_REQUIRE(bt_data);
+      BOOST_REQUIRE_EQUAL(*bt_data, bt2);
    }
 
 BOOST_AUTO_TEST_SUITE_END()
