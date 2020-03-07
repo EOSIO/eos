@@ -83,7 +83,6 @@ namespace eosio::trace_api_plugin {
    bool operator==(const transaction_trace_v0& lhs,  const transaction_trace_v0& rhs) {
       return
          lhs.id == rhs.id &&
-         lhs.status == rhs.status &&
          lhs.actions == rhs.actions;
    }
 

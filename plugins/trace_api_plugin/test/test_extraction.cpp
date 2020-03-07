@@ -1,6 +1,8 @@
 #define BOOST_TEST_MODULE trace_data_extraction
 #include <boost/test/included/unit_test.hpp>
 
+#include <eosio/chain/types.hpp>
+#include <eosio/chain/contract_types.hpp>
 #include <eosio/chain/trace.hpp>
 #include <eosio/chain/transaction.hpp>
 #include <eosio/chain/block.hpp>
@@ -50,6 +52,18 @@ namespace {
       return result;
    }
 
+   chain::bytes make_onerror_data( const chain::onerror& one ) {
+      fc::datastream<size_t> ps;
+      fc::raw::pack(ps, one);
+      chain::bytes result(ps.tellp());
+
+      if( result.size() ) {
+         fc::datastream<char*>  ds( result.data(), size_t(result.size()) );
+         fc::raw::pack(ds, one);
+      }
+      return result;
+   }
+
    auto get_private_key( name keyname, std::string role = "owner" ) {
       auto secret = fc::sha256::hash( keyname.to_string() + role );
       return chain::private_key_type::regenerate<fc::ecc::private_key_shim>( secret );
@@ -62,6 +76,11 @@ namespace {
    auto make_transfer_action( chain::name from, chain::name to, chain::asset quantity, std::string memo ) {
       return chain::action( std::vector<chain::permission_level> {{from, chain::config::active_name}},
                             "eosio.token"_n, "transfer"_n, make_transfer_data( from, to, quantity, std::move(memo) ) );
+   }
+
+   auto make_onerror_action( chain::name creator, chain::uint128_t sender_id ) {
+      return chain::action( std::vector<chain::permission_level>{{creator, chain::config::active_name}},
+                                chain::onerror{ sender_id, "test ", 4 });
    }
 
    auto make_packed_trx( std::vector<chain::action> actions ) {
@@ -239,7 +258,6 @@ BOOST_AUTO_TEST_SUITE(block_extraction)
          {
             {
                ptrx1.id(),
-               chain::transaction_receipt_header::executed,
                {
                   {
                      0,
@@ -309,7 +327,6 @@ BOOST_AUTO_TEST_SUITE(block_extraction)
          {
             {
                ptrx1.id(),
-               chain::transaction_receipt_header::executed,
                {
                   {
                      0,
@@ -321,7 +338,6 @@ BOOST_AUTO_TEST_SUITE(block_extraction)
             },
             {
                ptrx2.id(),
-               chain::transaction_receipt_header::executed,
                {
                   {
                      1,
@@ -333,13 +349,61 @@ BOOST_AUTO_TEST_SUITE(block_extraction)
             },
             {
                ptrx3.id(),
-               chain::transaction_receipt_header::executed,
                {
                   {
                      2,
                      "fred"_n, "eosio.token"_n, "transfer"_n,
                      {{ "fred"_n, "active"_n }},
                      make_transfer_data( "fred"_n, "bob"_n, "0.0001 SYS"_t, "Memo!" )
+                  }
+               }
+            }
+         }
+      };
+
+      BOOST_REQUIRE_EQUAL(max_lib, 0);
+      BOOST_REQUIRE(block_entry_for_height.count(1) > 0);
+      BOOST_REQUIRE_EQUAL(block_entry_for_height.at(1), expected_entry);
+      BOOST_REQUIRE(data_log.size() >= expected_entry.offset);
+      BOOST_REQUIRE(data_log.at(expected_entry.offset).contains<block_trace_v0>());
+      BOOST_REQUIRE_EQUAL(data_log.at(expected_entry.offset).get<block_trace_v0>(), expected_trace);
+   }
+
+   BOOST_FIXTURE_TEST_CASE(onerror_transaction_block, extraction_test_fixture)
+   {
+      auto onerror_act = make_onerror_action( "alice"_n, 1 );
+      auto actt1 = make_action_trace( 0, onerror_act, "eosio.token"_n );
+      auto ptrx1 = make_packed_trx( { onerror_act } );
+
+      auto act2 = make_transfer_action( "bob"_n, "alice"_n, "0.0001 SYS"_t, "Memo!" );
+      auto actt2 = make_action_trace( 1, act2, "bob"_n );
+      auto transfer_trx = make_packed_trx( { act2 } );
+
+      auto onerror_trace = make_transaction_trace( ptrx1.id(), 1, 1, chain::transaction_receipt_header::executed,
+                              { actt1 } );
+      auto transfer_trace = make_transaction_trace( transfer_trx.id(), 1, 1, chain::transaction_receipt_header::soft_fail,
+                                                   { actt2 } );
+      onerror_trace->failed_dtrx_trace = transfer_trace;
+
+      signal_applied_transaction( onerror_trace, transfer_trx.get_signed_transaction() );
+
+      auto bsp1 = make_block_state( chain::block_id_type(), 1, 1, "bp.one"_n,
+            { chain::packed_transaction(transfer_trx) } );
+      signal_accepted_block( bsp1 );
+
+      const uint64_t expected_lib = 0;
+      const block_entry_v0 expected_entry { bsp1->id, 1, 0 };
+
+      const block_trace_v0 expected_trace { bsp1->id, 1, bsp1->prev(), chain::block_timestamp_type(1), "bp.one"_n,
+         {
+            {
+               transfer_trx.id(), // transfer_trx.id() because that is the trx id known to the user
+               {
+                  {
+                     0,
+                     "eosio.token"_n, "eosio"_n, "onerror"_n,
+                     {{ "alice"_n, "active"_n }},
+                     make_onerror_data( chain::onerror{ 1, "test ", 4 } )
                   }
                }
             }

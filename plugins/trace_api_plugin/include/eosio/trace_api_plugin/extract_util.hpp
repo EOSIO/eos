@@ -25,13 +25,16 @@ inline action_trace_v0 to_action_trace_v0( const chain::action_trace& at ) {
 /// @return transaction_trace_v0 with populated action_trace_v0
 inline transaction_trace_v0 to_transaction_trace_v0( const chain::transaction_trace_ptr& t ) {
    transaction_trace_v0 r;
-   r.id = t->id;
-   if( t->receipt ) { // if no receipt leave as default hard_fail
-      r.status = t->receipt->status;
+   if( !t->failed_dtrx_trace ) {
+      r.id = t->id;
+   } else {
+      r.id = t->failed_dtrx_trace->id; // report the failed trx id since that is the id known to user
    }
    r.actions.reserve( t->action_traces.size());
    for( const auto& at : t->action_traces ) {
-      r.actions.emplace_back( to_action_trace_v0( at ));
+      if( !at.context_free ) { // not including CFA at this time
+         r.actions.emplace_back( to_action_trace_v0( at ));
+      }
    }
    return r;
 }
