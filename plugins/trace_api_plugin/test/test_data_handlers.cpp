@@ -18,7 +18,7 @@ BOOST_AUTO_TEST_SUITE(abi_data_handler_tests)
       };
       abi_data_handler handler;
 
-      auto expected = fc::variant("");
+      auto expected = fc::variant();
       auto actual = handler.process_data(action, fc::time_point::maximum());
 
       BOOST_TEST(to_kv(expected) == to_kv(actual), boost::test_tools::per_element());
@@ -31,7 +31,7 @@ BOOST_AUTO_TEST_SUITE(abi_data_handler_tests)
       };
       abi_data_handler handler;
 
-      auto expected = fc::variant("00010203");
+      auto expected = fc::variant();
       auto actual = handler.process_data(action, fc::time_point::maximum());
 
       BOOST_TEST(to_kv(expected) == to_kv(actual), boost::test_tools::per_element());
@@ -88,7 +88,7 @@ BOOST_AUTO_TEST_SUITE(abi_data_handler_tests)
       abi_data_handler handler;
       handler.add_abi("alice"_n, abi);
 
-      auto expected = fc::variant("00010203");
+      auto expected = fc::variant();
 
       auto actual = handler.process_data(action, fc::time_point::maximum());
 
@@ -116,7 +116,7 @@ BOOST_AUTO_TEST_SUITE(abi_data_handler_tests)
       abi_data_handler handler([&log_called](const exception_with_context& ){log_called = true;});
       handler.add_abi("alice"_n, abi);
 
-      auto expected = fc::variant("000102");
+      auto expected = fc::variant();
 
       auto actual = handler.process_data(action, fc::time_point::maximum());
 
