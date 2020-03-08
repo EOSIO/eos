@@ -6,22 +6,21 @@
 #include <eosio/trace_api_plugin/common.hpp>
 
 namespace eosio::trace_api_plugin {
-   using data_handler_function = std::function<fc::variant(const action_trace_v0&)>;
+   using data_handler_function = std::function<fc::variant(const action_trace_v0&, const yield_function&)>;
 
    namespace detail {
       class response_formatter {
       public:
-         static fc::variant process_block( const block_trace_v0& trace, bool irreversible, const data_handler_function& data_handler, const now_function& now, const fc::time_point& deadline );
+         static fc::variant process_block( const block_trace_v0& trace, bool irreversible, const data_handler_function& data_handler, const yield_function& yield );
       };
    }
 
    template<typename LogfileProvider, typename DataHandlerProvider>
    class request_handler {
    public:
-      request_handler(LogfileProvider&& logfile_provider, DataHandlerProvider&& data_handler_provider, const now_function& now)
+      request_handler(LogfileProvider&& logfile_provider, DataHandlerProvider&& data_handler_provider)
       :logfile_provider(std::move(logfile_provider))
       ,data_handler_provider(std::move(data_handler_provider))
-      ,now(now)
       {
       }
 
@@ -30,32 +29,30 @@ namespace eosio::trace_api_plugin {
        * (eg JSON)
        *
        * @param block_height - the height of the block whose trace is requested
-       * @param deadline - deadline for the processing of the request
+       * @param yield - a yield function to allow cooperation during long running tasks
        * @return a properly formatted variant representing the trace for the given block height if it exists, an
        * empty variant otherwise.
-       * @throws deadline_exceeded when the processing of the request cannot be completed by the provided time.
+       * @throws yield_exception if a call to `yield` throws.
        * @throws bad_data_exception when there are issues with the underlying data preventing processing.
        */
-      fc::variant get_block_trace( uint32_t block_height, const fc::time_point& deadline ) {
+      fc::variant get_block_trace( uint32_t block_height, const yield_function& yield = {}) {
          auto data = logfile_provider.get_block(block_height);
          if (!data) {
             return {};
          }
 
-         if (now() >= deadline) {
-            throw deadline_exceeded("Provided deadline exceeded while parsing metadata");
-         }
-         auto data_handler = [this, &deadline](const action_trace_v0& action) -> fc::variant {
-            return data_handler_provider.process_data(action, deadline);
+         call_if_set(yield);
+
+         auto data_handler = [this](const action_trace_v0& action, const yield_function& yield) -> fc::variant {
+            return data_handler_provider.process_data(action, yield);
          };
 
-         return detail::response_formatter::process_block(std::get<0>(*data), std::get<1>(*data), data_handler, now, deadline);
+         return detail::response_formatter::process_block(std::get<0>(*data), std::get<1>(*data), data_handler, yield);
       }
 
    private:
       LogfileProvider logfile_provider;
       DataHandlerProvider data_handler_provider;
-      now_function now;
    };
 
 

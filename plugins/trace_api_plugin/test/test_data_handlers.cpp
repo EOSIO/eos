@@ -19,7 +19,7 @@ BOOST_AUTO_TEST_SUITE(abi_data_handler_tests)
       abi_data_handler handler;
 
       auto expected = fc::variant();
-      auto actual = handler.process_data(action, fc::time_point::maximum());
+      auto actual = handler.process_data(action);
 
       BOOST_TEST(to_kv(expected) == to_kv(actual), boost::test_tools::per_element());
    }
@@ -32,7 +32,7 @@ BOOST_AUTO_TEST_SUITE(abi_data_handler_tests)
       abi_data_handler handler;
 
       auto expected = fc::variant();
-      auto actual = handler.process_data(action, fc::time_point::maximum());
+      auto actual = handler.process_data(action);
 
       BOOST_TEST(to_kv(expected) == to_kv(actual), boost::test_tools::per_element());
    }
@@ -63,7 +63,7 @@ BOOST_AUTO_TEST_SUITE(abi_data_handler_tests)
          ("c", 2)
          ("d", 3);
 
-      auto actual = handler.process_data(action, fc::time_point::maximum());
+      auto actual = handler.process_data(action);
 
       BOOST_TEST(to_kv(expected) == to_kv(actual), boost::test_tools::per_element());
    }
@@ -90,7 +90,7 @@ BOOST_AUTO_TEST_SUITE(abi_data_handler_tests)
 
       auto expected = fc::variant();
 
-      auto actual = handler.process_data(action, fc::time_point::maximum());
+      auto actual = handler.process_data(action);
 
       BOOST_TEST(to_kv(expected) == to_kv(actual), boost::test_tools::per_element());
    }
@@ -118,7 +118,7 @@ BOOST_AUTO_TEST_SUITE(abi_data_handler_tests)
 
       auto expected = fc::variant();
 
-      auto actual = handler.process_data(action, fc::time_point::maximum());
+      auto actual = handler.process_data(action);
 
       BOOST_TEST(to_kv(expected) == to_kv(actual), boost::test_tools::per_element());
       BOOST_TEST(log_called);
@@ -135,7 +135,7 @@ BOOST_AUTO_TEST_SUITE(base64_data_handler_tests)
       base64_data_handler handler;
 
       auto expected = fc::variant("");
-      auto actual = handler.process_data(action, fc::time_point::maximum());
+      auto actual = handler.process_data(action);
 
       BOOST_TEST(to_kv(expected) == to_kv(actual), boost::test_tools::per_element());
    }
@@ -148,7 +148,7 @@ BOOST_AUTO_TEST_SUITE(base64_data_handler_tests)
       base64_data_handler handler;
 
       auto expected = fc::variant("AAEC");
-      auto actual = handler.process_data(action, fc::time_point::maximum());
+      auto actual = handler.process_data(action);
 
       BOOST_TEST(to_kv(expected) == to_kv(actual), boost::test_tools::per_element());
    }
@@ -161,7 +161,7 @@ BOOST_AUTO_TEST_SUITE(base64_data_handler_tests)
       base64_data_handler handler;
 
       auto expected = fc::variant("AAE=");
-      auto actual = handler.process_data(action, fc::time_point::maximum());
+      auto actual = handler.process_data(action);
 
       BOOST_TEST(to_kv(expected) == to_kv(actual), boost::test_tools::per_element());
    }
@@ -174,7 +174,7 @@ BOOST_AUTO_TEST_SUITE(base64_data_handler_tests)
       base64_data_handler handler;
 
       auto expected = fc::variant("AA==");
-      auto actual = handler.process_data(action, fc::time_point::maximum());
+      auto actual = handler.process_data(action);
 
       BOOST_TEST(to_kv(expected) == to_kv(actual), boost::test_tools::per_element());
    }
@@ -187,7 +187,7 @@ BOOST_AUTO_TEST_SUITE(base64_data_handler_tests)
       base64_data_handler handler;
 
       auto expected = fc::variant("/+A=");
-      auto actual = handler.process_data(action, fc::time_point::maximum());
+      auto actual = handler.process_data(action);
 
       BOOST_TEST(to_kv(expected) == to_kv(actual), boost::test_tools::per_element());
    }

@@ -4,18 +4,30 @@
 
 namespace eosio::trace_api_plugin {
 
-   using now_function = std::function<fc::time_point()>;
+   /**
+    * A function used to separate cooperative or external concerns from long running tasks
+    * calling code should expect that this can throw yield_exception and gracefully unwind if it does
+    * @throws yield_exception if the provided yield needs to terminate the long running process for any reason
+    */
+   using yield_function = std::function<void()>;
+
+   template<typename F, typename ...Args>
+   void call_if_set(F&& f, Args&&  ...args ) {
+      if (static_cast<bool>(f))
+         std::forward<F>(f)(std::forward<Args>(args)...);
+   }
 
    /**
     * Exceptions
     */
-   class deadline_exceeded : public std::runtime_error {
-   public:
-      explicit deadline_exceeded(const char* what_arg)
+   class yield_exception : public std::runtime_error {
+      public:
+      explicit yield_exception(const char* what_arg)
       :std::runtime_error(what_arg)
       {}
-      explicit deadline_exceeded(const std::string& what_arg)
-            :std::runtime_error(what_arg)
+
+      explicit yield_exception(const std::string& what_arg)
+      :std::runtime_error(what_arg)
       {}
    };
 
