@@ -28,8 +28,8 @@ struct response_test_fixture {
        *         optional containing a 2-tuple of the block_trace and a flag indicating irreversibility
        * @throws bad_data_exception : if the data is corrupt in some way
        */
-      get_block_t get_block(uint32_t height) {
-         return fixture.mock_get_block(height);
+      get_block_t get_block(uint32_t height, const yield_function& yield= {}) {
+         return fixture.mock_get_block(height, yield);
       }
       response_test_fixture& fixture;
    };
@@ -66,7 +66,7 @@ struct response_test_fixture {
    }
 
    // fixture data and methods
-   std::function<get_block_t(uint32_t)> mock_get_block;
+   std::function<get_block_t(uint32_t, const yield_function&)> mock_get_block;
    std::function<fc::variant(const action_trace_v0&, const yield_function&)> mock_data_handler = default_mock_data_handler;
 
    response_impl_type response_impl;
@@ -95,7 +95,7 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
          ("transactions", fc::variants() )
       ;
 
-      mock_get_block = [&block_trace]( uint32_t height ) -> get_block_t {
+      mock_get_block = [&block_trace]( uint32_t height, const yield_function& ) -> get_block_t {
          BOOST_TEST(height == 1);
          return std::make_tuple(block_trace, false);
       };
@@ -155,7 +155,7 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
          }))
       ;
 
-      mock_get_block = [&block_trace]( uint32_t height ) -> get_block_t {
+      mock_get_block = [&block_trace]( uint32_t height, const yield_function& ) -> get_block_t {
          BOOST_TEST(height == 1);
          return std::make_tuple(block_trace, false);
       };
@@ -213,7 +213,7 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
          }))
       ;
 
-      mock_get_block = [&block_trace]( uint32_t height ) -> get_block_t {
+      mock_get_block = [&block_trace]( uint32_t height, const yield_function& ) -> get_block_t {
          BOOST_TEST(height == 1);
          return std::make_tuple(block_trace, false);
       };
@@ -249,7 +249,7 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
          ("transactions", fc::variants() )
       ;
 
-      mock_get_block = [&block_trace]( uint32_t height ) -> get_block_t {
+      mock_get_block = [&block_trace]( uint32_t height, const yield_function& ) -> get_block_t {
          BOOST_TEST(height == 1);
          return std::make_tuple(block_trace, true);
       };
@@ -261,7 +261,7 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
 
    BOOST_FIXTURE_TEST_CASE(corrupt_block_data, response_test_fixture)
    {
-      mock_get_block = []( uint32_t height ) -> get_block_t {
+      mock_get_block = []( uint32_t height, const yield_function& ) -> get_block_t {
          BOOST_TEST(height == 1);
          throw bad_data_exception("mock exception");
       };
@@ -271,7 +271,7 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
 
    BOOST_FIXTURE_TEST_CASE(missing_block_data, response_test_fixture)
    {
-      mock_get_block = []( uint32_t height ) -> get_block_t {
+      mock_get_block = []( uint32_t height, const yield_function& ) -> get_block_t {
          BOOST_TEST(height == 1);
          return {};
       };
@@ -304,7 +304,7 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
          }
       };
 
-      mock_get_block = [&block_trace]( uint32_t height ) -> get_block_t {
+      mock_get_block = [&block_trace]( uint32_t height, const yield_function& ) -> get_block_t {
          BOOST_TEST(height == 1);
          return std::make_tuple(block_trace, false);
       };
@@ -315,6 +315,21 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
             throw yield_exception("mock");
          }
       };
+
+      BOOST_REQUIRE_THROW(get_block_trace( 1, yield ), yield_exception);
+   }
+
+   BOOST_FIXTURE_TEST_CASE(yield_throws_from_get_block, response_test_fixture)
+   {
+      // no other yield calls will throw
+      yield_function yield = [&]() {
+      };
+
+      // simulate a yield throw inside get block
+      mock_get_block = []( uint32_t height, const yield_function& yield) -> get_block_t {
+         throw yield_exception("mock exception");
+      };
+
 
       BOOST_REQUIRE_THROW(get_block_trace( 1, yield ), yield_exception);
    }
