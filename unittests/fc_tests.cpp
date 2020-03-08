@@ -2,6 +2,7 @@
 #include <fc/log/logger_config.hpp>
 #include <fc/bitutil.hpp>
 #include <fc/variant.hpp>
+#include <fc/io/json.hpp>
 #include <eosio/chain/block.hpp>
 #include <eosio/chain/action.hpp>
 
@@ -70,28 +71,104 @@ BOOST_AUTO_TEST_SUITE(fc_tests)
 
 BOOST_AUTO_TEST_CASE(variant_format_string_limited)
 {
-   const string format = "${a} ${b} ${c}";
    {
+      const string format = "${a} ${b} ${c}";
       fc::mutable_variant_object mu;
       mu( "a", string( 1024, 'a' ) );
       mu( "b", string( 1024, 'b' ) );
       mu( "c", string( 1024, 'c' ) );
-      string result = fc::format_string( format, mu, true );
-      BOOST_CHECK_EQUAL( result, string( 256, 'a' ) + "... " + string( 256, 'b' ) + "... " + string( 256, 'c' ) + "..." );
+      const string result = fc::format_string( format, mu, true );
+      const auto arg_limit_size = (1024 - format.size()) / mu.size();
+      BOOST_CHECK_EQUAL( result, string(arg_limit_size, 'a' ) + "... " + string(arg_limit_size, 'b' ) + "... " + string(arg_limit_size, 'c' ) + "..." );
+      BOOST_CHECK_LT(result.size(), 1024 + 3 * mu.size());
    }
    {
+      const string format = "${a} ${b} ${c} ${d} ${e}";
       fc::mutable_variant_object mu;
       signed_block a;
+      for(size_t idx=0; idx<10; ++idx) {
+         a.transactions.push_back(transaction_receipt());
+      }
       fc::blob b;
       for( int i = 0; i < 1024; ++i)
          b.data.push_back('b');
+      fc::variant b_vairant;
+      to_variant(b, b_vairant);
       fc::variants c;
       c.push_back(variant(a));
       mu( "a", a );
       mu( "b", b );
       mu( "c", c );
-      string result = fc::format_string( format, mu, true );
-      BOOST_CHECK_EQUAL( result, "${a} ${b} ${c}");
+      mu( "d", string( 1024, 'd' ) );
+      mu( "e", string( 1024, 'e' ) );
+      const string result = fc::format_string( format, mu, true );
+      const auto arg_limit_size = (1024 - format.size()) / mu.size();
+      string target_str = fc::json::to_string( a, fc::time_point::maximum()).substr(0, arg_limit_size) + "...} ";
+      target_str += b_vairant.as_string().substr(0, arg_limit_size) + "... ";
+      target_str += fc::json::to_string( c, fc::time_point::maximum()).substr(0, arg_limit_size) + "...} ";
+      target_str += string(arg_limit_size, 'd' ) + "... ";
+      target_str += string(arg_limit_size, 'e' ) + "...";
+      BOOST_CHECK_EQUAL( result, target_str);
+      BOOST_CHECK_LT(result.size(), 1024 + 3 * mu.size());
+   }
+   {
+      const string format_prefix(1024, 'a');
+      const string format = format_prefix + " ${a} ${b} ${c}";
+      fc::mutable_variant_object mu;
+      signed_block a;
+      for(size_t idx=0; idx<10; ++idx) {
+         a.transactions.push_back(transaction_receipt());
+      }
+      fc::blob b;
+      for( int i = 0; i < 1024; ++i)
+         b.data.push_back('b');
+      fc::variant b_vairant;
+      to_variant(b, b_vairant);
+      fc::variants c;
+      c.push_back(variant(a));
+      mu( "a", a );
+      mu( "b", b );
+      mu( "c", c );
+      const string result = fc::format_string( format, mu, true );
+      const string target_str = format_prefix + "...";
+      BOOST_CHECK_EQUAL( result, target_str);
+      BOOST_CHECK_LT(result.size(), 1024 + 3 * mu.size());
+   }
+   {
+
+      flat_set <permission_level> provided_permissions;
+      for (char ch = 'a'; ch < 'z'; ++ch) {
+         for (size_t idx = 1; idx < 10; ++idx) {
+            provided_permissions.insert(
+                  {name(std::string_view(string(idx, ch))), name(std::string_view(string(idx, ch + 1)))});
+         }
+      }
+      flat_set <public_key_type> provided_keys;
+      std::string digest = "1234567";
+      for (auto &permission : provided_permissions) {
+         digest += "1";
+         const std::string key_name_str = permission.actor.to_string() + permission.permission.to_string();
+         auto sig_digest = digest_type::hash(std::make_pair("1234", "abcd"));
+         const fc::crypto::signature sig = private_key_type::regenerate<fc::ecc::private_key_shim>(
+               fc::sha256::hash(key_name_str + "active")).sign(sig_digest);
+         provided_keys.insert(public_key_type{sig, fc::sha256{digest}, true});
+      }
+      const string format = "transaction declares authority '${auth}', provided permissions ${provided_permissions}, provided keys ${provided_keys}";
+      fc::mutable_variant_object mu;
+      mu("auth", *provided_permissions.begin());
+      mu("provided_permissions", provided_permissions);
+      mu("provided_keys", provided_keys);
+      const auto arg_limit_size = (1024 - format.size()) / mu.size();
+      const string result = fc::format_string(format, mu, true);
+      string target_str = "transaction declares authority '" +
+                          fc::json::to_string(*provided_permissions.begin(), fc::time_point::maximum()).substr(0, arg_limit_size);
+      target_str += "', provided permissions " +
+                    fc::json::to_string(provided_permissions, fc::time_point::maximum()).substr(0, arg_limit_size);
+      target_str += "...}, provided keys " +
+                    fc::json::to_string(provided_keys, fc::time_point::maximum()).substr(0, arg_limit_size) + "...}";
+
+      BOOST_CHECK_EQUAL(result, target_str);
+      BOOST_CHECK_LT(result.size(), 1024 + 3 * mu.size());
    }
 }
 
@@ -290,58 +367,6 @@ BOOST_AUTO_TEST_CASE(reflector_init_test) {
       }
 
    } FC_LOG_AND_RETHROW()
-}
-
-BOOST_AUTO_TEST_CASE(pre_dev) {
-#include <eosio/chain/exceptions.hpp>
-
-      std::string org = "abc";
-      std::string rev = "abc";
-
-      flat_set<permission_level> provided_permissions;
-      for(char f='a'; f<='z'; ++f)
-         for(char s='a'; s<='z'; ++s)
-            for(char t='a'; t<='z'; ++t) {
-                  org[0] = f;
-                  org[1] = s;
-                  org[2] = t;
-                  rev[0] = t;
-                  rev[1] = s;
-                  rev[2] = f;
-                  provided_permissions.insert(permission_level{ name{std::string_view(org)}, name{std::string_view(rev)}});
-               }
-
-      std::cout << "-------------------------provided_permissions :" << provided_permissions.size() << "-------------\n";
-      flat_set<public_key_type> provided_keys;
-      std::string digest = "1234567";
-      for(auto& permission : provided_permissions) {
-         digest += "1";
-         const std::string key_name_str = permission.actor.to_string() + permission.permission.to_string();
-         auto sig_digest = digest_type::hash( std::make_pair("1234", "abcd" ));
-         const fc::crypto::signature sig = private_key_type::regenerate<fc::ecc::private_key_shim>(fc::sha256::hash(key_name_str+"active")).sign(sig_digest);
-         provided_keys.insert(public_key_type{sig, fc::sha256{digest}, true});
-      }
-      std::cout << "-------------------------provided_keys :" << provided_keys.size() << "-------------\n";
-      auto func = [](const chain::permission_level& permission,
-                     const flat_set<permission_level>& provided_permissions,
-                     const flat_set<public_key_type>& provided_keys)
-      {
-//         EOS_ASSERT( false, unsatisfied_authorization,
-         fc::log_message log(fc::log_context(), "transaction declares authority '${auth}', "
-                     "provided permissions ${provided_permissions}, provided keys ${provided_keys}, ",fc::mutable_variant_object()
-                     ("auth", permission)
-                     ("provided_permissions", provided_permissions)
-                     ("provided_keys", provided_keys)
-         );
-         std::cout << "\n--------------: " << log.get_limited_message() << std::endl;
-      };
-      try {
-         func(permission_level{name{"abc"}, name{"def"}}, provided_permissions, provided_keys);
-      } catch( std::exception& ex)
-      {
-         std::cout << "Exception: " << ex.what();
-      }
-
 }
 
 BOOST_AUTO_TEST_SUITE_END()
