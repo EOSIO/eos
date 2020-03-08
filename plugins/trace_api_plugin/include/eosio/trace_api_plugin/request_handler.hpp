@@ -36,7 +36,7 @@ namespace eosio::trace_api_plugin {
        * @throws bad_data_exception when there are issues with the underlying data preventing processing.
        */
       fc::variant get_block_trace( uint32_t block_height, const yield_function& yield = {}) {
-         auto data = logfile_provider.get_block(block_height);
+         auto data = logfile_provider.get_block(block_height, yield);
          if (!data) {
             return {};
          }
