@@ -34,10 +34,10 @@ namespace eosio {
        * Given an action trace, produce a variant that represents the `data` field in the trace
        *
        * @param action - trace of the action including metadata necessary for finding the ABI
-       * @param deadline - deadline for processing
+       * @param yield - a yield function to allow cooperation during long running tasks
        * @return variant representing the `data` field of the action interpreted by known ABIs OR an empty variant
        */
-      fc::variant process_data( const action_trace_v0& action, const fc::time_point& deadline);
+      fc::variant process_data( const action_trace_v0& action, const yield_function& yield = {});
 
       /**
        * Utility class that allows mulitple request_handlers to share the same abi_data_handler
@@ -48,8 +48,8 @@ namespace eosio {
          :handler(handler)
          {}
 
-         fc::variant process_data( const action_trace_v0& action, const fc::time_point& deadline) {
-            return handler->process_data(action, deadline);
+         fc::variant process_data( const action_trace_v0& action, const yield_function& yield = {}) {
+            return handler->process_data(action, yield);
          }
 
          std::shared_ptr<abi_data_handler> handler;
