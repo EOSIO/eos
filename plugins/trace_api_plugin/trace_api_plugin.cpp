@@ -2,13 +2,19 @@
 
 #include <eosio/trace_api_plugin/abi_data_handler.hpp>
 #include <eosio/trace_api_plugin/request_handler.hpp>
+#include <eosio/trace_api_plugin/chain_extraction.hpp>
 
 #include <eosio/trace_api_plugin/configuration_utils.hpp>
 
+#include <boost/signals2/connection.hpp>
+
 using namespace eosio::trace_api_plugin;
 using namespace eosio::trace_api_plugin::configuration_utils;
+using boost::signals2::scoped_connection;
 
 namespace {
+   appbase::abstract_plugin& plugin_reg = app().register_plugin<_trace_api_plugin>();
+
    const std::string logger_name("trace_api");
    fc::logger _log;
 
@@ -53,7 +59,7 @@ namespace {
       }
 
       void append_lib( uint32_t new_lib ) {
-         store->append_lib;
+         store->append_lib(new_lib);
       }
 
       get_block_t get_block(uint32_t height, const yield_function& yield) {
@@ -213,7 +219,7 @@ struct trace_api_rpc_plugin_impl : public std::enable_shared_from_this<trace_api
 
          try {
 
-            auto resp = fc::variant(); // connect to response formatter
+            auto resp = that->request_handler->get_block_trace(*block_number);
             if (resp.is_null()) {
                error_results results{404, "Block trace missing"};
                cb( 404, fc::variant( results ));
@@ -259,6 +265,32 @@ struct trace_api_plugin_impl {
             EOS_THROW(chain::plugin_config_exception, "trace-minimum-irreversible-history-us must be either a positive number or -1");
          }
       }
+
+      // TODO: better decide here
+      auto log_exceptions = [](std::exception_ptr e) {
+         try {
+            std::rethrow_exception(e);
+         } FC_LOG_AND_DROP();
+      };
+      extraction = std::make_shared<chain_extraction_t>(shared_store_provider<temporary::ephemeral_store>(common->store), log_exceptions);
+
+      auto& chain = app().find_plugin<chain_plugin>()->chain();
+
+      applied_transaction_connection.emplace(
+         chain.applied_transaction.connect([this](std::tuple<const chain::transaction_trace_ptr&, const chain::signed_transaction&> t) {
+            extraction->signal_applied_transaction(std::get<0>(t), std::get<1>(t));
+         }));
+
+      accepted_block_connection.emplace(
+         chain.accepted_block.connect([this](const chain::block_state_ptr& p) {
+            extraction->signal_accepted_block(p);
+         }));
+
+      irreversible_block_connection.emplace(
+         chain.irreversible_block.connect([this](const chain::block_state_ptr& p) {
+            extraction->signal_irreversible_block(p);
+         }));
+
    }
 
    void plugin_startup() {
@@ -269,6 +301,14 @@ struct trace_api_plugin_impl {
 
    std::shared_ptr<trace_api_common_impl> common;
    fc::microseconds minimum_irreversible_trace_history = fc::microseconds::maximum();
+
+   using chain_extraction_t = chain_extraction_impl_type<shared_store_provider<temporary::ephemeral_store>>;
+   std::shared_ptr<chain_extraction_t> extraction;
+
+   //TODO: switch to appbase channels? if so remove the header above
+   fc::optional<scoped_connection>                            applied_transaction_connection;
+   fc::optional<scoped_connection>                            accepted_block_connection;
+   fc::optional<scoped_connection>                            irreversible_block_connection;
 };
 
 _trace_api_plugin::_trace_api_plugin()
