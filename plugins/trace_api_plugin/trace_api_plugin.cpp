@@ -39,6 +39,55 @@ namespace {
          _log.log(fc::log_message( context, detail_string ));
       }
    }
+
+   using get_block_t = std::optional<std::tuple<block_trace_v0, bool>>;
+
+   template<typename Store>
+   struct shared_store_provider {
+      shared_store_provider(const std::shared_ptr<Store>& store)
+      :store(store)
+      {}
+
+      void append( const data_log_entry& entry ) {
+         store->append(entry);
+      }
+
+      void append_lib( uint32_t new_lib ) {
+         store->append_lib;
+      }
+
+      get_block_t get_block(uint32_t height, const yield_function& yield) {
+         return store->get_block(height, yield);
+      }
+
+      std::shared_ptr<Store> store;
+   };
+}
+
+namespace temporary {
+   using namespace eosio::trace_api_plugin;
+   struct ephemeral_store {
+
+      void append( const data_log_entry& entry ) {
+         const auto& block = entry.get<block_trace_v0>();
+         traces[block.number] = block;
+      }
+
+      void append_lib( uint32_t new_lib ) {
+         lib = std::max(lib, new_lib);
+      }
+
+      get_block_t get_block(uint32_t height, const yield_function&) {
+         if (traces.count(height))
+            return std::make_tuple(traces.at(height), height <= lib);
+         else
+            return {};
+      }
+
+
+      uint32_t lib = 0;
+      std::map<uint32_t, block_trace_v0> traces;
+   };
 }
 
 namespace eosio {
@@ -63,11 +112,15 @@ struct trace_api_common_impl {
          trace_dir = dir_option;
 
       slice_stride = options.at("trace-slice-stride").as<uint32_t>();
+
+      store = std::make_shared<temporary::ephemeral_store>();
    }
 
    // common configuration paramters
    boost::filesystem::path trace_dir;
    uint32_t slice_stride = 0;
+
+   std::shared_ptr<temporary::ephemeral_store> store;
 };
 
 /**
@@ -96,7 +149,7 @@ struct trace_api_rpc_plugin_impl {
    }
 
    void plugin_initialize(const appbase::variables_map& options) {
-      data_handler = std::make_shared<abi_data_handler>([](const exception_with_context& e){
+      std::shared_ptr<abi_data_handler> data_handler = std::make_shared<abi_data_handler>([](const exception_with_context& e){
          log_exception(e, fc::log_level::debug);
       });
 
@@ -119,6 +172,11 @@ struct trace_api_rpc_plugin_impl {
          EOS_ASSERT(options.count("trace-no-abis") != 0, chain::plugin_config_exception,
                     "Trace API is not configured with ABIs and trace-no-abis is not set");
       }
+
+      request_handler = std::make_shared<request_handler_t>(
+         shared_store_provider<temporary::ephemeral_store>(common->store),
+         abi_data_handler::shared_provider(data_handler)
+      );
    }
 
    void plugin_startup() {
@@ -128,7 +186,9 @@ struct trace_api_rpc_plugin_impl {
    }
 
    std::shared_ptr<trace_api_common_impl> common;
-   std::shared_ptr<abi_data_handler> data_handler;
+
+   using request_handler_t = request_handler<shared_store_provider<temporary::ephemeral_store>, abi_data_handler::shared_provider>;
+   std::shared_ptr<request_handler_t> request_handler;
 };
 
 struct trace_api_plugin_impl {
