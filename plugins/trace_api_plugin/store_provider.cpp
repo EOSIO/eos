@@ -102,11 +102,11 @@ namespace eosio::trace_api {
    void slice_provider::create_new_index_slice_file(fc::cfile& index_file) const {
       index_file.open(fc::cfile::create_or_update_rw_mode);
       index_header h { .version = _current_version };
-      store_provider::append_store(h, index_file);
+      append_store(h, index_file);
    }
 
    void slice_provider::validate_existing_index_slice_file(fc::cfile& index_file, bool append) const {
-      const auto header = store_provider::extract_store<index_header>(index_file);
+      const auto header = extract_store<index_header>(index_file);
       if (header.version != _current_version) {
          throw old_slice_version("Old slice file with version: " + std::to_string(header.version) +
                                  " is in directory, only supporting version: " + std::to_string(_current_version));

@@ -51,8 +51,39 @@ namespace eosio::trace_api {
       {}
    };
 
-   class store_provider;
+   /**
+    * append an entry to the store
+    *
+    * @param entry : the entry to append
+    * @param file : the file to append entry to
+    * @return the offset in the file where that entry is written
+    */
+   template<typename DataEntry, typename File>
+   static uint64_t append_store(const DataEntry &entry, File &file) {
+      auto data = fc::raw::pack(entry);
+      const auto offset = file.tellp();
+      file.write(data.data(), data.size());
+      file.flush();
+      file.sync();
+      return offset;
+   }
 
+   /**
+    * extract an entry from the data log
+    *
+    * @param file : the file to extract entry from
+    * @return the extracted data log
+    */
+   template<typename DataEntry, typename File>
+   static DataEntry extract_store( File& file ) {
+      DataEntry entry;
+      auto ds = file.create_datastream();
+      fc::raw::unpack(ds, entry);
+      return entry;
+   }
+
+
+   class store_provider;
 
    class slice_provider {
    public:
@@ -208,36 +239,6 @@ namespace eosio::trace_api {
          return extract_store<data_log_entry>(trace);
       }
 
-      /**
-       * append an entry to the store
-       *
-       * @param entry : the entry to append
-       * @param file : the file to append entry to
-       * @return the offset in the file where that entry is written
-       */
-      template<typename DataEntry, typename File>
-      static uint64_t append_store(const DataEntry &entry, File &file) {
-         auto data = fc::raw::pack(entry);
-         const auto offset = file.tellp();
-         file.write(data.data(), data.size());
-         file.flush();
-         file.sync();
-         return offset;
-      }
-
-      /**
-       * extract an entry from the data log
-       *
-       * @param file : the file to extract entry from
-       * @return the extracted data log
-       */
-      template<typename DataEntry, typename File>
-      static DataEntry extract_store( File& file ) {
-         DataEntry entry;
-         auto ds = file.create_datastream();
-         fc::raw::unpack(ds, entry);
-         return entry;
-      }
    private:
       void find_or_create_slice_pair(uint32_t block_height, bool append, fc::cfile& trace, fc::cfile& index);
       void initialize_new_index_slice_file(fc::cfile& index);
