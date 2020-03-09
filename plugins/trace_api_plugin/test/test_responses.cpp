@@ -28,13 +28,13 @@ struct response_test_fixture {
        *         optional containing a 2-tuple of the block_trace and a flag indicating irreversibility
        * @throws bad_data_exception : if the data is corrupt in some way
        */
-      get_block_t get_block(uint32_t height) {
-         return fixture.mock_get_block(height);
+      get_block_t get_block(uint32_t height, const yield_function& yield= {}) {
+         return fixture.mock_get_block(height, yield);
       }
       response_test_fixture& fixture;
    };
 
-   constexpr static auto default_mock_data_handler = [](const action_trace_v0& a, const fc::time_point&) -> fc::variant {
+   constexpr static auto default_mock_data_handler = [](const action_trace_v0& a, const yield_function&) -> fc::variant {
       return fc::mutable_variant_object()("hex" , fc::to_hex(a.data.data(), a.data.size()));
    };
 
@@ -44,8 +44,8 @@ struct response_test_fixture {
       :fixture(fixture)
       {}
 
-      fc::variant process_data(const action_trace_v0& action, const fc::time_point& deadline) {
-         return fixture.mock_data_handler(action, deadline);
+      fc::variant process_data(const action_trace_v0& action, const yield_function& yield) {
+         return fixture.mock_data_handler(action, yield);
       }
 
       response_test_fixture& fixture;
@@ -56,19 +56,18 @@ struct response_test_fixture {
     * TODO: initialize extraction implementation here with `mock_logfile_provider` as template param
     */
    response_test_fixture()
-   : response_impl(mock_logfile_provider(*this), mock_data_handler_provider(*this), [this]()->fc::time_point { return mock_now(); })
+   : response_impl(mock_logfile_provider(*this), mock_data_handler_provider(*this))
    {
 
    }
 
-   fc::variant get_block_trace( uint32_t block_height, const fc::time_point& deadline = fc::time_point::maximum() ) {
-      return response_impl.get_block_trace( block_height, deadline );
+   fc::variant get_block_trace( uint32_t block_height, const yield_function& yield = {} ) {
+      return response_impl.get_block_trace( block_height, yield );
    }
 
    // fixture data and methods
-   std::function<get_block_t(uint32_t)> mock_get_block;
-   std::function<fc::time_point()> mock_now = []() -> fc::time_point { return fc::time_point::now(); };
-   std::function<fc::variant(const action_trace_v0&, const fc::time_point&)> mock_data_handler = default_mock_data_handler;
+   std::function<get_block_t(uint32_t, const yield_function&)> mock_get_block;
+   std::function<fc::variant(const action_trace_v0&, const yield_function&)> mock_data_handler = default_mock_data_handler;
 
    response_impl_type response_impl;
 
@@ -96,7 +95,7 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
          ("transactions", fc::variants() )
       ;
 
-      mock_get_block = [&block_trace]( uint32_t height ) -> get_block_t {
+      mock_get_block = [&block_trace]( uint32_t height, const yield_function& ) -> get_block_t {
          BOOST_TEST(height == 1);
          return std::make_tuple(block_trace, false);
       };
@@ -156,7 +155,7 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
          }))
       ;
 
-      mock_get_block = [&block_trace]( uint32_t height ) -> get_block_t {
+      mock_get_block = [&block_trace]( uint32_t height, const yield_function& ) -> get_block_t {
          BOOST_TEST(height == 1);
          return std::make_tuple(block_trace, false);
       };
@@ -214,13 +213,13 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
          }))
       ;
 
-      mock_get_block = [&block_trace]( uint32_t height ) -> get_block_t {
+      mock_get_block = [&block_trace]( uint32_t height, const yield_function& ) -> get_block_t {
          BOOST_TEST(height == 1);
          return std::make_tuple(block_trace, false);
       };
 
       // simulate an inability to parse the parameters
-      mock_data_handler = [](const action_trace_v0&, const fc::time_point&) -> fc::variant {
+      mock_data_handler = [](const action_trace_v0&, const yield_function&) -> fc::variant {
          return {};
       };
 
@@ -250,7 +249,7 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
          ("transactions", fc::variants() )
       ;
 
-      mock_get_block = [&block_trace]( uint32_t height ) -> get_block_t {
+      mock_get_block = [&block_trace]( uint32_t height, const yield_function& ) -> get_block_t {
          BOOST_TEST(height == 1);
          return std::make_tuple(block_trace, true);
       };
@@ -262,7 +261,7 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
 
    BOOST_FIXTURE_TEST_CASE(corrupt_block_data, response_test_fixture)
    {
-      mock_get_block = []( uint32_t height ) -> get_block_t {
+      mock_get_block = []( uint32_t height, const yield_function& ) -> get_block_t {
          BOOST_TEST(height == 1);
          throw bad_data_exception("mock exception");
       };
@@ -272,7 +271,7 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
 
    BOOST_FIXTURE_TEST_CASE(missing_block_data, response_test_fixture)
    {
-      mock_get_block = []( uint32_t height ) -> get_block_t {
+      mock_get_block = []( uint32_t height, const yield_function& ) -> get_block_t {
          BOOST_TEST(height == 1);
          return {};
       };
@@ -282,7 +281,7 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
       BOOST_TEST(null_response.is_null());
    }
 
-   BOOST_FIXTURE_TEST_CASE(deadline_throws, response_test_fixture)
+   BOOST_FIXTURE_TEST_CASE(yield_throws, response_test_fixture)
    {
       auto block_trace = block_trace_v0 {
          "b000000000000000000000000000000000000000000000000000000000000001"_h,
@@ -305,22 +304,34 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
          }
       };
 
-      mock_get_block = [&block_trace]( uint32_t height ) -> get_block_t {
+      mock_get_block = [&block_trace]( uint32_t height, const yield_function& ) -> get_block_t {
          BOOST_TEST(height == 1);
          return std::make_tuple(block_trace, false);
       };
 
-      auto deadline = fc::time_point(fc::microseconds(1));
       int countdown = 3;
-      mock_now = [&]() -> fc::time_point {
+      yield_function yield = [&]() {
          if (countdown-- == 0) {
-            return deadline;
-         } else {
-            return fc::time_point();
+            throw yield_exception("mock");
          }
       };
 
-      BOOST_REQUIRE_THROW(get_block_trace( 1, deadline ), deadline_exceeded);
+      BOOST_REQUIRE_THROW(get_block_trace( 1, yield ), yield_exception);
+   }
+
+   BOOST_FIXTURE_TEST_CASE(yield_throws_from_get_block, response_test_fixture)
+   {
+      // no other yield calls will throw
+      yield_function yield = [&]() {
+      };
+
+      // simulate a yield throw inside get block
+      mock_get_block = []( uint32_t height, const yield_function& yield) -> get_block_t {
+         throw yield_exception("mock exception");
+      };
+
+
+      BOOST_REQUIRE_THROW(get_block_trace( 1, yield ), yield_exception);
    }
 
 BOOST_AUTO_TEST_SUITE_END()
