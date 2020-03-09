@@ -22,7 +22,6 @@ namespace {
          {
             {
                "0000000000000000000000000000000000000000000000000000000000000001"_h,
-               chain::transaction_receipt_header::hard_fail,
                {
                   {
                      0,
@@ -56,7 +55,6 @@ namespace {
          {
             {
                "f000000000000000000000000000000000000000000000000000000000000004"_h,
-               chain::transaction_receipt_header::soft_fail,
                {}
             }
          }
