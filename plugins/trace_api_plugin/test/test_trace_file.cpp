@@ -68,7 +68,15 @@ namespace {
          "b000000000000000000000000000000000000000000000000000000000000002"_h, 7, 0
       } };
       const metadata_log_entry le2 { lib_entry_v0 { 5 } };
+   };
 
+   struct test_store_provider : public store_provider {
+      test_store_provider(const bfs::path& slice_dir, uint32_t width)
+         : store_provider(slice_dir, width) {
+         ilog("test_fixture");
+      }
+      using store_provider::scan_metadata_log_from;
+      using store_provider::read_data_log;
    };
 
    class vslice_datastream;
@@ -226,11 +234,11 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
    {
       fc::temp_directory tempdir;
       boost::filesystem::path tempdir_path = tempdir.path();
-      slice_provider sp(tempdir_path, 100);
+      slice_directory sp(tempdir_path, 100);
       BOOST_REQUIRE_EQUAL(sp.slice_number(99), 0);
       BOOST_REQUIRE_EQUAL(sp.slice_number(100), 1);
       BOOST_REQUIRE_EQUAL(sp.slice_number(1599), 15);
-      slice_provider sp2(tempdir_path, 0x10);
+      slice_directory sp2(tempdir_path, 0x10);
       BOOST_REQUIRE_EQUAL(sp2.slice_number(0xf), 0);
       BOOST_REQUIRE_EQUAL(sp2.slice_number(0x100), 0x10);
       BOOST_REQUIRE_EQUAL(sp2.slice_number(0x233), 0x23);
@@ -240,7 +248,7 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
    {
       fc::temp_directory tempdir;
       bfs::path tempdir_path = tempdir.path();
-      slice_provider sp(tempdir_path, 100);
+      slice_directory sp(tempdir_path, 100);
       fc::cfile slice;
 
       const bool read_file = false;
@@ -268,7 +276,7 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
          const std::string expected_filename = "trace_index_0000000" + std::to_string(i) + "00-0000000" + std::to_string(i+1) + "00.log";
          BOOST_REQUIRE_EQUAL(fp.filename().generic_string(), expected_filename);
          BOOST_REQUIRE(slice.is_open());
-         slice_provider::index_header h;
+         slice_directory::index_header h;
          const auto data = fc::raw::pack(h);
          BOOST_REQUIRE_EQUAL(bfs::file_size(fp), data.size());
          BOOST_REQUIRE_EQUAL(slice.tellp(), data.size());
@@ -322,7 +330,7 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       expected_filename = "trace_index_0000000100-0000000200.log";
       BOOST_REQUIRE_EQUAL(fp.filename().generic_string(), expected_filename);
       BOOST_REQUIRE(slice.is_open());
-      slice_provider::index_header h;
+      slice_directory::index_header h;
       data = fc::raw::pack(h);
       const uint64_t header_size = data.size();
       BOOST_REQUIRE_EQUAL(bfs::file_size(fp), header_size);
@@ -374,7 +382,7 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
    {
       fc::temp_directory tempdir;
       bfs::path tempdir_path = tempdir.path();
-      store_provider sp(tempdir_path, 100);
+      test_store_provider sp(tempdir_path, 100);
       sp.append(bt);
       sp.append_lib(54);
       sp.append(bt2);
