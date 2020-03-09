@@ -49,6 +49,11 @@ int main(int argc, char** argv) {
       return help ? 0 : 1;
    }
 
+   if(list + create + (key_to_delete != fc::crypto::public_key()) > 1) {
+      std::cerr << "Only one option may be specified to " << node_executable_name << "-sectl" << std::endl;
+      return 1;
+   }
+
    if(!eosio::secure_enclave::application_signed()) {
       std::cerr << node_executable_name <<  "-sectl is not signed so it is unable to managed Secure Enclave keys" << std::endl;
       return 1;
