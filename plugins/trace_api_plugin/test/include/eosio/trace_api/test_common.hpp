@@ -10,10 +10,10 @@
 #include <eosio/chain/block_state.hpp>
 #include <eosio/chain/name.hpp>
 
-#include <eosio/trace_api_plugin/data_log.hpp>
-#include <eosio/trace_api_plugin/metadata_log.hpp>
+#include <eosio/trace_api/data_log.hpp>
+#include <eosio/trace_api/metadata_log.hpp>
 
-namespace eosio::trace_api_plugin {
+namespace eosio::trace_api {
    /**
     * Utilities that make writing tests easier
     */

@@ -6,7 +6,7 @@
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/abi_def.hpp>
 
-namespace eosio::trace_api_plugin::configuration_utils {
+namespace eosio::trace_api::configuration_utils {
    using namespace eosio;
 
    /**

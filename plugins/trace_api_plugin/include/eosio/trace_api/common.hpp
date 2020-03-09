@@ -2,7 +2,7 @@
 
 #include <tuple>
 
-namespace eosio::trace_api_plugin {
+namespace eosio::trace_api {
    template<typename R, typename ...Args>
    class optional_delegate : private std::function<R(Args...)> {
    public:
@@ -63,7 +63,7 @@ namespace eosio::trace_api_plugin {
    using exception_with_context = std::tuple<const std::exception_ptr&, char const *, uint64_t, char const *>;
 
 #define MAKE_EXCEPTION_WITH_CONTEXT(eptr) \
-   (eosio::trace_api_plugin::exception_with_context((eptr),  __FILE__, __LINE__, __func__))
+   (eosio::trace_api::exception_with_context((eptr),  __FILE__, __LINE__, __func__))
 
 
 }

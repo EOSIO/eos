@@ -3,13 +3,13 @@
 
 #include <fc/variant_object.hpp>
 
-#include <eosio/trace_api_plugin/request_handler.hpp>
-#include <eosio/trace_api_plugin/base64_data_handler.hpp>
-#include <eosio/trace_api_plugin/test_common.hpp>
+#include <eosio/trace_api/request_handler.hpp>
+#include <eosio/trace_api/base64_data_handler.hpp>
+#include <eosio/trace_api/test_common.hpp>
 
 using namespace eosio;
-using namespace eosio::trace_api_plugin;
-using namespace eosio::trace_api_plugin::test_common;
+using namespace eosio::trace_api;
+using namespace eosio::trace_api::test_common;
 
 struct response_test_fixture {
    using get_block_t = std::optional<std::tuple<block_trace_v0, bool>>;
