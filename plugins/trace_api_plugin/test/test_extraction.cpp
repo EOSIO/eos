@@ -188,7 +188,7 @@ struct extraction_test_fixture {
    };
 
    extraction_test_fixture()
-   : extraction_impl(mock_logfile_provider_type(*this), [](std::exception_ptr eptr) {})
+   : extraction_impl(mock_logfile_provider_type(*this), exception_handler{} )
    {
    }
 

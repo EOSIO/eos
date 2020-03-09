@@ -1,5 +1,6 @@
 #pragma once
 
+#include <eosio/trace_api/common.hpp>
 #include <eosio/trace_api/trace.hpp>
 #include <eosio/trace_api/extract_util.hpp>
 #include <exception>
@@ -19,7 +20,7 @@ public:
     * @param store provider of append & append_lib
     * @param except_handler called on exceptions, logging if any is left to the user
     */
-   chain_extraction_impl_type( StoreProvider store, std::function<void(std::exception_ptr)> except_handler )
+   chain_extraction_impl_type( StoreProvider store, exception_handler except_handler )
    : store(std::move(store))
    , except_handler(std::move(except_handler))
    {}
@@ -102,7 +103,7 @@ private:
          store.append( std::move( bt ) );
 
       } catch( ... ) {
-         except_handler( std::current_exception() );
+         except_handler( MAKE_EXCEPTION_WITH_CONTEXT( std::current_exception() ) );
       }
    }
 
@@ -110,13 +111,13 @@ private:
       try {
          store.append_lib( bsp->block_num );
       } catch( ... ) {
-         except_handler( std::current_exception() );
+         except_handler( MAKE_EXCEPTION_WITH_CONTEXT( std::current_exception() ) );
       }
    }
 
 private:
    StoreProvider                                                store;
-   std::function<void(std::exception_ptr)>                      except_handler;
+   exception_handler                                            except_handler;
    std::map<transaction_id_type, chain::transaction_trace_ptr>  cached_traces;
    fc::optional<chain::transaction_trace_ptr>                   onblock_trace;
 
