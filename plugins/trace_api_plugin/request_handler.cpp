@@ -14,7 +14,7 @@ namespace {
       fc::variants result;
       result.reserve(authorizations.size());
       for ( const auto& a: authorizations) {
-         call_if_set(yield);
+         yield();
 
          result.emplace_back(fc::mutable_variant_object()
             ("account", a.account.to_string())
@@ -30,7 +30,7 @@ namespace {
       fc::variants result;
       result.reserve(actions.size());
       for ( const auto& a: actions) {
-         call_if_set(yield);
+         yield();
 
          auto action_variant = fc::mutable_variant_object()
                ("receiver", a.receiver.to_string())
@@ -55,7 +55,7 @@ namespace {
       fc::variants result;
       result.reserve(transactions.size());
       for ( const auto& t: transactions) {
-         call_if_set(yield);
+         yield();
 
          result.emplace_back(fc::mutable_variant_object()
             ("id", t.id.str())

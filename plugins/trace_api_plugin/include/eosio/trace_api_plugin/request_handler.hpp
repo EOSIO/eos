@@ -41,7 +41,7 @@ namespace eosio::trace_api_plugin {
             return {};
          }
 
-         call_if_set(yield);
+         yield();
 
          auto data_handler = [this](const action_trace_v0& action, const yield_function& yield) -> fc::variant {
             return data_handler_provider.process_data(action, yield);
