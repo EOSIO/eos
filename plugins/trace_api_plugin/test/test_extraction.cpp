@@ -97,7 +97,7 @@ struct extraction_test_fixture {
        *
        * @param entry : the entry to append
        */
-      void append( const data_log_entry& entry ) {
+      void append( const block_trace_v0& entry ) {
          fixture.data_log.emplace_back(entry);
       }
 
@@ -109,7 +109,7 @@ struct extraction_test_fixture {
    };
 
    extraction_test_fixture()
-   : extraction_impl(mock_logfile_provider_type(*this), [](std::exception_ptr eptr) {})
+   : extraction_impl(mock_logfile_provider_type(*this), exception_handler{} )
    {
    }
 

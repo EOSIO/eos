@@ -61,7 +61,12 @@ namespace eosio::trace_api {
    };
 
    using exception_with_context = std::tuple<const std::exception_ptr&, char const *, uint64_t, char const *>;
+   using exception_handler = optional_delegate<void, const exception_with_context&>;
 
+   /**
+    * Normal use case: exception_handler except_handler;
+    *   except_handler( MAKE_EXCEPTION_WITH_CONTEXT( std::current_exception() ) );
+    */
 #define MAKE_EXCEPTION_WITH_CONTEXT(eptr) \
    (eosio::trace_api::exception_with_context((eptr),  __FILE__, __LINE__, __func__))
 
