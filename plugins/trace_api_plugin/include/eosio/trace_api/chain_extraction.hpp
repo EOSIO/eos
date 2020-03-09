@@ -1,12 +1,12 @@
 #pragma once
 
-#include <eosio/trace_api_plugin/trace.hpp>
-#include <eosio/trace_api_plugin/extract_util.hpp>
+#include <eosio/trace_api/trace.hpp>
+#include <eosio/trace_api/extract_util.hpp>
 #include <exception>
 #include <functional>
 #include <map>
 
-namespace eosio { namespace trace_api_plugin {
+namespace eosio { namespace trace_api {
 
 using chain::transaction_id_type;
 using chain::packed_transaction;

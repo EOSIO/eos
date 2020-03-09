@@ -1,13 +1,13 @@
 #define BOOST_TEST_MODULE trace_trace_file
 #include <boost/test/included/unit_test.hpp>
 #include <fc/io/cfile.hpp>
-#include <eosio/trace_api_plugin/test_common.hpp>
-#include <eosio/trace_api_plugin/store_provider.hpp>
+#include <eosio/trace_api/test_common.hpp>
+#include <eosio/trace_api/store_provider.hpp>
 #include <boost/filesystem.hpp>
 
 using namespace eosio;
-using namespace eosio::trace_api_plugin;
-using namespace eosio::trace_api_plugin::test_common;
+using namespace eosio::trace_api;
+using namespace eosio::trace_api::test_common;
 namespace bfs = boost::filesystem;
 
 namespace {

@@ -1,15 +1,15 @@
 #pragma once
 
 #include <eosio/chain/abi_def.hpp>
-#include <eosio/trace_api_plugin/trace.hpp>
-#include <eosio/trace_api_plugin/common.hpp>
+#include <eosio/trace_api/trace.hpp>
+#include <eosio/trace_api/common.hpp>
 
 namespace eosio {
    namespace chain {
       struct abi_serializer;
    }
 
-   namespace trace_api_plugin {
+   namespace trace_api {
 
    /**
     * Data Handler that uses eosio::chain::abi_serializer to decode data with a known set of ABI's

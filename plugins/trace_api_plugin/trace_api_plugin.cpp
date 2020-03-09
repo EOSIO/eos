@@ -1,12 +1,12 @@
-#include <eosio/trace_api_plugin/trace_api_plugin.hpp>
+#include <eosio/trace_api/trace_api_plugin.hpp>
 
-#include <eosio/trace_api_plugin/abi_data_handler.hpp>
-#include <eosio/trace_api_plugin/request_handler.hpp>
+#include <eosio/trace_api/abi_data_handler.hpp>
+#include <eosio/trace_api/request_handler.hpp>
 
-#include <eosio/trace_api_plugin/configuration_utils.hpp>
+#include <eosio/trace_api/configuration_utils.hpp>
 
-using namespace eosio::trace_api_plugin;
-using namespace eosio::trace_api_plugin::configuration_utils;
+using namespace eosio::trace_api;
+using namespace eosio::trace_api::configuration_utils;
 
 namespace {
    const std::string logger_name("trace_api");
@@ -167,19 +167,19 @@ struct trace_api_plugin_impl {
    fc::microseconds minimum_irreversible_trace_history = fc::microseconds::maximum();
 };
 
-_trace_api_plugin::_trace_api_plugin()
+trace_api_plugin::trace_api_plugin()
 {}
 
-_trace_api_plugin::~_trace_api_plugin()
+trace_api_plugin::~trace_api_plugin()
 {}
 
-void _trace_api_plugin::set_program_options(appbase::options_description& cli, appbase::options_description& cfg) {
+void trace_api_plugin::set_program_options(appbase::options_description& cli, appbase::options_description& cfg) {
    trace_api_common_impl::set_program_options(cli, cfg);
    trace_api_plugin_impl::set_program_options(cli, cfg);
    trace_api_rpc_plugin_impl::set_program_options(cli, cfg);
 }
 
-void _trace_api_plugin::plugin_initialize(const appbase::variables_map& options) {
+void trace_api_plugin::plugin_initialize(const appbase::variables_map& options) {
    auto common = std::make_shared<trace_api_common_impl>();
    common->plugin_initialize(options);
 
@@ -190,17 +190,17 @@ void _trace_api_plugin::plugin_initialize(const appbase::variables_map& options)
    rpc->plugin_initialize(options);
 }
 
-void _trace_api_plugin::plugin_startup() {
+void trace_api_plugin::plugin_startup() {
    my->plugin_startup();
    rpc->plugin_startup();
 }
 
-void _trace_api_plugin::plugin_shutdown() {
+void trace_api_plugin::plugin_shutdown() {
    my->plugin_shutdown();
    rpc->plugin_shutdown();
 }
 
-void _trace_api_plugin::handle_sighup() {
+void trace_api_plugin::handle_sighup() {
    fc::logger::update( logger_name, _log );
 }
 

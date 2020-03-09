@@ -1,12 +1,12 @@
 #define BOOST_TEST_MODULE trace_data_logging
 #include <boost/test/included/unit_test.hpp>
-#include <eosio/trace_api_plugin/store_provider.hpp>
+#include <eosio/trace_api/store_provider.hpp>
 
-#include <eosio/trace_api_plugin/test_common.hpp>
+#include <eosio/trace_api/test_common.hpp>
 
 using namespace eosio;
-using namespace eosio::trace_api_plugin;
-using namespace eosio::trace_api_plugin::test_common;
+using namespace eosio::trace_api;
+using namespace eosio::trace_api::test_common;
 
 namespace {
 

@@ -1,10 +1,10 @@
-#include <eosio/trace_api_plugin/request_handler.hpp>
+#include <eosio/trace_api/request_handler.hpp>
 
 #include <fc/variant_object.hpp>
 #include <fc/crypto/base64.hpp>
 
 namespace {
-   using namespace eosio::trace_api_plugin;
+   using namespace eosio::trace_api;
 
    std::string to_iso8601_datetime( const fc::time_point& t) {
       return (std::string)t + "Z";
@@ -68,7 +68,7 @@ namespace {
 
 }
 
-namespace eosio::trace_api_plugin::detail {
+namespace eosio::trace_api::detail {
    fc::variant response_formatter::process_block( const block_trace_v0& trace, bool irreversible, const data_handler_function& data_handler, const yield_function& yield ) {
       return fc::mutable_variant_object()
          ("id", trace.id.str() )
