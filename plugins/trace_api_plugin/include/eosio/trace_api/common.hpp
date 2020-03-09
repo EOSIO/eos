@@ -63,6 +63,9 @@ namespace eosio::trace_api {
    using exception_with_context = std::tuple<const std::exception_ptr&, char const *, uint64_t, char const *>;
    using exception_handler = optional_delegate<void, const exception_with_context&>;
 
+   struct block_trace_v0;
+   // optional block trace and irreversibility paired data
+   using get_block_t = std::optional<std::tuple<block_trace_v0, bool>>;
    /**
     * Normal use case: exception_handler except_handler;
     *   except_handler( MAKE_EXCEPTION_WITH_CONTEXT( std::current_exception() ) );
