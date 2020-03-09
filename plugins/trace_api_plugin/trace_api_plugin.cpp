@@ -2,6 +2,8 @@
 
 #include <eosio/trace_api/abi_data_handler.hpp>
 #include <eosio/trace_api/request_handler.hpp>
+#include <eosio/trace_api/chain_extraction.hpp>
+#include <eosio/trace_api/store_provider.hpp>
 #include <eosio/trace_api/configuration_utils.hpp>
 
 using namespace eosio::trace_api;
@@ -49,8 +51,8 @@ namespace {
       :store(store)
       {}
 
-      void append( const data_log_entry& entry ) {
-         store->append(entry);
+      void append( const block_trace_v0& trace ) {
+         store->append(trace);
       }
 
       void append_lib( uint32_t new_lib ) {
@@ -66,27 +68,31 @@ namespace {
 }
 
 namespace temporary {
-   struct ephemeral_store {
-
-      void append( const data_log_entry& entry ) {
-         const auto& block = entry.get<block_trace_v0>();
-         traces[block.number] = block;
-      }
-
-      void append_lib( uint32_t new_lib ) {
-         lib = std::max(lib, new_lib);
-      }
+   struct store_shim : public store_provider {
+      using store_provider::store_provider;
 
       get_block_t get_block(uint32_t height, const yield_function&) {
-         if (traces.count(height))
-            return std::make_tuple(traces.at(height), height <= lib);
-         else
+         uint64_t lib = 0;
+         std::optional<uint64_t> offset = 0;
+
+         scan_metadata_log_from(height, 0, [&](const metadata_log_entry& e){
+            if (e.contains<lib_entry_v0>()) {
+               lib = std::max(lib, e.get<lib_entry_v0>().lib);
+            } else if (e.contains<block_entry_v0>()) {
+               const auto& be = e.get<block_entry_v0>();
+               if (be.number == height) {
+                  offset = be.offset;
+               }
+            }
+            return true;
+         });
+
+         if (!offset) {
             return {};
+         }
+
+         return std::make_tuple(read_data_log(height, *offset)->get<block_trace_v0>(), height <= lib);
       }
-
-
-      uint32_t lib = 0;
-      std::map<uint32_t, block_trace_v0> traces;
    };
 }
 
@@ -113,14 +119,14 @@ struct trace_api_common_impl {
 
       slice_stride = options.at("trace-slice-stride").as<uint32_t>();
 
-      store = std::make_shared<temporary::ephemeral_store>();
+      store = std::make_shared<temporary::store_shim>(trace_dir, slice_stride);
    }
 
    // common configuration paramters
    boost::filesystem::path trace_dir;
    uint32_t slice_stride = 0;
 
-   std::shared_ptr<temporary::ephemeral_store> store;
+   std::shared_ptr<temporary::store_shim> store;
 };
 
 /**
@@ -175,7 +181,7 @@ struct trace_api_rpc_plugin_impl : public std::enable_shared_from_this<trace_api
       }
 
       request_handler = std::make_shared<request_handler_t>(
-         shared_store_provider<temporary::ephemeral_store>(common->store),
+         shared_store_provider<temporary::store_shim>(common->store),
          abi_data_handler::shared_provider(data_handler)
       );
    }
@@ -231,7 +237,7 @@ struct trace_api_rpc_plugin_impl : public std::enable_shared_from_this<trace_api
 
    std::shared_ptr<trace_api_common_impl> common;
 
-   using request_handler_t = request_handler<shared_store_provider<temporary::ephemeral_store>, abi_data_handler::shared_provider>;
+   using request_handler_t = request_handler<shared_store_provider<temporary::store_shim>, abi_data_handler::shared_provider>;
    std::shared_ptr<request_handler_t> request_handler;
 };
 
@@ -262,27 +268,39 @@ struct trace_api_plugin_impl {
 
       // TODO: better decide here
       auto log_exceptions_and_shutdown = [](const exception_with_context& e) {
-         elog("Trace API encountered an Error which it cannot recover from.  Please resolve the error and relaunch the process");
          log_exception(e, fc::log_level::error);
-         app().shutdown();
+         app().quit();
+         throw yield_exception("shutting down");
       };
-      extraction = std::make_shared<chain_extraction_t>(shared_store_provider<temporary::ephemeral_store>(common->store), log_exceptions_and_shutdown);
+      extraction = std::make_shared<chain_extraction_t>(shared_store_provider<temporary::store_shim>(common->store), log_exceptions_and_shutdown);
 
       auto& chain = app().find_plugin<chain_plugin>()->chain();
 
       applied_transaction_connection.emplace(
          chain.applied_transaction.connect([this](std::tuple<const chain::transaction_trace_ptr&, const chain::signed_transaction&> t) {
-            extraction->signal_applied_transaction(std::get<0>(t), std::get<1>(t));
+            try {
+               extraction->signal_applied_transaction(std::get<0>(t), std::get<1>(t));
+            } catch (const yield_exception&) {
+               EOS_THROW(chain::controller_emit_signal_exception, "Trace API encountered an Error which it cannot recover from.  Please resolve the error and relaunch the process")
+            }
          }));
 
       accepted_block_connection.emplace(
          chain.accepted_block.connect([this](const chain::block_state_ptr& p) {
-            extraction->signal_accepted_block(p);
+            try {
+               extraction->signal_accepted_block(p);
+            } catch (const yield_exception&) {
+               EOS_THROW(chain::controller_emit_signal_exception, "Trace API encountered an Error which it cannot recover from.  Please resolve the error and relaunch the process")
+            }
          }));
 
       irreversible_block_connection.emplace(
          chain.irreversible_block.connect([this](const chain::block_state_ptr& p) {
-            extraction->signal_irreversible_block(p);
+            try {
+               extraction->signal_irreversible_block(p);
+            } catch (const yield_exception&) {
+               EOS_THROW(chain::controller_emit_signal_exception, "Trace API encountered an Error which it cannot recover from.  Please resolve the error and relaunch the process")
+            }
          }));
 
    }
@@ -296,7 +314,7 @@ struct trace_api_plugin_impl {
    std::shared_ptr<trace_api_common_impl> common;
    fc::microseconds minimum_irreversible_trace_history = fc::microseconds::maximum();
 
-   using chain_extraction_t = chain_extraction_impl_type<shared_store_provider<temporary::ephemeral_store>>;
+   using chain_extraction_t = chain_extraction_impl_type<shared_store_provider<temporary::store_shim>>;
    std::shared_ptr<chain_extraction_t> extraction;
 
    //TODO: switch to appbase channels? if so remove the header above
@@ -329,6 +347,8 @@ void trace_api_plugin::plugin_initialize(const appbase::variables_map& options) 
 }
 
 void trace_api_plugin::plugin_startup() {
+   handle_sighup(); // setup logging
+
    my->plugin_startup();
    rpc->plugin_startup();
 }
