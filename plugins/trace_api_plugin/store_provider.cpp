@@ -132,6 +132,7 @@ namespace eosio::trace_api {
       }
 
       slice_file.open(fc::cfile::create_or_update_rw_mode);
+      slice_file.seek(0);
       return true;
    }
 }
