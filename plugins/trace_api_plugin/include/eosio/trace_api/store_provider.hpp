@@ -4,6 +4,7 @@
 #include <fc/io/cfile.hpp>
 #include <boost/filesystem.hpp>
 #include <fc/variant.hpp>
+#include <eosio/trace_api/common.hpp>
 #include <eosio/trace_api/metadata_log.hpp>
 #include <eosio/trace_api/data_log.hpp>
 
@@ -137,6 +138,14 @@ namespace eosio::trace_api {
 
       void append(const block_trace_v0& bt);
       void append_lib(uint32_t lib);
+
+      /**
+       * Read the trace for a given block
+       * @param block_height : the height of the data being read
+       * @return empty optional if the data cannot be read OTHERWISE
+       *         optional containing a 2-tuple of the block_trace and a flag indicating irreversibility
+       */
+      get_block_t get_block(uint32_t block_height, const yield_function& yield= {});
 
       /**
        * Read the metadata log font-to-back starting at an offset passing each entry to a provided functor/lambda
