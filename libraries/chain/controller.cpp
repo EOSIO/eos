@@ -3354,7 +3354,6 @@ void controller_impl::on_activation<builtin_protocol_feature_t::action_return_va
 template<>
 void controller_impl::on_activation<builtin_protocol_feature_t::stop_deferred_transactions>() {
    db.modify( db.get<protocol_state_object>(), [&]( auto& ps ) {
-      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "set_deprecate_deferred_transactions" );
    } );
 }
 

@@ -1497,6 +1497,10 @@ class transaction_api : public context_aware_api {
       }
 
       void send_deferred( const uint128_t& sender_id, account_name payer, array_ptr<char> data, uint32_t data_len, uint32_t replace_existing) {
+         bool stop_deferred_transactions_activated = context.control.is_builtin_activated(builtin_protocol_feature_t::stop_deferred_transactions);
+         if ( !replace_existing && stop_deferred_transactions_activated) {
+            return;
+         }
          transaction trx;
          fc::raw::unpack<transaction>(data, data_len, trx);
          context.schedule_deferred_transaction(sender_id, payer, std::move(trx), replace_existing);

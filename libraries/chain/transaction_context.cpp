@@ -231,6 +231,10 @@ namespace eosio { namespace chain {
          control.validate_expiration(trx);
          control.validate_tapos(trx);
          validate_referenced_accounts( trx, enforce_whiteblacklist && control.is_producing_block() );
+         if ( trx.delay_sec.value > 0 ) {
+             bool stop_deferred_transactions_activated = control.is_builtin_activated(builtin_protocol_feature_t::stop_deferred_transactions);
+             EOS_ASSERT( !stop_deferred_transactions_activated, stop_deferred_tx, "delay seconds must be 0" );
+         }
       }
       init( initial_net_usage);
       if (!skip_recording)
@@ -239,6 +243,8 @@ namespace eosio { namespace chain {
 
    void transaction_context::init_for_deferred_trx( fc::time_point p )
    {
+      std::cout << "trx.expiration.sec_since_epoch(): "  << trx.expiration.sec_since_epoch()  << std::endl;
+      std::cout << "trx.transaction_extensions.size(): " << trx.transaction_extensions.size() << std::endl;
       if( (trx.expiration.sec_since_epoch() != 0) && (trx.transaction_extensions.size() > 0) ) {
          disallow_transaction_extensions( "no transaction extensions supported yet for deferred transactions" );
       }

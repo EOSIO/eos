@@ -350,15 +350,9 @@ void apply_context::execute_context_free_inline( action&& a ) {
 
 
 void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, account_name payer, transaction&& trx, bool replace_existing ) {
-  if ( control.is_builtin_activated(builtin_protocol_feature_t::stop_deferred_transactions) ) {
-     if (!replace_existing) {
-        return;
-     }
-  }
-
-   // EOS_ASSERT( control.is_builtin_activated( builtin_protocol_feature_t::deprecate_deferred_transactions ), deferred_tx_detected, "deferred transactions are disabled" );
    EOS_ASSERT( trx.context_free_actions.size() == 0, cfa_inside_generated_tx, "context free actions are not currently allowed in generated transactions" );
 
+   bool stop_deferred_transactions_activated = control.is_builtin_activated(builtin_protocol_feature_t::stop_deferred_transactions);
    bool enforce_actor_whitelist_blacklist = trx_context.enforce_whiteblacklist && control.is_producing_block()
                                              && !control.sender_avoids_whitelist_blacklist_enforcement( receiver );
    trx_context.validate_referenced_accounts( trx, enforce_actor_whitelist_blacklist );
@@ -407,7 +401,6 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
    trx_context.add_net_usage( static_cast<uint64_t>(cfg.base_per_transaction_net_usage)
                                + static_cast<uint64_t>(config::transaction_id_net_usage) ); // Will exit early if net usage cannot be payed.
 
-   EOS_ASSERT( fc::seconds(trx.delay_sec) == fc::seconds(0), delay_seconds_tx, "delay seconds must be 0" );
    auto delay = fc::seconds(trx.delay_sec);
 
    bool ram_restrictions_activated = control.is_builtin_activated( builtin_protocol_feature_t::ram_restrictions );
@@ -472,8 +465,10 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
       } catch( ... ) {
          if( disallow_send_to_self_bypass || !is_sending_only_to_self(receiver) ) {
             throw;
-         } else if( control.is_producing_block() ) {
-            EOS_THROW(subjective_block_production_exception, "Unexpected exception occurred validating sent deferred transaction consisting only of actions to self");
+         } else if (control.is_producing_block()) {
+           EOS_THROW(subjective_block_production_exception,
+                     "Unexpected exception occurred validating sent deferred "
+                     "transaction consisting only of actions to self");
          }
       }
    }
@@ -495,10 +490,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
       } else {
          control.add_to_ram_correction( ptr->payer, orig_trx_ram_bytes );
       }
-
-      //////////////////////////////////////////////
-      // Might need to come back to this code later.
-      //////////////////////////////////////////////
+      
       transaction_id_type trx_id_for_new_obj;
       if( replace_deferred_activated ) {
          trx_id_for_new_obj = trx.id();
@@ -508,29 +500,33 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
 
       // Use remove and create rather than modify because mutating the trx_id field in a modifier is unsafe.
       db.remove( *ptr );
+      if ( !stop_deferred_transactions_activated ) {
       db.create<generated_transaction_object>( [&]( auto& gtx ) {
-         gtx.trx_id      = trx_id_for_new_obj;
-         gtx.sender      = receiver;
-         gtx.sender_id   = sender_id;
-         gtx.payer       = payer;
-         gtx.published   = control.pending_block_time();
-         gtx.delay_until = gtx.published + delay;
-         gtx.expiration  = gtx.delay_until + fc::seconds(control.get_global_properties().configuration.deferred_trx_expiration_window);
+            gtx.trx_id      = trx_id_for_new_obj;
+            gtx.sender      = receiver;
+            gtx.sender_id   = sender_id;
+            gtx.payer       = payer;
+            gtx.published   = control.pending_block_time();
+            gtx.delay_until = gtx.published + delay;
+            gtx.expiration  = gtx.delay_until + fc::seconds(control.get_global_properties().configuration.deferred_trx_expiration_window);
 
-         trx_size = gtx.set( trx );
-      } );
+            trx_size = gtx.set( trx );
+         } );
+      }
    } else {
+      if ( !stop_deferred_transactions_activated ) {
       db.create<generated_transaction_object>( [&]( auto& gtx ) {
-         gtx.trx_id      = trx.id();
-         gtx.sender      = receiver;
-         gtx.sender_id   = sender_id;
-         gtx.payer       = payer;
-         gtx.published   = control.pending_block_time();
-         gtx.delay_until = gtx.published + delay;
-         gtx.expiration  = gtx.delay_until + fc::seconds(control.get_global_properties().configuration.deferred_trx_expiration_window);
+            gtx.trx_id      = trx.id();
+            gtx.sender      = receiver;
+            gtx.sender_id   = sender_id;
+            gtx.payer       = payer;
+            gtx.published   = control.pending_block_time();
+            gtx.delay_until = gtx.published + delay;
+            gtx.expiration  = gtx.delay_until + fc::seconds(control.get_global_properties().configuration.deferred_trx_expiration_window);
 
-         trx_size = gtx.set( trx );
-      } );
+            trx_size = gtx.set( trx );
+         } );
+      }
    }
 
    EOS_ASSERT( ram_restrictions_activated
