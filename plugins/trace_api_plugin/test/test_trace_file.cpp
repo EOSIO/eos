@@ -160,62 +160,62 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
    BOOST_FIXTURE_TEST_CASE(write_data_trace, test_fixture)
    {
       vslice vs;
-      const auto offset = store_provider::append_store( bt, vs );
+      const auto offset = append_store( bt, vs );
       BOOST_REQUIRE_EQUAL(offset,0);
 
-      const auto offset2 = store_provider::append_store( bt2, vs );
+      const auto offset2 = append_store( bt2, vs );
       BOOST_REQUIRE(offset < offset2);
 
       vs._pos = offset;
-      const auto bt_returned = store_provider::extract_store<block_trace_v0>( vs );
+      const auto bt_returned = extract_store<block_trace_v0>( vs );
       BOOST_REQUIRE(bt_returned == bt);
 
       vs._pos = offset2;
-      const auto bt_returned2 = store_provider::extract_store<block_trace_v0>( vs );
+      const auto bt_returned2 = extract_store<block_trace_v0>( vs );
       BOOST_REQUIRE(bt_returned2 == bt2);
    }
 
    BOOST_FIXTURE_TEST_CASE(write_metadata_trace, test_fixture)
    {
       vslice vs;
-      const auto offset = store_provider::append_store( be1, vs );
+      const auto offset = append_store( be1, vs );
       auto next_offset = vs._pos;
       BOOST_REQUIRE(offset < next_offset);
-      const auto offset2 = store_provider::append_store( le1, vs );
+      const auto offset2 = append_store( le1, vs );
       BOOST_REQUIRE(next_offset <= offset2);
       BOOST_REQUIRE(offset2 < vs._pos);
       next_offset = vs._pos;
-      const auto offset3 = store_provider::append_store( be2, vs );
+      const auto offset3 = append_store( be2, vs );
       BOOST_REQUIRE(next_offset <= offset3);
       BOOST_REQUIRE(offset3 < vs._pos);
       next_offset = vs._pos;
-      const auto offset4 = store_provider::append_store( le2, vs );
+      const auto offset4 = append_store( le2, vs );
       BOOST_REQUIRE(next_offset <= offset4);
       BOOST_REQUIRE(offset4 < vs._pos);
 
       vs._pos = offset;
-      const auto be_returned1 = store_provider::extract_store<metadata_log_entry>( vs );
+      const auto be_returned1 = extract_store<metadata_log_entry>( vs );
       BOOST_REQUIRE(be_returned1.contains<block_entry_v0>());
       const auto real_be_returned1 = be_returned1.get<block_entry_v0>();
       const auto real_be1 = be1.get<block_entry_v0>();
       BOOST_REQUIRE(real_be_returned1 == real_be1);
 
       vs._pos = offset2;
-      const auto le_returned1 = store_provider::extract_store<metadata_log_entry>( vs );
+      const auto le_returned1 = extract_store<metadata_log_entry>( vs );
       BOOST_REQUIRE(le_returned1.contains<lib_entry_v0>());
       const auto real_le_returned1 = le_returned1.get<lib_entry_v0>();
       const auto real_le1 = le1.get<lib_entry_v0>();
       BOOST_REQUIRE(real_le_returned1 == real_le1);
 
       vs._pos = offset3;
-      const auto be_returned2 = store_provider::extract_store<metadata_log_entry>( vs );
+      const auto be_returned2 = extract_store<metadata_log_entry>( vs );
       BOOST_REQUIRE(be_returned2.contains<block_entry_v0>());
       const auto real_be_returned2 = be_returned2.get<block_entry_v0>();
       const auto real_be2 = be2.get<block_entry_v0>();
       BOOST_REQUIRE(real_be_returned2 == real_be2);
 
       vs._pos = offset4;
-      const auto le_returned2 = store_provider::extract_store<metadata_log_entry>( vs );
+      const auto le_returned2 = extract_store<metadata_log_entry>( vs );
       BOOST_REQUIRE(le_returned2.contains<lib_entry_v0>());
       const auto real_le_returned2 = le_returned2.get<lib_entry_v0>();
       const auto real_le2 = le2.get<lib_entry_v0>();
@@ -285,7 +285,7 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       BOOST_REQUIRE(slice.is_open());
       BOOST_REQUIRE_EQUAL(bfs::file_size(fp), 0);
       BOOST_REQUIRE_EQUAL(slice.tellp(), 0);
-      uint64_t offset = store_provider::append_store(bt, slice);
+      uint64_t offset = append_store(bt, slice);
       BOOST_REQUIRE_EQUAL(offset, 0);
       auto data = fc::raw::pack(bt);
       BOOST_REQUIRE(slice.tellp() > 0);
@@ -327,7 +327,7 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       const uint64_t header_size = data.size();
       BOOST_REQUIRE_EQUAL(bfs::file_size(fp), header_size);
       BOOST_REQUIRE_EQUAL(slice.tellp(), header_size);
-      offset = store_provider::append_store(be1, slice);
+      offset = append_store(be1, slice);
       BOOST_REQUIRE_EQUAL(offset, header_size);
       data = fc::raw::pack(be1);
       const auto be1_size = data.size();
@@ -352,7 +352,7 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       BOOST_REQUIRE(slice.is_open());
       BOOST_REQUIRE_EQUAL(bfs::file_size(fp), header_size + be1_size);
       BOOST_REQUIRE_EQUAL(slice.tellp(), header_size + be1_size);
-      offset = store_provider::append_store(le1, slice);
+      offset = append_store(le1, slice);
       BOOST_REQUIRE_EQUAL(offset, header_size + be1_size);
       data = fc::raw::pack(le1);
       const auto le1_size = data.size();
