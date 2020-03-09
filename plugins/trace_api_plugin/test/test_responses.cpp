@@ -12,7 +12,6 @@ using namespace eosio::trace_api;
 using namespace eosio::trace_api::test_common;
 
 struct response_test_fixture {
-   using get_block_t = std::optional<std::tuple<block_trace_v0, bool>>;
    /**
     * MOCK implementation of the logfile input API
     */
