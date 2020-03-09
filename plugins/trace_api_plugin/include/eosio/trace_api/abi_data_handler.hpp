@@ -18,8 +18,8 @@ namespace eosio {
     */
    class abi_data_handler {
    public:
-      explicit abi_data_handler(exception_handler log = {})
-      :except_handler(log)
+      explicit abi_data_handler( exception_handler except_handler = {} )
+      :except_handler( std::move( except_handler ) )
       {
       }
 
