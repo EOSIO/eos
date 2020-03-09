@@ -43,6 +43,15 @@ namespace {
       }
    }
 
+   template<typename F>
+   void emit_killer(F&& f) {
+      try {
+         f();
+      } catch (const yield_exception& ) {
+         EOS_THROW(chain::controller_emit_signal_exception, "Trace API encountered an Error which it cannot recover from.  Please resolve the error and relaunch the process")
+      }
+   }
+
    using get_block_t = std::optional<std::tuple<block_trace_v0, bool>>;
 
    template<typename Store>
@@ -278,29 +287,23 @@ struct trace_api_plugin_impl {
 
       applied_transaction_connection.emplace(
          chain.applied_transaction.connect([this](std::tuple<const chain::transaction_trace_ptr&, const chain::signed_transaction&> t) {
-            try {
+            emit_killer([&](){
                extraction->signal_applied_transaction(std::get<0>(t), std::get<1>(t));
-            } catch (const yield_exception&) {
-               EOS_THROW(chain::controller_emit_signal_exception, "Trace API encountered an Error which it cannot recover from.  Please resolve the error and relaunch the process")
-            }
+            });
          }));
 
       accepted_block_connection.emplace(
          chain.accepted_block.connect([this](const chain::block_state_ptr& p) {
-            try {
+            emit_killer([&](){
                extraction->signal_accepted_block(p);
-            } catch (const yield_exception&) {
-               EOS_THROW(chain::controller_emit_signal_exception, "Trace API encountered an Error which it cannot recover from.  Please resolve the error and relaunch the process")
-            }
+            });
          }));
 
       irreversible_block_connection.emplace(
          chain.irreversible_block.connect([this](const chain::block_state_ptr& p) {
-            try {
+            emit_killer([&](){
                extraction->signal_irreversible_block(p);
-            } catch (const yield_exception&) {
-               EOS_THROW(chain::controller_emit_signal_exception, "Trace API encountered an Error which it cannot recover from.  Please resolve the error and relaunch the process")
-            }
+            });
          }));
 
    }
