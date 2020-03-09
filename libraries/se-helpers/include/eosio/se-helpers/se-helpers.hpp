@@ -13,10 +13,8 @@ class secure_enclave_key {
       const fc::crypto::public_key& public_key() const;
       fc::crypto::signature sign(const fc::sha256& digest) const;
 
-      secure_enclave_key() = delete;
       secure_enclave_key(const secure_enclave_key&);
       secure_enclave_key(secure_enclave_key&&);
-      secure_enclave_key& operator=(const secure_enclave_key&) = delete;
 
       bool operator<(const secure_enclave_key& r) const {
          return public_key() < r.public_key();
