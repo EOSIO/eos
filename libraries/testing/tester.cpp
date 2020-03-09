@@ -312,7 +312,13 @@ namespace eosio { namespace testing {
       }
    }
 
-   signed_block_ptr base_tester::_produce_block( fc::microseconds skip_time, bool skip_pending_trxs) {
+   signed_block_ptr base_tester::_produce_block( fc::microseconds skip_time, bool skip_pending_trxs ) {
+      std::vector<transaction_trace_ptr> traces;
+      return _produce_block( skip_time, skip_pending_trxs, false, traces );
+   }
+
+   signed_block_ptr base_tester::_produce_block( fc::microseconds skip_time, bool skip_pending_trxs,
+                                                 bool no_throw, std::vector<transaction_trace_ptr>& traces ) {
       auto head = control->head_block_state();
       auto head_time = control->head_block_time();
       auto next_time = head_time + skip_time;
@@ -324,7 +330,8 @@ namespace eosio { namespace testing {
       if( !skip_pending_trxs ) {
          for( auto itr = unapplied_transactions.begin(); itr != unapplied_transactions.end();  ) {
             auto trace = control->push_transaction( itr->trx_meta, fc::time_point::maximum(), DEFAULT_BILLED_CPU_TIME_US );
-            if(trace->except) {
+            traces.emplace_back( trace );
+            if(!no_throw && trace->except) {
                trace->except->dynamic_rethrow_exception();
             }
             itr = unapplied_transactions.erase( itr );
@@ -334,7 +341,8 @@ namespace eosio { namespace testing {
          while ((scheduled_trxs = get_scheduled_transactions()).size() > 0 ) {
             for( const auto& trx : scheduled_trxs ) {
                auto trace = control->push_scheduled_transaction( trx, fc::time_point::maximum(), DEFAULT_BILLED_CPU_TIME_US );
-               if( trace->except ) {
+               traces.emplace_back( trace );
+               if( !no_throw && trace->except ) {
                   trace->except->dynamic_rethrow_exception();
                }
             }
@@ -409,6 +417,10 @@ namespace eosio { namespace testing {
       last_produced_block[control->head_block_state()->header.producer] = control->head_block_state()->id;
 
       return control->head_block_state()->block;
+   }
+
+   signed_block_ptr base_tester::produce_block( std::vector<transaction_trace_ptr>& traces ) {
+      return _produce_block( fc::milliseconds(config::block_interval_ms), false, true, traces );
    }
 
    void base_tester::produce_blocks( uint32_t n, bool empty ) {
