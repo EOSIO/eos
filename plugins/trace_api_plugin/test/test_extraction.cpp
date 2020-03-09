@@ -8,14 +8,14 @@
 #include <eosio/chain/block.hpp>
 #include <eosio/chain/block_state.hpp>
 
-#include <eosio/trace_api_plugin/test_common.hpp>
-#include <eosio/trace_api_plugin/chain_extraction.hpp>
+#include <eosio/trace_api/test_common.hpp>
+#include <eosio/trace_api/chain_extraction.hpp>
 
 #include <fc/bitutil.hpp>
 
 using namespace eosio;
-using namespace eosio::trace_api_plugin;
-using namespace eosio::trace_api_plugin::test_common;
+using namespace eosio::trace_api;
+using namespace eosio::trace_api::test_common;
 using eosio::chain::name;
 using eosio::chain::digest_type;
 

@@ -1,9 +1,9 @@
 #pragma once
 
-#include <eosio/trace_api_plugin/trace.hpp>
+#include <eosio/trace_api/trace.hpp>
 #include <eosio/chain/block_state.hpp>
 
-namespace eosio { namespace trace_api_plugin {
+namespace eosio { namespace trace_api {
 
 /// Used by to_transaction_trace_v0 for creation of action_trace_v0
 inline action_trace_v0 to_action_trace_v0( const chain::action_trace& at ) {

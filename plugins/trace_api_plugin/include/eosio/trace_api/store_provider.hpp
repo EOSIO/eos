@@ -4,10 +4,10 @@
 #include <fc/io/cfile.hpp>
 #include <boost/filesystem.hpp>
 #include <fc/variant.hpp>
-#include <eosio/trace_api_plugin/metadata_log.hpp>
-#include <eosio/trace_api_plugin/data_log.hpp>
+#include <eosio/trace_api/metadata_log.hpp>
+#include <eosio/trace_api/data_log.hpp>
 
-namespace eosio::trace_api_plugin {
+namespace eosio::trace_api {
    using namespace boost::filesystem;
 
    class path_does_not_exist : public std::runtime_error {
@@ -237,4 +237,4 @@ namespace eosio::trace_api_plugin {
 
 }
 
-FC_REFLECT(eosio::trace_api_plugin::slice_provider::index_header, (version))
+FC_REFLECT(eosio::trace_api::slice_provider::index_header, (version))

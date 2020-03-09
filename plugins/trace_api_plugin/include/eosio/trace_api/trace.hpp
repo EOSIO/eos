@@ -4,7 +4,7 @@
 #include <eosio/chain/types.hpp>
 #include <eosio/chain/block.hpp>
 
-namespace eosio { namespace trace_api_plugin {
+namespace eosio { namespace trace_api {
 
    struct authorization_trace_v0 {
       chain::name account;
@@ -38,7 +38,7 @@ namespace eosio { namespace trace_api_plugin {
 
 } }
 
-FC_REFLECT(eosio::trace_api_plugin::authorization_trace_v0, (account)(permission))
-FC_REFLECT(eosio::trace_api_plugin::action_trace_v0, (global_sequence)(receiver)(account)(action)(authorization)(data))
-FC_REFLECT(eosio::trace_api_plugin::transaction_trace_v0, (id)(actions))
-FC_REFLECT(eosio::trace_api_plugin::block_trace_v0, (id)(number)(previous_id)(timestamp)(producer)(transactions))
+FC_REFLECT(eosio::trace_api::authorization_trace_v0, (account)(permission))
+FC_REFLECT(eosio::trace_api::action_trace_v0, (global_sequence)(receiver)(account)(action)(authorization)(data))
+FC_REFLECT(eosio::trace_api::transaction_trace_v0, (id)(actions))
+FC_REFLECT(eosio::trace_api::block_trace_v0, (id)(number)(previous_id)(timestamp)(producer)(transactions))

@@ -1,9 +1,9 @@
 #pragma once
 
-#include <eosio/trace_api_plugin/trace.hpp>
-#include <eosio/trace_api_plugin/common.hpp>
+#include <eosio/trace_api/trace.hpp>
+#include <eosio/trace_api/common.hpp>
 
-namespace eosio::trace_api_plugin {
+namespace eosio::trace_api {
    class base64_data_handler {
    public:
       base64_data_handler()
