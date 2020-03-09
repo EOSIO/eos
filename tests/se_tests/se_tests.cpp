@@ -53,23 +53,23 @@ BOOST_AUTO_TEST_CASE(se_test) try {
    {
       auto se_keys = eosio::secure_enclave::get_all_keys();
       BOOST_CHECK_EQUAL(se_keys.size(), 2);
-      BOOST_CHECK_EQUAL(pubkey_in_se_keyset(pub1, se_keys), true);
-      BOOST_CHECK_EQUAL(pubkey_in_se_keyset(pub2, se_keys), true);
+      BOOST_CHECK(pubkey_in_se_keyset(pub1, se_keys));
+      BOOST_CHECK(pubkey_in_se_keyset(pub2, se_keys));
    }
 
    //remove one of the SE keys
    {
       auto se_keys = eosio::secure_enclave::get_all_keys();
-      BOOST_CHECK_EQUAL(se_keys.begin()->public_key() == pub1 || se_keys.begin()->public_key() == pub2, true);
+      BOOST_CHECK(se_keys.begin()->public_key() == pub1 || se_keys.begin()->public_key() == pub2);
       //and make sure the one remaining is not the one removed
       if(se_keys.begin()->public_key() == pub1) {
          eosio::secure_enclave::delete_key(std::move(se_keys.extract(se_keys.begin()).value()));
-         BOOST_CHECK_EQUAL(eosio::secure_enclave::get_all_keys().begin()->public_key() == pub2, true);
+         BOOST_CHECK(eosio::secure_enclave::get_all_keys().begin()->public_key() == pub2);
          publast = pub2;
       }
       else {
          eosio::secure_enclave::delete_key(std::move(se_keys.extract(se_keys.begin()).value()));
-         BOOST_CHECK_EQUAL(eosio::secure_enclave::get_all_keys().begin()->public_key() == pub1, true);
+         BOOST_CHECK(eosio::secure_enclave::get_all_keys().begin()->public_key() == pub1);
          publast = pub1;
       }
    }
