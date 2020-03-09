@@ -13,7 +13,7 @@ using namespace eosio::trace_api::configuration_utils;
 using boost::signals2::scoped_connection;
 
 namespace {
-   appbase::abstract_plugin& plugin_reg = app().register_plugin<_trace_api_plugin>();
+   appbase::abstract_plugin& plugin_reg = app().register_plugin<trace_api_plugin>();
 
    const std::string logger_name("trace_api");
    fc::logger _log;
