@@ -18,8 +18,8 @@ namespace eosio {
     */
    class abi_data_handler {
    public:
-      explicit abi_data_handler(std::function<void(const exception_with_context&)> log = {})
-      :log(log)
+      explicit abi_data_handler( exception_handler except_handler = {} )
+      :except_handler( std::move( except_handler ) )
       {
       }
 
@@ -57,6 +57,6 @@ namespace eosio {
 
    private:
       std::map<chain::name, std::shared_ptr<chain::abi_serializer>> abi_serializer_by_account;
-      std::function<void(const exception_with_context&)> log;
+      exception_handler except_handler;
    };
 } }

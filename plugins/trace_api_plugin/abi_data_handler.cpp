@@ -16,7 +16,7 @@ namespace eosio::trace_api {
             try {
                return serializer_p->binary_to_variant(type_name, action.data, fc::microseconds::maximum());
             } catch (...) {
-               if (log) log(MAKE_EXCEPTION_WITH_CONTEXT(std::current_exception()));
+               except_handler(MAKE_EXCEPTION_WITH_CONTEXT(std::current_exception()));
             }
          }
       }
