@@ -396,11 +396,10 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
             return false;
          }
          return true;
-      });
+      }, []() {});
       BOOST_REQUIRE(found_block);
       BOOST_REQUIRE(lib_seen);
 
-      uint64_t block_offset = 0;
       std::vector<uint32_t> block_nums;
       std::vector<uint64_t> block_offsets;
       lib_seen = false;
@@ -416,7 +415,7 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
             lib_seen = true;
          }
          return true;
-      });
+      }, []() {});
       BOOST_REQUIRE(lib_seen);
       BOOST_REQUIRE_EQUAL(block_nums.size(), 2);
       BOOST_REQUIRE_EQUAL(block_nums[0], bt.number);
@@ -432,6 +431,37 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       bt_data = sp.read_data_log(block_nums[1], block_offsets[1]);
       BOOST_REQUIRE(bt_data);
       BOOST_REQUIRE_EQUAL(*bt_data, bt2);
+
+      block_nums.clear();
+      block_offsets.clear();
+      lib_seen = false;
+      int counter = 0;
+      try {
+         offset = sp.scan_metadata_log_from(9, 0, [&](const metadata_log_entry& e) -> bool {
+            if (e.contains<block_entry_v0>()) {
+               const auto& block = e.get<block_entry_v0>();
+               block_nums.push_back(block.number);
+               block_offsets.push_back(block.offset);
+            } else if (e.contains<lib_entry_v0>()) {
+               auto best_lib = e.get<lib_entry_v0>();
+               BOOST_REQUIRE(!lib_seen);
+               BOOST_REQUIRE_EQUAL(best_lib.lib, 54);
+               lib_seen = true;
+            }
+            return true;
+         }, [&counter]() {
+            if( ++counter == 3 ) {
+               throw yield_exception("");
+            }
+         });
+         BOOST_FAIL("Should not have completed scan");
+      } catch (const yield_exception& ex) {
+      }
+      BOOST_REQUIRE(lib_seen);
+      BOOST_REQUIRE_EQUAL(block_nums.size(), 1);
+      BOOST_REQUIRE_EQUAL(block_nums[0], bt.number);
+      BOOST_REQUIRE_EQUAL(block_offsets.size(), 1);
+      BOOST_REQUIRE(first_offset < offset);
    }
 
 BOOST_AUTO_TEST_SUITE_END()

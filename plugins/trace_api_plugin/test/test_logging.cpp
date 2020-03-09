@@ -63,7 +63,7 @@ struct logfile_test_fixture {
     */
    template<typename Fn>
    uint64_t scan_metadata_log_from( uint32_t block_height, uint64_t offset, Fn&& fn ) {
-      return store_impl.scan_metadata_log_from(block_height, offset, fn);
+      return store_impl.scan_metadata_log_from(block_height, offset, fn, []() {});
    }
 
    /**
