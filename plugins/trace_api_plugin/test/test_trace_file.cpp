@@ -73,7 +73,6 @@ namespace {
    struct test_store_provider : public store_provider {
       test_store_provider(const bfs::path& slice_dir, uint32_t width)
          : store_provider(slice_dir, width) {
-         ilog("test_fixture");
       }
       using store_provider::scan_metadata_log_from;
       using store_provider::read_data_log;
@@ -234,28 +233,28 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
    {
       fc::temp_directory tempdir;
       boost::filesystem::path tempdir_path = tempdir.path();
-      slice_directory sp(tempdir_path, 100);
-      BOOST_REQUIRE_EQUAL(sp.slice_number(99), 0);
-      BOOST_REQUIRE_EQUAL(sp.slice_number(100), 1);
-      BOOST_REQUIRE_EQUAL(sp.slice_number(1599), 15);
-      slice_directory sp2(tempdir_path, 0x10);
-      BOOST_REQUIRE_EQUAL(sp2.slice_number(0xf), 0);
-      BOOST_REQUIRE_EQUAL(sp2.slice_number(0x100), 0x10);
-      BOOST_REQUIRE_EQUAL(sp2.slice_number(0x233), 0x23);
+      slice_directory sd(tempdir_path, 100);
+      BOOST_REQUIRE_EQUAL(sd.slice_number(99), 0);
+      BOOST_REQUIRE_EQUAL(sd.slice_number(100), 1);
+      BOOST_REQUIRE_EQUAL(sd.slice_number(1599), 15);
+      slice_directory sd2(tempdir_path, 0x10);
+      BOOST_REQUIRE_EQUAL(sd2.slice_number(0xf), 0);
+      BOOST_REQUIRE_EQUAL(sd2.slice_number(0x100), 0x10);
+      BOOST_REQUIRE_EQUAL(sd2.slice_number(0x233), 0x23);
    }
 
    BOOST_FIXTURE_TEST_CASE(slice_file, test_fixture)
    {
       fc::temp_directory tempdir;
       bfs::path tempdir_path = tempdir.path();
-      slice_directory sp(tempdir_path, 100);
+      slice_directory sd(tempdir_path, 100);
       fc::cfile slice;
 
       const bool read_file = false;
       const bool append_file = true;
       // create trace slices
       for (uint i = 0; i < 9; ++i) {
-         bool found = sp.find_or_create_trace_slice(i, append_file, slice);
+         bool found = sd.find_or_create_trace_slice(i, append_file, slice);
          BOOST_REQUIRE(!found);
          bfs::path fp = slice.get_file_path();
          BOOST_REQUIRE_EQUAL(fp.parent_path().generic_string(), tempdir.path().generic_string());
@@ -269,7 +268,7 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
 
       // create trace index slices
       for (uint i = 0; i < 9; ++i) {
-         bool found = sp.find_or_create_index_slice(i, append_file, slice);
+         bool found = sd.find_or_create_index_slice(i, append_file, slice);
          BOOST_REQUIRE(!found);
          fc::path fp = slice.get_file_path();
          BOOST_REQUIRE_EQUAL(fp.parent_path().generic_string(), tempdir.path().generic_string());
@@ -284,7 +283,7 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       }
 
       // reopen trace slice for append
-      bool found = sp.find_or_create_trace_slice(0, append_file, slice);
+      bool found = sd.find_or_create_trace_slice(0, append_file, slice);
       BOOST_REQUIRE(found);
       fc::path fp = slice.get_file_path();
       BOOST_REQUIRE_EQUAL(fp.parent_path().generic_string(), tempdir.path().generic_string());
@@ -303,7 +302,7 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       slice.close();
 
       // open same file for read
-      found = sp.find_or_create_trace_slice(0, read_file, slice);
+      found = sd.find_or_create_trace_slice(0, read_file, slice);
       BOOST_REQUIRE(found);
       fp = slice.get_file_path();
       BOOST_REQUIRE_EQUAL(fp.filename().generic_string(), expected_filename);
@@ -313,7 +312,7 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       slice.close();
 
       // open same file for append again
-      found = sp.find_or_create_trace_slice(0, append_file, slice);
+      found = sd.find_or_create_trace_slice(0, append_file, slice);
       BOOST_REQUIRE(found);
       fp = slice.get_file_path();
       BOOST_REQUIRE_EQUAL(fp.filename().generic_string(), expected_filename);
@@ -323,7 +322,7 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       slice.close();
 
       // reopen trace index slice for append
-      found = sp.find_or_create_index_slice(1, append_file, slice);
+      found = sd.find_or_create_index_slice(1, append_file, slice);
       BOOST_REQUIRE(found);
       fp = slice.get_file_path();
       BOOST_REQUIRE_EQUAL(fp.parent_path().generic_string(), tempdir.path().generic_string());
@@ -344,7 +343,7 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       uint64_t index_file_size = bfs::file_size(fp);
       slice.close();
 
-      found = sp.find_or_create_index_slice(1, read_file, slice);
+      found = sd.find_or_create_index_slice(1, read_file, slice);
       BOOST_REQUIRE(found);
       fp = slice.get_file_path();
       BOOST_REQUIRE_EQUAL(fp.filename().generic_string(), expected_filename);
@@ -353,7 +352,7 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       BOOST_REQUIRE_EQUAL(slice.tellp(), header_size);
       slice.close();
 
-      found = sp.find_or_create_index_slice(1, append_file, slice);
+      found = sd.find_or_create_index_slice(1, append_file, slice);
       BOOST_REQUIRE(found);
       fp = slice.get_file_path();
       BOOST_REQUIRE_EQUAL(fp.filename().generic_string(), expected_filename);
@@ -368,7 +367,7 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       BOOST_REQUIRE_EQUAL(bfs::file_size(fp), slice.tellp());
       slice.close();
 
-      found = sp.find_or_create_index_slice(1, read_file, slice);
+      found = sd.find_or_create_index_slice(1, read_file, slice);
       BOOST_REQUIRE(found);
       fp = slice.get_file_path();
       BOOST_REQUIRE_EQUAL(fp.filename().generic_string(), expected_filename);
@@ -470,6 +469,56 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       BOOST_REQUIRE_EQUAL(block_nums[0], bt.number);
       BOOST_REQUIRE_EQUAL(block_offsets.size(), 1);
       BOOST_REQUIRE(first_offset < offset);
+   }
+
+   BOOST_FIXTURE_TEST_CASE(test_get_block, test_fixture)
+   {
+      fc::temp_directory tempdir;
+      bfs::path tempdir_path = tempdir.path();
+      store_provider sp(tempdir_path, 100);
+      sp.append(bt);
+      sp.append_lib(1);
+      sp.append(bt2);
+      int count = 0;
+      get_block_t block1 = sp.get_block(1,[&count]() {
+         if (++count >= 3) {
+            throw yield_exception("");
+         }
+      });
+      BOOST_REQUIRE(block1);
+      BOOST_REQUIRE(std::get<1>(*block1));
+      const auto block1_bt = std::get<0>(*block1);
+      BOOST_REQUIRE_EQUAL(block1_bt, bt);
+
+      count = 0;
+      get_block_t block2 = sp.get_block(5,[&count]() {
+         if (++count >= 4) {
+            throw yield_exception("");
+         }
+      });
+      BOOST_REQUIRE(block2);
+      BOOST_REQUIRE(!std::get<1>(*block2));
+      const auto block2_bt = std::get<0>(*block2);
+      BOOST_REQUIRE_EQUAL(block2_bt, bt2);
+
+      count = 0;
+      try {
+         sp.get_block(5,[&count]() {
+            if (++count >= 3) {
+               throw yield_exception("");
+            }
+         });
+         BOOST_FAIL("Should not have completed scan");
+      } catch (const yield_exception& ex) {
+      }
+
+      count = 0;
+      block2 = sp.get_block(2,[&count]() {
+         if (++count >= 4) {
+            throw yield_exception("");
+         }
+      });
+      BOOST_REQUIRE(!block2);
    }
 
 BOOST_AUTO_TEST_SUITE_END()
