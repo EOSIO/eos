@@ -1,4 +1,4 @@
-if(NOT MAS_ENABLED)
+if(NOT MAS_ENABLED OR MAS_LEGACY)
    return()
 endif()
 

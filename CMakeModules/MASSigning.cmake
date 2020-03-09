@@ -1,5 +1,8 @@
 if(APPLE AND MAS_CERT_FINGERPRINT AND MAS_BASE_APPID AND MAS_PROVISIONING_PROFILE)
   set(MAS_ENABLED ON)
+  if(MAS_KEYCHAIN_GROUP)
+    set(MAS_LEGACY ON)
+  endif()
 endif()
 
 macro(mas_sign target) #optional argument that forces keygroup when MAS_KEYCHAIN_GROUP not set
