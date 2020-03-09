@@ -1,5 +1,6 @@
 #define BOOST_TEST_MODULE trace_data_logging
 #include <boost/test/included/unit_test.hpp>
+#include <eosio/trace_api_plugin/store_provider.hpp>
 
 #include <eosio/trace_api_plugin/test_common.hpp>
 
@@ -17,7 +18,7 @@ struct logfile_test_fixture {
     * OPTIONAL use `mock_filesystem_provider` as template param to store things in RAM?
     */
    logfile_test_fixture()
-   // : logfile_impl()
+   : store_impl(tempdir.path(), 100)
    {
    }
 
@@ -29,25 +30,10 @@ struct logfile_test_fixture {
    /**
     * append an entry to the end of the data log
     *
-    * @param entry : the entry to append
-    * @return the offset in the log where that entry is written
+    * @param bt : block trace to append
     */
-   uint64_t append_data_log( const data_log_entry& entry ) {
-      // TODO: route to logfile subsystem
-      // return logfile_impl.append_data_log(std::move(entry));
-      return 0;
-   }
-
-   /**
-    * Append an entry to the metadata log
-    *
-    * @param entry
-    * @return
-    */
-   uint64_t append_metadata_log( const metadata_log_entry& entry ) {
-      // TODO: route to logfile subsystem
-      // return logfile_impl.append_data_log(std::move(entry));
-      return 0;
+   void append_data_log( const block_trace_v0& bt ) {
+      store_impl.append(bt);
    }
 
    /**
@@ -63,8 +49,7 @@ struct logfile_test_fixture {
     *
     */
    std::optional<data_log_entry> read_data_log( uint32_t block_height, uint64_t offset ) {
-      // TODO: route to logfile subsystem
-      return {};
+      return store_impl.read_data_log(block_height, offset);
    }
 
    /**
@@ -78,8 +63,7 @@ struct logfile_test_fixture {
     */
    template<typename Fn>
    uint64_t scan_metadata_log_from( uint32_t block_height, uint64_t offset, Fn&& fn ) {
-      // TODO: route to logfile subsystem
-      return offset;
+      return store_impl.scan_metadata_log_from(block_height, offset, fn);
    }
 
    /**
@@ -95,14 +79,14 @@ struct logfile_test_fixture {
        return result;
     }
 
-   // TODO: declare extraction implementation here with `mock_logfile_provider` as template param
-   // logfile_impl_type logfile_impl;
+   fc::temp_directory tempdir;
+   store_provider store_impl;
 };
 
 BOOST_AUTO_TEST_SUITE(logfile_access)
    BOOST_FIXTURE_TEST_CASE(single_slice_write, logfile_test_fixture)
    {
-      auto block_1_data_entry = data_log_entry {
+      auto block_1_data_entry =
          block_trace_v0 {
             "b000000000000000000000000000000000000000000000000000000000000001"_h,
             1,
@@ -110,34 +94,28 @@ BOOST_AUTO_TEST_SUITE(logfile_access)
             chain::block_timestamp_type(1),
             "bp.one"_n,
             {}
-         }
-      };
+         };
 
       // write the data
-      auto block_1_offset = append_data_log(block_1_data_entry);
+      append_data_log(block_1_data_entry);
+      uint64_t block_1_offset = 0;
 
-      auto block_1_metadata_entry = metadata_log_entry {
+      auto expected_block_entry =
          block_entry_v0 {
             "b000000000000000000000000000000000000000000000000000000000000001"_h,
             1,
             block_1_offset
-         }
-      };
-
-      // write the metadata
-      //
-      append_metadata_log(block_1_metadata_entry);
+         };
 
       auto actual_metadata_log = inspect_metadata_log(1);
       BOOST_REQUIRE_EQUAL(actual_metadata_log.size(), 1);
       BOOST_REQUIRE(actual_metadata_log[0].contains<block_entry_v0>());
       const auto actual_block_entry = actual_metadata_log[0].get<block_entry_v0>();
-      const auto expected_block_entry = block_1_metadata_entry.get<block_entry_v0>();
       BOOST_REQUIRE( actual_block_entry == expected_block_entry );
 
       auto actual_block_1_data_entry_opt = read_data_log(1, block_1_offset);
       BOOST_REQUIRE(actual_block_1_data_entry_opt);
-      BOOST_REQUIRE(*actual_block_1_data_entry_opt == block_1_data_entry);
+      BOOST_REQUIRE(actual_block_1_data_entry_opt->get<block_trace_v0>() == block_1_data_entry);
    }
 
 BOOST_AUTO_TEST_SUITE_END()
