@@ -1,6 +1,7 @@
 #include <eosio/se-helpers/se-helpers.hpp>
 
 #include <fc/fwd_impl.hpp>
+#include <fc/scoped_exit.hpp>
 
 #include <Security/Security.h>
 
@@ -8,13 +9,11 @@ namespace eosio::secure_enclave {
 
 static std::string string_for_cferror(CFErrorRef error) {
    CFStringRef errorString = CFCopyDescription(error);
-   char buff[CFStringGetLength(errorString) + 1];
-   std::string ret;
-   if(CFStringGetCString(errorString, buff, sizeof(buff), kCFStringEncodingUTF8))
-      ret = buff;
-   else
+   auto release_errorString = fc::make_scoped_exit([&errorString](){CFRelease(errorString);});
+
+   std::string ret(CFStringGetLength(errorString), '\0');
+   if(!CFStringGetCString(errorString, ret.data(), ret.size(), kCFStringEncodingUTF8))
       ret = "Unknown";
-   CFRelease(errorString);
    return ret;
 }
 
@@ -48,9 +47,8 @@ struct secure_enclave_key::impl {
       CFRelease(pubkey);
 
       if(error) {
-         std::string error_string = string_for_cferror(error);
-         CFRelease(error);
-         FC_ASSERT(false, "Failed to get public key from Secure Enclave: ${m}", ("m", error_string));
+         auto release_error = fc::make_scoped_exit([&error](){CFRelease(error);});
+         FC_ASSERT(false, "Failed to get public key from Secure Enclave: ${m}", ("m", string_for_cferror(error)));
       }
 
       fc::datastream<const char*> ds(serialized_public_key, sizeof(serialized_public_key));
@@ -61,8 +59,9 @@ struct secure_enclave_key::impl {
 secure_enclave_key::secure_enclave_key(void* seckeyref) {
    static_assert(sizeof(impl) <= fwd_size);
 
-   my->key_ref = (SecKeyRef)seckeyref;
+   my->key_ref = (SecKeyRef)(seckeyref);
    my->populate_public_key();
+   CFRetain(my->key_ref);
 }
 
 secure_enclave_key::secure_enclave_key(const secure_enclave_key& o) {
@@ -86,10 +85,16 @@ fc::crypto::signature secure_enclave_key::sign(const fc::sha256& digest) const {
 
    CFDataRef digestData = CFDataCreateWithBytesNoCopy(NULL, (UInt8*)digest.data(), digest.data_size(), kCFAllocatorNull);
    CFDataRef signature = SecKeyCreateSignature(my->key_ref, kSecKeyAlgorithmECDSASignatureDigestX962SHA256, digestData, &error);
-   if(error) {
-      std::string error_string = string_for_cferror(error);
-      CFRelease(error);
+
+   auto cleanup = fc::make_scoped_exit([&digestData, &signature]() {
       CFRelease(digestData);
+      if(signature)
+         CFRelease(signature);
+   });
+
+   if(error) {
+      auto release_error = fc::make_scoped_exit([&error](){CFRelease(error);});
+      std::string error_string = string_for_cferror(error);
       FC_ASSERT(false, "Failed to sign digest in Secure Enclave: ${m}", ("m", error_string));
    }
 
@@ -99,18 +104,9 @@ fc::crypto::signature secure_enclave_key::sign(const fc::sha256& digest) const {
 
    char serialized_signature[sizeof(fc::crypto::r1::compact_signature) + 1] = {fc::crypto::signature::storage_type::position<fc::crypto::r1::signature_shim>()};
 
-   try {
-      fc::crypto::r1::compact_signature* compact_sig = (fc::crypto::r1::compact_signature *)(serialized_signature + 1);
-      fc::ec_key key = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
-      *compact_sig = fc::crypto::r1::signature_from_ecdsa(key,my->pub_key._storage.get<fc::crypto::r1::public_key_shim>()._data, sig, digest);
-   } catch(...) {
-      CFRelease(signature);
-      CFRelease(digestData);
-      throw;
-   }
-
-   CFRelease(signature);
-   CFRelease(digestData);
+   fc::crypto::r1::compact_signature* compact_sig = (fc::crypto::r1::compact_signature *)(serialized_signature + 1);
+   fc::ec_key key = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
+   *compact_sig = fc::crypto::r1::signature_from_ecdsa(key,my->pub_key._storage.get<fc::crypto::r1::public_key_shim>()._data, sig, digest);
 
    fc::crypto::signature final_signature;
    fc::datastream<const char*> ds(serialized_signature, sizeof(serialized_signature));
@@ -148,21 +144,19 @@ secure_enclave_key create_key() {
    };
    CFDictionaryRef attributesDic = CFDictionaryCreate(NULL, attrKeys, atrrValues, sizeof(attrKeys)/sizeof(attrKeys[0]), &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
 
+   auto cleanup = fc::make_scoped_exit([&attributesDic, &keyAttrDic, &keySizeNumber, &accessControlRef]() {
+      CFRelease(attributesDic);
+      CFRelease(keyAttrDic);
+      CFRelease(keySizeNumber);
+      CFRelease(accessControlRef);
+   });
+
    CFErrorRef error = NULL;
    SecKeyRef privateKey = SecKeyCreateRandomKey(attributesDic, &error);
-   std::string error_string;
    if(error) {
-      error_string = string_for_cferror(error);
-      CFRelease(error);
+      auto release_error = fc::make_scoped_exit([&error](){CFRelease(error);});
+      FC_ASSERT(false, "Failed to create key in Secure Enclave: ${m}", ("m", string_for_cferror(error)));
    }
-
-   CFRelease(attributesDic);
-   CFRelease(keyAttrDic);
-   CFRelease(keySizeNumber);
-   CFRelease(accessControlRef);
-
-   if(error_string.size())
-      FC_ASSERT(false, "Failed to create key in Secure Enclave: ${m}", ("m", error_string));
 
    return secure_enclave_key(privateKey);
 }
@@ -183,25 +177,18 @@ std::set<secure_enclave_key> get_all_keys() {
       kSecAttrTokenIDSecureEnclave,
    };
    CFDictionaryRef keyAttrDic = CFDictionaryCreate(NULL, keyAttrKeys, keyAttrValues, sizeof(keyAttrValues)/sizeof(keyAttrValues[0]), &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
-
-   CFArrayRef keyRefs = NULL;
-   if(SecItemCopyMatching(keyAttrDic, (CFTypeRef*)&keyRefs) || !keyRefs) {
-      CFRelease(keyAttrDic);
-      return std::set<secure_enclave_key>();
-   }
+   auto cleanup_keyAttrDic = fc::make_scoped_exit([&keyAttrDic](){CFRelease(keyAttrDic);});
 
    std::set<secure_enclave_key> ret;
 
-   CFIndex count = CFArrayGetCount(keyRefs);
-   for(long i = 0; i < count; ++i) {
-      try {
-         ret.emplace((void*)CFRetain(CFArrayGetValueAtIndex(keyRefs, i)));
-      }
-      catch(...) {} //swallow keys we couldn't read for whatever reason
-   }
+   CFArrayRef keyRefs = NULL;
+   if(SecItemCopyMatching(keyAttrDic, (CFTypeRef*)&keyRefs) || !keyRefs)
+      return ret;
+   auto cleanup_keyRefs = fc::make_scoped_exit([&keyRefs](){CFRelease(keyRefs);});
 
-   CFRelease(keyRefs);
-   CFRelease(keyAttrDic);
+   CFIndex count = CFArrayGetCount(keyRefs);
+   for(long i = 0; i < count; ++i)
+      ret.emplace((void*)CFArrayGetValueAtIndex(keyRefs, i));
 
    return ret;
 }
