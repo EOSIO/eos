@@ -36,6 +36,35 @@ namespace eosio::trace_api {
       append_store(le, index);
    }
 
+   get_block_t store_provider::get_block(uint32_t block_height, const yield_function& yield) {
+      std::optional<uint64_t> trace_offset;
+      bool irreversible = false;
+      uint64_t offset = scan_metadata_log_from(block_height, 0, [&block_height, &trace_offset, &irreversible](const metadata_log_entry& e) -> bool {
+         if (e.contains<block_entry_v0>()) {
+            const auto& block = e.get<block_entry_v0>();
+            if (block.number == block_height) {
+               trace_offset = block.offset;
+            }
+         } else if (e.contains<lib_entry_v0>()) {
+            auto lib = e.get<lib_entry_v0>().lib;
+            if (lib >= block_height) {
+               irreversible = true;
+               return false;
+            }
+         }
+         return true;
+      }, yield);
+      if (!trace_offset) {
+         return get_block_t{};
+      }
+      std::optional<data_log_entry> entry = read_data_log(block_height, *trace_offset);
+      if (!entry) {
+         return get_block_t{};
+      }
+      const auto bt = entry->get<block_trace_v0>();
+      return std::make_tuple( bt, irreversible );
+   }
+
    void store_provider::find_or_create_slice_pair(uint32_t block_height, bool append, fc::cfile& trace, fc::cfile& index) {
       const uint32_t slice_number = _slice_provider.slice_number(block_height);
       const bool trace_created = _slice_provider.find_or_create_trace_slice(slice_number, append, trace);
