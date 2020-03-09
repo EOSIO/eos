@@ -148,7 +148,7 @@ namespace eosio::trace_api {
        * @return the highest offset read during this scan
        */
       template<typename Fn>
-      uint64_t scan_metadata_log_from( uint32_t block_height, uint64_t offset, Fn&& fn ) {
+      uint64_t scan_metadata_log_from( uint32_t block_height, uint64_t offset, Fn&& fn, const yield_function& yield ) {
          // ignoring offset
          offset = 0;
          fc::cfile index;
@@ -161,6 +161,7 @@ namespace eosio::trace_api {
          offset = index.tellp();
          uint64_t last_read_offset = offset;
          while (offset < end) {
+            yield();
             const auto metadata = extract_store<metadata_log_entry>(index);
             if(! fn(metadata)) {
                break;
