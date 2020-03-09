@@ -610,12 +610,17 @@ BOOST_AUTO_TEST_CASE( push_block_returns_forked_transactions ) try {
    wlog( "sam and pam go off on their own fork on c2 while dan produces blocks by himself in c1" );
    auto fork_block_num = c.control->head_block_num();
 
+   signed_block_ptr c2b;
    wlog( "c2 blocks:" );
    c2.produce_blocks(12); // pam produces 12 blocks
-   b = c2.produce_block( fc::milliseconds(config::block_interval_ms * 13) ); // sam skips over dan's blocks
+   b = c2b = c2.produce_block( fc::milliseconds(config::block_interval_ms * 13) ); // sam skips over dan's blocks
    expected_producer = N(sam);
    BOOST_REQUIRE_EQUAL( b->producer.to_string(), expected_producer.to_string() );
-   c2.produce_blocks(11 + 12);
+   // save blocks for verification of forking later
+   std::vector<signed_block_ptr> c2blocks;
+   for( size_t i = 0; i < 11 + 12; ++i ) {
+      c2blocks.emplace_back( c2.produce_block() );
+   }
 
 
    wlog( "c1 blocks:" );
@@ -695,6 +700,12 @@ BOOST_AUTO_TEST_CASE( push_block_returns_forked_transactions ) try {
    c.produce_block();
    c.produce_blocks(9);
 
+   // test forked blocks signal accepted_block in order, required by trace_api_plugin
+   std::vector<signed_block_ptr> accepted_blocks;
+   auto conn = c.control->accepted_block.connect( [&]( const block_state_ptr& bsp) {
+      accepted_blocks.emplace_back( bsp->block );
+   } );
+
    // dan on chain 1 now gets all of the blocks from chain 2 which should cause fork switch
    wlog( "push c2 blocks to c1" );
    for( uint32_t start = fork_block_num + 1, end = c2.control->head_block_num(); start <= end; ++start ) {
@@ -702,6 +713,17 @@ BOOST_AUTO_TEST_CASE( push_block_returns_forked_transactions ) try {
       c.push_block( fb );
    }
 
+   {  // verify forked blocks where signaled in order
+      auto itr = std::find( accepted_blocks.begin(), accepted_blocks.end(), c2b );
+      BOOST_CHECK( itr != accepted_blocks.end() );
+      ++itr;
+      BOOST_CHECK( itr != accepted_blocks.end() );
+      size_t i = 0;
+      for( i = 0; itr != accepted_blocks.end(); ++i, ++itr ) {
+         BOOST_CHECK( c2blocks.at(i) == *itr );
+      }
+      BOOST_CHECK( i == 11 + 12 );
+   }
    // verify transaction on fork is reported by push_block in order
    BOOST_REQUIRE_EQUAL( 4, c.get_unapplied_transaction_queue().size() );
    BOOST_REQUIRE_EQUAL( trace1->id, c.get_unapplied_transaction_queue().begin()->id() );
