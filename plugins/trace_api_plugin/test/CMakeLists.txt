@@ -16,6 +16,12 @@ target_include_directories( test_responses PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/i
 
 add_test(NAME test_responses COMMAND plugins/trace_api_plugin/test/test_responses WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
+add_executable( test_trace_file test_trace_file.cpp )
+target_link_libraries( test_trace_file trace_api_plugin )
+target_include_directories( test_trace_file PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" )
+
+add_test(NAME test_trace_file COMMAND plugins/trace_api_plugin/test/test_trace_file WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+
 add_executable( test_data_handlers test_data_handlers.cpp )
 target_link_libraries( test_data_handlers trace_api_plugin )
 target_include_directories( test_data_handlers PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" )
