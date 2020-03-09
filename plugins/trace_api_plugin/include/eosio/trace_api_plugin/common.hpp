@@ -3,19 +3,37 @@
 #include <tuple>
 
 namespace eosio::trace_api_plugin {
+   template<typename R, typename ...Args>
+   class optional_delegate : private std::function<R(Args...)> {
+   public:
+      using std::function<R(Args...)>::function;
+
+      /**
+       * overloaded call operator to ignore unset functions
+       */
+      template<typename U = R>
+      auto operator()( Args... args ) const -> std::enable_if_t<!std::is_void_v<U>, R> {
+         if (static_cast<bool>(*this)) {
+            return std::function<R(Args...)>::operator()(std::move(args)...);
+         } else {
+            return {};
+         }
+      }
+
+      template<typename U = R>
+      auto operator()( Args... args ) const -> std::enable_if_t<std::is_void_v<U>> {
+         if (static_cast<bool>(*this)) {
+            std::function<R(Args...)>::operator()(std::move(args)...);
+         }
+      }
+   };
 
    /**
     * A function used to separate cooperative or external concerns from long running tasks
     * calling code should expect that this can throw yield_exception and gracefully unwind if it does
     * @throws yield_exception if the provided yield needs to terminate the long running process for any reason
     */
-   using yield_function = std::function<void()>;
-
-   template<typename F, typename ...Args>
-   void call_if_set(F&& f, Args&&  ...args ) {
-      if (static_cast<bool>(f))
-         std::forward<F>(f)(std::forward<Args>(args)...);
-   }
+   using yield_function = optional_delegate<void>;
 
    /**
     * Exceptions
