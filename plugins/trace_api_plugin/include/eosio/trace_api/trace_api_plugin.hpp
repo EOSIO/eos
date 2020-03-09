@@ -7,12 +7,12 @@ namespace eosio {
    /**
     * Plugin that runs both a data extraction  and the HTTP RPC in the same application
     */
-   class _trace_api_plugin : public appbase::plugin<_trace_api_plugin> {
+   class trace_api_plugin : public appbase::plugin<trace_api_plugin> {
    public:
       APPBASE_PLUGIN_REQUIRES((chain_plugin)(http_plugin))
 
-      _trace_api_plugin();
-      virtual ~_trace_api_plugin();
+      trace_api_plugin();
+      virtual ~trace_api_plugin();
 
       virtual void set_program_options(appbase::options_description& cli, appbase::options_description& cfg) override;
 

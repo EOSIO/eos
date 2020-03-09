@@ -3,11 +3,11 @@
 #include <list>
 #include <boost/filesystem.hpp>
 
-#include <eosio/trace_api_plugin/configuration_utils.hpp>
-#include <eosio/trace_api_plugin/test_common.hpp>
+#include <eosio/trace_api/configuration_utils.hpp>
+#include <eosio/trace_api/test_common.hpp>
 
 using namespace eosio;
-using namespace eosio::trace_api_plugin::configuration_utils;
+using namespace eosio::trace_api::configuration_utils;
 
 namespace bfs = boost::filesystem;
 
