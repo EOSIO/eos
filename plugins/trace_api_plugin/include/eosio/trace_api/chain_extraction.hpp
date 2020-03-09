@@ -16,7 +16,7 @@ class chain_extraction_impl_type {
 public:
    /**
     * Chain Extractor for capturing transaction traces, action traces, and block info.
-    * @param store provider of append_data_log & append_metadata_log
+    * @param store provider of append & append_lib
     * @param except_handler called on exceptions, logging if any is left to the user
     */
    chain_extraction_impl_type( StoreProvider store, std::function<void(std::exception_ptr)> except_handler )

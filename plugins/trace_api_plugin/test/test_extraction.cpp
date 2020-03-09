@@ -176,7 +176,7 @@ struct extraction_test_fixture {
        *
        * @param entry : the entry to append
        */
-      void append( const data_log_entry& entry ) {
+      void append( const block_trace_v0& entry ) {
          fixture.data_log.emplace_back(entry);
       }
 
