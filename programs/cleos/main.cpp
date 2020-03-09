@@ -2585,15 +2585,30 @@ int main( int argc, char** argv ) {
    // get block
    string blockArg;
    bool get_bhs = false;
+   bool get_binfo = false;
    auto getBlock = get->add_subcommand("block", localized("Retrieve a full block from the blockchain"), false);
    getBlock->add_option("block", blockArg, localized("The number or ID of the block to retrieve"))->required();
    getBlock->add_flag("--header-state", get_bhs, localized("Get block header state from fork database instead") );
-   getBlock->set_callback([&blockArg,&get_bhs] {
-      auto arg = fc::mutable_variant_object("block_num_or_id", blockArg);
-      if( get_bhs ) {
-         std::cout << fc::json::to_pretty_string(call(get_block_header_state_func, arg)) << std::endl;
+   getBlock->add_flag("--info", get_binfo, localized("Get block info from the blockchain by block num only") );
+   getBlock->set_callback([&blockArg, &get_bhs, &get_binfo] {
+      EOSC_ASSERT( !(get_bhs && get_binfo), "ERROR: Either --header-state or --info can be set" );
+      if (get_binfo) {
+         fc::optional<int64_t> block_num;
+         try {
+            block_num = fc::to_int64(blockArg);
+         } catch (...) {
+            // error is handled in assertion below
+         }
+         EOSC_ASSERT( block_num.valid() && (*block_num > 0), "Invalid block num: ${block_num}", ("block_num", blockArg) );
+         const auto arg = fc::variant_object("block_num", static_cast<uint32_t>(*block_num));
+         std::cout << fc::json::to_pretty_string(call(get_block_info_func, arg)) << std::endl;
       } else {
-         std::cout << fc::json::to_pretty_string(call(get_block_func, arg)) << std::endl;
+         const auto arg = fc::variant_object("block_num_or_id", blockArg);
+         if (get_bhs) {
+            std::cout << fc::json::to_pretty_string(call(get_block_header_state_func, arg)) << std::endl;
+         } else {
+            std::cout << fc::json::to_pretty_string(call(get_block_func, arg)) << std::endl;
+         }
       }
    });
 

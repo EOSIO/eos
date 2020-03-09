@@ -280,6 +280,12 @@ public:
 
    fc::variant get_block(const get_block_params& params) const;
 
+   struct get_block_info_params {
+      uint32_t block_num;
+   };
+
+   fc::variant get_block_info(const get_block_info_params& params) const;
+
    struct get_block_header_state_params {
       string block_num_or_id;
    };
@@ -762,6 +768,7 @@ FC_REFLECT(eosio::chain_apis::read_only::get_info_results,
 FC_REFLECT(eosio::chain_apis::read_only::get_activated_protocol_features_params, (lower_bound)(upper_bound)(limit)(search_by_block_num)(reverse) )
 FC_REFLECT(eosio::chain_apis::read_only::get_activated_protocol_features_results, (activated_protocol_features)(more) )
 FC_REFLECT(eosio::chain_apis::read_only::get_block_params, (block_num_or_id))
+FC_REFLECT(eosio::chain_apis::read_only::get_block_info_params, (block_num))
 FC_REFLECT(eosio::chain_apis::read_only::get_block_header_state_params, (block_num_or_id))
 
 FC_REFLECT( eosio::chain_apis::read_write::push_transaction_results, (transaction_id)(processed) )

@@ -2083,6 +2083,32 @@ fc::variant read_only::get_block(const read_only::get_block_params& params) cons
            ("ref_block_prefix", ref_block_prefix);
 }
 
+fc::variant read_only::get_block_info(const read_only::get_block_info_params& params) const {
+
+   signed_block_ptr block;
+   try {
+         block = db.fetch_block_by_number( params.block_num );
+   } catch (...)   {
+      // assert below will handle the invalid block num
+   }
+
+   EOS_ASSERT( block, unknown_block_exception, "Could not find block: ${block}", ("block", params.block_num));
+
+   return fc::mutable_variant_object ()
+         ("block_num", block->block_num())
+         ("ref_block_num", static_cast<uint16_t>(block->block_num()))
+         ("id", block->id())
+         ("timestamp", block->timestamp)
+         ("producer", block->producer)
+         ("confirmed", block->confirmed)
+         ("previous", block->previous)
+         ("transaction_mroot", block->transaction_mroot)
+         ("action_mroot", block->action_mroot)
+         ("schedule_version", block->schedule_version)
+         ("producer_signature", block->producer_signature)
+         ("ref_block_prefix", static_cast<uint32_t>(block->id()._hash[1]));
+}
+
 fc::variant read_only::get_block_header_state(const get_block_header_state_params& params) const {
    block_state_ptr b;
    optional<uint64_t> block_num;
