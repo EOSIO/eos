@@ -71,7 +71,6 @@ namespace {
 }
 
 namespace temporary {
-   using namespace eosio::trace_api_plugin;
    struct ephemeral_store {
 
       void append( const data_log_entry& entry ) {
@@ -267,12 +266,12 @@ struct trace_api_plugin_impl {
       }
 
       // TODO: better decide here
-      auto log_exceptions = [](std::exception_ptr e) {
-         try {
-            std::rethrow_exception(e);
-         } FC_LOG_AND_DROP();
+      auto log_exceptions_and_shutdown = [](const exception_with_context& e) {
+         elog("Trace API encountered an Error which it cannot recover from.  Please resolve the error and relaunch the process");
+         log_exception(e, fc::log_level::error);
+         app().shutdown();
       };
-      extraction = std::make_shared<chain_extraction_t>(shared_store_provider<temporary::ephemeral_store>(common->store), log_exceptions);
+      extraction = std::make_shared<chain_extraction_t>(shared_store_provider<temporary::ephemeral_store>(common->store), log_exceptions_and_shutdown);
 
       auto& chain = app().find_plugin<chain_plugin>()->chain();
 
