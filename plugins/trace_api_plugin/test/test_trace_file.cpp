@@ -385,7 +385,7 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       sp.append(bt);
       sp.append_lib(54);
       sp.append(bt2);
-      const uint64_t bt_bn = bt.number;
+      const uint32_t bt_bn = bt.number;
       bool found_block = false;
       bool lib_seen = false;
       const uint64_t first_offset = sp.scan_metadata_log_from(9, 0, [&](const metadata_log_entry& e) -> bool {
