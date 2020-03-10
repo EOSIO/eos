@@ -243,8 +243,6 @@ namespace eosio { namespace chain {
 
    void transaction_context::init_for_deferred_trx( fc::time_point p )
    {
-      std::cout << "trx.expiration.sec_since_epoch(): "  << trx.expiration.sec_since_epoch()  << std::endl;
-      std::cout << "trx.transaction_extensions.size(): " << trx.transaction_extensions.size() << std::endl;
       if( (trx.expiration.sec_since_epoch() != 0) && (trx.transaction_extensions.size() > 0) ) {
          disallow_transaction_extensions( "no transaction extensions supported yet for deferred transactions" );
       }
