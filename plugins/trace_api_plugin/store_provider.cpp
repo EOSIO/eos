@@ -122,9 +122,6 @@ namespace eosio::trace_api {
       if( !found ) {
          trace_file.open(fc::cfile::create_or_update_rw_mode);
       }
-      else if( append ) {
-         trace_file.seek_end(0);
-      }
 
       return found;
    }
