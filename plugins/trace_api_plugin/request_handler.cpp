@@ -1,5 +1,7 @@
 #include <eosio/trace_api/request_handler.hpp>
 
+#include <algorithm>
+
 #include <fc/variant_object.hpp>
 #include <fc/crypto/base64.hpp>
 
@@ -29,9 +31,18 @@ namespace {
    fc::variants process_actions(const std::vector<action_trace_v0>& actions, const data_handler_function& data_handler, const yield_function& yield ) {
       fc::variants result;
       result.reserve(actions.size());
-      for ( const auto& a: actions) {
+
+      // create a vector of indices to sort based on actions to avoid copies
+      std::vector<int> indices(actions.size());
+      std::iota(indices.begin(), indices.end(), 0);
+      std::sort(indices.begin(), indices.end(), [&actions](const int& lhs, const int& rhs) -> bool {
+         return actions.at(lhs).global_sequence < actions.at(rhs).global_sequence;
+      });
+
+      for ( int index : indices) {
          yield();
 
+         const auto& a = actions.at(index);
          auto action_variant = fc::mutable_variant_object()
                ("receiver", a.receiver.to_string())
                ("account", a.account.to_string())
