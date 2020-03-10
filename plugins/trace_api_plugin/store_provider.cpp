@@ -1,7 +1,6 @@
 #include <eosio/trace_api/store_provider.hpp>
 
 #include <fc/variant_object.hpp>
-#include <fc/crypto/base64.hpp>
 
 namespace {
       static constexpr uint32_t _current_version = 1;

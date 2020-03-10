@@ -4,7 +4,6 @@
 #include <fc/variant_object.hpp>
 
 #include <eosio/trace_api/request_handler.hpp>
-#include <eosio/trace_api/base64_data_handler.hpp>
 #include <eosio/trace_api/test_common.hpp>
 
 using namespace eosio;
