@@ -352,7 +352,6 @@ void apply_context::execute_context_free_inline( action&& a ) {
 void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, account_name payer, transaction&& trx, bool replace_existing ) {
    EOS_ASSERT( trx.context_free_actions.size() == 0, cfa_inside_generated_tx, "context free actions are not currently allowed in generated transactions" );
 
-   bool stop_deferred_transactions_activated = control.is_builtin_activated(builtin_protocol_feature_t::stop_deferred_transactions);
    bool enforce_actor_whitelist_blacklist = trx_context.enforce_whiteblacklist && control.is_producing_block()
                                              && !control.sender_avoids_whitelist_blacklist_enforcement( receiver );
    trx_context.validate_referenced_accounts( trx, enforce_actor_whitelist_blacklist );
@@ -466,12 +465,13 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
          if( disallow_send_to_self_bypass || !is_sending_only_to_self(receiver) ) {
             throw;
          } else if( control.is_producing_block() ) {
-           EOS_THROW(subjective_block_production_exception, "Unexpected exception occurred validating sent deferred transaction consisting only of actions to self");
+            EOS_THROW(subjective_block_production_exception, "Unexpected exception occurred validating sent deferred transaction consisting only of actions to self");
          }
       }
    }
 
    uint32_t trx_size = 0;
+   bool stop_deferred_transactions_activated = control.is_builtin_activated(builtin_protocol_feature_t::stop_deferred_transactions);
    if ( auto ptr = db.find<generated_transaction_object,by_sender_id>(boost::make_tuple(receiver, sender_id)) ) {
       EOS_ASSERT( replace_existing, deferred_tx_duplicate, "deferred transaction with the same sender_id and payer already exists" );
 
