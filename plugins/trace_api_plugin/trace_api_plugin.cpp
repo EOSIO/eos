@@ -47,6 +47,16 @@ namespace {
       }
    }
 
+   /**
+    * The exception_handler provided to the extraction sub-system throws `yield_exception` as a signal that
+    * Something has gone wrong and the extraction process needs to terminate immediately
+    *
+    * This templated method is used to wrap signal handlers for `chain_controller` so that the plugin-internal
+    * `yield_exception` can be translated to a `chain::controller_emit_signal_exception`.
+    *
+    * The goal is that the currently applied block will be rolled-back before the shutdown takes effect leaving
+    * the system in a better state for restart.
+    */
    template<typename F>
    void emit_killer(F&& f) {
       try {
@@ -248,7 +258,6 @@ struct trace_api_plugin_impl {
          }
       }
 
-      // TODO: better decide here
       auto log_exceptions_and_shutdown = [](const exception_with_context& e) {
          log_exception(e, fc::log_level::error);
          app().quit();
@@ -293,7 +302,6 @@ struct trace_api_plugin_impl {
    using chain_extraction_t = chain_extraction_impl_type<shared_store_provider<store_provider>>;
    std::shared_ptr<chain_extraction_t> extraction;
 
-   //TODO: switch to appbase channels? if so remove the header above
    fc::optional<scoped_connection>                            applied_transaction_connection;
    fc::optional<scoped_connection>                            accepted_block_connection;
    fc::optional<scoped_connection>                            irreversible_block_connection;
