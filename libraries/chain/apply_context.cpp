@@ -516,7 +516,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
       bool replace_deferred_activated = control.is_builtin_activated(builtin_protocol_feature_t::replace_deferred);
 
       // For the sake of testing Deep Mind, we would still like to replace a deferred
-      // transaction so we can later test that ram correction is correclty handled through
+      // transaction so we can later test that ram correction is correctly handled through
       // Deep Mind code paths.
       //
       // However, when producing block, this is not possible anymore since v1.1.0. As such,
