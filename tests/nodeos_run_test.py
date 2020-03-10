@@ -612,9 +612,12 @@ try:
         raise
 
     try:
-        assert("hex_data" in trans[1]["actions"][0])
+        assert(trans[1]["actions"][0]["data"]["from"]=="currency1111")
+        assert(trans[1]["actions"][0]["data"]["to"]=="defproducera")
+        assert(trans[1]["actions"][0]["data"]["quantity"]=="0.0001 CUR")
+        assert(trans[1]["actions"][0]["data"]["memo"]=="test")
     except (AssertionError, KeyError) as _:
-        Print("ERROR: Expecting hex_data field on push transfer action json result.")
+        Print("ERROR: Expecting unpacked data fields on push transfer action json result.")
         raise
 
     result=node.pushTransaction(trans[1], None)
