@@ -78,8 +78,9 @@ namespace eosio::trace_api {
 
    slice_directory::slice_directory(const bfs::path& slice_dir, uint32_t width)
    : _slice_dir(slice_dir), _width(width) {
-      if (!exists(_slice_dir))
-         throw path_does_not_exist("The provided path does not exist: " + _slice_dir.generic_string());
+      if (!exists(_slice_dir)) {
+         bfs::create_directories(slice_dir);
+      }
    }
 
    bool slice_directory::find_or_create_index_slice(uint32_t slice_number, bool append, fc::cfile& index_file) const {
