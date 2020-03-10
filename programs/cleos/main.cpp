@@ -2335,9 +2335,9 @@ void get_account( const string& accountName, const string& coresym, bool json_fo
       std::cout << std::fixed << setprecision(3);
       std::cout << indent << std::left << std::setw(11) << "used:" << std::right << std::setw(18);
       if( res.cpu_limit.current_used ) {
-         std::cout << to_pretty_net(*res.cpu_limit.current_used) << "\n";
+         std::cout << to_pretty_time(*res.cpu_limit.current_used) << "\n";
       } else {
-         std::cout << to_pretty_net(res.cpu_limit.used) << "    ( out of date )\n";
+         std::cout << to_pretty_time(res.cpu_limit.used) << "    ( out of date )\n";
       }
       std::cout << indent << std::left << std::setw(11) << "available:" << std::right << std::setw(18) << to_pretty_time( res.cpu_limit.available ) << "\n";
       std::cout << indent << std::left << std::setw(11) << "limit:"     << std::right << std::setw(18) << to_pretty_time( res.cpu_limit.max ) << "\n";
