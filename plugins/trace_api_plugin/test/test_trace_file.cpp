@@ -68,7 +68,14 @@ namespace {
          "b000000000000000000000000000000000000000000000000000000000000002"_h, 7, 0
       } };
       const metadata_log_entry le2 { lib_entry_v0 { 5 } };
+   };
 
+   struct test_store_provider : public store_provider {
+      test_store_provider(const bfs::path& slice_dir, uint32_t width)
+         : store_provider(slice_dir, width) {
+      }
+      using store_provider::scan_metadata_log_from;
+      using store_provider::read_data_log;
    };
 
    class vslice_datastream;
@@ -160,62 +167,62 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
    BOOST_FIXTURE_TEST_CASE(write_data_trace, test_fixture)
    {
       vslice vs;
-      const auto offset = store_provider::append_store( bt, vs );
+      const auto offset = append_store( bt, vs );
       BOOST_REQUIRE_EQUAL(offset,0);
 
-      const auto offset2 = store_provider::append_store( bt2, vs );
+      const auto offset2 = append_store( bt2, vs );
       BOOST_REQUIRE(offset < offset2);
 
       vs._pos = offset;
-      const auto bt_returned = store_provider::extract_store<block_trace_v0>( vs );
+      const auto bt_returned = extract_store<block_trace_v0>( vs );
       BOOST_REQUIRE(bt_returned == bt);
 
       vs._pos = offset2;
-      const auto bt_returned2 = store_provider::extract_store<block_trace_v0>( vs );
+      const auto bt_returned2 = extract_store<block_trace_v0>( vs );
       BOOST_REQUIRE(bt_returned2 == bt2);
    }
 
    BOOST_FIXTURE_TEST_CASE(write_metadata_trace, test_fixture)
    {
       vslice vs;
-      const auto offset = store_provider::append_store( be1, vs );
+      const auto offset = append_store( be1, vs );
       auto next_offset = vs._pos;
       BOOST_REQUIRE(offset < next_offset);
-      const auto offset2 = store_provider::append_store( le1, vs );
+      const auto offset2 = append_store( le1, vs );
       BOOST_REQUIRE(next_offset <= offset2);
       BOOST_REQUIRE(offset2 < vs._pos);
       next_offset = vs._pos;
-      const auto offset3 = store_provider::append_store( be2, vs );
+      const auto offset3 = append_store( be2, vs );
       BOOST_REQUIRE(next_offset <= offset3);
       BOOST_REQUIRE(offset3 < vs._pos);
       next_offset = vs._pos;
-      const auto offset4 = store_provider::append_store( le2, vs );
+      const auto offset4 = append_store( le2, vs );
       BOOST_REQUIRE(next_offset <= offset4);
       BOOST_REQUIRE(offset4 < vs._pos);
 
       vs._pos = offset;
-      const auto be_returned1 = store_provider::extract_store<metadata_log_entry>( vs );
+      const auto be_returned1 = extract_store<metadata_log_entry>( vs );
       BOOST_REQUIRE(be_returned1.contains<block_entry_v0>());
       const auto real_be_returned1 = be_returned1.get<block_entry_v0>();
       const auto real_be1 = be1.get<block_entry_v0>();
       BOOST_REQUIRE(real_be_returned1 == real_be1);
 
       vs._pos = offset2;
-      const auto le_returned1 = store_provider::extract_store<metadata_log_entry>( vs );
+      const auto le_returned1 = extract_store<metadata_log_entry>( vs );
       BOOST_REQUIRE(le_returned1.contains<lib_entry_v0>());
       const auto real_le_returned1 = le_returned1.get<lib_entry_v0>();
       const auto real_le1 = le1.get<lib_entry_v0>();
       BOOST_REQUIRE(real_le_returned1 == real_le1);
 
       vs._pos = offset3;
-      const auto be_returned2 = store_provider::extract_store<metadata_log_entry>( vs );
+      const auto be_returned2 = extract_store<metadata_log_entry>( vs );
       BOOST_REQUIRE(be_returned2.contains<block_entry_v0>());
       const auto real_be_returned2 = be_returned2.get<block_entry_v0>();
       const auto real_be2 = be2.get<block_entry_v0>();
       BOOST_REQUIRE(real_be_returned2 == real_be2);
 
       vs._pos = offset4;
-      const auto le_returned2 = store_provider::extract_store<metadata_log_entry>( vs );
+      const auto le_returned2 = extract_store<metadata_log_entry>( vs );
       BOOST_REQUIRE(le_returned2.contains<lib_entry_v0>());
       const auto real_le_returned2 = le_returned2.get<lib_entry_v0>();
       const auto real_le2 = le2.get<lib_entry_v0>();
@@ -226,28 +233,28 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
    {
       fc::temp_directory tempdir;
       boost::filesystem::path tempdir_path = tempdir.path();
-      slice_provider sp(tempdir_path, 100);
-      BOOST_REQUIRE_EQUAL(sp.slice_number(99), 0);
-      BOOST_REQUIRE_EQUAL(sp.slice_number(100), 1);
-      BOOST_REQUIRE_EQUAL(sp.slice_number(1599), 15);
-      slice_provider sp2(tempdir_path, 0x10);
-      BOOST_REQUIRE_EQUAL(sp2.slice_number(0xf), 0);
-      BOOST_REQUIRE_EQUAL(sp2.slice_number(0x100), 0x10);
-      BOOST_REQUIRE_EQUAL(sp2.slice_number(0x233), 0x23);
+      slice_directory sd(tempdir_path, 100);
+      BOOST_REQUIRE_EQUAL(sd.slice_number(99), 0);
+      BOOST_REQUIRE_EQUAL(sd.slice_number(100), 1);
+      BOOST_REQUIRE_EQUAL(sd.slice_number(1599), 15);
+      slice_directory sd2(tempdir_path, 0x10);
+      BOOST_REQUIRE_EQUAL(sd2.slice_number(0xf), 0);
+      BOOST_REQUIRE_EQUAL(sd2.slice_number(0x100), 0x10);
+      BOOST_REQUIRE_EQUAL(sd2.slice_number(0x233), 0x23);
    }
 
    BOOST_FIXTURE_TEST_CASE(slice_file, test_fixture)
    {
       fc::temp_directory tempdir;
       bfs::path tempdir_path = tempdir.path();
-      slice_provider sp(tempdir_path, 100);
+      slice_directory sd(tempdir_path, 100);
       fc::cfile slice;
 
       const bool read_file = false;
       const bool append_file = true;
       // create trace slices
       for (uint i = 0; i < 9; ++i) {
-         bool found = sp.find_or_create_trace_slice(i, append_file, slice);
+         bool found = sd.find_or_create_trace_slice(i, append_file, slice);
          BOOST_REQUIRE(!found);
          bfs::path fp = slice.get_file_path();
          BOOST_REQUIRE_EQUAL(fp.parent_path().generic_string(), tempdir.path().generic_string());
@@ -261,14 +268,14 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
 
       // create trace index slices
       for (uint i = 0; i < 9; ++i) {
-         bool found = sp.find_or_create_index_slice(i, append_file, slice);
+         bool found = sd.find_or_create_index_slice(i, append_file, slice);
          BOOST_REQUIRE(!found);
          fc::path fp = slice.get_file_path();
          BOOST_REQUIRE_EQUAL(fp.parent_path().generic_string(), tempdir.path().generic_string());
          const std::string expected_filename = "trace_index_0000000" + std::to_string(i) + "00-0000000" + std::to_string(i+1) + "00.log";
          BOOST_REQUIRE_EQUAL(fp.filename().generic_string(), expected_filename);
          BOOST_REQUIRE(slice.is_open());
-         slice_provider::index_header h;
+         slice_directory::index_header h;
          const auto data = fc::raw::pack(h);
          BOOST_REQUIRE_EQUAL(bfs::file_size(fp), data.size());
          BOOST_REQUIRE_EQUAL(slice.tellp(), data.size());
@@ -276,7 +283,7 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       }
 
       // reopen trace slice for append
-      bool found = sp.find_or_create_trace_slice(0, append_file, slice);
+      bool found = sd.find_or_create_trace_slice(0, append_file, slice);
       BOOST_REQUIRE(found);
       fc::path fp = slice.get_file_path();
       BOOST_REQUIRE_EQUAL(fp.parent_path().generic_string(), tempdir.path().generic_string());
@@ -285,7 +292,7 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       BOOST_REQUIRE(slice.is_open());
       BOOST_REQUIRE_EQUAL(bfs::file_size(fp), 0);
       BOOST_REQUIRE_EQUAL(slice.tellp(), 0);
-      uint64_t offset = store_provider::append_store(bt, slice);
+      uint64_t offset = append_store(bt, slice);
       BOOST_REQUIRE_EQUAL(offset, 0);
       auto data = fc::raw::pack(bt);
       BOOST_REQUIRE(slice.tellp() > 0);
@@ -295,7 +302,7 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       slice.close();
 
       // open same file for read
-      found = sp.find_or_create_trace_slice(0, read_file, slice);
+      found = sd.find_or_create_trace_slice(0, read_file, slice);
       BOOST_REQUIRE(found);
       fp = slice.get_file_path();
       BOOST_REQUIRE_EQUAL(fp.filename().generic_string(), expected_filename);
@@ -305,7 +312,7 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       slice.close();
 
       // open same file for append again
-      found = sp.find_or_create_trace_slice(0, append_file, slice);
+      found = sd.find_or_create_trace_slice(0, append_file, slice);
       BOOST_REQUIRE(found);
       fp = slice.get_file_path();
       BOOST_REQUIRE_EQUAL(fp.filename().generic_string(), expected_filename);
@@ -315,19 +322,19 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       slice.close();
 
       // reopen trace index slice for append
-      found = sp.find_or_create_index_slice(1, append_file, slice);
+      found = sd.find_or_create_index_slice(1, append_file, slice);
       BOOST_REQUIRE(found);
       fp = slice.get_file_path();
       BOOST_REQUIRE_EQUAL(fp.parent_path().generic_string(), tempdir.path().generic_string());
       expected_filename = "trace_index_0000000100-0000000200.log";
       BOOST_REQUIRE_EQUAL(fp.filename().generic_string(), expected_filename);
       BOOST_REQUIRE(slice.is_open());
-      slice_provider::index_header h;
+      slice_directory::index_header h;
       data = fc::raw::pack(h);
       const uint64_t header_size = data.size();
       BOOST_REQUIRE_EQUAL(bfs::file_size(fp), header_size);
       BOOST_REQUIRE_EQUAL(slice.tellp(), header_size);
-      offset = store_provider::append_store(be1, slice);
+      offset = append_store(be1, slice);
       BOOST_REQUIRE_EQUAL(offset, header_size);
       data = fc::raw::pack(be1);
       const auto be1_size = data.size();
@@ -336,7 +343,7 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       uint64_t index_file_size = bfs::file_size(fp);
       slice.close();
 
-      found = sp.find_or_create_index_slice(1, read_file, slice);
+      found = sd.find_or_create_index_slice(1, read_file, slice);
       BOOST_REQUIRE(found);
       fp = slice.get_file_path();
       BOOST_REQUIRE_EQUAL(fp.filename().generic_string(), expected_filename);
@@ -345,14 +352,14 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       BOOST_REQUIRE_EQUAL(slice.tellp(), header_size);
       slice.close();
 
-      found = sp.find_or_create_index_slice(1, append_file, slice);
+      found = sd.find_or_create_index_slice(1, append_file, slice);
       BOOST_REQUIRE(found);
       fp = slice.get_file_path();
       BOOST_REQUIRE_EQUAL(fp.filename().generic_string(), expected_filename);
       BOOST_REQUIRE(slice.is_open());
       BOOST_REQUIRE_EQUAL(bfs::file_size(fp), header_size + be1_size);
       BOOST_REQUIRE_EQUAL(slice.tellp(), header_size + be1_size);
-      offset = store_provider::append_store(le1, slice);
+      offset = append_store(le1, slice);
       BOOST_REQUIRE_EQUAL(offset, header_size + be1_size);
       data = fc::raw::pack(le1);
       const auto le1_size = data.size();
@@ -360,7 +367,7 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       BOOST_REQUIRE_EQUAL(bfs::file_size(fp), slice.tellp());
       slice.close();
 
-      found = sp.find_or_create_index_slice(1, read_file, slice);
+      found = sd.find_or_create_index_slice(1, read_file, slice);
       BOOST_REQUIRE(found);
       fp = slice.get_file_path();
       BOOST_REQUIRE_EQUAL(fp.filename().generic_string(), expected_filename);
@@ -374,7 +381,7 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
    {
       fc::temp_directory tempdir;
       bfs::path tempdir_path = tempdir.path();
-      store_provider sp(tempdir_path, 100);
+      test_store_provider sp(tempdir_path, 100);
       sp.append(bt);
       sp.append_lib(54);
       sp.append(bt2);
@@ -396,11 +403,10 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
             return false;
          }
          return true;
-      });
+      }, []() {});
       BOOST_REQUIRE(found_block);
       BOOST_REQUIRE(lib_seen);
 
-      uint64_t block_offset = 0;
       std::vector<uint32_t> block_nums;
       std::vector<uint64_t> block_offsets;
       lib_seen = false;
@@ -416,7 +422,7 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
             lib_seen = true;
          }
          return true;
-      });
+      }, []() {});
       BOOST_REQUIRE(lib_seen);
       BOOST_REQUIRE_EQUAL(block_nums.size(), 2);
       BOOST_REQUIRE_EQUAL(block_nums[0], bt.number);
@@ -432,6 +438,87 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       bt_data = sp.read_data_log(block_nums[1], block_offsets[1]);
       BOOST_REQUIRE(bt_data);
       BOOST_REQUIRE_EQUAL(*bt_data, bt2);
+
+      block_nums.clear();
+      block_offsets.clear();
+      lib_seen = false;
+      int counter = 0;
+      try {
+         offset = sp.scan_metadata_log_from(9, 0, [&](const metadata_log_entry& e) -> bool {
+            if (e.contains<block_entry_v0>()) {
+               const auto& block = e.get<block_entry_v0>();
+               block_nums.push_back(block.number);
+               block_offsets.push_back(block.offset);
+            } else if (e.contains<lib_entry_v0>()) {
+               auto best_lib = e.get<lib_entry_v0>();
+               BOOST_REQUIRE(!lib_seen);
+               BOOST_REQUIRE_EQUAL(best_lib.lib, 54);
+               lib_seen = true;
+            }
+            return true;
+         }, [&counter]() {
+            if( ++counter == 3 ) {
+               throw yield_exception("");
+            }
+         });
+         BOOST_FAIL("Should not have completed scan");
+      } catch (const yield_exception& ex) {
+      }
+      BOOST_REQUIRE(lib_seen);
+      BOOST_REQUIRE_EQUAL(block_nums.size(), 1);
+      BOOST_REQUIRE_EQUAL(block_nums[0], bt.number);
+      BOOST_REQUIRE_EQUAL(block_offsets.size(), 1);
+      BOOST_REQUIRE(first_offset < offset);
+   }
+
+   BOOST_FIXTURE_TEST_CASE(test_get_block, test_fixture)
+   {
+      fc::temp_directory tempdir;
+      bfs::path tempdir_path = tempdir.path();
+      store_provider sp(tempdir_path, 100);
+      sp.append(bt);
+      sp.append_lib(1);
+      sp.append(bt2);
+      int count = 0;
+      get_block_t block1 = sp.get_block(1,[&count]() {
+         if (++count >= 3) {
+            throw yield_exception("");
+         }
+      });
+      BOOST_REQUIRE(block1);
+      BOOST_REQUIRE(std::get<1>(*block1));
+      const auto block1_bt = std::get<0>(*block1);
+      BOOST_REQUIRE_EQUAL(block1_bt, bt);
+
+      count = 0;
+      get_block_t block2 = sp.get_block(5,[&count]() {
+         if (++count >= 4) {
+            throw yield_exception("");
+         }
+      });
+      BOOST_REQUIRE(block2);
+      BOOST_REQUIRE(!std::get<1>(*block2));
+      const auto block2_bt = std::get<0>(*block2);
+      BOOST_REQUIRE_EQUAL(block2_bt, bt2);
+
+      count = 0;
+      try {
+         sp.get_block(5,[&count]() {
+            if (++count >= 3) {
+               throw yield_exception("");
+            }
+         });
+         BOOST_FAIL("Should not have completed scan");
+      } catch (const yield_exception& ex) {
+      }
+
+      count = 0;
+      block2 = sp.get_block(2,[&count]() {
+         if (++count >= 4) {
+            throw yield_exception("");
+         }
+      });
+      BOOST_REQUIRE(!block2);
    }
 
 BOOST_AUTO_TEST_SUITE_END()
