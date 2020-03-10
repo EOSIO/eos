@@ -52,8 +52,6 @@ namespace {
       }
    }
 
-   using get_block_t = std::optional<std::tuple<block_trace_v0, bool>>;
-
    template<typename Store>
    struct shared_store_provider {
       shared_store_provider(const std::shared_ptr<Store>& store)
@@ -73,35 +71,6 @@ namespace {
       }
 
       std::shared_ptr<Store> store;
-   };
-}
-
-namespace temporary {
-   struct store_shim : public store_provider {
-      using store_provider::store_provider;
-
-      get_block_t get_block(uint32_t height, const yield_function&) {
-         uint64_t lib = 0;
-         std::optional<uint64_t> offset = 0;
-
-         scan_metadata_log_from(height, 0, [&](const metadata_log_entry& e){
-            if (e.contains<lib_entry_v0>()) {
-               lib = std::max(lib, e.get<lib_entry_v0>().lib);
-            } else if (e.contains<block_entry_v0>()) {
-               const auto& be = e.get<block_entry_v0>();
-               if (be.number == height) {
-                  offset = be.offset;
-               }
-            }
-            return true;
-         });
-
-         if (!offset) {
-            return {};
-         }
-
-         return std::make_tuple(read_data_log(height, *offset)->get<block_trace_v0>(), height <= lib);
-      }
    };
 }
 
@@ -128,14 +97,14 @@ struct trace_api_common_impl {
 
       slice_stride = options.at("trace-slice-stride").as<uint32_t>();
 
-      store = std::make_shared<temporary::store_shim>(trace_dir, slice_stride);
+      store = std::make_shared<store_provider>(trace_dir, slice_stride);
    }
 
    // common configuration paramters
    boost::filesystem::path trace_dir;
    uint32_t slice_stride = 0;
 
-   std::shared_ptr<temporary::store_shim> store;
+   std::shared_ptr<store_provider> store;
 };
 
 /**
@@ -190,7 +159,7 @@ struct trace_api_rpc_plugin_impl : public std::enable_shared_from_this<trace_api
       }
 
       request_handler = std::make_shared<request_handler_t>(
-         shared_store_provider<temporary::store_shim>(common->store),
+         shared_store_provider<store_provider>(common->store),
          abi_data_handler::shared_provider(data_handler)
       );
    }
@@ -246,7 +215,7 @@ struct trace_api_rpc_plugin_impl : public std::enable_shared_from_this<trace_api
 
    std::shared_ptr<trace_api_common_impl> common;
 
-   using request_handler_t = request_handler<shared_store_provider<temporary::store_shim>, abi_data_handler::shared_provider>;
+   using request_handler_t = request_handler<shared_store_provider<store_provider>, abi_data_handler::shared_provider>;
    std::shared_ptr<request_handler_t> request_handler;
 };
 
@@ -281,7 +250,7 @@ struct trace_api_plugin_impl {
          app().quit();
          throw yield_exception("shutting down");
       };
-      extraction = std::make_shared<chain_extraction_t>(shared_store_provider<temporary::store_shim>(common->store), log_exceptions_and_shutdown);
+      extraction = std::make_shared<chain_extraction_t>(shared_store_provider<store_provider>(common->store), log_exceptions_and_shutdown);
 
       auto& chain = app().find_plugin<chain_plugin>()->chain();
 
@@ -317,7 +286,7 @@ struct trace_api_plugin_impl {
    std::shared_ptr<trace_api_common_impl> common;
    fc::microseconds minimum_irreversible_trace_history = fc::microseconds::maximum();
 
-   using chain_extraction_t = chain_extraction_impl_type<shared_store_provider<temporary::store_shim>>;
+   using chain_extraction_t = chain_extraction_impl_type<shared_store_provider<store_provider>>;
    std::shared_ptr<chain_extraction_t> extraction;
 
    //TODO: switch to appbase channels? if so remove the header above
