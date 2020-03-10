@@ -8,6 +8,10 @@
 #include <chainbase/chainbase.hpp>
 #include <set>
 
+namespace eosio { namespace chain {
+   class controller;
+}}
+
 namespace eosio { namespace chain { namespace resource_limits {
    namespace impl {
       template<typename T>
@@ -59,8 +63,8 @@ namespace eosio { namespace chain { namespace resource_limits {
 
    class resource_limits_manager {
       public:
-         explicit resource_limits_manager(chainbase::database& db)
-         :_db(db)
+         explicit resource_limits_manager(controller& c, chainbase::database& db)
+         :_control(c), _db(db)
          {
          }
 
@@ -103,7 +107,8 @@ namespace eosio { namespace chain { namespace resource_limits {
          int64_t get_account_ram_usage( const account_name& name ) const;
 
       private:
-         chainbase::database& _db;
+         const chain::controller&    _control;
+         chainbase::database&        _db;
    };
 } } } /// eosio::chain
 

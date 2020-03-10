@@ -3,6 +3,7 @@
 #include <eosio/chain/resource_limits_private.hpp>
 #include <eosio/chain/transaction_metadata.hpp>
 #include <eosio/chain/transaction.hpp>
+#include <eosio/chain/controller.hpp>
 #include <boost/tuple/tuple_io.hpp>
 #include <eosio/chain/database_utils.hpp>
 #include <algorithm>
@@ -52,24 +53,24 @@ void resource_limits_manager::add_indices() {
 }
 
 void resource_limits_manager::initialize_database() {
-   const auto& config = _db.create<resource_limits_config_object>([](resource_limits_config_object& config){
+   const auto& config = _db.create<resource_limits_config_object>([this](resource_limits_config_object& config){
       // see default settings in the declaration
 
-      if (eosio::chain::chain_config::deep_mind_enabled) {
+      if (auto dmlog = _control.get_deep_mind_logger()) {
          dmlog("RLIMIT_OP CONFIG INS ${data}",
             ("data", config)
          );
       }
    });
 
-   _db.create<resource_limits_state_object>([&config](resource_limits_state_object& state){
+   _db.create<resource_limits_state_object>([this, &config](resource_limits_state_object& state){
       // see default settings in the declaration
 
       // start the chain off in a way that it is "congested" aka slow-start
       state.virtual_cpu_limit = config.cpu_limit_parameters.max;
       state.virtual_net_limit = config.net_limit_parameters.max;
 
-      if (eosio::chain::chain_config::deep_mind_enabled) {
+      if (auto dmlog = _control.get_deep_mind_logger()) {
          dmlog("RLIMIT_OP STATE INS ${data}",
             ("data", state)
          );
@@ -104,7 +105,7 @@ void resource_limits_manager::initialize_account(const account_name& account) {
    _db.create<resource_limits_object>([&]( resource_limits_object& bl ) {
       bl.owner = account;
 
-      if (eosio::chain::chain_config::deep_mind_enabled) {
+      if (auto dmlog = _control.get_deep_mind_logger()) {
          dmlog("RLIMIT_OP ACCOUNT_LIMITS INS ${data}",
             ("data", bl)
          );
@@ -114,7 +115,7 @@ void resource_limits_manager::initialize_account(const account_name& account) {
    _db.create<resource_usage_object>([&]( resource_usage_object& bu ) {
       bu.owner = account;
 
-      if (eosio::chain::chain_config::deep_mind_enabled) {
+      if (auto dmlog = _control.get_deep_mind_logger()) {
          dmlog("RLIMIT_OP ACCOUNT_USAGE INS ${data}",
             ("data", bu)
          );
@@ -133,7 +134,7 @@ void resource_limits_manager::set_block_parameters(const elastic_limit_parameter
       c.cpu_limit_parameters = cpu_limit_parameters;
       c.net_limit_parameters = net_limit_parameters;
 
-      if (eosio::chain::chain_config::deep_mind_enabled) {
+      if (auto dmlog = _control.get_deep_mind_logger()) {
          dmlog("RLIMIT_OP CONFIG UPD ${data}",
             ("data", c)
          );
@@ -168,7 +169,7 @@ void resource_limits_manager::add_transaction_usage(const flat_set<account_name>
           bu.net_usage.add( net_usage, time_slot, config.account_net_usage_average_window );
           bu.cpu_usage.add( cpu_usage, time_slot, config.account_cpu_usage_average_window );
 
-         if (eosio::chain::chain_config::deep_mind_enabled) {
+         if (auto dmlog = _control.get_deep_mind_logger()) {
             dmlog("RLIMIT_OP ACCOUNT_USAGE UPD ${data}",
                ("data", bu)
             );
@@ -239,7 +240,7 @@ void resource_limits_manager::add_pending_ram_usage( const account_name account,
    _db.modify( usage, [&]( auto& u ) {
      u.ram_usage += ram_delta;
 
-     if (eosio::chain::chain_config::deep_mind_enabled) {
+     if (auto dmlog = _control.get_deep_mind_logger()) {
          dmlog("RAM_OP ${action_id} ${event_id} ${family} ${operation} ${legacy_tag} ${payer} ${new_usage} ${delta}",
             ("action_id", action_id)
             ("event_id", event_id)
@@ -317,7 +318,7 @@ bool resource_limits_manager::set_account_limits( const account_name& account, i
       pending_limits.net_weight = net_weight;
       pending_limits.cpu_weight = cpu_weight;
 
-      if (eosio::chain::chain_config::deep_mind_enabled) {
+      if (auto dmlog = _control.get_deep_mind_logger()) {
          dmlog("RLIMIT_OP ACCOUNT_LIMITS UPD ${data}",
             ("data", pending_limits)
          );
@@ -379,7 +380,7 @@ void resource_limits_manager::process_account_limit_updates() {
          multi_index.remove(*itr);
       }
 
-      if (eosio::chain::chain_config::deep_mind_enabled) {
+      if (auto dmlog = _control.get_deep_mind_logger()) {
          dmlog("RLIMIT_OP STATE UPD ${data}",
             ("data", state)
          );
@@ -401,7 +402,7 @@ void resource_limits_manager::process_block_usage(uint32_t block_num) {
       state.update_virtual_net_limit(config);
       state.pending_net_usage = 0;
 
-      if (eosio::chain::chain_config::deep_mind_enabled) {
+      if (auto dmlog = _control.get_deep_mind_logger()) {
          dmlog("RLIMIT_OP STATE UPD ${data}",
             ("data", state)
          );

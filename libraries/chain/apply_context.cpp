@@ -17,10 +17,6 @@ using boost::container::flat_set;
 namespace eosio { namespace chain {
 
 static inline void print_debug(account_name receiver, const action_trace& ar) {
-   if (eosio::chain::chain_config::deep_mind_console_enabled) {
-      return;
-   }
-
    if (!ar.console.empty()) {
       auto prefix = fc::format_string(
                                       "\n[(${a},${n})->${r}]",
@@ -257,7 +253,7 @@ void apply_context::require_recipient( account_name recipient ) {
          schedule_action( action_ordinal, recipient, false )
       );
 
-      if (eosio::chain::chain_config::deep_mind_enabled) {
+      if (auto dmlog = control.get_deep_mind_logger()) {
          dmlog("CREATION_OP NOTIFY ${action_id}",
             ("action_id", trx_context.action_id.current())
          );
@@ -357,7 +353,7 @@ void apply_context::execute_inline( action&& a ) {
       schedule_action( std::move(a), inline_receiver, false )
    );
 
-   if (eosio::chain::chain_config::deep_mind_enabled) {
+   if (auto dmlog = control.get_deep_mind_logger()) {
       dmlog("CREATION_OP INLINE ${action_id}",
          ("action_id", trx_context.action_id.current())
       );
@@ -378,7 +374,7 @@ void apply_context::execute_context_free_inline( action&& a ) {
       schedule_action( std::move(a), inline_receiver, true )
    );
 
-   if (eosio::chain::chain_config::deep_mind_enabled) {
+   if (auto dmlog = control.get_deep_mind_logger()) {
       dmlog("CREATION_OP CFA_INLINE ${action_id}",
          ("action_id", trx_context.action_id.current())
       );
@@ -515,22 +511,12 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
 
       bool replace_deferred_activated = control.is_builtin_activated(builtin_protocol_feature_t::replace_deferred);
 
-      // For the sake of testing Deep Mind, we would still like to replace a deferred
-      // transaction so we can later test that ram correction is correctly handled through
-      // Deep Mind code paths.
-      //
-      // However, when producing block, this is not possible anymore since v1.1.0. As such,
-      // if the `deep_mind_subjective_mitigations_disabled` is disabled, we lift the subjective
-      // mitigations and let our special producing node replace a deferred transaction.
-      //
-      if (!eosio::chain::chain_config::deep_mind_subjective_mitigations_disabled) {
-         EOS_ASSERT( replace_deferred_activated || !control.is_producing_block()
-                        || control.all_subjective_mitigations_disabled(),
-                     subjective_block_production_exception,
-                     "Replacing a deferred transaction is temporarily disabled." );
-      }
+      EOS_ASSERT( replace_deferred_activated || !control.is_producing_block()
+                     || control.all_subjective_mitigations_disabled(),
+                  subjective_block_production_exception,
+                  "Replacing a deferred transaction is temporarily disabled." );
 
-      if (eosio::chain::chain_config::deep_mind_enabled) {
+      if (control.get_deep_mind_logger() != nullptr) {
          event_id = ramEventId("${id}", ("id", ptr->id));
       }
 
@@ -548,7 +534,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
          trx_id_for_new_obj = ptr->trx_id;
       }
 
-      if (eosio::chain::chain_config::deep_mind_enabled) {
+      if (auto dmlog = control.get_deep_mind_logger()) {
          fc::datastream<const char*> ds( ptr->packed_trx.data(), ptr->packed_trx.size() );
          transaction dtrx;
          fc::raw::unpack(ds, static_cast<transaction&>(dtrx) );
@@ -580,7 +566,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
 
          trx_size = gtx.set( trx );
 
-         if (eosio::chain::chain_config::deep_mind_enabled) {
+         if (auto dmlog = control.get_deep_mind_logger()) {
             operation = "update";
             event_id = ramEventId("${id}", ("id", gtx.id));
 
@@ -609,7 +595,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
 
          trx_size = gtx.set( trx );
 
-         if (eosio::chain::chain_config::deep_mind_enabled) {
+         if (auto dmlog = control.get_deep_mind_logger()) {
             operation = "add";
             event_id = ramEventId("${id}", ("id", gtx.id));
 
@@ -644,7 +630,7 @@ bool apply_context::cancel_deferred_transaction( const uint128_t& sender_id, acc
    const auto* gto = db.find<generated_transaction_object,by_sender_id>(boost::make_tuple(sender, sender_id));
    if ( gto ) {
       fc::string event_id;
-      if (eosio::chain::chain_config::deep_mind_enabled) {
+      if (auto dmlog = control.get_deep_mind_logger()) {
          // unpack gtx->packed_trx into `dtrx` REVISE THIS!
          auto gtx = generated_transaction(*gto);
          fc::datastream<const char*> ds( gtx.packed_trx.data(), gtx.packed_trx.size() );
@@ -703,7 +689,7 @@ const table_id_object& apply_context::find_or_create_table( name code, name scop
    }
 
    fc::string event_id;
-   if (eosio::chain::chain_config::deep_mind_enabled) {
+   if (control.get_deep_mind_logger() != nullptr) {
       event_id = ramEventId("${code}:${scope}:${table}",
          ("code", code)
          ("scope", scope)
@@ -719,7 +705,7 @@ const table_id_object& apply_context::find_or_create_table( name code, name scop
       t_id.table = table;
       t_id.payer = payer;
 
-      if (eosio::chain::chain_config::deep_mind_enabled) {
+      if (auto dmlog = control.get_deep_mind_logger()) {
          dmlog("TBL_OP INS ${action_id} ${code} ${scope} ${table} ${payer}",
             ("action_id", trx_context.action_id.current())
             ("code", code)
@@ -733,7 +719,7 @@ const table_id_object& apply_context::find_or_create_table( name code, name scop
 
 void apply_context::remove_table( const table_id_object& tid ) {
    fc::string event_id;
-   if (eosio::chain::chain_config::deep_mind_enabled) {
+   if (control.get_deep_mind_logger() != nullptr) {
       event_id = ramEventId("${code}:${scope}:${table}",
          ("code", tid.code)
          ("scope", tid.scope)
@@ -743,7 +729,7 @@ void apply_context::remove_table( const table_id_object& tid ) {
 
    update_db_usage(tid.payer, - config::billable_size_v<table_id_object>, event_id.c_str(), "table", "remove", "remove_table" );
 
-   if (eosio::chain::chain_config::deep_mind_enabled) {
+   if (auto dmlog = control.get_deep_mind_logger()) {
       dmlog("TBL_OP REM ${action_id} ${code} ${scope} ${table} ${payer}",
          ("action_id", trx_context.action_id.current())
          ("code", tid.code)
@@ -851,7 +837,7 @@ int apply_context::db_store_i64( name code, name scope, name table, const accoun
    int64_t billable_size = (int64_t)(buffer_size + config::billable_size_v<key_value_object>);
 
    fc::string event_id;
-   if (eosio::chain::chain_config::deep_mind_enabled) {
+   if (control.get_deep_mind_logger() != nullptr) {
       event_id = ramEventId("${table_code}:${scope}:${table_name}:${primkey}",
          ("table_code", tab.code)
          ("scope", tab.scope)
@@ -862,7 +848,7 @@ int apply_context::db_store_i64( name code, name scope, name table, const accoun
 
    update_db_usage( payer, billable_size, event_id.c_str(), "table_row", "add", "primary_index_add" );
 
-   if (eosio::chain::chain_config::deep_mind_enabled) {
+   if (auto dmlog = control.get_deep_mind_logger()) {
       dmlog("DB_OP INS ${action_id} ${payer} ${table_code} ${scope} ${table_name} ${primkey} ${ndata}",
          ("action_id", trx_context.action_id.current())
          ("payer", payer)
@@ -893,7 +879,7 @@ void apply_context::db_update_i64( int iterator, account_name payer, const char*
    if( payer == account_name() ) payer = obj.payer;
 
    fc::string event_id;
-   if (eosio::chain::chain_config::deep_mind_enabled) {
+   if (control.get_deep_mind_logger() != nullptr) {
       event_id = ramEventId("${table_code}:${scope}:${table_name}:${primkey}",
          ("table_code", table_obj.code)
          ("scope", table_obj.scope)
@@ -912,7 +898,7 @@ void apply_context::db_update_i64( int iterator, account_name payer, const char*
       update_db_usage( obj.payer, new_size - old_size, event_id.c_str() , "table_row", "update", "primary_index_update" );
    }
 
-   if (eosio::chain::chain_config::deep_mind_enabled) {
+   if (auto dmlog = control.get_deep_mind_logger()) {
       dmlog("DB_OP UPD ${action_id} ${opayer}:${npayer} ${table_code} ${scope} ${table_name} ${primkey} ${odata}:${ndata}",
          ("action_id", trx_context.action_id.current())
          ("opayer", obj.payer)
@@ -941,7 +927,7 @@ void apply_context::db_remove_i64( int iterator ) {
 //   require_write_lock( table_obj.scope );
 
    fc::string event_id;
-   if (eosio::chain::chain_config::deep_mind_enabled) {
+   if (control.get_deep_mind_logger() != nullptr) {
       event_id = ramEventId("${table_code}:${scope}:${table_name}:${primkey}",
          ("table_code", table_obj.code)
          ("scope", table_obj.scope)
@@ -952,7 +938,7 @@ void apply_context::db_remove_i64( int iterator ) {
 
    update_db_usage( obj.payer,  -(obj.value.size() + config::billable_size_v<key_value_object>), event_id.c_str(), "table_row", "remove", "primary_index_remove" );
 
-   if (eosio::chain::chain_config::deep_mind_enabled) {
+   if (auto dmlog = control.get_deep_mind_logger()) {
       dmlog("DB_OP REM ${action_id} ${payer} ${table_code} ${scope} ${table_name} ${primkey} ${odata}",
          ("action_id", trx_context.action_id.current())
          ("payer", obj.payer)

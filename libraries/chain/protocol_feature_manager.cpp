@@ -2,6 +2,7 @@
 #include <eosio/chain/protocol_state_object.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/chain_config.hpp>
+#include <eosio/chain/controller.hpp>
 
 #include <fc/scoped_exit.hpp>
 
@@ -504,8 +505,8 @@ Enables new `set_action_return_value` intrinsic which sets a value that is inclu
 
 
 
-   protocol_feature_manager::protocol_feature_manager( protocol_feature_set&& pfs )
-   :_protocol_feature_set( std::move(pfs) )
+   protocol_feature_manager::protocol_feature_manager( controller& c, protocol_feature_set&& pfs )
+   :_control(c), _protocol_feature_set( std::move(pfs) )
    {
       _builtin_protocol_features.resize( _protocol_feature_set._recognized_builtin_protocol_features.size() );
    }
@@ -685,7 +686,7 @@ Enables new `set_action_return_value` intrinsic which sets a value that is inclu
                   ("digest", feature_digest)
       );
 
-      if (eosio::chain::chain_config::deep_mind_enabled) {
+      if (auto dmlog = _control.get_deep_mind_logger()) {
          dmlog("FEATURE_OP ACTIVATE ${feature_digest} ${feature}",
             ("feature_digest", feature_digest)
             ("feature", itr->to_variant())

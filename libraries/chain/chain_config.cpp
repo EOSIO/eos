@@ -3,10 +3,6 @@
 
 namespace eosio { namespace chain {
 
-   bool chain_config::deep_mind_enabled(false);
-   bool chain_config::deep_mind_console_enabled(false);
-   bool chain_config::deep_mind_subjective_mitigations_disabled(false);
-
    void chain_config::validate()const {
       EOS_ASSERT( target_block_net_usage_pct <= config::percent_100, action_validate_exception,
                   "target block net usage percentage cannot exceed 100%" );

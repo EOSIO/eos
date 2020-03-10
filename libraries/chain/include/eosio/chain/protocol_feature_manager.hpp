@@ -5,6 +5,8 @@
 
 namespace eosio { namespace chain {
 
+class controller;
+
 enum class protocol_feature_t : uint32_t {
    builtin
 };
@@ -245,7 +247,7 @@ protected:
 class protocol_feature_manager {
 public:
 
-   protocol_feature_manager( protocol_feature_set&& pfs );
+   protocol_feature_manager( controller& c, protocol_feature_set&& pfs );
 
    class const_iterator : public std::iterator<std::bidirectional_iterator_tag, const protocol_feature> {
    protected:
@@ -365,6 +367,9 @@ protected:
    vector<builtin_protocol_feature_entry> _builtin_protocol_features;
    size_t                                 _head_of_builtin_activation_list = builtin_protocol_feature_entry::no_previous;
    bool                                   _initialized = false;
+
+private:
+   const controller&    _control;
 };
 
 } } // namespace eosio::chain

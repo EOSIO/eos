@@ -41,6 +41,7 @@ if("eos-vm-oc" IN_LIST EOSIO_WASM_RUNTIMES)
    include_directories(${LLVM_INCLUDE_DIRS})
    add_definitions(${LLVM_DEFINITIONS})
 
+   option(EOSIO_ENABLE_DEVELOPER_OPTIONS "enable developer options for EOSIO" OFF)
    option(EOSVMOC_ENABLE_DEVELOPER_OPTIONS "enable developer options for EOS VM OC" OFF)
 endif()
 
@@ -126,6 +127,11 @@ foreach(RUNTIME ${EOSIO_WASM_RUNTIMES})
    string(REPLACE "-" "_" RUNTIMEUC ${RUNTIMEUC})
    target_compile_definitions(eosio_chain PUBLIC "EOSIO_${RUNTIMEUC}_RUNTIME_ENABLED")
 endforeach()
+
+if(EOSIO_ENABLE_DEVELOPER_OPTIONS)
+   message(WARNING "EOSIO Developer Options are enabled; these are NOT supported")
+   target_compile_definitions(eosio_chain PUBLIC EOSIO_DEVELOPER)
+endif()
 
 if(EOSVMOC_ENABLE_DEVELOPER_OPTIONS)
    message(WARNING "EOS VM OC Developer Options are enabled; these are NOT supported")

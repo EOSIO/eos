@@ -14,8 +14,6 @@
 #include <sstream>
 
 namespace dfuse { namespace dm {
-   // static bool reg_deep_mind_appender = fc::log_config::register_appender<log_appender>( "deep-mind" );
-
    class log_appender::impl {
       public:
          boost::mutex log_mutex;

@@ -193,7 +193,7 @@ class apply_context {
                context.db.modify( tab, [&]( auto& t ) {
                  ++t.count;
 
-                  if (eosio::chain::chain_config::deep_mind_enabled) {
+                  if (context.control.get_deep_mind_logger() != nullptr) {
                      event_id = ramEventId("${code}:${scope}:${table}:${index_name}",
                         ("code", t.code)
                         ("scope", t.scope)
@@ -216,7 +216,7 @@ class apply_context {
                EOS_ASSERT( table_obj.code == context.receiver, table_access_violation, "db access violation" );
 
                fc::string event_id;
-               if (eosio::chain::chain_config::deep_mind_enabled) {
+               if (context.control.get_deep_mind_logger() != nullptr) {
                   event_id = ramEventId("${code}:${scope}:${table}:${index_name}",
                      ("code", table_obj.code)
                      ("scope", table_obj.scope)
@@ -254,7 +254,7 @@ class apply_context {
                int64_t billing_size =  config::billable_size_v<ObjectType>;
 
                fc::string event_id;
-               if (eosio::chain::chain_config::deep_mind_enabled) {
+               if (context.control.get_deep_mind_logger() != nullptr) {
                   event_id = ramEventId("${code}:${scope}:${table}:${index_name}",
                      ("code", table_obj.code)
                      ("scope", table_obj.scope)

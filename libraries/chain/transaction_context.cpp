@@ -589,10 +589,12 @@ namespace eosio { namespace chain {
    void transaction_context::execute_action( uint32_t action_ordinal, uint32_t recurse_depth ) {
       apply_context acontext( control, *this, action_ordinal, recurse_depth );
 
-      if (eosio::chain::chain_config::deep_mind_enabled && recurse_depth == 0) {
-         dmlog("CREATION_OP ROOT ${action_id}",
-            ("action_id", action_id.current())
-         );
+      if (recurse_depth == 0) {
+         if (auto dmlog = control.get_deep_mind_logger()) {
+            dmlog("CREATION_OP ROOT ${action_id}",
+               ("action_id", action_id.current())
+            );
+         }
       }
 
       acontext.exec();
@@ -622,7 +624,7 @@ namespace eosio { namespace chain {
         gto.expiration  = gto.delay_until + fc::seconds(control.get_global_properties().configuration.deferred_trx_expiration_window);
         trx_size = gto.set( trx );
 
-        if (eosio::chain::chain_config::deep_mind_enabled) {
+        if (auto dmlog = control.get_deep_mind_logger()) {
             event_id = ramEventId("${id}", ("id", gto.id));
 
             dmlog("DTRX_OP PUSH_CREATE ${action_id} ${sender} ${sender_id} ${payer} ${published} ${delay} ${expiration} ${trx_id} ${trx}",
