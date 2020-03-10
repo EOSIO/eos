@@ -610,12 +610,17 @@ BOOST_AUTO_TEST_CASE( push_block_returns_forked_transactions ) try {
    wlog( "sam and pam go off on their own fork on c2 while dan produces blocks by himself in c1" );
    auto fork_block_num = c.control->head_block_num();
 
+   signed_block_ptr c2b;
    wlog( "c2 blocks:" );
    c2.produce_blocks(12); // pam produces 12 blocks
-   b = c2.produce_block( fc::milliseconds(config::block_interval_ms * 13) ); // sam skips over dan's blocks
+   b = c2b = c2.produce_block( fc::milliseconds(config::block_interval_ms * 13) ); // sam skips over dan's blocks
    expected_producer = N(sam);
    BOOST_REQUIRE_EQUAL( b->producer.to_string(), expected_producer.to_string() );
-   c2.produce_blocks(11 + 12);
+   // save blocks for verification of forking later
+   std::vector<signed_block_ptr> c2blocks;
+   for( size_t i = 0; i < 11 + 12; ++i ) {
+      c2blocks.emplace_back( c2.produce_block() );
+   }
 
 
    wlog( "c1 blocks:" );
@@ -625,7 +630,7 @@ BOOST_AUTO_TEST_CASE( push_block_returns_forked_transactions ) try {
    // create accounts on c1 which will be forked out
    c.produce_block();
 
-   transaction_trace_ptr trace1, trace2, trace3;
+   transaction_trace_ptr trace1, trace2, trace3, trace4;
    { // create account the hard way so we can set reference block and expiration
       signed_transaction trx;
       authority active_auth( get_public_key( N(test1), "active" ) );
@@ -675,8 +680,31 @@ BOOST_AUTO_TEST_CASE( push_block_returns_forked_transactions ) try {
       trx.sign( get_private_key( config::system_account_name, "active" ), c.control->get_chain_id()  );
       trace3 = c.push_transaction( trx );
    }
+   {
+      signed_transaction trx;
+      authority active_auth( get_public_key( N(test4), "active" ) );
+      authority owner_auth( get_public_key( N(test4), "owner" ) );
+      trx.actions.emplace_back( vector<permission_level>{{config::system_account_name,config::active_name}},
+                                newaccount{
+                                      .creator  = config::system_account_name,
+                                      .name     = N(test4),
+                                      .owner    = owner_auth,
+                                      .active   = active_auth,
+                                });
+      trx.expiration = c.control->head_block_time() + fc::seconds( 60 );
+      trx.set_reference_block( b->id() ); // tapos to dan's block should be rejected on fork switch
+      trx.sign( get_private_key( config::system_account_name, "active" ), c.control->get_chain_id()  );
+      trace4 = c.push_transaction( trx );
+      BOOST_CHECK( trace4->receipt->status == transaction_receipt_header::executed );
+   }
    c.produce_block();
    c.produce_blocks(9);
+
+   // test forked blocks signal accepted_block in order, required by trace_api_plugin
+   std::vector<signed_block_ptr> accepted_blocks;
+   auto conn = c.control->accepted_block.connect( [&]( const block_state_ptr& bsp) {
+      accepted_blocks.emplace_back( bsp->block );
+   } );
 
    // dan on chain 1 now gets all of the blocks from chain 2 which should cause fork switch
    wlog( "push c2 blocks to c1" );
@@ -685,11 +713,23 @@ BOOST_AUTO_TEST_CASE( push_block_returns_forked_transactions ) try {
       c.push_block( fb );
    }
 
+   {  // verify forked blocks where signaled in order
+      auto itr = std::find( accepted_blocks.begin(), accepted_blocks.end(), c2b );
+      BOOST_CHECK( itr != accepted_blocks.end() );
+      ++itr;
+      BOOST_CHECK( itr != accepted_blocks.end() );
+      size_t i = 0;
+      for( i = 0; itr != accepted_blocks.end(); ++i, ++itr ) {
+         BOOST_CHECK( c2blocks.at(i) == *itr );
+      }
+      BOOST_CHECK( i == 11 + 12 );
+   }
    // verify transaction on fork is reported by push_block in order
-   BOOST_REQUIRE_EQUAL( 3, c.get_unapplied_transaction_queue().size() );
+   BOOST_REQUIRE_EQUAL( 4, c.get_unapplied_transaction_queue().size() );
    BOOST_REQUIRE_EQUAL( trace1->id, c.get_unapplied_transaction_queue().begin()->id() );
    BOOST_REQUIRE_EQUAL( trace2->id, (++c.get_unapplied_transaction_queue().begin())->id() );
    BOOST_REQUIRE_EQUAL( trace3->id, (++(++c.get_unapplied_transaction_queue().begin()))->id() );
+   BOOST_REQUIRE_EQUAL( trace4->id, (++(++(++c.get_unapplied_transaction_queue().begin())))->id() );
 
    BOOST_REQUIRE_EXCEPTION(c.control->get_account( N(test1) ), fc::exception,
                            [a=N(test1)] (const fc::exception& e)->bool {
@@ -703,14 +743,37 @@ BOOST_AUTO_TEST_CASE( push_block_returns_forked_transactions ) try {
                            [a=N(test3)] (const fc::exception& e)->bool {
                               return std::string( e.what() ).find( a.to_string() ) != std::string::npos;
                            }) ;
+   BOOST_REQUIRE_EXCEPTION(c.control->get_account( N(test4) ), fc::exception,
+                           [a=N(test4)] (const fc::exception& e)->bool {
+                              return std::string( e.what() ).find( a.to_string() ) != std::string::npos;
+                           }) ;
 
    // produce block which will apply the unapplied transactions
-   c.produce_block();
+   std::vector<transaction_trace_ptr> traces;
+   c.produce_block( traces );
+
+   BOOST_REQUIRE_EQUAL( 4, traces.size() );
+   BOOST_CHECK_EQUAL( trace1->id, traces.at(0)->id );
+   BOOST_CHECK_EQUAL( transaction_receipt_header::executed, traces.at(0)->receipt->status );
+   BOOST_CHECK_EQUAL( trace2->id, traces.at(1)->id );
+   BOOST_CHECK_EQUAL( transaction_receipt_header::executed, traces.at(1)->receipt->status );
+   BOOST_CHECK_EQUAL( trace3->id, traces.at(2)->id );
+   BOOST_CHECK_EQUAL( transaction_receipt_header::executed, traces.at(2)->receipt->status );
+   // test4 failed because it was tapos to a forked out block
+   BOOST_CHECK_EQUAL( trace4->id, traces.at(3)->id );
+   BOOST_CHECK( !traces.at(3)->receipt );
+   BOOST_CHECK( !!traces.at(3)->except );
 
    // verify unapplied transactions ran
    BOOST_REQUIRE_EQUAL( c.control->get_account( N(test1) ).name,  N(test1) );
    BOOST_REQUIRE_EQUAL( c.control->get_account( N(test2) ).name,  N(test2) );
    BOOST_REQUIRE_EQUAL( c.control->get_account( N(test3) ).name,  N(test3) );
+
+   // failed because of tapos to forked out block
+   BOOST_REQUIRE_EXCEPTION(c.control->get_account( N(test4) ), fc::exception,
+                           [a=N(test4)] (const fc::exception& e)->bool {
+                              return std::string( e.what() ).find( a.to_string() ) != std::string::npos;
+                           }) ;
 
 } FC_LOG_AND_RETHROW()
 
