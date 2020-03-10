@@ -136,7 +136,6 @@ struct trace_api_rpc_plugin_impl : public std::enable_shared_from_this<trace_api
                   "There must be at least one ABI specified OR the flag trace-no-abis must be used.\n"
                   "ABIs are specified as \"Key=Value\" pairs in the form <account-name>=<abi-def>\n"
                   "Where <abi-def> can be:\n"
-                  "   a valid JSON-encoded ABI as a string\n"
                   "   an absolute path to a file containing a valid JSON-encoded ABI\n"
                   "   a relative path from `data-dir` to a file containing a valid JSON-encoded ABI\n"
                   );
@@ -160,7 +159,7 @@ struct trace_api_rpc_plugin_impl : public std::enable_shared_from_this<trace_api
             try {
                auto kv = parse_kv_pairs(entry);
                auto account = chain::name(kv.first);
-               auto abi = abi_def_from_file_or_str(kv.second, app().data_dir());
+               auto abi = abi_def_from_file(kv.second, app().data_dir());
                data_handler->add_abi(account, abi);
             } catch (...) {
                elog("Malformed trace-rpc-abi provider: \"${val}\"", ("val", entry));
