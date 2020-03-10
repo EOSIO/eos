@@ -3,7 +3,6 @@
 #include <algorithm>
 
 #include <fc/variant_object.hpp>
-#include <fc/crypto/base64.hpp>
 
 namespace {
    using namespace eosio::trace_api;
