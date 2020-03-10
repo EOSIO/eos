@@ -2,13 +2,20 @@
 
 #include <eosio/trace_api/abi_data_handler.hpp>
 #include <eosio/trace_api/request_handler.hpp>
+#include <eosio/trace_api/chain_extraction.hpp>
+#include <eosio/trace_api/store_provider.hpp>
 
 #include <eosio/trace_api/configuration_utils.hpp>
 
+#include <boost/signals2/connection.hpp>
+
 using namespace eosio::trace_api;
 using namespace eosio::trace_api::configuration_utils;
+using boost::signals2::scoped_connection;
 
 namespace {
+   appbase::abstract_plugin& plugin_reg = app().register_plugin<trace_api_plugin>();
+
    const std::string logger_name("trace_api");
    fc::logger _log;
 
@@ -39,6 +46,46 @@ namespace {
          _log.log(fc::log_message( context, detail_string ));
       }
    }
+
+   /**
+    * The exception_handler provided to the extraction sub-system throws `yield_exception` as a signal that
+    * Something has gone wrong and the extraction process needs to terminate immediately
+    *
+    * This templated method is used to wrap signal handlers for `chain_controller` so that the plugin-internal
+    * `yield_exception` can be translated to a `chain::controller_emit_signal_exception`.
+    *
+    * The goal is that the currently applied block will be rolled-back before the shutdown takes effect leaving
+    * the system in a better state for restart.
+    */
+   template<typename F>
+   void emit_killer(F&& f) {
+      try {
+         f();
+      } catch (const yield_exception& ) {
+         EOS_THROW(chain::controller_emit_signal_exception, "Trace API encountered an Error which it cannot recover from.  Please resolve the error and relaunch the process")
+      }
+   }
+
+   template<typename Store>
+   struct shared_store_provider {
+      shared_store_provider(const std::shared_ptr<Store>& store)
+      :store(store)
+      {}
+
+      void append( const block_trace_v0& trace ) {
+         store->append(trace);
+      }
+
+      void append_lib( uint32_t new_lib ) {
+         store->append_lib(new_lib);
+      }
+
+      get_block_t get_block(uint32_t height, const yield_function& yield) {
+         return store->get_block(height, yield);
+      }
+
+      std::shared_ptr<Store> store;
+   };
 }
 
 namespace eosio {
@@ -63,17 +110,22 @@ struct trace_api_common_impl {
          trace_dir = dir_option;
 
       slice_stride = options.at("trace-slice-stride").as<uint32_t>();
+
+      store = std::make_shared<store_provider>(trace_dir, slice_stride);
    }
 
    // common configuration paramters
    boost::filesystem::path trace_dir;
    uint32_t slice_stride = 0;
+
+   std::shared_ptr<store_provider> store;
 };
 
 /**
  * Interface with the RPC process
  */
-struct trace_api_rpc_plugin_impl {
+struct trace_api_rpc_plugin_impl : public std::enable_shared_from_this<trace_api_rpc_plugin_impl>
+{
    trace_api_rpc_plugin_impl( const std::shared_ptr<trace_api_common_impl>& common )
    :common(common) {}
 
@@ -96,7 +148,7 @@ struct trace_api_rpc_plugin_impl {
    }
 
    void plugin_initialize(const appbase::variables_map& options) {
-      data_handler = std::make_shared<abi_data_handler>([](const exception_with_context& e){
+      std::shared_ptr<abi_data_handler> data_handler = std::make_shared<abi_data_handler>([](const exception_with_context& e){
          log_exception(e, fc::log_level::debug);
       });
 
@@ -119,16 +171,66 @@ struct trace_api_rpc_plugin_impl {
          EOS_ASSERT(options.count("trace-no-abis") != 0, chain::plugin_config_exception,
                     "Trace API is not configured with ABIs and trace-no-abis is not set");
       }
+
+      request_handler = std::make_shared<request_handler_t>(
+         shared_store_provider<store_provider>(common->store),
+         abi_data_handler::shared_provider(data_handler)
+      );
    }
 
    void plugin_startup() {
+      auto& http = app().get_plugin<http_plugin>();
+      http.add_handler("/v1/trace_api/get_block", [wthis=weak_from_this()](std::string, std::string body, url_response_callback cb){
+         auto that = wthis.lock();
+         if (!that) {
+            return;
+         }
+
+         auto block_number = ([&body]() -> std::optional<uint32_t> {
+            if (body.empty()) {
+               return {};
+            }
+
+            try {
+               auto input = fc::json::from_string(body);
+               auto block_num = input.get_object()["block_num"].as_uint64();
+               if (block_num > std::numeric_limits<uint32_t>::max()) {
+                  return {};
+               }
+               return block_num;
+            } catch (...) {
+               return {};
+            }
+         })();
+
+         if (!block_number) {
+            error_results results{400, "Bad or missing block_num"};
+            cb( 400, fc::variant( results ));
+            return;
+         }
+
+         try {
+
+            auto resp = that->request_handler->get_block_trace(*block_number);
+            if (resp.is_null()) {
+               error_results results{404, "Block trace missing"};
+               cb( 404, fc::variant( results ));
+            } else {
+               cb( 200, resp );
+            }
+         } catch (...) {
+            http_plugin::handle_exception("trace_api", "get_block", body, cb);
+         }
+      });
    }
 
    void plugin_shutdown() {
    }
 
    std::shared_ptr<trace_api_common_impl> common;
-   std::shared_ptr<abi_data_handler> data_handler;
+
+   using request_handler_t = request_handler<shared_store_provider<store_provider>, abi_data_handler::shared_provider>;
+   std::shared_ptr<request_handler_t> request_handler;
 };
 
 struct trace_api_plugin_impl {
@@ -155,6 +257,37 @@ struct trace_api_plugin_impl {
             EOS_THROW(chain::plugin_config_exception, "trace-minimum-irreversible-history-us must be either a positive number or -1");
          }
       }
+
+      auto log_exceptions_and_shutdown = [](const exception_with_context& e) {
+         log_exception(e, fc::log_level::error);
+         app().quit();
+         throw yield_exception("shutting down");
+      };
+      extraction = std::make_shared<chain_extraction_t>(shared_store_provider<store_provider>(common->store), log_exceptions_and_shutdown);
+
+      auto& chain = app().find_plugin<chain_plugin>()->chain();
+
+      applied_transaction_connection.emplace(
+         chain.applied_transaction.connect([this](std::tuple<const chain::transaction_trace_ptr&, const chain::signed_transaction&> t) {
+            emit_killer([&](){
+               extraction->signal_applied_transaction(std::get<0>(t), std::get<1>(t));
+            });
+         }));
+
+      accepted_block_connection.emplace(
+         chain.accepted_block.connect([this](const chain::block_state_ptr& p) {
+            emit_killer([&](){
+               extraction->signal_accepted_block(p);
+            });
+         }));
+
+      irreversible_block_connection.emplace(
+         chain.irreversible_block.connect([this](const chain::block_state_ptr& p) {
+            emit_killer([&](){
+               extraction->signal_irreversible_block(p);
+            });
+         }));
+
    }
 
    void plugin_startup() {
@@ -165,6 +298,13 @@ struct trace_api_plugin_impl {
 
    std::shared_ptr<trace_api_common_impl> common;
    fc::microseconds minimum_irreversible_trace_history = fc::microseconds::maximum();
+
+   using chain_extraction_t = chain_extraction_impl_type<shared_store_provider<store_provider>>;
+   std::shared_ptr<chain_extraction_t> extraction;
+
+   fc::optional<scoped_connection>                            applied_transaction_connection;
+   fc::optional<scoped_connection>                            accepted_block_connection;
+   fc::optional<scoped_connection>                            irreversible_block_connection;
 };
 
 trace_api_plugin::trace_api_plugin()
@@ -191,6 +331,8 @@ void trace_api_plugin::plugin_initialize(const appbase::variables_map& options) 
 }
 
 void trace_api_plugin::plugin_startup() {
+   handle_sighup(); // setup logging
+
    my->plugin_startup();
    rpc->plugin_startup();
 }
