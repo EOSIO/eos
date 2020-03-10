@@ -595,7 +595,7 @@ datastream<ST>& operator<<(datastream<ST>& ds, const history_context_wrapper<boo
    fc::raw::pack(ds, as_type<fc::optional<std::string>>(e));
    fc::raw::pack(ds, as_type<fc::optional<uint64_t>>(debug_mode ? obj.obj.error_code
                                                                 : cap_error_code(obj.obj.error_code)));
-   fc::raw::pack(ds, as_type<fc::optional<eosio::chain::bytes>>(obj.obj.return_value));
+   fc::raw::pack(ds, as_type<eosio::chain::bytes>(obj.obj.return_value));
    return ds;
 }
 
