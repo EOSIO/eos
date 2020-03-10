@@ -136,6 +136,9 @@ namespace eosio::trace_api {
       if( append ) {
          trace_file.seek_end(0);
       }
+      else {
+         trace_file.seek(0); // ensure we are at the start of the file
+      }
       return true;
    }
 
