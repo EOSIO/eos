@@ -4,6 +4,7 @@
 #include <fc/io/cfile.hpp>
 #include <boost/filesystem.hpp>
 #include <fc/variant.hpp>
+#include <eosio/trace_api/common.hpp>
 #include <eosio/trace_api/metadata_log.hpp>
 #include <eosio/trace_api/data_log.hpp>
 
@@ -50,15 +51,50 @@ namespace eosio::trace_api {
       {}
    };
 
+   /**
+    * append an entry to the store
+    *
+    * @param entry : the entry to append
+    * @param file : the file to append entry to
+    * @return the offset in the file where that entry is written
+    */
+   template<typename DataEntry, typename File>
+   static uint64_t append_store(const DataEntry &entry, File &file) {
+      auto data = fc::raw::pack(entry);
+      const auto offset = file.tellp();
+      file.write(data.data(), data.size());
+      file.flush();
+      file.sync();
+      return offset;
+   }
+
+   /**
+    * extract an entry from the data log
+    *
+    * @param file : the file to extract entry from
+    * @return the extracted data log
+    */
+   template<typename DataEntry, typename File>
+   static DataEntry extract_store( File& file ) {
+      DataEntry entry;
+      auto ds = file.create_datastream();
+      fc::raw::unpack(ds, entry);
+      return entry;
+   }
+
+
    class store_provider;
 
-
-   class slice_provider {
+   /**
+    * Provides access to the slice directory.  It is only intended to be used by store_provider
+    * and unit tests.
+    */
+   class slice_directory {
    public:
       struct index_header {
          uint32_t version;
       };
-      slice_provider(const boost::filesystem::path& slice_dir, uint32_t width);
+      slice_directory(const boost::filesystem::path& slice_dir, uint32_t width);
 
       /**
        * Return the slice number that would include the passed in block_height
@@ -131,6 +167,9 @@ namespace eosio::trace_api {
       const uint32_t _width;
    };
 
+   /**
+    * Provides read and write access to block trace data.
+    */
    class store_provider {
    public:
       store_provider(const boost::filesystem::path& slice_dir, uint32_t width);
@@ -138,6 +177,15 @@ namespace eosio::trace_api {
       void append(const block_trace_v0& bt);
       void append_lib(uint32_t lib);
 
+      /**
+       * Read the trace for a given block
+       * @param block_height : the height of the data being read
+       * @return empty optional if the data cannot be read OTHERWISE
+       *         optional containing a 2-tuple of the block_trace and a flag indicating irreversibility
+       */
+      get_block_t get_block(uint32_t block_height, const yield_function& yield= {});
+
+   protected:
       /**
        * Read the metadata log font-to-back starting at an offset passing each entry to a provided functor/lambda
        *
@@ -148,12 +196,12 @@ namespace eosio::trace_api {
        * @return the highest offset read during this scan
        */
       template<typename Fn>
-      uint64_t scan_metadata_log_from( uint32_t block_height, uint64_t offset, Fn&& fn ) {
+      uint64_t scan_metadata_log_from( uint32_t block_height, uint64_t offset, Fn&& fn, const yield_function& yield ) {
          // ignoring offset
          offset = 0;
          fc::cfile index;
-         const uint32_t slice_number = _slice_provider.slice_number(block_height);
-         const bool found = _slice_provider.find_index_slice(slice_number, false, index);
+         const uint32_t slice_number = _slice_directory.slice_number(block_height);
+         const bool found = _slice_directory.find_index_slice(slice_number, false, index);
          if( !found ) {
             return 0;
          }
@@ -161,6 +209,7 @@ namespace eosio::trace_api {
          offset = index.tellp();
          uint64_t last_read_offset = offset;
          while (offset < end) {
+            yield();
             const auto metadata = extract_store<metadata_log_entry>(index);
             if(! fn(metadata)) {
                break;
@@ -180,9 +229,9 @@ namespace eosio::trace_api {
        *
        */
       std::optional<data_log_entry> read_data_log( uint32_t block_height, uint64_t offset ) {
-         const uint32_t slice_number = _slice_provider.slice_number(block_height);
+         const uint32_t slice_number = _slice_directory.slice_number(block_height);
          fc::cfile trace;
-         if( !_slice_provider.find_trace_slice(slice_number, false, trace) ) {
+         if( !_slice_directory.find_trace_slice(slice_number, false, trace) ) {
             const std::string offset_str = boost::lexical_cast<std::string>(offset);
             const std::string bh_str = boost::lexical_cast<std::string>(block_height);
             throw malformed_slice_file("Requested offset: " + offset_str + " to retrieve block number: " + bh_str + " but this trace file is new, so there are no traces present.");
@@ -198,43 +247,13 @@ namespace eosio::trace_api {
          return extract_store<data_log_entry>(trace);
       }
 
-      /**
-       * append an entry to the store
-       *
-       * @param entry : the entry to append
-       * @param file : the file to append entry to
-       * @return the offset in the file where that entry is written
-       */
-      template<typename DataEntry, typename File>
-      static uint64_t append_store(const DataEntry &entry, File &file) {
-         auto data = fc::raw::pack(entry);
-         const auto offset = file.tellp();
-         file.write(data.data(), data.size());
-         file.flush();
-         file.sync();
-         return offset;
-      }
-
-      /**
-       * extract an entry from the data log
-       *
-       * @param file : the file to extract entry from
-       * @return the extracted data log
-       */
-      template<typename DataEntry, typename File>
-      static DataEntry extract_store( File& file ) {
-         DataEntry entry;
-         auto ds = file.create_datastream();
-         fc::raw::unpack(ds, entry);
-         return entry;
-      }
    private:
       void find_or_create_slice_pair(uint32_t block_height, bool append, fc::cfile& trace, fc::cfile& index);
       void initialize_new_index_slice_file(fc::cfile& index);
       void validate_existing_index_slice_file(fc::cfile& index, bool append);
-      slice_provider _slice_provider;
+      slice_directory _slice_directory;
    };
 
 }
 
-FC_REFLECT(eosio::trace_api::slice_provider::index_header, (version))
+FC_REFLECT(eosio::trace_api::slice_directory::index_header, (version))
