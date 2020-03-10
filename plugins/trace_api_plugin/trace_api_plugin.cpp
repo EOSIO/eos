@@ -181,7 +181,7 @@ struct trace_api_rpc_plugin_impl : public std::enable_shared_from_this<trace_api
             try {
                auto kv = parse_kv_pairs(entry);
                auto account = chain::name(kv.first);
-               auto abi = abi_def_from_file_or_str(kv.second);
+               auto abi = abi_def_from_file_or_str(kv.second, app().data_dir());
                data_handler->add_abi(account, abi);
             } catch (...) {
                elog("Malformed trace-rpc-abi provider: \"${val}\"", ("val", entry));
