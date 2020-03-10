@@ -228,6 +228,103 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
       BOOST_TEST(to_kv(expected_response) == to_kv(actual_response), boost::test_tools::per_element());
    }
 
+   BOOST_FIXTURE_TEST_CASE(basic_block_response_unsorted, response_test_fixture)
+   {
+      auto block_trace = block_trace_v0 {
+         "b000000000000000000000000000000000000000000000000000000000000001"_h,
+         1,
+         "0000000000000000000000000000000000000000000000000000000000000000"_h,
+         chain::block_timestamp_type(0),
+         "bp.one"_n,
+         {
+            {
+               "0000000000000000000000000000000000000000000000000000000000000001"_h,
+               {
+                  {
+                     1,
+                     "receiver"_n, "contract"_n, "action"_n,
+                     {{ "alice"_n, "active"_n }},
+                     { 0x01, 0x01, 0x01, 0x01 }
+                  },
+                  {
+                     0,
+                     "receiver"_n, "contract"_n, "action"_n,
+                     {{ "alice"_n, "active"_n }},
+                     { 0x00, 0x00, 0x00, 0x00 }
+                  },
+                  {
+                     2,
+                     "receiver"_n, "contract"_n, "action"_n,
+                     {{ "alice"_n, "active"_n }},
+                     { 0x02, 0x02, 0x02, 0x02 }
+                  }
+               }
+            }
+         }
+      };
+
+      fc::variant expected_response = fc::mutable_variant_object()
+         ("id", "b000000000000000000000000000000000000000000000000000000000000001")
+         ("number", 1)
+         ("previous_id", "0000000000000000000000000000000000000000000000000000000000000000")
+         ("status", "pending")
+         ("timestamp", "2000-01-01T00:00:00.000Z")
+         ("producer", "bp.one")
+         ("transactions", fc::variants({
+            fc::mutable_variant_object()
+               ("id", "0000000000000000000000000000000000000000000000000000000000000001")
+               ("actions", fc::variants({
+                  fc::mutable_variant_object()
+                     ("receiver", "receiver")
+                     ("account", "contract")
+                     ("action", "action")
+                     ("authorization", fc::variants({
+                        fc::mutable_variant_object()
+                           ("account", "alice")
+                           ("permission", "active")
+                     }))
+                     ("data", "00000000")
+                  ,
+                  fc::mutable_variant_object()
+                     ("receiver", "receiver")
+                     ("account", "contract")
+                     ("action", "action")
+                     ("authorization", fc::variants({
+                        fc::mutable_variant_object()
+                           ("account", "alice")
+                           ("permission", "active")
+                     }))
+                     ("data", "01010101")
+                  ,
+                  fc::mutable_variant_object()
+                     ("receiver", "receiver")
+                     ("account", "contract")
+                     ("action", "action")
+                     ("authorization", fc::variants({
+                        fc::mutable_variant_object()
+                           ("account", "alice")
+                           ("permission", "active")
+                     }))
+                     ("data", "02020202")
+               }))
+         }))
+      ;
+
+      mock_get_block = [&block_trace]( uint32_t height, const yield_function& ) -> get_block_t {
+         BOOST_TEST(height == 1);
+         return std::make_tuple(block_trace, false);
+      };
+
+      // simulate an inability to parse the parameters
+      mock_data_handler = [](const action_trace_v0&, const yield_function&) -> fc::variant {
+         return {};
+      };
+
+      fc::variant actual_response = get_block_trace( 1 );
+
+      BOOST_TEST(to_kv(expected_response) == to_kv(actual_response), boost::test_tools::per_element());
+   }
+
    BOOST_FIXTURE_TEST_CASE(lib_response, response_test_fixture)
    {
       auto block_trace = block_trace_v0 {
