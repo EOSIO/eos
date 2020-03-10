@@ -7,12 +7,12 @@
 namespace eosio { namespace trace_api {
    struct block_entry_v0 {
       chain::block_id_type   id;
-      uint64_t               number;
+      uint32_t               number;
       uint64_t               offset;
    };
 
    struct lib_entry_v0 {
-      uint64_t               lib;
+      uint32_t               lib;
    };
 
    using metadata_log_entry = fc::static_variant<

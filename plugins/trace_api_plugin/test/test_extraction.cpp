@@ -152,7 +152,7 @@ BOOST_AUTO_TEST_SUITE(block_extraction)
             { chain::packed_transaction(ptrx1) } );
       signal_accepted_block( bsp1 );
       
-      const uint64_t expected_lib = 0;
+      const uint32_t expected_lib = 0;
       const block_trace_v0 expected_trace { bsp1->id, 1, bsp1->prev(), chain::block_timestamp_type(1), "bp.one"_n,
          {
             {
@@ -216,7 +216,7 @@ BOOST_AUTO_TEST_SUITE(block_extraction)
             { chain::packed_transaction(ptrx1), chain::packed_transaction(ptrx2), chain::packed_transaction(ptrx3) } );
       signal_accepted_block( bsp1 );
 
-      const uint64_t expected_lib = 0;
+      const uint32_t expected_lib = 0;
       const block_trace_v0 expected_trace { bsp1->id, 1, bsp1->prev(), chain::block_timestamp_type(1), "bp.one"_n,
          {
             {
@@ -283,7 +283,7 @@ BOOST_AUTO_TEST_SUITE(block_extraction)
             { chain::packed_transaction(transfer_trx) } );
       signal_accepted_block( bsp1 );
 
-      const uint64_t expected_lib = 0;
+      const uint32_t expected_lib = 0;
       const block_trace_v0 expected_trace { bsp1->id, 1, bsp1->prev(), chain::block_timestamp_type(1), "bp.one"_n,
          {
             {

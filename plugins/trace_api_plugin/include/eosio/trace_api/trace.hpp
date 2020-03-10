@@ -29,7 +29,7 @@ namespace eosio { namespace trace_api {
 
    struct block_trace_v0 {
       chain::block_id_type               id = {};
-      uint64_t                           number = {};
+      uint32_t                           number = {};
       chain::block_id_type               previous_id = {};
       chain::block_timestamp_type        timestamp = chain::block_timestamp_type(0);
       chain::name                        producer = {};
