@@ -58,7 +58,7 @@ BOOST_AUTO_TEST_SUITE(configuration_utils_tests)
 
    }
 
-   BOOST_FIXTURE_TEST_CASE(abi_def_from_file_or_str_test, temp_file_fixture)
+   BOOST_FIXTURE_TEST_CASE(abi_def_from_file_test, temp_file_fixture)
    {
       auto data_dir = fc::path(bfs::temp_directory_path());
       auto good_json = std::string("{\"version\" : \"test string please ignore\"}");
@@ -74,15 +74,13 @@ BOOST_AUTO_TEST_SUITE(configuration_utils_tests)
       auto directory_name = bfs::temp_directory_path().generic_string();
 
       // good cases
-      BOOST_TEST( abi_def_from_file_or_str(good_json, data_dir) == good_abi );
-      BOOST_TEST( abi_def_from_file_or_str(good_json_filename, data_dir) == good_abi );
-      BOOST_TEST( abi_def_from_file_or_str(relative_json_filename, data_dir) == good_abi );
+      BOOST_TEST( abi_def_from_file(good_json_filename, data_dir) == good_abi );
+      BOOST_TEST( abi_def_from_file(relative_json_filename, data_dir) == good_abi );
 
       // bad cases
-      BOOST_REQUIRE_THROW( abi_def_from_file_or_str(bad_json, data_dir), chain::json_parse_exception );
-      BOOST_REQUIRE_THROW( abi_def_from_file_or_str(bad_json_filename, data_dir), chain::json_parse_exception );
-      BOOST_REQUIRE_THROW( abi_def_from_file_or_str(bad_filename, data_dir), chain::plugin_config_exception );
-      BOOST_REQUIRE_THROW( abi_def_from_file_or_str(directory_name, data_dir), chain::plugin_config_exception );
+      BOOST_REQUIRE_THROW( abi_def_from_file(bad_json_filename, data_dir), chain::json_parse_exception );
+      BOOST_REQUIRE_THROW( abi_def_from_file(bad_filename, data_dir), chain::plugin_config_exception );
+      BOOST_REQUIRE_THROW( abi_def_from_file(directory_name, data_dir), chain::plugin_config_exception );
    }
 
 BOOST_AUTO_TEST_SUITE_END()
