@@ -3348,9 +3348,11 @@ void controller_impl::on_activation<builtin_protocol_feature_t::wtmsig_block_sig
 template<>
 void controller_impl::on_activation<builtin_protocol_feature_t::action_return_value>() {
    db.modify( db.get<protocol_state_object>(), [&]( auto& ps ) {
-      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "set_action_return_value" ); 
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "set_action_return_value" );
    } );
 }
+
+
 
 /// End of protocol feature activation handlers
 

@@ -16,6 +16,7 @@ using namespace eosio;
 using namespace eosio::chain;
 using namespace eosio::testing;
 
+
 BOOST_AUTO_TEST_SUITE(delay_tests)
 
 BOOST_FIXTURE_TEST_CASE( delay_create_account, validating_tester) { try {
@@ -2384,5 +2385,6 @@ BOOST_FIXTURE_TEST_CASE( delay_expired, validating_tester) { try {
    create_account(a); // account can still be created
 
 } FC_LOG_AND_RETHROW() }
+
 
 BOOST_AUTO_TEST_SUITE_END()
