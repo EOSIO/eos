@@ -356,7 +356,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
    bool enforce_actor_whitelist_blacklist = trx_context.enforce_whiteblacklist && control.is_producing_block()
                                              && !control.sender_avoids_whitelist_blacklist_enforcement( receiver );
    trx_context.validate_referenced_accounts( trx, enforce_actor_whitelist_blacklist );
-   
+
    if( control.is_builtin_activated( builtin_protocol_feature_t::no_duplicate_deferred_id ) ) {
       auto exts = trx.validate_and_extract_extensions();
       if( exts.size() > 0 ) {
@@ -490,7 +490,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
       } else {
          control.add_to_ram_correction( ptr->payer, orig_trx_ram_bytes );
       }
-      
+
       transaction_id_type trx_id_for_new_obj;
       if( replace_deferred_activated ) {
          trx_id_for_new_obj = trx.id();
@@ -501,7 +501,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
       // Use remove and create rather than modify because mutating the trx_id field in a modifier is unsafe.
       db.remove( *ptr );
       if ( !stop_deferred_transactions_activated ) {
-      db.create<generated_transaction_object>( [&]( auto& gtx ) {
+         db.create<generated_transaction_object>( [&]( auto& gtx ) {
             gtx.trx_id      = trx_id_for_new_obj;
             gtx.sender      = receiver;
             gtx.sender_id   = sender_id;
@@ -515,7 +515,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
       }
    } else {
       if ( !stop_deferred_transactions_activated ) {
-      db.create<generated_transaction_object>( [&]( auto& gtx ) {
+         db.create<generated_transaction_object>( [&]( auto& gtx ) {
             gtx.trx_id      = trx.id();
             gtx.sender      = receiver;
             gtx.sender_id   = sender_id;

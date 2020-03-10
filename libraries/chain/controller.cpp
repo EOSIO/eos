@@ -1240,8 +1240,10 @@ struct controller_impl {
       transaction_metadata_ptr trx = transaction_metadata::create_no_recover_keys( packed_transaction( dtrx ), transaction_metadata::trx_type::scheduled );
       trx->accepted = true;
 
+      bool stop_deferred_transactions_activated = self.is_builtin_activated(builtin_protocol_feature_t::stop_deferred_transactions);
+
       transaction_trace_ptr trace;
-      if( gtrx.expiration < self.pending_block_time() ) { // Or has the protocol feature been activated (STOP_DEFERRED)
+      if( gtrx.expiration < self.pending_block_time() || stop_deferred_transactions_activated ) {
          trace = std::make_shared<transaction_trace>();
          trace->id = gtrx.trx_id;
          trace->block_num = self.head_block_num() + 1;
@@ -3347,7 +3349,7 @@ void controller_impl::on_activation<builtin_protocol_feature_t::wtmsig_block_sig
 template<>
 void controller_impl::on_activation<builtin_protocol_feature_t::action_return_value>() {
    db.modify( db.get<protocol_state_object>(), [&]( auto& ps ) {
-      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "set_action_return_value" );
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "set_action_return_value" ); 
    } );
 }
 

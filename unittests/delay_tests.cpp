@@ -16,16 +16,6 @@ using namespace eosio;
 using namespace eosio::chain;
 using namespace eosio::testing;
 
-// class select_protocol_features_tester : public TESTER {
-//    select_protocol_features_tester( builtin_protocol_feature_t feature ) {
-//        setup_policy policy = setup_policy::full;
-//        db_read_mode read_mode = db_read_mode::SPECULATIVE;
-//        init(policy, read_mode);
-//    }
-// 
-//     base_tester::init(const setup_policy policy = setup_policy::full, db_read_mode read_mode = db_read_mode::SPECULATIVE);
-// };
-
 BOOST_AUTO_TEST_SUITE(delay_tests)
 
 BOOST_FIXTURE_TEST_CASE( delay_create_account, validating_tester) { try {

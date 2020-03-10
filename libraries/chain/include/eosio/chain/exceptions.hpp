@@ -279,8 +279,6 @@ namespace eosio { namespace chain {
                                     3040018, "Transaction exceeded transient resource limit" )
       FC_DECLARE_DERIVED_EXCEPTION( stop_deferred_tx, transaction_exception,
                                     3040019, "Deferred transactions have been stopped" )
-      // FC_DECLARE_DERIVED_EXCEPTION( delay_seconds_tx, transaction_exception,
-      //                               3040020, "Delay seconds must be 0" )
 
 
    FC_DECLARE_DERIVED_EXCEPTION( action_validate_exception, chain_exception,
