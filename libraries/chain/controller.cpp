@@ -572,10 +572,31 @@ struct controller_impl {
       }
    }
 
+   // Check that rocksdb is in sync with chainbase and automatically fix anything
+   // that we know how to fix.  Specifically undos that were applied only to
+   // chainbase will be applied to rocksdb as well.
+   void sync_rocksdb() {
+      const kv_db_config_object& cfg = db.get<kv_db_config_object>();
+      EOS_ASSERT( cfg.rocksdb_okay, "chain-kv did not exit cleanly." );
+      if(cfg.rocksdb_revision != -1) {
+         EOS_ASSERT( cfg.rocksdb_revision == kv_undo_stack.revision(), database_revision_mismatch_exception,
+                     "chain-kv is at revision ${b}, but chainbase expects it to be at revision ${a}", ("a", cfg.rocksdb_revision)("b", kv_undo_stack.revision()) );
+         try {
+            kv_undo_stack.undo_to( db.revision() );
+         } catch(...) {
+            db.modify( cfg, [](auto& obj) { obj.rocksdb_revision = kv_undo_stack->revision(); } );
+            throw;
+         }
+         db.modify( cfg, [](auto& obj) { obj.rocksdb_revision = -1; } );
+      } else {
+         EOS_ASSERT( db.revision() == kv_undo_stack.revision(), database_revision_mismatch_exception, 
+                     "chainbase is at revision ${a}, but chain-kv is at revision ${b}", ("a", db.revision())("b", kv_undo_stack.revision()) );
+      }
+   }
+
    void startup(std::function<void()> shutdown, std::function<bool()> check_shutdown, const snapshot_reader_ptr& snapshot) {
       EOS_ASSERT( snapshot, snapshot_exception, "No snapshot reader provided" );
-      EOS_ASSERT( db.revision() == kv_undo_stack.revision(), database_revision_mismatch_exception, 
-                  "chainbase is at revision ${a}, but chain-kv is at revision ${b}", ("a", db.revision())("b", kv_undo_stack.revision()) );
+      sync_rocksdb();
       this->shutdown = shutdown;
       ilog( "Starting initialization from snapshot, this may take a significant amount of time" );
       try {
@@ -604,8 +625,7 @@ struct controller_impl {
 
    void startup(std::function<void()> shutdown, std::function<bool()> check_shutdown, const genesis_state& genesis) {
       EOS_ASSERT( db.revision() < 1, database_exception, "This version of controller::startup only works with a fresh state database." );
-      EOS_ASSERT( db.revision() == kv_undo_stack.revision(), database_revision_mismatch_exception, 
-                  "chainbase is at revision ${a}, but chain-kv is at revision ${b}", ("a", db.revision())("b", kv_undo_stack.revision()) );
+      sync_rocksdb();
       const auto& genesis_chain_id = genesis.compute_chain_id();
       EOS_ASSERT( genesis_chain_id == chain_id, chain_id_type_exception,
                   "genesis state provided to startup corresponds to a chain ID (${genesis_chain_id}) that does not match the chain ID that controller was constructed with (${controller_chain_id})",
@@ -639,8 +659,7 @@ struct controller_impl {
 
    void startup(std::function<void()> shutdown, std::function<bool()> check_shutdown) {
       EOS_ASSERT( db.revision() >= 1, database_exception, "This version of controller::startup does not work with a fresh state database." );
-      EOS_ASSERT( db.revision() == kv_undo_stack.revision(), database_revision_mismatch_exception, 
-                  "chainbase is at revision ${a}, but chain-kv is at revision ${b}", ("a", db.revision())("b", kv_undo_stack.revision()) );
+      sync_rocksdb();
       EOS_ASSERT( fork_db.head(), fork_database_exception, "No existing fork database despite existing chain state. Replay required." );
 
       this->shutdown = shutdown;
@@ -814,11 +833,12 @@ struct controller_impl {
 
    ~controller_impl() {
       try {
-         try {
-            kv_database.close();
-         }
-         FC_LOG_AND_RETHROW()
+         kv_undo_stack.write_state();
+         kv_database.flush(true, true);
+         kv_database.close();
       } catch(...) {
+         // If we failed to sync rocks, record the failure in chainbase, so
+         // that we know that the state is bad on the next start up.
          db.modify(db.get<kv_config_object>(), [](auto& cfg){ cfg.rocksdb_okay = false; });
       }
       thread_pool.stop();
@@ -2551,15 +2571,6 @@ controller::controller( const config& cfg, protocol_feature_set&& pfs, const cha
 
 controller::~controller() {
    my->abort_block();
-
-   try {
-      try {
-         my->kv_undo_stack.write_state();
-         my->kv_database.flush(true, true);
-      }
-      FC_LOG_AND_RETHROW()
-   }
-   CATCH_AND_EXIT_DB_FAILURE()
 
    /* Shouldn't be needed anymore.
    //close fork_db here, because it can generate "irreversible" signal to this controller,
