@@ -612,10 +612,10 @@ try:
         raise
 
     try:
-        assert(trans[1]["actions"][0]["data"]["from"]=="currency1111")
-        assert(trans[1]["actions"][0]["data"]["to"]=="defproducera")
-        assert(trans[1]["actions"][0]["data"]["quantity"]=="0.0001 CUR")
-        assert(trans[1]["actions"][0]["data"]["memo"]=="test")
+        assert(trans[1]["actions"][0]["data"]["from"] == "currency1111")
+        assert(trans[1]["actions"][0]["data"]["to"] == "defproducera")
+        assert(trans[1]["actions"][0]["data"]["quantity"] == "0.0001 CUR")
+        assert(trans[1]["actions"][0]["data"]["memo"] == "test")
     except (AssertionError, KeyError) as _:
         Print("ERROR: Expecting unpacked data fields on push transfer action json result.")
         raise
