@@ -1678,7 +1678,7 @@ bool producer_plugin_impl::remove_expired_blacklisted_trxs( const fc::time_point
    auto& blacklist_by_expiry = _blacklisted_transactions.get<by_expiry>();
    if(!blacklist_by_expiry.empty()) {
       const chain::controller& chain = chain_plug->chain();
-      const auto lib_time = chain.last_irreversible_block_timestamp().to_time_point();
+      const auto lib_time = chain.last_irreversible_block_time();
 
       int num_expired = 0;
       int orig_count = _blacklisted_transactions.size();
