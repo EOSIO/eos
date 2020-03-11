@@ -94,7 +94,7 @@ namespace eosio::trace_api {
       struct index_header {
          uint32_t version;
       };
-      slice_directory(const boost::filesystem::path& slice_dir, uint32_t width);
+      slice_directory(const boost::filesystem::path& slice_dir, uint32_t width, std::optional<uint32_t> minimum_irreversible_history_blocks);
 
       /**
        * Return the slice number that would include the passed in block_height
@@ -152,6 +152,23 @@ namespace eosio::trace_api {
        */
       bool find_trace_slice(uint32_t slice_number, bool append, fc::cfile& trace_file) const;
 
+      /**
+       * Find or create a trace and index file pair
+       *
+       * @param slice_number : slice number of the requested slice file
+       * @param append : indicate if the file is going to be appended (or read)
+       * @param trace : the cfile that will be set to the appropriate slice filename and
+       *                opened to that file
+       */
+      void find_or_create_slice_pair(uint32_t slice_number, bool append, fc::cfile& trace, fc::cfile& index);
+
+      /**
+       * Cleans up all slices that are no longer needed to maintain the minimum number of blocks past lib
+       *
+       * @param lib : block number of the current lib
+       */
+      void cleanup_old_slices(uint32_t lib);
+
    private:
       // returns true if slice is found, slice_file will always be set to the appropriate path for
       // the slice_prefix and slice_number, but will only be opened if found
@@ -165,6 +182,8 @@ namespace eosio::trace_api {
 
       const boost::filesystem::path _slice_dir;
       const uint32_t _width;
+      const std::optional<uint32_t> _minimum_irreversible_history_blocks;
+      std::optional<uint32_t> _last_cleaned_up_slice;
    };
 
    /**
@@ -172,7 +191,7 @@ namespace eosio::trace_api {
     */
    class store_provider {
    public:
-      store_provider(const boost::filesystem::path& slice_dir, uint32_t width);
+      store_provider(const boost::filesystem::path& slice_dir, uint32_t stride_width, std::optional<uint32_t> minimum_irreversible_history_blocks);
 
       void append(const block_trace_v0& bt);
       void append_lib(uint32_t lib);
@@ -247,10 +266,22 @@ namespace eosio::trace_api {
          return extract_store<data_log_entry>(trace);
       }
 
-   private:
-      void find_or_create_slice_pair(uint32_t block_height, bool append, fc::cfile& trace, fc::cfile& index);
+      /**
+       * Initialize a new index slice with a valid header
+       * @param index : index file to open and add header to
+       *
+       */
       void initialize_new_index_slice_file(fc::cfile& index);
+
+      /**
+       * Ensure an existing index slice has a valid header
+       * @param index : index file to open and read header from
+       * @param append : indicates if file should be opened for
+       *                 appending
+       *
+       */
       void validate_existing_index_slice_file(fc::cfile& index, bool append);
+
       slice_directory _slice_directory;
    };
 
