@@ -1,4 +1,6 @@
-# Keosd
+---
+content_title: Keosd
+---
 
 ## Introduction
 

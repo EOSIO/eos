@@ -21,6 +21,6 @@ excerpt: "Delete unused REX-related user table entries"
 ## Examples
 
 
-```text
+```sh
 cleos system rex closerex accountname1
 ```

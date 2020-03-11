@@ -9,6 +9,7 @@
 #include <fc/log/logger_config.hpp>
 #include <fc/reflect/variant.hpp>
 #include <fc/io/json.hpp>
+#include <fc/io/raw.hpp>
 #include <fc/crypto/openssl.hpp>
 
 #include <boost/asio.hpp>
@@ -139,13 +140,14 @@ namespace eosio {
 
    class http_plugin_impl {
       public:
-         map<string,url_handler>  url_handlers;
+         // key -> priority, url_handler
+         map<string,std::pair<int,url_handler>>  url_handlers;
          optional<tcp::endpoint>  listen_endpoint;
          string                   access_control_allow_origin;
          string                   access_control_allow_headers;
          string                   access_control_max_age;
          bool                     access_control_allow_credentials = false;
-         size_t                   max_body_size;
+         size_t                   max_body_size{1024*1024};
 
          websocket_server_type    server;
 
@@ -153,6 +155,7 @@ namespace eosio {
          optional<eosio::chain::named_thread_pool>   thread_pool;
          std::atomic<size_t>                         bytes_in_flight{0};
          size_t                                      max_bytes_in_flight = 0;
+         fc::microseconds                            max_response_time{30*1000};
 
          optional<tcp::endpoint>  https_listen_endpoint;
          string                   https_cert_chain;
@@ -226,29 +229,37 @@ namespace eosio {
          template<class T>
          static void handle_exception(typename websocketpp::server<T>::connection_ptr con) {
             string err = "Internal Service error, http: ";
+            const auto deadline = fc::time_point::now() + fc::exception::format_time_limit;
             try {
                con->set_status( websocketpp::http::status_code::internal_server_error );
                try {
                   throw;
                } catch (const fc::exception& e) {
                   err += e.to_detail_string();
-                  fc_elog( logger, "${e}", ("e", err) );
+                  fc_elog( logger, "${e}", ("e", err));
                   error_results results{websocketpp::http::status_code::internal_server_error,
-                                        "Internal Service Error", error_results::error_info(e, verbose_http_errors )};
-                  con->set_body( fc::json::to_string( results ));
+                                        "Internal Service Error", error_results::error_info( e, verbose_http_errors )};
+                  con->set_body( fc::json::to_string( results, deadline ));
                } catch (const std::exception& e) {
                   err += e.what();
-                  fc_elog( logger, "${e}", ("e", err) );
+                  fc_elog( logger, "${e}", ("e", err));
                   error_results results{websocketpp::http::status_code::internal_server_error,
-                                        "Internal Service Error", error_results::error_info(fc::exception( FC_LOG_MESSAGE( error, e.what())), verbose_http_errors )};
-                  con->set_body( fc::json::to_string( results ));
+                                        "Internal Service Error",
+                                        error_results::error_info( fc::exception( FC_LOG_MESSAGE( error, e.what())),
+                                                                   verbose_http_errors )};
+                  con->set_body( fc::json::to_string( results, deadline ));
                } catch (...) {
                   err += "Unknown Exception";
                   error_results results{websocketpp::http::status_code::internal_server_error,
                                         "Internal Service Error",
-                                        error_results::error_info(fc::exception( FC_LOG_MESSAGE( error, "Unknown Exception" )), verbose_http_errors )};
-                  con->set_body( fc::json::to_string( results ));
+                                        error_results::error_info(
+                                              fc::exception( FC_LOG_MESSAGE( error, "Unknown Exception" )),
+                                              verbose_http_errors )};
+                  con->set_body( fc::json::to_string( results, deadline ));
                }
+            } catch (fc::timeout_exception& e) {
+               con->set_body( R"xxx({"message": "Internal Server Error"})xxx" );
+               fc_elog( logger, "Timeout exception ${te} attempting to handle exception: ${e}", ("te", e.to_detail_string())("e", err) );
             } catch (...) {
                con->set_body( R"xxx({"message": "Internal Server Error"})xxx" );
                fc_elog( logger, "Exception attempting to handle exception: ${e}", ("e", err) );
@@ -264,6 +275,18 @@ namespace eosio {
             const auto& host_str = req.get_header("Host");
             if (host_str.empty() || !host_is_valid(host_str, local_socket_host_port, is_secure)) {
                con->set_status(websocketpp::http::status_code::bad_request);
+               return false;
+            }
+            return true;
+         }
+
+         template<typename T>
+         bool verify_max_bytes_in_flight( const T& con ) {
+            if( bytes_in_flight > max_bytes_in_flight ) {
+               fc_dlog( logger, "503 - too many bytes in flight: ${bytes}", ("bytes", bytes_in_flight.load()) );
+               error_results results{websocketpp::http::status_code::too_many_requests, "Busy", error_results::error_info()};
+               con->set_body( fc::json::to_string( results, fc::time_point::maximum() ));
+               con->set_status( websocketpp::http::status_code::too_many_requests );
                return false;
             }
             return true;
@@ -297,13 +320,7 @@ namespace eosio {
 
                con->append_header( "Content-type", "application/json" );
 
-               if( bytes_in_flight > max_bytes_in_flight ) {
-                  fc_dlog( logger, "503 - too many bytes in flight: ${bytes}", ("bytes", bytes_in_flight.load()) );
-                  error_results results{websocketpp::http::status_code::too_many_requests, "Busy", error_results::error_info()};
-                  con->set_body( fc::json::to_string( results ));
-                  con->set_status( websocketpp::http::status_code::too_many_requests );
-                  return;
-               }
+               if( !verify_max_bytes_in_flight( con ) ) return;
 
                std::string body = con->get_request_body();
                std::string resource = con->get_uri()->get_resource();
@@ -311,35 +328,59 @@ namespace eosio {
                if( handler_itr != url_handlers.end()) {
                   con->defer_http_response();
                   bytes_in_flight += body.size();
-                  app().post( appbase::priority::low,
-                              [&ioc = thread_pool->get_executor(), &bytes_in_flight = this->bytes_in_flight, handler_itr,
-                               resource{std::move( resource )}, body{std::move( body )}, con]() {
+
+                  app().post( handler_itr->second.first,
+                              [&ioc = thread_pool->get_executor(), &bytes_in_flight = this->bytes_in_flight,
+                               handler_itr, this, resource{std::move( resource )}, body{std::move( body )}, con]() mutable {
+                     const size_t body_size = body.size();
+                     if( !verify_max_bytes_in_flight( con ) ) {
+                        con->send_http_response();
+                        bytes_in_flight -= body_size;
+                        return;
+                     }
                      try {
-                        handler_itr->second( resource, body,
-                              [&ioc, &bytes_in_flight, con]( int code, fc::variant response_body ) {
-                           boost::asio::post( ioc, [response_body{std::move( response_body )}, &bytes_in_flight, con, code]() mutable {
-                              std::string json = fc::json::to_string( response_body );
-                              response_body.clear();
-                              const size_t json_size = json.size();
-                              bytes_in_flight += json_size;
-                              con->set_body( std::move( json ) );
-                              con->set_status( websocketpp::http::status_code::value( code ) );
+                        handler_itr->second.second( std::move( resource ), std::move( body ),
+                                 [&ioc, &bytes_in_flight, con, this]( int code, fc::variant response_body ) {
+                           size_t response_size = 0;
+                           try {
+                              response_size = fc::raw::pack_size( response_body );
+                           } catch(...) {}
+                           bytes_in_flight += response_size;
+                           if( !verify_max_bytes_in_flight( con ) ) {
                               con->send_http_response();
-                              bytes_in_flight -= json_size;
-                           } );
+                              bytes_in_flight -= response_size;
+                           } else {
+                              boost::asio::post( ioc,
+                                 [response_body{std::move( response_body )}, response_size, &bytes_in_flight,
+                                  con, code, max_response_time=max_response_time]() mutable {
+                                 std::string json;
+                                 try {
+                                    json = fc::json::to_string( response_body, fc::time_point::now() + max_response_time );
+                                    con->set_body( std::move( json ) );
+                                    con->set_status( websocketpp::http::status_code::value( code ) );
+                                 } catch( ... ) {
+                                    handle_exception<T>( con );
+                                 }
+                                 response_body.clear();
+                                 const size_t json_size = json.size();
+                                 bytes_in_flight += json_size;
+                                 con->send_http_response();
+                                 bytes_in_flight -= (json_size + response_size);
+                              } );
+                           }
                         });
-                        bytes_in_flight -= body.size();
                      } catch( ... ) {
                         handle_exception<T>( con );
                         con->send_http_response();
                      }
+                     bytes_in_flight -= body_size;
                   } );
 
                } else {
                   fc_dlog( logger, "404 - not found: ${ep}", ("ep", resource) );
                   error_results results{websocketpp::http::status_code::not_found,
                                         "Not Found", error_results::error_info(fc::exception( FC_LOG_MESSAGE( error, "Unknown Endpoint" )), verbose_http_errors )};
-                  con->set_body( fc::json::to_string( results ));
+                  con->set_body( fc::json::to_string( results, fc::time_point::now() + max_response_time ));
                   con->set_status( websocketpp::http::status_code::not_found );
                }
             } catch( ... ) {
@@ -453,6 +494,8 @@ namespace eosio {
              "The maximum body size in bytes allowed for incoming RPC requests")
             ("http-max-bytes-in-flight-mb", bpo::value<uint32_t>()->default_value(500),
              "Maximum size in megabytes http_plugin should use for processing http requests. 503 error response when exceeded." )
+            ("http-max-response-time-ms", bpo::value<uint32_t>()->default_value(30),
+             "Maximum time for processing a request.")
             ("verbose-http-errors", bpo::bool_switch()->default_value(false),
              "Append the error log to HTTP responses")
             ("http-validate-host", boost::program_options::value<bool>()->default_value(true),
@@ -477,9 +520,8 @@ namespace eosio {
             string lipstr = options.at( "http-server-address" ).as<string>();
             string host = lipstr.substr( 0, lipstr.find( ':' ));
             string port = lipstr.substr( host.size() + 1, lipstr.size());
-            tcp::resolver::query query( tcp::v4(), host.c_str(), port.c_str());
             try {
-               my->listen_endpoint = *resolver.resolve( query );
+               my->listen_endpoint = *resolver.resolve( tcp::v4(), host, port );
                ilog( "configured http to listen on ${h}:${p}", ("h", host)( "p", port ));
             } catch ( const boost::system::system_error& ec ) {
                elog( "failed to configure http to listen on ${h}:${p} (${m})",
@@ -516,9 +558,8 @@ namespace eosio {
             string lipstr = options.at( "https-server-address" ).as<string>();
             string host = lipstr.substr( 0, lipstr.find( ':' ));
             string port = lipstr.substr( host.size() + 1, lipstr.size());
-            tcp::resolver::query query( tcp::v4(), host.c_str(), port.c_str());
             try {
-               my->https_listen_endpoint = *resolver.resolve( query );
+               my->https_listen_endpoint = *resolver.resolve( tcp::v4(), host, port );
                ilog( "configured https to listen on ${h}:${p} (TLS configuration will be validated momentarily)",
                      ("h", host)( "p", port ));
                my->https_cert_chain = options.at( "https-certificate-chain-file" ).as<string>();
@@ -542,6 +583,7 @@ namespace eosio {
                      "http-threads ${num} must be greater than 0", ("num", my->thread_pool_size));
 
          my->max_bytes_in_flight = options.at( "http-max-bytes-in-flight-mb" ).as<uint32_t>() * 1024 * 1024;
+         my->max_response_time = fc::microseconds( options.at("http-max-response-time-ms").as<uint32_t>() * 1000 );
 
          //watch out for the returns above when adding new code here
       } FC_LOG_AND_RETHROW()
@@ -550,86 +592,91 @@ namespace eosio {
    void http_plugin::plugin_startup() {
 
       handle_sighup(); // setup logging
-
-      my->thread_pool.emplace( "http", my->thread_pool_size );
-
-      if(my->listen_endpoint) {
+      app().post(appbase::priority::high, [this] ()
+      {
          try {
-            my->create_server_for_endpoint(*my->listen_endpoint, my->server);
+            my->thread_pool.emplace( "http", my->thread_pool_size );
+            if(my->listen_endpoint) {
+               try {
+                  my->create_server_for_endpoint(*my->listen_endpoint, my->server);
 
-            fc_ilog( logger, "start listening for http requests" );
-            my->server.listen(*my->listen_endpoint);
-            my->server.start_accept();
-         } catch ( const fc::exception& e ){
-            fc_elog( logger, "http service failed to start: ${e}", ("e", e.to_detail_string()) );
-            throw;
-         } catch ( const std::exception& e ){
-            fc_elog( logger, "http service failed to start: ${e}", ("e", e.what()) );
-            throw;
-         } catch (...) {
-            fc_elog( logger, "error thrown from http io service" );
-            throw;
-         }
-      }
+                  fc_ilog( logger, "start listening for http requests" );
+                  my->server.listen(*my->listen_endpoint);
+                  my->server.start_accept();
+               } catch ( const fc::exception& e ){
+                  fc_elog( logger, "http service failed to start: ${e}", ("e", e.to_detail_string()) );
+                  throw;
+               } catch ( const std::exception& e ){
+                  fc_elog( logger, "http service failed to start: ${e}", ("e", e.what()) );
+                  throw;
+               } catch (...) {
+                  fc_elog( logger, "error thrown from http io service" );
+                  throw;
+               }
+            }
 
 #ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
-      if(my->unix_endpoint) {
-         try {
-            my->unix_server.clear_access_channels(websocketpp::log::alevel::all);
-            my->unix_server.init_asio( &my->thread_pool->get_executor() );
-            my->unix_server.set_max_http_body_size(my->max_body_size);
-            my->unix_server.listen(*my->unix_endpoint);
-            my->unix_server.set_http_handler([&, &ioc = my->thread_pool->get_executor()](connection_hdl hdl) {
-               my->handle_http_request<detail::asio_local_with_stub_log>( my->unix_server.get_con_from_hdl(hdl));
-            });
-            my->unix_server.start_accept();
-         } catch ( const fc::exception& e ){
-            fc_elog( logger, "unix socket service (${path}) failed to start: ${e}", ("e", e.to_detail_string())("path",my->unix_endpoint->path()) );
-            throw;
-         } catch ( const std::exception& e ){
-            fc_elog( logger, "unix socket service (${path}) failed to start: ${e}", ("e", e.what())("path",my->unix_endpoint->path()) );
-            throw;
-         } catch (...) {
-            fc_elog( logger, "error thrown from unix socket (${path}) io service", ("path",my->unix_endpoint->path()) );
-            throw;
-         }
-      }
-#endif
-
-      if(my->https_listen_endpoint) {
-         try {
-            my->create_server_for_endpoint(*my->https_listen_endpoint, my->https_server);
-            my->https_server.set_tls_init_handler([this](websocketpp::connection_hdl hdl) -> ssl_context_ptr{
-               return my->on_tls_init(hdl);
-            });
-
-            fc_ilog( logger, "start listening for https requests" );
-            my->https_server.listen(*my->https_listen_endpoint);
-            my->https_server.start_accept();
-         } catch ( const fc::exception& e ){
-            fc_elog( logger, "https service failed to start: ${e}", ("e", e.to_detail_string()) );
-            throw;
-         } catch ( const std::exception& e ){
-            fc_elog( logger, "https service failed to start: ${e}", ("e", e.what()) );
-            throw;
-         } catch (...) {
-            fc_elog( logger, "error thrown from https io service" );
-            throw;
-         }
-      }
-
-      add_api({{
-         std::string("/v1/node/get_supported_apis"),
-         [&](string, string body, url_response_callback cb) mutable {
-            try {
-               if (body.empty()) body = "{}";
-               auto result = (*this).get_supported_apis();
-               cb(200, fc::variant(result));
-            } catch (...) {
-               handle_exception("node", "get_supported_apis", body, cb);
+            if(my->unix_endpoint) {
+               try {
+                  my->unix_server.clear_access_channels(websocketpp::log::alevel::all);
+                  my->unix_server.init_asio( &my->thread_pool->get_executor() );
+                  my->unix_server.set_max_http_body_size(my->max_body_size);
+                  my->unix_server.listen(*my->unix_endpoint);
+                  my->unix_server.set_http_handler([&, &ioc = my->thread_pool->get_executor()](connection_hdl hdl) {
+                     my->handle_http_request<detail::asio_local_with_stub_log>( my->unix_server.get_con_from_hdl(hdl));
+                  });
+                  my->unix_server.start_accept();
+               } catch ( const fc::exception& e ){
+                  fc_elog( logger, "unix socket service (${path}) failed to start: ${e}", ("e", e.to_detail_string())("path",my->unix_endpoint->path()) );
+                  throw;
+               } catch ( const std::exception& e ){
+                  fc_elog( logger, "unix socket service (${path}) failed to start: ${e}", ("e", e.what())("path",my->unix_endpoint->path()) );
+                  throw;
+               } catch (...) {
+                  fc_elog( logger, "error thrown from unix socket (${path}) io service", ("path",my->unix_endpoint->path()) );
+                  throw;
+               }
             }
+#endif
+            if(my->https_listen_endpoint) {
+               try {
+                  my->create_server_for_endpoint(*my->https_listen_endpoint, my->https_server);
+                  my->https_server.set_tls_init_handler([this](websocketpp::connection_hdl hdl) -> ssl_context_ptr{
+                     return my->on_tls_init(hdl);
+                  });
+
+                  fc_ilog( logger, "start listening for https requests" );
+                  my->https_server.listen(*my->https_listen_endpoint);
+                  my->https_server.start_accept();
+               } catch ( const fc::exception& e ){
+                  fc_elog( logger, "https service failed to start: ${e}", ("e", e.to_detail_string()) );
+                  throw;
+               } catch ( const std::exception& e ){
+                  fc_elog( logger, "https service failed to start: ${e}", ("e", e.what()) );
+                  throw;
+               } catch (...) {
+                  fc_elog( logger, "error thrown from https io service" );
+                  throw;
+               }
+            }
+
+            add_api({{
+               std::string("/v1/node/get_supported_apis"),
+               [&](string, string body, url_response_callback cb) mutable {
+                  try {
+                     if (body.empty()) body = "{}";
+                     auto result = (*this).get_supported_apis();
+                     cb(200, fc::variant(result));
+                  } catch (...) {
+                     handle_exception("node", "get_supported_apis", body, cb);
+                  }
+               }
+            }});
+         } catch (...) {
+            fc_elog(logger, "http_plugin startup fails, shutting down");
+            app().shutdown();
          }
-      }});
+      });
    }
 
    void http_plugin::handle_sighup() {
@@ -649,11 +696,13 @@ namespace eosio {
       if( my->thread_pool ) {
          my->thread_pool->stop();
       }
+
+      app().post( 0, [me = my](){} ); // keep my pointer alive until queue is drained
    }
 
-   void http_plugin::add_handler(const string& url, const url_handler& handler) {
+   void http_plugin::add_handler(const string& url, const url_handler& handler, int priority) {
       fc_ilog( logger, "add api url: ${c}", ("c", url) );
-      my->url_handlers.insert(std::make_pair(url,handler));
+      my->url_handlers.insert(std::make_pair(url,std::make_pair(priority, handler)));
    }
 
    void http_plugin::handle_exception( const char *api_name, const char *call_name, const string& body, url_response_callback cb ) {

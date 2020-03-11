@@ -337,7 +337,6 @@ bool resource_limits_manager::set_account_disk_limit( const account_name& accoun
 }
 
 int64_t resource_limits_manager::get_account_disk_limit( const account_name& account ) const {
-   const auto* pending_buo = _db.find<resource_limits_object,by_owner>( boost::make_tuple(true, account) );
    return get_account_limits(account).disk_bytes;
 }
 
@@ -443,13 +442,17 @@ std::pair<account_resource_limit, bool> resource_limits_manager::get_account_cpu
    account_resource_limit arl;
 
    uint128_t window_size = config.account_cpu_usage_average_window;
-   uint64_t  greylisted_virtual_cpu_limit = config.cpu_limit_parameters.max * greylist_limit;
 
    bool greylisted = false;
    uint128_t virtual_cpu_capacity_in_window = window_size;
-   if( greylisted_virtual_cpu_limit < state.virtual_cpu_limit ) {
-      virtual_cpu_capacity_in_window *= greylisted_virtual_cpu_limit;
-      greylisted = true;
+   if( greylist_limit < config::maximum_elastic_resource_multiplier ) {
+      uint64_t greylisted_virtual_cpu_limit = config.cpu_limit_parameters.max * greylist_limit;
+      if( greylisted_virtual_cpu_limit < state.virtual_cpu_limit ) {
+         virtual_cpu_capacity_in_window *= greylisted_virtual_cpu_limit;
+         greylisted = true;
+      } else {
+         virtual_cpu_capacity_in_window *= state.virtual_cpu_limit;
+      }
    } else {
       virtual_cpu_capacity_in_window *= state.virtual_cpu_limit;
    }
@@ -490,13 +493,17 @@ std::pair<account_resource_limit, bool> resource_limits_manager::get_account_net
    account_resource_limit arl;
 
    uint128_t window_size = config.account_net_usage_average_window;
-   uint64_t  greylisted_virtual_net_limit = config.net_limit_parameters.max * greylist_limit;
 
    bool greylisted = false;
    uint128_t virtual_network_capacity_in_window = window_size;
-   if( greylisted_virtual_net_limit < state.virtual_net_limit ) {
-      virtual_network_capacity_in_window *= greylisted_virtual_net_limit;
-      greylisted = true;
+   if( greylist_limit < config::maximum_elastic_resource_multiplier ) {
+      uint64_t greylisted_virtual_net_limit = config.net_limit_parameters.max * greylist_limit;
+      if( greylisted_virtual_net_limit < state.virtual_net_limit ) {
+         virtual_network_capacity_in_window *= greylisted_virtual_net_limit;
+         greylisted = true;
+      } else {
+         virtual_network_capacity_in_window *= state.virtual_net_limit;
+      }
    } else {
       virtual_network_capacity_in_window *= state.virtual_net_limit;
    }

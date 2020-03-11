@@ -37,6 +37,6 @@ Sets or updates an account's code on the blockchain.
 * `--max-net-usage` _UINT_ - set an upper limit on the net usage budget, in bytes, for the transaction (defaults to 0 which means no limit)
 * `--delay-sec` _UINT_ - set the delay_sec seconds, defaults to 0s
 
-```shell
+```sh
 cleos set code someaccount1 ./path/to/wasm
 ```

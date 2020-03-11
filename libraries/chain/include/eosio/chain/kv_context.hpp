@@ -56,8 +56,8 @@ namespace eosio { namespace chain {
    struct kv_context {
       virtual ~kv_context() {}
 
-      virtual void     kv_erase(uint64_t contract, const char* key, uint32_t key_size)                     = 0;
-      virtual void     kv_set(uint64_t contract, const char* key, uint32_t key_size, const char* value,
+      virtual int64_t  kv_erase(uint64_t contract, const char* key, uint32_t key_size)                     = 0;
+      virtual int64_t  kv_set(uint64_t contract, const char* key, uint32_t key_size, const char* value,
                               uint32_t value_size)                                                         = 0;
       virtual bool     kv_get(uint64_t contract, const char* key, uint32_t key_size, uint32_t& value_size) = 0;
       virtual uint32_t kv_get_data(uint32_t offset, char* data, uint32_t data_size)                        = 0;

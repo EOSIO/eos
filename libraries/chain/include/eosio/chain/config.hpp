@@ -79,13 +79,14 @@ const static uint32_t   default_max_inline_action_size         = 4 * 1024;   // 
 const static uint16_t   default_max_inline_action_depth        = 4;
 const static uint16_t   default_max_auth_depth                 = 6;
 const static uint32_t   default_sig_cpu_bill_pct               = 50 * percent_1; // billable percentage of signature recovery
+const static uint32_t   default_block_cpu_effort_pct           = 80 * percent_1; // percentage of block time used for producing block
 const static uint16_t   default_controller_thread_pool_size    = 2;
 const static uint16_t   default_rocksdb_threads                = 1;
 const static int        default_rocksdb_max_open_files         = -1;
 const static uint32_t   default_max_variable_signature_length  = 16384u;
 
 const static uint32_t   default_max_kv_key_size                = 1024;
-const static uint32_t   default_max_kv_value_size              = 256*1024; // Large enough to hold most contracts
+const static uint32_t   default_max_kv_value_size              = 1024*1024; // Large enough to hold most contracts
 const static uint32_t   default_max_kv_iterators               = 1024;
 
 const static uint32_t   min_net_usage_delta_between_base_and_max_for_trx  = 10*1024;
@@ -102,7 +103,7 @@ const static uint32_t   setcode_ram_bytes_multiplier       = 10;     ///< multip
 const static uint32_t   hashing_checktime_block_size       = 10*1024;  /// call checktime from hashing intrinsic once per this number of bytes
 
 const static eosio::chain::wasm_interface::vm_type default_wasm_runtime = eosio::chain::wasm_interface::vm_type::wabt;
-const static uint32_t   default_abi_serializer_max_time_ms = 15*1000; ///< default deadline for abi serialization methods
+const static uint32_t   default_abi_serializer_max_time_us = 15*1000; ///< default deadline for abi serialization methods
 
 /**
  *  The number of sequential blocks produced by a single producer

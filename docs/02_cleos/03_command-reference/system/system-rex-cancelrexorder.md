@@ -21,6 +21,6 @@ excerpt: "Cancel queued REX sell order if one exists"
 ## Examples
 
 
-```text
+```sh
 cleos system rex cancelrexorder accountname1
 ```

@@ -44,18 +44,11 @@ apply_context::apply_context(controller& con, transaction_context& trx_ctx, uint
 ,idx_double(*this)
 ,idx_long_double(*this)
 {
-   kv_iterators.emplace_back();
+   kv_iterators.emplace_back(); // the iterator handle with value 0 is reserved
    action_trace& trace = trx_ctx.get_action_trace(action_ordinal);
    act = &trace.act;
    receiver = trace.receiver;
    context_free = trace.context_free;
-   if (!context_free) {
-      kv_ram = create_kv_chainbase_context(db, kvram_id, receiver, create_kv_resource_manager_ram(*this), control.get_global_properties().kv_configuration.kvram);
-      if (db.get<kv_db_config_object>().using_rocksdb_for_disk)
-         kv_disk = create_kv_rocksdb_context(control.kv_database(), control.kv_undo_stack(), kvdisk_id, receiver, create_kv_resource_manager_disk(*this), control.get_global_properties().kv_configuration.kvdisk);
-      else
-         kv_disk = create_kv_chainbase_context(db, kvdisk_id, receiver, create_kv_resource_manager_disk(*this), control.get_global_properties().kv_configuration.kvdisk);
-   }
 }
 
 void apply_context::exec_one()
@@ -67,6 +60,15 @@ void apply_context::exec_one()
    try {
       try {
          action_return_value.clear();
+         kv_iterators.resize(1);
+         kv_destroyed_iterators.clear();
+         if (!context_free) {
+            kv_ram = create_kv_chainbase_context(db, kvram_id, receiver, create_kv_resource_manager_ram(*this), control.get_global_properties().kv_configuration.kvram);
+            if (db.get<kv_db_config_object>().using_rocksdb_for_disk)
+               kv_disk = create_kv_rocksdb_context(control.kv_database(), control.kv_undo_stack(), kvdisk_id, receiver, create_kv_resource_manager_disk(*this), control.get_global_properties().kv_configuration.kvdisk);
+            else
+               kv_disk = create_kv_chainbase_context(db, kvdisk_id, receiver, create_kv_resource_manager_disk(*this), control.get_global_properties().kv_configuration.kvdisk);
+         }
          receiver_account = &db.get<account_metadata_object,by_name>( receiver );
          privileged = receiver_account->is_privileged();
          auto native = control.find_apply_handler( receiver, act->account, act->name );
@@ -153,13 +155,11 @@ void apply_context::exec_one()
       r.auth_sequence[auth.actor] = next_auth_sequence( auth.actor );
    }
 
-   uint32_t version = 0;
    if( control.is_builtin_activated( builtin_protocol_feature_t::action_return_value ) ) {
-      version = set_field( version, builtin_protocol_feature_t::action_return_value, true );
       r.return_value.emplace( std::move( action_return_value ) );
    }
 
-   trx_context.executed_action_receipt_digests.emplace_back( r.digest( version ) );
+   trx_context.executed_action_receipt_digests.emplace_back( r.digest() );
 
    finalize_trace( trace, start );
 
@@ -172,6 +172,9 @@ void apply_context::finalize_trace( action_trace& trace, const fc::time_point& s
 {
    trace.account_ram_deltas = std::move( _account_ram_deltas );
    _account_ram_deltas.clear();
+
+   trace.account_disk_deltas = std::move( _account_disk_deltas );
+   _account_disk_deltas.clear();
 
    trace.console = std::move( _pending_console_output );
    _pending_console_output.clear();
@@ -862,11 +865,11 @@ int apply_context::db_end_i64( name code, name scope, name table ) {
    return keyval_cache.cache_table( *tab );
 }
 
-void apply_context::kv_erase(uint64_t db, uint64_t contract, const char* key, uint32_t key_size) {
+int64_t apply_context::kv_erase(uint64_t db, uint64_t contract, const char* key, uint32_t key_size) {
    return kv_get_db(db).kv_erase(contract, key, key_size);
 }
 
-void apply_context::kv_set(uint64_t db, uint64_t contract, const char* key, uint32_t key_size, const char* value, uint32_t value_size) {
+int64_t apply_context::kv_set(uint64_t db, uint64_t contract, const char* key, uint32_t key_size, const char* value, uint32_t value_size) {
    return kv_get_db(db).kv_set(contract, key, key_size, value, value_size);
 }
 
@@ -991,6 +994,11 @@ void apply_context::add_ram_usage( account_name account, int64_t ram_delta ) {
 
 void apply_context::add_disk_usage( account_name account, int64_t disk_delta ) {
    trx_context.add_disk_usage( account, disk_delta );
+
+   auto p = _account_disk_deltas.emplace( account, disk_delta );
+   if( !p.second ) {
+      p.first->delta += disk_delta;
+   }
 }
 
 action_name apply_context::get_sender() const {

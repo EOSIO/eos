@@ -3,6 +3,7 @@
 
 #include <eosio/chain/abi_serializer.hpp>
 #include <eosio/chain/exceptions.hpp>
+#include <eosio/chain/global_property_object.hpp>
 #include <eosio/chain/resource_limits.hpp>
 #include <eosio/chain/wasm_eosio_constraints.hpp>
 #include <eosio/chain/wast_to_wasm.hpp>
@@ -1047,7 +1048,7 @@ BOOST_FIXTURE_TEST_CASE(eosio_abi, TESTER) try {
    // see abi_serializer::to_abi()
    abi_serializer::to_variant(*result, pretty_output, get_resolver(), abi_serializer_max_time);
 
-   BOOST_TEST(fc::json::to_string(pretty_output).find("newaccount") != std::string::npos);
+   BOOST_TEST(fc::json::to_string(pretty_output, fc::time_point::now() + abi_serializer_max_time).find("newaccount") != std::string::npos);
 
    produce_block();
 } FC_LOG_AND_RETHROW()
@@ -1892,6 +1893,146 @@ BOOST_AUTO_TEST_CASE( code_size )  try {
    BOOST_CHECK_THROW(WASM::serialize(stream, module), FatalSerializationException);
 
 } FC_LOG_AND_RETHROW()
+
+BOOST_AUTO_TEST_CASE( billed_cpu_test ) try {
+
+   fc::temp_directory tempdir;
+   tester chain( tempdir, true );
+   chain.execute_setup_policy( setup_policy::full );
+
+   const resource_limits_manager& mgr = chain.control->get_resource_limits_manager();
+
+   account_name acc = N( asserter );
+   account_name user = N( user );
+   chain.create_accounts( {acc, user} );
+   chain.produce_block();
+
+   auto create_trx = [&](auto trx_max_ms) {
+      signed_transaction trx;
+      trx.actions.emplace_back( vector<permission_level>{{acc, config::active_name}},
+                                assertdef {1, "Should Not Assert!"} );
+      static int num_secs = 1;
+      chain.set_transaction_headers( trx, ++num_secs ); // num_secs provides nonce
+      trx.max_cpu_usage_ms = trx_max_ms;
+      trx.sign( chain.get_private_key( acc, "active" ), chain.control->get_chain_id() );
+      auto ptrx = std::make_shared<packed_transaction>(trx);
+      auto fut = transaction_metadata::start_recover_keys( ptrx, chain.control->get_thread_pool(), chain.control->get_chain_id(), fc::microseconds::maximum() );
+      return fut.get();
+   };
+
+   auto push_trx = [&]( const transaction_metadata_ptr& trx, fc::time_point deadline,
+                     uint32_t billed_cpu_time_us, bool explicit_billed_cpu_time ) {
+      auto r = chain.control->push_transaction( trx, deadline, billed_cpu_time_us, explicit_billed_cpu_time );
+      if( r->except_ptr ) std::rethrow_exception( r->except_ptr );
+      if( r->except ) throw *r->except;
+      return r;
+   };
+
+   auto ptrx = create_trx(0);
+   // no limits, just verifying trx works
+   push_trx( ptrx, fc::time_point::maximum(), 0, false ); // non-explicit billing
+
+   // setup account acc with large limits
+   chain.push_action( config::system_account_name, N(setalimits), config::system_account_name, fc::mutable_variant_object()
+         ("account", user)
+         ("ram_bytes", -1)
+         ("net_weight", 19'999'999)
+         ("cpu_weight", 19'999'999)
+   );
+   chain.push_action( config::system_account_name, N(setalimits), config::system_account_name, fc::mutable_variant_object()
+         ("account", acc)
+         ("ram_bytes", -1)
+         ("net_weight", 9'999)
+         ("cpu_weight", 9'999)
+   );
+
+   chain.produce_block();
+
+   auto max_cpu_time_us = chain.control->get_global_properties().configuration.max_transaction_cpu_usage;
+   auto min_cpu_time_us = chain.control->get_global_properties().configuration.min_transaction_cpu_usage;
+
+   auto cpu_limit = mgr.get_account_cpu_limit(acc).first; // huge limit ~17s
+
+   ptrx = create_trx(0);
+   BOOST_CHECK_LT( max_cpu_time_us, cpu_limit ); // max_cpu_time_us has to be less than cpu_limit to actually test max and not account
+   // indicate explicit billing at transaction max, max_cpu_time_us has to be greater than account cpu time
+   push_trx( ptrx, fc::time_point::maximum(), max_cpu_time_us, true );
+   chain.produce_block();
+
+   cpu_limit = mgr.get_account_cpu_limit(acc).first;
+
+   // do not allow to bill greater than chain configured max, objective failure even with explicit billing for over max
+   ptrx = create_trx(0);
+   BOOST_CHECK_LT( max_cpu_time_us + 1, cpu_limit ); // max_cpu_time_us+1 has to be less than cpu_limit to actually test max and not account
+   // indicate explicit billing at max + 1
+   BOOST_CHECK_EXCEPTION( push_trx( ptrx, fc::time_point::maximum(), max_cpu_time_us + 1, true ), tx_cpu_usage_exceeded,
+                          fc_exception_message_starts_with( "billed") );
+
+   // allow to bill at trx configured max
+   ptrx = create_trx(5); // set trx max at 5ms
+   BOOST_CHECK_LT( 5 * 1000, cpu_limit ); // 5ms has to be less than cpu_limit to actually test trx max and not account
+   // indicate explicit billing at max
+   push_trx( ptrx, fc::time_point::maximum(), 5 * 1000, true );
+   chain.produce_block();
+
+   cpu_limit = mgr.get_account_cpu_limit(acc).first; // update after last trx
+
+   // do not allow to bill greater than trx configured max, objective failure even with explicit billing for over max
+   ptrx = create_trx(5); // set trx max at 5ms
+   BOOST_CHECK_LT( 5 * 1000 + 1, cpu_limit ); // 5ms has to be less than cpu_limit to actually test trx max and not account
+   // indicate explicit billing at max + 1
+   BOOST_CHECK_EXCEPTION( push_trx( ptrx, fc::time_point::maximum(), 5 * 1000 + 1, true ), tx_cpu_usage_exceeded,
+                          fc_exception_message_starts_with("billed") );
+
+   // bill at minimum
+   ptrx = create_trx(0);
+   // indicate explicit billing at transaction minimum
+   push_trx( ptrx, fc::time_point::maximum(), min_cpu_time_us, true );
+   chain.produce_block();
+
+   // do not allow to bill less than minimum
+   ptrx = create_trx(0);
+   // indicate explicit billing at minimum-1, objective failure even with explicit billing for under min
+   BOOST_CHECK_EXCEPTION( push_trx( ptrx, fc::time_point::maximum(), min_cpu_time_us - 1, true ), transaction_exception,
+                          fc_exception_message_starts_with("cannot bill CPU time less than the minimum") );
+
+   chain.push_action( config::system_account_name, N(setalimits), config::system_account_name, fc::mutable_variant_object()
+         ("account", acc)
+         ("ram_bytes", -1)
+         ("net_weight", 75)
+         ("cpu_weight", 75) // ~130ms
+   );
+
+   chain.produce_block();
+   chain.produce_block( fc::days(1) ); // produce for one day to reset account cpu
+
+   cpu_limit = mgr.get_account_cpu_limit_ex(acc).first.max;
+
+   ptrx = create_trx(0);
+   BOOST_CHECK_LT( cpu_limit+1, max_cpu_time_us ); // needs to be less or this just tests the same thing as max_cpu_time_us test above
+   // indicate non-explicit billing with 1 more than our account cpu limit, triggers optimization check #8638 and fails trx
+   BOOST_CHECK_EXCEPTION( push_trx( ptrx, fc::time_point::maximum(), cpu_limit+1, false ), tx_cpu_usage_exceeded,
+                          fc_exception_message_starts_with("estimated") );
+
+   ptrx = create_trx(0);
+   BOOST_CHECK_LT( cpu_limit, max_cpu_time_us );
+   // indicate non-explicit billing at our account cpu limit, will allow this trx to run, but only bills for actual use
+   auto r = push_trx( ptrx, fc::time_point::maximum(), cpu_limit, false );
+   BOOST_CHECK_LT( r->receipt->cpu_usage_us, cpu_limit ); // verify not billed at provided bill amount when explicit_billed_cpu_time=false
+
+   chain.produce_block();
+   chain.produce_block( fc::days(1) ); // produce for one day to reset account cpu
+
+   ptrx = create_trx(0);
+   BOOST_CHECK_LT( cpu_limit+1, max_cpu_time_us ); // needs to be less or this just tests the same thing as max_cpu_time_us test above
+   // indicate explicit billing at over our account cpu limit, not allowed
+   cpu_limit = mgr.get_account_cpu_limit_ex(acc).first.max;
+   BOOST_CHECK_EXCEPTION( push_trx( ptrx, fc::time_point::maximum(), cpu_limit+1, true ), tx_cpu_usage_exceeded,
+                          fc_exception_message_starts_with("billed") );
+
+} FC_LOG_AND_RETHROW()
+
+
 
 // TODO: restore net_usage_tests
 #if 0

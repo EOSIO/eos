@@ -23,8 +23,10 @@ Retrieves the contents of a database table
 ## Example
 Get the data from the accounts table for the eosio.token contract, for user eosio,
 
-```shell
-$ cleos get table eosio.token eosio accounts
+```sh
+cleos get table eosio.token eosio accounts
+```
+```json
 {
   "rows": [{
       "balance": "999999920.0000 SYS"
@@ -32,5 +34,4 @@ $ cleos get table eosio.token eosio accounts
   ],
   "more": false
 }
-
 ```
