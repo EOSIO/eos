@@ -1640,12 +1640,14 @@ bool producer_plugin_impl::remove_expired_blacklisted_trxs( const fc::time_point
 {
    bool exhausted = false;
    auto& blacklist_by_expiry = _blacklisted_transactions.get<by_expiry>();
-   auto now = fc::time_point::now();
    if(!blacklist_by_expiry.empty()) {
+      const chain::controller& chain = chain_plug->chain();
+      const auto lib_time = chain.last_irreversible_block_time();
+
       int num_expired = 0;
       int orig_count = _blacklisted_transactions.size();
 
-      while (!blacklist_by_expiry.empty() && blacklist_by_expiry.begin()->expiry <= now) {
+      while (!blacklist_by_expiry.empty() && blacklist_by_expiry.begin()->expiry <= lib_time) {
          if (deadline <= fc::time_point::now()) {
             exhausted = true;
             break;
@@ -1751,12 +1753,13 @@ void producer_plugin_impl::process_scheduled_and_incoming_trxs( const fc::time_p
          continue; // do not allow schedule and execute in same block
       }
 
-      const transaction_id_type trx_id = sch_itr->trx_id; // make copy since reference could be invalidated
-      if (blacklist_by_id.find(trx_id) != blacklist_by_id.end()) {
+      if (blacklist_by_id.find(sch_itr->trx_id) != blacklist_by_id.end()) {
          ++sch_itr;
          continue;
       }
 
+      const transaction_id_type trx_id = sch_itr->trx_id; // make copy since reference could be invalidated
+      const auto sch_expiration = sch_itr->expiration;
       auto sch_itr_next = sch_itr; // save off next since sch_itr may be invalidated by loop
       ++sch_itr_next;
       const auto next_delay_until = sch_itr_next != sch_idx.end() ? sch_itr_next->delay_until : sch_itr->delay_until;
@@ -1806,9 +1809,8 @@ void producer_plugin_impl::process_scheduled_and_incoming_trxs( const fc::time_p
                }
                // do not blacklist
             } else {
-               auto expiration = fc::time_point::now() + fc::seconds(chain.get_global_properties().configuration.deferred_trx_expiration_window);
                // this failed our configured maximum transaction time, we don't want to replay it add it to a blacklist
-               _blacklisted_transactions.insert(transaction_id_with_expiry{trx_id, expiration});
+               _blacklisted_transactions.insert(transaction_id_with_expiry{trx_id, sch_expiration});
                num_failed++;
             }
          } else {
