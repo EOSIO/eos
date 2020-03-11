@@ -125,7 +125,7 @@ struct trace_api_common_impl {
    boost::filesystem::path trace_dir;
    uint32_t slice_stride = 0;
 
-   optional<uint32_t> minimum_irreversible_history_blocks;
+   std::optional<uint32_t> minimum_irreversible_history_blocks;
    static constexpr uint32_t manual_slice_file_value = -1;
 
    std::shared_ptr<store_provider> store;
