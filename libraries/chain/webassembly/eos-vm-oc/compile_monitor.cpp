@@ -248,6 +248,11 @@ void launch_compile_monitor(int nodeos_fd) {
    sigaddset(&set, SIGQUIT);
    sigprocmask(SIG_BLOCK, &set, nullptr);
 
+   struct sigaction sa;
+   sa.sa_handler =  SIG_DFL;
+   sa.sa_flags = SA_NOCLDWAIT;
+   sigaction(SIGCHLD, &sa, nullptr);
+
    int socks[2]; //0: local trampoline socket, 1: the one we give to trampoline
    socketpair(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0, socks);
    pid_t child = fork();
