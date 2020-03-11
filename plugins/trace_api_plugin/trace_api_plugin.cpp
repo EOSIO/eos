@@ -111,9 +111,9 @@ struct trace_api_common_impl {
       slice_stride = options.at("trace-slice-stride").as<uint32_t>();
 
       const char* trace_minimum_irreversible_history_blocks = "trace-minimum-irreversible-history-blocks";
-      const int32_t blocks = options.at(trace_minimum_irreversible_history_blocks).as<int32_t>();
+      const int32_t blocks = options.at("trace-minimum-irreversible-history-blocks").as<int32_t>();
       EOS_ASSERT(blocks >= -1, chain::plugin_config_exception,
-                 "\"${blocks}\" must be greater to or equal to -1.",("blocks",trace_minimum_irreversible_history_blocks));
+                 "\"trace-minimum-irreversible-history-blocks\" must be greater to or equal to -1.");
       if (blocks > manual_slice_file_value) {
          minimum_irreversible_history_blocks = blocks;
       }
