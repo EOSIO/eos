@@ -12,14 +12,15 @@ namespace {
 
 namespace eosio::trace_api {
    namespace bfs = boost::filesystem;
-   store_provider::store_provider(const bfs::path& slice_dir, uint32_t width)
-   : _slice_directory(slice_dir, width) {
+   store_provider::store_provider(const bfs::path& slice_dir, uint32_t stride_width, std::optional<uint32_t> minimum_irreversible_history_blocks)
+   : _slice_directory(slice_dir, stride_width, minimum_irreversible_history_blocks) {
    }
 
    void store_provider::append(const block_trace_v0& bt) {
       fc::cfile trace;
       fc::cfile index;
-      find_or_create_slice_pair(bt.number, true, trace, index);
+      const uint32_t slice_number = _slice_directory.slice_number(bt.number);
+      _slice_directory.find_or_create_slice_pair(slice_number, true, trace, index);
       // storing as static_variant to allow adding other data types to the trace file in the future
       const uint64_t offset = append_store(data_log_entry { bt }, trace);
 
@@ -33,6 +34,7 @@ namespace eosio::trace_api {
       _slice_directory.find_or_create_index_slice(slice_number, true, index);
       auto le = metadata_log_entry { lib_entry_v0 { .lib = lib }};
       append_store(le, index);
+      _slice_directory.cleanup_old_slices(lib);
    }
 
    get_block_t store_provider::get_block(uint32_t block_height, const yield_function& yield) {
@@ -64,19 +66,10 @@ namespace eosio::trace_api {
       return std::make_tuple( bt, irreversible );
    }
 
-   void store_provider::find_or_create_slice_pair(uint32_t block_height, bool append, fc::cfile& trace, fc::cfile& index) {
-      const uint32_t slice_number = _slice_directory.slice_number(block_height);
-      const bool trace_found = _slice_directory.find_or_create_trace_slice(slice_number, append, trace);
-      const bool index_found = _slice_directory.find_or_create_index_slice(slice_number, append, index);
-      if (trace_found != index_found) {
-         const std::string trace_status = trace_found ? "existing" : "new";
-         const std::string index_status = index_found ? "existing" : "new";
-         elog("Trace file is ${ts}, but it's metadata file is ${is}. This means the files are not consistent.", ("ts", trace_status)("is", index_status));
-      }
-   }
-
-   slice_directory::slice_directory(const bfs::path& slice_dir, uint32_t width)
-   : _slice_dir(slice_dir), _width(width) {
+   slice_directory::slice_directory(const bfs::path& slice_dir, uint32_t width, std::optional<uint32_t> minimum_irreversible_history_blocks)
+   : _slice_dir(slice_dir)
+   , _width(width)
+   , _minimum_irreversible_history_blocks(minimum_irreversible_history_blocks) {
       if (!exists(_slice_dir)) {
          bfs::create_directories(slice_dir);
       }
@@ -165,5 +158,48 @@ namespace eosio::trace_api {
       // when opening in "ab+" mode
       slice_file.seek(0);
       return true;
+   }
+
+
+   void slice_directory::find_or_create_slice_pair(uint32_t slice_number, bool append, fc::cfile& trace, fc::cfile& index) {
+      const bool trace_found = find_or_create_trace_slice(slice_number, append, trace);
+      const bool index_found = find_or_create_index_slice(slice_number, append, index);
+      if (trace_found != index_found) {
+         const std::string trace_status = trace_found ? "existing" : "new";
+         const std::string index_status = index_found ? "existing" : "new";
+         elog("Trace file is ${ts}, but it's metadata file is ${is}. This means the files are not consistent.", ("ts", trace_status)("is", index_status));
+      }
+   }
+
+   void slice_directory::cleanup_old_slices(uint32_t lib) {
+      if (!_minimum_irreversible_history_blocks)
+         return;
+      const uint32_t lib_slice_number = slice_number( lib );
+      if (lib_slice_number < 1 || (_last_cleaned_up_slice && _last_cleaned_up_slice >= lib_slice_number))
+         return;
+
+      // can only cleanup a slice once our last needed history block (lib - *_minimum_irreversible_history_blocks)
+      // is out of that slice (... - width)
+      const int64_t cleanup_block_number = static_cast<int64_t>(lib) - static_cast<int64_t>(*_minimum_irreversible_history_blocks) - _width;
+      if (cleanup_block_number > 0) {
+         uint32_t cleanup_slice_num = slice_number(static_cast<uint32_t>(cleanup_block_number));
+         // since we subtracted width, we are guaranteed cleanup_slice_num is not
+         while (!_last_cleaned_up_slice || *_last_cleaned_up_slice < cleanup_slice_num) {
+            fc::cfile trace;
+            fc::cfile index;
+            const uint32_t slice_to_clean = _last_cleaned_up_slice ? *_last_cleaned_up_slice + 1 : 0;
+            const bool trace_found = find_trace_slice(slice_to_clean, false, trace);
+            if (trace_found) {
+               trace.close();
+               bfs::remove(trace.get_file_path());
+            }
+            const bool index_found = find_index_slice(slice_to_clean, false, index);
+            if (index_found) {
+               index.close();
+               bfs::remove(index.get_file_path());
+            }
+            _last_cleaned_up_slice = slice_to_clean;
+         }
+      }
    }
 }
