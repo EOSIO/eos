@@ -374,6 +374,45 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       slice.close();
    }
 
+   BOOST_FIXTURE_TEST_CASE(slice_file_find_test, test_fixture)
+   {
+      fc::temp_directory tempdir;
+      slice_directory sd(tempdir.path(), 100, std::optional<uint32_t>());
+      fc::cfile slice;
+
+      // create trace slice
+      bool found = sd.find_or_create_trace_slice(1, open_state::write, slice);
+      BOOST_REQUIRE(!found);
+      bfs::path fp = slice.get_file_path();
+      BOOST_REQUIRE_EQUAL(fp.parent_path().generic_string(), tempdir.path().generic_string());
+      const std::string expected_filename = "trace_0000000100-0000000200.log";
+      BOOST_REQUIRE_EQUAL(fp.filename().generic_string(), expected_filename);
+      BOOST_REQUIRE(slice.is_open());
+      BOOST_REQUIRE_EQUAL(bfs::file_size(fp), 0);
+      BOOST_REQUIRE_EQUAL(slice.tellp(), 0);
+      slice.close();
+
+      // find trace slice (and open)
+      found = sd.find_trace_slice(1, open_state::write, slice);
+      BOOST_REQUIRE(found);
+      fp = slice.get_file_path();
+      BOOST_REQUIRE_EQUAL(fp.parent_path().generic_string(), tempdir.path().generic_string());
+      BOOST_REQUIRE_EQUAL(fp.filename().generic_string(), expected_filename);
+      BOOST_REQUIRE(slice.is_open());
+      BOOST_REQUIRE_EQUAL(bfs::file_size(fp), 0);
+      slice.close();
+
+      // find trace slice (and don't open)
+      found = sd.find_trace_slice(1, open_state::write, slice, false);
+      BOOST_REQUIRE(found);
+      fp = slice.get_file_path();
+      BOOST_REQUIRE_EQUAL(fp.parent_path().generic_string(), tempdir.path().generic_string());
+      BOOST_REQUIRE_EQUAL(fp.filename().generic_string(), expected_filename);
+      BOOST_REQUIRE(!slice.is_open());
+      BOOST_REQUIRE_EQUAL(bfs::file_size(fp), 0);
+      slice.close();
+   }
+
    void verify_directory_contents(const bfs::path& tempdir, std::set<bfs::path> expected_files) {
       std::set<bfs::path> unexpected_files;
       for (bfs::directory_iterator itr(tempdir); itr != directory_iterator(); ++itr) {

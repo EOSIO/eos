@@ -83,9 +83,10 @@ namespace eosio::trace_api {
       return found;
    }
 
-   bool slice_directory::find_index_slice(uint32_t slice_number, open_state state, fc::cfile& index_file) const {
-      if( !find_slice(_trace_index_prefix, slice_number, index_file) ) {
-         return false;
+   bool slice_directory::find_index_slice(uint32_t slice_number, open_state state, fc::cfile& index_file, bool open_file) const {
+      const bool found = find_slice(_trace_index_prefix, slice_number, index_file, open_file);
+      if( !found || !open_file ) {
+         return found;
       }
 
       validate_existing_index_slice_file(index_file, state);
@@ -120,11 +121,11 @@ namespace eosio::trace_api {
       return found;
    }
 
-   bool slice_directory::find_trace_slice(uint32_t slice_number, open_state state, fc::cfile& trace_file) const {
-      const bool found = find_slice(_trace_prefix, slice_number, trace_file);
+   bool slice_directory::find_trace_slice(uint32_t slice_number, open_state state, fc::cfile& trace_file, bool open_file) const {
+      const bool found = find_slice(_trace_prefix, slice_number, trace_file, open_file);
 
-      if( !found ) {
-         return false;
+      if( !found || !open_file ) {
+         return found;
       }
 
       if( state == open_state::write ) {
@@ -136,7 +137,7 @@ namespace eosio::trace_api {
       return true;
    }
 
-   bool slice_directory::find_slice(const char* slice_prefix, uint32_t slice_number, fc::cfile& slice_file) const {
+   bool slice_directory::find_slice(const char* slice_prefix, uint32_t slice_number, fc::cfile& slice_file, bool open_file) const {
       char filename[_max_filename_size] = {};
       const uint32_t slice_start = slice_number * _width;
       const int size_written = snprintf(filename, _max_filename_size, "%s%010d-%010d%s", slice_prefix, slice_start, (slice_start + _width), _trace_ext);
@@ -150,8 +151,10 @@ namespace eosio::trace_api {
       }
       const path slice_path = _slice_dir / filename;
       slice_file.set_file_path(slice_path);
-      if( !exists(slice_path)) {
-         return false;
+
+      const bool file_exists = exists(slice_path);
+      if( !file_exists || !open_file ) {
+         return file_exists;
       }
 
       slice_file.open(fc::cfile::create_or_update_rw_mode);
@@ -189,15 +192,15 @@ namespace eosio::trace_api {
             fc::cfile trace;
             fc::cfile index;
             const uint32_t slice_to_clean = _last_cleaned_up_slice ? *_last_cleaned_up_slice + 1 : 0;
-            const bool trace_found = find_trace_slice(slice_to_clean, open_state::read, trace);
-            if (trace_found) {
-               trace.close();
-               bfs::remove(trace.get_file_path());
-            }
-            const bool index_found = find_index_slice(slice_to_clean, open_state::read, index);
+            // cleanup index first to reduce the likelihood of reader finding index, but not finding trace
+            const bool dont_open_file = false;
+            const bool index_found = find_index_slice(slice_to_clean, open_state::read, index, dont_open_file);
             if (index_found) {
-               index.close();
                bfs::remove(index.get_file_path());
+            }
+            const bool trace_found = find_trace_slice(slice_to_clean, open_state::read, trace, dont_open_file);
+            if (trace_found) {
+               bfs::remove(trace.get_file_path());
             }
             _last_cleaned_up_slice = slice_to_clean;
          }
