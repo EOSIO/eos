@@ -215,7 +215,7 @@ struct trace_api_rpc_plugin_impl : public std::enable_shared_from_this<trace_api
                error_results results{404, "Block trace missing"};
                cb( 404, fc::variant( results ));
             } else {
-               cb( 200, resp );
+               cb( 200, std::move(resp) );
             }
          } catch (...) {
             http_plugin::handle_exception("trace_api", "get_block", body, cb);
