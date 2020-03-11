@@ -248,25 +248,9 @@ struct trace_api_plugin_impl {
 
    static void set_program_options(appbase::options_description& cli, appbase::options_description& cfg) {
       auto cfg_options = cfg.add_options();
-      cfg_options("trace-minimum-irreversible-history-us", bpo::value<uint64_t>()->default_value(-1),
-                  "the minimum amount of history, as defined by time, this node will keep after it becomes irreversible\n"
-                  "this value can be specified as a number of microseconds or\n"
-                  "a value of \"-1\" will disable automatic maintenance of the trace slice files\n"
-                  );
    }
 
    void plugin_initialize(const appbase::variables_map& options) {
-      if( options.count("trace-minimum-irreversible-history-us") ) {
-         auto value = options.at("trace-minimum-irreversible-history-us").as<uint64_t>();
-         if ( value == -1 ) {
-            minimum_irreversible_trace_history = fc::microseconds::maximum();
-         } else if (value >= 0) {
-            minimum_irreversible_trace_history = fc::microseconds(value);
-         } else {
-            EOS_THROW(chain::plugin_config_exception, "trace-minimum-irreversible-history-us must be either a positive number or -1");
-         }
-      }
-
       auto log_exceptions_and_shutdown = [](const exception_with_context& e) {
          log_exception(e, fc::log_level::error);
          app().quit();
@@ -306,7 +290,6 @@ struct trace_api_plugin_impl {
    }
 
    std::shared_ptr<trace_api_common_impl> common;
-   fc::microseconds minimum_irreversible_trace_history = fc::microseconds::maximum();
 
    using chain_extraction_t = chain_extraction_impl_type<shared_store_provider<store_provider>>;
    std::shared_ptr<chain_extraction_t> extraction;
