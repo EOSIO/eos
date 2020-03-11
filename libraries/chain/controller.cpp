@@ -2830,6 +2830,11 @@ block_id_type controller::last_irreversible_block_id() const {
    return get_block_id_for_num( lib_num );
 }
 
+block_timestamp_type controller::last_irreversible_block_timestamp() const {
+   return my->fork_db.root()->header.timestamp;
+}
+
+
 const dynamic_global_property_object& controller::get_dynamic_global_properties()const {
   return my->db.get<dynamic_global_property_object>();
 }
