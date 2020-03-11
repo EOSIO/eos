@@ -94,7 +94,9 @@ namespace eosio::trace_api {
       struct index_header {
          uint32_t version;
       };
-      slice_directory(const boost::filesystem::path& slice_dir, uint32_t width);
+
+      enum class open_state { read /*read from front to back*/, write /*write to end of file*/ };
+      slice_directory(const boost::filesystem::path& slice_dir, uint32_t width, std::optional<uint32_t> minimum_irreversible_history_blocks);
 
       /**
        * Return the slice number that would include the passed in block_height
@@ -110,61 +112,82 @@ namespace eosio::trace_api {
        * Find or create the index file associated with the indicated slice_number
        *
        * @param slice_number : slice number of the requested slice file
-       * @param append : indicate if the file is going to be appended (or read)
+       * @param state : indicate if the file is going to be written to (appended) or read
        * @param index_file : the cfile that will be set to the appropriate slice filename
        *                     and opened to that file
        * @return the true if file was found (i.e. already existed)
        */
-      bool find_or_create_index_slice(uint32_t slice_number, bool append, fc::cfile& index_file) const;
+      bool find_or_create_index_slice(uint32_t slice_number, open_state state, fc::cfile& index_file) const;
 
       /**
        * Find the index file associated with the indicated slice_number
        *
        * @param slice_number : slice number of the requested slice file
-       * @param append : indicate if the file is going to be appended (or read)
+       * @param state : indicate if the file is going to be written to (appended) or read
        * @param index_file : the cfile that will be set to the appropriate slice filename (always)
        *                     and opened to that file (if it was found)
+       * @param open_file : indicate if the file should be opened (if found) or not
        * @return the true if file was found (i.e. already existed), if not found index_file
        *         is set to the appropriate file, but not open
        */
-      bool find_index_slice(uint32_t slice_number, bool append, fc::cfile& index_file) const;
+      bool find_index_slice(uint32_t slice_number, open_state state, fc::cfile& index_file, bool open_file = true) const;
 
       /**
        * Find or create the trace file associated with the indicated slice_number
        *
        * @param slice_number : slice number of the requested slice file
-       * @param append : indicate if the file is going to be appended (or read)
+       * @param state : indicate if the file is going to be written to (appended) or read
        * @param trace_file : the cfile that will be set to the appropriate slice filename
        *                     and opened to that file
        * @return the true if file was found (i.e. already existed)
        */
-      bool find_or_create_trace_slice(uint32_t slice_number, bool append, fc::cfile& trace_file) const;
+      bool find_or_create_trace_slice(uint32_t slice_number, open_state state, fc::cfile& trace_file) const;
 
       /**
        * Find the trace file associated with the indicated slice_number
        *
        * @param slice_number : slice number of the requested slice file
-       * @param append : indicate if the file is going to be appended (or read)
+       * @param state : indicate if the file is going to be written to (appended) or read
        * @param trace_file : the cfile that will be set to the appropriate slice filename (always)
        *                     and opened to that file (if it was found)
+       * @param open_file : indicate if the file should be opened (if found) or not
        * @return the true if file was found (i.e. already existed), if not found index_file
        *         is set to the appropriate file, but not open
        */
-      bool find_trace_slice(uint32_t slice_number, bool append, fc::cfile& trace_file) const;
+      bool find_trace_slice(uint32_t slice_number, open_state state, fc::cfile& trace_file, bool open_file = true) const;
+
+      /**
+       * Find or create a trace and index file pair
+       *
+       * @param slice_number : slice number of the requested slice file
+       * @param state : indicate if the file is going to be written to (appended) or read
+       * @param trace : the cfile that will be set to the appropriate slice filename and
+       *                opened to that file
+       */
+      void find_or_create_slice_pair(uint32_t slice_number, open_state state, fc::cfile& trace, fc::cfile& index);
+
+      /**
+       * Cleans up all slices that are no longer needed to maintain the minimum number of blocks past lib
+       *
+       * @param lib : block number of the current lib
+       */
+      void cleanup_old_slices(uint32_t lib);
 
    private:
       // returns true if slice is found, slice_file will always be set to the appropriate path for
       // the slice_prefix and slice_number, but will only be opened if found
-      bool find_slice(const char* slice_prefix, uint32_t slice_number, fc::cfile& slice_file) const;
+      bool find_slice(const char* slice_prefix, uint32_t slice_number, fc::cfile& slice_file, bool open_file) const;
 
       // take an index file that is initialized to a file and open it and write its header
       void create_new_index_slice_file(fc::cfile& index_file) const;
 
       // take an open index slice file and verify its header is valid and prepare the file to be appended to (or read from)
-      void validate_existing_index_slice_file(fc::cfile& index_file, bool append) const;
+      void validate_existing_index_slice_file(fc::cfile& index_file, open_state state) const;
 
       const boost::filesystem::path _slice_dir;
       const uint32_t _width;
+      const std::optional<uint32_t> _minimum_irreversible_history_blocks;
+      std::optional<uint32_t> _last_cleaned_up_slice;
    };
 
    /**
@@ -172,7 +195,9 @@ namespace eosio::trace_api {
     */
    class store_provider {
    public:
-      store_provider(const boost::filesystem::path& slice_dir, uint32_t width);
+      using open_state = slice_directory::open_state;
+
+      store_provider(const boost::filesystem::path& slice_dir, uint32_t stride_width, std::optional<uint32_t> minimum_irreversible_history_blocks);
 
       void append(const block_trace_v0& bt);
       void append_lib(uint32_t lib);
@@ -201,7 +226,7 @@ namespace eosio::trace_api {
          offset = 0;
          fc::cfile index;
          const uint32_t slice_number = _slice_directory.slice_number(block_height);
-         const bool found = _slice_directory.find_index_slice(slice_number, false, index);
+         const bool found = _slice_directory.find_index_slice(slice_number, open_state::read, index);
          if( !found ) {
             return 0;
          }
@@ -231,7 +256,7 @@ namespace eosio::trace_api {
       std::optional<data_log_entry> read_data_log( uint32_t block_height, uint64_t offset ) {
          const uint32_t slice_number = _slice_directory.slice_number(block_height);
          fc::cfile trace;
-         if( !_slice_directory.find_trace_slice(slice_number, false, trace) ) {
+         if( !_slice_directory.find_trace_slice(slice_number, open_state::read, trace) ) {
             const std::string offset_str = boost::lexical_cast<std::string>(offset);
             const std::string bh_str = boost::lexical_cast<std::string>(block_height);
             throw malformed_slice_file("Requested offset: " + offset_str + " to retrieve block number: " + bh_str + " but this trace file is new, so there are no traces present.");
@@ -247,10 +272,21 @@ namespace eosio::trace_api {
          return extract_store<data_log_entry>(trace);
       }
 
-   private:
-      void find_or_create_slice_pair(uint32_t block_height, bool append, fc::cfile& trace, fc::cfile& index);
+      /**
+       * Initialize a new index slice with a valid header
+       * @param index : index file to open and add header to
+       *
+       */
       void initialize_new_index_slice_file(fc::cfile& index);
-      void validate_existing_index_slice_file(fc::cfile& index, bool append);
+
+      /**
+       * Ensure an existing index slice has a valid header
+       * @param index : index file to open and read header from
+       * @param state : indicate if the file is going to be written to (appended) or read
+       *
+       */
+      void validate_existing_index_slice_file(fc::cfile& index, open_state state);
+
       slice_directory _slice_directory;
    };
 

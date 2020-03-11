@@ -100,6 +100,9 @@ struct trace_api_common_impl {
                   "the location of the trace directory (absolute path or relative to application data dir)");
       cfg_options("trace-slice-stride", bpo::value<uint32_t>()->default_value(10'000),
                   "the number of blocks each \"slice\" of trace data will contain on the filesystem");
+      cfg_options("trace-minimum-irreversible-history-blocks", boost::program_options::value<int32_t>()->default_value(-1),
+                  "Number of blocks to ensure are kept past LIB for retrieval before \"slice\" files can be automatically removed.\n"
+                  "A value of -1 indicates that automatic removal of \"slice\" files will be turned off.");
    }
 
    void plugin_initialize(const appbase::variables_map& options) {
@@ -111,12 +114,22 @@ struct trace_api_common_impl {
 
       slice_stride = options.at("trace-slice-stride").as<uint32_t>();
 
-      store = std::make_shared<store_provider>(trace_dir, slice_stride);
+      const int32_t blocks = options.at("trace-minimum-irreversible-history-blocks").as<int32_t>();
+      EOS_ASSERT(blocks >= -1, chain::plugin_config_exception,
+                 "\"trace-minimum-irreversible-history-blocks\" must be greater to or equal to -1.");
+      if (blocks > manual_slice_file_value) {
+         minimum_irreversible_history_blocks = blocks;
+      }
+
+      store = std::make_shared<store_provider>(trace_dir, slice_stride, minimum_irreversible_history_blocks);
    }
 
    // common configuration paramters
    boost::filesystem::path trace_dir;
    uint32_t slice_stride = 0;
+
+   std::optional<uint32_t> minimum_irreversible_history_blocks;
+   static constexpr uint32_t manual_slice_file_value = -1;
 
    std::shared_ptr<store_provider> store;
 };
@@ -171,7 +184,7 @@ struct trace_api_rpc_plugin_impl : public std::enable_shared_from_this<trace_api
                     "Trace API is not configured with ABIs and trace-no-abis is not set");
       }
 
-      request_handler = std::make_shared<request_handler_t>(
+      req_handler = std::make_shared<request_handler_t>(
          shared_store_provider<store_provider>(common->store),
          abi_data_handler::shared_provider(data_handler)
       );
@@ -210,7 +223,7 @@ struct trace_api_rpc_plugin_impl : public std::enable_shared_from_this<trace_api
 
          try {
 
-            auto resp = that->request_handler->get_block_trace(*block_number);
+            auto resp = that->req_handler->get_block_trace(*block_number);
             if (resp.is_null()) {
                error_results results{404, "Block trace missing"};
                cb( 404, fc::variant( results ));
@@ -229,7 +242,7 @@ struct trace_api_rpc_plugin_impl : public std::enable_shared_from_this<trace_api
    std::shared_ptr<trace_api_common_impl> common;
 
    using request_handler_t = request_handler<shared_store_provider<store_provider>, abi_data_handler::shared_provider>;
-   std::shared_ptr<request_handler_t> request_handler;
+   std::shared_ptr<request_handler_t> req_handler;
 };
 
 struct trace_api_plugin_impl {
@@ -238,25 +251,9 @@ struct trace_api_plugin_impl {
 
    static void set_program_options(appbase::options_description& cli, appbase::options_description& cfg) {
       auto cfg_options = cfg.add_options();
-      cfg_options("trace-minimum-irreversible-history-us", bpo::value<uint64_t>()->default_value(-1),
-                  "the minimum amount of history, as defined by time, this node will keep after it becomes irreversible\n"
-                  "this value can be specified as a number of microseconds or\n"
-                  "a value of \"-1\" will disable automatic maintenance of the trace slice files\n"
-                  );
    }
 
    void plugin_initialize(const appbase::variables_map& options) {
-      if( options.count("trace-minimum-irreversible-history-us") ) {
-         auto value = options.at("trace-minimum-irreversible-history-us").as<uint64_t>();
-         if ( value == -1 ) {
-            minimum_irreversible_trace_history = fc::microseconds::maximum();
-         } else if (value >= 0) {
-            minimum_irreversible_trace_history = fc::microseconds(value);
-         } else {
-            EOS_THROW(chain::plugin_config_exception, "trace-minimum-irreversible-history-us must be either a positive number or -1");
-         }
-      }
-
       auto log_exceptions_and_shutdown = [](const exception_with_context& e) {
          log_exception(e, fc::log_level::error);
          app().quit();
@@ -296,7 +293,6 @@ struct trace_api_plugin_impl {
    }
 
    std::shared_ptr<trace_api_common_impl> common;
-   fc::microseconds minimum_irreversible_trace_history = fc::microseconds::maximum();
 
    using chain_extraction_t = chain_extraction_impl_type<shared_store_provider<store_provider>>;
    std::shared_ptr<chain_extraction_t> extraction;

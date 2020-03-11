@@ -9,6 +9,7 @@ using namespace eosio;
 using namespace eosio::trace_api;
 using namespace eosio::trace_api::test_common;
 namespace bfs = boost::filesystem;
+using open_state = slice_directory::open_state;
 
 namespace {
    struct test_fixture {
@@ -71,8 +72,8 @@ namespace {
    };
 
    struct test_store_provider : public store_provider {
-      test_store_provider(const bfs::path& slice_dir, uint32_t width)
-         : store_provider(slice_dir, width) {
+      test_store_provider(const bfs::path& slice_dir, uint32_t width, std::optional<uint32_t> minimum_irreversible_history_blocks = std::optional<uint32_t>())
+         : store_provider(slice_dir, width, minimum_irreversible_history_blocks) {
       }
       using store_provider::scan_metadata_log_from;
       using store_provider::read_data_log;
@@ -232,12 +233,11 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
    BOOST_FIXTURE_TEST_CASE(slice_number, test_fixture)
    {
       fc::temp_directory tempdir;
-      boost::filesystem::path tempdir_path = tempdir.path();
-      slice_directory sd(tempdir_path, 100);
+      slice_directory sd(tempdir.path(), 100, std::optional<uint32_t>());
       BOOST_REQUIRE_EQUAL(sd.slice_number(99), 0);
       BOOST_REQUIRE_EQUAL(sd.slice_number(100), 1);
       BOOST_REQUIRE_EQUAL(sd.slice_number(1599), 15);
-      slice_directory sd2(tempdir_path, 0x10);
+      slice_directory sd2(tempdir.path(), 0x10, std::optional<uint32_t>());
       BOOST_REQUIRE_EQUAL(sd2.slice_number(0xf), 0);
       BOOST_REQUIRE_EQUAL(sd2.slice_number(0x100), 0x10);
       BOOST_REQUIRE_EQUAL(sd2.slice_number(0x233), 0x23);
@@ -246,15 +246,12 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
    BOOST_FIXTURE_TEST_CASE(slice_file, test_fixture)
    {
       fc::temp_directory tempdir;
-      bfs::path tempdir_path = tempdir.path();
-      slice_directory sd(tempdir_path, 100);
+      slice_directory sd(tempdir.path(), 100, std::optional<uint32_t>());
       fc::cfile slice;
 
-      const bool read_file = false;
-      const bool append_file = true;
       // create trace slices
       for (uint i = 0; i < 9; ++i) {
-         bool found = sd.find_or_create_trace_slice(i, append_file, slice);
+         bool found = sd.find_or_create_trace_slice(i, open_state::write, slice);
          BOOST_REQUIRE(!found);
          bfs::path fp = slice.get_file_path();
          BOOST_REQUIRE_EQUAL(fp.parent_path().generic_string(), tempdir.path().generic_string());
@@ -268,7 +265,7 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
 
       // create trace index slices
       for (uint i = 0; i < 9; ++i) {
-         bool found = sd.find_or_create_index_slice(i, append_file, slice);
+         bool found = sd.find_or_create_index_slice(i, open_state::write, slice);
          BOOST_REQUIRE(!found);
          fc::path fp = slice.get_file_path();
          BOOST_REQUIRE_EQUAL(fp.parent_path().generic_string(), tempdir.path().generic_string());
@@ -283,7 +280,7 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       }
 
       // reopen trace slice for append
-      bool found = sd.find_or_create_trace_slice(0, append_file, slice);
+      bool found = sd.find_or_create_trace_slice(0, open_state::write, slice);
       BOOST_REQUIRE(found);
       fc::path fp = slice.get_file_path();
       BOOST_REQUIRE_EQUAL(fp.parent_path().generic_string(), tempdir.path().generic_string());
@@ -302,7 +299,7 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       slice.close();
 
       // open same file for read
-      found = sd.find_or_create_trace_slice(0, read_file, slice);
+      found = sd.find_or_create_trace_slice(0, open_state::read, slice);
       BOOST_REQUIRE(found);
       fp = slice.get_file_path();
       BOOST_REQUIRE_EQUAL(fp.filename().generic_string(), expected_filename);
@@ -312,7 +309,7 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       slice.close();
 
       // open same file for append again
-      found = sd.find_or_create_trace_slice(0, append_file, slice);
+      found = sd.find_or_create_trace_slice(0, open_state::write, slice);
       BOOST_REQUIRE(found);
       fp = slice.get_file_path();
       BOOST_REQUIRE_EQUAL(fp.filename().generic_string(), expected_filename);
@@ -322,7 +319,7 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       slice.close();
 
       // reopen trace index slice for append
-      found = sd.find_or_create_index_slice(1, append_file, slice);
+      found = sd.find_or_create_index_slice(1, open_state::write, slice);
       BOOST_REQUIRE(found);
       fp = slice.get_file_path();
       BOOST_REQUIRE_EQUAL(fp.parent_path().generic_string(), tempdir.path().generic_string());
@@ -343,7 +340,7 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       uint64_t index_file_size = bfs::file_size(fp);
       slice.close();
 
-      found = sd.find_or_create_index_slice(1, read_file, slice);
+      found = sd.find_or_create_index_slice(1, open_state::read, slice);
       BOOST_REQUIRE(found);
       fp = slice.get_file_path();
       BOOST_REQUIRE_EQUAL(fp.filename().generic_string(), expected_filename);
@@ -352,7 +349,7 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       BOOST_REQUIRE_EQUAL(slice.tellp(), header_size);
       slice.close();
 
-      found = sd.find_or_create_index_slice(1, append_file, slice);
+      found = sd.find_or_create_index_slice(1, open_state::write, slice);
       BOOST_REQUIRE(found);
       fp = slice.get_file_path();
       BOOST_REQUIRE_EQUAL(fp.filename().generic_string(), expected_filename);
@@ -367,7 +364,7 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       BOOST_REQUIRE_EQUAL(bfs::file_size(fp), slice.tellp());
       slice.close();
 
-      found = sd.find_or_create_index_slice(1, read_file, slice);
+      found = sd.find_or_create_index_slice(1, open_state::read, slice);
       BOOST_REQUIRE(found);
       fp = slice.get_file_path();
       BOOST_REQUIRE_EQUAL(fp.filename().generic_string(), expected_filename);
@@ -377,11 +374,149 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       slice.close();
    }
 
+   BOOST_FIXTURE_TEST_CASE(slice_file_find_test, test_fixture)
+   {
+      fc::temp_directory tempdir;
+      slice_directory sd(tempdir.path(), 100, std::optional<uint32_t>());
+      fc::cfile slice;
+
+      // create trace slice
+      bool found = sd.find_or_create_trace_slice(1, open_state::write, slice);
+      BOOST_REQUIRE(!found);
+      bfs::path fp = slice.get_file_path();
+      BOOST_REQUIRE_EQUAL(fp.parent_path().generic_string(), tempdir.path().generic_string());
+      const std::string expected_filename = "trace_0000000100-0000000200.log";
+      BOOST_REQUIRE_EQUAL(fp.filename().generic_string(), expected_filename);
+      BOOST_REQUIRE(slice.is_open());
+      BOOST_REQUIRE_EQUAL(bfs::file_size(fp), 0);
+      BOOST_REQUIRE_EQUAL(slice.tellp(), 0);
+      slice.close();
+
+      // find trace slice (and open)
+      found = sd.find_trace_slice(1, open_state::write, slice);
+      BOOST_REQUIRE(found);
+      fp = slice.get_file_path();
+      BOOST_REQUIRE_EQUAL(fp.parent_path().generic_string(), tempdir.path().generic_string());
+      BOOST_REQUIRE_EQUAL(fp.filename().generic_string(), expected_filename);
+      BOOST_REQUIRE(slice.is_open());
+      BOOST_REQUIRE_EQUAL(bfs::file_size(fp), 0);
+      slice.close();
+
+      // find trace slice (and don't open)
+      found = sd.find_trace_slice(1, open_state::write, slice, false);
+      BOOST_REQUIRE(found);
+      fp = slice.get_file_path();
+      BOOST_REQUIRE_EQUAL(fp.parent_path().generic_string(), tempdir.path().generic_string());
+      BOOST_REQUIRE_EQUAL(fp.filename().generic_string(), expected_filename);
+      BOOST_REQUIRE(!slice.is_open());
+      BOOST_REQUIRE_EQUAL(bfs::file_size(fp), 0);
+      slice.close();
+   }
+
+   void verify_directory_contents(const bfs::path& tempdir, std::set<bfs::path> expected_files) {
+      std::set<bfs::path> unexpected_files;
+      for (bfs::directory_iterator itr(tempdir); itr != directory_iterator(); ++itr) {
+         const auto filename = itr->path().filename();
+         if (expected_files.erase(filename) < 1) {
+            unexpected_files.insert(filename);
+         }
+      }
+      if (expected_files.size() + unexpected_files.size() == 0)
+         return;
+
+      std::string msg;
+      if (expected_files.size()) {
+         msg += " Expected the following files to be present, but were not:";
+      }
+      bool comma = false;
+      for(auto file : expected_files) {
+         if (comma)
+            msg += ",";
+         msg += " " + file.generic_string();
+      }
+      if (unexpected_files.size()) {
+         msg += " Did not expect the following files to be present, but they were:";
+      }
+      for(auto file : expected_files) {
+         if (comma)
+            msg += ",";
+         msg += " " + file.generic_string();
+      }
+      BOOST_FAIL(msg);
+   }
+
+   BOOST_FIXTURE_TEST_CASE(slice_dir_cleanup_height_less_than_width, test_fixture)
+   {
+      fc::temp_directory tempdir;
+      const uint32_t width = 10;
+      const uint32_t min_saved_blocks = 5;
+      slice_directory sd(tempdir.path(), width, std::optional<uint32_t>(min_saved_blocks));
+      fc::cfile file;
+
+      // verify it cleans up when there is just an index file, just a trace file, or when both are there
+      // verify it cleans up all slices that need to be cleaned
+      std::set<bfs::path> files;
+      BOOST_REQUIRE(!sd.find_or_create_index_slice(0, open_state::read, file));
+      files.insert(file.get_file_path().filename());
+      verify_directory_contents(tempdir.path(), files);
+      BOOST_REQUIRE(!sd.find_or_create_trace_slice(0, open_state::read, file));
+      files.insert(file.get_file_path().filename());
+      BOOST_REQUIRE(!sd.find_or_create_index_slice(1, open_state::read, file));
+      files.insert(file.get_file_path().filename());
+      BOOST_REQUIRE(!sd.find_or_create_trace_slice(2, open_state::read, file));
+      files.insert(file.get_file_path().filename());
+      BOOST_REQUIRE(!sd.find_or_create_index_slice(3, open_state::read, file));
+      files.insert(file.get_file_path().filename());
+      BOOST_REQUIRE(!sd.find_or_create_index_slice(4, open_state::read, file));
+      const auto index4 = file.get_file_path().filename();
+      files.insert(index4);
+      BOOST_REQUIRE(!sd.find_or_create_trace_slice(4, open_state::read, file));
+      const auto trace4 = file.get_file_path().filename();
+      files.insert(trace4);
+      BOOST_REQUIRE(!sd.find_or_create_index_slice(5, open_state::read, file));
+      const auto index5 = file.get_file_path().filename();
+      files.insert(index5);
+      BOOST_REQUIRE(!sd.find_or_create_trace_slice(6, open_state::read, file));
+      const auto trace6 = file.get_file_path().filename();
+      files.insert(trace6);
+      verify_directory_contents(tempdir.path(), files);
+
+      // verify that the current_slice and the previous are maintained as long as lib - min_saved_blocks is part of previous slice
+      uint32_t current_slice = 6;
+      uint32_t lib = current_slice * width;
+      sd.cleanup_old_slices(lib);
+      std::set<bfs::path> files2;
+      files2.insert(index5);
+      files2.insert(trace6);
+      verify_directory_contents(tempdir.path(), files2);
+
+      // saved blocks still in previous slice
+      lib += min_saved_blocks - 1;  // current_slice * width + min_saved_blocks - 1
+      sd.cleanup_old_slices(lib);
+      verify_directory_contents(tempdir.path(), files2);
+
+      // now all saved blocks in current slice
+      lib += 1; // current_slice * width + min_saved_blocks
+      sd.cleanup_old_slices(lib);
+      std::set<bfs::path> files3;
+      files3.insert(trace6);
+      verify_directory_contents(tempdir.path(), files3);
+
+      // moving lib into next slice, so 1 saved blocks still in 6th slice
+      lib += width - 1;
+      sd.cleanup_old_slices(lib);
+      verify_directory_contents(tempdir.path(), files3);
+
+      // moved last saved block out of 6th slice, so 6th slice is cleaned up
+      lib += 1;
+      sd.cleanup_old_slices(lib);
+      verify_directory_contents(tempdir.path(), std::set<bfs::path>());
+   }
+
    BOOST_FIXTURE_TEST_CASE(store_provider_write_read, test_fixture)
    {
       fc::temp_directory tempdir;
-      bfs::path tempdir_path = tempdir.path();
-      test_store_provider sp(tempdir_path, 100);
+      test_store_provider sp(tempdir.path(), 100);
       sp.append(bt);
       sp.append_lib(54);
       sp.append(bt2);
@@ -474,8 +609,7 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
    BOOST_FIXTURE_TEST_CASE(test_get_block, test_fixture)
    {
       fc::temp_directory tempdir;
-      bfs::path tempdir_path = tempdir.path();
-      store_provider sp(tempdir_path, 100);
+      store_provider sp(tempdir.path(), 100, std::optional<uint32_t>());
       sp.append(bt);
       sp.append_lib(1);
       sp.append(bt2);
