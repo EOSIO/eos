@@ -632,4 +632,7 @@ namespace eosio { namespace chain {
                                     3250002, "Protocol feature exception (invalid block)" )
       FC_DECLARE_DERIVED_EXCEPTION( protocol_feature_iterator_exception, protocol_feature_exception,
                                     3250003, "Protocol feature iterator exception" )
+
+   FC_DECLARE_DERIVED_EXCEPTION( version_exception, chain_exception,
+                               3260000, "General version mismatch" )
 } } // eosio::chain

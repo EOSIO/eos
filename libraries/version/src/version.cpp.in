@@ -1,0 +1,55 @@
+#include <eosio/version/version.hpp>
+
+namespace eosio { namespace version {
+   int64_t version_major() {
+      return @_VERSION_MAJOR_@;
+   }
+   int64_t version_minor() {
+      return @_VERSION_MINOR_@;
+   }
+   int64_t version_patch() {
+      return @_VERSION_PATCH_@;
+   }
+   std::string version_major_s {std::to_string(version_major())};
+   std::string version_minor_s {std::to_string(version_minor())};
+   std::string version_patch_s {std::to_string(version_patch())};
+   std::string version_suffix_s{"@_VERSION_SUFFIX_@"};
+   std::string version_hash_s  {"@_VERSION_HASH_@"  };
+   bool        version_dirty   { @_VERSION_DIRTY_@  };
+
+   namespace detail {
+      std::string version_client() {
+         if( version_major() == -1 || version_minor() == -1) {
+            return "unknown";
+         } else {
+            std::string version{'v' + version_major_s + '.' + version_minor_s};
+            if( !version_patch_s.empty() )  version += '.' + version_patch_s;
+            if( !version_suffix_s.empty() ) version += '-' + version_suffix_s;
+            return version;
+         }
+      }
+
+      std::string version_full() {
+         if( version_major() == -1 || version_minor() == -1) {
+            return "unknown";
+         } else {
+            std::string version{'v' + version_major_s + '.' + version_minor_s};
+            if( !version_patch_s.empty() )  version += '.' + version_patch_s;
+            if( !version_suffix_s.empty() ) version += '-' + version_suffix_s;
+            if( !version_hash_s.empty() )   version += '-' + version_hash_s;
+            if( version_dirty )           version += "-dirty";
+            return version;
+         }
+      }
+   }
+
+   const std::string& version_client() {
+      static const std::string version{detail::version_client()};
+      return version;
+   }
+
+   const std::string& version_full() {
+      static const std::string version{detail::version_full()};
+      return version;
+   }
+} }

@@ -10,4 +10,7 @@ namespace eosio { namespace version {
    ///< Grab the full version information of the client; example:  `v1.8.0-rc1-7de458254[-dirty]`
    const std::string& version_full();
 
+   int64_t version_major();
+   int64_t version_minor();
+   int64_t version_patch();
 } }
