@@ -9,15 +9,7 @@ genesis_state::genesis_state() {
 
 chain::chain_id_type genesis_state::compute_chain_id() const {
    digest_type::encoder enc;
-   //fc::raw::pack( enc, *this );
-   fc::raw::pack( enc, initial_timestamp);
-   fc::raw::pack( enc, initial_key );
-   fc::raw::pack( enc, initial_configuration );
-   // Only include initial_kv_configuration if it's different from the default so that
-   // we don't inadvertently change the chain_id of existing chains.
-   if( initial_kv_configuration != default_initial_kv_configuration ) {
-      fc::raw::pack( enc, initial_kv_configuration );
-   }
+   fc::raw::pack( enc, *this );
    return chain_id_type{enc.result()};
 }
 

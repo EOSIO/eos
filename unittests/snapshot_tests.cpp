@@ -121,7 +121,7 @@ struct variant_snapshot_suite {
 
    static void write_to_file( const std::string& basename, const snapshot_t& snapshot ) {
      std::ofstream file( basename + ".json", std::ios_base::binary );
-     fc::json::to_stream( file, snapshot );
+     fc::json::to_stream( file, snapshot, fc::time_point::maximum() );
    }
 };
 
@@ -467,19 +467,19 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_compatible_versions, SNAPSHOT_SUITE, snapshot
    {
       if(should_write_snapshot() && version == current_version) continue;
       static_assert(chain_snapshot_header::minimum_compatible_version <= 2, "version 2 unit test is no longer needed.  Please clean up data files");
-      auto v2 = SNAPSHOT_SUITE::load_from_file("snap_" + version);
+      auto old_snapshot = SNAPSHOT_SUITE::load_from_file("snap_" + version);
       BOOST_TEST_CHECKPOINT("loading snapshot: " << version);
-      snapshotted_tester v2_tester(chain.get_config(), SNAPSHOT_SUITE::get_reader(v2), ordinal++);
-      verify_integrity_hash<SNAPSHOT_SUITE>(*chain.control, *v2_tester.control);
+      snapshotted_tester old_snapshot_tester(chain.get_config(), SNAPSHOT_SUITE::get_reader(old_snapshot), ordinal++);
+      verify_integrity_hash<SNAPSHOT_SUITE>(*chain.control, *old_snapshot_tester.control);
 
       // create a latest snapshot
       auto latest_writer = SNAPSHOT_SUITE::get_writer();
-      v2_tester.control->write_snapshot(latest_writer);
+      old_snapshot_tester.control->write_snapshot(latest_writer);
       auto latest = SNAPSHOT_SUITE::finalize(latest_writer);
 
       // load the latest snapshot
       snapshotted_tester latest_tester(chain.get_config(), SNAPSHOT_SUITE::get_reader(latest), ordinal++);
-      verify_integrity_hash<SNAPSHOT_SUITE>(*v2_tester.control, *latest_tester.control);
+      verify_integrity_hash<SNAPSHOT_SUITE>(*old_snapshot_tester.control, *latest_tester.control);
    }
    // This isn't quite fully automated.  The snapshots still need to be gzipped and moved to
    // the correct place in the source tree.
@@ -619,13 +619,13 @@ static const char kv_snapshot_wast[] = R"=====(
 (module
   (func $kv_get (import "env" "kv_get") (param i64 i64 i32 i32 i32) (result i32))
   (func $kv_get_data (import "env" "kv_get_data") (param i64 i32 i32 i32) (result i32))
-  (func $kv_set (import "env" "kv_set") (param i64 i64 i32 i32 i32 i32))
+  (func $kv_set (import "env" "kv_set") (param i64 i64 i32 i32 i32 i32) (result i64))
   (memory 1)
   (func (export "apply") (param i64 i64 i64)
     (drop (call $kv_get (get_local 2) (get_local 0) (i32.const 0) (i32.const 8) (i32.const 8)))
     (drop (call $kv_get_data (get_local 2) (i32.const 0) (i32.const 0) (i32.const 8)))
     (i64.store (i32.const 0) (i64.add (i64.load (i32.const 0)) (i64.const 1)))
-    (call $kv_set (get_local 2) (get_local 0) (i32.const 16) (i32.const 8) (i32.const 0) (i32.const 8))
+    (drop (call $kv_set (get_local 2) (get_local 0) (i32.const 16) (i32.const 8) (i32.const 0) (i32.const 8)))
   )
 )
 )=====";
@@ -633,9 +633,16 @@ static const char kv_snapshot_wast[] = R"=====(
 static const char kv_snapshot_bios[] = R"=====(
 (module
   (func $set_resource_limit (import "env" "set_resource_limit") (param i64 i64 i64))
+  (func $kv_set_parameters_packed (import "env" "set_kv_parameters_packed") (param i64 i32 i32))
+  (memory 1)
   (func (export "apply") (param i64 i64 i64)
+    (call $kv_set_parameters_packed (i64.const 6138663586874765568) (i32.const 0) (i32.const 16))
+    (call $kv_set_parameters_packed (i64.const 6138663586881971200) (i32.const 0) (i32.const 16))
     (call $set_resource_limit (get_local 2) (i64.const 5454140623722381312) (i64.const -1))
   )
+  (data (i32.const 4) "\00\04\00\00")
+  (data (i32.const 8) "\00\00\10\00")
+  (data (i32.const 12) "\80\00\00\00")
 )
 )=====";
 

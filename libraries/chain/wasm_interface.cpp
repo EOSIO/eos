@@ -211,7 +211,7 @@ class privileged_api : public context_aware_api {
        * @pre limit >= -1
        */
       void set_resource_limit( account_name account, name resource, int64_t limit ) {
-         EOS_ASSERT(limit >= -1, wasm_execution_error, "invalid value for {resource} resource limit expected [-1,INT64_MAX]", ("resource", resource));
+         EOS_ASSERT(limit >= -1, wasm_execution_error, "invalid value for ${resource} resource limit expected [-1,INT64_MAX]", ("resource", resource));
          auto& manager = context.control.get_mutable_resource_limits_manager();
          if( resource == string_to_name("ram") ) {
             int64_t ram, net, cpu;
@@ -228,11 +228,11 @@ class privileged_api : public context_aware_api {
             manager.get_account_limits(account, ram, net, cpu);
             manager.set_account_limits( account, ram, net, limit );
          } else if( resource == string_to_name("disk") ) {
-            if( context.control.get_mutable_resource_limits_manager().set_account_disk_limit( account, limit ) ) {
+            if( manager.set_account_disk_limit( account, limit ) ) {
                context.trx_context.validate_disk_usage.insert( account );
             }
          } else {
-            EOS_ASSERT(false, wasm_execution_error, "unknown resource {resource}", ("resource", resource));
+            EOS_THROW(wasm_execution_error, "unknown resource ${resource}", ("resource", resource));
          }
       }
 
@@ -251,9 +251,9 @@ class privileged_api : public context_aware_api {
             manager.get_account_limits( account, ram, net, cpu );
             return cpu;
          } else if( resource == string_to_name("disk") ) {
-            return context.control.get_resource_limits_manager().get_account_disk_limit( account );
+            return manager.get_account_disk_limit( account );
          } else {
-            EOS_ASSERT(false, wasm_execution_error, "unknown resource {resource}", ("resource", resource));
+            EOS_THROW(wasm_execution_error, "unknown resource ${resource}", ("resource", resource));
          }
       }
 
@@ -371,24 +371,27 @@ class privileged_api : public context_aware_api {
          }
       }
 
-      uint32_t get_kv_parameters_packed( name db, array_ptr<char> packed_kv_parameters, uint32_t buffer_size ) {
-         auto& gpo = context.control.get_global_properties();
-         auto& params = gpo.kv_configuration.*kv_parameters_impl( db );
+      uint32_t get_kv_parameters_packed( name db, array_ptr<char> packed_kv_parameters, uint32_t buffer_size, uint32_t max_version ) {
+         const auto& gpo = context.control.get_global_properties();
+         const auto& params = gpo.kv_configuration.*kv_parameters_impl( db );
+         uint32_t version = std::min( max_version, uint32_t(0) );
 
-         auto s = fc::raw::pack_size( params );
-         if( buffer_size == 0 ) return s;
+         auto s = fc::raw::pack_size( version ) + fc::raw::pack_size( params );
 
          if ( s <= buffer_size ) {
             datastream<char*> ds( packed_kv_parameters, s );
+            fc::raw::pack(ds, version);
             fc::raw::pack(ds, params);
-            return s;
          }
-         return 0;
+         return s;
       }
 
-      void set_kv_parameters_packed( name db, array_ptr<const char> packed_kv_parameters, uint32_t datalen) {
+      void set_kv_parameters_packed( name db, array_ptr<const char> packed_kv_parameters, uint32_t datalen ) {
          datastream<const char*> ds( packed_kv_parameters, datalen );
+         uint32_t version;
          chain::kv_database_config cfg;
+         fc::raw::unpack(ds, version);
+         EOS_ASSERT(version == 0, kv_unknown_parameters_version, "set_kv_parameters_packed: Unknown version: ${version}", ("version", version));
          fc::raw::unpack(ds, cfg);
          context.db.modify( context.control.get_global_properties(),
             [&]( auto& gprops ) {
@@ -1540,10 +1543,10 @@ class kv_database_api : public context_aware_api {
    public:
       using context_aware_api::context_aware_api;
 
-      void kv_erase(uint64_t db, uint64_t contract, array_ptr<const char> key, uint32_t key_size) {
+      int64_t kv_erase(uint64_t db, uint64_t contract, array_ptr<const char> key, uint32_t key_size) {
          return context.kv_erase(db, contract, key, key_size);
       }
-      void kv_set(uint64_t db, uint64_t contract, array_ptr<const char> key, uint32_t key_size, array_ptr<const char> value, uint32_t value_size) {
+      int64_t kv_set(uint64_t db, uint64_t contract, array_ptr<const char> key, uint32_t key_size, array_ptr<const char> value, uint32_t value_size) {
          return context.kv_set(db, contract, key, key_size, value, value_size);
       }
       bool kv_get(uint64_t db, uint64_t contract, array_ptr<const char> key, uint32_t key_size, uint32_t& value_size) {
@@ -2017,7 +2020,7 @@ REGISTER_INTRINSICS(privileged_api,
    (set_proposed_producers_ex,        int64_t(int64_t, int, int)            )
    (get_blockchain_parameters_packed, int(int, int)                         )
    (set_blockchain_parameters_packed, void(int,int)                         )
-   (get_kv_parameters_packed,         int(int64_t, int, int)                )
+   (get_kv_parameters_packed,         int(int64_t, int, int, int)           )
    (set_kv_parameters_packed,         void(int64_t, int,int)                )
    (is_privileged,                    int(int64_t)                          )
    (set_privileged,                   void(int64_t, int)                    )
@@ -2076,21 +2079,21 @@ REGISTER_INTRINSICS( database_api,
 );
 
 REGISTER_INTRINSICS( kv_database_api,
-   (kv_erase,           void(int64_t,int64_t,int,int)          )
-   (kv_set,             void(int64_t,int64_t,int,int,int,int)  )
-   (kv_get,             int(int64_t,int64_t,int,int,int)       )
-   (kv_get_data,        int(int64_t,int,int,int)               )
-   (kv_it_create,       int(int64_t,int64_t,int,int)           )
-   (kv_it_destroy,      void(int)                              )
-   (kv_it_status,       int(int)                               )
-   (kv_it_compare,      int(int,int)                           )
-   (kv_it_key_compare,  int(int,int,int)                       )
-   (kv_it_move_to_end,  int(int)                               )
-   (kv_it_next,         int(int)                               )
-   (kv_it_prev,         int(int)                               )
-   (kv_it_lower_bound,  int(int,int,int)                       )
-   (kv_it_key,          int(int,int,int,int,int)               )
-   (kv_it_value,        int(int,int,int,int,int)               )
+   (kv_erase,           int64_t(int64_t,int64_t,int,int)         )
+   (kv_set,             int64_t(int64_t,int64_t,int,int,int,int) )
+   (kv_get,             int(int64_t,int64_t,int,int,int)         )
+   (kv_get_data,        int(int64_t,int,int,int)                 )
+   (kv_it_create,       int(int64_t,int64_t,int,int)             )
+   (kv_it_destroy,      void(int)                                )
+   (kv_it_status,       int(int)                                 )
+   (kv_it_compare,      int(int,int)                             )
+   (kv_it_key_compare,  int(int,int,int)                         )
+   (kv_it_move_to_end,  int(int)                                 )
+   (kv_it_next,         int(int)                                 )
+   (kv_it_prev,         int(int)                                 )
+   (kv_it_lower_bound,  int(int,int,int)                         )
+   (kv_it_key,          int(int,int,int,int,int)                 )
+   (kv_it_value,        int(int,int,int,int,int)                 )
 );
 
 REGISTER_INTRINSICS(crypto_api,

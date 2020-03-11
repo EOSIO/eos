@@ -189,7 +189,7 @@ namespace eosio { namespace chain {
          return prefix;
       }
 
-      void kv_erase(uint64_t contract, const char* key, uint32_t key_size) override {
+      int64_t kv_erase(uint64_t contract, const char* key, uint32_t key_size) override {
          EOS_ASSERT(name{ contract } == receiver, table_operation_not_permitted, "Can not write to this key");
          temp_data_buffer = nullptr;
 
@@ -198,18 +198,19 @@ namespace eosio { namespace chain {
             try {
                old_value = view.get(contract, { key, key_size });
                if (!old_value)
-                  return;
+                  return 0;
                view.erase(contract, { key, key_size });
             }
             FC_LOG_AND_RETHROW()
          }
          CATCH_AND_EXIT_DB_FAILURE()
 
-         resource_manager.update_table_usage(
-               -(static_cast<int64_t>(resource_manager.billable_size) + key_size + old_value->size()));
+         int64_t resource_delta = -(static_cast<int64_t>(resource_manager.billable_size) + key_size + old_value->size());
+         resource_manager.update_table_usage(resource_delta);
+         return resource_delta;
       }
 
-      void kv_set(uint64_t contract, const char* key, uint32_t key_size, const char* value,
+      int64_t kv_set(uint64_t contract, const char* key, uint32_t key_size, const char* value,
                   uint32_t value_size) override {
          EOS_ASSERT(name{ contract } == receiver, table_operation_not_permitted, "Can not write to this key");
          EOS_ASSERT(key_size <= limits.max_key_size, kv_limit_exceeded, "Key too large");
@@ -226,14 +227,15 @@ namespace eosio { namespace chain {
          }
          CATCH_AND_EXIT_DB_FAILURE()
 
+         int64_t resource_delta;
          if (old_value) {
             // 64-bit arithmetic cannot overflow, because both the key and value are limited to 32-bits
-            resource_manager.update_table_usage(static_cast<int64_t>(value_size) -
-                                                static_cast<int64_t>(old_value->size()));
+            resource_delta = static_cast<int64_t>(value_size) - static_cast<int64_t>(old_value->size());
          } else {
-            resource_manager.update_table_usage(static_cast<int64_t>(resource_manager.billable_size) + key_size +
-                                                value_size);
+            resource_delta = static_cast<int64_t>(resource_manager.billable_size) + key_size + value_size;
          }
+         resource_manager.update_table_usage(resource_delta);
+         return resource_delta;
       }
 
       bool kv_get(uint64_t contract, const char* key, uint32_t key_size, uint32_t& value_size) override {
@@ -268,6 +270,7 @@ namespace eosio { namespace chain {
 
       std::unique_ptr<kv_iterator> kv_it_create(uint64_t contract, const char* prefix, uint32_t size) override {
          EOS_ASSERT(num_iterators < limits.max_iterators, kv_bad_iter, "Too many iterators");
+         EOS_ASSERT(size <= limits.max_key_size, kv_bad_iter, "Prefix too large");
          try {
             try {
                return std::make_unique<kv_iterator_rocksdb>(num_iterators, view, contract, prefix, size);
