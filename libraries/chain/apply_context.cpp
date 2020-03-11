@@ -253,8 +253,8 @@ void apply_context::require_recipient( account_name recipient ) {
          schedule_action( action_ordinal, recipient, false )
       );
 
-      if (auto dmlog = control.get_deep_mind_logger()) {
-         dmlog("CREATION_OP NOTIFY ${action_id}",
+      if (auto logger = control.get_deep_mind_logger()) {
+         dmlog(logger, "CREATION_OP NOTIFY ${action_id}",
             ("action_id", trx_context.action_id.current())
          );
       }
@@ -353,8 +353,8 @@ void apply_context::execute_inline( action&& a ) {
       schedule_action( std::move(a), inline_receiver, false )
    );
 
-   if (auto dmlog = control.get_deep_mind_logger()) {
-      dmlog("CREATION_OP INLINE ${action_id}",
+   if (auto logger = control.get_deep_mind_logger()) {
+      dmlog(logger, "CREATION_OP INLINE ${action_id}",
          ("action_id", trx_context.action_id.current())
       );
    }
@@ -374,8 +374,8 @@ void apply_context::execute_context_free_inline( action&& a ) {
       schedule_action( std::move(a), inline_receiver, true )
    );
 
-   if (auto dmlog = control.get_deep_mind_logger()) {
-      dmlog("CREATION_OP CFA_INLINE ${action_id}",
+   if (auto logger = control.get_deep_mind_logger()) {
+      dmlog(logger, "CREATION_OP CFA_INLINE ${action_id}",
          ("action_id", trx_context.action_id.current())
       );
    }
@@ -517,7 +517,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
                   "Replacing a deferred transaction is temporarily disabled." );
 
       if (control.get_deep_mind_logger() != nullptr) {
-         event_id = ramEventId("${id}", ("id", ptr->id));
+         event_id = RAM_EVENT_ID("${id}", ("id", ptr->id));
       }
 
       uint64_t orig_trx_ram_bytes = config::billable_size_v<generated_transaction_object> + ptr->packed_trx.size();
@@ -534,12 +534,12 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
          trx_id_for_new_obj = ptr->trx_id;
       }
 
-      if (auto dmlog = control.get_deep_mind_logger()) {
+      if (auto logger = control.get_deep_mind_logger()) {
          fc::datastream<const char*> ds( ptr->packed_trx.data(), ptr->packed_trx.size() );
          transaction dtrx;
          fc::raw::unpack(ds, static_cast<transaction&>(dtrx) );
 
-         dmlog("DTRX_OP MODIFY_CANCEL ${action_id} ${sender} ${sender_id} ${payer} ${published} ${delay} ${expiration} ${trx_id} ${trx}",
+         dmlog(logger, "DTRX_OP MODIFY_CANCEL ${action_id} ${sender} ${sender_id} ${payer} ${published} ${delay} ${expiration} ${trx_id} ${trx}",
             ("action_id", trx_context.action_id.current())
             ("sender", receiver)
             ("sender_id", sender_id)
@@ -566,11 +566,11 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
 
          trx_size = gtx.set( trx );
 
-         if (auto dmlog = control.get_deep_mind_logger()) {
+         if (auto logger = control.get_deep_mind_logger()) {
             operation = "update";
-            event_id = ramEventId("${id}", ("id", gtx.id));
+            event_id = RAM_EVENT_ID("${id}", ("id", gtx.id));
 
-            dmlog("DTRX_OP MODIFY_CREATE ${action_id} ${sender} ${sender_id} ${payer} ${published} ${delay} ${expiration} ${trx_id} ${trx}",
+            dmlog(logger, "DTRX_OP MODIFY_CREATE ${action_id} ${sender} ${sender_id} ${payer} ${published} ${delay} ${expiration} ${trx_id} ${trx}",
                ("action_id", trx_context.action_id.current())
                ("sender", receiver)
                ("sender_id", sender_id)
@@ -595,11 +595,11 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
 
          trx_size = gtx.set( trx );
 
-         if (auto dmlog = control.get_deep_mind_logger()) {
+         if (auto logger = control.get_deep_mind_logger()) {
             operation = "add";
-            event_id = ramEventId("${id}", ("id", gtx.id));
+            event_id = RAM_EVENT_ID("${id}", ("id", gtx.id));
 
-            dmlog("DTRX_OP CREATE ${action_id} ${sender} ${sender_id} ${payer} ${published} ${delay} ${expiration} ${trx_id} ${trx}",
+            dmlog(logger, "DTRX_OP CREATE ${action_id} ${sender} ${sender_id} ${payer} ${published} ${delay} ${expiration} ${trx_id} ${trx}",
                ("action_id", trx_context.action_id.current())
                ("sender", receiver)
                ("sender_id", sender_id)
@@ -630,16 +630,16 @@ bool apply_context::cancel_deferred_transaction( const uint128_t& sender_id, acc
    const auto* gto = db.find<generated_transaction_object,by_sender_id>(boost::make_tuple(sender, sender_id));
    if ( gto ) {
       fc::string event_id;
-      if (auto dmlog = control.get_deep_mind_logger()) {
+      if (auto logger = control.get_deep_mind_logger()) {
          // unpack gtx->packed_trx into `dtrx` REVISE THIS!
          auto gtx = generated_transaction(*gto);
          fc::datastream<const char*> ds( gtx.packed_trx.data(), gtx.packed_trx.size() );
          transaction dtrx;
          fc::raw::unpack(ds, static_cast<transaction&>(dtrx) );
 
-         event_id = ramEventId("${id}", ("id", gto->id));
+         event_id = RAM_EVENT_ID("${id}", ("id", gto->id));
 
-         dmlog("DTRX_OP CANCEL ${action_id} ${sender} ${sender_id} ${payer} ${published} ${delay} ${expiration} ${trx_id} ${trx}",
+         dmlog(logger, "DTRX_OP CANCEL ${action_id} ${sender} ${sender_id} ${payer} ${published} ${delay} ${expiration} ${trx_id} ${trx}",
             ("action_id", trx_context.action_id.current())
             ("sender", receiver)
             ("sender_id", sender_id)
@@ -690,7 +690,7 @@ const table_id_object& apply_context::find_or_create_table( name code, name scop
 
    fc::string event_id;
    if (control.get_deep_mind_logger() != nullptr) {
-      event_id = ramEventId("${code}:${scope}:${table}",
+      event_id = RAM_EVENT_ID("${code}:${scope}:${table}",
          ("code", code)
          ("scope", scope)
          ("table", table)
@@ -705,8 +705,8 @@ const table_id_object& apply_context::find_or_create_table( name code, name scop
       t_id.table = table;
       t_id.payer = payer;
 
-      if (auto dmlog = control.get_deep_mind_logger()) {
-         dmlog("TBL_OP INS ${action_id} ${code} ${scope} ${table} ${payer}",
+      if (auto logger = control.get_deep_mind_logger()) {
+         dmlog(logger, "TBL_OP INS ${action_id} ${code} ${scope} ${table} ${payer}",
             ("action_id", trx_context.action_id.current())
             ("code", code)
             ("scope", scope)
@@ -720,7 +720,7 @@ const table_id_object& apply_context::find_or_create_table( name code, name scop
 void apply_context::remove_table( const table_id_object& tid ) {
    fc::string event_id;
    if (control.get_deep_mind_logger() != nullptr) {
-      event_id = ramEventId("${code}:${scope}:${table}",
+      event_id = RAM_EVENT_ID("${code}:${scope}:${table}",
          ("code", tid.code)
          ("scope", tid.scope)
          ("table", tid.table)
@@ -729,8 +729,8 @@ void apply_context::remove_table( const table_id_object& tid ) {
 
    update_db_usage(tid.payer, - config::billable_size_v<table_id_object>, event_id.c_str(), "table", "remove", "remove_table" );
 
-   if (auto dmlog = control.get_deep_mind_logger()) {
-      dmlog("TBL_OP REM ${action_id} ${code} ${scope} ${table} ${payer}",
+   if (auto logger = control.get_deep_mind_logger()) {
+      dmlog(logger, "TBL_OP REM ${action_id} ${code} ${scope} ${table} ${payer}",
          ("action_id", trx_context.action_id.current())
          ("code", tid.code)
          ("scope", tid.scope)
@@ -838,7 +838,7 @@ int apply_context::db_store_i64( name code, name scope, name table, const accoun
 
    fc::string event_id;
    if (control.get_deep_mind_logger() != nullptr) {
-      event_id = ramEventId("${table_code}:${scope}:${table_name}:${primkey}",
+      event_id = RAM_EVENT_ID("${table_code}:${scope}:${table_name}:${primkey}",
          ("table_code", tab.code)
          ("scope", tab.scope)
          ("table_name", tab.table)
@@ -848,8 +848,8 @@ int apply_context::db_store_i64( name code, name scope, name table, const accoun
 
    update_db_usage( payer, billable_size, event_id.c_str(), "table_row", "add", "primary_index_add" );
 
-   if (auto dmlog = control.get_deep_mind_logger()) {
-      dmlog("DB_OP INS ${action_id} ${payer} ${table_code} ${scope} ${table_name} ${primkey} ${ndata}",
+   if (auto logger = control.get_deep_mind_logger()) {
+      dmlog(logger, "DB_OP INS ${action_id} ${payer} ${table_code} ${scope} ${table_name} ${primkey} ${ndata}",
          ("action_id", trx_context.action_id.current())
          ("payer", payer)
          ("table_code", tab.code)
@@ -880,7 +880,7 @@ void apply_context::db_update_i64( int iterator, account_name payer, const char*
 
    fc::string event_id;
    if (control.get_deep_mind_logger() != nullptr) {
-      event_id = ramEventId("${table_code}:${scope}:${table_name}:${primkey}",
+      event_id = RAM_EVENT_ID("${table_code}:${scope}:${table_name}:${primkey}",
          ("table_code", table_obj.code)
          ("scope", table_obj.scope)
          ("table_name", table_obj.table)
@@ -898,8 +898,8 @@ void apply_context::db_update_i64( int iterator, account_name payer, const char*
       update_db_usage( obj.payer, new_size - old_size, event_id.c_str() , "table_row", "update", "primary_index_update" );
    }
 
-   if (auto dmlog = control.get_deep_mind_logger()) {
-      dmlog("DB_OP UPD ${action_id} ${opayer}:${npayer} ${table_code} ${scope} ${table_name} ${primkey} ${odata}:${ndata}",
+   if (auto logger = control.get_deep_mind_logger()) {
+      dmlog(logger, "DB_OP UPD ${action_id} ${opayer}:${npayer} ${table_code} ${scope} ${table_name} ${primkey} ${odata}:${ndata}",
          ("action_id", trx_context.action_id.current())
          ("opayer", obj.payer)
          ("npayer", payer)
@@ -928,7 +928,7 @@ void apply_context::db_remove_i64( int iterator ) {
 
    fc::string event_id;
    if (control.get_deep_mind_logger() != nullptr) {
-      event_id = ramEventId("${table_code}:${scope}:${table_name}:${primkey}",
+      event_id = RAM_EVENT_ID("${table_code}:${scope}:${table_name}:${primkey}",
          ("table_code", table_obj.code)
          ("scope", table_obj.scope)
          ("table_name", table_obj.table)
@@ -938,8 +938,8 @@ void apply_context::db_remove_i64( int iterator ) {
 
    update_db_usage( obj.payer,  -(obj.value.size() + config::billable_size_v<key_value_object>), event_id.c_str(), "table_row", "remove", "primary_index_remove" );
 
-   if (auto dmlog = control.get_deep_mind_logger()) {
-      dmlog("DB_OP REM ${action_id} ${payer} ${table_code} ${scope} ${table_name} ${primkey} ${odata}",
+   if (auto logger = control.get_deep_mind_logger()) {
+      dmlog(logger, "DB_OP REM ${action_id} ${payer} ${table_code} ${scope} ${table_name} ${primkey} ${odata}",
          ("action_id", trx_context.action_id.current())
          ("payer", obj.payer)
          ("table_code", table_obj.code)

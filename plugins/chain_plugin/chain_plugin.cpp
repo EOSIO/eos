@@ -33,7 +33,7 @@ FC_REFLECT_ENUM( chainbase::environment::arch_t,
                  (ARCH_X86_64)(ARCH_ARM)(ARCH_RISCV)(ARCH_OTHER) )
 FC_REFLECT(chainbase::environment, (debug)(os)(arch)(boost_version)(compiler) )
 
-const fc::string deep_mind_logger_name("deep_mind");
+const fc::string deep_mind_logger_name("deep-mind");
 fc::logger _deep_mind_log;
 
 namespace eosio {
@@ -1096,8 +1096,8 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
             } );
 
       my->accepted_block_connection = my->chain->accepted_block.connect( [this]( const block_state_ptr& blk ) {
-         if (auto dmlog = my->chain->get_deep_mind_logger()) {
-            dmlog("ACCEPTED_BLOCK ${num} ${blk}",
+         if (auto logger = my->chain->get_deep_mind_logger()) {
+            dmlog(logger, "ACCEPTED_BLOCK ${num} ${blk}",
                ("num", blk->block_num)
                ("blk", chain().to_variant_with_abi(blk, fc::microseconds(5000000)))
             );
@@ -1117,8 +1117,8 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
       my->applied_transaction_connection = my->chain->applied_transaction.connect(
             [this]( std::tuple<const transaction_trace_ptr&, const signed_transaction&> t ) {
-               if (auto dmlog = my->chain->get_deep_mind_logger()) {
-                  dmlog("APPLIED_TRANSACTION ${block} ${traces}",
+               if (auto logger = my->chain->get_deep_mind_logger()) {
+                  dmlog(logger, "APPLIED_TRANSACTION ${block} ${traces}",
                      ("block", chain().head_block_num() + 1)
                      ("traces", chain().to_variant_with_abi(std::get<0>(t), fc::microseconds(5000000)))
                   );

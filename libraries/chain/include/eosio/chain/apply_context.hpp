@@ -194,7 +194,7 @@ class apply_context {
                  ++t.count;
 
                   if (context.control.get_deep_mind_logger() != nullptr) {
-                     event_id = ramEventId("${code}:${scope}:${table}:${index_name}",
+                     event_id = RAM_EVENT_ID("${code}:${scope}:${table}:${index_name}",
                         ("code", t.code)
                         ("scope", t.scope)
                         ("table", t.table)
@@ -217,7 +217,7 @@ class apply_context {
 
                fc::string event_id;
                if (context.control.get_deep_mind_logger() != nullptr) {
-                  event_id = ramEventId("${code}:${scope}:${table}:${index_name}",
+                  event_id = RAM_EVENT_ID("${code}:${scope}:${table}:${index_name}",
                      ("code", table_obj.code)
                      ("scope", table_obj.scope)
                      ("table", table_obj.table)
@@ -255,7 +255,7 @@ class apply_context {
 
                fc::string event_id;
                if (context.control.get_deep_mind_logger() != nullptr) {
-                  event_id = ramEventId("${code}:${scope}:${table}:${index_name}",
+                  event_id = RAM_EVENT_ID("${code}:${scope}:${table}:${index_name}",
                      ("code", table_obj.code)
                      ("scope", table_obj.scope)
                      ("table", table_obj.table)

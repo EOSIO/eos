@@ -590,8 +590,8 @@ namespace eosio { namespace chain {
       apply_context acontext( control, *this, action_ordinal, recurse_depth );
 
       if (recurse_depth == 0) {
-         if (auto dmlog = control.get_deep_mind_logger()) {
-            dmlog("CREATION_OP ROOT ${action_id}",
+         if (auto logger = control.get_deep_mind_logger()) {
+            dmlog(logger, "CREATION_OP ROOT ${action_id}",
                ("action_id", action_id.current())
             );
          }
@@ -624,10 +624,10 @@ namespace eosio { namespace chain {
         gto.expiration  = gto.delay_until + fc::seconds(control.get_global_properties().configuration.deferred_trx_expiration_window);
         trx_size = gto.set( trx );
 
-        if (auto dmlog = control.get_deep_mind_logger()) {
-            event_id = ramEventId("${id}", ("id", gto.id));
+        if (auto logger = control.get_deep_mind_logger()) {
+            event_id = RAM_EVENT_ID("${id}", ("id", gto.id));
 
-            dmlog("DTRX_OP PUSH_CREATE ${action_id} ${sender} ${sender_id} ${payer} ${published} ${delay} ${expiration} ${trx_id} ${trx}",
+            dmlog(logger, "DTRX_OP PUSH_CREATE ${action_id} ${sender} ${sender_id} ${payer} ${published} ${delay} ${expiration} ${trx_id} ${trx}",
                ("action_id", action_id.current())
                ("sender", gto.sender)
                ("sender_id", gto.sender_id)
