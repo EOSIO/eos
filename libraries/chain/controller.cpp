@@ -2830,8 +2830,8 @@ block_id_type controller::last_irreversible_block_id() const {
    return get_block_id_for_num( lib_num );
 }
 
-block_timestamp_type controller::last_irreversible_block_timestamp() const {
-   return my->fork_db.root()->header.timestamp;
+time_point controller::last_irreversible_block_time() const {
+   return my->fork_db.root()->header.timestamp.to_time_point();
 }
 
 
