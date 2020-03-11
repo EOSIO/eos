@@ -20,7 +20,7 @@ namespace eosio::trace_api {
       fc::cfile trace;
       fc::cfile index;
       const uint32_t slice_number = _slice_directory.slice_number(bt.number);
-      _slice_directory.find_or_create_slice_pair(slice_number, true, trace, index);
+      _slice_directory.find_or_create_slice_pair(slice_number, open_state::write, trace, index);
       // storing as static_variant to allow adding other data types to the trace file in the future
       const uint64_t offset = append_store(data_log_entry { bt }, trace);
 
@@ -31,7 +31,7 @@ namespace eosio::trace_api {
    void store_provider::append_lib(uint32_t lib) {
       fc::cfile index;
       const uint32_t slice_number = _slice_directory.slice_number(lib);
-      _slice_directory.find_or_create_index_slice(slice_number, true, index);
+      _slice_directory.find_or_create_index_slice(slice_number, open_state::write, index);
       auto le = metadata_log_entry { lib_entry_v0 { .lib = lib }};
       append_store(le, index);
       _slice_directory.cleanup_old_slices(lib);
@@ -75,20 +75,20 @@ namespace eosio::trace_api {
       }
    }
 
-   bool slice_directory::find_or_create_index_slice(uint32_t slice_number, bool append, fc::cfile& index_file) const {
-      const bool found = find_index_slice(slice_number, append, index_file);
+   bool slice_directory::find_or_create_index_slice(uint32_t slice_number, open_state state, fc::cfile& index_file) const {
+      const bool found = find_index_slice(slice_number, state, index_file);
       if( !found ) {
          create_new_index_slice_file(index_file);
       }
       return found;
    }
 
-   bool slice_directory::find_index_slice(uint32_t slice_number, bool append, fc::cfile& index_file) const {
+   bool slice_directory::find_index_slice(uint32_t slice_number, open_state state, fc::cfile& index_file) const {
       if( !find_slice(_trace_index_prefix, slice_number, index_file) ) {
          return false;
       }
 
-      validate_existing_index_slice_file(index_file, append);
+      validate_existing_index_slice_file(index_file, state);
       return true;
    }
 
@@ -98,19 +98,20 @@ namespace eosio::trace_api {
       append_store(h, index_file);
    }
 
-   void slice_directory::validate_existing_index_slice_file(fc::cfile& index_file, bool append) const {
+   void slice_directory::validate_existing_index_slice_file(fc::cfile& index_file, open_state state) const {
       const auto header = extract_store<index_header>(index_file);
       if (header.version != _current_version) {
          throw old_slice_version("Old slice file with version: " + std::to_string(header.version) +
                                  " is in directory, only supporting version: " + std::to_string(_current_version));
       }
-      if( append ) {
+
+      if( state == open_state::write ) {
          index_file.seek_end(0);
       }
    }
 
-   bool slice_directory::find_or_create_trace_slice(uint32_t slice_number, bool append, fc::cfile& trace_file) const {
-      const bool found = find_trace_slice(slice_number, append, trace_file);
+   bool slice_directory::find_or_create_trace_slice(uint32_t slice_number, open_state state, fc::cfile& trace_file) const {
+      const bool found = find_trace_slice(slice_number, state, trace_file);
 
       if( !found ) {
          trace_file.open(fc::cfile::create_or_update_rw_mode);
@@ -119,14 +120,14 @@ namespace eosio::trace_api {
       return found;
    }
 
-   bool slice_directory::find_trace_slice(uint32_t slice_number, bool append, fc::cfile& trace_file) const {
+   bool slice_directory::find_trace_slice(uint32_t slice_number, open_state state, fc::cfile& trace_file) const {
       const bool found = find_slice(_trace_prefix, slice_number, trace_file);
 
       if( !found ) {
          return false;
       }
 
-      if( append ) {
+      if( state == open_state::write ) {
          trace_file.seek_end(0);
       }
       else {
@@ -161,9 +162,9 @@ namespace eosio::trace_api {
    }
 
 
-   void slice_directory::find_or_create_slice_pair(uint32_t slice_number, bool append, fc::cfile& trace, fc::cfile& index) {
-      const bool trace_found = find_or_create_trace_slice(slice_number, append, trace);
-      const bool index_found = find_or_create_index_slice(slice_number, append, index);
+   void slice_directory::find_or_create_slice_pair(uint32_t slice_number, open_state state, fc::cfile& trace, fc::cfile& index) {
+      const bool trace_found = find_or_create_trace_slice(slice_number, state, trace);
+      const bool index_found = find_or_create_index_slice(slice_number, state, index);
       if (trace_found != index_found) {
          const std::string trace_status = trace_found ? "existing" : "new";
          const std::string index_status = index_found ? "existing" : "new";
@@ -175,7 +176,7 @@ namespace eosio::trace_api {
       if (!_minimum_irreversible_history_blocks)
          return;
       const uint32_t lib_slice_number = slice_number( lib );
-      if (lib_slice_number < 1 || (_last_cleaned_up_slice && _last_cleaned_up_slice >= lib_slice_number))
+      if (lib_slice_number < 1 || (_last_cleaned_up_slice && _last_cleaned_up_slice >= lib_slice_number - 1))
          return;
 
       // can only cleanup a slice once our last needed history block (lib - *_minimum_irreversible_history_blocks)
@@ -183,17 +184,17 @@ namespace eosio::trace_api {
       const int64_t cleanup_block_number = static_cast<int64_t>(lib) - static_cast<int64_t>(*_minimum_irreversible_history_blocks) - _width;
       if (cleanup_block_number > 0) {
          uint32_t cleanup_slice_num = slice_number(static_cast<uint32_t>(cleanup_block_number));
-         // since we subtracted width, we are guaranteed cleanup_slice_num is not
+         // since we subtracted width, we are guaranteed cleanup_slice_num is not the slice that contains LIB
          while (!_last_cleaned_up_slice || *_last_cleaned_up_slice < cleanup_slice_num) {
             fc::cfile trace;
             fc::cfile index;
             const uint32_t slice_to_clean = _last_cleaned_up_slice ? *_last_cleaned_up_slice + 1 : 0;
-            const bool trace_found = find_trace_slice(slice_to_clean, false, trace);
+            const bool trace_found = find_trace_slice(slice_to_clean, open_state::read, trace);
             if (trace_found) {
                trace.close();
                bfs::remove(trace.get_file_path());
             }
-            const bool index_found = find_index_slice(slice_to_clean, false, index);
+            const bool index_found = find_index_slice(slice_to_clean, open_state::read, index);
             if (index_found) {
                index.close();
                bfs::remove(index.get_file_path());

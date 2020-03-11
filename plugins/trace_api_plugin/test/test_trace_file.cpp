@@ -9,6 +9,7 @@ using namespace eosio;
 using namespace eosio::trace_api;
 using namespace eosio::trace_api::test_common;
 namespace bfs = boost::filesystem;
+using open_state = slice_directory::open_state;
 
 namespace {
    struct test_fixture {
@@ -248,11 +249,9 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       slice_directory sd(tempdir.path(), 100, std::optional<uint32_t>());
       fc::cfile slice;
 
-      const bool read_file = false;
-      const bool append_file = true;
       // create trace slices
       for (uint i = 0; i < 9; ++i) {
-         bool found = sd.find_or_create_trace_slice(i, append_file, slice);
+         bool found = sd.find_or_create_trace_slice(i, open_state::write, slice);
          BOOST_REQUIRE(!found);
          bfs::path fp = slice.get_file_path();
          BOOST_REQUIRE_EQUAL(fp.parent_path().generic_string(), tempdir.path().generic_string());
@@ -266,7 +265,7 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
 
       // create trace index slices
       for (uint i = 0; i < 9; ++i) {
-         bool found = sd.find_or_create_index_slice(i, append_file, slice);
+         bool found = sd.find_or_create_index_slice(i, open_state::write, slice);
          BOOST_REQUIRE(!found);
          fc::path fp = slice.get_file_path();
          BOOST_REQUIRE_EQUAL(fp.parent_path().generic_string(), tempdir.path().generic_string());
@@ -281,7 +280,7 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       }
 
       // reopen trace slice for append
-      bool found = sd.find_or_create_trace_slice(0, append_file, slice);
+      bool found = sd.find_or_create_trace_slice(0, open_state::write, slice);
       BOOST_REQUIRE(found);
       fc::path fp = slice.get_file_path();
       BOOST_REQUIRE_EQUAL(fp.parent_path().generic_string(), tempdir.path().generic_string());
@@ -300,7 +299,7 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       slice.close();
 
       // open same file for read
-      found = sd.find_or_create_trace_slice(0, read_file, slice);
+      found = sd.find_or_create_trace_slice(0, open_state::read, slice);
       BOOST_REQUIRE(found);
       fp = slice.get_file_path();
       BOOST_REQUIRE_EQUAL(fp.filename().generic_string(), expected_filename);
@@ -310,7 +309,7 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       slice.close();
 
       // open same file for append again
-      found = sd.find_or_create_trace_slice(0, append_file, slice);
+      found = sd.find_or_create_trace_slice(0, open_state::write, slice);
       BOOST_REQUIRE(found);
       fp = slice.get_file_path();
       BOOST_REQUIRE_EQUAL(fp.filename().generic_string(), expected_filename);
@@ -320,7 +319,7 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       slice.close();
 
       // reopen trace index slice for append
-      found = sd.find_or_create_index_slice(1, append_file, slice);
+      found = sd.find_or_create_index_slice(1, open_state::write, slice);
       BOOST_REQUIRE(found);
       fp = slice.get_file_path();
       BOOST_REQUIRE_EQUAL(fp.parent_path().generic_string(), tempdir.path().generic_string());
@@ -341,7 +340,7 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       uint64_t index_file_size = bfs::file_size(fp);
       slice.close();
 
-      found = sd.find_or_create_index_slice(1, read_file, slice);
+      found = sd.find_or_create_index_slice(1, open_state::read, slice);
       BOOST_REQUIRE(found);
       fp = slice.get_file_path();
       BOOST_REQUIRE_EQUAL(fp.filename().generic_string(), expected_filename);
@@ -350,7 +349,7 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       BOOST_REQUIRE_EQUAL(slice.tellp(), header_size);
       slice.close();
 
-      found = sd.find_or_create_index_slice(1, append_file, slice);
+      found = sd.find_or_create_index_slice(1, open_state::write, slice);
       BOOST_REQUIRE(found);
       fp = slice.get_file_path();
       BOOST_REQUIRE_EQUAL(fp.filename().generic_string(), expected_filename);
@@ -365,7 +364,7 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       BOOST_REQUIRE_EQUAL(bfs::file_size(fp), slice.tellp());
       slice.close();
 
-      found = sd.find_or_create_index_slice(1, read_file, slice);
+      found = sd.find_or_create_index_slice(1, open_state::read, slice);
       BOOST_REQUIRE(found);
       fp = slice.get_file_path();
       BOOST_REQUIRE_EQUAL(fp.filename().generic_string(), expected_filename);
@@ -418,27 +417,27 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       // verify it cleans up when there is just an index file, just a trace file, or when both are there
       // verify it cleans up all slices that need to be cleaned
       std::set<bfs::path> files;
-      BOOST_REQUIRE(!sd.find_or_create_index_slice(0, false, file));
+      BOOST_REQUIRE(!sd.find_or_create_index_slice(0, open_state::read, file));
       files.insert(file.get_file_path().filename());
       verify_directory_contents(tempdir.path(), files);
-      BOOST_REQUIRE(!sd.find_or_create_trace_slice(0, false, file));
+      BOOST_REQUIRE(!sd.find_or_create_trace_slice(0, open_state::read, file));
       files.insert(file.get_file_path().filename());
-      BOOST_REQUIRE(!sd.find_or_create_index_slice(1, false, file));
+      BOOST_REQUIRE(!sd.find_or_create_index_slice(1, open_state::read, file));
       files.insert(file.get_file_path().filename());
-      BOOST_REQUIRE(!sd.find_or_create_trace_slice(2, false, file));
+      BOOST_REQUIRE(!sd.find_or_create_trace_slice(2, open_state::read, file));
       files.insert(file.get_file_path().filename());
-      BOOST_REQUIRE(!sd.find_or_create_index_slice(3, false, file));
+      BOOST_REQUIRE(!sd.find_or_create_index_slice(3, open_state::read, file));
       files.insert(file.get_file_path().filename());
-      BOOST_REQUIRE(!sd.find_or_create_index_slice(4, false, file));
+      BOOST_REQUIRE(!sd.find_or_create_index_slice(4, open_state::read, file));
       const auto index4 = file.get_file_path().filename();
       files.insert(index4);
-      BOOST_REQUIRE(!sd.find_or_create_trace_slice(4, false, file));
+      BOOST_REQUIRE(!sd.find_or_create_trace_slice(4, open_state::read, file));
       const auto trace4 = file.get_file_path().filename();
       files.insert(trace4);
-      BOOST_REQUIRE(!sd.find_or_create_index_slice(5, false, file));
+      BOOST_REQUIRE(!sd.find_or_create_index_slice(5, open_state::read, file));
       const auto index5 = file.get_file_path().filename();
       files.insert(index5);
-      BOOST_REQUIRE(!sd.find_or_create_trace_slice(6, false, file));
+      BOOST_REQUIRE(!sd.find_or_create_trace_slice(6, open_state::read, file));
       const auto trace6 = file.get_file_path().filename();
       files.insert(trace6);
       verify_directory_contents(tempdir.path(), files);
