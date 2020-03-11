@@ -181,7 +181,7 @@ struct trace_api_rpc_plugin_impl : public std::enable_shared_from_this<trace_api
                     "Trace API is not configured with ABIs and trace-no-abis is not set");
       }
 
-      request_handler = std::make_shared<request_handler_t>(
+      req_handler = std::make_shared<request_handler_t>(
          shared_store_provider<store_provider>(common->store),
          abi_data_handler::shared_provider(data_handler)
       );
@@ -220,7 +220,7 @@ struct trace_api_rpc_plugin_impl : public std::enable_shared_from_this<trace_api
 
          try {
 
-            auto resp = that->request_handler->get_block_trace(*block_number);
+            auto resp = that->req_handler->get_block_trace(*block_number);
             if (resp.is_null()) {
                error_results results{404, "Block trace missing"};
                cb( 404, fc::variant( results ));
@@ -239,7 +239,7 @@ struct trace_api_rpc_plugin_impl : public std::enable_shared_from_this<trace_api
    std::shared_ptr<trace_api_common_impl> common;
 
    using request_handler_t = request_handler<shared_store_provider<store_provider>, abi_data_handler::shared_provider>;
-   std::shared_ptr<request_handler_t> request_handler;
+   std::shared_ptr<request_handler_t> req_handler;
 };
 
 struct trace_api_plugin_impl {
