@@ -4,10 +4,14 @@
 #include <eosio/trace_api/request_handler.hpp>
 #include <eosio/trace_api/chain_extraction.hpp>
 #include <eosio/trace_api/store_provider.hpp>
+
 #include <eosio/trace_api/configuration_utils.hpp>
+
+#include <boost/signals2/connection.hpp>
 
 using namespace eosio::trace_api;
 using namespace eosio::trace_api::configuration_utils;
+using boost::signals2::scoped_connection;
 
 namespace {
    appbase::abstract_plugin& plugin_reg = app().register_plugin<trace_api_plugin>();

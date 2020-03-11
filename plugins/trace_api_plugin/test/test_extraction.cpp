@@ -40,18 +40,6 @@ namespace {
       });
    }
 
-   chain::bytes make_transfer_data( chain::name from, chain::name to, chain::asset quantity, std::string&& memo ) {
-      fc::datastream<size_t> ps;
-      fc::raw::pack(ps, from, to, quantity, memo);
-      chain::bytes result(ps.tellp());
-
-      if( result.size() ) {
-         fc::datastream<char*>  ds( result.data(), size_t(result.size()) );
-         fc::raw::pack(ds, from, to, quantity, memo);
-      }
-      return result;
-   }
-
    chain::bytes make_onerror_data( const chain::onerror& one ) {
       fc::datastream<size_t> ps;
       fc::raw::pack(ps, one);
@@ -148,7 +136,7 @@ namespace {
       auto bsp = std::make_shared<chain::block_state>(
             std::move( pbhs ),
             std::move( block ),
-            std::vector<chain::transaction_metadata_ptr>(),
+            eosio::chain::deque<chain::transaction_metadata_ptr>(),
             chain::protocol_feature_set(),
             []( chain::block_timestamp_type timestamp,
                 const fc::flat_set<digest_type>& cur_features,
