@@ -43,7 +43,7 @@ std::ostream& operator<<(std::ostream& osm, eosio::chain::db_read_mode m) {
       osm << "speculative";
    } else if ( m == eosio::chain::db_read_mode::HEAD ) {
       osm << "head";
-   } else if ( m == eosio::chain::db_read_mode::READ_ONLY ) {
+   } else if ( m == eosio::chain::db_read_mode::READ_ONLY ) { // deprecated
       osm << "read-only";
    } else if ( m == eosio::chain::db_read_mode::IRREVERSIBLE ) {
       osm << "irreversible";
@@ -140,6 +140,9 @@ public:
    bfs::path                        blocks_dir;
    bool                             readonly = false;
    flat_map<uint32_t,block_id_type> loaded_checkpoints;
+   bool                             accept_transactions = false;
+   bool                             api_accept_transactions = true;
+
 
    fc::optional<fork_database>      fork_db;
    fc::optional<block_log>          block_logger;
@@ -235,11 +238,12 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "Deferred transactions sent by accounts in this list do not have any of the subjective whitelist/blacklist checks applied to them (may specify multiple times)")
          ("read-mode", boost::program_options::value<eosio::chain::db_read_mode>()->default_value(eosio::chain::db_read_mode::SPECULATIVE),
           "Database read mode (\"speculative\", \"head\", \"read-only\", \"irreversible\").\n"
-          "In \"speculative\" mode database contains changes done up to the head block plus changes made by transactions not yet included to the blockchain.\n"
-          "In \"head\" mode database contains changes done up to the current head block.\n"
-          "In \"read-only\" mode database contains changes done up to the current head block and transactions cannot be pushed to the chain API.\n"
-          "In \"irreversible\" mode database contains changes done up to the last irreversible block and transactions cannot be pushed to the chain API.\n"
+          "In \"speculative\" mode: database contains state changes by transactions in the blockchain up to the head block as well as some transactions not yet included in the blockchain.\n"
+          "In \"head\" mode: database contains state changes by only transactions in the blockchain up to the head block; transactions received by the node are relayed if valid.\n"
+          "In \"read-only\" mode: (DEPRECATED: see p2p-accept-transactions & api-accept-transactions) database contains state changes by only transactions in the blockchain up to the head block; transactions received via the P2P network are not relayed and transactions cannot be pushed via the chain API.\n"
+          "In \"irreversible\" mode: database contains state changes by only transactions in the blockchain up to the last irreversible block; transactions received via the P2P network are not relayed and transactions cannot be pushed via the chain API.\n"
           )
+         ( "api-accept-transactions", bpo::value<bool>()->default_value(true), "Allow API transactions to be evaluated and relayed if valid.")
          ("validation-mode", boost::program_options::value<eosio::chain::validation_mode>()->default_value(eosio::chain::validation_mode::FULL),
           "Chain validation mode (\"full\" or \"light\").\n"
           "In \"full\" mode all incoming blocks will be fully validated.\n"
@@ -996,6 +1000,21 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       if ( options.count("read-mode") ) {
          my->chain_config->read_mode = options.at("read-mode").as<db_read_mode>();
       }
+      my->api_accept_transactions = options.at( "api-accept-transactions" ).as<bool>();
+
+      if( my->chain_config->read_mode == db_read_mode::IRREVERSIBLE || my->chain_config->read_mode == db_read_mode::READ_ONLY ) {
+         if( my->chain_config->read_mode == db_read_mode::READ_ONLY ) {
+            wlog( "read-mode = read-only is deprecated use p2p-accept-transactions = false, api-accept-transactions = false instead." );
+         }
+         if( my->api_accept_transactions ) {
+            my->api_accept_transactions = false;
+            std::stringstream ss; ss << my->chain_config->read_mode;
+            wlog( "api-accept-transactions set to false due to read-mode: ${m}", ("m", ss.str()) );
+         }
+      }
+      if( my->api_accept_transactions ) {
+         enable_accept_transactions();
+      }
 
       if ( options.count("validation-mode") ) {
          my->chain_config->block_validation_mode = options.at("validation-mode").as<validation_mode>();
@@ -1082,6 +1101,8 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
 void chain_plugin::plugin_startup()
 { try {
+   EOS_ASSERT( my->chain_config->read_mode != db_read_mode::IRREVERSIBLE || !accept_transactions(), plugin_config_exception,
+               "read-mode = irreversible. transactions should not be enabled by enable_accept_transactions" );
    try {
       auto shutdown = [](){ return app().quit(); };
       auto check_shutdown = [](){ return app().is_quiting(); };
@@ -1129,14 +1150,16 @@ void chain_plugin::plugin_shutdown() {
    my->chain.reset();
 }
 
-chain_apis::read_write::read_write(controller& db, const fc::microseconds& abi_serializer_max_time)
+chain_apis::read_write::read_write(controller& db, const fc::microseconds& abi_serializer_max_time, bool api_accept_transactions)
 : db(db)
 , abi_serializer_max_time(abi_serializer_max_time)
+, api_accept_transactions(api_accept_transactions)
 {
 }
 
 void chain_apis::read_write::validate() const {
-   EOS_ASSERT( !db.in_immutable_mode(), missing_chain_api_plugin_exception, "Not allowed, node in read-only mode" );
+   EOS_ASSERT( api_accept_transactions, missing_chain_api_plugin_exception,
+               "Not allowed, node has api-accept-transactions = false" );
 }
 
 bool chain_plugin::accept_block(const signed_block_ptr& block, const block_id_type& id ) {
@@ -1371,6 +1394,19 @@ chain::chain_id_type chain_plugin::get_chain_id()const {
 fc::microseconds chain_plugin::get_abi_serializer_max_time() const {
    return my->abi_serializer_max_time_us;
 }
+
+bool chain_plugin::api_accept_transactions() const{
+   return my->api_accept_transactions;
+}
+
+bool chain_plugin::accept_transactions() const {
+   return my->accept_transactions;
+}
+
+void chain_plugin::enable_accept_transactions() {
+   my->accept_transactions = true;
+}
+
 
 void chain_plugin::log_guard_exception(const chain::guard_exception&e ) {
    if (e.code() == chain::database_guard_exception::code_value) {
@@ -2047,6 +2083,32 @@ fc::variant read_only::get_block(const read_only::get_block_params& params) cons
            ("ref_block_prefix", ref_block_prefix);
 }
 
+fc::variant read_only::get_block_info(const read_only::get_block_info_params& params) const {
+
+   signed_block_ptr block;
+   try {
+         block = db.fetch_block_by_number( params.block_num );
+   } catch (...)   {
+      // assert below will handle the invalid block num
+   }
+
+   EOS_ASSERT( block, unknown_block_exception, "Could not find block: ${block}", ("block", params.block_num));
+
+   return fc::mutable_variant_object ()
+         ("block_num", block->block_num())
+         ("ref_block_num", static_cast<uint16_t>(block->block_num()))
+         ("id", block->id())
+         ("timestamp", block->timestamp)
+         ("producer", block->producer)
+         ("confirmed", block->confirmed)
+         ("previous", block->previous)
+         ("transaction_mroot", block->transaction_mroot)
+         ("action_mroot", block->action_mroot)
+         ("schedule_version", block->schedule_version)
+         ("producer_signature", block->producer_signature)
+         ("ref_block_prefix", static_cast<uint32_t>(block->id()._hash[1]));
+}
+
 fc::variant read_only::get_block_header_state(const get_block_header_state_params& params) const {
    block_state_ptr b;
    optional<uint64_t> block_num;
@@ -2336,8 +2398,15 @@ read_only::get_account_results read_only::get_account( const get_account_params&
    result.created          = accnt_obj.creation_date;
 
    uint32_t greylist_limit = db.is_resource_greylisted(result.account_name) ? 1 : config::maximum_elastic_resource_multiplier;
-   result.net_limit = rm.get_account_net_limit_ex( result.account_name, greylist_limit).first;
-   result.cpu_limit = rm.get_account_cpu_limit_ex( result.account_name, greylist_limit).first;
+   const block_timestamp_type current_usage_time (db.head_block_time());
+   result.net_limit.set( rm.get_account_net_limit_ex( result.account_name, greylist_limit, current_usage_time).first );
+   if ( result.net_limit.last_usage_update_time.valid() && (result.net_limit.last_usage_update_time->slot == 0) ) {   // account has no action yet
+      result.net_limit.last_usage_update_time = accnt_obj.creation_date;
+   }
+   result.cpu_limit.set( rm.get_account_cpu_limit_ex( result.account_name, greylist_limit, current_usage_time).first );
+   if ( result.cpu_limit.last_usage_update_time.valid() && (result.cpu_limit.last_usage_update_time->slot == 0) ) {   // account has no action yet
+      result.cpu_limit.last_usage_update_time = accnt_obj.creation_date;
+   }
    result.ram_usage = rm.get_account_ram_usage( result.account_name );
 
    const auto& permissions = d.get_index<permission_index,by_owner>();

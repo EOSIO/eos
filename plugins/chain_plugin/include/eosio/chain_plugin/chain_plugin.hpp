@@ -136,7 +136,22 @@ public:
       name                       producer_name;
    };
 
-   using account_resource_limit = chain::resource_limits::account_resource_limit;
+   // account_resource_info holds similar data members as in account_resource_limit, but decoupling making them independently to be refactored in future
+   struct account_resource_info {
+      int64_t used = 0;
+      int64_t available = 0;
+      int64_t max = 0;
+      optional<chain::block_timestamp_type> last_usage_update_time;    // optional for backward nodeos support
+      optional<int64_t> current_used;  // optional for backward nodeos support
+      void set( const chain::resource_limits::account_resource_limit& arl)
+      {
+         used = arl.used;
+         available = arl.available;
+         max = arl.max;
+         last_usage_update_time = arl.last_usage_update_time;
+         current_used = arl.current_used;
+      }
+   };
 
    struct get_account_results {
       name                       account_name;
@@ -153,8 +168,8 @@ public:
       int64_t                    net_weight = 0;
       int64_t                    cpu_weight = 0;
 
-      account_resource_limit     net_limit;
-      account_resource_limit     cpu_limit;
+      account_resource_info      net_limit;
+      account_resource_info      cpu_limit;
       int64_t                    ram_usage = 0;
 
       vector<permission>         permissions;
@@ -279,6 +294,12 @@ public:
    };
 
    fc::variant get_block(const get_block_params& params) const;
+
+   struct get_block_info_params {
+      uint32_t block_num;
+   };
+
+   fc::variant get_block_info(const get_block_info_params& params) const;
 
    struct get_block_header_state_params {
       string block_num_or_id;
@@ -592,8 +613,9 @@ public:
 class read_write {
    controller& db;
    const fc::microseconds abi_serializer_max_time;
+   const bool api_accept_transactions;
 public:
-   read_write(controller& db, const fc::microseconds& abi_serializer_max_time);
+   read_write(controller& db, const fc::microseconds& abi_serializer_max_time, bool api_accept_transactions);
    void validate() const;
 
    using push_block_params = chain::signed_block;
@@ -704,7 +726,7 @@ public:
    void plugin_shutdown();
 
    chain_apis::read_only get_read_only_api() const { return chain_apis::read_only(chain(), get_abi_serializer_max_time()); }
-   chain_apis::read_write get_read_write_api() { return chain_apis::read_write(chain(), get_abi_serializer_max_time()); }
+   chain_apis::read_write get_read_write_api() { return chain_apis::read_write(chain(), get_abi_serializer_max_time(), api_accept_transactions()); }
 
    bool accept_block( const chain::signed_block_ptr& block, const chain::block_id_type& id );
    void accept_transaction(const chain::packed_transaction_ptr& trx, chain::plugin_interface::next_function<chain::transaction_trace_ptr> next);
@@ -733,6 +755,10 @@ public:
 
    chain::chain_id_type get_chain_id() const;
    fc::microseconds get_abi_serializer_max_time() const;
+   bool api_accept_transactions() const;
+   // set true by other plugins if any plugin allows transactions
+   bool accept_transactions() const;
+   void enable_accept_transactions();
 
    static void handle_guard_exception(const chain::guard_exception& e);
    void do_hard_replay(const variables_map& options);
@@ -757,6 +783,7 @@ FC_REFLECT(eosio::chain_apis::read_only::get_info_results,
 FC_REFLECT(eosio::chain_apis::read_only::get_activated_protocol_features_params, (lower_bound)(upper_bound)(limit)(search_by_block_num)(reverse) )
 FC_REFLECT(eosio::chain_apis::read_only::get_activated_protocol_features_results, (activated_protocol_features)(more) )
 FC_REFLECT(eosio::chain_apis::read_only::get_block_params, (block_num_or_id))
+FC_REFLECT(eosio::chain_apis::read_only::get_block_info_params, (block_num))
 FC_REFLECT(eosio::chain_apis::read_only::get_block_header_state_params, (block_num_or_id))
 
 FC_REFLECT( eosio::chain_apis::read_write::push_transaction_results, (transaction_id)(processed) )
@@ -781,6 +808,7 @@ FC_REFLECT( eosio::chain_apis::read_only::get_producer_schedule_result, (active)
 FC_REFLECT( eosio::chain_apis::read_only::get_scheduled_transactions_params, (json)(lower_bound)(limit) )
 FC_REFLECT( eosio::chain_apis::read_only::get_scheduled_transactions_result, (transactions)(more) );
 
+FC_REFLECT( eosio::chain_apis::read_only::account_resource_info, (used)(available)(max)(last_usage_update_time)(current_used) )
 FC_REFLECT( eosio::chain_apis::read_only::get_account_results,
             (account_name)(head_block_num)(head_block_time)(privileged)(last_code_update)(created)
             (core_liquid_balance)(ram_quota)(net_weight)(cpu_weight)(net_limit)(cpu_limit)(ram_usage)(permissions)

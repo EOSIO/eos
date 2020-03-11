@@ -323,24 +323,24 @@ chain::action generate_nonce_action() {
 
 //resolver for ABI serializer to decode actions in proposed transaction in multisig contract
 auto abi_serializer_resolver = [](const name& account) -> fc::optional<abi_serializer> {
-   static unordered_map<account_name, fc::optional<abi_serializer> > abi_cache;
-   auto it = abi_cache.find( account );
-   if ( it == abi_cache.end() ) {
-      auto result = call(get_abi_func, fc::mutable_variant_object("account_name", account));
-      auto abi_results = result.as<eosio::chain_apis::read_only::get_abi_results>();
+  static unordered_map<account_name, fc::optional<abi_serializer> > abi_cache;
+  auto it = abi_cache.find( account );
+  if ( it == abi_cache.end() ) {
+    const auto raw_abi_result = call(get_raw_abi_func, fc::mutable_variant_object("account_name", account));
+    const auto raw_abi_blob = raw_abi_result["abi"].as_blob().data;
 
-      fc::optional<abi_serializer> abis;
-      if( abi_results.abi.valid() ) {
-         abis.emplace( *abi_results.abi, abi_serializer_max_time );
-      } else {
-         std::cerr << "ABI for contract " << account.to_string() << " not found. Action data will be shown in hex only." << std::endl;
-      }
-      abi_cache.emplace( account, abis );
+    fc::optional<abi_serializer> abis;
+    if (raw_abi_blob.size() != 0) {
+      abis.emplace(fc::raw::unpack<abi_def>(raw_abi_blob), abi_serializer_max_time);
+    } else {
+      std::cerr << "ABI for contract " << account.to_string() << " not found. Action data will be shown in hex only." << std::endl;
+    }
+    abi_cache.emplace( account, abis );
 
-      return abis;
-   }
+    return abis;
+  }
 
-   return it->second;
+  return it->second;
 };
 
 void prompt_for_wallet_password(string& pw, const string& name) {
@@ -2305,9 +2305,13 @@ void get_account( const string& accountName, const string& coresym, bool json_fo
          return ss.str();
       };
 
-
       std::cout << std::fixed << setprecision(3);
-      std::cout << indent << std::left << std::setw(11) << "used:"      << std::right << std::setw(18) << to_pretty_net( res.net_limit.used ) << "\n";
+      std::cout << indent << std::left << std::setw(11) << "used:" << std::right << std::setw(18);
+      if( res.net_limit.current_used ) {
+         std::cout << to_pretty_net(*res.net_limit.current_used) << "\n";
+      } else {
+         std::cout << to_pretty_net(res.net_limit.used) << "    ( out of date )\n";
+      }
       std::cout << indent << std::left << std::setw(11) << "available:" << std::right << std::setw(18) << to_pretty_net( res.net_limit.available ) << "\n";
       std::cout << indent << std::left << std::setw(11) << "limit:"     << std::right << std::setw(18) << to_pretty_net( res.net_limit.max ) << "\n";
       std::cout << std::endl;
@@ -2334,9 +2338,13 @@ void get_account( const string& accountName, const string& coresym, bool json_fo
          }
       }
 
-
       std::cout << std::fixed << setprecision(3);
-      std::cout << indent << std::left << std::setw(11) << "used:"      << std::right << std::setw(18) << to_pretty_time( res.cpu_limit.used ) << "\n";
+      std::cout << indent << std::left << std::setw(11) << "used:" << std::right << std::setw(18);
+      if( res.cpu_limit.current_used ) {
+         std::cout << to_pretty_time(*res.cpu_limit.current_used) << "\n";
+      } else {
+         std::cout << to_pretty_time(res.cpu_limit.used) << "    ( out of date )\n";
+      }
       std::cout << indent << std::left << std::setw(11) << "available:" << std::right << std::setw(18) << to_pretty_time( res.cpu_limit.available ) << "\n";
       std::cout << indent << std::left << std::setw(11) << "limit:"     << std::right << std::setw(18) << to_pretty_time( res.cpu_limit.max ) << "\n";
       std::cout << std::endl;
@@ -2591,15 +2599,30 @@ int main( int argc, char** argv ) {
    // get block
    string blockArg;
    bool get_bhs = false;
+   bool get_binfo = false;
    auto getBlock = get->add_subcommand("block", localized("Retrieve a full block from the blockchain"), false);
    getBlock->add_option("block", blockArg, localized("The number or ID of the block to retrieve"))->required();
    getBlock->add_flag("--header-state", get_bhs, localized("Get block header state from fork database instead") );
-   getBlock->set_callback([&blockArg,&get_bhs] {
-      auto arg = fc::mutable_variant_object("block_num_or_id", blockArg);
-      if( get_bhs ) {
-         std::cout << fc::json::to_pretty_string(call(get_block_header_state_func, arg)) << std::endl;
+   getBlock->add_flag("--info", get_binfo, localized("Get block info from the blockchain by block num only") );
+   getBlock->set_callback([&blockArg, &get_bhs, &get_binfo] {
+      EOSC_ASSERT( !(get_bhs && get_binfo), "ERROR: Either --header-state or --info can be set" );
+      if (get_binfo) {
+         fc::optional<int64_t> block_num;
+         try {
+            block_num = fc::to_int64(blockArg);
+         } catch (...) {
+            // error is handled in assertion below
+         }
+         EOSC_ASSERT( block_num.valid() && (*block_num > 0), "Invalid block num: ${block_num}", ("block_num", blockArg) );
+         const auto arg = fc::variant_object("block_num", static_cast<uint32_t>(*block_num));
+         std::cout << fc::json::to_pretty_string(call(get_block_info_func, arg)) << std::endl;
       } else {
-         std::cout << fc::json::to_pretty_string(call(get_block_func, arg)) << std::endl;
+         const auto arg = fc::variant_object("block_num_or_id", blockArg);
+         if (get_bhs) {
+            std::cout << fc::json::to_pretty_string(call(get_block_header_state_func, arg)) << std::endl;
+         } else {
+            std::cout << fc::json::to_pretty_string(call(get_block_func, arg)) << std::endl;
+         }
       }
    });
 
@@ -2679,15 +2702,19 @@ int main( int argc, char** argv ) {
    getAbi->add_option("name", accountName, localized("The name of the account whose abi should be retrieved"))->required();
    getAbi->add_option("-f,--file",filename, localized("The name of the file to save the contract .abi to instead of writing to console") );
    getAbi->set_callback([&] {
-      auto result = call(get_abi_func, fc::mutable_variant_object("account_name", accountName));
-
-      auto abi  = fc::json::to_pretty_string( result["abi"] );
-      if( filename.size() ) {
-         std::cerr << localized("saving abi to ${filename}", ("filename", filename)) << std::endl;
-         std::ofstream abiout( filename.c_str() );
-         abiout << abi;
+      const auto raw_abi_result = call(get_raw_abi_func, fc::mutable_variant_object("account_name", accountName));
+      const auto raw_abi_blob = raw_abi_result["abi"].as_blob().data;
+      if (raw_abi_blob.size() != 0) {
+          const auto abi = fc::json::to_pretty_string(fc::raw::unpack<abi_def>(raw_abi_blob));
+          if (filename.size()) {
+              std::cerr << localized("saving abi to ${filename}", ("filename", filename)) << std::endl;
+              std::ofstream abiout(filename.c_str());
+              abiout << abi;
+          } else {
+              std::cout << abi << "\n";
+          }
       } else {
-         std::cout << abi << "\n";
+        FC_THROW_EXCEPTION(key_not_found_exception, "Key ${key}", ("key", "abi"));
       }
    });
 

@@ -124,9 +124,8 @@ To uninstall the EOSIO built/installed binaries and dependencies, run:
 1. [White Paper](https://github.com/EOSIO/Documentation/blob/master/TechnicalWhitePaper.md)
 1. [Roadmap](https://github.com/EOSIO/Documentation/blob/master/Roadmap.md)
 
-<a name="gettingstarted"></a>
 ## Getting Started
-Instructions detailing the process of getting the software, building it, running a simple test network that produces blocks, account creation and uploading a sample contract to the blockchain can be found in the [Getting Started](https://developers.eos.io/eosio-home/docs) walkthrough.
+Instructions detailing the process of getting the software, building it, running a simple test network that produces blocks, account creation and uploading a sample contract to the blockchain can be found in the [Getting Started](https://developers.eos.io/welcome/latest/getting-started) walkthrough.
 
 ## Contributing
 
