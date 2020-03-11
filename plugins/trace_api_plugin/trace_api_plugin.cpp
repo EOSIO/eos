@@ -100,6 +100,9 @@ struct trace_api_common_impl {
                   "the location of the trace directory (absolute path or relative to application data dir)");
       cfg_options("trace-slice-stride", bpo::value<uint32_t>()->default_value(10'000),
                   "the number of blocks each \"slice\" of trace data will contain on the filesystem");
+      cfg_options("trace-minimum-irreversible-history-blocks", boost::program_options::value<int32_t>()->default_value(-1),
+                  "Number of blocks to ensure are kept past LIB for retrieval before \"slice\" files can be automatically removed.\n"
+                  "A value of -1 indicates that automatic removal of \"slice\" files will be turned off.");
    }
 
    void plugin_initialize(const appbase::variables_map& options) {
@@ -111,12 +114,23 @@ struct trace_api_common_impl {
 
       slice_stride = options.at("trace-slice-stride").as<uint32_t>();
 
-      store = std::make_shared<store_provider>(trace_dir, slice_stride);
+      const char* trace_minimum_irreversible_history_blocks = "trace-minimum-irreversible-history-blocks";
+      const int32_t blocks = options.at(trace_minimum_irreversible_history_blocks).as<int32_t>();
+      EOS_ASSERT(blocks >= -1, chain::plugin_config_exception,
+                 "\"${blocks}\" must be greater to or equal to -1.",("blocks",trace_minimum_irreversible_history_blocks));
+      if (blocks > manual_slice_file_value) {
+         minimum_irreversible_history_blocks = blocks;
+      }
+
+      store = std::make_shared<store_provider>(trace_dir, slice_stride, minimum_irreversible_history_blocks);
    }
 
    // common configuration paramters
    boost::filesystem::path trace_dir;
    uint32_t slice_stride = 0;
+
+   optional<uint32_t> minimum_irreversible_history_blocks;
+   static constexpr uint32_t manual_slice_file_value = -1;
 
    std::shared_ptr<store_provider> store;
 };
