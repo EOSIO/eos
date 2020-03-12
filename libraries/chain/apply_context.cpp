@@ -96,6 +96,9 @@ void apply_context::exec_one()
             } catch( const wasm_exit& ) {}
          }
 
+         kv_ram->flush();
+         kv_disk->flush();
+
          if( !privileged && control.is_builtin_activated( builtin_protocol_feature_t::ram_restrictions ) ) {
             const size_t checktime_interval = 10;
             size_t counter = 0;

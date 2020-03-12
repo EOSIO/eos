@@ -627,6 +627,17 @@ namespace eosio { namespace testing {
         return ok;
       }
 
+      void check_validate() {
+         auto hbh = control->head_block_state()->header;
+         auto vn_hbh = validating_node->head_block_state()->header;
+         BOOST_TEST(control->head_block_id() == validating_node->head_block_id());
+         BOOST_TEST(hbh.previous == vn_hbh.previous);
+         BOOST_TEST(hbh.timestamp.slot == vn_hbh.timestamp.slot);
+         BOOST_TEST(hbh.transaction_mroot == vn_hbh.transaction_mroot);
+         BOOST_TEST(hbh.action_mroot == vn_hbh.action_mroot);
+         BOOST_TEST(hbh.producer == vn_hbh.producer);
+      }
+
       unique_ptr<controller>   validating_node;
       uint32_t                 num_blocks_to_producer_before_shutdown = 0;
       bool                     skip_validate = false;

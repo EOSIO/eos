@@ -173,14 +173,13 @@ namespace eosio { namespace chain {
             write_session{ database }, view{ write_session, make_prefix() }, receiver{ receiver },
             resource_manager{ resource_manager }, limits{ limits } {}
 
-      ~kv_context_rocksdb() override {
+      ~kv_context_rocksdb() override {}
+
+      void flush() override {
          try {
-            try {
-               write_session.write_changes(undo_stack);
-            }
-            FC_LOG_AND_RETHROW()
+            write_session.write_changes(undo_stack);
          }
-         CATCH_AND_EXIT_DB_FAILURE()
+         FC_LOG_AND_RETHROW()
       }
 
       std::vector<char> make_prefix() {

@@ -321,7 +321,9 @@ namespace eosio { namespace chain {
       FC_DECLARE_DERIVED_EXCEPTION( database_revision_mismatch_exception, database_exception,
                                     3060006, "Chainbase and chain-kv databases are at different revisions" )
       FC_DECLARE_DERIVED_EXCEPTION( database_move_kv_disk_exception, database_exception,
-                                    3060006, "Chainbase already contains eosio.kvdisk entries; use resync, replay, or snapshot to move these to rocksdb" )
+                                    3060007, "Chainbase already contains eosio.kvdisk entries; use resync, replay, or snapshot to move these to rocksdb" )
+      FC_DECLARE_DERIVED_EXCEPTION( database_chain_kv_dirty_exception, database_exception,
+                                    3060008, "chain-kv is not in a consistent state" )
 
    FC_DECLARE_DERIVED_EXCEPTION( guard_exception, database_exception,
                                  3060100, "Guard Exception" )

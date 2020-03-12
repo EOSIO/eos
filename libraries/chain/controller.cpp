@@ -278,11 +278,14 @@ struct controller_impl {
    }
 
    void commit(int64_t revision) {
+      // Chainbase cannot throw from commit.  If rocksdb throws it will only result
+      // in the database holding extra data.  This extra data will be cleaned up
+      // on the next successful commit.
       try {
          db.commit(revision);
          kv_undo_stack.commit(revision);
       }
-      FC_LOG_AND_RETHROW()
+      FC_LOG_AND_DROP()
    }
 
    void pop_block() {
@@ -577,18 +580,19 @@ struct controller_impl {
    // that we know how to fix.  Specifically undos that were applied only to
    // chainbase will be applied to rocksdb as well.
    void sync_rocksdb() {
-      const kv_db_config_object& cfg = db.get<kv_db_config_object>();
-      EOS_ASSERT( cfg.rocksdb_okay, "chain-kv did not exit cleanly." );
-      if(cfg.rocksdb_revision != -1) {
-         EOS_ASSERT( cfg.rocksdb_revision == kv_undo_stack.revision(), database_revision_mismatch_exception,
-                     "chain-kv is at revision ${b}, but chainbase expects it to be at revision ${a}", ("a", cfg.rocksdb_revision)("b", kv_undo_stack.revision()) );
+      const kv_db_config_object* cfg = db.find<kv_db_config_object>();
+      if(!cfg) return;
+      EOS_ASSERT( cfg->rocksdb_okay, database_chain_kv_dirty_exception, "chain-kv did not exit cleanly." );
+      if(cfg->rocksdb_revision != -1) {
+         EOS_ASSERT( cfg->rocksdb_revision == kv_undo_stack.revision(), database_revision_mismatch_exception,
+                     "chain-kv is at revision ${b}, but chainbase expects it to be at revision ${a}", ("a", cfg->rocksdb_revision)("b", kv_undo_stack.revision()) );
          try {
             kv_undo_stack.undo_to( db.revision() );
          } catch(...) {
-            db.modify( cfg, [](auto& obj) { obj.rocksdb_revision = kv_undo_stack->revision(); } );
+            db.modify( *cfg, [revision=kv_undo_stack.revision()](auto& obj) { obj.rocksdb_revision = revision; } );
             throw;
          }
-         db.modify( cfg, [](auto& obj) { obj.rocksdb_revision = -1; } );
+         db.modify( *cfg, [](auto& obj) { obj.rocksdb_revision = -1; } );
       } else {
          EOS_ASSERT( db.revision() == kv_undo_stack.revision(), database_revision_mismatch_exception, 
                      "chainbase is at revision ${a}, but chain-kv is at revision ${b}", ("a", db.revision())("b", kv_undo_stack.revision()) );
@@ -840,7 +844,7 @@ struct controller_impl {
       } catch(...) {
          // If we failed to sync rocks, record the failure in chainbase, so
          // that we know that the state is bad on the next start up.
-         db.modify(db.get<kv_config_object>(), [](auto& cfg){ cfg.rocksdb_okay = false; });
+         db.modify(db.get<kv_db_config_object>(), [](auto& cfg){ cfg.rocksdb_okay = false; });
       }
       thread_pool.stop();
       pending.reset();
@@ -2606,6 +2610,10 @@ controller::~controller() {
    //for that we need 'my' to be valid pointer pointing to valid controller_impl.
    my->fork_db.close();
    */
+}
+
+int& controller::get_rocksdb_fail_counter() {
+   return my->kv_database.fail_counter;
 }
 
 void controller::add_indices() {

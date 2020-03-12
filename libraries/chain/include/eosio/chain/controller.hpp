@@ -122,6 +122,8 @@ namespace eosio { namespace chain {
          controller( const config& cfg, protocol_feature_set&& pfs, const chain_id_type& chain_id );
          ~controller();
 
+         int& get_rocksdb_fail_counter();
+
          void add_indices();
          void startup( std::function<void()> shutdown, std::function<bool()> check_shutdown, const snapshot_reader_ptr& snapshot);
          void startup( std::function<void()> shutdown, std::function<bool()> check_shutdown, const genesis_state& genesis);
