@@ -1112,7 +1112,7 @@ producer_plugin::integrity_hash_information producer_plugin::get_integrity_hash(
 }
 
 void producer_plugin::create_snapshot(producer_plugin::next_function<producer_plugin::snapshot_information> next) {
-   // #warning TODO: Re-enable snapshot generation.
+   #warning TODO: Re-enable snapshot generation.
    auto ex = producer_exception( FC_LOG_MESSAGE( error, "snapshot generation temporarily disabled") );
    next(ex.dynamic_copy_exception());
    return;
