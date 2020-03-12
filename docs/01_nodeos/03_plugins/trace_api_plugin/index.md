@@ -85,7 +85,7 @@ Therefore, one crucial goal of the `trace_api_plugin` is to have better maintena
 
 ## Examples
 
-Below it is a `nodeos` configuration example for the `trace_api_plugin` when tracing some reference contracts:
+Below it is a `nodeos` configuration example for the `trace_api_plugin` when tracing some EOSIO reference contracts:
 
 ```sh
 nodeos --data-dir data_dir --config-dir config_dir --trace-dir traces_dir
