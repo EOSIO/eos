@@ -16,12 +16,12 @@ target_link_libraries( eosio_tester_module
    PRIVATE WAST
    PRIVATE WASM
    PRIVATE Runtime
-   PRIVATE eosio_version )
+   PRIVATE eosio_version
+   PRIVATE eosio_libmodule)
 
 target_include_directories( eosio_tester_module
    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include"
            "${CMAKE_CURRENT_BINARY_DIR}/include"
-           "${CMAKE_CURRENT_SOURCE_DIR}/../wasm-jit/Include"
            )
 
 install( TARGETS eosio_tester_module
