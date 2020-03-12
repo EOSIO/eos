@@ -2372,36 +2372,34 @@ BOOST_FIXTURE_TEST_CASE(action_ordinal_test, TESTER) { try {
    set_code( N(erin), contracts::test_api_wasm() );
    produce_blocks(1);
 
-   // generate test hash
-   auto gth = [&](auto ac) {
-      action testact;
-      testact.account = ac.account;
-      testact.name    = ac.name;
-      testact.authorization = ac.authorization;
-      std::vector<char> buff(fc::raw::pack_size(testact));
-      datastream<char*> ds(buff.data(), buff.size());
-      fc::raw::pack(ds, testact);
-      sha256::encoder enc;
-      enc.write(buff.data(), fc::raw::pack_size(*(action_base*)(&testact)));
-      auto ret = enc.result();
-      return ret;
-   };
-
    // prove act digest
-   auto pad = [&](const auto& action_hash, const auto& test_hash, auto payload, auto value) {
-      std::vector<char> buff(1 + fc::raw::pack_size(value));
-      datastream<char*> ds(buff.data(), buff.size());
-      fc::raw::pack(ds, std::vector<char>{});
-      fc::raw::pack(ds, value);
-      sha256 hashes[2];
-      hashes[0] = test_hash;
-      sha256::encoder enc;
-      enc.write(buff.data(), ds.tellp());
-      hashes[1] = enc.result();
-      enc.reset();
-      enc.write((char*)&hashes[0], sizeof(hashes));
-      auto ret = enc.result();
-      return action_hash == ret;
+   auto pad = [](const digest_type& expected_act_digest, const action& act, const vector<char>& act_output)
+   {
+      std::vector<char> buf1;
+      buf1.resize(64);
+      datastream<char*> ds(buf1.data(), buf1.size());
+
+      {
+         std::vector<char> buf2;
+         const action_base* act_base = &act;
+         buf2.resize(fc::raw::pack_size(*act_base));
+         datastream<char*> ds2(buf2.data(), buf2.size());
+         fc::raw::pack(ds2, *act_base);
+         fc::raw::pack(ds, sha256::hash(buf2.data(), buf2.size()));
+      }
+
+      {
+         std::vector<char> buf2;
+         buf2.resize(fc::raw::pack_size(act.data) + fc::raw::pack_size(act_output));
+         datastream<char*> ds2(buf2.data(), buf2.size());
+         fc::raw::pack(ds2, act.data);
+         fc::raw::pack(ds2, act_output);
+         fc::raw::pack(ds, sha256::hash(buf2.data(), buf2.size()));
+      }
+
+      digest_type computed_act_digest = sha256::hash(buf1.data(), ds.tellp());
+
+      return expected_act_digest == computed_act_digest;
    };
 
    transaction_trace_ptr txn_trace = CALL_TEST_FUNCTION_SCOPE( *this, "test_action", "test_action_ordinal1",
@@ -2420,9 +2418,8 @@ BOOST_FIXTURE_TEST_CASE(action_ordinal_test, TESTER) { try {
    BOOST_REQUIRE_EQUAL(atrace[0].act.account, N(testapi));
    BOOST_REQUIRE_EQUAL(atrace[0].act.name, TEST_METHOD("test_action", "test_action_ordinal1"));
    BOOST_REQUIRE_EQUAL(atrace[0].receipt.valid(), true);
-   BOOST_REQUIRE_EQUAL(atrace[0].return_value.valid(), true);
-   BOOST_REQUIRE_EQUAL(fc::raw::unpack<unsigned_int>(*atrace[0].return_value), unsigned_int(1) );
-   BOOST_REQUIRE(pad(atrace[0].receipt->act_digest, gth(atrace[0].act), atrace[0].act.data, atrace[0].return_value));
+   BOOST_REQUIRE_EQUAL(fc::raw::unpack<unsigned_int>(atrace[0].return_value), unsigned_int(1) );
+   BOOST_REQUIRE(pad(atrace[0].receipt->act_digest, atrace[0].act, atrace[0].return_value));
    int start_gseq = atrace[0].receipt->global_sequence;
 
    BOOST_REQUIRE_EQUAL((int)atrace[1].action_ordinal,2);
@@ -2432,9 +2429,8 @@ BOOST_FIXTURE_TEST_CASE(action_ordinal_test, TESTER) { try {
    BOOST_REQUIRE_EQUAL(atrace[1].act.account, N(testapi));
    BOOST_REQUIRE_EQUAL(atrace[1].act.name, TEST_METHOD("test_action", "test_action_ordinal1"));
    BOOST_REQUIRE_EQUAL(atrace[1].receipt.valid(), true);
-   BOOST_REQUIRE_EQUAL(atrace[1].return_value.valid(), true);
-   BOOST_REQUIRE_EQUAL(fc::raw::unpack<std::string>(*atrace[1].return_value), "bob" );
-   BOOST_REQUIRE(pad(atrace[1].receipt->act_digest, gth(atrace[1].act), atrace[1].act.data, atrace[1].return_value));
+   BOOST_REQUIRE_EQUAL(fc::raw::unpack<std::string>(atrace[1].return_value), "bob" );
+   BOOST_REQUIRE(pad(atrace[1].receipt->act_digest, atrace[1].act, atrace[1].return_value));
    BOOST_REQUIRE_EQUAL(atrace[1].receipt->global_sequence, start_gseq + 1);
 
    BOOST_REQUIRE_EQUAL((int)atrace[2].action_ordinal, 3);
@@ -2444,9 +2440,8 @@ BOOST_FIXTURE_TEST_CASE(action_ordinal_test, TESTER) { try {
    BOOST_REQUIRE_EQUAL(atrace[2].act.account, N(testapi));
    BOOST_REQUIRE_EQUAL(atrace[2].act.name, TEST_METHOD("test_action", "test_action_ordinal2"));
    BOOST_REQUIRE_EQUAL(atrace[2].receipt.valid(), true);
-   BOOST_REQUIRE_EQUAL(atrace[2].return_value.valid(), true);
-   BOOST_REQUIRE_EQUAL(fc::raw::unpack<name>(*atrace[2].return_value), name("five") );
-   BOOST_REQUIRE(pad(atrace[2].receipt->act_digest, gth(atrace[2].act), atrace[2].act.data, atrace[2].return_value));
+   BOOST_REQUIRE_EQUAL(fc::raw::unpack<name>(atrace[2].return_value), name("five") );
+   BOOST_REQUIRE(pad(atrace[2].receipt->act_digest, atrace[2].act, atrace[2].return_value));
    BOOST_REQUIRE_EQUAL(atrace[2].receipt->global_sequence, start_gseq + 4);
 
    BOOST_REQUIRE_EQUAL((int)atrace[3].action_ordinal, 4);
@@ -2456,9 +2451,8 @@ BOOST_FIXTURE_TEST_CASE(action_ordinal_test, TESTER) { try {
    BOOST_REQUIRE_EQUAL(atrace[3].act.account, N(testapi));
    BOOST_REQUIRE_EQUAL(atrace[3].act.name, TEST_METHOD("test_action", "test_action_ordinal3"));
    BOOST_REQUIRE_EQUAL(atrace[3].receipt.valid(), true);
-   BOOST_REQUIRE_EQUAL(atrace[3].return_value.valid(), true);
-   BOOST_REQUIRE_EQUAL(fc::raw::unpack<unsigned_int>(*atrace[3].return_value), unsigned_int(9) );
-   BOOST_REQUIRE(pad(atrace[3].receipt->act_digest, gth(atrace[3].act), atrace[3].act.data, atrace[3].return_value));
+   BOOST_REQUIRE_EQUAL(fc::raw::unpack<unsigned_int>(atrace[3].return_value), unsigned_int(9) );
+   BOOST_REQUIRE(pad(atrace[3].receipt->act_digest, atrace[3].act, atrace[3].return_value));
    BOOST_REQUIRE_EQUAL(atrace[3].receipt->global_sequence, start_gseq + 8);
 
    BOOST_REQUIRE_EQUAL((int)atrace[4].action_ordinal, 5);
@@ -2468,9 +2462,8 @@ BOOST_FIXTURE_TEST_CASE(action_ordinal_test, TESTER) { try {
    BOOST_REQUIRE_EQUAL(atrace[4].act.account, N(testapi));
    BOOST_REQUIRE_EQUAL(atrace[4].act.name, TEST_METHOD("test_action", "test_action_ordinal1"));
    BOOST_REQUIRE_EQUAL(atrace[4].receipt.valid(), true);
-   BOOST_REQUIRE_EQUAL(atrace[4].return_value.valid(), true);
-   BOOST_REQUIRE_EQUAL(fc::raw::unpack<std::string>(*atrace[4].return_value), "charlie" );
-   BOOST_REQUIRE(pad(atrace[4].receipt->act_digest, gth(atrace[4].act), atrace[4].act.data, atrace[4].return_value));
+   BOOST_REQUIRE_EQUAL(fc::raw::unpack<std::string>(atrace[4].return_value), "charlie" );
+   BOOST_REQUIRE(pad(atrace[4].receipt->act_digest, atrace[4].act, atrace[4].return_value));
    BOOST_REQUIRE_EQUAL(atrace[4].receipt->global_sequence, start_gseq + 2);
 
    BOOST_REQUIRE_EQUAL((int)atrace[5].action_ordinal, 6);
@@ -2480,9 +2473,8 @@ BOOST_FIXTURE_TEST_CASE(action_ordinal_test, TESTER) { try {
    BOOST_REQUIRE_EQUAL(atrace[5].act.account, N(bob));
    BOOST_REQUIRE_EQUAL(atrace[5].act.name, TEST_METHOD("test_action", "test_action_ordinal_foo"));
    BOOST_REQUIRE_EQUAL(atrace[5].receipt.valid(), true);
-   BOOST_REQUIRE_EQUAL(atrace[5].return_value.valid(), true);
-   BOOST_REQUIRE_EQUAL(fc::raw::unpack<double>(*atrace[5].return_value), 13.23 );
-   BOOST_REQUIRE(pad(atrace[5].receipt->act_digest, gth(atrace[5].act), atrace[5].act.data, atrace[5].return_value));
+   BOOST_REQUIRE_EQUAL(fc::raw::unpack<double>(atrace[5].return_value), 13.23 );
+   BOOST_REQUIRE(pad(atrace[5].receipt->act_digest, atrace[5].act, atrace[5].return_value));
    BOOST_REQUIRE_EQUAL(atrace[5].receipt->global_sequence, start_gseq + 9);
 
    BOOST_REQUIRE_EQUAL((int)atrace[6].action_ordinal, 7);
@@ -2492,9 +2484,8 @@ BOOST_FIXTURE_TEST_CASE(action_ordinal_test, TESTER) { try {
    BOOST_REQUIRE_EQUAL(atrace[6].act.account, N(testapi));
    BOOST_REQUIRE_EQUAL(atrace[6].act.name, TEST_METHOD("test_action", "test_action_ordinal1"));
    BOOST_REQUIRE_EQUAL(atrace[6].receipt.valid(), true);
-   BOOST_REQUIRE_EQUAL(atrace[6].return_value.valid(), true);
-   BOOST_REQUIRE_EQUAL(fc::raw::unpack<std::string>(*atrace[6].return_value), "david" );
-   BOOST_REQUIRE(pad(atrace[6].receipt->act_digest, gth(atrace[6].act), atrace[6].act.data, atrace[6].return_value));
+   BOOST_REQUIRE_EQUAL(fc::raw::unpack<std::string>(atrace[6].return_value), "david" );
+   BOOST_REQUIRE(pad(atrace[6].receipt->act_digest, atrace[6].act, atrace[6].return_value));
    BOOST_REQUIRE_EQUAL(atrace[6].receipt->global_sequence, start_gseq + 3);
 
    BOOST_REQUIRE_EQUAL((int)atrace[7].action_ordinal, 8);
@@ -2504,9 +2495,8 @@ BOOST_FIXTURE_TEST_CASE(action_ordinal_test, TESTER) { try {
    BOOST_REQUIRE_EQUAL(atrace[7].act.account, N(charlie));
    BOOST_REQUIRE_EQUAL(atrace[7].act.name, TEST_METHOD("test_action", "test_action_ordinal_bar"));
    BOOST_REQUIRE_EQUAL(atrace[7].receipt.valid(), true);
-   BOOST_REQUIRE_EQUAL(atrace[7].return_value.valid(), true);
-   BOOST_REQUIRE_EQUAL(fc::raw::unpack<float>(*atrace[7].return_value), 11.42f );
-   BOOST_REQUIRE(pad(atrace[7].receipt->act_digest, gth(atrace[7].act), atrace[7].act.data, atrace[7].return_value));
+   BOOST_REQUIRE_EQUAL(fc::raw::unpack<float>(atrace[7].return_value), 11.42f );
+   BOOST_REQUIRE(pad(atrace[7].receipt->act_digest, atrace[7].act, atrace[7].return_value));
    BOOST_REQUIRE_EQUAL(atrace[7].receipt->global_sequence, start_gseq + 10);
 
    BOOST_REQUIRE_EQUAL((int)atrace[8].action_ordinal, 9);
@@ -2516,9 +2506,8 @@ BOOST_FIXTURE_TEST_CASE(action_ordinal_test, TESTER) { try {
    BOOST_REQUIRE_EQUAL(atrace[8].act.account, N(testapi));
    BOOST_REQUIRE_EQUAL(atrace[8].act.name, TEST_METHOD("test_action", "test_action_ordinal2"));
    BOOST_REQUIRE_EQUAL(atrace[8].receipt.valid(), true);
-   BOOST_REQUIRE_EQUAL(atrace[8].return_value.valid(), true);
-   BOOST_REQUIRE_EQUAL(fc::raw::unpack<bool>(*atrace[8].return_value), true );
-   BOOST_REQUIRE(pad(atrace[8].receipt->act_digest, gth(atrace[8].act), atrace[8].act.data, atrace[8].return_value));
+   BOOST_REQUIRE_EQUAL(fc::raw::unpack<bool>(atrace[8].return_value), true );
+   BOOST_REQUIRE(pad(atrace[8].receipt->act_digest, atrace[8].act, atrace[8].return_value));
    BOOST_REQUIRE_EQUAL(atrace[8].receipt->global_sequence, start_gseq + 5);
 
    BOOST_REQUIRE_EQUAL((int)atrace[9].action_ordinal, 10);
@@ -2528,9 +2517,8 @@ BOOST_FIXTURE_TEST_CASE(action_ordinal_test, TESTER) { try {
    BOOST_REQUIRE_EQUAL(atrace[9].act.account, N(testapi));
    BOOST_REQUIRE_EQUAL(atrace[9].act.name, TEST_METHOD("test_action", "test_action_ordinal2"));
    BOOST_REQUIRE_EQUAL(atrace[9].receipt.valid(), true);
-   BOOST_REQUIRE_EQUAL(atrace[9].return_value.valid(), true);
-   BOOST_REQUIRE_EQUAL(fc::raw::unpack<signed_int>(*atrace[9].return_value), signed_int(7) );
-   BOOST_REQUIRE(pad(atrace[9].receipt->act_digest, gth(atrace[9].act), atrace[9].act.data, atrace[9].return_value));
+   BOOST_REQUIRE_EQUAL(fc::raw::unpack<signed_int>(atrace[9].return_value), signed_int(7) );
+   BOOST_REQUIRE(pad(atrace[9].receipt->act_digest, atrace[9].act, atrace[9].return_value));
    BOOST_REQUIRE_EQUAL(atrace[9].receipt->global_sequence, start_gseq + 6);
 
    BOOST_REQUIRE_EQUAL((int)atrace[10].action_ordinal, 11);
@@ -2540,8 +2528,7 @@ BOOST_FIXTURE_TEST_CASE(action_ordinal_test, TESTER) { try {
    BOOST_REQUIRE_EQUAL(atrace[10].act.account, N(testapi));
    BOOST_REQUIRE_EQUAL(atrace[10].act.name, TEST_METHOD("test_action", "test_action_ordinal4"));
    BOOST_REQUIRE_EQUAL(atrace[10].receipt.valid(), true);
-   BOOST_REQUIRE_EQUAL(atrace[10].return_value.valid(), true); // return value not set is still a return value, it is just empty
-   BOOST_REQUIRE_EQUAL(atrace[10].return_value->size(), 0 );   // state_history_plugin keys off presence of return_value for version of receipt
+   BOOST_REQUIRE_EQUAL(atrace[10].return_value.size(), 0 );   // state_history_plugin keys off presence of return_value for version of receipt
    BOOST_REQUIRE_EQUAL(atrace[10].receipt->global_sequence, start_gseq + 7);
 } FC_LOG_AND_RETHROW() }
 
@@ -2657,8 +2644,7 @@ BOOST_FIXTURE_TEST_CASE(action_ordinal_failtest2, TESTER) { try {
    BOOST_REQUIRE_EQUAL(atrace[0].act.account, N(testapi));
    BOOST_REQUIRE_EQUAL(atrace[0].act.name, TEST_METHOD("test_action", "test_action_ordinal1"));
    BOOST_REQUIRE_EQUAL(atrace[0].receipt.valid(), true);
-   BOOST_REQUIRE_EQUAL(atrace[0].return_value.valid(), true);
-   BOOST_REQUIRE_EQUAL(fc::raw::unpack<unsigned_int>(*atrace[0].return_value), unsigned_int(1) );
+   BOOST_REQUIRE_EQUAL(fc::raw::unpack<unsigned_int>(atrace[0].return_value), unsigned_int(1) );
    BOOST_REQUIRE_EQUAL(atrace[0].except.valid(), false);
    int start_gseq = atrace[0].receipt->global_sequence;
 
@@ -2670,8 +2656,7 @@ BOOST_FIXTURE_TEST_CASE(action_ordinal_failtest2, TESTER) { try {
    BOOST_REQUIRE_EQUAL(atrace[1].act.account, N(testapi));
    BOOST_REQUIRE_EQUAL(atrace[1].act.name, TEST_METHOD("test_action", "test_action_ordinal1"));
    BOOST_REQUIRE_EQUAL(atrace[1].receipt.valid(), true);
-   BOOST_REQUIRE_EQUAL(atrace[1].return_value.valid(), true);
-   BOOST_REQUIRE_EQUAL(fc::raw::unpack<std::string>(*atrace[1].return_value), "bob" );
+   BOOST_REQUIRE_EQUAL(fc::raw::unpack<std::string>(atrace[1].return_value), "bob" );
    BOOST_REQUIRE_EQUAL(atrace[1].receipt->global_sequence, start_gseq + 1);
 
    // not executed
@@ -2780,8 +2765,7 @@ BOOST_FIXTURE_TEST_CASE(action_ordinal_failtest3, TESTER) { try {
    BOOST_REQUIRE_EQUAL(atrace[0].act.account, N(testapi));
    BOOST_REQUIRE_EQUAL(atrace[0].act.name, TEST_METHOD("test_action", "test_action_ordinal1"));
    BOOST_REQUIRE_EQUAL(atrace[0].receipt.valid(), true);
-   BOOST_REQUIRE_EQUAL(atrace[0].return_value.valid(), true);
-   BOOST_REQUIRE_EQUAL(fc::raw::unpack<unsigned_int>(*atrace[0].return_value), unsigned_int(1) );
+   BOOST_REQUIRE_EQUAL(fc::raw::unpack<unsigned_int>(atrace[0].return_value), unsigned_int(1) );
    BOOST_REQUIRE_EQUAL(atrace[0].except.valid(), false);
    int start_gseq = atrace[0].receipt->global_sequence;
 
@@ -2793,8 +2777,7 @@ BOOST_FIXTURE_TEST_CASE(action_ordinal_failtest3, TESTER) { try {
    BOOST_REQUIRE_EQUAL(atrace[1].act.account, N(testapi));
    BOOST_REQUIRE_EQUAL(atrace[1].act.name, TEST_METHOD("test_action", "test_action_ordinal1"));
    BOOST_REQUIRE_EQUAL(atrace[1].receipt.valid(), true);
-   BOOST_REQUIRE_EQUAL(atrace[1].return_value.valid(), true);
-   BOOST_REQUIRE_EQUAL(fc::raw::unpack<std::string>(*atrace[1].return_value), "bob" );
+   BOOST_REQUIRE_EQUAL(fc::raw::unpack<std::string>(atrace[1].return_value), "bob" );
    BOOST_REQUIRE_EQUAL(atrace[1].receipt->global_sequence, start_gseq + 1);
 
    // executed
@@ -2805,8 +2788,7 @@ BOOST_FIXTURE_TEST_CASE(action_ordinal_failtest3, TESTER) { try {
    BOOST_REQUIRE_EQUAL(atrace[2].act.account, N(testapi));
    BOOST_REQUIRE_EQUAL(atrace[2].act.name, TEST_METHOD("test_action", "test_action_ordinal2"));
    BOOST_REQUIRE_EQUAL(atrace[2].receipt.valid(), true);
-   BOOST_REQUIRE_EQUAL(atrace[2].return_value.valid(), true);
-   BOOST_REQUIRE_EQUAL(fc::raw::unpack<name>(*atrace[2].return_value), name("five") );
+   BOOST_REQUIRE_EQUAL(fc::raw::unpack<name>(atrace[2].return_value), name("five") );
    BOOST_REQUIRE_EQUAL(atrace[2].receipt->global_sequence, start_gseq + 4);
 
    // fails here
@@ -2828,8 +2810,7 @@ BOOST_FIXTURE_TEST_CASE(action_ordinal_failtest3, TESTER) { try {
    BOOST_REQUIRE_EQUAL(atrace[4].act.account, N(testapi));
    BOOST_REQUIRE_EQUAL(atrace[4].act.name, TEST_METHOD("test_action", "test_action_ordinal1"));
    BOOST_REQUIRE_EQUAL(atrace[4].receipt.valid(), true);
-   BOOST_REQUIRE_EQUAL(atrace[4].return_value.valid(), true);
-   BOOST_REQUIRE_EQUAL(fc::raw::unpack<std::string>(*atrace[4].return_value), "charlie" );
+   BOOST_REQUIRE_EQUAL(fc::raw::unpack<std::string>(atrace[4].return_value), "charlie" );
    BOOST_REQUIRE_EQUAL(atrace[4].receipt->global_sequence, start_gseq + 2);
 
    // not executed
@@ -2850,8 +2831,7 @@ BOOST_FIXTURE_TEST_CASE(action_ordinal_failtest3, TESTER) { try {
    BOOST_REQUIRE_EQUAL(atrace[6].act.account, N(testapi));
    BOOST_REQUIRE_EQUAL(atrace[6].act.name, TEST_METHOD("test_action", "test_action_ordinal1"));
    BOOST_REQUIRE_EQUAL(atrace[6].receipt.valid(), true);
-   BOOST_REQUIRE_EQUAL(atrace[6].return_value.valid(), true);
-   BOOST_REQUIRE_EQUAL(fc::raw::unpack<std::string>(*atrace[6].return_value), "david" );
+   BOOST_REQUIRE_EQUAL(fc::raw::unpack<std::string>(atrace[6].return_value), "david" );
    BOOST_REQUIRE_EQUAL(atrace[6].receipt->global_sequence, start_gseq + 3);
 
    // not executed
@@ -2872,8 +2852,7 @@ BOOST_FIXTURE_TEST_CASE(action_ordinal_failtest3, TESTER) { try {
    BOOST_REQUIRE_EQUAL(atrace[8].act.account, N(testapi));
    BOOST_REQUIRE_EQUAL(atrace[8].act.name, TEST_METHOD("test_action", "test_action_ordinal2"));
    BOOST_REQUIRE_EQUAL(atrace[8].receipt.valid(), true);
-   BOOST_REQUIRE_EQUAL(atrace[8].return_value.valid(), true);
-   BOOST_REQUIRE_EQUAL(fc::raw::unpack<bool>(*atrace[8].return_value), true );
+   BOOST_REQUIRE_EQUAL(fc::raw::unpack<bool>(atrace[8].return_value), true );
    BOOST_REQUIRE_EQUAL(atrace[8].receipt->global_sequence, start_gseq + 5);
 
    // executed
@@ -2884,8 +2863,7 @@ BOOST_FIXTURE_TEST_CASE(action_ordinal_failtest3, TESTER) { try {
    BOOST_REQUIRE_EQUAL(atrace[9].act.account, N(testapi));
    BOOST_REQUIRE_EQUAL(atrace[9].act.name, TEST_METHOD("test_action", "test_action_ordinal2"));
    BOOST_REQUIRE_EQUAL(atrace[9].receipt.valid(), true);
-   BOOST_REQUIRE_EQUAL(atrace[9].return_value.valid(), true);
-   BOOST_REQUIRE_EQUAL(fc::raw::unpack<signed_int>(*atrace[9].return_value), signed_int(7) );
+   BOOST_REQUIRE_EQUAL(fc::raw::unpack<signed_int>(atrace[9].return_value), signed_int(7) );
    BOOST_REQUIRE_EQUAL(atrace[9].receipt->global_sequence, start_gseq + 6);
 
    // executed
@@ -2896,8 +2874,7 @@ BOOST_FIXTURE_TEST_CASE(action_ordinal_failtest3, TESTER) { try {
    BOOST_REQUIRE_EQUAL(atrace[10].act.account, N(testapi));
    BOOST_REQUIRE_EQUAL(atrace[10].act.name, TEST_METHOD("test_action", "test_action_ordinal4"));
    BOOST_REQUIRE_EQUAL(atrace[10].receipt.valid(), true);
-   BOOST_REQUIRE_EQUAL(atrace[10].return_value.valid(), true);
-   BOOST_REQUIRE_EQUAL(atrace[10].return_value->size(), 0 );
+   BOOST_REQUIRE_EQUAL(atrace[10].return_value.size(), 0 );
    BOOST_REQUIRE_EQUAL(atrace[10].receipt->global_sequence, start_gseq + 7);
 
 } FC_LOG_AND_RETHROW() }

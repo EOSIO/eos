@@ -121,20 +121,24 @@ void apply_context::exec_one()
    //    * a pointer to an object in a chainbase index is not invalidated if the fields of that object are modified;
    //    * and, the *receiver_account object itself cannot be removed because accounts cannot be deleted in EOSIO.
 
-   // checktime encode
-   const auto& encode = [&](char* bytes, uint32_t len) { return trx_context.encode_with_checktime<digest_type>(bytes, len); };
-
    action_trace& trace = trx_context.get_action_trace( action_ordinal );
    trace.receipt.emplace();
 
-   if( control.is_builtin_activated( builtin_protocol_feature_t::action_return_value ) ) {
-      trace.return_value.emplace( std::move( action_return_value ) );
-   }
-
    action_receipt& r = *trace.receipt;
-   r.receiver         = receiver;
+   r.receiver        = receiver;
 
-   r.generate_action_digest(encode, *act, trace.return_value, !control.is_builtin_activated( builtin_protocol_feature_t::action_return_value ));
+   if( control.is_builtin_activated( builtin_protocol_feature_t::action_return_value ) ) {
+      trace.return_value = std::move(action_return_value);
+      r.act_digest = generate_action_digest(
+                        [this](const char* bytes, uint32_t len) {
+                           return trx_context.hash_with_checktime<digest_type>(bytes, len);
+                        },
+                        *act,
+                        trace.return_value
+                     );
+   } else {
+      r.act_digest = digest_type::hash(*act);
+   }
 
    r.global_sequence  = next_global_sequence();
    r.recv_sequence    = next_recv_sequence( *receiver_account );
