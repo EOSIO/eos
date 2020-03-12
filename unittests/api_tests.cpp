@@ -1091,13 +1091,36 @@ BOOST_FIXTURE_TEST_CASE(transaction_tests, TESTER) { try {
          auto& t = std::get<0>(x);
          if (t && t->receipt && t->receipt->status != transaction_receipt::executed) { trace = t; }
       } );
+      block_state_ptr bsp;
+      auto c2 = control->accepted_block.connect([&](const block_state_ptr& b) { bsp = b; });
 
       // test error handling on deferred transaction failure
-      CALL_TEST_FUNCTION(*this, "test_transaction", "send_transaction_trigger_error_handler", {});
+      auto test_trace = CALL_TEST_FUNCTION(*this, "test_transaction", "send_transaction_trigger_error_handler", {});
 
       BOOST_REQUIRE(trace);
       BOOST_CHECK_EQUAL(trace->receipt->status, transaction_receipt::soft_fail);
+
+      std::set<transaction_id_type> block_ids;
+      for( const auto& receipt : bsp->block->transactions ) {
+         transaction_id_type id;
+         if( receipt.trx.contains<packed_transaction>() ) {
+            const auto& pt = receipt.trx.get<packed_transaction>();
+            id = pt.id();
+         } else {
+            id = receipt.trx.get<transaction_id_type>();
+         }
+         block_ids.insert( id );
+      }
+
+      BOOST_CHECK_EQUAL(2, block_ids.size() ); // originating trx and deferred
+      BOOST_CHECK_EQUAL(1, block_ids.count( test_trace->id ) ); // originating
+      BOOST_CHECK( !test_trace->failed_dtrx_trace );
+      BOOST_CHECK_EQUAL(0, block_ids.count( trace->id ) ); // onerror id, not in block
+      BOOST_CHECK_EQUAL(1, block_ids.count( trace->failed_dtrx_trace->id ) ); // deferred id since trace moved to failed_dtrx_trace
+      BOOST_CHECK( trace->action_traces.at(0).act.name == N(onerror) );
+
       c.disconnect();
+      c2.disconnect();
    }
 
    // test test_transaction_size
