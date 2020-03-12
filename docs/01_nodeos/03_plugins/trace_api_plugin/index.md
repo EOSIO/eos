@@ -75,17 +75,17 @@ nodeos ... --plugin eosio::chain_plugin [options]
 
 ## Purpose
 
-While integrating applications such as block explorers and exchanges with an EOSIO blockchain, the user might require a complete transcript of actions that are processed by the blockchain, including those spawned from the execution of smart contracts and scheduled transactions. This plugin aims to serve that need. The purpose of the `trace_api_plugin` is to provide:
+While integrating applications such as block explorers and exchanges with an EOSIO blockchain, the user might require a complete transcript of actions that are processed by the blockchain, including those spawned from the execution of smart contracts and scheduled transactions. The `trace_api_plugin` aims to serve this need. The purpose of the plugin is to provide:
 
 * A transcript of retired actions and related metadata
 * A consumer focused long-term API to retrieve blocks
 * Maintainable resource commitments at the EOSIO nodes
 
-Therefore, one crucial goal of the `trace_api_plugin` is to have better maintenance of node resources (disk, memory, etc.). This is distinct from the existing `history_plugin` which provides far more configurable filtering and querying capabilities, or the existing `state_history_plugin` which provides a binary streaming interface to structural chain data, action data, as well as state deltas.
+Therefore, one crucial goal of the `trace_api_plugin` is to have better maintenance of node resources (file system, disk, memory, etc.). This goal is different from the existing `history_plugin` which provides far more configurable filtering and querying capabilities, or the existing `state_history_plugin` which provides a binary streaming interface to access structural chain data, action data, as well as state deltas.
 
 ## Examples
 
-Below it is a `nodeos` configuration example for the `trace_api_plugin`:
+Below it is a `nodeos` configuration example for the `trace_api_plugin` when tracing some reference contracts:
 
 ```sh
 nodeos --data-dir data_dir --config-dir config_dir --trace-dir traces_dir
