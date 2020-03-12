@@ -60,17 +60,23 @@ Config Options for eosio::trace_api_plugin:
 ## Dependencies
 
 * [`chain_plugin`](../chain_plugin/index.md)
+* [`http_plugin`](../http_plugin/index.md)
 
 ### Load Dependency Examples
+
+The following plugins are loaded with default settings if not specified on the command line or `config.ini`:
 
 ```console
 # config.ini
 plugin = eosio::chain_plugin
 [options]
+plugin = eosio::http_plugin 
+[options]
 ```
 ```sh
 # command-line
-nodeos ... --plugin eosio::chain_plugin [options]
+nodeos ... --plugin eosio::chain_plugin [options]  \
+           --plugin eosio::http_plugin [options]
 ```
 
 ## Purpose
