@@ -73,21 +73,19 @@ plugin = eosio::chain_plugin
 nodeos ... --plugin eosio::chain_plugin [options]
 ```
 
-## Desgin Goals
+## Purpose
 
-While integrating applications such as block explorers and exchanges with a EOSIO blockchain, the developer needs a complete transcript of actions that are processed by an EOSIO blockchain including those implied by the execution of smart contracts and scheduled transactions.
+While integrating applications such as block explorers and exchanges with an EOSIO blockchain, the user might require a complete transcript of actions that are processed by the blockchain, including those spawned from the execution of smart contracts and scheduled transactions. This plugin aims to serve that need. The purpose of the `trace_api_plugin` is to provide:
 
-This plugin is aim to solve that need. The purpose of the Trace API is to provide:
+* A transcript of retired actions and related metadata
+* A consumer focused long-term API to retrieve blocks
+* Maintainable resource commitments at the EOSIO nodes
 
-* A transcript of retired actions and the associated metadata
-* A consumer focused long-term API
-* Maintainable resource commitments
-
-Thereofre, the design of `trace_api_plugin` gives more emphasis at the resource maintainability. This is distinct from the existing `history-plugin` which provides far more configurable filtering and querying capabilities and the existing `state-history-plugin` which provides a binary streaming interface to structural chain data, action data, as well as state deltas.
+Therefore, one crucial goal of the `trace_api_plugin` is to have better maintenance of node resources (disk, memory, etc.). This is distinct from the existing `history_plugin` which provides far more configurable filtering and querying capabilities, or the existing `state_history_plugin` which provides a binary streaming interface to structural chain data, action data, as well as state deltas.
 
 ## Examples
 
-Below it is an example of configuration and tracing `eosio` reference contract
+Below it is a `nodeos` configuration example for the `trace_api_plugin`:
 
 ```sh
 nodeos --data-dir data_dir --config-dir config_dir --trace-dir traces_dir
@@ -100,14 +98,12 @@ nodeos --data-dir data_dir --config-dir config_dir --trace-dir traces_dir
 
 ## Maintenance Note
 
-To reduce the disk space consummed by this plugin, you can configure this option: 
+To reduce the disk space consummed by the `trace_api_plugin`, you can configure the following option: 
 
 ```console
   --trace-minimum-irreversible-history-blocks N (=-1) 
 ```
 
-Once the value is no longer `-1`, only `N` number of block before the current LIB block will be kept on the disk
+Once the value is no longer `-1`, only `N` number of blocks before the current LIB block will be kept on disk.
 
-If resource usage cannot be effectively managed via the trace-minimum-irreversible-history-blocks configuration, then there is a need for ongoing maintenance. In that case, the user may prefer to manage resources with an external system or process.
-
-## How-To Guides
+If resource usage cannot be effectively managed via the `trace-minimum-irreversible-history-blocks` configuration option, then there is a need for ongoing maintenance. In that case, the user may prefer to manage resources with an external system or process.
