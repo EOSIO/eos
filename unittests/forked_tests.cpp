@@ -275,7 +275,7 @@ BOOST_AUTO_TEST_CASE( forking ) try {
    wlog( "end push c2 blocks to c1" );
    wlog( "now push dan's block to c1 but first corrupt it so it is a bad block" );
    signed_block bad_block = std::move(*b);
-   bad_block.transaction_mroot = bad_block.previous;
+   bad_block.action_mroot = bad_block.previous;
    auto bad_block_bs = c.control->create_block_state_future( std::make_shared<signed_block>(std::move(bad_block)) );
    c.control->abort_block();
    BOOST_REQUIRE_EXCEPTION(c.control->push_block( bad_block_bs ), fc::exception,
@@ -405,7 +405,7 @@ BOOST_AUTO_TEST_CASE( read_modes ) try {
    BOOST_CHECK_EQUAL(head_block_num, read_only.control->fork_db_head_block_num());
    BOOST_CHECK_EQUAL(head_block_num, read_only.control->head_block_num());
 
-   tester irreversible(setup_policy::old_bios_only, db_read_mode::IRREVERSIBLE);
+   tester irreversible(setup_policy::none, db_read_mode::IRREVERSIBLE);
    push_blocks(c, irreversible);
    BOOST_CHECK_EQUAL(head_block_num, irreversible.control->fork_db_pending_head_block_num());
    BOOST_CHECK_EQUAL(last_irreversible_block_num, irreversible.control->fork_db_head_block_num());

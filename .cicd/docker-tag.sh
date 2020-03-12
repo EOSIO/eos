@@ -3,7 +3,7 @@ set -eo pipefail
 echo '+++ :evergreen_tree: Configuring Environment'
 REPO='eosio/ci-contracts-builder'
 PREFIX='base-ubuntu-18.04'
-IMAGE="$REPO:$PREFIX-$BUILDKITE_COMMIT"
+IMAGE="$REPO:$PREFIX-$BUILDKITE_COMMIT-$PLATFORM_TYPE"
 SANITIZED_BRANCH=$(echo "$BUILDKITE_BRANCH" | tr '/' '_')
 SANITIZED_TAG=$(echo "$BUILDKITE_TAG" | tr '/' '_')
 echo '+++ :arrow_down: Pulling Container'
