@@ -134,6 +134,11 @@ namespace LLVMJIT
 				return stack_sizes.emplace_back(numBytes).data();
 			}
 			WAVM_ASSERT_THROW(isReadOnly);
+			if(SectionName == ".eosio_table") {
+				U8* ptr = get_next_code_ptr(numBytes, alignment);
+				table_offset = ptr-code->data();
+				return ptr;
+			}
 
 			return get_next_code_ptr(numBytes, alignment);
 		}
@@ -148,6 +153,7 @@ namespace LLVMJIT
 
 		std::vector<uint8_t> dumpster;
 		std::list<std::vector<uint8_t>> stack_sizes;
+		unsigned table_offset = 0;
 
 		U8* get_next_code_ptr(uintptr_t numBytes, U32 alignment) {
 			FC_ASSERT(alignment <= alignof(std::max_align_t), "alignment of section exceeds max_align_t");
@@ -318,6 +324,7 @@ namespace LLVMJIT
 		instantiated_code ret;
 		ret.code = jitModule->final_pic_code;
 		ret.function_offsets = jitModule->function_to_offsets;
+		ret.table_offset = jitModule->unitmemorymanager->table_offset;
 		return ret;
 	}
 }

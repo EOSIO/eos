@@ -74,7 +74,7 @@ namespace LLVMJIT
 		else { return false; }
 	}
 
-	llvm::Value* CreateInBoundsGEPWAR(llvm::IRBuilder<>& irBuilder, llvm::Value* Ptr, llvm::Value* v1, llvm::Value* v2 = nullptr);
+	llvm::Value* CreateInBoundsGEPWAR(llvm::IRBuilder<>& irBuilder, llvm::Value* Ptr, llvm::Value* v1, llvm::Value* v2 = nullptr, llvm::Value* v3 = nullptr);
 
 	llvm::LLVMContext context;
 	llvm::Type* llvmResultTypes[(Uptr)ResultType::num];
@@ -130,7 +130,7 @@ namespace LLVMJIT
 		std::vector<llvm::Function*> functionDefs;
 		std::vector<size_t> importedFunctionOffsets;
 		std::vector<llvm::Constant*> globals;
-		llvm::Constant* defaultTablePointer;
+		llvm::GlobalVariable* defaultTablePointer;
 		llvm::Constant* defaultTableMaxElementIndex;
 		llvm::Constant* defaultMemoryBase;
 		llvm::Constant* depthCounter;
@@ -739,9 +739,9 @@ namespace LLVMJIT
 				"eosvmoc_internal.indirect_call_oob",FunctionType::get(),{});
 
 			// Load the type for this table entry.
-			auto functionTypePointerPointer = CreateInBoundsGEPWAR(irBuilder, moduleContext.defaultTablePointer, functionIndexZExt, emitLiteral((U32)0));
+			auto functionTypePointerPointer = CreateInBoundsGEPWAR(irBuilder, moduleContext.defaultTablePointer, emitLiteral((U32)0), functionIndexZExt, emitLiteral((U32)0));
 			auto functionTypePointer = irBuilder.CreateLoad(functionTypePointerPointer);
-			auto llvmCalleeType = emitLiteralPointer(calleeType,llvmI8PtrType);
+			auto llvmCalleeType = emitLiteral((I64)calleeType);
 			
 			// If the function type doesn't match, trap.
 			emitConditionalTrapIntrinsic(
@@ -753,7 +753,7 @@ namespace LLVMJIT
 			//If the WASM only contains table elements to function definitions internal to the wasm, we can take a
 			// simple and approach
 			if(moduleContext.tableOnlyHasDefinedFuncs) {
-				auto functionPointerPointer = CreateInBoundsGEPWAR(irBuilder, moduleContext.defaultTablePointer, functionIndexZExt, emitLiteral((U32)1));
+				auto functionPointerPointer = CreateInBoundsGEPWAR(irBuilder, moduleContext.defaultTablePointer, emitLiteral((U32)0), functionIndexZExt, emitLiteral((U32)1));
 				auto functionInfo = irBuilder.CreateLoad(functionPointerPointer);  //offset of code
 				llvm::Value* running_code_start = irBuilder.CreateLoad(emitLiteralPointer((void*)OFFSET_OF_CONTROL_BLOCK_MEMBER(running_code_base), llvmI64Type->getPointerTo(256)));
 				llvm::Value* offset_from_start = irBuilder.CreateAdd(running_code_start, functionInfo);
@@ -764,7 +764,7 @@ namespace LLVMJIT
 				if(calleeType->ret != ResultType::none) { push(result); }
 			}
 			else {
-				auto functionPointerPointer = CreateInBoundsGEPWAR(irBuilder, moduleContext.defaultTablePointer, functionIndexZExt, emitLiteral((U32)1));
+				auto functionPointerPointer = CreateInBoundsGEPWAR(irBuilder, moduleContext.defaultTablePointer, emitLiteral((U32)0), functionIndexZExt, emitLiteral((U32)1));
 				auto functionInfo = irBuilder.CreateLoad(functionPointerPointer);  //offset of code
 
 				auto is_intrnsic = irBuilder.CreateICmpSLT(functionInfo, typedZeroConstants[(Uptr)ValueType::i64]);
@@ -1263,10 +1263,12 @@ namespace LLVMJIT
 		}
 
 		if(module.tables.size()) {
-			current_prologue -= 8; //now pointing to LAST element
-			current_prologue -= 16*(module.tables.defs[0].type.size.min-1); //now pointing to FIRST element
-			auto tableElementType = llvm::StructType::get(context,{llvmI8PtrType, llvmI64Type});
-			defaultTablePointer = emitLiteralPointer((void*)current_prologue,tableElementType->getPointerTo(256));
+			auto tableStructureType = llvm::StructType::get(context,{llvmI64Type, llvmI64Type});
+			auto tableStructArrayType = llvm::ArrayType::get(tableStructureType, module.tables.defs[0].type.size.min);
+
+			defaultTablePointer = new llvm::GlobalVariable(*llvmModule, tableStructArrayType, true, llvm::GlobalValue::PrivateLinkage, llvm::ConstantAggregateZero::get(tableStructArrayType), "tableElements");
+			defaultTablePointer->setExternallyInitialized(true);
+			defaultTablePointer->setSection(".eosio_table");
 			defaultTableMaxElementIndex = emitLiteral((U64)module.tables.defs[0].type.size.min);
 
 			for(const TableSegment& table_segment : module.tableSegments)

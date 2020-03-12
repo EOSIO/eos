@@ -81,16 +81,13 @@ void run_compile(wrapped_fd&& response_sock, wrapped_fd&& wasm_code) noexcept { 
    }
 
    struct table_entry {
-      uintptr_t type;
+      int64_t type;
       int64_t func;    //>= 0 means offset to code in wasm; < 0 means intrinsic call at offset address
    };
 
-   if(module.tables.size())
-      prologue_it -= sizeof(table_entry) * module.tables.defs[0].type.size.min;
+   struct table_entry* table_index_0 = (struct table_entry*)(code.code.data()+code.table_offset);
 
    for(const TableSegment& table_segment : module.tableSegments) {
-      struct table_entry* table_index_0 = (struct table_entry*)&*prologue_it;
-
       if(table_segment.baseOffset.i32 > module.tables.defs[0].type.size.min)
          return;
 
@@ -105,11 +102,11 @@ void run_compile(wrapped_fd&& response_sock, wrapped_fd&& wasm_code) noexcept { 
             const auto& f = module.functions.imports[function_index];
             const intrinsic_entry& ie = get_intrinsic_map().at(f.moduleName + "." + f.exportName);
             table_index_0[effective_table_index].func = ie.ordinal*-8;
-            table_index_0[effective_table_index].type = (uintptr_t)module.types[module.functions.imports[function_index].type.index];
+            table_index_0[effective_table_index].type = (int64_t)module.types[module.functions.imports[function_index].type.index];
          }
          else {
             table_index_0[effective_table_index].func = function_to_offsets.at(function_index - module.functions.imports.size());
-            table_index_0[effective_table_index].type = (uintptr_t)module.types[module.functions.defs[function_index - module.functions.imports.size()].type.index];
+            table_index_0[effective_table_index].type = (int64_t)module.types[module.functions.defs[function_index - module.functions.imports.size()].type.index];
          }
       }
    }
