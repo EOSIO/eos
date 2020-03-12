@@ -2,7 +2,7 @@
 
 ## Description
 
-The `trace_api_plugin` provides a consumer-focused long-term API for retrieving blocks containing retired actions and related metadata. The plugin defines a new HTTP endpoint `/v1/trace/get_block` to be accessed by a client via the HTTP POST method. See the `trace_api_plugin` [RPC API reference](api-reference/index.md) for more information.
+The `trace_api_plugin` provides a consumer-focused long-term API for retrieving blocks containing retired actions and related metadata. The plugin defines a new HTTP endpoint accessible via HTTP POST (see the `trace_api_plugin` [RPC API reference](api-reference/index.md) for more information).
 
 ## Usage
 
