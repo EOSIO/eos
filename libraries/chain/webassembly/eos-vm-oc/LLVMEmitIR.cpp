@@ -139,9 +139,12 @@ namespace LLVMJIT
 		llvm::MDNode* likelyFalseBranchWeights;
 		llvm::MDNode* likelyTrueBranchWeights;
 
-		EmitModuleContext(const Module& inModule)
+      const std::map<const FunctionType*, uint32_t>& _wavm_func_type_to_ordinal;
+
+		EmitModuleContext(const Module& inModule, const std::map<const FunctionType*, uint32_t>& wavm_func_type_to_ordinal)
 		: module(inModule)
 		, llvmModule(new llvm::Module("",context))
+		, _wavm_func_type_to_ordinal(wavm_func_type_to_ordinal)
 		{
 			auto zeroAsMetadata = llvm::ConstantAsMetadata::get(emitLiteral(I32(0)));
 			auto i32MaxAsMetadata = llvm::ConstantAsMetadata::get(emitLiteral(I32(INT32_MAX)));
@@ -741,7 +744,7 @@ namespace LLVMJIT
 			// Load the type for this table entry.
 			auto functionTypePointerPointer = CreateInBoundsGEPWAR(irBuilder, moduleContext.defaultTablePointer, emitLiteral((U32)0), functionIndexZExt, emitLiteral((U32)0));
 			auto functionTypePointer = irBuilder.CreateLoad(functionTypePointerPointer);
-			auto llvmCalleeType = emitLiteral((I64)calleeType);
+			auto llvmCalleeType = emitLiteral((I32)moduleContext._wavm_func_type_to_ordinal.at(calleeType));
 			
 			// If the function type doesn't match, trap.
 			emitConditionalTrapIntrinsic(
@@ -1263,7 +1266,7 @@ namespace LLVMJIT
 		}
 
 		if(module.tables.size()) {
-			auto tableStructureType = llvm::StructType::get(context,{llvmI64Type, llvmI64Type});
+			auto tableStructureType = llvm::StructType::get(context,{llvmI32Type, llvmI64Type});
 			auto tableStructArrayType = llvm::ArrayType::get(tableStructureType, module.tables.defs[0].type.size.min);
 
 			defaultTablePointer = new llvm::GlobalVariable(*llvmModule, tableStructArrayType, true, llvm::GlobalValue::PrivateLinkage, llvm::ConstantAggregateZero::get(tableStructArrayType), "tableElements");
@@ -1293,7 +1296,7 @@ namespace LLVMJIT
 		return llvmModule;
 	}
 
-	llvm::Module* emitModule(const Module& module)
+	llvm::Module* emitModule(const Module& module, const std::map<const FunctionType*, uint32_t>& wavm_func_type_to_ordinal)
 	{
 		static bool inited;
 		if(!inited) {
@@ -1321,7 +1324,7 @@ namespace LLVMJIT
 			typedZeroConstants[(Uptr)ValueType::f64] = emitLiteral((F64)0.0);
 		}
 
-		return EmitModuleContext(module).emit();
+		return EmitModuleContext(module, wavm_func_type_to_ordinal).emit();
 	}
 }
 }}}

@@ -273,7 +273,7 @@ namespace LLVMJIT
 		final_pic_code = std::move(*unitmemorymanager->code);
 	}
 
-	instantiated_code instantiateModule(const IR::Module& module)
+	instantiated_code instantiateModule(const IR::Module& module, const std::map<const IR::FunctionType*, uint32_t>& wavm_func_type_to_ordinal)
 	{
 		static bool inited;
 		if(!inited) {
@@ -295,7 +295,7 @@ namespace LLVMJIT
 		}
 
 		// Emit LLVM IR for the module.
-		auto llvmModule = emitModule(module);
+		auto llvmModule = emitModule(module, wavm_func_type_to_ordinal);
 
 		// Construct the JIT compilation pipeline for this module.
 		auto jitModule = new JITModule();

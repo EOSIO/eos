@@ -20,7 +20,7 @@ struct instantiated_code {
 
 namespace LLVMJIT {
    bool getFunctionIndexFromExternalName(const char* externalName,Uptr& outFunctionDefIndex);
-   llvm::Module* emitModule(const IR::Module& module);
-   instantiated_code instantiateModule(const IR::Module& module);
+   llvm::Module* emitModule(const IR::Module& module, const std::map<const IR::FunctionType*, uint32_t>& wavm_func_type_to_ordinal);
+   instantiated_code instantiateModule(const IR::Module& module, const std::map<const IR::FunctionType*, uint32_t>& wavm_func_type_to_ordinal);
 }
 }}}

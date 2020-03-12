@@ -29,7 +29,12 @@ void run_compile(wrapped_fd&& response_sock, wrapped_fd&& wasm_code) noexcept { 
    wasm_injections::wasm_binary_injection<false> injector(module);
    injector.inject();
 
-   instantiated_code code = LLVMJIT::instantiateModule(module);
+   std::map<const FunctionType*, uint32_t> wavm_func_type_to_ordinal;
+   uint32_t next_ordinal = 1;
+   for(const FunctionType*& ft : module.types)
+      wavm_func_type_to_ordinal[ft] = next_ordinal++;
+
+   instantiated_code code = LLVMJIT::instantiateModule(module, wavm_func_type_to_ordinal);
 
    code_compilation_result_message result_message;
 
@@ -81,7 +86,7 @@ void run_compile(wrapped_fd&& response_sock, wrapped_fd&& wasm_code) noexcept { 
    }
 
    struct table_entry {
-      int64_t type;
+      uint32_t type;
       int64_t func;    //>= 0 means offset to code in wasm; < 0 means intrinsic call at offset address
    };
 
@@ -102,11 +107,11 @@ void run_compile(wrapped_fd&& response_sock, wrapped_fd&& wasm_code) noexcept { 
             const auto& f = module.functions.imports[function_index];
             const intrinsic_entry& ie = get_intrinsic_map().at(f.moduleName + "." + f.exportName);
             table_index_0[effective_table_index].func = ie.ordinal*-8;
-            table_index_0[effective_table_index].type = (int64_t)module.types[module.functions.imports[function_index].type.index];
+            table_index_0[effective_table_index].type = wavm_func_type_to_ordinal[module.types[module.functions.imports[function_index].type.index]];
          }
          else {
             table_index_0[effective_table_index].func = function_to_offsets.at(function_index - module.functions.imports.size());
-            table_index_0[effective_table_index].type = (int64_t)module.types[module.functions.defs[function_index - module.functions.imports.size()].type.index];
+            table_index_0[effective_table_index].type = wavm_func_type_to_ordinal[module.types[module.functions.defs[function_index - module.functions.imports.size()].type.index]];
          }
       }
    }
