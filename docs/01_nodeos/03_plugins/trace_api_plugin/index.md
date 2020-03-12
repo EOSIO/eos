@@ -100,6 +100,14 @@ nodeos --data-dir data_dir --config-dir config_dir --trace-dir traces_dir
 
 ## Maintenance Note
 
-If resource usage can be effectively managed based on number of blocks via the trace-minimum-irreversible-history-blocks configuration, then there is no need for on-going maintenance.  In some deployments, the user may prefer to manage resources with an external system or process.
+To reduce the disk space consummed by this plugin, you can configure this option: 
+
+```console
+  --trace-minimum-irreversible-history-blocks N (=-1) 
+```
+
+Once the value is no longer `-1`, only `N` number of block before the current LIB block will be kept on the disk
+
+If resource usage cannot be effectively managed via the trace-minimum-irreversible-history-blocks configuration, then there is a need for ongoing maintenance. In that case, the user may prefer to manage resources with an external system or process.
 
 ## How-To Guides
