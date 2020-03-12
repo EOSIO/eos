@@ -59,7 +59,19 @@ Config Options for eosio::trace_api_plugin:
 
 ## Dependencies
 
+* [`chain_plugin`](../chain_plugin/index.md)
+
 ### Load Dependency Examples
+
+```console
+# config.ini
+plugin = eosio::chain_plugin
+[options]
+```
+```sh
+# command-line
+nodeos ... --plugin eosio::chain_plugin [options]
+```
 
 ## Remarks
 
