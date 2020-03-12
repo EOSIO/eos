@@ -73,8 +73,33 @@ plugin = eosio::chain_plugin
 nodeos ... --plugin eosio::chain_plugin [options]
 ```
 
-## Remarks
+## Desgin Goals
+
+While integrating applications such as block explorers and exchanges with a EOSIO blockchain, the developer needs a complete transcript of actions that are processed by an EOSIO blockchain including those implied by the execution of smart contracts and scheduled transactions.
+
+This plugin is aim to solve that need. The purpose of the Trace API is to provide:
+
+* A transcript of retired actions and the associated metadata
+* A consumer focused long-term API
+* Maintainable resource commitments
+
+Thereofre, the design of `trace_api_plugin` gives more emphasis at the resource maintainability. This is distinct from the existing `history-plugin` which provides far more configurable filtering and querying capabilities and the existing `state-history-plugin` which provides a binary streaming interface to structural chain data, action data, as well as state deltas.
 
 ## Examples
+
+Below it is an example of configuration and tracing `eosio` reference contract
+
+```sh
+nodeos --data-dir data_dir --config-dir config_dir --trace-dir traces_dir
+--plugin eosio::trace_api_plugin 
+--trace-rpc-abi=eosio=abis/eosio.abi 
+--trace-rpc-abi=eosio.token=abis/eosio.token.abi 
+--trace-rpc-abi=eosio.msig=abis/eosio.msig.abi 
+--trace-rpc-abi=eosio.wrap=abis/eosio.wrap.abi
+```
+
+## Maintenance Note
+
+If resource usage can be effectively managed based on number of blocks via the trace-minimum-irreversible-history-blocks configuration, then there is no need for on-going maintenance.  In some deployments, the user may prefer to manage resources with an external system or process.
 
 ## How-To Guides
