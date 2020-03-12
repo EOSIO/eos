@@ -61,16 +61,16 @@ namespace eosio { namespace chain {
          void checktime()const;
 
          template <typename DigestType>
-         inline DigestType hash_with_checktime( const char* bytes, uint32_t len )const {
+         inline DigestType hash_with_checktime( const char* data, uint32_t datalen )const {
             const size_t bs = eosio::chain::config::hashing_checktime_block_size;
             typename DigestType::encoder enc;
-            while ( len > bs ) {
-               enc.write( bytes, bs );
-               bytes += bs;
-               len  -= bs;
+            while ( datalen > bs ) {
+               enc.write( data, bs );
+               data    += bs;
+               datalen -= bs;
                checktime();
             }
-            enc.write( bytes, len );
+            enc.write( data, datalen );
             return enc.result();
          }
 
