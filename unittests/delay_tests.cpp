@@ -16,7 +16,6 @@ using namespace eosio;
 using namespace eosio::chain;
 using namespace eosio::testing;
 
-
 BOOST_AUTO_TEST_SUITE(delay_tests)
 
 BOOST_FIXTURE_TEST_CASE( delay_create_account, validating_tester) { try {

@@ -1808,7 +1808,7 @@ BOOST_AUTO_TEST_CASE( stop_deferred_transactions_protocol_feature_user_test ) { 
    chain.produce_blocks();
    
    // Check that the number deferred transactions is 1.
-   gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
+   gen_size = chain.control->db().get_index<generated_transaction_multi_index>().size();
    BOOST_REQUIRE_EQUAL( gen_size, 1 );
    
    // Activate `stop_deferred_transaction` protocol feature.
@@ -1827,7 +1827,7 @@ BOOST_AUTO_TEST_CASE( stop_deferred_transactions_protocol_feature_user_test ) { 
    );
    
    // Check that the number deferred transactions is 1, due to the activation of the protocol feature.
-   gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
+   gen_size = chain.control->db().get_index<generated_transaction_multi_index>().size();
    BOOST_REQUIRE_EQUAL( gen_size, 1 );
 } FC_LOG_AND_RETHROW() }
 
@@ -1850,7 +1850,7 @@ BOOST_AUTO_TEST_CASE( stop_deferred_transactions_protocol_feature_contract_test 
    // START HERE TOMORROW
    /////////////////////////
    // Check that the deferred transaction queue is 0.
-   auto gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_sender_id>().size();
+   auto gen_size = chain.control->db().get_index<generated_transaction_multi_index>().size();
    BOOST_REQUIRE_EQUAL( gen_size, 0 );
    
    // Send a deferred transaction via the contract.
@@ -1863,7 +1863,7 @@ BOOST_AUTO_TEST_CASE( stop_deferred_transactions_protocol_feature_contract_test 
    chain.produce_blocks();
    
    // Check that the number deferred transactions is 1.
-   gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_sender_id>().size();
+   gen_size = chain.control->db().get_index<generated_transaction_multi_index>().size();
    BOOST_REQUIRE_EQUAL( gen_size, 1 );
    
    // // Activate `stop_deferred_transaction` protocol feature.

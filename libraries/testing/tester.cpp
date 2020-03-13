@@ -229,6 +229,26 @@ namespace eosio { namespace testing {
       };
    }
 
+   void base_tester::execute_setup_policy(const std::initializer_list<fc::sha256> protocol_features) {
+      const auto& pfm = control->get_protocol_feature_manager();
+      
+      auto preactivate_feature_digest = pfm.get_builtin_digest(builtin_protocol_feature_t::preactivate_feature);
+      FC_ASSERT(preactivate_feature_digest, "PREACTIVATE_FEATURE not found");
+      schedule_protocol_features_wo_preactivation({*preactivate_feature_digest});
+      produce_block();
+      
+      set_before_producer_authority_bios_contract();
+      produce_block();
+      
+      for (const auto& feature : protocol_features) {
+         preactivate_protocol_features( { feature } );
+         produce_block();
+      }
+
+      set_bios_contract();
+      produce_block();
+   }
+
    void base_tester::close() {
       control.reset();
       chain_transactions.clear();
