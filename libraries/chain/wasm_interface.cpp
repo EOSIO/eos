@@ -861,53 +861,40 @@ class crypto_api : public context_aware_api {
          }
       }
 
-      template<class Encoder> auto encode(char* data, uint32_t datalen) {
-         Encoder e;
-         const size_t bs = eosio::chain::config::hashing_checktime_block_size;
-         while ( datalen > bs ) {
-            e.write( data, bs );
-            data += bs;
-            datalen -= bs;
-            context.trx_context.checktime();
-         }
-         e.write( data, datalen );
-         return e.result();
-      }
-
       void assert_sha256(array_ptr<char> data, uint32_t datalen, const fc::sha256& hash_val) {
-         auto result = encode<fc::sha256::encoder>( data, datalen );
+         auto result = context.trx_context.hash_with_checktime<fc::sha256>( data, datalen );
          EOS_ASSERT( result == hash_val, crypto_api_exception, "hash mismatch" );
       }
 
       void assert_sha1(array_ptr<char> data, uint32_t datalen, const fc::sha1& hash_val) {
-         auto result = encode<fc::sha1::encoder>( data, datalen );
+         auto result = context.trx_context.hash_with_checktime<fc::sha1>( data, datalen );
          EOS_ASSERT( result == hash_val, crypto_api_exception, "hash mismatch" );
       }
 
       void assert_sha512(array_ptr<char> data, uint32_t datalen, const fc::sha512& hash_val) {
-         auto result = encode<fc::sha512::encoder>( data, datalen );
+         auto result = context.trx_context.hash_with_checktime<fc::sha512>( data, datalen );
          EOS_ASSERT( result == hash_val, crypto_api_exception, "hash mismatch" );
       }
 
       void assert_ripemd160(array_ptr<char> data, uint32_t datalen, const fc::ripemd160& hash_val) {
-         auto result = encode<fc::ripemd160::encoder>( data, datalen );
+         auto result = context.trx_context.hash_with_checktime<fc::ripemd160>( data, datalen );
          EOS_ASSERT( result == hash_val, crypto_api_exception, "hash mismatch" );
       }
 
       void sha1(array_ptr<char> data, uint32_t datalen, fc::sha1& hash_val) {
-         hash_val = encode<fc::sha1::encoder>( data, datalen );
+         hash_val = context.trx_context.hash_with_checktime<fc::sha1>( data, datalen );
       }
 
       void sha256(array_ptr<char> data, uint32_t datalen, fc::sha256& hash_val) {
-         hash_val = encode<fc::sha256::encoder>( data, datalen );
+         hash_val = context.trx_context.hash_with_checktime<fc::sha256>( data, datalen );
       }
 
       void sha512(array_ptr<char> data, uint32_t datalen, fc::sha512& hash_val) {
-         hash_val = encode<fc::sha512::encoder>( data, datalen );
+         hash_val = context.trx_context.hash_with_checktime<fc::sha512>( data, datalen );
       }
 
       void ripemd160(array_ptr<char> data, uint32_t datalen, fc::ripemd160& hash_val) {
-         hash_val = encode<fc::ripemd160::encoder>( data, datalen );
+         hash_val = context.trx_context.hash_with_checktime<fc::ripemd160>( data, datalen );
       }
 };
 
