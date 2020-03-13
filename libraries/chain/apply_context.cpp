@@ -513,6 +513,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
       }
    } else {
       if ( !stop_deferred_transactions_activated ) {
+std::cout << "2222222222222222222222222222222222222222\n";
          db.create<generated_transaction_object>( [&]( auto& gtx ) {
             gtx.trx_id      = trx.id();
             gtx.sender      = receiver;
@@ -537,7 +538,8 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
 }
 
 bool apply_context::cancel_deferred_transaction( const uint128_t& sender_id, account_name sender ) {
-   EOS_ASSERT( control.is_builtin_activated( builtin_protocol_feature_t::stop_deferred_transactions ), stop_deferred_tx, "deferred transactions are disabled" );
+   // bool stop_deferred_transactions_activated = control.is_builtin_activated(builtin_protocol_feature_t::stop_deferred_transactions);
+   // EOS_ASSERT( stop_deferred_transactions_activated, stop_deferred_tx, "deferred transactions are disabled" );
    auto& generated_transaction_idx = db.get_mutable_index<generated_transaction_multi_index>();
    const auto* gto = db.find<generated_transaction_object,by_sender_id>(boost::make_tuple(sender, sender_id));
    if ( gto ) {
