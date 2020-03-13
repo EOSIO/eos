@@ -1,0 +1,69 @@
+1st Protocol Feature `stop_deferred_transactions`
+=================================================
+[X] `canceldeferred` shall continue working
+[X] `senddeferred`
+[X]   - If `replace_existing` == true in `senddeferred`; it shall be a noop
+[X]   - If there is no transaction to replace in `schedule_deferred_transaction`;
+        fail
+[X]   - If there is a transaction to replace in `schedule_deferred_transaction`;
+        continue to cancel the old one but do not schedule the new one
+[X] `canceldelay` native action shall not change
+
+[X] `delaysec` > 0 is not allowed
+[ ]   - Contract-generated deferred shall not assert in native code (`send_deferred`)
+[ ]   - User-generated deferred shall assert in native code (`controller.cpp:push_transaction` (not `schedule_transaciton`))
+[ ] - The rules for deferred transaction retirement change:
+[ ]   - As soon as the protocol feature is activated there shall be no more ways to
+        insert deferred transactions into the generated transaction table(s)
+[ ] - Only if a deferred transaction is expired can it retire (`controller.cpp:push_schedule_transaction`)
+[ ]   - Look at `controller.cpp` for details
+
+Testing:
+[ ] The fixture is going to have to be changed (don't activate all protocol features right away)
+[ ] A few tests test to see if the queue gets larger (New test shall be added to verify that it doesn't do anything)
+[ ] Check that the transaction expires appropriately
+[ ] Will have to have duplicate tests, testing the different combinations of turning on/off the proto features relating to
+    deferred transactions
+[ ] 1) User-side
+[ ]    - Check that a user-defined transaction cannot have a `delay_sec` greater than 0
+[ ] 2) Contract-side
+[ ]    - Make sure that the corresponding logic for deferred transactions works correctly
+
+2nd Protocol Feature `remove_deferred_transactions` (make `stopdeferred` a dependency of `remove_deferred`)
+===========================================================================================================
+[ ] `canceldeferred` and `senddeferred` are going to assert (as in the current state (March 2nd))
+[ ]   - Shall also be removed from the whitelist (list of intrinsics that are to be linked to when you do a `setcode`)
+[ ]     - We want existing contracts using said functions to not be working anymore
+[ ] `canceldelay` native action to become a noop
+[ ] - Deferred transaction shall not be allowed; period (not even expired)
+[ ]   - If you call `push_scheduled_transaction` it shall fail
+[ ]   - Iterate and call `remove_scheduled_transaction` on the `generated_transaction_table`
+
+Testing:
+[ ] Verify that if you already had a contract deployed prior to activating said feature, that the contract functionality
+    shall fail
+[ ] Verify that after protocol feature activation, deplpying a contract using `senddeffered` and/or `canceldeferred` shall
+[ ] fail at the `setcode` level
+[ ] Have a test where we have accounts sending deferred transactions; and then activate protocol feature; and then have
+    RAM refunded
+[ ] 1) User-side
+[ ]    - ...
+[ ] 2) Contract-side
+[ ]    - In `eosio_contract.cpp` look at canceldelay impl
+
+Definition of Done:
+===================
+[ ] One protocol feature; error to call any of the two intrinsics:
+[ ]   - Test that it throws and error
+[ ]     - For the current tests don't get rid of them; update the tests so that it doesn't activiate all proto features
+[ ]       - Change the default to not activate all of the protofeatures
+
+User Storage
+============
+`transaction_context.cpp:schedule_transaction`
+Contract Storage
+================
+`apply_context.cpp:schedule_deferred_transaction`
+
+* Remove Deferred has to remove data on it's `on_activation` in file controller.cpp:on_activation stuff
+* Must remove the two intrinsics from the whitelist
