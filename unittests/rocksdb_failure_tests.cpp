@@ -84,6 +84,16 @@ public:
       act.name    = N(erase);
       (void)base_tester::push_action(std::move(act), N(rocksdb).to_uint64_t());
    }
+   void set_and_erase() {
+      try {
+         signed_transaction trx;
+         trx.actions.emplace_back(vector<permission_level>{{N(rocksdb), config::active_name}}, N(rocksdb), N(set), bytes{});
+         trx.actions.emplace_back(vector<permission_level>{{N(rocksdb), config::active_name}}, N(rocksdb), N(erase), bytes{});
+         set_transaction_headers(trx);
+         trx.sign(get_private_key(N(rocksdb), "active"), control->get_chain_id());
+         push_transaction(trx);
+      } catch(...) {}
+   }
 };
 }
 
@@ -100,6 +110,8 @@ BOOST_AUTO_TEST_CASE(test_rocksdb_failure) {
             t.set();
             BOOST_TEST_PASSPOINT();
             t.erase();
+            BOOST_TEST_PASSPOINT();
+            t.set_and_erase();
             BOOST_TEST_PASSPOINT();
             t.produce_block();
             BOOST_TEST_PASSPOINT();
