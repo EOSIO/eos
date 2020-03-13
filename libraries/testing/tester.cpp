@@ -76,20 +76,7 @@ namespace eosio { namespace testing {
          bio::copy(in, decompressed);
          return decompressed.str();
       }
-
-      void write_gzipped_snapshot( const char* fn, const std::string& snapshot ) {
-         std::stringstream out_str;
-         std::ofstream file(fn, std::ios_base::out | std::ios_base::binary);
-         bio::filtering_streambuf<bio::output> out;
-         out.push(bio::gzip_compressor());
-         out.push(file);
-         bio::copy(out, out_str);
-         file << out_str.str();
-         file.close();
-      }
    }
-
-   const fc::microseconds base_tester::abi_serializer_max_time{1000*1000}; // 1s for slow test machines
 
    std::string read_binary_snapshot( const char* fn ) {
       return read_gzipped_snapshot(fn);
@@ -99,14 +86,7 @@ namespace eosio { namespace testing {
       return fc::json::from_string( read_gzipped_snapshot(fn) );
    }
 
-   void write_binary_snapshot( const char* fn, const std::string& snapshot ) {
-      return write_gzipped_snapshot( fn, snapshot );
-   }
-
-   void write_json_snapshot( const char* fn, const fc::variant& snapshot) {
-      return write_gzipped_snapshot( fn, fc::json::to_string(snapshot, fc::time_point{fc::microseconds{1000*1000}}) );
-   }
-
+   const fc::microseconds base_tester::abi_serializer_max_time{1000*1000}; // 1s for slow test machines
 
    bool expect_assert_message(const fc::exception& ex, string expected) {
       BOOST_TEST_MESSAGE("LOG : " << "expected: " << expected << ", actual: " << ex.get_log().at(0).get_message());
