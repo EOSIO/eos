@@ -89,7 +89,7 @@ public:
 
 BOOST_AUTO_TEST_CASE(test_rocksdb_failure) {
    for(int i = 0; ; ++i) {
-      BOOST_TEST_CONTEXT("counter: " << i);
+      BOOST_TEST_CONTEXT("counter: " << i)
       {
          rocksdb_tester t;
          t.skip_validate = true;
@@ -103,7 +103,14 @@ BOOST_AUTO_TEST_CASE(test_rocksdb_failure) {
             BOOST_TEST_PASSPOINT();
             t.produce_block();
             BOOST_TEST_PASSPOINT();
-         } catch(...) {}
+         } catch(...) {
+            // If we bailed out of start_block, the previous block may not have been
+            // pushed to the validating node.
+            if(t.control->head_block_num() != t.validating_node->head_block_num()) {
+               BOOST_TEST(t.control->head_block_num() == t.validating_node->head_block_num() + 1);
+               t.validate_push_block(t.control->fetch_block_by_id(t.control->head_block_id()));
+            }
+         }
          if(fail_counter != 0) {
             break;
          }

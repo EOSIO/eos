@@ -1686,6 +1686,8 @@ struct controller_impl {
             throw;
          } catch( const protocol_feature_bad_block_exception& ) {
             throw;
+         } catch( const chain_kv_exception& ) {
+            throw;
          } catch (const fc::exception& e) {
             trace->error_code = controller::convert_exception_to_error_code( e );
             trace->except = e;
@@ -1835,7 +1837,10 @@ struct controller_impl {
          } catch( const boost::interprocess::bad_alloc& e ) {
             elog( "on block transaction failed due to a bad allocation" );
             throw;
-         } catch( const fc::exception& e ) {
+         } catch( const chain_kv_exception& e ) {
+            elog( "on block transaction failed due to rocksdb error" );
+            throw;
+         }  catch( const fc::exception& e ) {
             wlog( "on block transaction failed, but shouldn't impact block generation, system contract needs update" );
             edump((e.to_detail_string()));
          } catch( ... ) {

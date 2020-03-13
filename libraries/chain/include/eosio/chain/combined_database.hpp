@@ -27,8 +27,9 @@ namespace eosio { namespace chain {
             cb_session = std::make_unique<chainbase::database::session>(cb_database.start_undo_session(true));
             // If this fails chainbase will roll back safely.
             kv_undo_stack.push(false);
+         } catch(chain_kv::exception& e) {
+            EOS_THROW(chain_kv_exception, "chain-kv error: ${message}", ("message", e.what()));
          }
-         FC_LOG_AND_RETHROW()
       }
 
       combined_session()                        = default;

@@ -178,8 +178,9 @@ namespace eosio { namespace chain {
       void flush() override {
          try {
             write_session.write_changes(undo_stack);
+         } catch(chain_kv::exception& e) {
+            EOS_THROW(chain_kv_exception, "chain-kv error: ${message}", ("message", e.what()));
          }
-         FC_LOG_AND_RETHROW()
       }
 
       std::vector<char> make_prefix() {
@@ -218,13 +219,11 @@ namespace eosio { namespace chain {
 
          std::shared_ptr<const bytes> old_value;
          try {
-            try {
-               old_value = view.get(contract, { key, key_size });
-               view.set(contract, { key, key_size }, { value, value_size });
-            }
-            FC_LOG_AND_RETHROW()
+            old_value = view.get(contract, { key, key_size });
+            view.set(contract, { key, key_size }, { value, value_size });
+         } catch(chain_kv::exception& e) {
+            EOS_THROW(chain_kv_exception, "chain-kv error: ${message}", ("message", e.what()));
          }
-         CATCH_AND_EXIT_DB_FAILURE()
 
          int64_t resource_delta;
          if (old_value) {
@@ -285,13 +284,11 @@ namespace eosio { namespace chain {
                                                          name receiver, kv_resource_manager resource_manager,
                                                          const kv_database_config& limits) {
       try {
-         try {
-            return std::make_unique<kv_context_rocksdb>(kv_database, kv_undo_stack, database_id, receiver,
+         return std::make_unique<kv_context_rocksdb>(kv_database, kv_undo_stack, database_id, receiver,
                                                         resource_manager, limits);
-         }
-         FC_LOG_AND_RETHROW()
+      } catch(chain_kv::exception& e) {
+         EOS_THROW(chain_kv_exception, "chain-kv error: ${message}", ("message", e.what()));
       }
-      CATCH_AND_EXIT_DB_FAILURE()
    }
 
 }} // namespace eosio::chain
