@@ -53,6 +53,8 @@ void apply_context::exec_one()
 {
    auto start = fc::time_point::now();
 
+   digest_type act_digest;
+
    const auto& cfg = control.get_global_properties().configuration;
    const account_metadata_object* receiver_account = nullptr;
    try {
@@ -108,6 +110,18 @@ void apply_context::exec_one()
             }
          }
       } FC_RETHROW_EXCEPTIONS( warn, "pending console output: ${console}", ("console", _pending_console_output) )
+
+      if( control.is_builtin_activated( builtin_protocol_feature_t::action_return_value ) ) {
+         act_digest =   generate_action_digest(
+                           [this](const char* data, uint32_t datalen) {
+                              return trx_context.hash_with_checktime<digest_type>(data, datalen);
+                           },
+                           *act,
+                           action_return_value
+                        );
+      } else {
+         act_digest = digest_type::hash(*act);
+      }
    } catch( const fc::exception& e ) {
       action_trace& trace = trx_context.get_action_trace( action_ordinal );
       trace.error_code = controller::convert_exception_to_error_code( e );
@@ -122,23 +136,13 @@ void apply_context::exec_one()
    //    * and, the *receiver_account object itself cannot be removed because accounts cannot be deleted in EOSIO.
 
    action_trace& trace = trx_context.get_action_trace( action_ordinal );
+   trace.return_value  = std::move(action_return_value);
    trace.receipt.emplace();
 
    action_receipt& r = *trace.receipt;
    r.receiver        = receiver;
+   r.act_digest      = act_digest;
 
-   if( control.is_builtin_activated( builtin_protocol_feature_t::action_return_value ) ) {
-      trace.return_value = std::move(action_return_value);
-      r.act_digest = generate_action_digest(
-                        [this](const char* bytes, uint32_t len) {
-                           return trx_context.hash_with_checktime<digest_type>(bytes, len);
-                        },
-                        *act,
-                        trace.return_value
-                     );
-   } else {
-      r.act_digest = digest_type::hash(*act);
-   }
 
    r.global_sequence  = next_global_sequence();
    r.recv_sequence    = next_recv_sequence( *receiver_account );

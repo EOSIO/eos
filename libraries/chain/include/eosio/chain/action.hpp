@@ -103,8 +103,9 @@ namespace eosio { namespace chain {
       const auto action_base_size   = fc::raw::pack_size(*base);
       const auto action_input_size  = fc::raw::pack_size(act.data);
       const auto action_output_size = fc::raw::pack_size(action_output);
+      const auto rhs_size           = action_input_size + action_output_size;
       std::vector<char> buff;
-      buff.reserve(std::max(action_base_size, action_input_size+action_output_size));
+      buff.reserve(std::max(action_base_size, rhs_size));
       {
          buff.resize(action_base_size);
          fc::datastream<char*> ds(buff.data(), action_base_size);
@@ -112,7 +113,6 @@ namespace eosio { namespace chain {
          hashes[0] = hash(buff.data(), action_base_size);
       }
       {
-         auto rhs_size = action_input_size + action_output_size;
          buff.resize(rhs_size);
          fc::datastream<char*> ds(buff.data(), rhs_size);
          fc::raw::pack(ds, act.data);
