@@ -656,7 +656,7 @@ namespace eosio { namespace testing {
                                    const variant_object& data )const { try {
       const auto& acnt = control->get_account(code);
       auto abi = acnt.get_abi();
-      chain::abi_serializer abis(abi, abi_serializer_max_time);
+      chain::abi_serializer abis(abi, abi_serializer::create_yield_function( abi_serializer_max_time ));
 
       string action_type_name = abis.get_action_type(acttype);
       FC_ASSERT( action_type_name != string(), "unknown action type ${a}", ("a",acttype) );
@@ -666,7 +666,7 @@ namespace eosio { namespace testing {
       act.account = code;
       act.name = acttype;
       act.authorization = auths;
-      act.data = abis.variant_to_binary(action_type_name, data, abi_serializer_max_time);
+      act.data = abis.variant_to_binary(action_type_name, data, abi_serializer::create_yield_function( abi_serializer_max_time ));
       return act;
    } FC_CAPTURE_AND_RETHROW() }
 
@@ -684,7 +684,7 @@ namespace eosio { namespace testing {
         );
 
       signed_transaction trx;
-      abi_serializer::from_variant(pretty_trx, trx, get_resolver(), abi_serializer_max_time);
+      abi_serializer::from_variant(pretty_trx, trx, get_resolver(), abi_serializer::create_yield_function( abi_serializer_max_time ));
       set_transaction_headers(trx);
       for(auto iter = keys.begin(); iter != keys.end(); iter++)
          trx.sign( *iter, control->get_chain_id() );
@@ -730,7 +730,7 @@ namespace eosio { namespace testing {
          );
 
       signed_transaction trx;
-      abi_serializer::from_variant(pretty_trx, trx, get_resolver(), abi_serializer_max_time);
+      abi_serializer::from_variant(pretty_trx, trx, get_resolver(), abi_serializer::create_yield_function( abi_serializer_max_time ));
       set_transaction_headers(trx);
 
       trx.sign( get_private_key( from, "active" ), control->get_chain_id() );
@@ -764,7 +764,7 @@ namespace eosio { namespace testing {
          );
 
       signed_transaction trx;
-      abi_serializer::from_variant(pretty_trx, trx, get_resolver(), abi_serializer_max_time);
+      abi_serializer::from_variant(pretty_trx, trx, get_resolver(), abi_serializer::create_yield_function( abi_serializer_max_time ));
       set_transaction_headers(trx);
 
       trx.sign( get_private_key( from, name(config::active_name).to_string() ), control->get_chain_id()  );
@@ -792,7 +792,7 @@ namespace eosio { namespace testing {
          );
 
       signed_transaction trx;
-      abi_serializer::from_variant(pretty_trx, trx, get_resolver(), abi_serializer_max_time);
+      abi_serializer::from_variant(pretty_trx, trx, get_resolver(), abi_serializer::create_yield_function( abi_serializer_max_time ));
       set_transaction_headers(trx);
 
       trx.sign( get_private_key( currency, name(config::active_name).to_string() ), control->get_chain_id()  );

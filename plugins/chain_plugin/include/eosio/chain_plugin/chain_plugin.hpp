@@ -426,7 +426,7 @@ public:
       name scope{ convert_to_type<uint64_t>(p.scope, "scope") };
 
       abi_serializer abis;
-      abis.set_abi(abi, abi_serializer_max_time);
+      abis.set_abi(abi, abi_serializer::create_yield_function( abi_serializer_max_time ) );
       bool primary = false;
       const uint64_t table_with_index = get_table_index_name(p, primary);
       const auto* t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(p.code, scope, p.table));
@@ -479,7 +479,7 @@ public:
 
                fc::variant data_var;
                if( p.json ) {
-                  data_var = abis.binary_to_variant( abis.get_table_type(p.table), data, abi_serializer_max_time, shorten_abi_errors );
+                  data_var = abis.binary_to_variant( abis.get_table_type(p.table), data, abi_serializer::create_yield_function( abi_serializer_max_time ), shorten_abi_errors );
                } else {
                   data_var = fc::variant( data );
                }
@@ -517,7 +517,7 @@ public:
       uint64_t scope = convert_to_type<uint64_t>(p.scope, "scope");
 
       abi_serializer abis;
-      abis.set_abi(abi, abi_serializer_max_time);
+      abis.set_abi(abi, abi_serializer::create_yield_function( abi_serializer_max_time ));
       const auto* t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(p.code, name(scope), p.table));
       if( t_id != nullptr ) {
          const auto& idx = d.get_index<IndexType, chain::by_scope_primary>();
@@ -556,7 +556,7 @@ public:
 
                fc::variant data_var;
                if( p.json ) {
-                  data_var = abis.binary_to_variant( abis.get_table_type(p.table), data, abi_serializer_max_time, shorten_abi_errors );
+                  data_var = abis.binary_to_variant( abis.get_table_type(p.table), data, abi_serializer::create_yield_function( abi_serializer_max_time ), shorten_abi_errors );
                } else {
                   data_var = fc::variant( data );
                }
