@@ -2,6 +2,7 @@
 #include <eosio/chain/abi_def.hpp>
 #include <eosio/chain/trace.hpp>
 #include <eosio/chain/exceptions.hpp>
+#include <utility>
 #include <fc/variant_object.hpp>
 #include <fc/scoped_exit.hpp>
 
@@ -145,7 +146,7 @@ namespace impl {
 
    struct abi_traverse_context {
       explicit abi_traverse_context( abi_serializer::yield_function_t yield )
-      : yield( yield ),
+      : yield(std::move( yield )),
         recursion_depth(0)
       {
       }
