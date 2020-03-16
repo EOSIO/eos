@@ -1,3 +1,4 @@
+#include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/trace.hpp>
 
 namespace eosio { namespace chain {
@@ -33,5 +34,30 @@ action_trace::action_trace(
 ,block_time( trace.block_time )
 ,producer_block_id( trace.producer_block_id )
 {}
+
+ram_trace::ram_trace(
+   uint32_t action_id,
+   const char* event_id,
+   const char* family,
+   const char* operation,
+   const char* legacy_tag
+)
+:action_id( action_id )
+,event_id( event_id )
+,family( family )
+,operation( operation )
+,legacy_tag( legacy_tag )
+{
+   EOS_ASSERT(!is_generic(), misc_exception, "ram trace from constructor cannot be generic");
+}
+
+ram_trace::ram_trace()
+:action_id( 0 )
+,event_id( nullptr )
+,family( nullptr )
+,operation( nullptr )
+,legacy_tag( nullptr ) {
+   // Valid only for derived struct 'generic_ram_trace'
+}
 
 } } // eosio::chain

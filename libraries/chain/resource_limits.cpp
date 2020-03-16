@@ -225,7 +225,7 @@ void resource_limits_manager::add_transaction_usage(const flat_set<account_name>
    EOS_ASSERT( state.pending_net_usage <= config.net_limit_parameters.max, block_resource_exhausted, "Block has insufficient net resources" );
 }
 
-void resource_limits_manager::add_pending_ram_usage( const account_name account, int64_t ram_delta, uint32_t action_id, const char* event_id, const char* family, const char* operation, const char* legacy_tag ) {
+void resource_limits_manager::add_pending_ram_usage( const account_name account, int64_t ram_delta, const ram_trace&& ram_trace ) {
    if (ram_delta == 0) {
       return;
    }
@@ -238,20 +238,22 @@ void resource_limits_manager::add_pending_ram_usage( const account_name account,
               "Ram usage delta would underflow UINT64_MAX");
 
    _db.modify( usage, [&]( auto& u ) {
-     u.ram_usage += ram_delta;
+      u.ram_usage += ram_delta;
 
-     if (auto logger = _get_deep_mind_logger()) {
+      if (auto logger = _get_deep_mind_logger()) {
+         EOS_ASSERT(!ram_trace.is_generic(), misc_exception, "deep mind does not accept generic ram event");
+
          dmlog(logger, "RAM_OP ${action_id} ${event_id} ${family} ${operation} ${legacy_tag} ${payer} ${new_usage} ${delta}",
-            ("action_id", action_id)
-            ("event_id", event_id)
-            ("family", family)
-            ("operation", operation)
-            ("legacy_tag", legacy_tag)
+            ("action_id", ram_trace.get_action_id())
+            ("event_id", ram_trace.get_event_id())
+            ("family", ram_trace.get_family())
+            ("operation", ram_trace.get_operation())
+            ("legacy_tag", ram_trace.get_legacy_tag())
             ("payer", account)
             ("new_usage", u.ram_usage)
             ("delta", ram_delta)
          );
-     }
+      }
    });
 }
 

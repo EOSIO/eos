@@ -467,9 +467,9 @@ namespace eosio { namespace chain {
       }
    }
 
-   void transaction_context::add_ram_usage( account_name account, int64_t ram_delta, const char* event_id, const char* family, const char* operation, const char* legacy_tag ) {
+   void transaction_context::add_ram_usage( account_name account, int64_t ram_delta, const ram_trace&& ram_trace ) {
       auto& rl = control.get_mutable_resource_limits_manager();
-      rl.add_pending_ram_usage( account, ram_delta, action_id.current(), event_id, family, operation, legacy_tag );
+      rl.add_pending_ram_usage( account, ram_delta, std::move(ram_trace) );
       if( ram_delta > 0 ) {
          validate_ram_usage.insert( account );
       }
@@ -592,7 +592,7 @@ namespace eosio { namespace chain {
       if (recurse_depth == 0) {
          if (auto logger = control.get_deep_mind_logger()) {
             dmlog(logger, "CREATION_OP ROOT ${action_id}",
-               ("action_id", action_id.current())
+               ("action_id", get_action_id())
             );
          }
       }
@@ -628,7 +628,7 @@ namespace eosio { namespace chain {
             event_id = RAM_EVENT_ID("${id}", ("id", gto.id));
 
             dmlog(logger, "DTRX_OP PUSH_CREATE ${action_id} ${sender} ${sender_id} ${payer} ${published} ${delay} ${expiration} ${trx_id} ${trx}",
-               ("action_id", action_id.current())
+               ("action_id", get_action_id())
                ("sender", gto.sender)
                ("sender_id", gto.sender_id)
                ("payer", gto.payer)
@@ -642,7 +642,7 @@ namespace eosio { namespace chain {
       });
 
       int64_t ram_delta = (config::billable_size_v<generated_transaction_object> + trx_size);
-      add_ram_usage( cgto.payer, ram_delta, event_id.c_str(), "deferred_trx", "push", "deferred_trx_pushed" );
+      add_ram_usage( cgto.payer, ram_delta, ram_trace(get_action_id(), event_id.c_str(), "deferred_trx", "push", "deferred_trx_pushed") );
       trace->account_ram_delta = account_delta( cgto.payer, ram_delta );
    }
 

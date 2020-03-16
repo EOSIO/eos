@@ -203,7 +203,7 @@ class apply_context {
                   }
                });
 
-               context.update_db_usage( payer, config::billable_size_v<ObjectType>, event_id.c_str(), "secondary_index", "add", "secondary_index_add" );
+               context.update_db_usage( payer, config::billable_size_v<ObjectType>, ram_trace(context.get_action_id(), event_id.c_str(), "secondary_index", "add", "secondary_index_add") );
 
                itr_cache.cache_table( tab );
                return itr_cache.add( obj );
@@ -225,7 +225,7 @@ class apply_context {
                   );
                }
 
-               context.update_db_usage( obj.payer, -( config::billable_size_v<ObjectType> ), event_id.c_str(), "secondary_index", "remove", "secondary_index_remove" );
+               context.update_db_usage( obj.payer, -( config::billable_size_v<ObjectType> ), ram_trace(context.get_action_id(), event_id.c_str(), "secondary_index", "remove", "secondary_index_remove") );
 
 //               context.require_write_lock( table_obj.scope );
 
@@ -264,8 +264,8 @@ class apply_context {
                }
 
                if( obj.payer != payer ) {
-                  context.update_db_usage( obj.payer, -(billing_size), event_id.c_str(), "secondary_index", "remove", "secondary_index_update_remove_old_payer" );
-                  context.update_db_usage( payer, +(billing_size), event_id.c_str(), "secondary_index", "add", "secondary_index_update_add_new_payer" );
+                  context.update_db_usage( obj.payer, -(billing_size), ram_trace(context.get_action_id(), event_id.c_str(), "secondary_index", "remove", "secondary_index_update_remove_old_payer") );
+                  context.update_db_usage( payer, +(billing_size), ram_trace(context.get_action_id(), event_id.c_str(), "secondary_index", "add", "secondary_index_update_add_new_payer") );
                }
 
                context.db.modify( obj, [&]( auto& o ) {
@@ -539,7 +539,7 @@ class apply_context {
    /// Database methods:
    public:
 
-      void update_db_usage( const account_name& payer, int64_t delta, const char* event_id, const char* family, const char* operation, const char* legacy_tag );
+      void update_db_usage( const account_name& payer, int64_t delta, const ram_trace&& ram_trace );
 
       int  db_store_i64( name scope, name table, const account_name& payer, uint64_t id, const char* buffer, size_t buffer_size );
       void db_update_i64( int iterator, account_name payer, const char* buffer, size_t buffer_size );
@@ -574,7 +574,7 @@ class apply_context {
       uint64_t next_recv_sequence( const account_metadata_object& receiver_account );
       uint64_t next_auth_sequence( account_name actor );
 
-      void add_ram_usage( account_name account, int64_t ram_delta, const char* event_id, const char* family, const char* operation, const char* legacy_tag );
+      void add_ram_usage( account_name account, int64_t ram_delta, const ram_trace&& ram_trace );
       void finalize_trace( action_trace& trace, const fc::time_point& start );
 
       bool is_context_free()const { return context_free; }
@@ -583,6 +583,9 @@ class apply_context {
       const action& get_action()const { return *act; }
 
       action_name get_sender() const;
+
+      uint32_t get_action_id() const;
+      void increment_action_id();
 
    /// Fields:
    public:
