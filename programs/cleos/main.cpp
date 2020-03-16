@@ -331,7 +331,7 @@ auto abi_serializer_resolver = [](const name& account) -> fc::optional<abi_seria
 
     fc::optional<abi_serializer> abis;
     if (raw_abi_blob.size() != 0) {
-      abis.emplace(fc::raw::unpack<abi_def>(raw_abi_blob), abi_serializer_max_time);
+      abis.emplace(fc::raw::unpack<abi_def>(raw_abi_blob), abi_serializer::create_yield_function( abi_serializer_max_time ));
     } else {
       std::cerr << "ABI for contract " << account.to_string() << " not found. Action data will be shown in hex only." << std::endl;
     }
@@ -423,7 +423,7 @@ fc::variant push_transaction( signed_transaction& trx, const std::vector<public_
       if (!tx_return_packed) {
          try {
             fc::variant unpacked_data_trx;
-            abi_serializer::to_variant(trx, unpacked_data_trx, abi_serializer_resolver, abi_serializer_max_time);
+            abi_serializer::to_variant(trx, unpacked_data_trx, abi_serializer_resolver, abi_serializer::create_yield_function( abi_serializer_max_time ));
             return unpacked_data_trx;
          } catch (...) {
             return fc::variant(trx);
@@ -474,7 +474,7 @@ bytes variant_to_bin( const account_name& account, const action_name& action, co
 
    auto action_type = abis->get_action_type( action );
    FC_ASSERT( !action_type.empty(), "Unknown action ${action} in contract ${contract}", ("action", action)( "contract", account ));
-   return abis->variant_to_binary( action_type, action_args_var, abi_serializer_max_time );
+   return abis->variant_to_binary( action_type, action_args_var, abi_serializer::create_yield_function( abi_serializer_max_time ) );
 }
 
 fc::variant bin_to_variant( const account_name& account, const action_name& action, const bytes& action_args) {
@@ -483,7 +483,7 @@ fc::variant bin_to_variant( const account_name& account, const action_name& acti
 
    auto action_type = abis->get_action_type( action );
    FC_ASSERT( !action_type.empty(), "Unknown action ${action} in contract ${contract}", ("action", action)( "contract", account ));
-   return abis->binary_to_variant( action_type, action_args, abi_serializer_max_time );
+   return abis->binary_to_variant( action_type, action_args, abi_serializer::create_yield_function( abi_serializer_max_time ) );
 }
 
 fc::variant json_from_file_or_string(const string& file_or_str, fc::json::parse_type ptype = fc::json::parse_type::legacy_parser)
@@ -2519,7 +2519,7 @@ int main( int argc, char** argv ) {
       if( pack_action_data_flag ) {
          signed_transaction trx;
          try {
-            abi_serializer::from_variant( trx_var, trx, abi_serializer_resolver, abi_serializer_max_time );
+            abi_serializer::from_variant( trx_var, trx, abi_serializer_resolver, abi_serializer::create_yield_function( abi_serializer_max_time ) );
          } EOS_RETHROW_EXCEPTIONS( transaction_type_exception, "Invalid transaction format: '${data}'",
                                    ("data", fc::json::to_string(trx_var, fc::time_point::maximum())))
          std::cout << fc::json::to_pretty_string( packed_transaction( trx, packed_transaction::compression_type::none )) << std::endl;
@@ -2547,7 +2547,7 @@ int main( int argc, char** argv ) {
       signed_transaction strx = packed_trx.get_signed_transaction();
       fc::variant trx_var;
       if( unpack_action_data_flag ) {
-         abi_serializer::to_variant( strx, trx_var, abi_serializer_resolver, abi_serializer_max_time );
+         abi_serializer::to_variant( strx, trx_var, abi_serializer_resolver, abi_serializer::create_yield_function( abi_serializer_max_time ) );
       } else {
          trx_var = strx;
       }
@@ -3529,7 +3529,7 @@ int main( int argc, char** argv ) {
       } catch( fc::exception& ) {
          // unable to convert so try via abi
          signed_transaction trx;
-         abi_serializer::from_variant( trx_var, trx, abi_serializer_resolver, abi_serializer_max_time );
+         abi_serializer::from_variant( trx_var, trx, abi_serializer_resolver, abi_serializer::create_yield_function( abi_serializer_max_time ) );
          std::cout << fc::json::to_pretty_string( push_transaction( trx, signing_keys_opt.get_keys() )) << std::endl;
       }
    });
@@ -3821,7 +3821,7 @@ int main( int argc, char** argv ) {
 
       fc::variant trx_var;
       abi_serializer abi;
-      abi.to_variant(trx, trx_var, abi_serializer_resolver, abi_serializer_max_time);
+      abi.to_variant(trx, trx_var, abi_serializer_resolver, abi_serializer::create_yield_function( abi_serializer_max_time ));
       obj["transaction"] = trx_var;
 
       if( show_approvals_in_multisig_review ) {
