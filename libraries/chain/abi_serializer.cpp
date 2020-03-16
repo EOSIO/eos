@@ -49,7 +49,7 @@ namespace eosio { namespace chain {
    template <typename T>
    auto pack_unpack() {
       return std::make_pair<abi_serializer::unpack_function, abi_serializer::pack_function>(
-         []( fc::datastream<const char*>& stream, bool is_array, bool is_optional, const abi_serializer::yield_function_t& yield) -> fc::variant  {
+         []( fc::datastream<const char*>& stream, bool is_array, bool is_optional, const abi_serializer::yield_function_t& yield) {
             if( is_array )
                return variant_from_stream<vector<T>>(stream);
             else if ( is_optional )
@@ -63,7 +63,7 @@ namespace eosio { namespace chain {
    template <typename T>
    auto pack_unpack_deadline() {
       return std::make_pair<abi_serializer::unpack_function, abi_serializer::pack_function>(
-         []( fc::datastream<const char*>& stream, bool is_array, bool is_optional, const abi_serializer::yield_function_t& yield) -> fc::variant  {
+         []( fc::datastream<const char*>& stream, bool is_array, bool is_optional, const abi_serializer::yield_function_t& yield) {
             if( is_array )
                return variant_from_stream<vector<T>>(stream);
             else if ( is_optional )
