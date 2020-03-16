@@ -7,6 +7,7 @@
 #include <eosio/trace_api/common.hpp>
 #include <eosio/trace_api/metadata_log.hpp>
 #include <eosio/trace_api/data_log.hpp>
+#include <eosio/trace_api/compressed_file.hpp>
 
 namespace eosio::trace_api {
    using namespace boost::filesystem;
@@ -157,6 +158,17 @@ namespace eosio::trace_api {
       bool find_trace_slice(uint32_t slice_number, open_state state, fc::cfile& trace_file, bool open_file = true) const;
 
       /**
+       * Find the read-only compressed trace file associated with the indicated slice_number
+       *
+       * @param slice_number : slice number of the requested slice file
+       * @param open_file : indicate if the file should be opened (if found) or not
+       * @return if file was found (i.e. already existed) returns an optional containing a compressed_file which is
+       *         open (or not) depending on the `open_file` paraneter,
+       *         Otherwise, the returned optional is empty
+       */
+      std::optional<compressed_file> find_compressed_trace_slice(uint32_t slice_number, bool open_file = true) const;
+
+      /**
        * Find or create a trace and index file pair
        *
        * @param slice_number : slice number of the requested slice file
@@ -255,6 +267,14 @@ namespace eosio::trace_api {
        */
       std::optional<data_log_entry> read_data_log( uint32_t block_height, uint64_t offset ) {
          const uint32_t slice_number = _slice_directory.slice_number(block_height);
+
+         // Prefer a compressed trace if one exists
+         std::optional<compressed_file> ctrace = _slice_directory.find_compressed_trace_slice(slice_number);
+         if (ctrace) {
+            ctrace->seek(offset);
+            return extract_store<data_log_entry>(*ctrace);
+         }
+
          fc::cfile trace;
          if( !_slice_directory.find_trace_slice(slice_number, open_state::read, trace) ) {
             const std::string offset_str = boost::lexical_cast<std::string>(offset);

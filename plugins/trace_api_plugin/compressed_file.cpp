@@ -23,7 +23,7 @@ struct compressed_file_impl {
    void read( char* d, size_t n, const std::unique_ptr<fc::cfile>& file_ptr )
    {
       if (!initialized) {
-         if (Z_OK != inflateInit(&strm)) {
+         if (Z_OK != inflateInit2(&strm, -15)) {
             throw std::runtime_error("failed to initialize decompression");
          }
 
@@ -64,7 +64,7 @@ struct compressed_file_impl {
             auto ret = inflate(&strm, Z_NO_FLUSH);
 
             if (ret == Z_NEED_DICT || ret == Z_DATA_ERROR || ret == Z_MEM_ERROR) {
-               throw std::runtime_error("Error decompressing");
+               throw std::runtime_error("Error decompressing: " + std::string(strm.msg));
             }
 
             auto bytes_decompressed = read_buffer.size() - strm.avail_out;
@@ -100,7 +100,7 @@ struct compressed_file_impl {
       file_ptr->seek_end(-2 - seek_map_size);
 
       std::vector<seek_point_entry> seek_point_map(seek_point_count);
-      file_ptr->read(reinterpret_cast<char*>(seek_point_map.data()), seek_point_map.size());
+      file_ptr->read(reinterpret_cast<char*>(seek_point_map.data()), seek_point_map.size() * sizeof(seek_point_entry));
 
       // seek to the neareast seek point
       auto iter = std::lower_bound(seek_point_map.begin(), seek_point_map.end(), (uint64_t)loc, []( const auto& lhs, const auto& rhs ){
@@ -113,19 +113,21 @@ struct compressed_file_impl {
          return;
       }
 
+      long remaining = loc;
+
       // special case when this is before the first seek point
       if ( iter == seek_point_map.begin() ) {
          file_ptr->seek(0);
-         return;
+      } else {
+         // if lower bound wasn't exact it will be one past the seek point we need
+         const auto& seek_pt = *(iter - 1);
+         file_ptr->seek(std::get<1>(seek_pt));
+         remaining -= std::get<0>(seek_pt);
       }
 
-      // if lower bound wasn't exact it will be one past the seek point we need
-      const auto& seek_pt = *(iter - 1);
-      file_ptr->seek(std::get<1>(seek_pt));
 
       // read up to the expected offset
-      auto pre_read_size = loc - std::get<0>(seek_pt);
-      auto pre_read_buffer = std::vector<char>(pre_read_size);
+      auto pre_read_buffer = std::vector<char>(remaining);
       read(pre_read_buffer.data(), pre_read_buffer.size(), file_ptr);
    }
 
@@ -156,6 +158,12 @@ void compressed_file::seek( long loc ) {
 void compressed_file::read( char* d, size_t n ) {
    impl->read(d, n, file_ptr);
 }
+
+// these are defaulted now that the opaque impl type is known
+//
+compressed_file::compressed_file( compressed_file&& ) = default;
+compressed_file& compressed_file::operator= ( compressed_file&& ) = default;
+
 
 /**
  * Create a compressed file that looks like this:
@@ -206,7 +214,7 @@ bool compressed_file::process( const fc::path& input_path, const fc::path& outpu
    strm.zfree = Z_NULL;
    strm.opaque = Z_NULL;
 
-   if (deflateInit(&strm, Z_BEST_COMPRESSION) != Z_OK) {
+   if (deflateInit2(&strm, Z_BEST_COMPRESSION, Z_DEFLATED, -15, 8, Z_DEFAULT_STRATEGY) != Z_OK) {
       return false;
    }
 
@@ -242,25 +250,32 @@ bool compressed_file::process( const fc::path& input_path, const fc::path& outpu
       if (read_size == bytes_remaining ) {
          strm.avail_in = 0;
          strm.next_in = input_buffer.data();
-         strm.avail_out = output_buffer.size();
-         strm.next_out = output_buffer.data();
 
-         auto ret = deflate(&strm, Z_FINISH);
-         if (ret == Z_STREAM_ERROR) {
-            throw std::runtime_error("failed to create sync point");
-         }
-         output_file.write(reinterpret_cast<const char*>(output_buffer.data()), output_buffer.size() - strm.avail_out);
+         do {
+            strm.avail_out = output_buffer.size();
+            strm.next_out = output_buffer.data();
+
+            auto ret = deflate(&strm, Z_FINISH);
+            if (ret == Z_STREAM_ERROR) {
+               throw std::runtime_error("failed to create sync point");
+            }
+
+            output_file.write(reinterpret_cast<const char*>(output_buffer.data()), output_buffer.size() - strm.avail_out);
+         } while (strm.avail_out == 0);
       } else if ( read_size == bytes_remaining_before_sync ) {
          strm.avail_in = 0;
          strm.next_in = input_buffer.data();
-         strm.avail_out = output_buffer.size();
-         strm.next_out = output_buffer.data();
 
-         auto ret = deflate(&strm, Z_FULL_FLUSH);
-         if (ret == Z_STREAM_ERROR) {
-            throw std::runtime_error("failed to create sync point");
-         }
-         output_file.write(reinterpret_cast<const char*>(output_buffer.data()), output_buffer.size() - strm.avail_out);
+         do {
+            strm.avail_out = output_buffer.size();
+            strm.next_out = output_buffer.data();
+
+            auto ret = deflate(&strm, Z_FULL_FLUSH);
+            if (ret == Z_STREAM_ERROR) {
+               throw std::runtime_error("failed to create sync point");
+            }
+            output_file.write(reinterpret_cast<const char*>(output_buffer.data()), output_buffer.size() - strm.avail_out);
+         } while (strm.avail_out == 0);
 
          seek_point_map.at(next_sync_point++) = {read_offset, output_file.tellp()};
 

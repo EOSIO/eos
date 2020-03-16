@@ -33,11 +33,21 @@ namespace eosio::trace_api {
          file_ptr.reset();
       }
 
+      auto get_file_path() const {
+         return file_path;
+      }
+
       compressed_file_datastream create_datastream();
       
       static bool process( const fc::path& input_path, const fc::path& output_path, uint16_t seek_point_count );
 
-   private:
+      /**
+       * Provide default move construction/assignment
+       */
+      compressed_file( compressed_file&& );
+      compressed_file& operator= ( compressed_file&& );
+
+      private:
       fc::path file_path;
       std::unique_ptr<fc::cfile> file_ptr;
       std::unique_ptr<compressed_file_impl> impl;
