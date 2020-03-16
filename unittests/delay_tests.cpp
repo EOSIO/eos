@@ -49,10 +49,10 @@ BOOST_FIXTURE_TEST_CASE( delay_error_create_account, validating_tester) { try {
 
    produce_blocks(2);
    signed_transaction trx;
-
+   
    account_name a = N(newco);
    account_name creator = config::system_account_name;
-
+   
    auto owner_auth =  authority( get_public_key( a, "owner" ) );
    trx.actions.emplace_back( vector<permission_level>{{creator,config::active_name}},
                              newaccount{
@@ -64,16 +64,14 @@ BOOST_FIXTURE_TEST_CASE( delay_error_create_account, validating_tester) { try {
    set_transaction_headers(trx);
    trx.delay_sec = 3;
    trx.sign( get_private_key( creator, "active" ), control->get_chain_id()  );
-
-   ilog( fc::json::to_pretty_string(trx) );
+   
    auto trace = push_transaction( trx );
-   edump((*trace));
-
+   
    produce_blocks(6);
-
+   
    auto scheduled_trxs = get_scheduled_transactions();
    BOOST_REQUIRE_EQUAL(scheduled_trxs.size(), 1u);
-
+   
    auto dtrace = control->push_scheduled_transaction(scheduled_trxs.front(), fc::time_point::maximum());
    BOOST_REQUIRE_EQUAL(dtrace->except.valid(), true);
    BOOST_REQUIRE_EQUAL(dtrace->except->code(), missing_auth_exception::code_value);
