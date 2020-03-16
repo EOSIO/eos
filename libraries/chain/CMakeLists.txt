@@ -17,23 +17,23 @@ else()
 endif()
 
 if("eos-vm-oc" IN_LIST EOSIO_WASM_RUNTIMES)
-   set(CHAIN_EOSVMOC_SOURCES webassembly/eos-vm-oc/code_cache.cpp
-                             webassembly/eos-vm-oc/executor.cpp
-                             webassembly/eos-vm-oc/memory.cpp
-                             webassembly/eos-vm-oc/intrinsic.cpp
-                             webassembly/eos-vm-oc/LLVMJIT.cpp
-                             webassembly/eos-vm-oc/LLVMEmitIR.cpp
-                             webassembly/eos-vm-oc/compile_monitor.cpp
-                             webassembly/eos-vm-oc/compile_trampoline.cpp
-                             webassembly/eos-vm-oc/ipc_helpers.cpp
-                             webassembly/eos-vm-oc/gs_seg_helpers.c
-                             webassembly/eos-vm-oc.cpp)
+   set(CHAIN_EOSVMOC_SOURCES webassembly/runtimes/eos-vm-oc/code_cache.cpp
+                             webassembly/runtimes/eos-vm-oc/executor.cpp
+                             webassembly/runtimes/eos-vm-oc/memory.cpp
+                             webassembly/runtimes/eos-vm-oc/intrinsic.cpp
+                             webassembly/runtimes/eos-vm-oc/LLVMJIT.cpp
+                             webassembly/runtimes/eos-vm-oc/LLVMEmitIR.cpp
+                             webassembly/runtimes/eos-vm-oc/compile_monitor.cpp
+                             webassembly/runtimes/eos-vm-oc/compile_trampoline.cpp
+                             webassembly/runtimes/eos-vm-oc/ipc_helpers.cpp
+                             webassembly/runtimes/eos-vm-oc/gs_seg_helpers.c
+                             webassembly/runtimes/eos-vm-oc.cpp)
 
    if(LLVM_VERSION VERSION_LESS 7.1 AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
       enable_language(ASM-LLVMWAR)
-      list(APPEND CHAIN_EOSVMOC_SOURCES webassembly/eos-vm-oc/llvmWARshim.llvmwar)
+      list(APPEND CHAIN_EOSVMOC_SOURCES webassembly/runtimes/eos-vm-oc/llvmWARshim.llvmwar)
    else()
-      list(APPEND CHAIN_EOSVMOC_SOURCES webassembly/eos-vm-oc/llvmWARshim.cpp)
+      list(APPEND CHAIN_EOSVMOC_SOURCES webassembly/runtimes/eos-vm-oc/llvmWARshim.cpp)
    endif()
 
    llvm_map_components_to_libnames(LLVM_LIBS support core passes mcjit native orcjit)
@@ -44,7 +44,7 @@ if("eos-vm-oc" IN_LIST EOSIO_WASM_RUNTIMES)
 endif()
 
 if("eos-vm" IN_LIST EOSIO_WASM_RUNTIMES OR "eos-vm-jit" IN_LIST EOSIO_WASM_RUNTIMES)
-   set(CHAIN_EOSVM_SOURCES "webassembly/eos-vm.cpp")
+   set(CHAIN_EOSVM_SOURCES "webassembly/runtimes/eos-vm.cpp")
    set(CHAIN_EOSVM_LIBRARIES eos-vm)
 endif()
 

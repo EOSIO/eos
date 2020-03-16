@@ -3,6 +3,7 @@
 #include <eosio/chain/types.hpp>
 #include <eosio/chain/webassembly/common.hpp>
 #include <eosio/chain/webassembly/eos-vm.hpp>
+#include <fc/crypto/sha1.hpp>
 
 namespace eosio { namespace chain { namespace webassembly {
 
@@ -18,15 +19,15 @@ namespace eosio { namespace chain { namespace webassembly {
 
 #define DECLARE_HOST_FUNCTION(RET_TY, NAME, ...) \
    RET_TY NAME (__VA_ARGS__);                   \
-   static constexpr host_function_registrator<&interface::NAME> NAME_registrator = {"env", #NAME};
+   inline static host_function_registrator<&interface::NAME> NAME ## _registrator = {"env", #NAME};
 
 #define DECLARE_INJECTED_HOST_FUNCTION(RET_TY, NAME, ...) \
    RET_TY NAME (__VA_ARGS__);                            \
-   static constexpr host_function_registrator<&interface::NAME> NAME_registrator = {"eosio_injected", #NAME};
+   inline static host_function_registrator<&interface::NAME> NAME ## _registrator = {"eosio_injected", #NAME};
 
    class interface {
       public:
-         interface(apply_context& ctx) : context(ctx) {}
+         inline explicit interface(apply_context& ctx) : context(ctx) {}
 
          // checktime api
          DECLARE_INJECTED_HOST_FUNCTION(void, checktime)
@@ -35,8 +36,8 @@ namespace eosio { namespace chain { namespace webassembly {
          DECLARE_HOST_FUNCTION(int, get_context_free_data, uint32_t, legacy_array_ptr<char>, uint32_t)
 
          // privileged api
-         DECLARE_HOST_FUNCTION(int,      is_feature_active, int64_t)
-         DECLARE_HOST_FUNCTION(void,     activate_feature, int64_t)
+         DECLARE_HOST_FUNCTION(int,      is_feature_active,                int64_t)
+         DECLARE_HOST_FUNCTION(void,     activate_feature,                 int64_t)
          DECLARE_HOST_FUNCTION(void,     preactivate_feature,              const digest_type&)
          DECLARE_HOST_FUNCTION(void,     set_resource_limits,              account_name, int64_t, int64_t, int64_t)
          DECLARE_HOST_FUNCTION(void,     get_resource_limits,              account_name, int64_t&, int64_t&, int64_t&)
@@ -264,13 +265,13 @@ namespace eosio { namespace chain { namespace webassembly {
          DECLARE_HOST_FUNCTION(void,     __multi3,      __int128&, uint64_t, uint64_t, uint64_t, uint64_t)
          DECLARE_HOST_FUNCTION(void,     __modti3,      __int128&, uint64_t, uint64_t, uint64_t, uint64_t)
          DECLARE_HOST_FUNCTION(void,     __umodti3,     __int128&, uint64_t, uint64_t, uint64_t, uint64_t)
-         DECLARE_HOST_FUNCTION(void,     __addtf3,      __float128_t&, uint64_t, uint64_t, uint64_t, uint64_t)
-         DECLARE_HOST_FUNCTION(void,     __subtf3,      __float128_t&, uint64_t, uint64_t, uint64_t, uint64_t)
-         DECLARE_HOST_FUNCTION(void,     __multf3,      __float128_t&, uint64_t, uint64_t, uint64_t, uint64_t)
-         DECLARE_HOST_FUNCTION(void,     __divtf3,      __float128_t&, uint64_t, uint64_t, uint64_t, uint64_t)
-         DECLARE_HOST_FUNCTION(void,     __negtf2,      __float128_t&, uint64_t, uint64_t)
-         DECLARE_HOST_FUNCTION(void,     __extendsftf2, __float128_t&, float)
-         DECLARE_HOST_FUNCTION(void,     __extenddftf2, __float128_t&, double)
+         DECLARE_HOST_FUNCTION(void,     __addtf3,      float128_t&, uint64_t, uint64_t, uint64_t, uint64_t)
+         DECLARE_HOST_FUNCTION(void,     __subtf3,      float128_t&, uint64_t, uint64_t, uint64_t, uint64_t)
+         DECLARE_HOST_FUNCTION(void,     __multf3,      float128_t&, uint64_t, uint64_t, uint64_t, uint64_t)
+         DECLARE_HOST_FUNCTION(void,     __divtf3,      float128_t&, uint64_t, uint64_t, uint64_t, uint64_t)
+         DECLARE_HOST_FUNCTION(void,     __negtf2,      float128_t&, uint64_t, uint64_t)
+         DECLARE_HOST_FUNCTION(void,     __extendsftf2, float128_t&, float)
+         DECLARE_HOST_FUNCTION(void,     __extenddftf2, float128_t&, double)
          DECLARE_HOST_FUNCTION(double,   __trunctfdf2,  uint64_t, uint64_t)
          DECLARE_HOST_FUNCTION(float,    __trunctfsf2,  uint64_t, uint64_t)
          DECLARE_HOST_FUNCTION(int32_t,  __fixtfsi,     uint64_t, uint64_t)
