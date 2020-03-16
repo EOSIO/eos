@@ -67,3 +67,5 @@ Contract Storage
 
 * Remove Deferred has to remove data on it's `on_activation` in file controller.cpp:on_activation stuff
 * Must remove the two intrinsics from the whitelist
+
+[ ] Use Ninja
