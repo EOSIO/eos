@@ -9,12 +9,13 @@ This command does not accept any parameters.
 ## Example
 
 
-```shell
-$ ./cleos get info
+```sh
+cleos get info
 ```
+
 This command simply returns the current blockchain state information. 
 
-```shell
+```json
 {
   "server_version": "7451e092",
   "head_block_num": 6980,

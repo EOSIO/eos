@@ -1,55 +1,64 @@
+---
+content_title: Install Prebuilt Binaries
+---
 
 [[info | Previous Builds]]
-| If you have previously installed EOSIO from source using shell scripts, you must first run the [Uninstall Script](01_build-from-source/05_uninstall-eosio.md) before installing any prebuilt binaries on the same OS.
+| If you have previously installed EOSIO from source using shell scripts, you must first run the [Uninstall Script](01_build-from-source/01_shell-scripts/05_uninstall-eosio.md) before installing any prebuilt binaries on the same OS.
 
 ## Prebuilt Binaries
 
-EOSIO prebuilt binary packages are available for specific [Operating Systems](index.md#supported-operating-systems). Find the instructions below for your given OS:
+Prebuilt EOSIO software packages are available for the operating systems below. Find and follow the instructions for your OS:
 
 ### Mac OS X:
 
 #### Mac OS X Brew Install
 ```sh
-$ brew tap eosio/eosio
-$ brew install eosio
+brew tap eosio/eosio
+brew install eosio
 ```
 #### Mac OS X Brew Uninstall
 ```sh
-$ brew remove eosio
+brew remove eosio
 ```
 
 ### Ubuntu Linux:
 
 #### Ubuntu 18.04 Package Install
 ```sh
-$ wget https://github.com/eosio/eos/releases/download/v1.8.0-rc1/eosio_1.8.0-rc1-ubuntu-18.04_amd64.deb
-$ sudo apt install ./eosio_1.8.0-rc1-ubuntu-18.04_amd64.deb
+wget https://github.com/eosio/eos/releases/download/v1.8.0-rc1/eosio_1.8.0-rc1-ubuntu-18.04_amd64.deb
+sudo apt install ./eosio_1.8.0-rc1-ubuntu-18.04_amd64.deb
 ```
 #### Ubuntu 16.04 Package Install
 ```sh
-$ wget https://github.com/eosio/eos/releases/download/v1.8.0-rc1/eosio_1.8.0-rc1-ubuntu-16.04_amd64.deb
-$ sudo apt install ./eosio_1.8.0-rc1-ubuntu-16.04_amd64.deb
+wget https://github.com/eosio/eos/releases/download/v1.8.0-rc1/eosio_1.8.0-rc1-ubuntu-16.04_amd64.deb
+sudo apt install ./eosio_1.8.0-rc1-ubuntu-16.04_amd64.deb
 ```
 #### Ubuntu Package Uninstall
 ```sh
-$ sudo apt remove eosio
+sudo apt remove eosio
 ```
 
 ### RPM-based (CentOS, Amazon Linux, etc.):
 
 #### RPM Package Install
 ```sh
-$ wget https://github.com/eosio/eos/releases/download/v1.8.0-rc1/eosio-1.8.0-rc1.el7.x86_64.rpm
-$ sudo yum install ./eosio-1.8.0-rc1.el7.x86_64.rpm
+wget https://github.com/eosio/eos/releases/download/v1.8.0-rc1/eosio-1.8.0-rc1.el7.x86_64.rpm
+sudo yum install ./eosio-1.8.0-rc1.el7.x86_64.rpm
 ```
 #### RPM Package Uninstall
 ```sh
-$ sudo yum remove eosio
+sudo yum remove eosio
 ```
 
 ## Location of EOSIO binaries
 
-After installing the prebuilt binaries, the actual EOSIO binaries will be located under the `~/eosio/x.y/bin` folder, where `x.y` is the EOSIO release version that was installed.
+After installing the prebuilt packages, the actual EOSIO binaries will be located under:
+* `/usr/opt/eosio/<version-string>/bin` (Linux-based); or
+* `/usr/local/Cellar/eosio/<version-string>/bin` (MacOS)
+
+where `version-string` is the EOSIO version that was installed.
+
+Also, soft links for each EOSIO program (`nodeos`, `cleos`, `keosd`, etc.) will be created under `usr/bin` or `usr/local/bin` to allow them to be executed from any directory.
 
 ## Previous Versions
 

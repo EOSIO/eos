@@ -24,9 +24,9 @@ Some of the groundbreaking features of EOSIO include:
 
 Block.one is neither launching nor operating any initial public blockchains based upon the EOSIO software. This release refers only to version 1.0 of our open source software. We caution those who wish to use blockchains built on EOSIO to carefully vet the companies and organizations launching blockchains based on EOSIO before disclosing any private keys to their derivative software.
 
-## Testnets
+## Official Testnet
 
-There is no public testnet running currently.
+[testnet.eos.io](https://testnet.eos.io/)
 
 ## Supported Operating Systems
 
@@ -62,41 +62,41 @@ Prebuilt EOSIO software packages are available for the operating systems below. 
 
 #### Mac OS X Brew Install
 ```sh
-$ brew tap eosio/eosio
-$ brew install eosio
+brew tap eosio/eosio
+brew install eosio
 ```
 #### Mac OS X Brew Uninstall
 ```sh
-$ brew remove eosio
+brew remove eosio
 ```
 
 ### Ubuntu Linux:
 
 #### Ubuntu 18.04 Package Install
 ```sh
-$ wget https://github.com/eosio/eos/releases/download/v2.0.0/eosio_2.0.0-1-ubuntu-18.04_amd64.deb
-$ sudo apt install ./eosio_2.0.0-1-ubuntu-18.04_amd64.deb
+wget https://github.com/eosio/eos/releases/download/v2.0.0/eosio_2.0.0-1-ubuntu-18.04_amd64.deb
+sudo apt install ./eosio_2.0.0-1-ubuntu-18.04_amd64.deb
 ```
 #### Ubuntu 16.04 Package Install
 ```sh
-$ wget https://github.com/eosio/eos/releases/download/v2.0.0/eosio_2.0.0-1-ubuntu-16.04_amd64.deb
-$ sudo apt install ./eosio_2.0.0-1-ubuntu-16.04_amd64.deb
+wget https://github.com/eosio/eos/releases/download/v2.0.0/eosio_2.0.0-1-ubuntu-16.04_amd64.deb
+sudo apt install ./eosio_2.0.0-1-ubuntu-16.04_amd64.deb
 ```
 #### Ubuntu Package Uninstall
 ```sh
-$ sudo apt remove eosio
+sudo apt remove eosio
 ```
 
 ### RPM-based (CentOS, Amazon Linux, etc.):
 
 #### RPM Package Install
 ```sh
-$ wget https://github.com/eosio/eos/releases/download/v2.0.0/eosio-2.0.0-1.el7.x86_64.rpm
-$ sudo yum install ./eosio-2.0.0-1.el7.x86_64.rpm
+wget https://github.com/eosio/eos/releases/download/v2.0.0/eosio-2.0.0-1.el7.x86_64.rpm
+sudo yum install ./eosio-2.0.0-1.el7.x86_64.rpm
 ```
 #### RPM Package Uninstall
 ```sh
-$ sudo yum remove eosio
+sudo yum remove eosio
 ```
 
 ## Uninstall Script
@@ -124,9 +124,8 @@ To uninstall the EOSIO built/installed binaries and dependencies, run:
 1. [White Paper](https://github.com/EOSIO/Documentation/blob/master/TechnicalWhitePaper.md)
 1. [Roadmap](https://github.com/EOSIO/Documentation/blob/master/Roadmap.md)
 
-<a name="gettingstarted"></a>
 ## Getting Started
-Instructions detailing the process of getting the software, building it, running a simple test network that produces blocks, account creation and uploading a sample contract to the blockchain can be found in the [Getting Started](https://developers.eos.io/eosio-home/docs) walkthrough.
+Instructions detailing the process of getting the software, building it, running a simple test network that produces blocks, account creation and uploading a sample contract to the blockchain can be found in the [Getting Started](https://developers.eos.io/welcome/latest/getting-started) walkthrough.
 
 ## Contributing
 

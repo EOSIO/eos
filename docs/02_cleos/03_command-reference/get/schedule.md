@@ -11,12 +11,13 @@ Retrieve the producer schedule
 
 ## Example
 
-```shell
-$ ./cleos get schedule
+```sh
+cleos get schedule
 ```
+
 This command simply returns the current producer schedule. 
 
-```shell
+```console
 active schedule version 0
     Producer      Producer key
     ============= ==================

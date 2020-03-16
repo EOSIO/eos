@@ -61,7 +61,6 @@ find_library(libwasm WASM @CMAKE_INSTALL_PREFIX@/lib64 @CMAKE_INSTALL_PREFIX@/li
 find_library(libwast WAST @CMAKE_INSTALL_PREFIX@/lib64 @CMAKE_INSTALL_PREFIX@/lib NO_DEFAULT_PATH)
 find_library(libwabt wabt @CMAKE_INSTALL_PREFIX@/lib64 @CMAKE_INSTALL_PREFIX@/lib NO_DEFAULT_PATH)
 find_library(libir IR     @CMAKE_INSTALL_PREFIX@/lib64 @CMAKE_INSTALL_PREFIX@/lib NO_DEFAULT_PATH)
-find_library(libplatform Platform @CMAKE_INSTALL_PREFIX@/lib64 @CMAKE_INSTALL_PREFIX@/lib NO_DEFAULT_PATH)
 find_library(liblogging Logging @CMAKE_INSTALL_PREFIX@/lib64 @CMAKE_INSTALL_PREFIX@/lib NO_DEFAULT_PATH)
 find_library(libruntime Runtime @CMAKE_INSTALL_PREFIX@/lib64 @CMAKE_INSTALL_PREFIX@/lib NO_DEFAULT_PATH)
 find_library(libsoftfloat softfloat @CMAKE_INSTALL_PREFIX@/lib64 @CMAKE_INSTALL_PREFIX@/lib NO_DEFAULT_PATH)
@@ -93,7 +92,6 @@ macro(add_eosio_test_executable test_name)
        ${libwasm}
        ${libwabt}
        ${libruntime}
-       ${libplatform}
        ${libir}
        ${libsoftfloat}
        ${liboscrypto}

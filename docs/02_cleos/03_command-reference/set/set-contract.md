@@ -37,15 +37,17 @@ Creates or updates the contract on an account.
 ## Example
 Here we deploy the standard currency contract. 
 
-```shell
-$ ./cleos set contract currency ../../../contracts/currency/currency.wast ../../../contracts/currency/currency.abi
+```sh
+cleos set contract currency ../../../contracts/currency/currency.wast ../../../contracts/currency/currency.abi
 ```
 This will output something similar to...
 
-```shell
+```console
 Reading WAST...
 Assembling WASM...
 Publishing contract...
+```
+```json
 {
   "transaction_id": "9990306e13f630a9c5436a5a0b6fb8fe2c7f3da2f342b4898a39c4a2c17dcdb3",
   "processed": {

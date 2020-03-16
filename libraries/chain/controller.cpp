@@ -114,6 +114,7 @@ struct building_block {
                    const vector<digest_type>& new_protocol_feature_activations )
    :_pending_block_header_state( prev.next( when, num_prev_blocks_to_confirm ) )
    ,_new_protocol_feature_activations( new_protocol_feature_activations )
+   ,_trx_mroot_or_receipt_digests( digests_t{} )
    {}
 
    pending_block_header_state            _pending_block_header_state;
@@ -122,8 +123,8 @@ struct building_block {
    size_t                                _num_new_protocol_features_that_have_activated = 0;
    deque<transaction_metadata_ptr>       _pending_trx_metas;
    deque<transaction_receipt>            _pending_trx_receipts; // boost deque in 1.71 with 1024 elements performs better
-   deque<digest_type>                    _pending_trx_receipt_digests;
-   deque<digest_type>                    _action_receipt_digests;
+   static_variant<checksum256_type, digests_t> _trx_mroot_or_receipt_digests;
+   digests_t                             _action_receipt_digests;
 };
 
 struct assembled_block {
@@ -1094,7 +1095,8 @@ struct controller_impl {
       auto& bb = pending->_block_stage.get<building_block>();
       auto orig_trx_receipts_size           = bb._pending_trx_receipts.size();
       auto orig_trx_metas_size              = bb._pending_trx_metas.size();
-      auto orig_trx_receipt_digests_size    = bb._pending_trx_receipt_digests.size();
+      auto orig_trx_receipt_digests_size    = bb._trx_mroot_or_receipt_digests.contains<digests_t>() ?
+            bb._trx_mroot_or_receipt_digests.get<digests_t>().size() : 0;
       auto orig_action_receipt_digests_size = bb._action_receipt_digests.size();
 
       std::function<void()> callback = [this,
@@ -1106,7 +1108,8 @@ struct controller_impl {
          auto& bb = pending->_block_stage.get<building_block>();
          bb._pending_trx_receipts.resize(orig_trx_receipts_size);
          bb._pending_trx_metas.resize(orig_trx_metas_size);
-         bb._pending_trx_receipt_digests.resize(orig_trx_receipt_digests_size);
+         if( bb._trx_mroot_or_receipt_digests.contains<digests_t>() )
+            bb._trx_mroot_or_receipt_digests.get<digests_t>().resize(orig_trx_receipt_digests_size);
          bb._action_receipt_digests.resize(orig_action_receipt_digests_size);
       };
 
@@ -1212,6 +1215,10 @@ struct controller_impl {
 
    transaction_trace_ptr push_scheduled_transaction( const generated_transaction_object& gto, fc::time_point deadline, uint32_t billed_cpu_time_us, bool explicit_billed_cpu_time = false )
    { try {
+
+      const bool validating = !self.is_producing_block();
+      EOS_ASSERT( !validating || explicit_billed_cpu_time, transaction_exception, "validating requires explicit billing" );
+
       maybe_session undo_session;
       if ( !self.skip_db_sessions() )
          undo_session = maybe_session(db);
@@ -1319,7 +1326,7 @@ struct controller_impl {
 
       // Only subjective OR soft OR hard failure logic below:
 
-      if( gtrx.sender != account_name() && !failure_is_subjective(*trace->except)) {
+      if( gtrx.sender != account_name() && !(validating ? failure_is_subjective(*trace->except) : scheduled_failure_is_subjective(*trace->except))) {
          // Attempt error handling for the generated transaction.
 
          auto error_trace = apply_onerror( gtrx, deadline, trx_context.pseudo_start,
@@ -1341,7 +1348,7 @@ struct controller_impl {
 
       // subjectivity changes based on producing vs validating
       bool subjective  = false;
-      if (explicit_billed_cpu_time) {
+      if (validating) {
          subjective = failure_is_subjective(*trace->except);
       } else {
          subjective = scheduled_failure_is_subjective(*trace->except);
@@ -1350,15 +1357,18 @@ struct controller_impl {
       if ( !subjective ) {
          // hard failure logic
 
-         if( !explicit_billed_cpu_time ) {
+         if( !validating ) {
             auto& rl = self.get_mutable_resource_limits_manager();
             rl.update_account_usage( trx_context.bill_to_accounts, block_timestamp_type(self.pending_block_time()).slot );
             int64_t account_cpu_limit = 0;
             std::tie( std::ignore, account_cpu_limit, std::ignore, std::ignore ) = trx_context.max_bandwidth_billed_accounts_can_pay( true );
 
-            cpu_time_to_bill_us = static_cast<uint32_t>( std::min( std::min( static_cast<int64_t>(cpu_time_to_bill_us),
-                                                                             account_cpu_limit                          ),
-                                                                   trx_context.initial_objective_duration_limit.count()    ) );
+            uint32_t limited_cpu_time_to_bill_us = static_cast<uint32_t>( std::min(
+                  std::min( static_cast<int64_t>(cpu_time_to_bill_us), account_cpu_limit ),
+                  trx_context.initial_objective_duration_limit.count() ) );
+            EOS_ASSERT( !explicit_billed_cpu_time || (cpu_time_to_bill_us == limited_cpu_time_to_bill_us),
+                        transaction_exception, "cpu to bill ${cpu} != limited ${limit}", ("cpu", cpu_time_to_bill_us)("limit", limited_cpu_time_to_bill_us) );
+            cpu_time_to_bill_us = limited_cpu_time_to_bill_us;
          }
 
          resource_limits.add_transaction_usage( trx_context.bill_to_accounts, cpu_time_to_bill_us, 0,
@@ -1394,7 +1404,9 @@ struct controller_impl {
       r.cpu_usage_us         = cpu_usage_us;
       r.net_usage_words      = net_usage_words;
       r.status               = status;
-      pending->_block_stage.get<building_block>()._pending_trx_receipt_digests.emplace_back( r.digest() );
+      auto& bb = pending->_block_stage.get<building_block>();
+      if( bb._trx_mroot_or_receipt_digests.contains<digests_t>() )
+         bb._trx_mroot_or_receipt_digests.get<digests_t>().emplace_back( r.digest() );
       return r;
    }
 
@@ -1406,7 +1418,7 @@ struct controller_impl {
    transaction_trace_ptr push_transaction( const transaction_metadata_ptr& trx,
                                            fc::time_point deadline,
                                            uint32_t billed_cpu_time_us,
-                                           bool explicit_billed_cpu_time = false )
+                                           bool explicit_billed_cpu_time )
    {
       EOS_ASSERT(deadline != fc::time_point(), transaction_exception, "deadline cannot be uninitialized");
 
@@ -1469,6 +1481,7 @@ struct controller_impl {
                                                     ? transaction_receipt::executed
                                                     : transaction_receipt::delayed;
                trace->receipt = push_receipt(*trx->packed_trx(), s, trx_context.billed_cpu_time_us, trace->net_usage);
+               trx->billed_cpu_time_us = trx_context.billed_cpu_time_us;
                pending->_block_stage.get<building_block>()._pending_trx_metas.emplace_back(trx);
             } else {
                transaction_receipt_header r;
@@ -1689,7 +1702,9 @@ struct controller_impl {
 
       // Create (unsigned) block:
       auto block_ptr = std::make_shared<signed_block>( pbhs.make_block_header(
-         merkle( std::move( pending->_block_stage.get<building_block>()._pending_trx_receipt_digests ) ),
+         bb._trx_mroot_or_receipt_digests.contains<checksum256_type>() ?
+               bb._trx_mroot_or_receipt_digests.get<checksum256_type>() :
+               merkle( std::move( bb._trx_mroot_or_receipt_digests.get<digests_t>() ) ),
          merkle( std::move( pending->_block_stage.get<building_block>()._action_receipt_digests ) ),
          bb._new_pending_producer_schedule,
          std::move( bb._new_protocol_feature_activations ),
@@ -1841,6 +1856,9 @@ struct controller_impl {
          auto producer_block_id = b->id();
          start_block( b->timestamp, b->confirmed, new_protocol_feature_activations, s, producer_block_id);
 
+         // validated in create_block_state_future()
+         pending->_block_stage.get<building_block>()._trx_mroot_or_receipt_digests = b->transaction_mroot;
+
          const bool existing_trxs_metas = !bsp->trxs_metas().empty();
          const bool pub_keys_recovered = bsp->is_pub_keys_recovered();
          const bool skip_auth_checks = self.skip_auth_check();
@@ -1948,6 +1966,11 @@ struct controller_impl {
 
       return async_thread_pool( thread_pool.get_executor(), [b, prev, control=this]() {
          const bool skip_validate_signee = false;
+
+         auto trx_mroot = calculate_trx_merkle( b->transactions );
+         EOS_ASSERT( b->transaction_mroot == trx_mroot, block_validate_exception,
+                     "invalid block transaction merkle root ${b} != ${c}", ("b", b->transaction_mroot)("c", trx_mroot) );
+
          return std::make_shared<block_state>(
                         *prev,
                         move( b ),
@@ -1984,7 +2007,7 @@ struct controller_impl {
 
          fork_db.add( bsp );
 
-         if (conf.trusted_producers.count(b->producer)) {
+         if (self.is_trusted_producer(b->producer)) {
             trusted_producer_light_validation = true;
          };
 
@@ -2139,6 +2162,13 @@ struct controller_impl {
          protocol_features.popped_blocks_to( head->block_num );
       }
       return applied_trxs;
+   }
+
+   static checksum256_type calculate_trx_merkle( const deque<transaction_receipt>& trxs ) {
+      deque<digest_type> trx_digests;
+      for( const auto& a : trxs )
+         trx_digests.emplace_back( a.digest() );
+      return merkle( move( trx_digests ) );
    }
 
    void update_producers_authority() {
@@ -2433,6 +2463,8 @@ chainbase::database& controller::mutable_db()const { return my->db; }
 
 const fork_database& controller::fork_db()const { return my->fork_db; }
 
+const chainbase::database& controller::reversible_db()const { return my->reversible_blocks; }
+
 void controller::preactivate_feature( const digest_type& feature_digest ) {
    const auto& pfs = my->protocol_features.get_protocol_feature_set();
    auto cur_time = pending_block_time();
@@ -2642,22 +2674,20 @@ void controller::push_block( std::future<block_state_ptr>& block_state_future,
    my->push_block( block_state_future, forked_branch_cb, trx_lookup );
 }
 
-bool controller::in_immutable_mode()const{
-   return (db_mode_is_immutable(get_read_mode()));
-}
-
-transaction_trace_ptr controller::push_transaction( const transaction_metadata_ptr& trx, fc::time_point deadline, uint32_t billed_cpu_time_us ) {
+transaction_trace_ptr controller::push_transaction( const transaction_metadata_ptr& trx, fc::time_point deadline,
+                                                    uint32_t billed_cpu_time_us, bool explicit_billed_cpu_time ) {
    validate_db_available_size();
-   EOS_ASSERT( !in_immutable_mode(), transaction_type_exception, "push transaction not allowed in read-only mode" );
+   EOS_ASSERT( get_read_mode() != db_read_mode::IRREVERSIBLE, transaction_type_exception, "push transaction not allowed in irreversible mode" );
    EOS_ASSERT( trx && !trx->implicit && !trx->scheduled, transaction_type_exception, "Implicit/Scheduled transaction not allowed" );
-   return my->push_transaction(trx, deadline, billed_cpu_time_us, billed_cpu_time_us > 0 );
+   return my->push_transaction(trx, deadline, billed_cpu_time_us, explicit_billed_cpu_time );
 }
 
-transaction_trace_ptr controller::push_scheduled_transaction( const transaction_id_type& trxid, fc::time_point deadline, uint32_t billed_cpu_time_us )
+transaction_trace_ptr controller::push_scheduled_transaction( const transaction_id_type& trxid, fc::time_point deadline,
+                                                              uint32_t billed_cpu_time_us, bool explicit_billed_cpu_time )
 {
-   EOS_ASSERT( !in_immutable_mode(), transaction_type_exception, "push scheduled transaction not allowed in read-only mode" );
+   EOS_ASSERT( get_read_mode() != db_read_mode::IRREVERSIBLE, transaction_type_exception, "push scheduled transaction not allowed in irreversible mode" );
    validate_db_available_size();
-   return my->push_scheduled_transaction( trxid, deadline, billed_cpu_time_us, billed_cpu_time_us > 0 );
+   return my->push_scheduled_transaction( trxid, deadline, billed_cpu_time_us, explicit_billed_cpu_time );
 }
 
 const flat_set<account_name>& controller::get_actor_whitelist() const {
@@ -2799,6 +2829,11 @@ block_id_type controller::last_irreversible_block_id() const {
 
    return get_block_id_for_num( lib_num );
 }
+
+time_point controller::last_irreversible_block_time() const {
+   return my->fork_db.root()->header.timestamp.to_time_point();
+}
+
 
 const dynamic_global_property_object& controller::get_dynamic_global_properties()const {
   return my->db.get<dynamic_global_property_object>();
@@ -3015,6 +3050,10 @@ bool controller::skip_db_sessions( ) const {
 
 bool controller::skip_trx_checks() const {
    return light_validation_allowed(my->conf.disable_replay_opts);
+}
+
+bool controller::is_trusted_producer( const account_name& producer) const {
+   return get_validation_mode() == chain::validation_mode::LIGHT || my->conf.trusted_producers.count(producer);
 }
 
 bool controller::contracts_console()const {

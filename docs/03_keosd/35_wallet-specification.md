@@ -1,3 +1,7 @@
+---
+content_title: EOS Wallet Specification
+---
+
 ## EOS Wallet Import Format (WIF)
 
 Wallet Import Format is an encoding for a private EDSA key.  EOS uses the same version, checksum, and encoding scheme as the Bitcoin WIF addresses and should be compatible with existing libraries [1].

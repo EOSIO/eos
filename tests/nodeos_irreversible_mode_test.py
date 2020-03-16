@@ -392,7 +392,9 @@ try:
    testSuccessful = testSuccessful and executeTest(6, switchIrrToSpecModeWithConnectedToProdNode)
    testSuccessful = testSuccessful and executeTest(7, replayInIrrModeWithRevBlksAndConnectedToProdNode)
    testSuccessful = testSuccessful and executeTest(8, replayInIrrModeWithoutRevBlksAndConnectedToProdNode)
-   testSuccessful = testSuccessful and executeTest(9, switchToSpecModeWithIrrModeSnapshot)
+
+   # TODO: uncomment the following test case once snapshot generation is enabled.
+   #testSuccessful = testSuccessful and executeTest(9, switchToSpecModeWithIrrModeSnapshot)
 
 finally:
    TestHelper.shutdown(cluster, walletMgr, testSuccessful, killEosInstances, killWallet, keepLogs, killAll, dumpErrorDetails)
