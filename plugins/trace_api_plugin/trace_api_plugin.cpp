@@ -184,15 +184,30 @@ struct trace_api_rpc_plugin_impl : public std::enable_shared_from_this<trace_api
                     "Trace API is not configured with ABIs and trace-no-abis is not set");
       }
 
+
       req_handler = std::make_shared<request_handler_t>(
          shared_store_provider<store_provider>(common->store),
          abi_data_handler::shared_provider(data_handler)
       );
    }
 
+   fc::time_point calc_deadline( const fc::microseconds& max_serialization_time ) {
+      fc::time_point deadline = fc::time_point::now();
+      if( max_serialization_time > fc::microseconds::maximum() - deadline.time_since_epoch() ) {
+         deadline = fc::time_point::maximum();
+      } else {
+         deadline += max_serialization_time;
+      }
+      return deadline;
+   }
+
    void plugin_startup() {
       auto& http = app().get_plugin<http_plugin>();
-      http.add_handler("/v1/trace_api/get_block", [wthis=weak_from_this()](std::string, std::string body, url_response_callback cb){
+      fc::microseconds max_response_time = http.get_max_response_time();
+
+      http.add_handler("/v1/trace_api/get_block",
+            [wthis=weak_from_this(), max_response_time](std::string, std::string body, url_response_callback cb)
+      {
          auto that = wthis.lock();
          if (!that) {
             return;
@@ -223,7 +238,8 @@ struct trace_api_rpc_plugin_impl : public std::enable_shared_from_this<trace_api
 
          try {
 
-            auto resp = that->req_handler->get_block_trace(*block_number);
+            const auto deadline = that->calc_deadline( max_response_time );
+            auto resp = that->req_handler->get_block_trace(*block_number, [deadline]() { FC_CHECK_DEADLINE(deadline); });
             if (resp.is_null()) {
                error_results results{404, "Block trace missing"};
                cb( 404, fc::variant( results ));
