@@ -429,7 +429,7 @@ fc::variant bin_to_variant( const account_name& account, const action_name& acti
    return abis->binary_to_variant( action_type, action_args, abi_serializer_max_time );
 }
 
-fc::variant json_from_file_or_string(const string& file_or_str, fc::json::parse_type ptype = fc::json::legacy_parser)
+fc::variant json_from_file_or_string(const string& file_or_str, fc::json::parse_type ptype = fc::json::parse_type::legacy_parser)
 {
    regex r("^[ \t]*[\{\[]");
    if ( !regex_search(file_or_str, r) && fc::is_regular_file(file_or_str) ) {
@@ -447,7 +447,7 @@ fc::variant json_from_file_or_string(const string& file_or_str, fc::json::parse_
 bytes json_or_file_to_bin( const account_name& account, const action_name& action, const string& data_or_filename ) {
    fc::variant action_args_var;
    if( !data_or_filename.empty() ) {
-      action_args_var = json_from_file_or_string(data_or_filename, fc::json::relaxed_parser);
+      action_args_var = json_from_file_or_string(data_or_filename, fc::json::parse_type::relaxed_parser);
    }
    return variant_to_bin( account, action, action_args_var );
 }
@@ -3446,7 +3446,7 @@ int main( int argc, char** argv ) {
    actionsSubcommand->set_callback([&] {
       fc::variant action_args_var;
       if( !data.empty() ) {
-         action_args_var = json_from_file_or_string(data, fc::json::relaxed_parser);
+         action_args_var = json_from_file_or_string(data, fc::json::parse_type::relaxed_parser);
       }
       auto accountPermissions = get_account_permissions(tx_permission);
 
