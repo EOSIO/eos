@@ -311,9 +311,9 @@ struct controller_impl {
     blog( cfg.blocks_dir ),
     fork_db( cfg.state_dir ),
     wasmif( cfg.wasm_runtime, cfg.eosvmoc_tierup, db, cfg.state_dir, cfg.eosvmoc_config ),
-    resource_limits( s, db ),
+    resource_limits( db, [&s]() { return s.get_deep_mind_logger(); }),
     authorization( s, db ),
-    protocol_features( s, std::move(pfs) ),
+    protocol_features( std::move(pfs), [&s]() { return s.get_deep_mind_logger(); } ),
     conf( cfg ),
     chain_id( chain_id ),
     read_mode( cfg.read_mode ),
@@ -1149,7 +1149,7 @@ struct controller_impl {
       if (auto logger = get_deep_mind_logger()) {
          dmlog(logger, "TRX_OP CREATE onerror ${id} ${trx}",
             ("id", etrx.id())
-            ("trx", self.to_variant_with_abi(etrx, fc::microseconds(5000000)))
+            ("trx", self.to_variant_with_abi(etrx, fc::microseconds(config::dmlog_abi_serializer_max_time_us)))
          );
       }
 
@@ -2436,7 +2436,7 @@ struct controller_impl {
       if (auto logger = get_deep_mind_logger()) {
          dmlog(logger, "TRX_OP CREATE onblock ${id} ${trx}",
             ("id", trx.id())
-            ("trx", self.to_variant_with_abi(trx, fc::microseconds(5000000)))
+            ("trx", self.to_variant_with_abi(trx, fc::microseconds(config::dmlog_abi_serializer_max_time_us)))
          );
       }
 

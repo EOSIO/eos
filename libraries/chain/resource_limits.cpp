@@ -56,7 +56,7 @@ void resource_limits_manager::initialize_database() {
    const auto& config = _db.create<resource_limits_config_object>([this](resource_limits_config_object& config){
       // see default settings in the declaration
 
-      if (auto logger = _control.get_deep_mind_logger()) {
+      if (auto logger = _get_deep_mind_logger()) {
          dmlog(logger, "RLIMIT_OP CONFIG INS ${data}",
             ("data", config)
          );
@@ -70,7 +70,7 @@ void resource_limits_manager::initialize_database() {
       state.virtual_cpu_limit = config.cpu_limit_parameters.max;
       state.virtual_net_limit = config.net_limit_parameters.max;
 
-      if (auto logger = _control.get_deep_mind_logger()) {
+      if (auto logger = _get_deep_mind_logger()) {
          dmlog(logger, "RLIMIT_OP STATE INS ${data}",
             ("data", state)
          );
@@ -105,7 +105,7 @@ void resource_limits_manager::initialize_account(const account_name& account) {
    _db.create<resource_limits_object>([&]( resource_limits_object& bl ) {
       bl.owner = account;
 
-      if (auto logger = _control.get_deep_mind_logger()) {
+      if (auto logger = _get_deep_mind_logger()) {
          dmlog(logger, "RLIMIT_OP ACCOUNT_LIMITS INS ${data}",
             ("data", bl)
          );
@@ -115,7 +115,7 @@ void resource_limits_manager::initialize_account(const account_name& account) {
    _db.create<resource_usage_object>([&]( resource_usage_object& bu ) {
       bu.owner = account;
 
-      if (auto logger = _control.get_deep_mind_logger()) {
+      if (auto logger = _get_deep_mind_logger()) {
          dmlog(logger, "RLIMIT_OP ACCOUNT_USAGE INS ${data}",
             ("data", bu)
          );
@@ -134,7 +134,7 @@ void resource_limits_manager::set_block_parameters(const elastic_limit_parameter
       c.cpu_limit_parameters = cpu_limit_parameters;
       c.net_limit_parameters = net_limit_parameters;
 
-      if (auto logger = _control.get_deep_mind_logger()) {
+      if (auto logger = _get_deep_mind_logger()) {
          dmlog(logger, "RLIMIT_OP CONFIG UPD ${data}",
             ("data", c)
          );
@@ -169,7 +169,7 @@ void resource_limits_manager::add_transaction_usage(const flat_set<account_name>
           bu.net_usage.add( net_usage, time_slot, config.account_net_usage_average_window );
           bu.cpu_usage.add( cpu_usage, time_slot, config.account_cpu_usage_average_window );
 
-         if (auto logger = _control.get_deep_mind_logger()) {
+         if (auto logger = _get_deep_mind_logger()) {
             dmlog(logger, "RLIMIT_OP ACCOUNT_USAGE UPD ${data}",
                ("data", bu)
             );
@@ -240,7 +240,7 @@ void resource_limits_manager::add_pending_ram_usage( const account_name account,
    _db.modify( usage, [&]( auto& u ) {
      u.ram_usage += ram_delta;
 
-     if (auto logger = _control.get_deep_mind_logger()) {
+     if (auto logger = _get_deep_mind_logger()) {
          dmlog(logger, "RAM_OP ${action_id} ${event_id} ${family} ${operation} ${legacy_tag} ${payer} ${new_usage} ${delta}",
             ("action_id", action_id)
             ("event_id", event_id)
@@ -318,7 +318,7 @@ bool resource_limits_manager::set_account_limits( const account_name& account, i
       pending_limits.net_weight = net_weight;
       pending_limits.cpu_weight = cpu_weight;
 
-      if (auto logger = _control.get_deep_mind_logger()) {
+      if (auto logger = _get_deep_mind_logger()) {
          dmlog(logger, "RLIMIT_OP ACCOUNT_LIMITS UPD ${data}",
             ("data", pending_limits)
          );
@@ -380,7 +380,7 @@ void resource_limits_manager::process_account_limit_updates() {
          multi_index.remove(*itr);
       }
 
-      if (auto logger = _control.get_deep_mind_logger()) {
+      if (auto logger = _get_deep_mind_logger()) {
          dmlog(logger, "RLIMIT_OP STATE UPD ${data}",
             ("data", state)
          );
@@ -402,7 +402,7 @@ void resource_limits_manager::process_block_usage(uint32_t block_num) {
       state.update_virtual_net_limit(config);
       state.pending_net_usage = 0;
 
-      if (auto logger = _control.get_deep_mind_logger()) {
+      if (auto logger = _get_deep_mind_logger()) {
          dmlog(logger, "RLIMIT_OP STATE UPD ${data}",
             ("data", state)
          );

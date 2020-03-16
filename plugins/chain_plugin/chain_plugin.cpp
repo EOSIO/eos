@@ -1099,7 +1099,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          if (auto logger = my->chain->get_deep_mind_logger()) {
             dmlog(logger, "ACCEPTED_BLOCK ${num} ${blk}",
                ("num", blk->block_num)
-               ("blk", chain().to_variant_with_abi(blk, fc::microseconds(5000000)))
+               ("blk", chain().to_variant_with_abi(blk, fc::microseconds(config::dmlog_abi_serializer_max_time_us)))
             );
          }
 
@@ -1120,7 +1120,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
                if (auto logger = my->chain->get_deep_mind_logger()) {
                   dmlog(logger, "APPLIED_TRANSACTION ${block} ${traces}",
                      ("block", chain().head_block_num() + 1)
-                     ("traces", chain().to_variant_with_abi(std::get<0>(t), fc::microseconds(5000000)))
+                     ("traces", chain().to_variant_with_abi(std::get<0>(t), fc::microseconds(config::dmlog_abi_serializer_max_time_us)))
                   );
                }
 

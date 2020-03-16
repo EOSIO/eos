@@ -12,13 +12,12 @@ using namespace eosio::chain::resource_limits;
 using namespace eosio::testing;
 using namespace eosio::chain;
 
-class resource_limits_fixture: private tester, private chainbase_fixture<1024*1024>, public resource_limits_manager
+class resource_limits_fixture: private chainbase_fixture<1024*1024>, public resource_limits_manager
 {
    public:
       resource_limits_fixture()
-      :tester()
-      ,chainbase_fixture()
-      ,resource_limits_manager(*tester::control, *chainbase_fixture::_db)
+      :chainbase_fixture()
+      ,resource_limits_manager(*chainbase_fixture::_db, []() { return nullptr; })
       {
          add_indices();
          initialize_database();

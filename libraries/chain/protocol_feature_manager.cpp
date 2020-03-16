@@ -505,8 +505,10 @@ Enables new `set_action_return_value` intrinsic which sets a value that is inclu
 
 
 
-   protocol_feature_manager::protocol_feature_manager( controller& c, protocol_feature_set&& pfs )
-   :_protocol_feature_set( std::move(pfs) ), _control(c)
+   protocol_feature_manager::protocol_feature_manager(
+      protocol_feature_set&& pfs,
+      std::function<fc::logger*()> get_deep_mind_logger
+   ):_protocol_feature_set( std::move(pfs) ), _get_deep_mind_logger(get_deep_mind_logger)
    {
       _builtin_protocol_features.resize( _protocol_feature_set._recognized_builtin_protocol_features.size() );
    }
@@ -686,7 +688,7 @@ Enables new `set_action_return_value` intrinsic which sets a value that is inclu
                   ("digest", feature_digest)
       );
 
-      if (auto logger = _control.get_deep_mind_logger()) {
+      if (auto logger = _get_deep_mind_logger()) {
          dmlog(logger, "FEATURE_OP ACTIVATE ${feature_digest} ${feature}",
             ("feature_digest", feature_digest)
             ("feature", itr->to_variant())
