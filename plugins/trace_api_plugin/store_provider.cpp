@@ -7,7 +7,24 @@ namespace {
       static constexpr const char* _trace_prefix = "trace_";
       static constexpr const char* _trace_index_prefix = "trace_index_";
       static constexpr const char* _trace_ext = ".log";
-      static constexpr uint _max_filename_size = std::char_traits<char>::length(_trace_index_prefix) + 10 + 1 + 10 + std::char_traits<char>::length(_trace_ext) + 1; // "trace_index_" + 10-digits + '-' + 10-digits + ".log" + null-char
+      static constexpr const char* _compressed_trace_ext = ".clog";
+      static constexpr uint _max_filename_size = std::char_traits<char>::length(_trace_index_prefix) + 10 + 1 + 10 + std::char_traits<char>::length(_compressed_trace_ext) + 1; // "trace_index_" + 10-digits + '-' + 10-digits + ".log" + null-char
+
+      std::string make_filename(const char* slice_prefix, const char* slice_ext, uint32_t slice_number, uint32_t slice_width) {
+         char filename[_max_filename_size] = {};
+         const uint32_t slice_start = slice_number * slice_width;
+         const int size_written = snprintf(filename, _max_filename_size, "%s%010d-%010d%s", slice_prefix, slice_start, (slice_start + slice_width), slice_ext);
+         // assert that _max_filename_size is correct
+         if ( size_written >= _max_filename_size ) {
+            const std::string max_size_str = std::to_string(_max_filename_size - 1); // dropping null character from size
+            const std::string size_written_str = std::to_string(size_written);
+            throw std::runtime_error("Could not write the complete filename.  Anticipated the max filename characters to be: " +
+               max_size_str + " or less, but wrote: " + size_written_str + " characters.  This is likely because the file "
+               "format was changed and the code was not updated accordingly. Filename created: " + filename);
+         }
+
+         return std::string(filename);
+      }
 }
 
 namespace eosio::trace_api {
@@ -137,18 +154,25 @@ namespace eosio::trace_api {
       return true;
    }
 
-   bool slice_directory::find_slice(const char* slice_prefix, uint32_t slice_number, fc::cfile& slice_file, bool open_file) const {
-      char filename[_max_filename_size] = {};
-      const uint32_t slice_start = slice_number * _width;
-      const int size_written = snprintf(filename, _max_filename_size, "%s%010d-%010d%s", slice_prefix, slice_start, (slice_start + _width), _trace_ext);
-      // assert that _max_filename_size is correct
-      if ( size_written >= _max_filename_size ) {
-         const std::string max_size_str = std::to_string(_max_filename_size - 1); // dropping null character from size
-         const std::string size_written_str = std::to_string(size_written);
-         throw std::runtime_error("Could not write the complete filename.  Anticipated the max filename characters to be: " +
-            max_size_str + " or less, but wrote: " + size_written_str + " characters.  This is likely because the file "
-            "format was changed and the code was not updated accordingly. Filename created: " + filename);
+   std::optional<compressed_file> slice_directory::find_compressed_trace_slice(uint32_t slice_number, bool open_file ) const {
+      auto filename = make_filename(_trace_prefix, _compressed_trace_ext, slice_number, _width);
+      const path slice_path = _slice_dir / filename;
+      const bool file_exists = exists(slice_path);
+
+      if (file_exists) {
+         auto result = compressed_file(slice_path);
+         if (open_file) {
+            result.open();
+         }
+
+         return std::move(result);
+      } else {
+         return {};
       }
+   }
+
+   bool slice_directory::find_slice(const char* slice_prefix, uint32_t slice_number, fc::cfile& slice_file, bool open_file) const {
+      auto filename = make_filename(slice_prefix, _trace_ext, slice_number, _width);
       const path slice_path = _slice_dir / filename;
       slice_file.set_file_path(slice_path);
 
@@ -201,6 +225,11 @@ namespace eosio::trace_api {
             const bool trace_found = find_trace_slice(slice_to_clean, open_state::read, trace, dont_open_file);
             if (trace_found) {
                bfs::remove(trace.get_file_path());
+            }
+
+            auto ctrace = find_compressed_trace_slice(slice_to_clean, dont_open_file);
+            if (ctrace) {
+               bfs::remove(ctrace->get_file_path());
             }
             _last_cleaned_up_slice = slice_to_clean;
          }
