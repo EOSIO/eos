@@ -293,7 +293,7 @@ namespace eosio::trace_api {
       // Only process compression if its configured AND there is a range of irreversible blocks which would not also
       // be deleted
       if (_minimum_uncompressed_irreversible_history_blocks &&
-          (!_minimum_irreversible_history_blocks || *_minimum_uncompressed_irreversible_history_blocks < _minimum_irreversible_history_blocks) )
+          (!_minimum_irreversible_history_blocks || *_minimum_uncompressed_irreversible_history_blocks < *_minimum_irreversible_history_blocks) )
       {
          process_irreversible_slice_range(lib, *_minimum_uncompressed_irreversible_history_blocks, _last_compressed_slice, [this, &log](uint32_t slice_to_compress){
             fc::cfile trace;
