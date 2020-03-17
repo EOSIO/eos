@@ -103,6 +103,11 @@ struct trace_api_common_impl {
       cfg_options("trace-minimum-irreversible-history-blocks", boost::program_options::value<int32_t>()->default_value(-1),
                   "Number of blocks to ensure are kept past LIB for retrieval before \"slice\" files can be automatically removed.\n"
                   "A value of -1 indicates that automatic removal of \"slice\" files will be turned off.");
+      cfg_options("trace-minimum-irreversible-uncompressed-history-blocks", boost::program_options::value<int32_t>()->default_value(-1),
+                  "Number of blocks to ensure are uncompressed past LIB. Compressed \"slice\" files are still accessible but may carry a performance loss on retrieval\n"
+                  "A value of -1 indicates that automatic compression of \"slice\" files will be turned off.");
+      cfg_options("trace-compression-seek-points", boost::program_options::value<uint32_t>()->default_value(512),
+                  "Number of seek points to use when compressing \"slice\" files.  A higher number of seek points can increase read performance at the expense of compression efficiency\n");
    }
 
    void plugin_initialize(const appbase::variables_map& options) {
@@ -121,7 +126,31 @@ struct trace_api_common_impl {
          minimum_irreversible_history_blocks = blocks;
       }
 
-      store = std::make_shared<store_provider>(trace_dir, slice_stride, minimum_irreversible_history_blocks);
+      const int32_t uncompressed_blocks = options.at("trace-minimum-irreversible-uncompressed-history-blocks").as<int32_t>();
+      EOS_ASSERT(uncompressed_blocks >= -1, chain::plugin_config_exception,
+                 "\"trace-minimum-irreversible-uncompressed-history-blocks\" must be greater to or equal to -1.");
+
+      if (uncompressed_blocks > manual_slice_file_value) {
+         minimum_uncompressed_irreversible_history_blocks = uncompressed_blocks;
+      }
+
+      compression_seek_points = options.at("trace-compression-seek-points").as<uint32_t>();
+
+      store = std::make_shared<store_provider>(
+         trace_dir,
+         slice_stride,
+         minimum_irreversible_history_blocks,
+         minimum_uncompressed_irreversible_history_blocks,
+         compression_seek_points
+      );
+   }
+
+   void plugin_startup() {
+      store->start_maintenance_thread();
+   }
+
+   void plugin_shutdown() {
+      store->stop_maintenance_thread();
    }
 
    // common configuration paramters
@@ -129,6 +158,9 @@ struct trace_api_common_impl {
    uint32_t slice_stride = 0;
 
    std::optional<uint32_t> minimum_irreversible_history_blocks;
+   std::optional<uint32_t> minimum_uncompressed_irreversible_history_blocks;
+   uint32_t compression_seek_points;
+
    static constexpr uint32_t manual_slice_file_value = -1;
 
    std::shared_ptr<store_provider> store;
@@ -287,9 +319,11 @@ struct trace_api_plugin_impl {
    }
 
    void plugin_startup() {
+      common->plugin_startup();
    }
 
    void plugin_shutdown() {
+      common->plugin_shutdown();
    }
 
    std::shared_ptr<trace_api_common_impl> common;

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <ios>
+#include <thread>
 #include <fc/io/cfile.hpp>
 #include <boost/filesystem.hpp>
 #include <fc/variant.hpp>
@@ -97,7 +98,8 @@ namespace eosio::trace_api {
       };
 
       enum class open_state { read /*read from front to back*/, write /*write to end of file*/ };
-      slice_directory(const boost::filesystem::path& slice_dir, uint32_t width, std::optional<uint32_t> minimum_irreversible_history_blocks);
+      slice_directory(const boost::filesystem::path& slice_dir, uint32_t width, std::optional<uint32_t> minimum_irreversible_history_blocks,
+                      std::optional<uint32_t> minimum_uncompressed_irreversible_history_blocks, uint32_t compression_seek_points);
 
       /**
        * Return the slice number that would include the passed in block_height
@@ -179,11 +181,28 @@ namespace eosio::trace_api {
       void find_or_create_slice_pair(uint32_t slice_number, open_state state, fc::cfile& trace, fc::cfile& index);
 
       /**
+       * set the LIB for maintenance
+       * @param lib
+       */
+      void set_lib(uint32_t lib);
+
+      /**
+       * Start a thread which does background maintenance
+       */
+      void start_maintenance_thread();
+
+      /**
+       * Stop and join the thread doing background maintenance
+       */
+      void stop_maintenance_thread();
+
+      /**
        * Cleans up all slices that are no longer needed to maintain the minimum number of blocks past lib
+       * Compresses up all slices that can be compressed
        *
        * @param lib : block number of the current lib
        */
-      void cleanup_old_slices(uint32_t lib);
+      void run_maintenance_tasks(uint32_t lib);
 
    private:
       // returns true if slice is found, slice_file will always be set to the appropriate path for
@@ -196,10 +215,23 @@ namespace eosio::trace_api {
       // take an open index slice file and verify its header is valid and prepare the file to be appended to (or read from)
       void validate_existing_index_slice_file(fc::cfile& index_file, open_state state) const;
 
+      // helper for methods that process irreversible slice files
+      template<typename F>
+      void process_irreversible_slice_range(uint32_t lib, uint32_t upper_bound_block, std::optional<uint32_t>& lower_bound_slice, F&& f);
+
       const boost::filesystem::path _slice_dir;
       const uint32_t _width;
       const std::optional<uint32_t> _minimum_irreversible_history_blocks;
       std::optional<uint32_t> _last_cleaned_up_slice;
+      const std::optional<uint32_t> _minimum_uncompressed_irreversible_history_blocks;
+      std::optional<uint32_t> _last_compressed_slice;
+      uint32_t _compression_seek_points;
+
+      std::atomic<uint32_t> _best_known_lib{0};
+      std::mutex _maintenance_mtx;
+      std::condition_variable _maintenance_condition;
+      std::thread _maintenance_thread;
+      std::atomic_bool _maintenance_shutdown{false};
    };
 
    /**
@@ -209,7 +241,8 @@ namespace eosio::trace_api {
    public:
       using open_state = slice_directory::open_state;
 
-      store_provider(const boost::filesystem::path& slice_dir, uint32_t stride_width, std::optional<uint32_t> minimum_irreversible_history_blocks);
+      store_provider(const boost::filesystem::path& slice_dir, uint32_t stride_width, std::optional<uint32_t> minimum_irreversible_history_blocks,
+            std::optional<uint32_t> minimum_uncompressed_irreversible_history_blocks, uint32_t compression_seek_points);
 
       void append(const block_trace_v0& bt);
       void append_lib(uint32_t lib);
@@ -222,7 +255,15 @@ namespace eosio::trace_api {
        */
       get_block_t get_block(uint32_t block_height, const yield_function& yield= {});
 
-   protected:
+      void start_maintenance_thread() {
+         _slice_directory.start_maintenance_thread();
+      }
+      void stop_maintenance_thread() {
+         _slice_directory.stop_maintenance_thread();
+      }
+
+
+      protected:
       /**
        * Read the metadata log font-to-back starting at an offset passing each entry to a provided functor/lambda
        *

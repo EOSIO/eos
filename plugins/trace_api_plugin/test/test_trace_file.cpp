@@ -72,8 +72,8 @@ namespace {
    };
 
    struct test_store_provider : public store_provider {
-      test_store_provider(const bfs::path& slice_dir, uint32_t width, std::optional<uint32_t> minimum_irreversible_history_blocks = std::optional<uint32_t>())
-         : store_provider(slice_dir, width, minimum_irreversible_history_blocks) {
+      test_store_provider(const bfs::path& slice_dir, uint32_t width, std::optional<uint32_t> minimum_irreversible_history_blocks = std::optional<uint32_t>(), std::optional<uint32_t> minimum_uncompressed_irreversible_history_blocks = std::optional<uint32_t>(), uint32_t compression_seek_points = 0)
+         : store_provider(slice_dir, width, minimum_irreversible_history_blocks, minimum_uncompressed_irreversible_history_blocks, compression_seek_points) {
       }
       using store_provider::scan_metadata_log_from;
       using store_provider::read_data_log;
@@ -233,11 +233,11 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
    BOOST_FIXTURE_TEST_CASE(slice_number, test_fixture)
    {
       fc::temp_directory tempdir;
-      slice_directory sd(tempdir.path(), 100, std::optional<uint32_t>());
+      slice_directory sd(tempdir.path(), 100, std::optional<uint32_t>(), std::optional<uint32_t>(), 0);
       BOOST_REQUIRE_EQUAL(sd.slice_number(99), 0);
       BOOST_REQUIRE_EQUAL(sd.slice_number(100), 1);
       BOOST_REQUIRE_EQUAL(sd.slice_number(1599), 15);
-      slice_directory sd2(tempdir.path(), 0x10, std::optional<uint32_t>());
+      slice_directory sd2(tempdir.path(), 0x10, std::optional<uint32_t>(), std::optional<uint32_t>(), 0);
       BOOST_REQUIRE_EQUAL(sd2.slice_number(0xf), 0);
       BOOST_REQUIRE_EQUAL(sd2.slice_number(0x100), 0x10);
       BOOST_REQUIRE_EQUAL(sd2.slice_number(0x233), 0x23);
@@ -246,7 +246,7 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
    BOOST_FIXTURE_TEST_CASE(slice_file, test_fixture)
    {
       fc::temp_directory tempdir;
-      slice_directory sd(tempdir.path(), 100, std::optional<uint32_t>());
+      slice_directory sd(tempdir.path(), 100, std::optional<uint32_t>(), std::optional<uint32_t>(), 0);
       fc::cfile slice;
 
       // create trace slices
@@ -377,7 +377,7 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
    BOOST_FIXTURE_TEST_CASE(slice_file_find_test, test_fixture)
    {
       fc::temp_directory tempdir;
-      slice_directory sd(tempdir.path(), 100, std::optional<uint32_t>());
+      slice_directory sd(tempdir.path(), 100, std::optional<uint32_t>(), std::optional<uint32_t>(), 0);
       fc::cfile slice;
 
       // create trace slice
@@ -450,7 +450,7 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       fc::temp_directory tempdir;
       const uint32_t width = 10;
       const uint32_t min_saved_blocks = 5;
-      slice_directory sd(tempdir.path(), width, std::optional<uint32_t>(min_saved_blocks));
+      slice_directory sd(tempdir.path(), width, std::optional<uint32_t>(min_saved_blocks), std::optional<uint32_t>(), 0);
       fc::cfile file;
 
       // verify it cleans up when there is just an index file, just a trace file, or when both are there
@@ -484,7 +484,7 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       // verify that the current_slice and the previous are maintained as long as lib - min_saved_blocks is part of previous slice
       uint32_t current_slice = 6;
       uint32_t lib = current_slice * width;
-      sd.cleanup_old_slices(lib);
+      sd.run_maintenance_tasks(lib);
       std::set<bfs::path> files2;
       files2.insert(index5);
       files2.insert(trace6);
@@ -492,24 +492,24 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
 
       // saved blocks still in previous slice
       lib += min_saved_blocks - 1;  // current_slice * width + min_saved_blocks - 1
-      sd.cleanup_old_slices(lib);
+      sd.run_maintenance_tasks(lib);
       verify_directory_contents(tempdir.path(), files2);
 
       // now all saved blocks in current slice
       lib += 1; // current_slice * width + min_saved_blocks
-      sd.cleanup_old_slices(lib);
+      sd.run_maintenance_tasks(lib);
       std::set<bfs::path> files3;
       files3.insert(trace6);
       verify_directory_contents(tempdir.path(), files3);
 
       // moving lib into next slice, so 1 saved blocks still in 6th slice
       lib += width - 1;
-      sd.cleanup_old_slices(lib);
+      sd.run_maintenance_tasks(lib);
       verify_directory_contents(tempdir.path(), files3);
 
       // moved last saved block out of 6th slice, so 6th slice is cleaned up
       lib += 1;
-      sd.cleanup_old_slices(lib);
+      sd.run_maintenance_tasks(lib);
       verify_directory_contents(tempdir.path(), std::set<bfs::path>());
    }
 
@@ -609,7 +609,7 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
    BOOST_FIXTURE_TEST_CASE(test_get_block, test_fixture)
    {
       fc::temp_directory tempdir;
-      store_provider sp(tempdir.path(), 100, std::optional<uint32_t>());
+      store_provider sp(tempdir.path(), 100, std::optional<uint32_t>(), std::optional<uint32_t>(), 0);
       sp.append(bt);
       sp.append_lib(1);
       sp.append(bt2);
