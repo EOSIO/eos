@@ -1149,7 +1149,7 @@ struct controller_impl {
       if (auto dm_logger = get_deep_mind_logger()) {
          fc_dlog(*dm_logger, "TRX_OP CREATE onerror ${id} ${trx}",
             ("id", etrx.id())
-            ("trx", self.to_variant_with_abi(etrx, fc::microseconds(config::dmlog_abi_serializer_max_time_us)))
+            ("trx", self.to_variant_with_abi(etrx, abi_serializer::create_yield_function(fc::microseconds(config::dmlog_abi_serializer_max_time_us))))
          );
       }
 
@@ -2436,7 +2436,7 @@ struct controller_impl {
       if (auto dm_logger = get_deep_mind_logger()) {
          fc_dlog(*dm_logger, "TRX_OP CREATE onblock ${id} ${trx}",
             ("id", trx.id())
-            ("trx", self.to_variant_with_abi(trx, fc::microseconds(config::dmlog_abi_serializer_max_time_us)))
+            ("trx", self.to_variant_with_abi(trx, abi_serializer::create_yield_function(fc::microseconds(config::dmlog_abi_serializer_max_time_us))))
          );
       }
 
