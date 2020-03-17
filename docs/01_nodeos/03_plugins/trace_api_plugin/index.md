@@ -2,19 +2,19 @@
 
 ## Overview
 
-The `trace_api_plugin` provides a consumer-focused long-term API for retrieving retired actions and related metadata from a specified block. The plugin defines a new HTTP endpoint accessible at `/v1/trace_api/get_block` by the **POST** method and stores serialized block trace data to the filestream for later retrieval via HTTP RPC requests.
+The `trace_api_plugin` provides a consumer-focused long-term API for retrieving retired actions and related metadata from a specified block. The plugin stores serialized block trace data to the filesystem for later retrieval via HTTP RPC requests.
 
-For reference information, see the [Trace API reference documentation](api-reference/index.md).
+For more information, see the [Trace API reference documentation](api-reference/index.md).
 
 ## Purpose
 
-While integrating applications such as block explorers and exchanges with an EOSIO blockchain, the user might require a complete transcript of actions that are processed by the blockchain, including those spawned from the execution of smart contracts and scheduled transactions. The `trace_api_plugin` aims to serve this need. The purpose of the plugin is to provide:
+While integrating applications such as block explorers and exchanges with an EOSIO blockchain, the user might require a complete transcript of actions processed by the blockchain, including those spawned from the execution of smart contracts and scheduled transactions. The `trace_api_plugin` serves this need. The purpose of the plugin is to provide:
 
 * A transcript of retired actions and related metadata
 * A consumer-focused long-term API to retrieve blocks
 * Maintainable resource commitments at the EOSIO nodes
 
-Therefore, one crucial goal of the `trace_api_plugin` is to have better maintenance of node resources (file system, disk, memory, etc.). This goal is different from the existing `history_plugin` which provides far more configurable filtering and querying capabilities, or the existing `state_history_plugin` which provides a binary streaming interface to access structural chain data, action data, as well as state deltas.
+Therefore, one crucial goal of the `trace_api_plugin` is to improve the maintenance of node resources (file system, disk space, memory used, etc.). This goal is different from the existing `history_plugin` which provides far more configurable filtering and querying capabilities, or the existing `state_history_plugin` which provides a binary streaming interface to access structural chain data, action data, as well as state deltas.
 
 ## Usage
 
