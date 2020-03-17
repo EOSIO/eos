@@ -249,7 +249,7 @@ namespace eosio::trace_api {
          return;
 
       const int64_t upper_bound_block_number = static_cast<int64_t>(lib) - static_cast<int64_t>(min_irreversible) - _width;
-      if (upper_bound_block_number > 0) {
+      if (upper_bound_block_number >= 0) {
          uint32_t upper_bound_slice_num = slice_number(static_cast<uint32_t>(upper_bound_block_number));
          while (!lower_bound_slice || *lower_bound_slice < upper_bound_slice_num) {
             const uint32_t slice_to_process = lower_bound_slice ? *lower_bound_slice + 1 : 0;
