@@ -163,7 +163,7 @@ struct trace_api_common_impl {
    std::optional<uint32_t> minimum_uncompressed_irreversible_history_blocks;
    uint32_t compression_seek_points;
 
-   static constexpr uint32_t manual_slice_file_value = -1;
+   static constexpr int32_t manual_slice_file_value = -1;
 
    std::shared_ptr<store_provider> store;
 };
