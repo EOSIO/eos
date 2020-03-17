@@ -103,7 +103,7 @@ struct trace_api_common_impl {
       cfg_options("trace-minimum-irreversible-history-blocks", boost::program_options::value<int32_t>()->default_value(-1),
                   "Number of blocks to ensure are kept past LIB for retrieval before \"slice\" files can be automatically removed.\n"
                   "A value of -1 indicates that automatic removal of \"slice\" files will be turned off.");
-      cfg_options("trace-minimum-irreversible-uncompressed-history-blocks", boost::program_options::value<int32_t>()->default_value(-1),
+      cfg_options("trace-minimum-uncompressed-irreversible-history-blocks", boost::program_options::value<int32_t>()->default_value(-1),
                   "Number of blocks to ensure are uncompressed past LIB. Compressed \"slice\" files are still accessible but may carry a performance loss on retrieval\n"
                   "A value of -1 indicates that automatic compression of \"slice\" files will be turned off.");
       cfg_options("trace-compression-seek-points", boost::program_options::value<uint32_t>()->default_value(512),
@@ -126,9 +126,9 @@ struct trace_api_common_impl {
          minimum_irreversible_history_blocks = blocks;
       }
 
-      const int32_t uncompressed_blocks = options.at("trace-minimum-irreversible-uncompressed-history-blocks").as<int32_t>();
+      const int32_t uncompressed_blocks = options.at("trace-minimum-uncompressed-irreversiblehistory-blocks").as<int32_t>();
       EOS_ASSERT(uncompressed_blocks >= -1, chain::plugin_config_exception,
-                 "\"trace-minimum-irreversible-uncompressed-history-blocks\" must be greater to or equal to -1.");
+                 "\"trace-minimum-uncompressed-irreversible-history-blocks\" must be greater to or equal to -1.");
 
       if (uncompressed_blocks > manual_slice_file_value) {
          minimum_uncompressed_irreversible_history_blocks = uncompressed_blocks;
