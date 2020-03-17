@@ -513,6 +513,118 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       verify_directory_contents(tempdir.path(), std::set<bfs::path>());
    }
 
+   BOOST_FIXTURE_TEST_CASE(slice_dir_compress, test_fixture)
+   {
+      fc::temp_directory tempdir;
+      const uint32_t width = 10;
+      const uint32_t min_uncompressed_blocks = 5;
+      slice_directory sd(tempdir.path(), width, std::optional<uint32_t>(), std::optional<uint32_t>(min_uncompressed_blocks), 8);
+      fc::cfile file;
+
+      using file_vector_t = std::vector<std::tuple<bfs::path, bfs::path, bfs::path>>;
+      file_vector_t file_paths;
+      for (int i = 0; i < 7 ; i++) {
+         BOOST_REQUIRE(!sd.find_or_create_index_slice(i, open_state::read, file));
+         auto index_name = file.get_file_path().filename();
+         BOOST_REQUIRE(!sd.find_or_create_trace_slice(i, open_state::read, file));
+         auto trace_name = file.get_file_path().filename();
+         auto compressed_trace_name = trace_name;
+         compressed_trace_name.replace_extension(".clog");
+         file_paths.emplace_back(index_name, trace_name, compressed_trace_name);
+      }
+
+      // initial set is only indices and uncompressed traces
+      std::set<bfs::path> files;
+      for (const auto& e: file_paths) {
+         files.insert(std::get<0>(e));
+         files.insert(std::get<1>(e));
+      }
+      verify_directory_contents(tempdir.path(), files);
+
+      // verify no change up to the last block before a slice becomes compressible
+      sd.run_maintenance_tasks(14);
+      verify_directory_contents(tempdir.path(), files);
+
+      for (int reps = 0; reps < file_paths.size(); reps++) {
+         //  leading edge,
+         //  compresses one slice
+         files.erase(std::get<1>(file_paths.at(reps)));
+         files.insert(std::get<2>(file_paths.at(reps)));
+
+         sd.run_maintenance_tasks(15 + (reps * width));
+         verify_directory_contents(tempdir.path(), files);
+
+         // trailing edge, no change
+         sd.run_maintenance_tasks(24 + (reps * width));
+         verify_directory_contents(tempdir.path(), files);
+      }
+
+      // make sure the test is correct and and no uncompressed files remain
+      for (const auto& e: file_paths) {
+         BOOST_REQUIRE_EQUAL(files.count(std::get<0>(e)), 1);
+         BOOST_REQUIRE_EQUAL(files.count(std::get<1>(e)), 0);
+         BOOST_REQUIRE_EQUAL(files.count(std::get<2>(e)), 1);
+      }
+   }
+
+   BOOST_FIXTURE_TEST_CASE(slice_dir_compress_and_delete, test_fixture)
+   {
+      fc::temp_directory tempdir;
+      const uint32_t width = 10;
+      const uint32_t min_uncompressed_blocks = 5;
+      const uint32_t min_saved_blocks = min_uncompressed_blocks + width;
+      slice_directory sd(tempdir.path(), width, std::optional<uint32_t>(min_saved_blocks), std::optional<uint32_t>(min_uncompressed_blocks), 8);
+      fc::cfile file;
+
+      using file_vector_t = std::vector<std::tuple<bfs::path, bfs::path, bfs::path>>;
+      file_vector_t file_paths;
+      for (int i = 0; i < 7 ; i++) {
+         BOOST_REQUIRE(!sd.find_or_create_index_slice(i, open_state::read, file));
+         auto index_name = file.get_file_path().filename();
+         BOOST_REQUIRE(!sd.find_or_create_trace_slice(i, open_state::read, file));
+         auto trace_name = file.get_file_path().filename();
+         auto compressed_trace_name = trace_name;
+         compressed_trace_name.replace_extension(".clog");
+         file_paths.emplace_back(index_name, trace_name, compressed_trace_name);
+      }
+
+      // initial set is only indices and uncompressed traces
+      std::set<bfs::path> files;
+      for (const auto& e: file_paths) {
+         files.insert(std::get<0>(e));
+         files.insert(std::get<1>(e));
+      }
+      verify_directory_contents(tempdir.path(), files);
+
+      // verify no change up to the last block before a slice becomes compressible
+      sd.run_maintenance_tasks(14);
+      verify_directory_contents(tempdir.path(), files);
+
+      for (int reps = 0; reps < file_paths.size() + 1; reps++) {
+         //  leading edge,
+         //  compresses one slice IF its not past the end of our test,
+         if (reps < file_paths.size()) {
+            files.erase(std::get<1>(file_paths.at(reps)));
+            files.insert(std::get<2>(file_paths.at(reps)));
+         }
+
+         // removes one IF its not the first
+         if (reps > 0) {
+            files.erase(std::get<0>(file_paths.at(reps-1)));
+            files.erase(std::get<2>(file_paths.at(reps-1)));
+         }
+         sd.run_maintenance_tasks(15 + (reps * width));
+         verify_directory_contents(tempdir.path(), files);
+
+         // trailing edge, no change
+         sd.run_maintenance_tasks(24 + (reps * width));
+         verify_directory_contents(tempdir.path(), files);
+      }
+
+      // make sure the test is correct and ran through the permutations
+      BOOST_REQUIRE_EQUAL(files.size(), 0);
+   }
+
    BOOST_FIXTURE_TEST_CASE(store_provider_write_read, test_fixture)
    {
       fc::temp_directory tempdir;
