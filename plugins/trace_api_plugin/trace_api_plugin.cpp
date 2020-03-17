@@ -146,7 +146,9 @@ struct trace_api_common_impl {
    }
 
    void plugin_startup() {
-      store->start_maintenance_thread();
+      store->start_maintenance_thread([](const std::string& msg ){
+         fc_dlog( _log, msg );
+      });
    }
 
    void plugin_shutdown() {

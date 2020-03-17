@@ -208,8 +208,8 @@ namespace eosio::trace_api {
       _maintenance_condition.notify_one();
    }
 
-   void slice_directory::start_maintenance_thread() {
-      _maintenance_thread = std::thread([this](){
+   void slice_directory::start_maintenance_thread(log_handler log) {
+      _maintenance_thread = std::thread([this, log=std::move(log)](){
          fc::set_os_thread_name( "TraceAPI-Maintenance" );
          uint32_t last_lib = 0;
 
@@ -222,9 +222,11 @@ namespace eosio::trace_api {
             uint32_t best_known_lib = _best_known_lib;
             bool shutdown = _maintenance_shutdown;
 
+            log(std::string("Waking up to handle lib: ") + std::to_string(best_known_lib));
+
             if (last_lib < best_known_lib) {
                try {
-                  run_maintenance_tasks(best_known_lib);
+                  run_maintenance_tasks(best_known_lib, log);
                   last_lib = best_known_lib;
                } FC_LOG_AND_DROP();
             }
@@ -259,24 +261,30 @@ namespace eosio::trace_api {
       }
    }
 
-   void slice_directory::run_maintenance_tasks(uint32_t lib) {
+   void slice_directory::run_maintenance_tasks(uint32_t lib, const log_handler& log) {
       if (_minimum_irreversible_history_blocks) {
-         process_irreversible_slice_range(lib, *_minimum_irreversible_history_blocks, _last_cleaned_up_slice, [this](uint32_t slice_to_clean){
+         process_irreversible_slice_range(lib, *_minimum_irreversible_history_blocks, _last_cleaned_up_slice, [this, &log](uint32_t slice_to_clean){
             fc::cfile trace;
             fc::cfile index;
+
+            log(std::string("Attempting Prune of slice: ") + std::to_string(slice_to_clean));
+
             // cleanup index first to reduce the likelihood of reader finding index, but not finding trace
             const bool dont_open_file = false;
             const bool index_found = find_index_slice(slice_to_clean, open_state::read, index, dont_open_file);
             if (index_found) {
+               log(std::string("Removing: ") + index.get_file_path().generic_string());
                bfs::remove(index.get_file_path());
             }
             const bool trace_found = find_trace_slice(slice_to_clean, open_state::read, trace, dont_open_file);
             if (trace_found) {
+               log(std::string("Removing: ") + trace.get_file_path().generic_string());
                bfs::remove(trace.get_file_path());
             }
 
             auto ctrace = find_compressed_trace_slice(slice_to_clean, dont_open_file);
             if (ctrace) {
+               log(std::string("Removing: ") + ctrace->get_file_path().generic_string());
                bfs::remove(ctrace->get_file_path());
             }
          });
@@ -287,16 +295,22 @@ namespace eosio::trace_api {
       if (_minimum_uncompressed_irreversible_history_blocks &&
           (!_minimum_irreversible_history_blocks || *_minimum_uncompressed_irreversible_history_blocks < _minimum_irreversible_history_blocks) )
       {
-         process_irreversible_slice_range(lib, *_minimum_uncompressed_irreversible_history_blocks, _last_compressed_slice, [this](uint32_t slice_to_compress){
+         process_irreversible_slice_range(lib, *_minimum_uncompressed_irreversible_history_blocks, _last_compressed_slice, [this, &log](uint32_t slice_to_compress){
             fc::cfile trace;
             const bool dont_open_file = false;
             const bool trace_found = find_trace_slice(slice_to_compress, open_state::read, trace, dont_open_file);
+
+            log(std::string("Attempting compression of slice: ") + std::to_string(slice_to_compress));
+
             if (trace_found) {
                auto compressed_path = trace.get_file_path();
                compressed_path.replace_extension(_compressed_trace_ext);
+
+               log(std::string("Compressing: ") + trace.get_file_path().generic_string());
                compressed_file::process(trace.get_file_path(), compressed_path.generic_string(), _compression_seek_points);
 
                // after compression is complete, delete the old uncompressed file
+               log(std::string("Removing: ") + trace.get_file_path().generic_string());
                bfs::remove(trace.get_file_path());
             }
          });
