@@ -3,6 +3,7 @@
 #include <ios>
 #include <thread>
 #include <mutex>
+#include <condition_variable>
 #include <fc/io/cfile.hpp>
 #include <boost/filesystem.hpp>
 #include <fc/variant.hpp>
