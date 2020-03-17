@@ -638,12 +638,14 @@ namespace eosio { namespace chain {
       const auto& db = control.db();
       const auto& auth_manager = control.get_authorization_manager();
 
-      for( const auto& a : trx.context_free_actions ) {
-         auto* code = db.find<account_object, by_name>(a.account);
-         EOS_ASSERT( code != nullptr, transaction_exception,
-                     "action's code account '${account}' does not exist", ("account", a.account) );
-         EOS_ASSERT( a.authorization.size() == 0, transaction_exception,
-                     "context-free actions cannot have authorizations" );
+      if( trx.context_free_actions.size() > 0 && !control.skip_auth_check() ) {
+         for( const auto& a : trx.context_free_actions ) {
+            auto* code = db.find<account_object, by_name>( a.account );
+            EOS_ASSERT( code != nullptr, transaction_exception,
+                        "action's code account '${account}' does not exist", ("account", a.account) );
+            EOS_ASSERT( a.authorization.size() == 0, transaction_exception,
+                        "context-free actions cannot have authorizations" );
+         }
       }
 
       flat_set<account_name> actors;
