@@ -1,6 +1,7 @@
 #include <eosio/trace_api/store_provider.hpp>
 
 #include <fc/variant_object.hpp>
+#include <fc/log/logger_config.hpp>
 
 namespace {
       static constexpr uint32_t _current_version = 1;
@@ -29,8 +30,8 @@ namespace {
 
 namespace eosio::trace_api {
    namespace bfs = boost::filesystem;
-   store_provider::store_provider(const bfs::path& slice_dir, uint32_t stride_width, std::optional<uint32_t> minimum_irreversible_history_blocks)
-   : _slice_directory(slice_dir, stride_width, minimum_irreversible_history_blocks) {
+   store_provider::store_provider(const bfs::path& slice_dir, uint32_t stride_width, std::optional<uint32_t> minimum_irreversible_history_blocks, std::optional<uint32_t> minimum_uncompressed_irreversible_history_blocks, uint32_t compression_seek_points)
+   : _slice_directory(slice_dir, stride_width, minimum_irreversible_history_blocks, minimum_uncompressed_irreversible_history_blocks, compression_seek_points) {
    }
 
    void store_provider::append(const block_trace_v0& bt) {
@@ -51,7 +52,7 @@ namespace eosio::trace_api {
       _slice_directory.find_or_create_index_slice(slice_number, open_state::write, index);
       auto le = metadata_log_entry { lib_entry_v0 { .lib = lib }};
       append_store(le, index);
-      _slice_directory.cleanup_old_slices(lib);
+      _slice_directory.set_lib(lib);
    }
 
    get_block_t store_provider::get_block(uint32_t block_height, const yield_function& yield) {
@@ -83,10 +84,13 @@ namespace eosio::trace_api {
       return std::make_tuple( bt, irreversible );
    }
 
-   slice_directory::slice_directory(const bfs::path& slice_dir, uint32_t width, std::optional<uint32_t> minimum_irreversible_history_blocks)
+   slice_directory::slice_directory(const bfs::path& slice_dir, uint32_t width, std::optional<uint32_t> minimum_irreversible_history_blocks, std::optional<uint32_t> minimum_uncompressed_irreversible_history_blocks, uint32_t compression_seek_points)
    : _slice_dir(slice_dir)
    , _width(width)
-   , _minimum_irreversible_history_blocks(minimum_irreversible_history_blocks) {
+   , _minimum_irreversible_history_blocks(minimum_irreversible_history_blocks)
+   , _minimum_uncompressed_irreversible_history_blocks(minimum_uncompressed_irreversible_history_blocks)
+   , _compression_seek_points(compression_seek_points)
+   , _best_known_lib(0) {
       if (!exists(_slice_dir)) {
          bfs::create_directories(slice_dir);
       }
@@ -199,23 +203,67 @@ namespace eosio::trace_api {
       }
    }
 
-   void slice_directory::cleanup_old_slices(uint32_t lib) {
-      if (!_minimum_irreversible_history_blocks)
-         return;
+   void slice_directory::set_lib(uint32_t lib) {
+      _best_known_lib = lib;
+      _maintenance_condition.notify_one();
+   }
+
+   void slice_directory::start_maintenance_thread() {
+      _maintenance_thread = std::thread([this](){
+         fc::set_os_thread_name( "TraceAPI-Maintenance" );
+         uint32_t last_lib = 0;
+
+         while(true) {
+            std::unique_lock<std::mutex> lock(_maintenance_mtx);
+            while ( last_lib >= _best_known_lib && !_maintenance_shutdown ) {
+               _maintenance_condition.wait(lock);
+            }
+
+            uint32_t best_known_lib = _best_known_lib;
+            bool shutdown = _maintenance_shutdown;
+
+            if (last_lib < best_known_lib) {
+               try {
+                  run_maintenance_tasks(best_known_lib);
+                  last_lib = best_known_lib;
+               } FC_LOG_AND_DROP();
+            }
+
+            if (shutdown) {
+               break;
+            }
+         }
+      });
+   }
+
+   void slice_directory::stop_maintenance_thread() {
+      _maintenance_shutdown = true;
+      _maintenance_condition.notify_one();
+      _maintenance_thread.join();
+   }
+
+   template<typename F>
+   void slice_directory::process_irreversible_slice_range(uint32_t lib, uint32_t min_irreversible, std::optional<uint32_t>& lower_bound_slice, F&& f) {
       const uint32_t lib_slice_number = slice_number( lib );
-      if (lib_slice_number < 1 || (_last_cleaned_up_slice && _last_cleaned_up_slice >= lib_slice_number - 1))
+      if (lib_slice_number < 1 || (lower_bound_slice && *lower_bound_slice >= lib_slice_number - 1))
          return;
 
-      // can only cleanup a slice once our last needed history block (lib - *_minimum_irreversible_history_blocks)
-      // is out of that slice (... - width)
-      const int64_t cleanup_block_number = static_cast<int64_t>(lib) - static_cast<int64_t>(*_minimum_irreversible_history_blocks) - _width;
-      if (cleanup_block_number > 0) {
-         uint32_t cleanup_slice_num = slice_number(static_cast<uint32_t>(cleanup_block_number));
-         // since we subtracted width, we are guaranteed cleanup_slice_num is not the slice that contains LIB
-         while (!_last_cleaned_up_slice || *_last_cleaned_up_slice < cleanup_slice_num) {
+      const int64_t upper_bound_block_number = static_cast<int64_t>(lib) - static_cast<int64_t>(min_irreversible) - _width;
+      if (upper_bound_block_number > 0) {
+         uint32_t upper_bound_slice_num = slice_number(static_cast<uint32_t>(upper_bound_block_number));
+         while (!lower_bound_slice || *lower_bound_slice < upper_bound_slice_num) {
+            const uint32_t slice_to_process = lower_bound_slice ? *lower_bound_slice + 1 : 0;
+            f(slice_to_process);
+            lower_bound_slice = slice_to_process;
+         }
+      }
+   }
+
+   void slice_directory::run_maintenance_tasks(uint32_t lib) {
+      if (_minimum_irreversible_history_blocks) {
+         process_irreversible_slice_range(lib, *_minimum_irreversible_history_blocks, _last_cleaned_up_slice, [this](uint32_t slice_to_clean){
             fc::cfile trace;
             fc::cfile index;
-            const uint32_t slice_to_clean = _last_cleaned_up_slice ? *_last_cleaned_up_slice + 1 : 0;
             // cleanup index first to reduce the likelihood of reader finding index, but not finding trace
             const bool dont_open_file = false;
             const bool index_found = find_index_slice(slice_to_clean, open_state::read, index, dont_open_file);
@@ -231,8 +279,27 @@ namespace eosio::trace_api {
             if (ctrace) {
                bfs::remove(ctrace->get_file_path());
             }
-            _last_cleaned_up_slice = slice_to_clean;
-         }
+         });
+      }
+
+      // Only process compression if its configured AND there is a range of irreversible blocks which would not also
+      // be deleted
+      if (_minimum_uncompressed_irreversible_history_blocks &&
+          (!_minimum_irreversible_history_blocks || *_minimum_uncompressed_irreversible_history_blocks < _minimum_irreversible_history_blocks) )
+      {
+         process_irreversible_slice_range(lib, *_minimum_uncompressed_irreversible_history_blocks, _last_compressed_slice, [this](uint32_t slice_to_compress){
+            fc::cfile trace;
+            const bool dont_open_file = false;
+            const bool trace_found = find_trace_slice(slice_to_compress, open_state::read, trace, dont_open_file);
+            if (trace_found) {
+               auto compressed_path = trace.get_file_path();
+               compressed_path.replace_extension(_compressed_trace_ext);
+               compressed_file::process(trace.get_file_path(), compressed_path.generic_string(), _compression_seek_points);
+
+               // after compression is complete, delete the old uncompressed file
+               bfs::remove(trace.get_file_path());
+            }
+         });
       }
    }
 }
