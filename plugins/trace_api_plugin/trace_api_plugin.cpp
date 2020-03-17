@@ -126,7 +126,7 @@ struct trace_api_common_impl {
          minimum_irreversible_history_blocks = blocks;
       }
 
-      const int32_t uncompressed_blocks = options.at("trace-minimum-uncompressed-irreversiblehistory-blocks").as<int32_t>();
+      const int32_t uncompressed_blocks = options.at("trace-minimum-uncompressed-irreversible-history-blocks").as<int32_t>();
       EOS_ASSERT(uncompressed_blocks >= -1, chain::plugin_config_exception,
                  "\"trace-minimum-uncompressed-irreversible-history-blocks\" must be greater to or equal to -1.");
 
