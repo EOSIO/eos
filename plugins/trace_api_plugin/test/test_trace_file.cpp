@@ -484,7 +484,7 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       // verify that the current_slice and the previous are maintained as long as lib - min_saved_blocks is part of previous slice
       uint32_t current_slice = 6;
       uint32_t lib = current_slice * width;
-      sd.run_maintenance_tasks(lib);
+      sd.run_maintenance_tasks(lib, {});
       std::set<bfs::path> files2;
       files2.insert(index5);
       files2.insert(trace6);
@@ -492,24 +492,24 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
 
       // saved blocks still in previous slice
       lib += min_saved_blocks - 1;  // current_slice * width + min_saved_blocks - 1
-      sd.run_maintenance_tasks(lib);
+      sd.run_maintenance_tasks(lib, {});
       verify_directory_contents(tempdir.path(), files2);
 
       // now all saved blocks in current slice
       lib += 1; // current_slice * width + min_saved_blocks
-      sd.run_maintenance_tasks(lib);
+      sd.run_maintenance_tasks(lib, {});
       std::set<bfs::path> files3;
       files3.insert(trace6);
       verify_directory_contents(tempdir.path(), files3);
 
       // moving lib into next slice, so 1 saved blocks still in 6th slice
       lib += width - 1;
-      sd.run_maintenance_tasks(lib);
+      sd.run_maintenance_tasks(lib, {});
       verify_directory_contents(tempdir.path(), files3);
 
       // moved last saved block out of 6th slice, so 6th slice is cleaned up
       lib += 1;
-      sd.run_maintenance_tasks(lib);
+      sd.run_maintenance_tasks(lib, {});
       verify_directory_contents(tempdir.path(), std::set<bfs::path>());
    }
 
@@ -542,7 +542,7 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       verify_directory_contents(tempdir.path(), files);
 
       // verify no change up to the last block before a slice becomes compressible
-      sd.run_maintenance_tasks(14);
+      sd.run_maintenance_tasks(14, {});
       verify_directory_contents(tempdir.path(), files);
 
       for (int reps = 0; reps < file_paths.size(); reps++) {
@@ -551,11 +551,11 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
          files.erase(std::get<1>(file_paths.at(reps)));
          files.insert(std::get<2>(file_paths.at(reps)));
 
-         sd.run_maintenance_tasks(15 + (reps * width));
+         sd.run_maintenance_tasks(15 + (reps * width), {});
          verify_directory_contents(tempdir.path(), files);
 
          // trailing edge, no change
-         sd.run_maintenance_tasks(24 + (reps * width));
+         sd.run_maintenance_tasks(24 + (reps * width), {});
          verify_directory_contents(tempdir.path(), files);
       }
 
@@ -597,7 +597,7 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       verify_directory_contents(tempdir.path(), files);
 
       // verify no change up to the last block before a slice becomes compressible
-      sd.run_maintenance_tasks(14);
+      sd.run_maintenance_tasks(14, {});
       verify_directory_contents(tempdir.path(), files);
 
       for (int reps = 0; reps < file_paths.size() + 1; reps++) {
@@ -613,11 +613,11 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
             files.erase(std::get<0>(file_paths.at(reps-1)));
             files.erase(std::get<2>(file_paths.at(reps-1)));
          }
-         sd.run_maintenance_tasks(15 + (reps * width));
+         sd.run_maintenance_tasks(15 + (reps * width), {});
          verify_directory_contents(tempdir.path(), files);
 
          // trailing edge, no change
-         sd.run_maintenance_tasks(24 + (reps * width));
+         sd.run_maintenance_tasks(24 + (reps * width), {});
          verify_directory_contents(tempdir.path(), files);
       }
 

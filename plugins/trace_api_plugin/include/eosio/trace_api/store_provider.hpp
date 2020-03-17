@@ -191,7 +191,7 @@ namespace eosio::trace_api {
       /**
        * Start a thread which does background maintenance
        */
-      void start_maintenance_thread();
+      void start_maintenance_thread( log_handler log );
 
       /**
        * Stop and join the thread doing background maintenance
@@ -204,7 +204,7 @@ namespace eosio::trace_api {
        *
        * @param lib : block number of the current lib
        */
-      void run_maintenance_tasks(uint32_t lib);
+      void run_maintenance_tasks(uint32_t lib, const log_handler& log);
 
    private:
       // returns true if slice is found, slice_file will always be set to the appropriate path for
@@ -257,8 +257,8 @@ namespace eosio::trace_api {
        */
       get_block_t get_block(uint32_t block_height, const yield_function& yield= {});
 
-      void start_maintenance_thread() {
-         _slice_directory.start_maintenance_thread();
+      void start_maintenance_thread( log_handler log ) {
+         _slice_directory.start_maintenance_thread( std::move(log) );
       }
       void stop_maintenance_thread() {
          _slice_directory.stop_maintenance_thread();
