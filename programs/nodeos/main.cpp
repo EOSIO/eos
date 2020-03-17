@@ -64,6 +64,22 @@ void initialize_logging()
    auto config_path = app().get_logging_conf();
    if(fc::exists(config_path))
      fc::configure_logging(config_path); // intentionally allowing exceptions to escape
+   else {
+      auto cfg = fc::logging_config::default_config();
+      cfg.appenders.push_back(
+         fc::appender_config( "deep-mind", "dmlog" )
+      );
+
+      fc::logger_config dmlc;
+      dmlc.name = "deep-mind";
+      dmlc.level = fc::log_level::debug;
+      dmlc.enabled = true;
+      dmlc.appenders.push_back("deep-mind");
+
+      cfg.loggers.push_back( dmlc );
+
+      fc::configure_logging(cfg);
+   }
 
    fc::log_config::initialize_appenders( app().get_io_service() );
 

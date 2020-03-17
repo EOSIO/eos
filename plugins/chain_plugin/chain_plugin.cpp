@@ -1096,8 +1096,8 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
             } );
 
       my->accepted_block_connection = my->chain->accepted_block.connect( [this]( const block_state_ptr& blk ) {
-         if (auto logger = my->chain->get_deep_mind_logger()) {
-            dmlog(logger, "ACCEPTED_BLOCK ${num} ${blk}",
+         if (auto dm_logger = my->chain->get_deep_mind_logger()) {
+            fc_dlog(*dm_logger, "ACCEPTED_BLOCK ${num} ${blk}",
                ("num", blk->block_num)
                ("blk", chain().to_variant_with_abi(blk, fc::microseconds(config::dmlog_abi_serializer_max_time_us)))
             );
@@ -1117,8 +1117,8 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
       my->applied_transaction_connection = my->chain->applied_transaction.connect(
             [this]( std::tuple<const transaction_trace_ptr&, const signed_transaction&> t ) {
-               if (auto logger = my->chain->get_deep_mind_logger()) {
-                  dmlog(logger, "APPLIED_TRANSACTION ${block} ${traces}",
+               if (auto dm_logger = my->chain->get_deep_mind_logger()) {
+                  fc_dlog(*dm_logger, "APPLIED_TRANSACTION ${block} ${traces}",
                      ("block", chain().head_block_num() + 1)
                      ("traces", chain().to_variant_with_abi(std::get<0>(t), fc::microseconds(config::dmlog_abi_serializer_max_time_us)))
                   );

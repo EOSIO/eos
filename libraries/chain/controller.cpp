@@ -1146,8 +1146,8 @@ struct controller_impl {
          etrx.set_reference_block( self.head_block_id() );
       }
 
-      if (auto logger = get_deep_mind_logger()) {
-         dmlog(logger, "TRX_OP CREATE onerror ${id} ${trx}",
+      if (auto dm_logger = get_deep_mind_logger()) {
+         fc_dlog(*dm_logger, "TRX_OP CREATE onerror ${id} ${trx}",
             ("id", etrx.id())
             ("trx", self.to_variant_with_abi(etrx, fc::microseconds(config::dmlog_abi_serializer_max_time_us)))
          );
@@ -1342,8 +1342,8 @@ struct controller_impl {
          trace->except_ptr = std::current_exception();
          trace->elapsed = fc::time_point::now() - trx_context.start;
 
-         if (auto logger = get_deep_mind_logger()) {
-            dmlog(logger, "DTRX_OP FAILED ${action_id}",
+         if (auto dm_logger = get_deep_mind_logger()) {
+            fc_dlog(*dm_logger, "DTRX_OP FAILED ${action_id}",
                ("action_id", trx_context.action_id.current())
             );
          }
@@ -1563,9 +1563,9 @@ struct controller_impl {
    {
       EOS_ASSERT( !pending, block_validate_exception, "pending block already exists" );
 
-      if (auto logger = get_deep_mind_logger()) {
+      if (auto dm_logger = get_deep_mind_logger()) {
          // The head block represents the block just before this one that is about to start, so add 1 to get this block num
-         dmlog(logger, "START_BLOCK ${block_num}", ("block_num", head->block_num + 1));
+         fc_dlog(*dm_logger, "START_BLOCK ${block_num}", ("block_num", head->block_num + 1));
       }
 
       auto guard_pending = fc::make_scoped_exit([this, head_block_num=head->block_num](){
@@ -2129,8 +2129,8 @@ struct controller_impl {
          ilog("switching forks from ${current_head_id} (block number ${current_head_num}) to ${new_head_id} (block number ${new_head_num})",
               ("current_head_id", head->id)("current_head_num", head->block_num)("new_head_id", new_head->id)("new_head_num", new_head->block_num) );
 
-         if (auto logger = get_deep_mind_logger()) {
-            dmlog(logger, "SWITCH_FORK ${from_id} ${to_id}",
+         if (auto dm_logger = get_deep_mind_logger()) {
+            fc_dlog(*dm_logger, "SWITCH_FORK ${from_id} ${to_id}",
                ("from_id", head->id)
                ("to_id", new_head->id)
             );
@@ -2433,8 +2433,8 @@ struct controller_impl {
          trx.set_reference_block( self.head_block_id() );
       }
 
-      if (auto logger = get_deep_mind_logger()) {
-         dmlog(logger, "TRX_OP CREATE onblock ${id} ${trx}",
+      if (auto dm_logger = get_deep_mind_logger()) {
+         fc_dlog(*dm_logger, "TRX_OP CREATE onblock ${id} ${trx}",
             ("id", trx.id())
             ("trx", self.to_variant_with_abi(trx, fc::microseconds(config::dmlog_abi_serializer_max_time_us)))
          );
@@ -2613,10 +2613,10 @@ void controller::preactivate_feature( uint32_t action_id, const digest_type& fea
                ("digest", feature_digest)
    );
 
-   if (auto logger = get_deep_mind_logger()) {
+   if (auto dm_logger = get_deep_mind_logger()) {
       const auto feature = pfs.get_protocol_feature(feature_digest);
 
-      dmlog(logger, "FEATURE_OP PRE_ACTIVATE ${action_id} ${feature_digest} ${feature}",
+      fc_dlog(*dm_logger, "FEATURE_OP PRE_ACTIVATE ${action_id} ${feature_digest} ${feature}",
          ("action_id", action_id)
          ("feature_digest", feature_digest)
          ("feature", feature.to_variant())
@@ -3308,8 +3308,8 @@ void controller::add_to_ram_correction( account_name account, uint64_t ram_bytes
       } );
    }
 
-   if (auto logger = get_deep_mind_logger()) {
-      dmlog(logger, "RAM_CORRECTION_OP ${action_id} ${correction_id} ${event_id} ${payer} ${delta}",
+   if (auto dm_logger = get_deep_mind_logger()) {
+      fc_dlog(*dm_logger, "RAM_CORRECTION_OP ${action_id} ${correction_id} ${event_id} ${payer} ${delta}",
          ("action_id", action_id)
          ("correction_id", correction_object_id)
          ("event_id", event_id)
@@ -3330,6 +3330,30 @@ fc::logger* controller::get_deep_mind_logger()const {
 void controller::enable_deep_mind(fc::logger* logger) {
    EOS_ASSERT( logger != nullptr, misc_exception, "Invalid logger passed into enable_deep_mind, must be set" );
    my->deep_mind_logger = logger;
+
+   // The actual `fc::dmlog_appender` implementation that is currently used by deep mind
+   // logger is using `stdout` to prints it's log line out. Deep mind logging outputs
+   // massive amount of data out of the process, which can lead under pressure to some
+   // of the system calls (i.e. `fwrite`) to fail abruptly without fully writing the
+   // entire line.
+   //
+   // Recovering from errors on a buffered (line or full) and continuing retrying write
+   // is merely impossible to do right, because the buffer is actually held by the
+   // underlying `libc` implementation nor the operation system.
+   //
+   // To ensure good functionalities of deep mind tracer, the `stdout` is made unbuffered
+   // and the actual `fc::dmlog_appender` deals with retry when facing error, enabling a much
+   // more robust deep mind output.
+   //
+   // Changing the standard `stdout` behavior from buffered to unbuffered can is disruptive
+   // and can lead to weird scenarios in the logging process if `stdout` is used there too.
+   //
+   // In a future version, the `fc::dmlog_appender` implementation will switch to a `FIFO` file
+   // approach, which will remove the dependency on `stdout` and hence this call.
+   //
+   // For the time being, when `deep-mind = true` is activated, we set `stdout` here to
+   // be an unbuffered I/O stream.
+   setbuf(stdout, NULL);
 }
 
 #if defined(EOSIO_EOS_VM_RUNTIME_ENABLED) || defined(EOSIO_EOS_VM_JIT_RUNTIME_ENABLED)

@@ -688,8 +688,8 @@ Enables new `set_action_return_value` intrinsic which sets a value that is inclu
                   ("digest", feature_digest)
       );
 
-      if (auto logger = _get_deep_mind_logger()) {
-         dmlog(logger, "FEATURE_OP ACTIVATE ${feature_digest} ${feature}",
+      if (auto dm_logger = _get_deep_mind_logger()) {
+         fc_dlog(*dm_logger, "FEATURE_OP ACTIVATE ${feature_digest} ${feature}",
             ("feature_digest", feature_digest)
             ("feature", itr->to_variant())
          );
