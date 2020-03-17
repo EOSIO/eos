@@ -845,6 +845,64 @@ BOOST_FIXTURE_TEST_CASE(deferred_cfa_success, TESTER)  try {
    BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW()
 
+BOOST_AUTO_TEST_CASE(light_validation_skip_cfa) try {
+   tester chain;
+
+   std::vector<signed_block_ptr> blocks;
+   blocks.push_back(chain.produce_block());
+
+   chain.create_account( N(testapi) );
+   chain.create_account( N(dummy) );
+   blocks.push_back(chain.produce_block());
+   chain.set_code( N(testapi), contracts::test_api_wasm() );
+   blocks.push_back(chain.produce_block());
+
+   cf_action cfa;
+   signed_transaction trx;
+   action act({}, cfa);
+   trx.context_free_actions.push_back(act);
+   trx.context_free_data.emplace_back(fc::raw::pack<uint32_t>(100)); // verify payload matches context free data
+   trx.context_free_data.emplace_back(fc::raw::pack<uint32_t>(200));
+   // add a normal action along with cfa
+   dummy_action da = { DUMMY_ACTION_DEFAULT_A, DUMMY_ACTION_DEFAULT_B, DUMMY_ACTION_DEFAULT_C };
+   action act1(vector<permission_level>{{N(testapi), config::active_name}}, da);
+   trx.actions.push_back(act1);
+   chain.set_transaction_headers(trx);
+   // run normal passing case
+   auto sigs = trx.sign(chain.get_private_key(N(testapi), "active"), chain.control->get_chain_id());
+   auto trace = chain.push_transaction(trx);
+   blocks.push_back(chain.produce_block());
+
+   BOOST_REQUIRE(trace->receipt);
+   BOOST_CHECK_EQUAL(trace->receipt->status, transaction_receipt::executed);
+   BOOST_CHECK_EQUAL(2, trace->action_traces.size());
+
+   flat_set<account_name> trusted_producers = { N(eosio) };
+   validating_tester other(trusted_producers);
+   other.skip_validate = true;
+
+   transaction_trace_ptr other_trace;
+   auto cc = other.control->applied_transaction.connect( [&](std::tuple<const transaction_trace_ptr&, const signed_transaction&> x) {
+      auto& t = std::get<0>(x);
+      if( t && t->id == trace->id ) {
+         other_trace = t;
+      }
+   } );
+
+   for (auto& new_block : blocks) {
+      other.validate_push_block(new_block);
+   }
+   blocks.clear();
+
+   BOOST_REQUIRE(other_trace);
+   BOOST_REQUIRE(other_trace->receipt);
+   BOOST_CHECK_EQUAL(other_trace->receipt->status, transaction_receipt::executed);
+   BOOST_CHECK_EQUAL(1, other_trace->action_traces.size()); // no cfa
+
+   other.close();
+
+} FC_LOG_AND_RETHROW()
+
 /*************************************************************************************
  * checktime_tests test case
  *************************************************************************************/
