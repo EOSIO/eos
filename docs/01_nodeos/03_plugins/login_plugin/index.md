@@ -1,5 +1,3 @@
-# login_plugin
-
 ## Description
 
 The `login_plugin` supports the concept of applications authenticating with the EOSIO blockchain. The `login_plugin` API allows an application to verify whether an account is allowed to sign in order to satisfy a specified authority.
