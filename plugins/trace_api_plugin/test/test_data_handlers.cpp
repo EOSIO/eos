@@ -15,10 +15,10 @@ BOOST_AUTO_TEST_SUITE(abi_data_handler_tests)
       auto action = action_trace_v0 {
          0, "alice"_n, "alice"_n, "foo"_n, {}, {}
       };
-      abi_data_handler handler;
+      abi_data_handler handler(exception_handler{});
 
       auto expected = fc::variant();
-      auto actual = handler.process_data(action);
+      auto actual = handler.process_data(action, [](){});
 
       BOOST_TEST(to_kv(expected) == to_kv(actual), boost::test_tools::per_element());
    }
@@ -28,10 +28,10 @@ BOOST_AUTO_TEST_SUITE(abi_data_handler_tests)
       auto action = action_trace_v0 {
          0, "alice"_n, "alice"_n, "foo"_n, {}, {0x00, 0x01, 0x02, 0x03}
       };
-      abi_data_handler handler;
+      abi_data_handler handler(exception_handler{});
 
       auto expected = fc::variant();
-      auto actual = handler.process_data(action);
+      auto actual = handler.process_data(action, [](){});
 
       BOOST_TEST(to_kv(expected) == to_kv(actual), boost::test_tools::per_element());
    }
@@ -52,8 +52,8 @@ BOOST_AUTO_TEST_SUITE(abi_data_handler_tests)
          {}, {}, {}
       );
       abi.version = "eosio::abi/1.";
-      
-      abi_data_handler handler;
+
+      abi_data_handler handler(exception_handler{});
       handler.add_abi("alice"_n, abi);
 
       fc::variant expected = fc::mutable_variant_object()
@@ -62,7 +62,7 @@ BOOST_AUTO_TEST_SUITE(abi_data_handler_tests)
          ("c", 2)
          ("d", 3);
 
-      auto actual = handler.process_data(action);
+      auto actual = handler.process_data(action, [](){});
 
       BOOST_TEST(to_kv(expected) == to_kv(actual), boost::test_tools::per_element());
    }
@@ -84,12 +84,12 @@ BOOST_AUTO_TEST_SUITE(abi_data_handler_tests)
       );
       abi.version = "eosio::abi/1.";
 
-      abi_data_handler handler;
+      abi_data_handler handler(exception_handler{});
       handler.add_abi("alice"_n, abi);
 
       auto expected = fc::variant();
 
-      auto actual = handler.process_data(action);
+      auto actual = handler.process_data(action, [](){});
 
       BOOST_TEST(to_kv(expected) == to_kv(actual), boost::test_tools::per_element());
    }
@@ -117,7 +117,7 @@ BOOST_AUTO_TEST_SUITE(abi_data_handler_tests)
 
       auto expected = fc::variant();
 
-      auto actual = handler.process_data(action);
+      auto actual = handler.process_data(action, [](){});
 
       BOOST_TEST(to_kv(expected) == to_kv(actual), boost::test_tools::per_element());
       BOOST_TEST(log_called);

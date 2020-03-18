@@ -124,7 +124,7 @@ void blocklog::read_log() {
       abi_serializer::to_variant(*next,
                                  pretty_output,
                                  []( account_name n ) { return optional<abi_serializer>(); },
-                                 deadline);
+                                 abi_serializer::create_yield_function( deadline ));
       const auto block_id = next->id();
       const uint32_t ref_block_prefix = block_id._hash[1];
       const auto enhanced_object = fc::mutable_variant_object
@@ -134,7 +134,7 @@ void blocklog::read_log() {
                  (pretty_output.get_object());
       fc::variant v(std::move(enhanced_object));
       if (no_pretty_print)
-         fc::json::to_stream(*out, v, fc::time_point::maximum(), fc::json::stringify_large_ints_and_doubles);
+         fc::json::to_stream(*out, v, fc::time_point::maximum(), fc::json::output_formatting::stringify_large_ints_and_doubles);
       else
          *out << fc::json::to_pretty_string(v) << "\n";
    };
