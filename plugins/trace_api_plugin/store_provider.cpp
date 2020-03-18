@@ -210,7 +210,7 @@ namespace eosio::trace_api {
 
    void slice_directory::start_maintenance_thread(log_handler log) {
       _maintenance_thread = std::thread([this, log=std::move(log)](){
-         fc::set_os_thread_name( "TraceAPI-Maintenance" );
+         fc::set_os_thread_name( "trace-mx" );
          uint32_t last_lib = 0;
 
          while(true) {
