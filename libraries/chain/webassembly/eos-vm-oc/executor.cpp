@@ -73,7 +73,6 @@ int32_t eos_vm_oc_grow_memory(char** p, int32_t grow, int32_t max) {
    uint64_t max_pages = max;
    if(grow == 0)
       return (int32_t)cb->current_linear_memory_pages;
-   idump((previous_page_count)(grow_amount)(max_pages));
    if(previous_page_count + grow_amount > max_pages)
       return (int32_t)-1;
 

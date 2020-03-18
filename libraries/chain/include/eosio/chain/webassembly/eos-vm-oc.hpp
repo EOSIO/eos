@@ -55,9 +55,9 @@ inline array_ptr<T> array_ptr_impl (size_t ptr, size_t length)
 {
    eos_vm_oc_control_block* cb = (eos_vm_oc_control_block*)((*memory_ptr_ptr)-memory::cb_offset);
 
-   size_t end = ptr + length*sizeof(T);
+   ssize_t end = ptr + length*sizeof(T);
    if(end > cb->first_invalid_memory_address)
-      throw wasm_execution_error(FC_LOG_MESSAGE(error, "Access violation"));
+      throw wasm_execution_error(FC_LOG_MESSAGE(error, "access violation"));
 
    return array_ptr<T>((T*)(ptr+cb->full_linear_memory_start));
 }
