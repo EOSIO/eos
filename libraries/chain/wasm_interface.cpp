@@ -1134,7 +1134,7 @@ class action_api : public context_aware_api {
 
 };
 
-   class console_api : public context_aware_api {
+class console_api : public context_aware_api {
    public:
       console_api( apply_context& ctx )
       : context_aware_api(ctx,true)
