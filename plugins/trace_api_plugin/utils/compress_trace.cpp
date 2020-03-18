@@ -115,6 +115,8 @@ int main(int argc, char** argv) {
       std::cerr << "Error: " << e.what() << "\n";
    } catch (const fc::exception& e ) {
       std::cerr << "Error: " << e.to_detail_string() << "\n";
+   } catch (...) {
+      std::cerr << "An Unknown Error Occurred\n";
    }
 
    return 1;
