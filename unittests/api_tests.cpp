@@ -683,7 +683,7 @@ BOOST_FIXTURE_TEST_CASE(cf_action_tests, TESTER) { try {
 
          trx.actions.push_back(act1);
          // attempt to access non context free api
-         for (uint32_t i = 200; i <= 211; ++i) {
+         for (uint32_t i = 200; i <= 212; ++i) {
             trx.context_free_actions.clear();
             trx.context_free_data.clear();
             cfa.payload = i;

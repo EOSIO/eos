@@ -19,6 +19,8 @@ class wrapped_fd {
       wrapped_fd& operator=(const wrapped_fd&) = delete;
       wrapped_fd(wrapped_fd&& other) : _inuse(other._inuse), _fd(other._fd) {other._inuse = false;}
       wrapped_fd& operator=(wrapped_fd&& other) {
+         if(_inuse)
+            close(_fd);
          _inuse = other._inuse;
          _fd = other._fd;
          other._inuse = false;
