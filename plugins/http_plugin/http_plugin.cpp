@@ -726,11 +726,13 @@ namespace eosio {
          } catch (fc::exception& e) {
             error_results results{500, "Internal Service Error", error_results::error_info(e, verbose_http_errors)};
             cb( 500, fc::variant( results ));
-            if (e.code() != chain::greylist_net_usage_exceeded::code_value && e.code() != chain::greylist_cpu_usage_exceeded::code_value) {
+            if (e.code() != chain::greylist_net_usage_exceeded::code_value &&
+                e.code() != chain::greylist_cpu_usage_exceeded::code_value &&
+                e.code() != fc::timeout_exception::code_value ) {
                fc_elog( logger, "FC Exception encountered while processing ${api}.${call}",
                         ("api", api_name)( "call", call_name ) );
-               fc_dlog( logger, "Exception Details: ${e}", ("e", e.to_detail_string()) );
             }
+            fc_dlog( logger, "Exception Details: ${e}", ("e", e.to_detail_string()) );
          } catch (std::exception& e) {
             error_results results{500, "Internal Service Error", error_results::error_info(fc::exception( FC_LOG_MESSAGE( error, e.what())), verbose_http_errors)};
             cb( 500, fc::variant( results ));
@@ -770,6 +772,10 @@ namespace eosio {
       }
 
       return result;
+   }
+
+   fc::microseconds http_plugin::get_max_response_time()const {
+      return my->max_response_time;
    }
 
    std::istream& operator>>(std::istream& in, https_ecdh_curve_t& curve) {
