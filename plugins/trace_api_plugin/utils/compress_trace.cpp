@@ -12,6 +12,10 @@ namespace bfs = boost::filesystem;
 
 namespace {
    std::string validate_input_path( const bpo::variables_map& vmap ) {
+      if (vmap.count("input-path") == 0) {
+         throw bpo::required_option("input-path");
+      }
+
       auto input_path = vmap.at("input-path").as<std::string>();
 
       if (!bfs::exists(input_path)) {
@@ -50,10 +54,25 @@ namespace {
 
       return output_path;
    }
+
+   void print_help_text ( std::ostream& os, const bpo::options_description& opts ) {
+      os <<
+         "Usage: compress_trace <options> input-path [output-path]\n"
+         "\n"
+         "Compress a trace file to into the \"clog\" format.  By default the name of the\n"
+         "of the compressed file will the the same as the input-path with a changing the\n"
+         "extension to \"clog\"."
+         "\n\n"
+         "Positional Options:\n"
+         "  input-path                      path to the file to compress\n"
+         "  output-path                     [Optional] output file or directory path.\n"
+         "\n";
+      os << opts << "\n";
+   }
 }
 
 int main(int argc, char** argv) {
-   bpo::options_description vis_desc("Options:");
+   bpo::options_description vis_desc("Options");
    auto opts = vis_desc.add_options();
    opts("help,h", "show usage help message");
    opts("seek-points,s", bpo::value<uint32_t>()->default_value(512),
@@ -62,7 +81,7 @@ int main(int argc, char** argv) {
 
    bpo::options_description hidden_desc("hidden");
    auto hidden_opts = hidden_desc.add_options();
-   hidden_opts("input-path,i", bpo::value< std::string >()->required(), "input path");
+   hidden_opts("input-path,i", bpo::value< std::string >(), "input path");
    hidden_opts("output-path,o", bpo::value< std::string >(), "output path");
 
    bpo::positional_options_description pos_desc;
@@ -86,16 +105,16 @@ int main(int argc, char** argv) {
          }
 
          return 0;
+      } else {
+         print_help_text(std::cout, vis_desc);
       }
    } catch ( const bpo::error& e ) {
-      std::cout << "Error: " << e.what() << "\n\n";
-      auto help_desc = bpo::options_description("Usage: compress_trace <options> input-path [output-path]");
-      help_desc.add(vis_desc);
-      std::cout << help_desc << "\n";
+      std::cerr << "Error: " << e.what() << "\n\n";
+      print_help_text(std::cerr, vis_desc);
    } catch (const std::exception& e) {
-      std::cout << "Error: " << e.what() << "\n";
+      std::cerr << "Error: " << e.what() << "\n";
    } catch (const fc::exception& e ) {
-      std::cout << "Error: " << e.to_detail_string() << "\n";
+      std::cerr << "Error: " << e.to_detail_string() << "\n";
    }
 
    return 1;
