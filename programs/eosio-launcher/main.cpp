@@ -1194,7 +1194,7 @@ launcher_def::write_logging_config_file(tn_node_def &node) {
   if( gelf_enabled ) pp.appenders.push_back( "net" );
   log_config.loggers.emplace_back( pp );
 
-  auto str = fc::json::to_pretty_string( log_config, fc::time_point::maximum(), fc::json::stringify_large_ints_and_doubles );
+  auto str = fc::json::to_pretty_string( log_config, fc::time_point::maximum(), fc::json::output_formatting::stringify_large_ints_and_doubles );
   cfg.write( str.c_str(), str.size() );
   cfg.close();
 }
@@ -1244,7 +1244,7 @@ launcher_def::write_setprods_file() {
       if (p.producer_name != "eosio")
          no_bios.schedule.push_back(p);
    }
-  auto str = fc::json::to_pretty_string( no_bios, fc::time_point::maximum(), fc::json::stringify_large_ints_and_doubles );
+  auto str = fc::json::to_pretty_string( no_bios, fc::time_point::maximum(), fc::json::output_formatting::stringify_large_ints_and_doubles );
   psfile.write( str.c_str(), str.size() );
   psfile.close();
 }

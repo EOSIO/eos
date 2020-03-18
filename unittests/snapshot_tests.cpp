@@ -429,8 +429,8 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_chain_id_in_snapshot, SNAPSHOT_SUITE, snapsho
    verify_integrity_hash<SNAPSHOT_SUITE>(*chain.control, *snap_chain.control);
 }
 
-/* TODO: need new bin/json gzipped files
-// TODO: make this insensitive to abi_def changes, which isn't part of consensus or part of the database format
+#warning TODO: restore snapshot_tests/test_compatible_versions
+/*
 BOOST_AUTO_TEST_CASE_TEMPLATE(test_compatible_versions, SNAPSHOT_SUITE, snapshot_suites)
 {
    tester chain(setup_policy::preactivate_feature_and_new_bios);

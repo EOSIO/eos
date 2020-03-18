@@ -1,0 +1,682 @@
+openapi: 3.0.0
+info:
+  title: Chain API
+  description: "OAS 3.0 Nodeos [chain_api_plugin](https://eosio.github.io/eos/latest/nodeos/plugins/chain_api_plugin/index) API Specification\r"
+  version: 1.0.0
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  contact:
+    url: https://eos.io
+servers:
+  - url: "{protocol}://{host}:{port}/v1/chain"
+    variables:
+      protocol:
+        enum:
+          - http
+          - https
+        default: http
+      host:
+        default: localhost
+      port:
+        default: "8080"
+components:
+  schemas: {}
+paths:
+  /get_account:
+    post:
+      description: Returns an object containing various details about a specific account on the blockchain.
+      operationId: get_account
+      requestBody:
+        description: JSON Object with single member "account_name"
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - account_name
+              properties:
+                account_name:
+                  $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "https://eosio.github.io/schemata/v2.0/oas/Account.yaml"
+  /get_block:
+    post:
+      description: Returns an object containing various details about a specific block on the blockchain.
+      operationId: get_block
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - block_num_or_id
+              properties:
+                block_num_or_id:
+                  type: string
+                  description: Provide a `block number` or a `block id`
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "https://eosio.github.io/schemata/v2.0/oas/Block.yaml"
+  /get_info:
+    post:
+      description: Returns an object containing various details about the blockchain.
+      operationId: get_info
+      security: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "https://eosio.github.io/schemata/v2.0/oas/Info.yaml"
+
+  /push_transaction:
+    post:
+      description: This method expects a transaction in JSON format and will attempt to apply it to the blockchain.
+      operationId: push_transaction
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                signatures:
+                  type: array
+                  description: array of signatures required to authorize transaction
+                  items:
+                    $ref: "https://eosio.github.io/schemata/v2.0/oas/Signature.yaml"
+                compression:
+                  type: boolean
+                  description: Compression used, usually false
+                packed_context_free_data:
+                  type: string
+                  description: json to hex
+                packed_trx:
+                  type: string
+                  description: Transaction object json to hex
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                description: Returns Nothing
+
+  /send_transaction:
+    post:
+      description: This method expects a transaction in JSON format and will attempt to apply it to the blockchain.
+      operationId: send_transaction
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                signatures:
+                  type: array
+                  description: array of signatures required to authorize transaction
+                  items:
+                    $ref: "https://eosio.github.io/schemata/v2.0/oas/Signature.yaml"
+                compression:
+                  type: boolean
+                  description: Compression used, usually false
+                packed_context_free_data:
+                  type: string
+                  description: json to hex
+                packed_trx:
+                  type: string
+                  description: Transaction object json to hex
+
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                description: Returns Nothing
+
+  /push_transactions:
+    post:
+      description: This method expects a transaction in JSON format and will attempt to apply it to the blockchain.
+      operationId: push_transactions
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: "https://eosio.github.io/schemata/v2.0/oas/Transaction.yaml"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                description: Returns Nothing
+
+  /get_block_header_state:
+    post:
+      description: Retrieves the glock header state
+      operationId: get_block_header_state
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - block_num_or_id
+              properties:
+                block_num_or_id:
+                  type: string
+                  description: Provide a block_number or a block_id
+
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "https://eosio.github.io/schemata/v2.0/oas/BlockHeaderState.yaml"
+
+  /get_abi:
+    post:
+      description: Retrieves the ABI for a contract based on its account name
+      operationId: get_abi
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - account_name
+              properties:
+                account_name:
+                  $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "https://eosio.github.io/schemata/v2.0/oas/Abi.yaml"
+  /get_currency_balance:
+    post:
+      description: Retrieves the current balance
+      operationId: get_currency_balance
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - code
+                - account
+                - symbol
+              properties:
+                code:
+                  $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
+                account:
+                  $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
+                symbol:
+                  $ref: "https://eosio.github.io/schemata/v2.0/oas/Symbol.yaml"
+
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "https://eosio.github.io/schemata/v2.0/oas/Symbol.yaml"
+
+  /get_currency_stats:
+    post:
+      description: Retrieves currency stats
+      operationId: get_currency_stats
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                code:
+                  $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
+                symbol:
+                  $ref: "https://eosio.github.io/schemata/v2.0/oas/Symbol.yaml"
+
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                description: "Returns an object with one member labeled as the symbol you requested, the object has three members: supply (Symbol), max_supply (Symbol) and issuer (Name)"
+
+  /get_required_keys:
+    post:
+      description: Returns the required keys needed to sign a transaction.
+      operationId: get_required_keys
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - transaction
+                - available_keys
+              properties:
+                transaction:
+                  $ref: "https://eosio.github.io/schemata/v2.0/oas/Transaction.yaml"
+                available_keys:
+                  type: array
+                  description: Provide the available keys
+                  items:
+                    $ref: "https://eosio.github.io/schemata/v2.0/oas/PublicKey.yaml"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                {}
+
+  /get_producers:
+    post:
+      description: Retrieves producers list
+      operationId: get_producers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              title: "GetProducersRequest"
+              type: object
+              required:
+                - limit
+                - lower_bound
+              properties:
+                limit:
+                  type: string
+                  description: total number of producers to retrieve
+                lower_bound:
+                  type: string
+                  description: In conjunction with limit can be used to paginate through the results. For example, limit=10 and lower_bound=10 would be page 2
+                json:
+                  type: boolean
+                  description: return result in JSON format
+
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: "GetProducersResponse"
+                type: object
+                additionalProperties: false
+                minProperties:  3
+                required:
+                  - active
+                  - pending
+                  - proposed
+                properties:
+                  active:
+                    type: array
+                    nullable: true
+                    items:
+                      $ref: "https://eosio.github.io/schemata/v2.0/oas/ProducerSchedule.yaml"
+                  pending:
+                    type: array
+                    nullable: true
+                    items:
+                      $ref: "https://eosio.github.io/schemata/v2.0/oas/ProducerSchedule.yaml"
+                  proposed:
+                    type: array
+                    nullable: true
+                    items:
+                      $ref: "https://eosio.github.io/schemata/v2.0/oas/ProducerSchedule.yaml"
+
+
+  /get_raw_code_and_abi:
+    post:
+      description: Retrieves raw code and ABI for a contract based on account name
+      operationId: get_raw_code_and_abi
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - account_name
+              properties:
+                account_name:
+                  $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
+
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  account_name:
+                    $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
+                  wasm:
+                    type: string
+                    description: base64 encoded wasm
+                  abi:
+                    type: string
+                    description: base64 encoded ABI
+
+  /get_scheduled_transaction:
+    post:
+      description: Retrieves the scheduled transaction
+      operationId: get_scheduled_transaction
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                lower_bound:
+                  $ref: "https://eosio.github.io/schemata/v2.0/oas/DateTimeSeconds.yaml"
+                limit:
+                  description: The maximum number of transactions to return
+                  type: integer
+                json:
+                  description: true/false whether the packed transaction is converted to json
+                  type: boolean
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  transactions:
+                    type: array
+                    items:
+                      $ref: "https://eosio.github.io/schemata/v2.0/oas/Transaction.yaml"
+
+
+  /get_table_by_scope:
+    post:
+      description: Retrieves table scope
+      operationId: get_table_by_scope
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - code
+              properties:
+                code:
+                  type: string
+                  description: "`name` of the contract to return table data for"
+                table:
+                  type: string
+                  description: Filter results by table
+                lower_bound:
+                  type: string
+                  description: Filters results to return the first element that is not less than provided value in set
+                upper_bound:
+                  type: string
+                  description: Filters results to return the first element that is greater than provided value in set
+                limit:
+                  type: integer
+                  description: Limit number of results returned.
+                  format: int32
+                reverse:
+                  type: boolean
+                  description: Reverse the order of returned results
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  rows:
+                    type: array
+                    items:
+                      $ref: "https://eosio.github.io/schemata/v2.0/oas/TableScope.yaml"
+                  more:
+                    $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
+
+  /get_table_rows:
+    post:
+      description: Returns an object containing rows from the specified table.
+      operationId: get_table_rows
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - code
+                - table
+                - scope
+              properties:
+                code:
+                  type: string
+                  description: The name of the smart contract that controls the provided table
+                table:
+                  type: string
+                  description: The name of the table to query
+                scope:
+                  type: string
+                  description: The account to which this data belongs
+                index_position:
+                  type: string
+                  description: Position of the index used, accepted parameters `primary`, `secondary`, `tertiary`, `fourth`, `fifth`, `sixth`, `seventh`, `eighth`, `ninth` , `tenth`
+                key_type:
+                  type: string
+                  description: Type of key specified by index_position (for example - `uint64_t` or `name`)
+                encode_type:
+                  type: string
+                upper_bound:
+                  type: string
+                lower_bound:
+                  type: string
+
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  rows:
+                    type: array
+                    items: {}
+
+  /abi_json_to_bin:
+    post:
+      description: Returns an object containing rows from the specified table.
+      operationId: abi_json_to_bin
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              title: AbiJsonToBinRequest
+              properties:
+                binargs:
+                  $ref: "https://eosio.github.io/schemata/v2.0/oas/Hex.yaml"
+
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  binargs:
+                    $ref: "https://eosio.github.io/schemata/v2.0/oas/Hex.yaml"
+
+  /abi_bin_to_json:
+    post:
+      description: Returns an object containing rows from the specified table.
+      operationId: abi_bin_to_json
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              title: AbiBinToJsonRequest
+              properties:
+                code:
+                  $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
+                action:
+                  $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
+                binargs:
+                  $ref: "https://eosio.github.io/schemata/v2.0/oas/Hex.yaml"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: string
+
+  /get_code:
+    post:
+      description: Returns an object containing rows from the specified table.
+      operationId: get_code
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - account_name
+                - code_as_wasm
+              properties:
+                account_name:
+                  $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
+                code_as_wasm:
+                  type: integer
+                  default: 1
+                  description: This must be 1 (true)
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                title: GetCodeResponse.yaml
+                properties:
+                  name:
+                    $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
+                  code_hash:
+                    $ref: "https://eosio.github.io/schemata/v2.0/oas/Sha256.yaml"
+                  wast:
+                    type: string
+                  wasm:
+                    type: string
+                  abi:
+                    $ref: "https://eosio.github.io/schemata/v2.0/oas/Abi.yaml"
+
+  /get_raw_abi:
+    post:
+      description: Returns an object containing rows from the specified table.
+      operationId: get_raw_abi
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - account_name
+              properties:
+                account_name:
+                  $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  account_name:
+                    $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
+                  code_hash:
+                    $ref: "https://eosio.github.io/schemata/v2.0/oas/Sha256.yaml"
+                  abi_hash:
+                    allOf:
+                      - $ref: "https://eosio.github.io/schemata/v2.0/oas/Sha256.yaml"
+                  abi:
+                    type: string
+
+
+  /get_activated_protocol_features:
+    post:
+      description: Retreives the activated protocol features for producer node
+      operationId: get_activated_protocol_features
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - params
+              properties:
+                params:
+                  type: object
+                  description: Defines the filters to retreive the protocol features by
+                  required:
+                    - search_by_block_num
+                    - reverse
+                  properties:
+                    lower_bound:
+                      type: integer
+                      description: Lower bound
+                    upper_bound:
+                      type: integer
+                      description: Upper bound
+                    limit:
+                      type: integer
+                      description: The limit, default is 10
+                    search_by_block_num:
+                      type: boolean
+                      description: Flag to indicate it is has to search by block number
+                    reverse:
+                      type: boolean
+                      description: Flag to indicate it has to search in reverse
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                description: Returns activated protocol features
+                required:
+                  - activated_protocol_features
+                properties:
+                  activated_protocol_features:
+                    type: array
+                    description: Variant type, an array of strings with the activated protocol features
+                    items:
+                      type: string
+                  more:
+                    type: integer
+                    description: "In case there's more activated protocol features than the input parameter `limit` requested, returns the ordinal of the next activated protocol feature which was not returned, otherwise zero."
