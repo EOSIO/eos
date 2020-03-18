@@ -1,5 +1,3 @@
-# trace_api_plugin
-
 ## Description
 
 The `trace_api_plugin` provides a consumer-focused long-term API for retrieving retired actions and related metadata from a specified block. The plugin defines a new HTTP endpoint accessible (see the [API reference](api-reference/index.md) for more information).

@@ -1,5 +1,3 @@
-# test_control_plugin
-
 ## Description
 
 The `test_control_plugin` is designed to cause a graceful shutdown when reaching a particular block in a sequence of blocks produced by a specific block producer. It can be invoked to either shutdown on the **head block** or the **last irreversible block**.

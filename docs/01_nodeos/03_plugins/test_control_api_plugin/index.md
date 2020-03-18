@@ -1,5 +1,3 @@
-# test_control_api_plugin
-
 ## Description
 
 The `test_control_api_plugin` allows to send a control message to the [test_control_plugin](../test_control_plugin/index.md) telling the plugin to shut down the `nodeos` instance when reaching a particular block. It is intended for testing.

@@ -1,5 +1,3 @@
-# txn_test_gen_plugin
-
 ## Description
 
 The `txn_test_gen_plugin` is used for transaction test purposes.

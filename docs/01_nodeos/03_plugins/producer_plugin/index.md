@@ -1,5 +1,3 @@
-# producer_plugin
-
 ## Description
 
 The `producer_plugin` loads functionality required for a node to produce blocks.
