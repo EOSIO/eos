@@ -106,8 +106,6 @@ struct trace_api_common_impl {
       cfg_options("trace-minimum-uncompressed-irreversible-history-blocks", boost::program_options::value<int32_t>()->default_value(-1),
                   "Number of blocks to ensure are uncompressed past LIB. Compressed \"slice\" files are still accessible but may carry a performance loss on retrieval\n"
                   "A value of -1 indicates that automatic compression of \"slice\" files will be turned off.");
-      cfg_options("trace-compression-seek-points", boost::program_options::value<uint32_t>()->default_value(512),
-                  "Number of seek points to use when compressing \"slice\" files.  A higher number of seek points can increase read performance at the expense of compression efficiency\n");
    }
 
    void plugin_initialize(const appbase::variables_map& options) {
@@ -134,8 +132,6 @@ struct trace_api_common_impl {
          minimum_uncompressed_irreversible_history_blocks = uncompressed_blocks;
       }
 
-      compression_seek_points = options.at("trace-compression-seek-points").as<uint32_t>();
-
       store = std::make_shared<store_provider>(
          trace_dir,
          slice_stride,
@@ -161,9 +157,9 @@ struct trace_api_common_impl {
 
    std::optional<uint32_t> minimum_irreversible_history_blocks;
    std::optional<uint32_t> minimum_uncompressed_irreversible_history_blocks;
-   uint32_t compression_seek_points;
 
    static constexpr int32_t manual_slice_file_value = -1;
+   static constexpr uint32_t compression_seek_points = 512;
 
    std::shared_ptr<store_provider> store;
 };
