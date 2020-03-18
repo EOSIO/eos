@@ -73,12 +73,12 @@ void apply_context::exec_one()
             }
 
             if( ( receiver_account->code_hash != digest_type() ) &&
-                (  !( act->account == config::system_account_name
-                      && act->name == N( setcode )
-                      && receiver == config::system_account_name )
-                  || control.is_builtin_activated( builtin_protocol_feature_t::forward_setcode )
-                )
-                  ) {
+                  (  !( act->account == config::system_account_name
+                        && act->name == N( setcode )
+                        && receiver == config::system_account_name )
+                     || control.is_builtin_activated( builtin_protocol_feature_t::forward_setcode )
+                  )
+            ) {
                if( trx_context.enforce_whiteblacklist && control.is_producing_block() ) {
                   control.check_contract_list( receiver );
                   control.check_action_list( act->account, act->name );
