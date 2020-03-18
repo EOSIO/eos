@@ -1,5 +1,3 @@
-# db_size_api_plugin
-
 ## Description
 
 The `db_size_api_plugin` retrieves analytics about the blockchain.
