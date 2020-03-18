@@ -10,9 +10,6 @@
 #include <eosio/chain/exceptions.hpp>
 
 #include <unistd.h>
-#include <sys/syscall.h>
-#include <sys/mman.h>
-#include <linux/memfd.h>
 
 #include "IR/Module.h"
 #include "IR/Validate.h"
@@ -55,14 +52,14 @@ code_cache_async::code_cache_async(const bfs::path data_dir, const eosvmoc::conf
 }
 
 code_cache_async::~code_cache_async() {
-   _compile_monitor_write_socket.shutdown(local::datagram_protocol::socket::shutdown_send);
+   _compile_monitor_write_socket.shutdown(local::stream_protocol::socket::shutdown_send);
    _monitor_reply_thread.join();
    consume_compile_thread_queue();
 }
 
 //remember again: wait_on_compile_monitor_message's callback is non-main thread!
 void code_cache_async::wait_on_compile_monitor_message() {
-   _compile_monitor_read_socket.async_wait(local::datagram_protocol::socket::wait_read, [this](auto ec) {
+   _compile_monitor_read_socket.async_wait(local::stream_protocol::socket::wait_read, [this](auto ec) {
       if(ec) {
          _ctx.stop();
          return;
@@ -168,7 +165,7 @@ const code_descriptor* const code_cache_async::get_descriptor_for_code(const dig
 code_cache_sync::~code_cache_sync() {
    //it's exceedingly critical that we wait for the compile monitor to be done with all its work
    //This is easy in the sync case
-   _compile_monitor_write_socket.shutdown(local::datagram_protocol::socket::shutdown_send);
+   _compile_monitor_write_socket.shutdown(local::stream_protocol::socket::shutdown_send);
    auto [success, message, fds] = read_message_with_fds(_compile_monitor_read_socket);
    if(success)
       elog("unexpected response from EOS VM OC compile monitor during shutdown");
@@ -279,8 +276,8 @@ code_cache_base::code_cache_base(const boost::filesystem::path data_dir, const e
    //okay, let's do this by the book: we're not allowed to write & read on different threads to the same asio socket. So create two fds
    //representing the same unix socket. we'll read on one and write on the other
    int duped = dup(compile_monitor_conn);
-   _compile_monitor_write_socket.assign(local::datagram_protocol(), duped);
-   _compile_monitor_read_socket.assign(local::datagram_protocol(), compile_monitor_conn.release());
+   _compile_monitor_write_socket.assign(local::stream_protocol(), duped);
+   _compile_monitor_read_socket.assign(local::stream_protocol(), compile_monitor_conn.release());
 }
 
 void code_cache_base::set_on_disk_region_dirty(bool dirty) {

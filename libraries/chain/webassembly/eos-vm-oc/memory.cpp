@@ -1,17 +1,15 @@
 #include <eosio/chain/webassembly/eos-vm-oc/memory.hpp>
 #include <eosio/chain/webassembly/eos-vm-oc/intrinsic.hpp>
+#include <eosio/chain/webassembly/eos-vm-oc/anon_mem_fd.hpp>
 
 #include <fc/scoped_exit.hpp>
 
 #include <unistd.h>
-#include <sys/syscall.h>
-#include <sys/mman.h>
-#include <linux/memfd.h>
 
 namespace eosio { namespace chain { namespace eosvmoc {
 
 memory::memory() {
-   int fd = syscall(SYS_memfd_create, "eosvmoc_mem", MFD_CLOEXEC);
+   int fd = anon_mem_fd("eosvmoc_mem");
    FC_ASSERT(fd >= 0, "Failed to create memory memfd");
    auto cleanup_fd = fc::make_scoped_exit([&fd](){close(fd);});
    int ret = ftruncate(fd, wasm_memory_size+memory_prologue_size);

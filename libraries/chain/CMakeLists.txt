@@ -26,6 +26,7 @@ if("eos-vm-oc" IN_LIST EOSIO_WASM_RUNTIMES)
                              webassembly/eos-vm-oc/compile_monitor.cpp
                              webassembly/eos-vm-oc/compile_trampoline.cpp
                              webassembly/eos-vm-oc/ipc_helpers.cpp
+                             webassembly/eos-vm-oc/anon_mem_fd.cpp
                              webassembly/eos-vm-oc/gs_seg_helpers.c
                              webassembly/eos-vm-oc.cpp)
 
@@ -116,7 +117,7 @@ target_include_directories( eosio_chain
                             )
 
 if("eos-vm-oc" IN_LIST EOSIO_WASM_RUNTIMES)
-   target_link_libraries(eosio_chain "-Wl,-wrap=main")
+   #target_link_libraries(eosio_chain "-Wl,-wrap=main")
 endif()
 
 foreach(RUNTIME ${EOSIO_WASM_RUNTIMES})

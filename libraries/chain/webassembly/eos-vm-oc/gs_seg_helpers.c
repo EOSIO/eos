@@ -1,7 +1,7 @@
 #include <eosio/chain/webassembly/eos-vm-oc/gs_seg_helpers.h>
 
-#include <asm/prctl.h>
-#include <sys/prctl.h>
+//#include <asm/prctl.h>
+//#include <sys/prctl.h>
 
 #if 0
 int arch_prctl(int code, unsigned long* addr);

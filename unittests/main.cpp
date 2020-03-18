@@ -3,6 +3,7 @@
 #include <iostream>
 
 #include <eosio/chain/exceptions.hpp>
+#include <eosio/chain/webassembly/eos-vm-oc/compile_monitor.hpp>
 
 #include <fc/log/logger.hpp>
 
@@ -18,6 +19,9 @@ void translate_fc_exception(const fc::exception &e) {
 boost::unit_test::test_suite* init_unit_test_suite(int argc, char* argv[]) {
    // Turn off blockchain logging if no --verbose parameter is not added
    // To have verbose enabled, call "tests/chain_test -- --verbose"
+
+   eosio::chain::eosvmoc::start_compile_monitor_trampoline();
+
    bool is_verbose = false;
    std::string verbose_arg = "--verbose";
    for (int i = 0; i < argc; i++) {

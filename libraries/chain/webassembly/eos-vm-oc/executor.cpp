@@ -14,10 +14,6 @@
 
 #include <boost/hana/equal.hpp>
 
-#include <asm/prctl.h>
-#include <sys/prctl.h>
-#include <sys/syscall.h>
-
 #if defined(__has_feature)
 #if __has_feature(shadow_call_stack)
 #error EOS VM OC is not compatible with Clang ShadowCallStack
@@ -142,6 +138,7 @@ struct executor_signal_init {
       sigemptyset(&sig_action.sa_mask);
       sig_action.sa_flags = SA_SIGINFO | SA_NODEFER;
       sigaction(SIGSEGV, &sig_action, &old_sig_action);
+      sigaction(SIGBUS, &sig_action, &old_sig_action);
       if(old_sig_action.sa_flags & SA_SIGINFO)
          chained_handler = old_sig_action.sa_sigaction;
       else if(old_sig_action.sa_handler != SIG_IGN && old_sig_action.sa_handler != SIG_DFL)
@@ -199,7 +196,7 @@ void executor::execute(const code_descriptor& code, const memory& mem, apply_con
 
    context.trx_context.transaction_timer.set_expiration_callback([](void* user) {
       executor* self = (executor*)user;
-      syscall(SYS_mprotect, self->code_mapping, self->code_mapping_size, PROT_NONE);
+      mprotect(self->code_mapping, self->code_mapping_size, PROT_NONE);
       self->mapping_is_executable = false;
    }, this);
    context.trx_context.checktime(); //catch any expiration that might have occurred before setting up callback
@@ -241,7 +238,7 @@ void executor::execute(const code_descriptor& code, const memory& mem, apply_con
 }
 
 executor::~executor() {
-   arch_prctl(ARCH_SET_GS, nullptr);
+   //arch_prctl(ARCH_SET_GS, nullptr);
 }
 
 }}}

@@ -1,5 +1,4 @@
 #include <signal.h>
-#include <sys/prctl.h>
 
 #include <eosio/chain/webassembly/eos-vm-oc/ipc_protocol.hpp>
 #include <eosio/chain/webassembly/eos-vm-oc/compile_monitor.hpp>
@@ -9,7 +8,7 @@
 
 #include <eosio/chain/exceptions.hpp>
 
-#include <boost/asio/local/datagram_protocol.hpp>
+#include <boost/asio/local/stream_protocol.hpp>
 #include <boost/signals2.hpp>
 
 namespace eosio { namespace chain { namespace eosvmoc {
@@ -17,9 +16,11 @@ namespace eosio { namespace chain { namespace eosvmoc {
 using namespace boost::asio;
 
 static size_t get_size_of_fd(int fd) {
-   struct stat st;
-   FC_ASSERT(fstat(fd, &st) == 0, "failed to get size of fd");
-   return st.st_size;
+   uint32_t* sz = (uint32_t*)mmap(nullptr, 4096, PROT_READ, MAP_SHARED, fd, 0);
+   FC_ASSERT(sz != MAP_FAILED, "failed to map memfd file");
+   size_t ret = *sz;
+   munmap(sz, 4096);
+   return ret;
 }
 
 static void copy_memfd_contents_to_pointer(void* dst, int fd) {
@@ -27,14 +28,15 @@ static void copy_memfd_contents_to_pointer(void* dst, int fd) {
    FC_ASSERT(fstat(fd, &st) == 0, "failed to get size of fd");
    if(st.st_size == 0)
       return;
-   void* contents = mmap(nullptr, st.st_size, PROT_READ, MAP_SHARED, fd, 0);
+   char* contents = (char*)mmap(nullptr, st.st_size, PROT_READ, MAP_SHARED, fd, 0);
    FC_ASSERT(contents != MAP_FAILED, "failed to map memfd file");
-   memcpy(dst, contents, st.st_size);
+   uint32_t* sz = (uint32_t*)contents;
+   memcpy(dst, contents+sizeof(uint32_t), *sz);
    munmap(contents, st.st_size);
 }
 
 struct compile_monitor_session {
-   compile_monitor_session(boost::asio::io_context& context, local::datagram_protocol::socket&& n, wrapped_fd&& c, wrapped_fd& t) :
+   compile_monitor_session(boost::asio::io_context& context, local::stream_protocol::socket&& n, wrapped_fd&& c, wrapped_fd& t) :
       _ctx(context),
       _nodeos_instance_socket(std::move(n)),
       _cache_fd(std::move(c)),
@@ -55,7 +57,7 @@ struct compile_monitor_session {
    }
    
    void read_message_from_nodeos() {
-      _nodeos_instance_socket.async_wait(local::datagram_protocol::socket::wait_read, [this](auto ec) {
+      _nodeos_instance_socket.async_wait(local::stream_protocol::socket::wait_read, [this](auto ec) {
          if(ec) {
             connection_dead_signal();
             return;
@@ -94,9 +96,9 @@ struct compile_monitor_session {
    void kick_compile_off(const code_tuple& code_id, wrapped_fd&& wasm_code) {
       //prepare a requst to go out to the trampoline
       int socks[2];
-      socketpair(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0, socks);
-      local::datagram_protocol::socket response_socket(_ctx);
-      response_socket.assign(local::datagram_protocol(), socks[0]);
+      socketpair(AF_UNIX, SOCK_STREAM , 0, socks);
+      local::stream_protocol::socket response_socket(_ctx);
+      response_socket.assign(local::stream_protocol(), socks[0]);
       std::vector<wrapped_fd> fds_pass_to_trampoline;
       fds_pass_to_trampoline.emplace_back(socks[1]);
       fds_pass_to_trampoline.emplace_back(std::move(wasm_code));
@@ -112,9 +114,9 @@ struct compile_monitor_session {
       read_message_from_compile_task(current_compiles.begin());
    }
 
-   void read_message_from_compile_task(std::list<std::tuple<code_tuple, local::datagram_protocol::socket>>::iterator current_compile_it) {
+   void read_message_from_compile_task(std::list<std::tuple<code_tuple, local::stream_protocol::socket>>::iterator current_compile_it) {
       auto& [code, socket] = *current_compile_it;
-      socket.async_wait(local::datagram_protocol::socket::wait_read, [this, current_compile_it](auto ec) {
+      socket.async_wait(local::stream_protocol::socket::wait_read, [this, current_compile_it](auto ec) {
          //at this point we only expect 1 of 2 things to happen: we either get a reply (success), or we get no reply (failure)
          auto& [code, socket] = *current_compile_it;
          auto [success, message, fds] = read_message_with_fds(socket);
@@ -172,7 +174,7 @@ struct compile_monitor_session {
 
 private:
    boost::asio::io_context& _ctx;
-   local::datagram_protocol::socket _nodeos_instance_socket;
+   local::stream_protocol::socket _nodeos_instance_socket;
    wrapped_fd  _cache_fd;
    wrapped_fd& _trampoline_socket;
 
@@ -180,18 +182,18 @@ private:
    size_t _code_size;
    allocator_t* _allocator;
 
-   std::list<std::tuple<code_tuple, local::datagram_protocol::socket>> current_compiles;
+   std::list<std::tuple<code_tuple, local::stream_protocol::socket>> current_compiles;
 };
 
 struct compile_monitor {
-   compile_monitor(boost::asio::io_context& ctx, local::datagram_protocol::socket&& n, wrapped_fd&& t) : _nodeos_socket(std::move(n)), _trampoline_socket(std::move(t)) {
+   compile_monitor(boost::asio::io_context& ctx, local::stream_protocol::socket&& n, wrapped_fd&& t) : _nodeos_socket(std::move(n)), _trampoline_socket(std::move(t)) {
       //the only duty of compile_monitor is to create a compile_monitor_session when a code_cache instance
       // in nodeos wants one
       wait_for_new_incomming_session(ctx);
    }
 
    void wait_for_new_incomming_session(boost::asio::io_context& ctx) {
-      _nodeos_socket.async_wait(boost::asio::local::datagram_protocol::socket::wait_read, [this, &ctx](auto ec) {
+      _nodeos_socket.async_wait(boost::asio::local::stream_protocol::socket::wait_read, [this, &ctx](auto ec) {
          if(ec) {
             ctx.stop();
             return;
@@ -206,8 +208,8 @@ struct compile_monitor {
             return;
          }
          try {
-            local::datagram_protocol::socket _socket_for_comm(ctx);
-            _socket_for_comm.assign(local::datagram_protocol(), fds[0].release());
+            local::stream_protocol::socket _socket_for_comm(ctx);
+            _socket_for_comm.assign(local::stream_protocol(), fds[0].release());
             _compile_sessions.emplace_front(ctx, std::move(_socket_for_comm), std::move(fds[1]), _trampoline_socket);
             _compile_sessions.front().connection_dead_signal.connect([&, it = _compile_sessions.begin()]() {
                ctx.post([&]() {
@@ -227,15 +229,15 @@ struct compile_monitor {
       });
    }
 
-   local::datagram_protocol::socket _nodeos_socket;
+   local::stream_protocol::socket _nodeos_socket;
    wrapped_fd _trampoline_socket;
 
    std::list<compile_monitor_session> _compile_sessions;
 };
 
 void launch_compile_monitor(int nodeos_fd) {
-   prctl(PR_SET_NAME, "oc-monitor");
-   prctl(PR_SET_PDEATHSIG, SIGKILL);
+   //prctl(PR_SET_NAME, "oc-monitor");
+   //prctl(PR_SET_PDEATHSIG, SIGKILL);
 
    //first off, let's disable shutdown signals to us; we want all shutdown indicators to come from
    // nodeos shutting us down
@@ -249,7 +251,7 @@ void launch_compile_monitor(int nodeos_fd) {
    sigprocmask(SIG_BLOCK, &set, nullptr);
 
    int socks[2]; //0: local trampoline socket, 1: the one we give to trampoline
-   socketpair(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0, socks);
+   socketpair(AF_UNIX, SOCK_STREAM , 0, socks);
    pid_t child = fork();
    if(child == 0) {
       close(socks[0]);
@@ -259,8 +261,8 @@ void launch_compile_monitor(int nodeos_fd) {
 
    {
       boost::asio::io_context ctx;
-      boost::asio::local::datagram_protocol::socket nodeos_socket(ctx);
-      nodeos_socket.assign(boost::asio::local::datagram_protocol(), nodeos_fd);
+      boost::asio::local::stream_protocol::socket nodeos_socket(ctx);
+      nodeos_socket.assign(boost::asio::local::stream_protocol(), nodeos_fd);
       wrapped_fd trampoline_socket(socks[0]);
       compile_monitor monitor(ctx, std::move(nodeos_socket), std::move(trampoline_socket));
       ctx.run();
@@ -275,7 +277,7 @@ struct compile_monitor_trampoline {
    void start() {
       //create communication socket; let's hold off on asio usage until all forks are done
       int socks[2];
-      socketpair(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0, socks);
+      socketpair(AF_UNIX, SOCK_STREAM , 0, socks);
       compile_manager_fd = socks[0];
 
       compile_manager_pid = fork();
@@ -291,17 +293,23 @@ struct compile_monitor_trampoline {
 };
 
 static compile_monitor_trampoline the_compile_monitor_trampoline;
+#if 0
 extern "C" int __real_main(int, char*[]);
 extern "C" int __wrap_main(int argc, char* argv[]) {
    the_compile_monitor_trampoline.start();
    return __real_main(argc, argv);
+}
+#endif
+
+void start_compile_monitor_trampoline() {
+   the_compile_monitor_trampoline.start();
 }
 
 wrapped_fd get_connection_to_compile_monitor(int cache_fd) {
    FC_ASSERT(the_compile_monitor_trampoline.compile_manager_pid >= 0, "EOS VM oop connection doesn't look active");
 
    int socks[2]; //0: our socket to compile_manager_session, 1: socket we'll give to compile_maanger_session
-   socketpair(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0, socks);
+   socketpair(AF_UNIX, SOCK_STREAM , 0, socks);
    wrapped_fd socket_to_monitor_session(socks[0]);
    wrapped_fd socket_to_hand_to_monitor_session(socks[1]);
 

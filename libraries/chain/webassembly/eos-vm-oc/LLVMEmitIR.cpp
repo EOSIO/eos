@@ -363,7 +363,7 @@ namespace LLVMJIT
 		llvm::Value* emitRuntimeIntrinsic(const char* intrinsicName,const FunctionType* intrinsicType,const std::initializer_list<llvm::Value*>& args)
 		{
 			const eosio::chain::eosvmoc::intrinsic_entry& ie = eosio::chain::eosvmoc::get_intrinsic_map().at(intrinsicName);
-         auto bytePointer = CreateInBoundsGEPWAR(irBuilder, irBuilder.CreateLoad(llvmI8PtrType, memoryBasePtrPtr), emitLiteral(OFFSET_OF_FIRST_INTRINSIC-ie.ordinal*8));
+         auto bytePointer = CreateInBoundsGEPWAR(irBuilder, irBuilder.CreateLoad(llvmI8PtrType, memoryBasePtrPtr), emitLiteral((I32)(OFFSET_OF_FIRST_INTRINSIC-ie.ordinal*8)));
          auto cast = irBuilder.CreatePointerCast(bytePointer, llvmI64Type->getPointerTo());
 			llvm::Value* ic = irBuilder.CreateLoad(cast, llvmI64Type->getPointerTo() );
 			llvm::Value* itp = irBuilder.CreateIntToPtr(ic, asLLVMType(ie.type)->getPointerTo());
@@ -709,7 +709,7 @@ namespace LLVMJIT
 			if(imm.functionIndex < moduleContext.importedFunctionOffsets.size())
 			{
 				calleeType = module.types[module.functions.imports[imm.functionIndex].type.index];
-            auto bytePointer = CreateInBoundsGEPWAR(irBuilder, irBuilder.CreateLoad(llvmI8PtrType, memoryBasePtrPtr), emitLiteral(OFFSET_OF_FIRST_INTRINSIC-moduleContext.importedFunctionOffsets[imm.functionIndex]*8));
+            auto bytePointer = CreateInBoundsGEPWAR(irBuilder, irBuilder.CreateLoad(llvmI8PtrType, memoryBasePtrPtr), emitLiteral((I32)(OFFSET_OF_FIRST_INTRINSIC-moduleContext.importedFunctionOffsets[imm.functionIndex]*8)));
             auto cast = irBuilder.CreatePointerCast(bytePointer, llvmI64Type->getPointerTo());
             llvm::Value* ic = irBuilder.CreateLoad(cast, llvmI64Type->getPointerTo() );
 				callee = irBuilder.CreateIntToPtr(ic, asLLVMType(calleeType)->getPointerTo());

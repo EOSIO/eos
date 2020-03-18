@@ -5,6 +5,7 @@
 #include <eosio/net_plugin/net_plugin.hpp>
 #include <eosio/producer_plugin/producer_plugin.hpp>
 #include <eosio/version/version.hpp>
+#include <eosio/chain/webassembly/eos-vm-oc/compile_monitor.hpp>
 
 #include <fc/log/logger_config.hpp>
 #include <fc/log/appender.hpp>
@@ -81,6 +82,7 @@ enum return_codes {
 
 int main(int argc, char** argv)
 {
+   eosio::chain::eosvmoc::start_compile_monitor_trampoline();
    try {
       app().set_version(eosio::nodeos::config::version);
       app().set_version_string(eosio::version::version_client());

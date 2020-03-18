@@ -4,7 +4,6 @@
 #include <eosio/chain/webassembly/eos-vm-oc/intrinsic.hpp>
 #include <eosio/chain/wasm_eosio_injection.hpp>
 
-#include <sys/prctl.h>
 #include <signal.h>
 #include <sys/resource.h>
 
@@ -18,12 +17,12 @@ using namespace IR;
 namespace eosio { namespace chain { namespace eosvmoc {
 
 void run_compile(wrapped_fd&& response_sock, wrapped_fd&& wasm_code) noexcept {  //noexcept; we'll just blow up if anything tries to cross this boundry
-   std::vector<uint8_t> wasm = vector_for_memfd(wasm_code);
+   std::vector<char> wasm = vector_for_memfd(wasm_code);
 
    //ideally we catch exceptions and sent them upstream as strings for easier reporting
 
    Module module;
-   Serialization::MemoryInputStream stream(wasm.data(), wasm.size());
+   Serialization::MemoryInputStream stream((uint8_t*)wasm.data(), wasm.size());
    WASM::serialize(stream, module);
    module.userSections.clear();
    wasm_injections::wasm_binary_injection<false> injector(module);
@@ -136,8 +135,8 @@ void run_compile(wrapped_fd&& response_sock, wrapped_fd&& wasm_code) noexcept { 
 }
 
 void run_compile_trampoline(int fd) {
-   prctl(PR_SET_NAME, "oc-trampoline");
-   prctl(PR_SET_PDEATHSIG, SIGKILL);
+   //prctl(PR_SET_NAME, "oc-trampoline");
+   //prctl(PR_SET_PDEATHSIG, SIGKILL);
 
    //squelching this for now, but it means we won't have ability to get compile metrics
    struct sigaction act;
@@ -161,8 +160,8 @@ void run_compile_trampoline(int fd) {
 
       pid_t pid = fork();
       if(pid == 0) {
-         prctl(PR_SET_NAME, "oc-compile");
-         prctl(PR_SET_PDEATHSIG, SIGKILL);
+         //prctl(PR_SET_NAME, "oc-compile");
+         //prctl(PR_SET_PDEATHSIG, SIGKILL);
 
          struct rlimit cpu_limits = {20u, 20u};
          setrlimit(RLIMIT_CPU, &cpu_limits);

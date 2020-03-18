@@ -284,7 +284,7 @@ namespace LLVMJIT
 			to.EmitStackSizeSection = 1;
 
 			targetMachine = llvm::EngineBuilder().setRelocationModel(llvm::Reloc::PIC_).setCodeModel(llvm::CodeModel::Small).setTargetOptions(to).selectTarget(
-				llvm::Triple(targetTriple),"","",llvm::SmallVector<std::string,0>()
+				llvm::Triple(targetTriple + "-elf"),"","",llvm::SmallVector<std::string,0>()
 				);
 		}
 

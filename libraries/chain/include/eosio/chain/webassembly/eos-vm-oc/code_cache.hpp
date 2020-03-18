@@ -11,7 +11,7 @@
 #include <boost/multi_index/key_extractors.hpp>
 
 #include <boost/interprocess/mem_algo/rbtree_best_fit.hpp>
-#include <boost/asio/local/datagram_protocol.hpp>
+#include <boost/asio/local/stream_protocol.hpp>
 
 
 #include <thread>
@@ -68,8 +68,8 @@ class code_cache_base {
       int _cache_fd;
 
       io_context _ctx;
-      local::datagram_protocol::socket _compile_monitor_write_socket{_ctx};
-      local::datagram_protocol::socket _compile_monitor_read_socket{_ctx};
+      local::stream_protocol::socket _compile_monitor_write_socket{_ctx};
+      local::stream_protocol::socket _compile_monitor_read_socket{_ctx};
 
       //these are really only useful to the async code cache, but keep them here so
       //free_code can be shared
