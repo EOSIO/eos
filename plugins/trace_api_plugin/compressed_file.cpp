@@ -20,7 +20,7 @@ struct compressed_file_impl {
       }
    }
 
-   void read( char* d, size_t n, const std::unique_ptr<fc::cfile>& file_ptr )
+   void read( char* d, size_t n, fc::cfile& file )
    {
       if (!initialized) {
          if (Z_OK != inflateInit2(&strm, -15)) {
@@ -51,9 +51,9 @@ struct compressed_file_impl {
       // decompress more chunks
       while (written < n) {
          if ( strm.avail_in == 0 ) {
-            size_t remaining = file_size - file_ptr->tellp();
+            size_t remaining = file_size - file.tellp();
             size_t to_read = std::min((size_t)compressed_buffer.size(), remaining);
-            file_ptr->read(reinterpret_cast<char*>(compressed_buffer.data()), to_read);
+            file.read(reinterpret_cast<char*>(compressed_buffer.data()), to_read);
             strm.avail_in = to_read;
             strm.next_in = compressed_buffer.data();
          }
@@ -85,22 +85,22 @@ struct compressed_file_impl {
       }
    }
 
-   void seek( long loc, const std::unique_ptr<fc::cfile>& file_ptr  ) {
+   void seek( long loc, fc::cfile& file ) {
       if (initialized) {
          inflateEnd(&strm);
          initialized = false;
       }
 
       // read in the seek point map
-      file_ptr->seek_end(-2);
+      file.seek_end(-2);
       uint16_t seek_point_count = 0;
-      file_ptr->read(reinterpret_cast<char*>(&seek_point_count), 2);
+      file.read(reinterpret_cast<char*>(&seek_point_count), 2);
 
       int seek_map_size = 16 * seek_point_count;
-      file_ptr->seek_end(-2 - seek_map_size);
+      file.seek_end(-2 - seek_map_size);
 
       std::vector<seek_point_entry> seek_point_map(seek_point_count);
-      file_ptr->read(reinterpret_cast<char*>(seek_point_map.data()), seek_point_map.size() * sizeof(seek_point_entry));
+      file.read(reinterpret_cast<char*>(seek_point_map.data()), seek_point_map.size() * sizeof(seek_point_entry));
 
       // seek to the neareast seek point
       auto iter = std::lower_bound(seek_point_map.begin(), seek_point_map.end(), (uint64_t)loc, []( const auto& lhs, const auto& rhs ){
@@ -109,7 +109,7 @@ struct compressed_file_impl {
 
       // special case when there is a seek point that is exact
       if ( iter != seek_point_map.end() && std::get<0>(*iter) == loc ) {
-         file_ptr->seek(std::get<1>(*iter));
+         file.seek(std::get<1>(*iter));
          return;
       }
 
@@ -117,18 +117,18 @@ struct compressed_file_impl {
 
       // special case when this is before the first seek point
       if ( iter == seek_point_map.begin() ) {
-         file_ptr->seek(0);
+         file.seek(0);
       } else {
          // if lower bound wasn't exact it will be one past the seek point we need
          const auto& seek_pt = *(iter - 1);
-         file_ptr->seek(std::get<1>(seek_pt));
+         file.seek(std::get<1>(seek_pt));
          remaining -= std::get<0>(seek_pt);
       }
 
 
       // read up to the expected offset
       auto pre_read_buffer = std::vector<char>(remaining);
-      read(pre_read_buffer.data(), pre_read_buffer.size(), file_ptr);
+      read(pre_read_buffer.data(), pre_read_buffer.size(), file);
    }
 
    z_stream strm;
@@ -151,12 +151,12 @@ compressed_file::~compressed_file()
 {}
 
 void compressed_file::seek( long loc ) {
-   impl->seek(loc, file_ptr);
+   impl->seek(loc, *file_ptr);
 
 }
 
 void compressed_file::read( char* d, size_t n ) {
-   impl->read(d, n, file_ptr);
+   impl->read(d, n, *file_ptr);
 }
 
 // these are defaulted now that the opaque impl type is known
