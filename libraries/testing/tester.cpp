@@ -156,7 +156,7 @@ namespace eosio { namespace testing {
       cfg = def_conf.first;
 
       open(def_conf.second);
-      execute_setup_policy(policy);
+      execute_setup_policy(policy, {});
    }
 
    void base_tester::init(controller::config config, const snapshot_reader_ptr& snapshot) {
@@ -189,7 +189,7 @@ namespace eosio { namespace testing {
       open(std::move(pfs), default_genesis().compute_chain_id());
    }
 
-   void base_tester::execute_setup_policy(const setup_policy policy) {
+   void base_tester::execute_setup_policy(const setup_policy policy, std::optional<vector<digest_type>> ignored_features = {}) {
       const auto& pfm = control->get_protocol_feature_manager();
 
       auto schedule_preactivate_protocol_feature = [&]() {
@@ -214,11 +214,32 @@ namespace eosio { namespace testing {
             set_before_producer_authority_bios_contract();
             break;
          }
-         case setup_policy::full: {
+         // case setup_policy::preactivate_feature_and_new_bios_without_deprecating_deferred: {
+         //    schedule_preactivate_protocol_feature();
+         //    produce_block();
+         //    set_before_producer_authority_bios_contract();
+         //    preactivate_protocol_features({control->get_protocol_feature_manager().get_builtin_digest(builtin_protocol_feature_t::only_link_to_existing_permission),
+         //                                   control->get_protocol_feature_manager().get_builtin_digest(builtin_protocol_feature_t::replace_deferred),
+         //                                   control->get_protocol_feature_manager().get_builtin_digest(builtin_protocol_feature_t::no_duplicate_deferred_id),
+         //                                   control->get_protocol_feature_manager().get_builtin_digest(builtin_protocol_feature_t::fix_linkauth_restriction),
+         //                                   control->get_protocol_feature_manager().get_builtin_digest(builtin_protocol_feature_t::disallow_empty_producer_schedule),
+         //                                   control->get_protocol_feature_manager().get_builtin_digest(builtin_protocol_feature_t::restrict_action_to_self),
+         //                                   control->get_protocol_feature_manager().get_builtin_digest(builtin_protocol_feature_t::only_bill_first_authorizer),
+         //                                   control->get_protocol_feature_manager().get_builtin_digest(builtin_protocol_feature_t::forward_setcode),
+         //                                   control->get_protocol_feature_manager().get_builtin_digest(builtin_protocol_feature_t::get_sender),
+         //                                   control->get_protocol_feature_manager().get_builtin_digest(builtin_protocol_feature_t::ram_restrictions),
+         //                                   control->get_protocol_feature_manager().get_builtin_digest(builtin_protocol_feature_t::webauthn_key),
+         //                                   control->get_protocol_feature_manager().get_builtin_digest(builtin_protocol_feature_t::wtmsig_block_signatures),
+         //                                   control->get_protocol_feature_manager().get_builtin_digest(builtin_protocol_feature_t::action_return_value)});
+         //    produce_block();
+         //    set_bios_contract();
+         //    break;
+         // }
+         case setup_policy::complete: {
             schedule_preactivate_protocol_feature();
             produce_block();
             set_before_producer_authority_bios_contract();
-            preactivate_all_builtin_protocol_features();
+            preactivate_builtin_protocol_features(ignored_features);
             produce_block();
             set_bios_contract();
             break;
@@ -227,26 +248,6 @@ namespace eosio { namespace testing {
          default:
             break;
       };
-   }
-
-   void base_tester::execute_setup_policy(const std::initializer_list<fc::sha256> protocol_features) {
-      const auto& pfm = control->get_protocol_feature_manager();
-      
-      auto preactivate_feature_digest = pfm.get_builtin_digest(builtin_protocol_feature_t::preactivate_feature);
-      FC_ASSERT(preactivate_feature_digest, "PREACTIVATE_FEATURE not found");
-      schedule_protocol_features_wo_preactivation({*preactivate_feature_digest});
-      produce_block();
-      
-      set_before_producer_authority_bios_contract();
-      produce_block();
-      
-      for (const auto& feature : protocol_features) {
-         preactivate_protocol_features( { feature } );
-         produce_block();
-      }
-
-      set_bios_contract();
-      produce_block();
    }
 
    void base_tester::close() {
@@ -1125,7 +1126,7 @@ namespace eosio { namespace testing {
       }
    }
 
-   void base_tester::preactivate_all_builtin_protocol_features() {
+   void base_tester::preactivate_builtin_protocol_features(std::optional<vector<digest_type>> ignored_features) {
       const auto& pfm = control->get_protocol_feature_manager();
       const auto& pfs = pfm.get_protocol_feature_set();
       const auto current_block_num  =  control->head_block_num() + (control->is_building_block() ? 1 : 0);
@@ -1136,12 +1137,17 @@ namespace eosio { namespace testing {
       vector<digest_type> preactivations;
 
       std::function<void(const digest_type&)> add_digests =
-      [&pfm, &pfs, current_block_num, current_block_time, &preactivation_set, &preactivations, &add_digests]
+      [&ignored_features, &pfm, &pfs, current_block_num, current_block_time, &preactivation_set, &preactivations, &add_digests]
       ( const digest_type& feature_digest ) {
          const auto& pf = pfs.get_protocol_feature( feature_digest );
          FC_ASSERT( pf.builtin_feature, "called add_digests on a non-builtin protocol feature" );
          if( !pf.enabled || pf.earliest_allowed_activation_time > current_block_time
              || pfm.is_builtin_activated( *pf.builtin_feature, current_block_num ) ) return;
+
+         const auto feature_is_ignored = std::find(ignored_features.value().cbegin(), ignored_features.value().cend(), feature_digest);
+         if( feature_is_ignored != ignored_features.value().cend() ) {
+            return;
+         }
 
          auto res = preactivation_set.emplace( feature_digest );
          if( !res.second ) return;

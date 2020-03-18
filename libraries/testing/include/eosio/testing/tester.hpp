@@ -62,7 +62,7 @@ namespace eosio { namespace testing {
       old_bios_only,
       preactivate_feature_only,
       preactivate_feature_and_new_bios,
-      full
+      complete
    };
 
    std::vector<uint8_t> read_wasm( const char* fn );
@@ -152,15 +152,14 @@ namespace eosio { namespace testing {
 
          virtual ~base_tester() {};
 
-         void              init(const setup_policy policy = setup_policy::full, db_read_mode read_mode = db_read_mode::SPECULATIVE);
+         void              init(const setup_policy policy = setup_policy::complete, db_read_mode read_mode = db_read_mode::SPECULATIVE);
          void              init(controller::config config, const snapshot_reader_ptr& snapshot);
          void              init(controller::config config, const genesis_state& genesis);
          void              init(controller::config config);
          void              init(controller::config config, protocol_feature_set&& pfs, const snapshot_reader_ptr& snapshot);
          void              init(controller::config config, protocol_feature_set&& pfs, const genesis_state& genesis);
          void              init(controller::config config, protocol_feature_set&& pfs);
-         void              execute_setup_policy(const setup_policy policy);
-         void              execute_setup_policy(const std::initializer_list<fc::sha256> protocol_features);
+         void              execute_setup_policy(const setup_policy policy, std::optional<vector<digest_type>> ignored_features);
 
          void              close();
          template <typename Lambda>
@@ -379,7 +378,7 @@ namespace eosio { namespace testing {
 
          void schedule_protocol_features_wo_preactivation(const vector<digest_type> feature_digests);
          void preactivate_protocol_features(const vector<digest_type> feature_digests);
-         void preactivate_all_builtin_protocol_features();
+         void preactivate_builtin_protocol_features(std::optional<vector<digest_type>> ignored_features);
 
          static genesis_state default_genesis() {
             genesis_state genesis;
@@ -437,7 +436,7 @@ namespace eosio { namespace testing {
 
    class tester : public base_tester {
    public:
-      tester(setup_policy policy = setup_policy::full, db_read_mode read_mode = db_read_mode::SPECULATIVE) {
+      tester(setup_policy policy = setup_policy::complete, db_read_mode read_mode = db_read_mode::SPECULATIVE) {
          init(policy, read_mode);
       }
 
@@ -526,19 +525,7 @@ namespace eosio { namespace testing {
          validating_node = create_validating_node(vcfg, def_conf.second, true);
 
          init(def_conf.first, def_conf.second);
-         execute_setup_policy( {*control->get_protocol_feature_manager().get_builtin_digest(builtin_protocol_feature_t::only_link_to_existing_permission),
-                                *control->get_protocol_feature_manager().get_builtin_digest(builtin_protocol_feature_t::replace_deferred),
-                                *control->get_protocol_feature_manager().get_builtin_digest(builtin_protocol_feature_t::no_duplicate_deferred_id),
-                                *control->get_protocol_feature_manager().get_builtin_digest(builtin_protocol_feature_t::fix_linkauth_restriction),
-                                *control->get_protocol_feature_manager().get_builtin_digest(builtin_protocol_feature_t::disallow_empty_producer_schedule),
-                                *control->get_protocol_feature_manager().get_builtin_digest(builtin_protocol_feature_t::restrict_action_to_self),
-                                *control->get_protocol_feature_manager().get_builtin_digest(builtin_protocol_feature_t::only_bill_first_authorizer),
-                                *control->get_protocol_feature_manager().get_builtin_digest(builtin_protocol_feature_t::forward_setcode),
-                                *control->get_protocol_feature_manager().get_builtin_digest(builtin_protocol_feature_t::get_sender),
-                                *control->get_protocol_feature_manager().get_builtin_digest(builtin_protocol_feature_t::ram_restrictions),
-                                *control->get_protocol_feature_manager().get_builtin_digest(builtin_protocol_feature_t::webauthn_key),
-                                *control->get_protocol_feature_manager().get_builtin_digest(builtin_protocol_feature_t::wtmsig_block_signatures),
-                                *control->get_protocol_feature_manager().get_builtin_digest(builtin_protocol_feature_t::action_return_value)} );
+         execute_setup_policy(setup_policy::complete, {});
       }
 
       static void config_validator(controller::config& vcfg) {

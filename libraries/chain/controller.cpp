@@ -1256,7 +1256,7 @@ struct controller_impl {
          return trace;
       }
 
-      if ( self.is_builtin_activated( builtin_protocol_feature_t::stop_deferred_transactions ) ) {
+      if ( stop_deferred_transactions_activated ) {
          return trace;
       }
       

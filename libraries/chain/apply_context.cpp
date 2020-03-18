@@ -513,7 +513,6 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
       }
    } else {
       if ( !stop_deferred_transactions_activated ) {
-std::cout << "2222222222222222222222222222222222222222\n";
          db.create<generated_transaction_object>( [&]( auto& gtx ) {
             gtx.trx_id      = trx.id();
             gtx.sender      = receiver;
