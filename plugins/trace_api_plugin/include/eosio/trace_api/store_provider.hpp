@@ -311,15 +311,15 @@ namespace eosio::trace_api {
       std::optional<data_log_entry> read_data_log( uint32_t block_height, uint64_t offset ) {
          const uint32_t slice_number = _slice_directory.slice_number(block_height);
 
-         // Prefer a compressed trace if one exists
-         std::optional<compressed_file> ctrace = _slice_directory.find_compressed_trace_slice(slice_number);
-         if (ctrace) {
-            ctrace->seek(offset);
-            return extract_store<data_log_entry>(*ctrace);
-         }
-
          fc::cfile trace;
          if( !_slice_directory.find_trace_slice(slice_number, open_state::read, trace) ) {
+            // attempt to read a compressed trace if one exists
+            std::optional<compressed_file> ctrace = _slice_directory.find_compressed_trace_slice(slice_number);
+            if (ctrace) {
+               ctrace->seek(offset);
+               return extract_store<data_log_entry>(*ctrace);
+            }
+
             const std::string offset_str = boost::lexical_cast<std::string>(offset);
             const std::string bh_str = boost::lexical_cast<std::string>(block_height);
             throw malformed_slice_file("Requested offset: " + offset_str + " to retrieve block number: " + bh_str + " but this trace file is new, so there are no traces present.");
