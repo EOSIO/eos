@@ -72,9 +72,6 @@ namespace eosio { namespace testing {
    std::string          read_binary_snapshot( const char* fn );
    fc::variant          read_json_snapshot( const char* fn );
 
-   void                 write_binary_snapshot( const char* fn, const std::string& s );
-   void                 write_json_snapshot( const char* fn, const fc::variant& s );
-
    using namespace eosio::chain;
 
    fc::variant_object filter_fields(const fc::variant_object& filter, const fc::variant_object& value);
@@ -178,6 +175,8 @@ namespace eosio { namespace testing {
          virtual signed_block_ptr produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms) ) = 0;
          virtual signed_block_ptr produce_empty_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms) ) = 0;
          virtual signed_block_ptr finish_block() = 0;
+         // produce one block and return traces for all applied transactions, both failed and executed
+         signed_block_ptr     produce_block( std::vector<transaction_trace_ptr>& traces );
          void                 produce_blocks( uint32_t n = 1, bool empty = false );
          void                 produce_blocks_until_end_of_round();
          void                 produce_blocks_for_n_rounds(const uint32_t num_of_rounds = 1);
@@ -341,7 +340,7 @@ namespace eosio { namespace testing {
                   const auto& accnt = control->db().get<account_object, by_name>( name );
                   abi_def abi;
                   if( abi_serializer::to_abi( accnt.abi, abi )) {
-                     return abi_serializer( abi, abi_serializer_max_time );
+                     return abi_serializer( abi, abi_serializer::create_yield_function( abi_serializer_max_time ) );
                   }
                   return optional<abi_serializer>();
                } FC_RETHROW_EXCEPTIONS( error, "Failed to find or parse ABI for ${name}", ("name", name))
@@ -416,7 +415,10 @@ namespace eosio { namespace testing {
          }
 
       protected:
-         signed_block_ptr _produce_block( fc::microseconds skip_time, bool skip_pending_trxs = false );
+         signed_block_ptr _produce_block( fc::microseconds skip_time, bool skip_pending_trxs );
+         signed_block_ptr _produce_block( fc::microseconds skip_time, bool skip_pending_trxs,
+                                          bool no_throw, std::vector<transaction_trace_ptr>& traces );
+
          void             _start_block(fc::time_point block_time);
          signed_block_ptr _finish_block();
 
@@ -480,6 +482,8 @@ namespace eosio { namespace testing {
             init(cfg);
          }
       }
+
+      using base_tester::produce_block;
 
       signed_block_ptr produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms) )override {
          return _produce_block(skip_time, false);

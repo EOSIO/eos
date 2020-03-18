@@ -55,6 +55,8 @@ void apply_context::exec_one()
 {
    auto start = fc::time_point::now();
 
+   digest_type act_digest;
+
    const auto& cfg = control.get_global_properties().configuration;
    const account_metadata_object* receiver_account = nullptr;
    try {
@@ -116,6 +118,18 @@ void apply_context::exec_one()
             }
          }
       } FC_RETHROW_EXCEPTIONS( warn, "pending console output: ${console}", ("console", _pending_console_output) )
+
+      if( control.is_builtin_activated( builtin_protocol_feature_t::action_return_value ) ) {
+         act_digest =   generate_action_digest(
+                           [this](const char* data, uint32_t datalen) {
+                              return trx_context.hash_with_checktime<digest_type>(data, datalen);
+                           },
+                           *act,
+                           action_return_value
+                        );
+      } else {
+         act_digest = digest_type::hash(*act);
+      }
    } catch( const fc::exception& e ) {
       action_trace& trace = trx_context.get_action_trace( action_ordinal );
       trace.error_code = controller::convert_exception_to_error_code( e );
@@ -128,43 +142,15 @@ void apply_context::exec_one()
    //    * a pointer to an object in a chainbase index is not invalidated if other objects in that index are modified, removed, or added;
    //    * a pointer to an object in a chainbase index is not invalidated if the fields of that object are modified;
    //    * and, the *receiver_account object itself cannot be removed because accounts cannot be deleted in EOSIO.
-   const auto& encode = [&](char* bytes, uint32_t len) {
-      const size_t bs = eosio::chain::config::hashing_checktime_block_size;
-      sha256::encoder enc;
-      while ( len > bs ) {
-         enc.write( bytes, bs );
-         bytes += bs;
-         len  -= bs;
-         trx_context.checktime();
-      }
-      enc.write( bytes, len );
-      return enc.result();
-   };
-
-   const auto& encode_action = [&](const action& act, action_receipt& r) {
-      if (control.is_builtin_activated( builtin_protocol_feature_t::action_return_value )) {
-         const action_base* base = &act; // downcast to get only the action_base packed size
-         auto act_ret_val_size = fc::raw::pack_size(action_return_value);
-         auto act_pack_size    = fc::raw::pack_size(act);
-         std::vector<char> buff(act_pack_size + act_ret_val_size);
-         datastream<char*> ds(buff.data(), act_pack_size + act_ret_val_size);
-         fc::raw::pack(ds, act);
-         fc::raw::pack(ds, action_return_value);
-         sha256 hashes[2];
-         const size_t lhs_size = fc::raw::pack_size(*base);
-         hashes[0] = encode(buff.data(), lhs_size);
-         hashes[1] = encode(buff.data() + lhs_size, fc::raw::pack_size(act.data) + act_ret_val_size);
-         r.act_digest = encode((char*)&hashes[0], sizeof(hashes));
-      } else {
-         r.act_digest = digest_type::hash(act);
-      }
-   };
 
    action_trace& trace = trx_context.get_action_trace( action_ordinal );
+   trace.return_value  = std::move(action_return_value);
    trace.receipt.emplace();
+
    action_receipt& r = *trace.receipt;
-   r.receiver         = receiver;
-   encode_action(*act, r);
+   r.receiver        = receiver;
+   r.act_digest      = act_digest;
+
 
    r.global_sequence  = next_global_sequence();
    r.recv_sequence    = next_recv_sequence( *receiver_account );
@@ -183,9 +169,6 @@ void apply_context::exec_one()
       r.auth_sequence[auth.actor] = next_auth_sequence( auth.actor );
    }
 
-   if( control.is_builtin_activated( builtin_protocol_feature_t::action_return_value ) ) {
-      trace.return_value.emplace( std::move( action_return_value ) );
-   }
    trx_context.executed_action_receipt_digests.emplace_back( r.digest() );
 
    finalize_trace( trace, start );

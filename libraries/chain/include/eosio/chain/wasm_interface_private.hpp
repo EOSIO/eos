@@ -8,7 +8,6 @@
 #else
 #define _REGISTER_EOSVMOC_INTRINSIC(CLS, MOD, METHOD, WASM_SIG, NAME, SIG)
 #endif
-#include <eosio/chain/webassembly/eos-vm.hpp>
 #include <eosio/chain/webassembly/runtime_interface.hpp>
 #include <eosio/chain/wasm_eosio_injection.hpp>
 #include <eosio/chain/transaction_context.hpp>
@@ -23,7 +22,10 @@
 #include "IR/Validate.h"
 
 #if defined(EOSIO_EOS_VM_RUNTIME_ENABLED) || defined(EOSIO_EOS_VM_JIT_RUNTIME_ENABLED)
+#include <eosio/chain/webassembly/eos-vm.hpp>
 #include <eosio/vm/allocator.hpp>
+#else
+#define _REGISTER_EOS_VM_INTRINSIC(CLS, MOD, METHOD, WASM_SIG, NAME, SIG)
 #endif
 
 using namespace fc;

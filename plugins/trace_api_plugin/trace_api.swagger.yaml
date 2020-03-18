@@ -1,0 +1,52 @@
+openapi: 3.0.0
+info:
+  title: Trace API
+  version: 1.0.0
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  contact:
+    url: https://eos.io
+servers:
+  - url: '{protocol}://{host}:{port}/v1/'
+    variables:
+      protocol:
+        enum:
+          - http
+          - https
+        default: http
+      host:
+        default: localhost
+      port:
+        default: "8080"
+components:
+  schemas: {}
+paths:
+  /trace_api/get_block:
+    post:
+      description: Returns a block object containing retired actions and related metadata.
+      operationId: get_block
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - block_num
+              properties:
+                block_num:
+                  type: string
+                  description: Provide a `block number`
+      responses:
+        "200":
+          description: OK - valid response payload
+          content:
+            application/json:
+              schema:
+                $ref: "https://eosio.github.io/schemata/v2.0/oas/Block.yaml"
+        "400":
+          description: Error - requested block number is invalid (not a number, larger than max int)
+        "404":
+          description: Error - requested data not present on node
+        "500":
+          description: Error - exceptional condition while processing get_block; e.g. corrupt files

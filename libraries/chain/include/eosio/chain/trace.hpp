@@ -45,7 +45,7 @@ namespace eosio { namespace chain {
       flat_set<account_delta>         account_disk_deltas;
       fc::optional<fc::exception>     except;
       fc::optional<uint64_t>          error_code;
-      fc::optional<std::vector<char>> return_value;
+      std::vector<char>               return_value;
    };
 
    struct transaction_trace {

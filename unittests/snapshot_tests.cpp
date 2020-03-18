@@ -447,8 +447,8 @@ bool should_write_snapshot() {
    return result;
 }
 
-/* TODO: need new bin/json gzipped files
-// TODO: make this insensitive to abi_def changes, which isn't part of consensus or part of the database format
+#warning TODO: restore snapshot_tests/test_compatible_versions
+/*
 BOOST_AUTO_TEST_CASE_TEMPLATE(test_compatible_versions, SNAPSHOT_SUITE, snapshot_suites)
 {
    tester chain(setup_policy::preactivate_feature_and_new_bios);
