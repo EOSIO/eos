@@ -9,13 +9,27 @@ namespace eosio::trace_api {
    struct compressed_file_impl;
    /**
     * wrapper for read-only access to a compressed file.
-    * compressed files support seeking though the efficiency of random access is lower than
-    * an uncompressed file in trade for smaller on-disk resource usage
+    * compressed files support seeking and reading
+    *
+    * the efficiency of seeking is lower than that of an uncompressed file as each seek translates to
+    *  - 2 seeks + 1 read to load and process the seek-point-mapping
+    *  - potentially a read/decompress/discard of the data between the seek point and the requested offset
+    *
+    * More seek points can lower the average amount of data that must be read/decompressed/discarded in order
+    * to seek to any given offset.  However, each seek point has some effect on the file size as it represents a
+    * flush of the compressor which can degrade compression performance.
     */
    class compressed_file {
    public:
-      compressed_file( fc::path file_path );
+      explicit compressed_file( fc::path file_path );
       ~compressed_file();
+
+      /**
+       * Provide default move construction/assignment
+       */
+      compressed_file( compressed_file&& );
+      compressed_file& operator= ( compressed_file&& );
+
 
       void open() {
          file_ptr = std::make_unique<fc::cfile>();
@@ -41,13 +55,7 @@ namespace eosio::trace_api {
       
       static bool process( const fc::path& input_path, const fc::path& output_path, uint16_t seek_point_count );
 
-      /**
-       * Provide default move construction/assignment
-       */
-      compressed_file( compressed_file&& );
-      compressed_file& operator= ( compressed_file&& );
-
-      private:
+   private:
       fc::path file_path;
       std::unique_ptr<fc::cfile> file_ptr;
       std::unique_ptr<compressed_file_impl> impl;
