@@ -87,18 +87,6 @@ extern const char* const state_history_plugin_abi = R"({
             ]
         },
         {
-            "name": "action_receipt_v1", "fields": [
-                { "name": "receiver", "type": "name" },
-                { "name": "act_digest", "type": "checksum256" },
-                { "name": "global_sequence", "type": "uint64" },
-                { "name": "recv_sequence", "type": "uint64" },
-                { "name": "auth_sequence", "type": "account_auth_sequence[]" },
-                { "name": "code_sequence", "type": "varuint32" },
-                { "name": "abi_sequence", "type": "varuint32" },
-                { "name": "return_value", "type": "bytes" }
-            ]
-        },
-        {
             "name": "account_delta", "fields": [
                 { "name": "account", "type": "name" },
                 { "name": "delta", "type": "int64" }
@@ -132,7 +120,8 @@ extern const char* const state_history_plugin_abi = R"({
                 { "name": "account_ram_deltas", "type": "account_delta[]" },
                 { "name": "account_disk_deltas", "type": "account_delta[]" },
                 { "name": "except", "type": "string?" },
-                { "name": "error_code", "type": "uint64?" }
+                { "name": "error_code", "type": "uint64?" },
+                { "name": "return_value", "type": "bytes"}
             ]
         },
         {
@@ -537,7 +526,7 @@ extern const char* const state_history_plugin_abi = R"({
         { "name": "request", "types": ["get_status_request_v0", "get_blocks_request_v0", "get_blocks_ack_request_v0"] },
         { "name": "result", "types": ["get_status_result_v0", "get_blocks_result_v0"] },
 
-        { "name": "action_receipt", "types": ["action_receipt_v0", "action_receipt_v1"] },
+        { "name": "action_receipt", "types": ["action_receipt_v0"] },
         { "name": "action_trace", "types": ["action_trace_v0", "action_trace_v1"] },
         { "name": "partial_transaction", "types": ["partial_transaction_v0"] },
         { "name": "transaction_trace", "types": ["transaction_trace_v0"] },

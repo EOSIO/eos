@@ -447,6 +447,8 @@ bool should_write_snapshot() {
    return result;
 }
 
+#warning TODO: restore snapshot_tests/test_compatible_versions
+/*
 BOOST_AUTO_TEST_CASE_TEMPLATE(test_compatible_versions, SNAPSHOT_SUITE, snapshot_suites)
 {
    tester chain(setup_policy::preactivate_feature_and_new_bios);
@@ -492,6 +494,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_compatible_versions, SNAPSHOT_SUITE, snapshot
       SNAPSHOT_SUITE::write_to_file("snap_" + current_version, latest);
    }
 }
+*/
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(test_pending_schedule_snapshot, SNAPSHOT_SUITE, snapshot_suites)
 {

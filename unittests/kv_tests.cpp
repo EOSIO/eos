@@ -57,13 +57,13 @@ class kv_tester : public tester {
          const auto& accnt = control->db().get<account_object, by_name>(N(kvtest));
          abi_def     abi;
          BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
-         abi_ser.set_abi(abi, abi_serializer_max_time);
+         abi_ser.set_abi(abi, abi_serializer::create_yield_function(abi_serializer_max_time));
       }
       {
          const auto& accnt = control->db().get<account_object, by_name>(config::system_account_name);
          abi_def     abi;
          BOOST_TEST_REQUIRE(abi_serializer::to_abi(accnt.abi, abi));
-         sys_abi_ser.set_abi(abi, abi_serializer_max_time);
+         sys_abi_ser.set_abi(abi, abi_serializer::create_yield_function(abi_serializer_max_time));
       }
 
       BOOST_TEST_REQUIRE(set_limit(N(eosio.kvdisk), -1) == "");
@@ -81,7 +81,7 @@ class kv_tester : public tester {
       action act;
       act.account = account;
       act.name    = name;
-      act.data    = abi_ser.variant_to_binary(action_type_name, data, abi_serializer_max_time);
+      act.data    = abi_ser.variant_to_binary(action_type_name, data, abi_serializer::create_yield_function(abi_serializer_max_time));
       return base_tester::push_action(std::move(act), N(kvtest).to_uint64_t());
    }
 
@@ -98,7 +98,7 @@ class kv_tester : public tester {
       action act;
       act.account = config::system_account_name;
       act.name    = name;
-      act.data    = sys_abi_ser.variant_to_binary(action_type_name, mvo()("account", account)("limit", limit), abi_serializer_max_time);
+      act.data    = sys_abi_ser.variant_to_binary(action_type_name, mvo()("account", account)("limit", limit), abi_serializer::create_yield_function(abi_serializer_max_time));
       return base_tester::push_action(std::move(act), config::system_account_name.to_uint64_t());
    }
 
@@ -115,7 +115,7 @@ class kv_tester : public tester {
       action act;
       act.account = config::system_account_name;
       act.name    = name;
-      act.data    = sys_abi_ser.variant_to_binary(action_type_name, mvo()("k", klimit)("v", vlimit)("i", ilimit), abi_serializer_max_time);
+      act.data    = sys_abi_ser.variant_to_binary(action_type_name, mvo()("k", klimit)("v", vlimit)("i", ilimit), abi_serializer::create_yield_function(abi_serializer_max_time));
       return base_tester::push_action(std::move(act), config::system_account_name.to_uint64_t());
    }
 
@@ -513,7 +513,7 @@ class kv_tester : public tester {
       action act;
       act.account = N(kvtest);
       act.name    = N(set);
-      act.data    = abi_ser.variant_to_binary("set", mvo()("db", db)("contract", N(kvtest))("k", k)("v", v), abi_serializer_max_time);
+      act.data    = abi_ser.variant_to_binary("set", mvo()("db", db)("contract", N(kvtest))("k", k)("v", v), abi_serializer::create_yield_function(abi_serializer_max_time));
       act.authorization = vector<permission_level>{{N(kvtest), config::active_name}};
       return act;
    }
@@ -522,7 +522,7 @@ class kv_tester : public tester {
       action act;
       act.account = N(eosio);
       act.name    = db == N(eosio.kvram)?N(setramlimit):N(setdisklimit);
-      act.data    = sys_abi_ser.variant_to_binary(act.name.to_string(), mvo()("account", N(kvtest))("limit", limit), abi_serializer_max_time);
+      act.data    = sys_abi_ser.variant_to_binary(act.name.to_string(), mvo()("account", N(kvtest))("limit", limit), abi_serializer::create_yield_function(abi_serializer_max_time));
       act.authorization = vector<permission_level>{{N(kvtest), config::active_name}};
       return act;
    }

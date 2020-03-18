@@ -599,6 +599,36 @@ try:
     if actual != expected:
         errorExit("FAILURE - Wrong currency1111 balance (expected=%s, actual=%s)" % (str(expected), str(actual)), raw=True)
 
+    Print("push transfer action to currency1111 contract with sign skipping option enabled")
+    data="{\"from\":\"currency1111\",\"to\":\"defproducera\",\"quantity\":"
+    data +="\"00.0001 CUR\",\"memo\":\"test\"}"
+    opts="-s -d --permission currency1111@active"
+    trans=node.pushMessage(contract, action, data, opts)
+
+    try:
+        assert(not trans[1]["signatures"])
+    except (AssertionError, KeyError) as _:
+        Print("ERROR: Expected signatures array to be empty due to skipping option enabled.")
+        raise
+
+    try:
+        assert(trans[1]["actions"][0]["data"]["from"] == "currency1111")
+        assert(trans[1]["actions"][0]["data"]["to"] == "defproducera")
+        assert(trans[1]["actions"][0]["data"]["quantity"] == "0.0001 CUR")
+        assert(trans[1]["actions"][0]["data"]["memo"] == "test")
+    except (AssertionError, KeyError) as _:
+        Print("ERROR: Expecting unpacked data fields on push transfer action json result.")
+        raise
+
+    result=node.pushTransaction(trans[1], None)
+
+    amountStr=node.getTableAccountBalance("currency1111", currencyAccount.name)
+
+    expected="99999.9999 CUR"
+    actual=amountStr
+    if actual != expected:
+        errorExit("FAILURE - Wrong currency1111 balance (expectedgma=%s, actual=%s)" % (str(expected), str(actual)), raw=True)
+
     Print("Locking wallet \"%s\"." % (defproduceraWallet.name))
     if not walletMgr.lockWallet(defproduceraWallet):
         cmdError("%s wallet lock" % (ClientName))
