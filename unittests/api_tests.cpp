@@ -846,7 +846,7 @@ BOOST_FIXTURE_TEST_CASE(deferred_cfa_success, TESTER)  try {
 } FC_LOG_AND_RETHROW()
 
 BOOST_AUTO_TEST_CASE(light_validation_skip_cfa) try {
-   tester chain;
+   tester chain(setup_policy::full);
 
    std::vector<signed_block_ptr> blocks;
    blocks.push_back(chain.produce_block());
@@ -876,10 +876,19 @@ BOOST_AUTO_TEST_CASE(light_validation_skip_cfa) try {
    BOOST_REQUIRE(trace->receipt);
    BOOST_CHECK_EQUAL(trace->receipt->status, transaction_receipt::executed);
    BOOST_CHECK_EQUAL(2, trace->action_traces.size());
+   BOOST_CHECK_EQUAL("test\n", trace->action_traces.at(0).console); // cfa executed
+   BOOST_CHECK_EQUAL("", trace->action_traces.at(1).console);
 
-   flat_set<account_name> trusted_producers = { N(eosio) };
-   validating_tester other(trusted_producers);
-   other.skip_validate = true;
+
+   fc::temp_directory tempdir;
+   auto conf_genesis = tester::default_config( tempdir );
+
+   auto& cfg = conf_genesis.first;
+   cfg.trusted_producers = { N(eosio) }; // light validation
+
+   tester other( conf_genesis.first, conf_genesis.second );
+   other.execute_setup_policy( setup_policy::full );
+
 
    transaction_trace_ptr other_trace;
    auto cc = other.control->applied_transaction.connect( [&](std::tuple<const transaction_trace_ptr&, const signed_transaction&> x) {
@@ -890,14 +899,16 @@ BOOST_AUTO_TEST_CASE(light_validation_skip_cfa) try {
    } );
 
    for (auto& new_block : blocks) {
-      other.validate_push_block(new_block);
+      other.push_block(new_block);
    }
    blocks.clear();
 
    BOOST_REQUIRE(other_trace);
    BOOST_REQUIRE(other_trace->receipt);
    BOOST_CHECK_EQUAL(other_trace->receipt->status, transaction_receipt::executed);
-   BOOST_CHECK_EQUAL(1, other_trace->action_traces.size()); // no cfa
+   BOOST_CHECK_EQUAL(2, other_trace->action_traces.size());
+   BOOST_CHECK_EQUAL("", other_trace->action_traces.at(0).console); // cfa not executed for light validation (trusted producer)
+   BOOST_CHECK_EQUAL("", other_trace->action_traces.at(1).console);
 
    other.close();
 
