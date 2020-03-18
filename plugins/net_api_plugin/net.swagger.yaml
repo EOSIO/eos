@@ -1,0 +1,225 @@
+openapi: 3.0.0
+info:
+  title: Net API
+  version: 1.0.0
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  contact:
+    url: https://eos.io
+servers:
+  - url: '{protocol}://{host}:{port}/v1/'
+    variables:
+      protocol:
+        enum:
+          - http
+          - https
+        default: http
+      host:
+        default: localhost
+      port:
+        default: "8080"
+components:
+  schemas: {}
+paths:
+  /net/connections:
+    post:
+      summary: connections
+      description: Returns an array of all peer connection statuses.
+      operationId: connections
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties: {}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    peer:
+                      description: The IP address or URL of the peer
+                      type: string
+                    connecting:
+                      description: True if the peer is connecting, otherwise false
+                      type: boolean
+                    syncing:
+                      description: True if the peer is syncing, otherwise false
+                      type: boolean
+                    last_handshake:
+                      description: Structure holding detailed information about the connection
+                      type: object
+                      properties:
+                        network_version:
+                          description: Incremental value above a computed base
+                          type: integer
+                        chain_id:
+                          $ref: 'https://eosio.github.io/schemata/v2.0/oas/Sha256.yaml'
+                        node_id:
+                          $ref: 'https://eosio.github.io/schemata/v2.0/oas/Sha256.yaml'
+                        key:
+                          $ref: 'https://eosio.github.io/schemata/v2.0/oas/PublicKey.yaml'
+                        time:
+                          $ref: 'https://eosio.github.io/schemata/v2.0/oas/DateTimeSeconds.yaml'
+                        token:
+                          $ref: 'https://eosio.github.io/schemata/v2.0/oas/Sha256.yaml'
+                        sig:
+                          $ref: 'https://eosio.github.io/schemata/v2.0/oas/Signature.yaml'
+                        p2p_address:
+                          description: IP address or URL of the peer
+                          type: string
+                        last_irreversible_block_num:
+                          description: Last irreversible block number
+                          type: integer
+                        last_irreversible_block_id:
+                          $ref: 'https://eosio.github.io/schemata/v2.0/oas/Sha256.yaml'
+                        head_num:
+                          description: Head number
+                          type: integer
+                        head_id:
+                          $ref: 'https://eosio.github.io/schemata/v2.0/oas/Sha256.yaml'
+                        os:
+                          description: Operating system name
+                          type: string
+                        agent:
+                          description: Agent name
+                          type: string
+                        generation:
+                          description: Generation number
+                          type: integer
+
+  /net/connect:
+    post:
+      summary: connect
+      description: Initiate a connection to a specified peer.
+      operationId: connect
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - endpoint
+              properties:
+                endpoint:
+                  type: string
+                  description: the endpoint to connect to expressed as either IP address or URL
+
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: string
+                description: '"already connected" or "added connection"'
+  /net/disconnect:
+    post:
+      summary: disconnect
+      description: Initiate disconnection from a specified peer.
+      operationId: disconnect
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - endpoint
+              properties:
+                endpoint:
+                  type: string
+                  description: the endpoint to disconnect from, expressed as either IP address or URL
+
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: string
+                description: '"connection removed" or "no known connection for host"'
+  /net/status:
+    post:
+      summary: status
+      description: Retrieves the connection status for a specified peer.
+      operationId: status
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - endpoint
+              properties:
+                endpoint:
+                  type: string
+                  description: the endpoint to get the status for, to expressed as either IP address or URL
+
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  peer:
+                    description: The IP address or URL of the peer
+                    type: string
+                  connecting:
+                    description: True if the peer is connecting, otherwise false
+                    type: boolean
+                  syncing:
+                    description: True if the peer is syncing, otherwise false
+                    type: boolean
+                  last_handshake:
+                    description: Structure holding detailed information about the connection
+                    type: object
+                    properties:
+                      network_version:
+                        description: Incremental value above a computed base
+                        type: integer
+                      chain_id:
+                        $ref: 'https://eosio.github.io/schemata/v2.0/oas/Sha256.yaml'
+                      node_id:
+                        $ref: 'https://eosio.github.io/schemata/v2.0/oas/Sha256.yaml'
+                      key:
+                        $ref: 'https://eosio.github.io/schemata/v2.0/oas/PublicKey.yaml'
+                      time:
+                        $ref: 'https://eosio.github.io/schemata/v2.0/oas/DateTimeSeconds.yaml'
+                      token:
+                        $ref: 'https://eosio.github.io/schemata/v2.0/oas/Sha256.yaml'
+                      sig:
+                        $ref: 'https://eosio.github.io/schemata/v2.0/oas/Signature.yaml'
+                      p2p_address:
+                        description: IP address or URL of the peer
+                        type: string
+                      last_irreversible_block_num:
+                        description: Last irreversible block number
+                        type: integer
+                      last_irreversible_block_id:
+                        $ref: 'https://eosio.github.io/schemata/v2.0/oas/Sha256.yaml'
+                      head_num:
+                        description: Head number
+                        type: integer
+                      head_id:
+                        $ref: 'https://eosio.github.io/schemata/v2.0/oas/Sha256.yaml'
+                      os:
+                        description: Operating system name
+                        type: string
+                      agent:
+                        description: Agent name
+                        type: string
+                      generation:
+                        description: Generation number
+                        type: integer

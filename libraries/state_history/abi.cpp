@@ -121,7 +121,7 @@ extern const char* const state_history_plugin_abi = R"({
                 { "name": "account_disk_deltas", "type": "account_delta[]" },
                 { "name": "except", "type": "string?" },
                 { "name": "error_code", "type": "uint64?" },
-                { "name": "return_value", "type": "bytes?"}
+                { "name": "return_value", "type": "bytes"}
             ]
         },
         {

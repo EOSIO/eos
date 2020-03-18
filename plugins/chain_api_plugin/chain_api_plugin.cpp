@@ -83,6 +83,7 @@ void chain_api_plugin::plugin_startup() {
    _http_plugin.add_api({
       CHAIN_RO_CALL(get_activated_protocol_features, 200),
       CHAIN_RO_CALL(get_block, 200),
+      CHAIN_RO_CALL(get_block_info, 200),
       CHAIN_RO_CALL(get_block_header_state, 200),
       CHAIN_RO_CALL(get_account, 200),
       CHAIN_RO_CALL(get_code, 200),
