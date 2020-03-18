@@ -1,4 +1,3 @@
-# trace_api_plugin
 
 ## Overview
 
