@@ -1782,10 +1782,16 @@ BOOST_AUTO_TEST_CASE( set_action_return_value_test ) { try {
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_CASE( stop_deferred_transactions_protocol_feature_user_test ) { try {
-   tester chain{setup_policy::preactivate_feature_and_new_bios};
-   const auto& tester_account = N(tester);
+   // tester chain{setup_policy::preactivate_feature_and_new_bios};
+   // const auto& tester_account = N(tester);
+   // const auto& pfm = chain.control->get_protocol_feature_manager();
+   // const auto& d = pfm.get_builtin_digest(builtin_protocol_feature_t::stop_deferred_transactions);
+
+   fc::temp_directory tempdir;
+   validating_tester chain( tempdir, true );
    const auto& pfm = chain.control->get_protocol_feature_manager();
-   const auto& d = pfm.get_builtin_digest(builtin_protocol_feature_t::stop_deferred_transactions);
+   auto d = pfm.get_builtin_digest( builtin_protocol_feature_t::stop_deferred_transactions );
+   chain.execute_setup_policy( setup_policy::complete, {*d} );
    
    chain.produce_block();
 
@@ -1832,10 +1838,16 @@ BOOST_AUTO_TEST_CASE( stop_deferred_transactions_protocol_feature_user_test ) { 
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_CASE( stop_deferred_transactions_protocol_feature_contract_test ) { try {
-   tester chain{setup_policy::preactivate_feature_and_new_bios};
-   const auto& tester_account = N(tester);
+   // tester chain{setup_policy::preactivate_feature_and_new_bios};
+   // const auto& tester_account = N(tester);
+   // const auto& pfm = chain.control->get_protocol_feature_manager();
+   // const auto& d = pfm.get_builtin_digest(builtin_protocol_feature_t::stop_deferred_transactions);
+
+   fc::temp_directory tempdir;
+   validating_tester chain( tempdir, true );
    const auto& pfm = chain.control->get_protocol_feature_manager();
-   const auto& d = pfm.get_builtin_digest(builtin_protocol_feature_t::stop_deferred_transactions);
+   auto d = pfm.get_builtin_digest( builtin_protocol_feature_t::stop_deferred_transactions );
+   chain.execute_setup_policy( setup_policy::complete, {*d} );
    
    chain.produce_block();
 
@@ -1862,22 +1874,27 @@ BOOST_AUTO_TEST_CASE( stop_deferred_transactions_protocol_feature_contract_test 
    gen_size = chain.control->db().get_index<generated_transaction_multi_index>().size();
    BOOST_REQUIRE_EQUAL( gen_size, 1 );
    
-   // // Activate `stop_deferred_transaction` protocol feature.
-   // chain.preactivate_protocol_features( {*d} );
-   // chain.produce_block();
-   // 
-   // // Send a deferred transaction via the contract.
-   // chain.push_action( N(test), N(defercall), N(alice), fc::mutable_variant_object()
-   //                     ("payer", "alice")
-   //                     ("sender_id", 2)
-   //                     ("contract", "test")
-   //                     ("payload", 49), 120
-   // );
+   // Activate `stop_deferred_transaction` protocol feature.
+   chain.preactivate_protocol_features( {*d} );
+   chain.produce_block();
+   
+   // Send a deferred transaction via the contract.
+   chain.push_action( N(test), N(defercall), N(alice), fc::mutable_variant_object()
+                       ("payer", "alice")
+                       ("sender_id", 2)
+                       ("contract", "test")
+                       ("payload", 49)
+   );
    // chain.produce_blocks();
-   // 
-   // // Check that the number deferred transactions is 1, due to the activation of the protocol feature.
-   // gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
-   // BOOST_REQUIRE_EQUAL( gen_size, 1 );
+   
+   // Check that the number deferred transactions is 1, due to the activation of the protocol feature.
+   gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
+
+   // We check that the database contains 0 `generated_transaction`s, and not 1
+   // `generated_transaction` because the previously sent
+   // `generated_transaction`, sent from contract `test`:`defercall` has already
+   // gone through its lifetime.
+   BOOST_REQUIRE_EQUAL( gen_size, 0 );
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_SUITE_END()
