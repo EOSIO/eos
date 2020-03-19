@@ -4,6 +4,15 @@
 
 namespace {
    using seek_point_entry = std::tuple<uint64_t, uint64_t>;
+   constexpr size_t expected_seek_point_entry_size = 16;
+
+   using seek_point_count_type = uint16_t;
+   constexpr size_t expected_seek_point_count_size = 2;
+
+   // These are hard-coded expectations in the written file format
+   //
+   static_assert(sizeof(seek_point_entry) == expected_seek_point_entry_size, "unexpected size for seek point");
+   static_assert(sizeof(seek_point_count_type) == expected_seek_point_count_size, "Unexpected size for seek point count");
 }
 
 namespace eosio::trace_api {
@@ -92,12 +101,12 @@ struct compressed_file_impl {
       }
 
       // read in the seek point map
-      file.seek_end(-2);
-      uint16_t seek_point_count = 0;
-      file.read(reinterpret_cast<char*>(&seek_point_count), 2);
+      file.seek_end(-expected_seek_point_count_size);
+      seek_point_count_type seek_point_count = 0;
+      file.read(reinterpret_cast<char*>(&seek_point_count), sizeof(seek_point_count));
 
-      int seek_map_size = 16 * seek_point_count;
-      file.seek_end(-2 - seek_map_size);
+      int seek_map_size = sizeof(seek_point_entry) * seek_point_count;
+      file.seek_end(-expected_seek_point_count_size - seek_map_size);
 
       std::vector<seek_point_entry> seek_point_map(seek_point_count);
       file.read(reinterpret_cast<char*>(seek_point_map.data()), seek_point_map.size() * sizeof(seek_point_entry));
@@ -195,7 +204,7 @@ compressed_file& compressed_file::operator= ( compressed_file&& ) = default;
  * @param seek_point_count
  * @return
  */
-bool compressed_file::process( const fc::path& input_path, const fc::path& output_path, uint16_t seek_point_count ) {
+bool compressed_file::process( const fc::path& input_path, const fc::path& output_path, seek_point_count_type seek_point_count ) {
    if (!fc::exists(input_path)) {
       throw std::ios_base::failure(std::string("Attempting to create compressed_file from file that does not exist: ") + input_path.generic_string());
    }
@@ -297,12 +306,10 @@ bool compressed_file::process( const fc::path& input_path, const fc::path& outpu
    input_file.close();
 
    // write out the seek point table
-   static_assert(sizeof(seek_point_entry) == 16, "unexpected size for seek point");
    output_file.write(reinterpret_cast<const char*>(seek_point_map.data()), seek_point_map.size() * sizeof(seek_point_entry));
 
    // write out the seek point count
-   static_assert(sizeof(seek_point_count) == 2, "Unexpected size for seek point count");
-   output_file.write(reinterpret_cast<const char*>(&seek_point_count), 2);
+   output_file.write(reinterpret_cast<const char*>(&seek_point_count), sizeof(seek_point_count_type));
 
    output_file.close();
    return true;
