@@ -156,7 +156,7 @@ namespace eosio { namespace testing {
       cfg = def_conf.first;
 
       open(def_conf.second);
-      execute_setup_policy(policy, {});
+      execute_setup_policy(policy);
    }
 
    void base_tester::init(controller::config config, const snapshot_reader_ptr& snapshot) {
@@ -189,7 +189,7 @@ namespace eosio { namespace testing {
       open(std::move(pfs), default_genesis().compute_chain_id());
    }
 
-   void base_tester::execute_setup_policy(const setup_policy policy, std::optional<vector<digest_type>> ignored_features = {}) {
+   void base_tester::execute_setup_policy(const setup_policy policy, const std::vector<digest_type>& ignored_features) {
       const auto& pfm = control->get_protocol_feature_manager();
 
       auto schedule_preactivate_protocol_feature = [&]() {
@@ -1126,7 +1126,7 @@ namespace eosio { namespace testing {
       }
    }
 
-   void base_tester::preactivate_builtin_protocol_features(std::optional<vector<digest_type>> ignored_features) {
+   void base_tester::preactivate_builtin_protocol_features(const std::vector<digest_type>& ignored_features) {
       const auto& pfm = control->get_protocol_feature_manager();
       const auto& pfs = pfm.get_protocol_feature_set();
       const auto current_block_num  =  control->head_block_num() + (control->is_building_block() ? 1 : 0);
@@ -1144,8 +1144,8 @@ namespace eosio { namespace testing {
          if( !pf.enabled || pf.earliest_allowed_activation_time > current_block_time
              || pfm.is_builtin_activated( *pf.builtin_feature, current_block_num ) ) return;
 
-         const auto feature_is_ignored = std::find(ignored_features.value().cbegin(), ignored_features.value().cend(), feature_digest);
-         if( feature_is_ignored != ignored_features.value().cend() ) {
+         const auto feature_is_ignored = std::find(ignored_features.cbegin(), ignored_features.cend(), feature_digest);
+         if( feature_is_ignored != ignored_features.cend() ) {
             return;
          }
 

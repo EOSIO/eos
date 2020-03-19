@@ -159,7 +159,7 @@ namespace eosio { namespace testing {
          void              init(controller::config config, protocol_feature_set&& pfs, const snapshot_reader_ptr& snapshot);
          void              init(controller::config config, protocol_feature_set&& pfs, const genesis_state& genesis);
          void              init(controller::config config, protocol_feature_set&& pfs);
-         void              execute_setup_policy(const setup_policy policy, std::optional<vector<digest_type>> ignored_features);
+         void              execute_setup_policy(const setup_policy policy, const std::vector<digest_type>& ignored_features = {});
 
          void              close();
          template <typename Lambda>
@@ -378,7 +378,7 @@ namespace eosio { namespace testing {
 
          void schedule_protocol_features_wo_preactivation(const vector<digest_type> feature_digests);
          void preactivate_protocol_features(const vector<digest_type> feature_digests);
-         void preactivate_builtin_protocol_features(std::optional<vector<digest_type>> ignored_features);
+         void preactivate_builtin_protocol_features(const std::vector<digest_type>& ignored_features);
 
          static genesis_state default_genesis() {
             genesis_state genesis;
@@ -525,7 +525,7 @@ namespace eosio { namespace testing {
          validating_node = create_validating_node(vcfg, def_conf.second, true);
 
          init(def_conf.first, def_conf.second);
-         execute_setup_policy(setup_policy::complete, {});
+         execute_setup_policy(setup_policy::complete);
       }
 
       static void config_validator(controller::config& vcfg) {
