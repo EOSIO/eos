@@ -876,7 +876,11 @@ BOOST_AUTO_TEST_CASE(light_validation_skip_cfa) try {
    BOOST_REQUIRE(trace->receipt);
    BOOST_CHECK_EQUAL(trace->receipt->status, transaction_receipt::executed);
    BOOST_CHECK_EQUAL(2, trace->action_traces.size());
+
+   BOOST_CHECK(trace->action_traces.at(0).context_free); // cfa
    BOOST_CHECK_EQUAL("test\n", trace->action_traces.at(0).console); // cfa executed
+
+   BOOST_CHECK(!trace->action_traces.at(1).context_free); // non-cfa
    BOOST_CHECK_EQUAL("", trace->action_traces.at(1).console);
 
 
@@ -906,9 +910,19 @@ BOOST_AUTO_TEST_CASE(light_validation_skip_cfa) try {
    BOOST_REQUIRE(other_trace);
    BOOST_REQUIRE(other_trace->receipt);
    BOOST_CHECK_EQUAL(other_trace->receipt->status, transaction_receipt::executed);
+   BOOST_CHECK(*trace->receipt == *other_trace->receipt);
    BOOST_CHECK_EQUAL(2, other_trace->action_traces.size());
+
+   BOOST_CHECK(other_trace->action_traces.at(0).context_free); // cfa
    BOOST_CHECK_EQUAL("", other_trace->action_traces.at(0).console); // cfa not executed for light validation (trusted producer)
+   BOOST_CHECK_EQUAL(trace->action_traces.at(0).receipt->global_sequence, other_trace->action_traces.at(0).receipt->global_sequence);
+   BOOST_CHECK_EQUAL(trace->action_traces.at(0).receipt->digest(), other_trace->action_traces.at(0).receipt->digest());
+
+   BOOST_CHECK(!other_trace->action_traces.at(1).context_free); // non-cfa
    BOOST_CHECK_EQUAL("", other_trace->action_traces.at(1).console);
+   BOOST_CHECK_EQUAL(trace->action_traces.at(1).receipt->global_sequence, other_trace->action_traces.at(1).receipt->global_sequence);
+   BOOST_CHECK_EQUAL(trace->action_traces.at(1).receipt->digest(), other_trace->action_traces.at(1).receipt->digest());
+
 
    other.close();
 
