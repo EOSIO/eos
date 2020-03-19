@@ -9,7 +9,7 @@ namespace {
       static constexpr const char* _trace_index_prefix = "trace_index_";
       static constexpr const char* _trace_ext = ".log";
       static constexpr const char* _compressed_trace_ext = ".clog";
-      static constexpr uint _max_filename_size = std::char_traits<char>::length(_trace_index_prefix) + 10 + 1 + 10 + std::char_traits<char>::length(_compressed_trace_ext) + 1; // "trace_index_" + 10-digits + '-' + 10-digits + ".log" + null-char
+      static constexpr uint _max_filename_size = std::char_traits<char>::length(_trace_index_prefix) + 10 + 1 + 10 + std::char_traits<char>::length(_compressed_trace_ext) + 1; // "trace_index_" + 10-digits + '-' + 10-digits + ".clog" + null-char
 
       std::string make_filename(const char* slice_prefix, const char* slice_ext, uint32_t slice_number, uint32_t slice_width) {
          char filename[_max_filename_size] = {};

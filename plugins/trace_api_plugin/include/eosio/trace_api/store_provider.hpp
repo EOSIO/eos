@@ -227,7 +227,7 @@ namespace eosio::trace_api {
       std::optional<uint32_t> _last_cleaned_up_slice;
       const std::optional<uint32_t> _minimum_uncompressed_irreversible_history_blocks;
       std::optional<uint32_t> _last_compressed_slice;
-      uint32_t _compression_seek_points;
+      const uint32_t _compression_seek_points;
 
       std::atomic<uint32_t> _best_known_lib{0};
       std::mutex _maintenance_mtx;
