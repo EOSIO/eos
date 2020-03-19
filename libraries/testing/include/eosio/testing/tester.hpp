@@ -162,8 +162,7 @@ namespace eosio { namespace testing {
          void              execute_setup_policy(const setup_policy policy);
 
          void              close();
-         template <typename Lambda>
-         void              open( protocol_feature_set&& pfs, fc::optional<chain_id_type> expected_chain_id, Lambda lambda );
+         void              open( protocol_feature_set&& pfs, fc::optional<chain_id_type> expected_chain_id, const std::function<void()>& lambda );
          void              open( protocol_feature_set&& pfs, const snapshot_reader_ptr& snapshot );
          void              open( protocol_feature_set&& pfs, const genesis_state& genesis );
          void              open( protocol_feature_set&& pfs, fc::optional<chain_id_type> expected_chain_id = {} );
