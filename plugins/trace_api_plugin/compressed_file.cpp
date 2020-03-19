@@ -64,7 +64,7 @@ struct compressed_file_impl {
             auto ret = inflate(&strm, Z_NO_FLUSH);
 
             if (ret == Z_NEED_DICT || ret == Z_DATA_ERROR || ret == Z_MEM_ERROR) {
-               throw std::runtime_error("Error decompressing: " + std::string(strm.msg));
+               throw compressed_file_error("Error decompressing: " + std::string(strm.msg));
             }
 
             auto bytes_decompressed = read_buffer.size() - strm.avail_out;
@@ -79,7 +79,7 @@ struct compressed_file_impl {
             }
 
             if (written < n && ret == Z_STREAM_END) {
-               throw std::runtime_error("Attempting to read past the end of a compressed file");
+               throw std::ios_base::failure("Attempting to read past the end of a compressed file");
             }
          } while (strm.avail_out == 0 && written < n);
       }
@@ -196,6 +196,9 @@ compressed_file& compressed_file::operator= ( compressed_file&& ) = default;
  * @return
  */
 bool compressed_file::process( const fc::path& input_path, const fc::path& output_path, uint16_t seek_point_count ) {
+   if (!fc::exists(input_path)) {
+      throw std::ios_base::failure(std::string("Attempting to create compressed_file from file that does not exist: ") + input_path.generic_string());
+   }
    std::vector<seek_point_entry> seek_point_map(seek_point_count);
 
    size_t input_size = fc::file_size(input_path);
@@ -257,7 +260,7 @@ bool compressed_file::process( const fc::path& input_path, const fc::path& outpu
 
             auto ret = deflate(&strm, Z_FINISH);
             if (ret == Z_STREAM_ERROR) {
-               throw std::runtime_error("failed to create sync point");
+               throw compressed_file_error("failed to finalize compressed file");
             }
 
             output_file.write(reinterpret_cast<const char*>(output_buffer.data()), output_buffer.size() - strm.avail_out);
@@ -272,7 +275,7 @@ bool compressed_file::process( const fc::path& input_path, const fc::path& outpu
 
             auto ret = deflate(&strm, Z_FULL_FLUSH);
             if (ret == Z_STREAM_ERROR) {
-               throw std::runtime_error("failed to create sync point");
+               throw compressed_file_error("failed to create sync point");
             }
             output_file.write(reinterpret_cast<const char*>(output_buffer.data()), output_buffer.size() - strm.avail_out);
          } while (strm.avail_out == 0);
