@@ -3049,7 +3049,7 @@ bool controller::skip_db_sessions( ) const {
 }
 
 bool controller::skip_trx_checks() const {
-   return light_validation_allowed(my->conf.disable_replay_opts);
+   return light_validation_allowed(my->conf.force_all_checks);
 }
 
 bool controller::is_trusted_producer( const account_name& producer) const {
