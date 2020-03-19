@@ -61,7 +61,7 @@ void apply_context::exec_one()
       try {
          action_return_value.clear();
          receiver_account = &db.get<account_metadata_object,by_name>( receiver );
-         if( !context_free || (context_free && !control.skip_auth_check() ) ) {
+         if( !context_free || (context_free && !control.skip_trx_checks() ) ) {
             privileged = receiver_account->is_privileged();
             auto native = control.find_apply_handler( receiver, act->account, act->name );
             if( native ) {
