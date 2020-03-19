@@ -1,5 +1,3 @@
-# wallet_plugin
-
 ## Description
 
 The `wallet_plugin` adds access to wallet functionality from a node.

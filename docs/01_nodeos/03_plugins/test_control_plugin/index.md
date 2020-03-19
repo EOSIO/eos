@@ -1,4 +1,3 @@
-# test_control_plugin
 
 ## Description
 
