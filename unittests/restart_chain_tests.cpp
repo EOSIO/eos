@@ -55,10 +55,10 @@ FC_REFLECT(cf_action, (payload)(cfd_idx))
 class replay_tester : public base_tester {
  public:
    template <typename OnAppliedTrx>
-   replay_tester(controller::config config, const genesis_state& genesis, OnAppliedTrx&& onAppliedTrx) {
+   replay_tester(controller::config config, const genesis_state& genesis, OnAppliedTrx&& on_applied_trx) {
       cfg = config;
-      base_tester::open(make_protocol_feature_set(), genesis.compute_chain_id(), [&genesis,&control=this->control, &onAppliedTrx]() {        
-         control->applied_transaction.connect(onAppliedTrx);
+      base_tester::open(make_protocol_feature_set(), genesis.compute_chain_id(), [&genesis,&control=this->control, &on_applied_trx]() {        
+         control->applied_transaction.connect(on_applied_trx);
          control->startup( [](){}, []() { return false; }, genesis );
       });
    }
@@ -224,7 +224,7 @@ BOOST_AUTO_TEST_CASE(test_light_validation_restart_from_block_log) {
    BOOST_CHECK_EQUAL(2, other_trace->action_traces.size());
 
    BOOST_CHECK(other_trace->action_traces.at(0).context_free); // cfa
-   BOOST_CHECK_EQUAL("", other_trace->action_traces.at(0).console); // cfa not executed for light validation (trusted producer)
+   BOOST_CHECK_EQUAL("", other_trace->action_traces.at(0).console); // cfa not executed for replay
    BOOST_CHECK_EQUAL(trace->action_traces.at(0).receipt->global_sequence, other_trace->action_traces.at(0).receipt->global_sequence);
    BOOST_CHECK_EQUAL(trace->action_traces.at(0).receipt->digest(), other_trace->action_traces.at(0).receipt->digest());
 
