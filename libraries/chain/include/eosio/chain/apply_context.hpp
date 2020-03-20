@@ -1,5 +1,6 @@
 #pragma once
 #include <eosio/chain/controller.hpp>
+#include <eosio/chain/deep_mind.hpp>
 #include <eosio/chain/transaction.hpp>
 #include <eosio/chain/contract_table_objects.hpp>
 #include <fc/utility.hpp>

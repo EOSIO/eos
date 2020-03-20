@@ -103,6 +103,8 @@ add_library( eosio_chain
              whitelisted_intrinsics.cpp
              thread_utils.cpp
              platform_timer_accuracy.cpp
+             deep_mind.cpp
+
              ${PLATFORM_TIMER_IMPL}
              ${HEADERS}
              )
