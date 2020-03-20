@@ -471,7 +471,13 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
    }
 
    uint32_t trx_size = 0;
+   
    bool stop_deferred_transactions_activated = control.is_builtin_activated(builtin_protocol_feature_t::stop_deferred_transactions);
+
+   if ( stop_deferred_transactions_activated ) {
+       EOS_ASSERT( replace_existing, stop_deferred_tx, "you may only replace existing deferred transactions; not generate new ones" );
+   }
+   
    if ( auto ptr = db.find<generated_transaction_object,by_sender_id>(boost::make_tuple(receiver, sender_id)) ) {
       EOS_ASSERT( replace_existing, deferred_tx_duplicate, "deferred transaction with the same sender_id and payer already exists" );
 
@@ -537,8 +543,6 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
 }
 
 bool apply_context::cancel_deferred_transaction( const uint128_t& sender_id, account_name sender ) {
-   // bool stop_deferred_transactions_activated = control.is_builtin_activated(builtin_protocol_feature_t::stop_deferred_transactions);
-   // EOS_ASSERT( stop_deferred_transactions_activated, stop_deferred_tx, "deferred transactions are disabled" );
    auto& generated_transaction_idx = db.get_mutable_index<generated_transaction_multi_index>();
    const auto* gto = db.find<generated_transaction_object,by_sender_id>(boost::make_tuple(sender, sender_id));
    if ( gto ) {

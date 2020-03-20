@@ -404,35 +404,41 @@ BOOST_FIXTURE_TEST_CASE(action_receipt_tests, TESTER) { try {
 /*************************************************************************************
  * action_tests test case
  *************************************************************************************/
-BOOST_FIXTURE_TEST_CASE(action_tests, TESTER) { try {
-	produce_blocks(2);
-	create_account( N(testapi) );
-	create_account( N(acc1) );
-	create_account( N(acc2) );
-	create_account( N(acc3) );
-	create_account( N(acc4) );
-	produce_blocks(10);
-	set_code( N(testapi), contracts::test_api_wasm() );
-	produce_blocks(1);
+BOOST_AUTO_TEST_CASE(action_tests) { try {
+   fc::temp_directory tempdir;
+   validating_tester chain( tempdir, true );
+   const auto& pfm = chain.control->get_protocol_feature_manager();
+   auto d = pfm.get_builtin_digest( builtin_protocol_feature_t::stop_deferred_transactions );
+   chain.execute_setup_policy( setup_policy::complete, {*d} );
+
+   chain.produce_blocks(2);
+   chain.create_account( N(testapi) );
+   chain.create_account( N(acc1) );
+   chain.create_account( N(acc2) );
+   chain.create_account( N(acc3) );
+   chain.create_account( N(acc4) );
+   chain.produce_blocks(10);
+   chain.set_code( N(testapi), contracts::test_api_wasm() );
+   chain.produce_blocks(1);
 
    // test assert_true
-	CALL_TEST_FUNCTION( *this, "test_action", "assert_true", {});
+   CALL_TEST_FUNCTION( chain, "test_action", "assert_true", {});
 
    //test assert_false
-   BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( *this, "test_action", "assert_false", {} ),
+   BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( chain, "test_action", "assert_false", {} ),
                           eosio_assert_message_exception, eosio_assert_message_is("test_action::assert_false") );
 
    // test read_action_normal
    dummy_action dummy13{DUMMY_ACTION_DEFAULT_A, DUMMY_ACTION_DEFAULT_B, DUMMY_ACTION_DEFAULT_C};
-   CALL_TEST_FUNCTION( *this, "test_action", "read_action_normal", fc::raw::pack(dummy13));
+   CALL_TEST_FUNCTION( chain, "test_action", "read_action_normal", fc::raw::pack(dummy13));
 
    // test read_action_to_0
    std::vector<char> raw_bytes((1<<16));
-   CALL_TEST_FUNCTION( *this, "test_action", "read_action_to_0", raw_bytes );
+   CALL_TEST_FUNCTION( chain, "test_action", "read_action_to_0", raw_bytes );
 
    // test read_action_to_0
    raw_bytes.resize((1<<16)+1);
-   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_action", "read_action_to_0", raw_bytes), eosio::chain::wasm_execution_error,
+   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( chain, "test_action", "read_action_to_0", raw_bytes), eosio::chain::wasm_execution_error,
          [](const eosio::chain::wasm_execution_error& e) {
             return expect_assert_message(e, "access violation");
          }
@@ -440,11 +446,11 @@ BOOST_FIXTURE_TEST_CASE(action_tests, TESTER) { try {
 
    // test read_action_to_64k
    raw_bytes.resize(1);
-	CALL_TEST_FUNCTION( *this, "test_action", "read_action_to_64k", raw_bytes );
+	CALL_TEST_FUNCTION( chain, "test_action", "read_action_to_64k", raw_bytes );
 
    // test read_action_to_64k
    raw_bytes.resize(3);
-	BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_action", "read_action_to_64k", raw_bytes ), eosio::chain::wasm_execution_error,
+	BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( chain, "test_action", "read_action_to_64k", raw_bytes ), eosio::chain::wasm_execution_error,
          [](const eosio::chain::wasm_execution_error& e) {
             return expect_assert_message(e, "access violation");
          }
@@ -452,7 +458,7 @@ BOOST_FIXTURE_TEST_CASE(action_tests, TESTER) { try {
 
    // test require_notice
    auto scope = std::vector<account_name>{N(testapi)};
-   auto test_require_notice = [this](auto& test, std::vector<char>& data, std::vector<account_name>& scope){
+   auto test_require_notice = [&chain](auto& test, std::vector<char>& data, std::vector<account_name>& scope){
       signed_transaction trx;
       auto tm = test_api_action<TEST_METHOD("test_action", "require_notice")>{};
 
@@ -461,20 +467,20 @@ BOOST_FIXTURE_TEST_CASE(action_tests, TESTER) { try {
       std::copy(data.begin(), data.end(), std::back_inserter(dest));
       trx.actions.push_back(act);
 
-      test.set_transaction_headers(trx);
-      trx.sign(test.get_private_key(N(inita), "active"), control->get_chain_id());
-      auto res = test.push_transaction(trx);
+      chain.set_transaction_headers(trx);
+      trx.sign(chain.get_private_key(N(inita), "active"), chain.control->get_chain_id());
+      auto res = chain.push_transaction(trx);
       BOOST_CHECK_EQUAL(res->receipt->status, transaction_receipt::executed);
    };
 
-   BOOST_CHECK_EXCEPTION(test_require_notice(*this, raw_bytes, scope), unsatisfied_authorization,
+   BOOST_CHECK_EXCEPTION(test_require_notice(chain, raw_bytes, scope), unsatisfied_authorization,
          [](const unsatisfied_authorization& e) {
             return expect_assert_message(e, "transaction declares authority");
          }
       );
 
    // test require_auth
-   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_action", "require_auth", {}), missing_auth_exception,
+   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( chain, "test_action", "require_auth", {}), missing_auth_exception,
          [](const missing_auth_exception& e) {
             return expect_assert_message(e, "missing authority of");
          }
@@ -482,7 +488,7 @@ BOOST_FIXTURE_TEST_CASE(action_tests, TESTER) { try {
 
    // test require_auth
    auto a3only = std::vector<permission_level>{{N(acc3), config::active_name}};
-   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_action", "require_auth", fc::raw::pack(a3only)), missing_auth_exception,
+   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( chain, "test_action", "require_auth", fc::raw::pack(a3only)), missing_auth_exception,
          [](const missing_auth_exception& e) {
             return expect_assert_message(e, "missing authority of");
          }
@@ -490,7 +496,7 @@ BOOST_FIXTURE_TEST_CASE(action_tests, TESTER) { try {
 
    // test require_auth
    auto a4only = std::vector<permission_level>{{N(acc4), config::active_name}};
-   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_action", "require_auth", fc::raw::pack(a4only)), missing_auth_exception,
+   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( chain, "test_action", "require_auth", fc::raw::pack(a4only)), missing_auth_exception,
          [](const missing_auth_exception& e) {
             return expect_assert_message(e, "missing authority of");
          }
@@ -514,46 +520,46 @@ BOOST_FIXTURE_TEST_CASE(action_tests, TESTER) { try {
       act.authorization = {{N(testapi), config::active_name}, {N(acc3), config::active_name}, {N(acc4), config::active_name}};
       trx.actions.push_back(act);
 
-      set_transaction_headers(trx);
-      trx.sign(get_private_key(N(testapi), "active"), control->get_chain_id());
-      trx.sign(get_private_key(N(acc3), "active"), control->get_chain_id());
-      trx.sign(get_private_key(N(acc4), "active"), control->get_chain_id());
-      auto res = push_transaction(trx);
+      chain.set_transaction_headers(trx);
+      trx.sign(chain.get_private_key(N(testapi), "active"), chain.control->get_chain_id());
+      trx.sign(chain.get_private_key(N(acc3), "active"), chain.control->get_chain_id());
+      trx.sign(chain.get_private_key(N(acc4), "active"), chain.control->get_chain_id());
+      auto res = chain.push_transaction(trx);
       BOOST_CHECK_EQUAL(res->receipt->status, transaction_receipt::executed);
    }
 
-   uint64_t now = static_cast<uint64_t>( control->head_block_time().time_since_epoch().count() );
+   uint64_t now = static_cast<uint64_t>( chain.control->head_block_time().time_since_epoch().count() );
    now += config::block_interval_us;
-   CALL_TEST_FUNCTION( *this, "test_action", "test_current_time", fc::raw::pack(now));
+   CALL_TEST_FUNCTION( chain, "test_action", "test_current_time", fc::raw::pack(now));
 
    // test current_time
-   produce_block();
-   BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( *this, "test_action", "test_current_time", fc::raw::pack(now) ),
+   chain.produce_block();
+   BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( chain, "test_action", "test_current_time", fc::raw::pack(now) ),
                           eosio_assert_message_exception, eosio_assert_message_is("tmp == current_time()")     );
 
    // test test_current_receiver
-   CALL_TEST_FUNCTION( *this, "test_action", "test_current_receiver", fc::raw::pack(N(testapi)));
+   CALL_TEST_FUNCTION( chain, "test_action", "test_current_receiver", fc::raw::pack(N(testapi)));
 
    // test send_action_sender
-   CALL_TEST_FUNCTION( *this, "test_transaction", "send_action_sender", fc::raw::pack(N(testapi)));
+   CALL_TEST_FUNCTION( chain, "test_transaction", "send_action_sender", fc::raw::pack(N(testapi)));
 
-   produce_block();
+   chain.produce_block();
 
    // test_publication_time
-   uint64_t pub_time = static_cast<uint64_t>( control->head_block_time().time_since_epoch().count() );
+   uint64_t pub_time = static_cast<uint64_t>( chain.control->head_block_time().time_since_epoch().count() );
    pub_time += config::block_interval_us;
-   CALL_TEST_FUNCTION( *this, "test_action", "test_publication_time", fc::raw::pack(pub_time) );
+   CALL_TEST_FUNCTION( chain, "test_action", "test_publication_time", fc::raw::pack(pub_time) );
 
    // test test_abort
-   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_action", "test_abort", {} ), abort_called,
+   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( chain, "test_action", "test_abort", {} ), abort_called,
          [](const fc::exception& e) {
             return expect_assert_message(e, "abort() called");
          }
       );
 
    dummy_action da = { DUMMY_ACTION_DEFAULT_A, DUMMY_ACTION_DEFAULT_B, DUMMY_ACTION_DEFAULT_C };
-   CallAction(*this, da);
-   BOOST_REQUIRE_EQUAL( validate(), true );
+   CallAction(chain, da);
+   BOOST_REQUIRE_EQUAL( chain.validate(), true );
 } FC_LOG_AND_RETHROW() }
 
 // test require_recipient loop (doesn't cause infinite loop)

@@ -1240,7 +1240,9 @@ struct controller_impl {
       trx->accepted = true;
 
       transaction_trace_ptr trace;
+
       bool stop_deferred_transactions_activated = self.is_builtin_activated(builtin_protocol_feature_t::stop_deferred_transactions);
+
       if( gtrx.expiration < self.pending_block_time() || stop_deferred_transactions_activated ) {
          trace = std::make_shared<transaction_trace>();
          trace->id = gtrx.trx_id;
@@ -1256,9 +1258,9 @@ struct controller_impl {
          return trace;
       }
 
-      if ( stop_deferred_transactions_activated ) {
-         return trace;
-      }
+      // if ( stop_deferred_transactions_activated ) {
+      //    return trace;
+      // }
       
       auto reset_in_trx_requiring_checks = fc::make_scoped_exit([old_value=in_trx_requiring_checks,this](){
          in_trx_requiring_checks = old_value;
@@ -1458,6 +1460,11 @@ struct controller_impl {
             }
 
             trx_context.delay = fc::seconds(trn.delay_sec);
+
+            if ( trx_context.delay.count() > 0 ) {
+               bool stop_deferred_transactions_activated = self.is_builtin_activated(builtin_protocol_feature_t::stop_deferred_transactions);
+               EOS_ASSERT( !stop_deferred_transactions_activated, stop_deferred_tx, "delay seconds must be 0" );
+            }
 
             if( check_auth ) {
                authorization.check_authorization(
