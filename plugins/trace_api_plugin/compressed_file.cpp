@@ -205,7 +205,7 @@ bool compressed_file::process( const fc::path& input_path, const fc::path& outpu
    }
 
    // subtract 1 to make sure that the truncated division will only create a seek point if there is at least one byte
-   // in the next stride.  So, a file size of N and a stride <= N results in 0 seek points.  N + 1 will have a seek
+   // in the next stride.  So, a file size of N and a stride >= N results in 0 seek points.  N + 1 will have a seek
    // point for the last byte as will XN + 1 which will create X seek points (the last of which is for the last byte)
    // of the file
    const auto seek_point_count = (input_size - 1) / seek_point_stride;
