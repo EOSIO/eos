@@ -69,6 +69,16 @@ namespace {
          "b000000000000000000000000000000000000000000000000000000000000002"_h, 7, 0
       } };
       const metadata_log_entry le2 { lib_entry_v0 { 5 } };
+
+      bool create_non_empty_trace_slice( slice_directory& sd, uint32_t slice_number, fc::cfile& file) {
+         const uint8_t bad_which = 0x7F;
+         if (!sd.find_or_create_trace_slice(slice_number, open_state::write, file)) {
+            file.write(reinterpret_cast<const char*>(&bad_which), sizeof(uint8_t));
+            file.close();
+            return sd.find_or_create_trace_slice(slice_number, open_state::read, file);
+         }
+         return false;
+      }
    };
 
    struct test_store_provider : public store_provider {
@@ -526,7 +536,7 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       for (int i = 0; i < 7 ; i++) {
          BOOST_REQUIRE(!sd.find_or_create_index_slice(i, open_state::read, file));
          auto index_name = file.get_file_path().filename();
-         BOOST_REQUIRE(!sd.find_or_create_trace_slice(i, open_state::read, file));
+         BOOST_REQUIRE(create_non_empty_trace_slice(sd, i, file));
          auto trace_name = file.get_file_path().filename();
          auto compressed_trace_name = trace_name;
          compressed_trace_name.replace_extension(".clog");
@@ -581,7 +591,7 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       for (int i = 0; i < 7 ; i++) {
          BOOST_REQUIRE(!sd.find_or_create_index_slice(i, open_state::read, file));
          auto index_name = file.get_file_path().filename();
-         BOOST_REQUIRE(!sd.find_or_create_trace_slice(i, open_state::read, file));
+         BOOST_REQUIRE(create_non_empty_trace_slice(sd, i, file));
          auto trace_name = file.get_file_path().filename();
          auto compressed_trace_name = trace_name;
          compressed_trace_name.replace_extension(".clog");
