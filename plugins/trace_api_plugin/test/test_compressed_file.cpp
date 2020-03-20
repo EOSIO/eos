@@ -112,7 +112,7 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(random_access_test, T, test_types, temp_file_fi
    auto uncompressed_filename = create_temp_file(data.data(), data.size() * sizeof(T));
    auto compressed_filename = create_temp_file(nullptr, 0);
 
-   BOOST_TEST(compressed_file::process(uncompressed_filename, compressed_filename, 32));
+   BOOST_TEST(compressed_file::process(uncompressed_filename, compressed_filename, 512));
 
    // test that you can read all of the offsets from the compressed form by opening and seeking to them
    for (int i = 0; i < data.size(); i++) {
@@ -139,7 +139,7 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(sequential_access, T, test_types, temp_file_fix
    auto uncompressed_filename = create_temp_file(data.data(), data.size() * sizeof(T));
    auto compressed_filename = create_temp_file(nullptr, 0);
 
-   BOOST_TEST(compressed_file::process(uncompressed_filename, compressed_filename, 32));
+   BOOST_TEST(compressed_file::process(uncompressed_filename, compressed_filename, 512));
 
    // test that you can read all of the offsets from the compressed form sequentially
    auto compf = compressed_file(compressed_filename);
@@ -162,7 +162,7 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(blob_access, T, test_types, temp_file_fixture) 
    auto uncompressed_filename = create_temp_file(data.data(), data.size() * sizeof(T));
    auto compressed_filename = create_temp_file(nullptr, 0);
 
-   BOOST_TEST(compressed_file::process(uncompressed_filename, compressed_filename, 32));
+   BOOST_TEST(compressed_file::process(uncompressed_filename, compressed_filename, 512));
 
    // test that you can read all of the offsets from the compressed form through the end of the file
    for (int i = 0; i < data.size(); i++) {
@@ -175,5 +175,42 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(blob_access, T, test_types, temp_file_fixture) 
       BOOST_REQUIRE_EQUAL_COLLECTIONS(data.begin() + i, data.end(), actual_data.begin(), actual_data.end() - i);
    }
 }
+
+BOOST_FIXTURE_TEST_CASE_TEMPLATE(blob_access_no_seek_points, T, test_types, temp_file_fixture) {
+   // generate a large dataset where ever 8 bytes is the offset to that 8 bytes of data
+   auto data = std::vector<T>(32);
+   std::generate(data.begin(), data.end(), []() {
+      return make_random<T>();
+   });
+
+   auto uncompressed_size = data.size() * sizeof(T);
+   auto uncompressed_filename = create_temp_file(data.data(), uncompressed_size);
+   auto compressed_filename = create_temp_file(nullptr, 0);
+
+   // set a stride of the whole file which should result in no seek points
+   BOOST_TEST(compressed_file::process(uncompressed_filename, compressed_filename, uncompressed_size));
+
+   // verify that no seek points were created
+   fc::cfile compressed;
+   compressed.set_file_path(compressed_filename);
+   compressed.open("r");
+   compressed.seek(fc::file_size(compressed_filename) - 2);
+   const uint16_t expected_seek_point_count = 0;
+   uint16_t actual_seek_point_count = std::numeric_limits<uint16_t>::max();
+   compressed.read(reinterpret_cast<char*>(&actual_seek_point_count), 2);
+   BOOST_REQUIRE_EQUAL(expected_seek_point_count, actual_seek_point_count);
+
+   // test that you can read all of the offsets from the compressed form through the end of the file
+   for (int i = 0; i < data.size(); i++) {
+      auto actual_data = std::vector<T>(32);
+      auto compf = compressed_file(compressed_filename);
+      compf.open();
+      compf.seek(i * sizeof(T));
+      compf.read(reinterpret_cast<char*>(actual_data.data()), (actual_data.size() - i) * sizeof(T));
+      compf.close();
+      BOOST_REQUIRE_EQUAL_COLLECTIONS(data.begin() + i, data.end(), actual_data.begin(), actual_data.end() - i);
+   }
+}
+
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -101,7 +101,7 @@ namespace eosio::trace_api {
 
       enum class open_state { read /*read from front to back*/, write /*write to end of file*/ };
       slice_directory(const boost::filesystem::path& slice_dir, uint32_t width, std::optional<uint32_t> minimum_irreversible_history_blocks,
-                      std::optional<uint32_t> minimum_uncompressed_irreversible_history_blocks, uint32_t compression_seek_points);
+                      std::optional<uint32_t> minimum_uncompressed_irreversible_history_blocks, size_t compression_seek_point_stride);
 
       /**
        * Return the slice number that would include the passed in block_height
@@ -227,7 +227,7 @@ namespace eosio::trace_api {
       std::optional<uint32_t> _last_cleaned_up_slice;
       const std::optional<uint32_t> _minimum_uncompressed_irreversible_history_blocks;
       std::optional<uint32_t> _last_compressed_slice;
-      const uint32_t _compression_seek_points;
+      const size_t _compression_seek_point_stride;
 
       std::atomic<uint32_t> _best_known_lib{0};
       std::mutex _maintenance_mtx;
@@ -244,7 +244,7 @@ namespace eosio::trace_api {
       using open_state = slice_directory::open_state;
 
       store_provider(const boost::filesystem::path& slice_dir, uint32_t stride_width, std::optional<uint32_t> minimum_irreversible_history_blocks,
-            std::optional<uint32_t> minimum_uncompressed_irreversible_history_blocks, uint32_t compression_seek_points);
+            std::optional<uint32_t> minimum_uncompressed_irreversible_history_blocks, size_t compression_seek_point_stride);
 
       void append(const block_trace_v0& bt);
       void append_lib(uint32_t lib);

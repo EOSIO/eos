@@ -30,8 +30,8 @@ namespace {
 
 namespace eosio::trace_api {
    namespace bfs = boost::filesystem;
-   store_provider::store_provider(const bfs::path& slice_dir, uint32_t stride_width, std::optional<uint32_t> minimum_irreversible_history_blocks, std::optional<uint32_t> minimum_uncompressed_irreversible_history_blocks, uint32_t compression_seek_points)
-   : _slice_directory(slice_dir, stride_width, minimum_irreversible_history_blocks, minimum_uncompressed_irreversible_history_blocks, compression_seek_points) {
+   store_provider::store_provider(const bfs::path& slice_dir, uint32_t stride_width, std::optional<uint32_t> minimum_irreversible_history_blocks, std::optional<uint32_t> minimum_uncompressed_irreversible_history_blocks, size_t compression_seek_point_stride)
+   : _slice_directory(slice_dir, stride_width, minimum_irreversible_history_blocks, minimum_uncompressed_irreversible_history_blocks, compression_seek_point_stride) {
    }
 
    void store_provider::append(const block_trace_v0& bt) {
@@ -84,12 +84,12 @@ namespace eosio::trace_api {
       return std::make_tuple( bt, irreversible );
    }
 
-   slice_directory::slice_directory(const bfs::path& slice_dir, uint32_t width, std::optional<uint32_t> minimum_irreversible_history_blocks, std::optional<uint32_t> minimum_uncompressed_irreversible_history_blocks, uint32_t compression_seek_points)
+   slice_directory::slice_directory(const bfs::path& slice_dir, uint32_t width, std::optional<uint32_t> minimum_irreversible_history_blocks, std::optional<uint32_t> minimum_uncompressed_irreversible_history_blocks, size_t compression_seek_point_stride)
    : _slice_dir(slice_dir)
    , _width(width)
    , _minimum_irreversible_history_blocks(minimum_irreversible_history_blocks)
    , _minimum_uncompressed_irreversible_history_blocks(minimum_uncompressed_irreversible_history_blocks)
-   , _compression_seek_points(compression_seek_points)
+   , _compression_seek_point_stride(compression_seek_point_stride)
    , _best_known_lib(0) {
       if (!exists(_slice_dir)) {
          bfs::create_directories(slice_dir);
@@ -307,7 +307,7 @@ namespace eosio::trace_api {
                compressed_path.replace_extension(_compressed_trace_ext);
 
                log(std::string("Compressing: ") + trace.get_file_path().generic_string());
-               compressed_file::process(trace.get_file_path(), compressed_path.generic_string(), _compression_seek_points);
+               compressed_file::process(trace.get_file_path(), compressed_path.generic_string(), _compression_seek_point_stride);
 
                // after compression is complete, delete the old uncompressed file
                log(std::string("Removing: ") + trace.get_file_path().generic_string());
