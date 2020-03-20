@@ -1,2 +1,6 @@
-add_executable( compress_trace compress_trace.cpp )
-target_link_libraries( compress_trace trace_api_plugin )
+add_executable( trace_api_util
+        compress_cmd.cpp
+        trace_api_util.cpp
+)
+target_link_libraries( trace_api_util trace_api_plugin )
+target_include_directories( trace_api_util PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" )
