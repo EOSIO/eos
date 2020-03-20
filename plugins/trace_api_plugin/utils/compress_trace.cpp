@@ -75,9 +75,9 @@ int main(int argc, char** argv) {
    bpo::options_description vis_desc("Options");
    auto opts = vis_desc.add_options();
    opts("help,h", "show usage help message");
-   opts("seek-points,s", bpo::value<uint32_t>()->default_value(512),
-        "the number of seek points to create when compressing the trace.  "
-        "More seek points will degrade compression efficiency but increase read efficiency");
+   opts("seek-point-stride,s", bpo::value<uint32_t>()->default_value(512),
+        "the number of bytes between seek points in a compressed trace.  "
+        "A smaller stride may degrade compression efficiency but increase read efficiency");
 
    bpo::options_description hidden_desc("hidden");
    auto hidden_opts = hidden_desc.add_options();
@@ -98,9 +98,9 @@ int main(int argc, char** argv) {
       if (vmap.count("help") == 0) {
          auto input_path = validate_input_path(vmap);
          auto output_path = validate_output_path(vmap, input_path);
-         auto seek_points = vmap.at("seek-points").as<uint32_t>();
+         auto seek_point_stride = vmap.at("seek-point-stride").as<uint32_t>();
 
-         if (!compressed_file::process(input_path, output_path, seek_points)) {
+         if (!compressed_file::process(input_path, output_path, seek_point_stride)) {
             throw std::runtime_error("Unexpected compression failure");
          }
 

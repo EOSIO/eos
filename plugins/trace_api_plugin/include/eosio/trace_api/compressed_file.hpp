@@ -112,12 +112,12 @@ namespace eosio::trace_api {
        *
        * @param input_path - the path to the input file
        * @param output_path - the path to write the output file to (overwriting an existing file at that path)
-       * @param seek_point_count - the number of seek points to write
+       * @param seek_point_stride - the number of uncompressed bytes between seek points
        * @return true if successful, false if there was no error but the process could not complete
        * @throws std::ios_base::failure if the input_path does not exist or the output_path cannot be written to
        * @throws compressed_file_error if there is an issue during compression of the data stream
        */
-      static bool process( const fc::path& input_path, const fc::path& output_path, uint16_t seek_point_count );
+      static bool process( const fc::path& input_path, const fc::path& output_path, size_t seek_point_stride );
 
    private:
       fc::path file_path;

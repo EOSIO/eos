@@ -78,20 +78,33 @@ struct compressed_file_impl {
                throw compressed_file_error("Error decompressing: " + std::string(strm.msg));
             }
 
-            auto bytes_decompressed = read_buffer.size() - strm.avail_out;
-            auto to_copy = std::min(bytes_decompressed, n - written);
-            std::memcpy(d + written, read_buffer.data(), to_copy);
-            written += to_copy;
 
-            if (bytes_decompressed > to_copy) {
-               // move remaining to the front of the buffer
-               std::memmove(read_buffer.data(), read_buffer.data() + to_copy, bytes_decompressed - to_copy);
-               remaining_read_buffer = bytes_decompressed - to_copy;
+
+            auto bytes_decompressed = read_buffer.size() - strm.avail_out;
+            if (bytes_decompressed > 0) {
+               auto to_copy = std::min(bytes_decompressed, n - written);
+               std::memcpy(d + written, read_buffer.data(), to_copy);
+               written += to_copy;
+
+               if (bytes_decompressed > to_copy) {
+                  // move remaining to the front of the buffer
+                  std::memmove(read_buffer.data(), read_buffer.data() + to_copy, bytes_decompressed - to_copy);
+                  remaining_read_buffer = bytes_decompressed - to_copy;
+               }
             }
 
             if (written < n && ret == Z_STREAM_END) {
                throw std::ios_base::failure("Attempting to read past the end of a compressed file");
             }
+
+            if (ret == Z_BUF_ERROR) {
+               // need more input
+               if (strm.avail_in != 0) {
+                  throw compressed_file_error("Error decompressing cannot continue processing input");
+               }
+               break;
+            }
+
          } while (strm.avail_out == 0 && written < n);
       }
    }
@@ -102,44 +115,49 @@ struct compressed_file_impl {
          initialized = false;
       }
 
+      long remaining = loc;
+
       // read in the seek point map
       file.seek_end(-expected_seek_point_count_size);
       seek_point_count_type seek_point_count = 0;
       file.read(reinterpret_cast<char*>(&seek_point_count), sizeof(seek_point_count));
 
-      int seek_map_size = sizeof(seek_point_entry) * seek_point_count;
-      file.seek_end(-expected_seek_point_count_size - seek_map_size);
+      if (seek_point_count > 0) {
+         int seek_map_size = sizeof(seek_point_entry) * seek_point_count;
+         file.seek_end(-expected_seek_point_count_size - seek_map_size);
 
-      std::vector<seek_point_entry> seek_point_map(seek_point_count);
-      file.read(reinterpret_cast<char*>(seek_point_map.data()), seek_point_map.size() * sizeof(seek_point_entry));
+         std::vector<seek_point_entry> seek_point_map(seek_point_count);
+         file.read(reinterpret_cast<char*>(seek_point_map.data()), seek_point_map.size() * sizeof(seek_point_entry));
 
-      // seek to the neareast seek point
-      auto iter = std::lower_bound(seek_point_map.begin(), seek_point_map.end(), (uint64_t)loc, []( const auto& lhs, const auto& rhs ){
-         return std::get<0>(lhs) < rhs;
-      });
+         // seek to the neareast seek point
+         auto iter = std::lower_bound(seek_point_map.begin(), seek_point_map.end(), (uint64_t)loc, []( const auto& lhs, const auto& rhs ){
+            return std::get<0>(lhs) < rhs;
+         });
 
-      // special case when there is a seek point that is exact
-      if ( iter != seek_point_map.end() && std::get<0>(*iter) == loc ) {
-         file.seek(std::get<1>(*iter));
-         return;
-      }
+         // special case when there is a seek point that is exact
+         if ( iter != seek_point_map.end() && std::get<0>(*iter) == loc ) {
+            file.seek(std::get<1>(*iter));
+            return;
+         }
 
-      long remaining = loc;
-
-      // special case when this is before the first seek point
-      if ( iter == seek_point_map.begin() ) {
-         file.seek(0);
+         // special case when this is before the first seek point
+         if ( iter == seek_point_map.begin() ) {
+            file.seek(0);
+         } else {
+            // if lower bound wasn't exact iter will be one past the seek point we need
+            const auto& seek_pt = *(iter - 1);
+            file.seek(std::get<1>(seek_pt));
+            remaining -= std::get<0>(seek_pt);
+         }
       } else {
-         // if lower bound wasn't exact iter will be one past the seek point we need
-         const auto& seek_pt = *(iter - 1);
-         file.seek(std::get<1>(seek_pt));
-         remaining -= std::get<0>(seek_pt);
+         file.seek(0);
       }
-
 
       // read up to the expected offset
-      auto pre_read_buffer = std::vector<char>(remaining);
-      read(pre_read_buffer.data(), pre_read_buffer.size(), file);
+      if (remaining > 0) {
+         auto pre_read_buffer = std::vector<char>(remaining);
+         read(pre_read_buffer.data(), pre_read_buffer.size(), file);
+      }
    }
 
    z_stream strm;
@@ -176,14 +194,22 @@ compressed_file::compressed_file( compressed_file&& ) = default;
 compressed_file& compressed_file::operator= ( compressed_file&& ) = default;
 
 
-bool compressed_file::process( const fc::path& input_path, const fc::path& output_path, seek_point_count_type seek_point_count ) {
+bool compressed_file::process( const fc::path& input_path, const fc::path& output_path, size_t seek_point_stride  ) {
    if (!fc::exists(input_path)) {
       throw std::ios_base::failure(std::string("Attempting to create compressed_file from file that does not exist: ") + input_path.generic_string());
    }
-   std::vector<seek_point_entry> seek_point_map(seek_point_count);
 
    const size_t input_size = fc::file_size(input_path);
-   const auto ideal_seek_stride = input_size / seek_point_map.size();
+   if (input_size == 0) {
+      throw std::ios_base::failure(std::string("Attempting to create compressed_file from file that is empty: ") + input_path.generic_string());
+   }
+
+   // subtract 1 to make sure that the truncated division will only create a seek point if there is at least one byte
+   // in the next stride.  So, a file size of N and a stride <= N results in 0 seek points.  N + 1 will have a seek
+   // point for the last byte as will XN + 1 which will create X seek points (the last of which is for the last byte)
+   // of the file
+   const auto seek_point_count = (input_size - 1) / seek_point_stride;
+   std::vector<seek_point_entry> seek_point_map(seek_point_count);
 
    fc::cfile input_file;
    input_file.set_file_path(input_path);
@@ -206,7 +232,7 @@ bool compressed_file::process( const fc::path& input_path, const fc::path& outpu
    auto input_buffer = std::vector<uint8_t>(buffer_size);
    auto output_buffer = std::vector<uint8_t>(buffer_size);
 
-   auto bytes_remaining_before_sync = ideal_seek_stride;
+   auto bytes_remaining_before_sync = seek_point_stride;
    int next_sync_point = 0;
 
    // process a single chunk of input completely,
@@ -264,7 +290,7 @@ bool compressed_file::process( const fc::path& input_path, const fc::path& outpu
             // if we are out of sync points, set this value one past the end (disabling it)
             bytes_remaining_before_sync = input_size - read_offset + 1;
          } else {
-            bytes_remaining_before_sync = ideal_seek_stride;
+            bytes_remaining_before_sync = seek_point_stride;
          }
       } else {
          bytes_remaining_before_sync -= read_size;
@@ -275,7 +301,9 @@ bool compressed_file::process( const fc::path& input_path, const fc::path& outpu
    input_file.close();
 
    // write out the seek point table
-   output_file.write(reinterpret_cast<const char*>(seek_point_map.data()), seek_point_map.size() * sizeof(seek_point_entry));
+   if (seek_point_map.size() > 0) {
+      output_file.write(reinterpret_cast<const char*>(seek_point_map.data()), seek_point_map.size() * sizeof(seek_point_entry));
+   }
 
    // write out the seek point count
    output_file.write(reinterpret_cast<const char*>(&seek_point_count), sizeof(seek_point_count_type));

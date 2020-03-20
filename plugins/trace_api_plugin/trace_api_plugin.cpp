@@ -137,7 +137,7 @@ struct trace_api_common_impl {
          slice_stride,
          minimum_irreversible_history_blocks,
          minimum_uncompressed_irreversible_history_blocks,
-         compression_seek_points
+         compression_seek_point_stride
       );
    }
 
@@ -159,7 +159,7 @@ struct trace_api_common_impl {
    std::optional<uint32_t> minimum_uncompressed_irreversible_history_blocks;
 
    static constexpr int32_t manual_slice_file_value = -1;
-   static constexpr uint32_t compression_seek_points = 512;
+   static constexpr uint32_t compression_seek_point_stride = 6 * 1024 * 1024; // 6 MiB strides for clog seek points
 
    std::shared_ptr<store_provider> store;
 };
