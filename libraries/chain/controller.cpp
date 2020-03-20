@@ -3011,7 +3011,7 @@ optional<producer_authority_schedule> controller::proposed_producers()const {
    return producer_authority_schedule::from_shared(gpo.proposed_schedule);
 }
 
-bool controller::light_validation_allowed(bool replay_opts_disabled_by_policy) const {
+bool controller::light_validation_allowed() const {
    if (!my->pending || my->in_trx_requiring_checks) {
       return false;
    }
@@ -3019,7 +3019,8 @@ bool controller::light_validation_allowed(bool replay_opts_disabled_by_policy) c
    const auto pb_status = my->pending->_block_status;
 
    // in a pending irreversible or previously validated block and we have forcing all checks
-   const bool consider_skipping_on_replay = (pb_status == block_status::irreversible || pb_status == block_status::validated) && !replay_opts_disabled_by_policy;
+   const bool consider_skipping_on_replay =
+         (pb_status == block_status::irreversible || pb_status == block_status::validated) && !my->conf.force_all_checks;
 
    // OR in a signed block and in light validation mode
    const bool consider_skipping_on_validate = (pb_status == block_status::complete &&
@@ -3030,7 +3031,11 @@ bool controller::light_validation_allowed(bool replay_opts_disabled_by_policy) c
 
 
 bool controller::skip_auth_check() const {
-   return light_validation_allowed(my->conf.force_all_checks);
+   return light_validation_allowed();
+}
+
+bool controller::skip_trx_checks() const {
+   return light_validation_allowed();
 }
 
 bool controller::skip_db_sessions( block_status bs ) const {
@@ -3040,16 +3045,12 @@ bool controller::skip_db_sessions( block_status bs ) const {
       && !my->in_trx_requiring_checks;
 }
 
-bool controller::skip_db_sessions( ) const {
+bool controller::skip_db_sessions() const {
    if (my->pending) {
       return skip_db_sessions(my->pending->_block_status);
    } else {
       return false;
    }
-}
-
-bool controller::skip_trx_checks() const {
-   return light_validation_allowed(my->conf.disable_replay_opts);
 }
 
 bool controller::is_trusted_producer( const account_name& producer) const {
