@@ -18,6 +18,29 @@ namespace eosio::trace_api {
     * More seek points can lower the average amount of data that must be read/decompressed/discarded in order
     * to seek to any given offset.  However, each seek point has some effect on the file size as it represents a
     * flush of the compressor which can degrade compression performance.
+    *
+    *  A compressed file looks like this on the filesystem:
+    * /====================\ file offset 0
+    * |                    |
+    * |  Compressed Data   |
+    * |  with seek points  |
+    * |                    |
+    * |--------------------|  file offset END - 2 - (16 * seek point count)
+    * |                    |
+    * |  mapping of        |
+    * |    orig offset to  |
+    * |    seek pt offset  |
+    * |                    |
+    * |--------------------|  file offset END - 2
+    * |  seek pt count     |
+    * \====================/  file offset END
+    *
+    * Where a "seek point" is a point in the compressed data stream where
+    * the decompressor can start reading from having not read any of the prior data
+    * seek points should be traversable by a decompressor so that reads which span
+    * seek points do not have to be aware of them
+    *
+    * In zlib this is created by doing a complete flush of the stream
     */
    class compressed_file {
    public:

@@ -9,6 +9,8 @@ namespace {
    using seek_point_count_type = uint16_t;
    constexpr size_t expected_seek_point_count_size = 2;
 
+   constexpr int raw_zlib_window_bits = -15;
+
    // These are hard-coded expectations in the written file format
    //
    static_assert(sizeof(seek_point_entry) == expected_seek_point_entry_size, "unexpected size for seek point");
@@ -32,7 +34,7 @@ struct compressed_file_impl {
    void read( char* d, size_t n, fc::cfile& file )
    {
       if (!initialized) {
-         if (Z_OK != inflateInit2(&strm, -15)) {
+         if (Z_OK != inflateInit2(&strm, raw_zlib_window_bits)) {
             throw std::runtime_error("failed to initialize decompression");
          }
 
@@ -128,7 +130,7 @@ struct compressed_file_impl {
       if ( iter == seek_point_map.begin() ) {
          file.seek(0);
       } else {
-         // if lower bound wasn't exact it will be one past the seek point we need
+         // if lower bound wasn't exact iter will be one past the seek point we need
          const auto& seek_pt = *(iter - 1);
          file.seek(std::get<1>(seek_pt));
          remaining -= std::get<0>(seek_pt);
@@ -174,44 +176,14 @@ compressed_file::compressed_file( compressed_file&& ) = default;
 compressed_file& compressed_file::operator= ( compressed_file&& ) = default;
 
 
-/**
- * Create a compressed file that looks like this:
- *
- * /====================\ file offset 0
- * |                    |
- * |  Compressed Data   |
- * |  with seek points  |
- * |                    |
- * |--------------------|  file offset END - 2 - (16 * seek point count)
- * |                    |
- * |  mapping of        |
- * |    orig offset to  |
- * |    seek pt offset  |
- * |                    |
- * |--------------------|  file offset END - 2
- * |  seek pt count     |
- * \====================/  file offset END
- *
- * Where a "seek point" is a point in the compressed data stream where
- * the decompressor can start reading from having not read any of the prior data
- * seek points should be traversable by a decompressor so that reads which span
- * seek points do not have to be aware of them
- *
- * In zlib this is created by doing a complete flush of the stream
- *
- * @param input_path
- * @param output_path
- * @param seek_point_count
- * @return
- */
 bool compressed_file::process( const fc::path& input_path, const fc::path& output_path, seek_point_count_type seek_point_count ) {
    if (!fc::exists(input_path)) {
       throw std::ios_base::failure(std::string("Attempting to create compressed_file from file that does not exist: ") + input_path.generic_string());
    }
    std::vector<seek_point_entry> seek_point_map(seek_point_count);
 
-   size_t input_size = fc::file_size(input_path);
-   auto ideal_seek_stride = input_size / seek_point_map.size();
+   const size_t input_size = fc::file_size(input_path);
+   const auto ideal_seek_stride = input_size / seek_point_map.size();
 
    fc::cfile input_file;
    input_file.set_file_path(input_path);
@@ -226,7 +198,7 @@ bool compressed_file::process( const fc::path& input_path, const fc::path& outpu
    strm.zfree = Z_NULL;
    strm.opaque = Z_NULL;
 
-   if (deflateInit2(&strm, Z_BEST_COMPRESSION, Z_DEFLATED, -15, 8, Z_DEFAULT_STRATEGY) != Z_OK) {
+   if (deflateInit2(&strm, Z_BEST_COMPRESSION, Z_DEFLATED, raw_zlib_window_bits, 8, Z_DEFAULT_STRATEGY) != Z_OK) {
       return false;
    }
 
@@ -237,57 +209,54 @@ bool compressed_file::process( const fc::path& input_path, const fc::path& outpu
    auto bytes_remaining_before_sync = ideal_seek_stride;
    int next_sync_point = 0;
 
-   size_t read_offset = 0;
-   while (read_offset < input_size) {
-      auto bytes_remaining = input_size - read_offset;
-      auto read_size = std::min({ buffer_size, bytes_remaining, bytes_remaining_before_sync });
-      input_file.read(reinterpret_cast<char*>(input_buffer.data()), read_size);
-
-      strm.avail_in = read_size;
+   // process a single chunk of input completely,
+   // this may sometime loop multiple times if the compressor state combined with input data creates more than a
+   // single buffer's worth of data
+   //
+   auto process_chunk = [&]( size_t input_size, int mode ) {
+      strm.avail_in = input_size;
       strm.next_in = input_buffer.data();
 
       do {
          strm.avail_out = output_buffer.size();
          strm.next_out = output_buffer.data();
-         auto ret = deflate(&strm, Z_NO_FLUSH);
-         if (ret == Z_STREAM_ERROR) {
-            throw std::runtime_error("deflate failed");
+         auto ret = deflate(&strm, mode);
+
+         const bool success = ret == Z_OK || (mode == Z_FINISH && ret == Z_STREAM_END);
+         if (!success) {
+            return ret;
          }
 
          output_file.write(reinterpret_cast<const char*>(output_buffer.data()), output_buffer.size() - strm.avail_out);
       } while (strm.avail_out == 0);
 
+      return Z_OK;
+   };
+
+   size_t read_offset = 0;
+   while (read_offset < input_size) {
+      const auto bytes_remaining = input_size - read_offset;
+      const auto read_size = std::min({ buffer_size, bytes_remaining, bytes_remaining_before_sync });
+      input_file.read(reinterpret_cast<char*>(input_buffer.data()), read_size);
+
+      auto ret = process_chunk(read_size, Z_NO_FLUSH);
+      if (ret != Z_OK) {
+         throw compressed_file_error(std::string("deflate failed: ") + std::to_string(ret));
+      }
       read_offset += read_size;
 
       if (read_size == bytes_remaining ) {
-         strm.avail_in = 0;
-         strm.next_in = input_buffer.data();
-
-         do {
-            strm.avail_out = output_buffer.size();
-            strm.next_out = output_buffer.data();
-
-            auto ret = deflate(&strm, Z_FINISH);
-            if (ret == Z_STREAM_ERROR) {
-               throw compressed_file_error("failed to finalize compressed file");
-            }
-
-            output_file.write(reinterpret_cast<const char*>(output_buffer.data()), output_buffer.size() - strm.avail_out);
-         } while (strm.avail_out == 0);
+         // finish the file out by draining remaining output
+         ret = process_chunk(0, Z_FINISH);
+         if (ret != Z_OK) {
+            throw compressed_file_error(std::string("failed to finalize file compression: ") + std::to_string(ret));
+         }
       } else if ( read_size == bytes_remaining_before_sync ) {
-         strm.avail_in = 0;
-         strm.next_in = input_buffer.data();
-
-         do {
-            strm.avail_out = output_buffer.size();
-            strm.next_out = output_buffer.data();
-
-            auto ret = deflate(&strm, Z_FULL_FLUSH);
-            if (ret == Z_STREAM_ERROR) {
-               throw compressed_file_error("failed to create sync point");
-            }
-            output_file.write(reinterpret_cast<const char*>(output_buffer.data()), output_buffer.size() - strm.avail_out);
-         } while (strm.avail_out == 0);
+         // create a sync point by flushing the compressor so a decompressor can start at this offset
+         ret = process_chunk(0, Z_FULL_FLUSH);
+         if (ret != Z_OK) {
+            throw compressed_file_error(std::string("failed to create sync point: ") + std::to_string(ret));
+         }
 
          seek_point_map.at(next_sync_point++) = {read_offset, output_file.tellp()};
 
