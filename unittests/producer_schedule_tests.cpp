@@ -246,7 +246,7 @@ BOOST_FIXTURE_TEST_CASE( producer_schedule_promotion_test, TESTER ) try {
    BOOST_REQUIRE_EQUAL( control->head_block_producer(), N(alice) );
    BOOST_REQUIRE_EQUAL( control->pending_block_producer(), N(bob) );
    BOOST_CHECK_EQUAL( control->pending_producers().version, 2u );
-   
+
    produce_blocks(12); // Bob produces his first 11 blocks
    BOOST_CHECK_EQUAL( control->active_producers().version, 1u );
    produce_blocks(12); // Bob produces his 12th block.
@@ -255,13 +255,13 @@ BOOST_FIXTURE_TEST_CASE( producer_schedule_promotion_test, TESTER ) try {
    BOOST_REQUIRE_EQUAL( control->pending_block_producer(), N(bob) );
    BOOST_CHECK_EQUAL( control->active_producers().version, 2u );
    BOOST_CHECK_EQUAL( true, compare_schedules( sch2, control->active_producers() ) );
-   
+
    produce_block(); // Alice produces the first block of her second round which has changed the active schedule.
-   
+
    // The next block will be produced according to the new schedule
    produce_block();
    BOOST_CHECK_EQUAL( control->head_block_producer(), N(carol) ); // And that next block happens to be produced by Carol.
-   
+
    BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW()
 

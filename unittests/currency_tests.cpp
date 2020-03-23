@@ -27,7 +27,6 @@ using namespace fc;
 
 class currency_tester : public TESTER {
    public:
-      using TESTER::TESTER;
       auto push_action(const account_name& signer, const action_name &name, const variant_object &data ) {
          string action_type_name = abi_ser.get_action_type(name);
 

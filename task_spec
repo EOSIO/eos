@@ -69,3 +69,22 @@ Contract Storage
 * Must remove the two intrinsics from the whitelist
 
 [ ] Use Ninja
+
+libraries/chain/include/eosio/chain/generated_transaction_object.hpp 
+Viewed
+@@ -9,7 +9,11 @@
+#include <boost/multi_index/mem_fun.hpp>
+
+#include "multi_index_includes.hpp"
+
+/////////////////////////////////
+/////////////////////////////////
+// Delete this table once proto feature is activated
+/////////////////////////////////
+/////////////////////////////////
+namespace eosio { namespace chain {
+   using boost::multi_index_container;
+   using namespace boost::multi_index;
+
+For adding more protocol features:
+https://github.com/EOSIO/eos/pull/8697/commits/03ad47d35d54bac12e0c5787dc94eb60fe376a99
