@@ -108,18 +108,18 @@ namespace eosio {
     * @brief Structure used to create JSON error responses
     */
    struct error_results {
-      uint16_t code;
+      uint16_t code{};
       string message;
 
       struct error_info {
-         int64_t code;
+         int64_t code{};
          string name;
          string what;
 
          struct error_detail {
             string message;
             string file;
-            uint64_t line_number;
+            uint64_t line_number{};
             string method;
          };
 
