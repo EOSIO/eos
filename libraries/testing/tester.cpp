@@ -214,27 +214,6 @@ namespace eosio { namespace testing {
             set_before_producer_authority_bios_contract();
             break;
          }
-         // case setup_policy::preactivate_feature_and_new_bios_without_deprecating_deferred: {
-         //    schedule_preactivate_protocol_feature();
-         //    produce_block();
-         //    set_before_producer_authority_bios_contract();
-         //    preactivate_protocol_features({control->get_protocol_feature_manager().get_builtin_digest(builtin_protocol_feature_t::only_link_to_existing_permission),
-         //                                   control->get_protocol_feature_manager().get_builtin_digest(builtin_protocol_feature_t::replace_deferred),
-         //                                   control->get_protocol_feature_manager().get_builtin_digest(builtin_protocol_feature_t::no_duplicate_deferred_id),
-         //                                   control->get_protocol_feature_manager().get_builtin_digest(builtin_protocol_feature_t::fix_linkauth_restriction),
-         //                                   control->get_protocol_feature_manager().get_builtin_digest(builtin_protocol_feature_t::disallow_empty_producer_schedule),
-         //                                   control->get_protocol_feature_manager().get_builtin_digest(builtin_protocol_feature_t::restrict_action_to_self),
-         //                                   control->get_protocol_feature_manager().get_builtin_digest(builtin_protocol_feature_t::only_bill_first_authorizer),
-         //                                   control->get_protocol_feature_manager().get_builtin_digest(builtin_protocol_feature_t::forward_setcode),
-         //                                   control->get_protocol_feature_manager().get_builtin_digest(builtin_protocol_feature_t::get_sender),
-         //                                   control->get_protocol_feature_manager().get_builtin_digest(builtin_protocol_feature_t::ram_restrictions),
-         //                                   control->get_protocol_feature_manager().get_builtin_digest(builtin_protocol_feature_t::webauthn_key),
-         //                                   control->get_protocol_feature_manager().get_builtin_digest(builtin_protocol_feature_t::wtmsig_block_signatures),
-         //                                   control->get_protocol_feature_manager().get_builtin_digest(builtin_protocol_feature_t::action_return_value)});
-         //    produce_block();
-         //    set_bios_contract();
-         //    break;
-         // }
          case setup_policy::complete: {
             schedule_preactivate_protocol_feature();
             produce_block();

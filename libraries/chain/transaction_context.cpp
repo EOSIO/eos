@@ -231,10 +231,6 @@ namespace eosio { namespace chain {
          control.validate_expiration(trx);
          control.validate_tapos(trx);
          validate_referenced_accounts( trx, enforce_whiteblacklist && control.is_producing_block() );
-         // if ( trx.delay_sec.value > 0 ) {
-         //     bool stop_deferred_transactions_activated = control.is_builtin_activated(builtin_protocol_feature_t::stop_deferred_transactions);
-         //     EOS_ASSERT( !stop_deferred_transactions_activated, stop_deferred_tx, "delay seconds must be 0" );
-         // }
       }
       init( initial_net_usage);
       if (!skip_recording)

@@ -1257,10 +1257,6 @@ struct controller_impl {
          undo_session.squash();
          return trace;
       }
-
-      // if ( stop_deferred_transactions_activated ) {
-      //    return trace;
-      // }
       
       auto reset_in_trx_requiring_checks = fc::make_scoped_exit([old_value=in_trx_requiring_checks,this](){
          in_trx_requiring_checks = old_value;

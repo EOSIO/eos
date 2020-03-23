@@ -205,11 +205,11 @@ BOOST_FIXTURE_TEST_CASE( producer_schedule_promotion_test, TESTER ) try {
    while (control->head_block_num() < 3) {
       produce_block();
    }
-   
+
    auto compare_schedules = [&]( const vector<producer_authority>& a, const producer_authority_schedule& b ) {
       return std::equal( a.begin(), a.end(), b.producers.begin(), b.producers.end() );
    };
-   
+
    auto res = set_producers( {N(alice),N(bob)} );
    vector<producer_authority> sch1 = {
                                  producer_authority{N(alice), block_signing_authority_v0{1, {{get_public_key(N(alice), "active"), 1}}}},
@@ -229,7 +229,7 @@ BOOST_FIXTURE_TEST_CASE( producer_schedule_promotion_test, TESTER ) try {
    BOOST_CHECK_EQUAL( control->active_producers().version, 1u );
    BOOST_CHECK_EQUAL( true, compare_schedules( sch1, control->active_producers() ) );
    produce_blocks(6);
-   
+
    res = set_producers( {N(alice),N(bob),N(carol)} );
    vector<producer_authority> sch2 = {
                                  producer_authority{N(alice), block_signing_authority_v0{1, {{get_public_key(N(alice), "active"),1}}}},
@@ -239,14 +239,14 @@ BOOST_FIXTURE_TEST_CASE( producer_schedule_promotion_test, TESTER ) try {
    wlog("set producer schedule to [alice,bob,carol]");
    BOOST_REQUIRE_EQUAL( true, control->proposed_producers().valid() );
    BOOST_CHECK_EQUAL( true, compare_schedules( sch2, *control->proposed_producers() ) );
-   
+
    produce_block();
    produce_blocks(23); // Alice produces the last block of her first round.
                     // Bob's first block (which advances LIB to Alice's last block) is started but not finalized.
    BOOST_REQUIRE_EQUAL( control->head_block_producer(), N(alice) );
    BOOST_REQUIRE_EQUAL( control->pending_block_producer(), N(bob) );
    // BOOST_CHECK_EQUAL( control->pending_producers().version, 2u );
-   // 
+   //
    // produce_blocks(12); // Bob produces his first 11 blocks
    // BOOST_CHECK_EQUAL( control->active_producers().version, 1u );
    // produce_blocks(12); // Bob produces his 12th block.
@@ -255,13 +255,13 @@ BOOST_FIXTURE_TEST_CASE( producer_schedule_promotion_test, TESTER ) try {
    // // BOOST_REQUIRE_EQUAL( control->pending_block_producer(), N(bob) );
    // BOOST_CHECK_EQUAL( control->active_producers().version, 2u );
    // BOOST_CHECK_EQUAL( true, compare_schedules( sch2, control->active_producers() ) );
-   // 
+   //
    // produce_block(); // Alice produces the first block of her second round which has changed the active schedule.
-   // 
+   //
    // // The next block will be produced according to the new schedule
    // produce_block();
    // // BOOST_CHECK_EQUAL( control->head_block_producer(), N(carol) ); // And that next block happens to be produced by Carol.
-   // 
+   //
    // BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW()
 

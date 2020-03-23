@@ -73,8 +73,6 @@ class currency_tester : public TESTER {
       currency_tester()
          :TESTER(fc::temp_directory{}, true), abi_ser(json::from_string(contracts::eosio_token_abi().data()).as<abi_def>(), abi_serializer_max_time)
       {
-         // fc::temp_directory tempdir;
-         // *this( tempdir, true );
          const auto& pfm = control->get_protocol_feature_manager();
          auto d = pfm.get_builtin_digest( builtin_protocol_feature_t::stop_deferred_transactions );
          execute_setup_policy( setup_policy::complete, {*d} );
@@ -404,24 +402,17 @@ BOOST_FIXTURE_TEST_CASE(test_symbol, TESTER) try {
 } FC_LOG_AND_RETHROW() /// test_symbol
 
 BOOST_FIXTURE_TEST_CASE( test_proxy, currency_tester ) try {
-   // fc::temp_directory tempdir;
-   // currency_tester chain( tempdir, true );
-   // currency_tester chain;
-   // const auto& pfm = chain.control->get_protocol_feature_manager();
-   // auto d = pfm.get_builtin_digest( builtin_protocol_feature_t::stop_deferred_transactions );
-   // chain.execute_setup_policy( setup_policy::complete, {*d} );
-   
    produce_blocks(2);
-   
+
    create_accounts( {N(alice), N(proxy)} );
    produce_block();
-   
+
    set_code(N(proxy), contracts::proxy_wasm());
    produce_blocks(1);
-   
+
    // eosio::chain::abi_serializer proxy_abi_ser(json::from_string(contracts::proxy_abi().data()).as<abi_def>(), eosio::testing::base_tester::abi_serializer_max_time);
    abi_serializer proxy_abi_ser(json::from_string(contracts::proxy_abi().data()).as<abi_def>(), abi_serializer_max_time);
-   
+
    // set up proxy owner
    {
       signed_transaction trx;
@@ -436,14 +427,14 @@ BOOST_FIXTURE_TEST_CASE( test_proxy, currency_tester ) try {
          abi_serializer_max_time
       );
       trx.actions.emplace_back(std::move(setowner_act));
-   
+
       set_transaction_headers(trx);
       trx.sign(get_private_key(N(proxy), "active"), control->get_chain_id());
       push_transaction(trx);
       produce_block();
       BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
    }
-   
+
    // for now wasm "time" is in seconds, so we have to truncate off any parts of a second that may have applied
    fc::time_point expected_delivery(fc::seconds(control->head_block_time().sec_since_epoch()) + fc::seconds(10));
    {
@@ -455,13 +446,13 @@ BOOST_FIXTURE_TEST_CASE( test_proxy, currency_tester ) try {
          ("memo", "fund Proxy")
       );
    }
-   
+
    while(control->head_block_time() < expected_delivery) {
       produce_block();
       BOOST_REQUIRE_EQUAL(get_balance( N(proxy)), asset::from_string("5.0000 CUR"));
       BOOST_REQUIRE_EQUAL(get_balance( N(alice)),   asset::from_string("0.0000 CUR"));
    }
-   
+
    produce_block();
    BOOST_REQUIRE_EQUAL(get_balance( N(proxy)), asset::from_string("0.0000 CUR"));
    BOOST_REQUIRE_EQUAL(get_balance( N(alice)),   asset::from_string("5.0000 CUR"));
@@ -469,12 +460,6 @@ BOOST_FIXTURE_TEST_CASE( test_proxy, currency_tester ) try {
 } FC_LOG_AND_RETHROW() /// test_currency
 
 BOOST_FIXTURE_TEST_CASE( test_deferred_failure, currency_tester ) try {
-   // fc::temp_directory tempdir;
-   // currency_tester chain( tempdir, true );
-   // const auto& pfm = chain.control->get_protocol_feature_manager();
-   // auto d = pfm.get_builtin_digest( builtin_protocol_feature_t::stop_deferred_transactions );
-   // chain.execute_setup_policy( setup_policy::complete, {*d} );
-   
    produce_blocks(2);
 
    create_accounts( {N(alice), N(bob), N(proxy)} );
