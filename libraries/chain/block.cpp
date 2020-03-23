@@ -20,16 +20,16 @@ namespace eosio { namespace chain {
       }
    }
 
-   static fc::static_variant<transaction_id_type, pruned_transaction> translate_transaction_receipt(const transaction_id_type& tid) {
+   static fc::static_variant<transaction_id_type, pruned_transaction> translate_transaction_receipt(const transaction_id_type& tid, bool) {
       return tid;
    }
-   static fc::static_variant<transaction_id_type, pruned_transaction> translate_transaction_receipt(const packed_transaction& ptrx) {
-      return pruned_transaction(ptrx);
+   static fc::static_variant<transaction_id_type, pruned_transaction> translate_transaction_receipt(const packed_transaction& ptrx, bool legacy) {
+      return pruned_transaction(ptrx, legacy);
    }
 
-   pruned_transaction_receipt::pruned_transaction_receipt(const transaction_receipt& other)
+   pruned_transaction_receipt::pruned_transaction_receipt(const transaction_receipt& other, bool legacy)
      : transaction_receipt_header(static_cast<const transaction_receipt_header&>(other)),
-       trx(other.trx.visit([&](const auto& obj) { return translate_transaction_receipt(obj); }))
+       trx(other.trx.visit([&](const auto& obj) { return translate_transaction_receipt(obj, legacy); }))
    {}
 
    flat_multimap<uint16_t, block_extension> signed_block::validate_and_extract_extensions()const {
@@ -73,12 +73,15 @@ namespace eosio { namespace chain {
 
    }
 
-   pruned_block::pruned_block( const signed_block& other )
+   pruned_block::pruned_block( const signed_block& other, bool legacy )
      : signed_block_header(static_cast<const signed_block_header&>(other)),
-       prune_state(prune_state_type::complete_legacy),
-       transactions(other.transactions.begin(), other.transactions.end()),
+       prune_state(legacy ? prune_state_type::complete_legacy : prune_state_type::complete),
        block_extensions(other.block_extensions)
-   {}
+   {
+      for(const auto& trx : other.transactions) {
+         transactions.emplace_back(trx, legacy);
+      }
+   }
 
    static std::size_t pruned_trx_receipt_packed_size(const pruned_transaction& obj, pruned_transaction::compression_type segment_compression) {
       return obj.maximum_pruned_pack_size(segment_compression);

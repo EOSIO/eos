@@ -1013,7 +1013,7 @@ BOOST_AUTO_TEST_CASE(pruned_block_test) {
 
    t.push_transaction(trx);
    signed_block_ptr original = t.produce_block();
-   pruned_block basic(*original);
+   pruned_block basic(*original, true);
 
    BOOST_TEST(basic.transaction_mroot.str() == original->transaction_mroot.str());
    BOOST_TEST(basic.transaction_mroot.str() == calculate_trx_merkle(basic.transactions).str());

@@ -257,7 +257,7 @@ namespace eosio { namespace chain {
       pruned_transaction& operator=(const pruned_transaction&) = delete;
       pruned_transaction& operator=(pruned_transaction&&) = default;
 
-      pruned_transaction(const packed_transaction& other) : pruned_transaction(other.get_signed_transaction(), true, other.get_compression()) {}
+      pruned_transaction(const packed_transaction& other, bool legacy) : pruned_transaction(other.get_signed_transaction(), legacy, other.get_compression()) {}
       explicit pruned_transaction(const signed_transaction& t, bool legacy, compression_type _compression = compression_type::none);
       explicit pruned_transaction(signed_transaction&& t, bool legacy, compression_type _compression = compression_type::none);
 
