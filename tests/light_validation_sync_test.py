@@ -11,9 +11,14 @@ from TestHelper import AppArgs
 import json
 
 ###############################################################
-# nodeos_chainbase_allocation_test
+# light_validation_sync_test
 #
-# Test snapshot creation and restarting from snapshot
+# Test message sync for light validation mode.
+# 
+# This test creates a producer node and a light validation node.
+# Pushes a transaction with context free data to the producer
+# node and check the pushed transaction can be synched to
+# the validation node.
 #
 ###############################################################
 
@@ -37,17 +42,6 @@ try:
     cluster.killall(allInstances=killAll)
     cluster.cleanup()
 
-    # The following is the list of chainbase objects that need to be verified:
-    # - account_object (bootstrap)
-    # - code_object (bootstrap)
-    # - generated_transaction_object
-    # - global_property_object
-    # - key_value_object (bootstrap)
-    # - protocol_state_object (bootstrap)
-    # - permission_object (bootstrap)
-    # The bootstrap process has created account_object and code_object (by uploading the bios contract),
-    # key_value_object (token creation), protocol_state_object (preactivation feature), and permission_object
-    # (automatically taken care by the automatically generated eosio account)
     assert cluster.launch(
         pnodes=1,
         prodCount=1,
@@ -84,7 +78,7 @@ try:
 
     cmd = "push transaction '{}' -p payloadless".format(json.dumps(trx))
     trans = producerNode.processCleosCmd(cmd, cmd, silentErrors=False)
-    assert trans
+    assert trans, "Failed to push transaction with context free data"
     
     cfTrxBlockNum = int(trans["processed"]["block_num"])
     cfTrxId = trans["transaction_id"]
@@ -97,12 +91,12 @@ try:
     Utils.Print("verify the account payloadless from validation node")
     cmd = "get account -j payloadless"
     trans = validationNode.processCleosCmd(cmd, cmd, silentErrors=False)
-    assert trans["account_name"]
+    assert trans["account_name"], "Failed to get the account payloadless"
 
     Utils.Print("verify the context free transaction from validation node")
     cmd = "get transaction " + cfTrxId
     trans = validationNode.processCleosCmd(cmd, cmd, silentErrors=False)
-    assert trans
+    assert trans, "Failed to get the transaction with context free data from the light validation node"
 
     testSuccessful = True
 finally:
