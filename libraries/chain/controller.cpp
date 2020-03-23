@@ -3288,7 +3288,7 @@ fc::optional<chain_id_type> controller::extract_chain_id_from_db( const path& st
 
       controller_impl::validate_db_version( db );
 
-      if (db.revision() < 1) return {};
+      if( db.revision() < 1 ) return {};
 
       return db.get<global_property_object>().chain_id;
    } catch( const bad_database_version_exception& ) {

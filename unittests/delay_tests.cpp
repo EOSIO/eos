@@ -1908,7 +1908,7 @@ BOOST_AUTO_TEST_CASE( canceldelay_test ) { try {
            ("auth",  authority(chain.get_public_key(tester_account, "first"))),
            30, 10
    );
-   wdump((fc::json::to_pretty_string(trace)));
+   //wdump((fc::json::to_pretty_string(trace)));
    ids.push_back(trace->id);
    BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace->receipt->status);
    gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
@@ -1959,7 +1959,7 @@ BOOST_AUTO_TEST_CASE( canceldelay_test ) { try {
    chain.set_transaction_headers(trx);
    trx.sign(chain.get_private_key(N(tester), "active"), chain.control->get_chain_id());
    trace = chain.push_transaction(trx);
-   wdump((fc::json::to_pretty_string(trace)));
+   //wdump((fc::json::to_pretty_string(trace)));
    BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt->status);
    gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
    BOOST_CHECK_EQUAL(2, gen_size);

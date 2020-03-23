@@ -89,7 +89,6 @@ class currency_tester : public TESTER {
          );
          wdump((result));
 
-
          result = push_action(N(eosio.token), N(issue), mutable_variant_object()
                  ("to",       eosio_token)
                  ("quantity", "1000000.0000 CUR")
@@ -410,7 +409,6 @@ BOOST_FIXTURE_TEST_CASE( test_proxy, currency_tester ) try {
    set_code(N(proxy), contracts::proxy_wasm());
    produce_blocks(1);
 
-   // eosio::chain::abi_serializer proxy_abi_ser(json::from_string(contracts::proxy_abi().data()).as<abi_def>(), eosio::testing::base_tester::abi_serializer_max_time);
    abi_serializer proxy_abi_ser(json::from_string(contracts::proxy_abi().data()).as<abi_def>(), abi_serializer_max_time);
 
    // set up proxy owner
@@ -423,7 +421,6 @@ BOOST_FIXTURE_TEST_CASE( test_proxy, currency_tester ) try {
       setowner_act.data = proxy_abi_ser.variant_to_binary("setowner", mutable_variant_object()
          ("owner", "alice")
          ("delay", 10),
-         // eosio::testing::base_tester::abi_serializer_max_time
          abi_serializer_max_time
       );
       trx.actions.emplace_back(std::move(setowner_act));
@@ -439,7 +436,6 @@ BOOST_FIXTURE_TEST_CASE( test_proxy, currency_tester ) try {
    fc::time_point expected_delivery(fc::seconds(control->head_block_time().sec_since_epoch()) + fc::seconds(10));
    {
       auto trace = push_action(N(eosio.token), N(transfer), mutable_variant_object()
-         // ("from", currency_tester::eosio_token.to_string())
          ("from", eosio_token)
          ("to",   "proxy")
          ("quantity", "5.0000 CUR")
