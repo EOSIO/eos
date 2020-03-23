@@ -593,8 +593,10 @@ namespace WASM
 							throw FatalSerializationException("invalid import function type index");
 						}
 						module.functions.imports.push_back({{functionTypeIndex},std::move(moduleName),std::move(exportName)});
-						if (module.functions.imports.size() >= max_size)
-							throw FatalSerializationException(std::string("Too many function imports"));
+						if (module.functions.imports.size() >= max_size) {
+              auto inp = std::to_string( module.functions.imports.size() );
+							throw FatalSerializationException(std::string("Too many function imports: ") + inp + "  max: " + std::to_string(max_size) );
+            }
 						break;
 					}
 					case ObjectKind::table:
@@ -679,8 +681,10 @@ namespace WASM
 				// try to get a serialization exception before making a huge allocation for malformed input.
 				module.functions.defs.clear();
 				constexpr size_t max_size = eosio::chain::wasm_constraints::maximum_section_elements;
-				if ( numFunctions >= max_size )
-					throw FatalSerializationException(std::string("Too many function defs"));
+				if ( numFunctions >= max_size ) {
+              auto inp = std::to_string( numFunctions );
+							throw FatalSerializationException(std::string("Too many function defs: ") + inp + "  maximum_section_elements: " + std::to_string(max_size) );
+        }
 				for(Uptr functionIndex = 0;functionIndex < numFunctions;++functionIndex)
 				{
 					U32 functionTypeIndex = 0;
