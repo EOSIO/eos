@@ -1257,7 +1257,7 @@ struct controller_impl {
          undo_session.squash();
          return trace;
       }
-      
+
       auto reset_in_trx_requiring_checks = fc::make_scoped_exit([old_value=in_trx_requiring_checks,this](){
          in_trx_requiring_checks = old_value;
       });
@@ -3281,17 +3281,16 @@ chain_id_type controller::extract_chain_id(snapshot_reader& snapshot) {
 
 fc::optional<chain_id_type> controller::extract_chain_id_from_db( const path& state_dir ) {
    try {
-     chainbase::database db(state_dir, chainbase::database::read_only);
+      chainbase::database db( state_dir, chainbase::database::read_only );
 
-     db.add_index<database_header_multi_index>();
-     db.add_index<global_property_multi_index>();
+      db.add_index<database_header_multi_index>();
+      db.add_index<global_property_multi_index>();
 
-     controller_impl::validate_db_version(db);
+      controller_impl::validate_db_version( db );
 
-     if (db.revision() < 1)
-       return {};
+      if (db.revision() < 1) return {};
 
-     return db.get<global_property_object>().chain_id;
+      return db.get<global_property_object>().chain_id;
    } catch( const bad_database_version_exception& ) {
       throw;
    } catch( ... ) {

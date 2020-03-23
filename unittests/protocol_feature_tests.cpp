@@ -1868,22 +1868,41 @@ BOOST_AUTO_TEST_CASE( stop_deferred_transactions_protocol_feature_contract_test 
    chain.preactivate_protocol_features( {*d} );
    chain.produce_block();
 
-   // Send a deferred transaction via the contract.
+   // Send a deferred transaction via the contract.  But it shall throw an
+   // exception because after that activation of `stop_deferred_transaction`, a
+   // contract may only replace existing deferred transactions; not generate new
+   // ones (the field `sender_id` is used to determine if a deferred transaction
+   // is being replaced or not).
+   BOOST_REQUIRE_EXCEPTION( chain.push_action( N(test), N(defercall), N(alice), fc::mutable_variant_object()
+                                                ("payer", "alice")
+                                                ("sender_id", 2)
+                                                ("contract", "test")
+                                                ("payload", 49)
+                            ),
+                            stop_deferred_tx,
+                            fc_exception_message_starts_with( "you may only replace existing deferred transactions; not generate new ones" ) );
+
+   // Send a deferred transaction via the contract.  This time, replacing an
+   // existing one.  Note: sending a payload of 100 tells the contract to set
+   // `replace_existing` to true.
    chain.push_action( N(test), N(defercall), N(alice), fc::mutable_variant_object()
                        ("payer", "alice")
-                       ("sender_id", 2)
+                       ("sender_id", 1)
                        ("contract", "test")
-                       ("payload", 49)
+                       ("payload", 100)
    );
-   // chain.produce_blocks();
-
+   
    // Check that the number deferred transactions is 1, due to the activation of the protocol feature.
    gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
-
+   
    // We check that the database contains 0 `generated_transaction`s, and not 1
    // `generated_transaction` because the previously sent
    // `generated_transaction`, sent from contract `test`:`defercall` has already
    // gone through its lifetime.
+   //
+   // Note: the reason why the database contains 0 `generated_transaction`s, and
+   // not 1 even though we specified to replace a deferred transaction, is that
+   // there actually is never any deferred transaction to replace to begin with.
    BOOST_REQUIRE_EQUAL( gen_size, 0 );
 } FC_LOG_AND_RETHROW() }
 
