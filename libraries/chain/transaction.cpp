@@ -316,21 +316,23 @@ void packed_transaction::reflector_init()
    local_unpack_context_free_data();
 }
 
-void packed_transaction::local_unpack_transaction(vector<bytes>&& context_free_data)
-{
+static transaction unpack_transaction(const bytes& packed_trx, packed_transaction::compression_type compression) {
    try {
       switch( compression ) {
-         case compression_type::none:
-            unpacked_trx = signed_transaction( unpack_transaction( packed_trx ), signatures, std::move(context_free_data) );
-            break;
-         case compression_type::zlib:
-            unpacked_trx = signed_transaction( zlib_decompress_transaction( packed_trx ), signatures, std::move(context_free_data) );
-            break;
+         case packed_transaction::compression_type::none:
+            return unpack_transaction( packed_trx );
+         case packed_transaction::compression_type::zlib:
+            return zlib_decompress_transaction( packed_trx );
          default:
             EOS_THROW( unknown_transaction_compression, "Unknown transaction compression algorithm" );
       }
-      trx_id = unpacked_trx.id();
    } FC_CAPTURE_AND_RETHROW( (compression) )
+}
+
+void packed_transaction::local_unpack_transaction(vector<bytes>&& context_free_data)
+{
+   unpacked_trx = signed_transaction( unpack_transaction( packed_trx, compression ), signatures, std::move(context_free_data) );
+   trx_id = unpacked_trx.id();
 }
 
 static vector<bytes> unpack_context_free_data(const bytes& packed_context_free_data, packed_transaction::compression_type compression)
@@ -557,6 +559,30 @@ void pruned_transaction::prune_all() {
 
 std::size_t pruned_transaction::maximum_pruned_pack_size(compression_type segment_compression) const {
    return fc::raw::pack_size(compression) + fc::raw::pack_size(packed_trx) + prunable_data.maximum_pruned_pack_size(segment_compression);
+}
+
+static std::vector<bytes> maybe_unpack_context_free_data(const prunable_transaction_data::full& obj, packed_transaction::compression_type) {
+   return obj.context_free_segments;
+}
+static std::vector<bytes> maybe_unpack_context_free_data(const prunable_transaction_data::full_legacy& obj, packed_transaction::compression_type compression) {
+   return unpack_context_free_data(obj.packed_context_free_data, compression);
+}
+template<typename T>
+static std::vector<bytes> maybe_unpack_context_free_data(const T&, packed_transaction::compression_type) {
+   return {};
+}
+
+void pruned_transaction::reflector_init()
+{
+   // called after construction, but always on the same thread and before packed_transaction passed to any other threads
+   static_assert(fc::raw::has_feature_reflector_init_on_unpacked_reflected_types,
+                 "FC unpack needs to call reflector_init otherwise unpacked_trx will not be initialized");
+   EOS_ASSERT( unpacked_trx.expiration == time_point_sec(), tx_decompression_error, "packed_transaction already unpacked" );
+   const auto* signatures = get_signatures();
+   unpacked_trx = signed_transaction(unpack_transaction(packed_trx, compression),
+                                     signatures ? *signatures : std::vector<signature_type>{},
+                                     prunable_data.prunable_data.visit([&](const auto& obj) { return maybe_unpack_context_free_data(obj, compression); }));
+   trx_id = unpacked_trx.id();
 }
 
 } } // eosio::chain

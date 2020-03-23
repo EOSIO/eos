@@ -990,6 +990,35 @@ BOOST_AUTO_TEST_CASE(pruned_transaction_test) {
    BOOST_CHECK_THROW(pruned.get_prunable_size(), tx_prune_exception);
 }
 
+BOOST_AUTO_TEST_CASE(pruned_block_test) {
+   tester t;
+   signed_transaction trx;
+   trx.actions.push_back({ { permission_level{ N(eosio), N(active) } }, N(eosio), N(), bytes() } );
+   trx.context_free_actions.push_back({ {}, N(eosio), N(), bytes() });
+   trx.context_free_data.push_back(bytes());
+   t.set_transaction_headers(trx);
+   trx.sign( t.get_private_key( N(eosio), "active" ), t.control->get_chain_id() );
+
+   t.push_transaction(trx);
+   signed_block_ptr original = t.produce_block();
+   pruned_block basic(*original);
+
+   fc::datastream<std::size_t> size_stream;
+   basic.pack_with_padding(size_stream, pruned_transaction::compression_type::none);
+   std::vector<char> buffer(size_stream.tellp());
+   fc::datastream<char*> stream(buffer.data(), buffer.size());
+   basic.pack_with_padding(stream, pruned_transaction::compression_type::none);
+   pruned_block deserialized;
+   fc::datastream<const char*> in(buffer.data(), buffer.size());
+   std::size_t unpacked_size = deserialized.unpack_with_padding(in, pruned_transaction::compression_type::none);
+   BOOST_TEST(in.tellp() == buffer.size());
+   deserialized.transactions.back().trx.get<pruned_transaction>().prune_all();
+   deserialized.prune_state = pruned_block::prune_state_type::incomplete;
+   fc::datastream<char*> out(buffer.data(), buffer.size());
+   deserialized.pack_with_padding(out, pruned_transaction::compression_type::none, unpacked_size);
+   BOOST_TEST(out.tellp() == buffer.size());
+}
+
 BOOST_AUTO_TEST_CASE(reflector_init_test) {
    try {
 

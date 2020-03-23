@@ -20,6 +20,18 @@ namespace eosio { namespace chain {
       }
    }
 
+   static fc::static_variant<transaction_id_type, pruned_transaction> translate_transaction_receipt(const transaction_id_type& tid) {
+      return tid;
+   }
+   static fc::static_variant<transaction_id_type, pruned_transaction> translate_transaction_receipt(const packed_transaction& ptrx) {
+      return pruned_transaction(ptrx);
+   }
+
+   pruned_transaction_receipt::pruned_transaction_receipt(const transaction_receipt& other)
+     : transaction_receipt_header(static_cast<const transaction_receipt_header&>(other)),
+       trx(other.trx.visit([&](const auto& obj) { return translate_transaction_receipt(obj); }))
+   {}
+
    flat_multimap<uint16_t, block_extension> signed_block::validate_and_extract_extensions()const {
       using decompose_t = block_extension_types::decompose_t;
 
@@ -59,6 +71,33 @@ namespace eosio { namespace chain {
 
       return results;
 
+   }
+
+   pruned_block::pruned_block( const signed_block& other )
+     : signed_block_header(static_cast<const signed_block_header&>(other)),
+       prune_state(prune_state_type::complete_legacy),
+       transactions(other.transactions.begin(), other.transactions.end()),
+       block_extensions(other.block_extensions)
+   {}
+
+   static std::size_t pruned_trx_receipt_packed_size(const pruned_transaction& obj, pruned_transaction::compression_type segment_compression) {
+      return obj.maximum_pruned_pack_size(segment_compression);
+   }
+   static std::size_t pruned_trx_receipt_packed_size(const transaction_id_type& obj, pruned_transaction::compression_type) {
+      return fc::raw::pack_size(obj);
+   }
+
+   std::size_t pruned_transaction_receipt::maximum_pruned_pack_size( pruned_transaction::compression_type segment_compression ) const {
+      return fc::raw::pack_size(*static_cast<const transaction_receipt_header*>(this)) + 1 +
+         trx.visit([&](const auto& obj){ return pruned_trx_receipt_packed_size(obj, segment_compression); });
+   }
+
+   std::size_t pruned_block::maximum_pruned_pack_size( pruned_transaction::compression_type segment_compression ) const {
+      std::size_t result = fc::raw::pack_size(fc::unsigned_int(transactions.size()));
+      for(const pruned_transaction_receipt& r: transactions) {
+         result += r.maximum_pruned_pack_size( segment_compression );
+      }
+      return fc::raw::pack_size(*static_cast<const signed_block_header*>(this)) + fc::raw::pack_size(prune_state) + result + fc::raw::pack_size(block_extensions);
    }
 
 } } /// namespace eosio::chain
