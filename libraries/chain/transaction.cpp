@@ -426,7 +426,7 @@ static constexpr std::size_t digest_pack_size = 32;
 
 static std::size_t padded_pack_size(const prunable_transaction_data::none& obj, prunable_transaction_data::compression_type) {
    std::size_t result = fc::raw::pack_size(obj);
-   EOS_ASSERT(result == digest_pack_size, chain_type_exception, "Internal EOSIO error");
+   EOS_ASSERT(result == digest_pack_size, packed_transaction_type_exception, "Unexpected size of packed digest");
    return result;
 }
 
