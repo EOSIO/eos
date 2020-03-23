@@ -282,9 +282,14 @@ namespace eosio {
 
          template<typename T>
          bool verify_max_bytes_in_flight( const T& con ) {
-            if( bytes_in_flight > max_bytes_in_flight ) {
-               fc_dlog( logger, "503 - too many bytes in flight: ${bytes}", ("bytes", bytes_in_flight.load()) );
-               error_results results{websocketpp::http::status_code::too_many_requests, "Busy", error_results::error_info()};
+            auto bytes_in_flight_size = bytes_in_flight.load();
+            if( bytes_in_flight_size > max_bytes_in_flight ) {
+               fc_dlog( logger, "429 - too many bytes in flight: ${bytes}", ("bytes", bytes_in_flight_size) );
+               error_results::error_info ei;
+               ei.code = websocketpp::http::status_code::too_many_requests;
+               ei.name = "Busy";
+               ei.what = "Too many bytes in flight: " + std::to_string( bytes_in_flight_size );
+               error_results results{websocketpp::http::status_code::too_many_requests, "Busy", ei};
                con->set_body( fc::json::to_string( results, fc::time_point::maximum() ));
                con->set_status( websocketpp::http::status_code::too_many_requests );
                return false;
