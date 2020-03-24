@@ -15,7 +15,7 @@ RUN curl -LO https://github.com/Kitware/CMake/releases/download/v3.16.2/cmake-3.
     make install && \
     rm -rf cmake-3.16.2.tar.gz cmake-3.16.2
 # build clang10
-RUN git clone --single-branch --branch llvmorg-10.0.0-rc3 https://github.com/llvm/llvm-project clang10 && \
+RUN git clone --single-branch --branch llvmorg-10.0.0 https://github.com/llvm/llvm-project clang10 && \
     mkdir /clang10/build && cd /clang10/build && \
     cmake -G 'Unix Makefiles' -DCMAKE_INSTALL_PREFIX='/usr/local' -DLLVM_ENABLE_PROJECTS='lld;polly;clang;clang-tools-extra;libcxx;libcxxabi;libunwind;compiler-rt' -DLLVM_BUILD_LLVM_DYLIB=ON -DLLVM_ENABLE_RTTI=ON -DLLVM_INCLUDE_DOCS=OFF -DLLVM_TARGETS_TO_BUILD=host -DCMAKE_BUILD_TYPE=Release ../llvm && \
     make -j $(nproc) && \
@@ -24,7 +24,7 @@ RUN git clone --single-branch --branch llvmorg-10.0.0-rc3 https://github.com/llv
     rm -rf /clang10
 COPY ./.cicd/helpers/clang.make /tmp/clang.cmake
 # build llvm10
-RUN git clone --depth 1 --single-branch --branch llvmorg-10.0.0-rc3 https://github.com/llvm/llvm-project llvm && \
+RUN git clone --depth 1 --single-branch --branch llvmorg-10.0.0 https://github.com/llvm/llvm-project llvm && \
     cd llvm/llvm && \
     mkdir build && \
     cd build && \

@@ -20,7 +20,7 @@ RUN curl -LO https://github.com/Kitware/CMake/releases/download/v3.16.2/cmake-3.
     rm -rf cmake-3.16.2.tar.gz cmake-3.16.2
 COPY ./scripts/clang-devtoolset8-support.patch /tmp/clang-devtoolset8-support.patch
 # build clang10
-RUN git clone --single-branch --branch llvmorg-10.0.0-rc3 https://github.com/llvm/llvm-project clang10 && \
+RUN git clone --single-branch --branch llvmorg-10.0.0 https://github.com/llvm/llvm-project clang10 && \
     mkdir /clang10/build && cd /clang10/build && \
     source /opt/rh/devtoolset-8/enable && \
     source /opt/rh/rh-python36/enable && \
@@ -31,7 +31,7 @@ RUN git clone --single-branch --branch llvmorg-10.0.0-rc3 https://github.com/llv
     rm -rf /clang10
 COPY ./.cicd/helpers/clang.make /tmp/clang.cmake
 # build llvm10
-RUN git clone --depth 1 --single-branch --branch llvmorg-10.0.0-rc3 https://github.com/llvm/llvm-project llvm && \
+RUN git clone --depth 1 --single-branch --branch llvmorg-10.0.0 https://github.com/llvm/llvm-project llvm && \
     cd llvm/llvm && \
     mkdir build && \
     cd build && \
