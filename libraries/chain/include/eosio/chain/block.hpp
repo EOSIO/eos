@@ -146,36 +146,18 @@ namespace eosio { namespace chain {
 
       std::size_t maximum_pruned_pack_size( pruned_transaction::cf_compression_type segment_compression ) const;
 
+      // Returns the maximum_pruned_padded_size.  It is the caller's responsibility to
+      // reserve enough space after the end if in-place pruning is desired.
       template<typename Stream>
-      void pack_with_padding(Stream& stream, pruned_transaction::cf_compression_type segment_compression) {
+      std::size_t pack(Stream& stream, pruned_transaction::cf_compression_type segment_compression) {
          std::size_t padded_size = maximum_pruned_pack_size( segment_compression );
-         pack_with_padding(stream, segment_compression, padded_size);
-      }
-      template<typename Stream>
-      void pack_with_padding(Stream& stream, pruned_transaction::cf_compression_type segment_compression, std::size_t padded_size) {
-         fc::raw::pack(stream, fc::unsigned_int(padded_size));
-         std::size_t pos = stream.tellp();
+         // TODO: This only handles legacy transactions.
          fc::raw::pack(stream, *this);
-         std::size_t actual_size = stream.tellp() - pos;
-         EOS_ASSERT(actual_size <= padded_size, block_padding_exception,
-                    "Provided value of padded_size (${provided}) is less than the packed size of the block (${actual})",
-                    ("actual", actual_size)("provided", padded_size) );
-         for(std::size_t i = 0; i < padded_size - actual_size; ++i) {
-            stream.put('\0');
-         }
+         return padded_size;
       }
       template<typename Stream>
-      std::size_t unpack_with_padding(Stream& stream, pruned_transaction::cf_compression_type segment_compression) {
-         fc::unsigned_int padded_size;
-         fc::raw::unpack(stream, padded_size);
-         std::size_t pos = stream.tellp();
+      void unpack(Stream& stream, pruned_transaction::cf_compression_type segment_compression) {
          fc::raw::unpack(stream, *this);
-         std::size_t actual_size = stream.tellp() - pos;
-         EOS_ASSERT(actual_size <= padded_size, block_padding_exception,
-                    "Stored value of padded_size (${provided}) is less than the packed size of the block (${actual})",
-                    ("actual", actual_size)("provided", padded_size) );
-         stream.skip( padded_size - actual_size );
-         return padded_size;
       }
 
       flat_multimap<uint16_t, block_extension> validate_and_extract_extensions()const;

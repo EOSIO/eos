@@ -1019,22 +1019,24 @@ BOOST_AUTO_TEST_CASE(pruned_block_test) {
    BOOST_TEST(basic.transaction_mroot.str() == calculate_trx_merkle(basic.transactions).str());
 
    fc::datastream<std::size_t> size_stream;
-   basic.pack_with_padding(size_stream, pruned_transaction::cf_compression_type::none);
-   std::vector<char> buffer(size_stream.tellp());
+   std::size_t padded_size = basic.pack(size_stream, pruned_transaction::cf_compression_type::none);
+   BOOST_TEST(size_stream.tellp() <= padded_size);
+   std::vector<char> buffer(padded_size);
    fc::datastream<char*> stream(buffer.data(), buffer.size());
-   basic.pack_with_padding(stream, pruned_transaction::cf_compression_type::none);
+   basic.pack(stream, pruned_transaction::cf_compression_type::none);
    pruned_block deserialized;
    fc::datastream<const char*> in(buffer.data(), buffer.size());
-   std::size_t unpacked_size = deserialized.unpack_with_padding(in, pruned_transaction::cf_compression_type::none);
-   BOOST_TEST(in.tellp() == buffer.size());
+   deserialized.unpack(in, pruned_transaction::cf_compression_type::none);
+   std::size_t unpacked_size = padded_size;
+   BOOST_TEST(in.tellp() <= buffer.size());
    BOOST_TEST(deserialized.transaction_mroot.str() == original->transaction_mroot.str());
    BOOST_TEST(deserialized.transaction_mroot.str() == calculate_trx_merkle(deserialized.transactions).str());
    deserialized.transactions.back().trx.get<pruned_transaction>().prune_all();
    deserialized.prune_state = pruned_block::prune_state_type::incomplete;
    BOOST_TEST(deserialized.transaction_mroot.str() == calculate_trx_merkle(deserialized.transactions).str());
    fc::datastream<char*> out(buffer.data(), buffer.size());
-   deserialized.pack_with_padding(out, pruned_transaction::cf_compression_type::none, unpacked_size);
-   BOOST_TEST(out.tellp() == buffer.size());
+   deserialized.pack(out, pruned_transaction::cf_compression_type::none);
+   BOOST_TEST(out.tellp() <= buffer.size());
 }
 
 BOOST_AUTO_TEST_CASE(reflector_init_test) {
