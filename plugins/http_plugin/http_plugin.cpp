@@ -133,7 +133,6 @@ namespace eosio {
       struct abstract_conn {
          virtual ~abstract_conn() {}
          virtual bool verify_max_bytes_in_flight() = 0;
-         virtual void send_http_response() = 0;
          virtual void handle_exception() = 0;
       };
 
@@ -334,6 +333,7 @@ namespace eosio {
                error_results results{websocketpp::http::status_code::too_many_requests, "Busy", ei};
                con->set_body( fc::json::to_string( results, fc::time_point::maximum() ));
                con->set_status( websocketpp::http::status_code::too_many_requests );
+               con->send_http_response();
                return false;
             }
             return true;
@@ -358,10 +358,6 @@ namespace eosio {
 
             bool verify_max_bytes_in_flight() override {
                return _impl.verify_max_bytes_in_flight(_conn);
-            }
-
-            void send_http_response() override {
-               _conn->send_http_response();
             }
 
             void handle_exception()override {
