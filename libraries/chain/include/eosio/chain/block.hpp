@@ -112,7 +112,7 @@ namespace eosio { namespace chain {
 
       fc::static_variant<transaction_id_type, pruned_transaction> trx;
 
-      std::size_t maximum_pruned_pack_size( pruned_transaction::compression_type segment_compression ) const;
+      std::size_t maximum_pruned_pack_size( pruned_transaction::cf_compression_type segment_compression ) const;
 
       digest_type digest()const {
          digest_type::encoder enc;
@@ -144,15 +144,15 @@ namespace eosio { namespace chain {
       deque<pruned_transaction_receipt>       transactions; /// new or generated transactions
       extensions_type                         block_extensions;
 
-      std::size_t maximum_pruned_pack_size( pruned_transaction::compression_type segment_compression ) const;
+      std::size_t maximum_pruned_pack_size( pruned_transaction::cf_compression_type segment_compression ) const;
 
       template<typename Stream>
-      void pack_with_padding(Stream& stream, pruned_transaction::compression_type segment_compression) {
+      void pack_with_padding(Stream& stream, pruned_transaction::cf_compression_type segment_compression) {
          std::size_t padded_size = maximum_pruned_pack_size( segment_compression );
          pack_with_padding(stream, segment_compression, padded_size);
       }
       template<typename Stream>
-      void pack_with_padding(Stream& stream, pruned_transaction::compression_type segment_compression, std::size_t padded_size) {
+      void pack_with_padding(Stream& stream, pruned_transaction::cf_compression_type segment_compression, std::size_t padded_size) {
          fc::raw::pack(stream, fc::unsigned_int(padded_size));
          std::size_t pos = stream.tellp();
          fc::raw::pack(stream, *this);
@@ -162,7 +162,7 @@ namespace eosio { namespace chain {
          }
       }
       template<typename Stream>
-      std::size_t unpack_with_padding(Stream& stream, pruned_transaction::compression_type segment_compression) {
+      std::size_t unpack_with_padding(Stream& stream, pruned_transaction::cf_compression_type segment_compression) {
          fc::unsigned_int padded_size;
          fc::raw::unpack(stream, padded_size);
          std::size_t pos = stream.tellp();

@@ -204,7 +204,10 @@ namespace eosio { namespace chain {
    };
 
    struct prunable_transaction_data {
-      using compression_type = packed_transaction::compression_type;
+      enum class compression_type {
+         none = 0,
+         zlib = 1,
+      };
 
       struct none {
          digest_type                     prunable_digest;
@@ -250,6 +253,7 @@ namespace eosio { namespace chain {
 
    struct pruned_transaction : fc::reflect_init {
       using compression_type = packed_transaction::compression_type;
+      using cf_compression_type = prunable_transaction_data::compression_type;
 
       pruned_transaction() = default;
       pruned_transaction(pruned_transaction&&) = default;
@@ -289,7 +293,7 @@ namespace eosio { namespace chain {
 
       void prune_all();
 
-      std::size_t maximum_pruned_pack_size( compression_type segment_compression ) const;
+      std::size_t maximum_pruned_pack_size( cf_compression_type segment_compression ) const;
 
    private:
 

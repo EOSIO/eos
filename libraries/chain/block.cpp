@@ -83,19 +83,19 @@ namespace eosio { namespace chain {
       }
    }
 
-   static std::size_t pruned_trx_receipt_packed_size(const pruned_transaction& obj, pruned_transaction::compression_type segment_compression) {
+   static std::size_t pruned_trx_receipt_packed_size(const pruned_transaction& obj, pruned_transaction::cf_compression_type segment_compression) {
       return obj.maximum_pruned_pack_size(segment_compression);
    }
-   static std::size_t pruned_trx_receipt_packed_size(const transaction_id_type& obj, pruned_transaction::compression_type) {
+   static std::size_t pruned_trx_receipt_packed_size(const transaction_id_type& obj, pruned_transaction::cf_compression_type) {
       return fc::raw::pack_size(obj);
    }
 
-   std::size_t pruned_transaction_receipt::maximum_pruned_pack_size( pruned_transaction::compression_type segment_compression ) const {
+   std::size_t pruned_transaction_receipt::maximum_pruned_pack_size( pruned_transaction::cf_compression_type segment_compression ) const {
       return fc::raw::pack_size(*static_cast<const transaction_receipt_header*>(this)) + 1 +
          trx.visit([&](const auto& obj){ return pruned_trx_receipt_packed_size(obj, segment_compression); });
    }
 
-   std::size_t pruned_block::maximum_pruned_pack_size( pruned_transaction::compression_type segment_compression ) const {
+   std::size_t pruned_block::maximum_pruned_pack_size( pruned_transaction::cf_compression_type segment_compression ) const {
       std::size_t result = fc::raw::pack_size(fc::unsigned_int(transactions.size()));
       for(const pruned_transaction_receipt& r: transactions) {
          result += r.maximum_pruned_pack_size( segment_compression );

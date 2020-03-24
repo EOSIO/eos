@@ -557,7 +557,7 @@ void pruned_transaction::prune_all() {
    unpacked_trx.signatures.clear();
 }
 
-std::size_t pruned_transaction::maximum_pruned_pack_size(compression_type segment_compression) const {
+std::size_t pruned_transaction::maximum_pruned_pack_size(cf_compression_type segment_compression) const {
    return fc::raw::pack_size(compression) + fc::raw::pack_size(packed_trx) + prunable_data.maximum_pruned_pack_size(segment_compression);
 }
 

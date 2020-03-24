@@ -980,7 +980,7 @@ BOOST_AUTO_TEST_CASE(pruned_transaction_test) {
    BOOST_TEST(*pruned.get_signatures() == packed.get_signatures());
    BOOST_TEST(pruned.get_prunable_size() == packed.get_prunable_size());
    BOOST_TEST(pruned.get_unprunable_size() == packed.get_unprunable_size());
-   std::size_t max_size = pruned.maximum_pruned_pack_size(pruned_transaction::compression_type::none);
+   std::size_t max_size = pruned.maximum_pruned_pack_size(pruned_transaction::cf_compression_type::none);
    BOOST_TEST(fc::raw::pack_size(pruned) <= max_size);
 
    pruned.prune_all();
@@ -1019,13 +1019,13 @@ BOOST_AUTO_TEST_CASE(pruned_block_test) {
    BOOST_TEST(basic.transaction_mroot.str() == calculate_trx_merkle(basic.transactions).str());
 
    fc::datastream<std::size_t> size_stream;
-   basic.pack_with_padding(size_stream, pruned_transaction::compression_type::none);
+   basic.pack_with_padding(size_stream, pruned_transaction::cf_compression_type::none);
    std::vector<char> buffer(size_stream.tellp());
    fc::datastream<char*> stream(buffer.data(), buffer.size());
-   basic.pack_with_padding(stream, pruned_transaction::compression_type::none);
+   basic.pack_with_padding(stream, pruned_transaction::cf_compression_type::none);
    pruned_block deserialized;
    fc::datastream<const char*> in(buffer.data(), buffer.size());
-   std::size_t unpacked_size = deserialized.unpack_with_padding(in, pruned_transaction::compression_type::none);
+   std::size_t unpacked_size = deserialized.unpack_with_padding(in, pruned_transaction::cf_compression_type::none);
    BOOST_TEST(in.tellp() == buffer.size());
    BOOST_TEST(deserialized.transaction_mroot.str() == original->transaction_mroot.str());
    BOOST_TEST(deserialized.transaction_mroot.str() == calculate_trx_merkle(deserialized.transactions).str());
@@ -1033,7 +1033,7 @@ BOOST_AUTO_TEST_CASE(pruned_block_test) {
    deserialized.prune_state = pruned_block::prune_state_type::incomplete;
    BOOST_TEST(deserialized.transaction_mroot.str() == calculate_trx_merkle(deserialized.transactions).str());
    fc::datastream<char*> out(buffer.data(), buffer.size());
-   deserialized.pack_with_padding(out, pruned_transaction::compression_type::none, unpacked_size);
+   deserialized.pack_with_padding(out, pruned_transaction::cf_compression_type::none, unpacked_size);
    BOOST_TEST(out.tellp() == buffer.size());
 }
 
