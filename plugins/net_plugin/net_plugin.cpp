@@ -560,45 +560,46 @@ namespace eosio {
          blocks_only
       };
 
-      std::atomic<connection_types>             connection_type{both};
+      std::atomic<connection_types>         connection_type{both};
 
    public:
-      boost::asio::io_context::strand           strand;
-      std::shared_ptr<tcp::socket>              socket; // only accessed through strand after construction
+      boost::asio::io_context::strand       strand;
+      std::shared_ptr<tcp::socket>          socket; // only accessed through strand after construction
 
-      fc::message_buffer<1024*1024>    pending_message_buffer;
-      std::atomic<std::size_t>         outstanding_read_bytes{0}; // accessed only from strand threads
+      fc::message_buffer<1024*1024>         pending_message_buffer;
+      std::atomic<std::size_t>              outstanding_read_bytes{0}; // accessed only from strand threads
 
-      queued_buffer           buffer_queue;
+      queued_buffer                         buffer_queue;
 
-      std::atomic<uint32_t>   trx_in_progress_size{0};
-      const uint32_t          connection_id;
-      int16_t                 sent_handshake_count = 0;
-      std::atomic<bool>       connecting{true};
-      std::atomic<bool>       syncing{false};
-      uint16_t                protocol_version = 0;
-      uint16_t                consecutive_rejected_blocks = 0;
-      std::atomic<uint16_t>   consecutive_immediate_connection_close = 0;
+      std::atomic<uint32_t>                 trx_in_progress_size{0};
+      const uint32_t                        connection_id;
+      int16_t                               sent_handshake_count = 0;
+      std::atomic<bool>                     connecting{true};
+      std::atomic<bool>                     syncing{false};
+      uint16_t                              protocol_version = 0;
+      uint16_t                              consecutive_rejected_blocks = 0;
+      std::atomic<uint16_t>                 consecutive_immediate_connection_close = 0;
+      std::atomic<connection_state>         last_status{connection_state::never_connected};
+      std::atomic<uint32_t>                 last_block_sent{0};
+      std::atomic<uint32_t>                 last_block_received{0};
 
       std::mutex                            response_expected_timer_mtx;
       boost::asio::steady_timer             response_expected_timer;
 
       std::atomic<go_away_reason>           no_retry{no_reason};
 
-      mutable std::mutex          conn_mtx; //< mtx for last_req .. local_endpoint_port
-      optional<request_message>   last_req;
-      handshake_message           last_handshake_recv;
-      handshake_message           last_handshake_sent;
-      string                      last_status;
-      uint32_t                    last_block{0};
-      block_id_type               fork_head;
-      uint32_t                    fork_head_num{0};
-      fc::time_point              last_close;
-      fc::sha256                  conn_node_id;
-      string                      remote_endpoint_ip;
-      string                      remote_endpoint_port;
-      string                      local_endpoint_ip;
-      string                      local_endpoint_port;
+      mutable std::mutex                    conn_mtx; //< mtx for last_req .. local_endpoint_port
+      optional<request_message>             last_req;
+      handshake_message                     last_handshake_recv;
+      handshake_message                     last_handshake_sent;
+      block_id_type                         fork_head;
+      uint32_t                              fork_head_num{0};
+      fc::time_point                        last_close;
+      fc::sha256                            conn_node_id;
+      string                                remote_endpoint_ip;
+      string                                remote_endpoint_port;
+      string                                local_endpoint_ip;
+      string                                local_endpoint_port;
 
       connection_status get_status()const;
 
@@ -874,8 +875,9 @@ namespace eosio {
       stat.peer = peer_addr;
       stat.connecting = connecting;
       stat.syncing = syncing;
-      stat.last_block = last_block;
       stat.last_status = last_status;
+      stat.last_block_sent = last_block_sent;
+      stat.last_block_received = last_block_received;
       std::lock_guard<std::mutex> g( conn_mtx );
       stat.last_handshake_recv = last_handshake_recv;
       stat.last_handshake_sent = last_handshake_sent;
@@ -936,7 +938,7 @@ namespace eosio {
       {
          std::lock_guard<std::mutex> g_conn( self->conn_mtx );
          has_last_req = !!self->last_req;
-         self->last_status = "closed";
+         self->last_status = connection_state::closed;
          self->last_handshake_recv = handshake_message();
          self->last_handshake_sent = handshake_message();
          self->last_close = fc::time_point::now();
@@ -1029,7 +1031,7 @@ namespace eosio {
                fc_dlog( logger, "found block for id at num ${n}", ("n", b->block_num()) );
                my_impl->dispatcher->add_peer_block( blkid, c->connection_id );
                c->strand.post( [c, num{b->block_num()}, b{std::move(b)}]() {
-                  c->last_block = num;
+                  c->last_block_sent = num;
                   c->enqueue_block( b );
                } );
             } else {
@@ -1057,7 +1059,7 @@ namespace eosio {
             static_assert( std::is_same_v<decltype( c->sent_handshake_count ), int16_t>, "INT16_MAX based on int16_t" );
             if( c->sent_handshake_count == INT16_MAX ) c->sent_handshake_count = 1; // do not wrap
             c->last_handshake_sent.generation = ++c->sent_handshake_count;
-            c->last_status = "handshaking";
+            c->last_status = connection_state::handshaking;
             auto last_handshake_sent = c->last_handshake_sent;
             g_conn.unlock();
             fc_ilog( logger, "Sending handshake generation ${g} to ${ep}, lib ${lib}, head ${head}, id ${id}",
@@ -1161,7 +1163,7 @@ namespace eosio {
       }
       {
          std::lock_guard<std::mutex> g_conn( conn_mtx );
-         last_status = reason_str( reason );
+         last_status = connection_state::go_away;
       }
    }
 
@@ -1184,7 +1186,7 @@ namespace eosio {
          signed_block_ptr sb = cc.fetch_block_by_number( num );
          if( sb ) {
             c->strand.post( [c, num, sb{std::move(sb)}]() {
-               c->last_block = num;
+               c->last_block_sent = num;
                c->enqueue_block( sb, true );
             });
          } else {
@@ -1759,7 +1761,7 @@ namespace eosio {
          return;
       }
       c->strand.post( [c, blk_num]() {
-         c->last_block = blk_num;
+         c->last_block_received = blk_num;
          c->consecutive_rejected_blocks = 0;
       });
       std::unique_lock<std::mutex> g_sync( sync_mtx );
@@ -2216,12 +2218,12 @@ namespace eosio {
          default:
             return;
       }
-      std::unique_lock<std::mutex> g_conn( conn_mtx );
       connecting = true;
-      last_status = "connecting";
+      last_status = connection_state::connecting;
+      std::unique_lock<std::mutex> g_conn( conn_mtx );
       pending_message_buffer.reset();
-      buffer_queue.clear_out_queue();
       g_conn.unlock();
+      buffer_queue.clear_out_queue();
       boost::asio::async_connect( *socket, endpoints,
          boost::asio::bind_executor( strand,
                [resolver, c = shared_from_this(), socket=socket]( const boost::system::error_code& err, const tcp::endpoint& endpoint ) {
@@ -2683,7 +2685,7 @@ namespace eosio {
 
       std::unique_lock<std::mutex> g_conn( conn_mtx );
       last_handshake_recv = msg;
-      last_status = "connected";
+      last_status = connection_state::connected;
       g_conn.unlock();
       my_impl->sync_master->recv_handshake( shared_from_this(), msg );
    }
@@ -2692,7 +2694,7 @@ namespace eosio {
       peer_wlog( this, "received go_away_message, reason = ${r}", ("r", reason_str( msg.reason )) );
       {
          std::lock_guard<std::mutex> g_conn( conn_mtx );
-         last_status = reason_str( msg.reason );
+         last_status = connection_state::go_away;
       }
       bool retry = no_retry == no_reason; // if no previous go away message
       no_retry = msg.reason;
@@ -2929,11 +2931,6 @@ namespace eosio {
       // use c in this method instead of this to highlight that all methods called on c-> must be thread safe
       connection_ptr c = shared_from_this();
 
-      {
-         std::lock_guard<std::mutex> g_conn( conn_mtx );
-         c->last_block = blk_num;
-      }
-
       // if we have closed connection then stop processing
       if( !c->socket_is_open() )
          return;
@@ -2981,6 +2978,11 @@ namespace eosio {
       }
 
       if( reason == no_reason ) {
+         {
+            std::lock_guard<std::mutex> g_conn( conn_mtx );
+            c->last_block_received = blk_num;
+         }
+
          boost::asio::post( my_impl->thread_pool->get_executor(), [dispatcher = my_impl->dispatcher.get(), cid=c->connection_id, blk_id, msg]() {
             dispatcher->add_peer_block( blk_id, cid );
             dispatcher->update_txns_block_num( msg );
