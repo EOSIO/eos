@@ -157,6 +157,9 @@ namespace eosio { namespace chain {
          std::size_t pos = stream.tellp();
          fc::raw::pack(stream, *this);
          std::size_t actual_size = stream.tellp() - pos;
+         EOS_ASSERT(actual_size <= padded_size, block_padding_exception,
+                    "Provided value of padded_size (${provided}) is less than the packed size of the block (${actual})",
+                    ("actual", actual_size)("provided", padded_size) );
          for(std::size_t i = 0; i < padded_size - actual_size; ++i) {
             stream.put('\0');
          }
@@ -168,6 +171,9 @@ namespace eosio { namespace chain {
          std::size_t pos = stream.tellp();
          fc::raw::unpack(stream, *this);
          std::size_t actual_size = stream.tellp() - pos;
+         EOS_ASSERT(actual_size <= padded_size, block_padding_exception,
+                    "Stored value of padded_size (${provided}) is less than the packed size of the block (${actual})",
+                    ("actual", actual_size)("provided", padded_size) );
          stream.skip( padded_size - actual_size );
          return padded_size;
       }
