@@ -508,8 +508,7 @@ BOOST_AUTO_TEST_SUITE(resource_limits_test)
       // Push trigger block to validator2 node.
       // This should still cause a NET failure, but will no longer be due to a receipt mismatch.
       // Because validator2 is in light validation mode, it does not compute the NET bill itself and instead only relies on the value in the block.
-      // The failure will be due to failing to satisfy the invariant in resource_limits_manager::add_transaction_usage
-      // because the NET bill in the block is too high.
+      // The failure will be due to failing check_net_usage within transaction_context::finalize because the NET bill in the block is too high.
       {
          auto bs = validator2.control->create_block_state_future( trigger_block );
          validator2.control->abort_block();

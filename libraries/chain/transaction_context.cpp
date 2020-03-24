@@ -341,12 +341,13 @@ namespace eosio { namespace chain {
          billing_timer_exception_code = tx_cpu_usage_exceeded::code_value;
       }
 
-      if( !explicit_net_usage ) {
-         net_usage = ((net_usage + 7)/8)*8; // Round up to nearest multiple of word size (8 bytes)
-      }
-
       eager_net_limit = net_limit;
-      check_net_usage();
+
+      if( explicit_net_usage ) {
+         check_net_usage();    // Should already be rounded. Just check NET usage satisfies limits.
+      } else {
+         round_up_net_usage(); // Round up to nearest multiple of word size (8 bytes) and check NET usage satisfies limits.
+      }
 
       auto now = fc::time_point::now();
       trace->elapsed = now - start;
@@ -368,21 +369,19 @@ namespace eosio { namespace chain {
    }
 
    void transaction_context::check_net_usage()const {
-      if (!control.skip_trx_checks()) {
-         if( BOOST_UNLIKELY(net_usage > eager_net_limit) ) {
-            if ( net_limit_due_to_block ) {
-               EOS_THROW( block_net_usage_exceeded,
-                          "not enough space left in block: ${net_usage} > ${net_limit}",
-                          ("net_usage", net_usage)("net_limit", eager_net_limit) );
-            }  else if (net_limit_due_to_greylist) {
-               EOS_THROW( greylist_net_usage_exceeded,
-                          "greylisted transaction net usage is too high: ${net_usage} > ${net_limit}",
-                          ("net_usage", net_usage)("net_limit", eager_net_limit) );
-            } else {
-               EOS_THROW( tx_net_usage_exceeded,
-                          "transaction net usage is too high: ${net_usage} > ${net_limit}",
-                          ("net_usage", net_usage)("net_limit", eager_net_limit) );
-            }
+      if( BOOST_UNLIKELY(net_usage > eager_net_limit) ) {
+         if ( net_limit_due_to_block ) {
+            EOS_THROW( block_net_usage_exceeded,
+                        "not enough space left in block: ${net_usage} > ${net_limit}",
+                        ("net_usage", net_usage)("net_limit", eager_net_limit) );
+         }  else if (net_limit_due_to_greylist) {
+            EOS_THROW( greylist_net_usage_exceeded,
+                        "greylisted transaction net usage is too high: ${net_usage} > ${net_limit}",
+                        ("net_usage", net_usage)("net_limit", eager_net_limit) );
+         } else {
+            EOS_THROW( tx_net_usage_exceeded,
+                        "transaction net usage is too high: ${net_usage} > ${net_limit}",
+                        ("net_usage", net_usage)("net_limit", eager_net_limit) );
          }
       }
    }

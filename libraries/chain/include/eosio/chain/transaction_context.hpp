@@ -65,6 +65,12 @@ namespace eosio { namespace chain {
             check_net_usage(); 
          }
 
+         inline void round_up_net_usage() {
+            if( explicit_net_usage ) return;
+            net_usage = ((net_usage + 7)/8)*8; // Round up to nearest multiple of word size (8 bytes)
+            check_net_usage();
+         }
+
          void check_net_usage()const;
 
          void checktime()const;
