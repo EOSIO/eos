@@ -294,7 +294,7 @@ namespace eosio {
 
          template<class T>
          void handle_http_request(typename websocketpp::server<T>::connection_ptr con) {
-            fc_elog( logger, "handling http request" );
+            ilog( "handling http request" );
             try {
                auto& req = con->get_request();
 
@@ -325,8 +325,8 @@ namespace eosio {
 
                std::string body = con->get_request_body();
                std::string resource = con->get_uri()->get_resource();
-               fc_elog( logger, "resource : ${resource}", ("resource", resource) );
-               fc_elog( logger, "request body : ${body}", ("body", body) );
+               ilog( "resource : ${resource}", ("resource", resource) );
+               ilog( "request body : ${body}", ("body", body) );
                auto handler_itr = url_handlers.find( resource );
                if( handler_itr != url_handlers.end()) {
                   con->defer_http_response();
@@ -358,7 +358,7 @@ namespace eosio {
                                  std::string json;
                                  try {
                                     json = fc::json::to_string( response_body, fc::time_point::now() + max_response_time );
-                                    fc_elog( logger, "response body : ${json}", ("json", json) );
+                                    ilog( "response body : ${json}", ("json", json) );
                                     con->set_body( std::move( json ) );
                                     con->set_status( websocketpp::http::status_code::value( code ) );
                                  } catch( ... ) {
@@ -367,7 +367,7 @@ namespace eosio {
                                  response_body.clear();
                                  const size_t json_size = json.size();
                                  bytes_in_flight += json_size;
-                                 fc_elog( logger, "sending response" );
+                                 ilog( "sending response" );
                                  con->send_http_response();
                                  bytes_in_flight -= (json_size + response_size);
                               } );
