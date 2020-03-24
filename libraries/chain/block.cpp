@@ -32,7 +32,7 @@ namespace eosio { namespace chain {
        trx(other.trx.visit([&](const auto& obj) { return translate_transaction_receipt(obj, legacy); }))
    {}
 
-   flat_multimap<uint16_t, block_extension> signed_block::validate_and_extract_extensions()const {
+   static flat_multimap<uint16_t, block_extension> validate_and_extract_block_extensions(const extensions_type& block_extensions) {
       using decompose_t = block_extension_types::decompose_t;
 
       flat_multimap<uint16_t, block_extension> results;
@@ -73,6 +73,10 @@ namespace eosio { namespace chain {
 
    }
 
+   flat_multimap<uint16_t, block_extension> signed_block::validate_and_extract_extensions()const {
+      return validate_and_extract_block_extensions( block_extensions );
+   }
+
    pruned_block::pruned_block( const signed_block& other, bool legacy )
      : signed_block_header(static_cast<const signed_block_header&>(other)),
        prune_state(legacy ? prune_state_type::complete_legacy : prune_state_type::complete),
@@ -101,6 +105,10 @@ namespace eosio { namespace chain {
          result += r.maximum_pruned_pack_size( segment_compression );
       }
       return fc::raw::pack_size(*static_cast<const signed_block_header*>(this)) + fc::raw::pack_size(prune_state) + result + fc::raw::pack_size(block_extensions);
+   }
+
+   flat_multimap<uint16_t, block_extension> pruned_block::validate_and_extract_extensions()const {
+      return validate_and_extract_block_extensions( block_extensions );
    }
 
 } } /// namespace eosio::chain
