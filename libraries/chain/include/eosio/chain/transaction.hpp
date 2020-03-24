@@ -286,7 +286,7 @@ namespace eosio { namespace chain {
       const vector<signature_type>* get_signatures()const;
       // Returns nullptr if any context_free_data segment was pruned
       const vector<bytes>*          get_context_free_data()const;
-      // Returns nullptr if the context_free_data segment was pruned segment_ordinal is out of range.
+      // Returns nullptr if the context_free_data segment was pruned or segment_ordinal is out of range.
       const bytes*                  get_context_free_data(std::size_t segment_ordinal);
       const fc::enum_type<uint8_t,compression_type>& get_compression()const { return compression; }
       const bytes&                  get_packed_transaction()const { return packed_trx; }
