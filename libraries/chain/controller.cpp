@@ -1079,7 +1079,8 @@ struct controller_impl {
       db.create<global_property_object>([&genesis,&chain_id=this->chain_id](auto& gpo ){
          gpo.configuration = genesis.initial_configuration;
          gpo.kv_configuration = kv_config{};
-         gpo.wasm_configuration = genesis.initial_wasm_configuration;
+         // TODO: Update this when genesis protocol features are enabled.
+         gpo.wasm_configuration = genesis_state::default_initial_wasm_configuration;
          gpo.chain_id = chain_id;
       });
 

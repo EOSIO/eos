@@ -34,7 +34,8 @@ struct wasm_config_tester : TESTER {
    void set_wasm_params(const wasm_config& params) {
       signed_transaction trx;
       trx.actions.emplace_back(vector<permission_level>{{N(eosio),config::active_name}}, N(eosio), N(setwparams),
-                               bios_abi_ser.variant_to_binary("setwparams", fc::mutable_variant_object()("cfg", params), abi_serializer_max_time));
+                               bios_abi_ser.variant_to_binary("setwparams", fc::mutable_variant_object()("cfg", params),
+                                                              abi_serializer::create_yield_function( abi_serializer_max_time )));
       trx.actions[0].authorization = vector<permission_level>{{N(eosio),config::active_name}};
       set_transaction_headers(trx);
       trx.sign(get_private_key(N(eosio), "active"), control->get_chain_id());
