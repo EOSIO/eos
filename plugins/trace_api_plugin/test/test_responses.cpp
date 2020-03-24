@@ -1,0 +1,432 @@
+#define BOOST_TEST_MODULE trace_data_responses
+#include <boost/test/included/unit_test.hpp>
+
+#include <fc/variant_object.hpp>
+
+#include <eosio/trace_api/request_handler.hpp>
+#include <eosio/trace_api/test_common.hpp>
+
+using namespace eosio;
+using namespace eosio::trace_api;
+using namespace eosio::trace_api::test_common;
+
+struct response_test_fixture {
+   /**
+    * MOCK implementation of the logfile input API
+    */
+   struct mock_logfile_provider {
+      mock_logfile_provider(response_test_fixture& fixture)
+      :fixture(fixture)
+      {}
+
+      /**
+       * Read the trace for a given block
+       * @param block_height : the height of the data being read
+       * @return empty optional if the data cannot be read OTHERWISE
+       *         optional containing a 2-tuple of the block_trace and a flag indicating irreversibility
+       * @throws bad_data_exception : if the data is corrupt in some way
+       */
+      get_block_t get_block(uint32_t height, const yield_function& yield= {}) {
+         return fixture.mock_get_block(height, yield);
+      }
+      response_test_fixture& fixture;
+   };
+
+   constexpr static auto default_mock_data_handler = [](const action_trace_v0& a, const yield_function&) -> fc::variant {
+      return fc::mutable_variant_object()("hex" , fc::to_hex(a.data.data(), a.data.size()));
+   };
+
+
+   struct mock_data_handler_provider {
+      mock_data_handler_provider(response_test_fixture& fixture)
+      :fixture(fixture)
+      {}
+
+      fc::variant process_data(const action_trace_v0& action, const yield_function& yield) {
+         return fixture.mock_data_handler(action, yield);
+      }
+
+      response_test_fixture& fixture;
+   };
+
+   using response_impl_type = request_handler<mock_logfile_provider, mock_data_handler_provider>;
+   /**
+    * TODO: initialize extraction implementation here with `mock_logfile_provider` as template param
+    */
+   response_test_fixture()
+   : response_impl(mock_logfile_provider(*this), mock_data_handler_provider(*this))
+   {
+
+   }
+
+   fc::variant get_block_trace( uint32_t block_height, const yield_function& yield = {} ) {
+      return response_impl.get_block_trace( block_height, yield );
+   }
+
+   // fixture data and methods
+   std::function<get_block_t(uint32_t, const yield_function&)> mock_get_block;
+   std::function<fc::variant(const action_trace_v0&, const yield_function&)> mock_data_handler = default_mock_data_handler;
+
+   response_impl_type response_impl;
+
+};
+
+BOOST_AUTO_TEST_SUITE(trace_responses)
+   BOOST_FIXTURE_TEST_CASE(basic_empty_block_response, response_test_fixture)
+   {
+      auto block_trace = block_trace_v0 {
+         "b000000000000000000000000000000000000000000000000000000000000001"_h,
+         1,
+         "0000000000000000000000000000000000000000000000000000000000000000"_h,
+         chain::block_timestamp_type(0),
+         "bp.one"_n,
+         {}
+      };
+
+      fc::variant expected_response = fc::mutable_variant_object()
+         ("id", "b000000000000000000000000000000000000000000000000000000000000001")
+         ("number", 1)
+         ("previous_id", "0000000000000000000000000000000000000000000000000000000000000000")
+         ("status", "pending")
+         ("timestamp", "2000-01-01T00:00:00.000Z")
+         ("producer", "bp.one")
+         ("transactions", fc::variants() )
+      ;
+
+      mock_get_block = [&block_trace]( uint32_t height, const yield_function& ) -> get_block_t {
+         BOOST_TEST(height == 1);
+         return std::make_tuple(block_trace, false);
+      };
+
+      fc::variant actual_response = get_block_trace( 1 );
+
+      BOOST_TEST(to_kv(expected_response) == to_kv(actual_response), boost::test_tools::per_element());
+   }
+
+   BOOST_FIXTURE_TEST_CASE(basic_block_response, response_test_fixture)
+   {
+      auto block_trace = block_trace_v0 {
+         "b000000000000000000000000000000000000000000000000000000000000001"_h,
+         1,
+         "0000000000000000000000000000000000000000000000000000000000000000"_h,
+         chain::block_timestamp_type(0),
+         "bp.one"_n,
+         {
+            {
+               "0000000000000000000000000000000000000000000000000000000000000001"_h,
+               {
+                  {
+                     0,
+                     "receiver"_n, "contract"_n, "action"_n,
+                     {{ "alice"_n, "active"_n }},
+                     { 0x00, 0x01, 0x02, 0x03 }
+                  }
+               }
+            }
+         }
+      };
+
+      fc::variant expected_response = fc::mutable_variant_object()
+         ("id", "b000000000000000000000000000000000000000000000000000000000000001")
+         ("number", 1)
+         ("previous_id", "0000000000000000000000000000000000000000000000000000000000000000")
+         ("status", "pending")
+         ("timestamp", "2000-01-01T00:00:00.000Z")
+         ("producer", "bp.one")
+         ("transactions", fc::variants({
+            fc::mutable_variant_object()
+               ("id", "0000000000000000000000000000000000000000000000000000000000000001")
+               ("actions", fc::variants({
+                  fc::mutable_variant_object()
+                     ("receiver", "receiver")
+                     ("account", "contract")
+                     ("action", "action")
+                     ("authorization", fc::variants({
+                        fc::mutable_variant_object()
+                           ("account", "alice")
+                           ("permission", "active")
+                     }))
+                     ("data", "00010203")
+                     ("params", fc::mutable_variant_object()
+                           ("hex", "00010203"))
+               }))
+         }))
+      ;
+
+      mock_get_block = [&block_trace]( uint32_t height, const yield_function& ) -> get_block_t {
+         BOOST_TEST(height == 1);
+         return std::make_tuple(block_trace, false);
+      };
+
+      fc::variant actual_response = get_block_trace( 1 );
+
+      BOOST_TEST(to_kv(expected_response) == to_kv(actual_response), boost::test_tools::per_element());
+   }
+
+   BOOST_FIXTURE_TEST_CASE(basic_block_response_no_params, response_test_fixture)
+   {
+      auto block_trace = block_trace_v0 {
+         "b000000000000000000000000000000000000000000000000000000000000001"_h,
+         1,
+         "0000000000000000000000000000000000000000000000000000000000000000"_h,
+         chain::block_timestamp_type(0),
+         "bp.one"_n,
+         {
+            {
+               "0000000000000000000000000000000000000000000000000000000000000001"_h,
+               {
+                  {
+                     0,
+                     "receiver"_n, "contract"_n, "action"_n,
+                     {{ "alice"_n, "active"_n }},
+                     { 0x00, 0x01, 0x02, 0x03 }
+                  }
+               }
+            }
+         }
+      };
+
+      fc::variant expected_response = fc::mutable_variant_object()
+         ("id", "b000000000000000000000000000000000000000000000000000000000000001")
+         ("number", 1)
+         ("previous_id", "0000000000000000000000000000000000000000000000000000000000000000")
+         ("status", "pending")
+         ("timestamp", "2000-01-01T00:00:00.000Z")
+         ("producer", "bp.one")
+         ("transactions", fc::variants({
+            fc::mutable_variant_object()
+               ("id", "0000000000000000000000000000000000000000000000000000000000000001")
+               ("actions", fc::variants({
+                  fc::mutable_variant_object()
+                     ("receiver", "receiver")
+                     ("account", "contract")
+                     ("action", "action")
+                     ("authorization", fc::variants({
+                        fc::mutable_variant_object()
+                           ("account", "alice")
+                           ("permission", "active")
+                     }))
+                     ("data", "00010203")
+               }))
+         }))
+      ;
+
+      mock_get_block = [&block_trace]( uint32_t height, const yield_function& ) -> get_block_t {
+         BOOST_TEST(height == 1);
+         return std::make_tuple(block_trace, false);
+      };
+
+      // simulate an inability to parse the parameters
+      mock_data_handler = [](const action_trace_v0&, const yield_function&) -> fc::variant {
+         return {};
+      };
+
+      fc::variant actual_response = get_block_trace( 1 );
+
+      BOOST_TEST(to_kv(expected_response) == to_kv(actual_response), boost::test_tools::per_element());
+   }
+
+   BOOST_FIXTURE_TEST_CASE(basic_block_response_unsorted, response_test_fixture)
+   {
+      auto block_trace = block_trace_v0 {
+         "b000000000000000000000000000000000000000000000000000000000000001"_h,
+         1,
+         "0000000000000000000000000000000000000000000000000000000000000000"_h,
+         chain::block_timestamp_type(0),
+         "bp.one"_n,
+         {
+            {
+               "0000000000000000000000000000000000000000000000000000000000000001"_h,
+               {
+                  {
+                     1,
+                     "receiver"_n, "contract"_n, "action"_n,
+                     {{ "alice"_n, "active"_n }},
+                     { 0x01, 0x01, 0x01, 0x01 }
+                  },
+                  {
+                     0,
+                     "receiver"_n, "contract"_n, "action"_n,
+                     {{ "alice"_n, "active"_n }},
+                     { 0x00, 0x00, 0x00, 0x00 }
+                  },
+                  {
+                     2,
+                     "receiver"_n, "contract"_n, "action"_n,
+                     {{ "alice"_n, "active"_n }},
+                     { 0x02, 0x02, 0x02, 0x02 }
+                  }
+               }
+            }
+         }
+      };
+
+      fc::variant expected_response = fc::mutable_variant_object()
+         ("id", "b000000000000000000000000000000000000000000000000000000000000001")
+         ("number", 1)
+         ("previous_id", "0000000000000000000000000000000000000000000000000000000000000000")
+         ("status", "pending")
+         ("timestamp", "2000-01-01T00:00:00.000Z")
+         ("producer", "bp.one")
+         ("transactions", fc::variants({
+            fc::mutable_variant_object()
+               ("id", "0000000000000000000000000000000000000000000000000000000000000001")
+               ("actions", fc::variants({
+                  fc::mutable_variant_object()
+                     ("receiver", "receiver")
+                     ("account", "contract")
+                     ("action", "action")
+                     ("authorization", fc::variants({
+                        fc::mutable_variant_object()
+                           ("account", "alice")
+                           ("permission", "active")
+                     }))
+                     ("data", "00000000")
+                  ,
+                  fc::mutable_variant_object()
+                     ("receiver", "receiver")
+                     ("account", "contract")
+                     ("action", "action")
+                     ("authorization", fc::variants({
+                        fc::mutable_variant_object()
+                           ("account", "alice")
+                           ("permission", "active")
+                     }))
+                     ("data", "01010101")
+                  ,
+                  fc::mutable_variant_object()
+                     ("receiver", "receiver")
+                     ("account", "contract")
+                     ("action", "action")
+                     ("authorization", fc::variants({
+                        fc::mutable_variant_object()
+                           ("account", "alice")
+                           ("permission", "active")
+                     }))
+                     ("data", "02020202")
+               }))
+         }))
+      ;
+
+      mock_get_block = [&block_trace]( uint32_t height, const yield_function& ) -> get_block_t {
+         BOOST_TEST(height == 1);
+         return std::make_tuple(block_trace, false);
+      };
+
+      // simulate an inability to parse the parameters
+      mock_data_handler = [](const action_trace_v0&, const yield_function&) -> fc::variant {
+         return {};
+      };
+
+      fc::variant actual_response = get_block_trace( 1 );
+
+      BOOST_TEST(to_kv(expected_response) == to_kv(actual_response), boost::test_tools::per_element());
+   }
+
+   BOOST_FIXTURE_TEST_CASE(lib_response, response_test_fixture)
+   {
+      auto block_trace = block_trace_v0 {
+         "b000000000000000000000000000000000000000000000000000000000000001"_h,
+         1,
+         "0000000000000000000000000000000000000000000000000000000000000000"_h,
+         chain::block_timestamp_type(0),
+         "bp.one"_n,
+         {}
+      };
+
+      fc::variant expected_response = fc::mutable_variant_object()
+         ("id", "b000000000000000000000000000000000000000000000000000000000000001")
+         ("number", 1)
+         ("previous_id", "0000000000000000000000000000000000000000000000000000000000000000")
+         ("status", "irreversible")
+         ("timestamp", "2000-01-01T00:00:00.000Z")
+         ("producer", "bp.one")
+         ("transactions", fc::variants() )
+      ;
+
+      mock_get_block = [&block_trace]( uint32_t height, const yield_function& ) -> get_block_t {
+         BOOST_TEST(height == 1);
+         return std::make_tuple(block_trace, true);
+      };
+
+      fc::variant response = get_block_trace( 1 );
+      BOOST_TEST(to_kv(expected_response) == to_kv(response), boost::test_tools::per_element());
+
+   }
+
+   BOOST_FIXTURE_TEST_CASE(corrupt_block_data, response_test_fixture)
+   {
+      mock_get_block = []( uint32_t height, const yield_function& ) -> get_block_t {
+         BOOST_TEST(height == 1);
+         throw bad_data_exception("mock exception");
+      };
+
+      BOOST_REQUIRE_THROW(get_block_trace( 1 ), bad_data_exception);
+   }
+
+   BOOST_FIXTURE_TEST_CASE(missing_block_data, response_test_fixture)
+   {
+      mock_get_block = []( uint32_t height, const yield_function& ) -> get_block_t {
+         BOOST_TEST(height == 1);
+         return {};
+      };
+
+      fc::variant null_response = get_block_trace( 1 );
+
+      BOOST_TEST(null_response.is_null());
+   }
+
+   BOOST_FIXTURE_TEST_CASE(yield_throws, response_test_fixture)
+   {
+      auto block_trace = block_trace_v0 {
+         "b000000000000000000000000000000000000000000000000000000000000001"_h,
+         1,
+         "0000000000000000000000000000000000000000000000000000000000000000"_h,
+         chain::block_timestamp_type(0),
+         "bp.one"_n,
+         {
+            {
+               "0000000000000000000000000000000000000000000000000000000000000001"_h,
+               {
+                  {
+                     0,
+                     "receiver"_n, "contract"_n, "action"_n,
+                     {{ "alice"_n, "active"_n }},
+                     { 0x00, 0x01, 0x02, 0x03 }
+                  }
+               }
+            }
+         }
+      };
+
+      mock_get_block = [&block_trace]( uint32_t height, const yield_function& ) -> get_block_t {
+         BOOST_TEST(height == 1);
+         return std::make_tuple(block_trace, false);
+      };
+
+      int countdown = 3;
+      yield_function yield = [&]() {
+         if (countdown-- == 0) {
+            throw yield_exception("mock");
+         }
+      };
+
+      BOOST_REQUIRE_THROW(get_block_trace( 1, yield ), yield_exception);
+   }
+
+   BOOST_FIXTURE_TEST_CASE(yield_throws_from_get_block, response_test_fixture)
+   {
+      // no other yield calls will throw
+      yield_function yield = [&]() {
+      };
+
+      // simulate a yield throw inside get block
+      mock_get_block = []( uint32_t height, const yield_function& yield) -> get_block_t {
+         throw yield_exception("mock exception");
+      };
+
+
+      BOOST_REQUIRE_THROW(get_block_trace( 1, yield ), yield_exception);
+   }
+
+BOOST_AUTO_TEST_SUITE_END()

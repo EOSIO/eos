@@ -168,7 +168,7 @@ namespace LLVMJIT
 	struct JITModule
 	{
 		JITModule() {
-			objectLayer = llvm::make_unique<llvm::orc::LegacyRTDyldObjectLinkingLayer>(ES,[this](llvm::orc::VModuleKey K) {
+			objectLayer = std::make_unique<llvm::orc::LegacyRTDyldObjectLinkingLayer>(ES,[this](llvm::orc::VModuleKey K) {
 									return llvm::orc::LegacyRTDyldObjectLinkingLayer::Resources{
 										unitmemorymanager, std::make_shared<llvm::orc::NullResolver>()
 										};
@@ -203,7 +203,7 @@ namespace LLVMJIT
 							  }
 							  );
 			objectLayer->setProcessAllSections(true);
-			compileLayer = llvm::make_unique<CompileLayer>(*objectLayer,llvm::orc::SimpleCompiler(*targetMachine));
+			compileLayer = std::make_unique<CompileLayer>(*objectLayer,llvm::orc::SimpleCompiler(*targetMachine));
 		}
 
 		void compile(llvm::Module* llvmModule);

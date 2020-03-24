@@ -271,8 +271,10 @@ function ensure-boost() {
 }
 
 function ensure-llvm() {
+    echo "${COLOR_CYAN}[Ensuring LLVM support]${COLOR_NC}"
     if $PIN_COMPILER || $BUILD_CLANG; then
         if [[ -d $LLVM_ROOT ]]; then
+            echo "LLVM_ROOT ($LLVM_ROOT) already exists!"
             return
         fi
         LLVM_TEMP_DIR=$(mktemp -d)
@@ -283,7 +285,7 @@ function ensure-llvm() {
         execute bash -c "cd '$LLVM_TEMP_DIR' \
         && git clone --depth 1 --single-branch --branch $LLVM_VERSION https://github.com/llvm-mirror/llvm.git llvm && cd llvm \
         && mkdir build && cd build \
-        && ${CMAKE} -DCMAKE_INSTALL_PREFIX='${LLVM_ROOT}' -DLLVM_TARGETS_TO_BUILD=host -DLLVM_BUILD_TOOLS=false -DLLVM_ENABLE_RTTI=1 -DCMAKE_BUILD_TYPE=Release $LLVM_PINNED_CMAKE_ARGS .. \
+        && ${CMAKE} -DCMAKE_INSTALL_PREFIX='${LLVM_ROOT}' -DLLVM_TARGETS_TO_BUILD=host -DLLVM_BUILD_TOOLS=false -DLLVM_ENABLE_RTTI=1 -DCMAKE_BUILD_TYPE=Release -DLLVM_ENABLE_TERMINFO=OFF $LLVM_PINNED_CMAKE_ARGS .. \
         && make -j${JOBS} install"
         echo " - LLVM successfully installed @ ${LLVM_ROOT}"
     elif [[ $NAME == "Ubuntu" ]]; then
@@ -291,7 +293,7 @@ function ensure-llvm() {
     elif [[ $NAME == "Amazon Linux" ]]; then
         execute unlink $LLVM_ROOT || true
     elif [[ $NAME == "CentOS Linux" ]]; then
-        execute ln -snf /opt/rh/llvm-toolset-7.0/root $LLVM_ROOT
+        export LOCAL_CMAKE_FLAGS="${LOCAL_CMAKE_FLAGS} -DLLVM_DIR='/opt/rh/llvm-toolset-7.0/root/usr/lib64/cmake/llvm'"
     fi
 }
 

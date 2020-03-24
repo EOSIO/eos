@@ -2,6 +2,7 @@
 
 from core_symbol import CORE_SYMBOL
 from Cluster import Cluster
+from Cluster import NamedAccounts
 from WalletMgr import WalletMgr
 from Node import Node
 from TestHelper import TestHelper
@@ -25,39 +26,6 @@ import re
 
 Print=Utils.Print
 errorExit=Utils.errorExit
-
-class NamedAccounts:
-
-    def __init__(self, cluster, numAccounts):
-        Print("NamedAccounts %d" % (numAccounts))
-        self.numAccounts=numAccounts
-        self.accounts=cluster.createAccountKeys(numAccounts)
-        if self.accounts is None:
-            errorExit("FAILURE - create keys")
-        accountNum = 0
-        for account in self.accounts:
-            Print("NamedAccounts Name for %d" % (accountNum))
-            account.name=self.setName(accountNum)
-            accountNum+=1
-
-    def setName(self, num):
-        retStr="test"
-        digits=[]
-        maxDigitVal=5
-        maxDigits=8
-        temp=num
-        while len(digits) < maxDigits:
-            digit=(num % maxDigitVal)+1
-            num=int(num/maxDigitVal)
-            digits.append(digit)
-
-        digits.reverse()
-        for digit in digits:
-            retStr=retStr+str(digit)
-
-        Print("NamedAccounts Name for %d is %s" % (temp, retStr))
-        return retStr
-
 
 args = TestHelper.parse_args({"--dump-error-details","--keep-logs","-v","--leave-running","--clean-run","--wallet-port"})
 Utils.Debug=args.v
@@ -88,7 +56,7 @@ try:
     minRAMValue=1002
     maxRAMFlag="--chain-state-db-size-mb"
     maxRAMValue=1010
-    extraNodeosArgs=" %s %d %s %d " % (minRAMFlag, minRAMValue, maxRAMFlag, maxRAMValue)
+    extraNodeosArgs=" %s %d %s %d  --http-max-response-time-ms 990000 " % (minRAMFlag, minRAMValue, maxRAMFlag, maxRAMValue)
     if cluster.launch(onlyBios=False, pnodes=totalNodes, totalNodes=totalNodes, totalProducers=totalNodes, extraNodeosArgs=extraNodeosArgs, useBiosBootFile=False) is False:
         Utils.cmdError("launcher")
         errorExit("Failed to stand up eos cluster.")
@@ -144,7 +112,7 @@ try:
     wasmFile="integration_test.wasm"
     abiFile="integration_test.abi"
     Print("Publish contract")
-    trans=nodes[0].publishContract(contractAccount.name, contractDir, wasmFile, abiFile, waitForTransBlock=True)
+    trans=nodes[0].publishContract(contractAccount, contractDir, wasmFile, abiFile, waitForTransBlock=True)
     if trans is None:
         Utils.cmdError("%s set contract %s" % (ClientName, contractAccount.name))
         errorExit("Failed to publish contract.")
@@ -197,19 +165,19 @@ try:
         errorExit("Incorrect number of store actions sent")
 
     # Make sure all the nodes are shutdown (may take a little while for this to happen, so making multiple passes)
-    allDone=False
     count=0
-    while not allDone:
+    while True:
         allDone=True
         for node in nodes:
             if node.verifyAlive():
                 allDone=False
-        if not allDone:
-            time.sleep(5)
+        if allDone:
+            break
         count+=1
-        if count>5:
+        if count>12:
             Utils.cmdError("All Nodes should have died")
             errorExit("Failure - All Nodes should have died")
+        time.sleep(5)
 
     for i in range(numNodes):
         f = open(Utils.getNodeDataDir(i) + "/stderr.txt")
@@ -300,7 +268,6 @@ try:
     addSwapFlags={}
 
     time.sleep(10)
-    allDone=True
     for node in nodes:
         if not node.verifyAlive():
             Utils.cmdError("All Nodes should be alive")
@@ -337,7 +304,6 @@ try:
 
     time.sleep(10)
     Print("Check nodes are alive")
-    allDone=True
     for node in nodes:
         if not node.verifyAlive():
             Utils.cmdError("All Nodes should be alive")

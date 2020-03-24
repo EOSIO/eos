@@ -60,6 +60,20 @@ namespace eosio { namespace chain {
 
          void checktime()const;
 
+         template <typename DigestType>
+         inline DigestType hash_with_checktime( const char* data, uint32_t datalen )const {
+            const size_t bs = eosio::chain::config::hashing_checktime_block_size;
+            typename DigestType::encoder enc;
+            while ( datalen > bs ) {
+               enc.write( data, bs );
+               data    += bs;
+               datalen -= bs;
+               checktime();
+            }
+            enc.write( data, datalen );
+            return enc.result();
+         }
+
          void pause_billing_timer();
          void resume_billing_timer();
 
@@ -97,7 +111,8 @@ namespace eosio { namespace chain {
          void schedule_transaction();
          void record_transaction( const transaction_id_type& id, fc::time_point_sec expire );
 
-         void validate_cpu_usage_to_bill( int64_t u, bool check_minimum = true )const;
+         void validate_cpu_usage_to_bill( int64_t billed_us, int64_t account_cpu_limit, bool check_minimum )const;
+         void validate_account_cpu_usage( int64_t billed_us, int64_t account_cpu_limit, bool estimate )const;
 
          void disallow_transaction_extensions( const char* error_msg )const;
 

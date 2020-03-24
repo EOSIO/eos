@@ -9,6 +9,9 @@ if [[ "$(uname)" == 'Linux' ]]; then
     if [[ "$ID" == 'centos' ]]; then
         [[ -f /opt/rh/rh-python36/enable ]] && source /opt/rh/rh-python36/enable
     fi
+    cd $GIT_ROOT && npm install
+else
+    npm install
 fi
 cd $GIT_ROOT/build
 # mongoDB

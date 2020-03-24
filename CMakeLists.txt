@@ -52,10 +52,11 @@ endif()
 set(CMAKE_EXPORT_COMPILE_COMMANDS "ON")
 set(BUILD_DOXYGEN FALSE CACHE BOOL "Build doxygen documentation on every make")
 set(BUILD_MONGO_DB_PLUGIN FALSE CACHE BOOL "Build mongo database plugin")
+set(ENABLE_MULTIVERSION_PROTOCOL_TEST FALSE CACHE BOOL "Enable nodeos multiversion protocol test")
 
 # add defaults for openssl
 if(APPLE AND UNIX AND "${OPENSSL_ROOT_DIR}" STREQUAL "")
-   set(OPENSSL_ROOT_DIR "/usr/local/opt/openssl")
+   set(OPENSSL_ROOT_DIR "/usr/local/opt/openssl@1.1")
 endif()
 
 # WASM runtimes to enable. Each runtime in this list will have:
@@ -68,16 +69,15 @@ if(CMAKE_SIZEOF_VOID_P EQUAL 8 AND NOT WIN32)
       # EOS VM OC requires LLVM, but move the check up here to a central location so that the EosioTester.cmakes
       # can be created with the exact version found
       find_package(LLVM REQUIRED CONFIG)
-      if(LLVM_VERSION_MAJOR VERSION_LESS 7 OR LLVM_VERSION_MAJOR VERSION_GREATER 9)
-	      message(FATAL_ERROR "EOSIO requires an LLVM version 7.0 to 9.0")
+      if(LLVM_VERSION_MAJOR VERSION_LESS 7 OR LLVM_VERSION_MAJOR VERSION_GREATER 10)
+	      message(FATAL_ERROR "EOSIO requires an LLVM version 7.0 to 10.0")
       endif()
    endif()
 endif()
 
 if(CMAKE_SIZEOF_VOID_P EQUAL 8 AND NOT WIN32)
-   list(APPEND EOSIO_WASM_RUNTIMES eos-vm)
    if(CMAKE_SYSTEM_PROCESSOR STREQUAL x86_64)
-      list(APPEND EOSIO_WASM_RUNTIMES eos-vm-jit)
+      list(APPEND EOSIO_WASM_RUNTIMES eos-vm eos-vm-jit)
    endif()
 endif()
 

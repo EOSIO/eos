@@ -5,6 +5,7 @@
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/generated_transaction_object.hpp>
 #include <eosio/chain/global_property_object.hpp>
+#include <eosio/chain/kv_chainbase_objects.hpp>
 #include <eosio/chain/permission_link_object.hpp>
 #include <eosio/chain/permission_object.hpp>
 #include <eosio/chain/protocol_state_object.hpp>
@@ -262,6 +263,16 @@ datastream<ST>& operator<<(
     datastream<ST>&                                                                                       ds,
     const history_context_wrapper<eosio::chain::table_id_object, eosio::chain::index_long_double_object>& obj) {
    return serialize_secondary_index(ds, obj.context, obj.obj);
+}
+
+template <typename ST>
+datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosio::chain::kv_object>& obj) {
+   fc::raw::pack(ds, fc::unsigned_int(0));
+   fc::raw::pack(ds, as_type<uint64_t>(obj.obj.database_id.to_uint64_t()));
+   fc::raw::pack(ds, as_type<uint64_t>(obj.obj.contract.to_uint64_t()));
+   fc::raw::pack(ds, as_type<eosio::chain::shared_blob>(obj.obj.kv_key));
+   fc::raw::pack(ds, as_type<eosio::chain::shared_blob>(obj.obj.kv_value));
+   return ds;
 }
 
 template <typename ST>
@@ -568,7 +579,7 @@ inline fc::optional<uint64_t> cap_error_code( const fc::optional<uint64_t>& erro
 template <typename ST>
 datastream<ST>& operator<<(datastream<ST>& ds, const history_context_wrapper<bool, eosio::chain::action_trace>& obj) {
    bool  debug_mode = obj.context;
-   fc::raw::pack(ds, fc::unsigned_int(0));
+   fc::raw::pack(ds, fc::unsigned_int(1));
    fc::raw::pack(ds, as_type<fc::unsigned_int>(obj.obj.action_ordinal));
    fc::raw::pack(ds, as_type<fc::unsigned_int>(obj.obj.creator_action_ordinal));
    fc::raw::pack(ds, bool(obj.obj.receipt));
@@ -584,6 +595,7 @@ datastream<ST>& operator<<(datastream<ST>& ds, const history_context_wrapper<boo
    else
       fc::raw::pack(ds, std::string{});
    history_serialize_container(ds, obj.db, as_type<flat_set<eosio::chain::account_delta>>(obj.obj.account_ram_deltas));
+   history_serialize_container(ds, obj.db, as_type<flat_set<eosio::chain::account_delta>>(obj.obj.account_disk_deltas));
 
    fc::optional<std::string> e;
    if (obj.obj.except) {
@@ -595,7 +607,7 @@ datastream<ST>& operator<<(datastream<ST>& ds, const history_context_wrapper<boo
    fc::raw::pack(ds, as_type<fc::optional<std::string>>(e));
    fc::raw::pack(ds, as_type<fc::optional<uint64_t>>(debug_mode ? obj.obj.error_code
                                                                 : cap_error_code(obj.obj.error_code)));
-
+   fc::raw::pack(ds, as_type<eosio::chain::bytes>(obj.obj.return_value));
    return ds;
 }
 

@@ -50,8 +50,6 @@ namespace eosio { namespace chain {
       IRREVERSIBLE
    };
 
-   inline bool db_mode_is_immutable(db_read_mode m) {return db_read_mode::READ_ONLY == m || db_read_mode::IRREVERSIBLE ==m;}
-
    enum class validation_mode {
       FULL,
       LIGHT
@@ -59,7 +57,6 @@ namespace eosio { namespace chain {
 
    class controller {
       public:
-
          struct config {
             flat_set<account_name>   sender_bypass_whiteblacklist;
             flat_set<account_name>   actor_whitelist;
@@ -83,6 +80,7 @@ namespace eosio { namespace chain {
             bool                     allow_ram_billing_in_notify = false;
             uint32_t                 maximum_variable_signature_length = chain::config::default_max_variable_signature_length;
             bool                     disable_all_subjective_mitigations = false; //< for testing purposes only
+            uint32_t                 terminate_at_block     = 0; //< primarily for testing purposes
 
             wasm_interface::vm_type  wasm_runtime = chain::config::default_wasm_runtime;
             eosvmoc::config          eosvmoc_config;
@@ -111,9 +109,9 @@ namespace eosio { namespace chain {
          ~controller();
 
          void add_indices();
-         void startup( std::function<bool()> shutdown, const snapshot_reader_ptr& snapshot);
-         void startup( std::function<bool()> shutdown, const genesis_state& genesis);
-         void startup( std::function<bool()> shutdown);
+         void startup( std::function<void()> shutdown, std::function<bool()> check_shutdown, const snapshot_reader_ptr& snapshot);
+         void startup( std::function<void()> shutdown, std::function<bool()> check_shutdown, const genesis_state& genesis);
+         void startup( std::function<void()> shutdown, std::function<bool()> check_shutdown);
 
          void preactivate_feature( const digest_type& feature_digest );
 
@@ -145,13 +143,15 @@ namespace eosio { namespace chain {
          /**
           *
           */
-         transaction_trace_ptr push_transaction( const transaction_metadata_ptr& trx, fc::time_point deadline, uint32_t billed_cpu_time_us = 0 );
+         transaction_trace_ptr push_transaction( const transaction_metadata_ptr& trx, fc::time_point deadline,
+                                                 uint32_t billed_cpu_time_us, bool explicit_billed_cpu_time );
 
          /**
           * Attempt to execute a specific transaction in our deferred trx database
           *
           */
-         transaction_trace_ptr push_scheduled_transaction( const transaction_id_type& scheduled, fc::time_point deadline, uint32_t billed_cpu_time_us = 0 );
+         transaction_trace_ptr push_scheduled_transaction( const transaction_id_type& scheduled, fc::time_point deadline,
+                                                           uint32_t billed_cpu_time_us, bool explicit_billed_cpu_time );
 
          block_state_ptr finalize_block( const signer_callback_type& signer_callback );
          void sign_block( const signer_callback_type& signer_callback );
@@ -171,6 +171,7 @@ namespace eosio { namespace chain {
          boost::asio::io_context& get_thread_pool();
 
          const chainbase::database& db()const;
+         const chainbase::database& reversible_db() const;
 
          const fork_database& fork_db()const;
 
@@ -227,6 +228,7 @@ namespace eosio { namespace chain {
 
          uint32_t last_irreversible_block_num() const;
          block_id_type last_irreversible_block_id() const;
+         time_point last_irreversible_block_time() const;
 
          signed_block_ptr fetch_block_by_number( uint32_t block_num )const;
          signed_block_ptr fetch_block_by_id( block_id_type id )const;
@@ -276,6 +278,7 @@ namespace eosio { namespace chain {
          bool skip_db_sessions( )const;
          bool skip_db_sessions( block_status bs )const;
          bool skip_trx_checks()const;
+         bool is_trusted_producer( const account_name& producer) const;
 
          bool contracts_console()const;
 
@@ -283,9 +286,11 @@ namespace eosio { namespace chain {
 
          db_read_mode get_read_mode()const;
          validation_mode get_validation_mode()const;
+         uint32_t get_terminate_at_block()const;
          bool in_immutable_mode()const;
 
          void set_subjective_cpu_leeway(fc::microseconds leeway);
+         fc::optional<fc::microseconds> get_subjective_cpu_leeway() const;
          void set_greylist_limit( uint32_t limit );
          uint32_t get_greylist_limit()const;
 
@@ -320,24 +325,23 @@ namespace eosio { namespace chain {
          wasm_interface& get_wasm_interface();
 
 
-         optional<abi_serializer> get_abi_serializer( account_name n, const fc::microseconds& max_serialization_time )const {
+         optional<abi_serializer> get_abi_serializer( account_name n, const abi_serializer::yield_function_t& yield )const {
             if( n.good() ) {
                try {
                   const auto& a = get_account( n );
                   abi_def abi;
                   if( abi_serializer::to_abi( a.abi, abi ))
-                     return abi_serializer( abi, max_serialization_time );
+                     return abi_serializer( abi, yield );
                } FC_CAPTURE_AND_LOG((n))
             }
             return optional<abi_serializer>();
          }
 
          template<typename T>
-         fc::variant to_variant_with_abi( const T& obj, const fc::microseconds& max_serialization_time ) {
+         fc::variant to_variant_with_abi( const T& obj, const abi_serializer::yield_function_t& yield ) {
             fc::variant pretty_output;
             abi_serializer::to_variant( obj, pretty_output,
-                                        [&]( account_name n ){ return get_abi_serializer( n, max_serialization_time ); },
-                                        max_serialization_time);
+                                        [&]( account_name n ){ return get_abi_serializer( n, yield ); }, yield );
             return pretty_output;
          }
 

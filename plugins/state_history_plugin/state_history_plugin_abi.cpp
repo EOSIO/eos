@@ -17,7 +17,8 @@ extern const char* const state_history_plugin_abi = R"({
                 { "name": "trace_begin_block", "type": "uint32" },
                 { "name": "trace_end_block", "type": "uint32" },
                 { "name": "chain_state_begin_block", "type": "uint32" },
-                { "name": "chain_state_end_block", "type": "uint32" }
+                { "name": "chain_state_end_block", "type": "uint32" },
+                { "name": "chain_id", "type": "checksum256$" }
             ]
         },
         {
@@ -104,6 +105,23 @@ extern const char* const state_history_plugin_abi = R"({
                 { "name": "account_ram_deltas", "type": "account_delta[]" },
                 { "name": "except", "type": "string?" },
                 { "name": "error_code", "type": "uint64?" }
+            ]
+        },
+        {
+            "name": "action_trace_v1", "fields": [
+                { "name": "action_ordinal", "type": "varuint32" },
+                { "name": "creator_action_ordinal", "type": "varuint32" },
+                { "name": "receipt", "type": "action_receipt?" },
+                { "name": "receiver", "type": "name" },
+                { "name": "act", "type": "action" },
+                { "name": "context_free", "type": "bool" },
+                { "name": "elapsed", "type": "int64" },
+                { "name": "console", "type": "string" },
+                { "name": "account_ram_deltas", "type": "account_delta[]" },
+                { "name": "account_disk_deltas", "type": "account_delta[]" },
+                { "name": "except", "type": "string?" },
+                { "name": "error_code", "type": "uint64?" },
+                { "name": "return_value", "type": "bytes"}
             ]
         },
         {
@@ -297,6 +315,14 @@ extern const char* const state_history_plugin_abi = R"({
                 { "type": "uint64", "name": "primary_key" },
                 { "type": "name", "name": "payer" },
                 { "type": "float128", "name": "secondary_key" }
+            ]
+        },
+        {
+            "name": "key_value_v0", "fields": [
+                { "type": "name", "name": "database" },
+                { "type": "name", "name": "contract" },
+                { "type": "bytes", "name": "key" },
+                { "type": "bytes", "name": "value" }
             ]
         },
         {
@@ -501,7 +527,7 @@ extern const char* const state_history_plugin_abi = R"({
         { "name": "result", "types": ["get_status_result_v0", "get_blocks_result_v0"] },
 
         { "name": "action_receipt", "types": ["action_receipt_v0"] },
-        { "name": "action_trace", "types": ["action_trace_v0"] },
+        { "name": "action_trace", "types": ["action_trace_v0", "action_trace_v1"] },
         { "name": "partial_transaction", "types": ["partial_transaction_v0"] },
         { "name": "transaction_trace", "types": ["transaction_trace_v0"] },
         { "name": "transaction_variant", "types": ["transaction_id", "packed_transaction"] },
@@ -517,6 +543,7 @@ extern const char* const state_history_plugin_abi = R"({
         { "name": "contract_index256", "types": ["contract_index256_v0"] },
         { "name": "contract_index_double", "types": ["contract_index_double_v0"] },
         { "name": "contract_index_long_double", "types": ["contract_index_long_double_v0"] },
+        { "name": "key_value", "types": ["key_value_v0"] },
         { "name": "chain_config", "types": ["chain_config_v0"] },
         { "name": "global_property", "types": ["global_property_v0", "global_property_v1"] },
         { "name": "generated_transaction", "types": ["generated_transaction_v0"] },
@@ -544,6 +571,7 @@ extern const char* const state_history_plugin_abi = R"({
         { "name": "contract_index256", "type": "contract_index256", "key_names": ["code", "scope", "table", "primary_key"] },
         { "name": "contract_index_double", "type": "contract_index_double", "key_names": ["code", "scope", "table", "primary_key"] },
         { "name": "contract_index_long_double", "type": "contract_index_long_double", "key_names": ["code", "scope", "table", "primary_key"] },
+        { "name": "key_value", "type": "key_value", "key_names": ["database", "contract", "key"] },
         { "name": "global_property", "type": "global_property", "key_names": [] },
         { "name": "generated_transaction", "type": "generated_transaction", "key_names": ["sender", "sender_id"] },
         { "name": "protocol_state", "type": "protocol_state", "key_names": [] },

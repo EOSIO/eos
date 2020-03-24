@@ -34,5 +34,14 @@
             "SKIP_V180": "true",
             "SKIP_V200": "false"
         }
+    },
+    "eosio-resume-from-state":
+    {
+        "test":
+        [
+            {
+                "commit": "2a56c0e027cb63a7d57b040ec91197749e63cc62"
+            }
+        ]
     }
 }

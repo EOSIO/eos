@@ -532,8 +532,8 @@ class apply_context {
 
    /// KV Database methods:
    public:
-      void     kv_erase(uint64_t db, uint64_t contract, const char* key, uint32_t key_size);
-      void     kv_set(uint64_t db, uint64_t contract, const char* key, uint32_t key_size, const char* value, uint32_t value_size);
+      int64_t  kv_erase(uint64_t db, uint64_t contract, const char* key, uint32_t key_size);
+      int64_t  kv_set(uint64_t db, uint64_t contract, const char* key, uint32_t key_size, const char* value, uint32_t value_size);
       bool     kv_get(uint64_t db, uint64_t contract, const char* key, uint32_t key_size, uint32_t& value_size);
       uint32_t kv_get_data(uint64_t db, uint32_t offset, char* data, uint32_t data_size);
       uint32_t kv_it_create(uint64_t db, uint64_t contract, const char* prefix, uint32_t size);
@@ -594,6 +594,7 @@ class apply_context {
       bool                          context_free = false;
 
    public:
+      std::vector<char>             action_return_value;
       generic_index<index64_object>                                  idx64;
       generic_index<index128_object>                                 idx128;
       generic_index<index256_object, uint128_t*, const uint128_t*>   idx256;
@@ -613,6 +614,7 @@ class apply_context {
       vector<uint32_t>                    _cfa_inline_actions; ///< action_ordinals of queued inline context-free actions
       std::string                         _pending_console_output;
       flat_set<account_delta>             _account_ram_deltas; ///< flat_set of account_delta so json is an array of objects
+      flat_set<account_delta>             _account_disk_deltas; ///< flat_set of account_delta so json is an array of objects
 
       //bytes                               _cached_trx;
 };

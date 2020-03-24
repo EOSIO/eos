@@ -241,6 +241,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          get_status_result_v0 result;
          result.head              = {chain.head_block_num(), chain.head_block_id()};
          result.last_irreversible = {chain.last_irreversible_block_num(), chain.last_irreversible_block_id()};
+         result.chain_id          = chain.get_chain_id();
          if (plugin->trace_log) {
             result.trace_begin_block = plugin->trace_log->begin_block();
             result.trace_end_block   = plugin->trace_log->end_block();
@@ -534,6 +535,8 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       process_table("contract_index256", db.get_index<index256_index>(), pack_contract_row);
       process_table("contract_index_double", db.get_index<index_double_index>(), pack_contract_row);
       process_table("contract_index_long_double", db.get_index<index_long_double_index>(), pack_contract_row);
+
+      process_table("key_value", db.get_index<kv_index>(), pack_row);
 
       process_table("global_property", db.get_index<global_property_multi_index>(), pack_row);
       process_table("generated_transaction", db.get_index<generated_transaction_multi_index>(), pack_row);

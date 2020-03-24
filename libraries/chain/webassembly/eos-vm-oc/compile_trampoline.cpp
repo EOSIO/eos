@@ -92,6 +92,9 @@ void run_compile(wrapped_fd&& response_sock, wrapped_fd&& wasm_code) noexcept { 
       if(table_segment.baseOffset.i32 > module.tables.defs[0].type.size.min)
          return;
 
+      if(table_segment.baseOffset.i32 > module.tables.defs[0].type.size.min)
+         return;
+
       for(Uptr i = 0; i < table_segment.indices.size(); ++i) {
          const Uptr function_index = table_segment.indices[i];
          const long int effective_table_index = table_segment.baseOffset.i32 + i;
