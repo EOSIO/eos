@@ -343,11 +343,8 @@ namespace eosio { namespace chain {
 
       eager_net_limit = net_limit;
 
-      if( explicit_net_usage ) {
-         check_net_usage();    // Should already be rounded. Just check NET usage satisfies limits.
-      } else {
-         round_up_net_usage(); // Round up to nearest multiple of word size (8 bytes) and check NET usage satisfies limits.
-      }
+      round_up_net_usage(); // Round up to nearest multiple of word size (8 bytes).
+      check_net_usage();    // Check that NET usage satisfies limits (even when explicit_net_usage is true).
 
       auto now = fc::time_point::now();
       trace->elapsed = now - start;
