@@ -639,6 +639,18 @@ namespace eosio { namespace testing {
    };
 
    /**
+    * Utility predicate to check whether an fc::exception code is equivalent to a given value
+    */
+   struct fc_exception_code_is {
+      fc_exception_code_is( int64_t code )
+            : expected( code ) {}
+
+      bool operator()( const fc::exception& ex );
+
+      int64_t expected;
+   };
+
+   /**
     * Utility predicate to check whether an fc::exception message is equivalent to a given string
     */
    struct fc_exception_message_is {

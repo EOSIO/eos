@@ -75,7 +75,7 @@ namespace eosio { namespace chain {
       }
    }
 
-   void transaction_context::init(uint64_t initial_net_usage)
+   void transaction_context::init( uint64_t initial_net_usage )
    {
       EOS_ASSERT( !is_initialized, transaction_exception, "cannot initialize twice" );
 
@@ -197,7 +197,7 @@ namespace eosio { namespace chain {
       }
 
       published = control.pending_block_time();
-      init( initial_net_usage);
+      init( initial_net_usage );
    }
 
    void transaction_context::init_for_input_trx( uint64_t packed_trx_unprunable_size,
@@ -230,6 +230,24 @@ namespace eosio { namespace chain {
                                + static_cast<uint64_t>(config::transaction_id_net_usage);
       }
 
+      init_for_input_trx_common( initial_net_usage, skip_recording );
+   }
+
+   void transaction_context::init_for_input_trx_with_explicit_net( uint32_t explicit_net_usage_words,
+                                                                   bool skip_recording )
+   {
+      if( trx.transaction_extensions.size() > 0 ) {
+         disallow_transaction_extensions( "no transaction extensions supported yet for input transactions" );
+      }
+
+      explicit_net_usage = true;
+      net_usage = (static_cast<uint64_t>(explicit_net_usage_words) * 8);
+
+      init_for_input_trx_common( 0, skip_recording );
+   }
+
+   void transaction_context::init_for_input_trx_common( uint64_t initial_net_usage, bool skip_recording )
+   {
       published = control.pending_block_time();
       is_input = true;
       if (!control.skip_trx_checks()) {
@@ -237,7 +255,7 @@ namespace eosio { namespace chain {
          control.validate_tapos(trx);
          validate_referenced_accounts( trx, enforce_whiteblacklist && control.is_producing_block() );
       }
-      init( initial_net_usage);
+      init( initial_net_usage );
       if (!skip_recording)
          record_transaction( id, trx.expiration ); /// checks for dupes
    }
@@ -323,7 +341,9 @@ namespace eosio { namespace chain {
          billing_timer_exception_code = tx_cpu_usage_exceeded::code_value;
       }
 
-      net_usage = ((net_usage + 7)/8)*8; // Round up to nearest multiple of word size (8 bytes)
+      if( !explicit_net_usage ) {
+         net_usage = ((net_usage + 7)/8)*8; // Round up to nearest multiple of word size (8 bytes)
+      }
 
       eager_net_limit = net_limit;
       check_net_usage();
