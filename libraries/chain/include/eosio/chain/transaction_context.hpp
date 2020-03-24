@@ -31,7 +31,9 @@ namespace eosio { namespace chain {
 
    class transaction_context {
       private:
-         void init( uint64_t initial_net_usage);
+         void init( uint64_t initial_net_usage );
+
+         void init_for_input_trx_common( uint64_t initial_net_usage, bool skip_recording );
 
       public:
 
@@ -45,7 +47,10 @@ namespace eosio { namespace chain {
 
          void init_for_input_trx( uint64_t packed_trx_unprunable_size,
                                   uint64_t packed_trx_prunable_size,
-                                  bool skip_recording);
+                                  bool skip_recording );
+
+         void init_for_input_trx_with_explicit_net( uint32_t explicit_net_usage_words,
+                                                    bool skip_recording );
 
          void init_for_deferred_trx( fc::time_point published );
 
@@ -54,7 +59,17 @@ namespace eosio { namespace chain {
          void squash();
          void undo();
 
-         inline void add_net_usage( uint64_t u ) { net_usage += u; check_net_usage(); }
+         inline void add_net_usage( uint64_t u ) { 
+            if( explicit_net_usage ) return;
+            net_usage += u;
+            check_net_usage(); 
+         }
+
+         inline void round_up_net_usage() {
+            if( explicit_net_usage ) return;
+            net_usage = ((net_usage + 7)/8)*8; // Round up to nearest multiple of word size (8 bytes)
+            check_net_usage();
+         }
 
          void check_net_usage()const;
 
@@ -156,6 +171,7 @@ namespace eosio { namespace chain {
          bool                          net_limit_due_to_greylist = false;
          uint64_t                      eager_net_limit = 0;
          uint64_t&                     net_usage; /// reference to trace->net_usage
+         bool                          explicit_net_usage = false;
 
          bool                          cpu_limit_due_to_greylist = false;
 

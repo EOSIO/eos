@@ -1153,6 +1153,15 @@ namespace eosio { namespace testing {
       preactivate_protocol_features( preactivations );
    }
 
+   bool fc_exception_code_is::operator()( const fc::exception& ex ) {
+      bool match = (ex.code() == expected);
+      if( !match ) {
+         auto message = ex.get_log().at( 0 ).get_message();
+         BOOST_TEST_MESSAGE( "LOG: expected code: " << expected << ", actual code: " << ex.code() << ", message: " << message );
+      }
+      return match;
+   }
+
    bool fc_exception_message_is::operator()( const fc::exception& ex ) {
       auto message = ex.get_log().at( 0 ).get_message();
       bool match = (message == expected);
