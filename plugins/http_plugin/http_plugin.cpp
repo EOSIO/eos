@@ -461,17 +461,18 @@ namespace eosio {
           * @return the constructed internal_url_handler
           */
          detail::internal_url_handler make_app_thread_url_handler( int priority, url_handler next ) {
-            return [this, priority, next=std::move(next)]( detail::abstract_conn_ptr conn, string r, string b, url_response_callback then ) mutable {
+            auto next_ptr = std::make_shared<url_handler>(std::move(next));
+            return [this, priority, next_ptr]( detail::abstract_conn_ptr conn, string r, string b, url_response_callback then ) mutable {
                auto tracked_b = make_in_flight(std::move(b), *this);
                if (!conn->verify_max_bytes_in_flight()) {
                   return;
                }
 
                // post to the app thread capturing the body_scope
-               app().post( priority, [next=std::move(next), conn=std::move(conn), r=std::move(r), tracked_b=std::move(tracked_b), then=std::move(then)]() mutable {
+               app().post( priority, [next_ptr, conn=std::move(conn), r=std::move(r), tracked_b=std::move(tracked_b), then=std::move(then)]() mutable {
                   try {
                      // call the `next` url_handler and wrap the response handler
-                     next( std::move( r ), std::move( *tracked_b ), std::move(then)) ;
+                     (*next_ptr)( std::move( r ), std::move( *tracked_b ), std::move(then)) ;
                   } catch( ... ) {
                      conn->handle_exception();
                   }
@@ -518,10 +519,10 @@ namespace eosio {
                      auto tracked_json = make_in_flight(std::move(json), *this);
                      con->set_body( std::move( *tracked_json ) );
                      con->set_status( websocketpp::http::status_code::value( code ) );
-                     con->send_http_response();
                   } catch( ... ) {
                      handle_exception<T>( con );
                   }
+                  con->send_http_response();
                });
             };
          }
@@ -553,6 +554,7 @@ namespace eosio {
                }
 
                con->append_header( "Content-type", "application/json" );
+               con->defer_http_response();
 
                if( !verify_max_bytes_in_flight( con ) ) return;
 
@@ -560,7 +562,6 @@ namespace eosio {
                auto handler_itr = url_handlers.find( resource );
                if( handler_itr != url_handlers.end()) {
                   std::string body = con->get_request_body();
-                  con->defer_http_response();
                   handler_itr->second( make_abstract_conn_ptr<T>(con, *this), std::move( resource ), std::move( body ), make_http_response_handler<T>(con) );
                } else {
                   fc_dlog( logger, "404 - not found: ${ep}", ("ep", resource) );
