@@ -294,7 +294,6 @@ namespace eosio {
 
          template<class T>
          void handle_http_request(typename websocketpp::server<T>::connection_ptr con) {
-            ilog( "handling http request" );
             try {
                auto& req = con->get_request();
 
@@ -325,8 +324,6 @@ namespace eosio {
 
                std::string body = con->get_request_body();
                std::string resource = con->get_uri()->get_resource();
-               ilog( "resource : ${resource}", ("resource", resource) );
-               ilog( "request body : ${body}", ("body", body) );
                auto handler_itr = url_handlers.find( resource );
                if( handler_itr != url_handlers.end()) {
                   con->defer_http_response();
@@ -334,6 +331,7 @@ namespace eosio {
                   app().post( handler_itr->second.first,
                               [&ioc = thread_pool->get_executor(), &bytes_in_flight = this->bytes_in_flight,
                                handler_itr, this, resource{std::move( resource )}, body{std::move( body )}, con]() mutable {
+                     const bool trace = resource == "/v1/chain/push_transaction" || resource == "/v1/chain/send_transaction";
                      const size_t body_size = body.size();
                      if( !verify_max_bytes_in_flight( con ) ) {
                         con->send_http_response();
@@ -342,7 +340,7 @@ namespace eosio {
                      }
                      try {
                         handler_itr->second.second( std::move( resource ), std::move( body ),
-                                 [&ioc, &bytes_in_flight, con, this]( int code, fc::variant response_body ) {
+                                 [&ioc, &bytes_in_flight, con, this, trace=trace]( int code, fc::variant response_body ) {
                            size_t response_size = 0;
                            try {
                               response_size = fc::raw::pack_size( response_body );
@@ -354,20 +352,35 @@ namespace eosio {
                            } else {
                               boost::asio::post( ioc,
                                  [response_body{std::move( response_body )}, response_size, &bytes_in_flight,
-                                  con, code, max_response_time=max_response_time]() mutable {
+                                  con, code, max_response_time=max_response_time, trace=trace]() mutable {
                                  std::string json;
+                                 fc::variant_object resp;
                                  try {
+                                    fc::from_variant( response_body, resp );
                                     json = fc::json::to_string( response_body, fc::time_point::now() + max_response_time );
-                                    ilog( "response body : ${json}", ("json", json) );
                                     con->set_body( std::move( json ) );
                                     con->set_status( websocketpp::http::status_code::value( code ) );
                                  } catch( ... ) {
                                     handle_exception<T>( con );
                                  }
+                                 if ( trace && resp.contains("transaction_id") ) {
+                                    std::string order_id = "";
+                                    try {
+                                        auto action_traces = resp["processed"]["action_traces"];
+                                        std::vector<fc::variant> act_traces_vec;
+                                        fc::from_variant( action_traces, act_traces_vec );
+                                        auto order_id_variant = act_traces_vec[0]["act"]["data"]["order_id"];
+                                        fc::from_variant( order_id_variant, order_id );
+                                    } catch( const fc::exception& e ) {
+                                        ilog ( "error extracting order_id - ${e}", ("e", e.to_detail_string()) );
+                                    }
+                                    std::string trx_id;
+                                    fc::from_variant( response_body["transaction_id"], trx_id );
+                                    ilog( "sending http response for ${order_id} (${id})", ("order_id", order_id)("id", trx_id) );
+                                 }
                                  response_body.clear();
                                  const size_t json_size = json.size();
                                  bytes_in_flight += json_size;
-                                 ilog( "sending response" );
                                  con->send_http_response();
                                  bytes_in_flight -= (json_size + response_size);
                               } );

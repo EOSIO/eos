@@ -2114,6 +2114,8 @@ void read_write::push_block(read_write::push_block_params&& params, next_functio
 void read_write::push_transaction(const read_write::push_transaction_params& params, next_function<read_write::push_transaction_results> next) {
    try {
       auto pretty_input = std::make_shared<packed_transaction>();
+      auto id = pretty_input->id();
+      ilog( "starting push_transaction (${id})", ("id", id) );
       auto resolver = make_resolver(this, abi_serializer_max_time);
       try {
          abi_serializer::from_variant(params, *pretty_input, resolver, abi_serializer_max_time);
@@ -2182,6 +2184,7 @@ void read_write::push_transaction(const read_write::push_transaction_params& par
                }
 
                const chain::transaction_id_type& id = trx_trace_ptr->id;
+               ilog( "finished push_transaction (${id})", ("id", id) );
                next(read_write::push_transaction_results{id, output});
             } CATCH_AND_CALL(next);
          }
@@ -2233,6 +2236,8 @@ void read_write::send_transaction(const read_write::send_transaction_params& par
 
    try {
       auto pretty_input = std::make_shared<packed_transaction>();
+      auto id = pretty_input->id();
+      ilog( "starting send_transaction (${id})", ("id", id) );
       auto resolver = make_resolver(this, abi_serializer_max_time);
       try {
          abi_serializer::from_variant(params, *pretty_input, resolver, abi_serializer_max_time);
@@ -2253,6 +2258,7 @@ void read_write::send_transaction(const read_write::send_transaction_params& par
                   output = *trx_trace_ptr;
                }
 
+               ilog( "finished send_transaction (${id})", ("id", id) );
                const chain::transaction_id_type& id = trx_trace_ptr->id;
                next(read_write::send_transaction_results{id, output});
             } CATCH_AND_CALL(next);
