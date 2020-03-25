@@ -279,6 +279,8 @@ namespace eosio { namespace chain {
                                     3040018, "Transaction exceeded transient resource limit" )
       FC_DECLARE_DERIVED_EXCEPTION( tx_prune_exception, transaction_exception,
                                     3040019, "Prunable data not found" )
+      FC_DECLARE_DERIVED_EXCEPTION( tx_not_full_legacy, transaction_exception,
+                                    3040019, "Prunable transaction is not full legacy" )
 
 
    FC_DECLARE_DERIVED_EXCEPTION( action_validate_exception, chain_exception,

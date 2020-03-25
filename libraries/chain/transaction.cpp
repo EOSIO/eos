@@ -270,6 +270,18 @@ bytes packed_transaction::get_raw_transaction() const
    } FC_CAPTURE_AND_RETHROW((compression)(packed_trx))
 }
 
+packed_transaction::packed_transaction(const bytes& packed_txn, const vector<signature_type>& sigs, const bytes& packed_cfd, compression_type _compression )
+:signatures(sigs)
+,compression(_compression)
+,packed_context_free_data(packed_cfd)
+,packed_trx(packed_txn)
+{
+   local_unpack_transaction({});
+   if( !packed_context_free_data.empty() ) {
+      local_unpack_context_free_data();
+   }
+}
+
 packed_transaction::packed_transaction( bytes&& packed_txn, vector<signature_type>&& sigs, bytes&& packed_cfd, compression_type _compression )
 :signatures(std::move(sigs))
 ,compression(_compression)

@@ -116,14 +116,17 @@ namespace eosio { namespace chain {
       if (prune_state != prune_state_type::complete_legacy)
          return signed_block_ptr{};
 
-      auto result = std::make_shared<signed_block>(*this);
+      auto result = std::make_shared<signed_block>(*static_cast<const signed_block_header*>(this));
       result->block_extensions = this->block_extensions;
 
       auto visitor = overloaded{
-         [](const transaction_id_type &id) -> transaction_receipt::trx_type { return id; },
-         [](const pruned_transaction &trx) -> transaction_receipt::trx_type { 
-            return packed_transaction{trx.get_signed_transaction(), trx.get_compression()}; 
-      }};
+          [](const transaction_id_type &id) -> transaction_receipt::trx_type { return id; },
+          [](const pruned_transaction &trx) -> transaction_receipt::trx_type {
+             auto& prunable_data = trx.get_prunable_data().prunable_data;
+             EOS_ASSERT(prunable_data.contains<prunable_transaction_data::full_legacy>(), tx_not_full_legacy, "pruned_transaction does not contain the full legacy data");
+             auto& legacy = prunable_data.get<prunable_transaction_data::full_legacy>();
+             return packed_transaction(trx.get_packed_transaction(), legacy.signatures, legacy.packed_context_free_data, trx.get_compression());
+          }};
 
       for (const pruned_transaction_receipt &r : transactions){
          result->transactions.emplace_back(transaction_receipt{r, r.trx.visit(visitor)});

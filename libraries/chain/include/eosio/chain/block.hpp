@@ -33,7 +33,7 @@ namespace eosio { namespace chain {
    struct transaction_receipt : public transaction_receipt_header {
       using trx_type = fc::static_variant<transaction_id_type, packed_transaction>;
       transaction_receipt() : transaction_receipt_header() {}
-      transaction_receipt(const transaction_receipt_header& header, trx_type&& t): transaction_receipt_header(header), trx(t){}
+      transaction_receipt(const transaction_receipt_header& header, trx_type&& t): transaction_receipt_header(header), trx(std::move(t)){}
       explicit transaction_receipt( const transaction_id_type& tid ):transaction_receipt_header(executed),trx(tid){}
       explicit transaction_receipt( const packed_transaction& ptrx ):transaction_receipt_header(executed),trx(ptrx){}
 
@@ -140,6 +140,7 @@ namespace eosio { namespace chain {
       pruned_block( pruned_block&& ) = default;
       pruned_block& operator=(const pruned_block&) = delete;
       pruned_block clone() const { return *this; }
+      signed_block_ptr to_signed_block() const;
 
       fc::enum_type<uint8_t,prune_state_type> prune_state{prune_state_type::complete_legacy};
       deque<pruned_transaction_receipt>       transactions; /// new or generated transactions
@@ -162,8 +163,6 @@ namespace eosio { namespace chain {
       }
 
       flat_multimap<uint16_t, block_extension> validate_and_extract_extensions()const;
-
-      signed_block_ptr to_signed_block() const;
    };
    using pruned_block_ptr = std::shared_ptr<pruned_block>;
 
