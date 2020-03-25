@@ -1,5 +1,7 @@
 #pragma once
 
+#include <eosio/chain/webassembly/eos-vm-oc/stack.hpp>
+
 #include <stdint.h>
 #include <stddef.h>
 #include <exception>
@@ -35,6 +37,7 @@ class executor {
       sigjmp_buf executors_sigjmp_buf;
       std::list<std::vector<std::byte>> executors_bounce_buffers;
       std::vector<std::byte> globals_buffer;
+      execution_stack stack;
 };
 
 }}}

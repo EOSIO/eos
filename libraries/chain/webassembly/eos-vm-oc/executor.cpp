@@ -161,6 +161,7 @@ void executor::execute(const code_descriptor& code, memory& mem, apply_context& 
       max_call_depth = config.max_call_depth;
       max_pages = config.max_pages;
    }
+   stack.reset(max_call_depth);
    mem.reset(max_pages);
    EOS_ASSERT(code.starting_memory_pages <= (int)max_pages, wasm_execution_error, "Initial memory out of range");
 
@@ -222,18 +223,20 @@ void executor::execute(const code_descriptor& code, memory& mem, apply_context& 
 
    switch(sigsetjmp(*cb->jmp, 0)) {
       case 0:
-         code.start.visit(overloaded {
-            [&](const no_offset&) {},
-            [&](const intrinsic_ordinal& i) {
-               void(*start_func)() = (void(*)())(*(uintptr_t*)((uintptr_t)mem.zero_page_memory_base() - memory::first_intrinsic_offset - i.ordinal*8));
-               start_func();
-            },
-            [&](const code_offset& offs) {
-               void(*start_func)() = (void(*)())(cb->running_code_base + offs.offset);
-               start_func();
-            }
+         stack.run([&]{
+            code.start.visit(overloaded {
+               [&](const no_offset&) {},
+               [&](const intrinsic_ordinal& i) {
+                  void(*start_func)() = (void(*)())(*(uintptr_t*)((uintptr_t)mem.zero_page_memory_base() - memory::first_intrinsic_offset - i.ordinal*8));
+                  start_func();
+               },
+               [&](const code_offset& offs) {
+                  void(*start_func)() = (void(*)())(cb->running_code_base + offs.offset);
+                  start_func();
+               }
+            });
+            apply_func(context.get_receiver().to_uint64_t(), context.get_action().account.to_uint64_t(), context.get_action().name.to_uint64_t());
          });
-         apply_func(context.get_receiver().to_uint64_t(), context.get_action().account.to_uint64_t(), context.get_action().name.to_uint64_t());
          break;
       //case 1: clean eosio_exit
       case EOSVMOC_EXIT_CHECKTIME_FAIL:
