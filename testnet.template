@@ -51,7 +51,7 @@ echo "FEATURE_DIGESTS: $FEATURE_DIGESTS" >> $logfile
 
 echo "http-server-address = $wdaddr" > $wddir/config.ini
 
-programs/keosd/keosd --config-dir $wddir --data-dir $wddir 2> $wddir/wdlog.txt &
+programs/keosd/keosd --config-dir $wddir --data-dir $wddir --http-max-response-time-ms 99999 2> $wddir/wdlog.txt &
 echo $$ > ignition_wallet.pid
 echo keosd log in $wddir/wdlog.txt >> $logfile
 sleep 1
