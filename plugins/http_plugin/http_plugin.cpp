@@ -305,6 +305,7 @@ namespace eosio {
                con->set_body( R"xxx({"message": "Internal Server Error"})xxx" );
                fc_elog( logger, "Exception attempting to handle exception: ${e}", ("e", err) );
             }
+            con->send_http_response();
          }
 
          template<class T>
@@ -362,7 +363,6 @@ namespace eosio {
 
             void handle_exception()override {
                http_plugin_impl::handle_exception<T>(_conn);
-               _conn->send_http_response();
             }
 
             detail::connection_ptr<T> _conn;
@@ -468,8 +468,9 @@ namespace eosio {
                   return;
                }
 
-               // post to the app thread capturing the body_scope
-               app().post( priority, [next_ptr, conn=std::move(conn), r=std::move(r), tracked_b=std::move(tracked_b), then=std::move(then)]() mutable {
+               // post to the app thread taking shared ownership of next (via std::shared_ptr),
+               // sole ownership of the tracked body and the passed in parameters
+               app().post( priority, [next_ptr=std::move(next_ptr), conn=std::move(conn), r=std::move(r), tracked_b=std::move(tracked_b), then=std::move(then)]() mutable {
                   try {
                      // call the `next` url_handler and wrap the response handler
                      (*next_ptr)( std::move( r ), std::move( *tracked_b ), std::move(then)) ;
@@ -519,10 +520,10 @@ namespace eosio {
                      auto tracked_json = make_in_flight(std::move(json), *this);
                      con->set_body( std::move( *tracked_json ) );
                      con->set_status( websocketpp::http::status_code::value( code ) );
+                     con->send_http_response();
                   } catch( ... ) {
                      handle_exception<T>( con );
                   }
-                  con->send_http_response();
                });
             };
          }
@@ -569,6 +570,7 @@ namespace eosio {
                                         "Not Found", error_results::error_info(fc::exception( FC_LOG_MESSAGE( error, "Unknown Endpoint" )), verbose_http_errors )};
                   con->set_body( fc::json::to_string( results, fc::time_point::now() + max_response_time ));
                   con->set_status( websocketpp::http::status_code::not_found );
+                  con->send_http_response();
                }
             } catch( ... ) {
                handle_exception<T>( con );
