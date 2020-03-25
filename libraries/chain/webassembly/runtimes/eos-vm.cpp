@@ -1,4 +1,5 @@
 #include <eosio/chain/webassembly/eos-vm.hpp>
+#include <eosio/chain/webassembly/interface.hpp>
 #include <eosio/chain/apply_context.hpp>
 #include <eosio/chain/transaction_context.hpp>
 #include <eosio/chain/wasm_eosio_constraints.hpp>
@@ -47,7 +48,7 @@ template<typename Impl>
 class eos_vm_instantiated_module : public wasm_instantiated_module_interface {
       using backend_t = backend<apply_context, Impl>;
    public:
-      
+
       eos_vm_instantiated_module(eos_vm_runtime<Impl>* runtime, std::unique_ptr<backend_t> mod) :
          _runtime(runtime),
          _instantiated_module(std::move(mod)) {}
@@ -57,8 +58,9 @@ class eos_vm_instantiated_module : public wasm_instantiated_module_interface {
          _runtime->_bkend = _instantiated_module.get();
          auto fn = [&]() {
             _runtime->_bkend->initialize(&context);
+            eosio::chain::webassembly::interface iface(context);
             const auto& res = _runtime->_bkend->call(
-                &context, "env", "apply", context.get_receiver().to_uint64_t(),
+                &iface, "env", "apply", context.get_receiver().to_uint64_t(),
                 context.get_action().account.to_uint64_t(),
                 context.get_action().name.to_uint64_t());
          };
@@ -97,11 +99,12 @@ bool eos_vm_runtime<Impl>::inject_module(IR::Module& module) {
 template<typename Impl>
 std::unique_ptr<wasm_instantiated_module_interface> eos_vm_runtime<Impl>::instantiate_module(const char* code_bytes, size_t code_size, std::vector<uint8_t>,
                                                                                              const digest_type&, const uint8_t&, const uint8_t&) {
-   using backend_t = backend<apply_context, Impl>;
+   using rhf_t     = registered_host_function<eosio::chain::webassembly::interface>;
+   using backend_t = backend<rhf_t, Impl>;
    try {
       wasm_code_ptr code((uint8_t*)code_bytes, code_size);
       std::unique_ptr<backend_t> bkend = std::make_unique<backend_t>(code, code_size);
-      registered_host_functions<apply_context>::resolve(bkend->get_module());
+      rhf_t::resolve(bkend->get_module());
       return std::make_unique<eos_vm_instantiated_module<Impl>>(this, std::move(bkend));
    } catch(eosio::vm::exception& e) {
       FC_THROW_EXCEPTION(wasm_execution_error, "Error building eos-vm interp: ${e}", ("e", e.what()));

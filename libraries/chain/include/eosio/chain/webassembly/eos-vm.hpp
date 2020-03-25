@@ -60,15 +60,3 @@ class eos_vm_runtime : public eosio::chain::wasm_runtime_interface {
 };
 
 } } } }// eosio::chain::webassembly::wabt_runtime
-
-#define __EOS_VM_INTRINSIC_NAME(LBL, SUF) LBL##SUF
-#define _EOS_VM_INTRINSIC_NAME(LBL, SUF) __INTRINSIC_NAME(LBL, SUF)
-
-#define _REGISTER_EOS_VM_INTRINSIC(CLS, MOD, METHOD, WASM_SIG, NAME, SIG) \
-   eosio::vm::registered_function<eosio::chain::apply_context, CLS, &CLS::METHOD> _EOS_VM_INTRINSIC_NAME(__eos_vm_intrinsic_fn, __COUNTER__)(std::string(MOD), std::string(NAME));
-
-#else
-
-#define _REGISTER_EOS_VM_INTRINSIC(CLS, MOD, METHOD, WASM_SIG, NAME, SIG)
-
-#endif
