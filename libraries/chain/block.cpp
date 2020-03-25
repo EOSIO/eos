@@ -1,4 +1,5 @@
 #include <eosio/chain/block.hpp>
+#include <eosio/chain/types.hpp>
 
 namespace eosio { namespace chain {
    void additional_block_signatures_extension::reflector_init() {
@@ -111,4 +112,22 @@ namespace eosio { namespace chain {
       return validate_and_extract_block_extensions( block_extensions );
    }
 
+   signed_block_ptr pruned_block::to_signed_block() const {
+      if (prune_state != prune_state_type::complete_legacy)
+         return signed_block_ptr{};
+
+      auto result = std::make_shared<signed_block>(*this);
+      result->block_extensions = this->block_extensions;
+
+      auto visitor = overloaded{
+         [](const transaction_id_type &id) -> transaction_receipt::trx_type { return id; },
+         [](const pruned_transaction &trx) -> transaction_receipt::trx_type { 
+            return packed_transaction{trx.get_signed_transaction(), trx.get_compression()}; 
+      }};
+
+      for (const pruned_transaction_receipt &r : transactions){
+         result->transactions.emplace_back(transaction_receipt{r, r.trx.visit(visitor)});
+      }
+      return result;
+   }
 } } /// namespace eosio::chain

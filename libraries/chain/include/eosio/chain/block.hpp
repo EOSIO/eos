@@ -31,12 +31,13 @@ namespace eosio { namespace chain {
    };
 
    struct transaction_receipt : public transaction_receipt_header {
-
-      transaction_receipt():transaction_receipt_header(){}
+      using trx_type = fc::static_variant<transaction_id_type, packed_transaction>;
+      transaction_receipt() : transaction_receipt_header() {}
+      transaction_receipt(const transaction_receipt_header& header, trx_type&& t): transaction_receipt_header(header), trx(t){}
       explicit transaction_receipt( const transaction_id_type& tid ):transaction_receipt_header(executed),trx(tid){}
       explicit transaction_receipt( const packed_transaction& ptrx ):transaction_receipt_header(executed),trx(ptrx){}
 
-      fc::static_variant<transaction_id_type, packed_transaction> trx;
+      trx_type trx;
 
       digest_type digest()const {
          digest_type::encoder enc;
@@ -161,6 +162,8 @@ namespace eosio { namespace chain {
       }
 
       flat_multimap<uint16_t, block_extension> validate_and_extract_extensions()const;
+
+      signed_block_ptr to_signed_block() const;
    };
    using pruned_block_ptr = std::shared_ptr<pruned_block>;
 
