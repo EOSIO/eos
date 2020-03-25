@@ -268,7 +268,9 @@ constexpr auto intrinsic_table = boost::hana::make_tuple(
    "env.get_resource_limit"_s,
    "env.set_resource_limit"_s,
    "env.get_kv_parameters_packed"_s,
-   "env.set_kv_parameters_packed"_s
+   "env.set_kv_parameters_packed"_s,
+   "env.get_wasm_parameters_packed"_s,
+   "env.set_wasm_parameters_packed"_s
 );
 
 }}}

@@ -53,6 +53,7 @@ namespace eosio {
          MAKE_READ_WASM_ABI(test_api_db,           test_api_db,           test-contracts)
          MAKE_READ_WASM_ABI(test_api_multi_index,  test_api_multi_index,  test-contracts)
          MAKE_READ_WASM_ABI(test_ram_limit,        test_ram_limit,        test-contracts)
+         MAKE_READ_WASM_ABI(wasm_config_bios,      wasm_config_bios,      test-contracts)
       };
    } /// eosio::testing
 }  /// eosio

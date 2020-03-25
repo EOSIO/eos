@@ -6,6 +6,7 @@
 #include <eosio/chain/webassembly/runtime_interface.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/apply_context.hpp>
+#include <eosio/chain/wasm_config.hpp>
 #include <softfloat_types.h>
 
 //eos-vm includes
@@ -115,13 +116,18 @@ using namespace fc;
 using namespace eosio::vm;
 using namespace eosio::chain::webassembly::common;
 
+void validate(const bytes& code, const wasm_config& cfg, const whitelisted_intrinsics_type& intrinsics );
+
+struct apply_options;
+
 template<typename Backend>
 class eos_vm_runtime : public eosio::chain::wasm_runtime_interface {
    public:
       eos_vm_runtime();
       bool inject_module(IR::Module&) override;
       std::unique_ptr<wasm_instantiated_module_interface> instantiate_module(const char* code_bytes, size_t code_size, std::vector<uint8_t>,
-                                                                             const digest_type& code_hash, const uint8_t& vm_type, const uint8_t& vm_version) override;
+                                                                             const digest_type& code_hash, const uint8_t& vm_type, const uint8_t& vm_version,
+                                                                             const wasm_config& config) override;
 
       void immediately_exit_currently_running_module() override;
 
@@ -129,7 +135,7 @@ class eos_vm_runtime : public eosio::chain::wasm_runtime_interface {
       // todo: managing this will get more complicated with sync calls;
       //       immediately_exit_currently_running_module() should probably
       //       move from wasm_runtime_interface to wasm_instantiated_module_interface.
-      backend<apply_context, Backend>* _bkend = nullptr;  // non owning pointer to allow for immediate exit
+      backend<apply_context, Backend, apply_options>* _bkend = nullptr;  // non owning pointer to allow for immediate exit
 
    template<typename Impl>
    friend class eos_vm_instantiated_module;

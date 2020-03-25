@@ -20,6 +20,7 @@ struct chain_snapshot_header {
     *         - forwards compatible with versions 2 and 3
     *         - kv database
     *         - DISK resource
+    *         - Configurable wasm limits
     */
 
    static constexpr uint32_t minimum_compatible_version = 2;

@@ -38,6 +38,12 @@ namespace eosio { namespace chain {
    wasm_interface::~wasm_interface() {}
 
    void wasm_interface::validate(const controller& control, const bytes& code) {
+      if (control.is_builtin_activated(builtin_protocol_feature_t::configurable_wasm_limits)) {
+         const auto& pso = control.db().get<protocol_state_object>();
+         const auto& gpo = control.get_global_properties();
+         webassembly::eos_vm_runtime::validate( code, gpo.wasm_configuration, pso.whitelisted_intrinsics );
+         return;
+      }
       Module module;
       try {
          Serialization::MemoryInputStream stream((U8*)code.data(), code.size());
@@ -396,6 +402,31 @@ class privileged_api : public context_aware_api {
          context.db.modify( context.control.get_global_properties(),
             [&]( auto& gprops ) {
                  gprops.kv_configuration.*kv_parameters_impl( db ) = cfg;
+         });
+      }
+
+      uint32_t get_wasm_parameters_packed( array_ptr<char> packed_parameters, uint32_t buffer_size ) {
+         auto& gpo = context.control.get_global_properties();
+         auto& params = gpo.wasm_configuration;
+
+         auto s = fc::raw::pack_size( params );
+         if( buffer_size == 0 ) return s;
+
+         if ( s <= buffer_size ) {
+            datastream<char*> ds( packed_parameters, s );
+            fc::raw::pack(ds, params);
+            return s;
+         }
+         return 0;
+      }
+
+      void set_wasm_parameters_packed( array_ptr<const char> packed_parameters, uint32_t buffer_size ) {
+         datastream<const char*> ds( packed_parameters, buffer_size );
+         chain::wasm_config cfg;
+         fc::raw::unpack(ds, cfg);
+         context.db.modify( context.control.get_global_properties(),
+            [&]( auto& gprops ) {
+                 gprops.wasm_configuration = cfg;
          });
       }
 
@@ -2016,6 +2047,8 @@ REGISTER_INTRINSICS(privileged_api,
    (set_blockchain_parameters_packed, void(int,int)                         )
    (get_kv_parameters_packed,         int(int64_t, int, int, int)           )
    (set_kv_parameters_packed,         void(int64_t, int,int)                )
+   (get_wasm_parameters_packed,       int(int, int)                         )
+   (set_wasm_parameters_packed,       void(int,int)                         )
    (is_privileged,                    int(int64_t)                          )
    (set_privileged,                   void(int64_t, int)                    )
    (preactivate_feature,              void(int)                             )
