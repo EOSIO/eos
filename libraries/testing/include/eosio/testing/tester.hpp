@@ -516,7 +516,6 @@ namespace eosio { namespace testing {
             wdump((e.to_detail_string()));
          }
       }
-      controller::config vcfg;
 
       validating_tester(const flat_set<account_name>& trusted_producers = flat_set<account_name>()) {
          auto to_digest_type = [] (const char* str) {
@@ -532,28 +531,6 @@ namespace eosio { namespace testing {
 
          init(def_conf.first, def_conf.second);
          execute_setup_policy(setup_policy::complete);
-      }
-
-      static void config_validator(controller::config& vcfg) {
-         FC_ASSERT( vcfg.blocks_dir.filename().generic_string() != "."
-                    && vcfg.state_dir.filename().generic_string() != ".", "invalid path names in controller::config" );
-
-         vcfg.blocks_dir = vcfg.blocks_dir.parent_path() / std::string("v_").append( vcfg.blocks_dir.filename().generic_string() );
-         vcfg.state_dir  = vcfg.state_dir.parent_path() / std::string("v_").append( vcfg.state_dir.filename().generic_string() );
-
-         vcfg.contracts_console = false;
-      }
-
-      static unique_ptr<controller> create_validating_node(controller::config vcfg, const genesis_state& genesis, bool use_genesis) {
-         unique_ptr<controller> validating_node = std::make_unique<controller>(vcfg, make_protocol_feature_set(), genesis.compute_chain_id());
-         validating_node->add_indices();
-         if (use_genesis) {
-            validating_node->startup( [](){}, []() { return false; }, genesis );
-         }
-         else {
-            validating_node->startup( [](){}, []() { return false; } );
-         }
-         return validating_node;
       }
 
       validating_tester(const fc::temp_directory& tempdir, bool use_genesis) {
@@ -584,6 +561,28 @@ namespace eosio { namespace testing {
          else {
             init(def_conf.first);
          }
+      }
+
+      static void config_validator(controller::config& vcfg) {
+         FC_ASSERT( vcfg.blocks_dir.filename().generic_string() != "."
+                    && vcfg.state_dir.filename().generic_string() != ".", "invalid path names in controller::config" );
+
+         vcfg.blocks_dir = vcfg.blocks_dir.parent_path() / std::string("v_").append( vcfg.blocks_dir.filename().generic_string() );
+         vcfg.state_dir  = vcfg.state_dir.parent_path() / std::string("v_").append( vcfg.state_dir.filename().generic_string() );
+
+         vcfg.contracts_console = false;
+      }
+
+      static unique_ptr<controller> create_validating_node(controller::config vcfg, const genesis_state& genesis, bool use_genesis) {
+         unique_ptr<controller> validating_node = std::make_unique<controller>(vcfg, make_protocol_feature_set(), genesis.compute_chain_id());
+         validating_node->add_indices();
+         if (use_genesis) {
+            validating_node->startup( [](){}, []() { return false; }, genesis );
+         }
+         else {
+            validating_node->startup( [](){}, []() { return false; } );
+         }
+         return validating_node;
       }
 
       signed_block_ptr produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms) )override {
@@ -617,8 +616,6 @@ namespace eosio { namespace testing {
       }
 
       bool validate() {
-
-
         auto hbh = control->head_block_state()->header;
         auto vn_hbh = validating_node->head_block_state()->header;
         bool ok = control->head_block_id() == validating_node->head_block_id() &&
@@ -636,9 +633,10 @@ namespace eosio { namespace testing {
         return ok;
       }
 
-      unique_ptr<controller>   validating_node;
-      uint32_t                 num_blocks_to_producer_before_shutdown = 0;
-      bool                     skip_validate = false;
+      controller::config          vcfg;
+      std::unique_ptr<controller> validating_node;
+      uint32_t                    num_blocks_to_producer_before_shutdown = 0;
+      bool                        skip_validate = false;
    };
 
    /**
