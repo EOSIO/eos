@@ -462,7 +462,7 @@ namespace eosio {
           */
          detail::internal_url_handler make_app_thread_url_handler( int priority, url_handler next ) {
             auto next_ptr = std::make_shared<url_handler>(std::move(next));
-            return [this, priority, next_ptr]( detail::abstract_conn_ptr conn, string r, string b, url_response_callback then ) mutable {
+            return [this, priority, next_ptr=std::move(next_ptr)]( detail::abstract_conn_ptr conn, string r, string b, url_response_callback then ) mutable {
                auto tracked_b = make_in_flight(std::move(b), *this);
                if (!conn->verify_max_bytes_in_flight()) {
                   return;
@@ -470,7 +470,7 @@ namespace eosio {
 
                // post to the app thread taking shared ownership of next (via std::shared_ptr),
                // sole ownership of the tracked body and the passed in parameters
-               app().post( priority, [next_ptr=std::move(next_ptr), conn=std::move(conn), r=std::move(r), tracked_b=std::move(tracked_b), then=std::move(then)]() mutable {
+               app().post( priority, [next_ptr, conn=std::move(conn), r=std::move(r), tracked_b=std::move(tracked_b), then=std::move(then)]() mutable {
                   try {
                      // call the `next` url_handler and wrap the response handler
                      (*next_ptr)( std::move( r ), std::move( *tracked_b ), std::move(then)) ;
