@@ -533,6 +533,20 @@ namespace eosio { namespace testing {
          execute_setup_policy(setup_policy::complete);
       }
 
+      validating_tester(bool use_genesis) {
+         auto def_conf = default_config(tempdir);
+         vcfg = def_conf.first;
+         config_validator(vcfg);
+         validating_node = create_validating_node(vcfg, def_conf.second, use_genesis);
+
+         if (use_genesis) {
+            init(def_conf.first, def_conf.second);
+         }
+         else {
+            init(def_conf.first);
+         }
+      }
+
       validating_tester(const fc::temp_directory& tempdir, bool use_genesis) {
          auto def_conf = default_config(tempdir);
          vcfg = def_conf.first;
