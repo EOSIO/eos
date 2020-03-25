@@ -2244,7 +2244,7 @@ void read_write::send_transaction(const read_write::send_transaction_params& par
       } EOS_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid packed transaction")
 
       app().get_method<incoming::methods::transaction_async>()(pretty_input, true,
-            [this, next](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
+            [this, next, id=id](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
          if (result.contains<fc::exception_ptr>()) {
             next(result.get<fc::exception_ptr>());
          } else {
