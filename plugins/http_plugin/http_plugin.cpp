@@ -392,7 +392,6 @@ namespace eosio {
                                        auto order_id_variant = act_traces_vec[0]["act"]["data"]["order_id"];
                                        order_id = order_id_variant.as_string();
                                     } catch( const fc::exception& e ) {
-                                       ilog( "data : ${data}", ("data", data) );
                                        ilog( "failed to extract order_id - ${e}", ("e", e.to_detail_string()) );
                                     }
                                     ilog( "sending http response for ${order_id} (${id})", ("order_id", order_id)("id", transaction_id) );

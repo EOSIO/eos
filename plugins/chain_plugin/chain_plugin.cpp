@@ -2236,13 +2236,13 @@ void read_write::send_transaction(const read_write::send_transaction_params& par
 
    try {
       auto pretty_input = std::make_shared<packed_transaction>();
-      auto id = pretty_input->id();
-      ilog( "starting send_transaction (${id})", ("id", id) );
       auto resolver = make_resolver(this, abi_serializer_max_time);
       try {
          abi_serializer::from_variant(params, *pretty_input, resolver, abi_serializer_max_time);
       } EOS_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid packed transaction")
 
+      auto id = pretty_input->id();
+      ilog( "starting send_transaction (${id})", ("id", id) );
       app().get_method<incoming::methods::transaction_async>()(pretty_input, true,
             [this, next, id=id](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
          if (result.contains<fc::exception_ptr>()) {
