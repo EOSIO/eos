@@ -386,7 +386,11 @@ namespace eosio {
 
                                     std::string order_id = "";
                                     std::string data = "";
+                                    int cpu_usage_us = -1;
                                     try {
+                                       auto cpu = resp["processed"]["receipt"]["cpu_usage_us"];
+                                       fc::from_variant( cpu, cpu_usage_us );
+
                                        std::vector<fc::variant> act_traces_vec;
                                        auto action_traces = resp["processed"]["action_traces"];
                                        fc::from_variant( action_traces, act_traces_vec );
@@ -395,7 +399,7 @@ namespace eosio {
                                     } catch( const fc::exception& e ) {
                                        ilog( "failed to extract order_id - ${e}", ("e", e.to_detail_string()) );
                                     }
-                                    ilog( "${us} - finished handle_http_request order_id=${order_id} (${id})", ("us", fc::time_point::now().time_since_epoch())("order_id", order_id)("id", transaction_id) );
+                                    ilog( "${us} - finished handle_http_request order_id=${order_id} cpu_usage_us=${cpu_usage_us} (${id})", ("us", fc::time_point::now().time_since_epoch())("order_id", order_id)("cpu_usage_us", cpu_usage_us)("id", transaction_id) );
                                  }
                                  response_body.clear();
                                  const size_t json_size = json.size();
