@@ -354,29 +354,44 @@ namespace eosio {
                                  [response_body{std::move( response_body )}, response_size, &bytes_in_flight,
                                   con, code, max_response_time=max_response_time, trace=trace]() mutable {
                                  std::string json;
-                                 fc::variant_object resp;
                                  try {
-                                    fc::from_variant( response_body, resp );
                                     json = fc::json::to_string( response_body, fc::time_point::now() + max_response_time );
                                     con->set_body( std::move( json ) );
                                     con->set_status( websocketpp::http::status_code::value( code ) );
                                  } catch( ... ) {
                                     handle_exception<T>( con );
                                  }
-                                 if ( trace && resp.contains("transaction_id") ) {
+
+                                 if( trace ) {
+                                    fc::variant_object resp;
+                                    try {
+                                       fc::from_variant( response_body, resp );
+                                    } catch( const fc::exception& e ) {
+                                       ilog( "failed to convert response body to variant_object - ${e}", ("e", e.to_detail_string()) );
+                                    }
+
+                                    std::string transaction_id = "";
+                                    try {
+                                       if( resp.contains("transaction_id") ) {
+                                           transaction_id = resp["transaction_id"].as_string();
+                                       } else {
+                                          ilog( "response_body doesn't contain transaction_id" );
+                                       }
+                                    } catch( const fc::exception& e ) {
+                                       ilog( "failed to extract transaction_id - ${e}", ("e", e.to_detail_string()) );
+                                    }
+
                                     std::string order_id = "";
                                     try {
-                                        auto action_traces = resp["processed"]["action_traces"];
-                                        std::vector<fc::variant> act_traces_vec;
-                                        fc::from_variant( action_traces, act_traces_vec );
-                                        auto order_id_variant = act_traces_vec[0]["act"]["data"]["order_id"];
-                                        fc::from_variant( order_id_variant, order_id );
+                                       std::vector<fc::variant> act_traces_vec;
+                                       auto action_traces = resp["processed"]["action_traces"];
+                                       fc::from_variant( action_traces, act_traces_vec );
+                                       auto order_id_variant = act_traces_vec[0]["act"]["data"]["order_id"];
+                                       order_id = order_id_variant.as_string();
                                     } catch( const fc::exception& e ) {
-                                        ilog ( "error extracting order_id - ${e}", ("e", e.to_detail_string()) );
+                                       ilog( "failed to extract order_id - ${e}", ("e", e.to_detail_string()) );
                                     }
-                                    std::string trx_id;
-                                    fc::from_variant( response_body["transaction_id"], trx_id );
-                                    ilog( "sending http response for ${order_id} (${id})", ("order_id", order_id)("id", trx_id) );
+                                    ilog( "sending http response for ${order_id} (${id})", ("order_id", order_id)("id", transaction_id) );
                                  }
                                  response_body.clear();
                                  const size_t json_size = json.size();
