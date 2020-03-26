@@ -324,14 +324,17 @@ namespace eosio {
 
                std::string body = con->get_request_body();
                std::string resource = con->get_uri()->get_resource();
+               const bool trace = resource == "/v1/chain/send_transaction";
+               if( trace ) {
+                   ilog( "${us} - starting handle_http_request", ("us", fc::time_point::now().time_since_epoch()) );
+               }
                auto handler_itr = url_handlers.find( resource );
                if( handler_itr != url_handlers.end()) {
                   con->defer_http_response();
                   bytes_in_flight += body.size();
                   app().post( handler_itr->second.first,
                               [&ioc = thread_pool->get_executor(), &bytes_in_flight = this->bytes_in_flight,
-                               handler_itr, this, resource{std::move( resource )}, body{std::move( body )}, con]() mutable {
-                     const bool trace = resource == "/v1/chain/push_transaction" || resource == "/v1/chain/send_transaction";
+                               handler_itr, this, resource{std::move( resource )}, body{std::move( body )}, con, trace=trace]() mutable {
                      const size_t body_size = body.size();
                      if( !verify_max_bytes_in_flight( con ) ) {
                         con->send_http_response();
@@ -392,7 +395,7 @@ namespace eosio {
                                     } catch( const fc::exception& e ) {
                                        ilog( "failed to extract order_id - ${e}", ("e", e.to_detail_string()) );
                                     }
-                                    ilog( "sending http response for ${order_id} (${id})", ("order_id", order_id)("id", transaction_id) );
+                                    ilog( "${us} - finished handle_http_request order_id=${order_id} (${id})", ("us", fc::time_point::now().time_since_epoch())("order_id", order_id)("id", transaction_id) );
                                  }
                                  response_body.clear();
                                  const size_t json_size = json.size();
