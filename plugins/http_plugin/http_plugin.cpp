@@ -382,13 +382,17 @@ namespace eosio {
                                     }
 
                                     std::string order_id = "";
+                                    std::string data = "";
                                     try {
                                        std::vector<fc::variant> act_traces_vec;
                                        auto action_traces = resp["processed"]["action_traces"];
                                        fc::from_variant( action_traces, act_traces_vec );
+                                       auto data_variant = act_traces_vec[0]["act"]["data"];
+                                       data = fc::json::to_string( data_variant, fc::time_point::now() + max_response_time );
                                        auto order_id_variant = act_traces_vec[0]["act"]["data"]["order_id"];
                                        order_id = order_id_variant.as_string();
                                     } catch( const fc::exception& e ) {
+                                       ilog( "data : ${data}", ("data", data) );
                                        ilog( "failed to extract order_id - ${e}", ("e", e.to_detail_string()) );
                                     }
                                     ilog( "sending http response for ${order_id} (${id})", ("order_id", order_id)("id", transaction_id) );
