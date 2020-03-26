@@ -406,6 +406,8 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
    }
 
    void on_applied_transaction(const transaction_trace_ptr& p, const signed_transaction& t) {
+      auto id = p->id;
+      ilog ( "on_applied_transaction id=${id}", ("id", id) );
       if (p->receipt && trace_log) {
          if (is_onblock(p))
             onblock_trace.emplace(p, t);
