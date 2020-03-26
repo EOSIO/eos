@@ -189,7 +189,7 @@ namespace eosio { namespace testing {
       open(std::move(pfs), default_genesis().compute_chain_id());
    }
 
-   void base_tester::execute_setup_policy(const setup_policy policy, const std::vector<digest_type>& ignored_features) {
+   void base_tester::execute_setup_policy(const setup_policy policy) {
       const auto& pfm = control->get_protocol_feature_manager();
 
       auto schedule_preactivate_protocol_feature = [&]() {
@@ -218,7 +218,9 @@ namespace eosio { namespace testing {
             schedule_preactivate_protocol_feature();
             produce_block();
             set_before_producer_authority_bios_contract();
-            preactivate_builtin_protocol_features(ignored_features);
+            if ( !ignored_features.empty() ) {
+               preactivate_builtin_protocol_features(ignored_features);
+            }
             produce_block();
             set_bios_contract();
             break;
@@ -1134,8 +1136,20 @@ namespace eosio { namespace testing {
          if( !pf.enabled || pf.earliest_allowed_activation_time > current_block_time
              || pfm.is_builtin_activated( *pf.builtin_feature, current_block_num ) ) return;
 
+         std::function<void(const digest_type&)> check_dependencies =
+         [&check_dependencies, &ignored_features, &pf] ( const digest_type& feature ) {
+            const auto dependency_is_ignored     = std::find( ignored_features.cbegin(), ignored_features.cend(), feature );
+            const auto dependency_has_dependency = std::find( pf.dependencies.cbegin(),  pf.dependencies.cend(),  feature );
+            if ( dependency_is_ignored != ignored_features.cend() && dependency_has_dependency != pf.dependencies.cend() ) {
+                check_dependencies(*dependency_has_dependency);
+            } else {
+                FC_ASSERT( pf.builtin_feature, "ignoring a protocol feature that is a dependency for another protocol feature" );
+            }
+         };
+
          const auto feature_is_ignored = std::find(ignored_features.cbegin(), ignored_features.cend(), feature_digest);
          if( feature_is_ignored != ignored_features.cend() ) {
+            check_dependencies(*feature_is_ignored);
             return;
          }
 

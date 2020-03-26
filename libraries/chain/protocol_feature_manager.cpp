@@ -200,7 +200,7 @@ Enables new `set_action_return_value` intrinsic which sets a value that is inclu
 
          (  builtin_protocol_feature_t::stop_deferred_transactions, builtin_protocol_feature_spec{
             "DEPRECATE_DEFERRED_TRANSACTIONS",
-            fc::variant("8b3d91df64471bdcf4b0f14edaf4a1cf7e082e36902a1e26516c81f6c7f658d7").as<digest_type>(),
+            fc::variant("56e2c91142e6ca088a2e982c51f94fc944ea9e478e4113fc46649d5e2c04b5b1").as<digest_type>(),
             // SHA256 hash of the raw message below within the comment delimiters (do not modify message below).
 /*
 Builtin protocol feature: DEPRECATE_DEFERRED_TRANSACTIONS

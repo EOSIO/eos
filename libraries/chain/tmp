@@ -1,0 +1,3 @@
+Builtin protocol feature: DEPRECATE_DEFERRED_TRANSACTIONS
+
+Stops the ability to perform a deferred transaction.
