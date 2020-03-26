@@ -1018,6 +1018,10 @@ BOOST_AUTO_TEST_CASE(pruned_block_test) {
    BOOST_TEST(basic.transaction_mroot.str() == original->transaction_mroot.str());
    BOOST_TEST(basic.transaction_mroot.str() == calculate_trx_merkle(basic.transactions).str());
 
+   signed_block_ptr recovered = basic.to_signed_block();
+   BOOST_REQUIRE(recovered);
+   BOOST_TEST(fc::raw::pack(*original) == fc::raw::pack(*recovered));
+
    fc::datastream<std::size_t> size_stream;
    std::size_t padded_size = basic.pack(size_stream, pruned_transaction::cf_compression_type::none);
    BOOST_TEST(size_stream.tellp() <= padded_size);
@@ -1037,6 +1041,8 @@ BOOST_AUTO_TEST_CASE(pruned_block_test) {
    fc::datastream<char*> out(buffer.data(), buffer.size());
    deserialized.pack(out, pruned_transaction::cf_compression_type::none);
    BOOST_TEST(out.tellp() <= buffer.size());
+
+   BOOST_TEST(!deserialized.to_signed_block());
 }
 
 BOOST_AUTO_TEST_CASE(reflector_init_test) {
