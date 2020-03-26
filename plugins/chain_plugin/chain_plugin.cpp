@@ -2113,14 +2113,16 @@ void read_write::push_block(read_write::push_block_params&& params, next_functio
 
 void read_write::push_transaction(const read_write::push_transaction_params& params, next_function<read_write::push_transaction_results> next) {
    try {
+      ilog( "starting push_transaction" );
       auto pretty_input = std::make_shared<packed_transaction>();
-      auto id = pretty_input->id();
-      ilog( "starting push_transaction (${id})", ("id", id) );
       auto resolver = make_resolver(this, abi_serializer_max_time);
+      ilog( "starting abi_serializer in push_transaction" );
       try {
          abi_serializer::from_variant(params, *pretty_input, resolver, abi_serializer_max_time);
       } EOS_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid packed transaction")
 
+      auto id = pretty_input->id();
+      ilog( "finished abi_serializer in push_transaction (${id})", ("id", id) );
       app().get_method<incoming::methods::transaction_async>()(pretty_input, true,
             [this, next](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
          if (result.contains<fc::exception_ptr>()) {
@@ -2235,14 +2237,16 @@ void read_write::push_transactions(const read_write::push_transactions_params& p
 void read_write::send_transaction(const read_write::send_transaction_params& params, next_function<read_write::send_transaction_results> next) {
 
    try {
+      ilog( "starting send_transaction" );
       auto pretty_input = std::make_shared<packed_transaction>();
       auto resolver = make_resolver(this, abi_serializer_max_time);
+      ilog( "starting abi_serializer in send_transaction" );
       try {
          abi_serializer::from_variant(params, *pretty_input, resolver, abi_serializer_max_time);
       } EOS_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid packed transaction")
 
       auto id = pretty_input->id();
-      ilog( "starting send_transaction (${id})", ("id", id) );
+      ilog( "finished abi_serializer in send_transaction (${id})", ("id", id) );
       app().get_method<incoming::methods::transaction_async>()(pretty_input, true,
             [this, next, id=id](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
          if (result.contains<fc::exception_ptr>()) {
