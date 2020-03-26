@@ -387,8 +387,6 @@ namespace eosio {
                                        std::vector<fc::variant> act_traces_vec;
                                        auto action_traces = resp["processed"]["action_traces"];
                                        fc::from_variant( action_traces, act_traces_vec );
-                                       auto data_variant = act_traces_vec[0]["act"]["data"];
-                                       data = fc::json::to_string( data_variant, fc::time_point::now() + max_response_time );
                                        auto order_id_variant = act_traces_vec[0]["act"]["data"]["order_id"];
                                        order_id = order_id_variant.as_string();
                                     } catch( const fc::exception& e ) {
