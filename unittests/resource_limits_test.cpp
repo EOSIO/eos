@@ -4,7 +4,6 @@
 #include <eosio/chain/resource_limits.hpp>
 #include <eosio/chain/config.hpp>
 #include <eosio/testing/chainbase_fixture.hpp>
-#include <eosio/testing/tester.hpp>
 
 #include <boost/test/unit_test.hpp>
 

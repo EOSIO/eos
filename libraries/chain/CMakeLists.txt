@@ -5,6 +5,8 @@ file(GLOB HEADERS "include/eosio/chain/*.hpp"
                   "include/eosio/chain/webassembly/*.hpp"
                   "${CMAKE_CURRENT_BINARY_DIR}/include/eosio/chain/core_symbol.hpp" )
 
+option(EOSIO_ENABLE_DEVELOPER_OPTIONS "enable developer options for EOSIO" OFF)
+
 if(APPLE AND UNIX)
    set(PLATFORM_TIMER_IMPL platform_timer_macos.cpp)
 else()
@@ -41,7 +43,6 @@ if("eos-vm-oc" IN_LIST EOSIO_WASM_RUNTIMES)
    include_directories(${LLVM_INCLUDE_DIRS})
    add_definitions(${LLVM_DEFINITIONS})
 
-   option(EOSIO_ENABLE_DEVELOPER_OPTIONS "enable developer options for EOSIO" OFF)
    option(EOSVMOC_ENABLE_DEVELOPER_OPTIONS "enable developer options for EOS VM OC" OFF)
 endif()
 
@@ -103,7 +104,6 @@ add_library( eosio_chain
              whitelisted_intrinsics.cpp
              thread_utils.cpp
              platform_timer_accuracy.cpp
-             deep_mind.cpp
 
              ${PLATFORM_TIMER_IMPL}
              ${HEADERS}

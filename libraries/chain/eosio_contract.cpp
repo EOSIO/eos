@@ -2,7 +2,6 @@
 #include <eosio/chain/contract_table_objects.hpp>
 
 #include <eosio/chain/controller.hpp>
-#include <eosio/chain/deep_mind.hpp>
 #include <eosio/chain/transaction_context.hpp>
 #include <eosio/chain/apply_context.hpp>
 #include <eosio/chain/transaction.hpp>
@@ -118,7 +117,7 @@ void apply_eosio_newaccount(apply_context& context) {
    ram_delta += owner_permission.auth.get_billable_size();
    ram_delta += active_permission.auth.get_billable_size();
 
-   fc::string event_id;
+   std::string event_id;
    if (context.control.get_deep_mind_logger() != nullptr) {
       event_id = RAM_EVENT_ID("${name}", ("name", create.name));
    }
@@ -198,7 +197,7 @@ void apply_eosio_setcode(apply_context& context) {
 
    if (new_size != old_size) {
       std::string operation;
-      fc::string event_id;
+      std::string event_id;
       if (context.control.get_deep_mind_logger() != nullptr) {
          operation = "update";
          if (old_size <= 0) {
@@ -238,7 +237,7 @@ void apply_eosio_setabi(apply_context& context) {
 
    if (new_size != old_size) {
       std::string operation;
-      fc::string event_id;
+      std::string event_id;
       if (context.control.get_deep_mind_logger() != nullptr) {
          operation = "update";
          if (old_size <= 0) {
@@ -308,7 +307,7 @@ void apply_eosio_updateauth(apply_context& context) {
 
       int64_t new_size = (int64_t)(config::billable_size_v<permission_object> + permission->auth.get_billable_size());
 
-      fc::string event_id;
+      std::string event_id;
       if (context.control.get_deep_mind_logger() != nullptr) {
          event_id = RAM_EVENT_ID("${id}", ("id", permission->id));
       }
@@ -319,7 +318,7 @@ void apply_eosio_updateauth(apply_context& context) {
 
       int64_t new_size = (int64_t)(config::billable_size_v<permission_object> + p.auth.get_billable_size());
 
-      fc::string event_id;
+      std::string event_id;
       if (context.control.get_deep_mind_logger() != nullptr) {
          event_id = RAM_EVENT_ID("${id}", ("id", p.id));
       }
@@ -353,7 +352,7 @@ void apply_eosio_deleteauth(apply_context& context) {
    const auto& permission = authorization.get_permission({remove.account, remove.permission});
    int64_t old_size = config::billable_size_v<permission_object> + permission.auth.get_billable_size();
 
-   fc::string event_id;
+   std::string event_id;
    if (context.control.get_deep_mind_logger() != nullptr) {
       event_id = RAM_EVENT_ID("${id}", ("id", permission.id));
    }
@@ -410,7 +409,7 @@ void apply_eosio_linkauth(apply_context& context) {
             link.required_permission = requirement.requirement;
          });
 
-         fc::string event_id;
+         std::string event_id;
          if (context.control.get_deep_mind_logger() != nullptr) {
             event_id = RAM_EVENT_ID("${id}", ("id", l.id));
          }
@@ -437,7 +436,7 @@ void apply_eosio_unlinkauth(apply_context& context) {
    auto link = db.find<permission_link_object, by_action_name>(link_key);
    EOS_ASSERT(link != nullptr, action_validate_exception, "Attempting to unlink authority, but no link found");
 
-   fc::string event_id;
+   std::string event_id;
    if (context.control.get_deep_mind_logger() != nullptr) {
       event_id = RAM_EVENT_ID("${id}", ("id", link->id));
    }

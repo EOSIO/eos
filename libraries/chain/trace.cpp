@@ -47,16 +47,14 @@ ram_trace::ram_trace(
 ,family( family )
 ,operation( operation )
 ,legacy_tag( legacy_tag )
-{
-   EOS_ASSERT(!is_generic(), misc_exception, "ram trace from constructor cannot be generic");
-}
+{}
 
 ram_trace::ram_trace()
 :action_id( 0 )
-,event_id( nullptr )
-,family( nullptr )
-,operation( nullptr )
-,legacy_tag( nullptr ) {
+,event_id( "generic" )
+,family( "generic" )
+,operation( "generic" )
+,legacy_tag( "generic" ) {
    // Valid only for derived struct 'generic_ram_trace'
 }
 

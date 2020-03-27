@@ -1,6 +1,5 @@
 #pragma once
 #include <eosio/chain/controller.hpp>
-#include <eosio/chain/deep_mind.hpp>
 #include <eosio/chain/transaction.hpp>
 #include <eosio/chain/contract_table_objects.hpp>
 #include <fc/utility.hpp>
@@ -190,7 +189,7 @@ class apply_context {
                   o.payer         = payer;
                });
 
-               fc::string event_id;
+               std::string event_id;
                context.db.modify( tab, [&]( auto& t ) {
                  ++t.count;
 
@@ -216,7 +215,7 @@ class apply_context {
                const auto& table_obj = itr_cache.get_table( obj.t_id );
                EOS_ASSERT( table_obj.code == context.receiver, table_access_violation, "db access violation" );
 
-               fc::string event_id;
+               std::string event_id;
                if (context.control.get_deep_mind_logger() != nullptr) {
                   event_id = RAM_EVENT_ID("${code}:${scope}:${table}:${index_name}",
                      ("code", table_obj.code)
@@ -254,7 +253,7 @@ class apply_context {
 
                int64_t billing_size =  config::billable_size_v<ObjectType>;
 
-               fc::string event_id;
+               std::string event_id;
                if (context.control.get_deep_mind_logger() != nullptr) {
                   event_id = RAM_EVENT_ID("${code}:${scope}:${table}:${index_name}",
                      ("code", table_obj.code)
@@ -540,7 +539,7 @@ class apply_context {
    /// Database methods:
    public:
 
-      void update_db_usage( const account_name& payer, int64_t delta, const ram_trace&& ram_trace );
+      void update_db_usage( const account_name& payer, int64_t delta, const ram_trace& trace );
 
       int  db_store_i64( name scope, name table, const account_name& payer, uint64_t id, const char* buffer, size_t buffer_size );
       void db_update_i64( int iterator, account_name payer, const char* buffer, size_t buffer_size );
@@ -575,7 +574,7 @@ class apply_context {
       uint64_t next_recv_sequence( const account_metadata_object& receiver_account );
       uint64_t next_auth_sequence( account_name actor );
 
-      void add_ram_usage( account_name account, int64_t ram_delta, const ram_trace&& ram_trace );
+      void add_ram_usage( account_name account, int64_t ram_delta, const ram_trace& trace );
       void finalize_trace( action_trace& trace, const fc::time_point& start );
 
       bool is_context_free()const { return context_free; }

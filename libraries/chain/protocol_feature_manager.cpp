@@ -1,8 +1,6 @@
 #include <eosio/chain/protocol_feature_manager.hpp>
 #include <eosio/chain/protocol_state_object.hpp>
 #include <eosio/chain/exceptions.hpp>
-#include <eosio/chain/chain_config.hpp>
-#include <eosio/chain/controller.hpp>
 
 #include <fc/scoped_exit.hpp>
 

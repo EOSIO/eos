@@ -3,7 +3,6 @@
 #include <eosio/chain/resource_limits_private.hpp>
 #include <eosio/chain/transaction_metadata.hpp>
 #include <eosio/chain/transaction.hpp>
-#include <eosio/chain/controller.hpp>
 #include <boost/tuple/tuple_io.hpp>
 #include <eosio/chain/database_utils.hpp>
 #include <algorithm>
@@ -225,7 +224,7 @@ void resource_limits_manager::add_transaction_usage(const flat_set<account_name>
    EOS_ASSERT( state.pending_net_usage <= config.net_limit_parameters.max, block_resource_exhausted, "Block has insufficient net resources" );
 }
 
-void resource_limits_manager::add_pending_ram_usage( const account_name account, int64_t ram_delta, const ram_trace&& ram_trace ) {
+void resource_limits_manager::add_pending_ram_usage( const account_name account, int64_t ram_delta, const ram_trace& trace ) {
    if (ram_delta == 0) {
       return;
    }
@@ -241,14 +240,12 @@ void resource_limits_manager::add_pending_ram_usage( const account_name account,
       u.ram_usage += ram_delta;
 
       if (auto dm_logger = _get_deep_mind_logger()) {
-         EOS_ASSERT(!ram_trace.is_generic(), misc_exception, "deep mind does not accept generic ram event");
-
          fc_dlog(*dm_logger, "RAM_OP ${action_id} ${event_id} ${family} ${operation} ${legacy_tag} ${payer} ${new_usage} ${delta}",
-            ("action_id", ram_trace.get_action_id())
-            ("event_id", ram_trace.get_event_id())
-            ("family", ram_trace.get_family())
-            ("operation", ram_trace.get_operation())
-            ("legacy_tag", ram_trace.get_legacy_tag())
+            ("action_id", trace.get_action_id())
+            ("event_id", trace.get_event_id())
+            ("family", trace.get_family())
+            ("operation", trace.get_operation())
+            ("legacy_tag", trace.get_legacy_tag())
             ("payer", account)
             ("new_usage", u.ram_usage)
             ("delta", ram_delta)

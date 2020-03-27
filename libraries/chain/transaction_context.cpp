@@ -467,9 +467,9 @@ namespace eosio { namespace chain {
       }
    }
 
-   void transaction_context::add_ram_usage( account_name account, int64_t ram_delta, const ram_trace&& ram_trace ) {
+   void transaction_context::add_ram_usage( account_name account, int64_t ram_delta, const ram_trace& trace ) {
       auto& rl = control.get_mutable_resource_limits_manager();
-      rl.add_pending_ram_usage( account, ram_delta, std::move(ram_trace) );
+      rl.add_pending_ram_usage( account, ram_delta, trace );
       if( ram_delta > 0 ) {
          validate_ram_usage.insert( account );
       }
@@ -612,7 +612,7 @@ namespace eosio { namespace chain {
 
       auto first_auth = trx.first_authorizer();
 
-      fc::string event_id;
+      std::string event_id;
       uint32_t trx_size = 0;
       const auto& cgto = control.mutable_db().create<generated_transaction_object>( [&]( auto& gto ) {
         gto.trx_id      = id;

@@ -1032,7 +1032,7 @@ struct controller_impl {
       ram_delta += owner_permission.auth.get_billable_size();
       ram_delta += active_permission.auth.get_billable_size();
 
-      fc::string event_id;
+      std::string event_id;
       if (get_deep_mind_logger() != nullptr) {
          event_id = RAM_EVENT_ID("${name}", ("name", name));
       }
@@ -1189,7 +1189,7 @@ struct controller_impl {
    }
 
    int64_t remove_scheduled_transaction( const generated_transaction_object& gto ) {
-      fc::string event_id;
+      std::string event_id;
       if (get_deep_mind_logger() != nullptr) {
          event_id = RAM_EVENT_ID("${id}", ("id", gto.id));
       }
@@ -1344,7 +1344,7 @@ struct controller_impl {
 
          if (auto dm_logger = get_deep_mind_logger()) {
             fc_dlog(*dm_logger, "DTRX_OP FAILED ${action_id}",
-               ("action_id", trx_context.action_id.current())
+               ("action_id", trx_context.get_action_id())
             );
          }
       }
@@ -3330,8 +3330,6 @@ fc::logger* controller::get_deep_mind_logger()const {
 void controller::enable_deep_mind(fc::logger* logger) {
    EOS_ASSERT( logger != nullptr, misc_exception, "Invalid logger passed into enable_deep_mind, must be set" );
    my->deep_mind_logger = logger;
-
-   set_dmlog_appender_stdout_unbuffered();
 }
 
 #if defined(EOSIO_EOS_VM_RUNTIME_ENABLED) || defined(EOSIO_EOS_VM_JIT_RUNTIME_ENABLED)
@@ -3421,7 +3419,7 @@ void controller_impl::on_activation<builtin_protocol_feature_t::replace_deferred
                ("name", itr->name)("adjust", itr->ram_correction)("current", current_ram_usage) );
       }
 
-      fc::string event_id;
+      std::string event_id;
       if (get_deep_mind_logger() != nullptr) {
          event_id = RAM_EVENT_ID("${id}", ("id", itr->id._id));
       }

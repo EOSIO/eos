@@ -213,7 +213,12 @@ namespace eosio { namespace chain {
            "Unactivated key type used when modifying permission");
 
       _db.modify( permission, [&](permission_object& po) {
-         const permission_object old_permission(po);
+         auto dm_logger = _control.get_deep_mind_logger();
+
+         fc::variant old_permission;
+         if (dm_logger) {
+            old_permission = po;
+         }
 
          po.auth = auth;
          po.last_updated = _control.pending_block_time();

@@ -504,7 +504,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
    }
 
    uint32_t trx_size = 0;
-   fc::string event_id;
+   std::string event_id;
    std::string operation;
    if ( auto ptr = db.find<generated_transaction_object,by_sender_id>(boost::make_tuple(receiver, sender_id)) ) {
       EOS_ASSERT( replace_existing, deferred_tx_duplicate, "deferred transaction with the same sender_id and payer already exists" );
@@ -537,7 +537,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
       if (auto dm_logger = control.get_deep_mind_logger()) {
          fc::datastream<const char*> ds( ptr->packed_trx.data(), ptr->packed_trx.size() );
          transaction dtrx;
-         fc::raw::unpack(ds, static_cast<transaction&>(dtrx) );
+         fc::raw::unpack(ds, dtrx);
 
          fc_dlog(*dm_logger, "DTRX_OP MODIFY_CANCEL ${action_id} ${sender} ${sender_id} ${payer} ${published} ${delay} ${expiration} ${trx_id} ${trx}",
             ("action_id", get_action_id())
@@ -629,13 +629,11 @@ bool apply_context::cancel_deferred_transaction( const uint128_t& sender_id, acc
    auto& generated_transaction_idx = db.get_mutable_index<generated_transaction_multi_index>();
    const auto* gto = db.find<generated_transaction_object,by_sender_id>(boost::make_tuple(sender, sender_id));
    if ( gto ) {
-      fc::string event_id;
+      std::string event_id;
       if (auto dm_logger = control.get_deep_mind_logger()) {
-         // unpack gtx->packed_trx into `dtrx` REVISE THIS!
-         auto gtx = generated_transaction(*gto);
-         fc::datastream<const char*> ds( gtx.packed_trx.data(), gtx.packed_trx.size() );
+         fc::datastream<const char*> ds( gto->packed_trx.data(), gto->packed_trx.size() );
          transaction dtrx;
-         fc::raw::unpack(ds, static_cast<transaction&>(dtrx) );
+         fc::raw::unpack(ds, dtrx);
 
          event_id = RAM_EVENT_ID("${id}", ("id", gto->id));
 
@@ -688,7 +686,7 @@ const table_id_object& apply_context::find_or_create_table( name code, name scop
       return *existing_tid;
    }
 
-   fc::string event_id;
+   std::string event_id;
    if (control.get_deep_mind_logger() != nullptr) {
       event_id = RAM_EVENT_ID("${code}:${scope}:${table}",
          ("code", code)
@@ -718,7 +716,7 @@ const table_id_object& apply_context::find_or_create_table( name code, name scop
 }
 
 void apply_context::remove_table( const table_id_object& tid ) {
-   fc::string event_id;
+   std::string event_id;
    if (control.get_deep_mind_logger() != nullptr) {
       event_id = RAM_EVENT_ID("${code}:${scope}:${table}",
          ("code", tid.code)
@@ -757,7 +755,7 @@ bytes apply_context::get_packed_transaction() {
    return r;
 }
 
-void apply_context::update_db_usage( const account_name& payer, int64_t delta, const ram_trace&& ram_trace ) {
+void apply_context::update_db_usage( const account_name& payer, int64_t delta, const ram_trace& trace ) {
    if( delta > 0 ) {
       if( !(privileged || payer == account_name(receiver)
                || control.is_builtin_activated( builtin_protocol_feature_t::ram_restrictions ) ) )
@@ -767,7 +765,7 @@ void apply_context::update_db_usage( const account_name& payer, int64_t delta, c
          require_authorization( payer );
       }
    }
-   add_ram_usage(payer, delta, std::move(ram_trace));
+   add_ram_usage(payer, delta, trace);
 }
 
 
@@ -836,7 +834,7 @@ int apply_context::db_store_i64( name code, name scope, name table, const accoun
 
    int64_t billable_size = (int64_t)(buffer_size + config::billable_size_v<key_value_object>);
 
-   fc::string event_id;
+   std::string event_id;
    if (control.get_deep_mind_logger() != nullptr) {
       event_id = RAM_EVENT_ID("${table_code}:${scope}:${table_name}:${primkey}",
          ("table_code", tab.code)
@@ -878,7 +876,7 @@ void apply_context::db_update_i64( int iterator, account_name payer, const char*
 
    if( payer == account_name() ) payer = obj.payer;
 
-   fc::string event_id;
+   std::string event_id;
    if (control.get_deep_mind_logger() != nullptr) {
       event_id = RAM_EVENT_ID("${table_code}:${scope}:${table_name}:${primkey}",
          ("table_code", table_obj.code)
@@ -926,7 +924,7 @@ void apply_context::db_remove_i64( int iterator ) {
 
 //   require_write_lock( table_obj.scope );
 
-   fc::string event_id;
+   std::string event_id;
    if (control.get_deep_mind_logger() != nullptr) {
       event_id = RAM_EVENT_ID("${table_code}:${scope}:${table_name}:${primkey}",
          ("table_code", table_obj.code)
@@ -1098,8 +1096,8 @@ uint64_t apply_context::next_auth_sequence( account_name actor ) {
    return amo.auth_sequence;
 }
 
-void apply_context::add_ram_usage( account_name account, int64_t ram_delta, const ram_trace&& ram_trace ) {
-   trx_context.add_ram_usage( account, ram_delta, std::move(ram_trace) );
+void apply_context::add_ram_usage( account_name account, int64_t ram_delta, const ram_trace& trace ) {
+   trx_context.add_ram_usage( account, ram_delta, trace );
 
    auto p = _account_ram_deltas.emplace( account, ram_delta );
    if( !p.second ) {
