@@ -25,7 +25,6 @@ struct eos_vm_oc_control_block {
 #endif
    unsigned current_call_depth_remaining;
    int64_t current_linear_memory_pages; //-1 if no memory
-   int64_t max_linear_memory_pages;
    char* full_linear_memory_start;
    sigjmp_buf* jmp;
 #ifdef __cplusplus
@@ -36,5 +35,6 @@ struct eos_vm_oc_control_block {
    uintptr_t running_code_base;
    int64_t  first_invalid_memory_address;
    unsigned is_running;
+   int64_t max_linear_memory_pages;
    void* globals;
 };
