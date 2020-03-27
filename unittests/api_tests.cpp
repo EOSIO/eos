@@ -405,9 +405,9 @@ BOOST_FIXTURE_TEST_CASE(action_receipt_tests, TESTER) { try {
  * action_tests test case
  *************************************************************************************/
 BOOST_AUTO_TEST_CASE(action_tests) { try {
-   digest_type feature = builtin_protocol_feature_codenames.at(builtin_protocol_feature_t::stop_deferred_transactions).description_digest;
-   fc::temp_directory tempdir;
-   validating_tester chain( tempdir, true, {feature} );
+   static fc::temp_directory tempdir;
+   static const std::vector<builtin_protocol_feature_t> ignored_features{builtin_protocol_feature_codenames.find(builtin_protocol_feature_t::stop_deferred_transactions)->first};
+   validating_tester chain{tempdir, true, ignored_features};
    
    chain.execute_setup_policy( setup_policy::complete );
 
@@ -778,9 +778,9 @@ BOOST_FIXTURE_TEST_CASE(cfa_stateful_api, TESTER)  try {
 } FC_LOG_AND_RETHROW()
 
 BOOST_FIXTURE_TEST_CASE(deferred_cfa_failed, TESTER)  try {
-   digest_type feature = builtin_protocol_feature_codenames.at(builtin_protocol_feature_t::stop_deferred_transactions).description_digest;
-   fc::temp_directory tempdir;
-   validating_tester chain( tempdir, true, {feature} );
+   static fc::temp_directory tempdir;
+   static const std::vector<builtin_protocol_feature_t> ignored_features{builtin_protocol_feature_codenames.find(builtin_protocol_feature_t::stop_deferred_transactions)->first};
+   validating_tester chain{tempdir, true, ignored_features};
 
    chain.create_account( N(testapi) );
    chain.produce_blocks(1);
@@ -817,9 +817,9 @@ BOOST_FIXTURE_TEST_CASE(deferred_cfa_failed, TESTER)  try {
 } FC_LOG_AND_RETHROW()
 
 BOOST_FIXTURE_TEST_CASE(deferred_cfa_success, TESTER)  try {
-   digest_type feature = builtin_protocol_feature_codenames.at(builtin_protocol_feature_t::stop_deferred_transactions).description_digest;
-   fc::temp_directory tempdir;
-   validating_tester chain( tempdir, true, {feature} );
+   static fc::temp_directory tempdir;
+   static const std::vector<builtin_protocol_feature_t> ignored_features{builtin_protocol_feature_codenames.find(builtin_protocol_feature_t::stop_deferred_transactions)->first};
+   validating_tester chain{tempdir, true, ignored_features};
 
    chain.create_account( N(testapi) );
    chain.produce_blocks(1);
@@ -858,7 +858,6 @@ BOOST_FIXTURE_TEST_CASE(deferred_cfa_success, TESTER)  try {
 } FC_LOG_AND_RETHROW()
 
 BOOST_AUTO_TEST_CASE(light_validation_skip_cfa) try {
-   // tester chain(setup_policy::full);
    tester chain(setup_policy::complete);
 
    std::vector<signed_block_ptr> blocks;
@@ -1129,9 +1128,9 @@ BOOST_FIXTURE_TEST_CASE(checktime_hashing_fail, TESTER) { try {
  * transaction_tests test case
  *************************************************************************************/
 BOOST_AUTO_TEST_CASE(transaction_tests) { try {
-   digest_type feature = builtin_protocol_feature_codenames.at(builtin_protocol_feature_t::stop_deferred_transactions).description_digest;
-   fc::temp_directory tempdir;
-   validating_tester chain( tempdir, true, {feature} );
+   static fc::temp_directory tempdir;
+   static const std::vector<builtin_protocol_feature_t> ignored_features{builtin_protocol_feature_codenames.find(builtin_protocol_feature_t::stop_deferred_transactions)->first};
+   validating_tester chain{tempdir, true, ignored_features};
 
    chain.produce_blocks(2);
    chain.create_account( N(testapi) );
@@ -1248,9 +1247,9 @@ BOOST_AUTO_TEST_CASE(transaction_tests) { try {
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_CASE(deferred_transaction_tests) { try {
-   digest_type feature = builtin_protocol_feature_codenames.at(builtin_protocol_feature_t::stop_deferred_transactions).description_digest;
-   fc::temp_directory tempdir;
-   validating_tester chain( tempdir, true, {feature} );
+   static fc::temp_directory tempdir;
+   static const std::vector<builtin_protocol_feature_t> ignored_features{builtin_protocol_feature_codenames.find(builtin_protocol_feature_t::stop_deferred_transactions)->first};
+   validating_tester chain{tempdir, true, ignored_features};
 
    chain.produce_blocks(2);
    chain.create_accounts( {N(testapi), N(testapi2), N(alice)} );

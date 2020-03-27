@@ -72,7 +72,7 @@ class currency_tester : public TESTER {
       }
 
     currency_tester(fc::temp_directory& tempdir)
-      :TESTER( tempdir, true, {builtin_protocol_feature_codenames.at(builtin_protocol_feature_t::stop_deferred_transactions).description_digest} )
+      :TESTER( tempdir, true, {builtin_protocol_feature_codenames.find(builtin_protocol_feature_t::stop_deferred_transactions)->first} )
       ,abi_ser( json::from_string(contracts::eosio_token_abi().data()).as<abi_def>(), abi_serializer::create_yield_function( abi_serializer_max_time ) )
       {
          create_account( N(eosio.token));

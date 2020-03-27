@@ -218,9 +218,10 @@ namespace eosio { namespace testing {
             schedule_preactivate_protocol_feature();
             produce_block();
             set_before_producer_authority_bios_contract();
-            if ( !ignored_features.empty() ) {
-               preactivate_builtin_protocol_features(ignored_features);
-            }
+            // if ( !ignored_features.empty() ) {
+            //    preactivate_builtin_protocol_features(ignored_features);
+            // }
+            preactivate_builtin_protocol_features(ignored_features);
             produce_block();
             set_bios_contract();
             break;
@@ -1118,38 +1119,44 @@ namespace eosio { namespace testing {
       }
    }
 
-   void base_tester::preactivate_builtin_protocol_features(const std::vector<digest_type>& ignored_features) {
+   void base_tester::preactivate_builtin_protocol_features(const std::vector<builtin_protocol_feature_t>& ignored_features) {
       const auto& pfm = control->get_protocol_feature_manager();
       const auto& pfs = pfm.get_protocol_feature_set();
       const auto current_block_num  =  control->head_block_num() + (control->is_building_block() ? 1 : 0);
       const auto current_block_time = ( control->is_building_block() ? control->pending_block_time()
                                         : control->head_block_time() + fc::milliseconds(config::block_interval_ms) );
 
-      set<digest_type>    preactivation_set;
-      vector<digest_type> preactivations;
+      set<digest_type>         preactivation_set;
+      vector<digest_type>      preactivations;
+      std::vector<digest_type> ignored_digests;
+      
+      ignored_digests.reserve(ignored_features.size());
+      for ( const auto& feature : ignored_features ) {
+         ignored_digests.push_back(*pfs.get_builtin_digest( feature ) );
+      }
 
       std::function<void(const digest_type&)> add_digests =
-      [&ignored_features, &pfm, &pfs, current_block_num, current_block_time, &preactivation_set, &preactivations, &add_digests]
+      [&ignored_digests, &pfm, &pfs, current_block_num, current_block_time, &preactivation_set, &preactivations, &add_digests]
       ( const digest_type& feature_digest ) {
          const auto& pf = pfs.get_protocol_feature( feature_digest );
          FC_ASSERT( pf.builtin_feature, "called add_digests on a non-builtin protocol feature" );
          if( !pf.enabled || pf.earliest_allowed_activation_time > current_block_time
              || pfm.is_builtin_activated( *pf.builtin_feature, current_block_num ) ) return;
 
-         std::function<void(const digest_type&)> check_dependencies =
-         [&check_dependencies, &ignored_features, &pf] ( const digest_type& feature ) {
-            const auto dependency_is_ignored     = std::find( ignored_features.cbegin(), ignored_features.cend(), feature );
-            const auto dependency_has_dependency = std::find( pf.dependencies.cbegin(),  pf.dependencies.cend(),  feature );
-            if ( dependency_is_ignored != ignored_features.cend() && dependency_has_dependency != pf.dependencies.cend() ) {
-                check_dependencies(*dependency_has_dependency);
-            } else {
-                FC_ASSERT( pf.builtin_feature, "ignoring a protocol feature that is a dependency for another protocol feature" );
-            }
-         };
+         // std::function<void(const digest_type&)> check_dependencies =
+         // [&check_dependencies, &ignored_digests, &pf] ( const digest_type& feature ) {
+         //    const auto dependency_is_ignored     = std::find( ignored_features.cbegin(), ignored_features.cend(), feature );
+         //    const auto dependency_has_dependency = std::find( pf.dependencies.cbegin(),  pf.dependencies.cend(),  feature );
+         //    if ( dependency_is_ignored != ignored_features.cend() && dependency_has_dependency != pf.dependencies.cend() ) {
+         //        check_dependencies(*dependency_has_dependency);
+         //    } else {
+         //        FC_ASSERT( pf.builtin_feature, "ignoring a protocol feature that is a dependency for another protocol feature" );
+         //    }
+         // };
 
-         const auto feature_is_ignored = std::find(ignored_features.cbegin(), ignored_features.cend(), feature_digest);
-         if( feature_is_ignored != ignored_features.cend() ) {
-            check_dependencies(*feature_is_ignored);
+         const auto digest_is_ignored = std::find(ignored_digests.cbegin(), ignored_digests.cend(), feature_digest);
+         if( digest_is_ignored != ignored_digests.cend() ) {
+            // check_dependencies(*feature_is_ignored);
             return;
          }
 

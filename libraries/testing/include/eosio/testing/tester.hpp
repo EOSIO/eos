@@ -378,7 +378,7 @@ namespace eosio { namespace testing {
 
          void schedule_protocol_features_wo_preactivation(const vector<digest_type> feature_digests);
          void preactivate_protocol_features(const vector<digest_type> feature_digests);
-         void preactivate_builtin_protocol_features(const std::vector<digest_type>& ignored_features);
+         void preactivate_builtin_protocol_features(const std::vector<builtin_protocol_feature_t>& ignored_features);
 
          static genesis_state default_genesis() {
             genesis_state genesis;
@@ -431,11 +431,10 @@ namespace eosio { namespace testing {
          controller::config                            cfg;
          map<transaction_id_type, transaction_receipt> chain_transactions;
          map<account_name, block_id_type>              last_produced_block;
-         unapplied_transaction_queue                   unapplied_transactions;
-         
+         unapplied_transaction_queue                   unapplied_transactions;         
 
       public:
-         vector<digest_type>                           ignored_features;
+         vector<builtin_protocol_feature_t>            ignored_features;
          vector<digest_type>                           protocol_features_to_be_activated_wo_preactivation;
    };
 
@@ -534,8 +533,7 @@ namespace eosio { namespace testing {
          execute_setup_policy(setup_policy::complete);
       }
 
-      validating_tester(bool use_genesis)
-      {
+      validating_tester(bool use_genesis) {
          auto def_conf = default_config(tempdir);
          vcfg = def_conf.first;
          config_validator(vcfg);
@@ -549,7 +547,7 @@ namespace eosio { namespace testing {
          }
       }
 
-      validating_tester(const fc::temp_directory& tempdir, bool use_genesis, const std::vector<digest_type>& ignored_features = {}) {
+      validating_tester(const fc::temp_directory& tempdir, bool use_genesis, const std::vector<builtin_protocol_feature_t>& ignored_features = {}) {
          base_tester::ignored_features = ignored_features;
          auto def_conf = default_config(tempdir);
          vcfg = def_conf.first;
