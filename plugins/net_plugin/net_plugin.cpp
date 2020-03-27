@@ -577,7 +577,7 @@ namespace eosio {
       std::atomic<bool>                     connecting{true};
       std::atomic<bool>                     syncing{false};
       uint16_t                              protocol_version = 0;
-      uint16_t                              consecutive_rejected_blocks = 0;
+      std::atomic<uint16_t>                 consecutive_rejected_blocks = 0;
       std::atomic<uint16_t>                 consecutive_immediate_connection_close = 0;
       std::atomic<connection_state>         last_status{connection_state::never_connected};
       std::atomic<uint32_t>                 last_block_sent{0};
@@ -1161,10 +1161,7 @@ namespace eosio {
          fc_ilog(logger, "sending empty request but not calling sync wait on ${p}", ("p",peer_address()));
          enqueue( ( sync_request_message ) {0,0} );
       }
-      {
-         std::lock_guard<std::mutex> g_conn( conn_mtx );
-         last_status = connection_state::go_away;
-      }
+      last_status = connection_state::go_away;
    }
 
    bool connection::enqueue_sync_block() {
@@ -1760,10 +1757,7 @@ namespace eosio {
          c->close( false, true );
          return;
       }
-      c->strand.post( [c, blk_num]() {
-         c->last_block_received = blk_num;
-         c->consecutive_rejected_blocks = 0;
-      });
+      c->consecutive_rejected_blocks = 0;
       std::unique_lock<std::mutex> g_sync( sync_mtx );
       stages state = sync_state;
       fc_dlog( logger, "state ${s}", ("s", stage_str( state )) );
@@ -2220,9 +2214,7 @@ namespace eosio {
       }
       connecting = true;
       last_status = connection_state::connecting;
-      std::unique_lock<std::mutex> g_conn( conn_mtx );
       pending_message_buffer.reset();
-      g_conn.unlock();
       buffer_queue.clear_out_queue();
       boost::asio::async_connect( *socket, endpoints,
          boost::asio::bind_executor( strand,
@@ -2692,10 +2684,7 @@ namespace eosio {
 
    void connection::handle_message( const go_away_message& msg ) {
       peer_wlog( this, "received go_away_message, reason = ${r}", ("r", reason_str( msg.reason )) );
-      {
-         std::lock_guard<std::mutex> g_conn( conn_mtx );
-         last_status = connection_state::go_away;
-      }
+      last_status = connection_state::go_away;
       bool retry = no_retry == no_reason; // if no previous go away message
       no_retry = msg.reason;
       if( msg.reason == duplicate ) {
@@ -2978,11 +2967,7 @@ namespace eosio {
       }
 
       if( reason == no_reason ) {
-         {
-            std::lock_guard<std::mutex> g_conn( conn_mtx );
-            c->last_block_received = blk_num;
-         }
-
+          c->last_block_received = blk_num;
          boost::asio::post( my_impl->thread_pool->get_executor(), [dispatcher = my_impl->dispatcher.get(), cid=c->connection_id, blk_id, msg]() {
             dispatcher->add_peer_block( blk_id, cid );
             dispatcher->update_txns_block_num( msg );
