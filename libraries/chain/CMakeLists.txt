@@ -5,8 +5,6 @@ file(GLOB HEADERS "include/eosio/chain/*.hpp"
                   "include/eosio/chain/webassembly/*.hpp"
                   "${CMAKE_CURRENT_BINARY_DIR}/include/eosio/chain/core_symbol.hpp" )
 
-option(EOSIO_ENABLE_DEVELOPER_OPTIONS "enable developer options for EOSIO" OFF)
-
 if(APPLE AND UNIX)
    set(PLATFORM_TIMER_IMPL platform_timer_macos.cpp)
 else()
@@ -129,11 +127,6 @@ foreach(RUNTIME ${EOSIO_WASM_RUNTIMES})
    string(REPLACE "-" "_" RUNTIMEUC ${RUNTIMEUC})
    target_compile_definitions(eosio_chain PUBLIC "EOSIO_${RUNTIMEUC}_RUNTIME_ENABLED")
 endforeach()
-
-if(EOSIO_ENABLE_DEVELOPER_OPTIONS)
-   message(WARNING "EOSIO Developer Options are enabled; these are NOT supported")
-   target_compile_definitions(eosio_chain PUBLIC EOSIO_DEVELOPER)
-endif()
 
 if(EOSVMOC_ENABLE_DEVELOPER_OPTIONS)
    message(WARNING "EOS VM OC Developer Options are enabled; these are NOT supported")

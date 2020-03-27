@@ -70,28 +70,52 @@ namespace eosio { namespace chain {
 
    struct ram_trace {
    public:
-      ram_trace(uint32_t action_id, const char* event_id, const char* family, const char* operation, const char* legacy_tag);
+      ram_trace(uint32_t action_id, const char* event_id, const char* family, const char* operation, const char* legacy_tag)
+      :action_id(action_id),event_id(event_id),family(family),operation(operation),legacy_tag(legacy_tag)
+      {}
 
-      inline uint32_t get_action_id() const { return action_id; }
-      inline const char* get_event_id() const { return event_id; }
-      inline const char* get_family() const { return family; }
-      inline const char* get_operation() const { return operation; }
-      inline const char* get_legacy_tag() const { return legacy_tag; }
-
-   protected:
-      ram_trace();
+      uint32_t     action_id  = 0;
+      const char*  event_id   = "generic";
+      const char*  family     = "generic";
+      const char*  operation  = "generic";
+      const char*  legacy_tag = "generic";
 
    private:
-      uint32_t       action_id;
-      const char*    event_id;
-      const char*    family;
-      const char*    operation;
-      const char*    legacy_tag;
+      ram_trace(uint32_t action_id)
+      :action_id(action_id)
+      {}
+
+      friend ram_trace generic_ram_trace(uint32_t);
    };
 
-   struct generic_ram_trace: public ram_trace {
-      generic_ram_trace(): ram_trace() {}
-   };
+   inline ram_trace generic_ram_trace(uint32_t action_id) {
+      return {action_id};
+   }
+
+   // struct ram_trace {
+   // public:
+   //    ram_trace(uint32_t action_id, const char* event_id, const char* family, const char* operation, const char* legacy_tag);
+
+   //    inline uint32_t get_action_id() const { return action_id; }
+   //    inline const char* get_event_id() const { return event_id; }
+   //    inline const char* get_family() const { return family; }
+   //    inline const char* get_operation() const { return operation; }
+   //    inline const char* get_legacy_tag() const { return legacy_tag; }
+
+   // protected:
+   //    ram_trace();
+
+   // private:
+   //    uint32_t       action_id;
+   //    const char*    event_id;
+   //    const char*    family;
+   //    const char*    operation;
+   //    const char*    legacy_tag;
+   // };
+
+   // struct generic_ram_trace: public ram_trace {
+   //    generic_ram_trace(): ram_trace() {}
+   // };
 
 } }  /// namespace eosio::chain
 

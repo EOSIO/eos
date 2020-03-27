@@ -35,27 +35,4 @@ action_trace::action_trace(
 ,producer_block_id( trace.producer_block_id )
 {}
 
-ram_trace::ram_trace(
-   uint32_t action_id,
-   const char* event_id,
-   const char* family,
-   const char* operation,
-   const char* legacy_tag
-)
-:action_id( action_id )
-,event_id( event_id )
-,family( family )
-,operation( operation )
-,legacy_tag( legacy_tag )
-{}
-
-ram_trace::ram_trace()
-:action_id( 0 )
-,event_id( "generic" )
-,family( "generic" )
-,operation( "generic" )
-,legacy_tag( "generic" ) {
-   // Valid only for derived struct 'generic_ram_trace'
-}
-
 } } // eosio::chain

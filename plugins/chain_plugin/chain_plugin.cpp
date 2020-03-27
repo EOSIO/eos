@@ -226,7 +226,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("contracts-console", bpo::bool_switch()->default_value(false),
           "print contract's output to console")
          ("deep-mind", bpo::bool_switch()->default_value(false),
-          "print deeper information about eosio software")
+          "print deeper information about chain operations")
          ("actor-whitelist", boost::program_options::value<vector<string>>()->composing()->multitoken(),
           "Account added to actor whitelist (may specify multiple times)")
          ("actor-blacklist", boost::program_options::value<vector<string>>()->composing()->multitoken(),
@@ -1123,7 +1123,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          if (auto dm_logger = my->chain->get_deep_mind_logger()) {
             fc_dlog(*dm_logger, "ACCEPTED_BLOCK ${num} ${blk}",
                ("num", blk->block_num)
-               ("blk", chain().to_variant_with_abi(blk, abi_serializer::create_yield_function(fc::microseconds(config::dmlog_abi_serializer_max_time_us))))
+               ("blk", blk)
             );
          }
 

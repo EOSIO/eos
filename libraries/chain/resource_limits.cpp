@@ -241,11 +241,11 @@ void resource_limits_manager::add_pending_ram_usage( const account_name account,
 
       if (auto dm_logger = _get_deep_mind_logger()) {
          fc_dlog(*dm_logger, "RAM_OP ${action_id} ${event_id} ${family} ${operation} ${legacy_tag} ${payer} ${new_usage} ${delta}",
-            ("action_id", trace.get_action_id())
-            ("event_id", trace.get_event_id())
-            ("family", trace.get_family())
-            ("operation", trace.get_operation())
-            ("legacy_tag", trace.get_legacy_tag())
+            ("action_id", trace.action_id)
+            ("event_id", trace.event_id)
+            ("family", trace.family)
+            ("operation", trace.operation)
+            ("legacy_tag", trace.legacy_tag)
             ("payer", account)
             ("new_usage", u.ram_usage)
             ("delta", ram_delta)
