@@ -12,9 +12,9 @@ namespace eosio { namespace chain {
     * linked list of blocks. There is a secondary index file of only block positions that enables
     * O(1) random access lookup by block number.
     *
-    * +---------+----------------+---------+----------------+-----+------------+-------------------+
-    * | Block 1 | Pos of Block 1 | Block 2 | Pos of Block 2 | ... | Head Block | Pos of Head Block |
-    * +---------+----------------+---------+----------------+-----+------------+-------------------+
+    * +---------------+----------------+---------------+----------------+-----+------------------+-------------------+
+    * | Block 1 Entry | Pos of Block 1 | Block 2 Entry | Pos of Block 2 | ... | Head Block Entry | Pos of Head Block |
+    * +---------------+----------------+---------------+----------------+-----+------------------+-------------------+
     *
     * +----------------+----------------+-----+-------------------+
     * | Pos of Block 1 | Pos of Block 2 | ... | Pos of Head Block |
@@ -38,27 +38,31 @@ namespace eosio { namespace chain {
          block_log(block_log&& other);
          ~block_log();
 
-         uint64_t append(const signed_block_ptr& b);
+         [[deprecated]] uint64_t append(const signed_block_ptr& b);
+         uint64_t append(const pruned_block_ptr& block, pruned_transaction::cf_compression_type segment_compression);
+
          void flush();
-         void reset( const genesis_state& gs, const signed_block_ptr& genesis_block );
+
+         [[deprecated]] void reset( const genesis_state& gs, const signed_block_ptr& genesis_block );
+         void reset( const genesis_state& gs, const pruned_block_ptr& genesis_block, pruned_transaction::cf_compression_type segment_compression);
          void reset( const chain_id_type& chain_id, uint32_t first_block_num );
 
-         signed_block_ptr read_block(uint64_t file_pos)const;
+         pruned_block_ptr read_block(uint64_t file_pos) const;
          void             read_block_header(block_header& bh, uint64_t file_pos)const;
-         signed_block_ptr read_block_by_num(uint32_t block_num)const;
+         
          block_id_type    read_block_id_by_num(uint32_t block_num)const;
-         signed_block_ptr read_block_by_id(const block_id_type& id)const {
-            return read_block_by_num(block_header::num_from_id(id));
-         }
+
+         [[deprecated]] signed_block_ptr read_block_by_num(uint32_t block_num) const;
+         pruned_block_ptr read_pruned_block_by_num(uint32_t block_num) const;
 
          /**
           * Return offset of block in file, or block_log::npos if it does not exist.
           */
-         uint64_t get_block_pos(uint32_t block_num) const;
-         signed_block_ptr        read_head()const;
-         const signed_block_ptr& head()const;
-         const block_id_type&    head_id()const;
-         uint32_t                first_block_num() const;
+         uint64_t                       get_block_pos(uint32_t block_num) const;
+         signed_block_header_ptr        read_head() const;
+         const signed_block_header_ptr& head() const;
+         const block_id_type&           head_id() const;
+         uint32_t                       first_block_num() const;
 
          static const uint64_t npos = std::numeric_limits<uint64_t>::max();
 

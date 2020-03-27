@@ -151,7 +151,7 @@ namespace eosio { namespace chain {
       // Returns the maximum_pruned_padded_size.  It is the caller's responsibility to
       // reserve enough space after the end if in-place pruning is desired.
       template<typename Stream>
-      std::size_t pack(Stream& stream, pruned_transaction::cf_compression_type segment_compression) {
+      std::size_t pack(Stream& stream, pruned_transaction::cf_compression_type segment_compression) const {
          std::size_t padded_size = maximum_pruned_pack_size( segment_compression );
          // TODO: This only handles legacy transactions.
          fc::raw::pack(stream, *this);
