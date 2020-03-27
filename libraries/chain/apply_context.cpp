@@ -61,51 +61,53 @@ void apply_context::exec_one()
       try {
          action_return_value.clear();
          receiver_account = &db.get<account_metadata_object,by_name>( receiver );
-         privileged = receiver_account->is_privileged();
-         auto native = control.find_apply_handler( receiver, act->account, act->name );
-         if( native ) {
-            if( trx_context.enforce_whiteblacklist && control.is_producing_block() ) {
-               control.check_contract_list( receiver );
-               control.check_action_list( act->account, act->name );
-            }
-            (*native)( *this );
-         }
-
-         if( ( receiver_account->code_hash != digest_type() ) &&
-               (  !( act->account == config::system_account_name
-                     && act->name == N( setcode )
-                     && receiver == config::system_account_name )
-                  || control.is_builtin_activated( builtin_protocol_feature_t::forward_setcode )
-               )
-         ) {
-            if( trx_context.enforce_whiteblacklist && control.is_producing_block() ) {
-               control.check_contract_list( receiver );
-               control.check_action_list( act->account, act->name );
-            }
-            try {
-               control.get_wasm_interface().apply( receiver_account->code_hash, receiver_account->vm_type, receiver_account->vm_version, *this );
-            } catch( const wasm_exit& ) {}
-         }
-
-         if( !privileged && control.is_builtin_activated( builtin_protocol_feature_t::ram_restrictions ) ) {
-            const size_t checktime_interval = 10;
-            size_t counter = 0;
-            bool   not_in_notify_context = (receiver == act->account);
-            const auto end = _account_ram_deltas.end();
-            for( auto itr = _account_ram_deltas.begin(); itr != end; ++itr, ++counter ) {
-               if( counter == checktime_interval ) {
-                  trx_context.checktime();
-                  counter = 0;
+         if( !(context_free && control.skip_trx_checks()) ) {
+            privileged = receiver_account->is_privileged();
+            auto native = control.find_apply_handler( receiver, act->account, act->name );
+            if( native ) {
+               if( trx_context.enforce_whiteblacklist && control.is_producing_block() ) {
+                  control.check_contract_list( receiver );
+                  control.check_action_list( act->account, act->name );
                }
-               if( itr->delta > 0 && itr->account != receiver ) {
-                  EOS_ASSERT( not_in_notify_context, unauthorized_ram_usage_increase,
-                              "unprivileged contract cannot increase RAM usage of another account within a notify context: ${account}",
-                              ("account", itr->account)
-                  );
-                  EOS_ASSERT( has_authorization( itr->account ), unauthorized_ram_usage_increase,
-                              "unprivileged contract cannot increase RAM usage of another account that has not authorized the action: ${account}",
-                              ("account", itr->account)
-                  );
+               (*native)( *this );
+            }
+
+            if( ( receiver_account->code_hash != digest_type() ) &&
+                  (  !( act->account == config::system_account_name
+                        && act->name == N( setcode )
+                        && receiver == config::system_account_name )
+                     || control.is_builtin_activated( builtin_protocol_feature_t::forward_setcode )
+                  )
+            ) {
+               if( trx_context.enforce_whiteblacklist && control.is_producing_block() ) {
+                  control.check_contract_list( receiver );
+                  control.check_action_list( act->account, act->name );
+               }
+               try {
+                  control.get_wasm_interface().apply( receiver_account->code_hash, receiver_account->vm_type, receiver_account->vm_version, *this );
+               } catch( const wasm_exit& ) {}
+            }
+
+            if( !privileged && control.is_builtin_activated( builtin_protocol_feature_t::ram_restrictions ) ) {
+               const size_t checktime_interval = 10;
+               size_t counter = 0;
+               bool not_in_notify_context = (receiver == act->account);
+               const auto end = _account_ram_deltas.end();
+               for( auto itr = _account_ram_deltas.begin(); itr != end; ++itr, ++counter ) {
+                  if( counter == checktime_interval ) {
+                     trx_context.checktime();
+                     counter = 0;
+                  }
+                  if( itr->delta > 0 && itr->account != receiver ) {
+                     EOS_ASSERT( not_in_notify_context, unauthorized_ram_usage_increase,
+                                 "unprivileged contract cannot increase RAM usage of another account within a notify context: ${account}",
+                                 ("account", itr->account)
+                     );
+                     EOS_ASSERT( has_authorization( itr->account ), unauthorized_ram_usage_increase,
+                                 "unprivileged contract cannot increase RAM usage of another account that has not authorized the action: ${account}",
+                                 ("account", itr->account)
+                     );
+                  }
                }
             }
          }

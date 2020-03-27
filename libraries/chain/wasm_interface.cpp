@@ -1099,9 +1099,9 @@ public:
 
 };
 
-class action_api : public context_aware_api {
+class context_free_action_api : public context_aware_api {
    public:
-   action_api( apply_context& ctx )
+      context_free_action_api( apply_context& ctx )
       :context_aware_api(ctx,true){}
 
       int read_action_data(array_ptr<char> memory, uint32_t buffer_size) {
@@ -1122,9 +1122,16 @@ class action_api : public context_aware_api {
          return context.get_receiver();
       }
 
+};
+
+class action_api : public context_aware_api {
+   public:
+      using context_aware_api::context_aware_api;
+
       void set_action_return_value( array_ptr<char> packed_blob, uint32_t datalen ) {
          context.action_return_value.assign( packed_blob.value, packed_blob.value + datalen );
       }
+
 };
 
 class console_api : public context_aware_api {
@@ -1951,10 +1958,13 @@ REGISTER_INTRINSICS(context_free_system_api,
    (eosio_exit,           void(int)           )
 );
 
-REGISTER_INTRINSICS(action_api,
+REGISTER_INTRINSICS(context_free_action_api,
    (read_action_data,       int(int, int)  )
    (action_data_size,       int()          )
    (current_receiver,       int64_t()      )
+);
+
+REGISTER_INTRINSICS(action_api,
    (set_action_return_value,void(int, int) )
 );
 

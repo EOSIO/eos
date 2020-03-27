@@ -1444,7 +1444,8 @@ struct controller_impl {
    transaction_trace_ptr push_transaction( const transaction_metadata_ptr& trx,
                                            fc::time_point deadline,
                                            uint32_t billed_cpu_time_us,
-                                           bool explicit_billed_cpu_time )
+                                           bool explicit_billed_cpu_time,
+                                           fc::optional<uint32_t> explicit_net_usage_words )
    {
       EOS_ASSERT(deadline != fc::time_point(), transaction_exception, "deadline cannot be uninitialized");
 
@@ -1476,13 +1477,18 @@ struct controller_impl {
          trace = trx_context.trace;
          try {
             if( trx->implicit ) {
+               EOS_ASSERT( !explicit_net_usage_words.valid(), transaction_exception, "NET usage cannot be explicitly set for implicit transactions" );
                trx_context.init_for_implicit_trx();
                trx_context.enforce_whiteblacklist = false;
             } else {
                bool skip_recording = replay_head_time && (time_point(trn.expiration) <= *replay_head_time);
-               trx_context.init_for_input_trx( trx->packed_trx()->get_unprunable_size(),
-                                               trx->packed_trx()->get_prunable_size(),
-                                               skip_recording);
+               if( explicit_net_usage_words ) {
+                  trx_context.init_for_input_trx_with_explicit_net( *explicit_net_usage_words, skip_recording );
+               } else {
+                  trx_context.init_for_input_trx( trx->packed_trx()->get_unprunable_size(),
+                                                  trx->packed_trx()->get_prunable_size(),
+                                                  skip_recording );
+               }
             }
 
             trx_context.delay = fc::seconds(trn.delay_sec);
@@ -1689,7 +1695,7 @@ struct controller_impl {
                   in_trx_requiring_checks = old_value;
                });
             in_trx_requiring_checks = true;
-            push_transaction( onbtrx, fc::time_point::maximum(), gpo.configuration.min_transaction_cpu_usage, true );
+            push_transaction( onbtrx, fc::time_point::maximum(), gpo.configuration.min_transaction_cpu_usage, true, {} );
          } catch( const std::bad_alloc& e ) {
             elog( "on block transaction failed due to a std::bad_alloc" );
             throw;
@@ -1921,6 +1927,8 @@ struct controller_impl {
 
          transaction_trace_ptr trace;
 
+         bool explicit_net = self.skip_trx_checks();
+
          size_t packed_idx = 0;
          const auto& trx_receipts = pending->_block_stage.get<building_block>()._pending_trx_receipts;
          for( const auto& receipt : b->transactions ) {
@@ -1930,7 +1938,11 @@ struct controller_impl {
                                                        : ( !!std::get<0>( trx_metas.at( packed_idx ) ) ?
                                                              std::get<0>( trx_metas.at( packed_idx ) )
                                                              : std::get<1>( trx_metas.at( packed_idx ) ).get() ) );
-               trace = push_transaction( trx_meta, fc::time_point::maximum(), receipt.cpu_usage_us, true );
+               fc::optional<uint32_t> explicit_net_usage_words;
+               if( explicit_net ) {
+                  explicit_net_usage_words = receipt.net_usage_words.value;
+               }
+               trace = push_transaction( trx_meta, fc::time_point::maximum(), receipt.cpu_usage_us, true, explicit_net_usage_words );
                ++packed_idx;
             } else if( receipt.trx.contains<transaction_id_type>() ) {
                trace = push_scheduled_transaction( receipt.trx.get<transaction_id_type>(), fc::time_point::maximum(), receipt.cpu_usage_us, true );
@@ -2740,7 +2752,7 @@ transaction_trace_ptr controller::push_transaction( const transaction_metadata_p
    validate_db_available_size();
    EOS_ASSERT( get_read_mode() != db_read_mode::IRREVERSIBLE, transaction_type_exception, "push transaction not allowed in irreversible mode" );
    EOS_ASSERT( trx && !trx->implicit && !trx->scheduled, transaction_type_exception, "Implicit/Scheduled transaction not allowed" );
-   return my->push_transaction(trx, deadline, billed_cpu_time_us, explicit_billed_cpu_time );
+   return my->push_transaction(trx, deadline, billed_cpu_time_us, explicit_billed_cpu_time, {} );
 }
 
 transaction_trace_ptr controller::push_scheduled_transaction( const transaction_id_type& trxid, fc::time_point deadline,
@@ -3072,7 +3084,7 @@ optional<producer_authority_schedule> controller::proposed_producers()const {
    return producer_authority_schedule::from_shared(gpo.proposed_schedule);
 }
 
-bool controller::light_validation_allowed(bool replay_opts_disabled_by_policy) const {
+bool controller::light_validation_allowed() const {
    if (!my->pending || my->in_trx_requiring_checks) {
       return false;
    }
@@ -3080,7 +3092,8 @@ bool controller::light_validation_allowed(bool replay_opts_disabled_by_policy) c
    const auto pb_status = my->pending->_block_status;
 
    // in a pending irreversible or previously validated block and we have forcing all checks
-   const bool consider_skipping_on_replay = (pb_status == block_status::irreversible || pb_status == block_status::validated) && !replay_opts_disabled_by_policy;
+   const bool consider_skipping_on_replay =
+         (pb_status == block_status::irreversible || pb_status == block_status::validated) && !my->conf.force_all_checks;
 
    // OR in a signed block and in light validation mode
    const bool consider_skipping_on_validate = (pb_status == block_status::complete &&
@@ -3091,7 +3104,11 @@ bool controller::light_validation_allowed(bool replay_opts_disabled_by_policy) c
 
 
 bool controller::skip_auth_check() const {
-   return light_validation_allowed(my->conf.force_all_checks);
+   return light_validation_allowed();
+}
+
+bool controller::skip_trx_checks() const {
+   return light_validation_allowed();
 }
 
 bool controller::skip_db_sessions( block_status bs ) const {
@@ -3101,16 +3118,12 @@ bool controller::skip_db_sessions( block_status bs ) const {
       && !my->in_trx_requiring_checks;
 }
 
-bool controller::skip_db_sessions( ) const {
+bool controller::skip_db_sessions() const {
    if (my->pending) {
       return skip_db_sessions(my->pending->_block_status);
    } else {
       return false;
    }
-}
-
-bool controller::skip_trx_checks() const {
-   return light_validation_allowed(my->conf.disable_replay_opts);
 }
 
 bool controller::is_trusted_producer( const account_name& producer) const {

@@ -4,6 +4,8 @@
 #include <eosio/chain/resource_limits.hpp>
 #include <eosio/chain/config.hpp>
 #include <eosio/testing/chainbase_fixture.hpp>
+#include <eosio/testing/tester.hpp>
+#include "fork_test_utilities.hpp"
 
 #include <boost/test/unit_test.hpp>
 
@@ -417,5 +419,141 @@ BOOST_AUTO_TEST_SUITE(resource_limits_test)
 
    } FC_LOG_AND_RETHROW()
 
+   BOOST_AUTO_TEST_CASE(light_net_validation) try {
+      tester main( setup_policy::preactivate_feature_and_new_bios );
+      tester validator( setup_policy::none );
+      tester validator2( setup_policy::none );
 
-   BOOST_AUTO_TEST_SUITE_END()
+      name test_account("alice");
+      name test_account2("bob");
+
+      constexpr int64_t net_weight = 1;
+      constexpr int64_t other_net_weight = 1'000'000'000;
+
+      signed_block_ptr trigger_block;
+
+      // Create test account with limited NET quota
+      main.create_accounts( {test_account, test_account2} );
+      main.push_action( config::system_account_name, N(setalimits), config::system_account_name, fc::mutable_variant_object()
+         ("account",    test_account)
+         ("ram_bytes",  -1)
+         ("net_weight", net_weight)
+         ("cpu_weight", -1)
+      );
+      main.push_action( config::system_account_name, N(setalimits), config::system_account_name, fc::mutable_variant_object()
+         ("account",    test_account2)
+         ("ram_bytes",  -1)
+         ("net_weight", other_net_weight)
+         ("cpu_weight", -1)
+      );
+      main.produce_block();
+
+      // Sync validator and validator2 nodes with the main node as of this state.
+      push_blocks( main, validator );
+      push_blocks( main, validator2 );
+
+      // Restart validator2 node in light validation mode.
+      {
+         validator2.close();
+         auto cfg = validator2.get_config();
+         cfg.block_validation_mode = validation_mode::LIGHT;
+         validator2.init( cfg );
+      }
+
+      const auto& rlm = main.control->get_resource_limits_manager();
+
+      // NET quota of test account should be enough to support one but not two reqauth transactions.
+      int64_t before_net_usage = rlm.get_account_net_limit_ex( test_account ).first.used;
+      main.push_action( config::system_account_name, N(reqauth), test_account, fc::mutable_variant_object()("from", "alice"), 6 );
+      int64_t after_net_usage = rlm.get_account_net_limit_ex( test_account ).first.used;
+      int64_t reqauth_net_usage_delta = after_net_usage - before_net_usage;
+      BOOST_REQUIRE_EXCEPTION( 
+         main.push_action( config::system_account_name, N(reqauth), test_account, fc::mutable_variant_object()("from", "alice"), 7 ),
+         fc::exception, fc_exception_code_is( tx_net_usage_exceeded::code_value )
+      );
+      trigger_block = main.produce_block();
+
+      auto main_schedule_hash = main.control->head_block_state()->pending_schedule.schedule_hash;
+      auto main_block_mroot   = main.control->head_block_state()->blockroot_merkle.get_root();
+
+      // Modify NET bill in transaction receipt within trigger block to cause the NET usage of test account to exceed its quota.
+      {
+         // Increase the NET usage in the reqauth transaction receipt.
+         trigger_block->transactions.back().net_usage_words.value = 2*((reqauth_net_usage_delta + 7)/8); // double the NET bill
+
+         // Re-calculate the transaction merkle
+         deque<digest_type> trx_digests;
+         const auto& trxs = trigger_block->transactions;
+         for( const auto& a : trxs )
+            trx_digests.emplace_back( a.digest() );
+         trigger_block->transaction_mroot = merkle( move(trx_digests) );
+
+         // Re-sign the block
+         auto header_bmroot = digest_type::hash( std::make_pair( trigger_block->digest(), main_block_mroot ) );
+         auto sig_digest = digest_type::hash( std::make_pair(header_bmroot, main_schedule_hash ) );
+         trigger_block->producer_signature = main.get_private_key(config::system_account_name, "active").sign(sig_digest);
+      }
+
+      // Push trigger block to validator node.
+      // This should fail because the NET bill calculated by the fully-validating node will differ from the one in the block.
+      {
+         auto bs = validator.control->create_block_state_future( trigger_block );
+         validator.control->abort_block();
+         BOOST_REQUIRE_EXCEPTION(
+            validator.control->push_block( bs, forked_branch_callback{}, trx_meta_cache_lookup{} ), 
+            fc::exception, fc_exception_message_is( "receipt does not match" )
+         );
+      }
+
+      // Push trigger block to validator2 node.
+      // This should still cause a NET failure, but will no longer be due to a receipt mismatch.
+      // Because validator2 is in light validation mode, it does not compute the NET bill itself and instead only relies on the value in the block.
+      // The failure will be due to failing check_net_usage within transaction_context::finalize because the NET bill in the block is too high.
+      {
+         auto bs = validator2.control->create_block_state_future( trigger_block );
+         validator2.control->abort_block();
+         BOOST_REQUIRE_EXCEPTION(
+            validator2.control->push_block( bs, forked_branch_callback{}, trx_meta_cache_lookup{} ), 
+            fc::exception, fc_exception_code_is( tx_net_usage_exceeded::code_value )
+         );
+      }
+
+      // Modify NET bill in transaction receipt within trigger block to be lower than what it originally was.
+      {
+         // Increase the NET usage in the reqauth transaction receipt.
+         trigger_block->transactions.back().net_usage_words.value = ((reqauth_net_usage_delta + 7)/8)/2; // half the original NET bill
+
+         // Re-calculate the transaction merkle
+         deque<digest_type> trx_digests;
+         const auto& trxs = trigger_block->transactions;
+         for( const auto& a : trxs )
+            trx_digests.emplace_back( a.digest() );
+         trigger_block->transaction_mroot = merkle( move(trx_digests) );
+
+         // Re-sign the block
+         auto header_bmroot = digest_type::hash( std::make_pair( trigger_block->digest(), main_block_mroot ) );
+         auto sig_digest = digest_type::hash( std::make_pair(header_bmroot, main_schedule_hash ) );
+         trigger_block->producer_signature = main.get_private_key(config::system_account_name, "active").sign(sig_digest);
+      }
+
+      // Push new trigger block to validator node.
+      // This should still fail because the NET bill is incorrect.
+      {
+         auto bs = validator.control->create_block_state_future( trigger_block );
+         validator.control->abort_block();
+         BOOST_REQUIRE_EXCEPTION(
+            validator.control->push_block( bs, forked_branch_callback{}, trx_meta_cache_lookup{} ), 
+            fc::exception, fc_exception_message_is( "receipt does not match" )
+         );
+      }
+
+      // Push new trigger block to validator2 node.
+      // Because validator2 is in light validation mode, this will not fail despite the fact that the NET bill is incorrect.
+      {
+         auto bs = validator2.control->create_block_state_future( trigger_block );
+         validator2.control->abort_block();
+         validator2.control->push_block( bs, forked_branch_callback{}, trx_meta_cache_lookup{} );
+      }
+   } FC_LOG_AND_RETHROW()
+
+BOOST_AUTO_TEST_SUITE_END()

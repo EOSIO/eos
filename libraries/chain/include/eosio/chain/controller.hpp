@@ -274,11 +274,11 @@ namespace eosio { namespace chain {
 
          int64_t set_proposed_producers( vector<producer_authority> producers );
 
-         bool light_validation_allowed(bool replay_opts_disabled_by_policy) const;
+         bool light_validation_allowed() const;
          bool skip_auth_check()const;
-         bool skip_db_sessions( )const;
-         bool skip_db_sessions( block_status bs )const;
          bool skip_trx_checks()const;
+         bool skip_db_sessions()const;
+         bool skip_db_sessions( block_status bs )const;
          bool is_trusted_producer( const account_name& producer) const;
 
          bool contracts_console()const;
@@ -288,7 +288,6 @@ namespace eosio { namespace chain {
          db_read_mode get_read_mode()const;
          validation_mode get_validation_mode()const;
          uint32_t get_terminate_at_block()const;
-         bool in_immutable_mode()const;
 
          void set_subjective_cpu_leeway(fc::microseconds leeway);
          fc::optional<fc::microseconds> get_subjective_cpu_leeway() const;

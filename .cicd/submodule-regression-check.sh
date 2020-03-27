@@ -5,8 +5,8 @@ declare -A BASE_MAP
 
 if [[ $BUILDKITE == true ]]; then
     [[ -z $BUILDKITE_PULL_REQUEST_BASE_BRANCH ]] && echo "Unable to find BUILDKITE_PULL_REQUEST_BASE_BRANCH ENV. Skipping submodule regression check." && exit 0
-    BASE_BRANCH=$BUILDKITE_PULL_REQUEST_BASE_BRANCH
-    CURRENT_BRANCH=$BUILDKITE_BRANCH
+    BASE_BRANCH="$(echo "$BUILDKITE_PULL_REQUEST_BASE_BRANCH" | sed 's.^/..')"
+    CURRENT_BRANCH="$(echo "$BUILDKITE_BRANCH" | sed 's.^/..')"
 else
     [[ -z $GITHUB_BASE_REF ]] && echo "Cannot find \$GITHUB_BASE_REF, so we have nothing to compare submodules to. Skipping submodule regression check." && exit 0
     BASE_BRANCH=$GITHUB_BASE_REF

@@ -162,8 +162,7 @@ namespace eosio { namespace testing {
          void              execute_setup_policy(const setup_policy policy);
 
          void              close();
-         template <typename Lambda>
-         void              open( protocol_feature_set&& pfs, fc::optional<chain_id_type> expected_chain_id, Lambda lambda );
+         void              open( protocol_feature_set&& pfs, fc::optional<chain_id_type> expected_chain_id, const std::function<void()>& lambda );
          void              open( protocol_feature_set&& pfs, const snapshot_reader_ptr& snapshot );
          void              open( protocol_feature_set&& pfs, const genesis_state& genesis );
          void              open( protocol_feature_set&& pfs, fc::optional<chain_id_type> expected_chain_id = {} );
@@ -511,7 +510,7 @@ namespace eosio { namespace testing {
          try {
             if( num_blocks_to_producer_before_shutdown > 0 )
                produce_blocks( num_blocks_to_producer_before_shutdown );
-            if (!skip_validate)
+            if (!skip_validate && std::uncaught_exceptions() == 0)
                BOOST_CHECK_EQUAL( validate(), true );
          } catch( const fc::exception& e ) {
             wdump((e.to_detail_string()));
@@ -637,6 +636,18 @@ namespace eosio { namespace testing {
       unique_ptr<controller>   validating_node;
       uint32_t                 num_blocks_to_producer_before_shutdown = 0;
       bool                     skip_validate = false;
+   };
+
+   /**
+    * Utility predicate to check whether an fc::exception code is equivalent to a given value
+    */
+   struct fc_exception_code_is {
+      fc_exception_code_is( int64_t code )
+            : expected( code ) {}
+
+      bool operator()( const fc::exception& ex );
+
+      int64_t expected;
    };
 
    /**
