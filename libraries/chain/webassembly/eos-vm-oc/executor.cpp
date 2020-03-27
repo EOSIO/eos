@@ -18,6 +18,7 @@
 #include <asm/prctl.h>
 #include <sys/prctl.h>
 #include <sys/syscall.h>
+#include <sys/mman.h>
 
 #if defined(__has_feature)
 #if __has_feature(shadow_call_stack)
@@ -162,12 +163,16 @@ void executor::execute(const code_descriptor& code, memory& mem, apply_context& 
       max_pages = config.max_pages;
    }
    stack.reset(max_call_depth);
-   mem.reset(max_pages);
    EOS_ASSERT(code.starting_memory_pages <= (int)max_pages, wasm_execution_error, "Initial memory out of range");
 
    //prepare initial memory, mutable globals, and table data
    if(code.starting_memory_pages > 0 ) {
-      arch_prctl(ARCH_SET_GS, (unsigned long*)(mem.zero_page_memory_base()+code.starting_memory_pages*memory::stride));
+      uint64_t initial_page_offset = std::min(static_cast<std::size_t>(code.starting_memory_pages), mem.size_of_memory_slice_mapping()/memory::stride - 1);
+      if(initial_page_offset < code.starting_memory_pages) {
+         mprotect(mem.full_page_memory_base() + initial_page_offset * eosio::chain::wasm_constraints::wasm_page_size,
+                  (code.starting_memory_pages - initial_page_offset) * eosio::chain::wasm_constraints::wasm_page_size, PROT_READ | PROT_WRITE);
+      }
+      arch_prctl(ARCH_SET_GS, (unsigned long*)(mem.zero_page_memory_base()+initial_page_offset*memory::stride));
       memset(mem.full_page_memory_base(), 0, 64u*1024u*code.starting_memory_pages);
    }
    else
@@ -213,10 +218,16 @@ void executor::execute(const code_descriptor& code, memory& mem, apply_context& 
    }, this);
    context.trx_context.checktime(); //catch any expiration that might have occurred before setting up callback
 
-   auto cleanup = fc::make_scoped_exit([cb, &tt=context.trx_context.transaction_timer](){
+   auto cleanup = fc::make_scoped_exit([cb, &tt=context.trx_context.transaction_timer, &mem=mem](){
       cb->is_running = false;
       cb->bounce_buffers->clear();
       tt.set_expiration_callback(nullptr, nullptr);
+
+      uint64_t base_pages = mem.size_of_memory_slice_mapping()/memory::stride - 1;
+      if(cb->current_linear_memory_pages > base_pages) {
+         mprotect(mem.full_page_memory_base() + base_pages * eosio::chain::wasm_constraints::wasm_page_size,
+                  (cb->current_linear_memory_pages - base_pages) * eosio::chain::wasm_constraints::wasm_page_size, PROT_NONE);
+      }
    });
 
    void(*apply_func)(uint64_t, uint64_t, uint64_t) = (void(*)(uint64_t, uint64_t, uint64_t))(cb->running_code_base + code.apply_offset);

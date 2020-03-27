@@ -654,10 +654,21 @@ BOOST_FIXTURE_TEST_CASE( max_code_bytes, wasm_config_tester ) {
    BOOST_CHECK_THROW(set_code(N(bigcode), small_contract_wasm), wasm_exception);
 }
 
+static const char access_biggest_memory_wast[] = R"=====(
+(module
+  (memory 0)
+  (func (export "apply") (param i64 i64 i64)
+    (drop (grow_memory (i32.wrap/i64 (get_local 2))))
+    (i32.store (i32.mul (i32.wrap/i64 (get_local 2)) (i32.const 65536)) (i32.const 0))
+  )
+)
+)=====";
+
 BOOST_FIXTURE_TEST_CASE( max_pages, wasm_config_tester ) try {
    produce_blocks(2);
 
-   create_accounts( {N(bigmem)} );
+   create_accounts( { N(bigmem), N(accessmem) } );
+   set_code(N(accessmem), access_biggest_memory_wast);
    produce_block();
    auto params = genesis_state::default_initial_wasm_configuration;
    for(uint64_t max_pages : {600, 400}) { // above and below the default limit
@@ -685,7 +696,22 @@ BOOST_FIXTURE_TEST_CASE( max_pages, wasm_config_tester ) try {
          push_transaction(trx);
       };
 
+      // verify that page accessibility cannot leak across wasm executions
+      auto checkaccess = [&](uint64_t pagenum) {
+         action act;
+         act.account = N(accessmem);
+         act.name = name(pagenum);
+         act.authorization = vector<permission_level>{{N(accessmem),config::active_name}};
+         signed_transaction trx;
+         trx.actions.push_back(act);
+
+         set_transaction_headers(trx);
+         trx.sign(get_private_key( N(accessmem), "active" ), control->get_chain_id());
+         BOOST_CHECK_THROW(push_transaction(trx), eosio::chain::wasm_exception);
+      };
+
       pushit(1);
+      checkaccess(max_pages - 1);
       produce_blocks(1);
 
       // Increase memory limit
@@ -693,6 +719,7 @@ BOOST_FIXTURE_TEST_CASE( max_pages, wasm_config_tester ) try {
       set_wasm_params(params);
       produce_block();
       pushit(2);
+      checkaccess(max_pages);
 
       // Decrease memory limit
       params.max_pages -= 2;
