@@ -92,31 +92,6 @@ namespace eosio { namespace chain {
       return {action_id};
    }
 
-   // struct ram_trace {
-   // public:
-   //    ram_trace(uint32_t action_id, const char* event_id, const char* family, const char* operation, const char* legacy_tag);
-
-   //    inline uint32_t get_action_id() const { return action_id; }
-   //    inline const char* get_event_id() const { return event_id; }
-   //    inline const char* get_family() const { return family; }
-   //    inline const char* get_operation() const { return operation; }
-   //    inline const char* get_legacy_tag() const { return legacy_tag; }
-
-   // protected:
-   //    ram_trace();
-
-   // private:
-   //    uint32_t       action_id;
-   //    const char*    event_id;
-   //    const char*    family;
-   //    const char*    operation;
-   //    const char*    legacy_tag;
-   // };
-
-   // struct generic_ram_trace: public ram_trace {
-   //    generic_ram_trace(): ram_trace() {}
-   // };
-
 } }  /// namespace eosio::chain
 
 FC_REFLECT( eosio::chain::account_delta,
