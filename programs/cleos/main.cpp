@@ -2422,22 +2422,6 @@ CLI::callback_t header_opt_callback = [](CLI::results_t res) {
 };
 
 
-// TODO remove this when eos-vm-oc is broken out into a separate lib and not linked in
-struct run_me {
-    bool initialized;
-
-    run_me() {
-        struct sigaction sa;
-        sa.sa_handler = SIG_DFL;
-        sa.sa_flags = SA_NOCLDWAIT;
-        sigaction(SIGCHLD, &sa, nullptr);
-
-        initialized = true;
-    }
-} ;
-
-static run_me reap_eos_vm_processes;
-
 int main( int argc, char** argv ) {
 
    fc::logger::get(DEFAULT_LOGGER).set_log_level(fc::log_level::debug);
