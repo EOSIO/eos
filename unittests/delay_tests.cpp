@@ -2282,7 +2282,10 @@ BOOST_AUTO_TEST_CASE( canceldelay_test2 ) { try {
 
 BOOST_AUTO_TEST_CASE( max_transaction_delay_create ) { try {
    //assuming max transaction delay is 45 days (default in config.hpp)
-   TESTER chain;
+   static fc::temp_directory tempdir;
+   static const std::vector<builtin_protocol_feature_t> ignored_features{builtin_protocol_feature_codenames.find(builtin_protocol_feature_t::stop_deferred_transactions)->first};
+   TESTER chain{tempdir, true, ignored_features};
+   chain.execute_setup_policy( setup_policy::complete );
 
    const auto& tester_account = N(tester);
 

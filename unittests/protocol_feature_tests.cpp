@@ -1785,6 +1785,8 @@ BOOST_AUTO_TEST_CASE( stop_deferred_transactions_protocol_feature_user_test ) { 
    static fc::temp_directory tempdir;
    static const std::vector<builtin_protocol_feature_t> ignored_features{builtin_protocol_feature_codenames.find(builtin_protocol_feature_t::stop_deferred_transactions)->first};
    validating_tester chain{tempdir, true, ignored_features};
+   chain.execute_setup_policy( setup_policy::complete );
+   
    const auto& pfm = chain.control->get_protocol_feature_manager();
    auto stop_deferred_trx_feature = pfm.get_builtin_digest( builtin_protocol_feature_t::only_link_to_existing_permission );
 
@@ -1836,6 +1838,8 @@ BOOST_AUTO_TEST_CASE( stop_deferred_transactions_protocol_feature_contract_test 
    static fc::temp_directory tempdir;
    static const std::vector<builtin_protocol_feature_t> ignored_features{builtin_protocol_feature_codenames.find(builtin_protocol_feature_t::stop_deferred_transactions)->first};
    validating_tester chain{tempdir, true, ignored_features};
+   // chain.execute_setup_policy( setup_policy::complete );
+   
    const auto& pfm = chain.control->get_protocol_feature_manager();
    auto stop_deferred_trx_feature = pfm.get_builtin_digest( builtin_protocol_feature_t::only_link_to_existing_permission );
 

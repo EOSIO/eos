@@ -408,7 +408,6 @@ BOOST_AUTO_TEST_CASE(action_tests) { try {
    static fc::temp_directory tempdir;
    static const std::vector<builtin_protocol_feature_t> ignored_features{builtin_protocol_feature_codenames.find(builtin_protocol_feature_t::stop_deferred_transactions)->first};
    validating_tester chain{tempdir, true, ignored_features};
-   
    chain.execute_setup_policy( setup_policy::complete );
 
    chain.produce_blocks(2);
@@ -777,20 +776,21 @@ BOOST_FIXTURE_TEST_CASE(cfa_stateful_api, TESTER)  try {
    BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW()
 
-BOOST_FIXTURE_TEST_CASE(deferred_cfa_failed, TESTER)  try {
+BOOST_AUTO_TEST_CASE(deferred_cfa_failed)  try {
    static fc::temp_directory tempdir;
    static const std::vector<builtin_protocol_feature_t> ignored_features{builtin_protocol_feature_codenames.find(builtin_protocol_feature_t::stop_deferred_transactions)->first};
    validating_tester chain{tempdir, true, ignored_features};
-
+   chain.execute_setup_policy( setup_policy::complete );
+   
    chain.create_account( N(testapi) );
    chain.produce_blocks(1);
    chain.set_code( N(testapi), contracts::test_api_wasm() );
-
+   
    account_name a = N(testapi2);
    account_name creator = config::system_account_name;
-
+   
    signed_transaction trx;
-
+   
    trx.actions.emplace_back( vector<permission_level>{{creator,config::active_name}},
                                  newaccount{
                                  .creator  = creator,
@@ -801,25 +801,26 @@ BOOST_FIXTURE_TEST_CASE(deferred_cfa_failed, TESTER)  try {
    action act({}, test_api_action<TEST_METHOD("test_transaction", "stateful_api")>{});
    trx.context_free_actions.push_back(act);
    chain.set_transaction_headers(trx, 10, 2);
-   trx.sign( get_private_key( creator, "active" ), chain.control->get_chain_id()  );
-
+   trx.sign( chain.get_private_key( creator, "active" ), chain.control->get_chain_id()  );
+   
    BOOST_CHECK_EXCEPTION(chain.push_transaction( trx ), fc::exception,
       [&](const fc::exception &e) {
          return expect_assert_message(e, "only context free api's can be used in this context");
       });
-
+   
    chain.produce_blocks(10);
-
+   
    // CFA failed, testapi2 not created
    chain.create_account( N(testapi2) );
-
-   BOOST_REQUIRE_EQUAL( validate(), true );
+   
+   BOOST_REQUIRE_EQUAL( chain.validate(), true );
 } FC_LOG_AND_RETHROW()
 
-BOOST_FIXTURE_TEST_CASE(deferred_cfa_success, TESTER)  try {
+BOOST_AUTO_TEST_CASE(deferred_cfa_success)  try {
    static fc::temp_directory tempdir;
    static const std::vector<builtin_protocol_feature_t> ignored_features{builtin_protocol_feature_codenames.find(builtin_protocol_feature_t::stop_deferred_transactions)->first};
    validating_tester chain{tempdir, true, ignored_features};
+   // chain.execute_setup_policy( setup_policy::complete );
 
    chain.create_account( N(testapi) );
    chain.produce_blocks(1);
@@ -1131,6 +1132,7 @@ BOOST_AUTO_TEST_CASE(transaction_tests) { try {
    static fc::temp_directory tempdir;
    static const std::vector<builtin_protocol_feature_t> ignored_features{builtin_protocol_feature_codenames.find(builtin_protocol_feature_t::stop_deferred_transactions)->first};
    validating_tester chain{tempdir, true, ignored_features};
+   chain.execute_setup_policy( setup_policy::complete );
 
    chain.produce_blocks(2);
    chain.create_account( N(testapi) );
@@ -1250,6 +1252,7 @@ BOOST_AUTO_TEST_CASE(deferred_transaction_tests) { try {
    static fc::temp_directory tempdir;
    static const std::vector<builtin_protocol_feature_t> ignored_features{builtin_protocol_feature_codenames.find(builtin_protocol_feature_t::stop_deferred_transactions)->first};
    validating_tester chain{tempdir, true, ignored_features};
+   chain.execute_setup_policy( setup_policy::complete );
 
    chain.produce_blocks(2);
    chain.create_accounts( {N(testapi), N(testapi2), N(alice)} );
