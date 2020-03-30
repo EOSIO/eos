@@ -2,12 +2,14 @@
 set -eo pipefail
 . ./.cicd/helpers/general.sh
 mkdir -p $BUILD_DIR
-if [[ $(uname) == 'Darwin' ]]; then
+if [[ $(uname) == 'Darwin' && $FORCE_LINUX != true ]]; then
     bash -c "cd build/packages && chmod 755 ./*.sh && ./generate_package.sh brew"
     ARTIFACT='*.rb;*.tar.gz'
     cd build/packages
     [[ -d x86_64 ]] && cd 'x86_64' # backwards-compatibility with release/1.6.x
-    buildkite-agent artifact upload "./$ARTIFACT" --agent-access-token $BUILDKITE_AGENT_ACCESS_TOKEN
+    if [[ "$BUILDKITE" == 'true' ]]; then
+      buildkite-agent artifact upload "./$ARTIFACT" --agent-access-token $BUILDKITE_AGENT_ACCESS_TOKEN
+    fi
     for A in $(echo $ARTIFACT | tr ';' ' '); do
         if [[ $(ls $A | grep -c '') == 0 ]]; then
             echo "+++ :no_entry: ERROR: Expected artifact \"$A\" not found!"
@@ -19,7 +21,7 @@ if [[ $(uname) == 'Darwin' ]]; then
 else # Linux
     ARGS=${ARGS:-"--rm --init -v $(pwd):$MOUNTED_DIR"}
     . $HELPERS_DIR/file-hash.sh $CICD_DIR/platforms/$PLATFORM_TYPE/$IMAGE_TAG.dockerfile
-    PRE_COMMANDS="cd $MOUNTED_DIR/build/packages && chmod 755 ./*.sh"
+    PRE_COMMANDS="cd $MOUNTED_DIR/build/packages && chmod 755 \"./*.sh\""
     if [[ "$IMAGE_TAG" =~ "ubuntu" ]]; then
         ARTIFACT='*.deb'
         PACKAGE_TYPE='deb'
@@ -34,7 +36,9 @@ else # Linux
     eval docker run $ARGS $(buildkite-intrinsics) $FULL_TAG bash -c \"$COMMANDS\"
     cd build/packages
     [[ -d x86_64 ]] && cd 'x86_64' # backwards-compatibility with release/1.6.x
-    buildkite-agent artifact upload "./$ARTIFACT" --agent-access-token $BUILDKITE_AGENT_ACCESS_TOKEN
+    if [[ "$BUILDKITE" == 'true' ]]; then
+        buildkite-agent artifact upload "./$ARTIFACT" --agent-access-token $BUILDKITE_AGENT_ACCESS_TOKEN
+    fi
     for A in $(echo $ARTIFACT | tr ';' ' '); do
         if [[ $(ls $A | grep -c '') == 0 ]]; then
             echo "+++ :no_entry: ERROR: Expected artifact \"$A\" not found!"
