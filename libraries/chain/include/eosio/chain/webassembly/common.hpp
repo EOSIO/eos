@@ -2,6 +2,8 @@
 
 #include <eosio/chain/wasm_interface.hpp>
 #include <eosio/chain/wasm_eosio_constraints.hpp>
+#include <eosio/vm/reference_proxy.hpp>
+#include <eosio/vm/span.hpp>
 
 #define EOSIO_INJECTED_MODULE_NAME "eosio_injection"
 
@@ -29,4 +31,14 @@ namespace eosio { namespace chain {
    template <typename T>
    static constexpr bool is_whitelisted_legacy_type_v = detail::is_whitelisted_legacy_type<T>::value;
 
- } } // eosio::chain
+   template <typename T>
+   using legacy_ptr = eosio::vm::reference_proxy<T, true>;
+
+   template <typename T>
+   using legacy_array_ptr = eosio::vm::reference_proxy<eosio::vm::span<T>>;
+
+   struct null_terminated_ptr : eosio::vm::span<const char> {
+      using base_t = eosio::vm::span<const char>;
+      null_terminated_ptr(const char* ptr) : base_t(ptr, strlen(ptr)) {}
+   };
+}} // eosio::chain

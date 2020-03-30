@@ -1,6 +1,6 @@
 #pragma once
 
-#if defined(EOSIO_EOS_VM_RUNTIME_ENABLED) || defined(EOSIO_EOS_VM_JIT_RUNTIME_ENABLED)
+//#if defined(EOSIO_EOS_VM_RUNTIME_ENABLED) || defined(EOSIO_EOS_VM_JIT_RUNTIME_ENABLED)
 
 #include <eosio/chain/webassembly/common.hpp>
 #include <eosio/chain/webassembly/runtime_interface.hpp>
@@ -10,16 +10,8 @@
 
 //eos-vm includes
 #include <eosio/vm/backend.hpp>
-
-// eosio specific specializations
-namespace eosio { namespace chain {
-   template <typename T>
-   using legacy_array_ptr = eosio::vm::reference_proxy<span<T>>;
-
-   template <typename T>
-   using legacy_ptr       = eosio::vm::reference_proxy<T>;
-}} // ns eosio::chain
-
+#include <eosio/vm/host_function.hpp>
+#include <eosio/vm/span.hpp>
 
 namespace eosio { namespace chain { namespace webassembly {
    struct eosio_type_converter : public eosio::vm::type_converter<> {
@@ -28,8 +20,18 @@ namespace eosio { namespace chain { namespace webassembly {
 
       using elem_type = decltype(std::declval<type_converter>().get_interface().operand_from_back(0));
 
-      EOS_VM_FROM_WASM(T, T*, (elem_type&& ptr) { return reference_proxy<T>{as.value<T*>(std::move(ptr))}; }
-      EOS_VM_FROM_WASM(T, T&, (elem_type&& ptr) { return reference_proxy<T>{as.value<T&>(std::move(ptr))}; }
+      template <typename T, typename U>
+      auto from_wasm(U* ptr) const -> std::enable_if_t<std::is_same_v<T, U*>, eosio::vm::reference_proxy<T>> {
+         return {ptr};
+      }
+
+      template <typename T, typename U>
+      auto from_wasm(eosio::vm::reference<U> r) const -> std::enable_if_t<
+         std::is_same_v<T, eosio::vm::reference<U>>, eosio::vm::reference_proxy<T>> {
+         return {r.get()};
+      }
+
+      EOS_VM_FROM_WASM(null_terminated_ptr, (elem_type&& ptr)){ return null_terminated_ptr{ptr}; }
    };
 }}} // ns eosio::chain::webassembly
 
@@ -59,4 +61,4 @@ class eos_vm_runtime : public eosio::chain::wasm_runtime_interface {
    friend class eos_vm_instantiated_module;
 };
 
-} } } }// eosio::chain::webassembly::wabt_runtime
+}}}}// eosio::chain::webassembly::wabt_runtime
