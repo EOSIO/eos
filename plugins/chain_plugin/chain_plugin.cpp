@@ -147,6 +147,7 @@ public:
    flat_map<uint32_t,block_id_type> loaded_checkpoints;
    bool                             accept_transactions = false;
    bool                             api_accept_transactions = true;
+   bool                             account_queries_enabled = false;
 
 
    fc::optional<fork_database>      fork_db;
@@ -186,6 +187,28 @@ public:
    fc::optional<scoped_connection>                                   accepted_transaction_connection;
    fc::optional<scoped_connection>                                   applied_transaction_connection;
 
+
+   using permission_key = std::tuple<name, name>;
+   std::multimap<name, permission_key> authorizing_account_to_permission;
+   std::multimap<public_key_type, permission_key> authorizing_key_to_permission;
+
+   void build_account_query_map() {
+      ilog("Building account query maps");
+      auto start = fc::time_point::now();
+      const auto& index = chain->db().get_index<permission_index>().indices().get<by_id>();
+      for (const auto& e : index) {
+         permission_key key = std::make_tuple(e.owner, e.name);
+         for (const auto& a : e.auth.accounts) {
+            authorizing_account_to_permission.emplace(a.permission.actor, key);
+         }
+
+         for (const auto& k: e.auth.keys) {
+            authorizing_key_to_permission.emplace((public_key_type)k.key, key);
+         }
+      }
+      auto duration = fc::time_point::now() - start;
+      ilog("Finished building account query maps in ${sec}", ("sec", (duration.count() / 1'000'000.0 )));
+   }
 };
 
 chain_plugin::chain_plugin()
@@ -329,6 +352,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          }), "Number of threads to use for EOS VM OC tier-up")
          ("eos-vm-oc-enable", bpo::bool_switch(), "Enable EOS VM OC tier-up runtime")
 #endif
+         ("enable-account-queries", bpo::value<bool>()->default_value(false), "enable queries to find accounts by various metadata.")
          ;
 
 // TODO: rate limiting
@@ -1103,6 +1127,8 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          my->chain_config->eosvmoc_tierup = true;
 #endif
 
+      my->account_queries_enabled = options.at("enable-account-queries").as<bool>();
+
       my->chain.emplace( *my->chain_config, std::move(pfs), *chain_id );
 
       // initialize deep mind logging
@@ -1249,6 +1275,16 @@ void chain_plugin::plugin_startup()
    }
 
    my->chain_config.reset();
+
+   if (my->account_queries_enabled) {
+      my->account_queries_enabled = false;
+      try {
+         my->build_account_query_map();
+         my->account_queries_enabled = true;
+      } FC_LOG_AND_DROP(("Unabled to enable account queries"));
+   }
+
+
 } FC_CAPTURE_AND_RETHROW() }
 
 void chain_plugin::plugin_shutdown() {
@@ -1553,6 +1589,11 @@ void chain_plugin::handle_bad_alloc() {
    //return -2 -- it's what programs/nodeos/main.cpp reports for std::exception
    std::_Exit(-2);
 }
+
+bool chain_plugin::account_queries_enabled() const {
+   return my->account_queries_enabled;
+}
+
 
 namespace chain_apis {
 
@@ -2696,6 +2737,11 @@ read_only::get_required_keys_result read_only::get_required_keys( const get_requ
 
 read_only::get_transaction_id_result read_only::get_transaction_id( const read_only::get_transaction_id_params& params)const {
    return params.id();
+}
+
+read_only::get_accounts_by_authorizers_result read_only::get_accounts_by_authorizers( const read_only::get_accounts_by_authorizers_params& args) const
+{
+   return {};
 }
 
 namespace detail {

@@ -76,8 +76,9 @@ struct async_result_visitor : public fc::visitor<fc::variant> {
 void chain_api_plugin::plugin_startup() {
    ilog( "starting chain_api_plugin" );
    my.reset(new chain_api_plugin_impl(app().get_plugin<chain_plugin>().chain()));
-   auto ro_api = app().get_plugin<chain_plugin>().get_read_only_api();
-   auto rw_api = app().get_plugin<chain_plugin>().get_read_write_api();
+   auto& chain = app().get_plugin<chain_plugin>();
+   auto ro_api = chain.get_read_only_api();
+   auto rw_api = chain.get_read_write_api();
 
    auto& _http_plugin = app().get_plugin<http_plugin>();
    ro_api.set_shorten_abi_errors( !_http_plugin.verbose_errors() );
@@ -111,6 +112,12 @@ void chain_api_plugin::plugin_startup() {
       CHAIN_RW_CALL_ASYNC(push_transactions, chain_apis::read_write::push_transactions_results, 202, http_params_types::params_required),
       CHAIN_RW_CALL_ASYNC(send_transaction, chain_apis::read_write::send_transaction_results, 202, http_params_types::params_required)
    });
+
+   if (chain.account_queries_enabled()) {
+      _http_plugin.add_api({
+         CHAIN_RO_CALL(get_accounts_by_authorizers, 200),
+      });
+   }
 }
 
 void chain_api_plugin::plugin_shutdown() {}

@@ -605,6 +605,24 @@ public:
       return result;
    }
 
+   struct get_accounts_by_authorizers_params{
+      std::vector<chain::name> accounts;
+      std::vector<chain::public_key_type> keys;
+   };
+
+   struct get_accounts_by_authorizers_result{
+      struct account_result {
+         chain::name         account_name;
+         chain::name         permission_name;
+         fc::variant         authorizer;
+         chain::weight_type  weight;
+         uint32_t            threshold;
+      };
+
+      std::vector<account_result> accounts;
+   };
+   get_accounts_by_authorizers_result get_accounts_by_authorizers( const get_accounts_by_authorizers_params& args) const;
+
    chain::symbol extract_core_symbol()const;
 
    friend struct resolver_factory<read_only>;
@@ -764,6 +782,8 @@ public:
 
    static void handle_db_exhaustion();
    static void handle_bad_alloc();
+
+   bool account_queries_enabled() const;
 private:
    static void log_guard_exception(const chain::guard_exception& e);
 
@@ -831,3 +851,7 @@ FC_REFLECT( eosio::chain_apis::read_only::abi_bin_to_json_params, (code)(action)
 FC_REFLECT( eosio::chain_apis::read_only::abi_bin_to_json_result, (args) )
 FC_REFLECT( eosio::chain_apis::read_only::get_required_keys_params, (transaction)(available_keys) )
 FC_REFLECT( eosio::chain_apis::read_only::get_required_keys_result, (required_keys) )
+FC_REFLECT( eosio::chain_apis::read_only::get_accounts_by_authorizers_params, (accounts)(keys))
+FC_REFLECT( eosio::chain_apis::read_only::get_accounts_by_authorizers_result::account_result, (account_name)(permission_name)(authorizer)(weight)(threshold))
+FC_REFLECT( eosio::chain_apis::read_only::get_accounts_by_authorizers_result, (accounts))
+
