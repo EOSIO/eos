@@ -188,27 +188,7 @@ public:
    fc::optional<scoped_connection>                                   applied_transaction_connection;
 
 
-   using permission_key = std::tuple<name, name>;
-   std::multimap<name, permission_key> authorizing_account_to_permission;
-   std::multimap<public_key_type, permission_key> authorizing_key_to_permission;
-
-   void build_account_query_map() {
-      ilog("Building account query maps");
-      auto start = fc::time_point::now();
-      const auto& index = chain->db().get_index<permission_index>().indices().get<by_id>();
-      for (const auto& e : index) {
-         permission_key key = std::make_tuple(e.owner, e.name);
-         for (const auto& a : e.auth.accounts) {
-            authorizing_account_to_permission.emplace(a.permission.actor, key);
-         }
-
-         for (const auto& k: e.auth.keys) {
-            authorizing_key_to_permission.emplace((public_key_type)k.key, key);
-         }
-      }
-      auto duration = fc::time_point::now() - start;
-      ilog("Finished building account query maps in ${sec}", ("sec", (duration.count() / 1'000'000.0 )));
-   }
+   fc::optional<chain_apis::account_query_db>                        _account_query_db;
 };
 
 chain_plugin::chain_plugin()
@@ -1207,6 +1187,9 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
             );
          }
 
+         if (my->_account_query_db) {
+            my->_account_query_db->commit_block(blk);
+         }
          my->accepted_block_channel.publish( priority::high, blk );
       } );
 
@@ -1220,14 +1203,16 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
             } );
 
       my->applied_transaction_connection = my->chain->applied_transaction.connect(
-            [this]( std::tuple<const transaction_trace_ptr&, const packed_transaction_ptr&> t ) {
+            [this]( std::tuple<const transaction_trace_ptr&, const signed_transaction&> t ) {
                if (auto dm_logger = my->chain->get_deep_mind_logger()) {
                   fc_dlog(*dm_logger, "APPLIED_TRANSACTION ${block} ${traces}",
                      ("block", my->chain->head_block_num() + 1)
                      ("traces", my->chain->maybe_to_variant_with_abi(std::get<0>(t), abi_serializer::create_yield_function(my->chain->get_abi_serializer_max_time())))
                   );
                }
-
+               if (my->_account_query_db) {
+                  my->_account_query_db->cache_transaction_trace(std::get<0>(t));
+               }
                my->applied_transaction_channel.publish( priority::low, std::get<0>(t) );
             } );
 
@@ -1279,7 +1264,7 @@ void chain_plugin::plugin_startup()
    if (my->account_queries_enabled) {
       my->account_queries_enabled = false;
       try {
-         my->build_account_query_map();
+         my->_account_query_db.emplace(*my->chain);
          my->account_queries_enabled = true;
       } FC_LOG_AND_DROP(("Unabled to enable account queries"));
    }
@@ -1314,6 +1299,11 @@ void chain_apis::read_write::validate() const {
    EOS_ASSERT( api_accept_transactions, missing_chain_api_plugin_exception,
                "Not allowed, node has api-accept-transactions = false" );
 }
+
+chain_apis::read_only chain_plugin::get_read_only_api() const {
+   return chain_apis::read_only(chain(), my->_account_query_db, get_abi_serializer_max_time());
+}
+
 
 bool chain_plugin::accept_block(const signed_block_ptr& block, const block_id_type& id ) {
    return my->incoming_block_sync_method(block, id);
@@ -2739,9 +2729,10 @@ read_only::get_transaction_id_result read_only::get_transaction_id( const read_o
    return params.id();
 }
 
-read_only::get_accounts_by_authorizers_result read_only::get_accounts_by_authorizers( const read_only::get_accounts_by_authorizers_params& args) const
+account_query_db::get_accounts_by_authorizers_result read_only::get_accounts_by_authorizers( const account_query_db::get_accounts_by_authorizers_params& args) const
 {
-   return {};
+   EOS_ASSERT(aqdb.valid(), plugin_config_exception, "Account Queries being accessed when not enabled");
+   return aqdb->get_accounts_by_authorizers(args);
 }
 
 namespace detail {

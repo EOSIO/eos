@@ -16,6 +16,8 @@
 #include <boost/container/flat_set.hpp>
 #include <boost/multiprecision/cpp_int.hpp>
 
+#include <eosio/chain_plugin/account_query_db.hpp>
+
 #include <fc/static_variant.hpp>
 
 namespace fc { class variant; }
@@ -78,14 +80,15 @@ string convert_to_string(const float128_t& source, const string& key_type, const
 
 class read_only {
    const controller& db;
+   const fc::optional<account_query_db>& aqdb;
    const fc::microseconds abi_serializer_max_time;
    bool  shorten_abi_errors = true;
 
 public:
    static const string KEYi64;
 
-   read_only(const controller& db, const fc::microseconds& abi_serializer_max_time)
-      : db(db), abi_serializer_max_time(abi_serializer_max_time) {}
+   read_only(const controller& db, const fc::optional<account_query_db>& aqdb, const fc::microseconds& abi_serializer_max_time)
+      : db(db), aqdb(aqdb), abi_serializer_max_time(abi_serializer_max_time) {}
 
    void validate() const {}
 
@@ -605,22 +608,8 @@ public:
       return result;
    }
 
-   struct get_accounts_by_authorizers_params{
-      std::vector<chain::name> accounts;
-      std::vector<chain::public_key_type> keys;
-   };
-
-   struct get_accounts_by_authorizers_result{
-      struct account_result {
-         chain::name         account_name;
-         chain::name         permission_name;
-         fc::variant         authorizer;
-         chain::weight_type  weight;
-         uint32_t            threshold;
-      };
-
-      std::vector<account_result> accounts;
-   };
+   using get_accounts_by_authorizers_result = account_query_db::get_accounts_by_authorizers_result;
+   using get_accounts_by_authorizers_params = account_query_db::get_accounts_by_authorizers_params;
    get_accounts_by_authorizers_result get_accounts_by_authorizers( const get_accounts_by_authorizers_params& args) const;
 
    chain::symbol extract_core_symbol()const;
@@ -744,8 +733,8 @@ public:
    void plugin_shutdown();
    void handle_sighup() override;
 
-   chain_apis::read_only get_read_only_api() const { return chain_apis::read_only(chain(), get_abi_serializer_max_time()); }
    chain_apis::read_write get_read_write_api() { return chain_apis::read_write(chain(), get_abi_serializer_max_time(), api_accept_transactions()); }
+   chain_apis::read_only get_read_only_api() const;
 
    bool accept_block( const chain::signed_block_ptr& block, const chain::block_id_type& id );
    void accept_transaction(const chain::packed_transaction_ptr& trx, chain::plugin_interface::next_function<chain::transaction_trace_ptr> next);
@@ -851,7 +840,4 @@ FC_REFLECT( eosio::chain_apis::read_only::abi_bin_to_json_params, (code)(action)
 FC_REFLECT( eosio::chain_apis::read_only::abi_bin_to_json_result, (args) )
 FC_REFLECT( eosio::chain_apis::read_only::get_required_keys_params, (transaction)(available_keys) )
 FC_REFLECT( eosio::chain_apis::read_only::get_required_keys_result, (required_keys) )
-FC_REFLECT( eosio::chain_apis::read_only::get_accounts_by_authorizers_params, (accounts)(keys))
-FC_REFLECT( eosio::chain_apis::read_only::get_accounts_by_authorizers_result::account_result, (account_name)(permission_name)(authorizer)(weight)(threshold))
-FC_REFLECT( eosio::chain_apis::read_only::get_accounts_by_authorizers_result, (accounts))
 

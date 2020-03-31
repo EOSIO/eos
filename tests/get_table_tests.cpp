@@ -89,7 +89,7 @@ BOOST_FIXTURE_TEST_CASE( get_scope_test, TESTER ) try {
    produce_blocks(1);
 
    // iterate over scope
-   eosio::chain_apis::read_only plugin(*(this->control), fc::microseconds::maximum());
+   eosio::chain_apis::read_only plugin(*(this->control), {}, fc::microseconds::maximum());
    eosio::chain_apis::read_only::get_table_by_scope_params param{N(eosio.token), N(accounts), "inita", "", 10};
    eosio::chain_apis::read_only::get_table_by_scope_result result = plugin.read_only::get_table_by_scope(param);
 
@@ -194,7 +194,7 @@ BOOST_FIXTURE_TEST_CASE( get_table_test, TESTER ) try {
    produce_blocks(1);
 
    // get table: normal case
-   eosio::chain_apis::read_only plugin(*(this->control), fc::microseconds::maximum());
+   eosio::chain_apis::read_only plugin(*(this->control), {}, fc::microseconds::maximum());
    eosio::chain_apis::read_only::get_table_rows_params p;
    p.code = N(eosio.token);
    p.scope = "inita";
@@ -363,7 +363,7 @@ BOOST_FIXTURE_TEST_CASE( get_table_by_seckey_test, TESTER ) try {
    produce_blocks(1);
 
    // get table: normal case
-   eosio::chain_apis::read_only plugin(*(this->control), fc::microseconds::maximum());
+   eosio::chain_apis::read_only plugin(*(this->control), {}, fc::microseconds::maximum());
    eosio::chain_apis::read_only::get_table_rows_params p;
    p.code = N(eosio);
    p.scope = "eosio";
@@ -515,6 +515,7 @@ BOOST_FIXTURE_TEST_CASE( get_table_next_key_test, TESTER ) try {
    // }
 
 
+/*
    chain_apis::read_only plugin(*(this->control), fc::microseconds::maximum());
    chain_apis::read_only::get_table_rows_params params = []{
       chain_apis::read_only::get_table_rows_params params{};
@@ -524,6 +525,14 @@ BOOST_FIXTURE_TEST_CASE( get_table_next_key_test, TESTER ) try {
       params.limit=1;
       return params;
    }();
+*/
+   chain_apis::read_only plugin(*(this->control), {}, fc::microseconds::maximum());
+   chain_apis::read_only::get_table_rows_params params{
+      .json=true,
+      .code=N(test),
+      .scope="test",
+      .limit=1
+   };
 
    params.table = N(numobjs);
 
