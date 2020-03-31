@@ -1185,7 +1185,7 @@ namespace eosio {
          signed_block_ptr sb;
          try {
             sb = cc.fetch_block_by_number( num );
-         } catch(...) {}
+         } FC_LOG_AND_DROP();
          if( sb ) {
             c->strand.post( [c, sb{std::move(sb)}]() {
                c->enqueue_block( sb, true );
