@@ -59,7 +59,7 @@ namespace {
     * @return
     */
    bool is_onblock(const chain::transaction_trace_ptr& p) {
-      if (p->action_traces.size() != 1)
+      if (p->action_traces.empty())
          return false;
       const auto& act = p->action_traces[0].act;
       if (act.account != eosio::chain::config::system_account_name || act.name != N(onblock) ||
