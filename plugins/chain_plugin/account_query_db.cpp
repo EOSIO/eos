@@ -97,7 +97,7 @@ namespace eosio::chain_apis {
        * blockchain state at the current HEAD
        */
       void build_account_query_map() {
-         ilog("Building account query maps");
+         ilog("Building account query DB");
          auto start = fc::time_point::now();
          const auto& index = controller.db().get_index<chain::permission_index>().indices().get<by_id>();
 
@@ -106,7 +106,7 @@ namespace eosio::chain_apis {
             add_to_bimaps(*pi, po);
          }
          auto duration = fc::time_point::now() - start;
-         ilog("Finished building account query maps in ${sec}", ("sec", (duration.count() / 1'000'000.0 )));
+         ilog("Finished building account query DB in ${sec}", ("sec", (duration.count() / 1'000'000.0 )));
       }
 
       /**
