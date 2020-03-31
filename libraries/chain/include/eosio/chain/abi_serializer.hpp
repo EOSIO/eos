@@ -257,6 +257,7 @@ namespace impl {
              std::is_same<T, packed_transaction_v0>::value ||
              std::is_same<T, packed_transaction>::value ||
              std::is_same<T, transaction_trace>::value ||
+             std::is_same<T, transaction_receipt_v0>::value ||
              std::is_same<T, transaction_receipt>::value ||
              std::is_same<T, action_trace>::value ||
              std::is_same<T, signed_transaction>::value ||
@@ -531,7 +532,7 @@ namespace impl {
       {
          // TODO: this could be faster by going directly to variant
          auto sb_v0 = block.to_signed_block_v0();
-         add( out, name, sb_v0, std::move( resolver ), ctx );
+         add( out, name, *sb_v0, std::move( resolver ), ctx );
       }
 
       /**
@@ -743,6 +744,14 @@ namespace impl {
 
          EOS_ASSERT(valid_empty_data || !act.data.empty(), packed_transaction_type_exception,
                     "Failed to deserialize data for ${account}:${name}", ("account", act.account)("name", act.name));
+      }
+
+      template<typename Resolver>
+      static void extract( const variant& v, signed_block& sb, Resolver resolver, abi_traverse_context& ctx )
+      {
+         signed_block_v0 v0;
+         extract( v, v0, std::move( resolver ), ctx );
+         sb = signed_block( v0, true );
       }
 
       template<typename Resolver>

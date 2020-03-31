@@ -139,6 +139,7 @@ namespace eosio { namespace chain {
       signed_block( const signed_block_v0&, bool legacy );
       signed_block( signed_block&& ) = default;
       signed_block& operator=(const signed_block&) = delete;
+      signed_block& operator=(signed_block&&) = default;
       signed_block clone() const { return *this; }
       signed_block_v0_ptr to_signed_block_v0() const;
 
