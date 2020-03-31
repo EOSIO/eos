@@ -325,16 +325,14 @@ namespace eosio {
                std::string body = con->get_request_body();
                std::string resource = con->get_uri()->get_resource();
                const bool trace = resource == "/v1/chain/send_transaction";
-               if( trace ) {
-                   ilog( "${us} - starting handle_http_request", ("us", fc::time_point::now().time_since_epoch()) );
-               }
+               auto start_time = fc::time_point::now().time_since_epoch();
                auto handler_itr = url_handlers.find( resource );
                if( handler_itr != url_handlers.end()) {
                   con->defer_http_response();
                   bytes_in_flight += body.size();
                   app().post( handler_itr->second.first,
                               [&ioc = thread_pool->get_executor(), &bytes_in_flight = this->bytes_in_flight,
-                               handler_itr, this, resource{std::move( resource )}, body{std::move( body )}, con, trace=trace]() mutable {
+                               handler_itr, this, resource{std::move( resource )}, body{std::move( body )}, con, trace=trace, start_time=start_time]() mutable {
                      const size_t body_size = body.size();
                      if( !verify_max_bytes_in_flight( con ) ) {
                         con->send_http_response();
@@ -343,7 +341,7 @@ namespace eosio {
                      }
                      try {
                         handler_itr->second.second( std::move( resource ), std::move( body ),
-                                 [&ioc, &bytes_in_flight, con, this, trace=trace]( int code, fc::variant response_body ) {
+                                 [&ioc, &bytes_in_flight, con, this, trace=trace, start_time=start_time]( int code, fc::variant response_body ) {
                            size_t response_size = 0;
                            try {
                               response_size = fc::raw::pack_size( response_body );
@@ -355,7 +353,7 @@ namespace eosio {
                            } else {
                               boost::asio::post( ioc,
                                  [response_body{std::move( response_body )}, response_size, &bytes_in_flight,
-                                  con, code, max_response_time=max_response_time, trace=trace]() mutable {
+                                  con, code, max_response_time=max_response_time, trace=trace, start_time=start_time]() mutable {
                                  std::string json;
                                  try {
                                     json = fc::json::to_string( response_body, fc::time_point::now() + max_response_time );
@@ -366,41 +364,10 @@ namespace eosio {
                                  }
 
                                  if( trace ) {
-                                    fc::variant_object resp;
-                                    try {
-                                       fc::from_variant( response_body, resp );
-                                    } catch( const fc::exception& e ) {
-                                       ilog( "failed to convert response body to variant_object - ${e}", ("e", e.to_detail_string()) );
-                                    }
-
-                                    std::string transaction_id = "";
-                                    try {
-                                       if( resp.contains("transaction_id") ) {
-                                           transaction_id = resp["transaction_id"].as_string();
-                                       } else {
-                                          ilog( "response_body doesn't contain transaction_id" );
-                                       }
-                                    } catch( const fc::exception& e ) {
-                                       ilog( "failed to extract transaction_id - ${e}", ("e", e.to_detail_string()) );
-                                    }
-
-                                    std::string order_id = "";
-                                    std::string data = "";
-                                    int cpu_usage_us = -1;
-                                    try {
-                                       auto cpu = resp["processed"]["receipt"]["cpu_usage_us"];
-                                       fc::from_variant( cpu, cpu_usage_us );
-
-                                       std::vector<fc::variant> act_traces_vec;
-                                       auto action_traces = resp["processed"]["action_traces"];
-                                       fc::from_variant( action_traces, act_traces_vec );
-                                       auto order_id_variant = act_traces_vec[0]["act"]["data"]["order_id"];
-                                       order_id = order_id_variant.as_string();
-                                    } catch( const fc::exception& e ) {
-                                       ilog( "failed to extract order_id - ${e}", ("e", e.to_detail_string()) );
-                                    }
-                                    ilog( "${us} - finished handle_http_request order_id=${order_id} cpu_usage_us=${cpu_usage_us} (${id})", ("us", fc::time_point::now().time_since_epoch())("order_id", order_id)("cpu_usage_us", cpu_usage_us)("id", transaction_id) );
+                                     auto now = fc::time_point::now().time_since_epoch();
+                                     ilog( "start=${start} end=${end} total=${total}", ("start", start)("end", end)("total", end-start) )
                                  }
+
                                  response_body.clear();
                                  const size_t json_size = json.size();
                                  bytes_in_flight += json_size;
