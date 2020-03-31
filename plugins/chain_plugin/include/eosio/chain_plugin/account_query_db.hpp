@@ -46,7 +46,11 @@ namespace eosio::chain_apis {
        * parameters for the get_accounts_by_authorizers RPC
        */
       struct get_accounts_by_authorizers_params{
-         std::vector<chain::name> accounts;
+         struct account_level {
+            chain::name actor;
+            chain::name permission;
+         };
+         std::vector<account_level> accounts;
          std::vector<chain::public_key_type> keys;
       };
 
@@ -77,6 +81,43 @@ namespace eosio::chain_apis {
       std::unique_ptr<struct account_query_db_impl> _impl;
    };
 
+}
+
+namespace fc {
+   using params = eosio::chain_apis::account_query_db::get_accounts_by_authorizers_params;
+   /**
+    * Overloaded to_variant so that permission is only present if it is set
+    * @param a
+    * @param v
+    */
+   inline void to_variant(const params::account_level& a, fc::variant& v) {
+      if (a.permission.empty()) {
+         v = a.actor.to_string();
+      } else {
+         v = mutable_variant_object()
+            ("account", a.actor.to_string())
+            ("permission", a.permission.to_string());
+      }
+   }
+
+   /**
+    * Overloaded from_variant to allow parsing an account with a permission wildcard (empty) from a string
+    * instead of an object
+    * @param v
+    * @param a
+    */
+   inline void from_variant(const fc::variant& v, params::account_level& a) {
+      a = {{},{}};
+      if (v.is_string()) {
+         from_variant(v, a.actor);
+      } else if (v.is_object()) {
+         const auto& vo = v.get_object();
+         if(vo.contains("actor"))
+            from_variant(vo["actor"], a.actor);
+         if(vo.contains("permission"))
+            from_variant(vo["permission"], a.permission);
+      }
+   }
 }
 
 FC_REFLECT( eosio::chain_apis::account_query_db::get_accounts_by_authorizers_params, (accounts)(keys))

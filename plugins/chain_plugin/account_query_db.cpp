@@ -69,6 +69,8 @@ namespace {
       return auth.actor == eosio::chain::config::system_account_name &&
              auth.permission == eosio::chain::config::active_name;
    }
+
+   using name_pair_t = eosio::chain_apis::account_query_db::get_accounts_by_authorizers_params::account_level;
 }
 
 namespace std {
@@ -81,6 +83,17 @@ namespace std {
          return std::uintptr_t(&lhs.get()) < std::uintptr_t(&rhs.get());
       }
    };
+
+   /**
+    * support for using `name_pair_t` in ordered containers
+    */
+   template<>
+   struct less<name_pair_t> {
+      bool operator()( const name_pair_t& lhs, const name_pair_t& rhs ) const {
+         return std::tie(lhs.actor,lhs.permission) < std::tie(rhs.actor, rhs.permission);
+      }
+   };
+
 }
 
 namespace eosio::chain_apis {
@@ -117,7 +130,7 @@ namespace eosio::chain_apis {
       void add_to_bimaps( const permission_info& pi, const chain::permission_object& po ) {
          // For each account, add this permission info's non-owning reference to the bimap for accounts
          for (const auto& a : po.auth.accounts) {
-            name_bimap.insert(name_bimap_t::value_type {a.permission.actor, pi});
+            name_bimap.insert(name_bimap_t::value_type {{a.permission.actor, a.permission.permission}, pi});
          }
 
          // for each key, add this permission info's non-owning reference to the bimap for keys
@@ -220,11 +233,11 @@ namespace eosio::chain_apis {
 
                if (at.act.name == chain::updateauth::get_name()) {
                   auto data = at.act.data_as<chain::updateauth>();
-                  auto itr = updated.emplace(data.account, data.permission).first;
+                  auto itr = updated.emplace(name_pair_t{data.account, data.permission}).first;
                   deleted.erase(*itr);
                } else if (at.act.name == chain::deleteauth::get_name()) {
                   auto data = at.act.data_as<chain::deleteauth>();
-                  auto itr = deleted.emplace(data.account, data.permission).first;
+                  auto itr = deleted.emplace(name_pair_t{data.account, data.permission}).first;
                   updated.erase(*itr);
                }
             }
@@ -254,9 +267,10 @@ namespace eosio::chain_apis {
 
          // for each updated permission, find the new values and update the account query db
          for (const auto& up: updated) {
-            auto source_itr = permission_by_owner.find(up);
+            auto key = std::make_tuple(up.actor, up.permission);
+            auto source_itr = permission_by_owner.find(key);
             EOS_ASSERT(source_itr != permission_by_owner.end(), chain::plugin_exception, "chain data is missing");
-            auto itr = index.find(up);
+            auto itr = index.find(key);
             if (itr == index.end()) {
                const auto& po = *source_itr;
                itr = index.emplace(permission_info{ po.owner, po.name, po.last_updated }).first;
@@ -272,7 +286,8 @@ namespace eosio::chain_apis {
 
          // for all deleted permissions, process their removal from the account query DB
          for (const auto& dp: deleted) {
-            auto itr = index.find(dp);
+            auto key = std::make_tuple(dp.actor, dp.permission);
+            auto itr = index.find(key);
             if (itr != index.end()) {
                remove_from_bimaps(*itr);
                index.erase(itr);
@@ -290,17 +305,30 @@ namespace eosio::chain_apis {
          result_t result;
 
          // deduplicate inputs
-         auto account_set = std::set<chain::name>(args.accounts.begin(), args.accounts.end());
+         auto account_set = std::set<name_pair_t>(args.accounts.begin(), args.accounts.end());
          auto key_set = std::set<chain::public_key_type>(args.keys.begin(), args.keys.end());
 
          // build a set of permissions that include any of our keys/accounts
          auto permission_set = std::set<name_pair_t>();
 
          for (const auto& a: account_set) {
-            auto range = name_bimap.left.equal_range(a);
+            auto range = ([&](){
+               if (a.permission.empty()) {
+                  // empty permission is a wildcard
+                  // construct a range between the lower bound of the given account and the lower bound of the
+                  // next possible account name
+                  const auto begin = name_bimap.left.lower_bound(a);
+                  const auto next_account_name = chain::name(a.actor.to_uint64_t());
+                  const auto end = name_bimap.left.lower_bound(name_pair_t{next_account_name,a.permission});
+                  return std::make_pair(begin, end);
+               } else {
+                  return name_bimap.left.equal_range(a);
+               }
+            })();
+
             for (auto itr = range.first; itr != range.second; ++itr) {
                const auto& pi = itr->second.get();
-               permission_set.emplace(std::make_tuple(pi.owner, pi.name));
+               permission_set.emplace(name_pair_t{pi.owner, pi.name});
             }
          }
 
@@ -308,7 +336,7 @@ namespace eosio::chain_apis {
             auto range = key_bimap.left.equal_range(k);
             for (auto itr = range.first; itr != range.second; ++itr) {
                const auto& pi = itr->second.get();
-               permission_set.emplace(std::make_tuple(pi.owner, pi.name));
+               permission_set.emplace(name_pair_t{pi.owner, pi.name});
             }
          }
 
@@ -331,12 +359,14 @@ namespace eosio::chain_apis {
          // all the relevant authorization data.
          const auto& permission_by_owner = controller.db().get_index<chain::permission_index>().indices().get<chain::by_owner>();
          for (const auto& p: permission_set) {
-            const auto& iter = permission_by_owner.find(p);
+            const auto& iter = permission_by_owner.find(std::make_tuple(p.actor, p.permission));
             EOS_ASSERT(iter != permission_by_owner.end(), chain::plugin_exception, "chain data mismatch");
             const auto& po = *iter;
 
             for (const auto& a : po.auth.accounts) {
-               if (account_set.count(a.permission.actor)) {
+               if (account_set.count({a.permission.actor, a.permission.permission}) ||
+                   account_set.count({a.permission.actor, {}}))
+               {
                   push_result(po, a.permission, a.weight);
                }
             }
@@ -355,8 +385,7 @@ namespace eosio::chain_apis {
       /**
        * Convenience aliases
        */
-      using name_pair_t = std::tuple<chain::name, chain::name>;
-      using name_bimap_t = bimap<multiset_of<chain::name>, multiset_of<permission_info::cref>>;
+      using name_bimap_t = bimap<multiset_of<name_pair_t>, multiset_of<permission_info::cref>>;
       using key_bimap_t = bimap<multiset_of<chain::public_key_type>, multiset_of<permission_info::cref>>;
       using cached_trace_map_t = std::map<chain::transaction_id_type, chain::transaction_trace_ptr>;
       using onblock_trace_t = std::optional<chain::transaction_trace_ptr>;
