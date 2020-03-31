@@ -18,34 +18,47 @@ namespace eosio { namespace chain { namespace webassembly {
    };
 
 
+// TODO when using C++20 switch to __VA_OPT__
 #define PRECONDITIONS(...) \
-   __VA_ARGS__
+   , ##__VA_ARGS__
 
+
+#define REGISTER_INJECTED_HOST_FUNCTION(NAME, ...) \
+   inline static host_function_registrator<&interface::NAME, alias_check, early_validate_pointers, ##__VA_ARGS__> NAME ## _registrator = {"eosio.injection", #NAME};
+
+#define REGISTER_HOST_FUNCTION(NAME, ...) \
+   inline static host_function_registrator<&interface::NAME, alias_check, early_validate_pointers, ##__VA_ARGS__> NAME ## _registrator = {"env", #NAME};
+
+#define REGISTER_CF_HOST_FUNCTION(NAME, ...) \
+   inline static host_function_registrator<&interface::NAME, alias_check, early_validate_pointers, context_free_check, ##__VA_ARGS__> NAME ## _registrator = {"env", #NAME};
+
+#if 0
 #define DECLARE_HOST_FUNCTION(PRECONDS, MODULE, CONSTNESS, RET_TY, NAME, ...) \
    RET_TY NAME(__VA_ARGS__) CONSTNESS; \
-   inline static host_function_registrator<&interface::NAME, alias_check, early_validate_pointers, PRECONDS > NAME ## _registrator = {#MODULE, #NAME};
+   inline static host_function_registrator<&interface::NAME, alias_check, early_validate_pointers PRECONDS > NAME ## _registrator = {#MODULE, #NAME};
 
-#define DECLARE_CF_HOST_FUNCTION(CONSTNESS, RET_TY, NAME, ...) \
+#define DECLARE_CF_HOST_FUNCTION(PRECONDS, CONSTNESS, RET_TY, NAME, ...) \
    RET_TY NAME(__VA_ARGS__) CONSTNESS; \
-   inline static host_function_registrator<&interface::NAME, alias_check, early_validate_pointers, context_free_check, PRECONDS > NAME ## _registrator = {"env", #NAME};
+   inline static host_function_registrator<&interface::NAME, alias_check, early_validate_pointers, context_free_check PRECONDS > NAME ## _registrator = {"env", #NAME};
 
 #define DECLARE(PRECONDS, RET_TY, NAME, ...) \
    DECLARE_HOST_FUNCTION(PRECONDS, env, , RET_TY, NAME, __VA_ARGS__)
 
 #define DECLARE_CF(PRECONDS, RET_TY, NAME, ...) \
-   DECLARE_CF_HOST_FUNCTION(PRECONDS, env, , RET_TY, NAME, __VA_ARGS__)
+   DECLARE_CF_HOST_FUNCTION(PRECONDS, , RET_TY, NAME, __VA_ARGS__)
 
 #define DECLARE_CONST(PRECONDS, RET_TY, NAME, ...) \
    DECLARE_HOST_FUNCTION(PRECONDS, env, const, RET_TY, NAME, __VA_ARGS__)
 
 #define DECLARE_CONST_CF(PRECONDS, RET_TY, NAME, ...) \
-   DECLARE_CF_HOST_FUNCTION(PRECONDS, env, const, RET_TY, NAME, __VA_ARGS__)
+   DECLARE_CF_HOST_FUNCTION(PRECONDS, const, RET_TY, NAME, __VA_ARGS__)
 
 #define DECLARE_INJECTED(PRECONDS, RET_TY, NAME, ...) \
-   DECLARE_HOST_FUNCTION(PRECONDS, eosio_injected, , RET_TY, NAME, __VA_ARGS__)
+   DECLARE_HOST_FUNCTION(PRECONDS, eosio_injection, , RET_TY, NAME, __VA_ARGS__)
 
 #define DECLARE_INJECTED_CONST(PRECONDS, RET_TY, NAME, ...) \
-   DECLARE_HOST_FUNCTION(PRECONDS, eosio_injected, const, RET_TY, NAME, __VA_ARGS__)
+   DECLARE_HOST_FUNCTION(PRECONDS, eosio_injection, const, RET_TY, NAME, __VA_ARGS__)
+#endif
 
 
    // TODO maybe house these some place else
@@ -99,542 +112,563 @@ namespace eosio { namespace chain { namespace webassembly {
          })));
 
    EOS_VM_PRECONDITION(is_nan_check,
-         EOS_VM_INVOKE_ON(float, [&](auto arg, auto&&.. rest) {
+         EOS_VM_INVOKE_ON(float, [&](auto arg, auto&&... rest) {
             EOS_ASSERT(!is_nan(arg), transaction_exception, "NaN is not an allowed value for a secondary key");
          });
-         EOS_VM_INVOKE_ON(double, [&](auto arg, auto&&.. rest) {
+         EOS_VM_INVOKE_ON(double, [&](auto arg, auto&&... rest) {
             EOS_ASSERT(!is_nan(arg), transaction_exception, "NaN is not an allowed value for a secondary key");
          });
-         EOS_VM_INVOKE_ON(const float128_t&, [&](const auto& arg, auto&&.. rest) {
+         EOS_VM_INVOKE_ON(const float128_t&, [&](const auto& arg, auto&&... rest) {
             EOS_ASSERT(!is_nan(arg), transaction_exception, "NaN is not an allowed value for a secondary key");
          })
          );
 
    EOS_VM_PRECONDITION(legacy_static_check_wl_args,
          EOS_VM_INVOKE_ONCE([&](auto&&... args) {
-            static_assert(is_whitelisted_legacy_type_v<args> && ..., "legacy whitelisted type violation");
+            static_assert( are_whitelisted_legacy_types_v<decltype(args)...>, "legacy whitelisted type violation");
          }));
 
    EOS_VM_PRECONDITION(static_check_wl_args,
          EOS_VM_INVOKE_ONCE([&](auto&&... args) {
-            static_assert(is_whitelisted_type_v<args> && ..., "whitelisted type violation");
+            static_assert( are_whitelisted_types_v<decltype(args)...>, "whitelisted type violation");
          }));
 
    class interface {
       public:
          // checktime api
-         DECLARE_INJECTED( PRECONDITIONS(legacy_static_check_wl_args),
-               void, checktime)
+         void checktime();
+         REGISTER_HOST_FUNCTION(checktime, legacy_static_check_wl_args);
 
          // context free api
-         DECLARE_CONST_CF( PRECONDITIONS(legacy_static_check_wl_args),
-               int32_t, get_context_free_data, uint32_t, legacy_array_ptr<char>)
+         int32_t get_context_free_data(uint32_t index, legacy_array_ptr<char> buffer) const;
+         REGISTER_CF_HOST_FUNCTION(get_context_free_data, legacy_static_check_wl_args)
 
          // privileged api
-         DECLARE_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               int32_t,  is_feature_active,                int64_t)
-         DECLARE_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               void,     activate_feature,                 int64_t)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               void,     preactivate_feature,              const digest_type&)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               void,     set_resource_limits,              account_name, int64_t, int64_t, int64_t)
-         DECLARE_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               void,     get_resource_limits,              account_name, legacy_ptr<int64_t>, legacy_ptr<int64_t>, legacy_ptr<int64_t>)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               int64_t,  set_proposed_producers,           legacy_array_ptr<char>)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               int64_t,  set_proposed_producers_ex,        uint64_t, legacy_array_ptr<char>)
-         DECLARE_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               uint32_t, get_blockchain_parameters_packed, legacy_array_ptr<char>)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               void,     set_blockchain_parameters_packed, legacy_array_ptr<char>)
-         DECLARE_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               bool,     is_privileged,                    account_name)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               void,     set_privileged,                   account_name, bool)
+         int32_t is_feature_active(int64_t feature_name) const;
+         void activate_feature(int64_t feature_name) const;
+         void preactivate_feature(legacy_ptr<const digest_type>);
+         void set_resource_limits(account_name account, int64_t ram_bytes, int64_t net_weight, int64_t cpu_weight);
+         void get_resource_limits(account_name account, legacy_ptr<int64_t> ram_bytes, legacy_ptr<int64_t> net_weight, legacy_ptr<int64_t> cpu_weight) const;
+         int64_t set_proposed_producers(legacy_array_ptr<char> packed_producer_schedule);
+         int64_t set_proposed_producers_ex(uint64_t packed_producer_format, legacy_array_ptr<char> packed_producer_schedule);
+         uint32_t get_blockchain_parameters_packed(legacy_array_ptr<char> packed_blockchain_parameters) const;
+         void set_blockchain_parameters_packed(legacy_array_ptr<char> packed_blockchain_parameters);
+         bool is_privileged(account_name account) const;
+         void set_privileged(account_name account, bool is_priv);
+
+         REGISTER_HOST_FUNCTION(is_feature_active, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(activate_feature, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(preactivate_feature, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(set_resource_limits, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(set_resource_limits, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(set_proposed_producers, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(set_proposed_producers_ex, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(get_blockchain_parameters_packed, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(set_blockchain_parameters_packed, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(is_privileged, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(set_privileged, legacy_static_check_wl_args);
 
          // softfloat api
-         DECLARE_INJECTED_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               float,    _eosio_f32_add,        float, float)
-         DECLARE_INJECTED_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               float,    _eosio_f32_sub,        float, float)
-         DECLARE_INJECTED_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               float,    _eosio_f32_div,        float, float)
-         DECLARE_INJECTED_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               float,    _eosio_f32_mul,        float, float)
-         DECLARE_INJECTED_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               float,    _eosio_f32_min,        float, float)
-         DECLARE_INJECTED_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               float,    _eosio_f32_max,        float, float)
-         DECLARE_INJECTED_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               float,    _eosio_f32_copysign,   float, float)
-         DECLARE_INJECTED_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               float,    _eosio_f32_abs,        float)
-         DECLARE_INJECTED_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               float,    _eosio_f32_neg,        float)
-         DECLARE_INJECTED_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               float,    _eosio_f32_sqrt,       float)
-         DECLARE_INJECTED_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               float,    _eosio_f32_ceil,       float)
-         DECLARE_INJECTED_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               float,    _eosio_f32_floor,      float)
-         DECLARE_INJECTED_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               float,    _eosio_f32_trunc,      float)
-         DECLARE_INJECTED_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               float,    _eosio_f32_nearest,    float)
-         DECLARE_INJECTED_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               bool,     _eosio_f32_eq,         float, float)
-         DECLARE_INJECTED_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               bool,     _eosio_f32_ne,         float, float)
-         DECLARE_INJECTED_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               bool,     _eosio_f32_lt,         float, float)
-         DECLARE_INJECTED_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               bool,     _eosio_f32_le,         float, float)
-         DECLARE_INJECTED_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               bool,     _eosio_f32_gt,         float, float)
-         DECLARE_INJECTED_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               bool,     _eosio_f32_ge,         float, float)
-         DECLARE_INJECTED_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               double,   _eosio_f64_add,        double, double)
-         DECLARE_INJECTED_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               double,   _eosio_f64_sub,        double, double)
-         DECLARE_INJECTED_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               double,   _eosio_f64_div,        double, double)
-         DECLARE_INJECTED_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               double,   _eosio_f64_mul,        double, double)
-         DECLARE_INJECTED_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               double,   _eosio_f64_min,        double, double)
-         DECLARE_INJECTED_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               double,   _eosio_f64_max,        double, double)
-         DECLARE_INJECTED_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               double,   _eosio_f64_copysign,   double, double)
-         DECLARE_INJECTED_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               double,   _eosio_f64_abs,        double)
-         DECLARE_INJECTED_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               double,   _eosio_f64_neg,        double)
-         DECLARE_INJECTED_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               double,   _eosio_f64_sqrt,       double)
-         DECLARE_INJECTED_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               double,   _eosio_f64_ceil,       double)
-         DECLARE_INJECTED_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               double,   _eosio_f64_floor,      double)
-         DECLARE_INJECTED_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               double,   _eosio_f64_trunc,      double)
-         DECLARE_INJECTED_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               double,   _eosio_f64_nearest,    double)
-         DECLARE_INJECTED_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               bool,     _eosio_f64_eq,         double, double)
-         DECLARE_INJECTED_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               bool,     _eosio_f64_ne,         double, double)
-         DECLARE_INJECTED_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               bool,     _eosio_f64_lt,         double, double)
-         DECLARE_INJECTED_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               bool,     _eosio_f64_le,         double, double)
-         DECLARE_INJECTED_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               bool,     _eosio_f64_gt,         double, double)
-         DECLARE_INJECTED_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               bool,     _eosio_f64_ge,         double, double)
-         DECLARE_INJECTED_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               double,   _eosio_f32_promote,    float)
-         DECLARE_INJECTED_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               float,    _eosio_f64_demote,     double)
-         DECLARE_INJECTED_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               int32_t,  _eosio_f32_trunc_i32s, float)
-         DECLARE_INJECTED_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               int32_t,  _eosio_f64_trunc_i32s, double)
-         DECLARE_INJECTED_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               uint32_t, _eosio_f32_trunc_i32u, float)
-         DECLARE_INJECTED_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               uint32_t, _eosio_f64_trunc_i32u, double)
-         DECLARE_INJECTED_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               int64_t,  _eosio_f32_trunc_i64s, float)
-         DECLARE_INJECTED_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               int64_t,  _eosio_f64_trunc_i64s, double)
-         DECLARE_INJECTED_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               uint64_t, _eosio_f32_trunc_i64u, float)
-         DECLARE_INJECTED_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               uint64_t, _eosio_f64_trunc_i64u, double)
-         DECLARE_INJECTED_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               float,    _eosio_i32_to_f32,     int32_t)
-         DECLARE_INJECTED_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               float,    _eosio_i64_to_f32,     int64_t)
-         DECLARE_INJECTED_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               float,    _eosio_ui32_to_f32,    uint32_t)
-         DECLARE_INJECTED_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               float,    _eosio_ui64_to_f32,    uint64_t)
-         DECLARE_INJECTED_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               double,   _eosio_i32_to_f64,     int32_t)
-         DECLARE_INJECTED_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               double,   _eosio_i64_to_f64,     int64_t)
-         DECLARE_INJECTED_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               double,   _eosio_ui32_to_f64,    uint32_t)
-         DECLARE_INJECTED_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               double,   _eosio_ui64_to_f64,    uint64_t)
+         float _eosio_f32_add(float, float) const;
+         float _eosio_f32_sub(float, float) const;
+         float _eosio_f32_div(float, float) const;
+         float _eosio_f32_mul(float, float) const;
+         float _eosio_f32_min(float, float) const;
+         float _eosio_f32_max(float, float) const;
+         float _eosio_f32_copysign(float, float) const;
+         float _eosio_f32_abs(float) const;
+         float _eosio_f32_neg(float) const;
+         float _eosio_f32_sqrt(float) const;
+         float _eosio_f32_ceil(float) const;
+         float _eosio_f32_floor(float) const;
+         float _eosio_f32_trunc(float) const;
+         float _eosio_f32_nearest(float) const;
+         bool _eosio_f32_eq(float, float) const;
+         bool _eosio_f32_ne(float, float) const;
+         bool _eosio_f32_lt(float, float) const;
+         bool _eosio_f32_le(float, float) const;
+         bool _eosio_f32_gt(float, float) const;
+         bool _eosio_f32_ge(float, float) const;
+         double _eosio_f64_add(double, double) const;
+         double _eosio_f64_sub(double, double) const;
+         double _eosio_f64_div(double, double) const;
+         double _eosio_f64_mul(double, double) const;
+         double _eosio_f64_min(double, double) const;
+         double _eosio_f64_max(double, double) const;
+         double _eosio_f64_copysign(double, double) const;
+         double _eosio_f64_abs(double) const;
+         double _eosio_f64_neg(double) const;
+         double _eosio_f64_sqrt(double) const;
+         double _eosio_f64_ceil(double) const;
+         double _eosio_f64_floor(double) const;
+         double _eosio_f64_trunc(double) const;
+         double _eosio_f64_nearest(double) const;
+         bool _eosio_f64_eq(double, double) const;
+         bool _eosio_f64_ne(double, double) const;
+         bool _eosio_f64_lt(double, double) const;
+         bool _eosio_f64_le(double, double) const;
+         bool _eosio_f64_gt(double, double) const;
+         bool _eosio_f64_ge(double, double) const;
+         double _eosio_f32_promote(float) const;
+         float _eosio_f64_demote(double) const;
+         int32_t _eosio_f32_trunc_i32s(float) const;
+         int32_t _eosio_f64_trunc_i32s(double) const;
+         uint32_t _eosio_f32_trunc_i32u(float) const;
+         uint32_t _eosio_f64_trunc_i32u(double) const;
+         int64_t _eosio_f32_trunc_i64s(float) const;
+         int64_t _eosio_f64_trunc_i64s(double) const;
+         uint64_t _eosio_f32_trunc_i64u(float) const;
+         uint64_t _eosio_f64_trunc_i64u(double) const;
+         float _eosio_i32_to_f32(int32_t) const;
+         float _eosio_i64_to_f32(int64_t) const;
+         float _eosio_ui32_to_f32(uint32_t) const;
+         float _eosio_ui64_to_f32(uint64_t) const;
+         double _eosio_i32_to_f64(int32_t) const;
+         double _eosio_i64_to_f64(int64_t) const;
+         double _eosio_ui32_to_f64(uint32_t) const;
+         double _eosio_ui64_to_f64(uint64_t) const;
+
+         REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_add, legacy_static_check_wl_args);
+         REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_sub, legacy_static_check_wl_args);
+         REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_div, legacy_static_check_wl_args);
+         REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_mul, legacy_static_check_wl_args);
+         REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_min, legacy_static_check_wl_args);
+         REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_max, legacy_static_check_wl_args);
+         REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_copysign, legacy_static_check_wl_args);
+         REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_abs, legacy_static_check_wl_args);
+         REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_neg, legacy_static_check_wl_args);
+         REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_sqrt, legacy_static_check_wl_args);
+         REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_ceil, legacy_static_check_wl_args);
+         REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_floor, legacy_static_check_wl_args);
+         REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_trunc, legacy_static_check_wl_args);
+         REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_nearest, legacy_static_check_wl_args);
+         REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_eq, legacy_static_check_wl_args);
+         REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_ne, legacy_static_check_wl_args);
+         REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_lt, legacy_static_check_wl_args);
+         REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_le, legacy_static_check_wl_args);
+         REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_le, legacy_static_check_wl_args);
+         REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_gt, legacy_static_check_wl_args);
+         REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_ge, legacy_static_check_wl_args);
+         REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_add, legacy_static_check_wl_args);
+         REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_sub, legacy_static_check_wl_args);
+         REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_div, legacy_static_check_wl_args);
+         REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_mul, legacy_static_check_wl_args);
+         REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_min, legacy_static_check_wl_args);
+         REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_max, legacy_static_check_wl_args);
+         REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_copysign, legacy_static_check_wl_args);
+         REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_abs, legacy_static_check_wl_args);
+         REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_neg, legacy_static_check_wl_args);
+         REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_sqrt, legacy_static_check_wl_args);
+         REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_ceil, legacy_static_check_wl_args);
+         REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_floor, legacy_static_check_wl_args);
+         REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_trunc, legacy_static_check_wl_args);
+         REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_nearest, legacy_static_check_wl_args);
+         REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_eq, legacy_static_check_wl_args);
+         REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_ne, legacy_static_check_wl_args);
+         REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_lt, legacy_static_check_wl_args);
+         REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_le, legacy_static_check_wl_args);
+         REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_gt, legacy_static_check_wl_args);
+         REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_ge, legacy_static_check_wl_args);
+         REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_promote, legacy_static_check_wl_args);
+         REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_demote, legacy_static_check_wl_args);
+         REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_trunc_i32s, legacy_static_check_wl_args);
+         REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_trunc_i32s, legacy_static_check_wl_args);
+         REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_trunc_i32u, legacy_static_check_wl_args);
+         REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_trunc_i32u, legacy_static_check_wl_args);
+         REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_trunc_i64s, legacy_static_check_wl_args);
+         REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_trunc_i64s, legacy_static_check_wl_args);
+         REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_trunc_i64u, legacy_static_check_wl_args);
+         REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_trunc_i64u, legacy_static_check_wl_args);
+         REGISTER_INJECTED_HOST_FUNCTION(_eosio_i32_to_f32, legacy_static_check_wl_args);
+         REGISTER_INJECTED_HOST_FUNCTION(_eosio_i64_to_f32, legacy_static_check_wl_args);
+         REGISTER_INJECTED_HOST_FUNCTION(_eosio_ui32_to_f32, legacy_static_check_wl_args);
+         REGISTER_INJECTED_HOST_FUNCTION(_eosio_ui64_to_f32, legacy_static_check_wl_args);
+         REGISTER_INJECTED_HOST_FUNCTION(_eosio_i32_to_f64, legacy_static_check_wl_args);
+         REGISTER_INJECTED_HOST_FUNCTION(_eosio_i64_to_f64, legacy_static_check_wl_args);
+         REGISTER_INJECTED_HOST_FUNCTION(_eosio_ui32_to_f64, legacy_static_check_wl_args);
+         REGISTER_INJECTED_HOST_FUNCTION(_eosio_ui64_to_f64, legacy_static_check_wl_args);
 
          // producer api
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               int32_t, get_active_producers, legacy_array_ptr<account_name>)
+         int32_t get_active_producers(legacy_array_ptr<account_name>) const;
+         REGISTER_HOST_FUNCTION(get_active_producers, legacy_static_check_wl_args);
 
          // crypto api
-         DECLARE_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               void,    assert_recover_key, legacy_ptr<const fc::sha256>, legacy_array_ptr<char>, legacy_array_ptr<char>)
-         DECLARE_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               int32_t, recover_key,        legacy_ptr<const fc::sha256>, legacy_array_ptr<char>, legacy_array_ptr<char>)
-         DECLARE_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               void,    assert_sha256,      legacy_array_ptr<char>, legacy_ptr<const fc::sha256>)
-         DECLARE_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               void,    assert_sha1,        legacy_array_ptr<char>, legacy_ptr<const fc::sha1>)
-         DECLARE_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               void,    assert_sha512,      legacy_array_ptr<char>, legacy_ptr<const fc::sha512>)
-         DECLARE_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               void,    assert_ripemd160,   legacy_array_ptr<char>, legacy_ptr<const fc::ripemd160>)
-         DECLARE_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               void,    sha256,             legacy_array_ptr<char>, legacy_ptr<fc::sha256>)
-         DECLARE_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               void,    sha1,               legacy_array_ptr<char>, legacy_ptr<fc::sha1>)
-         DECLARE_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               void,    sha512,             legacy_array_ptr<char>, legacy_ptr<fc::sha512>)
-         DECLARE_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               void,    ripemd160,          legacy_array_ptr<char>, legacy_ptr<fc::ripemd160>)
+         void assert_recover_key(legacy_ptr<const fc::sha256>, legacy_array_ptr<char>, legacy_array_ptr<char>) const;
+         int32_t recover_key(legacy_ptr<const fc::sha256>, legacy_array_ptr<char>, legacy_array_ptr<char>) const;
+         void assert_sha256(legacy_array_ptr<char>, legacy_ptr<const fc::sha256>) const;
+         void assert_sha1(legacy_array_ptr<char>, legacy_ptr<const fc::sha1>) const;
+         void assert_sha512(legacy_array_ptr<char>, legacy_ptr<const fc::sha512>) const;
+         void assert_ripemd160(legacy_array_ptr<char>, legacy_ptr<const fc::ripemd160>) const;
+         void sha256(legacy_array_ptr<char>, legacy_ptr<fc::sha256>) const;
+         void sha1(legacy_array_ptr<char>, legacy_ptr<fc::sha1>) const;
+         void sha512(legacy_array_ptr<char>, legacy_ptr<fc::sha512>) const;
+         void ripemd160(legacy_array_ptr<char>, legacy_ptr<fc::ripemd160>) const;
+
+         REGISTER_HOST_FUNCTION(assert_recover_key, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(recover_key, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(assert_sha256, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(assert_sha1, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(assert_sha512, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(assert_ripemd160, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(sha256, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(sha1, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(sha512, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(ripemd160, legacy_static_check_wl_args);
 
          // permission api
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               bool,    check_transaction_authorization, legacy_array_ptr<char>, legacy_array_ptr<char>, legacy_array_ptr<char>)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               bool,    check_permission_authorization,  account_name, permission_name, legacy_array_ptr<char>, legacy_array_ptr<char>, uint64_t)
-         DECLARE_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               int64_t, get_permission_last_used,        account_name, permission_name)
-         DECLARE_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               int64_t, get_account_creation_time,       account_name)
+         bool check_transaction_authorization(legacy_array_ptr<char>, legacy_array_ptr<char>, legacy_array_ptr<char>);
+         bool check_permission_authorization(account_name, permission_name, legacy_array_ptr<char>, legacy_array_ptr<char>, uint64_t);
+         int64_t get_permission_last_used(account_name, permission_name) const;
+         int64_t get_account_creation_time(account_name) const;
+
+         REGISTER_HOST_FUNCTION(check_transaction_authorization, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(check_permission_authorization, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(get_permission_last_used, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(get_account_creation_time, legacy_static_check_wl_args);
 
          // authorization api
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               void,       require_auth,      account_name)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               void,       require_auth2,     account_name, permission_name)
-         DECLARE_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               bool, has_auth,          account_name)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               void,       require_recipient, account_name)
-         DECLARE_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               bool, is_account,        account_name)
+         void require_auth(account_name);
+         void require_auth2(account_name, permission_name);
+         bool has_auth(account_name) const;
+         void require_recipient(account_name);
+         bool is_account(account_name) const;
+
+         REGISTER_HOST_FUNCTION(require_auth, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(require_auth2, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(has_auth, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(require_recipient, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(is_account, legacy_static_check_wl_args);
 
          // system api
-         DECLARE_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               uint64_t, current_time)
-         DECLARE_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               uint64_t, publication_time)
-         DECLARE_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               bool,     is_feature_activated, legacy_ptr<const digest_type>)
-         DECLARE_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               name,     get_sender)
+         uint64_t current_time() const;
+         uint64_t publication_time() const;
+         bool is_feature_activated(legacy_ptr<const digest_type>) const;
+         name get_sender() const;
+
+         REGISTER_HOST_FUNCTION(current_time, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(publication_time, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(is_feature_activated, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(get_sender, legacy_static_check_wl_args);
 
          // context-free system api
-         DECLARE_CF( PRECONDITIONS(legacy_static_check_wl_args),
-               void, abort)
-         DECLARE_CF( PRECONDITIONS(legacy_static_check_wl_args),
-               void, eosio_assert,         bool, null_terminated_ptr)
-         DECLARE_CF( PRECONDITIONS(legacy_static_check_wl_args),
-               void, eosio_assert_message, bool, legacy_array_ptr<const char>)
-         DECLARE_CF( PRECONDITIONS(legacy_static_check_wl_args),
-               void, eosio_assert_code,    bool, uint64_t)
-         DECLARE_CF( PRECONDITIONS(legacy_static_check_wl_args),
-               void, eosio_exit,           int32_t)
+         void abort();
+         void eosio_assert(bool, null_terminated_ptr);
+         void eosio_assert_message(bool, legacy_array_ptr<const char>);
+         void eosio_assert_code(bool, uint64_t);
+         void eosio_exit(int32_t);
+
+         REGISTER_CF_HOST_FUNCTION(abort, legacy_static_check_wl_args)
+         REGISTER_CF_HOST_FUNCTION(eosio_assert, legacy_static_check_wl_args)
+         REGISTER_CF_HOST_FUNCTION(eosio_assert_message, legacy_static_check_wl_args)
+         REGISTER_CF_HOST_FUNCTION(eosio_assert_code, legacy_static_check_wl_args)
+         REGISTER_CF_HOST_FUNCTION(eosio_exit, legacy_static_check_wl_args)
 
          // action api
-         DECLARE_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               int32_t, read_action_data,        legacy_array_ptr<char>)
-         DECLARE_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               int32_t, action_data_size)
-         DECLARE_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               name,    current_receiver)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               void,          set_action_return_value, legacy_array_ptr<char>)
+         int32_t read_action_data(legacy_array_ptr<char>) const;
+         int32_t action_data_size() const;
+         name current_receiver() const;
+         void set_action_return_value(legacy_array_ptr<char>);
+
+         REGISTER_HOST_FUNCTION(read_action_data, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(action_data_size, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(current_receiver, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(set_action_return_value, legacy_static_check_wl_args);
 
          // console api
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               void, prints,     null_terminated_ptr)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               void, prints_l,   legacy_array_ptr<const char>)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               void, printi,     int64_t)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               void, printui,    uint64_t)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               void, printi128,  legacy_ptr<const __int128>)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               void, printui128, legacy_ptr<const unsigned __int128>)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               void, printsf,    float)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               void, printdf,    double)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               void, printqf,    legacy_ptr<const float128_t>)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               void, printn,     name)
-         DECLARE( PRECONDITIONS(),
-               void, printhex,   legacy_array_ptr<const char>)
+         void prints(null_terminated_ptr);
+         void prints_l(legacy_array_ptr<const char>);
+         void printi(int64_t);
+         void printui(uint64_t);
+         void printi128(legacy_ptr<const __int128>);
+         void printui128(legacy_ptr<const unsigned __int128>);
+         void printsf(float);
+         void printdf(double);
+         void printqf(legacy_ptr<const float128_t>);
+         void printn(name);
+         void printhex(legacy_array_ptr<const char>);
 
-         // TODO still need to abstract the DECLAREs a bit to allow for abitrary preconditions
+         REGISTER_HOST_FUNCTION(prints, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(prints_l, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(printi, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(printui, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(printi128, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(printui128, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(printsf, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(printdf, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(printqf, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(printn, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(printhex, legacy_static_check_wl_args);
+
          // database api
          // primary index api
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               int32_t, db_store_i64,      uint64_t, uint64_t, uint64_t, uint64_t, legacy_array_ptr<const char>)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               void,    db_update_i64,     int32_t, uint64_t, legacy_array_ptr<const char>)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               void,    db_remove_i64,     int32_t)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               int32_t, db_get_i64,        int32_t, legacy_array_ptr<char>)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               int32_t, db_next_i64,       int32_t, legacy_ptr<uint64_t>)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               int32_t, db_previous_i64,   int32_t, legacy_ptr<uint64_t>)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               int32_t, db_find_i64,       uint64_t, uint64_t, uint64_t, uint64_t)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               int32_t, db_lowerbound_i64, uint64_t, uint64_t, uint64_t, uint64_t)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               int32_t, db_upperbound_i64, uint64_t, uint64_t, uint64_t, uint64_t)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               int32_t, db_end_i64,        uint64_t, uint64_t, uint64_t)
+         int32_t db_store_i64(uint64_t, uint64_t, uint64_t, uint64_t, legacy_array_ptr<const char>);
+         void db_update_i64(int32_t, uint64_t, legacy_array_ptr<const char>);
+         void db_remove_i64(int32_t);
+         int32_t db_get_i64(int32_t, legacy_array_ptr<char>);
+         int32_t db_next_i64(int32_t, legacy_ptr<uint64_t>);
+         int32_t db_previous_i64(int32_t, legacy_ptr<uint64_t>);
+         int32_t db_find_i64(uint64_t, uint64_t, uint64_t, uint64_t);
+         int32_t db_lowerbound_i64(uint64_t, uint64_t, uint64_t, uint64_t);
+         int32_t db_upperbound_i64(uint64_t, uint64_t, uint64_t, uint64_t);
+         int32_t db_end_i64(uint64_t, uint64_t, uint64_t);
+
+         REGISTER_HOST_FUNCTION(db_store_i64, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(db_update_i64, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(db_remove_i64, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(db_get_i64, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(db_next_i64, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(db_previous_i64, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(db_find_i64, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(db_lowerbound_i64, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(db_upperbound_i64, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(db_end_i64, legacy_static_check_wl_args);
+
 
          // uint64_t secondary index api
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               int32_t, db_idx64_store,          uint64_t, uint64_t, uint64_t, uint64_t, legacy_ptr<const uint64_t>)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               void,    db_idx64_update,         int32_t, uint64_t, legacy_ptr<const uint64_t>)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               void,    db_idx64_remove,         int32_t)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               int32_t, db_idx64_find_secondary, uint64_t, uint64_t, uint64_t, legacy_ptr<const uint64_t>, legacy_ptr<uint64_t>)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               int32_t, db_idx64_find_primary,   uint64_t, uint64_t, uint64_t, legacy_ptr<uint64_t>, uint64_t)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               int32_t, db_idx64_lowerbound,     uint64_t, uint64_t, uint64_t, legacy_ptr<uint64_t>, legacy_ptr<uint64_t>)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               int32_t, db_idx64_upperbound,     uint64_t, uint64_t, uint64_t, legacy_ptr<uint64_t>, legacy_ptr<uint64_t>)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               int32_t, db_idx64_end,            uint64_t, uint64_t, uint64_t)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               int32_t, db_idx64_next,           int32_t, legacy_ptr<uint64_t>)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               int32_t, db_idx64_previous,       int32_t, legacy_ptr<uint64_t>)
+         int32_t db_idx64_store(uint64_t, uint64_t, uint64_t, uint64_t, legacy_ptr<const uint64_t>);
+         void db_idx64_update(int32_t, uint64_t, legacy_ptr<const uint64_t>);
+         void db_idx64_remove(int32_t);
+         int32_t db_idx64_find_secondary(uint64_t, uint64_t, uint64_t, legacy_ptr<const uint64_t>, legacy_ptr<uint64_t>);
+         int32_t db_idx64_find_primary(uint64_t, uint64_t, uint64_t, legacy_ptr<uint64_t>, uint64_t);
+         int32_t db_idx64_lowerbound(uint64_t, uint64_t, uint64_t, legacy_ptr<uint64_t>, legacy_ptr<uint64_t>);
+         int32_t db_idx64_upperbound(uint64_t, uint64_t, uint64_t, legacy_ptr<uint64_t>, legacy_ptr<uint64_t>);
+         int32_t db_idx64_end(uint64_t, uint64_t, uint64_t);
+         int32_t db_idx64_next(int32_t, legacy_ptr<uint64_t>);
+         int32_t db_idx64_previous(int32_t, legacy_ptr<uint64_t>);
+
+         REGISTER_HOST_FUNCTION(db_idx64_store, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(db_idx64_update, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(db_idx64_remove, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(db_idx64_find_secondary, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(db_idx64_find_primary, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(db_idx64_lowerbound, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(db_idx64_upperbound, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(db_idx64_end, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(db_idx64_next, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(db_idx64_previous, legacy_static_check_wl_args);
 
          // uint128_t secondary index api
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               int32_t, db_idx128_store,          uint64_t, uint64_t, uint64_t, uint64_t, legacy_ptr<const uint128_t>)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               void,    db_idx128_update,         int32_t, uint64_t, legacy_ptr<const uint128_t>)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               void,    db_idx128_remove,         int32_t)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               int32_t, db_idx128_find_secondary, uint64_t, uint64_t, uint64_t, legacy_ptr<const uint128_t>, legacy_ptr<uint64_t>)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               int32_t, db_idx128_find_primary,   uint64_t, uint64_t, uint64_t, legacy_ptr<uint128_t>, uint64_t)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               int32_t, db_idx128_lowerbound,     uint64_t, uint64_t, uint64_t, legacy_ptr<uint128_t>, legacy_ptr<uint64_t>)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               int32_t, db_idx128_upperbound,     uint64_t, uint64_t, uint64_t, legacy_ptr<uint128_t>, legacy_ptr<uint64_t>)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               int32_t, db_idx128_end,            uint64_t, uint64_t, uint64_t)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               int32_t, db_idx128_next,           int32_t, legacy_ptr<uint64_t>)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               int32_t, db_idx128_previous,       int32_t, legacy_ptr<uint64_t>)
+         int32_t db_idx128_store(uint64_t, uint64_t, uint64_t, uint64_t, legacy_ptr<const uint128_t>);
+         void db_idx128_update(int32_t, uint64_t, legacy_ptr<const uint128_t>);
+         void db_idx128_remove(int32_t);
+         int32_t db_idx128_find_secondary(uint64_t, uint64_t, uint64_t, legacy_ptr<const uint128_t>, legacy_ptr<uint64_t>);
+         int32_t db_idx128_find_primary(uint64_t, uint64_t, uint64_t, legacy_ptr<uint128_t>, uint64_t);
+         int32_t db_idx128_lowerbound(uint64_t, uint64_t, uint64_t, legacy_ptr<uint128_t>, legacy_ptr<uint64_t>);
+         int32_t db_idx128_upperbound(uint64_t, uint64_t, uint64_t, legacy_ptr<uint128_t>, legacy_ptr<uint64_t>);
+         int32_t db_idx128_end(uint64_t, uint64_t, uint64_t);
+         int32_t db_idx128_next(int32_t, legacy_ptr<uint64_t>);
+         int32_t db_idx128_previous(int32_t, legacy_ptr<uint64_t>);
+
+         REGISTER_HOST_FUNCTION(db_idx128_store, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(db_idx128_update, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(db_idx128_remove, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(db_idx128_find_secondary, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(db_idx128_find_primary, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(db_idx128_lowerbound, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(db_idx128_upperbound, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(db_idx128_end, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(db_idx128_next, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(db_idx128_previous, legacy_static_check_wl_args);
 
          // 256-bit secondary index api
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               int32_t, db_idx256_store,          uint64_t, uint64_t, uint64_t, uint64_t, legacy_array_ptr<const uint128_t>)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               void,    db_idx256_update,         int32_t, uint64_t, legacy_array_ptr<const uint128_t>)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               void,    db_idx256_remove,         int32_t)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               int32_t, db_idx256_find_secondary, uint64_t, uint64_t, uint64_t, legacy_array_ptr<const uint128_t>, uint64_t&)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               int32_t, db_idx256_find_primary,   uint64_t, uint64_t, uint64_t, legacy_array_ptr<uint128_t>, uint64_t)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               int32_t, db_idx256_lowerbound,     uint64_t, uint64_t, uint64_t, legacy_array_ptr<uint128_t>, legacy_ptr<uint64_t>)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               int32_t, db_idx256_upperbound,     uint64_t, uint64_t, uint64_t, legacy_array_ptr<uint128_t>, legacy_ptr<uint64_t>)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               int32_t, db_idx256_end,            uint64_t, uint64_t, uint64_t)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               int32_t, db_idx256_next,           int32_t, legacy_ptr<uint64_t>)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               int32_t, db_idx256_previous,       int32_t, legacy_ptr<uint64_t>)
+         int32_t db_idx256_store(uint64_t, uint64_t, uint64_t, uint64_t, legacy_array_ptr<const uint128_t>);
+         void db_idx256_update(int32_t, uint64_t, legacy_array_ptr<const uint128_t>);
+         void db_idx256_remove(int32_t);
+         int32_t db_idx256_find_secondary(uint64_t, uint64_t, uint64_t, legacy_array_ptr<const uint128_t>, uint64_t&);
+         int32_t db_idx256_find_primary(uint64_t, uint64_t, uint64_t, legacy_array_ptr<uint128_t>, uint64_t);
+         int32_t db_idx256_lowerbound(uint64_t, uint64_t, uint64_t, legacy_array_ptr<uint128_t>, legacy_ptr<uint64_t>);
+         int32_t db_idx256_upperbound(uint64_t, uint64_t, uint64_t, legacy_array_ptr<uint128_t>, legacy_ptr<uint64_t>);
+         int32_t db_idx256_end(uint64_t, uint64_t, uint64_t);
+         int32_t db_idx256_next(int32_t, legacy_ptr<uint64_t>);
+         int32_t db_idx256_previous(int32_t, legacy_ptr<uint64_t>);
+
+         REGISTER_HOST_FUNCTION(db_idx256_store, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(db_idx256_update, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(db_idx256_remove, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(db_idx256_find_secondary, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(db_idx256_find_primary, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(db_idx256_lowerbound, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(db_idx256_upperbound, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(db_idx256_end, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(db_idx256_next, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(db_idx256_previous, legacy_static_check_wl_args);
 
          // double secondary index api
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               int32_t, db_idx_double_store,          uint64_t, uint64_t, uint64_t, uint64_t, legacy_ptr<const float64_t>)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               void,    db_idx_double_update,         int32_t, uint64_t, legacy_ptr<const float64_t>)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               void,    db_idx_double_remove,         int32_t)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               int32_t, db_idx_double_find_secondary, uint64_t, uint64_t, uint64_t, legacy_ptr<const float64_t>, legacy_ptr<uint64_t>)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               int32_t, db_idx_double_find_primary,   uint64_t, uint64_t, uint64_t, legacy_ptr<float64_t>, uint64_t)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               int32_t, db_idx_double_lowerbound,     uint64_t, uint64_t, uint64_t, legacy_ptr<float64_t>, legacy_ptr<uint64_t>)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               int32_t, db_idx_double_upperbound,     uint64_t, uint64_t, uint64_t, legacy_ptr<float64_t>, legacy_ptr<uint64_t>)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               int32_t, db_idx_double_end,            uint64_t, uint64_t, uint64_t)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               int32_t, db_idx_double_next,           int32_t, legacy_ptr<uint64_t>)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               int32_t, db_idx_double_previous,       int32_t, legacy_ptr<uint64_t>)
+         int32_t db_idx_double_store(uint64_t, uint64_t, uint64_t, uint64_t, legacy_ptr<const float64_t>);
+         void db_idx_double_update(int32_t, uint64_t, legacy_ptr<const float64_t>);
+         void db_idx_double_remove(int32_t);
+         int32_t db_idx_double_find_secondary(uint64_t, uint64_t, uint64_t, legacy_ptr<const float64_t>, legacy_ptr<uint64_t>);
+         int32_t db_idx_double_find_primary(uint64_t, uint64_t, uint64_t, legacy_ptr<float64_t>, uint64_t);
+         int32_t db_idx_double_lowerbound(uint64_t, uint64_t, uint64_t, legacy_ptr<float64_t>, legacy_ptr<uint64_t>);
+         int32_t db_idx_double_upperbound(uint64_t, uint64_t, uint64_t, legacy_ptr<float64_t>, legacy_ptr<uint64_t>);
+         int32_t db_idx_double_end(uint64_t, uint64_t, uint64_t);
+         int32_t db_idx_double_next(int32_t, legacy_ptr<uint64_t>);
+         int32_t db_idx_double_previous(int32_t, legacy_ptr<uint64_t>);
+
+         REGISTER_HOST_FUNCTION(db_idx_double_store, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(db_idx_double_update, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(db_idx_double_remove, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(db_idx_double_find_secondary, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(db_idx_double_find_primary, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(db_idx_double_lowerbound, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(db_idx_double_upperbound, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(db_idx_double_end, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(db_idx_double_next, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(db_idx_double_previous, legacy_static_check_wl_args);
+
 
          // long double secondary index api
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               int32_t, db_idx_long_double_store,          uint64_t, uint64_t, uint64_t, uint64_t, legacy_ptr<const float128_t>)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               void,    db_idx_long_double_update,         int32_t, uint64_t, legacy_ptr<const float128_t>)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               void,    db_idx_long_double_remove,         int32_t)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               int32_t, db_idx_long_double_find_secondary, uint64_t, uint64_t, uint64_t, legacy_ptr<const float128_t>, legacy_ptr<uint64_t>)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               int32_t, db_idx_long_double_find_primary,   uint64_t, uint64_t, uint64_t, legacy_ptr<float128_t>, uint64_t)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               int32_t, db_idx_long_double_lowerbound,     uint64_t, uint64_t, uint64_t, legacy_ptr<float128_t>, legacy_ptr<uint64_t>)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               int32_t, db_idx_long_double_upperbound,     uint64_t, uint64_t, uint64_t, legacy_ptr<float128_t>,  legacy_ptr<uint64_t>)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               int32_t, db_idx_long_double_end,            uint64_t, uint64_t, uint64_t)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               int32_t, db_idx_long_double_next,           int32_t, legacy_ptr<uint64_t>)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               int32_t, db_idx_long_double_previous,       int32_t, legacy_ptr<uint64_t>)
+         int32_t db_idx_long_double_store(uint64_t, uint64_t, uint64_t, uint64_t, legacy_ptr<const float128_t>);
+         void db_idx_long_double_update(int32_t, uint64_t, legacy_ptr<const float128_t>);
+         void db_idx_long_double_remove(int32_t);
+         int32_t db_idx_long_double_find_secondary(uint64_t, uint64_t, uint64_t, legacy_ptr<const float128_t>, legacy_ptr<uint64_t>);
+         int32_t db_idx_long_double_find_primary(uint64_t, uint64_t, uint64_t, legacy_ptr<float128_t>, uint64_t);
+         int32_t db_idx_long_double_lowerbound(uint64_t, uint64_t, uint64_t, legacy_ptr<float128_t>, legacy_ptr<uint64_t>);
+         int32_t db_idx_long_double_upperbound(uint64_t, uint64_t, uint64_t, legacy_ptr<float128_t>,  legacy_ptr<uint64_t>);
+         int32_t db_idx_long_double_end(uint64_t, uint64_t, uint64_t);
+         int32_t db_idx_long_double_next(int32_t, legacy_ptr<uint64_t>);
+         int32_t db_idx_long_double_previous(int32_t, legacy_ptr<uint64_t>);
+
+         REGISTER_HOST_FUNCTION(db_idx_long_double_store, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(db_idx_long_double_update, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(db_idx_long_double_remove, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(db_idx_long_double_find_secondary, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(db_idx_long_double_find_primary, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(db_idx_long_double_lowerbound, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(db_idx_long_double_upperbound, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(db_idx_long_double_end, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(db_idx_long_double_next, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(db_idx_long_double_previous, legacy_static_check_wl_args);
 
          // memory api
-         DECLARE_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               char*,   memcpy,  char*, const char*, wasm_size_t)
-         DECLARE_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               char*,   memmove, char*, const char*, wasm_size_t)
-         DECLARE_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               int32_t, memcmp,  const char*, const char*, wasm_size_t)
-         DECLARE_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               char*,   memset, char*, int32_t, wasm_size_t)
+         char* memcpy(char*, const char*, wasm_size_t) const;
+         char* memmove(char*, const char*, wasm_size_t) const;
+         int32_t memcmp(const char*, const char*, wasm_size_t) const;
+         char* memset(char*, int32_t, wasm_size_t) const;
+
+         REGISTER_HOST_FUNCTION(memcpy, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(memmove, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(memcmp, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(memset, legacy_static_check_wl_args);
 
          // transaction api
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               void, send_inline,              legacy_array_ptr<char>)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               void, send_context_free_inline, legacy_array_ptr<char>)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               void, send_deferred,            legacy_ptr<const uint128_t>, account_name, legacy_array_ptr<char>, uint32_t)
-         DECLARE( PRECONDITIONS(legacy_static_check_wl_args),
-               bool, cancel_deferred,          legacy_ptr<const uint128_t>)
+         void send_inline(legacy_array_ptr<char>);
+         void send_context_free_inline(legacy_array_ptr<char>);
+         void send_deferred(legacy_ptr<const uint128_t>, account_name, legacy_array_ptr<char>, uint32_t);
+         bool cancel_deferred(legacy_ptr<const uint128_t>);
+
+         REGISTER_HOST_FUNCTION(send_inline, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(send_context_free_inline, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(send_deferred, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(cancel_deferred, legacy_static_check_wl_args);
 
          // context-free transaction api
-         DECLARE_CONST_CF( PRECONDITIONS(legacy_static_check_wl_args),
-               int32_t, read_transaction, legacy_array_ptr<char>)
-         DECLARE_CONST_CF( PRECONDITIONS(legacy_static_check_wl_args),
-               int32_t, transaction_size)
-         DECLARE_CONST_CF( PRECONDITIONS(legacy_static_check_wl_args),
-               int32_t, expiration)
-         DECLARE_CONST_CF( PRECONDITIONS(legacy_static_check_wl_args),
-               int32_t, tapos_block_num)
-         DECLARE_CONST_CF( PRECONDITIONS(legacy_static_check_wl_args),
-               int32_t, tapos_block_prefix)
-         DECLARE_CONST_CF( PRECONDITIONS(legacy_static_check_wl_args),
-               int32_t, get_action, uint32_t, uint32_t, legacy_array_ptr<char>)
+         int32_t read_transaction(legacy_array_ptr<char>) const;
+         int32_t transaction_size() const;
+         int32_t expiration() const;
+         int32_t tapos_block_num() const;
+         int32_t tapos_block_prefix() const;
+         int32_t get_action(uint32_t, uint32_t, legacy_array_ptr<char>) const;
+
+         REGISTER_HOST_FUNCTION(read_transaction, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(transaction_size, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(expiration, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(tapos_block_num, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(tapos_block_prefix, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(get_action, legacy_static_check_wl_args);
 
          // compiler builtins api
-         DECLARE_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               void,     __ashlti3,      legacy_ptr<int128_t>, uint64_t, uint64_t, uint32_t)
-         DECLARE_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               void,     __ashrti3,      legacy_ptr<int128_t>, uint64_t, uint64_t, uint32_t)
-         DECLARE_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               void,     __lshlti3,      legacy_ptr<int128_t>, uint64_t, uint64_t, uint32_t)
-         DECLARE_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               void,     __lshrti3,      legacy_ptr<int128_t>, uint64_t, uint64_t, uint32_t)
-         DECLARE_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               void,     __divti3,       legacy_ptr<int128_t>, uint64_t, uint64_t, uint64_t, uint64_t)
-         DECLARE_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               void,     __udivti3,      legacy_ptr<uint128_t>, uint64_t, uint64_t, uint64_t, uint64_t)
-         DECLARE_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               void,     __multi3,       legacy_ptr<int128_t>, uint64_t, uint64_t, uint64_t, uint64_t)
-         DECLARE_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               void,     __modti3,       legacy_ptr<int128_t>, uint64_t, uint64_t, uint64_t, uint64_t)
-         DECLARE_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               void,     __umodti3,      legacy_ptr<uint128_t>, uint64_t, uint64_t, uint64_t, uint64_t)
-         DECLARE_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               void,     __addtf3,       legacy_ptr<float128_t>, uint64_t, uint64_t, uint64_t, uint64_t)
-         DECLARE_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               void,     __subtf3,       legacy_ptr<float128_t>, uint64_t, uint64_t, uint64_t, uint64_t)
-         DECLARE_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               void,     __multf3,       legacy_ptr<float128_t>, uint64_t, uint64_t, uint64_t, uint64_t)
-         DECLARE_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               void,     __divtf3,       legacy_ptr<float128_t>, uint64_t, uint64_t, uint64_t, uint64_t)
-         DECLARE_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               void,     __negtf2,       legacy_ptr<float128_t>, uint64_t, uint64_t)
-         DECLARE_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               void,     __extendsftf2,  legacy_ptr<float128_t>, float)
-         DECLARE_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               void,     __extenddftf2,  legacy_ptr<float128_t>, double)
-         DECLARE_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               double,   __trunctfdf2,   uint64_t, uint64_t)
-         DECLARE_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               float,    __trunctfsf2,   uint64_t, uint64_t)
-         DECLARE_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               int32_t,  __fixtfsi,      uint64_t, uint64_t)
-         DECLARE_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               int64_t,  __fixtfdi,      uint64_t, uint64_t)
-         DECLARE_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               void,     __fixtfti,      legacy_ptr<int128_t>, uint64_t, uint64_t)
-         DECLARE_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               uint32_t, __fixunstfsi,   uint64_t, uint64_t)
-         DECLARE_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               uint64_t, __fixunstfdi,   uint64_t, uint64_t)
-         DECLARE_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               void,     __fixunstfti,   legacy_ptr<uint128_t>, uint64_t, uint64_t)
-         DECLARE_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               void,     __fixsfti,      legacy_ptr<int128_t>, float)
-         DECLARE_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               void,     __fixdfti,      legacy_ptr<int128_t>, double)
-         DECLARE_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               void,     __fixunssfti,   legacy_ptr<uint128_t>, float)
-         DECLARE_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               void,     __fixunsdfti,   legacy_ptr<uint128_t>, double)
-         DECLARE_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               double,   __floatsidf,    int32_t)
-         DECLARE_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               void,     __floatsitf,    legacy_ptr<float128_t>, int32_t)
-         DECLARE_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               void,     __floatditf,    legacy_ptr<float128_t>, uint64_t)
-         DECLARE_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               void,     __floatunsitf,  legacy_ptr<float128_t>, uint32_t)
-         DECLARE_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               void,     __floatunditf,  legacy_ptr<float128_t>, uint64_t)
-         DECLARE_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               double,   __floattidf,    uint64_t, uint64_t)
-         DECLARE_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               double,   __floatuntidf,  uint64_t, uint64_t)
-         DECLARE_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               int32_t,  __cmptf2,   uint64_t, uint64_t, uint64_t, uint64_t)
-         DECLARE_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               int32_t,  __eqtf2,    uint64_t, uint64_t, uint64_t, uint64_t)
-         DECLARE_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               int32_t,  __netf2,    uint64_t, uint64_t, uint64_t, uint64_t)
-         DECLARE_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               int32_t,  __getf2,    uint64_t, uint64_t, uint64_t, uint64_t)
-         DECLARE_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               int32_t,  __gttf2,    uint64_t, uint64_t, uint64_t, uint64_t)
-         DECLARE_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               int32_t,  __letf2,    uint64_t, uint64_t, uint64_t, uint64_t)
-         DECLARE_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               int32_t,  __lttf2,    uint64_t, uint64_t, uint64_t, uint64_t)
-         DECLARE_CONST( PRECONDITIONS(legacy_static_check_wl_args),
-               int32_t,  __unordtf2, uint64_t, uint64_t, uint64_t, uint64_t)
+         void __ashlti3(legacy_ptr<int128_t>, uint64_t, uint64_t, uint32_t) const;
+         void __ashrti3(legacy_ptr<int128_t>, uint64_t, uint64_t, uint32_t) const;
+         void __lshlti3(legacy_ptr<int128_t>, uint64_t, uint64_t, uint32_t) const;
+         void __lshrti3(legacy_ptr<int128_t>, uint64_t, uint64_t, uint32_t) const;
+         void __divti3(legacy_ptr<int128_t>, uint64_t, uint64_t, uint64_t, uint64_t) const;
+         void __udivti3(legacy_ptr<uint128_t>, uint64_t, uint64_t, uint64_t, uint64_t) const;
+         void __multi3(legacy_ptr<int128_t>, uint64_t, uint64_t, uint64_t, uint64_t) const;
+         void __modti3(legacy_ptr<int128_t>, uint64_t, uint64_t, uint64_t, uint64_t) const;
+         void __umodti3(legacy_ptr<uint128_t>, uint64_t, uint64_t, uint64_t, uint64_t) const;
+         void __addtf3(legacy_ptr<float128_t>, uint64_t, uint64_t, uint64_t, uint64_t) const;
+         void __subtf3(legacy_ptr<float128_t>, uint64_t, uint64_t, uint64_t, uint64_t) const;
+         void __multf3(legacy_ptr<float128_t>, uint64_t, uint64_t, uint64_t, uint64_t) const;
+         void __divtf3(legacy_ptr<float128_t>, uint64_t, uint64_t, uint64_t, uint64_t) const;
+         void __negtf2(legacy_ptr<float128_t>, uint64_t, uint64_t) const;
+         void __extendsftf2(legacy_ptr<float128_t>, float) const;
+         void __extenddftf2(legacy_ptr<float128_t>, double) const;
+         double __trunctfdf2(uint64_t, uint64_t) const;
+         float __trunctfsf2(uint64_t, uint64_t) const;
+         int32_t __fixtfsi(uint64_t, uint64_t) const;
+         int64_t __fixtfdi(uint64_t, uint64_t) const;
+         void __fixtfti(legacy_ptr<int128_t>, uint64_t, uint64_t) const;
+         uint32_t __fixunstfsi(uint64_t, uint64_t) const;
+         uint64_t __fixunstfdi(uint64_t, uint64_t) const;
+         void __fixunstfti(legacy_ptr<uint128_t>, uint64_t, uint64_t) const;
+         void __fixsfti(legacy_ptr<int128_t>, float) const;
+         void __fixdfti(legacy_ptr<int128_t>, double) const;
+         void __fixunssfti(legacy_ptr<uint128_t>, float) const;
+         void __fixunsdfti(legacy_ptr<uint128_t>, double) const;
+         double __floatsidf(int32_t) const;
+         void __floatsitf(legacy_ptr<float128_t>, int32_t) const;
+         void __floatditf(legacy_ptr<float128_t>, uint64_t) const;
+         void __floatunsitf(legacy_ptr<float128_t>, uint32_t) const;
+         void __floatunditf(legacy_ptr<float128_t>, uint64_t) const;
+         double __floattidf(uint64_t, uint64_t) const;
+         double __floatuntidf(uint64_t, uint64_t) const;
+         int32_t __cmptf2(uint64_t, uint64_t, uint64_t, uint64_t) const;
+         int32_t __eqtf2(uint64_t, uint64_t, uint64_t, uint64_t) const;
+         int32_t __netf2(uint64_t, uint64_t, uint64_t, uint64_t) const;
+         int32_t __getf2(uint64_t, uint64_t, uint64_t, uint64_t) const;
+         int32_t __gttf2(uint64_t, uint64_t, uint64_t, uint64_t) const;
+         int32_t __letf2(uint64_t, uint64_t, uint64_t, uint64_t) const;
+         int32_t __lttf2(uint64_t, uint64_t, uint64_t, uint64_t) const;
+         int32_t __unordtf2(uint64_t, uint64_t, uint64_t, uint64_t) const;
+
+         REGISTER_HOST_FUNCTION(__ashlti3, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(__ashrti3, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(__lshlti3, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(__lshrti3, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(__divti3, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(__udivti3, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(__multi3, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(__modti3, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(__umodti3, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(__addtf3, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(__subtf3, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(__multf3, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(__divtf3, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(__negtf2, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(__extendsftf2, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(__extenddftf2, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(__trunctfdf2, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(__trunctfsf2, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(__fixtfsi, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(__fixtfdi, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(__fixtfti, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(2_t __fixunstfsi, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(4_t __fixunstfdi, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(__fixunstfti, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(__fixsfti, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(__fixdfti, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(__fixunssfti, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(__fixunsdfti, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(__floatsidf, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(__floatsitf, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(__floatditf, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(__floatunsitf, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(__floatunditf, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(__floattidf, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(__floatuntidf, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(__cmptf2, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(__eqtf2, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(__netf2, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(__getf2, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(__gttf2, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(__letf2, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(__lttf2, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(__unordtf2, legacy_static_check_wl_args);
 
          // call depth api
-         DECLARE_INJECTED( PRECONDITIONS(legacy_static_check_wl_args),
-               void, call_depth_assert)
+         void call_depth_assert()
+         REGISTER_INJECTED_HOST_FUNCTION(call_depth_assert);
 
       private:
          apply_context& context;

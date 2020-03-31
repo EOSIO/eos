@@ -4,8 +4,7 @@
 #include <eosio/chain/wasm_eosio_constraints.hpp>
 #include <eosio/vm/reference_proxy.hpp>
 #include <eosio/vm/span.hpp>
-
-#define EOSIO_INJECTED_MODULE_NAME "eosio_injection"
+#include <eosio/vm/types.hpp>
 
 using namespace fc;
 
@@ -26,10 +25,16 @@ namespace eosio { namespace chain {
    }
 
    template <typename T>
-   static constexpr bool is_whitelisted_type_v = detail::is_whitelisted_type<T>::value;
+   inline static constexpr bool is_whitelisted_type_v = detail::is_whitelisted_type<T>::value;
 
    template <typename T>
-   static constexpr bool is_whitelisted_legacy_type_v = detail::is_whitelisted_legacy_type<T>::value;
+   inline static constexpr bool is_whitelisted_legacy_type_v = detail::is_whitelisted_legacy_type<T>::value;
+
+   template <typename... Ts>
+   inline static constexpr bool are_whitelisted_types_v = (... && detail::is_whitelisted_type<Ts>::value);
+
+   template <typename... Ts>
+   inline static constexpr bool are_whitelisted_legacy_types_v = (... && detail::is_whitelisted_legacy_type<Ts>::value);
 
    template <typename T>
    using legacy_ptr = eosio::vm::reference_proxy<T, true>;
@@ -41,4 +46,6 @@ namespace eosio { namespace chain {
       using base_t = eosio::vm::span<const char>;
       null_terminated_ptr(const char* ptr) : base_t(ptr, strlen(ptr)) {}
    };
+
+   using wasm_size_t = eosio::vm::wasm_size_t;
 }} // eosio::chain

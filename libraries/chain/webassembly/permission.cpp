@@ -18,16 +18,16 @@ namespace eosio { namespace chain { namespace webassembly {
       permissions = fc::raw::unpack<flat_set<permission_level>>( perms_data, perms_size );
    }
 
-   bool interface::check_transaction_authorization( legacy_array_ptr<char> trx_data,     uint32_t trx_size,
-                                                    legacy_array_ptr<char> pubkeys_data, uint32_t pubkeys_size,
-                                                    legacy_array_ptr<char> perms_data,   uint32_t perms_size ) {
-      transaction trx = fc::raw::unpack<transaction>( trx_data, trx_size );
+   bool interface::check_transaction_authorization( legacy_array_ptr<char> trx_data,
+                                                    legacy_array_ptr<char> pubkeys_data,
+                                                    legacy_array_ptr<char> perms_data ) {
+      transaction trx = fc::raw::unpack<transaction>( trx_data.data(), trx_data.size() );
 
       flat_set<public_key_type> provided_keys;
-      unpack_provided_keys( provided_keys, pubkeys_data, pubkeys_size );
+      unpack_provided_keys( provided_keys, pubkeys_data.data(), pubkeys_data.size() );
 
       flat_set<permission_level> provided_permissions;
-      unpack_provided_permissions( provided_permissions, perms_data, perms_size );
+      unpack_provided_permissions( provided_permissions, perms_data.data(), perms_data.size() );
 
       try {
          context.control
@@ -46,14 +46,14 @@ namespace eosio { namespace chain { namespace webassembly {
    }
 
    bool interface::check_permission_authorization( account_name account, permission_name permission,
-                                                   legacy_array_ptr<char> pubkeys_data, uint32_t pubkeys_size,
-                                                   legacy_array_ptr<char> perms_data,   uint32_t perms_size,
+                                                   legacy_array_ptr<char> pubkeys_data,
+                                                   legacy_array_ptr<char> perms_data,
                                                    uint64_t delay_us ) {
       EOS_ASSERT( delay_us <= static_cast<uint64_t>(std::numeric_limits<int64_t>::max()),
                   action_validate_exception, "provided delay is too large" );
 
       flat_set<public_key_type> provided_keys;
-      unpack_provided_keys( provided_keys, pubkeys_data, pubkeys_size );
+      unpack_provided_keys( provided_keys, pubkeys_data.data(), pubkeys_data.size() );
 
       flat_set<permission_level> provided_permissions;
       unpack_provided_permissions( provided_permissions, perms_data, perms_size );

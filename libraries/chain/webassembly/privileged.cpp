@@ -15,8 +15,8 @@ namespace eosio { namespace chain { namespace webassembly {
       EOS_ASSERT( false, unsupported_feature, "Unsupported Hardfork Detected" );
    }
 
-   void interface::preactivate_feature( const digest_type& feature_digest ) {
-      context.control.preactivate_feature( feature_digest );
+   void interface::preactivate_feature( legacy_ptr<const digest_type> feature_digest ) {
+      context.control.preactivate_feature( *feature_digest.data() );
    }
 
    void interface::set_resource_limits( account_name account, int64_t ram_bytes, int64_t net_weight, int64_t cpu_weight ) {
@@ -80,8 +80,8 @@ namespace eosio { namespace chain { namespace webassembly {
       return context.control.set_proposed_producers( std::move(producers) );
    }
 
-   int64_t interface::set_proposed_producers( legacy_array_ptr<char> packed_producer_schedule, uint32_t datalen ) {
-      datastream<const char*> ds( packed_producer_schedule, datalen );
+   int64_t interface::set_proposed_producers( legacy_array_ptr<char> packed_producer_schedule) {
+      datastream<const char*> ds( packed_producer_schedule.data(), packed_producer_schedule.size() );
       std::vector<producer_authority> producers;
       std::vector<legacy::producer_key> old_version;
       fc::raw::unpack(ds, old_version);
@@ -96,11 +96,11 @@ namespace eosio { namespace chain { namespace webassembly {
       return set_proposed_producers_common( context, std::move(producers), true );
    }
 
-   int64_t interface::set_proposed_producers_ex( uint64_t packed_producer_format, legacy_array_ptr<char> packed_producer_schedule, uint32_t datalen ) {
+   int64_t interface::set_proposed_producers_ex( uint64_t packed_producer_format, legacy_array_ptr<char> packed_producer_schedule) {
       if (packed_producer_format == 0) {
-         return set_proposed_producers(packed_producer_schedule, datalen);
+         return set_proposed_producers(packed_producer_schedule.data(), packed_producer_schedule.size());
       } else if (packed_producer_format == 1) {
-         datastream<const char*> ds( packed_producer_schedule, datalen );
+         datastream<const char*> ds( packed_producer_schedule.data(), packed_producer_schedule.size() );
          vector<producer_authority> producers;
 
          fc::raw::unpack(ds, producers);
@@ -110,22 +110,22 @@ namespace eosio { namespace chain { namespace webassembly {
       }
    }
 
-   uint32_t interface::get_blockchain_parameters_packed( legacy_array_ptr<char> packed_blockchain_parameters, uint32_t buffer_size ) const {
+   uint32_t interface::get_blockchain_parameters_packed( legacy_array_ptr<char> packed_blockchain_parameters ) const {
       auto& gpo = context.control.get_global_properties();
 
       auto s = fc::raw::pack_size( gpo.configuration );
       if( buffer_size == 0 ) return s;
 
       if ( s <= buffer_size ) {
-         datastream<char*> ds( packed_blockchain_parameters, s );
+         datastream<char*> ds( packed_blockchain_parameters.data(), s );
          fc::raw::pack(ds, gpo.configuration);
          return s;
       }
       return 0;
    }
 
-   void interface::set_blockchain_parameters_packed( legacy_array_ptr<char> packed_blockchain_parameters, uint32_t datalen ) {
-      datastream<const char*> ds( packed_blockchain_parameters, datalen );
+   void interface::set_blockchain_parameters_packed( legacy_array_ptr<char> packed_blockchain_parameters ) {
+      datastream<const char*> ds( packed_blockchain_parameters.data(), packed_blockchain_parameters.size() );
       chain::chain_config cfg;
       fc::raw::unpack(ds, cfg);
       cfg.validate();
