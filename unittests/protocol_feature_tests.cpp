@@ -1782,13 +1782,10 @@ BOOST_AUTO_TEST_CASE( set_action_return_value_test ) { try {
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_CASE( stop_deferred_transactions_protocol_feature_user_test ) { try {
-   static fc::temp_directory tempdir;
-   static const std::vector<builtin_protocol_feature_t> ignored_features{builtin_protocol_feature_codenames.find(builtin_protocol_feature_t::stop_deferred_transactions)->first};
-   validating_tester chain{tempdir, true, ignored_features};
-   chain.execute_setup_policy( setup_policy::complete );
+   validating_tester chain( {}, {::eosio::chain::builtin_protocol_feature_t::stop_deferred_transactions} );
    
    const auto& pfm = chain.control->get_protocol_feature_manager();
-   auto stop_deferred_trx_feature = pfm.get_builtin_digest( builtin_protocol_feature_t::only_link_to_existing_permission );
+   auto stop_deferred_trx_feature = pfm.get_builtin_digest( builtin_protocol_feature_t::stop_deferred_transactions );
 
    chain.produce_block();
 
@@ -1835,13 +1832,10 @@ BOOST_AUTO_TEST_CASE( stop_deferred_transactions_protocol_feature_user_test ) { 
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_CASE( stop_deferred_transactions_protocol_feature_contract_test ) { try {
-   static fc::temp_directory tempdir;
-   static const std::vector<builtin_protocol_feature_t> ignored_features{builtin_protocol_feature_codenames.find(builtin_protocol_feature_t::stop_deferred_transactions)->first};
-   validating_tester chain{tempdir, true, ignored_features};
-   // chain.execute_setup_policy( setup_policy::complete );
+   validating_tester chain( {}, {::eosio::chain::builtin_protocol_feature_t::stop_deferred_transactions} );
    
    const auto& pfm = chain.control->get_protocol_feature_manager();
-   auto stop_deferred_trx_feature = pfm.get_builtin_digest( builtin_protocol_feature_t::only_link_to_existing_permission );
+   auto stop_deferred_trx_feature = pfm.get_builtin_digest( builtin_protocol_feature_t::stop_deferred_transactions );
 
    chain.produce_block();
 
@@ -1862,7 +1856,6 @@ BOOST_AUTO_TEST_CASE( stop_deferred_transactions_protocol_feature_contract_test 
                        ("contract", "test")
                        ("payload", 49)
    );
-   // chain.produce_empty_block();
 
    // Check that the number deferred transactions is 1.
    gen_size = chain.control->db().get_index<generated_transaction_multi_index>().size();

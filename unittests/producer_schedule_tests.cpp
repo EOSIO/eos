@@ -2,7 +2,6 @@
 #include <eosio/testing/tester.hpp>
 
 #include <boost/test/unit_test.hpp>
-#include <iostream>
 
 #include "fork_test_utilities.hpp"
 

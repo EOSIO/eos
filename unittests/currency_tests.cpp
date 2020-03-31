@@ -71,8 +71,8 @@ class currency_tester : public TESTER {
          return trace;
       }
 
-    currency_tester(fc::temp_directory& tempdir)
-      :TESTER( tempdir, true, {builtin_protocol_feature_codenames.find(builtin_protocol_feature_t::stop_deferred_transactions)->first} )
+    currency_tester()
+      :TESTER( {}, {::eosio::chain::builtin_protocol_feature_t::stop_deferred_transactions} )
       ,abi_ser( json::from_string(contracts::eosio_token_abi().data()).as<abi_def>(), abi_serializer::create_yield_function( abi_serializer_max_time ) )
       {
          create_account( N(eosio.token));
@@ -106,15 +106,13 @@ BOOST_AUTO_TEST_SUITE(currency_tests)
 
 BOOST_AUTO_TEST_CASE( bootstrap ) try {
    auto expected = asset::from_string( "1000000.0000 CUR" );
-   fc::temp_directory tempdir;
-   currency_tester chain{tempdir};
+   currency_tester chain;
    auto actual = chain.get_currency_balance(N(eosio.token), expected.get_symbol(), N(eosio.token));
    BOOST_REQUIRE_EQUAL(expected, actual);
 } FC_LOG_AND_RETHROW() /// test_api_bootstrap
 
 BOOST_AUTO_TEST_CASE( test_transfer ) try {
-   fc::temp_directory tempdir;
-   currency_tester chain{tempdir};
+   currency_tester chain;
    chain.create_accounts( {N(alice)} );
 
    // make a transfer from the contract to a user
@@ -134,8 +132,7 @@ BOOST_AUTO_TEST_CASE( test_transfer ) try {
 } FC_LOG_AND_RETHROW() /// test_transfer
 
 BOOST_AUTO_TEST_CASE( test_duplicate_transfer ) {
-   fc::temp_directory tempdir;
-   currency_tester chain{tempdir};
+   currency_tester chain;
    chain.create_accounts( {N(alice)} );
 
    auto trace = chain.push_action(N(eosio.token), N(transfer), mutable_variant_object()
@@ -159,8 +156,7 @@ BOOST_AUTO_TEST_CASE( test_duplicate_transfer ) {
 }
 
 BOOST_AUTO_TEST_CASE( test_addtransfer ) try {
-   fc::temp_directory tempdir;
-   currency_tester chain{tempdir};
+   currency_tester chain;
    chain.create_accounts( {N(alice)} );
 
    // make a transfer from the contract to a user
@@ -196,8 +192,7 @@ BOOST_AUTO_TEST_CASE( test_addtransfer ) try {
 
 
 BOOST_AUTO_TEST_CASE( test_overspend ) try {
-   fc::temp_directory tempdir;
-   currency_tester chain{tempdir};
+   currency_tester chain;
    chain.create_accounts( {N(alice), N(bob)} );
 
    // make a transfer from the contract to a user
@@ -233,8 +228,7 @@ BOOST_AUTO_TEST_CASE( test_overspend ) try {
 } FC_LOG_AND_RETHROW() /// test_overspend
 
 BOOST_AUTO_TEST_CASE( test_fullspend ) try {
-   fc::temp_directory tempdir;
-   currency_tester chain{tempdir};
+   currency_tester chain;
    chain.create_accounts( {N(alice), N(bob)} );
 
    // make a transfer from the contract to a user
@@ -410,8 +404,7 @@ BOOST_FIXTURE_TEST_CASE(test_symbol, TESTER) try {
 } FC_LOG_AND_RETHROW() /// test_symbol
 
 BOOST_AUTO_TEST_CASE( test_proxy ) try {
-   fc::temp_directory tempdir;
-   currency_tester chain{tempdir};
+   currency_tester chain;
    chain.produce_blocks(2);
 
    chain.create_accounts( {N(alice), N(proxy)} );
@@ -467,8 +460,7 @@ BOOST_AUTO_TEST_CASE( test_proxy ) try {
 } FC_LOG_AND_RETHROW() /// test_currency
 
 BOOST_AUTO_TEST_CASE( test_deferred_failure ) try {
-   fc::temp_directory tempdir;
-   currency_tester chain{tempdir};
+   currency_tester chain;
    chain.produce_blocks(2);
 
    chain.create_accounts( {N(alice), N(bob), N(proxy)} );
@@ -579,8 +571,7 @@ BOOST_AUTO_TEST_CASE( test_deferred_failure ) try {
 } FC_LOG_AND_RETHROW() /// test_currency
 
 BOOST_AUTO_TEST_CASE( test_input_quantity ) try {
-   fc::temp_directory tempdir;
-   currency_tester chain{tempdir};
+   currency_tester chain;
    chain.produce_blocks(2);
 
    chain.create_accounts( {N(alice), N(bob), N(carl)} );

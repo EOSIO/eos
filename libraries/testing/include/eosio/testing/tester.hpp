@@ -517,43 +517,29 @@ namespace eosio { namespace testing {
          }
       }
 
-      validating_tester(const flat_set<account_name>& trusted_producers = flat_set<account_name>()) {
-         auto to_digest_type = [] (const char* str) {
-            return fc::variant("69b064c5178e2738e144ed6caa9349a3995370d78db29e494b3126ebd9111966").as<digest_type>();
-         };
-         auto def_conf = default_config(tempdir);
-
+      validating_tester(const ::boost::container::flat_set<::eosio::chain::account_name>& trusted_producers = ::boost::container::flat_set<::eosio::chain::account_name>(),
+                        const ::std::vector<::eosio::chain::builtin_protocol_feature_t>& ignored_features = {},
+                        const ::eosio::testing::setup_policy& policy = ::eosio::testing::setup_policy::complete) {
+         ::std::pair<::eosio::chain::controller::config, ::eosio::chain::genesis_state> def_conf = default_config(tempdir); 
+         ::eosio::testing::base_tester::ignored_features = ignored_features;
          vcfg = def_conf.first;
          config_validator(vcfg);
          vcfg.trusted_producers = trusted_producers;
-
          validating_node = create_validating_node(vcfg, def_conf.second, true);
-
          init(def_conf.first, def_conf.second);
-         execute_setup_policy(setup_policy::complete);
+         execute_setup_policy(policy);
       }
 
-      validating_tester(bool use_genesis) {
-         auto def_conf = default_config(tempdir);
-         vcfg = def_conf.first;
-         config_validator(vcfg);
-         validating_node = create_validating_node(vcfg, def_conf.second, use_genesis);
-      
-         if (use_genesis) {
-            init(def_conf.first, def_conf.second);
-         }
-         else {
-            init(def_conf.first);
-         }
-      }
-
+      // Delete this one after I fix the default one
       validating_tester(const fc::temp_directory& tempdir, bool use_genesis, const std::vector<builtin_protocol_feature_t>& ignored_features = {}) {
          base_tester::ignored_features = ignored_features;
+         
          auto def_conf = default_config(tempdir);
          vcfg = def_conf.first;
          config_validator(vcfg);
+         
          validating_node = create_validating_node(vcfg, def_conf.second, use_genesis);
-
+      
          if (use_genesis) {
             init(def_conf.first, def_conf.second);
          }
@@ -568,6 +554,7 @@ namespace eosio { namespace testing {
          conf_edit(def_conf.first);
          vcfg = def_conf.first;
          config_validator(vcfg);
+         
          validating_node = create_validating_node(vcfg, def_conf.second, use_genesis);
 
          if (use_genesis) {

@@ -218,9 +218,6 @@ namespace eosio { namespace testing {
             schedule_preactivate_protocol_feature();
             produce_block();
             set_before_producer_authority_bios_contract();
-            // if ( !ignored_features.empty() ) {
-            //    preactivate_builtin_protocol_features(ignored_features);
-            // }
             preactivate_builtin_protocol_features(ignored_features);
             produce_block();
             set_bios_contract();
@@ -1143,20 +1140,20 @@ namespace eosio { namespace testing {
          if( !pf.enabled || pf.earliest_allowed_activation_time > current_block_time
              || pfm.is_builtin_activated( *pf.builtin_feature, current_block_num ) ) return;
 
-         // std::function<void(const digest_type&)> check_dependencies =
-         // [&check_dependencies, &ignored_digests, &pf] ( const digest_type& feature ) {
-         //    const auto dependency_is_ignored     = std::find( ignored_features.cbegin(), ignored_features.cend(), feature );
-         //    const auto dependency_has_dependency = std::find( pf.dependencies.cbegin(),  pf.dependencies.cend(),  feature );
-         //    if ( dependency_is_ignored != ignored_features.cend() && dependency_has_dependency != pf.dependencies.cend() ) {
-         //        check_dependencies(*dependency_has_dependency);
-         //    } else {
-         //        FC_ASSERT( pf.builtin_feature, "ignoring a protocol feature that is a dependency for another protocol feature" );
-         //    }
-         // };
+         std::function<void(const digest_type&)> check_dependencies =
+         [&check_dependencies, &ignored_digests, &pf] ( const digest_type& feature ) {
+            const auto dependency_is_ignored     = std::find( ignored_digests.cbegin(), ignored_digests.cend(), feature );
+            const auto dependency_has_dependency = std::find( pf.dependencies.cbegin(),  pf.dependencies.cend(),  feature );
+            if ( dependency_is_ignored != ignored_digests.cend() && dependency_has_dependency != pf.dependencies.cend() ) {
+                check_dependencies(*dependency_has_dependency);
+            } else {
+                FC_ASSERT( pf.builtin_feature, "ignoring a protocol feature that is a dependency for another protocol feature" );
+            }
+         };
 
          const auto digest_is_ignored = std::find(ignored_digests.cbegin(), ignored_digests.cend(), feature_digest);
          if( digest_is_ignored != ignored_digests.cend() ) {
-            // check_dependencies(*feature_is_ignored);
+            check_dependencies(*digest_is_ignored);
             return;
          }
 

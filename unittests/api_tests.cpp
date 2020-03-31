@@ -404,12 +404,9 @@ BOOST_FIXTURE_TEST_CASE(action_receipt_tests, TESTER) { try {
 /*************************************************************************************
  * action_tests test case
  *************************************************************************************/
-BOOST_AUTO_TEST_CASE(action_tests) { try {
-   static fc::temp_directory tempdir;
-   static const std::vector<builtin_protocol_feature_t> ignored_features{builtin_protocol_feature_codenames.find(builtin_protocol_feature_t::stop_deferred_transactions)->first};
-   validating_tester chain{tempdir, true, ignored_features};
-   chain.execute_setup_policy( setup_policy::complete );
-
+BOOST_AUTO_TEST_CASE(action_receipt) { try {
+   validating_tester chain( {}, {::eosio::chain::builtin_protocol_feature_t::stop_deferred_transactions} );
+   
    chain.produce_blocks(2);
    chain.create_account( N(testapi) );
    chain.create_account( N(acc1) );
@@ -472,7 +469,7 @@ BOOST_AUTO_TEST_CASE(action_tests) { try {
       BOOST_CHECK_EQUAL(res->receipt->status, transaction_receipt::executed);
    };
 
-   BOOST_CHECK_EXCEPTION(test_require_notice(chain, raw_bytes, scope), unsatisfied_authorization,
+    BOOST_CHECK_EXCEPTION(test_require_notice(chain, raw_bytes, scope), unsatisfied_authorization,
          [](const unsatisfied_authorization& e) {
             return expect_assert_message(e, "transaction declares authority");
          }
@@ -586,14 +583,12 @@ BOOST_FIXTURE_TEST_CASE(require_notice_tests, TESTER) { try {
    } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_CASE(ram_billing_in_notify_tests) { try {
-   fc::temp_directory tempdir;
-   validating_tester chain( tempdir, true );
-   chain.execute_setup_policy( setup_policy::preactivate_feature_and_new_bios );
+   validating_tester chain( {}, {}, ::eosio::testing::setup_policy::preactivate_feature_and_new_bios );
    const auto& pfm = chain.control->get_protocol_feature_manager();
    const auto& d = pfm.get_builtin_digest(builtin_protocol_feature_t::action_return_value); // testapi requires this
    BOOST_REQUIRE(d);
    chain.preactivate_protocol_features( {*d} );
-
+   
    chain.produce_blocks(2);
    chain.create_account( N(testapi) );
    chain.create_account( N(testapi2) );
@@ -602,18 +597,18 @@ BOOST_AUTO_TEST_CASE(ram_billing_in_notify_tests) { try {
    chain.produce_blocks(1);
    chain.set_code( N(testapi2), contracts::test_api_wasm() );
    chain.produce_blocks(1);
-
+   
    BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( chain, "test_action", "test_ram_billing_in_notify",
                                               fc::raw::pack( ((unsigned __int128)N(testapi2).to_uint64_t() << 64) | N(testapi).to_uint64_t() ) ),
                           subjective_block_production_exception,
                           fc_exception_message_is("Cannot charge RAM to other accounts during notify.")
    );
-
-
+   
+   
    CALL_TEST_FUNCTION( chain, "test_action", "test_ram_billing_in_notify", fc::raw::pack( ((unsigned __int128)N(testapi2).to_uint64_t() << 64) | 0 ) );
-
+   
    CALL_TEST_FUNCTION( chain, "test_action", "test_ram_billing_in_notify", fc::raw::pack( ((unsigned __int128)N(testapi2).to_uint64_t() << 64) | N(testapi2).to_uint64_t() ) );
-
+   
    BOOST_REQUIRE_EQUAL( chain.validate(), true );
 } FC_LOG_AND_RETHROW() }
 
@@ -777,10 +772,7 @@ BOOST_FIXTURE_TEST_CASE(cfa_stateful_api, TESTER)  try {
 } FC_LOG_AND_RETHROW()
 
 BOOST_AUTO_TEST_CASE(deferred_cfa_failed)  try {
-   static fc::temp_directory tempdir;
-   static const std::vector<builtin_protocol_feature_t> ignored_features{builtin_protocol_feature_codenames.find(builtin_protocol_feature_t::stop_deferred_transactions)->first};
-   validating_tester chain{tempdir, true, ignored_features};
-   chain.execute_setup_policy( setup_policy::complete );
+   validating_tester chain( {}, {::eosio::chain::builtin_protocol_feature_t::stop_deferred_transactions} );
    
    chain.create_account( N(testapi) );
    chain.produce_blocks(1);
@@ -817,10 +809,7 @@ BOOST_AUTO_TEST_CASE(deferred_cfa_failed)  try {
 } FC_LOG_AND_RETHROW()
 
 BOOST_AUTO_TEST_CASE(deferred_cfa_success)  try {
-   static fc::temp_directory tempdir;
-   static const std::vector<builtin_protocol_feature_t> ignored_features{builtin_protocol_feature_codenames.find(builtin_protocol_feature_t::stop_deferred_transactions)->first};
-   validating_tester chain{tempdir, true, ignored_features};
-   // chain.execute_setup_policy( setup_policy::complete );
+   validating_tester chain( {}, {::eosio::chain::builtin_protocol_feature_t::stop_deferred_transactions} );
 
    chain.create_account( N(testapi) );
    chain.produce_blocks(1);
@@ -1129,10 +1118,7 @@ BOOST_FIXTURE_TEST_CASE(checktime_hashing_fail, TESTER) { try {
  * transaction_tests test case
  *************************************************************************************/
 BOOST_AUTO_TEST_CASE(transaction_tests) { try {
-   static fc::temp_directory tempdir;
-   static const std::vector<builtin_protocol_feature_t> ignored_features{builtin_protocol_feature_codenames.find(builtin_protocol_feature_t::stop_deferred_transactions)->first};
-   validating_tester chain{tempdir, true, ignored_features};
-   chain.execute_setup_policy( setup_policy::complete );
+   validating_tester chain( {}, {::eosio::chain::builtin_protocol_feature_t::stop_deferred_transactions} );
 
    chain.produce_blocks(2);
    chain.create_account( N(testapi) );
@@ -1227,7 +1213,7 @@ BOOST_AUTO_TEST_CASE(transaction_tests) { try {
 
    // test test_read_transaction
    // this is a bit rough, but I couldn't figure out a better way to compare the hashes
-   auto tx_trace = CALL_TEST_FUNCTION( chain, "test_transaction", "test_read_transaction", {} );
+   auto tx_trace = CALL_TEST_FUNCTION(chain, "test_transaction", "test_read_transaction", {} );
    string sha_expect = tx_trace->id;
    BOOST_TEST_MESSAGE( "tx_trace->action_traces.front().console: = " << tx_trace->action_traces.front().console );
    BOOST_TEST_MESSAGE( "sha_expect = " << sha_expect );
@@ -1239,7 +1225,7 @@ BOOST_AUTO_TEST_CASE(transaction_tests) { try {
    CALL_TEST_FUNCTION(chain, "test_transaction", "test_tapos_block_prefix", fc::raw::pack(chain.control->head_block_id()._hash[1]) );
 
    // test send_action_recurse
-   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION(chain, "test_transaction", "send_action_recurse", {}), eosio::chain::transaction_exception,
+   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( chain, "test_transaction", "send_action_recurse", {}), eosio::chain::transaction_exception,
          [](const eosio::chain::transaction_exception& e) {
             return expect_assert_message(e, "max inline action depth per transaction reached");
          }
@@ -1249,10 +1235,7 @@ BOOST_AUTO_TEST_CASE(transaction_tests) { try {
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_CASE(deferred_transaction_tests) { try {
-   static fc::temp_directory tempdir;
-   static const std::vector<builtin_protocol_feature_t> ignored_features{builtin_protocol_feature_codenames.find(builtin_protocol_feature_t::stop_deferred_transactions)->first};
-   validating_tester chain{tempdir, true, ignored_features};
-   chain.execute_setup_policy( setup_policy::complete );
+   validating_tester chain( {}, {::eosio::chain::builtin_protocol_feature_t::stop_deferred_transactions} );
 
    chain.produce_blocks(2);
    chain.create_accounts( {N(testapi), N(testapi2), N(alice)} );
@@ -1445,9 +1428,7 @@ BOOST_AUTO_TEST_CASE(deferred_transaction_tests) { try {
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_CASE(more_deferred_transaction_tests) { try {
-   fc::temp_directory tempdir;
-   validating_tester chain( tempdir, true );
-   chain.execute_setup_policy( setup_policy::preactivate_feature_and_new_bios );
+   validating_tester chain( {}, {}, ::eosio::testing::setup_policy::preactivate_feature_and_new_bios );
 
    const auto& pfm = chain.control->get_protocol_feature_manager();
    auto d = pfm.get_builtin_digest( builtin_protocol_feature_t::replace_deferred );
