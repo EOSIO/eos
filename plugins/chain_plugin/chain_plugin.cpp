@@ -2232,18 +2232,14 @@ void read_write::push_transactions(const read_write::push_transactions_params& p
 void read_write::send_transaction(const read_write::send_transaction_params& params, next_function<read_write::send_transaction_results> next) {
 
    try {
-      ilog( "${us} - starting send_transaction", ("us", fc::time_point::now().time_since_epoch()) );
       auto pretty_input = std::make_shared<packed_transaction>();
       auto resolver = make_resolver(this, abi_serializer_max_time);
-      ilog( "${us} - starting abi_serializer in send_transaction", ("us", fc::time_point::now().time_since_epoch()) );
       try {
          abi_serializer::from_variant(params, *pretty_input, resolver, abi_serializer_max_time);
       } EOS_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid packed transaction")
 
-      auto id = pretty_input->id();
-      ilog( "${us} - finished abi_serializer in send_transaction (${id})", ("us", fc::time_point::now().time_since_epoch())("id", id) );
       app().get_method<incoming::methods::transaction_async>()(pretty_input, true,
-            [this, next, id=id](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
+            [this, next](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
          if (result.contains<fc::exception_ptr>()) {
             next(result.get<fc::exception_ptr>());
          } else {
@@ -2257,7 +2253,6 @@ void read_write::send_transaction(const read_write::send_transaction_params& par
                   output = *trx_trace_ptr;
                }
 
-               ilog( "${us} - finished send_transaction (${id})", ("us", fc::time_point::now().time_since_epoch())("id", id) );
                const chain::transaction_id_type& id = trx_trace_ptr->id;
                next(read_write::send_transaction_results{id, output});
             } CATCH_AND_CALL(next);

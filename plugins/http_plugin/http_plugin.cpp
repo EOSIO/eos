@@ -365,7 +365,7 @@ namespace eosio {
 
                                  if( trace ) {
                                      auto now = fc::time_point::now().time_since_epoch();
-                                     ilog( "start=${start} end=${end} total=${total}", ("start", start)("end", end)("total", end-start) )
+                                     ilog( "start=${start} end=${end} total=${total}", ("start", start_time)("end", now)("total", now-start_time) );
                                  }
 
                                  response_body.clear();
