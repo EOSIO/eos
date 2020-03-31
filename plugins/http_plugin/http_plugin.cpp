@@ -363,16 +363,16 @@ namespace eosio {
                                     handle_exception<T>( con );
                                  }
 
-                                 if( trace ) {
-                                     auto now = fc::time_point::now().time_since_epoch();
-                                     ilog( "start=${start} end=${end} total=${total}", ("start", start_time)("end", now)("total", now-start_time) );
-                                 }
-
                                  response_body.clear();
                                  const size_t json_size = json.size();
                                  bytes_in_flight += json_size;
+                                 auto before_send = fc::time_point::now().time_since_epoch();
                                  con->send_http_response();
                                  bytes_in_flight -= (json_size + response_size);
+                                 if( trace ) {
+                                     auto now = fc::time_point::now().time_since_epoch();
+                                     ilog( "start=${start} end=${end} send_time=${send_time} total=${total}", ("start", start_time)("end", now)("send_time", now-before_send)("total", now-start_time) );
+                                 }
                               } );
                            }
                         });
