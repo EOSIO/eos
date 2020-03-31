@@ -200,7 +200,7 @@ namespace eosio::chain_apis {
             auto itr = index.find(up);
             if (itr == index.end()) {
                const auto& po = *source_itr;
-               index.emplace(permission_info{ po.owner, po.name, po.last_updated });
+               itr = index.emplace(permission_info{ po.owner, po.name, po.last_updated }).first;
             } else {
                remove_from_bimaps(*itr);
                index.modify(itr, [&](auto& mutable_pi){
