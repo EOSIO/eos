@@ -39,16 +39,21 @@ namespace eosio { namespace chain {
    namespace detail {
       using unique_file = std::unique_ptr<FILE, decltype(&fclose)>;
 
+      struct log_entry {
+         uint32_t         offset;
+         fc::unsigned_int compression;
+         pruned_block_ptr block;
+      };
+
       class block_log_impl {
          public:
-            signed_block_header_ptr  head;
-            block_id_type            head_id;
-            fc::cfile                block_file;
-            fc::cfile                index_file;
-            bool                     open_files = false;
-            bool                     genesis_written_to_block_log = false;
-            uint32_t                 version = 0;
-            uint32_t                 first_block_num = 0;
+            pruned_block_ptr head;
+            fc::cfile        block_file;
+            fc::cfile        index_file;
+            bool             open_files                   = false;
+            bool             genesis_written_to_block_log = false;
+            uint32_t         version                      = 0;
+            uint32_t         first_block_num              = 0;
 
             inline void check_open_files() {
                if( !open_files ) {
@@ -81,11 +86,23 @@ namespace eosio { namespace chain {
 
             static std::vector<char> pack(const pruned_block&                     b,
                                           pruned_transaction::cf_compression_type segment_compression);
-            static void unpack(fc::cfile_datastream& ds, pruned_block& block);
+            static void unpack(fc::cfile_datastream& ds, log_entry& entry);
 
             uint64_t write_log_entry(const pruned_block&                     b,
                                      pruned_transaction::cf_compression_type segment_compression);
-            pruned_block_ptr read_log_entry();
+
+            void             read_block_header(block_header& bh, uint64_t file_pos);
+            pruned_block_ptr read_block(uint64_t pos);
+            void             read_head();
+            log_entry        read_v4_log_entry(uint64_t pos);
+
+            /// calculate the offset from the start of serialized block entry to block start
+            static int offset_to_block_start(uint32_t version) { 
+               if (version >= 4) {
+                  return sizeof(uint32_t) + 1; // the size of offset + compression
+               }
+               return 0;
+            }
       };
 
       void detail::block_log_impl::reopen() {
@@ -260,12 +277,7 @@ namespace eosio { namespace chain {
             my->first_block_num = 1;
          }
 
-         my->head = read_head();
-         if( my->head ) {
-            my->head_id = my->head->id();
-         } else {
-            my->head_id = {};
-         }
+         my->read_head();
 
          if (index_size) {
             ilog("Index is nonempty");
@@ -300,18 +312,18 @@ namespace eosio { namespace chain {
 
       // In version 4 of the irreversible blocks log format, these log entries consists of the following in order:
       //    1. An uint32_t offset from the start of this log entry to the start of the next log entry.
-      //    2. An uint32_t indicating the compression status for the serialization of the pruned_block following this.
+      //    2. An fc::unsigned_int indicating the compression status for the serialization of the pruned_block following this.
       //    3. The serialization of a pruned_block representation of the block for the entry including padding.
 
       std::size_t padded_size = b.maximum_pruned_pack_size(segment_compression);
-      std::vector<char> buffer(padded_size + 2* sizeof(uint32_t));
+      std::vector<char> buffer(padded_size + offset_to_block_start(4));
       fc::datastream<char*> stream(buffer.data(), buffer.size());
 
       uint32_t offset      = buffer.size();
-      uint32_t compression = static_cast<uint32_t>(segment_compression);
       stream.write((char*)&offset, sizeof(offset));
-      stream.write((char*)&compression, sizeof(compression));
-      b.pack(stream, segment_compression);
+      fc::unsigned_int compression = static_cast<uint32_t>(segment_compression);
+      fc::raw::pack(stream, compression);
+      fc::raw::pack(stream, b);
       return buffer;
    }
 
@@ -322,8 +334,11 @@ namespace eosio { namespace chain {
       if (version >= 4)  {
          buffer = detail::block_log_impl::pack(b, segment_compression);
       } else {
+#warning: TODO avoid heap allocation
          auto block_ptr = b.to_signed_block();
          EOS_ASSERT(block_ptr, block_log_append_fail, "Unable to convert block to legacy format");
+         EOS_ASSERT(segment_compression == pruned_transaction::cf_compression_type::none, block_log_append_fail, 
+            "the compression must be \"none\" for legacy format");
          buffer = fc::raw::pack(*block_ptr);
       }
       block_file.write(buffer.data(), buffer.size());
@@ -332,12 +347,13 @@ namespace eosio { namespace chain {
       return pos;
    }
 
-   void detail::block_log_impl::unpack(fc::cfile_datastream& ds, pruned_block& block) { 
-      uint32_t len;
-      uint32_t compression;
-      fc::raw::unpack(ds, len);
-      fc::raw::unpack(ds, compression);
-      block.unpack(ds, static_cast<pruned_transaction::cf_compression_type>(compression));
+   void detail::block_log_impl::unpack(fc::cfile_datastream& ds, detail::log_entry& entry) { 
+      fc::raw::unpack(ds, entry.offset);
+      fc::raw::unpack(ds, entry.compression);
+      EOS_ASSERT(static_cast<pruned_transaction::cf_compression_type>(entry.compression.value) == pruned_transaction::cf_compression_type::none, block_log_exception,
+               "Only support compression_type none");
+      entry.block = std::make_shared<pruned_block>();
+      fc::raw::unpack(ds, *entry.block);
    }
 
 
@@ -367,7 +383,6 @@ namespace eosio { namespace chain {
          auto pos = write_log_entry(*b, segment_compression);
 
          head = b;
-         head_id = b->id();
 
          flush();
 
@@ -408,11 +423,13 @@ namespace eosio { namespace chain {
       auto totem = block_log::npos;
       block_file.write((char*)&totem, sizeof(totem));
 
+      // version must be assigned before this->append() because it is used inside this->append()
+      version = block_log::max_supported_version;
+
       if (first_block) {
          append(first_block, segment_compression);
       } else {
          head.reset();
-         head_id = {};
       }
 
       auto pos = block_file.tellp();
@@ -420,7 +437,6 @@ namespace eosio { namespace chain {
       static_assert( block_log::max_supported_version > 0, "a version number of zero is not supported" );
 
       // going back to write correct version to indicate that all block log header data writes completed successfully
-      version = block_log::max_supported_version;
       block_file.seek( 0 );
       block_file.write( (char*)&version, sizeof(version) );
       block_file.seek( pos );
@@ -451,33 +467,36 @@ namespace eosio { namespace chain {
       block_file << chain_id;
    }
 
-   pruned_block_ptr detail::block_log_impl::read_log_entry() {
+   pruned_block_ptr detail::block_log_impl::read_block(uint64_t pos) {
+      check_open_files();
+      block_file.seek(pos);
       auto ds = block_file.create_datastream();
       if (version >= 4) {
-         pruned_block_ptr result = std::make_shared<pruned_block>();
-         detail::block_log_impl::unpack(ds, *result);
-         return result;
+         log_entry        entry;
+         detail::block_log_impl::unpack(ds, entry);
+         return entry.block;
       } else {
-         signed_block_ptr result = std::make_shared<signed_block>();
-         fc::raw::unpack(ds, *result);
-         return std::make_shared<pruned_block>(*result, true);
+         signed_block block;
+         fc::raw::unpack(ds, block);
+#warning: TODO: use move(block)
+         return std::make_shared<pruned_block>(block, true);
       }
    }
 
-   pruned_block_ptr block_log::read_block(uint64_t pos) const {
-      my->check_open_files();
-      my->block_file.seek(pos);
-      return my->read_log_entry();
+   detail::log_entry detail::block_log_impl::read_v4_log_entry(uint64_t pos) {
+      check_open_files();
+      block_file.seek(pos);
+      auto ds = block_file.create_datastream();
+      log_entry entry;
+      block_log_impl::unpack(ds, entry);
+      return entry;
    }
 
-   void block_log::read_block_header(block_header& bh, uint64_t pos) const {
-      my->check_open_files();
+   void detail::block_log_impl::read_block_header(block_header& bh, uint64_t pos) {
+      pos += offset_to_block_start(version);
 
-      if (my->version == 4)
-         pos += 2 * sizeof(uint32_t);
-
-      my->block_file.seek(pos);
-      auto ds = my->block_file.create_datastream();
+      block_file.seek(pos);
+      auto ds = block_file.create_datastream();
       fc::raw::unpack(ds, bh);
    }
 
@@ -491,9 +510,9 @@ namespace eosio { namespace chain {
          pruned_block_ptr b;
          uint64_t pos = get_block_pos(block_num);
          if (pos != npos) {
-            b = read_block(pos);
-            EOS_ASSERT(b->block_num() == block_num, reversible_blocks_exception,
-                      "Wrong block was read from block log.", ("returned", b->block_num())("expected", block_num));
+            b = my->read_block(pos);
+            EOS_ASSERT(b->block_num() == block_num, block_log_exception,
+                      "Wrong block was read from block log.");
          }
          return b;
       } FC_LOG_AND_RETHROW()
@@ -504,7 +523,7 @@ namespace eosio { namespace chain {
          uint64_t pos = get_block_pos(block_num);
          if (pos != npos) {
             block_header bh;
-            read_block_header(bh, pos);
+            my->read_block_header(bh, pos);
             EOS_ASSERT(bh.block_num() == block_num, reversible_blocks_exception,
                        "Wrong block header was read from block log.", ("returned", bh.block_num())("expected", block_num));
             return bh.id();
@@ -515,7 +534,7 @@ namespace eosio { namespace chain {
 
    uint64_t block_log::get_block_pos(uint32_t block_num) const {
       my->check_open_files();
-      if (!(my->head && block_num <= block_header::num_from_id(my->head_id) && block_num >= my->first_block_num))
+      if (!(my->head && block_num <= block_header::num_from_id(my->head->id()) && block_num >= my->first_block_num))
          return npos;
       my->index_file.seek(sizeof(uint64_t) * (block_num - my->first_block_num));
       uint64_t pos;
@@ -523,31 +542,23 @@ namespace eosio { namespace chain {
       return pos;
    }
 
-   signed_block_header_ptr block_log::read_head()const {
-      my->check_open_files();
 
+   void detail::block_log_impl::read_head() {
       uint64_t pos;
 
-      // Check that the file is not empty
-      my->block_file.seek_end(0);
-      if (my->block_file.tellp() <= sizeof(pos))
-         return {};
-
-      my->block_file.seek_end(-sizeof(pos));
-      my->block_file.read((char*)&pos, sizeof(pos));
-      if (pos != npos) {
-         return read_block(pos);
-      } else {
-         return {};
-      }
+      block_file.seek_end(-sizeof(pos));
+      block_file.read((char*)&pos, sizeof(pos));
+      if (pos != block_log::npos) {
+         head = read_block(pos);
+      } 
    }
 
-   const signed_block_header_ptr& block_log::head() const {
-      return my->head;
+   signed_block_header* block_log::head() const {
+      return my->head.get();
    }
 
-   const block_id_type&    block_log::head_id() const {
-      return my->head_id;
+   block_id_type block_log::head_id() const {
+      return my->head->id();
    }
 
    uint32_t block_log::first_block_num() const {
@@ -834,6 +845,56 @@ namespace eosio { namespace chain {
       }));
    }
 
+   bool prune(pruned_transaction& ptx) { 
+      ptx.prune_all();
+      return true;
+   }
+   
+   void block_log::prune_transaction(uint32_t block_num, transaction_id_type id) {
+      try {
+         EOS_ASSERT(my->version >= 4, block_log_exception, "The block log version ${version} does not support transaction pruning.", ("version", my->version));
+         uint64_t pos = get_block_pos(block_num);
+         EOS_ASSERT(pos != npos, block_log_exception,
+                     "Specified block_num ${block_num} does not exist in block log.", ("block_num", block_num));
+
+         auto entry = my->read_v4_log_entry(pos);
+
+         EOS_ASSERT(entry.block->block_num() == block_num, block_log_exception,
+                     "Wrong block was read from block log.");
+
+         auto pruner = overloaded{[](transaction_id_type&) { return false; },
+                                  [&id](pruned_transaction& ptx) { return ptx.id() == id && prune(ptx); }};
+
+         for (auto trx : entry.block->transactions) {
+            if (trx.trx.visit(pruner)) {
+               my->block_file.seek(pos);
+               std::vector<char> buffer = detail::block_log_impl::pack(*entry.block, static_cast<pruned_transaction::cf_compression_type>(entry.compression.value));
+               my->block_file.write(buffer.data(), buffer.size());
+               my->block_file.flush();
+               return;
+            }
+         }
+
+         EOS_ASSERT(true, block_log_exception,
+                  "Block ${block_num} does not contain transaction ${id}.", ("id", id)("block_num", block_num));
+         
+      }
+      FC_LOG_AND_RETHROW()
+   }
+
+   int trim_data::blknum_offset_from_block_entry(uint32_t block_log_version) { 
+
+      //to derive blknum_offset==14 see block_header.hpp and note on disk struct is packed
+      //   block_timestamp_type timestamp;                  //bytes 0:3
+      //   account_name         producer;                   //bytes 4:11
+      //   uint16_t             confirmed;                  //bytes 12:13
+      //   block_id_type        previous;                   //bytes 14:45, low 4 bytes is big endian block number of previous block
+      
+      int blknum_offset = 14;
+      blknum_offset += detail::block_log_impl::offset_to_block_start(block_log_version);
+      return blknum_offset;
+   }
+
    detail::reverse_iterator::reverse_iterator()
    : _file(nullptr, &fclose)
    , _buffer_ptr(std::make_unique<char[]>(_buf_len)) {
@@ -880,10 +941,10 @@ namespace eosio { namespace chain {
       uint32_t bnum = 0;
       if (block_pos >= _start_of_buffer_position) {
          const uint32_t index_of_block = block_pos - _start_of_buffer_position;
-         bnum = *reinterpret_cast<uint32_t*>(buf + index_of_block + trim_data::blknum_offset);  //block number of previous block (is big endian)
+         bnum = *reinterpret_cast<uint32_t*>(buf + index_of_block + trim_data::blknum_offset_from_block_entry(_version));  //block number of previous block (is big endian)
       }
       else {
-         const auto blknum_offset_pos = block_pos + trim_data::blknum_offset;
+         const auto blknum_offset_pos = block_pos + trim_data::trim_data::blknum_offset_from_block_entry(_version);
          auto status = fseek(_file.get(), blknum_offset_pos, SEEK_SET);
          EOS_ASSERT( status == 0, block_log_exception, "Could not seek in '${blocks_log}' to position: ${pos}. Returned status: ${status}", ("blocks_log", _block_file_name)("pos", blknum_offset_pos)("status", status) );
          auto size = fread((void*)&bnum, sizeof(bnum), 1, _file.get());
@@ -1065,8 +1126,8 @@ namespace eosio { namespace chain {
       new_block_file.close();
       new_block_file.open( LOG_RW_C );
 
-      static_assert( block_log::max_supported_version == 4,
-                     "Code was written to support version 3 format, need to update this code for latest format." );
+      static_assert( block_log::max_supported_version >= 3,
+                     "Code was written to support format of version 3 or greater, need to update this code for latest format." );
       uint32_t version = block_log::max_supported_version;
       new_block_file.seek(0);
       new_block_file.write((char*)&version, sizeof(version));
@@ -1248,7 +1309,7 @@ namespace eosio { namespace chain {
       EOS_ASSERT( size == 1, block_log_exception, "cannot read ${file} entry for block ${b}", ("file", index_file_name.string())("b",n) );
 
       //read blocks.log and verify block number n is found at the determined file position
-      const auto calc_blknum_pos = block_n_pos + blknum_offset;
+      const auto calc_blknum_pos = block_n_pos + blknum_offset_from_block_entry(version);
       status = fseek(blk_in, calc_blknum_pos, SEEK_SET);
       EOS_ASSERT( status == 0, block_log_exception, "cannot seek to ${file} ${pos} from beginning of file", ("file", block_file_name.string())("pos", calc_blknum_pos) );
       const uint64_t block_offset_pos = ftell(blk_in);

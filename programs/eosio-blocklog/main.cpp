@@ -68,7 +68,7 @@ struct report_time {
 void blocklog::read_log() {
    report_time rt("reading log");
    block_log block_logger(blocks_dir);
-   const auto end = block_logger.read_head();
+   const auto end = block_logger.head();
    EOS_ASSERT( end, block_log_exception, "No blocks found in block log" );
    EOS_ASSERT( end->block_num() > 1, block_log_exception, "Only one block found in block log" );
 
@@ -249,8 +249,9 @@ void smoke_test(bfs::path block_dir) {
    uint64_t file_pos;
    auto size = fread((void*)&file_pos, sizeof(uint64_t), 1, td.blk_in);
    EOS_ASSERT( size == 1, block_log_exception, "${file} read fails", ("file", td.block_file_name.string()) );
-   status = fseek(td.blk_in, file_pos + trim_data::blknum_offset, SEEK_SET);
-   EOS_ASSERT( status == 0, block_log_exception, "cannot seek to ${file} ${pos} from beginning of file", ("file", td.block_file_name.string())("pos", file_pos + trim_data::blknum_offset) );
+   int blknum_offset = trim_data::blknum_offset_from_block_entry(td.version);
+   status            = fseek(td.blk_in, file_pos + blknum_offset, SEEK_SET);
+   EOS_ASSERT( status == 0, block_log_exception, "cannot seek to ${file} ${pos} from beginning of file", ("file", td.block_file_name.string())("pos", file_pos + blknum_offset) );
    uint32_t bnum;
    size = fread((void*)&bnum, sizeof(uint32_t), 1, td.blk_in);
    EOS_ASSERT( size == 1, block_log_exception, "${file} read fails", ("file", td.block_file_name.string()) );

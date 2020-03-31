@@ -46,9 +46,6 @@ namespace eosio { namespace chain {
          [[deprecated]] void reset( const genesis_state& gs, const signed_block_ptr& genesis_block );
          void reset( const genesis_state& gs, const pruned_block_ptr& genesis_block, pruned_transaction::cf_compression_type segment_compression);
          void reset( const chain_id_type& chain_id, uint32_t first_block_num );
-
-         pruned_block_ptr read_block(uint64_t file_pos) const;
-         void             read_block_header(block_header& bh, uint64_t file_pos)const;
          
          block_id_type    read_block_id_by_num(uint32_t block_num)const;
 
@@ -59,10 +56,11 @@ namespace eosio { namespace chain {
           * Return offset of block in file, or block_log::npos if it does not exist.
           */
          uint64_t                       get_block_pos(uint32_t block_num) const;
-         signed_block_header_ptr        read_head() const;
-         const signed_block_header_ptr& head() const;
-         const block_id_type&           head_id() const;
+         signed_block_header*           head() const;
+         [[deprecated]] block_id_type   head_id() const; // use head()->id() instead
          uint32_t                       first_block_num() const;
+
+         void prune_transaction(uint32_t block_num, transaction_id_type id);
 
          static const uint64_t npos = std::numeric_limits<uint64_t>::max();
 
@@ -92,12 +90,6 @@ namespace eosio { namespace chain {
          std::unique_ptr<detail::block_log_impl> my;
    };
 
-//to derive blknum_offset==14 see block_header.hpp and note on disk struct is packed
-//   block_timestamp_type timestamp;                  //bytes 0:3
-//   account_name         producer;                   //bytes 4:11
-//   uint16_t             confirmed;                  //bytes 12:13
-//   block_id_type        previous;                   //bytes 14:45, low 4 bytes is big endian block number of previous block
-
    struct trim_data {            //used by trim_blocklog_front(), trim_blocklog_end(), and smoke_test()
       trim_data(fc::path block_dir);
       ~trim_data();
@@ -113,6 +105,6 @@ namespace eosio { namespace chain {
       uint64_t first_block_pos = 0;                      //file position in blocks.log for the first block in the log
       chain_id_type chain_id;
 
-      static constexpr int blknum_offset{14};            //offset from start of block to 4 byte block number, valid for the only allowed versions
+      static int blknum_offset_from_block_entry(uint32_t block_log_version);
    };
 } }

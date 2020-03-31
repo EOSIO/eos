@@ -135,7 +135,6 @@ namespace eosio { namespace chain {
       enum class prune_state_type : uint8_t { incomplete, complete, complete_legacy };
 
       pruned_block() = default;
-      explicit pruned_block( const signed_block_header& h ):signed_block_header(h){}
       pruned_block( const signed_block&, bool legacy );
       pruned_block( pruned_block&& ) = default;
       pruned_block& operator=(const pruned_block&) = delete;

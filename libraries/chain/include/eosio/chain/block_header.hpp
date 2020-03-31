@@ -75,9 +75,7 @@ namespace eosio { namespace chain {
    {
       signature_type    producer_signature;
    };
-
-   using signed_block_header_ptr = std::shared_ptr<signed_block_header>;
-
+   
 } } /// namespace eosio::chain
 
 FC_REFLECT(eosio::chain::block_header,
