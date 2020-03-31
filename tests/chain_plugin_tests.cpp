@@ -89,7 +89,7 @@ BOOST_FIXTURE_TEST_CASE( get_block_with_invalid_abi, TESTER ) try {
    char headnumstr[20];
    sprintf(headnumstr, "%d", headnum);
    chain_apis::read_only::get_block_params param{headnumstr};
-   chain_apis::read_only plugin(*(this->control), fc::microseconds::maximum());
+   chain_apis::read_only plugin(*(this->control), {}, fc::microseconds::maximum());
 
    // block should be decoded successfully
    std::string block_str = json::to_pretty_string(plugin.get_block(param));
