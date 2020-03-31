@@ -278,11 +278,6 @@ void launch_compile_monitor(int nodeos_fd) {
 
 struct compile_monitor_trampoline {
    void start() {
-      struct sigaction sa;
-      sa.sa_handler = SIG_DFL;
-      sa.sa_flags = SA_NOCLDWAIT;
-      sigaction(SIGCHLD, &sa, nullptr);
-
       //create communication socket; let's hold off on asio usage until all forks are done
       int socks[2];
       socketpair(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0, socks);
