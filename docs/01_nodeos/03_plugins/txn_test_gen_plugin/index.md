@@ -1,4 +1,3 @@
-# txn_test_gen_plugin
 
 ## Description
 

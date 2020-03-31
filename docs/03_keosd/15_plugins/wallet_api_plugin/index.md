@@ -1,5 +1,3 @@
-# wallet_api_plugin
-
 ## Description
 
 The `wallet_api_plugin` exposes functionality from the [`wallet_plugin`](../wallet_plugin/index.md) to the RPC API interface managed by the [`http_plugin`](../http_plugin/index.md).

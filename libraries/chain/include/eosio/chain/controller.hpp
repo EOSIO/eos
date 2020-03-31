@@ -228,6 +228,7 @@ namespace eosio { namespace chain {
 
          uint32_t last_irreversible_block_num() const;
          block_id_type last_irreversible_block_id() const;
+         time_point last_irreversible_block_time() const;
 
          signed_block_ptr fetch_block_by_number( uint32_t block_num )const;
          signed_block_ptr fetch_block_by_id( block_id_type id )const;
@@ -272,11 +273,11 @@ namespace eosio { namespace chain {
 
          int64_t set_proposed_producers( vector<producer_authority> producers );
 
-         bool light_validation_allowed(bool replay_opts_disabled_by_policy) const;
+         bool light_validation_allowed() const;
          bool skip_auth_check()const;
-         bool skip_db_sessions( )const;
-         bool skip_db_sessions( block_status bs )const;
          bool skip_trx_checks()const;
+         bool skip_db_sessions()const;
+         bool skip_db_sessions( block_status bs )const;
          bool is_trusted_producer( const account_name& producer) const;
 
          bool contracts_console()const;
@@ -286,7 +287,6 @@ namespace eosio { namespace chain {
          db_read_mode get_read_mode()const;
          validation_mode get_validation_mode()const;
          uint32_t get_terminate_at_block()const;
-         bool in_immutable_mode()const;
 
          void set_subjective_cpu_leeway(fc::microseconds leeway);
          fc::optional<fc::microseconds> get_subjective_cpu_leeway() const;
@@ -324,24 +324,23 @@ namespace eosio { namespace chain {
          wasm_interface& get_wasm_interface();
 
 
-         optional<abi_serializer> get_abi_serializer( account_name n, const fc::microseconds& max_serialization_time )const {
+         optional<abi_serializer> get_abi_serializer( account_name n, const abi_serializer::yield_function_t& yield )const {
             if( n.good() ) {
                try {
                   const auto& a = get_account( n );
                   abi_def abi;
                   if( abi_serializer::to_abi( a.abi, abi ))
-                     return abi_serializer( abi, max_serialization_time );
+                     return abi_serializer( abi, yield );
                } FC_CAPTURE_AND_LOG((n))
             }
             return optional<abi_serializer>();
          }
 
          template<typename T>
-         fc::variant to_variant_with_abi( const T& obj, const fc::microseconds& max_serialization_time ) {
+         fc::variant to_variant_with_abi( const T& obj, const abi_serializer::yield_function_t& yield ) {
             fc::variant pretty_output;
             abi_serializer::to_variant( obj, pretty_output,
-                                        [&]( account_name n ){ return get_abi_serializer( n, max_serialization_time ); },
-                                        max_serialization_time);
+                                        [&]( account_name n ){ return get_abi_serializer( n, yield ); }, yield );
             return pretty_output;
          }
 
