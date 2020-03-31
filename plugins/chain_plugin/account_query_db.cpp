@@ -318,7 +318,7 @@ namespace eosio::chain_apis {
                   // construct a range between the lower bound of the given account and the lower bound of the
                   // next possible account name
                   const auto begin = name_bimap.left.lower_bound(a);
-                  const auto next_account_name = chain::name(a.actor.to_uint64_t());
+                  const auto next_account_name = chain::name(a.actor.to_uint64_t() + 1);
                   const auto end = name_bimap.left.lower_bound(name_pair_t{next_account_name,a.permission});
                   return std::make_pair(begin, end);
                } else {
