@@ -254,12 +254,14 @@ namespace impl {
    template<typename T>
    constexpr bool single_type_requires_abi_v() {
       return std::is_base_of<transaction, T>::value ||
+             std::is_same<T, packed_transaction_v0>::value ||
              std::is_same<T, packed_transaction>::value ||
              std::is_same<T, transaction_trace>::value ||
              std::is_same<T, transaction_receipt>::value ||
              std::is_same<T, action_trace>::value ||
              std::is_same<T, signed_transaction>::value ||
              std::is_same<T, signed_block_v0>::value ||
+             std::is_same<T, signed_block>::value ||
              std::is_same<T, action>::value;
    }
 
@@ -442,13 +444,31 @@ namespace impl {
       }
 
       /**
+       * overload of to_variant_object for packed_transaction_v0
+       *
+       * This matches the FC_REFLECT for this type, but this is provided to allow extracting the contents of ptrx.transaction
+       */
+      template<typename Resolver>
+      static void add( mutable_variant_object &out, const char* name, const packed_transaction_v0& ptrx, Resolver resolver, abi_traverse_context& ctx )
+      {
+         static_assert(fc::reflector<packed_transaction_v0>::total_member_count == 4);
+         auto h = ctx.enter_scope();
+         mutable_variant_object mvo;
+         auto trx = ptrx.get_transaction();
+         mvo("id", trx.id());
+         mvo("signatures", ptrx.get_signatures());
+         mvo("compression", ptrx.get_compression());
+         mvo("packed_context_free_data", ptrx.get_packed_context_free_data());
+         mvo("context_free_data", ptrx.get_context_free_data());
+         mvo("packed_trx", ptrx.get_packed_transaction());
+         add(mvo, "transaction", trx, resolver, ctx);
+         out(name, std::move(mvo));
+      }
+
+      /**
        * overload of to_variant_object for packed_transaction, providing original packed_transaction_v0 variant layout
        *
        * This matches the FC_REFLECT for this type, but this is provided to allow extracting the contents of ptrx.transaction
-       * @tparam Resolver
-       * @param act
-       * @param resolver
-       * @return
        */
       template<typename Resolver>
       static void add( mutable_variant_object &out, const char* name, const packed_transaction& ptrx, Resolver resolver, abi_traverse_context& ctx )
@@ -457,15 +477,18 @@ namespace impl {
          auto h = ctx.enter_scope();
          mutable_variant_object mvo;
          auto trx = ptrx.get_transaction();
-/* TODO support old packed_transaction_v0 format?
          mvo("id", trx.id());
-         mvo("signatures", ptrx.get_signatures() != nullptr ? *ptrx.get_signatures() : vector<signature_type>() );
+         mvo("signatures", ptrx.get_signatures() != nullptr ? *ptrx.get_signatures() : vector<signature_type>());
          mvo("compression", ptrx.get_compression());
-         mvo("packed_context_free_data", ptrx.get_packed_context_free_data());
-         mvo("context_free_data", ptrx.get_context_free_data());
+         if( ptrx.get_prunable_data().prunable_data.contains<prunable_transaction_data::full_legacy>() ) {
+            const auto& legacy = ptrx.get_prunable_data().prunable_data.get<prunable_transaction_data::full_legacy>();
+            mvo( "packed_context_free_data", legacy.packed_context_free_data );
+         } else {
+            mvo( "packed_context_free_data", bytes() );
+         }
+         mvo("context_free_data", ptrx.get_context_free_data() != nullptr ? *ptrx.get_context_free_data() : vector<bytes>());
          mvo("packed_trx", ptrx.get_packed_transaction());
          add(mvo, "transaction", trx, resolver, ctx);
-*/
          out(name, std::move(mvo));
       }
 
@@ -713,9 +736,16 @@ namespace impl {
       template<typename Resolver>
       static void extract( const variant& v, packed_transaction& ptrx, Resolver resolver, abi_traverse_context& ctx )
       {
+         packed_transaction_v0 v0;
+         extract( v, v0, std::move( resolver ), ctx );
+         ptrx = packed_transaction( std::move( v0 ), true );
+      }
+
+      template<typename Resolver>
+      static void extract( const variant& v, packed_transaction_v0& ptrx, Resolver resolver, abi_traverse_context& ctx )
+      {
          auto h = ctx.enter_scope();
          const variant_object& vo = v.get_object();
-/* TODO figure out what to do with serialization
          EOS_ASSERT(vo.contains("signatures"), packed_transaction_type_exception, "Missing signatures");
          EOS_ASSERT(vo.contains("compression"), packed_transaction_type_exception, "Missing compression");
          std::vector<signature_type> signatures;
@@ -737,26 +767,26 @@ namespace impl {
             bytes packed_trx;
             from_variant(vo["packed_trx"], packed_trx);
             if( use_packed_cfd ) {
-               ptrx = packed_transaction( std::move( packed_trx ), std::move( signatures ), std::move( packed_cfd ), compression );
+               ptrx = packed_transaction_v0( std::move( packed_trx ), std::move( signatures ), std::move( packed_cfd ), compression );
             } else {
-               ptrx = packed_transaction( std::move( packed_trx ), std::move( signatures ), std::move( cfd ), compression );
+               ptrx = packed_transaction_v0( std::move( packed_trx ), std::move( signatures ), std::move( cfd ), compression );
             }
          } else {
             EOS_ASSERT(vo.contains("transaction"), packed_transaction_type_exception, "Missing transaction");
             if( use_packed_cfd ) {
                transaction trx;
                extract( vo["transaction"], trx, resolver, ctx );
-               ptrx = packed_transaction( std::move(trx), std::move(signatures), std::move(packed_cfd), compression );
+               ptrx = packed_transaction_v0( std::move(trx), std::move(signatures), std::move(packed_cfd), compression );
             } else {
                signed_transaction trx;
                extract( vo["transaction"], trx, resolver, ctx );
                trx.signatures = std::move( signatures );
                trx.context_free_data = std::move(cfd);
-               ptrx = packed_transaction( std::move( trx ), compression );
+               ptrx = packed_transaction_v0( std::move( trx ), compression );
             }
          }
-*/
       }
+
    };
 
    /**

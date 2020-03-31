@@ -191,6 +191,7 @@ namespace eosio { namespace chain {
       friend struct fc::reflector<packed_transaction_v0>;
       friend struct fc::reflector_init_visitor<packed_transaction_v0>;
       friend struct fc::has_reflector_init<packed_transaction_v0>;
+      friend struct packed_transaction;
       void reflector_init();
    private:
       vector<signature_type>                  signatures;
@@ -233,7 +234,7 @@ namespace eosio { namespace chain {
 
       struct full_legacy {
          std::vector<signature_type>     signatures;
-         std::vector<char>               packed_context_free_data;
+         bytes                           packed_context_free_data;
       };
 
       using prunable_data_type = fc::static_variant< full_legacy,
@@ -263,6 +264,7 @@ namespace eosio { namespace chain {
       packed_transaction& operator=(packed_transaction&&) = default;
 
       packed_transaction(const packed_transaction_v0& other, bool legacy) : packed_transaction(other.get_signed_transaction(), legacy, other.get_compression()) {}
+      packed_transaction(packed_transaction_v0&& other, bool legacy) : packed_transaction(std::move( other.unpacked_trx ), legacy, other.get_compression()) {}
       explicit packed_transaction(const signed_transaction& t, bool legacy, compression_type _compression = compression_type::none);
       explicit packed_transaction(signed_transaction&& t, bool legacy, compression_type _compression = compression_type::none);
 
