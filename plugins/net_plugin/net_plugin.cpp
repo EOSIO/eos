@@ -977,17 +977,31 @@ namespace eosio {
             lib_num, head_num, msg_head_id]() {
          auto msg_head_num = block_header::num_from_id(msg_head_id);
          bool on_fork = msg_head_num == 0;
-         try {
-            const controller& cc = chain_plug->chain();
-            on_fork = on_fork || cc.get_block_id_for_num( msg_head_num ) != msg_head_id;
-         } catch( ... ) {
-            on_fork = true;
+         bool unknown_block = false;
+         if( !on_fork ) {
+            try {
+               const controller& cc = chain_plug->chain();
+               block_id_type my_id = cc.get_block_id_for_num( msg_head_num );
+               on_fork = my_id != msg_head_id;
+            } catch( const unknown_block_exception& ) {
+               unknown_block = true;
+            } catch( ... ) {
+               on_fork = true;
+            }
          }
-         if( on_fork ) msg_head_num = 0;
-         // if peer on fork, start at their last lib, otherwise we can start at msg_head+1
-         c->strand.post( [c, msg_head_num, lib_num, head_num]() {
-            c->blk_send_branch_impl( msg_head_num, lib_num, head_num );
-         } );
+         if( unknown_block ) {
+            c->strand.post( [msg_head_num, c]() {
+               peer_ilog( c, "Peer asked for unknown block ${mn}, sending: benign_other go away", ("mn", msg_head_num) );
+               c->no_retry = benign_other;
+               c->enqueue( go_away_message( benign_other ) );
+            } );
+         } else {
+            if( on_fork ) msg_head_num = 0;
+            // if peer on fork, start at their last lib, otherwise we can start at msg_head+1
+            c->strand.post( [c, msg_head_num, lib_num, head_num]() {
+               c->blk_send_branch_impl( msg_head_num, lib_num, head_num );
+            } );
+         }
       } );
    }
 
@@ -1168,7 +1182,10 @@ namespace eosio {
          connection_ptr c = weak.lock();
          if( !c ) return;
          controller& cc = my_impl->chain_plug->chain();
-         signed_block_ptr sb = cc.fetch_block_by_number( num );
+         signed_block_ptr sb;
+         try {
+            sb = cc.fetch_block_by_number( num );
+         } FC_LOG_AND_DROP();
          if( sb ) {
             c->strand.post( [c, sb{std::move(sb)}]() {
                c->enqueue_block( sb, true );
@@ -2622,27 +2639,20 @@ namespace eosio {
 
             if( peer_lib <= lib_num && peer_lib > 0 ) {
                bool on_fork = false;
-               bool unknown_block = false;
                try {
                   block_id_type peer_lib_id = cc.get_block_id_for_num( peer_lib );
                   on_fork = (msg_lib_id != peer_lib_id);
                } catch( const unknown_block_exception& ) {
-                  peer_ilog( c, "peer last irreversible block ${pl} is unknown", ("pl", peer_lib) );
-                  unknown_block = true;
+                  // allow this for now, will be checked on sync
+                  peer_dlog( c, "peer last irreversible block ${pl} is unknown", ("pl", peer_lib) );
                } catch( ... ) {
                   peer_wlog( c, "caught an exception getting block id for ${pl}", ("pl", peer_lib) );
                   on_fork = true;
                }
-               if( on_fork || unknown_block ) {
-                  c->strand.post( [on_fork, unknown_block, c]() {
-                     if( on_fork ) {
-                        peer_elog( c, "Peer chain is forked, sending: forked go away" );
-                        c->enqueue( go_away_message( forked ) );
-                     } else if( unknown_block ) {
-                        peer_ilog( c, "Peer asked for unknown block, sending: benign_other go away" );
-                        c->no_retry = benign_other;
-                        c->enqueue( go_away_message( benign_other ) );
-                     }
+               if( on_fork ) {
+                  c->strand.post( [c]() {
+                     peer_elog( c, "Peer chain is forked, sending: forked go away" );
+                     c->enqueue( go_away_message( forked ) );
                   } );
                }
             }
