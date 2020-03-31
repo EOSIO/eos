@@ -409,10 +409,10 @@ fc::variant push_transaction( signed_transaction& trx, const std::vector<public_
 
    if (!tx_dont_broadcast) {
       if (tx_use_old_rpc) {
-         return call(push_txn_func, packed_transaction(trx, compression));
+         return call(push_txn_func, packed_transaction_v0(trx, compression));
       } else {
          try {
-            return call(send_txn_func, packed_transaction(trx, compression));
+            return call(send_txn_func, packed_transaction_v0(trx, compression));
          }
          catch (chain::missing_chain_api_plugin_exception &) {
             std::cerr << "New RPC send_transaction may not be supported. Add flag --use-old-rpc to use old RPC push_transaction instead." << std::endl;
@@ -429,7 +429,7 @@ fc::variant push_transaction( signed_transaction& trx, const std::vector<public_
             return fc::variant(trx);
          }
       } else {
-        return fc::variant(packed_transaction(trx, compression));
+        return fc::variant(packed_transaction_v0(trx, compression));
       }
    }
 }
@@ -2521,11 +2521,11 @@ int main( int argc, char** argv ) {
             abi_serializer::from_variant( trx_var, trx, abi_serializer_resolver, abi_serializer::create_yield_function( abi_serializer_max_time ) );
          } EOS_RETHROW_EXCEPTIONS( transaction_type_exception, "Invalid transaction format: '${data}'",
                                    ("data", fc::json::to_string(trx_var, fc::time_point::maximum())))
-         std::cout << fc::json::to_pretty_string( packed_transaction( trx, packed_transaction::compression_type::none )) << std::endl;
+         std::cout << fc::json::to_pretty_string( packed_transaction_v0( trx, packed_transaction::compression_type::none )) << std::endl;
       } else {
          try {
             signed_transaction trx = trx_var.as<signed_transaction>();
-            std::cout << fc::json::to_pretty_string( fc::variant( packed_transaction( trx, packed_transaction::compression_type::none ))) << std::endl;
+            std::cout << fc::json::to_pretty_string( fc::variant( packed_transaction_v0( trx, packed_transaction::compression_type::none ))) << std::endl;
          } EOS_RETHROW_EXCEPTIONS( transaction_type_exception, "Fail to convert transaction, --pack-action-data likely needed" )
       }
    });
@@ -3478,7 +3478,7 @@ int main( int argc, char** argv ) {
       }
 
       if(push_trx) {
-         auto trx_result = call(push_txn_func, packed_transaction(trx, packed_transaction::compression_type::none));
+         auto trx_result = call(push_txn_func, packed_transaction_v0(trx, packed_transaction::compression_type::none));
          std::cout << fc::json::to_pretty_string(trx_result) << std::endl;
       } else {
          std::cout << fc::json::to_pretty_string(trx) << std::endl;

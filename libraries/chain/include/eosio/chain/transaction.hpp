@@ -133,38 +133,38 @@ namespace eosio { namespace chain {
                                                     bool allow_duplicate_keys = false )const;
    };
 
-   struct packed_transaction : fc::reflect_init {
+   struct packed_transaction_v0 : fc::reflect_init {
       enum class compression_type {
          none = 0,
          zlib = 1,
       };
 
-      packed_transaction() = default;
-      packed_transaction(packed_transaction&&) = default;
-      explicit packed_transaction(const packed_transaction&) = default;
-      packed_transaction& operator=(const packed_transaction&) = delete;
-      packed_transaction& operator=(packed_transaction&&) = default;
+      packed_transaction_v0() = default;
+      packed_transaction_v0(packed_transaction_v0&&) = default;
+      explicit packed_transaction_v0(const packed_transaction_v0&) = default;
+      packed_transaction_v0& operator=(const packed_transaction_v0&) = delete;
+      packed_transaction_v0& operator=(packed_transaction_v0&&) = default;
 
-      explicit packed_transaction(const signed_transaction& t, compression_type _compression = compression_type::none)
+      explicit packed_transaction_v0(const signed_transaction& t, compression_type _compression = compression_type::none)
       :signatures(t.signatures), compression(_compression), unpacked_trx(t), trx_id(unpacked_trx.id())
       {
          local_pack_transaction();
          local_pack_context_free_data();
       }
 
-      explicit packed_transaction(signed_transaction&& t, compression_type _compression = compression_type::none)
+      explicit packed_transaction_v0(signed_transaction&& t, compression_type _compression = compression_type::none)
       :signatures(t.signatures), compression(_compression), unpacked_trx(std::move(t)), trx_id(unpacked_trx.id())
       {
          local_pack_transaction();
          local_pack_context_free_data();
       }
 
-      packed_transaction(const bytes& packed_txn, const vector<signature_type>& sigs, const bytes& packed_cfd, compression_type _compression);
+      packed_transaction_v0(const bytes& packed_txn, const vector<signature_type>& sigs, const bytes& packed_cfd, compression_type _compression);
 
       // used by abi_serializer
-      packed_transaction( bytes&& packed_txn, vector<signature_type>&& sigs, bytes&& packed_cfd, compression_type _compression );
-      packed_transaction( bytes&& packed_txn, vector<signature_type>&& sigs, vector<bytes>&& cfd, compression_type _compression );
-      packed_transaction( transaction&& t, vector<signature_type>&& sigs, bytes&& packed_cfd, compression_type _compression );
+      packed_transaction_v0( bytes&& packed_txn, vector<signature_type>&& sigs, bytes&& packed_cfd, compression_type _compression );
+      packed_transaction_v0( bytes&& packed_txn, vector<signature_type>&& sigs, vector<bytes>&& cfd, compression_type _compression );
+      packed_transaction_v0( transaction&& t, vector<signature_type>&& sigs, bytes&& packed_cfd, compression_type _compression );
 
       uint32_t get_unprunable_size()const;
       uint32_t get_prunable_size()const;
@@ -172,7 +172,6 @@ namespace eosio { namespace chain {
       digest_type packed_digest()const;
 
       const transaction_id_type& id()const { return trx_id; }
-      bytes               get_raw_transaction()const;
 
       time_point_sec                expiration()const { return unpacked_trx.expiration; }
       const vector<bytes>&          get_context_free_data()const { return unpacked_trx.context_free_data; }
@@ -189,9 +188,9 @@ namespace eosio { namespace chain {
       void local_pack_transaction();
       void local_pack_context_free_data();
 
-      friend struct fc::reflector<packed_transaction>;
-      friend struct fc::reflector_init_visitor<packed_transaction>;
-      friend struct fc::has_reflector_init<packed_transaction>;
+      friend struct fc::reflector<packed_transaction_v0>;
+      friend struct fc::reflector_init_visitor<packed_transaction_v0>;
+      friend struct fc::has_reflector_init<packed_transaction_v0>;
       void reflector_init();
    private:
       vector<signature_type>                  signatures;
@@ -253,19 +252,19 @@ namespace eosio { namespace chain {
       prunable_data_type  prunable_data;
    };
 
-   struct pruned_transaction : fc::reflect_init {
-      using compression_type = packed_transaction::compression_type;
+   struct packed_transaction : fc::reflect_init {
+      using compression_type = packed_transaction_v0::compression_type;
       using cf_compression_type = prunable_transaction_data::compression_type;
 
-      pruned_transaction() = default;
-      pruned_transaction(pruned_transaction&&) = default;
-      explicit pruned_transaction(const pruned_transaction&) = default;
-      pruned_transaction& operator=(const pruned_transaction&) = delete;
-      pruned_transaction& operator=(pruned_transaction&&) = default;
+      packed_transaction() = default;
+      packed_transaction(packed_transaction&&) = default;
+      explicit packed_transaction(const packed_transaction&) = default;
+      packed_transaction& operator=(const packed_transaction&) = delete;
+      packed_transaction& operator=(packed_transaction&&) = default;
 
-      pruned_transaction(const packed_transaction& other, bool legacy) : pruned_transaction(other.get_signed_transaction(), legacy, other.get_compression()) {}
-      explicit pruned_transaction(const signed_transaction& t, bool legacy, compression_type _compression = compression_type::none);
-      explicit pruned_transaction(signed_transaction&& t, bool legacy, compression_type _compression = compression_type::none);
+      packed_transaction(const packed_transaction_v0& other, bool legacy) : packed_transaction(other.get_signed_transaction(), legacy, other.get_compression()) {}
+      explicit packed_transaction(const signed_transaction& t, bool legacy, compression_type _compression = compression_type::none);
+      explicit packed_transaction(signed_transaction&& t, bool legacy, compression_type _compression = compression_type::none);
 
 #if 0
       // used by abi_serializer
@@ -300,9 +299,9 @@ namespace eosio { namespace chain {
 
    private:
 
-      friend struct fc::reflector<pruned_transaction>;
-      friend struct fc::reflector_init_visitor<pruned_transaction>;
-      friend struct fc::has_reflector_init<pruned_transaction>;
+      friend struct fc::reflector<packed_transaction>;
+      friend struct fc::reflector_init_visitor<packed_transaction>;
+      friend struct fc::has_reflector_init<packed_transaction>;
       void reflector_init();
    private:
       fc::enum_type<uint8_t,compression_type> compression;
@@ -315,6 +314,7 @@ namespace eosio { namespace chain {
       transaction_id_type                     trx_id;
    };
 
+   using packed_transaction_v0_ptr = std::shared_ptr<packed_transaction_v0>;
    using packed_transaction_ptr = std::shared_ptr<packed_transaction>;
 
    uint128_t transaction_id_to_sender_id( const transaction_id_type& tid );
@@ -326,10 +326,10 @@ FC_REFLECT( eosio::chain::transaction_header, (expiration)(ref_block_num)(ref_bl
                                               (max_net_usage_words)(max_cpu_usage_ms)(delay_sec) )
 FC_REFLECT_DERIVED( eosio::chain::transaction, (eosio::chain::transaction_header), (context_free_actions)(actions)(transaction_extensions) )
 FC_REFLECT_DERIVED( eosio::chain::signed_transaction, (eosio::chain::transaction), (signatures)(context_free_data) )
-FC_REFLECT_ENUM( eosio::chain::packed_transaction::compression_type, (none)(zlib))
+FC_REFLECT_ENUM( eosio::chain::packed_transaction_v0::compression_type, (none)(zlib))
 // @ignore unpacked_trx
-FC_REFLECT( eosio::chain::packed_transaction, (signatures)(compression)(packed_context_free_data)(packed_trx) )
-FC_REFLECT( eosio::chain::pruned_transaction, (compression)(prunable_data)(packed_trx) )
+FC_REFLECT( eosio::chain::packed_transaction_v0, (signatures)(compression)(packed_context_free_data)(packed_trx) )
+FC_REFLECT( eosio::chain::packed_transaction, (compression)(prunable_data)(packed_trx) )
 FC_REFLECT( eosio::chain::prunable_transaction_data, (prunable_data));
 FC_REFLECT( eosio::chain::prunable_transaction_data::none, (prunable_digest))
 FC_REFLECT( eosio::chain::prunable_transaction_data::signatures_only, (signatures)(context_free_mroot))

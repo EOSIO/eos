@@ -1240,7 +1240,7 @@ struct controller_impl {
 
       signed_transaction dtrx;
       fc::raw::unpack(ds,static_cast<transaction&>(dtrx) );
-      transaction_metadata_ptr trx = transaction_metadata::create_no_recover_keys( packed_transaction( dtrx ), transaction_metadata::trx_type::scheduled );
+      transaction_metadata_ptr trx = transaction_metadata::create_no_recover_keys( packed_transaction( dtrx, true ), transaction_metadata::trx_type::scheduled );
       trx->accepted = true;
 
       transaction_trace_ptr trace;
@@ -1659,7 +1659,7 @@ struct controller_impl {
 
          try {
             transaction_metadata_ptr onbtrx =
-                  transaction_metadata::create_no_recover_keys( packed_transaction( get_on_block_transaction() ), transaction_metadata::trx_type::implicit );
+                  transaction_metadata::create_no_recover_keys( packed_transaction( get_on_block_transaction(), true ), transaction_metadata::trx_type::implicit );
             auto reset_in_trx_requiring_checks = fc::make_scoped_exit([old_value=in_trx_requiring_checks,this](){
                   in_trx_requiring_checks = old_value;
                });
@@ -1928,11 +1928,11 @@ struct controller_impl {
 
             EOS_ASSERT( trx_receipts.size() > 0,
                         block_validate_exception, "expected a receipt",
-                        ("block", *b)("expected_receipt", receipt)
+                        ("block_num", b->block_num())("block_id", producer_block_id)("expected_receipt", receipt)
                       );
             EOS_ASSERT( trx_receipts.size() == num_pending_receipts + 1,
                         block_validate_exception, "expected receipt was not added",
-                        ("block", *b)("expected_receipt", receipt)
+                        ("block_num", b->block_num())("block_id", producer_block_id)("expected_receipt", receipt)
                       );
             const transaction_receipt_header& r = trx_receipts.back();
             EOS_ASSERT( r == static_cast<const transaction_receipt_header&>(receipt),

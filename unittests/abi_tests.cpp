@@ -1495,7 +1495,7 @@ BOOST_AUTO_TEST_CASE(packed_transaction)
    txn.max_cpu_usage_ms = 43;
 
    // pack the transaction to verify that the var unpacking logic is correct
-   auto packed_txn = chain::packed_transaction(txn);
+   auto packed_txn = chain::packed_transaction(txn, true);
 
    const char* packed_transaction_abi = R"=====(
    {

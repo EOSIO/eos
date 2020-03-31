@@ -663,8 +663,7 @@ namespace eosio { namespace chain {
       }
 
       if( bad_block.valid() ) {
-         ilog( "Recovered only up to block number ${num}. Last block in block log was not properly committed:\n${last_block}",
-               ("num", block_num)("last_block", *bad_block) );
+         ilog( "Recovered only up to block number ${num}. Last block in block log was not properly committed.", ("num", block_num) );
       } else if( except_ptr ) {
          std::string error_msg;
 

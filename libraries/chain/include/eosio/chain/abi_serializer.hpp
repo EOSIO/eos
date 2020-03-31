@@ -259,7 +259,7 @@ namespace impl {
              std::is_same<T, transaction_receipt>::value ||
              std::is_same<T, action_trace>::value ||
              std::is_same<T, signed_transaction>::value ||
-             std::is_same<T, signed_block>::value ||
+             std::is_same<T, signed_block_v0>::value ||
              std::is_same<T, action>::value;
    }
 
@@ -442,7 +442,7 @@ namespace impl {
       }
 
       /**
-       * overload of to_variant_object for packed_transaction
+       * overload of to_variant_object for packed_transaction, providing original packed_transaction_v0 variant layout
        *
        * This matches the FC_REFLECT for this type, but this is provided to allow extracting the contents of ptrx.transaction
        * @tparam Resolver
@@ -453,18 +453,19 @@ namespace impl {
       template<typename Resolver>
       static void add( mutable_variant_object &out, const char* name, const packed_transaction& ptrx, Resolver resolver, abi_traverse_context& ctx )
       {
-         static_assert(fc::reflector<packed_transaction>::total_member_count == 4);
+         static_assert(fc::reflector<packed_transaction>::total_member_count == 3);
          auto h = ctx.enter_scope();
          mutable_variant_object mvo;
          auto trx = ptrx.get_transaction();
+/* TODO support old packed_transaction_v0 format?
          mvo("id", trx.id());
-         mvo("signatures", ptrx.get_signatures());
+         mvo("signatures", ptrx.get_signatures() != nullptr ? *ptrx.get_signatures() : vector<signature_type>() );
          mvo("compression", ptrx.get_compression());
          mvo("packed_context_free_data", ptrx.get_packed_context_free_data());
          mvo("context_free_data", ptrx.get_context_free_data());
          mvo("packed_trx", ptrx.get_packed_transaction());
          add(mvo, "transaction", trx, resolver, ctx);
-
+*/
          out(name, std::move(mvo));
       }
 
@@ -505,9 +506,9 @@ namespace impl {
        * block.header_extensions and block.block_extensions
        */
       template<typename Resolver>
-      static void add( mutable_variant_object &out, const char* name, const signed_block& block, Resolver resolver, abi_traverse_context& ctx )
+      static void add( mutable_variant_object &out, const char* name, const signed_block_v0& block, Resolver resolver, abi_traverse_context& ctx )
       {
-         static_assert(fc::reflector<signed_block>::total_member_count == 12);
+         static_assert(fc::reflector<signed_block_v0>::total_member_count == 12);
          auto h = ctx.enter_scope();
          mutable_variant_object mvo;
          mvo("timestamp", block.timestamp);
@@ -714,6 +715,7 @@ namespace impl {
       {
          auto h = ctx.enter_scope();
          const variant_object& vo = v.get_object();
+/* TODO figure out what to do with serialization
          EOS_ASSERT(vo.contains("signatures"), packed_transaction_type_exception, "Missing signatures");
          EOS_ASSERT(vo.contains("compression"), packed_transaction_type_exception, "Missing compression");
          std::vector<signature_type> signatures;
@@ -753,6 +755,7 @@ namespace impl {
                ptrx = packed_transaction( std::move( trx ), compression );
             }
          }
+*/
       }
    };
 
