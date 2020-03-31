@@ -522,8 +522,20 @@ namespace impl {
          out(name, std::move(mvo));
       }
 
+
       /**
-       * overload of to_variant_object for signed_block
+       * overload of to_variant_object for signed_block, support old signed_block_v0 format
+       */
+      template<typename Resolver>
+      static void add( mutable_variant_object &out, const char* name, const signed_block& block, Resolver resolver, abi_traverse_context& ctx )
+      {
+         // TODO: this could be faster by going directly to variant
+         auto sb_v0 = block.to_signed_block_v0();
+         add( out, name, sb_v0, std::move( resolver ), ctx );
+      }
+
+      /**
+       * overload of to_variant_object for signed_block_v0
        *
        * This matches the FC_REFLECT for this type, but this is provided to allow extracting the contents of
        * block.header_extensions and block.block_extensions
