@@ -692,14 +692,16 @@ paths:
               properties:
                 accounts:
                   type: array
-                  description: List of authorizing accounts
+                  description: List of authorizing accounts and/or actor/permissions
                   items:
-                    type: string
+                    anyOf:
+                      - $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
+                      - $ref: "https://eosio.github.io/schemata/v2.0/oas/Authority.yaml"
                 keys:
                   type: array
                   description: List of authorizing keys
                   items:
-                    type: string
+                    $ref: "https://eosio.github.io/schemata/v2.0/oas/PublicKey.yaml"
       responses:
         "200":
           description: OK
