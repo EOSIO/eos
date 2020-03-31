@@ -330,6 +330,7 @@ struct controller_impl {
       set_activation_handler<builtin_protocol_feature_t::webauthn_key>();
       set_activation_handler<builtin_protocol_feature_t::wtmsig_block_signatures>();
       set_activation_handler<builtin_protocol_feature_t::action_return_value>();
+      set_activation_handler<builtin_protocol_feature_t::code_version>();
 
       self.irreversible_block.connect([this](const block_state_ptr& bsp) {
          wasmif.current_lib(bsp->block_num);
@@ -3374,6 +3375,12 @@ void controller_impl::on_activation<builtin_protocol_feature_t::action_return_va
    } );
 }
 
+template<>
+void controller_impl::on_activation<builtin_protocol_feature_t::code_version>() {
+   db.modify( db.get<protocol_state_object>(), [&]( auto& ps ) {
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "get_code_version" );
+   } );
+}
 
 
 /// End of protocol feature activation handlers

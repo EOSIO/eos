@@ -197,6 +197,17 @@ Enables new `set_action_return_value` intrinsic which sets a value that is inclu
 */
             {}
          } )
+         (  builtin_protocol_feature_t::code_version, builtin_protocol_feature_spec{
+            "CODE_VERSION",
+            fc::variant("88be0686bfbb8a950784c808ab99b459151644958651a66cfc90703c3ef29c46").as<digest_type>(),
+            // SHA256 hash of the raw message below within the comment delimiters (do not modify message below).
+/*
+Builtin protocol feature: CODE_VERSION
+
+Allows contracts to read code version of any account
+*/
+            {}
+         } )
    ;
 
 
