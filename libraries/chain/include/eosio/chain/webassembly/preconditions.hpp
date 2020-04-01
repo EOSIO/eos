@@ -96,6 +96,9 @@ namespace eosio { namespace chain { namespace webassembly {
             using namespace eosio::vm;
             using arg_t = decltype(arg);
             if constexpr (is_span_type_v<arg_t>) {
+               // check alignment while we are here
+               EOS_ASSERT( reinterpret_cast<std::uintptr_t>(arg.data()) % alignof(dependent_type_t<arg_t>) == 0,
+                     wasm_exception, "memory not aligned" );
                eosio::vm::invoke_on<false, eosio::vm::invoke_on_all_t>([&](auto narg, auto&&... nrest) {
                   using nested_arg_t = decltype(arg);
                   if constexpr (eosio::vm::is_span_type_v<nested_arg_t>)

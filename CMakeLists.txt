@@ -63,17 +63,17 @@ endif()
 #  * definition EOSIO_<RUNTIME>_RUNTIME_ENABLED defined in public libchain interface
 #  * ctest entries with --runtime
 # TODO reenable later
-#if(CMAKE_SIZEOF_VOID_P EQUAL 8 AND NOT WIN32)
-#   if("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux" AND "${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
-#      list(APPEND EOSIO_WASM_RUNTIMES eos-vm-oc)
-#      # EOS VM OC requires LLVM, but move the check up here to a central location so that the EosioTester.cmakes
-#      # can be created with the exact version found
-#      find_package(LLVM REQUIRED CONFIG)
-#      if(LLVM_VERSION_MAJOR VERSION_LESS 7 OR LLVM_VERSION_MAJOR VERSION_GREATER 10)
-#	      message(FATAL_ERROR "EOSIO requires an LLVM version 7.0 to 10.0")
-#      endif()
-#   endif()
-#endif()
+if(CMAKE_SIZEOF_VOID_P EQUAL 8 AND NOT WIN32)
+   #if("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux" AND "${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
+   #   #list(APPEND EOSIO_WASM_RUNTIMES eos-vm-oc)
+   #   # EOS VM OC requires LLVM, but move the check up here to a central location so that the EosioTester.cmakes
+   #   # can be created with the exact version found
+   #   find_package(LLVM REQUIRED CONFIG)
+   #  if(LLVM_VERSION_MAJOR VERSION_LESS 7 OR LLVM_VERSION_MAJOR VERSION_GREATER 10)
+   #     message(FATAL_ERROR "EOSIO requires an LLVM version 7.0 to 10.0")
+   #  endif()
+   #endif()
+endif()
 
 if(CMAKE_SIZEOF_VOID_P EQUAL 8 AND NOT WIN32)
    list(APPEND EOSIO_WASM_RUNTIMES eos-vm)
