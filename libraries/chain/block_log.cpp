@@ -493,10 +493,22 @@ namespace eosio { namespace chain {
    }
 
    void detail::block_log_impl::read_block_header(block_header& bh, uint64_t pos) {
+#if defined(SUPPORT_CF_COMPRESSION)
       pos += offset_to_block_start(version);
+#endif
 
       block_file.seek(pos);
       auto ds = block_file.create_datastream();
+
+#if !defined(SUPPORT_CF_COMPRESSION)
+      if (version >= 4 ) {
+         uint32_t offset;
+         fc::unsigned_int compression;
+         fc::raw::unpack(ds, offset);
+         fc::raw::unpack(ds, compression);
+         EOS_ASSERT( compression.value == static_cast<uint32_t>(pruned_transaction::cf_compression_type::none), block_log_exception , "Only \"none\" compression type is supported.");
+      }
+#endif
       fc::raw::unpack(ds, bh);
    }
 
@@ -534,7 +546,7 @@ namespace eosio { namespace chain {
 
    uint64_t block_log::get_block_pos(uint32_t block_num) const {
       my->check_open_files();
-      if (!(my->head && block_num <= block_header::num_from_id(my->head->id()) && block_num >= my->first_block_num))
+      if (!(my->head && block_num <= my->head->block_num() && block_num >= my->first_block_num))
          return npos;
       my->index_file.seek(sizeof(uint64_t) * (block_num - my->first_block_num));
       uint64_t pos;
