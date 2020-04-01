@@ -390,8 +390,10 @@ namespace eosio {
    constexpr auto     def_sync_fetch_span = 100;
 
    constexpr auto     message_header_size = 4;
-   constexpr uint32_t signed_block_which = 7;        // see protocol net_message
-   constexpr uint32_t packed_transaction_which = 8;  // see protocol net_message
+   constexpr uint32_t signed_block_v0_which = 7;        // see protocol net_message
+   constexpr uint32_t packed_transaction_v0_which = 8;  // see protocol net_message
+   constexpr uint32_t signed_block_which = 9;           // see protocol net_message
+   constexpr uint32_t packed_transaction_which = 10;    // see protocol net_message
 
    /**
     *  For a while, network version was a 16 bit value equal to the second set of 16 bits
@@ -2365,7 +2367,7 @@ namespace eosio {
          auto peek_ds = pending_message_buffer.create_peek_datastream();
          unsigned_int which{};
          fc::raw::unpack( peek_ds, which );
-         if( which == signed_block_which ) {
+         if( which == signed_block_v0_which || which == signed_block_which ) {
             block_header bh;
             fc::raw::unpack( peek_ds, bh );
 
@@ -2405,10 +2407,17 @@ namespace eosio {
                }
             }
 
+            shared_ptr<signed_block> ptr;
             auto ds = pending_message_buffer.create_datastream();
             fc::raw::unpack( ds, which ); // throw away
-            shared_ptr<signed_block> ptr = std::make_shared<signed_block>();
-            fc::raw::unpack( ds, *ptr );
+            if( which == signed_block_which ) {
+               ptr = std::make_shared<signed_block>();
+               fc::raw::unpack( ds, *ptr );
+            } else { // signed_block_v0_which
+               signed_block_v0 v0;
+               fc::raw::unpack( ds, v0 );
+               ptr = std::make_shared<signed_block>( std::move( v0 ), true);
+            }
 
             auto is_webauthn_sig = []( const fc::crypto::signature& s ) {
                return s.which() == fc::crypto::signature::storage_type::position<fc::crypto::webauthn::signature>();
@@ -2430,17 +2439,24 @@ namespace eosio {
 
             handle_message( blk_id, std::move( ptr ) );
 
-         } else if( which == packed_transaction_which ) {
+         } else if( which == packed_transaction_v0_which || which == packed_transaction_which ) {
             if( !my_impl->p2p_accept_transactions ) {
                fc_dlog( logger, "p2p-accept-transaction=false - dropping txn" );
                pending_message_buffer.advance_read_ptr( message_length );
                return true;
             }
 
+            shared_ptr<packed_transaction> ptr;
             auto ds = pending_message_buffer.create_datastream();
             fc::raw::unpack( ds, which ); // throw away
-            shared_ptr<packed_transaction> ptr = std::make_shared<packed_transaction>();
-            fc::raw::unpack( ds, *ptr );
+            if( which == packed_transaction_which ) {
+               ptr = std::make_shared<packed_transaction>();
+               fc::raw::unpack( ds, *ptr );
+            } else { // packed_transaction_v0_which
+               packed_transaction_v0 v0;
+               fc::raw::unpack( ds, v0 );
+               ptr = std::make_shared<packed_transaction>( std::move( v0 ), true );
+            }
             handle_message( std::move( ptr ) );
 
          } else {
