@@ -96,7 +96,7 @@ static const char misaligned_const_ref_wast[] = R"=====(
    (call $memmove
     (i32.const 17)
     (i32.const 16)
-    (i32.const 64) 
+    (i32.const 64)
    )
   )
   (call $assert_sha256

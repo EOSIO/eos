@@ -3,16 +3,6 @@
 #include <softfloat.hpp>
 
 namespace eosio { namespace chain { namespace webassembly {
-   inline static bool is_nan( const float32_t f ) {
-      return f32_is_nan( f );
-   }
-   inline static bool is_nan( const float64_t f ) {
-      return f64_is_nan( f );
-   }
-   inline static bool is_nan( const float128_t& f ) {
-      return f128_is_nan( f );
-   }
-
    static constexpr uint32_t inv_float_eps = 0x4B000000;
    static constexpr uint64_t inv_double_eps = 0x4330000000000000;
 

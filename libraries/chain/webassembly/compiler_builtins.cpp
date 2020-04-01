@@ -11,27 +11,27 @@ namespace eosio { namespace chain { namespace webassembly {
    void interface::__ashlti3(legacy_ptr<__int128> ret, uint64_t low, uint64_t high, uint32_t shift) const {
       fc::uint128_t i(high, low);
       i <<= shift;
-      ret.front() = (unsigned __int128)i;
+      ret.ref() = (unsigned __int128)i;
    }
 
    void interface::__ashrti3(legacy_ptr<__int128> ret, uint64_t low, uint64_t high, uint32_t shift) const {
       // retain the signedness
-      ret.front() = high;
-      ret.front() <<= 64;
-      ret.front() |= low;
-      ret.front() >>= shift;
+      ret.ref() = high;
+      ret.ref() <<= 64;
+      ret.ref() |= low;
+      ret.ref() >>= shift;
    }
 
    void interface::__lshlti3(legacy_ptr<__int128> ret, uint64_t low, uint64_t high, uint32_t shift) const {
       fc::uint128_t i(high, low);
       i <<= shift;
-      ret.front() = (unsigned __int128)i;
+      ret.ref() = (unsigned __int128)i;
    }
 
    void interface::__lshrti3(legacy_ptr<__int128> ret, uint64_t low, uint64_t high, uint32_t shift) const {
       fc::uint128_t i(high, low);
       i >>= shift;
-      ret.front() = (unsigned __int128)i;
+      ret.ref() = (unsigned __int128)i;
    }
 
    void interface::__divti3(legacy_ptr<__int128> ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb) const {
@@ -48,7 +48,7 @@ namespace eosio { namespace chain { namespace webassembly {
 
       lhs /= rhs;
 
-      ret.front() = lhs;
+      ret.ref() = lhs;
    }
 
    void interface::__udivti3(legacy_ptr<unsigned __int128> ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb) const {
@@ -64,7 +64,7 @@ namespace eosio { namespace chain { namespace webassembly {
       EOS_ASSERT(rhs != 0, arithmetic_exception, "divide by zero");
 
       lhs /= rhs;
-      ret.front() = lhs;
+      ret.ref() = lhs;
    }
 
    void interface::__multi3(legacy_ptr<__int128> ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb) const {
@@ -78,7 +78,7 @@ namespace eosio { namespace chain { namespace webassembly {
       rhs |=  lb;
 
       lhs *= rhs;
-      ret.front() = lhs;
+      ret.ref() = lhs;
    }
 
    void interface::__modti3(legacy_ptr<__int128> ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb) const {
@@ -94,7 +94,7 @@ namespace eosio { namespace chain { namespace webassembly {
       EOS_ASSERT(rhs != 0, arithmetic_exception, "divide by zero");
 
       lhs %= rhs;
-      ret.front() = lhs;
+      ret.ref() = lhs;
    }
 
    void interface::__umodti3(legacy_ptr<unsigned __int128> ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb) const {
@@ -110,40 +110,40 @@ namespace eosio { namespace chain { namespace webassembly {
       EOS_ASSERT(rhs != 0, arithmetic_exception, "divide by zero");
 
       lhs %= rhs;
-      ret.front() = lhs;
+      ret.ref() = lhs;
    }
 
    // arithmetic long double
    void interface::__addtf3( legacy_ptr<float128_t> ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) const {
       float128_t a = {{ la, ha }};
       float128_t b = {{ lb, hb }};
-      ret.front() = f128_add( a, b );
+      ret.ref() = f128_add( a, b );
    }
    void interface::__subtf3( legacy_ptr<float128_t> ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) const {
       float128_t a = {{ la, ha }};
       float128_t b = {{ lb, hb }};
-      ret.front() = f128_sub( a, b );
+      ret.ref() = f128_sub( a, b );
    }
    void interface::__multf3( legacy_ptr<float128_t> ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) const {
       float128_t a = {{ la, ha }};
       float128_t b = {{ lb, hb }};
-      ret.front() = f128_mul( a, b );
+      ret.ref() = f128_mul( a, b );
    }
    void interface::__divtf3( legacy_ptr<float128_t> ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) const {
       float128_t a = {{ la, ha }};
       float128_t b = {{ lb, hb }};
-      ret.front() = f128_div( a, b );
+      ret.ref() = f128_div( a, b );
    }
    void interface::__negtf2( legacy_ptr<float128_t> ret, uint64_t la, uint64_t ha ) const {
-      ret.front() = {{ la, (ha ^ (uint64_t)1 << 63) }};
+      ret.ref() = {{ la, (ha ^ (uint64_t)1 << 63) }};
    }
 
    // conversion long double
    void interface::__extendsftf2( legacy_ptr<float128_t> ret, float f ) const {
-      ret.front() = f32_to_f128( to_softfloat32(f) );
+      ret.ref() = f32_to_f128( to_softfloat32(f) );
    }
    void interface::__extenddftf2( legacy_ptr<float128_t> ret, double d ) const {
-      ret.front() = f64_to_f128( to_softfloat64(d) );
+      ret.ref() = f64_to_f128( to_softfloat64(d) );
    }
    double interface::__trunctfdf2( uint64_t l, uint64_t h ) const {
       float128_t f = {{ l, h }};
@@ -163,7 +163,7 @@ namespace eosio { namespace chain { namespace webassembly {
    }
    void interface::__fixtfti( legacy_ptr<__int128> ret, uint64_t l, uint64_t h ) const {
       float128_t f = {{ l, h }};
-      ret.front() = ___fixtfti( f );
+      ret.ref() = ___fixtfti( f );
    }
    uint32_t interface::__fixunstfsi( uint64_t l, uint64_t h ) const {
       float128_t f = {{ l, h }};
@@ -175,34 +175,34 @@ namespace eosio { namespace chain { namespace webassembly {
    }
    void interface::__fixunstfti( legacy_ptr<unsigned __int128> ret, uint64_t l, uint64_t h ) const {
       float128_t f = {{ l, h }};
-      ret.front() = ___fixunstfti( f );
+      ret.ref() = ___fixunstfti( f );
    }
    void interface::__fixsfti( legacy_ptr<__int128> ret, float a ) const {
-      ret.front() = ___fixsfti( to_softfloat32(a).v );
+      ret.ref() = ___fixsfti( to_softfloat32(a).v );
    }
    void interface::__fixdfti( legacy_ptr<__int128> ret, double a ) const {
-      ret.front() = ___fixdfti( to_softfloat64(a).v );
+      ret.ref() = ___fixdfti( to_softfloat64(a).v );
    }
    void interface::__fixunssfti( legacy_ptr<unsigned __int128> ret, float a ) const {
-      ret.front() = ___fixunssfti( to_softfloat32(a).v );
+      ret.ref() = ___fixunssfti( to_softfloat32(a).v );
    }
    void interface::__fixunsdfti( legacy_ptr<unsigned __int128> ret, double a ) const {
-      ret.front() = ___fixunsdfti( to_softfloat64(a).v );
+      ret.ref() = ___fixunsdfti( to_softfloat64(a).v );
    }
    double interface::__floatsidf( int32_t i ) const {
       return from_softfloat64(i32_to_f64(i));
    }
    void interface::__floatsitf( legacy_ptr<float128_t> ret, int32_t i ) const {
-      ret.front() = i32_to_f128(i);
+      ret.ref() = i32_to_f128(i);
    }
    void interface::__floatditf( legacy_ptr<float128_t> ret, uint64_t a ) const {
-      ret.front() = i64_to_f128( a );
+      ret.ref() = i64_to_f128( a );
    }
    void interface::__floatunsitf( legacy_ptr<float128_t> ret, uint32_t i ) const {
-      ret.front() = ui32_to_f128(i);
+      ret.ref() = ui32_to_f128(i);
    }
    void interface::__floatunditf( legacy_ptr<float128_t> ret, uint64_t a ) const {
-      ret.front() = ui64_to_f128( a );
+      ret.ref() = ui64_to_f128( a );
    }
    double interface::__floattidf( uint64_t l, uint64_t h ) const {
       fc::uint128_t v(h, l);

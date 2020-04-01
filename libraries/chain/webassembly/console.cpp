@@ -13,12 +13,12 @@ namespace eosio { namespace chain { namespace webassembly {
    // TODO predicate these for ignore
    void interface::prints(null_terminated_ptr str) {
       predicated_print(context,
-      [&]() { context.console_append( static_cast<const char*>(str.data()) ) });
+      [&]() { context.console_append( static_cast<const char*>(str.data()) ); });
    }
 
    void interface::prints_l(legacy_array_ptr<const char> str ) {
 		predicated_print(context,
-      [&]() { context.console_append(string(str.data(), str.size())) });
+      [&]() { context.console_append(string(str.ref().data(), str.ref().size())); });
    }
 
    void interface::printi(int64_t val) {
@@ -42,7 +42,7 @@ namespace eosio { namespace chain { namespace webassembly {
    void interface::printi128(legacy_ptr<const __int128> v) {
 		predicated_print(context,
       [&]() {
-			const __int128 val = v.front();
+			const __int128 val = v.ref();
 			bool is_negative = (val < 0);
 			unsigned __int128 val_magnitude;
 
@@ -66,7 +66,7 @@ namespace eosio { namespace chain { namespace webassembly {
    void interface::printui128(legacy_ptr<const unsigned __int128> val) {
 		predicated_print(context,
       [&]() {
-			fc::uint128_t v(val.front()>>64, static_cast<uint64_t>(val.front()) );
+			fc::uint128_t v(val.ref()>>64, static_cast<uint64_t>(val.ref()) );
 			context.console_append(fc::variant(v).get_string());
       });
    }
@@ -110,7 +110,7 @@ namespace eosio { namespace chain { namespace webassembly {
 
 		predicated_print(context,
       [&]() {
-			const float128_t val = v.front();
+			const float128_t val = v.ref();
 			std::ostringstream oss;
 			oss.setf( std::ios::scientific, std::ios::floatfield );
 
@@ -131,10 +131,10 @@ namespace eosio { namespace chain { namespace webassembly {
    }
 
    void interface::printn(name value) {
-		predicated_print(context, [&]() { context.console_append(value.to_string()) });
+		predicated_print(context, [&]() { context.console_append(value.to_string()); });
    }
 
-   void interface::printhex(legacy_array_ptr<const char> data, uint32_t data_len ) {
-      predicated_print(context, context.console_append(fc::to_hex(data, data_len)) });
+   void interface::printhex(legacy_array_ptr<const char> data ) {
+      predicated_print(context, [&]() { context.console_append(fc::to_hex(data.ref().data(), data.ref().size())); });
    }
 }}} // ns eosio::chain::webassembly

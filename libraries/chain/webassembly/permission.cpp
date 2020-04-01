@@ -21,13 +21,13 @@ namespace eosio { namespace chain { namespace webassembly {
    bool interface::check_transaction_authorization( legacy_array_ptr<char> trx_data,
                                                     legacy_array_ptr<char> pubkeys_data,
                                                     legacy_array_ptr<char> perms_data ) {
-      transaction trx = fc::raw::unpack<transaction>( trx_data.data(), trx_data.size() );
+      transaction trx = fc::raw::unpack<transaction>( trx_data.ref().data(), trx_data.ref().size() );
 
       flat_set<public_key_type> provided_keys;
-      unpack_provided_keys( provided_keys, pubkeys_data.data(), pubkeys_data.size() );
+      unpack_provided_keys( provided_keys, pubkeys_data.ref().data(), pubkeys_data.ref().size() );
 
       flat_set<permission_level> provided_permissions;
-      unpack_provided_permissions( provided_permissions, perms_data.data(), perms_data.size() );
+      unpack_provided_permissions( provided_permissions, perms_data.ref().data(), perms_data.ref().size() );
 
       try {
          context.control
@@ -53,10 +53,10 @@ namespace eosio { namespace chain { namespace webassembly {
                   action_validate_exception, "provided delay is too large" );
 
       flat_set<public_key_type> provided_keys;
-      unpack_provided_keys( provided_keys, pubkeys_data.data(), pubkeys_data.size() );
+      unpack_provided_keys( provided_keys, pubkeys_data.ref().data(), pubkeys_data.ref().size() );
 
       flat_set<permission_level> provided_permissions;
-      unpack_provided_permissions( provided_permissions, perms_data, perms_size );
+      unpack_provided_permissions( provided_permissions, perms_data.ref().data(), perms_data.ref().size() );
 
       try {
          context.control

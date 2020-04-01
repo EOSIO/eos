@@ -10,31 +10,11 @@
 
 //eos-vm includes
 #include <eosio/vm/backend.hpp>
-#include <eosio/vm/host_function.hpp>
-#include <eosio/vm/span.hpp>
 
-namespace eosio { namespace chain { namespace webassembly {
-   struct eosio_type_converter : public eosio::vm::type_converter<> {
-      using base_type = eosio::vm::type_converter<>;
-      using base_type::running_context;
-
-      using elem_type = decltype(std::declval<type_converter>().get_interface().operand_from_back(0));
-
-      template <typename T, typename U>
-      auto from_wasm(U* ptr) const -> std::enable_if_t<std::is_same_v<T, U*>, eosio::vm::reference_proxy<T>> {
-         return {ptr};
-      }
-
-      template <typename T, typename U>
-      auto from_wasm(eosio::vm::reference<U> r) const -> std::enable_if_t<
-         std::is_same_v<T, eosio::vm::reference<U>>, eosio::vm::reference_proxy<T>> {
-         return {r.get()};
-      }
-
-      EOS_VM_FROM_WASM(null_terminated_ptr, (elem_type&& ptr)){ return null_terminated_ptr{ptr}; }
-   };
-}}} // ns eosio::chain::webassembly
-
+namespace eosio { namespace chain {
+   template <typename Impl>
+   using eos_vm_backend_t = eosio::vm::backend<eos_vm_host_functions_t, Impl>;
+}} // ns eosio::chain
 namespace eosio { namespace chain { namespace webassembly { namespace eos_vm_runtime {
 
 using namespace fc;
@@ -55,7 +35,7 @@ class eos_vm_runtime : public eosio::chain::wasm_runtime_interface {
       // todo: managing this will get more complicated with sync calls;
       //       immediately_exit_currently_running_module() should probably
       //       move from wasm_runtime_interface to wasm_instantiated_module_interface.
-      backend<apply_context, Backend>* _bkend = nullptr;  // non owning pointer to allow for immediate exit
+      eos_vm_backend_t<Backend>* _bkend = nullptr;  // non owning pointer to allow for immediate exit
 
    template<typename Impl>
    friend class eos_vm_instantiated_module;

@@ -137,7 +137,7 @@ namespace eosio { namespace chain {
                                                                     )
    {
       for(const key_weight& k: auth.keys)
-         EOS_ASSERT(k.key.which() < _db.get<protocol_state_object>().num_supported_key_types, unactivated_key_type,
+         EOS_ASSERT(static_cast<uint32_t>(k.key.which()) < _db.get<protocol_state_object>().num_supported_key_types, unactivated_key_type,
            "Unactivated key type used when creating permission");
 
       auto creation_time = initial_creation_time;
@@ -168,7 +168,7 @@ namespace eosio { namespace chain {
                                                                     )
    {
       for(const key_weight& k: auth.keys)
-         EOS_ASSERT(k.key.which() < _db.get<protocol_state_object>().num_supported_key_types, unactivated_key_type,
+         EOS_ASSERT(static_cast<uint32_t>(k.key.which()) < _db.get<protocol_state_object>().num_supported_key_types, unactivated_key_type,
            "Unactivated key type used when creating permission");
 
       auto creation_time = initial_creation_time;
@@ -193,7 +193,7 @@ namespace eosio { namespace chain {
 
    void authorization_manager::modify_permission( const permission_object& permission, const authority& auth ) {
       for(const key_weight& k: auth.keys)
-         EOS_ASSERT(k.key.which() < _db.get<protocol_state_object>().num_supported_key_types, unactivated_key_type,
+         EOS_ASSERT(static_cast<uint32_t>(k.key.which()) < _db.get<protocol_state_object>().num_supported_key_types, unactivated_key_type,
            "Unactivated key type used when modifying permission");
 
       _db.modify( permission, [&](permission_object& po) {
@@ -340,7 +340,7 @@ namespace eosio { namespace chain {
                   "the owner of the linked permission needs to be the actor of the declared authorization" );
 
       if( link.code == config::system_account_name
-            || !_control.is_builtin_activated( builtin_protocol_feature_t::fix_linkauth_restriction ) ) 
+            || !_control.is_builtin_activated( builtin_protocol_feature_t::fix_linkauth_restriction ) )
       {
          EOS_ASSERT( link.type != updateauth::get_name(),  action_validate_exception,
                      "Cannot link eosio::updateauth to a minimum permission" );

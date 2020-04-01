@@ -2,14 +2,14 @@
 #include <eosio/chain/transaction_context.hpp>
 
 namespace eosio { namespace chain { namespace webassembly {
-   int32_t interface::read_transaction( legacy_array_ptr<char> data, uint32_t buffer_size ) const {
+   int32_t interface::read_transaction( legacy_array_ptr<char> data ) const {
       bytes trx = context.get_packed_transaction();
 
       auto s = trx.size();
-      if( buffer_size == 0) return s;
+      if (data.ref().size() == 0) return s;
 
-      auto copy_size = std::min( static_cast<size_t>(buffer_size), s );
-      std::memcpy( data, trx.data(), copy_size );
+      auto copy_size = std::min( static_cast<size_t>(data.ref().size()), s );
+      std::memcpy( data.ref().data(), trx.data(), copy_size );
 
       return copy_size;
    }
@@ -29,7 +29,7 @@ namespace eosio { namespace chain { namespace webassembly {
      return context.trx_context.trx.ref_block_prefix;
    }
 
-   int32_t interface::get_action( uint32_t type, uint32_t index, legacy_array_ptr<char> buffer, uint32_t buffer_size ) const {
-      return context.get_action( type, index, buffer, buffer_size );
+   int32_t interface::get_action( uint32_t type, uint32_t index, legacy_array_ptr<char> buffer ) const {
+      return context.get_action( type, index, buffer.ref().data(), buffer.ref().size() );
    }
 }}} // ns eosio::chain::webassembly

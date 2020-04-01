@@ -8,16 +8,16 @@ namespace eosio { namespace chain { namespace webassembly {
 
    void interface::eosio_assert( bool condition, null_terminated_ptr msg ) {
       if( BOOST_UNLIKELY( !condition ) ) {
-         const size_t sz = strnlen( msg, max_assert_message );
-         std::string message( msg, sz );
+         const size_t sz = strnlen( msg.data(), max_assert_message );
+         std::string message( msg.data(), sz );
          EOS_THROW( eosio_assert_message_exception, "assertion failure with message: ${s}", ("s",message) );
       }
    }
 
-   void interface::eosio_assert_message( bool condition, legacy_array_ptr<const char> msg, uint32_t msg_len ) {
+   void interface::eosio_assert_message( bool condition, legacy_array_ptr<const char> msg ) {
       if( BOOST_UNLIKELY( !condition ) ) {
-         const size_t sz = msg_len > max_assert_message ? max_assert_message : msg_len;
-         std::string message( msg, sz );
+         const size_t sz = msg.ref().size() > max_assert_message ? max_assert_message : msg.ref().size();
+         std::string message( msg.ref().data(), sz );
          EOS_THROW( eosio_assert_message_exception, "assertion failure with message: ${s}", ("s",message) );
       }
    }

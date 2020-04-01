@@ -1,12 +1,12 @@
 #include <eosio/chain/webassembly/interface.hpp>
 
 namespace eosio { namespace chain { namespace webassembly {
-   int32_t interface::read_action_data(legacy_array_ptr<char> memory, uint32_t buffer_size) const {
+   int32_t interface::read_action_data(legacy_array_ptr<char> memory) const {
       auto s = context.get_action().data.size();
-      if( buffer_size == 0 ) return s;
+      if( memory.ref().data() == 0 ) return s;
 
-      auto copy_size = std::min( static_cast<size_t>(buffer_size), s );
-      std::memcpy( (char*)memory.value, context.get_action().data.data(), copy_size );
+      auto copy_size = std::min( static_cast<size_t>(memory.ref().size()), s );
+      std::memcpy( memory.ref().data(), context.get_action().data.data(), copy_size );
 
       return copy_size;
    }
@@ -19,7 +19,7 @@ namespace eosio { namespace chain { namespace webassembly {
       return context.get_receiver();
    }
 
-   void interface::set_action_return_value( legacy_array_ptr<char> packed_blob, uint32_t datalen ) {
-      context.action_return_value.assign( packed_blob.value, packed_blob.value + datalen );
+   void interface::set_action_return_value( legacy_array_ptr<char> packed_blob ) {
+      context.action_return_value.assign( packed_blob.ref().data(), packed_blob.ref().data() + packed_blob.ref().size() );
    }
 }}} // ns eosio::chain::webassembly

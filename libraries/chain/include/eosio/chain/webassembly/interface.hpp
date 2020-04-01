@@ -7,58 +7,23 @@
 
 namespace eosio { namespace chain { namespace webassembly {
 
-   class interface;
-
    template <auto HostFunction, typename... Preconditions>
    struct host_function_registrator {
       constexpr host_function_registrator(const std::string& mod_name, const std::string& fn_name) {
-         using rhf_t = eosio::vm::registered_host_functions<interface>;
+         using rhf_t = eos_vm_host_functions_t;
          rhf_t::add<HostFunction, Preconditions...>(mod_name, fn_name);
       }
    };
 
 
-// TODO when using C++20 switch to __VA_OPT__
-#define PRECONDITIONS(...) \
-   , ##__VA_ARGS__
-
-
 #define REGISTER_INJECTED_HOST_FUNCTION(NAME, ...) \
-   inline static host_function_registrator<&interface::NAME, alias_check, early_validate_pointers, ##__VA_ARGS__> NAME ## _registrator = {"eosio.injection", #NAME};
+   inline static host_function_registrator<&interface::NAME, alias_check, early_validate_pointers, ##__VA_ARGS__> NAME ## _registrator = {eosio_injected_module_name, #NAME};
 
 #define REGISTER_HOST_FUNCTION(NAME, ...) \
    inline static host_function_registrator<&interface::NAME, alias_check, early_validate_pointers, ##__VA_ARGS__> NAME ## _registrator = {"env", #NAME};
 
 #define REGISTER_CF_HOST_FUNCTION(NAME, ...) \
    inline static host_function_registrator<&interface::NAME, alias_check, early_validate_pointers, context_free_check, ##__VA_ARGS__> NAME ## _registrator = {"env", #NAME};
-
-#if 0
-#define DECLARE_HOST_FUNCTION(PRECONDS, MODULE, CONSTNESS, RET_TY, NAME, ...) \
-   RET_TY NAME(__VA_ARGS__) CONSTNESS; \
-   inline static host_function_registrator<&interface::NAME, alias_check, early_validate_pointers PRECONDS > NAME ## _registrator = {#MODULE, #NAME};
-
-#define DECLARE_CF_HOST_FUNCTION(PRECONDS, CONSTNESS, RET_TY, NAME, ...) \
-   RET_TY NAME(__VA_ARGS__) CONSTNESS; \
-   inline static host_function_registrator<&interface::NAME, alias_check, early_validate_pointers, context_free_check PRECONDS > NAME ## _registrator = {"env", #NAME};
-
-#define DECLARE(PRECONDS, RET_TY, NAME, ...) \
-   DECLARE_HOST_FUNCTION(PRECONDS, env, , RET_TY, NAME, __VA_ARGS__)
-
-#define DECLARE_CF(PRECONDS, RET_TY, NAME, ...) \
-   DECLARE_CF_HOST_FUNCTION(PRECONDS, , RET_TY, NAME, __VA_ARGS__)
-
-#define DECLARE_CONST(PRECONDS, RET_TY, NAME, ...) \
-   DECLARE_HOST_FUNCTION(PRECONDS, env, const, RET_TY, NAME, __VA_ARGS__)
-
-#define DECLARE_CONST_CF(PRECONDS, RET_TY, NAME, ...) \
-   DECLARE_CF_HOST_FUNCTION(PRECONDS, const, RET_TY, NAME, __VA_ARGS__)
-
-#define DECLARE_INJECTED(PRECONDS, RET_TY, NAME, ...) \
-   DECLARE_HOST_FUNCTION(PRECONDS, eosio_injection, , RET_TY, NAME, __VA_ARGS__)
-
-#define DECLARE_INJECTED_CONST(PRECONDS, RET_TY, NAME, ...) \
-   DECLARE_HOST_FUNCTION(PRECONDS, eosio_injection, const, RET_TY, NAME, __VA_ARGS__)
-#endif
 
 
    // TODO maybe house these some place else
@@ -85,8 +50,8 @@ namespace eosio { namespace chain { namespace webassembly {
             if constexpr (is_reference_proxy_type_v<arg_t>)
                if constexpr (is_span_type_v<dependent_type_t<arg_t>>) {
                   using dep_t = dependent_type_t<arg_t>;
-                  const auto& s = (dep_t)arg;
-                  EOS_ASSERT( s.size() <= std::numeric_limits<wasm_size_t>::max() / (wasm_size_t)sizeof(dep_t),
+                  const auto& s = (dep_t&)arg;
+                  EOS_ASSERT( s.size() <= std::numeric_limits<wasm_size_t>::max() / (wasm_size_t)sizeof(dependent_type_t<dep_t>),
                         wasm_exception, "length will overflow" );
                   volatile auto check = *(reinterpret_cast<const char*>(s.data()) + s.size_bytes() - 1);
                   ignore_unused_variable_warning(check);
@@ -95,7 +60,7 @@ namespace eosio { namespace chain { namespace webassembly {
 
    EOS_VM_PRECONDITION(context_free_check,
          EOS_VM_INVOKE_ONCE([&](auto&&...) {
-            EOS_ASSERT(ctx.get_host()->context.is_context_free(), unaccessible_api, "only context free api's can be used in this context");
+            EOS_ASSERT(ctx.get_host().get_context().is_context_free(), unaccessible_api, "only context free api's can be used in this context");
          }));
 
    EOS_VM_PRECONDITION(alias_check,
@@ -103,7 +68,7 @@ namespace eosio { namespace chain { namespace webassembly {
             using namespace eosio::vm;
             using arg_t = decltype(arg);
             if constexpr (is_span_type_v<arg_t>) {
-               eosio::vm::invoke_on<false, eosio::vm::detail::invoke_on_all_t>([&](auto narg, auto&&... nrest) {
+               eosio::vm::invoke_on<false, eosio::vm::invoke_on_all_t>([&](auto narg, auto&&... nrest) {
                   using nested_arg_t = decltype(arg);
                   if constexpr (eosio::vm::is_span_type_v<nested_arg_t>)
                      EOS_ASSERT(!is_aliasing(arg, narg), wasm_exception, "arrays not allowed to alias");
@@ -125,19 +90,24 @@ namespace eosio { namespace chain { namespace webassembly {
 
    EOS_VM_PRECONDITION(legacy_static_check_wl_args,
          EOS_VM_INVOKE_ONCE([&](auto&&... args) {
-            static_assert( are_whitelisted_legacy_types_v<decltype(args)...>, "legacy whitelisted type violation");
+            static_assert( are_whitelisted_legacy_types_v<std::decay_t<decltype(args)>...>, "legacy whitelisted type violation");
          }));
 
    EOS_VM_PRECONDITION(static_check_wl_args,
          EOS_VM_INVOKE_ONCE([&](auto&&... args) {
-            static_assert( are_whitelisted_types_v<decltype(args)...>, "whitelisted type violation");
+            static_assert( are_whitelisted_types_v<std::decay_t<decltype(args)>...>, "whitelisted type violation");
          }));
 
    class interface {
       public:
+         interface(apply_context& ctx) : context(ctx) {}
+
+         inline apply_context& get_context() { return context; }
+         inline const apply_context& get_context() const { return context; }
+
          // checktime api
          void checktime();
-         REGISTER_HOST_FUNCTION(checktime, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(checktime);
 
          // context free api
          int32_t get_context_free_data(uint32_t index, legacy_array_ptr<char> buffer) const;
@@ -160,7 +130,7 @@ namespace eosio { namespace chain { namespace webassembly {
          REGISTER_HOST_FUNCTION(activate_feature, legacy_static_check_wl_args);
          REGISTER_HOST_FUNCTION(preactivate_feature, legacy_static_check_wl_args);
          REGISTER_HOST_FUNCTION(set_resource_limits, legacy_static_check_wl_args);
-         REGISTER_HOST_FUNCTION(set_resource_limits, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(get_resource_limits, legacy_static_check_wl_args);
          REGISTER_HOST_FUNCTION(set_proposed_producers, legacy_static_check_wl_args);
          REGISTER_HOST_FUNCTION(set_proposed_producers_ex, legacy_static_check_wl_args);
          REGISTER_HOST_FUNCTION(get_blockchain_parameters_packed, legacy_static_check_wl_args);
@@ -245,7 +215,6 @@ namespace eosio { namespace chain { namespace webassembly {
          REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_eq, legacy_static_check_wl_args);
          REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_ne, legacy_static_check_wl_args);
          REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_lt, legacy_static_check_wl_args);
-         REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_le, legacy_static_check_wl_args);
          REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_le, legacy_static_check_wl_args);
          REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_gt, legacy_static_check_wl_args);
          REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_ge, legacy_static_check_wl_args);
@@ -345,10 +314,10 @@ namespace eosio { namespace chain { namespace webassembly {
          bool is_feature_activated(legacy_ptr<const digest_type>) const;
          name get_sender() const;
 
-         REGISTER_HOST_FUNCTION(current_time, legacy_static_check_wl_args);
-         REGISTER_HOST_FUNCTION(publication_time, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(current_time);
+         REGISTER_HOST_FUNCTION(publication_time);
          REGISTER_HOST_FUNCTION(is_feature_activated, legacy_static_check_wl_args);
-         REGISTER_HOST_FUNCTION(get_sender, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(get_sender);
 
          // context-free system api
          void abort();
@@ -357,7 +326,7 @@ namespace eosio { namespace chain { namespace webassembly {
          void eosio_assert_code(bool, uint64_t);
          void eosio_exit(int32_t);
 
-         REGISTER_CF_HOST_FUNCTION(abort, legacy_static_check_wl_args)
+         REGISTER_CF_HOST_FUNCTION(abort)
          REGISTER_CF_HOST_FUNCTION(eosio_assert, legacy_static_check_wl_args)
          REGISTER_CF_HOST_FUNCTION(eosio_assert_message, legacy_static_check_wl_args)
          REGISTER_CF_HOST_FUNCTION(eosio_assert_code, legacy_static_check_wl_args)
@@ -370,8 +339,8 @@ namespace eosio { namespace chain { namespace webassembly {
          void set_action_return_value(legacy_array_ptr<char>);
 
          REGISTER_HOST_FUNCTION(read_action_data, legacy_static_check_wl_args);
-         REGISTER_HOST_FUNCTION(action_data_size, legacy_static_check_wl_args);
-         REGISTER_HOST_FUNCTION(current_receiver, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(action_data_size);
+         REGISTER_HOST_FUNCTION(current_receiver);
          REGISTER_HOST_FUNCTION(set_action_return_value, legacy_static_check_wl_args);
 
          // console api
@@ -474,7 +443,7 @@ namespace eosio { namespace chain { namespace webassembly {
          int32_t db_idx256_store(uint64_t, uint64_t, uint64_t, uint64_t, legacy_array_ptr<const uint128_t>);
          void db_idx256_update(int32_t, uint64_t, legacy_array_ptr<const uint128_t>);
          void db_idx256_remove(int32_t);
-         int32_t db_idx256_find_secondary(uint64_t, uint64_t, uint64_t, legacy_array_ptr<const uint128_t>, uint64_t&);
+         int32_t db_idx256_find_secondary(uint64_t, uint64_t, uint64_t, legacy_array_ptr<const uint128_t>, legacy_ptr<uint64_t>);
          int32_t db_idx256_find_primary(uint64_t, uint64_t, uint64_t, legacy_array_ptr<uint128_t>, uint64_t);
          int32_t db_idx256_lowerbound(uint64_t, uint64_t, uint64_t, legacy_array_ptr<uint128_t>, legacy_ptr<uint64_t>);
          int32_t db_idx256_upperbound(uint64_t, uint64_t, uint64_t, legacy_array_ptr<uint128_t>, legacy_ptr<uint64_t>);
@@ -505,13 +474,13 @@ namespace eosio { namespace chain { namespace webassembly {
          int32_t db_idx_double_next(int32_t, legacy_ptr<uint64_t>);
          int32_t db_idx_double_previous(int32_t, legacy_ptr<uint64_t>);
 
-         REGISTER_HOST_FUNCTION(db_idx_double_store, legacy_static_check_wl_args);
-         REGISTER_HOST_FUNCTION(db_idx_double_update, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(db_idx_double_store, legacy_static_check_wl_args, is_nan_check);
+         REGISTER_HOST_FUNCTION(db_idx_double_update, legacy_static_check_wl_args, is_nan_check);
          REGISTER_HOST_FUNCTION(db_idx_double_remove, legacy_static_check_wl_args);
-         REGISTER_HOST_FUNCTION(db_idx_double_find_secondary, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(db_idx_double_find_secondary, legacy_static_check_wl_args, is_nan_check);
          REGISTER_HOST_FUNCTION(db_idx_double_find_primary, legacy_static_check_wl_args);
-         REGISTER_HOST_FUNCTION(db_idx_double_lowerbound, legacy_static_check_wl_args);
-         REGISTER_HOST_FUNCTION(db_idx_double_upperbound, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(db_idx_double_lowerbound, legacy_static_check_wl_args, is_nan_check);
+         REGISTER_HOST_FUNCTION(db_idx_double_upperbound, legacy_static_check_wl_args, is_nan_check);
          REGISTER_HOST_FUNCTION(db_idx_double_end, legacy_static_check_wl_args);
          REGISTER_HOST_FUNCTION(db_idx_double_next, legacy_static_check_wl_args);
          REGISTER_HOST_FUNCTION(db_idx_double_previous, legacy_static_check_wl_args);
@@ -529,22 +498,22 @@ namespace eosio { namespace chain { namespace webassembly {
          int32_t db_idx_long_double_next(int32_t, legacy_ptr<uint64_t>);
          int32_t db_idx_long_double_previous(int32_t, legacy_ptr<uint64_t>);
 
-         REGISTER_HOST_FUNCTION(db_idx_long_double_store, legacy_static_check_wl_args);
-         REGISTER_HOST_FUNCTION(db_idx_long_double_update, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(db_idx_long_double_store, legacy_static_check_wl_args, is_nan_check);
+         REGISTER_HOST_FUNCTION(db_idx_long_double_update, legacy_static_check_wl_args, is_nan_check);
          REGISTER_HOST_FUNCTION(db_idx_long_double_remove, legacy_static_check_wl_args);
-         REGISTER_HOST_FUNCTION(db_idx_long_double_find_secondary, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(db_idx_long_double_find_secondary, legacy_static_check_wl_args, is_nan_check);
          REGISTER_HOST_FUNCTION(db_idx_long_double_find_primary, legacy_static_check_wl_args);
-         REGISTER_HOST_FUNCTION(db_idx_long_double_lowerbound, legacy_static_check_wl_args);
-         REGISTER_HOST_FUNCTION(db_idx_long_double_upperbound, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(db_idx_long_double_lowerbound, legacy_static_check_wl_args, is_nan_check);
+         REGISTER_HOST_FUNCTION(db_idx_long_double_upperbound, legacy_static_check_wl_args, is_nan_check);
          REGISTER_HOST_FUNCTION(db_idx_long_double_end, legacy_static_check_wl_args);
          REGISTER_HOST_FUNCTION(db_idx_long_double_next, legacy_static_check_wl_args);
          REGISTER_HOST_FUNCTION(db_idx_long_double_previous, legacy_static_check_wl_args);
 
          // memory api
-         char* memcpy(char*, const char*, wasm_size_t) const;
-         char* memmove(char*, const char*, wasm_size_t) const;
-         int32_t memcmp(const char*, const char*, wasm_size_t) const;
-         char* memset(char*, int32_t, wasm_size_t) const;
+         char* memcpy(unvalidated_ptr<char>, unvalidated_ptr<const char>, wasm_size_t) const;
+         char* memmove(unvalidated_ptr<char>, unvalidated_ptr<const char>, wasm_size_t) const;
+         int32_t memcmp(unvalidated_ptr<const char>, unvalidated_ptr<const char>, wasm_size_t) const;
+         char* memset(unvalidated_ptr<char>, int32_t, wasm_size_t) const;
 
          REGISTER_HOST_FUNCTION(memcpy, legacy_static_check_wl_args);
          REGISTER_HOST_FUNCTION(memmove, legacy_static_check_wl_args);
@@ -643,8 +612,8 @@ namespace eosio { namespace chain { namespace webassembly {
          REGISTER_HOST_FUNCTION(__fixtfsi, legacy_static_check_wl_args);
          REGISTER_HOST_FUNCTION(__fixtfdi, legacy_static_check_wl_args);
          REGISTER_HOST_FUNCTION(__fixtfti, legacy_static_check_wl_args);
-         REGISTER_HOST_FUNCTION(2_t __fixunstfsi, legacy_static_check_wl_args);
-         REGISTER_HOST_FUNCTION(4_t __fixunstfdi, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(__fixunstfsi, legacy_static_check_wl_args);
+         REGISTER_HOST_FUNCTION(__fixunstfdi, legacy_static_check_wl_args);
          REGISTER_HOST_FUNCTION(__fixunstfti, legacy_static_check_wl_args);
          REGISTER_HOST_FUNCTION(__fixsfti, legacy_static_check_wl_args);
          REGISTER_HOST_FUNCTION(__fixdfti, legacy_static_check_wl_args);
@@ -667,7 +636,7 @@ namespace eosio { namespace chain { namespace webassembly {
          REGISTER_HOST_FUNCTION(__unordtf2, legacy_static_check_wl_args);
 
          // call depth api
-         void call_depth_assert()
+         void call_depth_assert();
          REGISTER_INJECTED_HOST_FUNCTION(call_depth_assert);
 
       private:
