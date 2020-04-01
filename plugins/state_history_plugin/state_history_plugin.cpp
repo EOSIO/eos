@@ -156,7 +156,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       try {
          auto block = chain_plug->chain().fetch_block_by_number(block_num);
          if (block)
-            return block->id();
+            return block->calculate_id();
       } catch (...) {
       }
       return {};

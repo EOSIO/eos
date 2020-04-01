@@ -397,7 +397,8 @@ struct controller_impl {
       auto root_id = fork_db.root()->id;
 
       if( log_head ) {
-         EOS_ASSERT( root_id == blog.head_id(), fork_database_exception, "fork database root does not match block log head" );
+         // todo: move this check to startup so id does not have to be calculated
+         EOS_ASSERT( root_id == log_head->calculate_id(), fork_database_exception, "fork database root does not match block log head" );
       } else {
          EOS_ASSERT( fork_db.root()->block_num == lib_num, fork_database_exception,
                      "empty block log expects the first appended block to build off a block that is not the fork database root" );
@@ -461,7 +462,7 @@ struct controller_impl {
       genheader.pending_schedule.schedule_hash = fc::sha256::hash(initial_legacy_schedule);
       genheader.header.timestamp               = genesis.initial_timestamp;
       genheader.header.action_mroot            = genesis.compute_chain_id();
-      genheader.id                             = genheader.header.id();
+      genheader.id                             = genheader.header.calculate_id();
       genheader.block_num                      = genheader.header.block_num();
 
       head = std::make_shared<block_state>();
@@ -1719,7 +1720,7 @@ struct controller_impl {
 
       block_ptr->transactions = std::move( bb._pending_trx_receipts );
 
-      auto id = block_ptr->id();
+      auto id = block_ptr->calculate_id();
 
       // Update TaPoS table:
       create_block_summary( id );
@@ -1859,7 +1860,7 @@ struct controller_impl {
          const signed_block_ptr& b = bsp->block;
          const auto& new_protocol_feature_activations = bsp->get_new_protocol_feature_activations();
 
-         auto producer_block_id = b->id();
+         auto producer_block_id = bsp->id;
          start_block( b->timestamp, b->confirmed, new_protocol_feature_activations, s, producer_block_id);
 
          // validated in create_block_state_future()
@@ -1963,10 +1964,8 @@ struct controller_impl {
       }
    } FC_CAPTURE_AND_RETHROW() } /// apply_block
 
-   std::future<block_state_ptr> create_block_state_future( const signed_block_ptr& b ) {
+   std::future<block_state_ptr> create_block_state_future( const block_id_type& id, const signed_block_ptr& b ) {
       EOS_ASSERT( b, block_validate_exception, "null block" );
-
-      auto id = b->id();
 
       // no reason for a block_state if fork_db already knows about block
       auto existing = fork_db.get_block( id );
@@ -1976,14 +1975,14 @@ struct controller_impl {
       EOS_ASSERT( prev, unlinkable_block_exception,
                   "unlinkable block ${id}", ("id", id)("previous", b->previous) );
 
-      return async_thread_pool( thread_pool.get_executor(), [b, prev, control=this]() {
+      return async_thread_pool( thread_pool.get_executor(), [b, prev, id, control=this]() {
          const bool skip_validate_signee = false;
 
          auto trx_mroot = calculate_trx_merkle( b->transactions );
          EOS_ASSERT( b->transaction_mroot == trx_mroot, block_validate_exception,
                      "invalid block transaction merkle root ${b} != ${c}", ("b", b->transaction_mroot)("c", trx_mroot) );
 
-         return std::make_shared<block_state>(
+         auto bsp = std::make_shared<block_state>(
                         *prev,
                         move( b ),
                         control->protocol_features.get_protocol_feature_set(),
@@ -1993,6 +1992,10 @@ struct controller_impl {
                         { control->check_protocol_features( timestamp, cur_features, new_features ); },
                         skip_validate_signee
          );
+
+         EOS_ASSERT( id == bsp->id, block_validate_exception,
+                     "provided id ${id} does not match block id ${bid}", ("id", id)("bid", bsp->id) );
+         return bsp;
       } );
    }
 
@@ -2674,8 +2677,8 @@ boost::asio::io_context& controller::get_thread_pool() {
    return my->thread_pool.get_executor();
 }
 
-std::future<block_state_ptr> controller::create_block_state_future( const signed_block_ptr& b ) {
-   return my->create_block_state_future( b );
+std::future<block_state_ptr> controller::create_block_state_future( const block_id_type& id, const signed_block_ptr& b ) {
+   return my->create_block_state_future( id, b );
 }
 
 void controller::push_block( std::future<block_state_ptr>& block_state_future,
@@ -2858,7 +2861,7 @@ signed_block_ptr controller::fetch_block_by_id( block_id_type id )const {
    auto state = my->fork_db.get_block(id);
    if( state && state->block ) return state->block;
    auto bptr = fetch_block_by_number( block_header::num_from_id(id) );
-   if( bptr && bptr->id() == id ) return bptr;
+   if( bptr && bptr->calculate_id() == id ) return bptr;
    return signed_block_ptr();
 }
 

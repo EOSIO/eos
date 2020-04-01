@@ -157,7 +157,7 @@ namespace eosio { namespace chain {
          void sign_block( const signer_callback_type& signer_callback );
          void commit_block();
 
-         std::future<block_state_ptr> create_block_state_future( const signed_block_ptr& b );
+         std::future<block_state_ptr> create_block_state_future( const block_id_type& id, const signed_block_ptr& b );
 
          /**
           * @param block_state_future provide from call to create_block_state_future

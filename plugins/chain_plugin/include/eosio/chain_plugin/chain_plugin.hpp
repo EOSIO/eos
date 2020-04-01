@@ -731,8 +731,6 @@ public:
    bool accept_block( const chain::signed_block_ptr& block, const chain::block_id_type& id );
    void accept_transaction(const chain::packed_transaction_ptr& trx, chain::plugin_interface::next_function<chain::transaction_trace_ptr> next);
 
-   bool block_is_on_preferred_chain(const chain::block_id_type& block_id);
-
    static bool recover_reversible_blocks( const fc::path& db_dir,
                                           uint32_t cache_size,
                                           optional<fc::path> new_db_dir = optional<fc::path>(),

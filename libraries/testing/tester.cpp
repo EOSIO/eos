@@ -297,7 +297,7 @@ namespace eosio { namespace testing {
    }
 
    void base_tester::push_block(signed_block_ptr b) {
-      auto bsf = control->create_block_state_future(b);
+      auto bsf = control->create_block_state_future(b->calculate_id(), b);
       unapplied_transactions.add_aborted( control->abort_block() );
       control->push_block( bsf, [this]( const branch_type& forked_branch ) {
          unapplied_transactions.add_forked( forked_branch );
@@ -306,8 +306,8 @@ namespace eosio { namespace testing {
       } );
 
       auto itr = last_produced_block.find(b->producer);
-      if (itr == last_produced_block.end() || block_header::num_from_id(b->id()) > block_header::num_from_id(itr->second)) {
-         last_produced_block[b->producer] = b->id();
+      if (itr == last_produced_block.end() || b->block_num() > block_header::num_from_id(itr->second)) {
+         last_produced_block[b->producer] = b->calculate_id();
       }
    }
 
@@ -1023,7 +1023,7 @@ namespace eosio { namespace testing {
 
             auto block = a.control->fetch_block_by_number(i);
             if( block ) { //&& !b.control->is_known_block(block->id()) ) {
-               auto bsf = b.control->create_block_state_future( block );
+               auto bsf = b.control->create_block_state_future( block->calculate_id(), block );
                b.control->abort_block();
                b.control->push_block(bsf, forked_branch_callback{}, trx_meta_cache_lookup{}); //, eosio::chain::validation_steps::created_block);
             }

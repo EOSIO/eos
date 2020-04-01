@@ -292,7 +292,7 @@ namespace eosio { namespace chain {
 
       block_header_state result( std::move( *static_cast<detail::block_header_state_common*>(this) ) );
 
-      result.id      = h.id();
+      result.id      = h.calculate_id();
       result.header  = h;
 
       result.header_exts = std::move(exts);

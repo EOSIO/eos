@@ -2381,7 +2381,7 @@ namespace eosio {
             block_header bh;
             fc::raw::unpack( peek_ds, bh );
 
-            const block_id_type blk_id = bh.id();
+            const block_id_type blk_id = bh.calculate_id();
             const uint32_t blk_num = bh.block_num();
             if( my_impl->dispatcher->have_block( blk_id ) ) {
                fc_dlog( logger, "canceling wait on ${p}, already received block ${num}, id ${id}...",
@@ -3127,7 +3127,7 @@ namespace eosio {
       controller& cc = chain_plug->chain();
       if( cc.is_trusted_producer(block->producer) ) {
          dispatcher->strand.post( [this, block]() {
-            auto id = block->id();
+            auto id = block->calculate_id();
             fc_dlog( logger, "signaled pre_accepted_block, blk num = ${num}, id = ${id}", ("num", block->block_num())("id", id) );
             dispatcher->bcast_block( block, id );
          });
