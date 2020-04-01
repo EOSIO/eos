@@ -85,56 +85,9 @@ namespace eosio { namespace chain {
       EOS_VM_TO_WASM(name, (name n)) { return as_result<uint64_t>(n.to_uint64_t()); }
    };
 
-
    using eos_vm_host_functions_t = eosio::vm::registered_host_functions<webassembly::interface,
                                                                         eosio::vm::execution_interface,
                                                                         eosio::chain::type_converter>;
    using wasm_size_t = eosio::vm::wasm_size_t;
-
-   namespace detail {
-      template <typename T>
-      constexpr std::true_type is_legacy_ptr(legacy_ptr<T>);
-      template <typename T>
-      constexpr std::false_type is_legacy_ptr(T);
-      template <typename T>
-      constexpr std::true_type is_legacy_array_ptr(legacy_array_ptr<T>);
-      template <typename T>
-      constexpr std::false_type is_legacy_array_ptr(T);
-      template <typename T>
-      constexpr std::true_type is_unvalidated_ptr(unvalidated_ptr<T>);
-      template <typename T>
-      constexpr std::false_type is_unvalidated_ptr(T);
-
-      template <typename T>
-      struct is_whitelisted_legacy_type {
-         static constexpr bool value = std::is_same_v<float128_t, T> ||
-                                       std::is_same_v<null_terminated_ptr, T> ||
-                                       std::is_same_v<decltype(is_legacy_ptr(std::declval<T>())), std::true_type> ||
-                                       std::is_same_v<decltype(is_legacy_array_ptr(std::declval<T>())), std::true_type> ||
-                                       std::is_same_v<decltype(is_unvalidated_ptr(std::declval<T>())), std::true_type> ||
-                                       std::is_same_v<name, T> ||
-                                       std::is_arithmetic_v<T>;
-      };
-      template <typename T>
-      struct is_whitelisted_type {
-         static constexpr bool value = std::is_arithmetic_v<T> ||
-                                       std::is_same_v<name, T> ||
-                                       std::is_pointer_v<T>    ||
-                                       std::is_lvalue_reference_v<T> ||
-                                       eosio::vm::is_span_type_v<T>;
-      };
-   }
-
-   template <typename T>
-   inline static constexpr bool is_whitelisted_type_v = detail::is_whitelisted_type<T>::value;
-
-   template <typename T>
-   inline static constexpr bool is_whitelisted_legacy_type_v = detail::is_whitelisted_legacy_type<T>::value;
-
-   template <typename... Ts>
-   inline static constexpr bool are_whitelisted_types_v = (... && detail::is_whitelisted_type<Ts>::value);
-
-   template <typename... Ts>
-   inline static constexpr bool are_whitelisted_legacy_types_v = (... && detail::is_whitelisted_legacy_type<Ts>::value);
 
 }} // eosio::chain

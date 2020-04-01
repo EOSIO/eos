@@ -105,10 +105,6 @@ namespace eosio { namespace chain {
    wasm_instantiated_module_interface::~wasm_instantiated_module_interface() {}
    wasm_runtime_interface::~wasm_runtime_interface() {}
 
-#if defined(assert)
-   #undef assert
-#endif
-
 std::istream& operator>>(std::istream& in, wasm_interface::vm_type& runtime) {
    std::string s;
    in >> s;

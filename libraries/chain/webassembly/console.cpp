@@ -39,10 +39,9 @@ namespace eosio { namespace chain { namespace webassembly {
       });
    }
 
-   void interface::printi128(legacy_ptr<const __int128> v) {
+   void interface::printi128(const __int128& val) {
 		predicated_print(context,
       [&]() {
-			const __int128 val = v.ref();
 			bool is_negative = (val < 0);
 			unsigned __int128 val_magnitude;
 
@@ -63,10 +62,10 @@ namespace eosio { namespace chain { namespace webassembly {
       });
    }
 
-   void interface::printui128(legacy_ptr<const unsigned __int128> val) {
+   void interface::printui128(const unsigned __int128& val) {
 		predicated_print(context,
       [&]() {
-			fc::uint128_t v(val.ref()>>64, static_cast<uint64_t>(val.ref()) );
+			fc::uint128_t v(val>>64, static_cast<uint64_t>(val) );
 			context.console_append(fc::variant(v).get_string());
       });
    }
@@ -95,7 +94,7 @@ namespace eosio { namespace chain { namespace webassembly {
       });
    }
 
-   void interface::printqf( legacy_ptr<const float128_t> v ) {
+   void interface::printqf( const float128_t& val ) {
       /*
        * Native-side long double uses an 80-bit extended-precision floating-point number.
        * The easiest solution for now was to use the Berkeley softfloat library to round the 128-bit
@@ -110,7 +109,6 @@ namespace eosio { namespace chain { namespace webassembly {
 
 		predicated_print(context,
       [&]() {
-			const float128_t val = v.ref();
 			std::ostringstream oss;
 			oss.setf( std::ios::scientific, std::ios::floatfield );
 

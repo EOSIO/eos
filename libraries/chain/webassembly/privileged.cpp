@@ -15,8 +15,8 @@ namespace eosio { namespace chain { namespace webassembly {
       EOS_ASSERT( false, unsupported_feature, "Unsupported Hardfork Detected" );
    }
 
-   void interface::preactivate_feature( legacy_ptr<const digest_type> feature_digest ) {
-      context.control.preactivate_feature( feature_digest.ref() );
+   void interface::preactivate_feature( const digest_type& feature_digest ) {
+      context.control.preactivate_feature( feature_digest );
    }
 
    void interface::set_resource_limits( account_name account, int64_t ram_bytes, int64_t net_weight, int64_t cpu_weight ) {
