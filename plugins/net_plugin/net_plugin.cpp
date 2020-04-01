@@ -414,10 +414,11 @@ namespace eosio {
     *  the need for compatibility hooks
     */
    constexpr uint16_t proto_base = 0;
-   constexpr uint16_t proto_explicit_sync = 1;
-   constexpr uint16_t block_id_notify = 2; // reserved. feature was removed. next net_version should be 3
+   constexpr uint16_t proto_explicit_sync = 1; // version at time of eosio 1.0
+   constexpr uint16_t block_id_notify = 2;     // reserved. feature was removed. next net_version should be 3
+   constexpr uint16_t pruned_types = 3;        // support packed_transaction & signed_block in addition to prior *_v0 versions
 
-   constexpr uint16_t net_version = proto_explicit_sync;
+   constexpr uint16_t net_version = pruned_types;
 
    /**
     * Index by start_block_num
@@ -1241,6 +1242,19 @@ namespace eosio {
       return create_send_buffer( packed_transaction_which, trx );
    }
 
+   static std::shared_ptr<std::vector<char>> create_send_buffer( const signed_block_v0_ptr& sb ) {
+      // this implementation is to avoid copy of signed_block to net_message
+      // matches which of net_message for signed_block
+      fc_dlog( logger, "sending block ${bn}", ("bn", sb->block_num()) );
+      return create_send_buffer( signed_block_v0_which, *sb );
+   }
+
+   static std::shared_ptr<std::vector<char>> create_send_buffer( const packed_transaction_v0& trx ) {
+      // this implementation is to avoid copy of packed_transaction to net_message
+      // matches which of net_message for packed_transaction
+      return create_send_buffer( packed_transaction_v0_which, trx );
+   }
+
    void connection::enqueue_block( const signed_block_ptr& sb, bool to_sync_queue) {
       fc_dlog( logger, "enqueue block ${num}", ("num", sb->block_num()) );
       verify_strand_in_this_thread( strand, __func__, __LINE__ );
@@ -1589,10 +1603,6 @@ namespace eosio {
                   ("ep", c->peer_name())("lib", msg.last_irreversible_block_num)("head", msg.head_num)
                   ("id", msg.head_id.str().substr(8,16)) );
          c->syncing = false;
-         // wait for receipt of a notice message before initiating sync
-         if (c->protocol_version < proto_explicit_sync) {
-            start_sync( c, peer_lib );
-         }
          return;
       }
       if (lib_num > msg.head_num ) {

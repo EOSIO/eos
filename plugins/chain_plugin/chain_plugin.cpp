@@ -2072,6 +2072,7 @@ fc::variant read_only::get_block(const read_only::get_block_params& params) cons
 
    EOS_ASSERT( block, unknown_block_exception, "Could not find block: ${block}", ("block", params.block_num_or_id));
 
+   // serializes signed_block to variant in signed_block_v0 format
    fc::variant pretty_output;
    abi_serializer::to_variant(*block, pretty_output, make_resolver(this, abi_serializer::create_yield_function( abi_serializer_max_time )),
                               abi_serializer::create_yield_function( abi_serializer_max_time ));
