@@ -618,7 +618,7 @@ public:
    read_write(controller& db, const fc::microseconds& abi_serializer_max_time, bool api_accept_transactions);
    void validate() const;
 
-   using push_block_params = chain::signed_block;
+   using push_block_params = chain::signed_block_v0;
    using push_block_results = empty;
    void push_block(push_block_params&& params, chain::plugin_interface::next_function<push_block_results> next);
 

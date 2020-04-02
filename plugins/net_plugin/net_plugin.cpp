@@ -2855,12 +2855,7 @@ namespace eosio {
    }
 
    size_t calc_trx_size( const packed_transaction_ptr& trx ) {
-      // transaction is stored packed and unpacked, double packed_size and size of signed as an approximation of use
-      const auto cfd_size = trx->get_context_free_data() != nullptr ? trx->get_context_free_data()->size() : 0;
-      auto sig_size = trx->get_signatures() != nullptr ? trx->get_signatures()->size() : 0;
-      sig_size *= sizeof(signature_type);
-      return (trx->get_packed_transaction().size() * 2 + sizeof(trx->get_signed_transaction())) * 2 +
-             cfd_size + sig_size;
+      return trx->get_estimated_size();
    }
 
    void connection::handle_message( packed_transaction_ptr trx ) {

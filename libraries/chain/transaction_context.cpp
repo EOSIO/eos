@@ -52,7 +52,7 @@ namespace eosio { namespace chain {
    ,trx(t)
    ,id(trx_id)
    ,undo_session()
-   ,trace(std::make_shared<transaction_trace>())
+   ,trace(std::make_unique<transaction_trace>())
    ,start(s)
    ,transaction_timer(std::move(tmr))
    ,net_usage(trace->net_usage)

@@ -277,6 +277,7 @@ namespace eosio { namespace chain {
 
       uint32_t get_unprunable_size()const;
       uint32_t get_prunable_size()const;
+      uint32_t get_estimated_size()const { return estimated_size; }
 
       digest_type packed_digest()const;
 
@@ -290,7 +291,7 @@ namespace eosio { namespace chain {
       // Returns nullptr if any context_free_data segment was pruned
       const vector<bytes>*          get_context_free_data()const;
       // Returns nullptr if the context_free_data segment was pruned or segment_ordinal is out of range.
-      const bytes*                  get_context_free_data(std::size_t segment_ordinal);
+      const bytes*                  get_context_free_data(std::size_t segment_ordinal)const;
       const fc::enum_type<uint8_t,compression_type>& get_compression()const { return compression; }
       const bytes&                  get_packed_transaction()const { return packed_trx; }
       const prunable_transaction_data& get_prunable_data() const { return prunable_data; }
@@ -306,12 +307,13 @@ namespace eosio { namespace chain {
       friend struct fc::has_reflector_init<packed_transaction>;
       void reflector_init();
    private:
+      uint32_t                                estimated_size = 0;
       fc::enum_type<uint8_t,compression_type> compression;
       prunable_transaction_data               prunable_data;
       bytes                                   packed_trx;
 
    private:
-      // cache unpacked trx, for thread safety do not modify after construction
+      // cache unpacked trx, for thread safety do not modify any attributes after construction
       signed_transaction                      unpacked_trx;
       transaction_id_type                     trx_id;
    };

@@ -971,6 +971,7 @@ BOOST_AUTO_TEST_CASE(pruned_transaction_test) {
    BOOST_TEST(pruned.get_unprunable_size() == packed.get_unprunable_size());
    std::size_t max_size = pruned.maximum_pruned_pack_size(packed_transaction::cf_compression_type::none);
    BOOST_TEST(fc::raw::pack_size(pruned) <= max_size);
+   BOOST_TEST(fc::raw::pack_size(pruned) < pruned.get_estimated_size());
 
    pruned.prune_all();
    BOOST_TEST(packed.packed_digest().str() == pruned.packed_digest().str());
