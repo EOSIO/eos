@@ -206,7 +206,7 @@ namespace eosio { namespace chain {
    };
 
    struct prunable_transaction_data {
-      enum class compression_type {
+      enum class compression_type : uint8_t {
          none = 0,
          zlib = 1,
       };
