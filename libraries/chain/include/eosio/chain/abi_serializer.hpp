@@ -447,10 +447,11 @@ namespace impl {
       /**
        * overload of to_variant_object for packed_transaction_v0
        *
-       * This matches the FC_REFLECT for this type, but this is provided to allow extracting the contents of ptrx.transaction
+       * This matches the FC_REFLECT for packed_transaction_v0 type with the addition of "transaction" which is provided
+       * to allow extracting the contents of ptrx.get_transaction()
        */
       template<typename Resolver>
-      static void add( mutable_variant_object &out, const char* name, const packed_transaction_v0& ptrx, Resolver resolver, abi_traverse_context& ctx )
+      static void add( mutable_variant_object& out, const char* name, const packed_transaction_v0& ptrx, Resolver resolver, abi_traverse_context& ctx )
       {
          static_assert(fc::reflector<packed_transaction_v0>::total_member_count == 4);
          auto h = ctx.enter_scope();
@@ -469,10 +470,11 @@ namespace impl {
       /**
        * overload of to_variant_object for packed_transaction, providing original packed_transaction_v0 variant layout
        *
-       * This matches the FC_REFLECT for this type, but this is provided to allow extracting the contents of ptrx.transaction
+       * This matches the FC_REFLECT for packed_transaction_v0 type with the addition of "transaction" which is provided
+       * to allow extracting the contents of ptrx.get_transaction(). The generated variant should match above method.
        */
       template<typename Resolver>
-      static void add( mutable_variant_object &out, const char* name, const packed_transaction& ptrx, Resolver resolver, abi_traverse_context& ctx )
+      static void add( mutable_variant_object& out, const char* name, const packed_transaction& ptrx, Resolver resolver, abi_traverse_context& ctx )
       {
          static_assert(fc::reflector<packed_transaction>::total_member_count == 3);
          auto h = ctx.enter_scope();
@@ -531,6 +533,7 @@ namespace impl {
       static void add( mutable_variant_object &out, const char* name, const signed_block& block, Resolver resolver, abi_traverse_context& ctx )
       {
          // TODO: this could be faster by going directly to variant
+         // TODO: Conversion to packed_transaction_v0 could be done via above if we go directly to variant
          auto sb_v0 = block.to_signed_block_v0();
          add( out, name, *sb_v0, std::move( resolver ), ctx );
       }
