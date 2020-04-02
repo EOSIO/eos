@@ -4,7 +4,7 @@
 #include <fc/bitutil.hpp>
 #include <fc/io/cfile.hpp>
 #include <fc/io/raw.hpp>
-#include <sys/mman.h>
+#include <boost/iostreams/device/mapped_file.hpp>
 
 #define LOG_READ  (std::ios::in | std::ios::binary)
 #define LOG_WRITE (std::ios::out | std::ios::binary | std::ios::app)
@@ -211,44 +211,6 @@ namespace eosio { namespace chain {
       private:
          FILE* const _file;
          const std::string _filename;
-      };
-
-      /*
-       *  @brief A utility class to wrap mmap() system call for RAII usage
-       *
-       */
-      class mmap_readonly_data {
-         int      fd;
-         uint64_t _size;
-         void*    _addr;
-
-       public:
-         mmap_readonly_data(const char* filename) {
-            int fd = ::open(filename, O_RDONLY);
-            EOS_ASSERT(fd != -1, block_log_exception, "Unable to open file: ${filename}", ("filename", filename));
-
-            struct stat st;
-            stat(filename, &st);
-            _size = st.st_size;
-
-            _addr = mmap(0, st.st_size, PROT_READ, MAP_SHARED, fd, 0);
-            if (_addr == MAP_FAILED) {
-               int err_num = errno;
-               close(fd);
-               EOS_ASSERT(true, block_log_exception, "mmap() failure: ${msg}", ("msg", (strerror(err_num))));
-            }
-         }
-         ~mmap_readonly_data() {
-            munmap(_addr, _size);
-            close(fd);
-         }
-
-         mmap_readonly_data(const mmap_readonly_data&) = delete;
-         mmap_readonly_data& operator=(const mmap_readonly_data&) = delete;
-
-         const char*                 addr() const { return static_cast<const char*>(_addr); }
-         uint64_t                    size() const { return _size; }
-         fc::datastream<const char*> create_datastream() const { return fc::datastream<const char*>(addr(), size()); }
       };
    }
 
@@ -764,8 +726,8 @@ namespace eosio { namespace chain {
       uint32_t      block_num = 0;
       block_id_type previous;
 
-      detail::mmap_readonly_data  log_data((backup_dir / "blocks.log").generic_string().c_str());
-      fc::datastream<const char*> ds      = log_data.create_datastream();
+      boost::iostreams::mapped_file_source log_data((backup_dir / "blocks.log").generic_string());
+      fc::datastream<const char*> ds(log_data.data(), log_data.size());
       uint32_t                    version = verify_log_preamble_and_return_version(ds, block_file_name);
       pos                                 = ds.tellp();
       std::string error_msg;
@@ -784,7 +746,7 @@ namespace eosio { namespace chain {
                   fc::raw::unpack(ds, &signed_tmp);
                }
             } catch (...) {
-               write_incomplete_block_data(blocks_dir, now, block_num, log_data.addr() + pos, log_data.size() - pos);
+               write_incomplete_block_data(blocks_dir, now, block_num, log_data.data() + pos, log_data.size() - pos);
                throw;
             }
 
@@ -818,9 +780,11 @@ namespace eosio { namespace chain {
          error_msg = "unrecognized exception";
       }
 
-      int fd_to = creat(block_file_name, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-      EOS_ASSERT(fd_to > 0, block_log_exception, "Could not create block log file: ${name}", ("name", block_file_name));
-      int nwritten = write(fd_to, log_data.addr(), pos);
+      FILE* fp = fopen(block_file_name, "w");
+      EOS_ASSERT(fp != nullptr, block_log_exception, "Could not create block log file: ${name}", ("name", block_file_name));
+      int nwritten = fwrite(log_data.data(), 1,  pos, fp);
+      fclose(fp);
+
       EOS_ASSERT(
           nwritten == pos, block_log_exception,
           "Unable to write the entire block log file: ${name}, expected size=${expected}, written size=${written}",
@@ -957,7 +921,7 @@ namespace eosio { namespace chain {
       EOS_ASSERT( _file, block_log_exception, "Could not open Block log file at '${blocks_log}'", ("blocks_log", _block_file_name) );
       _end_of_buffer_position = _unset_position;
 
-      // TODO: reimplemented with mmap_readonly_data() and verify_log_preamble_and_return_version()
+      // TODO: reimplemented with mapped_file_source and verify_log_preamble_and_return_version()
 
       //read block log to see if version 1 or 2 and get first blocknum (implicit 1 if version 1)
       _version = 0;

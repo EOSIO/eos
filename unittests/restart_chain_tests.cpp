@@ -162,6 +162,8 @@ BOOST_AUTO_TEST_CASE(test_restart_from_block_log) {
    BOOST_REQUIRE_NO_THROW(from_block_log_chain.control->get_account(N(replay1)));
    BOOST_REQUIRE_NO_THROW(from_block_log_chain.control->get_account(N(replay2)));
    BOOST_REQUIRE_NO_THROW(from_block_log_chain.control->get_account(N(replay3)));
+
+   BOOST_REQUIRE_NO_THROW(block_log::repair_log(copied_config.blocks_dir, 0));
 }
 
 BOOST_AUTO_TEST_CASE(test_light_validation_restart_from_block_log) {
