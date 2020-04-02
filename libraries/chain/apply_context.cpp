@@ -363,8 +363,12 @@ void apply_context::execute_context_free_inline( action&& a ) {
    );
 }
 
-
 void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, account_name payer, transaction&& trx, bool replace_existing ) {
+   bool stop_deferred_transactions_activated = control.is_builtin_activated(builtin_protocol_feature_t::stop_deferred_transactions);
+   if ( stop_deferred_transactions_activated ) {
+       EOS_ASSERT( replace_existing, stop_deferred_tx, "you may only replace existing deferred transactions; not generate new ones" );
+   }
+   
    EOS_ASSERT( trx.context_free_actions.size() == 0, cfa_inside_generated_tx, "context free actions are not currently allowed in generated transactions" );
 
    bool enforce_actor_whitelist_blacklist = trx_context.enforce_whiteblacklist && control.is_producing_block()
@@ -487,13 +491,8 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
 
    uint32_t trx_size = 0;
    
-   bool stop_deferred_transactions_activated = control.is_builtin_activated(builtin_protocol_feature_t::stop_deferred_transactions);
-   
-   if ( stop_deferred_transactions_activated ) {
-       EOS_ASSERT( replace_existing, stop_deferred_tx, "you may only replace existing deferred transactions; not generate new ones" );
-   }
-   
-   if ( auto ptr = db.find<generated_transaction_object,by_sender_id>(boost::make_tuple(receiver, sender_id)) ) {
+   if ( auto ptr = db.find<generated_transaction_object,by_sender_id>(boost::make_tuple(receiver, sender_id)) )
+   {
       EOS_ASSERT( replace_existing, deferred_tx_duplicate, "deferred transaction with the same sender_id and payer already exists" );
 
       bool replace_deferred_activated = control.is_builtin_activated(builtin_protocol_feature_t::replace_deferred);
@@ -519,33 +518,44 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
 
       // Use remove and create rather than modify because mutating the trx_id field in a modifier is unsafe.
       db.remove( *ptr );
-      if ( !stop_deferred_transactions_activated ) {
-         db.create<generated_transaction_object>( [&]( auto& gtx ) {
-            gtx.trx_id      = trx_id_for_new_obj;
-            gtx.sender      = receiver;
-            gtx.sender_id   = sender_id;
-            gtx.payer       = payer;
-            gtx.published   = control.pending_block_time();
-            gtx.delay_until = gtx.published + delay;
-            gtx.expiration  = gtx.delay_until + fc::seconds(control.get_global_properties().configuration.deferred_trx_expiration_window);
 
-            trx_size = gtx.set( trx );
-         } );
-      }
+      db.create<generated_transaction_object>( [&]( auto& gtx ) {
+         gtx.trx_id      = trx_id_for_new_obj;
+         gtx.sender      = receiver;
+         gtx.sender_id   = sender_id;
+         gtx.payer       = payer;
+         gtx.published   = control.pending_block_time();
+         gtx.delay_until = gtx.published + delay;
+         gtx.expiration  = gtx.delay_until + fc::seconds(control.get_global_properties().configuration.deferred_trx_expiration_window);
+
+         trx_size = gtx.set( trx );
+
+         if ( stop_deferred_transactions_activated ) {
+            EOS_ASSERT( ram_restrictions_activated
+               || control.is_ram_billing_in_notify_allowed()
+               || (receiver == act->account) || (receiver == payer) || privileged,
+               subjective_block_production_exception,
+               "Cannot charge RAM to other accounts during notify."
+            );
+            add_ram_usage( payer, (config::billable_size_v<generated_transaction_object> + trx_size) );
+            return;
+         }
+      } );
    } else {
-      if ( !stop_deferred_transactions_activated ) {
-         db.create<generated_transaction_object>( [&]( auto& gtx ) {
-            gtx.trx_id      = trx.id();
-            gtx.sender      = receiver;
-            gtx.sender_id   = sender_id;
-            gtx.payer       = payer;
-            gtx.published   = control.pending_block_time();
-            gtx.delay_until = gtx.published + delay;
-            gtx.expiration  = gtx.delay_until + fc::seconds(control.get_global_properties().configuration.deferred_trx_expiration_window);
-
-            trx_size = gtx.set( trx );
-         } );
+      if ( stop_deferred_transactions_activated ) {
+         EOS_THROW( stop_deferred_tx, "deferred transaction to replace not found" );
       }
+      db.create<generated_transaction_object>( [&]( auto& gtx ) {
+         gtx.trx_id      = trx.id();
+         gtx.sender      = receiver;
+         gtx.sender_id   = sender_id;
+         gtx.payer       = payer;
+         gtx.published   = control.pending_block_time();
+         gtx.delay_until = gtx.published + delay;
+         gtx.expiration  = gtx.delay_until + fc::seconds(control.get_global_properties().configuration.deferred_trx_expiration_window);
+
+         trx_size = gtx.set( trx );
+      } );
    }
 
    EOS_ASSERT( ram_restrictions_activated
@@ -556,6 +566,209 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
    );
    add_ram_usage( payer, (config::billable_size_v<generated_transaction_object> + trx_size) );
 }
+
+
+// void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, account_name payer, transaction&& trx, bool replace_existing ) {
+//    bool stop_deferred_transactions_activated = control.is_builtin_activated(builtin_protocol_feature_t::stop_deferred_transactions);
+//    if ( stop_deferred_transactions_activated ) {
+//        EOS_ASSERT( replace_existing, stop_deferred_tx, "you may only replace existing deferred transactions; not generate new ones" );
+//    }
+//    
+//    EOS_ASSERT( trx.context_free_actions.size() == 0, cfa_inside_generated_tx, "context free actions are not currently allowed in generated transactions" );
+// 
+//    bool enforce_actor_whitelist_blacklist = trx_context.enforce_whiteblacklist && control.is_producing_block()
+//                                              && !control.sender_avoids_whitelist_blacklist_enforcement( receiver );
+//    trx_context.validate_referenced_accounts( trx, enforce_actor_whitelist_blacklist );
+// 
+//    if( control.is_builtin_activated( builtin_protocol_feature_t::no_duplicate_deferred_id ) ) {
+//       auto exts = trx.validate_and_extract_extensions();
+//       if( exts.size() > 0 ) {
+//          auto itr = exts.lower_bound( deferred_transaction_generation_context::extension_id() );
+// 
+//          EOS_ASSERT( exts.size() == 1 && itr != exts.end(), invalid_transaction_extension,
+//                      "only the deferred_transaction_generation_context extension is currently supported for deferred transactions"
+//          );
+// 
+//          const auto& context = itr->second.get<deferred_transaction_generation_context>();
+// 
+//          EOS_ASSERT( context.sender == receiver, ill_formed_deferred_transaction_generation_context,
+//                      "deferred transaction generaction context contains mismatching sender",
+//                      ("expected", receiver)("actual", context.sender)
+//          );
+//          EOS_ASSERT( context.sender_id == sender_id, ill_formed_deferred_transaction_generation_context,
+//                      "deferred transaction generaction context contains mismatching sender_id",
+//                      ("expected", sender_id)("actual", context.sender_id)
+//          );
+//          EOS_ASSERT( context.sender_trx_id == trx_context.id, ill_formed_deferred_transaction_generation_context,
+//                      "deferred transaction generaction context contains mismatching sender_trx_id",
+//                      ("expected", trx_context.id)("actual", context.sender_trx_id)
+//          );
+//       } else {
+//          emplace_extension(
+//             trx.transaction_extensions,
+//             deferred_transaction_generation_context::extension_id(),
+//             fc::raw::pack( deferred_transaction_generation_context( trx_context.id, sender_id, receiver ) )
+//          );
+//       }
+//       trx.expiration = time_point_sec();
+//       trx.ref_block_num = 0;
+//       trx.ref_block_prefix = 0;
+//    } else {
+//       trx.expiration = control.pending_block_time() + fc::microseconds(999'999); // Rounds up to nearest second (makes expiration check unnecessary)
+//       trx.set_reference_block(control.head_block_id()); // No TaPoS check necessary
+//    }
+// 
+//    // Charge ahead of time for the additional net usage needed to retire the deferred transaction
+//    // whether that be by successfully executing, soft failure, hard failure, or expiration.
+//    const auto& cfg = control.get_global_properties().configuration;
+//    trx_context.add_net_usage( static_cast<uint64_t>(cfg.base_per_transaction_net_usage)
+//                                + static_cast<uint64_t>(config::transaction_id_net_usage) ); // Will exit early if net usage cannot be payed.
+// 
+//    auto delay = fc::seconds(trx.delay_sec);
+// 
+//    bool ram_restrictions_activated = control.is_builtin_activated( builtin_protocol_feature_t::ram_restrictions );
+// 
+//    if( !control.skip_auth_check() && !privileged ) { // Do not need to check authorization if replayng irreversible block or if contract is privileged
+//       if( payer != receiver ) {
+//          if( ram_restrictions_activated ) {
+//             EOS_ASSERT( receiver == act->account, action_validate_exception,
+//                         "cannot bill RAM usage of deferred transactions to another account within notify context"
+//             );
+//             EOS_ASSERT( has_authorization( payer ), action_validate_exception,
+//                         "cannot bill RAM usage of deferred transaction to another account that has not authorized the action: ${payer}",
+//                         ("payer", payer)
+//             );
+//          } else {
+//             require_authorization(payer); /// uses payer's storage
+//          }
+//       }
+// 
+//       // Originally this code bypassed authorization checks if a contract was deferring only actions to itself.
+//       // The idea was that the code could already do whatever the deferred transaction could do, so there was no point in checking authorizations.
+//       // But this is not true. The original implementation didn't validate the authorizations on the actions which allowed for privilege escalation.
+//       // It would make it possible to bill RAM to some unrelated account.
+//       // Furthermore, even if the authorizations were forced to be a subset of the current action's authorizations, it would still violate the expectations
+//       // of the signers of the original transaction, because the deferred transaction would allow billing more CPU and network bandwidth than the maximum limit
+//       // specified on the original transaction.
+//       // So, the deferred transaction must always go through the authorization checking if it is not sent by a privileged contract.
+//       // However, the old logic must still be considered because it cannot objectively change until a consensus protocol upgrade.
+// 
+//       bool disallow_send_to_self_bypass = control.is_builtin_activated( builtin_protocol_feature_t::restrict_action_to_self );
+// 
+//       auto is_sending_only_to_self = [&trx]( const account_name& self ) {
+//          bool send_to_self = true;
+//          for( const auto& act : trx.actions ) {
+//             if( act.account != self ) {
+//                send_to_self = false;
+//                break;
+//             }
+//          }
+//          return send_to_self;
+//       };
+// 
+//       try {
+//          control.get_authorization_manager()
+//                 .check_authorization( trx.actions,
+//                                       {},
+//                                       {{receiver, config::eosio_code_name}},
+//                                       delay,
+//                                       std::bind(&transaction_context::checktime, &this->trx_context),
+//                                       false
+//                                     );
+//       } catch( const fc::exception& e ) {
+//          if( disallow_send_to_self_bypass || !is_sending_only_to_self(receiver) ) {
+//             throw;
+//          } else if( control.is_producing_block() ) {
+//             subjective_block_production_exception new_exception(FC_LOG_MESSAGE( error, "Authorization failure with sent deferred transaction consisting only of actions to self"));
+//             for (const auto& log: e.get_log()) {
+//                new_exception.append_log(log);
+//             }
+//             throw new_exception;
+//          }
+//       } catch( ... ) {
+//          if( disallow_send_to_self_bypass || !is_sending_only_to_self(receiver) ) {
+//             throw;
+//          } else if( control.is_producing_block() ) {
+//             EOS_THROW(subjective_block_production_exception, "Unexpected exception occurred validating sent deferred transaction consisting only of actions to self");
+//          }
+//       }
+//    }
+// 
+//    uint32_t trx_size = 0;
+//    
+//    // bool stop_deferred_transactions_activated = control.is_builtin_activated(builtin_protocol_feature_t::stop_deferred_transactions);
+//    // 
+//    // if ( stop_deferred_transactions_activated ) {
+//    //     EOS_ASSERT( replace_existing, stop_deferred_tx, "you may only replace existing deferred transactions; not generate new ones" );
+//    // }
+//    
+//    if ( auto ptr = db.find<generated_transaction_object,by_sender_id>(boost::make_tuple(receiver, sender_id)) )
+//    {
+//       EOS_ASSERT( replace_existing, deferred_tx_duplicate, "deferred transaction with the same sender_id and payer already exists" );
+// 
+//       bool replace_deferred_activated = control.is_builtin_activated(builtin_protocol_feature_t::replace_deferred);
+// 
+//       EOS_ASSERT( replace_deferred_activated || !control.is_producing_block()
+//                      || control.all_subjective_mitigations_disabled(),
+//                   subjective_block_production_exception,
+//                   "Replacing a deferred transaction is temporarily disabled." );
+// 
+//       uint64_t orig_trx_ram_bytes = config::billable_size_v<generated_transaction_object> + ptr->packed_trx.size();
+//       if( replace_deferred_activated ) {
+//          add_ram_usage( ptr->payer, -static_cast<int64_t>( orig_trx_ram_bytes ) );
+//       } else {
+//          control.add_to_ram_correction( ptr->payer, orig_trx_ram_bytes );
+//       }
+// 
+//       transaction_id_type trx_id_for_new_obj;
+//       if( replace_deferred_activated ) {
+//          trx_id_for_new_obj = trx.id();
+//       } else {
+//          trx_id_for_new_obj = ptr->trx_id;
+//       }
+// 
+//       // Use remove and create rather than modify because mutating the trx_id field in a modifier is unsafe.
+//       db.remove( *ptr );
+// 
+//       if ( !stop_deferred_transactions_activated ) {
+//          db.create<generated_transaction_object>( [&]( auto& gtx ) {
+//             gtx.trx_id      = trx_id_for_new_obj;
+//             gtx.sender      = receiver;
+//             gtx.sender_id   = sender_id;
+//             gtx.payer       = payer;
+//             gtx.published   = control.pending_block_time();
+//             gtx.delay_until = gtx.published + delay;
+//             gtx.expiration  = gtx.delay_until + fc::seconds(control.get_global_properties().configuration.deferred_trx_expiration_window);
+// 
+//             trx_size = gtx.set( trx );
+//             // add_ram_usage( payer, (config::billable_size_v<generated_transaction_object> + trx_size) );
+//          } );
+//       }
+//    } else {
+//       if ( !stop_deferred_transactions_activated ) {
+//          db.create<generated_transaction_object>( [&]( auto& gtx ) {
+//             gtx.trx_id      = trx.id();
+//             gtx.sender      = receiver;
+//             gtx.sender_id   = sender_id;
+//             gtx.payer       = payer;
+//             gtx.published   = control.pending_block_time();
+//             gtx.delay_until = gtx.published + delay;
+//             gtx.expiration  = gtx.delay_until + fc::seconds(control.get_global_properties().configuration.deferred_trx_expiration_window);
+// 
+//             trx_size = gtx.set( trx );
+//             // add_ram_usage( payer, (config::billable_size_v<generated_transaction_object> + trx_size) );
+//          } );
+//       }
+//    }
+// 
+//    EOS_ASSERT( ram_restrictions_activated
+//                || control.is_ram_billing_in_notify_allowed()
+//                || (receiver == act->account) || (receiver == payer) || privileged,
+//                subjective_block_production_exception,
+//                "Cannot charge RAM to other accounts during notify."
+//    );
+//    // add_ram_usage( payer, (config::billable_size_v<generated_transaction_object> + trx_size) );
+// }
 
 bool apply_context::cancel_deferred_transaction( const uint128_t& sender_id, account_name sender ) {
    auto& generated_transaction_idx = db.get_mutable_index<generated_transaction_multi_index>();
