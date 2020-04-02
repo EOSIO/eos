@@ -418,7 +418,7 @@ namespace eosio {
    constexpr uint16_t block_id_notify = 2;     // reserved. feature was removed. next net_version should be 3
    constexpr uint16_t pruned_types = 3;        // support packed_transaction & signed_block in addition to prior *_v0 versions
 
-   constexpr uint16_t net_version = pruned_types;
+   constexpr uint16_t net_version = proto_explicit_sync;
 
    /**
     * Index by start_block_num
@@ -1243,15 +1243,15 @@ namespace eosio {
    }
 
    static std::shared_ptr<std::vector<char>> create_send_buffer( const signed_block_v0_ptr& sb ) {
-      // this implementation is to avoid copy of signed_block to net_message
-      // matches which of net_message for signed_block
+      // this implementation is to avoid copy of signed_block_v0 to net_message
+      // matches which of net_message for signed_block_v0
       fc_dlog( logger, "sending block ${bn}", ("bn", sb->block_num()) );
       return create_send_buffer( signed_block_v0_which, *sb );
    }
 
    static std::shared_ptr<std::vector<char>> create_send_buffer( const packed_transaction_v0& trx ) {
-      // this implementation is to avoid copy of packed_transaction to net_message
-      // matches which of net_message for packed_transaction
+      // this implementation is to avoid copy of packed_transaction_v0 to net_message
+      // matches which of net_message for packed_transaction_v0
       return create_send_buffer( packed_transaction_v0_which, trx );
    }
 
