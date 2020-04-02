@@ -750,14 +750,6 @@ namespace impl {
       }
 
       template<typename Resolver>
-      static void extract( const variant& v, signed_block& sb, Resolver resolver, abi_traverse_context& ctx )
-      {
-         signed_block_v0 v0;
-         extract( v, v0, std::move( resolver ), ctx );
-         sb = signed_block( v0, true );
-      }
-
-      template<typename Resolver>
       static void extract( const variant& v, packed_transaction& ptrx, Resolver resolver, abi_traverse_context& ctx )
       {
          packed_transaction_v0 v0;
@@ -773,7 +765,7 @@ namespace impl {
          EOS_ASSERT(vo.contains("signatures"), packed_transaction_type_exception, "Missing signatures");
          EOS_ASSERT(vo.contains("compression"), packed_transaction_type_exception, "Missing compression");
          std::vector<signature_type> signatures;
-         packed_transaction::compression_type compression;
+         packed_transaction_v0::compression_type compression;
          from_variant(vo["signatures"], signatures);
          from_variant(vo["compression"], compression);
 
