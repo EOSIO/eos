@@ -880,7 +880,7 @@ namespace eosio { namespace chain {
          auto pruner = overloaded{[](transaction_id_type&) { return false; },
                                   [&id](pruned_transaction& ptx) { return ptx.id() == id && prune(ptx); }};
 
-         for (auto trx : block.transactions) {
+         for (auto& trx : block.transactions) {
             if (trx.trx.visit(pruner)) {
                my->block_file.seek(pos);
                std::vector<char> buffer = detail::block_log_impl::pack_v4_log_entry(*entry.block, static_cast<pruned_transaction::cf_compression_type>(entry.compression));
