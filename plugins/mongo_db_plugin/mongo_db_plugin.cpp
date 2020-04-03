@@ -1019,7 +1019,7 @@ void mongo_db_plugin_impl::_process_irreversible_block(const chain::block_state_
    using bsoncxx::builder::basic::kvp;
 
 
-   const auto block_id = bs->block->id();
+   const auto& block_id = bs->id;
    const auto block_id_str = block_id.str();
 
    auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
