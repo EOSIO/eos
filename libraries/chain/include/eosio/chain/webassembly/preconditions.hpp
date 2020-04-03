@@ -72,7 +72,7 @@ namespace eosio { namespace chain { namespace webassembly {
    }
 
    EOS_VM_PRECONDITION(early_validate_pointers,
-         EOS_VM_INVOKE_ON_ALL([&](auto arg, auto&&... rest) {
+         EOS_VM_INVOKE_ON_ALL([&](auto&& arg, auto&&... rest) {
             using namespace eosio::vm;
             using arg_t = decltype(arg);
             if constexpr (is_reference_proxy_type_v<arg_t>)
@@ -92,14 +92,14 @@ namespace eosio { namespace chain { namespace webassembly {
          }));
 
    EOS_VM_PRECONDITION(alias_check,
-         EOS_VM_INVOKE_ON_ALL(([&](auto arg, auto&&... rest) {
+         EOS_VM_INVOKE_ON_ALL(([&](auto&& arg, auto&&... rest) {
             using namespace eosio::vm;
             using arg_t = decltype(arg);
             if constexpr (is_span_type_v<arg_t>) {
                // check alignment while we are here
                EOS_ASSERT( reinterpret_cast<std::uintptr_t>(arg.data()) % alignof(dependent_type_t<arg_t>) == 0,
                      wasm_exception, "memory not aligned" );
-               eosio::vm::invoke_on<false, eosio::vm::invoke_on_all_t>([&](auto narg, auto&&... nrest) {
+               eosio::vm::invoke_on<false, eosio::vm::invoke_on_all_t>([&](auto&& narg, auto&&... nrest) {
                   using nested_arg_t = decltype(arg);
                   if constexpr (eosio::vm::is_span_type_v<nested_arg_t>)
                      EOS_ASSERT(!is_aliasing(arg, narg), wasm_exception, "arrays not allowed to alias");
@@ -108,10 +108,10 @@ namespace eosio { namespace chain { namespace webassembly {
          })));
 
    EOS_VM_PRECONDITION(is_nan_check,
-         EOS_VM_INVOKE_ON(float, [&](auto arg, auto&&... rest) {
+         EOS_VM_INVOKE_ON(float, [&](auto&& arg, auto&&... rest) {
             EOS_ASSERT(!is_nan(arg), transaction_exception, "NaN is not an allowed value for a secondary key");
          });
-         EOS_VM_INVOKE_ON(double, [&](auto arg, auto&&... rest) {
+         EOS_VM_INVOKE_ON(double, [&](auto&& arg, auto&&... rest) {
             EOS_ASSERT(!is_nan(arg), transaction_exception, "NaN is not an allowed value for a secondary key");
          });
          EOS_VM_INVOKE_ON(const float128_t&, [&](const auto& arg, auto&&... rest) {

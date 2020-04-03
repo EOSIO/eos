@@ -69,6 +69,7 @@ namespace eosio { namespace chain {
          return {as_value<char*>(ptr)};
       }
 
+#if 0
       template <typename T, typename U>
       auto from_wasm(U* ptr) const -> std::enable_if_t<std::is_same_v<T, U*>, eosio::vm::reference_proxy<T>> {
          return {ptr};
@@ -79,10 +80,13 @@ namespace eosio { namespace chain {
          -> std::enable_if_t<std::is_same_v<T, eosio::vm::reference<U>>, eosio::vm::reference_proxy<T>> {
          return {r.get()};
       }
+#endif
 
       EOS_VM_FROM_WASM(null_terminated_ptr, (const elem_type& ptr)) { return {as_value<const char*>(ptr)}; }
       EOS_VM_FROM_WASM(name, (const elem_type& e)) { return name{static_cast<uint64_t>(as_value<uint64_t>(e))}; }
       EOS_VM_TO_WASM(name, (name n)) { return as_result<uint64_t>(n.to_uint64_t()); }
+      // OSX clang can't find the base class version
+      EOS_VM_FROM_WASM(bool, (const elem_type& value)) { return as_value<uint32_t>(value) ? 1 : 0; }
    };
 
    using eos_vm_host_functions_t = eosio::vm::registered_host_functions<webassembly::interface,

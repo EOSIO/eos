@@ -3,7 +3,7 @@
 #include <eosio/chain/transaction_context.hpp>
 
 namespace eosio { namespace chain { namespace webassembly {
-   template<class Encoder> auto encode(auto& context, char* data, uint32_t datalen) {
+   template<class Encoder, class Context> auto encode(Context& context, char* data, uint32_t datalen) {
       Encoder e;
       const size_t bs = eosio::chain::config::hashing_checktime_block_size;
       while ( datalen > bs ) {

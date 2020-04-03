@@ -23,12 +23,15 @@ namespace eosio { namespace chain { namespace webassembly {
    inline static host_function_registrator<&interface::NAME, alias_check, early_validate_pointers, static_check_wl_args, ##__VA_ARGS__> NAME ## _registrator = {"env", #NAME};
 
 #define REGISTER_CF_HOST_FUNCTION(NAME, ...) \
-   inline static host_function_registrator<&interface::NAME, alias_check, early_validate_pointers, static_check_wl_args, context_free_check, ##__VA_ARGS__> NAME ## _registrator = {"env", #NAME};
+   inline static host_function_registrator<&interface::NAME, alias_check, early_validate_pointers, static_check_wl_args, ##__VA_ARGS__> NAME ## _registrator = {"env", #NAME};
 
 #define REGISTER_LEGACY_HOST_FUNCTION(NAME, ...) \
    inline static host_function_registrator<&interface::NAME, alias_check, early_validate_pointers, legacy_static_check_wl_args, ##__VA_ARGS__> NAME ## _registrator = {"env", #NAME};
 
 #define REGISTER_LEGACY_CF_HOST_FUNCTION(NAME, ...) \
+   inline static host_function_registrator<&interface::NAME, alias_check, early_validate_pointers, legacy_static_check_wl_args, ##__VA_ARGS__> NAME ## _registrator = {"env", #NAME};
+
+#define REGISTER_LEGACY_CF_ONLY_HOST_FUNCTION(NAME, ...) \
    inline static host_function_registrator<&interface::NAME, alias_check, early_validate_pointers, legacy_static_check_wl_args, context_free_check, ##__VA_ARGS__> NAME ## _registrator = {"env", #NAME};
 
    class interface {
@@ -44,7 +47,7 @@ namespace eosio { namespace chain { namespace webassembly {
 
          // context free api
          int32_t get_context_free_data(uint32_t index, legacy_array_ptr<char> buffer) const;
-         REGISTER_LEGACY_CF_HOST_FUNCTION(get_context_free_data)
+         REGISTER_LEGACY_CF_ONLY_HOST_FUNCTION(get_context_free_data)
 
          // privileged api
          int32_t is_feature_active(int64_t feature_name) const;
