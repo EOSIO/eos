@@ -480,7 +480,7 @@ packed_transaction::packed_transaction(const signed_transaction& t, bool legacy,
    unpacked_trx(t),
    trx_id(unpacked_trx.id())
 {
-   estimated_size = estimated_size * 2 + get_prunable_size();
+   estimated_size = estimated_size * 2 + get_prunable_size() * 2;
 }
 
 packed_transaction::packed_transaction(signed_transaction&& t, bool legacy, compression_type _compression)
@@ -490,7 +490,7 @@ packed_transaction::packed_transaction(signed_transaction&& t, bool legacy, comp
    unpacked_trx(std::move(t)),
    trx_id(unpacked_trx.id())
 {
-   estimated_size = estimated_size * 2 + get_prunable_size();
+   estimated_size = estimated_size * 2 + get_prunable_size() * 2;
 }
 
 packed_transaction_v0_ptr packed_transaction::to_packed_transaction_v0() const {
@@ -598,7 +598,7 @@ void packed_transaction::reflector_init()
                                      signatures ? *signatures : std::vector<signature_type>{},
                                      prunable_data.prunable_data.visit([&](const auto& obj) { return maybe_unpack_context_free_data(obj, compression); }));
    trx_id = unpacked_trx.id();
-   estimated_size = packed_size * 2 + get_prunable_size(); // x2 since stored packed and unpacked
+   estimated_size = packed_size * 2 + get_prunable_size() * 2; // x2 since stored packed and unpacked
 }
 
 } } // eosio::chain
