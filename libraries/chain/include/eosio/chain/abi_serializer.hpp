@@ -757,12 +757,6 @@ namespace impl {
       }
 
       template<typename Resolver>
-      static void extract( const variant& v, packed_transaction& ptrx, Resolver resolver, abi_traverse_context& ctx )
-      {
-         EOS_THROW( packed_transaction_type_exception, "not implemented, use packed_transaction_v0" )
-      }
-
-      template<typename Resolver>
       static void extract( const variant& v, packed_transaction_v0& ptrx, Resolver resolver, abi_traverse_context& ctx )
       {
          auto h = ctx.enter_scope();
