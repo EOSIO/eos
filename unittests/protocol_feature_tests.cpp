@@ -1781,4 +1781,52 @@ BOOST_AUTO_TEST_CASE( set_action_return_value_test ) { try {
    c.produce_block();
 } FC_LOG_AND_RETHROW() }
 
+BOOST_AUTO_TEST_CASE( require_key_test ) { try {
+   tester c( setup_policy::preactivate_feature_and_new_bios );
+
+   const auto& pfm = c.control->get_protocol_feature_manager();
+   const auto& d = pfm.get_builtin_digest(builtin_protocol_feature_t::require_key);
+   BOOST_REQUIRE(d);
+
+   const auto& alice_account = account_name("alice");
+   const auto& bob_account = account_name("bob");
+   const auto& dan_account = account_name("dan");
+   const auto& perm_name = permission_name("active");
+
+   c.create_accounts( {alice_account} );
+   c.create_accounts( {bob_account} );
+   c.create_accounts( {dan_account} );
+   c.produce_block();
+
+
+   BOOST_CHECK_EXCEPTION(  c.set_code( alice_account, contracts::require_key_test_wasm() ),
+                           wasm_exception,
+                           fc_exception_message_is( "env.require_key unresolveable" ) );
+
+   c.preactivate_protocol_features( {*d} );
+   c.produce_blocks(10);
+
+   c.set_code( alice_account, contracts::require_key_test_wasm() );
+   c.set_abi(  alice_account, contracts::require_key_test_abi().data() );
+
+   c.push_action( alice_account, action_name("reqkey"), alice_account,
+      mutable_variant_object()("pk",  c.get_public_key(alice_account, "active") ));
+
+   BOOST_CHECK_EXCEPTION( c.push_action( alice_account, action_name("reqkey"), {alice_account, bob_account},
+         mutable_variant_object()("pk",  c.get_public_key(alice_account, "active") )),
+         unsatisfied_authorization,
+         fc_exception_message_starts_with( "transaction bears an irrelevant signature" ) );
+
+   BOOST_CHECK_EXCEPTION( c.push_action( alice_account, action_name("reqkey"), {alice_account},
+         mutable_variant_object()("pk",  c.get_public_key(bob_account, "active") )),
+         unsatisfied_authorization,
+         fc_exception_message_starts_with( "require_key failed with unresolved key" ) );
+
+   c.push_action( alice_account, action_name("reqkey2"), {bob_account, dan_account},
+      mutable_variant_object()("pk1",  c.get_public_key(bob_account, "active") )
+                              ("pk2",  c.get_public_key(dan_account, "active") ));
+
+   c.produce_block();
+} FC_LOG_AND_RETHROW() }
+
 BOOST_AUTO_TEST_SUITE_END()

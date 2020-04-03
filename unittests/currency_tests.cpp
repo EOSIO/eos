@@ -35,7 +35,7 @@ class currency_tester : public TESTER {
          act.account = N(eosio.token);
          act.name = name;
          act.authorization = vector<permission_level>{{signer, config::active_name}};
-         act.data = abi_ser.variant_to_binary(action_type_name, data, abi_serializer_max_time);
+         act.data = abi_ser.variant_to_binary(action_type_name, data, abi_serializer::create_yield_function( abi_serializer_max_time ));
 
          signed_transaction trx;
          trx.actions.emplace_back(std::move(act));
@@ -71,7 +71,7 @@ class currency_tester : public TESTER {
       }
 
       currency_tester()
-         :TESTER(),abi_ser(json::from_string(contracts::eosio_token_abi().data()).as<abi_def>(), abi_serializer_max_time)
+         :TESTER(),abi_ser(json::from_string(contracts::eosio_token_abi().data()).as<abi_def>(), abi_serializer::create_yield_function( abi_serializer_max_time ))
       {
          create_account( N(eosio.token));
          set_code( N(eosio.token), contracts::eosio_token_wasm() );
@@ -405,7 +405,7 @@ BOOST_FIXTURE_TEST_CASE( test_proxy, currency_tester ) try {
    set_code(N(proxy), contracts::proxy_wasm());
    produce_blocks(1);
 
-   abi_serializer proxy_abi_ser(json::from_string(contracts::proxy_abi().data()).as<abi_def>(), abi_serializer_max_time);
+   abi_serializer proxy_abi_ser(json::from_string(contracts::proxy_abi().data()).as<abi_def>(), abi_serializer::create_yield_function( abi_serializer_max_time ));
 
    // set up proxy owner
    {
@@ -417,7 +417,7 @@ BOOST_FIXTURE_TEST_CASE( test_proxy, currency_tester ) try {
       setowner_act.data = proxy_abi_ser.variant_to_binary("setowner", mutable_variant_object()
          ("owner", "alice")
          ("delay", 10),
-         abi_serializer_max_time
+         abi_serializer::create_yield_function( abi_serializer_max_time )
       );
       trx.actions.emplace_back(std::move(setowner_act));
 
@@ -461,7 +461,7 @@ BOOST_FIXTURE_TEST_CASE( test_deferred_failure, currency_tester ) try {
    set_code(N(bob), contracts::proxy_wasm());
    produce_blocks(1);
 
-   abi_serializer proxy_abi_ser(json::from_string(contracts::proxy_abi().data()).as<abi_def>(), abi_serializer_max_time);
+   abi_serializer proxy_abi_ser(json::from_string(contracts::proxy_abi().data()).as<abi_def>(), abi_serializer::create_yield_function( abi_serializer_max_time ));
 
    // set up proxy owner
    {
@@ -473,7 +473,7 @@ BOOST_FIXTURE_TEST_CASE( test_deferred_failure, currency_tester ) try {
       setowner_act.data = proxy_abi_ser.variant_to_binary("setowner", mutable_variant_object()
          ("owner", "bob")
          ("delay", 10),
-         abi_serializer_max_time
+         abi_serializer::create_yield_function( abi_serializer_max_time )
       );
       trx.actions.emplace_back(std::move(setowner_act));
 
@@ -524,7 +524,7 @@ BOOST_FIXTURE_TEST_CASE( test_deferred_failure, currency_tester ) try {
       setowner_act.data = proxy_abi_ser.variant_to_binary("setowner", mutable_variant_object()
          ("owner", "alice")
          ("delay", 0),
-         abi_serializer_max_time
+         abi_serializer::create_yield_function( abi_serializer_max_time )
       );
       trx.actions.emplace_back(std::move(setowner_act));
 

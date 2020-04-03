@@ -1,0 +1,6 @@
+if( EOSIO_COMPILE_TEST_CONTRACTS )
+   add_contract( require_key_test require_key_test require_key_test.cpp )
+else()
+   configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/require_key_test.wasm ${CMAKE_CURRENT_BINARY_DIR}/require_key_test.wasm COPYONLY )
+   configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/require_key_test.abi  ${CMAKE_CURRENT_BINARY_DIR}/require_key_test.abi  COPYONLY )
+endif()

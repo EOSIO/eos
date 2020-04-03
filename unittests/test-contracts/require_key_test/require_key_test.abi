@@ -1,0 +1,46 @@
+{
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT ",
+    "version": "eosio::abi/1.1",
+    "types": [],
+    "structs": [
+        {
+            "name": "reqkey",
+            "base": "",
+            "fields": [
+                {
+                    "name": "pk",
+                    "type": "public_key"
+                }
+            ]
+        },
+        {
+            "name": "reqkey2",
+            "base": "",
+            "fields": [
+                {
+                    "name": "pk1",
+                    "type": "public_key"
+                },
+                {
+                    "name": "pk2",
+                    "type": "public_key"
+                }
+            ]
+        }
+    ],
+    "actions": [
+        {
+            "name": "reqkey",
+            "type": "reqkey",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "reqkey2",
+            "type": "reqkey2",
+            "ricardian_contract": ""
+        }
+    ],
+    "tables": [],
+    "ricardian_clauses": [],
+    "variants": []
+}
