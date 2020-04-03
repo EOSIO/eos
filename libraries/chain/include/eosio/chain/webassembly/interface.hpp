@@ -20,13 +20,13 @@ namespace eosio { namespace chain { namespace webassembly {
    inline static host_function_registrator<&interface::NAME, alias_check, early_validate_pointers, ##__VA_ARGS__> NAME ## _registrator = {eosio_injected_module_name, #NAME};
 
 #define REGISTER_HOST_FUNCTION(NAME, ...) \
-   inline static host_function_registrator<&interface::NAME, alias_check, early_validate_pointers, static_check_wl_args, ##__VA_ARGS__> NAME ## _registrator = {"env", #NAME};
+   inline static host_function_registrator<&interface::NAME, alias_check, early_validate_pointers, static_check_wl_args, context_aware_check, ##__VA_ARGS__> NAME ## _registrator = {"env", #NAME};
 
 #define REGISTER_CF_HOST_FUNCTION(NAME, ...) \
    inline static host_function_registrator<&interface::NAME, alias_check, early_validate_pointers, static_check_wl_args, ##__VA_ARGS__> NAME ## _registrator = {"env", #NAME};
 
 #define REGISTER_LEGACY_HOST_FUNCTION(NAME, ...) \
-   inline static host_function_registrator<&interface::NAME, alias_check, early_validate_pointers, legacy_static_check_wl_args, ##__VA_ARGS__> NAME ## _registrator = {"env", #NAME};
+   inline static host_function_registrator<&interface::NAME, alias_check, early_validate_pointers, legacy_static_check_wl_args, context_aware_check, ##__VA_ARGS__> NAME ## _registrator = {"env", #NAME};
 
 #define REGISTER_LEGACY_CF_HOST_FUNCTION(NAME, ...) \
    inline static host_function_registrator<&interface::NAME, alias_check, early_validate_pointers, legacy_static_check_wl_args, ##__VA_ARGS__> NAME ## _registrator = {"env", #NAME};
@@ -209,16 +209,16 @@ namespace eosio { namespace chain { namespace webassembly {
          void sha512(legacy_array_ptr<char>, legacy_ptr<fc::sha512>) const;
          void ripemd160(legacy_array_ptr<char>, legacy_ptr<fc::ripemd160>) const;
 
-         REGISTER_LEGACY_HOST_FUNCTION(assert_recover_key);
-         REGISTER_LEGACY_HOST_FUNCTION(recover_key);
-         REGISTER_LEGACY_HOST_FUNCTION(assert_sha256);
-         REGISTER_LEGACY_HOST_FUNCTION(assert_sha1);
-         REGISTER_LEGACY_HOST_FUNCTION(assert_sha512);
-         REGISTER_LEGACY_HOST_FUNCTION(assert_ripemd160);
-         REGISTER_LEGACY_HOST_FUNCTION(sha256);
-         REGISTER_LEGACY_HOST_FUNCTION(sha1);
-         REGISTER_LEGACY_HOST_FUNCTION(sha512);
-         REGISTER_LEGACY_HOST_FUNCTION(ripemd160);
+         REGISTER_LEGACY_CF_HOST_FUNCTION(assert_recover_key);
+         REGISTER_LEGACY_CF_HOST_FUNCTION(recover_key);
+         REGISTER_LEGACY_CF_HOST_FUNCTION(assert_sha256);
+         REGISTER_LEGACY_CF_HOST_FUNCTION(assert_sha1);
+         REGISTER_LEGACY_CF_HOST_FUNCTION(assert_sha512);
+         REGISTER_LEGACY_CF_HOST_FUNCTION(assert_ripemd160);
+         REGISTER_LEGACY_CF_HOST_FUNCTION(sha256);
+         REGISTER_LEGACY_CF_HOST_FUNCTION(sha1);
+         REGISTER_LEGACY_CF_HOST_FUNCTION(sha512);
+         REGISTER_LEGACY_CF_HOST_FUNCTION(ripemd160);
 
          // permission api
          bool check_transaction_authorization(legacy_array_ptr<char>, legacy_array_ptr<char>, legacy_array_ptr<char>);
@@ -274,10 +274,10 @@ namespace eosio { namespace chain { namespace webassembly {
          name current_receiver() const;
          void set_action_return_value(legacy_array_ptr<char>);
 
-         REGISTER_LEGACY_HOST_FUNCTION(read_action_data);
-         REGISTER_HOST_FUNCTION(action_data_size);
-         REGISTER_HOST_FUNCTION(current_receiver);
-         REGISTER_LEGACY_HOST_FUNCTION(set_action_return_value);
+         REGISTER_LEGACY_CF_HOST_FUNCTION(read_action_data);
+         REGISTER_CF_HOST_FUNCTION(action_data_size);
+         REGISTER_CF_HOST_FUNCTION(current_receiver);
+         REGISTER_LEGACY_CF_HOST_FUNCTION(set_action_return_value);
 
          // console api
          void prints(null_terminated_ptr);
@@ -292,17 +292,17 @@ namespace eosio { namespace chain { namespace webassembly {
          void printn(name);
          void printhex(legacy_array_ptr<const char>);
 
-         REGISTER_LEGACY_HOST_FUNCTION(prints);
-         REGISTER_LEGACY_HOST_FUNCTION(prints_l);
-         REGISTER_LEGACY_HOST_FUNCTION(printi);
-         REGISTER_LEGACY_HOST_FUNCTION(printui);
-         REGISTER_HOST_FUNCTION(printi128);
-         REGISTER_HOST_FUNCTION(printui128);
-         REGISTER_LEGACY_HOST_FUNCTION(printsf);
-         REGISTER_LEGACY_HOST_FUNCTION(printdf);
-         REGISTER_HOST_FUNCTION(printqf);
-         REGISTER_LEGACY_HOST_FUNCTION(printn);
-         REGISTER_LEGACY_HOST_FUNCTION(printhex);
+         REGISTER_LEGACY_CF_HOST_FUNCTION(prints);
+         REGISTER_LEGACY_CF_HOST_FUNCTION(prints_l);
+         REGISTER_LEGACY_CF_HOST_FUNCTION(printi);
+         REGISTER_LEGACY_CF_HOST_FUNCTION(printui);
+         REGISTER_CF_HOST_FUNCTION(printi128);
+         REGISTER_CF_HOST_FUNCTION(printui128);
+         REGISTER_LEGACY_CF_HOST_FUNCTION(printsf);
+         REGISTER_LEGACY_CF_HOST_FUNCTION(printdf);
+         REGISTER_CF_HOST_FUNCTION(printqf);
+         REGISTER_LEGACY_CF_HOST_FUNCTION(printn);
+         REGISTER_LEGACY_CF_HOST_FUNCTION(printhex);
 
          // database api
          // primary index api
@@ -451,10 +451,10 @@ namespace eosio { namespace chain { namespace webassembly {
          int32_t memcmp(unvalidated_ptr<const char>, unvalidated_ptr<const char>, wasm_size_t) const;
          char* memset(unvalidated_ptr<char>, int32_t, wasm_size_t) const;
 
-         REGISTER_LEGACY_HOST_FUNCTION(memcpy);
-         REGISTER_LEGACY_HOST_FUNCTION(memmove);
-         REGISTER_LEGACY_HOST_FUNCTION(memcmp);
-         REGISTER_LEGACY_HOST_FUNCTION(memset);
+         REGISTER_LEGACY_CF_HOST_FUNCTION(memcpy);
+         REGISTER_LEGACY_CF_HOST_FUNCTION(memmove);
+         REGISTER_LEGACY_CF_HOST_FUNCTION(memcmp);
+         REGISTER_LEGACY_CF_HOST_FUNCTION(memset);
 
          // transaction api
          void send_inline(legacy_array_ptr<char>);
@@ -475,12 +475,12 @@ namespace eosio { namespace chain { namespace webassembly {
          int32_t tapos_block_prefix() const;
          int32_t get_action(uint32_t, uint32_t, legacy_array_ptr<char>) const;
 
-         REGISTER_LEGACY_HOST_FUNCTION(read_transaction);
-         REGISTER_HOST_FUNCTION(transaction_size);
-         REGISTER_HOST_FUNCTION(expiration);
-         REGISTER_HOST_FUNCTION(tapos_block_num);
-         REGISTER_HOST_FUNCTION(tapos_block_prefix);
-         REGISTER_LEGACY_HOST_FUNCTION(get_action);
+         REGISTER_LEGACY_CF_HOST_FUNCTION(read_transaction);
+         REGISTER_CF_HOST_FUNCTION(transaction_size);
+         REGISTER_CF_HOST_FUNCTION(expiration);
+         REGISTER_CF_HOST_FUNCTION(tapos_block_num);
+         REGISTER_CF_HOST_FUNCTION(tapos_block_prefix);
+         REGISTER_LEGACY_CF_HOST_FUNCTION(get_action);
 
          // compiler builtins api
          void __ashlti3(int128_t&, uint64_t, uint64_t, uint32_t) const;
@@ -527,49 +527,49 @@ namespace eosio { namespace chain { namespace webassembly {
          int32_t __lttf2(uint64_t, uint64_t, uint64_t, uint64_t) const;
          int32_t __unordtf2(uint64_t, uint64_t, uint64_t, uint64_t) const;
 
-         REGISTER_HOST_FUNCTION(__ashlti3);
-         REGISTER_HOST_FUNCTION(__ashrti3);
-         REGISTER_HOST_FUNCTION(__lshlti3);
-         REGISTER_HOST_FUNCTION(__lshrti3);
-         REGISTER_HOST_FUNCTION(__divti3);
-         REGISTER_HOST_FUNCTION(__udivti3);
-         REGISTER_HOST_FUNCTION(__multi3);
-         REGISTER_HOST_FUNCTION(__modti3);
-         REGISTER_HOST_FUNCTION(__umodti3);
-         REGISTER_HOST_FUNCTION(__addtf3);
-         REGISTER_HOST_FUNCTION(__subtf3);
-         REGISTER_HOST_FUNCTION(__multf3);
-         REGISTER_HOST_FUNCTION(__divtf3);
-         REGISTER_HOST_FUNCTION(__negtf2);
-         REGISTER_HOST_FUNCTION(__extendsftf2);
-         REGISTER_HOST_FUNCTION(__extenddftf2);
-         REGISTER_HOST_FUNCTION(__trunctfdf2);
-         REGISTER_HOST_FUNCTION(__trunctfsf2);
-         REGISTER_HOST_FUNCTION(__fixtfsi);
-         REGISTER_HOST_FUNCTION(__fixtfdi);
-         REGISTER_HOST_FUNCTION(__fixtfti);
-         REGISTER_HOST_FUNCTION(__fixunstfsi);
-         REGISTER_HOST_FUNCTION(__fixunstfdi);
-         REGISTER_HOST_FUNCTION(__fixunstfti);
-         REGISTER_HOST_FUNCTION(__fixsfti);
-         REGISTER_HOST_FUNCTION(__fixdfti);
-         REGISTER_HOST_FUNCTION(__fixunssfti);
-         REGISTER_HOST_FUNCTION(__fixunsdfti);
-         REGISTER_HOST_FUNCTION(__floatsidf);
-         REGISTER_HOST_FUNCTION(__floatsitf);
-         REGISTER_HOST_FUNCTION(__floatditf);
-         REGISTER_HOST_FUNCTION(__floatunsitf);
-         REGISTER_HOST_FUNCTION(__floatunditf);
-         REGISTER_HOST_FUNCTION(__floattidf);
-         REGISTER_HOST_FUNCTION(__floatuntidf);
-         REGISTER_HOST_FUNCTION(__cmptf2);
-         REGISTER_HOST_FUNCTION(__eqtf2);
-         REGISTER_HOST_FUNCTION(__netf2);
-         REGISTER_HOST_FUNCTION(__getf2);
-         REGISTER_HOST_FUNCTION(__gttf2);
-         REGISTER_HOST_FUNCTION(__letf2);
-         REGISTER_HOST_FUNCTION(__lttf2);
-         REGISTER_HOST_FUNCTION(__unordtf2);
+         REGISTER_CF_HOST_FUNCTION(__ashlti3);
+         REGISTER_CF_HOST_FUNCTION(__ashrti3);
+         REGISTER_CF_HOST_FUNCTION(__lshlti3);
+         REGISTER_CF_HOST_FUNCTION(__lshrti3);
+         REGISTER_CF_HOST_FUNCTION(__divti3);
+         REGISTER_CF_HOST_FUNCTION(__udivti3);
+         REGISTER_CF_HOST_FUNCTION(__multi3);
+         REGISTER_CF_HOST_FUNCTION(__modti3);
+         REGISTER_CF_HOST_FUNCTION(__umodti3);
+         REGISTER_CF_HOST_FUNCTION(__addtf3);
+         REGISTER_CF_HOST_FUNCTION(__subtf3);
+         REGISTER_CF_HOST_FUNCTION(__multf3);
+         REGISTER_CF_HOST_FUNCTION(__divtf3);
+         REGISTER_CF_HOST_FUNCTION(__negtf2);
+         REGISTER_CF_HOST_FUNCTION(__extendsftf2);
+         REGISTER_CF_HOST_FUNCTION(__extenddftf2);
+         REGISTER_CF_HOST_FUNCTION(__trunctfdf2);
+         REGISTER_CF_HOST_FUNCTION(__trunctfsf2);
+         REGISTER_CF_HOST_FUNCTION(__fixtfsi);
+         REGISTER_CF_HOST_FUNCTION(__fixtfdi);
+         REGISTER_CF_HOST_FUNCTION(__fixtfti);
+         REGISTER_CF_HOST_FUNCTION(__fixunstfsi);
+         REGISTER_CF_HOST_FUNCTION(__fixunstfdi);
+         REGISTER_CF_HOST_FUNCTION(__fixunstfti);
+         REGISTER_CF_HOST_FUNCTION(__fixsfti);
+         REGISTER_CF_HOST_FUNCTION(__fixdfti);
+         REGISTER_CF_HOST_FUNCTION(__fixunssfti);
+         REGISTER_CF_HOST_FUNCTION(__fixunsdfti);
+         REGISTER_CF_HOST_FUNCTION(__floatsidf);
+         REGISTER_CF_HOST_FUNCTION(__floatsitf);
+         REGISTER_CF_HOST_FUNCTION(__floatditf);
+         REGISTER_CF_HOST_FUNCTION(__floatunsitf);
+         REGISTER_CF_HOST_FUNCTION(__floatunditf);
+         REGISTER_CF_HOST_FUNCTION(__floattidf);
+         REGISTER_CF_HOST_FUNCTION(__floatuntidf);
+         REGISTER_CF_HOST_FUNCTION(__cmptf2);
+         REGISTER_CF_HOST_FUNCTION(__eqtf2);
+         REGISTER_CF_HOST_FUNCTION(__netf2);
+         REGISTER_CF_HOST_FUNCTION(__getf2);
+         REGISTER_CF_HOST_FUNCTION(__gttf2);
+         REGISTER_CF_HOST_FUNCTION(__letf2);
+         REGISTER_CF_HOST_FUNCTION(__lttf2);
+         REGISTER_CF_HOST_FUNCTION(__unordtf2);
 
          // call depth api
          void call_depth_assert();
