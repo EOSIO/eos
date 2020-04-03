@@ -10,6 +10,7 @@
 
 #include <contracts.hpp>
 #include <snapshots.hpp>
+#include <boost/iostreams/device/mapped_file.hpp>
 
 using namespace eosio;
 using namespace testing;
@@ -26,6 +27,11 @@ void remove_existing_states(controller::config& config) {
    auto state_path = config.state_dir;
    remove_all(state_path);
    fc::create_directories(state_path);
+}
+
+void remove_reversible_blocks(controller::config& config) {
+   auto blocks_path = config.blocks_dir;
+   remove_all(blocks_path/"reversible");
 }
 
 struct dummy_action {
@@ -163,7 +169,16 @@ BOOST_AUTO_TEST_CASE(test_restart_from_block_log) {
    BOOST_REQUIRE_NO_THROW(from_block_log_chain.control->get_account(N(replay2)));
    BOOST_REQUIRE_NO_THROW(from_block_log_chain.control->get_account(N(replay3)));
 
-   BOOST_REQUIRE_NO_THROW(block_log::repair_log(copied_config.blocks_dir, 0));
+   fc::path backup_dir;
+
+   BOOST_REQUIRE_NO_THROW(backup_dir = block_log::repair_log(copied_config.blocks_dir, 0));
+
+   using boost::iostreams::mapped_file_source;
+   mapped_file_source recovered_log((copied_config.blocks_dir / "blocks.log").generic_string());
+   mapped_file_source backup_log((backup_dir / "blocks.log").generic_string());
+
+   BOOST_REQUIRE(recovered_log.size() == backup_log.size());
+   BOOST_CHECK(memcmp(recovered_log.data(), backup_log.data(), backup_log.size()) == 0);
 }
 
 BOOST_AUTO_TEST_CASE(test_light_validation_restart_from_block_log) {
@@ -209,6 +224,7 @@ BOOST_AUTO_TEST_CASE(test_light_validation_restart_from_block_log) {
 
    // remove the state files to make sure we are starting from block log
    remove_existing_states(copied_config);
+   
    transaction_trace_ptr other_trace;
 
    replay_tester from_block_log_chain(copied_config, *genesis,
@@ -235,5 +251,42 @@ BOOST_AUTO_TEST_CASE(test_light_validation_restart_from_block_log) {
    BOOST_CHECK_EQUAL(trace->action_traces.at(1).receipt->global_sequence, other_trace->action_traces.at(1).receipt->global_sequence);
    BOOST_CHECK_EQUAL(trace->action_traces.at(1).receipt->digest(), other_trace->action_traces.at(1).receipt->digest());
 }
+
+BOOST_AUTO_TEST_CASE(test_trim_blocklog_end) {
+   tester chain;
+
+   chain.create_account(N(replay1));
+   chain.produce_blocks(1);
+   chain.create_account(N(replay2));
+   chain.produce_blocks(1);
+   chain.create_account(N(replay3));
+   chain.produce_blocks(1);
+   auto cutoff_block = chain.produce_block();
+   auto cutoff_block_num = cutoff_block->block_num();
+   chain.produce_blocks(10);
+
+   BOOST_REQUIRE_NO_THROW(chain.control->get_account(N(replay1)));
+   BOOST_REQUIRE_NO_THROW(chain.control->get_account(N(replay2)));
+   BOOST_REQUIRE_NO_THROW(chain.control->get_account(N(replay3)));
+
+   chain.close();
+
+   controller::config copied_config = chain.get_config();
+   auto               genesis       = chain::block_log::extract_genesis_state(chain.get_config().blocks_dir);
+   BOOST_REQUIRE(genesis);
+
+   // remove the state files to make sure we are starting from block log
+   remove_existing_states(copied_config);
+   remove_reversible_blocks(copied_config);
+   // trim the block file
+   block_log::trim_blocklog_end(copied_config.blocks_dir, cutoff_block_num);
+
+   tester from_block_log_chain(copied_config, *genesis);
+   BOOST_REQUIRE_NO_THROW(from_block_log_chain.control->get_account(N(replay1)));
+   BOOST_REQUIRE_NO_THROW(from_block_log_chain.control->get_account(N(replay2)));
+   BOOST_REQUIRE_NO_THROW(from_block_log_chain.control->get_account(N(replay3)));
+}
+   
+
 
 BOOST_AUTO_TEST_SUITE_END()

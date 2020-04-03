@@ -210,26 +210,10 @@ void blocklog::initialize(const variables_map& options) {
 }
 
 int trim_blocklog_end(bfs::path block_dir, uint32_t n) {       //n is last block to keep (remove later blocks)
-   report_time rt("trimming blocklog end");
-   using namespace std;
-   trim_data td(block_dir);
-   cout << "\nIn directory " << block_dir << " will trim all blocks after block " << n << " from "
-        << td.block_file_name.generic_string() << " and " << td.index_file_name.generic_string() << ".\n";
-   if (n < td.first_block) {
-      cerr << "All blocks are after block " << n << " so do nothing (trim_end would delete entire blocks.log)\n";
-      return 1;
-   }
-   if (n >= td.last_block) {
-      cerr << "There are no blocks after block " << n << " so do nothing\n";
-      return 2;
-   }
-   const uint64_t end_of_new_file = td.block_pos(n + 1);
-   bfs::resize_file(td.block_file_name, end_of_new_file);
-   const uint64_t index_end= td.block_index(n) + sizeof(uint64_t);             //advance past record for block n
-   bfs::resize_file(td.index_file_name, index_end);
-   cout << "blocks.index has been trimmed to " << index_end << " bytes\n";
+   report_time rt("trimming blocklog end");   
+   int ret = block_log::trim_blocklog_end(block_dir, n);
    rt.report();
-   return 0;
+   return ret;
 }
 
 bool trim_blocklog_front(bfs::path block_dir, uint32_t n) {        //n is first block to keep (remove prior blocks)

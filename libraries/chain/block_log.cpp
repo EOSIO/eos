@@ -5,6 +5,7 @@
 #include <fc/io/cfile.hpp>
 #include <fc/io/raw.hpp>
 #include <boost/iostreams/device/mapped_file.hpp>
+#include <boost/filesystem.hpp>
 
 #define LOG_READ  (std::ios::in | std::ios::binary)
 #define LOG_WRITE (std::ios::out | std::ios::binary | std::ios::app)
@@ -1340,6 +1341,28 @@ namespace eosio { namespace chain {
                   ("pos",block_offset_pos)("file", block_file_name.string())("exp_bnum",n)("act_bnum",bnum) );
 
       return block_n_pos;
+   }
+
+   int block_log::trim_blocklog_end(fc::path block_dir, uint32_t n) {       //n is last block to keep (remove later blocks)
+      trim_data td(block_dir);
+
+      ilog("In directory ${block_dir} will trim all blocks after block ${n} from ${block_file} and ${index_file}",
+         ("block_dir", block_dir.generic_string())("n", n)("block_file",td.block_file_name.generic_string())("index_file", td.index_file_name.generic_string()));
+
+      if (n < td.first_block) {
+         elog("All blocks are after block ${n} so do nothing (trim_end would delete entire blocks.log)",("n", n));
+         return 1;
+      }
+      if (n >= td.last_block) {
+         elog("There are no blocks after block ${n} so do nothing",("n", n));
+         return 2;
+      }
+      const uint64_t end_of_new_file = td.block_pos(n + 1);
+      boost::filesystem::resize_file(td.block_file_name, end_of_new_file);
+      const uint64_t index_end= td.block_index(n) + sizeof(uint64_t);             //advance past record for block n
+      boost::filesystem::resize_file(td.index_file_name, index_end);
+      ilog("blocks.index has been trimmed to ${index_end} bytes", ("index_end", index_end));
+      return 0;
    }
 
    } } /// eosio::chain
