@@ -102,7 +102,7 @@ namespace eosio { namespace chain {
 
       flat_multimap<uint16_t, block_extension> validate_and_extract_extensions()const;
    };
-   using signed_block_v0_ptr = std::shared_ptr<signed_block_v0>;
+   using signed_block_v0_ptr = std::shared_ptr<const signed_block_v0>;
 
    struct transaction_receipt : public transaction_receipt_header {
 
