@@ -1562,7 +1562,7 @@ BOOST_AUTO_TEST_CASE(packed_transaction)
    chain::packed_transaction_v0 packed_txn2;
    abi_serializer::from_variant(var, packed_txn2, get_resolver(fc::json::from_string(packed_transaction_abi).as<abi_def>()), abi_serializer::create_yield_function( max_serialization_time ));
 
-   const auto txn2 = packed_txn2.get_transaction();
+   const auto& txn2 = packed_txn2.get_transaction();
 
    BOOST_REQUIRE_EQUAL(txn.ref_block_num, txn2.ref_block_num);
    BOOST_REQUIRE_EQUAL(txn.ref_block_prefix, txn2.ref_block_prefix);

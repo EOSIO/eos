@@ -2543,7 +2543,7 @@ int main( int argc, char** argv ) {
          fc::from_variant<packed_transaction_v0>( packed_trx_var, packed_trx );
       } EOS_RETHROW_EXCEPTIONS( transaction_type_exception, "Invalid packed transaction format: '${data}'",
                                 ("data", fc::json::to_string(packed_trx_var, fc::time_point::maximum())))
-      signed_transaction strx = packed_trx.get_signed_transaction();
+      const signed_transaction& strx = packed_trx.get_signed_transaction();
       fc::variant trx_var;
       if( unpack_action_data_flag ) {
          abi_serializer::to_variant( strx, trx_var, abi_serializer_resolver, abi_serializer::create_yield_function( abi_serializer_max_time ) );

@@ -81,6 +81,12 @@ namespace eosio { namespace chain {
     *  read and write scopes.
     */
    struct transaction : public transaction_header {
+      transaction() = default;
+      explicit transaction( const transaction& ) = default;
+      transaction( transaction&& ) = default;
+      transaction& operator=(const transaction&) = delete;
+      transaction& operator=(transaction&&) = default;
+
       vector<action>         context_free_actions;
       vector<action>         actions;
       extensions_type        transaction_extensions;
@@ -110,8 +116,10 @@ namespace eosio { namespace chain {
    struct signed_transaction : public transaction
    {
       signed_transaction() = default;
-//      signed_transaction( const signed_transaction& ) = default;
-//      signed_transaction( signed_transaction&& ) = default;
+      explicit signed_transaction( const signed_transaction& ) = default;
+      signed_transaction( signed_transaction&& ) = default;
+      signed_transaction& operator=(const signed_transaction&) = delete;
+      signed_transaction& operator=(signed_transaction&&) = default;
       signed_transaction( transaction&& trx, const vector<signature_type>& signatures, const vector<bytes>& context_free_data)
       : transaction(std::move(trx))
       , signatures(signatures)

@@ -456,7 +456,7 @@ namespace impl {
          static_assert(fc::reflector<packed_transaction_v0>::total_member_count == 4);
          auto h = ctx.enter_scope();
          mutable_variant_object mvo;
-         auto trx = ptrx.get_transaction();
+         const auto& trx = ptrx.get_transaction();
          mvo("id", trx.id());
          mvo("signatures", ptrx.get_signatures());
          mvo("compression", ptrx.get_compression());
@@ -479,7 +479,7 @@ namespace impl {
          static_assert(fc::reflector<packed_transaction>::total_member_count == 3);
          auto h = ctx.enter_scope();
          mutable_variant_object mvo;
-         auto trx = ptrx.get_transaction();
+         const auto& trx = ptrx.get_transaction();
          mvo("id", trx.id());
          mvo("signatures", ptrx.get_signatures() != nullptr ? *ptrx.get_signatures() : vector<signature_type>());
          mvo("compression", ptrx.get_compression());
