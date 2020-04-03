@@ -490,8 +490,7 @@ namespace eosio { namespace chain {
       } else {
          signed_block block;
          fc::raw::unpack(ds, block);
-#warning: TODO: use move(block)
-         return std::make_shared<pruned_block>(block, true);
+         return std::make_shared<pruned_block>(std::move(block), true);
       }
    }
 
