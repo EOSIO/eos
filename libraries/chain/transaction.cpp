@@ -493,6 +493,10 @@ packed_transaction::packed_transaction(signed_transaction&& t, bool legacy, comp
    estimated_size = estimated_size * 2 + get_prunable_size();
 }
 
+packed_transaction_v0_ptr packed_transaction::to_packed_transaction_v0() const {
+   return std::make_shared<const packed_transaction_v0>( get_signed_transaction(), get_compression() );
+}
+
 uint32_t packed_transaction::get_unprunable_size()const {
    uint64_t size = config::fixed_net_overhead_of_packed_trx;
    size += packed_trx.size();

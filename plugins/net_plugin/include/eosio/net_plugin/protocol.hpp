@@ -142,8 +142,8 @@ namespace eosio {
                                       notice_message,
                                       request_message,
                                       sync_request_message,
-                                      signed_block,         // which = 7
-                                      packed_transaction>;  // which = 8
+                                      signed_block_v0,         // which = 7
+                                      packed_transaction_v0>;  // which = 8
 
 } // namespace eosio
 

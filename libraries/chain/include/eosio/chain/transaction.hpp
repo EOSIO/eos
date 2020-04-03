@@ -267,6 +267,8 @@ namespace eosio { namespace chain {
       prunable_data_type  prunable_data;
    };
 
+   using packed_transaction_v0_ptr = std::shared_ptr<const packed_transaction_v0>;
+
    struct packed_transaction : fc::reflect_init {
       using compression_type = packed_transaction_v0::compression_type;
       using cf_compression_type = prunable_transaction_data::compression_type;
@@ -282,12 +284,7 @@ namespace eosio { namespace chain {
       explicit packed_transaction(const signed_transaction& t, bool legacy, compression_type _compression = compression_type::none);
       explicit packed_transaction(signed_transaction&& t, bool legacy, compression_type _compression = compression_type::none);
 
-#if 0
-      // used by abi_serializer
-      packed_transaction( bytes&& packed_txn, vector<signature_type>&& sigs, bytes&& packed_cfd, compression_type _compression );
-      packed_transaction( bytes&& packed_txn, vector<signature_type>&& sigs, vector<bytes>&& cfd, compression_type _compression );
-      packed_transaction( transaction&& t, vector<signature_type>&& sigs, bytes&& packed_cfd, compression_type _compression );
-#endif
+      packed_transaction_v0_ptr to_packed_transaction_v0() const;
 
       uint32_t get_unprunable_size()const;
       uint32_t get_prunable_size()const;
@@ -332,8 +329,7 @@ namespace eosio { namespace chain {
       transaction_id_type                     trx_id;
    };
 
-   using packed_transaction_v0_ptr = std::shared_ptr<packed_transaction_v0>;
-   using packed_transaction_ptr = std::shared_ptr<packed_transaction>;
+   using packed_transaction_ptr = std::shared_ptr<const packed_transaction>;
 
    uint128_t transaction_id_to_sender_id( const transaction_id_type& tid );
 
