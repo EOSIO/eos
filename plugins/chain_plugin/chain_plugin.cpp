@@ -2135,7 +2135,7 @@ fc::variant read_only::get_block_header_state(const get_block_header_state_param
 
 void read_write::push_block(read_write::push_block_params&& params, next_function<read_write::push_block_results> next) {
    try {
-      app().get_method<incoming::methods::block_sync>()(std::make_shared<signed_block>(params, true), {});
+      app().get_method<incoming::methods::block_sync>()(std::make_shared<signed_block>( std::move( params ), true), {});
       next(read_write::push_block_results{});
    } catch ( boost::interprocess::bad_alloc& ) {
       chain_plugin::handle_db_exhaustion();
@@ -2151,7 +2151,7 @@ void read_write::push_transaction(const read_write::push_transaction_params& par
       packed_transaction_ptr input_trx;
       try {
          abi_serializer::from_variant(params, input_trx_v0, std::move( resolver ), abi_serializer::create_yield_function( abi_serializer_max_time ));
-         input_trx = std::make_shared<packed_transaction>( input_trx_v0, true );
+         input_trx = std::make_shared<packed_transaction>( std::move( input_trx_v0 ), true );
       } EOS_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid packed transaction")
 
       app().get_method<incoming::methods::transaction_async>()(input_trx, true,
@@ -2272,7 +2272,7 @@ void read_write::send_transaction(const read_write::send_transaction_params& par
       packed_transaction_ptr input_trx;
       try {
          abi_serializer::from_variant(params, input_trx_v0, std::move( resolver ), abi_serializer::create_yield_function( abi_serializer_max_time ));
-         input_trx = std::make_shared<packed_transaction>( input_trx_v0, true );
+         input_trx = std::make_shared<packed_transaction>( std::move( input_trx_v0 ), true );
       } EOS_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid packed transaction")
 
       app().get_method<incoming::methods::transaction_async>()(input_trx, true,
