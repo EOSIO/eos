@@ -194,10 +194,12 @@ namespace eosio { namespace chain {
       friend struct fc::has_reflector_init<packed_transaction>;
       void reflector_init();
    private:
-      vector<signature_type>                  signatures;
-      fc::enum_type<uint8_t,compression_type> compression;
-      bytes                                   packed_context_free_data;
-      bytes                                   packed_trx;
+     friend struct pruned_transaction;
+     friend struct prunable_transaction_data;
+     vector<signature_type>                   signatures;
+     fc::enum_type<uint8_t, compression_type> compression;
+     bytes                                    packed_context_free_data;
+     bytes                                    packed_trx;
 
    private:
       // cache unpacked trx, for thread safety do not modify after construction
@@ -251,6 +253,11 @@ namespace eosio { namespace chain {
       std::size_t maximum_pruned_pack_size( compression_type segment_compression ) const;
 
       prunable_data_type  prunable_data;
+
+      static prunable_transaction_data make(bool legacy, const signed_transaction& t,
+                                            packed_transaction::compression_type _compression);
+      static prunable_transaction_data make(bool legacy, const packed_transaction& t);
+      static prunable_transaction_data make(bool legacy, packed_transaction&& t);
    };
 
    struct pruned_transaction : fc::reflect_init {
@@ -263,8 +270,10 @@ namespace eosio { namespace chain {
       pruned_transaction& operator=(const pruned_transaction&) = delete;
       pruned_transaction& operator=(pruned_transaction&&) = default;
 
-      pruned_transaction(const packed_transaction& other, bool legacy) : pruned_transaction(other.get_signed_transaction(), legacy, other.get_compression()) {}
-      explicit pruned_transaction(const signed_transaction& t, bool legacy, compression_type _compression = compression_type::none);
+      pruned_transaction(const packed_transaction& other, bool legacy);
+      pruned_transaction(packed_transaction&& other, bool legacy);
+      explicit pruned_transaction(const signed_transaction& t, bool legacy,
+                                  compression_type _compression = compression_type::none);
       explicit pruned_transaction(signed_transaction&& t, bool legacy, compression_type _compression = compression_type::none);
 
 #if 0

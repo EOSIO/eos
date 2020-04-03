@@ -21,16 +21,27 @@ namespace eosio { namespace chain {
       }
    }
 
-   static fc::static_variant<transaction_id_type, pruned_transaction> translate_transaction_receipt(const transaction_id_type& tid, bool) {
-      return tid;
-   }
-   static fc::static_variant<transaction_id_type, pruned_transaction> translate_transaction_receipt(const packed_transaction& ptrx, bool legacy) {
-      return pruned_transaction(ptrx, legacy);
-   }
+   struct transaction_receipt_translator {
+      bool                                                        legacy;
+      fc::static_variant<transaction_id_type, pruned_transaction> operator()(const transaction_id_type& tid) const {
+         return tid;
+      }
+      fc::static_variant<transaction_id_type, pruned_transaction> operator()(const packed_transaction& ptrx) const {
+         return pruned_transaction(ptrx, legacy);
+      }
+      fc::static_variant<transaction_id_type, pruned_transaction> operator()(packed_transaction&& ptrx) const {
+         return pruned_transaction(std::move(ptrx), legacy);
+      }
+   };
 
    pruned_transaction_receipt::pruned_transaction_receipt(const transaction_receipt& other, bool legacy)
      : transaction_receipt_header(static_cast<const transaction_receipt_header&>(other)),
-       trx(other.trx.visit([&](const auto& obj) { return translate_transaction_receipt(obj, legacy); }))
+       trx(other.trx.visit(transaction_receipt_translator{legacy}))
+   {}
+
+   pruned_transaction_receipt::pruned_transaction_receipt(transaction_receipt&& other, bool legacy)
+     : transaction_receipt_header(static_cast<const transaction_receipt_header&>(other)),
+       trx( std::move(other.trx).visit(transaction_receipt_translator{legacy}))
    {}
 
    static flat_multimap<uint16_t, block_extension> validate_and_extract_block_extensions(const extensions_type& block_extensions) {
@@ -85,6 +96,16 @@ namespace eosio { namespace chain {
    {
       for(const auto& trx : other.transactions) {
          transactions.emplace_back(trx, legacy);
+      }
+   }
+
+    pruned_block::pruned_block( signed_block&& other, bool legacy )
+     : signed_block_header(std::move(static_cast<const signed_block_header&>(other))),
+       prune_state(legacy ? prune_state_type::complete_legacy : prune_state_type::complete),
+       block_extensions(std::move(other.block_extensions)) 
+   {
+      for(auto& trx : other.transactions) {
+         transactions.emplace_back(std::move(trx), legacy);
       }
    }
 

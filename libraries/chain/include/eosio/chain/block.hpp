@@ -108,6 +108,7 @@ namespace eosio { namespace chain {
 
       pruned_transaction_receipt():transaction_receipt_header(){}
       pruned_transaction_receipt(const transaction_receipt&, bool legacy);
+      pruned_transaction_receipt(transaction_receipt&&, bool legacy);
       explicit pruned_transaction_receipt( const transaction_id_type& tid ):transaction_receipt_header(executed),trx(tid){}
       explicit pruned_transaction_receipt( const pruned_transaction& ptrx ):transaction_receipt_header(executed),trx(ptrx){}
 
@@ -136,6 +137,7 @@ namespace eosio { namespace chain {
 
       pruned_block() = default;
       pruned_block( const signed_block&, bool legacy );
+      pruned_block( signed_block&&, bool legacy );
       pruned_block( pruned_block&& ) = default;
       pruned_block& operator=(const pruned_block&) = delete;
       pruned_block clone() const { return *this; }
