@@ -250,8 +250,8 @@ BOOST_AUTO_TEST_CASE(test_restart_with_different_chain_id) {
 }
 
 BOOST_FIXTURE_TEST_CASE(test_restart_from_block_log, restart_from_block_log_test_fixture) {
+   BOOST_REQUIRE_NO_THROW(block_log::smoke_test(chain.get_config().blocks_dir));
 }
-
 
 BOOST_FIXTURE_TEST_CASE(test_restart_from_trimed_block_log, restart_from_block_log_test_fixture) {
    auto& config = chain.get_config();

@@ -227,32 +227,8 @@ bool trim_blocklog_front(bfs::path block_dir, uint32_t n) {        //n is first 
 void smoke_test(bfs::path block_dir) {
    using namespace std;
    cout << "\nSmoke test of blocks.log and blocks.index in directory " << block_dir << '\n';
-   trim_data td(block_dir);
-   auto status = fseek(td.blk_in, -sizeof(uint64_t), SEEK_END);             //get last_block from blocks.log, compare to from blocks.index
-   EOS_ASSERT( status == 0, block_log_exception, "cannot seek to ${file} ${pos} from beginning of file", ("file", td.block_file_name.string())("pos", sizeof(uint64_t)) );
-   uint64_t file_pos;
-   auto size = fread((void*)&file_pos, sizeof(uint64_t), 1, td.blk_in);
-   EOS_ASSERT( size == 1, block_log_exception, "${file} read fails", ("file", td.block_file_name.string()) );
-   int blknum_offset = trim_data::blknum_offset_from_block_entry(td.version);
-   status            = fseek(td.blk_in, file_pos + blknum_offset, SEEK_SET);
-   EOS_ASSERT( status == 0, block_log_exception, "cannot seek to ${file} ${pos} from beginning of file", ("file", td.block_file_name.string())("pos", file_pos + blknum_offset) );
-   uint32_t bnum;
-   size = fread((void*)&bnum, sizeof(uint32_t), 1, td.blk_in);
-   EOS_ASSERT( size == 1, block_log_exception, "${file} read fails", ("file", td.block_file_name.string()) );
-   bnum = endian_reverse_u32(bnum) + 1;                       //convert from big endian to little endian and add 1
-   EOS_ASSERT( td.last_block == bnum, block_log_exception, "blocks.log says last block is ${lb} which disagrees with blocks.index", ("lb", bnum) );
-   cout << "blocks.log and blocks.index agree on number of blocks\n";
-   uint32_t delta = (td.last_block + 8 - td.first_block) >> 3;
-   if (delta < 1)
-      delta = 1;
-   for (uint32_t n = td.first_block; ; n += delta) {
-      if (n > td.last_block)
-         n = td.last_block;
-      td.block_pos(n);                                 //check block 'n' is where blocks.index says
-      if (n == td.last_block)
-         break;
-   }
-   cout << "\nno problems found\n";                         //if get here there were no exceptions
+   block_log::smoke_test(block_dir);
+   cout << "\nno problems found\n"; // if get here there were no exceptions
 }
 
 int main(int argc, char** argv) {

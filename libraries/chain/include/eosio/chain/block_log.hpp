@@ -84,29 +84,13 @@ namespace eosio { namespace chain {
 
          static bool trim_blocklog_front(const fc::path& block_dir, const fc::path& temp_dir, uint32_t truncate_at_block);
          static int  trim_blocklog_end(fc::path block_dir, uint32_t n);
+         static void smoke_test(fc::path block_dir);
+
 
    private:
          void open(const fc::path& data_dir);
          void construct_index();
 
          std::unique_ptr<detail::block_log_impl> my;
-   };
-
-   struct trim_data {            //used by trim_blocklog_front(), trim_blocklog_end(), and smoke_test()
-      trim_data(fc::path block_dir);
-      ~trim_data();
-      uint64_t block_index(uint32_t n) const;
-      uint64_t block_pos(uint32_t n);
-      fc::path block_file_name, index_file_name;        //full pathname for blocks.log and blocks.index
-      uint32_t version = 0;                              //blocklog version
-      uint32_t first_block = 0;                          //first block in blocks.log
-      uint32_t last_block = 0;                          //last block in blocks.log
-      FILE* blk_in = nullptr;                            //C style files for reading blocks.log and blocks.index
-      FILE* ind_in = nullptr;                            //C style files for reading blocks.log and blocks.index
-      //we use low level file IO because it is distinctly faster than C++ filebuf or iostream
-      uint64_t first_block_pos = 0;                      //file position in blocks.log for the first block in the log
-      chain_id_type chain_id;
-
-      static int blknum_offset_from_block_entry(uint32_t block_log_version);
    };
 } }
