@@ -525,29 +525,10 @@ namespace impl {
          out(name, std::move(mvo));
       }
 
-
-      /**
-       * overload of to_variant_object for signed_block, support old signed_block_v0 format
-       */
-      template<typename Resolver>
-      static void add( mutable_variant_object &out, const char* name, const signed_block& block, Resolver resolver, abi_traverse_context& ctx )
+      template<typename Resolver, typename SignedBlock>
+      static void add_signed_block( mutable_variant_object& out, const char* name, const SignedBlock& block, Resolver resolver, abi_traverse_context& ctx )
       {
-         // TODO: this could be faster by going directly to variant
-         // TODO: Conversion to packed_transaction_v0 could be done via above if we go directly to variant
-         auto sb_v0 = block.to_signed_block_v0();
-         add( out, name, *sb_v0, std::move( resolver ), ctx );
-      }
-
-      /**
-       * overload of to_variant_object for signed_block_v0
-       *
-       * This matches the FC_REFLECT for this type, but this is provided to allow extracting the contents of
-       * block.header_extensions and block.block_extensions
-       */
-      template<typename Resolver>
-      static void add( mutable_variant_object &out, const char* name, const signed_block_v0& block, Resolver resolver, abi_traverse_context& ctx )
-      {
-         static_assert(fc::reflector<signed_block_v0>::total_member_count == 12);
+         static_assert( std::is_same_v<SignedBlock, signed_block> || std::is_same_v<SignedBlock, signed_block_v0> );
          auto h = ctx.enter_scope();
          mutable_variant_object mvo;
          mvo("timestamp", block.timestamp);
@@ -562,7 +543,8 @@ namespace impl {
          // process contents of block.header_extensions
          flat_multimap<uint16_t, block_header_extension> header_exts = block.validate_and_extract_header_extensions();
          if ( header_exts.count(protocol_feature_activation::extension_id() > 0) ) {
-            const auto& new_protocol_features = header_exts.lower_bound(protocol_feature_activation::extension_id())->second.get<protocol_feature_activation>().protocol_features;
+            const auto& new_protocol_features =
+                  header_exts.lower_bound(protocol_feature_activation::extension_id())->second.template get<protocol_feature_activation>().protocol_features;
             vector<variant> pf_array;
             pf_array.reserve(new_protocol_features.size());
             for (auto feature : new_protocol_features) {
@@ -573,7 +555,8 @@ namespace impl {
             mvo("new_protocol_features", pf_array);
          }
          if ( header_exts.count(producer_schedule_change_extension::extension_id())) {
-            const auto& new_producer_schedule = header_exts.lower_bound(producer_schedule_change_extension::extension_id())->second.get<producer_schedule_change_extension>();
+            const auto& new_producer_schedule =
+                  header_exts.lower_bound(producer_schedule_change_extension::extension_id())->second.template get<producer_schedule_change_extension>();
             mvo("new_producer_schedule", new_producer_schedule);
          }
 
@@ -583,11 +566,35 @@ namespace impl {
          // process contents of block.block_extensions
          auto block_exts = block.validate_and_extract_extensions();
          if ( block_exts.count(additional_block_signatures_extension::extension_id()) > 0) {
-            const auto& additional_signatures = block_exts.lower_bound(additional_block_signatures_extension::extension_id())->second.get<additional_block_signatures_extension>();
+            const auto& additional_signatures =
+                  block_exts.lower_bound(additional_block_signatures_extension::extension_id())->second.template get<additional_block_signatures_extension>();
             mvo("additional_signatures", additional_signatures);
          }
 
          out(name, std::move(mvo));
+      }
+
+      /**
+       * overload of to_variant_object for signed_block, support old signed_block_v0 format
+       */
+      template<typename Resolver>
+      static void add( mutable_variant_object& out, const char* name, const signed_block& block, Resolver resolver, abi_traverse_context& ctx )
+      {
+         static_assert(fc::reflector<signed_block>::total_member_count == 13);
+         add_signed_block( out, name, block, std::move(resolver), ctx );
+      }
+
+      /**
+       * overload of to_variant_object for signed_block_v0
+       *
+       * This matches the FC_REFLECT for this type, but this is provided to allow extracting the contents of
+       * block.header_extensions and block.block_extensions
+       */
+      template<typename Resolver>
+      static void add( mutable_variant_object &out, const char* name, const signed_block_v0& block, Resolver resolver, abi_traverse_context& ctx )
+      {
+         static_assert(fc::reflector<signed_block_v0>::total_member_count == 12);
+         add_signed_block( out, name, block, std::move(resolver), ctx );
       }
    };
 
@@ -752,9 +759,7 @@ namespace impl {
       template<typename Resolver>
       static void extract( const variant& v, packed_transaction& ptrx, Resolver resolver, abi_traverse_context& ctx )
       {
-         packed_transaction_v0 v0;
-         extract( v, v0, std::move( resolver ), ctx );
-         ptrx = packed_transaction( std::move( v0 ), true );
+         EOS_THROW( packed_transaction_type_exception, "not implemented, use packed_transaction_v0" )
       }
 
       template<typename Resolver>
@@ -872,6 +877,8 @@ void abi_serializer::to_variant( const T& o, variant& vo, Resolver resolver, con
 
 template<typename T, typename Resolver>
 void abi_serializer::from_variant( const variant& v, T& o, Resolver resolver, const yield_function_t& yield ) try {
+   static_assert( !std::is_same_v<T, packed_transaction>, "use packed_transaction_v0" );
+   static_assert( !std::is_same_v<T, signed_block>, "use signed_block_v0" );
    impl::abi_traverse_context ctx( yield );
    impl::abi_from_variant::extract(v, o, resolver, ctx);
 } FC_RETHROW_EXCEPTIONS(error, "Failed to deserialize variant", ("variant",v))

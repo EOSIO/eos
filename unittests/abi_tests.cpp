@@ -1559,7 +1559,7 @@ BOOST_AUTO_TEST_CASE(packed_transaction)
    fc::variant var;
    abi_serializer::to_variant(packed_txn, var, get_resolver(fc::json::from_string(packed_transaction_abi).as<abi_def>()), abi_serializer::create_yield_function( max_serialization_time ));
 
-   chain::packed_transaction packed_txn2;
+   chain::packed_transaction_v0 packed_txn2;
    abi_serializer::from_variant(var, packed_txn2, get_resolver(fc::json::from_string(packed_transaction_abi).as<abi_def>()), abi_serializer::create_yield_function( max_serialization_time ));
 
    const auto txn2 = packed_txn2.get_transaction();
