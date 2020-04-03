@@ -75,13 +75,14 @@ namespace eosio { namespace chain {
           *  @param allow_unused_keys - true if method should not assert on unused keys
           */
          void
-         check_authorization( const vector<action>&                actions,
-                              const flat_set<public_key_type>&     provided_keys,
-                              const flat_set<permission_level>&    provided_permissions = flat_set<permission_level>(),
-                              fc::microseconds                     provided_delay = fc::microseconds(0),
-                              const std::function<void()>&         checktime = std::function<void()>(),
-                              bool                                 allow_unused_keys = false,
-                              const flat_set<permission_level>&    satisfied_authorizations = flat_set<permission_level>()
+         check_authorization( const vector<action>&             actions,
+                              const flat_set<public_key_type>&  provided_keys,
+                              const flat_set<permission_level>& provided_permissions = flat_set<permission_level>(),
+                              flat_set<public_key_type>&&       required_keys = {},
+                              fc::microseconds                  provided_delay = fc::microseconds(0),
+                              const std::function<void()>&      checktime = std::function<void()>(),
+                              bool                              allow_unused_keys = false,
+                              const flat_set<permission_level>& satisfied_authorizations = flat_set<permission_level>()
                             )const;
 
 
@@ -97,13 +98,14 @@ namespace eosio { namespace chain {
           *  @param allow_unused_keys - true if method does not require all keys to be used
           */
          void
-         check_authorization( account_name                         account,
-                              permission_name                      permission,
-                              const flat_set<public_key_type>&     provided_keys,
-                              const flat_set<permission_level>&    provided_permissions = flat_set<permission_level>(),
-                              fc::microseconds                     provided_delay = fc::microseconds(0),
-                              const std::function<void()>&         checktime = std::function<void()>(),
-                              bool                                 allow_unused_keys = false
+         check_authorization( account_name                      account,
+                              permission_name                   permission,
+                              const flat_set<public_key_type>&  provided_keys,
+                              const flat_set<permission_level>& provided_permissions = flat_set<permission_level>(),
+                              flat_set<public_key_type>&&       required_keys = {},
+                              fc::microseconds                  provided_delay = fc::microseconds(0),
+                              const std::function<void()>&      checktime = std::function<void()>(),
+                              bool                              allow_unused_keys = false
                             )const;
 
          flat_set<public_key_type> get_required_keys( const transaction& trx,

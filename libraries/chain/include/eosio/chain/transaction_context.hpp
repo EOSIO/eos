@@ -132,6 +132,7 @@ namespace eosio { namespace chain {
          bool                          explicit_billed_cpu_time = false;
 
          transaction_checktime_timer   transaction_timer;
+         flat_set<public_key_type>     required_keys;
 
       private:
          bool                          is_initialized = false;

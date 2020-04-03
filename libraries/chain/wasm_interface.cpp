@@ -934,6 +934,7 @@ class permission_api : public context_aware_api {
                    .check_authorization( trx.actions,
                                          provided_keys,
                                          provided_permissions,
+                                         {},
                                          fc::seconds(trx.delay_sec),
                                          std::bind(&transaction_context::checktime, &context.trx_context),
                                          false
@@ -966,6 +967,7 @@ class permission_api : public context_aware_api {
                                          permission,
                                          provided_keys,
                                          provided_permissions,
+                                         {},
                                          fc::microseconds(delay_us),
                                          std::bind(&transaction_context::checktime, &context.trx_context),
                                          false
@@ -1030,6 +1032,11 @@ class authorization_api : public context_aware_api {
       return context.is_account( account );
    }
 
+   void require_key( array_ptr<const char> packed_key, uint32_t packed_len ) {
+      public_key_type pk;
+      fc::raw::unpack<public_key_type>(packed_key, packed_len, pk);
+      context.trx_context.required_keys.insert(pk);
+   }
 };
 
 class system_api : public context_aware_api {

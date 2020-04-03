@@ -340,7 +340,7 @@ namespace eosio { namespace chain {
                   "the owner of the linked permission needs to be the actor of the declared authorization" );
 
       if( link.code == config::system_account_name
-            || !_control.is_builtin_activated( builtin_protocol_feature_t::fix_linkauth_restriction ) ) 
+            || !_control.is_builtin_activated( builtin_protocol_feature_t::fix_linkauth_restriction ) )
       {
          EOS_ASSERT( link.type != updateauth::get_name(),  action_validate_exception,
                      "Cannot link eosio::updateauth to a minimum permission" );
@@ -438,13 +438,14 @@ namespace eosio { namespace chain {
    std::function<void()> authorization_manager::_noop_checktime{&noop_checktime};
 
    void
-   authorization_manager::check_authorization( const vector<action>&                actions,
-                                               const flat_set<public_key_type>&     provided_keys,
-                                               const flat_set<permission_level>&    provided_permissions,
-                                               fc::microseconds                     provided_delay,
-                                               const std::function<void()>&         _checktime,
-                                               bool                                 allow_unused_keys,
-                                               const flat_set<permission_level>&    satisfied_authorizations
+   authorization_manager::check_authorization( const vector<action>&             actions,
+                                               const flat_set<public_key_type>&  provided_keys,
+                                               const flat_set<permission_level>& provided_permissions,
+                                               flat_set<public_key_type>&&       required_keys,
+                                               fc::microseconds                  provided_delay,
+                                               const std::function<void()>&      _checktime,
+                                               bool                              allow_unused_keys,
+                                               const flat_set<permission_level>& satisfied_authorizations
                                              )const
    {
       const auto& checktime = ( static_cast<bool>(_checktime) ? _checktime : _noop_checktime );
@@ -457,6 +458,7 @@ namespace eosio { namespace chain {
                                         _control.get_global_properties().configuration.max_authority_depth,
                                         provided_keys,
                                         provided_permissions,
+                                        required_keys,
                                         effective_provided_delay,
                                         checktime
                                       );
@@ -533,21 +535,39 @@ namespace eosio { namespace chain {
 
       }
 
-      if( !allow_unused_keys ) {
-         EOS_ASSERT( checker.all_keys_used(), tx_irrelevant_sig,
+      if (_control.is_builtin_activated( builtin_protocol_feature_t::require_key )) {
+         const auto& unused = checker.unused_keys();
+         for ( auto it = unused.begin(); it != unused.end(); ++it) {
+            const auto& rk = required_keys.find(*it);
+            if ( !allow_unused_keys ) {
+               EOS_ASSERT( rk != required_keys.end(), unsatisfied_authorization,
+                  "transaction bears an irrelevant signature '${key}' from these keys: ${keys}",
+                  ("key", *it)("keys", std::vector<public_key_type>(it, unused.end())) );
+            }
+            required_keys.erase(rk);
+         }
+         for ( const auto& rk : required_keys ) {
+            EOS_ASSERT( provided_keys.find(rk) != provided_keys.end(), unsatisfied_authorization,
+               "require_key failed with unresolved key '${key}'", ("key", rk) );
+         }
+      } else {
+         if( !allow_unused_keys ) {
+            EOS_ASSERT( checker.all_keys_used(), tx_irrelevant_sig,
                      "transaction bears irrelevant signatures from these keys: ${keys}",
                      ("keys", checker.unused_keys()) );
+         }
       }
    }
 
    void
-   authorization_manager::check_authorization( account_name                         account,
-                                               permission_name                      permission,
-                                               const flat_set<public_key_type>&     provided_keys,
-                                               const flat_set<permission_level>&    provided_permissions,
-                                               fc::microseconds                     provided_delay,
-                                               const std::function<void()>&         _checktime,
-                                               bool                                 allow_unused_keys
+   authorization_manager::check_authorization( account_name                      account,
+                                               permission_name                   permission,
+                                               const flat_set<public_key_type>&  provided_keys,
+                                               const flat_set<permission_level>& provided_permissions,
+                                               flat_set<public_key_type>&&       required_keys,
+                                               fc::microseconds                  provided_delay,
+                                               const std::function<void()>&      _checktime,
+                                               bool                              allow_unused_keys
                                              )const
    {
       const auto& checktime = ( static_cast<bool>(_checktime) ? _checktime : _noop_checktime );
@@ -558,6 +578,7 @@ namespace eosio { namespace chain {
                                         _control.get_global_properties().configuration.max_authority_depth,
                                         provided_keys,
                                         provided_permissions,
+                                        required_keys,
                                         ( provided_delay >= delay_max_limit ) ? fc::microseconds::maximum() : provided_delay,
                                         checktime
                                       );
@@ -573,13 +594,31 @@ namespace eosio { namespace chain {
                   ("delay_max_limit_ms", delay_max_limit.count()/1000)
                 );
 
-      if( !allow_unused_keys ) {
-         EOS_ASSERT( checker.all_keys_used(), tx_irrelevant_sig,
+      if (_control.is_builtin_activated( builtin_protocol_feature_t::require_key )) {
+         const auto& unused = checker.unused_keys();
+         for ( auto it = unused.begin(); it != unused.end(); ++it) {
+            const auto& rk = required_keys.find(*it);
+            if ( !allow_unused_keys ) {
+               EOS_ASSERT( rk != required_keys.end(), unsatisfied_authorization,
+                  "transaction bears an irrelevant signature '${key}' from these keys: ${keys}",
+                  ("key", *it)("keys", std::vector<public_key_type>(it, unused.end())) );
+            }
+            required_keys.erase(rk);
+         }
+         for ( const auto& rk : required_keys ) {
+            EOS_ASSERT( provided_keys.find(rk) != provided_keys.end(), unsatisfied_authorization,
+               "require_key failed with unresolved key '${key}'", ("key", rk) );
+         }
+      } else {
+         if( !allow_unused_keys ) {
+            EOS_ASSERT( checker.all_keys_used(), tx_irrelevant_sig,
                      "irrelevant keys provided: ${keys}",
                      ("keys", checker.unused_keys()) );
+         }
       }
    }
 
+   // TODO: need to add support for require_key and dry run
    flat_set<public_key_type> authorization_manager::get_required_keys( const transaction& trx,
                                                                        const flat_set<public_key_type>& candidate_keys,
                                                                        fc::microseconds provided_delay
@@ -588,6 +627,7 @@ namespace eosio { namespace chain {
       auto checker = make_auth_checker( [&](const permission_level& p){ return get_permission(p).auth; },
                                         _control.get_global_properties().configuration.max_authority_depth,
                                         candidate_keys,
+                                        {},
                                         {},
                                         provided_delay,
                                         _noop_checktime

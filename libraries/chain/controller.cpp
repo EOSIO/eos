@@ -1473,6 +1473,7 @@ struct controller_impl {
                        trn.actions,
                        trx->recovered_keys(),
                        {},
+                       std::move(trx_context.required_keys),
                        trx_context.delay,
                        [&trx_context](){ trx_context.checktime(); },
                        false
@@ -3312,26 +3313,21 @@ fc::optional<chain_id_type> controller::extract_chain_id_from_db( const path& st
    return {};
 }
 
-/// Protocol feature activation handlers:
-#define EOS_PROTO_FEATURE_ON_ACTIVATION(PF, FUNC)                          \
-   template<>                                                              \
-   void controller_impl::on_activation<builtin_protocol_feature_t::PF>() { \
-      db.modify( db.get<protocol_state_object>(), FUNC );                  \
-   }
-
-#define EOS_PROTO_FEATURE_ON_ACTIVATION_EX(PF, FUNC)                       \
-   template<>                                                              \
-   void controller_impl::on_activation<builtin_protocol_feature_t::PF>() { \
-      FUNC();                                                              \
-   }
-
 template <typename... Args>
 inline auto whitelister(Args&&... args) { return [&]( auto& ps ) { add_intrinsics_to_whitelist(ps.whitelisted_intrinsics, std::forward<Args>(args)...); }; }
 
-EOS_PROTO_FEATURE_ON_ACTIVATION(preactivate_feature, whitelister("preactivate_feature", "is_feature_activated"))
-EOS_PROTO_FEATURE_ON_ACTIVATION(get_sender,          whitelister("get_sender"))
-EOS_PROTO_FEATURE_ON_ACTIVATION_EX(replace_deferred,
-   ([&]() {
+/// Protocol feature activation handlers:
+   template<>
+   void controller_impl::on_activation<builtin_protocol_feature_t::preactivate_feature>() {
+      db.modify( db.get<protocol_state_object>(), whitelister("preactivate_feature", "is_feature_activated") );
+   }
+   template<>
+   void controller_impl::on_activation<builtin_protocol_feature_t::get_sender>() {
+      db.modify( db.get<protocol_state_object>(), whitelister("get_sender") );
+   }
+
+   template<>
+   void controller_impl::on_activation<builtin_protocol_feature_t::replace_deferred>() {
       const auto& indx = db.get_index<account_ram_correction_index, by_id>();
       for( auto itr = indx.begin(); itr != indx.end(); itr = indx.begin() ) {
          int64_t current_ram_usage = resource_limits.get_account_ram_usage( itr->name );
@@ -3345,17 +3341,23 @@ EOS_PROTO_FEATURE_ON_ACTIVATION_EX(replace_deferred,
          resource_limits.add_pending_ram_usage( itr->name, ram_delta );
          db.remove( *itr );
       }
-   })
-)
-
-EOS_PROTO_FEATURE_ON_ACTIVATION(webauthn_key,            [](auto& ps) { ps.num_supported_key_types = 3; })
-EOS_PROTO_FEATURE_ON_ACTIVATION(wtmsig_block_signatures, whitelister("set_proposed_producers_ex"))
-EOS_PROTO_FEATURE_ON_ACTIVATION(action_return_value,     whitelister("set_action_return_value"))
-EOS_PROTO_FEATURE_ON_ACTIVATION(require_key,             whitelister("require_key"))
-
+   }
+   template<>
+   void controller_impl::on_activation<builtin_protocol_feature_t::webauthn_key>() {
+      db.modify( db.get<protocol_state_object>(), [](auto& ps) { ps.num_supported_key_types = 3; });
+   }
+   template<>
+   void controller_impl::on_activation<builtin_protocol_feature_t::wtmsig_block_signatures>() {
+      db.modify( db.get<protocol_state_object>(), whitelister("set_proposed_producers_ex") );
+   }
+   template<>
+   void controller_impl::on_activation<builtin_protocol_feature_t::action_return_value>() {
+      db.modify( db.get<protocol_state_object>(), whitelister("set_action_return_value") );
+   }
+   template<>
+   void controller_impl::on_activation<builtin_protocol_feature_t::require_key>() {
+      db.modify( db.get<protocol_state_object>(), whitelister("require_key") );
+   }
 /// End of protocol feature activation handlers
 
 } } /// eosio::chain
-
-#undef EOS_PROTO_FEATURE_ON_ACTIVATION
-#undef EOS_PROTO_FEATURE_ON_ACTIVATION_EX

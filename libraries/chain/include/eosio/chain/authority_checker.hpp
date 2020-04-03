@@ -38,6 +38,7 @@ namespace detail {
          const std::function<void()>&         checktime;
          vector<public_key_type>              provided_keys; // Making this a flat_set<public_key_type> causes runtime problems with utilities::filter_data_by_marker for some reason. TODO: Figure out why.
          flat_set<permission_level>           provided_permissions;
+         vector<public_key_type>              required_keys;
          vector<bool>                         _used_keys;
          fc::microseconds                     provided_delay;
          uint16_t                             recursion_depth_limit;
@@ -47,6 +48,7 @@ namespace detail {
                             uint16_t                             recursion_depth_limit,
                             const flat_set<public_key_type>&     provided_keys,
                             const flat_set<permission_level>&    provided_permissions,
+                            const flat_set<public_key_type>&     required_keys,
                             fc::microseconds                     provided_delay,
                             const std::function<void()>&         checktime
                          )
@@ -54,6 +56,7 @@ namespace detail {
          ,checktime( checktime )
          ,provided_keys(provided_keys.begin(), provided_keys.end())
          ,provided_permissions(provided_permissions)
+         ,required_keys(required_keys.begin(), required_keys.end())
          ,_used_keys(provided_keys.size(), false)
          ,provided_delay(provided_delay)
          ,recursion_depth_limit(recursion_depth_limit)
@@ -260,6 +263,7 @@ namespace detail {
                            uint16_t                             recursion_depth_limit,
                            const flat_set<public_key_type>&     provided_keys,
                            const flat_set<permission_level>&    provided_permissions = flat_set<permission_level>(),
+                           const flat_set<public_key_type>&     required_keys = {},
                            fc::microseconds                     provided_delay = fc::microseconds(0),
                            const std::function<void()>&         _checktime = std::function<void()>()
                          )
@@ -270,6 +274,7 @@ namespace detail {
                                                             recursion_depth_limit,
                                                             provided_keys,
                                                             provided_permissions,
+                                                            required_keys,
                                                             provided_delay,
                                                             checktime );
    }
