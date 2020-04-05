@@ -108,6 +108,7 @@ namespace eosio { namespace chain {
 
       transaction_receipt():transaction_receipt_header(){}
       transaction_receipt(const transaction_receipt_v0&, bool legacy);
+      transaction_receipt(transaction_receipt_v0&&, bool legacy);
       explicit transaction_receipt( const transaction_id_type& tid ):transaction_receipt_header(executed),trx(tid){}
       explicit transaction_receipt( const packed_transaction& ptrx ):transaction_receipt_header(executed),trx(ptrx){}
 
@@ -137,6 +138,7 @@ namespace eosio { namespace chain {
       signed_block() = default;
       explicit signed_block( const signed_block_header& h ):signed_block_header(h){}
       signed_block( const signed_block_v0&, bool legacy );
+      signed_block( signed_block_v0&&, bool legacy );
       signed_block( signed_block&& ) = default;
       signed_block& operator=(const signed_block&) = delete;
       signed_block& operator=(signed_block&&) = default;
@@ -152,7 +154,7 @@ namespace eosio { namespace chain {
       // Returns the maximum_pruned_padded_size.  It is the caller's responsibility to
       // reserve enough space after the end if in-place pruning is desired.
       template<typename Stream>
-      std::size_t pack(Stream& stream, packed_transaction::cf_compression_type segment_compression) {
+      std::size_t pack(Stream& stream, packed_transaction::cf_compression_type segment_compression) const {
          std::size_t padded_size = maximum_pruned_pack_size( segment_compression );
          // TODO: This only handles legacy transactions.
          fc::raw::pack(stream, *this);
