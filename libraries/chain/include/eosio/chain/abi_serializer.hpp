@@ -481,14 +481,11 @@ namespace impl {
          mutable_variant_object mvo;
          const auto& trx = ptrx.get_transaction();
          mvo("id", trx.id());
-         mvo("signatures", ptrx.get_signatures() != nullptr ? *ptrx.get_signatures() : vector<signature_type>());
+         const auto* sigs = ptrx.get_signatures();
+         mvo("signatures", sigs != nullptr ? *sigs : vector<signature_type>());
          mvo("compression", ptrx.get_compression());
-         if( ptrx.get_prunable_data().prunable_data.contains<prunable_transaction_data::full_legacy>() ) {
-            const auto& legacy = ptrx.get_prunable_data().prunable_data.get<prunable_transaction_data::full_legacy>();
-            mvo( "packed_context_free_data", legacy.packed_context_free_data );
-         } else {
-            mvo( "packed_context_free_data", bytes() );
-         }
+         const auto* context_free_data = ptrx.get_context_free_data();
+         mvo("packed_context_free_data", context_free_data != nullptr ? *context_free_data : vector<bytes>() );
          mvo("context_free_data", ptrx.get_context_free_data() != nullptr ? *ptrx.get_context_free_data() : vector<bytes>());
          mvo("packed_trx", ptrx.get_packed_transaction());
          add(mvo, "transaction", trx, resolver, ctx);
