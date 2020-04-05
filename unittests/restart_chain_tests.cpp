@@ -257,7 +257,7 @@ BOOST_FIXTURE_TEST_CASE(test_restart_from_trimed_block_log, restart_from_block_l
    auto& config = chain.get_config();
    auto blocks_path = config.blocks_dir;
    remove_all(blocks_path/"reversible");
-   block_log::trim_blocklog_end(config.blocks_dir, cutoff_block_num);
+   BOOST_REQUIRE_NO_THROW(block_log::trim_blocklog_end(config.blocks_dir, cutoff_block_num));
 }
    
 BOOST_FIXTURE_TEST_CASE(test_light_validation_restart_from_block_log, light_validation_restart_from_block_log_test_fixture) {
@@ -268,5 +268,16 @@ BOOST_FIXTURE_TEST_CASE(test_light_validation_restart_from_block_log_with_pruned
    blog.prune_transaction(trace->block_num, trace->id);
 }
 
+BOOST_AUTO_TEST_CASE(test_trim_blocklog_front) {
+   tester chain;
+   chain.produce_blocks(10);
+   chain.produce_blocks(20);
+   chain.close();
+
+   auto  blocks_dir = chain.get_config().blocks_dir;
+   auto  temp   = boost::filesystem::unique_path();
+   BOOST_REQUIRE_NO_THROW(block_log::trim_blocklog_front(blocks_dir, temp, 10));
+   BOOST_REQUIRE_NO_THROW(block_log::smoke_test(blocks_dir));
+}
 
 BOOST_AUTO_TEST_SUITE_END()
