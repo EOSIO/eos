@@ -35,12 +35,10 @@ namespace eosio { namespace chain {
    class block_log {
       public:
          block_log(const fc::path& data_dir);
-         block_log(block_log&& other);
+         block_log(block_log&& other) = default;
          ~block_log();
-
+         
          uint64_t append(const signed_block_ptr& block, packed_transaction::cf_compression_type segment_compression);
-
-         void flush();
 
          void reset( const genesis_state& gs, const signed_block_ptr& genesis_block, packed_transaction::cf_compression_type segment_compression);
          void reset( const chain_id_type& chain_id, uint32_t first_block_num );
@@ -49,10 +47,6 @@ namespace eosio { namespace chain {
 
          std::unique_ptr<signed_block>   read_signed_block_by_num(uint32_t block_num) const;
 
-         /**
-          * Return offset of block in file, or block_log::npos if it does not exist.
-          */
-         uint64_t                       get_block_pos(uint32_t block_num) const;
          const signed_block_ptr&        head() const;
          uint32_t                       first_block_num() const;
 
@@ -70,7 +64,7 @@ namespace eosio { namespace chain {
          static const uint32_t min_supported_version;
          static const uint32_t max_supported_version;
 
-         static fc::path repair_log( const fc::path& data_dir, uint32_t truncate_at_block = 0 );
+         static fc::path repair_log( const fc::path& data_dir, uint32_t truncate_at_block = UINT32_MAX );
 
          static fc::optional<genesis_state> extract_genesis_state( const fc::path& data_dir );
 
@@ -93,9 +87,6 @@ namespace eosio { namespace chain {
          static void smoke_test(fc::path block_dir, uint32_t n);
 
    private:
-         void open(const fc::path& data_dir);
-         void construct_index();
-
          std::unique_ptr<detail::block_log_impl> my;
    };
 } }
