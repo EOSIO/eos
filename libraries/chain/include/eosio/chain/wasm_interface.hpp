@@ -55,7 +55,7 @@ namespace eosio { namespace chain {
             }
 
             // Try to resolve an intrinsic first.
-            if( !fail && Runtime::IntrinsicResolver::singleton.resolve( mod_name, export_name, type, out ) ) {
+            if( !fail /*&& Runtime::IntrinsicResolver::singleton.resolve( mod_name, export_name, type, out ) */) {
                return true;
             }
 

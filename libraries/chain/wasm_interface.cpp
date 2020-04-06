@@ -54,8 +54,15 @@ namespace eosio { namespace chain {
 
       const auto& pso = control.db().get<protocol_state_object>();
 
-      //root_resolver resolver( pso.whitelisted_intrinsics );
-      //LinkResult link_result = linkModule(module, resolver);
+      root_resolver resolver( pso.whitelisted_intrinsics );
+
+      for(const auto& import : module.functions.imports) {
+         ObjectInstance* ignore;
+         resolver.resolve(import.moduleName, import.exportName, IR::ObjectType(), ignore);
+      }
+      EOS_ASSERT(module.tables.imports.empty(), wasm_exception, "Cannot import tables");
+      EOS_ASSERT(module.memories.imports.empty(), wasm_exception, "Cannot import memories");
+      EOS_ASSERT(module.globals.imports.empty(), wasm_exception, "Cannot import globals");
 
       //there are a couple opportunties for improvement here--
       //Easy: Cache the Module created here so it can be reused for instantiaion
