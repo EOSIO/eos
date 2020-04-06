@@ -56,12 +56,12 @@ namespace eosio { namespace chain {
           * Return offset of block in file, or block_log::npos if it does not exist.
           */
          uint64_t                       get_block_pos(uint32_t block_num) const;
-#warning TODO: change to pruned_block after merged with PR 8901
+#warning TODO: change to pruned_block after merged with PR 8900
          signed_block_header*           head() const;
          [[deprecated]] block_id_type   head_id() const; // use head()->id() instead
          uint32_t                       first_block_num() const;
 
-         bool prune_transaction(uint32_t block_num, transaction_id_type id);
+         void prune_transaction(uint32_t block_num, transaction_id_type id);
 
          static const uint64_t npos = std::numeric_limits<uint64_t>::max();
 

@@ -49,14 +49,13 @@ namespace eosio { namespace chain {
       template <typename Stream>
       void unpack(Stream& ds, log_entry& entry){
          fc::raw::unpack(ds, entry.offset);
-         fc::raw::unpack(ds, entry.compression);
-         EOS_ASSERT(entry.compression == pruned_transaction::cf_compression_type::none, block_log_exception,
+         uint8_t compression;
+         fc::raw::unpack(ds, compression);
+         EOS_ASSERT(compression == static_cast<uint8_t>(pruned_transaction::cf_compression_type::none), block_log_exception,
                   "Only support compression_type none");
+         entry.compression = static_cast<pruned_transaction::cf_compression_type>(compression);
          fc::raw::unpack(ds, *entry.block);
       }
-
-      
-
 
       class block_log_impl {
          public:
@@ -111,7 +110,7 @@ namespace eosio { namespace chain {
             /// calculate the offset from the start of serialized block entry to block start
             static int offset_to_block_start(uint32_t version) { 
                if (version < 4) return 0;
-               return sizeof(uint32_t) + sizeof(pruned_transaction::cf_compression_type);
+               return sizeof(uint32_t) + 1;
             }
 
             static int blknum_offset_from_block_entry(uint32_t block_log_version) { 
@@ -345,7 +344,7 @@ namespace eosio { namespace chain {
       uint32_t offset      = buffer.size();
       stream.write((char*)&offset, sizeof(offset));
       fc::raw::pack(stream, segment_compression);
-      fc::raw::pack(stream, b);
+      b.pack(stream, segment_compression);
       return buffer;
    }
 
@@ -506,10 +505,10 @@ namespace eosio { namespace chain {
 
       if (version >= 4 ) {
          uint32_t offset;
-         fc::unsigned_int compression;
+         uint8_t  compression;
          fc::raw::unpack(ds, offset);
          fc::raw::unpack(ds, compression);
-         EOS_ASSERT( compression.value == static_cast<uint32_t>(pruned_transaction::cf_compression_type::none), block_log_exception , "Only \"none\" compression type is supported.");
+         EOS_ASSERT( compression == static_cast<uint8_t>(pruned_transaction::cf_compression_type::none), block_log_exception , "Only \"none\" compression type is supported.");
       }
       fc::raw::unpack(ds, bh);
    }
@@ -767,7 +766,7 @@ namespace eosio { namespace chain {
             }
 
             if (!verify_block(ds, previous, pos, *hdr)) {
- #warning TODO: require fc::reflector<eosio::chain::pruned_block::prune_state_type> to work, change after merged with PR 8901
+ #warning TODO: require fc::reflector<eosio::chain::pruned_block::prune_state_type> to work, change after merged with PR 8900
             //   variant block;
             //    if (version >= 4)
             //       to_variant(pruned_tmp, block);
@@ -877,7 +876,7 @@ namespace eosio { namespace chain {
       return true;
    }
    
-   bool block_log::prune_transaction(uint32_t block_num, transaction_id_type id) {
+   void block_log::prune_transaction(uint32_t block_num, transaction_id_type id) {
       try {
          EOS_ASSERT(my->version >= 4, block_log_exception, "The block log version ${version} does not support transaction pruning.", ("version", my->version));
          uint64_t pos = get_block_pos(block_num);
@@ -898,19 +897,14 @@ namespace eosio { namespace chain {
          for (auto& trx : block.transactions) {
             if (trx.trx.visit(pruner)) {
                my->block_file.seek(pos);
-               std::vector<char> buffer = detail::block_log_impl::pack_v4_log_entry(*entry.block, static_cast<pruned_transaction::cf_compression_type>(entry.compression));
-               EOS_ASSERT(buffer.size() <= entry.offset, block_log_exception, "");
+               std::vector<char> buffer = detail::block_log_impl::pack_v4_log_entry(*entry.block, entry.compression);
+               EOS_ASSERT(buffer.size() <= entry.offset, block_log_exception, "Not enough space reserved in block log entry to serialize pruned block.");
                my->block_file.write(buffer.data(), buffer.size());
                my->block_file.flush();
-               return true;
             }
          }
-
-         elog("Block ${block_num} does not contain transaction ${id}.", ("id", id)("block_num", block_num));
-         return false;
       }
-      FC_CAPTURE_AND_LOG(())
-      return false;
+      FC_LOG_AND_RETHROW()
    }
 
    
@@ -1164,8 +1158,8 @@ namespace eosio { namespace chain {
       new_block_file.close();
       new_block_file.open( LOG_RW_C );
 
-      static_assert( block_log::max_supported_version >= 4,
-                     "Code was written to support format of version 4 or greater, need to update this code for latest format." );
+      static_assert( block_log::max_supported_version == 4,
+                     "Code was written to support format of version 4, need to update this code for latest format." );
       uint32_t version = block_log::max_supported_version;
       new_block_file.seek(0);
       new_block_file.write((char*)&version, sizeof(version));
@@ -1374,11 +1368,11 @@ namespace eosio { namespace chain {
          ("block_dir", block_dir.generic_string())("n", n)("block_file",td.block_file_name.generic_string())("index_file", td.index_file_name.generic_string()));
 
       if (n < td.first_block) {
-         elog("All blocks are after block ${n} so do nothing (trim_end would delete entire blocks.log)",("n", n));
+         dlog("All blocks are after block ${n} so do nothing (trim_end would delete entire blocks.log)",("n", n));
          return 1;
       }
       if (n >= td.last_block) {
-         elog("There are no blocks after block ${n} so do nothing",("n", n));
+         dlog("There are no blocks after block ${n} so do nothing",("n", n));
          return 2;
       }
       const uint64_t end_of_new_file = td.block_pos(n + 1);
