@@ -393,6 +393,11 @@ void apply_eosio_unlinkauth(apply_context& context) {
 }
 
 void apply_eosio_canceldelay(apply_context& context) {
+   bool remove_deferred_transactions_activated = context.control.is_builtin_activated(builtin_protocol_feature_t::remove_deferred_transactions);
+   if (remove_deferred_transactions_activated) {
+      return;
+   }
+   
    auto cancel = context.get_action().data_as<canceldelay>();
    context.require_authorization(cancel.canceling_auth.actor); // only here to mark the single authority on this action as used
 

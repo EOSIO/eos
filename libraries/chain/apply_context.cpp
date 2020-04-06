@@ -364,7 +364,11 @@ void apply_context::execute_context_free_inline( action&& a ) {
 }
 
 void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, account_name payer, transaction&& trx, bool replace_existing ) {
-   bool stop_deferred_transactions_activated = control.is_builtin_activated(builtin_protocol_feature_t::stop_deferred_transactions);
+   bool remove_deferred_transactions_activated = control.is_builtin_activated(builtin_protocol_feature_t::remove_deferred_transactions);
+   bool stop_deferred_transactions_activated   = control.is_builtin_activated(builtin_protocol_feature_t::stop_deferred_transactions);
+
+   EOS_ASSERT( !remove_deferred_transactions_activated, remove_deferred_tx, "attempting to schedule a deferred transaction; deferred transactions have been removed" );
+   
    if ( stop_deferred_transactions_activated ) {
        EOS_ASSERT( replace_existing, stop_deferred_tx, "you may only replace existing deferred transactions; not generate new ones" );
    }

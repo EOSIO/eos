@@ -109,23 +109,22 @@ BOOST_AUTO_TEST_CASE( bootstrap ) try {
    BOOST_REQUIRE_EQUAL(expected, actual);
 } FC_LOG_AND_RETHROW() /// test_api_bootstrap
 
-BOOST_AUTO_TEST_CASE( test_transfer ) try {
-   currency_tester chain;
-   chain.create_accounts( {N(alice)} );
+BOOST_FIXTURE_TEST_CASE( test_transfer, currency_tester ) try {
+   create_accounts( {N(alice)} );
 
    // make a transfer from the contract to a user
    {
-      auto trace = chain.push_action(N(eosio.token), N(transfer), mutable_variant_object()
-         ("from", chain.eosio_token)
+      auto trace = push_action(N(eosio.token), N(transfer), mutable_variant_object()
+         ("from", eosio_token)
          ("to",   "alice")
          ("quantity", "100.0000 CUR")
          ("memo", "fund Alice")
       );
 
-      chain.produce_block();
+      produce_block();
 
-      BOOST_REQUIRE_EQUAL(true, chain.chain_has_transaction(trace->id));
-      BOOST_REQUIRE_EQUAL(chain.get_balance(N(alice)), asset::from_string( "100.0000 CUR" ) );
+      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trace->id));
+      BOOST_REQUIRE_EQUAL(get_balance(N(alice)), asset::from_string( "100.0000 CUR" ) );
    }
 } FC_LOG_AND_RETHROW() /// test_transfer
 

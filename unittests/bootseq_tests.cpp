@@ -65,6 +65,10 @@ std::vector<genesis_account> test_genesis( {
 
 class bootseq_tester : public TESTER {
 public:
+   bootseq_tester()
+   : TESTER( {builtin_protocol_feature_t::stop_deferred_transactions} )
+   {}
+    
    void deploy_contract( bool call_init = true ) {
       set_code( config::system_account_name, contracts::eosio_system_wasm() );
       set_abi( config::system_account_name, contracts::eosio_system_abi().data() );
@@ -187,7 +191,8 @@ BOOST_AUTO_TEST_SUITE(bootseq_tests)
 
 BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
     try {
-
+        // bootseq_tester chain( {builtin_protocol_feature_t::stop_deferred_transactions,
+        //                        builtin_protocol_feature_t::remove_deferred_transactions} );
         // Create eosio.msig and eosio.token
         create_accounts({N(eosio.msig), N(eosio.token), N(eosio.ram), N(eosio.ramfee), N(eosio.stake), N(eosio.vpay), N(eosio.bpay), N(eosio.saving) });
         // Set code for the following accounts:
@@ -262,14 +267,14 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         auto votepro = [&]( account_name voter, vector<account_name> producers ) {
           std::sort( producers.begin(), producers.end() );
           base_tester::push_action(config::system_account_name, N(voteproducer), voter, mvo()
-                                ("voter",  name(voter))
-                                ("proxy", name(0) )
-                                ("producers", producers)
-                     );
+                                         ("voter",  name(voter))
+                                         ("proxy", name(0) )
+                                         ("producers", producers)
+                             );
         };
         votepro( N(b1), { N(proda), N(prodb), N(prodc), N(prodd), N(prode), N(prodf), N(prodg),
-                           N(prodh), N(prodi), N(prodj), N(prodk), N(prodl), N(prodm), N(prodn),
-                           N(prodo), N(prodp), N(prodq), N(prodr), N(prods), N(prodt), N(produ)} );
+                          N(prodh), N(prodi), N(prodj), N(prodk), N(prodl), N(prodm), N(prodn),
+                          N(prodo), N(prodp), N(prodq), N(prodr), N(prods), N(prodt), N(produ)} );
         votepro( N(whale2), {N(runnerup1), N(runnerup2), N(runnerup3)} );
         votepro( N(whale3), {N(proda), N(prodb), N(prodc), N(prodd), N(prode)} );
 

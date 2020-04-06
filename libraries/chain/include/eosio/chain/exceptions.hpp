@@ -280,7 +280,9 @@ namespace eosio { namespace chain {
       FC_DECLARE_DERIVED_EXCEPTION( tx_prune_exception, transaction_exception,
                                     3040019, "Prunable data not found" )
       FC_DECLARE_DERIVED_EXCEPTION( stop_deferred_tx, transaction_exception,
-                                    3040019, "Deferred transactions have been stopped" )
+                                    3040020, "Deferred transactions have been stopped" )
+      FC_DECLARE_DERIVED_EXCEPTION( remove_deferred_tx, transaction_exception,
+                                    3040021, "Deferred transactions have been removed" )
 
 
    FC_DECLARE_DERIVED_EXCEPTION( action_validate_exception, chain_exception,
