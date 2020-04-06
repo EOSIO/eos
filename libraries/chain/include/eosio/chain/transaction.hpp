@@ -214,6 +214,8 @@ namespace eosio { namespace chain {
       transaction_id_type                     trx_id;
    };
 
+   using packed_transaction_v0_ptr = std::shared_ptr<const packed_transaction_v0>;
+
    struct prunable_transaction_data {
       enum class compression_type : uint8_t {
          none = 0,
@@ -232,10 +234,9 @@ namespace eosio { namespace chain {
          digest_type                     context_free_mroot;
       };
 
-      using segment_type = fc::static_variant<digest_type, std::vector<char>>;
+      using segment_type = fc::static_variant<digest_type, bytes>;
 
       struct partial {
-         // TODO: will need indication of what was pruned so correct exception can be thrown in apply_context.get_context_free_data
          std::vector<signature_type>     signatures;
          std::vector<segment_type>       context_free_segments;
       };
@@ -266,8 +267,6 @@ namespace eosio { namespace chain {
 
       prunable_data_type  prunable_data;
    };
-
-   using packed_transaction_v0_ptr = std::shared_ptr<const packed_transaction_v0>;
 
    struct packed_transaction : fc::reflect_init {
       using compression_type = packed_transaction_v0::compression_type;
@@ -310,11 +309,11 @@ namespace eosio { namespace chain {
       std::size_t maximum_pruned_pack_size( cf_compression_type segment_compression ) const;
 
    private:
-
       friend struct fc::reflector<packed_transaction>;
       friend struct fc::reflector_init_visitor<packed_transaction>;
       friend struct fc::has_reflector_init<packed_transaction>;
       void reflector_init();
+      uint32_t calculate_estimated_size() const;
    private:
       uint32_t                                estimated_size = 0;
       fc::enum_type<uint8_t,compression_type> compression;
