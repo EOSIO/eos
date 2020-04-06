@@ -27,7 +27,7 @@ BOOST_AUTO_TEST_CASE(block_with_invalid_tx_test)
    signed_tx.signatures.clear();
    signed_tx.sign(main.get_private_key(config::system_account_name, "active"), main.control->get_chain_id());
    // Replace the valid transaction with the invalid transaction
-   auto invalid_packed_tx = packed_transaction(signed_tx, true);
+   auto invalid_packed_tx = packed_transaction(std::move(signed_tx), true);
    copy_b->transactions.back().trx = invalid_packed_tx;
 
    // Re-calculate the transaction merkle
@@ -67,7 +67,7 @@ std::pair<signed_block_ptr, signed_block_ptr> corrupt_trx_in_block(validating_te
    signed_tx.sign(main.get_private_key(act_name, "active"), main.control->get_chain_id());
 
    // Replace the valid transaction with the invalid transaction
-   auto invalid_packed_tx = packed_transaction(signed_tx, true, packed_trx.get_compression());
+   auto invalid_packed_tx = packed_transaction(std::move(signed_tx), true, packed_trx.get_compression());
    copy_b->transactions.back().trx = invalid_packed_tx;
 
    // Re-calculate the transaction merkle

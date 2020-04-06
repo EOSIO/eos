@@ -739,9 +739,9 @@ BOOST_AUTO_TEST_CASE(transaction_test) { try {
    BOOST_CHECK_EQUAL(1u, trx.signatures.size());
    trx.validate();
 
-   packed_transaction pkt(trx, true, packed_transaction::compression_type::none);
+   packed_transaction pkt(signed_transaction(trx), true, packed_transaction::compression_type::none);
 
-   packed_transaction pkt2(trx, true, packed_transaction::compression_type::zlib);
+   packed_transaction pkt2(signed_transaction(trx), true, packed_transaction::compression_type::zlib);
 
    BOOST_CHECK_EQUAL(true, trx.expiration ==  pkt.expiration());
    BOOST_CHECK_EQUAL(true, trx.expiration == pkt2.expiration());
@@ -796,6 +796,14 @@ BOOST_AUTO_TEST_CASE(transaction_test) { try {
    BOOST_CHECK_EQUAL(true, trx.expiration == pkt4.get_transaction().expiration);
    keys.clear();
    pkt4.to_packed_transaction_v0()->get_signed_transaction().get_signature_keys(test.control->get_chain_id(), fc::time_point::maximum(), keys);
+   BOOST_CHECK_EQUAL(1u, keys.size());
+   BOOST_CHECK_EQUAL(public_key, *keys.begin());
+
+   packed_transaction pkt6(*pkt.to_packed_transaction_v0(), true);
+   BOOST_CHECK_EQUAL(pkt.id(), pkt6.id());
+   BOOST_CHECK(pkt6.get_estimated_size() > 0);
+   keys.clear();
+   pkt6.to_packed_transaction_v0()->get_signed_transaction().get_signature_keys(test.control->get_chain_id(), fc::time_point::maximum(), keys);
    BOOST_CHECK_EQUAL(1u, keys.size());
    BOOST_CHECK_EQUAL(public_key, *keys.begin());
 
@@ -868,11 +876,11 @@ BOOST_AUTO_TEST_CASE(transaction_metadata_test) { try {
       trx.sign( private_key, test.control->get_chain_id()  );
       BOOST_CHECK_EQUAL(1u, trx.signatures.size());
 
-      packed_transaction pkt(trx, true, packed_transaction::compression_type::none);
-      packed_transaction pkt2(trx, true, packed_transaction::compression_type::zlib);
+      packed_transaction pkt(signed_transaction(trx), true, packed_transaction::compression_type::none);
+      packed_transaction pkt2(signed_transaction(trx), true, packed_transaction::compression_type::zlib);
 
-      packed_transaction_ptr ptrx = std::make_shared<packed_transaction>( trx, true, packed_transaction::compression_type::none);
-      packed_transaction_ptr ptrx2 = std::make_shared<packed_transaction>( trx, true, packed_transaction::compression_type::zlib);
+      packed_transaction_ptr ptrx = std::make_shared<packed_transaction>( signed_transaction(trx), true, packed_transaction::compression_type::none);
+      packed_transaction_ptr ptrx2 = std::make_shared<packed_transaction>( signed_transaction(trx), true, packed_transaction::compression_type::zlib);
 
       BOOST_CHECK_EQUAL(trx.id(), pkt.id());
       BOOST_CHECK_EQUAL(trx.id(), pkt2.id());
@@ -959,7 +967,7 @@ BOOST_AUTO_TEST_CASE(pruned_transaction_test) {
    trx.sign( t.get_private_key( N(eosio), "active" ), t.control->get_chain_id() );
 
    packed_transaction_v0 packed(trx);
-   packed_transaction pruned(trx, true);
+   packed_transaction pruned(std::move(trx), true);
    BOOST_TEST(packed.packed_digest().str() == pruned.packed_digest().str());
    BOOST_REQUIRE(pruned.get_context_free_data() != nullptr);
    BOOST_TEST(*pruned.get_context_free_data() == packed.get_context_free_data());

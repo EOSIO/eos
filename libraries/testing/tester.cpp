@@ -533,7 +533,7 @@ namespace eosio { namespace testing {
       return push_transaction( trx );
    }
 
-   transaction_trace_ptr base_tester::push_transaction( packed_transaction& trx,
+   transaction_trace_ptr base_tester::push_transaction( const packed_transaction& trx,
                                                         fc::time_point deadline,
                                                         uint32_t billed_cpu_time_us
                                                       )
@@ -552,7 +552,7 @@ namespace eosio { namespace testing {
       return r;
    } FC_RETHROW_EXCEPTIONS( warn, "transaction_header: ${header}", ("header", transaction_header(trx.get_transaction()) )) }
 
-   transaction_trace_ptr base_tester::push_transaction( signed_transaction& trx,
+   transaction_trace_ptr base_tester::push_transaction( const signed_transaction& trx,
                                                         fc::time_point deadline,
                                                         uint32_t billed_cpu_time_us,
                                                         bool no_throw
@@ -569,7 +569,7 @@ namespace eosio { namespace testing {
       auto time_limit = deadline == fc::time_point::maximum() ?
             fc::microseconds::maximum() :
             fc::microseconds( deadline - fc::time_point::now() );
-      auto ptrx = std::make_shared<packed_transaction>( trx, true, c );
+      auto ptrx = std::make_shared<packed_transaction>( signed_transaction(trx), true, c );
       auto fut = transaction_metadata::start_recover_keys( std::move( ptrx ), control->get_thread_pool(), control->get_chain_id(), time_limit );
       auto r = control->push_transaction( fut.get(), deadline, billed_cpu_time_us, billed_cpu_time_us > 0 );
       if (no_throw) return r;

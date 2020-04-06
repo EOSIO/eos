@@ -126,7 +126,7 @@ namespace eosio { namespace chain {
       signed_transaction( signed_transaction&& ) = default;
       signed_transaction& operator=(const signed_transaction&) = delete;
       signed_transaction& operator=(signed_transaction&&) = default;
-      signed_transaction( transaction&& trx, vector<signature_type> signatures, vector<bytes> context_free_data)
+      signed_transaction( transaction trx, vector<signature_type> signatures, vector<bytes> context_free_data)
       : transaction(std::move(trx))
       , signatures(std::move(signatures))
       , context_free_data(std::move(context_free_data))
@@ -281,8 +281,7 @@ namespace eosio { namespace chain {
 
       packed_transaction(const packed_transaction_v0& other, bool legacy);
       packed_transaction(packed_transaction_v0&& other, bool legacy);
-      explicit packed_transaction(const signed_transaction& t, bool legacy, compression_type _compression = compression_type::none);
-      explicit packed_transaction(signed_transaction&& t, bool legacy, compression_type _compression = compression_type::none);
+      explicit packed_transaction(signed_transaction t, bool legacy, compression_type _compression = compression_type::none);
 
       packed_transaction_v0_ptr to_packed_transaction_v0() const;
 

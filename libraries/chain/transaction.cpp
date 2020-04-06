@@ -476,17 +476,7 @@ static prunable_transaction_data make_prunable_transaction_data( bool legacy, ve
    }
 }
 
-packed_transaction::packed_transaction(const signed_transaction& t, bool legacy, compression_type _compression)
- : compression(_compression),
-   prunable_data(make_prunable_transaction_data(legacy, t.signatures, t.context_free_data, _compression)),
-   packed_trx(pack_transaction(t, estimated_size, compression)),
-   unpacked_trx(t),
-   trx_id(unpacked_trx.id())
-{
-   estimated_size = estimated_size * 2 + get_prunable_size() * 2;
-}
-
-packed_transaction::packed_transaction(signed_transaction&& t, bool legacy, compression_type _compression)
+packed_transaction::packed_transaction(signed_transaction t, bool legacy, compression_type _compression)
  : compression(_compression),
    prunable_data(make_prunable_transaction_data(legacy, std::move(t.signatures), std::move(t.context_free_data), _compression)),
    packed_trx(pack_transaction(t, estimated_size, compression)),
@@ -607,17 +597,6 @@ std::size_t packed_transaction::maximum_pruned_pack_size(cf_compression_type seg
    return fc::raw::pack_size(compression) + fc::raw::pack_size(packed_trx) + prunable_data.maximum_pruned_pack_size(segment_compression);
 }
 
-static std::vector<bytes> maybe_unpack_context_free_data(const prunable_transaction_data::full& obj, packed_transaction_v0::compression_type) {
-   return obj.context_free_segments;
-}
-static std::vector<bytes> maybe_unpack_context_free_data(const prunable_transaction_data::full_legacy& obj, packed_transaction_v0::compression_type compression) {
-   return unpack_context_free_data(obj.packed_context_free_data, compression);
-}
-template<typename T>
-static std::vector<bytes> maybe_unpack_context_free_data(const T&, packed_transaction_v0::compression_type) {
-   return {};
-}
-
 void packed_transaction::reflector_init()
 {
    // called after construction, but always on the same thread and before packed_transaction passed to any other threads
@@ -626,9 +605,7 @@ void packed_transaction::reflector_init()
    EOS_ASSERT( unpacked_trx.expiration == time_point_sec(), tx_decompression_error, "packed_transaction already unpacked" );
    const auto* signatures = get_signatures();
    uint32_t packed_size = 0;
-   unpacked_trx = signed_transaction(unpack_transaction(packed_trx, packed_size, compression),
-                                     signatures ? *signatures : std::vector<signature_type>{},
-                                     prunable_data.prunable_data.visit([&](const auto& obj) { return maybe_unpack_context_free_data(obj, compression); }));
+   unpacked_trx = unpack_transaction(packed_trx, packed_size, compression);
    trx_id = unpacked_trx.id();
    estimated_size = packed_size * 2 + get_prunable_size() * 2; // x2 since stored packed and unpacked
 }

@@ -74,7 +74,7 @@ namespace {
    auto make_packed_trx( std::vector<chain::action> actions ) {
       chain::signed_transaction trx;
       trx.actions = std::move( actions );
-      return packed_transaction( trx, true );
+      return packed_transaction( std::move(trx), true );
    }
 
    chain::action_trace make_action_trace( uint64_t global_sequence, chain::action act, chain::name receiver ) {
