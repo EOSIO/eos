@@ -1162,9 +1162,7 @@ struct controller_impl {
          trx_context.squash();
          restore.cancel();
          return trace;
-      } catch( const disallowed_transaction_extensions_bad_block_exception& ) {
-         throw;
-      } catch( const protocol_feature_bad_block_exception& ) {
+      } catch( const objective_block_production_exception& ) {
          throw;
       } catch( const fc::exception& e ) {
          cpu_time_to_bill_us = trx_context.update_billed_cpu_time( fc::time_point::now() );
@@ -1314,9 +1312,7 @@ struct controller_impl {
          restore.cancel();
 
          return trace;
-      } catch( const disallowed_transaction_extensions_bad_block_exception& ) {
-         throw;
-      } catch( const protocol_feature_bad_block_exception& ) {
+      } catch( const objective_block_production_exception& ) {
          throw;
       } catch( const fc::exception& e ) {
          cpu_time_to_bill_us = trx_context.update_billed_cpu_time( fc::time_point::now() );
@@ -1521,9 +1517,7 @@ struct controller_impl {
             }
 
             return trace;
-         } catch( const disallowed_transaction_extensions_bad_block_exception& ) {
-            throw;
-         } catch( const protocol_feature_bad_block_exception& ) {
+         } catch( const objective_block_production_exception& ) {
             throw;
          } catch (const fc::exception& e) {
             trace->error_code = controller::convert_exception_to_error_code( e );

@@ -673,8 +673,11 @@ int apply_context::get_context_free_data( uint32_t index, char* buffer, size_t b
    if( data.contains<prunable_transaction_data::none>() || data.contains<prunable_transaction_data::signatures_only>() ||
        data.contains<prunable_transaction_data::partial>() ) // TODO: for partial determine if index is pruned and throw only in that case
    {
-      // TODO: throw an exception like disallowed_transaction_extensions_bad_block_exception && subjective_block_production_exception
-      EOS_ASSERT( false, subjective_block_production_exception, "todo" );
+      if( control.is_producing_block() ) {
+         EOS_THROW( subjective_block_production_exception, "pruned context free data not available" );
+      } else {
+         EOS_THROW( pruned_context_free_data_bad_block_exception, "pruned context free data not available" );
+      }
    }
 
    std::vector<bytes> context_free_data = data.contains<prunable_transaction_data::full_legacy>() ?
