@@ -40,6 +40,8 @@ using chain::signed_transaction;
 using chain::signed_block;
 using chain::transaction_id_type;
 using chain::packed_transaction;
+using chain::packed_transaction_v0;
+using chain::packed_transaction_v0_ptr;
 
 static appbase::abstract_plugin& _mongo_db_plugin = app().register_plugin<mongo_db_plugin>();
 
@@ -1065,7 +1067,7 @@ void mongo_db_plugin_impl::_process_irreversible_block(const chain::block_state_
          string trx_id_str;
          if( receipt.trx.contains<packed_transaction>() ) {
             const auto& pt = receipt.trx.get<packed_transaction>();
-            if( !filter_include( pt.get_signed_transaction() ) ) continue;
+            if( !filter_include( pt.get_transaction() ) ) continue;
             const auto& id = pt.id();
             trx_id_str = id.str();
          } else {
