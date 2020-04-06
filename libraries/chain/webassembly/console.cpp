@@ -5,7 +5,7 @@ namespace eosio { namespace chain { namespace webassembly {
 
    template <typename Ctx, typename F>
    inline static void predicated_print(Ctx& context, F&& print_func) {
-      if (UNLIKELY(!context.control.contracts_console()))
+      if (UNLIKELY(context.control.contracts_console()))
          print_func();
    }
 
