@@ -406,7 +406,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
              auth.permission == eosio::chain::config::active_name;
    }
 
-   void on_applied_transaction(const transaction_trace_ptr& p, const signed_transaction& t) {
+   void on_applied_transaction(const transaction_trace_ptr& p, const packed_transaction_ptr& t) {
       if (p->receipt && trace_log) {
          if (is_onblock(p))
             onblock_trace.emplace(p, t);
@@ -590,7 +590,7 @@ void state_history_plugin::plugin_initialize(const variables_map& options) {
       EOS_ASSERT(my->chain_plug, chain::missing_chain_plugin_exception, "");
       auto& chain = my->chain_plug->chain();
       my->applied_transaction_connection.emplace(
-          chain.applied_transaction.connect([&](std::tuple<const transaction_trace_ptr&, const signed_transaction&> t) {
+          chain.applied_transaction.connect([&](std::tuple<const transaction_trace_ptr&, const packed_transaction_ptr&> t) {
              my->on_applied_transaction(std::get<0>(t), std::get<1>(t));
           }));
       my->accepted_block_connection.emplace(

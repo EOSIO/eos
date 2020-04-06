@@ -475,7 +475,7 @@ BOOST_AUTO_TEST_CASE( actor_blacklist_inline_deferred ) { try {
       tester2.chain->push_block( b );
    }
 
-   auto log_trxs = [&](std::tuple<const transaction_trace_ptr&, const signed_transaction&> x) {
+   auto log_trxs = [&](std::tuple<const transaction_trace_ptr&, const packed_transaction_ptr&> x) {
       auto& t = std::get<0>(x);
       if( !t || t->action_traces.size() == 0 ) return;
 

@@ -1090,7 +1090,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
             } );
 
       my->applied_transaction_connection = my->chain->applied_transaction.connect(
-            [this]( std::tuple<const transaction_trace_ptr&, const signed_transaction&> t ) {
+            [this]( std::tuple<const transaction_trace_ptr&, const packed_transaction_ptr&> t ) {
                my->applied_transaction_channel.publish( priority::low, std::get<0>(t) );
             } );
 

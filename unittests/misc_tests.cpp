@@ -749,15 +749,16 @@ BOOST_AUTO_TEST_CASE(transaction_test) { try {
    BOOST_CHECK_EQUAL(trx.id(), pkt.id());
    BOOST_CHECK_EQUAL(trx.id(), pkt2.id());
 
-   BOOST_CHECK_EQUAL(pkt.get_signed_transaction().id(), pkt2.get_signed_transaction().id());
-   BOOST_CHECK_EQUAL(pkt.get_signed_transaction().id(), pkt2.id());
+   BOOST_CHECK_EQUAL(pkt.to_packed_transaction_v0()->get_signed_transaction().id(), pkt2.to_packed_transaction_v0()->get_signed_transaction().id());
+   BOOST_CHECK_EQUAL(pkt.to_packed_transaction_v0()->get_transaction().id(), pkt2.id());
+   BOOST_CHECK_EQUAL(pkt.get_transaction().id(), pkt2.id());
 
    flat_set<public_key_type> keys;
-   auto cpu_time1 = pkt.get_signed_transaction().get_signature_keys(test.control->get_chain_id(), fc::time_point::maximum(), keys);
+   auto cpu_time1 = pkt.to_packed_transaction_v0()->get_signed_transaction().get_signature_keys(test.control->get_chain_id(), fc::time_point::maximum(), keys);
    BOOST_CHECK_EQUAL(1u, keys.size());
    BOOST_CHECK_EQUAL(public_key, *keys.begin());
    keys.clear();
-   auto cpu_time2 = pkt.get_signed_transaction().get_signature_keys(test.control->get_chain_id(), fc::time_point::maximum(), keys);
+   auto cpu_time2 = pkt.to_packed_transaction_v0()->get_signed_transaction().get_signature_keys(test.control->get_chain_id(), fc::time_point::maximum(), keys);
    BOOST_CHECK_EQUAL(1u, keys.size());
    BOOST_CHECK_EQUAL(public_key, *keys.begin());
 
@@ -787,14 +788,14 @@ BOOST_AUTO_TEST_CASE(transaction_test) { try {
    packed_transaction pkt5;
    fc::from_variant(pkt_v, pkt5);
 
-   BOOST_CHECK_EQUAL(pkt.get_signed_transaction().id(), pkt3.get_signed_transaction().id());
-   BOOST_CHECK_EQUAL(pkt.get_signed_transaction().id(), pkt4.get_signed_transaction().id());
-   BOOST_CHECK_EQUAL(pkt.get_signed_transaction().id(), pkt5.get_signed_transaction().id()); // failure indicates reflector_init not working
-   BOOST_CHECK_EQUAL(pkt.id(), pkt4.get_signed_transaction().id());
+   BOOST_CHECK_EQUAL(pkt.get_transaction().id(), pkt3.get_transaction().id());
+   BOOST_CHECK_EQUAL(pkt.get_transaction().id(), pkt4.get_transaction().id());
+   BOOST_CHECK_EQUAL(pkt.get_transaction().id(), pkt5.get_transaction().id()); // failure indicates reflector_init not working
+   BOOST_CHECK_EQUAL(pkt.id(), pkt4.get_transaction().id());
    BOOST_CHECK_EQUAL(true, trx.expiration == pkt4.expiration());
-   BOOST_CHECK_EQUAL(true, trx.expiration == pkt4.get_signed_transaction().expiration);
+   BOOST_CHECK_EQUAL(true, trx.expiration == pkt4.get_transaction().expiration);
    keys.clear();
-   pkt4.get_signed_transaction().get_signature_keys(test.control->get_chain_id(), fc::time_point::maximum(), keys);
+   pkt4.to_packed_transaction_v0()->get_signed_transaction().get_signature_keys(test.control->get_chain_id(), fc::time_point::maximum(), keys);
    BOOST_CHECK_EQUAL(1u, keys.size());
    BOOST_CHECK_EQUAL(public_key, *keys.begin());
 

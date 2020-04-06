@@ -465,17 +465,20 @@ std::size_t prunable_transaction_data::maximum_pruned_pack_size(prunable_transac
    return 1 + prunable_data.visit([&](const auto& t){ return padded_pack_size(t, compression); });
 }
 
-static prunable_transaction_data make_prunable_transaction_data( bool legacy, const signed_transaction& t, packed_transaction::compression_type _compression ) {
+static prunable_transaction_data make_prunable_transaction_data( bool legacy, vector<signature_type> signatures,
+                                                                 vector<bytes> context_free_data,
+                                                                 packed_transaction::compression_type _compression ) {
    if(legacy) {
-      return { prunable_transaction_data::full_legacy{ t.signatures, pack_context_free_data( t.context_free_data, _compression ) } };
+      bytes packed_cfd = pack_context_free_data( context_free_data, _compression );
+      return { prunable_transaction_data::full_legacy{ std::move(signatures), std::move(packed_cfd), std::move(context_free_data) } };
    } else {
-      return { prunable_transaction_data::full{ t.signatures, t.context_free_data } };
+      return { prunable_transaction_data::full{ std::move(signatures), std::move(context_free_data) } };
    }
 }
 
 packed_transaction::packed_transaction(const signed_transaction& t, bool legacy, compression_type _compression)
  : compression(_compression),
-   prunable_data(make_prunable_transaction_data(legacy, t, _compression)),
+   prunable_data(make_prunable_transaction_data(legacy, t.signatures, t.context_free_data, _compression)),
    packed_trx(pack_transaction(t, estimated_size, compression)),
    unpacked_trx(t),
    trx_id(unpacked_trx.id())
@@ -485,7 +488,7 @@ packed_transaction::packed_transaction(const signed_transaction& t, bool legacy,
 
 packed_transaction::packed_transaction(signed_transaction&& t, bool legacy, compression_type _compression)
  : compression(_compression),
-   prunable_data(make_prunable_transaction_data(legacy, t, _compression)),
+   prunable_data(make_prunable_transaction_data(legacy, std::move(t.signatures), std::move(t.context_free_data), _compression)),
    packed_trx(pack_transaction(t, estimated_size, compression)),
    unpacked_trx(std::move(t)),
    trx_id(unpacked_trx.id())
@@ -493,8 +496,37 @@ packed_transaction::packed_transaction(signed_transaction&& t, bool legacy, comp
    estimated_size = estimated_size * 2 + get_prunable_size() * 2;
 }
 
+packed_transaction::packed_transaction(const packed_transaction_v0& other, bool legacy)
+ : compression(other.compression),
+   prunable_data(legacy ? prunable_transaction_data{ prunable_transaction_data::full_legacy{ other.signatures,
+                                                                                             other.packed_context_free_data,
+                                                                                             other.unpacked_trx.context_free_data } }
+                        : prunable_transaction_data{ prunable_transaction_data::full{ other.signatures,
+                                                                                      other.unpacked_trx.context_free_data } }),
+   packed_trx(other.packed_trx),
+   unpacked_trx(other.unpacked_trx),
+   trx_id(other.id())
+{}
+
+packed_transaction::packed_transaction(packed_transaction_v0&& other, bool legacy)
+ : compression(other.compression),
+   prunable_data(legacy ? prunable_transaction_data{ prunable_transaction_data::full_legacy{ std::move(other.signatures),
+                                                                                             std::move(other.packed_context_free_data),
+                                                                                             std::move(other.unpacked_trx.context_free_data) } }
+                        : prunable_transaction_data{ prunable_transaction_data::full{ std::move(other.signatures),
+                                                                                      std::move(other.unpacked_trx.context_free_data) } }),
+   packed_trx(std::move(other.packed_trx)),
+   unpacked_trx(std::move(other.unpacked_trx)),
+   trx_id(other.id())
+{}
+
 packed_transaction_v0_ptr packed_transaction::to_packed_transaction_v0() const {
-   return std::make_shared<const packed_transaction_v0>( get_signed_transaction(), get_compression() );
+   const auto* sigs = get_signatures();
+   const auto* context_free_data = get_context_free_data();
+   signed_transaction strx( transaction( get_transaction() ),
+                            sigs != nullptr ? *sigs : vector<signature_type>(),
+                            context_free_data != nullptr ? *context_free_data : vector<bytes>() );
+   return std::make_shared<const packed_transaction_v0>( std::move( strx ) );
 }
 
 uint32_t packed_transaction::get_unprunable_size()const {
@@ -540,9 +572,10 @@ const vector<signature_type>* packed_transaction::get_signatures()const {
 }
 
 const vector<bytes>* packed_transaction::get_context_free_data()const {
-   if(prunable_data.prunable_data.contains<prunable_transaction_data::full>() ||
-      prunable_data.prunable_data.contains<prunable_transaction_data::full_legacy>()) {
-      return &unpacked_trx.context_free_data;
+   if( prunable_data.prunable_data.contains<prunable_transaction_data::full>() ) {
+      return &prunable_data.prunable_data.get<prunable_transaction_data::full>().context_free_segments;
+   } else if( prunable_data.prunable_data.contains<prunable_transaction_data::full_legacy>() ) {
+      return &prunable_data.prunable_data.get<prunable_transaction_data::full_legacy>().context_free_segments;
    } else {
       return nullptr;
    }
@@ -553,22 +586,21 @@ const bytes* maybe_get_context_free_data(const prunable_transaction_data::signat
 const bytes* maybe_get_context_free_data(const prunable_transaction_data::partial&, std::size_t) {
    EOS_THROW(tx_prune_exception, "unimplemented");
 }
-// full uses the copy in unpacked_trx
-const bytes* maybe_get_context_free_data(const prunable_transaction_data::full_legacy&, std::size_t) { return nullptr; }
-const bytes* maybe_get_context_free_data(const prunable_transaction_data::full&, std::size_t) { return nullptr; }
+const bytes* maybe_get_context_free_data(const prunable_transaction_data::full_legacy& full_leg, std::size_t i) {
+   if( full_leg.context_free_segments.size() <= i ) return nullptr;
+   return &full_leg.context_free_segments[i];
+}
+const bytes* maybe_get_context_free_data(const prunable_transaction_data::full& f, std::size_t i) {
+   if( f.context_free_segments.size() <= i ) return nullptr;
+   return &f.context_free_segments[i];
+}
 
 const bytes* packed_transaction::get_context_free_data(std::size_t segment_ordinal) const {
-   if (segment_ordinal < unpacked_trx.context_free_data.size()) {
-      return &unpacked_trx.context_free_data[segment_ordinal];
-   } else {
-     return prunable_data.prunable_data.visit([&](const auto& obj) { return maybe_get_context_free_data(obj, segment_ordinal); });
-   }
+  return prunable_data.prunable_data.visit([&](const auto& obj) { return maybe_get_context_free_data(obj, segment_ordinal); });
 }
 
 void packed_transaction::prune_all() {
    prunable_data = prunable_data.prune_all();
-   unpacked_trx.context_free_data.clear();
-   unpacked_trx.signatures.clear();
 }
 
 std::size_t packed_transaction::maximum_pruned_pack_size(cf_compression_type segment_compression) const {

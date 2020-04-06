@@ -210,7 +210,7 @@ BOOST_AUTO_TEST_CASE(test_light_validation_restart_from_block_log) {
    transaction_trace_ptr other_trace;
 
    replay_tester from_block_log_chain(copied_config, *genesis,
-                                      [&](std::tuple<const transaction_trace_ptr&, const signed_transaction&> x) {
+                                      [&](std::tuple<const transaction_trace_ptr&, const packed_transaction_ptr&> x) {
                                          auto& t = std::get<0>(x);
                                          if (t && t->id == trace->id) {
                                             other_trace = t;

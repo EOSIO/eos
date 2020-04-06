@@ -742,7 +742,8 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
    using bsoncxx::builder::basic::make_array;
    namespace bbb = bsoncxx::builder::basic;
 
-   const signed_transaction& trx = t->packed_trx()->get_signed_transaction();
+   const packed_transaction_v0_ptr ptv0 = t->packed_trx()->to_packed_transaction_v0();
+   const signed_transaction& trx = ptv0->get_signed_transaction();
 
    if( !filter_include( trx ) ) return;
 
@@ -1658,7 +1659,7 @@ void mongo_db_plugin::plugin_initialize(const variables_map& options)
                   my->accepted_transaction( t );
                } ));
          my->applied_transaction_connection.emplace(
-               chain.applied_transaction.connect( [&]( std::tuple<const chain::transaction_trace_ptr&, const chain::signed_transaction&> t ) {
+               chain.applied_transaction.connect( [&]( std::tuple<const chain::transaction_trace_ptr&, const chain::packed_transaction_ptr&> t ) {
                   my->applied_transaction( std::get<0>(t) );
                } ));
 

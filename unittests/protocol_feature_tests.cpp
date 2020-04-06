@@ -536,7 +536,7 @@ BOOST_AUTO_TEST_CASE( no_duplicate_deferred_id_test ) try {
    c2.produce_empty_block( fc::minutes(10) );
 
    transaction_trace_ptr trace0;
-   auto h2 = c2.control->applied_transaction.connect( [&](std::tuple<const transaction_trace_ptr&, const signed_transaction&> x) {
+   auto h2 = c2.control->applied_transaction.connect( [&](std::tuple<const transaction_trace_ptr&, const packed_transaction_ptr&> x) {
       auto& t = std::get<0>(x);
       if( t && t->receipt && t->receipt->status == transaction_receipt::expired) {
          trace0 = t;
@@ -554,7 +554,7 @@ BOOST_AUTO_TEST_CASE( no_duplicate_deferred_id_test ) try {
    const auto& index = c.control->db().get_index<generated_transaction_multi_index,by_trx_id>();
 
    transaction_trace_ptr trace1;
-   auto h = c.control->applied_transaction.connect( [&](std::tuple<const transaction_trace_ptr&, const signed_transaction&> x) {
+   auto h = c.control->applied_transaction.connect( [&](std::tuple<const transaction_trace_ptr&, const packed_transaction_ptr&> x) {
       auto& t = std::get<0>(x);
       if( t && t->receipt && t->receipt->status == transaction_receipt::executed) {
          trace1 = t;

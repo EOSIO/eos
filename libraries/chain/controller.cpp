@@ -1140,7 +1140,8 @@ struct controller_impl {
       }
 
       transaction_checktime_timer trx_timer(timer);
-      transaction_context trx_context( self, etrx, etrx.id(), std::move(trx_timer), start );
+      packed_transaction_ptr trx = std::make_shared<const packed_transaction>( std::move( etrx ), true );
+      transaction_context trx_context( self, trx, std::move(trx_timer), start );
       trx_context.deadline = deadline;
       trx_context.explicit_billed_cpu_time = explicit_billed_cpu_time;
       trx_context.billed_cpu_time_us = billed_cpu_time_us;
@@ -1149,7 +1150,7 @@ struct controller_impl {
       try {
          trx_context.init_for_implicit_trx();
          trx_context.published = gtrx.published;
-         trx_context.execute_action( trx_context.schedule_action( etrx.actions.back(), gtrx.sender, false, 0, 0 ), 0 );
+         trx_context.execute_action( trx_context.schedule_action( trx->get_transaction().actions.back(), gtrx.sender, false, 0, 0 ), 0 );
          trx_context.finalize(); // Automatically rounds up network and CPU usage in trace and bills payers if successful
 
          auto restore = make_block_restore_point();
@@ -1241,7 +1242,8 @@ struct controller_impl {
 
       signed_transaction dtrx;
       fc::raw::unpack(ds,static_cast<transaction&>(dtrx) );
-      transaction_metadata_ptr trx = transaction_metadata::create_no_recover_keys( packed_transaction( dtrx, true ), transaction_metadata::trx_type::scheduled );
+      transaction_metadata_ptr trx =
+            transaction_metadata::create_no_recover_keys( packed_transaction( std::move(dtrx), true ), transaction_metadata::trx_type::scheduled );
       trx->accepted = true;
 
       transaction_trace_ptr trace;
@@ -1255,7 +1257,7 @@ struct controller_impl {
          trace->receipt = push_receipt( gtrx.trx_id, transaction_receipt::expired, billed_cpu_time_us, 0 ); // expire the transaction
          trace->account_ram_delta = account_delta( gtrx.payer, trx_removal_ram_delta );
          emit( self.accepted_transaction, trx );
-         emit( self.applied_transaction, std::tie(trace, dtrx) );
+         emit( self.applied_transaction, std::tie(trace, trx->packed_trx()) );
          undo_session.squash();
          return trace;
       }
@@ -1268,7 +1270,7 @@ struct controller_impl {
       uint32_t cpu_time_to_bill_us = billed_cpu_time_us;
 
       transaction_checktime_timer trx_timer(timer);
-      transaction_context trx_context( self, dtrx, gtrx.trx_id, std::move(trx_timer) );
+      transaction_context trx_context( self, trx->packed_trx(), std::move(trx_timer) );
       trx_context.leeway =  fc::microseconds(0); // avoid stealing cpu resource
       trx_context.deadline = deadline;
       trx_context.explicit_billed_cpu_time = explicit_billed_cpu_time;
@@ -1280,7 +1282,7 @@ struct controller_impl {
 
          if( trx_context.enforce_whiteblacklist && pending->_block_status == controller::block_status::incomplete ) {
             flat_set<account_name> actors;
-            for( const auto& act : trx_context.trx.actions ) {
+            for( const auto& act : trx->packed_trx()->get_transaction().actions ) {
                for( const auto& auth : act.authorization ) {
                   actors.insert( auth.actor );
                }
@@ -1304,7 +1306,7 @@ struct controller_impl {
          trace->account_ram_delta = account_delta( gtrx.payer, trx_removal_ram_delta );
 
          emit( self.accepted_transaction, trx );
-         emit( self.applied_transaction, std::tie(trace, dtrx) );
+         emit( self.applied_transaction, std::tie(trace, trx->packed_trx()) );
 
          trx_context.squash();
          undo_session.squash();
@@ -1338,7 +1340,7 @@ struct controller_impl {
          if( !trace->except_ptr ) {
             trace->account_ram_delta = account_delta( gtrx.payer, trx_removal_ram_delta );
             emit( self.accepted_transaction, trx );
-            emit( self.applied_transaction, std::tie(trace, dtrx) );
+            emit( self.applied_transaction, std::tie(trace, trx->packed_trx()) );
             undo_session.squash();
             return trace;
          }
@@ -1379,12 +1381,12 @@ struct controller_impl {
          trace->account_ram_delta = account_delta( gtrx.payer, trx_removal_ram_delta );
 
          emit( self.accepted_transaction, trx );
-         emit( self.applied_transaction, std::tie(trace, dtrx) );
+         emit( self.applied_transaction, std::tie(trace, trx->packed_trx()) );
 
          undo_session.squash();
       } else {
          emit( self.accepted_transaction, trx );
-         emit( self.applied_transaction, std::tie(trace, dtrx) );
+         emit( self.applied_transaction, std::tie(trace, trx->packed_trx()) );
       }
 
       return trace;
@@ -1440,9 +1442,8 @@ struct controller_impl {
             }
          }
 
-         const signed_transaction& trn = trx->packed_trx()->get_signed_transaction();
          transaction_checktime_timer trx_timer(timer);
-         transaction_context trx_context(self, trn, trx->id(), std::move(trx_timer), start);
+         transaction_context trx_context(self, trx->packed_trx(), std::move(trx_timer), start);
          if ((bool)subjective_cpu_leeway && pending->_block_status == controller::block_status::incomplete) {
             trx_context.leeway = *subjective_cpu_leeway;
          }
@@ -1451,6 +1452,7 @@ struct controller_impl {
          trx_context.billed_cpu_time_us = billed_cpu_time_us;
          trace = trx_context.trace;
          try {
+            const transaction& trn = trx->packed_trx()->get_transaction();
             if( trx->implicit ) {
                EOS_ASSERT( !explicit_net_usage_words.valid(), transaction_exception, "NET usage cannot be explicitly set for implicit transactions" );
                trx_context.init_for_implicit_trx();
@@ -1507,7 +1509,7 @@ struct controller_impl {
                emit( self.accepted_transaction, trx);
             }
 
-            emit(self.applied_transaction, std::tie(trace, trn));
+            emit(self.applied_transaction, std::tie(trace, trx->packed_trx()));
 
 
             if ( read_mode != db_read_mode::SPECULATIVE && pending->_block_status == controller::block_status::incomplete ) {
@@ -1530,7 +1532,7 @@ struct controller_impl {
          }
 
          emit( self.accepted_transaction, trx );
-         emit( self.applied_transaction, std::tie(trace, trn) );
+         emit( self.applied_transaction, std::tie(trace, trx->packed_trx()) );
 
          return trace;
       } FC_CAPTURE_AND_RETHROW((trace))
@@ -1883,7 +1885,7 @@ struct controller_impl {
                      trx_metas.emplace_back( std::move( trx_meta_ptr ), recover_keys_future{} );
                   } else if( skip_auth_checks ) {
                      trx_metas.emplace_back(
-                           transaction_metadata::create_no_recover_keys( pt, transaction_metadata::trx_type::input ),
+                           transaction_metadata::create_no_recover_keys( packed_transaction( pt ), transaction_metadata::trx_type::input ),
                            recover_keys_future{} );
                   } else {
                      auto ptrx = std::make_shared<packed_transaction>( pt );

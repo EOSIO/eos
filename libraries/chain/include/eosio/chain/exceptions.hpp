@@ -279,6 +279,10 @@ namespace eosio { namespace chain {
                                     3040018, "Transaction exceeded transient resource limit" )
       FC_DECLARE_DERIVED_EXCEPTION( tx_prune_exception, transaction_exception,
                                     3040019, "Prunable data not found" )
+      FC_DECLARE_DERIVED_EXCEPTION( tx_no_signature, transaction_exception,
+                                    3040020, "Transaction has no signatures" )
+      FC_DECLARE_DERIVED_EXCEPTION( tx_no_context_free_data, transaction_exception,
+                                    3040021, "Transaction context free data pruned" )
 
 
    FC_DECLARE_DERIVED_EXCEPTION( action_validate_exception, chain_exception,

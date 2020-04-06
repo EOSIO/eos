@@ -126,14 +126,9 @@ namespace eosio { namespace chain {
       signed_transaction( signed_transaction&& ) = default;
       signed_transaction& operator=(const signed_transaction&) = delete;
       signed_transaction& operator=(signed_transaction&&) = default;
-      signed_transaction( transaction&& trx, const vector<signature_type>& signatures, const vector<bytes>& context_free_data)
+      signed_transaction( transaction&& trx, vector<signature_type> signatures, vector<bytes> context_free_data)
       : transaction(std::move(trx))
-      , signatures(signatures)
-      , context_free_data(context_free_data)
-      {}
-      signed_transaction( transaction&& trx, const vector<signature_type>& signatures, vector<bytes>&& context_free_data)
-      : transaction(std::move(trx))
-      , signatures(signatures)
+      , signatures(std::move(signatures))
       , context_free_data(std::move(context_free_data))
       {}
 
@@ -208,6 +203,8 @@ namespace eosio { namespace chain {
       friend struct packed_transaction;
       void reflector_init();
    private:
+      friend struct packed_transaction;
+
       vector<signature_type>                  signatures;
       fc::enum_type<uint8_t,compression_type> compression;
       bytes                                   packed_context_free_data;
@@ -220,10 +217,13 @@ namespace eosio { namespace chain {
    };
 
    struct prunable_transaction_data {
-      enum class compression_type {
+      enum class compression_type : uint8_t {
          none = 0,
          zlib = 1,
+         COMPRESSION_TYPE_COUNT
       };
+      // Do not exceed 127 as that will break compatibility in serialization format
+      static_assert( static_cast<uint8_t>(compression_type::COMPRESSION_TYPE_COUNT) <= 127 );
 
       struct none {
          digest_type                     prunable_digest;
@@ -237,18 +237,20 @@ namespace eosio { namespace chain {
       using segment_type = fc::static_variant<digest_type, std::vector<char>>;
 
       struct partial {
+         // TODO: will need indication of what was pruned so correct exception can be thrown in apply_context.get_context_free_data
          std::vector<signature_type>     signatures;
          std::vector<segment_type>       context_free_segments;
       };
 
       struct full {
          std::vector<signature_type>     signatures;
-         std::vector<std::vector<char>>  context_free_segments;
+         std::vector<bytes>              context_free_segments;
       };
 
       struct full_legacy {
          std::vector<signature_type>     signatures;
          bytes                           packed_context_free_data;
+         vector<bytes>                   context_free_segments;
       };
 
       using prunable_data_type = fc::static_variant< full_legacy,
@@ -279,8 +281,8 @@ namespace eosio { namespace chain {
       packed_transaction& operator=(const packed_transaction&) = delete;
       packed_transaction& operator=(packed_transaction&&) = default;
 
-      packed_transaction(const packed_transaction_v0& other, bool legacy) : packed_transaction(other.get_signed_transaction(), legacy, other.get_compression()) {}
-      packed_transaction(packed_transaction_v0&& other, bool legacy) : packed_transaction(std::move( other.unpacked_trx ), legacy, other.get_compression()) {}
+      packed_transaction(const packed_transaction_v0& other, bool legacy);
+      packed_transaction(packed_transaction_v0&& other, bool legacy);
       explicit packed_transaction(const signed_transaction& t, bool legacy, compression_type _compression = compression_type::none);
       explicit packed_transaction(signed_transaction&& t, bool legacy, compression_type _compression = compression_type::none);
 
@@ -296,7 +298,6 @@ namespace eosio { namespace chain {
 
       time_point_sec                expiration()const { return unpacked_trx.expiration; }
       const transaction&            get_transaction()const { return unpacked_trx; }
-      const signed_transaction&     get_signed_transaction()const { return unpacked_trx; }
       // Returns nullptr if the signatures were pruned
       const vector<signature_type>* get_signatures()const;
       // Returns nullptr if any context_free_data segment was pruned
@@ -321,11 +322,11 @@ namespace eosio { namespace chain {
       uint32_t                                estimated_size = 0;
       fc::enum_type<uint8_t,compression_type> compression;
       prunable_transaction_data               prunable_data;
-      bytes                                   packed_trx;
+      bytes                                   packed_trx; // packed and compressed (according to compression) transaction
 
    private:
       // cache unpacked trx, for thread safety do not modify any attributes after construction
-      signed_transaction                      unpacked_trx;
+      transaction                             unpacked_trx;
       transaction_id_type                     trx_id;
    };
 
