@@ -112,17 +112,29 @@ namespace eosio { namespace chain { namespace webassembly {
             }
          })));
 
+   template<typename T>
+   inline constexpr bool should_check_nan_v =
+      std::is_same_v<T, float32_t> || std::is_same_v<T, float64_t> || std::is_same_v<T, float128_t>;
+
+   template<typename T>
+   struct remove_reference_proxy {
+      using type = T;
+   };
+   template<typename T, bool B>
+   struct remove_reference_proxy<vm::reference_proxy<T, B>> {
+      using type = T;
+   };
+   template<typename T>
+   struct remove_reference_proxy<vm::reference<T>> {
+      using type = T;
+   };
+
    EOS_VM_PRECONDITION(is_nan_check,
-         EOS_VM_INVOKE_ON(float, [&](auto&& arg, auto&&... rest) {
-            EOS_ASSERT(!is_nan(arg), transaction_exception, "NaN is not an allowed value for a secondary key");
-         });
-         EOS_VM_INVOKE_ON(double, [&](auto&& arg, auto&&... rest) {
-            EOS_ASSERT(!is_nan(arg), transaction_exception, "NaN is not an allowed value for a secondary key");
-         });
-         EOS_VM_INVOKE_ON(const float128_t&, [&](const auto& arg, auto&&... rest) {
-            EOS_ASSERT(!is_nan(arg), transaction_exception, "NaN is not an allowed value for a secondary key");
-         })
-         );
+         EOS_VM_INVOKE_ON_ALL([&](auto&& arg, auto&&... rest) {
+            if constexpr (should_check_nan_v<std::remove_cv_t<typename remove_reference_proxy<std::decay_t<decltype(arg)>>::type>>) {
+               EOS_ASSERT(!webassembly::is_nan(arg), transaction_exception, "NaN is not an allowed value for a secondary key");
+            }
+         }));
 
    EOS_VM_PRECONDITION(legacy_static_check_wl_args,
          EOS_VM_INVOKE_ONCE([&](auto&&... args) {
