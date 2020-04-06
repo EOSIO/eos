@@ -876,7 +876,7 @@ namespace eosio { namespace chain {
       return true;
    }
    
-   void block_log::prune_transaction(uint32_t block_num, transaction_id_type id) {
+   void block_log::prune_transactions(uint32_t block_num, const std::vector<transaction_id_type>& ids) {
       try {
          EOS_ASSERT(my->version >= 4, block_log_exception, "The block log version ${version} does not support transaction pruning.", ("version", my->version));
          uint64_t pos = get_block_pos(block_num);
@@ -892,7 +892,7 @@ namespace eosio { namespace chain {
                      "Wrong block was read from block log.");
 
          auto pruner = overloaded{[](transaction_id_type&) { return false; },
-                                  [&id](pruned_transaction& ptx) { return ptx.id() == id && prune(ptx); }};
+                                  [&ids](pruned_transaction& ptx) { return  std::find(ids.begin(), ids.end(), ptx.id()) != ids.end() && prune(ptx); }};
 
          for (auto& trx : block.transactions) {
             if (trx.trx.visit(pruner)) {

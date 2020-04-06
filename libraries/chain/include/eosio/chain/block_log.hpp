@@ -61,7 +61,7 @@ namespace eosio { namespace chain {
          [[deprecated]] block_id_type   head_id() const; // use head()->id() instead
          uint32_t                       first_block_num() const;
 
-         void prune_transaction(uint32_t block_num, transaction_id_type id);
+         void prune_transactions(uint32_t block_num, const vector<transaction_id_type>& ids);
 
          static const uint64_t npos = std::numeric_limits<uint64_t>::max();
 
