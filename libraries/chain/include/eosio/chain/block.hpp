@@ -178,6 +178,8 @@ namespace eosio { namespace chain {
 
 FC_REFLECT_ENUM( eosio::chain::transaction_receipt::status_enum,
                  (executed)(soft_fail)(hard_fail)(delayed)(expired) )
+FC_REFLECT_ENUM(eosio::chain::pruned_block::prune_state_type, 
+                 (incomplete)(complete)(complete_legacy));
 
 FC_REFLECT(eosio::chain::transaction_receipt_header, (status)(cpu_usage_us)(net_usage_words) )
 FC_REFLECT_DERIVED(eosio::chain::transaction_receipt, (eosio::chain::transaction_receipt_header), (trx) )
