@@ -62,15 +62,15 @@ namespace eosio { namespace chain { namespace webassembly {
          bool is_privileged(account_name account) const;
          void set_privileged(account_name account, bool is_priv);
 
-         REGISTER_HOST_FUNCTION(is_feature_active);
-         REGISTER_HOST_FUNCTION(activate_feature);
-         REGISTER_HOST_FUNCTION(preactivate_feature);
-         REGISTER_HOST_FUNCTION(set_resource_limits);
-         REGISTER_LEGACY_HOST_FUNCTION(get_resource_limits);
-         REGISTER_LEGACY_HOST_FUNCTION(set_proposed_producers);
-         REGISTER_LEGACY_HOST_FUNCTION(set_proposed_producers_ex);
-         REGISTER_LEGACY_HOST_FUNCTION(get_blockchain_parameters_packed);
-         REGISTER_LEGACY_HOST_FUNCTION(set_blockchain_parameters_packed);
+         REGISTER_HOST_FUNCTION(is_feature_active, privileged_check);
+         REGISTER_HOST_FUNCTION(activate_feature, privileged_check);
+         REGISTER_HOST_FUNCTION(preactivate_feature, privileged_check);
+         REGISTER_HOST_FUNCTION(set_resource_limits, privileged_check);
+         REGISTER_LEGACY_HOST_FUNCTION(get_resource_limits, privileged_check);
+         REGISTER_LEGACY_HOST_FUNCTION(set_proposed_producers, privileged_check);
+         REGISTER_LEGACY_HOST_FUNCTION(set_proposed_producers_ex, privileged_check);
+         REGISTER_LEGACY_HOST_FUNCTION(get_blockchain_parameters_packed, privileged_check);
+         REGISTER_LEGACY_HOST_FUNCTION(set_blockchain_parameters_packed, privileged_check);
          REGISTER_HOST_FUNCTION(is_privileged);
          REGISTER_HOST_FUNCTION(set_privileged);
 
