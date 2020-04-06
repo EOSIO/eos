@@ -406,7 +406,7 @@ BOOST_FIXTURE_TEST_CASE(action_receipt_tests, TESTER) { try {
  *************************************************************************************/
 BOOST_AUTO_TEST_CASE(action_receipt) { try {
    TESTER chain( {builtin_protocol_feature_t::stop_deferred_transactions} );
-   
+
    chain.produce_blocks(2);
    chain.create_account( N(testapi) );
    chain.create_account( N(acc1) );
@@ -469,7 +469,7 @@ BOOST_AUTO_TEST_CASE(action_receipt) { try {
       BOOST_CHECK_EQUAL(res->receipt->status, transaction_receipt::executed);
    };
 
-    BOOST_CHECK_EXCEPTION(test_require_notice(chain, raw_bytes, scope), unsatisfied_authorization,
+   BOOST_CHECK_EXCEPTION(test_require_notice(chain, raw_bytes, scope), unsatisfied_authorization,
          [](const unsatisfied_authorization& e) {
             return expect_assert_message(e, "transaction declares authority");
          }
@@ -588,7 +588,7 @@ BOOST_AUTO_TEST_CASE(ram_billing_in_notify_tests) { try {
    const auto& d = pfm.get_builtin_digest(builtin_protocol_feature_t::action_return_value); // testapi requires this
    BOOST_REQUIRE(d);
    chain.preactivate_protocol_features( {*d} );
-   
+
    chain.produce_blocks(2);
    chain.create_account( N(testapi) );
    chain.create_account( N(testapi2) );
@@ -597,18 +597,18 @@ BOOST_AUTO_TEST_CASE(ram_billing_in_notify_tests) { try {
    chain.produce_blocks(1);
    chain.set_code( N(testapi2), contracts::test_api_wasm() );
    chain.produce_blocks(1);
-   
+
    BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( chain, "test_action", "test_ram_billing_in_notify",
                                               fc::raw::pack( ((unsigned __int128)N(testapi2).to_uint64_t() << 64) | N(testapi).to_uint64_t() ) ),
                           subjective_block_production_exception,
                           fc_exception_message_is("Cannot charge RAM to other accounts during notify.")
    );
-   
-   
+
+
    CALL_TEST_FUNCTION( chain, "test_action", "test_ram_billing_in_notify", fc::raw::pack( ((unsigned __int128)N(testapi2).to_uint64_t() << 64) | 0 ) );
-   
+
    CALL_TEST_FUNCTION( chain, "test_action", "test_ram_billing_in_notify", fc::raw::pack( ((unsigned __int128)N(testapi2).to_uint64_t() << 64) | N(testapi2).to_uint64_t() ) );
-   
+
    BOOST_REQUIRE_EQUAL( chain.validate(), true );
 } FC_LOG_AND_RETHROW() }
 
@@ -773,16 +773,16 @@ BOOST_FIXTURE_TEST_CASE(cfa_stateful_api, TESTER)  try {
 
 BOOST_AUTO_TEST_CASE(deferred_cfa_failed)  try {
    TESTER chain( {builtin_protocol_feature_t::stop_deferred_transactions} );
-   
+
    chain.create_account( N(testapi) );
    chain.produce_blocks(1);
    chain.set_code( N(testapi), contracts::test_api_wasm() );
-   
+
    account_name a = N(testapi2);
    account_name creator = config::system_account_name;
-   
+
    signed_transaction trx;
-   
+
    trx.actions.emplace_back( vector<permission_level>{{creator,config::active_name}},
                                  newaccount{
                                  .creator  = creator,
@@ -794,17 +794,17 @@ BOOST_AUTO_TEST_CASE(deferred_cfa_failed)  try {
    trx.context_free_actions.push_back(act);
    chain.set_transaction_headers(trx, 10, 2);
    trx.sign( chain.get_private_key( creator, "active" ), chain.control->get_chain_id()  );
-   
+
    BOOST_CHECK_EXCEPTION(chain.push_transaction( trx ), fc::exception,
       [&](const fc::exception &e) {
          return expect_assert_message(e, "only context free api's can be used in this context");
       });
-   
+
    chain.produce_blocks(10);
-   
+
    // CFA failed, testapi2 not created
    chain.create_account( N(testapi2) );
-   
+
    BOOST_REQUIRE_EQUAL( chain.validate(), true );
 } FC_LOG_AND_RETHROW()
 
@@ -893,7 +893,6 @@ BOOST_AUTO_TEST_CASE(light_validation_skip_cfa) try {
    cfg.trusted_producers = { N(eosio) }; // light validation
 
    tester other( conf_genesis.first, conf_genesis.second );
-   // other.execute_setup_policy( setup_policy::full );
    other.execute_setup_policy( setup_policy::full );
 
 

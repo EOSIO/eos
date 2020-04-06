@@ -146,6 +146,7 @@ namespace eosio { namespace testing {
          typedef string action_result;
 
          static const uint32_t DEFAULT_EXPIRATION_DELTA = 6;
+
          static const uint32_t DEFAULT_BILLED_CPU_TIME_US = 2000;
          static const fc::microseconds abi_serializer_max_time;
 
@@ -431,11 +432,11 @@ namespace eosio { namespace testing {
          controller::config                            cfg;
          map<transaction_id_type, transaction_receipt> chain_transactions;
          map<account_name, block_id_type>              last_produced_block;
-         unapplied_transaction_queue                   unapplied_transactions;         
+         unapplied_transaction_queue                   unapplied_transactions;
 
       public:
-         vector<builtin_protocol_feature_t>            ignored_features;
          vector<digest_type>                           protocol_features_to_be_activated_wo_preactivation;
+         vector<builtin_protocol_feature_t>            ignored_features;
    };
 
    class tester : public base_tester {
@@ -531,7 +532,7 @@ namespace eosio { namespace testing {
                         const flat_set<account_name>& trusted_producers = flat_set<account_name>(),
                         const setup_policy& policy = setup_policy::full) {
          base_tester::ignored_features = ignored_features;
-         pair<controller::config, genesis_state> def_conf = default_config(tempdir); 
+         pair<controller::config, genesis_state> def_conf = default_config(tempdir);
          vcfg = def_conf.first;
          config_validator(vcfg);
          vcfg.trusted_producers = trusted_producers;
@@ -542,13 +543,13 @@ namespace eosio { namespace testing {
 
       validating_tester(const fc::temp_directory& tempdir, bool use_genesis) {
          base_tester::ignored_features = ignored_features;
-         
+
          auto def_conf = default_config(tempdir);
          vcfg = def_conf.first;
          config_validator(vcfg);
-         
+
          validating_node = create_validating_node(vcfg, def_conf.second, use_genesis);
-      
+
          if (use_genesis) {
             init(def_conf.first, def_conf.second);
          }
@@ -563,7 +564,7 @@ namespace eosio { namespace testing {
          conf_edit(def_conf.first);
          vcfg = def_conf.first;
          config_validator(vcfg);
-         
+
          validating_node = create_validating_node(vcfg, def_conf.second, use_genesis);
 
          if (use_genesis) {
@@ -753,4 +754,3 @@ namespace eosio { namespace testing {
   };
 
 } } /// eosio::testing
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         

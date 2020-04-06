@@ -2255,7 +2255,7 @@ BOOST_AUTO_TEST_CASE( canceldelay_test2 ) { try {
 BOOST_AUTO_TEST_CASE( max_transaction_delay_create ) { try {
    //assuming max transaction delay is 45 days (default in config.hpp)
    TESTER chain( {builtin_protocol_feature_t::stop_deferred_transactions} );
-        
+
    const auto& tester_account = N(tester);
 
    chain.produce_blocks();

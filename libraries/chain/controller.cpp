@@ -1243,8 +1243,7 @@ struct controller_impl {
       transaction_metadata_ptr trx = transaction_metadata::create_no_recover_keys( packed_transaction( dtrx ), transaction_metadata::trx_type::scheduled );
       trx->accepted = true;
 
-      transaction_trace_ptr trace;
-      
+      transaction_trace_ptr trace;      
       if( gtrx.expiration < self.pending_block_time() ) {
          trace = std::make_shared<transaction_trace>();
          trace->id = gtrx.trx_id;

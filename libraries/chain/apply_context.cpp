@@ -368,7 +368,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
    if ( stop_deferred_transactions_activated ) {
        EOS_ASSERT( replace_existing, stop_deferred_tx, "you may only replace existing deferred transactions; not generate new ones" );
    }
-   
+
    EOS_ASSERT( trx.context_free_actions.size() == 0, cfa_inside_generated_tx, "context free actions are not currently allowed in generated transactions" );
 
    bool enforce_actor_whitelist_blacklist = trx_context.enforce_whiteblacklist && control.is_producing_block()
@@ -490,7 +490,6 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
    }
 
    uint32_t trx_size = 0;
-   
    if ( auto ptr = db.find<generated_transaction_object,by_sender_id>(boost::make_tuple(receiver, sender_id)) ) {
       EOS_ASSERT( replace_existing, deferred_tx_duplicate, "deferred transaction with the same sender_id and payer already exists" );
 
@@ -545,7 +544,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
          trx_size = gtx.set( trx );
       } );
    }
-   
+
    EOS_ASSERT( ram_restrictions_activated
                || control.is_ram_billing_in_notify_allowed()
                || (receiver == act->account) || (receiver == payer) || privileged,

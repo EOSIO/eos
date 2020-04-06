@@ -1783,7 +1783,7 @@ BOOST_AUTO_TEST_CASE( set_action_return_value_test ) { try {
 
 BOOST_AUTO_TEST_CASE( stop_deferred_transactions_protocol_feature_user_test ) { try {
    validating_tester chain( {builtin_protocol_feature_t::stop_deferred_transactions} );
-   
+
    const auto& pfm = chain.control->get_protocol_feature_manager();
    auto stop_deferred_trx_feature = pfm.get_builtin_digest( builtin_protocol_feature_t::stop_deferred_transactions );
 
@@ -1833,7 +1833,7 @@ BOOST_AUTO_TEST_CASE( stop_deferred_transactions_protocol_feature_user_test ) { 
 
 BOOST_AUTO_TEST_CASE( stop_deferred_transactions_protocol_feature_contract_test ) { try {
    validating_tester chain( {builtin_protocol_feature_t::stop_deferred_transactions} );
-   
+
    const auto& pfm = chain.control->get_protocol_feature_manager();
    auto stop_deferred_trx_feature = pfm.get_builtin_digest( builtin_protocol_feature_t::stop_deferred_transactions );
 
@@ -1888,10 +1888,10 @@ BOOST_AUTO_TEST_CASE( stop_deferred_transactions_protocol_feature_contract_test 
                        ("contract", "test")
                        ("payload", 100)
    );
-   
+
    // Check that the number deferred transactions is 1, due to the activation of the protocol feature.
    gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
-   
+
    // We check that the database contains 0 `generated_transaction`s, and not 1
    // `generated_transaction` because the previously sent
    // `generated_transaction`, sent from contract `test`:`defercall` has already

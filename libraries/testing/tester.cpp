@@ -1,4 +1,3 @@
-#include <boost/test/data/for_each_sample.hpp>
 #include <boost/test/unit_test.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 #include <eosio/testing/tester.hpp>
@@ -1127,7 +1126,7 @@ namespace eosio { namespace testing {
       set<digest_type>    preactivation_set;
       vector<digest_type> preactivations;
       set<digest_type>    ignored_digests;
-      
+
       for ( const auto& feature : ignored_features ) {
          const auto& digest = *pfs.get_builtin_digest( feature );
          ignored_digests.insert( digest );
@@ -1271,4 +1270,4 @@ std::ostream& operator<<( std::ostream& osm, const fc::variant_object& v ) {
 std::ostream& operator<<( std::ostream& osm, const fc::variant_object::entry& e ) {
    osm << "{ " << e.key() << ": " << e.value() << " }";
    return osm;
-}                   
+}
