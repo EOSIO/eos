@@ -159,6 +159,8 @@ namespace eosio { namespace chain {
          local_pack_context_free_data();
       }
 
+      packed_transaction(const bytes& packed_txn, const vector<signature_type>& sigs, const bytes& packed_cfd, compression_type _compression);
+
       // used by abi_serializer
       packed_transaction( bytes&& packed_txn, vector<signature_type>&& sigs, bytes&& packed_cfd, compression_type _compression );
       packed_transaction( bytes&& packed_txn, vector<signature_type>&& sigs, vector<bytes>&& cfd, compression_type _compression );
@@ -290,6 +292,7 @@ namespace eosio { namespace chain {
       const bytes*                  get_context_free_data(std::size_t segment_ordinal);
       const fc::enum_type<uint8_t,compression_type>& get_compression()const { return compression; }
       const bytes&                  get_packed_transaction()const { return packed_trx; }
+      const prunable_transaction_data& get_prunable_data() const { return prunable_data; }
 
       void prune_all();
 

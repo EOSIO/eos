@@ -107,11 +107,11 @@ FC_REFLECT( cf_action, (payload)(cfd_idx) )
 FC_REFLECT( dtt_action, (payer)(deferred_account)(deferred_action)(permission_name)(delay_sec) )
 FC_REFLECT( invalid_access_action, (code)(val)(index)(store) )
 
-// #ifdef NON_VALIDATING_TEST
+#ifdef NON_VALIDATING_TEST
 #define TESTER tester
-// #else
-// #define TESTER validating_tester
-// #endif
+#else
+#define TESTER validating_tester
+#endif
 
 using namespace eosio;
 using namespace eosio::testing;

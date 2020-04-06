@@ -83,6 +83,12 @@ namespace eosio {
               add_handler(call.first, call.second, priority);
         }
 
+        void add_async_handler(const string& url, const url_handler& handler);
+        void add_async_api(const api_description& api) {
+           for (const auto& call : api)
+              add_handler(call.first, call.second);
+        }
+
         // standard exception handling for api handlers
         static void handle_exception( const char *api_name, const char *call_name, const string& body, url_response_callback cb );
 
