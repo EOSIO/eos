@@ -731,7 +731,7 @@ BOOST_AUTO_TEST_CASE( greylist_limit_tests ) { try {
    // But all it takes is one transaction in the block to be above the target.
 
    tester c( conf_genesis.first, conf_genesis.second );
-   c.execute_setup_policy( setup_policy::complete );
+   c.execute_setup_policy( setup_policy::full );
 
    const resource_limits_manager& rm = c.control->get_resource_limits_manager();
 

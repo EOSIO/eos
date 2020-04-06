@@ -1,0 +1,3 @@
+Builtin protocol feature: REMOVE_DEFERRED_TRANSACTIONS
+
+Removes all deferred transaction functionality.

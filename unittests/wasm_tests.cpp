@@ -1898,7 +1898,7 @@ BOOST_AUTO_TEST_CASE( billed_cpu_test ) try {
 
    fc::temp_directory tempdir;
    tester chain( tempdir, true );
-   chain.execute_setup_policy( setup_policy::complete );
+   chain.execute_setup_policy( setup_policy::full );
 
    const resource_limits_manager& mgr = chain.control->get_resource_limits_manager();
 

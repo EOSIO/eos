@@ -107,11 +107,11 @@ FC_REFLECT( cf_action, (payload)(cfd_idx) )
 FC_REFLECT( dtt_action, (payer)(deferred_account)(deferred_action)(permission_name)(delay_sec) )
 FC_REFLECT( invalid_access_action, (code)(val)(index)(store) )
 
-#ifdef NON_VALIDATING_TEST
+// #ifdef NON_VALIDATING_TEST
 #define TESTER tester
-#else
-#define TESTER validating_tester
-#endif
+// #else
+// #define TESTER validating_tester
+// #endif
 
 using namespace eosio;
 using namespace eosio::testing;
@@ -405,7 +405,7 @@ BOOST_FIXTURE_TEST_CASE(action_receipt_tests, TESTER) { try {
  * action_tests test case
  *************************************************************************************/
 BOOST_AUTO_TEST_CASE(action_receipt) { try {
-   validating_tester chain( {}, {::eosio::chain::builtin_protocol_feature_t::stop_deferred_transactions} );
+   TESTER chain( {builtin_protocol_feature_t::stop_deferred_transactions} );
    
    chain.produce_blocks(2);
    chain.create_account( N(testapi) );
@@ -583,7 +583,7 @@ BOOST_FIXTURE_TEST_CASE(require_notice_tests, TESTER) { try {
    } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_CASE(ram_billing_in_notify_tests) { try {
-   validating_tester chain( {}, {}, ::eosio::testing::setup_policy::preactivate_feature_and_new_bios );
+   TESTER chain( {}, {}, setup_policy::preactivate_feature_and_new_bios );
    const auto& pfm = chain.control->get_protocol_feature_manager();
    const auto& d = pfm.get_builtin_digest(builtin_protocol_feature_t::action_return_value); // testapi requires this
    BOOST_REQUIRE(d);
@@ -772,7 +772,7 @@ BOOST_FIXTURE_TEST_CASE(cfa_stateful_api, TESTER)  try {
 } FC_LOG_AND_RETHROW()
 
 BOOST_AUTO_TEST_CASE(deferred_cfa_failed)  try {
-   validating_tester chain( {}, {::eosio::chain::builtin_protocol_feature_t::stop_deferred_transactions} );
+   TESTER chain( {builtin_protocol_feature_t::stop_deferred_transactions} );
    
    chain.create_account( N(testapi) );
    chain.produce_blocks(1);
@@ -809,7 +809,7 @@ BOOST_AUTO_TEST_CASE(deferred_cfa_failed)  try {
 } FC_LOG_AND_RETHROW()
 
 BOOST_AUTO_TEST_CASE(deferred_cfa_success)  try {
-   validating_tester chain( {}, {::eosio::chain::builtin_protocol_feature_t::stop_deferred_transactions} );
+   TESTER chain( {builtin_protocol_feature_t::stop_deferred_transactions} );
 
    chain.create_account( N(testapi) );
    chain.produce_blocks(1);
@@ -848,7 +848,7 @@ BOOST_AUTO_TEST_CASE(deferred_cfa_success)  try {
 } FC_LOG_AND_RETHROW()
 
 BOOST_AUTO_TEST_CASE(light_validation_skip_cfa) try {
-   tester chain(setup_policy::complete);
+   tester chain(setup_policy::full);
 
    std::vector<signed_block_ptr> blocks;
    blocks.push_back(chain.produce_block());
@@ -894,7 +894,7 @@ BOOST_AUTO_TEST_CASE(light_validation_skip_cfa) try {
 
    tester other( conf_genesis.first, conf_genesis.second );
    // other.execute_setup_policy( setup_policy::full );
-   other.execute_setup_policy( setup_policy::complete );
+   other.execute_setup_policy( setup_policy::full );
 
 
    transaction_trace_ptr other_trace;
@@ -1118,7 +1118,7 @@ BOOST_FIXTURE_TEST_CASE(checktime_hashing_fail, TESTER) { try {
  * transaction_tests test case
  *************************************************************************************/
 BOOST_AUTO_TEST_CASE(transaction_tests) { try {
-   validating_tester chain( {}, {::eosio::chain::builtin_protocol_feature_t::stop_deferred_transactions} );
+   TESTER chain( {builtin_protocol_feature_t::stop_deferred_transactions} );
 
    chain.produce_blocks(2);
    chain.create_account( N(testapi) );
@@ -1235,7 +1235,7 @@ BOOST_AUTO_TEST_CASE(transaction_tests) { try {
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_CASE(deferred_transaction_tests) { try {
-   validating_tester chain( {}, {::eosio::chain::builtin_protocol_feature_t::stop_deferred_transactions} );
+   TESTER chain( {builtin_protocol_feature_t::stop_deferred_transactions} );
 
    chain.produce_blocks(2);
    chain.create_accounts( {N(testapi), N(testapi2), N(alice)} );
@@ -1428,7 +1428,7 @@ BOOST_AUTO_TEST_CASE(deferred_transaction_tests) { try {
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_CASE(more_deferred_transaction_tests) { try {
-   validating_tester chain( {}, {}, ::eosio::testing::setup_policy::preactivate_feature_and_new_bios );
+   TESTER chain( {}, {}, setup_policy::preactivate_feature_and_new_bios );
 
    const auto& pfm = chain.control->get_protocol_feature_manager();
    auto d = pfm.get_builtin_digest( builtin_protocol_feature_t::replace_deferred );

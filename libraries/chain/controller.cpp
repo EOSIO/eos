@@ -1244,10 +1244,8 @@ struct controller_impl {
       trx->accepted = true;
 
       transaction_trace_ptr trace;
-
-      bool stop_deferred_transactions_activated = self.is_builtin_activated(builtin_protocol_feature_t::stop_deferred_transactions);
-
-      if( gtrx.expiration < self.pending_block_time() || stop_deferred_transactions_activated ) {
+      
+      if( gtrx.expiration < self.pending_block_time() ) {
          trace = std::make_shared<transaction_trace>();
          trace->id = gtrx.trx_id;
          trace->block_num = self.head_block_num() + 1;
@@ -1259,6 +1257,11 @@ struct controller_impl {
          emit( self.accepted_transaction, trx );
          emit( self.applied_transaction, std::tie(trace, dtrx) );
          undo_session.squash();
+         return trace;
+      }
+
+      bool stop_deferred_transactions_activated = self.is_builtin_activated(builtin_protocol_feature_t::stop_deferred_transactions);
+      if (stop_deferred_transactions_activated) {
          return trace;
       }
 

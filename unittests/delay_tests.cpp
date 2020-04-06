@@ -19,7 +19,7 @@ using namespace eosio::testing;
 BOOST_AUTO_TEST_SUITE(delay_tests)
 
 BOOST_AUTO_TEST_CASE( delay_create_account ) { try {
-   TESTER chain( {}, {::eosio::chain::builtin_protocol_feature_t::stop_deferred_transactions} );
+   TESTER chain( {builtin_protocol_feature_t::stop_deferred_transactions} );
 
    chain.produce_blocks(2);
    signed_transaction trx;
@@ -47,7 +47,7 @@ BOOST_AUTO_TEST_CASE( delay_create_account ) { try {
 
 
 BOOST_AUTO_TEST_CASE( delay_error_create_account ) { try {
-   TESTER chain( {}, {::eosio::chain::builtin_protocol_feature_t::stop_deferred_transactions} );
+   TESTER chain( {builtin_protocol_feature_t::stop_deferred_transactions} );
 
    chain.produce_blocks(2);
    signed_transaction trx;
@@ -90,7 +90,7 @@ const std::string eosio_token = name(N(eosio.token)).to_string();
 
 // test link to permission with delay directly on it
 BOOST_AUTO_TEST_CASE( link_delay_direct_test ) { try {
-   TESTER chain( {}, {::eosio::chain::builtin_protocol_feature_t::stop_deferred_transactions} );
+   TESTER chain( {builtin_protocol_feature_t::stop_deferred_transactions} );
 
    const auto& tester_account = N(tester);
 
@@ -228,7 +228,7 @@ BOOST_AUTO_TEST_CASE( link_delay_direct_test ) { try {
 
 
 BOOST_AUTO_TEST_CASE(delete_auth_test) { try {
-   TESTER chain( {}, {::eosio::chain::builtin_protocol_feature_t::stop_deferred_transactions} );
+   TESTER chain( {builtin_protocol_feature_t::stop_deferred_transactions} );
 
    const auto& tester_account = N(tester);
 
@@ -365,7 +365,7 @@ BOOST_AUTO_TEST_CASE(delete_auth_test) { try {
 
 // test link to permission with delay on permission which is parent of min permission (special logic in permission_object::satisfies)
 BOOST_AUTO_TEST_CASE( link_delay_direct_parent_permission_test ) { try {
-   TESTER chain( {}, {::eosio::chain::builtin_protocol_feature_t::stop_deferred_transactions} );
+   TESTER chain( {builtin_protocol_feature_t::stop_deferred_transactions} );
 
    const auto& tester_account = N(tester);
 
@@ -503,7 +503,7 @@ BOOST_AUTO_TEST_CASE( link_delay_direct_parent_permission_test ) { try {
 
 // test link to permission with delay on permission between min permission and authorizing permission it
 BOOST_AUTO_TEST_CASE( link_delay_direct_walk_parent_permissions_test ) { try {
-   TESTER chain( {}, {::eosio::chain::builtin_protocol_feature_t::stop_deferred_transactions} );
+   TESTER chain( {builtin_protocol_feature_t::stop_deferred_transactions} );
 
    const auto& tester_account = N(tester);
 
@@ -647,7 +647,7 @@ BOOST_AUTO_TEST_CASE( link_delay_direct_walk_parent_permissions_test ) { try {
 
 // test removing delay on permission
 BOOST_AUTO_TEST_CASE( link_delay_permission_change_test ) { try {
-   TESTER chain( {}, {::eosio::chain::builtin_protocol_feature_t::stop_deferred_transactions} );
+   TESTER chain( {builtin_protocol_feature_t::stop_deferred_transactions} );
 
    const auto& tester_account = N(tester);
 
@@ -838,7 +838,7 @@ BOOST_AUTO_TEST_CASE( link_delay_permission_change_test ) { try {
 
 // test removing delay on permission based on heirarchy delay
 BOOST_AUTO_TEST_CASE( link_delay_permission_change_with_delay_heirarchy_test ) { try {
-   TESTER chain( {}, {::eosio::chain::builtin_protocol_feature_t::stop_deferred_transactions} );
+   TESTER chain( {builtin_protocol_feature_t::stop_deferred_transactions} );
 
    const auto& tester_account = N(tester);
 
@@ -1035,7 +1035,7 @@ BOOST_AUTO_TEST_CASE( link_delay_permission_change_with_delay_heirarchy_test ) {
 
 // test moving link with delay on permission
 BOOST_AUTO_TEST_CASE( link_delay_link_change_test ) { try {
-   TESTER chain( {}, {::eosio::chain::builtin_protocol_feature_t::stop_deferred_transactions} );
+   TESTER chain( {builtin_protocol_feature_t::stop_deferred_transactions} );
 
    const auto& tester_account = N(tester);
 
@@ -1237,7 +1237,7 @@ BOOST_AUTO_TEST_CASE( link_delay_link_change_test ) { try {
 
 // test link with unlink
 BOOST_AUTO_TEST_CASE( link_delay_unlink_test ) { try {
-   TESTER chain( {}, {::eosio::chain::builtin_protocol_feature_t::stop_deferred_transactions} );
+   TESTER chain( {builtin_protocol_feature_t::stop_deferred_transactions} );
 
    const auto& tester_account = N(tester);
 
@@ -1426,7 +1426,7 @@ BOOST_AUTO_TEST_CASE( link_delay_unlink_test ) { try {
 
 // test moving link with delay on permission's parent
 BOOST_AUTO_TEST_CASE( link_delay_link_change_heirarchy_test ) { try {
-   TESTER chain( {}, {::eosio::chain::builtin_protocol_feature_t::stop_deferred_transactions} );
+   TESTER chain( {builtin_protocol_feature_t::stop_deferred_transactions} );
 
    const auto& tester_account = N(tester);
 
@@ -1617,7 +1617,7 @@ BOOST_AUTO_TEST_CASE( link_delay_link_change_heirarchy_test ) { try {
 
 // test delay_sec field imposing unneeded delay
 BOOST_AUTO_TEST_CASE( mindelay_test ) { try {
-   TESTER chain( {}, {::eosio::chain::builtin_protocol_feature_t::stop_deferred_transactions} );
+   TESTER chain( {builtin_protocol_feature_t::stop_deferred_transactions} );
 
    const auto& tester_account = N(tester);
 
@@ -1749,7 +1749,7 @@ BOOST_AUTO_TEST_CASE( mindelay_test ) { try {
 
 // test canceldelay action cancelling a delayed transaction
 BOOST_AUTO_TEST_CASE( canceldelay_test ) { try {
-   TESTER chain( {}, {::eosio::chain::builtin_protocol_feature_t::stop_deferred_transactions} );
+   TESTER chain( {builtin_protocol_feature_t::stop_deferred_transactions} );
 
    const auto& tester_account = N(tester);
    std::vector<transaction_id_type> ids;
@@ -1987,7 +1987,7 @@ BOOST_AUTO_TEST_CASE( canceldelay_test ) { try {
 
 // test canceldelay action under different permission levels
 BOOST_AUTO_TEST_CASE( canceldelay_test2 ) { try {
-   TESTER chain( {}, {::eosio::chain::builtin_protocol_feature_t::stop_deferred_transactions} );
+   TESTER chain( {builtin_protocol_feature_t::stop_deferred_transactions} );
 
    const auto& tester_account = N(tester);
 
@@ -2254,7 +2254,7 @@ BOOST_AUTO_TEST_CASE( canceldelay_test2 ) { try {
 
 BOOST_AUTO_TEST_CASE( max_transaction_delay_create ) { try {
    //assuming max transaction delay is 45 days (default in config.hpp)
-   TESTER chain( {}, {::eosio::chain::builtin_protocol_feature_t::stop_deferred_transactions} );
+   TESTER chain( {builtin_protocol_feature_t::stop_deferred_transactions} );
         
    const auto& tester_account = N(tester);
 
@@ -2276,7 +2276,7 @@ BOOST_AUTO_TEST_CASE( max_transaction_delay_create ) { try {
 
 BOOST_AUTO_TEST_CASE( max_transaction_delay_execute ) { try {
    //assuming max transaction delay is 45 days (default in config.hpp)
-   TESTER chain( {}, {::eosio::chain::builtin_protocol_feature_t::stop_deferred_transactions} );
+   TESTER chain( {builtin_protocol_feature_t::stop_deferred_transactions} );
 
    const auto& tester_account = N(tester);
 
@@ -2349,7 +2349,7 @@ BOOST_AUTO_TEST_CASE( max_transaction_delay_execute ) { try {
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_CASE( delay_expired ) { try {
-   TESTER chain( {}, {::eosio::chain::builtin_protocol_feature_t::stop_deferred_transactions} );
+   TESTER chain( {builtin_protocol_feature_t::stop_deferred_transactions} );
 
    chain.produce_blocks(2);
    signed_transaction trx;

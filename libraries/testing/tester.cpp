@@ -1,3 +1,4 @@
+#include <boost/test/data/for_each_sample.hpp>
 #include <boost/test/unit_test.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 #include <eosio/testing/tester.hpp>
@@ -214,11 +215,11 @@ namespace eosio { namespace testing {
             set_before_producer_authority_bios_contract();
             break;
          }
-         case setup_policy::complete: {
+         case setup_policy::full: {
             schedule_preactivate_protocol_feature();
             produce_block();
             set_before_producer_authority_bios_contract();
-            preactivate_builtin_protocol_features(ignored_features);
+            preactivate_selected_protocol_features(ignored_features);
             produce_block();
             set_bios_contract();
             break;
@@ -1116,46 +1117,40 @@ namespace eosio { namespace testing {
       }
    }
 
-   void base_tester::preactivate_builtin_protocol_features(const std::vector<builtin_protocol_feature_t>& ignored_features) {
+   void base_tester::preactivate_selected_protocol_features(const vector<builtin_protocol_feature_t>& ignored_features) {
       const auto& pfm = control->get_protocol_feature_manager();
       const auto& pfs = pfm.get_protocol_feature_set();
       const auto current_block_num  =  control->head_block_num() + (control->is_building_block() ? 1 : 0);
       const auto current_block_time = ( control->is_building_block() ? control->pending_block_time()
                                         : control->head_block_time() + fc::milliseconds(config::block_interval_ms) );
 
-      set<digest_type>         preactivation_set;
-      vector<digest_type>      preactivations;
-      std::vector<digest_type> ignored_digests;
+      set<digest_type>    preactivation_set;
+      vector<digest_type> preactivations;
+      set<digest_type>    ignored_digests;
       
-      ignored_digests.reserve(ignored_features.size());
       for ( const auto& feature : ignored_features ) {
-         ignored_digests.push_back(*pfs.get_builtin_digest( feature ) );
+         const auto& digest = *pfs.get_builtin_digest( feature );
+         ignored_digests.insert( digest );
+
+         // Check if `feature` is a dependecy for another protocol feature. If
+         // so, ignore that protocol feature as well.
+         const auto& pf = pfs.get_protocol_feature( digest );
+         for ( const auto& f : builtin_protocol_feature_codenames ) {
+            const auto dep = std::find( f.second.builtin_dependencies.cbegin(), f.second.builtin_dependencies.cend(), *pf.builtin_feature );
+            if ( dep != f.second.builtin_dependencies.cend() ) {
+               const auto& dep_digest = *pfs.get_builtin_digest( f.first );
+               ignored_digests.insert( dep_digest );
+            }
+         }
       }
 
       std::function<void(const digest_type&)> add_digests =
-      [&ignored_digests, &pfm, &pfs, current_block_num, current_block_time, &preactivation_set, &preactivations, &add_digests]
+      [&pfm, &pfs, current_block_num, current_block_time, &preactivation_set, &preactivations, &add_digests]
       ( const digest_type& feature_digest ) {
          const auto& pf = pfs.get_protocol_feature( feature_digest );
          FC_ASSERT( pf.builtin_feature, "called add_digests on a non-builtin protocol feature" );
          if( !pf.enabled || pf.earliest_allowed_activation_time > current_block_time
              || pfm.is_builtin_activated( *pf.builtin_feature, current_block_num ) ) return;
-
-         std::function<void(const digest_type&)> check_dependencies =
-         [&check_dependencies, &ignored_digests, &pf] ( const digest_type& feature ) {
-            const auto dependency_is_ignored     = std::find( ignored_digests.cbegin(), ignored_digests.cend(), feature );
-            const auto dependency_has_dependency = std::find( pf.dependencies.cbegin(),  pf.dependencies.cend(),  feature );
-            if ( dependency_is_ignored != ignored_digests.cend() && dependency_has_dependency != pf.dependencies.cend() ) {
-                check_dependencies(*dependency_has_dependency);
-            } else {
-                FC_ASSERT( pf.builtin_feature, "ignoring a protocol feature that is a dependency for another protocol feature" );
-            }
-         };
-
-         const auto digest_is_ignored = std::find(ignored_digests.cbegin(), ignored_digests.cend(), feature_digest);
-         if( digest_is_ignored != ignored_digests.cend() ) {
-            check_dependencies(*digest_is_ignored);
-            return;
-         }
 
          auto res = preactivation_set.emplace( feature_digest );
          if( !res.second ) return;
@@ -1169,7 +1164,7 @@ namespace eosio { namespace testing {
 
       for( const auto& f : builtin_protocol_feature_codenames ) {
          auto digest = pfs.get_builtin_digest( f.first );
-         if( !digest ) continue;
+         if( !digest || std::find(ignored_digests.cbegin(), ignored_digests.cend(), digest) != ignored_digests.cend() ) continue;
          add_digests( *digest );
       }
 
@@ -1276,4 +1271,4 @@ std::ostream& operator<<( std::ostream& osm, const fc::variant_object& v ) {
 std::ostream& operator<<( std::ostream& osm, const fc::variant_object::entry& e ) {
    osm << "{ " << e.key() << ": " << e.value() << " }";
    return osm;
-}
+}                   

@@ -62,7 +62,7 @@ namespace eosio { namespace testing {
       old_bios_only,
       preactivate_feature_only,
       preactivate_feature_and_new_bios,
-      complete
+      full
    };
 
    std::vector<uint8_t> read_wasm( const char* fn );
@@ -151,7 +151,7 @@ namespace eosio { namespace testing {
 
          virtual ~base_tester() {};
 
-         void              init(const setup_policy policy = setup_policy::complete, db_read_mode read_mode = db_read_mode::SPECULATIVE);
+         void              init(const setup_policy policy = setup_policy::full, db_read_mode read_mode = db_read_mode::SPECULATIVE);
          void              init(controller::config config, const snapshot_reader_ptr& snapshot);
          void              init(controller::config config, const genesis_state& genesis);
          void              init(controller::config config);
@@ -378,7 +378,7 @@ namespace eosio { namespace testing {
 
          void schedule_protocol_features_wo_preactivation(const vector<digest_type> feature_digests);
          void preactivate_protocol_features(const vector<digest_type> feature_digests);
-         void preactivate_builtin_protocol_features(const std::vector<builtin_protocol_feature_t>& ignored_features);
+         void preactivate_selected_protocol_features(const vector<builtin_protocol_feature_t>& ignored_features);
 
          static genesis_state default_genesis() {
             genesis_state genesis;
@@ -440,7 +440,7 @@ namespace eosio { namespace testing {
 
    class tester : public base_tester {
    public:
-      tester(setup_policy policy = setup_policy::complete, db_read_mode read_mode = db_read_mode::SPECULATIVE) {
+      tester(setup_policy policy = setup_policy::full, db_read_mode read_mode = db_read_mode::SPECULATIVE) {
          init(policy, read_mode);
       }
 
@@ -482,6 +482,16 @@ namespace eosio { namespace testing {
          }
       }
 
+      tester(const vector<builtin_protocol_feature_t>& ignored_features,
+             const flat_set<account_name>& trusted_producers = flat_set<account_name>(),
+             const setup_policy& policy = setup_policy::full) {
+         base_tester::ignored_features = ignored_features;
+         auto def_conf = default_config(tempdir);
+         def_conf.first.trusted_producers = trusted_producers;
+         init(def_conf.first, def_conf.second);
+         execute_setup_policy(policy);
+      }
+
       using base_tester::produce_block;
 
       signed_block_ptr produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms) )override {
@@ -517,11 +527,11 @@ namespace eosio { namespace testing {
          }
       }
 
-      validating_tester(const ::boost::container::flat_set<::eosio::chain::account_name>& trusted_producers = ::boost::container::flat_set<::eosio::chain::account_name>(),
-                        const ::std::vector<::eosio::chain::builtin_protocol_feature_t>& ignored_features = {},
-                        const ::eosio::testing::setup_policy& policy = ::eosio::testing::setup_policy::complete) {
-         ::std::pair<::eosio::chain::controller::config, ::eosio::chain::genesis_state> def_conf = default_config(tempdir); 
-         ::eosio::testing::base_tester::ignored_features = ignored_features;
+      validating_tester(const vector<builtin_protocol_feature_t>& ignored_features = {},
+                        const flat_set<account_name>& trusted_producers = flat_set<account_name>(),
+                        const setup_policy& policy = setup_policy::full) {
+         base_tester::ignored_features = ignored_features;
+         pair<controller::config, genesis_state> def_conf = default_config(tempdir); 
          vcfg = def_conf.first;
          config_validator(vcfg);
          vcfg.trusted_producers = trusted_producers;
@@ -530,8 +540,7 @@ namespace eosio { namespace testing {
          execute_setup_policy(policy);
       }
 
-      // Delete this one after I fix the default one
-      validating_tester(const fc::temp_directory& tempdir, bool use_genesis, const std::vector<builtin_protocol_feature_t>& ignored_features = {}) {
+      validating_tester(const fc::temp_directory& tempdir, bool use_genesis) {
          base_tester::ignored_features = ignored_features;
          
          auto def_conf = default_config(tempdir);
@@ -744,3 +753,4 @@ namespace eosio { namespace testing {
   };
 
 } } /// eosio::testing
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         

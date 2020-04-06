@@ -25,8 +25,6 @@ using namespace eosio::chain;
 using namespace eosio::testing;
 using namespace fc;
 
-static fc::temp_directory temporary_config_dir{};
-
 class currency_tester : public TESTER {
    public:
       auto push_action(const account_name& signer, const action_name &name, const variant_object &data ) {
@@ -72,7 +70,7 @@ class currency_tester : public TESTER {
       }
 
     currency_tester()
-      :TESTER( {}, {::eosio::chain::builtin_protocol_feature_t::stop_deferred_transactions} )
+      :TESTER( {builtin_protocol_feature_t::stop_deferred_transactions} )
       ,abi_ser( json::from_string(contracts::eosio_token_abi().data()).as<abi_def>(), abi_serializer::create_yield_function( abi_serializer_max_time ) )
       {
          create_account( N(eosio.token));

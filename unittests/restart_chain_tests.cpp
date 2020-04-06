@@ -165,7 +165,7 @@ BOOST_AUTO_TEST_CASE(test_restart_from_block_log) {
 }
 
 BOOST_AUTO_TEST_CASE(test_light_validation_restart_from_block_log) {
-   tester chain(setup_policy::complete);
+   tester chain(setup_policy::full);
 
    chain.create_account(N(testapi));
    chain.create_account(N(dummy));

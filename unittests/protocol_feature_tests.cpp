@@ -1782,7 +1782,7 @@ BOOST_AUTO_TEST_CASE( set_action_return_value_test ) { try {
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_CASE( stop_deferred_transactions_protocol_feature_user_test ) { try {
-   validating_tester chain( {}, {::eosio::chain::builtin_protocol_feature_t::stop_deferred_transactions} );
+   validating_tester chain( {builtin_protocol_feature_t::stop_deferred_transactions} );
    
    const auto& pfm = chain.control->get_protocol_feature_manager();
    auto stop_deferred_trx_feature = pfm.get_builtin_digest( builtin_protocol_feature_t::stop_deferred_transactions );
@@ -1832,7 +1832,7 @@ BOOST_AUTO_TEST_CASE( stop_deferred_transactions_protocol_feature_user_test ) { 
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_CASE( stop_deferred_transactions_protocol_feature_contract_test ) { try {
-   validating_tester chain( {}, {::eosio::chain::builtin_protocol_feature_t::stop_deferred_transactions} );
+   validating_tester chain( {builtin_protocol_feature_t::stop_deferred_transactions} );
    
    const auto& pfm = chain.control->get_protocol_feature_manager();
    auto stop_deferred_trx_feature = pfm.get_builtin_digest( builtin_protocol_feature_t::stop_deferred_transactions );
