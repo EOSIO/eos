@@ -57,6 +57,9 @@ namespace eosio { namespace chain {
       using base_type::elem_type;
       using base_type::get_host;
 
+      // TODO: These are duplicated from the base class, because clang is
+      // unable to find them.  I think clang is correct here because the
+      // return type does not affect hiding.
       template <typename T>
       auto from_wasm(const elem_type& ptr) const
          -> std::enable_if_t<std::is_same_v<T, unvalidated_ptr<const char>>, T> {
@@ -69,6 +72,21 @@ namespace eosio { namespace chain {
          return {as_value<char*>(ptr)};
       }
 
+      template <typename T>
+      auto from_wasm(const elem_type& ptr) const
+         -> std::enable_if_t< vm::is_reference_proxy_type_v<T> &&
+                              vm::is_reference_proxy_legacy_v<T> &&
+                              !vm::is_span_type_v<vm::dependent_type_t<T>>, T> {
+         return {as_value<vm::reference_proxy_dependent_type_t<T>*>(std::move(ptr))};
+      }
+
+      template <typename T>
+      auto from_wasm(const elem_type& ptr) const
+         -> std::enable_if_t< vm::is_reference_proxy_type_v<T> &&
+                              !vm::is_reference_proxy_legacy_v<T> &&
+                              !vm::is_span_type_v<vm::dependent_type_t<T>>, T> {
+         return {as_value<vm::reference_proxy_dependent_type_t<T>*>(std::move(ptr))};
+      }
 #if 0
       template <typename T, typename U>
       auto from_wasm(U* ptr) const -> std::enable_if_t<std::is_same_v<T, U*>, eosio::vm::reference_proxy<T>> {
