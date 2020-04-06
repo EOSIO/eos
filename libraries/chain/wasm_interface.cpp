@@ -1525,14 +1525,14 @@ class context_free_transaction_api : public context_aware_api {
       }
 
       int expiration() {
-        return context.trx_context.packed_trx->get_transaction().expiration.sec_since_epoch();
+        return context.trx_context.packed_trx.get_transaction().expiration.sec_since_epoch();
       }
 
       int tapos_block_num() {
-        return context.trx_context.packed_trx->get_transaction().ref_block_num;
+        return context.trx_context.packed_trx.get_transaction().ref_block_num;
       }
       int tapos_block_prefix() {
-        return context.trx_context.packed_trx->get_transaction().ref_block_prefix;
+        return context.trx_context.packed_trx.get_transaction().ref_block_prefix;
       }
 
       int get_action( uint32_t type, uint32_t index, array_ptr<char> buffer, uint32_t buffer_size )const {

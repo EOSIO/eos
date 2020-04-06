@@ -390,15 +390,15 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
                      "deferred transaction generaction context contains mismatching sender_id",
                      ("expected", sender_id)("actual", context.sender_id)
          );
-         EOS_ASSERT( context.sender_trx_id == trx_context.packed_trx->id(), ill_formed_deferred_transaction_generation_context,
+         EOS_ASSERT( context.sender_trx_id == trx_context.packed_trx.id(), ill_formed_deferred_transaction_generation_context,
                      "deferred transaction generaction context contains mismatching sender_trx_id",
-                     ("expected", trx_context.packed_trx->id())("actual", context.sender_trx_id)
+                     ("expected", trx_context.packed_trx.id())("actual", context.sender_trx_id)
          );
       } else {
          emplace_extension(
             trx.transaction_extensions,
             deferred_transaction_generation_context::extension_id(),
-            fc::raw::pack( deferred_transaction_generation_context( trx_context.packed_trx->id(), sender_id, receiver ) )
+            fc::raw::pack( deferred_transaction_generation_context( trx_context.packed_trx.id(), sender_id, receiver ) )
          );
       }
       trx.expiration = time_point_sec();
@@ -612,18 +612,18 @@ vector<account_name> apply_context::get_active_producers() const {
 }
 
 bytes apply_context::get_packed_transaction() {
-   if( trx_context.packed_trx->get_compression() == packed_transaction::compression_type::none) {
-      return trx_context.packed_trx->get_packed_transaction();
+   if( trx_context.packed_trx.get_compression() == packed_transaction::compression_type::none) {
+      return trx_context.packed_trx.get_packed_transaction();
    } else {
-      return fc::raw::pack( static_cast<const transaction&>( trx_context.packed_trx->get_transaction() ) );
+      return fc::raw::pack( static_cast<const transaction&>( trx_context.packed_trx.get_transaction() ) );
    }
 }
 
 size_t apply_context::get_packed_transaction_size() {
-   if( trx_context.packed_trx->get_compression() == packed_transaction::compression_type::none) {
-      return trx_context.packed_trx->get_packed_transaction().size();
+   if( trx_context.packed_trx.get_compression() == packed_transaction::compression_type::none) {
+      return trx_context.packed_trx.get_packed_transaction().size();
    } else {
-      return fc::raw::pack_size( static_cast<const transaction&>( trx_context.packed_trx->get_transaction() ) );
+      return fc::raw::pack_size( static_cast<const transaction&>( trx_context.packed_trx.get_transaction() ) );
    }
 }
 
@@ -643,7 +643,7 @@ void apply_context::update_db_usage( const account_name& payer, int64_t delta ) 
 
 int apply_context::get_action( uint32_t type, uint32_t index, char* buffer, size_t buffer_size )const
 {
-   const auto& trx = trx_context.packed_trx->get_transaction();
+   const auto& trx = trx_context.packed_trx.get_transaction();
    const action* act_ptr = nullptr;
 
    if( type == 0 ) {
@@ -669,7 +669,7 @@ int apply_context::get_action( uint32_t type, uint32_t index, char* buffer, size
 
 int apply_context::get_context_free_data( uint32_t index, char* buffer, size_t buffer_size )const
 {
-   const prunable_transaction_data::prunable_data_type& data = trx_context.packed_trx->get_prunable_data().prunable_data;
+   const prunable_transaction_data::prunable_data_type& data = trx_context.packed_trx.get_prunable_data().prunable_data;
    if( data.contains<prunable_transaction_data::none>() || data.contains<prunable_transaction_data::signatures_only>() ||
        data.contains<prunable_transaction_data::partial>() ) // TODO: for partial determine if index is pruned and throw only in that case
    {

@@ -1140,7 +1140,7 @@ struct controller_impl {
       }
 
       transaction_checktime_timer trx_timer(timer);
-      packed_transaction_ptr trx = std::make_shared<const packed_transaction>( std::move( etrx ), true );
+      const packed_transaction trx( std::move( etrx ), true );
       transaction_context trx_context( self, trx, std::move(trx_timer), start );
       trx_context.deadline = deadline;
       trx_context.explicit_billed_cpu_time = explicit_billed_cpu_time;
@@ -1150,7 +1150,7 @@ struct controller_impl {
       try {
          trx_context.init_for_implicit_trx();
          trx_context.published = gtrx.published;
-         trx_context.execute_action( trx_context.schedule_action( trx->get_transaction().actions.back(), gtrx.sender, false, 0, 0 ), 0 );
+         trx_context.execute_action( trx_context.schedule_action( trx.get_transaction().actions.back(), gtrx.sender, false, 0, 0 ), 0 );
          trx_context.finalize(); // Automatically rounds up network and CPU usage in trace and bills payers if successful
 
          auto restore = make_block_restore_point();
@@ -1268,7 +1268,7 @@ struct controller_impl {
       uint32_t cpu_time_to_bill_us = billed_cpu_time_us;
 
       transaction_checktime_timer trx_timer(timer);
-      transaction_context trx_context( self, trx->packed_trx(), std::move(trx_timer) );
+      transaction_context trx_context( self, *trx->packed_trx(), std::move(trx_timer) );
       trx_context.leeway =  fc::microseconds(0); // avoid stealing cpu resource
       trx_context.deadline = deadline;
       trx_context.explicit_billed_cpu_time = explicit_billed_cpu_time;
@@ -1439,7 +1439,7 @@ struct controller_impl {
          }
 
          transaction_checktime_timer trx_timer(timer);
-         transaction_context trx_context(self, trx->packed_trx(), std::move(trx_timer), start);
+         transaction_context trx_context(self, *trx->packed_trx(), std::move(trx_timer), start);
          if ((bool)subjective_cpu_leeway && pending->_block_status == controller::block_status::incomplete) {
             trx_context.leeway = *subjective_cpu_leeway;
          }
