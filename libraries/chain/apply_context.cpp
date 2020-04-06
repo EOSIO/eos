@@ -528,17 +528,6 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
          gtx.expiration  = gtx.delay_until + fc::seconds(control.get_global_properties().configuration.deferred_trx_expiration_window);
 
          trx_size = gtx.set( trx );
-
-         if ( stop_deferred_transactions_activated ) {
-            EOS_ASSERT( ram_restrictions_activated
-               || control.is_ram_billing_in_notify_allowed()
-               || (receiver == act->account) || (receiver == payer) || privileged,
-               subjective_block_production_exception,
-               "Cannot charge RAM to other accounts during notify."
-            );
-            add_ram_usage( payer, (config::billable_size_v<generated_transaction_object> + trx_size) );
-            return;
-         }
       } );
    } else {
       if ( stop_deferred_transactions_activated ) {
@@ -556,7 +545,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
          trx_size = gtx.set( trx );
       } );
    }
-
+   
    EOS_ASSERT( ram_restrictions_activated
                || control.is_ram_billing_in_notify_allowed()
                || (receiver == act->account) || (receiver == payer) || privileged,
