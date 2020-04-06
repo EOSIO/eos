@@ -365,7 +365,7 @@ class ClassStruct(EmptyScope):
 
         debug("%sClassStruct.next_scope found \"%s\" - \"%s\" - \"%s\" current=%s, start=%s, end=%s, pattern=%s " % (self.indent, search_str, type, name, self.current, start, end, self.pattern.pattern))
         # determine if there is a non-namespace/non-class/non-struct scope before a namespace/class/struct scope
-        if start != -1 and (generic_scope_start == -1 or start <= generic_scope_start):
+        if type is not None: #start != -1 and (generic_scope_start == -1 or start <= generic_scope_start):
             debug("%sClassStruct.next_scope found %s at %d" % (self.indent, type, start))
             new_scope = create_scope(type, name, inherit, start, self.content, self)
         else:
@@ -381,7 +381,7 @@ class ClassStruct(EmptyScope):
         return new_scope
 
 class Namespace(ClassStruct):
-    namespace_class_pattern = re.compile(r'((?<!using\s)%s|%s|%s|%s(?:\s+class)?)\s+(\w+)(?:\s+final)?\s*(:\s*(public\s+)?([^<\s]+)[^{]*)?\s*\{' % (EmptyScope.namespace_str, EmptyScope.struct_str, EmptyScope.class_str, EmptyScope.enum_str), re.MULTILINE | re.DOTALL)
+    namespace_class_pattern = re.compile(r'((?<!using\s)%s|%s|%s|%s(?:\s+class)?)\s+(\w+)\s*(?:final)?(:\s*(public\s+)?(\w+)(::\w+)*(?:<[^>]*>)?)?\s*\{' % (EmptyScope.namespace_str, EmptyScope.struct_str, EmptyScope.class_str, EmptyScope.enum_str), re.MULTILINE | re.DOTALL)
 
     def __init__(self, name, inherit, start, content, parent_scope):
         assert inherit is None, "namespace %s should not inherit from %s" % (name, inherit)
@@ -635,6 +635,9 @@ def validate_file(file):
     reflections=Reflections(contents)
     reflections.read()
     for reflection_name in reflections.classes:
+        match=re.search(r'^fc::', reflection_name)
+        if match:
+            continue
         reflection = reflections.classes[reflection_name]
         class_struct = global_namespace.find_class(reflection_name)
         if class_struct is None:
@@ -725,7 +728,8 @@ def validate_file(file):
             assert len(unused_reflect_fields) == 0, "Reflection for %s has fields not in definition for class/struct - \"%s\"" % (reflection_name, ",".join(unused_reflect_fields))
         assert len(reflection.swapped) == 0, "Reflection for %s has erroneous swaps - \"%s\"" % (reflection_name, ",".join(reflection.swapped))
         assert len(back_swapped) == 0, "Reflection for %s indicated swapped fields that were never provided - \"%s\"" % (reflection_name, ",".join(back_swapped))
-        assert len(fwd_swapped) == 0, "Reflection for %s indicated and provided swapped fields that are not in the class - \"%s\"" % (reflection_name, ",".join(fwd_swapped))
+        if len(fwd_swapped) !=0:
+            assert len(fwd_swapped) == 0, "Reflection for %s indicated and provided swapped fields that are not in the class - \"%s\"" % (reflection_name, ",".join(fwd_swapped))
 
     print("%s passed" % (file))
 
