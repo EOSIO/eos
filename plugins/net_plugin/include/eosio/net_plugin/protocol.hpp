@@ -135,6 +135,15 @@ namespace eosio {
       uint32_t end_block{0};
    };
 
+   struct generic_message {
+      uint64_t type {0};
+      bytes    payload;
+   };
+
+   struct generic_support_message {
+      vector<uint16_t> types;
+   };
+
    using net_message = static_variant<handshake_message,
                                       chain_size_message,
                                       go_away_message,
@@ -143,7 +152,9 @@ namespace eosio {
                                       request_message,
                                       sync_request_message,
                                       signed_block,         // which = 7
-                                      packed_transaction>;  // which = 8
+                                      packed_transaction,   // which = 8
+                                      generic_message,
+                                      generic_support_message>;
 
 } // namespace eosio
 
@@ -162,6 +173,8 @@ FC_REFLECT( eosio::time_message, (org)(rec)(xmt)(dst) )
 FC_REFLECT( eosio::notice_message, (known_trx)(known_blocks) )
 FC_REFLECT( eosio::request_message, (req_trx)(req_blocks) )
 FC_REFLECT( eosio::sync_request_message, (start_block)(end_block) )
+FC_REFLECT( eosio::generic_message, (type)(payload) )
+FC_REFLECT( eosio::generic_support_message, (types) )
 
 /**
  *

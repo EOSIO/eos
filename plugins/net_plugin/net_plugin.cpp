@@ -713,6 +713,7 @@ namespace eosio {
       void handle_message( const block_id_type& id, signed_block_ptr msg );
       void handle_message( const packed_transaction& msg ) = delete; // packed_transaction_ptr overload used instead
       void handle_message( packed_transaction_ptr msg );
+      void handle_message( const generic_support_message& msg );
 
       void process_signed_block( const block_id_type& id, signed_block_ptr msg );
 
@@ -781,6 +782,17 @@ namespace eosio {
       void operator()( const sync_request_message& msg ) const {
          // continue call to handle_message on connection strand
          fc_dlog( logger, "handle sync_request_message" );
+         c->handle_message( msg );
+      }
+
+      void operator()( const generic_message& msg ) const {
+         // continue call to signal on connection strand
+         fc_dlog( logger, "handle generic_message" );
+      }
+
+      void operator()( const generic_support_message& msg ) const {
+         // continue call to handle_message on connection strand
+         fc_dlog( logger, "handle generic_support_message" );
          c->handle_message( msg );
       }
    };
@@ -2895,6 +2907,10 @@ namespace eosio {
       app().post(priority, [ptr{std::move(ptr)}, id, c = shared_from_this()]() mutable {
          c->process_signed_block( id, std::move( ptr ) );
       });
+   }
+
+   void connection::handle_message( const generic_support_message& msg ) {
+      peer_dlog(this, "generic_support_message");
    }
 
    // called from application thread
