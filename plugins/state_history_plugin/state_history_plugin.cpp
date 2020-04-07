@@ -181,10 +181,10 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          socket_stream->next_layer().set_option(boost::asio::ip::tcp::no_delay(true));
          socket_stream->next_layer().set_option(boost::asio::socket_base::send_buffer_size(1024 * 1024));
          socket_stream->next_layer().set_option(boost::asio::socket_base::receive_buffer_size(1024 * 1024));
-         socket_stream->async_accept([self = shared_from_this(), this](boost::system::error_code ec) {
-            callback(ec, "async_accept", [&] {
-               start_read();
-               send(state_history_plugin_abi);
+         socket_stream->async_accept([self = shared_from_this()](boost::system::error_code ec) {
+            self->callback(ec, "async_accept", [self] {
+               self->start_read();
+               self->send(state_history_plugin_abi);
             });
          });
       }
@@ -192,15 +192,15 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       void start_read() {
          auto in_buffer = std::make_shared<boost::beast::flat_buffer>();
          socket_stream->async_read(
-             *in_buffer, [self = shared_from_this(), this, in_buffer](boost::system::error_code ec, size_t) {
-                callback(ec, "async_read", [&] {
+             *in_buffer, [self = shared_from_this(), in_buffer](boost::system::error_code ec, size_t) {
+                self->callback(ec, "async_read", [self, in_buffer] {
                    auto d = boost::asio::buffer_cast<char const*>(boost::beast::buffers_front(in_buffer->data()));
                    auto s = boost::asio::buffer_size(in_buffer->data());
                    fc::datastream<const char*> ds(d, s);
                    state_request               req;
                    fc::raw::unpack(ds, req);
-                   req.visit(*this);
-                   start_read();
+                   req.visit(*self);
+                   self->start_read();
                 });
              });
       }
@@ -226,11 +226,11 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          sent_abi = true;
          socket_stream->async_write( //
              boost::asio::buffer(send_queue[0]),
-             [self = shared_from_this(), this](boost::system::error_code ec, size_t) {
-                callback(ec, "async_write", [&] {
-                   send_queue.erase(send_queue.begin());
-                   sending = false;
-                   send();
+             [self = shared_from_this()](boost::system::error_code ec, size_t) {
+                self->callback(ec, "async_write", [self] {
+                   self->send_queue.erase(self->send_queue.begin());
+                   self->sending = false;
+                   self->send();
                 });
              });
       }
@@ -241,6 +241,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          get_status_result_v0 result;
          result.head              = {chain.head_block_num(), chain.head_block_id()};
          result.last_irreversible = {chain.last_irreversible_block_num(), chain.last_irreversible_block_id()};
+         result.chain_id          = chain.get_chain_id();
          if (plugin->trace_log) {
             result.trace_begin_block = plugin->trace_log->begin_block();
             result.trace_end_block   = plugin->trace_log->end_block();
@@ -325,11 +326,13 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
 
       template <typename F>
       void callback(boost::system::error_code ec, const char* what, F f) {
-         if (plugin->stopping)
-            return;
-         if (ec)
-            return on_fail(ec, what);
-         catch_and_close(f);
+         app().post( priority::medium, [=]() {
+            if( plugin->stopping )
+               return;
+            if( ec )
+               return on_fail( ec, what );
+            catch_and_close( f );
+         } );
       }
 
       void on_fail(boost::system::error_code ec, const char* what) {
@@ -474,8 +477,8 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
 
       const auto&                                table_id_index = db.get_index<table_id_multi_index>();
       std::map<uint64_t, const table_id_object*> removed_table_id;
-      for (auto& rem : table_id_index.stack().back().removed_values)
-         removed_table_id[rem.first._id] = &rem.second;
+      for (auto& rem : table_id_index.last_undo_session().removed_values)
+         removed_table_id[rem.id._id] = &rem;
 
       auto get_table_id = [&](uint64_t tid) -> const table_id_object& {
          auto obj = table_id_index.find(tid);
@@ -502,23 +505,20 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
             for (auto& row : index.indices())
                delta.rows.obj.emplace_back(true, pack_row(row));
          } else {
-            if (index.stack().empty())
-               return;
-            auto& undo = index.stack().back();
-            if (undo.old_values.empty() && undo.new_ids.empty() && undo.removed_values.empty())
+            auto undo = index.last_undo_session();
+            if (undo.old_values.empty() && undo.new_values.empty() && undo.removed_values.empty())
                return;
             deltas.push_back({});
             auto& delta = deltas.back();
             delta.name  = name;
             for (auto& old : undo.old_values) {
-               auto& row = index.get(old.first);
-               if (include_delta(old.second, row))
+               auto& row = index.get(old.id);
+               if (include_delta(old, row))
                   delta.rows.obj.emplace_back(true, pack_row(row));
             }
             for (auto& old : undo.removed_values)
-               delta.rows.obj.emplace_back(false, pack_row(old.second));
-            for (auto id : undo.new_ids) {
-               auto& row = index.get(id);
+               delta.rows.obj.emplace_back(false, pack_row(old));
+            for (auto& row : undo.new_values) {
                delta.rows.obj.emplace_back(true, pack_row(row));
             }
          }

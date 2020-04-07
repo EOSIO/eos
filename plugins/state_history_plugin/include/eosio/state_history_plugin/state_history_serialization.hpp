@@ -401,11 +401,11 @@ datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosi
       auto&       index  = obj.db.get_index<eosio::chain::permission_index>();
       const auto* parent = index.find(obj.obj.parent);
       if (!parent) {
-         auto& undo = index.stack().back();
-         auto  it   = undo.removed_values.find(obj.obj.parent);
+         auto undo = index.last_undo_session();
+         auto  it   = std::find_if(undo.removed_values.begin(), undo.removed_values.end(), [&](auto& x){ return x.id._id == obj.obj.parent; });
          EOS_ASSERT(it != undo.removed_values.end(), eosio::chain::plugin_exception,
                     "can not find parent of permission_object");
-         parent = &it->second;
+         parent = &*it;
       }
       fc::raw::pack(ds, as_type<uint64_t>(parent->name.to_uint64_t()));
    } else {
@@ -568,7 +568,7 @@ inline fc::optional<uint64_t> cap_error_code( const fc::optional<uint64_t>& erro
 template <typename ST>
 datastream<ST>& operator<<(datastream<ST>& ds, const history_context_wrapper<bool, eosio::chain::action_trace>& obj) {
    bool  debug_mode = obj.context;
-   fc::raw::pack(ds, fc::unsigned_int(0));
+   fc::raw::pack(ds, fc::unsigned_int(1));
    fc::raw::pack(ds, as_type<fc::unsigned_int>(obj.obj.action_ordinal));
    fc::raw::pack(ds, as_type<fc::unsigned_int>(obj.obj.creator_action_ordinal));
    fc::raw::pack(ds, bool(obj.obj.receipt));
@@ -595,7 +595,7 @@ datastream<ST>& operator<<(datastream<ST>& ds, const history_context_wrapper<boo
    fc::raw::pack(ds, as_type<fc::optional<std::string>>(e));
    fc::raw::pack(ds, as_type<fc::optional<uint64_t>>(debug_mode ? obj.obj.error_code
                                                                 : cap_error_code(obj.obj.error_code)));
-
+   fc::raw::pack(ds, as_type<eosio::chain::bytes>(obj.obj.return_value));
    return ds;
 }
 

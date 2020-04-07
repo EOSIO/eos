@@ -15,7 +15,6 @@
 #include <fc/io/json.hpp>
 #include <fc/crypto/aes.hpp>
 #include <fc/crypto/hex.hpp>
-#include <fc/smart_ref_impl.hpp>
 
 #include <boost/range/adaptor/map.hpp>
 #include <boost/range/algorithm/copy.hpp>
@@ -183,8 +182,8 @@ public:
       else
          EOS_THROW(chain::unsupported_key_type_exception, "Key type \"${kt}\" not supported by software wallet", ("kt", key_type));
 
-      import_key((string)priv_key);
-      return (string)priv_key.get_public_key();
+      import_key(priv_key.to_string());
+      return priv_key.get_public_key().to_string();
    }
 
    bool load_wallet_file(string wallet_filename = "")

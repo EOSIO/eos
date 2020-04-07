@@ -11,6 +11,7 @@
 #include <eosio/chain/abi_serializer.hpp>
 #include <eosio/chain/plugin_interface.hpp>
 #include <eosio/chain/types.hpp>
+#include <eosio/chain/fixed_bytes.hpp>
 
 #include <boost/container/flat_set.hpp>
 #include <boost/multiprecision/cpp_int.hpp>
@@ -65,6 +66,16 @@ uint64_t convert_to_type(const string& str, const string& desc);
 template<>
 double convert_to_type(const string& str, const string& desc);
 
+template<typename Type>
+string convert_to_string(const Type& source, const string& key_type, const string& encode_type, const string& desc);
+
+template<>
+string convert_to_string(const chain::key256_t& source, const string& key_type, const string& encode_type, const string& desc);
+
+template<>
+string convert_to_string(const float128_t& source, const string& key_type, const string& encode_type, const string& desc);
+
+
 class read_only {
    const controller& db;
    const fc::microseconds abi_serializer_max_time;
@@ -102,6 +113,7 @@ public:
       optional<string>        server_version_string;
       optional<uint32_t>              fork_db_head_block_num;
       optional<chain::block_id_type>  fork_db_head_block_id;
+      optional<string>        server_full_version_string;
    };
    get_info_results get_info(const get_info_params&) const;
 
@@ -124,7 +136,22 @@ public:
       name                       producer_name;
    };
 
-   using account_resource_limit = chain::resource_limits::account_resource_limit;
+   // account_resource_info holds similar data members as in account_resource_limit, but decoupling making them independently to be refactored in future
+   struct account_resource_info {
+      int64_t used = 0;
+      int64_t available = 0;
+      int64_t max = 0;
+      optional<chain::block_timestamp_type> last_usage_update_time;    // optional for backward nodeos support
+      optional<int64_t> current_used;  // optional for backward nodeos support
+      void set( const chain::resource_limits::account_resource_limit& arl)
+      {
+         used = arl.used;
+         available = arl.available;
+         max = arl.max;
+         last_usage_update_time = arl.last_usage_update_time;
+         current_used = arl.current_used;
+      }
+   };
 
    struct get_account_results {
       name                       account_name;
@@ -141,8 +168,8 @@ public:
       int64_t                    net_weight = 0;
       int64_t                    cpu_weight = 0;
 
-      account_resource_limit     net_limit;
-      account_resource_limit     cpu_limit;
+      account_resource_info      net_limit;
+      account_resource_info      cpu_limit;
       int64_t                    ram_usage = 0;
 
       vector<permission>         permissions;
@@ -268,6 +295,12 @@ public:
 
    fc::variant get_block(const get_block_params& params) const;
 
+   struct get_block_info_params {
+      uint32_t block_num;
+   };
+
+   fc::variant get_block_info(const get_block_info_params& params) const;
+
    struct get_block_header_state_params {
       string block_num_or_id;
    };
@@ -293,6 +326,7 @@ public:
    struct get_table_rows_result {
       vector<fc::variant> rows; ///< one row per item, either encoded as hex String or JSON object
       bool                more = false; ///< true if last element in data is not the end and sizeof data() < limit
+      string              next_key; ///< fill lower_bound with this value to fetch more rows
    };
 
    get_table_rows_result get_table_rows( const get_table_rows_params& params )const;
@@ -413,7 +447,7 @@ public:
       name scope{ convert_to_type<uint64_t>(p.scope, "scope") };
 
       abi_serializer abis;
-      abis.set_abi(abi, abi_serializer_max_time);
+      abis.set_abi(abi, abi_serializer::create_yield_function( abi_serializer_max_time ) );
       bool primary = false;
       const uint64_t table_with_index = get_table_index_name(p, primary);
       const auto* t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(p.code, scope, p.table));
@@ -466,7 +500,7 @@ public:
 
                fc::variant data_var;
                if( p.json ) {
-                  data_var = abis.binary_to_variant( abis.get_table_type(p.table), data, abi_serializer_max_time, shorten_abi_errors );
+                  data_var = abis.binary_to_variant( abis.get_table_type(p.table), data, abi_serializer::create_yield_function( abi_serializer_max_time ), shorten_abi_errors );
                } else {
                   data_var = fc::variant( data );
                }
@@ -481,6 +515,7 @@ public:
             }
             if( itr != end_itr ) {
                result.more = true;
+               result.next_key = convert_to_string(itr->secondary_key, p.key_type, p.encode_type, "next_key - next lower bound");
             }
          };
 
@@ -503,7 +538,7 @@ public:
       uint64_t scope = convert_to_type<uint64_t>(p.scope, "scope");
 
       abi_serializer abis;
-      abis.set_abi(abi, abi_serializer_max_time);
+      abis.set_abi(abi, abi_serializer::create_yield_function( abi_serializer_max_time ));
       const auto* t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(p.code, name(scope), p.table));
       if( t_id != nullptr ) {
          const auto& idx = d.get_index<IndexType, chain::by_scope_primary>();
@@ -542,7 +577,7 @@ public:
 
                fc::variant data_var;
                if( p.json ) {
-                  data_var = abis.binary_to_variant( abis.get_table_type(p.table), data, abi_serializer_max_time, shorten_abi_errors );
+                  data_var = abis.binary_to_variant( abis.get_table_type(p.table), data, abi_serializer::create_yield_function( abi_serializer_max_time ), shorten_abi_errors );
                } else {
                   data_var = fc::variant( data );
                }
@@ -555,6 +590,7 @@ public:
             }
             if( itr != end_itr ) {
                result.more = true;
+               result.next_key = convert_to_string(itr->primary_key, p.key_type, p.encode_type, "next_key - next lower bound");
             }
          };
 
@@ -577,8 +613,9 @@ public:
 class read_write {
    controller& db;
    const fc::microseconds abi_serializer_max_time;
+   const bool api_accept_transactions;
 public:
-   read_write(controller& db, const fc::microseconds& abi_serializer_max_time);
+   read_write(controller& db, const fc::microseconds& abi_serializer_max_time, bool api_accept_transactions);
    void validate() const;
 
    using push_block_params = chain::signed_block;
@@ -625,13 +662,13 @@ public:
      using index_type = chain::index256_index;
      static auto function() {
         return [](const input_type& v) {
-            chain::key256_t k;
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wstrict-aliasing"
-            k[0] = ((uint128_t *)&v._hash)[0]; //0-127
-            k[1] = ((uint128_t *)&v._hash)[1]; //127-256
-#pragma GCC diagnostic pop
-            return k;
+            // The input is in big endian, i.e. f58262c8005bb64b8f99ec6083faf050c502d099d9929ae37ffed2fe1bb954fb
+            // fixed_bytes will convert the input to array of 2 uint128_t in little endian, i.e. 50f0fa8360ec998f4bb65b00c86282f5 fb54b91bfed2fe7fe39a92d999d002c5
+            // which is the format used by secondary index
+            uint8_t buffer[32];
+            memcpy(buffer, v.data(), 32);
+            fixed_bytes<32> fb(buffer); 
+            return chain::key256_t(fb.get_array());
         };
      }
  };
@@ -643,10 +680,13 @@ public:
      using index_type = chain::index256_index;
      static auto function() {
         return [](const input_type& v) {
-            chain::key256_t k;
-            memset(k.data(), 0, sizeof(k));
-            memcpy(k.data(), v._hash, sizeof(v._hash));
-            return k;
+            // The input is in big endian, i.e. 83a83a3876c64c33f66f33c54f1869edef5b5d4a000000000000000000000000
+            // fixed_bytes will convert the input to array of 2 uint128_t in little endian, i.e. ed69184fc5336ff6334cc676383aa883 0000000000000000000000004a5d5bef
+            // which is the format used by secondary index
+            uint8_t buffer[20];
+            memcpy(buffer, v.data(), 20);
+            fixed_bytes<20> fb(buffer); 
+            return chain::key256_t(fb.get_array());
         };
      }
  };
@@ -657,9 +697,14 @@ public:
      using index_type = chain::index256_index;
      static auto function() {
         return [](const input_type v) {
+            // The input is in little endian of uint256_t, i.e. fb54b91bfed2fe7fe39a92d999d002c550f0fa8360ec998f4bb65b00c86282f5
+            // the following will convert the input to array of 2 uint128_t in little endian, i.e. 50f0fa8360ec998f4bb65b00c86282f5 fb54b91bfed2fe7fe39a92d999d002c5
+            // which is the format used by secondary index
             chain::key256_t k;
-            k[0] = ((uint128_t *)&v)[0]; //0-127
-            k[1] = ((uint128_t *)&v)[1]; //127-256
+            uint8_t buffer[32];
+            boost::multiprecision::export_bits(v, buffer, 8, false);
+            memcpy(&k[0], buffer + 16, 16);
+            memcpy(&k[1], buffer, 16);
             return k;
         };
      }
@@ -681,9 +726,9 @@ public:
    void plugin_shutdown();
 
    chain_apis::read_only get_read_only_api() const { return chain_apis::read_only(chain(), get_abi_serializer_max_time()); }
-   chain_apis::read_write get_read_write_api() { return chain_apis::read_write(chain(), get_abi_serializer_max_time()); }
+   chain_apis::read_write get_read_write_api() { return chain_apis::read_write(chain(), get_abi_serializer_max_time(), api_accept_transactions()); }
 
-   void accept_block( const chain::signed_block_ptr& block );
+   bool accept_block( const chain::signed_block_ptr& block, const chain::block_id_type& id );
    void accept_transaction(const chain::packed_transaction_ptr& trx, chain::plugin_interface::next_function<chain::transaction_trace_ptr> next);
 
    bool block_is_on_preferred_chain(const chain::block_id_type& block_id);
@@ -710,6 +755,10 @@ public:
 
    chain::chain_id_type get_chain_id() const;
    fc::microseconds get_abi_serializer_max_time() const;
+   bool api_accept_transactions() const;
+   // set true by other plugins if any plugin allows transactions
+   bool accept_transactions() const;
+   void enable_accept_transactions();
 
    static void handle_guard_exception(const chain::guard_exception& e);
    void do_hard_replay(const variables_map& options);
@@ -727,16 +776,20 @@ private:
 FC_REFLECT( eosio::chain_apis::permission, (perm_name)(parent)(required_auth) )
 FC_REFLECT(eosio::chain_apis::empty, )
 FC_REFLECT(eosio::chain_apis::read_only::get_info_results,
-(server_version)(chain_id)(head_block_num)(last_irreversible_block_num)(last_irreversible_block_id)(head_block_id)(head_block_time)(head_block_producer)(virtual_block_cpu_limit)(virtual_block_net_limit)(block_cpu_limit)(block_net_limit)(server_version_string)(fork_db_head_block_num)(fork_db_head_block_id) )
+           (server_version)(chain_id)(head_block_num)(last_irreversible_block_num)(last_irreversible_block_id)
+           (head_block_id)(head_block_time)(head_block_producer)
+           (virtual_block_cpu_limit)(virtual_block_net_limit)(block_cpu_limit)(block_net_limit)
+           (server_version_string)(fork_db_head_block_num)(fork_db_head_block_id)(server_full_version_string) )
 FC_REFLECT(eosio::chain_apis::read_only::get_activated_protocol_features_params, (lower_bound)(upper_bound)(limit)(search_by_block_num)(reverse) )
 FC_REFLECT(eosio::chain_apis::read_only::get_activated_protocol_features_results, (activated_protocol_features)(more) )
 FC_REFLECT(eosio::chain_apis::read_only::get_block_params, (block_num_or_id))
+FC_REFLECT(eosio::chain_apis::read_only::get_block_info_params, (block_num))
 FC_REFLECT(eosio::chain_apis::read_only::get_block_header_state_params, (block_num_or_id))
 
 FC_REFLECT( eosio::chain_apis::read_write::push_transaction_results, (transaction_id)(processed) )
 
 FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_params, (json)(code)(scope)(table)(table_key)(lower_bound)(upper_bound)(limit)(key_type)(index_position)(encode_type)(reverse)(show_payer) )
-FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_result, (rows)(more) );
+FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_result, (rows)(more)(next_key) );
 
 FC_REFLECT( eosio::chain_apis::read_only::get_table_by_scope_params, (code)(table)(lower_bound)(upper_bound)(limit)(reverse) )
 FC_REFLECT( eosio::chain_apis::read_only::get_table_by_scope_result_row, (code)(scope)(table)(payer)(count));
@@ -755,6 +808,7 @@ FC_REFLECT( eosio::chain_apis::read_only::get_producer_schedule_result, (active)
 FC_REFLECT( eosio::chain_apis::read_only::get_scheduled_transactions_params, (json)(lower_bound)(limit) )
 FC_REFLECT( eosio::chain_apis::read_only::get_scheduled_transactions_result, (transactions)(more) );
 
+FC_REFLECT( eosio::chain_apis::read_only::account_resource_info, (used)(available)(max)(last_usage_update_time)(current_used) )
 FC_REFLECT( eosio::chain_apis::read_only::get_account_results,
             (account_name)(head_block_num)(head_block_time)(privileged)(last_code_update)(created)
             (core_liquid_balance)(ram_quota)(net_weight)(cpu_weight)(net_limit)(cpu_limit)(ram_usage)(permissions)

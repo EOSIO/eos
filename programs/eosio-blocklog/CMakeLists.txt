@@ -4,12 +4,6 @@ if( UNIX AND NOT APPLE )
   set(rt_library rt )
 endif()
 
-find_package( Gperftools QUIET )
-if( GPERFTOOLS_FOUND )
-    message( STATUS "Found gperftools; compiling eosio-blocklog with TCMalloc")
-    list( APPEND PLATFORM_SPECIFIC_LIBS tcmalloc )
-endif()
-
 target_include_directories(eosio-blocklog PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
 
 target_link_libraries( eosio-blocklog

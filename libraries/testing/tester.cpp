@@ -1,6 +1,7 @@
 #include <boost/test/unit_test.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 #include <eosio/testing/tester.hpp>
+#include <eosio/chain/block_log.hpp>
 #include <eosio/chain/wast_to_wasm.hpp>
 #include <eosio/chain/eosio_contract.hpp>
 #include <eosio/chain/generated_transaction_object.hpp>
@@ -241,15 +242,25 @@ namespace eosio { namespace testing {
       open( make_protocol_feature_set(), genesis );
    }
 
-   void base_tester::open( const fc::optional<chain_id_type>& expected_chain_id ) {
+   void base_tester::open( fc::optional<chain_id_type> expected_chain_id ) {
       open( make_protocol_feature_set(), expected_chain_id );
    }
 
-   template <typename Lambda>
-   void base_tester::open( protocol_feature_set&& pfs, const fc::optional<chain_id_type>& expected_chain_id, Lambda lambda ) {
-      control.reset( new controller(cfg, std::move(pfs), expected_chain_id) );
+   void base_tester::open( protocol_feature_set&& pfs, fc::optional<chain_id_type> expected_chain_id, const std::function<void()>& lambda ) {
+      if( !expected_chain_id ) {
+         expected_chain_id = controller::extract_chain_id_from_db( cfg.state_dir );
+         if( !expected_chain_id ) {
+            if( fc::is_regular_file( cfg.blocks_dir / "blocks.log" ) ) {
+               expected_chain_id = block_log::extract_chain_id( cfg.blocks_dir );
+            } else {
+               expected_chain_id = genesis_state().compute_chain_id();
+            }
+         }
+      }
+
+      control.reset( new controller(cfg, std::move(pfs), *expected_chain_id) );
       control->add_indices();
-      lambda();
+      if (lambda) lambda();
       chain_transactions.clear();
       control->accepted_block.connect([this]( const block_state_ptr& block_state ){
         FC_ASSERT( block_state->block );
@@ -269,19 +280,19 @@ namespace eosio { namespace testing {
       const auto& snapshot_chain_id = controller::extract_chain_id( *snapshot );
       snapshot->return_to_header();
       open(std::move(pfs), snapshot_chain_id, [&snapshot,&control=this->control]() {
-         control->startup([]() { return false; }, snapshot );
+         control->startup( [](){}, []() { return false; }, snapshot );
       });
    }
 
    void base_tester::open( protocol_feature_set&& pfs, const genesis_state& genesis ) {
       open(std::move(pfs), genesis.compute_chain_id(), [&genesis,&control=this->control]() {
-         control->startup( []() { return false; }, genesis );
+         control->startup( [](){}, []() { return false; }, genesis );
       });
    }
 
-   void base_tester::open( protocol_feature_set&& pfs, const fc::optional<chain_id_type>& expected_chain_id ) {
+   void base_tester::open( protocol_feature_set&& pfs, fc::optional<chain_id_type> expected_chain_id ) {
       open(std::move(pfs), expected_chain_id, [&control=this->control]() {
-         control->startup( []() { return false; } );
+         control->startup( [](){}, []() { return false; } );
       });
    }
 
@@ -300,7 +311,13 @@ namespace eosio { namespace testing {
       }
    }
 
-   signed_block_ptr base_tester::_produce_block( fc::microseconds skip_time, bool skip_pending_trxs) {
+   signed_block_ptr base_tester::_produce_block( fc::microseconds skip_time, bool skip_pending_trxs ) {
+      std::vector<transaction_trace_ptr> traces;
+      return _produce_block( skip_time, skip_pending_trxs, false, traces );
+   }
+
+   signed_block_ptr base_tester::_produce_block( fc::microseconds skip_time, bool skip_pending_trxs,
+                                                 bool no_throw, std::vector<transaction_trace_ptr>& traces ) {
       auto head = control->head_block_state();
       auto head_time = control->head_block_time();
       auto next_time = head_time + skip_time;
@@ -311,8 +328,9 @@ namespace eosio { namespace testing {
 
       if( !skip_pending_trxs ) {
          for( auto itr = unapplied_transactions.begin(); itr != unapplied_transactions.end();  ) {
-            auto trace = control->push_transaction( itr->trx_meta, fc::time_point::maximum(), DEFAULT_BILLED_CPU_TIME_US );
-            if(trace->except) {
+            auto trace = control->push_transaction( itr->trx_meta, fc::time_point::maximum(), DEFAULT_BILLED_CPU_TIME_US, true );
+            traces.emplace_back( trace );
+            if(!no_throw && trace->except) {
                trace->except->dynamic_rethrow_exception();
             }
             itr = unapplied_transactions.erase( itr );
@@ -321,8 +339,9 @@ namespace eosio { namespace testing {
          vector<transaction_id_type> scheduled_trxs;
          while ((scheduled_trxs = get_scheduled_transactions()).size() > 0 ) {
             for( const auto& trx : scheduled_trxs ) {
-               auto trace = control->push_scheduled_transaction( trx, fc::time_point::maximum(), DEFAULT_BILLED_CPU_TIME_US );
-               if( trace->except ) {
+               auto trace = control->push_scheduled_transaction( trx, fc::time_point::maximum(), DEFAULT_BILLED_CPU_TIME_US, true );
+               traces.emplace_back( trace );
+               if( !no_throw && trace->except ) {
                   trace->except->dynamic_rethrow_exception();
                }
             }
@@ -397,6 +416,10 @@ namespace eosio { namespace testing {
       last_produced_block[control->head_block_state()->header.producer] = control->head_block_state()->id;
 
       return control->head_block_state()->block;
+   }
+
+   signed_block_ptr base_tester::produce_block( std::vector<transaction_trace_ptr>& traces ) {
+      return _produce_block( fc::milliseconds(config::block_interval_ms), false, true, traces );
    }
 
    void base_tester::produce_blocks( uint32_t n, bool empty ) {
@@ -523,7 +546,7 @@ namespace eosio { namespace testing {
             fc::microseconds::maximum() :
             fc::microseconds( deadline - fc::time_point::now() );
       auto fut = transaction_metadata::start_recover_keys( ptrx, control->get_thread_pool(), control->get_chain_id(), time_limit );
-      auto r = control->push_transaction( fut.get(), deadline, billed_cpu_time_us );
+      auto r = control->push_transaction( fut.get(), deadline, billed_cpu_time_us, billed_cpu_time_us > 0 );
       if( r->except_ptr ) std::rethrow_exception( r->except_ptr );
       if( r->except ) throw *r->except;
       return r;
@@ -548,7 +571,7 @@ namespace eosio { namespace testing {
             fc::microseconds( deadline - fc::time_point::now() );
       auto ptrx = std::make_shared<packed_transaction>( trx, c );
       auto fut = transaction_metadata::start_recover_keys( ptrx, control->get_thread_pool(), control->get_chain_id(), time_limit );
-      auto r = control->push_transaction( fut.get(), deadline, billed_cpu_time_us );
+      auto r = control->push_transaction( fut.get(), deadline, billed_cpu_time_us, billed_cpu_time_us > 0 );
       if (no_throw) return r;
       if( r->except_ptr ) std::rethrow_exception( r->except_ptr );
       if( r->except)  throw *r->except;
@@ -632,7 +655,7 @@ namespace eosio { namespace testing {
                                    const variant_object& data )const { try {
       const auto& acnt = control->get_account(code);
       auto abi = acnt.get_abi();
-      chain::abi_serializer abis(abi, abi_serializer_max_time);
+      chain::abi_serializer abis(abi, abi_serializer::create_yield_function( abi_serializer_max_time ));
 
       string action_type_name = abis.get_action_type(acttype);
       FC_ASSERT( action_type_name != string(), "unknown action type ${a}", ("a",acttype) );
@@ -642,7 +665,7 @@ namespace eosio { namespace testing {
       act.account = code;
       act.name = acttype;
       act.authorization = auths;
-      act.data = abis.variant_to_binary(action_type_name, data, abi_serializer_max_time);
+      act.data = abis.variant_to_binary(action_type_name, data, abi_serializer::create_yield_function( abi_serializer_max_time ));
       return act;
    } FC_CAPTURE_AND_RETHROW() }
 
@@ -660,7 +683,7 @@ namespace eosio { namespace testing {
         );
 
       signed_transaction trx;
-      abi_serializer::from_variant(pretty_trx, trx, get_resolver(), abi_serializer_max_time);
+      abi_serializer::from_variant(pretty_trx, trx, get_resolver(), abi_serializer::create_yield_function( abi_serializer_max_time ));
       set_transaction_headers(trx);
       for(auto iter = keys.begin(); iter != keys.end(); iter++)
          trx.sign( *iter, control->get_chain_id() );
@@ -706,7 +729,7 @@ namespace eosio { namespace testing {
          );
 
       signed_transaction trx;
-      abi_serializer::from_variant(pretty_trx, trx, get_resolver(), abi_serializer_max_time);
+      abi_serializer::from_variant(pretty_trx, trx, get_resolver(), abi_serializer::create_yield_function( abi_serializer_max_time ));
       set_transaction_headers(trx);
 
       trx.sign( get_private_key( from, "active" ), control->get_chain_id() );
@@ -740,7 +763,7 @@ namespace eosio { namespace testing {
          );
 
       signed_transaction trx;
-      abi_serializer::from_variant(pretty_trx, trx, get_resolver(), abi_serializer_max_time);
+      abi_serializer::from_variant(pretty_trx, trx, get_resolver(), abi_serializer::create_yield_function( abi_serializer_max_time ));
       set_transaction_headers(trx);
 
       trx.sign( get_private_key( from, name(config::active_name).to_string() ), control->get_chain_id()  );
@@ -768,7 +791,7 @@ namespace eosio { namespace testing {
          );
 
       signed_transaction trx;
-      abi_serializer::from_variant(pretty_trx, trx, get_resolver(), abi_serializer_max_time);
+      abi_serializer::from_variant(pretty_trx, trx, get_resolver(), abi_serializer::create_yield_function( abi_serializer_max_time ));
       set_transaction_headers(trx);
 
       trx.sign( get_private_key( currency, name(config::active_name).to_string() ), control->get_chain_id()  );
@@ -1128,6 +1151,15 @@ namespace eosio { namespace testing {
       }
 
       preactivate_protocol_features( preactivations );
+   }
+
+   bool fc_exception_code_is::operator()( const fc::exception& ex ) {
+      bool match = (ex.code() == expected);
+      if( !match ) {
+         auto message = ex.get_log().at( 0 ).get_message();
+         BOOST_TEST_MESSAGE( "LOG: expected code: " << expected << ", actual code: " << ex.code() << ", message: " << message );
+      }
+      return match;
    }
 
    bool fc_exception_message_is::operator()( const fc::exception& ex ) {

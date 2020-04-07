@@ -2,7 +2,7 @@
 set -eo pipefail
 # variables
 echo "+++ $([[ "$BUILDKITE" == 'true' ]] && echo ':evergreen_tree: ')Configuring Environment"
-[[ -z "$CPUS" ]] && export CPUS=$(getconf _NPROCESSORS_ONLN)
+[[ -z "$JOBS" ]] && export JOBS=$(getconf _NPROCESSORS_ONLN)
 GIT_ROOT="$(dirname $BASH_SOURCE[0])/.."
 if [[ "$(uname)" == 'Linux' ]]; then
     . /etc/os-release
@@ -22,8 +22,8 @@ else
 fi
 # run tests
 set +e # defer ctest error handling to end
-echo "$ ctest -j $CPUS -LE _tests --output-on-failure -T Test"
-ctest -j $CPUS -LE _tests --output-on-failure -T Test
+echo "$ ctest -j $JOBS -LE _tests --output-on-failure -T Test"
+ctest -j $JOBS -LE _tests --output-on-failure -T Test
 EXIT_STATUS=$?
 echo 'Done running parallelizable tests.'
 exit $EXIT_STATUS

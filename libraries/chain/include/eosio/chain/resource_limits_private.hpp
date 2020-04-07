@@ -233,7 +233,7 @@ namespace eosio { namespace chain { namespace resource_limits {
        * real maximum block is less, this virtual number is only used for rate limiting users.
        *
        * It's lowest possible value is max_block_size * blocksize_average_window_ms / block_interval
-       * It's highest possible value is 1000 times its lowest possible value
+       * It's highest possible value is config::maximum_elastic_resource_multiplier (1000) times its lowest possible value
        *
        * This means that the most an account can consume during idle periods is 1000x the bandwidth
        * it is gauranteed under congestion.

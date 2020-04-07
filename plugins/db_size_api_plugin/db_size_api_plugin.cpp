@@ -28,11 +28,12 @@ void db_size_api_plugin::plugin_startup() {
    app().get_plugin<http_plugin>().add_api({
        CALL(db_size, this, get,
             INVOKE_R_V(this, get), 200),
+       CALL(db_size, this, get_reversible,
+            INVOKE_R_V(this, get_reversible), 200),
    });
 }
 
-db_size_stats db_size_api_plugin::get() {
-   const chainbase::database& db = app().get_plugin<chain_plugin>().chain().db();
+db_size_stats db_size_api_plugin::get_db_stats(const chainbase::database& db) {
    db_size_stats ret;
 
    ret.free_bytes = db.get_segment_manager()->get_free_memory();
@@ -44,6 +45,14 @@ db_size_stats db_size_api_plugin::get() {
       ret.indices.emplace_back(db_size_index_count{i.second, i.first});
 
    return ret;
+}
+
+db_size_stats db_size_api_plugin::get() {
+   return get_db_stats(app().get_plugin<chain_plugin>().chain().db());
+}
+
+db_size_stats db_size_api_plugin::get_reversible() {
+   return get_db_stats(app().get_plugin<chain_plugin>().chain().reversible_db());
 }
 
 #undef INVOKE_R_V

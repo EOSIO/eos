@@ -1,0 +1,105 @@
+{
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT ",
+    "version": "eosio::abi/1.1",
+    "types": [],
+    "structs": [
+        {
+            "name": "addhashobj",
+            "base": "",
+            "fields": [
+                {
+                    "name": "hashinput",
+                    "type": "string"
+                }
+            ]
+        },
+        {
+            "name": "addnumobj",
+            "base": "",
+            "fields": [
+                {
+                    "name": "input",
+                    "type": "uint64"
+                }
+            ]
+        },
+        {
+            "name": "hashobj",
+            "base": "",
+            "fields": [
+                {
+                    "name": "key",
+                    "type": "uint64"
+                },
+                {
+                    "name": "hash_input",
+                    "type": "string"
+                },
+                {
+                    "name": "sec256",
+                    "type": "checksum256"
+                },
+                {
+                    "name": "sec160",
+                    "type": "checksum160"
+                }
+            ]
+        },
+        {
+            "name": "numobj",
+            "base": "",
+            "fields": [
+                {
+                    "name": "key",
+                    "type": "uint64"
+                },
+                {
+                    "name": "sec64",
+                    "type": "uint64"
+                },
+                {
+                    "name": "sec128",
+                    "type": "uint128"
+                },
+                {
+                    "name": "secdouble",
+                    "type": "float64"
+                },
+                {
+                    "name": "secldouble",
+                    "type": "float128"
+                }
+            ]
+        }
+    ],
+    "actions": [
+        {
+            "name": "addhashobj",
+            "type": "addhashobj",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "addnumobj",
+            "type": "addnumobj",
+            "ricardian_contract": ""
+        }
+    ],
+    "tables": [
+        {
+            "name": "hashobjs",
+            "type": "hashobj",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        },
+        {
+            "name": "numobjs",
+            "type": "numobj",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        }
+    ],
+    "ricardian_clauses": [],
+    "variants": []
+}

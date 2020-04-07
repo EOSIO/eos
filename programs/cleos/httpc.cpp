@@ -71,8 +71,6 @@ namespace eosio { namespace client { namespace http {
       response_stream >> http_version;
       response_stream >> status_code;
 
-      EOS_ASSERT( status_code != 400, invalid_http_request, "The server has rejected the request as invalid!");
-
       std::string status_message;
       std::getline(response_stream, status_message);
       EOS_ASSERT( !(!response_stream || http_version.substr(0, 5) != "HTTP/"), invalid_http_response, "Invalid Response" );
@@ -189,7 +187,7 @@ namespace eosio { namespace client { namespace http {
                              bool print_response ) {
    std::string postjson;
    if( !postdata.is_null() ) {
-      postjson = print_request ? fc::json::to_pretty_string( postdata ) : fc::json::to_string( postdata );
+      postjson = print_request ? fc::json::to_pretty_string( postdata ) : fc::json::to_string( postdata, fc::time_point::maximum() );
    }
 
    const auto& url = cp.url;

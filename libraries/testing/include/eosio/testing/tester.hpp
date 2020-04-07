@@ -162,19 +162,20 @@ namespace eosio { namespace testing {
          void              execute_setup_policy(const setup_policy policy);
 
          void              close();
-         template <typename Lambda>
-         void              open( protocol_feature_set&& pfs, const fc::optional<chain_id_type>& expected_chain_id, Lambda lambda );
+         void              open( protocol_feature_set&& pfs, fc::optional<chain_id_type> expected_chain_id, const std::function<void()>& lambda );
          void              open( protocol_feature_set&& pfs, const snapshot_reader_ptr& snapshot );
          void              open( protocol_feature_set&& pfs, const genesis_state& genesis );
-         void              open( protocol_feature_set&& pfs, const fc::optional<chain_id_type>& expected_chain_id = {} );
+         void              open( protocol_feature_set&& pfs, fc::optional<chain_id_type> expected_chain_id = {} );
          void              open( const snapshot_reader_ptr& snapshot );
          void              open( const genesis_state& genesis );
-         void              open( const fc::optional<chain_id_type>& expected_chain_id = {} );
+         void              open( fc::optional<chain_id_type> expected_chain_id = {} );
          bool              is_same_chain( base_tester& other );
 
          virtual signed_block_ptr produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms) ) = 0;
          virtual signed_block_ptr produce_empty_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms) ) = 0;
          virtual signed_block_ptr finish_block() = 0;
+         // produce one block and return traces for all applied transactions, both failed and executed
+         signed_block_ptr     produce_block( std::vector<transaction_trace_ptr>& traces );
          void                 produce_blocks( uint32_t n = 1, bool empty = false );
          void                 produce_blocks_until_end_of_round();
          void                 produce_blocks_for_n_rounds(const uint32_t num_of_rounds = 1);
@@ -338,7 +339,7 @@ namespace eosio { namespace testing {
                   const auto& accnt = control->db().get<account_object, by_name>( name );
                   abi_def abi;
                   if( abi_serializer::to_abi( accnt.abi, abi )) {
-                     return abi_serializer( abi, abi_serializer_max_time );
+                     return abi_serializer( abi, abi_serializer::create_yield_function( abi_serializer_max_time ) );
                   }
                   return optional<abi_serializer>();
                } FC_RETHROW_EXCEPTIONS( error, "Failed to find or parse ABI for ${name}", ("name", name))
@@ -392,23 +393,31 @@ namespace eosio { namespace testing {
             controller::config cfg;
             cfg.blocks_dir      = tempdir.path() / config::default_blocks_dir_name;
             cfg.state_dir  = tempdir.path() / config::default_state_dir_name;
-            cfg.state_size = 1024*1024*8;
+            cfg.state_size = 1024*1024*16;
             cfg.state_guard_size = 0;
             cfg.reversible_cache_size = 1024*1024*8;
             cfg.reversible_guard_size = 0;
             cfg.contracts_console = true;
+            cfg.eosvmoc_config.cache_size = 1024*1024*8;
 
             for(int i = 0; i < boost::unit_test::framework::master_test_suite().argc; ++i) {
-               if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--wavm"))
-                  cfg.wasm_runtime = chain::wasm_interface::vm_type::wavm;
-               else if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--wabt"))
+               if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--wabt"))
                   cfg.wasm_runtime = chain::wasm_interface::vm_type::wabt;
+               else if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--eos-vm"))
+                  cfg.wasm_runtime = chain::wasm_interface::vm_type::eos_vm;
+               else if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--eos-vm-jit"))
+                  cfg.wasm_runtime = chain::wasm_interface::vm_type::eos_vm_jit;
+               else if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--eos-vm-oc"))
+                  cfg.wasm_runtime = chain::wasm_interface::vm_type::eos_vm_oc;
             }
             return {cfg, default_genesis()};
          }
 
       protected:
-         signed_block_ptr _produce_block( fc::microseconds skip_time, bool skip_pending_trxs = false );
+         signed_block_ptr _produce_block( fc::microseconds skip_time, bool skip_pending_trxs );
+         signed_block_ptr _produce_block( fc::microseconds skip_time, bool skip_pending_trxs,
+                                          bool no_throw, std::vector<transaction_trace_ptr>& traces );
+
          void             _start_block(fc::time_point block_time);
          signed_block_ptr _finish_block();
 
@@ -473,6 +482,8 @@ namespace eosio { namespace testing {
          }
       }
 
+      using base_tester::produce_block;
+
       signed_block_ptr produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms) )override {
          return _produce_block(skip_time, false);
       }
@@ -499,8 +510,8 @@ namespace eosio { namespace testing {
          try {
             if( num_blocks_to_producer_before_shutdown > 0 )
                produce_blocks( num_blocks_to_producer_before_shutdown );
-            if (!skip_validate)
-               BOOST_REQUIRE_EQUAL( validate(), true );
+            if (!skip_validate && std::uncaught_exceptions() == 0)
+               BOOST_CHECK_EQUAL( validate(), true );
          } catch( const fc::exception& e ) {
             wdump((e.to_detail_string()));
          }
@@ -534,10 +545,10 @@ namespace eosio { namespace testing {
          unique_ptr<controller> validating_node = std::make_unique<controller>(vcfg, make_protocol_feature_set(), genesis.compute_chain_id());
          validating_node->add_indices();
          if (use_genesis) {
-            validating_node->startup( []() { return false; }, genesis );
+            validating_node->startup( [](){}, []() { return false; }, genesis );
          }
          else {
-            validating_node->startup( []() { return false; } );
+            validating_node->startup( [](){}, []() { return false; } );
          }
          return validating_node;
       }
@@ -617,7 +628,7 @@ namespace eosio { namespace testing {
         validating_node.reset();
         validating_node = std::make_unique<controller>(vcfg, make_protocol_feature_set(), control->get_chain_id());
         validating_node->add_indices();
-        validating_node->startup( []() { return false; } );
+        validating_node->startup( [](){}, []() { return false; } );
 
         return ok;
       }
@@ -625,6 +636,18 @@ namespace eosio { namespace testing {
       unique_ptr<controller>   validating_node;
       uint32_t                 num_blocks_to_producer_before_shutdown = 0;
       bool                     skip_validate = false;
+   };
+
+   /**
+    * Utility predicate to check whether an fc::exception code is equivalent to a given value
+    */
+   struct fc_exception_code_is {
+      fc_exception_code_is( int64_t code )
+            : expected( code ) {}
+
+      bool operator()( const fc::exception& ex );
+
+      int64_t expected;
    };
 
    /**

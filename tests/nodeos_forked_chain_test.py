@@ -289,7 +289,8 @@ try:
             blockProducer=node.getBlockProducerByNum(blockNum)
 
         if producerToSlot[lastBlockProducer]["count"]!=inRowCountPerProducer:
-            Utils.errorExit("Producer %s, in slot %d, expected to produce %d blocks but produced %d blocks" % (blockProducer, slot, inRowCountPerProducer, producerToSlot[lastBlockProducer]["count"]))
+            Utils.errorExit("Producer %s, in slot %d, expected to produce %d blocks but produced %d blocks.  At block number %d." %
+                            (lastBlockProducer, slot, inRowCountPerProducer, producerToSlot[lastBlockProducer]["count"], blockNum-1))
 
         if blockProducer==productionCycle[0]:
             break
@@ -492,7 +493,7 @@ finally:
         Print("Compare Blocklog")
         cluster.compareBlockLogs()
         Print(Utils.FileDivider)
-        Print("Compare Blocklog")
+        Print("Print Blocklog")
         cluster.printBlockLog()
         Print(Utils.FileDivider)
 

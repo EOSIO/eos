@@ -42,11 +42,11 @@ namespace chain {
          friend T fc::variant::as()const;
 
          friend class eosio::chain_apis::read_only;
-         friend class chain_plugin;
 
          friend class eosio::net_plugin_impl;
          friend struct eosio::handshake_message;
          friend class block_log;
+         friend struct trim_data;
          friend class controller;
          friend struct controller_impl;
          friend class global_property_object;

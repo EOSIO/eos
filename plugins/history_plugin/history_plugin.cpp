@@ -258,9 +258,10 @@ namespace eosio {
 
                db.create<action_history_object>( [&]( auto& aho ) {
                   auto ps = fc::raw::pack_size( at );
-                  aho.packed_action_trace.resize(ps);
-                  datastream<char*> ds( aho.packed_action_trace.data(), ps );
-                  fc::raw::pack( ds, at );
+                  aho.packed_action_trace.resize_and_fill(ps, [&at](char* data, std::size_t size) {
+                     fc::datastream<char*> ds( data, size );
+                     fc::raw::pack( ds, at );
+                  });
                   aho.action_sequence_num = at.receipt->global_sequence;
                   aho.block_num = chain.head_block_num() + 1;
                   aho.block_time = chain.pending_block_time();
@@ -424,7 +425,7 @@ namespace eosio {
                                  start_itr->action_sequence_num,
                                  start_itr->account_sequence_num,
                                  a.block_num, a.block_time,
-                                 chain.to_variant_with_abi(t, abi_serializer_max_time)
+                                 chain.to_variant_with_abi(t, abi_serializer::create_yield_function( abi_serializer_max_time ))
                                  });
 
            end_time = fc::time_point::now();
@@ -484,20 +485,20 @@ namespace eosio {
               fc::datastream<const char*> ds( itr->packed_action_trace.data(), itr->packed_action_trace.size() );
               action_trace t;
               fc::raw::unpack( ds, t );
-              result.traces.emplace_back( chain.to_variant_with_abi(t, abi_serializer_max_time) );
+              result.traces.emplace_back( chain.to_variant_with_abi(t, abi_serializer::create_yield_function( abi_serializer_max_time )) );
 
               ++itr;
             }
 
             auto blk = chain.fetch_block_by_number( result.block_num );
             if( blk || chain.is_building_block() ) {
-               const vector<transaction_receipt>& receipts = blk ? blk->transactions : chain.get_pending_trx_receipts();
+               const auto& receipts = blk ? blk->transactions : chain.get_pending_trx_receipts();
                for (const auto &receipt: receipts) {
                     if (receipt.trx.contains<packed_transaction>()) {
                         auto &pt = receipt.trx.get<packed_transaction>();
                         if (pt.id() == result.id) {
                             fc::mutable_variant_object r("receipt", receipt);
-                            r("trx", chain.to_variant_with_abi(pt.get_signed_transaction(), abi_serializer_max_time));
+                            r("trx", chain.to_variant_with_abi(pt.get_signed_transaction(), abi_serializer::create_yield_function( abi_serializer_max_time )));
                             result.trx = move(r);
                             break;
                         }
@@ -525,7 +526,7 @@ namespace eosio {
                         result.block_num = *p.block_num_hint;
                         result.block_time = blk->timestamp;
                         fc::mutable_variant_object r("receipt", receipt);
-                        r("trx", chain.to_variant_with_abi(pt.get_signed_transaction(), abi_serializer_max_time));
+                        r("trx", chain.to_variant_with_abi(pt.get_signed_transaction(), abi_serializer::create_yield_function( abi_serializer_max_time )));
                         result.trx = move(r);
                         found = true;
                         break;

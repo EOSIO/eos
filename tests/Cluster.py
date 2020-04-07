@@ -35,6 +35,38 @@ class PFSetupPolicy:
                policy == PFSetupPolicy.PREACTIVATE_FEATURE_ONLY or \
                policy == PFSetupPolicy.FULL
 
+# Class for generating distinct names for many accounts
+class NamedAccounts:
+
+    def __init__(self, cluster, numAccounts):
+        Utils.Print("NamedAccounts %d" % (numAccounts))
+        self.numAccounts=numAccounts
+        self.accounts=cluster.createAccountKeys(numAccounts)
+        if self.accounts is None:
+            Utils.errorExit("FAILURE - create keys")
+        accountNum = 0
+        for account in self.accounts:
+            Utils.Print("NamedAccounts Name for %d" % (accountNum))
+            account.name=self.setName(accountNum)
+            accountNum+=1
+
+    def setName(self, num):
+        retStr="test"
+        digits=[]
+        maxDigitVal=5
+        maxDigits=8
+        temp=num
+        while len(digits) < maxDigits:
+            digit=(num % maxDigitVal)+1
+            num=int(num/maxDigitVal)
+            digits.append(digit)
+
+        digits.reverse()
+        retStr += "".join(map(str, digits))
+
+        Utils.Print("NamedAccounts Name for %d is %s" % (temp, retStr))
+        return retStr
+
 # pylint: disable=too-many-instance-attributes
 # pylint: disable=too-many-public-methods
 class Cluster(object):
@@ -144,7 +176,7 @@ class Cluster(object):
     # pylint: disable=too-many-branches
     # pylint: disable=too-many-statements
     def launch(self, pnodes=1, unstartedNodes=0, totalNodes=1, prodCount=1, topo="mesh", delay=1, onlyBios=False, dontBootstrap=False,
-               totalProducers=None, sharedProducers=0, extraNodeosArgs=None, useBiosBootFile=True, specificExtraNodeosArgs=None, onlySetProds=False,
+               totalProducers=None, sharedProducers=0, extraNodeosArgs=" --http-max-response-time-ms 990000 ", useBiosBootFile=True, specificExtraNodeosArgs=None, onlySetProds=False,
                pfSetupPolicy=PFSetupPolicy.FULL, alternateVersionLabelsFile=None, associatedNodeLabels=None, loadSystemContract=True):
         """Launch cluster.
         pnodes: producer nodes count
@@ -1078,7 +1110,7 @@ class Cluster(object):
         wasmFile="%s.wasm" % (contract)
         abiFile="%s.abi" % (contract)
         Utils.Print("Publish %s contract" % (contract))
-        trans=biosNode.publishContract(eosioAccount.name, contractDir, wasmFile, abiFile, waitForTransBlock=True)
+        trans=biosNode.publishContract(eosioAccount, contractDir, wasmFile, abiFile, waitForTransBlock=True)
         if trans is None:
             Utils.Print("ERROR: Failed to publish contract %s." % (contract))
             return None
@@ -1207,7 +1239,7 @@ class Cluster(object):
         wasmFile="%s.wasm" % (contract)
         abiFile="%s.abi" % (contract)
         Utils.Print("Publish %s contract" % (contract))
-        trans=biosNode.publishContract(eosioTokenAccount.name, contractDir, wasmFile, abiFile, waitForTransBlock=True)
+        trans=biosNode.publishContract(eosioTokenAccount, contractDir, wasmFile, abiFile, waitForTransBlock=True)
         if trans is None:
             Utils.Print("ERROR: Failed to publish contract %s." % (contract))
             return None
@@ -1263,7 +1295,7 @@ class Cluster(object):
             wasmFile="%s.wasm" % (contract)
             abiFile="%s.abi" % (contract)
             Utils.Print("Publish %s contract" % (contract))
-            trans=biosNode.publishContract(eosioAccount.name, contractDir, wasmFile, abiFile, waitForTransBlock=True)
+            trans=biosNode.publishContract(eosioAccount, contractDir, wasmFile, abiFile, waitForTransBlock=True)
             if trans is None:
                 Utils.Print("ERROR: Failed to publish contract %s." % (contract))
                 return None
@@ -1394,9 +1426,9 @@ class Cluster(object):
         time.sleep(1) # Give processes time to stand down
         return True
 
-    def relaunchEosInstances(self, cachePopen=False):
+    def relaunchEosInstances(self, cachePopen=False, nodeArgs=""):
 
-        chainArg=self.__chainSyncStrategy.arg
+        chainArg=self.__chainSyncStrategy.arg + " " + nodeArgs
 
         newChain= False if self.__chainSyncStrategy.name in [Utils.SyncHardReplayTag, Utils.SyncNoneTag] else True
         for i in range(0, len(self.nodes)):

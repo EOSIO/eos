@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+from testUtils import Account
 from testUtils import Utils
 from Cluster import Cluster
 from WalletMgr import WalletMgr
@@ -325,7 +326,7 @@ try:
     wasmFile="eosio.token.wasm"
     abiFile="eosio.token.abi"
     Print("Publish contract")
-    trans=node.publishContract(currencyAccount.name, contractDir, wasmFile, abiFile, waitForTransBlock=True)
+    trans=node.publishContract(currencyAccount, contractDir, wasmFile, abiFile, waitForTransBlock=True)
     if trans is None:
         cmdError("%s set contract currency1111" % (ClientName))
         errorExit("Failed to publish contract.")
@@ -598,18 +599,49 @@ try:
     if actual != expected:
         errorExit("FAILURE - Wrong currency1111 balance (expected=%s, actual=%s)" % (str(expected), str(actual)), raw=True)
 
+    Print("push transfer action to currency1111 contract with sign skipping option enabled")
+    data="{\"from\":\"currency1111\",\"to\":\"defproducera\",\"quantity\":"
+    data +="\"00.0001 CUR\",\"memo\":\"test\"}"
+    opts="-s -d --permission currency1111@active"
+    trans=node.pushMessage(contract, action, data, opts)
+
+    try:
+        assert(not trans[1]["signatures"])
+    except (AssertionError, KeyError) as _:
+        Print("ERROR: Expected signatures array to be empty due to skipping option enabled.")
+        raise
+
+    try:
+        assert(trans[1]["actions"][0]["data"]["from"] == "currency1111")
+        assert(trans[1]["actions"][0]["data"]["to"] == "defproducera")
+        assert(trans[1]["actions"][0]["data"]["quantity"] == "0.0001 CUR")
+        assert(trans[1]["actions"][0]["data"]["memo"] == "test")
+    except (AssertionError, KeyError) as _:
+        Print("ERROR: Expecting unpacked data fields on push transfer action json result.")
+        raise
+
+    result=node.pushTransaction(trans[1], None)
+
+    amountStr=node.getTableAccountBalance("currency1111", currencyAccount.name)
+
+    expected="99999.9999 CUR"
+    actual=amountStr
+    if actual != expected:
+        errorExit("FAILURE - Wrong currency1111 balance (expectedgma=%s, actual=%s)" % (str(expected), str(actual)), raw=True)
+
     Print("Locking wallet \"%s\"." % (defproduceraWallet.name))
     if not walletMgr.lockWallet(defproduceraWallet):
         cmdError("%s wallet lock" % (ClientName))
         errorExit("Failed to lock wallet %s" % (defproduceraWallet.name))
 
 
+    simpleDB = Account("simpledb")
     contractDir="contracts/simpledb"
     wasmFile="simpledb.wasm"
     abiFile="simpledb.abi"
     Print("Setting simpledb contract without simpledb account was causing core dump in %s." % (ClientName))
     Print("Verify %s generates an error, but does not core dump." % (ClientName))
-    retMap=node.publishContract("simpledb", contractDir, wasmFile, abiFile, shouldFail=True)
+    retMap=node.publishContract(simpleDB, contractDir, wasmFile, abiFile, shouldFail=True)
     if retMap is None:
         errorExit("Failed to publish, but should have returned a details map")
     if retMap["returncode"] == 0 or retMap["returncode"] == 139: # 139 SIGSEGV
@@ -618,14 +650,13 @@ try:
         Print("Test successful, %s returned error code: %d" % (ClientName, retMap["returncode"]))
 
     Print("set permission")
-    code="currency1111"
     pType="transfer"
     requirement="active"
-    trans=node.setPermission(testeraAccount.name, code, pType, requirement, waitForTransBlock=True, exitOnError=True)
+    trans=node.setPermission(testeraAccount, currencyAccount, pType, requirement, waitForTransBlock=True, exitOnError=True)
 
     Print("remove permission")
     requirement="null"
-    trans=node.setPermission(testeraAccount.name, code, pType, requirement, waitForTransBlock=True, exitOnError=True)
+    trans=node.setPermission(testeraAccount, currencyAccount, pType, requirement, waitForTransBlock=True, exitOnError=True)
 
     Print("Locking all wallets.")
     if not walletMgr.lockAllWallets():

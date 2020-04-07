@@ -22,6 +22,16 @@ errorExit=Utils.errorExit
 
 from core_symbol import CORE_SYMBOL
 
+def verifyBlockLog(expected_block_num, trimmedBlockLog):
+    firstBlockNum = expected_block_num
+    for block in trimmedBlockLog:
+        assert 'block_num' in block, print("ERROR: eosio-blocklog didn't return block output")
+        block_num = block['block_num']
+        assert block_num == expected_block_num
+        expected_block_num += 1
+    Print("Block_log contiguous from block number %d to %d" % (firstBlockNum, expected_block_num - 1))
+
+
 appArgs=AppArgs()
 args = TestHelper.parse_args({"--dump-error-details","--keep-logs","-v","--leave-running","--clean-run"})
 Utils.Debug=args.v
@@ -33,7 +43,7 @@ dontKill=args.leave_running
 prodCount=2
 killAll=args.clean_run
 walletPort=TestHelper.DEFAULT_WALLET_PORT
-totalNodes=pnodes
+totalNodes=pnodes+1
 
 walletMgr=WalletMgr(True, port=walletPort)
 testSuccessful=False
@@ -129,6 +139,69 @@ try:
     beforeEndOfBlockLog=lib-20
     Print("Block num %d will definitely be at least one block behind the most recent entry in block log, so --trim will work" % (beforeEndOfBlockLog))
     output=cluster.getBlockLog(0, blockLogAction=BlockLogAction.trim, last=beforeEndOfBlockLog, throwException=True)
+
+    Print("Kill the non production node, we want to verify its block log")
+    cluster.getNode(2).kill(signal.SIGTERM)
+
+    Print("Trim off block num 1 to remove genesis block from block log.")
+    output=cluster.getBlockLog(2, blockLogAction=BlockLogAction.trim, first=2, throwException=True)
+
+    Print("Smoke test the trimmed block log.")
+    output=cluster.getBlockLog(2, blockLogAction=BlockLogAction.smoke_test)
+
+    Print("Analyze block log.")
+    trimmedBlockLog=cluster.getBlockLog(2, blockLogAction=BlockLogAction.return_blocks)
+
+    verifyBlockLog(2, trimmedBlockLog)
+
+    # relaunch the node with the truncated block log and ensure it catches back up with the producers
+    current_head_block_num = node1.getInfo()["head_block_num"]
+    cluster.getNode(2).relaunch(2, cachePopen=True)
+    assert cluster.getNode(2).waitForBlock(current_head_block_num, timeout=60, reportInterval=15)
+
+    # ensure it continues to advance
+    current_head_block_num = node1.getInfo()["head_block_num"]
+    assert cluster.getNode(2).waitForBlock(current_head_block_num, timeout=60, reportInterval=15)
+    info = cluster.getNode(2).getInfo()
+    block = cluster.getNode(2).getBlock(2)
+    assert block is not None
+    block = cluster.getNode(2).getBlock(1, silentErrors=True)
+    assert block is None
+
+    # verify it shuts down cleanly
+    cluster.getNode(2).interruptAndVerifyExitStatus()
+
+    firstBlock = info["last_irreversible_block_num"]
+    Print("Trim off block num %s." % (firstBlock))
+    output=cluster.getBlockLog(2, blockLogAction=BlockLogAction.trim, first=firstBlock, throwException=True)
+
+    Print("Smoke test the trimmed block log.")
+    output=cluster.getBlockLog(2, blockLogAction=BlockLogAction.smoke_test)
+
+    Print("Analyze block log.")
+    trimmedBlockLog=cluster.getBlockLog(2, blockLogAction=BlockLogAction.return_blocks)
+
+    verifyBlockLog(firstBlock, trimmedBlockLog)
+
+    # relaunch the node with the truncated block log and ensure it catches back up with the producers
+    current_head_block_num = node1.getInfo()["head_block_num"]
+    assert current_head_block_num >= info["head_block_num"]
+    cluster.getNode(2).relaunch(2, cachePopen=True)
+    assert cluster.getNode(2).waitForBlock(current_head_block_num, timeout=60, reportInterval=15)
+
+    # ensure it continues to advance
+    current_head_block_num = node1.getInfo()["head_block_num"]
+    assert cluster.getNode(2).waitForBlock(current_head_block_num, timeout=60, reportInterval=15)
+    info = cluster.getNode(2).getInfo()
+    block = cluster.getNode(2).getBlock(firstBlock)
+    assert block is not None
+    block = cluster.getNode(2).getBlock(firstBlock - 1, silentErrors=True)
+    assert block is None
+    block = cluster.getNode(2).getBlock(1, silentErrors=True)
+    assert block is None
+
+    # verify it shuts down cleanly
+    cluster.getNode(2).interruptAndVerifyExitStatus()
 
     testSuccessful=True
 

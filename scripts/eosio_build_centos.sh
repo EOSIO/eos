@@ -12,7 +12,7 @@ echo "Disk space available: ${DISK_AVAIL}G"
 
 echo ""
 
-# Repo necessary for rh-python3 and devtoolset-8
+# Repo necessary for rh-python3, devtoolset-8 and llvm-toolset-7.0
 ensure-scl
 # GCC8 for Centos / Needed for CMAKE install even if we're pinning
 ensure-devtoolset
