@@ -1,5 +1,3 @@
-# chain_plugin
-
 ## Description
 
 The `chain_plugin` is a core plugin required to process and aggregate chain data on an EOSIO node.
@@ -73,7 +71,8 @@ Config Options for eosio::chain_plugin:
                                         application config dir)
   --checkpoint arg                      Pairs of [BLOCK_NUM,BLOCK_ID] that 
                                         should be enforced as checkpoints.
-  --wasm-runtime wavm/wabt              Override default WASM runtime
+  --wasm-runtime eos-vm|eos-vm-jit      Override default WASM runtime (wabt)
+  --eos-vm-oc-enable                    Enable optimized compilation in WASM
   --abi-serializer-max-time-ms arg (=15000)
                                         Override default maximum ABI 
                                         serialization time allowed in ms

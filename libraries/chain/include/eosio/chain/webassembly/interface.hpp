@@ -277,7 +277,7 @@ namespace eosio { namespace chain { namespace webassembly {
          REGISTER_LEGACY_CF_HOST_FUNCTION(read_action_data);
          REGISTER_CF_HOST_FUNCTION(action_data_size);
          REGISTER_CF_HOST_FUNCTION(current_receiver);
-         REGISTER_LEGACY_CF_HOST_FUNCTION(set_action_return_value);
+         REGISTER_LEGACY_HOST_FUNCTION(set_action_return_value);
 
          // console api
          void prints(null_terminated_ptr);

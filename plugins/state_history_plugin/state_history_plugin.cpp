@@ -241,6 +241,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          get_status_result_v0 result;
          result.head              = {chain.head_block_num(), chain.head_block_id()};
          result.last_irreversible = {chain.last_irreversible_block_num(), chain.last_irreversible_block_id()};
+         result.chain_id          = chain.get_chain_id();
          if (plugin->trace_log) {
             result.trace_begin_block = plugin->trace_log->begin_block();
             result.trace_end_block   = plugin->trace_log->end_block();

@@ -290,7 +290,7 @@ try:
 
         if producerToSlot[lastBlockProducer]["count"]!=inRowCountPerProducer:
             Utils.errorExit("Producer %s, in slot %d, expected to produce %d blocks but produced %d blocks.  At block number %d." %
-                            (blockProducer, slot, inRowCountPerProducer, producerToSlot[lastBlockProducer]["count"], blockNum))
+                            (lastBlockProducer, slot, inRowCountPerProducer, producerToSlot[lastBlockProducer]["count"], blockNum-1))
 
         if blockProducer==productionCycle[0]:
             break

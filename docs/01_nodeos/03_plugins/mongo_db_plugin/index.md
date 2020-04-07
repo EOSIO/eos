@@ -1,5 +1,3 @@
-# mongo_db_plugin
-
 [[warning | Deprecation Notice]]
 | The `mongo_db_plugin` is deprecated and will no longer be maintained. Please refer to the [`state_history_plugin`](../state_history_plugin/index.md) and the [`history-tools`](../state_history_plugin/index.md#history-tools) for better options to archive blockchain data.
 

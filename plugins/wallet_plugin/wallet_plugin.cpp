@@ -42,9 +42,10 @@ void wallet_plugin::plugin_initialize(const variables_map& options) {
       if (options.count("wallet-dir")) {
          auto dir = options.at("wallet-dir").as<boost::filesystem::path>();
          if (dir.is_relative())
-            wallet_manager_ptr->set_dir(app().data_dir() / dir);
-         else
-            wallet_manager_ptr->set_dir(dir);
+            dir = app().data_dir() / dir;
+         if( !bfs::exists(dir) )
+            bfs::create_directories(dir);
+         wallet_manager_ptr->set_dir(dir);
       }
       if (options.count("unlock-timeout")) {
          auto timeout = options.at("unlock-timeout").as<int64_t>();

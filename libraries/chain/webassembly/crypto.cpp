@@ -3,18 +3,6 @@
 #include <eosio/chain/transaction_context.hpp>
 
 namespace eosio { namespace chain { namespace webassembly {
-   template<class Encoder, class Context> auto encode(Context& context, char* data, uint32_t datalen) {
-      Encoder e;
-      const size_t bs = eosio::chain::config::hashing_checktime_block_size;
-      while ( datalen > bs ) {
-         e.write( data, bs );
-         data += bs;
-         datalen -= bs;
-         context.trx_context.checktime();
-      }
-      e.write( data, datalen );
-      return e.result();
-   }
 
    void interface::assert_recover_key( legacy_ptr<const fc::sha256> digest,
                                        legacy_array_ptr<char> sig,
@@ -77,38 +65,38 @@ namespace eosio { namespace chain { namespace webassembly {
    }
 
    void interface::assert_sha256(legacy_array_ptr<char> data, legacy_ptr<const fc::sha256> hash_val) const {
-      auto result = encode<fc::sha256::encoder>( context, data.ref().data(), data.ref().size() );
+      auto result = context.trx_context.hash_with_checktime<fc::sha256>( data.ref().data(), data.ref().size() );
       EOS_ASSERT( result == hash_val.ref(), crypto_api_exception, "hash mismatch" );
    }
 
    void interface::assert_sha1(legacy_array_ptr<char> data, legacy_ptr<const fc::sha1> hash_val) const {
-      auto result = encode<fc::sha1::encoder>( context, data.ref().data(), data.ref().size() );
+      auto result = context.trx_context.hash_with_checktime<fc::sha1>( data.ref().data(), data.ref().size() );
       EOS_ASSERT( result == hash_val.ref(), crypto_api_exception, "hash mismatch" );
    }
 
    void interface::assert_sha512(legacy_array_ptr<char> data, legacy_ptr<const fc::sha512> hash_val) const {
-      auto result = encode<fc::sha512::encoder>( context, data.ref().data(), data.ref().size() );
+      auto result = context.trx_context.hash_with_checktime<fc::sha512>( data.ref().data(), data.ref().size() );
       EOS_ASSERT( result == hash_val.ref(), crypto_api_exception, "hash mismatch" );
    }
 
    void interface::assert_ripemd160(legacy_array_ptr<char> data, legacy_ptr<const fc::ripemd160> hash_val) const {
-      auto result = encode<fc::ripemd160::encoder>( context, data.ref().data(), data.ref().size() );
+      auto result = context.trx_context.hash_with_checktime<fc::ripemd160>( data.ref().data(), data.ref().size() );
       EOS_ASSERT( result == hash_val.ref(), crypto_api_exception, "hash mismatch" );
    }
 
    void interface::sha1(legacy_array_ptr<char> data, legacy_ptr<fc::sha1> hash_val) const {
-      hash_val.ref() = encode<fc::sha1::encoder>( context, data.ref().data(), data.ref().size() );
+      hash_val.ref() = context.trx_context.hash_with_checktime<fc::sha1>( data.ref().data(), data.ref().size() );
    }
 
    void interface::sha256(legacy_array_ptr<char> data, legacy_ptr<fc::sha256> hash_val) const {
-      hash_val.ref() = encode<fc::sha256::encoder>( context, data.ref().data(), data.ref().size() );
+      hash_val.ref() = context.trx_context.hash_with_checktime<fc::sha256>( data.ref().data(), data.ref().size() );
    }
 
    void interface::sha512(legacy_array_ptr<char> data, legacy_ptr<fc::sha512> hash_val) const {
-      hash_val.ref() = encode<fc::sha512::encoder>( context, data.ref().data(), data.ref().size() );
+      hash_val.ref() = context.trx_context.hash_with_checktime<fc::sha512>( data.ref().data(), data.ref().size() );
    }
 
    void interface::ripemd160(legacy_array_ptr<char> data, legacy_ptr<fc::ripemd160> hash_val) const {
-      hash_val.ref() = encode<fc::ripemd160::encoder>( context, data.ref().data(), data.ref().size() );
+      hash_val.ref() = context.trx_context.hash_with_checktime<fc::ripemd160>( data.ref().data(), data.ref().size() );
    }
 }}} // ns eosio::chain::webassembly

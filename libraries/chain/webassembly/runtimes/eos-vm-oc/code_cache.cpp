@@ -262,8 +262,11 @@ code_cache_base::code_cache_base(const boost::filesystem::path data_dir, const e
       for(unsigned i = 0; i < number_entries; ++i) {
          code_descriptor cd;
          fc::raw::unpack(ds, cd);
-         if(cd.codegen_version != 0)
+         if(cd.codegen_version != 0) {
+            allocator->deallocate(code_mapping + cd.code_begin);
+            allocator->deallocate(code_mapping + cd.initdata_begin);
             continue;
+         }
          _cache_index.push_back(std::move(cd));
       }
       allocator->deallocate(code_mapping + cache_header.serialized_descriptor_index);

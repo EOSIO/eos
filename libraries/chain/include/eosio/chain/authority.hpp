@@ -29,8 +29,8 @@ struct shared_public_key {
       return std::move(public_key_storage);
    }
 
-   operator string() const {
-      return (string)this->operator public_key_type();
+   std::string to_string() const {
+      return this->operator public_key_type().to_string();
    }
 
    shared_public_key_data pubkey;
