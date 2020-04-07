@@ -75,7 +75,7 @@ namespace eosio { namespace chain { namespace webassembly {
          EOS_VM_INVOKE_ON_ALL([&](auto&& arg, auto&&... rest) {
             using namespace eosio::vm;
             using arg_t = decltype(arg);
-            if constexpr (is_reference_proxy_type_v<arg_t>)
+            if constexpr (is_reference_proxy_type_v<arg_t>) {
                if constexpr (is_span_type_v<dependent_type_t<arg_t>>) {
                   using dep_t = dependent_type_t<arg_t>;
                   const auto& s = (dep_t&)arg;
@@ -83,7 +83,12 @@ namespace eosio { namespace chain { namespace webassembly {
                         wasm_execution_error, "length will overflow" );
                   volatile auto check = *(reinterpret_cast<const char*>(arg.original_ptr) + s.size_bytes() - 1);
                   ignore_unused_variable_warning(check);
+               } else {
+                  EOS_ASSERT(arg.original_ptr != ctx.get_interface().get_memory(), wasm_execution_error, "references cannot be created for null pointers");
                }
+            } else if constexpr (vm::is_reference_type_v<arg_t>) {
+               EOS_ASSERT(arg.value != ctx.get_interface().get_memory(), wasm_execution_error, "references cannot be created for null pointers");
+            }
          }));
 
    EOS_VM_PRECONDITION(context_free_check,
