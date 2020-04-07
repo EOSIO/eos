@@ -121,6 +121,8 @@ class EmptyScope:
             debug("%sEmptyScope(%s).read - %s find end current: %s, end: %s" % (self.indent, self.__class__.__name__, self.name, self.current, self.end))
             pdesc = str(self.parent_scope) if self.parent_scope is not None else "<no parent scope>"
             assert self.end != -1, "Could not find \"%s\" in \"%s\" - parent scope - %s" % (EmptyScope.end_char, self.content[self.current:], pdesc)
+            if self.end < self.current:
+                assert self.end >= self.current, "End can't be before current"
         debug("%sEmptyScope(%s).read - %s - Done at %s" % (self.indent, self.__class__.__name__, self.name, self.end))
 
     def add(self, child):
@@ -146,6 +148,7 @@ class EmptyScope:
             if possible > all_start and possible < all_end:
                 possible = self.content.find(EmptyScope.end_char, all_end + 1)
         debug("%sEmptyScope.find_possible_end current=%s  possible end=%s" % (self.indent, self.current, possible))
+
         return possible
 
     def next_scope(self, end = None):
@@ -217,17 +220,48 @@ class EmptyScope:
         desc += indent + "  }\n"
         return desc
 
-def create_scope(type, name, inherit, start, content, parent_scope):
+def allocate_scope(type, name, inherit, start, content, parent_scope):
     indent = parent_scope.indent + " > " if parent_scope is not None else " > "
     debug("%screate_scope" % (indent))
     if type == EmptyScope.namespace_str:
         return Namespace(name, inherit, start, content, parent_scope)
     elif type == EmptyScope.class_str or type == EmptyScope.struct_str:
-        return ClassStruct(name, inherit, start, content, parent_scope, is_enum = False)
+        return ClassStruct(name, inherit, start, content, parent_scope, is_enum=False)
     elif type.startswith(EmptyScope.enum_str):
-        return ClassStruct(name, inherit, start, content, parent_scope, is_enum = True)
+        return ClassStruct(name, inherit, start, content, parent_scope, is_enum=True)
     else:
         assert False, "Script does not account for type = \"%s\" found in \"%s\"" % (type, content[start:])
+
+
+def create_scope(type, name, inherit, start, content, parent_scope):
+    pscope = parent_scope
+    elements = name.split('::')
+    top_scope = None
+
+    for nname in elements:
+        if nname in pscope.children:
+            new_scope = pscope.children[nname]
+            new_scope.content = content
+            assert start >= new_scope.start, "New scope must start must be greater than prior start"
+            new_scope.start = start
+            new_scope.current = start + 1
+            new_scope.end = None
+
+        else:
+            new_scope = allocate_scope(type, nname, inherit, start, content, pscope)
+
+        if top_scope is None:
+            top_scope = new_scope
+        else:
+            pscope.add(new_scope)
+
+        pscope = new_scope
+
+    return (top_scope, new_scope)
+
+
+
+
 
 class ClassStruct(EmptyScope):
     field_pattern = re.compile(r'\n\s*?(?:mutable\s+)?(%s\w[\w:]*(?:\s*<\s*%s\w[\w:\s.,]*\s*(?:\s*<\s*%s\w[\w:]*\s*(?:\s*<\s*%s\w[\w:\s.,]*\s*(?:,\s*%s\w[\w:\s.,]*\s*)*>\s*)?(?:,\s*%s\w[\w:]*\s*(?:\s*<\s*%s\w[\w:\s.,]*\s*(?:,\s*%s\w[\w:\s.,]*\s*)*>\s*)?)?>\s*)?(?:,\s*%s\w[\w:]*\s*(?:\s*<\s*%s\w[\w:\s.,]*\s*(?:\s*<\s*%s\w[\w:]*\s*(?:,\s*%s\w[\w:\s.,]*\s*)*>\s*)?(?:,\s*%s\w[\w:]*\s*(?:\s*<\s*%s\w[\w:\s.,]*\s*(?:,\s*%s\w[\w:\s.,]*\s*)*>\s*)?)?>\s*)?)?>\s*)?)(?:\*\s+|\s+\*|\s+)(\w+)\s*(?:;|=\s*[-]?\w[\w:]*(?:\s*[-/\*\+]\s*[-]?\w[\w:]*)*\s*;|=\s*(?:\w[\w:]*(?:<[^\n;]>)?)?(?:{|(?:\([^\)]*\)?|(?:\"[^\"]*\")?)\s*;)|\s*{[^\}]*}\s*;)' % (EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern), re.MULTILINE | re.DOTALL)
@@ -370,18 +404,22 @@ class ClassStruct(EmptyScope):
             new_scope = create_scope(type, name, inherit, start, self.content, self)
         else:
             debug("%sClassStruct.next_scope found EmptyScope (%s) at %d, next scope at %s" % (self.indent, type, generic_scope_start, start))
-            new_scope = EmptyScope("", generic_scope_start, self.content, self)
+            empty_scope = EmptyScope("", generic_scope_start, self.content, self)
+            new_scope = (empty_scope, empty_scope)
 
-        self.add_fields(self.current, new_scope.start)
-        self.add_usings(self.current, new_scope.start)
-        self.add_typedefs(self.current, new_scope.start)
-        new_scope.read()
-        self.current = new_scope.end + 1
+        self.add_fields(self.current, new_scope[0].start)
+        self.add_usings(self.current, new_scope[0].start)
+        self.add_typedefs(self.current, new_scope[0].start)
+        new_scope[1].read()
 
-        return new_scope
+        if new_scope[1].end + 1 < self.current:
+            assert new_scope[1].end + 1 >= self.current, "Processing of scope should not result in moving backwards"
+        self.current = new_scope[1].end + 1
+
+        return new_scope[0]
 
 class Namespace(ClassStruct):
-    namespace_class_pattern = re.compile(r'((?<!using\s)%s|%s|%s|%s(?:\s+class)?)\s+(\w+)\s*(?:final)?(:\s*(public\s+)?(\w+)(::\w+)*(?:<[^>]*>)?)?\s*\{' % (EmptyScope.namespace_str, EmptyScope.struct_str, EmptyScope.class_str, EmptyScope.enum_str), re.MULTILINE | re.DOTALL)
+    namespace_class_pattern = re.compile(r'((?<!using\s)%s|%s|%s|%s(?:\s+class)?)\s+((?:\w+)(?:::\w+)*)\s*(?:final)?(:\s*(public\s+)?(\w+)(::\w+)*(?:<[^>]*>)?)?\s*\{' % (EmptyScope.namespace_str, EmptyScope.struct_str, EmptyScope.class_str, EmptyScope.enum_str), re.MULTILINE | re.DOTALL)
 
     def __init__(self, name, inherit, start, content, parent_scope):
         assert inherit is None, "namespace %s should not inherit from %s" % (name, inherit)
