@@ -1657,6 +1657,36 @@ BOOST_FIXTURE_TEST_CASE(chain_tests, TESTER) { try {
    BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW() }
 
+static const char get_active_producers_wast[] = R"=====(
+(module
+ (import "env" "get_active_producers" (func $get_active_producers (param i32 i32) (result i32)))
+ (memory 1)
+ (func (export "apply") (param i64 i64 i64)
+  (drop (call $get_active_producers
+   (i32.const 1)
+   (i32.const 0xFFFFFFFF)
+  ))
+ )
+)
+)=====";
+
+BOOST_FIXTURE_TEST_CASE(get_producers_tests, TESTER) { try {
+   produce_blocks(2);
+   create_account( N(getprods) );
+   set_code( N(getprods), get_active_producers_wast );
+   produce_block();
+
+   for(int i = 0; i < 100; ++i) {
+      signed_transaction trx;
+      trx.actions.push_back({ { { N(getprods), config::active_name } }, N(getprods), N(), bytes() });
+      set_transaction_headers(trx);
+      trx.sign(get_private_key(N(getprods), "active"), control->get_chain_id());
+      BOOST_CHECK_THROW(push_transaction(trx), wasm_exception);
+      produce_block();
+   }
+
+} FC_LOG_AND_RETHROW() }
+
 /*************************************************************************************
  * db_tests test case
  *************************************************************************************/
