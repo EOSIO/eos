@@ -2240,13 +2240,13 @@ BOOST_FIXTURE_TEST_CASE(resource_limits_tests, TESTER) {
    produce_block();
 
    set_code(N(rlimits), get_resource_limits_null_ram_wast);
-   BOOST_CHECK_EXCEPTION(pushit(), wasm_exception, fc_exception_message_is("references cannot be created for null pointers"));
+   BOOST_CHECK_THROW(pushit(), wasm_exception);
 
    set_code(N(rlimits), get_resource_limits_null_net_wast);
-   BOOST_CHECK_EXCEPTION(pushit(), wasm_exception, fc_exception_message_is("references cannot be created for null pointers"));
+   BOOST_CHECK_THROW(pushit(), wasm_exception);
 
    set_code(N(rlimits), get_resource_limits_null_cpu_wast);
-   BOOST_CHECK_EXCEPTION(pushit(), wasm_exception, fc_exception_message_is("references cannot be created for null pointers"));
+   BOOST_CHECK_THROW(pushit(), wasm_exception);
 }
 
 #if 0
