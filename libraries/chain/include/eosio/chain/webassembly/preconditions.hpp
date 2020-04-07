@@ -80,8 +80,8 @@ namespace eosio { namespace chain { namespace webassembly {
                   using dep_t = dependent_type_t<arg_t>;
                   const auto& s = (dep_t&)arg;
                   EOS_ASSERT( s.size() <= std::numeric_limits<wasm_size_t>::max() / (wasm_size_t)sizeof(dependent_type_t<dep_t>),
-                        wasm_exception, "length will overflow" );
-                  volatile auto check = *(reinterpret_cast<const char*>(s.data()) + s.size_bytes() - 1);
+                        wasm_execution_error, "length will overflow" );
+                  volatile auto check = *(reinterpret_cast<const char*>(arg.original_ptr) + s.size_bytes() - 1);
                   ignore_unused_variable_warning(check);
                }
          }));
