@@ -278,7 +278,7 @@ namespace eosio { namespace chain {
       FC_DECLARE_DERIVED_EXCEPTION( tx_prune_exception, transaction_exception,
                                     3040019, "Prunable data not found" )
       FC_DECLARE_DERIVED_EXCEPTION( tx_no_signature, transaction_exception,
-                                    3040020, "Transaction has no signatures" )
+                                    3040020, "Transaction signatures pruned" )
       FC_DECLARE_DERIVED_EXCEPTION( tx_no_context_free_data, transaction_exception,
                                     3040021, "Transaction context free data pruned" )
 
@@ -634,17 +634,17 @@ namespace eosio { namespace chain {
                                     3250003, "Protocol feature iterator exception" )
 
    // Any derived types of subjective_block_production_exception need to update controller::failure_is_subjective
-   FC_DECLARE_DERIVED_EXCEPTION( subjective_block_production_exception,  chain_exception,
+   FC_DECLARE_DERIVED_EXCEPTION( subjective_block_production_exception, chain_exception,
                                  3260000, "Subjective exception thrown during block production" )
 
-   // Objective block production exceptions are throw out of transaction processing to stop block production
-   FC_DECLARE_DERIVED_EXCEPTION( objective_block_production_exception,  chain_exception,
-                                 3270000, "Objective exception thrown during block production" )
-      FC_DECLARE_DERIVED_EXCEPTION( disallowed_transaction_extensions_bad_block_exception, objective_block_production_exception,
+   // Objective block validation exceptions are throw out of transaction processing to stop block production
+   FC_DECLARE_DERIVED_EXCEPTION( objective_block_validation_exception, chain_exception,
+                                 3270000, "Objective exception thrown during block validation" )
+      FC_DECLARE_DERIVED_EXCEPTION( disallowed_transaction_extensions_bad_block_exception, objective_block_validation_exception,
                                     3270001, "Transaction includes disallowed extensions (invalid block)" )
-      FC_DECLARE_DERIVED_EXCEPTION( protocol_feature_bad_block_exception, objective_block_production_exception,
+      FC_DECLARE_DERIVED_EXCEPTION( protocol_feature_bad_block_exception, objective_block_validation_exception,
                                     3270002, "Protocol feature exception (invalid block)" )
-      FC_DECLARE_DERIVED_EXCEPTION( pruned_context_free_data_bad_block_exception, objective_block_production_exception,
-                                    3270002, "Protocol feature exception (invalid block)" )
+      FC_DECLARE_DERIVED_EXCEPTION( pruned_context_free_data_bad_block_exception, objective_block_validation_exception,
+                                    3270003, "Context free data pruned (invalid block)" )
 
 } } // eosio::chain
