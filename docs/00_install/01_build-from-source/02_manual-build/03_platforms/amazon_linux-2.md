@@ -1,5 +1,5 @@
 ---
-content_title: Amazon Linux 2 (unpinned)
+content_title: Amazon Linux 2
 ---
 
 This section contains shell commands to manually download, build, install, test, and uninstall EOSIO and dependencies on Amazon Linux 2.
