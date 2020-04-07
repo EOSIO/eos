@@ -275,10 +275,16 @@ BOOST_AUTO_TEST_CASE(test_trim_blocklog_front) {
    chain.produce_blocks(20);
    chain.close();
 
+   namespace bfs = boost::filesystem;
+
    auto  blocks_dir = chain.get_config().blocks_dir;
-   auto  temp   = boost::filesystem::unique_path();
-   BOOST_REQUIRE_NO_THROW(block_log::trim_blocklog_front(blocks_dir, temp, 10));
-   BOOST_REQUIRE_NO_THROW(block_log::smoke_test(blocks_dir));
+   auto  temp1   = bfs::unique_path();
+   boost::filesystem::create_directory(temp1);
+   bfs::copy(blocks_dir / "blocks.log", temp1 / "blocks.log");
+   bfs::copy(blocks_dir / "blocks.index", temp1 / "blocks.index");
+   auto temp2 = bfs::unique_path();
+   BOOST_REQUIRE_NO_THROW(block_log::trim_blocklog_front(temp1, temp2, 10));
+   BOOST_REQUIRE_NO_THROW(block_log::smoke_test(temp1));
 }
 
 BOOST_AUTO_TEST_SUITE_END()
