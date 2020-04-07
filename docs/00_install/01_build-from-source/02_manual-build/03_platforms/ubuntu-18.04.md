@@ -1,5 +1,5 @@
 ---
-content_title: Ubuntu 18.04 (unpinned)
+content_title: Ubuntu 18.04
 ---
 
 This section contains shell commands to manually download, build, install, test, and uninstall EOSIO and dependencies on Ubuntu 18.04.

@@ -1,5 +1,5 @@
 ---
-content_title: Centos 7.7 (unpinned)
+content_title: Centos 7.7
 ---
 
 This section contains shell commands to manually download, build, install, test, and uninstall EOSIO and dependencies on Centos 7.7.
