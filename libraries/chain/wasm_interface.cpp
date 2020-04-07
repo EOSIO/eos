@@ -1509,19 +1509,27 @@ class context_free_transaction_api : public context_aware_api {
       :context_aware_api(ctx,true){}
 
       int read_transaction( array_ptr<char> data, uint32_t buffer_size ) {
-         bytes trx = context.get_packed_transaction();
+         if( buffer_size == 0 ) return transaction_size();
 
-         auto s = trx.size();
-         if( buffer_size == 0) return s;
+         const packed_transaction& packed_trx = context.trx_context.packed_trx;
+         const bytes& trx =
+            packed_trx.get_compression() == packed_transaction::compression_type::none ?
+              packed_trx.get_packed_transaction() :
+              fc::raw::pack( static_cast<const transaction&>( packed_trx.get_transaction() ) );
 
-         auto copy_size = std::min( static_cast<size_t>(buffer_size), s );
+         size_t copy_size = std::min( static_cast<size_t>(buffer_size), trx.size() );
          memcpy( data, trx.data(), copy_size );
 
          return copy_size;
       }
 
       int transaction_size() {
-         return context.get_packed_transaction_size();
+         const packed_transaction& packed_trx = context.trx_context.packed_trx;
+         if( packed_trx.get_compression() == packed_transaction::compression_type::none) {
+            return packed_trx.get_packed_transaction().size();
+         } else {
+            return fc::raw::pack_size( static_cast<const transaction&>( packed_trx.get_transaction() ) );
+         }
       }
 
       int expiration() {

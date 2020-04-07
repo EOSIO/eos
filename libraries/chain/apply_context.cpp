@@ -611,22 +611,6 @@ vector<account_name> apply_context::get_active_producers() const {
    return accounts;
 }
 
-bytes apply_context::get_packed_transaction() {
-   if( trx_context.packed_trx.get_compression() == packed_transaction::compression_type::none) {
-      return trx_context.packed_trx.get_packed_transaction();
-   } else {
-      return fc::raw::pack( static_cast<const transaction&>( trx_context.packed_trx.get_transaction() ) );
-   }
-}
-
-size_t apply_context::get_packed_transaction_size() {
-   if( trx_context.packed_trx.get_compression() == packed_transaction::compression_type::none) {
-      return trx_context.packed_trx.get_packed_transaction().size();
-   } else {
-      return fc::raw::pack_size( static_cast<const transaction&>( trx_context.packed_trx.get_transaction() ) );
-   }
-}
-
 void apply_context::update_db_usage( const account_name& payer, int64_t delta ) {
    if( delta > 0 ) {
       if( !(privileged || payer == account_name(receiver)
