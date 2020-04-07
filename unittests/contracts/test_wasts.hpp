@@ -638,6 +638,13 @@ static const char import_injected_wast[] =                                      
 " (func $apply (param $0 i64) (param $1 i64) (param $2 i64))"                         \
 ")";
 
+static const char import_wrong_signature_wast[] = R"=====(
+(module
+ (import "env" "eosio_assert" (func (param i32 i64)))
+ (func (export "apply") (param i64 i64 i64))
+)
+)=====";
+
 static const char memory_growth_memset_store[] = R"=====(
 (module
  (export "apply" (func $apply))
