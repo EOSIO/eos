@@ -72,7 +72,7 @@ class transaction_metadata {
       const transaction_id_type& id()const { return _packed_trx->id(); }
       fc::microseconds signature_cpu_usage()const { return _sig_cpu_usage; }
       const flat_set<public_key_type>& recovered_keys()const { return _recovered_pub_keys; }
-      uint32_t get_estimated_size() const { return sizeof(transaction_metadata) + _recovered_pub_keys.size() * sizeof(public_key_type); }
+      uint32_t get_estimated_size() const;
 
       /// Thread safe.
       /// @returns transaction_metadata_ptr or exception via future
