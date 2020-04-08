@@ -18,32 +18,9 @@ using std::shared_ptr;
 
 typedef shared_ptr<struct state_history_plugin_impl> state_history_ptr;
 
-struct partial_transaction {
-   chain::time_point_sec         expiration             = {};
-   uint16_t                      ref_block_num          = {};
-   uint32_t                      ref_block_prefix       = {};
-   fc::unsigned_int              max_net_usage_words    = {};
-   uint8_t                       max_cpu_usage_ms       = {};
-   fc::unsigned_int              delay_sec              = {};
-   chain::extensions_type        transaction_extensions = {};
-   vector<chain::signature_type> signatures             = {};
-   vector<bytes>                 context_free_data      = {};
-
-   partial_transaction(const chain::packed_transaction_ptr& t)
-       : expiration(t->get_transaction().expiration)
-       , ref_block_num(t->get_transaction().ref_block_num)
-       , ref_block_prefix(t->get_transaction().ref_block_prefix)
-       , max_net_usage_words(t->get_transaction().max_net_usage_words)
-       , max_cpu_usage_ms(t->get_transaction().max_cpu_usage_ms)
-       , delay_sec(t->get_transaction().delay_sec)
-       , transaction_extensions(t->get_transaction().transaction_extensions)
-       , signatures(t->get_signatures() != nullptr ? *t->get_signatures() : vector<chain::signature_type>{})
-       , context_free_data(t->get_context_free_data() != nullptr ? *t->get_context_free_data() : vector<bytes>{}) {}
-};
-
 struct augmented_transaction_trace {
    chain::transaction_trace_ptr         trace;
-   std::shared_ptr<partial_transaction> partial;
+   chain::packed_transaction_ptr        packed_trx;
 
    augmented_transaction_trace()                                   = default;
    augmented_transaction_trace(const augmented_transaction_trace&) = default;
@@ -52,14 +29,10 @@ struct augmented_transaction_trace {
    augmented_transaction_trace(const chain::transaction_trace_ptr& trace)
        : trace{trace} {}
 
-   augmented_transaction_trace(const chain::transaction_trace_ptr&         trace,
-                               const std::shared_ptr<partial_transaction>& partial)
+   augmented_transaction_trace(const chain::transaction_trace_ptr&  trace,
+                               const chain::packed_transaction_ptr& packed_trx)
        : trace{trace}
-       , partial{partial} {}
-
-   augmented_transaction_trace(const chain::transaction_trace_ptr& trace, const chain::packed_transaction_ptr& t)
-       : trace{trace}
-       , partial{std::make_shared<partial_transaction>(t)} {}
+       , packed_trx{packed_trx} {}
 
    augmented_transaction_trace& operator=(const augmented_transaction_trace&) = default;
    augmented_transaction_trace& operator=(augmented_transaction_trace&&) = default;
