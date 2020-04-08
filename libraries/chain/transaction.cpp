@@ -607,8 +607,13 @@ const vector<bytes>* packed_transaction::get_context_free_data()const {
 
 const bytes* maybe_get_context_free_data(const prunable_transaction_data::none&, std::size_t) { return nullptr; }
 const bytes* maybe_get_context_free_data(const prunable_transaction_data::signatures_only&, std::size_t) { return nullptr; }
-const bytes* maybe_get_context_free_data(const prunable_transaction_data::partial&, std::size_t) {
-   EOS_THROW(tx_prune_exception, "unimplemented");
+const bytes* maybe_get_context_free_data(const prunable_transaction_data::partial& p, std::size_t i) {
+   if( p.context_free_segments.size() <= i ) return nullptr;
+   return p.context_free_segments[i].visit(
+         overloaded{
+               []( const digest_type& t ) -> const bytes* { return nullptr; },
+               []( const bytes& vec ) { return &vec; }
+         } );
 }
 const bytes* maybe_get_context_free_data(const prunable_transaction_data::full_legacy& full_leg, std::size_t i) {
    if( full_leg.context_free_segments.size() <= i ) return nullptr;

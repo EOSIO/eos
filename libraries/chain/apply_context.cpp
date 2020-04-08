@@ -654,9 +654,24 @@ int apply_context::get_action( uint32_t type, uint32_t index, char* buffer, size
 int apply_context::get_context_free_data( uint32_t index, char* buffer, size_t buffer_size )const
 {
    const prunable_transaction_data::prunable_data_type& data = trx_context.packed_trx.get_prunable_data().prunable_data;
-   if( data.contains<prunable_transaction_data::none>() || data.contains<prunable_transaction_data::signatures_only>() ||
-       data.contains<prunable_transaction_data::partial>() ) // TODO: for partial determine if index is pruned and throw only in that case
-   {
+   bool throw_exception = false;
+   const bytes* cfd = nullptr;
+   if( data.contains<prunable_transaction_data::none>() || data.contains<prunable_transaction_data::signatures_only>() ) {
+   } else if( data.contains<prunable_transaction_data::partial>() ) {
+      if( index >= data.get<prunable_transaction_data::partial>().context_free_segments.size() ) return -1;
+
+      cfd = trx_context.packed_trx.get_context_free_data(index);
+   } else {
+      const std::vector<bytes>& context_free_data =
+            data.contains<prunable_transaction_data::full_legacy>() ?
+               data.get<prunable_transaction_data::full_legacy>().context_free_segments :
+               data.get<prunable_transaction_data::full>().context_free_segments;
+      if( index >= context_free_data.size() ) return -1;
+
+      cfd = &context_free_data[index];
+   }
+
+   if( !cfd ) {
       if( control.is_producing_block() ) {
          EOS_THROW( subjective_block_production_exception, "pruned context free data not available" );
       } else {
@@ -664,17 +679,11 @@ int apply_context::get_context_free_data( uint32_t index, char* buffer, size_t b
       }
    }
 
-   std::vector<bytes> context_free_data = data.contains<prunable_transaction_data::full_legacy>() ?
-         data.get<prunable_transaction_data::full_legacy>().context_free_segments :
-         data.get<prunable_transaction_data::full>().context_free_segments;
-
-   if( index >= context_free_data.size() ) return -1;
-
-   auto s = context_free_data[index].size();
+   auto s = cfd->size();
    if( buffer_size == 0 ) return s;
 
    auto copy_size = std::min( buffer_size, s );
-   memcpy( buffer, context_free_data[index].data(), copy_size );
+   memcpy( buffer, cfd->data(), copy_size );
 
    return copy_size;
 }
