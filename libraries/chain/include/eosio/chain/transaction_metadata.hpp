@@ -83,10 +83,9 @@ class transaction_metadata {
 
       /// @returns constructed transaction_metadata with no key recovery (sig_cpu_usage=0, recovered_pub_keys=empty)
       static transaction_metadata_ptr
-      create_no_recover_keys( packed_transaction trx, trx_type t ) {
-         return std::make_shared<transaction_metadata>( private_type(),
-               std::make_shared<packed_transaction>( std::move(trx) ), fc::microseconds(), flat_set<public_key_type>(),
-                     t == trx_type::implicit, t == trx_type::scheduled );
+      create_no_recover_keys( packed_transaction_ptr trx, trx_type t ) {
+         return std::make_shared<transaction_metadata>( private_type(), std::move(trx),
+               fc::microseconds(), flat_set<public_key_type>(), t == trx_type::implicit, t == trx_type::scheduled );
       }
 
 };

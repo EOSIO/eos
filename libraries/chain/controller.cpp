@@ -1241,7 +1241,8 @@ struct controller_impl {
       signed_transaction dtrx;
       fc::raw::unpack(ds,static_cast<transaction&>(dtrx) );
       transaction_metadata_ptr trx =
-            transaction_metadata::create_no_recover_keys( packed_transaction( std::move(dtrx), true ), transaction_metadata::trx_type::scheduled );
+            transaction_metadata::create_no_recover_keys( std::make_shared<packed_transaction>( std::move(dtrx), true ),
+                                                          transaction_metadata::trx_type::scheduled );
       trx->accepted = true;
 
       transaction_trace_ptr trace;
@@ -1656,7 +1657,8 @@ struct controller_impl {
 
          try {
             transaction_metadata_ptr onbtrx =
-                  transaction_metadata::create_no_recover_keys( packed_transaction( get_on_block_transaction(), true ), transaction_metadata::trx_type::implicit );
+                  transaction_metadata::create_no_recover_keys( std::make_shared<packed_transaction>( get_on_block_transaction(), true ),
+                                                                transaction_metadata::trx_type::implicit );
             auto reset_in_trx_requiring_checks = fc::make_scoped_exit([old_value=in_trx_requiring_checks,this](){
                   in_trx_requiring_checks = old_value;
                });
@@ -1878,11 +1880,12 @@ struct controller_impl {
                   if( trx_meta_ptr && ( skip_auth_checks || !trx_meta_ptr->recovered_keys().empty() ) ) {
                      trx_metas.emplace_back( std::move( trx_meta_ptr ), recover_keys_future{} );
                   } else if( skip_auth_checks ) {
+                     packed_transaction_ptr ptrx( b, &pt ); // alias signed_block_ptr
                      trx_metas.emplace_back(
-                           transaction_metadata::create_no_recover_keys( packed_transaction( pt ), transaction_metadata::trx_type::input ),
+                           transaction_metadata::create_no_recover_keys( ptrx, transaction_metadata::trx_type::input ),
                            recover_keys_future{} );
                   } else {
-                     auto ptrx = std::make_shared<packed_transaction>( pt );
+                     packed_transaction_ptr ptrx( b, &pt ); // alias signed_block_ptr
                      auto fut = transaction_metadata::start_recover_keys(
                            std::move( ptrx ), thread_pool.get_executor(), chain_id, microseconds::maximum() );
                      trx_metas.emplace_back( transaction_metadata_ptr{}, std::move( fut ) );
