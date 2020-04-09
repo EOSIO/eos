@@ -89,18 +89,14 @@ namespace eosio { namespace chain {
          validate_pointer<vm::reference_proxy_dependent_type_t<T>>(ptr, 1);
          return {ptr};
       }
-#if 0
-      template <typename T, typename U>
-      auto from_wasm(U* ptr) const -> std::enable_if_t<std::is_same_v<T, U*>, eosio::vm::reference_proxy<T>> {
+
+      template <typename T>
+      auto from_wasm(void* ptr) const
+         -> std::enable_if_t< std::is_lvalue_reference_v<T>,
+                              vm::reference_proxy<std::remove_reference_t<T>>> {
+         validate_pointer<std::remove_reference_t<T>*>(ptr, 1);
          return {ptr};
       }
-
-      template <typename T, typename U>
-      auto from_wasm(eosio::vm::reference<U> r) const
-         -> std::enable_if_t<std::is_same_v<T, eosio::vm::reference<U>>, eosio::vm::reference_proxy<T>> {
-         return {r.get()};
-      }
-#endif
 
       EOS_VM_FROM_WASM(null_terminated_ptr, (const void* ptr)) {
          validate_null_terminated_pointer(ptr);
