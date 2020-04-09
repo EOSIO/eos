@@ -1657,6 +1657,7 @@ BOOST_FIXTURE_TEST_CASE(chain_tests, TESTER) { try {
    BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW() }
 
+// Must not leak memory when passing an out-of-bounds unaligned address to get_active_producers
 static const char get_active_producers_wast[] = R"=====(
 (module
  (import "env" "get_active_producers" (func $get_active_producers (param i32 i32) (result i32)))
@@ -1686,6 +1687,46 @@ BOOST_FIXTURE_TEST_CASE(get_producers_tests, TESTER) { try {
    }
 
 } FC_LOG_AND_RETHROW() }
+
+
+// Some db_idx256 intrinsics take both an aligned array and another reference argument.
+// Make sure that the copy of the array does not leak when the other argument is out of bounds.
+static const char memalign_noleak_wast[] = R"=====(
+(module
+ (import "env" "db_idx256_find_secondary" (func $db_idx256_find_secondary (param i64 i64 i64 i32 i32 i32) (result i32)))
+ (memory 528)
+ (func (export "apply") (param i64 i64 i64)
+  (drop (call $db_idx256_find_secondary
+   (i64.const 0)
+   (i64.const 0)
+   (i64.const 0)
+   (i32.const 1)
+   (i32.const 1081343) ;; Just under 33 MiB (32 bytes per element)
+   (i32.const 0xFFFFFFFF)
+  ))
+ )
+)
+)=====";
+
+BOOST_FIXTURE_TEST_CASE(memalign_noleak_tests, TESTER) { try {
+   produce_blocks(2);
+   create_account( N(noleak) );
+   set_code( N(noleak), memalign_noleak_wast );
+   produce_block();
+
+   // This will leak ~33 GiB if there's a memory leak, which should be
+   // enough to be noticeable.
+   for(int i = 0; i < 1000; ++i) {
+      signed_transaction trx;
+      trx.actions.push_back({ { { N(noleak), config::active_name } }, N(noleak), N(), bytes() });
+      set_transaction_headers(trx);
+      trx.sign(get_private_key(N(noleak), "active"), control->get_chain_id());
+      BOOST_CHECK_THROW(push_transaction(trx), wasm_exception);
+      produce_block();
+   }
+
+} FC_LOG_AND_RETHROW() }
+
 
 /*************************************************************************************
  * db_tests test case
