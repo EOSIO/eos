@@ -44,7 +44,6 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/db_modes_test.sh ${CMAKE_CURRENT_BINA
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/prod_preactivation_test.py ${CMAKE_CURRENT_BINARY_DIR}/prod_preactivation_test.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/release-build.sh ${CMAKE_CURRENT_BINARY_DIR}/release-build.sh COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/validate-reflection.py ${CMAKE_CURRENT_BINARY_DIR}/validate-reflection.py COPYONLY)
->>>>>>> d701af265... Created validate-reflection-test in parallel test group
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/version-label.sh ${CMAKE_CURRENT_BINARY_DIR}/version-label.sh COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/nodeos_producer_watermark_test.py ${CMAKE_CURRENT_BINARY_DIR}/nodeos_producer_watermark_test.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/ship_test.py ${CMAKE_CURRENT_BINARY_DIR}/ship_test.py COPYONLY)
@@ -101,7 +100,6 @@ add_test(NAME db_modes_test COMMAND tests/db_modes_test.sh WORKING_DIRECTORY ${C
 set_tests_properties(db_modes_test PROPERTIES COST 6000)
 add_test(NAME release-build-test COMMAND tests/release-build.sh WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 add_test(NAME validate-reflection-test COMMAND tests/validate-reflection.py plugins/ programs/ libraries/ --recurse --extension "cpp" --extension "hpp" -e WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/../..)
-add_test(NAME validate-reflection-test COMMAND build/tests/validate-reflection.py plugins/ programs/ libraries/ --recurse --extension "cpp" --extension "hpp" -e WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/..)
 add_test(NAME version-label-test COMMAND tests/version-label.sh WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
 # Long running tests
