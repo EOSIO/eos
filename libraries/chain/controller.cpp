@@ -1882,7 +1882,7 @@ struct controller_impl {
                   } else if( skip_auth_checks ) {
                      packed_transaction_ptr ptrx( b, &pt ); // alias signed_block_ptr
                      trx_metas.emplace_back(
-                           transaction_metadata::create_no_recover_keys( ptrx, transaction_metadata::trx_type::input ),
+                           transaction_metadata::create_no_recover_keys( std::move(ptrx), transaction_metadata::trx_type::input ),
                            recover_keys_future{} );
                   } else {
                      packed_transaction_ptr ptrx( b, &pt ); // alias signed_block_ptr

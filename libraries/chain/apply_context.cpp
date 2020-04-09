@@ -654,7 +654,6 @@ int apply_context::get_action( uint32_t type, uint32_t index, char* buffer, size
 int apply_context::get_context_free_data( uint32_t index, char* buffer, size_t buffer_size )const
 {
    const prunable_transaction_data::prunable_data_type& data = trx_context.packed_trx.get_prunable_data().prunable_data;
-   bool throw_exception = false;
    const bytes* cfd = nullptr;
    if( data.contains<prunable_transaction_data::none>() || data.contains<prunable_transaction_data::signatures_only>() ) {
    } else if( data.contains<prunable_transaction_data::partial>() ) {

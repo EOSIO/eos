@@ -577,7 +577,7 @@ uint32_t packed_transaction::calculate_estimated_size() const {
          }
    };
 
-   return sizeof(*this) + packed_trx.size() * 2 + sizeof(prunable_data) + prunable_data.prunable_data.visit(visitor);
+   return sizeof(*this) + packed_trx.size() * 2 + prunable_data.prunable_data.visit(visitor);
 }
 
 digest_type packed_transaction::packed_digest()const {
