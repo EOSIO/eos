@@ -79,7 +79,7 @@ namespace eosio { namespace chain {
             bool                     contracts_console      =  false;
             bool                     allow_ram_billing_in_notify = false;
             uint32_t                 maximum_variable_signature_length = chain::config::default_max_variable_signature_length;
-            bool                     disable_all_subjective_mitigations = false; //< for testing purposes only
+            bool                     disable_all_subjective_mitigations = false; //< for developer & testing purposes, can be configured using `disable-all-subjective-mitigations` when `EOSIO_DEVELOPER` build option is provided
             uint32_t                 terminate_at_block     = 0; //< primarily for testing purposes
 
             wasm_interface::vm_type  wasm_runtime = chain::config::default_wasm_runtime;
@@ -346,6 +346,16 @@ namespace eosio { namespace chain {
             abi_serializer::to_variant( obj, pretty_output,
                                         [&]( account_name n ){ return get_abi_serializer( n, yield ); }, yield );
             return pretty_output;
+         }
+
+         template<typename T>
+         fc::variant maybe_to_variant_with_abi( const T& obj, const abi_serializer::yield_function_t& yield ) {
+            try {
+               return to_variant_with_abi(obj, yield);
+            } FC_LOG_AND_DROP()
+
+            // If we are unable to transform to an ABI aware variant, let's just return the original `obj` as-is
+            return fc::variant(obj);
          }
 
       static chain_id_type extract_chain_id(snapshot_reader& snapshot);

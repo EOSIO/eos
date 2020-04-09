@@ -1144,7 +1144,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
                if (auto dm_logger = my->chain->get_deep_mind_logger()) {
                   fc_dlog(*dm_logger, "APPLIED_TRANSACTION ${block} ${traces}",
                      ("block", chain().head_block_num() + 1)
-                     ("traces", chain().to_variant_with_abi(std::get<0>(t), abi_serializer::create_yield_function(fc::microseconds(config::dmlog_abi_serializer_max_time_us))))
+                     ("traces", chain().maybe_to_variant_with_abi(std::get<0>(t), abi_serializer::create_yield_function(fc::microseconds(config::dmlog_abi_serializer_max_time_us))))
                   );
                }
 
