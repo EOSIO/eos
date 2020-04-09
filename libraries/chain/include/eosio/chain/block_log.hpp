@@ -50,7 +50,7 @@ namespace eosio { namespace chain {
          block_id_type    read_block_id_by_num(uint32_t block_num)const;
 
          [[deprecated]] signed_block_ptr read_block_by_num(uint32_t block_num) const;
-         pruned_block_ptr read_pruned_block_by_num(uint32_t block_num) const;
+         std::unique_ptr<pruned_block>   read_pruned_block_by_num(uint32_t block_num) const;
 
          /**
           * Return offset of block in file, or block_log::npos if it does not exist.

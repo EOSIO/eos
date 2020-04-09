@@ -336,6 +336,7 @@ FC_REFLECT( eosio::chain::transaction_header, (expiration)(ref_block_num)(ref_bl
 FC_REFLECT_DERIVED( eosio::chain::transaction, (eosio::chain::transaction_header), (context_free_actions)(actions)(transaction_extensions) )
 FC_REFLECT_DERIVED( eosio::chain::signed_transaction, (eosio::chain::transaction), (signatures)(context_free_data) )
 FC_REFLECT_ENUM( eosio::chain::packed_transaction::compression_type, (none)(zlib))
+FC_REFLECT_ENUM( eosio::chain::prunable_transaction_data::compression_type, (none)(zlib))
 // @ignore unpacked_trx
 FC_REFLECT( eosio::chain::packed_transaction, (signatures)(compression)(packed_context_free_data)(packed_trx) )
 FC_REFLECT( eosio::chain::pruned_transaction, (compression)(prunable_data)(packed_trx) )
