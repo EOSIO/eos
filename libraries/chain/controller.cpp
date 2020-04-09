@@ -1937,7 +1937,7 @@ struct controller_impl {
             const transaction_receipt_header& r = trx_receipts.back();
             EOS_ASSERT( r == static_cast<const transaction_receipt_header&>(receipt),
                         block_validate_exception, "receipt does not match",
-                        ("producer_receipt", receipt)("validator_receipt", trx_receipts.back()) );
+                        ("producer_receipt", static_cast<const transaction_receipt_header&>(receipt))("validator_receipt", r) );
          }
 
          finalize_block();
