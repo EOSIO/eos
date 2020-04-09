@@ -61,32 +61,32 @@ namespace eosio { namespace chain {
       // unable to find them.  I think clang is correct here because the
       // return type does not affect hiding.
       template <typename T>
-      auto from_wasm(const char* ptr) const
+      auto from_wasm(const void* ptr) const
          -> std::enable_if_t<std::is_same_v<T, unvalidated_ptr<const char>>, T> {
-         return {ptr};
+         return {static_cast<const char*>(ptr)};
       }
 
       template <typename T>
-      auto from_wasm(char* ptr) const
+      auto from_wasm(void* ptr) const
          -> std::enable_if_t<std::is_same_v<T, unvalidated_ptr<char>>, T> {
-         return {ptr};
+         return {static_cast<char*>(ptr)};
       }
 
       template <typename T>
-      auto from_wasm(vm::reference_proxy_dependent_type_t<T>* ptr) const
+      auto from_wasm(void* ptr) const
          -> std::enable_if_t< vm::is_reference_proxy_type_v<T> &&
                               vm::is_reference_proxy_legacy_v<T> &&
                               !vm::is_span_type_v<vm::dependent_type_t<T>>, T> {
-         validate_pointer(ptr, 1);
+         validate_pointer<vm::reference_proxy_dependent_type_t<T>>(ptr, 1);
          return {ptr};
       }
 
       template <typename T>
-      auto from_wasm(vm::reference_proxy_dependent_type_t<T>* ptr) const
+      auto from_wasm(void* ptr) const
          -> std::enable_if_t< vm::is_reference_proxy_type_v<T> &&
                               !vm::is_reference_proxy_legacy_v<T> &&
                               !vm::is_span_type_v<vm::dependent_type_t<T>>, T> {
-         validate_pointer(ptr, 1);
+         validate_pointer<vm::reference_proxy_dependent_type_t<T>>(ptr, 1);
          return {ptr};
       }
 #if 0
@@ -102,9 +102,9 @@ namespace eosio { namespace chain {
       }
 #endif
 
-      EOS_VM_FROM_WASM(null_terminated_ptr, (const char* ptr)) {
+      EOS_VM_FROM_WASM(null_terminated_ptr, (const void* ptr)) {
          validate_null_terminated_pointer(ptr);
-         return {ptr};
+         return {static_cast<const char*>(ptr)};
       }
       EOS_VM_FROM_WASM(name, (uint64_t e)) { return name{e}; }
       uint64_t to_wasm(name&& n) { return n.to_uint64_t(); }
