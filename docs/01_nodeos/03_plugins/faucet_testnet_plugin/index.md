@@ -1,17 +1,16 @@
-# faucet_testnet_plugin
-
 ## Description
 
 The `faucet_testnet_plugin` provides an interface that assists in the automation of distributing tokens on an EOSIO testnet.
 
 ## Usage
 
-```sh
+```console
 # config.ini
 plugin = eosio::faucet_testnet_plugin
-
+```
+```sh
 # command-line
-$ nodeos ... --plugin eosio::faucet_testnet_plugin
+nodeos ... --plugin eosio::faucet_testnet_plugin
 ```
 
 ## Options

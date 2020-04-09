@@ -4,7 +4,7 @@ Query infomation of an EOSIO account
 
 ## Before you begin
 
-* Install the currently supported version of cleos
+* Install the currently supported version of `cleos`
 
 * Understand the following:
   * What is an account
@@ -13,13 +13,13 @@ Query infomation of an EOSIO account
 
 Execute the command below:
 
-```shell
+```sh
 cleos get account ACCOUNT_NAME
 ```
 
-You should be see something like below:
+This should produce similar output as below:
 
-```shell
+```console
 created: 2018-06-01T12:00:00.000
 privileged: true
 permissions:
@@ -39,5 +39,5 @@ cpu bandwidth:
      limit:              unlimited
 ```
 
-[[info]]
-| Depends on the EOSIO network you are connected, you might see different fields associated with an account. That depends on which system contract has been deployed tp the network.
+[[info | Account Fields]]
+| Depending on the EOSIO network you are connected, you might see different fields associated with an account. That depends on which system contract has been deployed on the network.

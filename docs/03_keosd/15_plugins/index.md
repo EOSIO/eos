@@ -1,4 +1,6 @@
-# Keosd Plugins
+---
+content_title: Keosd Plugins
+---
 
 ## Overview
 

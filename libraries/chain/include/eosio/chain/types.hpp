@@ -258,6 +258,7 @@ namespace eosio { namespace chain {
    using int128_t            = __int128;
    using uint128_t           = unsigned __int128;
    using bytes               = vector<char>;
+   using digests_t           = deque<digest_type>;
 
    struct sha256_less {
       bool operator()( const fc::sha256& lhs, const fc::sha256& rhs ) const {

@@ -874,18 +874,17 @@ namespace LLVMJIT
 		//
 		// Load/store operators
 		//
-
-		#define EMIT_LOAD_OP(valueTypeId,name,llvmMemoryType,naturalAlignmentLog2,conversionOp) \
+		#define EMIT_LOAD_OP(valueTypeId,name,llvmMemoryType,naturalAlignmentLog2,conversionOp,alignmentParam) \
 			void valueTypeId##_##name(LoadOrStoreImm<naturalAlignmentLog2> imm) \
 			{ \
 				auto byteIndex = pop(); \
 				auto pointer = coerceByteIndexToPointer(byteIndex,imm.offset,llvmMemoryType); \
 				auto load = irBuilder.CreateLoad(pointer); \
-				load->setAlignment(1); \
+				load->setAlignment(alignmentParam); \
 				load->setVolatile(true); \
 				push(conversionOp(load,asLLVMType(ValueType::valueTypeId))); \
 			}
-		#define EMIT_STORE_OP(valueTypeId,name,llvmMemoryType,naturalAlignmentLog2,conversionOp) \
+		#define EMIT_STORE_OP(valueTypeId,name,llvmMemoryType,naturalAlignmentLog2,conversionOp,alignmentParam) \
 			void valueTypeId##_##name(LoadOrStoreImm<naturalAlignmentLog2> imm) \
 			{ \
 				auto value = pop(); \
@@ -894,25 +893,31 @@ namespace LLVMJIT
 				auto memoryValue = conversionOp(value,llvmMemoryType); \
 				auto store = irBuilder.CreateStore(memoryValue,pointer); \
 				store->setVolatile(true); \
-				store->setAlignment(1); \
+				store->setAlignment(alignmentParam); \
 			}
-			
+
 		llvm::Value* identityConversion(llvm::Value* value,llvm::Type* type) { return value; }
 
-		EMIT_LOAD_OP(i32,load8_s,llvmI8Type,0,irBuilder.CreateSExt)  EMIT_LOAD_OP(i32,load8_u,llvmI8Type,0,irBuilder.CreateZExt)
-		EMIT_LOAD_OP(i32,load16_s,llvmI16Type,1,irBuilder.CreateSExt) EMIT_LOAD_OP(i32,load16_u,llvmI16Type,1,irBuilder.CreateZExt)
-		EMIT_LOAD_OP(i64,load8_s,llvmI8Type,0,irBuilder.CreateSExt)  EMIT_LOAD_OP(i64,load8_u,llvmI8Type,0,irBuilder.CreateZExt)
-		EMIT_LOAD_OP(i64,load16_s,llvmI16Type,1,irBuilder.CreateSExt)  EMIT_LOAD_OP(i64,load16_u,llvmI16Type,1,irBuilder.CreateZExt)
-		EMIT_LOAD_OP(i64,load32_s,llvmI32Type,2,irBuilder.CreateSExt)  EMIT_LOAD_OP(i64,load32_u,llvmI32Type,2,irBuilder.CreateZExt)
+#if LLVM_VERSION_MAJOR < 10
+   #define LOAD_STORE_ALIGNMENT_PARAM 1
+#else
+   #define LOAD_STORE_ALIGNMENT_PARAM llvm::MaybeAlign(1)
+#endif
 
-		EMIT_LOAD_OP(i32,load,llvmI32Type,2,identityConversion) EMIT_LOAD_OP(i64,load,llvmI64Type,3,identityConversion)
-		EMIT_LOAD_OP(f32,load,llvmF32Type,2,identityConversion) EMIT_LOAD_OP(f64,load,llvmF64Type,3,identityConversion)
+		EMIT_LOAD_OP(i32,load8_s,llvmI8Type,0,irBuilder.CreateSExt,LOAD_STORE_ALIGNMENT_PARAM)  EMIT_LOAD_OP(i32,load8_u,llvmI8Type,0,irBuilder.CreateZExt,LOAD_STORE_ALIGNMENT_PARAM)
+		EMIT_LOAD_OP(i32,load16_s,llvmI16Type,1,irBuilder.CreateSExt,LOAD_STORE_ALIGNMENT_PARAM) EMIT_LOAD_OP(i32,load16_u,llvmI16Type,1,irBuilder.CreateZExt,LOAD_STORE_ALIGNMENT_PARAM)
+		EMIT_LOAD_OP(i64,load8_s,llvmI8Type,0,irBuilder.CreateSExt,LOAD_STORE_ALIGNMENT_PARAM)  EMIT_LOAD_OP(i64,load8_u,llvmI8Type,0,irBuilder.CreateZExt,LOAD_STORE_ALIGNMENT_PARAM)
+		EMIT_LOAD_OP(i64,load16_s,llvmI16Type,1,irBuilder.CreateSExt,LOAD_STORE_ALIGNMENT_PARAM)  EMIT_LOAD_OP(i64,load16_u,llvmI16Type,1,irBuilder.CreateZExt,LOAD_STORE_ALIGNMENT_PARAM)
+		EMIT_LOAD_OP(i64,load32_s,llvmI32Type,2,irBuilder.CreateSExt,LOAD_STORE_ALIGNMENT_PARAM)  EMIT_LOAD_OP(i64,load32_u,llvmI32Type,2,irBuilder.CreateZExt,LOAD_STORE_ALIGNMENT_PARAM)
 
-		EMIT_STORE_OP(i32,store8,llvmI8Type,0,irBuilder.CreateTrunc) EMIT_STORE_OP(i64,store8,llvmI8Type,0,irBuilder.CreateTrunc)
-		EMIT_STORE_OP(i32,store16,llvmI16Type,1,irBuilder.CreateTrunc) EMIT_STORE_OP(i64,store16,llvmI16Type,1,irBuilder.CreateTrunc)
-		EMIT_STORE_OP(i32,store,llvmI32Type,2,irBuilder.CreateTrunc) EMIT_STORE_OP(i64,store32,llvmI32Type,2,irBuilder.CreateTrunc)
-		EMIT_STORE_OP(i64,store,llvmI64Type,3,identityConversion)
-		EMIT_STORE_OP(f32,store,llvmF32Type,2,identityConversion) EMIT_STORE_OP(f64,store,llvmF64Type,3,identityConversion)
+		EMIT_LOAD_OP(i32,load,llvmI32Type,2,identityConversion,LOAD_STORE_ALIGNMENT_PARAM) EMIT_LOAD_OP(i64,load,llvmI64Type,3,identityConversion,LOAD_STORE_ALIGNMENT_PARAM)
+		EMIT_LOAD_OP(f32,load,llvmF32Type,2,identityConversion,LOAD_STORE_ALIGNMENT_PARAM) EMIT_LOAD_OP(f64,load,llvmF64Type,3,identityConversion,LOAD_STORE_ALIGNMENT_PARAM)
+
+		EMIT_STORE_OP(i32,store8,llvmI8Type,0,irBuilder.CreateTrunc,LOAD_STORE_ALIGNMENT_PARAM) EMIT_STORE_OP(i64,store8,llvmI8Type,0,irBuilder.CreateTrunc,LOAD_STORE_ALIGNMENT_PARAM)
+		EMIT_STORE_OP(i32,store16,llvmI16Type,1,irBuilder.CreateTrunc,LOAD_STORE_ALIGNMENT_PARAM) EMIT_STORE_OP(i64,store16,llvmI16Type,1,irBuilder.CreateTrunc,LOAD_STORE_ALIGNMENT_PARAM)
+		EMIT_STORE_OP(i32,store,llvmI32Type,2,irBuilder.CreateTrunc,LOAD_STORE_ALIGNMENT_PARAM) EMIT_STORE_OP(i64,store32,llvmI32Type,2,irBuilder.CreateTrunc,LOAD_STORE_ALIGNMENT_PARAM)
+		EMIT_STORE_OP(i64,store,llvmI64Type,3,identityConversion,LOAD_STORE_ALIGNMENT_PARAM)
+		EMIT_STORE_OP(f32,store,llvmF32Type,2,identityConversion,LOAD_STORE_ALIGNMENT_PARAM) EMIT_STORE_OP(f64,store,llvmF64Type,3,identityConversion,LOAD_STORE_ALIGNMENT_PARAM)
 
 		//
 		// Numeric operator macros

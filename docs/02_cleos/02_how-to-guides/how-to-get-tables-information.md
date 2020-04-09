@@ -4,7 +4,7 @@ Query infomation of a table
 
 ## Before you begin
 
-* Install the currently supported version of cleos
+* Install the currently supported version of `cleos`
 
 * Understand the following:
   * What is an account
@@ -13,6 +13,6 @@ Query infomation of a table
 
 ## Steps
 
-```shell
+```sh
 cleos get table ACCOUNT SCOPE TABLE
 ```

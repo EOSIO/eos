@@ -1,4 +1,6 @@
-# EOSIO Overview
+---
+content_title: EOSIO Overview
+---
 
 EOSIO is the next-generation blockchain platform for creating and deploying smart contracts and distributed applications. EOSIO comes with a number of programs. The primary ones included in EOSIO are the following:
 

@@ -1,5 +1,3 @@
-# history_api_plugin
-
 [[warning | Deprecation Notice]]
 | The `history_plugin` that the `history_api_plugin` depends upon is deprecated and will no longer be maintained. Please use the [`state_history_plugin`](../state_history_plugin/index.md) instead.
 
@@ -17,7 +15,7 @@ It provides four RPC API endpoints:
 [[info | More Info]]
 | See HISTORY section of [RPC API](https://developers.eos.io/eosio-nodeos/reference).
 
-The four actions listed above are used by the following Cleos commands (matching order):
+The four actions listed above are used by the following `cleos` commands (matching order):
 
 * get actions
 * get transaction
@@ -26,12 +24,13 @@ The four actions listed above are used by the following Cleos commands (matching
 
 ## Usage
 
-```sh
+```console
 # config.ini
 plugin = eosio::history_api_plugin
-
+```
+```sh
 # command-line
-$ nodeos ... --plugin eosio::history_api_plugin
+nodeos ... --plugin eosio::history_api_plugin
 ```
 
 ## Options
@@ -46,7 +45,7 @@ None
 
 ### Load Dependency Examples
 
-```sh
+```console
 # config.ini
 plugin = eosio::history_plugin
 [options]
@@ -54,9 +53,10 @@ plugin = eosio::chain_plugin
 [options]
 plugin = eosio::http_plugin
 [options]
-
+```
+```sh
 # command-line
-$ nodeos ... --plugin eosio::history_plugin [options]  \
-             --plugin eosio::chain_plugin [operations] [options]  \
-             --plugin eosio::http_plugin [options]
+nodeos ... --plugin eosio::history_plugin [options]  \
+           --plugin eosio::chain_plugin [operations] [options]  \
+           --plugin eosio::http_plugin [options]
 ```

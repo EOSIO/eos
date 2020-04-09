@@ -17,6 +17,6 @@
 ## Examples
 
 
-```text
+```sh
 cleos system rex updaterex accountname1
 ```

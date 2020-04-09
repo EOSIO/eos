@@ -9,15 +9,17 @@ None
 ## Usage
 
 
-```shell
-$ cleos wallet open
+```sh
+cleos wallet open
+```
 or
-$ cleos wallet open -n second-wallet
+```sh
+cleos wallet open -n second-wallet
 ```
 
 ## Outputs
 
 
-```shell
+```console
 Opened: default
 ```

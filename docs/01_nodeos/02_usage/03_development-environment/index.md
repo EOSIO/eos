@@ -1,4 +1,6 @@
-# Development Environment
+---
+content_title: Development Environment
+---
 
 There are several ways to configure a `nodeos` environment for development and testing. Which option to use largely depends on what the project goals are. Some practical options are provided below.
 
@@ -14,6 +16,12 @@ While this option can technically be used for smart contract development, it may
 
 * [Configure Nodeos as a Local Two-Node Testnet](01_local-multi-node-testnet.md)
 * [Configure Nodeos as a Local 21-Node Testnet](https://github.com/EOSIO/eos/blob/master/tutorials/bios-boot-tutorial/README.md)
+
+## Official Testnet
+
+The official testnet is available for testing EOSIO dApps and smart contracts:
+
+* [testnet.eos.io](https://testnet.eos.io/)
 
 ## Third-Party Testnets
 

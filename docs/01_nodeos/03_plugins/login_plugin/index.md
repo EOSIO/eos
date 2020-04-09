@@ -1,18 +1,17 @@
-# login_plugin
-
 ## Description
 
 The `login_plugin` supports the concept of applications authenticating with the EOSIO blockchain. The `login_plugin` API allows an application to verify whether an account is allowed to sign in order to satisfy a specified authority.
 
 ## Usage
 
-```sh
+```console
 # config.ini
 plugin = eosio::login_plugin
 [options]
-
+```
+```sh
 # command-line
-$ nodeos ... --plugin eosio::login_plugin [options]
+nodeos ... --plugin eosio::login_plugin [options]
 ```
 
 ## Options
@@ -34,14 +33,15 @@ Config Options for eosio::login_plugin:
 
 ### Load Dependency Examples
 
-```sh
+```console
 # config.ini
 plugin = eosio::chain_plugin
 [options]
 plugin = eosio::http_plugin 
 [options]
-
+```
+```sh
 # command-line
-$ nodeos ... --plugin eosio::chain_plugin [options]  \
-             --plugin eosio::http_plugin [options]
+nodeos ... --plugin eosio::chain_plugin [options]  \
+           --plugin eosio::http_plugin [options]
 ```

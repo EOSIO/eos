@@ -3,15 +3,13 @@ Sets or updates an action's state on the blockchain.
 
 **Command**
 
-```shell
-$ ./cleos set action
+```sh
+cleos set action
 ```
 **Output**
 
-```shell
-ERROR: RequiredError: Subcommand required
-set or update blockchain action state
-Usage: ./cleos set action [OPTIONS] SUBCOMMAND
+```console
+Usage: cleos set action [OPTIONS] SUBCOMMAND
 
 Options:
   -h,--help                   Print this help message and exit
@@ -21,8 +19,8 @@ Subcommands:
 ```
 **Command**
 
-```shell
-$ ./cleos set action permission
+```sh
+cleos set action permission
 ```
 
 ## Positionals
@@ -63,7 +61,7 @@ should be used to sign transaction
 
 ## Usage
 
-```shell
+```sh
 #Link a `voteproducer` action to the 'voting' permissions
 cleos set action permission sandwichfarm eosio.system voteproducer voting -p sandwichfarm@voting
 

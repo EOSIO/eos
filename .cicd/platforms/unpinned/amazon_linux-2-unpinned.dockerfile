@@ -6,15 +6,14 @@ RUN yum update -y && \
     libtool make bzip2 bzip2-devel openssl-devel gmp-devel libstdc++ libcurl-devel \
     libusbx-devel python3 python3-devel python-devel libedit-devel doxygen \
     graphviz clang patch llvm-devel llvm-static vim-common jq
-# build cmake.
-RUN curl -LO https://cmake.org/files/v3.13/cmake-3.13.2.tar.gz && \
-    tar -xzf cmake-3.13.2.tar.gz && \
-    cd cmake-3.13.2 && \
+# build cmake
+RUN curl -LO https://github.com/Kitware/CMake/releases/download/v3.16.2/cmake-3.16.2.tar.gz && \
+    tar -xzf cmake-3.16.2.tar.gz && \
+    cd cmake-3.16.2 && \
     ./bootstrap --prefix=/usr/local && \
     make -j$(nproc) && \
     make install && \
-    cd / && \
-    rm -rf cmake-3.13.2.tar.gz /cmake-3.13.2
+    rm -rf cmake-3.16.2.tar.gz cmake-3.16.2
 # build boost
 RUN curl -LO https://dl.bintray.com/boostorg/release/1.71.0/source/boost_1_71_0.tar.bz2 && \
     tar -xjf boost_1_71_0.tar.bz2 && \
@@ -52,8 +51,6 @@ RUN curl -L https://github.com/mongodb/mongo-cxx-driver/archive/r3.4.0.tar.gz -o
     rm -rf mongo-cxx-driver-r3.4.0.tar.gz /mongo-cxx-driver-r3.4.0
 # add mongodb to path
 ENV PATH=${PATH}:/mongodb-linux-x86_64-amazon-3.6.3/bin
-# install ccache
-RUN yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm && yum install -y ccache
 # install nvm
 RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.0/install.sh | bash
 # load nvm in non-interactive shells

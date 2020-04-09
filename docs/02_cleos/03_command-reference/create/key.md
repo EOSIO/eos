@@ -4,7 +4,7 @@ Creates a new keypair and prints the public and private keys
 
 ## Usage
 
-```shell
+```console
 Usage: cleos create key [OPTIONS]
 
 Options:
@@ -16,13 +16,13 @@ Options:
 
 ## Command
 
-```shell
-$ ./cleos create key -f passwd
+```sh
+cleos create key -f passwd
 ```
 
 ## Output
 
-```shell
+```console
 Private key: 5KCkcSxYKZfh5Cr8CCunS2PiUKzNZLhtfBjudaUnad3PDargFQo
 Public key: EOS5uHeBsURAT6bBXNtvwKtWaiDSDJSdSmc96rHVws5M1qqVCkAm6
 ```

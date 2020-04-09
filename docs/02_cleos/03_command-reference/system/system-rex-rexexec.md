@@ -18,6 +18,6 @@
 ## Examples
 
 
-```text
+```sh
 cleos system rex rexexec accountname1 10
 ```

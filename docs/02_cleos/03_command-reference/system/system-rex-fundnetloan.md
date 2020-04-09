@@ -21,6 +21,6 @@ excerpt: "Deposit into a Network loan fund"
 ## Examples
 
 
-```text
+```sh
 cleos system rex fundnetloan accountname1 abc123 "1 EOS"
 ```

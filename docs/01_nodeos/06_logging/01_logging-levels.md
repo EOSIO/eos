@@ -1,3 +1,7 @@
+---
+content_title: Logging Levels
+---
+
 There are six available logging levels:
 - all
 - debug

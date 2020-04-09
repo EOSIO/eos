@@ -10,14 +10,16 @@ None
 ## Usage
 
 
-```shell
-$ cleos wallet lock
+```sh
+cleos wallet lock
+```
 or
-$ ./cleos wallet lock -n second-wallet
+```sh
+cleos wallet lock -n second-wallet
 ```
 
 ## Outputs
 
-```shell
+```console
 Locked: 'default'
 ```

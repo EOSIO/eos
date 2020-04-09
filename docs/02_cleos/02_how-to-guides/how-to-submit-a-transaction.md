@@ -4,7 +4,7 @@ Push a transaction
 
 ## Before you begin
 
-* Install the currently supported version of cleos
+* Install the currently supported version of `cleos`
 
 * Understand the following:
   * What is a transaction
@@ -76,13 +76,13 @@ Push a transaction
 
 * Execute the following command:
 
-```shell
+```sh
 cleos push transaction TRX_FILE.json
 ```
 
-* Submit a transction from a JSON:
+* Submit a transaction from a JSON:
 
-```shell
+```sh
 cleos push transaction JSON
 ```
 

@@ -21,6 +21,6 @@ excerpt: "Withdraw from a CPU loan fund"
 
 ## Examples
 
-```text
+```sh
 cleos system rex defundcpuloan accountname1 abc123 "1 EOS"
 ```

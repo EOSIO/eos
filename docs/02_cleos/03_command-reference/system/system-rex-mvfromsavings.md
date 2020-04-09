@@ -22,6 +22,6 @@ excerpt: "Move REX tokens out of savings bucket"
 ## Examples
 
 
-```text
+```sh
 cleos system rex mvfromsavings accountname1 "1 REX"
 ```

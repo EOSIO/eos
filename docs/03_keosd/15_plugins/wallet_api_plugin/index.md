@@ -1,5 +1,3 @@
-# wallet_api_plugin
-
 ## Description
 
 The `wallet_api_plugin` exposes functionality from the [`wallet_plugin`](../wallet_plugin/index.md) to the RPC API interface managed by the [`http_plugin`](../http_plugin/index.md).
@@ -14,7 +12,7 @@ The `wallet_api_plugin` exposes functionality from the [`wallet_plugin`](../wall
 plugin = eosio::wallet_api_plugin
 
 # command-line
-$ nodeos ... --plugin eosio::wallet_api_plugin
+nodeos ... --plugin eosio::wallet_api_plugin
 ```
 
 ## Options
@@ -36,6 +34,6 @@ plugin = eosio::http_plugin
 [options]
 
 # command-line
-$ nodeos ... --plugin eosio::wallet_plugin [options]  \
-             --plugin eosio::http_plugin [options]
+nodeos ... --plugin eosio::wallet_plugin [options]  \
+           --plugin eosio::http_plugin [options]
 ```

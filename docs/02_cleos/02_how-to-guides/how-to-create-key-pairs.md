@@ -2,7 +2,7 @@
 
 ## Before you begin
 
-* Install the currently supported version of cleos
+* Install the currently supported version of `cleos`
 
 * Understand the following:
   * What is a public and private key pair
@@ -11,12 +11,12 @@
 
 To output the key pair to the console
 
-```shell
+```sh
 cleos create key --to-console
 ```
 
 To save the key pair to file
 
-```shell
+```sh
 cleos create key --file FILE_TO_SAVEKEY
 ```

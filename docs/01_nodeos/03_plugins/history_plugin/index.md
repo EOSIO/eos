@@ -1,5 +1,3 @@
-# history_plugin
-
 [[warning | Deprecation Notice]]
 | The `history_plugin` is deprecated and will no longer be maintained. Please use the [`state_history_plugin`](../state_history_plugin/index.md) instead.
 
@@ -9,13 +7,14 @@ The `history_plugin` provides a cache layer to obtain historical data about the 
 
 ## Usage
 
-```sh
+```console
 # config.ini
 plugin = eosio::history_plugin
 [options]
-
+```
+```sh
 # command-line
-$ nodeos ... --plugin eosio::history_plugin [options]
+nodeos ... --plugin eosio::history_plugin [options]
 ```
 
 ## Options

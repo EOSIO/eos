@@ -86,4 +86,4 @@ var/lib/node_*
 *.iws
 .DS_Store
 
-node_modules
+!*.swagger.*

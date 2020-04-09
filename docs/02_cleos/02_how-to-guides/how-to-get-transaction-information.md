@@ -4,7 +4,7 @@ Query infomation of a transaction
 
 ## Before you begin
 
-* Install the currently supported version of cleos
+* Install the currently supported version of `cleos`
 
 * Understand the following:
 
@@ -12,9 +12,9 @@ Query infomation of a transaction
 
 ## Steps
 
-```shell
+```sh
 cleos get transaction id
 ```
 
 [[info]]
-| Beware that you need to connect a nodeos that enable history API plugin to query transaction information
+| Be aware that you need to connect to a `nodeos` instance that enables history API plugin to query transaction information.

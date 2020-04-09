@@ -4,7 +4,7 @@ Delegate resource for an account or application
 
 ## Before you begin
 
-* Install the currently supported version of cleos
+* Install the currently supported version of `cleos`
 
 * Ensure the reference system contracts from `eosio.contracts` repository is deployed and used to manage system resources
 
@@ -13,19 +13,17 @@ Delegate resource for an account or application
   * What is network bandwidth
   * What is CPU bandwidth
 
-
-
 ## Steps
 
 Delegate 0.01 SYS CPU bandwidth from `bob` to `alice`
 
-```shell
+```sh
 cleos system delegatebw bob alice "0.01 SYS" "0 SYS"
 ```
 
 You should see something below:
 
-```shell
+```console
 executed transaction: 5487afafd67bf459a20fcc2dbc5d0c2f0d1f10e33123eaaa07088046fd18e3ae  192 bytes  503 us
 #         eosio <= eosio::delegatebw            {"from":"bob","receiver":"alice","stake_net_quantity":"0.0000 SYS","stake_cpu_quanti...
 #   eosio.token <= eosio.token::transfer        {"from":"bob","to":"eosio.stake","quantity":"0.0010 EOS","memo":"stake bandwidth"}

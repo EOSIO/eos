@@ -1,4 +1,6 @@
-<!-- ## How to replay from a snapshot -->
+---
+content_title: How to replay from a snapshot
+---
 
 Once you have obtained a copy of a valid snapshot file from which you wish to create a valid chain state, copy it to your data/snapshots directory, backing up (if you wish to keep them) and removing any existing contents of the data directory.
 
@@ -10,7 +12,7 @@ data/             | *                          | remove
 You can use `snapshots-dir = "snapshots" ` in the configuration file or using the `--snapshots-dir` command line option, to specify the where to find the the snapshot to replay, use `--snapshot` to specify the name of the snapshot to replay.
 
 ```sh
-$ nodeos --snapshot yoursnapshot.name \
+nodeos --snapshot yoursnapshot.name \
   -e -p eosio \
   --plugin eosio::producer_plugin  \
   --plugin eosio::chain_api_plugin \

@@ -1,3 +1,6 @@
+---
+content_title: Producing Node Setup
+---
 
 [[info | System contracts required]]
 | These instructions assume you want to launch a producing node on a network with **system contracts loaded**. These instructions will not work on a default development node using native functionality, or one without system contracts loaded.
@@ -9,7 +12,7 @@ This section describes how to set up a producing node within the EOSIO network. 
 ## Before you begin
 
 * [Install the EOSIO software](../../../00_install/index.md) before starting this section.
-* It is assumed that `nodeos`, `cleos`, and `keosd` are accessible through the path. If you built from source, make sure to run the [install script](../../../00_install/01_build-from-source/03_install-eosio-binaries.md).
+* It is assumed that `nodeos`, `cleos`, and `keosd` are accessible through the path. If you built EOSIO using shell scripts, make sure to run the [Install Script](../../../00_install/01_build-from-source/01_shell-scripts/03_install-eosio-binaries.md).
 * Know how to pass [Nodeos options](../../02_usage/00_nodeos-options.md) to enable or disable functionality.
 
 ## Steps
@@ -27,7 +30,7 @@ Please follow the steps below to set up a producing node:
 In order for your account to be eligible as a producer, you will need to register the account as a producer:
 
 ```sh
-$ cleos system regproducer accountname1 EOS1234534... http://producer.site Antarctica
+cleos system regproducer accountname1 EOS1234534... http://producer.site Antarctica
 ```
 
 ### 2. Set Producer Name
@@ -62,7 +65,7 @@ signature-provider = PUBLIC_SIGNING_KEY=KEY:PRIVATE_SIGNING_KEY
 ```
 
 #### Using Keosd:
-You can also use Keosd instead of hard-defining keys. 
+You can also use `keosd` instead of hard-defining keys. 
 
 ```console
 # config.ini:

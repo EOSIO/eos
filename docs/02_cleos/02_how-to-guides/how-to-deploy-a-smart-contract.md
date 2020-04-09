@@ -4,7 +4,7 @@ Deploy an EOSIO contract
 
 ## Before you begin
 
-* Install the currently supported version of cleos
+* Install the currently supported version of `cleos`
 
 * Unlock the wallet which contains the private key of the contract account
 
@@ -12,7 +12,7 @@ Deploy an EOSIO contract
 
 Execute:
 
-```shell
+```sh
 cleos set contract contract_account contract_directory_path
 ```
 

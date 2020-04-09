@@ -1,4 +1,6 @@
-<!-- # How to replay from a blocks.log file -->
+---
+content_title: How to replay from a blocks.log file
+---
 
 Once you have obtained a copy of the `blocks.log` file which you wish to replay the blockchain from, copy it to your `data/blocks` directory, backing up any existing contents if you wish to keep them, and remove the `blocks.index`, `forkdb.dat`, `shared_memory.bin`, and `shared_memory.meta`.
 
@@ -15,7 +17,7 @@ data/blocks/reversible  | shared_memory.meta | Remove
 You can use `blocks-dir = "blocks"` in the `config.ini` file, or use the `--blocks-dir` command line option, to specify where to find the `blocks.log` file to replay.
 
 ```sh
-$ nodeos --replay-blockchain \
+nodeos --replay-blockchain \
   -e -p eosio \
   --plugin eosio::producer_plugin  \
   --plugin eosio::chain_api_plugin \

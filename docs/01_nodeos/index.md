@@ -1,8 +1,10 @@
-# Nodeos
+---
+content_title: Nodeos
+---
 
 ## Introduction
 
-`nodeos` is the core service daemon that runs on every EOSIO node. It can be configured to process smart contracts, validate transactions, produce blocks with valid transactions, and confirm blocks to record them on the blockchain.
+`nodeos` is the core service daemon that runs on every EOSIO node. It can be configured to process smart contracts, validate transactions, produce blocks containing valid transactions, and confirm blocks to record them on the blockchain.
 
 ## Installation
 
@@ -10,7 +12,7 @@
 
 ## Explore
 
-Please navigate the sections below to configure and use `nodeos`.
+Navigate the sections below to configure and use `nodeos`.
 
 * [Usage](02_usage/index.md) - Configuring and using `nodeos`, node setups/environments.
 * [Plugins](03_plugins/index.md) - Using plugins, plugin options, mandatory vs. optional.

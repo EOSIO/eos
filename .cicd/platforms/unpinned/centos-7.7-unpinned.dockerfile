@@ -9,17 +9,15 @@ RUN yum update -y && \
     graphviz bzip2-devel openssl-devel gmp-devel ocaml libicu-devel \
     python python-devel rh-python36 file libusbx-devel \
     libcurl-devel patch vim-common jq llvm-toolset-7.0-llvm-devel llvm-toolset-7.0-llvm-static
-# build cmake.
-RUN curl -LO https://cmake.org/files/v3.13/cmake-3.13.2.tar.gz && \
+# build cmake
+RUN curl -LO https://github.com/Kitware/CMake/releases/download/v3.16.2/cmake-3.16.2.tar.gz && \
+    tar -xzf cmake-3.16.2.tar.gz && \
+    cd cmake-3.16.2 && \
     source /opt/rh/devtoolset-8/enable && \
-    source /opt/rh/rh-python36/enable && \
-    tar -xzf cmake-3.13.2.tar.gz && \
-    cd cmake-3.13.2 && \
     ./bootstrap --prefix=/usr/local && \
     make -j$(nproc) && \
     make install && \
-    cd / && \
-    rm -rf cmake-3.13.2.tar.gz /cmake-3.13.2
+    rm -rf cmake-3.16.2.tar.gz cmake-3.16.2
 # build boost
 RUN curl -LO https://dl.bintray.com/boostorg/release/1.71.0/source/boost_1_71_0.tar.bz2 && \
     source /opt/rh/devtoolset-8/enable && \
@@ -63,11 +61,6 @@ RUN curl -L https://github.com/mongodb/mongo-cxx-driver/archive/r3.4.0.tar.gz -o
     rm -rf mongo-cxx-driver-r3.4.0.tar.gz /mongo-cxx-driver-r3.4.0
 # add mongodb to path
 ENV PATH=${PATH}:/mongodb-linux-x86_64-amazon-3.6.3/bin
-# install ccache
-RUN yum install -y ccache
-# fix ccache for centos
-RUN cd /usr/lib64/ccache && ln -s ../../bin/ccache c++
-ENV CCACHE_PATH="/opt/rh/devtoolset-8/root/usr/bin"
 # install nvm
 RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.0/install.sh | bash
 # load nvm in non-interactive shells

@@ -142,20 +142,6 @@ namespace Runtime
 		~ModuleInstance() override;
 	};
 
-	// Initializes global state used by the WAVM intrinsics.
-	void initWAVMIntrinsics();
-
-	// Checks whether an address is owned by a table or memory.
-	bool isAddressOwnedByTable(U8* address);
-	bool isAddressOwnedByMemory(U8* address);
-	
-	// Allocates virtual pages with alignBytes of padding, and returns an aligned base address.
-	// The unaligned allocation address and size are written to outUnalignedBaseAddress and outUnalignedNumPlatformPages.
-	U8* allocateVirtualPagesAligned(Uptr numBytes,Uptr alignmentBytes,U8*& outUnalignedBaseAddress,Uptr& outUnalignedNumPlatformPages);
-
-	// Turns a hardware trap that occurred in WASM code into a runtime exception or fatal error.
-	[[noreturn]] void handleHardwareTrap(Platform::HardwareTrapType trapType,Platform::CallStack&& trapCallStack,Uptr trapOperand);
-
 	// Adds GC roots from WASM threads to the provided array.
 	void getThreadGCRoots(std::vector<ObjectInstance*>& outGCRoots);
 }
