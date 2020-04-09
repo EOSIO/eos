@@ -54,10 +54,16 @@ namespace eosio { namespace chain { namespace webassembly {
       return context.idx64.find_primary(code, scope, table, secondary, primary);
    }
    int32_t interface::db_idx64_lowerbound( uint64_t code, uint64_t scope, uint64_t table, legacy_ptr<uint64_t> secondary, legacy_ptr<uint64_t> primary ) {
-      return context.idx64.lowerbound_secondary(code, scope, table, secondary.ref(), primary.ref());
+      int32_t result = context.idx64.lowerbound_secondary(code, scope, table, secondary.ref(), primary.ref());
+      (void)legacy_ptr<uint64_t>(std::move(secondary));
+      (void)legacy_ptr<uint64_t>(std::move(primary));
+      return result;
    }
    int32_t interface::db_idx64_upperbound( uint64_t code, uint64_t scope, uint64_t table, legacy_ptr<uint64_t> secondary, legacy_ptr<uint64_t> primary ) {
-      return context.idx64.upperbound_secondary(code, scope, table, secondary.ref(), primary.ref());
+      int32_t result = context.idx64.upperbound_secondary(code, scope, table, secondary.ref(), primary.ref());
+      (void)legacy_ptr<uint64_t>(std::move(secondary));
+      (void)legacy_ptr<uint64_t>(std::move(primary));
+      return result;
    }
    int32_t interface::db_idx64_end( uint64_t code, uint64_t scope, uint64_t table ) {
       return context.idx64.end_secondary(code, scope, table);
@@ -89,10 +95,16 @@ namespace eosio { namespace chain { namespace webassembly {
       return context.idx128.find_primary(code, scope, table, secondary, primary);
    }
    int32_t interface::db_idx128_lowerbound( uint64_t code, uint64_t scope, uint64_t table, legacy_ptr<uint128_t> secondary, legacy_ptr<uint64_t> primary ) {
-      return context.idx128.lowerbound_secondary(code, scope, table, secondary.ref(), primary.ref());
+      int32_t result = context.idx128.lowerbound_secondary(code, scope, table, secondary.ref(), primary.ref());
+      (void)legacy_ptr<uint128_t>(std::move(secondary));
+      (void)legacy_ptr<uint64_t>(std::move(primary));
+      return result;
    }
    int32_t interface::db_idx128_upperbound( uint64_t code, uint64_t scope, uint64_t table, legacy_ptr<uint128_t> secondary, legacy_ptr<uint64_t> primary ) {
-      return context.idx128.upperbound_secondary(code, scope, table, secondary.ref(), primary.ref());
+      int32_t result = context.idx128.upperbound_secondary(code, scope, table, secondary.ref(), primary.ref());
+      (void)legacy_ptr<uint128_t>(std::move(secondary));
+      (void)legacy_ptr<uint64_t>(std::move(primary));
+      return result;
    }
    int32_t interface::db_idx128_end( uint64_t code, uint64_t scope, uint64_t table ) {
       return context.idx128.end_secondary(code, scope, table);
@@ -144,14 +156,20 @@ namespace eosio { namespace chain { namespace webassembly {
                     db_api_exception,
                     "invalid size of secondary key array for idx256 : given ${given} bytes but expected ${expected} bytes",
                     ("given",data.ref().size())("expected", idx256_array_size) );
-      return context.idx256.lowerbound_secondary(code, scope, table, data.ref().data(), primary.ref());
+      int32_t result = context.idx256.lowerbound_secondary(code, scope, table, data.ref().data(), primary.ref());
+      (void)legacy_array_ptr<uint128_t>(std::move(data));
+      (void)legacy_ptr<uint64_t>(std::move(primary));
+      return result;
    }
    int32_t interface::db_idx256_upperbound( uint64_t code, uint64_t scope, uint64_t table, legacy_array_ptr<uint128_t> data, legacy_ptr<uint64_t> primary ) {
       EOS_ASSERT( data.ref().size() == idx256_array_size,
                     db_api_exception,
                     "invalid size of secondary key array for idx256 : given ${given} bytes but expected ${expected} bytes",
                     ("given",data.ref().size())("expected", idx256_array_size) );
-      return context.idx256.upperbound_secondary(code, scope, table, data.ref().data(), primary.ref());
+      int32_t result = context.idx256.upperbound_secondary(code, scope, table, data.ref().data(), primary.ref());
+      (void)legacy_array_ptr<uint128_t>(std::move(data));
+      (void)legacy_ptr<uint64_t>(std::move(primary));
+      return result;
    }
    int32_t interface::db_idx256_end( uint64_t code, uint64_t scope, uint64_t table ) {
       return context.idx256.end_secondary(code, scope, table);
@@ -182,10 +200,16 @@ namespace eosio { namespace chain { namespace webassembly {
       return context.idx_double.find_primary(code, scope, table, secondary, primary);
    }
    int32_t interface::db_idx_double_lowerbound( uint64_t code, uint64_t scope, uint64_t table, legacy_ptr<float64_t> secondary, legacy_ptr<uint64_t> primary ) {
-      return context.idx_double.lowerbound_secondary(code, scope, table, secondary.ref(), primary.ref());
+      int32_t result = context.idx_double.lowerbound_secondary(code, scope, table, secondary.ref(), primary.ref());
+      (void)legacy_ptr<float64_t>(std::move(secondary));
+      (void)legacy_ptr<uint64_t>(std::move(primary));
+      return result;
    }
    int32_t interface::db_idx_double_upperbound( uint64_t code, uint64_t scope, uint64_t table, legacy_ptr<float64_t> secondary, legacy_ptr<uint64_t> primary ) {
-      return context.idx_double.upperbound_secondary(code, scope, table, secondary.ref(), primary.ref());
+      int32_t result = context.idx_double.upperbound_secondary(code, scope, table, secondary.ref(), primary.ref());
+      (void)legacy_ptr<float64_t>(std::move(secondary));
+      (void)legacy_ptr<uint64_t>(std::move(primary));
+      return result;
    }
    int32_t interface::db_idx_double_end( uint64_t code, uint64_t scope, uint64_t table ) {
       return context.idx_double.end_secondary(code, scope, table);
@@ -216,10 +240,16 @@ namespace eosio { namespace chain { namespace webassembly {
       return context.idx_long_double.find_primary(code, scope, table, secondary, primary);
    }
    int32_t interface::db_idx_long_double_lowerbound( uint64_t code, uint64_t scope, uint64_t table, legacy_ptr<float128_t> secondary, legacy_ptr<uint64_t> primary ) {
-      return context.idx_long_double.lowerbound_secondary(code, scope, table, secondary.ref(), primary.ref());
+      int32_t result = context.idx_long_double.lowerbound_secondary(code, scope, table, secondary.ref(), primary.ref());
+      (void)legacy_ptr<float128_t>(std::move(secondary));
+      (void)legacy_ptr<uint64_t>(std::move(primary));
+      return result;
    }
    int32_t interface::db_idx_long_double_upperbound( uint64_t code, uint64_t scope, uint64_t table, legacy_ptr<float128_t> secondary, legacy_ptr<uint64_t> primary ) {
-      return context.idx_long_double.upperbound_secondary(code, scope, table, secondary.ref(), primary.ref());
+      int32_t result = context.idx_long_double.upperbound_secondary(code, scope, table, secondary.ref(), primary.ref());
+      (void)legacy_ptr<float128_t>(std::move(secondary));
+      (void)legacy_ptr<uint64_t>(std::move(primary));
+      return result;
    }
    int32_t interface::db_idx_long_double_end( uint64_t code, uint64_t scope, uint64_t table ) {
       return context.idx_long_double.end_secondary(code, scope, table);

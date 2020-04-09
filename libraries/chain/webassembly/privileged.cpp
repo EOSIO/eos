@@ -30,6 +30,9 @@ namespace eosio { namespace chain { namespace webassembly {
 
    void interface::get_resource_limits( account_name account, legacy_ptr<int64_t> ram_bytes, legacy_ptr<int64_t> net_weight, legacy_ptr<int64_t> cpu_weight ) const {
       context.control.get_resource_limits_manager().get_account_limits( account, ram_bytes.ref(), net_weight.ref(), cpu_weight.ref());
+      (void)legacy_ptr<int64_t>(std::move(ram_bytes));
+      (void)legacy_ptr<int64_t>(std::move(net_weight));
+      (void)legacy_ptr<int64_t>(std::move(cpu_weight));
    }
 
    int64_t set_proposed_producers_common( apply_context& context, vector<producer_authority> && producers, bool validate_keys ) {
