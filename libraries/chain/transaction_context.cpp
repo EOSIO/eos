@@ -298,11 +298,11 @@ namespace eosio { namespace chain {
       }
 
       if( delay != fc::microseconds() ) {
-         // bool remove_deferred_transactions_activated = control.is_builtin_activated(builtin_protocol_feature_t::remove_deferred_transactions);
-         // EOS_ASSERT( !remove_deferred_transactions_activated, remove_deferred_tx, "attempting to cancel a deferred transaction; deferred transactions have been removed" );
-         // 
-         // bool stop_deferred_transactions_activated = control.is_builtin_activated(builtin_protocol_feature_t::stop_deferred_transactions);
-         // EOS_THROW( stop_deferred_tx, "delay seconds must be 0" );
+         bool remove_deferred_transactions_activated = control.is_builtin_activated(builtin_protocol_feature_t::remove_deferred_transactions);
+         EOS_ASSERT( !remove_deferred_transactions_activated, remove_deferred_tx, "`transaction_context::exec` attempting to cancel a deferred transaction; deferred transactions have been removed" );
+         
+         bool stop_deferred_transactions_activated = control.is_builtin_activated(builtin_protocol_feature_t::stop_deferred_transactions);
+         EOS_ASSERT( !stop_deferred_transactions_activated, stop_deferred_tx, "`transaction_context::exec` delay seconds must be 0" );
          schedule_transaction();
       }
    }
@@ -615,10 +615,10 @@ namespace eosio { namespace chain {
 
    void transaction_context::schedule_transaction() {
       bool remove_deferred_transactions_activated = control.is_builtin_activated(builtin_protocol_feature_t::remove_deferred_transactions);
-      EOS_ASSERT( !remove_deferred_transactions_activated, remove_deferred_tx, "attempting to cancel a deferred transaction; deferred transactions have been removed" );
+      EOS_ASSERT( !remove_deferred_transactions_activated, remove_deferred_tx, "`transaction_context::schedule_transaction` attempting to cancel a deferred transaction; deferred transactions have been removed" );
       
       bool stop_deferred_transactions_activated = control.is_builtin_activated(builtin_protocol_feature_t::stop_deferred_transactions);
-      EOS_ASSERT( trx.delay_sec.value == 0, stop_deferred_tx, "delay seconds must be 0" );
+      EOS_ASSERT( !stop_deferred_transactions_activated, stop_deferred_tx, "`transaction_context::schedule_transaction` delay seconds must be 0" );
       // Charge ahead of time for the additional net usage needed to retire the delayed transaction
       // whether that be by successfully executing, soft failure, hard failure, or expiration.
       if( trx.delay_sec.value == 0 ) { // Do not double bill. Only charge if we have not already charged for the delay.

@@ -365,11 +365,11 @@ void apply_context::execute_context_free_inline( action&& a ) {
 
 void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, account_name payer, transaction&& trx, bool replace_existing ) {
    bool remove_deferred_transactions_activated = control.is_builtin_activated(builtin_protocol_feature_t::remove_deferred_transactions);
-   EOS_ASSERT( !remove_deferred_transactions_activated, remove_deferred_tx, "attempting to schedule a deferred transaction; deferred transactions have been removed" );
+   EOS_ASSERT( !remove_deferred_transactions_activated, remove_deferred_tx, "`apply_context::schedule_deferred_transaction` attempting to schedule a deferred transaction; deferred transactions have been removed" );
 
    bool stop_deferred_transactions_activated   = control.is_builtin_activated(builtin_protocol_feature_t::stop_deferred_transactions);
    if ( stop_deferred_transactions_activated ) {
-       EOS_ASSERT( replace_existing, stop_deferred_tx, "you may only replace existing deferred transactions; not generate new ones" );
+       EOS_ASSERT( replace_existing, stop_deferred_tx, "`apply_context::schedule_deferred_transaction` you may only replace existing deferred transactions; not generate new ones" );
    }
 
    EOS_ASSERT( trx.context_free_actions.size() == 0, cfa_inside_generated_tx, "context free actions are not currently allowed in generated transactions" );
@@ -559,7 +559,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
 
 bool apply_context::cancel_deferred_transaction( const uint128_t& sender_id, account_name sender ) {
    bool remove_deferred_transactions_activated = control.is_builtin_activated(builtin_protocol_feature_t::remove_deferred_transactions);
-   EOS_ASSERT( !remove_deferred_transactions_activated, remove_deferred_tx, "attempting to cancel a deferred transaction; deferred transactions have been removed" );
+   EOS_ASSERT( !remove_deferred_transactions_activated, remove_deferred_tx, "`apply_context::cancel_deferred_transaction` attempting to cancel a deferred transaction; deferred transactions have been removed" );
    
    auto& generated_transaction_idx = db.get_mutable_index<generated_transaction_multi_index>();
    const auto* gto = db.find<generated_transaction_object,by_sender_id>(boost::make_tuple(sender, sender_id));

@@ -1208,7 +1208,7 @@ struct controller_impl {
 
    transaction_trace_ptr push_scheduled_transaction( const transaction_id_type& trxid, fc::time_point deadline, uint32_t billed_cpu_time_us, bool explicit_billed_cpu_time = false ) {
       bool remove_deferred_transactions_activated = self.is_builtin_activated(builtin_protocol_feature_t::remove_deferred_transactions);
-      EOS_ASSERT( !remove_deferred_transactions_activated, remove_deferred_tx, "attempting to cancel a deferred transaction; deferred transactions have been removed" );
+      EOS_ASSERT( !remove_deferred_transactions_activated, remove_deferred_tx, "`controller_impl::push_scheduled_transaction` attempting to cancel a deferred transaction; deferred transactions have been removed" );
        
       const auto& idx = db.get_index<generated_transaction_multi_index,by_trx_id>();
       auto itr = idx.find( trxid );
@@ -1477,7 +1477,7 @@ struct controller_impl {
 
             if ( trx_context.delay.count() > 0 ) {
                bool stop_deferred_transactions_activated = self.is_builtin_activated(builtin_protocol_feature_t::stop_deferred_transactions);
-               EOS_ASSERT( !stop_deferred_transactions_activated, stop_deferred_tx, "delay seconds must be 0" );
+               EOS_ASSERT( !stop_deferred_transactions_activated, stop_deferred_tx, "`controller_impl::push_transaction` delay seconds must be 0" );
             }
 
             if( check_auth ) {

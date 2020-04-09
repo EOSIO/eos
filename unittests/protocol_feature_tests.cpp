@@ -1823,7 +1823,7 @@ BOOST_AUTO_TEST_CASE( stop_deferred_transactions_protocol_feature_user_test ) { 
                                  ("quantity", "9.0000 CUR")
                                  ("memo", "" ), 120, 60),
       stop_deferred_tx,
-      fc_exception_message_starts_with("delay seconds must be 0")
+      fc_exception_message_starts_with("`controller_impl::push_transaction` delay seconds must be 0")
    );
 
    // Check that the number deferred transactions is 1, due to the activation of the protocol feature.
@@ -1877,7 +1877,7 @@ BOOST_AUTO_TEST_CASE( stop_deferred_transactions_protocol_feature_contract_test 
                                                 ("payload", 49)
                             ),
                             stop_deferred_tx,
-                            fc_exception_message_starts_with( "you may only replace existing deferred transactions; not generate new ones" ) );
+                            fc_exception_message_starts_with( "`apply_context::schedule_deferred_transaction` you may only replace existing deferred transactions; not generate new ones" ) );
 
    // Send a deferred transaction via the contract.  This time, replacing an
    // existing one.  Note: sending a payload of 100 tells the contract to set
