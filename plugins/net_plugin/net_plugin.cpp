@@ -272,6 +272,7 @@ namespace eosio {
       optional<eosio::chain::named_thread_pool> thread_pool;
 
       generic_support_message                   generic_support_msg;
+      const net::generic_message_handler*       generic_msg_handler;
    private:
       mutable std::mutex            chain_info_mtx; // protects chain_*
       uint32_t                      chain_lib_num{0};
@@ -722,6 +723,7 @@ namespace eosio {
       void handle_message( const block_id_type& id, signed_block_ptr msg );
       void handle_message( const packed_transaction& msg ) = delete; // packed_transaction_ptr overload used instead
       void handle_message( packed_transaction_ptr msg );
+      void handle_message( const generic_message& msg );
       void handle_message( const generic_support_message& msg );
 
       void process_signed_block( const block_id_type& id, signed_block_ptr msg );
@@ -797,6 +799,7 @@ namespace eosio {
       void operator()( const generic_message& msg ) const {
          // continue call to signal on connection strand
          fc_dlog( logger, "handle generic_message" );
+         c->handle_message( msg );
       }
 
       void operator()( const generic_support_message& msg ) const {
@@ -2950,6 +2953,11 @@ namespace eosio {
       });
    }
 
+   void connection::handle_message( const generic_message& msg ) {
+      peer_dlog(this, "generic_message");
+      my_impl->generic_msg_handler->route(msg);
+   }
+
    void connection::handle_message( const generic_support_message& msg ) {
       peer_dlog(this, "generic_support_message");
       std::lock_guard<std::mutex> g( conn_mtx );
@@ -3556,6 +3564,7 @@ namespace eosio {
       }
 
       my->generic_support_msg.types = generic_msg_handler.get_registered_types();
+      my->generic_msg_handler = &generic_msg_handler;
 
       } catch( ... ) {
          // always want plugin_shutdown even on exception

@@ -8,9 +8,9 @@ namespace eosio { namespace net {
       : type(type) {
    }
 
-   void generic_message_handler::route(const generic_message& msg) {
+   void generic_message_handler::route(const generic_message& msg) const {
       auto existing_router = _routers.find(msg.type);
-      if (existing_router == _routers.end()) {
+      if (existing_router == _routers.cend()) {
          dlog( "No routes for generic_message of type: ${type}", ("type", msg.type) );
          return;
       }
