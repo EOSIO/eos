@@ -285,6 +285,8 @@ BOOST_AUTO_TEST_CASE(test_trim_blocklog_front) {
    auto temp2 = bfs::unique_path();
    BOOST_REQUIRE_NO_THROW(block_log::trim_blocklog_front(temp1, temp2, 10));
    BOOST_REQUIRE_NO_THROW(block_log::smoke_test(temp1));
+   bfs::remove_all(temp1);
+   bfs::remove_all(temp2);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
