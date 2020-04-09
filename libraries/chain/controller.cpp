@@ -1149,7 +1149,7 @@ struct controller_impl {
       if (auto dm_logger = get_deep_mind_logger()) {
          fc_dlog(*dm_logger, "TRX_OP CREATE onerror ${id} ${trx}",
             ("id", etrx.id())
-            ("trx", self.maybe_to_variant_with_abi(etrx, abi_serializer::create_yield_function(fc::microseconds(config::dmlog_abi_serializer_max_time_us))))
+            ("trx", self.maybe_to_variant_with_abi(etrx, abi_serializer::create_yield_function(self.get_abi_serializer_max_time())))
          );
       }
 
@@ -2448,7 +2448,7 @@ struct controller_impl {
       if (auto dm_logger = get_deep_mind_logger()) {
          fc_dlog(*dm_logger, "TRX_OP CREATE onblock ${id} ${trx}",
             ("id", trx.id())
-            ("trx", self.maybe_to_variant_with_abi(trx, abi_serializer::create_yield_function(fc::microseconds(config::dmlog_abi_serializer_max_time_us))))
+            ("trx", self.maybe_to_variant_with_abi(trx, abi_serializer::create_yield_function(self.get_abi_serializer_max_time())))
          );
       }
 
@@ -3330,6 +3330,10 @@ void controller::add_to_ram_correction( account_name account, uint64_t ram_bytes
          ("delta", ram_bytes)
       );
    }
+}
+
+fc::microseconds controller::get_abi_serializer_max_time()const {
+   return my->conf.abi_serializer_max_time_us;
 }
 
 bool controller::all_subjective_mitigations_disabled()const {

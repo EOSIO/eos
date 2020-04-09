@@ -706,8 +706,10 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       if( options.count( "wasm-runtime" ))
          my->wasm_runtime = options.at( "wasm-runtime" ).as<vm_type>();
 
-      if(options.count("abi-serializer-max-time-ms"))
+      if(options.count("abi-serializer-max-time-ms")) {
          my->abi_serializer_max_time_us = fc::microseconds(options.at("abi-serializer-max-time-ms").as<uint32_t>() * 1000);
+         my->chain_config->abi_serializer_max_time_us = my->abi_serializer_max_time_us;
+      }
 
       my->chain_config->blocks_dir = my->blocks_dir;
       my->chain_config->state_dir = app().data_dir() / config::default_state_dir_name;
@@ -1143,8 +1145,8 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
             [this]( std::tuple<const transaction_trace_ptr&, const signed_transaction&> t ) {
                if (auto dm_logger = my->chain->get_deep_mind_logger()) {
                   fc_dlog(*dm_logger, "APPLIED_TRANSACTION ${block} ${traces}",
-                     ("block", chain().head_block_num() + 1)
-                     ("traces", chain().maybe_to_variant_with_abi(std::get<0>(t), abi_serializer::create_yield_function(fc::microseconds(config::dmlog_abi_serializer_max_time_us))))
+                     ("block", my->chain->head_block_num() + 1)
+                     ("traces", my->chain->maybe_to_variant_with_abi(std::get<0>(t), abi_serializer::create_yield_function(my->chain->get_abi_serializer_max_time())))
                   );
                }
 
