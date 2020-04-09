@@ -27,7 +27,6 @@ using namespace fc;
 
 class currency_tester : public TESTER {
    public:
-
       auto push_action(const account_name& signer, const action_name &name, const variant_object &data ) {
          string action_type_name = abi_ser.get_action_type(name);
 
@@ -70,8 +69,9 @@ class currency_tester : public TESTER {
          return trace;
       }
 
-      currency_tester()
-         :TESTER(),abi_ser(json::from_string(contracts::eosio_token_abi().data()).as<abi_def>(), abi_serializer::create_yield_function( abi_serializer_max_time ))
+    currency_tester()
+      :TESTER( {builtin_protocol_feature_t::stop_deferred_transactions} )
+      ,abi_ser( json::from_string(contracts::eosio_token_abi().data()).as<abi_def>(), abi_serializer::create_yield_function( abi_serializer_max_time ) )
       {
          create_account( N(eosio.token));
          set_code( N(eosio.token), contracts::eosio_token_wasm() );
@@ -104,8 +104,8 @@ BOOST_AUTO_TEST_SUITE(currency_tests)
 
 BOOST_AUTO_TEST_CASE( bootstrap ) try {
    auto expected = asset::from_string( "1000000.0000 CUR" );
-   currency_tester t;
-   auto actual = t.get_currency_balance(N(eosio.token), expected.get_symbol(), N(eosio.token));
+   currency_tester chain;
+   auto actual = chain.get_currency_balance(N(eosio.token), expected.get_symbol(), N(eosio.token));
    BOOST_REQUIRE_EQUAL(expected, actual);
 } FC_LOG_AND_RETHROW() /// test_api_bootstrap
 
@@ -151,7 +151,7 @@ BOOST_FIXTURE_TEST_CASE( test_duplicate_transfer, currency_tester ) {
    BOOST_CHECK_EQUAL(get_balance(N(alice)), asset::from_string( "100.0000 CUR" ) );
 }
 
-BOOST_FIXTURE_TEST_CASE( test_addtransfer, currency_tester ) try {
+BOOST_FIXTURE_TEST_CASE( test_addtransfer, currency_tester) try {
    create_accounts( {N(alice)} );
 
    // make a transfer from the contract to a user
@@ -405,7 +405,7 @@ BOOST_FIXTURE_TEST_CASE( test_proxy, currency_tester ) try {
    set_code(N(proxy), contracts::proxy_wasm());
    produce_blocks(1);
 
-   abi_serializer proxy_abi_ser(json::from_string(contracts::proxy_abi().data()).as<abi_def>(), abi_serializer::create_yield_function( abi_serializer_max_time ));
+   abi_serializer proxy_abi_ser(json::from_string(contracts::proxy_abi().data()).as<abi_def>(), abi_serializer::create_yield_function( currency_tester::abi_serializer_max_time ));
 
    // set up proxy owner
    {
@@ -417,7 +417,7 @@ BOOST_FIXTURE_TEST_CASE( test_proxy, currency_tester ) try {
       setowner_act.data = proxy_abi_ser.variant_to_binary("setowner", mutable_variant_object()
          ("owner", "alice")
          ("delay", 10),
-         abi_serializer::create_yield_function( abi_serializer_max_time )
+         abi_serializer::create_yield_function( currency_tester::abi_serializer_max_time )
       );
       trx.actions.emplace_back(std::move(setowner_act));
 
@@ -461,7 +461,7 @@ BOOST_FIXTURE_TEST_CASE( test_deferred_failure, currency_tester ) try {
    set_code(N(bob), contracts::proxy_wasm());
    produce_blocks(1);
 
-   abi_serializer proxy_abi_ser(json::from_string(contracts::proxy_abi().data()).as<abi_def>(), abi_serializer::create_yield_function( abi_serializer_max_time ));
+   abi_serializer proxy_abi_ser(json::from_string(contracts::proxy_abi().data()).as<abi_def>(), abi_serializer::create_yield_function( currency_tester::abi_serializer_max_time ));
 
    // set up proxy owner
    {
@@ -473,7 +473,7 @@ BOOST_FIXTURE_TEST_CASE( test_deferred_failure, currency_tester ) try {
       setowner_act.data = proxy_abi_ser.variant_to_binary("setowner", mutable_variant_object()
          ("owner", "bob")
          ("delay", 10),
-         abi_serializer::create_yield_function( abi_serializer_max_time )
+         abi_serializer::create_yield_function( currency_tester::abi_serializer_max_time )
       );
       trx.actions.emplace_back(std::move(setowner_act));
 
@@ -524,7 +524,7 @@ BOOST_FIXTURE_TEST_CASE( test_deferred_failure, currency_tester ) try {
       setowner_act.data = proxy_abi_ser.variant_to_binary("setowner", mutable_variant_object()
          ("owner", "alice")
          ("delay", 0),
-         abi_serializer::create_yield_function( abi_serializer_max_time )
+         abi_serializer::create_yield_function( currency_tester::abi_serializer_max_time )
       );
       trx.actions.emplace_back(std::move(setowner_act));
 
@@ -538,7 +538,7 @@ BOOST_FIXTURE_TEST_CASE( test_deferred_failure, currency_tester ) try {
    while( control->pending_block_time() < expected_redelivery ) {
       produce_block();
       BOOST_REQUIRE_EQUAL(get_balance( N(proxy)), asset::from_string("5.0000 CUR"));
-      BOOST_REQUIRE_EQUAL(get_balance( N(alice)),   asset::from_string("0.0000 CUR"));
+      BOOST_REQUIRE_EQUAL(get_balance( N(alice)), asset::from_string("0.0000 CUR"));
       BOOST_REQUIRE_EQUAL(get_balance( N(bob)),   asset::from_string("0.0000 CUR"));
       BOOST_REQUIRE_EQUAL(1, index.size());
       BOOST_REQUIRE_EQUAL(false, chain_has_transaction(deferred2_id));
@@ -562,7 +562,6 @@ BOOST_FIXTURE_TEST_CASE( test_deferred_failure, currency_tester ) try {
 } FC_LOG_AND_RETHROW() /// test_currency
 
 BOOST_FIXTURE_TEST_CASE( test_input_quantity, currency_tester ) try {
-
    produce_blocks(2);
 
    create_accounts( {N(alice), N(bob), N(carl)} );

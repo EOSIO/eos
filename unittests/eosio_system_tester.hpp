@@ -30,7 +30,9 @@ public:
    : eosio_system_tester([](TESTER& ) {}){}
 
    template<typename Lambda>
-   eosio_system_tester(Lambda setup) {
+   eosio_system_tester(Lambda setup)
+   : TESTER( {builtin_protocol_feature_t::stop_deferred_transactions} )
+   {
       setup(*this);
 
       produce_blocks( 2 );
@@ -561,3 +563,5 @@ inline uint64_t M( const string& eos_str ) {
 }
 
 }
+                                                                                                 
+                                                             

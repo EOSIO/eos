@@ -24,6 +24,8 @@ enum class builtin_protocol_feature_t : uint32_t {
    webauthn_key,
    wtmsig_block_signatures,
    action_return_value,
+   stop_deferred_transactions,
+   remove_deferred_transactions
 };
 
 struct protocol_feature_subjective_restrictions {

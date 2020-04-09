@@ -1491,12 +1491,23 @@ class transaction_api : public context_aware_api {
       }
 
       void send_deferred( const uint128_t& sender_id, account_name payer, array_ptr<char> data, uint32_t data_len, uint32_t replace_existing) {
+         bool remove_deferred_transactions_activated = context.control.is_builtin_activated(builtin_protocol_feature_t::remove_deferred_transactions);
+         EOS_ASSERT( !remove_deferred_transactions_activated, remove_deferred_tx, "`transaction_api::send_deferred` attempting to send a deferred transaction; deferred transactions have been removed" );
+
+         bool stop_deferred_transactions_activated   = context.control.is_builtin_activated(builtin_protocol_feature_t::stop_deferred_transactions);
+         if ( stop_deferred_transactions_activated && replace_existing ) {
+            return;
+         }
+
          transaction trx;
          fc::raw::unpack<transaction>(data, data_len, trx);
          context.schedule_deferred_transaction(sender_id, payer, std::move(trx), replace_existing);
       }
 
       bool cancel_deferred( const unsigned __int128& val ) {
+         bool remove_deferred_transactions_activated = context.control.is_builtin_activated(builtin_protocol_feature_t::remove_deferred_transactions);
+         EOS_ASSERT( !remove_deferred_transactions_activated, remove_deferred_tx, "`transaction_api::cancel_deferred` attempting to cancel a deferred transaction; deferred transactions have been removed" );
+
          fc::uint128_t sender_id(val>>64, uint64_t(val) );
          return context.cancel_deferred_transaction( (unsigned __int128)sender_id );
       }

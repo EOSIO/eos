@@ -1207,6 +1207,9 @@ struct controller_impl {
    }
 
    transaction_trace_ptr push_scheduled_transaction( const transaction_id_type& trxid, fc::time_point deadline, uint32_t billed_cpu_time_us, bool explicit_billed_cpu_time = false ) {
+      bool remove_deferred_transactions_activated = self.is_builtin_activated(builtin_protocol_feature_t::remove_deferred_transactions);
+      EOS_ASSERT( !remove_deferred_transactions_activated, remove_deferred_tx, "`controller_impl::push_scheduled_transaction` attempting to cancel a deferred transaction; deferred transactions have been removed" );
+       
       const auto& idx = db.get_index<generated_transaction_multi_index,by_trx_id>();
       auto itr = idx.find( trxid );
       EOS_ASSERT( itr != idx.end(), unknown_transaction_exception, "unknown transaction" );
@@ -1243,7 +1246,7 @@ struct controller_impl {
       transaction_metadata_ptr trx = transaction_metadata::create_no_recover_keys( packed_transaction( dtrx ), transaction_metadata::trx_type::scheduled );
       trx->accepted = true;
 
-      transaction_trace_ptr trace;
+      transaction_trace_ptr trace;      
       if( gtrx.expiration < self.pending_block_time() ) {
          trace = std::make_shared<transaction_trace>();
          trace->id = gtrx.trx_id;
@@ -1256,6 +1259,11 @@ struct controller_impl {
          emit( self.accepted_transaction, trx );
          emit( self.applied_transaction, std::tie(trace, dtrx) );
          undo_session.squash();
+         return trace;
+      }
+
+      bool stop_deferred_transactions_activated = self.is_builtin_activated(builtin_protocol_feature_t::stop_deferred_transactions);
+      if (stop_deferred_transactions_activated) {
          return trace;
       }
 
@@ -1466,6 +1474,11 @@ struct controller_impl {
             }
 
             trx_context.delay = fc::seconds(trn.delay_sec);
+
+            if ( trx_context.delay.count() > 0 ) {
+               bool stop_deferred_transactions_activated = self.is_builtin_activated(builtin_protocol_feature_t::stop_deferred_transactions);
+               EOS_ASSERT( !stop_deferred_transactions_activated, stop_deferred_tx, "`controller_impl::push_transaction` delay seconds must be 0" );
+            }
 
             if( check_auth ) {
                authorization.check_authorization(

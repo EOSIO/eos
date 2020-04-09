@@ -379,7 +379,7 @@ namespace eosio { namespace testing {
 
          void schedule_protocol_features_wo_preactivation(const vector<digest_type> feature_digests);
          void preactivate_protocol_features(const vector<digest_type> feature_digests);
-         void preactivate_all_builtin_protocol_features();
+         void preactivate_selected_protocol_features(const vector<builtin_protocol_feature_t>& ignored_features);
 
          static genesis_state default_genesis() {
             genesis_state genesis;
@@ -436,6 +436,7 @@ namespace eosio { namespace testing {
 
       public:
          vector<digest_type>                           protocol_features_to_be_activated_wo_preactivation;
+         vector<builtin_protocol_feature_t>            ignored_features;
    };
 
    class tester : public base_tester {
@@ -482,6 +483,16 @@ namespace eosio { namespace testing {
          }
       }
 
+      tester(const vector<builtin_protocol_feature_t>& ignored_features,
+             const flat_set<account_name>& trusted_producers = flat_set<account_name>(),
+             const setup_policy& policy = setup_policy::full) {
+         base_tester::ignored_features = ignored_features;
+         auto def_conf = default_config(tempdir);
+         def_conf.first.trusted_producers = trusted_producers;
+         init(def_conf.first, def_conf.second);
+         execute_setup_policy(policy);
+      }
+
       using base_tester::produce_block;
 
       signed_block_ptr produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms) )override {
@@ -516,19 +527,52 @@ namespace eosio { namespace testing {
             wdump((e.to_detail_string()));
          }
       }
-      controller::config vcfg;
 
-      validating_tester(const flat_set<account_name>& trusted_producers = flat_set<account_name>()) {
-         auto def_conf = default_config(tempdir);
-
+      validating_tester(const vector<builtin_protocol_feature_t>& ignored_features = {},
+                        const flat_set<account_name>& trusted_producers = flat_set<account_name>(),
+                        const setup_policy& policy = setup_policy::full) {
+         base_tester::ignored_features = ignored_features;
+         pair<controller::config, genesis_state> def_conf = default_config(tempdir);
          vcfg = def_conf.first;
          config_validator(vcfg);
          vcfg.trusted_producers = trusted_producers;
-
          validating_node = create_validating_node(vcfg, def_conf.second, true);
-
          init(def_conf.first, def_conf.second);
-         execute_setup_policy(setup_policy::full);
+         execute_setup_policy(policy);
+      }
+
+      validating_tester(const fc::temp_directory& tempdir, bool use_genesis) {
+         base_tester::ignored_features = ignored_features;
+
+         auto def_conf = default_config(tempdir);
+         vcfg = def_conf.first;
+         config_validator(vcfg);
+
+         validating_node = create_validating_node(vcfg, def_conf.second, use_genesis);
+
+         if (use_genesis) {
+            init(def_conf.first, def_conf.second);
+         }
+         else {
+            init(def_conf.first);
+         }
+      }
+
+      template <typename Lambda>
+      validating_tester(const fc::temp_directory& tempdir, Lambda conf_edit, bool use_genesis) {
+         auto def_conf = default_config(tempdir);
+         conf_edit(def_conf.first);
+         vcfg = def_conf.first;
+         config_validator(vcfg);
+
+         validating_node = create_validating_node(vcfg, def_conf.second, use_genesis);
+
+         if (use_genesis) {
+            init(def_conf.first, def_conf.second);
+         }
+         else {
+            init(def_conf.first);
+         }
       }
 
       static void config_validator(controller::config& vcfg) {
@@ -551,36 +595,6 @@ namespace eosio { namespace testing {
             validating_node->startup( [](){}, []() { return false; } );
          }
          return validating_node;
-      }
-
-      validating_tester(const fc::temp_directory& tempdir, bool use_genesis) {
-         auto def_conf = default_config(tempdir);
-         vcfg = def_conf.first;
-         config_validator(vcfg);
-         validating_node = create_validating_node(vcfg, def_conf.second, use_genesis);
-
-         if (use_genesis) {
-            init(def_conf.first, def_conf.second);
-         }
-         else {
-            init(def_conf.first);
-         }
-      }
-
-      template <typename Lambda>
-      validating_tester(const fc::temp_directory& tempdir, Lambda conf_edit, bool use_genesis) {
-         auto def_conf = default_config(tempdir);
-         conf_edit(def_conf.first);
-         vcfg = def_conf.first;
-         config_validator(vcfg);
-         validating_node = create_validating_node(vcfg, def_conf.second, use_genesis);
-
-         if (use_genesis) {
-            init(def_conf.first, def_conf.second);
-         }
-         else {
-            init(def_conf.first);
-         }
       }
 
       signed_block_ptr produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms) )override {
@@ -614,8 +628,6 @@ namespace eosio { namespace testing {
       }
 
       bool validate() {
-
-
         auto hbh = control->head_block_state()->header;
         auto vn_hbh = validating_node->head_block_state()->header;
         bool ok = control->head_block_id() == validating_node->head_block_id() &&
@@ -633,9 +645,10 @@ namespace eosio { namespace testing {
         return ok;
       }
 
-      unique_ptr<controller>   validating_node;
-      uint32_t                 num_blocks_to_producer_before_shutdown = 0;
-      bool                     skip_validate = false;
+      controller::config          vcfg;
+      std::unique_ptr<controller> validating_node;
+      uint32_t                    num_blocks_to_producer_before_shutdown = 0;
+      bool                        skip_validate = false;
    };
 
    /**

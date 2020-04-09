@@ -218,7 +218,7 @@ namespace eosio { namespace testing {
             schedule_preactivate_protocol_feature();
             produce_block();
             set_before_producer_authority_bios_contract();
-            preactivate_all_builtin_protocol_features();
+            preactivate_selected_protocol_features(ignored_features);
             produce_block();
             set_bios_contract();
             break;
@@ -1116,7 +1116,7 @@ namespace eosio { namespace testing {
       }
    }
 
-   void base_tester::preactivate_all_builtin_protocol_features() {
+   void base_tester::preactivate_selected_protocol_features(const vector<builtin_protocol_feature_t>& ignored_features) {
       const auto& pfm = control->get_protocol_feature_manager();
       const auto& pfs = pfm.get_protocol_feature_set();
       const auto current_block_num  =  control->head_block_num() + (control->is_building_block() ? 1 : 0);
@@ -1125,6 +1125,23 @@ namespace eosio { namespace testing {
 
       set<digest_type>    preactivation_set;
       vector<digest_type> preactivations;
+      set<digest_type>    ignored_digests;
+
+      for ( const auto& feature : ignored_features ) {
+         const auto& digest = *pfs.get_builtin_digest( feature );
+         ignored_digests.insert( digest );
+
+         // Check if `feature` is a dependecy for another protocol feature. If
+         // so, ignore that protocol feature as well.
+         const auto& pf = pfs.get_protocol_feature( digest );
+         for ( const auto& f : builtin_protocol_feature_codenames ) {
+            const auto dep = std::find( f.second.builtin_dependencies.cbegin(), f.second.builtin_dependencies.cend(), *pf.builtin_feature );
+            if ( dep != f.second.builtin_dependencies.cend() ) {
+               const auto& dep_digest = *pfs.get_builtin_digest( f.first );
+               ignored_digests.insert( dep_digest );
+            }
+         }
+      }
 
       std::function<void(const digest_type&)> add_digests =
       [&pfm, &pfs, current_block_num, current_block_time, &preactivation_set, &preactivations, &add_digests]
@@ -1146,7 +1163,7 @@ namespace eosio { namespace testing {
 
       for( const auto& f : builtin_protocol_feature_codenames ) {
          auto digest = pfs.get_builtin_digest( f.first );
-         if( !digest ) continue;
+         if( !digest || std::find(ignored_digests.cbegin(), ignored_digests.cend(), digest) != ignored_digests.cend() ) continue;
          add_digests( *digest );
       }
 

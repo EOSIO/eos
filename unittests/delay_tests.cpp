@@ -16,67 +16,66 @@ using namespace eosio;
 using namespace eosio::chain;
 using namespace eosio::testing;
 
-
 BOOST_AUTO_TEST_SUITE(delay_tests)
 
-BOOST_FIXTURE_TEST_CASE( delay_create_account, validating_tester) { try {
+BOOST_AUTO_TEST_CASE( delay_create_account ) { try {
+   TESTER chain( {builtin_protocol_feature_t::stop_deferred_transactions} );
 
-   produce_blocks(2);
+   chain.produce_blocks(2);
    signed_transaction trx;
 
    account_name a = N(newco);
    account_name creator = config::system_account_name;
 
-   auto owner_auth =  authority( get_public_key( a, "owner" ) );
+   auto owner_auth =  authority( chain.get_public_key( a, "owner" ) );
    trx.actions.emplace_back( vector<permission_level>{{creator,config::active_name}},
                              newaccount{
                                 .creator  = creator,
                                 .name     = a,
                                 .owner    = owner_auth,
-                                .active   = authority( get_public_key( a, "active" ) )
+                                .active   = authority( chain.get_public_key( a, "active" ) )
                              });
-   set_transaction_headers(trx);
+   chain.set_transaction_headers(trx);
    trx.delay_sec = 3;
-   trx.sign( get_private_key( creator, "active" ), control->get_chain_id()  );
+   trx.sign( chain.get_private_key( creator, "active" ), chain.control->get_chain_id()  );
 
-   auto trace = push_transaction( trx );
+   auto trace = chain.push_transaction( trx );
 
-   produce_blocks(8);
+   chain.produce_blocks(8);
 
 } FC_LOG_AND_RETHROW() }
 
 
-BOOST_FIXTURE_TEST_CASE( delay_error_create_account, validating_tester) { try {
+BOOST_AUTO_TEST_CASE( delay_error_create_account ) { try {
+   TESTER chain( {builtin_protocol_feature_t::stop_deferred_transactions} );
 
-   produce_blocks(2);
+   chain.produce_blocks(2);
    signed_transaction trx;
 
    account_name a = N(newco);
    account_name creator = config::system_account_name;
 
-   auto owner_auth =  authority( get_public_key( a, "owner" ) );
+   auto owner_auth =  authority( chain.get_public_key( a, "owner" ) );
    trx.actions.emplace_back( vector<permission_level>{{creator,config::active_name}},
                              newaccount{
                                 .creator  = N(bad), /// a does not exist, this should error when execute
                                 .name     = a,
                                 .owner    = owner_auth,
-                                .active   = authority( get_public_key( a, "active" ) )
+                                .active   = authority( chain.get_public_key( a, "active" ) )
                              });
-   set_transaction_headers(trx);
+   chain.set_transaction_headers(trx);
    trx.delay_sec = 3;
-   trx.sign( get_private_key( creator, "active" ), control->get_chain_id()  );
+   trx.sign( chain.get_private_key( creator, "active" ), chain.control->get_chain_id()  );
 
-   ilog( fc::json::to_pretty_string(trx) );
-   auto trace = push_transaction( trx );
-   edump((*trace));
+   auto trace = chain.push_transaction( trx );
 
-   produce_blocks(6);
+   chain.produce_blocks(6);
 
-   auto scheduled_trxs = get_scheduled_transactions();
+   auto scheduled_trxs = chain.get_scheduled_transactions();
    BOOST_REQUIRE_EQUAL(scheduled_trxs.size(), 1u);
 
-   auto billed_cpu_time_us = control->get_global_properties().configuration.min_transaction_cpu_usage;
-   auto dtrace = control->push_scheduled_transaction(scheduled_trxs.front(), fc::time_point::maximum(), billed_cpu_time_us, true);
+   auto billed_cpu_time_us = chain.control->get_global_properties().configuration.min_transaction_cpu_usage;
+   auto dtrace = chain.control->push_scheduled_transaction(scheduled_trxs.front(), fc::time_point::maximum(), billed_cpu_time_us, true);
    BOOST_REQUIRE_EQUAL(dtrace->except.valid(), true);
    BOOST_REQUIRE_EQUAL(dtrace->except->code(), missing_auth_exception::code_value);
 
@@ -91,7 +90,7 @@ const std::string eosio_token = name(N(eosio.token)).to_string();
 
 // test link to permission with delay directly on it
 BOOST_AUTO_TEST_CASE( link_delay_direct_test ) { try {
-   TESTER chain;
+   TESTER chain( {builtin_protocol_feature_t::stop_deferred_transactions} );
 
    const auto& tester_account = N(tester);
 
@@ -229,7 +228,7 @@ BOOST_AUTO_TEST_CASE( link_delay_direct_test ) { try {
 
 
 BOOST_AUTO_TEST_CASE(delete_auth_test) { try {
-   TESTER chain;
+   TESTER chain( {builtin_protocol_feature_t::stop_deferred_transactions} );
 
    const auto& tester_account = N(tester);
 
@@ -366,7 +365,7 @@ BOOST_AUTO_TEST_CASE(delete_auth_test) { try {
 
 // test link to permission with delay on permission which is parent of min permission (special logic in permission_object::satisfies)
 BOOST_AUTO_TEST_CASE( link_delay_direct_parent_permission_test ) { try {
-   TESTER chain;
+   TESTER chain( {builtin_protocol_feature_t::stop_deferred_transactions} );
 
    const auto& tester_account = N(tester);
 
@@ -504,7 +503,7 @@ BOOST_AUTO_TEST_CASE( link_delay_direct_parent_permission_test ) { try {
 
 // test link to permission with delay on permission between min permission and authorizing permission it
 BOOST_AUTO_TEST_CASE( link_delay_direct_walk_parent_permissions_test ) { try {
-   TESTER chain;
+   TESTER chain( {builtin_protocol_feature_t::stop_deferred_transactions} );
 
    const auto& tester_account = N(tester);
 
@@ -648,7 +647,7 @@ BOOST_AUTO_TEST_CASE( link_delay_direct_walk_parent_permissions_test ) { try {
 
 // test removing delay on permission
 BOOST_AUTO_TEST_CASE( link_delay_permission_change_test ) { try {
-   TESTER chain;
+   TESTER chain( {builtin_protocol_feature_t::stop_deferred_transactions} );
 
    const auto& tester_account = N(tester);
 
@@ -839,7 +838,7 @@ BOOST_AUTO_TEST_CASE( link_delay_permission_change_test ) { try {
 
 // test removing delay on permission based on heirarchy delay
 BOOST_AUTO_TEST_CASE( link_delay_permission_change_with_delay_heirarchy_test ) { try {
-   TESTER chain;
+   TESTER chain( {builtin_protocol_feature_t::stop_deferred_transactions} );
 
    const auto& tester_account = N(tester);
 
@@ -1036,7 +1035,7 @@ BOOST_AUTO_TEST_CASE( link_delay_permission_change_with_delay_heirarchy_test ) {
 
 // test moving link with delay on permission
 BOOST_AUTO_TEST_CASE( link_delay_link_change_test ) { try {
-   TESTER chain;
+   TESTER chain( {builtin_protocol_feature_t::stop_deferred_transactions} );
 
    const auto& tester_account = N(tester);
 
@@ -1238,7 +1237,7 @@ BOOST_AUTO_TEST_CASE( link_delay_link_change_test ) { try {
 
 // test link with unlink
 BOOST_AUTO_TEST_CASE( link_delay_unlink_test ) { try {
-   TESTER chain;
+   TESTER chain( {builtin_protocol_feature_t::stop_deferred_transactions} );
 
    const auto& tester_account = N(tester);
 
@@ -1427,7 +1426,7 @@ BOOST_AUTO_TEST_CASE( link_delay_unlink_test ) { try {
 
 // test moving link with delay on permission's parent
 BOOST_AUTO_TEST_CASE( link_delay_link_change_heirarchy_test ) { try {
-   TESTER chain;
+   TESTER chain( {builtin_protocol_feature_t::stop_deferred_transactions} );
 
    const auto& tester_account = N(tester);
 
@@ -1618,7 +1617,7 @@ BOOST_AUTO_TEST_CASE( link_delay_link_change_heirarchy_test ) { try {
 
 // test delay_sec field imposing unneeded delay
 BOOST_AUTO_TEST_CASE( mindelay_test ) { try {
-   TESTER chain;
+   TESTER chain( {builtin_protocol_feature_t::stop_deferred_transactions} );
 
    const auto& tester_account = N(tester);
 
@@ -1750,7 +1749,8 @@ BOOST_AUTO_TEST_CASE( mindelay_test ) { try {
 
 // test canceldelay action cancelling a delayed transaction
 BOOST_AUTO_TEST_CASE( canceldelay_test ) { try {
-   TESTER chain;
+   TESTER chain( {builtin_protocol_feature_t::stop_deferred_transactions} );
+
    const auto& tester_account = N(tester);
    std::vector<transaction_id_type> ids;
 
@@ -1987,7 +1987,7 @@ BOOST_AUTO_TEST_CASE( canceldelay_test ) { try {
 
 // test canceldelay action under different permission levels
 BOOST_AUTO_TEST_CASE( canceldelay_test2 ) { try {
-   TESTER chain;
+   TESTER chain( {builtin_protocol_feature_t::stop_deferred_transactions} );
 
    const auto& tester_account = N(tester);
 
@@ -2254,7 +2254,7 @@ BOOST_AUTO_TEST_CASE( canceldelay_test2 ) { try {
 
 BOOST_AUTO_TEST_CASE( max_transaction_delay_create ) { try {
    //assuming max transaction delay is 45 days (default in config.hpp)
-   TESTER chain;
+   TESTER chain( {builtin_protocol_feature_t::stop_deferred_transactions} );
 
    const auto& tester_account = N(tester);
 
@@ -2276,7 +2276,7 @@ BOOST_AUTO_TEST_CASE( max_transaction_delay_create ) { try {
 
 BOOST_AUTO_TEST_CASE( max_transaction_delay_execute ) { try {
    //assuming max transaction delay is 45 days (default in config.hpp)
-   TESTER chain;
+   TESTER chain( {builtin_protocol_feature_t::stop_deferred_transactions} );
 
    const auto& tester_account = N(tester);
 
@@ -2348,42 +2348,43 @@ BOOST_AUTO_TEST_CASE( max_transaction_delay_execute ) { try {
 
 } FC_LOG_AND_RETHROW() }
 
-BOOST_FIXTURE_TEST_CASE( delay_expired, validating_tester) { try {
+BOOST_AUTO_TEST_CASE( delay_expired ) { try {
+   TESTER chain( {builtin_protocol_feature_t::stop_deferred_transactions} );
 
-   produce_blocks(2);
+   chain.produce_blocks(2);
    signed_transaction trx;
 
    account_name a = N(newco);
    account_name creator = config::system_account_name;
 
-   auto owner_auth =  authority( get_public_key( a, "owner" ) );
+   auto owner_auth =  authority( chain.get_public_key( a, "owner" ) );
    trx.actions.emplace_back( vector<permission_level>{{creator,config::active_name}},
                              newaccount{
                                 .creator  = creator,
                                 .name     = a,
                                 .owner    = owner_auth,
-                                .active   = authority( get_public_key( a, "active" ) )
+                                .active   = authority( chain.get_public_key( a, "active" ) )
                              });
-   set_transaction_headers(trx);
+   chain.set_transaction_headers(trx);
    trx.delay_sec = 3;
-   trx.expiration = control->head_block_time() + fc::microseconds(1000000);
-   trx.sign( get_private_key( creator, "active" ), control->get_chain_id()  );
+   trx.expiration = chain.control->head_block_time() + fc::microseconds(1000000);
+   trx.sign( chain.get_private_key( creator, "active" ), chain.control->get_chain_id()  );
 
-   auto trace = push_transaction( trx );
-
-   BOOST_REQUIRE_EQUAL(transaction_receipt_header::delayed, trace->receipt->status);
-
-   signed_block_ptr sb = produce_block();
-
-   sb  = produce_block();
+   auto trace = chain.push_transaction( trx );
 
    BOOST_REQUIRE_EQUAL(transaction_receipt_header::delayed, trace->receipt->status);
-   produce_empty_block(fc::milliseconds(610 * 1000));
-   sb  = produce_block();
+
+   signed_block_ptr sb = chain.produce_block();
+
+   sb  = chain.produce_block();
+
+   BOOST_REQUIRE_EQUAL(transaction_receipt_header::delayed, trace->receipt->status);
+   chain.produce_empty_block(fc::milliseconds(610 * 1000));
+   sb  = chain.produce_block();
    BOOST_REQUIRE_EQUAL(1, sb->transactions.size());
    BOOST_REQUIRE_EQUAL(transaction_receipt_header::expired, sb->transactions[0].status);
 
-   create_account(a); // account can still be created
+   chain.create_account(a); // account can still be created
 
 } FC_LOG_AND_RETHROW() }
 
