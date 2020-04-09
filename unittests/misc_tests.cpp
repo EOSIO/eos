@@ -752,6 +752,8 @@ BOOST_AUTO_TEST_CASE(transaction_test) { try {
    BOOST_CHECK_EQUAL(pkt.to_packed_transaction_v0()->get_signed_transaction().id(), pkt2.to_packed_transaction_v0()->get_signed_transaction().id());
    BOOST_CHECK_EQUAL(pkt.to_packed_transaction_v0()->get_transaction().id(), pkt2.id());
    BOOST_CHECK_EQUAL(pkt.get_transaction().id(), pkt2.id());
+   BOOST_CHECK_EQUAL(pkt.to_packed_transaction_v0()->get_prunable_size(), pkt.get_prunable_size());
+   BOOST_CHECK_EQUAL(pkt.to_packed_transaction_v0()->get_unprunable_size(), pkt.get_unprunable_size());
 
    flat_set<public_key_type> keys;
    auto cpu_time1 = pkt.to_packed_transaction_v0()->get_signed_transaction().get_signature_keys(test.control->get_chain_id(), fc::time_point::maximum(), keys);

@@ -513,7 +513,7 @@ packed_transaction_v0_ptr packed_transaction::to_packed_transaction_v0() const {
    signed_transaction strx( transaction( get_transaction() ),
                             sigs != nullptr ? *sigs : vector<signature_type>(),
                             context_free_data != nullptr ? *context_free_data : vector<bytes>() );
-   return std::make_shared<const packed_transaction_v0>( std::move( strx ) );
+   return std::make_shared<const packed_transaction_v0>( std::move( strx ), get_compression() );
 }
 
 uint32_t packed_transaction::get_unprunable_size()const {
