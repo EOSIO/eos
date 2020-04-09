@@ -271,6 +271,7 @@ namespace eosio {
       uint16_t                                  thread_pool_size = 2;
       optional<eosio::chain::named_thread_pool> thread_pool;
 
+      generic_support_message                   generic_support_msg;
    private:
       mutable std::mutex            chain_info_mtx; // protects chain_*
       uint32_t                      chain_lib_num{0};
@@ -414,8 +415,9 @@ namespace eosio {
    constexpr uint16_t proto_base = 0;
    constexpr uint16_t proto_explicit_sync = 1;
    constexpr uint16_t block_id_notify = 2; // reserved. feature was removed. next net_version should be 3
+   constexpr uint16_t generic_messages = 3;
 
-   constexpr uint16_t net_version = proto_explicit_sync;
+   constexpr uint16_t net_version = generic_messages;
 
    /**
     * Index by start_block_num
@@ -528,8 +530,8 @@ namespace eosio {
 
    class connection : public std::enable_shared_from_this<connection> {
    public:
-      explicit connection( string endpoint );
-      connection();
+      connection( string endpoint, generic_support_message generic_support_msg );
+      explicit connection( generic_support_message generic_support_msg );
 
       ~connection() {}
 
@@ -575,6 +577,7 @@ namespace eosio {
       std::atomic<bool>       connecting{true};
       std::atomic<bool>       syncing{false};
       uint16_t                protocol_version = 0;
+      generic_message_types   generic_msg_types;
       uint16_t                consecutive_rejected_blocks = 0;
       std::atomic<uint16_t>   consecutive_immediate_connection_close = 0;
 
@@ -596,7 +599,11 @@ namespace eosio {
       string                      local_endpoint_ip;
       string                      local_endpoint_port;
 
-      connection_status get_status()const;
+      const net_message           generic_support_msg;
+
+      connection_status get_status() const;
+
+      generic_message_types supported_types() const;
 
       /** \name Peer Timestamps
        *  Time message handling
@@ -636,6 +643,8 @@ namespace eosio {
       bool process_next_message(uint32_t message_length);
 
       void send_handshake( bool force = false );
+
+      void send( const generic_message& msg, const std::string& type_name, bool force );
 
       /** \name Peer Timestamps
        *  Time message handling
@@ -816,26 +825,28 @@ namespace eosio {
 
    //---------------------------------------------------------------------------
 
-   connection::connection( string endpoint )
+   connection::connection( string endpoint, generic_support_message generic_support_msg )
       : peer_addr( endpoint ),
         strand( my_impl->thread_pool->get_executor() ),
         socket( new tcp::socket( my_impl->thread_pool->get_executor() ) ),
         connection_id( ++my_impl->current_connection_id ),
         response_expected_timer( my_impl->thread_pool->get_executor() ),
         last_handshake_recv(),
-        last_handshake_sent()
+        last_handshake_sent(),
+        generic_support_msg(generic_support_msg)
    {
       fc_ilog( logger, "creating connection to ${n}", ("n", endpoint) );
    }
 
-   connection::connection()
+   connection::connection( generic_support_message generic_support_msg )
       : peer_addr(),
         strand( my_impl->thread_pool->get_executor() ),
         socket( new tcp::socket( my_impl->thread_pool->get_executor() ) ),
         connection_id( ++my_impl->current_connection_id ),
         response_expected_timer( my_impl->thread_pool->get_executor() ),
         last_handshake_recv(),
-        last_handshake_sent()
+        last_handshake_sent(),
+        generic_support_msg(generic_support_msg)
    {
       fc_dlog( logger, "new connection object created" );
    }
@@ -877,7 +888,7 @@ namespace eosio {
       }
    }
 
-   connection_status connection::get_status()const {
+   connection_status connection::get_status() const {
       connection_status stat;
       stat.peer = peer_addr;
       stat.connecting = connecting;
@@ -885,6 +896,11 @@ namespace eosio {
       std::lock_guard<std::mutex> g( conn_mtx );
       stat.last_handshake = last_handshake_recv;
       return stat;
+   }
+
+   generic_message_types connection::supported_types() const {
+      std::lock_guard<std::mutex> g( conn_mtx );
+      return generic_msg_types;
    }
 
    bool connection::start_session() {
@@ -1068,8 +1084,10 @@ namespace eosio {
    }
 
    void connection::send_handshake( bool force ) {
-      strand.post( [force, c = shared_from_this()]() {
+      bool initial = false;
+      strand.post( [force, c = shared_from_this(), &initial]() {
          std::unique_lock<std::mutex> g_conn( c->conn_mtx );
+         initial = c->sent_handshake_count == 0;
          if( c->populate_handshake( c->last_handshake_sent, force ) ) {
             static_assert( std::is_same_v<decltype( c->sent_handshake_count ), int16_t>, "INT16_MAX based on int16_t" );
             if( c->sent_handshake_count == INT16_MAX ) c->sent_handshake_count = 1; // do not wrap
@@ -1082,6 +1100,29 @@ namespace eosio {
                      ("head", last_handshake_sent.head_num)("id", last_handshake_sent.head_id.str().substr(8,16)) );
             c->enqueue( last_handshake_sent );
          }
+      });
+      if (initial) {
+         strand.post([c = shared_from_this()]() {
+            fc_ilog( logger, "Sending general_support_messsage" );
+            c->enqueue( c->generic_support_msg );
+         });
+      }
+   }
+
+   void connection::send( const generic_message& msg, const std::string& type_name, bool force) {
+      // if not forcing, then only send if the message would be processed by this connection
+      if (!force) {
+         std::lock_guard<std::mutex> g( conn_mtx );
+         const auto found = std::find(std::begin(generic_msg_types), std::end(generic_msg_types), msg.type);
+         if (found == std::end(generic_msg_types)) {
+            fc_dlog( logger, "Not sending generic_message of type: ${type} (${name}), to endpoint: ${ep} since it doesn't"
+                             " process that type", ("type", msg.type)("name", type_name)("ep", peer_address()) );
+            return;
+         }
+      }
+      strand.post([c = shared_from_this(),&msg, &type_name]() {
+         fc_ilog( logger, "Sending general_message type: ${type} (${name})", ("type", msg.type)("name", type_name) );
+         c->enqueue( msg );
       });
    }
 
@@ -2200,7 +2241,7 @@ namespace eosio {
    }
 
    void net_plugin_impl::start_listen_loop() {
-      connection_ptr new_connection = std::make_shared<connection>();
+      connection_ptr new_connection = std::make_shared<connection>( generic_support_msg );
       new_connection->connecting = true;
       new_connection->strand.post( [this, new_connection = std::move( new_connection )](){
          acceptor->async_accept( *new_connection->socket,
@@ -2911,6 +2952,8 @@ namespace eosio {
 
    void connection::handle_message( const generic_support_message& msg ) {
       peer_dlog(this, "generic_support_message");
+      std::lock_guard<std::mutex> g( conn_mtx );
+      generic_msg_types = msg.types;
    }
 
    // called from application thread
@@ -3512,6 +3555,8 @@ namespace eosio {
          connect( seed_node );
       }
 
+      my->generic_support_msg.types = generic_msg_handler.get_registered_types();
+
       } catch( ... ) {
          // always want plugin_shutdown even on exception
          plugin_shutdown();
@@ -3575,7 +3620,7 @@ namespace eosio {
       if( my->find_connection( host ) )
          return "already connected";
 
-      connection_ptr c = std::make_shared<connection>( host );
+      connection_ptr c = std::make_shared<connection>( host, my->generic_support_msg );
       fc_dlog( logger, "calling active connector: ${h}", ("h", host) );
       if( c->resolve_and_connect() ) {
          fc_dlog( logger, "adding new connection to the list: ${c}", ("c", c->peer_name()) );
@@ -3616,7 +3661,7 @@ namespace eosio {
    }
 
    // call with connections_mtx
-   connection_ptr net_plugin_impl::find_connection( const string& host )const {
+   connection_ptr net_plugin_impl::find_connection( const string& host ) const {
       for( const auto& c : connections )
          if( c->peer_address() == host ) return c;
       return connection_ptr();
@@ -3630,4 +3675,42 @@ namespace eosio {
       return 0;
    }
 
+   generic_message_types net_plugin::supported_types( const string& endpoint ) const {
+      std::shared_lock<std::shared_mutex> g( my->connections_mtx );
+      auto con = my->find_connection( endpoint );
+      if( con )
+         return con->supported_types();
+      return generic_message_types{};
+   }
+
+   unordered_map<string, generic_message_types> net_plugin::supported_types( bool ignore_endpoints_with_no_support ) const {
+      unordered_map<string, generic_message_types> result;
+      std::shared_lock<std::shared_mutex> g( my->connections_mtx );
+      result.reserve( my->connections.size() );
+      for (auto con : my->connections) {
+         if (!ignore_endpoints_with_no_support || !con->generic_msg_types.empty()) {
+            result.insert( { con->peer_address(), con->generic_msg_types } );
+         }
+      }
+      return result;
+   }
+
+   void net_plugin::send( const generic_message& msg, const std::string& type_name, const vector<string>& endpoints ) {
+      std::shared_lock<std::shared_mutex> g( my->connections_mtx );
+      if (!endpoints.empty()) {
+         const bool send_if_expecting_type = false;
+         for (auto con : my->connections) {
+            con->send(msg, type_name, send_if_expecting_type);
+         }
+      }
+      else {
+         const bool force_send = true;
+         for (const auto endpoint : endpoints) {
+            auto con = my->find_connection( endpoint );
+            if( con ) {
+               con->send(msg, type_name, force_send);
+            }
+         }
+      }
+   }
 }

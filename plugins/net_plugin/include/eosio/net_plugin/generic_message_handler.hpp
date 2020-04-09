@@ -15,6 +15,9 @@ namespace eosio {
       template<typename T>
       void convert(const bytes& payload, T& t);
 
+      template<typename T>
+      void convert(const T& t, bytes& payload);
+
       class generic_message_handler {
       public:
          struct generic_router;
