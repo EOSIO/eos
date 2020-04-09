@@ -169,4 +169,34 @@ BOOST_AUTO_TEST_SUITE(router_tests)
       BOOST_REQUIRE_EQUAL(router2_call1.size(), 1);
    }
 
+   BOOST_AUTO_TEST_CASE(registered_types)
+   {
+      generic_message_handler handler;
+      vector<test_type1> router1_call1;
+      scoped_connection con1 = handler.register_msg<test_type1>([&router1_call1](const test_type1& t) {
+         router1_call1.push_back(t);
+      });
+      auto types = handler.get_registered_types();
+      BOOST_REQUIRE_EQUAL(types.size(), 1);
+      BOOST_REQUIRE_EQUAL(types[0], typeid(test_type1).hash_code());
+      vector<test_type1> router1_call2;
+      scoped_connection con2 = handler.register_msg<test_type1>([&router1_call2](const test_type1& t) {
+         router1_call2.push_back(t);
+      });
+      types = handler.get_registered_types();
+      BOOST_REQUIRE_EQUAL(types.size(), 1);
+      BOOST_REQUIRE_EQUAL(types[0], typeid(test_type1).hash_code());
+      vector<test_type2> router2_call1;
+      scoped_connection con3 = handler.register_msg<test_type2>([&router2_call1](const test_type2& t) {
+         router2_call1.push_back(t);
+      });
+      types = handler.get_registered_types();
+      BOOST_REQUIRE_EQUAL(types.size(), 2);
+      std::unordered_set<uint64_t> expected_types = { typeid(test_type1).hash_code(), typeid(test_type2).hash_code() };
+      for (auto type : types) {
+         BOOST_REQUIRE_EQUAL(expected_types.count(type), 1);
+         expected_types.erase(type);
+      }
+   }
+
 BOOST_AUTO_TEST_SUITE_END()

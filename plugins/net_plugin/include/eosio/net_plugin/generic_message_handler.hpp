@@ -44,8 +44,11 @@ namespace eosio {
 
          // route a generic_message to the functions that were registered for it
          void route(const generic_message& msg);
+
+         // report all registered generic_messages
+         generic_message_types get_registered_types() const;
       private:
-         using router_map = std::unordered_map<uint64_t, generic_router_ptr>;
+         using router_map = std::unordered_map<generic_message_type, generic_router_ptr>;
          router_map _routers;
       };
 

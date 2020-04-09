@@ -17,4 +17,12 @@ namespace eosio { namespace net {
 
       existing_router->second->route(msg);
    }
+
+   generic_message_types generic_message_handler::get_registered_types() const {
+      generic_message_types types;
+      for (auto msg : _routers) {
+         types.push_back(msg.first);
+      }
+      return types;
+   }
 } }

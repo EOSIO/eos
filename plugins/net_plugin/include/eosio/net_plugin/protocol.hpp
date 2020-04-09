@@ -9,6 +9,8 @@ namespace eosio {
 
    static_assert(sizeof(std::chrono::system_clock::duration::rep) >= 8, "system_clock is expected to be at least 64 bits");
    typedef std::chrono::system_clock::duration::rep tstamp;
+   using generic_message_type = uint64_t;
+   using generic_message_types = vector<uint64_t>;
 
    struct chain_size_message {
       uint32_t                   last_irreversible_block_num = 0;
@@ -136,12 +138,12 @@ namespace eosio {
    };
 
    struct generic_message {
-      uint64_t type {0};
-      bytes    payload;
+      generic_message_type type {0};
+      bytes                payload;
    };
 
    struct generic_support_message {
-      vector<uint16_t> types;
+      generic_message_types types;
    };
 
    using net_message = static_variant<handshake_message,
