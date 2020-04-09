@@ -44,6 +44,17 @@ namespace {
 
 }
 
+// Be permissive on apply.
+struct apply_options {
+   static constexpr std::uint32_t max_pages = wasm_constraints::maximum_linear_memory/wasm_constraints::wasm_page_size;
+   static constexpr std::uint32_t max_call_depth = wasm_constraints::maximum_call_depth+1;
+   static constexpr bool forbid_export_mutable_globals = false;
+   static constexpr bool allow_code_after_function_end = false;
+   static constexpr bool allow_u32_limits_flags = true;
+   static constexpr bool allow_invalid_empty_local_set = true;
+   static constexpr bool allow_zero_blocktype = true;
+};
+
 template<typename Impl>
 class eos_vm_instantiated_module : public wasm_instantiated_module_interface {
    using backend_t = eos_vm_backend_t<Impl>;

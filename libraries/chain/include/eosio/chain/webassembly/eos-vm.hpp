@@ -11,15 +11,22 @@
 //eos-vm includes
 #include <eosio/vm/backend.hpp>
 
-namespace eosio { namespace chain {
-   template <typename Impl>
-   using eos_vm_backend_t = eosio::vm::backend<eos_vm_host_functions_t, Impl>;
-}} // ns eosio::chain
 namespace eosio { namespace chain { namespace webassembly { namespace eos_vm_runtime {
+
+struct apply_options;
+
+}}
+
+template <typename Impl>
+using eos_vm_backend_t = eosio::vm::backend<eos_vm_host_functions_t, Impl, webassembly::eos_vm_runtime::apply_options>;
+
+namespace webassembly { namespace eos_vm_runtime {
 
 using namespace fc;
 using namespace eosio::vm;
 using namespace eosio::chain::webassembly::common;
+
+struct apply_options;
 
 template<typename Backend>
 class eos_vm_runtime : public eosio::chain::wasm_runtime_interface {
