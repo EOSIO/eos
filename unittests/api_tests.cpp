@@ -2160,6 +2160,99 @@ BOOST_FIXTURE_TEST_CASE(permission_tests, TESTER) { try {
 
 } FC_LOG_AND_RETHROW() }
 
+static const char resource_limits_wast[] = R"=====(
+(module
+ (func $set_resource_limits (import "env" "set_resource_limits") (param i64 i64 i64 i64))
+ (func $get_resource_limits (import "env" "get_resource_limits") (param i64 i32 i32 i32))
+ (func $eosio_assert (import "env" "eosio_assert") (param i32 i32))
+ (memory 1)
+ (func (export "apply") (param i64 i64 i64)
+  (call $set_resource_limits (get_local 2) (i64.const 2788) (i64.const 11) (i64.const 12))
+  (call $get_resource_limits (get_local 2) (i32.const 0x100) (i32.const 0x108) (i32.const 0x110))
+  (call $eosio_assert (i64.eq (i64.const 2788) (i64.load (i32.const 0x100))) (i32.const 8))
+  (call $eosio_assert (i64.eq (i64.const 11) (i64.load (i32.const 0x108))) (i32.const 32))
+  (call $eosio_assert (i64.eq (i64.const 12) (i64.load (i32.const 0x110))) (i32.const 64))
+  ;; Aligned overlap
+  (call $get_resource_limits (get_local 2) (i32.const 0x100) (i32.const 0x100) (i32.const 0x110))
+  (call $eosio_assert (i64.eq (i64.const 11) (i64.load (i32.const 0x100))) (i32.const 96))
+  (call $get_resource_limits (get_local 2) (i32.const 0x100) (i32.const 0x110) (i32.const 0x110))
+  (call $eosio_assert (i64.eq (i64.const 12) (i64.load (i32.const 0x110))) (i32.const 128))
+  ;; Unaligned beats aligned
+  (call $get_resource_limits (get_local 2) (i32.const 0x101) (i32.const 0x108) (i32.const 0x100))
+  (call $eosio_assert (i64.eq (i64.const 2788) (i64.load (i32.const 0x101))) (i32.const 160))
+  ;; Unaligned overlap
+  (call $get_resource_limits (get_local 2) (i32.const 0x101) (i32.const 0x101) (i32.const 0x110))
+  (call $eosio_assert (i64.eq (i64.const 11) (i64.load (i32.const 0x101))) (i32.const 192))
+  (call $get_resource_limits (get_local 2) (i32.const 0x100) (i32.const 0x111) (i32.const 0x111))
+  (call $eosio_assert (i64.eq (i64.const 12) (i64.load (i32.const 0x111))) (i32.const 224))
+ )
+ (data (i32.const 8) "expected ram 2788")
+ (data (i32.const 32) "expected net 11")
+ (data (i32.const 64) "expected cpu 12")
+ (data (i32.const 96) "expected net to overwrite ram")
+ (data (i32.const 128) "expected cpu to overwrite net")
+ (data (i32.const 160) "expected unaligned")
+ (data (i32.const 192) "expected unet to overwrite uram")
+ (data (i32.const 224) "expected ucpu to overwrite unet")
+)
+)=====";
+
+static const char get_resource_limits_null_ram_wast[] = R"=====(
+(module
+ (func $get_resource_limits (import "env" "get_resource_limits") (param i64 i32 i32 i32))
+ (memory 1)
+ (func (export "apply") (param i64 i64 i64)
+  (call $get_resource_limits (get_local 2) (i32.const 0) (i32.const 0x10) (i32.const 0x10))
+ )
+)
+)=====";
+
+static const char get_resource_limits_null_net_wast[] = R"=====(
+(module
+ (func $get_resource_limits (import "env" "get_resource_limits") (param i64 i32 i32 i32))
+ (memory 1)
+ (func (export "apply") (param i64 i64 i64)
+  (call $get_resource_limits (get_local 2) (i32.const 0x10) (i32.const 0) (i32.const 0x10))
+ )
+)
+)=====";
+
+static const char get_resource_limits_null_cpu_wast[] = R"=====(
+(module
+ (func $get_resource_limits (import "env" "get_resource_limits") (param i64 i32 i32 i32))
+ (memory 1)
+ (func (export "apply") (param i64 i64 i64)
+  (call $get_resource_limits (get_local 2) (i32.const 0x10) (i32.const 0x10) (i32.const 0))
+ )
+)
+)=====";
+
+BOOST_FIXTURE_TEST_CASE(resource_limits_tests, TESTER) {
+   create_accounts( { N(rlimits), N(testacnt) } );
+   set_code(N(rlimits), resource_limits_wast);
+   push_action( N(eosio), N(setpriv), N(eosio), mutable_variant_object()("account", N(rlimits))("is_priv", 1));
+   produce_block();
+
+   auto pushit = [&]{
+      signed_transaction trx;
+      trx.actions.push_back({ { { N(rlimits), config::active_name } }, N(rlimits), N(testacnt), bytes{}});
+      set_transaction_headers(trx);
+      trx.sign(get_private_key( N(rlimits), "active" ), control->get_chain_id());
+      push_transaction(trx);
+   };
+   pushit();
+   produce_block();
+
+   set_code(N(rlimits), get_resource_limits_null_ram_wast);
+   BOOST_CHECK_THROW(pushit(), wasm_exception);
+
+   set_code(N(rlimits), get_resource_limits_null_net_wast);
+   BOOST_CHECK_THROW(pushit(), wasm_exception);
+
+   set_code(N(rlimits), get_resource_limits_null_cpu_wast);
+   BOOST_CHECK_THROW(pushit(), wasm_exception);
+}
+
 #if 0
 /*************************************************************************************
  * privileged_tests test case
