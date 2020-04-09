@@ -61,31 +61,31 @@ namespace eosio { namespace chain {
       // unable to find them.  I think clang is correct here because the
       // return type does not affect hiding.
       template <typename T>
-      auto from_wasm(const elem_type& ptr) const
+      auto from_wasm(const char* ptr) const
          -> std::enable_if_t<std::is_same_v<T, unvalidated_ptr<const char>>, T> {
-         return {as_value<const char*>(ptr)};
+         return {ptr};
       }
 
       template <typename T>
-      auto from_wasm(const elem_type& ptr) const
+      auto from_wasm(char* ptr) const
          -> std::enable_if_t<std::is_same_v<T, unvalidated_ptr<char>>, T> {
-         return {as_value<char*>(ptr)};
+         return {ptr};
       }
 
       template <typename T>
-      auto from_wasm(const elem_type& ptr) const
+      auto from_wasm(vm::reference_proxy_dependent_type_t<T>* ptr) const
          -> std::enable_if_t< vm::is_reference_proxy_type_v<T> &&
                               vm::is_reference_proxy_legacy_v<T> &&
                               !vm::is_span_type_v<vm::dependent_type_t<T>>, T> {
-         return {as_value<vm::reference_proxy_dependent_type_t<T>*>(std::move(ptr))};
+         return {ptr};
       }
 
       template <typename T>
-      auto from_wasm(const elem_type& ptr) const
+      auto from_wasm(vm::reference_proxy_dependent_type_t<T>* ptr) const
          -> std::enable_if_t< vm::is_reference_proxy_type_v<T> &&
                               !vm::is_reference_proxy_legacy_v<T> &&
                               !vm::is_span_type_v<vm::dependent_type_t<T>>, T> {
-         return {as_value<vm::reference_proxy_dependent_type_t<T>*>(std::move(ptr))};
+         return {ptr};
       }
 #if 0
       template <typename T, typename U>
@@ -100,11 +100,11 @@ namespace eosio { namespace chain {
       }
 #endif
 
-      EOS_VM_FROM_WASM(null_terminated_ptr, (const elem_type& ptr)) { return {as_value<const char*>(ptr)}; }
-      EOS_VM_FROM_WASM(name, (const elem_type& e)) { return name{static_cast<uint64_t>(as_value<uint64_t>(e))}; }
-      EOS_VM_TO_WASM(name, (name n)) { return as_result<uint64_t>(n.to_uint64_t()); }
+      EOS_VM_FROM_WASM(null_terminated_ptr, (const char* ptr)) { return {ptr}; }
+      EOS_VM_FROM_WASM(name, (uint64_t e)) { return name{e}; }
+      uint64_t to_wasm(name&& n) { return n.to_uint64_t(); }
       // OSX clang can't find the base class version
-      EOS_VM_FROM_WASM(bool, (const elem_type& value)) { return as_value<uint32_t>(value) ? 1 : 0; }
+      EOS_VM_FROM_WASM(bool, (uint32_t value)) { return value ? 1 : 0; }
    };
 
    using eos_vm_host_functions_t = eosio::vm::registered_host_functions<webassembly::interface,
