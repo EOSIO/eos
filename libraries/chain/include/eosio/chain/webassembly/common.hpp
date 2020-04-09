@@ -77,6 +77,7 @@ namespace eosio { namespace chain {
          -> std::enable_if_t< vm::is_reference_proxy_type_v<T> &&
                               vm::is_reference_proxy_legacy_v<T> &&
                               !vm::is_span_type_v<vm::dependent_type_t<T>>, T> {
+         validate_pointer(ptr, 1);
          return {ptr};
       }
 
@@ -85,6 +86,7 @@ namespace eosio { namespace chain {
          -> std::enable_if_t< vm::is_reference_proxy_type_v<T> &&
                               !vm::is_reference_proxy_legacy_v<T> &&
                               !vm::is_span_type_v<vm::dependent_type_t<T>>, T> {
+         validate_pointer(ptr, 1);
          return {ptr};
       }
 #if 0
@@ -100,7 +102,10 @@ namespace eosio { namespace chain {
       }
 #endif
 
-      EOS_VM_FROM_WASM(null_terminated_ptr, (const char* ptr)) { return {ptr}; }
+      EOS_VM_FROM_WASM(null_terminated_ptr, (const char* ptr)) {
+         validate_null_terminated_pointer(ptr);
+         return {ptr};
+      }
       EOS_VM_FROM_WASM(name, (uint64_t e)) { return name{e}; }
       uint64_t to_wasm(name&& n) { return n.to_uint64_t(); }
       // OSX clang can't find the base class version
