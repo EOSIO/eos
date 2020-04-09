@@ -1,4 +1,5 @@
 #include <eosio/chain/webassembly/interface.hpp>
+#include <eosio/chain/webassembly/eos-vm.hpp>
 #include <eosio/chain/wasm_interface.hpp>
 #include <eosio/chain/apply_context.hpp>
 #include <eosio/chain/controller.hpp>
@@ -54,15 +55,7 @@ namespace eosio { namespace chain {
 
       const auto& pso = control.db().get<protocol_state_object>();
 
-      root_resolver resolver( pso.whitelisted_intrinsics );
-
-      for(const auto& import : module.functions.imports) {
-         ObjectInstance* ignore;
-         resolver.resolve(import.moduleName, import.exportName, IR::ObjectType(), ignore);
-      }
-      EOS_ASSERT(module.tables.imports.empty(), wasm_exception, "Cannot import tables");
-      EOS_ASSERT(module.memories.imports.empty(), wasm_exception, "Cannot import memories");
-      EOS_ASSERT(module.globals.imports.empty(), wasm_exception, "Cannot import globals");
+      webassembly::eos_vm_runtime::validate_intrinsics( code, pso.whitelisted_intrinsics );
 
       //there are a couple opportunties for improvement here--
       //Easy: Cache the Module created here so it can be reused for instantiaion

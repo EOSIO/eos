@@ -44,6 +44,37 @@ namespace {
 
 }
 
+// Used on setcode.  Must not reject anything that WAVM accepts
+// For the moment, this runs after WAVM validation, as I am not
+// sure that eos-vm will replicate WAVM's parsing exactly.
+struct setcode_options {
+   static constexpr bool forbid_export_mutable_globals = false;
+   static constexpr bool allow_code_after_function_end = true;
+   static constexpr bool allow_u32_limits_flags = true;
+   static constexpr bool allow_invalid_empty_local_set = true;
+   static constexpr bool allow_zero_blocktype = true;
+};
+
+void validate_intrinsics(const bytes& code, const whitelisted_intrinsics_type& intrinsics) {
+   wasm_code_ptr code_ptr((uint8_t*)code.data(), code.size());
+   try {
+      eosio::vm::backend<eos_vm_host_functions_t, eosio::vm::null_backend, setcode_options> bkend(code_ptr, code.size(), nullptr);
+      // check import signatures
+       eos_vm_host_functions_t::resolve(bkend.get_module());
+      // check that the imports are all currently enabled
+      auto intrinsic_set = convert_intrinsic_whitelist_to_set( intrinsics );
+      const auto& imports = bkend.get_module().imports;
+      for(std::uint32_t i = 0; i < imports.size(); ++i) {
+         EOS_ASSERT(intrinsic_set.find(std::string((char*)imports[i].field_str.raw(), imports[i].field_str.size())) != intrinsic_set.end(),
+                    wasm_serialization_error, "${module}.${fn} unresolveable",
+                    ("module", std::string((char*)imports[i].module_str.raw(), imports[i].module_str.size()))
+                    ("fn", std::string((char*)imports[i].field_str.raw(), imports[i].field_str.size())));
+      }
+   } catch(vm::exception& e) {
+      EOS_THROW(wasm_serialization_error, e.detail());
+   }
+}
+
 // Be permissive on apply.
 struct apply_options {
    static constexpr std::uint32_t max_pages = wasm_constraints::maximum_linear_memory/wasm_constraints::wasm_page_size;

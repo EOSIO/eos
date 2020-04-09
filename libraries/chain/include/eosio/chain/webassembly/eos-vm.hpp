@@ -6,6 +6,7 @@
 #include <eosio/chain/webassembly/runtime_interface.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/apply_context.hpp>
+#include <eosio/chain/whitelisted_intrinsics.hpp>
 #include <softfloat_types.h>
 
 //eos-vm includes
@@ -27,6 +28,8 @@ using namespace eosio::vm;
 using namespace eosio::chain::webassembly::common;
 
 struct apply_options;
+
+void validate_intrinsics(const bytes& code, const whitelisted_intrinsics_type& intrinsics);
 
 template<typename Backend>
 class eos_vm_runtime : public eosio::chain::wasm_runtime_interface {
