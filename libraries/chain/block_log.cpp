@@ -75,7 +75,7 @@ namespace eosio { namespace chain {
          std::vector<char> buffer(padded_size + offset_to_block_start(4));
          fc::datastream<char*> stream(buffer.data(), buffer.size());
 
-         uint32_t offset      = buffer.size();
+         uint32_t offset      = buffer.size() + sizeof(uint64_t);
          stream.write((char*)&offset, sizeof(offset));
          fc::raw::pack(stream, static_cast<uint8_t>(compression));
          block.pack(stream, compression);
