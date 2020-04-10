@@ -786,16 +786,8 @@ namespace eosio { namespace chain {
       }
 
       if( bad_block.valid() ) {
-         fc::variant last_block = std::visit(
-             [](const auto& v) {
-                fc::variant r;
-                fc::to_variant(v, r);
-                return r;
-             },
-             *bad_block);
          ilog("Recovered only up to block number ${num}. Last block in block log was not properly "
-              "committed:\n${last_block}",
-              ("num", block_num)("last_block", last_block));
+              "committed",("num", block_num));
       } else if( except_ptr ) {
          std::string error_msg;
 
