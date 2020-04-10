@@ -503,8 +503,10 @@ Enables new `set_action_return_value` intrinsic which sets a value that is inclu
 
 
 
-   protocol_feature_manager::protocol_feature_manager( protocol_feature_set&& pfs )
-   :_protocol_feature_set( std::move(pfs) )
+   protocol_feature_manager::protocol_feature_manager(
+      protocol_feature_set&& pfs,
+      std::function<fc::logger*()> get_deep_mind_logger
+   ):_protocol_feature_set( std::move(pfs) ), _get_deep_mind_logger(get_deep_mind_logger)
    {
       _builtin_protocol_features.resize( _protocol_feature_set._recognized_builtin_protocol_features.size() );
    }
@@ -683,6 +685,13 @@ Enables new `set_action_return_value` intrinsic which sets a value that is inclu
                   "cannot activate already activated builtin feature with digest: ${digest}",
                   ("digest", feature_digest)
       );
+
+      if (auto dm_logger = _get_deep_mind_logger()) {
+         fc_dlog(*dm_logger, "FEATURE_OP ACTIVATE ${feature_digest} ${feature}",
+            ("feature_digest", feature_digest)
+            ("feature", itr->to_variant())
+         );
+      }
 
       _activated_protocol_features.push_back( protocol_feature_entry{itr, current_block_num} );
       _builtin_protocol_features[indx].previous = _head_of_builtin_activation_list;

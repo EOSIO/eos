@@ -16,7 +16,7 @@ namespace eosio { namespace chain { namespace webassembly {
    }
 
    void interface::preactivate_feature( const digest_type& feature_digest ) {
-      context.control.preactivate_feature( feature_digest );
+      context.control.preactivate_feature( context.get_action_id(), feature_digest );
    }
 
    void interface::set_resource_limits( account_name account, int64_t ram_bytes, int64_t net_weight, int64_t cpu_weight ) {
