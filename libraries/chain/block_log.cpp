@@ -56,6 +56,7 @@ namespace eosio { namespace chain {
 
       template <typename Stream>
       void unpack(Stream& ds, log_entry_v4& entry){
+         auto start_pos = ds.tellp();
          fc::raw::unpack(ds, entry.offset);
          uint8_t compression;
          fc::raw::unpack(ds, compression);
@@ -63,6 +64,8 @@ namespace eosio { namespace chain {
          EOS_ASSERT(entry.compression == pruned_transaction::cf_compression_type::none, block_log_exception,
                   "Only support compression_type none");
          fc::raw::unpack(ds, static_cast<pruned_block&>(entry));
+         EOS_ASSERT(ds.tellp() - start_pos + sizeof(uint64_t) == entry.offset , block_log_exception,
+                  "Invalid block log entry offset");
       }
 
       std::vector<char> pack(const pruned_block& block, pruned_transaction::cf_compression_type compression) {
