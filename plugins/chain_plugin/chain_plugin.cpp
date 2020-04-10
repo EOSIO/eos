@@ -1301,7 +1301,7 @@ bool chain_plugin::import_reversible_blocks( const fc::path& reversible_dir,
    new_reversible.add_index<reversible_block_index>();
    try {
       while( reversible_blocks.tellg() < end_pos ) {
-         signed_block tmp;
+         signed_block_v0 tmp;
          fc::raw::unpack(reversible_blocks, tmp);
          num = tmp.block_num();
 
@@ -1316,7 +1316,7 @@ bool chain_plugin::import_reversible_blocks( const fc::path& reversible_dir,
 
          new_reversible.create<reversible_block_object>( [&]( auto& ubo ) {
             ubo.blocknum = num;
-            ubo.set_block( std::make_shared<signed_block>(std::move(tmp)) );
+            ubo.set_block( std::make_shared<signed_block>(std::move(tmp), true) );
          });
          end = num;
       }
@@ -1358,7 +1358,9 @@ bool chain_plugin::export_reversible_blocks( const fc::path& reversible_dir,
          signed_block tmp;
          fc::datastream<const char *> ds( itr->packedblock.data(), itr->packedblock.size() );
          fc::raw::unpack(ds, tmp); // Verify that packed block has not been corrupted.
-         reversible_blocks.write( itr->packedblock.data(), itr->packedblock.size() );
+         signed_block_v0_ptr v0 = tmp.to_signed_block_v0(); // store in signed_block_v0 format
+         auto packed_v0 = fc::raw::pack(*v0);
+         reversible_blocks.write( packed_v0.data(), packed_v0.size() );
          end = itr->blocknum;
          ++num;
       }
