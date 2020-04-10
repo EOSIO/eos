@@ -3407,6 +3407,38 @@ fc::optional<chain_id_type> controller::extract_chain_id_from_db( const path& st
    return {};
 }
 
+void controller::replace_producer_keys( const public_key_type& key ) {
+   ilog("Replace producer keys with ${k}", ("k", key));
+   mutable_db().modify( db().get<global_property_object>(), [&]( auto& gp ) {
+      gp.proposed_schedule_block_num = {};
+      gp.proposed_schedule.version = 0;
+      gp.proposed_schedule.producers.clear();
+   });
+   my->head->pending_schedule = {};
+   for (auto& prod: my->head->active_schedule.producers ) {
+      ilog("${n}", ("n", prod.producer_name));
+      prod.authority.visit([&](auto &auth) {
+         auth.threshold = 1;
+         auth.keys = {key_weight{key, 1}};
+      });
+   }
+}
+
+void controller::replace_account_keys( name account, const public_key_type& key ) {
+   auto* owner = db().find<permission_object, by_owner>(boost::make_tuple(account, N(owner)));
+   if (owner) {
+      mutable_db().modify(*owner, [&](auto& p) {
+         p.auth = authority(key);
+      });
+   }
+   auto* active = db().find<permission_object, by_owner>(boost::make_tuple(account, N(active)));
+   if (active) {
+      mutable_db().modify(*active, [&](auto& p) {
+         p.auth = authority(key);
+      });
+   }
+}
+
 /// Protocol feature activation handlers:
 
 template<>
