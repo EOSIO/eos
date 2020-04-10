@@ -1,5 +1,5 @@
 ---
-content_title: Ubuntu 18.04 (unpinned)
+content_title: Ubuntu 18.04
 ---
 
 This section contains shell commands to manually download, build, install, test, and uninstall EOSIO and dependencies on Ubuntu 18.04.
@@ -84,10 +84,14 @@ cd $EOSIO_INSTALL_LOCATION && curl -L https://github.com/mongodb/mongo-cxx-drive
 
 ## Build EOSIO
 These commands build the EOSIO software on the specified OS. Make sure to [Install EOSIO Dependencies](#install-eosio-dependencies) first.
+
+[[caution | `EOSIO_BUILD_LOCATION` environment variable]]
+| Do NOT change this variable. It is set for convenience only. It should always be set to the `build` folder within the cloned repository.
+
 ```sh
 export EOSIO_BUILD_LOCATION=$EOSIO_LOCATION/build
 mkdir -p $EOSIO_BUILD_LOCATION
-cd $EOSIO_BUILD_LOCATION && cmake -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER='clang++-7' -DCMAKE_C_COMPILER='clang-7' -DLLVM_DIR='/usr/lib/llvm-7/lib/cmake/llvm' -DCMAKE_INSTALL_PREFIX=$EOSIO_INSTALL_LOCATION -DBUILD_MONGO_DB_PLUGIN=true ..
+cd $EOSIO_BUILD_LOCATION && cmake -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER='clang++-7' -DCMAKE_C_COMPILER='clang-7' -DLLVM_DIR='/usr/lib/llvm-7/lib/cmake/llvm' -DCMAKE_INSTALL_PREFIX=$EOSIO_INSTALL_LOCATION -DBUILD_MONGO_DB_PLUGIN=true $EOSIO_LOCATION
 cd $EOSIO_BUILD_LOCATION && make -j$(nproc)
 ```
 

@@ -310,7 +310,7 @@ struct trace_api_plugin_impl {
       auto& chain = app().find_plugin<chain_plugin>()->chain();
 
       applied_transaction_connection.emplace(
-         chain.applied_transaction.connect([this](std::tuple<const chain::transaction_trace_ptr&, const chain::signed_transaction&> t) {
+         chain.applied_transaction.connect([this](std::tuple<const chain::transaction_trace_ptr&, const chain::packed_transaction_ptr&> t) {
             emit_killer([&](){
                extraction->signal_applied_transaction(std::get<0>(t), std::get<1>(t));
             });

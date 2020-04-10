@@ -40,7 +40,6 @@ namespace eosio { namespace chain {
       class block_log_impl {
          public:
             signed_block_ptr         head;
-            block_id_type            head_id;
             fc::cfile                block_file;
             fc::cfile                index_file;
             bool                     open_files = false;
@@ -251,11 +250,6 @@ namespace eosio { namespace chain {
          }
 
          my->head = read_head();
-         if( my->head ) {
-            my->head_id = my->head->id();
-         } else {
-            my->head_id = {};
-         }
 
          if (index_size) {
             ilog("Index is nonempty");
@@ -309,7 +303,6 @@ namespace eosio { namespace chain {
          block_file.write((char*)&pos, sizeof(pos));
          index_file.write((char*)&pos, sizeof(pos));
          head = b;
-         head_id = b->id();
 
          flush();
 
@@ -354,7 +347,6 @@ namespace eosio { namespace chain {
          append(first_block);
       } else {
          head.reset();
-         head_id = {};
       }
 
       auto pos = block_file.tellp();
@@ -427,7 +419,7 @@ namespace eosio { namespace chain {
             read_block_header(bh, pos);
             EOS_ASSERT(bh.block_num() == block_num, reversible_blocks_exception,
                        "Wrong block header was read from block log.", ("returned", bh.block_num())("expected", block_num));
-            return bh.id();
+            return bh.calculate_id();
          }
          return {};
       } FC_LOG_AND_RETHROW()
@@ -435,7 +427,7 @@ namespace eosio { namespace chain {
 
    uint64_t block_log::get_block_pos(uint32_t block_num) const {
       my->check_open_files();
-      if (!(my->head && block_num <= block_header::num_from_id(my->head_id) && block_num >= my->first_block_num))
+      if (!(my->head && block_num <= my->head->block_num() && block_num >= my->first_block_num))
          return npos;
       my->index_file.seek(sizeof(uint64_t) * (block_num - my->first_block_num));
       uint64_t pos;
@@ -464,10 +456,6 @@ namespace eosio { namespace chain {
 
    const signed_block_ptr& block_log::head()const {
       return my->head;
-   }
-
-   const block_id_type&    block_log::head_id()const {
-      return my->head_id;
    }
 
    uint32_t block_log::first_block_num() const {
@@ -629,7 +617,7 @@ namespace eosio { namespace chain {
             break;
          }
 
-         auto id = tmp.id();
+         auto id = tmp.calculate_id();
          if( block_header::num_from_id(previous) + 1 != block_header::num_from_id(id) ) {
             elog( "Block ${num} (${id}) skips blocks. Previous block in block log is block ${prev_num} (${previous})",
                   ("num", block_header::num_from_id(id))("id", id)
@@ -663,8 +651,7 @@ namespace eosio { namespace chain {
       }
 
       if( bad_block.valid() ) {
-         ilog( "Recovered only up to block number ${num}. Last block in block log was not properly committed:\n${last_block}",
-               ("num", block_num)("last_block", *bad_block) );
+         ilog( "Recovered only up to block number ${num}. Last block in block log was not properly committed.", ("num", block_num) );
       } else if( except_ptr ) {
          std::string error_msg;
 

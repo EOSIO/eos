@@ -390,15 +390,15 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
                      "deferred transaction generaction context contains mismatching sender_id",
                      ("expected", sender_id)("actual", context.sender_id)
          );
-         EOS_ASSERT( context.sender_trx_id == trx_context.id, ill_formed_deferred_transaction_generation_context,
+         EOS_ASSERT( context.sender_trx_id == trx_context.packed_trx.id(), ill_formed_deferred_transaction_generation_context,
                      "deferred transaction generaction context contains mismatching sender_trx_id",
-                     ("expected", trx_context.id)("actual", context.sender_trx_id)
+                     ("expected", trx_context.packed_trx.id())("actual", context.sender_trx_id)
          );
       } else {
          emplace_extension(
             trx.transaction_extensions,
             deferred_transaction_generation_context::extension_id(),
-            fc::raw::pack( deferred_transaction_generation_context( trx_context.id, sender_id, receiver ) )
+            fc::raw::pack( deferred_transaction_generation_context( trx_context.packed_trx.id(), sender_id, receiver ) )
          );
       }
       trx.expiration = time_point_sec();
@@ -611,11 +611,6 @@ vector<account_name> apply_context::get_active_producers() const {
    return accounts;
 }
 
-bytes apply_context::get_packed_transaction() {
-   auto r = fc::raw::pack( static_cast<const transaction&>(trx_context.trx) );
-   return r;
-}
-
 void apply_context::update_db_usage( const account_name& payer, int64_t delta ) {
    if( delta > 0 ) {
       if( !(privileged || payer == account_name(receiver)
@@ -632,7 +627,7 @@ void apply_context::update_db_usage( const account_name& payer, int64_t delta ) 
 
 int apply_context::get_action( uint32_t type, uint32_t index, char* buffer, size_t buffer_size )const
 {
-   const auto& trx = trx_context.trx;
+   const auto& trx = trx_context.packed_trx.get_transaction();
    const action* act_ptr = nullptr;
 
    if( type == 0 ) {
@@ -658,15 +653,36 @@ int apply_context::get_action( uint32_t type, uint32_t index, char* buffer, size
 
 int apply_context::get_context_free_data( uint32_t index, char* buffer, size_t buffer_size )const
 {
-   const auto& trx = trx_context.trx;
+   const prunable_transaction_data::prunable_data_type& data = trx_context.packed_trx.get_prunable_data().prunable_data;
+   const bytes* cfd = nullptr;
+   if( data.contains<prunable_transaction_data::none>() || data.contains<prunable_transaction_data::signatures_only>() ) {
+   } else if( data.contains<prunable_transaction_data::partial>() ) {
+      if( index >= data.get<prunable_transaction_data::partial>().context_free_segments.size() ) return -1;
 
-   if( index >= trx.context_free_data.size() ) return -1;
+      cfd = trx_context.packed_trx.get_context_free_data(index);
+   } else {
+      const std::vector<bytes>& context_free_data =
+            data.contains<prunable_transaction_data::full_legacy>() ?
+               data.get<prunable_transaction_data::full_legacy>().context_free_segments :
+               data.get<prunable_transaction_data::full>().context_free_segments;
+      if( index >= context_free_data.size() ) return -1;
 
-   auto s = trx.context_free_data[index].size();
+      cfd = &context_free_data[index];
+   }
+
+   if( !cfd ) {
+      if( control.is_producing_block() ) {
+         EOS_THROW( subjective_block_production_exception, "pruned context free data not available" );
+      } else {
+         EOS_THROW( pruned_context_free_data_bad_block_exception, "pruned context free data not available" );
+      }
+   }
+
+   auto s = cfd->size();
    if( buffer_size == 0 ) return s;
 
    auto copy_size = std::min( buffer_size, s );
-   memcpy( buffer, trx.context_free_data[index].data(), copy_size );
+   memcpy( buffer, cfd->data(), copy_size );
 
    return copy_size;
 }

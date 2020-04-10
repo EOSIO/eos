@@ -126,7 +126,7 @@ void blocklog::read_log() {
                                  pretty_output,
                                  []( account_name n ) { return optional<abi_serializer>(); },
                                  abi_serializer::create_yield_function( deadline ));
-      const auto block_id = next->id();
+      const auto block_id = next->calculate_id();
       const uint32_t ref_block_prefix = block_id._hash[1];
       const auto enhanced_object = fc::mutable_variant_object
                  ("block_num",next->block_num())

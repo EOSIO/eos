@@ -44,13 +44,11 @@ namespace eosio { namespace chain {
    }
 
    transaction_context::transaction_context( controller& c,
-                                             const signed_transaction& t,
-                                             const transaction_id_type& trx_id,
+                                             const packed_transaction& t,
                                              transaction_checktime_timer&& tmr,
                                              fc::time_point s )
    :control(c)
-   ,trx(t)
-   ,id(trx_id)
+   ,packed_trx(t)
    ,undo_session()
    ,trace(std::make_shared<transaction_trace>())
    ,start(s)
@@ -61,7 +59,7 @@ namespace eosio { namespace chain {
       if (!c.skip_db_sessions()) {
          undo_session = c.mutable_db().start_undo_session(true);
       }
-      trace->id = id;
+      trace->id = packed_trx.id();
       trace->block_num = c.head_block_num() + 1;
       trace->block_time = c.pending_block_time();
       trace->producer_block_id = c.pending_producer_block_id();
@@ -100,6 +98,7 @@ namespace eosio { namespace chain {
          _deadline = start + objective_duration_limit;
       }
 
+      const transaction& trx = packed_trx.get_transaction();
       // Possibly lower net_limit to optional limit set in the transaction header
       uint64_t trx_specified_net_usage_limit = static_cast<uint64_t>(trx.max_net_usage_words.value) * 8;
       if( trx_specified_net_usage_limit > 0 && trx_specified_net_usage_limit <= net_limit ) {
@@ -192,6 +191,7 @@ namespace eosio { namespace chain {
 
    void transaction_context::init_for_implicit_trx( uint64_t initial_net_usage  )
    {
+      const transaction& trx = packed_trx.get_transaction();
       if( trx.transaction_extensions.size() > 0 ) {
          disallow_transaction_extensions( "no transaction extensions supported yet for implicit transactions" );
       }
@@ -204,6 +204,7 @@ namespace eosio { namespace chain {
                                                  uint64_t packed_trx_prunable_size,
                                                  bool skip_recording )
    {
+      const transaction& trx = packed_trx.get_transaction();
       if( trx.transaction_extensions.size() > 0 ) {
          disallow_transaction_extensions( "no transaction extensions supported yet for input transactions" );
       }
@@ -236,6 +237,7 @@ namespace eosio { namespace chain {
    void transaction_context::init_for_input_trx_with_explicit_net( uint32_t explicit_net_usage_words,
                                                                    bool skip_recording )
    {
+      const transaction& trx = packed_trx.get_transaction();
       if( trx.transaction_extensions.size() > 0 ) {
          disallow_transaction_extensions( "no transaction extensions supported yet for input transactions" );
       }
@@ -250,6 +252,7 @@ namespace eosio { namespace chain {
    {
       published = control.pending_block_time();
       is_input = true;
+      const transaction& trx = packed_trx.get_transaction();
       if (!control.skip_trx_checks()) {
          control.validate_expiration(trx);
          control.validate_tapos(trx);
@@ -257,11 +260,12 @@ namespace eosio { namespace chain {
       }
       init( initial_net_usage );
       if (!skip_recording)
-         record_transaction( id, trx.expiration ); /// checks for dupes
+         record_transaction( packed_trx.id(), trx.expiration ); /// checks for dupes
    }
 
    void transaction_context::init_for_deferred_trx( fc::time_point p )
    {
+      const transaction& trx = packed_trx.get_transaction();
       if( (trx.expiration.sec_since_epoch() != 0) && (trx.transaction_extensions.size() > 0) ) {
          disallow_transaction_extensions( "no transaction extensions supported yet for deferred transactions" );
       }
@@ -279,6 +283,7 @@ namespace eosio { namespace chain {
    void transaction_context::exec() {
       EOS_ASSERT( is_initialized, transaction_exception, "must first initialize" );
 
+      const transaction& trx = packed_trx.get_transaction();
       if( apply_context_free ) {
          for( const auto& act : trx.context_free_actions ) {
             schedule_action( act, act.account, true, 0, 0 );
@@ -306,6 +311,7 @@ namespace eosio { namespace chain {
       EOS_ASSERT( is_initialized, transaction_exception, "must first initialize" );
 
       if( is_input ) {
+         const transaction& trx = packed_trx.get_transaction();
          auto& am = control.get_mutable_authorization_manager();
          for( const auto& act : trx.actions ) {
             for( const auto& auth : act.authorization ) {
@@ -611,6 +617,7 @@ namespace eosio { namespace chain {
    void transaction_context::schedule_transaction() {
       // Charge ahead of time for the additional net usage needed to retire the delayed transaction
       // whether that be by successfully executing, soft failure, hard failure, or expiration.
+      const transaction& trx = packed_trx.get_transaction();
       if( trx.delay_sec.value == 0 ) { // Do not double bill. Only charge if we have not already charged for the delay.
          const auto& cfg = control.get_global_properties().configuration;
          add_net_usage( static_cast<uint64_t>(cfg.base_per_transaction_net_usage)
@@ -621,7 +628,7 @@ namespace eosio { namespace chain {
 
       uint32_t trx_size = 0;
       const auto& cgto = control.mutable_db().create<generated_transaction_object>( [&]( auto& gto ) {
-        gto.trx_id      = id;
+        gto.trx_id      = packed_trx.id();
         gto.payer       = first_auth;
         gto.sender      = account_name(); /// delayed transactions have no sender
         gto.sender_id   = transaction_id_to_sender_id( gto.trx_id );

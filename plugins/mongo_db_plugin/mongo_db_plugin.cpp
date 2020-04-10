@@ -40,6 +40,8 @@ using chain::signed_transaction;
 using chain::signed_block;
 using chain::transaction_id_type;
 using chain::packed_transaction;
+using chain::packed_transaction_v0;
+using chain::packed_transaction_v0_ptr;
 
 static appbase::abstract_plugin& _mongo_db_plugin = app().register_plugin<mongo_db_plugin>();
 
@@ -742,7 +744,8 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
    using bsoncxx::builder::basic::make_array;
    namespace bbb = bsoncxx::builder::basic;
 
-   const signed_transaction& trx = t->packed_trx()->get_signed_transaction();
+   const packed_transaction_v0_ptr ptv0 = t->packed_trx()->to_packed_transaction_v0();
+   const signed_transaction& trx = ptv0->get_signed_transaction();
 
    if( !filter_include( trx ) ) return;
 
@@ -1019,7 +1022,7 @@ void mongo_db_plugin_impl::_process_irreversible_block(const chain::block_state_
    using bsoncxx::builder::basic::kvp;
 
 
-   const auto block_id = bs->block->id();
+   const auto& block_id = bs->id;
    const auto block_id_str = block_id.str();
 
    auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -1064,7 +1067,7 @@ void mongo_db_plugin_impl::_process_irreversible_block(const chain::block_state_
          string trx_id_str;
          if( receipt.trx.contains<packed_transaction>() ) {
             const auto& pt = receipt.trx.get<packed_transaction>();
-            if( !filter_include( pt.get_signed_transaction() ) ) continue;
+            if( !filter_include( pt.get_transaction() ) ) continue;
             const auto& id = pt.id();
             trx_id_str = id.str();
          } else {
@@ -1658,7 +1661,7 @@ void mongo_db_plugin::plugin_initialize(const variables_map& options)
                   my->accepted_transaction( t );
                } ));
          my->applied_transaction_connection.emplace(
-               chain.applied_transaction.connect( [&]( std::tuple<const chain::transaction_trace_ptr&, const chain::signed_transaction&> t ) {
+               chain.applied_transaction.connect( [&]( std::tuple<const chain::transaction_trace_ptr&, const chain::packed_transaction_ptr&> t ) {
                   my->applied_transaction( std::get<0>(t) );
                } ));
 

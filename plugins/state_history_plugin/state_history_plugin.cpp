@@ -156,7 +156,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       try {
          auto block = chain_plug->chain().fetch_block_by_number(block_num);
          if (block)
-            return block->id();
+            return block->calculate_id();
       } catch (...) {
       }
       return {};
@@ -406,7 +406,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
              auth.permission == eosio::chain::config::active_name;
    }
 
-   void on_applied_transaction(const transaction_trace_ptr& p, const signed_transaction& t) {
+   void on_applied_transaction(const transaction_trace_ptr& p, const packed_transaction_ptr& t) {
       if (p->receipt && trace_log) {
          if (is_onblock(p))
             onblock_trace.emplace(p, t);
@@ -455,7 +455,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       EOS_ASSERT(traces_bin.size() == (uint32_t)traces_bin.size(), plugin_exception, "traces is too big");
 
       state_history_log_header header{.magic        = ship_magic(ship_current_version),
-                                      .block_id     = block_state->block->id(),
+                                      .block_id     = block_state->id,
                                       .payload_size = sizeof(uint32_t) + traces_bin.size()};
       trace_log->write_entry(header, block_state->block->previous, [&](auto& stream) {
          uint32_t s = (uint32_t)traces_bin.size();
@@ -551,7 +551,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       auto deltas_bin = zlib_compress_bytes(fc::raw::pack(deltas));
       EOS_ASSERT(deltas_bin.size() == (uint32_t)deltas_bin.size(), plugin_exception, "deltas is too big");
       state_history_log_header header{.magic        = ship_magic(ship_current_version),
-                                      .block_id     = block_state->block->id(),
+                                      .block_id     = block_state->id,
                                       .payload_size = sizeof(uint32_t) + deltas_bin.size()};
       chain_state_log->write_entry(header, block_state->block->previous, [&](auto& stream) {
          uint32_t s = (uint32_t)deltas_bin.size();
@@ -590,7 +590,7 @@ void state_history_plugin::plugin_initialize(const variables_map& options) {
       EOS_ASSERT(my->chain_plug, chain::missing_chain_plugin_exception, "");
       auto& chain = my->chain_plug->chain();
       my->applied_transaction_connection.emplace(
-          chain.applied_transaction.connect([&](std::tuple<const transaction_trace_ptr&, const signed_transaction&> t) {
+          chain.applied_transaction.connect([&](std::tuple<const transaction_trace_ptr&, const packed_transaction_ptr&> t) {
              my->on_applied_transaction(std::get<0>(t), std::get<1>(t));
           }));
       my->accepted_block_connection.emplace(

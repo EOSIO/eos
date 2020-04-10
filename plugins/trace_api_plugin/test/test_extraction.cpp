@@ -74,7 +74,7 @@ namespace {
    auto make_packed_trx( std::vector<chain::action> actions ) {
       chain::signed_transaction trx;
       trx.actions = std::move( actions );
-      return packed_transaction( trx );
+      return packed_transaction( std::move(trx), true );
    }
 
    chain::action_trace make_action_trace( uint64_t global_sequence, chain::action act, chain::name receiver ) {
@@ -180,8 +180,8 @@ struct extraction_test_fixture {
    {
    }
 
-   void signal_applied_transaction( const chain::transaction_trace_ptr& trace, const chain::signed_transaction& strx ) {
-      extraction_impl.signal_applied_transaction(trace, strx);
+   void signal_applied_transaction( const chain::transaction_trace_ptr& trace, const chain::packed_transaction_ptr& ptrx ) {
+      extraction_impl.signal_applied_transaction(trace, ptrx);
    }
 
    void signal_accepted_block( const chain::block_state_ptr& bsp ) {
@@ -212,7 +212,7 @@ BOOST_AUTO_TEST_SUITE(block_extraction)
       signal_applied_transaction(
             make_transaction_trace( ptrx1.id(), 1, 1, chain::transaction_receipt_header::executed,
                   { actt1, actt2, actt3 } ),
-            ptrx1.get_signed_transaction() );
+            std::make_shared<packed_transaction>(ptrx1) );
       
       // accept the block with one transaction
       auto bsp1 = make_block_state( chain::block_id_type(), 1, 1, "bp.one"_n,
@@ -268,15 +268,15 @@ BOOST_AUTO_TEST_SUITE(block_extraction)
       signal_applied_transaction(
             make_transaction_trace( ptrx1.id(), 1, 1, chain::transaction_receipt_header::executed,
                   { actt1 } ),
-            ptrx1.get_signed_transaction() );
+            std::make_shared<packed_transaction>( ptrx1 ) );
       signal_applied_transaction(
             make_transaction_trace( ptrx2.id(), 1, 1, chain::transaction_receipt_header::executed,
                   { actt2 } ),
-            ptrx2.get_signed_transaction() );
+            std::make_shared<packed_transaction>( ptrx2 ) );
       signal_applied_transaction(
             make_transaction_trace( ptrx3.id(), 1, 1, chain::transaction_receipt_header::executed,
                   { actt3 } ),
-            ptrx3.get_signed_transaction() );
+            std::make_shared<packed_transaction>( ptrx3 ) );
 
       // accept the block with three transaction
       auto bsp1 = make_block_state( chain::block_id_type(), 1, 1, "bp.one"_n,
@@ -344,7 +344,7 @@ BOOST_AUTO_TEST_SUITE(block_extraction)
                                                    { actt2 } );
       onerror_trace->failed_dtrx_trace = transfer_trace;
 
-      signal_applied_transaction( onerror_trace, transfer_trx.get_signed_transaction() );
+      signal_applied_transaction( onerror_trace, std::make_shared<packed_transaction>( transfer_trx ) );
 
       auto bsp1 = make_block_state( chain::block_id_type(), 1, 1, "bp.one"_n,
             { chain::packed_transaction(transfer_trx) } );

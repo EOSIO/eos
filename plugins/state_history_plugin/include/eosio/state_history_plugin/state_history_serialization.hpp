@@ -650,23 +650,26 @@ datastream<ST>& operator<<(datastream<ST>&                                      
       std::pair<uint8_t, bool> context = std::make_pair(stat, debug_mode);
       fc::raw::pack( //
           ds, make_history_context_wrapper(
-                  obj.db, context, eosio::augmented_transaction_trace{trace.failed_dtrx_trace, obj.obj.partial}));
+                  obj.db, context, eosio::augmented_transaction_trace{trace.failed_dtrx_trace, obj.obj.packed_trx}));
    }
 
-   bool include_partial = obj.obj.partial && !trace.failed_dtrx_trace;
-   fc::raw::pack(ds, include_partial);
-   if (include_partial) {
-      auto& partial = *obj.obj.partial;
+   bool include_packed_trx = obj.obj.packed_trx && !trace.failed_dtrx_trace;
+   fc::raw::pack(ds, include_packed_trx);
+   if (include_packed_trx) {
+      const auto& pt = *obj.obj.packed_trx;
+      const auto& trx = pt.get_transaction();
       fc::raw::pack(ds, fc::unsigned_int(0));
-      fc::raw::pack(ds, as_type<eosio::chain::time_point_sec>(partial.expiration));
-      fc::raw::pack(ds, as_type<uint16_t>(partial.ref_block_num));
-      fc::raw::pack(ds, as_type<uint32_t>(partial.ref_block_prefix));
-      fc::raw::pack(ds, as_type<fc::unsigned_int>(partial.max_net_usage_words));
-      fc::raw::pack(ds, as_type<uint8_t>(partial.max_cpu_usage_ms));
-      fc::raw::pack(ds, as_type<fc::unsigned_int>(partial.delay_sec));
-      fc::raw::pack(ds, as_type<eosio::chain::extensions_type>(partial.transaction_extensions));
-      fc::raw::pack(ds, as_type<std::vector<eosio::chain::signature_type>>(partial.signatures));
-      fc::raw::pack(ds, as_type<std::vector<eosio::bytes>>(partial.context_free_data));
+      fc::raw::pack(ds, as_type<eosio::chain::time_point_sec>(trx.expiration));
+      fc::raw::pack(ds, as_type<uint16_t>(trx.ref_block_num));
+      fc::raw::pack(ds, as_type<uint32_t>(trx.ref_block_prefix));
+      fc::raw::pack(ds, as_type<fc::unsigned_int>(trx.max_net_usage_words));
+      fc::raw::pack(ds, as_type<uint8_t>(trx.max_cpu_usage_ms));
+      fc::raw::pack(ds, as_type<fc::unsigned_int>(trx.delay_sec));
+      fc::raw::pack(ds, as_type<eosio::chain::extensions_type>(trx.transaction_extensions));
+      const auto* sigs = pt.get_signatures();
+      const auto* cfd = pt.get_context_free_data();
+      fc::raw::pack(ds, as_type<std::vector<eosio::chain::signature_type>>(sigs ? *sigs : std::vector<eosio::chain::signature_type>{}));
+      fc::raw::pack(ds, as_type<std::vector<eosio::bytes>>(cfd ? *cfd : std::vector<eosio::bytes>{}));
    }
 
    return ds;

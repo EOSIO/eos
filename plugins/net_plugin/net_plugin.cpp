@@ -390,8 +390,8 @@ namespace eosio {
    constexpr auto     def_sync_fetch_span = 100;
 
    constexpr auto     message_header_size = 4;
-   constexpr uint32_t signed_block_which = 7;        // see protocol net_message
-   constexpr uint32_t packed_transaction_which = 8;  // see protocol net_message
+   constexpr uint32_t signed_block_v0_which = 7;        // see protocol net_message
+   constexpr uint32_t packed_transaction_v0_which = 8;  // see protocol net_message
 
    /**
     *  For a while, network version was a 16 bit value equal to the second set of 16 bits
@@ -412,8 +412,8 @@ namespace eosio {
     *  the need for compatibility hooks
     */
    constexpr uint16_t proto_base = 0;
-   constexpr uint16_t proto_explicit_sync = 1;
-   constexpr uint16_t block_id_notify = 2; // reserved. feature was removed. next net_version should be 3
+   constexpr uint16_t proto_explicit_sync = 1; // version at time of eosio 1.0
+   constexpr uint16_t block_id_notify = 2;     // reserved. feature was removed. next net_version should be 3
 
    constexpr uint16_t net_version = proto_explicit_sync;
 
@@ -977,17 +977,31 @@ namespace eosio {
             lib_num, head_num, msg_head_id]() {
          auto msg_head_num = block_header::num_from_id(msg_head_id);
          bool on_fork = msg_head_num == 0;
-         try {
-            const controller& cc = chain_plug->chain();
-            on_fork = on_fork || cc.get_block_id_for_num( msg_head_num ) != msg_head_id;
-         } catch( ... ) {
-            on_fork = true;
+         bool unknown_block = false;
+         if( !on_fork ) {
+            try {
+               const controller& cc = chain_plug->chain();
+               block_id_type my_id = cc.get_block_id_for_num( msg_head_num );
+               on_fork = my_id != msg_head_id;
+            } catch( const unknown_block_exception& ) {
+               unknown_block = true;
+            } catch( ... ) {
+               on_fork = true;
+            }
          }
-         if( on_fork ) msg_head_num = 0;
-         // if peer on fork, start at their last lib, otherwise we can start at msg_head+1
-         c->strand.post( [c, msg_head_num, lib_num, head_num]() {
-            c->blk_send_branch_impl( msg_head_num, lib_num, head_num );
-         } );
+         if( unknown_block ) {
+            c->strand.post( [msg_head_num, c]() {
+               peer_ilog( c, "Peer asked for unknown block ${mn}, sending: benign_other go away", ("mn", msg_head_num) );
+               c->no_retry = benign_other;
+               c->enqueue( go_away_message( benign_other ) );
+            } );
+         } else {
+            if( on_fork ) msg_head_num = 0;
+            // if peer on fork, start at their last lib, otherwise we can start at msg_head+1
+            c->strand.post( [c, msg_head_num, lib_num, head_num]() {
+               c->blk_send_branch_impl( msg_head_num, lib_num, head_num );
+            } );
+         }
       } );
    }
 
@@ -1168,7 +1182,10 @@ namespace eosio {
          connection_ptr c = weak.lock();
          if( !c ) return;
          controller& cc = my_impl->chain_plug->chain();
-         signed_block_ptr sb = cc.fetch_block_by_number( num );
+         signed_block_ptr sb;
+         try {
+            sb = cc.fetch_block_by_number( num );
+         } FC_LOG_AND_DROP();
          if( sb ) {
             c->strand.post( [c, sb{std::move(sb)}]() {
                c->enqueue_block( sb, true );
@@ -1230,13 +1247,15 @@ namespace eosio {
       // this implementation is to avoid copy of signed_block to net_message
       // matches which of net_message for signed_block
       fc_dlog( logger, "sending block ${bn}", ("bn", sb->block_num()) );
-      return create_send_buffer( signed_block_which, *sb );
+      auto sb_v0 = sb->to_signed_block_v0();
+      return create_send_buffer( signed_block_v0_which, *sb_v0 );
    }
 
    static std::shared_ptr<std::vector<char>> create_send_buffer( const packed_transaction& trx ) {
       // this implementation is to avoid copy of packed_transaction to net_message
       // matches which of net_message for packed_transaction
-      return create_send_buffer( packed_transaction_which, trx );
+      auto pt_v0 = trx.to_packed_transaction_v0();
+      return create_send_buffer( packed_transaction_v0_which, *pt_v0 );
    }
 
    void connection::enqueue_block( const signed_block_ptr& sb, bool to_sync_queue) {
@@ -1587,10 +1606,6 @@ namespace eosio {
                   ("ep", c->peer_name())("lib", msg.last_irreversible_block_num)("head", msg.head_num)
                   ("id", msg.head_id.str().substr(8,16)) );
          c->syncing = false;
-         // wait for receipt of a notice message before initiating sync
-         if (c->protocol_version < proto_explicit_sync) {
-            start_sync( c, peer_lib );
-         }
          return;
       }
       if (lib_num > msg.head_num ) {
@@ -2365,11 +2380,11 @@ namespace eosio {
          auto peek_ds = pending_message_buffer.create_peek_datastream();
          unsigned_int which{};
          fc::raw::unpack( peek_ds, which );
-         if( which == signed_block_which ) {
+         if( which == signed_block_v0_which ) {
             block_header bh;
             fc::raw::unpack( peek_ds, bh );
 
-            const block_id_type blk_id = bh.id();
+            const block_id_type blk_id = bh.calculate_id();
             const uint32_t blk_num = bh.block_num();
             if( my_impl->dispatcher->have_block( blk_id ) ) {
                fc_dlog( logger, "canceling wait on ${p}, already received block ${num}, id ${id}...",
@@ -2407,8 +2422,9 @@ namespace eosio {
 
             auto ds = pending_message_buffer.create_datastream();
             fc::raw::unpack( ds, which ); // throw away
-            shared_ptr<signed_block> ptr = std::make_shared<signed_block>();
-            fc::raw::unpack( ds, *ptr );
+            signed_block_v0 sb_v0;
+            fc::raw::unpack( ds, sb_v0 );
+            shared_ptr<signed_block> ptr = std::make_shared<signed_block>( std::move( sb_v0 ), true );
 
             auto is_webauthn_sig = []( const fc::crypto::signature& s ) {
                return s.which() == fc::crypto::signature::storage_type::position<fc::crypto::webauthn::signature>();
@@ -2430,7 +2446,7 @@ namespace eosio {
 
             handle_message( blk_id, std::move( ptr ) );
 
-         } else if( which == packed_transaction_which ) {
+         } else if( which == packed_transaction_v0_which ) {
             if( !my_impl->p2p_accept_transactions ) {
                fc_dlog( logger, "p2p-accept-transaction=false - dropping txn" );
                pending_message_buffer.advance_read_ptr( message_length );
@@ -2439,8 +2455,9 @@ namespace eosio {
 
             auto ds = pending_message_buffer.create_datastream();
             fc::raw::unpack( ds, which ); // throw away
-            shared_ptr<packed_transaction> ptr = std::make_shared<packed_transaction>();
-            fc::raw::unpack( ds, *ptr );
+            packed_transaction_v0 pt_v0;
+            fc::raw::unpack( ds, pt_v0 );
+            shared_ptr<packed_transaction> ptr = std::make_shared<packed_transaction>( pt_v0, true );
             handle_message( std::move( ptr ) );
 
          } else {
@@ -2621,27 +2638,20 @@ namespace eosio {
 
             if( peer_lib <= lib_num && peer_lib > 0 ) {
                bool on_fork = false;
-               bool unknown_block = false;
                try {
                   block_id_type peer_lib_id = cc.get_block_id_for_num( peer_lib );
                   on_fork = (msg_lib_id != peer_lib_id);
                } catch( const unknown_block_exception& ) {
-                  peer_ilog( c, "peer last irreversible block ${pl} is unknown", ("pl", peer_lib) );
-                  unknown_block = true;
+                  // allow this for now, will be checked on sync
+                  peer_dlog( c, "peer last irreversible block ${pl} is unknown", ("pl", peer_lib) );
                } catch( ... ) {
                   peer_wlog( c, "caught an exception getting block id for ${pl}", ("pl", peer_lib) );
                   on_fork = true;
                }
-               if( on_fork || unknown_block ) {
-                  c->strand.post( [on_fork, unknown_block, c]() {
-                     if( on_fork ) {
-                        peer_elog( c, "Peer chain is forked, sending: forked go away" );
-                        c->enqueue( go_away_message( forked ) );
-                     } else if( unknown_block ) {
-                        peer_ilog( c, "Peer asked for unknown block, sending: benign_other go away" );
-                        c->no_retry = benign_other;
-                        c->enqueue( go_away_message( benign_other ) );
-                     }
+               if( on_fork ) {
+                  c->strand.post( [c]() {
+                     peer_elog( c, "Peer chain is forked, sending: forked go away" );
+                     c->enqueue( go_away_message( forked ) );
                   } );
                }
             }
@@ -2829,10 +2839,7 @@ namespace eosio {
    }
 
    size_t calc_trx_size( const packed_transaction_ptr& trx ) {
-      // transaction is stored packed and unpacked, double packed_size and size of signed as an approximation of use
-      return (trx->get_packed_transaction().size() * 2 + sizeof(trx->get_signed_transaction())) * 2 +
-             trx->get_packed_context_free_data().size() * 4 +
-             trx->get_signatures().size() * sizeof(signature_type);
+      return trx->get_estimated_size();
    }
 
    void connection::handle_message( packed_transaction_ptr trx ) {
@@ -3099,7 +3106,7 @@ namespace eosio {
       controller& cc = chain_plug->chain();
       if( cc.is_trusted_producer(block->producer) ) {
          dispatcher->strand.post( [this, block]() {
-            auto id = block->id();
+            auto id = block->calculate_id();
             fc_dlog( logger, "signaled pre_accepted_block, blk num = ${num}, id = ${id}", ("num", block->block_num())("id", id) );
             dispatcher->bcast_block( block, id );
          });

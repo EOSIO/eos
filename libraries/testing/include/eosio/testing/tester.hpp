@@ -195,8 +195,8 @@ namespace eosio { namespace testing {
          vector<transaction_id_type> get_scheduled_transactions() const;
          unapplied_transaction_queue& get_unapplied_transaction_queue() { return unapplied_transactions; }
 
-         transaction_trace_ptr    push_transaction( packed_transaction& trx, fc::time_point deadline = fc::time_point::maximum(), uint32_t billed_cpu_time_us = DEFAULT_BILLED_CPU_TIME_US );
-         transaction_trace_ptr    push_transaction( signed_transaction& trx, fc::time_point deadline = fc::time_point::maximum(), uint32_t billed_cpu_time_us = DEFAULT_BILLED_CPU_TIME_US, bool no_throw = false );
+         transaction_trace_ptr    push_transaction( const packed_transaction& trx, fc::time_point deadline = fc::time_point::maximum(), uint32_t billed_cpu_time_us = DEFAULT_BILLED_CPU_TIME_US );
+         transaction_trace_ptr    push_transaction( const signed_transaction& trx, fc::time_point deadline = fc::time_point::maximum(), uint32_t billed_cpu_time_us = DEFAULT_BILLED_CPU_TIME_US, bool no_throw = false );
 
          [[nodiscard]]
          action_result            push_action(action&& cert_act, uint64_t authorizer); // TODO/QUESTION: Is this needed?
@@ -585,7 +585,7 @@ namespace eosio { namespace testing {
 
       signed_block_ptr produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms) )override {
          auto sb = _produce_block(skip_time, false);
-         auto bsf = validating_node->create_block_state_future( sb );
+         auto bsf = validating_node->create_block_state_future( sb->calculate_id(), sb );
          validating_node->push_block( bsf, forked_branch_callback{}, trx_meta_cache_lookup{} );
 
          return sb;
@@ -596,14 +596,14 @@ namespace eosio { namespace testing {
       }
 
       void validate_push_block(const signed_block_ptr& sb) {
-         auto bs = validating_node->create_block_state_future( sb );
+         auto bs = validating_node->create_block_state_future( sb->calculate_id(), sb );
          validating_node->push_block( bs, forked_branch_callback{}, trx_meta_cache_lookup{} );
       }
 
       signed_block_ptr produce_empty_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms) )override {
          unapplied_transactions.add_aborted( control->abort_block() );
          auto sb = _produce_block(skip_time, true);
-         auto bsf = validating_node->create_block_state_future( sb );
+         auto bsf = validating_node->create_block_state_future( sb->calculate_id(), sb );
          validating_node->push_block( bsf, forked_branch_callback{}, trx_meta_cache_lookup{} );
 
          return sb;

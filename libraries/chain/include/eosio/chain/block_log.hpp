@@ -57,7 +57,6 @@ namespace eosio { namespace chain {
          uint64_t get_block_pos(uint32_t block_num) const;
          signed_block_ptr        read_head()const;
          const signed_block_ptr& head()const;
-         const block_id_type&    head_id()const;
          uint32_t                first_block_num() const;
 
          static const uint64_t npos = std::numeric_limits<uint64_t>::max();
