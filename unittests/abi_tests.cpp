@@ -2351,6 +2351,31 @@ BOOST_AUTO_TEST_CASE(variant_of_aliases)
    } FC_LOG_AND_RETHROW()
 }
 
+BOOST_AUTO_TEST_CASE(action_results)
+{
+   auto action_results_abi = R"({
+      "version": "eosio::abi/1.2",
+      "action_results": [
+         {"name": "act1", "result_type": "string"},
+         {"name": "act2", "result_type": "uint16"},
+      ],
+   })";
+
+   try {
+      // round-trip abi through multiple formats
+      // json -> variant -> abi_def -> bin
+      auto bin = fc::raw::pack(fc::json::from_string(action_results_abi).as<abi_def>());
+      // bin -> abi_def -> variant -> abi_def
+      auto def = variant(fc::raw::unpack<abi_def>(bin)).as<abi_def>();
+
+      BOOST_REQUIRE_EQUAL(def.action_results.value.size(), 2);
+      BOOST_REQUIRE_EQUAL(def.action_results.value[0].name, name{"act1"});
+      BOOST_REQUIRE_EQUAL(def.action_results.value[0].result_type, "string");
+      BOOST_REQUIRE_EQUAL(def.action_results.value[1].name, name{"act2"});
+      BOOST_REQUIRE_EQUAL(def.action_results.value[1].result_type, "uint16");
+   } FC_LOG_AND_RETHROW()
+}
+
 BOOST_AUTO_TEST_CASE(extend)
 {
    using eosio::testing::fc_exception_message_starts_with;
@@ -2413,6 +2438,7 @@ BOOST_AUTO_TEST_CASE(version)
       BOOST_CHECK_THROW( abi_serializer(fc::json::from_string(R"({"version": "eosio::abi/9.0"})").as<abi_def>(), abi_serializer::create_yield_function( max_serialization_time )), unsupported_abi_version_exception );
       abi_serializer(fc::json::from_string(R"({"version": "eosio::abi/1.0"})").as<abi_def>(), abi_serializer::create_yield_function( max_serialization_time ));
       abi_serializer(fc::json::from_string(R"({"version": "eosio::abi/1.1"})").as<abi_def>(), abi_serializer::create_yield_function( max_serialization_time ));
+      abi_serializer(fc::json::from_string(R"({"version": "eosio::abi/1.2"})").as<abi_def>(), abi_serializer::create_yield_function( max_serialization_time ));
    } FC_LOG_AND_RETHROW()
 }
 

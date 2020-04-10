@@ -246,7 +246,7 @@ protected:
 class protocol_feature_manager {
 public:
 
-   protocol_feature_manager( protocol_feature_set&& pfs );
+   protocol_feature_manager( protocol_feature_set&& pfs, std::function<fc::logger*()> get_deep_mind_logger );
 
    class const_iterator : public std::iterator<std::bidirectional_iterator_tag, const protocol_feature> {
    protected:
@@ -366,6 +366,9 @@ protected:
    vector<builtin_protocol_feature_entry> _builtin_protocol_features;
    size_t                                 _head_of_builtin_activation_list = builtin_protocol_feature_entry::no_previous;
    bool                                   _initialized = false;
+
+private:
+   std::function<fc::logger*()>           _get_deep_mind_logger;
 };
 
 } } // namespace eosio::chain
