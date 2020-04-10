@@ -317,7 +317,7 @@ class ClassStruct(EmptyScope):
         if match is None:
             return end
         if match.group(1) == "using":
-            return end
+            return loc+match.span()[1]
         field = match.group(2)
         self.fields.append(field)
         all = match.group(0)
