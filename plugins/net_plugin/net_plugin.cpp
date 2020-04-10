@@ -579,6 +579,7 @@ namespace eosio {
       std::atomic<bool>       syncing{false};
       uint16_t                protocol_version = 0;
       generic_message_types   generic_msg_types;
+      std::atomic<bool>       sent_generic_support_message = false;
       uint16_t                consecutive_rejected_blocks = 0;
       std::atomic<uint16_t>   consecutive_immediate_connection_close = 0;
 
@@ -644,6 +645,8 @@ namespace eosio {
       bool process_next_message(uint32_t message_length);
 
       void send_handshake( bool force = false );
+
+      void send_generic_support_message();
 
       void send( const generic_message& msg, const std::string& type_name, bool force );
 
@@ -970,6 +973,7 @@ namespace eosio {
       }
       self->peer_requested.reset();
       self->sent_handshake_count = 0;
+      self->sent_generic_support_message = false;
       if( !shutdown) my_impl->sync_master->sync_reset_lib_num( self->shared_from_this() );
       fc_ilog( logger, "closing '${a}', ${p}", ("a", self->peer_address())("p", self->peer_name()) );
       fc_dlog( logger, "canceling wait on ${p}", ("p", self->peer_name()) ); // peer_name(), do not hold conn_mtx
@@ -1104,11 +1108,16 @@ namespace eosio {
             c->enqueue( last_handshake_sent );
          }
       });
-      if (initial) {
+      send_generic_support_message();
+   }
+
+   void connection::send_generic_support_message() {
+      if (!sent_generic_support_message && protocol_version >= generic_messages) {
          strand.post([c = shared_from_this()]() {
             fc_ilog( logger, "Sending general_support_messsage" );
             c->enqueue( c->generic_support_msg );
          });
+         sent_generic_support_message = true;
       }
    }
 
@@ -2715,6 +2724,9 @@ namespace eosio {
 
          if( sent_handshake_count == 0 ) {
             send_handshake();
+         }
+         else {
+            send_generic_support_message();
          }
       }
 
