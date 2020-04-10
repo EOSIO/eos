@@ -174,7 +174,7 @@ class privileged_api : public context_aware_api {
        *  Also fails if the feature was already activated or pre-activated.
        */
       void preactivate_feature( const digest_type& feature_digest ) {
-         context.control.preactivate_feature( feature_digest );
+         context.control.preactivate_feature( context.get_action_id(), feature_digest );
       }
 
       /**

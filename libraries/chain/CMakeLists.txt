@@ -92,6 +92,7 @@ add_library( eosio_chain
 #
 #             contracts/chain_initializer.cpp
 
+             authority.cpp
              trace.cpp
              transaction_metadata.cpp
              protocol_state_object.cpp
@@ -102,6 +103,7 @@ add_library( eosio_chain
              whitelisted_intrinsics.cpp
              thread_utils.cpp
              platform_timer_accuracy.cpp
+
              ${PLATFORM_TIMER_IMPL}
              ${HEADERS}
              )
