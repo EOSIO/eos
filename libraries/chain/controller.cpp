@@ -3414,7 +3414,9 @@ void controller::replace_producer_keys( const public_key_type& key ) {
       gp.proposed_schedule.version = 0;
       gp.proposed_schedule.producers.clear();
    });
+   auto version = my->head->pending_schedule.schedule.version;
    my->head->pending_schedule = {};
+   my->head->pending_schedule.schedule.version = version;
    for (auto& prod: my->head->active_schedule.producers ) {
       ilog("${n}", ("n", prod.producer_name));
       prod.authority.visit([&](auto &auth) {
@@ -3424,19 +3426,18 @@ void controller::replace_producer_keys( const public_key_type& key ) {
    }
 }
 
-void controller::replace_account_keys( name account, const public_key_type& key ) {
-   auto* owner = db().find<permission_object, by_owner>(boost::make_tuple(account, N(owner)));
-   if (owner) {
-      mutable_db().modify(*owner, [&](auto& p) {
-         p.auth = authority(key);
-      });
-   }
-   auto* active = db().find<permission_object, by_owner>(boost::make_tuple(account, N(active)));
-   if (active) {
-      mutable_db().modify(*active, [&](auto& p) {
-         p.auth = authority(key);
-      });
-   }
+void controller::replace_account_keys( name account, name permission, const public_key_type& key ) {
+   auto& rlm = get_mutable_resource_limits_manager();
+   auto* perm = db().find<permission_object, by_owner>(boost::make_tuple(account, permission));
+   if (!perm)
+      return;
+   int64_t old_size = (int64_t)(chain::config::billable_size_v<permission_object> + perm->auth.get_billable_size());
+   mutable_db().modify(*perm, [&](auto& p) {
+      p.auth = authority(key);
+   });
+   int64_t new_size = (int64_t)(chain::config::billable_size_v<permission_object> + perm->auth.get_billable_size());
+   rlm.add_pending_ram_usage(account, new_size - old_size, generic_ram_trace(0));
+   rlm.verify_account_ram_usage(account);
 }
 
 /// Protocol feature activation handlers:
