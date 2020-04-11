@@ -203,10 +203,12 @@ namespace eosio { namespace chain {
       friend struct packed_transaction;
       void reflector_init();
    private:
-      vector<signature_type>                  signatures;
-      fc::enum_type<uint8_t,compression_type> compression;
-      bytes                                   packed_context_free_data;
-      bytes                                   packed_trx;
+     friend struct pruned_transaction;
+     friend struct prunable_transaction_data;
+     vector<signature_type>                   signatures;
+     fc::enum_type<uint8_t, compression_type> compression;
+     bytes                                    packed_context_free_data;
+     bytes                                    packed_trx;
 
    private:
       // cache unpacked trx, for thread safety do not modify after construction
