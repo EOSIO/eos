@@ -7,6 +7,7 @@
 #include <boost/iostreams/device/mapped_file.hpp>
 #include <boost/filesystem.hpp>
 #include <variant>
+#include <algorithm>
 
 #define LOG_READ  (std::ios::in | std::ios::binary)
 #define LOG_WRITE (std::ios::out | std::ios::binary | std::ios::app)
@@ -53,10 +54,14 @@ namespace eosio { namespace chain {
          uint32_t offset = 0;
       };
 
+      size_t get_stream_pos(fc::cfile_datastream& ds) { return ds.tellp(); }
+      size_t get_stream_pos(std::ifstream& ds) { return ds.tellg();  }
+      void   skip_streamm_pos(fc::cfile_datastream& ds, size_t n) { ds.skip(n);  }
+      void   skip_streamm_pos(std::ifstream& ds, size_t n) { ds.seekg(n, ds.cur);  }
 
       template <typename Stream>
       void unpack(Stream& ds, log_entry_v4& entry){
-         auto start_pos = ds.tellp();
+         auto start_pos = get_stream_pos(ds);
          fc::raw::unpack(ds, entry.offset);
          uint8_t compression;
          fc::raw::unpack(ds, compression);
@@ -64,8 +69,12 @@ namespace eosio { namespace chain {
          EOS_ASSERT(entry.compression == packed_transaction::cf_compression_type::none, block_log_exception,
                   "Only support compression_type none");
          fc::raw::unpack(ds, static_cast<signed_block&>(entry));
-         EOS_ASSERT(ds.tellp() - start_pos + sizeof(uint64_t) == entry.offset , block_log_exception,
-                  "Invalid block log entry offset");
+         uint64_t current_stream_offset = get_stream_pos(ds) - start_pos;
+
+         int64_t bytes_to_skip = static_cast<int64_t>(entry.offset) - sizeof(uint64_t) - current_stream_offset;
+         EOS_ASSERT(bytes_to_skip >= 0, block_log_exception,
+                    "Invalid block log entry offset");
+         skip_streamm_pos(ds, bytes_to_skip);
       }
 
       std::vector<char> pack(const signed_block& block, packed_transaction::cf_compression_type compression) {
@@ -648,7 +657,7 @@ namespace eosio { namespace chain {
 
       ilog( "Reconstructing '${new_block_log}' from backed up block log", ("new_block_log", block_log_path) );
 
-      std::fstream  old_block_stream;
+      std::ifstream  old_block_stream;
       std::fstream  new_block_stream;
 
       old_block_stream.open( (backup_dir / "blocks.log").generic_string().c_str(), LOG_READ );
@@ -893,9 +902,14 @@ namespace eosio { namespace chain {
          }
 
          if (pruned) {
-            my->block_file.seek(pos);
-            std::vector<char> buffer = detail::pack(entry);
-            EOS_ASSERT(buffer.size() <= entry.offset, block_log_exception, "Not enough space reserved in block log entry to serialize pruned block.");
+            // we don't want to rewrite entire entry, just the block data itself.
+            const auto block_offset = detail::offset_to_block_start(my->version);
+            my->block_file.seek(pos + block_offset);
+            const uint32_t max_block_size = entry.offset - block_offset - sizeof(uint64_t);
+            std::vector<char> buffer(max_block_size);
+            fc::datastream<char*> stream(buffer.data(), buffer.size());
+            static_cast<signed_block&>(entry).pack(stream, entry.compression);
+            EOS_ASSERT(buffer.size() <= max_block_size, block_log_exception, "Not enough space reserved in block log entry to serialize pruned block.");
             my->block_file.write(buffer.data(), buffer.size());
             my->block_file.flush();
          }
@@ -1120,6 +1134,7 @@ namespace eosio { namespace chain {
       FILE* ind_in = nullptr;                            //C style files for reading blocks.log and blocks.index
       //we use low level file IO because it is distinctly faster than C++ filebuf or iostream
       uint64_t first_block_pos = 0;                      //file position in blocks.log for the first block in the log
+      uint64_t block_file_size = 0;
       chain_id_type chain_id;
    };
 
@@ -1276,6 +1291,7 @@ namespace eosio { namespace chain {
          const auto expected_totem = block_log::npos;
          std::decay_t<decltype(block_log::npos)> actual_totem;
          size = fread ( (char*)&actual_totem, sizeof(actual_totem), 1, blk_in);
+         block_file_size = fc::file_size(block_file_name);
 
          EOS_ASSERT(size == 1, block_log_exception,
                     "Expected to read ${size} bytes, but did not read any bytes", ("size", sizeof(actual_totem)));
@@ -1337,6 +1353,24 @@ namespace eosio { namespace chain {
       auto size = fread((void*)&block_n_pos, sizeof(block_n_pos), 1, ind_in);                   //filepos of block n
       EOS_ASSERT( size == 1, block_log_exception, "cannot read ${file} entry for block ${b}", ("file", index_file_name.string())("b",n) );
 
+      if (version >= 4) {
+         uint64_t block_n_plus_1_pos = block_file_size;
+         if (n < last_block) {
+            size = fread((void*)&block_n_plus_1_pos, sizeof(block_n_plus_1_pos), 1, ind_in);
+            EOS_ASSERT( size == 1, block_log_exception, "cannot read ${file} entry for block ${b}", ("file", index_file_name.string())("b",n+1) );
+         }
+
+         uint32_t entry_offset = 0;
+         status = fseek(blk_in, block_n_pos, SEEK_SET);
+         EOS_ASSERT( status == 0, block_log_exception, "cannot seek to ${file} ${pos} from beginning of file for block ${b}", ("file", block_file_name.string())("pos", block_n_pos)("b",n) );
+         size = fread((void*)&entry_offset, sizeof(entry_offset), 1, blk_in);
+         EOS_ASSERT( size == 1, block_log_exception, "cannot read ${file} entry for block ${b}", ("file", block_file_name.string())("b",n) );
+
+         EOS_ASSERT((entry_offset == (block_n_plus_1_pos - block_n_pos)), block_log_exception, 
+            "The entry offset in block ${n} is ${entry_offset} does not match the difference of block positions in index file", 
+               ("n", n)("entry_offset", entry_offset)("pos_diff", block_n_plus_1_pos - block_n_pos));
+      }
+
       //read blocks.log and verify block number n is found at the determined file position
       const auto calc_blknum_pos = block_n_pos + detail::block_log_impl::blknum_offset_from_block_entry(version);
       status = fseek(blk_in, calc_blknum_pos, SEEK_SET);
@@ -1376,7 +1410,7 @@ namespace eosio { namespace chain {
       return 0;
    }
 
-   void block_log::smoke_test(fc::path block_dir) {
+   void block_log::smoke_test(fc::path block_dir, uint32_t interval) {
       trim_data td(block_dir);
       auto status = fseek(td.blk_in, -sizeof(uint64_t), SEEK_END);             //get last_block from blocks.log, compare to from blocks.index
       EOS_ASSERT( status == 0, block_log_exception, "cannot seek to ${file} ${pos} from beginning of file", ("file", td.block_file_name.string())("pos", sizeof(uint64_t)) );
@@ -1392,10 +1426,10 @@ namespace eosio { namespace chain {
       bnum = fc::endian_reverse_u32(bnum) + 1;                       //convert from big endian to little endian and add 1
       EOS_ASSERT( td.last_block == bnum, block_log_exception, "blocks.log says last block is ${lb} which disagrees with blocks.index", ("lb", bnum) );
       ilog("blocks.log and blocks.index agree on number of blocks");
-      uint32_t delta = (td.last_block + 8 - td.first_block) >> 3;
-      if (delta < 1)
-         delta = 1;
-      for (uint32_t n = td.first_block; ; n += delta) {
+      if (interval == 0) {
+         interval = std::max((td.last_block + 8 - td.first_block) >> 3, 1U);
+      }
+      for (uint32_t n = td.first_block; ; n += interval) {
          if (n > td.last_block)
             n = td.last_block;
          td.block_pos(n);                                 //check block 'n' is where blocks.index says

@@ -250,7 +250,7 @@ BOOST_AUTO_TEST_CASE(test_restart_with_different_chain_id) {
 }
 
 BOOST_FIXTURE_TEST_CASE(test_restart_from_block_log, restart_from_block_log_test_fixture) {
-   BOOST_REQUIRE_NO_THROW(block_log::smoke_test(chain.get_config().blocks_dir));
+   BOOST_REQUIRE_NO_THROW(block_log::smoke_test(chain.get_config().blocks_dir, 1));
 }
 
 BOOST_FIXTURE_TEST_CASE(test_restart_from_trimed_block_log, restart_from_block_log_test_fixture) {
@@ -264,8 +264,10 @@ BOOST_FIXTURE_TEST_CASE(test_light_validation_restart_from_block_log, light_vali
 }
 
 BOOST_FIXTURE_TEST_CASE(test_light_validation_restart_from_block_log_with_pruned_trx, light_validation_restart_from_block_log_test_fixture) {
-   block_log blog(chain.get_config().blocks_dir);
+   const auto& blocks_dir = chain.get_config().blocks_dir;
+   block_log blog(blocks_dir);
    BOOST_REQUIRE_NO_THROW(blog.prune_transactions(trace->block_num, std::vector<transaction_id_type>{trace->id}));
+   BOOST_REQUIRE_NO_THROW(block_log::repair_log(blocks_dir));
 }
 
 BOOST_AUTO_TEST_CASE(test_trim_blocklog_front) {
@@ -283,7 +285,7 @@ BOOST_AUTO_TEST_CASE(test_trim_blocklog_front) {
    bfs::copy(blocks_dir / "blocks.index", temp1 / "blocks.index");
    auto temp2 = bfs::unique_path();
    BOOST_REQUIRE_NO_THROW(block_log::trim_blocklog_front(temp1, temp2, 10));
-   BOOST_REQUIRE_NO_THROW(block_log::smoke_test(temp1));
+   BOOST_REQUIRE_NO_THROW(block_log::smoke_test(temp1, 1));
    bfs::remove_all(temp1);
    bfs::remove_all(temp2);
 }

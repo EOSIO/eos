@@ -228,7 +228,7 @@ bool trim_blocklog_front(bfs::path block_dir, uint32_t n) {        //n is first 
 void smoke_test(bfs::path block_dir) {
    using namespace std;
    cout << "\nSmoke test of blocks.log and blocks.index in directory " << block_dir << '\n';
-   block_log::smoke_test(block_dir);
+   block_log::smoke_test(block_dir, 0);
    cout << "\nno problems found\n"; // if get here there were no exceptions
 }
 
