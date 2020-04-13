@@ -909,7 +909,6 @@ namespace eosio { namespace chain {
             std::vector<char> buffer(max_block_size);
             fc::datastream<char*> stream(buffer.data(), buffer.size());
             static_cast<signed_block&>(entry).pack(stream, entry.compression);
-            EOS_ASSERT(buffer.size() <= max_block_size, block_log_exception, "Not enough space reserved in block log entry to serialize pruned block.");
             my->block_file.write(buffer.data(), buffer.size());
             my->block_file.flush();
          }
