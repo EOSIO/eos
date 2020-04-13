@@ -1494,7 +1494,7 @@ class transaction_api : public context_aware_api {
          bool remove_deferred_transactions_activated = context.control.is_builtin_activated(builtin_protocol_feature_t::remove_deferred_transactions);
          EOS_ASSERT( !remove_deferred_transactions_activated, remove_deferred_tx, "`transaction_api::send_deferred` attempting to send a deferred transaction; deferred transactions have been removed" );
 
-         bool stop_deferred_transactions_activated   = context.control.is_builtin_activated(builtin_protocol_feature_t::stop_deferred_transactions);
+         bool stop_deferred_transactions_activated = context.control.is_builtin_activated(builtin_protocol_feature_t::stop_deferred_transactions);
          if ( stop_deferred_transactions_activated && replace_existing ) {
             return;
          }

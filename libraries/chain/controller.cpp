@@ -1476,6 +1476,9 @@ struct controller_impl {
             trx_context.delay = fc::seconds(trn.delay_sec);
 
             if ( trx_context.delay.count() > 0 ) {
+               bool remove_deferred_transactions_activated = self.is_builtin_activated(builtin_protocol_feature_t::remove_deferred_transactions);
+               EOS_ASSERT( !remove_deferred_transactions_activated, remove_deferred_tx, "`controller_impl::push_transaction` deferred transactions have been removed" );
+
                bool stop_deferred_transactions_activated = self.is_builtin_activated(builtin_protocol_feature_t::stop_deferred_transactions);
                EOS_ASSERT( !stop_deferred_transactions_activated, stop_deferred_tx, "`controller_impl::push_transaction` delay seconds must be 0" );
             }

@@ -369,7 +369,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
 
    bool stop_deferred_transactions_activated   = control.is_builtin_activated(builtin_protocol_feature_t::stop_deferred_transactions);
    if ( stop_deferred_transactions_activated ) {
-       EOS_ASSERT( replace_existing, stop_deferred_tx, "`apply_context::schedule_deferred_transaction` you may only replace existing deferred transactions; not generate new ones" );
+      EOS_ASSERT( replace_existing, stop_deferred_tx, "`apply_context::schedule_deferred_transaction` you may only replace existing deferred transactions; not generate new ones" );
    }
 
    EOS_ASSERT( trx.context_free_actions.size() == 0, cfa_inside_generated_tx, "context free actions are not currently allowed in generated transactions" );
