@@ -84,7 +84,9 @@ namespace eosio { namespace chain {
          //    3. The serialization of a pruned_block representation of the block for the entry including padding.
 
          std::size_t padded_size = block.maximum_pruned_pack_size(compression);
-         std::vector<char> buffer(padded_size + offset_to_block_start(block_log::max_supported_version));
+         static_assert( block_log::max_supported_version == 4,
+                     "Code was written to support format of version 4, need to update this code for latest format." );
+         std::vector<char>     buffer(padded_size + offset_to_block_start(block_log::max_supported_version));
          fc::datastream<char*> stream(buffer.data(), buffer.size());
 
          uint32_t offset      = buffer.size() + sizeof(uint64_t);
