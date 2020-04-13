@@ -84,7 +84,7 @@ namespace eosio { namespace chain {
          //    3. The serialization of a pruned_block representation of the block for the entry including padding.
 
          std::size_t padded_size = block.maximum_pruned_pack_size(compression);
-         std::vector<char> buffer(padded_size + offset_to_block_start(4));
+         std::vector<char> buffer(padded_size + offset_to_block_start(block_log::max_supported_version));
          fc::datastream<char*> stream(buffer.data(), buffer.size());
 
          uint32_t offset      = buffer.size() + sizeof(uint64_t);
@@ -98,17 +98,17 @@ namespace eosio { namespace chain {
          return pack(static_cast<const signed_block&>(entry), entry.compression);
       }
 
-      using log_entry = std::variant<log_entry_v4, signed_block>;
+      using log_entry = std::variant<log_entry_v4, signed_block_v0>;
 
       template <typename Stream>
       void unpack(Stream& ds, log_entry& entry) {
          std::visit(
-             overloaded{[&ds](signed_block& v) { fc::raw::unpack(ds, v); }, [&ds](log_entry_v4& v) { unpack(ds, v); }},
+             overloaded{[&ds](signed_block_v0& v) { fc::raw::unpack(ds, v); }, [&ds](log_entry_v4& v) { unpack(ds, v); }},
              entry);
       }
 
       std::vector<char> pack(const log_entry& entry) {
-         return std::visit(overloaded{[](const signed_block& v) { return fc::raw::pack(v); },
+         return std::visit(overloaded{[](const signed_block_v0& v) { return fc::raw::pack(v); },
                                       [](const log_entry_v4& v) { return pack(v); }},
                            entry);
       }
@@ -734,7 +734,7 @@ namespace eosio { namespace chain {
 
       detail::log_entry entry;
       if (version < 4) {
-         entry.emplace<signed_block>();
+         entry.emplace<signed_block_v0>();
       }
 
       while( pos < end_pos ) {
