@@ -589,7 +589,8 @@ class Reflections:
                 ignore_swap = ignore_swap_match.group(1)
                 reflect_class = self.find_or_add(next_reflect_class)
                 if (ignore_or_swap == ignore_str):
-                    assert ignore_swap not in reflect_class.ignored, "Reflection for %s repeats %s \"%s\"" % (next_reflect_class, ignore_or_swap, ignore_str)
+                    if ignore_swap in reflect_class.ignored:
+                        assert ignore_swap not in reflect_class.ignored, "Reflection for %s repeats %s \"%s\"" % (next_reflect_class, ignore_or_swap, ignore_str)
                     assert ignore_swap not in reflect_class.swapped, "Reflection for %s references field \"%s\" in %s  and %s " % (next_reflect_class, ignore_swap, ignore_str, swap_str)
                     reflect_class.ignored.append(ignore_swap)
                 else:
@@ -759,8 +760,9 @@ def validate_file(file):
                         f_index += 1
                     else:
                         assert reflect_field == field, "Reflection for %s should have field %s instead of %s or else it should indicate if the field should be ignored (%s) or swapped (%s)" %(reflection_name, field, reflect_field, ignore_str, swap_str)
-                f_index += 1
-                rf_index += 1
+                else:
+                    f_index += 1
+                    rf_index += 1
             debug("rf_index=%s, rf_len=%s, f_index=%s, f_len=%s" % (rf_index, rf_len, f_index, f_len))
 
         assert len(reflection.ignored) == 0, "Reflection for %s has erroneous ignores - \"%s\"" % (reflection_name, ",".join(reflection.ignored))

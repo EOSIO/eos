@@ -48,6 +48,5 @@ typedef chainbase::generic_index<account_control_history_multi_index> account_co
 
 CHAINBASE_SET_INDEX_TYPE( eosio::account_control_history_object, eosio::account_control_history_multi_index )
 
-// @ignore id
 FC_REFLECT( eosio::account_control_history_object, (controlled_account)(controlled_permission)(controlling_account) )
 

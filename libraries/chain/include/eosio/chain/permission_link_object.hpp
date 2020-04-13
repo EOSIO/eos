@@ -75,5 +75,4 @@ namespace eosio { namespace chain {
 
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::permission_link_object, eosio::chain::permission_link_index)
 
-// @ignore id
 FC_REFLECT(eosio::chain::permission_link_object, (account)(code)(message_type)(required_permission))

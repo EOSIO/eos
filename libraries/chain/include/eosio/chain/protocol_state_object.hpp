@@ -82,7 +82,6 @@ FC_REFLECT(eosio::chain::protocol_state_object::activated_protocol_feature,
             (feature_digest)(activation_block_num)
           )
 
-// @ignore id
 FC_REFLECT(eosio::chain::protocol_state_object,
             (activated_protocol_features)(preactivated_protocol_features)(whitelisted_intrinsics)(num_supported_key_types)
           )

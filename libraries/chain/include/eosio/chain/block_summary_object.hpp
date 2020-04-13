@@ -34,5 +34,4 @@ namespace eosio { namespace chain {
 
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::block_summary_object, eosio::chain::block_summary_multi_index)
 
-// @ignore id
 FC_REFLECT( eosio::chain::block_summary_object, (block_id) )

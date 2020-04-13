@@ -51,5 +51,4 @@ namespace eosio { namespace chain {
 
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::database_header_object, eosio::chain::database_header_multi_index)
 
-// @ignore id
 FC_REFLECT( eosio::chain::database_header_object, (version) )
