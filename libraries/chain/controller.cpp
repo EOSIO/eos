@@ -247,6 +247,7 @@ struct controller_impl {
    uint32_t                       snapshot_head_block = 0;
    named_thread_pool              thread_pool;
    platform_timer                 timer;
+   fc::logger*                    deep_mind_logger = nullptr;
 #if defined(EOSIO_EOS_VM_RUNTIME_ENABLED) || defined(EOSIO_EOS_VM_JIT_RUNTIME_ENABLED)
    vm::wasm_allocator                 wasm_alloc;
 #endif
@@ -310,9 +311,9 @@ struct controller_impl {
     blog( cfg.blocks_dir ),
     fork_db( cfg.state_dir ),
     wasmif( cfg.wasm_runtime, cfg.eosvmoc_tierup, db, cfg.state_dir, cfg.eosvmoc_config ),
-    resource_limits( db ),
+    resource_limits( db, [&s]() { return s.get_deep_mind_logger(); }),
     authorization( s, db ),
-    protocol_features( std::move(pfs) ),
+    protocol_features( std::move(pfs), [&s]() { return s.get_deep_mind_logger(); } ),
     conf( cfg ),
     chain_id( chain_id ),
     read_mode( cfg.read_mode ),
@@ -1020,9 +1021,9 @@ struct controller_impl {
       });
 
       const auto& owner_permission  = authorization.create_permission(name, config::owner_name, 0,
-                                                                      owner, initial_timestamp );
+                                                                      owner, 0, initial_timestamp );
       const auto& active_permission = authorization.create_permission(name, config::active_name, owner_permission.id,
-                                                                      active, initial_timestamp );
+                                                                      active, 0, initial_timestamp );
 
       resource_limits.initialize_account(name);
 
@@ -1031,7 +1032,12 @@ struct controller_impl {
       ram_delta += owner_permission.auth.get_billable_size();
       ram_delta += active_permission.auth.get_billable_size();
 
-      resource_limits.add_pending_ram_usage(name, ram_delta);
+      std::string event_id;
+      if (get_deep_mind_logger() != nullptr) {
+         event_id = RAM_EVENT_ID("${name}", ("name", name));
+      }
+
+      resource_limits.add_pending_ram_usage(name, ram_delta, ram_trace(0, event_id.c_str(), "account", "add", "newaccount"));
       resource_limits.verify_account_ram_usage(name);
    }
 
@@ -1082,11 +1088,13 @@ struct controller_impl {
                                                                              config::majority_producers_permission_name,
                                                                              active_permission.id,
                                                                              active_producers_authority,
+                                                                             0,
                                                                              genesis.initial_timestamp );
       const auto& minority_permission     = authorization.create_permission( config::producers_account_name,
                                                                              config::minority_producers_permission_name,
                                                                              majority_permission.id,
                                                                              active_producers_authority,
+                                                                             0,
                                                                              genesis.initial_timestamp );
    }
 
@@ -1138,6 +1146,13 @@ struct controller_impl {
          etrx.set_reference_block( self.head_block_id() );
       }
 
+      if (auto dm_logger = get_deep_mind_logger()) {
+         fc_dlog(*dm_logger, "TRX_OP CREATE onerror ${id} ${trx}",
+            ("id", etrx.id())
+            ("trx", self.maybe_to_variant_with_abi(etrx, abi_serializer::create_yield_function(self.get_abi_serializer_max_time())))
+         );
+      }
+
       transaction_checktime_timer trx_timer(timer);
       transaction_context trx_context( self, etrx, etrx.id(), std::move(trx_timer), start );
       trx_context.deadline = deadline;
@@ -1174,8 +1189,13 @@ struct controller_impl {
    }
 
    int64_t remove_scheduled_transaction( const generated_transaction_object& gto ) {
+      std::string event_id;
+      if (get_deep_mind_logger() != nullptr) {
+         event_id = RAM_EVENT_ID("${id}", ("id", gto.id));
+      }
+
       int64_t ram_delta = -(config::billable_size_v<generated_transaction_object> + gto.packed_trx.size());
-      resource_limits.add_pending_ram_usage( gto.payer, ram_delta );
+      resource_limits.add_pending_ram_usage( gto.payer, ram_delta, ram_trace(0, event_id.c_str(), "deferred_trx", "remove", "deferred_trx_removed") );
       // No need to verify_account_ram_usage since we are only reducing memory
 
       db.remove( gto );
@@ -1321,6 +1341,12 @@ struct controller_impl {
          trace->except = e;
          trace->except_ptr = std::current_exception();
          trace->elapsed = fc::time_point::now() - trx_context.start;
+
+         if (auto dm_logger = get_deep_mind_logger()) {
+            fc_dlog(*dm_logger, "DTRX_OP FAILED ${action_id}",
+               ("action_id", trx_context.get_action_id())
+            );
+         }
       }
       trx_context.undo();
 
@@ -1542,6 +1568,11 @@ struct controller_impl {
                      const optional<block_id_type>& producer_block_id )
    {
       EOS_ASSERT( !pending, block_validate_exception, "pending block already exists" );
+
+      if (auto dm_logger = get_deep_mind_logger()) {
+         // The head block represents the block just before this one that is about to start, so add 1 to get this block num
+         fc_dlog(*dm_logger, "START_BLOCK ${block_num}", ("block_num", head->block_num + 1));
+      }
 
       auto guard_pending = fc::make_scoped_exit([this, head_block_num=head->block_num](){
          protocol_features.popped_blocks_to( head_block_num );
@@ -2109,6 +2140,14 @@ struct controller_impl {
          auto old_head = head;
          ilog("switching forks from ${current_head_id} (block number ${current_head_num}) to ${new_head_id} (block number ${new_head_num})",
               ("current_head_id", head->id)("current_head_num", head->block_num)("new_head_id", new_head->id)("new_head_num", new_head->block_num) );
+
+         if (auto dm_logger = get_deep_mind_logger()) {
+            fc_dlog(*dm_logger, "SWITCH_FORK ${from_id} ${to_id}",
+               ("from_id", head->id)
+               ("to_id", new_head->id)
+            );
+         }
+
          auto branches = fork_db.fetch_branch_from( new_head->id, head->id );
 
          if( branches.second.size() > 0 ) {
@@ -2405,7 +2444,19 @@ struct controller_impl {
          trx.expiration = self.pending_block_time() + fc::microseconds(999'999); // Round up to nearest second to avoid appearing expired
          trx.set_reference_block( self.head_block_id() );
       }
+
+      if (auto dm_logger = get_deep_mind_logger()) {
+         fc_dlog(*dm_logger, "TRX_OP CREATE onblock ${id} ${trx}",
+            ("id", trx.id())
+            ("trx", self.maybe_to_variant_with_abi(trx, abi_serializer::create_yield_function(self.get_abi_serializer_max_time())))
+         );
+      }
+
       return trx;
+   }
+
+   inline fc::logger* get_deep_mind_logger() const {
+      return deep_mind_logger;
    }
 
 }; /// controller_impl
@@ -2477,7 +2528,7 @@ const fork_database& controller::fork_db()const { return my->fork_db; }
 
 const chainbase::database& controller::reversible_db()const { return my->reversible_blocks; }
 
-void controller::preactivate_feature( const digest_type& feature_digest ) {
+void controller::preactivate_feature( uint32_t action_id, const digest_type& feature_digest ) {
    const auto& pfs = my->protocol_features.get_protocol_feature_set();
    auto cur_time = pending_block_time();
 
@@ -2573,6 +2624,16 @@ void controller::preactivate_feature( const digest_type& feature_digest ) {
                "not all dependencies of protocol feature with digest '${digest}' have been activated or pre-activated",
                ("digest", feature_digest)
    );
+
+   if (auto dm_logger = get_deep_mind_logger()) {
+      const auto feature = pfs.get_protocol_feature(feature_digest);
+
+      fc_dlog(*dm_logger, "FEATURE_OP PRE_ACTIVATE ${action_id} ${feature_digest} ${feature}",
+         ("action_id", action_id)
+         ("feature_digest", feature_digest)
+         ("feature", feature.to_variant())
+      );
+   }
 
    my->db.modify( pso, [&]( auto& ps ) {
       ps.preactivated_protocol_features.push_back( feature_digest );
@@ -3244,21 +3305,48 @@ const flat_set<account_name> &controller::get_resource_greylist() const {
 }
 
 
-void controller::add_to_ram_correction( account_name account, uint64_t ram_bytes ) {
+void controller::add_to_ram_correction( account_name account, uint64_t ram_bytes, uint32_t action_id, const char* event_id ) {
+   int64_t correction_object_id = 0;
+
    if( auto ptr = my->db.find<account_ram_correction_object, by_name>( account ) ) {
       my->db.modify<account_ram_correction_object>( *ptr, [&]( auto& rco ) {
+         correction_object_id = rco.id._id;
          rco.ram_correction += ram_bytes;
       } );
    } else {
       my->db.create<account_ram_correction_object>( [&]( auto& rco ) {
+         correction_object_id = rco.id._id;
          rco.name = account;
          rco.ram_correction = ram_bytes;
       } );
    }
+
+   if (auto dm_logger = get_deep_mind_logger()) {
+      fc_dlog(*dm_logger, "RAM_CORRECTION_OP ${action_id} ${correction_id} ${event_id} ${payer} ${delta}",
+         ("action_id", action_id)
+         ("correction_id", correction_object_id)
+         ("event_id", event_id)
+         ("payer", account)
+         ("delta", ram_bytes)
+      );
+   }
+}
+
+fc::microseconds controller::get_abi_serializer_max_time()const {
+   return my->conf.abi_serializer_max_time_us;
 }
 
 bool controller::all_subjective_mitigations_disabled()const {
    return my->conf.disable_all_subjective_mitigations;
+}
+
+fc::logger* controller::get_deep_mind_logger()const {
+   return my->get_deep_mind_logger();
+}
+
+void controller::enable_deep_mind(fc::logger* logger) {
+   EOS_ASSERT( logger != nullptr, misc_exception, "Invalid logger passed into enable_deep_mind, must be set" );
+   my->deep_mind_logger = logger;
 }
 
 #if defined(EOSIO_EOS_VM_RUNTIME_ENABLED) || defined(EOSIO_EOS_VM_JIT_RUNTIME_ENABLED)
@@ -3319,6 +3407,39 @@ fc::optional<chain_id_type> controller::extract_chain_id_from_db( const path& st
    return {};
 }
 
+void controller::replace_producer_keys( const public_key_type& key ) {
+   ilog("Replace producer keys with ${k}", ("k", key));
+   mutable_db().modify( db().get<global_property_object>(), [&]( auto& gp ) {
+      gp.proposed_schedule_block_num = {};
+      gp.proposed_schedule.version = 0;
+      gp.proposed_schedule.producers.clear();
+   });
+   auto version = my->head->pending_schedule.schedule.version;
+   my->head->pending_schedule = {};
+   my->head->pending_schedule.schedule.version = version;
+   for (auto& prod: my->head->active_schedule.producers ) {
+      ilog("${n}", ("n", prod.producer_name));
+      prod.authority.visit([&](auto &auth) {
+         auth.threshold = 1;
+         auth.keys = {key_weight{key, 1}};
+      });
+   }
+}
+
+void controller::replace_account_keys( name account, name permission, const public_key_type& key ) {
+   auto& rlm = get_mutable_resource_limits_manager();
+   auto* perm = db().find<permission_object, by_owner>(boost::make_tuple(account, permission));
+   if (!perm)
+      return;
+   int64_t old_size = (int64_t)(chain::config::billable_size_v<permission_object> + perm->auth.get_billable_size());
+   mutable_db().modify(*perm, [&](auto& p) {
+      p.auth = authority(key);
+   });
+   int64_t new_size = (int64_t)(chain::config::billable_size_v<permission_object> + perm->auth.get_billable_size());
+   rlm.add_pending_ram_usage(account, new_size - old_size, generic_ram_trace(0));
+   rlm.verify_account_ram_usage(account);
+}
+
 /// Protocol feature activation handlers:
 
 template<>
@@ -3348,7 +3469,12 @@ void controller_impl::on_activation<builtin_protocol_feature_t::replace_deferred
                ("name", itr->name)("adjust", itr->ram_correction)("current", current_ram_usage) );
       }
 
-      resource_limits.add_pending_ram_usage( itr->name, ram_delta );
+      std::string event_id;
+      if (get_deep_mind_logger() != nullptr) {
+         event_id = RAM_EVENT_ID("${id}", ("id", itr->id._id));
+      }
+
+      resource_limits.add_pending_ram_usage( itr->name, ram_delta, ram_trace(0, event_id.c_str(), "deferred_trx", "correction", "deferred_trx_ram_correction") );
       db.remove( *itr );
    }
 }

@@ -28,7 +28,8 @@ if("eos-vm-oc" IN_LIST EOSIO_WASM_RUNTIMES)
                              webassembly/eos-vm-oc/compile_trampoline.cpp
                              webassembly/eos-vm-oc/ipc_helpers.cpp
                              webassembly/eos-vm-oc/gs_seg_helpers.c
-                             webassembly/eos-vm-oc.cpp)
+                             webassembly/eos-vm-oc.cpp
+                             webassembly/eos-vm-oc/default_real_main.cpp)
 
    if(LLVM_VERSION VERSION_LESS 7.1 AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
       enable_language(ASM-LLVMWAR)
@@ -91,6 +92,7 @@ add_library( eosio_chain
 #
 #             contracts/chain_initializer.cpp
 
+             authority.cpp
              trace.cpp
              transaction_metadata.cpp
              protocol_state_object.cpp
@@ -101,6 +103,7 @@ add_library( eosio_chain
              whitelisted_intrinsics.cpp
              thread_utils.cpp
              platform_timer_accuracy.cpp
+
              ${PLATFORM_TIMER_IMPL}
              ${HEADERS}
              )
@@ -116,8 +119,11 @@ target_include_directories( eosio_chain
                                    "${CMAKE_BINARY_DIR}/libraries/wabt"
                             )
 
+add_library(eosio_chain_wrap INTERFACE )
+target_link_libraries(eosio_chain_wrap INTERFACE eosio_chain)
+
 if("eos-vm-oc" IN_LIST EOSIO_WASM_RUNTIMES)
-   target_link_libraries(eosio_chain "-Wl,-wrap=main")
+   target_link_libraries(eosio_chain_wrap INTERFACE "-Wl,-wrap=main")
 endif()
 
 foreach(RUNTIME ${EOSIO_WASM_RUNTIMES})

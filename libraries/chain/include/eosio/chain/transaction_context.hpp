@@ -6,6 +6,22 @@
 
 namespace eosio { namespace chain {
 
+   /**
+    * This is a little helper class used by deep mind tracer
+    * to record on-going execution id/index of all actions executed
+    * by a given transaction.
+    */
+   class action_id_type {
+      public:
+        action_id_type(): id(0) {}
+
+        inline void increment() { id++; }
+        inline uint32_t current() const { return id; }
+
+      private:
+        uint32_t id;
+   };
+
    struct transaction_checktime_timer {
       public:
          transaction_checktime_timer() = delete;
@@ -98,12 +114,14 @@ namespace eosio { namespace chain {
 
          void validate_referenced_accounts( const transaction& trx, bool enforce_actor_whitelist_blacklist )const;
 
+         uint32_t get_action_id() const { return action_id.current(); }
+
       private:
 
          friend struct controller_impl;
          friend class apply_context;
 
-         void add_ram_usage( account_name account, int64_t ram_delta );
+         void add_ram_usage( account_name account, int64_t ram_delta, const ram_trace& trace );
 
          action_trace& get_action_trace( uint32_t action_ordinal );
          const action_trace& get_action_trace( uint32_t action_ordinal )const;
@@ -161,6 +179,9 @@ namespace eosio { namespace chain {
          bool                          explicit_billed_cpu_time = false;
 
          transaction_checktime_timer   transaction_timer;
+
+         /// kept to track ids of action_traces push via this transaction
+         action_id_type                action_id;
 
       private:
          bool                          is_initialized = false;

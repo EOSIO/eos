@@ -18,7 +18,7 @@ class resource_limits_fixture: private chainbase_fixture<1024*1024>, public reso
    public:
       resource_limits_fixture()
       :chainbase_fixture()
-      ,resource_limits_manager(*chainbase_fixture::_db)
+      ,resource_limits_manager(*chainbase_fixture::_db, []() { return nullptr; })
       {
          add_indices();
          initialize_database();
@@ -252,11 +252,11 @@ BOOST_AUTO_TEST_SUITE(resource_limits_test)
       process_account_limit_updates();
 
       for (uint64_t idx = 0; idx < expected_iterations - 1; idx++) {
-         add_pending_ram_usage(account, increment);
+         add_pending_ram_usage(account, increment, generic_ram_trace(0));
          verify_account_ram_usage(account);
       }
 
-      add_pending_ram_usage(account, increment);
+      add_pending_ram_usage(account, increment, generic_ram_trace(0));
       BOOST_REQUIRE_THROW(verify_account_ram_usage(account), ram_usage_exceeded);
    } FC_LOG_AND_RETHROW();
 
@@ -266,7 +266,7 @@ BOOST_AUTO_TEST_SUITE(resource_limits_test)
       set_account_limits(account, 100, -1, -1 );
       verify_account_ram_usage(account);
       process_account_limit_updates();
-      BOOST_REQUIRE_THROW(add_pending_ram_usage(account, -101), transaction_exception);
+      BOOST_REQUIRE_THROW(add_pending_ram_usage(account, -101, generic_ram_trace(0)), transaction_exception);
 
    } FC_LOG_AND_RETHROW();
 
@@ -276,11 +276,11 @@ BOOST_AUTO_TEST_SUITE(resource_limits_test)
       set_account_limits(account, UINT64_MAX, -1, -1 );
       verify_account_ram_usage(account);
       process_account_limit_updates();
-      add_pending_ram_usage(account, UINT64_MAX/2);
+      add_pending_ram_usage(account, UINT64_MAX/2, generic_ram_trace(0));
       verify_account_ram_usage(account);
-      add_pending_ram_usage(account, UINT64_MAX/2);
+      add_pending_ram_usage(account, UINT64_MAX/2, generic_ram_trace(0));
       verify_account_ram_usage(account);
-      BOOST_REQUIRE_THROW(add_pending_ram_usage(account, 2), transaction_exception);
+      BOOST_REQUIRE_THROW(add_pending_ram_usage(account, 2, generic_ram_trace(0)), transaction_exception);
 
    } FC_LOG_AND_RETHROW();
 
@@ -295,7 +295,7 @@ BOOST_AUTO_TEST_SUITE(resource_limits_test)
       initialize_account(account);
       set_account_limits(account, limit, -1, -1 );
       process_account_limit_updates();
-      add_pending_ram_usage(account, commit);
+      add_pending_ram_usage(account, commit, generic_ram_trace(0));
       verify_account_ram_usage(account);
 
       for (int idx = 0; idx < expected_iterations - 1; idx++) {
@@ -467,7 +467,7 @@ BOOST_AUTO_TEST_SUITE(resource_limits_test)
       main.push_action( config::system_account_name, N(reqauth), test_account, fc::mutable_variant_object()("from", "alice"), 6 );
       int64_t after_net_usage = rlm.get_account_net_limit_ex( test_account ).first.used;
       int64_t reqauth_net_usage_delta = after_net_usage - before_net_usage;
-      BOOST_REQUIRE_EXCEPTION( 
+      BOOST_REQUIRE_EXCEPTION(
          main.push_action( config::system_account_name, N(reqauth), test_account, fc::mutable_variant_object()("from", "alice"), 7 ),
          fc::exception, fc_exception_code_is( tx_net_usage_exceeded::code_value )
       );
@@ -500,7 +500,7 @@ BOOST_AUTO_TEST_SUITE(resource_limits_test)
          auto bs = validator.control->create_block_state_future( trigger_block );
          validator.control->abort_block();
          BOOST_REQUIRE_EXCEPTION(
-            validator.control->push_block( bs, forked_branch_callback{}, trx_meta_cache_lookup{} ), 
+            validator.control->push_block( bs, forked_branch_callback{}, trx_meta_cache_lookup{} ),
             fc::exception, fc_exception_message_is( "receipt does not match" )
          );
       }
@@ -513,7 +513,7 @@ BOOST_AUTO_TEST_SUITE(resource_limits_test)
          auto bs = validator2.control->create_block_state_future( trigger_block );
          validator2.control->abort_block();
          BOOST_REQUIRE_EXCEPTION(
-            validator2.control->push_block( bs, forked_branch_callback{}, trx_meta_cache_lookup{} ), 
+            validator2.control->push_block( bs, forked_branch_callback{}, trx_meta_cache_lookup{} ),
             fc::exception, fc_exception_code_is( tx_net_usage_exceeded::code_value )
          );
       }
@@ -542,7 +542,7 @@ BOOST_AUTO_TEST_SUITE(resource_limits_test)
          auto bs = validator.control->create_block_state_future( trigger_block );
          validator.control->abort_block();
          BOOST_REQUIRE_EXCEPTION(
-            validator.control->push_block( bs, forked_branch_callback{}, trx_meta_cache_lookup{} ), 
+            validator.control->push_block( bs, forked_branch_callback{}, trx_meta_cache_lookup{} ),
             fc::exception, fc_exception_message_is( "receipt does not match" )
          );
       }
