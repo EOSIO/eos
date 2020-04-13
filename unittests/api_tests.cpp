@@ -2320,6 +2320,96 @@ BOOST_FIXTURE_TEST_CASE(resource_limits_tests, TESTER) {
    BOOST_CHECK_THROW(pushit(), wasm_exception);
 }
 
+static const char is_privileged_wast[] = R"======(
+(module
+  (import "env" "is_privileged" (func $is_privileged (param i64) (result i32)))
+  (func (export "apply") (param i64 i64 i64)
+    (drop (call $is_privileged (get_local 2)))
+  )
+)
+)======";
+
+BOOST_FIXTURE_TEST_CASE(is_privileged, TESTER) {
+   create_accounts( {N(priv), N(unpriv), N(a)} );
+   push_action(config::system_account_name, N(setpriv), config::system_account_name,  mutable_variant_object()
+               ("account", "priv")
+               ("is_priv", 1));
+   set_code( N(priv), is_privileged_wast );
+   set_code( N(unpriv), is_privileged_wast );
+   auto pushit = [&](name account, name action) {
+      signed_transaction trx;
+      trx.actions.push_back({ { { account, config::active_name } }, account, action, bytes() });
+      set_transaction_headers(trx);
+      trx.sign(get_private_key( account, "active" ), control->get_chain_id());
+      push_transaction(trx);
+   };
+   pushit(N(priv), N(a));
+   BOOST_CHECK_EXCEPTION(pushit(N(unpriv), N(a)), chain::unaccessible_api,
+                         fc_exception_message_is("unpriv does not have permission to call this API"));
+   BOOST_CHECK_THROW(pushit(N(priv), N(bcd)), fc::exception);
+}
+
+static const char set_privileged1_wast[] = R"======(
+(module
+  (import "env" "set_privileged" (func $set_privileged (param i64 i32)))
+  (func (export "apply") (param i64 i64 i64)
+    (call $set_privileged (get_local 2) (i32.const 1))
+  )
+)
+)======";
+
+BOOST_FIXTURE_TEST_CASE(set_privileged1, TESTER) {
+   create_accounts( {N(priv), N(unpriv), N(a)} );
+   push_action(config::system_account_name, N(setpriv), config::system_account_name,  mutable_variant_object()
+               ("account", "priv")
+               ("is_priv", 1));
+   set_code( N(priv), set_privileged1_wast );
+   set_code( N(unpriv), set_privileged1_wast );
+   auto pushit = [&](name account, name action) {
+      signed_transaction trx;
+      trx.actions.push_back({ { { account, config::active_name } }, account, action, bytes() });
+      set_transaction_headers(trx);
+      trx.sign(get_private_key( account, "active" ), control->get_chain_id());
+      push_transaction(trx);
+   };
+   pushit(N(priv), N(a));
+   BOOST_CHECK_EXCEPTION(pushit(N(unpriv), N(a)), chain::unaccessible_api,
+                         fc_exception_message_is("unpriv does not have permission to call this API"));
+   BOOST_CHECK_THROW(pushit(N(priv), N(bcd)), fc::exception);
+}
+
+// If an account marks itself as unprivileged, it takes effect at the end of the action.
+// However, is_privileged reports the change in status immediately.
+static const char set_privileged2_wast[] = R"======(
+(module
+  (import "env" "set_privileged" (func $set_privileged (param i64 i32)))
+  (import "env" "is_privileged" (func $is_privileged (param i64) (result i32)))
+  (import "env" "eosio_assert" (func $eosio_assert (param i32 i32)))
+  (memory 1)
+  (func (export "apply") (param i64 i64 i64)
+    (call $set_privileged (get_local 0) (i32.const 0))
+    (call $eosio_assert (i32.eqz (call $is_privileged (get_local 0))) (i32.const 0))
+  )
+  (data (i32.const 0) "is_privileged should return false")
+)
+)======";
+
+BOOST_FIXTURE_TEST_CASE(set_privileged2, TESTER) {
+   create_accounts( {N(priv)} );
+   push_action(config::system_account_name, N(setpriv), config::system_account_name,  mutable_variant_object()
+               ("account", "priv")
+               ("is_priv", 1));
+   set_code( N(priv), set_privileged2_wast );
+   auto pushit = [&](name account, name action) {
+      signed_transaction trx;
+      trx.actions.push_back({ { { account, config::active_name } }, account, action, bytes() });
+      set_transaction_headers(trx);
+      trx.sign(get_private_key( account, "active" ), control->get_chain_id());
+      push_transaction(trx);
+   };
+   pushit(N(priv), N());
+}
+
 #if 0
 /*************************************************************************************
  * privileged_tests test case
