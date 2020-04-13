@@ -56,7 +56,10 @@ namespace eosio { namespace chain {
          const signed_block_ptr&        head() const;
          uint32_t                       first_block_num() const;
 
-         void prune_transactions(uint32_t block_num, const vector<transaction_id_type>& ids);
+         /**
+          *  @returns The number of transactions been pruned
+          **/
+         size_t prune_transactions(uint32_t block_num, const vector<transaction_id_type>& ids);
 
          static const uint64_t npos = std::numeric_limits<uint64_t>::max();
 

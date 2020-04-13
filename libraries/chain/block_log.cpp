@@ -879,7 +879,7 @@ namespace eosio { namespace chain {
       return true;
    }
    
-   void block_log::prune_transactions(uint32_t block_num, const std::vector<transaction_id_type>& ids) {
+   size_t block_log::prune_transactions(uint32_t block_num, const std::vector<transaction_id_type>& ids) {
       try {
          EOS_ASSERT( my->version >= 4, block_log_exception,
                      "The block log version ${version} does not support transaction pruning.", ("version", my->version) );
@@ -895,15 +895,13 @@ namespace eosio { namespace chain {
          EOS_ASSERT(entry.block_num() == block_num, block_log_exception,
                      "Wrong block was read from block log.");
 
-         auto pruner = overloaded{[](transaction_id_type&) { return false; },
-                                  [&ids](packed_transaction& ptx) { return  std::find(ids.begin(), ids.end(), ptx.id()) != ids.end() && prune(ptx); }};
+         size_t num_trx_pruned = std::count_if(entry.transactions.begin(), entry.transactions.end(), [&ids] (auto& trx) {
+            auto pruner = overloaded{[](transaction_id_type&) { return false; },
+                                     [&ids](packed_transaction& ptx) { return  std::find(ids.begin(), ids.end(), ptx.id()) != ids.end() && prune(ptx); }};
+            return trx.trx.visit(pruner);
+         });
 
-         bool pruned = false;
-         for (auto& trx : entry.transactions) {
-            pruned |= trx.trx.visit(pruner);
-         }
-
-         if (pruned) {
+         if (num_trx_pruned) {
             // we don't want to rewrite entire entry, just the block data itself.
             const auto block_offset = detail::offset_to_block_start(my->version);
             my->block_file.seek(pos + block_offset);
@@ -914,6 +912,7 @@ namespace eosio { namespace chain {
             my->block_file.write(buffer.data(), buffer.size());
             my->block_file.flush();
          }
+         return num_trx_pruned;
       }
       FC_LOG_AND_RETHROW()
    }
