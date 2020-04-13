@@ -81,7 +81,7 @@ class EmptyScope:
     strip_extra_pattern = re.compile(r'\n\s*\*\s*')
     invalid_chars_pattern = re.compile(r'([^\w\s,])')
     multi_line_comment_ignore_swap_pattern = re.compile(r'(\w+)(?:\s*,\s*)?')
-    handle_braces_initialization_swap_pattern = re.compile(r'(?:{|;)\s*([^{};=]*?)\s*{([^{};]*)}(?=\s*;)', re.MULTILINE | re.DOTALL)
+    handle_braces_initialization_swap_pattern = re.compile(r'(?:{|;|})\s*([^{};=]*?)\s*{([^{};]*)}(?=\s*;)', re.MULTILINE | re.DOTALL)
     # pattern to handle fields initialized with {}
     possible_end_skip_initialization = re.compile(r'{[^;}]*}\s*;', re.MULTILINE | re.DOTALL)
     namespace_str = "namespace"
@@ -91,6 +91,7 @@ class EmptyScope:
     any_scope_pattern = re.compile(r'\{', re.DOTALL)
     start_char = "{"
     end_char = "}"
+    initializer_pattern = re.compile(r'\s*{[^{]*}\s*;', re.MULTILINE)
 
     def __init__(self, name, start, content, parent_scope):
         pname = parent_scope.name if parent_scope is not None else ""
@@ -300,8 +301,10 @@ class ClassStruct(EmptyScope):
                 self.classes[child.name] = child
                 self.children[child.name] = child
 
+
     def add_fields(self, start, end):
         loc = start - 1 if start > 0 else 0
+
         while loc < end:
             debug("%sClassStruct.add_fields -{\n%s\n}" % (self.indent, self.content[loc:end + 1]))
             if self.is_enum:
@@ -313,13 +316,16 @@ class ClassStruct(EmptyScope):
 
     def add_field(self, loc, end):
         debug("%sClassStruct.add_field - %s to %s (%s)" % (self.indent, loc, end + 1, len(self.content)))
-        match = ClassStruct.field_pattern.search(self.content[loc:end + 1])
+        match = ClassStruct.field_pattern.search(self.content[loc:end+1])
+
         if match is None:
             return end
         if match.group(1) == "using":
             return loc+match.span()[1]
+
         field = match.group(2)
         self.fields.append(field)
+
         all = match.group(0)
         loc = self.content.find(all, loc) + len(all)
         debug("%sClassStruct.add_field - %s (%d) - loc: %s, pattern: %s, matched: \"%s\"" % (self.indent, field, len(self.fields), loc, ClassStruct.field_pattern.pattern, all))
@@ -406,6 +412,7 @@ class ClassStruct(EmptyScope):
             debug("%sClassStruct.next_scope found EmptyScope (%s) at %d, next scope at %s" % (self.indent, type, generic_scope_start, start))
             empty_scope = EmptyScope("", generic_scope_start, self.content, self)
             new_scope = (empty_scope, empty_scope)
+
 
         self.add_fields(self.current, new_scope[0].start)
         self.add_usings(self.current, new_scope[0].start)
@@ -599,6 +606,7 @@ class Reflections:
         reflect_class = self.find_or_add(reflect_class_name)
         assert field not in reflect_class.fields, "Reflection for %s repeats field \"%s\"" % (reflect_class_name, field)
         reflect_class.fields.append(field)
+
         debug("add_field %s --> %s" % (reflect_class_name, field))
 
 def replace_multi_line_comment(match):
