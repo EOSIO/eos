@@ -68,7 +68,7 @@ namespace eosio { namespace chain {
          entry.compression = static_cast<packed_transaction::cf_compression_type>(compression);
          EOS_ASSERT(entry.compression == packed_transaction::cf_compression_type::none, block_log_exception,
                   "Only support compression_type none");
-         fc::raw::unpack(ds, static_cast<signed_block&>(entry));
+         static_cast<signed_block&>(entry).unpack(ds, entry.compression);
          uint64_t current_stream_offset = get_stream_pos(ds) - start_pos;
 
          int64_t bytes_to_skip = static_cast<int64_t>(entry.offset) - sizeof(uint64_t) - current_stream_offset;
