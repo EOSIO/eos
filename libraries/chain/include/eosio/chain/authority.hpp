@@ -301,6 +301,9 @@ inline bool validate( const Authority& auth ) {
 
 } } // namespace eosio::chain
 
+namespace fc {
+   void to_variant(const eosio::chain::shared_public_key& var, fc::variant& vo);
+} // namespace fc
 
 FC_REFLECT(eosio::chain::permission_level_weight, (permission)(weight) )
 FC_REFLECT(eosio::chain::key_weight, (key)(weight) )
