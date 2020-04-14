@@ -10,6 +10,8 @@ from TestHelper import TestHelper
 
 import decimal
 import re
+import json
+import os
 
 ###############################################################
 # nodeos_run_test
@@ -628,6 +630,37 @@ try:
     actual=amountStr
     if actual != expected:
         errorExit("FAILURE - Wrong currency1111 balance (expectedgma=%s, actual=%s)" % (str(expected), str(actual)), raw=True)
+
+    Print("---- Test for signing transaction ----")
+    testeraAccountAmountBeforeTrx=node.getAccountEosBalanceStr(testeraAccount.name)
+    currencyAccountAmountBeforeTrx=node.getAccountEosBalanceStr(currencyAccount.name)
+
+    xferAmount="1.2345 {0}".format(CORE_SYMBOL)
+    unsignedTrxRet = node.transferFunds(currencyAccount, testeraAccount, xferAmount, "unsigned trx", False, False, True, False, False, True, None, True)
+    unsignedTrxJsonFile = "unsigned_trx_file"
+    with open(unsignedTrxJsonFile, 'w') as outfile:
+        json.dump(unsignedTrxRet, outfile)
+    testeraAccountAmountAftrTrx=node.getAccountEosBalanceStr(testeraAccount.name)
+    currencyAccountAmountAftrTrx=node.getAccountEosBalanceStr(currencyAccount.name)
+    try:
+        assert(testeraAccountAmountBeforeTrx == testeraAccountAmountAftrTrx)
+        assert(currencyAccountAmountBeforeTrx == currencyAccountAmountAftrTrx)
+    except (AssertionError) as _:
+        Print("ERROR: Expecting transfer is not executed.")
+        raise
+
+    signCmd = "sign --public-key {0} {1} -p".format(currencyAccount.activePublicKey, unsignedTrxJsonFile)
+    node.processCleosCmd(signCmd, "Sign and push a transaction", False, True)
+    os.remove(unsignedTrxJsonFile)
+
+    testeraAccountAmountAfterSign=node.getAccountEosBalanceStr(testeraAccount.name)
+    currencyAccountAmountAfterSign=node.getAccountEosBalanceStr(currencyAccount.name)
+    try:
+        assert(Utils.addAmount(testeraAccountAmountAftrTrx, xferAmount) == testeraAccountAmountAfterSign)
+        assert(Utils.deduceAmount(currencyAccountAmountAftrTrx, xferAmount) == currencyAccountAmountAfterSign)
+    except (AssertionError) as _:
+        Print("ERROR: Expecting transfer has been executed with exact amount.")
+        raise
 
     Print("Locking wallet \"%s\"." % (defproduceraWallet.name))
     if not walletMgr.lockWallet(defproduceraWallet):
