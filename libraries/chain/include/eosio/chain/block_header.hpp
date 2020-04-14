@@ -75,7 +75,7 @@ namespace eosio { namespace chain {
    {
       signature_type    producer_signature;
    };
-
+   
 } } /// namespace eosio::chain
 
 FC_REFLECT(eosio::chain::block_header,

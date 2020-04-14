@@ -70,12 +70,6 @@ namespace eosio { namespace chain {
       uint8_t                max_cpu_usage_ms    = 0; /// upper limit on the total CPU time billed for this transaction
       fc::unsigned_int       delay_sec           = 0UL; /// number of seconds to delay this transaction for during which it may be canceled.
 
-      /**
-       * @return the absolute block number given the relative ref_block_num
-       */
-      block_num_type get_ref_blocknum( block_num_type head_blocknum )const {
-         return ((head_blocknum/0xffff)*0xffff) + head_blocknum%0xffff;
-      }
       void set_reference_block( const block_id_type& reference_block );
       bool verify_reference_block( const block_id_type& reference_block )const;
       void validate()const;
@@ -203,10 +197,12 @@ namespace eosio { namespace chain {
       friend struct packed_transaction;
       void reflector_init();
    private:
-      vector<signature_type>                  signatures;
-      fc::enum_type<uint8_t,compression_type> compression;
-      bytes                                   packed_context_free_data;
-      bytes                                   packed_trx;
+     friend struct pruned_transaction;
+     friend struct prunable_transaction_data;
+     vector<signature_type>                   signatures;
+     fc::enum_type<uint8_t, compression_type> compression;
+     bytes                                    packed_context_free_data;
+     bytes                                    packed_trx;
 
    private:
       // cache unpacked trx, for thread safety do not modify after construction

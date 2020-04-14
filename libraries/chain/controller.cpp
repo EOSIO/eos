@@ -425,7 +425,7 @@ struct controller_impl {
             db.commit( (*bitr)->block_num );
             root_id = (*bitr)->id;
 
-            blog.append( (*bitr)->block );
+            blog.append( (*bitr)->block, packed_transaction::cf_compression_type::none );
 
             auto rbitr = rbi.begin();
             while( rbitr != rbi.end() && rbitr->blocknum <= (*bitr)->block_num ) {
@@ -486,11 +486,12 @@ struct controller_impl {
          ilog( "existing block log, attempting to replay from ${s} to ${n} blocks",
                ("s", start_block_num)("n", blog_head->block_num()) );
          try {
-            while( auto next = blog.read_block_by_num( head->block_num + 1 ) ) {
-               replay_push_block( next, controller::block_status::irreversible );
+            while( std::unique_ptr<signed_block> next = blog.read_signed_block_by_num( head->block_num + 1 ) ) {
+               auto block_num = next->block_num();
+               replay_push_block( std::move(next), controller::block_status::irreversible );
                if( check_shutdown() ) break;
-               if( next->block_num() % 500 == 0 ) {
-                  ilog( "${n} of ${head}", ("n", next->block_num())("head", blog_head->block_num()) );
+               if( block_num % 500 == 0 ) {
+                  ilog( "${n} of ${head}", ("n", block_num)("head", blog_head->block_num()) );
                }
             }
          } catch(  const database_guard_exception& e ) {
@@ -597,7 +598,7 @@ struct controller_impl {
                      "block log does not start with genesis block"
          );
       } else {
-         blog.reset( genesis, head->block );
+         blog.reset( genesis, head->block, packed_transaction::cf_compression_type::none );
       }
       init(check_shutdown);
    }
@@ -2870,7 +2871,7 @@ signed_block_ptr controller::fetch_block_by_number( uint32_t block_num )const  {
       return blk_state->block;
    }
 
-   return my->blog.read_block_by_num(block_num);
+   return my->blog.read_signed_block_by_num(block_num);
 } FC_CAPTURE_AND_RETHROW( (block_num) ) }
 
 block_state_ptr controller::fetch_block_state_by_id( block_id_type id )const {
