@@ -7,7 +7,7 @@ RUN apt-get update && \
     bzip2 automake libbz2-dev libssl-dev doxygen graphviz libgmp3-dev \
     autotools-dev libicu-dev python2.7 python2.7-dev python3 python3-dev \
     autoconf libtool curl zlib1g-dev sudo ruby libusb-1.0-0-dev \
-    libcurl4-gnutls-dev pkg-config patch llvm-7-dev clang-7 ccache vim-common jq
+    libcurl4-gnutls-dev pkg-config patch llvm-7-dev clang-7 ccache vim-common jq wget
 # build cmake.
 RUN curl -LO https://cmake.org/files/v3.13/cmake-3.13.2.tar.gz && \
     tar -xzf cmake-3.13.2.tar.gz && \
@@ -54,3 +54,6 @@ RUN curl -L https://github.com/mongodb/mongo-cxx-driver/archive/r3.4.0.tar.gz -o
     rm -rf mongo-cxx-driver-r3.4.0.tar.gz /mongo-cxx-driver-r3.4.0
 # add mongodb to path
 ENV PATH=${PATH}:/mongodb-linux-x86_64-ubuntu1804-4.1.1/bin
+
+RUN wget https://github.com/EOSIO/cppKin/releases/download/v1.1.0/cppkin_1.1.0-ubuntu-18.04_amd64.deb
+RUN apt install -y ./cppkin_1.1.0-ubuntu-18.04_amd64.deb
