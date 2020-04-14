@@ -14,7 +14,7 @@ RUN curl -LO https://github.com/Kitware/CMake/releases/download/v3.16.2/cmake-3.
     tar -xzf cmake-3.16.2.tar.gz && \
     cd cmake-3.16.2 && \
     ./bootstrap --prefix=/usr/local && \
-    make -j$(nproc) && \
+    make -j $(nproc) && \
     make install && \
     rm -rf cmake-3.16.2.tar.gz cmake-3.16.2
 # build clang8
@@ -40,7 +40,7 @@ RUN git clone --depth 1 --single-branch --branch release_80 https://github.com/l
     mkdir build && \
     cd build && \
     cmake -G 'Unix Makefiles' -DLLVM_TARGETS_TO_BUILD=host -DLLVM_BUILD_TOOLS=false -DLLVM_ENABLE_RTTI=1 -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_TOOLCHAIN_FILE='/tmp/clang.cmake' -DCMAKE_EXE_LINKER_FLAGS=-pthread -DCMAKE_SHARED_LINKER_FLAGS=-pthread -DLLVM_ENABLE_PIC=NO -DLLVM_ENABLE_TERMINFO=OFF .. && \
-    make -j$(nproc) && \
+    make -j $(nproc) && \
     make install && \
     cd / && \
     rm -rf /llvm
@@ -63,7 +63,7 @@ RUN curl -LO https://github.com/mongodb/mongo-c-driver/releases/download/1.13.0/
     mkdir -p build && \
     cd build && \
     cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local -DENABLE_BSON=ON -DENABLE_SSL=OPENSSL -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF -DENABLE_STATIC=ON -DCMAKE_TOOLCHAIN_FILE='/tmp/clang.cmake' .. && \
-    make -j$(nproc) && \
+    make -j $(nproc) && \
     make install && \
     cd / && \
     rm -rf mongo-c-driver-1.13.0.tar.gz /mongo-c-driver-1.13.0
@@ -75,7 +75,7 @@ RUN curl -L https://github.com/mongodb/mongo-cxx-driver/archive/r3.4.0.tar.gz -o
     sed -i 's/add_subdirectory(test)//' src/mongocxx/CMakeLists.txt src/bsoncxx/CMakeLists.txt && \
     cd build && \
     cmake -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_TOOLCHAIN_FILE='/tmp/clang.cmake' .. && \
-    make -j$(nproc) && \
+    make -j $(nproc) && \
     make install && \
     cd / && \
     rm -rf mongo-cxx-driver-r3.4.0.tar.gz /mongo-cxx-driver-r3.4.0
