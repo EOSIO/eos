@@ -283,7 +283,7 @@ void resource_limits_manager::verify_account_ram_usage( const account_name accou
    }
 }
 
-void resource_limits_manager::add_pending_disk_usage( const account_name account, int64_t disk_delta ) {
+void resource_limits_manager::add_pending_disk_usage( const account_name account, int64_t disk_delta, const disk_trace& trace ) {
    if (disk_delta == 0) {
       return;
    }
@@ -297,6 +297,18 @@ void resource_limits_manager::add_pending_disk_usage( const account_name account
 
    _db.modify( usage, [&]( auto& u ) {
      u.disk_usage += disk_delta;
+
+      if (auto dm_logger = _get_deep_mind_logger()) {
+         fc_dlog(*dm_logger, "DISK_OP ${action_id} ${event_id} ${family} ${operation} ${payer} ${new_usage} ${delta}",
+            ("action_id", trace.action_id)
+            ("event_id", trace.event_id)
+            ("family", trace.family)
+            ("operation", trace.operation)
+            ("payer", account)
+            ("new_usage", u.disk_usage)
+            ("delta", disk_delta)
+         );
+      }
    });
 }
 

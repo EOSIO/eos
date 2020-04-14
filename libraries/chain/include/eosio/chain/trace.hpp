@@ -93,6 +93,32 @@ namespace eosio { namespace chain {
       return {action_id};
    }
 
+   #define DISK_EVENT_ID( FORMAT, ... ) \
+      fc::format_string( FORMAT, fc::mutable_variant_object()__VA_ARGS__ )
+
+   struct disk_trace {
+   public:
+      disk_trace(uint32_t action_id, const char* event_id, const char* family, const char* operation)
+      :action_id(action_id),event_id(event_id),family(family),operation(operation)
+      {}
+
+      uint32_t     action_id  = 0;
+      const char*  event_id   = "generic";
+      const char*  family     = "generic";
+      const char*  operation  = "generic";
+
+   private:
+      disk_trace(uint32_t action_id)
+      :action_id(action_id)
+      {}
+
+      friend disk_trace generic_disk_trace(uint32_t);
+   };
+
+   inline disk_trace generic_disk_trace(uint32_t action_id) {
+      return {action_id};
+   }
+
 } }  /// namespace eosio::chain
 
 FC_REFLECT( eosio::chain::account_delta,

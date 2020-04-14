@@ -80,7 +80,7 @@ namespace eosio { namespace chain { namespace resource_limits {
          void add_pending_ram_usage( const account_name account, int64_t ram_delta, const ram_trace& trace );
          void verify_account_ram_usage( const account_name accunt )const;
 
-         void add_pending_disk_usage( const account_name account, int64_t disk_delta );
+         void add_pending_disk_usage( const account_name account, int64_t disk_delta, const disk_trace& trace );
          void verify_account_disk_usage( const account_name account ) const;
 
          /// set_account_limits returns true if new ram_bytes limit is more restrictive than the previously set one

@@ -6,11 +6,22 @@
 namespace eosio { namespace chain {
 
    namespace {
-      void kv_resource_manager_update_ram(apply_context& context, int64_t delta) {
-         context.add_ram_usage(account_name(context.get_receiver()), delta, generic_ram_trace(0));
+      void kv_resource_manager_update_ram(apply_context& context, int64_t delta, const kv_resource_trace& trace) {
+         std::string event_id;
+         if (context.control.get_deep_mind_logger() != nullptr) {
+            event_id = RAM_EVENT_ID("${id}", ("id", fc::to_hex(trace.key.data(), trace.key.size())));
+         }
+
+         context.add_ram_usage(account_name(context.get_receiver()), delta, ram_trace(context.get_action_id(), event_id.c_str(), "kv", trace.op_to_string(), "."));
       }
-      void kv_resource_manager_update_disk(apply_context& context, int64_t delta) {
-         context.add_disk_usage(account_name(context.get_receiver()), delta);
+
+      void kv_resource_manager_update_disk(apply_context& context, int64_t delta, const kv_resource_trace& trace) {
+         std::string event_id;
+         if (context.control.get_deep_mind_logger() != nullptr) {
+            event_id = DISK_EVENT_ID("${id}", ("id", fc::to_hex(trace.key.data(), trace.key.size())));
+         }
+
+         context.add_disk_usage(account_name(context.get_receiver()), delta, disk_trace(context.get_action_id(), event_id.c_str(), "kv", trace.op_to_string()));
       }
    }
    kv_resource_manager create_kv_resource_manager_ram(apply_context& context) {

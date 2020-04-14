@@ -494,9 +494,9 @@ namespace eosio { namespace chain {
       }
    }
 
-   void transaction_context::add_disk_usage( account_name account, int64_t disk_delta ) {
+   void transaction_context::add_disk_usage( account_name account, int64_t disk_delta, const disk_trace& trace ) {
       auto& rl = control.get_mutable_resource_limits_manager();
-      rl.add_pending_disk_usage( account, disk_delta );
+      rl.add_pending_disk_usage( account, disk_delta, trace );
       if( disk_delta > 0 ) {
          validate_disk_usage.insert( account );
       }

@@ -135,18 +135,21 @@ namespace eosio { namespace chain {
 
    struct kv_context_chainbase : kv_context {
       using tracker_type = std::decay_t<decltype(std::declval<chainbase::database>().get_mutable_index<kv_index>().track_removed())>;
-      chainbase::database&       db;
-      tracker_type               tracker = db.get_mutable_index<kv_index>().track_removed();
-      name                       database_id;
-      name                       receiver;
-      kv_resource_manager        resource_manager;
-      const kv_database_config&  limits;
-      uint32_t                   num_iterators = 0;
-      std::optional<shared_blob> temp_data_buffer;
+      chainbase::database&         db;
+      tracker_type                 tracker = db.get_mutable_index<kv_index>().track_removed();
+      name                         database_id;
+      name                         receiver;
+      kv_resource_manager          resource_manager;
+      const kv_database_config&    limits;
+      uint32_t                     num_iterators = 0;
+      std::optional<shared_blob>   temp_data_buffer;
+      std::function<fc::logger*()> get_deep_mind_logger;
+      std::function<uint32_t()>    get_action_id;
 
       kv_context_chainbase(chainbase::database& db, name database_id, name receiver,
-                           kv_resource_manager resource_manager, const kv_database_config& limits)
-         : db{ db }, database_id{ database_id }, receiver{ receiver }, resource_manager{ resource_manager }, limits{limits} {}
+                           kv_resource_manager resource_manager, const kv_database_config& limits,
+                           std::function<fc::logger*()> get_deep_mind_logger, std::function<uint32_t()> get_action_id)
+         : db{ db }, database_id{ database_id }, receiver{ receiver }, resource_manager{ resource_manager }, limits{limits}, get_deep_mind_logger(get_deep_mind_logger), get_action_id(get_action_id) {}
 
       ~kv_context_chainbase() override {}
 
@@ -158,7 +161,18 @@ namespace eosio { namespace chain {
          if (!kv)
             return 0;
          int64_t resource_delta = -(static_cast<int64_t>(resource_manager.billable_size) + kv->kv_key.size() + kv->kv_value.size());
-         resource_manager.update_table_usage(resource_delta);
+         resource_manager.update_table_usage(resource_delta, kv_resource_trace(key, key_size, kv_resource_trace::operation::erase));
+
+         if (auto dm_logger = get_deep_mind_logger()) {
+            fc_dlog(*dm_logger, "KV_OP REM ${action_id} ${db} ${payer} ${key} ${odata}",
+               ("action_id", get_action_id())
+               ("db", database_id)
+               ("payer", name{ contract })
+               ("key", fc::to_hex(kv->kv_key.data(), kv->kv_key.size()))
+               ("odata", fc::to_hex(kv->kv_value.data(), kv->kv_value.size()))
+            );
+         }
+
          tracker.remove(*kv);
          return resource_delta;
       }
@@ -176,19 +190,42 @@ namespace eosio { namespace chain {
             int64_t old_size = static_cast<int64_t>(kv->kv_key.size()) + kv->kv_value.size();
             int64_t new_size = static_cast<int64_t>(value_size) + key_size;
             int64_t resource_delta = new_size - old_size;
-            resource_manager.update_table_usage(resource_delta);
+            resource_manager.update_table_usage(resource_delta, kv_resource_trace(key, key_size, kv_resource_trace::operation::update));
+
+            if (auto dm_logger = get_deep_mind_logger()) {
+               fc_dlog(*dm_logger, "KV_OP UPD ${action_id} ${db} ${payer} ${key} ${odata}:${ndata}",
+                  ("action_id", get_action_id())
+                  ("db", database_id)
+                  ("payer", name{ contract })
+                  ("key", fc::to_hex(kv->kv_key.data(), kv->kv_key.size()))
+                  ("odata", fc::to_hex(kv->kv_value.data(), kv->kv_value.size()))
+                  ("ndata", fc::to_hex(value, value_size))
+               );
+            }
+
             db.modify(*kv, [&](auto& obj) { obj.kv_value.assign(value, value_size); });
             return resource_delta;
          } else {
             int64_t new_size = static_cast<int64_t>(value_size) + key_size;
             int64_t resource_delta = new_size + resource_manager.billable_size;
-            resource_manager.update_table_usage(resource_delta);
+            resource_manager.update_table_usage(resource_delta, kv_resource_trace(key, key_size, kv_resource_trace::operation::create));
             db.create<kv_object>([&](auto& obj) {
                obj.database_id = database_id;
                obj.contract    = name{ contract };
                obj.kv_key.assign(key, key_size);
                obj.kv_value.assign(value, value_size);
             });
+
+            if (auto dm_logger = get_deep_mind_logger()) {
+               fc_dlog(*dm_logger, "KV_OP INS ${action_id} ${db} ${payer} ${key} ${ndata}",
+                  ("action_id", get_action_id())
+                  ("db", database_id)
+                  ("payer", name{ contract })
+                  ("key", fc::to_hex(key, key_size))
+                  ("ndata", fc::to_hex(value, value_size))
+               );
+            }
+
             return resource_delta;
          }
       }
@@ -228,8 +265,10 @@ namespace eosio { namespace chain {
    }; // kv_context_chainbase
 
    std::unique_ptr<kv_context> create_kv_chainbase_context(chainbase::database& db, name database_id, name receiver,
-                                                           kv_resource_manager resource_manager, const kv_database_config& limits) {
-      return std::make_unique<kv_context_chainbase>(db, database_id, receiver, resource_manager, limits);
+                                                           kv_resource_manager resource_manager, const kv_database_config& limits,
+                                                           std::function<fc::logger*()> get_deep_mind_logger, std::function<uint32_t()> get_action_id)
+   {
+      return std::make_unique<kv_context_chainbase>(db, database_id, receiver, resource_manager, limits, get_deep_mind_logger, get_action_id);
    }
 
 }} // namespace eosio::chain

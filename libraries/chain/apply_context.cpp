@@ -64,8 +64,11 @@ void apply_context::exec_one()
          kv_iterators.resize(1);
          kv_destroyed_iterators.clear();
          if (!context_free) {
-            kv_ram = create_kv_chainbase_context(db, kvram_id, receiver, create_kv_resource_manager_ram(*this), control.get_global_properties().kv_configuration.kvram);
-            kv_disk = create_kv_chainbase_context(db, kvdisk_id, receiver, create_kv_resource_manager_disk(*this), control.get_global_properties().kv_configuration.kvdisk);
+            auto get_deep_mind_logger = [this]() { return control.get_deep_mind_logger(); };
+            auto get_action_id = [this]() { return this->get_action_id(); };
+
+            kv_ram = create_kv_chainbase_context(db, kvram_id, receiver, create_kv_resource_manager_ram(*this), control.get_global_properties().kv_configuration.kvram, get_deep_mind_logger, get_action_id);
+            kv_disk = create_kv_chainbase_context(db, kvdisk_id, receiver, create_kv_resource_manager_disk(*this), control.get_global_properties().kv_configuration.kvdisk, get_deep_mind_logger, get_action_id);
          }
          receiver_account = &db.get<account_metadata_object,by_name>( receiver );
          if( !(context_free && control.skip_trx_checks()) ) {
@@ -1213,8 +1216,8 @@ void apply_context::add_ram_usage( account_name account, int64_t ram_delta, cons
    }
 }
 
-void apply_context::add_disk_usage( account_name account, int64_t disk_delta ) {
-   trx_context.add_disk_usage( account, disk_delta );
+void apply_context::add_disk_usage( account_name account, int64_t disk_delta, const disk_trace& trace ) {
+   trx_context.add_disk_usage( account, disk_delta, trace );
 
    auto p = _account_disk_deltas.emplace( account, disk_delta );
    if( !p.second ) {
