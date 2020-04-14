@@ -1,6 +1,6 @@
 #!/bin/bash
 set -eo pipefail
-VERSION=1
+VERSION=2
 brew update
 brew install git cmake python libtool libusb graphviz automake wget gmp llvm@7 pkgconfig doxygen openssl@1.1 jq boost || :
 # install mongoDB
