@@ -36,7 +36,7 @@ namespace eosio { namespace chain {
     *            compression_status and pruned_block.
     */
 
-   enum Versions {
+   enum versions {
       initial_version = 1,
       block_x_start_version = 2,
       genesis_state_or_chain_id_version = 3,
