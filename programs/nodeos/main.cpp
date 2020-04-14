@@ -13,6 +13,7 @@
 #include <boost/dll/runtime_symbol_info.hpp>
 #include <boost/exception/diagnostic_information.hpp>
 
+#include "cppkin.h"
 #include "config.hpp"
 
 using namespace appbase;
@@ -82,6 +83,21 @@ enum return_codes {
 int main(int argc, char** argv)
 {
    try {
+
+      auto transportType = cppkin::TransportType::Http;
+      auto encodingType = cppkin::EncodingType::Json;
+      cppkin::CppkinParams cppkinParams;
+      cppkinParams.AddParam(cppkin::ConfigTags::ENDPOINT, "127.0.0.1");
+      cppkinParams.AddParam(cppkin::ConfigTags::SERVICE_NAME, "test-service");
+      cppkinParams.AddParam(cppkin::ConfigTags::PORT, -1);
+      cppkinParams.AddParam(cppkin::ConfigTags::SAMPLE_COUNT, 1);
+      cppkinParams.AddParam(cppkin::ConfigTags::TRANSPORT_TYPE, cppkin::TransportType(transportType).ToString());
+      cppkinParams.AddParam(cppkin::ConfigTags::ENCODING_TYPE, cppkin::EncodingType(encodingType).ToString());
+      cppkinParams.AddParam(cppkin::ConfigTags::API_KEY, "sljdflsjdf");
+      cppkinParams.AddParam(cppkin::ConfigTags::DATA_FORMAT, "zipkin");
+      cppkinParams.AddParam(cppkin::ConfigTags::DATA_FORMAT_VERSION, 2);
+      cppkin::Init(cppkinParams);
+
       app().set_version(eosio::nodeos::config::version);
       app().set_version_string(eosio::version::version_client());
       app().set_full_version_string(eosio::version::version_full());
