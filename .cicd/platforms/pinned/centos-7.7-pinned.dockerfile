@@ -18,7 +18,6 @@ RUN curl -LO https://github.com/Kitware/CMake/releases/download/v3.16.2/cmake-3.
     make -j$(nproc) && \
     make install && \
     rm -rf cmake-3.16.2.tar.gz cmake-3.16.2
-COPY ./scripts/clang-devtoolset8-support.patch /tmp/clang-devtoolset8-support.patch
 # build clang10
 RUN git clone --single-branch --branch llvmorg-10.0.0 https://github.com/llvm/llvm-project clang10 && \
     mkdir /clang10/build && cd /clang10/build && \
