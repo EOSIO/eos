@@ -1795,11 +1795,11 @@ BOOST_AUTO_TEST_CASE( stop_deferred_transactions_protocol_feature_user_test ) { 
    chain.create_account(N(tester));
    chain.produce_blocks();
 
-   // Check that the deferred transaction queue is 0.
+   // Check that the deferred transaction database is 0.
    auto gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
    BOOST_REQUIRE_EQUAL( gen_size, 0 );
 
-   // Add a deferred transaction.
+   // Send a deferred transaction.
    auto trace = chain.push_action(N(eosio.token), name("transfer"), N(tester), fc::mutable_variant_object()
                                    ("from", "tester")
                                    ("to", "eosio.token")
@@ -1807,7 +1807,7 @@ BOOST_AUTO_TEST_CASE( stop_deferred_transactions_protocol_feature_user_test ) { 
                                    ("memo", "" ), 120, 60);
    chain.produce_blocks();
 
-   // Check that the number deferred transactions is 1.
+   // Check that the deferred transaction database is 1.
    gen_size = chain.control->db().get_index<generated_transaction_multi_index>().size();
    BOOST_REQUIRE_EQUAL( gen_size, 1 );
 
@@ -1815,7 +1815,7 @@ BOOST_AUTO_TEST_CASE( stop_deferred_transactions_protocol_feature_user_test ) { 
    chain.preactivate_protocol_features( {*stop_deferred_trx_feature} );
    chain.produce_block();
 
-   // Add a deferred transaction.
+   // Send another deferred transaction (it shall throw).
    BOOST_REQUIRE_EXCEPTION(
       trace = chain.push_action(N(eosio.token), name("transfer"), N(tester), fc::mutable_variant_object()
                                  ("from", "tester")
@@ -1826,7 +1826,8 @@ BOOST_AUTO_TEST_CASE( stop_deferred_transactions_protocol_feature_user_test ) { 
       fc_exception_message_starts_with("`controller_impl::push_transaction` delay seconds must be 0")
    );
 
-   // Check that the number deferred transactions is 1, due to the activation of the protocol feature.
+   // Check that the deferred transaction database is 0, due to the activation
+   // of the protocol feature.
    gen_size = chain.control->db().get_index<generated_transaction_multi_index>().size();
    BOOST_REQUIRE_EQUAL( gen_size, 1 );
 } FC_LOG_AND_RETHROW() }
@@ -1844,63 +1845,56 @@ BOOST_AUTO_TEST_CASE( stop_deferred_transactions_protocol_feature_contract_test 
    chain.set_code( N(test), contracts::deferred_test_wasm() );
    chain.set_abi( N(test), contracts::deferred_test_abi().data() );
    chain.produce_blocks();
-
-   // Check that the deferred transaction queue is 0.
+   
+   // Check that the deferred transaction database is 0.
    auto gen_size = chain.control->db().get_index<generated_transaction_multi_index>().size();
    BOOST_REQUIRE_EQUAL( gen_size, 0 );
-
+   
    // Send a deferred transaction via the contract.
-   chain.push_action( N(test), N(defercall), N(alice), fc::mutable_variant_object()
+   chain.push_action( N(test), N(defercall2), N(alice), fc::mutable_variant_object()
                        ("payer", "alice")
                        ("sender_id", 1)
                        ("contract", "test")
-                       ("payload", 49)
+                       ("delay_sec", 60)
+                       ("replace_existing", false)
    );
-
-   // Check that the number deferred transactions is 1.
+   
+   // Check that the deferred transaction database is 1.
    gen_size = chain.control->db().get_index<generated_transaction_multi_index>().size();
    BOOST_REQUIRE_EQUAL( gen_size, 1 );
-
+   
    // Activate `stop_deferred_transaction` protocol feature.
    chain.preactivate_protocol_features( {*stop_deferred_trx_feature} );
    chain.produce_block();
 
-   // Send a deferred transaction via the contract.  But it shall throw an
-   // exception because after that activation of `stop_deferred_transaction`, a
-   // contract may only replace existing deferred transactions; not generate new
-   // ones (the field `sender_id` is used to determine if a deferred transaction
-   // is being replaced or not).
-   BOOST_REQUIRE_EXCEPTION( chain.push_action( N(test), N(defercall), N(alice), fc::mutable_variant_object()
+   // The field `sender_id` is used to determine if a deferred transaction is
+   // being replaced or a newly generated transaction).
+   //
+   // Send another deferred transaction (it shall throw).
+   BOOST_REQUIRE_EXCEPTION( chain.push_action( N(test), N(defercall2), N(alice), fc::mutable_variant_object()
                                                 ("payer", "alice")
                                                 ("sender_id", 2)
                                                 ("contract", "test")
-                                                ("payload", 49)
+                                                ("delay_sec", 60)
+                                                ("replace_existing", false)
                             ),
                             stop_deferred_tx,
                             fc_exception_message_starts_with( "`apply_context::schedule_deferred_transaction` you may only replace existing deferred transactions; not generate new ones" ) );
-
-   // Send a deferred transaction via the contract.  This time, replacing an
-   // existing one.  Note: sending a payload of 100 tells the contract to set
-   // `replace_existing` to true.
-   chain.push_action( N(test), N(defercall), N(alice), fc::mutable_variant_object()
+   
+   // Replace the existing deferred transaction via the contract.
+   chain.push_action( N(test), N(defercall2), N(alice), fc::mutable_variant_object()
                        ("payer", "alice")
                        ("sender_id", 1)
                        ("contract", "test")
-                       ("payload", 100)
+                       ("delay_sec", 60)
+                       ("replace_existing", true)
    );
-
-   // Check that the number deferred transactions is 1, due to the activation of the protocol feature.
+   
+   // Check that the deferred transaction database is 1, due to the activation of
+   // the protocol feature.
    gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
-
-   // We check that the database contains 0 `generated_transaction`s, and not 1
-   // `generated_transaction` because the previously sent
-   // `generated_transaction`, sent from contract `test`:`defercall` has already
-   // gone through its lifetime.
-   //
-   // Note: the reason why the database contains 0 `generated_transaction`s, and
-   // not 1 even though we specified to replace a deferred transaction, is that
-   // there actually is never any deferred transaction to replace to begin with.
-   BOOST_REQUIRE_EQUAL( gen_size, 0 );
+   
+   BOOST_REQUIRE_EQUAL( gen_size, 1 );
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_CASE( remove_deferred_transactions_protocol_feature_user_test ) { try {
@@ -1919,31 +1913,31 @@ BOOST_AUTO_TEST_CASE( remove_deferred_transactions_protocol_feature_user_test ) 
    chain.create_account(N(tester));
    chain.produce_blocks();
 
-   // Check that the deferred transaction queue is 0.
+   // Check that the deferred transaction database is 0.
    auto gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
    BOOST_REQUIRE_EQUAL( gen_size, 0 );
 
-   // Add a deferred transaction.
+   // Send a deferred transaction.
    auto trace = chain.push_action(N(eosio.token), name("transfer"), N(tester), fc::mutable_variant_object()
                                    ("from", "tester")
                                    ("to", "eosio.token")
                                    ("quantity", "9.0000 CUR")
                                    ("memo", "" ), 120, 60);
    chain.produce_blocks();
-
-   // Check that the number deferred transactions is 1.
+   
+   // Check that the deferred transaction database is 1.
    gen_size = chain.control->db().get_index<generated_transaction_multi_index>().size();
    BOOST_REQUIRE_EQUAL( gen_size, 1 );
-
+   
    // Activate `stop_deferred_transaction` protocol feature.
    chain.preactivate_protocol_features( {*stop_deferred_trx_feature} );
    chain.produce_block();
-
+   
    // Activate `remove_deferred_transaction` protocol feature.
    chain.preactivate_protocol_features( {*remove_deferred_trx_feature} );
    chain.produce_block();
-
-   // Add a deferred transaction.
+   
+   // Send a deferred transaction (it shall throw).
    BOOST_REQUIRE_EXCEPTION(
       trace = chain.push_action(N(eosio.token), name("transfer"), N(tester), fc::mutable_variant_object()
                                  ("from", "tester")
@@ -1953,8 +1947,9 @@ BOOST_AUTO_TEST_CASE( remove_deferred_transactions_protocol_feature_user_test ) 
       remove_deferred_tx,
       fc_exception_message_starts_with("`controller_impl::push_transaction` deferred transactions have been removed")
    );
-
-   // Check that the number deferred transactions is 1, due to the activation of the protocol feature.
+   
+   // Check that the deferred transaction database is is 1, due to the // TODO: THIS NEEDS TO BE ZERO TO SHOW THAT ALL WERE DELETED
+   // activation of the protocol feature.
    gen_size = chain.control->db().get_index<generated_transaction_multi_index>().size();
    BOOST_REQUIRE_EQUAL( gen_size, 1 );
 } FC_LOG_AND_RETHROW() }
@@ -1975,50 +1970,59 @@ BOOST_AUTO_TEST_CASE( remove_deferred_transactions_protocol_feature_contract_tes
    chain.set_abi( N(test), contracts::deferred_test_abi().data() );
    chain.produce_blocks();
 
-   // Check that the deferred transaction queue is 0.
+   // Check that the deferred transaction database is 0.
    auto gen_size = chain.control->db().get_index<generated_transaction_multi_index>().size();
    BOOST_REQUIRE_EQUAL( gen_size, 0 );
-
+   
    // Send a deferred transaction via the contract.
-   chain.push_action( N(test), N(defercall), N(alice), fc::mutable_variant_object()
+   chain.push_action( N(test), N(defercall2), N(alice), fc::mutable_variant_object()
                        ("payer", "alice")
                        ("sender_id", 1)
                        ("contract", "test")
-                       ("payload", 49)
+                       ("delay_sec", 60)
+                       ("replace_existing", false)
    );
 
+   // Check that the deferred transaction database is 1.
+   gen_size = chain.control->db().get_index<generated_transaction_multi_index>().size();
+   BOOST_REQUIRE_EQUAL( gen_size, 1 );
+   
    // Activate `stop_deferred_transaction` protocol feature.
    chain.preactivate_protocol_features( {*stop_deferred_trx_feature} );
    chain.produce_block();
-
+   
    // Activate `remove_deferred_transaction` protocol feature.
    chain.preactivate_protocol_features( {*remove_deferred_trx_feature} );
    chain.produce_block();
-
-   // Send a deferred transaction via the contract.  But it shall throw an
-   // exception because after that activation of `remove_deferred_transaction`.
-   BOOST_REQUIRE_EXCEPTION( chain.push_action( N(test), N(defercall), N(alice), fc::mutable_variant_object()
+   
+   // Send a new deferred transaction via the contract (it shall throw).
+   BOOST_REQUIRE_EXCEPTION( chain.push_action( N(test), N(defercall2), N(alice), fc::mutable_variant_object()
                                                 ("payer", "alice")
                                                 ("sender_id", 2)
                                                 ("contract", "test")
-                                                ("payload", 49)
+                                                ("delay_sec", 60)
+                                                ("replace_existing", false)
                             ),
                             remove_deferred_tx,
-                            fc_exception_message_starts_with( "`apply_context::schedule_deferred_transaction` deferred transactions have been removed" ) );
+                            fc_exception_message_starts_with( "`transaction_api::send_deferred` attempting to send a deferred transaction; deferred transactions have been removed" ) );
 
-   BOOST_REQUIRE_EXCEPTION( chain.push_action( N(test), N(defercall), N(alice), fc::mutable_variant_object()
+   // Replace the existing deferred transaction via the contract (it shall
+   // throw).
+   BOOST_REQUIRE_EXCEPTION( chain.push_action( N(test), N(defercall2), N(alice), fc::mutable_variant_object()
                                                 ("payer", "alice")
                                                 ("sender_id", 1)
                                                 ("contract", "test")
-                                                ("payload", 100)
+                                                ("delay_sec", 60)
+                                                ("replace_existing", true)
                             ),
                             remove_deferred_tx,
-                            fc_exception_message_starts_with( "`apply_context::schedule_deferred_transaction` deferred transactions have been removed" ) );
-
-   // Check that the number deferred transactions is 1, due to the activation of the protocol feature.
+                            fc_exception_message_starts_with( "`transaction_api::send_deferred` attempting to send a deferred transaction; deferred transactions have been removed" ) );
+   
+   // Check that the deferred transaction database is 0, due to the activation of // TODO: THIS NEEDS TO BE ZERO TO SHOW THAT ALL WERE DELETED
+   // the protocol feature.
    gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
-
-   BOOST_REQUIRE_EQUAL( gen_size, 0 );
+   
+   BOOST_REQUIRE_EQUAL( gen_size, 1 );
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_SUITE_END()

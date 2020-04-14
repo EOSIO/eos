@@ -26,6 +26,32 @@
             ]
         },
         {
+            "name": "defercall2",
+            "base": "",
+            "fields": [
+                {
+                    "name": "payer",
+                    "type": "name"
+                },
+                {
+                    "name": "sender_id",
+                    "type": "uint64"
+                },
+                {
+                    "name": "contract",
+                    "type": "name"
+                },
+                {
+                    "name": "delay_sec",
+                    "type": "uint64"
+                },
+                {
+                    "name": "replace_existing",
+                    "type": "bool"
+                }
+            ]
+        },
+        {
             "name": "deferfunc",
             "base": "",
             "fields": [
@@ -93,6 +119,11 @@
         {
             "name": "defercall",
             "type": "defercall",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "defercall2",
+            "type": "defercall2",
             "ricardian_contract": ""
         },
         {

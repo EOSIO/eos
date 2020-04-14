@@ -11,6 +11,9 @@ public:
    void defercall( eosio::name payer, uint64_t sender_id, eosio::name contract, uint64_t payload );
 
    [[eosio::action]]
+   void defercall2( eosio::name payer, uint64_t sender_id, eosio::name contract, uint64_t delay_sec, bool replace_existing );
+
+   [[eosio::action]]
    void delayedcall( eosio::name payer, uint64_t sender_id, eosio::name contract,
                      uint64_t payload, uint32_t delay_sec, bool replace_existing );
 

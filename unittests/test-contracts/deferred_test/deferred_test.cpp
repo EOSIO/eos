@@ -32,7 +32,18 @@ void deferred_test::defercall( name payer, uint64_t sender_id, name contract, ui
       else
          ds << payer;
    }
+   
+   trx.send( (static_cast<uint128_t>(payer.value) << 64) | sender_id, payer, replace_existing );
+}
 
+void deferred_test::defercall2( eosio::name payer, uint64_t sender_id, eosio::name contract, uint64_t delay_sec, bool replace_existing ) {
+   print( "defercall called on ", get_self(), "\n" );
+   require_auth( payer );
+   print( "deferred send of deferfunc action to ", contract, " by ", payer, " with sender id ", sender_id );
+   transaction trx;
+   deferfunc_action a( contract, {get_self(), "active"_n} );
+   trx.actions.emplace_back( a.to_action( 0x00 ) );
+   trx.delay_sec = delay_sec;
    trx.send( (static_cast<uint128_t>(payer.value) << 64) | sender_id, payer, replace_existing );
 }
 
