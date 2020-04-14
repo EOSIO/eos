@@ -1658,7 +1658,7 @@ BOOST_FIXTURE_TEST_CASE(chain_tests, TESTER) { try {
 } FC_LOG_AND_RETHROW() }
 
 // Must not leak memory when passing an out-of-bounds unaligned address to get_active_producers
-static const char get_active_producers_wast[] = R"=====(
+static const char get_active_producers1_wast[] = R"=====(
 (module
  (import "env" "get_active_producers" (func $get_active_producers (param i32 i32) (result i32)))
  (memory 1)
@@ -1671,10 +1671,10 @@ static const char get_active_producers_wast[] = R"=====(
 )
 )=====";
 
-BOOST_FIXTURE_TEST_CASE(get_producers_tests, TESTER) { try {
+BOOST_FIXTURE_TEST_CASE(get_producers1_tests, TESTER) { try {
    produce_blocks(2);
    create_account( N(getprods) );
-   set_code( N(getprods), get_active_producers_wast );
+   set_code( N(getprods), get_active_producers1_wast );
    produce_block();
 
    for(int i = 0; i < 100; ++i) {
@@ -1688,6 +1688,72 @@ BOOST_FIXTURE_TEST_CASE(get_producers_tests, TESTER) { try {
 
 } FC_LOG_AND_RETHROW() }
 
+// get_active_producers interprets its second argument as the size in bytes (but see below).
+// This WASM expects that the current producers are the default {"eosio"}.
+static const char get_active_producers2_wast[] = R"=====(
+(module
+ (import "env" "get_active_producers" (func $get_active_producers (param i32 i32) (result i32)))
+ (import "env" "eosio_assert" (func $eosio_assert (param i32 i32)))
+ (memory 1)
+ (func (export "apply") (param i64 i64 i64)
+  (i64.store (i32.const 8) (i64.const 0xCCCCCCCCCCCCCCCC))
+  (call $eosio_assert
+   (i32.eq
+    (call $get_active_producers
+     (i32.const 8)
+     (i32.const 1))
+    (i32.const 1))
+   (i32.const 256))
+  (call $eosio_assert
+   (i64.eq (i64.load (i32.const 8)) (i64.const 0xCCCCCCCCCCCCCC00))
+   (i32.const 512)))
+ (data (i32.const 256) "get_active_producers should return 1")
+ (data (i32.const 512) "get_active_producers should only write one byte"))
+)=====";
+
+BOOST_FIXTURE_TEST_CASE(get_active_producers2, TESTER) {
+   produce_block();
+   create_account( N(getprods) );
+   set_code( N(getprods), get_active_producers2_wast );
+   produce_block();
+
+   signed_transaction trx;
+   trx.actions.push_back({ { { N(getprods), config::active_name } }, N(getprods), N(), bytes() });
+   set_transaction_headers(trx);
+   trx.sign(get_private_key(N(getprods), "active"), control->get_chain_id());
+   push_transaction(trx);
+   produce_block();
+}
+
+// When validating memory bounds, however, get_active_producers
+// treats the size as counting 8-byte elements.
+static const char get_active_producers3_wast[] = R"=====(
+(module
+ (import "env" "get_active_producers" (func $get_active_producers (param i32 i32) (result i32)))
+ (memory 1)
+ (func (export "apply") (param i64 i64 i64)
+  (drop (call $get_active_producers
+   (i32.wrap/i64 (get_local 2))
+   (i32.const 1)))))
+)=====";
+
+BOOST_FIXTURE_TEST_CASE(get_active_producers3, TESTER) {
+   produce_block();
+   create_account( N(getprods) );
+   set_code( N(getprods), get_active_producers3_wast );
+   produce_block();
+
+   auto pushit = [&](int offset) {
+      signed_transaction trx;
+      trx.actions.push_back({ { { N(getprods), config::active_name } }, N(getprods), name(offset), bytes() });
+      set_transaction_headers(trx);
+      trx.sign(get_private_key(N(getprods), "active"), control->get_chain_id());
+      push_transaction(trx);
+      produce_block();
+   };
+   pushit(65528);
+   BOOST_CHECK_THROW(pushit(65529), wasm_execution_error);
+}
 
 // Some db_idx256 intrinsics take both an aligned array and another reference argument.
 // Make sure that the copy of the array does not leak when the other argument is out of bounds.

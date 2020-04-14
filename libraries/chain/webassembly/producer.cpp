@@ -8,7 +8,7 @@ namespace eosio { namespace chain { namespace webassembly {
       auto s = len * sizeof(chain::account_name);
       if( producers.ref().size_bytes() == 0 ) return s;
 
-      auto copy_size = std::min( producers.ref().size_bytes(), s );
+      auto copy_size = std::min( producers.ref().size(), s );
       std::memcpy( producers.ref().data(), active_producers.data(), copy_size );
 
       return copy_size;
