@@ -23,3 +23,4 @@ libusb-1.0-0-dev,dpkg -s
 libcurl4-gnutls-dev,dpkg -s
 pkg-config,dpkg -s
 patch,dpkg -s
+wget,dpkg -s

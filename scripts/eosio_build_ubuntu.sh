@@ -90,3 +90,9 @@ if $INSTALL_MONGO; then
 		echo " - MongoDB C++ driver found with correct version @ ${MONGO_CXX_DRIVER_ROOT}."
 	fi
 fi
+
+if [[ $VERSION_MAJ == 18 ]]; then
+    echo "${COLOR_CYAN}[Installing cppkin]${COLOR_NC}"
+    wget https://github.com/EOSIO/cppKin/releases/download/v1.1.0/cppkin_1.1.0-ubuntu-18.04_amd64.deb
+    apt install -y ./cppkin_1.1.0-ubuntu-18.04_amd64.deb
+fi
