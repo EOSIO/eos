@@ -58,6 +58,6 @@ struct genesis_state {
 
 } } // namespace eosio::chain
 
-
+// @swap initial_timestamp initial_key initial_configuration
 FC_REFLECT(eosio::chain::genesis_state,
            (initial_timestamp)(initial_key)(initial_configuration))

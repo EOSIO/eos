@@ -175,7 +175,7 @@ namespace eosio { namespace chain {
 
 } } /// eosio::chain
 
-FC_REFLECT_ENUM( eosio::chain::transaction_receipt::status_enum,
+FC_REFLECT_ENUM( eosio::chain::transaction_receipt_header::status_enum,
                  (executed)(soft_fail)(hard_fail)(delayed)(expired) )
 
 FC_REFLECT(eosio::chain::transaction_receipt_header, (status)(cpu_usage_us)(net_usage_words) )

@@ -436,6 +436,29 @@ class Utils:
 
         return "comparison of %s type is not supported, context=%s" % (typeName,context)
 
+    @staticmethod
+    def addAmount(assetStr: str, deltaStr: str) -> str:
+        asset = assetStr.split()
+        if len(asset) != 2:
+            return None
+        delta = deltaStr.split()
+        if len(delta) != 2:
+            return None
+        if asset[1] != delta[1]:
+            return None
+        return "{0} {1}".format(round(float(asset[0]) + float(delta[0]), 4), asset[1])
+
+    @staticmethod
+    def deduceAmount(assetStr: str, deltaStr: str) -> str:
+        asset = assetStr.split()
+        if len(asset) != 2:
+            return None
+        delta = deltaStr.split()
+        if len(delta) != 2:
+            return None
+        if asset[1] != delta[1]:
+            return None
+        return "{0} {1}".format(round(float(asset[0]) - float(delta[0]), 4), asset[1])
 ###########################################################################################
 class Account(object):
     # pylint: disable=too-few-public-methods
