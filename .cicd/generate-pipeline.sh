@@ -457,7 +457,7 @@ EOF
     fi
 done
 # Execute multiversion test
-if ( [[ ! $PINNED == false ]] ); then
+if [[ ! "$PINNED" == 'false' || "$SKIP_MULTIVERSION_TEST" == 'false' ]]; then
         cat <<EOF
   - label: ":pipeline: Multiversion Test"
     command: 
