@@ -336,7 +336,7 @@ FC_REFLECT_DERIVED( eosio::chain::signed_transaction, (eosio::chain::transaction
 FC_REFLECT_ENUM( eosio::chain::packed_transaction_v0::compression_type, (none)(zlib))
 // @ignore unpacked_trx trx_id
 FC_REFLECT( eosio::chain::packed_transaction_v0, (signatures)(compression)(packed_context_free_data)(packed_trx) )
-// @ignore unpacked_trx trx_id
+// @ignore estimated_size unpacked_trx trx_id
 FC_REFLECT( eosio::chain::packed_transaction, (compression)(prunable_data)(packed_trx) )
 FC_REFLECT( eosio::chain::prunable_transaction_data, (prunable_data));
 FC_REFLECT( eosio::chain::prunable_transaction_data::none, (prunable_digest))
