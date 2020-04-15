@@ -43,6 +43,10 @@ else # Linux
     elif [[ "$IMAGE_TAG" == 'ubuntu-18.04-unpinned' ]]; then
         PRE_COMMANDS="$PRE_COMMANDS && export PATH=/usr/lib/ccache:\\\$PATH"
         CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_CXX_COMPILER='clang++-7' -DCMAKE_C_COMPILER='clang-7' -DLLVM_DIR='/usr/lib/llvm-7/lib/cmake/llvm'"
+
+        echo "${COLOR_CYAN}[Installing cppkin]${COLOR_NC}"
+        wget https://github.com/EOSIO/cppKin/releases/download/v1.1.0/cppkin_1.1.0-ubuntu-18.04_amd64.deb
+        apt install -y ./cppkin_1.1.0-ubuntu-18.04_amd64.deb
     fi
     BUILD_COMMANDS="cmake $CMAKE_EXTRAS .. && make -j$JOBS"
     # Docker Commands
