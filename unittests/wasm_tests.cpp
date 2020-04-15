@@ -1799,6 +1799,56 @@ BOOST_FIXTURE_TEST_CASE( varuint_memory_flags_tests, old_wasm_tester ) try {
    BOOST_REQUIRE_THROW(set_code("memflags"_n, varuint_memory_flags), wasm_exception);
 } FC_LOG_AND_RETHROW()
 
+static char reset_memory_fail1_wast[] = R"======(
+(module
+ (memory 2)
+ (func (export "apply") (param i64 i64 i64))
+)
+)======";
+
+// In a previous version of eos-vm, this would leave
+// memory incorrectly accessible to the next action.
+static char reset_memory_fail2_wast[] = R"======(
+(module
+ (memory 2)
+ (table 1 anyfunc)
+ (func $apply (export "apply") (param i64 i64 i64))
+ (elem (i32.const 1) $apply)
+)
+)======";
+
+static char reset_memory_fail3_wast[] = R"======(
+(module
+ (memory 1)
+ (func (export "apply") (param i64 i64 i64)
+  (i64.store (i32.const 65536) (i64.const 0))
+ )
+)
+)======";
+
+BOOST_FIXTURE_TEST_CASE( reset_memory_fail, TESTER ) try {
+   produce_block();
+   create_accounts( {N(usemem), N(resetmem), N(accessmem)} );
+   produce_block();
+
+   set_code(N(usemem), reset_memory_fail1_wast);
+   set_code(N(resetmem), reset_memory_fail2_wast);
+   set_code(N(accessmem), reset_memory_fail3_wast);
+   produce_block();
+
+   auto pushit = [&](name acct) {
+      signed_transaction trx;
+      trx.actions.push_back({ { { acct, config::active_name } }, acct, N(), bytes() });
+      set_transaction_headers(trx);
+      trx.sign(get_private_key( acct, "active" ), control->get_chain_id());
+      push_transaction(trx);
+   };
+   pushit(N(usemem));
+   BOOST_CHECK_THROW(pushit(N(resetmem)), wasm_execution_error);
+   BOOST_CHECK_THROW(pushit(N(accessmem)), wasm_execution_error);
+   produce_block();
+} FC_LOG_AND_RETHROW()
+
 // TODO: Update to use eos-vm once merged
 BOOST_AUTO_TEST_CASE( code_size )  try {
    using namespace IR;
