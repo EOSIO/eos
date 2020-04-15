@@ -50,7 +50,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
    string                                                     endpoint_address = "0.0.0.0";
    uint16_t                                                   endpoint_port    = 8080;
    std::unique_ptr<tcp::acceptor>                             acceptor;
-   trace_converter                                            trace_converter;
+   trace_converter                                            trace_convert;
 
    void get_log_entry(state_history_log& log, uint32_t block_num, fc::optional<bytes>& result) {
       if (block_num < log.begin_block() || block_num >= log.end_block())
@@ -324,7 +324,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
 
    void on_applied_transaction(const transaction_trace_ptr& p, const packed_transaction_ptr& t) {
       if (trace_log)
-         trace_converter.add_transaction(p, t);
+         trace_convert.add_transaction(p, t);
    }
 
    void on_accepted_block(const block_state_ptr& block_state) {
@@ -344,7 +344,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       if (!trace_log)
          return;
       auto traces_bin =
-          state_history::zlib_compress_bytes(trace_converter.pack(chain_plug->chain().db(), trace_debug_mode, block_state));
+          state_history::zlib_compress_bytes(trace_convert.pack(chain_plug->chain().db(), trace_debug_mode, block_state));
       EOS_ASSERT(traces_bin.size() == (uint32_t)traces_bin.size(), plugin_exception, "traces is too big");
 
       state_history_log_header header{.magic        = ship_magic(ship_current_version),
