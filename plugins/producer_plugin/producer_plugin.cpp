@@ -26,6 +26,8 @@
 #include <boost/multi_index/ordered_index.hpp>
 #include <boost/signals2/connection.hpp>
 
+#include "cppkin.h"
+
 namespace bmi = boost::multi_index;
 using bmi::indexed_by;
 using bmi::ordered_non_unique;
@@ -1917,6 +1919,8 @@ static auto maybe_make_debug_time_logger() -> fc::optional<decltype(make_debug_t
 
 void producer_plugin_impl::produce_block() {
    //ilog("produce_block ${t}", ("t", fc::time_point::now())); // for testing _produce_time_offset_us
+   cppkin::trace trace = Trace("ProduceBlock");
+   auto produce_span = CreateSpan("ProduceBlock");
    EOS_ASSERT(_pending_block_mode == pending_block_mode::producing, producer_exception, "called produce_block while not actually producing");
    chain::controller& chain = chain_plug->chain();
    const auto& hbs = chain.head_block_state();
@@ -1958,6 +1962,8 @@ void producer_plugin_impl::produce_block() {
    chain.commit_block();
 
    block_state_ptr new_bs = chain.head_block_state();
+   produce_span.Submit();
+   trace.Submit();
 
    ilog("Produced block ${id}... #${n} @ ${t} signed by ${p} [trxs: ${count}, lib: ${lib}, confirmed: ${confs}]",
         ("p",new_bs->header.producer)("id",new_bs->id.str().substr(8,16))

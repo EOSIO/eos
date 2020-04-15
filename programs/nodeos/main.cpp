@@ -114,9 +114,7 @@ int main(int argc, char** argv)
          }
          return INITIALIZE_FAIL;
       }
-      cppkin::Trace trace("InitLogging");
       initialize_logging();
-      trace.Submit();
       ilog( "${name} version ${ver} ${fv}",
             ("name", nodeos::config::node_executable_name)("ver", app().version_string())
             ("fv", app().version_string() == app().full_version_string() ? "" : app().full_version_string()) );
