@@ -27,3 +27,9 @@ target_link_libraries( test_configuration_utils trace_api_plugin )
 target_include_directories( test_configuration_utils PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" )
 
 add_test(NAME test_configuration_utils COMMAND plugins/trace_api_plugin/test/test_configuration_utils WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+
+add_executable( test_compressed_file test_compressed_file.cpp )
+target_link_libraries( test_compressed_file trace_api_plugin )
+target_include_directories( test_compressed_file PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" )
+
+add_test(NAME test_compressed_file COMMAND plugins/trace_api_plugin/test/test_compressed_file WORKING_DIRECTORY ${CMAKE_BINARY_DIR})

@@ -2291,7 +2291,7 @@ BOOST_FIXTURE_TEST_CASE(eosio_assert_code_tests, TESTER) { try {
    set_abi( N(testapi), abi_string );
 
    auto var = fc::json::from_string(abi_string);
-   abi_serializer abis(var.as<abi_def>(), abi_serializer_max_time);
+   abi_serializer abis(var.as<abi_def>(), abi_serializer::create_yield_function( abi_serializer_max_time ));
 
    produce_blocks(10);
 
