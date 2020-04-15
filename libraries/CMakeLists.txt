@@ -7,6 +7,7 @@ add_subdirectory( appbase )
 add_subdirectory( chain )
 add_subdirectory( testing )
 add_subdirectory( version )
+add_subdirectory( state_history )
 
 #turn tools&tests off; not needed for library build
 set(BUILD_TESTS OFF CACHE BOOL "Build GTest-based tests")

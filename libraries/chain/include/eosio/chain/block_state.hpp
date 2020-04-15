@@ -69,4 +69,5 @@ namespace eosio { namespace chain {
 
 } } /// namespace eosio::chain
 
+// @ignore _pub_keys_recovered _cached_trxs
 FC_REFLECT_DERIVED( eosio::chain::block_state, (eosio::chain::block_header_state), (block)(validated) )

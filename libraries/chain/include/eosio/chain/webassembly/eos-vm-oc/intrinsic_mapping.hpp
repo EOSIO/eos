@@ -249,7 +249,26 @@ constexpr auto intrinsic_table = boost::hana::make_tuple(
    "eosio_injection._eosio_i64_to_f64"_s,
    "eosio_injection._eosio_ui32_to_f64"_s,
    "eosio_injection._eosio_ui64_to_f64"_s,
-   "env.set_action_return_value"_s
+   "env.set_action_return_value"_s,
+   "env.kv_erase"_s,
+   "env.kv_set"_s,
+   "env.kv_get"_s,
+   "env.kv_get_data"_s,
+   "env.kv_it_create"_s,
+   "env.kv_it_destroy"_s,
+   "env.kv_it_status"_s,
+   "env.kv_it_compare"_s,
+   "env.kv_it_key_compare"_s,
+   "env.kv_it_move_to_end"_s,
+   "env.kv_it_next"_s,
+   "env.kv_it_prev"_s,
+   "env.kv_it_lower_bound"_s,
+   "env.kv_it_key"_s,
+   "env.kv_it_value"_s,
+   "env.get_resource_limit"_s,
+   "env.set_resource_limit"_s,
+   "env.get_kv_parameters_packed"_s,
+   "env.set_kv_parameters_packed"_s
 );
 
 }}}

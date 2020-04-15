@@ -118,6 +118,7 @@ extern const char* const state_history_plugin_abi = R"({
                 { "name": "elapsed", "type": "int64" },
                 { "name": "console", "type": "string" },
                 { "name": "account_ram_deltas", "type": "account_delta[]" },
+                { "name": "account_disk_deltas", "type": "account_delta[]" },
                 { "name": "except", "type": "string?" },
                 { "name": "error_code", "type": "uint64?" },
                 { "name": "return_value", "type": "bytes"}
@@ -314,6 +315,14 @@ extern const char* const state_history_plugin_abi = R"({
                 { "type": "uint64", "name": "primary_key" },
                 { "type": "name", "name": "payer" },
                 { "type": "float128", "name": "secondary_key" }
+            ]
+        },
+        {
+            "name": "key_value_v0", "fields": [
+                { "type": "name", "name": "database" },
+                { "type": "name", "name": "contract" },
+                { "type": "bytes", "name": "key" },
+                { "type": "bytes", "name": "value" }
             ]
         },
         {
@@ -534,6 +543,7 @@ extern const char* const state_history_plugin_abi = R"({
         { "name": "contract_index256", "types": ["contract_index256_v0"] },
         { "name": "contract_index_double", "types": ["contract_index_double_v0"] },
         { "name": "contract_index_long_double", "types": ["contract_index_long_double_v0"] },
+        { "name": "key_value", "types": ["key_value_v0"] },
         { "name": "chain_config", "types": ["chain_config_v0"] },
         { "name": "global_property", "types": ["global_property_v0", "global_property_v1"] },
         { "name": "generated_transaction", "types": ["generated_transaction_v0"] },
@@ -561,6 +571,7 @@ extern const char* const state_history_plugin_abi = R"({
         { "name": "contract_index256", "type": "contract_index256", "key_names": ["code", "scope", "table", "primary_key"] },
         { "name": "contract_index_double", "type": "contract_index_double", "key_names": ["code", "scope", "table", "primary_key"] },
         { "name": "contract_index_long_double", "type": "contract_index_long_double", "key_names": ["code", "scope", "table", "primary_key"] },
+        { "name": "key_value", "type": "key_value", "key_names": ["database", "contract", "key"] },
         { "name": "global_property", "type": "global_property", "key_names": [] },
         { "name": "generated_transaction", "type": "generated_transaction", "key_names": ["sender", "sender_id"] },
         { "name": "protocol_state", "type": "protocol_state", "key_names": [] },

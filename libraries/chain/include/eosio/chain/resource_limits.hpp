@@ -25,6 +25,7 @@ namespace eosio { namespace chain { namespace resource_limits {
          }
       };
    }
+   struct resource_limits_object;
 
    using ratio = impl::ratio<uint64_t>;
 
@@ -68,7 +69,7 @@ namespace eosio { namespace chain { namespace resource_limits {
          void add_indices();
          void initialize_database();
          void add_to_snapshot( const snapshot_writer_ptr& snapshot ) const;
-         void read_from_snapshot( const snapshot_reader_ptr& snapshot );
+         void read_from_snapshot( const snapshot_reader_ptr& snapshot, uint32_t version );
 
          void initialize_account( const account_name& account );
          void set_block_parameters( const elastic_limit_parameters& cpu_limit_parameters, const elastic_limit_parameters& net_limit_parameters );
@@ -79,9 +80,15 @@ namespace eosio { namespace chain { namespace resource_limits {
          void add_pending_ram_usage( const account_name account, int64_t ram_delta, const ram_trace& trace );
          void verify_account_ram_usage( const account_name accunt )const;
 
+         void add_pending_disk_usage( const account_name account, int64_t disk_delta );
+         void verify_account_disk_usage( const account_name account ) const;
+
          /// set_account_limits returns true if new ram_bytes limit is more restrictive than the previously set one
          bool set_account_limits( const account_name& account, int64_t ram_bytes, int64_t net_weight, int64_t cpu_weight);
          void get_account_limits( const account_name& account, int64_t& ram_bytes, int64_t& net_weight, int64_t& cpu_weight) const;
+         /// set_account_disk_limit returns true if new disk_bytes limit is more restrictive than the previously set one
+         bool set_account_disk_limit( const account_name& account, int64_t disk_bytes );
+         int64_t get_account_disk_limit( const account_name& account ) const;
 
          void process_account_limit_updates();
          void process_block_usage( uint32_t block_num );
@@ -102,9 +109,12 @@ namespace eosio { namespace chain { namespace resource_limits {
          get_account_net_limit_ex( const account_name& name, uint32_t greylist_limit = config::maximum_elastic_resource_multiplier, const fc::optional<block_timestamp_type>& current_time={} ) const;
 
          int64_t get_account_ram_usage( const account_name& name ) const;
+         int64_t get_account_disk_usage( const account_name& name ) const;
 
       private:
-         chainbase::database&         _db;
+         const resource_limits_object& get_account_limits( const account_name& account ) const;
+         const resource_limits_object& get_or_create_pending_account_limits( const account_name& account );
+         chainbase::database& _db;
          std::function<fc::logger*()> _get_deep_mind_logger;
    };
 } } } /// eosio::chain

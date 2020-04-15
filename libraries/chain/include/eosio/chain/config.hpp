@@ -83,6 +83,10 @@ const static uint32_t   default_block_cpu_effort_pct           = 80 * percent_1;
 const static uint16_t   default_controller_thread_pool_size    = 2;
 const static uint32_t   default_max_variable_signature_length  = 16384u;
 
+const static uint32_t   default_max_kv_key_size                = 1024;
+const static uint32_t   default_max_kv_value_size              = 1024*1024; // Large enough to hold most contracts
+const static uint32_t   default_max_kv_iterators               = 1024;
+
 const static uint32_t   min_net_usage_delta_between_base_and_max_for_trx  = 10*1024;
 // Should be large enough to allow recovery from badly set blockchain parameters without a hard fork
 // (unless net_usage_leeway is set to 0 and so are the net limits of all accounts that can help with resetting blockchain parameters).
