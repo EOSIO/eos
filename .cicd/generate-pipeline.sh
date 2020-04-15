@@ -36,7 +36,7 @@ for FILE in $(ls $CICD_DIR/platforms/$PLATFORM_TYPE); do
     # macos-10.14
     # ubuntu-16.04
     # skip Mojave if it's anything but the post-merge build
-    [[ "$RUN_ALL_TESTS" == 'true' ]] || [[ $FILE_NAME =~ 'macos-10.14' ]] && ( [[ $BUILDKITE_SOURCE != 'webhook' ]] || [[ $BUILDKITE_PULL_REQUEST != false ]] || [[ ! $BUILDKITE_MESSAGE =~ 'Merge pull request' ]] ) && export SKIP_MACOS_10_14=true && continue
+    [[ "$RUN_ALL_TESTS" == 'true' || "SKIP_MACOS_10_14" == 'false' ]] || [[ $FILE_NAME =~ 'macos-10.14' ]] && ( [[ $BUILDKITE_SOURCE != 'webhook' ]] || [[ $BUILDKITE_PULL_REQUEST != false ]] || [[ ! $BUILDKITE_MESSAGE =~ 'Merge pull request' ]] ) && export SKIP_MACOS_10_14=true && continue
     export PLATFORM_NAME="$(echo $FILE_NAME | cut -d- -f1 | sed 's/os/OS/g')"
     # macOS
     # ubuntu
