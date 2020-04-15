@@ -1,4 +1,3 @@
-# producer_plugin
 
 ## Description
 

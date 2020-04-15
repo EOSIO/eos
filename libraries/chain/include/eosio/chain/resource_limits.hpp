@@ -2,6 +2,7 @@
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/types.hpp>
 #include <eosio/chain/config.hpp>
+#include <eosio/chain/trace.hpp>
 #include <eosio/chain/snapshot.hpp>
 #include <eosio/chain/block_timestamp.hpp>
 #include <chainbase/chainbase.hpp>
@@ -59,8 +60,9 @@ namespace eosio { namespace chain { namespace resource_limits {
 
    class resource_limits_manager {
       public:
-         explicit resource_limits_manager(chainbase::database& db)
-         :_db(db)
+
+         explicit resource_limits_manager(chainbase::database& db, std::function<fc::logger*()> get_deep_mind_logger)
+         :_db(db),_get_deep_mind_logger(get_deep_mind_logger)
          {
          }
 
@@ -75,7 +77,7 @@ namespace eosio { namespace chain { namespace resource_limits {
          void update_account_usage( const flat_set<account_name>& accounts, uint32_t ordinal );
          void add_transaction_usage( const flat_set<account_name>& accounts, uint64_t cpu_usage, uint64_t net_usage, uint32_t ordinal );
 
-         void add_pending_ram_usage( const account_name account, int64_t ram_delta );
+         void add_pending_ram_usage( const account_name account, int64_t ram_delta, const ram_trace& trace );
          void verify_account_ram_usage( const account_name accunt )const;
 
          void add_pending_disk_usage( const account_name account, int64_t disk_delta );
@@ -113,6 +115,7 @@ namespace eosio { namespace chain { namespace resource_limits {
          const resource_limits_object& get_account_limits( const account_name& account ) const;
          const resource_limits_object& get_or_create_pending_account_limits( const account_name& account );
          chainbase::database& _db;
+         std::function<fc::logger*()> _get_deep_mind_logger;
    };
 } } } /// eosio::chain
 

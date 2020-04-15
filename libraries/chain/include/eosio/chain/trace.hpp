@@ -66,6 +66,33 @@ namespace eosio { namespace chain {
       std::exception_ptr                         except_ptr;
    };
 
+   #define RAM_EVENT_ID( FORMAT, ... ) \
+      fc::format_string( FORMAT, fc::mutable_variant_object()__VA_ARGS__ )
+
+   struct ram_trace {
+   public:
+      ram_trace(uint32_t action_id, const char* event_id, const char* family, const char* operation, const char* legacy_tag)
+      :action_id(action_id),event_id(event_id),family(family),operation(operation),legacy_tag(legacy_tag)
+      {}
+
+      uint32_t     action_id  = 0;
+      const char*  event_id   = "generic";
+      const char*  family     = "generic";
+      const char*  operation  = "generic";
+      const char*  legacy_tag = "generic";
+
+   private:
+      ram_trace(uint32_t action_id)
+      :action_id(action_id)
+      {}
+
+      friend ram_trace generic_ram_trace(uint32_t);
+   };
+
+   inline ram_trace generic_ram_trace(uint32_t action_id) {
+      return {action_id};
+   }
+
 } }  /// namespace eosio::chain
 
 FC_REFLECT( eosio::chain::account_delta,
@@ -76,6 +103,7 @@ FC_REFLECT( eosio::chain::action_trace,
                (receiver)(act)(context_free)(elapsed)(console)(trx_id)(block_num)(block_time)
                (producer_block_id)(account_ram_deltas)(account_disk_deltas)(except)(error_code)(return_value) )
 
+// @ignore except_ptr
 FC_REFLECT( eosio::chain::transaction_trace, (id)(block_num)(block_time)(producer_block_id)
                                              (receipt)(elapsed)(net_usage)(scheduled)
                                              (action_traces)(account_ram_delta)(failed_dtrx_trace)(except)(error_code) )

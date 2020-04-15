@@ -1,5 +1,3 @@
-# history_plugin
-
 [[warning | Deprecation Notice]]
 | The `history_plugin` is deprecated and will no longer be maintained. Please use the [`state_history_plugin`](../state_history_plugin/index.md) instead.
 

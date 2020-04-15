@@ -173,9 +173,9 @@ namespace detail {
             };
 
             permissions.reserve(authority.waits.size() + authority.keys.size() + authority.accounts.size());
-            std::for_each(authority.accounts.begin(), authority.accounts.end(), boost::bind<void>(emplace_permission, 1, _1));
-            std::for_each(authority.keys.begin(), authority.keys.end(), boost::bind<void>(emplace_permission, 2, _1));
-            std::for_each(authority.waits.begin(), authority.waits.end(), boost::bind<void>(emplace_permission, 3, _1));
+            std::for_each(authority.accounts.begin(), authority.accounts.end(), std::bind(emplace_permission, 1, std::placeholders::_1));
+            std::for_each(authority.keys.begin(), authority.keys.end(), std::bind(emplace_permission, 2, std::placeholders::_1));
+            std::for_each(authority.waits.begin(), authority.waits.end(), std::bind(emplace_permission, 3, std::placeholders::_1));
 
             // Check all permissions, from highest weight to lowest, seeing if provided authorization factors satisfies them or not
             for( const auto& p: permissions )

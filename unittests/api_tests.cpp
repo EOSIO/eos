@@ -845,6 +845,89 @@ BOOST_FIXTURE_TEST_CASE(deferred_cfa_success, TESTER)  try {
    BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW()
 
+BOOST_AUTO_TEST_CASE(light_validation_skip_cfa) try {
+   tester chain(setup_policy::full);
+
+   std::vector<signed_block_ptr> blocks;
+   blocks.push_back(chain.produce_block());
+
+   chain.create_account( N(testapi) );
+   chain.create_account( N(dummy) );
+   blocks.push_back(chain.produce_block());
+   chain.set_code( N(testapi), contracts::test_api_wasm() );
+   blocks.push_back(chain.produce_block());
+
+   cf_action cfa;
+   signed_transaction trx;
+   action act({}, cfa);
+   trx.context_free_actions.push_back(act);
+   trx.context_free_data.emplace_back(fc::raw::pack<uint32_t>(100)); // verify payload matches context free data
+   trx.context_free_data.emplace_back(fc::raw::pack<uint32_t>(200));
+   // add a normal action along with cfa
+   dummy_action da = { DUMMY_ACTION_DEFAULT_A, DUMMY_ACTION_DEFAULT_B, DUMMY_ACTION_DEFAULT_C };
+   action act1(vector<permission_level>{{N(testapi), config::active_name}}, da);
+   trx.actions.push_back(act1);
+   chain.set_transaction_headers(trx);
+   // run normal passing case
+   auto sigs = trx.sign(chain.get_private_key(N(testapi), "active"), chain.control->get_chain_id());
+   auto trace = chain.push_transaction(trx);
+   blocks.push_back(chain.produce_block());
+
+   BOOST_REQUIRE(trace->receipt);
+   BOOST_CHECK_EQUAL(trace->receipt->status, transaction_receipt::executed);
+   BOOST_CHECK_EQUAL(2, trace->action_traces.size());
+
+   BOOST_CHECK(trace->action_traces.at(0).context_free); // cfa
+   BOOST_CHECK_EQUAL("test\n", trace->action_traces.at(0).console); // cfa executed
+
+   BOOST_CHECK(!trace->action_traces.at(1).context_free); // non-cfa
+   BOOST_CHECK_EQUAL("", trace->action_traces.at(1).console);
+
+
+   fc::temp_directory tempdir;
+   auto conf_genesis = tester::default_config( tempdir );
+
+   auto& cfg = conf_genesis.first;
+   cfg.trusted_producers = { N(eosio) }; // light validation
+
+   tester other( conf_genesis.first, conf_genesis.second );
+   other.execute_setup_policy( setup_policy::full );
+
+
+   transaction_trace_ptr other_trace;
+   auto cc = other.control->applied_transaction.connect( [&](std::tuple<const transaction_trace_ptr&, const signed_transaction&> x) {
+      auto& t = std::get<0>(x);
+      if( t && t->id == trace->id ) {
+         other_trace = t;
+      }
+   } );
+
+   for (auto& new_block : blocks) {
+      other.push_block(new_block);
+   }
+   blocks.clear();
+
+   BOOST_REQUIRE(other_trace);
+   BOOST_REQUIRE(other_trace->receipt);
+   BOOST_CHECK_EQUAL(other_trace->receipt->status, transaction_receipt::executed);
+   BOOST_CHECK(*trace->receipt == *other_trace->receipt);
+   BOOST_CHECK_EQUAL(2, other_trace->action_traces.size());
+
+   BOOST_CHECK(other_trace->action_traces.at(0).context_free); // cfa
+   BOOST_CHECK_EQUAL("", other_trace->action_traces.at(0).console); // cfa not executed for light validation (trusted producer)
+   BOOST_CHECK_EQUAL(trace->action_traces.at(0).receipt->global_sequence, other_trace->action_traces.at(0).receipt->global_sequence);
+   BOOST_CHECK_EQUAL(trace->action_traces.at(0).receipt->digest(), other_trace->action_traces.at(0).receipt->digest());
+
+   BOOST_CHECK(!other_trace->action_traces.at(1).context_free); // non-cfa
+   BOOST_CHECK_EQUAL("", other_trace->action_traces.at(1).console);
+   BOOST_CHECK_EQUAL(trace->action_traces.at(1).receipt->global_sequence, other_trace->action_traces.at(1).receipt->global_sequence);
+   BOOST_CHECK_EQUAL(trace->action_traces.at(1).receipt->digest(), other_trace->action_traces.at(1).receipt->digest());
+
+
+   other.close();
+
+} FC_LOG_AND_RETHROW()
+
 /*************************************************************************************
  * checktime_tests test case
  *************************************************************************************/
@@ -2072,6 +2155,99 @@ BOOST_FIXTURE_TEST_CASE(permission_tests, TESTER) { try {
    BOOST_CHECK_EQUAL( int64_t(0), get_result_int64() );
 
 } FC_LOG_AND_RETHROW() }
+
+static const char resource_limits_wast[] = R"=====(
+(module
+ (func $set_resource_limits (import "env" "set_resource_limits") (param i64 i64 i64 i64))
+ (func $get_resource_limits (import "env" "get_resource_limits") (param i64 i32 i32 i32))
+ (func $eosio_assert (import "env" "eosio_assert") (param i32 i32))
+ (memory 1)
+ (func (export "apply") (param i64 i64 i64)
+  (call $set_resource_limits (get_local 2) (i64.const 2788) (i64.const 11) (i64.const 12))
+  (call $get_resource_limits (get_local 2) (i32.const 0x100) (i32.const 0x108) (i32.const 0x110))
+  (call $eosio_assert (i64.eq (i64.const 2788) (i64.load (i32.const 0x100))) (i32.const 8))
+  (call $eosio_assert (i64.eq (i64.const 11) (i64.load (i32.const 0x108))) (i32.const 32))
+  (call $eosio_assert (i64.eq (i64.const 12) (i64.load (i32.const 0x110))) (i32.const 64))
+  ;; Aligned overlap
+  (call $get_resource_limits (get_local 2) (i32.const 0x100) (i32.const 0x100) (i32.const 0x110))
+  (call $eosio_assert (i64.eq (i64.const 11) (i64.load (i32.const 0x100))) (i32.const 96))
+  (call $get_resource_limits (get_local 2) (i32.const 0x100) (i32.const 0x110) (i32.const 0x110))
+  (call $eosio_assert (i64.eq (i64.const 12) (i64.load (i32.const 0x110))) (i32.const 128))
+  ;; Unaligned beats aligned
+  (call $get_resource_limits (get_local 2) (i32.const 0x101) (i32.const 0x108) (i32.const 0x100))
+  (call $eosio_assert (i64.eq (i64.const 2788) (i64.load (i32.const 0x101))) (i32.const 160))
+  ;; Unaligned overlap
+  (call $get_resource_limits (get_local 2) (i32.const 0x101) (i32.const 0x101) (i32.const 0x110))
+  (call $eosio_assert (i64.eq (i64.const 11) (i64.load (i32.const 0x101))) (i32.const 192))
+  (call $get_resource_limits (get_local 2) (i32.const 0x100) (i32.const 0x111) (i32.const 0x111))
+  (call $eosio_assert (i64.eq (i64.const 12) (i64.load (i32.const 0x111))) (i32.const 224))
+ )
+ (data (i32.const 8) "expected ram 2788")
+ (data (i32.const 32) "expected net 11")
+ (data (i32.const 64) "expected cpu 12")
+ (data (i32.const 96) "expected net to overwrite ram")
+ (data (i32.const 128) "expected cpu to overwrite net")
+ (data (i32.const 160) "expected unaligned")
+ (data (i32.const 192) "expected unet to overwrite uram")
+ (data (i32.const 224) "expected ucpu to overwrite unet")
+)
+)=====";
+
+static const char get_resource_limits_null_ram_wast[] = R"=====(
+(module
+ (func $get_resource_limits (import "env" "get_resource_limits") (param i64 i32 i32 i32))
+ (memory 1)
+ (func (export "apply") (param i64 i64 i64)
+  (call $get_resource_limits (get_local 2) (i32.const 0) (i32.const 0x10) (i32.const 0x10))
+ )
+)
+)=====";
+
+static const char get_resource_limits_null_net_wast[] = R"=====(
+(module
+ (func $get_resource_limits (import "env" "get_resource_limits") (param i64 i32 i32 i32))
+ (memory 1)
+ (func (export "apply") (param i64 i64 i64)
+  (call $get_resource_limits (get_local 2) (i32.const 0x10) (i32.const 0) (i32.const 0x10))
+ )
+)
+)=====";
+
+static const char get_resource_limits_null_cpu_wast[] = R"=====(
+(module
+ (func $get_resource_limits (import "env" "get_resource_limits") (param i64 i32 i32 i32))
+ (memory 1)
+ (func (export "apply") (param i64 i64 i64)
+  (call $get_resource_limits (get_local 2) (i32.const 0x10) (i32.const 0x10) (i32.const 0))
+ )
+)
+)=====";
+
+BOOST_FIXTURE_TEST_CASE(resource_limits_tests, TESTER) {
+   create_accounts( { N(rlimits), N(testacnt) } );
+   set_code(N(rlimits), resource_limits_wast);
+   push_action( N(eosio), N(setpriv), N(eosio), mutable_variant_object()("account", N(rlimits))("is_priv", 1));
+   produce_block();
+
+   auto pushit = [&]{
+      signed_transaction trx;
+      trx.actions.push_back({ { { N(rlimits), config::active_name } }, N(rlimits), N(testacnt), bytes{}});
+      set_transaction_headers(trx);
+      trx.sign(get_private_key( N(rlimits), "active" ), control->get_chain_id());
+      push_transaction(trx);
+   };
+   pushit();
+   produce_block();
+
+   set_code(N(rlimits), get_resource_limits_null_ram_wast);
+   BOOST_CHECK_THROW(pushit(), wasm_exception);
+
+   set_code(N(rlimits), get_resource_limits_null_net_wast);
+   BOOST_CHECK_THROW(pushit(), wasm_exception);
+
+   set_code(N(rlimits), get_resource_limits_null_cpu_wast);
+   BOOST_CHECK_THROW(pushit(), wasm_exception);
+}
 
 #if 0
 /*************************************************************************************

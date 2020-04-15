@@ -1,5 +1,3 @@
-# net_plugin
-
 ## Description
 
 The `net_plugin` provides an authenticated p2p protocol to persistently synchronize nodes.
