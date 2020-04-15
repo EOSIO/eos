@@ -81,3 +81,6 @@ RUN curl -L https://github.com/mongodb/mongo-cxx-driver/archive/r3.4.0.tar.gz -o
     rm -rf mongo-cxx-driver-r3.4.0.tar.gz /mongo-cxx-driver-r3.4.0
 # add mongodb to path
 ENV PATH=${PATH}:/mongodb-linux-x86_64-ubuntu1804-4.1.1/bin
+
+RUN wget https://github.com/EOSIO/cppKin/releases/download/v1.1.0/cppkin_1.1.0-ubuntu-18.04_amd64.deb
+RUN apt install -y ./cppkin_1.1.0-ubuntu-18.04_amd64.deb
