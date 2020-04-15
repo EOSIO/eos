@@ -343,4 +343,5 @@ FC_REFLECT( eosio::chain::prunable_transaction_data::none, (prunable_digest))
 FC_REFLECT( eosio::chain::prunable_transaction_data::signatures_only, (signatures)(context_free_mroot))
 FC_REFLECT( eosio::chain::prunable_transaction_data::partial, (signatures)(context_free_segments))
 FC_REFLECT( eosio::chain::prunable_transaction_data::full, (signatures)(context_free_segments))
+// @ignore context_free_segments
 FC_REFLECT( eosio::chain::prunable_transaction_data::full_legacy, (signatures)(packed_context_free_data))
