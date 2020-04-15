@@ -1800,16 +1800,24 @@ BOOST_AUTO_TEST_CASE( stop_deferred_transactions_protocol_feature_user_test ) { 
    BOOST_REQUIRE_EQUAL( gen_size, 0 );
 
    // Send a deferred transaction.
-   auto trace = chain.push_action(N(eosio.token), name("transfer"), N(tester), fc::mutable_variant_object()
-                                   ("from", "tester")
-                                   ("to", "eosio.token")
-                                   ("quantity", "9.0000 CUR")
-                                   ("memo", "" ), 120, 60);
+   chain.push_action(N(eosio.token), name("transfer"), N(tester), fc::mutable_variant_object()
+                      ("from", "tester")
+                      ("to", "eosio.token")
+                      ("quantity", "9.0000 CUR")
+                      ("memo", "" ), 120, 60);
    chain.produce_blocks();
 
-   // Check that the deferred transaction database is 1.
+   // Send another deferred transaction for good measure.
+   chain.push_action(N(eosio.token), name("transfer"), N(tester), fc::mutable_variant_object()
+                      ("from", "tester")
+                      ("to", "eosio.token")
+                      ("quantity", "9.0000 CUR")
+                      ("memo", "" ), 1200, 600);
+   chain.produce_blocks();
+
+   // Check that the deferred transaction database is 2.
    gen_size = chain.control->db().get_index<generated_transaction_multi_index>().size();
-   BOOST_REQUIRE_EQUAL( gen_size, 1 );
+   BOOST_REQUIRE_EQUAL( gen_size, 2 );
 
    // Activate `stop_deferred_transaction` protocol feature.
    chain.preactivate_protocol_features( {*stop_deferred_trx_feature} );
@@ -1817,19 +1825,19 @@ BOOST_AUTO_TEST_CASE( stop_deferred_transactions_protocol_feature_user_test ) { 
 
    // Send another deferred transaction (it shall throw).
    BOOST_REQUIRE_EXCEPTION(
-      trace = chain.push_action(N(eosio.token), name("transfer"), N(tester), fc::mutable_variant_object()
-                                 ("from", "tester")
-                                 ("to", "eosio.token")
-                                 ("quantity", "9.0000 CUR")
-                                 ("memo", "" ), 120, 60),
+      chain.push_action(N(eosio.token), name("transfer"), N(tester), fc::mutable_variant_object()
+                         ("from", "tester")
+                         ("to", "eosio.token")
+                         ("quantity", "9.0000 CUR")
+                         ("memo", "" ), 120, 60),
       stop_deferred_tx,
       fc_exception_message_starts_with("`controller_impl::push_transaction` delay seconds must be 0")
    );
 
-   // Check that the deferred transaction database is 0, due to the activation
-   // of the protocol feature.
+   // Check that the deferred transaction database is still 2, due to the
+   // activation of the protocol feature.
    gen_size = chain.control->db().get_index<generated_transaction_multi_index>().size();
-   BOOST_REQUIRE_EQUAL( gen_size, 1 );
+   BOOST_REQUIRE_EQUAL( gen_size, 2 );
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_CASE( stop_deferred_transactions_protocol_feature_contract_test ) { try {
@@ -1858,10 +1866,19 @@ BOOST_AUTO_TEST_CASE( stop_deferred_transactions_protocol_feature_contract_test 
                        ("delay_sec", 60)
                        ("replace_existing", false)
    );
+
+   // Send another deferred transaction for good measure.
+   chain.push_action( N(test), N(defercall2), N(alice), fc::mutable_variant_object()
+                       ("payer", "alice")
+                       ("sender_id", 100)
+                       ("contract", "test")
+                       ("delay_sec", 6000)
+                       ("replace_existing", false)
+   );
    
-   // Check that the deferred transaction database is 1.
+   // Check that the deferred transaction database is 2.
    gen_size = chain.control->db().get_index<generated_transaction_multi_index>().size();
-   BOOST_REQUIRE_EQUAL( gen_size, 1 );
+   BOOST_REQUIRE_EQUAL( gen_size, 2 );
    
    // Activate `stop_deferred_transaction` protocol feature.
    chain.preactivate_protocol_features( {*stop_deferred_trx_feature} );
@@ -1890,11 +1907,11 @@ BOOST_AUTO_TEST_CASE( stop_deferred_transactions_protocol_feature_contract_test 
                        ("replace_existing", true)
    );
    
-   // Check that the deferred transaction database is 1, due to the activation of
-   // the protocol feature.
+   // Check that the deferred transaction database is still 2, due to the
+   // activation of the protocol feature.
    gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
    
-   BOOST_REQUIRE_EQUAL( gen_size, 1 );
+   BOOST_REQUIRE_EQUAL( gen_size, 2 );
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_CASE( remove_deferred_transactions_protocol_feature_user_test ) { try {
@@ -1918,16 +1935,24 @@ BOOST_AUTO_TEST_CASE( remove_deferred_transactions_protocol_feature_user_test ) 
    BOOST_REQUIRE_EQUAL( gen_size, 0 );
 
    // Send a deferred transaction.
-   auto trace = chain.push_action(N(eosio.token), name("transfer"), N(tester), fc::mutable_variant_object()
-                                   ("from", "tester")
-                                   ("to", "eosio.token")
-                                   ("quantity", "9.0000 CUR")
-                                   ("memo", "" ), 120, 60);
+   chain.push_action(N(eosio.token), name("transfer"), N(tester), fc::mutable_variant_object()
+                      ("from", "tester")
+                      ("to", "eosio.token")
+                      ("quantity", "9.0000 CUR")
+                      ("memo", "" ), 120, 60);
+   chain.produce_blocks();
+
+   // Send another deferred transaction for good measure.
+   chain.push_action(N(eosio.token), name("transfer"), N(tester), fc::mutable_variant_object()
+                      ("from", "tester")
+                      ("to", "eosio.token")
+                      ("quantity", "9.0000 CUR")
+                      ("memo", "" ), 1200, 600);
    chain.produce_blocks();
    
-   // Check that the deferred transaction database is 1.
+   // Check that the deferred transaction database is 2.
    gen_size = chain.control->db().get_index<generated_transaction_multi_index>().size();
-   BOOST_REQUIRE_EQUAL( gen_size, 1 );
+   BOOST_REQUIRE_EQUAL( gen_size, 2 );
    
    // Activate `stop_deferred_transaction` protocol feature.
    chain.preactivate_protocol_features( {*stop_deferred_trx_feature} );
@@ -1939,19 +1964,19 @@ BOOST_AUTO_TEST_CASE( remove_deferred_transactions_protocol_feature_user_test ) 
    
    // Send a deferred transaction (it shall throw).
    BOOST_REQUIRE_EXCEPTION(
-      trace = chain.push_action(N(eosio.token), name("transfer"), N(tester), fc::mutable_variant_object()
-                                 ("from", "tester")
-                                 ("to", "eosio.token")
-                                 ("quantity", "9.0000 CUR")
-                                 ("memo", "" ), 120, 60),
+      chain.push_action(N(eosio.token), name("transfer"), N(tester), fc::mutable_variant_object()
+                         ("from", "tester")
+                         ("to", "eosio.token")
+                         ("quantity", "9.0000 CUR")
+                         ("memo", "" ), 120, 60),
       remove_deferred_tx,
       fc_exception_message_starts_with("`controller_impl::push_transaction` deferred transactions have been removed")
    );
    
-   // Check that the deferred transaction database is is 1, due to the // TODO: THIS NEEDS TO BE ZERO TO SHOW THAT ALL WERE DELETED
-   // activation of the protocol feature.
+   // Check that the deferred transaction database is 0, due to the activation
+   // of the protocol feature.
    gen_size = chain.control->db().get_index<generated_transaction_multi_index>().size();
-   BOOST_REQUIRE_EQUAL( gen_size, 1 );
+   BOOST_REQUIRE_EQUAL( gen_size, 0 );
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_CASE( remove_deferred_transactions_protocol_feature_contract_test ) { try {
@@ -1983,9 +2008,18 @@ BOOST_AUTO_TEST_CASE( remove_deferred_transactions_protocol_feature_contract_tes
                        ("replace_existing", false)
    );
 
-   // Check that the deferred transaction database is 1.
+   // Send another deferred transaction for good measure.
+   chain.push_action( N(test), N(defercall2), N(alice), fc::mutable_variant_object()
+                       ("payer", "alice")
+                       ("sender_id", 100)
+                       ("contract", "test")
+                       ("delay_sec", 6000)
+                       ("replace_existing", false)
+   );
+
+   // Check that the deferred transaction database is 2.
    gen_size = chain.control->db().get_index<generated_transaction_multi_index>().size();
-   BOOST_REQUIRE_EQUAL( gen_size, 1 );
+   BOOST_REQUIRE_EQUAL( gen_size, 2 );
    
    // Activate `stop_deferred_transaction` protocol feature.
    chain.preactivate_protocol_features( {*stop_deferred_trx_feature} );
@@ -2018,11 +2052,11 @@ BOOST_AUTO_TEST_CASE( remove_deferred_transactions_protocol_feature_contract_tes
                             remove_deferred_tx,
                             fc_exception_message_starts_with( "`transaction_api::send_deferred` attempting to send a deferred transaction; deferred transactions have been removed" ) );
    
-   // Check that the deferred transaction database is 0, due to the activation of // TODO: THIS NEEDS TO BE ZERO TO SHOW THAT ALL WERE DELETED
-   // the protocol feature.
+   // Check that the deferred transaction database is 0, due to the activation
+   // of the protocol feature.
    gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
    
-   BOOST_REQUIRE_EQUAL( gen_size, 1 );
+   BOOST_REQUIRE_EQUAL( gen_size, 0 );
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_SUITE_END()

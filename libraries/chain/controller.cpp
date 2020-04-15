@@ -3400,30 +3400,11 @@ void controller_impl::on_activation<builtin_protocol_feature_t::remove_deferred_
    
    // Remove all deferred transactions one-by-one.
    const auto& indx = db.get_index<generated_transaction_multi_index,by_trx_id>();
-   for( auto itr = indx.begin(); itr != indx.end(); itr = indx.begin() ) {
+   for( auto itr = indx.begin(); itr != indx.end(); ++itr ) {
       remove_scheduled_transaction( *itr );
-      db.remove( *itr );
       elog( "deferred transaction ${trx_id} created by ${sender} with a delay of ${delay_until} and an expiration of ${expiration} has been removed.",
             ("trx_id", itr->trx_id)("sender", itr->sender)("delay_until", itr->delay_until)("expiration", itr->expiration) );
    }
-
-   // auto gtrx = generated_transaction(gto); //generated_transaction_object
-   // int64_t trx_removal_ram_delta = remove_scheduled_transaction(gto);
-   // trace->account_ram_delta = account_delta( gtrx.payer, trx_removal_ram_delta );
-   // 
-   // 
-   // const auto& indx = db().get_index<generated_transaction_multi_index,by_trx_id>();
-   // for( auto itr = indx.begin(); itr != indx.end(); itr = indx.begin() ) {
-   //    int64_t current_ram_usage = resource_limits.get_account_ram_usage( itr->name );
-   //    int64_t ram_delta = -static_cast<int64_t>(itr->ram_correction);
-   //    if( itr->ram_correction > static_cast<uint64_t>(current_ram_usage) ) {
-   //       ram_delta = -current_ram_usage;
-   //       elog( "account ${name} was to be reduced by ${adjust} bytes of RAM despite only using ${current} bytes of RAM",
-   //             ("name", itr->name)("adjust", itr->ram_correction)("current", current_ram_usage) );
-   //    }
-   // 
-   //    resource_limits.add_pending_ram_usage( itr->name, ram_delta );
-   //    db.remove( *itr );
 }
 
 /// End of protocol feature activation handlers

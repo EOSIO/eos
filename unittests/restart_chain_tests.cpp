@@ -165,7 +165,8 @@ BOOST_AUTO_TEST_CASE(test_restart_from_block_log) {
 }
 
 BOOST_AUTO_TEST_CASE(test_light_validation_restart_from_block_log) {
-   tester chain(setup_policy::full);
+   tester chain( {builtin_protocol_feature_t::stop_deferred_transactions,
+                  builtin_protocol_feature_t::remove_deferred_transactions} );
 
    chain.create_account(N(testapi));
    chain.create_account(N(dummy));
