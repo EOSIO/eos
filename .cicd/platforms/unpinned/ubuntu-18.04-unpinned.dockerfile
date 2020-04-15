@@ -24,6 +24,10 @@ RUN curl -LO https://dl.bintray.com/boostorg/release/1.71.0/source/boost_1_71_0.
     ./b2 --with-iostreams --with-date_time --with-filesystem --with-system --with-program_options --with-chrono --with-test -j$(nproc) install && \
     cd / && \
     rm -rf boost_1_71_0.tar.bz2 /boost_1_71_0
+# install eosio cppkin
+RUN curl -LO https://github.com/EOSIO/cppKin/releases/download/v1.1.1/cppkin_1.1.1-ubuntu-18.04_amd64.deb && \
+    apt install -y ./cppkin_1.1.1-ubuntu-18.04_amd64.deb && \
+    rm ./cppkin_1.1.1-ubuntu-18.04_amd64.deb
 # install nvm
 RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.0/install.sh | bash
 # load nvm in non-interactive shells
