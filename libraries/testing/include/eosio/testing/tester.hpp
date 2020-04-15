@@ -493,6 +493,17 @@ namespace eosio { namespace testing {
          execute_setup_policy(policy);
       }
 
+      tester(const vector<builtin_protocol_feature_t>& ignored_features,
+             controller::config config,
+             const genesis_state& genesis,
+             const flat_set<account_name>& trusted_producers = flat_set<account_name>(),
+             const setup_policy& policy = setup_policy::full) {
+         base_tester::ignored_features = ignored_features;
+         config.trusted_producers = trusted_producers;
+         init(config, genesis);
+         execute_setup_policy(policy);
+      }
+
       using base_tester::produce_block;
 
       signed_block_ptr produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms) )override {
@@ -538,6 +549,20 @@ namespace eosio { namespace testing {
          vcfg.trusted_producers = trusted_producers;
          validating_node = create_validating_node(vcfg, def_conf.second, true);
          init(def_conf.first, def_conf.second);
+         execute_setup_policy(policy);
+      }
+
+      validating_tester(const vector<builtin_protocol_feature_t>& ignored_features,
+                        controller::config config,
+                        const genesis_state& genesis,
+                        const flat_set<account_name>& trusted_producers = flat_set<account_name>(),
+                        const setup_policy& policy = setup_policy::full) {
+         base_tester::ignored_features = ignored_features;
+         vcfg = config;
+         config_validator(vcfg);
+         vcfg.trusted_producers = trusted_producers;
+         validating_node = create_validating_node(vcfg, genesis, true);
+         init(config, genesis);
          execute_setup_policy(policy);
       }
 
@@ -753,4 +778,4 @@ namespace eosio { namespace testing {
      string expected;
   };
 
-} } /// eosio::testing
+} } /// eosio::testing                                                                                                                                                                                                                                                 
