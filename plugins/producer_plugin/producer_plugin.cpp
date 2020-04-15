@@ -1919,8 +1919,8 @@ static auto maybe_make_debug_time_logger() -> fc::optional<decltype(make_debug_t
 
 void producer_plugin_impl::produce_block() {
    //ilog("produce_block ${t}", ("t", fc::time_point::now())); // for testing _produce_time_offset_us
-   cppkin::trace trace = Trace("ProduceBlock");
-   auto produce_span = CreateSpan("ProduceBlock");
+   cppkin::Trace trace = cppkin::Trace("ProduceBlock");
+   auto produce_span = trace.CreateSpan("ProduceBlock");
    EOS_ASSERT(_pending_block_mode == pending_block_mode::producing, producer_exception, "called produce_block while not actually producing");
    chain::controller& chain = chain_plug->chain();
    const auto& hbs = chain.head_block_state();
