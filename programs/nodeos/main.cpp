@@ -84,17 +84,15 @@ int main(int argc, char** argv)
 {
    try {
 
-      auto transportType = cppkin::TransportType::Http;
-      auto encodingType = cppkin::EncodingType::Json;
       cppkin::CppkinParams cppkinParams;
-      cppkinParams.AddParam(cppkin::ConfigTags::ENDPOINT, "127.0.0.1");
-      cppkinParams.AddParam(cppkin::ConfigTags::SERVICE_NAME, "test-service");
+      cppkinParams.AddParam(cppkin::ConfigTags::ENDPOINT, std::string("https://trace-api.newrelic.com/trace/v1"));
+      cppkinParams.AddParam(cppkin::ConfigTags::SERVICE_NAME, std::string("nodeos"));
       cppkinParams.AddParam(cppkin::ConfigTags::PORT, -1);
       cppkinParams.AddParam(cppkin::ConfigTags::SAMPLE_COUNT, 1);
-      cppkinParams.AddParam(cppkin::ConfigTags::TRANSPORT_TYPE, cppkin::TransportType(transportType).ToString());
-      cppkinParams.AddParam(cppkin::ConfigTags::ENCODING_TYPE, cppkin::EncodingType(encodingType).ToString());
-      cppkinParams.AddParam(cppkin::ConfigTags::API_KEY, "sljdflsjdf");
-      cppkinParams.AddParam(cppkin::ConfigTags::DATA_FORMAT, "zipkin");
+      cppkinParams.AddParam(cppkin::ConfigTags::TRANSPORT_TYPE, cppkin::TransportType(cppkin::TransportType::Http).ToString());
+      cppkinParams.AddParam(cppkin::ConfigTags::ENCODING_TYPE, cppkin::EncodingType(cppkin::EncodingType::Json).ToString());
+      cppkinParams.AddParam(cppkin::ConfigTags::API_KEY, std::string(std::getenv("NEW_RELIC_API_KEY")));
+      cppkinParams.AddParam(cppkin::ConfigTags::DATA_FORMAT, std::string("zipkin"));
       cppkinParams.AddParam(cppkin::ConfigTags::DATA_FORMAT_VERSION, 2);
       cppkin::Init(cppkinParams);
 
@@ -116,7 +114,9 @@ int main(int argc, char** argv)
          }
          return INITIALIZE_FAIL;
       }
+      cppkin::Trace trace("InitLogging");
       initialize_logging();
+      trace.Submit();
       ilog( "${name} version ${ver} ${fv}",
             ("name", nodeos::config::node_executable_name)("ver", app().version_string())
             ("fv", app().version_string() == app().full_version_string() ? "" : app().full_version_string()) );
