@@ -3489,7 +3489,7 @@ namespace eosio {
       my->ticker();
 
       my->incoming_transaction_ack_subscription = app().get_channel<compat::channels::transaction_ack>().subscribe(
-            boost::bind(&net_plugin_impl::transaction_ack, my.get(), _1));
+            std::bind(&net_plugin_impl::transaction_ack, my.get(), std::placeholders::_1));
 
       my->start_monitors();
 
