@@ -23,6 +23,7 @@ For information on specific plugins, just select from the list below:
 * [`state_history_plugin`](state_history_plugin/index.md)
 * [`test_control_api_plugin`](test_control_api_plugin/index.md)
 * [`test_control_plugin`](test_control_plugin/index.md)
+* [`trace_api_plugin`](trace_api_plugin/index.md)
 * [`txn_test_gen_plugin`](txn_test_gen_plugin/index.md)
 
 [[info | Nodeos is modular]]

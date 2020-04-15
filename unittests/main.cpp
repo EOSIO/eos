@@ -12,7 +12,7 @@
 
 void translate_fc_exception(const fc::exception &e) {
    std::cerr << "\033[33m" <<  e.to_detail_string() << "\033[0m" << std::endl;
-   BOOST_TEST_FAIL("Caught Unexpected Exception");
+   throw std::runtime_error("Caught Unexpected Exception");
 }
 
 boost::unit_test::test_suite* init_unit_test_suite(int argc, char* argv[]) {
