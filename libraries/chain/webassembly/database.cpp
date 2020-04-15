@@ -123,14 +123,14 @@ namespace eosio { namespace chain { namespace webassembly {
    int32_t interface::db_idx256_store( uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, legacy_array_ptr<const uint128_t> data ) {
       EOS_ASSERT( data.ref().size() == idx256_array_size,
                     db_api_exception,
-                    "invalid size of secondary key array for idx256 : given ${given} bytes but expected ${expected} bytes",
+                    "invalid size of secondary key array for idx256: given ${given} bytes but expected ${expected} bytes",
                     ("given",data.ref().size())("expected", idx256_array_size) );
       return context.idx256.store(scope, table, account_name(payer), id, data.ref().data());
    }
    void interface::db_idx256_update( int32_t iterator, uint64_t payer, legacy_array_ptr<const uint128_t> data ) {
       EOS_ASSERT( data.ref().size() == idx256_array_size,
                     db_api_exception,
-                    "invalid size of secondary key array for idx256 : given ${given} bytes but expected ${expected} bytes",
+                    "invalid size of secondary key array for idx256: given ${given} bytes but expected ${expected} bytes",
                     ("given",data.ref().size())("expected", idx256_array_size) );
       return context.idx256.update(iterator, account_name(payer), data.ref().data());
    }
@@ -140,21 +140,21 @@ namespace eosio { namespace chain { namespace webassembly {
    int32_t interface::db_idx256_find_secondary( uint64_t code, uint64_t scope, uint64_t table, legacy_array_ptr<const uint128_t> data, legacy_ptr<uint64_t> primary ) {
       EOS_ASSERT( data.ref().size() == idx256_array_size,
                     db_api_exception,
-                    "invalid size of secondary key array for idx256 : given ${given} bytes but expected ${expected} bytes",
+                    "invalid size of secondary key array for idx256: given ${given} bytes but expected ${expected} bytes",
                     ("given",data.ref().size())("expected", idx256_array_size) );
       return context.idx256.find_secondary(code, scope, table, data.ref().data(), primary.ref());
    }
    int32_t interface::db_idx256_find_primary( uint64_t code, uint64_t scope, uint64_t table, legacy_array_ptr<uint128_t> data, uint64_t primary ) {
       EOS_ASSERT( data.ref().size() == idx256_array_size,
                     db_api_exception,
-                    "invalid size of secondary key array for idx256 : given ${given} bytes but expected ${expected} bytes",
+                    "invalid size of secondary key array for idx256: given ${given} bytes but expected ${expected} bytes",
                     ("given",data.ref().size())("expected", idx256_array_size) );
       return context.idx256.find_primary(code, scope, table, data.ref().data(), primary);
    }
    int32_t interface::db_idx256_lowerbound( uint64_t code, uint64_t scope, uint64_t table, legacy_array_ptr<uint128_t> data, legacy_ptr<uint64_t> primary ) {
       EOS_ASSERT( data.ref().size() == idx256_array_size,
                     db_api_exception,
-                    "invalid size of secondary key array for idx256 : given ${given} bytes but expected ${expected} bytes",
+                    "invalid size of secondary key array for idx256: given ${given} bytes but expected ${expected} bytes",
                     ("given",data.ref().size())("expected", idx256_array_size) );
       int32_t result = context.idx256.lowerbound_secondary(code, scope, table, data.ref().data(), primary.ref());
       (void)legacy_array_ptr<uint128_t>(std::move(data));
@@ -164,7 +164,7 @@ namespace eosio { namespace chain { namespace webassembly {
    int32_t interface::db_idx256_upperbound( uint64_t code, uint64_t scope, uint64_t table, legacy_array_ptr<uint128_t> data, legacy_ptr<uint64_t> primary ) {
       EOS_ASSERT( data.ref().size() == idx256_array_size,
                     db_api_exception,
-                    "invalid size of secondary key array for idx256 : given ${given} bytes but expected ${expected} bytes",
+                    "invalid size of secondary key array for idx256: given ${given} bytes but expected ${expected} bytes",
                     ("given",data.ref().size())("expected", idx256_array_size) );
       int32_t result = context.idx256.upperbound_secondary(code, scope, table, data.ref().data(), primary.ref());
       (void)legacy_array_ptr<uint128_t>(std::move(data));
