@@ -103,7 +103,8 @@ add_library( eosio_chain
              whitelisted_intrinsics.cpp
              thread_utils.cpp
              platform_timer_accuracy.cpp
-
+             kv_context.cpp
+             kv_context_chainbase.cpp
              ${PLATFORM_TIMER_IMPL}
              ${HEADERS}
              )

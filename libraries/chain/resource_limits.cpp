@@ -87,8 +87,25 @@ void resource_limits_manager::add_to_snapshot( const snapshot_writer_ptr& snapsh
    });
 }
 
-void resource_limits_manager::read_from_snapshot( const snapshot_reader_ptr& snapshot ) {
-   resource_index_set::walk_indices([this, &snapshot]( auto utils ){
+void resource_limits_manager::read_from_snapshot( const snapshot_reader_ptr& snapshot, uint32_t version ) {
+   resource_index_set::walk_indices([this, &snapshot, version]( auto utils ){
+      using value_t = typename decltype(utils)::index_t::value_type;
+      if constexpr ( !std::is_same_v<typename value_t::v3, value_t> ) {
+         using v3 = typename value_t::v3;
+         if ( v3::minimum_version <= version && version <= v3::maximum_version ) {
+            snapshot->read_section<typename decltype(utils)::index_t::value_type>([this]( auto& section ) {
+               bool more = !section.empty();
+               while(more) {
+                  decltype(utils)::create(_db, [this, &section, &more]( auto &row ) {
+                     v3 legacy_row;
+                     more = section.read_row(legacy_row, _db);
+                     row.initialize_from(legacy_row);
+                  });
+               }
+            });
+            return;
+         }
+      }
       snapshot->read_section<typename decltype(utils)::index_t::value_type>([this]( auto& section ) {
          bool more = !section.empty();
          while(more) {
@@ -266,50 +283,72 @@ void resource_limits_manager::verify_account_ram_usage( const account_name accou
    }
 }
 
+void resource_limits_manager::add_pending_disk_usage( const account_name account, int64_t disk_delta ) {
+   if (disk_delta == 0) {
+      return;
+   }
+
+   const auto& usage  = _db.get<resource_usage_object,by_owner>( account );
+
+   EOS_ASSERT( disk_delta <= 0 || UINT64_MAX - usage.disk_usage >= (uint64_t)disk_delta, transaction_exception,
+              "Disk usage delta would overflow UINT64_MAX");
+   EOS_ASSERT(disk_delta >= 0 || usage.disk_usage >= (uint64_t)(-disk_delta), transaction_exception,
+              "Disk usage delta would underflow UINT64_MAX");
+
+   _db.modify( usage, [&]( auto& u ) {
+     u.disk_usage += disk_delta;
+   });
+}
+
+void resource_limits_manager::verify_account_disk_usage( const account_name account ) const {
+   int64_t disk_bytes = get_account_disk_limit( account );
+
+   if( disk_bytes >= 0 ) {
+      const auto& usage  = _db.get<resource_usage_object,by_owner>( account );
+      EOS_ASSERT( usage.disk_usage <= static_cast<uint64_t>(disk_bytes), disk_usage_exceeded,
+                  "account ${account} has insufficient disk; needs ${needs} bytes has ${available} bytes",
+                  ("account", account)("needs",usage.disk_usage)("available",disk_bytes)              );
+   }
+}
+
 int64_t resource_limits_manager::get_account_ram_usage( const account_name& name )const {
    return _db.get<resource_usage_object,by_owner>( name ).ram_usage;
 }
 
+int64_t resource_limits_manager::get_account_disk_usage( const account_name& name )const {
+   return _db.get<resource_usage_object,by_owner>( name ).disk_usage;
+}
 
-bool resource_limits_manager::set_account_limits( const account_name& account, int64_t ram_bytes, int64_t net_weight, int64_t cpu_weight) {
-   //const auto& usage = _db.get<resource_usage_object,by_owner>( account );
+const resource_limits_object& resource_limits_manager::get_or_create_pending_account_limits( const account_name& account ) {
    /*
     * Since we need to delay these until the next resource limiting boundary, these are created in a "pending"
     * state or adjusted in an existing "pending" state.  The chain controller will collapse "pending" state into
     * the actual state at the next appropriate boundary.
     */
-   auto find_or_create_pending_limits = [&]() -> const resource_limits_object& {
-      const auto* pending_limits = _db.find<resource_limits_object, by_owner>( boost::make_tuple(true, account) );
-      if (pending_limits == nullptr) {
-         const auto& limits = _db.get<resource_limits_object, by_owner>( boost::make_tuple(false, account));
-         return _db.create<resource_limits_object>([&](resource_limits_object& pending_limits){
-            pending_limits.owner = limits.owner;
-            pending_limits.ram_bytes = limits.ram_bytes;
-            pending_limits.net_weight = limits.net_weight;
-            pending_limits.cpu_weight = limits.cpu_weight;
-            pending_limits.pending = true;
-         });
-      } else {
-         return *pending_limits;
-      }
-   };
+   const auto* pending_limits = _db.find<resource_limits_object, by_owner>( boost::make_tuple(true, account) );
+   if (pending_limits == nullptr) {
+      const auto& limits = _db.get<resource_limits_object, by_owner>( boost::make_tuple(false, account));
+      return _db.create<resource_limits_object>([&](resource_limits_object& pending_limits){
+         pending_limits.owner = limits.owner;
+         pending_limits.ram_bytes = limits.ram_bytes;
+         pending_limits.net_weight = limits.net_weight;
+         pending_limits.cpu_weight = limits.cpu_weight;
+         pending_limits.disk_bytes = limits.disk_bytes;
+         pending_limits.pending = true;
+      });
+   } else {
+     return *pending_limits;
+   }
+}
 
+bool resource_limits_manager::set_account_limits( const account_name& account, int64_t ram_bytes, int64_t net_weight, int64_t cpu_weight) {
    // update the users weights directly
-   auto& limits = find_or_create_pending_limits();
+   auto& limits = get_or_create_pending_account_limits( account );
 
    bool decreased_limit = false;
 
    if( ram_bytes >= 0 ) {
-
       decreased_limit = ( (limits.ram_bytes < 0) || (ram_bytes < limits.ram_bytes) );
-
-      /*
-      if( limits.ram_bytes < 0 ) {
-         EOS_ASSERT(ram_bytes >= usage.ram_usage, wasm_execution_error, "converting unlimited account would result in overcommitment [commit=${c}, desired limit=${l}]", ("c", usage.ram_usage)("l", ram_bytes));
-      } else {
-         EOS_ASSERT(ram_bytes >= usage.ram_usage, wasm_execution_error, "attempting to release committed ram resources [commit=${c}, desired limit=${l}]", ("c", usage.ram_usage)("l", ram_bytes));
-      }
-      */
    }
 
    _db.modify( limits, [&]( resource_limits_object& pending_limits ){
@@ -327,18 +366,34 @@ bool resource_limits_manager::set_account_limits( const account_name& account, i
    return decreased_limit;
 }
 
-void resource_limits_manager::get_account_limits( const account_name& account, int64_t& ram_bytes, int64_t& net_weight, int64_t& cpu_weight ) const {
+const resource_limits_object& resource_limits_manager::get_account_limits( const account_name& account ) const {
    const auto* pending_buo = _db.find<resource_limits_object,by_owner>( boost::make_tuple(true, account) );
    if (pending_buo) {
-      ram_bytes  = pending_buo->ram_bytes;
-      net_weight = pending_buo->net_weight;
-      cpu_weight = pending_buo->cpu_weight;
+      return *pending_buo;
    } else {
       const auto& buo = _db.get<resource_limits_object,by_owner>( boost::make_tuple( false, account ) );
-      ram_bytes  = buo.ram_bytes;
-      net_weight = buo.net_weight;
-      cpu_weight = buo.cpu_weight;
+      return buo;
    }
+}
+
+void resource_limits_manager::get_account_limits( const account_name& account, int64_t& ram_bytes, int64_t& net_weight, int64_t& cpu_weight ) const {
+   const auto& buo = get_account_limits(account);
+   ram_bytes  = buo.ram_bytes;
+   net_weight = buo.net_weight;
+   cpu_weight = buo.cpu_weight;
+}
+
+bool resource_limits_manager::set_account_disk_limit( const account_name& account, int64_t disk_bytes ) {
+   auto& limits = get_or_create_pending_account_limits( account );
+   bool decreased_limit = disk_bytes >= 0 && (limits.disk_bytes < 0 || disk_bytes < limits.disk_bytes);
+   _db.modify(limits, [disk_bytes]( resource_limits_object& pending_limits ) {
+      pending_limits.disk_bytes = disk_bytes;
+   });
+   return decreased_limit;
+}
+
+int64_t resource_limits_manager::get_account_disk_limit( const account_name& account ) const {
+   return get_account_limits(account).disk_bytes;
 }
 
 
@@ -372,6 +427,7 @@ void resource_limits_manager::process_account_limit_updates() {
          const auto& actual_entry = _db.get<resource_limits_object, by_owner>(boost::make_tuple(false, itr->owner));
          _db.modify(actual_entry, [&](resource_limits_object& rlo){
             update_state_and_value(rso.total_ram_bytes,  rlo.ram_bytes,  itr->ram_bytes, "ram_bytes");
+            update_state_and_value(rso.total_disk_bytes, rlo.disk_bytes, itr->disk_bytes, "disk_bytes");
             update_state_and_value(rso.total_cpu_weight, rlo.cpu_weight, itr->cpu_weight, "cpu_weight");
             update_state_and_value(rso.total_net_weight, rlo.net_weight, itr->net_weight, "net_weight");
          });

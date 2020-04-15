@@ -18,6 +18,7 @@
 #include <eosio/chain/genesis_intrinsics.hpp>
 #include <eosio/chain/whitelisted_intrinsics.hpp>
 #include <eosio/chain/database_header_object.hpp>
+#include <eosio/chain/kv_chainbase_objects.hpp>
 
 #include <eosio/chain/protocol_feature_manager.hpp>
 #include <eosio/chain/authorization_manager.hpp>
@@ -50,7 +51,8 @@ using controller_index_set = index_set<
    generated_transaction_multi_index,
    table_id_multi_index,
    code_index,
-   database_header_multi_index
+   database_header_multi_index,
+   kv_index
 >;
 
 using contract_database_index_set = index_set<
@@ -331,6 +333,7 @@ struct controller_impl {
       set_activation_handler<builtin_protocol_feature_t::webauthn_key>();
       set_activation_handler<builtin_protocol_feature_t::wtmsig_block_signatures>();
       set_activation_handler<builtin_protocol_feature_t::action_return_value>();
+      set_activation_handler<builtin_protocol_feature_t::kv_database>();
 
       self.irreversible_block.connect([this](const block_state_ptr& bsp) {
          wasmif.current_lib(bsp->block_num);
@@ -952,6 +955,7 @@ struct controller_impl {
          // special case for in-place upgrade of global_property_object
          if (std::is_same<value_t, global_property_object>::value) {
             using v2 = legacy::snapshot_global_property_object_v2;
+            using v3 = legacy::snapshot_global_property_object_v3;
 
             if (std::clamp(header.version, v2::minimum_version, v2::maximum_version) == header.version ) {
                fc::optional<genesis_state> genesis = extract_legacy_genesis_state(*snapshot, header.version);
@@ -963,11 +967,29 @@ struct controller_impl {
                   section.read_row(legacy_global_properties, db);
 
                   db.create<global_property_object>([&legacy_global_properties,&gs_chain_id](auto& gpo ){
-                     gpo.initalize_from(legacy_global_properties, gs_chain_id);
+                     gpo.initalize_from(legacy_global_properties, gs_chain_id, kv_config{});
                   });
                });
                return; // early out to avoid default processing
             }
+
+            if (std::clamp(header.version, v3::minimum_version, v3::maximum_version) == header.version ) {
+               snapshot->read_section<global_property_object>([&db=this->db]( auto &section ) {
+                  v3 legacy_global_properties;
+                  section.read_row(legacy_global_properties, db);
+
+                  db.create<global_property_object>([&legacy_global_properties](auto& gpo ){
+                     gpo.initalize_from(legacy_global_properties, kv_config{});
+                  });
+               });
+               return; // early out to avoid default processing
+            }
+         }
+
+         // skip the kv index if the snapshot doesn't contain it
+         if constexpr (std::is_same_v<value_t, kv_object>) {
+            if ( header.version < kv_object::minimum_snapshot_version )
+               return;
          }
 
          snapshot->read_section<value_t>([this]( auto& section ) {
@@ -983,7 +1005,7 @@ struct controller_impl {
       read_contract_tables_from_snapshot(snapshot);
 
       authorization.read_from_snapshot(snapshot);
-      resource_limits.read_from_snapshot(snapshot);
+      resource_limits.read_from_snapshot(snapshot, header.version);
 
       db.set_revision( head->block_num );
       db.create<database_header_object>([](const auto& header){
@@ -1061,6 +1083,7 @@ struct controller_impl {
       genesis.initial_configuration.validate();
       db.create<global_property_object>([&genesis,&chain_id=this->chain_id](auto& gpo ){
          gpo.configuration = genesis.initial_configuration;
+         gpo.kv_configuration = kv_config{};
          gpo.chain_id = chain_id;
       });
 
@@ -3503,6 +3526,31 @@ void controller_impl::on_activation<builtin_protocol_feature_t::action_return_va
    } );
 }
 
+template<>
+void controller_impl::on_activation<builtin_protocol_feature_t::kv_database>() {
+   db.modify( db.get<protocol_state_object>(), [&]( auto& ps ) {
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "kv_erase" );
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "kv_set" );
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "kv_get" );
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "kv_get_data" );
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "kv_it_create" );
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "kv_it_destroy" );
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "kv_it_status" );
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "kv_it_compare" );
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "kv_it_key_compare" );
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "kv_it_move_to_end" );
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "kv_it_next" );
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "kv_it_prev" );
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "kv_it_lower_bound" );
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "kv_it_key" );
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "kv_it_value" );
+      // resource management
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "set_resource_limit" );
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "get_resource_limit" );
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "set_kv_parameters_packed" );
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "get_kv_parameters_packed" );
+   } );
+}
 
 
 /// End of protocol feature activation handlers

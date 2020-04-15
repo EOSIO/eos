@@ -364,6 +364,8 @@ namespace eosio { namespace chain {
                                     3080007, "Transaction exceeded the current greylisted account network usage limit" )
       FC_DECLARE_DERIVED_EXCEPTION( greylist_cpu_usage_exceeded, resource_exhausted_exception,
                                     3080008, "Transaction exceeded the current greylisted account CPU usage limit" )
+      FC_DECLARE_DERIVED_EXCEPTION( disk_usage_exceeded, resource_exhausted_exception,
+                                    3080009, "Account using more than allotted DISK usage" )
 
       FC_DECLARE_DERIVED_EXCEPTION( leeway_deadline_exception, deadline_exception,
                                     3081001, "Transaction reached the deadline set due to leeway on account CPU limits" )
@@ -539,6 +541,14 @@ namespace eosio { namespace chain {
                                     3160009, "No wasm file found" )
       FC_DECLARE_DERIVED_EXCEPTION( abi_file_not_found,          contract_exception,
                                     3160010, "No abi file found" )
+      FC_DECLARE_DERIVED_EXCEPTION( kv_bad_db_id,          contract_exception,
+                                    3160011, "Bad key-value database ID" )
+      FC_DECLARE_DERIVED_EXCEPTION( kv_bad_iter,          contract_exception,
+                                    3160012, "Bad key-value iterator" )
+      FC_DECLARE_DERIVED_EXCEPTION( kv_limit_exceeded,          contract_exception,
+                                    3160013, "The key or value is too large" )
+      FC_DECLARE_DERIVED_EXCEPTION( kv_unknown_parameters_version,          contract_exception,
+                                    3160014, "Unknown kv_parameters version" )
 
    FC_DECLARE_DERIVED_EXCEPTION( producer_exception,           chain_exception,
                                  3170000, "Producer exception" )

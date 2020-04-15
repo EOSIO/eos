@@ -43,6 +43,7 @@ apply_context::apply_context(controller& con, transaction_context& trx_ctx, uint
 ,idx_double(*this)
 ,idx_long_double(*this)
 {
+   kv_iterators.emplace_back(); // the iterator handle with value 0 is reserved
    action_trace& trace = trx_ctx.get_action_trace(action_ordinal);
    act = &trace.act;
    receiver = trace.receiver;
@@ -60,6 +61,12 @@ void apply_context::exec_one()
    try {
       try {
          action_return_value.clear();
+         kv_iterators.resize(1);
+         kv_destroyed_iterators.clear();
+         if (!context_free) {
+            kv_ram = create_kv_chainbase_context(db, kvram_id, receiver, create_kv_resource_manager_ram(*this), control.get_global_properties().kv_configuration.kvram);
+            kv_disk = create_kv_chainbase_context(db, kvdisk_id, receiver, create_kv_resource_manager_disk(*this), control.get_global_properties().kv_configuration.kvdisk);
+         }
          receiver_account = &db.get<account_metadata_object,by_name>( receiver );
          if( !(context_free && control.skip_trx_checks()) ) {
             privileged = receiver_account->is_privileged();
@@ -176,6 +183,9 @@ void apply_context::finalize_trace( action_trace& trace, const fc::time_point& s
 {
    trace.account_ram_deltas = std::move( _account_ram_deltas );
    _account_ram_deltas.clear();
+
+   trace.account_disk_deltas = std::move( _account_disk_deltas );
+   _account_disk_deltas.clear();
 
    trace.console = std::move( _pending_console_output );
    _pending_console_output.clear();
@@ -1092,6 +1102,102 @@ int apply_context::db_end_i64( name code, name scope, name table ) {
    return keyval_cache.cache_table( *tab );
 }
 
+int64_t apply_context::kv_erase(uint64_t db, uint64_t contract, const char* key, uint32_t key_size) {
+   return kv_get_db(db).kv_erase(contract, key, key_size);
+}
+
+int64_t apply_context::kv_set(uint64_t db, uint64_t contract, const char* key, uint32_t key_size, const char* value, uint32_t value_size) {
+   return kv_get_db(db).kv_set(contract, key, key_size, value, value_size);
+}
+
+bool apply_context::kv_get(uint64_t db, uint64_t contract, const char* key, uint32_t key_size, uint32_t& value_size) {
+   return kv_get_db(db).kv_get(contract, key, key_size, value_size);
+}
+
+uint32_t apply_context::kv_get_data(uint64_t db, uint32_t offset, char* data, uint32_t data_size) {
+   return kv_get_db(db).kv_get_data(offset, data, data_size);
+}
+
+uint32_t apply_context::kv_it_create(uint64_t db, uint64_t contract, const char* prefix, uint32_t size) {
+   auto& kdb = kv_get_db(db);
+   uint32_t itr;
+   if (!kv_destroyed_iterators.empty()) {
+      itr = kv_destroyed_iterators.back();
+      kv_destroyed_iterators.pop_back();
+   } else {
+      // Sanity check in case the per-database limits are set poorly
+      EOS_ASSERT(kv_iterators.size() <= 0xFFFFFFFFu, kv_bad_iter, "Too many iterators");
+      itr = kv_iterators.size();
+      kv_iterators.emplace_back();
+   }
+   kv_iterators[itr] = kdb.kv_it_create(contract, prefix, size);
+   return itr;
+}
+
+void apply_context::kv_it_destroy(uint32_t itr) {
+   kv_check_iterator(itr);
+   kv_destroyed_iterators.push_back(itr);
+   kv_iterators[itr].reset();
+}
+
+int32_t apply_context::kv_it_status(uint32_t itr) {
+   kv_check_iterator(itr);
+   return static_cast<int32_t>(kv_iterators[itr]->kv_it_status());
+}
+
+int32_t apply_context::kv_it_compare(uint32_t itr_a, uint32_t itr_b) {
+   kv_check_iterator(itr_a);
+   kv_check_iterator(itr_b);
+   return kv_iterators[itr_a]->kv_it_compare(*kv_iterators[itr_b]);
+}
+
+int32_t apply_context::kv_it_key_compare(uint32_t itr, const char* key, uint32_t size) {
+   kv_check_iterator(itr);
+   return kv_iterators[itr]->kv_it_key_compare(key, size);
+}
+
+int32_t apply_context::kv_it_move_to_end(uint32_t itr) {
+   kv_check_iterator(itr);
+   return static_cast<int32_t>(kv_iterators[itr]->kv_it_move_to_end());
+}
+
+int32_t apply_context::kv_it_next(uint32_t itr) {
+   kv_check_iterator(itr);
+   return static_cast<int32_t>(kv_iterators[itr]->kv_it_next());
+}
+
+int32_t apply_context::kv_it_prev(uint32_t itr) {
+   kv_check_iterator(itr);
+   return static_cast<int32_t>(kv_iterators[itr]->kv_it_prev());
+}
+
+int32_t apply_context::kv_it_lower_bound(uint32_t itr, const char* key, uint32_t size) {
+   kv_check_iterator(itr);
+   return static_cast<int32_t>(kv_iterators[itr]->kv_it_lower_bound(key, size));
+}
+
+int32_t apply_context::kv_it_key(uint32_t itr, uint32_t offset, char* dest, uint32_t size, uint32_t& actual_size) {
+   kv_check_iterator(itr);
+   return static_cast<int32_t>(kv_iterators[itr]->kv_it_key(offset, dest, size, actual_size));
+}
+
+int32_t apply_context::kv_it_value(uint32_t itr, uint32_t offset, char* dest, uint32_t size, uint32_t& actual_size) {
+   kv_check_iterator(itr);
+   return static_cast<int32_t>(kv_iterators[itr]->kv_it_value(offset, dest, size, actual_size));
+}
+
+kv_context& apply_context::kv_get_db(uint64_t db) {
+   if (db == kvram_id.to_uint64_t())
+      return *kv_ram;
+   else if (db == kvdisk_id.to_uint64_t())
+      return *kv_disk;
+   EOS_ASSERT(false, kv_bad_db_id, "Bad key-value database ID");
+}
+
+void apply_context::kv_check_iterator(uint32_t itr) {
+   EOS_ASSERT(itr < kv_iterators.size() && kv_iterators[itr], kv_bad_iter, "Bad key-value iterator");
+}
+
 uint64_t apply_context::next_global_sequence() {
    const auto& p = control.get_dynamic_global_properties();
    db.modify( p, [&]( auto& dgp ) {
@@ -1120,6 +1226,15 @@ void apply_context::add_ram_usage( account_name account, int64_t ram_delta, cons
    auto p = _account_ram_deltas.emplace( account, ram_delta );
    if( !p.second ) {
       p.first->delta += ram_delta;
+   }
+}
+
+void apply_context::add_disk_usage( account_name account, int64_t disk_delta ) {
+   trx_context.add_disk_usage( account, disk_delta );
+
+   auto p = _account_disk_deltas.emplace( account, disk_delta );
+   if( !p.second ) {
+      p.first->delta += disk_delta;
    }
 }
 
