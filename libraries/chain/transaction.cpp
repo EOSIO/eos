@@ -256,7 +256,7 @@ static bytes zlib_compress_transaction(const transaction& t) {
    return out;
 }
 
-packed_transaction_v0::packed_transaction_v0(const bytes& packed_txn, const vector<signature_type>& sigs, const bytes& packed_cfd, compression_type _compression )
+packed_transaction_v0::packed_transaction_v0(const bytes& packed_txn, const vector<signature_type>& sigs, const bytes& packed_cfd, compression_type _compression)
 :signatures(sigs)
 ,compression(_compression)
 ,packed_context_free_data(packed_cfd)
@@ -423,21 +423,21 @@ digest_type packed_transaction::prunable_data_type::digest() const {
 
 static constexpr std::size_t digest_pack_size = 32;
 
-static std::size_t padded_pack_size( const packed_transaction::prunable_data_type::none& obj, packed_transaction::prunable_data_type::compression_type) {
+static std::size_t padded_pack_size(const packed_transaction::prunable_data_type::none& obj, packed_transaction::prunable_data_type::compression_type) {
    std::size_t result = fc::raw::pack_size(obj);
    EOS_ASSERT(result == digest_pack_size, packed_transaction_type_exception, "Unexpected size of packed digest");
    return result;
 }
 
-static std::size_t padded_pack_size( const packed_transaction::prunable_data_type::signatures_only& obj, packed_transaction::prunable_data_type::compression_type) {
+static std::size_t padded_pack_size(const packed_transaction::prunable_data_type::signatures_only& obj, packed_transaction::prunable_data_type::compression_type) {
    return fc::raw::pack_size(obj);
 }
 
-static std::size_t padded_pack_size( const packed_transaction::prunable_data_type::partial& obj, packed_transaction::prunable_data_type::compression_type segment_compression) {
+static std::size_t padded_pack_size(const packed_transaction::prunable_data_type::partial& obj, packed_transaction::prunable_data_type::compression_type segment_compression) {
      EOS_THROW(tx_prune_exception, "unimplemented");
 }
 
-static std::size_t padded_pack_size( const packed_transaction::prunable_data_type::full& obj, packed_transaction::prunable_data_type::compression_type segment_compression) {
+static std::size_t padded_pack_size(const packed_transaction::prunable_data_type::full& obj, packed_transaction::prunable_data_type::compression_type segment_compression) {
    EOS_THROW(tx_prune_exception, "unimplemented");
 #if 0
    std::size_t context_free_size = fc::raw::pack_size(fc::unsigned_int(obj.context_free_segments.size()));
@@ -450,11 +450,11 @@ static std::size_t padded_pack_size( const packed_transaction::prunable_data_typ
 #endif
 }
 
-static std::size_t padded_pack_size( const packed_transaction::prunable_data_type::full_legacy& obj, packed_transaction::prunable_data_type::compression_type) {
+static std::size_t padded_pack_size(const packed_transaction::prunable_data_type::full_legacy& obj, packed_transaction::prunable_data_type::compression_type) {
   return std::max(fc::raw::pack_size(obj), digest_pack_size);
 }
 
-std::size_t packed_transaction::prunable_data_type::maximum_pruned_pack_size( packed_transaction::prunable_data_type::compression_type compression) const {
+std::size_t packed_transaction::prunable_data_type::maximum_pruned_pack_size(packed_transaction::prunable_data_type::compression_type compression) const {
    return 1 + prunable_data.visit([&](const auto& t){ return padded_pack_size(t, compression); });
 }
 
@@ -495,10 +495,10 @@ packed_transaction::packed_transaction(const packed_transaction_v0& other, bool 
 
 packed_transaction::packed_transaction(packed_transaction_v0&& other, bool legacy)
  : compression(other.compression),
-   prunable_data(legacy ? prunable_data_type{prunable_data_type::full_legacy{std::move( other.signatures),
+   prunable_data(legacy ? prunable_data_type{prunable_data_type::full_legacy{std::move(other.signatures),
                                                                              std::move(other.packed_context_free_data),
                                                                              std::move(other.unpacked_trx.context_free_data) } }
-                        : prunable_data_type{prunable_data_type::full{std::move( other.signatures),
+                        : prunable_data_type{prunable_data_type::full{std::move(other.signatures),
                                                                       std::move(other.unpacked_trx.context_free_data) } }),
    packed_trx(std::move(other.packed_trx)),
    unpacked_trx(std::move(other.unpacked_trx)),
@@ -605,9 +605,9 @@ const vector<bytes>* packed_transaction::get_context_free_data()const {
    }
 }
 
-const bytes* maybe_get_context_free_data( const packed_transaction::prunable_data_type::none&, std::size_t) { return nullptr; }
-const bytes* maybe_get_context_free_data( const packed_transaction::prunable_data_type::signatures_only&, std::size_t) { return nullptr; }
-const bytes* maybe_get_context_free_data( const packed_transaction::prunable_data_type::partial& p, std::size_t i) {
+const bytes* maybe_get_context_free_data(const packed_transaction::prunable_data_type::none&, std::size_t) { return nullptr; }
+const bytes* maybe_get_context_free_data(const packed_transaction::prunable_data_type::signatures_only&, std::size_t) { return nullptr; }
+const bytes* maybe_get_context_free_data(const packed_transaction::prunable_data_type::partial& p, std::size_t i) {
    if( p.context_free_segments.size() <= i ) return nullptr;
    return p.context_free_segments[i].visit(
          overloaded{
@@ -615,11 +615,11 @@ const bytes* maybe_get_context_free_data( const packed_transaction::prunable_dat
                []( const bytes& vec ) { return &vec; }
          } );
 }
-const bytes* maybe_get_context_free_data( const packed_transaction::prunable_data_type::full_legacy& full_leg, std::size_t i) {
+const bytes* maybe_get_context_free_data(const packed_transaction::prunable_data_type::full_legacy& full_leg, std::size_t i) {
    if( full_leg.context_free_segments.size() <= i ) return nullptr;
    return &full_leg.context_free_segments[i];
 }
-const bytes* maybe_get_context_free_data( const packed_transaction::prunable_data_type::full& f, std::size_t i) {
+const bytes* maybe_get_context_free_data(const packed_transaction::prunable_data_type::full& f, std::size_t i) {
    if( f.context_free_segments.size() <= i ) return nullptr;
    return &f.context_free_segments[i];
 }
