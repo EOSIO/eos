@@ -50,7 +50,7 @@ namespace eosio { namespace chain { namespace webassembly {
          void activate_feature(int64_t feature_name) const;
          void preactivate_feature(const digest_type&);
          void set_resource_limits(account_name account, int64_t ram_bytes, int64_t net_weight, int64_t cpu_weight);
-         void get_resource_limits(account_name account, legacy_ptr<int64_t> ram_bytes, legacy_ptr<int64_t> net_weight, legacy_ptr<int64_t> cpu_weight) const;
+         void get_resource_limits(account_name account, legacy_ptr<int64_t, 8> ram_bytes, legacy_ptr<int64_t, 8> net_weight, legacy_ptr<int64_t, 8> cpu_weight) const;
          int64_t set_proposed_producers(legacy_array_ptr<char> packed_producer_schedule);
          int64_t set_proposed_producers_ex(uint64_t packed_producer_format, legacy_array_ptr<char> packed_producer_schedule);
          uint32_t get_blockchain_parameters_packed(legacy_array_ptr<char> packed_blockchain_parameters) const;
@@ -331,8 +331,8 @@ namespace eosio { namespace chain { namespace webassembly {
          void db_idx64_remove(int32_t);
          int32_t db_idx64_find_secondary(uint64_t, uint64_t, uint64_t, legacy_ptr<const uint64_t>, legacy_ptr<uint64_t>);
          int32_t db_idx64_find_primary(uint64_t, uint64_t, uint64_t, uint64_t&, uint64_t);
-         int32_t db_idx64_lowerbound(uint64_t, uint64_t, uint64_t, legacy_ptr<uint64_t>, legacy_ptr<uint64_t>);
-         int32_t db_idx64_upperbound(uint64_t, uint64_t, uint64_t, legacy_ptr<uint64_t>, legacy_ptr<uint64_t>);
+         int32_t db_idx64_lowerbound(uint64_t, uint64_t, uint64_t, legacy_ptr<uint64_t, 8>, legacy_ptr<uint64_t, 8>);
+         int32_t db_idx64_upperbound(uint64_t, uint64_t, uint64_t, legacy_ptr<uint64_t, 8>, legacy_ptr<uint64_t, 8>);
          int32_t db_idx64_end(uint64_t, uint64_t, uint64_t);
          int32_t db_idx64_next(int32_t, uint64_t&);
          int32_t db_idx64_previous(int32_t, uint64_t&);
@@ -354,8 +354,8 @@ namespace eosio { namespace chain { namespace webassembly {
          void db_idx128_remove(int32_t);
          int32_t db_idx128_find_secondary(uint64_t, uint64_t, uint64_t, legacy_ptr<const uint128_t>, legacy_ptr<uint64_t>);
          int32_t db_idx128_find_primary(uint64_t, uint64_t, uint64_t, uint128_t&, uint64_t);
-         int32_t db_idx128_lowerbound(uint64_t, uint64_t, uint64_t, legacy_ptr<uint128_t>, legacy_ptr<uint64_t>);
-         int32_t db_idx128_upperbound(uint64_t, uint64_t, uint64_t, legacy_ptr<uint128_t>, legacy_ptr<uint64_t>);
+         int32_t db_idx128_lowerbound(uint64_t, uint64_t, uint64_t, legacy_ptr<uint128_t, 16>, legacy_ptr<uint64_t, 8>);
+         int32_t db_idx128_upperbound(uint64_t, uint64_t, uint64_t, legacy_ptr<uint128_t, 16>, legacy_ptr<uint64_t, 8>);
          int32_t db_idx128_end(uint64_t, uint64_t, uint64_t);
          int32_t db_idx128_next(int32_t, uint64_t&);
          int32_t db_idx128_previous(int32_t, uint64_t&);
@@ -377,8 +377,8 @@ namespace eosio { namespace chain { namespace webassembly {
          void db_idx256_remove(int32_t);
          int32_t db_idx256_find_secondary(uint64_t, uint64_t, uint64_t, legacy_array_ptr<const uint128_t>, legacy_ptr<uint64_t>);
          int32_t db_idx256_find_primary(uint64_t, uint64_t, uint64_t, legacy_array_ptr<uint128_t>, uint64_t);
-         int32_t db_idx256_lowerbound(uint64_t, uint64_t, uint64_t, legacy_array_ptr<uint128_t>, legacy_ptr<uint64_t>);
-         int32_t db_idx256_upperbound(uint64_t, uint64_t, uint64_t, legacy_array_ptr<uint128_t>, legacy_ptr<uint64_t>);
+         int32_t db_idx256_lowerbound(uint64_t, uint64_t, uint64_t, legacy_array_ptr<uint128_t, 16>, legacy_ptr<uint64_t, 8>);
+         int32_t db_idx256_upperbound(uint64_t, uint64_t, uint64_t, legacy_array_ptr<uint128_t, 16>, legacy_ptr<uint64_t, 8>);
          int32_t db_idx256_end(uint64_t, uint64_t, uint64_t);
          int32_t db_idx256_next(int32_t, uint64_t&);
          int32_t db_idx256_previous(int32_t, uint64_t&);
@@ -400,8 +400,8 @@ namespace eosio { namespace chain { namespace webassembly {
          void db_idx_double_remove(int32_t);
          int32_t db_idx_double_find_secondary(uint64_t, uint64_t, uint64_t, legacy_ptr<const float64_t>, legacy_ptr<uint64_t>);
          int32_t db_idx_double_find_primary(uint64_t, uint64_t, uint64_t, float64_t&, uint64_t);
-         int32_t db_idx_double_lowerbound(uint64_t, uint64_t, uint64_t, legacy_ptr<float64_t>, legacy_ptr<uint64_t>);
-         int32_t db_idx_double_upperbound(uint64_t, uint64_t, uint64_t, legacy_ptr<float64_t>, legacy_ptr<uint64_t>);
+         int32_t db_idx_double_lowerbound(uint64_t, uint64_t, uint64_t, legacy_ptr<float64_t, 8>, legacy_ptr<uint64_t, 8>);
+         int32_t db_idx_double_upperbound(uint64_t, uint64_t, uint64_t, legacy_ptr<float64_t, 8>, legacy_ptr<uint64_t, 8>);
          int32_t db_idx_double_end(uint64_t, uint64_t, uint64_t);
          int32_t db_idx_double_next(int32_t, uint64_t&);
          int32_t db_idx_double_previous(int32_t, uint64_t&);
@@ -424,8 +424,8 @@ namespace eosio { namespace chain { namespace webassembly {
          void db_idx_long_double_remove(int32_t);
          int32_t db_idx_long_double_find_secondary(uint64_t, uint64_t, uint64_t, legacy_ptr<const float128_t>, legacy_ptr<uint64_t>);
          int32_t db_idx_long_double_find_primary(uint64_t, uint64_t, uint64_t, float128_t&, uint64_t);
-         int32_t db_idx_long_double_lowerbound(uint64_t, uint64_t, uint64_t, legacy_ptr<float128_t>, legacy_ptr<uint64_t>);
-         int32_t db_idx_long_double_upperbound(uint64_t, uint64_t, uint64_t, legacy_ptr<float128_t>,  legacy_ptr<uint64_t>);
+         int32_t db_idx_long_double_lowerbound(uint64_t, uint64_t, uint64_t, legacy_ptr<float128_t, 8>, legacy_ptr<uint64_t, 8>);
+         int32_t db_idx_long_double_upperbound(uint64_t, uint64_t, uint64_t, legacy_ptr<float128_t, 8>,  legacy_ptr<uint64_t, 8>);
          int32_t db_idx_long_double_end(uint64_t, uint64_t, uint64_t);
          int32_t db_idx_long_double_next(int32_t, uint64_t&);
          int32_t db_idx_long_double_previous(int32_t, uint64_t&);

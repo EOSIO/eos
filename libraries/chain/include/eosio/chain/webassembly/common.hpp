@@ -25,11 +25,11 @@ namespace eosio { namespace chain {
    inline static constexpr auto eosio_injected_module_name = EOSIO_INJECTED_MODULE_NAME;
 
 
-   template <typename T>
-   using legacy_ptr = eosio::vm::reference_proxy<T, true>;
+   template <typename T, std::size_t Align = alignof(T)>
+   using legacy_ptr = eosio::vm::reference_proxy<T, Align>;
 
-   template <typename T>
-   using legacy_array_ptr = eosio::vm::reference_proxy<eosio::vm::span<T>>;
+   template <typename T, std::size_t Align = alignof(T)>
+   using legacy_array_ptr = eosio::vm::reference_proxy<eosio::vm::span<T>, Align>;
 
    struct null_terminated_ptr : eosio::vm::span<const char> {
       using base_type = eosio::vm::span<const char>;

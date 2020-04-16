@@ -9,12 +9,12 @@
 
 namespace eosio { namespace chain { namespace webassembly {
    namespace detail {
-      template <typename T>
-      constexpr std::true_type is_legacy_ptr(legacy_ptr<T>);
+      template <typename T, std::size_t A>
+      constexpr std::integral_constant<bool, A != 0> is_legacy_ptr(legacy_ptr<T, A>);
       template <typename T>
       constexpr std::false_type is_legacy_ptr(T);
-      template <typename T>
-      constexpr std::true_type is_legacy_array_ptr(legacy_array_ptr<T>);
+      template <typename T, std::size_t A>
+      constexpr std::integral_constant<bool, A != 0> is_legacy_array_ptr(legacy_array_ptr<T, A>);
       template <typename T>
       constexpr std::false_type is_legacy_array_ptr(T);
       template <typename T>
@@ -131,8 +131,8 @@ namespace eosio { namespace chain { namespace webassembly {
    struct remove_reference_proxy {
       using type = T;
    };
-   template<typename T, bool B>
-   struct remove_reference_proxy<vm::reference_proxy<T, B>> {
+   template<typename T, std::size_t A>
+   struct remove_reference_proxy<vm::reference_proxy<T, A>> {
       using type = T;
    };
    template<typename T>
