@@ -419,9 +419,10 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
    }
 
    void on_accepted_block(const block_state_ptr& block_state) {
-      if (!cppkin::IsEmpty()) {
+      cppkin::Span ship_span;
+      if (!cppkin::IsContainerEmpty()) {
           cppkin::Span& parent_span = cppkin::TopSpan();
-          auto ship_span = parent_span.CreateSpan("StateHistory");
+          ship_span = parent_span.CreateSpan("StateHistory");
           ship_span.AddSimpleTag("block_num", int(block_state->block_num));
           ship_span.AddSimpleTag("build_tag", std::getenv("BUILD_TAG"));
       }
@@ -437,7 +438,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          }
       }
 
-      if (!cppkin::IsEmpty()) {
+      if (!cppkin::IsContainerEmpty()) {
           ship_span.Submit();
       }
    }
