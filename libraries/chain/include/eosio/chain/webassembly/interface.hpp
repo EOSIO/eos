@@ -41,10 +41,6 @@ namespace eosio { namespace chain { namespace webassembly {
          inline apply_context& get_context() { return context; }
          inline const apply_context& get_context() const { return context; }
 
-         // checktime api
-         void checktime();
-         REGISTER_HOST_FUNCTION(checktime);
-
          // context free api
          int32_t get_context_free_data(uint32_t index, legacy_array_ptr<char> buffer) const;
          REGISTER_LEGACY_CF_ONLY_HOST_FUNCTION(get_context_free_data)
@@ -570,10 +566,6 @@ namespace eosio { namespace chain { namespace webassembly {
          REGISTER_CF_HOST_FUNCTION(__letf2);
          REGISTER_CF_HOST_FUNCTION(__lttf2);
          REGISTER_CF_HOST_FUNCTION(__unordtf2);
-
-         // call depth api
-         void call_depth_assert();
-         REGISTER_INJECTED_HOST_FUNCTION(call_depth_assert);
 
       private:
          apply_context& context;

@@ -53,10 +53,8 @@ endif()
 set(CHAIN_WEBASSEMBLY_SOURCES
    webassembly/action.cpp
    webassembly/authorization.cpp
-   webassembly/call_depth.cpp
    webassembly/cf_system.cpp
    webassembly/cf_transaction.cpp
-   webassembly/checktime.cpp
    webassembly/compiler_builtins.cpp
    webassembly/context_free.cpp
    webassembly/console.cpp
