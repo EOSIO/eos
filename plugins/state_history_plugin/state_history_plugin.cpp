@@ -419,10 +419,12 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
    }
 
    void on_accepted_block(const block_state_ptr& block_state) {
-      cppkin::Span& parent_span = cppkin::TopSpan();
-      auto ship_span = parent_span.CreateSpan("StateHistory");
-      ship_span.AddSimpleTag("block_num", int(block_state->block_num));
-      ship_span.AddSimpleTag("build_tag", std::getenv("BUILD_TAG"));
+      if (!cppkin::IsEmpty()) {
+          cppkin::Span& parent_span = cppkin::TopSpan();
+          auto ship_span = parent_span.CreateSpan("StateHistory");
+          ship_span.AddSimpleTag("block_num", int(block_state->block_num));
+          ship_span.AddSimpleTag("build_tag", std::getenv("BUILD_TAG"));
+      }
 
       store_traces(block_state);
       store_chain_state(block_state);
@@ -435,7 +437,9 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          }
       }
 
-      ship_span.Submit();
+      if (!cppkin::IsEmpty()) {
+          ship_span.Submit();
+      }
    }
 
    void store_traces(const block_state_ptr& block_state) {
