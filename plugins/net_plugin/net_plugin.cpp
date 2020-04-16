@@ -648,7 +648,7 @@ namespace eosio {
 
       void send_generic_support_message();
 
-      void send( const generic_message& msg, const std::string& type_name, bool force );
+      void send( generic_message msg, std::string type_name, bool force );
 
       /** \name Peer Timestamps
        *  Time message handling
@@ -1121,7 +1121,7 @@ namespace eosio {
       }
    }
 
-   void connection::send( const generic_message& msg, const std::string& type_name, bool force) {
+   void connection::send( generic_message msg, std::string type_name, bool force) {
       // if not forcing, then only send if the message would be processed by this connection
       if (!force) {
          std::lock_guard<std::mutex> g( conn_mtx );
@@ -1132,7 +1132,7 @@ namespace eosio {
             return;
          }
       }
-      strand.post([c = shared_from_this(),&msg, &type_name]() {
+      strand.post([c = shared_from_this(), msg=std::move(msg), type_name=std::move(type_name)]() {
          fc_ilog( logger, "Sending general_message type: ${type} (${name})", ("type", msg.type)("name", type_name) );
          c->enqueue( msg );
       });
@@ -3709,6 +3709,7 @@ namespace eosio {
       std::shared_lock<std::shared_mutex> g( my->connections_mtx );
       result.reserve( my->connections.size() );
       for (auto con : my->connections) {
+         std::lock_guard<std::mutex> g( con->conn_mtx );
          if (!ignore_endpoints_with_no_support || !con->generic_msg_types.empty()) {
             result.insert( { con->peer_address(), con->generic_msg_types } );
          }
