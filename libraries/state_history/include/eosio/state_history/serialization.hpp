@@ -41,6 +41,12 @@ history_context_wrapper<std::decay_t<P>, std::decay_t<T>> make_history_context_w
    return {db, context, obj};
 }
 
+struct trace_receipt_context {
+   uint8_t  failed_status = eosio::chain::transaction_receipt_header::hard_fail;
+   bool     debug_mode;
+   uint32_t version;
+};
+
 namespace fc {
 
 template <typename T>
@@ -615,10 +621,10 @@ datastream<ST>& operator<<(datastream<ST>& ds, const history_context_wrapper<boo
 
 template <typename ST>
 datastream<ST>& operator<<(
-    datastream<ST>&                                                                                             ds,
-    const history_context_wrapper<std::pair<uint8_t, bool>, eosio::state_history::augmented_transaction_trace>& obj) {
+    datastream<ST>&                                                                                          ds,
+    const history_context_wrapper<trace_receipt_context, eosio::state_history::augmented_transaction_trace>& obj) {
    auto& trace      = *obj.obj.trace;
-   bool  debug_mode = obj.context.second;
+   bool  debug_mode = obj.context.debug_mode;
    fc::raw::pack(ds, fc::unsigned_int(0));
    fc::raw::pack(ds, as_type<eosio::chain::transaction_id_type>(trace.id));
    if (trace.receipt) {
@@ -629,13 +635,14 @@ datastream<ST>& operator<<(
       fc::raw::pack(ds, as_type<uint32_t>(trace.receipt->cpu_usage_us));
       fc::raw::pack(ds, as_type<fc::unsigned_int>(trace.receipt->net_usage_words));
    } else {
-      fc::raw::pack(ds, uint8_t(obj.context.first));
+      fc::raw::pack(ds, uint8_t(obj.context.failed_status));
       fc::raw::pack(ds, uint32_t(0));
       fc::raw::pack(ds, fc::unsigned_int(0));
    }
    fc::raw::pack(ds, as_type<int64_t>(debug_mode ? trace.elapsed.count() : 0));
    fc::raw::pack(ds, as_type<uint64_t>(trace.net_usage));
    fc::raw::pack(ds, as_type<bool>(trace.scheduled));
+   
    history_context_serialize_container(ds, obj.db, debug_mode,
                                        as_type<std::vector<eosio::chain::action_trace>>(trace.action_traces));
 
@@ -657,10 +664,10 @@ datastream<ST>& operator<<(
 
    fc::raw::pack(ds, bool(trace.failed_dtrx_trace));
    if (trace.failed_dtrx_trace) {
-      uint8_t stat = eosio::chain::transaction_receipt_header::hard_fail;
+      trace_receipt_context context = obj.context;
+      context.failed_status = eosio::chain::transaction_receipt_header::hard_fail;
       if (trace.receipt && trace.receipt->status.value == eosio::chain::transaction_receipt_header::soft_fail)
-         stat = eosio::chain::transaction_receipt_header::soft_fail;
-      std::pair<uint8_t, bool> context = std::make_pair(stat, debug_mode);
+         context.failed_status = eosio::chain::transaction_receipt_header::soft_fail;
       fc::raw::pack( //
           ds, make_history_context_wrapper(
                   obj.db, context,
@@ -680,21 +687,13 @@ datastream<ST>& operator<<(
       fc::raw::pack(ds, as_type<uint8_t>(trx.max_cpu_usage_ms));
       fc::raw::pack(ds, as_type<fc::unsigned_int>(trx.delay_sec));
       fc::raw::pack(ds, as_type<eosio::chain::extensions_type>(trx.transaction_extensions));
-      const auto* sigs = pt.get_signatures();
-      const auto* cfd = pt.get_context_free_data();
+
+      const auto* sigs = obj.context.version == 0 ? pt.get_signatures() : nullptr;
+      const auto* cfd = obj.context.version == 0 ? pt.get_context_free_data() : nullptr;
       fc::raw::pack(ds, as_type<std::vector<eosio::chain::signature_type>>(sigs ? *sigs : std::vector<eosio::chain::signature_type>{}));
       fc::raw::pack(ds, as_type<std::vector<eosio::chain::bytes>>(cfd ? *cfd : std::vector<eosio::chain::bytes>{}));
    }
 
-   return ds;
-}
-
-template <typename ST>
-datastream<ST>&
-operator<<(datastream<ST>&                                                                         ds,
-           const history_context_wrapper<bool, eosio::state_history::augmented_transaction_trace>& obj) {
-   std::pair<uint8_t, bool> context = std::make_pair(eosio::chain::transaction_receipt_header::hard_fail, obj.context);
-   ds << make_history_context_wrapper(obj.db, context, obj.obj);
    return ds;
 }
 
