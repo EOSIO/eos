@@ -1964,9 +1964,7 @@ void producer_plugin_impl::produce_block() {
 
    auto commit_span = trace.CreateSpan("CommitBlock");
 
-   cppkin::PushSpan(commit_span);
    chain.commit_block();
-   cppkin::PopSpan();
 
    block_state_ptr new_bs = chain.head_block_state();
    commit_span.AddSimpleTag("block_num", int(new_bs->block_num));
