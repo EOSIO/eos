@@ -1114,7 +1114,7 @@ namespace eosio {
    void connection::send_generic_support_message() {
       if (!sent_generic_support_message && protocol_version >= generic_messages) {
          strand.post([c = shared_from_this()]() {
-            fc_ilog( logger, "Sending general_support_messsage" );
+            fc_ilog( logger, "Sending generic_support_messsage" );
             c->enqueue( c->generic_support_msg );
          });
          sent_generic_support_message = true;
@@ -2967,7 +2967,7 @@ namespace eosio {
 
    void connection::handle_message( const generic_message& msg ) {
       peer_dlog(this, "generic_message");
-      my_impl->generic_msg_handler->route(msg);
+      my_impl->generic_msg_handler->route(msg, peer_address());
    }
 
    void connection::handle_message( const generic_support_message& msg ) {

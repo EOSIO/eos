@@ -26,17 +26,17 @@ namespace eosio {
          struct generic_router {
             generic_router(const std::type_info& type);
             virtual ~generic_router() {}
-            virtual void route(const generic_message& msg) const = 0;
+            virtual void route(const generic_message& msg, const std::string& endpoint) const = 0;
             const std::type_info& type;
          };
 
          template<typename T>
          struct router : public generic_router {
-            typedef void (forward_message)(const T&);
+            typedef void (forward_message)(const T&, const std::string&);
 
             router();
             ~router() override {}
-            void route(const generic_message& msg) const override;
+            void route(const generic_message& msg, const std::string& endpoint) const override;
             signal<forward_message> forward_msg;
          };
 
@@ -46,7 +46,7 @@ namespace eosio {
          scoped_connection register_msg(ForwardMessage forward_msg);
 
          // route a generic_message to the functions that were registered for it
-         void route(const generic_message& msg) const;
+         void route(const generic_message& msg, const string& endpoint) const;
 
          // report all registered generic_messages
          generic_message_types get_registered_types() const;
@@ -61,10 +61,10 @@ namespace eosio {
       }
 
       template<typename T>
-      void generic_message_handler::router<T>::route(const generic_message& msg) const {
+      void generic_message_handler::router<T>::route(const generic_message& msg, const string& endpoint) const {
          T t;
          convert(msg.payload, t);
-         forward_msg(t);
+         forward_msg(t, endpoint);
       }
 
       template<typename T, typename ForwardMessage>
@@ -77,7 +77,7 @@ namespace eosio {
             // type is already registered
             msg_router = dynamic_cast<router_t* >(existing_router->second.get());
             if (msg_router == nullptr) {
-               const std::string error_msg = "Found existing router for type hash code: " +
+               const string error_msg = "Found existing router for type hash code: " +
                   std::to_string(type.hash_code()) + ", but expecting the found router to be a router<" + type.name() +
                   "> instead it was a router<" + existing_router->second->type.name() + ">";
                throw std::runtime_error(error_msg);

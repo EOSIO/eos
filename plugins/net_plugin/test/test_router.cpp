@@ -84,29 +84,34 @@ BOOST_AUTO_TEST_SUITE(router_tests)
    {
       generic_message_handler::router<test_type1> msg_router1;
       vector<test_type1> router1_call1;
-      scoped_connection con1 = msg_router1.forward_msg.connect([&router1_call1](const test_type1& t) {
+      std::string received_endpoint;
+      scoped_connection con1 = msg_router1.forward_msg.connect([&router1_call1, &received_endpoint](const test_type1& t, const std::string& endpoint) {
          router1_call1.push_back(t);
+         received_endpoint = endpoint;
       });
 
       const test_type1 t1 = { .f1 = 0x12345678, .f2 = 0x2468013579abcdef };
 
       generic_message msg;
       pack_generic_message(msg, t1);
-      msg_router1.route(msg);
+      msg_router1.route(msg, "localhost");
       BOOST_REQUIRE_EQUAL(router1_call1.size(), 1);
       BOOST_REQUIRE_EQUAL(router1_call1[0].f1, t1.f1);
       BOOST_REQUIRE_EQUAL(router1_call1[0].f2, t1.f2);
 
+      BOOST_REQUIRE_EQUAL(received_endpoint, "localhost");
+
       vector<test_type1> router1_call2;
-      scoped_connection con2 = msg_router1.forward_msg.connect([&router1_call2](const test_type1& t) {
+      scoped_connection con2 = msg_router1.forward_msg.connect([&router1_call2, &received_endpoint](const test_type1& t, const std::string& endpoint) {
          router1_call2.push_back(t);
+         received_endpoint = endpoint;
       });
 
       const test_type1 t2 = { .f1 = 0x12345677, .f2 = 0x2468013579abcdee };
 
       pack_generic_message(msg, t2);
       BOOST_REQUIRE(true);
-      msg_router1.route(msg);
+      msg_router1.route(msg, "127.0.0.1");
       BOOST_REQUIRE_EQUAL(router1_call1.size(), 2);
       BOOST_REQUIRE_EQUAL(router1_call1[0].f1, t1.f1);
       BOOST_REQUIRE_EQUAL(router1_call1[0].f2, t1.f2);
@@ -116,21 +121,23 @@ BOOST_AUTO_TEST_SUITE(router_tests)
       BOOST_REQUIRE_EQUAL(router1_call2.size(), 1);
       BOOST_REQUIRE_EQUAL(router1_call2[0].f1, t2.f1);
       BOOST_REQUIRE_EQUAL(router1_call2[0].f2, t2.f2);
+
+      BOOST_REQUIRE_EQUAL(received_endpoint, "127.0.0.1");
    }
 
    BOOST_AUTO_TEST_CASE(routing_handler)
    {
       generic_message_handler handler;
       vector<test_type1> router1_call1;
-      scoped_connection con1 = handler.register_msg<test_type1>([&router1_call1](const test_type1& t) {
+      scoped_connection con1 = handler.register_msg<test_type1>([&router1_call1](const test_type1& t, const std::string& endpoint) {
          router1_call1.push_back(t);
       });
       vector<test_type1> router1_call2;
-      scoped_connection con2 = handler.register_msg<test_type1>([&router1_call2](const test_type1& t) {
+      scoped_connection con2 = handler.register_msg<test_type1>([&router1_call2](const test_type1& t, const std::string& endpoint) {
          router1_call2.push_back(t);
       });
       vector<test_type2> router2_call1;
-      scoped_connection con3 = handler.register_msg<test_type2>([&router2_call1](const test_type2& t) {
+      scoped_connection con3 = handler.register_msg<test_type2>([&router2_call1](const test_type2& t, const std::string& endpoint) {
          router2_call1.push_back(t);
       });
 
@@ -139,7 +146,7 @@ BOOST_AUTO_TEST_SUITE(router_tests)
       const test_type1 t1 = { .f1 = 0x12345678, .f2 = 0x2468013579abcdef };
 
       pack_generic_message(msg, t1);
-      handler.route(msg);
+      handler.route(msg, "localhost");
       BOOST_REQUIRE_EQUAL(router1_call1.size(), 1);
       BOOST_REQUIRE_EQUAL(router1_call1[0].f1, t1.f1);
       BOOST_REQUIRE_EQUAL(router1_call1[0].f2, t1.f2);
@@ -151,7 +158,7 @@ BOOST_AUTO_TEST_SUITE(router_tests)
       const test_type2 t2 = { .f1 = 0x1234567890abcdef, .f2 = 0x24681357, .f3 = 0xa9 };
 
       pack_generic_message(msg, t2);
-      handler.route(msg);
+      handler.route(msg, "localhost");
       BOOST_REQUIRE_EQUAL(router1_call1.size(), 1);
       BOOST_REQUIRE_EQUAL(router1_call2.size(), 1);
       BOOST_REQUIRE_EQUAL(router2_call1.size(), 1);
@@ -163,7 +170,7 @@ BOOST_AUTO_TEST_SUITE(router_tests)
 
       // does nothing with test_type3
       pack_generic_message(msg, t3);
-      handler.route(msg);
+      handler.route(msg, "localhost");
       BOOST_REQUIRE_EQUAL(router1_call1.size(), 1);
       BOOST_REQUIRE_EQUAL(router1_call2.size(), 1);
       BOOST_REQUIRE_EQUAL(router2_call1.size(), 1);
@@ -173,21 +180,21 @@ BOOST_AUTO_TEST_SUITE(router_tests)
    {
       generic_message_handler handler;
       vector<test_type1> router1_call1;
-      scoped_connection con1 = handler.register_msg<test_type1>([&router1_call1](const test_type1& t) {
+      scoped_connection con1 = handler.register_msg<test_type1>([&router1_call1](const test_type1& t, const std::string& endpoint) {
          router1_call1.push_back(t);
       });
       auto types = handler.get_registered_types();
       BOOST_REQUIRE_EQUAL(types.size(), 1);
       BOOST_REQUIRE_EQUAL(types[0], typeid(test_type1).hash_code());
       vector<test_type1> router1_call2;
-      scoped_connection con2 = handler.register_msg<test_type1>([&router1_call2](const test_type1& t) {
+      scoped_connection con2 = handler.register_msg<test_type1>([&router1_call2](const test_type1& t, const std::string& endpoint) {
          router1_call2.push_back(t);
       });
       types = handler.get_registered_types();
       BOOST_REQUIRE_EQUAL(types.size(), 1);
       BOOST_REQUIRE_EQUAL(types[0], typeid(test_type1).hash_code());
       vector<test_type2> router2_call1;
-      scoped_connection con3 = handler.register_msg<test_type2>([&router2_call1](const test_type2& t) {
+      scoped_connection con3 = handler.register_msg<test_type2>([&router2_call1](const test_type2& t, const std::string& endpoint) {
          router2_call1.push_back(t);
       });
       types = handler.get_registered_types();

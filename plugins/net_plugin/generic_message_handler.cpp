@@ -8,14 +8,14 @@ namespace eosio { namespace net {
       : type(type) {
    }
 
-   void generic_message_handler::route(const generic_message& msg) const {
+   void generic_message_handler::route(const generic_message& msg, const string& endpoint) const {
       auto existing_router = _routers.find(msg.type);
       if (existing_router == _routers.cend()) {
          dlog( "No routes for generic_message of type: ${type}", ("type", msg.type) );
          return;
       }
 
-      existing_router->second->route(msg);
+      existing_router->second->route(msg, endpoint);
    }
 
    generic_message_types generic_message_handler::get_registered_types() const {

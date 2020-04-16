@@ -57,7 +57,7 @@ namespace eosio {
 
    template<typename T, typename ForwardMessage>
    boost::signals2::scoped_connection net_plugin::register_msg(ForwardMessage forward_msg) {
-      return generic_msg_handler.register_msg(forward_msg);
+      return generic_msg_handler.register_msg<T>(forward_msg);
    }
 
    template<typename T>
