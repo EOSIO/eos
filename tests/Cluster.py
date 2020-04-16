@@ -273,6 +273,7 @@ class Cluster(object):
             assert(isinstance(specificExtraNodeosArgs, dict))
             for nodeNum,arg in specificExtraNodeosArgs.items():
                 assert(isinstance(nodeNum, (str,int)))
+                Utils.Print("nodeNum: \"%s\", arg: \"%s\"" % (nodeNum, arg))
                 assert(isinstance(arg, str))
                 cmdArr.append("--specific-num")
                 cmdArr.append(str(nodeNum))
