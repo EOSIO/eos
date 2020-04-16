@@ -804,18 +804,18 @@ int apply_context::get_action( uint32_t type, uint32_t index, char* buffer, size
 
 int apply_context::get_context_free_data( uint32_t index, char* buffer, size_t buffer_size )const
 {
-   const prunable_transaction_data::prunable_data_type& data = trx_context.packed_trx.get_prunable_data().prunable_data;
+   const packed_transaction::prunable_data_type::prunable_data_t& data = trx_context.packed_trx.get_prunable_data().prunable_data;
    const bytes* cfd = nullptr;
-   if( data.contains<prunable_transaction_data::none>() || data.contains<prunable_transaction_data::signatures_only>() ) {
-   } else if( data.contains<prunable_transaction_data::partial>() ) {
-      if( index >= data.get<prunable_transaction_data::partial>().context_free_segments.size() ) return -1;
+   if( data.contains<packed_transaction::prunable_data_type::none>() || data.contains<packed_transaction::prunable_data_type::signatures_only>() ) {
+   } else if( data.contains<packed_transaction::prunable_data_type::partial>() ) {
+      if( index >= data.get<packed_transaction::prunable_data_type::partial>().context_free_segments.size() ) return -1;
 
       cfd = trx_context.packed_trx.get_context_free_data(index);
    } else {
       const std::vector<bytes>& context_free_data =
-            data.contains<prunable_transaction_data::full_legacy>() ?
-               data.get<prunable_transaction_data::full_legacy>().context_free_segments :
-               data.get<prunable_transaction_data::full>().context_free_segments;
+            data.contains<packed_transaction::prunable_data_type::full_legacy>() ?
+               data.get<packed_transaction::prunable_data_type::full_legacy>().context_free_segments :
+               data.get<packed_transaction::prunable_data_type::full>().context_free_segments;
       if( index >= context_free_data.size() ) return -1;
 
       cfd = &context_free_data[index];
