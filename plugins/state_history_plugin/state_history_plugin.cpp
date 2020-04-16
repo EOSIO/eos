@@ -13,6 +13,8 @@
 #include <boost/iostreams/filtering_stream.hpp>
 #include <boost/signals2/connection.hpp>
 
+#include "cppkin.h"
+
 using tcp    = boost::asio::ip::tcp;
 namespace ws = boost::beast::websocket;
 
@@ -420,7 +422,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       cppkin::Trace trace = cppkin::Trace("StateHistory");
       auto ship_span = trace.CreateSpan("StateHistory");
       produce_span.AddSimpleTag("block_num", int(block_state->block_num));
-      produce_span.AddSimpleTag("build_tag", std::string(std::getenv("BUILD_TAG")));
+      produce_span.AddSimpleTag("build_tag", std::getenv("BUILD_TAG"));
 
       store_traces(block_state);
       store_chain_state(block_state);
