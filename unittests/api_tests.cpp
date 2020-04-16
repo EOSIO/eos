@@ -892,16 +892,9 @@ BOOST_AUTO_TEST_CASE(light_validation_skip_cfa) try {
    BOOST_CHECK(!trace->action_traces.at(1).context_free); // non-cfa
    BOOST_CHECK_EQUAL("", trace->action_traces.at(1).console);
    
-   fc::temp_directory tempdir;
-   auto conf_genesis = tester::default_config( tempdir );
-   
-   auto& cfg = conf_genesis.first;
-   cfg.trusted_producers = { N(eosio) }; // light validation 
-   
-   TESTER other( {builtin_protocol_feature_t::stop_deferred_transactions,
+   tester other( {builtin_protocol_feature_t::stop_deferred_transactions,
                   builtin_protocol_feature_t::remove_deferred_transactions},
-                  conf_genesis.first,
-                  conf_genesis.second);
+                  { N(eosio) });
    
    transaction_trace_ptr other_trace;
    auto cc = other.control->applied_transaction.connect( [&](std::tuple<const transaction_trace_ptr&, const signed_transaction&> x) {
@@ -911,7 +904,6 @@ BOOST_AUTO_TEST_CASE(light_validation_skip_cfa) try {
       }
    } );
 
-   std::cout << blocks.size() << std::endl;
    for (auto& new_block : blocks) {
       other.push_block(new_block);
    }

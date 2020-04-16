@@ -297,7 +297,6 @@ namespace eosio { namespace testing {
    }
 
    void base_tester::push_block(signed_block_ptr b) {
-       std::cout << "0" << std::endl;
       auto bsf = control->create_block_state_future(b);
       unapplied_transactions.add_aborted( control->abort_block() );
       control->push_block( bsf, [this]( const branch_type& forked_branch ) {
@@ -310,7 +309,6 @@ namespace eosio { namespace testing {
       if (itr == last_produced_block.end() || block_header::num_from_id(b->id()) > block_header::num_from_id(itr->second)) {
          last_produced_block[b->producer] = b->id();
       }
-      std::cout << "1" << std::endl;
    }
 
    signed_block_ptr base_tester::_produce_block( fc::microseconds skip_time, bool skip_pending_trxs ) {
