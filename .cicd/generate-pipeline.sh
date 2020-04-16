@@ -67,7 +67,7 @@ for FILE in $(ls $CICD_DIR/platforms/$PLATFORM_TYPE); do
     if [[ $FILE_NAME =~ 'macos-10.14' ]]; then
       export ANKA_TEMPLATE_NAME='10.14.6_6C_14G_40G'
     elif [[ $FILE_NAME =~ 'macos-10.15' ]]; then
-      export ANKA_TEMPLATE_NAME='10.15.3_6C_14G_40G'
+      export ANKA_TEMPLATE_NAME='10.15.4_6C_14G_40G'
     else # Linux
       export ANKA_TAG_BASE=''
       export ANKA_TEMPLATE_NAME=''
