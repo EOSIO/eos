@@ -1920,7 +1920,8 @@ static auto maybe_make_debug_time_logger() -> fc::optional<decltype(make_debug_t
 void producer_plugin_impl::produce_block() {
    //ilog("produce_block ${t}", ("t", fc::time_point::now())); // for testing _produce_time_offset_us
    cppkin::Trace trace = cppkin::Trace("ProduceBlock");
-   auto produce_span = trace.CreateSpan("ProduceBlock");
+   auto prepare_span = trace.CreateSpan("PrepareBlock");
+
    EOS_ASSERT(_pending_block_mode == pending_block_mode::producing, producer_exception, "called produce_block while not actually producing");
    chain::controller& chain = chain_plug->chain();
    const auto& hbs = chain.head_block_state();
@@ -1959,12 +1960,19 @@ void producer_plugin_impl::produce_block() {
       return sigs;
    } );
 
+   prepare_span.Submit();
+
+   auto commit_span = trace.CreateSpan("CommitBlock");
+
+   cppkin::PushSpan(commit_span);
    chain.commit_block();
+   cppkin::PopSpan();
 
    block_state_ptr new_bs = chain.head_block_state();
-   produce_span.AddSimpleTag("block_num", int(new_bs->block_num));
-   produce_span.AddSimpleTag("build_tag", std::getenv("BUILD_TAG"));
-   produce_span.Submit();
+   commit_span.AddSimpleTag("block_num", int(new_bs->block_num));
+   commit_span.AddSimpleTag("build_tag", std::getenv("BUILD_TAG"));
+
+   commit_span.Submit();
    trace.Submit();
 
    ilog("Produced block ${id}... #${n} @ ${t} signed by ${p} [trxs: ${count}, lib: ${lib}, confirmed: ${confs}]",
