@@ -86,7 +86,7 @@ int main(int argc, char** argv)
 
       cppkin::CppkinParams cppkinParams;
       cppkinParams.AddParam(cppkin::ConfigTags::ENDPOINT, std::string("https://trace-api.newrelic.com/trace/v1"));
-      cppkinParams.AddParam(cppkin::ConfigTags::SERVICE_NAME, std::string("nodeos"));
+      cppkinParams.AddParam(cppkin::ConfigTags::SERVICE_NAME, std::string(std::getenv("NEW_RELIC_SERVICE_NAME")));
       cppkinParams.AddParam(cppkin::ConfigTags::PORT, -1);
       cppkinParams.AddParam(cppkin::ConfigTags::SAMPLE_COUNT, 1);
       cppkinParams.AddParam(cppkin::ConfigTags::TRANSPORT_TYPE, cppkin::TransportType(cppkin::TransportType::Http).ToString());
