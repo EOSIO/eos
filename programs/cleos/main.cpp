@@ -343,6 +343,10 @@ auto abi_serializer_resolver = [](const name& account) -> fc::optional<abi_seria
   return it->second;
 };
 
+auto abi_serializer_resolver_empty = [](const name& account) -> fc::optional<abi_serializer> {
+   return fc::optional<abi_serializer>();
+};
+
 void prompt_for_wallet_password(string& pw, const string& name) {
    if(pw.size() == 0 && name != "SecureEnclave") {
       std::cout << localized("password: ");
@@ -3444,7 +3448,7 @@ int main( int argc, char** argv ) {
       fc::variant trx_var = json_from_file_or_string(trx_json_to_sign);
       signed_transaction trx;
       try {
-        trx = trx_var.as<signed_transaction>();
+        abi_serializer::from_variant( trx_var, trx, abi_serializer_resolver_empty, abi_serializer::create_yield_function( abi_serializer_max_time ) );
       } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Invalid transaction format: '${data}'",
                                ("data", fc::json::to_string(trx_var, fc::time_point::maximum())))
 

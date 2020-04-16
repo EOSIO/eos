@@ -63,7 +63,7 @@ function set_system_vars() {
         export OS_MAJ=$(echo "${OS_VER}" | cut -d'.' -f1)
         export OS_MIN=$(echo "${OS_VER}" | cut -d'.' -f2)
         export OS_PATCH=$(echo "${OS_VER}" | cut -d'.' -f3)
-        export MEM_GIG=$(bc <<< "($(sysctl -in hw.memsize) / 1024000000)")
+        export MEM_GIG=$(($(sysctl -in hw.memsize) / 1024 / 1024 /1024))
         export DISK_INSTALL=$(df -h . | tail -1 | tr -s ' ' | cut -d\  -f1 || cut -d' ' -f1)
         export blksize=$(df . | head -1 | awk '{print $2}' | cut -d- -f1)
         export gbfactor=$(( 1073741824 / blksize ))
