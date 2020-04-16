@@ -651,4 +651,7 @@ void packed_transaction::reflector_init()
    estimated_size = calculate_estimated_size();
 }
 
+void packed_transaction::prunable_data_type::full_legacy::unpack_context_free_data(packed_transaction_v0::compression_type compression) {
+   context_free_segments = chain::unpack_context_free_data(packed_context_free_data, compression);
+}
 } } // eosio::chain

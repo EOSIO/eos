@@ -246,6 +246,7 @@ namespace eosio { namespace chain {
             std::vector<signature_type>     signatures;
             bytes                           packed_context_free_data;
             vector<bytes>                   context_free_segments;
+            void unpack_context_free_data(packed_transaction_v0::compression_type compression);
          };
 
          using prunable_data_t = fc::static_variant< full_legacy,
