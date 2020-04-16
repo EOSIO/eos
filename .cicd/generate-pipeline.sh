@@ -79,6 +79,10 @@ export BUILD_SOURCE=${BUILD_SOURCE:---build \$BUILDKITE_BUILD_ID}
 if [[ ! $BUILDKITE_PIPELINE_SLUG =~ 'lrt' ]] && [[ $BUILDKITE_BRANCH =~ ^release/[0-9]+\.[0-9]+\.x$ || $BUILDKITE_BRANCH =~ ^master$ || $BUILDKITE_BRANCH =~ ^develop$ ]]; then
     [[ $BUILDKITE_SOURCE != 'schedule' ]] && export TRIGGER_JOB=true
 fi
+# run LRTs synchronously when running full test suite
+if [[ "$RUN_ALL_TESTS" == 'true' ]]; then
+    [[ "$SKIP_LONG_RUNNING_TESTS" != 'true' ]] && export SKIP_LONG_RUNNING_TESTS='false' && export TRIGGER_JOB='false'
+fi
 oIFS="$IFS"
 IFS=$''
 nIFS=$IFS # fix array splitting (\n won't work)
