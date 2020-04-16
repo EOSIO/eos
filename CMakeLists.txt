@@ -203,8 +203,6 @@ install(FILES ${CMAKE_BINARY_DIR}/modules/EosioTester.cmake DESTINATION ${CMAKE_
 
 configure_file(${CMAKE_SOURCE_DIR}/LICENSE
                ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE COPYONLY)
-configure_file(${CMAKE_SOURCE_DIR}/libraries/wabt/LICENSE
-               ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE.wabt COPYONLY)
 configure_file(${CMAKE_SOURCE_DIR}/libraries/softfloat/COPYING.txt
                ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE.softfloat COPYONLY)
 configure_file(${CMAKE_SOURCE_DIR}/libraries/wasm-jit/LICENSE
