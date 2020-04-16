@@ -3,8 +3,9 @@
 namespace eosio { namespace chain { namespace webassembly {
    char* interface::memcpy( unvalidated_ptr<char> dest, unvalidated_ptr<const char> src, wasm_size_t length) const {
       volatile auto check_src = *((const char*)src + length - 1);
-      volatile auto check_dest = *((const char*)dest + length);
-      vm::ignore_unused_variable_warning(check_src, check_dest);
+      volatile auto check_dest = *((const char*)dest + length - 1);
+      volatile auto check_result = *(const char*)dest;
+      vm::ignore_unused_variable_warning(check_src, check_dest, check_result);
       EOS_ASSERT((size_t)(std::abs((ptrdiff_t)(char*)dest - (ptrdiff_t)(const char*)src)) >= length,
             overlapping_memory_error, "memcpy can only accept non-aliasing pointers");
       return (char *)std::memcpy((char*)dest, (const char*)src, length);
@@ -12,8 +13,9 @@ namespace eosio { namespace chain { namespace webassembly {
 
    char* interface::memmove( unvalidated_ptr<char> dest, unvalidated_ptr<const char> src, wasm_size_t length) const {
       volatile auto check_src = *((const char*)src + length - 1);
-      volatile auto check_dest = *((const char*)dest + length);
-      vm::ignore_unused_variable_warning(check_src, check_dest);
+      volatile auto check_dest = *((const char*)dest + length - 1);
+      volatile auto check_result = *(const char*)dest;
+      vm::ignore_unused_variable_warning(check_src, check_dest, check_result);
       return (char *)std::memmove((char*)dest, (const char*)src, length);
    }
 
@@ -26,8 +28,9 @@ namespace eosio { namespace chain { namespace webassembly {
    }
 
    char* interface::memset( unvalidated_ptr<char> dest, int32_t value, wasm_size_t length ) const {
-      volatile auto check_dest = *((const char*)dest + length);
-      vm::ignore_unused_variable_warning(check_dest);
+      volatile auto check_dest = *((const char*)dest + length - 1);
+      volatile auto check_result = *(const char*)dest;
+      vm::ignore_unused_variable_warning(check_dest, check_result);
       return (char *)std::memset( (char*)dest, value, length );
    }
 

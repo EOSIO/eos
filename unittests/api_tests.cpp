@@ -2057,6 +2057,143 @@ BOOST_FIXTURE_TEST_CASE(crypto_tests, TESTER) { try {
 } FC_LOG_AND_RETHROW() }
 
 /*************************************************************************************
+ * memory_tests test case
+ *************************************************************************************/
+static const char memcpy_pass_wast[] = R"======(
+(module
+ (import "env" "memcpy" (func $memcpy (param i32 i32 i32) (result i32)))
+ (import "env" "eosio_assert" (func $eosio_assert (param i32 i32)))
+ (memory 1)
+ (func (export "apply") (param i64 i64 i64)
+  (i64.store (i32.const 0) (i64.const 0x8877665544332211))
+  (call $eosio_assert (i32.eq (call $memcpy (i32.const 65535) (i32.const 0) (i32.const 1)) (i32.const 65535)) (i32.const 128))
+  (call $eosio_assert (i64.eq (i64.load (i32.const 65528)) (i64.const 0x1100000000000000)) (i32.const 256))
+  (drop (call $memcpy (i32.const 8) (i32.const 7) (i32.const 1)))
+  (drop (call $memcpy (i32.const 7) (i32.const 8) (i32.const 1)))
+ )
+ (data (i32.const 128) "expected memcpy to return 65535")
+ (data (i32.const 256) "expected memcpy to write one byte")
+)
+)======";
+
+static const char memcpy_overlap_wast[] = R"======(
+(module
+ (import "env" "memcpy" (func $memcpy (param i32 i32 i32) (result i32)))
+ (memory 1)
+ (func (export "apply") (param i64 i64 i64)
+  (drop (call $memcpy (i32.const 16) (i32.wrap/i64 (get_local 2)) (i32.const 8)))
+ )
+)
+)======";
+
+static const char memmove_pass_wast[] = R"======(
+(module
+ (import "env" "memmove" (func $memmove (param i32 i32 i32) (result i32)))
+ (import "env" "eosio_assert" (func $eosio_assert (param i32 i32)))
+ (memory 1)
+ (func $fillmem (param i32 i32)
+  (loop
+   (i32.store8 (get_local 0) (get_local 1))
+   (set_local 1 (i32.sub (get_local 1) (i32.const 1)))
+   (set_local 0 (i32.add (get_local 0) (i32.const 1)))
+   (br_if 0 (get_local 1))
+  )
+ )
+ (func $checkmem (param i32 i32 i32)
+   (loop
+    (call $eosio_assert (i32.eq (i32.load8_u (get_local 0)) (get_local 1)) (get_local 2))
+    (set_local 1 (i32.sub (get_local 1) (i32.const 1)))
+    (set_local 0 (i32.add (get_local 0) (i32.const 1)))
+    (br_if 0 (get_local 1))
+   )
+ )
+ (func (export "apply") (param i64 i64 i64)
+  (i64.store (i32.const 0) (i64.const 0x8877665544332211))
+  (call $eosio_assert (i32.eq (call $memmove (i32.const 65535) (i32.const 0) (i32.const 1)) (i32.const 65535)) (i32.const 128))
+  (call $eosio_assert (i64.eq (i64.load (i32.const 65528)) (i64.const 0x1100000000000000)) (i32.const 256))
+
+  (call $fillmem (i32.const 8) (i32.const 128))
+  (drop (call $memmove (i32.const 64) (i32.const 8) (i32.const 128)))
+  (call $checkmem (i32.const 64) (i32.const 128) (i32.const 384))
+
+  (call $fillmem (i32.const 8) (i32.const 128))
+  (drop (call $memmove (i32.const 8) (i32.const 8) (i32.const 128)))
+  (call $checkmem (i32.const 8) (i32.const 128) (i32.const 512))
+
+  (call $fillmem (i32.const 64) (i32.const 128))
+  (drop (call $memmove (i32.const 8) (i32.const 64) (i32.const 128)))
+  (call $checkmem (i32.const 8) (i32.const 128) (i32.const 640))
+ )
+ (data (i32.const 128) "expected memmove to return 65535")
+ (data (i32.const 256) "expected memmove to write one byte")
+ (data (i32.const 384) "memmove overlap dest above src")
+ (data (i32.const 512) "memmove overlap exact")
+ (data (i32.const 640) "memmove overlap src above dst")
+)
+)======";
+
+static const char memcmp_pass_wast[] = R"======(
+(module
+ (import "env" "memcmp" (func $memcmp (param i32 i32 i32) (result i32)))
+ (import "env" "eosio_assert" (func $eosio_assert (param i32 i32)))
+ (memory 1)
+ (func (export "apply") (param i64 i64 i64)
+  (call $eosio_assert (i32.eq (call $memcmp (i32.const 65535) (i32.const 65535) (i32.const 1)) (i32.const 0)) (i32.const 128))
+  (call $eosio_assert (i32.eq (call $memcmp (i32.const 0) (i32.const 2) (i32.const 3)) (i32.const 0)) (i32.const 256))
+  (call $eosio_assert (i32.eq (call $memcmp (i32.const 0) (i32.const 2) (i32.const 6)) (i32.const -1)) (i32.const 384))
+  (call $eosio_assert (i32.eq (call $memcmp (i32.const 2) (i32.const 0) (i32.const 6)) (i32.const 1)) (i32.const 512))
+ )
+ (data (i32.const 0) "abababcdcdcd")
+ (data (i32.const 128) "memcmp at end of memory")
+ (data (i32.const 256) "memcmp overlap eq1")
+ (data (i32.const 384) "memcmp overlap <")
+ (data (i32.const 512) "memcmp overlap >")
+)
+)======";
+
+static const char memset_pass_wast[] = R"======(
+(module
+ (import "env" "memset" (func $memset (param i32 i32 i32) (result i32)))
+ (import "env" "eosio_assert" (func $eosio_assert (param i32 i32)))
+ (memory 1)
+ (func (export "apply") (param i64 i64 i64)
+  (call $eosio_assert (i32.eq (call $memset (i32.const 65535) (i32.const 0xCC) (i32.const 1)) (i32.const 65535)) (i32.const 128))
+  (call $eosio_assert (i64.eq (i64.load (i32.const 65528)) (i64.const 0xCC00000000000000)) (i32.const 256))
+ )
+ (data (i32.const 128) "expected memset to return 65535")
+ (data (i32.const 256) "expected memset to write one byte")
+)
+)======";
+
+BOOST_FIXTURE_TEST_CASE(memory_tests, TESTER) {
+   produce_block();
+   create_accounts( { N(memcpy), N(memcpy2), N(memmove), N(memcmp), N(memset) } );
+   set_code( N(memcpy), memcpy_pass_wast );
+   set_code( N(memcpy2), memcpy_overlap_wast );
+   set_code( N(memmove), memmove_pass_wast );
+   set_code( N(memcmp), memcmp_pass_wast );
+   set_code( N(memset), memset_pass_wast );
+   auto pushit = [&](name acct, name act) {
+      signed_transaction trx;
+      trx.actions.push_back({ { {acct, config::active_name} }, acct, act, bytes()});
+      set_transaction_headers(trx);
+      trx.sign(get_private_key(acct, "active"), control->get_chain_id());
+      push_transaction(trx);
+   };
+   pushit(N(memcpy), name());
+   pushit(N(memcpy2), name(0));
+   pushit(N(memcpy2), name(8));
+   BOOST_CHECK_THROW(pushit(N(memcpy2), name(12)), overlapping_memory_error);
+   BOOST_CHECK_THROW(pushit(N(memcpy2), name(16)), overlapping_memory_error);
+   BOOST_CHECK_THROW(pushit(N(memcpy2), name(20)), overlapping_memory_error);
+   pushit(N(memcpy2), name(24));
+
+   pushit(N(memmove), name());
+   pushit(N(memcmp), name());
+   pushit(N(memset), name());
+}
+
+/*************************************************************************************
  * print_tests test case
  *************************************************************************************/
 BOOST_FIXTURE_TEST_CASE(print_tests, TESTER) { try {
