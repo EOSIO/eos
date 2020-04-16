@@ -1963,6 +1963,7 @@ void producer_plugin_impl::produce_block() {
 
    block_state_ptr new_bs = chain.head_block_state();
    produce_span.AddSimpleTag("block_num", int(new_bs->block_num));
+   produce_span.AddSimpleTag("build_tag", std::string(std::getenv("BUILD_TAG")));
    produce_span.Submit();
    trace.Submit();
 

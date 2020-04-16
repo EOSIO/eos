@@ -417,6 +417,11 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
    }
 
    void on_accepted_block(const block_state_ptr& block_state) {
+      cppkin::Trace trace = cppkin::Trace("StateHistory");
+      auto ship_span = trace.CreateSpan("StateHistory");
+      produce_span.AddSimpleTag("block_num", int(block_state->block_num));
+      produce_span.AddSimpleTag("build_tag", std::string(std::getenv("BUILD_TAG")));
+
       store_traces(block_state);
       store_chain_state(block_state);
       for (auto& s : sessions) {
@@ -427,6 +432,9 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
             p->send_update(true);
          }
       }
+
+      ship_span.Submit();
+      trace.Submit();
    }
 
    void store_traces(const block_state_ptr& block_state) {
