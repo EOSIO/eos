@@ -482,15 +482,15 @@ namespace impl {
          const auto& trx = ptrx.get_transaction();
          mvo("id", trx.id());
          const auto* sigs = ptrx.get_signatures();
-         if( ptrx.get_prunable_data().prunable_data.contains<prunable_transaction_data::full_legacy>() ) {
-            const auto& legacy = ptrx.get_prunable_data().prunable_data.get<prunable_transaction_data::full_legacy>();
+         if( ptrx.get_prunable_data().prunable_data.contains<packed_transaction::prunable_data_type::full_legacy>() ) {
+            const auto& legacy = ptrx.get_prunable_data().prunable_data.get<packed_transaction::prunable_data_type::full_legacy>();
             mvo("signatures", legacy.signatures );
          } else {
             mvo("signatures", vector<signature_type>());
          }
          mvo("compression", ptrx.get_compression());
-         if( ptrx.get_prunable_data().prunable_data.contains<prunable_transaction_data::full_legacy>() ) {
-            const auto& legacy = ptrx.get_prunable_data().prunable_data.get<prunable_transaction_data::full_legacy>();
+         if( ptrx.get_prunable_data().prunable_data.contains<packed_transaction::prunable_data_type::full_legacy>() ) {
+            const auto& legacy = ptrx.get_prunable_data().prunable_data.get<packed_transaction::prunable_data_type::full_legacy>();
             mvo("packed_context_free_data", legacy.packed_context_free_data);
             mvo("context_free_data", legacy.context_free_segments);
          } else {

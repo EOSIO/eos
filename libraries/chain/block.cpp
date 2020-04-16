@@ -143,7 +143,7 @@ namespace eosio { namespace chain {
       auto visitor = overloaded{
           [](const transaction_id_type &id) -> transaction_receipt_v0::trx_type { return id; },
           [](const packed_transaction &trx) -> transaction_receipt_v0::trx_type {
-             const auto& legacy = trx.get_prunable_data().prunable_data.get<prunable_transaction_data::full_legacy>();
+             const auto& legacy = trx.get_prunable_data().prunable_data.get<packed_transaction::prunable_data_type::full_legacy>();
              return packed_transaction_v0(trx.get_packed_transaction(), legacy.signatures, legacy.packed_context_free_data, trx.get_compression());
           }};
 

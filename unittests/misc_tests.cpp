@@ -722,7 +722,8 @@ BOOST_AUTO_TEST_CASE(transaction_test) { try {
             ("name", "nonce")
             ("data", fc::raw::pack(std::string("dummy")))
          })
-      );
+      )
+      ("context_free_data", vector<bytes>{{'d','u','m','m','y',' ','d','a','t','a'}});
 
    abi_serializer::from_variant(pretty_trx, trx, test.get_resolver(), abi_serializer::create_yield_function( test.abi_serializer_max_time ));
 
@@ -796,6 +797,10 @@ BOOST_AUTO_TEST_CASE(transaction_test) { try {
    BOOST_CHECK_EQUAL(pkt.id(), pkt4.get_transaction().id());
    BOOST_CHECK_EQUAL(true, trx.expiration == pkt4.expiration());
    BOOST_CHECK_EQUAL(true, trx.expiration == pkt4.get_transaction().expiration);
+   BOOST_REQUIRE(pkt.get_context_free_data() != nullptr);
+   BOOST_REQUIRE(pkt4.get_context_free_data() != nullptr);
+   BOOST_REQUIRE_EQUAL(pkt.get_context_free_data()->size(), pkt4.get_context_free_data()->size());
+   BOOST_CHECK(std::equal(pkt.get_context_free_data()->begin(), pkt.get_context_free_data()->end(), pkt4.get_context_free_data()->begin()));
    keys.clear();
    pkt4.to_packed_transaction_v0()->get_signed_transaction().get_signature_keys(test.control->get_chain_id(), fc::time_point::maximum(), keys);
    BOOST_CHECK_EQUAL(1u, keys.size());
@@ -866,7 +871,8 @@ BOOST_AUTO_TEST_CASE(transaction_metadata_test) { try {
             ("name", "nonce")
             ("data", fc::raw::pack(std::string("dummy data")))
          })
-      );
+      )
+      ("context_free_data", vector<bytes>{{'d','u','m','m','y',' ','d','a','t','a'}});
 
       abi_serializer::from_variant(pretty_trx, trx, test.get_resolver(), abi_serializer::create_yield_function( test.abi_serializer_max_time ));
 
@@ -919,43 +925,43 @@ BOOST_AUTO_TEST_CASE(transaction_metadata_test) { try {
 
 BOOST_AUTO_TEST_CASE(prunable_transaction_data_test) {
    {
-      prunable_transaction_data basic{prunable_transaction_data::full_legacy{{}, {}}};
-      prunable_transaction_data pruned = prunable_transaction_data(basic).prune_all();
-      BOOST_TEST(basic.maximum_pruned_pack_size(prunable_transaction_data::compression_type::none) >=
-                 pruned.maximum_pruned_pack_size(prunable_transaction_data::compression_type::none));
-      BOOST_TEST(fc::raw::pack_size(basic) <= basic.maximum_pruned_pack_size(prunable_transaction_data::compression_type::none));
-      BOOST_TEST(fc::raw::pack_size(pruned) <= pruned.maximum_pruned_pack_size(prunable_transaction_data::compression_type::none));
+      packed_transaction::prunable_data_type basic{packed_transaction::prunable_data_type::full_legacy{{}, {}}};
+      packed_transaction::prunable_data_type pruned = packed_transaction::prunable_data_type( basic).prune_all();
+      BOOST_TEST( basic.maximum_pruned_pack_size( packed_transaction::prunable_data_type::compression_type::none) >=
+                  pruned.maximum_pruned_pack_size( packed_transaction::prunable_data_type::compression_type::none));
+      BOOST_TEST(fc::raw::pack_size(basic) <= basic.maximum_pruned_pack_size( packed_transaction::prunable_data_type::compression_type::none));
+      BOOST_TEST(fc::raw::pack_size(pruned) <= pruned.maximum_pruned_pack_size( packed_transaction::prunable_data_type::compression_type::none));
       BOOST_TEST(basic.digest().str() == pruned.digest().str());
    }
 
    bytes large_bytes(48);
    {
-      prunable_transaction_data basic{prunable_transaction_data::full_legacy{{}, fc::raw::pack(std::vector(4, large_bytes))}};
-      prunable_transaction_data pruned = prunable_transaction_data(basic).prune_all();
-      BOOST_TEST(basic.maximum_pruned_pack_size(prunable_transaction_data::compression_type::none) >=
-                 pruned.maximum_pruned_pack_size(prunable_transaction_data::compression_type::none));
-      BOOST_TEST(fc::raw::pack_size(basic) <= basic.maximum_pruned_pack_size(prunable_transaction_data::compression_type::none));
-      BOOST_TEST(fc::raw::pack_size(pruned) <= pruned.maximum_pruned_pack_size(prunable_transaction_data::compression_type::none));
+      packed_transaction::prunable_data_type basic{packed_transaction::prunable_data_type::full_legacy{{}, fc::raw::pack( std::vector( 4, large_bytes))}};
+      packed_transaction::prunable_data_type pruned = packed_transaction::prunable_data_type(basic).prune_all();
+      BOOST_TEST( basic.maximum_pruned_pack_size( packed_transaction::prunable_data_type::compression_type::none) >=
+                  pruned.maximum_pruned_pack_size( packed_transaction::prunable_data_type::compression_type::none));
+      BOOST_TEST(fc::raw::pack_size(basic) <= basic.maximum_pruned_pack_size( packed_transaction::prunable_data_type::compression_type::none));
+      BOOST_TEST(fc::raw::pack_size(pruned) <= pruned.maximum_pruned_pack_size( packed_transaction::prunable_data_type::compression_type::none));
       BOOST_TEST(basic.digest().str() == pruned.digest().str());
    }
 
    {
-      prunable_transaction_data basic{prunable_transaction_data::full_legacy{std::vector(4, signature_type()), fc::raw::pack(std::vector(4, large_bytes))}};
-      prunable_transaction_data pruned = prunable_transaction_data(basic).prune_all();
-      BOOST_TEST(basic.maximum_pruned_pack_size(prunable_transaction_data::compression_type::none) >=
-                 pruned.maximum_pruned_pack_size(prunable_transaction_data::compression_type::none));
-      BOOST_TEST(fc::raw::pack_size(basic) <= basic.maximum_pruned_pack_size(prunable_transaction_data::compression_type::none));
-      BOOST_TEST(fc::raw::pack_size(pruned) <= pruned.maximum_pruned_pack_size(prunable_transaction_data::compression_type::none));
+      packed_transaction::prunable_data_type basic{packed_transaction::prunable_data_type::full_legacy{std::vector( 4, signature_type()), fc::raw::pack( std::vector( 4, large_bytes))}};
+      packed_transaction::prunable_data_type pruned = packed_transaction::prunable_data_type(basic).prune_all();
+      BOOST_TEST( basic.maximum_pruned_pack_size( packed_transaction::prunable_data_type::compression_type::none) >=
+                  pruned.maximum_pruned_pack_size( packed_transaction::prunable_data_type::compression_type::none));
+      BOOST_TEST(fc::raw::pack_size(basic) <= basic.maximum_pruned_pack_size( packed_transaction::prunable_data_type::compression_type::none));
+      BOOST_TEST(fc::raw::pack_size(pruned) <= pruned.maximum_pruned_pack_size( packed_transaction::prunable_data_type::compression_type::none));
       BOOST_TEST(basic.digest().str() == pruned.digest().str());
    }
 
    {
-      prunable_transaction_data basic{prunable_transaction_data::full_legacy{std::vector(4, signature_type()), {}}};
-      prunable_transaction_data pruned = prunable_transaction_data(basic).prune_all();
-      BOOST_TEST(basic.maximum_pruned_pack_size(prunable_transaction_data::compression_type::none) >=
-                 pruned.maximum_pruned_pack_size(prunable_transaction_data::compression_type::none));
-      BOOST_TEST(fc::raw::pack_size(basic) <= basic.maximum_pruned_pack_size(prunable_transaction_data::compression_type::none));
-      BOOST_TEST(fc::raw::pack_size(pruned) <= pruned.maximum_pruned_pack_size(prunable_transaction_data::compression_type::none));
+      packed_transaction::prunable_data_type basic{packed_transaction::prunable_data_type::full_legacy{std::vector( 4, signature_type()), {}}};
+      packed_transaction::prunable_data_type pruned = packed_transaction::prunable_data_type(basic).prune_all();
+      BOOST_TEST( basic.maximum_pruned_pack_size( packed_transaction::prunable_data_type::compression_type::none) >=
+                  pruned.maximum_pruned_pack_size( packed_transaction::prunable_data_type::compression_type::none));
+      BOOST_TEST(fc::raw::pack_size(basic) <= basic.maximum_pruned_pack_size( packed_transaction::prunable_data_type::compression_type::none));
+      BOOST_TEST(fc::raw::pack_size(pruned) <= pruned.maximum_pruned_pack_size( packed_transaction::prunable_data_type::compression_type::none));
       BOOST_TEST(basic.digest().str() == pruned.digest().str());
    }
 }
