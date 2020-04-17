@@ -74,11 +74,11 @@ namespace eosio { namespace chain { namespace webassembly {
    EOS_VM_PRECONDITION(early_validate_pointers,
          EOS_VM_INVOKE_ON_ALL([&](auto&& arg, auto&&... rest) {
             using namespace eosio::vm;
-            using arg_t = decltype(arg);
+            using arg_t = std::decay_t<decltype(arg)>;
             if constexpr (is_reference_proxy_type_v<arg_t>) {
                if constexpr (is_span_type_v<dependent_type_t<arg_t>>) {
                   using dep_t = dependent_type_t<arg_t>;
-                  const auto& s = (dep_t&)arg;
+                  const dep_t& s = arg;
                   EOS_ASSERT( s.size() <= std::numeric_limits<wasm_size_t>::max() / (wasm_size_t)sizeof(dependent_type_t<dep_t>),
                         wasm_execution_error, "length will overflow" );
                   volatile auto check = *(reinterpret_cast<const char*>(arg.original_ptr) + s.size_bytes() - 1);
@@ -110,13 +110,13 @@ namespace eosio { namespace chain { namespace webassembly {
    EOS_VM_PRECONDITION(alias_check,
          EOS_VM_INVOKE_ON_ALL(([&](auto&& arg, auto&&... rest) {
             using namespace eosio::vm;
-            using arg_t = decltype(arg);
+            using arg_t = std::decay_t<decltype(arg)>;
             if constexpr (is_span_type_v<arg_t>) {
                // check alignment while we are here
                EOS_ASSERT( reinterpret_cast<std::uintptr_t>(arg.data()) % alignof(dependent_type_t<arg_t>) == 0,
                      wasm_exception, "memory not aligned" );
                eosio::vm::invoke_on<false, eosio::vm::invoke_on_all_t>([&](auto&& narg, auto&&... nrest) {
-                  using nested_arg_t = decltype(arg);
+                  using nested_arg_t = std::decay_t<decltype(arg)>;
                   if constexpr (eosio::vm::is_span_type_v<nested_arg_t>)
                      EOS_ASSERT(!is_aliasing(arg, narg), wasm_exception, "arrays not allowed to alias");
                }, rest...);
