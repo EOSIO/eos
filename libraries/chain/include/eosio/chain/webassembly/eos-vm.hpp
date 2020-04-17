@@ -25,7 +25,6 @@ namespace webassembly { namespace eos_vm_runtime {
 
 using namespace fc;
 using namespace eosio::vm;
-using namespace eosio::chain::webassembly::common;
 
 struct apply_options;
 

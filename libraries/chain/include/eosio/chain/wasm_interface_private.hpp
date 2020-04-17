@@ -1,7 +1,6 @@
 #pragma once
 
 #include <eosio/chain/wasm_interface.hpp>
-#include <eosio/chain/webassembly/wavm.hpp>
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
 #include <eosio/chain/webassembly/eos-vm-oc.hpp>
 #else
