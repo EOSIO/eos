@@ -181,7 +181,6 @@ namespace eosio {
       void bcast_transaction(const packed_transaction& trx);
       void rejected_transaction(const packed_transaction_ptr& trx, uint32_t head_blk_num);
       void bcast_block( const signed_block_ptr& b, const block_id_type& id );
-      void bcast_notice( const block_id_type& id );
       void rejected_block(const block_id_type& id);
 
       void recv_block(const connection_ptr& conn, const block_id_type& msg, uint32_t bnum);
@@ -1257,7 +1256,7 @@ namespace eosio {
    static std::shared_ptr<std::vector<char>> create_send_buffer( const signed_block_v0& sb_v0 ) {
       // this implementation is to avoid copy of signed_block_v0 to net_message
       // matches which of net_message for signed_block_v0
-      fc_dlog( logger, "sending block ${bn}", ("bn", sb_v0.block_num()) );
+      fc_dlog( logger, "sending v0 block ${bn}", ("bn", sb_v0.block_num()) );
       return create_send_buffer( signed_block_v0_which, sb_v0 );
    }
 
@@ -1268,10 +1267,42 @@ namespace eosio {
       return create_send_buffer( packed_transaction_v0_which, *pt_v0 );
    }
 
-   void connection::enqueue_block( const signed_block_ptr& sb, bool to_sync_queue) {
-      fc_dlog( logger, "enqueue block ${num}", ("num", sb->block_num()) );
+   static std::shared_ptr<std::vector<char>> get_send_buffer( connection& c,
+                                                              const signed_block_ptr& b,
+                                                              std::shared_ptr<std::vector<char>>& send_buffer,
+                                                              std::shared_ptr<std::vector<char>>& send_buffer_v0,
+                                                              bool& valid_v0_block )
+   {
+      const uint16_t v = c.protocol_version.load();
+      if( v >= proto_pruned_types ) {
+         if( !send_buffer ) {
+            send_buffer = create_send_buffer( b );
+         }
+         return send_buffer;
+      } else {
+         if( !send_buffer_v0 ) {
+            const auto sb_v0 = valid_v0_block ? b->to_signed_block_v0() : signed_block_v0_uptr();
+            if( !sb_v0 ) {
+               valid_v0_block = false;
+               // unable to convert to v0 signed block and client doesn't support proto_pruned_types, so tell it to go away
+               c.enqueue( go_away_message( fatal_other ) );
+               return send_buffer_v0;
+            }
+            send_buffer_v0 = create_send_buffer( *sb_v0 );
+         }
+         return send_buffer_v0;
+      }
+   }
+
+   void connection::enqueue_block( const signed_block_ptr& b, bool to_sync_queue) {
+      fc_dlog( logger, "enqueue block ${num}", ("num", b->block_num()) );
       verify_strand_in_this_thread( strand, __func__, __LINE__ );
-      enqueue_buffer( create_send_buffer( sb ), no_reason, to_sync_queue);
+
+      std::shared_ptr<std::vector<char>> send_buffer, send_buffer_v0;
+      bool valid_v0_block = b->prune_state != signed_block::prune_state_type::incomplete;
+      auto sb = get_send_buffer( *this, b, send_buffer, send_buffer_v0, valid_v0_block );
+      if( !sb ) return;
+      enqueue_buffer( sb, no_reason, to_sync_queue);
    }
 
    void connection::enqueue_buffer( const std::shared_ptr<std::vector<char>>& send_buffer,
@@ -1951,36 +1982,15 @@ namespace eosio {
 
       std::shared_ptr<std::vector<char>> send_buffer, send_buffer_v0;
       bool valid_v0_block = b->prune_state != signed_block::prune_state_type::incomplete;
-      auto get_send_buffer = [&](const connection_ptr& cp) {
-         const uint16_t v = cp->protocol_version.load();
-         if( v >= proto_pruned_types ) {
-            if( !send_buffer ) {
-               send_buffer = create_send_buffer( b );
-            }
-            return send_buffer;
-         } else {
-            if( !send_buffer_v0 ) {
-               const auto sb_v0 = valid_v0_block ? b->to_signed_block_v0() : signed_block_v0_uptr();
-               if( !sb_v0 ) {
-                  valid_v0_block = false;
-                  // unable to convert to v0 signed block and client doesn't support proto_pruned_types, so tell it to go away
-                  cp->enqueue( go_away_message( fatal_other ) );
-                  return send_buffer_v0;
-               }
-               send_buffer_v0 = create_send_buffer( *sb_v0 );
-            }
-            return send_buffer_v0;
-         }
-      };
-
-      for_each_block_connection( [this, &id, bnum = b->block_num(), &get_send_buffer]( auto& cp ) {
+      const auto bnum = b->block_num();
+      for_each_block_connection( [this, &id, &bnum, &b, &send_buffer, &send_buffer_v0, &valid_v0_block]( auto& cp ) {
          peer_dlog( cp, "socket_is_open ${s}, connecting ${c}, syncing ${ss}",
                     ("s", cp->socket_is_open())("c", cp->connecting.load())("ss", cp->syncing.load()) );
          if( !cp->current() ) return true;
-         std::shared_ptr<std::vector<char>> sb = get_send_buffer( cp );
+         std::shared_ptr<std::vector<char>> sb = get_send_buffer( *cp, b, send_buffer, send_buffer_v0, valid_v0_block );
          if( !sb ) return true;
 
-         cp->strand.post( [this, cp, id, bnum, sb]() {
+         cp->strand.post( [this, cp, id, bnum, sb{std::move(sb)}]() {
             std::unique_lock<std::mutex> g_conn( cp->conn_mtx );
             bool has_block = cp->last_handshake_recv.last_irreversible_block_num >= bnum;
             g_conn.unlock();
