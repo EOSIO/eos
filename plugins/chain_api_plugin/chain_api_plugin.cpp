@@ -31,11 +31,39 @@ struct async_result_visitor : public fc::visitor<fc::variant> {
    }
 };
 
+namespace {
+   template<typename T>
+   T parse_params(const std::string& body) {
+     if (body.empty()) {
+       return {};
+     }
+
+     try {
+       return fc::json::from_string(body).as<T>();
+     } EOS_RETHROW_EXCEPTIONS(chain::invalid_http_request, "Unable to parse valid input from ${body}", ("body", body));
+   }
+}
+
+#define CALL(api_name, api_handle, api_namespace, call_name, http_response_code) \
+{std::string("/v1/" #api_name "/" #call_name), \
+   [api_handle](string, string body, url_response_callback cb) mutable { \
+          api_handle.validate(); \
+          try { \
+             if (body.empty()) body = "{}"; \
+             auto params = parse_params<api_namespace::call_name ## _params, params_type>(body);\
+             fc::variant result( api_handle.call_name( std::move(params) ) ); \
+             cb(http_response_code, std::move(result)); \
+          } catch (...) { \
+             http_plugin::handle_exception(#api_name, #call_name, body, cb); \
+          } \
+       }}
+
 #define CALL_WITH_400(api_name, api_handle, api_namespace, call_name, http_response_code, params_type) \
 {std::string("/v1/" #api_name "/" #call_name), \
    [api_handle](string, string body, url_response_callback cb) mutable { \
           api_handle.validate(); \
           try { \
+             if (body.empty()) body = "{}"; \
              auto params = parse_params<api_namespace::call_name ## _params, params_type>(body);\
              fc::variant result( api_handle.call_name( std::move(params) ) ); \
              cb(http_response_code, std::move(result)); \
@@ -45,6 +73,21 @@ struct async_result_visitor : public fc::visitor<fc::variant> {
        }}
 
 #define CALL_ASYNC_WITH_400(api_name, api_handle, api_namespace, call_name, call_result, http_response_code, params_type) \
+#define CALL_WITH_400(api_name, api_handle, api_namespace, call_name, http_response_code) \
+{std::string("/v1/" #api_name "/" #call_name), \
+   [api_handle](string, string body, url_response_callback cb) mutable { \
+          api_handle.validate(); \
+          try { \
+             if (body.empty()) body = "{}"; \
+             auto params = parse_params<api_namespace::call_name ## _params>(body);\
+             fc::variant result( api_handle.call_name( std::move(params) ) ); \
+             cb(http_response_code, std::move(result)); \
+          } catch (...) { \
+             http_plugin::handle_exception(#api_name, #call_name, body, cb); \
+          } \
+       }}
+
+#define CALL_ASYNC(api_name, api_handle, api_namespace, call_name, call_result, http_response_code) \
 {std::string("/v1/" #api_name "/" #call_name), \
    [api_handle](string, string body, url_response_callback cb) mutable { \
       api_handle.validate(); \
@@ -72,6 +115,8 @@ struct async_result_visitor : public fc::visitor<fc::variant> {
 #define CHAIN_RW_CALL(call_name, http_response_code, params_type) CALL_WITH_400(chain, rw_api, chain_apis::read_write, call_name, http_response_code, params_type)
 #define CHAIN_RO_CALL_ASYNC(call_name, call_result, http_response_code, params_type) CALL_ASYNC_WITH_400(chain, ro_api, chain_apis::read_only, call_name, call_result, http_response_code, params_type)
 #define CHAIN_RW_CALL_ASYNC(call_name, call_result, http_response_code, params_type) CALL_ASYNC_WITH_400(chain, rw_api, chain_apis::read_write, call_name, call_result, http_response_code, params_type)
+
+#define CHAIN_RO_CALL_WITH_400(call_name, http_response_code) CALL_WITH_400(chain, ro_api, chain_apis::read_only, call_name, http_response_code)
 
 void chain_api_plugin::plugin_startup() {
    ilog( "starting chain_api_plugin" );
@@ -115,7 +160,7 @@ void chain_api_plugin::plugin_startup() {
 
    if (chain.account_queries_enabled()) {
       _http_plugin.add_api({
-         CHAIN_RO_CALL(get_accounts_by_authorizers, 200),
+         CHAIN_RO_CALL_WITH_400(get_accounts_by_authorizers, 200),
       });
    }
 }
