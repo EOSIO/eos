@@ -94,7 +94,7 @@ namespace eosio { namespace chain {
       auto from_wasm(void* ptr) const
          -> std::enable_if_t< std::is_lvalue_reference_v<T>,
                               vm::reference_proxy<std::remove_reference_t<T>>> {
-         validate_pointer<std::remove_reference_t<T>*>(ptr, 1);
+         validate_pointer<std::remove_reference_t<T>>(ptr, 1);
          return {ptr};
       }
 
