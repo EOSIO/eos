@@ -133,11 +133,11 @@ namespace eosio { namespace chain {
       return validate_and_extract_block_extensions( block_extensions );
    }
 
-   signed_block_v0_ptr signed_block::to_signed_block_v0() const {
+   signed_block_v0_uptr signed_block::to_signed_block_v0() const {
       if (prune_state != prune_state_type::complete_legacy)
-         return signed_block_v0_ptr{};
+         return signed_block_v0_uptr{};
 
-      auto result = std::make_shared<signed_block_v0>(*static_cast<const signed_block_header*>(this));
+      auto result = std::make_unique<signed_block_v0>(*static_cast<const signed_block_header*>(this));
       result->block_extensions = this->block_extensions;
 
       auto visitor = overloaded{
