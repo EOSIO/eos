@@ -34,13 +34,17 @@ struct async_result_visitor : public fc::visitor<fc::variant> {
 namespace {
    template<typename T>
    T parse_params(const std::string& body) {
-     if (body.empty()) {
-       return {};
-     }
+      if (body.empty()) {
+         return {};
+      }
 
-     try {
-       return fc::json::from_string(body).as<T>();
-     } EOS_RETHROW_EXCEPTIONS(chain::invalid_http_request, "Unable to parse valid input from ${body}", ("body", body));
+      try {
+        try {
+           return fc::json::from_string(body).as<T>();
+        } catch (const chain::chain_exception& e) { // EOS_RETHROW_EXCEPTIONS does not re-type these so, re-code it
+          throw fc::exception(e);
+        }
+      } EOS_RETHROW_EXCEPTIONS(chain::invalid_http_request, "Unable to parse valid input from POST body");
    }
 }
 
