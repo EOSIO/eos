@@ -114,6 +114,7 @@ Options:
 
 #include <fc/io/fstream.hpp>
 
+#define CLI11_HAS_FILESYSTEM 0
 #include "CLI11.hpp"
 #include "help_text.hpp"
 #include "localize.hpp"
