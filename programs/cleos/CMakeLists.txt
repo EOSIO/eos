@@ -4,13 +4,6 @@ if( UNIX AND NOT APPLE )
   set(rt_library rt )
 endif()
 
-# See "Note: Special instructions for GCC 8" on https://github.com/CLIUtils/CLI11
-if( ${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU" AND
-        ${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER_EQUAL 8 AND
-        ${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS 9 )
-    add_compile_definitions(CLI11_HAS_FILESYSTEM=0)
-endif()
-
 set(LOCALEDIR ${CMAKE_INSTALL_PREFIX}/share/locale)
 set(LOCALEDOMAIN ${CLI_CLIENT_EXECUTABLE_NAME})
 configure_file(config.hpp.in config.hpp ESCAPE_QUOTES)
