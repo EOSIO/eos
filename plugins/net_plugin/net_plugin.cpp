@@ -330,7 +330,7 @@ namespace eosio {
        */
       chain::signature_type sign_compact(const chain::public_key_type& signer, const fc::sha256& digest) const;
 
-      constexpr uint16_t to_protocol_version(uint16_t v);
+      constexpr static uint16_t to_protocol_version(uint16_t v);
 
       connection_ptr find_connection(const string& host)const; // must call with held mutex
    };
@@ -392,6 +392,8 @@ namespace eosio {
    constexpr auto     message_header_size = 4;
    constexpr uint32_t signed_block_v0_which = 7;        // see protocol net_message
    constexpr uint32_t packed_transaction_v0_which = 8;  // see protocol net_message
+   constexpr uint32_t signed_block_which = 11;          // see protocol net_message
+   constexpr uint32_t trx_message_v1_which = 12;        // see protocol net_message
 
    /**
     *  For a while, network version was a 16 bit value equal to the second set of 16 bits
@@ -412,10 +414,12 @@ namespace eosio {
     *  the need for compatibility hooks
     */
    constexpr uint16_t proto_base = 0;
-   constexpr uint16_t proto_explicit_sync = 1; // version at time of eosio 1.0
-   constexpr uint16_t block_id_notify = 2;     // reserved. feature was removed. next net_version should be 3
+   constexpr uint16_t proto_explicit_sync = 1;       // version at time of eosio 1.0
+   constexpr uint16_t proto_block_id_notify = 2;     // reserved. feature was removed. next net_version should be 3
+   constexpr uint16_t proto_generic_messages = 3;    // placeholder for generic messages
+   constexpr uint16_t proto_pruned_types = 4;        // supports new signed_block & packed_transaction types
 
-   constexpr uint16_t net_version = proto_explicit_sync;
+   constexpr uint16_t net_version = proto_pruned_types;
 
    /**
     * Index by start_block_num
@@ -574,7 +578,7 @@ namespace eosio {
       int16_t                 sent_handshake_count = 0;
       std::atomic<bool>       connecting{true};
       std::atomic<bool>       syncing{false};
-      uint16_t                protocol_version = 0;
+      std::atomic<uint16_t>   protocol_version = 0;
       uint16_t                consecutive_rejected_blocks = 0;
       std::atomic<uint16_t>   consecutive_immediate_connection_close = 0;
 
@@ -1247,8 +1251,14 @@ namespace eosio {
       // this implementation is to avoid copy of signed_block to net_message
       // matches which of net_message for signed_block
       fc_dlog( logger, "sending block ${bn}", ("bn", sb->block_num()) );
-      auto sb_v0 = sb->to_signed_block_v0();
-      return create_send_buffer( signed_block_v0_which, *sb_v0 );
+      return create_send_buffer( signed_block_which, *sb );
+   }
+
+   static std::shared_ptr<std::vector<char>> create_send_buffer( const signed_block_v0& sb_v0 ) {
+      // this implementation is to avoid copy of signed_block_v0 to net_message
+      // matches which of net_message for signed_block_v0
+      fc_dlog( logger, "sending block ${bn}", ("bn", sb_v0.block_num()) );
+      return create_send_buffer( signed_block_v0_which, sb_v0 );
    }
 
    static std::shared_ptr<std::vector<char>> create_send_buffer( const packed_transaction& trx ) {
@@ -1938,27 +1948,39 @@ namespace eosio {
       fc_dlog( logger, "bcast block ${b}", ("b", b->block_num()) );
 
       if( my_impl->sync_master->syncing_with_peer() ) return;
-      
-      bool have_connection = false;
-      for_each_block_connection( [&have_connection]( auto& cp ) {
+
+      std::shared_ptr<std::vector<char>> send_buffer, send_buffer_v0;
+      bool valid_v0_block = b->prune_state != signed_block::prune_state_type::incomplete;
+      auto get_send_buffer = [&](const connection_ptr& cp) {
+         const uint16_t v = cp->protocol_version.load();
+         if( v >= proto_pruned_types ) {
+            if( !send_buffer ) {
+               send_buffer = create_send_buffer( b );
+            }
+            return send_buffer;
+         } else {
+            if( !send_buffer_v0 ) {
+               const auto sb_v0 = valid_v0_block ? b->to_signed_block_v0() : signed_block_v0_uptr();
+               if( !sb_v0 ) {
+                  valid_v0_block = false;
+                  // unable to convert to v0 signed block and client doesn't support proto_pruned_types, so tell it to go away
+                  cp->enqueue( go_away_message( fatal_other ) );
+                  return send_buffer_v0;
+               }
+               send_buffer_v0 = create_send_buffer( *sb_v0 );
+            }
+            return send_buffer_v0;
+         }
+      };
+
+      for_each_block_connection( [this, &id, bnum = b->block_num(), &get_send_buffer]( auto& cp ) {
          peer_dlog( cp, "socket_is_open ${s}, connecting ${c}, syncing ${ss}",
                     ("s", cp->socket_is_open())("c", cp->connecting.load())("ss", cp->syncing.load()) );
+         if( !cp->current() ) return true;
+         std::shared_ptr<std::vector<char>> sb = get_send_buffer( cp );
+         if( !sb ) return true;
 
-         if( !cp->current() ) {
-            return true;
-         }
-         have_connection = true;
-         return false;
-      } );
-
-      if( !have_connection ) return;
-      std::shared_ptr<std::vector<char>> send_buffer = create_send_buffer( b );
-
-      for_each_block_connection( [this, &id, bnum = b->block_num(), &send_buffer]( auto& cp ) {
-         if( !cp->current() ) {
-            return true;
-         }
-         cp->strand.post( [this, cp, id, bnum, send_buffer]() {
+         cp->strand.post( [this, cp, id, bnum, sb]() {
             std::unique_lock<std::mutex> g_conn( cp->conn_mtx );
             bool has_block = cp->last_handshake_recv.last_irreversible_block_num >= bnum;
             g_conn.unlock();
@@ -1968,7 +1990,7 @@ namespace eosio {
                   return;
                }
                fc_dlog( logger, "bcast block ${b} to ${p}", ("b", bnum)("p", cp->peer_name()) );
-               cp->enqueue_buffer( send_buffer, no_reason );
+               cp->enqueue_buffer( sb, no_reason );
             }
          });
          return true;
@@ -2610,7 +2632,7 @@ namespace eosio {
          protocol_version = my_impl->to_protocol_version(msg.network_version);
          if( protocol_version != net_version ) {
             fc_ilog( logger, "Local network version: ${nv} Remote version: ${mnv}",
-                     ("nv", net_version)( "mnv", protocol_version ) );
+                     ("nv", net_version)("mnv", protocol_version.load()) );
          }
 
          g_conn.lock();
