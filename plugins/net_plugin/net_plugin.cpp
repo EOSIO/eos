@@ -1091,10 +1091,8 @@ namespace eosio {
    }
 
    void connection::send_handshake( bool force ) {
-      bool initial = false;
-      strand.post( [force, c = shared_from_this(), &initial]() {
+      strand.post( [force, c = shared_from_this()]() {
          std::unique_lock<std::mutex> g_conn( c->conn_mtx );
-         initial = c->sent_handshake_count == 0;
          if( c->populate_handshake( c->last_handshake_sent, force ) ) {
             static_assert( std::is_same_v<decltype( c->sent_handshake_count ), int16_t>, "INT16_MAX based on int16_t" );
             if( c->sent_handshake_count == INT16_MAX ) c->sent_handshake_count = 1; // do not wrap
@@ -2207,13 +2205,10 @@ namespace eosio {
          c->set_connection_type( c->peer_address() );
 
          auto resolver = std::make_shared<tcp::resolver>( my_impl->thread_pool->get_executor() );
-         connection_wptr weak_conn = c;
          // Note: need to add support for IPv6 too
          resolver->async_resolve( tcp::v4(), host, port, boost::asio::bind_executor( c->strand,
-            [resolver, weak_conn]( const boost::system::error_code& err, tcp::resolver::results_type endpoints ) {
-               auto c = weak_conn.lock();
-               if( !c ) return;
-               if( !err ) {
+            [resolver, c]( const boost::system::error_code& err, tcp::resolver::results_type endpoints ) {
+               if( !err && !app().is_quiting() ) {
                   c->connect( resolver, endpoints );
                } else {
                   fc_elog( logger, "Unable to resolve ${add}: ${error}", ("add", c->peer_name())( "error", err.message() ) );
