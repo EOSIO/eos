@@ -35,7 +35,7 @@ namespace {
    template<typename T>
    T parse_params(const std::string& body) {
       if (body.empty()) {
-         return {};
+         EOS_THROW(chain::invalid_http_request, "A Request body is required");
       }
 
       try {
