@@ -66,7 +66,6 @@ namespace {
    [api_handle](string, string body, url_response_callback cb) mutable { \
           api_handle.validate(); \
           try { \
-             if (body.empty()) body = "{}"; \
              auto params = parse_params<api_namespace::call_name ## _params>(body);\
              fc::variant result( api_handle.call_name( std::move(params) ) ); \
              cb(http_response_code, std::move(result)); \
