@@ -2412,7 +2412,7 @@ namespace eosio {
          auto peek_ds = pending_message_buffer.create_peek_datastream();
          unsigned_int which{};
          fc::raw::unpack( peek_ds, which );
-         if( which == signed_block_v0_which ) {
+         if( which == signed_block_which || which == signed_block_v0_which ) {
             block_header bh;
             fc::raw::unpack( peek_ds, bh );
 
@@ -2453,10 +2453,16 @@ namespace eosio {
             }
 
             auto ds = pending_message_buffer.create_datastream();
-            fc::raw::unpack( ds, which ); // throw away
-            signed_block_v0 sb_v0;
-            fc::raw::unpack( ds, sb_v0 );
-            shared_ptr<signed_block> ptr = std::make_shared<signed_block>( std::move( sb_v0 ), true );
+            fc::raw::unpack( ds, which );
+            shared_ptr<signed_block> ptr;
+            if( which == signed_block_which ) {
+               ptr = std::make_shared<signed_block>();
+               fc::raw::unpack( ds, *ptr );
+            } else {
+               signed_block_v0 sb_v0;
+               fc::raw::unpack( ds, sb_v0 );
+               ptr = std::make_shared<signed_block>( std::move( sb_v0 ), true );
+            }
 
             auto is_webauthn_sig = []( const fc::crypto::signature& s ) {
                return s.which() == fc::crypto::signature::storage_type::position<fc::crypto::webauthn::signature>();
