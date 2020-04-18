@@ -2565,12 +2565,14 @@ namespace eosio {
       uint32_t trx_in_progress_sz = this->trx_in_progress_size.load();
       if( trx_in_progress_sz > def_max_trx_in_progress_size ) {
          fc_wlog( logger, "Dropping trx, too many trx in progress ${s} bytes", ("s", trx_in_progress_sz) );
+         pending_message_buffer.advance_read_ptr( message_length );
          return true;
       }
 
       bool have_trx = false;
       shared_ptr<packed_transaction> ptr;
       auto ds = pending_message_buffer.create_datastream();
+      const auto buff_size_start = pending_message_buffer.bytes_to_read();
       unsigned_int which{};
       fc::raw::unpack( ds, which );
       if( which == trx_message_v1_which ) {
@@ -2581,6 +2583,8 @@ namespace eosio {
          }
          if( have_trx ) {
             my_impl->dispatcher->add_peer_txn( *trx_id, connection_id );
+            const auto buff_size_current = pending_message_buffer.bytes_to_read();
+            pending_message_buffer.advance_read_ptr( message_length - (buff_size_start - buff_size_current) );
          } else {
             std::shared_ptr<packed_transaction> trx;
             fc::raw::unpack( ds, trx );
@@ -2603,7 +2607,7 @@ namespace eosio {
       }
 
       if( have_trx ) {
-         fc_dlog( logger, "got a duplicate transaction - dropping trx" );
+         fc_dlog( logger, "got a duplicate transaction - dropping" );
          return true;
       }
 
