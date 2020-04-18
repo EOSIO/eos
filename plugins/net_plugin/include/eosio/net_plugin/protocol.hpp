@@ -145,7 +145,7 @@ namespace eosio {
 
    struct trx_message_v1 {
       fc::optional<transaction_id_type> trx_id; // only provided for large trx as trade-off for small trxs not worth it
-      packed_transaction trx;
+      std::shared_ptr<packed_transaction> trx;
    };
 
    using net_message = static_variant<handshake_message,
