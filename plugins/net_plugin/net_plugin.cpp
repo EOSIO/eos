@@ -238,6 +238,7 @@ namespace eosio {
       uint32_t                              max_client_count = 0;
       uint32_t                              max_nodes_per_host = 1;
       bool                                  p2p_accept_transactions = true;
+      bool                                  p2p_reject_incomplete_blocks = true;
 
       /// Peer clock may be no more than 1 second skewed from our clock, including network latency.
       const std::chrono::system_clock::duration peer_authentication_interval{std::chrono::seconds{1}};
@@ -1297,6 +1298,8 @@ namespace eosio {
          if( !send_buffer_v0 ) {
             const auto sb_v0 = valid_v0_block ? b->to_signed_block_v0() : signed_block_v0_uptr();
             if( !sb_v0 ) {
+               peer_wlog( (&c), "Sending go away for incomplete block #${n} ${id}...",
+                          ("n", b->block_num())("id", b->calculate_id().str().substr(8,16)) );
                valid_v0_block = false;
                // unable to convert to v0 signed block and client doesn't support proto_pruned_types, so tell it to go away
                c.enqueue( go_away_message( fatal_other ) );
@@ -3010,6 +3013,14 @@ namespace eosio {
    // called from connection strand
    void connection::handle_message( const block_id_type& id, signed_block_ptr ptr ) {
       peer_dlog( this, "received signed_block ${id}", ("id", ptr->block_num() ) );
+      if( my_impl->p2p_reject_incomplete_blocks ) {
+         if( ptr->prune_state == signed_block::prune_state_type::incomplete ) {
+            peer_wlog( this, "Sending go away for incomplete block #${n} ${id}...",
+                  ("n", ptr->block_num())("id", id.str().substr(8,16)) );
+            enqueue( go_away_message( fatal_other ) );
+            return;
+         }
+      }
       auto priority = my_impl->sync_master->syncing_with_peer() ? priority::medium : priority::high;
       app().post(priority, [ptr{std::move(ptr)}, id, c = shared_from_this()]() mutable {
          c->process_signed_block( id, std::move( ptr ) );
@@ -3398,6 +3409,7 @@ namespace eosio {
            "    p2p.blk.eos.io:9876:blk\n")
          ( "p2p-max-nodes-per-host", bpo::value<int>()->default_value(def_max_nodes_per_host), "Maximum number of client nodes from any single IP address")
          ( "p2p-accept-transactions", bpo::value<bool>()->default_value(true), "Allow transactions received over p2p network to be evaluated and relayed if valid.")
+         ( "p2p-reject-incomplete-blocks", bpo::value<bool>()->default_value(true), "Reject pruned signed_blocks even in light validation")
          ( "agent-name", bpo::value<string>()->default_value("EOS Test Agent"), "The name supplied to identify this node amongst the peers.")
          ( "allowed-connection", bpo::value<vector<string>>()->multitoken()->default_value({"any"}, "any"), "Can be 'any' or 'producers' or 'specified' or 'none'. If 'specified', peer-key must be specified at least once. If only 'producers', peer-key is not required. 'producers' and 'specified' may be combined.")
          ( "peer-key", bpo::value<vector<string>>()->composing()->multitoken(), "Optional public key of peer allowed to connect.  May be used multiple times.")
