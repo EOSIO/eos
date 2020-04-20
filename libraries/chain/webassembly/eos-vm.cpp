@@ -70,8 +70,8 @@ void validate(const bytes& code, const wasm_config& cfg, const whitelisted_intri
 
 // Be permissive on apply.
 struct apply_options {
-   static constexpr std::uint32_t max_pages = wasm_constraints::maximum_linear_memory/wasm_constraints::wasm_page_size;
-   static constexpr std::uint32_t max_call_depth = wasm_constraints::maximum_call_depth+1;
+   std::uint32_t max_pages = wasm_constraints::maximum_linear_memory/wasm_constraints::wasm_page_size;
+   std::uint32_t max_call_depth = wasm_constraints::maximum_call_depth+1;
    static constexpr bool forbid_export_mutable_globals = false;
    static constexpr bool allow_code_after_function_end = false;
    static constexpr bool allow_u32_limits_flags = true;
@@ -142,7 +142,8 @@ std::unique_ptr<wasm_instantiated_module_interface> eos_vm_runtime<Impl>::instan
    using backend_t = backend<apply_context, Impl, apply_options>;
    try {
       wasm_code_ptr code((uint8_t*)code_bytes, code_size);
-      apply_options options{ opts.max_pages, opts.max_call_depth };
+      apply_options options = { .max_pages = opts.max_pages,
+                                .max_call_depth = opts.max_call_depth };
       std::unique_ptr<backend_t> bkend = std::make_unique<backend_t>(code, code_size, nullptr, options);
       registered_host_functions<apply_context>::resolve(bkend->get_module());
       return std::make_unique<eos_vm_instantiated_module<Impl>>(this, std::move(bkend));
