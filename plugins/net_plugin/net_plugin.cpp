@@ -1268,7 +1268,7 @@ namespace eosio {
    static std::shared_ptr<std::vector<char>> create_send_buffer( const packed_transaction_ptr& trx ) {
       // const cast required, trx_message_v1 has non-const shared_ptr because FC_REFLECT does not work with const types
       fc::optional<transaction_id_type> trx_id;
-      if( trx->get_estimated_size() > 7 * sizeof(transaction_id_type) ) {
+      if( trx->get_estimated_size() > 1024 ) { // simple guess on threshold
          fc_dlog( logger, "including trx id, est size: ${es}", ("es", trx->get_estimated_size()) );
          trx_id = trx->id();
       }
@@ -2592,7 +2592,7 @@ namespace eosio {
             std::shared_ptr<packed_transaction> trx;
             fc::raw::unpack( ds, trx );
             ptr = std::move( trx );
-            EOS_ASSERT( !trx_id || *trx_id == ptr->id(), transaction_id_type_exception,
+            EOS_ASSERT( !trx_id || !ptr || *trx_id == ptr->id(), transaction_id_type_exception,
                         "Provided trx_id does not match provided packed_transaction" );
             node_transaction_state nts = {ptr->id(), ptr->expiration(), 0, connection_id};
             my_impl->dispatcher->add_peer_txn( nts );
