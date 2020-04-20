@@ -39,7 +39,7 @@ def cli11_bugfix_test():
         ['./programs/cleos/cleos', '-u', 'http://localhost:0/',
          'push', 'action', 'accout', 'action', '["data"]', '-p', 'wallet'],
         check=False,
-        capture_output=True)
+        stderr=subprocess.PIPE)
 
     if not completed_process.returncode:
         raise Exception('Test command unexpectedly succeeded')
