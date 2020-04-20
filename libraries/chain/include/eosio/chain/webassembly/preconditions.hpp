@@ -22,6 +22,14 @@ namespace eosio { namespace chain { namespace webassembly {
       template <typename T>
       constexpr std::false_type is_unvalidated_ptr(T);
 
+      template<typename T>
+      inline constexpr bool is_softfloat_type_v =
+         std::is_same_v<T, float32_t> || std::is_same_v<T, float64_t> || std::is_same_v<T, float128_t>;
+
+      template<typename T>
+      inline constexpr bool is_wasm_arithmetic_type_v =
+         is_softfloat_type_v<T> || std::is_integral_v<T>;
+
       template <typename T>
       struct is_whitelisted_legacy_type {
          static constexpr bool value = std::is_same_v<float128_t, T> ||
@@ -32,14 +40,19 @@ namespace eosio { namespace chain { namespace webassembly {
                                        std::is_same_v<name, T> ||
                                        std::is_arithmetic_v<T>;
       };
+
       template <typename T>
       struct is_whitelisted_type {
-         static constexpr bool value = std::is_arithmetic_v<std::decay_t<T>> ||
-                                       std::is_same_v<std::decay_t<T>, name> ||
-                                       std::is_pointer_v<T>    ||
-                                       std::is_lvalue_reference_v<T> ||
-                                       std::is_same_v<std::decay_t<T>, float128_t> ||
-                                       eosio::vm::is_span_type_v<std::decay_t<T>>;
+         static constexpr bool value = is_wasm_arithmetic_type_v<T> ||
+                                       std::is_same_v<name, T>;
+      };
+      template <typename T>
+      struct is_whitelisted_type<vm::span<T>> {
+         static constexpr bool value = is_wasm_arithmetic_type_v<std::remove_const_t<T>>;
+      };
+      template <typename T>
+      struct is_whitelisted_type<vm::reference_proxy<T, 0>> {
+         static constexpr bool value = is_wasm_arithmetic_type_v<std::remove_const_t<T>>;
       };
    }
 
@@ -50,7 +63,7 @@ namespace eosio { namespace chain { namespace webassembly {
    inline static constexpr bool is_whitelisted_legacy_type_v = detail::is_whitelisted_legacy_type<T>::value;
 
    template <typename... Ts>
-   inline static constexpr bool are_whitelisted_types_v = true; //(... && detail::is_whitelisted_type<Ts>::value);
+   inline static constexpr bool are_whitelisted_types_v = (... && detail::is_whitelisted_type<Ts>::value);
 
    template <typename... Ts>
    inline static constexpr bool are_whitelisted_legacy_types_v = (... && detail::is_whitelisted_legacy_type<Ts>::value);

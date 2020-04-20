@@ -11,7 +11,7 @@ namespace eosio { namespace chain { namespace webassembly {
       return static_cast<uint64_t>( context.trx_context.published.time_since_epoch().count() );
    }
 
-   bool interface::is_feature_activated( const digest_type& feature_digest ) const {
+   bool interface::is_feature_activated( legacy_ptr<const digest_type> feature_digest ) const {
       return context.control.is_protocol_feature_activated( feature_digest );
    }
 

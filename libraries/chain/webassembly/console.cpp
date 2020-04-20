@@ -39,7 +39,7 @@ namespace eosio { namespace chain { namespace webassembly {
       });
    }
 
-   void interface::printi128(const __int128& val) {
+   void interface::printi128(legacy_ptr<const __int128> val) {
 		predicated_print(context,
       [&]() {
 			bool is_negative = (val < 0);
@@ -62,7 +62,7 @@ namespace eosio { namespace chain { namespace webassembly {
       });
    }
 
-   void interface::printui128(const unsigned __int128& val) {
+   void interface::printui128(legacy_ptr<const unsigned __int128> val) {
 		predicated_print(context,
       [&]() {
 			fc::uint128_t v(val>>64, static_cast<uint64_t>(val) );
@@ -94,7 +94,7 @@ namespace eosio { namespace chain { namespace webassembly {
       });
    }
 
-   void interface::printqf( const float128_t& val ) {
+   void interface::printqf( legacy_ptr<const float128_t> val ) {
       /*
        * Native-side long double uses an 80-bit extended-precision floating-point number.
        * The easiest solution for now was to use the Berkeley softfloat library to round the 128-bit
@@ -115,13 +115,13 @@ namespace eosio { namespace chain { namespace webassembly {
 #ifdef __x86_64__
 			oss.precision( std::numeric_limits<long double>::digits10 );
 			extFloat80_t val_approx;
-			f128M_to_extF80M(&val, &val_approx);
+			f128M_to_extF80M(&val.ref(), &val_approx);
 			long double _val;
 			std::memcpy((char*)&_val, (char*)&val_approx, sizeof(long double));
 			oss << _val;
 #else
 			oss.precision( std::numeric_limits<double>::digits10 );
-			double val_approx = from_softfloat64( f128M_to_f64(&val) );
+			double val_approx = from_softfloat64( f128M_to_f64(&val.ref()) );
 			oss << val_approx;
 #endif
 			context.console_append( oss.str() );

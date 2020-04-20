@@ -48,7 +48,7 @@ namespace eosio { namespace chain { namespace webassembly {
          // privileged api
          int32_t is_feature_active(int64_t feature_name) const;
          void activate_feature(int64_t feature_name) const;
-         void preactivate_feature(const digest_type&);
+         void preactivate_feature(legacy_ptr<const digest_type>);
          void set_resource_limits(account_name account, int64_t ram_bytes, int64_t net_weight, int64_t cpu_weight);
          void get_resource_limits(account_name account, legacy_ptr<int64_t, 8> ram_bytes, legacy_ptr<int64_t, 8> net_weight, legacy_ptr<int64_t, 8> cpu_weight) const;
          int64_t set_proposed_producers(legacy_array_ptr<char> packed_producer_schedule);
@@ -60,7 +60,7 @@ namespace eosio { namespace chain { namespace webassembly {
 
          REGISTER_HOST_FUNCTION(is_feature_active, privileged_check);
          REGISTER_HOST_FUNCTION(activate_feature, privileged_check);
-         REGISTER_HOST_FUNCTION(preactivate_feature, privileged_check);
+         REGISTER_LEGACY_HOST_FUNCTION(preactivate_feature, privileged_check);
          REGISTER_HOST_FUNCTION(set_resource_limits, privileged_check);
          REGISTER_LEGACY_HOST_FUNCTION(get_resource_limits, privileged_check);
          REGISTER_LEGACY_HOST_FUNCTION(set_proposed_producers, privileged_check);
@@ -243,12 +243,12 @@ namespace eosio { namespace chain { namespace webassembly {
          // system api
          uint64_t current_time() const;
          uint64_t publication_time() const;
-         bool is_feature_activated(const digest_type&) const;
+         bool is_feature_activated(legacy_ptr<const digest_type>) const;
          name get_sender() const;
 
          REGISTER_HOST_FUNCTION(current_time);
          REGISTER_HOST_FUNCTION(publication_time);
-         REGISTER_HOST_FUNCTION(is_feature_activated);
+         REGISTER_LEGACY_HOST_FUNCTION(is_feature_activated);
          REGISTER_HOST_FUNCTION(get_sender);
 
          // context-free system api
@@ -280,11 +280,11 @@ namespace eosio { namespace chain { namespace webassembly {
          void prints_l(legacy_array_ptr<const char>);
          void printi(int64_t);
          void printui(uint64_t);
-         void printi128(const __int128&);
-         void printui128(const unsigned __int128&);
+         void printi128(legacy_ptr<const __int128>);
+         void printui128(legacy_ptr<const unsigned __int128>);
          void printsf(float);
          void printdf(double);
-         void printqf(const float128_t&);
+         void printqf(legacy_ptr<const float128_t>);
          void printn(name);
          void printhex(legacy_array_ptr<const char>);
 
@@ -292,11 +292,11 @@ namespace eosio { namespace chain { namespace webassembly {
          REGISTER_LEGACY_CF_HOST_FUNCTION(prints_l);
          REGISTER_LEGACY_CF_HOST_FUNCTION(printi);
          REGISTER_LEGACY_CF_HOST_FUNCTION(printui);
-         REGISTER_CF_HOST_FUNCTION(printi128);
-         REGISTER_CF_HOST_FUNCTION(printui128);
+         REGISTER_LEGACY_CF_HOST_FUNCTION(printi128);
+         REGISTER_LEGACY_CF_HOST_FUNCTION(printui128);
          REGISTER_LEGACY_CF_HOST_FUNCTION(printsf);
          REGISTER_LEGACY_CF_HOST_FUNCTION(printdf);
-         REGISTER_CF_HOST_FUNCTION(printqf);
+         REGISTER_LEGACY_CF_HOST_FUNCTION(printqf);
          REGISTER_LEGACY_CF_HOST_FUNCTION(printn);
          REGISTER_LEGACY_CF_HOST_FUNCTION(printhex);
 
@@ -306,7 +306,7 @@ namespace eosio { namespace chain { namespace webassembly {
          void db_update_i64(int32_t, uint64_t, legacy_array_ptr<const char>);
          void db_remove_i64(int32_t);
          int32_t db_get_i64(int32_t, legacy_array_ptr<char>);
-         int32_t db_next_i64(int32_t, uint64_t&);
+         int32_t db_next_i64(int32_t, legacy_ptr<uint64_t>);
          int32_t db_previous_i64(int32_t, legacy_ptr<uint64_t>);
          int32_t db_find_i64(uint64_t, uint64_t, uint64_t, uint64_t);
          int32_t db_lowerbound_i64(uint64_t, uint64_t, uint64_t, uint64_t);
@@ -317,7 +317,7 @@ namespace eosio { namespace chain { namespace webassembly {
          REGISTER_LEGACY_HOST_FUNCTION(db_update_i64);
          REGISTER_LEGACY_HOST_FUNCTION(db_remove_i64);
          REGISTER_LEGACY_HOST_FUNCTION(db_get_i64);
-         REGISTER_HOST_FUNCTION(db_next_i64);
+         REGISTER_LEGACY_HOST_FUNCTION(db_next_i64);
          REGISTER_LEGACY_HOST_FUNCTION(db_previous_i64);
          REGISTER_LEGACY_HOST_FUNCTION(db_find_i64);
          REGISTER_LEGACY_HOST_FUNCTION(db_lowerbound_i64);
@@ -326,50 +326,50 @@ namespace eosio { namespace chain { namespace webassembly {
 
 
          // uint64_t secondary index api
-         int32_t db_idx64_store(uint64_t, uint64_t, uint64_t, uint64_t, const uint64_t&);
-         void db_idx64_update(int32_t, uint64_t, const uint64_t&);
+         int32_t db_idx64_store(uint64_t, uint64_t, uint64_t, uint64_t, legacy_ptr<const uint64_t>);
+         void db_idx64_update(int32_t, uint64_t, legacy_ptr<const uint64_t>);
          void db_idx64_remove(int32_t);
          int32_t db_idx64_find_secondary(uint64_t, uint64_t, uint64_t, legacy_ptr<const uint64_t>, legacy_ptr<uint64_t>);
-         int32_t db_idx64_find_primary(uint64_t, uint64_t, uint64_t, uint64_t&, uint64_t);
+         int32_t db_idx64_find_primary(uint64_t, uint64_t, uint64_t, legacy_ptr<uint64_t>, uint64_t);
          int32_t db_idx64_lowerbound(uint64_t, uint64_t, uint64_t, legacy_ptr<uint64_t, 8>, legacy_ptr<uint64_t, 8>);
          int32_t db_idx64_upperbound(uint64_t, uint64_t, uint64_t, legacy_ptr<uint64_t, 8>, legacy_ptr<uint64_t, 8>);
          int32_t db_idx64_end(uint64_t, uint64_t, uint64_t);
-         int32_t db_idx64_next(int32_t, uint64_t&);
-         int32_t db_idx64_previous(int32_t, uint64_t&);
+         int32_t db_idx64_next(int32_t, legacy_ptr<uint64_t>);
+         int32_t db_idx64_previous(int32_t, legacy_ptr<uint64_t>);
 
-         REGISTER_HOST_FUNCTION(db_idx64_store);
-         REGISTER_HOST_FUNCTION(db_idx64_update);
+         REGISTER_LEGACY_HOST_FUNCTION(db_idx64_store);
+         REGISTER_LEGACY_HOST_FUNCTION(db_idx64_update);
          REGISTER_LEGACY_HOST_FUNCTION(db_idx64_remove);
          REGISTER_LEGACY_HOST_FUNCTION(db_idx64_find_secondary);
-         REGISTER_HOST_FUNCTION(db_idx64_find_primary);
+         REGISTER_LEGACY_HOST_FUNCTION(db_idx64_find_primary);
          REGISTER_LEGACY_HOST_FUNCTION(db_idx64_lowerbound);
          REGISTER_LEGACY_HOST_FUNCTION(db_idx64_upperbound);
          REGISTER_LEGACY_HOST_FUNCTION(db_idx64_end);
-         REGISTER_HOST_FUNCTION(db_idx64_next);
-         REGISTER_HOST_FUNCTION(db_idx64_previous);
+         REGISTER_LEGACY_HOST_FUNCTION(db_idx64_next);
+         REGISTER_LEGACY_HOST_FUNCTION(db_idx64_previous);
 
          // uint128_t secondary index api
-         int32_t db_idx128_store(uint64_t, uint64_t, uint64_t, uint64_t, const uint128_t&);
-         void db_idx128_update(int32_t, uint64_t, const uint128_t&);
+         int32_t db_idx128_store(uint64_t, uint64_t, uint64_t, uint64_t, legacy_ptr<const uint128_t>);
+         void db_idx128_update(int32_t, uint64_t, legacy_ptr<const uint128_t>);
          void db_idx128_remove(int32_t);
          int32_t db_idx128_find_secondary(uint64_t, uint64_t, uint64_t, legacy_ptr<const uint128_t>, legacy_ptr<uint64_t>);
-         int32_t db_idx128_find_primary(uint64_t, uint64_t, uint64_t, uint128_t&, uint64_t);
+         int32_t db_idx128_find_primary(uint64_t, uint64_t, uint64_t, legacy_ptr<uint128_t>, uint64_t);
          int32_t db_idx128_lowerbound(uint64_t, uint64_t, uint64_t, legacy_ptr<uint128_t, 16>, legacy_ptr<uint64_t, 8>);
          int32_t db_idx128_upperbound(uint64_t, uint64_t, uint64_t, legacy_ptr<uint128_t, 16>, legacy_ptr<uint64_t, 8>);
          int32_t db_idx128_end(uint64_t, uint64_t, uint64_t);
-         int32_t db_idx128_next(int32_t, uint64_t&);
-         int32_t db_idx128_previous(int32_t, uint64_t&);
+         int32_t db_idx128_next(int32_t, legacy_ptr<uint64_t>);
+         int32_t db_idx128_previous(int32_t, legacy_ptr<uint64_t>);
 
-         REGISTER_HOST_FUNCTION(db_idx128_store);
-         REGISTER_HOST_FUNCTION(db_idx128_update);
+         REGISTER_LEGACY_HOST_FUNCTION(db_idx128_store);
+         REGISTER_LEGACY_HOST_FUNCTION(db_idx128_update);
          REGISTER_LEGACY_HOST_FUNCTION(db_idx128_remove);
          REGISTER_LEGACY_HOST_FUNCTION(db_idx128_find_secondary);
-         REGISTER_HOST_FUNCTION(db_idx128_find_primary);
+         REGISTER_LEGACY_HOST_FUNCTION(db_idx128_find_primary);
          REGISTER_LEGACY_HOST_FUNCTION(db_idx128_lowerbound);
          REGISTER_LEGACY_HOST_FUNCTION(db_idx128_upperbound);
          REGISTER_LEGACY_HOST_FUNCTION(db_idx128_end);
-         REGISTER_HOST_FUNCTION(db_idx128_next);
-         REGISTER_HOST_FUNCTION(db_idx128_previous);
+         REGISTER_LEGACY_HOST_FUNCTION(db_idx128_next);
+         REGISTER_LEGACY_HOST_FUNCTION(db_idx128_previous);
 
          // 256-bit secondary index api
          int32_t db_idx256_store(uint64_t, uint64_t, uint64_t, uint64_t, legacy_array_ptr<const uint128_t>);
@@ -380,8 +380,8 @@ namespace eosio { namespace chain { namespace webassembly {
          int32_t db_idx256_lowerbound(uint64_t, uint64_t, uint64_t, legacy_array_ptr<uint128_t, 16>, legacy_ptr<uint64_t, 8>);
          int32_t db_idx256_upperbound(uint64_t, uint64_t, uint64_t, legacy_array_ptr<uint128_t, 16>, legacy_ptr<uint64_t, 8>);
          int32_t db_idx256_end(uint64_t, uint64_t, uint64_t);
-         int32_t db_idx256_next(int32_t, uint64_t&);
-         int32_t db_idx256_previous(int32_t, uint64_t&);
+         int32_t db_idx256_next(int32_t, legacy_ptr<uint64_t>);
+         int32_t db_idx256_previous(int32_t, legacy_ptr<uint64_t>);
 
          REGISTER_LEGACY_HOST_FUNCTION(db_idx256_store);
          REGISTER_LEGACY_HOST_FUNCTION(db_idx256_update);
@@ -391,55 +391,55 @@ namespace eosio { namespace chain { namespace webassembly {
          REGISTER_LEGACY_HOST_FUNCTION(db_idx256_lowerbound);
          REGISTER_LEGACY_HOST_FUNCTION(db_idx256_upperbound);
          REGISTER_LEGACY_HOST_FUNCTION(db_idx256_end);
-         REGISTER_HOST_FUNCTION(db_idx256_next);
-         REGISTER_HOST_FUNCTION(db_idx256_previous);
+         REGISTER_LEGACY_HOST_FUNCTION(db_idx256_next);
+         REGISTER_LEGACY_HOST_FUNCTION(db_idx256_previous);
 
          // double secondary index api
-         int32_t db_idx_double_store(uint64_t, uint64_t, uint64_t, uint64_t, const float64_t&);
-         void db_idx_double_update(int32_t, uint64_t, const float64_t&);
+         int32_t db_idx_double_store(uint64_t, uint64_t, uint64_t, uint64_t, legacy_ptr<const float64_t>);
+         void db_idx_double_update(int32_t, uint64_t, legacy_ptr<const float64_t>);
          void db_idx_double_remove(int32_t);
          int32_t db_idx_double_find_secondary(uint64_t, uint64_t, uint64_t, legacy_ptr<const float64_t>, legacy_ptr<uint64_t>);
-         int32_t db_idx_double_find_primary(uint64_t, uint64_t, uint64_t, float64_t&, uint64_t);
+         int32_t db_idx_double_find_primary(uint64_t, uint64_t, uint64_t, legacy_ptr<float64_t>, uint64_t);
          int32_t db_idx_double_lowerbound(uint64_t, uint64_t, uint64_t, legacy_ptr<float64_t, 8>, legacy_ptr<uint64_t, 8>);
          int32_t db_idx_double_upperbound(uint64_t, uint64_t, uint64_t, legacy_ptr<float64_t, 8>, legacy_ptr<uint64_t, 8>);
          int32_t db_idx_double_end(uint64_t, uint64_t, uint64_t);
-         int32_t db_idx_double_next(int32_t, uint64_t&);
-         int32_t db_idx_double_previous(int32_t, uint64_t&);
+         int32_t db_idx_double_next(int32_t, legacy_ptr<uint64_t>);
+         int32_t db_idx_double_previous(int32_t, legacy_ptr<uint64_t>);
 
-         REGISTER_HOST_FUNCTION(db_idx_double_store, is_nan_check);
-         REGISTER_HOST_FUNCTION(db_idx_double_update, is_nan_check);
+         REGISTER_LEGACY_HOST_FUNCTION(db_idx_double_store, is_nan_check);
+         REGISTER_LEGACY_HOST_FUNCTION(db_idx_double_update, is_nan_check);
          REGISTER_LEGACY_HOST_FUNCTION(db_idx_double_remove);
          REGISTER_LEGACY_HOST_FUNCTION(db_idx_double_find_secondary, is_nan_check);
-         REGISTER_HOST_FUNCTION(db_idx_double_find_primary);
+         REGISTER_LEGACY_HOST_FUNCTION(db_idx_double_find_primary);
          REGISTER_LEGACY_HOST_FUNCTION(db_idx_double_lowerbound, is_nan_check);
          REGISTER_LEGACY_HOST_FUNCTION(db_idx_double_upperbound, is_nan_check);
          REGISTER_LEGACY_HOST_FUNCTION(db_idx_double_end);
-         REGISTER_HOST_FUNCTION(db_idx_double_next);
-         REGISTER_HOST_FUNCTION(db_idx_double_previous);
+         REGISTER_LEGACY_HOST_FUNCTION(db_idx_double_next);
+         REGISTER_LEGACY_HOST_FUNCTION(db_idx_double_previous);
 
 
          // long double secondary index api
-         int32_t db_idx_long_double_store(uint64_t, uint64_t, uint64_t, uint64_t, const float128_t&);
-         void db_idx_long_double_update(int32_t, uint64_t, const float128_t&);
+         int32_t db_idx_long_double_store(uint64_t, uint64_t, uint64_t, uint64_t, legacy_ptr<const float128_t>);
+         void db_idx_long_double_update(int32_t, uint64_t, legacy_ptr<const float128_t>);
          void db_idx_long_double_remove(int32_t);
          int32_t db_idx_long_double_find_secondary(uint64_t, uint64_t, uint64_t, legacy_ptr<const float128_t>, legacy_ptr<uint64_t>);
-         int32_t db_idx_long_double_find_primary(uint64_t, uint64_t, uint64_t, float128_t&, uint64_t);
+         int32_t db_idx_long_double_find_primary(uint64_t, uint64_t, uint64_t, legacy_ptr<float128_t>, uint64_t);
          int32_t db_idx_long_double_lowerbound(uint64_t, uint64_t, uint64_t, legacy_ptr<float128_t, 8>, legacy_ptr<uint64_t, 8>);
          int32_t db_idx_long_double_upperbound(uint64_t, uint64_t, uint64_t, legacy_ptr<float128_t, 8>,  legacy_ptr<uint64_t, 8>);
          int32_t db_idx_long_double_end(uint64_t, uint64_t, uint64_t);
-         int32_t db_idx_long_double_next(int32_t, uint64_t&);
-         int32_t db_idx_long_double_previous(int32_t, uint64_t&);
+         int32_t db_idx_long_double_next(int32_t, legacy_ptr<uint64_t>);
+         int32_t db_idx_long_double_previous(int32_t, legacy_ptr<uint64_t>);
 
-         REGISTER_HOST_FUNCTION(db_idx_long_double_store, is_nan_check);
-         REGISTER_HOST_FUNCTION(db_idx_long_double_update, is_nan_check);
+         REGISTER_LEGACY_HOST_FUNCTION(db_idx_long_double_store, is_nan_check);
+         REGISTER_LEGACY_HOST_FUNCTION(db_idx_long_double_update, is_nan_check);
          REGISTER_LEGACY_HOST_FUNCTION(db_idx_long_double_remove);
          REGISTER_LEGACY_HOST_FUNCTION(db_idx_long_double_find_secondary, is_nan_check);
-         REGISTER_HOST_FUNCTION(db_idx_long_double_find_primary);
+         REGISTER_LEGACY_HOST_FUNCTION(db_idx_long_double_find_primary);
          REGISTER_LEGACY_HOST_FUNCTION(db_idx_long_double_lowerbound, is_nan_check);
          REGISTER_LEGACY_HOST_FUNCTION(db_idx_long_double_upperbound, is_nan_check);
          REGISTER_LEGACY_HOST_FUNCTION(db_idx_long_double_end);
-         REGISTER_HOST_FUNCTION(db_idx_long_double_next);
-         REGISTER_HOST_FUNCTION(db_idx_long_double_previous);
+         REGISTER_LEGACY_HOST_FUNCTION(db_idx_long_double_next);
+         REGISTER_LEGACY_HOST_FUNCTION(db_idx_long_double_previous);
 
          // memory api
          char* memcpy(unvalidated_ptr<char>, unvalidated_ptr<const char>, wasm_size_t) const;
@@ -479,39 +479,39 @@ namespace eosio { namespace chain { namespace webassembly {
          REGISTER_LEGACY_CF_HOST_FUNCTION(get_action);
 
          // compiler builtins api
-         void __ashlti3(int128_t&, uint64_t, uint64_t, uint32_t) const;
-         void __ashrti3(int128_t&, uint64_t, uint64_t, uint32_t) const;
-         void __lshlti3(int128_t&, uint64_t, uint64_t, uint32_t) const;
-         void __lshrti3(int128_t&, uint64_t, uint64_t, uint32_t) const;
-         void __divti3(int128_t&, uint64_t, uint64_t, uint64_t, uint64_t) const;
-         void __udivti3(uint128_t&, uint64_t, uint64_t, uint64_t, uint64_t) const;
-         void __multi3(int128_t&, uint64_t, uint64_t, uint64_t, uint64_t) const;
-         void __modti3(int128_t&, uint64_t, uint64_t, uint64_t, uint64_t) const;
-         void __umodti3(uint128_t&, uint64_t, uint64_t, uint64_t, uint64_t) const;
-         void __addtf3(float128_t&, uint64_t, uint64_t, uint64_t, uint64_t) const;
-         void __subtf3(float128_t&, uint64_t, uint64_t, uint64_t, uint64_t) const;
-         void __multf3(float128_t&, uint64_t, uint64_t, uint64_t, uint64_t) const;
-         void __divtf3(float128_t&, uint64_t, uint64_t, uint64_t, uint64_t) const;
-         void __negtf2(float128_t&, uint64_t, uint64_t) const;
-         void __extendsftf2(float128_t&, float) const;
-         void __extenddftf2(float128_t&, double) const;
+         void __ashlti3(legacy_ptr<int128_t>, uint64_t, uint64_t, uint32_t) const;
+         void __ashrti3(legacy_ptr<int128_t>, uint64_t, uint64_t, uint32_t) const;
+         void __lshlti3(legacy_ptr<int128_t>, uint64_t, uint64_t, uint32_t) const;
+         void __lshrti3(legacy_ptr<int128_t>, uint64_t, uint64_t, uint32_t) const;
+         void __divti3(legacy_ptr<int128_t>, uint64_t, uint64_t, uint64_t, uint64_t) const;
+         void __udivti3(legacy_ptr<uint128_t>, uint64_t, uint64_t, uint64_t, uint64_t) const;
+         void __multi3(legacy_ptr<int128_t>, uint64_t, uint64_t, uint64_t, uint64_t) const;
+         void __modti3(legacy_ptr<int128_t>, uint64_t, uint64_t, uint64_t, uint64_t) const;
+         void __umodti3(legacy_ptr<uint128_t>, uint64_t, uint64_t, uint64_t, uint64_t) const;
+         void __addtf3(legacy_ptr<float128_t>, uint64_t, uint64_t, uint64_t, uint64_t) const;
+         void __subtf3(legacy_ptr<float128_t>, uint64_t, uint64_t, uint64_t, uint64_t) const;
+         void __multf3(legacy_ptr<float128_t>, uint64_t, uint64_t, uint64_t, uint64_t) const;
+         void __divtf3(legacy_ptr<float128_t>, uint64_t, uint64_t, uint64_t, uint64_t) const;
+         void __negtf2(legacy_ptr<float128_t>, uint64_t, uint64_t) const;
+         void __extendsftf2(legacy_ptr<float128_t>, float) const;
+         void __extenddftf2(legacy_ptr<float128_t>, double) const;
          double __trunctfdf2(uint64_t, uint64_t) const;
          float __trunctfsf2(uint64_t, uint64_t) const;
          int32_t __fixtfsi(uint64_t, uint64_t) const;
          int64_t __fixtfdi(uint64_t, uint64_t) const;
-         void __fixtfti(int128_t&, uint64_t, uint64_t) const;
+         void __fixtfti(legacy_ptr<int128_t>, uint64_t, uint64_t) const;
          uint32_t __fixunstfsi(uint64_t, uint64_t) const;
          uint64_t __fixunstfdi(uint64_t, uint64_t) const;
-         void __fixunstfti(uint128_t&, uint64_t, uint64_t) const;
-         void __fixsfti(int128_t&, float) const;
-         void __fixdfti(int128_t&, double) const;
-         void __fixunssfti(uint128_t&, float) const;
-         void __fixunsdfti(uint128_t&, double) const;
+         void __fixunstfti(legacy_ptr<uint128_t>, uint64_t, uint64_t) const;
+         void __fixsfti(legacy_ptr<int128_t>, float) const;
+         void __fixdfti(legacy_ptr<int128_t>, double) const;
+         void __fixunssfti(legacy_ptr<uint128_t>, float) const;
+         void __fixunsdfti(legacy_ptr<uint128_t>, double) const;
          double __floatsidf(int32_t) const;
-         void __floatsitf(float128_t&, int32_t) const;
-         void __floatditf(float128_t&, uint64_t) const;
-         void __floatunsitf(float128_t&, uint32_t) const;
-         void __floatunditf(float128_t&, uint64_t) const;
+         void __floatsitf(legacy_ptr<float128_t>, int32_t) const;
+         void __floatditf(legacy_ptr<float128_t>, uint64_t) const;
+         void __floatunsitf(legacy_ptr<float128_t>, uint32_t) const;
+         void __floatunditf(legacy_ptr<float128_t>, uint64_t) const;
          double __floattidf(uint64_t, uint64_t) const;
          double __floatuntidf(uint64_t, uint64_t) const;
          int32_t __cmptf2(uint64_t, uint64_t, uint64_t, uint64_t) const;
@@ -523,39 +523,39 @@ namespace eosio { namespace chain { namespace webassembly {
          int32_t __lttf2(uint64_t, uint64_t, uint64_t, uint64_t) const;
          int32_t __unordtf2(uint64_t, uint64_t, uint64_t, uint64_t) const;
 
-         REGISTER_CF_HOST_FUNCTION(__ashlti3);
-         REGISTER_CF_HOST_FUNCTION(__ashrti3);
-         REGISTER_CF_HOST_FUNCTION(__lshlti3);
-         REGISTER_CF_HOST_FUNCTION(__lshrti3);
-         REGISTER_CF_HOST_FUNCTION(__divti3);
-         REGISTER_CF_HOST_FUNCTION(__udivti3);
-         REGISTER_CF_HOST_FUNCTION(__multi3);
-         REGISTER_CF_HOST_FUNCTION(__modti3);
-         REGISTER_CF_HOST_FUNCTION(__umodti3);
-         REGISTER_CF_HOST_FUNCTION(__addtf3);
-         REGISTER_CF_HOST_FUNCTION(__subtf3);
-         REGISTER_CF_HOST_FUNCTION(__multf3);
-         REGISTER_CF_HOST_FUNCTION(__divtf3);
-         REGISTER_CF_HOST_FUNCTION(__negtf2);
-         REGISTER_CF_HOST_FUNCTION(__extendsftf2);
-         REGISTER_CF_HOST_FUNCTION(__extenddftf2);
+         REGISTER_LEGACY_CF_HOST_FUNCTION(__ashlti3);
+         REGISTER_LEGACY_CF_HOST_FUNCTION(__ashrti3);
+         REGISTER_LEGACY_CF_HOST_FUNCTION(__lshlti3);
+         REGISTER_LEGACY_CF_HOST_FUNCTION(__lshrti3);
+         REGISTER_LEGACY_CF_HOST_FUNCTION(__divti3);
+         REGISTER_LEGACY_CF_HOST_FUNCTION(__udivti3);
+         REGISTER_LEGACY_CF_HOST_FUNCTION(__multi3);
+         REGISTER_LEGACY_CF_HOST_FUNCTION(__modti3);
+         REGISTER_LEGACY_CF_HOST_FUNCTION(__umodti3);
+         REGISTER_LEGACY_CF_HOST_FUNCTION(__addtf3);
+         REGISTER_LEGACY_CF_HOST_FUNCTION(__subtf3);
+         REGISTER_LEGACY_CF_HOST_FUNCTION(__multf3);
+         REGISTER_LEGACY_CF_HOST_FUNCTION(__divtf3);
+         REGISTER_LEGACY_CF_HOST_FUNCTION(__negtf2);
+         REGISTER_LEGACY_CF_HOST_FUNCTION(__extendsftf2);
+         REGISTER_LEGACY_CF_HOST_FUNCTION(__extenddftf2);
          REGISTER_CF_HOST_FUNCTION(__trunctfdf2);
          REGISTER_CF_HOST_FUNCTION(__trunctfsf2);
          REGISTER_CF_HOST_FUNCTION(__fixtfsi);
          REGISTER_CF_HOST_FUNCTION(__fixtfdi);
-         REGISTER_CF_HOST_FUNCTION(__fixtfti);
+         REGISTER_LEGACY_CF_HOST_FUNCTION(__fixtfti);
          REGISTER_CF_HOST_FUNCTION(__fixunstfsi);
          REGISTER_CF_HOST_FUNCTION(__fixunstfdi);
-         REGISTER_CF_HOST_FUNCTION(__fixunstfti);
-         REGISTER_CF_HOST_FUNCTION(__fixsfti);
-         REGISTER_CF_HOST_FUNCTION(__fixdfti);
-         REGISTER_CF_HOST_FUNCTION(__fixunssfti);
-         REGISTER_CF_HOST_FUNCTION(__fixunsdfti);
+         REGISTER_LEGACY_CF_HOST_FUNCTION(__fixunstfti);
+         REGISTER_LEGACY_CF_HOST_FUNCTION(__fixsfti);
+         REGISTER_LEGACY_CF_HOST_FUNCTION(__fixdfti);
+         REGISTER_LEGACY_CF_HOST_FUNCTION(__fixunssfti);
+         REGISTER_LEGACY_CF_HOST_FUNCTION(__fixunsdfti);
          REGISTER_CF_HOST_FUNCTION(__floatsidf);
-         REGISTER_CF_HOST_FUNCTION(__floatsitf);
-         REGISTER_CF_HOST_FUNCTION(__floatditf);
-         REGISTER_CF_HOST_FUNCTION(__floatunsitf);
-         REGISTER_CF_HOST_FUNCTION(__floatunditf);
+         REGISTER_LEGACY_CF_HOST_FUNCTION(__floatsitf);
+         REGISTER_LEGACY_CF_HOST_FUNCTION(__floatditf);
+         REGISTER_LEGACY_CF_HOST_FUNCTION(__floatunsitf);
+         REGISTER_LEGACY_CF_HOST_FUNCTION(__floatunditf);
          REGISTER_CF_HOST_FUNCTION(__floattidf);
          REGISTER_CF_HOST_FUNCTION(__floatuntidf);
          REGISTER_CF_HOST_FUNCTION(__cmptf2);
