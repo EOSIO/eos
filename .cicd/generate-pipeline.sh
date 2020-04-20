@@ -80,8 +80,13 @@ if [[ ! -z ${BUILDKITE_TRIGGERED_FROM_BUILD_ID} ]]; then
 fi
 export BUILD_SOURCE=${BUILD_SOURCE:---build \$BUILDKITE_BUILD_ID}
 # set trigger_job if master/release/develop branch and webhook
-if [[ ! $BUILDKITE_PIPELINE_SLUG =~ 'lrt' ]] && [[ $BUILDKITE_BRANCH =~ ^release/[0-9]+\.[0-9]+\.x$ || $BUILDKITE_BRANCH =~ ^master$ || $BUILDKITE_BRANCH =~ ^develop$ ]]; then
+if [[ ! $BUILDKITE_PIPELINE_SLUG =~ 'lrt' ]] && [[ $BUILDKITE_BRANCH =~ ^release/[0-9]+\.[0-9]+\.x$ || $BUILDKITE_BRANCH =~ ^master$ || $BUILDKITE_BRANCH =~ ^develop$ || "$SKIP_LONG_RUNNING_TESTS" == 'false' ]]; then
     [[ $BUILDKITE_SOURCE != 'schedule' ]] && export TRIGGER_JOB=true
+fi
+# run LRTs synchronously when running full test suite
+if [[ "$RUN_ALL_TESTS" == 'true' && "$SKIP_LONG_RUNNING_TESTS" != 'true' ]]; then
+    export SKIP_LONG_RUNNING_TESTS='false'
+    export TRIGGER_JOB='false'
 fi
 oIFS="$IFS"
 IFS=$''
@@ -439,7 +444,7 @@ EOF
     fi
 done
 # Execute multiversion test
-if ( [[ ! $PINNED == false ]] ); then
+if [[ ! "$PINNED" == 'false' || "$SKIP_MULTIVERSION_TEST" == 'false' ]]; then
         cat <<EOF
   - label: ":pipeline: Multiversion Test"
     command: 
