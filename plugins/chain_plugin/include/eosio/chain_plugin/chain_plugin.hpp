@@ -17,6 +17,7 @@
 #include <boost/multiprecision/cpp_int.hpp>
 
 #include <fc/static_variant.hpp>
+#include <eosio/chain/chain_id_type.hpp>
 
 namespace fc { class variant; }
 
@@ -608,6 +609,33 @@ public:
    chain::symbol extract_core_symbol()const;
 
    friend struct resolver_factory<read_only>;
+
+    get_account_results &
+    collect_core_liquid_balance(const get_account_params &params, get_account_results &result, const chainbase::database &d,
+                                const name &token_code, const symbol &core_symbol) const;
+
+    get_account_results &
+    collect_total_resources(const get_account_params &params, get_account_results &result, const chainbase::database &d,
+                            const abi_serializer &abis) const;
+
+    get_account_results &collect_self_delegated_bandwidth(const get_account_params &params, get_account_results &result,
+                                                          const chainbase::database &d, const abi_serializer &abis) const;
+
+    get_account_results &
+    collect_refund_request(const get_account_params &params, get_account_results &result, const chainbase::database &d,
+                           const abi_serializer &abis) const;
+
+    get_account_results &
+    collect_voter_info(const get_account_params &params, get_account_results &result, const chainbase::database &d,
+                       const abi_serializer &abis) const;
+
+    get_account_results &
+    collect_rex_info(const get_account_params &params, get_account_results &result, const chainbase::database &d,
+                     const abi_serializer &abis) const;
+
+    get_account_results &
+    collect_account_results(const get_account_params &params, get_account_results &result, const chainbase::database &d,
+                            const chain::account_object &code_account) const;
 };
 
 class read_write {
@@ -720,6 +748,14 @@ public:
    virtual ~chain_plugin();
 
    virtual void set_program_options(options_description& cli, options_description& cfg) override;
+
+   void validate_root_key();
+   void print_build_info(const variables_map& options);
+   void load_white_black_lists(const variables_map& options);
+   void initialize_checkpoints(const variables_map& options);
+   void extract_genesis_json(const variables_map& options);
+   fc::optional<chain::chain_id_type> initialize_with_snapshot(const variables_map& options);
+   fc::optional<chain::chain_id_type> initialize_without_snapshot(const variables_map& options);
 
    void plugin_initialize(const variables_map& options);
    void plugin_startup();

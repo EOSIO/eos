@@ -601,20 +601,17 @@ chain_plugin::do_hard_replay(const variables_map& options) {
          }
 }
 
-void chain_plugin::plugin_initialize(const variables_map& options) {
-   ilog("initializing chain plugin");
+   void chain_plugin::validate_root_key() {
+       try {
+           genesis_state gs; // Check if EOSIO_ROOT_KEY is bad
+       } catch ( const fc::exception& ) {
+           elog( "EOSIO_ROOT_KEY ('${root_key}') is invalid. Recompile with a valid public key.",
+                 ("root_key", genesis_state::eosio_root_key));
+           throw;
+       }
+   }
 
-   try {
-      try {
-         genesis_state gs; // Check if EOSIO_ROOT_KEY is bad
-      } catch ( const fc::exception& ) {
-         elog( "EOSIO_ROOT_KEY ('${root_key}') is invalid. Recompile with a valid public key.",
-               ("root_key", genesis_state::eosio_root_key));
-         throw;
-      }
-
-      my->chain_config = controller::config();
-
+   void chain_plugin::print_build_info(const variables_map& options) {
       if( options.at( "print-build-info" ).as<bool>() || options.count( "extract-build-info") ) {
          if( options.at( "print-build-info" ).as<bool>() ) {
             ilog( "Build environment JSON:\n${e}", ("e", json::to_pretty_string( chainbase::environment() )) );
@@ -636,7 +633,9 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
          EOS_THROW( node_management_success, "reported build environment information" );
       }
+   }
 
+   void chain_plugin::load_white_black_lists(const variables_map& options) {
       LOAD_VALUE_SET( options, "sender-bypass-whiteblacklist", my->chain_config->sender_bypass_whiteblacklist );
       LOAD_VALUE_SET( options, "actor-whitelist", my->chain_config->actor_whitelist );
       LOAD_VALUE_SET( options, "actor-blacklist", my->chain_config->actor_blacklist );
@@ -664,6 +663,239 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
             list.emplace( key_str );
          }
       }
+   }
+
+   void chain_plugin::initialize_checkpoints(const variables_map& options) {
+      if( options.count("checkpoint") ) {
+         auto cps = options.at("checkpoint").as<vector<string>>();
+         my->loaded_checkpoints.reserve(cps.size());
+         for( const auto& cp : cps ) {
+            auto item = fc::json::from_string(cp).as<std::pair<uint32_t,block_id_type>>();
+            auto itr = my->loaded_checkpoints.find(item.first);
+            if( itr != my->loaded_checkpoints.end() ) {
+               EOS_ASSERT( itr->second == item.second,
+                           plugin_config_exception,
+                           "redefining existing checkpoint at block number ${num}: original: ${orig} new: ${new}",
+                           ("num", item.first)("orig", itr->second)("new", item.second)
+               );
+            } else {
+               my->loaded_checkpoints[item.first] = item.second;
+            }
+         }
+      }
+   }
+
+   void chain_plugin::extract_genesis_json(const variables_map& options) {
+      if( options.count( "extract-genesis-json" ) || options.at( "print-genesis-json" ).as<bool>()) {
+         fc::optional<genesis_state> gs;
+
+         if( fc::exists( my->blocks_dir / "blocks.log" )) {
+            gs = block_log::extract_genesis_state( my->blocks_dir );
+            EOS_ASSERT( gs,
+                        plugin_config_exception,
+                        "Block log at '${path}' does not contain a genesis state, it only has the chain-id.",
+                        ("path", (my->blocks_dir / "blocks.log").generic_string())
+            );
+         } else {
+            wlog( "No blocks.log found at '${p}'. Using default genesis state.",
+                  ("p", (my->blocks_dir / "blocks.log").generic_string()));
+            gs.emplace();
+         }
+
+         if( options.at( "print-genesis-json" ).as<bool>()) {
+            ilog( "Genesis JSON:\n${genesis}", ("genesis", json::to_pretty_string( *gs )));
+         }
+
+         if( options.count( "extract-genesis-json" )) {
+            auto p = options.at( "extract-genesis-json" ).as<bfs::path>();
+
+            if( p.is_relative()) {
+               p = bfs::current_path() / p;
+            }
+
+            EOS_ASSERT( fc::json::save_to_file( *gs, p, true ),
+                        misc_exception,
+                        "Error occurred while writing genesis JSON to '${path}'",
+                        ("path", p.generic_string())
+            );
+
+            ilog( "Saved genesis JSON to '${path}'", ("path", p.generic_string()) );
+         }
+
+         EOS_THROW( extract_genesis_state_exception, "extracted genesis state from blocks.log" );
+      }
+   }
+
+   fc::optional<chain_id_type> chain_plugin::initialize_with_snapshot(const variables_map& options) {
+      fc::optional<chain_id_type> chain_id;
+      my->snapshot_path = options.at( "snapshot" ).as<bfs::path>();
+      EOS_ASSERT( fc::exists(*my->snapshot_path), plugin_config_exception,
+                  "Cannot load snapshot, ${name} does not exist", ("name", my->snapshot_path->generic_string()) );
+
+      // recover genesis information from the snapshot
+      // used for validation code below
+      auto infile = std::ifstream(my->snapshot_path->generic_string(), (std::ios::in | std::ios::binary));
+      istream_snapshot_reader reader(infile);
+      reader.validate();
+      chain_id = controller::extract_chain_id(reader);
+      infile.close();
+
+      EOS_ASSERT( options.count( "genesis-timestamp" ) == 0,
+                  plugin_config_exception,
+                  "--snapshot is incompatible with --genesis-timestamp as the snapshot contains genesis information");
+      EOS_ASSERT( options.count( "genesis-json" ) == 0,
+                  plugin_config_exception,
+                  "--snapshot is incompatible with --genesis-json as the snapshot contains genesis information");
+
+      auto shared_mem_path = my->chain_config->state_dir / "shared_memory.bin";
+      EOS_ASSERT( !fc::is_regular_file(shared_mem_path),
+                  plugin_config_exception,
+                  "Snapshot can only be used to initialize an empty database." );
+
+      if( fc::is_regular_file( my->blocks_dir / "blocks.log" )) {
+         auto block_log_genesis = block_log::extract_genesis_state(my->blocks_dir);
+         if( block_log_genesis ) {
+            const auto& block_log_chain_id = block_log_genesis->compute_chain_id();
+            EOS_ASSERT( *chain_id == block_log_chain_id,
+                        plugin_config_exception,
+                        "snapshot chain ID (${snapshot_chain_id}) does not match the chain ID from the genesis state in the block log (${block_log_chain_id})",
+                        ("snapshot_chain_id",  *chain_id)
+                              ("block_log_chain_id", block_log_chain_id)
+            );
+         } else {
+            const auto& block_log_chain_id = block_log::extract_chain_id(my->blocks_dir);
+            EOS_ASSERT( *chain_id == block_log_chain_id,
+                        plugin_config_exception,
+                        "snapshot chain ID (${snapshot_chain_id}) does not match the chain ID (${block_log_chain_id}) in the block log",
+                        ("snapshot_chain_id",  *chain_id)
+                              ("block_log_chain_id", block_log_chain_id)
+            );
+         }
+      }
+
+      return chain_id;
+   }
+
+   fc::optional<chain_id_type> chain_plugin::initialize_without_snapshot(const variables_map& options) {
+      fc::optional<chain_id_type> chain_id = controller::extract_chain_id_from_db( my->chain_config->state_dir );
+
+      fc::optional<genesis_state> block_log_genesis;
+      fc::optional<chain_id_type> block_log_chain_id;
+
+      if( fc::is_regular_file( my->blocks_dir / "blocks.log" ) ) {
+         block_log_genesis = block_log::extract_genesis_state( my->blocks_dir );
+         if( block_log_genesis ) {
+            block_log_chain_id = block_log_genesis->compute_chain_id();
+         } else {
+            block_log_chain_id = block_log::extract_chain_id( my->blocks_dir );
+         }
+
+         if( chain_id ) {
+            EOS_ASSERT( *block_log_chain_id == *chain_id, block_log_exception,
+                        "Chain ID in blocks.log (${block_log_chain_id}) does not match the existing "
+                        " chain ID in state (${state_chain_id}).",
+                        ("block_log_chain_id", *block_log_chain_id)
+                              ("state_chain_id", *chain_id)
+            );
+         } else if( block_log_genesis ) {
+            ilog( "Starting fresh blockchain state using genesis state extracted from blocks.log." );
+            my->genesis = block_log_genesis;
+            // Delay setting chain_id until later so that the code handling genesis-json below can know
+            // that chain_id still only represents a chain ID extracted from the state (assuming it exists).
+         }
+      }
+
+      if( options.count( "genesis-json" ) ) {
+         bfs::path genesis_file = options.at( "genesis-json" ).as<bfs::path>();
+         if( genesis_file.is_relative()) {
+            genesis_file = bfs::current_path() / genesis_file;
+         }
+
+         EOS_ASSERT( fc::is_regular_file( genesis_file ),
+                     plugin_config_exception,
+                     "Specified genesis file '${genesis}' does not exist.",
+                     ("genesis", genesis_file.generic_string()));
+
+         genesis_state provided_genesis = fc::json::from_file( genesis_file ).as<genesis_state>();
+
+         if( options.count( "genesis-timestamp" ) ) {
+            provided_genesis.initial_timestamp = calculate_genesis_timestamp( options.at( "genesis-timestamp" ).as<string>() );
+
+            ilog( "Using genesis state provided in '${genesis}' but with adjusted genesis timestamp",
+                  ("genesis", genesis_file.generic_string()) );
+         } else {
+            ilog( "Using genesis state provided in '${genesis}'", ("genesis", genesis_file.generic_string()));
+         }
+
+         if( block_log_genesis ) {
+            EOS_ASSERT( *block_log_genesis == provided_genesis, plugin_config_exception,
+                        "Genesis state, provided via command line arguments, does not match the existing genesis state"
+                        " in blocks.log. It is not necessary to provide genesis state arguments when a full blocks.log "
+                        "file already exists."
+            );
+         } else {
+            const auto& provided_genesis_chain_id = provided_genesis.compute_chain_id();
+            if( chain_id ) {
+               EOS_ASSERT( provided_genesis_chain_id == *chain_id, plugin_config_exception,
+                           "Genesis state, provided via command line arguments, has a chain ID (${provided_genesis_chain_id}) "
+                           "that does not match the existing chain ID in the database state (${state_chain_id}). "
+                           "It is not necessary to provide genesis state arguments when an initialized database state already exists.",
+                           ("provided_genesis_chain_id", provided_genesis_chain_id)
+                                 ("state_chain_id", *chain_id)
+               );
+            } else {
+               if( block_log_chain_id ) {
+                  EOS_ASSERT( provided_genesis_chain_id == *block_log_chain_id, plugin_config_exception,
+                              "Genesis state, provided via command line arguments, has a chain ID (${provided_genesis_chain_id}) "
+                              "that does not match the existing chain ID in blocks.log (${block_log_chain_id}).",
+                              ("provided_genesis_chain_id", provided_genesis_chain_id)
+                                    ("block_log_chain_id", *block_log_chain_id)
+                  );
+               }
+
+               chain_id = provided_genesis_chain_id;
+
+               ilog( "Starting fresh blockchain state using provided genesis state." );
+               my->genesis = std::move(provided_genesis);
+            }
+         }
+      } else {
+         EOS_ASSERT( options.count( "genesis-timestamp" ) == 0,
+                     plugin_config_exception,
+                     "--genesis-timestamp is only valid if also passed in with --genesis-json");
+      }
+
+      if( !chain_id ) {
+         if( my->genesis ) {
+            // Uninitialized state database and genesis state extracted from block log
+            chain_id = my->genesis->compute_chain_id();
+         } else {
+            // Uninitialized state database and no genesis state provided
+
+            EOS_ASSERT( !block_log_chain_id, plugin_config_exception,
+                        "Genesis state is necessary to initialize fresh blockchain state but genesis state could not be "
+                        "found in the blocks log. Please either load from snapshot or find a blocks log that starts "
+                        "from genesis."
+            );
+
+            ilog( "Starting fresh blockchain state using default genesis state." );
+            my->genesis.emplace();
+            chain_id = my->genesis->compute_chain_id();
+         }
+      }
+
+      return chain_id;
+   }
+
+   void chain_plugin::plugin_initialize(const variables_map& options) {
+      ilog("initializing chain plugin");
+
+      try {
+         validate_root_key();
+         my->chain_config = controller::config();
+
+         print_build_info(options);
+         load_white_black_lists(options);
 
       if( options.count( "blocks-dir" )) {
          auto bld = options.at( "blocks-dir" ).as<bfs::path>();
@@ -685,23 +917,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          pfs = initialize_protocol_features( protocol_features_dir );
       }
 
-      if( options.count("checkpoint") ) {
-         auto cps = options.at("checkpoint").as<vector<string>>();
-         my->loaded_checkpoints.reserve(cps.size());
-         for( const auto& cp : cps ) {
-            auto item = fc::json::from_string(cp).as<std::pair<uint32_t,block_id_type>>();
-            auto itr = my->loaded_checkpoints.find(item.first);
-            if( itr != my->loaded_checkpoints.end() ) {
-               EOS_ASSERT( itr->second == item.second,
-                           plugin_config_exception,
-                          "redefining existing checkpoint at block number ${num}: original: ${orig} new: ${new}",
-                          ("num", item.first)("orig", itr->second)("new", item.second)
-               );
-            } else {
-               my->loaded_checkpoints[item.first] = item.second;
-            }
-         }
-      }
+      initialize_checkpoints(options);
 
       if( options.count( "wasm-runtime" ))
          my->wasm_runtime = options.at( "wasm-runtime" ).as<vm_type>();
@@ -756,44 +972,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       if( options.count( "terminate-at-block" ))
          my->chain_config->terminate_at_block = options.at( "terminate-at-block" ).as<uint32_t>();
 
-      if( options.count( "extract-genesis-json" ) || options.at( "print-genesis-json" ).as<bool>()) {
-         fc::optional<genesis_state> gs;
-
-         if( fc::exists( my->blocks_dir / "blocks.log" )) {
-            gs = block_log::extract_genesis_state( my->blocks_dir );
-            EOS_ASSERT( gs,
-                        plugin_config_exception,
-                        "Block log at '${path}' does not contain a genesis state, it only has the chain-id.",
-                        ("path", (my->blocks_dir / "blocks.log").generic_string())
-            );
-         } else {
-            wlog( "No blocks.log found at '${p}'. Using default genesis state.",
-                  ("p", (my->blocks_dir / "blocks.log").generic_string()));
-            gs.emplace();
-         }
-
-         if( options.at( "print-genesis-json" ).as<bool>()) {
-            ilog( "Genesis JSON:\n${genesis}", ("genesis", json::to_pretty_string( *gs )));
-         }
-
-         if( options.count( "extract-genesis-json" )) {
-            auto p = options.at( "extract-genesis-json" ).as<bfs::path>();
-
-            if( p.is_relative()) {
-               p = bfs::current_path() / p;
-            }
-
-            EOS_ASSERT( fc::json::save_to_file( *gs, p, true ),
-                        misc_exception,
-                        "Error occurred while writing genesis JSON to '${path}'",
-                        ("path", p.generic_string())
-            );
-
-            ilog( "Saved genesis JSON to '${path}'", ("path", p.generic_string()) );
-         }
-
-         EOS_THROW( extract_genesis_state_exception, "extracted genesis state from blocks.log" );
-      }
+      extract_genesis_json(options);
 
       if( options.count("export-reversible-blocks") ) {
          auto p = options.at( "export-reversible-blocks" ).as<bfs::path>();
@@ -856,162 +1035,8 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          wlog("The --import-reversible-blocks option should be used by itself.");
       }
 
-      fc::optional<chain_id_type> chain_id;
-      if (options.count( "snapshot" )) {
-         my->snapshot_path = options.at( "snapshot" ).as<bfs::path>();
-         EOS_ASSERT( fc::exists(*my->snapshot_path), plugin_config_exception,
-                     "Cannot load snapshot, ${name} does not exist", ("name", my->snapshot_path->generic_string()) );
-
-         // recover genesis information from the snapshot
-         // used for validation code below
-         auto infile = std::ifstream(my->snapshot_path->generic_string(), (std::ios::in | std::ios::binary));
-         istream_snapshot_reader reader(infile);
-         reader.validate();
-         chain_id = controller::extract_chain_id(reader);
-         infile.close();
-
-         EOS_ASSERT( options.count( "genesis-timestamp" ) == 0,
-                 plugin_config_exception,
-                 "--snapshot is incompatible with --genesis-timestamp as the snapshot contains genesis information");
-         EOS_ASSERT( options.count( "genesis-json" ) == 0,
-                     plugin_config_exception,
-                     "--snapshot is incompatible with --genesis-json as the snapshot contains genesis information");
-
-         auto shared_mem_path = my->chain_config->state_dir / "shared_memory.bin";
-         EOS_ASSERT( !fc::is_regular_file(shared_mem_path),
-                 plugin_config_exception,
-                 "Snapshot can only be used to initialize an empty database." );
-
-         if( fc::is_regular_file( my->blocks_dir / "blocks.log" )) {
-            auto block_log_genesis = block_log::extract_genesis_state(my->blocks_dir);
-            if( block_log_genesis ) {
-               const auto& block_log_chain_id = block_log_genesis->compute_chain_id();
-               EOS_ASSERT( *chain_id == block_log_chain_id,
-                           plugin_config_exception,
-                           "snapshot chain ID (${snapshot_chain_id}) does not match the chain ID from the genesis state in the block log (${block_log_chain_id})",
-                           ("snapshot_chain_id",  *chain_id)
-                           ("block_log_chain_id", block_log_chain_id)
-               );
-            } else {
-               const auto& block_log_chain_id = block_log::extract_chain_id(my->blocks_dir);
-               EOS_ASSERT( *chain_id == block_log_chain_id,
-                           plugin_config_exception,
-                           "snapshot chain ID (${snapshot_chain_id}) does not match the chain ID (${block_log_chain_id}) in the block log",
-                           ("snapshot_chain_id",  *chain_id)
-                           ("block_log_chain_id", block_log_chain_id)
-               );
-            }
-         }
-
-      } else {
-
-         chain_id = controller::extract_chain_id_from_db( my->chain_config->state_dir );
-
-         fc::optional<genesis_state> block_log_genesis;
-         fc::optional<chain_id_type> block_log_chain_id;
-
-         if( fc::is_regular_file( my->blocks_dir / "blocks.log" ) ) {
-            block_log_genesis = block_log::extract_genesis_state( my->blocks_dir );
-            if( block_log_genesis ) {
-               block_log_chain_id = block_log_genesis->compute_chain_id();
-            } else {
-               block_log_chain_id = block_log::extract_chain_id( my->blocks_dir );
-            }
-
-            if( chain_id ) {
-               EOS_ASSERT( *block_log_chain_id == *chain_id, block_log_exception,
-                           "Chain ID in blocks.log (${block_log_chain_id}) does not match the existing "
-                           " chain ID in state (${state_chain_id}).",
-                           ("block_log_chain_id", *block_log_chain_id)
-                           ("state_chain_id", *chain_id)
-               );
-            } else if( block_log_genesis ) {
-               ilog( "Starting fresh blockchain state using genesis state extracted from blocks.log." );
-               my->genesis = block_log_genesis;
-               // Delay setting chain_id until later so that the code handling genesis-json below can know
-               // that chain_id still only represents a chain ID extracted from the state (assuming it exists).
-            }
-         }
-
-         if( options.count( "genesis-json" ) ) {
-            bfs::path genesis_file = options.at( "genesis-json" ).as<bfs::path>();
-            if( genesis_file.is_relative()) {
-               genesis_file = bfs::current_path() / genesis_file;
-            }
-
-            EOS_ASSERT( fc::is_regular_file( genesis_file ),
-                        plugin_config_exception,
-                       "Specified genesis file '${genesis}' does not exist.",
-                       ("genesis", genesis_file.generic_string()));
-
-            genesis_state provided_genesis = fc::json::from_file( genesis_file ).as<genesis_state>();
-
-            if( options.count( "genesis-timestamp" ) ) {
-               provided_genesis.initial_timestamp = calculate_genesis_timestamp( options.at( "genesis-timestamp" ).as<string>() );
-
-               ilog( "Using genesis state provided in '${genesis}' but with adjusted genesis timestamp",
-                     ("genesis", genesis_file.generic_string()) );
-            } else {
-               ilog( "Using genesis state provided in '${genesis}'", ("genesis", genesis_file.generic_string()));
-            }
-
-            if( block_log_genesis ) {
-               EOS_ASSERT( *block_log_genesis == provided_genesis, plugin_config_exception,
-                           "Genesis state, provided via command line arguments, does not match the existing genesis state"
-                           " in blocks.log. It is not necessary to provide genesis state arguments when a full blocks.log "
-                           "file already exists."
-               );
-            } else {
-               const auto& provided_genesis_chain_id = provided_genesis.compute_chain_id();
-               if( chain_id ) {
-                  EOS_ASSERT( provided_genesis_chain_id == *chain_id, plugin_config_exception,
-                              "Genesis state, provided via command line arguments, has a chain ID (${provided_genesis_chain_id}) "
-                              "that does not match the existing chain ID in the database state (${state_chain_id}). "
-                              "It is not necessary to provide genesis state arguments when an initialized database state already exists.",
-                              ("provided_genesis_chain_id", provided_genesis_chain_id)
-                              ("state_chain_id", *chain_id)
-                  );
-               } else {
-                  if( block_log_chain_id ) {
-                     EOS_ASSERT( provided_genesis_chain_id == *block_log_chain_id, plugin_config_exception,
-                                 "Genesis state, provided via command line arguments, has a chain ID (${provided_genesis_chain_id}) "
-                                 "that does not match the existing chain ID in blocks.log (${block_log_chain_id}).",
-                                 ("provided_genesis_chain_id", provided_genesis_chain_id)
-                                 ("block_log_chain_id", *block_log_chain_id)
-                     );
-                  }
-
-                  chain_id = provided_genesis_chain_id;
-
-                  ilog( "Starting fresh blockchain state using provided genesis state." );
-                  my->genesis = std::move(provided_genesis);
-               }
-            }
-         } else {
-            EOS_ASSERT( options.count( "genesis-timestamp" ) == 0,
-                        plugin_config_exception,
-                        "--genesis-timestamp is only valid if also passed in with --genesis-json");
-         }
-
-         if( !chain_id ) {
-            if( my->genesis ) {
-               // Uninitialized state database and genesis state extracted from block log
-               chain_id = my->genesis->compute_chain_id();
-            } else {
-               // Uninitialized state database and no genesis state provided
-
-               EOS_ASSERT( !block_log_chain_id, plugin_config_exception,
-                           "Genesis state is necessary to initialize fresh blockchain state but genesis state could not be "
-                           "found in the blocks log. Please either load from snapshot or find a blocks log that starts "
-                           "from genesis."
-               );
-
-               ilog( "Starting fresh blockchain state using default genesis state." );
-               my->genesis.emplace();
-               chain_id = my->genesis->compute_chain_id();
-            }
-         }
-      }
+      fc::optional<chain_id_type> chain_id = (options.count( "snapshot" )) ?
+         initialize_with_snapshot(options) :  initialize_without_snapshot(options);
 
       if ( options.count("read-mode") ) {
          my->chain_config->read_mode = options.at("read-mode").as<db_read_mode>();
@@ -2496,91 +2521,145 @@ read_only::get_account_results read_only::get_account( const get_account_params&
 
    const auto& code_account = db.db().get<account_object,by_name>( config::system_account_name );
 
-   abi_def abi;
-   if( abi_serializer::to_abi(code_account.abi, abi) ) {
-      abi_serializer abis( abi, abi_serializer::create_yield_function( abi_serializer_max_time ) );
-
-      const auto token_code = N(eosio.token);
-
-      auto core_symbol = extract_core_symbol();
-
-      if (params.expected_core_symbol.valid())
-         core_symbol = *(params.expected_core_symbol);
-
-      const auto* t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( token_code, params.account_name, N(accounts) ));
-      if( t_id != nullptr ) {
-         const auto &idx = d.get_index<key_value_index, by_scope_primary>();
-         auto it = idx.find(boost::make_tuple( t_id->id, core_symbol.to_symbol_code() ));
-         if( it != idx.end() && it->value.size() >= sizeof(asset) ) {
-            asset bal;
-            fc::datastream<const char *> ds(it->value.data(), it->value.size());
-            fc::raw::unpack(ds, bal);
-
-            if( bal.get_symbol().valid() && bal.get_symbol() == core_symbol ) {
-               result.core_liquid_balance = bal;
-            }
-         }
-      }
-
-      t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, params.account_name, N(userres) ));
-      if (t_id != nullptr) {
-         const auto &idx = d.get_index<key_value_index, by_scope_primary>();
-         auto it = idx.find(boost::make_tuple( t_id->id, params.account_name.to_uint64_t() ));
-         if ( it != idx.end() ) {
-            vector<char> data;
-            copy_inline_row(*it, data);
-            result.total_resources = abis.binary_to_variant( "user_resources", data, abi_serializer::create_yield_function( abi_serializer_max_time ), shorten_abi_errors );
-         }
-      }
-
-      t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, params.account_name, N(delband) ));
-      if (t_id != nullptr) {
-         const auto &idx = d.get_index<key_value_index, by_scope_primary>();
-         auto it = idx.find(boost::make_tuple( t_id->id, params.account_name.to_uint64_t() ));
-         if ( it != idx.end() ) {
-            vector<char> data;
-            copy_inline_row(*it, data);
-            result.self_delegated_bandwidth = abis.binary_to_variant( "delegated_bandwidth", data, abi_serializer::create_yield_function( abi_serializer_max_time ), shorten_abi_errors );
-         }
-      }
-
-      t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, params.account_name, N(refunds) ));
-      if (t_id != nullptr) {
-         const auto &idx = d.get_index<key_value_index, by_scope_primary>();
-         auto it = idx.find(boost::make_tuple( t_id->id, params.account_name.to_uint64_t() ));
-         if ( it != idx.end() ) {
-            vector<char> data;
-            copy_inline_row(*it, data);
-            result.refund_request = abis.binary_to_variant( "refund_request", data, abi_serializer::create_yield_function( abi_serializer_max_time ), shorten_abi_errors );
-         }
-      }
-
-      t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, config::system_account_name, N(voters) ));
-      if (t_id != nullptr) {
-         const auto &idx = d.get_index<key_value_index, by_scope_primary>();
-         auto it = idx.find(boost::make_tuple( t_id->id, params.account_name.to_uint64_t() ));
-         if ( it != idx.end() ) {
-            vector<char> data;
-            copy_inline_row(*it, data);
-            result.voter_info = abis.binary_to_variant( "voter_info", data, abi_serializer::create_yield_function( abi_serializer_max_time ), shorten_abi_errors );
-         }
-      }
-
-      t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, config::system_account_name, N(rexbal) ));
-      if (t_id != nullptr) {
-         const auto &idx = d.get_index<key_value_index, by_scope_primary>();
-         auto it = idx.find(boost::make_tuple( t_id->id, params.account_name.to_uint64_t() ));
-         if( it != idx.end() ) {
-            vector<char> data;
-            copy_inline_row(*it, data);
-            result.rex_info = abis.binary_to_variant( "rex_balance", data, abi_serializer::create_yield_function( abi_serializer_max_time ), shorten_abi_errors );
-         }
-      }
-   }
-   return result;
+    collect_account_results(params, result, d, code_account);
+    return result;
 }
 
-static variant action_abi_to_variant( const abi_def& abi, type_name action_type ) {
+    read_only::get_account_results &
+    read_only::collect_account_results(const read_only::get_account_params &params,
+                                       read_only::get_account_results &result,
+                                       const database &d, const account_object &code_account) const {
+        abi_def abi;
+        if( abi_serializer::to_abi(code_account.abi, abi) ) {
+           abi_serializer abis( abi, abi_serializer::create_yield_function(abi_serializer_max_time) );
+
+           const auto token_code = N(eosio.token);
+
+           auto core_symbol = extract_core_symbol();
+
+           if (params.expected_core_symbol.valid())
+              core_symbol = *(params.expected_core_symbol);
+
+            collect_core_liquid_balance(params, result, d, token_code, core_symbol);
+            collect_total_resources(params, result, d, abis);
+            collect_self_delegated_bandwidth(params, result, d, abis);
+            collect_refund_request(params, result, d, abis);
+            collect_voter_info(params, result, d, abis);
+            collect_rex_info(params, result, d, abis);
+        }
+        return result;
+    }
+
+    read_only::get_account_results &
+    read_only::collect_rex_info(const read_only::get_account_params &params, read_only::get_account_results &result,
+                                const database &d, const abi_serializer &abis) const {
+        const table_id_object* t_id = d.find<table_id_object, by_code_scope_table>(boost::make_tuple(system_account_name, system_account_name, N(rexbal) ));
+        if (t_id != nullptr) {
+           const auto &idx = d.get_index<key_value_index, by_scope_primary>();
+           auto it = idx.find(boost::make_tuple( t_id->id, params.account_name.to_uint64_t() ));
+           if( it != idx.end() ) {
+              vector<char> data;
+              copy_inline_row(*it, data);
+              result.rex_info = abis.binary_to_variant("rex_balance", data, abi_serializer::create_yield_function(
+                      abi_serializer_max_time), shorten_abi_errors);
+           }
+        }
+        return result;
+    }
+
+    read_only::get_account_results &
+    read_only::collect_voter_info(const read_only::get_account_params &params, read_only::get_account_results &result,
+                                  const database &d, const abi_serializer &abis) const {
+        const auto* t_id = d.find<table_id_object, by_code_scope_table>(boost::make_tuple(system_account_name, system_account_name, N(voters) ));
+        if (t_id != nullptr) {
+           const auto &idx = d.get_index<key_value_index, by_scope_primary>();
+           auto it = idx.find(boost::make_tuple( t_id->id, params.account_name.to_uint64_t() ));
+           if ( it != idx.end() ) {
+              vector<char> data;
+              copy_inline_row(*it, data);
+              result.voter_info = abis.binary_to_variant("voter_info", data, abi_serializer::create_yield_function(
+                      abi_serializer_max_time), shorten_abi_errors);
+           }
+        }
+        return result;
+    }
+
+    read_only::get_account_results &
+    read_only::collect_refund_request(const read_only::get_account_params &params,
+                                      read_only::get_account_results &result,
+                                      const database &d, const abi_serializer &abis) const {
+        const auto* t_id = d.find<table_id_object, by_code_scope_table>(boost::make_tuple(system_account_name, params.account_name, N(refunds) ));
+        if (t_id != nullptr) {
+           const auto &idx = d.get_index<key_value_index, by_scope_primary>();
+           auto it = idx.find(boost::make_tuple( t_id->id, params.account_name.to_uint64_t() ));
+           if ( it != idx.end() ) {
+              vector<char> data;
+              copy_inline_row(*it, data);
+              result.refund_request = abis.binary_to_variant("refund_request", data, abi_serializer::create_yield_function(
+                      abi_serializer_max_time), shorten_abi_errors);
+           }
+        }
+        return result;
+    }
+
+    read_only::get_account_results &
+    read_only::collect_self_delegated_bandwidth(const read_only::get_account_params &params,
+                                                read_only::get_account_results &result,
+                                                const database &d,
+                                                const abi_serializer &abis) const {
+        const auto* t_id = d.find<table_id_object, by_code_scope_table>(boost::make_tuple(system_account_name, params.account_name, N(delband) ));
+        if (t_id != nullptr) {
+           const auto &idx = d.get_index<key_value_index, by_scope_primary>();
+           auto it = idx.find(boost::make_tuple( t_id->id, params.account_name.to_uint64_t() ));
+           if ( it != idx.end() ) {
+              vector<char> data;
+              copy_inline_row(*it, data);
+              result.self_delegated_bandwidth = abis.binary_to_variant("delegated_bandwidth", data, abi_serializer::create_yield_function(
+                      abi_serializer_max_time), shorten_abi_errors);
+           }
+        }
+        return result;
+    }
+
+    read_only::get_account_results &
+    read_only::collect_total_resources(const read_only::get_account_params &params,
+                                       read_only::get_account_results &result,
+                                       const database &d, const abi_serializer &abis) const {
+        const auto* t_id = d.find<table_id_object, by_code_scope_table>(boost::make_tuple(system_account_name, params.account_name, N(userres) ));
+        if (t_id != nullptr) {
+           const auto &idx = d.get_index<key_value_index, by_scope_primary>();
+           auto it = idx.find(boost::make_tuple( t_id->id, params.account_name.to_uint64_t() ));
+           if ( it != idx.end() ) {
+              vector<char> data;
+              copy_inline_row(*it, data);
+              result.total_resources = abis.binary_to_variant("user_resources", data, abi_serializer::create_yield_function(
+                      abi_serializer_max_time), shorten_abi_errors);
+           }
+        }
+        return result;
+    }
+
+    read_only::get_account_results &
+    read_only::collect_core_liquid_balance(const read_only::get_account_params &params, read_only::get_account_results &result,
+                                           const database &d, const name &token_code, const symbol &core_symbol) const {
+        const auto* t_id = d.find<table_id_object, by_code_scope_table>(boost::make_tuple(token_code, params.account_name, N(accounts) ));
+        if( t_id != nullptr ) {
+           const auto &idx = d.get_index<key_value_index, by_scope_primary>();
+           auto it = idx.find(boost::make_tuple( t_id->id, core_symbol.to_symbol_code() ));
+           if( it != idx.end() && it->value.size() >= sizeof(asset) ) {
+              asset bal;
+              datastream<const char *> ds(it->value.data(), it->value.size());
+              raw::unpack(ds, bal);
+
+              if( bal.get_symbol().valid() && bal.get_symbol() == core_symbol ) {
+                 result.core_liquid_balance = bal;
+              }
+           }
+        }
+        return result;
+    }
+
+    static variant action_abi_to_variant( const abi_def& abi, type_name action_type ) {
    variant v;
    auto it = std::find_if(abi.structs.begin(), abi.structs.end(), [&](auto& x){return x.name == action_type;});
    if( it != abi.structs.end() )
