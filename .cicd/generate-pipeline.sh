@@ -36,7 +36,10 @@ for FILE in $(ls $CICD_DIR/platforms/$PLATFORM_TYPE); do
     # macos-10.14
     # ubuntu-16.04
     # skip Mojave if it's anything but the post-merge build
-    [[ $FILE_NAME =~ 'macos-10.14' ]] && ( [[ $BUILDKITE_SOURCE != 'webhook' ]] || [[ $BUILDKITE_PULL_REQUEST != false ]] || [[ ! $BUILDKITE_MESSAGE =~ 'Merge pull request' ]] ) && export SKIP_MACOS_10_14=true && continue
+    if [[ "$FILE_NAME" =~ 'macos-10.14' && "$SKIP_MACOS_10_14" != 'false' && "$RUN_ALL_TESTS" != 'true' && ( "$BUILDKITE_SOURCE" != 'webhook' || "$BUILDKITE_PULL_REQUEST" != 'false' || ! "$BUILDKITE_MESSAGE" =~ 'Merge pull request' ) ]]; then
+        export SKIP_MACOS_10_14='true'
+        continue
+    fi
     export PLATFORM_NAME="$(echo $FILE_NAME | cut -d- -f1 | sed 's/os/OS/g')"
     # macOS
     # ubuntu
@@ -93,8 +96,13 @@ if [[ ! -z ${BUILDKITE_TRIGGERED_FROM_BUILD_ID} ]]; then
 fi
 export BUILD_SOURCE=${BUILD_SOURCE:---build \$BUILDKITE_BUILD_ID}
 # set trigger_job if master/release/develop branch and webhook
-if [[ ! $BUILDKITE_PIPELINE_SLUG =~ 'lrt' ]] && [[ $BUILDKITE_BRANCH =~ ^release/[0-9]+\.[0-9]+\.x$ || $BUILDKITE_BRANCH =~ ^master$ || $BUILDKITE_BRANCH =~ ^develop$ ]]; then
+if [[ ! $BUILDKITE_PIPELINE_SLUG =~ 'lrt' ]] && [[ $BUILDKITE_BRANCH =~ ^release/[0-9]+\.[0-9]+\.x$ || $BUILDKITE_BRANCH =~ ^master$ || $BUILDKITE_BRANCH =~ ^develop$ || "$SKIP_LONG_RUNNING_TESTS" == 'false' ]]; then
     [[ $BUILDKITE_SOURCE != 'schedule' ]] && export TRIGGER_JOB=true
+fi
+# run LRTs synchronously when running full test suite
+if [[ "$RUN_ALL_TESTS" == 'true' && "$SKIP_LONG_RUNNING_TESTS" != 'true' ]]; then
+    export SKIP_LONG_RUNNING_TESTS='false'
+    export TRIGGER_JOB='false'
 fi
 oIFS="$IFS"
 IFS=$''
@@ -457,7 +465,7 @@ EOF
     fi
 done
 # Execute multiversion test
-if ( [[ ! $PINNED == false ]] ); then
+if [[ ! "$PINNED" == 'false' || "$SKIP_MULTIVERSION_TEST" == 'false' ]]; then
         cat <<EOF
   - label: ":pipeline: Multiversion Test"
     command: 
