@@ -86,8 +86,6 @@ namespace eosio { namespace chain { namespace webassembly {
                } else {
                   EOS_ASSERT(arg.original_ptr != ctx.get_interface().get_memory(), wasm_execution_error, "references cannot be created for null pointers");
                }
-            } else if constexpr (vm::is_reference_type_v<arg_t>) {
-               EOS_ASSERT(arg.value != ctx.get_interface().get_memory(), wasm_execution_error, "references cannot be created for null pointers");
             }
          }));
 
@@ -133,10 +131,6 @@ namespace eosio { namespace chain { namespace webassembly {
    };
    template<typename T, std::size_t A>
    struct remove_reference_proxy<vm::reference_proxy<T, A>> {
-      using type = T;
-   };
-   template<typename T>
-   struct remove_reference_proxy<vm::reference<T>> {
       using type = T;
    };
 
