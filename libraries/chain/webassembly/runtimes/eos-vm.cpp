@@ -62,10 +62,9 @@ void validate_intrinsics(const bytes& code, const whitelisted_intrinsics_type& i
       // check import signatures
        eos_vm_host_functions_t::resolve(bkend.get_module());
       // check that the imports are all currently enabled
-      auto intrinsic_set = convert_intrinsic_whitelist_to_set( intrinsics );
       const auto& imports = bkend.get_module().imports;
       for(std::uint32_t i = 0; i < imports.size(); ++i) {
-         EOS_ASSERT(intrinsic_set.find(std::string((char*)imports[i].field_str.raw(), imports[i].field_str.size())) != intrinsic_set.end(),
+        EOS_ASSERT(is_intrinsic_whitelisted(intrinsics, std::string_view((char*)imports[i].field_str.raw(), imports[i].field_str.size())),
                     wasm_serialization_error, "${module}.${fn} unresolveable",
                     ("module", std::string((char*)imports[i].module_str.raw(), imports[i].module_str.size()))
                     ("fn", std::string((char*)imports[i].field_str.raw(), imports[i].field_str.size())));
