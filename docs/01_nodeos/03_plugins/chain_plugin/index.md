@@ -71,7 +71,7 @@ Config Options for eosio::chain_plugin:
                                         application config dir)
   --checkpoint arg                      Pairs of [BLOCK_NUM,BLOCK_ID] that 
                                         should be enforced as checkpoints.
-  --wasm-runtime eos-vm|eos-vm-jit      Override default WASM runtime (wabt)
+  --wasm-runtime eos-vm|eos-vm-jit      Override default WASM runtime (eos-vm-jit)
   --eos-vm-oc-enable                    Enable optimized compilation in WASM
   --abi-serializer-max-time-ms arg (=15000)
                                         Override default maximum ABI 
