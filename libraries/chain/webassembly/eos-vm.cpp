@@ -70,20 +70,20 @@ void validate(const bytes& code, const wasm_config& cfg, const whitelisted_intri
 
 // Be permissive on apply.
 struct apply_options {
-   std::uint32_t max_pages = wasm_constraints::maximum_linear_memory/wasm_constraints::wasm_page_size;
-   std::uint32_t max_call_depth = wasm_constraints::maximum_call_depth+1;
+   static constexpr std::uint32_t max_pages = wasm_constraints::maximum_linear_memory/wasm_constraints::wasm_page_size;
+   static constexpr std::uint32_t max_call_depth = wasm_constraints::maximum_call_depth+1;
+   static constexpr bool forbid_export_mutable_globals = false;
    static constexpr bool allow_code_after_function_end = false;
    static constexpr bool allow_u32_limits_flags = true;
    static constexpr bool allow_invalid_empty_local_set = true;
    static constexpr bool allow_zero_blocktype = true;
 };
 
-
 template<typename Impl>
 class eos_vm_instantiated_module : public wasm_instantiated_module_interface {
       using backend_t = backend<apply_context, Impl, apply_options>;
    public:
-      
+
       eos_vm_instantiated_module(eos_vm_runtime<Impl>* runtime, std::unique_ptr<backend_t> mod) :
          _runtime(runtime),
          _instantiated_module(std::move(mod)) {}
@@ -138,6 +138,7 @@ bool eos_vm_runtime<Impl>::inject_module(IR::Module& module) {
 template<typename Impl>
 std::unique_ptr<wasm_instantiated_module_interface> eos_vm_runtime<Impl>::instantiate_module(const char* code_bytes, size_t code_size, std::vector<uint8_t>,
                                                                                              const digest_type&, const uint8_t&, const uint8_t&, const wasm_config& opts) {
+
    using backend_t = backend<apply_context, Impl, apply_options>;
    try {
       wasm_code_ptr code((uint8_t*)code_bytes, code_size);

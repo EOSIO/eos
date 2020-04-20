@@ -715,7 +715,7 @@ class Node(object):
         return self.waitForBlock(blockNum, timeout=timeout, blockType=blockType)
 
     # Trasfer funds. Returns "transfer" json return object
-    def transferFunds(self, source, destination, amountStr, memo="memo", force=False, waitForTransBlock=False, exitOnError=True, reportStatus=True, sign=False, dontSend=False, expiration=None):
+    def transferFunds(self, source, destination, amountStr, memo="memo", force=False, waitForTransBlock=False, exitOnError=True, reportStatus=True, sign=False, dontSend=False, expiration=None, skipSign=False):
         assert isinstance(amountStr, str)
         assert(source)
         assert(isinstance(source, Account))
@@ -740,6 +740,9 @@ class Node(object):
         if sign:
             cmdArr.append("--sign-with")
             cmdArr.append("[ \"%s\" ]" % (source.activePublicKey))
+
+        if skipSign:
+            cmdArr.append("--skip-sign")
 
         cmdArr.append(source.name)
         cmdArr.append(destination.name)
