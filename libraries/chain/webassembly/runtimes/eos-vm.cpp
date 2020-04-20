@@ -64,7 +64,8 @@ void validate_intrinsics(const bytes& code, const whitelisted_intrinsics_type& i
       // check that the imports are all currently enabled
       const auto& imports = bkend.get_module().imports;
       for(std::uint32_t i = 0; i < imports.size(); ++i) {
-        EOS_ASSERT(is_intrinsic_whitelisted(intrinsics, std::string_view((char*)imports[i].field_str.raw(), imports[i].field_str.size())),
+        EOS_ASSERT(std::string_view((char*)imports[i].module_str.raw(), imports[i].module_str.size()) == "env" &&
+                   is_intrinsic_whitelisted(intrinsics, std::string_view((char*)imports[i].field_str.raw(), imports[i].field_str.size())),
                     wasm_serialization_error, "${module}.${fn} unresolveable",
                     ("module", std::string((char*)imports[i].module_str.raw(), imports[i].module_str.size()))
                     ("fn", std::string((char*)imports[i].field_str.raw(), imports[i].field_str.size())));
