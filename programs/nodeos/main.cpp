@@ -6,6 +6,7 @@
 #include <eosio/producer_plugin/producer_plugin.hpp>
 #include <eosio/version/version.hpp>
 
+#include <fc/log/logger.hpp>
 #include <fc/log/logger_config.hpp>
 #include <fc/log/appender.hpp>
 #include <fc/exception/exception.hpp>
@@ -20,6 +21,22 @@ using namespace eosio;
 
 namespace detail {
 
+fc::logging_config& add_deep_mind_logger(fc::logging_config& config) {
+   config.appenders.push_back(
+      fc::appender_config( "deep-mind", "dmlog" )
+   );
+
+   fc::logger_config dmlc;
+   dmlc.name = "deep-mind";
+   dmlc.level = fc::log_level::debug;
+   dmlc.enabled = true;
+   dmlc.appenders.push_back("deep-mind");
+
+   config.loggers.push_back( dmlc );
+
+   return config;
+}
+
 void configure_logging(const bfs::path& config_path)
 {
    try {
@@ -27,7 +44,9 @@ void configure_logging(const bfs::path& config_path)
          if( fc::exists( config_path ) ) {
             fc::configure_logging( config_path );
          } else {
-            fc::configure_logging( fc::logging_config::default_config() );
+            auto cfg = fc::logging_config::default_config();
+
+            fc::configure_logging( ::detail::add_deep_mind_logger(cfg) );
          }
       } catch (...) {
          elog("Error reloading logging.json");
@@ -63,6 +82,12 @@ void initialize_logging()
    auto config_path = app().get_logging_conf();
    if(fc::exists(config_path))
      fc::configure_logging(config_path); // intentionally allowing exceptions to escape
+   else {
+      auto cfg = fc::logging_config::default_config();
+
+      fc::configure_logging( ::detail::add_deep_mind_logger(cfg) );
+   }
+
    fc::log_config::initialize_appenders( app().get_io_service() );
 
    app().set_sighup_callback(logging_conf_handler);
@@ -123,7 +148,7 @@ int main(int argc, char** argv)
             elog("Database dirty flag set (likely due to unclean shutdown): replay required" );
             return DATABASE_DIRTY;
          }
-      } catch (...) { } 
+      } catch (...) { }
 
       elog( "${e}", ("e",e.to_detail_string()));
       return OTHER_FAIL;

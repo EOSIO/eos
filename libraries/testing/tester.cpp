@@ -269,8 +269,7 @@ namespace eosio { namespace testing {
       open( make_protocol_feature_set(), expected_chain_id );
    }
 
-   template <typename Lambda>
-   void base_tester::open( protocol_feature_set&& pfs, fc::optional<chain_id_type> expected_chain_id, Lambda lambda ) {
+   void base_tester::open( protocol_feature_set&& pfs, fc::optional<chain_id_type> expected_chain_id, const std::function<void()>& lambda ) {
       if( !expected_chain_id ) {
          expected_chain_id = controller::extract_chain_id_from_db( cfg.state_dir );
          if( !expected_chain_id ) {
@@ -284,7 +283,7 @@ namespace eosio { namespace testing {
 
       control.reset( new controller(cfg, std::move(pfs), *expected_chain_id) );
       control->add_indices();
-      lambda();
+      if (lambda) lambda();
       chain_transactions.clear();
       control->accepted_block.connect([this]( const block_state_ptr& block_state ){
         FC_ASSERT( block_state->block );
@@ -1188,6 +1187,15 @@ namespace eosio { namespace testing {
       }
 
       preactivate_protocol_features( preactivations );
+   }
+
+   bool fc_exception_code_is::operator()( const fc::exception& ex ) {
+      bool match = (ex.code() == expected);
+      if( !match ) {
+         auto message = ex.get_log().at( 0 ).get_message();
+         BOOST_TEST_MESSAGE( "LOG: expected code: " << expected << ", actual code: " << ex.code() << ", message: " << message );
+      }
+      return match;
    }
 
    bool fc_exception_message_is::operator()( const fc::exception& ex ) {
