@@ -135,14 +135,6 @@ namespace eosio {
       uint32_t end_block{0};
    };
 
-   struct generic_message {
-      go_away_message tmp; // until merge of generic message support
-   };
-
-   struct generic_support_message {
-      go_away_message tmp; // until merge of generic message support
-   };
-
    struct trx_message_v1 {
       fc::optional<transaction_id_type> trx_id; // only provided for large trx as trade-off for small trxs not worth it
       std::shared_ptr<packed_transaction> trx;
@@ -157,10 +149,8 @@ namespace eosio {
                                       sync_request_message,
                                       signed_block_v0,         // which = 7
                                       packed_transaction_v0,   // which = 8
-                                      generic_message,         // which = 9
-                                      generic_support_message, // which = 10
-                                      signed_block,            // which = 11
-                                      trx_message_v1>;         // which = 12
+                                      signed_block,            // which = 9
+                                      trx_message_v1>;         // which = 10
 
 } // namespace eosio
 
@@ -179,8 +169,6 @@ FC_REFLECT( eosio::time_message, (org)(rec)(xmt)(dst) )
 FC_REFLECT( eosio::notice_message, (known_trx)(known_blocks) )
 FC_REFLECT( eosio::request_message, (req_trx)(req_blocks) )
 FC_REFLECT( eosio::sync_request_message, (start_block)(end_block) )
-FC_REFLECT( eosio::generic_message, (tmp) )
-FC_REFLECT( eosio::generic_support_message, (tmp) )
 FC_REFLECT( eosio::trx_message_v1, (trx_id)(trx) )
 
 

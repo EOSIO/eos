@@ -393,8 +393,8 @@ namespace eosio {
    constexpr auto     message_header_size = 4;
    constexpr uint32_t signed_block_v0_which = 7;        // see protocol net_message
    constexpr uint32_t packed_transaction_v0_which = 8;  // see protocol net_message
-   constexpr uint32_t signed_block_which = 11;          // see protocol net_message
-   constexpr uint32_t trx_message_v1_which = 12;        // see protocol net_message
+   constexpr uint32_t signed_block_which = 9;           // see protocol net_message
+   constexpr uint32_t trx_message_v1_which = 10;        // see protocol net_message
 
    /**
     *  For a while, network version was a 16 bit value equal to the second set of 16 bits
@@ -417,8 +417,8 @@ namespace eosio {
    constexpr uint16_t proto_base = 0;
    constexpr uint16_t proto_explicit_sync = 1;       // version at time of eosio 1.0
    constexpr uint16_t proto_block_id_notify = 2;     // reserved. feature was removed. next net_version should be 3
-   constexpr uint16_t proto_generic_messages = 3;    // placeholder for generic messages
-   constexpr uint16_t proto_pruned_types = 4;        // supports new signed_block & packed_transaction types
+   constexpr uint16_t proto_pruned_types = 3;        // supports new signed_block & packed_transaction types
+   constexpr uint16_t proto_generic_messages = 4;    // placeholder for generic messages
 
    constexpr uint16_t net_version = proto_pruned_types;
 
@@ -1252,6 +1252,7 @@ namespace eosio {
    }
 
    static std::shared_ptr<std::vector<char>> create_send_buffer( const signed_block_ptr& sb ) {
+      static_assert( signed_block_which == net_message::position<signed_block>() );
       // this implementation is to avoid copy of signed_block to net_message
       // matches which of net_message for signed_block
       fc_dlog( logger, "sending block ${bn}", ("bn", sb->block_num()) );
@@ -1259,6 +1260,7 @@ namespace eosio {
    }
 
    static std::shared_ptr<std::vector<char>> create_send_buffer( const signed_block_v0& sb_v0 ) {
+      static_assert( signed_block_v0_which == net_message::position<signed_block_v0>() );
       // this implementation is to avoid copy of signed_block_v0 to net_message
       // matches which of net_message for signed_block_v0
       fc_dlog( logger, "sending v0 block ${bn}", ("bn", sb_v0.block_num()) );
@@ -1266,17 +1268,19 @@ namespace eosio {
    }
 
    static std::shared_ptr<std::vector<char>> create_send_buffer( const packed_transaction_ptr& trx ) {
-      // const cast required, trx_message_v1 has non-const shared_ptr because FC_REFLECT does not work with const types
+      static_assert( trx_message_v1_which == net_message::position<trx_message_v1>() );
       fc::optional<transaction_id_type> trx_id;
       if( trx->get_estimated_size() > 1024 ) { // simple guess on threshold
          fc_dlog( logger, "including trx id, est size: ${es}", ("es", trx->get_estimated_size()) );
          trx_id = trx->id();
       }
+      // const cast required, trx_message_v1 has non-const shared_ptr because FC_REFLECT does not work with const types
       trx_message_v1 v1{ std::move(trx_id), std::const_pointer_cast<packed_transaction>(trx) };
       return create_send_buffer( trx_message_v1_which, v1 );
    }
 
    static std::shared_ptr<std::vector<char>> create_send_buffer( const packed_transaction_v0& trx ) {
+      static_assert( packed_transaction_v0_which == net_message::position<packed_transaction_v0>() );
       // this implementation is to avoid copy of packed_transaction_v0 to net_message
       // matches which of net_message for packed_transaction_v0
       return create_send_buffer( packed_transaction_v0_which, trx );
