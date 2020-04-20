@@ -17,7 +17,7 @@ namespace eosio { namespace chain { namespace webassembly {
    };
 
 #define REGISTER_INJECTED_HOST_FUNCTION(NAME, ...) \
-   inline static host_function_registrator<&interface::NAME, alias_check ##__VA_ARGS__> NAME ## _registrator = {eosio_injected_module_name, #NAME};
+   inline static host_function_registrator<&interface::NAME, ##__VA_ARGS__> NAME ## _registrator = {eosio_injected_module_name, #NAME};
 
 #define REGISTER_HOST_FUNCTION(NAME, ...) \
    inline static host_function_registrator<&interface::NAME, alias_check, static_check_wl_args, context_aware_check, ##__VA_ARGS__> NAME ## _registrator = {"env", #NAME};
@@ -26,13 +26,13 @@ namespace eosio { namespace chain { namespace webassembly {
    inline static host_function_registrator<&interface::NAME, alias_check, static_check_wl_args, ##__VA_ARGS__> NAME ## _registrator = {"env", #NAME};
 
 #define REGISTER_LEGACY_HOST_FUNCTION(NAME, ...) \
-   inline static host_function_registrator<&interface::NAME, alias_check, null_pointer_check, legacy_static_check_wl_args, context_aware_check, ##__VA_ARGS__> NAME ## _registrator = {"env", #NAME};
+   inline static host_function_registrator<&interface::NAME, null_pointer_check, legacy_static_check_wl_args, context_aware_check, ##__VA_ARGS__> NAME ## _registrator = {"env", #NAME};
 
 #define REGISTER_LEGACY_CF_HOST_FUNCTION(NAME, ...) \
-   inline static host_function_registrator<&interface::NAME, alias_check, null_pointer_check, legacy_static_check_wl_args, ##__VA_ARGS__> NAME ## _registrator = {"env", #NAME};
+   inline static host_function_registrator<&interface::NAME, null_pointer_check, legacy_static_check_wl_args, ##__VA_ARGS__> NAME ## _registrator = {"env", #NAME};
 
 #define REGISTER_LEGACY_CF_ONLY_HOST_FUNCTION(NAME, ...) \
-   inline static host_function_registrator<&interface::NAME, alias_check, null_pointer_check, legacy_static_check_wl_args, context_free_check, ##__VA_ARGS__> NAME ## _registrator = {"env", #NAME};
+   inline static host_function_registrator<&interface::NAME, null_pointer_check, legacy_static_check_wl_args, context_free_check, ##__VA_ARGS__> NAME ## _registrator = {"env", #NAME};
 
    class interface {
       public:
