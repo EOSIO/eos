@@ -72,7 +72,7 @@ namespace eosio { namespace chain { namespace webassembly {
    inline static bool is_aliasing(const T& a, const U& b) {
       std::uintptr_t a_ui = reinterpret_cast<std::uintptr_t>(a.data());
       std::uintptr_t b_ui = reinterpret_cast<std::uintptr_t>(b.data());
-      return a_ui < b_ui ? a_ui + a.size() >= b_ui : b_ui + b.size() >= a_ui;
+      return a_ui < b_ui ? a_ui + a.size_bytes() > b_ui : b_ui + b.size_bytes() > a_ui;
    }
    inline static bool is_nan( const float32_t f ) {
       return f32_is_nan( f );
@@ -109,6 +109,13 @@ namespace eosio { namespace chain { namespace webassembly {
                        "${code} does not have permission to call this API", ("code", ctx.get_host().get_context().get_receiver()));
          }));
 
+   namespace detail {
+      template<typename T>
+      vm::span<const T> to_span(const vm::reference_proxy<T>& val) { return &val.ref(); }
+      template<typename T>
+      vm::span<T> to_span(const vm::span<T>& val) { return val; }
+   }
+
    EOS_VM_PRECONDITION(alias_check,
          EOS_VM_INVOKE_ON_ALL(([&](auto&& arg, auto&&... rest) {
             using namespace eosio::vm;
@@ -117,10 +124,12 @@ namespace eosio { namespace chain { namespace webassembly {
                // check alignment while we are here
                EOS_ASSERT( reinterpret_cast<std::uintptr_t>(arg.data()) % alignof(dependent_type_t<arg_t>) == 0,
                      wasm_exception, "memory not aligned" );
+            }
+            if constexpr (is_span_type_v<arg_t> || vm::is_reference_proxy_type_v<arg_t>) {
                eosio::vm::invoke_on<false, eosio::vm::invoke_on_all_t>([&](auto&& narg, auto&&... nrest) {
                   using nested_arg_t = std::decay_t<decltype(arg)>;
-                  if constexpr (eosio::vm::is_span_type_v<nested_arg_t>)
-                     EOS_ASSERT(!is_aliasing(arg, narg), wasm_exception, "arrays not allowed to alias");
+                  if constexpr (eosio::vm::is_span_type_v<nested_arg_t> || vm::is_reference_proxy_type_v<arg_t>)
+                      EOS_ASSERT(!is_aliasing(to_span(arg), to_span(narg)), wasm_exception, "pointers not allowed to alias");
                }, rest...);
             }
          })));
