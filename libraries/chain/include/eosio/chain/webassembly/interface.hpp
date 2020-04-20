@@ -282,22 +282,22 @@ namespace eosio { namespace chain { namespace webassembly {
          void printui(uint64_t);
          void printi128(legacy_ptr<const __int128>);
          void printui128(legacy_ptr<const unsigned __int128>);
-         void printsf(float);
-         void printdf(double);
+         void printsf(float32_t);
+         void printdf(float64_t);
          void printqf(legacy_ptr<const float128_t>);
          void printn(name);
          void printhex(legacy_array_ptr<const char>);
 
          REGISTER_LEGACY_CF_HOST_FUNCTION(prints);
          REGISTER_LEGACY_CF_HOST_FUNCTION(prints_l);
-         REGISTER_LEGACY_CF_HOST_FUNCTION(printi);
-         REGISTER_LEGACY_CF_HOST_FUNCTION(printui);
+         REGISTER_CF_HOST_FUNCTION(printi);
+         REGISTER_CF_HOST_FUNCTION(printui);
          REGISTER_LEGACY_CF_HOST_FUNCTION(printi128);
          REGISTER_LEGACY_CF_HOST_FUNCTION(printui128);
-         REGISTER_LEGACY_CF_HOST_FUNCTION(printsf);
-         REGISTER_LEGACY_CF_HOST_FUNCTION(printdf);
+         REGISTER_CF_HOST_FUNCTION(printsf);
+         REGISTER_CF_HOST_FUNCTION(printdf);
          REGISTER_LEGACY_CF_HOST_FUNCTION(printqf);
-         REGISTER_LEGACY_CF_HOST_FUNCTION(printn);
+         REGISTER_CF_HOST_FUNCTION(printn);
          REGISTER_LEGACY_CF_HOST_FUNCTION(printhex);
 
          // database api
@@ -315,14 +315,14 @@ namespace eosio { namespace chain { namespace webassembly {
 
          REGISTER_LEGACY_HOST_FUNCTION(db_store_i64);
          REGISTER_LEGACY_HOST_FUNCTION(db_update_i64);
-         REGISTER_LEGACY_HOST_FUNCTION(db_remove_i64);
+         REGISTER_HOST_FUNCTION(db_remove_i64);
          REGISTER_LEGACY_HOST_FUNCTION(db_get_i64);
          REGISTER_LEGACY_HOST_FUNCTION(db_next_i64);
          REGISTER_LEGACY_HOST_FUNCTION(db_previous_i64);
-         REGISTER_LEGACY_HOST_FUNCTION(db_find_i64);
-         REGISTER_LEGACY_HOST_FUNCTION(db_lowerbound_i64);
-         REGISTER_LEGACY_HOST_FUNCTION(db_upperbound_i64);
-         REGISTER_LEGACY_HOST_FUNCTION(db_end_i64);
+         REGISTER_HOST_FUNCTION(db_find_i64);
+         REGISTER_HOST_FUNCTION(db_lowerbound_i64);
+         REGISTER_HOST_FUNCTION(db_upperbound_i64);
+         REGISTER_HOST_FUNCTION(db_end_i64);
 
 
          // uint64_t secondary index api
@@ -339,12 +339,12 @@ namespace eosio { namespace chain { namespace webassembly {
 
          REGISTER_LEGACY_HOST_FUNCTION(db_idx64_store);
          REGISTER_LEGACY_HOST_FUNCTION(db_idx64_update);
-         REGISTER_LEGACY_HOST_FUNCTION(db_idx64_remove);
+         REGISTER_HOST_FUNCTION(db_idx64_remove);
          REGISTER_LEGACY_HOST_FUNCTION(db_idx64_find_secondary);
          REGISTER_LEGACY_HOST_FUNCTION(db_idx64_find_primary);
          REGISTER_LEGACY_HOST_FUNCTION(db_idx64_lowerbound);
          REGISTER_LEGACY_HOST_FUNCTION(db_idx64_upperbound);
-         REGISTER_LEGACY_HOST_FUNCTION(db_idx64_end);
+         REGISTER_HOST_FUNCTION(db_idx64_end);
          REGISTER_LEGACY_HOST_FUNCTION(db_idx64_next);
          REGISTER_LEGACY_HOST_FUNCTION(db_idx64_previous);
 
@@ -362,12 +362,12 @@ namespace eosio { namespace chain { namespace webassembly {
 
          REGISTER_LEGACY_HOST_FUNCTION(db_idx128_store);
          REGISTER_LEGACY_HOST_FUNCTION(db_idx128_update);
-         REGISTER_LEGACY_HOST_FUNCTION(db_idx128_remove);
+         REGISTER_HOST_FUNCTION(db_idx128_remove);
          REGISTER_LEGACY_HOST_FUNCTION(db_idx128_find_secondary);
          REGISTER_LEGACY_HOST_FUNCTION(db_idx128_find_primary);
          REGISTER_LEGACY_HOST_FUNCTION(db_idx128_lowerbound);
          REGISTER_LEGACY_HOST_FUNCTION(db_idx128_upperbound);
-         REGISTER_LEGACY_HOST_FUNCTION(db_idx128_end);
+         REGISTER_HOST_FUNCTION(db_idx128_end);
          REGISTER_LEGACY_HOST_FUNCTION(db_idx128_next);
          REGISTER_LEGACY_HOST_FUNCTION(db_idx128_previous);
 
@@ -385,12 +385,12 @@ namespace eosio { namespace chain { namespace webassembly {
 
          REGISTER_LEGACY_HOST_FUNCTION(db_idx256_store);
          REGISTER_LEGACY_HOST_FUNCTION(db_idx256_update);
-         REGISTER_LEGACY_HOST_FUNCTION(db_idx256_remove);
+         REGISTER_HOST_FUNCTION(db_idx256_remove);
          REGISTER_LEGACY_HOST_FUNCTION(db_idx256_find_secondary);
          REGISTER_LEGACY_HOST_FUNCTION(db_idx256_find_primary);
          REGISTER_LEGACY_HOST_FUNCTION(db_idx256_lowerbound);
          REGISTER_LEGACY_HOST_FUNCTION(db_idx256_upperbound);
-         REGISTER_LEGACY_HOST_FUNCTION(db_idx256_end);
+         REGISTER_HOST_FUNCTION(db_idx256_end);
          REGISTER_LEGACY_HOST_FUNCTION(db_idx256_next);
          REGISTER_LEGACY_HOST_FUNCTION(db_idx256_previous);
 
@@ -408,12 +408,12 @@ namespace eosio { namespace chain { namespace webassembly {
 
          REGISTER_LEGACY_HOST_FUNCTION(db_idx_double_store, is_nan_check);
          REGISTER_LEGACY_HOST_FUNCTION(db_idx_double_update, is_nan_check);
-         REGISTER_LEGACY_HOST_FUNCTION(db_idx_double_remove);
+         REGISTER_HOST_FUNCTION(db_idx_double_remove);
          REGISTER_LEGACY_HOST_FUNCTION(db_idx_double_find_secondary, is_nan_check);
          REGISTER_LEGACY_HOST_FUNCTION(db_idx_double_find_primary);
          REGISTER_LEGACY_HOST_FUNCTION(db_idx_double_lowerbound, is_nan_check);
          REGISTER_LEGACY_HOST_FUNCTION(db_idx_double_upperbound, is_nan_check);
-         REGISTER_LEGACY_HOST_FUNCTION(db_idx_double_end);
+         REGISTER_HOST_FUNCTION(db_idx_double_end);
          REGISTER_LEGACY_HOST_FUNCTION(db_idx_double_next);
          REGISTER_LEGACY_HOST_FUNCTION(db_idx_double_previous);
 
@@ -432,12 +432,12 @@ namespace eosio { namespace chain { namespace webassembly {
 
          REGISTER_LEGACY_HOST_FUNCTION(db_idx_long_double_store, is_nan_check);
          REGISTER_LEGACY_HOST_FUNCTION(db_idx_long_double_update, is_nan_check);
-         REGISTER_LEGACY_HOST_FUNCTION(db_idx_long_double_remove);
+         REGISTER_HOST_FUNCTION(db_idx_long_double_remove);
          REGISTER_LEGACY_HOST_FUNCTION(db_idx_long_double_find_secondary, is_nan_check);
          REGISTER_LEGACY_HOST_FUNCTION(db_idx_long_double_find_primary);
          REGISTER_LEGACY_HOST_FUNCTION(db_idx_long_double_lowerbound, is_nan_check);
          REGISTER_LEGACY_HOST_FUNCTION(db_idx_long_double_upperbound, is_nan_check);
-         REGISTER_LEGACY_HOST_FUNCTION(db_idx_long_double_end);
+         REGISTER_HOST_FUNCTION(db_idx_long_double_end);
          REGISTER_LEGACY_HOST_FUNCTION(db_idx_long_double_next);
          REGISTER_LEGACY_HOST_FUNCTION(db_idx_long_double_previous);
 

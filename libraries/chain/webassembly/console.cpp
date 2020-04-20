@@ -70,26 +70,26 @@ namespace eosio { namespace chain { namespace webassembly {
       });
    }
 
-   void interface::printsf( float val ) {
+   void interface::printsf( float32_t val ) {
 		predicated_print(context,
       [&]() {
 			// Assumes float representation on native side is the same as on the WASM side
 			std::ostringstream oss;
 			oss.setf( std::ios::scientific, std::ios::floatfield );
 			oss.precision( std::numeric_limits<float>::digits10 );
-			oss << val;
+			oss << ::from_softfloat32(val);
 			context.console_append( oss.str() );
       });
    }
 
-   void interface::printdf( double val ) {
+   void interface::printdf( float64_t val ) {
 		predicated_print(context,
       [&]() {
 			// Assumes double representation on native side is the same as on the WASM side
 			std::ostringstream oss;
 			oss.setf( std::ios::scientific, std::ios::floatfield );
 			oss.precision( std::numeric_limits<double>::digits10 );
-			oss << val;
+			oss << ::from_softfloat64(val);
 			context.console_append( oss.str() );
       });
    }

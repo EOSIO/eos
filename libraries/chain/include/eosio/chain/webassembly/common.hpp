@@ -104,6 +104,8 @@ namespace eosio { namespace chain {
       }
       EOS_VM_FROM_WASM(name, (uint64_t e)) { return name{e}; }
       uint64_t to_wasm(name&& n) { return n.to_uint64_t(); }
+      EOS_VM_FROM_WASM(float32_t, (float f)) { return ::to_softfloat32(f); }
+      EOS_VM_FROM_WASM(float64_t, (double f)) { return ::to_softfloat64(f); }
       // OSX clang can't find the base class version
       EOS_VM_FROM_WASM(bool, (uint32_t value)) { return value ? 1 : 0; }
    };
