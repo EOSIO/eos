@@ -15,7 +15,7 @@ namespace eosio { namespace chain { namespace webassembly {
 }}} // ns eosio::chain::webassembly
 
 // TODO need to fix up wasm_tests to not use this macro
-#define EOSIO_INJECTED_MODULE_NAME "eosio.injection"
+#define EOSIO_INJECTED_MODULE_NAME "eosio_injection"
 
 namespace eosio { namespace chain {
 
