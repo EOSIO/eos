@@ -84,21 +84,12 @@ namespace eosio { namespace chain { namespace webassembly {
       return f128_is_nan( f );
    }
 
-   EOS_VM_PRECONDITION(early_validate_pointers,
+   EOS_VM_PRECONDITION(null_pointer_check,
          EOS_VM_INVOKE_ON_ALL([&](auto&& arg, auto&&... rest) {
             using namespace eosio::vm;
             using arg_t = std::decay_t<decltype(arg)>;
-            if constexpr (is_reference_proxy_type_v<arg_t>) {
-               if constexpr (is_span_type_v<dependent_type_t<arg_t>>) {
-                  using dep_t = dependent_type_t<arg_t>;
-                  const dep_t& s = arg;
-                  EOS_ASSERT( s.size() <= std::numeric_limits<wasm_size_t>::max() / (wasm_size_t)sizeof(dependent_type_t<dep_t>),
-                        wasm_execution_error, "length will overflow" );
-                  volatile auto check = *(reinterpret_cast<const char*>(arg.original_ptr) + s.size_bytes() - 1);
-                  ignore_unused_variable_warning(check);
-               } else {
-                  EOS_ASSERT(arg.original_ptr != ctx.get_interface().get_memory(), wasm_execution_error, "references cannot be created for null pointers");
-               }
+            if constexpr (decltype(detail::is_legacy_ptr(std::declval<arg_t>()))::value && !is_span_type_v<dependent_type_t<arg_t>>) {
+               EOS_ASSERT(arg.original_ptr != ctx.get_interface().get_memory(), wasm_execution_error, "references cannot be created for null pointers");
             }
          }));
 
