@@ -1,7 +1,5 @@
 #pragma once
 
-//#if defined(EOSIO_EOS_VM_RUNTIME_ENABLED) || defined(EOSIO_EOS_VM_JIT_RUNTIME_ENABLED)
-
 #include <eosio/chain/webassembly/common.hpp>
 #include <eosio/chain/webassembly/runtime_interface.hpp>
 #include <eosio/chain/exceptions.hpp>
@@ -26,8 +24,6 @@ namespace webassembly { namespace eos_vm_runtime {
 using namespace fc;
 using namespace eosio::vm;
 
-struct apply_options;
-
 void validate_intrinsics(const bytes& code, const whitelisted_intrinsics_type& intrinsics);
 
 template<typename Backend>
@@ -50,4 +46,4 @@ class eos_vm_runtime : public eosio::chain::wasm_runtime_interface {
    friend class eos_vm_instantiated_module;
 };
 
-}}}}// eosio::chain::webassembly::wabt_runtime
+}}}}// eosio::chain::webassembly::eos_vm_runtime
