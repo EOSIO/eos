@@ -42,7 +42,7 @@ namespace eosio { namespace chain { namespace webassembly {
          inline const apply_context& get_context() const { return context; }
 
          // context free api
-         int32_t get_context_free_data(uint32_t index, legacy_array_ptr<char> buffer) const;
+         int32_t get_context_free_data(uint32_t index, legacy_span<char> buffer) const;
          REGISTER_LEGACY_CF_ONLY_HOST_FUNCTION(get_context_free_data)
 
          // privileged api
@@ -51,10 +51,10 @@ namespace eosio { namespace chain { namespace webassembly {
          void preactivate_feature(legacy_ptr<const digest_type>);
          void set_resource_limits(account_name account, int64_t ram_bytes, int64_t net_weight, int64_t cpu_weight);
          void get_resource_limits(account_name account, legacy_ptr<int64_t, 8> ram_bytes, legacy_ptr<int64_t, 8> net_weight, legacy_ptr<int64_t, 8> cpu_weight) const;
-         int64_t set_proposed_producers(legacy_array_ptr<char> packed_producer_schedule);
-         int64_t set_proposed_producers_ex(uint64_t packed_producer_format, legacy_array_ptr<char> packed_producer_schedule);
-         uint32_t get_blockchain_parameters_packed(legacy_array_ptr<char> packed_blockchain_parameters) const;
-         void set_blockchain_parameters_packed(legacy_array_ptr<char> packed_blockchain_parameters);
+         int64_t set_proposed_producers(legacy_span<char> packed_producer_schedule);
+         int64_t set_proposed_producers_ex(uint64_t packed_producer_format, legacy_span<char> packed_producer_schedule);
+         uint32_t get_blockchain_parameters_packed(legacy_span<char> packed_blockchain_parameters) const;
+         void set_blockchain_parameters_packed(legacy_span<char> packed_blockchain_parameters);
          bool is_privileged(account_name account) const;
          void set_privileged(account_name account, bool is_priv);
 
@@ -190,20 +190,20 @@ namespace eosio { namespace chain { namespace webassembly {
          REGISTER_INJECTED_HOST_FUNCTION(_eosio_ui64_to_f64);
 
          // producer api
-         int32_t get_active_producers(legacy_array_ptr<account_name>) const;
+         int32_t get_active_producers(legacy_span<account_name>) const;
          REGISTER_LEGACY_HOST_FUNCTION(get_active_producers);
 
          // crypto api
-         void assert_recover_key(legacy_ptr<const fc::sha256>, legacy_array_ptr<char>, legacy_array_ptr<char>) const;
-         int32_t recover_key(legacy_ptr<const fc::sha256>, legacy_array_ptr<char>, legacy_array_ptr<char>) const;
-         void assert_sha256(legacy_array_ptr<char>, legacy_ptr<const fc::sha256>) const;
-         void assert_sha1(legacy_array_ptr<char>, legacy_ptr<const fc::sha1>) const;
-         void assert_sha512(legacy_array_ptr<char>, legacy_ptr<const fc::sha512>) const;
-         void assert_ripemd160(legacy_array_ptr<char>, legacy_ptr<const fc::ripemd160>) const;
-         void sha256(legacy_array_ptr<char>, legacy_ptr<fc::sha256>) const;
-         void sha1(legacy_array_ptr<char>, legacy_ptr<fc::sha1>) const;
-         void sha512(legacy_array_ptr<char>, legacy_ptr<fc::sha512>) const;
-         void ripemd160(legacy_array_ptr<char>, legacy_ptr<fc::ripemd160>) const;
+         void assert_recover_key(legacy_ptr<const fc::sha256>, legacy_span<char>, legacy_span<char>) const;
+         int32_t recover_key(legacy_ptr<const fc::sha256>, legacy_span<char>, legacy_span<char>) const;
+         void assert_sha256(legacy_span<char>, legacy_ptr<const fc::sha256>) const;
+         void assert_sha1(legacy_span<char>, legacy_ptr<const fc::sha1>) const;
+         void assert_sha512(legacy_span<char>, legacy_ptr<const fc::sha512>) const;
+         void assert_ripemd160(legacy_span<char>, legacy_ptr<const fc::ripemd160>) const;
+         void sha256(legacy_span<char>, legacy_ptr<fc::sha256>) const;
+         void sha1(legacy_span<char>, legacy_ptr<fc::sha1>) const;
+         void sha512(legacy_span<char>, legacy_ptr<fc::sha512>) const;
+         void ripemd160(legacy_span<char>, legacy_ptr<fc::ripemd160>) const;
 
          REGISTER_LEGACY_CF_HOST_FUNCTION(assert_recover_key);
          REGISTER_LEGACY_CF_HOST_FUNCTION(recover_key);
@@ -217,8 +217,8 @@ namespace eosio { namespace chain { namespace webassembly {
          REGISTER_LEGACY_CF_HOST_FUNCTION(ripemd160);
 
          // permission api
-         bool check_transaction_authorization(legacy_array_ptr<char>, legacy_array_ptr<char>, legacy_array_ptr<char>);
-         bool check_permission_authorization(account_name, permission_name, legacy_array_ptr<char>, legacy_array_ptr<char>, uint64_t);
+         bool check_transaction_authorization(legacy_span<char>, legacy_span<char>, legacy_span<char>);
+         bool check_permission_authorization(account_name, permission_name, legacy_span<char>, legacy_span<char>, uint64_t);
          int64_t get_permission_last_used(account_name, permission_name) const;
          int64_t get_account_creation_time(account_name) const;
 
@@ -254,7 +254,7 @@ namespace eosio { namespace chain { namespace webassembly {
          // context-free system api
          void abort();
          void eosio_assert(bool, null_terminated_ptr);
-         void eosio_assert_message(bool, legacy_array_ptr<const char>);
+         void eosio_assert_message(bool, legacy_span<const char>);
          void eosio_assert_code(bool, uint64_t);
          void eosio_exit(int32_t);
 
@@ -265,10 +265,10 @@ namespace eosio { namespace chain { namespace webassembly {
          REGISTER_CF_HOST_FUNCTION(eosio_exit)
 
          // action api
-         int32_t read_action_data(legacy_array_ptr<char>) const;
+         int32_t read_action_data(legacy_span<char>) const;
          int32_t action_data_size() const;
          name current_receiver() const;
-         void set_action_return_value(legacy_array_ptr<char>);
+         void set_action_return_value(legacy_span<char>);
 
          REGISTER_LEGACY_CF_HOST_FUNCTION(read_action_data);
          REGISTER_CF_HOST_FUNCTION(action_data_size);
@@ -277,7 +277,7 @@ namespace eosio { namespace chain { namespace webassembly {
 
          // console api
          void prints(null_terminated_ptr);
-         void prints_l(legacy_array_ptr<const char>);
+         void prints_l(legacy_span<const char>);
          void printi(int64_t);
          void printui(uint64_t);
          void printi128(legacy_ptr<const __int128>);
@@ -286,7 +286,7 @@ namespace eosio { namespace chain { namespace webassembly {
          void printdf(float64_t);
          void printqf(legacy_ptr<const float128_t>);
          void printn(name);
-         void printhex(legacy_array_ptr<const char>);
+         void printhex(legacy_span<const char>);
 
          REGISTER_LEGACY_CF_HOST_FUNCTION(prints);
          REGISTER_LEGACY_CF_HOST_FUNCTION(prints_l);
@@ -302,10 +302,10 @@ namespace eosio { namespace chain { namespace webassembly {
 
          // database api
          // primary index api
-         int32_t db_store_i64(uint64_t, uint64_t, uint64_t, uint64_t, legacy_array_ptr<const char>);
-         void db_update_i64(int32_t, uint64_t, legacy_array_ptr<const char>);
+         int32_t db_store_i64(uint64_t, uint64_t, uint64_t, uint64_t, legacy_span<const char>);
+         void db_update_i64(int32_t, uint64_t, legacy_span<const char>);
          void db_remove_i64(int32_t);
-         int32_t db_get_i64(int32_t, legacy_array_ptr<char>);
+         int32_t db_get_i64(int32_t, legacy_span<char>);
          int32_t db_next_i64(int32_t, legacy_ptr<uint64_t>);
          int32_t db_previous_i64(int32_t, legacy_ptr<uint64_t>);
          int32_t db_find_i64(uint64_t, uint64_t, uint64_t, uint64_t);
@@ -372,13 +372,13 @@ namespace eosio { namespace chain { namespace webassembly {
          REGISTER_LEGACY_HOST_FUNCTION(db_idx128_previous);
 
          // 256-bit secondary index api
-         int32_t db_idx256_store(uint64_t, uint64_t, uint64_t, uint64_t, legacy_array_ptr<const uint128_t>);
-         void db_idx256_update(int32_t, uint64_t, legacy_array_ptr<const uint128_t>);
+         int32_t db_idx256_store(uint64_t, uint64_t, uint64_t, uint64_t, legacy_span<const uint128_t>);
+         void db_idx256_update(int32_t, uint64_t, legacy_span<const uint128_t>);
          void db_idx256_remove(int32_t);
-         int32_t db_idx256_find_secondary(uint64_t, uint64_t, uint64_t, legacy_array_ptr<const uint128_t>, legacy_ptr<uint64_t>);
-         int32_t db_idx256_find_primary(uint64_t, uint64_t, uint64_t, legacy_array_ptr<uint128_t>, uint64_t);
-         int32_t db_idx256_lowerbound(uint64_t, uint64_t, uint64_t, legacy_array_ptr<uint128_t, 16>, legacy_ptr<uint64_t, 8>);
-         int32_t db_idx256_upperbound(uint64_t, uint64_t, uint64_t, legacy_array_ptr<uint128_t, 16>, legacy_ptr<uint64_t, 8>);
+         int32_t db_idx256_find_secondary(uint64_t, uint64_t, uint64_t, legacy_span<const uint128_t>, legacy_ptr<uint64_t>);
+         int32_t db_idx256_find_primary(uint64_t, uint64_t, uint64_t, legacy_span<uint128_t>, uint64_t);
+         int32_t db_idx256_lowerbound(uint64_t, uint64_t, uint64_t, legacy_span<uint128_t, 16>, legacy_ptr<uint64_t, 8>);
+         int32_t db_idx256_upperbound(uint64_t, uint64_t, uint64_t, legacy_span<uint128_t, 16>, legacy_ptr<uint64_t, 8>);
          int32_t db_idx256_end(uint64_t, uint64_t, uint64_t);
          int32_t db_idx256_next(int32_t, legacy_ptr<uint64_t>);
          int32_t db_idx256_previous(int32_t, legacy_ptr<uint64_t>);
@@ -453,9 +453,9 @@ namespace eosio { namespace chain { namespace webassembly {
          REGISTER_LEGACY_CF_HOST_FUNCTION(memset);
 
          // transaction api
-         void send_inline(legacy_array_ptr<char>);
-         void send_context_free_inline(legacy_array_ptr<char>);
-         void send_deferred(legacy_ptr<const uint128_t>, account_name, legacy_array_ptr<char>, uint32_t);
+         void send_inline(legacy_span<char>);
+         void send_context_free_inline(legacy_span<char>);
+         void send_deferred(legacy_ptr<const uint128_t>, account_name, legacy_span<char>, uint32_t);
          bool cancel_deferred(legacy_ptr<const uint128_t>);
 
          REGISTER_LEGACY_HOST_FUNCTION(send_inline);
@@ -464,12 +464,12 @@ namespace eosio { namespace chain { namespace webassembly {
          REGISTER_LEGACY_HOST_FUNCTION(cancel_deferred);
 
          // context-free transaction api
-         int32_t read_transaction(legacy_array_ptr<char>) const;
+         int32_t read_transaction(legacy_span<char>) const;
          int32_t transaction_size() const;
          int32_t expiration() const;
          int32_t tapos_block_num() const;
          int32_t tapos_block_prefix() const;
-         int32_t get_action(uint32_t, uint32_t, legacy_array_ptr<char>) const;
+         int32_t get_action(uint32_t, uint32_t, legacy_span<char>) const;
 
          REGISTER_LEGACY_CF_HOST_FUNCTION(read_transaction);
          REGISTER_CF_HOST_FUNCTION(transaction_size);

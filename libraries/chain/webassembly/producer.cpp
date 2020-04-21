@@ -1,7 +1,7 @@
 #include <eosio/chain/webassembly/interface.hpp>
 
 namespace eosio { namespace chain { namespace webassembly {
-   int32_t interface::get_active_producers( legacy_array_ptr<account_name> producers ) const {
+   int32_t interface::get_active_producers( legacy_span<account_name> producers ) const {
       auto active_producers = context.get_active_producers();
 
       size_t len = active_producers.size();

@@ -29,7 +29,7 @@ namespace eosio { namespace chain {
    using legacy_ptr = eosio::vm::argument_proxy<T*, Align>;
 
    template <typename T, std::size_t Align = alignof(T)>
-   using legacy_array_ptr = eosio::vm::argument_proxy<eosio::vm::span<T>, Align>;
+   using legacy_span = eosio::vm::argument_proxy<eosio::vm::span<T>, Align>;
 
    struct null_terminated_ptr : eosio::vm::span<const char> {
       using base_type = eosio::vm::span<const char>;

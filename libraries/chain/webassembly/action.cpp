@@ -1,7 +1,7 @@
 #include <eosio/chain/webassembly/interface.hpp>
 
 namespace eosio { namespace chain { namespace webassembly {
-   int32_t interface::read_action_data(legacy_array_ptr<char> memory) const {
+   int32_t interface::read_action_data(legacy_span<char> memory) const {
       auto s = context.get_action().data.size();
       if( memory.data() == 0 ) return s;
 
@@ -19,7 +19,7 @@ namespace eosio { namespace chain { namespace webassembly {
       return context.get_receiver();
    }
 
-   void interface::set_action_return_value( legacy_array_ptr<char> packed_blob ) {
+   void interface::set_action_return_value( legacy_span<char> packed_blob ) {
       context.action_return_value.assign( packed_blob.data(), packed_blob.data() + packed_blob.size() );
    }
 }}} // ns eosio::chain::webassembly

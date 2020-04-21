@@ -16,7 +16,7 @@ namespace eosio { namespace chain { namespace webassembly {
       [&]() { context.console_append( static_cast<const char*>(str.data()) ); });
    }
 
-   void interface::prints_l(legacy_array_ptr<const char> str ) {
+   void interface::prints_l(legacy_span<const char> str ) {
 		predicated_print(context,
       [&]() { context.console_append(string(str.data(), str.size())); });
    }
@@ -132,7 +132,7 @@ namespace eosio { namespace chain { namespace webassembly {
 		predicated_print(context, [&]() { context.console_append(value.to_string()); });
    }
 
-   void interface::printhex(legacy_array_ptr<const char> data ) {
+   void interface::printhex(legacy_span<const char> data ) {
       predicated_print(context, [&]() { context.console_append(fc::to_hex(data.data(), data.size())); });
    }
 }}} // ns eosio::chain::webassembly

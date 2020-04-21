@@ -83,7 +83,7 @@ namespace eosio { namespace chain { namespace webassembly {
       return context.control.set_proposed_producers( std::move(producers) );
    }
 
-   int64_t interface::set_proposed_producers( legacy_array_ptr<char> packed_producer_schedule) {
+   int64_t interface::set_proposed_producers( legacy_span<char> packed_producer_schedule) {
       datastream<const char*> ds( packed_producer_schedule.data(), packed_producer_schedule.size() );
       std::vector<producer_authority> producers;
       std::vector<legacy::producer_key> old_version;
@@ -99,7 +99,7 @@ namespace eosio { namespace chain { namespace webassembly {
       return set_proposed_producers_common( context, std::move(producers), true );
    }
 
-   int64_t interface::set_proposed_producers_ex( uint64_t packed_producer_format, legacy_array_ptr<char> packed_producer_schedule) {
+   int64_t interface::set_proposed_producers_ex( uint64_t packed_producer_format, legacy_span<char> packed_producer_schedule) {
       if (packed_producer_format == 0) {
          return set_proposed_producers(std::move(packed_producer_schedule));
       } else if (packed_producer_format == 1) {
@@ -113,7 +113,7 @@ namespace eosio { namespace chain { namespace webassembly {
       }
    }
 
-   uint32_t interface::get_blockchain_parameters_packed( legacy_array_ptr<char> packed_blockchain_parameters ) const {
+   uint32_t interface::get_blockchain_parameters_packed( legacy_span<char> packed_blockchain_parameters ) const {
       auto& gpo = context.control.get_global_properties();
 
       auto s = fc::raw::pack_size( gpo.configuration );
@@ -127,7 +127,7 @@ namespace eosio { namespace chain { namespace webassembly {
       return 0;
    }
 
-   void interface::set_blockchain_parameters_packed( legacy_array_ptr<char> packed_blockchain_parameters ) {
+   void interface::set_blockchain_parameters_packed( legacy_span<char> packed_blockchain_parameters ) {
       datastream<const char*> ds( packed_blockchain_parameters.data(), packed_blockchain_parameters.size() );
       chain::chain_config cfg;
       fc::raw::unpack(ds, cfg);

@@ -14,7 +14,7 @@ namespace eosio { namespace chain { namespace webassembly {
       }
    }
 
-   void interface::eosio_assert_message( bool condition, legacy_array_ptr<const char> msg ) {
+   void interface::eosio_assert_message( bool condition, legacy_span<const char> msg ) {
       if( BOOST_UNLIKELY( !condition ) ) {
          const size_t sz = msg.size() > max_assert_message ? max_assert_message : msg.size();
          std::string message( msg.data(), sz );

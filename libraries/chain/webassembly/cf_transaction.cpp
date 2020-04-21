@@ -2,7 +2,7 @@
 #include <eosio/chain/transaction_context.hpp>
 
 namespace eosio { namespace chain { namespace webassembly {
-   int32_t interface::read_transaction( legacy_array_ptr<char> data ) const {
+   int32_t interface::read_transaction( legacy_span<char> data ) const {
       bytes trx = context.get_packed_transaction();
 
       auto s = trx.size();
@@ -29,7 +29,7 @@ namespace eosio { namespace chain { namespace webassembly {
      return context.trx_context.trx.ref_block_prefix;
    }
 
-   int32_t interface::get_action( uint32_t type, uint32_t index, legacy_array_ptr<char> buffer ) const {
+   int32_t interface::get_action( uint32_t type, uint32_t index, legacy_span<char> buffer ) const {
       return context.get_action( type, index, buffer.data(), buffer.size() );
    }
 }}} // ns eosio::chain::webassembly
