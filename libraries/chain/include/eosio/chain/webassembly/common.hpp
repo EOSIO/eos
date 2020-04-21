@@ -3,7 +3,7 @@
 #include <eosio/chain/wasm_interface.hpp>
 #include <eosio/chain/wasm_eosio_constraints.hpp>
 #include <eosio/vm/host_function.hpp>
-#include <eosio/vm/reference_proxy.hpp>
+#include <eosio/vm/argument_proxy.hpp>
 #include <eosio/vm/span.hpp>
 #include <eosio/vm/types.hpp>
 
@@ -26,10 +26,10 @@ namespace eosio { namespace chain {
 
 
    template <typename T, std::size_t Align = alignof(T)>
-   using legacy_ptr = eosio::vm::reference_proxy<T, Align>;
+   using legacy_ptr = eosio::vm::argument_proxy<T*, Align>;
 
    template <typename T, std::size_t Align = alignof(T)>
-   using legacy_array_ptr = eosio::vm::reference_proxy<eosio::vm::span<T>, Align>;
+   using legacy_array_ptr = eosio::vm::argument_proxy<eosio::vm::span<T>, Align>;
 
    struct null_terminated_ptr : eosio::vm::span<const char> {
       using base_type = eosio::vm::span<const char>;
@@ -74,26 +74,26 @@ namespace eosio { namespace chain {
 
       template <typename T>
       auto from_wasm(void* ptr) const
-         -> std::enable_if_t< vm::is_reference_proxy_type_v<T> &&
-                              vm::is_reference_proxy_legacy_v<T> &&
+         -> std::enable_if_t< vm::is_argument_proxy_type_v<T> &&
+                              vm::is_argument_proxy_legacy_v<T> &&
                               !vm::is_span_type_v<vm::dependent_type_t<T>>, T> {
-         validate_pointer<vm::reference_proxy_dependent_type_t<T>>(ptr, 1);
+         validate_pointer<vm::argument_proxy_dependent_type_t<T>>(ptr, 1);
          return {ptr};
       }
 
       template <typename T>
       auto from_wasm(void* ptr) const
-         -> std::enable_if_t< vm::is_reference_proxy_type_v<T> &&
-                              !vm::is_reference_proxy_legacy_v<T> &&
+         -> std::enable_if_t< vm::is_argument_proxy_type_v<T> &&
+                              !vm::is_argument_proxy_legacy_v<T> &&
                               !vm::is_span_type_v<vm::dependent_type_t<T>>, T> {
-         validate_pointer<vm::reference_proxy_dependent_type_t<T>>(ptr, 1);
+         validate_pointer<vm::argument_proxy_dependent_type_t<T>>(ptr, 1);
          return {ptr};
       }
 
       template <typename T>
       auto from_wasm(void* ptr) const
          -> std::enable_if_t< std::is_pointer_v<T>,
-                              vm::reference_proxy<std::remove_pointer_t<T>>> {
+                              vm::argument_proxy<std::remove_pointer_t<T>>> {
          validate_pointer<std::remove_pointer_t<T>>(ptr, 1);
          return {ptr};
       }

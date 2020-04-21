@@ -6,10 +6,10 @@ namespace eosio { namespace chain { namespace webassembly {
 
       size_t len = active_producers.size();
       auto s = len * sizeof(chain::account_name);
-      if( producers.ref().size_bytes() == 0 ) return s;
+      if( producers.size_bytes() == 0 ) return s;
 
-      auto copy_size = std::min( producers.ref().size(), s );
-      std::memcpy( producers.ref().data(), active_producers.data(), copy_size );
+      auto copy_size = std::min( producers.size(), s );
+      std::memcpy( producers.data(), active_producers.data(), copy_size );
 
       return copy_size;
    }

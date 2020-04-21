@@ -6,10 +6,10 @@ namespace eosio { namespace chain { namespace webassembly {
       bytes trx = context.get_packed_transaction();
 
       auto s = trx.size();
-      if (data.ref().size() == 0) return s;
+      if (data.size() == 0) return s;
 
-      auto copy_size = std::min( static_cast<size_t>(data.ref().size()), s );
-      std::memcpy( data.ref().data(), trx.data(), copy_size );
+      auto copy_size = std::min( static_cast<size_t>(data.size()), s );
+      std::memcpy( data.data(), trx.data(), copy_size );
 
       return copy_size;
    }
@@ -30,6 +30,6 @@ namespace eosio { namespace chain { namespace webassembly {
    }
 
    int32_t interface::get_action( uint32_t type, uint32_t index, legacy_array_ptr<char> buffer ) const {
-      return context.get_action( type, index, buffer.ref().data(), buffer.ref().size() );
+      return context.get_action( type, index, buffer.data(), buffer.size() );
    }
 }}} // ns eosio::chain::webassembly

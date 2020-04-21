@@ -18,7 +18,7 @@ namespace eosio { namespace chain { namespace webassembly {
 
    void interface::prints_l(legacy_array_ptr<const char> str ) {
 		predicated_print(context,
-      [&]() { context.console_append(string(str.ref().data(), str.ref().size())); });
+      [&]() { context.console_append(string(str.data(), str.size())); });
    }
 
    void interface::printi(int64_t val) {
@@ -42,13 +42,13 @@ namespace eosio { namespace chain { namespace webassembly {
    void interface::printi128(legacy_ptr<const __int128> val) {
 		predicated_print(context,
       [&]() {
-			bool is_negative = (val < 0);
+			bool is_negative = (*val < 0);
 			unsigned __int128 val_magnitude;
 
 			if( is_negative )
-				val_magnitude = static_cast<unsigned __int128>(-val); // Works even if val is at the lowest possible value of a int128_t
+				val_magnitude = static_cast<unsigned __int128>(-*val); // Works even if val is at the lowest possible value of a int128_t
 			else
-				val_magnitude = static_cast<unsigned __int128>(val);
+				val_magnitude = static_cast<unsigned __int128>(*val);
 
 			fc::uint128_t v(val_magnitude>>64, static_cast<uint64_t>(val_magnitude) );
 
@@ -65,7 +65,7 @@ namespace eosio { namespace chain { namespace webassembly {
    void interface::printui128(legacy_ptr<const unsigned __int128> val) {
 		predicated_print(context,
       [&]() {
-			fc::uint128_t v(val>>64, static_cast<uint64_t>(val) );
+			fc::uint128_t v(*val>>64, static_cast<uint64_t>(*val) );
 			context.console_append(fc::variant(v).get_string());
       });
    }
@@ -115,13 +115,13 @@ namespace eosio { namespace chain { namespace webassembly {
 #ifdef __x86_64__
 			oss.precision( std::numeric_limits<long double>::digits10 );
 			extFloat80_t val_approx;
-			f128M_to_extF80M(&val.ref(), &val_approx);
+			f128M_to_extF80M(val.get(), &val_approx);
 			long double _val;
 			std::memcpy((char*)&_val, (char*)&val_approx, sizeof(long double));
 			oss << _val;
 #else
 			oss.precision( std::numeric_limits<double>::digits10 );
-			double val_approx = from_softfloat64( f128M_to_f64(&val.ref()) );
+			double val_approx = from_softfloat64( f128M_to_f64(val.get()) );
 			oss << val_approx;
 #endif
 			context.console_append( oss.str() );
@@ -133,6 +133,6 @@ namespace eosio { namespace chain { namespace webassembly {
    }
 
    void interface::printhex(legacy_array_ptr<const char> data ) {
-      predicated_print(context, [&]() { context.console_append(fc::to_hex(data.ref().data(), data.ref().size())); });
+      predicated_print(context, [&]() { context.console_append(fc::to_hex(data.data(), data.size())); });
    }
 }}} // ns eosio::chain::webassembly

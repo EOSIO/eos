@@ -51,7 +51,7 @@ namespace eosio { namespace chain { namespace webassembly {
          static constexpr bool value = is_wasm_arithmetic_type_v<std::remove_const_t<T>>;
       };
       template <typename T>
-      struct is_whitelisted_type<vm::reference_proxy<T, 0>> {
+      struct is_whitelisted_type<vm::argument_proxy<T*, 0>> {
          static constexpr bool value = is_wasm_arithmetic_type_v<std::remove_const_t<T>>;
       };
    }
@@ -111,7 +111,7 @@ namespace eosio { namespace chain { namespace webassembly {
 
    namespace detail {
       template<typename T>
-      vm::span<const T> to_span(const vm::reference_proxy<T>& val) { return &val.ref(); }
+      vm::span<const T> to_span(const vm::argument_proxy<T*>& val) { return {val.get(), 1}; }
       template<typename T>
       vm::span<T> to_span(const vm::span<T>& val) { return val; }
    }
@@ -125,10 +125,10 @@ namespace eosio { namespace chain { namespace webassembly {
                EOS_ASSERT( reinterpret_cast<std::uintptr_t>(arg.data()) % alignof(dependent_type_t<arg_t>) == 0,
                      wasm_exception, "memory not aligned" );
             }
-            if constexpr (is_span_type_v<arg_t> || vm::is_reference_proxy_type_v<arg_t>) {
+            if constexpr (is_span_type_v<arg_t> || vm::is_argument_proxy_type_v<arg_t>) {
                eosio::vm::invoke_on<false, eosio::vm::invoke_on_all_t>([&](auto&& narg, auto&&... nrest) {
                   using nested_arg_t = std::decay_t<decltype(arg)>;
-                  if constexpr (eosio::vm::is_span_type_v<nested_arg_t> || vm::is_reference_proxy_type_v<arg_t>)
+                  if constexpr (eosio::vm::is_span_type_v<nested_arg_t> || vm::is_argument_proxy_type_v<arg_t>)
                       EOS_ASSERT(!is_aliasing(to_span(arg), to_span(narg)), wasm_exception, "pointers not allowed to alias");
                }, rest...);
             }
@@ -139,18 +139,18 @@ namespace eosio { namespace chain { namespace webassembly {
       std::is_same_v<T, float32_t> || std::is_same_v<T, float64_t> || std::is_same_v<T, float128_t>;
 
    template<typename T>
-   struct remove_reference_proxy {
+   struct remove_argument_proxy {
       using type = T;
    };
    template<typename T, std::size_t A>
-   struct remove_reference_proxy<vm::reference_proxy<T, A>> {
+   struct remove_argument_proxy<vm::argument_proxy<T*, A>> {
       using type = T;
    };
 
    EOS_VM_PRECONDITION(is_nan_check,
          EOS_VM_INVOKE_ON_ALL([&](auto&& arg, auto&&... rest) {
-            if constexpr (should_check_nan_v<std::remove_cv_t<typename remove_reference_proxy<std::decay_t<decltype(arg)>>::type>>) {
-               EOS_ASSERT(!webassembly::is_nan(arg), transaction_exception, "NaN is not an allowed value for a secondary key");
+            if constexpr (should_check_nan_v<std::remove_cv_t<typename remove_argument_proxy<std::decay_t<decltype(arg)>>::type>>) {
+               EOS_ASSERT(!webassembly::is_nan(*arg), transaction_exception, "NaN is not an allowed value for a secondary key");
             }
          }));
 

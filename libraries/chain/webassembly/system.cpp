@@ -12,7 +12,7 @@ namespace eosio { namespace chain { namespace webassembly {
    }
 
    bool interface::is_feature_activated( legacy_ptr<const digest_type> feature_digest ) const {
-      return context.control.is_protocol_feature_activated( feature_digest );
+      return context.control.is_protocol_feature_activated( *feature_digest );
    }
 
    name interface::get_sender() const {
