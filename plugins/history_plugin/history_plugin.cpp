@@ -424,7 +424,7 @@ namespace eosio {
                                  start_itr->action_sequence_num,
                                  start_itr->account_sequence_num,
                                  a.block_num, a.block_time,
-                                 chain.to_variant_with_abi(t, abi_serializer_max_time)
+                                 chain.to_variant_with_abi(t, abi_serializer::create_yield_function( abi_serializer_max_time ))
                                  });
 
            end_time = fc::time_point::now();
@@ -484,7 +484,7 @@ namespace eosio {
               fc::datastream<const char*> ds( itr->packed_action_trace.data(), itr->packed_action_trace.size() );
               action_trace t;
               fc::raw::unpack( ds, t );
-              result.traces.emplace_back( chain.to_variant_with_abi(t, abi_serializer_max_time) );
+              result.traces.emplace_back( chain.to_variant_with_abi(t, abi_serializer::create_yield_function( abi_serializer_max_time )) );
 
               ++itr;
             }
@@ -497,7 +497,7 @@ namespace eosio {
                         auto &pt = receipt.trx.get<packed_transaction>();
                         if (pt.id() == result.id) {
                             fc::mutable_variant_object r("receipt", receipt);
-                            r("trx", chain.to_variant_with_abi(pt.get_signed_transaction(), abi_serializer_max_time));
+                            r("trx", chain.to_variant_with_abi(pt.get_signed_transaction(), abi_serializer::create_yield_function( abi_serializer_max_time )));
                             result.trx = move(r);
                             break;
                         }
@@ -525,7 +525,7 @@ namespace eosio {
                         result.block_num = *p.block_num_hint;
                         result.block_time = blk->timestamp;
                         fc::mutable_variant_object r("receipt", receipt);
-                        r("trx", chain.to_variant_with_abi(pt.get_signed_transaction(), abi_serializer_max_time));
+                        r("trx", chain.to_variant_with_abi(pt.get_signed_transaction(), abi_serializer::create_yield_function( abi_serializer_max_time )));
                         result.trx = move(r);
                         found = true;
                         break;

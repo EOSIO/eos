@@ -3,7 +3,7 @@ set -eo pipefail
 . ./.cicd/helpers/general.sh
 mkdir -p $BUILD_DIR
 CMAKE_EXTRAS="-DCMAKE_BUILD_TYPE='Release' -DENABLE_MULTIVERSION_PROTOCOL_TEST=true -DBUILD_MONGO_DB_PLUGIN=true"
-if [[ "$(uname)" == 'Darwin' ]]; then
+if [[ "$(uname)" == 'Darwin' && $FORCE_LINUX != true ]]; then
     # You can't use chained commands in execute
     if [[ "$GITHUB_ACTIONS" == 'true' ]]; then
         export PINNED=false
@@ -38,6 +38,8 @@ else # Linux
         [[ "$ENABLE_INSTALL" == 'true' ]] && COMMANDS="$COMMANDS && make install"
     elif [[ "$GITHUB_ACTIONS" == 'true' ]]; then
         ARGS="$ARGS -e JOBS"
+        COMMANDS="$BUILD_COMMANDS"
+    else
         COMMANDS="$BUILD_COMMANDS"
     fi
     . $HELPERS_DIR/file-hash.sh $CICD_DIR/platforms/$PLATFORM_TYPE/$IMAGE_TAG.dockerfile

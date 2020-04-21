@@ -1,8 +1,17 @@
-# trace_api_plugin
 
-## Description
+## Overview
 
-The `trace_api_plugin` provides a consumer-focused long-term API for retrieving retired actions and related metadata from a specified block. The plugin defines a new HTTP endpoint accessible (see the [API reference](api-reference/index.md) for more information).
+The `trace_api_plugin` provides a consumer-focused long-term API for retrieving retired actions and related metadata from a specified block. The plugin stores serialized block trace data to the filesystem for later retrieval via HTTP RPC requests. For detailed information about the definition of this application programming interface see the [Trace API reference documentation](api-reference/index.md).
+
+## Purpose
+
+While integrating applications such as block explorers and exchanges with an EOSIO blockchain, the user might require a complete transcript of actions processed by the blockchain, including those spawned from the execution of smart contracts and scheduled transactions. The `trace_api_plugin` serves this need. The purpose of the plugin is to provide:
+
+* A transcript of retired actions and related metadata
+* A consumer-focused long-term API to retrieve blocks
+* Maintainable resource commitments at the EOSIO nodes
+
+Therefore, one crucial goal of the `trace_api_plugin` is to improve the maintenance of node resources (file system, disk space, memory used, etc.). This goal is different from the existing `history_plugin` which provides far more configurable filtering and querying capabilities, or the existing `state_history_plugin` which provides a binary streaming interface to access structural chain data, action data, as well as state deltas.
 
 ## Usage
 
@@ -16,7 +25,7 @@ plugin = eosio::trace_api_plugin
 nodeos ... --plugin eosio::trace_api_plugin [options]
 ```
 
-## Options
+## Configuration Options
 
 These can be specified from both the `nodeos` command-line or the `config.ini` file:
 
@@ -79,19 +88,9 @@ nodeos ... --plugin eosio::chain_plugin [options]  \
            --plugin eosio::http_plugin [options]
 ```
 
-## Purpose
+## Configuration Example
 
-While integrating applications such as block explorers and exchanges with an EOSIO blockchain, the user might require a complete transcript of actions that are processed by the blockchain, including those spawned from the execution of smart contracts and scheduled transactions. The `trace_api_plugin` aims to serve this need. The purpose of the plugin is to provide:
-
-* A transcript of retired actions and related metadata
-* A consumer focused long-term API to retrieve blocks
-* Maintainable resource commitments at the EOSIO nodes
-
-Therefore, one crucial goal of the `trace_api_plugin` is to have better maintenance of node resources (file system, disk, memory, etc.). This goal is different from the existing `history_plugin` which provides far more configurable filtering and querying capabilities, or the existing `state_history_plugin` which provides a binary streaming interface to access structural chain data, action data, as well as state deltas.
-
-## Examples
-
-Below it is a `nodeos` configuration example for the `trace_api_plugin` when tracing some EOSIO reference contracts:
+Here is a `nodeos` configuration example for the `trace_api_plugin` when tracing some EOSIO reference contracts:
 
 ```sh
 nodeos --data-dir data_dir --config-dir config_dir --trace-dir traces_dir
@@ -104,7 +103,7 @@ nodeos --data-dir data_dir --config-dir config_dir --trace-dir traces_dir
 
 ## Maintenance Note
 
-To reduce the disk space consummed by the `trace_api_plugin`, you can configure the following option: 
+To reduce the disk space consummed by the `trace_api_plugin`, configure the following option: 
 
 ```console
   --trace-minimum-irreversible-history-blocks N (=-1) 
@@ -116,6 +115,6 @@ If resource usage cannot be effectively managed via the `trace-minimum-irreversi
 
 ### Manual Filesystem Management
 
-The `trace-dir` configuration option defines a location on the filesystem where all artefacts created by the `trace_api_plugin` are stored. These files are stable once the LIB block has progressed past that slice and then can be deleted at any time to reclaim filesystem space. The conventions regarding these files are to-be-determined. However, the remainder of the system will tolerate any out-of-process management system that removes some or all of these files in this directory regardless of what data they represent, or whether there is a running `nodeos` instance accessing them or not.  Data which would nominally be available, but is no longer so due to manual maintenance, will result in a HTTP 404 response from the appropriate API endpoint(s).
+The `trace-dir` configuration option defines a location on the filesystem where all artefacts created by the `trace_api_plugin` are stored. These files are stable once the LIB block has progressed past that slice and then can be deleted at any time to reclaim filesystem space. The conventions regarding these files are to be determined. However, the remainder of the system will tolerate any out-of-process management system that removes some or all of these files in this directory regardless of what data they represent, or whether there is a running `nodeos` instance accessing them or not.  Data which would nominally be available, but is no longer so due to manual maintenance, will result in a HTTP 404 response from the appropriate API endpoint(s).
 
 In conjunction with the `trace-minimum-irreversible-history-blocks=-1` option, administrators can take full control over the lifetime of the data available via the `trace-api-plugin` and the associated filesystem resources. 

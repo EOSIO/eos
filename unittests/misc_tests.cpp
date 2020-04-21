@@ -173,7 +173,10 @@ BOOST_AUTO_TEST_CASE(variant_format_string_limited)
       mu( "b", string( 1024, 'b' ) );
       mu( "c", string( 1024, 'c' ) );
       string result = fc::format_string( format, mu, true );
-      BOOST_CHECK_EQUAL( result, string( 256, 'a' ) + "... " + string( 256, 'b' ) + "... " + string( 256, 'c' ) + "..." );
+      BOOST_CHECK_LT(0, mu.size());
+      BOOST_CHECK_LT(format.size(), 1024);
+      const size_t target_size = (1024 -  format.size()) / mu.size();
+      BOOST_CHECK_EQUAL( result, string( target_size, 'a' ) + "... " + string( target_size, 'b' ) + "... " + string( target_size, 'c' ) + "..." );
    }
    {
       fc::mutable_variant_object mu;
@@ -188,6 +191,60 @@ BOOST_AUTO_TEST_CASE(variant_format_string_limited)
       mu( "c", c );
       string result = fc::format_string( format, mu, true );
       BOOST_CHECK_EQUAL( result, "${a} ${b} ${c}");
+   }
+   {
+      // test cases for issue #8741, short version, all fields being displayed
+      flat_set <permission_level> provided_permissions;
+      for(char ch = 'a'; ch < 'c'; ++ch) {
+         provided_permissions.insert( {name(std::string_view(string(4, ch))), name(std::string_view(string(4, ch + 1)))});
+      }
+      flat_set <public_key_type> provided_keys;
+      auto fill_keys = [](const flat_set <permission_level>& provided_permissions, flat_set <public_key_type>& provided_keys) {
+         std::string digest = "1234567";
+         for (auto &permission : provided_permissions) {
+            digest += "1";
+            const std::string key_name_str = permission.actor.to_string() + permission.permission.to_string();
+            auto sig_digest = digest_type::hash(std::make_pair("1234", "abcd"));
+            const fc::crypto::signature sig = private_key_type::regenerate<fc::ecc::private_key_shim>(
+                  fc::sha256::hash(key_name_str + "active")).sign(sig_digest);
+            provided_keys.insert(public_key_type{sig, fc::sha256{digest}, true});
+         }
+      };
+      fill_keys(provided_permissions, provided_keys);
+      const string format = "transaction declares authority '${auth}', provided permissions ${provided_permissions}, provided keys ${provided_keys}";
+      fc::mutable_variant_object mu;
+      mu("auth", *provided_permissions.begin());
+      mu("provided_permissions", provided_permissions);
+      mu("provided_keys", provided_keys);
+      BOOST_CHECK_LT(0, mu.size());
+      const auto arg_limit_size = (1024 - format.size()) / mu.size();
+      const string result = fc::format_string(format, mu, true);
+      BOOST_CHECK(provided_permissions.begin() != provided_permissions.end());
+      const string auth_str = fc::json::to_string(*provided_permissions.begin(), fc::time_point::maximum());
+      string target_str = "transaction declares authority '" + fc::json::to_string(*provided_permissions.begin(), fc::time_point::maximum());
+      target_str += "', provided permissions " + fc::json::to_string(provided_permissions, fc::time_point::maximum());
+      target_str += ", provided keys " + fc::json::to_string(provided_keys, fc::time_point::maximum()).substr(0, arg_limit_size);
+      BOOST_CHECK_EQUAL(result, target_str);
+      BOOST_CHECK_LT(result.size(), 1024 + 3 * mu.size());
+
+      // test cases for issue #8741, longer version, permission and keys field being folded
+      provided_permissions.clear();
+      provided_keys.clear();
+      for(char ch = 'c'; ch < 'z'; ++ch) {
+         provided_permissions.insert( {name(std::string_view(string(5, ch))), name(std::string_view(string(5, ch + 1)))});
+      }
+      fill_keys(provided_permissions, provided_keys);
+      fc::mutable_variant_object mu_fold;
+      mu_fold("auth", *provided_permissions.begin());
+      mu_fold("provided_permissions", provided_permissions);
+      mu_fold("provided_keys", provided_keys);
+      BOOST_CHECK_LT(0, mu_fold.size());
+      string target_fold_str = "transaction declares authority '" + fc::json::to_string(*provided_permissions.begin(), fc::time_point::maximum());
+      target_fold_str += "', provided permissions ${provided_permissions}";
+      target_fold_str += ", provided keys ${provided_keys}";
+      const string result_fold = fc::format_string(format, mu_fold, true);
+      BOOST_CHECK_EQUAL(result_fold, target_fold_str);
+      BOOST_CHECK_LT(result_fold.size(), 1024 + 3 * mu.size());
    }
 }
 
@@ -667,7 +724,7 @@ BOOST_AUTO_TEST_CASE(transaction_test) { try {
          })
       );
 
-   abi_serializer::from_variant(pretty_trx, trx, test.get_resolver(), test.abi_serializer_max_time);
+   abi_serializer::from_variant(pretty_trx, trx, test.get_resolver(), abi_serializer::create_yield_function( test.abi_serializer_max_time ));
 
    test.set_transaction_headers(trx);
 
@@ -811,7 +868,7 @@ BOOST_AUTO_TEST_CASE(transaction_metadata_test) { try {
          })
       );
 
-      abi_serializer::from_variant(pretty_trx, trx, test.get_resolver(), test.abi_serializer_max_time);
+      abi_serializer::from_variant(pretty_trx, trx, test.get_resolver(), abi_serializer::create_yield_function( test.abi_serializer_max_time ));
 
       test.set_transaction_headers(trx);
       trx.expiration = fc::time_point::now();

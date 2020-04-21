@@ -272,18 +272,14 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          send_update();
       }
 
-      void send_update(bool changed = false) {
-         if (changed)
-            need_to_send_update = true;
-         if (!send_queue.empty() || !need_to_send_update || !current_request ||
-             !current_request->max_messages_in_flight)
+      void send_update(get_blocks_result_v0 result) {
+         need_to_send_update = true;
+         if (!send_queue.empty() || !current_request || !current_request->max_messages_in_flight)
             return;
-         auto&                chain = plugin->chain_plug->chain();
-         get_blocks_result_v0 result;
-         result.head              = {chain.head_block_num(), chain.head_block_id()};
+         auto& chain = plugin->chain_plug->chain();
          result.last_irreversible = {chain.last_irreversible_block_num(), chain.last_irreversible_block_id()};
          uint32_t current =
-             current_request->irreversible_only ? result.last_irreversible.block_num : result.head.block_num;
+               current_request->irreversible_only ? result.last_irreversible.block_num : result.head.block_num;
          if (current_request->start_block_num <= current &&
              current_request->start_block_num < current_request->end_block_num) {
             auto block_id = plugin->get_block_id(current_request->start_block_num);
@@ -305,6 +301,27 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          --current_request->max_messages_in_flight;
          need_to_send_update = current_request->start_block_num <= current &&
                                current_request->start_block_num < current_request->end_block_num;
+      }
+
+      void send_update(const block_state_ptr& block_state) {
+         need_to_send_update = true;
+         if (!send_queue.empty() || !current_request || !current_request->max_messages_in_flight)
+            return;
+         get_blocks_result_v0 result;
+         result.head = {block_state->block_num, block_state->id};
+         send_update(std::move(result));
+      }
+
+      void send_update(bool changed = false) {
+         if (changed)
+            need_to_send_update = true;
+         if (!send_queue.empty() || !need_to_send_update || !current_request ||
+             !current_request->max_messages_in_flight)
+            return;
+         auto& chain = plugin->chain_plug->chain();
+         get_blocks_result_v0 result;
+         result.head = {chain.head_block_num(), chain.head_block_id()};
+         send_update(std::move(result));
       }
 
       template <typename F>
@@ -424,7 +441,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          if (p) {
             if (p->current_request && block_state->block_num < p->current_request->start_block_num)
                p->current_request->start_block_num = block_state->block_num;
-            p->send_update(true);
+            p->send_update(block_state);
          }
       }
    }
