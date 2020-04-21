@@ -12,9 +12,6 @@ Every `nodeos` instance creates some internal files to housekeep the blockchain 
 * `reversible_blocks` is a memory mapped file and contains blocks that have been written to the blockchain but have not yet become irreversible. These blocks contain valid pushed transactions that still await confirmation to become final via the consensus protocol. The head block is the last block written to the blockchain, stored in `reversible_blocks`.
 * The `chain state` or `chain database` is currently stored and cached in a memory mapped file. It contains the blockchain state associated with each block, including account details, deferred transactions, and data stored using multi index tables in smart contracts. The last 65,536 block IDs are also cached to support Transaction as Proof of Stake (TaPOS). The transaction ID/expiration is also cached until the transaction expires. Once a block becomes irreversible, the associated chain state is no longer cached.
 
-[[info | KV Database]]
-| Future EOSIO versions will feature key-value (KV) database access/storage on disk. Data that requires caching might still use RAM or memory mapped files, but permanent storage will reside in the KV database on disk.
-
 * The `pending block` is an in memory block containing transactions as they are processed and pushed into the block; this will/may eventually become the head block. If the `nodeos` instance is the producing node, the pending block is distributed to other `nodeos` instances.
 * Outside the chain state, block data is cached in RAM until it becomes final/irreversible; especifically the signed block itself. After the last irreversible block (LIB) catches up to the block, that block is then retrieved from the irreversible blocks log.
 
