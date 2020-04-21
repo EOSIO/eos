@@ -24,7 +24,7 @@ The `nodeos` service provides query access to the chain database via the HTTP [R
 
 ## Nodeos Read Modes
 
-The `nodeos` service can be started and run in different "read" modes. These control how the node processes blocks and transactions:
+The `nodeos` service can be run in different "read" modes. These modes control how the node operates and how it processes blocks and transactions:
 
 - `speculative`: this includes the side effects of confirmed and unconfirmed transactions.
 - `head`: this only includes the side effects of confirmed transactions, this mode processes unconfirmed transactions but does not include them.
