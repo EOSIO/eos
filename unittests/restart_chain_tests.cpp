@@ -266,7 +266,8 @@ BOOST_FIXTURE_TEST_CASE(test_light_validation_restart_from_block_log, light_vali
 BOOST_FIXTURE_TEST_CASE(test_light_validation_restart_from_block_log_with_pruned_trx, light_validation_restart_from_block_log_test_fixture) {
    const auto& blocks_dir = chain.get_config().blocks_dir;
    block_log blog(blocks_dir);
-   BOOST_CHECK(blog.prune_transactions(trace->block_num, std::vector<transaction_id_type>{trace->id}) == 1);
+   std::vector<transaction_id_type> ids{trace->id};
+   BOOST_CHECK(blog.prune_transactions(trace->block_num, ids) == 1);
    BOOST_REQUIRE_NO_THROW(block_log::repair_log(blocks_dir));
 }
 
