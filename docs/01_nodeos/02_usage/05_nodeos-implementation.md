@@ -33,7 +33,7 @@ The `nodeos` service can be run in different "read" modes. These modes control h
 
 - `speculative`: this includes the side effects of confirmed and unconfirmed transactions.
 - `head`: this only includes the side effects of confirmed transactions, this mode processes unconfirmed transactions but does not include them.
-- `read-only`: this only includes the side effects of confirmed transactions.
+- `read-only`: this mode is deprecated. Similar functionality can be achieved by combining options: `read-mode = head`, `p2p-accept-transactions = false`, `api-accept-transactions = false`. When these options are set, the local database will contain state changes made by transactions in the chain up to the head block. Also, transactions received via the P2P network are not relayed and transactions cannot be pushed via the chain API.
 - `irreversible`: this mode also includes confirmed transactions only up to those included in the last irreversible block.
 
 A transaction is considered confirmed when a `nodeos` instance has received, processed, and written it to a block on the blockchain, i.e. it is in the head block or an earlier block.
