@@ -10,17 +10,22 @@ Every `nodeos` instance creates some internal files to housekeep the blockchain 
 
 * The `block.log` is an append only log of blocks written to disk and contains all the irreversible blocks.
 * `Reversible_blocks` is a memory mapped file and contains blocks that have been written to the blockchain but have not yet become irreversible.
-* The `chain state` or `database` is a memory mapped file, storing the blockchain state of each block (account details, deferred transactions, transactions, data stored using multi index tables in smart contracts, etc.). Once a block becomes irreversible we no longer cache the chain state.
+* The `chain state` or `chain database` is a memory mapped file, storing the blockchain state of each block (account details, deferred transactions, transactions, data stored using multi index tables in smart contracts, etc.). Once a block becomes irreversible, the chain state is no longer cached.
 * The `pending block` is an in memory block containing transactions as they are processed into a block, this will/may eventually become the head block. If this instance of `nodeos` is the producing node then the pending block is distributed to other `nodeos` instances.
 * The head block is the last block written to the blockchain, stored in `reversible_blocks`.
 
+## EOSIO Interfaces
+
+EOSIO provides a set of [services](../../) and [interfaces](https://developers.eos.io/manuals/eosio.cdt/latest/files) that enable contract developers to persist state across action, and consequently transaction, boundaries. Contracts may use these services and interfaces for various purposes. For example, `eosio.token` contract keeps balances for all users in the chain database. Each instance of `nodeos` keeps the database in memory, so contracts can read and write data with ease.
+
+### Nodeos RPC API
+
+The `nodeos` service provides query access to the chain database via the HTTP [RPC API](../05_rpc_apis/index.md).
+
 ## Nodeos Read Modes
 
-EOSIO provides a set of [services and interfaces](https://developers.eos.io/eosio-cpp/docs/db-api) that enable contract developers to persist state across action, and consequently transaction, boundaries. Contracts may use these services and interfaces for different purposes. For example, `eosio.token` contract keeps balances for all users in the database.
+The `nodeos` service can be started and run in different "read" modes. These control how the node processes blocks and transactions:
 
-Each instance of `nodeos` keeps the database in memory, so contracts can read and write data.   `nodeos` also provides access to this data over HTTP RPC API for reading the database.
-
-However, at any given time there can be multiple correct ways to query that data: 
 - `speculative`: this includes the side effects of confirmed and unconfirmed transactions.
 - `head`: this only includes the side effects of confirmed transactions, this mode processes unconfirmed transactions but does not include them.
 - `read-only`: this only includes the side effects of confirmed transactions.
