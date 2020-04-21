@@ -58,7 +58,7 @@ In this mode `nodeos` is able to execute transactions which have TaPoS pointing 
 ### Read-Only Mode
 
 [[caution | Deprecation Notice]]
-| The explicit `read-only` mode is deprecated. Similar functionality can be achieved in `head` mode by combining options: `read-mode = head`, `p2p-accept-transactions = false`, `api-accept-transactions = false`.
+| The explicit `read-mode = read-only` mode is deprecated. Similar functionality can now be achieved in `head` mode by combining options: `read-mode = head`, `p2p-accept-transactions = false`, `api-accept-transactions = false`.
 
 Clients such as `cleos` and the RPC API will see database state as of the current head block of the chain. It **will not** include changes made by transactions known to this node but not included in the chain, such as unconfirmed transactions.
 
