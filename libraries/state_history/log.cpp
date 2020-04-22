@@ -107,7 +107,11 @@ void state_history_log::recover_blocks(uint64_t size) {
 
 void state_history_log::open_log() {
    log.set_file_path(log_filename);
-   log.open("a+b"); // std::ios_base::binary | std::ios_base::in | std::ios_base::out | std::ios_base::app
+   if (!fc::exists(log_filename)) {
+      log.open("a+b");
+      log.close();
+   }
+   log.open("rb+"); // we need to use "rb+" mode; otherwise, transaction pruning changes on disk won't be available for reading
    log.seek_end(0);
    uint64_t size = log.tellp();
    if (size >= state_history_log_header_serial_size) {
@@ -272,21 +276,16 @@ void state_history_traces_log::prune_transactions(state_history_log::block_num_t
    EOS_ASSERT(entry_result, chain::state_history_exception, "nonexistant block num ${block_num}",
               ("block_num", block_num));
 
-   auto pos = get_log().tellp();
+   auto& log = get_log();
+   auto  pos = log.tellp();
 
    auto [entry_payload, version] = *entry_result;
    auto pruned_section           = state_history::trace_converter::prune_traces(entry_payload, version, ids);
    auto bytes_to_write = pruned_section.size();
 
    if (bytes_to_write > 0) {
-      // the log object is in append mode, which cannot be used to update written content,
-      // we need to open the file in the update mode
-
-      fc::cfile update_log;
-      update_log.set_file_path(get_log().get_file_path());
-      update_log.open(fc::cfile::update_rw_mode);
-      update_log.seek(pos - bytes_to_write);
-      update_log.write(pruned_section.data(), bytes_to_write);
+      log.seek(pos - bytes_to_write);
+      log.write(pruned_section.data(), bytes_to_write);
    }
 }
 
