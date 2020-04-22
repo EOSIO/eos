@@ -162,42 +162,47 @@ BOOST_FIXTURE_TEST_CASE(test_trace_converter_test_no_compression, trace_converte
 // }
 
 BOOST_AUTO_TEST_CASE(test_trace_log) {
-      tester chain;
+   namespace bfs = boost::filesystem;
+   tester chain;
 
-      scoped_temp_path state_history_dir;
-      fc::create_directories(state_history_dir.path);
-      state_history_traces_log log(state_history_dir.path);
+   scoped_temp_path state_history_dir;
+   fc::create_directories(state_history_dir.path);
+   state_history_traces_log log(state_history_dir.path);
 
-      chain.control->applied_transaction.connect(
-          [&](std::tuple<const transaction_trace_ptr&, const packed_transaction_ptr&> t) {
-             log.add_transaction(std::get<0>(t), std::get<1>(t));
-          });
+   chain.control->applied_transaction.connect(
+       [&](std::tuple<const transaction_trace_ptr&, const packed_transaction_ptr&> t) {
+          log.add_transaction(std::get<0>(t), std::get<1>(t));
+       });
 
-      chain.control->accepted_block.connect(
-          [&](const block_state_ptr& bs) { log.store_traces(chain.control->db(), bs); });
+   chain.control->accepted_block.connect([&](const block_state_ptr& bs) { log.store_traces(chain.control->db(), bs); });
 
+   deploy_test_api(chain);
+   auto cfd_trace = push_test_cfd_transaction(chain);
+   chain.produce_blocks(10);
 
-      deploy_test_api(chain);
-      auto cfd_trace    = push_test_cfd_transaction(chain);
-      chain.produce_blocks(10);
+   auto traces_bin = log.get_log_entry(cfd_trace->block_num);
+   BOOST_REQUIRE(traces_bin);
 
-      auto traces_bin = log.get_log_entry(cfd_trace->block_num);
-      BOOST_REQUIRE(traces_bin);
+   auto partial = get_partial_from_traces_bin(*traces_bin, cfd_trace->id);
+   BOOST_REQUIRE(partial.context_free_data.size());
+   BOOST_REQUIRE(partial.signatures.size());
 
-      auto partial = get_partial_from_traces_bin(*traces_bin, cfd_trace->id);
-      BOOST_REQUIRE(partial.context_free_data.size());
-      BOOST_REQUIRE(partial.signatures.size());
+   scoped_temp_path temp_dir;
+   fc::create_directories(temp_dir.path);
+   bfs::copy(state_history_dir.path / "trace_history.log", temp_dir.path / "trace_history.log");
+   bfs::copy(state_history_dir.path / "trace_history.index", temp_dir.path / "trace_history.index");
 
-      std::vector<transaction_id_type> ids{cfd_trace->id};
-      log.prune_traces(cfd_trace->block_num, ids);
-      BOOST_REQUIRE(ids.empty());
+   state_history_traces_log         temp_log(temp_dir.path);
+   std::vector<transaction_id_type> ids{cfd_trace->id};
+   temp_log.prune_traces(cfd_trace->block_num, ids);
+   BOOST_REQUIRE(ids.empty());
 
-      auto pruned_traces_bin = log.get_log_entry(cfd_trace->block_num);
-      BOOST_REQUIRE(pruned_traces_bin);
+   auto pruned_traces_bin = temp_log.get_log_entry(cfd_trace->block_num);
+   BOOST_REQUIRE(pruned_traces_bin);
 
-      auto pruned_partial = get_partial_from_traces_bin(*pruned_traces_bin, cfd_trace->id);
-      BOOST_CHECK(pruned_partial.context_free_data.empty());
-      BOOST_CHECK(pruned_partial.signatures.empty());
+   auto pruned_partial = get_partial_from_traces_bin(*pruned_traces_bin, cfd_trace->id);
+   BOOST_CHECK(pruned_partial.context_free_data.empty());
+   BOOST_CHECK(pruned_partial.signatures.empty());
 }
 
 BOOST_AUTO_TEST_SUITE_END()
