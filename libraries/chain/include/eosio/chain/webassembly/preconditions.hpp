@@ -65,9 +65,6 @@ namespace eosio { namespace chain { namespace webassembly {
    inline static constexpr bool is_whitelisted_legacy_type_v = detail::is_whitelisted_legacy_type<T>::value;
 
    template <typename... Ts>
-   inline static constexpr bool are_whitelisted_types_v = (... && detail::is_whitelisted_type<Ts>::value);
-
-   template <typename... Ts>
    inline static constexpr bool are_whitelisted_legacy_types_v = (... && detail::is_whitelisted_legacy_type<Ts>::value);
 
    template <typename T, typename U>
@@ -118,10 +115,11 @@ namespace eosio { namespace chain { namespace webassembly {
       vm::span<T> to_span(const vm::span<T>& val) { return val; }
    }
 
-   EOS_VM_PRECONDITION(alias_check,
+   EOS_VM_PRECONDITION(core_precondition,
          EOS_VM_INVOKE_ON_ALL(([&](auto&& arg, auto&&... rest) {
             using namespace eosio::vm;
             using arg_t = std::decay_t<decltype(arg)>;
+            static_assert( is_whitelisted_type_v<arg_t>, "whitelisted type violation");
             if constexpr (is_span_type_v<arg_t>) {
                // check alignment while we are here
                EOS_ASSERT( reinterpret_cast<std::uintptr_t>(arg.data()) % alignof(dependent_type_t<arg_t>) == 0,
@@ -161,8 +159,4 @@ namespace eosio { namespace chain { namespace webassembly {
             static_assert( are_whitelisted_legacy_types_v<std::decay_t<decltype(args)>...>, "legacy whitelisted type violation");
          }));
 
-   EOS_VM_PRECONDITION(static_check_wl_args,
-         EOS_VM_INVOKE_ONCE([&](auto&&... args) {
-            static_assert( are_whitelisted_types_v<std::decay_t<decltype(args)>...>, "whitelisted type violation");
-         }));
 }}} // ns eosio::chain::webassembly

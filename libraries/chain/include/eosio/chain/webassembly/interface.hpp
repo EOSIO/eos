@@ -20,10 +20,10 @@ namespace eosio { namespace chain { namespace webassembly {
    inline static host_function_registrator<&interface::NAME, ##__VA_ARGS__> NAME ## _registrator = {eosio_injected_module_name, #NAME};
 
 #define REGISTER_HOST_FUNCTION(NAME, ...) \
-   inline static host_function_registrator<&interface::NAME, alias_check, static_check_wl_args, context_aware_check, ##__VA_ARGS__> NAME ## _registrator = {"env", #NAME};
+   inline static host_function_registrator<&interface::NAME, core_precondition, context_aware_check, ##__VA_ARGS__> NAME ## _registrator = {"env", #NAME};
 
 #define REGISTER_CF_HOST_FUNCTION(NAME, ...) \
-   inline static host_function_registrator<&interface::NAME, alias_check, static_check_wl_args, ##__VA_ARGS__> NAME ## _registrator = {"env", #NAME};
+   inline static host_function_registrator<&interface::NAME, core_precondition, ##__VA_ARGS__> NAME ## _registrator = {"env", #NAME};
 
 #define REGISTER_LEGACY_HOST_FUNCTION(NAME, ...) \
    inline static host_function_registrator<&interface::NAME, null_pointer_check, legacy_static_check_wl_args, context_aware_check, ##__VA_ARGS__> NAME ## _registrator = {"env", #NAME};
