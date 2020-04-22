@@ -3,7 +3,7 @@
 namespace eosio { namespace chain { namespace webassembly {
    int32_t interface::read_action_data(legacy_span<char> memory) const {
       auto s = context.get_action().data.size();
-      if( memory.data() == 0 ) return s;
+      if( memory.size() == 0 ) return s;
 
       auto copy_size = std::min( static_cast<size_t>(memory.size()), s );
       std::memcpy( memory.data(), context.get_action().data.data(), copy_size );
