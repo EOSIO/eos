@@ -268,12 +268,12 @@ namespace eosio { namespace chain { namespace webassembly {
          int32_t read_action_data(legacy_span<char>) const;
          int32_t action_data_size() const;
          name current_receiver() const;
-         void set_action_return_value(legacy_span<const char>);
+         void set_action_return_value(span<const char>);
 
          REGISTER_LEGACY_CF_HOST_FUNCTION(read_action_data);
          REGISTER_CF_HOST_FUNCTION(action_data_size);
          REGISTER_CF_HOST_FUNCTION(current_receiver);
-         REGISTER_LEGACY_HOST_FUNCTION(set_action_return_value);
+         REGISTER_HOST_FUNCTION(set_action_return_value);
 
          // console api
          void prints(null_terminated_ptr);
