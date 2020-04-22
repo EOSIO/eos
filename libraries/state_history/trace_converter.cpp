@@ -103,20 +103,6 @@ void pack(fc::datastream<char*>& ds, const prunable_data_type&  data, compressio
    }
 }
 
-void unpack(fc::datastream<const char*>& ds, prunable_data_type& data, compression_type compression) {
-   if (compression == compression_type::none) {
-      fc::raw::unpack(ds, data);
-   }
-   else if (compression == compression_type::zlib) {
-      bytes compressed;
-      fc::raw::unpack(ds, compressed);
-      bytes uncompressed = zlib_decompress(compressed);
-      fc::datastream<const char*> uncompressed_ds(uncompressed.data(), uncompressed.size());
-      fc::raw::unpack(uncompressed_ds, data);
-   }
-}
-
-
 // each individual pruable data in a trasaction is packed as an optional prunable_data_type::full
 // or an optional bytes to a compressed prunable_data_type::full
 size_t pack_pruable(bytes& buffer, const packed_transaction& trx,
@@ -125,17 +111,20 @@ size_t pack_pruable(bytes& buffer, const packed_transaction& trx,
    const auto& data = trx.get_prunable_data();
 
    int max_size = data.maximum_pruned_pack_size(compression);
-   if (data.prunable_data.contains<prunable_data_type::full_legacy>()) {
-      max_size += sizeof(uint8_t);
-   }
    uint64_t start_buffer_position = buffer.size();
    buffer.resize(buffer.size() + max_size);
    fc::datastream<char*> ds(buffer.data() + start_buffer_position, max_size);
-   pack(ds, data, compression);
-   
+
    if (data.prunable_data.contains<prunable_data_type::full_legacy>()) {
-      fc::raw::pack(ds, static_cast<uint8_t>(trx.get_compression()));
+      // convert full_legacy to full before serialization
+      const auto& full_legacy  = data.prunable_data.get<prunable_data_type::full_legacy>();
+      prunable_data_type pd    = {prunable_data_type::full{full_legacy.signatures, full_legacy.context_free_segments}};
+      pack(ds, pd, compression);
    }
+   else {
+      pack(ds, data, compression);
+   }
+   
    buffer.resize(start_buffer_position + ds.tellp());
    return max_size;
 }
@@ -144,12 +133,17 @@ size_t pack_pruable(bytes& buffer, const packed_transaction& trx,
 void unpack_prunable(const char* read_buffer, fc::datastream<const char*>& ds, prunable_data_type& data,
                      compression_type compression) {
 
-   unpack(ds, data, compression);
-   if (data.prunable_data.contains<prunable_data_type::full_legacy>()) {
-      uint8_t local_comp;
-      fc::raw::unpack(ds, local_comp);
-      auto& full_legacy = data.prunable_data.get<prunable_data_type::full_legacy>();
-      full_legacy.unpack_context_free_data(static_cast<chain::packed_transaction_v0::compression_type>(local_comp));
+   if (compression == compression_type::none) {
+      fc::raw::unpack(ds, data);
+   }
+   else {
+      fc::unsigned_int len;
+      fc::raw::unpack(ds, len);
+      bytes uncompressed = decompress_buffer(read_buffer + ds.tellp(), len, compression);
+      ds.skip(len);
+
+      fc::datastream<const char*> uncompressed_ds(uncompressed.data(), uncompressed.size());
+      fc::raw::unpack(uncompressed_ds, data);
    }
 }
 
@@ -234,8 +228,8 @@ bytes trace_converter::pack(const chainbase::database& db, bool trace_debug_mode
 struct restore_partial {
    partial_transaction_v0& ptrx;
    void operator()(prunable_data_type::full_legacy& data) const {
-      ptrx.signatures        = std::move(data.signatures);
-      ptrx.context_free_data = std::move(data.context_free_segments);
+      // this should never happen because we convert full_legacy to full before serialization
+      assert(false);
    }
    void operator()(prunable_data_type::none& data) const {}
    void operator()(prunable_data_type::signatures_only& data) const {

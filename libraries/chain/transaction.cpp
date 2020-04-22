@@ -407,7 +407,10 @@ static digest_type prunable_digest(const packed_transaction::prunable_data_type:
 }
 
 static digest_type prunable_digest(const packed_transaction::prunable_data_type::full& obj) {
-   EOS_THROW(tx_prune_exception, "unimplemented");
+   digest_type::encoder prunable;
+   fc::raw::pack( prunable, obj.signatures );
+   fc::raw::pack( prunable, obj.context_free_segments );
+   return prunable.result();
 }
 
 static digest_type prunable_digest(const packed_transaction::prunable_data_type::full_legacy& obj) {
@@ -649,9 +652,5 @@ void packed_transaction::reflector_init()
       legacy.context_free_segments = unpack_context_free_data( legacy.packed_context_free_data, compression );
    }
    estimated_size = calculate_estimated_size();
-}
-
-void packed_transaction::prunable_data_type::full_legacy::unpack_context_free_data(packed_transaction_v0::compression_type compression) {
-   context_free_segments = chain::unpack_context_free_data(packed_context_free_data, compression);
 }
 } } // eosio::chain
