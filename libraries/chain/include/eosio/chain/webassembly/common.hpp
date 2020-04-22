@@ -57,9 +57,6 @@ namespace eosio { namespace chain {
       using base_type::elem_type;
       using base_type::get_host;
 
-      // TODO: These are duplicated from the base class, because clang is
-      // unable to find them.  I think clang is correct here because the
-      // return type does not affect hiding.
       template <typename T>
       auto from_wasm(const void* ptr) const
          -> std::enable_if_t<std::is_same_v<T, unvalidated_ptr<const char>>, T> {
