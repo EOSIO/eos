@@ -87,7 +87,7 @@ namespace eosio { namespace chain { namespace webassembly {
          EOS_VM_INVOKE_ON_ALL([&](auto&& arg, auto&&... rest) {
             using namespace eosio::vm;
             using arg_t = std::decay_t<decltype(arg)>;
-            if constexpr (decltype(detail::is_legacy_ptr(std::declval<arg_t>()))::value && !is_span_type_v<dependent_type_t<arg_t>>) {
+            if constexpr (decltype(detail::is_legacy_ptr(std::declval<arg_t>()))::value) {
                EOS_ASSERT(arg.get_original_pointer() != ctx.get_interface().get_memory(), wasm_execution_error, "references cannot be created for null pointers");
             }
          }));
@@ -122,7 +122,7 @@ namespace eosio { namespace chain { namespace webassembly {
             static_assert( is_whitelisted_type_v<arg_t>, "whitelisted type violation");
             if constexpr (is_span_type_v<arg_t>) {
                // check alignment while we are here
-               EOS_ASSERT( reinterpret_cast<std::uintptr_t>(arg.data()) % alignof(dependent_type_t<arg_t>) == 0,
+               EOS_ASSERT( reinterpret_cast<std::uintptr_t>(arg.data()) % alignof(typename arg_t::value_type) == 0,
                      wasm_exception, "memory not aligned" );
             }
             if constexpr (is_span_type_v<arg_t> || vm::is_argument_proxy_type_v<arg_t>) {
