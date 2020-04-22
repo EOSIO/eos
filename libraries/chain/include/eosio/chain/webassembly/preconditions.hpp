@@ -48,7 +48,9 @@ namespace eosio { namespace chain { namespace webassembly {
       };
       template <typename T>
       struct is_whitelisted_type<vm::span<T>> {
-         static constexpr bool value = is_wasm_arithmetic_type_v<std::remove_const_t<T>>;
+         // If expanding this beyond char, add a static_assert of the alignment of every
+         // additional type allowed.
+         static constexpr bool value = std::is_same_v<std::remove_const_t<T>, char>;
       };
       template <typename T>
       struct is_whitelisted_type<vm::argument_proxy<T*, 0>> {
