@@ -20,7 +20,7 @@ namespace eosio { namespace chain { namespace webassembly {
 
    bool interface::check_transaction_authorization( legacy_span<const char> trx_data,
                                                     legacy_span<const char> pubkeys_data,
-                                                    legacy_span<const char> perms_data ) {
+                                                    legacy_span<const char> perms_data ) const {
       transaction trx = fc::raw::unpack<transaction>( trx_data.data(), trx_data.size() );
 
       flat_set<public_key_type> provided_keys;
@@ -48,7 +48,7 @@ namespace eosio { namespace chain { namespace webassembly {
    bool interface::check_permission_authorization( account_name account, permission_name permission,
                                                    legacy_span<const char> pubkeys_data,
                                                    legacy_span<const char> perms_data,
-                                                   uint64_t delay_us ) {
+                                                   uint64_t delay_us ) const {
       EOS_ASSERT( delay_us <= static_cast<uint64_t>(std::numeric_limits<int64_t>::max()),
                   action_validate_exception, "provided delay is too large" );
 

@@ -217,8 +217,8 @@ namespace eosio { namespace chain { namespace webassembly {
          REGISTER_LEGACY_CF_HOST_FUNCTION(ripemd160);
 
          // permission api
-         bool check_transaction_authorization(legacy_span<const char>, legacy_span<const char>, legacy_span<const char>);
-         bool check_permission_authorization(account_name, permission_name, legacy_span<const char>, legacy_span<const char>, uint64_t);
+         bool check_transaction_authorization(legacy_span<const char>, legacy_span<const char>, legacy_span<const char>) const;
+         bool check_permission_authorization(account_name, permission_name, legacy_span<const char>, legacy_span<const char>, uint64_t) const;
          int64_t get_permission_last_used(account_name, permission_name) const;
          int64_t get_account_creation_time(account_name) const;
 
@@ -228,8 +228,8 @@ namespace eosio { namespace chain { namespace webassembly {
          REGISTER_HOST_FUNCTION(get_account_creation_time);
 
          // authorization api
-         void require_auth(account_name);
-         void require_auth2(account_name, permission_name);
+         void require_auth(account_name) const;
+         void require_auth2(account_name, permission_name) const;
          bool has_auth(account_name) const;
          void require_recipient(account_name);
          bool is_account(account_name) const;
@@ -252,11 +252,11 @@ namespace eosio { namespace chain { namespace webassembly {
          REGISTER_HOST_FUNCTION(get_sender);
 
          // context-free system api
-         void abort();
-         void eosio_assert(bool, null_terminated_ptr);
-         void eosio_assert_message(bool, legacy_span<const char>);
-         void eosio_assert_code(bool, uint64_t);
-         void eosio_exit(int32_t);
+         void abort() const;
+         void eosio_assert(bool, null_terminated_ptr) const;
+         void eosio_assert_message(bool, legacy_span<const char>) const;
+         void eosio_assert_code(bool, uint64_t) const;
+         void eosio_exit(int32_t) const;
 
          REGISTER_CF_HOST_FUNCTION(abort)
          REGISTER_LEGACY_CF_HOST_FUNCTION(eosio_assert)
