@@ -213,7 +213,7 @@ bool apply_context::is_account( const account_name& account )const {
    return nullptr != db.find<account_object,by_name>( account );
 }
 
-void apply_context::require_authorization( const account_name& account ) {
+void apply_context::require_authorization( const account_name& account ) const {
    for( uint32_t i=0; i < act->authorization.size(); i++ ) {
      if( act->authorization[i].actor == account ) {
         return;
@@ -230,7 +230,7 @@ bool apply_context::has_authorization( const account_name& account )const {
 }
 
 void apply_context::require_authorization(const account_name& account,
-                                          const permission_name& permission) {
+                                          const permission_name& permission) const {
   for( uint32_t i=0; i < act->authorization.size(); i++ )
      if( act->authorization[i].actor == account ) {
         if( act->authorization[i].permission == permission ) {
