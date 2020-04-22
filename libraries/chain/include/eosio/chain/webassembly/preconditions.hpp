@@ -89,7 +89,7 @@ namespace eosio { namespace chain { namespace webassembly {
             using namespace eosio::vm;
             using arg_t = std::decay_t<decltype(arg)>;
             if constexpr (decltype(detail::is_legacy_ptr(std::declval<arg_t>()))::value && !is_span_type_v<dependent_type_t<arg_t>>) {
-               EOS_ASSERT(arg.original_ptr != ctx.get_interface().get_memory(), wasm_execution_error, "references cannot be created for null pointers");
+               EOS_ASSERT(arg.get_original_pointer() != ctx.get_interface().get_memory(), wasm_execution_error, "references cannot be created for null pointers");
             }
          }));
 
