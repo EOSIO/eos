@@ -1,7 +1,7 @@
 #include <eosio/chain/webassembly/interface.hpp>
 
 namespace eosio { namespace chain { namespace webassembly {
-   char* interface::memcpy( unvalidated_ptr<char> dest, unvalidated_ptr<const char> src, wasm_size_t length) const {
+   void* interface::memcpy( unvalidated_ptr<char> dest, unvalidated_ptr<const char> src, wasm_size_t length) const {
       volatile auto check_src = *((const char*)src + length - 1);
       volatile auto check_dest = *((const char*)dest + length - 1);
       volatile auto check_result = *(const char*)dest;
@@ -11,7 +11,7 @@ namespace eosio { namespace chain { namespace webassembly {
       return (char *)std::memcpy((char*)dest, (const char*)src, length);
    }
 
-   char* interface::memmove( unvalidated_ptr<char> dest, unvalidated_ptr<const char> src, wasm_size_t length) const {
+   void* interface::memmove( unvalidated_ptr<char> dest, unvalidated_ptr<const char> src, wasm_size_t length) const {
       volatile auto check_src = *((const char*)src + length - 1);
       volatile auto check_dest = *((const char*)dest + length - 1);
       volatile auto check_result = *(const char*)dest;
@@ -27,7 +27,7 @@ namespace eosio { namespace chain { namespace webassembly {
       return ret < 0 ? -1 : ret > 0 ? 1 : 0;
    }
 
-   char* interface::memset( unvalidated_ptr<char> dest, int32_t value, wasm_size_t length ) const {
+   void* interface::memset( unvalidated_ptr<char> dest, int32_t value, wasm_size_t length ) const {
       volatile auto check_dest = *((const char*)dest + length - 1);
       volatile auto check_result = *(const char*)dest;
       vm::ignore_unused_variable_warning(check_dest, check_result);

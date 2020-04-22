@@ -442,10 +442,10 @@ namespace eosio { namespace chain { namespace webassembly {
          REGISTER_LEGACY_HOST_FUNCTION(db_idx_long_double_previous);
 
          // memory api
-         char* memcpy(unvalidated_ptr<char>, unvalidated_ptr<const char>, wasm_size_t) const;
-         char* memmove(unvalidated_ptr<char>, unvalidated_ptr<const char>, wasm_size_t) const;
+         void* memcpy(unvalidated_ptr<char>, unvalidated_ptr<const char>, wasm_size_t) const;
+         void* memmove(unvalidated_ptr<char>, unvalidated_ptr<const char>, wasm_size_t) const;
          int32_t memcmp(unvalidated_ptr<const char>, unvalidated_ptr<const char>, wasm_size_t) const;
-         char* memset(unvalidated_ptr<char>, int32_t, wasm_size_t) const;
+         void* memset(unvalidated_ptr<char>, int32_t, wasm_size_t) const;
 
          REGISTER_LEGACY_CF_HOST_FUNCTION(memcpy);
          REGISTER_LEGACY_CF_HOST_FUNCTION(memmove);
