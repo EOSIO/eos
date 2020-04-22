@@ -196,7 +196,10 @@ BOOST_AUTO_TEST_CASE(test_trace_log) {
    log.prune_transactions(cfd_trace->block_num, ids);
    BOOST_REQUIRE(ids.empty());
 
-   auto pruned_traces_bin = log.get_log_entry(cfd_trace->block_num);
+   // we assume the nodeos has to be stopped while running, it can only be read
+   // correctly with restart
+   state_history_traces_log new_log(state_history_dir.path);
+   auto pruned_traces_bin = new_log.get_log_entry(cfd_trace->block_num);
    BOOST_REQUIRE(pruned_traces_bin);
 
    auto pruned_partial = get_partial_from_traces_bin(*pruned_traces_bin, cfd_trace->id);
