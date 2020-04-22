@@ -573,9 +573,8 @@ namespace eosio { namespace chain { namespace webassembly {
 
 }}} // ns eosio::chain::webassembly
 
-#undef PRECONDITIONS
-#undef DECLARE
-#undef DECLARE_CONST
-#undef DECLARE_INJECTED
-#undef DECLARE_INJECTED_CONST
-#undef DECLARE_HOST_FUNCTION
+#undef REGISTER_LEGACY_CF_ONLY_HOST_FUNCTION
+#undef REGISTER_LEGACY_CF_HOST_FUNCTION
+#undef REGISTER_LEGACY_HOST_FUNCTION
+#undef REGISTER_HOST_FUNCTION
+#undef REGISTER_INJECTED_HOST_FUNCTION
