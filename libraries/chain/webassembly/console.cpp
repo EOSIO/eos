@@ -18,7 +18,7 @@ namespace eosio { namespace chain { namespace webassembly {
 
    void interface::prints_l(legacy_span<const char> str ) {
 		predicated_print(context,
-      [&]() { context.console_append(string(str.data(), str.size())); });
+      [&]() { context.console_append(std::string_view(str.data(), str.size())); });
    }
 
    void interface::printi(int64_t val) {
