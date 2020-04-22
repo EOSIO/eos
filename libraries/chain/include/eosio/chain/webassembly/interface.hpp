@@ -51,10 +51,10 @@ namespace eosio { namespace chain { namespace webassembly {
          void preactivate_feature(legacy_ptr<const digest_type>);
          void set_resource_limits(account_name account, int64_t ram_bytes, int64_t net_weight, int64_t cpu_weight);
          void get_resource_limits(account_name account, legacy_ptr<int64_t, 8> ram_bytes, legacy_ptr<int64_t, 8> net_weight, legacy_ptr<int64_t, 8> cpu_weight) const;
-         int64_t set_proposed_producers(legacy_span<char> packed_producer_schedule);
-         int64_t set_proposed_producers_ex(uint64_t packed_producer_format, legacy_span<char> packed_producer_schedule);
+         int64_t set_proposed_producers(legacy_span<const char> packed_producer_schedule);
+         int64_t set_proposed_producers_ex(uint64_t packed_producer_format, legacy_span<const char> packed_producer_schedule);
          uint32_t get_blockchain_parameters_packed(legacy_span<char> packed_blockchain_parameters) const;
-         void set_blockchain_parameters_packed(legacy_span<char> packed_blockchain_parameters);
+         void set_blockchain_parameters_packed(legacy_span<const char> packed_blockchain_parameters);
          bool is_privileged(account_name account) const;
          void set_privileged(account_name account, bool is_priv);
 
@@ -194,16 +194,16 @@ namespace eosio { namespace chain { namespace webassembly {
          REGISTER_LEGACY_HOST_FUNCTION(get_active_producers);
 
          // crypto api
-         void assert_recover_key(legacy_ptr<const fc::sha256>, legacy_span<char>, legacy_span<char>) const;
-         int32_t recover_key(legacy_ptr<const fc::sha256>, legacy_span<char>, legacy_span<char>) const;
-         void assert_sha256(legacy_span<char>, legacy_ptr<const fc::sha256>) const;
-         void assert_sha1(legacy_span<char>, legacy_ptr<const fc::sha1>) const;
-         void assert_sha512(legacy_span<char>, legacy_ptr<const fc::sha512>) const;
-         void assert_ripemd160(legacy_span<char>, legacy_ptr<const fc::ripemd160>) const;
-         void sha256(legacy_span<char>, legacy_ptr<fc::sha256>) const;
-         void sha1(legacy_span<char>, legacy_ptr<fc::sha1>) const;
-         void sha512(legacy_span<char>, legacy_ptr<fc::sha512>) const;
-         void ripemd160(legacy_span<char>, legacy_ptr<fc::ripemd160>) const;
+         void assert_recover_key(legacy_ptr<const fc::sha256>, legacy_span<const char>, legacy_span<const char>) const;
+         int32_t recover_key(legacy_ptr<const fc::sha256>, legacy_span<const char>, legacy_span<char>) const;
+         void assert_sha256(legacy_span<const char>, legacy_ptr<const fc::sha256>) const;
+         void assert_sha1(legacy_span<const char>, legacy_ptr<const fc::sha1>) const;
+         void assert_sha512(legacy_span<const char>, legacy_ptr<const fc::sha512>) const;
+         void assert_ripemd160(legacy_span<const char>, legacy_ptr<const fc::ripemd160>) const;
+         void sha256(legacy_span<const char>, legacy_ptr<fc::sha256>) const;
+         void sha1(legacy_span<const char>, legacy_ptr<fc::sha1>) const;
+         void sha512(legacy_span<const char>, legacy_ptr<fc::sha512>) const;
+         void ripemd160(legacy_span<const char>, legacy_ptr<fc::ripemd160>) const;
 
          REGISTER_LEGACY_CF_HOST_FUNCTION(assert_recover_key);
          REGISTER_LEGACY_CF_HOST_FUNCTION(recover_key);
@@ -217,8 +217,8 @@ namespace eosio { namespace chain { namespace webassembly {
          REGISTER_LEGACY_CF_HOST_FUNCTION(ripemd160);
 
          // permission api
-         bool check_transaction_authorization(legacy_span<char>, legacy_span<char>, legacy_span<char>);
-         bool check_permission_authorization(account_name, permission_name, legacy_span<char>, legacy_span<char>, uint64_t);
+         bool check_transaction_authorization(legacy_span<const char>, legacy_span<const char>, legacy_span<const char>);
+         bool check_permission_authorization(account_name, permission_name, legacy_span<const char>, legacy_span<const char>, uint64_t);
          int64_t get_permission_last_used(account_name, permission_name) const;
          int64_t get_account_creation_time(account_name) const;
 
@@ -268,7 +268,7 @@ namespace eosio { namespace chain { namespace webassembly {
          int32_t read_action_data(legacy_span<char>) const;
          int32_t action_data_size() const;
          name current_receiver() const;
-         void set_action_return_value(legacy_span<char>);
+         void set_action_return_value(legacy_span<const char>);
 
          REGISTER_LEGACY_CF_HOST_FUNCTION(read_action_data);
          REGISTER_CF_HOST_FUNCTION(action_data_size);
@@ -453,9 +453,9 @@ namespace eosio { namespace chain { namespace webassembly {
          REGISTER_LEGACY_CF_HOST_FUNCTION(memset);
 
          // transaction api
-         void send_inline(legacy_span<char>);
-         void send_context_free_inline(legacy_span<char>);
-         void send_deferred(legacy_ptr<const uint128_t>, account_name, legacy_span<char>, uint32_t);
+         void send_inline(legacy_span<const char>);
+         void send_context_free_inline(legacy_span<const char>);
+         void send_deferred(legacy_ptr<const uint128_t>, account_name, legacy_span<const char>, uint32_t);
          bool cancel_deferred(legacy_ptr<const uint128_t>);
 
          REGISTER_LEGACY_HOST_FUNCTION(send_inline);

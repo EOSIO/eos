@@ -19,7 +19,7 @@ namespace eosio { namespace chain { namespace webassembly {
       return context.get_receiver();
    }
 
-   void interface::set_action_return_value( legacy_span<char> packed_blob ) {
+   void interface::set_action_return_value( legacy_span<const char> packed_blob ) {
       context.action_return_value.assign( packed_blob.data(), packed_blob.data() + packed_blob.size() );
    }
 }}} // ns eosio::chain::webassembly
