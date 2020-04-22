@@ -134,7 +134,7 @@ class state_history_traces_log : public state_history_log {
    /**
     *  @param[in,out] ids The ids to been pruned and returns the ids not found in the specified block
     **/
-   void prune_traces(block_num_type block_num, std::vector<chain::transaction_id_type>& ids);
+   void prune_transactions(block_num_type block_num, std::vector<chain::transaction_id_type>& ids);
 };
 
 } // namespace eosio

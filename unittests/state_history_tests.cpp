@@ -85,7 +85,12 @@ state_history::partial_transaction_v0 get_partial_from_traces_bin(const bytes&  
 
 struct scoped_temp_path {
    boost::filesystem::path path;
-   scoped_temp_path() { path = boost::filesystem::unique_path(); }
+   scoped_temp_path() {
+      path = boost::filesystem::unique_path();
+      if (boost::unit_test::framework::master_test_suite().argc >= 2) {
+         path += boost::unit_test::framework::master_test_suite().argv[1];
+      }
+   }
    ~scoped_temp_path() {
       boost::filesystem::remove_all(path);
    }
@@ -187,17 +192,11 @@ BOOST_AUTO_TEST_CASE(test_trace_log) {
    BOOST_REQUIRE(partial.context_free_data.size());
    BOOST_REQUIRE(partial.signatures.size());
 
-   scoped_temp_path temp_dir;
-   fc::create_directories(temp_dir.path);
-   bfs::copy(state_history_dir.path / "trace_history.log", temp_dir.path / "trace_history.log");
-   bfs::copy(state_history_dir.path / "trace_history.index", temp_dir.path / "trace_history.index");
-
-   state_history_traces_log         temp_log(temp_dir.path);
    std::vector<transaction_id_type> ids{cfd_trace->id};
-   temp_log.prune_traces(cfd_trace->block_num, ids);
+   log.prune_transactions(cfd_trace->block_num, ids);
    BOOST_REQUIRE(ids.empty());
 
-   auto pruned_traces_bin = temp_log.get_log_entry(cfd_trace->block_num);
+   auto pruned_traces_bin = log.get_log_entry(cfd_trace->block_num);
    BOOST_REQUIRE(pruned_traces_bin);
 
    auto pruned_partial = get_partial_from_traces_bin(*pruned_traces_bin, cfd_trace->id);

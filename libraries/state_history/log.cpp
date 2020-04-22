@@ -266,7 +266,7 @@ fc::optional<chain::bytes> state_history_traces_log::get_log_entry(block_num_typ
    });
 }
 
-void state_history_traces_log::prune_traces(state_history_log::block_num_type        block_num,
+void state_history_traces_log::prune_transactions(state_history_log::block_num_type        block_num,
                                             std::vector<chain::transaction_id_type>& ids) {
    auto entry_result = get_entry(block_num);
    EOS_ASSERT(entry_result, chain::state_history_exception, "nonexistant block num ${block_num}",
