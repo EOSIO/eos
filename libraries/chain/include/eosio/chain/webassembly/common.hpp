@@ -74,14 +74,6 @@ namespace eosio { namespace chain {
 
       template <typename T>
       auto from_wasm(void* ptr) const
-         -> std::enable_if_t< vm::is_argument_proxy_type_v<T> &&
-                              !vm::is_span_type_v<vm::dependent_type_t<T>>, T> {
-         validate_pointer<vm::argument_proxy_dependent_type_t<T>>(ptr, 1);
-         return {ptr};
-      }
-
-      template <typename T>
-      auto from_wasm(void* ptr) const
          -> std::enable_if_t< std::is_pointer_v<T>,
                               vm::argument_proxy<std::remove_pointer_t<T>>> {
          validate_pointer<std::remove_pointer_t<T>>(ptr, 1);
@@ -96,8 +88,6 @@ namespace eosio { namespace chain {
       uint64_t to_wasm(name&& n) { return n.to_uint64_t(); }
       EOS_VM_FROM_WASM(float32_t, (float f)) { return ::to_softfloat32(f); }
       EOS_VM_FROM_WASM(float64_t, (double f)) { return ::to_softfloat64(f); }
-      // OSX clang can't find the base class version
-      EOS_VM_FROM_WASM(bool, (uint32_t value)) { return value ? 1 : 0; }
    };
 
    using eos_vm_host_functions_t = eosio::vm::registered_host_functions<webassembly::interface,
