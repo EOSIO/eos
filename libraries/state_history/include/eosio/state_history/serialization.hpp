@@ -43,8 +43,8 @@ history_context_wrapper<std::decay_t<P>, std::decay_t<T>> make_history_context_w
 
 struct trace_receipt_context {
    uint8_t  failed_status = eosio::chain::transaction_receipt_header::hard_fail;
-   bool     debug_mode;
-   uint32_t version;
+   bool     debug_mode    = false;
+   uint32_t version       = 0;
 };
 
 namespace fc {

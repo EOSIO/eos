@@ -43,7 +43,7 @@ namespace {
 bytes decompress_buffer(const char* buffer, uint32_t len, compression_type compression) {
    bytes                     decompressed;
    bio::filtering_ostreambuf strm;
-   EOS_ASSERT(compression == compression_type::zlib, state_history_exception, "unspported compression format");
+   EOS_ASSERT(compression == compression_type::zlib, state_history_exception, "unsupported compression format");
    strm.push(bio::zlib_decompressor());
    strm.push(bio::back_inserter(decompressed));
    bio::write(strm, buffer, len);
@@ -103,9 +103,9 @@ void pack(fc::datastream<char*>& ds, const prunable_data_type&  data, compressio
    }
 }
 
-// each individual pruable data in a trasaction is packed as an optional prunable_data_type::full
+// each individual prunable data in a transaction is packed as an optional prunable_data_type::full
 // or an optional bytes to a compressed prunable_data_type::full
-size_t pack_pruable(bytes& buffer, const packed_transaction& trx,
+size_t pack_prunable(bytes& buffer, const packed_transaction& trx,
                   compression_type compression) {
 
    const auto& data = trx.get_prunable_data();
@@ -154,8 +154,9 @@ bytes pack_prunables(const std::vector<augmented_transaction_trace>& traces, com
 
    int size_with_paddings = 0;
    for_each_packed_transaction(
-       traces, [&](const chain::packed_transaction& pt) { size_with_paddings += pack_pruable(out, pt, compression); });
+       traces, [&](const chain::packed_transaction& pt) { size_with_paddings += pack_prunable(out, pt, compression); });
 
+   EOS_ASSERT(size_with_paddings >= out.size(), state_history_exception, "The estimated max size is small than the actual size");
    out.resize(size_with_paddings);
    return out;
 }
