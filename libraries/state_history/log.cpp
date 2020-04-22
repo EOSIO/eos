@@ -267,7 +267,7 @@ fc::optional<chain::bytes> state_history_traces_log::get_log_entry(block_num_typ
 }
 
 void state_history_traces_log::prune_transactions(state_history_log::block_num_type        block_num,
-                                            std::vector<chain::transaction_id_type>& ids) {
+                                                  std::vector<chain::transaction_id_type>& ids) {
    auto entry_result = get_entry(block_num);
    EOS_ASSERT(entry_result, chain::state_history_exception, "nonexistant block num ${block_num}",
               ("block_num", block_num));
@@ -276,7 +276,7 @@ void state_history_traces_log::prune_transactions(state_history_log::block_num_t
 
    auto [entry_payload, version] = *entry_result;
    auto pruned_section           = state_history::trace_converter::prune_traces(entry_payload, version, ids);
-   auto bytes_to_write = pruned_section.size();
+   auto bytes_to_write           = pruned_section.size();
 
    if (bytes_to_write > 0) {
       // the log object is in append mode, which cannot be used to update written content,
