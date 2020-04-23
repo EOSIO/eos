@@ -28,13 +28,17 @@ namespace eosio { namespace chain {
       bool is_kv_chainbase_context_iterator() const override { return true; }
 
       template <typename It>
-      kv_it_stat move_to(const It& it) {
+      kv_it_stat move_to(const It& it, uint32_t* found_key_size, uint32_t* found_value_size) {
          if (it != idx.end() && it->database_id == database_id && it->contract == contract &&
              it->kv_key.size() >= prefix.size() && !memcmp(it->kv_key.data(), prefix.data(), prefix.size())) {
             current = &*it;
+            *found_key_size = current->kv_key.size();
+            *found_value_size = current->kv_value.size();
             return kv_it_stat::iterator_ok;
          } else {
             current = nullptr;
+            *found_key_size = 0;
+            *found_value_size = 0;
             return kv_it_stat::iterator_end;
          }
       }
@@ -80,17 +84,17 @@ namespace eosio { namespace chain {
          return kv_it_stat::iterator_end;
       }
 
-      kv_it_stat kv_it_next() override {
+      kv_it_stat kv_it_next(uint32_t* found_key_size, uint32_t* found_value_size) override {
          if (current) {
             EOS_ASSERT(!tracker.is_removed(*current), kv_bad_iter, "Iterator to erased element");
             auto it = idx.iterator_to(*current);
             ++it;
-            return move_to(it);
+            return move_to(it, found_key_size, found_value_size);
          }
-         return move_to(idx.lower_bound(boost::make_tuple(database_id, contract, prefix)));
+         return move_to(idx.lower_bound(boost::make_tuple(database_id, contract, prefix)), found_key_size, found_value_size);
       }
 
-      kv_it_stat kv_it_prev() override {
+      kv_it_stat kv_it_prev(uint32_t* found_key_size, uint32_t* found_value_size) override {
          std::decay_t<decltype(idx.end())> it;
          if (current) {
             EOS_ASSERT(!tracker.is_removed(*current), kv_bad_iter, "Iterator to erased element");
@@ -98,14 +102,16 @@ namespace eosio { namespace chain {
          } else
             it = idx.upper_bound(boost::make_tuple(database_id, contract, blob_prefix{{prefix.data(), prefix.size()}}));
          if (it != idx.begin())
-            return move_to(--it);
+            return move_to(--it, found_key_size, found_value_size);
          current = nullptr;
+         *found_key_size = 0;
+         *found_value_size = 0;
          return kv_it_stat::iterator_end;
       }
 
-      kv_it_stat kv_it_lower_bound(const char* key, uint32_t size) override {
+      kv_it_stat kv_it_lower_bound(const char* key, uint32_t size, uint32_t* found_key_size, uint32_t* found_value_size) override {
          auto clamped_key = std::max(std::string_view{ key, size }, std::string_view{ prefix.data(), prefix.size() }, unsigned_blob_less{});
-         return move_to(idx.lower_bound(boost::make_tuple(database_id, contract, clamped_key)));
+         return move_to(idx.lower_bound(boost::make_tuple(database_id, contract, clamped_key)), found_key_size, found_value_size);
       }
 
       kv_it_stat kv_it_key(uint32_t offset, char* dest, uint32_t size, uint32_t& actual_size) override {

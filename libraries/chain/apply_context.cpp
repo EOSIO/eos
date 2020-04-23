@@ -1145,19 +1145,19 @@ int32_t apply_context::kv_it_move_to_end(uint32_t itr) {
    return static_cast<int32_t>(kv_iterators[itr]->kv_it_move_to_end());
 }
 
-int32_t apply_context::kv_it_next(uint32_t itr) {
+int32_t apply_context::kv_it_next(uint32_t itr, uint32_t* found_key_size, uint32_t* found_value_size) {
    kv_check_iterator(itr);
-   return static_cast<int32_t>(kv_iterators[itr]->kv_it_next());
+   return static_cast<int32_t>(kv_iterators[itr]->kv_it_next(found_key_size, found_value_size));
 }
 
-int32_t apply_context::kv_it_prev(uint32_t itr) {
+int32_t apply_context::kv_it_prev(uint32_t itr, uint32_t* found_key_size, uint32_t* found_value_size) {
    kv_check_iterator(itr);
-   return static_cast<int32_t>(kv_iterators[itr]->kv_it_prev());
+   return static_cast<int32_t>(kv_iterators[itr]->kv_it_prev(found_key_size, found_value_size));
 }
 
-int32_t apply_context::kv_it_lower_bound(uint32_t itr, const char* key, uint32_t size) {
+int32_t apply_context::kv_it_lower_bound(uint32_t itr, const char* key, uint32_t size, uint32_t* found_key_size, uint32_t* found_value_size) {
    kv_check_iterator(itr);
-   return static_cast<int32_t>(kv_iterators[itr]->kv_it_lower_bound(key, size));
+   return static_cast<int32_t>(kv_iterators[itr]->kv_it_lower_bound(key, size, found_key_size, found_value_size));
 }
 
 int32_t apply_context::kv_it_key(uint32_t itr, uint32_t offset, char* dest, uint32_t size, uint32_t& actual_size) {

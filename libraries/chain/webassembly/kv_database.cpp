@@ -41,16 +41,16 @@ namespace eosio { namespace chain { namespace webassembly {
       return context.kv_it_move_to_end(itr);
    }
 
-   int32_t  interface::kv_it_next(uint32_t itr) {
-      return context.kv_it_next(itr);
+   int32_t  interface::kv_it_next(uint32_t itr, uint32_t* found_key_size, uint32_t* found_value_size) {
+      return context.kv_it_next(itr, found_key_size, found_value_size);
    }
 
-   int32_t  interface::kv_it_prev(uint32_t itr) {
-      return context.kv_it_prev(itr);
+   int32_t  interface::kv_it_prev(uint32_t itr, uint32_t* found_key_size, uint32_t* found_value_size) {
+      return context.kv_it_prev(itr, found_key_size, found_value_size);
    }
 
-   int32_t  interface::kv_it_lower_bound(uint32_t itr, span<const char> key) {
-      return context.kv_it_lower_bound(itr, key.data(), key.size());
+   int32_t  interface::kv_it_lower_bound(uint32_t itr, span<const char> key, uint32_t* found_key_size, uint32_t* found_value_size) {
+      return context.kv_it_lower_bound(itr, key.data(), key.size(), found_key_size, found_value_size);
    }
 
    int32_t  interface::kv_it_key(uint32_t itr, uint32_t offset, span<char> dest, uint32_t* actual_size) {

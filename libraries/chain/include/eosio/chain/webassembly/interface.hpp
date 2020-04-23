@@ -460,9 +460,9 @@ namespace eosio { namespace chain { namespace webassembly {
          int32_t  kv_it_compare(uint32_t, uint32_t);
          int32_t  kv_it_key_compare(uint32_t, span<const char>);
          int32_t  kv_it_move_to_end(uint32_t);
-         int32_t  kv_it_next(uint32_t);
-         int32_t  kv_it_prev(uint32_t);
-         int32_t  kv_it_lower_bound(uint32_t, span<const char>);
+         int32_t  kv_it_next(uint32_t, uint32_t* found_key_size, uint32_t* found_value_size);
+         int32_t  kv_it_prev(uint32_t, uint32_t* found_key_size, uint32_t* found_value_size);
+         int32_t  kv_it_lower_bound(uint32_t, span<const char>, uint32_t* found_key_size, uint32_t* found_value_size);
          int32_t  kv_it_key(uint32_t, uint32_t, span<char>, uint32_t*);
          int32_t  kv_it_value(uint32_t, uint32_t, span<char> dest, uint32_t*);
 
