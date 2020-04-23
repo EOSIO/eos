@@ -59,8 +59,6 @@ namespace eosio { namespace chain {
       wasm_validations::wasm_binary_validation validator(control, module);
       validator.validate();
 
-      webassembly::eos_vm_runtime::validate( code, gpo.wasm_configuration, pso.whitelisted_intrinsics );
-
       //there are a couple opportunties for improvement here--
       //Easy: Cache the Module created here so it can be reused for instantiaion
       //Hard: Kick off instantiation in a separate thread at this location
