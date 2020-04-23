@@ -12,9 +12,6 @@
 [submodule "libraries/fc"]
 	path = libraries/fc
 	url = https://github.com/EOSIO/fc
-[submodule "libraries/wabt"]
-	path = libraries/wabt
-	url = https://github.com/EOSIO/wabt
 [submodule "libraries/yubihsm"]
 	path = libraries/yubihsm
 	url = https://github.com/Yubico/yubihsm-shell
