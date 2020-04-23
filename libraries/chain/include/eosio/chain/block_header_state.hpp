@@ -177,6 +177,7 @@ FC_REFLECT( eosio::chain::detail::schedule_info,
             (schedule)
 )
 
+// @ignore header_exts
 FC_REFLECT_DERIVED(  eosio::chain::block_header_state, (eosio::chain::detail::block_header_state_common),
                      (id)
                      (header)

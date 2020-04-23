@@ -1,4 +1,5 @@
 #include <eosio/chain/webassembly/eos-vm.hpp>
+#include <eosio/chain/webassembly/interface.hpp>
 #include <eosio/chain/apply_context.hpp>
 #include <eosio/chain/transaction_context.hpp>
 #include <eosio/chain/wasm_eosio_constraints.hpp>
@@ -43,11 +44,53 @@ namespace {
 
 }
 
+// Used on setcode.  Must not reject anything that WAVM accepts
+// For the moment, this runs after WAVM validation, as I am not
+// sure that eos-vm will replicate WAVM's parsing exactly.
+struct setcode_options {
+   static constexpr bool forbid_export_mutable_globals = false;
+   static constexpr bool allow_code_after_function_end = true;
+   static constexpr bool allow_u32_limits_flags = true;
+   static constexpr bool allow_invalid_empty_local_set = true;
+   static constexpr bool allow_zero_blocktype = true;
+};
+
+void validate_intrinsics(const bytes& code, const whitelisted_intrinsics_type& intrinsics) {
+   wasm_code_ptr code_ptr((uint8_t*)code.data(), code.size());
+   try {
+      eosio::vm::backend<eos_vm_host_functions_t, eosio::vm::null_backend, setcode_options> bkend(code_ptr, code.size(), nullptr);
+      // check import signatures
+       eos_vm_host_functions_t::resolve(bkend.get_module());
+      // check that the imports are all currently enabled
+      const auto& imports = bkend.get_module().imports;
+      for(std::uint32_t i = 0; i < imports.size(); ++i) {
+        EOS_ASSERT(std::string_view((char*)imports[i].module_str.raw(), imports[i].module_str.size()) == "env" &&
+                   is_intrinsic_whitelisted(intrinsics, std::string_view((char*)imports[i].field_str.raw(), imports[i].field_str.size())),
+                    wasm_serialization_error, "${module}.${fn} unresolveable",
+                    ("module", std::string((char*)imports[i].module_str.raw(), imports[i].module_str.size()))
+                    ("fn", std::string((char*)imports[i].field_str.raw(), imports[i].field_str.size())));
+      }
+   } catch(vm::exception& e) {
+      EOS_THROW(wasm_serialization_error, e.detail());
+   }
+}
+
+// Be permissive on apply.
+struct apply_options {
+   static constexpr std::uint32_t max_pages = wasm_constraints::maximum_linear_memory/wasm_constraints::wasm_page_size;
+   static constexpr std::uint32_t max_call_depth = wasm_constraints::maximum_call_depth+1;
+   static constexpr bool forbid_export_mutable_globals = false;
+   static constexpr bool allow_code_after_function_end = false;
+   static constexpr bool allow_u32_limits_flags = true;
+   static constexpr bool allow_invalid_empty_local_set = true;
+   static constexpr bool allow_zero_blocktype = true;
+};
+
 template<typename Impl>
 class eos_vm_instantiated_module : public wasm_instantiated_module_interface {
-      using backend_t = backend<apply_context, Impl>;
+   using backend_t = eos_vm_backend_t<Impl>;
    public:
-      
+
       eos_vm_instantiated_module(eos_vm_runtime<Impl>* runtime, std::unique_ptr<backend_t> mod) :
          _runtime(runtime),
          _instantiated_module(std::move(mod)) {}
@@ -56,9 +99,11 @@ class eos_vm_instantiated_module : public wasm_instantiated_module_interface {
          _instantiated_module->set_wasm_allocator(&context.control.get_wasm_allocator());
          _runtime->_bkend = _instantiated_module.get();
          auto fn = [&]() {
-            _runtime->_bkend->initialize(&context);
-            const auto& res = _runtime->_bkend->call(
-                &context, "env", "apply", context.get_receiver().to_uint64_t(),
+            eosio::chain::webassembly::interface iface(context);
+            _runtime->_bkend->initialize(iface);
+            _runtime->_bkend->call(
+                iface, "env", "apply",
+                context.get_receiver().to_uint64_t(),
                 context.get_action().account.to_uint64_t(),
                 context.get_action().name.to_uint64_t());
          };
@@ -70,8 +115,7 @@ class eos_vm_instantiated_module : public wasm_instantiated_module_interface {
          } catch(eosio::vm::wasm_memory_exception& e) {
             FC_THROW_EXCEPTION(wasm_execution_error, "access violation");
          } catch(eosio::vm::exception& e) {
-            // FIXME: Do better translation
-            FC_THROW_EXCEPTION(wasm_execution_error, "something went wrong...");
+            FC_THROW_EXCEPTION(wasm_execution_error, "eos-vm system failure");
          }
          _runtime->_bkend = nullptr;
       }
@@ -97,11 +141,11 @@ bool eos_vm_runtime<Impl>::inject_module(IR::Module& module) {
 template<typename Impl>
 std::unique_ptr<wasm_instantiated_module_interface> eos_vm_runtime<Impl>::instantiate_module(const char* code_bytes, size_t code_size, std::vector<uint8_t>,
                                                                                              const digest_type&, const uint8_t&, const uint8_t&) {
-   using backend_t = backend<apply_context, Impl>;
+   using backend_t = eos_vm_backend_t<Impl>;
    try {
       wasm_code_ptr code((uint8_t*)code_bytes, code_size);
-      std::unique_ptr<backend_t> bkend = std::make_unique<backend_t>(code, code_size);
-      registered_host_functions<apply_context>::resolve(bkend->get_module());
+      std::unique_ptr<backend_t> bkend = std::make_unique<backend_t>(code, code_size, nullptr);
+      eos_vm_host_functions_t::resolve(bkend->get_module());
       return std::make_unique<eos_vm_instantiated_module<Impl>>(this, std::move(bkend));
    } catch(eosio::vm::exception& e) {
       FC_THROW_EXCEPTION(wasm_execution_error, "Error building eos-vm interp: ${e}", ("e", e.what()));
