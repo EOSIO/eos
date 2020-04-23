@@ -281,12 +281,7 @@ bytes trace_converter::prune_traces(const bytes& entry_payload, uint32_t version
          // the incoming trace matches the one of ids to be pruned
          state_history::pack(write_strm, incoming_prunable.prune_all(), compression);
          modified = true;
-
-         // delete the found id from the ids vector
-         if (itr != ids.end() - 1) {
-            *itr = ids.back();
-         }
-         ids.resize(ids.size() - 1);
+         ids.erase(it);
       } else {
          // the incoming trace should not be pruned
          auto bytes_read = read_strm.tellp() - last_read_pos; 
