@@ -69,11 +69,31 @@ namespace eosio { namespace chain { namespace webassembly {
    inline static constexpr bool are_whitelisted_legacy_types_v = (... && detail::is_whitelisted_legacy_type<Ts>::value);
 
    template <typename T, typename U>
-   inline static bool is_aliasing(const T& a, const U& b) {
-      std::uintptr_t a_ui = reinterpret_cast<std::uintptr_t>(a.data());
-      std::uintptr_t b_ui = reinterpret_cast<std::uintptr_t>(b.data());
-      return a_ui < b_ui ? a_ui + a.size_bytes() > b_ui : b_ui + b.size_bytes() > a_ui;
+   inline static bool is_aliasing(const T& s1, const U& s2) {
+      std::uintptr_t a_begin = reinterpret_cast<std::uintptr_t>(s1.data());
+      std::uintptr_t a_end   = a_begin + s1.size_bytes();
+      
+      std::uintptr_t b_begin = reinterpret_cast<std::uintptr_t>(s2.data());
+      std::uintptr_t b_end   = b_begin + s2.size_bytes();
+
+      // Aliasing iff the intersection of intervals [a_begin, a_end) and [b_begin, b_end) has non-zero size.
+
+      if (a_begin > b_begin) {
+         std::swap(a_begin, b_begin);
+         std::swap(a_end, b_end);
+      }
+
+      if (a_end <= b_begin) // intersection interval with non-zero size does not exist
+         return false;
+
+      // Intersection interval is [b_begin, std::min(a_end, b_end)).
+
+      if (std::min(a_end, b_end) == b_begin) // intersection interval has zero size 
+         return false;
+
+      return true;
    }
+
    inline static bool is_nan( const float32_t f ) {
       return f32_is_nan( f );
    }
