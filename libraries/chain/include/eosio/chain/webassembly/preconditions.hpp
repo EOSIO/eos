@@ -129,7 +129,7 @@ namespace eosio { namespace chain { namespace webassembly {
                eosio::vm::invoke_on<false, eosio::vm::invoke_on_all_t>([&](auto&& narg, auto&&... nrest) {
                   using nested_arg_t = std::decay_t<decltype(arg)>;
                   if constexpr (eosio::vm::is_span_type_v<nested_arg_t> || vm::is_argument_proxy_type_v<arg_t>)
-                      EOS_ASSERT(!is_aliasing(to_span(arg), to_span(narg)), wasm_exception, "pointers not allowed to alias");
+                      EOS_ASSERT(!is_aliasing(detail::to_span(arg), detail::to_span(narg)), wasm_exception, "pointers not allowed to alias");
                }, rest...);
             }
          })));

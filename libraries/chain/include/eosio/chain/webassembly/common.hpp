@@ -24,6 +24,8 @@ namespace eosio { namespace chain {
 
    inline static constexpr auto eosio_injected_module_name = EOSIO_INJECTED_MODULE_NAME;
 
+   template <typename T, std::size_t Extent = eosio::vm::dynamic_extent>
+   using span = eosio::vm::span<T, Extent>;
 
    template <typename T, std::size_t Align = alignof(T)>
    using legacy_ptr = eosio::vm::argument_proxy<T*, Align>;
