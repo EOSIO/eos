@@ -2,7 +2,6 @@
 
 #include <eosio/chain/block_state.hpp>
 #include <eosio/state_history/types.hpp>
-#include <eosio/chain/abi_serializer.hpp>
 
 namespace eosio {
 namespace state_history {

@@ -1,5 +1,8 @@
+#include <eosio/state_history/compression.hpp>
+#include <eosio/state_history/create_deltas.hpp>
 #include <eosio/state_history/log.hpp>
 #include <eosio/state_history/trace_converter.hpp>
+#include <eosio/state_history/serialization.hpp>
 
 namespace eosio {
 
@@ -290,7 +293,7 @@ void state_history_traces_log::prune_transactions(state_history_log::block_num_t
    }
 }
 
-void state_history_traces_log::store_traces(const chainbase::database& db, const chain::block_state_ptr& block_state) {
+void state_history_traces_log::store(const chainbase::database& db, const chain::block_state_ptr& block_state) {
 
    auto traces_bin = trace_convert.pack(db, trace_debug_mode, block_state, ship_current_version, compression);
 
@@ -307,6 +310,37 @@ void state_history_traces_log::store_traces(const chainbase::database& db, const
 
 bool state_history_traces_log::exists(fc::path state_history_dir) {
    return fc::exists(state_history_dir / "trace_history.log") && fc::exists(state_history_dir / "trace_history.index");
+}
+
+state_history_chain_state_log::state_history_chain_state_log(fc::path state_history_dir)
+    : state_history_log("chain_state_history", (state_history_dir / "chain_state_history.log").string(),
+                        (state_history_dir / "chain_state_history.index").string()) {}
+
+fc::optional<chain::bytes> state_history_chain_state_log::get_log_entry(block_num_type block_num) {
+   this->get_entry(block_num, [](const chain::bytes& data, uint32_t) { return state_history::zlib_decompress(data); });
+}
+
+void state_history_chain_state_log::store(const chainbase::database& db, const chain::block_state_ptr& block_state) {
+   bool fresh = this->begin_block() == this->end_block();
+   if (fresh)
+      ilog("Placing initial state in block ${n}", ("n", block_state->block->block_num()));
+
+   using namespace state_history;
+
+   std::vector<table_delta> deltas     = create_deltas(db, fresh);
+   auto                     deltas_bin = zlib_compress_bytes(fc::raw::pack(deltas));
+   EOS_ASSERT(deltas_bin.size() == (uint32_t)deltas_bin.size(), chain::state_history_exception, "deltas is too big");
+
+   state_history_log_header header{.magic        = ship_magic(ship_current_version),
+                                   .block_id     = block_state->id,
+                                   .payload_size = sizeof(uint32_t) + deltas_bin.size()};
+
+   this->write_entry(header, block_state->block->previous, [&](auto& stream) {
+      uint32_t s = (uint32_t)deltas_bin.size();
+      stream.write((char*)&s, sizeof(s));
+      if (!deltas_bin.empty())
+         stream.write(deltas_bin.data(), deltas_bin.size());
+   });
 }
 
 } // namespace eosio

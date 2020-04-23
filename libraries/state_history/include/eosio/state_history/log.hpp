@@ -129,12 +129,21 @@ class state_history_traces_log : public state_history_log {
 
    fc::optional<chain::bytes> get_log_entry(block_num_type block_num);
 
-   void store_traces(const chainbase::database& db, const chain::block_state_ptr& block_state);
+   void store(const chainbase::database& db, const chain::block_state_ptr& block_state);
 
    /**
     *  @param[in,out] ids The ids to been pruned and returns the ids not found in the specified block
     **/
    void prune_transactions(block_num_type block_num, std::vector<chain::transaction_id_type>& ids);
+};
+
+class state_history_chain_state_log : public state_history_log {
+ public:
+   state_history_chain_state_log(fc::path state_history_dir);
+   
+   fc::optional<chain::bytes> get_log_entry(block_num_type block_num);
+
+   void store(const chainbase::database& db, const chain::block_state_ptr& block_state);
 };
 
 } // namespace eosio

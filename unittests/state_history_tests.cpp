@@ -117,7 +117,7 @@ BOOST_AUTO_TEST_CASE(test_trace_log) {
           log.add_transaction(std::get<0>(t), std::get<1>(t));
        });
 
-   chain.control->accepted_block.connect([&](const block_state_ptr& bs) { log.store_traces(chain.control->db(), bs); });
+   chain.control->accepted_block.connect([&](const block_state_ptr& bs) { log.store(chain.control->db(), bs); });
 
    deploy_test_api(chain);
    auto cfd_trace = push_test_cfd_transaction(chain);
