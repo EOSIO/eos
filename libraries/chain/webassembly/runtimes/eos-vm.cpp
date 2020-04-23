@@ -48,7 +48,7 @@ void validate(const bytes& code, const wasm_config& cfg, const whitelisted_intri
    EOS_ASSERT(code.size() <= cfg.max_module_bytes, wasm_serialization_error, "Code too large");
    wasm_code_ptr code_ptr((uint8_t*)code.data(), code.size());
    try {
-      eosio::vm::backend<apply_context, eosio::vm::null_backend, wasm_config> bkend(code_ptr, code.size(), nullptr, cfg);
+      eosio::vm::backend<eos_vm_host_functions_t, eosio::vm::null_backend, wasm_config> bkend(code_ptr, code.size(), nullptr, cfg);
       // check import signatures
       registered_host_functions<apply_context>::resolve(bkend.get_module());
       // check that the imports are all currently enabled
@@ -79,26 +79,6 @@ struct setcode_options {
    static constexpr bool allow_invalid_empty_local_set = true;
    static constexpr bool allow_zero_blocktype = true;
 };
-
-void validate_intrinsics(const bytes& code, const whitelisted_intrinsics_type& intrinsics) {
-   wasm_code_ptr code_ptr((uint8_t*)code.data(), code.size());
-   try {
-      eosio::vm::backend<eos_vm_host_functions_t, eosio::vm::null_backend, setcode_options> bkend(code_ptr, code.size(), nullptr);
-      // check import signatures
-       eos_vm_host_functions_t::resolve(bkend.get_module());
-      // check that the imports are all currently enabled
-      const auto& imports = bkend.get_module().imports;
-      for(std::uint32_t i = 0; i < imports.size(); ++i) {
-        EOS_ASSERT(std::string_view((char*)imports[i].module_str.raw(), imports[i].module_str.size()) == "env" &&
-                   is_intrinsic_whitelisted(intrinsics, std::string_view((char*)imports[i].field_str.raw(), imports[i].field_str.size())),
-                    wasm_serialization_error, "${module}.${fn} unresolveable",
-                    ("module", std::string((char*)imports[i].module_str.raw(), imports[i].module_str.size()))
-                    ("fn", std::string((char*)imports[i].field_str.raw(), imports[i].field_str.size())));
-      }
-   } catch(vm::exception& e) {
-      EOS_THROW(wasm_serialization_error, e.detail());
-   }
-}
 
 // Be permissive on apply.
 struct apply_options {
