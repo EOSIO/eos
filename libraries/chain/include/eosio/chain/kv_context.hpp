@@ -30,9 +30,10 @@ namespace eosio { namespace chain {
       virtual int32_t    kv_it_compare(const kv_iterator& rhs)                                          = 0;
       virtual int32_t    kv_it_key_compare(const char* key, uint32_t size)                              = 0;
       virtual kv_it_stat kv_it_move_to_end()                                                            = 0;
-      virtual kv_it_stat kv_it_next()                                                                   = 0;
-      virtual kv_it_stat kv_it_prev()                                                                   = 0;
-      virtual kv_it_stat kv_it_lower_bound(const char* key, uint32_t size)                              = 0;
+      virtual kv_it_stat kv_it_next(uint32_t* found_key_size, uint32_t* found_value_size)               = 0;
+      virtual kv_it_stat kv_it_prev(uint32_t* found_key_size, uint32_t* found_value_size)               = 0;
+      virtual kv_it_stat kv_it_lower_bound(const char* key, uint32_t size,
+                                          uint32_t* found_key_size, uint32_t* found_value_size)         = 0;
       virtual kv_it_stat kv_it_key(uint32_t offset, char* dest, uint32_t size, uint32_t& actual_size)   = 0;
       virtual kv_it_stat kv_it_value(uint32_t offset, char* dest, uint32_t size, uint32_t& actual_size) = 0;
    };

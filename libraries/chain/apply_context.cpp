@@ -223,7 +223,7 @@ bool apply_context::is_account( const account_name& account )const {
    return nullptr != db.find<account_object,by_name>( account );
 }
 
-void apply_context::require_authorization( const account_name& account ) {
+void apply_context::require_authorization( const account_name& account ) const {
    for( uint32_t i=0; i < act->authorization.size(); i++ ) {
      if( act->authorization[i].actor == account ) {
         return;
@@ -240,7 +240,7 @@ bool apply_context::has_authorization( const account_name& account )const {
 }
 
 void apply_context::require_authorization(const account_name& account,
-                                          const permission_name& permission) {
+                                          const permission_name& permission) const {
   for( uint32_t i=0; i < act->authorization.size(); i++ )
      if( act->authorization[i].actor == account ) {
         if( act->authorization[i].permission == permission ) {
@@ -1145,19 +1145,19 @@ int32_t apply_context::kv_it_move_to_end(uint32_t itr) {
    return static_cast<int32_t>(kv_iterators[itr]->kv_it_move_to_end());
 }
 
-int32_t apply_context::kv_it_next(uint32_t itr) {
+int32_t apply_context::kv_it_next(uint32_t itr, uint32_t* found_key_size, uint32_t* found_value_size) {
    kv_check_iterator(itr);
-   return static_cast<int32_t>(kv_iterators[itr]->kv_it_next());
+   return static_cast<int32_t>(kv_iterators[itr]->kv_it_next(found_key_size, found_value_size));
 }
 
-int32_t apply_context::kv_it_prev(uint32_t itr) {
+int32_t apply_context::kv_it_prev(uint32_t itr, uint32_t* found_key_size, uint32_t* found_value_size) {
    kv_check_iterator(itr);
-   return static_cast<int32_t>(kv_iterators[itr]->kv_it_prev());
+   return static_cast<int32_t>(kv_iterators[itr]->kv_it_prev(found_key_size, found_value_size));
 }
 
-int32_t apply_context::kv_it_lower_bound(uint32_t itr, const char* key, uint32_t size) {
+int32_t apply_context::kv_it_lower_bound(uint32_t itr, const char* key, uint32_t size, uint32_t* found_key_size, uint32_t* found_value_size) {
    kv_check_iterator(itr);
-   return static_cast<int32_t>(kv_iterators[itr]->kv_it_lower_bound(key, size));
+   return static_cast<int32_t>(kv_iterators[itr]->kv_it_lower_bound(key, size, found_key_size, found_value_size));
 }
 
 int32_t apply_context::kv_it_key(uint32_t itr, uint32_t offset, char* dest, uint32_t size, uint32_t& actual_size) {

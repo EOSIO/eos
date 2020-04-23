@@ -510,9 +510,9 @@ class apply_context {
        *
        * @throws missing_auth_exception If no sufficient permission was found
        */
-      void require_authorization(const account_name& account);
+      void require_authorization(const account_name& account) const;
       bool has_authorization(const account_name& account) const;
-      void require_authorization(const account_name& account, const permission_name& permission);
+      void require_authorization(const account_name& account, const permission_name& permission) const;
 
       /**
        * @return true if account exists, false if it does not
@@ -533,7 +533,7 @@ class apply_context {
    /// Console methods:
    public:
 
-      void console_append( const string& val ) {
+      void console_append( std::string_view val ) {
          _pending_console_output += val;
       }
 
@@ -573,9 +573,9 @@ class apply_context {
       int32_t  kv_it_compare(uint32_t itr_a, uint32_t itr_b);
       int32_t  kv_it_key_compare(uint32_t itr, const char* key, uint32_t size);
       int32_t  kv_it_move_to_end(uint32_t itr);
-      int32_t  kv_it_next(uint32_t itr);
-      int32_t  kv_it_prev(uint32_t itr);
-      int32_t  kv_it_lower_bound(uint32_t itr, const char* key, uint32_t size);
+      int32_t  kv_it_next(uint32_t itr, uint32_t* found_key_size, uint32_t* found_value_size);
+      int32_t  kv_it_prev(uint32_t itr, uint32_t* found_key_size, uint32_t* found_value_size);
+      int32_t  kv_it_lower_bound(uint32_t itr, const char* key, uint32_t size, uint32_t* found_key_size, uint32_t* found_value_size);
       int32_t  kv_it_key(uint32_t itr, uint32_t offset, char* dest, uint32_t size, uint32_t& actual_size);
       int32_t  kv_it_value(uint32_t itr, uint32_t offset, char* dest, uint32_t size, uint32_t& actual_size);
 

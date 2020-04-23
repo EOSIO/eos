@@ -96,7 +96,7 @@ static const char misaligned_const_ref_wast[] = R"=====(
    (call $memmove
     (i32.const 17)
     (i32.const 16)
-    (i32.const 64) 
+    (i32.const 64)
    )
   )
   (call $assert_sha256
@@ -704,6 +704,13 @@ static const char import_injected_wast[] =                                      
 " (import \"" EOSIO_INJECTED_MODULE_NAME "\" \"checktime\" (func $inj (param i32)))"  \
 " (func $apply (param $0 i64) (param $1 i64) (param $2 i64))"                         \
 ")";
+
+static const char import_wrong_signature_wast[] = R"=====(
+(module
+ (import "env" "eosio_assert" (func (param i32 i64)))
+ (func (export "apply") (param i64 i64 i64))
+)
+)=====";
 
 static const char memory_growth_memset_store[] = R"=====(
 (module
