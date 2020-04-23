@@ -4,7 +4,7 @@ project( EOSIO )
 include(CTest) # suppresses DartConfiguration.tcl error
 enable_testing()
 
-if ("${CMAKE_INSTALL_PREFIX}" STREQUAL "/usr/local")
+if ("${CMAKE_INSTALL_PREFIX}" STREQUAL "/usr/local/")
    message(WARNING "CMAKE_INSTALL_PREFIX is set to /usr/local. This is not recommended.")
 endif()
 
@@ -72,6 +72,7 @@ if(CMAKE_SIZEOF_VOID_P EQUAL 8 AND NOT WIN32)
       list(APPEND EOSIO_WASM_RUNTIMES eos-vm-oc)
       # EOS VM OC requires LLVM, but move the check up here to a central location so that the EosioTester.cmakes
       # can be created with the exact version found
+      SET(LLVM_DIR "/usr/lib/llvm-7/cmake" )
       find_package(LLVM REQUIRED CONFIG)
       if(LLVM_VERSION_MAJOR VERSION_LESS 7 OR LLVM_VERSION_MAJOR VERSION_GREATER 10)
 	      message(FATAL_ERROR "EOSIO requires an LLVM version 7.0 to 10.0")

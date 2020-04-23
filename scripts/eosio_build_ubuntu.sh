@@ -26,7 +26,7 @@ build-clang
 # LLVM Installation
 ensure-llvm
 # BOOST Installation
-ensure-boost
+#ensure-boost
 VERSION_MAJ=$(echo "${VERSION_ID}" | cut -d'.' -f1)
 VERSION_MIN=$(echo "${VERSION_ID}" | cut -d'.' -f2)
 if $INSTALL_MONGO; then
