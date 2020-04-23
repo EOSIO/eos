@@ -48,9 +48,9 @@ void validate(const bytes& code, const wasm_config& cfg, const whitelisted_intri
    EOS_ASSERT(code.size() <= cfg.max_module_bytes, wasm_serialization_error, "Code too large");
    wasm_code_ptr code_ptr((uint8_t*)code.data(), code.size());
    try {
-      eosio::vm::backend<eos_vm_host_functions_t, eosio::vm::null_backend, wasm_config> bkend(code_ptr, code.size(), nullptr, cfg);
+      eos_vm_null_backend_t<wasm_config> bkend(code_ptr, code.size(), nullptr, cfg);
       // check import signatures
-      registered_host_functions<apply_context>::resolve(bkend.get_module());
+      eos_vm_host_functions_t::resolve(bkend.get_module());
       // check that the imports are all currently enabled
       auto intrinsic_set = convert_intrinsic_whitelist_to_set( intrinsics );
       const auto& imports = bkend.get_module().imports;

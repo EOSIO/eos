@@ -20,6 +20,9 @@ struct apply_options;
 template <typename Impl>
 using eos_vm_backend_t = eosio::vm::backend<eos_vm_host_functions_t, Impl, webassembly::eos_vm_runtime::apply_options>;
 
+template <typename Options>
+using eos_vm_null_backend_t = eosio::vm::backend<eos_vm_host_functions_t, eosio::vm::null_backend, Options>;
+
 namespace webassembly { namespace eos_vm_runtime {
 
 using namespace fc;
