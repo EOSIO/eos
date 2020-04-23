@@ -893,7 +893,7 @@ BOOST_DATA_TEST_CASE_F(tester, alias, bdata::make(databases), db) {
    };
 
    // The kv_alias_general_wast code effectively creates three reserved intervals in linear memory: [32, 36), [64, 68), and [128, 132).
-   // The constructed span sent as an argument to the code can be used to test various alasing scenarios.
+   // The constructed span sent as an argument to the code can be used to test various aliasing scenarios.
 
    static const char* const alias_error_msg = "pointers not allowed to alias";
 

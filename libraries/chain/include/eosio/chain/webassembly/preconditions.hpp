@@ -48,8 +48,9 @@ namespace eosio { namespace chain { namespace webassembly {
       };
       template <typename T>
       struct is_whitelisted_type<vm::span<T>> {
-         // If expanding this beyond char, add a static_assert of the alignment of every
-         // additional type allowed.
+         // Currently only a span of [const] char is allowed so there are no alignment concerns.
+         // If we wish to expand to general span<T> in the future, changes are needed in EOS VM
+         // to check proper alignment of the void* within from_wasm before constructing the span.
          static constexpr bool value = std::is_same_v<std::remove_const_t<T>, char>;
       };
       template <typename T>
@@ -110,7 +111,10 @@ namespace eosio { namespace chain { namespace webassembly {
 
    namespace detail {
       template<typename T>
-      vm::span<const T> to_span(const vm::argument_proxy<T*>& val) { return {val.get(), 1}; }
+      vm::span<const char> to_span(const vm::argument_proxy<T*>& val) { 
+         return {static_cast<const char*>(val.get_original_pointer()), sizeof(T)}; 
+      }
+
       template<typename T>
       vm::span<T> to_span(const vm::span<T>& val) { return val; }
    }
@@ -120,15 +124,10 @@ namespace eosio { namespace chain { namespace webassembly {
             using namespace eosio::vm;
             using arg_t = std::decay_t<decltype(arg)>;
             static_assert( is_whitelisted_type_v<arg_t>, "whitelisted type violation");
-            if constexpr (is_span_type_v<arg_t>) {
-               // check alignment while we are here
-               EOS_ASSERT( reinterpret_cast<std::uintptr_t>(arg.data()) % alignof(typename arg_t::value_type) == 0,
-                     wasm_exception, "memory not aligned" );
-            }
             if constexpr (is_span_type_v<arg_t> || vm::is_argument_proxy_type_v<arg_t>) {
                eosio::vm::invoke_on<false, eosio::vm::invoke_on_all_t>([&](auto&& narg, auto&&... nrest) {
                   using nested_arg_t = std::decay_t<decltype(narg)>;
-                  if constexpr (eosio::vm::is_span_type_v<nested_arg_t> || vm::is_argument_proxy_type_v<arg_t>)
+                  if constexpr (eosio::vm::is_span_type_v<nested_arg_t> || vm::is_argument_proxy_type_v<nested_arg_t>)
                       EOS_ASSERT(!is_aliasing(detail::to_span(arg), detail::to_span(narg)), wasm_exception, "pointers not allowed to alias");
                }, rest...);
             }
