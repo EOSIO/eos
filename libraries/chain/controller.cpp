@@ -3459,7 +3459,7 @@ void controller::replace_account_keys( name account, name permission, const publ
       p.auth = authority(key);
    });
    int64_t new_size = (int64_t)(chain::config::billable_size_v<permission_object> + perm->auth.get_billable_size());
-   rlm.add_pending_ram_usage(account, new_size - old_size, generic_ram_trace(0));
+   rlm.add_pending_ram_usage(account, new_size - old_size, generic_storage_usage_trace(0));
    rlm.verify_account_ram_usage(account);
 }
 
