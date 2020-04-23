@@ -1,3 +1,4 @@
+#include <eosio/chain/apply_context.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/kv_chainbase_objects.hpp>
 #include <eosio/chain/kv_context.hpp>
@@ -143,13 +144,10 @@ namespace eosio { namespace chain {
       const kv_database_config&    limits;
       uint32_t                     num_iterators = 0;
       std::optional<shared_blob>   temp_data_buffer;
-      std::function<fc::logger*()> get_deep_mind_logger;
-      std::function<uint32_t()>    get_action_id;
 
       kv_context_chainbase(chainbase::database& db, name database_id, name receiver,
-                           kv_resource_manager resource_manager, const kv_database_config& limits,
-                           std::function<fc::logger*()> get_deep_mind_logger, std::function<uint32_t()> get_action_id)
-         : db{ db }, database_id{ database_id }, receiver{ receiver }, resource_manager{ resource_manager }, limits{limits}, get_deep_mind_logger(get_deep_mind_logger), get_action_id(get_action_id) {}
+                           kv_resource_manager resource_manager, const kv_database_config& limits)
+         : db{ db }, database_id{ database_id }, receiver{ receiver }, resource_manager{ resource_manager }, limits{limits} {}
 
       ~kv_context_chainbase() override {}
 
@@ -163,9 +161,9 @@ namespace eosio { namespace chain {
          int64_t resource_delta = -(static_cast<int64_t>(resource_manager.billable_size) + kv->kv_key.size() + kv->kv_value.size());
          resource_manager.update_table_usage(resource_delta, kv_resource_trace(key, key_size, kv_resource_trace::operation::erase));
 
-         if (auto dm_logger = get_deep_mind_logger()) {
+         if (auto dm_logger = resource_manager._context->control.get_deep_mind_logger()) {
             fc_dlog(*dm_logger, "KV_OP REM ${action_id} ${db} ${payer} ${key} ${odata}",
-               ("action_id", get_action_id())
+               ("action_id", resource_manager._context->get_action_id())
                ("db", database_id)
                ("payer", name{ contract })
                ("key", fc::to_hex(kv->kv_key.data(), kv->kv_key.size()))
@@ -192,9 +190,9 @@ namespace eosio { namespace chain {
             int64_t resource_delta = new_size - old_size;
             resource_manager.update_table_usage(resource_delta, kv_resource_trace(key, key_size, kv_resource_trace::operation::update));
 
-            if (auto dm_logger = get_deep_mind_logger()) {
+            if (auto dm_logger = resource_manager._context->control.get_deep_mind_logger()) {
                fc_dlog(*dm_logger, "KV_OP UPD ${action_id} ${db} ${payer} ${key} ${odata}:${ndata}",
-                  ("action_id", get_action_id())
+                  ("action_id", resource_manager._context->get_action_id())
                   ("db", database_id)
                   ("payer", name{ contract })
                   ("key", fc::to_hex(kv->kv_key.data(), kv->kv_key.size()))
@@ -216,9 +214,9 @@ namespace eosio { namespace chain {
                obj.kv_value.assign(value, value_size);
             });
 
-            if (auto dm_logger = get_deep_mind_logger()) {
+            if (auto dm_logger = resource_manager._context->control.get_deep_mind_logger()) {
                fc_dlog(*dm_logger, "KV_OP INS ${action_id} ${db} ${payer} ${key} ${ndata}",
-                  ("action_id", get_action_id())
+                  ("action_id", resource_manager._context->get_action_id())
                   ("db", database_id)
                   ("payer", name{ contract })
                   ("key", fc::to_hex(key, key_size))
@@ -265,10 +263,9 @@ namespace eosio { namespace chain {
    }; // kv_context_chainbase
 
    std::unique_ptr<kv_context> create_kv_chainbase_context(chainbase::database& db, name database_id, name receiver,
-                                                           kv_resource_manager resource_manager, const kv_database_config& limits,
-                                                           std::function<fc::logger*()> get_deep_mind_logger, std::function<uint32_t()> get_action_id)
+                                                           kv_resource_manager resource_manager, const kv_database_config& limits)
    {
-      return std::make_unique<kv_context_chainbase>(db, database_id, receiver, resource_manager, limits, get_deep_mind_logger, get_action_id);
+      return std::make_unique<kv_context_chainbase>(db, database_id, receiver, resource_manager, limits);
    }
 
 }} // namespace eosio::chain

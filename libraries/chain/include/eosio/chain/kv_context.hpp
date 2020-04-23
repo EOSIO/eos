@@ -82,7 +82,6 @@ namespace eosio { namespace chain {
    };
 
    std::unique_ptr<kv_context> create_kv_chainbase_context(chainbase::database& db, name database_id, name receiver,
-                                                           kv_resource_manager resource_manager, const kv_database_config& limits,
-                                                           std::function<fc::logger*()> get_deep_mind_logger, std::function<uint32_t()> get_action_id);
+                                                           kv_resource_manager resource_manager, const kv_database_config& limits);
 
 }} // namespace eosio::chain

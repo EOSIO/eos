@@ -66,12 +66,16 @@ namespace eosio { namespace chain {
       std::exception_ptr                         except_ptr;
    };
 
-   #define RAM_EVENT_ID( FORMAT, ... ) \
+   #define STORAGE_EVENT_ID( FORMAT, ... ) \
       fc::format_string( FORMAT, fc::mutable_variant_object()__VA_ARGS__ )
 
-   struct ram_trace {
+   struct storage_usage_trace {
    public:
-      ram_trace(uint32_t action_id, const char* event_id, const char* family, const char* operation, const char* legacy_tag)
+      storage_usage_trace(uint32_t action_id, const char* event_id, const char* family, const char* operation)
+      :storage_usage_trace(action_id, event_id, family, operation, ".")
+      {}
+
+      storage_usage_trace(uint32_t action_id, const char* event_id, const char* family, const char* operation, const char* legacy_tag)
       :action_id(action_id),event_id(event_id),family(family),operation(operation),legacy_tag(legacy_tag)
       {}
 
@@ -82,43 +86,16 @@ namespace eosio { namespace chain {
       const char*  legacy_tag = "generic";
 
    private:
-      ram_trace(uint32_t action_id)
+      storage_usage_trace(uint32_t action_id)
       :action_id(action_id)
       {}
 
-      friend ram_trace generic_ram_trace(uint32_t);
+      friend storage_usage_trace generic_storage_usage_trace(uint32_t);
    };
 
-   inline ram_trace generic_ram_trace(uint32_t action_id) {
+   inline storage_usage_trace generic_storage_usage_trace(uint32_t action_id) {
       return {action_id};
    }
-
-   #define DISK_EVENT_ID( FORMAT, ... ) \
-      fc::format_string( FORMAT, fc::mutable_variant_object()__VA_ARGS__ )
-
-   struct disk_trace {
-   public:
-      disk_trace(uint32_t action_id, const char* event_id, const char* family, const char* operation)
-      :action_id(action_id),event_id(event_id),family(family),operation(operation)
-      {}
-
-      uint32_t     action_id  = 0;
-      const char*  event_id   = "generic";
-      const char*  family     = "generic";
-      const char*  operation  = "generic";
-
-   private:
-      disk_trace(uint32_t action_id)
-      :action_id(action_id)
-      {}
-
-      friend disk_trace generic_disk_trace(uint32_t);
-   };
-
-   inline disk_trace generic_disk_trace(uint32_t action_id) {
-      return {action_id};
-   }
-
 } }  /// namespace eosio::chain
 
 FC_REFLECT( eosio::chain::account_delta,

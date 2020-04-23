@@ -241,7 +241,7 @@ void resource_limits_manager::add_transaction_usage(const flat_set<account_name>
    EOS_ASSERT( state.pending_net_usage <= config.net_limit_parameters.max, block_resource_exhausted, "Block has insufficient net resources" );
 }
 
-void resource_limits_manager::add_pending_ram_usage( const account_name account, int64_t ram_delta, const ram_trace& trace ) {
+void resource_limits_manager::add_pending_ram_usage( const account_name account, int64_t ram_delta, const storage_usage_trace& trace ) {
    if (ram_delta == 0) {
       return;
    }
@@ -283,7 +283,7 @@ void resource_limits_manager::verify_account_ram_usage( const account_name accou
    }
 }
 
-void resource_limits_manager::add_pending_disk_usage( const account_name account, int64_t disk_delta, const disk_trace& trace ) {
+void resource_limits_manager::add_pending_disk_usage( const account_name account, int64_t disk_delta, const storage_usage_trace& trace ) {
    if (disk_delta == 0) {
       return;
    }
