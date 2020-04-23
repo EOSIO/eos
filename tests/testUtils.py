@@ -269,13 +269,13 @@ class Utils:
             raise
 
     @staticmethod
-    def runCmdReturnStr(cmd, trace=False):
+    def runCmdReturnStr(cmd, trace=False, silentErrors=False):
         cmdArr=shlex.split(cmd)
-        return Utils.runCmdArrReturnStr(cmdArr)
+        return Utils.runCmdArrReturnStr(cmdArr, trace=trace, silentErrors=silentErrors)
 
     @staticmethod
-    def runCmdArrReturnStr(cmdArr, trace=False):
-        retStr=Utils.checkOutput(cmdArr)
+    def runCmdArrReturnStr(cmdArr, trace=False, silentErrors=False):
+        retStr=Utils.checkOutput(cmdArr,ignoreError=silentErrors)
         if trace: Utils.Print ("RAW > %s" % (retStr))
         return retStr
 
@@ -358,7 +358,7 @@ class Utils:
             if returnType==ReturnType.json:
                 rtn=Utils.runCmdReturnJson(cmd, silentErrors=silentErrors)
             else:
-                rtn=Utils.runCmdReturnStr(cmd)
+                rtn=Utils.runCmdReturnStr(cmd, silentErrors=silentErrors)
         except subprocess.CalledProcessError as ex:
             if throwException:
                 raise

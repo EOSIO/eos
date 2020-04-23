@@ -317,7 +317,8 @@ state_history_chain_state_log::state_history_chain_state_log(fc::path state_hist
                         (state_history_dir / "chain_state_history.index").string()) {}
 
 fc::optional<chain::bytes> state_history_chain_state_log::get_log_entry(block_num_type block_num) {
-   this->get_entry(block_num, [](const chain::bytes& data, uint32_t) { return state_history::zlib_decompress(data); });
+   return this->get_entry(block_num,
+                          [](const chain::bytes& data, uint32_t) { return state_history::zlib_decompress(data); });
 }
 
 void state_history_chain_state_log::store(const chainbase::database& db, const chain::block_state_ptr& block_state) {

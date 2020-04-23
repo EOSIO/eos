@@ -27,7 +27,7 @@ struct trace_converter {
     * @param[in] entry_payload        The entry_payload 
     * @param[in] version              The version of the entry
     * @param[in, out] ids             The list of transaction ids to be pruned. After the member function returns, 
-    *                                 it would be modified to contain the list of transaction ids that do not exists
+    *                                 it would be modified to contain the list of transaction ids that do not exist
     *                                 in the log entry.
     * 
    * @returns The serialized prunable_data section

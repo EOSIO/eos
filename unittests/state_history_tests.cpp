@@ -99,11 +99,6 @@ BOOST_FIXTURE_TEST_CASE(test_trace_converter_test_no_compression, trace_converte
    start();
 }
 
-// BOOST_FIXTURE_TEST_CASE(test_trace_converter_test_zlib_compression, trace_converter_test_fixture) {
-//    compression = packed_transaction::prunable_data_type::compression_type::zlib;
-//    start();
-// }
-
 BOOST_AUTO_TEST_CASE(test_trace_log) {
    namespace bfs = boost::filesystem;
    tester chain;
