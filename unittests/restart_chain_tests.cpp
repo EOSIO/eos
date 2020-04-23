@@ -248,6 +248,11 @@ BOOST_AUTO_TEST_CASE(test_trim_blocklog_front) {
    bfs::copy(blocks_dir / "blocks.index", temp1.path / "blocks.index");
    BOOST_REQUIRE_NO_THROW(block_log::trim_blocklog_front(temp1.path, temp2.path, 10));
    BOOST_REQUIRE_NO_THROW(block_log::smoke_test(temp1.path, 1));
+
+   block_log old_log(blocks_dir);
+   block_log new_log(temp1.path);
+   BOOST_CHECK(new_log.first_block_num() == 10);
+   BOOST_CHECK(new_log.head()->block_num() == old_log.head()->block_num());
 }
 
 BOOST_AUTO_TEST_SUITE_END()
