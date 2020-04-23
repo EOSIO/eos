@@ -103,8 +103,6 @@ void pack(fc::datastream<char*>& ds, const prunable_data_type&  data, compressio
    }
 }
 
-// each individual prunable data in a transaction is packed as an optional prunable_data_type::full
-// or an optional bytes to a compressed prunable_data_type::full
 size_t pack_prunable(bytes& buffer, const packed_transaction& trx,
                   compression_type compression) {
 
@@ -193,6 +191,26 @@ void do_visit_trace(const char* read_buffer, fc::datastream<const char*>& strm, 
       visitor(trace_v0, prunable);
    }
 }
+
+struct restore_partial {
+   partial_transaction_v0& ptrx;
+   void operator()(prunable_data_type::full_legacy& data) const {
+      // this should never happen because we convert full_legacy to full before serialization
+      assert(false);
+   }
+   void operator()(prunable_data_type::none& data) const {}
+   void operator()(prunable_data_type::signatures_only& data) const {
+      ptrx.signatures        = std::move(data.signatures);
+   }
+   void operator()(prunable_data_type::partial& data) const  {
+      ptrx.signatures        = std::move(data.signatures);
+   }
+   void operator()(prunable_data_type::full& data) const {
+      ptrx.signatures        = std::move(data.signatures);
+      ptrx.context_free_data = std::move(data.context_free_segments);
+   }
+};
+
 } // namespace
 
 bytes trace_converter::pack(const chainbase::database& db, bool trace_debug_mode, const block_state_ptr& block_state,
@@ -225,25 +243,6 @@ bytes trace_converter::pack(const chainbase::database& db, bool trace_debug_mode
       return buffer;
    }
 }
-
-struct restore_partial {
-   partial_transaction_v0& ptrx;
-   void operator()(prunable_data_type::full_legacy& data) const {
-      // this should never happen because we convert full_legacy to full before serialization
-      assert(false);
-   }
-   void operator()(prunable_data_type::none& data) const {}
-   void operator()(prunable_data_type::signatures_only& data) const {
-      ptrx.signatures        = std::move(data.signatures);
-   }
-   void operator()(prunable_data_type::partial& data) const  {
-      ptrx.signatures        = std::move(data.signatures);
-   }
-   void operator()(prunable_data_type::full& data) const {
-      ptrx.signatures        = std::move(data.signatures);
-      ptrx.context_free_data = std::move(data.context_free_segments);
-   }
-};
 
 bytes trace_converter::to_traces_bin_v0(const bytes& entry_payload, uint32_t version) {
    if (version == 0)
