@@ -334,6 +334,7 @@ struct controller_impl {
       set_activation_handler<builtin_protocol_feature_t::wtmsig_block_signatures>();
       set_activation_handler<builtin_protocol_feature_t::action_return_value>();
       set_activation_handler<builtin_protocol_feature_t::kv_database>();
+      set_activation_handler<builtin_protocol_feature_t::configurable_wasm_limits>();
 
       self.irreversible_block.connect([this](const block_state_ptr& bsp) {
          wasmif.current_lib(bsp->block_num);
@@ -965,7 +966,8 @@ struct controller_impl {
                   section.read_row(legacy_global_properties, db);
 
                   db.create<global_property_object>([&legacy_global_properties,&gs_chain_id](auto& gpo ){
-                     gpo.initalize_from(legacy_global_properties, gs_chain_id, kv_config{});
+                     gpo.initalize_from(legacy_global_properties, gs_chain_id, kv_config{},
+                                        genesis_state::default_initial_wasm_configuration);
                   });
                });
                return; // early out to avoid default processing
@@ -977,7 +979,8 @@ struct controller_impl {
                   section.read_row(legacy_global_properties, db);
 
                   db.create<global_property_object>([&legacy_global_properties](auto& gpo ){
-                     gpo.initalize_from(legacy_global_properties, kv_config{});
+                     gpo.initalize_from(legacy_global_properties, kv_config{},
+                                        genesis_state::default_initial_wasm_configuration);
                   });
                });
                return; // early out to avoid default processing
@@ -1082,6 +1085,8 @@ struct controller_impl {
       db.create<global_property_object>([&genesis,&chain_id=this->chain_id](auto& gpo ){
          gpo.configuration = genesis.initial_configuration;
          gpo.kv_configuration = kv_config{};
+         // TODO: Update this when genesis protocol features are enabled.
+         gpo.wasm_configuration = genesis_state::default_initial_wasm_configuration;
          gpo.chain_id = chain_id;
       });
 
@@ -3546,6 +3551,14 @@ void controller_impl::on_activation<builtin_protocol_feature_t::kv_database>() {
       add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "get_resource_limit" );
       add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "set_kv_parameters_packed" );
       add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "get_kv_parameters_packed" );
+   } );
+}
+
+template<>
+void controller_impl::on_activation<builtin_protocol_feature_t::configurable_wasm_limits>() {
+   db.modify( db.get<protocol_state_object>(), [&]( auto& ps ) {
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "set_wasm_parameters_packed" );
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "get_wasm_parameters_packed" );
    } );
 }
 

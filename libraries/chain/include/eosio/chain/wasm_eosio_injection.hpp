@@ -121,11 +121,6 @@ namespace eosio { namespace chain { namespace wasm_injections {
       static void initializer();
    };
 
-   struct max_memory_injection_visitor {
-      static void inject( IR::Module& m );
-      static void initializer();
-   };
-
    struct blacklist_injection_visitor {
       static void inject( IR::Module& m );
       static void initializer();
@@ -271,16 +266,11 @@ namespace eosio { namespace chain { namespace wasm_injections {
       static constexpr bool kills = true;
       static constexpr bool post = false;
       static int32_t global_idx;
-      static void init() {
-         global_idx = -1;
+      static void init( Module& mod) {
+         mod.globals.defs.push_back({{ValueType::i32, true}, {(I32)eosio::chain::wasm_constraints::maximum_call_depth}});
+         global_idx = mod.globals.size()-1;
       }
       static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
-         if ( global_idx == -1 ) {
-            arg.module->globals.defs.push_back({{ValueType::i32, true}, {(I32) eosio::chain::wasm_constraints::maximum_call_depth}});
-         }
-
-         global_idx = arg.module->globals.size()-1;
-
          int32_t assert_idx;
          injector_utils::add_import<ResultType::none>(*(arg.module), "call_depth_assert", assert_idx);
 
@@ -782,19 +772,18 @@ namespace eosio { namespace chain { namespace wasm_injections {
    // Otherwise you'll just get softfloat injection
    template<bool full_injection>
    class wasm_binary_injection {
-      using standard_module_injectors = module_injectors< max_memory_injection_visitor >;
 
       public:
          wasm_binary_injection( IR::Module& mod )  : _module( &mod ) {
-            _module_injectors.init();
             // initialize static fields of injectors
             injector_utils::init( mod );
             checktime_injection::init();
-            call_depth_check_and_insert_checktime::init();
+            if constexpr (full_injection) {
+               call_depth_check_and_insert_checktime::init( mod );
+            }
          }
 
          void inject() {
-            _module_injectors.inject( *_module );
             // inject checktime first
             if constexpr (full_injection)
                injector_utils::add_import<ResultType::none>( *_module, u8"checktime", checktime_injection::chktm_idx );
@@ -844,7 +833,6 @@ namespace eosio { namespace chain { namespace wasm_injections {
          }
       private:
          IR::Module* _module;
-         standard_module_injectors _module_injectors;
    };
 
 }}} // namespace wasm_constraints, chain, eosio

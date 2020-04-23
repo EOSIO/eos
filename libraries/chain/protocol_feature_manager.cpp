@@ -208,6 +208,17 @@ Enables usage of key-value database intrinsics.
 */
             {}
          } )
+         (  builtin_protocol_feature_t::configurable_wasm_limits, builtin_protocol_feature_spec{
+            "CONFIGURABLE_WASM_LIMITS",
+            fc::variant("41bcbce5b6c60d1d98c51722748cf4be90d3145b273a4e075cb024aa242f14ee").as<digest_type>(),
+            // SHA256 hash of the raw message below within the comment delimiters (do not modify message below).
+/*
+Builtin protocol feature: CONFIGURABLE_WASM_LIMITS
+
+Allows privileged contracts to set the contraints on webassembly code.
+*/
+            {}
+         } )
    ;
 
 
