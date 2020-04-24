@@ -1,17 +1,14 @@
 #!/usr/bin/env python3
 
 from testUtils import Utils
-import testUtils
+from datetime import datetime
 import time
 from Cluster import Cluster
+import json
 from WalletMgr import WalletMgr
-from Node import BlockType
 from Node import Node
 from TestHelper import TestHelper
 
-import decimal
-import math
-import re
 import signal
 
 ###############################################################
@@ -259,11 +256,40 @@ try:
     Print("Validating blockNum=%s, producer=%s" % (blockNum, blockProducer))
     cluster.biosNode.kill(signal.SIGTERM)
 
+    class HeadWaiter:
+        def __init__(self, node):
+            self.node=node
+            self.cachedHeadBlockNum=node.getBlockNum()
+
+        def waitIfNeeded(self, blockNum):
+            delta=self.cachedHeadBlockNum-blockNum
+            if delta >= 0:
+                return
+            previousHeadBlockNum=self.cachedHeadBlockNum
+            delta=-1*delta
+            timeout=(delta+1)/2 + 3 # round up to nearest second and 3 second extra leeway
+            self.node.waitForBlock(blockNum, timeout=timeout)
+            self.cachedHeadBlockNum=node.getBlockNum()
+            if blockNum > self.cachedHeadBlockNum:
+                Utils.errorExit("Failed to advance from block number %d to %d in %d seconds.  Only got to block number %d" % (previousHeadBlockNum, blockNum, timeout, self.cachedHeadBlockNum))
+
+        def getBlock(self, blockNum):
+            self.waitIfNeeded(blockNum)
+            return self.node.getBlock(blockNum)
+
     #advance to the next block of 12
     lastBlockProducer=blockProducer
+
+    waiter=HeadWaiter(node)
+
     while blockProducer==lastBlockProducer:
         blockNum+=1
-        blockProducer=node.getBlockProducerByNum(blockNum)
+        block=waiter.getBlock(blockNum)
+        Utils.Print("Block num: %d, block: %s" % (blockNum, json.dumps(block, indent=4, sort_keys=True)))
+        blockProducer=Node.getBlockAttribute(block, "producer", blockNum)
+
+    timestampStr=Node.getBlockAttribute(block, "timestamp", blockNum)
+    timestamp=datetime.strptime(timestampStr, Utils.TimeFmt)
 
 
     # ***   Identify what the production cycle is   ***
@@ -272,6 +298,9 @@ try:
     producerToSlot={}
     slot=-1
     inRowCountPerProducer=12
+    lastTimestamp=timestamp
+    headBlockNum=node.getBlockNum()
+    firstBlockForWindowMissedSlot=False
     while True:
         if blockProducer not in producers:
             Utils.errorExit("Producer %s was not one of the voted on producers" % blockProducer)
@@ -283,14 +312,31 @@ try:
 
         producerToSlot[blockProducer]={"slot":slot, "count":0}
         lastBlockProducer=blockProducer
+        blockSkip=[]
+        roundSkips=0
+        missedSlotAfter=[]
+        if firstBlockForWindowMissedSlot:
+            missedSlotAfter.append(blockNum-1)
+            firstBlockForWindowMissedSlot=False
         while blockProducer==lastBlockProducer:
             producerToSlot[blockProducer]["count"]+=1
             blockNum+=1
-            blockProducer=node.getBlockProducerByNum(blockNum)
+            block=waiter.getBlock(blockNum)
+            blockProducer=Node.getBlockAttribute(block, "producer", blockNum)
+            timestampStr=Node.getBlockAttribute(block, "timestamp", blockNum)
+            timestamp=datetime.strptime(timestampStr, Utils.TimeFmt)
+            timediff=timestamp-lastTimestamp
+            if int(timediff.total_seconds() / 0.5) != 1:
+                missedSlotAfter.append(blockNum-1)
+            lastTimestamp=timestamp
 
         if producerToSlot[lastBlockProducer]["count"]!=inRowCountPerProducer:
-            Utils.errorExit("Producer %s, in slot %d, expected to produce %d blocks but produced %d blocks.  At block number %d." %
-                            (lastBlockProducer, slot, inRowCountPerProducer, producerToSlot[lastBlockProducer]["count"], blockNum-1))
+            Utils.errorExit("Producer %s, in slot %d, expected to produce %d blocks but produced %d blocks.  At block number %d. " %
+                            (lastBlockProducer, slot, inRowCountPerProducer, producerToSlot[lastBlockProducer]["count"], blockNum-1) +
+                            "Slots were missed after the following blocks: %s" % (", ".join(missedSlotAfter)))
+        elif len(missedSlotAfter) > 0:
+            # if there was a full round, then the most recent producer missed a slot
+            firstBlockForWindowMissedSlot=True
 
         if blockProducer==productionCycle[0]:
             break
