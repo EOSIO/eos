@@ -180,20 +180,8 @@ function ensure-compiler() {
                 fi
             fi
         else
-            ## Check for c++ version 7 or higher
-            [[ $( $(which $CXX) -dumpversion | cut -d '.' -f 1 ) -lt 7 ]] && export NO_CPP17=true
-            if [[ $NO_CPP17 == false ]]; then # https://github.com/EOSIO/eos/issues/7402
-                while true; do
-                    echo "${COLOR_YELLOW}WARNING: Your GCC compiler ($CXX) is less performant than clang (https://github.com/EOSIO/eos/issues/7402). We suggest running the build script with -P or install your own clang and try again.${COLOR_NC}"
-                    [[ $NONINTERACTIVE == false ]] && printf "${COLOR_YELLOW}Do you wish to proceed anyway? (y/n)?${COLOR_NC}" && read -p " " PROCEED
-                    case $PROCEED in
-                        "" ) echo "What would you like to do?";;
-                        0 | true | [Yy]* ) break;;
-                        1 | false | [Nn]* ) exit 1;;
-                        * ) echo "Please type 'y' for yes or 'n' for no.";;
-                    esac
-                done
-            fi
+            ## Check for c++ version 9 or higher
+            [[ $( $(which $CXX) -dumpversion | cut -d '.' -f 1 ) -lt 9 ]] && export NO_CPP17=true
         fi
     fi
     if $NO_CPP17; then
