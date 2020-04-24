@@ -201,7 +201,8 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("protocol-features-dir", bpo::value<bfs::path>()->default_value("protocol_features"),
           "the location of the protocol_features directory (absolute path or relative to application config dir)")
          ("checkpoint", bpo::value<vector<string>>()->composing(), "Pairs of [BLOCK_NUM,BLOCK_ID] that should be enforced as checkpoints.")
-         ("wasm-runtime", bpo::value<eosio::chain::wasm_interface::vm_type>()->value_name("runtime")->notifier([](const auto& vm){
+         ("wasm-runtime", bpo::value<eosio::chain::wasm_interface::vm_type>()->default_value(eosio::chain::wasm_interface::vm_type::wabt,
+            "wabt")->value_name("runtime")->notifier([](const auto& vm){
 #ifndef EOSIO_EOS_VM_OC_DEVELOPER
             //throwing an exception here (like EOS_ASSERT) is just gobbled up with a "Failed to initialize" error :(
             if(vm == wasm_interface::vm_type::eos_vm_oc) {
@@ -209,7 +210,12 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
                EOS_ASSERT(false, plugin_exception, "");
             }
 #endif
-         }), "Override default WASM runtime")
+         }), "Override default WASM runtime(\"wabt\", \"eos-vm\", \"eos-vm-jit\", \"eos-vm-oc\").\n"
+         "\"wabt\" : runtime from the WebAssembly Binary Toolkit.\n"
+         "\"eos-vm\" : runtime lets developers perform step-through debugging of C++ smart contracts.\n"
+         "\"eos-vm-jit\" : runtime rapidly compiles smart contracts in an easy to reference binary file for WASMs.\n"
+         "\"eos-vm-oc\" : runtime creates an optimized version of the file for fast reference."
+         )
          ("abi-serializer-max-time-ms", bpo::value<uint32_t>()->default_value(config::default_abi_serializer_max_time_us / 1000),
           "Override default maximum ABI serialization time allowed in ms")
          ("chain-state-db-size-mb", bpo::value<uint64_t>()->default_value(config::default_state_size / (1024  * 1024)), "Maximum size (in MiB) of the chain state database")
