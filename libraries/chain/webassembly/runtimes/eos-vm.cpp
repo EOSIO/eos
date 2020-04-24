@@ -55,21 +55,23 @@ struct setcode_options {
    static constexpr bool allow_zero_blocktype = true;
 };
 
-void validate( const bytes& code, const whitelisted_intrinsics_type& intrinsics ) {
+void validate(const bytes& code, const whitelisted_intrinsics_type& intrinsics) {
    wasm_code_ptr code_ptr((uint8_t*)code.data(), code.size());
    try {
-      eos_vm_null_backend_t<setcode_options> bkend(code_ptr, code.size(), nullptr);
+      eosio::vm::backend<eos_vm_host_functions_t, eosio::vm::null_backend, setcode_options> bkend(code_ptr, code.size(), nullptr);
       // check import signatures
-      eos_vm_host_functions_t::resolve(bkend.get_module());
-      auto intrinsic_set = convert_intrinsic_whitelist_to_set( intrinsics );
+       eos_vm_host_functions_t::resolve(bkend.get_module());
+      // check that the imports are all currently enabled
       const auto& imports = bkend.get_module().imports;
       for(std::uint32_t i = 0; i < imports.size(); ++i) {
-         EOS_ASSERT(intrinsic_set.find(std::string((char*)imports[i].field_str.raw(), imports[i].field_str.size())) != intrinsic_set.end(),
-                    wasm_serialization_error, "Imported function ${fn} not available",
+         EOS_ASSERT(std::string_view((char*)imports[i].module_str.raw(), imports[i].module_str.size()) == "env" &&
+                    is_intrinsic_whitelisted(intrinsics, std::string_view((char*)imports[i].field_str.raw(), imports[i].field_str.size())),
+                    wasm_serialization_error, "${module}.${fn} unresolveable",
+                    ("module", std::string((char*)imports[i].module_str.raw(), imports[i].module_str.size()))
                     ("fn", std::string((char*)imports[i].field_str.raw(), imports[i].field_str.size())));
       }
-   } catch ( vm::exception& e ) {
-      EOS_THROW( wasm_serialization_error, e.detail() );
+   } catch(vm::exception& e) {
+      EOS_THROW(wasm_serialization_error, e.detail());
    }
 }
 
@@ -81,11 +83,12 @@ void validate( const bytes& code, const wasm_config& cfg, const whitelisted_intr
       // check import signatures
       eos_vm_host_functions_t::resolve(bkend.get_module());
       // check that the imports are all currently enabled
-      auto intrinsic_set = convert_intrinsic_whitelist_to_set( intrinsics );
       const auto& imports = bkend.get_module().imports;
       for(std::uint32_t i = 0; i < imports.size(); ++i) {
-         EOS_ASSERT(intrinsic_set.find(std::string((char*)imports[i].field_str.raw(), imports[i].field_str.size())) != intrinsic_set.end(),
-                    wasm_serialization_error, "Imported function ${fn} not available",
+         EOS_ASSERT(std::string_view((char*)imports[i].module_str.raw(), imports[i].module_str.size()) == "env" &&
+                    is_intrinsic_whitelisted(intrinsics, std::string_view((char*)imports[i].field_str.raw(), imports[i].field_str.size())),
+                    wasm_serialization_error, "${module}.${fn} unresolveable",
+                    ("module", std::string((char*)imports[i].module_str.raw(), imports[i].module_str.size()))
                     ("fn", std::string((char*)imports[i].field_str.raw(), imports[i].field_str.size())));
       }
       // check apply

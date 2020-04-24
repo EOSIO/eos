@@ -19,15 +19,6 @@ using namespace std::literals;
 
 BOOST_AUTO_TEST_SUITE(protocol_feature_tests)
 
-
-inline static auto unresolved_function_message(std::string_view name) {
-   std::stringstream output;
-   output << "Imported function ";
-   output << name;
-   output << " not available";
-   return output.str();
-}
-
 BOOST_AUTO_TEST_CASE( activate_preactivate_feature ) try {
    tester c( setup_policy::none );
    const auto& pfm = c.control->get_protocol_feature_manager();
@@ -36,7 +27,7 @@ BOOST_AUTO_TEST_CASE( activate_preactivate_feature ) try {
 
    // Cannot set latest bios contract since it requires intrinsics that have not yet been whitelisted.
    BOOST_CHECK_EXCEPTION( c.set_code( config::system_account_name, contracts::eosio_bios_wasm() ),
-                          wasm_exception, fc_exception_message_is(unresolved_function_message("is_feature_activated"))
+                          wasm_exception, fc_exception_message_is("env.is_feature_activated unresolveable")
    );
 
    // But the old bios contract can still be set.
@@ -1024,7 +1015,7 @@ BOOST_AUTO_TEST_CASE( get_sender_test ) { try {
 
    BOOST_CHECK_EXCEPTION(  c.set_code( tester1_account, contracts::get_sender_test_wasm() ),
                            wasm_exception,
-                           fc_exception_message_is(unresolved_function_message("get_sender") ) );
+                           fc_exception_message_is( "env.get_sender unresolveable" ) );
 
    const auto& pfm = c.control->get_protocol_feature_manager();
    const auto& d = pfm.get_builtin_digest( builtin_protocol_feature_t::get_sender );
@@ -1542,7 +1533,7 @@ BOOST_AUTO_TEST_CASE( set_proposed_producers_ex_test ) { try {
 
    BOOST_CHECK_EXCEPTION(  c.set_code( alice_account, import_set_proposed_producer_ex_wast ),
                            wasm_exception,
-                           fc_exception_message_is(unresolved_function_message("set_proposed_producers_ex" )) );
+                           fc_exception_message_is( "env.set_proposed_producers_ex unresolveable" ) );
 
    c.preactivate_protocol_features( {*d} );
    c.produce_block();
@@ -1776,7 +1767,7 @@ BOOST_AUTO_TEST_CASE( set_action_return_value_test ) { try {
 
    BOOST_CHECK_EXCEPTION(  c.set_code( alice_account, import_set_action_return_value_wast ),
                            wasm_exception,
-                           fc_exception_message_is(unresolved_function_message("set_action_return_value" )) );
+                           fc_exception_message_is( "env.set_action_return_value unresolveable" ) );
 
    c.preactivate_protocol_features( {*d} );
    c.produce_block();
