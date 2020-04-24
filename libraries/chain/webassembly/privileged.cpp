@@ -145,6 +145,31 @@ namespace eosio { namespace chain { namespace webassembly {
       return context.control.set_proposed_producers( std::move(producers) );
    }
 
+   uint32_t interface::get_wasm_parameters_packed( span<char> packed_parameters ) const {
+      auto& gpo = context.control.get_global_properties();
+      auto& params = gpo.wasm_configuration;
+
+      auto s = fc::raw::pack_size( params );
+      if ( packed_parameters.size() == 0 )
+         return s;
+
+      if ( s <= packed_parameters.size() ) {
+         datastream<char*> ds( packed_parameters.data(), s );
+         fc::raw::pack(ds, params);
+         return s;
+      }
+      return 0;
+   }
+   void interface::set_wasm_parameters_packed( span<const char> packed_parameters ) {
+      datastream<const char*> ds( packed_parameters.data(), packed_parameters.size() );
+      chain::wasm_config cfg;
+      fc::raw::unpack(ds, cfg);
+      context.db.modify( context.control.get_global_properties(),
+         [&]( auto& gprops ) {
+            gprops.wasm_configuration = cfg;
+         }
+      );
+   }
    int64_t interface::set_proposed_producers( legacy_span<const char> packed_producer_schedule) {
       datastream<const char*> ds( packed_producer_schedule.data(), packed_producer_schedule.size() );
       std::vector<producer_authority> producers;
