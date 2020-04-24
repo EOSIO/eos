@@ -300,7 +300,7 @@ try:
     inRowCountPerProducer=12
     lastTimestamp=timestamp
     headBlockNum=node.getBlockNum()
-    firstBlockForWindowMissedSlot=False
+    firstBlockForWindowMissedSlot=None
     while True:
         if blockProducer not in producers:
             Utils.errorExit("Producer %s was not one of the voted on producers" % blockProducer)
@@ -315,9 +315,9 @@ try:
         blockSkip=[]
         roundSkips=0
         missedSlotAfter=[]
-        if firstBlockForWindowMissedSlot:
-            missedSlotAfter.append(blockNum-1)
-            firstBlockForWindowMissedSlot=False
+        if firstBlockForWindowMissedSlot is not None:
+            missedSlotAfter.append(firstBlockForWindowMissedSlot)
+            firstBlockForWindowMissedSlot=None
         while blockProducer==lastBlockProducer:
             producerToSlot[blockProducer]["count"]+=1
             blockNum+=1
@@ -326,8 +326,16 @@ try:
             timestampStr=Node.getBlockAttribute(block, "timestamp", blockNum)
             timestamp=datetime.strptime(timestampStr, Utils.TimeFmt)
             timediff=timestamp-lastTimestamp
-            if int(timediff.total_seconds() / 0.5) != 1:
-                missedSlotAfter.append(blockNum-1)
+            slotTime=0.5
+            slotsDiff=int(timediff.total_seconds() / slotTime)
+            if slotsDiff != 1:
+                slotTimeDelta=datetime.timedelta(slotTime)
+                first=lastTimestamp + slotTimeDelta
+                missed=datetime.strftime(first, Utils.TimeFmt)
+                if slotsDiff > 2:
+                    last=timestamp - slotTimeDelta
+                    missed+= " thru " + datetime.strftime(last, Utils.TimeFmt)
+                missedSlotAfter.append("%d (%s)" % (blockNum-1, missed))
             lastTimestamp=timestamp
 
         if producerToSlot[lastBlockProducer]["count"]!=inRowCountPerProducer:
@@ -336,7 +344,7 @@ try:
                             "Slots were missed after the following blocks: %s" % (", ".join(missedSlotAfter)))
         elif len(missedSlotAfter) > 0:
             # if there was a full round, then the most recent producer missed a slot
-            firstBlockForWindowMissedSlot=True
+            firstBlockForWindowMissedSlot=missedSlotAfter[0]
 
         if blockProducer==productionCycle[0]:
             break
