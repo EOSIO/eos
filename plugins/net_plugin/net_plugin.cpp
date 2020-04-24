@@ -418,7 +418,6 @@ namespace eosio {
    constexpr uint16_t proto_explicit_sync = 1;       // version at time of eosio 1.0
    constexpr uint16_t proto_block_id_notify = 2;     // reserved. feature was removed. next net_version should be 3
    constexpr uint16_t proto_pruned_types = 3;        // supports new signed_block & packed_transaction types
-   constexpr uint16_t proto_generic_messages = 4;    // placeholder for generic messages
 
    constexpr uint16_t net_version = proto_pruned_types;
 
