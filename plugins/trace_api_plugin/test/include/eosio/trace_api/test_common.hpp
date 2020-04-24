@@ -109,7 +109,7 @@ namespace eosio::trace_api {
    }
 
    std::ostream& operator<<(std::ostream &os, const block_trace_v0 &bt) {
-      os << fc::json::to_string( bt, fc::time_point::maximum() );
+      os << fc::json::to_string( bt, fc::time_point::max() );
       return os;
    }
 
@@ -134,12 +134,12 @@ namespace eosio::trace_api {
    }
 
    std::ostream& operator<<(std::ostream& os, const block_entry_v0& be) {
-      os << fc::json::to_string(be, fc::time_point::maximum());
+      os << fc::json::to_string(be, fc::time_point::max());
       return os;
    }
 
    std::ostream& operator<<(std::ostream& os, const lib_entry_v0& le) {
-      os << fc::json::to_string(le, fc::time_point::maximum());
+      os << fc::json::to_string(le, fc::time_point::max());
       return os;
    }
 }
@@ -147,7 +147,7 @@ namespace eosio::trace_api {
 namespace fc {
    template<typename ...Ts>
    std::ostream& operator<<(std::ostream &os, const fc::static_variant<Ts...>& v ) {
-      os << fc::json::to_string(v, fc::time_point::maximum());
+      os << fc::json::to_string(v, fc::time_point::max());
       return os;
    }
 
@@ -168,7 +168,7 @@ namespace eosio::chain {
    }
 
    std::ostream& operator<<(std::ostream& os, const abi_def& abi) {
-      os << fc::json::to_string(abi, fc::time_point::maximum());
+      os << fc::json::to_string(abi, fc::time_point::max());
       return os;
    }
 }

@@ -213,7 +213,7 @@ struct faucet_testnet_plugin_impl {
       controller& cc = plugin.chain();
 
       signed_transaction trx;
-      auto memo = fc::variant(fc::time_point::now()).as_string() + " " + fc::variant(fc::time_point::now().time_since_epoch()).as_string();
+      auto memo = fc::variant(fc::clock::now()).as_string() + " " + fc::variant(fc::clock::now().time_since_epoch()).as_string();
 
       //create "A" account
       auto owner_auth   = chain::authority{1, {{owner_pub_key, 1}}, {}};

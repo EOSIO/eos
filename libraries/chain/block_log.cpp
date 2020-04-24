@@ -520,7 +520,7 @@ namespace eosio { namespace chain {
       EOS_ASSERT( fc::is_directory(data_dir) && fc::is_regular_file(data_dir / "blocks.log"), block_log_not_found,
                  "Block log not found in '${blocks_dir}'", ("blocks_dir", data_dir)          );
 
-      auto now = fc::time_point::now();
+      auto now = fc::clock::now();
 
       auto blocks_dir = fc::canonical( data_dir );
       if( blocks_dir.filename().generic_string() == "." ) {
@@ -529,7 +529,7 @@ namespace eosio { namespace chain {
       auto backup_dir = blocks_dir.parent_path();
       auto blocks_dir_name = blocks_dir.filename();
       EOS_ASSERT( blocks_dir_name.generic_string() != ".", block_log_exception, "Invalid path to blocks directory" );
-      backup_dir = backup_dir / blocks_dir_name.generic_string().append("-").append( now );
+      backup_dir = backup_dir / blocks_dir_name.generic_string().append("-").append( fc::to_iso_string( now ) );
 
       EOS_ASSERT( !fc::exists(backup_dir), block_log_backup_dir_exist,
                  "Cannot move existing blocks directory to already existing directory '${new_blocks_dir}'",
@@ -682,7 +682,7 @@ namespace eosio { namespace chain {
                "The block ${next_num} could not be deserialized from the block log due to error:\n${error_msg}",
                ("num", block_num)("next_num", block_num+1)("error_msg", error_msg) );
 
-         auto tail_path = blocks_dir / std::string("blocks-bad-tail-").append( now ).append(".log");
+         auto tail_path = blocks_dir / std::string("blocks-bad-tail-").append( fc::to_iso_string( now ) ).append(".log");
          if( !fc::exists(tail_path) && incomplete_block_data.size() > 0 ) {
             std::fstream tail_stream;
             tail_stream.open( tail_path.generic_string().c_str(), LOG_WRITE );

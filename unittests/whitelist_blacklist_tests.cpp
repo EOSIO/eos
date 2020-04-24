@@ -764,7 +764,7 @@ BOOST_AUTO_TEST_CASE( greylist_limit_tests ) { try {
       trx.sign( c.get_private_key( acnt, perm.to_string() ), c.control->get_chain_id() );
       // This transaction is charged 104 bytes of NET.
 
-      return c.push_transaction( trx, fc::time_point::maximum(), billed_cpu_time_us );
+      return c.push_transaction( trx, fc::time_point::max(), billed_cpu_time_us );
    };
 
    // Force contraction of elastic resources until fully congested.

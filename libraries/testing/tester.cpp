@@ -328,7 +328,7 @@ namespace eosio { namespace testing {
 
       if( !skip_pending_trxs ) {
          for( auto itr = unapplied_transactions.begin(); itr != unapplied_transactions.end();  ) {
-            auto trace = control->push_transaction( itr->trx_meta, fc::time_point::maximum(), DEFAULT_BILLED_CPU_TIME_US, true );
+            auto trace = control->push_transaction( itr->trx_meta, fc::time_point::max(), DEFAULT_BILLED_CPU_TIME_US, true );
             traces.emplace_back( trace );
             if(!no_throw && trace->except) {
                trace->except->dynamic_rethrow_exception();
@@ -339,7 +339,7 @@ namespace eosio { namespace testing {
          vector<transaction_id_type> scheduled_trxs;
          while ((scheduled_trxs = get_scheduled_transactions()).size() > 0 ) {
             for( const auto& trx : scheduled_trxs ) {
-               auto trace = control->push_scheduled_transaction( trx, fc::time_point::maximum(), DEFAULT_BILLED_CPU_TIME_US, true );
+               auto trace = control->push_scheduled_transaction( trx, fc::time_point::max(), DEFAULT_BILLED_CPU_TIME_US, true );
                traces.emplace_back( trace );
                if( !no_throw && trace->except ) {
                   trace->except->dynamic_rethrow_exception();
@@ -478,7 +478,7 @@ namespace eosio { namespace testing {
 
 
   void base_tester::set_transaction_headers( transaction& trx, uint32_t expiration, uint32_t delay_sec ) const {
-     trx.expiration = control->head_block_time() + fc::seconds(expiration);
+     trx.expiration = fc::time_point_cast<fc::seconds>( control->head_block_time() ) + fc::seconds(expiration);
      trx.set_reference_block( control->head_block_id() );
 
      trx.max_net_usage_words = 0; // No limit
@@ -542,9 +542,9 @@ namespace eosio { namespace testing {
          _start_block(control->head_block_time() + fc::microseconds(config::block_interval_us));
 
       auto ptrx = std::make_shared<packed_transaction>(trx);
-      auto time_limit = deadline == fc::time_point::maximum() ?
-            fc::microseconds::maximum() :
-            fc::microseconds( deadline - fc::time_point::now() );
+      auto time_limit = deadline == fc::time_point::max() ?
+            fc::microseconds::max() :
+            fc::microseconds( deadline - fc::clock::now() );
       auto fut = transaction_metadata::start_recover_keys( ptrx, control->get_thread_pool(), control->get_chain_id(), time_limit );
       auto r = control->push_transaction( fut.get(), deadline, billed_cpu_time_us, billed_cpu_time_us > 0 );
       if( r->except_ptr ) std::rethrow_exception( r->except_ptr );
@@ -566,9 +566,9 @@ namespace eosio { namespace testing {
          c = packed_transaction::compression_type::zlib;
       }
 
-      auto time_limit = deadline == fc::time_point::maximum() ?
-            fc::microseconds::maximum() :
-            fc::microseconds( deadline - fc::time_point::now() );
+      auto time_limit = deadline == fc::time_point::max() ?
+            fc::microseconds::max() :
+            fc::microseconds( deadline - fc::clock::now() );
       auto ptrx = std::make_shared<packed_transaction>( trx, c );
       auto fut = transaction_metadata::start_recover_keys( ptrx, control->get_thread_pool(), control->get_chain_id(), time_limit );
       auto r = control->push_transaction( fut.get(), deadline, billed_cpu_time_us, billed_cpu_time_us > 0 );
@@ -733,7 +733,7 @@ namespace eosio { namespace testing {
       set_transaction_headers(trx);
 
       trx.sign( get_private_key( from, "active" ), control->get_chain_id() );
-      return push_transaction( trx, fc::time_point::maximum(), billed_cpu_time_us );
+      return push_transaction( trx, fc::time_point::max(), billed_cpu_time_us );
    }
 
 

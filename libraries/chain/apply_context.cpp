@@ -52,7 +52,7 @@ apply_context::apply_context(controller& con, transaction_context& trx_ctx, uint
 
 void apply_context::exec_one()
 {
-   auto start = fc::time_point::now();
+   auto start = fc::clock::now();
 
    digest_type act_digest;
 
@@ -190,7 +190,7 @@ void apply_context::finalize_trace( action_trace& trace, const fc::time_point& s
    trace.console = std::move( _pending_console_output );
    _pending_console_output.clear();
 
-   trace.elapsed = fc::time_point::now() - start;
+   trace.elapsed = fc::clock::now() - start;
 }
 
 void apply_context::exec()
@@ -435,7 +435,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
       trx.ref_block_num = 0;
       trx.ref_block_prefix = 0;
    } else {
-      trx.expiration = control.pending_block_time() + fc::microseconds(999'999); // Rounds up to nearest second (makes expiration check unnecessary)
+      trx.expiration = fc::chrono::ceil<fc::seconds>( control.pending_block_time() );// Rounds up to nearest second (makes expiration check unnecessary)
       trx.set_reference_block(control.head_block_id()); // No TaPoS check necessary
    }
 

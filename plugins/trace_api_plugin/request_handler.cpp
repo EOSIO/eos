@@ -8,7 +8,7 @@ namespace {
    using namespace eosio::trace_api;
 
    std::string to_iso8601_datetime( const fc::time_point& t) {
-      return (std::string)t + "Z";
+      return fc::to_iso_string(t) + "Z";
    }
 
    fc::variants process_authorizations(const std::vector<authorization_trace_v0>& authorizations, const yield_function& yield ) {

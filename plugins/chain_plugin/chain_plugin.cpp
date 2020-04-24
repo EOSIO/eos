@@ -345,9 +345,9 @@ if( options.count(op_name) ) { \
 fc::time_point calculate_genesis_timestamp( string tstr ) {
    fc::time_point genesis_timestamp;
    if( strcasecmp (tstr.c_str(), "now") == 0 ) {
-      genesis_timestamp = fc::time_point::now();
+      genesis_timestamp = fc::clock::now();
    } else {
-      genesis_timestamp = time_point::from_iso_string( tstr );
+      fc::from_iso_string( tstr, genesis_timestamp );
    }
 
    auto epoch_us = genesis_timestamp.time_since_epoch().count();
@@ -1190,7 +1190,7 @@ void chain_plugin::plugin_startup()
 
    if (my->genesis) {
       ilog("Blockchain started; head block is #${num}, genesis timestamp is ${ts}",
-           ("num", my->chain->head_block_num())("ts", (std::string)my->genesis->initial_timestamp));
+           ("num", my->chain->head_block_num())("ts", fc::to_iso_string(my->genesis->initial_timestamp)));
    }
    else {
       ilog("Blockchain started; head block is #${num}", ("num", my->chain->head_block_num()));
@@ -1267,7 +1267,7 @@ bool chain_plugin::recover_reversible_blocks( const fc::path& db_dir, uint32_t c
    }
    fc::path backup_dir;
 
-   auto now = fc::time_point::now();
+   auto now = fc::to_iso_string( fc::clock::now() );
 
    if( new_db_dir ) {
       backup_dir = reversible_dir;
@@ -1569,11 +1569,11 @@ read_only::get_activated_protocol_features( const read_only::get_activated_proto
       auto& activation_ordinal_value   = mvo["activation_ordinal"];
       auto& activation_block_num_value = mvo["activation_block_num"];
 
-      auto cur_time = fc::time_point::now();
+      auto cur_time = fc::clock::now();
       auto end_time = cur_time + fc::microseconds(1000 * 10); /// 10ms max time
       for( unsigned int count = 0;
            cur_time <= end_time && count < params.limit && itr != end_itr;
-           ++itr, cur_time = fc::time_point::now() )
+           ++itr, cur_time = fc::clock::now() )
       {
          const auto& conv_itr = convert_iterator( itr );
          activation_ordinal_value   = conv_itr.activation_ordinal();
@@ -1842,9 +1842,9 @@ read_only::get_table_by_scope_result read_only::get_table_by_scope( const read_o
       return result;
 
    auto walk_table_range = [&]( auto itr, auto end_itr ) {
-      auto cur_time = fc::time_point::now();
+      auto cur_time = fc::clock::now();
       auto end_time = cur_time + fc::microseconds(1000 * 10); /// 10ms max time
-      for( unsigned int count = 0; cur_time <= end_time && count < p.limit && itr != end_itr; ++itr, cur_time = fc::time_point::now() ) {
+      for( unsigned int count = 0; cur_time <= end_time && count < p.limit && itr != end_itr; ++itr, cur_time = fc::clock::now() ) {
          if( p.table && itr->table != p.table ) continue;
 
          result.rows.push_back( {itr->code, itr->scope, itr->table, itr->payer, itr->count} );
@@ -1956,7 +1956,7 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
    const auto& secondary_index_by_secondary = secondary_index.get<by_secondary>();
 
    read_only::get_producers_result result;
-   const auto stopTime = fc::time_point::now() + fc::microseconds(1000 * 10); // 10ms
+   const auto stopTime = fc::clock::now() + fc::microseconds(1000 * 10); // 10ms
    vector<char> data;
 
    auto it = [&]{
@@ -1970,7 +1970,7 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
    }();
 
    for( ; it != secondary_index_by_secondary.end() && it->t_id == secondary_table_id->id; ++it ) {
-      if (result.rows.size() >= p.limit || fc::time_point::now() > stopTime) {
+      if (result.rows.size() >= p.limit || fc::clock::now() > stopTime) {
          result.more = name{it->primary_key}.to_string();
          break;
       }
@@ -2049,7 +2049,7 @@ read_only::get_scheduled_transactions( const read_only::get_scheduled_transactio
    auto itr = ([&](){
       if (!p.lower_bound.empty()) {
          try {
-            auto when = time_point::from_iso_string( p.lower_bound );
+	    auto when = fc::from_iso_string<fc::time_point>( p.lower_bound );
             return idx_by_delay.lower_bound(boost::make_tuple(when));
          } catch (...) {
             try {
@@ -2076,8 +2076,8 @@ read_only::get_scheduled_transactions( const read_only::get_scheduled_transactio
    auto resolver = make_resolver(this, abi_serializer::create_yield_function( abi_serializer_max_time ));
 
    uint32_t remaining = p.limit;
-   auto time_limit = fc::time_point::now() + fc::microseconds(1000 * 10); /// 10ms max time
-   while (itr != idx_by_delay.end() && remaining > 0 && time_limit > fc::time_point::now()) {
+   auto time_limit = fc::clock::now() + fc::microseconds(1000 * 10); /// 10ms max time
+   while (itr != idx_by_delay.end() && remaining > 0 && time_limit > fc::clock::now()) {
       auto row = fc::mutable_variant_object()
               ("trx_id", itr->trx_id)
               ("sender", itr->sender)

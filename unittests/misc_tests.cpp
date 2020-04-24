@@ -220,10 +220,10 @@ BOOST_AUTO_TEST_CASE(variant_format_string_limited)
       const auto arg_limit_size = (1024 - format.size()) / mu.size();
       const string result = fc::format_string(format, mu, true);
       BOOST_CHECK(provided_permissions.begin() != provided_permissions.end());
-      const string auth_str = fc::json::to_string(*provided_permissions.begin(), fc::time_point::maximum());
-      string target_str = "transaction declares authority '" + fc::json::to_string(*provided_permissions.begin(), fc::time_point::maximum());
-      target_str += "', provided permissions " + fc::json::to_string(provided_permissions, fc::time_point::maximum());
-      target_str += ", provided keys " + fc::json::to_string(provided_keys, fc::time_point::maximum()).substr(0, arg_limit_size);
+      const string auth_str = fc::json::to_string(*provided_permissions.begin(), fc::time_point::max());
+      string target_str = "transaction declares authority '" + fc::json::to_string(*provided_permissions.begin(), fc::time_point::max());
+      target_str += "', provided permissions " + fc::json::to_string(provided_permissions, fc::time_point::max());
+      target_str += ", provided keys " + fc::json::to_string(provided_keys, fc::time_point::max()).substr(0, arg_limit_size);
       BOOST_CHECK_EQUAL(result, target_str);
       BOOST_CHECK_LT(result.size(), 1024 + 3 * mu.size());
 
@@ -239,7 +239,7 @@ BOOST_AUTO_TEST_CASE(variant_format_string_limited)
       mu_fold("provided_permissions", provided_permissions);
       mu_fold("provided_keys", provided_keys);
       BOOST_CHECK_LT(0, mu_fold.size());
-      string target_fold_str = "transaction declares authority '" + fc::json::to_string(*provided_permissions.begin(), fc::time_point::maximum());
+      string target_fold_str = "transaction declares authority '" + fc::json::to_string(*provided_permissions.begin(), fc::time_point::max());
       target_fold_str += "', provided permissions ${provided_permissions}";
       target_fold_str += ", provided keys ${provided_keys}";
       const string result_fold = fc::format_string(format, mu_fold, true);
@@ -728,7 +728,7 @@ BOOST_AUTO_TEST_CASE(transaction_test) { try {
 
    test.set_transaction_headers(trx);
 
-   trx.expiration = fc::time_point::now();
+   trx.expiration = fc::now<fc::seconds>();
    trx.validate();
    BOOST_CHECK_EQUAL(0u, trx.signatures.size());
    ((const signed_transaction &)trx).sign( test.get_private_key( config::system_account_name, "active" ), test.control->get_chain_id());
@@ -758,11 +758,11 @@ BOOST_AUTO_TEST_CASE(transaction_test) { try {
    BOOST_CHECK_EQUAL(pkt.get_signed_transaction().id(), pkt2.id());
 
    flat_set<public_key_type> keys;
-   auto cpu_time1 = pkt.get_signed_transaction().get_signature_keys(test.control->get_chain_id(), fc::time_point::maximum(), keys);
+   auto cpu_time1 = pkt.get_signed_transaction().get_signature_keys(test.control->get_chain_id(), fc::time_point::max(), keys);
    BOOST_CHECK_EQUAL(1u, keys.size());
    BOOST_CHECK_EQUAL(public_key, *keys.begin());
    keys.clear();
-   auto cpu_time2 = pkt.get_signed_transaction().get_signature_keys(test.control->get_chain_id(), fc::time_point::maximum(), keys);
+   auto cpu_time2 = pkt.get_signed_transaction().get_signature_keys(test.control->get_chain_id(), fc::time_point::max(), keys);
    BOOST_CHECK_EQUAL(1u, keys.size());
    BOOST_CHECK_EQUAL(public_key, *keys.begin());
 
@@ -805,7 +805,7 @@ BOOST_AUTO_TEST_CASE(transaction_test) { try {
    BOOST_CHECK_EQUAL(true, trx.expiration == pkt4.expiration());
    BOOST_CHECK_EQUAL(true, trx.expiration == pkt4.get_signed_transaction().expiration);
    keys.clear();
-   pkt4.get_signed_transaction().get_signature_keys(test.control->get_chain_id(), fc::time_point::maximum(), keys);
+   pkt4.get_signed_transaction().get_signature_keys(test.control->get_chain_id(), fc::time_point::max(), keys);
    BOOST_CHECK_EQUAL(1u, keys.size());
    BOOST_CHECK_EQUAL(public_key, *keys.begin());
 
@@ -871,7 +871,7 @@ BOOST_AUTO_TEST_CASE(transaction_metadata_test) { try {
       abi_serializer::from_variant(pretty_trx, trx, test.get_resolver(), abi_serializer::create_yield_function( test.abi_serializer_max_time ));
 
       test.set_transaction_headers(trx);
-      trx.expiration = fc::time_point::now();
+      trx.expiration = fc::now<fc::seconds>();
 
       auto private_key = test.get_private_key( config::system_account_name, "active" );
       auto public_key = private_key.get_public_key();
@@ -891,12 +891,12 @@ BOOST_AUTO_TEST_CASE(transaction_metadata_test) { try {
 
       named_thread_pool thread_pool( "misc", 5 );
 
-      auto fut = transaction_metadata::start_recover_keys( ptrx, thread_pool.get_executor(), test.control->get_chain_id(), fc::microseconds::maximum() );
-      auto fut2 = transaction_metadata::start_recover_keys( ptrx2, thread_pool.get_executor(), test.control->get_chain_id(), fc::microseconds::maximum() );
+      auto fut = transaction_metadata::start_recover_keys( ptrx, thread_pool.get_executor(), test.control->get_chain_id(), fc::microseconds::max() );
+      auto fut2 = transaction_metadata::start_recover_keys( ptrx2, thread_pool.get_executor(), test.control->get_chain_id(), fc::microseconds::max() );
 
       // start another key reovery on same packed_transaction, creates a new future with transaction_metadata, should not interfere with above
-      transaction_metadata::start_recover_keys( ptrx, thread_pool.get_executor(), test.control->get_chain_id(), fc::microseconds::maximum() );
-      transaction_metadata::start_recover_keys( ptrx2, thread_pool.get_executor(), test.control->get_chain_id(), fc::microseconds::maximum() );
+      transaction_metadata::start_recover_keys( ptrx, thread_pool.get_executor(), test.control->get_chain_id(), fc::microseconds::max() );
+      transaction_metadata::start_recover_keys( ptrx2, thread_pool.get_executor(), test.control->get_chain_id(), fc::microseconds::max() );
 
       auto mtrx = fut.get();
       const auto& keys = mtrx->recovered_keys();
