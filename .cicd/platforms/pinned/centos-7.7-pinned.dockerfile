@@ -4,7 +4,7 @@ ENV VERSION 1
 RUN yum update -y && \
     yum install -y epel-release && \
     yum --enablerepo=extras install -y centos-release-scl && \
-    yum --enablerepo=extras install -y devtoolset-8 && \
+    yum --enablerepo=extras install -y devtoolset-9 && \
     yum --enablerepo=extras install -y which git autoconf automake libtool make bzip2 doxygen \
     graphviz bzip2-devel openssl-devel gmp-devel ocaml libicu-devel \
     python python-devel rh-python36 file libusbx-devel \
@@ -13,7 +13,7 @@ RUN yum update -y && \
 RUN curl -LO https://github.com/Kitware/CMake/releases/download/v3.16.2/cmake-3.16.2.tar.gz && \
     tar -xzf cmake-3.16.2.tar.gz && \
     cd cmake-3.16.2 && \
-    source /opt/rh/devtoolset-8/enable && \
+    source /opt/rh/devtoolset-9/enable && \
     ./bootstrap --prefix=/usr/local && \
     make -j$(nproc) && \
     make install && \
@@ -21,7 +21,7 @@ RUN curl -LO https://github.com/Kitware/CMake/releases/download/v3.16.2/cmake-3.
 # build clang10
 RUN git clone --single-branch --branch llvmorg-10.0.0 https://github.com/llvm/llvm-project clang10 && \
     mkdir /clang10/build && cd /clang10/build && \
-    source /opt/rh/devtoolset-8/enable && \
+    source /opt/rh/devtoolset-9/enable && \
     source /opt/rh/rh-python36/enable && \
     cmake -G 'Unix Makefiles' -DCMAKE_INSTALL_PREFIX='/usr/local' -DLLVM_ENABLE_PROJECTS='lld;polly;clang;clang-tools-extra;libcxx;libcxxabi;libunwind;compiler-rt' -DLLVM_BUILD_LLVM_DYLIB=ON -DLLVM_ENABLE_RTTI=ON -DLLVM_INCLUDE_DOCS=OFF -DLLVM_TARGETS_TO_BUILD=host -DCMAKE_BUILD_TYPE=Release ../llvm && \
     make -j $(nproc) && \

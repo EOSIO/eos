@@ -4,7 +4,7 @@ ENV VERSION 1
 RUN yum update -y && \
     yum install -y epel-release && \
     yum --enablerepo=extras install -y centos-release-scl && \
-    yum --enablerepo=extras install -y devtoolset-8 && \
+    yum --enablerepo=extras install -y devtoolset-9 && \
     yum --enablerepo=extras install -y which git autoconf automake libtool make bzip2 doxygen \
     graphviz bzip2-devel openssl-devel gmp-devel ocaml libicu-devel \
     python python-devel rh-python36 file libusbx-devel \
@@ -13,14 +13,14 @@ RUN yum update -y && \
 RUN curl -LO https://github.com/Kitware/CMake/releases/download/v3.16.2/cmake-3.16.2.tar.gz && \
     tar -xzf cmake-3.16.2.tar.gz && \
     cd cmake-3.16.2 && \
-    source /opt/rh/devtoolset-8/enable && \
+    source /opt/rh/devtoolset-9/enable && \
     ./bootstrap --prefix=/usr/local && \
     make -j$(nproc) && \
     make install && \
     rm -rf cmake-3.16.2.tar.gz cmake-3.16.2
 # build boost
 RUN curl -LO https://dl.bintray.com/boostorg/release/1.71.0/source/boost_1_71_0.tar.bz2 && \
-    source /opt/rh/devtoolset-8/enable && \
+    source /opt/rh/devtoolset-9/enable && \
     source /opt/rh/rh-python36/enable && \
     tar -xjf boost_1_71_0.tar.bz2 && \
     cd boost_1_71_0 && \
@@ -34,7 +34,7 @@ RUN curl -LO https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-amazon-3.6.3.
     rm -f mongodb-linux-x86_64-amazon-3.6.3.tgz
 # build mongodb c driver
 RUN curl -LO https://github.com/mongodb/mongo-c-driver/releases/download/1.13.0/mongo-c-driver-1.13.0.tar.gz && \
-    source /opt/rh/devtoolset-8/enable && \
+    source /opt/rh/devtoolset-9/enable && \
     source /opt/rh/rh-python36/enable && \
     tar -xzf mongo-c-driver-1.13.0.tar.gz && \
     cd mongo-c-driver-1.13.0 && \
@@ -47,7 +47,7 @@ RUN curl -LO https://github.com/mongodb/mongo-c-driver/releases/download/1.13.0/
     rm -rf mongo-c-driver-1.13.0.tar.gz /mongo-c-driver-1.13.0
 # build mongodb cxx driver
 RUN curl -L https://github.com/mongodb/mongo-cxx-driver/archive/r3.4.0.tar.gz -o mongo-cxx-driver-r3.4.0.tar.gz && \
-    source /opt/rh/devtoolset-8/enable && \
+    source /opt/rh/devtoolset-9/enable && \
     source /opt/rh/rh-python36/enable && \
     tar -xzf mongo-cxx-driver-r3.4.0.tar.gz && \
     cd mongo-cxx-driver-r3.4.0 && \
