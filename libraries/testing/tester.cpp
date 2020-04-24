@@ -340,7 +340,6 @@ namespace eosio { namespace testing {
          while ((scheduled_trxs = get_scheduled_transactions()).size() > 0 ) {
             for( const auto& trx : scheduled_trxs ) {
                auto trace = control->push_scheduled_transaction( trx, fc::time_point::max(), DEFAULT_BILLED_CPU_TIME_US, true );
-               traces.emplace_back( trace );
                if( !no_throw && trace->except ) {
                   trace->except->dynamic_rethrow_exception();
                }
