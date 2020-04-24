@@ -3260,7 +3260,7 @@ int main( int argc, char** argv ) {
    string wallet_pw;
    auto unlockWallet = wallet->add_subcommand("unlock", localized("Unlock wallet"));
    unlockWallet->add_option("-n,--name", wallet_name, localized("The name of the wallet to unlock"));
-   unlockWallet->add_option("--password", wallet_pw, localized("The password returned by wallet create"));
+   unlockWallet->add_option("--password", wallet_pw, localized("The password returned by wallet create"))->expected(0, 1);
    unlockWallet->callback([&wallet_name, &wallet_pw] {
       prompt_for_wallet_password(wallet_pw, wallet_name);
 
@@ -3273,7 +3273,7 @@ int main( int argc, char** argv ) {
    string wallet_key_str;
    auto importWallet = wallet->add_subcommand("import", localized("Import private key into wallet"));
    importWallet->add_option("-n,--name", wallet_name, localized("The name of the wallet to import key into"));
-   importWallet->add_option("--private-key", wallet_key_str, localized("Private key in WIF format to import"));
+   importWallet->add_option("--private-key", wallet_key_str, localized("Private key in WIF format to import"))->expected(0, 1);
    importWallet->callback([&wallet_name, &wallet_key_str] {
       if( wallet_key_str.size() == 0 ) {
          std::cout << localized("private key: ");
@@ -3300,7 +3300,7 @@ int main( int argc, char** argv ) {
    auto removeKeyWallet = wallet->add_subcommand("remove_key", localized("Remove key from wallet"));
    removeKeyWallet->add_option("-n,--name", wallet_name, localized("The name of the wallet to remove key from"));
    removeKeyWallet->add_option("key", wallet_rm_key_str, localized("Public key in WIF format to remove"))->required();
-   removeKeyWallet->add_option("--password", wallet_pw, localized("The password returned by wallet create"));
+   removeKeyWallet->add_option("--password", wallet_pw, localized("The password returned by wallet create"))->expected(0, 1);
    removeKeyWallet->callback([&wallet_name, &wallet_pw, &wallet_rm_key_str] {
       prompt_for_wallet_password(wallet_pw, wallet_name);
       public_key_type pubkey;
@@ -3344,7 +3344,7 @@ int main( int argc, char** argv ) {
    // list private keys
    auto listPrivKeys = wallet->add_subcommand("private_keys", localized("List of private keys from an unlocked wallet in wif or PVT_R1 format."));
    listPrivKeys->add_option("-n,--name", wallet_name, localized("The name of the wallet to list keys from"), true);
-   listPrivKeys->add_option("--password", wallet_pw, localized("The password returned by wallet create"));
+   listPrivKeys->add_option("--password", wallet_pw, localized("The password returned by wallet create"))->expected(0, 1);
    listPrivKeys->callback([&wallet_name, &wallet_pw] {
       prompt_for_wallet_password(wallet_pw, wallet_name);
       fc::variants vs = {fc::variant(wallet_name), fc::variant(wallet_pw)};
@@ -3373,7 +3373,7 @@ int main( int argc, char** argv ) {
    auto sign = app.add_subcommand("sign", localized("Sign a transaction"));
    sign->add_option("transaction", trx_json_to_sign,
                                  localized("The JSON string or filename defining the transaction to sign"), true)->required();
-   sign->add_option("-k,--private-key", str_private_key, localized("The private key that will be used to sign the transaction"));
+   sign->add_option("-k,--private-key", str_private_key, localized("The private key that will be used to sign the transaction"))->expected(0, 1);
    sign->add_option("--public-key", str_public_key, localized("Ask ${exec} to sign with the corresponding private key of the given public key", ("exec", key_store_executable_name)));
    sign->add_option("-c,--chain-id", str_chain_id, localized("The chain id that will be used to sign the transaction"));
    sign->add_flag("-p,--push-transaction", push_trx, localized("Push transaction after signing"));
