@@ -38,11 +38,32 @@ namespace eosio { namespace chain {
       virtual kv_it_stat kv_it_value(uint32_t offset, char* dest, uint32_t size, uint32_t& actual_size) = 0;
    };
 
+   struct kv_resource_trace {
+      enum class operation {
+         create  = 0, // The operation represents the creation of a key-value pair
+         update  = 1, // The operation represents the update of a key-value pair
+         erase   = 2, // The operation represents the deletion of a key-value pair
+      };
+
+      kv_resource_trace(const char* key, uint32_t key_size, operation op): key(key, key_size), op(op) {}
+
+      std::string_view key;
+      operation op;
+
+      const char* op_to_string() const {
+         if (op == operation::create) return "create";
+         if (op == operation::update) return "update";
+         if (op == operation::erase) return "erase";
+
+         return "unknown";
+      }
+   };
+
    struct kv_resource_manager {
-      void     update_table_usage(int64_t delta) { return _update_table_usage(*_context, delta); }
+      void     update_table_usage(int64_t delta, const kv_resource_trace& trace) { return _update_table_usage(*_context, delta, trace); }
       apply_context* _context;
       uint64_t       billable_size;
-      void (*_update_table_usage)(apply_context&, int64_t delta);
+      void (*_update_table_usage)(apply_context&, int64_t delta, const kv_resource_trace& trace);
    };
 
    kv_resource_manager create_kv_resource_manager_ram(apply_context& context);
