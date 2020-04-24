@@ -951,6 +951,7 @@ class Cluster(object):
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         env = {
             "BIOS_CONTRACT_PATH": "unittests/contracts/old_versions/v1.6.0-rc3/eosio.bios",
+            "BIOS_CURRENCY_SYMBOL": CORE_SYMBOL,
             "FEATURE_DIGESTS": ""
         }
         if PFSetupPolicy.hasPreactivateFeature(pfSetupPolicy):
