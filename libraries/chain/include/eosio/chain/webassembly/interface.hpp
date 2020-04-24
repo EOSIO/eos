@@ -71,6 +71,8 @@ namespace eosio { namespace chain { namespace webassembly {
          REGISTER_LEGACY_HOST_FUNCTION(get_resource_limits, privileged_check);
          REGISTER_HOST_FUNCTION(set_resource_limit, privileged_check);
          REGISTER_HOST_FUNCTION(get_resource_limit, privileged_check);
+         REGISTER_HOST_FUNCTION(get_wasm_parameters_packed, privileged_check);
+         REGISTER_HOST_FUNCTION(set_wasm_parameters_packed, privileged_check);
          REGISTER_LEGACY_HOST_FUNCTION(set_proposed_producers, privileged_check);
          REGISTER_LEGACY_HOST_FUNCTION(set_proposed_producers_ex, privileged_check);
          REGISTER_LEGACY_HOST_FUNCTION(get_blockchain_parameters_packed, privileged_check);

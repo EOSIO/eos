@@ -18,6 +18,7 @@ struct wasm_config {
    std::uint32_t max_code_bytes;
    std::uint32_t max_pages;
    std::uint32_t max_call_depth;
+   void validate() const;
 };
 
 inline constexpr bool operator==(const wasm_config& lhs, const wasm_config& rhs) {

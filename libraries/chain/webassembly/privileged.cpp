@@ -164,6 +164,7 @@ namespace eosio { namespace chain { namespace webassembly {
       datastream<const char*> ds( packed_parameters.data(), packed_parameters.size() );
       chain::wasm_config cfg;
       fc::raw::unpack(ds, cfg);
+      cfg.validate();
       context.db.modify( context.control.get_global_properties(),
          [&]( auto& gprops ) {
             gprops.wasm_configuration = cfg;
