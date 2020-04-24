@@ -564,14 +564,14 @@ chain::permission_level to_permission_level(const std::string& s) {
    return permission_level { name(s.substr(0, at_pos)), name(s.substr(at_pos + 1)) };
 }
 
-chain::action create_newaccount(const name& creator, const name& newaccount, auth_type owner, auth_type active) {
+chain::action create_newaccount(const name& creator, const name& newaccount, authority owner, authority active) {
    return action {
       get_account_permissions(tx_permission, {creator,config::active_name}),
       eosio::chain::newaccount{
          .creator      = creator,
          .name         = newaccount,
-         .owner        = owner.contains<public_key_type>() ? authority(owner.get<public_key_type>()) : authority(owner.get<permission_level>()),
-         .active       = active.contains<public_key_type>() ? authority(active.get<public_key_type>()) : authority(active.get<permission_level>())
+         .owner        = owner,
+         .active       = active
       }
    };
 }
@@ -1063,27 +1063,34 @@ struct create_account_subcommand {
       add_standard_transaction_options(createAccount, "creator@active");
 
       createAccount->set_callback([this] {
-            auth_type owner, active;
-
-            if( owner_key_str.find('@') != string::npos ) {
+            authority owner, active;
+            if( owner_key_str.find('{') != string::npos ) {
+               try{
+                  owner = parse_json_authority_or_key(owner_key_str);
+               } EOS_RETHROW_EXCEPTIONS( explained_exception, "Invalid owner authority: ${authority}", ("authority", owner_key_str) )
+            } else if( owner_key_str.find('@') != string::npos ) {
                try {
-                  owner = to_permission_level(owner_key_str);
+                  owner = authority(to_permission_level(owner_key_str));
                } EOS_RETHROW_EXCEPTIONS( explained_exception, "Invalid owner permission level: ${permission}", ("permission", owner_key_str) )
             } else {
                try {
-                  owner = public_key_type(owner_key_str);
+                  owner = authority(public_key_type(owner_key_str));
                } EOS_RETHROW_EXCEPTIONS( public_key_type_exception, "Invalid owner public key: ${public_key}", ("public_key", owner_key_str) );
             }
 
             if( active_key_str.empty() ) {
                active = owner;
-            } else if( active_key_str.find('@') != string::npos ) {
+            } else if ( active_key_str.find('{') != string::npos ) { 
+               try{
+                  active = parse_json_authority_or_key(active_key_str);
+               } EOS_RETHROW_EXCEPTIONS( explained_exception, "Invalid active authority: ${authority}", ("authority", owner_key_str) )
+            }else if( active_key_str.find('@') != string::npos ) {
                try {
-                  active = to_permission_level(active_key_str);
+                  active = authority(to_permission_level(active_key_str));
                } EOS_RETHROW_EXCEPTIONS( explained_exception, "Invalid active permission level: ${permission}", ("permission", active_key_str) )
             } else {
                try {
-                  active = public_key_type(active_key_str);
+                  active = authority(public_key_type(active_key_str));
                } EOS_RETHROW_EXCEPTIONS( public_key_type_exception, "Invalid active public key: ${public_key}", ("public_key", active_key_str) );
             }
 
