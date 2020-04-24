@@ -854,8 +854,8 @@ static const char min_set_parameters_wast[] = R"======(
   (memory 1)
   (func (export "apply") (param i64 i64 i64)
      (br_if 0 (i32.eqz (i32.eqz (i32.wrap/i64 (get_local 2)))))
-     (drop (call $read_action_data (i32.const 0) (i32.const 44)))
-     (call $set_wasm_parameters_packed (i32.const 0) (i32.const 44))
+     (drop (call $read_action_data (i32.const 4) (i32.const 44)))
+     (call $set_wasm_parameters_packed (i32.const 0) (i32.const 48))
   )
 )
 )======";
