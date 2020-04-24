@@ -88,11 +88,9 @@ void undo_tests(bool reload_undo, uint64_t target_segment_size) {
    reload();
    BOOST_REQUIRE_EQUAL(undo_stack->revision(), 11);
    KV_REQUIRE_EXCEPTION(undo_stack->set_revision(12), "cannot set revision while there is an existing undo stack");
-   KV_REQUIRE_EXCEPTION(undo_stack->squash(), "nothing to squash");
    undo_stack->commit(0);
    BOOST_REQUIRE_EQUAL(undo_stack->revision(), 11);
    KV_REQUIRE_EXCEPTION(undo_stack->set_revision(12), "cannot set revision while there is an existing undo stack");
-   KV_REQUIRE_EXCEPTION(undo_stack->squash(), "nothing to squash");
    undo_stack->commit(11);
    BOOST_REQUIRE_EQUAL(undo_stack->revision(), 11);
    reload();
@@ -106,7 +104,6 @@ void undo_tests(bool reload_undo, uint64_t target_segment_size) {
                                                     { { 0x20, 0x00 }, { 0x70 } },
                                                     { { 0x20, 0x03 }, { 0x60 } },
                                               } }));
-
 } // undo_tests()
 
 void squash_tests(bool reload_undo, uint64_t target_segment_size) {
@@ -250,6 +247,8 @@ void squash_tests(bool reload_undo, uint64_t target_segment_size) {
    reload();
    BOOST_REQUIRE_EQUAL(undo_stack->revision(), 0);
    BOOST_REQUIRE_EQUAL(get_all(db, { 0x20 }), (kv_values{ {} }));
+
+   // TODO: test squash with only 1 undo level
 } // squash_tests()
 
 void commit_tests(bool reload_undo, uint64_t target_segment_size) {
