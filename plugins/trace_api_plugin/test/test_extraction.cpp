@@ -64,6 +64,17 @@ namespace {
       return packed_transaction( trx );
    }
 
+    auto make_trx_header( const chain::transaction& trx ) {
+        chain::transaction_header th;
+        th.expiration = trx.expiration;
+        th.ref_block_num = trx.ref_block_num;
+        th.ref_block_prefix = trx.ref_block_prefix;
+        th.max_net_usage_words = trx.max_net_usage_words;
+        th.max_cpu_usage_ms = trx.max_cpu_usage_ms;
+        th.delay_sec = trx.delay_sec;
+        return th;
+    }
+
    chain::action_trace make_action_trace( uint64_t global_sequence, chain::action act, chain::name receiver ) {
       chain::action_trace result;
       // don't think we need any information other than receiver and global sequence
@@ -98,6 +109,10 @@ struct extraction_test_fixture {
        * @param entry : the entry to append
        */
       void append( const block_trace_v0& entry ) {
+         fixture.data_log.emplace_back(entry);
+      }
+
+      void append( const block_trace_v1& entry ) {
          fixture.data_log.emplace_back(entry);
       }
 
@@ -153,7 +168,15 @@ BOOST_AUTO_TEST_SUITE(block_extraction)
       signal_accepted_block( bsp1 );
       
       const uint32_t expected_lib = 0;
-      const block_trace_v0 expected_trace { bsp1->id, 1, bsp1->prev(), chain::block_timestamp_type(1), "bp.one"_n,
+      const block_trace_v1 expected_trace{
+         bsp1->id,
+         1,
+         bsp1->prev(),
+         chain::block_timestamp_type(1),
+         "bp.one"_n,
+         bsp1->block->transaction_mroot,
+         bsp1->block->action_mroot,
+         bsp1->block->schedule_version,
          {
             {
                ptrx1.id(),
@@ -176,15 +199,20 @@ BOOST_AUTO_TEST_SUITE(block_extraction)
                      {{ "alice"_n, "active"_n }},
                      make_transfer_data( "alice"_n, "bob"_n, "0.0001 SYS"_t, "Memo!" )
                   }
-               }
+               },
+               fc::enum_type<uint8_t, chain::transaction_receipt_header::status_enum>{bsp1->block->transactions[0].status},
+               bsp1->block->transactions[0].cpu_usage_us,
+               bsp1->block->transactions[0].net_usage_words,
+               ptrx1.get_signatures(),
+               make_trx_header(ptrx1.get_transaction())
             }
          }
       };
 
       BOOST_REQUIRE_EQUAL(max_lib, 0);
       BOOST_REQUIRE(data_log.size() == 1);
-      BOOST_REQUIRE(data_log.at(0).contains<block_trace_v0>());
-      BOOST_REQUIRE_EQUAL(data_log.at(0).get<block_trace_v0>(), expected_trace);
+      BOOST_REQUIRE(data_log.at(0).contains<block_trace_v1>());
+      BOOST_REQUIRE_EQUAL(data_log.at(0).get<block_trace_v1>(), expected_trace);
    }
 
    BOOST_FIXTURE_TEST_CASE(basic_multi_transaction_block, extraction_test_fixture) {
@@ -217,7 +245,16 @@ BOOST_AUTO_TEST_SUITE(block_extraction)
       signal_accepted_block( bsp1 );
 
       const uint32_t expected_lib = 0;
-      const block_trace_v0 expected_trace { bsp1->id, 1, bsp1->prev(), chain::block_timestamp_type(1), "bp.one"_n,
+
+      const block_trace_v1 expected_trace{
+         bsp1->id,
+         1,
+         bsp1->prev(),
+         chain::block_timestamp_type(1),
+         "bp.one"_n,
+         bsp1->block->transaction_mroot,
+         bsp1->block->action_mroot,
+         bsp1->block->schedule_version,
          {
             {
                ptrx1.id(),
@@ -228,37 +265,54 @@ BOOST_AUTO_TEST_SUITE(block_extraction)
                      {{ "alice"_n, "active"_n }},
                      make_transfer_data( "alice"_n, "bob"_n, "0.0001 SYS"_t, "Memo!" )
                   }
-               }
-            },
+               },
+               fc::enum_type<uint8_t, chain::transaction_receipt_header::status_enum>{bsp1->block->transactions[0].status},
+               bsp1->block->transactions[0].cpu_usage_us,
+               bsp1->block->transactions[0].net_usage_words,
+               ptrx1.get_signatures(),
+               make_trx_header(ptrx1.get_transaction())
+            }
+            ,
             {
                ptrx2.id(),
                {
                   {
                      1,
-                     "bob"_n, "eosio.token"_n, "transfer"_n,
-                     {{ "bob"_n, "active"_n }},
-                     make_transfer_data( "bob"_n, "alice"_n, "0.0001 SYS"_t, "Memo!" )
+                     "fred"_n, "eosio.token"_n, "transfer"_n,
+                     {{ "fred"_n, "active"_n }},
+                     make_transfer_data( "fred"_n, "bob"_n, "0.0001 SYS"_t, "Memo!" )
                   }
-               }
-            },
+               },
+               fc::enum_type<uint8_t, chain::transaction_receipt_header::status_enum>{bsp1->block->transactions[1].status},
+               bsp1->block->transactions[1].cpu_usage_us,
+               bsp1->block->transactions[1].net_usage_words,
+               ptrx2.get_signatures(),
+               make_trx_header(ptrx2.get_transaction())
+            }
+            ,
             {
                ptrx3.id(),
                {
                   {
                      2,
-                     "fred"_n, "eosio.token"_n, "transfer"_n,
-                     {{ "fred"_n, "active"_n }},
-                     make_transfer_data( "fred"_n, "bob"_n, "0.0001 SYS"_t, "Memo!" )
+                     "bob"_n, "eosio.token"_n, "transfer"_n,
+                     {{"bob"_n, "active"_n}},
+                     make_transfer_data("bob"_n, "alice"_n, "0.0001 SYS"_t, "Memo!")
                   }
-               }
+               },
+               fc::enum_type<uint8_t, chain::transaction_receipt_header::status_enum>{bsp1->block->transactions[2].status},
+               bsp1->block->transactions[2].cpu_usage_us,
+               bsp1->block->transactions[2].net_usage_words,
+               ptrx3.get_signatures(),
+               make_trx_header(ptrx3.get_transaction())
             }
          }
       };
 
       BOOST_REQUIRE_EQUAL(max_lib, 0);
       BOOST_REQUIRE(data_log.size() == 1);
-      BOOST_REQUIRE(data_log.at(0).contains<block_trace_v0>());
-      BOOST_REQUIRE_EQUAL(data_log.at(0).get<block_trace_v0>(), expected_trace);
+      BOOST_REQUIRE(data_log.at(0).contains<block_trace_v1>());
+      BOOST_REQUIRE_EQUAL(data_log.at(0).get<block_trace_v1>(), expected_trace);
    }
 
    BOOST_FIXTURE_TEST_CASE(onerror_transaction_block, extraction_test_fixture)
@@ -284,7 +338,15 @@ BOOST_AUTO_TEST_SUITE(block_extraction)
       signal_accepted_block( bsp1 );
 
       const uint32_t expected_lib = 0;
-      const block_trace_v0 expected_trace { bsp1->id, 1, bsp1->prev(), chain::block_timestamp_type(1), "bp.one"_n,
+      const block_trace_v1 expected_trace {
+         bsp1->id,
+         1,
+         bsp1->prev(),
+         chain::block_timestamp_type(1),
+         "bp.one"_n,
+         bsp1->block->transaction_mroot,
+         bsp1->block->action_mroot,
+         bsp1->block->schedule_version,
          {
             {
                transfer_trx.id(), // transfer_trx.id() because that is the trx id known to the user
@@ -295,15 +357,20 @@ BOOST_AUTO_TEST_SUITE(block_extraction)
                      {{ "alice"_n, "active"_n }},
                      make_onerror_data( chain::onerror{ 1, "test ", 4 } )
                   }
-               }
+               },
+               fc::enum_type<uint8_t, chain::transaction_receipt_header::status_enum>{bsp1->block->transactions[0].status},
+               bsp1->block->transactions[0].cpu_usage_us,
+               bsp1->block->transactions[1].net_usage_words,
+               transfer_trx.get_signatures(),
+               make_trx_header(transfer_trx.get_transaction())
             }
          }
       };
 
       BOOST_REQUIRE_EQUAL(max_lib, 0);
       BOOST_REQUIRE(data_log.size() == 1);
-      BOOST_REQUIRE(data_log.at(0).contains<block_trace_v0>());
-      BOOST_REQUIRE_EQUAL(data_log.at(0).get<block_trace_v0>(), expected_trace);
+      BOOST_REQUIRE(data_log.at(0).contains<block_trace_v1>());
+      BOOST_REQUIRE_EQUAL(data_log.at(0).get<block_trace_v1>(), expected_trace);
    }
 
 BOOST_AUTO_TEST_SUITE_END()

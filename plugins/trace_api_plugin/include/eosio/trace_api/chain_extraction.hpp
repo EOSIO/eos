@@ -6,6 +6,9 @@
 #include <exception>
 #include <functional>
 #include <map>
+#include <eosio/chain_plugin/chain_plugin.hpp>
+#include <eosio/chain/abi_serializer.hpp>
+#include <eosio/chain/block_state.hpp>
 
 namespace eosio { namespace trace_api {
 
@@ -63,9 +66,9 @@ private:
       if( is_onblock( trace )) {
          onblock_trace.emplace( trace );
       } else if( trace->failed_dtrx_trace ) {
-         cached_traces[trace->failed_dtrx_trace->id] = trace;
+         cached_traces[trace->failed_dtrx_trace->id] = std::pair{trace, t};
       } else {
-         cached_traces[trace->id] = trace;
+         cached_traces[trace->id] = std::pair{trace, t};
       }
    }
 
@@ -79,12 +82,12 @@ private:
 
    void store_block_trace( const chain::block_state_ptr& block_state ) {
       try {
-         block_trace_v0 bt = create_block_trace_v0( block_state );
+         block_trace_v1 bt = create_block_trace_v1( block_state );
 
-         std::vector<transaction_trace_v0>& traces = bt.transactions;
+         std::vector<transaction_trace_v1>& traces = bt.transactions_v1;
          traces.reserve( block_state->block->transactions.size() + 1 );
          if( onblock_trace )
-            traces.emplace_back( to_transaction_trace_v0( *onblock_trace ));
+            traces.emplace_back( to_transaction_trace_v1( *onblock_trace));
          for( const auto& r : block_state->block->transactions ) {
             transaction_id_type id;
             if( r.trx.contains<transaction_id_type>()) {
@@ -94,7 +97,7 @@ private:
             }
             const auto it = cached_traces.find( id );
             if( it != cached_traces.end() ) {
-               traces.emplace_back( to_transaction_trace_v0( it->second ));
+               traces.emplace_back( to_transaction_trace_v1( it->second.first, it->second.second));
             }
          }
          cached_traces.clear();
@@ -116,10 +119,10 @@ private:
    }
 
 private:
-   StoreProvider                                                store;
-   exception_handler                                            except_handler;
-   std::map<transaction_id_type, chain::transaction_trace_ptr>  cached_traces;
-   fc::optional<chain::transaction_trace_ptr>                   onblock_trace;
+   StoreProvider                                                                                      store;
+   exception_handler                                                                                  except_handler;
+   std::map<transaction_id_type, std::pair<chain::transaction_trace_ptr, chain::signed_transaction>>  cached_traces;
+   fc::optional<chain::transaction_trace_ptr>                                                         onblock_trace;
 
 };
 
