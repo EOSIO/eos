@@ -123,10 +123,10 @@ struct building_block {
    optional<producer_authority_schedule> _new_pending_producer_schedule;
    vector<digest_type>                   _new_protocol_feature_activations;
    size_t                                _num_new_protocol_features_that_have_activated = 0;
-   deque<transaction_metadata_ptr>       _pending_trx_metas;
-   deque<transaction_receipt>            _pending_trx_receipts; // boost deque in 1.71 with 1024 elements performs better
-   static_variant<checksum256_type, digests_t> _trx_mroot_or_receipt_digests;
-   digests_t                             _action_receipt_digests;
+   vector<transaction_metadata_ptr>      _pending_trx_metas;
+   vector<transaction_receipt>           _pending_trx_receipts;
+   vector<action_receipt>                _actions;
+   optional<checksum256_type>            _transaction_mroot;
 };
 
 struct assembled_block {
@@ -1467,8 +1467,7 @@ struct controller_impl {
    transaction_trace_ptr push_transaction( const transaction_metadata_ptr& trx,
                                            fc::time_point deadline,
                                            uint32_t billed_cpu_time_us,
-                                           bool explicit_billed_cpu_time,
-                                           fc::optional<uint32_t> explicit_net_usage_words )
+                                           bool explicit_billed_cpu_time )
    {
       EOS_ASSERT(deadline != fc::time_point(), transaction_exception, "deadline cannot be uninitialized");
 
@@ -1762,10 +1761,8 @@ struct controller_impl {
 
       // Create (unsigned) block:
       auto block_ptr = std::make_shared<signed_block>( pbhs.make_block_header(
-         bb._trx_mroot_or_receipt_digests.contains<checksum256_type>() ?
-         bb._trx_mroot_or_receipt_digests.get<checksum256_type>() :
-         merkle( std::move( bb._trx_mroot_or_receipt_digests.get<digests_t>() ) ),
-         merkle( std::move( pending->_block_stage.get<building_block>()._action_receipt_digests ) ),
+         bb._transaction_mroot ? *bb._transaction_mroot : calculate_trx_merkle( bb._pending_trx_receipts ),
+         calculate_action_merkle(),
          bb._new_pending_producer_schedule,
          std::move( bb._new_protocol_feature_activations ),
          protocol_features.get_protocol_feature_set()
@@ -1907,6 +1904,27 @@ struct controller_impl {
       }
    }
 
+   void report_block_header_diff( const block_header& b, const block_header& ab ) {
+
+#define EOS_REPORT(DESC,A,B) \
+   if( A != B ) { \
+      elog("${desc}: ${bv} != ${abv}", ("desc", DESC)("bv", A)("abv", B)); \
+   }
+
+      EOS_REPORT( "timestamp", b.timestamp, ab.timestamp )
+      EOS_REPORT( "producer", b.producer, ab.producer )
+      EOS_REPORT( "confirmed", b.confirmed, ab.confirmed )
+      EOS_REPORT( "previous", b.previous, ab.previous )
+      EOS_REPORT( "transaction_mroot", b.transaction_mroot, ab.transaction_mroot )
+      EOS_REPORT( "action_mroot", b.action_mroot, ab.action_mroot )
+      EOS_REPORT( "schedule_version", b.schedule_version, ab.schedule_version )
+      EOS_REPORT( "new_producers", b.new_producers, ab.new_producers )
+      EOS_REPORT( "header_extensions", b.header_extensions, ab.header_extensions )
+
+#undef EOS_REPORT
+   }
+
+
    void apply_block( const block_state_ptr& bsp, controller::block_status s, const trx_meta_cache_lookup& trx_lookup )
    { try {
       try {
@@ -1994,13 +2012,20 @@ struct controller_impl {
                         ("producer_receipt", receipt)("validator_receipt", trx_receipts.back()) );
          }
 
+         // validated in create_block_state_future()
+         pending->_block_stage.get<building_block>()._transaction_mroot = b->transaction_mroot;
+
          finalize_block();
 
          auto& ab = pending->_block_stage.get<assembled_block>();
 
-         // this implicitly asserts that all header fields (less the signature) are identical
-         EOS_ASSERT( producer_block_id == ab._id, block_validate_exception, "Block ID does not match",
-                     ("producer_block_id",producer_block_id)("validator_block_id",ab._id) );
+         if( producer_block_id != ab._id ) {
+            elog( "Validation block id does not match producer block id" );
+            report_block_header_diff( *b, *ab._unsigned_block );
+            // this implicitly asserts that all header fields (less the signature) are identical
+            EOS_ASSERT( producer_block_id == ab._id, block_validate_exception, "Block ID does not match",
+                        ("producer_block_id", producer_block_id)("validator_block_id", ab._id) );
+         }
 
          if( !use_bsp_cached ) {
             bsp->set_trxs_metas( std::move( ab._trx_metas ), !skip_auth_checks );
@@ -2238,8 +2263,19 @@ struct controller_impl {
       return applied_trxs;
    }
 
-   static checksum256_type calculate_trx_merkle( const deque<transaction_receipt>& trxs ) {
-      deque<digest_type> trx_digests;
+   checksum256_type calculate_action_merkle() {
+      vector<digest_type> action_digests;
+      const auto& actions = pending->_block_stage.get<building_block>()._actions;
+      action_digests.reserve( actions.size() );
+      for( const auto& a : actions )
+         action_digests.emplace_back( a.digest() );
+
+      return merkle( move(action_digests) );
+   }
+
+   static checksum256_type calculate_trx_merkle( const vector<transaction_receipt>& trxs ) {
+      vector<digest_type> trx_digests;
+      trx_digests.reserve( trxs.size() );
       for( const auto& a : trxs )
          trx_digests.emplace_back( a.digest() );
       return merkle( move( trx_digests ) );
@@ -2775,7 +2811,7 @@ transaction_trace_ptr controller::push_transaction( const transaction_metadata_p
    validate_db_available_size();
    EOS_ASSERT( get_read_mode() != db_read_mode::IRREVERSIBLE, transaction_type_exception, "push transaction not allowed in irreversible mode" );
    EOS_ASSERT( trx && !trx->implicit && !trx->scheduled, transaction_type_exception, "Implicit/Scheduled transaction not allowed" );
-   return my->push_transaction(trx, deadline, billed_cpu_time_us, explicit_billed_cpu_time, {} );
+   return my->push_transaction(trx, deadline, billed_cpu_time_us, explicit_billed_cpu_time );
 }
 
 transaction_trace_ptr controller::push_scheduled_transaction( const transaction_id_type& trxid, fc::time_point deadline,
@@ -3147,6 +3183,10 @@ bool controller::skip_db_sessions() const {
    } else {
       return false;
    }
+}
+
+bool controller::is_trusted_producer( const account_name& producer) const {
+   return get_validation_mode() == chain::validation_mode::LIGHT || my->conf.trusted_producers.count(producer);
 }
 
 bool controller::is_trusted_producer( const account_name& producer) const {

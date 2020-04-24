@@ -2461,6 +2461,7 @@ read_only::get_account_results read_only::get_account( const get_account_params&
    result.created          = accnt_obj.creation_date;
 
    uint32_t greylist_limit = db.is_resource_greylisted(result.account_name) ? 1 : config::maximum_elastic_resource_multiplier;
+<<<<<<< HEAD
    const block_timestamp_type current_usage_time (db.head_block_time());
    result.net_limit.set( rm.get_account_net_limit_ex( result.account_name, greylist_limit, current_usage_time).first );
    if ( result.net_limit.last_usage_update_time.valid() && (result.net_limit.last_usage_update_time->slot == 0) ) {   // account has no action yet
@@ -2470,6 +2471,10 @@ read_only::get_account_results read_only::get_account( const get_account_params&
    if ( result.cpu_limit.last_usage_update_time.valid() && (result.cpu_limit.last_usage_update_time->slot == 0) ) {   // account has no action yet
       result.cpu_limit.last_usage_update_time = accnt_obj.creation_date;
    }
+=======
+   result.net_limit = rm.get_account_net_limit_ex( result.account_name, greylist_limit).first;
+   result.cpu_limit = rm.get_account_cpu_limit_ex( result.account_name, greylist_limit).first;
+>>>>>>> de78b49b5765c88f4e005046d1489c3905985b94
    result.ram_usage = rm.get_account_ram_usage( result.account_name );
 
    const auto& permissions = d.get_index<permission_index,by_owner>();

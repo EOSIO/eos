@@ -182,8 +182,8 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       void schedule_maybe_produce_block( bool exhausted );
       void produce_block();
       bool maybe_produce_block();
-      bool remove_expired_trxs( const fc::time_point& deadline );
       bool block_is_exhausted() const;
+      bool remove_expired_persisted_trxs( const fc::time_point& deadline );
       bool remove_expired_blacklisted_trxs( const fc::time_point& deadline );
       bool process_unapplied_trxs( const fc::time_point& deadline );
       void process_scheduled_and_incoming_trxs( const fc::time_point& deadline, size_t& pending_incoming_process_limit );
@@ -412,6 +412,47 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          return true;
       }
 
+      class incoming_transaction_queue {
+         uint64_t max_incoming_transaction_queue_size = 0;
+         uint64_t size_in_bytes = 0;
+         std::deque<std::tuple<transaction_metadata_ptr, bool, next_function<transaction_trace_ptr>>> _incoming_transactions;
+
+      private:
+         static uint64_t calc_size( const transaction_metadata_ptr& trx ) {
+            return trx->packed_trx()->get_unprunable_size() + trx->packed_trx()->get_prunable_size() + sizeof( *trx );
+         }
+
+         void add_size( const transaction_metadata_ptr& trx ) {
+            auto size = calc_size( trx );
+            EOS_ASSERT( size_in_bytes + size < max_incoming_transaction_queue_size, tx_resource_exhaustion, "Transaction exceeded producer resource limit" );
+            size_in_bytes += size;
+         }
+
+      public:
+         void set_max_incoming_transaction_queue_size( uint64_t v ) { max_incoming_transaction_queue_size = v; }
+
+         void add( const transaction_metadata_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next ) {
+            add_size( trx );
+            _incoming_transactions.emplace_back( trx, persist_until_expired, std::move( next ) );
+         }
+
+         void add_front( const transaction_metadata_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next ) {
+            add_size( trx );
+            _incoming_transactions.emplace_front( trx, persist_until_expired, std::move( next ) );
+         }
+
+         auto pop_front() {
+            EOS_ASSERT( !_incoming_transactions.empty(), producer_exception, "logic error, front() called on empty incoming_transactions" );
+            auto intrx = _incoming_transactions.front();
+            _incoming_transactions.pop_front();
+            const transaction_metadata_ptr& trx = std::get<0>( intrx );
+            size_in_bytes -= calc_size( trx );
+            return intrx;
+         }
+
+         return true;
+      }
+
       void on_incoming_transaction_async(const packed_transaction_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next) {
          chain::controller& chain = chain_plug->chain();
          const auto max_trx_time_ms = _max_transaction_time_ms.load();
@@ -487,7 +528,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
             }
 
             if( !chain.is_building_block()) {
-               _unapplied_transactions.add_incoming( trx, persist_until_expired, next );
+               _pending_incoming_transactions.add( trx, persist_until_expired, next );
                return true;
             }
 
@@ -503,7 +544,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
             auto trace = chain.push_transaction( trx, deadline, trx->billed_cpu_time_us, false );
             if( trace->except ) {
                if( exception_is_exhausted( *trace->except, deadline_is_subjective )) {
-                  _unapplied_transactions.add_incoming( trx, persist_until_expired, next );
+                  _pending_incoming_transactions.add( trx, persist_until_expired, next );
                   if( _pending_block_mode == pending_block_mode::producing ) {
                      fc_dlog( _trx_trace_log, "[TRX_TRACE] Block ${block_num} for producer ${prod} COULD NOT FIT, tx: ${txid} RETRYING ",
                               ("block_num", chain.head_block_num() + 1)
@@ -1704,7 +1745,6 @@ bool producer_plugin_impl::process_unapplied_trxs( const fc::time_point& deadlin
                      // don't erase, subjective failure so try again next time
                      break;
                   }
-                  // don't erase, subjective failure so try again next time
                } else {
                   // this failed our configured maximum transaction time, we don't want to replay it
                   ++num_failed;
@@ -1781,12 +1821,7 @@ void producer_plugin_impl::process_scheduled_and_incoming_trxs( const fc::time_p
 
          --pending_incoming_process_limit;
          incoming_trx_weight -= 1.0;
-
-         auto trx_meta = itr->trx_meta;
-         auto next = itr->next;
-         bool persist_until_expired = itr->trx_type == trx_enum_type::incoming_persisted;
-         itr = _unapplied_transactions.erase( itr );
-         if( !process_incoming_transaction_async( trx_meta, persist_until_expired, next ) ) {
+         if( !process_incoming_transaction_async(std::get<0>(e), std::get<1>(e), std::get<2>(e)) ) {
             exhausted = true;
             break;
          }
@@ -1812,7 +1847,6 @@ void producer_plugin_impl::process_scheduled_and_incoming_trxs( const fc::time_p
                   exhausted = true;
                   break;
                }
-               // do not blacklist
             } else {
                // this failed our configured maximum transaction time, we don't want to replay it add it to a blacklist
                _blacklisted_transactions.insert(transaction_id_with_expiry{trx_id, sch_expiration});
@@ -1851,12 +1885,8 @@ bool producer_plugin_impl::process_incoming_trxs( const fc::time_point& deadline
             break;
          }
          --pending_incoming_process_limit;
-         auto trx_meta = itr->trx_meta;
-         auto next = itr->next;
-         bool persist_until_expired = itr->trx_type == trx_enum_type::incoming_persisted;
-         itr = _unapplied_transactions.erase( itr );
          ++processed;
-         if( !process_incoming_transaction_async( trx_meta, persist_until_expired, next ) ) {
+         if( !process_incoming_transaction_async(std::get<0>(e), std::get<1>(e), std::get<2>(e)) ) {
             exhausted = true;
             break;
          }

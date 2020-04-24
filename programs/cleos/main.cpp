@@ -471,6 +471,28 @@ void print_action( const fc::variant& at ) {
    }
 }
 
+//resolver for ABI serializer to decode actions in proposed transaction in multisig contract
+auto abi_serializer_resolver = [](const name& account) -> fc::optional<abi_serializer> {
+   static unordered_map<account_name, fc::optional<abi_serializer> > abi_cache;
+   auto it = abi_cache.find( account );
+   if ( it == abi_cache.end() ) {
+      auto result = call(get_abi_func, fc::mutable_variant_object("account_name", account));
+      auto abi_results = result.as<eosio::chain_apis::read_only::get_abi_results>();
+
+      fc::optional<abi_serializer> abis;
+      if( abi_results.abi.valid() ) {
+         abis.emplace( *abi_results.abi, abi_serializer::create_yield_function( abi_serializer_max_time ) );
+      } else {
+         std::cerr << "ABI for contract " << account.to_string() << " not found. Action data will be shown in hex only." << std::endl;
+      }
+      abi_cache.emplace( account, abis );
+
+      return abis;
+   }
+
+   return it->second;
+};
+
 bytes variant_to_bin( const account_name& account, const action_name& action, const fc::variant& action_args_var ) {
    auto abis = abi_serializer_resolver( account );
    FC_ASSERT( abis.valid(), "No ABI found for ${contract}", ("contract", account));
@@ -3535,7 +3557,7 @@ int main( int argc, char** argv ) {
          // unable to convert so try via abi
          signed_transaction trx;
          abi_serializer::from_variant( trx_var, trx, abi_serializer_resolver, abi_serializer::create_yield_function( abi_serializer_max_time ) );
-         std::cout << fc::json::to_pretty_string( push_transaction( trx, signing_keys_opt.get_keys() )) << std::endl;
+         std::cout << fc::json::to_pretty_string( push_transaction( trx )) << std::endl;
       }
    });
 
