@@ -12,7 +12,7 @@ add_subdirectory( version )
 add_subdirectory( state_history )
 add_subdirectory( abieos )
 add_subdirectory( rocksdb EXCLUDE_FROM_ALL )
-add_subdirectory( chain-kv )
+add_subdirectory( chain_kv )
 
 set(USE_EXISTING_SOFTFLOAT ON CACHE BOOL "use pre-exisiting softfloat lib")
 set(ENABLE_TOOLS OFF CACHE BOOL "Build tools")

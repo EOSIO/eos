@@ -3,7 +3,7 @@ include(ExternalProject)
 file(GLOB UNIT_TESTS "*.cpp") # find all unit test suites
 
 add_executable(chain-kv-tests ${UNIT_TESTS})
-target_link_libraries(chain-kv-tests chain-kv)
+target_link_libraries(chain-kv-tests chain_kv)
 
 enable_testing()
 
