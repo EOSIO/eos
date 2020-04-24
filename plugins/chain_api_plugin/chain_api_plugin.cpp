@@ -144,12 +144,6 @@ void chain_api_plugin::plugin_startup() {
       CHAIN_RW_CALL_ASYNC(push_transactions, chain_apis::read_write::push_transactions_results, 202),
       CHAIN_RW_CALL_ASYNC(send_transaction, chain_apis::read_write::send_transaction_results, 202)
    });
-
-//   if (chain.account_queries_enabled()) {
-//      _http_plugin.add_api({
-//         CHAIN_RO_CALL_WITH_400(get_accounts_by_authorizers, 200),
-//      });
-//   }
 }
 
 void chain_api_plugin::plugin_shutdown() {}
