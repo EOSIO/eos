@@ -74,7 +74,7 @@ namespace eosio { namespace chain {
       template <typename T>
       auto from_wasm(void* ptr) const
          -> std::enable_if_t< std::is_pointer_v<T>,
-                              vm::argument_proxy<std::remove_pointer_t<T>>> {
+                              vm::argument_proxy<T> > {
          validate_pointer<std::remove_pointer_t<T>>(ptr, 1);
          return {ptr};
       }
