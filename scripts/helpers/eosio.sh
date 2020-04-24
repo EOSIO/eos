@@ -294,6 +294,7 @@ function build-clang() {
             && rm -rf clang10 \
             && git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://github.com/llvm/llvm-project clang10 \
             && cd clang10 \
+            && patch -p1 < \"$REPO_ROOT/scripts/clang-devtoolset9-support.patch\" \
             && mkdir build && cd build \
             && ${CMAKE} -G 'Unix Makefiles' -DCMAKE_INSTALL_PREFIX='${CLANG_ROOT}' -DLLVM_ENABLE_PROJECTS='lld;polly;clang;clang-tools-extra;libcxx;libcxxabi;libunwind;compiler-rt' -DLLVM_BUILD_LLVM_DYLIB=ON -DLLVM_ENABLE_RTTI=ON -DLLVM_INCLUDE_DOCS=OFF -DLLVM_TARGETS_TO_BUILD=host -DCMAKE_BUILD_TYPE=Release ../llvm \
             && make -j${JOBS} \
