@@ -58,7 +58,7 @@ struct setcode_options {
 void validate(const bytes& code, const whitelisted_intrinsics_type& intrinsics) {
    wasm_code_ptr code_ptr((uint8_t*)code.data(), code.size());
    try {
-      eosio::vm::backend<eos_vm_host_functions_t, eosio::vm::null_backend, setcode_options> bkend(code_ptr, code.size(), nullptr);
+      eos_vm_null_backend_t<setcode_options> bkend(code_ptr, code.size(), nullptr);
       // check import signatures
        eos_vm_host_functions_t::resolve(bkend.get_module());
       // check that the imports are all currently enabled
@@ -171,13 +171,13 @@ bool eos_vm_runtime<Impl>::inject_module(IR::Module& module) {
 
 template<typename Impl>
 std::unique_ptr<wasm_instantiated_module_interface> eos_vm_runtime<Impl>::instantiate_module(const char* code_bytes, size_t code_size, std::vector<uint8_t>,
-                                                                                             const digest_type&, const uint8_t&, const uint8_t&, const wasm_config& opts) {
+                                                                                             const digest_type&, const uint8_t&, const uint8_t&) {
 
    using backend_t = eos_vm_backend_t<Impl>;
    try {
       wasm_code_ptr code((uint8_t*)code_bytes, code_size);
-      apply_options options = { .max_pages = opts.max_pages,
-                                .max_call_depth = opts.max_call_depth };
+      apply_options options = { .max_pages = 65536,
+                                .max_call_depth = 0 };
       std::unique_ptr<backend_t> bkend = std::make_unique<backend_t>(code, code_size, nullptr, options);
       eos_vm_host_functions_t::resolve(bkend->get_module());
       return std::make_unique<eos_vm_instantiated_module<Impl>>(this, std::move(bkend));
