@@ -40,9 +40,9 @@ namespace eosio { namespace chain {
 
    void wasm_interface::validate(const controller& control, const bytes& code) {
       const auto& pso = control.db().get<protocol_state_object>();
-      const auto& gpo = control.get_global_properties();
 
       if (control.is_builtin_activated(builtin_protocol_feature_t::configurable_wasm_limits)) {
+         const auto& gpo = control.get_global_properties();
          webassembly::eos_vm_runtime::validate( code, gpo.wasm_configuration, pso.whitelisted_intrinsics );
          return;
       }
