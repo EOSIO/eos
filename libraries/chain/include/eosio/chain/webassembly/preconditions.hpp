@@ -145,7 +145,7 @@ namespace eosio { namespace chain { namespace webassembly {
             using arg_t = std::decay_t<decltype(arg)>;
             static_assert( is_whitelisted_type_v<arg_t>, "whitelisted type violation");
             if constexpr (is_span_type_v<arg_t> || vm::is_argument_proxy_type_v<arg_t>) {
-               eosio::vm::invoke_on<false, eosio::vm::invoke_on_all_t>([&](auto&& narg, auto&&... nrest) {
+               eosio::vm::invoke_on<false, eosio::vm::invoke_on_all_t>([&arg](auto&& narg, auto&&... nrest) {
                   using nested_arg_t = std::decay_t<decltype(narg)>;
                   if constexpr (eosio::vm::is_span_type_v<nested_arg_t> || vm::is_argument_proxy_type_v<nested_arg_t>)
                       EOS_ASSERT(!is_aliasing(detail::to_span(arg), detail::to_span(narg)), wasm_exception, "pointers not allowed to alias");
