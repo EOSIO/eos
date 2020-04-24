@@ -85,6 +85,7 @@ if [[ ! $BUILDKITE_PIPELINE_SLUG =~ 'lrt' ]] && [[ $BUILDKITE_BRANCH =~ ^release
 fi
 # run LRTs synchronously when running full test suite
 if [[ "$RUN_ALL_TESTS" == 'true' && "$SKIP_LONG_RUNNING_TESTS" != 'true' ]]; then
+    export BUILD_SOURCE="--build \$BUILDKITE_BUILD_ID"
     export SKIP_LONG_RUNNING_TESTS='false'
     export TRIGGER_JOB='false'
 fi
