@@ -72,7 +72,7 @@ namespace {
       :store(store)
       {}
 
-      void append( const block_trace_v0& trace ) {
+      void append( const block_trace_v1& trace ) {
          store->append(trace);
       }
 
