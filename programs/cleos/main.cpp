@@ -314,11 +314,11 @@ eosio::chain_apis::read_only::get_info_results get_info() {
 }
 
 string generate_nonce_string() {
-   return fc::to_string(fc::now<fc::microseconds>().time_since_epoch().count());
+   return fc::to_string(fc::now().time_since_epoch().count());
 }
 
 chain::action generate_nonce_action() {
-   return chain::action( {}, config::null_account_name, name("nonce"), fc::raw::pack(fc::now<fc::microseconds>().time_since_epoch().count()));
+   return chain::action( {}, config::null_account_name, name("nonce"), fc::raw::pack(fc::now().time_since_epoch().count()));
 }
 
 //resolver for ABI serializer to decode actions in proposed transaction in multisig contract

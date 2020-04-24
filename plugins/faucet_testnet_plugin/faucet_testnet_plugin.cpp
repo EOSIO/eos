@@ -213,7 +213,11 @@ struct faucet_testnet_plugin_impl {
       controller& cc = plugin.chain();
 
       signed_transaction trx;
+<<<<<<< HEAD
       auto memo = fc::variant(fc::now<fc::microseconds>()).as_string() + " " + fc::variant(fc::now<fc::microseconds>().time_since_epoch()).as_string();
+=======
+      auto memo = fc::variant(fc::now()).as_string() + " " + fc::variant(fc::now().time_since_epoch()).as_string();
+>>>>>>> 381862ac9... fc is using std::chrono
 
       //create "A" account
       auto owner_auth   = chain::authority{1, {{owner_pub_key, 1}}, {}};

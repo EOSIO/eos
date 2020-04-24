@@ -5,10 +5,11 @@
 
 using namespace eosio;
 using namespace eosio::chain;
+using namespace std::chrono_literals;
 
 BOOST_AUTO_TEST_SUITE(unapplied_transaction_queue_tests)
 
-auto unique_trx_meta_data( fc::time_point_sec expire = fc::now<fc::seconds>() + fc::seconds( 120 ) ) {
+auto unique_trx_meta_data( fc::time_point_sec expire = fc::now<fc::seconds>() + 120s ) {
 
    static uint64_t nextid = 0;
    ++nextid;
@@ -297,14 +298,14 @@ BOOST_AUTO_TEST_CASE( unapplied_transaction_queue_test ) try {
    BOOST_REQUIRE( next( q ) == nullptr );
    BOOST_CHECK( q.empty() );
 
-   auto trx20 = unique_trx_meta_data( fc::now<fc::seconds>() - fc::seconds( 1 ) );
-   auto trx21 = unique_trx_meta_data( fc::now<fc::seconds>() - fc::seconds( 1 ) );
-   auto trx22 = unique_trx_meta_data( fc::now<fc::seconds>() + fc::seconds( 120 ) );
-   auto trx23 = unique_trx_meta_data( fc::now<fc::seconds>() + fc::seconds( 120 ) );
+   auto trx20 = unique_trx_meta_data( fc::now<fc::seconds>() - 1s );
+   auto trx21 = unique_trx_meta_data( fc::now<fc::seconds>() - 1s );
+   auto trx22 = unique_trx_meta_data( fc::now<fc::seconds>() + 120s );
+   auto trx23 = unique_trx_meta_data( fc::now<fc::seconds>() + 120s );
    q.add_aborted( { trx20, trx22 } );
    q.add_persisted( trx21 );
    q.add_persisted( trx23 );
-   q.clear_expired( fc::now<fc::microseconds>(), fc::now<fc::microseconds>() + fc::seconds( 300 ), [](auto, auto){} );
+   q.clear_expired( fc::now(), fc::now() + 300s, [](auto, auto){} );
    BOOST_CHECK( q.size() == 2 );
    BOOST_REQUIRE( next( q ) == trx23 );
    BOOST_REQUIRE( next( q ) == trx22 );

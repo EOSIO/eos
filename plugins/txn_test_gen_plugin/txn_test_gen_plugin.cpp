@@ -341,7 +341,7 @@ struct txn_test_gen_plugin_impl {
          static fc::crypto::private_key a_priv_key = fc::crypto::private_key::regenerate(fc::sha256(std::string(64, 'a')));
          static fc::crypto::private_key b_priv_key = fc::crypto::private_key::regenerate(fc::sha256(std::string(64, 'b')));
 
-         static uint64_t nonce = static_cast<uint64_t>(fc::now<fc::microseconds>().time_since_epoch().count()) << 32;
+         static uint64_t nonce = static_cast<uint64_t>(fc::now().time_since_epoch().count()) << 32;
 
          uint32_t reference_block_num = cc.last_irreversible_block_num();
          if (txn_reference_block_lag >= 0) {

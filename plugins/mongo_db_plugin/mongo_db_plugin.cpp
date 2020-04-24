@@ -92,17 +92,17 @@ public:
 
    bool add_action_trace( mongocxx::bulk_write& bulk_action_traces, const chain::action_trace& atrace,
                           const chain::transaction_trace_ptr& t,
-                          bool executed, const std::chrono::milliseconds& now,
+                          bool executed, const fc::milliseconds& now,
                           bool& write_ttrace );
 
    void update_account(const chain::action& act);
 
    void add_pub_keys( const vector<chain::key_weight>& keys, const account_name& name,
-                      const permission_name& permission, const std::chrono::milliseconds& now );
+                      const permission_name& permission, const fc::milliseconds& now );
    void remove_pub_keys( const account_name& name, const permission_name& permission );
    void add_account_control( const vector<chain::permission_level_weight>& controlling_accounts,
                              const account_name& name, const permission_name& permission,
-                             const std::chrono::milliseconds& now );
+                             const fc::milliseconds& now );
    void remove_account_control( const account_name& name, const permission_name& permission );
 
    /// @return true if act should be added to mongodb, false to skip it
@@ -294,7 +294,7 @@ void mongo_db_plugin_impl::queue( Queue& queue, const Entry& e ) {
       queue_sleep_time += 10;
       if( queue_sleep_time > 1000 )
          wlog("queue size: ${q}", ("q", queue_size));
-      std::this_thread::sleep_for( std::chrono::milliseconds( queue_sleep_time ));
+      std::this_thread::sleep_for( fc::milliseconds( queue_sleep_time ));
       lock.lock();
    } else {
       queue_sleep_time -= 10;
@@ -440,52 +440,52 @@ void mongo_db_plugin_impl::consume_blocks() {
          }
 
          // process transactions
-         auto start_time = fc::now<fc::microseconds>();
+         auto start_time = fc::now();
          auto size = transaction_trace_process_queue.size();
          while (!transaction_trace_process_queue.empty()) {
             const auto& t = transaction_trace_process_queue.front();
             process_applied_transaction(t);
             transaction_trace_process_queue.pop_front();
          }
-         auto time = fc::now<fc::microseconds>() - start_time;
+         auto time = fc::now() - start_time;
          auto per = size > 0 ? time.count()/size : 0;
          if( time > fc::microseconds(500000) ) // reduce logging, .5 secs
             ilog( "process_applied_transaction,  time per: ${p}, size: ${s}, time: ${t}", ("s", size)("t", time)("p", per) );
 
-         start_time = fc::now<fc::microseconds>();
+         start_time = fc::now();
          size = transaction_metadata_process_queue.size();
          while (!transaction_metadata_process_queue.empty()) {
             const auto& t = transaction_metadata_process_queue.front();
             process_accepted_transaction(t);
             transaction_metadata_process_queue.pop_front();
          }
-         time = fc::now<fc::microseconds>() - start_time;
+         time = fc::now() - start_time;
          per = size > 0 ? time.count()/size : 0;
          if( time > fc::microseconds(500000) ) // reduce logging, .5 secs
             ilog( "process_accepted_transaction, time per: ${p}, size: ${s}, time: ${t}", ("s", size)( "t", time )( "p", per ));
 
          // process blocks
-         start_time = fc::now<fc::microseconds>();
+         start_time = fc::now();
          size = block_state_process_queue.size();
          while (!block_state_process_queue.empty()) {
             const auto& bs = block_state_process_queue.front();
             process_accepted_block( bs );
             block_state_process_queue.pop_front();
          }
-         time = fc::now<fc::microseconds>() - start_time;
+         time = fc::now() - start_time;
          per = size > 0 ? time.count()/size : 0;
          if( time > fc::microseconds(500000) ) // reduce logging, .5 secs
             ilog( "process_accepted_block,       time per: ${p}, size: ${s}, time: ${t}", ("s", size)("t", time)("p", per) );
 
          // process irreversible blocks
-         start_time = fc::now<fc::microseconds>();
+         start_time = fc::now();
          size = irreversible_block_state_process_queue.size();
          while (!irreversible_block_state_process_queue.empty()) {
             const auto& bs = irreversible_block_state_process_queue.front();
             process_irreversible_block(bs);
             irreversible_block_state_process_queue.pop_front();
          }
-         time = fc::now<fc::microseconds>() - start_time;
+         time = fc::now() - start_time;
          per = size > 0 ? time.count()/size : 0;
          if( time > fc::microseconds(500000) ) // reduce logging, .5 secs
             ilog( "process_irreversible_block,   time per: ${p}, size: ${s}, time: ${t}", ("s", size)("t", time)("p", per) );
@@ -597,7 +597,7 @@ optional<abi_serializer> mongo_db_plugin_impl::get_abi_serializer( account_name 
          auto itr = abi_cache_index.find( n );
          if( itr != abi_cache_index.end() ) {
             abi_cache_index.modify( itr, []( auto& entry ) {
-               entry.last_accessed = fc::now<fc::microseconds>();
+               entry.last_accessed = fc::now();
             });
 
             return itr->serializer;
@@ -618,7 +618,7 @@ optional<abi_serializer> mongo_db_plugin_impl::get_abi_serializer( account_name 
                purge_abi_cache(); // make room if necessary
                abi_cache entry;
                entry.account = n;
-               entry.last_accessed = fc::now<fc::microseconds>();
+               entry.last_accessed = fc::now();
                abi_serializer abis;
                if( n == chain::config::system_account_name ) {
                   // redefine eosio setabi.abi from bytes to abi_def
@@ -748,8 +748,7 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
 
    auto trans_doc = bsoncxx::builder::basic::document{};
 
-   auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
-         std::chrono::microseconds{fc::now<fc::microseconds>().time_since_epoch().count()} );
+   auto now = fc::now<fc::milliseconds>();
 
    const auto& trx_id = t->id();
    const auto trx_id_str = trx_id.str();
@@ -764,7 +763,7 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
    } catch( bsoncxx::exception& e) {
       elog( "Unable to convert transaction to BSON: ${e}", ("e", e.what()) );
       try {
-         elog( "  JSON: ${j}", ("j", fc::json::to_string( v, fc::now<fc::microseconds>() + fc::exception::format_time_limit )) );
+         elog( "  JSON: ${j}", ("j", fc::json::to_string( v, fc::now() + fc::exception::format_time_limit )) );
       } catch(...) {}
    }
 
@@ -788,7 +787,7 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
       } catch( bsoncxx::exception& e ) {
          elog( "Unable to convert signing keys to BSON: ${e}", ("e", e.what()) );
          try {
-            elog( "  JSON: ${j}", ("j", fc::json::to_string( signing_keys, fc::now<fc::microseconds>() + fc::exception::format_time_limit )) );
+            elog( "  JSON: ${j}", ("j", fc::json::to_string( signing_keys, fc::now() + fc::exception::format_time_limit )) );
          } catch(...) {}
       }
    }
@@ -815,7 +814,7 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
 bool
 mongo_db_plugin_impl::add_action_trace( mongocxx::bulk_write& bulk_action_traces, const chain::action_trace& atrace,
                                         const chain::transaction_trace_ptr& t,
-                                        bool executed, const std::chrono::milliseconds& now,
+                                        bool executed, const fc::milliseconds& now,
                                         bool& write_ttrace )
 {
    using namespace bsoncxx::types;
@@ -840,7 +839,7 @@ mongo_db_plugin_impl::add_action_trace( mongocxx::bulk_write& bulk_action_traces
       } catch( bsoncxx::exception& e ) {
          elog( "Unable to convert action trace to BSON: ${e}", ("e", e.what()) );
          try {
-            elog( "  JSON: ${j}", ("j", fc::json::to_string( v, fc::now<fc::microseconds>() + fc::exception::format_time_limit )) );
+            elog( "  JSON: ${j}", ("j", fc::json::to_string( v, fc::now() + fc::exception::format_time_limit )) );
          } catch(...) {}
       }
       if( t->receipt.valid() ) {
@@ -863,8 +862,7 @@ void mongo_db_plugin_impl::_process_applied_transaction( const chain::transactio
 
    auto trans_traces_doc = bsoncxx::builder::basic::document{};
 
-   auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
-         std::chrono::microseconds{fc::now<fc::microseconds>().time_since_epoch().count()});
+   auto now = fc::now<fc::milliseconds>();
 
    mongocxx::options::bulk_write bulk_opts;
    bulk_opts.ordered(false);
@@ -893,7 +891,7 @@ void mongo_db_plugin_impl::_process_applied_transaction( const chain::transactio
          } catch( bsoncxx::exception& e ) {
             elog( "Unable to convert transaction to BSON: ${e}", ("e", e.what()) );
             try {
-               elog( "  JSON: ${j}", ("j", fc::json::to_string( v, fc::now<fc::microseconds>() + fc::exception::format_time_limit )) );
+               elog( "  JSON: ${j}", ("j", fc::json::to_string( v, fc::now() + fc::exception::format_time_limit )) );
             } catch(...) {}
          }
          trans_traces_doc.append( kvp( "createdAt", b_date{now} ) );
@@ -939,8 +937,7 @@ void mongo_db_plugin_impl::_process_accepted_block( const chain::block_state_ptr
    const auto& block_id = bs->id;
    const auto block_id_str = block_id.str();
 
-   auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
-         std::chrono::microseconds{fc::now<fc::microseconds>().time_since_epoch().count()});
+   auto now = fc::now<fc::milliseconds>();
 
    if( store_block_states ) {
       auto block_state_doc = bsoncxx::builder::basic::document{};
@@ -955,7 +952,7 @@ void mongo_db_plugin_impl::_process_accepted_block( const chain::block_state_ptr
       } catch( bsoncxx::exception& e ) {
          elog( "Unable to convert block_header_state to BSON: ${e}", ("e", e.what()) );
          try {
-            elog( "  JSON: ${j}", ("j", fc::json::to_string( bhs, fc::now<fc::microseconds>() + fc::exception::format_time_limit )) );
+            elog( "  JSON: ${j}", ("j", fc::json::to_string( bhs, fc::now() + fc::exception::format_time_limit )) );
          } catch(...) {}
       }
       block_state_doc.append( kvp( "createdAt", b_date{now} ) );
@@ -988,7 +985,7 @@ void mongo_db_plugin_impl::_process_accepted_block( const chain::block_state_ptr
       } catch( bsoncxx::exception& e ) {
          elog( "Unable to convert block to BSON: ${e}", ("e", e.what()) );
          try {
-            elog( "  JSON: ${j}", ("j", fc::json::to_string( v, fc::now<fc::microseconds>() + fc::exception::format_time_limit )) );
+            elog( "  JSON: ${j}", ("j", fc::json::to_string( v, fc::now() + fc::exception::format_time_limit )) );
          } catch(...) {}
       }
       block_doc.append( kvp( "createdAt", b_date{now} ) );
@@ -1022,8 +1019,7 @@ void mongo_db_plugin_impl::_process_irreversible_block(const chain::block_state_
    const auto block_id = bs->block->id();
    const auto block_id_str = block_id.str();
 
-   auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
-         std::chrono::microseconds{fc::now<fc::microseconds>().time_since_epoch().count()});
+   auto now = fc::now<fc::milliseconds>();
 
    if( store_blocks ) {
       auto ir_block = find_block( _blocks, block_id_str );
@@ -1096,7 +1092,7 @@ void mongo_db_plugin_impl::_process_irreversible_block(const chain::block_state_
 }
 
 void mongo_db_plugin_impl::add_pub_keys( const vector<chain::key_weight>& keys, const account_name& name,
-                                         const permission_name& permission, const std::chrono::milliseconds& now )
+                                         const permission_name& permission, const fc::milliseconds& now )
 {
    using bsoncxx::builder::basic::kvp;
    using bsoncxx::builder::basic::make_document;
@@ -1152,7 +1148,7 @@ void mongo_db_plugin_impl::remove_pub_keys( const account_name& name, const perm
 
 void mongo_db_plugin_impl::add_account_control( const vector<chain::permission_level_weight>& controlling_accounts,
                                                 const account_name& name, const permission_name& permission,
-                                                const std::chrono::milliseconds& now )
+                                                const fc::milliseconds& now )
 {
    using bsoncxx::builder::basic::kvp;
    using bsoncxx::builder::basic::make_document;
@@ -1209,7 +1205,7 @@ void mongo_db_plugin_impl::remove_account_control( const account_name& name, con
 
 namespace {
 
-void create_account( mongocxx::collection& accounts, const name& name, std::chrono::milliseconds& now ) {
+void create_account( mongocxx::collection& accounts, const name& name, fc::milliseconds& now ) {
    using namespace bsoncxx::types;
    using bsoncxx::builder::basic::kvp;
    using bsoncxx::builder::basic::make_document;
@@ -1243,8 +1239,7 @@ void mongo_db_plugin_impl::update_account(const chain::action& act)
 
    try {
       if( act.name == newaccount ) {
-         std::chrono::milliseconds now = std::chrono::duration_cast<std::chrono::milliseconds>(
-               std::chrono::microseconds{fc::now<fc::microseconds>().time_since_epoch().count()} );
+         auto now = fc::now<fc::milliseconds>();
          auto newacc = act.data_as<chain::newaccount>();
 
          create_account( _accounts, newacc.name, now );
@@ -1255,8 +1250,7 @@ void mongo_db_plugin_impl::update_account(const chain::action& act)
          add_account_control( newacc.active.accounts, newacc.name, active, now );
 
       } else if( act.name == updateauth ) {
-         auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
-               std::chrono::microseconds{fc::now<fc::microseconds>().time_since_epoch().count()} );
+         auto now = fc::now<fc::milliseconds>();
          const auto update = act.data_as<chain::updateauth>();
          remove_pub_keys(update.account, update.permission);
          remove_account_control(update.account, update.permission);
@@ -1269,8 +1263,7 @@ void mongo_db_plugin_impl::update_account(const chain::action& act)
          remove_account_control(del.account, del.permission);
 
       } else if( act.name == setabi ) {
-         auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
-               std::chrono::microseconds{fc::now<fc::microseconds>().time_since_epoch().count()} );
+         auto now = fc::now<fc::milliseconds>();
          auto setabi = act.data_as<chain::setabi>();
 
          abi_cache_index.erase( setabi.account );
@@ -1300,7 +1293,7 @@ void mongo_db_plugin_impl::update_account(const chain::action& act)
             } catch( bsoncxx::exception& e ) {
                elog( "Unable to convert abi JSON to BSON: ${e}", ("e", e.what()));
                try {
-                  elog( "  JSON: ${j}", ("j", fc::json::to_string( v, fc::now<fc::microseconds>() + fc::exception::format_time_limit )) );
+                  elog( "  JSON: ${j}", ("j", fc::json::to_string( v, fc::now() + fc::exception::format_time_limit )) );
                } catch(...) {}
             }
          }
@@ -1383,7 +1376,7 @@ void mongo_db_plugin_impl::create_expiration_index(mongocxx::collection& collect
    }
 
    mongocxx::options::index index_options{};
-   index_options.expire_after( std::chrono::seconds( expire_after_seconds ));
+   index_options.expire_after( fc::seconds( expire_after_seconds ));
    index_options.background( true );
    ilog( "mongo db create ttl index for collection ${collection}", ( "collection", collection.name().to_string()));
    collection.create_index( make_document( kvp( "createdAt", 1 )), index_options );
@@ -1403,8 +1396,7 @@ void mongo_db_plugin_impl::init() {
 
       auto accounts = mongo_conn[db_name][accounts_col];
       if( accounts.estimated_document_count() == 0 ) {
-         auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
-               std::chrono::microseconds{fc::now<fc::microseconds>().time_since_epoch().count()} );
+         auto now = fc::now<fc::milliseconds>();
 
          auto doc = make_document( kvp( "name", name( chain::config::system_account_name ).to_string()),
                                    kvp( "createdAt", b_date{now} ));

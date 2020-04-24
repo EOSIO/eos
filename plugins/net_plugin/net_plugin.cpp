@@ -423,7 +423,7 @@ namespace eosio {
    struct peer_sync_state {
       explicit peer_sync_state(uint32_t start = 0, uint32_t end = 0, uint32_t last_acted = 0)
          :start_block( start ), end_block( end ), last( last_acted ),
-          start_time(fc::now<fc::microseconds>())
+          start_time(fc::now())
       {}
       uint32_t     start_block;
       uint32_t     end_block;
@@ -931,7 +931,7 @@ namespace eosio {
          has_last_req = !!self->last_req;
          self->last_handshake_recv = handshake_message();
          self->last_handshake_sent = handshake_message();
-         self->last_close = fc::now<fc::microseconds>();
+         self->last_close = fc::now();
          self->conn_node_id = fc::sha256();
       }
       if( has_last_req && !shutdown ) {
@@ -2028,7 +2028,7 @@ namespace eosio {
       fc_dlog( logger, "not sending rejected transaction ${tid}", ("tid", trx->id()) );
       // keep rejected transaction around for awhile so we don't broadcast it
       // update its block number so it will be purged when current block number is lib
-      if( trx->expiration() > fc::now<fc::microseconds>() ) { // no need to update blk_num if already expired
+      if( trx->expiration() > fc::now() ) { // no need to update blk_num if already expired
          update_txns_block_num( trx->id(), head_blk_num );
       }
    }
@@ -2128,7 +2128,7 @@ namespace eosio {
       if( consecutive_immediate_connection_close > def_max_consecutive_immediate_connection_close || no_retry == benign_other ) {
          auto connector_period_us = std::chrono::duration_cast<std::chrono::microseconds>( my_impl->connector_period );
          std::lock_guard<std::mutex> g( c->conn_mtx );
-         if( last_close == fc::time_point() || last_close > fc::now<fc::microseconds>() - fc::microseconds( connector_period_us.count() ) ) {
+         if( last_close == fc::time_point() || last_close > fc::now() - fc::microseconds( connector_period_us.count() ) ) {
             return true; // true so doesn't remove from valid connections
          }
       }
@@ -2399,7 +2399,7 @@ namespace eosio {
             }
             fc_dlog( logger, "${p} received block ${num}, id ${id}..., latency: ${latency}",
                      ("p", peer_name())("num", bh.block_num())("id", blk_id.str().substr(8,16))
-                     ("latency", (fc::now<fc::microseconds>() - bh.timestamp).count()/1000) );
+                     ("latency", (fc::now() - bh.timestamp).count()/1000) );
             if( !my_impl->sync_master->syncing_with_peer() ) { // guard against peer thinking it needs to send us old blocks
                uint32_t lib = 0;
                std::tie( lib, std::ignore, std::ignore, std::ignore, std::ignore, std::ignore ) = my_impl->get_chain_info();
@@ -2922,7 +2922,7 @@ namespace eosio {
          fc_elog( logger,"Caught an unknown exception trying to recall blockID" );
       }
 
-      fc::microseconds age( fc::now<fc::microseconds>() - msg->timestamp);
+      fc::microseconds age( fc::now() - msg->timestamp);
       peer_dlog( c, "received signed_block : #${n} block age in secs = ${age}",
                  ("n", blk_num)( "age", fc::duration_cast<fc::seconds>(age) ) );
 
@@ -3038,19 +3038,19 @@ namespace eosio {
    }
 
    void net_plugin_impl::expire() {
-      auto now = fc::now<fc::microseconds>();
+      auto now = fc::now();
       uint32_t lib = 0;
       std::tie( lib, std::ignore, std::ignore, std::ignore, std::ignore, std::ignore ) = get_chain_info();
       dispatcher->expire_blocks( lib );
       dispatcher->expire_txns( lib );
-      fc_dlog( logger, "expire_txns ${n}us", ("n", fc::now<fc::microseconds>() - now) );
+      fc_dlog( logger, "expire_txns ${n}us", ("n", fc::now() - now) );
 
       start_expire_timer();
    }
 
    // called from any thread
    void net_plugin_impl::connection_monitor(std::weak_ptr<connection> from_connection, bool reschedule ) {
-      auto max_time = fc::now<fc::microseconds>();
+      auto max_time = fc::now();
       max_time += fc::milliseconds(max_cleanup_time_ms);
       auto from = from_connection.lock();
       std::unique_lock<std::shared_mutex> g( connections_mtx );
@@ -3058,10 +3058,10 @@ namespace eosio {
       if (it == connections.end()) it = connections.begin();
       size_t num_rm = 0, num_clients = 0, num_peers = 0;
       while (it != connections.end()) {
-         if (fc::now<fc::microseconds>() >= max_time) {
+         if (fc::now() >= max_time) {
             connection_wptr wit = *it;
             g.unlock();
-            fc_dlog( logger, "Exiting connection monitor early, ran out of time: ${t}", ("t", max_time - fc::now<fc::microseconds>()) );
+            fc_dlog( logger, "Exiting connection monitor early, ran out of time: ${t}", ("t", max_time - fc::now()) );
             if( reschedule ) {
                start_conn_timer( std::chrono::milliseconds( 1 ), wit ); // avoid exhausting
             }

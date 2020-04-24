@@ -52,7 +52,7 @@ apply_context::apply_context(controller& con, transaction_context& trx_ctx, uint
 
 void apply_context::exec_one()
 {
-   auto start = fc::now<fc::microseconds>();
+   auto start = fc::now();
 
    digest_type act_digest;
 
@@ -190,7 +190,7 @@ void apply_context::finalize_trace( action_trace& trace, const fc::time_point& s
    trace.console = std::move( _pending_console_output );
    _pending_console_output.clear();
 
-   trace.elapsed = fc::now<fc::microseconds>() - start;
+   trace.elapsed = fc::now() - start;
 }
 
 void apply_context::exec()

@@ -345,7 +345,7 @@ if( options.count(op_name) ) { \
 fc::time_point calculate_genesis_timestamp( string tstr ) {
    fc::time_point genesis_timestamp;
    if( strcasecmp (tstr.c_str(), "now") == 0 ) {
-      genesis_timestamp = fc::now<fc::microseconds>();
+      genesis_timestamp = fc::now();
    } else {
       fc::from_iso_string( tstr, genesis_timestamp );
    }
@@ -1267,7 +1267,7 @@ bool chain_plugin::recover_reversible_blocks( const fc::path& db_dir, uint32_t c
    }
    fc::path backup_dir;
 
-   auto now = fc::to_iso_string( fc::now<fc::microseconds>() );
+   auto now = fc::to_iso_string( fc::now() );
 
    if( new_db_dir ) {
       backup_dir = reversible_dir;
@@ -1568,11 +1568,10 @@ read_only::get_activated_protocol_features( const read_only::get_activated_proto
       auto& activation_ordinal_value   = mvo["activation_ordinal"];
       auto& activation_block_num_value = mvo["activation_block_num"];
 
-      auto cur_time = fc::now<fc::microseconds>();
-      auto end_time = cur_time + fc::microseconds(1000 * 10); /// 10ms max time
+      auto end_time = fc::now() + 10ms;/// 10ms max time
       for( unsigned int count = 0;
-           cur_time <= end_time && count < params.limit && itr != end_itr;
-           ++itr, cur_time = fc::now<fc::microseconds>() )
+           fc::now() <= end_time && count < params.limit && itr != end_itr;
+           ++itr )
       {
          const auto& conv_itr = convert_iterator( itr );
          activation_ordinal_value   = conv_itr.activation_ordinal();
@@ -1841,9 +1840,8 @@ read_only::get_table_by_scope_result read_only::get_table_by_scope( const read_o
       return result;
 
    auto walk_table_range = [&]( auto itr, auto end_itr ) {
-      auto cur_time = fc::now<fc::microseconds>();
-      auto end_time = cur_time + fc::microseconds(1000 * 10); /// 10ms max time
-      for( unsigned int count = 0; cur_time <= end_time && count < p.limit && itr != end_itr; ++itr, cur_time = fc::now<fc::microseconds>() ) {
+      auto end_time = fc::now() + 10ms;/// 10ms max time
+      for( unsigned int count = 0; fc::now() <= end_time && count < p.limit && itr != end_itr; ++itr ) {
          if( p.table && itr->table != p.table ) continue;
 
          result.rows.push_back( {itr->code, itr->scope, itr->table, itr->payer, itr->count} );
@@ -1955,7 +1953,7 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
    const auto& secondary_index_by_secondary = secondary_index.get<by_secondary>();
 
    read_only::get_producers_result result;
-   const auto stopTime = fc::now<fc::microseconds>() + fc::microseconds(1000 * 10); // 10ms
+   const auto stopTime = fc::now() + 10ms; // 10ms
    vector<char> data;
 
    auto it = [&]{
@@ -1969,7 +1967,7 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
    }();
 
    for( ; it != secondary_index_by_secondary.end() && it->t_id == secondary_table_id->id; ++it ) {
-      if (result.rows.size() >= p.limit || fc::now<fc::microseconds>() > stopTime) {
+      if (result.rows.size() >= p.limit || fc::now() > stopTime) {
          result.more = name{it->primary_key}.to_string();
          break;
       }
@@ -2075,8 +2073,8 @@ read_only::get_scheduled_transactions( const read_only::get_scheduled_transactio
    auto resolver = make_resolver(this, abi_serializer::create_yield_function( abi_serializer_max_time ));
 
    uint32_t remaining = p.limit;
-   auto time_limit = fc::now<fc::microseconds>() + fc::microseconds(1000 * 10); /// 10ms max time
-   while (itr != idx_by_delay.end() && remaining > 0 && time_limit > fc::now<fc::microseconds>()) {
+   auto time_limit = fc::now() + 10ms; /// 10ms max time
+   while (itr != idx_by_delay.end() && remaining > 0 && time_limit > fc::now()) {
       auto row = fc::mutable_variant_object()
               ("trx_id", itr->trx_id)
               ("sender", itr->sender)
