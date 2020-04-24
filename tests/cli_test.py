@@ -4,59 +4,66 @@
 # response to the `--help` option. It also contains a couple of additional
 # CLI-related checks as well as test cases for CLI bugfixes.
 
-from testUtils import Utils
-
 import subprocess
 import re
 
 
 def nodeos_help_test():
+    """Test that nodeos help contains option descriptions"""
     help_text = subprocess.check_output(["./programs/nodeos/nodeos", "--help"])
 
-    if not re.search(b'Application.*Options', help_text):
-        raise Exception('No application options found '
-                        'in the output of "nodeos --help"')
-
-    if not re.search(b'Options for .*_plugin', help_text):
-        raise Exception('No plugin options found '
-                        'in the output of "nodeos --help"')
+    assert(re.search(b'Application.*Options', help_text))
+    assert(re.search(b'Options for .*_plugin', help_text))
 
 
 def cleos_help_test(args):
+    """Test that cleos help contains option and subcommand descriptions"""
     help_text = subprocess.check_output(["./programs/cleos/cleos"] + args)
 
-    if b'Options:' not in help_text:
-        raise Exception('No options found in the '
-                        'output of "cleos ' + ' '.join(args))
-
-    if b'Subcommands:' not in help_text:
-        raise Exception('No subcommands found in the '
-                        'output of cleos ' + ' '.join(args))
+    assert(b'Options:' in help_text)
+    assert(b'Subcommands:' in help_text)
 
 
 def cli11_bugfix_test():
+    """Test that subcommand names can be used as option arguments"""
     completed_process = subprocess.run(
         ['./programs/cleos/cleos', '-u', 'http://localhost:0/',
          'push', 'action', 'accout', 'action', '["data"]', '-p', 'wallet'],
         check=False,
         stderr=subprocess.PIPE)
 
-    if not completed_process.returncode:
-        raise Exception('Test command unexpectedly succeeded')
+    # The above command must fail because there is no server running
+    # on localhost:0
+    assert(completed_process.returncode != 0)
 
-    if b'Failed to connect to nodeos' not in completed_process.stderr:
-        raise Exception('Regression failure: cleos '
-                        'failed to parse command line')
+    # Make sure that the command failed because of the connection error,
+    # not the command line parsing error.
+    assert(b'Failed to connect to nodeos' in completed_process.stderr)
 
 
-try:
-    nodeos_help_test()
+def cli11_optional_option_arg_test():
+    """Test that options like --password can be specified without a value"""
+    chain = 'cf057bbfb72640471fd910bcb67639c22df9f92470936cddc1ade0e2f2e7dc4f'
+    key = '5Jgfqh3svgBZvCAQkcnUX8sKmVUkaUekYDGqFakm52Ttkc5MBA4'
 
-    cleos_help_test(['--help'])
-    cleos_help_test(['system', '--help'])
-    cleos_help_test(['version', '--help'])
-    cleos_help_test(['wallet', '--help'])
+    output = subprocess.check_output(['./programs/cleos/cleos', 'sign',
+                                      '-c', chain, '-k', '{}'],
+                                     input=key.encode(),
+                                     stderr=subprocess.DEVNULL)
+    assert(b'signatures' in output)
 
-    cli11_bugfix_test()
-except Exception as e:
-    Utils.errorExit("cli_test: " + str(e))
+    output = subprocess.check_output(['./programs/cleos/cleos', 'sign',
+                                      '-c', chain, '-k', key, '{}'])
+    assert(b'signatures' in output)
+
+
+nodeos_help_test()
+
+cleos_help_test(['--help'])
+cleos_help_test(['system', '--help'])
+cleos_help_test(['version', '--help'])
+cleos_help_test(['wallet', '--help'])
+
+cli11_bugfix_test()
+
+cli11_optional_option_arg_test()
