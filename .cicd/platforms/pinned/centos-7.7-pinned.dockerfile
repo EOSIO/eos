@@ -18,9 +18,12 @@ RUN curl -LO https://github.com/Kitware/CMake/releases/download/v3.16.2/cmake-3.
     make -j$(nproc) && \
     make install && \
     rm -rf cmake-3.16.2.tar.gz cmake-3.16.2
+COPY ./scripts/clang-devtoolset9-support.patch /tmp/clang-devtoolset9-support.patch
 # build clang10
 RUN git clone --single-branch --branch llvmorg-10.0.0 https://github.com/llvm/llvm-project clang10 && \
-    mkdir /clang10/build && cd /clang10/build && \
+    cd /clang10 && \
+    patch -p1 < /tmp/clang-devtoolset9-support.patch && \
+    mkdir build && cd build && \
     source /opt/rh/devtoolset-9/enable && \
     source /opt/rh/rh-python36/enable && \
     cmake -G 'Unix Makefiles' -DCMAKE_INSTALL_PREFIX='/usr/local' -DLLVM_ENABLE_PROJECTS='lld;polly;clang;clang-tools-extra;libcxx;libcxxabi;libunwind;compiler-rt' -DLLVM_BUILD_LLVM_DYLIB=ON -DLLVM_ENABLE_RTTI=ON -DLLVM_INCLUDE_DOCS=OFF -DLLVM_TARGETS_TO_BUILD=host -DCMAKE_BUILD_TYPE=Release ../llvm && \
