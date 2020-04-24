@@ -197,6 +197,17 @@ Enables new `set_action_return_value` intrinsic which sets a value that is inclu
 */
             {}
          } )
+         (  builtin_protocol_feature_t::kv_database, builtin_protocol_feature_spec{
+            "KV_DATABASE",
+            fc::variant("14cfb3252a5fa3ae4c764929e0bbc467528990c9cc46aefcc7f16367f28b6278").as<digest_type>(),
+            // SHA256 hash of the raw message below within the comment delimiters (do not modify message below).
+/*
+Builtin protocol feature: KV_DATABASE
+
+Enables usage of key-value database intrinsics.
+*/
+            {}
+         } )
    ;
 
 
@@ -503,8 +514,10 @@ Enables new `set_action_return_value` intrinsic which sets a value that is inclu
 
 
 
-   protocol_feature_manager::protocol_feature_manager( protocol_feature_set&& pfs )
-   :_protocol_feature_set( std::move(pfs) )
+   protocol_feature_manager::protocol_feature_manager(
+      protocol_feature_set&& pfs,
+      std::function<fc::logger*()> get_deep_mind_logger
+   ):_protocol_feature_set( std::move(pfs) ), _get_deep_mind_logger(get_deep_mind_logger)
    {
       _builtin_protocol_features.resize( _protocol_feature_set._recognized_builtin_protocol_features.size() );
    }
@@ -683,6 +696,13 @@ Enables new `set_action_return_value` intrinsic which sets a value that is inclu
                   "cannot activate already activated builtin feature with digest: ${digest}",
                   ("digest", feature_digest)
       );
+
+      if (auto dm_logger = _get_deep_mind_logger()) {
+         fc_dlog(*dm_logger, "FEATURE_OP ACTIVATE ${feature_digest} ${feature}",
+            ("feature_digest", feature_digest)
+            ("feature", itr->to_variant())
+         );
+      }
 
       _activated_protocol_features.push_back( protocol_feature_entry{itr, current_block_num} );
       _builtin_protocol_features[indx].previous = _head_of_builtin_activation_list;

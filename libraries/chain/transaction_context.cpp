@@ -318,6 +318,9 @@ namespace eosio { namespace chain {
       for( auto a : validate_ram_usage ) {
          rl.verify_account_ram_usage( a );
       }
+      for( auto a : validate_disk_usage ) {
+         rl.verify_account_disk_usage( a );
+      }
 
       // Calculate the new highest network usage and CPU time that all of the billed accounts can afford to be billed
       int64_t account_net_limit = 0;
@@ -483,11 +486,19 @@ namespace eosio { namespace chain {
       }
    }
 
-   void transaction_context::add_ram_usage( account_name account, int64_t ram_delta ) {
+   void transaction_context::add_ram_usage( account_name account, int64_t ram_delta, const storage_usage_trace& trace ) {
       auto& rl = control.get_mutable_resource_limits_manager();
-      rl.add_pending_ram_usage( account, ram_delta );
+      rl.add_pending_ram_usage( account, ram_delta, trace );
       if( ram_delta > 0 ) {
          validate_ram_usage.insert( account );
+      }
+   }
+
+   void transaction_context::add_disk_usage( account_name account, int64_t disk_delta, const storage_usage_trace& trace ) {
+      auto& rl = control.get_mutable_resource_limits_manager();
+      rl.add_pending_disk_usage( account, disk_delta, trace );
+      if( disk_delta > 0 ) {
+         validate_disk_usage.insert( account );
       }
    }
 
@@ -604,6 +615,15 @@ namespace eosio { namespace chain {
 
    void transaction_context::execute_action( uint32_t action_ordinal, uint32_t recurse_depth ) {
       apply_context acontext( control, *this, action_ordinal, recurse_depth );
+
+      if (recurse_depth == 0) {
+         if (auto dm_logger = control.get_deep_mind_logger()) {
+            fc_dlog(*dm_logger, "CREATION_OP ROOT ${action_id}",
+               ("action_id", get_action_id())
+            );
+         }
+      }
+
       acontext.exec();
    }
 
@@ -619,6 +639,7 @@ namespace eosio { namespace chain {
 
       auto first_auth = trx.first_authorizer();
 
+      std::string event_id;
       uint32_t trx_size = 0;
       const auto& cgto = control.mutable_db().create<generated_transaction_object>( [&]( auto& gto ) {
         gto.trx_id      = id;
@@ -629,10 +650,26 @@ namespace eosio { namespace chain {
         gto.delay_until = gto.published + delay;
         gto.expiration  = gto.delay_until + fc::seconds(control.get_global_properties().configuration.deferred_trx_expiration_window);
         trx_size = gto.set( trx );
+
+        if (auto dm_logger = control.get_deep_mind_logger()) {
+            event_id = STORAGE_EVENT_ID("${id}", ("id", gto.id));
+
+            fc_dlog(*dm_logger, "DTRX_OP PUSH_CREATE ${action_id} ${sender} ${sender_id} ${payer} ${published} ${delay} ${expiration} ${trx_id} ${trx}",
+               ("action_id", get_action_id())
+               ("sender", gto.sender)
+               ("sender_id", gto.sender_id)
+               ("payer", gto.payer)
+               ("published", gto.published)
+               ("delay", gto.delay_until)
+               ("expiration", gto.expiration)
+               ("trx_id", trx.id())
+               ("trx", control.maybe_to_variant_with_abi(trx, abi_serializer::create_yield_function(control.get_abi_serializer_max_time())))
+            );
+         }
       });
 
       int64_t ram_delta = (config::billable_size_v<generated_transaction_object> + trx_size);
-      add_ram_usage( cgto.payer, ram_delta );
+      add_ram_usage( cgto.payer, ram_delta, storage_usage_trace(get_action_id(), event_id.c_str(), "deferred_trx", "push", "deferred_trx_pushed") );
       trace->account_ram_delta = account_delta( cgto.payer, ram_delta );
    }
 
