@@ -451,7 +451,7 @@ namespace eosio { namespace chain {
 
       auto delay_max_limit = fc::seconds( _control.get_global_properties().configuration.max_transaction_delay );
 
-      auto effective_provided_delay =  (provided_delay >= delay_max_limit) ? fc::microseconds::maximum() : provided_delay;
+      auto effective_provided_delay =  (provided_delay >= delay_max_limit) ? fc::microseconds::max() : provided_delay;
 
       auto checker = make_auth_checker( [&](const permission_level& p){ return get_permission(p).auth; },
                                         _control.get_global_properties().configuration.max_authority_depth,
@@ -558,7 +558,7 @@ namespace eosio { namespace chain {
                                         _control.get_global_properties().configuration.max_authority_depth,
                                         provided_keys,
                                         provided_permissions,
-                                        ( provided_delay >= delay_max_limit ) ? fc::microseconds::maximum() : provided_delay,
+                                        ( provided_delay >= delay_max_limit ) ? fc::microseconds::max() : provided_delay,
                                         checktime
                                       );
 

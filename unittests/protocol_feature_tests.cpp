@@ -278,7 +278,8 @@ BOOST_AUTO_TEST_CASE( subjective_restrictions_test ) try {
    auto preactivate_feature_digest = get_builtin_digest( builtin_protocol_feature_t::preactivate_feature );
    auto only_link_to_existing_permission_digest = get_builtin_digest( builtin_protocol_feature_t::only_link_to_existing_permission );
 
-   auto invalid_act_time = fc::time_point::from_iso_string( "2200-01-01T00:00:00" );
+   time_point  invalid_act_time;
+   fc::from_iso_string( "2200-01-01T00:00:00", invalid_act_time );
    auto valid_act_time = fc::time_point{};
 
    // First, test subjective_restrictions on feature that can be activated WITHOUT preactivation (PREACTIVATE_FEATURE)
@@ -294,7 +295,7 @@ BOOST_AUTO_TEST_CASE( subjective_restrictions_test ) try {
    BOOST_CHECK_EXCEPTION(  c.produce_block(),
                            protocol_feature_exception,
                            fc_exception_message_starts_with(
-                              std::string(c.control->head_block_time()) +
+                              fc::to_iso_string(c.control->head_block_time()) +
                               " is too early for the earliest allowed activation time of the protocol feature"
                            )
    );
@@ -339,7 +340,7 @@ BOOST_AUTO_TEST_CASE( subjective_restrictions_test ) try {
    BOOST_CHECK_EXCEPTION(  c.preactivate_protocol_features({only_link_to_existing_permission_digest}),
                            subjective_block_production_exception,
                            fc_exception_message_starts_with(
-                              std::string(c.control->head_block_time() + fc::milliseconds(config::block_interval_ms)) +
+                              fc::to_iso_string(c.control->head_block_time() + fc::milliseconds(config::block_interval_ms)) +
                               " is too early for the earliest allowed activation time of the protocol feature"
                            )
    );

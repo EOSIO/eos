@@ -247,8 +247,8 @@ public:
             try {
                std::vector<public_key_type> keys = json_keys.template as<std::vector<public_key_type>>();
                signing_keys = std::move(keys);
-            } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid public key array format '${data}'", 
-                                     ("data", fc::json::to_string(json_keys, fc::time_point::maximum())))
+            } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid public key array format '${data}'",
+                                     ("data", fc::json::to_string(json_keys, fc::time_point::max())))
          }
       }
       return signing_keys;
@@ -314,11 +314,11 @@ eosio::chain_apis::read_only::get_info_results get_info() {
 }
 
 string generate_nonce_string() {
-   return fc::to_string(fc::time_point::now().time_since_epoch().count());
+   return fc::to_string(fc::clock::now().time_since_epoch().count());
 }
 
 chain::action generate_nonce_action() {
-   return chain::action( {}, config::null_account_name, name("nonce"), fc::raw::pack(fc::time_point::now().time_since_epoch().count()));
+   return chain::action( {}, config::null_account_name, name("nonce"), fc::raw::pack(fc::clock::now().time_since_epoch().count()));
 }
 
 //resolver for ABI serializer to decode actions in proposed transaction in multisig contract
@@ -374,7 +374,7 @@ fc::variant push_transaction( signed_transaction& trx, const std::vector<public_
    auto info = get_info();
 
    if (trx.signatures.size() == 0) { // #5445 can't change txn content if already signed
-      trx.expiration = info.head_block_time + tx_expiration;
+      trx.expiration = fc::time_point_cast<fc::seconds>(info.head_block_time + tx_expiration);
 
       // Set tapos, default to last irreversible block if it's not specified by the user
       block_id_type ref_block_id = info.last_irreversible_block_id;
@@ -446,7 +446,7 @@ void print_action( const fc::variant& at ) {
    const auto& act = at["act"].get_object();
    auto code = act["account"].as_string();
    auto func = act["name"].as_string();
-   auto args = fc::json::to_string( act["data"], fc::time_point::maximum() );
+   auto args = fc::json::to_string( act["data"], fc::time_point::max() );
    auto console = at["console"].as_string();
 
    /*
@@ -722,7 +722,7 @@ authority parse_json_authority(const std::string& authorityJsonOrFile) {
    try {
       return authority_var.as<authority>();
    } EOS_RETHROW_EXCEPTIONS(authority_type_exception, "Invalid authority format '${data}'",
-                            ("data", fc::json::to_string(authority_var, fc::time_point::maximum())))
+                            ("data", fc::json::to_string(authority_var, fc::time_point::max())))
 }
 
 authority parse_json_authority_or_key(const std::string& authorityJsonOrFile) {
@@ -1367,7 +1367,7 @@ struct get_schedule_subcommand {
             static_assert( std::is_same<decltype(a), static_variant<block_signing_authority_v0>>::value,
                            "Updates maybe needed if block_signing_authority changes" );
             block_signing_authority_v0 auth = a.get<block_signing_authority_v0>();
-            printf( "%s\n", fc::json::to_string( auth, fc::time_point::maximum() ).c_str() );
+            printf( "%s\n", fc::json::to_string( auth, fc::time_point::max() ).c_str() );
          }
       }
       printf("\n");
@@ -1567,7 +1567,7 @@ struct bidname_info_subcommand {
          const auto& row = result.rows[0];
          string time = row["last_bid_time"].as_string();
          try {
-             time = (string)fc::time_point(fc::microseconds(to_uint64(time)));
+             time = fc::to_iso_string( fc::time_point( fc::microseconds(to_uint64(time)) ) );
          } catch (fc::parse_error_exception&) {
          }
          int64_t bid = row["high_bid"].as_int64();
@@ -2158,7 +2158,7 @@ void get_account( const string& accountName, const string& coresym, bool json_fo
          staked = asset( 0, res.core_liquid_balance->get_symbol() );    // Correct core symbol for staked asset.
       }
 
-      std::cout << "created: " << string(res.created) << std::endl;
+      std::cout << "created: " << fc::to_iso_string( res.created ) << std::endl;
 
       if(res.privileged) std::cout << "privileged: true" << std::endl;
 
@@ -2350,7 +2350,8 @@ void get_account( const string& accountName, const string& coresym, bool json_fo
 
       if( res.refund_request.is_object() ) {
          auto obj = res.refund_request.get_object();
-         auto request_time = fc::time_point_sec::from_iso_string( obj["request_time"].as_string() );
+	 fc::time_point_sec  request_time;
+	 fc::from_iso_string( obj["request_time"].as_string(), request_time );
          fc::time_point refund_time = request_time + fc::days(3);
          auto now = res.head_block_time;
          asset net = asset::from_string( obj["net_amount"].as_string() );
@@ -2360,7 +2361,7 @@ void get_account( const string& accountName, const string& coresym, bool json_fo
          if( unstaking > asset( 0, unstaking.get_symbol() ) ) {
             std::cout << std::fixed << setprecision(3);
             std::cout << "unstaking tokens:" << std::endl;
-            std::cout << indent << std::left << std::setw(25) << "time of unstake request:" << std::right << std::setw(20) << string(request_time);
+            std::cout << indent << std::left << std::setw(25) << "time of unstake request:" << std::right << std::setw(20) << fc::to_iso_string(request_time);
             if( now >= refund_time ) {
                std::cout << " (available to claim now with 'eosio::refund' action)\n";
             } else {
@@ -2520,7 +2521,7 @@ int main( int argc, char** argv ) {
          try {
             abi_serializer::from_variant( trx_var, trx, abi_serializer_resolver, abi_serializer::create_yield_function( abi_serializer_max_time ) );
          } EOS_RETHROW_EXCEPTIONS( transaction_type_exception, "Invalid transaction format: '${data}'",
-                                   ("data", fc::json::to_string(trx_var, fc::time_point::maximum())))
+                                   ("data", fc::json::to_string(trx_var, fc::time_point::max())))
          std::cout << fc::json::to_pretty_string( packed_transaction( trx, packed_transaction::compression_type::none )) << std::endl;
       } else {
          try {
@@ -2542,7 +2543,7 @@ int main( int argc, char** argv ) {
       try {
          fc::from_variant<packed_transaction>( packed_trx_var, packed_trx );
       } EOS_RETHROW_EXCEPTIONS( transaction_type_exception, "Invalid packed transaction format: '${data}'",
-                                ("data", fc::json::to_string(packed_trx_var, fc::time_point::maximum())))
+                                ("data", fc::json::to_string(packed_trx_var, fc::time_point::max())))
       signed_transaction strx = packed_trx.get_signed_transaction();
       fc::variant trx_var;
       if( unpack_action_data_flag ) {
@@ -2930,7 +2931,7 @@ int main( int argc, char** argv ) {
                   args = fc::json::to_pretty_string( act["data"] );
               }
               else {
-                 args = fc::json::to_string( act["data"], fc::time_point::maximum() );
+                 args = fc::json::to_string( act["data"], fc::time_point::max() );
                  if( !fullact ) {
                     args = args.substr(0,60) + "...";
                  }
@@ -3444,7 +3445,7 @@ int main( int argc, char** argv ) {
       try {
         trx = trx_var.as<signed_transaction>();
       } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Invalid transaction format: '${data}'",
-                               ("data", fc::json::to_string(trx_var, fc::time_point::maximum())))
+                               ("data", fc::json::to_string(trx_var, fc::time_point::max())))
 
       fc::optional<chain_id_type> chain_id;
 
@@ -3586,7 +3587,7 @@ int main( int argc, char** argv ) {
       try {
          proposed_trx = trx_var.as<transaction>();
       } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Invalid transaction format: '${data}'",
-                               ("data", fc::json::to_string(trx_var, fc::time_point::maximum())))
+                               ("data", fc::json::to_string(trx_var, fc::time_point::max())))
       bytes proposed_trx_serialized = variant_to_bin( name(proposed_contract), name(proposed_action), trx_var );
 
       vector<permission_level> reqperm;
@@ -3613,7 +3614,7 @@ int main( int argc, char** argv ) {
 
       transaction trx;
 
-      trx.expiration = fc::time_point_sec( fc::time_point::now() + fc::hours(proposal_expiration_hours) );
+      trx.expiration = fc::now<fc::seconds>() + fc::hours(proposal_expiration_hours);
       trx.ref_block_num = 0;
       trx.ref_block_prefix = 0;
       trx.max_net_usage_words = 0;

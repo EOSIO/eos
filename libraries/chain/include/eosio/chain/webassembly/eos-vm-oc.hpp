@@ -201,7 +201,7 @@ inline auto convert_native_to_wasm(const name &val) {
 }
 
 inline auto convert_native_to_wasm(const fc::time_point_sec& val) {
-   return native_to_wasm_t<const fc::time_point_sec &>(val.sec_since_epoch());
+   return native_to_wasm_t<const fc::time_point_sec &>(val.time_since_epoch().count());
 }
 
 inline auto convert_native_to_wasm(char* ptr) {

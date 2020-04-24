@@ -183,7 +183,7 @@ namespace eosio { namespace chain {
       checktime(); // Fail early if deadline has already been exceeded
 
       if(control.skip_trx_checks())
-         transaction_timer.start(fc::time_point::maximum());
+         transaction_timer.start(fc::time_point::max());
       else
          transaction_timer.start(_deadline);
 
@@ -227,7 +227,7 @@ namespace eosio { namespace chain {
           // If delayed, also charge ahead of time for the additional net usage needed to retire the delayed transaction
           // whether that be by successfully executing, soft failure, hard failure, or expiration.
          initial_net_usage += static_cast<uint64_t>(cfg.base_per_transaction_net_usage)
-                               + static_cast<uint64_t>(config::transaction_id_net_usage);
+                            + static_cast<uint64_t>(config::transaction_id_net_usage);
       }
 
       init_for_input_trx_common( initial_net_usage, skip_recording );
@@ -262,10 +262,10 @@ namespace eosio { namespace chain {
 
    void transaction_context::init_for_deferred_trx( fc::time_point p )
    {
-      if( (trx.expiration.sec_since_epoch() != 0) && (trx.transaction_extensions.size() > 0) ) {
+      if( ( trx.expiration.time_since_epoch() != fc::seconds(0) ) && ( trx.transaction_extensions.size() > 0 ) ) {
          disallow_transaction_extensions( "no transaction extensions supported yet for deferred transactions" );
       }
-      // If (trx.expiration.sec_since_epoch() == 0) then it was created after NO_DUPLICATE_DEFERRED_ID activation,
+      // If ( trx.expiration == epoch ) then it was created after NO_DUPLICATE_DEFERRED_ID activation,
       // and so validation of its extensions was done either in:
       //   * apply_context::schedule_deferred_transaction for contract-generated transactions;
       //   * or transaction_context::init_for_input_trx for delayed input transactions.
@@ -346,7 +346,7 @@ namespace eosio { namespace chain {
       round_up_net_usage(); // Round up to nearest multiple of word size (8 bytes).
       check_net_usage();    // Check that NET usage satisfies limits (even when explicit_net_usage is true).
 
-      auto now = fc::time_point::now();
+      auto now = fc::clock::now();
       trace->elapsed = now - start;
 
       update_billed_cpu_time( now );
@@ -387,7 +387,7 @@ namespace eosio { namespace chain {
       if(BOOST_LIKELY(transaction_timer.expired == false))
          return;
 
-      auto now = fc::time_point::now();
+      auto now = fc::clock::now();
       if( explicit_billed_cpu_time || deadline_exception_code == deadline_exception::code_value ) {
          EOS_THROW( deadline_exception, "deadline exceeded ${billing_timer}us",
                      ("billing_timer", now - pseudo_start)("now", now)("deadline", _deadline)("start", start) );
@@ -417,7 +417,7 @@ namespace eosio { namespace chain {
    void transaction_context::pause_billing_timer() {
       if( explicit_billed_cpu_time || pseudo_start == fc::time_point() ) return; // either irrelevant or already paused
 
-      auto now = fc::time_point::now();
+      auto now = fc::clock::now();
       billed_time = now - pseudo_start;
       deadline_exception_code = deadline_exception::code_value; // Other timeout exceptions cannot be thrown while billable timer is paused.
       pseudo_start = fc::time_point();
@@ -427,7 +427,7 @@ namespace eosio { namespace chain {
    void transaction_context::resume_billing_timer() {
       if( explicit_billed_cpu_time || pseudo_start != fc::time_point() ) return; // either irrelevant or already running
 
-      auto now = fc::time_point::now();
+      auto now = fc::clock::now();
       pseudo_start = now - billed_time;
       if( (pseudo_start + billing_timer_duration_limit) <= deadline ) {
          _deadline = pseudo_start + billing_timer_duration_limit;

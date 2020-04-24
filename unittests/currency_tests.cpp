@@ -429,7 +429,7 @@ BOOST_FIXTURE_TEST_CASE( test_proxy, currency_tester ) try {
    }
 
    // for now wasm "time" is in seconds, so we have to truncate off any parts of a second that may have applied
-   fc::time_point expected_delivery(fc::seconds(control->head_block_time().sec_since_epoch()) + fc::seconds(10));
+   fc::time_point expected_delivery(fc::time_point_cast<fc::seconds>( control->head_block_time() ).time_since_epoch() + fc::seconds(10));
    {
       auto trace = push_action(N(eosio.token), N(transfer), mutable_variant_object()
          ("from", eosio_token)

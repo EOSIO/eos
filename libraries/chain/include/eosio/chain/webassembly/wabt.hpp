@@ -580,7 +580,7 @@ struct intrinsic_invoker_impl<Ret, std::tuple<const fc::time_point_sec&, Inputs.
    template<then_type Then>
    static Ret translate_one(wabt_apply_instance_vars& vars, Inputs... rest, const TypedValues& args, int offset) {
       uint32_t wasm_value = args.at((uint32_t)offset).get_i32();
-      auto value = fc::time_point_sec(wasm_value);
+      auto value = fc::time_point_sec( fc::seconds(wasm_value) );
       return Then(vars, value, rest..., args, (uint32_t)offset - 1);
    }
 

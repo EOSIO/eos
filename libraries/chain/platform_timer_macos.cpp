@@ -80,11 +80,11 @@ platform_timer::~platform_timer() {
 }
 
 void platform_timer::start(fc::time_point tp) {
-   if(tp == fc::time_point::maximum()) {
+   if(tp == fc::time_point::max()) {
       expired = 0;
       return;
    }
-   fc::microseconds x = tp.time_since_epoch() - fc::time_point::now().time_since_epoch();
+   fc::microseconds x = tp.time_since_epoch() - fc::clock::now().time_since_epoch();
    if(x.count() <= 0)
       expired = 1;
    else {

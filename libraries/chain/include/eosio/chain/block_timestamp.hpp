@@ -15,7 +15,7 @@ namespace eosio { namespace chain {
    * It is a parameterised class that takes an Epoch in milliseconds and
    * and an interval in milliseconds and computes the number of slots.
    **/
-   template<uint16_t IntervalMs, uint64_t EpochMs>
+   template<uint16_t IntervalMs, uint64_t msSinceEpoch>
    class block_timestamp {
       public:
          explicit block_timestamp( uint32_t s=0 ) :slot(s){}
@@ -44,7 +44,7 @@ namespace eosio { namespace chain {
 
          operator fc::time_point() const {
             int64_t msec = slot * (int64_t)IntervalMs;
-            msec += EpochMs;
+            msec += msSinceEpoch;
             return fc::time_point(fc::milliseconds(msec));
          }
 
@@ -58,37 +58,47 @@ namespace eosio { namespace chain {
          bool   operator <=( const block_timestamp& t )const   { return slot <= t.slot; }
          bool   operator ==( const block_timestamp& t )const   { return slot == t.slot; }
          bool   operator !=( const block_timestamp& t )const   { return slot != t.slot; }
+
          uint32_t slot;
 
       private:
       void set_time_point(const fc::time_point& t) {
-         auto micro_since_epoch = t.time_since_epoch();
-         auto msec_since_epoch  = micro_since_epoch.count() / 1000;
-         slot = ( msec_since_epoch - EpochMs ) / IntervalMs;
+         auto msec_since_epoch  = fc::chrono::duration_cast<fc::chrono::milliseconds>( t.time_since_epoch() );
+         slot = ( msec_since_epoch.count() - msSinceEpoch ) / IntervalMs;
       }
 
       void set_time_point(const fc::time_point_sec& t) {
-         uint64_t  sec_since_epoch = t.sec_since_epoch();
-         slot = (sec_since_epoch * 1000 - EpochMs) / IntervalMs;
+         auto msec_since_epoch  = fc::chrono::duration_cast<fc::chrono::milliseconds>( t.time_since_epoch() );
+         slot = (msec_since_epoch.count() - msSinceEpoch) / IntervalMs;
       }
    }; // block_timestamp
 
-   typedef block_timestamp<config::block_interval_ms,config::block_timestamp_epoch> block_timestamp_type; 
+   typedef block_timestamp<config::block_interval_ms,config::block_timestamp_epoch> block_timestamp_type;
+
+   template<uint16_t IntervalMs, uint64_t msSinceEpoch>
+   constexpr fc::microseconds operator - (const block_timestamp<IntervalMs, msSinceEpoch> & bts, const fc::time_point& tp)
+   {
+      return fc::duration_cast<fc::microseconds>(fc::time_point(bts) - tp);
+   }
+   template<uint16_t IntervalMs, uint64_t msSinceEpoch>
+   constexpr fc::microseconds operator - (const fc::time_point& tp, const block_timestamp<IntervalMs, msSinceEpoch> & bts)
+   {
+      return fc::duration_cast<fc::microseconds>(tp - fc::time_point(bts));
+   }
 
 } } /// eosio::chain
-
 
 #include <fc/reflect/reflect.hpp>
 FC_REFLECT(eosio::chain::block_timestamp_type, (slot))
 
 namespace fc {
-  template<uint16_t IntervalMs, uint64_t EpochMs>
-  void to_variant(const eosio::chain::block_timestamp<IntervalMs,EpochMs>& t, fc::variant& v) {
+  template<uint16_t IntervalMs, uint64_t msSinceEpoch>
+  void to_variant(const eosio::chain::block_timestamp<IntervalMs,msSinceEpoch>& t, fc::variant& v) {
      to_variant( (fc::time_point)t, v);
   }
 
-  template<uint16_t IntervalMs, uint64_t EpochMs>
-  void from_variant(const fc::variant& v, eosio::chain::block_timestamp<IntervalMs,EpochMs>& t) {
+  template<uint16_t IntervalMs, uint64_t msSinceEpoch>
+  void from_variant(const fc::variant& v, eosio::chain::block_timestamp<IntervalMs,msSinceEpoch>& t) {
      t = v.as<fc::time_point>();
   }
 }

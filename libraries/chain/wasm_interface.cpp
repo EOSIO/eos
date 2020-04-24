@@ -1525,7 +1525,7 @@ class context_free_transaction_api : public context_aware_api {
       }
 
       int expiration() {
-        return context.trx_context.trx.expiration.sec_since_epoch();
+        return context.trx_context.trx.expiration.time_since_epoch().count();
       }
 
       int tapos_block_num() {

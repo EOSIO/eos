@@ -3,7 +3,7 @@
 namespace eosio { namespace chain {
 
 genesis_state::genesis_state() {
-   initial_timestamp = fc::time_point::from_iso_string( "2018-06-01T12:00:00" );
+   fc::from_iso_string( "2018-06-01T12:00:00", initial_timestamp );
    initial_key = fc::variant(eosio_root_key).as<public_key_type>();
 }
 

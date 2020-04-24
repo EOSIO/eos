@@ -477,7 +477,7 @@ struct controller_impl {
       auto blog_head_time = blog_head->timestamp.to_time_point();
       replay_head_time = blog_head_time;
       auto start_block_num = head->block_num + 1;
-      auto start = fc::time_point::now();
+      auto start = fc::clock::now();
 
       std::exception_ptr except_ptr;
 
@@ -529,7 +529,7 @@ struct controller_impl {
          ilog( "${n} reversible blocks replayed", ("n",rev) );
       }
 
-      auto end = fc::time_point::now();
+      auto end = fc::clock::now();
       ilog( "replayed ${n} blocks in ${duration} seconds, ${mspb} ms/block",
             ("n", head->block_num + 1 - start_block_num)("duration", (end-start).count()/1000000)
             ("mspb", ((end-start).count()/1000.0)/(head->block_num-start_block_num)) );
@@ -1134,7 +1134,7 @@ struct controller_impl {
          etrx.ref_block_num = 0;
          etrx.ref_block_prefix = 0;
       } else {
-         etrx.expiration = self.pending_block_time() + fc::microseconds(999'999); // Round up to nearest second to avoid appearing expired
+         etrx.expiration = fc::chrono::ceil<fc::seconds>( self.pending_block_time() ); // Round up to nearest second to avoid appearing expired
          etrx.set_reference_block( self.head_block_id() );
       }
 
@@ -1165,7 +1165,7 @@ struct controller_impl {
       } catch( const protocol_feature_bad_block_exception& ) {
          throw;
       } catch( const fc::exception& e ) {
-         cpu_time_to_bill_us = trx_context.update_billed_cpu_time( fc::time_point::now() );
+         cpu_time_to_bill_us = trx_context.update_billed_cpu_time( fc::clock::now() );
          trace->error_code = controller::convert_exception_to_error_code( e );
          trace->except = e;
          trace->except_ptr = std::current_exception();
@@ -1316,11 +1316,11 @@ struct controller_impl {
       } catch( const protocol_feature_bad_block_exception& ) {
          throw;
       } catch( const fc::exception& e ) {
-         cpu_time_to_bill_us = trx_context.update_billed_cpu_time( fc::time_point::now() );
+         cpu_time_to_bill_us = trx_context.update_billed_cpu_time( fc::clock::now() );
          trace->error_code = controller::convert_exception_to_error_code( e );
          trace->except = e;
          trace->except_ptr = std::current_exception();
-         trace->elapsed = fc::time_point::now() - trx_context.start;
+         trace->elapsed = fc::clock::now() - trx_context.start;
       }
       trx_context.undo();
 
@@ -1341,7 +1341,7 @@ struct controller_impl {
             undo_session.squash();
             return trace;
          }
-         trace->elapsed = fc::time_point::now() - trx_context.start;
+         trace->elapsed = fc::clock::now() - trx_context.start;
       }
 
       // Only subjective OR hard failure logic below:
@@ -1425,7 +1425,7 @@ struct controller_impl {
 
       transaction_trace_ptr trace;
       try {
-         auto start = fc::time_point::now();
+         auto start = fc::clock::now();
          const bool check_auth = !self.skip_auth_check() && !trx->implicit;
          const fc::microseconds sig_cpu_usage = trx->signature_cpu_usage();
 
@@ -1664,7 +1664,7 @@ struct controller_impl {
                   in_trx_requiring_checks = old_value;
                });
             in_trx_requiring_checks = true;
-            push_transaction( onbtrx, fc::time_point::maximum(), gpo.configuration.min_transaction_cpu_usage, true, {} );
+            push_transaction( onbtrx, fc::time_point::max(), gpo.configuration.min_transaction_cpu_usage, true, {} );
          } catch( const std::bad_alloc& e ) {
             elog( "on block transaction failed due to a std::bad_alloc" );
             throw;
@@ -1887,7 +1887,7 @@ struct controller_impl {
                   } else {
                      auto ptrx = std::make_shared<packed_transaction>( pt );
                      auto fut = transaction_metadata::start_recover_keys(
-                           std::move( ptrx ), thread_pool.get_executor(), chain_id, microseconds::maximum() );
+                           std::move( ptrx ), thread_pool.get_executor(), chain_id, microseconds::max() );
                      trx_metas.emplace_back( transaction_metadata_ptr{}, std::move( fut ) );
                   }
                }
@@ -1911,10 +1911,10 @@ struct controller_impl {
                if( explicit_net ) {
                   explicit_net_usage_words = receipt.net_usage_words.value;
                }
-               trace = push_transaction( trx_meta, fc::time_point::maximum(), receipt.cpu_usage_us, true, explicit_net_usage_words );
+               trace = push_transaction( trx_meta, fc::time_point::max(), receipt.cpu_usage_us, true, explicit_net_usage_words );
                ++packed_idx;
             } else if( receipt.trx.contains<transaction_id_type>() ) {
-               trace = push_scheduled_transaction( receipt.trx.get<transaction_id_type>(), fc::time_point::maximum(), receipt.cpu_usage_us, true );
+               trace = push_scheduled_transaction( receipt.trx.get<transaction_id_type>(), fc::time_point::max(), receipt.cpu_usage_us, true );
             } else {
                EOS_ASSERT( false, block_validate_exception, "encountered unexpected receipt type" );
             }
@@ -2402,7 +2402,7 @@ struct controller_impl {
          trx.ref_block_num = 0;
          trx.ref_block_prefix = 0;
       } else {
-         trx.expiration = self.pending_block_time() + fc::microseconds(999'999); // Round up to nearest second to avoid appearing expired
+         trx.expiration = fc::chrono::ceil<fc::seconds>( self.pending_block_time() ); // Round up to nearest second to avoid appearing expired
          trx.set_reference_block( self.head_block_id() );
       }
       return trx;
