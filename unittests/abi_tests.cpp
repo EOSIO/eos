@@ -2438,7 +2438,6 @@ BOOST_AUTO_TEST_CASE(version)
       BOOST_CHECK_THROW( abi_serializer(fc::json::from_string(R"({"version": "eosio::abi/9.0"})").as<abi_def>(), abi_serializer::create_yield_function( max_serialization_time )), unsupported_abi_version_exception );
       abi_serializer(fc::json::from_string(R"({"version": "eosio::abi/1.0"})").as<abi_def>(), abi_serializer::create_yield_function( max_serialization_time ));
       abi_serializer(fc::json::from_string(R"({"version": "eosio::abi/1.1"})").as<abi_def>(), abi_serializer::create_yield_function( max_serialization_time ));
-      abi_serializer(fc::json::from_string(R"({"version": "eosio::abi/1.2"})").as<abi_def>(), abi_serializer::create_yield_function( max_serialization_time ));
    } FC_LOG_AND_RETHROW()
 }
 

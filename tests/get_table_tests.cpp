@@ -345,7 +345,7 @@ BOOST_FIXTURE_TEST_CASE( get_table_by_seckey_test, TESTER ) try {
    base_tester::push_action(config::system_account_name, N(init),
                             config::system_account_name,  mutable_variant_object()
                             ("version", 0)
-                            ("core", CORE_SYM_STR));
+                            ("core", "4,SYS"));
 
    // bidname
    auto bidname = [this]( const account_name& bidder, const account_name& newname, const asset& bid ) {

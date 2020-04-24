@@ -370,8 +370,7 @@ std::pair<int64_t, bool> resource_limits_manager::get_account_cpu_limit( const a
    return {arl.available, greylisted};
 }
 
-std::pair<account_resource_limit, bool>
-resource_limits_manager::get_account_cpu_limit_ex( const account_name& name, uint32_t greylist_limit, const fc::optional<block_timestamp_type>& current_time) const {
+std::pair<account_resource_limit, bool> resource_limits_manager::get_account_cpu_limit_ex( const account_name& name, uint32_t greylist_limit ) const {
 
    const auto& state = _db.get<resource_limits_state_object>();
    const auto& usage = _db.get<resource_usage_object, by_owner>(name);
@@ -381,7 +380,7 @@ resource_limits_manager::get_account_cpu_limit_ex( const account_name& name, uin
    get_account_limits( name, x, y, cpu_weight );
 
    if( cpu_weight < 0 || state.total_cpu_weight == 0 ) {
-      return {{ -1, -1, -1, block_timestamp_type(usage.cpu_usage.last_ordinal), -1 }, false};
+      return {{ -1, -1, -1 }, false};
    }
 
    account_resource_limit arl;
@@ -415,15 +414,6 @@ resource_limits_manager::get_account_cpu_limit_ex( const account_name& name, uin
 
    arl.used = impl::downgrade_cast<int64_t>(cpu_used_in_window);
    arl.max = impl::downgrade_cast<int64_t>(max_user_use_in_window);
-   arl.last_usage_update_time = block_timestamp_type(usage.cpu_usage.last_ordinal);
-   arl.current_used = arl.used;
-   if ( current_time.valid() ) {
-      if (current_time->slot > usage.cpu_usage.last_ordinal) {
-         auto history_usage = usage.cpu_usage;
-         history_usage.add(0, current_time->slot, window_size);
-         arl.current_used = impl::downgrade_cast<int64_t>(impl::integer_divide_ceil((uint128_t)history_usage.value_ex * window_size, (uint128_t)config::rate_limiting_precision));
-      }
-   }
    return {arl, greylisted};
 }
 
@@ -432,8 +422,7 @@ std::pair<int64_t, bool> resource_limits_manager::get_account_net_limit( const a
    return {arl.available, greylisted};
 }
 
-std::pair<account_resource_limit, bool>
-resource_limits_manager::get_account_net_limit_ex( const account_name& name, uint32_t greylist_limit, const fc::optional<block_timestamp_type>& current_time) const {
+std::pair<account_resource_limit, bool> resource_limits_manager::get_account_net_limit_ex( const account_name& name, uint32_t greylist_limit ) const {
    const auto& config = _db.get<resource_limits_config_object>();
    const auto& state  = _db.get<resource_limits_state_object>();
    const auto& usage  = _db.get<resource_usage_object, by_owner>(name);
@@ -442,7 +431,7 @@ resource_limits_manager::get_account_net_limit_ex( const account_name& name, uin
    get_account_limits( name, x, net_weight, y );
 
    if( net_weight < 0 || state.total_net_weight == 0) {
-      return {{ -1, -1, -1, block_timestamp_type(usage.net_usage.last_ordinal), -1 }, false};
+      return {{ -1, -1, -1 }, false};
    }
 
    account_resource_limit arl;
@@ -476,15 +465,6 @@ resource_limits_manager::get_account_net_limit_ex( const account_name& name, uin
 
    arl.used = impl::downgrade_cast<int64_t>(net_used_in_window);
    arl.max = impl::downgrade_cast<int64_t>(max_user_use_in_window);
-   arl.last_usage_update_time = block_timestamp_type(usage.net_usage.last_ordinal);
-   arl.current_used = arl.used;
-   if ( current_time.valid() ) {
-      if (current_time->slot > usage.net_usage.last_ordinal) {
-         auto history_usage = usage.net_usage;
-         history_usage.add(0, current_time->slot, window_size);
-         arl.current_used = impl::downgrade_cast<int64_t>(impl::integer_divide_ceil((uint128_t)history_usage.value_ex * window_size, (uint128_t)config::rate_limiting_precision));
-      }
-   }
    return {arl, greylisted};
 }
 
