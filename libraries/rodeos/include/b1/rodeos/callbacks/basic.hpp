@@ -1,9 +1,7 @@
 #pragma once
 
-#include <fc/exception/exception.hpp>
-
+#include <b1/rodeos/callbacks/definitions.hpp>
 #include <eosio/stream.hpp>
-#include <eosio/vm/backend.hpp>
 
 namespace b1::rodeos {
 
@@ -15,58 +13,28 @@ struct assert_exception : std::exception {
    const char* what() const noexcept override { return msg.c_str(); }
 };
 
-template <typename Backend>
-struct wasm_state {
-   eosio::vm::wasm_allocator& wa;
-   Backend&                   backend;
-};
-
-inline size_t copy_to_wasm(char* dest, size_t dest_size, const char* src, size_t src_size) {
-   if (dest_size == 0)
-      return src_size;
-   auto copy_size = std::min(dest_size, src_size);
-   memcpy(dest, src, copy_size);
-   return copy_size;
-}
-
 template <typename Derived>
-struct basic_callbacks {
+struct context_free_system_callbacks {
    Derived& derived() { return static_cast<Derived&>(*this); }
-
-   void check_bounds(const char* begin, const char* end) {
-      if (begin > end)
-         throw std::runtime_error("bad memory");
-      // todo: check bounds
-   }
-
-   void check_bounds(const char* begin, uint32_t size) {
-      // todo: check bounds
-   }
-
-   uint32_t check_bounds_get_len(const char* str) {
-      // todo: check bounds
-      return strlen(str);
-   }
 
    void abort() { throw std::runtime_error("called abort"); }
 
-   void eosio_assert_message(bool test, const char* msg, uint32_t msg_len) {
-      check_bounds(msg, msg + msg_len);
-      if (!test)
-         throw assert_exception(std::string(msg, msg_len));
+   void eosio_assert(uint32_t condition, null_terminated_ptr msg) {
+      if (!condition)
+         throw assert_exception(std::string(msg.data(), msg.size()));
    }
 
-   // todo: replace with prints_l
-   void print_range(const char* begin, const char* end) {
-      check_bounds(begin, end);
-      std::cerr.write(begin, end - begin);
+   void eosio_assert_message(bool condition, legacy_span<const char> msg) {
+      if (!condition)
+         throw assert_exception(std::string(msg.data(), msg.size()));
    }
 
-   template <typename Rft, typename Allocator>
+   template <typename Rft>
    static void register_callbacks() {
-      Rft::template add<Derived, &Derived::abort, Allocator>("env", "abort");
-      Rft::template add<Derived, &Derived::eosio_assert_message, Allocator>("env", "eosio_assert_message");
-      Rft::template add<Derived, &Derived::print_range, Allocator>("env", "print_range");
+      // todo: preconditions
+      Rft::template add<&Derived::abort>("env", "abort");
+      Rft::template add<&Derived::eosio_assert>("env", "eosio_assert");
+      Rft::template add<&Derived::eosio_assert_message>("env", "eosio_assert_message");
    }
 };
 
@@ -80,23 +48,23 @@ template <typename Derived>
 struct data_callbacks {
    Derived& derived() { return static_cast<Derived&>(*this); }
 
-   uint32_t get_input_data(char* dest, uint32_t size) {
-      derived().check_bounds(dest, size);
+   uint32_t get_input_data(eosio::vm::span<char> dest) {
       auto& input_data = derived().get_state().input_data;
-      return copy_to_wasm(dest, size, input_data.pos, size_t(input_data.end - input_data.pos));
+      memcpy(dest.data(), input_data.pos, std::min(dest.size(), size_t(input_data.end - input_data.pos)));
+      return input_data.end - input_data.pos;
    }
 
-   void set_output_data(const char* data, uint32_t size) {
-      derived().check_bounds(data, size);
+   void set_output_data(eosio::vm::span<const char> data) {
       auto& output_data = derived().get_state().output_data;
       output_data.clear();
-      output_data.insert(output_data.end(), data, data + size);
+      output_data.insert(output_data.end(), data.begin(), data.end());
    }
 
-   template <typename Rft, typename Allocator>
+   template <typename Rft>
    static void register_callbacks() {
-      Rft::template add<Derived, &Derived::get_input_data, Allocator>("env", "get_input_data");
-      Rft::template add<Derived, &Derived::set_output_data, Allocator>("env", "set_output_data");
+      // todo: preconditions
+      Rft::template add<&Derived::get_input_data>("env", "get_input_data");
+      Rft::template add<&Derived::set_output_data>("env", "set_output_data");
    }
 };
 

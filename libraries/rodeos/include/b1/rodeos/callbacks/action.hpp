@@ -1,6 +1,6 @@
 #pragma once
 
-#include <b1/rodeos/callbacks/basic.hpp>
+#include <b1/rodeos/callbacks/definitions.hpp>
 
 namespace b1::rodeos {
 
@@ -14,15 +14,11 @@ template <typename Derived>
 struct action_callbacks {
    Derived& derived() { return static_cast<Derived&>(*this); }
 
-   int read_action_data(char* memory, uint32_t buffer_size) {
-      derived().check_bounds(memory, buffer_size);
-      auto& state = derived().get_state();
-      auto  s     = state.action_data.end - state.action_data.pos;
-      if (buffer_size == 0)
-         return s;
-      auto copy_size = std::min(static_cast<size_t>(buffer_size), static_cast<size_t>(s));
-      memcpy(memory, state.action_data.pos, copy_size);
-      return copy_size;
+   int read_action_data(eosio::vm::span<char> data) {
+      auto&  state = derived().get_state();
+      size_t s     = state.action_data.end - state.action_data.pos;
+      memcpy(data.data(), state.action_data.pos, std::min(data.size(), s));
+      return s;
    }
 
    int action_data_size() {
@@ -32,18 +28,18 @@ struct action_callbacks {
 
    uint64_t current_receiver() { return derived().get_state().receiver.value; }
 
-   void set_action_return_value(char* packed_blob, uint32_t datalen) {
+   void set_action_return_value(eosio::vm::span<const char> packed_blob) {
       // todo: limit size
-      derived().check_bounds(packed_blob, datalen);
-      derived().get_state().action_return_value.assign(packed_blob, packed_blob + datalen);
+      derived().get_state().action_return_value.assign(packed_blob.begin(), packed_blob.end());
    }
 
-   template <typename Rft, typename Allocator>
+   template <typename Rft>
    static void register_callbacks() {
-      Rft::template add<Derived, &Derived::read_action_data, Allocator>("env", "read_action_data");
-      Rft::template add<Derived, &Derived::action_data_size, Allocator>("env", "action_data_size");
-      Rft::template add<Derived, &Derived::current_receiver, Allocator>("env", "current_receiver");
-      Rft::template add<Derived, &Derived::set_action_return_value, Allocator>("env", "set_action_return_value");
+      // todo: preconditions
+      Rft::template add<&Derived::read_action_data>("env", "read_action_data");
+      Rft::template add<&Derived::action_data_size>("env", "action_data_size");
+      Rft::template add<&Derived::current_receiver>("env", "current_receiver");
+      Rft::template add<&Derived::set_action_return_value>("env", "set_action_return_value");
    }
 }; // action_callbacks
 

@@ -1,9 +1,9 @@
 #pragma once
 
 #include <b1/chain_kv/chain_kv.hpp>
+#include <b1/rodeos/callbacks/definitions.hpp>
 #include <eosio/check.hpp>
 #include <eosio/name.hpp>
-#include <fc/exception/exception.hpp>
 #include <rocksdb/db.h>
 #include <rocksdb/table.h>
 
@@ -45,6 +45,21 @@ struct kv_iterator_rocksdb {
          return kv_it_stat::iterator_ok;
    }
 
+   void fill_found(uint32_t* found_key_size, uint32_t* found_value_size) {
+      auto kv = kv_it.get_kv();
+      if (kv) {
+         if (found_key_size)
+            *found_key_size = kv->key.size();
+         if (found_value_size)
+            *found_value_size = kv->value.size();
+      } else {
+         if (found_key_size)
+            *found_key_size = 0;
+         if (found_value_size)
+            *found_value_size = 0;
+      }
+   }
+
    int32_t kv_it_compare(const kv_iterator_rocksdb& rhs) {
       eosio::check(rhs.is_kv_rocksdb_context_iterator(), "Incompatible key-value iterators");
       auto& r = static_cast<const kv_iterator_rocksdb&>(rhs);
@@ -64,20 +79,24 @@ struct kv_iterator_rocksdb {
       return kv_it_stat::iterator_end;
    }
 
-   kv_it_stat kv_it_next() {
+   kv_it_stat kv_it_next(uint32_t* found_key_size = nullptr, uint32_t* found_value_size = nullptr) {
       eosio::check(!kv_it.is_erased(), "Iterator to erased element");
       ++kv_it;
+      fill_found(found_key_size, found_value_size);
       return kv_it_status();
    }
 
-   kv_it_stat kv_it_prev() {
+   kv_it_stat kv_it_prev(uint32_t* found_key_size = nullptr, uint32_t* found_value_size = nullptr) {
       eosio::check(!kv_it.is_erased(), "Iterator to erased element");
       --kv_it;
+      fill_found(found_key_size, found_value_size);
       return kv_it_status();
    }
 
-   kv_it_stat kv_it_lower_bound(const char* key, uint32_t size) {
+   kv_it_stat kv_it_lower_bound(const char* key, uint32_t size, uint32_t* found_key_size = nullptr,
+                                uint32_t* found_value_size = nullptr) {
       kv_it.lower_bound(key, size);
+      fill_found(found_key_size, found_value_size);
       return kv_it_status();
    }
 
@@ -224,30 +243,23 @@ template <typename Derived>
 struct db_callbacks {
    Derived& derived() { return static_cast<Derived&>(*this); }
 
-   int64_t kv_erase(uint64_t db, uint64_t contract, const char* key, uint32_t key_size) {
-      derived().check_bounds(key, key_size);
-      return kv_get_db(db).kv_erase(contract, key, key_size);
+   int64_t kv_erase(uint64_t db, uint64_t contract, eosio::vm::span<const char> key) {
+      return kv_get_db(db).kv_erase(contract, key.data(), key.size());
    }
 
-   int64_t kv_set(uint64_t db, uint64_t contract, const char* key, uint32_t key_size, const char* value,
-                  uint32_t value_size) {
-      derived().check_bounds(key, key_size);
-      derived().check_bounds(value, value_size);
-      return kv_get_db(db).kv_set(contract, key, key_size, value, value_size);
+   int64_t kv_set(uint64_t db, uint64_t contract, eosio::vm::span<const char> key, eosio::vm::span<const char> value) {
+      return kv_get_db(db).kv_set(contract, key.data(), key.size(), value.data(), value.size());
    }
 
-   bool kv_get(uint64_t db, uint64_t contract, const char* key, uint32_t key_size, uint32_t& value_size) {
-      derived().check_bounds(key, key_size);
-      return kv_get_db(db).kv_get(contract, key, key_size, value_size);
+   bool kv_get(uint64_t db, uint64_t contract, eosio::vm::span<const char> key, uint32_t* value_size) {
+      return kv_get_db(db).kv_get(contract, key.data(), key.size(), *value_size);
    }
 
-   uint32_t kv_get_data(uint64_t db, uint32_t offset, char* data, uint32_t data_size) {
-      derived().check_bounds(data, data_size);
-      return kv_get_db(db).kv_get_data(offset, data, data_size);
+   uint32_t kv_get_data(uint64_t db, uint32_t offset, eosio::vm::span<char> data) {
+      return kv_get_db(db).kv_get_data(offset, data.data(), data.size());
    }
 
-   uint32_t kv_it_create(uint64_t db, uint64_t contract, const char* prefix, uint32_t size) {
-      derived().check_bounds(prefix, size);
+   uint32_t kv_it_create(uint64_t db, uint64_t contract, eosio::vm::span<const char> prefix) {
       auto&    kdb = kv_get_db(db);
       uint32_t itr;
       if (!derived().get_db_view_state().kv_destroyed_iterators.empty()) {
@@ -259,7 +271,7 @@ struct db_callbacks {
          itr = derived().get_db_view_state().kv_iterators.size();
          derived().get_db_view_state().kv_iterators.emplace_back();
       }
-      derived().get_db_view_state().kv_iterators[itr] = kdb.kv_it_create(contract, prefix, size);
+      derived().get_db_view_state().kv_iterators[itr] = kdb.kv_it_create(contract, prefix.data(), prefix.size());
       return itr;
    }
 
@@ -281,10 +293,9 @@ struct db_callbacks {
             *derived().get_db_view_state().kv_iterators[itr_b]);
    }
 
-   int32_t kv_it_key_compare(uint32_t itr, const char* key, uint32_t size) {
-      derived().check_bounds(key, size);
+   int32_t kv_it_key_compare(uint32_t itr, eosio::vm::span<const char> key) {
       kv_check_iterator(itr);
-      return derived().get_db_view_state().kv_iterators[itr]->kv_it_key_compare(key, size);
+      return derived().get_db_view_state().kv_iterators[itr]->kv_it_key_compare(key.data(), key.size());
    }
 
    int32_t kv_it_move_to_end(uint32_t itr) {
@@ -292,34 +303,35 @@ struct db_callbacks {
       return static_cast<int32_t>(derived().get_db_view_state().kv_iterators[itr]->kv_it_move_to_end());
    }
 
-   int32_t kv_it_next(uint32_t itr) {
-      kv_check_iterator(itr);
-      return static_cast<int32_t>(derived().get_db_view_state().kv_iterators[itr]->kv_it_next());
-   }
-
-   int32_t kv_it_prev(uint32_t itr) {
-      kv_check_iterator(itr);
-      return static_cast<int32_t>(derived().get_db_view_state().kv_iterators[itr]->kv_it_prev());
-   }
-
-   int32_t kv_it_lower_bound(uint32_t itr, const char* key, uint32_t size) {
-      derived().check_bounds(key, size);
-      kv_check_iterator(itr);
-      return static_cast<int32_t>(derived().get_db_view_state().kv_iterators[itr]->kv_it_lower_bound(key, size));
-   }
-
-   int32_t kv_it_key(uint32_t itr, uint32_t offset, char* dest, uint32_t size, uint32_t& actual_size) {
-      derived().check_bounds(dest, size);
+   int32_t kv_it_next(uint32_t itr, uint32_t* found_key_size, uint32_t* found_value_size) {
       kv_check_iterator(itr);
       return static_cast<int32_t>(
-            derived().get_db_view_state().kv_iterators[itr]->kv_it_key(offset, dest, size, actual_size));
+            derived().get_db_view_state().kv_iterators[itr]->kv_it_next(found_key_size, found_value_size));
    }
 
-   int32_t kv_it_value(uint32_t itr, uint32_t offset, char* dest, uint32_t size, uint32_t& actual_size) {
-      derived().check_bounds(dest, size);
+   int32_t kv_it_prev(uint32_t itr, uint32_t* found_key_size, uint32_t* found_value_size) {
       kv_check_iterator(itr);
       return static_cast<int32_t>(
-            derived().get_db_view_state().kv_iterators[itr]->kv_it_value(offset, dest, size, actual_size));
+            derived().get_db_view_state().kv_iterators[itr]->kv_it_prev(found_key_size, found_value_size));
+   }
+
+   int32_t kv_it_lower_bound(uint32_t itr, eosio::vm::span<const char> key, uint32_t* found_key_size,
+                             uint32_t* found_value_size) {
+      kv_check_iterator(itr);
+      return static_cast<int32_t>(derived().get_db_view_state().kv_iterators[itr]->kv_it_lower_bound(
+            key.data(), key.size(), found_key_size, found_value_size));
+   }
+
+   int32_t kv_it_key(uint32_t itr, uint32_t offset, eosio::vm::span<char> dest, uint32_t* actual_size) {
+      kv_check_iterator(itr);
+      return static_cast<int32_t>(
+            derived().get_db_view_state().kv_iterators[itr]->kv_it_key(offset, dest.data(), dest.size(), *actual_size));
+   }
+
+   int32_t kv_it_value(uint32_t itr, uint32_t offset, eosio::vm::span<char> dest, uint32_t* actual_size) {
+      kv_check_iterator(itr);
+      return static_cast<int32_t>(derived().get_db_view_state().kv_iterators[itr]->kv_it_value(
+            offset, dest.data(), dest.size(), *actual_size));
    }
 
    kv_context_rocksdb& kv_get_db(uint64_t db) {
@@ -338,23 +350,24 @@ struct db_callbacks {
                    "Bad key-value iterator");
    }
 
-   template <typename Rft, typename Allocator>
+   template <typename Rft>
    static void register_callbacks() {
-      Rft::template add<Derived, &Derived::kv_erase, Allocator>("env", "kv_erase");
-      Rft::template add<Derived, &Derived::kv_set, Allocator>("env", "kv_set");
-      Rft::template add<Derived, &Derived::kv_get, Allocator>("env", "kv_get");
-      Rft::template add<Derived, &Derived::kv_get_data, Allocator>("env", "kv_get_data");
-      Rft::template add<Derived, &Derived::kv_it_create, Allocator>("env", "kv_it_create");
-      Rft::template add<Derived, &Derived::kv_it_destroy, Allocator>("env", "kv_it_destroy");
-      Rft::template add<Derived, &Derived::kv_it_status, Allocator>("env", "kv_it_status");
-      Rft::template add<Derived, &Derived::kv_it_compare, Allocator>("env", "kv_it_compare");
-      Rft::template add<Derived, &Derived::kv_it_key_compare, Allocator>("env", "kv_it_key_compare");
-      Rft::template add<Derived, &Derived::kv_it_move_to_end, Allocator>("env", "kv_it_move_to_end");
-      Rft::template add<Derived, &Derived::kv_it_next, Allocator>("env", "kv_it_next");
-      Rft::template add<Derived, &Derived::kv_it_prev, Allocator>("env", "kv_it_prev");
-      Rft::template add<Derived, &Derived::kv_it_lower_bound, Allocator>("env", "kv_it_lower_bound");
-      Rft::template add<Derived, &Derived::kv_it_key, Allocator>("env", "kv_it_key");
-      Rft::template add<Derived, &Derived::kv_it_value, Allocator>("env", "kv_it_value");
+      // todo: preconditions
+      Rft::template add<&Derived::kv_erase>("env", "kv_erase");
+      Rft::template add<&Derived::kv_set>("env", "kv_set");
+      Rft::template add<&Derived::kv_get>("env", "kv_get");
+      Rft::template add<&Derived::kv_get_data>("env", "kv_get_data");
+      Rft::template add<&Derived::kv_it_create>("env", "kv_it_create");
+      Rft::template add<&Derived::kv_it_destroy>("env", "kv_it_destroy");
+      Rft::template add<&Derived::kv_it_status>("env", "kv_it_status");
+      Rft::template add<&Derived::kv_it_compare>("env", "kv_it_compare");
+      Rft::template add<&Derived::kv_it_key_compare>("env", "kv_it_key_compare");
+      Rft::template add<&Derived::kv_it_move_to_end>("env", "kv_it_move_to_end");
+      Rft::template add<&Derived::kv_it_next>("env", "kv_it_next");
+      Rft::template add<&Derived::kv_it_prev>("env", "kv_it_prev");
+      Rft::template add<&Derived::kv_it_lower_bound>("env", "kv_it_lower_bound");
+      Rft::template add<&Derived::kv_it_key>("env", "kv_it_key");
+      Rft::template add<&Derived::kv_it_value>("env", "kv_it_value");
    }
 }; // db_callbacks
 
@@ -367,11 +380,47 @@ class kv_environment : public db_callbacks<kv_environment> {
    kv_environment(const kv_environment&) = default;
 
    auto& get_db_view_state() { return state; }
-   void  check_bounds(const char*, uint32_t) {}
 
-   using base::kv_set;
+   int64_t kv_erase(uint64_t db, uint64_t contract, const char* key, uint32_t key_size) {
+      return base::kv_erase(db, contract, { key, key_size });
+   }
+
+   int64_t kv_set(uint64_t db, uint64_t contract, const char* key, uint32_t key_size, const char* value,
+                  uint32_t value_size) {
+      return base::kv_set(db, contract, { key, key_size }, { value, value_size });
+   }
+
    void kv_set(uint64_t db, uint64_t contract, const std::vector<char>& k, const std::vector<char>& v) {
-      base::kv_set(db, contract, k.data(), k.size(), v.data(), v.size());
+      base::kv_set(db, contract, { k.data(), k.size() }, { v.data(), v.size() });
+   }
+
+   bool kv_get(uint64_t db, uint64_t contract, const char* key, uint32_t key_size, uint32_t& value_size) {
+      return base::kv_get(db, contract, { key, key_size }, &value_size);
+   }
+
+   uint32_t kv_get_data(uint64_t db, uint32_t offset, char* data, uint32_t data_size) {
+      return base::kv_get_data(db, offset, { data, data_size });
+   }
+
+   uint32_t kv_it_create(uint64_t db, uint64_t contract, const char* prefix, uint32_t prefix_size) {
+      return base::kv_it_create(db, contract, { prefix, prefix_size });
+   }
+
+   int32_t kv_it_key_compare(uint32_t itr, const char* key, uint32_t key_size) {
+      return base::kv_it_key_compare(itr, { key, key_size });
+   }
+
+   int32_t kv_it_lower_bound(uint32_t itr, const char* key, uint32_t key_size, uint32_t* found_key_size = nullptr,
+                             uint32_t* found_value_size = nullptr) {
+      return base::kv_it_lower_bound(itr, { key, key_size }, found_key_size, found_value_size);
+   }
+
+   int32_t kv_it_key(uint32_t itr, uint32_t offset, char* dest, uint32_t dest_size, uint32_t* actual_size) {
+      return base::kv_it_key(itr, offset, { dest, dest_size }, actual_size);
+   }
+
+   int32_t kv_it_value(uint32_t itr, uint32_t offset, char* dest, uint32_t dest_size, uint32_t* actual_size) {
+      return base::kv_it_value(itr, offset, { dest, dest_size }, actual_size);
    }
 };
 

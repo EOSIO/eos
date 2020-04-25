@@ -1,6 +1,6 @@
+#include <b1/chain_kv/chain_kv.hpp>
 #include <b1/rodeos/filter.hpp>
 #include <b1/rodeos/wasm_ql.hpp>
-#include <chain_kv/chain_kv.hpp>
 #include <eosio/ship_protocol.hpp>
 #include <functional>
 
@@ -53,11 +53,11 @@ struct rodeos_db_snapshot {
 
    void refresh();
    void end_write(bool write_fill);
-   void start_block(const ship_protocol::get_blocks_result_v0& result);
-   void end_block(const ship_protocol::get_blocks_result_v0& result, bool force_write);
-   void check_write(const ship_protocol::get_blocks_result_v0& result);
-   void write_block_info(const ship_protocol::get_blocks_result_v0& result);
-   void write_deltas(const ship_protocol::get_blocks_result_v0& result, std::function<bool()> shutdown);
+   void start_block(const eosio::ship_protocol::get_blocks_result_v0& result);
+   void end_block(const eosio::ship_protocol::get_blocks_result_v0& result, bool force_write);
+   void check_write(const eosio::ship_protocol::get_blocks_result_v0& result);
+   void write_block_info(const eosio::ship_protocol::get_blocks_result_v0& result);
+   void write_deltas(const eosio::ship_protocol::get_blocks_result_v0& result, std::function<bool()> shutdown);
 
  private:
    void write_fill_status();
@@ -70,7 +70,7 @@ struct rodeos_filter {
 
    rodeos_filter(eosio::name name, const std::string& wasm_filename);
 
-   void process(rodeos_db_snapshot& snapshot, const ship_protocol::get_blocks_result_v0& result,
+   void process(rodeos_db_snapshot& snapshot, const eosio::ship_protocol::get_blocks_result_v0& result,
                 eosio::input_stream bin, const std::function<void(const char* data, uint64_t size)>& push_data);
 };
 

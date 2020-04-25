@@ -14,18 +14,17 @@
 namespace b1::rodeos::filter {
 
 struct callbacks;
-using backend_t = eosio::vm::backend<callbacks, eosio::vm::jit>;
-using rhf_t     = eosio::vm::registered_host_functions<callbacks>;
+using rhf_t     = registered_host_functions<callbacks>;
+using backend_t = eosio::vm::backend<rhf_t, eosio::vm::jit>;
 
 struct filter_state : b1::rodeos::data_state<backend_t>, b1::rodeos::console_state, b1::rodeos::filter_callback_state {
    eosio::vm::wasm_allocator wa = {};
 };
 
-// todo: remove basic_callbacks
-struct callbacks : b1::rodeos::basic_callbacks<callbacks>,
-                   b1::rodeos::chaindb_callbacks<callbacks>,
+struct callbacks : b1::rodeos::chaindb_callbacks<callbacks>,
                    b1::rodeos::compiler_builtins_callbacks<callbacks>,
                    b1::rodeos::console_callbacks<callbacks>,
+                   b1::rodeos::context_free_system_callbacks<callbacks>,
                    b1::rodeos::data_callbacks<callbacks>,
                    b1::rodeos::db_callbacks<callbacks>,
                    b1::rodeos::filter_callbacks<callbacks>,
@@ -47,16 +46,16 @@ struct callbacks : b1::rodeos::basic_callbacks<callbacks>,
 };
 
 inline void register_callbacks() {
-   b1::rodeos::basic_callbacks<callbacks>::register_callbacks<rhf_t, eosio::vm::wasm_allocator>();
-   b1::rodeos::chaindb_callbacks<callbacks>::register_callbacks<rhf_t, eosio::vm::wasm_allocator>();
-   b1::rodeos::compiler_builtins_callbacks<callbacks>::register_callbacks<rhf_t, eosio::vm::wasm_allocator>();
-   b1::rodeos::console_callbacks<callbacks>::register_callbacks<rhf_t, eosio::vm::wasm_allocator>();
-   b1::rodeos::data_callbacks<callbacks>::register_callbacks<rhf_t, eosio::vm::wasm_allocator>();
-   b1::rodeos::db_callbacks<callbacks>::register_callbacks<rhf_t, eosio::vm::wasm_allocator>();
-   b1::rodeos::filter_callbacks<callbacks>::register_callbacks<rhf_t, eosio::vm::wasm_allocator>();
-   b1::rodeos::memory_callbacks<callbacks>::register_callbacks<rhf_t, eosio::vm::wasm_allocator>();
-   b1::rodeos::unimplemented_callbacks<callbacks>::register_callbacks<rhf_t, eosio::vm::wasm_allocator>();
-   b1::rodeos::unimplemented_filter_callbacks<callbacks>::register_callbacks<rhf_t, eosio::vm::wasm_allocator>();
+   b1::rodeos::chaindb_callbacks<callbacks>::register_callbacks<rhf_t>();
+   b1::rodeos::compiler_builtins_callbacks<callbacks>::register_callbacks<rhf_t>();
+   b1::rodeos::console_callbacks<callbacks>::register_callbacks<rhf_t>();
+   b1::rodeos::context_free_system_callbacks<callbacks>::register_callbacks<rhf_t>();
+   b1::rodeos::data_callbacks<callbacks>::register_callbacks<rhf_t>();
+   b1::rodeos::db_callbacks<callbacks>::register_callbacks<rhf_t>();
+   b1::rodeos::filter_callbacks<callbacks>::register_callbacks<rhf_t>();
+   b1::rodeos::memory_callbacks<callbacks>::register_callbacks<rhf_t>();
+   b1::rodeos::unimplemented_callbacks<callbacks>::register_callbacks<rhf_t>();
+   b1::rodeos::unimplemented_filter_callbacks<callbacks>::register_callbacks<rhf_t>();
 }
 
 } // namespace b1::rodeos::filter

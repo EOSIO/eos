@@ -78,7 +78,7 @@ extern "C" rodeos_bool rodeos_open_db(rodeos_error* error, rodeos_context* conte
          return error->set("path is null");
       if (context->db)
          return error->set("a database is already open on this context");
-      context->db = std::make_shared<chain_kv::database>(
+      context->db = std::make_shared<b1::chain_kv::database>(
             path, create_if_missing, num_threads ? std::make_optional(num_threads) : std::nullopt,
             max_open_files ? std::make_optional(max_open_files) : std::nullopt);
       return true;
@@ -218,7 +218,7 @@ extern "C" rodeos_query_handler* rodeos_create_query_handler(rodeos_error* error
    return handle_exceptions(error, nullptr, [&]() -> rodeos_query_handler* {
       if (!partition)
          return error->set("partition is null"), nullptr;
-      auto shared_state              = std::make_shared<eosio::wasm_ql::shared_state>(partition->obj->db);
+      auto shared_state              = std::make_shared<b1::rodeos::wasm_ql::shared_state>(partition->obj->db);
       shared_state->max_console_size = max_console_size;
       shared_state->wasm_cache_size  = wasm_cache_size;
       shared_state->max_exec_time_ms = max_exec_time_ms;

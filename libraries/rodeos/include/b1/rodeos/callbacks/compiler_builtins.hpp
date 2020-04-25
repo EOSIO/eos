@@ -1,6 +1,6 @@
 #pragma once
 
-#include <b1/rodeos/callbacks/basic.hpp>
+#include <b1/rodeos/callbacks/definitions.hpp>
 #include <compiler_builtins.hpp>
 #include <softfloat.hpp>
 
@@ -10,47 +10,47 @@ template <typename Derived>
 struct compiler_builtins_callbacks {
    Derived& derived() { return static_cast<Derived&>(*this); }
 
-   void __ashlti3(__int128& ret, uint64_t low, uint64_t high, uint32_t shift) {
+   void __ashlti3(legacy_ptr<__int128> ret, uint64_t low, uint64_t high, uint32_t shift) {
       if (shift >= 128) {
-         ret = 0;
+         *ret = 0;
       } else {
          unsigned __int128 i = high;
          i <<= 64;
          i |= low;
          i <<= shift;
-         ret = (__int128)i;
+         *ret = (__int128)i;
       }
    }
 
-   void __ashrti3(__int128& ret, uint64_t low, uint64_t high, uint32_t shift) {
+   void __ashrti3(legacy_ptr<__int128> ret, uint64_t low, uint64_t high, uint32_t shift) {
       // retain the signedness
-      ret = high;
-      ret <<= 64;
-      ret |= low;
-      ret >>= shift;
+      *ret = high;
+      *ret <<= 64;
+      *ret |= low;
+      *ret >>= shift;
    }
 
-   void __lshlti3(__int128& ret, uint64_t low, uint64_t high, uint32_t shift) {
+   void __lshlti3(legacy_ptr<__int128> ret, uint64_t low, uint64_t high, uint32_t shift) {
       if (shift >= 128) {
-         ret = 0;
+         *ret = 0;
       } else {
          unsigned __int128 i = high;
          i <<= 64;
          i |= low;
          i <<= shift;
-         ret = (__int128)i;
+         *ret = (__int128)i;
       }
    }
 
-   void __lshrti3(__int128& ret, uint64_t low, uint64_t high, uint32_t shift) {
+   void __lshrti3(legacy_ptr<__int128> ret, uint64_t low, uint64_t high, uint32_t shift) {
       unsigned __int128 i = high;
       i <<= 64;
       i |= low;
       i >>= shift;
-      ret = (unsigned __int128)i;
+      *ret = (unsigned __int128)i;
    }
 
-   void __divti3(__int128& ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb) {
+   void __divti3(legacy_ptr<__int128> ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb) {
       __int128 lhs = ha;
       __int128 rhs = hb;
 
@@ -65,10 +65,10 @@ struct compiler_builtins_callbacks {
 
       lhs /= rhs;
 
-      ret = lhs;
+      *ret = lhs;
    }
 
-   void __udivti3(unsigned __int128& ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb) {
+   void __udivti3(legacy_ptr<unsigned __int128> ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb) {
       unsigned __int128 lhs = ha;
       unsigned __int128 rhs = hb;
 
@@ -82,10 +82,10 @@ struct compiler_builtins_callbacks {
          throw std::runtime_error("divide by zero");
 
       lhs /= rhs;
-      ret = lhs;
+      *ret = lhs;
    }
 
-   void __modti3(__int128& ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb) {
+   void __modti3(legacy_ptr<__int128> ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb) {
       __int128 lhs = ha;
       __int128 rhs = hb;
 
@@ -99,10 +99,10 @@ struct compiler_builtins_callbacks {
          throw std::runtime_error("divide by zero");
 
       lhs %= rhs;
-      ret = lhs;
+      *ret = lhs;
    }
 
-   void __umodti3(unsigned __int128& ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb) {
+   void __umodti3(legacy_ptr<unsigned __int128> ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb) {
       unsigned __int128 lhs = ha;
       unsigned __int128 rhs = hb;
 
@@ -116,10 +116,10 @@ struct compiler_builtins_callbacks {
          throw std::runtime_error("divide by zero");
 
       lhs %= rhs;
-      ret = lhs;
+      *ret = lhs;
    }
 
-   void __multi3(__int128& ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb) {
+   void __multi3(legacy_ptr<__int128> ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb) {
       __int128 lhs = ha;
       __int128 rhs = hb;
 
@@ -130,31 +130,31 @@ struct compiler_builtins_callbacks {
       rhs |= lb;
 
       lhs *= rhs;
-      ret = lhs;
+      *ret = lhs;
    }
 
-   void __addtf3(float128_t& ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb) {
+   void __addtf3(legacy_ptr<float128_t> ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb) {
       float128_t a = { { la, ha } };
       float128_t b = { { lb, hb } };
-      ret          = f128_add(a, b);
+      *ret         = f128_add(a, b);
    }
 
-   void __subtf3(float128_t& ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb) {
+   void __subtf3(legacy_ptr<float128_t> ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb) {
       float128_t a = { { la, ha } };
       float128_t b = { { lb, hb } };
-      ret          = f128_sub(a, b);
+      *ret         = f128_sub(a, b);
    }
 
-   void __multf3(float128_t& ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb) {
+   void __multf3(legacy_ptr<float128_t> ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb) {
       float128_t a = { { la, ha } };
       float128_t b = { { lb, hb } };
-      ret          = f128_mul(a, b);
+      *ret         = f128_mul(a, b);
    }
 
-   void __divtf3(float128_t& ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb) {
+   void __divtf3(legacy_ptr<float128_t> ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb) {
       float128_t a = { { la, ha } };
       float128_t b = { { lb, hb } };
-      ret          = f128_div(a, b);
+      *ret         = f128_div(a, b);
    }
 
    int __unordtf2(uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb) {
@@ -191,15 +191,15 @@ struct compiler_builtins_callbacks {
 
    int __cmptf2(uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb) { return ___cmptf2(la, ha, lb, hb, 1); }
 
-   void __negtf2(float128_t& ret, uint64_t la, uint64_t ha) { ret = { { la, (ha ^ (uint64_t)1 << 63) } }; }
+   void __negtf2(legacy_ptr<float128_t> ret, uint64_t la, uint64_t ha) { *ret = { { la, (ha ^ (uint64_t)1 << 63) } }; }
 
-   void __floatsitf(float128_t& ret, int32_t i) { ret = i32_to_f128(i); }
+   void __floatsitf(legacy_ptr<float128_t> ret, int32_t i) { *ret = i32_to_f128(i); }
 
-   void __floatditf(float128_t& ret, uint64_t a) { ret = i64_to_f128(a); }
+   void __floatditf(legacy_ptr<float128_t> ret, uint64_t a) { *ret = i64_to_f128(a); }
 
-   void __floatunsitf(float128_t& ret, uint32_t i) { ret = ui32_to_f128(i); }
+   void __floatunsitf(legacy_ptr<float128_t> ret, uint32_t i) { *ret = ui32_to_f128(i); }
 
-   void __floatunditf(float128_t& ret, uint64_t a) { ret = ui64_to_f128(a); }
+   void __floatunditf(legacy_ptr<float128_t> ret, uint64_t a) { *ret = ui64_to_f128(a); }
 
    double __floattidf(uint64_t l, uint64_t h) {
       unsigned __int128 val = h;
@@ -217,13 +217,13 @@ struct compiler_builtins_callbacks {
 
    double __floatsidf(int32_t i) { return from_softfloat64(i32_to_f64(i)); }
 
-   void __extendsftf2(float128_t& ret, float f) { ret = f32_to_f128(to_softfloat32(f)); }
+   void __extendsftf2(legacy_ptr<float128_t> ret, float f) { *ret = f32_to_f128(to_softfloat32(f)); }
 
-   void __extenddftf2(float128_t& ret, double d) { ret = f64_to_f128(to_softfloat64(d)); }
+   void __extenddftf2(legacy_ptr<float128_t> ret, double d) { *ret = f64_to_f128(to_softfloat64(d)); }
 
-   void __fixtfti(__int128& ret, uint64_t l, uint64_t h) {
+   void __fixtfti(legacy_ptr<__int128> ret, uint64_t l, uint64_t h) {
       float128_t f = { { l, h } };
-      ret          = ___fixtfti(f);
+      *ret         = ___fixtfti(f);
    }
 
    int32_t __fixtfsi(uint64_t l, uint64_t h) {
@@ -236,9 +236,9 @@ struct compiler_builtins_callbacks {
       return f128_to_i64(f, 0, false);
    }
 
-   void __fixunstfti(unsigned __int128& ret, uint64_t l, uint64_t h) {
+   void __fixunstfti(legacy_ptr<unsigned __int128> ret, uint64_t l, uint64_t h) {
       float128_t f = { { l, h } };
-      ret          = ___fixunstfti(f);
+      *ret         = ___fixunstfti(f);
    }
 
    uint32_t __fixunstfsi(uint64_t l, uint64_t h) {
@@ -251,13 +251,13 @@ struct compiler_builtins_callbacks {
       return f128_to_ui64(f, 0, false);
    }
 
-   void __fixsfti(__int128& ret, float a) { ret = ___fixsfti(to_softfloat32(a).v); }
+   void __fixsfti(legacy_ptr<__int128> ret, float a) { *ret = ___fixsfti(to_softfloat32(a).v); }
 
-   void __fixdfti(__int128& ret, double a) { ret = ___fixdfti(to_softfloat64(a).v); }
+   void __fixdfti(legacy_ptr<__int128> ret, double a) { *ret = ___fixdfti(to_softfloat64(a).v); }
 
-   void __fixunssfti(unsigned __int128& ret, float a) { ret = ___fixunssfti(to_softfloat32(a).v); }
+   void __fixunssfti(legacy_ptr<unsigned __int128> ret, float a) { *ret = ___fixunssfti(to_softfloat32(a).v); }
 
-   void __fixunsdfti(unsigned __int128& ret, double a) { ret = ___fixunsdfti(to_softfloat64(a).v); }
+   void __fixunsdfti(legacy_ptr<unsigned __int128> ret, double a) { *ret = ___fixunsdfti(to_softfloat64(a).v); }
 
    double __trunctfdf2(uint64_t l, uint64_t h) {
       float128_t f = { { l, h } };
@@ -269,51 +269,52 @@ struct compiler_builtins_callbacks {
       return from_softfloat32(f128_to_f32(f));
    }
 
-   template <typename Rft, typename Allocator>
+   template <typename Rft>
    static void register_callbacks() {
-      Rft::template add<Derived, &Derived::__ashlti3, Allocator>("env", "__ashlti3");
-      Rft::template add<Derived, &Derived::__ashrti3, Allocator>("env", "__ashrti3");
-      Rft::template add<Derived, &Derived::__lshlti3, Allocator>("env", "__lshlti3");
-      Rft::template add<Derived, &Derived::__lshrti3, Allocator>("env", "__lshrti3");
-      Rft::template add<Derived, &Derived::__divti3, Allocator>("env", "__divti3");
-      Rft::template add<Derived, &Derived::__udivti3, Allocator>("env", "__udivti3");
-      Rft::template add<Derived, &Derived::__modti3, Allocator>("env", "__modti3");
-      Rft::template add<Derived, &Derived::__umodti3, Allocator>("env", "__umodti3");
-      Rft::template add<Derived, &Derived::__multi3, Allocator>("env", "__multi3");
-      Rft::template add<Derived, &Derived::__addtf3, Allocator>("env", "__addtf3");
-      Rft::template add<Derived, &Derived::__subtf3, Allocator>("env", "__subtf3");
-      Rft::template add<Derived, &Derived::__multf3, Allocator>("env", "__multf3");
-      Rft::template add<Derived, &Derived::__divtf3, Allocator>("env", "__divtf3");
-      Rft::template add<Derived, &Derived::__eqtf2, Allocator>("env", "__eqtf2");
-      Rft::template add<Derived, &Derived::__netf2, Allocator>("env", "__netf2");
-      Rft::template add<Derived, &Derived::__getf2, Allocator>("env", "__getf2");
-      Rft::template add<Derived, &Derived::__gttf2, Allocator>("env", "__gttf2");
-      Rft::template add<Derived, &Derived::__lttf2, Allocator>("env", "__lttf2");
-      Rft::template add<Derived, &Derived::__letf2, Allocator>("env", "__letf2");
-      Rft::template add<Derived, &Derived::__cmptf2, Allocator>("env", "__cmptf2");
-      Rft::template add<Derived, &Derived::__unordtf2, Allocator>("env", "__unordtf2");
-      Rft::template add<Derived, &Derived::__negtf2, Allocator>("env", "__negtf2");
-      Rft::template add<Derived, &Derived::__floatsitf, Allocator>("env", "__floatsitf");
-      Rft::template add<Derived, &Derived::__floatunsitf, Allocator>("env", "__floatunsitf");
-      Rft::template add<Derived, &Derived::__floatditf, Allocator>("env", "__floatditf");
-      Rft::template add<Derived, &Derived::__floatunditf, Allocator>("env", "__floatunditf");
-      Rft::template add<Derived, &Derived::__floattidf, Allocator>("env", "__floattidf");
-      Rft::template add<Derived, &Derived::__floatuntidf, Allocator>("env", "__floatuntidf");
-      Rft::template add<Derived, &Derived::__floatsidf, Allocator>("env", "__floatsidf");
-      Rft::template add<Derived, &Derived::__extendsftf2, Allocator>("env", "__extendsftf2");
-      Rft::template add<Derived, &Derived::__extenddftf2, Allocator>("env", "__extenddftf2");
-      Rft::template add<Derived, &Derived::__fixtfti, Allocator>("env", "__fixtfti");
-      Rft::template add<Derived, &Derived::__fixtfdi, Allocator>("env", "__fixtfdi");
-      Rft::template add<Derived, &Derived::__fixtfsi, Allocator>("env", "__fixtfsi");
-      Rft::template add<Derived, &Derived::__fixunstfti, Allocator>("env", "__fixunstfti");
-      Rft::template add<Derived, &Derived::__fixunstfdi, Allocator>("env", "__fixunstfdi");
-      Rft::template add<Derived, &Derived::__fixunstfsi, Allocator>("env", "__fixunstfsi");
-      Rft::template add<Derived, &Derived::__fixsfti, Allocator>("env", "__fixsfti");
-      Rft::template add<Derived, &Derived::__fixdfti, Allocator>("env", "__fixdfti");
-      Rft::template add<Derived, &Derived::__fixunssfti, Allocator>("env", "__fixunssfti");
-      Rft::template add<Derived, &Derived::__fixunsdfti, Allocator>("env", "__fixunsdfti");
-      Rft::template add<Derived, &Derived::__trunctfdf2, Allocator>("env", "__trunctfdf2");
-      Rft::template add<Derived, &Derived::__trunctfsf2, Allocator>("env", "__trunctfsf2");
+      // todo: preconditions
+      Rft::template add<&Derived::__ashlti3>("env", "__ashlti3");
+      Rft::template add<&Derived::__ashrti3>("env", "__ashrti3");
+      Rft::template add<&Derived::__lshlti3>("env", "__lshlti3");
+      Rft::template add<&Derived::__lshrti3>("env", "__lshrti3");
+      Rft::template add<&Derived::__divti3>("env", "__divti3");
+      Rft::template add<&Derived::__udivti3>("env", "__udivti3");
+      Rft::template add<&Derived::__modti3>("env", "__modti3");
+      Rft::template add<&Derived::__umodti3>("env", "__umodti3");
+      Rft::template add<&Derived::__multi3>("env", "__multi3");
+      Rft::template add<&Derived::__addtf3>("env", "__addtf3");
+      Rft::template add<&Derived::__subtf3>("env", "__subtf3");
+      Rft::template add<&Derived::__multf3>("env", "__multf3");
+      Rft::template add<&Derived::__divtf3>("env", "__divtf3");
+      Rft::template add<&Derived::__eqtf2>("env", "__eqtf2");
+      Rft::template add<&Derived::__netf2>("env", "__netf2");
+      Rft::template add<&Derived::__getf2>("env", "__getf2");
+      Rft::template add<&Derived::__gttf2>("env", "__gttf2");
+      Rft::template add<&Derived::__lttf2>("env", "__lttf2");
+      Rft::template add<&Derived::__letf2>("env", "__letf2");
+      Rft::template add<&Derived::__cmptf2>("env", "__cmptf2");
+      Rft::template add<&Derived::__unordtf2>("env", "__unordtf2");
+      Rft::template add<&Derived::__negtf2>("env", "__negtf2");
+      Rft::template add<&Derived::__floatsitf>("env", "__floatsitf");
+      Rft::template add<&Derived::__floatunsitf>("env", "__floatunsitf");
+      Rft::template add<&Derived::__floatditf>("env", "__floatditf");
+      Rft::template add<&Derived::__floatunditf>("env", "__floatunditf");
+      Rft::template add<&Derived::__floattidf>("env", "__floattidf");
+      Rft::template add<&Derived::__floatuntidf>("env", "__floatuntidf");
+      Rft::template add<&Derived::__floatsidf>("env", "__floatsidf");
+      Rft::template add<&Derived::__extendsftf2>("env", "__extendsftf2");
+      Rft::template add<&Derived::__extenddftf2>("env", "__extenddftf2");
+      Rft::template add<&Derived::__fixtfti>("env", "__fixtfti");
+      Rft::template add<&Derived::__fixtfdi>("env", "__fixtfdi");
+      Rft::template add<&Derived::__fixtfsi>("env", "__fixtfsi");
+      Rft::template add<&Derived::__fixunstfti>("env", "__fixunstfti");
+      Rft::template add<&Derived::__fixunstfdi>("env", "__fixunstfdi");
+      Rft::template add<&Derived::__fixunstfsi>("env", "__fixunstfsi");
+      Rft::template add<&Derived::__fixsfti>("env", "__fixsfti");
+      Rft::template add<&Derived::__fixdfti>("env", "__fixdfti");
+      Rft::template add<&Derived::__fixunssfti>("env", "__fixunssfti");
+      Rft::template add<&Derived::__fixunsdfti>("env", "__fixunsdfti");
+      Rft::template add<&Derived::__trunctfdf2>("env", "__trunctfdf2");
+      Rft::template add<&Derived::__trunctfsf2>("env", "__trunctfsf2");
    }
 };
 

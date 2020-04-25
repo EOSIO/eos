@@ -1,6 +1,6 @@
 #pragma once
 
-#include <b1/rodeos/callbacks/basic.hpp>
+#include <b1/rodeos/callbacks/definitions.hpp>
 
 namespace b1::rodeos {
 
@@ -14,10 +14,10 @@ struct unimplemented_filter_callbacks {
    // system_api
    int64_t current_time() { return unimplemented<int64_t>("current_time"); }
 
-   template <typename Rft, typename Allocator>
+   template <typename Rft>
    static void register_callbacks() {
-      // system_api
-      Rft::template add<Derived, &Derived::current_time, Allocator>("env", "current_time");
+      // todo: preconditions
+      Rft::template add<&Derived::current_time>("env", "current_time");
    }
 }; // unimplemented_filter_callbacks
 

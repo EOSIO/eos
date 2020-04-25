@@ -1,6 +1,6 @@
 #pragma once
 
-#include <b1/rodeos/callbacks/basic.hpp>
+#include <b1/rodeos/callbacks/definitions.hpp>
 
 namespace b1::rodeos {
 
@@ -106,12 +106,6 @@ struct unimplemented_callbacks {
    int64_t get_sender() { return unimplemented<int64_t>("get_sender"); }
 
    // context_free_system_api
-   void eosio_assert(uint32_t test, const char* msg) {
-      // todo: bounds check
-      // todo: move out of unimplemented_callbacks.hpp
-      if (test == 0)
-         throw std::runtime_error(std::string("assertion failed: ") + msg);
-   }
    void eosio_assert_code(int, int64_t) { return unimplemented<void>("eosio_assert_code"); }
    void eosio_exit(int) { return unimplemented<void>("eosio_exit"); }
 
@@ -139,48 +133,48 @@ struct unimplemented_callbacks {
    // context_free_api
    int get_context_free_data(int, int, int) { return unimplemented<int>("get_context_free_data"); }
 
-   template <typename Rft, typename Allocator>
+   template <typename Rft>
    static void register_callbacks() {
+      // todo: preconditions
+
       // privileged_api
-      Rft::template add<Derived, &Derived::is_feature_active, Allocator>("env", "is_feature_active");
-      Rft::template add<Derived, &Derived::activate_feature, Allocator>("env", "activate_feature");
-      Rft::template add<Derived, &Derived::get_resource_limits, Allocator>("env", "get_resource_limits");
-      Rft::template add<Derived, &Derived::set_resource_limits, Allocator>("env", "set_resource_limits");
-      Rft::template add<Derived, &Derived::set_proposed_producers, Allocator>("env", "set_proposed_producers");
-      Rft::template add<Derived, &Derived::get_blockchain_parameters_packed, Allocator>(
-            "env", "get_blockchain_parameters_packed");
-      Rft::template add<Derived, &Derived::set_blockchain_parameters_packed, Allocator>(
-            "env", "set_blockchain_parameters_packed");
-      Rft::template add<Derived, &Derived::is_privileged, Allocator>("env", "is_privileged");
-      Rft::template add<Derived, &Derived::set_privileged, Allocator>("env", "set_privileged");
-      Rft::template add<Derived, &Derived::preactivate_feature, Allocator>("env", "preactivate_feature");
+      Rft::template add<&Derived::is_feature_active>("env", "is_feature_active");
+      Rft::template add<&Derived::activate_feature>("env", "activate_feature");
+      Rft::template add<&Derived::get_resource_limits>("env", "get_resource_limits");
+      Rft::template add<&Derived::set_resource_limits>("env", "set_resource_limits");
+      Rft::template add<&Derived::set_proposed_producers>("env", "set_proposed_producers");
+      Rft::template add<&Derived::get_blockchain_parameters_packed>("env", "get_blockchain_parameters_packed");
+      Rft::template add<&Derived::set_blockchain_parameters_packed>("env", "set_blockchain_parameters_packed");
+      Rft::template add<&Derived::is_privileged>("env", "is_privileged");
+      Rft::template add<&Derived::set_privileged>("env", "set_privileged");
+      Rft::template add<&Derived::preactivate_feature>("env", "preactivate_feature");
 
       // producer_api
-      Rft::template add<Derived, &Derived::get_active_producers, Allocator>("env", "get_active_producers");
+      Rft::template add<&Derived::get_active_producers>("env", "get_active_producers");
 
 #define DB_SECONDARY_INDEX_METHODS_SIMPLE(IDX)                                                                         \
-   Rft::template add<Derived, &Derived::db_##IDX##_store, Allocator>("env", "db_" #IDX "_store");                      \
-   Rft::template add<Derived, &Derived::db_##IDX##_remove, Allocator>("env", "db_" #IDX "_remove");                    \
-   Rft::template add<Derived, &Derived::db_##IDX##_update, Allocator>("env", "db_" #IDX "_update");                    \
-   Rft::template add<Derived, &Derived::db_##IDX##_find_primary, Allocator>("env", "db_" #IDX "_find_primary");        \
-   Rft::template add<Derived, &Derived::db_##IDX##_find_secondary, Allocator>("env", "db_" #IDX "_find_secondary");    \
-   Rft::template add<Derived, &Derived::db_##IDX##_lowerbound, Allocator>("env", "db_" #IDX "_lowerbound");            \
-   Rft::template add<Derived, &Derived::db_##IDX##_upperbound, Allocator>("env", "db_" #IDX "_upperbound");            \
-   Rft::template add<Derived, &Derived::db_##IDX##_end, Allocator>("env", "db_" #IDX "_end");                          \
-   Rft::template add<Derived, &Derived::db_##IDX##_next, Allocator>("env", "db_" #IDX "_next");                        \
-   Rft::template add<Derived, &Derived::db_##IDX##_previous, Allocator>("env", "db_" #IDX "_previous");
+   Rft::template add<&Derived::db_##IDX##_store>("env", "db_" #IDX "_store");                                          \
+   Rft::template add<&Derived::db_##IDX##_remove>("env", "db_" #IDX "_remove");                                        \
+   Rft::template add<&Derived::db_##IDX##_update>("env", "db_" #IDX "_update");                                        \
+   Rft::template add<&Derived::db_##IDX##_find_primary>("env", "db_" #IDX "_find_primary");                            \
+   Rft::template add<&Derived::db_##IDX##_find_secondary>("env", "db_" #IDX "_find_secondary");                        \
+   Rft::template add<&Derived::db_##IDX##_lowerbound>("env", "db_" #IDX "_lowerbound");                                \
+   Rft::template add<&Derived::db_##IDX##_upperbound>("env", "db_" #IDX "_upperbound");                                \
+   Rft::template add<&Derived::db_##IDX##_end>("env", "db_" #IDX "_end");                                              \
+   Rft::template add<&Derived::db_##IDX##_next>("env", "db_" #IDX "_next");                                            \
+   Rft::template add<&Derived::db_##IDX##_previous>("env", "db_" #IDX "_previous");
 
 #define DB_SECONDARY_INDEX_METHODS_ARRAY(IDX)                                                                          \
-   Rft::template add<Derived, &Derived::db_##IDX##_store, Allocator>("env", "db_" #IDX "_store");                      \
-   Rft::template add<Derived, &Derived::db_##IDX##_remove, Allocator>("env", "db_" #IDX "_remove");                    \
-   Rft::template add<Derived, &Derived::db_##IDX##_update, Allocator>("env", "db_" #IDX "_update");                    \
-   Rft::template add<Derived, &Derived::db_##IDX##_find_primary, Allocator>("env", "db_" #IDX "_find_primary");        \
-   Rft::template add<Derived, &Derived::db_##IDX##_find_secondary, Allocator>("env", "db_" #IDX "_find_secondary");    \
-   Rft::template add<Derived, &Derived::db_##IDX##_lowerbound, Allocator>("env", "db_" #IDX "_lowerbound");            \
-   Rft::template add<Derived, &Derived::db_##IDX##_upperbound, Allocator>("env", "db_" #IDX "_upperbound");            \
-   Rft::template add<Derived, &Derived::db_##IDX##_end, Allocator>("env", "db_" #IDX "_end");                          \
-   Rft::template add<Derived, &Derived::db_##IDX##_next, Allocator>("env", "db_" #IDX "_next");                        \
-   Rft::template add<Derived, &Derived::db_##IDX##_previous, Allocator>("env", "db_" #IDX "_previous");
+   Rft::template add<&Derived::db_##IDX##_store>("env", "db_" #IDX "_store");                                          \
+   Rft::template add<&Derived::db_##IDX##_remove>("env", "db_" #IDX "_remove");                                        \
+   Rft::template add<&Derived::db_##IDX##_update>("env", "db_" #IDX "_update");                                        \
+   Rft::template add<&Derived::db_##IDX##_find_primary>("env", "db_" #IDX "_find_primary");                            \
+   Rft::template add<&Derived::db_##IDX##_find_secondary>("env", "db_" #IDX "_find_secondary");                        \
+   Rft::template add<&Derived::db_##IDX##_lowerbound>("env", "db_" #IDX "_lowerbound");                                \
+   Rft::template add<&Derived::db_##IDX##_upperbound>("env", "db_" #IDX "_upperbound");                                \
+   Rft::template add<&Derived::db_##IDX##_end>("env", "db_" #IDX "_end");                                              \
+   Rft::template add<&Derived::db_##IDX##_next>("env", "db_" #IDX "_next");                                            \
+   Rft::template add<&Derived::db_##IDX##_previous>("env", "db_" #IDX "_previous");
 
       // database_api
       DB_SECONDARY_INDEX_METHODS_SIMPLE(idx64)
@@ -193,58 +187,55 @@ struct unimplemented_callbacks {
 #undef DB_SECONDARY_INDEX_METHODS_ARRAY
 
       // crypto_api
-      Rft::template add<Derived, &Derived::assert_recover_key, Allocator>("env", "assert_recover_key");
-      Rft::template add<Derived, &Derived::recover_key, Allocator>("env", "recover_key");
-      Rft::template add<Derived, &Derived::assert_sha256, Allocator>("env", "assert_sha256");
-      Rft::template add<Derived, &Derived::assert_sha1, Allocator>("env", "assert_sha1");
-      Rft::template add<Derived, &Derived::assert_sha512, Allocator>("env", "assert_sha512");
-      Rft::template add<Derived, &Derived::assert_ripemd160, Allocator>("env", "assert_ripemd160");
-      Rft::template add<Derived, &Derived::sha1, Allocator>("env", "sha1");
-      Rft::template add<Derived, &Derived::sha256, Allocator>("env", "sha256");
-      Rft::template add<Derived, &Derived::sha512, Allocator>("env", "sha512");
-      Rft::template add<Derived, &Derived::ripemd160, Allocator>("env", "ripemd160");
+      Rft::template add<&Derived::assert_recover_key>("env", "assert_recover_key");
+      Rft::template add<&Derived::recover_key>("env", "recover_key");
+      Rft::template add<&Derived::assert_sha256>("env", "assert_sha256");
+      Rft::template add<&Derived::assert_sha1>("env", "assert_sha1");
+      Rft::template add<&Derived::assert_sha512>("env", "assert_sha512");
+      Rft::template add<&Derived::assert_ripemd160>("env", "assert_ripemd160");
+      Rft::template add<&Derived::sha1>("env", "sha1");
+      Rft::template add<&Derived::sha256>("env", "sha256");
+      Rft::template add<&Derived::sha512>("env", "sha512");
+      Rft::template add<&Derived::ripemd160>("env", "ripemd160");
 
       // permission_api
-      Rft::template add<Derived, &Derived::check_transaction_authorization, Allocator>(
-            "env", "check_transaction_authorization");
-      Rft::template add<Derived, &Derived::check_permission_authorization, Allocator>("env",
-                                                                                      "check_permission_authorization");
-      Rft::template add<Derived, &Derived::get_permission_last_used, Allocator>("env", "get_permission_last_used");
-      Rft::template add<Derived, &Derived::get_account_creation_time, Allocator>("env", "get_account_creation_time");
+      Rft::template add<&Derived::check_transaction_authorization>("env", "check_transaction_authorization");
+      Rft::template add<&Derived::check_permission_authorization>("env", "check_permission_authorization");
+      Rft::template add<&Derived::get_permission_last_used>("env", "get_permission_last_used");
+      Rft::template add<&Derived::get_account_creation_time>("env", "get_account_creation_time");
 
       // system_api
-      Rft::template add<Derived, &Derived::publication_time, Allocator>("env", "publication_time");
-      Rft::template add<Derived, &Derived::is_feature_activated, Allocator>("env", "is_feature_activated");
-      Rft::template add<Derived, &Derived::get_sender, Allocator>("env", "get_sender");
+      Rft::template add<&Derived::publication_time>("env", "publication_time");
+      Rft::template add<&Derived::is_feature_activated>("env", "is_feature_activated");
+      Rft::template add<&Derived::get_sender>("env", "get_sender");
 
       // context_free_system_api
-      Rft::template add<Derived, &Derived::eosio_assert, Allocator>("env", "eosio_assert");
-      Rft::template add<Derived, &Derived::eosio_assert_code, Allocator>("env", "eosio_assert_code");
-      Rft::template add<Derived, &Derived::eosio_exit, Allocator>("env", "eosio_exit");
+      Rft::template add<&Derived::eosio_assert_code>("env", "eosio_assert_code");
+      Rft::template add<&Derived::eosio_exit>("env", "eosio_exit");
 
       // authorization_api
-      Rft::template add<Derived, &Derived::require_recipient, Allocator>("env", "require_recipient");
-      Rft::template add<Derived, &Derived::require_auth, Allocator>("env", "require_auth");
-      Rft::template add<Derived, &Derived::require_auth2, Allocator>("env", "require_auth2");
-      Rft::template add<Derived, &Derived::has_auth, Allocator>("env", "has_auth");
-      Rft::template add<Derived, &Derived::is_account, Allocator>("env", "is_account");
+      Rft::template add<&Derived::require_recipient>("env", "require_recipient");
+      Rft::template add<&Derived::require_auth>("env", "require_auth");
+      Rft::template add<&Derived::require_auth2>("env", "require_auth2");
+      Rft::template add<&Derived::has_auth>("env", "has_auth");
+      Rft::template add<&Derived::is_account>("env", "is_account");
 
       // context_free_transaction_api
-      Rft::template add<Derived, &Derived::read_transaction, Allocator>("env", "read_transaction");
-      Rft::template add<Derived, &Derived::transaction_size, Allocator>("env", "transaction_size");
-      Rft::template add<Derived, &Derived::expiration, Allocator>("env", "expiration");
-      Rft::template add<Derived, &Derived::tapos_block_prefix, Allocator>("env", "tapos_block_prefix");
-      Rft::template add<Derived, &Derived::tapos_block_num, Allocator>("env", "tapos_block_num");
-      Rft::template add<Derived, &Derived::get_action, Allocator>("env", "get_action");
+      Rft::template add<&Derived::read_transaction>("env", "read_transaction");
+      Rft::template add<&Derived::transaction_size>("env", "transaction_size");
+      Rft::template add<&Derived::expiration>("env", "expiration");
+      Rft::template add<&Derived::tapos_block_prefix>("env", "tapos_block_prefix");
+      Rft::template add<&Derived::tapos_block_num>("env", "tapos_block_num");
+      Rft::template add<&Derived::get_action>("env", "get_action");
 
       // transaction_api
-      Rft::template add<Derived, &Derived::send_inline, Allocator>("env", "send_inline");
-      Rft::template add<Derived, &Derived::send_context_free_inline, Allocator>("env", "send_context_free_inline");
-      Rft::template add<Derived, &Derived::send_deferred, Allocator>("env", "send_deferred");
-      Rft::template add<Derived, &Derived::cancel_deferred, Allocator>("env", "cancel_deferred");
+      Rft::template add<&Derived::send_inline>("env", "send_inline");
+      Rft::template add<&Derived::send_context_free_inline>("env", "send_context_free_inline");
+      Rft::template add<&Derived::send_deferred>("env", "send_deferred");
+      Rft::template add<&Derived::cancel_deferred>("env", "cancel_deferred");
 
       // context_free_api
-      Rft::template add<Derived, &Derived::get_context_free_data, Allocator>("env", "get_context_free_data");
+      Rft::template add<&Derived::get_context_free_data>("env", "get_context_free_data");
    } // register_callbacks()
 };   // unimplemented_callbacks
 
