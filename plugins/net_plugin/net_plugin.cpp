@@ -672,6 +672,7 @@ namespace eosio {
       /** @} */
 
       const string peer_name();
+      const string no_lock_peer_name();
 
       void blk_send_branch( const block_id_type& msg_head_id );
       void blk_send_branch_impl( uint32_t msg_head_num, uint32_t lib_num, uint32_t head_num );
@@ -803,6 +804,7 @@ namespace eosio {
          // continue call to signal on connection strand
          fc_dlog( logger, "handle generic_message" );
          c->handle_message( msg );
+         //fc_dlog( logger, "handle generic_message done" );
       }
 
       void operator()( const generic_support_message& msg ) const {
@@ -842,6 +844,7 @@ namespace eosio {
         generic_support_msg(generic_support_msg)
    {
       fc_ilog( logger, "creating connection to ${n}", ("n", endpoint) );
+      //fc_ilog( logger, "creating connection to ${n}, types: ${t}", ("n", endpoint)("t", generic_support_msg.types.size()) );
    }
 
    connection::connection( generic_support_message generic_support_msg )
@@ -855,6 +858,7 @@ namespace eosio {
         generic_support_msg(generic_support_msg)
    {
       fc_dlog( logger, "new connection object created" );
+      //fc_dlog( logger, "new connection object created, types: ${t}", ("t", generic_support_msg.types.size()) );
    }
 
    void connection::update_endpoints() {
@@ -1112,7 +1116,7 @@ namespace eosio {
    void connection::send_generic_support_message() {
       if (!sent_generic_support_message && protocol_version >= generic_messages) {
          strand.post([c = shared_from_this()]() {
-            fc_ilog( logger, "Sending generic_support_messsage" );
+            fc_dlog( logger, "Sending generic_support_message" );
             c->enqueue( c->generic_support_msg );
          });
          sent_generic_support_message = true;
@@ -1125,7 +1129,7 @@ namespace eosio {
          std::lock_guard<std::mutex> g( conn_mtx );
          const auto found = std::find(std::begin(generic_msg_types), std::end(generic_msg_types), msg.type);
          if (found == std::end(generic_msg_types)) {
-            fc_dlog( logger, "Not sending generic_message of type: ${type} (${name}), to endpoint: ${ep} since it doesn't"
+            fc_ilog( logger, "Not sending generic_message of type: ${type} (${name}), to endpoint: ${ep} since it doesn't"
                              " process that type", ("type", msg.type)("name", type_name)("ep", peer_address()) );
             return;
          }
@@ -1384,6 +1388,10 @@ namespace eosio {
    // locks conn_mtx, do not call while holding conn_mtx
    const string connection::peer_name() {
       std::lock_guard<std::mutex> g_conn( conn_mtx );
+      return no_lock_peer_name();
+   }
+
+   const string connection::no_lock_peer_name() {
       if( !last_handshake_recv.p2p_address.empty() ) {
          return last_handshake_recv.p2p_address;
       }
@@ -2672,6 +2680,7 @@ namespace eosio {
             fc_ilog( logger, "Local network version: ${nv} Remote version: ${mnv}",
                      ("nv", net_version)( "mnv", protocol_version ) );
          }
+         //fc_ilog( logger, "protocol_version matches" );
 
          g_conn.lock();
          if( conn_node_id != msg.node_id ) {
@@ -2962,13 +2971,17 @@ namespace eosio {
 
    void connection::handle_message( const generic_message& msg ) {
       peer_dlog(this, "generic_message");
-      my_impl->generic_msg_handler->route(msg, peer_address());
+      my_impl->generic_msg_handler->route(msg, peer_name());
+      peer_dlog(this, "generic_message done");
    }
 
    void connection::handle_message( const generic_support_message& msg ) {
       peer_dlog(this, "generic_support_message");
-      std::lock_guard<std::mutex> g( conn_mtx );
+      std::unique_lock<std::mutex> g( conn_mtx );
       generic_msg_types = msg.types;
+      //const auto size = generic_msg_types.size();
+      //g.unlock();
+      //peer_ilog(this, "generic_support_message count: ${c}", ("c", size));
    }
 
    // called from application thread
@@ -3481,9 +3494,13 @@ namespace eosio {
 
    void net_plugin::plugin_startup() {
       handle_sighup();
+
       try {
 
       fc_ilog( logger, "my node_id is ${id}", ("id", my->node_id ));
+
+      my->generic_support_msg.types = generic_msg_handler.get_registered_types();
+      my->generic_msg_handler = &generic_msg_handler;
 
       my->producer_plug = app().find_plugin<producer_plugin>();
 
@@ -3569,9 +3586,6 @@ namespace eosio {
       for( const auto& seed_node : my->supplied_peers ) {
          connect( seed_node );
       }
-
-      my->generic_support_msg.types = generic_msg_handler.get_registered_types();
-      my->generic_msg_handler = &generic_msg_handler;
 
       } catch( ... ) {
          // always want plugin_shutdown even on exception
@@ -3706,15 +3720,19 @@ namespace eosio {
       for (auto con : my->connections) {
          std::lock_guard<std::mutex> g( con->conn_mtx );
          if (!ignore_endpoints_with_no_support || !con->generic_msg_types.empty()) {
-            result.insert( { con->peer_address(), con->generic_msg_types } );
+            //fc_ilog( logger, "Supported Types count: ${c}, for \"${a}\"", ("c",con->generic_msg_types.size())("a", con->no_lock_peer_name()) );
+            result.insert( { con->no_lock_peer_name(), con->generic_msg_types } );
          }
+//         else {
+//            fc_ilog( logger, "Supported Types skipping for \"${a}\"", ("a", con->no_lock_peer_name()) );
+//         }
       }
       return result;
    }
 
    void net_plugin::send( const generic_message& msg, const std::string& type_name, const vector<string>& endpoints ) {
       std::shared_lock<std::shared_mutex> g( my->connections_mtx );
-      if (!endpoints.empty()) {
+      if (endpoints.empty()) {
          const bool send_if_expecting_type = false;
          for (auto con : my->connections) {
             con->send(msg, type_name, send_if_expecting_type);
@@ -3722,9 +3740,8 @@ namespace eosio {
       }
       else {
          const bool force_send = true;
-         for (const auto endpoint : endpoints) {
-            auto con = my->find_connection( endpoint );
-            if( con ) {
+         for (auto con : my->connections) {
+            if (std::find(endpoints.begin(), endpoints.end(), con->no_lock_peer_name()) != endpoints.end()) {
                con->send(msg, type_name, force_send);
             }
          }

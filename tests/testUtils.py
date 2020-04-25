@@ -436,6 +436,16 @@ class Utils:
 
         return "comparison of %s type is not supported, context=%s" % (typeName,context)
 
+    @staticmethod
+    def getJsonBoolString(val):
+        assert(isinstance(val, bool))
+        if val == True:
+            return "true"
+        elif val == False:
+            return "false"
+
+        return "null"
+
 ###########################################################################################
 class Account(object):
     # pylint: disable=too-few-public-methods

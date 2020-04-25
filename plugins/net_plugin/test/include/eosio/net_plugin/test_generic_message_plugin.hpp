@@ -22,9 +22,9 @@ namespace eosio {
                : my( test_generic_message ) {}
 
             struct type1 {
-               string   f1;
-               uint64_t f2;
-               bool     f3;
+               bool     f1;
+               string   f2;
+               uint64_t f3;
             };
             struct send_type1_params {
                std::vector<string> endpoints;
@@ -49,7 +49,7 @@ namespace eosio {
             send_type2_results send_type2( const send_type2_params& params ) const;
 
             struct type3 {
-               bool     f1;
+               string   f1;
             };
             struct send_type3_params {
                std::vector<string> endpoints;
@@ -60,7 +60,7 @@ namespace eosio {
             send_type3_results send_type3( const send_type3_params& params ) const;
 
             struct registered_types_params {
-               bool include_no_types;
+               bool ignore_no_support;
             };
             struct node {
                string         endpoint;
@@ -130,7 +130,7 @@ FC_REFLECT(eosio::test_generic_message::test_generic_message_apis::read_write::t
 FC_REFLECT(eosio::test_generic_message::test_generic_message_apis::read_write::send_type2_params, (endpoints)(data) )
 FC_REFLECT(eosio::test_generic_message::test_generic_message_apis::read_write::type3, (f1) )
 FC_REFLECT(eosio::test_generic_message::test_generic_message_apis::read_write::send_type3_params, (endpoints)(data) )
-FC_REFLECT(eosio::test_generic_message::test_generic_message_apis::read_write::registered_types_params, (include_no_types) )
+FC_REFLECT(eosio::test_generic_message::test_generic_message_apis::read_write::registered_types_params, (ignore_no_support) )
 FC_REFLECT(eosio::test_generic_message::test_generic_message_apis::read_write::node, (endpoint)(types) )
 FC_REFLECT(eosio::test_generic_message::test_generic_message_apis::read_write::registered_types_results, (nodes) )
 FC_REFLECT(eosio::test_generic_message::test_generic_message_apis::read_write::received_data_params, (endpoints) )

@@ -8,8 +8,8 @@ namespace fc { class variant; }
 namespace {
    template<typename T>
    void verify_payload(std::size_t payload_size, std::size_t type_size) {
-      EOS_ASSERT( payload_size == type_size, eosio::chain::plugin_exception,
-                  "generic_message payload size (${ps}) not sized correctly to deserialize a ${name} which requires size: ${ts}",
+      EOS_ASSERT( payload_size >= type_size, eosio::chain::plugin_exception,
+                  "generic_message payload size (${ps}) not sized correctly to deserialize a ${name} which requires at least a size of: ${ts}",
                   ("ps", payload_size)("name",typeid(T).name())("ts", type_size));
    }
 
@@ -23,6 +23,76 @@ namespace {
          eosio::abi_serializer::create_yield_function( ten_seconds ) );
       rcvd.push_back({ .endpoint = endpoint, .data = std::move(pretty_output) });
    }
+
+   template<typename T>
+   const char* get_type(const T& t) {
+      return "<UNKNOWN>";
+   }
+
+   const char* get_type(const std::string& t) {
+      return "<STRING>";
+   }
+
+   const char* get_type(const uint64_t& t) {
+      return "<uint64_t>";
+   }
+
+   const char* get_type(const bool& t) {
+      return "<bool>";
+   }
+
+   template<typename T>
+   std::size_t size(const T& t) {
+      return sizeof(t);
+   }
+
+   std::size_t size(const std::string& t) {
+      return sizeof(std::size_t) + t.length();
+   }
+
+   std::size_t total_size() {
+      return 0;
+   }
+
+   template<typename T, typename... Types>
+   std::size_t total_size(const T& t, Types... vars) {
+      const auto s = size(t);
+      return total_size(vars...) + s;
+   }
+
+   template<typename T>
+   void pack(char*& buffer, const T& t) {
+      const auto s = sizeof(t);
+      std::memcpy((void*)buffer, (const void*)&t, s);
+      buffer += s;
+   }
+
+   void pack(char*& buffer, const std::string& t) {
+      const std::size_t length = t.length();
+      const auto s = sizeof(length);
+      std::memcpy((void*)buffer, (const void*)&length, s);
+      buffer += s;
+      std::memcpy((void*)buffer, (const void*)t.data(), length);
+      buffer += t.length();
+   }
+
+   template<typename T>
+   void unpack(const char*& buffer, T& t) {
+      const auto s = sizeof(t);
+      std::memcpy((void*)&t, buffer, s);
+      buffer += s;
+   }
+
+   void unpack(const char*& buffer, std::string& t) {
+      std::size_t length = 0;
+      const auto s = sizeof(length);
+      std::memcpy((void*)&length, (const void*)buffer, s);
+      buffer += s;
+      t.resize(length);
+      std::memcpy((void*)t.data(), (const void*)buffer, length);
+      buffer += length;
+   }
+
 }
 
 namespace eosio {
@@ -33,64 +103,54 @@ namespace net {
 
    template<>
    void convert(const eosio::bytes& payload, type1& t) {
-      const std::size_t f1_size = sizeof(t.f1);
-      const std::size_t f2_size = sizeof(t.f2);
-      const std::size_t f3_size = sizeof(t.f3);
-      verify_payload<type1>(payload.size(), f1_size + f2_size + f3_size);
-      std::memcpy((void*)&t.f1, (const void*)payload.data(), f1_size);
-      std::memcpy((void*)&t.f2, (const void*)(payload.data() + f1_size), f2_size);
-      std::memcpy((void*)&t.f3, (const void*)(payload.data() + f1_size + f2_size), f3_size);
+      verify_payload<type1>(payload.size(), total_size(t.f1, t.f2, t.f3));
+      const char* payload_offset = payload.data();
+      ::unpack(payload_offset, t.f1);
+      ::unpack(payload_offset, t.f2);
+      ::unpack(payload_offset, t.f3);
    }
 
    template<>
    void convert(const type1& t, eosio::bytes& payload) {
-      const std::size_t f1_size = sizeof(t.f1);
-      const std::size_t f2_size = sizeof(t.f2);
-      const std::size_t f3_size = sizeof(t.f3);
-      payload.resize(f1_size + f2_size + f3_size);
-      std::memcpy((void*)payload.data(), (const void*)&t.f1, f1_size);
-      std::memcpy((void*)(payload.data() + f1_size), (const void*)&t.f2, f2_size);
-      std::memcpy((void*)(payload.data() + f1_size + f2_size), (const void*)&t.f3, f3_size);
+      payload.resize(total_size(t.f1, t.f2, t.f3));
+      char* payload_offset = payload.data();
+      ::pack(payload_offset, t.f1);
+      ::pack(payload_offset, t.f2);
+      ::pack(payload_offset, t.f3);
    }
 
    template<>
    void convert(const eosio::bytes& payload, type2& t) {
-      const std::size_t f1_size = sizeof(t.f1);
-      const std::size_t f2_size = sizeof(t.f2);
-      const std::size_t f3_size = sizeof(t.f3);
-      const std::size_t f4_size = sizeof(t.f4);
-      verify_payload<type2>(payload.size(), f1_size + f2_size + f3_size + f4_size);
-      std::memcpy((void*)&t.f1, (const void*)payload.data(), f1_size);
-      std::memcpy((void*)&t.f2, (const void*)(payload.data() + f1_size), f2_size);
-      std::memcpy((void*)&t.f3, (const void*)(payload.data() + f1_size + f2_size), f3_size);
-      std::memcpy((void*)&t.f4, (const void*)(payload.data() + f1_size + f2_size + f3_size), f4_size);
+      verify_payload<type2>(payload.size(), total_size(t.f1, t.f2, t.f3, t.f4));
+      const char* payload_offset = payload.data();
+      ::unpack(payload_offset, t.f1);
+      ::unpack(payload_offset, t.f2);
+      ::unpack(payload_offset, t.f3);
+      ::unpack(payload_offset, t.f4);
    }
 
    template<>
    void convert(const type2& t, eosio::bytes& payload) {
-      const std::size_t f1_size = sizeof(t.f1);
-      const std::size_t f2_size = sizeof(t.f2);
-      const std::size_t f3_size = sizeof(t.f3);
-      const std::size_t f4_size = sizeof(t.f4);
-      payload.resize(f1_size + f2_size + f3_size + f4_size);
-      std::memcpy((void*)payload.data(), (const void*)&t.f1, f1_size);
-      std::memcpy((void*)(payload.data() + f1_size), (const void*)&t.f2, f2_size);
-      std::memcpy((void*)(payload.data() + f1_size + f2_size), (const void*)&t.f3, f3_size);
-      std::memcpy((void*)(payload.data() + f1_size + f2_size + f3_size), (const void*)&t.f4, f4_size);
+      payload.resize(total_size(t.f1, t.f2, t.f3, t.f4));
+      char* payload_offset = payload.data();
+      ::pack(payload_offset, t.f1);
+      ::pack(payload_offset, t.f2);
+      ::pack(payload_offset, t.f3);
+      ::pack(payload_offset, t.f4);
    }
 
    template<>
    void convert(const eosio::bytes& payload, type3& t) {
-      const std::size_t f1_size = sizeof(t.f1);
-      verify_payload<type3>(payload.size(), f1_size);
-      std::memcpy((void*)&t.f1, (const void*)payload.data(), f1_size);
+      verify_payload<type3>(payload.size(), total_size(t.f1));
+      const char* payload_offset = payload.data();
+      ::unpack(payload_offset, t.f1);
    }
 
    template<>
    void convert(const type3& t, eosio::bytes& payload) {
-      const std::size_t f1_size = sizeof(t.f1);
-      payload.resize(f1_size);
-      std::memcpy((void*)payload.data(), (const void*)&t.f1, f1_size);
+      payload.resize(total_size(t.f1));
+      char* payload_offset = payload.data();
+      ::pack(payload_offset, t.f1);
    }
 }
 
@@ -104,7 +164,9 @@ struct test_generic_message_plugin_impl {
 
    net_plugin&    _net_plugin;
    std::vector<std::string> _types;
+   std::vector<net::scoped_connection> _signal_connections;
    received_data  _received_data;
+   mutable std::mutex _received_data_mtx;
 };
 
 test_generic_message_plugin::test_generic_message_plugin()
@@ -115,19 +177,25 @@ void test_generic_message_plugin_impl::register_types()
 {
    for (auto type : _types) {
       if (type == "type1") {
-         _net_plugin.register_msg<net::type1>([this](const net::type1& t, const string& endpoint) {
-            store(t, endpoint, _received_data);
-         });
+         _signal_connections.emplace_back(
+            _net_plugin.register_msg<net::type1>([this](const net::type1& t, const string& endpoint) {
+               std::unique_lock<std::mutex> g( _received_data_mtx );
+               store(t, endpoint, _received_data);
+            }));
       }
       else if (type == "type2") {
-         _net_plugin.register_msg<net::type2>([this](const net::type2& t, const string& endpoint) {
-            store(t, endpoint, _received_data);
-         });
+         _signal_connections.emplace_back(
+            _net_plugin.register_msg<net::type2>([this](const net::type2& t, const string& endpoint) {
+               std::unique_lock<std::mutex> g( _received_data_mtx );
+               store(t, endpoint, _received_data);
+            }));
       }
       else if (type == "type3") {
-         _net_plugin.register_msg<net::type3>([this](const net::type3& t, const string& endpoint) {
-            store(t, endpoint, _received_data);
-         });
+         _signal_connections.emplace_back(
+            _net_plugin.register_msg<net::type3>([this](const net::type3& t, const string& endpoint) {
+               std::unique_lock<std::mutex> g( _received_data_mtx );
+               store(t, endpoint, _received_data);
+            }));
       }
    }
 }
@@ -154,6 +222,7 @@ void test_generic_message_plugin::plugin_startup() {
 
 void test_generic_message_plugin::plugin_shutdown() {
    ilog("test_generic_message_plugin shutting down");
+   my->_signal_connections.clear();
 }
 
 namespace test_generic_message_apis {
@@ -174,7 +243,7 @@ read_write::send_type3_results read_write::send_type3(const read_write::send_typ
 }
 
 read_write::registered_types_results read_write::registered_types( const registered_types_params& params ) const {
-   const auto types = my->_net_plugin.supported_types(params.include_no_types);
+   const auto types = my->_net_plugin.supported_types(params.ignore_no_support);
    registered_types_results results;
    for (const auto endpoint_types : types) {
       vector<string> type_names;
@@ -201,7 +270,18 @@ read_write::registered_types_results read_write::registered_types( const registe
 }
 
 read_write::received_data_results read_write::received_data( const received_data_params& params ) const {
-   return { .messages = my->_received_data };
+   std::unique_lock<std::mutex> g( my->_received_data_mtx );
+   if (params.endpoints.empty()) {
+      return { .messages = my->_received_data };
+   }
+   read_write::received_data_results results;
+   for (const auto msg : my->_received_data) {
+      const auto found = std::find(params.endpoints.begin(), params.endpoints.end(), msg.endpoint);
+      if (found != params.endpoints.end()) {
+         results.messages.push_back(msg);
+      }
+   }
+   return results;
 }
 } // namespace test_generic_message_apis
 

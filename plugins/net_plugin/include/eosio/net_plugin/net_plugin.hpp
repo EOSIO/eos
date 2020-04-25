@@ -45,7 +45,7 @@ namespace eosio {
          * @param t : Type T data to be converted to a generic_message payload
          * @param endpoints : endpoints to send the data to. If none provided, the message
          *                    will be sent to all endpoints that register to receive that
-         *                    generic message type
+         *                    generic message type.
          */
         template<typename T>
         void send_generic_message(const T& t, const vector<string>& endpoints = vector<string>{});

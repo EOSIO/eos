@@ -63,8 +63,11 @@ namespace eosio {
       template<typename T>
       void generic_message_handler::router<T>::route(const generic_message& msg, const string& endpoint) const {
          T t;
-         convert(msg.payload, t);
-         forward_msg(t, endpoint);
+         //ilog( "TEST route convert" );
+         convert( msg.payload, t );
+         //ilog( "TEST route forward_msg: ${f}", ("f", (uint64_t) &forward_msg));
+         forward_msg( t, endpoint );
+         //ilog( "TEST route done" );
       }
 
       template<typename T, typename ForwardMessage>
@@ -74,6 +77,7 @@ namespace eosio {
          auto existing_router = _routers.find(type.hash_code());
          router_t* msg_router = nullptr;
          if (existing_router != _routers.end()) {
+            dlog("register existing type: ${t} (${n}", ("t", type.hash_code())("n", type.name()));
             // type is already registered
             msg_router = dynamic_cast<router_t* >(existing_router->second.get());
             if (msg_router == nullptr) {
@@ -84,6 +88,7 @@ namespace eosio {
             }
          }
          else {
+            dlog("register new type: ${t} (${n}", ("t", type.hash_code())("n", type.name()));
             auto actual_router = std::make_shared<router_t>();
             msg_router = actual_router.get();
             generic_router_ptr g_router(actual_router);
