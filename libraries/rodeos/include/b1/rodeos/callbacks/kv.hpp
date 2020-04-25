@@ -1,7 +1,7 @@
 #pragma once
 
 #include <b1/chain_kv/chain_kv.hpp>
-#include <b1/rodeos/callbacks/definitions.hpp>
+#include <b1/rodeos/callbacks/vm_types.hpp>
 #include <eosio/check.hpp>
 #include <eosio/name.hpp>
 #include <rocksdb/db.h>
@@ -415,12 +415,12 @@ class kv_environment : public db_callbacks<kv_environment> {
       return base::kv_it_lower_bound(itr, { key, key_size }, found_key_size, found_value_size);
    }
 
-   int32_t kv_it_key(uint32_t itr, uint32_t offset, char* dest, uint32_t dest_size, uint32_t* actual_size) {
-      return base::kv_it_key(itr, offset, { dest, dest_size }, actual_size);
+   int32_t kv_it_key(uint32_t itr, uint32_t offset, char* dest, uint32_t dest_size, uint32_t& actual_size) {
+      return base::kv_it_key(itr, offset, { dest, dest_size }, &actual_size);
    }
 
-   int32_t kv_it_value(uint32_t itr, uint32_t offset, char* dest, uint32_t dest_size, uint32_t* actual_size) {
-      return base::kv_it_value(itr, offset, { dest, dest_size }, actual_size);
+   int32_t kv_it_value(uint32_t itr, uint32_t offset, char* dest, uint32_t dest_size, uint32_t& actual_size) {
+      return base::kv_it_value(itr, offset, { dest, dest_size }, &actual_size);
    }
 };
 

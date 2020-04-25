@@ -2,6 +2,8 @@ file(GLOB_RECURSE HEADERS "include/*.hpp" "include/*.h")
 
 add_library( rodeos_lib
              embedded_rodeos.cpp
+             rodeos.cpp
+             wasm_ql.cpp
              ${HEADERS}
            )
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <b1/rodeos/callbacks/definitions.hpp>
+#include <b1/rodeos/callbacks/vm_types.hpp>
 #include <eosio/stream.hpp>
 
 namespace b1::rodeos {
