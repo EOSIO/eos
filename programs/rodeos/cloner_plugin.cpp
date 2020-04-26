@@ -116,7 +116,7 @@ struct cloner_session : ship_client::connection_callbacks, std::enable_shared_fr
    std::vector<block_position> get_positions() {
       std::vector<block_position> result;
       if (rodeos_snapshot->head) {
-         rodeos::db_view_state view_state{ eosio::name{ "state" }, *db, *rodeos_snapshot->write_session,
+         rodeos::db_view_state view_state{ rodeos::state_account, *db, *rodeos_snapshot->write_session,
                                            partition->contract_kv_prefix };
          for (uint32_t i = rodeos_snapshot->irreversible; i <= rodeos_snapshot->head; ++i) {
             auto info = rodeos::get_state_row<rodeos::block_info>(

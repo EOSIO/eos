@@ -23,7 +23,7 @@ rocksdb_plugin::~rocksdb_plugin() {}
 
 void rocksdb_plugin::set_program_options(options_description& cli, options_description& cfg) {
    auto op = cfg.add_options();
-   op("rdb-database", bpo::value<std::string>()->default_value("./chain.rocksdb"), "Primary database path");
+   op("rdb-database", bpo::value<std::string>()->default_value("./rodeos.rocksdb"), "Primary database path");
    op("rdb-threads", bpo::value<uint32_t>(),
       "Increase number of background RocksDB threads. Only used with cloner_plugin. Recommend 8 for full history "
       "on large chains.");

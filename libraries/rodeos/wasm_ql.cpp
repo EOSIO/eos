@@ -228,7 +228,7 @@ void run_action(wasm_ql::thread_state& thread_state, const std::vector<char>& co
       throw eosio::vm::timeout_exception("execution timed out");
 
    chain_kv::write_session write_session{ *thread_state.shared->db, snapshot };
-   db_view_state db_view_state{ eosio::name{ "state" }, *thread_state.shared->db, write_session, contract_kv_prefix };
+   db_view_state           db_view_state{ state_account, *thread_state.shared->db, write_session, contract_kv_prefix };
 
    std::optional<backend_entry>        entry = thread_state.shared->backend_cache->get(action.account);
    std::optional<std::vector<uint8_t>> code;
@@ -261,7 +261,7 @@ void run_action(wasm_ql::thread_state& thread_state, const std::vector<char>& co
    }
    auto se = fc::make_scoped_exit([&] { thread_state.shared->backend_cache->add(std::move(*entry)); });
 
-   fill_status_sing sing{ eosio::name{ "state" }, db_view_state, false };
+   fill_status_sing sing{ state_account, db_view_state, false };
    if (!sing.exists())
       throw std::runtime_error("No fill_status records found; is filler running?");
    auto& fill_status = sing.get();
@@ -299,7 +299,7 @@ const std::vector<char>& query_get_info(wasm_ql::thread_state&   thread_state,
                                         const std::vector<char>& contract_kv_prefix) {
    rocksdb::ManagedSnapshot snapshot{ thread_state.shared->db->rdb.get() };
    chain_kv::write_session  write_session{ *thread_state.shared->db, snapshot.snapshot() };
-   db_view_state db_view_state{ eosio::name{ "state" }, *thread_state.shared->db, write_session, contract_kv_prefix };
+   db_view_state            db_view_state{ state_account, *thread_state.shared->db, write_session, contract_kv_prefix };
 
    std::string result = "{\"server_type\":\"wasm-ql\"";
 
@@ -318,7 +318,7 @@ const std::vector<char>& query_get_info(wasm_ql::thread_state&   thread_state,
    }
 
    {
-      fill_status_sing sing{ eosio::name{ "state" }, db_view_state, false };
+      fill_status_sing sing{ state_account, db_view_state, false };
       if (sing.exists()) {
          std::visit(
                [&](auto& obj) {
@@ -355,7 +355,7 @@ const std::vector<char>& query_get_block(wasm_ql::thread_state&   thread_state,
 
    rocksdb::ManagedSnapshot snapshot{ thread_state.shared->db->rdb.get() };
    chain_kv::write_session  write_session{ *thread_state.shared->db, snapshot.snapshot() };
-   db_view_state db_view_state{ eosio::name{ "state" }, *thread_state.shared->db, write_session, contract_kv_prefix };
+   db_view_state            db_view_state{ state_account, *thread_state.shared->db, write_session, contract_kv_prefix };
 
    std::string              bn_json = "\"" + params.block_num_or_id + "\"";
    eosio::json_token_stream bn_stream{ bn_json.data() };
@@ -424,7 +424,7 @@ const std::vector<char>& query_get_abi(wasm_ql::thread_state& thread_state, cons
 
    rocksdb::ManagedSnapshot snapshot{ thread_state.shared->db->rdb.get() };
    chain_kv::write_session  write_session{ *thread_state.shared->db, snapshot.snapshot() };
-   db_view_state db_view_state{ eosio::name{ "state" }, *thread_state.shared->db, write_session, contract_kv_prefix };
+   db_view_state            db_view_state{ state_account, *thread_state.shared->db, write_session, contract_kv_prefix };
 
    auto acc = get_state_row<ship_protocol::account>(
          db_view_state.kv_state.view,

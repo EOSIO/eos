@@ -10,7 +10,7 @@ std::optional<std::pair<std::shared_ptr<const chain_kv::bytes>, T>> get_state_ro
    std::optional<std::pair<std::shared_ptr<const chain_kv::bytes>, T>> result;
    result.emplace();
    result->first =
-         view.get(eosio::name{ "state" }.value,
+         view.get(state_account.value,
                   chain_kv::to_slice(eosio::check(eosio::convert_to_key(std::make_tuple((uint8_t)0x01, key))).value()));
    if (!result->first) {
       result.reset();
@@ -28,13 +28,13 @@ std::optional<std::pair<std::shared_ptr<const chain_kv::bytes>, T>> get_state_ro
                                                                                             const K&        key) {
    std::optional<std::pair<std::shared_ptr<const chain_kv::bytes>, T>> result;
    auto                                                                pk =
-         view.get(eosio::name{ "state" }.value,
+         view.get(state_account.value,
                   chain_kv::to_slice(eosio::check(eosio::convert_to_key(std::make_tuple((uint8_t)0x01, key))).value()));
    if (!pk)
       return result;
 
    result.emplace();
-   result->first = view.get(eosio::name{ "state" }.value, chain_kv::to_slice(*pk));
+   result->first = view.get(state_account.value, chain_kv::to_slice(*pk));
    if (!result->first) {
       result.reset();
       return result;

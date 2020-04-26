@@ -1,6 +1,7 @@
 #pragma once
 
 #include <b1/rodeos/callbacks/kv.hpp>
+#include <b1/rodeos/constants.hpp>
 #include <eosio/ship_protocol.hpp>
 #include <eosio/to_key.hpp>
 
@@ -44,7 +45,7 @@ class iterator_cache {
       auto map_it = table_to_index.find(key);
       if (map_it != table_to_index.end())
          return map_it->second;
-      if (!view.get(eosio::name{ "state" }.value,
+      if (!view.get(state_account.value,
                     chain_kv::to_slice(eosio::check(eosio::convert_to_key(std::make_tuple(
                                                           (uint8_t)0x01, eosio::name{ "contract.tab" },
                                                           eosio::name{ "primary" }, key.code, key.table, key.scope)))
@@ -135,7 +136,7 @@ class iterator_cache {
          // std::cout << "db_next_i64: db_view::iterator\n";
          const auto& table_key = tables[it.table_index];
          view_it               = chain_kv::view::iterator{
-            view, eosio::name{ "state" }.value,
+            view, state_account.value,
             chain_kv::to_slice(
                   eosio::check(eosio::convert_to_key(std::make_tuple( //
                                      (uint8_t)0x01, eosio::name{ "contract.row" }, eosio::name{ "primary" },
@@ -173,7 +174,7 @@ class iterator_cache {
          return map_it->second;
       }
       // std::cout << "lower_bound: db_view::iterator\n";
-      chain_kv::view::iterator it{ view, eosio::name{ "state" }.value,
+      chain_kv::view::iterator it{ view, state_account.value,
                                    chain_kv::to_slice(eosio::check(eosio::convert_to_key(std::make_tuple(
                                                                          (uint8_t)0x01, eosio::name{ "contract.row" },
                                                                          eosio::name{ "primary" }, code, table, scope)))

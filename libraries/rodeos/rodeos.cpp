@@ -20,8 +20,8 @@ rodeos_db_snapshot::rodeos_db_snapshot(std::shared_ptr<rodeos_db_partition> part
       write_session.emplace(*db, snap->snapshot());
    }
 
-   db_view_state    view_state{ eosio::name{ "state" }, *db, *write_session, this->partition->contract_kv_prefix };
-   fill_status_sing sing{ eosio::name{ "state" }, view_state, false };
+   db_view_state    view_state{ state_account, *db, *write_session, this->partition->contract_kv_prefix };
+   fill_status_sing sing{ state_account, view_state, false };
    if (sing.exists()) {
       auto status     = std::get<0>(sing.get());
       chain_id        = status.chain_id;
@@ -60,9 +60,9 @@ void rodeos_db_snapshot::write_fill_status() {
                                .irreversible_id = head_id,
                                .first           = first };
 
-   db_view_state view_state{ eosio::name{ "state" }, *db, *write_session, partition->contract_kv_prefix };
+   db_view_state view_state{ state_account, *db, *write_session, partition->contract_kv_prefix };
    view_state.kv_state.enable_write = true;
-   fill_status_sing sing{ eosio::name{ "state" }, view_state, false };
+   fill_status_sing sing{ state_account, view_state, false };
    sing.set(status);
    sing.store();
 }
@@ -147,7 +147,7 @@ void rodeos_db_snapshot::write_block_info(const ship_protocol::get_blocks_result
    signed_block        block;
    eosio::check_discard(from_bin(block, bin));
 
-   db_view_state view_state{ eosio::name{ "state" }, *db, *write_session, partition->contract_kv_prefix };
+   db_view_state view_state{ state_account, *db, *write_session, partition->contract_kv_prefix };
    view_state.kv_state.enable_write = true;
 
    block_info_v0 info;
@@ -176,7 +176,7 @@ void rodeos_db_snapshot::write_deltas(const ship_protocol::get_blocks_result_v0&
    uint32_t            block_num = result.this_block->block_num;
    eosio::input_stream bin       = *result.deltas;
 
-   db_view_state view_state{ eosio::name{ "state" }, *db, *write_session, partition->contract_kv_prefix };
+   db_view_state view_state{ state_account, *db, *write_session, partition->contract_kv_prefix };
    view_state.kv_ram.enable_write           = true;
    view_state.kv_ram.bypass_receiver_check  = true;
    view_state.kv_disk.enable_write          = true;
