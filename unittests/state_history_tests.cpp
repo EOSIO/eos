@@ -4,16 +4,15 @@
 #include <eosio/testing/tester.hpp>
 #include <fc/io/json.hpp>
 
+#include "test_cfd_transaction.hpp"
+#include <boost/filesystem.hpp>
 #include <boost/iostreams/device/back_inserter.hpp>
 #include <boost/iostreams/filter/zlib.hpp>
 #include <boost/iostreams/filtering_stream.hpp>
-#include <boost/filesystem.hpp>
-#include "test_cfd_transaction.hpp"
 
 using namespace eosio;
 using namespace testing;
 using namespace chain;
-
 
 state_history::partial_transaction_v0 get_partial_from_traces_bin(const bytes&               traces_bin,
                                                                   const transaction_id_type& id) {
@@ -34,69 +33,59 @@ state_history::partial_transaction_v0 get_partial_from_traces_bin(const bytes&  
    return trace_v0.partial->get<state_history::partial_transaction_v0>();
 }
 
-struct trace_converter_test_fixture {
-   packed_transaction::prunable_data_type::compression_type compression;
-
-   void start() {
-      tester chain;
-
-      state_history::trace_converter converter_v0, converter_v1;
-      std::map<uint32_t, bytes>      on_disk_log_entries_v0;
-      std::map<uint32_t, bytes>      on_disk_log_entries_v1;
-
-      chain.control->applied_transaction.connect(
-          [&](std::tuple<const transaction_trace_ptr&, const packed_transaction_ptr&> t) {
-             converter_v0.add_transaction(std::get<0>(t), std::get<1>(t));
-             converter_v1.add_transaction(std::get<0>(t), std::get<1>(t));
-          });
-
-      chain.control->accepted_block.connect([&](const block_state_ptr& bs) {
-         on_disk_log_entries_v0[bs->block_num] = converter_v0.pack(chain.control->db(), true, bs, 0, compression);
-         on_disk_log_entries_v1[bs->block_num] = converter_v1.pack(chain.control->db(), true, bs, 1, compression);
-      });
-
-      deploy_test_api(chain);
-      auto cfd_trace    = push_test_cfd_transaction(chain);
-      chain.produce_blocks(10);
-
-      BOOST_CHECK(on_disk_log_entries_v0.size());
-      BOOST_CHECK(on_disk_log_entries_v1.size());
-
-      // make sure v0 and v1 are identifical when transform to traces bin
-      BOOST_CHECK(std::equal(on_disk_log_entries_v0.begin(), on_disk_log_entries_v0.end(),
-                             on_disk_log_entries_v1.begin(), [&](const auto& entry_v0, const auto& entry_v1) {
-                                return state_history::trace_converter::to_traces_bin_v0(entry_v0.second, 0) ==
-                                       state_history::trace_converter::to_traces_bin_v0(entry_v1.second, 1);
-                             }));
-
-      // Now deserialize the on disk trace log and make sure that the cfd exists
-      auto& cfd_entry_v1 = on_disk_log_entries_v1[cfd_trace->block_num];
-      auto  partial =
-          get_partial_from_traces_bin(state_history::trace_converter::to_traces_bin_v0(cfd_entry_v1, 1), cfd_trace->id);
-      BOOST_REQUIRE(partial.context_free_data.size());
-      BOOST_REQUIRE(partial.signatures.size());
-
-      // prune the cfd for the block
-      std::vector<transaction_id_type> ids{cfd_trace->id};
-      auto                             pruned = state_history::trace_converter::prune_traces(cfd_entry_v1, 1, ids);
-      BOOST_CHECK(pruned.size() < cfd_entry_v1.size());
-      BOOST_CHECK(ids.size() == 0);
-
-      std::copy(pruned.begin(), pruned.end(), cfd_entry_v1.end() - pruned.size());
-
-      // read the pruned trace and make sure the signature/cfd are empty
-      auto pruned_partial = get_partial_from_traces_bin(state_history::trace_converter::to_traces_bin_v0(cfd_entry_v1, 1),
-                                                  cfd_trace->id);
-      BOOST_CHECK(pruned_partial.context_free_data.size() == 0);
-      BOOST_CHECK(pruned_partial.signatures.size() == 0);
-   }
-};
-
 BOOST_AUTO_TEST_SUITE(test_state_history)
 
-BOOST_FIXTURE_TEST_CASE(test_trace_converter_test_no_compression, trace_converter_test_fixture) {
-   compression = packed_transaction::prunable_data_type::compression_type::none;
-   start();
+BOOST_AUTO_TEST_CASE(test_trace_converter_test) {
+
+   tester chain;
+
+   state_history::trace_converter converter_v0, converter_v1;
+   std::map<uint32_t, bytes>      on_disk_log_entries_v0;
+   std::map<uint32_t, bytes>      on_disk_log_entries_v1;
+
+   chain.control->applied_transaction.connect(
+       [&](std::tuple<const transaction_trace_ptr&, const packed_transaction_ptr&> t) {
+          converter_v0.add_transaction(std::get<0>(t), std::get<1>(t));
+          converter_v1.add_transaction(std::get<0>(t), std::get<1>(t));
+       });
+
+   chain.control->accepted_block.connect([&](const block_state_ptr& bs) {
+      on_disk_log_entries_v0[bs->block_num] = converter_v0.pack(chain.control->db(), true, bs, 0);
+      on_disk_log_entries_v1[bs->block_num] = converter_v1.pack(chain.control->db(), true, bs, 1);
+   });
+
+   deploy_test_api(chain);
+   auto cfd_trace = push_test_cfd_transaction(chain);
+   chain.produce_blocks(1);
+
+   BOOST_CHECK(on_disk_log_entries_v0.size());
+   BOOST_CHECK(on_disk_log_entries_v1.size());
+
+   // make sure v0 and v1 are identifical when transform to traces bin
+   BOOST_CHECK(std::equal(on_disk_log_entries_v0.begin(), on_disk_log_entries_v0.end(), on_disk_log_entries_v1.begin(),
+                          [&](const auto& entry_v0, const auto& entry_v1) {
+                             return state_history::trace_converter::to_traces_bin_v0(entry_v0.second, 0) ==
+                                    state_history::trace_converter::to_traces_bin_v0(entry_v1.second, 1);
+                          }));
+
+   // Now deserialize the on disk trace log and make sure that the cfd exists
+   auto& cfd_entry_v1 = on_disk_log_entries_v1.at(cfd_trace->block_num);
+   auto  partial =
+       get_partial_from_traces_bin(state_history::trace_converter::to_traces_bin_v0(cfd_entry_v1, 1), cfd_trace->id);
+   BOOST_REQUIRE(partial.context_free_data.size());
+   BOOST_REQUIRE(partial.signatures.size());
+
+   // prune the cfd for the block
+   std::vector<transaction_id_type> ids{cfd_trace->id};
+   auto                             offsets = state_history::trace_converter::prune_traces(cfd_entry_v1, 1, ids);
+   BOOST_CHECK(offsets.first > 0 && offsets.second > 0);
+   BOOST_CHECK(ids.size() == 0);
+
+   // read the pruned trace and make sure the signature/cfd are empty
+   auto pruned_partial =
+       get_partial_from_traces_bin(state_history::trace_converter::to_traces_bin_v0(cfd_entry_v1, 1), cfd_trace->id);
+   BOOST_CHECK(pruned_partial.context_free_data.size() == 0);
+   BOOST_CHECK(pruned_partial.signatures.size() == 0);
 }
 
 BOOST_AUTO_TEST_CASE(test_trace_log) {
@@ -118,6 +107,9 @@ BOOST_AUTO_TEST_CASE(test_trace_log) {
    auto cfd_trace = push_test_cfd_transaction(chain);
    chain.produce_blocks(10);
 
+   packed_transaction::prunable_data_type prunable;
+   auto                                   x = prunable.prune_all();
+
    auto traces_bin = log.get_log_entry(cfd_trace->block_num);
    BOOST_REQUIRE(traces_bin);
 
@@ -132,7 +124,7 @@ BOOST_AUTO_TEST_CASE(test_trace_log) {
    // we assume the nodeos has to be stopped while running, it can only be read
    // correctly with restart
    state_history_traces_log new_log(state_history_dir.path);
-   auto pruned_traces_bin = new_log.get_log_entry(cfd_trace->block_num);
+   auto                     pruned_traces_bin = new_log.get_log_entry(cfd_trace->block_num);
    BOOST_REQUIRE(pruned_traces_bin);
 
    auto pruned_partial = get_partial_from_traces_bin(*pruned_traces_bin, cfd_trace->id);

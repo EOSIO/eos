@@ -110,7 +110,7 @@ try:
 
     trans = validationNode.processCleosCmd(cmd, cmd, silentErrors=False)
     assert trans, "Failed to get the transaction with context free data from the light validation node"
-    # check whether the transaction has been pruned based on the tag of prunable_data, if the tag is 1, when it's prunable_data_t::none
+    # check whether the transaction has been pruned based on the tag of prunable_data, if the tag is 1, then it's a prunable_data_t::none
     assert trans["trx"]["receipt"]["trx"][1]["prunable_data"]["prunable_data"][0] == 1, "the the transaction with context free data has not been pruned"
 
     # try to prune the transaction where it doesn't belong

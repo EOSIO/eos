@@ -18,21 +18,21 @@ struct trace_converter {
    void  add_transaction(const transaction_trace_ptr& trace, const packed_transaction_ptr& transaction);
 
    bytes pack(const chainbase::database& db, bool trace_debug_mode, const block_state_ptr& block_state,
-              uint32_t version, compression_type compression);
+              uint32_t version);
    static bytes to_traces_bin_v0(const bytes& entry_payload, uint32_t version); 
 
    /**
-    * Prune the signatures and context free data in a v1 log entry payload
+    * Prune the signatures and context free data in a v1 log entry payload for the specified transactions.
     * 
-    * @param[in] entry_payload        The entry_payload 
+    * @param[in,out] entry_payload    The entry_payload.                            
     * @param[in] version              The version of the entry
     * @param[in, out] ids             The list of transaction ids to be pruned. After the member function returns, 
     *                                 it would be modified to contain the list of transaction ids that do not exist
     *                                 in the log entry.
     * 
-   * @returns The serialized prunable_data section
+   * @returns The pair of offsets within entry_payload where data has been modified.
     **/
-   static bytes prune_traces(const bytes& entry_payload, uint32_t version, std::vector<transaction_id_type>& ids);
+   static std::pair<uint64_t, uint64_t> prune_traces(bytes& entry_payload, uint32_t version, std::vector<transaction_id_type>& ids);
 
 };
 

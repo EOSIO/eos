@@ -117,7 +117,6 @@ class state_history_traces_log : public state_history_log {
  public:
    using compression_type            = chain::packed_transaction::prunable_data_type::compression_type;
    bool             trace_debug_mode = false;
-   compression_type compression      = compression_type::none;
 
    state_history_traces_log(fc::path state_history_dir);
 

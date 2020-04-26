@@ -256,7 +256,7 @@ state_history_log::get_entry(state_history_log::block_num_type block_num) {
    chain::bytes data(s);
    if (s)
       stream.read(data.data(), s);
-   return std::make_pair(data, get_ship_version(header.magic));
+   return std::make_pair(std::move(data), get_ship_version(header.magic));
 }
 
 state_history_traces_log::state_history_traces_log(fc::path state_history_dir)
@@ -277,25 +277,24 @@ void state_history_traces_log::prune_transactions(state_history_log::block_num_t
 
    auto pos = get_log().tellp();
 
-   auto [entry_payload, version] = *entry_result;
-   auto pruned_section           = state_history::trace_converter::prune_traces(entry_payload, version, ids);
-   auto bytes_to_write           = pruned_section.size();
+   auto& [entry_payload, version]  = *entry_result;
+   auto [start_offset, end_offset] = state_history::trace_converter::prune_traces(entry_payload, version, ids);
 
-   if (bytes_to_write > 0) {
+   if (end_offset > 0) {
       // the log object is in append mode, which cannot be used to update written content,
       // we need to open the file in the update mode
 
       fc::cfile update_log;
       update_log.set_file_path(get_log().get_file_path());
       update_log.open(fc::cfile::update_rw_mode);
-      update_log.seek(pos - bytes_to_write);
-      update_log.write(pruned_section.data(), bytes_to_write);
+      update_log.seek(pos - entry_payload.size() + start_offset);
+      update_log.write(entry_payload.data() + start_offset, end_offset-start_offset);
    }
 }
 
 void state_history_traces_log::store(const chainbase::database& db, const chain::block_state_ptr& block_state) {
 
-   auto traces_bin = trace_convert.pack(db, trace_debug_mode, block_state, ship_current_version, compression);
+   auto traces_bin = trace_convert.pack(db, trace_debug_mode, block_state, ship_current_version);
 
    state_history_log_header header{.magic        = ship_magic(ship_current_version),
                                    .block_id     = block_state->id,

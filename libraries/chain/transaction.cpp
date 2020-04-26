@@ -390,9 +390,6 @@ void packed_transaction_v0::local_pack_context_free_data()
    packed_context_free_data = pack_context_free_data(unpacked_trx.context_free_data, compression);
 }
 
-packed_transaction::prunable_data_type packed_transaction::prunable_data_type::prune_all() const {
-   return {packed_transaction::prunable_data_type::none{digest() } };
-}
 
 static digest_type prunable_digest(const packed_transaction::prunable_data_type::none& obj) {
    return obj.prunable_digest;
@@ -422,6 +419,22 @@ static digest_type prunable_digest(const packed_transaction::prunable_data_type:
 
 digest_type packed_transaction::prunable_data_type::digest() const {
    return prunable_data.visit( [](const auto& obj) { return prunable_digest(obj); } );
+}
+
+packed_transaction::prunable_data_type packed_transaction::prunable_data_type::prune_all() const {
+   return prunable_data.visit(overloaded{
+       [](const none& obj) -> packed_transaction::prunable_data_type {
+          return {obj};
+       },
+       [](const packed_transaction::prunable_data_type::signatures_only& obj)
+           -> packed_transaction::prunable_data_type {
+          return {none{prunable_digest(obj)}};
+       },
+       [](const auto& obj) -> packed_transaction::prunable_data_type {
+          if (obj.signatures.empty() && obj.context_free_segments.empty())
+             return {obj};
+          return {none{prunable_digest(obj)}};
+       }});
 }
 
 static constexpr std::size_t digest_pack_size = 32;

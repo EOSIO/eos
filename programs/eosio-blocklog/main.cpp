@@ -321,10 +321,10 @@ int main(int argc, char** argv) {
          return 0;
       }
       if (blog.prune_transactions) {
-         const auto  blocks_dir        = vmap.at("blocks-dir").as<bfs::path>();
-         const auto  state_history_dir = vmap.at("state-history-dir").as<bfs::path>();
-         const auto  block_num         = vmap.at("block-num").as<uint32_t>();
-         const auto  ids               = vmap.at("transaction").as<std::vector<string>>();
+         const auto  blocks_dir        = vmap["blocks-dir"].as<bfs::path>();
+         const auto  state_history_dir = vmap["state-history-dir"].as<bfs::path>();
+         const auto  block_num         = vmap["block-num"].as<uint32_t>();
+         const auto  ids               = vmap.count("transaction") ? vmap["transaction"].as<std::vector<string>>() : std::vector<string>{};
          
          report_time                 rt("prune transactions");
          int ret = prune_transactions(blocks_dir, state_history_dir, block_num, {ids.begin(), ids.end()});
