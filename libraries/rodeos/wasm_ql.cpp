@@ -1,5 +1,3 @@
-// copyright defined in LICENSE.txt
-
 #include <b1/rodeos/wasm_ql.hpp>
 
 #include <b1/rodeos/callbacks/chaindb.hpp>
