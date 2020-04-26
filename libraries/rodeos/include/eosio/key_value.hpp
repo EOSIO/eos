@@ -868,14 +868,14 @@ class kv_singleton {
 public:
    using value_type = T;
 
-   explicit kv_singleton(eosio::name contract_name) : contract_name{contract_name} {
+   explicit kv_singleton(eosio::name contract_name, bool write_on_destruct) : contract_name{contract_name}, write_on_destruct{write_on_destruct} {
       key = make_prefix();
    }
 
-   kv_singleton(eosio::name contract_name, kv_environment environment) : environment{environment}, contract_name{contract_name} {}
+   kv_singleton(eosio::name contract_name, kv_environment environment, bool write_on_destruct) : environment{environment}, contract_name{contract_name}, write_on_destruct{write_on_destruct} {}
 
    ~kv_singleton() {
-      if (get_state().is_dirty) {
+      if (get_state().is_dirty && write_on_destruct) {
          store();
       }
    }
@@ -942,6 +942,7 @@ private:
    constexpr static uint64_t singleton_name = static_cast<uint64_t>(SingletonName);
 
    eosio::name contract_name;
+   bool write_on_destruct;
    key_type key;
 
    key_type make_prefix() {

@@ -261,10 +261,10 @@ void run_action(wasm_ql::thread_state& thread_state, const std::vector<char>& co
    }
    auto se = fc::make_scoped_exit([&] { thread_state.shared->backend_cache->add(std::move(*entry)); });
 
-   fill_status_kv fill_status_table{ eosio::name{ "state" }, db_view_state };
-   if (!fill_status_table.exists())
+   fill_status_sing sing{ eosio::name{ "state" }, db_view_state, false };
+   if (!sing.exists())
       throw std::runtime_error("No fill_status records found; is filler running?");
-   auto& fill_status = fill_status_table.get();
+   auto& fill_status = sing.get();
 
    // todo: move these out of thread_state since future enhancements could cause state to accidentally leak between
    // queries
@@ -318,8 +318,8 @@ const std::vector<char>& query_get_info(wasm_ql::thread_state&   thread_state,
    }
 
    {
-      fill_status_kv table{ eosio::name{ "state" }, db_view_state };
-      if (table.exists()) {
+      fill_status_sing sing{ eosio::name{ "state" }, db_view_state, false };
+      if (sing.exists()) {
          std::visit(
                [&](auto& obj) {
                   result += ",\"head_block_num\":\"" + std::to_string(obj.head) + "\"";
@@ -328,7 +328,7 @@ const std::vector<char>& query_get_info(wasm_ql::thread_state&   thread_state,
                   result += ",\"last_irreversible_block_id\":" +
                             eosio::check(eosio::convert_to_json(obj.irreversible_id)).value();
                },
-               table.get());
+               sing.get());
       } else
          throw std::runtime_error("No fill_status records found; is filler running?");
    }
