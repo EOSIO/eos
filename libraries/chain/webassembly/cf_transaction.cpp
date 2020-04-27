@@ -19,7 +19,10 @@ namespace eosio { namespace chain { namespace webassembly {
    }
 
    int32_t interface::expiration() const {
-     return context.trx_context.trx.expiration.sec_since_epoch();
+     // note: duration_cast<seconds> isn't required since
+     // expiration is of the fc::time_point_sec type, at the moment.
+     // This duration_cast prevents possible errors if the type of expiration changes
+     return fc::duration_cast<fc::seconds>( context.trx_context.trx.expiration.time_since_epoch() ).count();
    }
 
    int32_t interface::tapos_block_num() const {
