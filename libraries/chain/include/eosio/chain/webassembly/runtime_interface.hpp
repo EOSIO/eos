@@ -9,7 +9,6 @@ namespace IR {
 namespace eosio { namespace chain {
 
 class apply_context;
-struct wasm_config;
 
 class wasm_instantiated_module_interface {
    public:
