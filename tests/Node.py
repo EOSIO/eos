@@ -1301,24 +1301,28 @@ class Node(object):
         if logStatus: Utils.Print("Determined node(pid=%s) is alive" % (self.pid))
         return True
 
+    @staticmethod
+    def getBlockAttribute(block, key, blockNum, exitOnError=True):
+        value=block[key]
+
+        if value is None and exitOnError:
+            blockNumStr=" for block number %s" % (blockNum)
+            blockStr=" with block content:\n%s" % (json.dumps(block, indent=4, sort_keys=True))
+            Utils.cmdError("could not get %s%s%s" % (key, blockNumStr, blockStr))
+            Utils.errorExit("Failed to get block's %s" % (key))
+
+        return value
+
     def getBlockProducerByNum(self, blockNum, timeout=None, waitForBlock=True, exitOnError=True):
         if waitForBlock:
             self.waitForBlock(blockNum, timeout=timeout, blockType=BlockType.head)
         block=self.getBlock(blockNum, exitOnError=exitOnError)
-        blockProducer=block["producer"]
-        if blockProducer is None and exitOnError:
-            Utils.cmdError("could not get producer for block number %s" % (blockNum))
-            Utils.errorExit("Failed to get block's producer")
-        return blockProducer
+        return Node.getBlockAttribute(block, "producer", blockNum, exitOnError=exitOnError)
 
     def getBlockProducer(self, timeout=None, waitForBlock=True, exitOnError=True, blockType=BlockType.head):
         blockNum=self.getBlockNum(blockType=blockType)
         block=self.getBlock(blockNum, exitOnError=exitOnError, blockType=blockType)
-        blockProducer=block["producer"]
-        if blockProducer is None and exitOnError:
-            Utils.cmdError("could not get producer for block number %s" % (blockNum))
-            Utils.errorExit("Failed to get block's producer")
-        return blockProducer
+        return Node.getBlockAttribute(block, "producer", blockNum, exitOnError=exitOnError)
 
     def getNextCleanProductionCycle(self, trans):
         rounds=21*12*2  # max time to ensure that at least 2/3+1 of producers x blocks per producer x at least 2 times
