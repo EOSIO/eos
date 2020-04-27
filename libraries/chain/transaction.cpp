@@ -399,10 +399,6 @@ static digest_type prunable_digest(const packed_transaction::prunable_data_type:
    EOS_THROW(tx_prune_exception, "unimplemented");
 }
 
-static digest_type prunable_digest(const packed_transaction::prunable_data_type::signatures_only& obj) {
-   EOS_THROW(tx_prune_exception, "unimplemented");
-}
-
 static digest_type prunable_digest(const packed_transaction::prunable_data_type::full& obj) {
    digest_type::encoder prunable;
    fc::raw::pack( prunable, obj.signatures );
@@ -422,19 +418,8 @@ digest_type packed_transaction::prunable_data_type::digest() const {
 }
 
 packed_transaction::prunable_data_type packed_transaction::prunable_data_type::prune_all() const {
-   return prunable_data.visit(overloaded{
-       [](const none& obj) -> packed_transaction::prunable_data_type {
-          return {obj};
-       },
-       [](const packed_transaction::prunable_data_type::signatures_only& obj)
-           -> packed_transaction::prunable_data_type {
-          return {none{prunable_digest(obj)}};
-       },
-       [](const auto& obj) -> packed_transaction::prunable_data_type {
-          if (obj.signatures.empty() && obj.context_free_segments.empty())
-             return {obj};
-          return {none{prunable_digest(obj)}};
-       }});
+   return prunable_data.visit(
+       [](const auto& obj) -> packed_transaction::prunable_data_type { return {none{prunable_digest(obj)}}; });
 }
 
 static constexpr std::size_t digest_pack_size = 32;
@@ -445,9 +430,6 @@ static std::size_t padded_pack_size(const packed_transaction::prunable_data_type
    return result;
 }
 
-static std::size_t padded_pack_size(const packed_transaction::prunable_data_type::signatures_only& obj, packed_transaction::prunable_data_type::compression_type) {
-   return fc::raw::pack_size(obj);
-}
 
 static std::size_t padded_pack_size(const packed_transaction::prunable_data_type::partial& obj, packed_transaction::prunable_data_type::compression_type segment_compression) {
      EOS_THROW(tx_prune_exception, "unimplemented");
@@ -579,9 +561,6 @@ uint32_t packed_transaction::calculate_estimated_size() const {
    };
    auto visitor = overloaded{
          [](const prunable_data_type::none& v) { return 0ul; },
-         [](const prunable_data_type::signatures_only& v) {
-            return v.signatures.size() * sizeof(signature_type);
-         },
          [&](const prunable_data_type::partial& v) {
             return v.signatures.size() * sizeof(signature_type) + est_size(v.context_free_segments);
          },
@@ -622,7 +601,6 @@ const vector<bytes>* packed_transaction::get_context_free_data()const {
 }
 
 const bytes* maybe_get_context_free_data(const packed_transaction::prunable_data_type::none&, std::size_t) { return nullptr; }
-const bytes* maybe_get_context_free_data(const packed_transaction::prunable_data_type::signatures_only&, std::size_t) { return nullptr; }
 const bytes* maybe_get_context_free_data(const packed_transaction::prunable_data_type::partial& p, std::size_t i) {
    if( p.context_free_segments.size() <= i ) return nullptr;
    return p.context_free_segments[i].visit(

@@ -106,6 +106,16 @@ void for_each_packed_transaction(const std::vector<eosio::state_history::augment
    }
 }
 
+prunable_data_type prune(const prunable_data_type& obj) {
+   return obj.prunable_data.visit(
+       chain::overloaded{[](const prunable_data_type::none& elem) -> prunable_data_type { return {elem}; },
+                         [&obj](const auto& elem) -> prunable_data_type {
+                            if (elem.signatures.empty() && elem.context_free_segments.empty())
+                               return {elem};
+                            return obj.prune_all();
+                         }});
+}
+
 BOOST_DECLARE_HAS_MEMBER(has_context_free_segments, context_free_segments);
 
 template <typename T, std::enable_if_t<!has_context_free_segments<T>::value, int> = 0>
@@ -182,7 +192,6 @@ struct restore_partial {
       ptrx.context_free_data = std::move(data.context_free_segments);
    }
    void operator()(prunable_data_type::none& data) const {}
-   void operator()(prunable_data_type::signatures_only& data) const { ptrx.signatures = std::move(data.signatures); }
    void operator()(prunable_data_type::partial& data) const { ptrx.signatures = std::move(data.signatures); }
    void operator()(prunable_data_type::full& data) const {
       ptrx.signatures        = std::move(data.signatures);
@@ -211,15 +220,15 @@ struct trace_pruner {
    /// It relies on the fact that the serialized pruned data won't be larger than its un-pruned counterpart
    /// which is subsequently based on:
    ///   1) the presence of context free data requires the presence of signatures;
-   ///   2) prunable_data::prune_all() would never convert it to prunable_data::none when both the context free data and
-   ///   signature are empty.
+   ///   2) prune() would never convert it to prunable_data::none when both the context free data and
+   ///      signature are empty, which is different from the behavior in prunable_data::prune_all().
    void operator()(transaction_trace_v0& trace, prunable_data_type& incoming_prunable) {
       auto itr = std::find(ids.begin(), ids.end(), trace.id);
       if (itr != ids.end()) {
          // the incoming trace matches the one of ids to be pruned
          if (change_position == 0)
             change_position = write_strm.tellp();
-         pack(write_strm, incoming_prunable.prune_all());
+         pack(write_strm, prune(incoming_prunable));
          ids.erase(itr);
       } else if (change_position == 0) {
          // no change so far, skip the original serialized prunable_data bytes
