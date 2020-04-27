@@ -18,6 +18,7 @@ else()
 endif()
 
 if("eos-vm-oc" IN_LIST EOSIO_WASM_RUNTIMES)
+   enable_language(ASM)
    set(CHAIN_EOSVMOC_SOURCES webassembly/runtimes/eos-vm-oc/code_cache.cpp
                              webassembly/runtimes/eos-vm-oc/executor.cpp
                              webassembly/runtimes/eos-vm-oc/memory.cpp
@@ -28,8 +29,11 @@ if("eos-vm-oc" IN_LIST EOSIO_WASM_RUNTIMES)
                              webassembly/runtimes/eos-vm-oc/compile_trampoline.cpp
                              webassembly/runtimes/eos-vm-oc/ipc_helpers.cpp
                              webassembly/runtimes/eos-vm-oc/gs_seg_helpers.c
+                             webassembly/runtimes/eos-vm-oc/stack.cpp
+                             webassembly/runtimes/eos-vm-oc/switch_stack_linux.s
                              webassembly/runtimes/eos-vm-oc.cpp
                              webassembly/runtimes/eos-vm-oc/default_real_main.cpp)
+
 
    if(LLVM_VERSION VERSION_LESS 7.1 AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
       enable_language(ASM-LLVMWAR)
@@ -97,6 +101,7 @@ add_library( eosio_chain
               wasm_interface.cpp
               wasm_eosio_validation.cpp
               wasm_eosio_injection.cpp
+              wasm_config.cpp
               apply_context.cpp
               abi_serializer.cpp
               asset.cpp

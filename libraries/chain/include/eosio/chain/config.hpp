@@ -87,6 +87,18 @@ const static uint32_t   default_max_kv_key_size                = 1024;
 const static uint32_t   default_max_kv_value_size              = 1024*1024; // Large enough to hold most contracts
 const static uint32_t   default_max_kv_iterators               = 1024;
 
+const static uint32_t default_max_wasm_mutable_global_bytes = 1024;
+const static uint32_t default_max_wasm_table_elements       = 1024;
+const static uint32_t default_max_wasm_section_elements     = 8192;
+const static uint32_t default_max_wasm_linear_memory_init   = 64*1024;
+const static uint32_t default_max_wasm_func_local_bytes     = 8192;
+const static uint32_t default_max_wasm_nested_structures    = 1024;
+const static uint32_t default_max_wasm_symbol_bytes         = 8192;
+const static uint32_t default_max_wasm_module_bytes         = 20*1024*1024;
+const static uint32_t default_max_wasm_code_bytes           = 20*1024*1024;
+const static uint32_t default_max_wasm_pages                = 528;
+const static uint32_t default_max_wasm_call_depth           = 251;
+
 const static uint32_t   min_net_usage_delta_between_base_and_max_for_trx  = 10*1024;
 // Should be large enough to allow recovery from badly set blockchain parameters without a hard fork
 // (unless net_usage_leeway is set to 0 and so are the net limits of all accounts that can help with resetting blockchain parameters).

@@ -10,7 +10,9 @@
 
 namespace eosio { namespace chain { namespace eosvmoc {
 
-memory::memory() {
+memory::memory(uint64_t max_pages) {
+   uint64_t number_slices = max_pages + 1;
+   uint64_t wasm_memory_size = max_pages * wasm_constraints::wasm_page_size;
    int fd = syscall(SYS_memfd_create, "eosvmoc_mem", MFD_CLOEXEC);
    FC_ASSERT(fd >= 0, "Failed to create memory memfd");
    auto cleanup_fd = fc::make_scoped_exit([&fd](){close(fd);});
@@ -38,6 +40,16 @@ memory::memory() {
    const intrinsic_map_t& intrinsics = get_intrinsic_map();
    for(const auto& intrinsic : intrinsics)
       intrinsic_jump_table[-intrinsic.second.ordinal] = (uintptr_t)intrinsic.second.function_ptr;
+}
+
+void memory::reset(uint64_t max_pages) {
+   uint64_t old_max_pages = mapsize / memory::total_memory_per_slice - 1;
+   if(max_pages == old_max_pages) return;
+   memory new_memory{max_pages};
+   std::swap(mapbase, new_memory.mapbase);
+   std::swap(mapsize, new_memory.mapsize);
+   std::swap(zeropage_base, new_memory.zeropage_base);
+   std::swap(fullpage_base, new_memory.fullpage_base);
 }
 
 memory::~memory() {

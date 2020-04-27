@@ -24,6 +24,7 @@ void run_compile(wrapped_fd&& response_sock, wrapped_fd&& wasm_code) noexcept { 
 
    Module module;
    Serialization::MemoryInputStream stream(wasm.data(), wasm.size());
+   WASM::scoped_skip_checks no_check;
    WASM::serialize(stream, module);
    module.userSections.clear();
    wasm_injections::wasm_binary_injection<false> injector(module);
@@ -54,7 +55,7 @@ void run_compile(wrapped_fd&& response_sock, wrapped_fd&& wasm_code) noexcept { 
    if(module.memories.size())
       result_message.starting_memory_pages = module.memories.defs.at(0).type.size.min;
 
-   std::vector<uint8_t> prologue(memory::cb_offset); //getting the control block offset gets us as large as table+globals as possible
+   std::vector<uint8_t> prologue(module.globals.defs.size() * 8); // Large enough to handle all mutable globals
    std::vector<uint8_t>::iterator prologue_it = prologue.end();
 
    //set up mutable globals
@@ -85,11 +86,11 @@ void run_compile(wrapped_fd&& response_sock, wrapped_fd&& wasm_code) noexcept { 
       int64_t func;    //>= 0 means offset to code in wasm; < 0 means intrinsic call at offset address
    };
 
-   if(module.tables.size())
-      prologue_it -= sizeof(table_entry) * module.tables.defs[0].type.size.min;
-
    for(const TableSegment& table_segment : module.tableSegments) {
-      struct table_entry* table_index_0 = (struct table_entry*)&*prologue_it;
+      struct table_entry* table_index_0 = (struct table_entry*)(code.code.data() + code.table_offset);
+
+      if(table_segment.baseOffset.i32 > module.tables.defs[0].type.size.min)
+         return;
 
       if(table_segment.baseOffset.i32 > module.tables.defs[0].type.size.min)
          return;

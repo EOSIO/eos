@@ -252,6 +252,35 @@ static const char biggest_memory_wast[] = R"=====(
 )
 )=====";
 
+static const char biggest_memory_variable_wast[] = R"=====(
+(module
+ (import "env" "eosio_assert" (func $$eosio_assert (param i32 i32)))
+ (import "env" "require_auth" (func $$require_auth (param i64)))
+ (table 0 anyfunc)
+ (memory $$0 ${MAX_WASM_PAGES})
+ (export "memory" (memory $$0))
+ (export "apply" (func $$apply))
+ (func $$apply (param $$0 i64) (param $$1 i64) (param $$2 i64)
+  (call $$eosio_assert
+   (i32.eq
+     (grow_memory (i32.wrap/i64 (get_local 2)))
+     (i32.const ${MAX_WASM_PAGES})
+   )
+   (i32.const 0)
+  )
+  (call $$eosio_assert
+   (i32.eq
+     (grow_memory (i32.const 1))
+     (i32.const -1)
+   )
+   (i32.const 32)
+  )
+ )
+ (data (i32.const 0) "failed grow_memory")
+ (data (i32.const 32) "grow_memory unexpected success")
+)
+)=====";
+
 static const char too_big_memory_wast[] = R"=====(
 (module
  (table 0 anyfunc)
@@ -259,6 +288,35 @@ static const char too_big_memory_wast[] = R"=====(
  (export "memory" (memory $$0))
  (export "apply" (func $$apply))
  (func $$apply (param $$0 i64) (param $$1 i64) (param $$2 i64))
+)
+)=====";
+
+static const char max_memory_wast[] = R"=====(
+(module
+ (import "env" "eosio_assert" (func $$eosio_assert (param i32 i32)))
+ (import "env" "require_auth" (func $$require_auth (param i64)))
+ (table 0 anyfunc)
+ (memory $$0 ${INIT_WASM_PAGES} ${MAX_WASM_PAGES})
+ (export "memory" (memory $$0))
+ (export "apply" (func $$apply))
+ (func $$apply (param $$0 i64) (param $$1 i64) (param $$2 i64)
+  (call $$eosio_assert
+   (i32.eq
+     (grow_memory (i32.wrap/i64 (get_local 2)))
+     (i32.const ${INIT_WASM_PAGES})
+   )
+   (i32.const 0)
+  )
+  (call $$eosio_assert
+   (i32.eq
+     (grow_memory (i32.const 1))
+     (i32.const -1)
+   )
+   (i32.const 32)
+  )
+ )
+ (data (i32.const 0) "failed grow_memory")
+ (data (i32.const 32) "grow_memory unexpected success")
 )
 )=====";
 
@@ -279,6 +337,15 @@ static const char too_big_table[] = R"=====(
  (func $apply (param $0 i64) (param $1 i64) (param $2 i64))
  (elem (i32.const 0) $apply)
  (elem (i32.const 1022) $apply $apply)
+)
+)=====";
+
+static const char variable_table[] = R"=====(
+(module
+ (table ${TABLE_SIZE} anyfunc)
+ (func (export "apply") (param i64 i64 i64))
+ (elem (i32.const 0) 0)
+ (elem (i32.const ${TABLE_OFFSET}) 0 0)
 )
 )=====";
 
