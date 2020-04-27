@@ -2575,7 +2575,7 @@ int main( int argc, char** argv ) {
    // get account
    string accountName;
    string coresym;
-   bool print_json;
+   bool print_json = false;
    auto getAccount = get->add_subcommand("account", localized("Retrieve an account from the blockchain"));
    getAccount->add_option("name", accountName, localized("The name of the account to retrieve"))->required();
    getAccount->add_option("core-symbol", coresym, localized("The expected core symbol of the chain you are querying"));
