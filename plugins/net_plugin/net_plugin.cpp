@@ -1208,6 +1208,151 @@ namespace eosio {
       return true;
    }
 
+   //------------------------------------------------------------------------
+
+   using send_buffer_type = std::shared_ptr<std::vector<char>>;
+
+   struct buffer_factory {
+
+      /// caches result for subsequent calls, only provide same net_message instance for each invocation
+      const send_buffer_type& get_send_buffer( const net_message& m ) {
+         if( !send_buffer ) {
+            send_buffer = create_send_buffer( m );
+         }
+         return send_buffer;
+      }
+
+   protected:
+      send_buffer_type send_buffer;
+
+   protected:
+      static send_buffer_type create_send_buffer( const net_message& m ) {
+         const uint32_t payload_size = fc::raw::pack_size( m );
+
+         const char* const header = reinterpret_cast<const char* const>(&payload_size); // avoid variable size encoding of uint32_t
+         constexpr size_t header_size = sizeof(payload_size);
+         static_assert( header_size == message_header_size, "invalid message_header_size" );
+         const size_t buffer_size = header_size + payload_size;
+
+         auto send_buffer = std::make_shared<vector<char>>(buffer_size);
+         fc::datastream<char*> ds( send_buffer->data(), buffer_size);
+         ds.write( header, header_size );
+         fc::raw::pack( ds, m );
+
+         return send_buffer;
+      }
+
+      template< typename T>
+      static send_buffer_type create_send_buffer( uint32_t which, const T& v ) {
+         // match net_message static_variant pack
+         const uint32_t which_size = fc::raw::pack_size( unsigned_int( which ) );
+         const uint32_t payload_size = which_size + fc::raw::pack_size( v );
+
+         const char* const header = reinterpret_cast<const char* const>(&payload_size); // avoid variable size encoding of uint32_t
+         constexpr size_t header_size = sizeof( payload_size );
+         static_assert( header_size == message_header_size, "invalid message_header_size" );
+         const size_t buffer_size = header_size + payload_size;
+
+         auto send_buffer = std::make_shared<vector<char>>( buffer_size );
+         fc::datastream<char*> ds( send_buffer->data(), buffer_size );
+         ds.write( header, header_size );
+         fc::raw::pack( ds, unsigned_int( which ) );
+         fc::raw::pack( ds, v );
+
+         return send_buffer;
+      }
+
+   };
+
+   struct block_buffer_factory : public buffer_factory {
+
+      /// caches result for subsequent calls, only provide same signed_block_ptr instance for each invocation.
+      /// protocol_version can differ per invocation as buffer_factory potentially caches multiple send buffers.
+      const send_buffer_type& get_send_buffer( const signed_block_ptr& sb, uint16_t protocol_version ) {
+         if( protocol_version >= proto_pruned_types ) {
+            if( !send_buffer ) {
+               send_buffer = create_send_buffer( sb );
+            }
+            return send_buffer;
+         } else {
+            if( !send_buffer_v0 ) {
+               const auto v0 = sb->to_signed_block_v0();
+               if( !v0 ) return send_buffer_v0;
+               send_buffer_v0 = create_send_buffer( *v0 );
+            }
+            return send_buffer_v0;
+         }
+      }
+
+   private:
+      send_buffer_type send_buffer_v0;
+
+   private:
+
+      static std::shared_ptr<std::vector<char>> create_send_buffer( const signed_block_ptr& sb ) {
+         static_assert( signed_block_which == net_message::position<signed_block>() );
+         // this implementation is to avoid copy of signed_block to net_message
+         // matches which of net_message for signed_block
+         fc_dlog( logger, "sending block ${bn}", ("bn", sb->block_num()) );
+         return buffer_factory::create_send_buffer( signed_block_which, *sb );
+      }
+
+      static std::shared_ptr<std::vector<char>> create_send_buffer( const signed_block_v0& sb_v0 ) {
+         static_assert( signed_block_v0_which == net_message::position<signed_block_v0>() );
+         // this implementation is to avoid copy of signed_block_v0 to net_message
+         // matches which of net_message for signed_block_v0
+         fc_dlog( logger, "sending v0 block ${bn}", ("bn", sb_v0.block_num()) );
+         return buffer_factory::create_send_buffer( signed_block_v0_which, sb_v0 );
+      }
+   };
+
+   struct trx_buffer_factory : public buffer_factory {
+
+      /// caches result for subsequent calls, only provide same packed_transaction_ptr instance for each invocation.
+      /// protocol_version can differ per invocation as buffer_factory potentially caches multiple send buffers.
+      const send_buffer_type& get_send_buffer( const packed_transaction_ptr& trx, uint16_t protocol_version ) {
+         if( protocol_version >= proto_pruned_types ) {
+            if( !send_buffer ) {
+               send_buffer = create_send_buffer( trx );
+            }
+            return send_buffer;
+         } else {
+            if( !send_buffer_v0 ) {
+               const auto v0 = trx->to_packed_transaction_v0();
+               if( !v0 ) return send_buffer_v0;
+               send_buffer_v0 = create_send_buffer( *v0 );
+            }
+            return send_buffer_v0;
+         }
+      }
+
+   private:
+      send_buffer_type send_buffer_v0;
+
+   private:
+
+      static std::shared_ptr<std::vector<char>> create_send_buffer( const packed_transaction_ptr& trx ) {
+         static_assert( trx_message_v1_which == net_message::position<trx_message_v1>() );
+         fc::optional<transaction_id_type> trx_id;
+         if( trx->get_estimated_size() > 1024 ) { // simple guess on threshold
+            fc_dlog( logger, "including trx id, est size: ${es}", ("es", trx->get_estimated_size()) );
+            trx_id = trx->id();
+         }
+         // const cast required, trx_message_v1 has non-const shared_ptr because FC_REFLECT does not work with const types
+         trx_message_v1 v1{std::move( trx_id ), std::const_pointer_cast<packed_transaction>( trx )};
+         return buffer_factory::create_send_buffer( trx_message_v1_which, v1 );
+      }
+
+      static std::shared_ptr<std::vector<char>> create_send_buffer( const packed_transaction_v0& trx ) {
+         static_assert( packed_transaction_v0_which == net_message::position<packed_transaction_v0>() );
+         // this implementation is to avoid copy of packed_transaction_v0 to net_message
+         // matches which of net_message for packed_transaction_v0
+         return buffer_factory::create_send_buffer( packed_transaction_v0_which, trx );
+      }
+   };
+
+   //------------------------------------------------------------------------
+
    void connection::enqueue( const net_message& m ) {
       verify_strand_in_this_thread( strand, __func__, __LINE__ );
       go_away_reason close_after_send = no_reason;
@@ -1215,113 +1360,24 @@ namespace eosio {
          close_after_send = m.get<go_away_message>().reason;
       }
 
-      const uint32_t payload_size = fc::raw::pack_size( m );
-
-      const char* const header = reinterpret_cast<const char* const>(&payload_size); // avoid variable size encoding of uint32_t
-      constexpr size_t header_size = sizeof(payload_size);
-      static_assert( header_size == message_header_size, "invalid message_header_size" );
-      const size_t buffer_size = header_size + payload_size;
-
-      auto send_buffer = std::make_shared<vector<char>>(buffer_size);
-      fc::datastream<char*> ds( send_buffer->data(), buffer_size);
-      ds.write( header, header_size );
-      fc::raw::pack( ds, m );
-
+      buffer_factory buff_factory;
+      auto send_buffer = buff_factory.get_send_buffer( m );
       enqueue_buffer( send_buffer, close_after_send );
-   }
-
-   template< typename T>
-   static std::shared_ptr<std::vector<char>> create_send_buffer( uint32_t which, const T& v ) {
-      // match net_message static_variant pack
-      const uint32_t which_size = fc::raw::pack_size( unsigned_int( which ) );
-      const uint32_t payload_size = which_size + fc::raw::pack_size( v );
-
-      const char* const header = reinterpret_cast<const char* const>(&payload_size); // avoid variable size encoding of uint32_t
-      constexpr size_t header_size = sizeof( payload_size );
-      static_assert( header_size == message_header_size, "invalid message_header_size" );
-      const size_t buffer_size = header_size + payload_size;
-
-      auto send_buffer = std::make_shared<vector<char>>( buffer_size );
-      fc::datastream<char*> ds( send_buffer->data(), buffer_size );
-      ds.write( header, header_size );
-      fc::raw::pack( ds, unsigned_int( which ) );
-      fc::raw::pack( ds, v );
-
-      return send_buffer;
-   }
-
-   static std::shared_ptr<std::vector<char>> create_send_buffer( const signed_block_ptr& sb ) {
-      static_assert( signed_block_which == net_message::position<signed_block>() );
-      // this implementation is to avoid copy of signed_block to net_message
-      // matches which of net_message for signed_block
-      fc_dlog( logger, "sending block ${bn}", ("bn", sb->block_num()) );
-      return create_send_buffer( signed_block_which, *sb );
-   }
-
-   static std::shared_ptr<std::vector<char>> create_send_buffer( const signed_block_v0& sb_v0 ) {
-      static_assert( signed_block_v0_which == net_message::position<signed_block_v0>() );
-      // this implementation is to avoid copy of signed_block_v0 to net_message
-      // matches which of net_message for signed_block_v0
-      fc_dlog( logger, "sending v0 block ${bn}", ("bn", sb_v0.block_num()) );
-      return create_send_buffer( signed_block_v0_which, sb_v0 );
-   }
-
-   static std::shared_ptr<std::vector<char>> create_send_buffer( const packed_transaction_ptr& trx ) {
-      static_assert( trx_message_v1_which == net_message::position<trx_message_v1>() );
-      fc::optional<transaction_id_type> trx_id;
-      if( trx->get_estimated_size() > 1024 ) { // simple guess on threshold
-         fc_dlog( logger, "including trx id, est size: ${es}", ("es", trx->get_estimated_size()) );
-         trx_id = trx->id();
-      }
-      // const cast required, trx_message_v1 has non-const shared_ptr because FC_REFLECT does not work with const types
-      trx_message_v1 v1{ std::move(trx_id), std::const_pointer_cast<packed_transaction>(trx) };
-      return create_send_buffer( trx_message_v1_which, v1 );
-   }
-
-   static std::shared_ptr<std::vector<char>> create_send_buffer( const packed_transaction_v0& trx ) {
-      static_assert( packed_transaction_v0_which == net_message::position<packed_transaction_v0>() );
-      // this implementation is to avoid copy of packed_transaction_v0 to net_message
-      // matches which of net_message for packed_transaction_v0
-      return create_send_buffer( packed_transaction_v0_which, trx );
-   }
-
-   static std::shared_ptr<std::vector<char>> get_send_buffer( connection& c,
-                                                              const signed_block_ptr& b,
-                                                              std::shared_ptr<std::vector<char>>& send_buffer,
-                                                              std::shared_ptr<std::vector<char>>& send_buffer_v0,
-                                                              bool& valid_v0_block )
-   {
-      const uint16_t v = c.protocol_version.load();
-      if( v >= proto_pruned_types ) {
-         if( !send_buffer ) {
-            send_buffer = create_send_buffer( b );
-         }
-         return send_buffer;
-      } else {
-         if( !send_buffer_v0 ) {
-            const auto sb_v0 = valid_v0_block ? b->to_signed_block_v0() : signed_block_v0_uptr();
-            if( !sb_v0 ) {
-               peer_wlog( (&c), "Sending go away for incomplete block #${n} ${id}...",
-                          ("n", b->block_num())("id", b->calculate_id().str().substr(8,16)) );
-               valid_v0_block = false;
-               // unable to convert to v0 signed block and client doesn't support proto_pruned_types, so tell it to go away
-               c.enqueue( go_away_message( fatal_other ) );
-               return send_buffer_v0;
-            }
-            send_buffer_v0 = create_send_buffer( *sb_v0 );
-         }
-         return send_buffer_v0;
-      }
    }
 
    void connection::enqueue_block( const signed_block_ptr& b, bool to_sync_queue) {
       fc_dlog( logger, "enqueue block ${num}", ("num", b->block_num()) );
       verify_strand_in_this_thread( strand, __func__, __LINE__ );
 
-      std::shared_ptr<std::vector<char>> send_buffer, send_buffer_v0;
-      bool valid_v0_block = b->prune_state != signed_block::prune_state_type::incomplete;
-      auto sb = get_send_buffer( *this, b, send_buffer, send_buffer_v0, valid_v0_block );
-      if( !sb ) return;
+      block_buffer_factory buff_factory;
+      auto sb = buff_factory.get_send_buffer( b, protocol_version.load() );
+      if( !sb ) {
+         peer_wlog( this, "Sending go away for incomplete block #${n} ${id}...",
+                    ("n", b->block_num())("id", b->calculate_id().str().substr(8,16)) );
+         // unable to convert to v0 signed block and client doesn't support proto_pruned_types, so tell it to go away
+         enqueue( go_away_message( fatal_other ) );
+         return;
+      }
       enqueue_buffer( sb, no_reason, to_sync_queue);
    }
 
@@ -2016,15 +2072,20 @@ namespace eosio {
 
       if( my_impl->sync_master->syncing_with_peer() ) return;
 
-      std::shared_ptr<std::vector<char>> send_buffer, send_buffer_v0;
-      bool valid_v0_block = b->prune_state != signed_block::prune_state_type::incomplete;
+      block_buffer_factory buff_factory;
       const auto bnum = b->block_num();
-      for_each_block_connection( [this, &id, &bnum, &b, &send_buffer, &send_buffer_v0, &valid_v0_block]( auto& cp ) {
+      for_each_block_connection( [this, &id, &bnum, &b, &buff_factory]( auto& cp ) {
          peer_dlog( cp, "socket_is_open ${s}, connecting ${c}, syncing ${ss}",
                     ("s", cp->socket_is_open())("c", cp->connecting.load())("ss", cp->syncing.load()) );
          if( !cp->current() ) return true;
-         std::shared_ptr<std::vector<char>> sb = get_send_buffer( *cp, b, send_buffer, send_buffer_v0, valid_v0_block );
-         if( !sb ) return true;
+         send_buffer_type sb = buff_factory.get_send_buffer( b, cp->protocol_version.load() );
+         if( !sb ) {
+            peer_wlog( cp, "Sending go away for incomplete block #${n} ${id}...",
+                       ("n", b->block_num())("id", b->calculate_id().str().substr(8,16)) );
+            // unable to convert to v0 signed block and client doesn't support proto_pruned_types, so tell it to go away
+            cp->enqueue( go_away_message( fatal_other ) );
+            return true;
+         }
 
          cp->strand.post( [this, cp, id, bnum, sb{std::move(sb)}]() {
             std::unique_lock<std::mutex> g_conn( cp->conn_mtx );
@@ -2069,8 +2130,8 @@ namespace eosio {
       time_point_sec trx_expiration = trx->expiration();
       node_transaction_state nts = {id, trx_expiration, 0, 0};
 
-      std::shared_ptr<std::vector<char>> send_buffer, send_buffer_v0;
-      for_each_connection( [this, &trx, &nts, &send_buffer, &send_buffer_v0]( auto& cp ) {
+      trx_buffer_factory buff_factory;
+      for_each_connection( [this, &trx, &nts, &buff_factory]( auto& cp ) {
          if( cp->is_blocks_only_connection() || !cp->current() ) {
             return true;
          }
@@ -2079,21 +2140,9 @@ namespace eosio {
             return true;
          }
 
-         std::shared_ptr<std::vector<char>> sb;
-         const uint16_t v = cp->protocol_version.load();
-         if( v >= proto_pruned_types ) {
-            if( !send_buffer ) {
-               send_buffer = create_send_buffer( trx );
-            }
-            sb = send_buffer;
-         } else {
-            if( !send_buffer_v0 ) {
-               packed_transaction_v0_ptr v0 = trx->to_packed_transaction_v0();
-               send_buffer_v0 = create_send_buffer( *v0 );
-            }
-            sb = send_buffer_v0;
-         }
-         cp->strand.post( [cp, sb]() {
+         send_buffer_type sb = buff_factory.get_send_buffer( trx, cp->protocol_version.load() );
+         if( !sb ) return true;
+         cp->strand.post( [cp, sb{std::move(sb)}]() {
             fc_dlog( logger, "sending trx to ${n}", ("n", cp->peer_name()) );
             cp->enqueue_buffer( sb, no_reason );
          } );
