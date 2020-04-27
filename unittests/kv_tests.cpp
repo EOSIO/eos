@@ -733,19 +733,45 @@ FC_LOG_AND_RETHROW()
 // Must be set on a privileged account
 static const char kv_setup_wast[] =  R"=====(
 (module
+ (func $action_data_size (import "env" "action_data_size") (result i32))
+ (func $read_action_data (import "env" "read_action_data") (param i32 i32) (result i32))
  (func $kv_set_parameters_packed (import "env" "set_kv_parameters_packed") (param i64 i32 i32))
  (func $set_resource_limit (import "env" "set_resource_limit") (param i64 i64 i64))
  (memory 1)
  (func (export "apply") (param i64 i64 i64)
+   (local $next_name_address i32)
+   (local $bytes_remaining i32)
    (call $kv_set_parameters_packed (get_local 2) (i32.const 0) (i32.const 16))
-   (call $set_resource_limit (i64.const 11327368866104868864) (i64.const 5454140623722381312) (i64.const -1))
-   (call $set_resource_limit (i64.const 11327368596746665984) (i64.const 5454140623722381312) (i64.const -1))
+   (set_local $next_name_address (i32.const 16))
+   (set_local $bytes_remaining (call $action_data_size))
+   (if
+      (i32.ge_s (get_local $bytes_remaining) (i32.const 8))
+      (then
+         (drop (call $read_action_data (get_local $next_name_address) (get_local $bytes_remaining)))
+         (loop
+            (call $set_resource_limit (i64.load (get_local $next_name_address)) (i64.const 5454140623722381312) (i64.const -1))            
+            (set_local $bytes_remaining (i32.sub (get_local $bytes_remaining) (i32.const 8)))
+            (set_local $next_name_address (i32.add (get_local $next_name_address) (i32.const 8)))
+            (br_if 0 (i32.ge_s (get_local $bytes_remaining) (i32.const 8)))
+         )
+      )
+   )
  )
  (data (i32.const 4) "\00\04\00\00")
  (data (i32.const 8) "\00\00\10\00")
  (data (i32.const 12) "\80\00\00\00")
 )
 )=====";
+
+std::vector<char> construct_names_payload( std::vector<name> names ) {
+   std::vector<char> result;
+   result.resize(names.size() * sizeof(name));
+   fc::datastream<char*> ds(result.data(), result.size());
+   for( auto n : names ) {
+      fc::raw::pack(ds, n);
+   }
+   return result;
+}
 
 // Call iterator intrinsics that create native state
 // and then notify another contract.  The kv context should
@@ -794,12 +820,105 @@ BOOST_DATA_TEST_CASE_F(tester, notify, bdata::make(databases), db) {
    create_accounts({ N(setup), N(notified), N(notify) });
    set_code( N(setup), kv_setup_wast );
    push_action( N(eosio), N(setpriv), N(eosio), mutable_variant_object()("account", N(setup))("is_priv", 1));
-   BOOST_TEST_REQUIRE(push_action( action({}, N(setup), db, {}), N(setup).to_uint64_t() ) == "");
+   BOOST_TEST_REQUIRE(push_action( action({}, N(setup), db, construct_names_payload({N(notified), N(notify)})), N(setup).to_uint64_t() ) == "");
 
    set_code( N(notify), kv_notify_wast );
    set_code( N(notified), kv_notified_wast );
 
    BOOST_TEST_REQUIRE(push_action( action({}, N(notify), db, {}), N(notify).to_uint64_t() ) == "");
+}
+
+// Check corner cases of alias checks for the kv_set and kv_get intrinsics
+static const char kv_alias_pass_wast[] = R"=====(
+(module
+ (func $kv_get (import "env" "kv_get") (param i64 i64 i32 i32 i32) (result i32))
+ (func $kv_set (import "env" "kv_set") (param i64 i64 i32 i32 i32 i32) (result i64))
+ (memory 1)
+ (func (export "apply") (param i64 i64 i64)
+  (drop (call $kv_set (get_local 2) (get_local 0) (i32.const 0) (i32.const 0) (i32.const 0) (i32.const 1)))
+  (drop (call $kv_set (get_local 2) (get_local 0) (i32.const 0) (i32.const 1) (i32.const 0) (i32.const 0)))
+  (drop (call $kv_set (get_local 2) (get_local 0) (i32.const 0) (i32.const 1) (i32.const 1) (i32.const 0)))
+  (drop (call $kv_set (get_local 2) (get_local 0) (i32.const 1) (i32.const 0) (i32.const 0) (i32.const 1)))
+  (drop (call $kv_set (get_local 2) (get_local 0) (i32.const 0) (i32.const 2) (i32.const 1) (i32.const 0)))
+  (drop (call $kv_set (get_local 2) (get_local 0) (i32.const 1) (i32.const 0) (i32.const 0) (i32.const 2)))
+  (drop (call $kv_get (get_local 2) (get_local 0) (i32.const 1) (i32.const 1) (i32.const 2)))
+  (drop (call $kv_get (get_local 2) (get_local 0) (i32.const 2) (i32.const 0) (i32.const 2)))
+  (drop (call $kv_get (get_local 2) (get_local 0) (i32.const 6) (i32.const 1) (i32.const 2)))
+  (drop (call $kv_get (get_local 2) (get_local 0) (i32.const 6) (i32.const 0) (i32.const 2)))
+  (drop (call $kv_get (get_local 2) (get_local 0) (i32.const 4) (i32.const 0) (i32.const 2)))
+ )
+)
+)=====";
+
+static const char kv_alias_general_wast[] = R"=====(
+(module
+ (func $read_action_data (import "env" "read_action_data") (param i32 i32) (result i32))
+ (func $kv_get (import "env" "kv_get") (param i64 i64 i32 i32 i32) (result i32))
+ (func $kv_set (import "env" "kv_set") (param i64 i64 i32 i32 i32 i32) (result i64))
+ (memory 1)
+ (func (export "apply") (param i64 i64 i64)
+  (local $span_start i32)
+  (local $span_size i32)
+  (drop (call $read_action_data (i32.const 0) (i32.const 8)))
+  (set_local $span_start (i32.load (i32.const 0)))
+  (set_local $span_size  (i32.load (i32.const 4)))
+  (drop (call $kv_get (get_local 2) (get_local 0) (get_local $span_start) (get_local $span_size) (i32.const 32)))
+  (drop (call $kv_set (get_local 2) (get_local 0) (i32.const 64) (i32.const 4) (get_local $span_start) (get_local $span_size)))
+  (drop (call $kv_set (get_local 2) (get_local 0) (get_local $span_start) (get_local $span_size) (i32.const 128) (i32.const 4)))
+ )
+)
+)=====";
+
+BOOST_DATA_TEST_CASE_F(tester, alias, bdata::make(databases), db) {
+   const name alias_pass_account{N(alias.pass)};
+   const name alias_general_account{N(alias.gen)};
+
+   create_accounts({ N(setup), alias_pass_account, alias_general_account });
+   set_code( N(setup), kv_setup_wast );
+   push_action( N(eosio), N(setpriv), N(eosio), mutable_variant_object()("account", N(setup))("is_priv", 1));
+   BOOST_TEST_REQUIRE(push_action( action({}, N(setup), db, construct_names_payload({alias_pass_account, alias_general_account})), N(setup).to_uint64_t() ) == "");
+
+   set_code( alias_pass_account, kv_alias_pass_wast );
+   set_code( alias_general_account, kv_alias_general_wast );
+
+   BOOST_TEST_CHECK(push_action( action({}, alias_pass_account, db, {}), alias_pass_account.to_uint64_t() ) == "");
+
+   auto construct_span_payload = [](uint32_t span_start, uint32_t span_size) -> std::vector<char> {
+      std::vector<char> result;
+      result.resize(8);
+      fc::datastream<char*> ds(result.data(), result.size());
+      fc::raw::pack(ds, span_start);
+      fc::raw::pack(ds, span_size);
+      return result;
+   };
+
+   // The kv_alias_general_wast code effectively creates three reserved intervals in linear memory: [32, 36), [64, 68), and [128, 132).
+   // The constructed span sent as an argument to the code can be used to test various aliasing scenarios.
+
+   static const char* const alias_error_msg = "pointers not allowed to alias";
+
+   BOOST_TEST_CHECK(push_action( action({}, alias_general_account, db, construct_span_payload(31, 1)), alias_general_account.to_uint64_t() ) == "");
+   BOOST_TEST_CHECK(push_action( action({}, alias_general_account, db, construct_span_payload(36, 28)), alias_general_account.to_uint64_t() ) == "");
+   BOOST_TEST_CHECK(push_action( action({}, alias_general_account, db, construct_span_payload(68, 60)), alias_general_account.to_uint64_t() ) == "");
+   BOOST_TEST_CHECK(push_action( action({}, alias_general_account, db, construct_span_payload(132, 1)), alias_general_account.to_uint64_t() ) == "");
+
+   BOOST_TEST_CHECK(push_action( action({}, alias_general_account, db, construct_span_payload(31, 2)), alias_general_account.to_uint64_t() ) == alias_error_msg);
+   BOOST_TEST_CHECK(push_action( action({}, alias_general_account, db, construct_span_payload(32, 1)), alias_general_account.to_uint64_t() ) == alias_error_msg);
+   BOOST_TEST_CHECK(push_action( action({}, alias_general_account, db, construct_span_payload(33, 1)), alias_general_account.to_uint64_t() ) == alias_error_msg);
+   BOOST_TEST_CHECK(push_action( action({}, alias_general_account, db, construct_span_payload(35, 1)), alias_general_account.to_uint64_t() ) == alias_error_msg);
+   BOOST_TEST_CHECK(push_action( action({}, alias_general_account, db, construct_span_payload(35, 2)), alias_general_account.to_uint64_t() ) == alias_error_msg);
+
+   BOOST_TEST_CHECK(push_action( action({}, alias_general_account, db, construct_span_payload(63, 2)), alias_general_account.to_uint64_t() ) == alias_error_msg);
+   BOOST_TEST_CHECK(push_action( action({}, alias_general_account, db, construct_span_payload(64, 1)), alias_general_account.to_uint64_t() ) == alias_error_msg);
+   BOOST_TEST_CHECK(push_action( action({}, alias_general_account, db, construct_span_payload(65, 1)), alias_general_account.to_uint64_t() ) == alias_error_msg);
+   BOOST_TEST_CHECK(push_action( action({}, alias_general_account, db, construct_span_payload(67, 1)), alias_general_account.to_uint64_t() ) == alias_error_msg);
+   BOOST_TEST_CHECK(push_action( action({}, alias_general_account, db, construct_span_payload(67, 2)), alias_general_account.to_uint64_t() ) == alias_error_msg);
+
+   BOOST_TEST_CHECK(push_action( action({}, alias_general_account, db, construct_span_payload(127, 2)), alias_general_account.to_uint64_t() ) == alias_error_msg);
+   BOOST_TEST_CHECK(push_action( action({}, alias_general_account, db, construct_span_payload(128, 1)), alias_general_account.to_uint64_t() ) == alias_error_msg);
+   BOOST_TEST_CHECK(push_action( action({}, alias_general_account, db, construct_span_payload(129, 1)), alias_general_account.to_uint64_t() ) == alias_error_msg);
+   BOOST_TEST_CHECK(push_action( action({}, alias_general_account, db, construct_span_payload(131, 1)), alias_general_account.to_uint64_t() ) == alias_error_msg);
+   BOOST_TEST_CHECK(push_action( action({}, alias_general_account, db, construct_span_payload(131, 2)), alias_general_account.to_uint64_t() ) == alias_error_msg);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

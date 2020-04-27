@@ -1,6 +1,5 @@
 #pragma once
 
-#include <fc/log/logger.hpp>
 #include <eosio/chain/name.hpp>
 #include <eosio/chain/kv_config.hpp>
 #include <memory>
