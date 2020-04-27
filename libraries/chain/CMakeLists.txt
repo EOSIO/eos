@@ -19,20 +19,20 @@ endif()
 
 if("eos-vm-oc" IN_LIST EOSIO_WASM_RUNTIMES)
    enable_language(ASM)
-   set(CHAIN_EOSVMOC_SOURCES webassembly/eos-vm-oc/code_cache.cpp
-                             webassembly/eos-vm-oc/executor.cpp
-                             webassembly/eos-vm-oc/memory.cpp
-                             webassembly/eos-vm-oc/intrinsic.cpp
-                             webassembly/eos-vm-oc/LLVMJIT.cpp
-                             webassembly/eos-vm-oc/LLVMEmitIR.cpp
-                             webassembly/eos-vm-oc/compile_monitor.cpp
-                             webassembly/eos-vm-oc/compile_trampoline.cpp
-                             webassembly/eos-vm-oc/ipc_helpers.cpp
-                             webassembly/eos-vm-oc/gs_seg_helpers.c
-                             webassembly/eos-vm-oc/stack.cpp
-                             webassembly/eos-vm-oc/switch_stack_linux.s
-                             webassembly/eos-vm-oc.cpp
-                             webassembly/eos-vm-oc/default_real_main.cpp)
+   set(CHAIN_EOSVMOC_SOURCES webassembly/runtimes/eos-vm-oc/code_cache.cpp
+                             webassembly/runtimes/eos-vm-oc/executor.cpp
+                             webassembly/runtimes/eos-vm-oc/memory.cpp
+                             webassembly/runtimes/eos-vm-oc/intrinsic.cpp
+                             webassembly/runtimes/eos-vm-oc/LLVMJIT.cpp
+                             webassembly/runtimes/eos-vm-oc/LLVMEmitIR.cpp
+                             webassembly/runtimes/eos-vm-oc/compile_monitor.cpp
+                             webassembly/runtimes/eos-vm-oc/compile_trampoline.cpp
+                             webassembly/runtimes/eos-vm-oc/ipc_helpers.cpp
+                             webassembly/runtimes/eos-vm-oc/gs_seg_helpers.c
+                             webassembly/runtimes/eos-vm-oc/stack.cpp
+                             webassembly/runtimes/eos-vm-oc/switch_stack_linux.s
+                             webassembly/runtimes/eos-vm-oc.cpp
+                             webassembly/runtimes/eos-vm-oc/default_real_main.cpp)
 
 
    if(LLVM_VERSION VERSION_LESS 7.1 AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
