@@ -2217,8 +2217,10 @@ void read_write::push_transaction(const read_write::push_transaction_params& par
          abi_serializer::from_variant(params, *pretty_input, std::move( resolver ), abi_serializer::create_yield_function( abi_serializer_max_time ));
       } EOS_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid packed transaction")
 
+      auto expiration = pretty_input->expiration();
+
       app().get_method<incoming::methods::transaction_async>()(pretty_input, true,
-            [this, next](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
+            [this, next, expiration](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
          if (result.contains<fc::exception_ptr>()) {
             next(result.get<fc::exception_ptr>());
          } else {
@@ -2280,7 +2282,7 @@ void read_write::push_transaction(const read_write::push_transaction_params& par
                }
 
                const chain::transaction_id_type& id = trx_trace_ptr->id;
-               next(read_write::push_transaction_results{id, output});
+               next(read_write::push_transaction_results{id, expiration, output});
             } CATCH_AND_CALL(next);
          }
       });
@@ -2295,7 +2297,8 @@ static void push_recurse(read_write* rw, int index, const std::shared_ptr<read_w
    auto wrapped_next = [=](const fc::static_variant<fc::exception_ptr, read_write::push_transaction_results>& result) {
       if (result.contains<fc::exception_ptr>()) {
          const auto& e = result.get<fc::exception_ptr>();
-         results->emplace_back( read_write::push_transaction_results{ transaction_id_type(), fc::mutable_variant_object( "error", e->to_detail_string() ) } );
+         results->emplace_back(read_write::push_transaction_results{
+             transaction_id_type(), fc::time_point_sec{}, fc::mutable_variant_object("error", e->to_detail_string())});
       } else {
          const auto& r = result.get<read_write::push_transaction_results>();
          results->emplace_back( r );
@@ -2336,8 +2339,10 @@ void read_write::send_transaction(const read_write::send_transaction_params& par
          abi_serializer::from_variant(params, *pretty_input, resolver, abi_serializer::create_yield_function( abi_serializer_max_time ));
       } EOS_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid packed transaction")
 
+      auto expiration = pretty_input->expiration();
+
       app().get_method<incoming::methods::transaction_async>()(pretty_input, true,
-            [this, next](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
+            [this, next, expiration](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
          if (result.contains<fc::exception_ptr>()) {
             next(result.get<fc::exception_ptr>());
          } else {
@@ -2352,7 +2357,7 @@ void read_write::send_transaction(const read_write::send_transaction_params& par
                }
 
                const chain::transaction_id_type& id = trx_trace_ptr->id;
-               next(read_write::send_transaction_results{id, output});
+               next(read_write::send_transaction_results{id, expiration, output});
             } CATCH_AND_CALL(next);
          }
       });

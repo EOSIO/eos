@@ -185,6 +185,8 @@ uint32_t tx_max_net_usage = 0;
 
 uint32_t delaysec = 0;
 
+bool track_txn= false;
+
 vector<string> tx_permission;
 
 eosio::client::http::http_context context;
@@ -412,11 +414,13 @@ fc::variant push_transaction( signed_transaction& trx, const std::vector<public_
    }
 
    if (!tx_dont_broadcast) {
+      fc::variant arg(packed_transaction(trx, compression));
+
       if (tx_use_old_rpc) {
-         return call(push_txn_func, packed_transaction(trx, compression));
+         return track_txn ? call(push_txn_v2_func, arg) : call(push_txn_func, arg);
       } else {
          try {
-            return call(send_txn_func, packed_transaction(trx, compression));
+            return track_txn ? call(send_txn_v2_func, arg) : call(send_txn_func, arg);
          }
          catch (chain::missing_chain_api_plugin_exception &) {
             std::cerr << "New RPC send_transaction may not be supported. Add flag --use-old-rpc to use old RPC push_transaction instead." << std::endl;
@@ -3507,6 +3511,7 @@ int main( int argc, char** argv ) {
    actionsSubcommand->add_option("action", action,
                                  localized("A JSON string or filename defining the action to execute on the contract"), true)->required();
    actionsSubcommand->add_option("data", data, localized("The arguments to the contract"))->required();
+   actionsSubcommand->add_flag("--track", track_txn, localized("Enable transaction tracking via wait_transaction (requires enabling chain_api_v2 plugin)."));
 
    add_standard_transaction_options_plus_signing(actionsSubcommand);
    actionsSubcommand->set_callback([&] {
@@ -3524,6 +3529,7 @@ int main( int argc, char** argv ) {
    string trx_to_push;
    auto trxSubcommand = push->add_subcommand("transaction", localized("Push an arbitrary JSON transaction"));
    trxSubcommand->add_option("transaction", trx_to_push, localized("The JSON string or filename defining the transaction to push"))->required();
+   trxSubcommand->add_flag("--track", track_txn, localized("Enable transaction finalization tracking via wait_transaction (requires enabling chain v2 plugin)."));
    add_standard_transaction_options_plus_signing(trxSubcommand);
 
    trxSubcommand->set_callback([&] {
@@ -3549,6 +3555,14 @@ int main( int argc, char** argv ) {
       std::cout << fc::json::to_pretty_string(trxs_result) << std::endl;
    });
 
+   // wait transaction
+   string trxId;
+   auto wait = app.add_subcommand("wait_transaction", localized("Wait a tracked transaction in the blockchain to become finalized (requires enabling chain_api_v2 plugin)"), false);
+   auto waitSubcommand = wait->add_option("transaction", trxId, localized("the transaction id to wait"));
+   wait->set_callback([&] {
+      auto wait_result = call(wait_trx_func, fc::variant_object("transaction_id", trxId));
+      std::cout << fc::json::to_pretty_string(wait_result) << std::endl;
+   });
 
    // multisig subcommand
    auto msig = app.add_subcommand("multisig", localized("Multisig contract commands"), false);

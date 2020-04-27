@@ -625,6 +625,7 @@ public:
    using push_transaction_params = fc::variant_object;
    struct push_transaction_results {
       chain::transaction_id_type  transaction_id;
+      fc::time_point_sec          expiration;
       fc::variant                 processed;
    };
    void push_transaction(const push_transaction_params& params, chain::plugin_interface::next_function<push_transaction_results> next);
