@@ -684,10 +684,10 @@ try:
         errorExit("Failed to unlock wallet %s" % (testWallet.name))
 
     Print("Verify non-JSON call works")
-    rawAccount = node.getEosAccount(defproduceraAccount.name, exitOnError=True, returnType=ReturnType.raw)
-    coreLiquidBalance = account['core_liquid_balance']
-    match = re.search(r'\bliquid:\s*%s\s' % (coreLiquidBalance), rawAccount, re.MULTILINE | re.DOTALL)
-    assert match is not None, "did not find the core liquid balance (\"liquid:\") of %d in \"%s\"" % (coreLiquidBalance, rawAccount)
+    rawAccount=node.getEosAccount(defproduceraAccount.name, exitOnError=True, returnType=ReturnType.raw)
+    coreLiquidBalance=account['core_liquid_balance']
+    match=re.search(r'\bliquid:\s*%s\s' % (coreLiquidBalance), rawAccount, re.MULTILINE | re.DOTALL)
+    assert match is not None, "did not find the core liquid balance (\"liquid:\") of {} in \"{}\"".format(coreLiquidBalance, rawAccount)
 
     Print("Get head block num.")
     currentBlockNum=node.getHeadBlockNum()
