@@ -29,9 +29,6 @@ struct unvalidated_ptr {
    T* ptr;
 };
 
-template <typename... T>
-void ignore_unused_variable_warning(T&...) {}
-
 inline size_t legacy_copy_to_wasm(char* dest, size_t dest_size, const char* src, size_t src_size) {
    if (dest_size == 0)
       return src_size;

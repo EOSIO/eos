@@ -1,3 +1,5 @@
+// TODO: this file duplicates a CDT file
+
 // clang-format off
 #pragma once
 #include <eosio/datastream.hpp>
