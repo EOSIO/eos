@@ -68,6 +68,7 @@ struct provereset {
 };
 
 namespace {
+#warning Change this back to using TESTER
 struct old_wasm_tester : tester {
    old_wasm_tester() : tester{setup_policy::old_wasm_parser} {}
 };
