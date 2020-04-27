@@ -211,10 +211,12 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
             }
 #endif
          }), "Override default WASM runtime(\"wabt\", \"eos-vm\", \"eos-vm-jit\", \"eos-vm-oc\").\n"
-         "\"wabt\" : runtime from the WebAssembly Binary Toolkit.\n"
-         "\"eos-vm\" : runtime lets developers perform step-through debugging of C++ smart contracts.\n"
-         "\"eos-vm-jit\" : runtime rapidly compiles smart contracts in an easy to reference binary file for WASMs.\n"
-         "\"eos-vm-oc\" : runtime creates an optimized version of the file for fast reference."
+         "\"wabt\" : default runtime, the WebAssembly Binary Toolkit.\n"
+         "\"eos-vm\" : A WebAssembly interpreter providing extremely fast parsing/loading,"
+		 " and deterministic and efficient time bound execution with debugging support.\n"
+         "\"eos-vm-jit\" : A WebAssembly compiler that takes WASM and generates native code on the fly.\n"
+         "\"eos-vm-oc\" :  A specialized compiler framework (LLVM) that leverages a multipass compilation architecture."
+		 "The resulting native code from the Optimized Compiler is often an order of magnitude faster thatn others.\n"
          )
          ("abi-serializer-max-time-ms", bpo::value<uint32_t>()->default_value(config::default_abi_serializer_max_time_us / 1000),
           "Override default maximum ABI serialization time allowed in ms")
