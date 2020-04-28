@@ -905,10 +905,7 @@ namespace eosio { namespace chain {
                                      if (it != ids.end()) {
                                         ptx.prune_all();
                                         // remove the found entry from ids
-                                        if (it != ids.end() - 1) {
-                                           *it = ids.back();
-                                        }
-                                        ids.resize(ids.size() - 1);
+                                        ids.erase(it);
                                         return true;
                                      }
                                      return false;
