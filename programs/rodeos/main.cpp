@@ -10,6 +10,7 @@
 
 #include "cloner_plugin.hpp"
 #include "config.hpp"
+#include "wasm_ql_plugin.hpp"
 
 using namespace appbase;
 
@@ -72,7 +73,7 @@ int main(int argc, char** argv) {
       auto root = fc::app_path();
       app().set_default_data_dir(root / "eosio" / b1::rodeos::config::rodeos_executable_name / "data");
       app().set_default_config_dir(root / "eosio" / b1::rodeos::config::rodeos_executable_name / "config");
-      if (!app().initialize<b1::cloner_plugin>(argc, argv)) {
+      if (!app().initialize<b1::cloner_plugin, b1::wasm_ql_plugin>(argc, argv)) {
          const auto& opts = app().get_options();
          if (opts.count("help") || opts.count("version") || opts.count("full-version") ||
              opts.count("print-default-config")) {

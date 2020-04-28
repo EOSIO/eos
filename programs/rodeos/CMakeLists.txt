@@ -2,6 +2,8 @@ add_executable( ${RODEOS_EXECUTABLE_NAME}
   cloner_plugin.cpp
   main.cpp
   rocksdb_plugin.cpp
+  wasm_ql_http.cpp
+  wasm_ql_plugin.cpp
 )
 
 if( UNIX AND NOT APPLE )
