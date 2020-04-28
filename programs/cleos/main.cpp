@@ -248,7 +248,7 @@ public:
             try {
                std::vector<public_key_type> keys = json_keys.template as<std::vector<public_key_type>>();
                signing_keys = std::move(keys);
-            } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid public key array format '${data}'", 
+            } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid public key array format '${data}'",
                                      ("data", fc::json::to_string(json_keys, fc::time_point::maximum())))
          }
       }
@@ -2636,7 +2636,7 @@ int main( int argc, char** argv ) {
    // get account
    string accountName;
    string coresym;
-   bool print_json;
+   bool print_json = false;
    auto getAccount = get->add_subcommand("account", localized("Retrieve an account from the blockchain"));
    getAccount->add_option("name", accountName, localized("The name of the account to retrieve"))->required();
    getAccount->add_option("core-symbol", coresym, localized("The expected core symbol of the chain you are querying"));
