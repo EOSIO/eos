@@ -750,6 +750,19 @@ struct controller_impl {
          // else no checks needed since fork_db will be completely reset on replay anyway
       }
 
+      if (auto dm_logger = get_deep_mind_logger()) {
+         auto idx = db.get_index<account_index>();
+         for (auto& row : idx.indices()) {
+            if (row.abi.size() != 0) {
+               fc_dlog(*dm_logger, "ABIDUMP ${block_num} ${contract} ${abi}",
+                  ("block_num", head->block_num)
+                  ("contract", row.name)
+                  ("abi", row.abi)
+               );
+            }
+         }
+      }
+
       if( last_block_num > head->block_num ) {
          replay( check_shutdown ); // replay any irreversible and reversible blocks ahead of current head
       }
