@@ -1,6 +1,7 @@
 #pragma once
 
 #include <eosio/chain/trace.hpp>
+#include <variant>
 
 namespace eosio {
 namespace state_history {
@@ -12,14 +13,16 @@ using chain::signature_type;
 using chain::signed_transaction;
 using chain::transaction_trace_ptr;
 
+enum class compression_type : unsigned char { zlib, none };
+
 template <typename T>
 struct big_vector_wrapper {
    T obj;
 };
 
 struct augmented_transaction_trace {
-   transaction_trace_ptr                trace;
-   chain::packed_transaction_ptr        packed_trx;
+   transaction_trace_ptr         trace;
+   chain::packed_transaction_ptr packed_trx;
 
    augmented_transaction_trace()                                   = default;
    augmented_transaction_trace(const augmented_transaction_trace&) = default;
@@ -28,8 +31,7 @@ struct augmented_transaction_trace {
    augmented_transaction_trace(const transaction_trace_ptr& trace)
        : trace{trace} {}
 
-   augmented_transaction_trace(const transaction_trace_ptr& trace,
-                               const chain::packed_transaction_ptr& packed_trx)
+   augmented_transaction_trace(const transaction_trace_ptr& trace, const chain::packed_transaction_ptr& packed_trx)
        : trace{trace}
        , packed_trx{packed_trx} {}
 
@@ -86,7 +88,6 @@ struct get_blocks_result_v0 {
 };
 
 using state_request = fc::static_variant<get_status_request_v0, get_blocks_request_v0, get_blocks_ack_request_v0>;
-using state_result  = fc::static_variant<get_status_result_v0, get_blocks_result_v0>;
 
 struct account_auth_sequence {
    uint64_t account  = {};
@@ -152,7 +153,7 @@ struct action_trace_v1 {
    bytes                        return_value           = {};
 };
 
-using action_trace = fc::static_variant<action_trace_v0,action_trace_v1>;
+using action_trace = fc::static_variant<action_trace_v0, action_trace_v1>;
 
 struct partial_transaction_v0 {
    eosio::chain::time_point_sec               expiration             = {};
@@ -166,34 +167,60 @@ struct partial_transaction_v0 {
    std::vector<bytes>                         context_free_data      = {};
 };
 
-using partial_transaction = fc::static_variant<partial_transaction_v0>;
+struct partial_transaction_v1 {
+   eosio::chain::time_point_sec                         expiration             = {};
+   uint16_t                                             ref_block_num          = {};
+   uint32_t                                             ref_block_prefix       = {};
+   fc::unsigned_int                                     max_net_usage_words    = {};
+   uint8_t                                              max_cpu_usage_ms       = {};
+   fc::unsigned_int                                     delay_sec              = {};
+   std::vector<eosio::chain::extensions_type>           transaction_extensions = {};
+   eosio::chain::packed_transaction::prunable_data_type prunable_data          = {};
+};
+
+using partial_transaction = fc::static_variant<partial_transaction_v0, partial_transaction_v1>;
 
 struct transaction_trace_recurse;
 
 struct transaction_trace_v0 {
-   using transaction_trace = fc::static_variant<transaction_trace_v0>;
-   eosio::chain::digest_type               id                = {};
-   uint8_t                                 status            = {};
-   uint32_t                                cpu_usage_us      = {};
-   fc::unsigned_int                        net_usage_words   = {};
-   int64_t                                 elapsed           = {};
-   uint64_t                                net_usage         = {};
-   bool                                    scheduled         = {};
-   std::vector<action_trace>               action_traces     = {};
-   fc::optional<account_delta>             account_ram_delta = {};
-   fc::optional<std::string>               except            = {};
-   fc::optional<uint64_t>                  error_code        = {};
+   using transaction_trace                       = fc::static_variant<transaction_trace_v0>;
+   eosio::chain::digest_type   id                = {};
+   uint8_t                     status            = {};
+   uint32_t                    cpu_usage_us      = {};
+   fc::unsigned_int            net_usage_words   = {};
+   int64_t                     elapsed           = {};
+   uint64_t                    net_usage         = {};
+   bool                        scheduled         = {};
+   std::vector<action_trace>   action_traces     = {};
+   fc::optional<account_delta> account_ram_delta = {};
+   fc::optional<std::string>   except            = {};
+   fc::optional<uint64_t>      error_code        = {};
 
-   // semantically, this should be optional<transaction_trace>; 
+   // semantically, this should be optional<transaction_trace>;
    // it is represented as vector because optional cannot be used for incomplete type
-   std::vector<transaction_trace_recurse>  failed_dtrx_trace = {}; 
-   fc::optional<partial_transaction>       partial           = {};
+   std::vector<transaction_trace_recurse> failed_dtrx_trace = {};
+   fc::optional<partial_transaction>      partial           = {};
 };
 
 using transaction_trace = fc::static_variant<transaction_trace_v0>;
 struct transaction_trace_recurse {
    transaction_trace recurse;
 };
+
+// we use std::variant instead of fc::static_variable because fc::static_variable requires every constituent type to be default constructable. 
+using optional_signed_block = std::variant<std::nullptr_t, std::reference_wrapper<chain::signed_block_v0>, std::reference_wrapper<chain::signed_block>>;
+
+struct get_blocks_result_v1 {
+   block_position                 head;
+   block_position                 last_irreversible;
+   fc::optional<block_position>   this_block;
+   fc::optional<block_position>   prev_block;
+   optional_signed_block          block;
+   std::vector<transaction_trace> traces;
+   fc::optional<bytes>            deltas;
+};
+
+using state_result  = fc::static_variant<get_status_result_v0, get_blocks_result_v0, get_blocks_result_v1>;
 
 } // namespace state_history
 } // namespace eosio
@@ -214,6 +241,7 @@ FC_REFLECT(eosio::state_history::action, (account)(name)(authorization)(data));
 FC_REFLECT(eosio::state_history::action_trace_v0, (action_ordinal)(creator_action_ordinal)(receipt)(receiver)(act)(context_free)(elapsed)(console)(account_ram_deltas)(except)(error_code));
 FC_REFLECT(eosio::state_history::action_trace_v1, (action_ordinal)(creator_action_ordinal)(receipt)(receiver)(act)(context_free)(elapsed)(console)(account_ram_deltas)(account_disk_deltas)(except)(error_code)(return_value));
 FC_REFLECT(eosio::state_history::partial_transaction_v0, (expiration)(ref_block_num)(ref_block_prefix)(max_net_usage_words)(max_cpu_usage_ms)(delay_sec)(transaction_extensions)(signatures)(context_free_data));
+FC_REFLECT(eosio::state_history::partial_transaction_v1, (expiration)(ref_block_num)(ref_block_prefix)(max_net_usage_words)(max_cpu_usage_ms)(delay_sec)(transaction_extensions)(prunable_data));
 FC_REFLECT(eosio::state_history::transaction_trace_v0,(id)(status)(cpu_usage_us)(net_usage_words)(elapsed)(net_usage)(scheduled)(action_traces)(account_ram_delta)(except)(error_code)(failed_dtrx_trace)(partial));
 FC_REFLECT(eosio::state_history::transaction_trace_recurse, (recurse));
 // clang-format on

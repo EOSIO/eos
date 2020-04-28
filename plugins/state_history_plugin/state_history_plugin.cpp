@@ -47,18 +47,14 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
    uint16_t                                                   endpoint_port    = 8080;
    std::unique_ptr<tcp::acceptor>                             acceptor;
 
-   void get_block(uint32_t block_num, fc::optional<bytes>& result) {
-      chain::signed_block_ptr p;
+   state_history::signed_block get_block(uint32_t block_num) {
       try {
-         p = chain_plug->chain().fetch_block_by_number(block_num);
+         auto ptr = chain_plug->chain().fetch_block_by_number(block_num);
+         if (ptr)
+            return std::ref(*ptr);
       } catch (...) {
-         return;
       }
-      if (p) {
-         auto v0 = p->to_signed_block_v0();
-         if (v0)
-            result = fc::raw::pack(*v0);
-      }
+      return {};
    }
 
    fc::optional<chain::block_id_type> get_block_id(uint32_t block_num) {
@@ -191,6 +187,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          if (!send_queue.empty() || !current_request || !current_request->max_messages_in_flight)
             return;
          auto& chain = plugin->chain_plug->chain();
+         get_blocks_result_v1 result;
          result.last_irreversible = {chain.last_irreversible_block_num(), chain.last_irreversible_block_id()};
          uint32_t current =
                current_request->irreversible_only ? result.last_irreversible.block_num : result.head.block_num;
@@ -203,9 +200,9 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
                if (prev_block_id)
                   result.prev_block = block_position{current_request->start_block_num - 1, *prev_block_id};
                if (current_request->fetch_block)
-                  plugin->get_block(current_request->start_block_num, result.block);
+                  result.block = plugin->get_block(current_request->start_block_num);
                if (current_request->fetch_traces && plugin->trace_log) {
-                  result.traces = plugin->trace_log->get_log_entry(current_request->start_block_num);
+                  result.traces = plugin->trace_log->get_traces(current_request->start_block_num);
                }
                if (current_request->fetch_deltas && plugin->chain_state_log) {
                   result.deltas = plugin->chain_state_log->get_log_entry(current_request->start_block_num);
