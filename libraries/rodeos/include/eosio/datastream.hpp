@@ -357,12 +357,14 @@ DataStream& operator<<( DataStream& ds, const T& v ) {
    return ds;
 }
 
+/* throws off gcc
 // Backwards compatibility: allow user defined datastream operators to work with from_bin
 template<typename DataStream, typename T, _datastream_detail::require_specialized_left_shift<datastream<DataStream>,T>* = nullptr>
 result<void> to_bin( const T& v, datastream<DataStream>& ds ) {
    ds << v;
    return outcome::success();
 }
+*/
 
 /**
  *  Deserialize a class
@@ -380,11 +382,13 @@ DataStream& operator>>( DataStream& ds, T& v ) {
    return ds;
 }
 
+/* throws off gcc
 template<typename DataStream, typename T, _datastream_detail::require_specialized_right_shift<datastream<DataStream>,T>* = nullptr>
 result<void> from_bin( T& v, datastream<DataStream>& ds ) {
    ds >> v;
    return outcome::success();
 }
+*/
 
 /**
  * Unpack data inside a fixed size buffer as T

@@ -167,7 +167,7 @@ class backend_cache {
 };
 
 shared_state::shared_state(std::shared_ptr<chain_kv::database> db)
-    : backend_cache(std::make_unique<wasm_ql::backend_cache>(*this)), db(std::move(db)) {}
+    : backend_cache(std::make_shared<wasm_ql::backend_cache>(*this)), db(std::move(db)) {}
 
 shared_state::~shared_state() {}
 

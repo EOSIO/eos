@@ -11,15 +11,18 @@ namespace b1::rodeos::wasm_ql {
 class backend_cache;
 
 struct shared_state {
-   uint32_t                            max_console_size = {};
-   uint32_t                            wasm_cache_size  = {};
-   uint64_t                            max_exec_time_ms = {};
-   std::string                         contract_dir     = {};
-   std::unique_ptr<backend_cache>      backend_cache    = {};
-   std::shared_ptr<chain_kv::database> db;
+   uint32_t                                max_console_size = {};
+   uint32_t                                wasm_cache_size  = {};
+   uint64_t                                max_exec_time_ms = {};
+   std::string                             contract_dir     = {};
+   std::shared_ptr<wasm_ql::backend_cache> backend_cache    = {};
+   std::shared_ptr<chain_kv::database>     db;
 
    shared_state(std::shared_ptr<chain_kv::database> db);
+   shared_state(const shared_state&) = delete;
    ~shared_state();
+
+   shared_state& operator=(const shared_state&) = delete;
 };
 
 struct thread_state : action_state, console_state, query_state {

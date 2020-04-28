@@ -110,7 +110,7 @@ class iterator_cache {
          throw std::runtime_error("dereference invalid iterator");
       if (itr < 0)
          throw std::runtime_error("dereference end iterator");
-      if (itr >= iterators.size())
+      if (size_t(itr) >= iterators.size())
          throw std::runtime_error("dereference non-existing iterator");
       auto& it = iterators[itr];
       return legacy_copy_to_wasm(buffer, buffer_size, it.value.data(), it.value.size());
@@ -121,7 +121,7 @@ class iterator_cache {
          throw std::runtime_error("increment invalid iterator");
       if (itr < 0)
          return -1;
-      if (itr >= iterators.size())
+      if (size_t(itr) >= iterators.size())
          throw std::runtime_error("increment non-existing iterator");
       auto& it = iterators[itr];
       if (it.next >= 0) {
@@ -188,7 +188,7 @@ class iterator_cache {
 }; // iterator_cache
 
 struct chaindb_state {
-   std::unique_ptr<iterator_cache> iterator_cache;
+   std::unique_ptr<rodeos::iterator_cache> iterator_cache;
 };
 
 template <typename Derived>

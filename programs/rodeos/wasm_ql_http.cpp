@@ -396,12 +396,12 @@ class http_session : public std::enable_shared_from_this<http_session> {
       }
    };
 
-   beast::tcp_stream                   stream;
-   beast::flat_buffer                  buffer;
-   std::shared_ptr<const http_config>  http_config;
-   std::shared_ptr<const shared_state> shared_state;
-   std::shared_ptr<thread_state_cache> state_cache;
-   queue                               queue_;
+   beast::tcp_stream                            stream;
+   beast::flat_buffer                           buffer;
+   std::shared_ptr<const wasm_ql::http_config>  http_config;
+   std::shared_ptr<const wasm_ql::shared_state> shared_state;
+   std::shared_ptr<thread_state_cache>          state_cache;
+   queue                                        queue_;
 
    // The parser is stored in an optional container so we can
    // construct it from scratch it at the beginning of each new message.
@@ -549,11 +549,11 @@ class listener : public std::enable_shared_from_this<listener> {
 }; // listener
 
 struct server_impl : http_server, std::enable_shared_from_this<server_impl> {
-   net::io_service                     ioc;
-   std::shared_ptr<const http_config>  http_config  = {};
-   std::shared_ptr<const shared_state> shared_state = {};
-   std::vector<std::thread>            threads      = {};
-   std::unique_ptr<tcp::acceptor>      acceptor     = {};
+   net::io_service                              ioc;
+   std::shared_ptr<const wasm_ql::http_config>  http_config  = {};
+   std::shared_ptr<const wasm_ql::shared_state> shared_state = {};
+   std::vector<std::thread>                     threads      = {};
+   std::unique_ptr<tcp::acceptor>               acceptor     = {};
 
    server_impl(const std::shared_ptr<const wasm_ql::http_config>&  http_config,
                const std::shared_ptr<const wasm_ql::shared_state>& shared_state)

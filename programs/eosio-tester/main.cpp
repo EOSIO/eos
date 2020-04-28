@@ -46,7 +46,6 @@ using eosio::state_history::block_position;
 using eosio::state_history::create_deltas;
 using eosio::state_history::get_blocks_result_v0;
 using eosio::state_history::state_result;
-using eosio::state_history::trace_converter;
 using eosio::vm::span;
 
 struct callbacks;
@@ -183,7 +182,7 @@ struct test_chain {
    std::unique_ptr<eosio::chain::controller>         control;
    fc::optional<scoped_connection>                   applied_transaction_connection;
    fc::optional<scoped_connection>                   accepted_block_connection;
-   trace_converter                                   trace_converter;
+   eosio::state_history::trace_converter             trace_converter;
    fc::optional<block_position>                      prev_block;
    std::map<uint32_t, std::vector<char>>             history;
    std::unique_ptr<intrinsic_context>                intr_ctx;
