@@ -212,7 +212,13 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
                EOS_ASSERT(false, plugin_exception, "");
             }
 #endif
-         }), "Override default WASM runtime")
+         }), "Override default WASM runtime(\"eos-vm\", \"eos-vm-jit\", \"eos-vm-oc\").\n"
+         "\"eos-vm\" : A WebAssembly interpreter providing deterministic and efficient time bound execution with debugging support.\n"
+         "\"eos-vm-jit\" : A WebAssembly compiler that takes WASM and generates native code on the fly.\n"
+         "\"eos-vm-oc\" : A specialized compiler framework (LLVM) that leverages a multi-pass compilation architecture."
+		 "The resulting native code from the Optimized Compiler is often an order of magnitude faster thatn others.\n"
+		 "If EOSIO_EOS_VM_OC_DEVELOPER is not defined, enable 'eos-vm-oc-enable' option instead."
+         )
          ("abi-serializer-max-time-ms", bpo::value<uint32_t>()->default_value(config::default_abi_serializer_max_time_us / 1000),
           "Override default maximum ABI serialization time allowed in ms")
          ("chain-state-db-size-mb", bpo::value<uint64_t>()->default_value(config::default_state_size / (1024  * 1024)), "Maximum size (in MiB) of the chain state database")
