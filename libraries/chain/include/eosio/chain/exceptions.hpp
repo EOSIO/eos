@@ -549,6 +549,8 @@ namespace eosio { namespace chain {
                                     3160013, "The key or value is too large" )
       FC_DECLARE_DERIVED_EXCEPTION( kv_unknown_parameters_version,          contract_exception,
                                     3160014, "Unknown kv_parameters version" )
+      FC_DECLARE_DERIVED_EXCEPTION( wasm_config_unknown_version,          contract_exception,
+                                    3160015, "Unknown wasm_config version" )
 
    FC_DECLARE_DERIVED_EXCEPTION( producer_exception,           chain_exception,
                                  3170000, "Producer exception" )

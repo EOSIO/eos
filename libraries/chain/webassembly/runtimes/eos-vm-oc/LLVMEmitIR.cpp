@@ -1288,6 +1288,7 @@ namespace LLVMJIT
 		if(module.tables.size()) {
 			auto tableElementType = llvm::StructType::get(context,{llvmI8PtrType, llvmI64Type});
 			llvm::Type* tableArrayTy = llvm::ArrayType::get(tableElementType, module.tables.defs[0].type.size.min);
+#warning change this to use ExternallyInitialized when OC is reenabled.
 			defaultTablePointer = new llvm::GlobalVariable(*llvmModule, tableArrayTy, false, llvm::GlobalValue::ExternalLinkage, llvm::ConstantAggregateZero::get(tableArrayTy), getTableSymbolName());
 			defaultTablePointer->setVisibility(llvm::GlobalValue::ProtectedVisibility); // Don't use the GOT.
 			defaultTableMaxElementIndex = emitLiteral((U64)module.tables.defs[0].type.size.min);

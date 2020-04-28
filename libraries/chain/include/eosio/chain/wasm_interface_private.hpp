@@ -184,9 +184,8 @@ namespace eosio { namespace chain {
                }
             }
 
-            const auto& cfg = db.get<global_property_object>().wasm_configuration;
             wasm_instantiation_cache.modify(it, [&](auto& c) {
-               c.module = runtime_interface->instantiate_module((const char*)bytes.data(), bytes.size(), parse_initial_memory(module), code_hash, vm_type, vm_version, cfg);
+               c.module = runtime_interface->instantiate_module((const char*)bytes.data(), bytes.size(), parse_initial_memory(module), code_hash, vm_type, vm_version);
             });
          }
          return it->module;

@@ -55,21 +55,23 @@ struct setcode_options {
    static constexpr bool allow_zero_blocktype = true;
 };
 
-void validate( const bytes& code, const whitelisted_intrinsics_type& intrinsics ) {
+void validate(const bytes& code, const whitelisted_intrinsics_type& intrinsics) {
    wasm_code_ptr code_ptr((uint8_t*)code.data(), code.size());
    try {
       eos_vm_null_backend_t<setcode_options> bkend(code_ptr, code.size(), nullptr);
       // check import signatures
-      eos_vm_host_functions_t::resolve(bkend.get_module());
-      auto intrinsic_set = convert_intrinsic_whitelist_to_set( intrinsics );
+       eos_vm_host_functions_t::resolve(bkend.get_module());
+      // check that the imports are all currently enabled
       const auto& imports = bkend.get_module().imports;
       for(std::uint32_t i = 0; i < imports.size(); ++i) {
-         EOS_ASSERT(intrinsic_set.find(std::string((char*)imports[i].field_str.raw(), imports[i].field_str.size())) != intrinsic_set.end(),
-                    wasm_serialization_error, "Imported function ${fn} not available",
+         EOS_ASSERT(std::string_view((char*)imports[i].module_str.raw(), imports[i].module_str.size()) == "env" &&
+                    is_intrinsic_whitelisted(intrinsics, std::string_view((char*)imports[i].field_str.raw(), imports[i].field_str.size())),
+                    wasm_serialization_error, "${module}.${fn} unresolveable",
+                    ("module", std::string((char*)imports[i].module_str.raw(), imports[i].module_str.size()))
                     ("fn", std::string((char*)imports[i].field_str.raw(), imports[i].field_str.size())));
       }
-   } catch ( vm::exception& e ) {
-      EOS_THROW( wasm_serialization_error, e.detail() );
+   } catch(vm::exception& e) {
+      EOS_THROW(wasm_serialization_error, e.detail());
    }
 }
 
@@ -81,11 +83,12 @@ void validate( const bytes& code, const wasm_config& cfg, const whitelisted_intr
       // check import signatures
       eos_vm_host_functions_t::resolve(bkend.get_module());
       // check that the imports are all currently enabled
-      auto intrinsic_set = convert_intrinsic_whitelist_to_set( intrinsics );
       const auto& imports = bkend.get_module().imports;
       for(std::uint32_t i = 0; i < imports.size(); ++i) {
-         EOS_ASSERT(intrinsic_set.find(std::string((char*)imports[i].field_str.raw(), imports[i].field_str.size())) != intrinsic_set.end(),
-                    wasm_serialization_error, "Imported function ${fn} not available",
+         EOS_ASSERT(std::string_view((char*)imports[i].module_str.raw(), imports[i].module_str.size()) == "env" &&
+                    is_intrinsic_whitelisted(intrinsics, std::string_view((char*)imports[i].field_str.raw(), imports[i].field_str.size())),
+                    wasm_serialization_error, "${module}.${fn} unresolveable",
+                    ("module", std::string((char*)imports[i].module_str.raw(), imports[i].module_str.size()))
                     ("fn", std::string((char*)imports[i].field_str.raw(), imports[i].field_str.size())));
       }
       // check apply
@@ -168,13 +171,13 @@ bool eos_vm_runtime<Impl>::inject_module(IR::Module& module) {
 
 template<typename Impl>
 std::unique_ptr<wasm_instantiated_module_interface> eos_vm_runtime<Impl>::instantiate_module(const char* code_bytes, size_t code_size, std::vector<uint8_t>,
-                                                                                             const digest_type&, const uint8_t&, const uint8_t&, const wasm_config& opts) {
+                                                                                             const digest_type&, const uint8_t&, const uint8_t&) {
 
    using backend_t = eos_vm_backend_t<Impl>;
    try {
       wasm_code_ptr code((uint8_t*)code_bytes, code_size);
-      apply_options options = { .max_pages = opts.max_pages,
-                                .max_call_depth = opts.max_call_depth };
+      apply_options options = { .max_pages = 65536,
+                                .max_call_depth = 0 };
       std::unique_ptr<backend_t> bkend = std::make_unique<backend_t>(code, code_size, nullptr, options);
       eos_vm_host_functions_t::resolve(bkend->get_module());
       return std::make_unique<eos_vm_instantiated_module<Impl>>(this, std::move(bkend));

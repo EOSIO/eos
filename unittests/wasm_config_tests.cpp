@@ -1,5 +1,6 @@
 #include <eosio/chain/abi_serializer.hpp>
 #include <eosio/testing/tester.hpp>
+#include <eosio/chain/wast_to_wasm.hpp>
 
 #include <fc/string.hpp>
 #include <fc/variant_object.hpp>
@@ -578,7 +579,7 @@ BOOST_DATA_TEST_CASE_F( wasm_config_tester, max_symbol_bytes_export, data::make(
 
 static const char max_symbol_import_wast[] = R"=====(
 (module
-  (func (import "env" "eosio_assert") (param i32 i32))
+  (func (import "env" "db_idx_long_double_find_secondary") (param i64 i64 i64 i32 i32) (result i32))
   (func (export "apply") (param i64 i64 i64))
 )
 )=====";
@@ -587,7 +588,7 @@ BOOST_FIXTURE_TEST_CASE( max_symbol_bytes_import, wasm_config_tester ) {
    produce_blocks(2);
    create_accounts({N(bigname)});
 
-   constexpr int n_symbol = 12;
+   constexpr int n_symbol = 33;
 
    auto params = genesis_state::default_initial_wasm_configuration;
    params.max_symbol_bytes = n_symbol;
@@ -609,14 +610,28 @@ static const std::vector<uint8_t> small_contract_wasm{
    0x01, 0x07, 0x01, 0x60, 0x03, 0x7e, 0x7e, 0x7e, 0x00,
    0x03, 0x02, 0x01, 0x00,
    0x07, 0x09, 0x01, 0x05, 'a', 'p', 'p', 'l', 'y', 0x00, 0x00,
-   0x0a, 0x04, 0x01, 0x02, 0x00, 0x0b
+   0x0a, 0xE3, 0x01, 0x01, 0xE0, 0x01,
+   0x00, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
+   0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
+   0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
+   0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
+   0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
+   0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
+   0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
+   0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
+   0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
+   0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
+   0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
+   0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
+   0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
+   0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x0b
 };
 
 BOOST_FIXTURE_TEST_CASE( max_module_bytes, wasm_config_tester ) {
    produce_blocks(2);
    create_accounts({N(bigmodule)});
 
-   constexpr int n_module = 38;
+   const int n_module = small_contract_wasm.size();
 
    auto params = genesis_state::default_initial_wasm_configuration;
    params.max_module_bytes = n_module;
@@ -637,7 +652,7 @@ BOOST_FIXTURE_TEST_CASE( max_code_bytes, wasm_config_tester ) {
    produce_blocks(2);
    create_accounts({N(bigcode)});
 
-   constexpr int n_code = 2;
+   constexpr int n_code = 224;
 
    auto params = genesis_state::default_initial_wasm_configuration;
    params.max_code_bytes = n_code;
@@ -828,5 +843,79 @@ BOOST_FIXTURE_TEST_CASE( call_depth, wasm_config_tester ) try {
    BOOST_CHECK_THROW(pushit(), wasm_execution_error);
 
 } FC_LOG_AND_RETHROW()
+
+// This contract is one of the smallest that can be used to reset
+// the wasm parameters.  It should be impossible to set parameters
+// that would prevent it from being set on the eosio account and executing.
+static const char min_set_parameters_wast[] = R"======(
+(module
+  (import "env" "set_wasm_parameters_packed" (func $set_wasm_parameters_packed (param i32 i32)))
+  (import "env" "read_action_data" (func $read_action_data (param i32 i32) (result i32)))
+  (memory 1)
+  (func (export "apply") (param i64 i64 i64)
+     (br_if 0 (i32.eqz (i32.eqz (i32.wrap/i64 (get_local 2)))))
+     (drop (call $read_action_data (i32.const 4) (i32.const 44)))
+     (call $set_wasm_parameters_packed (i32.const 0) (i32.const 48))
+  )
+)
+)======";
+
+BOOST_FIXTURE_TEST_CASE(reset_chain_tests, wasm_config_tester) {
+   produce_block();
+
+   wasm_config min_params = {
+      .max_mutable_global_bytes = 0,
+      .max_table_elements       = 0,
+      .max_section_elements     = 4,
+      .max_linear_memory_init   = 0,
+      .max_func_local_bytes     = 8,
+      .max_nested_structures    = 1,
+      .max_symbol_bytes         = 32,
+      .max_module_bytes         = 256,
+      .max_code_bytes           = 32,
+      .max_pages                = 1,
+      .max_call_depth           = 2
+   };
+
+   auto check_minimal = [&](auto& member) {
+      if (member > 0) {
+         --member;
+         BOOST_CHECK_THROW(set_wasm_params(min_params), fc::exception);
+         ++member;
+      }
+   };
+   check_minimal(min_params.max_mutable_global_bytes);
+   check_minimal(min_params.max_table_elements);
+   check_minimal(min_params.max_section_elements);
+   check_minimal(min_params.max_func_local_bytes);
+   check_minimal(min_params.max_linear_memory_init);
+   check_minimal(min_params.max_nested_structures);
+   check_minimal(min_params.max_symbol_bytes);
+   check_minimal(min_params.max_module_bytes);
+   check_minimal(min_params.max_code_bytes);
+   check_minimal(min_params.max_pages);
+   check_minimal(min_params.max_call_depth);
+
+   set_wasm_params(min_params);
+   produce_block();
+
+   // Reset parameters and system contract
+   {
+      signed_transaction trx;
+      auto make_setcode = [](const std::vector<uint8_t>& code) {
+         return setcode{ N(eosio), 0, 0, bytes(code.begin(), code.end()) };
+      };
+      trx.actions.push_back({ { { N(eosio), config::active_name} }, make_setcode(wast_to_wasm(min_set_parameters_wast)) });
+      trx.actions.push_back({ { { N(eosio), config::active_name} }, N(eosio), N(), fc::raw::pack(genesis_state::default_initial_wasm_configuration) });
+      trx.actions.push_back({ { { N(eosio), config::active_name} }, make_setcode(contracts::eosio_bios_wasm()) });
+      set_transaction_headers(trx);
+      trx.sign(get_private_key(N(eosio), "active"), control->get_chain_id());
+      push_transaction(trx);
+   }
+   produce_block();
+   // Make sure that a normal contract works
+   set_wasm_params(genesis_state::default_initial_wasm_configuration);
+   produce_block();
+}
 
 BOOST_AUTO_TEST_SUITE_END()

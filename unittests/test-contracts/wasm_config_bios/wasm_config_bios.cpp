@@ -16,10 +16,16 @@ struct wasm_config {
    std::uint32_t max_call_depth;
 };
 
+struct internal_config {
+   uint32_t version;
+   wasm_config config;
+};
+
 class [[eosio::contract]] wasm_config_bios : public eosio::contract {
  public:
    using contract::contract;
    [[eosio::action]] void setwparams(const wasm_config& cfg) {
-      set_wasm_parameters_packed(&cfg, sizeof(cfg));
+      internal_config config{0, cfg};
+      set_wasm_parameters_packed(&config, sizeof(config));
    }
 };
