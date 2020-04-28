@@ -225,11 +225,6 @@ namespace eosio { namespace chain {
             digest_type                     prunable_digest;
          };
 
-         struct signatures_only {
-            std::vector<signature_type>     signatures;
-            digest_type                     context_free_mroot;
-         };
-
          using segment_type = fc::static_variant<digest_type, bytes>;
 
          struct partial {
@@ -250,7 +245,6 @@ namespace eosio { namespace chain {
 
          using prunable_data_t = fc::static_variant< full_legacy,
                                                      none,
-                                                     signatures_only,
                                                      partial,
                                                      full >;
 
@@ -339,7 +333,6 @@ FC_REFLECT( eosio::chain::packed_transaction_v0, (signatures)(compression)(packe
 FC_REFLECT( eosio::chain::packed_transaction, (compression)(prunable_data)(packed_trx) )
 FC_REFLECT( eosio::chain::packed_transaction::prunable_data_type, (prunable_data));
 FC_REFLECT( eosio::chain::packed_transaction::prunable_data_type::none, (prunable_digest))
-FC_REFLECT( eosio::chain::packed_transaction::prunable_data_type::signatures_only, (signatures)( context_free_mroot))
 FC_REFLECT( eosio::chain::packed_transaction::prunable_data_type::partial, (signatures)( context_free_segments))
 FC_REFLECT( eosio::chain::packed_transaction::prunable_data_type::full, (signatures)( context_free_segments))
 // @ignore context_free_segments

@@ -883,7 +883,7 @@ namespace eosio { namespace chain {
       }));
    }
    
-   size_t block_log::prune_transactions(uint32_t block_num, const std::vector<transaction_id_type>& ids) {
+   size_t block_log::prune_transactions(uint32_t block_num, std::vector<transaction_id_type>& ids) {
       try {
          EOS_ASSERT( my->version >= pruned_transaction_version, block_log_exception,
                      "The block log version ${version} does not support transaction pruning.", ("version", my->version) );
@@ -899,11 +899,18 @@ namespace eosio { namespace chain {
          EOS_ASSERT(entry.block_num() == block_num, block_log_exception,
                      "Wrong block was read from block log.");
 
-         auto pruner =
-             overloaded{[](transaction_id_type&) { return false; },
-                        [&ids](packed_transaction& ptx) {
-                           return std::find(ids.begin(), ids.end(), ptx.id()) != ids.end() && (ptx.prune_all(), true);
-                        }};
+         auto pruner = overloaded{[](transaction_id_type&) { return false; },
+                                  [&ids](packed_transaction& ptx) {
+                                     auto it = std::find(ids.begin(), ids.end(), ptx.id());
+                                     if (it != ids.end()) {
+                                        ptx.prune_all();
+                                        // remove the found entry from ids
+                                        ids.erase(it);
+                                        return true;
+                                     }
+                                     return false;
+                                  }};
+
          size_t num_trx_pruned = 0;
          for (auto& trx : entry.transactions) {
             num_trx_pruned += trx.trx.visit(pruner);
@@ -1444,5 +1451,9 @@ namespace eosio { namespace chain {
          if (n == td.last_block)
             break;
       }
+   }
+
+   bool block_log::exists(const fc::path& data_dir) {
+      return fc::exists(data_dir / "blocks.log") && fc::exists(data_dir / "blocks.index");
    }
 }} /// eosio::chain

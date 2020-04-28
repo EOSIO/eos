@@ -11,6 +11,7 @@
 #include <contracts.hpp>
 #include <snapshots.hpp>
 #include <boost/iostreams/device/mapped_file.hpp>
+#include "test_cfd_transaction.hpp"
 
 using namespace eosio;
 using namespace testing;
@@ -28,30 +29,6 @@ void remove_existing_states(controller::config& config) {
    remove_all(state_path);
    fc::create_directories(state_path);
 }
-
-struct dummy_action {
-   static eosio::chain::name get_name() { return N(dummyaction); }
-   static eosio::chain::name get_account() { return N(testapi); }
-
-   char     a; // 1
-   uint64_t b; // 8
-   int32_t  c; // 4
-};
-
-struct cf_action {
-   static eosio::chain::name get_name() { return N(cfaction); }
-   static eosio::chain::name get_account() { return N(testapi); }
-
-   uint32_t payload = 100;
-   uint32_t cfd_idx = 0; // context free data index
-};
-
-FC_REFLECT(dummy_action, (a)(b)(c))
-FC_REFLECT(cf_action, (payload)(cfd_idx))
-
-#define DUMMY_ACTION_DEFAULT_A 0x45
-#define DUMMY_ACTION_DEFAULT_B 0xab11cd1244556677
-#define DUMMY_ACTION_DEFAULT_C 0x7451ae12
 
 class replay_tester : public base_tester {
  public:
@@ -119,26 +96,9 @@ struct light_validation_restart_from_block_log_test_fixture {
    eosio::chain::transaction_trace_ptr trace;
    light_validation_restart_from_block_log_test_fixture()
        : chain(setup_policy::full) {
-      chain.create_account(N(testapi));
-      chain.create_account(N(dummy));
-      chain.produce_block();
-      chain.set_code(N(testapi), contracts::test_api_wasm());
-      chain.produce_block();
 
-      cf_action          cfa;
-      signed_transaction trx;
-      action             act({}, cfa);
-      trx.context_free_actions.push_back(act);
-      trx.context_free_data.emplace_back(fc::raw::pack<uint32_t>(100)); // verify payload matches context free data
-      trx.context_free_data.emplace_back(fc::raw::pack<uint32_t>(200));
-      // add a normal action along with cfa
-      dummy_action da = {DUMMY_ACTION_DEFAULT_A, DUMMY_ACTION_DEFAULT_B, DUMMY_ACTION_DEFAULT_C};
-      action       act1(vector<permission_level>{{N(testapi), config::active_name}}, da);
-      trx.actions.push_back(act1);
-      chain.set_transaction_headers(trx);
-      // run normal passing case
-      auto sigs  = trx.sign(chain.get_private_key(N(testapi), "active"), chain.control->get_chain_id());
-      trace = chain.push_transaction(trx);
+      deploy_test_api(chain);
+      trace = push_test_cfd_transaction(chain);
       chain.produce_blocks(10);
 
       BOOST_REQUIRE(trace->receipt);
@@ -253,7 +213,7 @@ BOOST_FIXTURE_TEST_CASE(test_restart_from_block_log, restart_from_block_log_test
    BOOST_REQUIRE_NO_THROW(block_log::smoke_test(chain.get_config().blocks_dir, 1));
 }
 
-BOOST_FIXTURE_TEST_CASE(test_restart_from_trimed_block_log, restart_from_block_log_test_fixture) {
+BOOST_FIXTURE_TEST_CASE(test_restart_from_trimmed_block_log, restart_from_block_log_test_fixture) {
    auto& config = chain.get_config();
    auto blocks_path = config.blocks_dir;
    remove_all(blocks_path/"reversible");
@@ -266,7 +226,9 @@ BOOST_FIXTURE_TEST_CASE(test_light_validation_restart_from_block_log, light_vali
 BOOST_FIXTURE_TEST_CASE(test_light_validation_restart_from_block_log_with_pruned_trx, light_validation_restart_from_block_log_test_fixture) {
    const auto& blocks_dir = chain.get_config().blocks_dir;
    block_log blog(blocks_dir);
-   BOOST_CHECK(blog.prune_transactions(trace->block_num, std::vector<transaction_id_type>{trace->id}) == 1);
+   std::vector<transaction_id_type> ids{trace->id};
+   BOOST_CHECK(blog.prune_transactions(trace->block_num, ids) == 1);
+   BOOST_CHECK(ids.empty());
    BOOST_REQUIRE_NO_THROW(block_log::repair_log(blocks_dir));
 }
 
@@ -279,15 +241,18 @@ BOOST_AUTO_TEST_CASE(test_trim_blocklog_front) {
    namespace bfs = boost::filesystem;
 
    auto  blocks_dir = chain.get_config().blocks_dir;
-   auto  temp1   = bfs::unique_path();
-   boost::filesystem::create_directory(temp1);
-   bfs::copy(blocks_dir / "blocks.log", temp1 / "blocks.log");
-   bfs::copy(blocks_dir / "blocks.index", temp1 / "blocks.index");
-   auto temp2 = bfs::unique_path();
-   BOOST_REQUIRE_NO_THROW(block_log::trim_blocklog_front(temp1, temp2, 10));
-   BOOST_REQUIRE_NO_THROW(block_log::smoke_test(temp1, 1));
-   bfs::remove_all(temp1);
-   bfs::remove_all(temp2);
+
+   scoped_temp_path temp1, temp2;
+   boost::filesystem::create_directory(temp1.path);
+   bfs::copy(blocks_dir / "blocks.log", temp1.path / "blocks.log");
+   bfs::copy(blocks_dir / "blocks.index", temp1.path / "blocks.index");
+   BOOST_REQUIRE_NO_THROW(block_log::trim_blocklog_front(temp1.path, temp2.path, 10));
+   BOOST_REQUIRE_NO_THROW(block_log::smoke_test(temp1.path, 1));
+
+   block_log old_log(blocks_dir);
+   block_log new_log(temp1.path);
+   BOOST_CHECK(new_log.first_block_num() == 10);
+   BOOST_CHECK(new_log.head()->block_num() == old_log.head()->block_num());
 }
 
 BOOST_AUTO_TEST_SUITE_END()

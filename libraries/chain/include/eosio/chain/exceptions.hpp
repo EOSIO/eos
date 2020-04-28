@@ -161,6 +161,7 @@ namespace eosio { namespace chain {
     *   |- resource_limit_exception
     *   |- mongo_db_exception
     *   |- contract_api_exception
+    *   |- state_history_exception
     */
 
     FC_DECLARE_DERIVED_EXCEPTION( chain_type_exception, chain_exception,
@@ -656,5 +657,8 @@ namespace eosio { namespace chain {
                                     3270002, "Protocol feature exception (invalid block)" )
       FC_DECLARE_DERIVED_EXCEPTION( pruned_context_free_data_bad_block_exception, objective_block_validation_exception,
                                     3270003, "Context free data pruned (invalid block)" )
+ 
+   FC_DECLARE_DERIVED_EXCEPTION( state_history_exception,    chain_exception,
+                                 3280000, "State history exception" )
 
 } } // eosio::chain

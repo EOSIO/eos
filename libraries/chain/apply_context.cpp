@@ -806,7 +806,7 @@ int apply_context::get_context_free_data( uint32_t index, char* buffer, size_t b
 {
    const packed_transaction::prunable_data_type::prunable_data_t& data = trx_context.packed_trx.get_prunable_data().prunable_data;
    const bytes* cfd = nullptr;
-   if( data.contains<packed_transaction::prunable_data_type::none>() || data.contains<packed_transaction::prunable_data_type::signatures_only>() ) {
+   if( data.contains<packed_transaction::prunable_data_type::none>() ) {
    } else if( data.contains<packed_transaction::prunable_data_type::partial>() ) {
       if( index >= data.get<packed_transaction::prunable_data_type::partial>().context_free_segments.size() ) return -1;
 

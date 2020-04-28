@@ -4,6 +4,8 @@
 #include <eosio/chain/config.hpp>
 #include <eosio/chain/reversible_block_object.hpp>
 
+#include <eosio/state_history/log.hpp>
+
 #include <fc/io/json.hpp>
 #include <fc/filesystem.hpp>
 #include <fc/variant.hpp>
@@ -47,7 +49,8 @@ struct blocklog {
    bool                             make_index = false;
    bool                             trim_log = false;
    bool                             smoke_test = false;
-   bool                             help = false;
+   bool                             prune_transactions = false;
+   bool                             help               = false;
 };
 
 struct report_time {
@@ -171,6 +174,8 @@ void blocklog::set_program_options(options_description& cli)
    cli.add_options()
          ("blocks-dir", bpo::value<bfs::path>()->default_value("blocks"),
           "the location of the blocks directory (absolute path or relative to the current directory)")
+         ("state-history-dir", bpo::value<bfs::path>()->default_value("state-history"),
+           "the location of the state-history directory (absolute path or relative to application data dir)")
          ("output-file,o", bpo::value<bfs::path>(),
           "the file to write the output to (absolute or relative path).  If not specified then output is to stdout.")
          ("first,f", bpo::value<uint32_t>(&first_block)->default_value(0),
@@ -187,6 +192,10 @@ void blocklog::set_program_options(options_description& cli)
           "Trim blocks.log and blocks.index. Must give 'blocks-dir' and 'first and/or 'last'.")
          ("smoke-test", bpo::bool_switch(&smoke_test)->default_value(false),
           "Quick test that blocks.log and blocks.index are well formed and agree with each other.")
+         ("block-num", bpo::value<uint32_t>()->default_value(0), "The block number which contains the transactions to be pruned")
+         ("transaction,t", bpo::value<std::vector<std::string> >()->multitoken(), "The transaction id to be pruned")
+         ("prune-transactions", bpo::bool_switch(&prune_transactions)->default_value(false),
+          "Prune the context free data and signatures from specified transactions of specified block-num.")
          ("help,h", bpo::bool_switch(&help)->default_value(false), "Print this help message and exit.")
          ;
 }
@@ -230,6 +239,37 @@ void smoke_test(bfs::path block_dir) {
    cout << "\nSmoke test of blocks.log and blocks.index in directory " << block_dir << '\n';
    block_log::smoke_test(block_dir, 0);
    cout << "\nno problems found\n"; // if get here there were no exceptions
+}
+
+template <typename Log>
+int prune_transactions(const char* type, bfs::path dir, uint32_t block_num,
+                       std::vector<transaction_id_type> unpruned_ids) {
+   using namespace std;
+   if (Log::exists(dir)) {
+      Log log(dir);
+      log.prune_transactions(block_num, unpruned_ids);
+      if (unpruned_ids.size()) {
+         cerr << "block " << block_num << " in " << type << " does not contain the following transactions: ";
+         copy(unpruned_ids.begin(), unpruned_ids.end(), ostream_iterator<string>(cerr, " "));
+         cerr << "\n";
+      }
+   } else {
+      cerr << "No " << type << " is found in " << dir.native() << "\n";
+   }
+   return unpruned_ids.size();
+}
+
+int prune_transactions(bfs::path block_dir, bfs::path state_history_dir, uint32_t block_num,
+                       const std::vector<transaction_id_type>& ids) {
+
+   if (block_num == 0 || ids.size() == 0) {
+      std::cerr << "prune-transaction does nothing unless specify block-num and transaction\n";
+      return -1;
+   }
+
+   using eosio::state_history_traces_log;
+   return prune_transactions<block_log>("block log", block_dir, block_num, ids) +
+          prune_transactions<state_history_traces_log>("state history traces log", state_history_dir, block_num, ids);
 }
 
 int main(int argc, char** argv) {
@@ -279,6 +319,17 @@ int main(int argc, char** argv) {
          fc::logger::get(DEFAULT_LOGGER).set_log_level(log_level);
          rt.report();
          return 0;
+      }
+      if (blog.prune_transactions) {
+         const auto  blocks_dir        = vmap["blocks-dir"].as<bfs::path>();
+         const auto  state_history_dir = vmap["state-history-dir"].as<bfs::path>();
+         const auto  block_num         = vmap["block-num"].as<uint32_t>();
+         const auto  ids               = vmap.count("transaction") ? vmap["transaction"].as<std::vector<string>>() : std::vector<string>{};
+         
+         report_time                 rt("prune transactions");
+         int ret = prune_transactions(blocks_dir, state_history_dir, block_num, {ids.begin(), ids.end()});
+         rt.report();
+         return ret;
       }
       //else print blocks.log as JSON
       blog.initialize(vmap);
