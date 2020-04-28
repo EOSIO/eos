@@ -104,6 +104,16 @@ namespace eosio { namespace chain {
       }
    };
 
+   struct log_entry_v4 : signed_block {
+      // In version 4 of the irreversible blocks log format, these log entries consists of the following in order:
+      //    1. An uint32_t size for number of bytes from the start of this log entry to the start of the next log entry.
+      //    2. An uint8_t indicating the compression status for the serialization of the pruned_block following this.
+      //    3. The serialization of a signed_block representation of the block for the entry including padding.
+      packed_transaction::cf_compression_type compression = packed_transaction::cf_compression_type::none;
+      uint32_t size = 0; // the size of the log entry
+   };
+
+
    namespace {
 
       template <typename T>
@@ -117,22 +127,6 @@ namespace eosio { namespace chain {
       constexpr int offset_to_block_start(uint32_t version) { 
          return version >= pruned_transaction_version ? sizeof(uint32_t) + 1 : 0;
       }
-
-
-      struct log_entry_v4 {
-         // In version 4 of the irreversible blocks log format, these log entries consists of the following in order:
-         //    1. An uint32_t size for number of bytes from the start of this log entry to the start of the next log entry.
-         //    2. An uint8_t indicating the compression status for the serialization of the pruned_block following this.
-         //    3. The serialization of a signed_block representation of the block for the entry including padding.
-
-         struct metadata_type {
-            packed_transaction::cf_compression_type compression = packed_transaction::cf_compression_type::none;
-            uint32_t size = 0; // the size of the log entry
-         };
-
-         metadata_type meta;
-         signed_block  block;
-      };
 
       template <typename Stream>
       void unpack(Stream& ds, log_entry_v4& entry){
@@ -149,7 +143,7 @@ namespace eosio { namespace chain {
          // be the size before the CFD has been pruned while the actual serialized block does not have the CFD anymore.
          // In this case, the serialized block has fewer bytes than what's indicated by entry.size. We need to
          // skip over the extra bytes to allow ds to position to the last 8 bytes of the entry.  
-         const int64_t bytes_to_skip = static_cast<int64_t>(meta.size) - sizeof(uint64_t) - current_stream_offset;
+         const int64_t bytes_to_skip = static_cast<int64_t>(entry.size) - sizeof(uint64_t) - current_stream_offset;
          EOS_ASSERT(bytes_to_skip >= 0, block_log_exception,
                     "Invalid block log entry offset");
          ds.skip(bytes_to_skip);
@@ -175,7 +169,7 @@ namespace eosio { namespace chain {
       void unpack(Stream& ds, log_entry& entry) {
          std::visit(
              overloaded{[&ds](signed_block_v0& v) { fc::raw::unpack(ds, v); }, 
-                        [&ds](log_entry_v4& v) { eosio::chain::detail::unpack(ds, v); }},
+                        [&ds](log_entry_v4& v) { unpack(ds, v); }},
              entry);
       }
    } // namespace
@@ -378,9 +372,6 @@ namespace {
       block_log_index() = default;
       block_log_index(const fc::path& path) { open(path); }
 
-   block_log::block_log(const fc::path& data_dir)
-   :my(new detail::block_log_impl()) {
-      open(data_dir);
       void open(const fc::path& path) { 
          file.open(path.generic_string());
          EOS_ASSERT(file.size() % sizeof(uint64_t) == 0, block_log_exception, "The size of ${file} is not the multiple of sizeof(uint64_t)",
@@ -828,9 +819,9 @@ namespace {
          log_entry_v4 entry;   
          my->block_file.seek(pos);
          auto ds = my->block_file.create_datastream();
-         eosio::chain::detail::unpack(ds, entry);
+         unpack(ds, entry);
 
-         EOS_ASSERT(entry.block.block_num() == block_num, block_log_exception,
+         EOS_ASSERT(entry.block_num() == block_num, block_log_exception,
                      "Wrong block was read from block log.");
 
          auto pruner = overloaded{[](transaction_id_type&) { return false; },
@@ -846,7 +837,7 @@ namespace {
                                   }};
 
          size_t num_trx_pruned = 0;
-         for (auto& trx : entry.block.transactions) {
+         for (auto& trx : entry.transactions) {
             num_trx_pruned += trx.trx.visit(pruner);
          }
 
@@ -854,10 +845,10 @@ namespace {
             // we don't want to rewrite entire entry, just the block data itself.
             const auto block_offset = offset_to_block_start(my->preamble.version);
             my->block_file.seek(pos + block_offset);
-            const uint32_t max_block_size = entry.meta.size - block_offset - sizeof(uint64_t);
+            const uint32_t max_block_size = entry.size - block_offset - sizeof(uint64_t);
             std::vector<char> buffer(max_block_size);
             fc::datastream<char*> stream(buffer.data(), buffer.size());
-            entry.block.pack(stream, entry.meta.compression);
+            static_cast<signed_block&>(entry).pack(stream, entry.compression);
             my->block_file.write(buffer.data(), buffer.size());
             my->block_file.flush();
          }
