@@ -73,7 +73,6 @@ struct callbacks;
 using rhf_t     = registered_host_functions<callbacks>;
 using backend_t = eosio::vm::backend<rhf_t, eosio::vm::jit, wasm_ql_backend_options>;
 
-// todo: remove context_free_system_callbacks
 struct callbacks : action_callbacks<callbacks>,
                    chaindb_callbacks<callbacks>,
                    compiler_builtins_callbacks<callbacks>,
@@ -254,9 +253,9 @@ void run_action(wasm_ql::thread_state& thread_state, const std::vector<char>& co
          entry->hash = *hash;
       else
          entry->name = action.account;
-      entry->backend = std::make_unique<backend_t>(*code, nullptr);
 
       std::call_once(registered_callbacks, register_callbacks);
+      entry->backend = std::make_unique<backend_t>(*code, nullptr);
       rhf_t::resolve(entry->backend->get_module());
    }
    auto se = fc::make_scoped_exit([&] { thread_state.shared->backend_cache->add(std::move(*entry)); });

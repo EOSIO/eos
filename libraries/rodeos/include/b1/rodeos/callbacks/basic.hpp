@@ -19,7 +19,7 @@ struct context_free_system_callbacks {
 
    void abort() { throw std::runtime_error("called abort"); }
 
-   void eosio_assert(uint32_t condition, null_terminated_ptr msg) {
+   void eosio_assert(bool condition, null_terminated_ptr msg) {
       if (!condition)
          throw assert_exception(std::string(msg.data(), msg.size()));
    }
