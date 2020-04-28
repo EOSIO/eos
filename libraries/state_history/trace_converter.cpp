@@ -192,7 +192,7 @@ struct restore_partial {
       ptrx.context_free_data = std::move(data.context_free_segments);
    }
    void operator()(prunable_data_type::none& data) const {}
-   void operator()(prunable_data_type::partial& data) const { ptrx.signatures = std::move(data.signatures); }
+   void operator()(prunable_data_type::partial& data) const { EOS_ASSERT(false, state_history_exception, "Not implemented"); }
    void operator()(prunable_data_type::full& data) const {
       ptrx.signatures        = std::move(data.signatures);
       ptrx.context_free_data = std::move(data.context_free_segments);
