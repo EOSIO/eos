@@ -199,15 +199,23 @@ chain_plugin::~chain_plugin(){}
 void chain_plugin::set_program_options(options_description& cli, options_description& cfg)
 {
    // build wasm_runtime help text
-   std::string wasm_runtime_opt = "Override default WASM runtime(\"eos-vm\"";
-   std::string wasm_runtime_desc = "\"eos-vm\" : (Default runtime) A WebAssembly interpreter providing deterministic and efficient time bound execution with debugging support.\n";
+   std::string wasm_runtime_opt = "Override default WASM runtime (";
+   std::string wasm_runtime_desc;
+   std::string delim;
 #ifdef EOSIO_EOS_VM_JIT_RUNTIME_ENABLED
-   wasm_runtime_opt += ", \"eos-vm-jit\"";
-   wasm_runtime_desc += "\"eos-vm-jit\" : A WebAssembly compiler that takes WASM and generates native code using a just in time compiler.\n";
+   wasm_runtime_opt += " \"eos-vm-jit\"";
+   wasm_runtime_desc += "\"eos-vm-jit\" : (Default runtime) A WebAssembly compiler that takes WASM and generates native code using a just in time compiler.\n";
+   delim = ", ";
+#endif
+
+#ifdef EOSIO_EOS_VM_RUNTIME_ENABLED
+   wasm_runtime_opt += delim + "\"eos-vm\"";
+   wasm_runtime_desc += "\"eos-vm\" : A WebAssembly interpreter providing deterministic and efficient time bound execution with debugging support.\n";
+   delim = ", ";
 #endif
 
 #ifdef EOSIO_EOS_VM_OC_DEVELOPER
-   wasm_runtime_opt += ", \"eos-vm-oc\"";
+   wasm_runtime_opt += delim + "\"eos-vm-oc\"";
    wasm_runtime_desc += "\"eos-vm-oc\" : A specialized compiler framework (LLVM) that leverages a multi-pass compilation architecture.\nThe resulting native code from the Optimized Compiler is often an order of magnitude faster thatn others.\n";
 #endif
    wasm_runtime_opt += ")\n" + wasm_runtime_desc;
@@ -227,7 +235,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
             }
 #endif
          }), wasm_runtime_opt.c_str()
-		 )
+         )
          ("abi-serializer-max-time-ms", bpo::value<uint32_t>()->default_value(config::default_abi_serializer_max_time_us / 1000),
           "Override default maximum ABI serialization time allowed in ms")
          ("chain-state-db-size-mb", bpo::value<uint64_t>()->default_value(config::default_state_size / (1024  * 1024)), "Maximum size (in MiB) of the chain state database")
