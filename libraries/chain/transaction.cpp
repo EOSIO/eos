@@ -400,10 +400,7 @@ static digest_type prunable_digest(const packed_transaction::prunable_data_type:
 }
 
 static digest_type prunable_digest(const packed_transaction::prunable_data_type::full& obj) {
-   digest_type::encoder prunable;
-   fc::raw::pack( prunable, obj.signatures );
-   fc::raw::pack( prunable, obj.context_free_segments );
-   return prunable.result();
+   EOS_THROW(tx_prune_exception, "unimplemented");
 }
 
 static digest_type prunable_digest(const packed_transaction::prunable_data_type::full_legacy& obj) {

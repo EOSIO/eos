@@ -175,7 +175,7 @@ void blocklog::set_program_options(options_description& cli)
          ("blocks-dir", bpo::value<bfs::path>()->default_value("blocks"),
           "the location of the blocks directory (absolute path or relative to the current directory)")
          ("state-history-dir", bpo::value<bfs::path>()->default_value("state-history"),
-           "the location of the state-history directory (absolute path or relative to application data dir)")
+           "the location of the state-history directory (absolute path or relative to the current dir)")
          ("output-file,o", bpo::value<bfs::path>(),
           "the file to write the output to (absolute or relative path).  If not specified then output is to stdout.")
          ("first,f", bpo::value<uint32_t>(&first_block)->default_value(0),

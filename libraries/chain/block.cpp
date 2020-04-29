@@ -36,7 +36,7 @@ namespace eosio { namespace chain {
 
    transaction_receipt::transaction_receipt(const transaction_receipt_v0& other, bool legacy)
      : transaction_receipt_header(static_cast<const transaction_receipt_header&>(other)),
-       trx( std::move(other.trx).visit(transaction_receipt_translator{legacy}))
+       trx( other.trx.visit(transaction_receipt_translator{legacy}))
    {}
 
    transaction_receipt::transaction_receipt(transaction_receipt_v0&& other, bool legacy)
