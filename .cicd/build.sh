@@ -39,7 +39,7 @@ else # Linux
         CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_CXX_COMPILER='clang++-7' -DCMAKE_C_COMPILER='clang-7' -DLLVM_DIR='/usr/lib/llvm-7/lib/cmake/llvm'"
     fi
     if [[ "$IMAGE_TAG" == centos* ]]; then
-        PRE_COMMANDS="$PRE_COMMANDS && source /opt/rh/rh-python36/enable"
+        PRE_COMMANDS="$PRE_COMMANDS && source /opt/rh/rh-python36/enable && source /opt/rh/go-toolset-7/enable"
     fi
     BUILD_COMMANDS="cmake $CMAKE_EXTRAS .. && make -j$JOBS"
     # Docker Commands
