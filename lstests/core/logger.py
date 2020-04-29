@@ -276,18 +276,15 @@ class Logger:
         for w in self.writers:
             w.flush()
 
-    def check_duration(self):
-        if self.launcher_idle_time_deadline is None:
-            return
-        remaining_duration = time.time() - self.launcher_idle_time_deadline
-        if remaining_duration.total_seconds() <= 0.0:
-            self.warn(f"Within {self.percent_reduction} % of declared maximum launcher-service idle time.  "
-                      "launcher-service may shutdown.  Test should increase launcher_maximum_idle_time passed "
-                      "to service.")
-            # only report once
-            self.launcher_idle_time_deadline = None
-
     def reset_launcher_maximum_idle_time(self, idle_time_minutes):
+        if self.launcher_idle_time_deadline is not None:
+            remaining_duration = self.launcher_idle_time_deadline - time.time()
+            if remaining_duration <= 0.0:
+                self.warn(f"Within {self.percent_reduction} % of declared maximum launcher-service idle time.  "
+                          "launcher-service may shutdown.  Test should increase launcher_maximum_idle_time passed "
+                          "to service. " + f"remaining={remaining_duration}, deadline={self.launcher_idle_time_deadline}, time={time.time()}")
+            else:
+                self.warn(f"Within {remaining_duration} seconds of launcher-service shutting down, deadline={self.launcher_idle_time_deadline}, time={time.time()}")
         self.launcher_idle_time_deadline = idle_time_minutes
         if self.launcher_idle_time_deadline is not None:
             minutes_to_seconds = 60
@@ -295,7 +292,6 @@ class Logger:
             self.launcher_idle_time_deadline *= (100 - self.percent_reduction) / 100
             self.launcher_idle_time_deadline += time.time()
 
-        self.warn(f"reset_launcher_maximum_idle_time: {self.launcher_idle_time_deadline}")
 
 # ----------------- test ------------------------------------------------------
 
