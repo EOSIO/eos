@@ -12,10 +12,12 @@ nodes.
 import argparse
 import base64
 import collections
+import errno
 import functools
 import math
 import os
 import platform
+import socket
 import string
 import threading
 import time
@@ -534,9 +536,12 @@ class Service:
                     break
             else:
                 service = service_list[0]
-            self.connect_to_existing_local_service(service)
-        else:
-            self.start_local_service()
+            # only choose an existing launcher if its command line was parsable (so we can determine the port to connect to)
+            if service.port != 0:
+                self.connect_to_existing_local_service(service)
+                return
+
+        self.start_local_service()
 
     # TO DO IN FUTURE
     def connect_to_remote_service(self):
@@ -620,6 +625,11 @@ class Service:
         self.debug(color.green("Starting a new launcher service (port={}).".format(self.port)))
         with open(PROGRAM_LOG, "w") as f:
             pass
+        if not self.are_ports_available(self.port):
+            msg = f"ERROR: Launcher service cannot use port: {self.port}, it is already taken!"
+            self.error(msg)
+            raise LauncherServiceError(msg)
+        self.debug(color.green(f"Launcher service port: {self.port} is availale."))
         generate_genesis_flag = ""
         if not os.path.isfile(self.gene):
             self.debug(color.green(f"Generating genesis-json file {self.gene}"))
@@ -628,7 +638,7 @@ class Service:
         if self.launcher_maximum_idle_time is not None:
             self.debug(color.green(f"generating {self.gene}"))
             idle_timeout_flag = f"--idle-shutdown={self.launcher_maximum_idle_time}"
-        cmdStr =  f"{self.file} --http-server-address=0.0.0.0:{self.port} --http-threads=4 --genesis-json={self.gene} " + \
+        cmdStr =  f"{self.file} --http-server-address=0.0.0.0:{self.port} --genesis-json={self.gene} " + \
                   f"{generate_genesis_flag} {idle_timeout_flag} {self.extra_args} >{PROGRAM_LOG}  2>&1 &"
         self.debug(color.green("Running: {}".format(cmdStr)))
         os.system(cmdStr)
@@ -650,6 +660,33 @@ class Service:
             msg = "ERROR: Launcher service (port={}) is not properly started!".format(self.port)
             self.error(msg)
             raise LauncherServiceError(msg)
+
+    def are_ports_available(self, ports):
+        """Check if specified port (as int) or ports (as set) is/are available for listening on."""
+        assert(ports)
+        if isinstance(ports, int):
+            ports={ports}
+        assert(isinstance(ports, set))
+
+        for port in ports:
+            self.debug(color.green(f"Checking if port: {port} is available."))
+            assert(isinstance(port, int))
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+
+            try:
+                s.bind(("127.0.0.1", port))
+            except socket.error as e:
+                if e.errno == errno.EADDRINUSE:
+                    self.warn(f"WARNING: Port {port} is already in use.")
+                else:
+                    # something else raised the socket.error exception
+                    self.warn(f"WARNING: Unknown exception while trying to listen on port: {port}.")
+                return False
+            finally:
+                s.close()
+
+        return True
 
 # =============== END OF SERVICE CLASS ================================================================================
 
@@ -1568,6 +1605,7 @@ class Cluster:
             self.logger.reset_launcher_maximum_idle_time(self.service.launcher_maximum_idle_time)
 
         # communication with launcher service
+        self.info(f"Connection with http://{self.service.addr}:{self.service.port}/v1/launcher/{api}")
         cx = Connection(url=f"http://{self.service.addr}:{self.service.port}/v1/launcher/{api}", data=data)
         self.log(cx.url, level=url_level, buffer=buffer)
         self.log(cx.request_text, level=request_text_level, buffer=buffer)
