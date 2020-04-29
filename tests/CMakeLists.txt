@@ -104,7 +104,9 @@ add_test(NAME release-build-test COMMAND tests/release-build.sh WORKING_DIRECTOR
 add_test(NAME validate-reflection-test COMMAND build/tests/validate-reflection.py plugins/ programs/ libraries/ --recurse --extension "cpp" --extension "hpp" -e WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/..)
 add_test(NAME version-label-test COMMAND tests/version-label.sh WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 add_test(NAME light_validation_sync_test COMMAND tests/light_validation_sync_test.py -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST light_validation_sync_test PROPERTY LABELS nonparallelizable_tests)
 add_test(NAME eosio_blocklog_prune_test COMMAND tests/eosio_blocklog_prune_test.py -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST eosio_blocklog_prune_test PROPERTY LABELS nonparallelizable_tests)
 
 # Long running tests
 add_test(NAME nodeos_sanity_lr_test COMMAND tests/nodeos_run_test.py -v --sanity-test --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
