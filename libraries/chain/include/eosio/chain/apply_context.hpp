@@ -2,6 +2,7 @@
 #include <eosio/chain/controller.hpp>
 #include <eosio/chain/transaction.hpp>
 #include <eosio/chain/contract_table_objects.hpp>
+#include <eosio/chain/kv_context.hpp>
 #include <fc/utility.hpp>
 #include <sstream>
 #include <algorithm>
@@ -194,7 +195,7 @@ class apply_context {
                  ++t.count;
 
                   if (context.control.get_deep_mind_logger() != nullptr) {
-                     event_id = RAM_EVENT_ID("${code}:${scope}:${table}:${index_name}",
+                     event_id = STORAGE_EVENT_ID("${code}:${scope}:${table}:${index_name}",
                         ("code", t.code)
                         ("scope", t.scope)
                         ("table", t.table)
@@ -203,7 +204,7 @@ class apply_context {
                   }
                });
 
-               context.update_db_usage( payer, config::billable_size_v<ObjectType>, ram_trace(context.get_action_id(), event_id.c_str(), "secondary_index", "add", "secondary_index_add") );
+               context.update_db_usage( payer, config::billable_size_v<ObjectType>, storage_usage_trace(context.get_action_id(), event_id.c_str(), "secondary_index", "add", "secondary_index_add") );
 
                itr_cache.cache_table( tab );
                return itr_cache.add( obj );
@@ -217,7 +218,7 @@ class apply_context {
 
                std::string event_id;
                if (context.control.get_deep_mind_logger() != nullptr) {
-                  event_id = RAM_EVENT_ID("${code}:${scope}:${table}:${index_name}",
+                  event_id = STORAGE_EVENT_ID("${code}:${scope}:${table}:${index_name}",
                      ("code", table_obj.code)
                      ("scope", table_obj.scope)
                      ("table", table_obj.table)
@@ -225,7 +226,7 @@ class apply_context {
                   );
                }
 
-               context.update_db_usage( obj.payer, -( config::billable_size_v<ObjectType> ), ram_trace(context.get_action_id(), event_id.c_str(), "secondary_index", "remove", "secondary_index_remove") );
+               context.update_db_usage( obj.payer, -( config::billable_size_v<ObjectType> ), storage_usage_trace(context.get_action_id(), event_id.c_str(), "secondary_index", "remove", "secondary_index_remove") );
 
 //               context.require_write_lock( table_obj.scope );
 
@@ -255,7 +256,7 @@ class apply_context {
 
                std::string event_id;
                if (context.control.get_deep_mind_logger() != nullptr) {
-                  event_id = RAM_EVENT_ID("${code}:${scope}:${table}:${index_name}",
+                  event_id = STORAGE_EVENT_ID("${code}:${scope}:${table}:${index_name}",
                      ("code", table_obj.code)
                      ("scope", table_obj.scope)
                      ("table", table_obj.table)
@@ -264,8 +265,8 @@ class apply_context {
                }
 
                if( obj.payer != payer ) {
-                  context.update_db_usage( obj.payer, -(billing_size), ram_trace(context.get_action_id(), event_id.c_str(), "secondary_index", "remove", "secondary_index_update_remove_old_payer") );
-                  context.update_db_usage( payer, +(billing_size), ram_trace(context.get_action_id(), event_id.c_str(), "secondary_index", "add", "secondary_index_update_add_new_payer") );
+                  context.update_db_usage( obj.payer, -(billing_size), storage_usage_trace(context.get_action_id(), event_id.c_str(), "secondary_index", "remove", "secondary_index_update_remove_old_payer") );
+                  context.update_db_usage( payer, +(billing_size), storage_usage_trace(context.get_action_id(), event_id.c_str(), "secondary_index", "add", "secondary_index_update_add_new_payer") );
                }
 
                context.db.modify( obj, [&]( auto& o ) {
@@ -539,7 +540,7 @@ class apply_context {
    /// Database methods:
    public:
 
-      void update_db_usage( const account_name& payer, int64_t delta, const ram_trace& trace );
+      void update_db_usage( const account_name& payer, int64_t delta, const storage_usage_trace& trace );
 
       int  db_store_i64( name scope, name table, const account_name& payer, uint64_t id, const char* buffer, size_t buffer_size );
       void db_update_i64( int iterator, account_name payer, const char* buffer, size_t buffer_size );
@@ -560,6 +561,27 @@ class apply_context {
 
       int  db_store_i64( name code, name scope, name table, const account_name& payer, uint64_t id, const char* buffer, size_t buffer_size );
 
+   /// KV Database methods:
+   public:
+      int64_t  kv_erase(uint64_t db, uint64_t contract, const char* key, uint32_t key_size);
+      int64_t  kv_set(uint64_t db, uint64_t contract, const char* key, uint32_t key_size, const char* value, uint32_t value_size);
+      bool     kv_get(uint64_t db, uint64_t contract, const char* key, uint32_t key_size, uint32_t& value_size);
+      uint32_t kv_get_data(uint64_t db, uint32_t offset, char* data, uint32_t data_size);
+      uint32_t kv_it_create(uint64_t db, uint64_t contract, const char* prefix, uint32_t size);
+      void     kv_it_destroy(uint32_t itr);
+      int32_t  kv_it_status(uint32_t itr);
+      int32_t  kv_it_compare(uint32_t itr_a, uint32_t itr_b);
+      int32_t  kv_it_key_compare(uint32_t itr, const char* key, uint32_t size);
+      int32_t  kv_it_move_to_end(uint32_t itr);
+      int32_t  kv_it_next(uint32_t itr, uint32_t* found_key_size, uint32_t* found_value_size);
+      int32_t  kv_it_prev(uint32_t itr, uint32_t* found_key_size, uint32_t* found_value_size);
+      int32_t  kv_it_lower_bound(uint32_t itr, const char* key, uint32_t size, uint32_t* found_key_size, uint32_t* found_value_size);
+      int32_t  kv_it_key(uint32_t itr, uint32_t offset, char* dest, uint32_t size, uint32_t& actual_size);
+      int32_t  kv_it_value(uint32_t itr, uint32_t offset, char* dest, uint32_t size, uint32_t& actual_size);
+
+   private:
+      kv_context& kv_get_db(uint64_t db);
+      void kv_check_iterator(uint32_t itr);
 
    /// Misc methods:
    public:
@@ -574,7 +596,8 @@ class apply_context {
       uint64_t next_recv_sequence( const account_metadata_object& receiver_account );
       uint64_t next_auth_sequence( account_name actor );
 
-      void add_ram_usage( account_name account, int64_t ram_delta, const ram_trace& trace );
+      void add_ram_usage( account_name account, int64_t ram_delta, const storage_usage_trace& trace );
+      void add_disk_usage( account_name account, int64_t disk_delta, const storage_usage_trace& trace );
       void finalize_trace( action_trace& trace, const fc::time_point& start );
 
       bool is_context_free()const { return context_free; }
@@ -612,6 +635,11 @@ class apply_context {
       generic_index<index_double_object>                             idx_double;
       generic_index<index_long_double_object>                        idx_long_double;
 
+      std::unique_ptr<kv_context>                                    kv_ram;
+      std::unique_ptr<kv_context>                                    kv_disk;
+      std::vector<std::unique_ptr<kv_iterator>>                      kv_iterators;
+      std::vector<size_t>                                            kv_destroyed_iterators;
+
    private:
 
       iterator_cache<key_value_object>    keyval_cache;
@@ -620,6 +648,7 @@ class apply_context {
       vector<uint32_t>                    _cfa_inline_actions; ///< action_ordinals of queued inline context-free actions
       std::string                         _pending_console_output;
       flat_set<account_delta>             _account_ram_deltas; ///< flat_set of account_delta so json is an array of objects
+      flat_set<account_delta>             _account_disk_deltas; ///< flat_set of account_delta so json is an array of objects
 
       //bytes                               _cached_trx;
 };

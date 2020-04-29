@@ -51,10 +51,16 @@ namespace eosio { namespace chain { namespace webassembly {
          void preactivate_feature(legacy_ptr<const digest_type>);
          void set_resource_limits(account_name account, int64_t ram_bytes, int64_t net_weight, int64_t cpu_weight);
          void get_resource_limits(account_name account, legacy_ptr<int64_t, 8> ram_bytes, legacy_ptr<int64_t, 8> net_weight, legacy_ptr<int64_t, 8> cpu_weight) const;
+         void set_resource_limit(account_name, name, int64_t);
+         uint32_t get_wasm_parameters_packed( span<char> packed_parameters, uint32_t max_version ) const;
+         void set_wasm_parameters_packed( span<const char> packed_parameters );
+         int64_t get_resource_limit(account_name, name) const;
          int64_t set_proposed_producers(legacy_span<const char> packed_producer_schedule);
          int64_t set_proposed_producers_ex(uint64_t packed_producer_format, legacy_span<const char> packed_producer_schedule);
          uint32_t get_blockchain_parameters_packed(legacy_span<char> packed_blockchain_parameters) const;
          void set_blockchain_parameters_packed(legacy_span<const char> packed_blockchain_parameters);
+         uint32_t get_kv_parameters_packed(name, span<char>, uint32_t) const;
+         void set_kv_parameters_packed(name, span<const char>);
          bool is_privileged(account_name account) const;
          void set_privileged(account_name account, bool is_priv);
 
@@ -63,10 +69,16 @@ namespace eosio { namespace chain { namespace webassembly {
          REGISTER_LEGACY_HOST_FUNCTION(preactivate_feature, privileged_check);
          REGISTER_HOST_FUNCTION(set_resource_limits, privileged_check);
          REGISTER_LEGACY_HOST_FUNCTION(get_resource_limits, privileged_check);
+         REGISTER_HOST_FUNCTION(set_resource_limit, privileged_check);
+         REGISTER_HOST_FUNCTION(get_resource_limit, privileged_check);
+         REGISTER_HOST_FUNCTION(get_wasm_parameters_packed, privileged_check);
+         REGISTER_HOST_FUNCTION(set_wasm_parameters_packed, privileged_check);
          REGISTER_LEGACY_HOST_FUNCTION(set_proposed_producers, privileged_check);
          REGISTER_LEGACY_HOST_FUNCTION(set_proposed_producers_ex, privileged_check);
          REGISTER_LEGACY_HOST_FUNCTION(get_blockchain_parameters_packed, privileged_check);
          REGISTER_LEGACY_HOST_FUNCTION(set_blockchain_parameters_packed, privileged_check);
+         REGISTER_HOST_FUNCTION(get_kv_parameters_packed, privileged_check);
+         REGISTER_HOST_FUNCTION(set_kv_parameters_packed, privileged_check);
          REGISTER_HOST_FUNCTION(is_privileged, privileged_check);
          REGISTER_HOST_FUNCTION(set_privileged, privileged_check);
 
@@ -440,6 +452,39 @@ namespace eosio { namespace chain { namespace webassembly {
          REGISTER_HOST_FUNCTION(db_idx_long_double_end);
          REGISTER_LEGACY_HOST_FUNCTION(db_idx_long_double_next);
          REGISTER_LEGACY_HOST_FUNCTION(db_idx_long_double_previous);
+
+         // kv database api
+         int64_t  kv_erase(uint64_t, uint64_t, span<const char>);
+         int64_t  kv_set(uint64_t, uint64_t, span<const char>, span<const char>);
+         bool     kv_get(uint64_t, uint64_t, span<const char>, uint32_t*);
+         uint32_t kv_get_data(uint64_t, uint32_t, span<char>);
+         uint32_t kv_it_create(uint64_t, uint64_t, span<const char>);
+         void     kv_it_destroy(uint32_t);
+         int32_t  kv_it_status(uint32_t);
+         int32_t  kv_it_compare(uint32_t, uint32_t);
+         int32_t  kv_it_key_compare(uint32_t, span<const char>);
+         int32_t  kv_it_move_to_end(uint32_t);
+         int32_t  kv_it_next(uint32_t, uint32_t* found_key_size, uint32_t* found_value_size);
+         int32_t  kv_it_prev(uint32_t, uint32_t* found_key_size, uint32_t* found_value_size);
+         int32_t  kv_it_lower_bound(uint32_t, span<const char>, uint32_t* found_key_size, uint32_t* found_value_size);
+         int32_t  kv_it_key(uint32_t, uint32_t, span<char>, uint32_t*);
+         int32_t  kv_it_value(uint32_t, uint32_t, span<char> dest, uint32_t*);
+
+         REGISTER_HOST_FUNCTION(kv_erase);
+         REGISTER_HOST_FUNCTION(kv_set);
+         REGISTER_HOST_FUNCTION(kv_get);
+         REGISTER_HOST_FUNCTION(kv_get_data);
+         REGISTER_HOST_FUNCTION(kv_it_create);
+         REGISTER_HOST_FUNCTION(kv_it_destroy);
+         REGISTER_HOST_FUNCTION(kv_it_status);
+         REGISTER_HOST_FUNCTION(kv_it_compare);
+         REGISTER_HOST_FUNCTION(kv_it_key_compare);
+         REGISTER_HOST_FUNCTION(kv_it_move_to_end);
+         REGISTER_HOST_FUNCTION(kv_it_next);
+         REGISTER_HOST_FUNCTION(kv_it_prev);
+         REGISTER_HOST_FUNCTION(kv_it_lower_bound);
+         REGISTER_HOST_FUNCTION(kv_it_key);
+         REGISTER_HOST_FUNCTION(kv_it_value);
 
          // memory api
          void* memcpy(unvalidated_ptr<char>, unvalidated_ptr<const char>, wasm_size_t) const;

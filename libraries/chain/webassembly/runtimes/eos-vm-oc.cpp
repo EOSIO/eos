@@ -3,6 +3,7 @@
 #include <eosio/chain/wasm_eosio_injection.hpp>
 #include <eosio/chain/apply_context.hpp>
 #include <eosio/chain/exceptions.hpp>
+#include <eosio/chain/global_property_object.hpp>
 
 #include <vector>
 #include <iterator>
@@ -36,14 +37,14 @@ class eosvmoc_instantiated_module : public wasm_instantiated_module_interface {
 };
 
 eosvmoc_runtime::eosvmoc_runtime(const boost::filesystem::path data_dir, const eosvmoc::config& eosvmoc_config, const chainbase::database& db)
-   : cc(data_dir, eosvmoc_config, db), exec(cc) {
+   : cc(data_dir, eosvmoc_config, db), exec(cc), mem(wasm_constraints::maximum_linear_memory/wasm_constraints::wasm_page_size) {
 }
 
 eosvmoc_runtime::~eosvmoc_runtime() {
 }
 
 std::unique_ptr<wasm_instantiated_module_interface> eosvmoc_runtime::instantiate_module(const char* code_bytes, size_t code_size, std::vector<uint8_t> initial_memory,
-                                                                                     const digest_type& code_hash, const uint8_t& vm_type, const uint8_t& vm_version) {
+                                                                                        const digest_type& code_hash, const uint8_t& vm_type, const uint8_t& vm_version) {
 
    return std::make_unique<eosvmoc_instantiated_module>(code_hash, vm_type, *this);
 }

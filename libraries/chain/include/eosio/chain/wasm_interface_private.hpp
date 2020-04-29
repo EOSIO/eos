@@ -10,6 +10,7 @@
 #include <eosio/chain/wasm_eosio_injection.hpp>
 #include <eosio/chain/transaction_context.hpp>
 #include <eosio/chain/code_object.hpp>
+#include <eosio/chain/global_property_object.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <fc/scoped_exit.hpp>
 
@@ -48,7 +49,10 @@ namespace eosio { namespace chain {
 
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
       struct eosvmoc_tier {
-         eosvmoc_tier(const boost::filesystem::path& d, const eosvmoc::config& c, const chainbase::database& db) : cc(d, c, db), exec(cc) {}
+         eosvmoc_tier(const boost::filesystem::path& d, const eosvmoc::config& c, const chainbase::database& db)
+          : cc(d, c, db), exec(cc),
+            // Can't get max_pages from db, because db hasn't been initialized yet.
+            mem(0) {}
          eosvmoc::code_cache_async cc;
          eosvmoc::executor exec;
          eosvmoc::memory mem;
@@ -158,6 +162,7 @@ namespace eosio { namespace chain {
             try {
                Serialization::MemoryInputStream stream((const U8*)bytes.data(),
                                                        bytes.size());
+               WASM::scoped_skip_checks no_check;
                WASM::serialize(stream, module);
                module.userSections.clear();
             } catch (const Serialization::FatalSerializationException& e) {

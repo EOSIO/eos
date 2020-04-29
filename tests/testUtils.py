@@ -63,7 +63,6 @@ class Utils:
     EosServerPath="programs/nodeos/"+ EosServerName
 
     EosLauncherPath="programs/eosio-launcher/eosio-launcher"
-    MongoPath="mongo"
     ShuttingDown=False
     CheckOutputDeque=deque(maxlen=10)
 
@@ -72,6 +71,8 @@ class Utils:
     FileDivider="================================================================="
     DataDir="var/lib/"
     ConfigDir="etc/eosio/"
+
+    TimeFmt='%Y-%m-%dT%H:%M:%S.%f'
 
     @staticmethod
     def Print(*args, **kwargs):

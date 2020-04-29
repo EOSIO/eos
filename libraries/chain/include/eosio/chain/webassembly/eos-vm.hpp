@@ -4,6 +4,7 @@
 #include <eosio/chain/webassembly/runtime_interface.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/apply_context.hpp>
+#include <eosio/chain/wasm_config.hpp>
 #include <eosio/chain/whitelisted_intrinsics.hpp>
 #include <softfloat_types.h>
 
@@ -19,12 +20,19 @@ struct apply_options;
 template <typename Impl>
 using eos_vm_backend_t = eosio::vm::backend<eos_vm_host_functions_t, Impl, webassembly::eos_vm_runtime::apply_options>;
 
+template <typename Options>
+using eos_vm_null_backend_t = eosio::vm::backend<eos_vm_host_functions_t, eosio::vm::null_backend, Options>;
+
 namespace webassembly { namespace eos_vm_runtime {
 
 using namespace fc;
 using namespace eosio::vm;
 
-void validate_intrinsics(const bytes& code, const whitelisted_intrinsics_type& intrinsics);
+void validate(const bytes& code, const whitelisted_intrinsics_type& intrinsics );
+
+void validate(const bytes& code, const wasm_config& cfg, const whitelisted_intrinsics_type& intrinsics );
+
+struct apply_options;
 
 template<typename Backend>
 class eos_vm_runtime : public eosio::chain::wasm_runtime_interface {
