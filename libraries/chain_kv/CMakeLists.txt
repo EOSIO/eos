@@ -3,7 +3,7 @@ file(GLOB_RECURSE HEADERS "include/*.hpp")
 add_library( chain_kv INTERFACE )
 
 target_link_libraries( chain_kv 
-                       INTERFACE fc rocksdb gflags
+                       INTERFACE fc rocksdb
                      )
 
 target_include_directories( chain_kv
