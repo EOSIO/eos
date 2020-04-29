@@ -84,10 +84,10 @@ namespace eosio { namespace chain {
          uint8_t compression;
          fc::raw::unpack(ds, compression);
          meta.compression = static_cast<packed_transaction::cf_compression_type>(compression);
-         EOS_ASSERT(meta.compression == packed_transaction::cf_compression_type::none, block_log_exception,
-                  "Only support compression_type none");
          EOS_ASSERT(meta.compression < packed_transaction::cf_compression_type::COMPRESSION_TYPE_COUNT, block_log_exception,
                   "Unknown compression_type");
+         EOS_ASSERT(meta.compression == packed_transaction::cf_compression_type::none, block_log_exception,
+                  "Only support compression_type none");         
          block.unpack(ds, meta.compression);
          const uint64_t current_stream_offset = get_stream_pos(ds) - start_pos;
          // For a block which contains CFD (context free data) and the CFD is pruned afterwards, the entry.size may
@@ -109,7 +109,7 @@ namespace eosio { namespace chain {
       std::vector<char> pack(const signed_block& block, packed_transaction::cf_compression_type compression) {
          const std::size_t padded_size = block.maximum_pruned_pack_size(compression);
          static_assert( block_log::max_supported_version == pruned_transaction_version,
-                     "Code was written to support format of version 4, need to update this code for latest format." );
+                     "Code was written to support format of version 4 or lower, need to update this code for latest format." );
          std::vector<char>     buffer(padded_size + offset_to_block_start(block_log::max_supported_version));
          fc::datastream<char*> stream(buffer.data(), buffer.size());
 
@@ -304,9 +304,8 @@ namespace eosio { namespace chain {
          FILE* const _file;
          const std::string _filename;
       };
-}}} // namespace eosio::chain::detail
+   } // namespace eosio::chain::detail
 
-namespace eosio { namespace chain {
 
    block_log::block_log(const fc::path& data_dir)
    :my(new detail::block_log_impl()) {
