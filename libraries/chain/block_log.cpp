@@ -728,6 +728,9 @@ namespace {
       ilog("Recovering Block Log...");
       EOS_ASSERT(fc::is_directory(data_dir) && fc::is_regular_file(data_dir / "blocks.log"), block_log_not_found,
                  "Block log not found in '${blocks_dir}'", ("blocks_dir", data_dir));
+                 
+      if (truncate_at_block == 0)
+         truncate_at_block = UINT32_MAX;
 
       auto now = fc::time_point::now();
 
