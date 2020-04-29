@@ -306,9 +306,6 @@ namespace eosio { namespace chain {
       };
 }}} // namespace eosio::chain::detail
 
-FC_REFLECT(eosio::chain::detail::log_entry_v4::metadata_type,  (compression)(size) )
-FC_REFLECT(eosio::chain::detail::log_entry_v4, (meta)(block) )
-
 namespace eosio { namespace chain {
 
    block_log::block_log(const fc::path& data_dir)
