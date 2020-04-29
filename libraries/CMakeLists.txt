@@ -1,4 +1,5 @@
-set(PORTABLE ON)      # rocksdb: don't use sse4.2
+set(PORTABLE ON)            # rocksdb: don't use sse4.2
+set(FAIL_ON_WARNINGS OFF)   # rocksdb: stop the madness: warnings change over time
 
 add_subdirectory( fc )
 add_subdirectory( builtins )
