@@ -779,6 +779,16 @@ public:
       }
    };
 
+   class reschedule_timeout {
+   public:
+      reschedule_timeout(launcher_service_plugin_impl_ptr impl) : _my(std::move(impl)) {}
+      ~reschedule_timeout() {
+         _my->schedule_timeout();
+      }
+   private:
+      launcher_service_plugin_impl_ptr _my;
+   };
+
 launcher_service_plugin::launcher_service_plugin():_my(new launcher_service_plugin_impl(app().get_io_service())){}
 launcher_service_plugin::~launcher_service_plugin(){}
 
@@ -949,7 +959,7 @@ fc::variant launcher_service_plugin::get_cluster_info(launcher_service::cluster_
 
 fc::variant launcher_service_plugin::get_cluster_running_state(launcher_service::cluster_id_param param)
 {
-   _my->schedule_timeout();
+   reschedule_timeout rt(_my);
    if (_my->_running_clusters.find(param.cluster_id) == _my->_running_clusters.end()) {
       throw std::runtime_error("cluster is not running");
    }
@@ -964,85 +974,85 @@ fc::variant launcher_service_plugin::get_cluster_running_state(launcher_service:
 }
 
 fc::variant launcher_service_plugin::get_info(launcher_service::node_id_param param) {
-   _my->schedule_timeout();
+   reschedule_timeout rt(_my);
    return _my->get_info(param.cluster_id, param.node_id);
 }
 
 fc::variant launcher_service_plugin::launch_cluster(launcher_service::cluster_def def)
 {
-   _my->schedule_timeout();
+   reschedule_timeout rt(_my);
    _my->launch_cluster(def);
    return fc::mutable_variant_object("result", _my->_running_clusters[def.cluster_id]);
 }
 
 fc::variant launcher_service_plugin::stop_all_clusters(launcher_service::empty_param) {
-   _my->schedule_timeout();
+   reschedule_timeout rt(_my);
    _my->stop_all_clusters();
    return fc::mutable_variant_object("result", "OK");
 }
 
 fc::variant launcher_service_plugin::stop_cluster(launcher_service::cluster_id_param param) {
-   _my->schedule_timeout();
+   reschedule_timeout rt(_my);
    _my->stop_cluster(param.cluster_id);
    return fc::mutable_variant_object("result", "OK");
 }
 
 fc::variant launcher_service_plugin::clean_cluster(launcher_service::cluster_id_param param) {
-   _my->schedule_timeout();
+   reschedule_timeout rt(_my);
    _my->clean_cluster(param.cluster_id);
    return fc::mutable_variant_object("result", "OK");
 }
 
 fc::variant launcher_service_plugin::start_node(launcher_service::start_node_param param) {
-   _my->schedule_timeout();
+   reschedule_timeout rt(_my);
    _my->start_node(param.cluster_id, param.node_id, param.extra_args);
    return fc::mutable_variant_object("result", "OK");
 }
 
 fc::variant launcher_service_plugin::stop_node(launcher_service::stop_node_param param) {
-   _my->schedule_timeout();
+   reschedule_timeout rt(_my);
    _my->stop_node(param.cluster_id, param.node_id, param.kill_sig);
    return fc::mutable_variant_object("result", "OK");
 }
 
 fc::variant launcher_service_plugin::get_protocol_features(launcher_service::node_id_param param) {
-   _my->schedule_timeout();
+   reschedule_timeout rt(_my);
    return _my->get_protocol_features(param.cluster_id, param.node_id);
 }
 
 fc::variant launcher_service_plugin::schedule_protocol_feature_activations(launcher_service::schedule_protocol_feature_activations_param param) {
-   _my->schedule_timeout();
+   reschedule_timeout rt(_my);
    return _my->schedule_protocol_feature_activations(param);
 }
 
 fc::variant launcher_service_plugin::get_block(launcher_service::get_block_param param) {
-   _my->schedule_timeout();
+   reschedule_timeout rt(_my);
    return _my->get_block(param.cluster_id, param.node_id, param.block_num_or_id);
 }
 
 fc::variant launcher_service_plugin::get_account(launcher_service::get_account_param param) {
-   _my->schedule_timeout();
+   reschedule_timeout rt(_my);
    return _my->get_account(param);
 }
 
 fc::variant launcher_service_plugin::get_code_hash(launcher_service::get_account_param param) {
-   _my->schedule_timeout();
+   reschedule_timeout rt(_my);
    return _my->get_code_hash(param);
 }
 
 fc::variant launcher_service_plugin::get_table_rows(launcher_service::get_table_rows_param param) {
-   _my->schedule_timeout();
+   reschedule_timeout rt(_my);
    return _my->get_table_rows(param);
 }
 
 fc::variant launcher_service_plugin::verify_transaction(launcher_service::verify_transaction_param param) {
-   _my->schedule_timeout();
+   reschedule_timeout rt(_my);
    return _my->verify_transaction(param);
 }
 
 fc::variant launcher_service_plugin::set_contract(launcher_service::set_contract_param param) {
    try {
-      _my->schedule_timeout();
+      reschedule_timeout rt(_my);
       return _my->set_contract(param);
    } catch (fc::exception &e) {
       elog("FC exception: code ${code}, cluster ${cluster}, node ${node}, details: ${d}",
@@ -1056,18 +1066,18 @@ fc::variant launcher_service_plugin::set_contract(launcher_service::set_contract
 }
 
 fc::variant launcher_service_plugin::import_keys(launcher_service::import_keys_param param) {
-   _my->schedule_timeout();
+   reschedule_timeout rt(_my);
    return _my->import_keys(param);
 }
 
 fc::variant launcher_service_plugin::generate_key(launcher_service::generate_key_param param) {
-   _my->schedule_timeout();
+   reschedule_timeout rt(_my);
    return _my->generate_key(param);
 }
 
 fc::variant launcher_service_plugin::push_actions(launcher_service::push_actions_param param) {
    try {
-      _my->schedule_timeout();
+      reschedule_timeout rt(_my);
       return _my->push_actions(param);
    } catch (fc::exception &e) {
       elog("FC exception: code ${code}, cluster ${cluster}, node ${node}, details: ${d}",
@@ -1081,13 +1091,13 @@ fc::variant launcher_service_plugin::push_actions(launcher_service::push_actions
 }
 
 fc::variant launcher_service_plugin::get_log_data(launcher_service::get_log_data_param param) {
-   _my->schedule_timeout();
+   reschedule_timeout rt(_my);
    return _my->get_log_data(param);
 }
 
 fc::variant launcher_service_plugin::send_raw(launcher_service::send_raw_param param) {
    try {
-      _my->schedule_timeout();
+      reschedule_timeout rt(_my);
       return _my->send_raw(param);
    } catch (fc::exception &e) {
       elog("FC exception: code ${code}, cluster ${cluster}, node ${node}, details: ${d}",
