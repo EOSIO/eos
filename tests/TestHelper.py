@@ -89,8 +89,6 @@ class TestHelper(object):
             parser.add_argument("--defproducera_prvt_key", type=str, help="defproducera private key.")
         if "--defproducerb_prvt_key" in includeArgs:
             parser.add_argument("--defproducerb_prvt_key", type=str, help="defproducerb private key.")
-        if "--mongodb" in includeArgs:
-            parser.add_argument("--mongodb", help="Configure a MongoDb instance", action='store_true')
         if "--dump-error-details" in includeArgs:
             parser.add_argument("--dump-error-details",
                                      help="Upon error print etc/eosio/node_*/config.ini and var/lib/node_*/stderr.log to stdout",
