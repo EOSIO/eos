@@ -71,6 +71,15 @@ namespace {
    }
 
    using name_pair_t = eosio::chain_apis::account_query_db::get_accounts_by_authorizers_params::account_level;
+
+   template<typename Output, typename Input>
+   auto make_optional_authorizer(const Input& authorizer) -> fc::optional<Output> {
+      if constexpr (std::is_same_v<Input, Output>) {
+         return authorizer;
+      } else {
+         return {};
+      }
+   }
 }
 
 namespace std {
@@ -344,12 +353,11 @@ namespace eosio::chain_apis {
           * Add a single result entry
           */
          auto push_result = [&result](const auto& po, const auto& authorizer, auto weight) {
-            fc::variant v;
-            fc::to_variant(authorizer, v);
             result.accounts.emplace_back(result_t::account_result{
                   po.owner,
                   po.name,
-                  v,
+                  make_optional_authorizer<chain::permission_level>(authorizer),
+                  make_optional_authorizer<chain::public_key_type>(authorizer),
                   weight,
                   po.auth.threshold
             });
