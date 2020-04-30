@@ -59,11 +59,12 @@ namespace eosio::chain_apis {
        */
       struct get_accounts_by_authorizers_result{
          struct account_result {
-            chain::name         account_name;
-            chain::name         permission_name;
-            fc::variant         authorizer;
-            chain::weight_type  weight;
-            uint32_t            threshold;
+            chain::name                            account_name;
+            chain::name                            permission_name;
+            fc::optional<chain::permission_level>  authorizing_account;
+            fc::optional<chain::public_key_type>   authorizing_key;
+            chain::weight_type                     weight;
+            uint32_t                               threshold;
          };
 
          std::vector<account_result> accounts;
@@ -121,5 +122,5 @@ namespace fc {
 }
 
 FC_REFLECT( eosio::chain_apis::account_query_db::get_accounts_by_authorizers_params, (accounts)(keys))
-FC_REFLECT( eosio::chain_apis::account_query_db::get_accounts_by_authorizers_result::account_result, (account_name)(permission_name)(authorizer)(weight)(threshold))
+FC_REFLECT( eosio::chain_apis::account_query_db::get_accounts_by_authorizers_result::account_result, (account_name)(permission_name)(authorizing_account)(authorizing_key)(weight)(threshold))
 FC_REFLECT( eosio::chain_apis::account_query_db::get_accounts_by_authorizers_result, (accounts))
