@@ -108,7 +108,7 @@ try:
     # prune the transaction with block-num=trans["block_num"], id=cfTrxId
     cluster.getBlockLog(1, blockLogAction=BlockLogAction.prune_transactions, extraArgs=" --block-num {} --transaction {}".format(trans["block_num"], cfTrxId), exitOnError=True)
 
-    # trans = validationNode.processCleosCmd(cmd, cmd, silentErrors=False)
+    trans = validationNode.processCleosCmd(cmd, cmd, silentErrors=False)
     # assert trans, "Failed to get the transaction with context free data from the light validation node"
     # # check whether the transaction has been pruned based on the tag of prunable_data, if the tag is 1, then it's a prunable_data_t::none
     # assert trans["trx"]["receipt"]["trx"][1]["prunable_data"]["prunable_data"][0] == 1, "the the transaction with context free data has not been pruned"
