@@ -720,6 +720,7 @@ class Cluster:
         - stop_cluster()
         - start_node()
         - stop_node()
+        - cleanup()
         - stop_all_nodes()
     - Queries
         - get_cluster_running_state()
@@ -919,6 +920,7 @@ class Cluster:
 
     def __exit__(self, exception_type, exception_value, exception_traceback):
         """Flush all buffered logging information in case a Cluster crashes."""
+        self.cleanup()
         self.flush()
 
     def check_config(self):
@@ -1024,9 +1026,6 @@ class Cluster:
         self.print_begin("Shutdown cluster")
         self.stop_cluster()
         self.print_end("Shutdown cluster")
-        self.print_begin("Cleanup cluster")
-        self.clean_cluster()
-        self.print_end("Cleanup cluster")
 
 # --------------- simple queries: queries that are made directly via call() -------------------------------------------
 
@@ -1605,7 +1604,6 @@ class Cluster:
             self.logger.reset_launcher_maximum_idle_time(self.service.launcher_maximum_idle_time)
 
         # communication with launcher service
-        self.info(f"Connection with http://{self.service.addr}:{self.service.port}/v1/launcher/{api}")
         cx = Connection(url=f"http://{self.service.addr}:{self.service.port}/v1/launcher/{api}", data=data)
         self.log(cx.url, level=url_level, buffer=buffer)
         self.log(cx.request_text, level=request_text_level, buffer=buffer)

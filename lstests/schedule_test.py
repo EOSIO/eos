@@ -33,7 +33,6 @@ def main():
         test_round(clus, round=2, prods=clus.node_to_producers[2], new_prods=clus.node_to_producers[2], verify_key="irreversible")
         test_round(clus, round=3, prods=clus.node_to_producers[1] + clus.node_to_producers[2], new_prods=clus.node_to_producers[1], verify_key="irreversible")
         clus.print_end(testname)
-        clus.cleanup()
 
 
 if __name__ == "__main__":

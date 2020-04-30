@@ -111,7 +111,6 @@ def main():
             kill_and_verify(clus)
             last_block_in_sync = restart_and_verify(clus, last_block_in_sync)
         clus.print_end(testname)
-        clus.cleanup()
 
 
 if __name__ == "__main__":

@@ -114,7 +114,6 @@ def main():
         for i in range(CATCHUP_ROUNDS):
             end = catchup(clus, end, i+1)
         clus.print_end(testname)
-        clus.cleanup()
 
 if __name__ == "__main__":
     main()

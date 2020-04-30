@@ -116,7 +116,6 @@ def main():
         time.sleep(1)
         check_sync()
         clus.print_end(testname)
-        clus.cleanup()
 
 
 if __name__ == "__main__":
