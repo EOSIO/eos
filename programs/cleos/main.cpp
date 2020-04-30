@@ -77,7 +77,6 @@ Options:
 #include <fc/exception/exception.hpp>
 #include <fc/variant_object.hpp>
 #include <fc/static_variant.hpp>
-#include <fc/utf8.hpp>
 
 #include <eosio/chain/name.hpp>
 #include <eosio/chain/config.hpp>
@@ -162,7 +161,8 @@ bfs::path determine_home_directory()
 }
 
 std::string clean_output( std::string str ) {
-   return fc::is_valid_utf8( str ) ? str : fc::prune_invalid_utf8( str );
+   const bool escape_control_chars = false;
+   return fc::escape_string( str, nullptr, escape_control_chars );
 }
 
 string url = "http://127.0.0.1:8888/";
@@ -384,7 +384,6 @@ void print_action( const fc::variant& at ) {
       args = args.substr(40)+"...";
    */
    if( args.size() > 100 ) args = args.substr(0,100) + "...";
-   args = clean_output( std::move( args ) );
    cout << "#" << std::setw(14) << right << receiver << " <= " << std::setw(28) << std::left << (code +"::" + func) << " " << args << "\n";
    if( console.size() ) {
       std::stringstream ss(console);
