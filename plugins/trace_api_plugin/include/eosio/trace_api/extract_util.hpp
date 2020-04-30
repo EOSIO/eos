@@ -39,30 +39,20 @@ inline transaction_trace_v0 to_transaction_trace_v0( const chain::transaction_tr
    return r;
 }
 
-inline transaction_trace_v1 to_transaction_trace_v1( const chain::transaction_trace_ptr& t, const chain::signed_transaction& trx = {} ) {
+inline transaction_trace_v1 to_transaction_trace_v1( const cache_trace& t ) {
     transaction_trace_v1 r;
-    if( !t->failed_dtrx_trace ) {
-        r.id = t->id;
-        r.status = t->receipt->status;
-        r.cpu_usage_us = t->receipt->cpu_usage_us;
-        r.net_usage_words = t->receipt->net_usage_words;
+    if( !t.trace->failed_dtrx_trace ) {
+        r.id = t.trace->id;
     } else {
-        r.id = t->failed_dtrx_trace->id; // report the failed trx id since that is the id known to user
-        r.status = t->failed_dtrx_trace->receipt->status;
-        r.cpu_usage_us = t->failed_dtrx_trace->receipt->cpu_usage_us;
-        r.net_usage_words = t->failed_dtrx_trace->receipt->net_usage_words;
+        r.id = t.trace->failed_dtrx_trace->id; // report the failed trx id since that is the id known to user
     }
-    r.signatures = trx.signatures;
-    r.trx_header = chain::transaction_header{
-            trx.expiration,
-            trx.ref_block_num,
-            trx.ref_block_prefix,
-            trx.max_net_usage_words,
-            trx.max_cpu_usage_ms,
-            trx.delay_sec
-    };
-    r.actions.reserve( t->action_traces.size());
-    for( const auto& at : t->action_traces ) {
+    r.status = t.trace->receipt->status;
+    r.cpu_usage_us = t.trace->receipt->cpu_usage_us;
+    r.net_usage_words = t.trace->receipt->net_usage_words;
+    r.signatures = t.trx_signatures;
+    r.trx_header = t.trx_header;
+    r.actions.reserve( t.trace->action_traces.size());
+    for( const auto& at : t.trace->action_traces ) {
         if( !at.context_free ) { // not including CFA at this time
             r.actions.emplace_back( to_action_trace_v0( at ));
         }
