@@ -1,6 +1,6 @@
 add_executable( ${RODEOS_EXECUTABLE_NAME}
   cloner_plugin.cpp
-  stream_plugin.cpp
+  streamer_plugin.cpp
   main.cpp
   rocksdb_plugin.cpp
   wasm_ql_http.cpp
@@ -32,9 +32,12 @@ configure_file(config.hpp.in config.hpp ESCAPE_QUOTES)
 
 target_include_directories(${RODEOS_EXECUTABLE_NAME} PUBLIC ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/../../libraries/abieos/src )
 
+# todo: review dependency strategy for rabbit
+set(RABBIT_LIB SimpleAmqpClient)
+
 target_link_libraries( ${RODEOS_EXECUTABLE_NAME}
         PRIVATE appbase version
-        PRIVATE rodeos_lib fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )
+        PRIVATE rodeos_lib fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} ${RABBIT_LIB} )
 
 copy_bin( ${RODEOS_EXECUTABLE_NAME} )
 install( TARGETS

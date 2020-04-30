@@ -5,6 +5,8 @@
 #include "streams/rabbitmq.hpp"
 #include "streams/stream.hpp"
 
+#include <abieos.hpp>
+#include <eosio/abi.hpp>
 #include <fc/exception/exception.hpp>
 #include <memory>
 
