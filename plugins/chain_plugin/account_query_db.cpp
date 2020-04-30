@@ -13,6 +13,8 @@
 #include <boost/bimap/multiset_of.hpp>
 #include <boost/bimap/set_of.hpp>
 
+#include <shared_mutex>
+
 using namespace eosio;
 using namespace boost::multi_index;
 using namespace boost::bimaps;
@@ -119,6 +121,8 @@ namespace eosio::chain_apis {
        * blockchain state at the current HEAD
        */
       void build_account_query_map() {
+         std::unique_lock write_lock(rw_mutex);
+
          ilog("Building account query DB");
          auto start = fc::time_point::now();
          const auto& index = controller.db().get_index<chain::permission_index>().indices().get<by_id>();
@@ -160,6 +164,22 @@ namespace eosio::chain_apis {
          // remove all entries from the key bimap that refer to this permission_info's reference
          const auto key_range = key_bimap.right.equal_range(pi);
          key_bimap.right.erase(key_range.first, key_range.second);
+      }
+
+      bool is_rollback_required( const chain::block_state_ptr& bsp ) const {
+         const auto t = bsp->block->timestamp.to_time_point();
+         const auto& index = permission_info_index.get<by_last_updated>();
+
+         if (index.empty()) {
+            return false;
+         } else {
+            const auto& pi = (*index.rbegin());
+            if (pi.last_updated < t) {
+               return false;
+            }
+         }
+
+         return true;
       }
 
       /**
@@ -219,14 +239,13 @@ namespace eosio::chain_apis {
          }
       }
 
+      using permission_set_t = std::set<name_pair_t>;
       /**
-       * Commit a block of transactions to the account query DB
-       * transaction traces need to be in the cache prior to this call
+       * Pre-Commit step with const qualifier to guarantee it does not mutate
+       * the thread-safe data set
        * @param bsp
        */
-      void commit_block(const chain::block_state_ptr& bsp ) {
-         using permission_set_t = std::set<name_pair_t>;
-
+      auto commit_block_prelock( const chain::block_state_ptr& bsp ) const {
          permission_set_t updated;
          permission_set_t deleted;
 
@@ -252,8 +271,6 @@ namespace eosio::chain_apis {
             }
          };
 
-         rollback_to_before(bsp);
-
          if( onblock_trace )
             process_trace(*onblock_trace);
 
@@ -271,35 +288,58 @@ namespace eosio::chain_apis {
             }
          }
 
-         auto& index = permission_info_index.get<by_owner_name>();
-         const auto& permission_by_owner = controller.db().get_index<chain::permission_index>().indices().get<chain::by_owner>();
+         return std::make_tuple(std::move(updated), std::move(deleted), is_rollback_required(bsp));
+      }
 
-         // for each updated permission, find the new values and update the account query db
-         for (const auto& up: updated) {
-            auto key = std::make_tuple(up.actor, up.permission);
-            auto source_itr = permission_by_owner.find(key);
-            EOS_ASSERT(source_itr != permission_by_owner.end(), chain::plugin_exception, "chain data is missing");
-            auto itr = index.find(key);
-            if (itr == index.end()) {
-               const auto& po = *source_itr;
-               itr = index.emplace(permission_info{ po.owner, po.name, po.last_updated }).first;
-            } else {
-               remove_from_bimaps(*itr);
-               index.modify(itr, [&](auto& mutable_pi){
-                  mutable_pi.last_updated = source_itr->last_updated;
-               });
+      /**
+       * Commit a block of transactions to the account query DB
+       * transaction traces need to be in the cache prior to this call
+       * @param bsp
+       */
+      void commit_block(const chain::block_state_ptr& bsp ) {
+         using permission_set_t = std::set<name_pair_t>;
+
+         permission_set_t updated;
+         permission_set_t deleted;
+         bool rollback_required = false;
+
+         std::tie(updated, deleted, rollback_required) = commit_block_prelock(bsp);
+
+         // optimistic skip of locking section if there is nothing to do
+         if (!updated.empty() || !deleted.empty() || rollback_required) {
+            std::unique_lock write_lock(rw_mutex);
+
+            rollback_to_before(bsp);
+            auto& index = permission_info_index.get<by_owner_name>();
+            const auto& permission_by_owner = controller.db().get_index<chain::permission_index>().indices().get<chain::by_owner>();
+
+            // for each updated permission, find the new values and update the account query db
+            for (const auto& up: updated) {
+               auto key = std::make_tuple(up.actor, up.permission);
+               auto source_itr = permission_by_owner.find(key);
+               EOS_ASSERT(source_itr != permission_by_owner.end(), chain::plugin_exception, "chain data is missing");
+               auto itr = index.find(key);
+               if (itr == index.end()) {
+                  const auto& po = *source_itr;
+                  itr = index.emplace(permission_info{ po.owner, po.name, po.last_updated }).first;
+               } else {
+                  remove_from_bimaps(*itr);
+                  index.modify(itr, [&](auto& mutable_pi){
+                     mutable_pi.last_updated = source_itr->last_updated;
+                  });
+               }
+
+               add_to_bimaps(*itr, *source_itr);
             }
 
-            add_to_bimaps(*itr, *source_itr);
-         }
-
-         // for all deleted permissions, process their removal from the account query DB
-         for (const auto& dp: deleted) {
-            auto key = std::make_tuple(dp.actor, dp.permission);
-            auto itr = index.find(key);
-            if (itr != index.end()) {
-               remove_from_bimaps(*itr);
-               index.erase(itr);
+            // for all deleted permissions, process their removal from the account query DB
+            for (const auto& dp: deleted) {
+               auto key = std::make_tuple(dp.actor, dp.permission);
+               auto itr = index.find(key);
+               if (itr != index.end()) {
+                  remove_from_bimaps(*itr);
+                  index.erase(itr);
+               }
             }
          }
 
@@ -310,6 +350,8 @@ namespace eosio::chain_apis {
 
       account_query_db::get_accounts_by_authorizers_result
       get_accounts_by_authorizers( const account_query_db::get_accounts_by_authorizers_params& args) const {
+         std::shared_lock read_lock(rw_mutex);
+
          using result_t = account_query_db::get_accounts_by_authorizers_result;
          result_t result;
 
@@ -404,6 +446,9 @@ namespace eosio::chain_apis {
       key_bimap_t                key_bimap;                ///< many:many bimap of keys:permission_infos
       cached_trace_map_t         cached_trace_map;         ///< temporary cache of uncommitted traces
       onblock_trace_t            onblock_trace;            ///< temporary cache of on_block trace
+
+
+      mutable std::shared_mutex  rw_mutex;                 ///< mutex for read/write locking on the Multi-index and bimaps
    };
 
    account_query_db::account_query_db( const chain::controller& controller )
