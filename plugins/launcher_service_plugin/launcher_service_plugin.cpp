@@ -60,11 +60,13 @@ namespace eosio {
    }
 
    using namespace launcher_service;
+   using microseconds = boost::posix_time::microseconds;
    class launcher_service_plugin_impl : public std::enable_shared_from_this<launcher_service_plugin_impl> {
 
-public:
-      launcher_service_plugin_impl(boost::asio::io_service& io) : _timer(io) {}
+   public:
+      launcher_service_plugin_impl(boost::asio::io_service& io) : _node_remove_timer(io), _shutdown_timer(io) {}
 
+      using child_ptr = std::shared_ptr<bp::child>;
       struct node_state {
          int                        id = 0;
          int                        pid = 0;
@@ -73,29 +75,60 @@ public:
          bool                       is_bios = false;
          std::string                stdout_path;
          std::string                stderr_path;
-         std::shared_ptr<bp::child> child;
+         child_ptr                  child;
 
          std::map<name, fc::optional<abi_serializer> >  abi_cache;
          fc::time_point                                 abi_cache_time;
 
          get_info_results                               get_info_cache;
          fc::time_point                                 get_info_cache_time;
+
+         void set_child(std::shared_ptr<bp::child>&& c = std::shared_ptr<bp::child>()) {
+            if (child)
+               dlog("Dropping child for pid ${p} (node ${n})", ("p", child->id())("n", id));
+
+            child = std::move(c);
+            if (child) {
+               pid = child->id();
+               dlog("Adding child for pid ${p} (node ${n})", ("p", child->id())("n", id));
+            }
+            else
+               pid = 0;
+         }
       };
+
+      using node_state_ptr = std::shared_ptr<node_state>;
+      using weak_node_state_ptr = std::weak_ptr<node_state>;
+
       struct cluster_state {
          cluster_def                                 def;
-         std::map<int, node_state>                   nodes; // node id => node_state
+         std::map<int, node_state_ptr>               nodes; // node id => node_state
          std::map<public_key_type, private_key_type> imported_keys;
 
          // possible transaction block-number for query purpose
          std::map<transaction_id_type, uint32_t>     transaction_blocknum;
       };
 
+      struct to_remove {
+         to_remove(const node_state_ptr& n) : child(n->child), node(n) {}
+         to_remove() {}
+
+         child_ptr           child;
+         weak_node_state_ptr node;
+         int                 num_timeouts {0};
+      };
+      using remove_map = std::map<int, to_remove>;
+
+      static constexpr uint64_t                 _seconds = 1'000'000;
+      static constexpr uint64_t                 _minutes = 60 * _seconds;
       launcher_config                           _config;
       std::map<int, cluster_state>              _running_clusters;
-      optional<boost::posix_time::microseconds> _idle_timeout;
-      boost::asio::deadline_timer               _timer;
+      remove_map                                _nodes_to_remove;
+      boost::asio::deadline_timer               _node_remove_timer;
+      static const microseconds                 _node_remove_timeout;
+      optional<microseconds>                    _idle_timeout;
+      boost::asio::deadline_timer               _shutdown_timer;
       uint32_t                                  _timer_correlation_id = 0;
-      static constexpr uint64_t                 _minutes = 60 * 1'000'000;
 
    public:
       static std::string cluster_to_string(int id) {
@@ -103,11 +136,13 @@ public:
          sprintf(str, "cluster%05d", (int)id);
          return str;
       }
+
       static std::string node_to_string(int id) {
          char str[32];
          sprintf(str, "node_%02d", (int)id);
          return str;
       }
+
       void create_path(bfs::path path, bool clean = false) {
          boost::system::error_code ec;
          if (!bfs::exists(path)) {
@@ -121,6 +156,7 @@ public:
             }
          }
       }
+
       static std::string itoa(int v) {
          char str[32];
          sprintf(str, "%d", v);
@@ -273,11 +309,11 @@ public:
 
          for (int i = 0; i < def.node_count; ++i) {
             node_def &node_config = def.get_node_def(i);
-            node_state state;
-            state.id = i;
-            state.http_port = node_config.http_port(_config, def.cluster_id, i);
-            state.p2p_port = node_config.p2p_port(_config, def.cluster_id, i);
-            state.is_bios = node_config.is_bios();
+            node_state_ptr state = std::make_shared<node_state>();
+            state->id = i;
+            state->http_port = node_config.http_port(_config, def.cluster_id, i);
+            state->p2p_port = node_config.p2p_port(_config, def.cluster_id, i);
+            state->is_bios = node_config.is_bios();
 
             bfs::path node_path = bfs::path(_config.data_dir) / cluster_to_string(def.cluster_id) / node_to_string(i);
             create_path(bfs::path(node_path));
@@ -294,7 +330,7 @@ public:
             bfs::ofstream cfg(node_path / "config.ini");
             cfg << generate_node_config(_config, def, i);
             cfg.close();
-            _running_clusters[def.cluster_id].nodes[i] = state;
+            _running_clusters[def.cluster_id].nodes[i] = std::move(state);
          }
          _running_clusters[def.cluster_id].def = def;
          _running_clusters[def.cluster_id].imported_keys[_config.default_key.get_public_key()] = _config.default_key;
@@ -306,7 +342,7 @@ public:
                continue;
             }
 
-            node_state &state = _running_clusters[def.cluster_id].nodes[i];
+            node_state &state = *_running_clusters[def.cluster_id].nodes[i];
             node_def node_config = def.get_node_def(i);
 
             bfs::path node_path = bfs::path(_config.data_dir) / cluster_to_string(def.cluster_id) / node_to_string(i);
@@ -357,23 +393,21 @@ public:
                cmd += extra_args;
             }
 
-            state.pid = 0;
-            state.child.reset();
-
             if (node_id == -1 && node_config.dont_start) {
+               state.set_child();
                continue;
             }
 
             ilog("start to execute:\"${c}\"", ("c", cmd));
-            state.child.reset(new bp::child(cmd, bp::std_out > stdout_path, bp::std_err > stderr_path));
+            state.set_child(std::make_shared<bp::child>(cmd, bp::std_out > stdout_path, bp::std_err > stderr_path));
 
-            state.pid = state.child->id();
             pidout << state.child->id();
             pidout.flush();
             pidout.close();
             state.child->detach();
          }
       }
+
       void launch_cluster(cluster_def &def) {
          if (def.cluster_id < 0 || def.cluster_id >= _config.max_clusters) {
             throw std::runtime_error("invalid cluster id");
@@ -382,38 +416,91 @@ public:
          setup_cluster(def);
          launch_nodes(def, -1, false);
       }
+
       void start_node(int cluster_id, int node_id, std::string extra_args) {
          if (_running_clusters.find(cluster_id) == _running_clusters.end()) {
             throw std::runtime_error("cluster is not running");
          }
          if (_running_clusters[cluster_id].nodes.find(node_id) != _running_clusters[cluster_id].nodes.end()) {
-            node_state &state = _running_clusters[cluster_id].nodes[node_id];
+            node_state &state = *_running_clusters[cluster_id].nodes[node_id];
             if (state.child && state.child->running()) {
                throw std::runtime_error("node already running");
             }
          }
          launch_nodes(_running_clusters[cluster_id].def, node_id, true, extra_args);
       }
+
       void stop_node(int cluster_id, int node_id, int killsig) {
          if (_running_clusters.find(cluster_id) != _running_clusters.end()) {
             if (_running_clusters[cluster_id].nodes.find(node_id) != _running_clusters[cluster_id].nodes.end()) {
-               node_state &state = _running_clusters[cluster_id].nodes[node_id];
-               if (state.child) {
-                  if (state.child->running()) {
-                     ilog("killing pid ${p} (cluster ${c}, node ${n}) with signal ${s}", ("p", state.child->id())("c", cluster_id)("n", node_id)("s", killsig));
-                     ::kill(state.child->id(), killsig);
+               node_state_ptr state = _running_clusters[cluster_id].nodes[node_id];
+               if (state->child) {
+                  if (state->child->running()) {
+                     ilog("killing pid ${p} (cluster ${c}, node ${n}) with signal ${s}", ("p", state->child->id())("c", cluster_id)("n", node_id)("s", killsig));
+                     string kill_cmd = "kill " + boost::lexical_cast<std::string>(killsig) + " " + boost::lexical_cast<std::string>(state->child->id());
+                     boost::process::system( kill_cmd );
                   }
-                  if (killsig == SIGKILL || !state.child->running()) {
-                     state.pid = 0;
-                     state.child.reset();
+                  if (!state->child->running()) {
+                     dlog("Removing pid ${p} (cluster ${c}, node ${n}) with signal ${s}", ("p", state->child->id())("c", cluster_id)("n", node_id)("s", killsig));
+                     state->set_child();
+                  } else {
+                     dlog("Storing pid ${p} (cluster ${c}, node ${n}) to clean up later", ("p", state->child->id())("c", cluster_id)("n", node_id));
+                     const auto launch_timer = _nodes_to_remove.empty();
+                     _nodes_to_remove[state->pid] = to_remove(state);
+
+                     if (launch_timer) {
+                        schedule_remove_shutdown_nodes();
+                     }
                   }
                }
             }
          }
       }
 
+      void schedule_remove_shutdown_nodes() {
+         _node_remove_timer.cancel();
+         _node_remove_timer.expires_from_now( _node_remove_timeout );
+         std::weak_ptr<launcher_service_plugin_impl> weak_this = weak_from_this();
+
+         _node_remove_timer.async_wait( app().get_priority_queue().wrap( priority::high,
+                                                                         [weak_this]( const boost::system::error_code& ec ) {
+                                                                            auto self = weak_this.lock();
+                                                                            if( self && ec != boost::asio::error::operation_aborted ) {
+                                                                               self->remove_shutdown_nodes();
+                                                                            }
+                                                                         } ) );
+      }
+
+      void remove_shutdown_nodes() {
+         std::vector<int> remove_now;
+         dlog("Checking ${count} nodes to determine if they have shutdown and are ready to be cleaned up",
+              ("count", _nodes_to_remove.size()));
+         for (auto& node_to_remove : _nodes_to_remove ) {
+            auto child = node_to_remove.second.child;
+            if (!child->running()) {
+               auto node = node_to_remove.second.node.lock();
+               // if the node is still valid and it is still holding this child, clean up the node's child
+               if (node && node->child.get() == child.get()) {
+                  node->set_child();
+               }
+               remove_now.push_back(node_to_remove.first);
+            }
+            else if (++node_to_remove.second.num_timeouts % 10 == 0) {
+               ilog("Node with pid: ${pid} still not shutdown after ${seconds} seconds",
+                    ("pid", node_to_remove.first)("seconds",node_to_remove.second.num_timeouts));
+            }
+         }
+         for (const auto& rem_node : remove_now) {
+            _nodes_to_remove.erase(rem_node);
+         }
+         if (!_nodes_to_remove.empty()) {
+            schedule_remove_shutdown_nodes();
+         }
+      }
+
       void stop_cluster(int cluster_id) {
          if (_running_clusters.find(cluster_id) != _running_clusters.end()) {
+            ilog("Stopping cluster: ${cid}", ("cid", cluster_id));
             for (auto &itr : _running_clusters[cluster_id].nodes) {
                stop_node(cluster_id, itr.first, SIGKILL);
             }
@@ -442,7 +529,7 @@ public:
          if (_running_clusters[cluster_id].nodes.find(node_id) == _running_clusters[cluster_id].nodes.end()) {
             throw std::runtime_error("nodeos is not running");
          }
-         int port = _running_clusters[cluster_id].nodes[node_id].http_port;
+         const int port = _running_clusters[cluster_id].nodes[node_id]->http_port;
          if (port) {
             client::http::parsed_url purl;
             purl.scheme = "http";
@@ -500,9 +587,9 @@ public:
       }
 
       fc::optional<abi_serializer> abi_serializer_resolver(int cluster_id, int node_id, const name& account) {
-         auto &abi_cache = _running_clusters[cluster_id].nodes[node_id].abi_cache;
-         if (fc::time_point::now() >= _running_clusters[cluster_id].nodes[node_id].abi_cache_time + fc::milliseconds(config::block_interval_ms)) {
-            _running_clusters[cluster_id].nodes[node_id].abi_cache_time = fc::time_point::now();
+         auto &abi_cache = _running_clusters[cluster_id].nodes[node_id]->abi_cache;
+         if (fc::time_point::now() >= _running_clusters[cluster_id].nodes[node_id]->abi_cache_time + fc::milliseconds(config::block_interval_ms)) {
+            _running_clusters[cluster_id].nodes[node_id]->abi_cache_time = fc::time_point::now();
             abi_cache.clear();
          }
          auto it = abi_cache.find( account );
@@ -522,7 +609,7 @@ public:
                                   const fc::variant& action_args_var) {
          auto abis = abi_serializer_resolver(cluster_id, node_id, account);
          if (!abis.valid()) {
-            _running_clusters[cluster_id].nodes[node_id].abi_cache.erase(account);
+            _running_clusters[cluster_id].nodes[node_id]->abi_cache.erase(account);
             FC_THROW_EXCEPTION(chain::abi_not_found_exception, "No ABI found for ${contract}", ("contract", account));
          }
 
@@ -542,12 +629,12 @@ public:
       fc::variant push_transaction(int cluster_id, int node_id, signed_transaction& trx,
                                    const std::vector<public_key_type> &sign_keys = std::vector<public_key_type>(),
                                    packed_transaction::compression_type compression = packed_transaction::compression_type::none) {
-         int port = _running_clusters[cluster_id].nodes[node_id].http_port;
-         auto &info = _running_clusters[cluster_id].nodes[node_id].get_info_cache;
-         if (fc::time_point::now() >= _running_clusters[cluster_id].nodes[node_id].get_info_cache_time + fc::milliseconds(config::block_interval_ms)) {
+         const int port = _running_clusters[cluster_id].nodes[node_id]->http_port;
+         auto &info = _running_clusters[cluster_id].nodes[node_id]->get_info_cache;
+         if (fc::time_point::now() >= _running_clusters[cluster_id].nodes[node_id]->get_info_cache_time + fc::milliseconds(config::block_interval_ms)) {
             fc::variant info_ = get_info(cluster_id, node_id);
             info = info_.as<get_info_results>();
-            _running_clusters[cluster_id].nodes[node_id].get_info_cache_time = fc::time_point::now();
+            _running_clusters[cluster_id].nodes[node_id]->get_info_cache_time = fc::time_point::now();
          }
 
          if (trx.signatures.size() == 0) {
@@ -760,20 +847,18 @@ public:
 
       void schedule_timeout() {
           if (_idle_timeout) {
-              ilog("schedule_timeout");
-              _timer.cancel();
-              _timer.expires_from_now( *_idle_timeout);
+              _shutdown_timer.cancel();
+              _shutdown_timer.expires_from_now( *_idle_timeout);
               std::weak_ptr<launcher_service_plugin_impl> weak_this = weak_from_this();
 
-              _timer.async_wait( app().get_priority_queue().wrap( priority::high,
-                                                                  [weak_this, cid = ++_timer_correlation_id, timeout = _idle_timeout->total_microseconds()]( const boost::system::error_code& ec ) {
-                                                                      auto self = weak_this.lock();
-                                                                      dlog("schedule_timeout timeout fired");
-                                                                      if( self && ec != boost::asio::error::operation_aborted && cid == self->_timer_correlation_id ) {
-                                                                          ilog("No requests made in ${timeout} minutes, shutting down service.",("timeout", timeout/launcher_service_plugin_impl::_minutes));
-                                                                          app().quit();
-                                                                      }
-                                                                  } ) );
+              _shutdown_timer.async_wait( app().get_priority_queue().wrap( priority::high,
+                                                                           [weak_this, cid = ++_timer_correlation_id, timeout = _idle_timeout->total_microseconds()]( const boost::system::error_code& ec ) {
+                                                                               auto self = weak_this.lock();
+                                                                               if( self && ec != boost::asio::error::operation_aborted && cid == self->_timer_correlation_id ) {
+                                                                                   ilog("No requests made in ${timeout} minutes, shutting down service.",("timeout", timeout/launcher_service_plugin_impl::_minutes));
+                                                                                   app().quit();
+                                                                               }
+                                                                           } ) );
           }
 
       }
@@ -788,6 +873,8 @@ public:
    private:
       launcher_service_plugin_impl_ptr _my;
    };
+
+const microseconds launcher_service_plugin_impl::_node_remove_timeout {_seconds};
 
 launcher_service_plugin::launcher_service_plugin():_my(new launcher_service_plugin_impl(app().get_io_service())){}
 launcher_service_plugin::~launcher_service_plugin(){}
@@ -891,7 +978,8 @@ void launcher_service_plugin::plugin_shutdown() {
    ilog("launcher_service_plugin::plugin_shutdown()");
    _my->stop_all_clusters();
    _my->_idle_timeout.reset();
-   _my->_timer.cancel();
+   _my->_shutdown_timer.cancel();
+   _my->_node_remove_timer.cancel();
 }
 
 fc::variant launcher_service_plugin::get_cluster_info(launcher_service::cluster_id_param param)
@@ -901,7 +989,7 @@ fc::variant launcher_service_plugin::get_cluster_info(launcher_service::cluster_
    }
    std::map<int, fc::variant> result;
    bool haserror = false, hasok = false;
-   size_t nodecount = _my->_running_clusters[param.cluster_id].nodes.size();
+   const size_t nodecount = _my->_running_clusters[param.cluster_id].nodes.size();
    std::vector<std::thread> threads;
    std::vector<std::pair<int, fc::variant> > thread_result;
    std::vector<std::string> errstrs;
@@ -911,8 +999,8 @@ fc::variant launcher_service_plugin::get_cluster_info(launcher_service::cluster_
    int k = 0;
    bool set_errstr = true;
    for (auto &itr : _my->_running_clusters[param.cluster_id].nodes) {
-      int id = itr.second.id;
-      int port = itr.second.http_port;
+      const int id = itr.second->id;
+      const int port = itr.second->http_port;
       thread_result[k].first = -1;
       if (port) {
          threads.push_back(std::thread([this, k, cid = param.cluster_id, id, port, &thread_result, &hasok, &haserror, &errstrs]() {
@@ -964,10 +1052,15 @@ fc::variant launcher_service_plugin::get_cluster_running_state(launcher_service:
       throw std::runtime_error("cluster is not running");
    }
    for (auto &itr : _my->_running_clusters[param.cluster_id].nodes) {
-      launcher_service_plugin_impl::node_state &state = itr.second;
+      launcher_service_plugin_impl::node_state &state = *itr.second;
       if (state.child && !state.child->running()) {
-         state.pid = 0;
-         state.child.reset();
+         ilog("child not running, removing child pid: ${pid}, node num: ${id}", ("pid", state.pid)("id", state.id));
+         const auto pid = state.pid;
+         _my->_nodes_to_remove.erase(pid);
+         state.set_child();
+      }
+      else if (state.child && state.child->running()) {
+         ilog("child still running, not removing child pid: ${pid}, node num: ${id}", ("pid", state.pid)("id", state.id));
       }
    }
    return fc::mutable_variant_object("result", _my->_running_clusters[param.cluster_id]);
