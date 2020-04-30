@@ -192,6 +192,7 @@ chain_plugin::chain_plugin()
    app().register_config_type<eosio::chain::db_read_mode>();
    app().register_config_type<eosio::chain::validation_mode>();
    app().register_config_type<chainbase::pinnable_mapped_file::map_mode>();
+   app().register_config_type<eosio::chain::wasm_interface::vm_type>();
 }
 
 chain_plugin::~chain_plugin(){}
@@ -204,7 +205,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
    std::string delim;
 #ifdef EOSIO_EOS_VM_JIT_RUNTIME_ENABLED
    wasm_runtime_opt += " \"eos-vm-jit\"";
-   wasm_runtime_desc += "\"eos-vm-jit\" : (Default runtime) A WebAssembly compiler that takes WASM and generates native code using a just in time compiler.\n";
+   wasm_runtime_desc += "\"eos-vm-jit\" : A WebAssembly compiler that takes WASM and generates native code using a just in time compiler.\n";
    delim = ", ";
 #endif
 
@@ -234,7 +235,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
                EOS_ASSERT(false, plugin_exception, "");
             }
 #endif
-         }), wasm_runtime_opt.c_str()
+         })->default_value(eosio::chain::wasm_interface::vm_type::eos_vm_jit, "eos-vm-jit"), wasm_runtime_opt.c_str()
          )
          ("abi-serializer-max-time-ms", bpo::value<uint32_t>()->default_value(config::default_abi_serializer_max_time_us / 1000),
           "Override default maximum ABI serialization time allowed in ms")
