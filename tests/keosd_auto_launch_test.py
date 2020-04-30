@@ -18,7 +18,7 @@ def run_cleos_wallet_command(command: str, no_auto_keosd: bool):
     return subprocess.run(args,
                           check=False,
                           stdout=subprocess.DEVNULL,
-                          stderr=subprocess.DEVNULL)
+                          stderr=subprocess.PIPE)
 
 
 def stop_keosd():
@@ -32,12 +32,14 @@ def keosd_auto_launch_test():
 
     # Make sure that when '--no-auto-keosd' is given, keosd is not started by
     # cleos.
-    assert run_cleos_wallet_command('list',
-                                    no_auto_keosd=True).returncode != 0
+    completed_process = run_cleos_wallet_command('list', no_auto_keosd=True)
+    assert completed_process.returncode != 0
+    assert b'Failed to connect to keosd' in completed_process.stderr
 
     # Verify that keosd auto-launching works.
-    assert run_cleos_wallet_command('list',
-                                    no_auto_keosd=False).returncode == 0
+    completed_process = run_cleos_wallet_command('list', no_auto_keosd=False)
+    assert completed_process.returncode == 0
+    assert b'launched' in completed_process.stderr
 
 
 try:
