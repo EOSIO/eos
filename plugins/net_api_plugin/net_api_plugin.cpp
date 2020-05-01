@@ -61,6 +61,10 @@ void net_api_plugin::plugin_startup() {
    auto& net_mgr = app().get_plugin<net_plugin>();
 
    app().get_plugin<http_plugin>().add_api({
+       CALL(net, net_mgr, connections,
+            INVOKE_R_V(net_mgr, connections), 200)}, appbase::priority::medium_high
+   );
+   app().get_plugin<http_plugin>().add_api({
     //   CALL(net, net_mgr, set_timeout,
     //        INVOKE_V_R(net_mgr, set_timeout, int64_t), 200),
     //   CALL(net, net_mgr, sign_transaction,
@@ -71,8 +75,6 @@ void net_api_plugin::plugin_startup() {
             INVOKE_R_R(net_mgr, disconnect, std::string), 201),
        CALL(net, net_mgr, status,
             INVOKE_R_R(net_mgr, status, std::string), 201),
-       CALL(net, net_mgr, connections,
-            INVOKE_R_V(net_mgr, connections), 201),
     //   CALL(net, net_mgr, open,
     //        INVOKE_V_R(net_mgr, open, std::string), 200),
    }, appbase::priority::medium);

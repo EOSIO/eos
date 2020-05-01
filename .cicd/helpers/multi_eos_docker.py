@@ -11,6 +11,15 @@ import tarfile
 
 
 def is_tag(ref):
+
+PWD = os.getcwd()
+config_path = '../tests/multiversion_paths.conf'
+if existing_build_found:
+    config_path = '{0}/builds/current/build/tests/multiversion_paths.conf'.format(PWD)
+
+with open(config_path, 'w') as fp:
+    fp.write('[eosio]\n')
+    for label in commits.keys(
     regex = re.compile('v[0-9]+\.[0-9]+\..*')
     return regex.match(ref)
 
@@ -89,16 +98,7 @@ for item in config.items('eosio'):
     elif get_commit_for_branch(item[1]):
         commits[label] = get_commit_for_branch(item[1])
     else:
-        commits[label] = item[1]
-
-PWD = os.getcwd()
-config_path = '../tests/multiversion_paths.conf'
-if existing_build_found:
-    config_path = '{0}/builds/current/build/tests/multiversion_paths.conf'.format(PWD)
-
-with open(config_path, 'w') as fp:
-    fp.write('[eosio]\n')
-    for label in commits.keys():
+        commits[label] = item[1]):
         fp.write('{}={}/builds/{}/build\n'.format(label, PWD, label))
 
 print 'Getting build data...'
