@@ -39,6 +39,7 @@ struct cloner_plugin_impl : std::enable_shared_from_this<cloner_plugin_impl> {
    std::shared_ptr<cloner_config>  config = std::make_shared<cloner_config>();
    std::shared_ptr<cloner_session> session;
    boost::asio::deadline_timer     timer;
+   std::optional<std::function<void(const char* data, uint64_t data_size)>> streamer = {};
 
    cloner_plugin_impl() : timer(app().get_io_service()) {}
 
@@ -66,7 +67,6 @@ struct cloner_session : ship_client::connection_callbacks, std::enable_shared_fr
    std::shared_ptr<ship_client::connection>                                 connection;
    bool                                                                     reported_block = false;
    std::unique_ptr<rodeos_filter>                                           filter         = {}; // todo: remove
-   std::optional<std::function<void(const char* data, uint64_t data_size)>> streamer       = {};
 
    cloner_session(cloner_plugin_impl* my) : my(my), config(my->config) {
       // todo: remove
@@ -158,9 +158,10 @@ struct cloner_session : ship_client::connection_callbacks, std::enable_shared_fr
       rodeos_snapshot->write_block_info(result);
       rodeos_snapshot->write_deltas(result, [] { return app().is_quiting(); });
 
-      if (filter && streamer)
+      if (filter && my->streamer) {
          filter->process(*rodeos_snapshot, result, bin,
-                         [&](const char* data, uint64_t data_size) { (*streamer)(data, data_size); });
+                         [&](const char* data, uint64_t data_size) { (*my->streamer)(data, data_size); });
+      }
 
       rodeos_snapshot->end_block(result, false);
       return true;
@@ -237,8 +238,7 @@ void cloner_plugin::plugin_shutdown() {
 }
 
 void cloner_plugin::set_streamer(std::function<void(const char* data, uint64_t data_size)> streamer_func) {
-   if (my->session)
-      my->session->streamer = streamer_func;
+   my->streamer = streamer_func;
 }
 
 } // namespace b1

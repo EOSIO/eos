@@ -53,7 +53,7 @@ void streamer_plugin::plugin_initialize(const variables_map& options) {
 void streamer_plugin::plugin_startup() {
    cloner_plugin* cloner = app().find_plugin<cloner_plugin>();
    if (cloner) {
-      cloner->set_streamer([&](const char* data, uint64_t data_size) { stream_data(data, data_size); });
+      cloner->set_streamer([this](const char* data, uint64_t data_size) { stream_data(data, data_size); });
    }
 }
 
