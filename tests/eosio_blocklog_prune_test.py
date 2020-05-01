@@ -11,6 +11,7 @@ from TestHelper import AppArgs
 from testUtils import BlockLogAction
 import json
 import sys
+import signal
 
 ###############################################################
 # eosio_blocklog_prune_test.py
@@ -104,14 +105,10 @@ try:
     trans = validationNode.processCleosCmd(cmd, cmd, silentErrors=False)
     assert trans, "Failed to get the transaction with context free data from the light validation node"
 
+    validationNode.kill(signal.SIGTERM)
 
     # prune the transaction with block-num=trans["block_num"], id=cfTrxId
     cluster.getBlockLog(1, blockLogAction=BlockLogAction.prune_transactions, extraArgs=" --block-num {} --transaction {}".format(trans["block_num"], cfTrxId), exitOnError=True)
-
-    trans = validationNode.processCleosCmd(cmd, cmd, silentErrors=False)
-    assert trans, "Failed to get the transaction with context free data from the light validation node"
-    # check whether the transaction has been pruned based on the tag of prunable_data, if the tag is 1, then it's a prunable_data_t::none
-    assert trans["trx"]["receipt"]["trx"][1]["prunable_data"]["prunable_data"][0] == 1, "the the transaction with context free data has not been pruned"
 
     # try to prune the transaction where it doesn't belong
     try:
@@ -120,6 +117,16 @@ try:
         ex = sys.exc_info()[0]
         msg=ex.output.decode("utf-8")
         assert "does not contain the following transactions: " + cfTrxId in msg, "The transaction id is not displayed in the console when it cannot be found"
+
+    # For Linux, the pruned result won't be immediately visible unless the node is restarted. For MacOS, the result is immediately visible even without restart.
+
+    isRelaunchSuccess = validationNode.relaunch(1)
+    assert isRelaunchSuccess, "Fail to relaunch verification node"
+
+    trans = validationNode.processCleosCmd(cmd, cmd, silentErrors=False)
+    assert trans, "Failed to get the transaction with context free data from the light validation node"
+    # check whether the transaction has been pruned based on the tag of prunable_data, if the tag is 1, then it's a prunable_data_t::none
+    assert trans["trx"]["receipt"]["trx"][1]["prunable_data"]["prunable_data"][0] == 1, "the the transaction with context free data has not been pruned"
 
     testSuccessful = True
 finally:
