@@ -1,8 +1,9 @@
 #pragma once
 #include <appbase/application.hpp>
 #include <fc/exception/exception.hpp>
-
 #include <fc/reflect/reflect.hpp>
+#include <fc/io/json.hpp>
+#include <eosio/chain/exceptions.hpp>
 
 namespace eosio {
    using namespace appbase;
@@ -157,6 +158,26 @@ namespace eosio {
 
       error_info error;
    };
+
+   enum class http_params_types {
+      no_params_required = 0,
+      params_required = 1
+   };
+
+   template<typename T, http_params_types require_params>
+   T parse_params(const std::string& body) {
+      if (body.empty() && (require_params == http_params_types::params_required)) {
+         EOS_THROW(chain::invalid_http_request, "A Request body is required");
+      }
+      const std::string& json_body = (body.empty() && (require_params == http_params_types::no_params_required)) ? "{}" : body;
+      try {
+         try {
+            return fc::json::from_string(json_body).as<T>();
+         } catch (const chain::chain_exception& e) { // EOS_RETHROW_EXCEPTIONS does not re-type these so, re-code it
+            throw fc::exception(e);
+         }
+      } EOS_RETHROW_EXCEPTIONS(chain::invalid_http_request, "Unable to parse valid input from POST body");
+   }
 }
 
 FC_REFLECT(eosio::error_results::error_info::error_detail, (message)(file)(line_number)(method))
