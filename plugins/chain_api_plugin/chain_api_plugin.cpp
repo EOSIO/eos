@@ -31,25 +31,12 @@ struct async_result_visitor : public fc::visitor<fc::variant> {
    }
 };
 
-#define CALL(api_name, api_handle, api_namespace, call_name, http_response_code) \
+#define CALL_WITH_400(api_name, api_handle, api_namespace, call_name, http_response_code, params_type) \
 {std::string("/v1/" #api_name "/" #call_name), \
    [api_handle](string, string body, url_response_callback cb) mutable { \
           api_handle.validate(); \
           try { \
-             if (body.empty()) body = "{}"; \
-             fc::variant result( api_handle.call_name(fc::json::from_string(body).as<api_namespace::call_name ## _params>()) ); \
-             cb(http_response_code, std::move(result)); \
-          } catch (...) { \
-             http_plugin::handle_exception(#api_name, #call_name, body, cb); \
-          } \
-       }}
-
-#define CALL_WITH_400(api_name, api_handle, api_namespace, call_name, http_response_code, require_params) \
-{std::string("/v1/" #api_name "/" #call_name), \
-   [api_handle](string, string body, url_response_callback cb) mutable { \
-          api_handle.validate(); \
-          try { \
-             auto params = parse_params<api_namespace::call_name ## _params, require_params>(body);\
+             auto params = parse_params<api_namespace::call_name ## _params, params_type>(body);\
              fc::variant result( api_handle.call_name( std::move(params) ) ); \
              cb(http_response_code, std::move(result)); \
           } catch (...) { \
@@ -57,13 +44,13 @@ struct async_result_visitor : public fc::visitor<fc::variant> {
           } \
        }}
 
-#define CALL_ASYNC(api_name, api_handle, api_namespace, call_name, call_result, http_response_code) \
+#define CALL_ASYNC(api_name, api_handle, api_namespace, call_name, call_result, http_response_code, params_type) \
 {std::string("/v1/" #api_name "/" #call_name), \
    [api_handle](string, string body, url_response_callback cb) mutable { \
       if (body.empty()) body = "{}"; \
       api_handle.validate(); \
       try { \
-         auto params = parse_params<api_namespace::call_name ## _params, http_params_types::no_params_required>(body);\
+         auto params = parse_params<api_namespace::call_name ## _params, params_type>(body);\
          api_handle.call_name( std::move(params),\
             [cb, body](const fc::static_variant<fc::exception_ptr, call_result>& result){\
                if (result.contains<fc::exception_ptr>()) {\
@@ -82,10 +69,10 @@ struct async_result_visitor : public fc::visitor<fc::variant> {
    }\
 }
 
-#define CHAIN_RO_CALL(call_name, http_response_code, require_params) CALL_WITH_400(chain, ro_api, chain_apis::read_only, call_name, http_response_code, require_params)
-#define CHAIN_RW_CALL(call_name, http_response_code) CALL(chain, rw_api, chain_apis::read_write, call_name, http_response_code, false)
-#define CHAIN_RO_CALL_ASYNC(call_name, call_result, http_response_code) CALL_ASYNC(chain, ro_api, chain_apis::read_only, call_name, call_result, http_response_code)
-#define CHAIN_RW_CALL_ASYNC(call_name, call_result, http_response_code) CALL_ASYNC(chain, rw_api, chain_apis::read_write, call_name, call_result, http_response_code)
+#define CHAIN_RO_CALL(call_name, http_response_code, params_type) CALL_WITH_400(chain, ro_api, chain_apis::read_only, call_name, http_response_code, params_type)
+#define CHAIN_RW_CALL(call_name, http_response_code, params_type) CALL_WITH_400(chain, rw_api, chain_apis::read_write, call_name, http_response_code, params_type)
+#define CHAIN_RO_CALL_ASYNC(call_name, call_result, http_response_code, params_type) CALL_ASYNC(chain, ro_api, chain_apis::read_only, call_name, call_result, http_response_code, params_type)
+#define CHAIN_RW_CALL_ASYNC(call_name, call_result, http_response_code, params_type) CALL_ASYNC(chain, rw_api, chain_apis::read_write, call_name, call_result, http_response_code, params_type)
 
 #define CHAIN_RO_CALL_WITH_PARAMS(call_name, http_response_code) CALL_WITH_400(chain, ro_api, chain_apis::read_only, call_name, http_response_code)
 
@@ -122,10 +109,10 @@ void chain_api_plugin::plugin_startup() {
       CHAIN_RO_CALL(abi_bin_to_json, 200, http_params_types::params_required),
       CHAIN_RO_CALL(get_required_keys, 200, http_params_types::params_required),
       CHAIN_RO_CALL(get_transaction_id, 200, http_params_types::params_required),
-      CHAIN_RW_CALL_ASYNC(push_block, chain_apis::read_write::push_block_results, 202),
-      CHAIN_RW_CALL_ASYNC(push_transaction, chain_apis::read_write::push_transaction_results, 202),
-      CHAIN_RW_CALL_ASYNC(push_transactions, chain_apis::read_write::push_transactions_results, 202),
-      CHAIN_RW_CALL_ASYNC(send_transaction, chain_apis::read_write::send_transaction_results, 202)
+      CHAIN_RW_CALL_ASYNC(push_block, chain_apis::read_write::push_block_results, 202, http_params_types::params_required),
+      CHAIN_RW_CALL_ASYNC(push_transaction, chain_apis::read_write::push_transaction_results, 202, http_params_types::params_required),
+      CHAIN_RW_CALL_ASYNC(push_transactions, chain_apis::read_write::push_transactions_results, 202, http_params_types::params_required),
+      CHAIN_RW_CALL_ASYNC(send_transaction, chain_apis::read_write::send_transaction_results, 202, http_params_types::params_required)
    });
 }
 

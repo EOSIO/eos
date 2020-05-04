@@ -2,6 +2,7 @@
 
 #include <eosio/wallet_plugin/wallet_plugin.hpp>
 #include <eosio/http_plugin/http_plugin.hpp>
+#include <fc/reflect/reflect.hpp>
 
 #include <appbase/application.hpp>
 
@@ -28,4 +29,28 @@ public:
 private:
 };
 
+template<typename T1, typename T2>
+struct two_params {
+   T1 p1;
+   T2 p2;
+};
+
+typedef  two_params<std::string, std::string> two_string_params;
+typedef  two_params<chain::digest_type, chain::public_key_type> two_params_sign_digest;
+
+template<typename T1, typename T2, typename T3>
+struct three_params {
+   T1 p1;
+   T2 p2;
+   T3 p3;
+};
+
+typedef  three_params<std::string, std::string, std::string> three_string_params;
+typedef  three_params<chain::signed_transaction, chain::flat_set<chain::public_key_type>, chain::chain_id_type> three_params_sign_trx;
 }
+
+FC_REFLECT( eosio::two_string_params, (p1)(p2) )
+FC_REFLECT( eosio::two_params_sign_digest, (p1)(p2) )
+FC_REFLECT( eosio::three_string_params, (p1)(p2)(p3) )
+FC_REFLECT( eosio::three_params_sign_trx, (p1)(p2)(p3) )
+

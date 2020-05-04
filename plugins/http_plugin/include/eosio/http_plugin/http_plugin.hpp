@@ -164,15 +164,22 @@ namespace eosio {
       params_required = 1
    };
 
-   template<typename T, http_params_types require_params>
+   template<typename T, http_params_types params_type>
    T parse_params(const std::string& body) {
-      if (body.empty() && (require_params == http_params_types::params_required)) {
-         EOS_THROW(chain::invalid_http_request, "A Request body is required");
+      if constexpr (params_type == http_params_types::params_required) {
+         if (body.empty()) {
+            EOS_THROW(chain::invalid_http_request, "A Request body is required");
+         }
       }
-      const std::string& json_body = (body.empty() && (require_params == http_params_types::no_params_required)) ? "{}" : body;
+
       try {
          try {
-            return fc::json::from_string(json_body).as<T>();
+            if constexpr (params_type == http_params_types::no_params_required) {
+               if (body.empty()) {
+                  return fc::json::from_string("{}").as<T>();
+               }
+            }
+            return fc::json::from_string(body).as<T>();
          } catch (const chain::chain_exception& e) { // EOS_RETHROW_EXCEPTIONS does not re-type these so, re-code it
             throw fc::exception(e);
          }
