@@ -183,6 +183,7 @@ namespace eosio::chain_apis {
       }
 
       bool is_rollback_required( const chain::block_state_ptr& bsp ) const {
+         std::shared_lock read_lock(rw_mutex);
          const auto t = bsp->block->timestamp.to_time_point();
          const auto& index = permission_info_index.get<by_last_updated>();
 
