@@ -51,20 +51,20 @@ namespace b1::rodeos::wasm_ql {
 // todo: relax some of these limits
 // todo: restore max_function_section_elements to 1023 and use nodeos's hard fork
 struct wasm_ql_backend_options {
-   static constexpr std::uint32_t max_mutable_global_bytes      = 1024;
-   static constexpr std::uint32_t max_table_elements            = 1024;
-   static constexpr std::uint32_t max_section_elements          = 8191;
-   static constexpr std::uint32_t max_function_section_elements = 8000;
-   static constexpr std::uint32_t max_import_section_elements   = 1023;
-   static constexpr std::uint32_t max_element_segment_elements  = 8191;
-   static constexpr std::uint32_t max_data_segment_bytes        = 8191;
-   static constexpr std::uint32_t max_linear_memory_init        = 64 * 1024;
-   static constexpr std::uint32_t max_func_local_bytes          = 8192;
-   static constexpr std::uint32_t max_local_sets                = 1023;
-   static constexpr std::uint32_t eosio_max_nested_structures   = 1023;
-   static constexpr std::uint32_t max_br_table_elements         = 8191;
-   static constexpr std::uint32_t max_symbol_bytes              = 8191;
-   static constexpr std::uint32_t max_memory_offset             = (33 * 1024 * 1024 - 1);
+   // static constexpr std::uint32_t max_mutable_global_bytes      = 1024;
+   // static constexpr std::uint32_t max_table_elements            = 1024;
+   // static constexpr std::uint32_t max_section_elements          = 8191;
+   // static constexpr std::uint32_t max_function_section_elements = 8000;
+   // static constexpr std::uint32_t max_import_section_elements   = 1023;
+   // static constexpr std::uint32_t max_element_segment_elements  = 8191;
+   // static constexpr std::uint32_t max_data_segment_bytes        = 8191;
+   // static constexpr std::uint32_t max_linear_memory_init        = 64 * 1024;
+   // static constexpr std::uint32_t max_func_local_bytes          = 8192;
+   // static constexpr std::uint32_t max_local_sets                = 1023;
+   // static constexpr std::uint32_t eosio_max_nested_structures   = 1023;
+   // static constexpr std::uint32_t max_br_table_elements         = 8191;
+   // static constexpr std::uint32_t max_symbol_bytes              = 8191;
+   // static constexpr std::uint32_t max_memory_offset             = (33 * 1024 * 1024 - 1);
    static constexpr std::uint32_t max_pages                     = 528; // 33 MiB
    static constexpr std::uint32_t max_call_depth                = 251;
 };
