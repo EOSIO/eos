@@ -96,7 +96,7 @@ namespace fc {
          v = a.actor.to_string();
       } else {
          v = mutable_variant_object()
-            ("account", a.actor.to_string())
+            ("actor", a.actor.to_string())
             ("permission", a.permission.to_string());
       }
    }

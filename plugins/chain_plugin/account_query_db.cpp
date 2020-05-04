@@ -25,9 +25,13 @@ namespace {
     * index over `last_updated` for roll-back support
     */
    struct permission_info {
-      chain::name owner;
-      chain::name name;
+      // indexed data
+      chain::name    owner;
+      chain::name    name;
       fc::time_point last_updated;
+
+      // un-indexed data
+      uint32_t       threshold;
 
       using cref = std::reference_wrapper<const permission_info>;
    };
@@ -72,7 +76,19 @@ namespace {
              auth.permission == eosio::chain::config::active_name;
    }
 
-   using name_pair_t = eosio::chain_apis::account_query_db::get_accounts_by_authorizers_params::account_level;
+   template<typename T>
+   struct weighted {
+      T                   value;
+      chain::weight_type  weight;
+
+      static weighted min( const T& value ) {
+         return {value, std::numeric_limits<chain::weight_type>::min()};
+      }
+
+      static weighted max( const T& value ) {
+         return {value, std::numeric_limits<chain::weight_type>::max()};
+      }
+   };
 
    template<typename Output, typename Input>
    auto make_optional_authorizer(const Input& authorizer) -> fc::optional<Output> {
@@ -96,12 +112,12 @@ namespace std {
    };
 
    /**
-    * support for using `name_pair_t` in ordered containers
+    * support for using `weighted<T>` in ordered containers
     */
-   template<>
-   struct less<name_pair_t> {
-      bool operator()( const name_pair_t& lhs, const name_pair_t& rhs ) const {
-         return std::tie(lhs.actor,lhs.permission) < std::tie(rhs.actor, rhs.permission);
+   template<typename T>
+   struct less<weighted<T>> {
+      bool operator()( const weighted<T>& lhs, const weighted<T>& rhs ) const {
+         return std::tie(lhs.value, lhs.weight) < std::tie(rhs.value, rhs.weight);
       }
    };
 
@@ -128,7 +144,7 @@ namespace eosio::chain_apis {
          const auto& index = controller.db().get_index<chain::permission_index>().indices().get<by_id>();
 
          for (const auto& po : index ) {
-            const auto& pi = permission_info_index.emplace( permission_info{ po.owner, po.name, po.last_updated } ).first;
+            const auto& pi = permission_info_index.emplace( permission_info{ po.owner, po.name, po.last_updated, po.auth.threshold } ).first;
             add_to_bimaps(*pi, po);
          }
          auto duration = fc::time_point::now() - start;
@@ -143,12 +159,12 @@ namespace eosio::chain_apis {
       void add_to_bimaps( const permission_info& pi, const chain::permission_object& po ) {
          // For each account, add this permission info's non-owning reference to the bimap for accounts
          for (const auto& a : po.auth.accounts) {
-            name_bimap.insert(name_bimap_t::value_type {{a.permission.actor, a.permission.permission}, pi});
+            name_bimap.insert(name_bimap_t::value_type {{a.permission, a.weight}, pi});
          }
 
          // for each key, add this permission info's non-owning reference to the bimap for keys
          for (const auto& k: po.auth.keys) {
-            key_bimap.insert(key_bimap_t::value_type {(chain::public_key_type)k.key, pi});
+            key_bimap.insert(key_bimap_t::value_type {{(chain::public_key_type)k.key, k.weight}, pi});
          }
       }
 
@@ -212,6 +228,7 @@ namespace eosio::chain_apis {
                const auto& po = *itr;
                index.modify(index.iterator_to(pi), [&po](auto& mutable_pi) {
                   mutable_pi.last_updated = po.last_updated;
+                  mutable_pi.threshold = po.auth.threshold;
                });
                add_to_bimaps(pi, po);
             }
@@ -239,7 +256,7 @@ namespace eosio::chain_apis {
          }
       }
 
-      using permission_set_t = std::set<name_pair_t>;
+      using permission_set_t = std::set<chain::permission_level>;
       /**
        * Pre-Commit step with const qualifier to guarantee it does not mutate
        * the thread-safe data set
@@ -261,11 +278,11 @@ namespace eosio::chain_apis {
 
                if (at.act.name == chain::updateauth::get_name()) {
                   auto data = at.act.data_as<chain::updateauth>();
-                  auto itr = updated.emplace(name_pair_t{data.account, data.permission}).first;
+                  auto itr = updated.emplace(chain::permission_level{data.account, data.permission}).first;
                   deleted.erase(*itr);
                } else if (at.act.name == chain::deleteauth::get_name()) {
                   auto data = at.act.data_as<chain::deleteauth>();
-                  auto itr = deleted.emplace(name_pair_t{data.account, data.permission}).first;
+                  auto itr = deleted.emplace(chain::permission_level{data.account, data.permission}).first;
                   updated.erase(*itr);
                }
             }
@@ -297,8 +314,6 @@ namespace eosio::chain_apis {
        * @param bsp
        */
       void commit_block(const chain::block_state_ptr& bsp ) {
-         using permission_set_t = std::set<name_pair_t>;
-
          permission_set_t updated;
          permission_set_t deleted;
          bool rollback_required = false;
@@ -321,11 +336,12 @@ namespace eosio::chain_apis {
                auto itr = index.find(key);
                if (itr == index.end()) {
                   const auto& po = *source_itr;
-                  itr = index.emplace(permission_info{ po.owner, po.name, po.last_updated }).first;
+                  itr = index.emplace(permission_info{ po.owner, po.name, po.last_updated, po.auth.threshold }).first;
                } else {
                   remove_from_bimaps(*itr);
                   index.modify(itr, [&](auto& mutable_pi){
                      mutable_pi.last_updated = source_itr->last_updated;
+                     mutable_pi.threshold = source_itr->auth.threshold;
                   });
                }
 
@@ -356,77 +372,55 @@ namespace eosio::chain_apis {
          result_t result;
 
          // deduplicate inputs
-         auto account_set = std::set<name_pair_t>(args.accounts.begin(), args.accounts.end());
+         auto account_set = std::set<chain::permission_level>();
+         for (const auto& input_account: args.accounts) {
+            account_set.emplace(chain::permission_level{input_account.actor, input_account.permission});
+         }
          auto key_set = std::set<chain::public_key_type>(args.keys.begin(), args.keys.end());
 
-         // build a set of permissions that include any of our keys/accounts
-         auto permission_set = std::set<name_pair_t>();
+         /**
+          * Add a range of results
+          */
+         auto push_results = [&result](const auto& begin, const auto& end) {
+            for (auto itr = begin; itr != end; ++itr) {
+               const auto& pi = itr->second.get();
+               const auto& authorizer = itr->first.value;
+               auto weight = itr->first.weight;
+
+               result.accounts.emplace_back(result_t::account_result{
+                     pi.owner,
+                     pi.name,
+                     make_optional_authorizer<chain::permission_level>(authorizer),
+                     make_optional_authorizer<chain::public_key_type>(authorizer),
+                     weight,
+                     pi.threshold
+               });
+            }
+         };
+
 
          for (const auto& a: account_set) {
-            auto range = ([&](){
-               if (a.permission.empty()) {
-                  // empty permission is a wildcard
-                  // construct a range between the lower bound of the given account and the lower bound of the
-                  // next possible account name
-                  const auto begin = name_bimap.left.lower_bound(a);
-                  const auto next_account_name = chain::name(a.actor.to_uint64_t() + 1);
-                  const auto end = name_bimap.left.lower_bound(name_pair_t{next_account_name,a.permission});
-                  return std::make_pair(begin, end);
-               } else {
-                  return name_bimap.left.equal_range(a);
-               }
-            })();
-
-            for (auto itr = range.first; itr != range.second; ++itr) {
-               const auto& pi = itr->second.get();
-               permission_set.emplace(name_pair_t{pi.owner, pi.name});
+            if (a.permission.empty()) {
+               // empty permission is a wildcard
+               // construct a range between the lower bound of the given account and the lower bound of the
+               // next possible account name
+               const auto begin = name_bimap.left.lower_bound(weighted<chain::permission_level>::min({a.actor, a.permission}));
+               const auto next_account_name = chain::name(a.actor.to_uint64_t() + 1);
+               const auto end = name_bimap.left.lower_bound(weighted<chain::permission_level>::min({next_account_name, a.permission}));
+               push_results(begin, end);
+            } else {
+               // construct a range of all possible weights for an account/permission pair
+               const auto begin = name_bimap.left.lower_bound(weighted<chain::permission_level>::min({a.actor, a.permission}));
+               const auto end = name_bimap.left.upper_bound(weighted<chain::permission_level>::max({a.actor, a.permission}));
+               push_results(begin, end);
             }
          }
 
          for (const auto& k: key_set) {
-            auto range = key_bimap.left.equal_range(k);
-            for (auto itr = range.first; itr != range.second; ++itr) {
-               const auto& pi = itr->second.get();
-               permission_set.emplace(name_pair_t{pi.owner, pi.name});
-            }
-         }
-
-         /**
-          * Add a single result entry
-          */
-         auto push_result = [&result](const auto& po, const auto& authorizer, auto weight) {
-            result.accounts.emplace_back(result_t::account_result{
-                  po.owner,
-                  po.name,
-                  make_optional_authorizer<chain::permission_level>(authorizer),
-                  make_optional_authorizer<chain::public_key_type>(authorizer),
-                  weight,
-                  po.auth.threshold
-            });
-         };
-
-         // for each permission that included at least one of the accounts/keys, add entries to the result to indicate
-         // all the relevant authorization data.
-         const auto& permission_by_owner = controller.db().get_index<chain::permission_index>().indices().get<chain::by_owner>();
-         for (const auto& p: permission_set) {
-            const auto& iter = permission_by_owner.find(std::make_tuple(p.actor, p.permission));
-            EOS_ASSERT(iter != permission_by_owner.end(), chain::plugin_exception, "chain data mismatch");
-            const auto& po = *iter;
-
-            for (const auto& a : po.auth.accounts) {
-               if (account_set.count({a.permission.actor, a.permission.permission}) ||
-                   account_set.count({a.permission.actor, {}}))
-               {
-                  push_result(po, a.permission, a.weight);
-               }
-            }
-
-            for (const auto& k: po.auth.keys) {
-               auto pk = (chain::public_key_type)k.key;
-               if (key_set.count(pk)) {
-                  push_result(po, pk, k.weight);
-               }
-            }
+            // construct a range of all possible weights for a key
+            const auto begin = key_bimap.left.lower_bound(weighted<chain::public_key_type>::min(k));
+            const auto end = key_bimap.left.upper_bound(weighted<chain::public_key_type>::max(k));
+            push_results(begin, end);
          }
 
          return result;
@@ -435,18 +429,24 @@ namespace eosio::chain_apis {
       /**
        * Convenience aliases
        */
-      using name_bimap_t = bimap<multiset_of<name_pair_t>, multiset_of<permission_info::cref>>;
-      using key_bimap_t = bimap<multiset_of<chain::public_key_type>, multiset_of<permission_info::cref>>;
       using cached_trace_map_t = std::map<chain::transaction_id_type, chain::transaction_trace_ptr>;
       using onblock_trace_t = std::optional<chain::transaction_trace_ptr>;
 
       const chain::controller&   controller;               ///< the controller to read data from
-      permission_info_index_t    permission_info_index;    ///< multi-index that holds ephemeral indices
-      name_bimap_t               name_bimap;               ///< many:many bimap of names:permission_infos
-      key_bimap_t                key_bimap;                ///< many:many bimap of keys:permission_infos
       cached_trace_map_t         cached_trace_map;         ///< temporary cache of uncommitted traces
       onblock_trace_t            onblock_trace;            ///< temporary cache of on_block trace
 
+
+      using name_bimap_t = bimap<multiset_of<weighted<chain::permission_level>>, multiset_of<permission_info::cref>>;
+      using key_bimap_t = bimap<multiset_of<weighted<chain::public_key_type>>, multiset_of<permission_info::cref>>;
+
+      /*
+       * The structures below are shared between the writing thread and the reading thread(s) and must be protected
+       * by the `rw_mutex`
+       */
+      permission_info_index_t    permission_info_index;    ///< multi-index that holds ephemeral indices
+      name_bimap_t               name_bimap;               ///< many:many bimap of names:permission_infos
+      key_bimap_t                key_bimap;                ///< many:many bimap of keys:permission_infos
 
       mutable std::shared_mutex  rw_mutex;                 ///< mutex for read/write locking on the Multi-index and bimaps
    };
