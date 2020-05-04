@@ -71,10 +71,47 @@ namespace eosio { namespace chain {
          signed_block  block;
       };
 
+      /*
+       *  @brief datastream adapter that adapts FILE* for use with fc unpack
+       *
+       *  This class supports unpack functionality but not pack.
+       */
+      class fileptr_datastream {
+      public:
+         explicit fileptr_datastream( FILE* file, const std::string& filename ) : _file(file), _filename(filename) {}
+
+         void skip( size_t s ) {
+            auto status = fseek(_file, s, SEEK_CUR);
+            EOS_ASSERT( status == 0, block_log_exception,
+                        "Could not seek past ${bytes} bytes in Block log file at '${blocks_log}'. Returned status: ${status}",
+                        ("bytes", s)("blocks_log", _filename)("status", status) );
+         }
+
+         bool read( char* d, size_t s ) {
+            size_t result = fread( d, 1, s, _file );
+            EOS_ASSERT( result == s, block_log_exception,
+                        "only able to read ${act} bytes of the expected ${exp} bytes in file: ${file}",
+                        ("act",result)("exp",s)("file", _filename) );
+            return true;
+         }
+
+         bool get( unsigned char& c ) { return get( *(char*)&c ); }
+
+         bool get( char& c ) { return read(&c, 1); }
+
+         size_t ftell( ) { return (size_t) ::ftell( _file ); }
+
+      private:
+         FILE* const _file;
+         const std::string _filename;
+      };
+
       size_t get_stream_pos(fc::cfile_datastream& ds) { return ds.tellp(); }
       size_t get_stream_pos(std::ifstream& ds) { return ds.tellg();  }
+      size_t get_stream_pos(fileptr_datastream& ds) { return ds.ftell(); }
       void   skip_streamm_pos(fc::cfile_datastream& ds, size_t n) { ds.skip(n);  }
       void   skip_streamm_pos(std::ifstream& ds, size_t n) { ds.seekg(n, ds.cur);  }
+      void   skip_streamm_pos(fileptr_datastream& ds, size_t n) { ds.skip(n); }
 
       template <typename Stream>
       log_entry_v4::metadata_type unpack(Stream& ds, signed_block& block){
@@ -272,38 +309,6 @@ namespace eosio { namespace chain {
          constexpr static uint64_t          _max_buffer_length        = file_location_to_buffer_location(_buffer_bytes);
       };
 
-      /*
-       *  @brief datastream adapter that adapts FILE* for use with fc unpack
-       *
-       *  This class supports unpack functionality but not pack.
-       */
-      class fileptr_datastream {
-      public:
-         explicit fileptr_datastream( FILE* file, const std::string& filename ) : _file(file), _filename(filename) {}
-
-         void skip( size_t s ) {
-            auto status = fseek(_file, s, SEEK_CUR);
-            EOS_ASSERT( status == 0, block_log_exception,
-                        "Could not seek past ${bytes} bytes in Block log file at '${blocks_log}'. Returned status: ${status}",
-                        ("bytes", s)("blocks_log", _filename)("status", status) );
-         }
-
-         bool read( char* d, size_t s ) {
-            size_t result = fread( d, 1, s, _file );
-            EOS_ASSERT( result == s, block_log_exception,
-                        "only able to read ${act} bytes of the expected ${exp} bytes in file: ${file}",
-                        ("act",result)("exp",s)("file", _filename) );
-            return true;
-         }
-
-         bool get( unsigned char& c ) { return get( *(char*)&c ); }
-
-         bool get( char& c ) { return read(&c, 1); }
-
-      private:
-         FILE* const _file;
-         const std::string _filename;
-      };
    } // namespace eosio::chain::detail
 
 
@@ -1176,7 +1181,7 @@ namespace eosio { namespace chain {
       void check_blockfile_indexfile();
       void make_indexfile_agree_with_blockfile();
       uint32_t get_block_number(uint64_t block_pos);
-      bool is_block_serializable(uint64_t pos);
+      bool is_block_deserializable(uint64_t pos);
       bool is_head_block_valid();
       void append_index(uint64_t num_indexes_existing);
       void trim_index(uint64_t last_block_pos, uint64_t num_indexes_existing);
@@ -1448,7 +1453,7 @@ namespace eosio { namespace chain {
    //    when necessary.
    // 4. Trim block and index files according to specified block number.
    int block_log::trim_blocklog_end(fc::path block_dir, uint32_t n) {       //n is last block to keep (remove later blocks)
-      trim_data td(block_dir);
+      trim_data td(block_dir, true);
 
       ilog("In directory ${block_dir} will trim all blocks after block ${n} from ${block_file} and ${index_file}",
          ("block_dir", block_dir.generic_string())("n", n)("block_file",td.block_file_name.generic_string())("index_file", td.index_file_name.generic_string()));
@@ -1539,11 +1544,11 @@ namespace eosio { namespace chain {
       auto size = fread((void*)&head_pos, sizeof(uint64_t), 1, blk_in);
       EOS_ASSERT( size == 1, block_log_exception, "${file} read fails", ("file", block_file_name.string()) );
 
-      // If head block is serializable, it is considered valid
-      return (is_block_serializable(head_pos));
+      // If head block is deserializable, it is considered valid
+      return (is_block_deserializable(head_pos));
    }
 
-   bool trim_data::is_block_serializable(uint64_t pos) {
+   bool trim_data::is_block_deserializable(uint64_t pos) {
       if (pos > block_file_size) {
          ilog( "Returning false because pos ${pos} greater than ${block_file_size}", ("pos", pos) ("block_file_size", block_file_size) );
          return false;
@@ -1559,16 +1564,15 @@ namespace eosio { namespace chain {
       detail::fileptr_datastream ds(blk_in, block_file_name.string());
 
       try {
-         if (version >= pruned_transaction_version) {
-            detail::log_entry_v4 entry;
-            fc::raw::unpack(ds, entry.meta.size);
-         } else {
-            signed_block_v0 block;
-            fc::raw::unpack(ds, block);
-         }
+        detail::log_entry entry;
+        if (version < pruned_transaction_version) {
+           entry.emplace<signed_block_v0>();
+        }
+
+        eosio::chain::detail::unpack(ds, entry);
       } catch (...) {
-         ilog("Failed to desearialize, returning false");
-         return false;
+         ilog("Failed to deserialize, returning false");
+         return false; // If we cannot unpack (deserialize), it is certain the block is corrupt
       }
 
       return true;
@@ -1649,7 +1653,6 @@ namespace eosio { namespace chain {
       uint64_t position;
       auto i = 0;
       while (i < num_indexes_to_append && (position = block_log_iter.previous()) != block_log::npos) {
-         ilog( "position = ${position}", ("position", position));
          index.write(position);
          ++i;
       }
@@ -1704,7 +1707,7 @@ namespace eosio { namespace chain {
          auto size = fread((void*)&block_pos, sizeof(uint64_t), 1, ind_in);
          EOS_ASSERT( size == 1, block_log_exception, "${file} read fails", ("file", block_file_name.string()) );
 
-         if (block_pos <= block_file_size && is_block_serializable(block_pos)) {
+         if (block_pos <= block_file_size && is_block_deserializable(block_pos)) {
             // Make sure block number matches
             block_number = get_block_number(block_pos);
             auto block_number_by_index_file = first_block + (num_blocks - i);
