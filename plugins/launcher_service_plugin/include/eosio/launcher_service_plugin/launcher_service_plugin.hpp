@@ -210,6 +210,8 @@ namespace launcher_service {
    };
 }
 
+using launcher_service_plugin_impl_ptr = std::shared_ptr<class launcher_service_plugin_impl>;
+
 class launcher_service_plugin : public appbase::plugin<launcher_service_plugin> {
 public:
    launcher_service_plugin();
@@ -257,8 +259,17 @@ public:
    // for unit-test
    static std::string generate_node_config(const launcher_service::launcher_config &_config, launcher_service::cluster_def &def, int node_id);
 
+   class reschedule_idle_timeout {
+   public:
+      reschedule_idle_timeout(launcher_service_plugin_impl_ptr impl);
+      ~reschedule_idle_timeout();
+   private:
+      launcher_service_plugin_impl_ptr _my;
+   };
+
+   reschedule_idle_timeout ensure_idle_timeout_reschedule();
 private:
-   std::unique_ptr<class launcher_service_plugin_impl>  _my;
+   launcher_service_plugin_impl_ptr _my;
 };
 
 }
