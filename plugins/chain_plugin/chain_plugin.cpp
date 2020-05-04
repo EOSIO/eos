@@ -211,13 +211,13 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
 
 #ifdef EOSIO_EOS_VM_RUNTIME_ENABLED
    wasm_runtime_opt += delim + "\"eos-vm\"";
-   wasm_runtime_desc += "\"eos-vm\" : A WebAssembly interpreter providing deterministic and efficient time bound execution with debugging support.\n";
+   wasm_runtime_desc += "\"eos-vm\" : A WebAssembly interpreter providing deterministic and efficient time bound execution.\n";
    delim = ", ";
 #endif
 
 #ifdef EOSIO_EOS_VM_OC_DEVELOPER
    wasm_runtime_opt += delim + "\"eos-vm-oc\"";
-   wasm_runtime_desc += "\"eos-vm-oc\" : A specialized compiler framework (LLVM) that leverages a multi-pass compilation architecture.\nThe resulting native code from the Optimized Compiler is often an order of magnitude faster thatn others.\n";
+   wasm_runtime_desc += "\"eos-vm-oc\" : A specialized compiler framework (LLVM) that leverages a multi-pass compilation architecture creating native code.\n";
 #endif
    wasm_runtime_opt += ")\n" + wasm_runtime_desc;
 
