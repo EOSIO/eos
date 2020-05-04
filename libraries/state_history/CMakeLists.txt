@@ -13,5 +13,5 @@ target_link_libraries( state_history
                      )
 
 target_include_directories( state_history
-                            PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_SOURCE_DIR}/../wasm-jit/Include"
+                            PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include"
                           )
