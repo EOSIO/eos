@@ -1,6 +1,9 @@
-option(PORTABLE CACHE ON)           # rocksdb: don't use sse4.2
-option(WITH_GFLAGS CACHE OFF)       # rocksdb: don't use gflags
-option(FAIL_ON_WARNINGS CACHE OFF)  # rocksdb: stop the madness: warnings change over time
+option(PORTABLE CACHE ON)               # rocksdb: don't use sse4.2
+option(WITH_GFLAGS CACHE OFF)           # rocksdb: don't use gflags
+option(WITH_TESTS CACHE OFF)            # rocksdb: don't build this
+option(WITH_TOOLS CACHE OFF)            # rocksdb: don't build this
+option(WITH_BENCHMARK_TOOLS CACHE OFF)  # rocksdb: don't build this
+option(FAIL_ON_WARNINGS CACHE OFF)      # rocksdb: stop the madness: warnings change over time
 
 add_subdirectory( fc )
 add_subdirectory( builtins )

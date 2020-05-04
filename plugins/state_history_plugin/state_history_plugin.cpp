@@ -50,7 +50,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
    string                                                     endpoint_address = "0.0.0.0";
    uint16_t                                                   endpoint_port    = 8080;
    std::unique_ptr<tcp::acceptor>                             acceptor;
-   trace_converter                                            trace_converter;
+   state_history::trace_converter                             trace_converter;
 
    void get_log_entry(state_history_log& log, uint32_t block_num, fc::optional<bytes>& result) {
       if (block_num < log.begin_block() || block_num >= log.end_block())
