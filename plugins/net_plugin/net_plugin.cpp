@@ -391,10 +391,10 @@ namespace eosio {
    constexpr auto     def_sync_fetch_span = 100;
 
    constexpr auto     message_header_size = 4;
-   constexpr uint32_t signed_block_v0_which = 7;        // see protocol net_message
-   constexpr uint32_t packed_transaction_v0_which = 8;  // see protocol net_message
-   constexpr uint32_t signed_block_which = 9;           // see protocol net_message
-   constexpr uint32_t trx_message_v1_which = 10;        // see protocol net_message
+   constexpr uint32_t signed_block_v0_which       = net_message::tag<signed_block_v0>::value;       // see protocol net_message
+   constexpr uint32_t packed_transaction_v0_which = net_message::tag<packed_transaction_v0>::value; // see protocol net_message
+   constexpr uint32_t signed_block_which          = net_message::tag<signed_block>::value;          // see protocol net_message
+   constexpr uint32_t trx_message_v1_which        = net_message::tag<trx_message_v1>::value;        // see protocol net_message
 
    /**
     *  For a while, network version was a 16 bit value equal to the second set of 16 bits
