@@ -210,8 +210,6 @@ namespace launcher_service {
    };
 }
 
-using launcher_service_plugin_impl_ptr = std::shared_ptr<class launcher_service_plugin_impl>;
-
 class launcher_service_plugin : public appbase::plugin<launcher_service_plugin> {
 public:
    launcher_service_plugin();
@@ -260,7 +258,7 @@ public:
    static std::string generate_node_config(const launcher_service::launcher_config &_config, launcher_service::cluster_def &def, int node_id);
 
 private:
-   launcher_service_plugin_impl_ptr  _my;
+   std::unique_ptr<class launcher_service_plugin_impl>  _my;
 };
 
 }

@@ -60,11 +60,36 @@ namespace eosio {
    }
 
    using namespace launcher_service;
-   using microseconds = boost::posix_time::microseconds;
-   class launcher_service_plugin_impl : public std::enable_shared_from_this<launcher_service_plugin_impl> {
+   using namespace fc;
+   using steady_timer = boost::asio::steady_timer;
+
+   static constexpr uint64_t                 _milliseconds = 1'000;
+
+   class launcher_interval_timer : public std::enable_shared_from_this<launcher_interval_timer> {
+   public:
+      launcher_interval_timer(launcher_service_plugin_impl& impl, boost::asio::io_service& io) : _timer(io), _impl(impl) {}
+      ~launcher_interval_timer();
+
+      void start_timer();
+      void stop_timer();
+   private:
+      void schedule_timer();
+      void timeout_processing();
+      void track_timeouts(const time_point& now);
+
+      steady_timer                              _timer;
+      static const microseconds                 _half_timeout;
+      static const steady_timer::duration       _timeout;
+      static const microseconds                 _timeout_threshold;
+      time_point                                _last_timeout;
+      std::map<time_point, time_point>          _missing_intervals;
+      launcher_service_plugin_impl&             _impl;
+   };
+
+   class launcher_service_plugin_impl {
 
    public:
-      launcher_service_plugin_impl(boost::asio::io_service& io) : _node_remove_timer(io), _shutdown_timer(io) {}
+      launcher_service_plugin_impl(boost::asio::io_service& io) : _interval_timer(std::make_shared<launcher_interval_timer>(*this, io)) {}
 
       using child_ptr = std::shared_ptr<bp::child>;
       struct node_state {
@@ -119,16 +144,17 @@ namespace eosio {
       };
       using remove_map = std::map<int, to_remove>;
 
-      static constexpr uint64_t                 _seconds = 1'000'000;
+      static constexpr uint64_t                 _seconds = 1'000 * _milliseconds;
       static constexpr uint64_t                 _minutes = 60 * _seconds;
       launcher_config                           _config;
       std::map<int, cluster_state>              _running_clusters;
       remove_map                                _nodes_to_remove;
-      boost::asio::deadline_timer               _node_remove_timer;
+      time_point                                _node_remove_deadline;
       static const microseconds                 _node_remove_timeout;
       optional<microseconds>                    _idle_timeout;
-      boost::asio::deadline_timer               _shutdown_timer;
+      optional<time_point>                      _idle_timeout_deadline;
       uint32_t                                  _timer_correlation_id = 0;
+      std::shared_ptr<launcher_interval_timer>  _interval_timer;
 
    public:
       static std::string cluster_to_string(int id) {
@@ -445,33 +471,34 @@ namespace eosio {
                      state->set_child();
                   } else {
                      dlog("Storing pid ${p} (cluster ${c}, node ${n}) to clean up later", ("p", state->child->id())("c", cluster_id)("n", node_id));
-                     const auto launch_timer = _nodes_to_remove.empty();
                      _nodes_to_remove[state->pid] = to_remove(state);
-
-                     if (launch_timer) {
-                        schedule_remove_shutdown_nodes();
-                     }
                   }
                }
             }
          }
       }
 
-      void schedule_remove_shutdown_nodes() {
-         _node_remove_timer.cancel();
-         _node_remove_timer.expires_from_now( _node_remove_timeout );
-         std::weak_ptr<launcher_service_plugin_impl> weak_this = weak_from_this();
+      void interval_callback(const time_point& now) {
+         remove_shutdown_nodes(now);
 
-         _node_remove_timer.async_wait( app().get_priority_queue().wrap( priority::high,
-                                                                         [weak_this]( const boost::system::error_code& ec ) {
-                                                                            auto self = weak_this.lock();
-                                                                            if( self && ec != boost::asio::error::operation_aborted ) {
-                                                                               self->remove_shutdown_nodes();
-                                                                            }
-                                                                         } ) );
+         // do this last, to allow everything else to happen prior to quit
+         check_idle_timeout(now);
       }
 
-      void remove_shutdown_nodes() {
+      void initialize_timers() {
+         schedule_node_remove_timeout();
+         schedule_idle_timeout();
+         _interval_timer->start_timer();
+      }
+
+      void remove_shutdown_nodes(const time_point& now) {
+         if (now < _node_remove_deadline)
+            return;
+
+         schedule_node_remove_timeout();
+         if (_nodes_to_remove.empty())
+            return;
+
          std::vector<int> remove_now;
          dlog("Checking ${count} nodes to determine if they have shutdown and are ready to be cleaned up",
               ("count", _nodes_to_remove.size()));
@@ -493,9 +520,6 @@ namespace eosio {
          for (const auto& rem_node : remove_now) {
             _nodes_to_remove.erase(rem_node);
          }
-         if (!_nodes_to_remove.empty()) {
-            schedule_remove_shutdown_nodes();
-         }
       }
 
       void stop_cluster(int cluster_id) {
@@ -506,6 +530,11 @@ namespace eosio {
             }
             _running_clusters.erase(cluster_id);
          }
+      }
+      void shutdown() {
+         _interval_timer->stop_timer();
+         stop_all_clusters();
+         _idle_timeout.reset();
       }
 
       void stop_all_clusters() {
@@ -845,34 +874,84 @@ namespace eosio {
          }
       }
 
-      void schedule_timeout() {
-          if (_idle_timeout) {
-              _shutdown_timer.cancel();
-              _shutdown_timer.expires_from_now( *_idle_timeout);
-              std::weak_ptr<launcher_service_plugin_impl> weak_this = weak_from_this();
-
-              _shutdown_timer.async_wait( app().get_priority_queue().wrap( priority::high,
-                                                                           [weak_this, cid = ++_timer_correlation_id, timeout = _idle_timeout->total_microseconds()]( const boost::system::error_code& ec ) {
-                                                                               auto self = weak_this.lock();
-                                                                               if( self && ec != boost::asio::error::operation_aborted && cid == self->_timer_correlation_id ) {
-                                                                                   ilog("No requests made in ${timeout} minutes, shutting down service.",("timeout", timeout/launcher_service_plugin_impl::_minutes));
-                                                                                   app().quit();
-                                                                               }
-                                                                           } ) );
+      void schedule_idle_timeout() {
+         if (_idle_timeout) {
+            _idle_timeout_deadline = time_point::now() + *_idle_timeout;
           }
+      }
 
+      void schedule_node_remove_timeout() {
+         _node_remove_deadline = time_point::now() + _node_remove_timeout;
+      }
+
+      void check_idle_timeout(const time_point& now) {
+         if (_idle_timeout_deadline && *_idle_timeout_deadline < now) {
+            ilog("No requests made in at least ${timeout} minutes, shutting down service.",("timeout", _idle_timeout->count()/launcher_service_plugin_impl::_minutes));
+            app().quit();
+         }
       }
    };
 
-   class reschedule_timeout {
+   class reschedule_idle_timeout {
    public:
-      reschedule_timeout(launcher_service_plugin_impl_ptr impl) : _my(std::move(impl)) {}
-      ~reschedule_timeout() {
-         _my->schedule_timeout();
+      reschedule_idle_timeout(launcher_service_plugin_impl& impl) : _my(impl) {}
+      ~reschedule_idle_timeout() {
+         _my.schedule_idle_timeout();
       }
    private:
-      launcher_service_plugin_impl_ptr _my;
+      launcher_service_plugin_impl& _my;
    };
+
+const microseconds launcher_interval_timer::_half_timeout {50 * _milliseconds};
+const steady_timer::duration launcher_interval_timer::_timeout {std::chrono::microseconds(2 * launcher_interval_timer::_half_timeout.count())};
+// threshold set to 50% past duration
+const microseconds launcher_interval_timer::_timeout_threshold {3 * launcher_interval_timer::_half_timeout.count()};
+
+launcher_interval_timer::~launcher_interval_timer() {
+   stop_timer();
+}
+
+void launcher_interval_timer::timeout_processing() {
+   const time_point now = time_point::now();
+   track_timeouts(now);
+   _impl.interval_callback(now);
+   schedule_timer();
+}
+
+void launcher_interval_timer::stop_timer() {
+   _timer.cancel();
+}
+
+void launcher_interval_timer::start_timer() {
+   _timer.cancel();
+
+   _last_timeout = time_point::now();
+   schedule_timer();
+}
+
+void launcher_interval_timer::schedule_timer() {
+   _timer.expires_from_now( _timeout );
+   std::weak_ptr<launcher_interval_timer> weak_this = weak_from_this();
+
+   _timer.async_wait( app().get_priority_queue().wrap( priority::high,
+                                                       [weak_this]( const boost::system::error_code& ec ) {
+                                                          ilog("timer fired: ${now}", ("now", time_point::now()));
+                                                          auto self = weak_this.lock();
+                                                          if( self && ec != boost::asio::error::operation_aborted ) {
+                                                             self->timeout_processing();
+                                                          }
+                                                       } ) );
+}
+
+void launcher_interval_timer::track_timeouts(const time_point& now) {
+   const auto diff = now - _last_timeout;
+   if (diff > _timeout_threshold) {
+      _missing_intervals.insert( { _last_timeout, now} );
+      elog("System responsiveness is poor. Responsiveness delay occurred between ${last} and ${now}.",
+           ("last", _last_timeout)("now", now));
+   }
+   _last_timeout = now;
+}
 
 const microseconds launcher_service_plugin_impl::_node_remove_timeout {_seconds};
 
@@ -926,7 +1005,7 @@ void launcher_service_plugin::plugin_initialize(const variables_map& options) {
       _my->_config.p2p_listen_addr = options.at("p2p-listen-address").as<std::string>();
       _my->_config.nodeos_cmd = options.at("nodeos-cmd").as<std::string>();
       _my->_config.genesis_file = options.at("genesis-json").as<std::string>();
-      _my->_config.abi_serializer_max_time = fc::microseconds(options.at("abi-serializer-max-time").as<uint32_t>());
+      _my->_config.abi_serializer_max_time = microseconds(options.at("abi-serializer-max-time").as<uint32_t>());
       _my->_config.log_file_rotate_max = options.at("log-file-max").as<uint16_t>();
       _my->_config.default_key = private_key_type(options.at("default-key").as<std::string>());
       _my->_config.base_port = options.at("base-port").as<uint16_t>();
@@ -938,8 +1017,7 @@ void launcher_service_plugin::plugin_initialize(const variables_map& options) {
           const auto timeout = options.at("idle-shutdown").as<uint16_t>();
           EOS_ASSERT(timeout > 0, chain::plugin_config_exception, "if passing \"idle-shutdown\" it must be greater than 0.");
           ilog("setting \"idle-shutdown\" timeout to ${timeout} seconds",("timeout", timeout));
-          _my->_idle_timeout = boost::posix_time::microseconds(timeout * launcher_service_plugin_impl::_minutes);
-          _my->schedule_timeout();
+          _my->_idle_timeout = microseconds(timeout * launcher_service_plugin_impl::_minutes);
       }
 
       // ephemeral port range starts from 32768 in linux, 49152 on mac
@@ -972,14 +1050,12 @@ void launcher_service_plugin::plugin_initialize(const variables_map& options) {
 
 void launcher_service_plugin::plugin_startup() {
    ilog("launcher_service_plugin::plugin_startup()");
+   _my->initialize_timers();
 }
 
 void launcher_service_plugin::plugin_shutdown() {
    ilog("launcher_service_plugin::plugin_shutdown()");
-   _my->stop_all_clusters();
-   _my->_idle_timeout.reset();
-   _my->_shutdown_timer.cancel();
-   _my->_node_remove_timer.cancel();
+   _my->shutdown();
 }
 
 fc::variant launcher_service_plugin::get_cluster_info(launcher_service::cluster_id_param param)
@@ -1047,7 +1123,7 @@ fc::variant launcher_service_plugin::get_cluster_info(launcher_service::cluster_
 
 fc::variant launcher_service_plugin::get_cluster_running_state(launcher_service::cluster_id_param param)
 {
-   reschedule_timeout rt(_my);
+   reschedule_idle_timeout rt(*_my);
    if (_my->_running_clusters.find(param.cluster_id) == _my->_running_clusters.end()) {
       throw std::runtime_error("cluster is not running");
    }
@@ -1067,85 +1143,85 @@ fc::variant launcher_service_plugin::get_cluster_running_state(launcher_service:
 }
 
 fc::variant launcher_service_plugin::get_info(launcher_service::node_id_param param) {
-   reschedule_timeout rt(_my);
+   reschedule_idle_timeout rt(*_my);
    return _my->get_info(param.cluster_id, param.node_id);
 }
 
 fc::variant launcher_service_plugin::launch_cluster(launcher_service::cluster_def def)
 {
-   reschedule_timeout rt(_my);
+   reschedule_idle_timeout rt(*_my);
    _my->launch_cluster(def);
    return fc::mutable_variant_object("result", _my->_running_clusters[def.cluster_id]);
 }
 
 fc::variant launcher_service_plugin::stop_all_clusters(launcher_service::empty_param) {
-   reschedule_timeout rt(_my);
+   reschedule_idle_timeout rt(*_my);
    _my->stop_all_clusters();
    return fc::mutable_variant_object("result", "OK");
 }
 
 fc::variant launcher_service_plugin::stop_cluster(launcher_service::cluster_id_param param) {
-   reschedule_timeout rt(_my);
+   reschedule_idle_timeout rt(*_my);
    _my->stop_cluster(param.cluster_id);
    return fc::mutable_variant_object("result", "OK");
 }
 
 fc::variant launcher_service_plugin::clean_cluster(launcher_service::cluster_id_param param) {
-   reschedule_timeout rt(_my);
+   reschedule_idle_timeout rt(*_my);
    _my->clean_cluster(param.cluster_id);
    return fc::mutable_variant_object("result", "OK");
 }
 
 fc::variant launcher_service_plugin::start_node(launcher_service::start_node_param param) {
-   reschedule_timeout rt(_my);
+   reschedule_idle_timeout rt(*_my);
    _my->start_node(param.cluster_id, param.node_id, param.extra_args);
    return fc::mutable_variant_object("result", "OK");
 }
 
 fc::variant launcher_service_plugin::stop_node(launcher_service::stop_node_param param) {
-   reschedule_timeout rt(_my);
+   reschedule_idle_timeout rt(*_my);
    _my->stop_node(param.cluster_id, param.node_id, param.kill_sig);
    return fc::mutable_variant_object("result", "OK");
 }
 
 fc::variant launcher_service_plugin::get_protocol_features(launcher_service::node_id_param param) {
-   reschedule_timeout rt(_my);
+   reschedule_idle_timeout rt(*_my);
    return _my->get_protocol_features(param.cluster_id, param.node_id);
 }
 
 fc::variant launcher_service_plugin::schedule_protocol_feature_activations(launcher_service::schedule_protocol_feature_activations_param param) {
-   reschedule_timeout rt(_my);
+   reschedule_idle_timeout rt(*_my);
    return _my->schedule_protocol_feature_activations(param);
 }
 
 fc::variant launcher_service_plugin::get_block(launcher_service::get_block_param param) {
-   reschedule_timeout rt(_my);
+   reschedule_idle_timeout rt(*_my);
    return _my->get_block(param.cluster_id, param.node_id, param.block_num_or_id);
 }
 
 fc::variant launcher_service_plugin::get_account(launcher_service::get_account_param param) {
-   reschedule_timeout rt(_my);
+   reschedule_idle_timeout rt(*_my);
    return _my->get_account(param);
 }
 
 fc::variant launcher_service_plugin::get_code_hash(launcher_service::get_account_param param) {
-   reschedule_timeout rt(_my);
+   reschedule_idle_timeout rt(*_my);
    return _my->get_code_hash(param);
 }
 
 fc::variant launcher_service_plugin::get_table_rows(launcher_service::get_table_rows_param param) {
-   reschedule_timeout rt(_my);
+   reschedule_idle_timeout rt(*_my);
    return _my->get_table_rows(param);
 }
 
 fc::variant launcher_service_plugin::verify_transaction(launcher_service::verify_transaction_param param) {
-   reschedule_timeout rt(_my);
+   reschedule_idle_timeout rt(*_my);
    return _my->verify_transaction(param);
 }
 
 fc::variant launcher_service_plugin::set_contract(launcher_service::set_contract_param param) {
+   reschedule_idle_timeout rt(*_my);
    try {
-      reschedule_timeout rt(_my);
       return _my->set_contract(param);
    } catch (fc::exception &e) {
       elog("FC exception: code ${code}, cluster ${cluster}, node ${node}, details: ${d}",
@@ -1159,18 +1235,18 @@ fc::variant launcher_service_plugin::set_contract(launcher_service::set_contract
 }
 
 fc::variant launcher_service_plugin::import_keys(launcher_service::import_keys_param param) {
-   reschedule_timeout rt(_my);
+   reschedule_idle_timeout rt(*_my);
    return _my->import_keys(param);
 }
 
 fc::variant launcher_service_plugin::generate_key(launcher_service::generate_key_param param) {
-   reschedule_timeout rt(_my);
+   reschedule_idle_timeout rt(*_my);
    return _my->generate_key(param);
 }
 
 fc::variant launcher_service_plugin::push_actions(launcher_service::push_actions_param param) {
+   reschedule_idle_timeout rt(*_my);
    try {
-      reschedule_timeout rt(_my);
       return _my->push_actions(param);
    } catch (fc::exception &e) {
       elog("FC exception: code ${code}, cluster ${cluster}, node ${node}, details: ${d}",
@@ -1184,13 +1260,13 @@ fc::variant launcher_service_plugin::push_actions(launcher_service::push_actions
 }
 
 fc::variant launcher_service_plugin::get_log_data(launcher_service::get_log_data_param param) {
-   reschedule_timeout rt(_my);
+   reschedule_idle_timeout rt(*_my);
    return _my->get_log_data(param);
 }
 
 fc::variant launcher_service_plugin::send_raw(launcher_service::send_raw_param param) {
+   reschedule_idle_timeout rt(*_my);
    try {
-      reschedule_timeout rt(_my);
       return _my->send_raw(param);
    } catch (fc::exception &e) {
       elog("FC exception: code ${code}, cluster ${cluster}, node ${node}, details: ${d}",
