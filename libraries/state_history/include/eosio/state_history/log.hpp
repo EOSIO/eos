@@ -7,8 +7,8 @@
 #include <eosio/chain/block_header.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/types.hpp>
-#include <fc/log/logger.hpp>
 #include <fc/io/cfile.hpp>
+#include <fc/log/logger.hpp>
 
 namespace eosio {
 
@@ -197,8 +197,8 @@ class state_history_log {
    }
 
    void open_log() {
-      log.set_file_path( log_filename );
-      log.open( "a+b" ); // std::ios_base::binary | std::ios_base::in | std::ios_base::out | std::ios_base::app
+      log.set_file_path(log_filename);
+      log.open("a+b"); // std::ios_base::binary | std::ios_base::in | std::ios_base::out | std::ios_base::app
       log.seek_end(0);
       uint64_t size = log.tellp();
       if (size >= state_history_log_header_serial_size) {
@@ -220,14 +220,14 @@ class state_history_log {
    }
 
    void open_index() {
-      index.set_file_path( index_filename );
-      index.open( "a+b" ); // std::ios_base::binary | std::ios_base::in | std::ios_base::out | std::ios_base::app
+      index.set_file_path(index_filename);
+      index.open("a+b"); // std::ios_base::binary | std::ios_base::in | std::ios_base::out | std::ios_base::app
       index.seek_end(0);
       if (index.tellp() == (static_cast<int>(_end_block) - _begin_block) * sizeof(uint64_t))
          return;
       ilog("Regenerate ${name}.index", ("name", name));
       index.close();
-      index.open( "w+b" ); // std::ios_base::binary | std::ios_base::in | std::ios_base::out | std::ios_base::trunc
+      index.open("w+b"); // std::ios_base::binary | std::ios_base::in | std::ios_base::out | std::ios_base::trunc
 
       log.seek_end(0);
       uint64_t size      = log.tellp();
