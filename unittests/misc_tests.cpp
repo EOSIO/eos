@@ -1020,14 +1020,14 @@ BOOST_AUTO_TEST_CASE(pruned_block_test) {
 
    t.push_transaction(trx);
    signed_block_ptr produced = t.produce_block();
-   signed_block_v0_ptr original = produced->to_signed_block_v0();
+   auto original = produced->to_signed_block_v0();
    BOOST_REQUIRE(original);
    signed_block basic(*original, true);
 
    BOOST_TEST(basic.transaction_mroot.str() == original->transaction_mroot.str());
    BOOST_TEST(basic.transaction_mroot.str() == calculate_trx_merkle(basic.transactions).str());
 
-   signed_block_v0_ptr recovered = basic.to_signed_block_v0();
+   auto recovered = basic.to_signed_block_v0();
    BOOST_REQUIRE(recovered);
    BOOST_TEST(fc::raw::pack(*original) == fc::raw::pack(*recovered));
 

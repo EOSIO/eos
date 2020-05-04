@@ -1423,7 +1423,7 @@ bool chain_plugin::export_reversible_blocks( const fc::path& reversible_dir,
          signed_block tmp;
          fc::datastream<const char *> ds( itr->packedblock.data(), itr->packedblock.size() );
          fc::raw::unpack(ds, tmp); // Verify that packed block has not been corrupted.
-         signed_block_v0_ptr v0 = tmp.to_signed_block_v0(); // store in signed_block_v0 format
+         const auto v0 = tmp.to_signed_block_v0(); // store in signed_block_v0 format
          auto packed_v0 = fc::raw::pack(*v0);
          reversible_blocks.write( packed_v0.data(), packed_v0.size() );
          end = itr->blocknum;
