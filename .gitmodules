@@ -2,10 +2,6 @@
 	path = libraries/chainbase
 	url = https://github.com/eosio/chainbase
         ignore = dirty
-[submodule "libraries/appbase"]
-	path = libraries/appbase
-	url = https://github.com/eosio/appbase
-        ignore = dirty
 [submodule "libraries/softfloat"]
 	path = libraries/softfloat
 	url = https://github.com/eosio/berkeley-softfloat-3
