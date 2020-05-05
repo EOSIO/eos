@@ -176,7 +176,7 @@ namespace eosio {
          try {
             if constexpr (params_type == http_params_types::no_params_required) {
                if (body.empty()) {
-                  return fc::json::from_string("{}").as<T>();
+                  return {};
                }
             }
             return fc::json::from_string(body).as<T>();
