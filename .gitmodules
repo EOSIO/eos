@@ -21,3 +21,9 @@
 [submodule "eosio-wasm-spec-tests"]
 	path = eosio-wasm-spec-tests
 	url = https://github.com/EOSIO/eosio-wasm-spec-tests
+[submodule "libraries/abieos"]
+	path = libraries/abieos
+	url = https://github.com/EOSIO/abieos.git
+[submodule "libraries/rocksdb"]
+	path = libraries/rocksdb
+	url = https://github.com/facebook/rocksdb.git
