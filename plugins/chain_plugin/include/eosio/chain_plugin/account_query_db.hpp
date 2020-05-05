@@ -46,11 +46,14 @@ namespace eosio::chain_apis {
        * parameters for the get_accounts_by_authorizers RPC
        */
       struct get_accounts_by_authorizers_params{
-         struct account_level {
-            chain::name actor;
-            chain::name permission;
+         /**
+          * This structure is an concrete alias of `chain::permission_level` to facilitate
+          * specialized rules when transforming to/from variants.
+          */
+         struct permission_level : public chain::permission_level {
          };
-         std::vector<account_level> accounts;
+
+         std::vector<permission_level> accounts;
          std::vector<chain::public_key_type> keys;
       };
 
@@ -91,7 +94,7 @@ namespace fc {
     * @param a
     * @param v
     */
-   inline void to_variant(const params::account_level& a, fc::variant& v) {
+   inline void to_variant(const params::permission_level& a, fc::variant& v) {
       if (a.permission.empty()) {
          v = a.actor.to_string();
       } else {
@@ -107,16 +110,23 @@ namespace fc {
     * @param v
     * @param a
     */
-   inline void from_variant(const fc::variant& v, params::account_level& a) {
-      a = {{},{}};
+   inline void from_variant(const fc::variant& v, params::permission_level& a) {
       if (v.is_string()) {
          from_variant(v, a.actor);
+         a.permission = {};
       } else if (v.is_object()) {
          const auto& vo = v.get_object();
          if(vo.contains("actor"))
             from_variant(vo["actor"], a.actor);
-         if(vo.contains("permission"))
+         else
+            EOS_THROW(eosio::chain::invalid_http_request, "Missing Actor field");
+
+         if(vo.contains("permission") && vo.size() == 2)
             from_variant(vo["permission"], a.permission);
+         else if (vo.size() == 1)
+            a.permission = {};
+         else
+            EOS_THROW(eosio::chain::invalid_http_request, "Unrecognized fields in account");
       }
    }
 }

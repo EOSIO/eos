@@ -1266,7 +1266,7 @@ void chain_plugin::plugin_startup()
       try {
          my->_account_query_db.emplace(*my->chain);
          my->account_queries_enabled = true;
-      } FC_LOG_AND_DROP(("Unabled to enable account queries"));
+      } FC_LOG_AND_DROP(("Unable to enable account queries"));
    }
 
 
