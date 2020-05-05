@@ -1,5 +1,6 @@
 #include <b1/rodeos/embedded_rodeos.h>
 #include <b1/rodeos/rodeos.hpp>
+#include <fc/scoped_exit.hpp>
 
 struct rodeos_error_s {
    const char* msg = "no error";
@@ -257,12 +258,23 @@ rodeos_bool rodeos_query_transaction(rodeos_error* error, rodeos_query_handler* 
 
       handler->state_cache.store_state(std::move(thread_state));
 
-      auto packed = eosio::check(eosio::convert_to_bin(tt)).value();
-      *result     = (char*)malloc(packed.size());
+      eosio::size_stream ss;
+      auto r = eosio::to_bin(tt, ss);
+      eosio::check_discard(r);
+      *result = (char*)malloc(ss.size);
       if (!result)
          throw std::bad_alloc();
-      *result_size = packed.size();
-      memcpy(*result, packed.data(), packed.size());
+      auto free_on_except = fc::make_scoped_exit([&]{
+         free(*result);
+         *result = nullptr;
+      });
+      eosio::fixed_buf_stream fbs(*result, ss.size);
+      eosio::check_discard(to_bin(tt, fbs));
+      if (fbs.pos != fbs.end) {
+         eosio::check(eosio::stream_error::underrun);
+      }
+      *result_size = ss.size;
+      free_on_except.cancel();
       return true;
    });
 }
