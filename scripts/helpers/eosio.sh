@@ -37,8 +37,6 @@ function setup() {
         echo "PROCEED: ${PROCEED}"
         echo "ENABLE_COVERAGE_TESTING: ${ENABLE_COVERAGE_TESTING}"
         echo "ENABLE_DOXYGEN: ${ENABLE_DOXYGEN}"
-        echo "ENABLE_MONGO: ${ENABLE_MONGO}"
-        echo "INSTALL_MONGO: ${INSTALL_MONGO}"
         echo "SUDO_LOCATION: ${SUDO_LOCATION}"
         echo "PIN_COMPILER: ${PIN_COMPILER}"
     fi
@@ -52,10 +50,6 @@ function setup() {
     execute mkdir -p $VAR_DIR/log
     execute mkdir -p $ETC_DIR
     execute mkdir -p $LIB_DIR
-    if $ENABLE_MONGO; then
-        execute mkdir -p $MONGODB_LOG_DIR
-        execute mkdir -p $MONGODB_DATA_DIR
-    fi
 }
 
 function ensure-which() {
@@ -132,21 +126,6 @@ function print_supported_linux_distros_and_exit() {
    echo "https://www.ubuntu.com/"
    echo "Exiting now."
    exit 1
-}
-
-function prompt-mongo-install() {
-    if $ENABLE_MONGO; then
-        while true; do
-            [[ $NONINTERACTIVE == false ]] && printf "${COLOR_YELLOW}You have chosen to include MongoDB support. Do you want for us to install MongoDB as well? (y/n)?${COLOR_NC}" && read -p " " PROCEED
-            echo ""
-            case $PROCEED in
-                "" ) echo "What would you like to do?";;
-                0 | true | [Yy]* ) export INSTALL_MONGO=true; break;;
-                1 | false | [Nn]* ) echo "${COLOR_RED} - Existing MongoDB will be used.${COLOR_NC}"; break;;
-                * ) echo "Please type 'y' for yes or 'n' for no.";;
-            esac
-        done
-    fi
 }
 
 function ensure-compiler() {

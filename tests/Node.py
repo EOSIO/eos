@@ -27,20 +27,15 @@ class Node(object):
 
     # pylint: disable=too-many-instance-attributes
     # pylint: disable=too-many-arguments
-    def __init__(self, host, port, pid=None, cmd=None, walletMgr=None, enableMongo=False, mongoHost="localhost", mongoPort=27017, mongoDb="EOStest"):
+    def __init__(self, host, port, pid=None, cmd=None, walletMgr=None):
         self.host=host
         self.port=port
         self.pid=pid
         self.cmd=cmd
         if Utils.Debug: Utils.Print("new Node host=%s, port=%s, pid=%s, cmd=%s" % (self.host, self.port, self.pid, self.cmd))
         self.killed=False # marks node as killed
-        self.enableMongo=enableMongo
-        self.mongoHost=mongoHost
-        self.mongoPort=mongoPort
-        self.mongoDb=mongoDb
         self.endpointHttp="http://%s:%d" % (self.host, self.port)
         self.endpointArgs="--url %s" % (self.endpointHttp)
-        self.mongoEndpointArgs=""
         self.infoValid=None
         self.lastRetrievedHeadBlockNum=None
         self.lastRetrievedLIB=None
@@ -49,8 +44,6 @@ class Node(object):
         self.walletMgr=walletMgr
         self.missingTransaction=False
         self.popenProc=None           # initial process is started by launcher, this will only be set on relaunch
-        if self.enableMongo:
-            self.mongoEndpointArgs += "--host %s --port %d %s" % (mongoHost, mongoPort, mongoDb)
 
     def eosClientArgs(self):
         walletArgs=" " + self.walletMgr.getWalletEndpointArgs() if self.walletMgr is not None else ""
@@ -187,42 +180,6 @@ class Node(object):
         return tmpStr
 
     @staticmethod
-    def runMongoCmdReturnJson(cmd, subcommand, trace=False, exitOnError=False):
-        """Run mongodb subcommand and return response."""
-        assert(cmd)
-        assert(isinstance(cmd, list))
-        assert(subcommand)
-        assert(isinstance(subcommand, str))
-        retId,outs,errs=Node.stdinAndCheckOutput(cmd, subcommand)
-        if retId is not 0:
-            errorMsg="mongodb call failed. cmd=[ %s ] subcommand=\"%s\" - %s" % (", ".join(cmd), subcommand, errs)
-            if exitOnError:
-                Utils.cmdError(errorMsg)
-                Utils.errorExit(errorMsg)
-
-            Utils.Print("ERROR: %s" % (errMsg))
-            return None
-        outStr=Node.byteArrToStr(outs)
-        if not outStr:
-            return None
-        extJStr=Utils.filterJsonObjectOrArray(outStr)
-        if not extJStr:
-            return None
-        jStr=Node.normalizeJsonObject(extJStr)
-        if not jStr:
-            return None
-        if trace: Utils.Print ("RAW > %s"% (outStr))
-        if trace: Utils.Print ("JSON> %s"% jStr)
-        try:
-            jsonData=json.loads(jStr)
-        except json.decoder.JSONDecodeError as _:
-            Utils.Print ("ERROR: JSONDecodeError")
-            Utils.Print ("Raw MongoDB response: > %s"% (outStr))
-            Utils.Print ("Normalized MongoDB response: > %s"% (jStr))
-            raise
-        return jsonData
-
-    @staticmethod
     def getTransId(trans):
         """Retrieve transaction id from dictionary object."""
         assert trans
@@ -254,10 +211,7 @@ class Node(object):
             if Utils.Debug: Utils.Print("Validating account %s" % (account.name))
             accountInfo=self.getEosAccount(account.name, exitOnError=True)
             try:
-                if not self.enableMongo:
-                    assert(accountInfo["account_name"] == account.name)
-                else:
-                    assert(accountInfo["name"] == account.name)
+                assert(accountInfo["account_name"] == account.name)
             except (AssertionError, TypeError, KeyError) as _:
                 Utils.Print("account validation failed. account: %s" % (account.name))
                 raise
@@ -266,58 +220,10 @@ class Node(object):
     def getBlock(self, blockNum, silentErrors=False, exitOnError=False):
         """Given a blockId will return block details."""
         assert(isinstance(blockNum, int))
-        if not self.enableMongo:
-            cmdDesc="get block"
-            cmd="%s %d" % (cmdDesc, blockNum)
-            msg="(block number=%s)" % (blockNum);
-            return self.processCleosCmd(cmd, cmdDesc, silentErrors=silentErrors, exitOnError=exitOnError, exitMsg=msg)
-        else:
-            cmd="%s %s" % (Utils.MongoPath, self.mongoEndpointArgs)
-            subcommand='db.blocks.findOne( { "block_num": %d } )' % (blockNum)
-            if Utils.Debug: Utils.Print("cmd: echo '%s' | %s" % (subcommand, cmd))
-            start=time.perf_counter()
-            try:
-                block=Node.runMongoCmdReturnJson(cmd.split(), subcommand, exitOnError=exitOnError)
-                if Utils.Debug:
-                    end=time.perf_counter()
-                    Utils.Print("cmd Duration: %.3f sec" % (end-start))
-
-                if block is not None:
-                    return block
-            except subprocess.CalledProcessError as ex:
-                if not silentErrors:
-                    end=time.perf_counter()
-                    msg=ex.output.decode("utf-8")
-                    errorMsg="Exception during get db node get block.  cmd Duration: %.3f sec. %s" % (end-start, msg)
-                    if exitOnError:
-                        Utils.cmdError(errorMsg)
-                        Utils.errorExit(errorMsg)
-                    else:
-                        Utils.Print("ERROR: %s" % (errorMsg))
-                return None
-
-        return None
-
-    def getBlockByIdMdb(self, blockId, silentErrors=False):
-        cmd="%s %s" % (Utils.MongoPath, self.mongoEndpointArgs)
-        subcommand='db.blocks.findOne( { "block_id": "%s" } )' % (blockId)
-        if Utils.Debug: Utils.Print("cmd: echo '%s' | %s" % (subcommand, cmd))
-        start=time.perf_counter()
-        try:
-            trans=Node.runMongoCmdReturnJson(cmd.split(), subcommand)
-            if Utils.Debug:
-                end=time.perf_counter()
-                Utils.Print("cmd Duration: %.3f sec" % (end-start))
-            if trans is not None:
-                return trans
-        except subprocess.CalledProcessError as ex:
-            if not silentErrors:
-                end=time.perf_counter()
-                msg=ex.output.decode("utf-8")
-                Utils.Print("ERROR: Exception during db get block by id.  cmd Duration: %.3f sec. %s" % (end-start, msg))
-            return None
-
-        return None
+        cmdDesc="get block"
+        cmd="%s %d" % (cmdDesc, blockNum)
+        msg="(block number=%s)" % (blockNum);
+        return self.processCleosCmd(cmd, cmdDesc, silentErrors=silentErrors, exitOnError=exitOnError, exitMsg=msg)
 
     def isBlockPresent(self, blockNum, blockType=BlockType.head):
         """Does node have head_block_num/last_irreversible_block_num >= blockNum"""
@@ -357,54 +263,19 @@ class Node(object):
         assert(isinstance(transId, str))
         exitOnErrorForDelayed=not delayedRetry and exitOnError
         timeout=3
-        if not self.enableMongo:
-            cmdDesc="get transaction"
-            cmd="%s %s" % (cmdDesc, transId)
-            msg="(transaction id=%s)" % (transId);
-            for i in range(0,(int(60/timeout) - 1)):
-                trans=self.processCleosCmd(cmd, cmdDesc, silentErrors=silentErrors, exitOnError=exitOnErrorForDelayed, exitMsg=msg)
-                if trans is not None or not delayedRetry:
-                    return trans
-                if Utils.Debug: Utils.Print("Could not find transaction with id %s, delay and retry" % (transId))
-                time.sleep(timeout)
-
-            self.missingTransaction=True
-            # either it is there or the transaction has timed out
-            return self.processCleosCmd(cmd, cmdDesc, silentErrors=silentErrors, exitOnError=exitOnError, exitMsg=msg)
-        else:
-            for i in range(0,(int(60/timeout) - 1)):
-                trans=self.getTransactionMdb(transId, silentErrors=silentErrors, exitOnError=exitOnErrorForDelayed)
-                if trans is not None or not delayedRetry:
-                    return trans
-                if Utils.Debug: Utils.Print("Could not find transaction with id %s in mongodb, delay and retry" % (transId))
-                time.sleep(timeout)
-
-            return self.getTransactionMdb(transId, silentErrors=silentErrors, exitOnError=exitOnError)
-
-    def getTransactionMdb(self, transId, silentErrors=False, exitOnError=False):
-        """Get transaction from MongoDB. Since DB only contains finalized blocks, transactions can take a while to appear in DB."""
-        cmd="%s %s" % (Utils.MongoPath, self.mongoEndpointArgs)
-        #subcommand='db.Transactions.findOne( { $and : [ { "trx_id": "%s" }, {"irreversible":true} ] } )' % (transId)
-        subcommand='db.transactions.findOne( { "trx_id": "%s" } )' % (transId)
-        if Utils.Debug: Utils.Print("cmd: echo '%s' | %s" % (subcommand, cmd))
-        start=time.perf_counter()
-        try:
-            trans=Node.runMongoCmdReturnJson(cmd.split(), subcommand, exitOnError=exitOnError)
-            if Utils.Debug:
-                end=time.perf_counter()
-                Utils.Print("cmd Duration: %.3f sec" % (end-start))
-            if trans is not None:
+        cmdDesc="get transaction"
+        cmd="%s %s" % (cmdDesc, transId)
+        msg="(transaction id=%s)" % (transId);
+        for i in range(0,(int(60/timeout) - 1)):
+            trans=self.processCleosCmd(cmd, cmdDesc, silentErrors=silentErrors, exitOnError=exitOnErrorForDelayed, exitMsg=msg)
+            if trans is not None or not delayedRetry:
                 return trans
-        except subprocess.CalledProcessError as ex:
-            end=time.perf_counter()
-            msg=ex.output.decode("utf-8")
-            errorMsg="Exception during get db node get trans in mongodb with transaction id=%s.  cmd Duration: %.3f sec.  %s" % (transId, end-start, msg)
-            if exitOnError:
-                Utils.cmdError("" % (errorMsg))
-                Utils.errorExit("Failed to retrieve transaction in mongodb for transaction id=%s" % (transId))
-            elif not silentErrors:
-                Utils.Print("ERROR: %s" % (errorMsg))
-            return None
+            if Utils.Debug: Utils.Print("Could not find transaction with id %s, delay and retry" % (transId))
+            time.sleep(timeout)
+
+        self.missingTransaction=True
+        # either it is there or the transaction has timed out
+        return self.processCleosCmd(cmd, cmdDesc, silentErrors=silentErrors, exitOnError=exitOnError, exitMsg=msg)
 
     def isTransInBlock(self, transId, blockId):
         """Check if transId is within block identified by blockId"""
@@ -418,12 +289,8 @@ class Node(object):
         transactions=None
         key=""
         try:
-            if not self.enableMongo:
-                key="[transactions]"
-                transactions=block["transactions"]
-            else:
-                key="[blocks][transactions]"
-                transactions=block["block"]["transactions"]
+            key="[transactions]"
+            transactions=block["transactions"]
         except (AssertionError, TypeError, KeyError) as _:
             Utils.Print("block%s not found. Block: %s" % (key,block))
             raise
@@ -449,12 +316,8 @@ class Node(object):
         refBlockNum=None
         key=""
         try:
-            if not self.enableMongo:
-                key="[trx][trx][ref_block_num]"
-                refBlockNum=trans["trx"]["trx"]["ref_block_num"]
-            else:
-                key="[ref_block_num]"
-                refBlockNum=trans["ref_block_num"]
+            key="[trx][trx][ref_block_num]"
+            refBlockNum=trans["trx"]["trx"]["ref_block_num"]
             refBlockNum=int(refBlockNum)+1
         except (TypeError, ValueError, KeyError) as _:
             Utils.Print("transaction%s not found. Transaction: %s" % (key, trans))
@@ -476,42 +339,11 @@ class Node(object):
 
         return None
 
-    def getBlockIdByTransIdMdb(self, transId):
-        """Given a transaction Id (string), will return block id (int) containing the transaction. This is specific to MongoDB."""
-        assert(transId)
-        assert(isinstance(transId, str))
-        trans=self.getTransactionMdb(transId)
-        if not trans: return None
-
-        refBlockNum=None
-        try:
-            refBlockNum=trans["ref_block_num"]
-            refBlockNum=int(refBlockNum)+1
-        except (TypeError, ValueError, KeyError) as _:
-            Utils.Print("transaction[ref_block_num] not found. Transaction: %s" % (trans))
-            return None
-
-        headBlockNum=self.getHeadBlockNum()
-        assert(headBlockNum)
-        try:
-            headBlockNum=int(headBlockNum)
-        except(ValueError) as _:
-            Utils.Print("Info parsing failed. %s" % (headBlockNum))
-
-        for blockNum in range(refBlockNum, headBlockNum+1):
-            if self.isTransInBlock(str(transId), blockNum):
-                return blockNum
-
-        return None
-
     def isTransInAnyBlock(self, transId):
         """Check if transaction (transId) is in a block."""
         assert(transId)
         assert(isinstance(transId, (str,int)))
-        # if not self.enableMongo:
         blockId=self.getBlockIdByTransId(transId)
-        # else:
-        #     blockId=self.getBlockIdByTransIdMdb(transId)
         return True if blockId else False
 
     def isTransFinalized(self, transId):
@@ -530,8 +362,8 @@ class Node(object):
     def createInitializeAccount(self, account, creatorAccount, stakedDeposit=1000, waitForTransBlock=False, stakeNet=100, stakeCPU=100, buyRAM=10000, exitOnError=False, sign=False):
         signStr = Node.__sign_str(sign, [ creatorAccount.activePublicKey ])
         cmdDesc="system newaccount"
-        cmd='%s -j %s %s %s %s %s --stake-net "%s %s" --stake-cpu "%s %s" --buy-ram "%s %s"' % (
-            cmdDesc, signStr, creatorAccount.name, account.name, account.ownerPublicKey,
+        cmd='%s -j %s %s \'%s\' \'%s\' --stake-net "%s %s" --stake-cpu "%s %s" --buy-ram "%s %s"' % (
+            cmdDesc, creatorAccount.name, account.name, account.ownerPublicKey,
             account.activePublicKey, stakeNet, CORE_SYMBOL, stakeCPU, CORE_SYMBOL, buyRAM, CORE_SYMBOL)
         msg="(creator account=%s, account=%s)" % (creatorAccount.name, account.name);
         trans=self.processCleosCmd(cmd, cmdDesc, silentErrors=False, exitOnError=exitOnError, exitMsg=msg)
@@ -565,43 +397,13 @@ class Node(object):
 
         return self.waitForTransBlockIfNeeded(trans, waitForTransBlock, exitOnError=exitOnError)
 
-    def getEosAccount(self, name, exitOnError=False, returnType=ReturnType.json, avoidMongo=False):
+    def getEosAccount(self, name, exitOnError=False, returnType=ReturnType.json):
         assert(isinstance(name, str))
-        if not self.enableMongo or avoidMongo:
-            cmdDesc="get account"
-            jsonFlag="-j" if returnType==ReturnType.json else ""
-            cmd="%s %s %s" % (cmdDesc, jsonFlag, name)
-            msg="( getEosAccount(name=%s) )" % (name);
-            return self.processCleosCmd(cmd, cmdDesc, silentErrors=False, exitOnError=exitOnError, exitMsg=msg, returnType=returnType)
-        else:
-            assert returnType == ReturnType.json, "MongoDB only supports a returnType of ReturnType.json"
-            return self.getEosAccountFromDb(name, exitOnError=exitOnError)
-
-    def getEosAccountFromDb(self, name, exitOnError=False):
-        cmd="%s %s" % (Utils.MongoPath, self.mongoEndpointArgs)
-        subcommand='db.accounts.findOne({"name" : "%s"})' % (name)
-        if Utils.Debug: Utils.Print("cmd: echo '%s' | %s" % (subcommand, cmd))
-        try:
-            timeout = 3
-            for i in range(0,(int(60/timeout) - 1)):
-                start=time.perf_counter()
-                trans=Node.runMongoCmdReturnJson(cmd.split(), subcommand, exitOnError=exitOnError)
-                if trans is not None:
-                    if Utils.Debug:
-                        end=time.perf_counter()
-                        Utils.Print("cmd Duration: %.3f sec" % (end-start))
-                    return trans
-                time.sleep(timeout)
-            return trans
-        except subprocess.CalledProcessError as ex:
-            msg=ex.output.decode("utf-8")
-            if exitOnError:
-                end=time.perf_counter()
-                Utils.cmdError("Exception during get account from db for %s.  cmd Duration: %.3f sec.  %s" % (name, end-start, msg))
-                Utils.errorExit("Failed during get account from db for %s. %s" % (name, msg))
-
-            Utils.Print("ERROR: Exception during get account from db for %s. %s" % (name, msg))
-            return None
+        cmdDesc="get account"
+        jsonFlag="-j" if returnType==ReturnType.json else ""
+        cmd="%s %s %s" % (cmdDesc, jsonFlag, name)
+        msg="( getEosAccount(name=%s) )" % (name);
+        return self.processCleosCmd(cmd, cmdDesc, silentErrors=False, exitOnError=exitOnError, exitMsg=msg, returnType=returnType)
 
     def getTable(self, contract, scope, table, exitOnError=False):
         cmdDesc = "get table"
@@ -647,16 +449,13 @@ class Node(object):
     # Verifies account. Returns "get account" json return object
     def verifyAccount(self, account):
         assert(account)
-        if not self.enableMongo:
-            ret=self.getEosAccount(account.name)
-            if ret is not None:
-                account_name=ret["account_name"]
-                if account_name is None:
-                    Utils.Print("ERROR: Failed to verify account creation.", account.name)
-                    return None
-                return ret
-        else:
-            return self.verifyAccountMdb(account)
+        ret = self.getEosAccount(account.name)
+        if ret is not None:
+            account_name = ret["account_name"]
+            if account_name is None:
+                Utils.Print("ERROR: Failed to verify account creation.", account.name)
+                return None
+            return ret
 
     def verifyAccountMdb(self, account):
         assert(account)
@@ -852,40 +651,10 @@ class Node(object):
         assert(isinstance(pos, int))
         assert(isinstance(offset, int))
 
-        if not self.enableMongo:
-            cmdDesc = "get actions"
-            cmd="%s -j %s %d %d" % (cmdDesc, account.name, pos, offset)
-            msg="account=%s, pos=%d, offset=%d" % (account.name, pos, offset);
-            return self.processCleosCmd(cmd, cmdDesc, exitOnError=exitOnError, exitMsg=msg)
-        else:
-            return self.getActionsMdb(account, pos, offset, exitOnError=exitOnError)
-
-    def getActionsMdb(self, account, pos=-1, offset=-1, exitOnError=False):
-        assert(isinstance(account, Account))
-        assert(isinstance(pos, int))
-        assert(isinstance(offset, int))
-
-        cmd="%s %s" % (Utils.MongoPath, self.mongoEndpointArgs)
-        subcommand='db.action_traces.find({$or: [{"act.data.from":"%s"},{"act.data.to":"%s"}]}).sort({"_id":%d}).limit(%d)' % (account.name, account.name, pos, abs(offset))
-        if Utils.Debug: Utils.Print("cmd: echo '%s' | %s" % (subcommand, cmd))
-        start=time.perf_counter()
-        try:
-            actions=Node.runMongoCmdReturnJson(cmd.split(), subcommand, exitOnError=exitOnError)
-            if Utils.Debug:
-                end=time.perf_counter()
-                Utils.Print("cmd Duration: %.3f sec" % (end-start))
-            if actions is not None:
-                return actions
-        except subprocess.CalledProcessError as ex:
-            end=time.perf_counter()
-            msg=ex.output.decode("utf-8")
-            errorMsg="Exception during get db actions.  cmd Duration: %.3f sec.  %s" % (end-start, msg)
-            if exitOnError:
-                Utils.cmdError(errorMsg)
-                Utils.errorExit(errorMsg)
-            else:
-                Utils.Print("ERROR: %s" % (errorMsg))
-        return None
+        cmdDesc = "get actions"
+        cmd = "%s -j %s %d %d" % (cmdDesc, account.name, pos, offset)
+        msg = "account=%s, pos=%d, offset=%d" % (account.name, pos, offset);
+        return self.processCleosCmd(cmd, cmdDesc, exitOnError=exitOnError, exitMsg=msg)
 
     # Gets accounts mapped to key. Returns array
     def getAccountsArrByKey(self, key):
@@ -1261,56 +1030,22 @@ class Node(object):
             self.lastRetrievedHeadBlockProducer=info["head_block_producer"]
         return info
 
-    def getBlockFromDb(self, idx):
-        cmd="%s %s" % (Utils.MongoPath, self.mongoEndpointArgs)
-        subcommand="db.blocks.find().sort({\"_id\":%d}).limit(1).pretty()" % (idx)
-        if Utils.Debug: Utils.Print("cmd: echo \"%s\" | %s" % (subcommand, cmd))
-        start=time.perf_counter()
-        try:
-            trans=Node.runMongoCmdReturnJson(cmd.split(), subcommand)
-            if Utils.Debug:
-                end=time.perf_counter()
-                Utils.Print("cmd Duration: %.3f sec" % (end-start))
-            return trans
-        except subprocess.CalledProcessError as ex:
-            end=time.perf_counter()
-            msg=ex.output.decode("utf-8")
-            Utils.Print("ERROR: Exception during get db block.  cmd Duration: %.3f sec.  %s" % (end-start, msg))
-            return None
-
     def checkPulse(self, exitOnError=False):
         info=self.getInfo(True, exitOnError=exitOnError)
         return False if info is None else True
 
     def getHeadBlockNum(self):
         """returns head block number(string) as returned by cleos get info."""
-        if not self.enableMongo:
-            info=self.getInfo(exitOnError=True)
-            if info is not None:
-                headBlockNumTag="head_block_num"
-                return info[headBlockNumTag]
-        else:
-            # Either this implementation or the one in getIrreversibleBlockNum are likely wrong.
-            time.sleep(1)
-            block=self.getBlockFromDb(-1)
-            if block is not None:
-                blockNum=block["block_num"]
-                return blockNum
-        return None
+        info = self.getInfo(exitOnError=True)
+        if info is not None:
+            headBlockNumTag = "head_block_num"
+            return info[headBlockNumTag]
 
     def getIrreversibleBlockNum(self):
-        if not self.enableMongo:
-            info=self.getInfo(exitOnError=True)
-            if info is not None:
-                Utils.Print("current lib: %d" % (info["last_irreversible_block_num"]))
-                return info["last_irreversible_block_num"]
-        else:
-            # Either this implementation or the one in getHeadBlockNum are likely wrong.
-            block=self.getBlockFromDb(-1)
-            if block is not None:
-                blockNum=block["block_num"]
-                return blockNum
-        return None
+        info = self.getInfo(exitOnError=True)
+        if info is not None:
+            Utils.Print("current lib: %d" % (info["last_irreversible_block_num"]))
+            return info["last_irreversible_block_num"]
 
     def getBlockNum(self, blockType=BlockType.head):
         assert isinstance(blockType, BlockType)
