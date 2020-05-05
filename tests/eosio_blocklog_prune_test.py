@@ -118,8 +118,6 @@ try:
         msg=ex.output.decode("utf-8")
         assert "does not contain the following transactions: " + cfTrxId in msg, "The transaction id is not displayed in the console when it cannot be found"
 
-    # For Linux, the pruned result won't be immediately visible unless the node is restarted. For MacOS, the result is immediately visible even without restart.
-
     isRelaunchSuccess = validationNode.relaunch(1)
     assert isRelaunchSuccess, "Fail to relaunch verification node"
 
