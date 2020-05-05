@@ -17,7 +17,3 @@ add_library(IR STATIC ${Sources} ${PublicHeaders})
 add_definitions(-DIR_API=DLL_EXPORT)
 target_link_libraries(IR Logging)
 
-install(TARGETS IR 
-   LIBRARY DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}
-   ARCHIVE DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR})
-

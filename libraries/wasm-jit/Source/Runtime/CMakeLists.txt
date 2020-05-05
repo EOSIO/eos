@@ -21,8 +21,3 @@ target_include_directories( Runtime PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../../../
 
 # Link against the LLVM libraries
 target_link_libraries(Runtime Logging IR)
-
-install(TARGETS Runtime 
-   LIBRARY DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}
-   ARCHIVE DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR})
-
