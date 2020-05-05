@@ -81,11 +81,11 @@ namespace {
       T                   value;
       chain::weight_type  weight;
 
-      static weighted min( const T& value ) {
+      static weighted lower_bound_for( const T& value ) {
          return {value, std::numeric_limits<chain::weight_type>::min()};
       }
 
-      static weighted max( const T& value ) {
+      static weighted upper_bound_for( const T& value ) {
          return {value, std::numeric_limits<chain::weight_type>::max()};
       }
    };
@@ -373,11 +373,8 @@ namespace eosio::chain_apis {
          result_t result;
 
          // deduplicate inputs
-         auto account_set = std::set<chain::permission_level>();
-         for (const auto& input_account: args.accounts) {
-            account_set.emplace(chain::permission_level{input_account.actor, input_account.permission});
-         }
-         auto key_set = std::set<chain::public_key_type>(args.keys.begin(), args.keys.end());
+         auto account_set = std::set<chain::permission_level>(args.accounts.begin(), args.accounts.end());
+         const auto key_set = std::set<chain::public_key_type>(args.keys.begin(), args.keys.end());
 
          /**
           * Add a range of results
@@ -405,22 +402,23 @@ namespace eosio::chain_apis {
                // empty permission is a wildcard
                // construct a range between the lower bound of the given account and the lower bound of the
                // next possible account name
-               const auto begin = name_bimap.left.lower_bound(weighted<chain::permission_level>::min({a.actor, a.permission}));
+               const auto begin = name_bimap.left.lower_bound(weighted<chain::permission_level>::lower_bound_for({a.actor, a.permission}));
                const auto next_account_name = chain::name(a.actor.to_uint64_t() + 1);
-               const auto end = name_bimap.left.lower_bound(weighted<chain::permission_level>::min({next_account_name, a.permission}));
+               const auto end = name_bimap.left.lower_bound(weighted<chain::permission_level>::lower_bound_for({next_account_name, a.permission}));
                push_results(begin, end);
             } else {
                // construct a range of all possible weights for an account/permission pair
-               const auto begin = name_bimap.left.lower_bound(weighted<chain::permission_level>::min({a.actor, a.permission}));
-               const auto end = name_bimap.left.upper_bound(weighted<chain::permission_level>::max({a.actor, a.permission}));
+               const auto p = chain::permission_level{a.actor, a.permission};
+               const auto begin = name_bimap.left.lower_bound(weighted<chain::permission_level>::lower_bound_for(p));
+               const auto end = name_bimap.left.upper_bound(weighted<chain::permission_level>::upper_bound_for(p));
                push_results(begin, end);
             }
          }
 
          for (const auto& k: key_set) {
             // construct a range of all possible weights for a key
-            const auto begin = key_bimap.left.lower_bound(weighted<chain::public_key_type>::min(k));
-            const auto end = key_bimap.left.upper_bound(weighted<chain::public_key_type>::max(k));
+            const auto begin = key_bimap.left.lower_bound(weighted<chain::public_key_type>::lower_bound_for(k));
+            const auto end = key_bimap.left.upper_bound(weighted<chain::public_key_type>::upper_bound_for(k));
             push_results(begin, end);
          }
 
