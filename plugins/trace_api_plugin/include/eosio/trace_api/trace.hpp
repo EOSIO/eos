@@ -29,17 +29,6 @@ namespace eosio { namespace trace_api {
    };
 
   struct transaction_trace_v1 : public transaction_trace_v0 {
-
-     transaction_trace_v1(chain::transaction_id_type id, std::vector<action_trace_v0> actions, fc::enum_type<uint8_t,status_type> status, uint32_t cpu_usage_us, fc::unsigned_int net_usage_words, std::vector<chain::signature_type> signatures, chain::transaction_header trx_header)
-     : transaction_trace_v0{id, std::move(actions)}
-     , status(status)
-     , cpu_usage_us(cpu_usage_us)
-     , net_usage_words(net_usage_words)
-     , signatures(std::move(signatures))
-     , trx_header(trx_header) {}
-
-     transaction_trace_v1() = default;
-
      fc::enum_type<uint8_t,status_type>         status = {};
      uint32_t                                   cpu_usage_us = 0;
      fc::unsigned_int                           net_usage_words;
@@ -57,15 +46,6 @@ namespace eosio { namespace trace_api {
   };
 
   struct block_trace_v1 : public block_trace_v0 {
-
-     block_trace_v1(chain::block_id_type id, uint32_t number, chain::block_id_type previous_id, chain::block_timestamp_type timestamp, chain::name producer, chain::checksum256_type transaction_mroot, chain::checksum256_type action_mroot, uint32_t schedule_version, std::vector<transaction_trace_v1> transactions_v1)
-     : block_trace_v0{id, number, previous_id, timestamp, producer, {}}
-     , transaction_mroot(transaction_mroot)
-     , action_mroot(action_mroot)
-     , schedule_version(schedule_version)
-     , transactions_v1(std::move(transactions_v1)) {}
-
-     block_trace_v1() = default;
      chain::checksum256_type            transaction_mroot = {};
      chain::checksum256_type            action_mroot = {};
      uint32_t                           schedule_version = {};

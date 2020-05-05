@@ -46,9 +46,11 @@ inline transaction_trace_v1 to_transaction_trace_v1( const cache_trace& t ) {
     } else {
         r.id = t.trace->failed_dtrx_trace->id; // report the failed trx id since that is the id known to user
     }
-    r.status = t.trace->receipt->status;
-    r.cpu_usage_us = t.trace->receipt->cpu_usage_us;
-    r.net_usage_words = t.trace->receipt->net_usage_words;
+    if (t.trace->receipt) {
+        r.status = t.trace->receipt->status;
+        r.cpu_usage_us = t.trace->receipt->cpu_usage_us;
+        r.net_usage_words = t.trace->receipt->net_usage_words;
+    }
     r.signatures = t.trx_signatures;
     r.trx_header = t.trx_header;
     r.actions.reserve( t.trace->action_traces.size());
