@@ -7,6 +7,7 @@ add_subdirectory( appbase )
 add_subdirectory( chain )
 add_subdirectory( testing )
 add_subdirectory( version )
+add_subdirectory( state_history )
 
 set(USE_EXISTING_SOFTFLOAT ON CACHE BOOL "use pre-exisiting softfloat lib")
 set(ENABLE_TOOLS OFF CACHE BOOL "Build tools")
