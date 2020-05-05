@@ -131,7 +131,7 @@ template <typename F>
 void with_result(const char* data, uint64_t size, F f) {
    eosio::input_stream          bin{ data, data + size };
    eosio::ship_protocol::result result;
-   eosio::check_discard(from_bin(result, bin));
+   from_bin(result, bin);
    auto* result_v0 = std::get_if<eosio::ship_protocol::get_blocks_result_v0>(&result);
    if (!result_v0)
       throw std::runtime_error("expected a get_blocks_result_v0");
@@ -243,7 +243,7 @@ rodeos_bool rodeos_query_transaction(rodeos_error* error, rodeos_query_handler* 
 
       std::vector<std::vector<char>> memory;
       eosio::input_stream            s{ data, size };
-      auto trx = eosio::check(eosio::from_bin<eosio::ship_protocol::packed_transaction>(s)).value();
+      auto trx = eosio::from_bin<eosio::ship_protocol::packed_transaction>(s);
 
       auto                                    thread_state = handler->state_cache.get_state();
       eosio::ship_protocol::transaction_trace tt;
@@ -257,7 +257,7 @@ rodeos_bool rodeos_query_transaction(rodeos_error* error, rodeos_query_handler* 
 
       handler->state_cache.store_state(std::move(thread_state));
 
-      auto packed = eosio::check(eosio::convert_to_bin(tt)).value();
+      auto packed = eosio::convert_to_bin(tt);
       *result     = (char*)malloc(packed.size());
       if (!result)
          throw std::bad_alloc();

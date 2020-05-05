@@ -320,7 +320,7 @@ void handle_request(const wasm_ql::http_config& http_config, const wasm_ql::shar
          err.message    = "Internal Service Error";
          err.error.name = "exception";
          err.error.what = e.what();
-         return send(error(http::status::internal_server_error, eosio::check(eosio::convert_to_json(err)).value(),
+         return send(error(http::status::internal_server_error, eosio::convert_to_json(err),
                            "application/json"));
       } catch (...) { //
          return send(error(http::status::internal_server_error, "failure reporting failure\n"));

@@ -79,12 +79,12 @@ struct cloner_session : ship_client::connection_callbacks, std::enable_shared_fr
       ilog("cloner database status:");
       ilog("    revisions:    ${f} - ${r}",
            ("f", rodeos_snapshot->undo_stack->first_revision())("r", rodeos_snapshot->undo_stack->revision()));
-      ilog("    chain:        ${a}", ("a", eosio::check(eosio::convert_to_json(rodeos_snapshot->chain_id)).value()));
+      ilog("    chain:        ${a}", ("a", eosio::convert_to_json(rodeos_snapshot->chain_id)));
       ilog("    head:         ${a} ${b}",
-           ("a", rodeos_snapshot->head)("b", eosio::check(eosio::convert_to_json(rodeos_snapshot->head_id)).value()));
+           ("a", rodeos_snapshot->head)("b", eosio::convert_to_json(rodeos_snapshot->head_id)));
       ilog("    irreversible: ${a} ${b}",
            ("a", rodeos_snapshot->irreversible)(
-                 "b", eosio::check(eosio::convert_to_json(rodeos_snapshot->irreversible_id)).value()));
+                 "b", eosio::convert_to_json(rodeos_snapshot->irreversible_id)));
 
       rodeos_snapshot->end_write(true);
       db->flush(true, true);
@@ -99,13 +99,13 @@ struct cloner_session : ship_client::connection_callbacks, std::enable_shared_fr
    }
 
    bool received(get_status_result_v0& status, eosio::input_stream bin) override {
-      ilog("nodeos has chain ${c}", ("c", eosio::check(eosio::convert_to_json(status.chain_id)).value()));
+      ilog("nodeos has chain ${c}", ("c", eosio::convert_to_json(status.chain_id)));
       if (rodeos_snapshot->chain_id == eosio::checksum256{})
          rodeos_snapshot->chain_id = status.chain_id;
       if (rodeos_snapshot->chain_id != status.chain_id)
          throw std::runtime_error(
-               "database is for chain " + eosio::check(eosio::convert_to_json(rodeos_snapshot->chain_id)).value() +
-               " but nodeos has chain " + eosio::check(eosio::convert_to_json(status.chain_id)).value());
+               "database is for chain " + eosio::convert_to_json(rodeos_snapshot->chain_id) +
+               " but nodeos has chain " + eosio::convert_to_json(status.chain_id));
       ilog("request blocks");
       connection->request_blocks(status, std::max(config->skip_to, rodeos_snapshot->head + 1), get_positions(),
                                  ship_client::request_block | ship_client::request_traces |

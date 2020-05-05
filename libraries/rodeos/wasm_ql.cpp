@@ -34,14 +34,14 @@ namespace eosio {
 
 // todo: move to abieos
 template <typename T, typename S>
-result<void> to_json(const might_not_exist<T>& val, S& stream) {
+void to_json(const might_not_exist<T>& val, S& stream) {
    return to_json(val.value, stream);
 }
 
 // todo: abieos support for pair. Used by extensions_type.
 template <typename S>
-result<void> to_json(const std::pair<uint16_t, std::vector<char>>&, S& stream) {
-   return stream_error::bad_variant_index;
+void to_json(const std::pair<uint16_t, std::vector<char>>&, S& stream) {
+   eosio::check(false, eosio::convert_stream_error(stream_error::bad_variant_index));
 }
 
 } // namespace eosio
@@ -216,7 +216,7 @@ std::optional<std::vector<uint8_t>> read_contract(db_view_state& db_view_state, 
 
    // todo: avoid copy
    result.emplace(code0.code.pos, code0.code.end);
-   ilog("compiling ${h}: ${a}", ("h", eosio::check(eosio::convert_to_json(hash)).value())("a", (std::string)account));
+   ilog("compiling ${h}: ${a}", ("h", eosio::convert_to_json(hash))("a", (std::string)account));
    return result;
 }
 
@@ -309,7 +309,7 @@ const std::vector<char>& query_get_info(wasm_ql::thread_state&   thread_state,
          auto record = table.primary_index.begin().value();
          if (auto* obj = std::get_if<ship_protocol::global_property_v1>(&record)) {
             found = true;
-            result += ",\"chain_id\":" + eosio::check(eosio::convert_to_json(obj->chain_id)).value();
+            result += ",\"chain_id\":" + eosio::convert_to_json(obj->chain_id);
          }
       }
       if (!found)
@@ -322,10 +322,10 @@ const std::vector<char>& query_get_info(wasm_ql::thread_state&   thread_state,
          std::visit(
                [&](auto& obj) {
                   result += ",\"head_block_num\":\"" + std::to_string(obj.head) + "\"";
-                  result += ",\"head_block_id\":" + eosio::check(eosio::convert_to_json(obj.head_id)).value();
+                  result += ",\"head_block_id\":" + eosio::convert_to_json(obj.head_id);
                   result += ",\"last_irreversible_block_num\":\"" + std::to_string(obj.irreversible) + "\"";
                   result += ",\"last_irreversible_block_id\":" +
-                            eosio::check(eosio::convert_to_json(obj.irreversible_id)).value();
+                            eosio::convert_to_json(obj.irreversible_id);
                },
                sing.get());
       } else
@@ -349,8 +349,11 @@ const std::vector<char>& query_get_block(wasm_ql::thread_state&   thread_state,
    get_block_params         params;
    std::string              s{ body.begin(), body.end() };
    eosio::json_token_stream stream{ s.data() };
-   if (auto r = from_json(params, stream); !r)
-      throw std::runtime_error("An error occurred deserializing get_block_params: " + r.error().message());
+   try {
+      from_json(params, stream);
+   } catch(std::exception& e) {
+      throw std::runtime_error("An error occurred deserializing get_block_params: "s + e.what());
+   }
 
    rocksdb::ManagedSnapshot snapshot{ thread_state.shared->db->rdb.get() };
    chain_kv::write_session  write_session{ *thread_state.shared->db, snapshot.snapshot() };
@@ -362,14 +365,20 @@ const std::vector<char>& query_get_block(wasm_ql::thread_state&   thread_state,
    std::optional<std::pair<std::shared_ptr<const chain_kv::bytes>, block_info>> info;
    if (params.block_num_or_id.size() == 64) {
       eosio::checksum256 id;
-      if (auto r = from_json(id, bn_stream); !r)
-         throw std::runtime_error("An error occurred deserializing block_num_or_id: " + r.error().message());
+      try {
+         from_json(id, bn_stream);
+      } catch(std::exception& e) {
+         throw std::runtime_error("An error occurred deserializing block_num_or_id: "s + e.what());
+      }
       info = get_state_row_secondary<block_info>(db_view_state.kv_state.view,
                                                  std::make_tuple(eosio::name{ "block.info" }, eosio::name{ "id" }, id));
    } else {
       uint32_t num;
-      if (auto r = from_json(num, bn_stream); !r)
-         throw std::runtime_error("An error occurred deserializing block_num_or_id: " + r.error().message());
+      try {
+         from_json(num, bn_stream);
+      } catch(std::exception& e) {
+         throw std::runtime_error("An error occurred deserializing block_num_or_id: "s + e.what());
+      }
       info = get_state_row<block_info>(db_view_state.kv_state.view,
                                        std::make_tuple(eosio::name{ "block.info" }, eosio::name{ "primary" }, num));
    }
@@ -380,17 +389,17 @@ const std::vector<char>& query_get_block(wasm_ql::thread_state&   thread_state,
       memcpy(&ref_block_prefix, obj.id.value.begin() + 8, sizeof(ref_block_prefix));
 
       std::string result = "{";
-      result += "\"block_num\":" + eosio::check(eosio::convert_to_json(obj.num)).value();
-      result += ",\"id\":" + eosio::check(eosio::convert_to_json(obj.id)).value();
-      result += ",\"timestamp\":" + eosio::check(eosio::convert_to_json(obj.timestamp)).value();
-      result += ",\"producer\":" + eosio::check(eosio::convert_to_json(obj.producer)).value();
-      result += ",\"confirmed\":" + eosio::check(eosio::convert_to_json(obj.confirmed)).value();
-      result += ",\"previous\":" + eosio::check(eosio::convert_to_json(obj.previous)).value();
-      result += ",\"transaction_mroot\":" + eosio::check(eosio::convert_to_json(obj.transaction_mroot)).value();
-      result += ",\"action_mroot\":" + eosio::check(eosio::convert_to_json(obj.action_mroot)).value();
-      result += ",\"schedule_version\":" + eosio::check(eosio::convert_to_json(obj.schedule_version)).value();
-      result += ",\"producer_signature\":" + eosio::check(eosio::convert_to_json(obj.producer_signature)).value();
-      result += ",\"ref_block_prefix\":" + eosio::check(eosio::convert_to_json(ref_block_prefix)).value();
+      result += "\"block_num\":" + eosio::convert_to_json(obj.num);
+      result += ",\"id\":" + eosio::convert_to_json(obj.id);
+      result += ",\"timestamp\":" + eosio::convert_to_json(obj.timestamp);
+      result += ",\"producer\":" + eosio::convert_to_json(obj.producer);
+      result += ",\"confirmed\":" + eosio::convert_to_json(obj.confirmed);
+      result += ",\"previous\":" + eosio::convert_to_json(obj.previous);
+      result += ",\"transaction_mroot\":" + eosio::convert_to_json(obj.transaction_mroot);
+      result += ",\"action_mroot\":" + eosio::convert_to_json(obj.action_mroot);
+      result += ",\"schedule_version\":" + eosio::convert_to_json(obj.schedule_version);
+      result += ",\"producer_signature\":" + eosio::convert_to_json(obj.producer_signature);
+      result += ",\"ref_block_prefix\":" + eosio::convert_to_json(ref_block_prefix);
       result += "}";
 
       thread_state.action_return_value.assign(result.data(), result.data() + result.size());
@@ -418,8 +427,11 @@ const std::vector<char>& query_get_abi(wasm_ql::thread_state& thread_state, cons
    get_abi_params           params;
    std::string              s{ body.begin(), body.end() };
    eosio::json_token_stream stream{ s.data() };
-   if (auto r = from_json(params, stream); !r)
-      throw std::runtime_error("An error occurred deserializing get_abi_params: " + r.error().message());
+   try {
+      from_json(params, stream);
+   } catch(std::exception& e) {
+      throw std::runtime_error("An error occurred deserializing get_abi_params: "s + e.what());
+   }
 
    rocksdb::ManagedSnapshot snapshot{ thread_state.shared->db->rdb.get() };
    chain_kv::write_session  write_session{ *thread_state.shared->db, snapshot.snapshot() };
@@ -436,12 +448,12 @@ const std::vector<char>& query_get_abi(wasm_ql::thread_state& thread_state, cons
    result.account_name = acc0.name;
    if (acc0.abi.pos != acc0.abi.end) {
       result.abi.emplace();
-      eosio::check_discard(eosio::from_bin(*result.abi, acc0.abi));
+      eosio::from_bin(*result.abi, acc0.abi);
    }
 
    // todo: avoid the extra copy
-   auto json = eosio::check(eosio::convert_to_json(result));
-   thread_state.action_return_value.assign(json.value().begin(), json.value().end());
+   auto json = eosio::convert_to_json(result);
+   thread_state.action_return_value.assign(json.begin(), json.end());
    return thread_state.action_return_value;
 } // query_get_abi
 
@@ -487,8 +499,11 @@ const std::vector<char>& query_get_required_keys(wasm_ql::thread_state& thread_s
    get_required_keys_params params;
    std::string              s{ body.begin(), body.end() };
    eosio::json_token_stream stream{ s.data() };
-   if (auto r = from_json(params, stream); !r)
-      throw std::runtime_error("An error occurred deserializing get_required_keys_params: " + r.error().message());
+   try {
+      from_json(params, stream);
+   } catch(std::exception& e) {
+      throw std::runtime_error("An error occurred deserializing get_required_keys_params: "s + e.what());
+   }
 
    get_required_keys_result result;
    for (auto& action : params.transaction.context_free_actions)
@@ -499,8 +514,8 @@ const std::vector<char>& query_get_required_keys(wasm_ql::thread_state& thread_s
          throw std::runtime_error("Actions may not have authorizations"); // todo
 
    // todo: avoid the extra copy
-   auto json = eosio::check(eosio::convert_to_json(result));
-   thread_state.action_return_value.assign(json.value().begin(), json.value().end());
+   auto json = eosio::convert_to_json(result);
+   thread_state.action_return_value.assign(json.begin(), json.end());
    return thread_state.action_return_value;
 } // query_get_required_keys
 
@@ -527,8 +542,11 @@ const std::vector<char>& query_send_transaction(wasm_ql::thread_state&   thread_
    {
       std::string              s{ body.begin(), body.end() };
       eosio::json_token_stream stream{ s.data() };
-      if (auto r = from_json(params, stream); !r)
-         throw std::runtime_error("An error occurred deserializing send_transaction_params: "s + r.error().message());
+      try {
+         from_json(params, stream);
+      } catch(std::exception& e) {
+         throw std::runtime_error("An error occurred deserializing send_transaction_params: "s + e.what());
+      }
    }
    if (params.compression != "0" && params.compression != "none")
       throw std::runtime_error("Compression must be 0 or none"); // todo
@@ -543,8 +561,8 @@ const std::vector<char>& query_send_transaction(wasm_ql::thread_state&   thread_
 
    // todo: hide variants during json conversion
    // todo: avoid the extra copy
-   auto json = eosio::check(eosio::convert_to_json(results));
-   thread_state.action_return_value.assign(json.value().begin(), json.value().end());
+   auto json = eosio::convert_to_json(results);
+   thread_state.action_return_value.assign(json.begin(), json.end());
    return thread_state.action_return_value;
 } // query_send_transaction
 
@@ -555,12 +573,14 @@ transaction_trace_v0 query_send_transaction(wasm_ql::thread_state&              
                                             std::vector<std::vector<char>>&          memory,             //
                                             bool                                     return_trace_on_except) {
    eosio::input_stream s{ trx.packed_trx };
-   auto                r = eosio::from_bin<ship_protocol::transaction>(s);
-   if (!r)
-      throw std::runtime_error("An error occurred deserializing packed_trx: "s + r.error().message());
+   ship_protocol::transaction unpacked;
+   try {
+      eosio::from_bin(unpacked, s);
+   } catch(std::exception& e) {
+      throw std::runtime_error("An error occurred deserializing packed_trx: "s + e.what());
+   }
    if (s.end != s.pos)
       throw std::runtime_error("Extra data in packed_trx");
-   ship_protocol::transaction& unpacked = r.value();
 
    if (!trx.signatures.empty())
       throw std::runtime_error("Signatures must be empty"); // todo
