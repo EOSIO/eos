@@ -54,8 +54,8 @@ using namespace eosio;
      eosio::detail::wallet_api_plugin_empty result;
 
 #define INVOKE_V_R_R(api_handle, call_name, in_param0, in_param1) \
-     const auto& vs = fc::json::json::from_string(body).as<fc::variants>(); \
-     api_handle.call_name(vs.at(0).as<in_param0>(), vs.at(1).as<in_param1>()); \
+     const auto& params = parse_params<two_params<in_param0, in_param1>, http_params_types::params_required>(body);\
+     api_handle.call_name(params.p1, params.p2); \
      eosio::detail::wallet_api_plugin_empty result;
 
 #define INVOKE_V_R_R_R(api_handle, call_name, in_param0, in_param1, in_param2) \
