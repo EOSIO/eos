@@ -1,13 +1,11 @@
 #pragma once
 
-#include <eosio/chain_plugin/chain_plugin.hpp>
-#include <eosio/http_client_plugin/http_client_plugin.hpp>
-
 #include <appbase/application.hpp>
 
 namespace eosio {
 
-using boost::signals2::signal;
+class producer_plugin;
+static appbase::abstract_plugin& _producer_plugin = app().register_plugin<producer_plugin>();
 
 class producer_plugin : public appbase::plugin<producer_plugin> {
 public:
@@ -79,8 +77,8 @@ public:
       boost::program_options::options_description &config_file_options
       ) override;
 
-   bool                   is_producer_key(const chain::public_key_type& key) const;
-   chain::signature_type  sign_compact(const chain::public_key_type& key, const fc::sha256& digest) const;
+   bool                  is_producer_key(const chain::public_key_type& key) const;
+   chain::signature_type sign_compact(const chain::public_key_type& key, const fc::sha256& digest) const;
 
    virtual void plugin_initialize(const boost::program_options::variables_map& options);
    virtual void plugin_startup();
