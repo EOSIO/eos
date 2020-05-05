@@ -169,35 +169,39 @@ BOOST_AUTO_TEST_SUITE(block_extraction)
       
       const uint32_t expected_lib = 0;
       const block_trace_v1 expected_trace{
-         bsp1->id,
-         1,
-         bsp1->prev(),
-         chain::block_timestamp_type(1),
-         "bp.one"_n,
+         {
+            bsp1->id,
+            1,
+            bsp1->prev(),
+            chain::block_timestamp_type(1),
+            "bp.one"_n
+         },
          bsp1->block->transaction_mroot,
          bsp1->block->action_mroot,
          bsp1->block->schedule_version,
          {
             {
-               ptrx1.id(),
                {
+                  ptrx1.id(),
                   {
-                     0,
-                     "eosio.token"_n, "eosio.token"_n, "transfer"_n,
-                     {{ "alice"_n, "active"_n }},
-                     make_transfer_data( "alice"_n, "bob"_n, "0.0001 SYS"_t, "Memo!" )
-                  },
-                  {
-                     1,
-                     "alice"_n, "eosio.token"_n, "transfer"_n,
-                     {{ "alice"_n, "active"_n }},
-                     make_transfer_data( "alice"_n, "bob"_n, "0.0001 SYS"_t, "Memo!" )
-                  },
-                  {
-                     2,
-                     "bob"_n, "eosio.token"_n, "transfer"_n,
-                     {{ "alice"_n, "active"_n }},
-                     make_transfer_data( "alice"_n, "bob"_n, "0.0001 SYS"_t, "Memo!" )
+                     {
+                        0,
+                        "eosio.token"_n, "eosio.token"_n, "transfer"_n,
+                        {{ "alice"_n, "active"_n }},
+                        make_transfer_data( "alice"_n, "bob"_n, "0.0001 SYS"_t, "Memo!" )
+                     },
+                     {
+                        1,
+                        "alice"_n, "eosio.token"_n, "transfer"_n,
+                        {{ "alice"_n, "active"_n }},
+                        make_transfer_data( "alice"_n, "bob"_n, "0.0001 SYS"_t, "Memo!" )
+                     },
+                     {
+                        2,
+                        "bob"_n, "eosio.token"_n, "transfer"_n,
+                        {{ "alice"_n, "active"_n }},
+                        make_transfer_data( "alice"_n, "bob"_n, "0.0001 SYS"_t, "Memo!" )
+                     }
                   }
                },
                fc::enum_type<uint8_t, chain::transaction_receipt_header::status_enum>{bsp1->block->transactions[0].status},
@@ -247,23 +251,27 @@ BOOST_AUTO_TEST_SUITE(block_extraction)
       const uint32_t expected_lib = 0;
 
       const block_trace_v1 expected_trace{
-         bsp1->id,
-         1,
-         bsp1->prev(),
-         chain::block_timestamp_type(1),
-         "bp.one"_n,
+         {
+            bsp1->id,
+            1,
+            bsp1->prev(),
+            chain::block_timestamp_type(1),
+            "bp.one"_n
+         },
          bsp1->block->transaction_mroot,
          bsp1->block->action_mroot,
          bsp1->block->schedule_version,
          {
             {
-               ptrx1.id(),
                {
+                  ptrx1.id(),
                   {
-                     0,
-                     "eosio.token"_n, "eosio.token"_n, "transfer"_n,
-                     {{ "alice"_n, "active"_n }},
-                     make_transfer_data( "alice"_n, "bob"_n, "0.0001 SYS"_t, "Memo!" )
+                     {
+                        0,
+                        "eosio.token"_n, "eosio.token"_n, "transfer"_n,
+                        {{ "alice"_n, "active"_n }},
+                        make_transfer_data( "alice"_n, "bob"_n, "0.0001 SYS"_t, "Memo!" )
+                     }
                   }
                },
                fc::enum_type<uint8_t, chain::transaction_receipt_header::status_enum>{bsp1->block->transactions[0].status},
@@ -274,13 +282,15 @@ BOOST_AUTO_TEST_SUITE(block_extraction)
             }
             ,
             {
-               ptrx2.id(),
                {
+                  ptrx2.id(),
                   {
-                     1,
-                     "bob"_n, "eosio.token"_n, "transfer"_n,
-                     {{ "bob"_n, "active"_n }},
-                     make_transfer_data( "bob"_n, "alice"_n, "0.0001 SYS"_t, "Memo!" )
+                     {
+                        1,
+                        "bob"_n, "eosio.token"_n, "transfer"_n,
+                        {{ "bob"_n, "active"_n }},
+                        make_transfer_data( "bob"_n, "alice"_n, "0.0001 SYS"_t, "Memo!" )
+                     }
                   }
                },
                fc::enum_type<uint8_t, chain::transaction_receipt_header::status_enum>{bsp1->block->transactions[1].status},
@@ -291,13 +301,15 @@ BOOST_AUTO_TEST_SUITE(block_extraction)
             }
             ,
             {
-               ptrx3.id(),
                {
+                  ptrx3.id(),
                   {
-                     2,
-                     "fred"_n, "eosio.token"_n, "transfer"_n,
-                     {{ "fred"_n, "active"_n }},
-                     make_transfer_data( "fred"_n, "bob"_n, "0.0001 SYS"_t, "Memo!" )
+                     {
+                        2,
+                        "fred"_n, "eosio.token"_n, "transfer"_n,
+                        {{ "fred"_n, "active"_n }},
+                        make_transfer_data( "fred"_n, "bob"_n, "0.0001 SYS"_t, "Memo!" )
+                     }
                   }
                },
                fc::enum_type<uint8_t, chain::transaction_receipt_header::status_enum>{bsp1->block->transactions[2].status},
@@ -339,23 +351,27 @@ BOOST_AUTO_TEST_SUITE(block_extraction)
 
       const uint32_t expected_lib = 0;
       const block_trace_v1 expected_trace {
-         bsp1->id,
-         1,
-         bsp1->prev(),
-         chain::block_timestamp_type(1),
-         "bp.one"_n,
+         {
+            bsp1->id,
+            1,
+            bsp1->prev(),
+            chain::block_timestamp_type(1),
+            "bp.one"_n
+         },
          bsp1->block->transaction_mroot,
          bsp1->block->action_mroot,
          bsp1->block->schedule_version,
          {
             {
-               transfer_trx.id(), // transfer_trx.id() because that is the trx id known to the user
                {
+                  transfer_trx.id(), // transfer_trx.id() because that is the trx id known to the user
                   {
-                     0,
-                     "eosio.token"_n, "eosio"_n, "onerror"_n,
-                     {{ "alice"_n, "active"_n }},
-                     make_onerror_data( chain::onerror{ 1, "test ", 4 } )
+                     {
+                        0,
+                        "eosio.token"_n, "eosio"_n, "onerror"_n,
+                        {{ "alice"_n, "active"_n }},
+                        make_onerror_data( chain::onerror{ 1, "test ", 4 } )
+                     }
                   }
                },
                fc::enum_type<uint8_t, chain::transaction_receipt_header::status_enum>{bsp1->block->transactions[0].status},

@@ -75,11 +75,13 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
    BOOST_FIXTURE_TEST_CASE(basic_empty_block_response, response_test_fixture)
    {
       auto block_trace = block_trace_v1 {
-         "b000000000000000000000000000000000000000000000000000000000000001"_h,
-         1,
-         "0000000000000000000000000000000000000000000000000000000000000000"_h,
-         chain::block_timestamp_type(0),
-         "bp.one"_n,
+         {
+            "b000000000000000000000000000000000000000000000000000000000000001"_h,
+            1,
+            "0000000000000000000000000000000000000000000000000000000000000000"_h,
+            chain::block_timestamp_type(0),
+            "bp.one"_n
+         },
          "0000000000000000000000000000000000000000000000000000000000000000"_h,
          "0000000000000000000000000000000000000000000000000000000000000000"_h,
          0,
@@ -112,23 +114,27 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
    BOOST_FIXTURE_TEST_CASE(basic_block_response, response_test_fixture)
    {
       auto block_trace = block_trace_v1 {
-         "b000000000000000000000000000000000000000000000000000000000000001"_h,
-         1,
-         "0000000000000000000000000000000000000000000000000000000000000000"_h,
-         chain::block_timestamp_type(0),
-         "bp.one"_n,
+         {
+            "b000000000000000000000000000000000000000000000000000000000000001"_h,
+            1,
+            "0000000000000000000000000000000000000000000000000000000000000000"_h,
+            chain::block_timestamp_type(0),
+            "bp.one"_n
+         },
          "0000000000000000000000000000000000000000000000000000000000000000"_h,
          "0000000000000000000000000000000000000000000000000000000000000000"_h,
          0,
          {
             {
-               "0000000000000000000000000000000000000000000000000000000000000001"_h,
                {
+                  "0000000000000000000000000000000000000000000000000000000000000001"_h,
                   {
-                     0,
-                     "receiver"_n, "contract"_n, "action"_n,
-                     {{ "alice"_n, "active"_n }},
-                     { 0x00, 0x01, 0x02, 0x03 }
+                     {
+                        0,
+                        "receiver"_n, "contract"_n, "action"_n,
+                        {{ "alice"_n, "active"_n }},
+                        { 0x00, 0x01, 0x02, 0x03 }
+                     }
                   }
                },
                fc::enum_type<uint8_t, chain::transaction_receipt_header::status_enum>{chain::transaction_receipt_header::status_enum::executed},
@@ -196,23 +202,27 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
    BOOST_FIXTURE_TEST_CASE(basic_block_response_no_params, response_test_fixture)
    {
       auto block_trace = block_trace_v1 {
-         "b000000000000000000000000000000000000000000000000000000000000001"_h,
-         1,
-         "0000000000000000000000000000000000000000000000000000000000000000"_h,
-         chain::block_timestamp_type(0),
-         "bp.one"_n,
+         {
+            "b000000000000000000000000000000000000000000000000000000000000001"_h,
+            1,
+            "0000000000000000000000000000000000000000000000000000000000000000"_h,
+            chain::block_timestamp_type(0),
+            "bp.one"_n
+         },
          "0000000000000000000000000000000000000000000000000000000000000000"_h,
          "0000000000000000000000000000000000000000000000000000000000000000"_h,
          0,
          {
             {
-               "0000000000000000000000000000000000000000000000000000000000000001"_h,
                {
+                  "0000000000000000000000000000000000000000000000000000000000000001"_h,
                   {
-                     0,
-                     "receiver"_n, "contract"_n, "action"_n,
-                     {{ "alice"_n, "active"_n }},
-                     { 0x00, 0x01, 0x02, 0x03 }
+                     {
+                        0,
+                        "receiver"_n, "contract"_n, "action"_n,
+                        {{ "alice"_n, "active"_n }},
+                        { 0x00, 0x01, 0x02, 0x03 }
+                     }
                   }
                },
                fc::enum_type<uint8_t, chain::transaction_receipt_header::status_enum>{chain::transaction_receipt_header::status_enum::executed},
@@ -283,35 +293,39 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
    BOOST_FIXTURE_TEST_CASE(basic_block_response_unsorted, response_test_fixture)
    {
       auto block_trace = block_trace_v1 {
-         "b000000000000000000000000000000000000000000000000000000000000001"_h,
-         1,
-         "0000000000000000000000000000000000000000000000000000000000000000"_h,
-         chain::block_timestamp_type(0),
-         "bp.one"_n,
+         {
+            "b000000000000000000000000000000000000000000000000000000000000001"_h,
+            1,
+            "0000000000000000000000000000000000000000000000000000000000000000"_h,
+            chain::block_timestamp_type(0),
+            "bp.one"_n
+         },
          "0000000000000000000000000000000000000000000000000000000000000000"_h,
          "0000000000000000000000000000000000000000000000000000000000000000"_h,
          0,
          {
             {
-               "0000000000000000000000000000000000000000000000000000000000000001"_h,
                {
+                  "0000000000000000000000000000000000000000000000000000000000000001"_h,
                   {
-                     1,
-                     "receiver"_n, "contract"_n, "action"_n,
-                     {{ "alice"_n, "active"_n }},
-                     { 0x01, 0x01, 0x01, 0x01 }
-                  },
-                  {
-                     0,
-                     "receiver"_n, "contract"_n, "action"_n,
-                     {{ "alice"_n, "active"_n }},
-                     { 0x00, 0x00, 0x00, 0x00 }
-                  },
-                  {
-                     2,
-                     "receiver"_n, "contract"_n, "action"_n,
-                     {{ "alice"_n, "active"_n }},
-                     { 0x02, 0x02, 0x02, 0x02 }
+                     {
+                        1,
+                        "receiver"_n, "contract"_n, "action"_n,
+                        {{ "alice"_n, "active"_n }},
+                        { 0x01, 0x01, 0x01, 0x01 }
+                     },
+                     {
+                        0,
+                        "receiver"_n, "contract"_n, "action"_n,
+                        {{ "alice"_n, "active"_n }},
+                        { 0x00, 0x00, 0x00, 0x00 }
+                     },
+                     {
+                        2,
+                        "receiver"_n, "contract"_n, "action"_n,
+                        {{ "alice"_n, "active"_n }},
+                        { 0x02, 0x02, 0x02, 0x02 }
+                     }
                   }
                },
                fc::enum_type<uint8_t, chain::transaction_receipt_header::status_enum>{chain::transaction_receipt_header::status_enum::executed},
@@ -406,11 +420,13 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
    BOOST_FIXTURE_TEST_CASE(lib_response, response_test_fixture)
    {
       auto block_trace = block_trace_v1{
-         "b000000000000000000000000000000000000000000000000000000000000001"_h,
-         1,
-         "0000000000000000000000000000000000000000000000000000000000000000"_h,
-         chain::block_timestamp_type(0),
-         "bp.one"_n,
+         {
+            "b000000000000000000000000000000000000000000000000000000000000001"_h,
+            1,
+            "0000000000000000000000000000000000000000000000000000000000000000"_h,
+            chain::block_timestamp_type(0),
+            "bp.one"_n
+         },
          "0000000000000000000000000000000000000000000000000000000000000000"_h,
          "0000000000000000000000000000000000000000000000000000000000000000"_h,
          0,
@@ -465,23 +481,27 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
    BOOST_FIXTURE_TEST_CASE(yield_throws, response_test_fixture)
    {
       auto block_trace = block_trace_v1 {
-         "b000000000000000000000000000000000000000000000000000000000000001"_h,
-         1,
-         "0000000000000000000000000000000000000000000000000000000000000000"_h,
-         chain::block_timestamp_type(0),
-         "bp.one"_n,
+         {
+            "b000000000000000000000000000000000000000000000000000000000000001"_h,
+            1,
+            "0000000000000000000000000000000000000000000000000000000000000000"_h,
+            chain::block_timestamp_type(0),
+            "bp.one"_n
+         },
          "0000000000000000000000000000000000000000000000000000000000000000"_h,
          "0000000000000000000000000000000000000000000000000000000000000000"_h,
          0,
          {
             {
-               "0000000000000000000000000000000000000000000000000000000000000001"_h,
                {
+                  "0000000000000000000000000000000000000000000000000000000000000001"_h,
                   {
-                     0,
-                     "receiver"_n, "contract"_n, "action"_n,
-                     {{ "alice"_n, "active"_n }},
-                     { 0x00, 0x01, 0x02, 0x03 }
+                     {
+                        0,
+                        "receiver"_n, "contract"_n, "action"_n,
+                        {{ "alice"_n, "active"_n }},
+                        { 0x00, 0x01, 0x02, 0x03 }
+                     }
                   }
                },
                fc::enum_type<uint8_t, chain::transaction_receipt_header::status_enum>{chain::transaction_receipt_header::status_enum::executed},
