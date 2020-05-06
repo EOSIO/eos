@@ -34,7 +34,7 @@ namespace eosio::trace_api {
    : _slice_directory(slice_dir, stride_width, minimum_irreversible_history_blocks, minimum_uncompressed_irreversible_history_blocks, compression_seek_point_stride) {
    }
 
-   void store_provider::append(const block_trace_v0& bt) {
+   void store_provider::append(const block_trace_v1& bt) {
       fc::cfile trace;
       fc::cfile index;
       const uint32_t slice_number = _slice_directory.slice_number(bt.number);
@@ -80,8 +80,7 @@ namespace eosio::trace_api {
       if (!entry) {
          return get_block_t{};
       }
-      const auto bt = entry->get<block_trace_v0>();
-      return std::make_tuple( bt, irreversible );
+      return std::make_tuple( entry.value(), irreversible );
    }
 
    slice_directory::slice_directory(const bfs::path& slice_dir, uint32_t width, std::optional<uint32_t> minimum_irreversible_history_blocks, std::optional<uint32_t> minimum_uncompressed_irreversible_history_blocks, size_t compression_seek_point_stride)
