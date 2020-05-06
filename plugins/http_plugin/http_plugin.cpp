@@ -971,6 +971,20 @@ namespace eosio {
       return result;
    }
 
+   bool http_plugin::test_url_handler (const std::string& url, const std::string& body, url_response_callback cb) const {
+      const string empty_resource;
+      auto itr = my->url_handlers.find(url);
+      if (itr != my->url_handlers.end()) {
+         std::cout << "-1111-url: " << url << std::endl;
+         detail::connection_ptr<websocketpp::config::core> empty_conn_ptr;
+         detail::abstract_conn_ptr abs_con_ptr = http_plugin_impl::make_abstract_conn_ptr<websocketpp::config::core>(empty_conn_ptr, *my);
+         itr->second( abs_con_ptr, empty_resource, body, cb );
+         std::cout << "-2222-body: [" << body << "]\n";
+         return true;
+      }
+      return false;
+   }
+
    fc::microseconds http_plugin::get_max_response_time()const {
       return my->max_response_time;
    }

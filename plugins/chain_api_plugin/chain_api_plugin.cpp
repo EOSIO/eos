@@ -34,7 +34,9 @@ struct async_result_visitor : public fc::visitor<fc::variant> {
 #define CALL_WITH_400(api_name, api_handle, api_namespace, call_name, http_response_code, params_type) \
 {std::string("/v1/" #api_name "/" #call_name), \
    [api_handle](string, string body, url_response_callback cb) mutable { \
+          std::cerr << "------------111111" << std::endl; \
           api_handle.validate(); \
+          std::cout << "------------222222" << std::endl; \
           try { \
              auto params = parse_params<api_namespace::call_name ## _params, params_type>(body);\
              fc::variant result( api_handle.call_name( std::move(params) ) ); \
