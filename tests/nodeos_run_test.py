@@ -89,7 +89,7 @@ try:
     Print("Validating system accounts after bootstrap")
     cluster.validateAccounts(None)
 
-    accounts=Cluster.createAccountKeys(3)
+    accounts=Cluster.createAccountKeys(4)
     if accounts is None:
         errorExit("FAILURE - create keys")
     testeraAccount=accounts[0]
@@ -98,6 +98,11 @@ try:
     currencyAccount.name="currency1111"
     exchangeAccount=accounts[2]
     exchangeAccount.name="exchange1111"
+    # account to test newaccount with authority
+    testerbAccount=accounts[3]
+    testerbAccount.name="testerb11111"
+    testerbOwner = testerbAccount.ownerPublicKey
+    testerbAccount.ownerPublicKey = '{"threshold":1, "accounts":[{"permission":{"actor": "' + testeraAccount.name + '", "permission":"owner"}, "weight": 1}],"keys":[{"key": "' +testerbOwner +  '", "weight": 1}],"waits":[]}'
 
     PRV_KEY1=testeraAccount.ownerPrivateKey
     PUB_KEY1=testeraAccount.ownerPublicKey
@@ -206,6 +211,9 @@ try:
 
     Print("Create new account %s via %s" % (testeraAccount.name, cluster.defproduceraAccount.name))
     transId=node.createInitializeAccount(testeraAccount, cluster.defproduceraAccount, stakedDeposit=0, waitForTransBlock=False, exitOnError=True)
+
+    Print("Create new account %s via %s" % (testerbAccount.name, cluster.defproduceraAccount.name))
+    transId=node.createInitializeAccount(testerbAccount, cluster.defproduceraAccount, stakedDeposit=0, waitForTransBlock=False, exitOnError=True)
 
     Print("Create new account %s via %s" % (currencyAccount.name, cluster.defproduceraAccount.name))
     transId=node.createInitializeAccount(currencyAccount, cluster.defproduceraAccount, buyRAM=200000, stakedDeposit=5000, exitOnError=True)
