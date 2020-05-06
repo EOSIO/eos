@@ -189,6 +189,24 @@ vector<string> tx_permission;
 
 eosio::client::http::http_context context;
 
+enum class tx_compression_type {
+   none,
+   zlib,
+   default_compression
+};
+static std::map<std::string, tx_compression_type> compression_type_map{
+   {"none", tx_compression_type::none },
+   {"zlib", tx_compression_type::zlib }
+};
+tx_compression_type tx_compression = tx_compression_type::default_compression;
+packed_transaction::compression_type to_compression_type( tx_compression_type t ) {
+   switch( t ) {
+      case tx_compression_type::none: return packed_transaction::compression_type::none;
+      case tx_compression_type::zlib: return packed_transaction::compression_type::zlib;
+      case tx_compression_type::default_compression: return packed_transaction::compression_type::none;
+   }
+}
+
 void add_standard_transaction_options(CLI::App* cmd, string default_permission = "") {
    CLI::callback_t parse_expiration = [](CLI::results_t res) -> bool {
       double value_s;
@@ -209,6 +227,8 @@ void add_standard_transaction_options(CLI::App* cmd, string default_permission =
    cmd->add_flag("--return-packed", tx_return_packed, localized("Used in conjunction with --dont-broadcast to get the packed transaction"));
    cmd->add_option("-r,--ref-block", tx_ref_block_num_or_id, (localized("Set the reference block num or block id used for TAPOS (Transaction as Proof-of-Stake)")));
    cmd->add_flag("--use-old-rpc", tx_use_old_rpc, localized("Use old RPC push_transaction, rather than new RPC send_transaction"));
+   cmd->add_option("--compression", tx_compression, localized("Compression for transaction 'none' or 'zlib'"))->transform(
+         CLI::CheckedTransformer(compression_type_map, CLI::ignore_case));
 
    string msg = "An account and permission level to authorize, as in 'account@permission'";
    if(!default_permission.empty())
@@ -373,8 +393,8 @@ void sign_transaction(signed_transaction& trx, fc::variant& required_keys, const
    trx = signed_trx.as<signed_transaction>();
 }
 
-fc::variant push_transaction( signed_transaction& trx, const std::vector<public_key_type>& signing_keys = std::vector<public_key_type>(),
-                              packed_transaction::compression_type compression = packed_transaction::compression_type::none ) {
+fc::variant push_transaction( signed_transaction& trx, const std::vector<public_key_type>& signing_keys = std::vector<public_key_type>() )
+{
    auto info = get_info();
 
    if (trx.signatures.size() == 0) { // #5445 can't change txn content if already signed
@@ -411,6 +431,7 @@ fc::variant push_transaction( signed_transaction& trx, const std::vector<public_
       sign_transaction(trx, required_keys, info.chain_id);
    }
 
+   packed_transaction::compression_type compression = to_compression_type( tx_compression );
    if (!tx_dont_broadcast) {
       if (tx_use_old_rpc) {
          return call(push_txn_func, packed_transaction(trx, compression));
@@ -438,11 +459,11 @@ fc::variant push_transaction( signed_transaction& trx, const std::vector<public_
    }
 }
 
-fc::variant push_actions(std::vector<chain::action>&& actions, packed_transaction::compression_type compression = packed_transaction::compression_type::none, const std::vector<public_key_type>& signing_keys = std::vector<public_key_type>() ) {
+fc::variant push_actions(std::vector<chain::action>&& actions, const std::vector<public_key_type>& signing_keys = std::vector<public_key_type>() ) {
    signed_transaction trx;
    trx.actions = std::forward<decltype(actions)>(actions);
 
-   return push_transaction(trx, signing_keys, compression);
+   return push_transaction(trx, signing_keys);
 }
 
 void print_action( const fc::variant& at ) {
@@ -571,13 +592,13 @@ void print_result( const fc::variant& result ) { try {
 } FC_CAPTURE_AND_RETHROW( (result) ) }
 
 using std::cout;
-void send_actions(std::vector<chain::action>&& actions, const std::vector<public_key_type>& signing_keys = std::vector<public_key_type>(), packed_transaction::compression_type compression = packed_transaction::compression_type::none ) {
+void send_actions(std::vector<chain::action>&& actions, const std::vector<public_key_type>& signing_keys = std::vector<public_key_type>() ) {
    std::ofstream out;
    if (tx_json_save_file.length()) {
       out.open(tx_json_save_file);
       EOSC_ASSERT(!out.fail(), "ERROR: Failed to create file \"${p}\"", ("p", tx_json_save_file));
    }
-   auto result = push_actions( move(actions), compression, signing_keys);
+   auto result = push_actions( move(actions), signing_keys);
 
    string jsonstr;
    if (tx_json_save_file.length()) {
@@ -3124,7 +3145,9 @@ int main( int argc, char** argv ) {
          actions.emplace_back( create_setcode(name(account), code_bytes ) );
          if ( shouldSend ) {
             std::cerr << localized("Setting Code...") << std::endl;
-            send_actions(std::move(actions), signing_keys_opt.get_keys(), packed_transaction::compression_type::zlib);
+            if( tx_compression == tx_compression_type::default_compression )
+               tx_compression = tx_compression_type::zlib;
+            send_actions(std::move(actions), signing_keys_opt.get_keys());
          }
       } else {
          std::cerr << localized("Skipping set code because the new code is the same as the existing code") << std::endl;
@@ -3172,7 +3195,9 @@ int main( int argc, char** argv ) {
          } EOS_RETHROW_EXCEPTIONS(abi_type_exception,  "Fail to parse ABI JSON")
          if ( shouldSend ) {
             std::cerr << localized("Setting ABI...") << std::endl;
-            send_actions(std::move(actions), signing_keys_opt.get_keys(), packed_transaction::compression_type::zlib);
+            if( tx_compression == tx_compression_type::default_compression )
+               tx_compression = tx_compression_type::zlib;
+            send_actions(std::move(actions), signing_keys_opt.get_keys());
          }
       } else {
          std::cerr << localized("Skipping set abi because the new abi is the same as the existing abi") << std::endl;
@@ -3189,7 +3214,9 @@ int main( int argc, char** argv ) {
       set_abi_callback();
       if (actions.size()) {
          std::cerr << localized("Publishing contract...") << std::endl;
-         send_actions(std::move(actions), signing_keys_opt.get_keys(), packed_transaction::compression_type::zlib);
+         if( tx_compression == tx_compression_type::default_compression )
+            tx_compression = tx_compression_type::zlib;
+         send_actions(std::move(actions), signing_keys_opt.get_keys());
       } else {
          std::cout << "no transaction is sent" << std::endl;
       }
