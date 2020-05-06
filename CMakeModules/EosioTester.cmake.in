@@ -69,12 +69,6 @@ get_filename_component(ssldir @OPENSSL_SSL_LIBRARY@ DIRECTORY)
 find_library(libosssl ssl "${ssldir}" NO_DEFAULT_PATH)
 find_library(libchainbase chainbase @CMAKE_INSTALL_PREFIX@/lib64 @CMAKE_INSTALL_PREFIX@/lib NO_DEFAULT_PATH)
 find_library(libbuiltins builtins @CMAKE_INSTALL_PREFIX@/lib64 @CMAKE_INSTALL_PREFIX@/lib NO_DEFAULT_PATH)
-find_library(GMP_LIBRARIES NAMES libgmp.a gmp.lib gmp libgmp-10 mpir
-    HINTS ENV GMP_LIB_DIR
-          ENV GMP_DIR
-    PATH_SUFFIXES lib
-    DOC "Path to the GMP library"
-)
 
 set(EOSIO_WASM_RUNTIMES @EOSIO_WASM_RUNTIMES@)
 if("eos-vm-oc" IN_LIST EOSIO_WASM_RUNTIMES)
@@ -98,7 +92,7 @@ macro(add_eosio_test_executable test_name)
        ${libchainbase}
        ${libbuiltins}
        ${libsecp256k1}
-       ${GMP_LIBRARIES}
+       @GMP_LIBRARIES@
 
        ${Boost_FILESYSTEM_LIBRARY}
        ${Boost_SYSTEM_LIBRARY}
