@@ -28,25 +28,27 @@ namespace {
          0,
          {
             {
-               "0000000000000000000000000000000000000000000000000000000000000001"_h,
                {
+                  "0000000000000000000000000000000000000000000000000000000000000001"_h,
                   {
-                     0,
-                     "eosio.token"_n, "eosio.token"_n, "transfer"_n,
-                     {{ "alice"_n, "active"_n }},
-                     make_transfer_data( "alice"_n, "bob"_n, "0.0001 SYS"_t, "Memo!" )
-                  },
-                  {
-                     1,
-                     "alice"_n, "eosio.token"_n, "transfer"_n,
-                     {{ "alice"_n, "active"_n }},
-                     make_transfer_data( "alice"_n, "bob"_n, "0.0001 SYS"_t, "Memo!" )
-                  },
-                  {
-                     2,
-                     "bob"_n, "eosio.token"_n, "transfer"_n,
-                     {{ "alice"_n, "active"_n }},
-                     make_transfer_data( "alice"_n, "bob"_n, "0.0001 SYS"_t, "Memo!" )
+                     {
+                        0,
+                        "eosio.token"_n, "eosio.token"_n, "transfer"_n,
+                        {{ "alice"_n, "active"_n }},
+                        make_transfer_data( "alice"_n, "bob"_n, "0.0001 SYS"_t, "Memo!" )
+                     },
+                     {
+                        1,
+                        "alice"_n, "eosio.token"_n, "transfer"_n,
+                        {{ "alice"_n, "active"_n }},
+                        make_transfer_data( "alice"_n, "bob"_n, "0.0001 SYS"_t, "Memo!" )
+                     },
+                     {
+                        2,
+                        "bob"_n, "eosio.token"_n, "transfer"_n,
+                        {{ "alice"_n, "active"_n }},
+                        make_transfer_data( "alice"_n, "bob"_n, "0.0001 SYS"_t, "Memo!" )
+                     }
                   }
                },
                fc::enum_type<uint8_t, chain::transaction_receipt_header::status_enum>{chain::transaction_receipt_header::status_enum::executed},
@@ -71,8 +73,10 @@ namespace {
          0,
          {
             {
-               "f000000000000000000000000000000000000000000000000000000000000004"_h,
-               {},
+               {
+                  "f000000000000000000000000000000000000000000000000000000000000004"_h,
+                  {}
+               },
                fc::enum_type<uint8_t, chain::transaction_receipt_header::status_enum>{chain::transaction_receipt_header::status_enum::executed},
                10,
                5,
