@@ -288,7 +288,7 @@ struct test_chain {
    void start_if_needed() {
       mutating();
       if (!control->is_building_block())
-         control->start_block(control->head_block_time() + fc::microseconds(block_interval_us), 0, {});
+         control->start_block(control->head_block_time() + fc::microseconds(block_interval_us), 0);
    }
 
    void finish_block() {
