@@ -205,19 +205,19 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
    std::string delim;
 #ifdef EOSIO_EOS_VM_JIT_RUNTIME_ENABLED
    wasm_runtime_opt += " \"eos-vm-jit\"";
-   wasm_runtime_desc += "\"eos-vm-jit\" : A WebAssembly compiler that takes WASM and generates native code using a just in time compiler.\n";
+   wasm_runtime_desc += "\"eos-vm-jit\" : A WebAssembly runtime that compiles WebAssembly code to native x86 code prior to execution.\n";
    delim = ", ";
 #endif
 
 #ifdef EOSIO_EOS_VM_RUNTIME_ENABLED
    wasm_runtime_opt += delim + "\"eos-vm\"";
-   wasm_runtime_desc += "\"eos-vm\" : A WebAssembly interpreter providing deterministic and efficient time bound execution.\n";
+   wasm_runtime_desc += "\"eos-vm\" : A WebAssembly interpreter.\n";
    delim = ", ";
 #endif
 
 #ifdef EOSIO_EOS_VM_OC_DEVELOPER
    wasm_runtime_opt += delim + "\"eos-vm-oc\"";
-   wasm_runtime_desc += "\"eos-vm-oc\" : A specialized compiler framework (LLVM) that leverages a multi-pass compilation architecture creating native code.\n";
+   wasm_runtime_desc += "\"eos-vm-oc\" : Unsupported. Instead, use one of the other runtimes along with the option enable-eos-vm-oc.\n";
 #endif
    wasm_runtime_opt += ")\n" + wasm_runtime_desc;
 
