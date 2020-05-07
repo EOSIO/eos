@@ -746,8 +746,8 @@ struct set_account_permission_subcommand {
    string permission;
    string authority_json_or_file;
    string parent;
-   bool add_code;
-   bool remove_code;
+   bool add_code = false;
+   bool remove_code = false;
 
    set_account_permission_subcommand(CLI::App* accountCmd) {
       auto permissions = accountCmd->add_subcommand("permission", localized("set parameters dealing with account permissions"));
@@ -1032,8 +1032,8 @@ struct create_account_subcommand {
    uint32_t buy_ram_bytes_in_kbytes = 0;
    uint32_t buy_ram_bytes = 0;
    string buy_ram_eos;
-   bool transfer;
-   bool simple;
+   bool transfer = false;
+   bool simple = false;
 
    create_account_subcommand(CLI::App* actionRoot, bool s) : simple(s) {
       auto createAccount = actionRoot->add_subcommand(
