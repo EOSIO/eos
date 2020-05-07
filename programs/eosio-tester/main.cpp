@@ -253,7 +253,7 @@ struct test_chain {
 
    void on_accepted_block(const block_state_ptr& block_state) {
       auto block_bin  = fc::raw::pack(*block_state->block);
-      auto traces_bin = trace_converter.pack(control->db(), false, block_state);
+      auto traces_bin = trace_converter.pack(control->db(), false, block_state, 1); // hard code version for now, will be changed in later commit
       auto deltas_bin = fc::raw::pack(create_deltas(control->db(), !prev_block));
 
       get_blocks_result_v0 message;
