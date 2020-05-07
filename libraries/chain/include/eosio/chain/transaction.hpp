@@ -57,12 +57,6 @@ namespace eosio { namespace chain {
     *  region.
     */
    struct transaction_header {
-      transaction_header() = default;
-      explicit transaction_header( const transaction_header& ) = default;
-      transaction_header( transaction_header&& ) = default;
-      // transaction_header& operator=(const transaction_header&) = delete;
-      transaction_header& operator=(transaction_header&&) = default;
-
       time_point_sec         expiration;   ///< the time at which a transaction expires
       uint16_t               ref_block_num       = 0U; ///< specifies a block num in the last 2^16 blocks.
       uint32_t               ref_block_prefix    = 0UL; ///< specifies the lower 32 bits of the blockid at get_ref_blocknum
