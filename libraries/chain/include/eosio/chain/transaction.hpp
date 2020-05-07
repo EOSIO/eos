@@ -60,7 +60,7 @@ namespace eosio { namespace chain {
       transaction_header() = default;
       explicit transaction_header( const transaction_header& ) = default;
       transaction_header( transaction_header&& ) = default;
-      transaction_header& operator=(const transaction_header&) = delete;
+      // transaction_header& operator=(const transaction_header&) = delete;
       transaction_header& operator=(transaction_header&&) = default;
 
       time_point_sec         expiration;   ///< the time at which a transaction expires
