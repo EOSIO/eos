@@ -937,6 +937,9 @@ void producer_plugin::plugin_startup()
    EOS_ASSERT( my->_producers.empty() || chain.get_validation_mode() == chain::validation_mode::FULL, plugin_config_exception,
               "node cannot have any producer-name configured because block production is not safe when validation_mode is not \"full\"" );
 
+   EOS_ASSERT( my->_producers.empty() || my->chain_plug->accept_transactions(), plugin_config_exception,
+              "node cannot have any producer-name configured because no block production is possible with no [api|p2p]-accepted-transactions" );
+
    my->_accepted_block_connection.emplace(chain.accepted_block.connect( [this]( const auto& bsp ){ my->on_block( bsp ); } ));
    my->_accepted_block_header_connection.emplace(chain.accepted_block_header.connect( [this]( const auto& bsp ){ my->on_block_header( bsp ); } ));
    my->_irreversible_block_connection.emplace(chain.irreversible_block.connect( [this]( const auto& bsp ){ my->on_irreversible_block( bsp->block ); } ));
@@ -989,6 +992,7 @@ void producer_plugin::handle_sighup() {
 }
 
 void producer_plugin::pause() {
+   fc_ilog(_log, "Producer paused.");
    my->_pause_production = true;
 }
 
@@ -1000,7 +1004,10 @@ void producer_plugin::resume() {
    if (my->_pending_block_mode == pending_block_mode::speculating) {
       chain::controller& chain = my->chain_plug->chain();
       my->_unapplied_transactions.add_aborted( chain.abort_block() );
+      fc_ilog(_log, "Producer resumed. Scheduling production.");
       my->schedule_production_loop();
+   } else {
+      fc_ilog(_log, "Producer resumed.");
    }
 }
 
@@ -1131,6 +1138,11 @@ producer_plugin::integrity_hash_information producer_plugin::get_integrity_hash(
 }
 
 void producer_plugin::create_snapshot(producer_plugin::next_function<producer_plugin::snapshot_information> next) {
+   #warning TODO: Re-enable snapshot generation.
+   auto ex = producer_exception( FC_LOG_MESSAGE( error, "snapshot generation temporarily disabled") );
+   next(ex.dynamic_copy_exception());
+   return;
+
    chain::controller& chain = my->chain_plug->chain();
 
    auto head_id = chain.head_block_id();
@@ -1399,7 +1411,7 @@ fc::time_point producer_plugin_impl::calculate_block_deadline( const fc::time_po
 producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
    chain::controller& chain = chain_plug->chain();
 
-   if( chain.in_immutable_mode() )
+   if( !chain_plug->accept_transactions() )
       return start_block_result::waiting_for_block;
 
    const auto& hbs = chain.head_block_state();
@@ -1659,12 +1671,14 @@ bool producer_plugin_impl::remove_expired_blacklisted_trxs( const fc::time_point
 {
    bool exhausted = false;
    auto& blacklist_by_expiry = _blacklisted_transactions.get<by_expiry>();
-   auto now = fc::time_point::now();
    if(!blacklist_by_expiry.empty()) {
+      const chain::controller& chain = chain_plug->chain();
+      const auto lib_time = chain.last_irreversible_block_time();
+
       int num_expired = 0;
       int orig_count = _blacklisted_transactions.size();
 
-      while (!blacklist_by_expiry.empty() && blacklist_by_expiry.begin()->expiry <= now) {
+      while (!blacklist_by_expiry.empty() && blacklist_by_expiry.begin()->expiry <= lib_time) {
          if (deadline <= fc::time_point::now()) {
             exhausted = true;
             break;
@@ -1770,12 +1784,13 @@ void producer_plugin_impl::process_scheduled_and_incoming_trxs( const fc::time_p
          continue; // do not allow schedule and execute in same block
       }
 
-      const transaction_id_type trx_id = sch_itr->trx_id; // make copy since reference could be invalidated
-      if (blacklist_by_id.find(trx_id) != blacklist_by_id.end()) {
+      if (blacklist_by_id.find(sch_itr->trx_id) != blacklist_by_id.end()) {
          ++sch_itr;
          continue;
       }
 
+      const transaction_id_type trx_id = sch_itr->trx_id; // make copy since reference could be invalidated
+      const auto sch_expiration = sch_itr->expiration;
       auto sch_itr_next = sch_itr; // save off next since sch_itr may be invalidated by loop
       ++sch_itr_next;
       const auto next_delay_until = sch_itr_next != sch_idx.end() ? sch_itr_next->delay_until : sch_itr->delay_until;
@@ -1825,9 +1840,8 @@ void producer_plugin_impl::process_scheduled_and_incoming_trxs( const fc::time_p
                }
                // do not blacklist
             } else {
-               auto expiration = fc::time_point::now() + fc::seconds(chain.get_global_properties().configuration.deferred_trx_expiration_window);
                // this failed our configured maximum transaction time, we don't want to replay it add it to a blacklist
-               _blacklisted_transactions.insert(transaction_id_with_expiry{trx_id, expiration});
+               _blacklisted_transactions.insert(transaction_id_with_expiry{trx_id, sch_expiration});
                num_failed++;
             }
          } else {

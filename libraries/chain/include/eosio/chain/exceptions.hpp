@@ -159,7 +159,6 @@ namespace eosio { namespace chain {
     *   |- reversible_blocks_exception
     *   |- block_log_exception
     *   |- resource_limit_exception
-    *   |- mongo_db_exception
     *   |- contract_api_exception
     */
 
@@ -277,6 +276,8 @@ namespace eosio { namespace chain {
                                     3040017, "Transaction includes disallowed extensions (invalid block)" )
       FC_DECLARE_DERIVED_EXCEPTION( tx_resource_exhaustion, transaction_exception,
                                     3040018, "Transaction exceeded transient resource limit" )
+      FC_DECLARE_DERIVED_EXCEPTION( tx_prune_exception, transaction_exception,
+                                    3040019, "Prunable data not found" )
 
 
    FC_DECLARE_DERIVED_EXCEPTION( action_validate_exception, chain_exception,
@@ -360,6 +361,8 @@ namespace eosio { namespace chain {
                                     3080007, "Transaction exceeded the current greylisted account network usage limit" )
       FC_DECLARE_DERIVED_EXCEPTION( greylist_cpu_usage_exceeded, resource_exhausted_exception,
                                     3080008, "Transaction exceeded the current greylisted account CPU usage limit" )
+      FC_DECLARE_DERIVED_EXCEPTION( disk_usage_exceeded, resource_exhausted_exception,
+                                    3080009, "Account using more than allotted DISK usage" )
 
       FC_DECLARE_DERIVED_EXCEPTION( leeway_deadline_exception, deadline_exception,
                                     3081001, "Transaction reached the deadline set due to leeway on account CPU limits" )
@@ -537,6 +540,16 @@ namespace eosio { namespace chain {
                                     3160009, "No wasm file found" )
       FC_DECLARE_DERIVED_EXCEPTION( abi_file_not_found,          contract_exception,
                                     3160010, "No abi file found" )
+      FC_DECLARE_DERIVED_EXCEPTION( kv_bad_db_id,          contract_exception,
+                                    3160011, "Bad key-value database ID" )
+      FC_DECLARE_DERIVED_EXCEPTION( kv_bad_iter,          contract_exception,
+                                    3160012, "Bad key-value iterator" )
+      FC_DECLARE_DERIVED_EXCEPTION( kv_limit_exceeded,          contract_exception,
+                                    3160013, "The key or value is too large" )
+      FC_DECLARE_DERIVED_EXCEPTION( kv_unknown_parameters_version,          contract_exception,
+                                    3160014, "Unknown kv_parameters version" )
+      FC_DECLARE_DERIVED_EXCEPTION( wasm_config_unknown_version,          contract_exception,
+                                    3160015, "Unknown wasm_config version" )
 
    FC_DECLARE_DERIVED_EXCEPTION( producer_exception,           chain_exception,
                                  3170000, "Producer exception" )
@@ -602,13 +615,6 @@ namespace eosio { namespace chain {
 
    FC_DECLARE_DERIVED_EXCEPTION( resource_limit_exception, chain_exception,
                                  3210000, "Resource limit exception" )
-
-   FC_DECLARE_DERIVED_EXCEPTION( mongo_db_exception, chain_exception,
-                                 3220000, "Mongo DB exception" )
-      FC_DECLARE_DERIVED_EXCEPTION( mongo_db_insert_fail, mongo_db_exception,
-                                 3220001, "Fail to insert new data to Mongo DB" )
-      FC_DECLARE_DERIVED_EXCEPTION( mongo_db_update_fail, mongo_db_exception,
-                                 3220002, "Fail to update existing data in Mongo DB" )
 
    FC_DECLARE_DERIVED_EXCEPTION( contract_api_exception,    chain_exception,
                                  3230000, "Contract API exception" )

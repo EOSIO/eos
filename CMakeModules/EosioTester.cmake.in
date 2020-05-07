@@ -39,7 +39,7 @@ endif ( APPLE )
 ### Remove after Boost 1.70 CMake fixes are in place
 set( Boost_NO_BOOST_CMAKE ON CACHE STRING "ON or OFF" )
 set( Boost_USE_STATIC_LIBS ON CACHE STRING "ON or OFF" )
-find_package(Boost 1.67 REQUIRED COMPONENTS
+find_package(Boost @Boost_MAJOR_VERSION@.@Boost_MINOR_VERSION@ EXACT REQUIRED COMPONENTS
    date_time
    filesystem
    system
@@ -59,7 +59,6 @@ endif()
 
 find_library(libwasm WASM @CMAKE_INSTALL_PREFIX@/lib64 @CMAKE_INSTALL_PREFIX@/lib NO_DEFAULT_PATH)
 find_library(libwast WAST @CMAKE_INSTALL_PREFIX@/lib64 @CMAKE_INSTALL_PREFIX@/lib NO_DEFAULT_PATH)
-find_library(libwabt wabt @CMAKE_INSTALL_PREFIX@/lib64 @CMAKE_INSTALL_PREFIX@/lib NO_DEFAULT_PATH)
 find_library(libir IR     @CMAKE_INSTALL_PREFIX@/lib64 @CMAKE_INSTALL_PREFIX@/lib NO_DEFAULT_PATH)
 find_library(liblogging Logging @CMAKE_INSTALL_PREFIX@/lib64 @CMAKE_INSTALL_PREFIX@/lib NO_DEFAULT_PATH)
 find_library(libruntime Runtime @CMAKE_INSTALL_PREFIX@/lib64 @CMAKE_INSTALL_PREFIX@/lib NO_DEFAULT_PATH)
@@ -90,7 +89,6 @@ macro(add_eosio_test_executable test_name)
        ${libfc}
        ${libwast}
        ${libwasm}
-       ${libwabt}
        ${libruntime}
        ${libir}
        ${libsoftfloat}

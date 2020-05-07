@@ -11,7 +11,6 @@
 namespace eosio { namespace chain { namespace eosvmoc {
 
 class memory {
-      static constexpr uint64_t wasm_memory_size                  = eosio::chain::wasm_constraints::maximum_linear_memory;
       static constexpr uint64_t intrinsic_count                   = boost::hana::length(intrinsic_table);
       //warning: changing the following 3 params will invalidate existing PIC
       static constexpr uint64_t mutable_global_size               = 8u  * eosio::chain::wasm_constraints::maximum_mutable_globals/4u;
@@ -21,14 +20,15 @@ class memory {
 
       //round up the prologue to multiple of 4K page
       static constexpr uint64_t memory_prologue_size = ((memory::wcb_allowance + mutable_global_size + table_size + intrinsic_count*UINT64_C(8))+UINT64_C(4095))/UINT64_C(4096)*UINT64_C(4096);
-      //prologue + 33MB + 4GB fault buffer + 4096 addtional buffer for safety
-      static constexpr uint64_t total_memory_per_slice = memory_prologue_size + wasm_memory_size + UINT64_C(0x100000000) + UINT64_C(4096);
-
-      static constexpr uint64_t number_slices = wasm_memory_size/(64u*1024u)+1u;
+      //prologue + 8GB fault buffer + 4096 addtional buffer for safety
+      static constexpr uint64_t total_memory_per_slice = memory_prologue_size + UINT64_C(0x200000000) + UINT64_C(4096);
 
    public:
-      memory();
+      explicit memory(uint64_t max_pages);
       ~memory();
+      memory(const memory&) = delete;
+      memory& operator=(const memory&) = delete;
+      void reset(uint64_t max_pages);
 
       uint8_t* const zero_page_memory_base() const { return zeropage_base; }
       uint8_t* const full_page_memory_base() const { return fullpage_base; }
@@ -47,6 +47,8 @@ class memory {
       static constexpr uintptr_t linear_memory = 0;
       static constexpr uintptr_t cb_offset = wcb_allowance + mutable_global_size + table_size;
       static constexpr uintptr_t first_intrinsic_offset = cb_offset + 8u;
+      // The maximum amount of data that PIC code can include in the prologue
+      static constexpr uintptr_t max_prologue_size = mutable_global_size + table_size;
 
       static_assert(-cb_offset == EOS_VM_OC_CONTROL_BLOCK_OFFSET, "EOS VM OC control block offset has slid out of place somehow");
       static_assert(stride == EOS_VM_OC_MEMORY_STRIDE, "EOS VM OC memory stride has slid out of place somehow");

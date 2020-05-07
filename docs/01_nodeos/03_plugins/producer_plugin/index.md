@@ -1,4 +1,3 @@
-# producer_plugin
 
 ## Description
 
@@ -38,6 +37,14 @@ Config Options for eosio::producer_plugin:
                                         the DPOS Irreversible Block for a chain
                                         this node will produce blocks on (use 
                                         negative value to indicate unlimited)
+  --max-block-cpu-usage-threshold-us    Threshold of CPU block production to 
+                                        consider block full; when within threshold 
+                                        of max-block-cpu-usage block can be 
+                                        produced immediately. Default value 5000
+  --max-block-net-usage-threshold-bytes Threshold of NET block production to 
+                                        consider block full; when within threshold
+                                        of max-block-net-usage block can be produced
+                                        immediately. Default value 1024
   -p [ --producer-name ] arg            ID of producer controlled by this node 
                                         (e.g. inita; may specify multiple 
                                         times)
@@ -132,3 +139,5 @@ plugin = eosio::chain_plugin [operations] [options]
 # command-line
 nodeos ... --plugin eosio::chain_plugin [operations] [options]
 ```
+
+For details about how blocks are produced please read the following [block producing explainer](10_block-producing-explained.md).

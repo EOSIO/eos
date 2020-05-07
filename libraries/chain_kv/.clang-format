@@ -1,0 +1,76 @@
+BasedOnStyle: LLVM
+IndentWidth: 3
+UseTab: Never
+ColumnLimit: 120
+
+--- 
+Language: Cpp
+# always align * and & to the type
+DerivePointerAlignment: false
+PointerAlignment: Left
+
+# regroup includes to these classes
+IncludeCategories:
+   - Regex: '(<|"(eosio)/)'
+     Priority: 4
+   - Regex: '(<|"(boost)/)'
+     Priority: 3
+   - Regex: '(<|"(llvm|llvm-c|clang|clang-c)/'
+     Priority: 3
+   - Regex: '<[[:alnum:]]+>'
+     Priority: 2
+   - Regex: '.*'
+     Priority: 1
+
+#IncludeBlocks: Regroup
+
+# set indent for public, private and protected
+#AccessModifierOffset: 3
+
+# make line continuations twice the normal indent
+ContinuationIndentWidth: 6
+
+# add missing namespace comments
+FixNamespaceComments: true
+
+# add spaces to braced list i.e. int* foo = { 0, 1, 2 }; instead of int* foo = {0,1,2};
+Cpp11BracedListStyle: false
+AlignAfterOpenBracket: Align
+AlignConsecutiveAssignments: true
+AlignConsecutiveDeclarations: true
+AlignOperands: true
+AlignTrailingComments: true
+AllowShortCaseLabelsOnASingleLine: true
+AllowShortFunctionsOnASingleLine: All
+AllowShortBlocksOnASingleLine: true
+#AllowShortIfStatementsOnASingleLine: WithoutElse
+#AllowShortIfStatementsOnASingleLine: true
+#AllowShortLambdasOnASingleLine: All
+AllowShortLoopsOnASingleLine: true
+AlwaysBreakTemplateDeclarations: true
+
+BinPackParameters: true
+### use this with clang9
+BreakBeforeBraces: Custom
+BraceWrapping:
+   #AfterCaseLabel: true
+   AfterClass: false
+   AfterControlStatement: false
+   AfterEnum: false
+   AfterFunction: false
+   AfterNamespace: false
+   AfterStruct: false
+   AfterUnion: false
+   AfterExternBlock: false
+   BeforeCatch: false
+   BeforeElse: false
+
+BreakConstructorInitializers: BeforeColon
+CompactNamespaces: true
+IndentCaseLabels: true
+IndentPPDirectives: AfterHash
+NamespaceIndentation: Inner
+ReflowComments: true
+SortIncludes: true
+SortUsingDeclarations: true
+---

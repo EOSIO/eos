@@ -1,0 +1,32 @@
+## asio transport unit tests
+##
+
+Import('env')
+Import('env_cpp11')
+Import('boostlibs')
+Import('platform_libs')
+Import('polyfill_libs')
+Import('tls_libs')
+
+env = env.Clone ()
+env_cpp11 = env_cpp11.Clone ()
+
+BOOST_LIBS = boostlibs(['unit_test_framework','system','thread','chrono'],env) + [platform_libs] + [tls_libs]
+
+objs = env.Object('base_boost.o', ["base.cpp"], LIBS = BOOST_LIBS)
+objs += env.Object('timers_boost.o', ["timers.cpp"], LIBS = BOOST_LIBS)
+objs += env.Object('security_boost.o', ["security.cpp"], LIBS = BOOST_LIBS)
+prgs = env.Program('test_base_boost', ["base_boost.o"], LIBS = BOOST_LIBS)
+prgs += env.Program('test_timers_boost', ["timers_boost.o"], LIBS = BOOST_LIBS)
+prgs += env.Program('test_security_boost', ["security_boost.o"], LIBS = BOOST_LIBS)
+
+if env_cpp11.has_key('WSPP_CPP11_ENABLED'):
+   BOOST_LIBS_CPP11 = boostlibs(['unit_test_framework','system'],env_cpp11) + [platform_libs] + [polyfill_libs] + [tls_libs]
+   objs += env_cpp11.Object('base_stl.o', ["base.cpp"], LIBS = BOOST_LIBS_CPP11)
+   objs += env_cpp11.Object('timers_stl.o', ["timers.cpp"], LIBS = BOOST_LIBS_CPP11)
+   objs += env_cpp11.Object('security_stl.o', ["security.cpp"], LIBS = BOOST_LIBS_CPP11)
+   prgs += env_cpp11.Program('test_base_stl', ["base_stl.o"], LIBS = BOOST_LIBS_CPP11)
+   prgs += env_cpp11.Program('test_timers_stl', ["timers_stl.o"], LIBS = BOOST_LIBS_CPP11)
+   prgs += env_cpp11.Program('test_security_stl', ["security_stl.o"], LIBS = BOOST_LIBS_CPP11)
+
+Return('prgs')

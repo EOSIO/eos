@@ -20,9 +20,9 @@ set( CMAKE_CXX_EXTENSIONS ON )
 set( CXX_STANDARD_REQUIRED ON)
 
 set(VERSION_MAJOR 2)
-set(VERSION_MINOR 0)
+set(VERSION_MINOR 1)
 set(VERSION_PATCH 0)
-set(VERSION_SUFFIX develop)
+set(VERSION_SUFFIX alpha1)
 
 if(VERSION_SUFFIX)
     set(VERSION_FULL "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}-${VERSION_SUFFIX}")
@@ -33,11 +33,13 @@ endif()
 set( CLI_CLIENT_EXECUTABLE_NAME cleos )
 set( NODE_EXECUTABLE_NAME nodeos )
 set( KEY_STORE_EXECUTABLE_NAME keosd )
+set( RODEOS_EXECUTABLE_NAME rodeos )
+set( TESTER_EXECUTABLE_NAME eosio-tester )
 
 # http://stackoverflow.com/a/18369825
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-    if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 7.0)
-        message(FATAL_ERROR "GCC version must be at least 7.0!")
+    if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 8.0)
+        message(FATAL_ERROR "GCC version must be at least 8.0!")
     endif()
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "AppleClang")
     if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 5.0)
@@ -51,7 +53,6 @@ endif()
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS "ON")
 set(BUILD_DOXYGEN FALSE CACHE BOOL "Build doxygen documentation on every make")
-set(BUILD_MONGO_DB_PLUGIN FALSE CACHE BOOL "Build mongo database plugin")
 set(ENABLE_MULTIVERSION_PROTOCOL_TEST FALSE CACHE BOOL "Enable nodeos multiversion protocol test")
 
 # add defaults for openssl
@@ -62,23 +63,22 @@ endif()
 # WASM runtimes to enable. Each runtime in this list will have:
 #  * definition EOSIO_<RUNTIME>_RUNTIME_ENABLED defined in public libchain interface
 #  * ctest entries with --runtime
-list(APPEND EOSIO_WASM_RUNTIMES wabt)   #always enable wabt; it works everywhere and parts of eosio still assume it's always available
+# TODO reenable later
 if(CMAKE_SIZEOF_VOID_P EQUAL 8 AND NOT WIN32)
-   if("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux" AND "${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
-      list(APPEND EOSIO_WASM_RUNTIMES eos-vm-oc)
-      # EOS VM OC requires LLVM, but move the check up here to a central location so that the EosioTester.cmakes
-      # can be created with the exact version found
-      find_package(LLVM REQUIRED CONFIG)
-      if(LLVM_VERSION_MAJOR VERSION_LESS 7 OR LLVM_VERSION_MAJOR VERSION_GREATER 10)
-	      message(FATAL_ERROR "EOSIO requires an LLVM version 7.0 to 10.0")
-      endif()
-   endif()
+   #if("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux" AND "${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
+   #   #list(APPEND EOSIO_WASM_RUNTIMES eos-vm-oc)
+   #   # EOS VM OC requires LLVM, but move the check up here to a central location so that the EosioTester.cmakes
+   #   # can be created with the exact version found
+   #   find_package(LLVM REQUIRED CONFIG)
+   #  if(LLVM_VERSION_MAJOR VERSION_LESS 7 OR LLVM_VERSION_MAJOR VERSION_GREATER 10)
+   #     message(FATAL_ERROR "EOSIO requires an LLVM version 7.0 to 10.0")
+   #  endif()
+   #endif()
 endif()
 
 if(CMAKE_SIZEOF_VOID_P EQUAL 8 AND NOT WIN32)
-   list(APPEND EOSIO_WASM_RUNTIMES eos-vm)
    if(CMAKE_SYSTEM_PROCESSOR STREQUAL x86_64)
-      list(APPEND EOSIO_WASM_RUNTIMES eos-vm-jit)
+      list(APPEND EOSIO_WASM_RUNTIMES eos-vm eos-vm-jit)
    endif()
 endif()
 
@@ -98,7 +98,7 @@ endif()
 set( Boost_USE_STATIC_LIBS ON CACHE STRING "ON or OFF" )
 # Most boost deps get implictly picked up via fc, as just about everything links to fc. In addition we pick up
 # the pthread dependency through fc.
-find_package(Boost 1.67 REQUIRED COMPONENTS program_options unit_test_framework)
+find_package(Boost 1.70 REQUIRED COMPONENTS program_options unit_test_framework)
 
 if( APPLE AND UNIX )
 # Apple Specific Options Here
@@ -120,6 +120,8 @@ else()
         endif()
     endif()
 endif()
+
+option(EOSIO_ENABLE_DEVELOPER_OPTIONS "enable developer options for EOSIO" OFF)
 
 # based on http://www.delorie.com/gnu/docs/gdb/gdb_70.html
 # uncomment this line to tell GDB about macros (slows compile times)
@@ -202,29 +204,35 @@ install(FILES ${CMAKE_BINARY_DIR}/modules/EosioTester.cmake DESTINATION ${CMAKE_
 
 configure_file(${CMAKE_SOURCE_DIR}/LICENSE
                ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE COPYONLY)
-configure_file(${CMAKE_SOURCE_DIR}/libraries/wabt/LICENSE
-               ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE.wabt COPYONLY)
 configure_file(${CMAKE_SOURCE_DIR}/libraries/softfloat/COPYING.txt
                ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE.softfloat COPYONLY)
 configure_file(${CMAKE_SOURCE_DIR}/libraries/wasm-jit/LICENSE
                ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE.wavm COPYONLY)
 configure_file(${CMAKE_SOURCE_DIR}/libraries/fc/secp256k1/upstream/COPYING
                ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE.secp256k1 COPYONLY)
+configure_file(${CMAKE_SOURCE_DIR}/libraries/fc/include/fc/crypto/webauthn_json/license.txt
+               ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE.rapidjson COPYONLY)
 configure_file(${CMAKE_SOURCE_DIR}/libraries/fc/src/network/LICENSE.go
                ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE.go COPYONLY)
 configure_file(${CMAKE_SOURCE_DIR}/libraries/yubihsm/LICENSE
                ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE.yubihsm COPYONLY)
 configure_file(${CMAKE_SOURCE_DIR}/libraries/eos-vm/LICENSE
                ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE.eos-vm COPYONLY)
+configure_file(${CMAKE_SOURCE_DIR}/libraries/rocksdb/LICENSE.Apache
+               ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE.rocksdb COPYONLY)
+configure_file(${CMAKE_SOURCE_DIR}/libraries/rocksdb/LICENSE.leveldb
+               ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE.leveldb COPYONLY)
 
 install(FILES LICENSE DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ COMPONENT base)
-install(FILES libraries/wabt/LICENSE DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ RENAME LICENSE.wabt COMPONENT base)
 install(FILES libraries/softfloat/COPYING.txt DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ RENAME LICENSE.softfloat COMPONENT base)
 install(FILES libraries/wasm-jit/LICENSE DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ RENAME LICENSE.wavm COMPONENT base)
 install(FILES libraries/fc/secp256k1/upstream/COPYING DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ RENAME LICENSE.secp256k1 COMPONENT base)
+install(FILES libraries/fc/include/fc/crypto/webauthn_json/license.txt DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ RENAME LICENSE.rapidjson COMPONENT base)
 install(FILES libraries/fc/src/network/LICENSE.go DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ COMPONENT base)
 install(FILES libraries/yubihsm/LICENSE DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ RENAME LICENSE.yubihsm COMPONENT base)
 install(FILES libraries/eos-vm/LICENSE DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ RENAME LICENSE.eos-vm COMPONENT base)
+install(FILES libraries/rocksdb/LICENSE.Apache DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ RENAME LICENSE.rocksdb COMPONENT base)
+install(FILES libraries/rocksdb/LICENSE.leveldb DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ RENAME LICENSE.leveldb COMPONENT base)
 
 add_custom_target(base-install
   COMMAND "${CMAKE_COMMAND}" --build "${CMAKE_BINARY_DIR}"
