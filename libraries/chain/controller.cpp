@@ -334,6 +334,7 @@ struct controller_impl {
       set_activation_handler<builtin_protocol_feature_t::wtmsig_block_signatures>();
       set_activation_handler<builtin_protocol_feature_t::action_return_value>();
       set_activation_handler<builtin_protocol_feature_t::kv_database>();
+      set_activation_handler<builtin_protocol_feature_t::configurable_wasm_limits>();
 
       self.irreversible_block.connect([this](const block_state_ptr& bsp) {
          wasmif.current_lib(bsp->block_num);
@@ -967,7 +968,8 @@ struct controller_impl {
                   section.read_row(legacy_global_properties, db);
 
                   db.create<global_property_object>([&legacy_global_properties,&gs_chain_id](auto& gpo ){
-                     gpo.initalize_from(legacy_global_properties, gs_chain_id, kv_config{});
+                     gpo.initalize_from(legacy_global_properties, gs_chain_id, kv_config{},
+                                        genesis_state::default_initial_wasm_configuration);
                   });
                });
                return; // early out to avoid default processing
@@ -979,7 +981,8 @@ struct controller_impl {
                   section.read_row(legacy_global_properties, db);
 
                   db.create<global_property_object>([&legacy_global_properties](auto& gpo ){
-                     gpo.initalize_from(legacy_global_properties, kv_config{});
+                     gpo.initalize_from(legacy_global_properties, kv_config{},
+                                        genesis_state::default_initial_wasm_configuration);
                   });
                });
                return; // early out to avoid default processing
@@ -1058,10 +1061,10 @@ struct controller_impl {
 
       std::string event_id;
       if (get_deep_mind_logger() != nullptr) {
-         event_id = RAM_EVENT_ID("${name}", ("name", name));
+         event_id = STORAGE_EVENT_ID("${name}", ("name", name));
       }
 
-      resource_limits.add_pending_ram_usage(name, ram_delta, ram_trace(0, event_id.c_str(), "account", "add", "newaccount"));
+      resource_limits.add_pending_ram_usage(name, ram_delta, storage_usage_trace(0, event_id.c_str(), "account", "add", "newaccount"));
       resource_limits.verify_account_ram_usage(name);
    }
 
@@ -1084,6 +1087,8 @@ struct controller_impl {
       db.create<global_property_object>([&genesis,&chain_id=this->chain_id](auto& gpo ){
          gpo.configuration = genesis.initial_configuration;
          gpo.kv_configuration = kv_config{};
+         // TODO: Update this when genesis protocol features are enabled.
+         gpo.wasm_configuration = genesis_state::default_initial_wasm_configuration;
          gpo.chain_id = chain_id;
       });
 
@@ -1215,11 +1220,11 @@ struct controller_impl {
    int64_t remove_scheduled_transaction( const generated_transaction_object& gto ) {
       std::string event_id;
       if (get_deep_mind_logger() != nullptr) {
-         event_id = RAM_EVENT_ID("${id}", ("id", gto.id));
+         event_id = STORAGE_EVENT_ID("${id}", ("id", gto.id));
       }
 
       int64_t ram_delta = -(config::billable_size_v<generated_transaction_object> + gto.packed_trx.size());
-      resource_limits.add_pending_ram_usage( gto.payer, ram_delta, ram_trace(0, event_id.c_str(), "deferred_trx", "remove", "deferred_trx_removed") );
+      resource_limits.add_pending_ram_usage( gto.payer, ram_delta, storage_usage_trace(0, event_id.c_str(), "deferred_trx", "remove", "deferred_trx_removed") );
       // No need to verify_account_ram_usage since we are only reducing memory
 
       db.remove( gto );
@@ -3462,7 +3467,7 @@ void controller::replace_account_keys( name account, name permission, const publ
       p.auth = authority(key);
    });
    int64_t new_size = (int64_t)(chain::config::billable_size_v<permission_object> + perm->auth.get_billable_size());
-   rlm.add_pending_ram_usage(account, new_size - old_size, generic_ram_trace(0));
+   rlm.add_pending_ram_usage(account, new_size - old_size, generic_storage_usage_trace(0));
    rlm.verify_account_ram_usage(account);
 }
 
@@ -3497,10 +3502,10 @@ void controller_impl::on_activation<builtin_protocol_feature_t::replace_deferred
 
       std::string event_id;
       if (get_deep_mind_logger() != nullptr) {
-         event_id = RAM_EVENT_ID("${id}", ("id", itr->id._id));
+         event_id = STORAGE_EVENT_ID("${id}", ("id", itr->id._id));
       }
 
-      resource_limits.add_pending_ram_usage( itr->name, ram_delta, ram_trace(0, event_id.c_str(), "deferred_trx", "correction", "deferred_trx_ram_correction") );
+      resource_limits.add_pending_ram_usage( itr->name, ram_delta, storage_usage_trace(0, event_id.c_str(), "deferred_trx", "correction", "deferred_trx_ram_correction") );
       db.remove( *itr );
    }
 }
@@ -3549,6 +3554,14 @@ void controller_impl::on_activation<builtin_protocol_feature_t::kv_database>() {
       add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "get_resource_limit" );
       add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "set_kv_parameters_packed" );
       add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "get_kv_parameters_packed" );
+   } );
+}
+
+template<>
+void controller_impl::on_activation<builtin_protocol_feature_t::configurable_wasm_limits>() {
+   db.modify( db.get<protocol_state_object>(), [&]( auto& ps ) {
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "set_wasm_parameters_packed" );
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "get_wasm_parameters_packed" );
    } );
 }
 

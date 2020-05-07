@@ -159,7 +159,6 @@ namespace eosio { namespace chain {
     *   |- reversible_blocks_exception
     *   |- block_log_exception
     *   |- resource_limit_exception
-    *   |- mongo_db_exception
     *   |- contract_api_exception
     *   |- state_history_exception
     */
@@ -550,6 +549,8 @@ namespace eosio { namespace chain {
                                     3160013, "The key or value is too large" )
       FC_DECLARE_DERIVED_EXCEPTION( kv_unknown_parameters_version,          contract_exception,
                                     3160014, "Unknown kv_parameters version" )
+      FC_DECLARE_DERIVED_EXCEPTION( wasm_config_unknown_version,          contract_exception,
+                                    3160015, "Unknown wasm_config version" )
 
    FC_DECLARE_DERIVED_EXCEPTION( producer_exception,           chain_exception,
                                  3170000, "Producer exception" )
@@ -615,13 +616,6 @@ namespace eosio { namespace chain {
 
    FC_DECLARE_DERIVED_EXCEPTION( resource_limit_exception, chain_exception,
                                  3210000, "Resource limit exception" )
-
-   FC_DECLARE_DERIVED_EXCEPTION( mongo_db_exception, chain_exception,
-                                 3220000, "Mongo DB exception" )
-      FC_DECLARE_DERIVED_EXCEPTION( mongo_db_insert_fail, mongo_db_exception,
-                                 3220001, "Fail to insert new data to Mongo DB" )
-      FC_DECLARE_DERIVED_EXCEPTION( mongo_db_update_fail, mongo_db_exception,
-                                 3220002, "Fail to update existing data in Mongo DB" )
 
    FC_DECLARE_DERIVED_EXCEPTION( contract_api_exception,    chain_exception,
                                  3230000, "Contract API exception" )
