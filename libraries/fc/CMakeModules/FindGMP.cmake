@@ -1,3 +1,5 @@
+# This module's inputs:
+#  GMP_STATIC            - static link GMP
 # This module defines:
 #  GMP_FOUND             - system has GMP lib
 #  GMP_INCLUDE_DIR       - the GMP include directory
@@ -32,7 +34,11 @@ else()
            )
 
   set(PREVIOUS_CMAKE_FIND_LIBRARY_SUFFIXES "${CMAKE_FIND_LIBRARY_SUFFIXES}")
-  set(CMAKE_FIND_LIBRARY_SUFFIXES "${CMAKE_SHARED_LIBRARY_SUFFIX}")
+  if(GMP_STATIC)
+    set(CMAKE_FIND_LIBRARY_SUFFIXES "${CMAKE_STATIC_LIBRARY_SUFFIX}")
+  else()
+    set(CMAKE_FIND_LIBRARY_SUFFIXES "${CMAKE_SHARED_LIBRARY_SUFFIX}")
+  endif()
 
   find_library(GMP_LIBRARIES NAMES gmp
     HINTS ENV GMP_LIB_DIR
