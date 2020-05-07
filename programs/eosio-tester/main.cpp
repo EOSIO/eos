@@ -288,7 +288,7 @@ struct test_chain {
    void start_if_needed() {
       mutating();
       if (!control->is_building_block())
-         control->start_block(control->head_block_time() + fc::microseconds(block_interval_us), 0, {});
+         control->start_block(control->head_block_time() + fc::microseconds(block_interval_us), 0);
    }
 
    void finish_block() {
@@ -777,7 +777,7 @@ struct callbacks {
       info.block_num      = chain.control->head_block_num();
       info.block_id       = convert(chain.control->head_block_id());
       info.timestamp.slot = chain.control->head_block_state()->header.timestamp.slot;
-      set_data(cb_alloc_data, cb_alloc, check(convert_to_bin(info)).value());
+      set_data(cb_alloc_data, cb_alloc, convert_to_bin(info));
    }
 
    void push_transaction(uint32_t chain_index, span<const char> args_packed, uint32_t cb_alloc_data,
@@ -799,7 +799,7 @@ struct callbacks {
       ilog("chainlib transaction took ${u} us", ("u", us.count()));
       // ilog("${r}", ("r", fc::json::to_pretty_string(result)));
       set_data(cb_alloc_data, cb_alloc,
-               check(convert_to_bin(chain_types::transaction_trace{ convert(*result) })).value());
+               convert_to_bin(chain_types::transaction_trace{ convert(*result) }));
    }
 
    bool exec_deferred(uint32_t chain_index, uint32_t cb_alloc_data, uint32_t cb_alloc) {
@@ -812,7 +812,7 @@ struct callbacks {
          auto trace = chain.control->push_scheduled_transaction(itr->trx_id, fc::time_point::maximum(),
                                                                 billed_cpu_time_use, true);
          set_data(cb_alloc_data, cb_alloc,
-                  check(convert_to_bin(chain_types::transaction_trace{ convert(*trace) })).value());
+                  convert_to_bin(chain_types::transaction_trace{ convert(*trace) }));
          return true;
       }
       return false;
@@ -925,9 +925,8 @@ struct callbacks {
       auto result = r.query_handler->query_transaction(*r.write_snapshot, data.data(), data.size());
       auto us = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - start_time);
       ilog("rodeos transaction took ${u} us", ("u", us.count()));
-      auto tt = eosio::check(eosio::convert_from_bin<eosio::ship_protocol::transaction_trace>(
-                                   { result.data, result.data + result.size }))
-                      .value();
+      auto tt = eosio::convert_from_bin<eosio::ship_protocol::transaction_trace>(
+                                   { result.data, result.data + result.size });
       auto& tt0 = std::get<eosio::ship_protocol::transaction_trace_v0>(tt);
       for (auto& at : tt0.action_traces) {
          auto& at1 = std::get<eosio::ship_protocol::action_trace_v1>(at);
@@ -1175,7 +1174,7 @@ static void run(const char* wasm, const std::vector<std::string>& args) {
    eosio::vm::wasm_allocator wa;
    auto                      code = eosio::vm::read_wasm(wasm);
    backend_t                 backend(code, nullptr);
-   ::state                   state{ wasm, wa, backend, eosio::check(eosio::convert_to_bin(args)).value() };
+   ::state                   state{ wasm, wa, backend, eosio::convert_to_bin(args) };
    callbacks                 cb{ state };
    state.files.emplace_back(stdin, false);
    state.files.emplace_back(stdout, false);

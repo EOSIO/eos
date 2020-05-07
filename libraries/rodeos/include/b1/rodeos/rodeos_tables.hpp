@@ -211,7 +211,7 @@ void store_delta_typed(eosio::kv_environment environment, table_delta_v0& delta,
    Table table{ environment };
    for (auto& row : delta.rows) {
       f();
-      auto obj = eosio::check(eosio::from_bin<typename Table::value_type>(row.data)).value();
+      auto obj = eosio::from_bin<typename Table::value_type>(row.data);
       if (row.present)
          table.put(obj);
       else
@@ -223,7 +223,7 @@ template <typename F>
 void store_delta_kv(eosio::kv_environment environment, table_delta_v0& delta, F f) {
    for (auto& row : delta.rows) {
       f();
-      auto  obj  = eosio::check(eosio::from_bin<key_value>(row.data)).value();
+      auto  obj  = eosio::from_bin<key_value>(row.data);
       auto& obj0 = std::get<key_value_v0>(obj);
       if (row.present)
          environment.kv_set(obj0.database.value, obj0.contract.value, obj0.key.pos, obj0.key.remaining(),

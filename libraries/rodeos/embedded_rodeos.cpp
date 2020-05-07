@@ -132,7 +132,7 @@ template <typename F>
 void with_result(const char* data, uint64_t size, F f) {
    eosio::input_stream          bin{ data, data + size };
    eosio::ship_protocol::result result;
-   eosio::check_discard(from_bin(result, bin));
+   from_bin(result, bin);
    auto* result_v0 = std::get_if<eosio::ship_protocol::get_blocks_result_v0>(&result);
    if (!result_v0)
       throw std::runtime_error("expected a get_blocks_result_v0");
@@ -244,7 +244,7 @@ rodeos_bool rodeos_query_transaction(rodeos_error* error, rodeos_query_handler* 
 
       std::vector<std::vector<char>> memory;
       eosio::input_stream            s{ data, size };
-      auto trx = eosio::check(eosio::from_bin<eosio::ship_protocol::packed_transaction>(s)).value();
+      auto trx = eosio::from_bin<eosio::ship_protocol::packed_transaction>(s);
 
       auto                                    thread_state = handler->state_cache.get_state();
       eosio::ship_protocol::transaction_trace tt;
@@ -259,8 +259,7 @@ rodeos_bool rodeos_query_transaction(rodeos_error* error, rodeos_query_handler* 
       handler->state_cache.store_state(std::move(thread_state));
 
       eosio::size_stream ss;
-      auto r = eosio::to_bin(tt, ss);
-      eosio::check_discard(r);
+      eosio::to_bin(tt, ss);
       *result = (char*)malloc(ss.size);
       if (!result)
          throw std::bad_alloc();
@@ -269,9 +268,9 @@ rodeos_bool rodeos_query_transaction(rodeos_error* error, rodeos_query_handler* 
          *result = nullptr;
       });
       eosio::fixed_buf_stream fbs(*result, ss.size);
-      eosio::check_discard(to_bin(tt, fbs));
+      to_bin(tt, fbs);
       if (fbs.pos != fbs.end) {
-         eosio::check(eosio::stream_error::underrun);
+         eosio::check(false, eosio::convert_stream_error(eosio::stream_error::underrun));
       }
       *result_size = ss.size;
       free_on_except.cancel();
