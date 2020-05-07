@@ -54,8 +54,7 @@ namespace eosio { namespace trace_api {
 
   struct cache_trace {
       chain::transaction_trace_ptr        trace;
-      chain::transaction_header           trx_header;
-      std::vector<chain::signature_type>  trx_signatures;
+      chain::packed_transaction_ptr       trx;
   };
 
 } }
@@ -66,4 +65,3 @@ FC_REFLECT(eosio::trace_api::transaction_trace_v0, (id)(actions))
 FC_REFLECT_DERIVED(eosio::trace_api::transaction_trace_v1, (eosio::trace_api::transaction_trace_v0), (status)(cpu_usage_us)(net_usage_words)(signatures)(trx_header))
 FC_REFLECT(eosio::trace_api::block_trace_v0, (id)(number)(previous_id)(timestamp)(producer)(transactions))
 FC_REFLECT_DERIVED(eosio::trace_api::block_trace_v1, (eosio::trace_api::block_trace_v0), (transaction_mroot)(action_mroot)(schedule_version)(transactions_v1))
-FC_REFLECT(eosio::trace_api::cache_trace, (trace)(trx_header)(trx_signatures))

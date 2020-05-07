@@ -63,9 +63,9 @@ private:
       if( is_onblock( trace )) {
          onblock_trace.emplace( trace );
       } else if( trace->failed_dtrx_trace ) {
-         cached_traces[trace->failed_dtrx_trace->id] = {trace, static_cast<const chain::transaction_header&>(t), t.signatures};
+         cached_traces[trace->failed_dtrx_trace->id] = {trace, t};
       } else {
-         cached_traces[trace->id] = {trace, static_cast<const chain::transaction_header&>(t), t.signatures};
+         cached_traces[trace->id] = {trace, t};
       }
    }
 
