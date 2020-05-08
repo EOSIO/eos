@@ -1,9 +1,6 @@
 #include <eosio/chain/config.hpp>
-#include <eosio/state_history/compression.hpp>
-#include <eosio/state_history/create_deltas.hpp>
 #include <eosio/state_history/log.hpp>
 #include <eosio/state_history/serialization.hpp>
-#include <eosio/state_history/trace_converter.hpp>
 #include <eosio/state_history_plugin/state_history_plugin.hpp>
 
 #include <boost/asio/bind_executor.hpp>
@@ -41,29 +38,14 @@ auto catch_and_log(F f) {
 
 struct state_history_plugin_impl : std::enable_shared_from_this<state_history_plugin_impl> {
    chain_plugin*                                              chain_plug = nullptr;
-   fc::optional<state_history_log>                            trace_log;
-   fc::optional<state_history_log>                            chain_state_log;
-   bool                                                       trace_debug_mode = false;
+   fc::optional<state_history_traces_log>                     trace_log;
+   fc::optional<state_history_chain_state_log>                chain_state_log;
    bool                                                       stopping = false;
    fc::optional<scoped_connection>                            applied_transaction_connection;
    fc::optional<scoped_connection>                            accepted_block_connection;
    string                                                     endpoint_address = "0.0.0.0";
    uint16_t                                                   endpoint_port    = 8080;
    std::unique_ptr<tcp::acceptor>                             acceptor;
-   state_history::trace_converter                             trace_converter;
-
-   void get_log_entry(state_history_log& log, uint32_t block_num, fc::optional<bytes>& result) {
-      if (block_num < log.begin_block() || block_num >= log.end_block())
-         return;
-      state_history_log_header header;
-      auto&                    stream = log.get_entry(block_num, header);
-      uint32_t                 s;
-      stream.read((char*)&s, sizeof(s));
-      bytes compressed(s);
-      if (s)
-         stream.read(compressed.data(), s);
-      result = state_history::zlib_decompress(compressed);
-   }
 
    void get_block(uint32_t block_num, fc::optional<bytes>& result) {
       chain::signed_block_ptr p;
@@ -84,7 +66,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       try {
          auto block = chain_plug->chain().fetch_block_by_number(block_num);
          if (block)
-            return block->id();
+            return block->calculate_id();
       } catch (...) {
       }
       return {};
@@ -219,10 +201,12 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
                   result.prev_block = block_position{current_request->start_block_num - 1, *prev_block_id};
                if (current_request->fetch_block)
                   plugin->get_block(current_request->start_block_num, result.block);
-               if (current_request->fetch_traces && plugin->trace_log)
-                  plugin->get_log_entry(*plugin->trace_log, current_request->start_block_num, result.traces);
-               if (current_request->fetch_deltas && plugin->chain_state_log)
-                  plugin->get_log_entry(*plugin->chain_state_log, current_request->start_block_num, result.deltas);
+               if (current_request->fetch_traces && plugin->trace_log) {
+                  result.traces = plugin->trace_log->get_log_entry(current_request->start_block_num);
+               }
+               if (current_request->fetch_deltas && plugin->chain_state_log) {
+                  result.deltas = plugin->chain_state_log->get_log_entry(current_request->start_block_num);
+               }
             }
             ++current_request->start_block_num;
          }
@@ -339,14 +323,16 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       });
    }
 
-   void on_applied_transaction(const transaction_trace_ptr& p, const signed_transaction& t) {
+   void on_applied_transaction(const transaction_trace_ptr& p, const packed_transaction_ptr& t) {
       if (trace_log)
-         trace_converter.add_transaction(p, t);
+         trace_log->add_transaction(p, t);
    }
 
    void on_accepted_block(const block_state_ptr& block_state) {
-      store_traces(block_state);
-      store_chain_state(block_state);
+      if (trace_log)
+         trace_log->store(chain_plug->chain().db(), block_state);
+      if (chain_state_log)
+         chain_state_log->store(chain_plug->chain().db(), block_state);
       for (auto& s : sessions) {
          auto& p = s.second;
          if (p) {
@@ -356,45 +342,6 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          }
       }
    }
-
-   void store_traces(const block_state_ptr& block_state) {
-      if (!trace_log)
-         return;
-      auto traces_bin =
-          state_history::zlib_compress_bytes(trace_converter.pack(chain_plug->chain().db(), trace_debug_mode, block_state));
-      EOS_ASSERT(traces_bin.size() == (uint32_t)traces_bin.size(), plugin_exception, "traces is too big");
-
-      state_history_log_header header{.magic        = ship_magic(ship_current_version),
-                                      .block_id     = block_state->block->id(),
-                                      .payload_size = sizeof(uint32_t) + traces_bin.size()};
-      trace_log->write_entry(header, block_state->block->previous, [&](auto& stream) {
-         uint32_t s = (uint32_t)traces_bin.size();
-         stream.write((char*)&s, sizeof(s));
-         if (!traces_bin.empty())
-            stream.write(traces_bin.data(), traces_bin.size());
-      });
-   }
-
-   void store_chain_state(const block_state_ptr& block_state) {
-      if (!chain_state_log)
-         return;
-      bool fresh = chain_state_log->begin_block() == chain_state_log->end_block();
-      if (fresh)
-         ilog("Placing initial state in block ${n}", ("n", block_state->block->block_num()));
-
-      std::vector<table_delta> deltas = state_history::create_deltas(chain_plug->chain().db(), fresh);
-      auto deltas_bin = state_history::zlib_compress_bytes(fc::raw::pack(deltas));
-      EOS_ASSERT(deltas_bin.size() == (uint32_t)deltas_bin.size(), plugin_exception, "deltas is too big");
-      state_history_log_header header{.magic        = ship_magic(ship_current_version),
-                                      .block_id     = block_state->block->id(),
-                                      .payload_size = sizeof(uint32_t) + deltas_bin.size()};
-      chain_state_log->write_entry(header, block_state->block->previous, [&](auto& stream) {
-         uint32_t s = (uint32_t)deltas_bin.size();
-         stream.write((char*)&s, sizeof(s));
-         if (!deltas_bin.empty())
-            stream.write(deltas_bin.data(), deltas_bin.size());
-      });
-   } // store_chain_state
 };   // state_history_plugin_impl
 
 state_history_plugin::state_history_plugin()
@@ -425,7 +372,7 @@ void state_history_plugin::plugin_initialize(const variables_map& options) {
       EOS_ASSERT(my->chain_plug, chain::missing_chain_plugin_exception, "");
       auto& chain = my->chain_plug->chain();
       my->applied_transaction_connection.emplace(
-          chain.applied_transaction.connect([&](std::tuple<const transaction_trace_ptr&, const signed_transaction&> t) {
+          chain.applied_transaction.connect([&](std::tuple<const transaction_trace_ptr&, const packed_transaction_ptr&> t) {
              my->on_applied_transaction(std::get<0>(t), std::get<1>(t));
           }));
       my->accepted_block_connection.emplace(
@@ -451,16 +398,14 @@ void state_history_plugin::plugin_initialize(const variables_map& options) {
       }
       boost::filesystem::create_directories(state_history_dir);
 
-      if (options.at("trace-history-debug-mode").as<bool>()) {
-         my->trace_debug_mode = true;
+      if (options.at("trace-history").as<bool>()) {
+         my->trace_log.emplace(state_history_dir);
+         if (options.at("trace-history-debug-mode").as<bool>()) 
+            my->trace_log->trace_debug_mode = true;                      
       }
 
-      if (options.at("trace-history").as<bool>())
-         my->trace_log.emplace("trace_history", (state_history_dir / "trace_history.log").string(),
-                               (state_history_dir / "trace_history.index").string());
       if (options.at("chain-state-history").as<bool>())
-         my->chain_state_log.emplace("chain_state_history", (state_history_dir / "chain_state_history.log").string(),
-                                     (state_history_dir / "chain_state_history.index").string());
+         my->chain_state_log.emplace(state_history_dir);
    }
    FC_LOG_AND_RETHROW()
 } // state_history_plugin::plugin_initialize

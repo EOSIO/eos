@@ -17,7 +17,7 @@ BOOST_AUTO_TEST_CASE(block_with_invalid_tx_test)
 
    // Make a copy of the valid block and corrupt the transaction
    auto copy_b = std::make_shared<signed_block>(std::move(*b));
-   auto signed_tx = copy_b->transactions.back().trx.get<packed_transaction>().get_signed_transaction();
+   auto signed_tx = signed_transaction( copy_b->transactions.back().trx.get<packed_transaction>().to_packed_transaction_v0()->get_signed_transaction() );
    auto& act = signed_tx.actions.back();
    auto act_data = act.data_as<newaccount>();
    // Make the transaction invalid by having the new account name the same as the creator name
@@ -27,7 +27,7 @@ BOOST_AUTO_TEST_CASE(block_with_invalid_tx_test)
    signed_tx.signatures.clear();
    signed_tx.sign(main.get_private_key(config::system_account_name, "active"), main.control->get_chain_id());
    // Replace the valid transaction with the invalid transaction
-   auto invalid_packed_tx = packed_transaction(signed_tx);
+   auto invalid_packed_tx = packed_transaction(std::move(signed_tx), true);
    copy_b->transactions.back().trx = invalid_packed_tx;
 
    // Re-calculate the transaction merkle
@@ -44,7 +44,7 @@ BOOST_AUTO_TEST_CASE(block_with_invalid_tx_test)
 
    // Push block with invalid transaction to other chain
    tester validator;
-   auto bs = validator.control->create_block_state_future( copy_b );
+   auto bs = validator.control->create_block_state_future( copy_b->calculate_id(), copy_b );
    validator.control->abort_block();
    BOOST_REQUIRE_EXCEPTION(validator.control->push_block( bs, forked_branch_callback{}, trx_meta_cache_lookup{} ), fc::exception ,
    [] (const fc::exception &e)->bool {
@@ -61,13 +61,13 @@ std::pair<signed_block_ptr, signed_block_ptr> corrupt_trx_in_block(validating_te
    // Make a copy of the valid block and corrupt the transaction
    auto copy_b = std::make_shared<signed_block>(b->clone());
    const auto& packed_trx = copy_b->transactions.back().trx.get<packed_transaction>();
-   auto signed_tx = packed_trx.get_signed_transaction();
+   auto signed_tx = signed_transaction( packed_trx.to_packed_transaction_v0()->get_signed_transaction() );
    // Corrupt one signature
    signed_tx.signatures.clear();
    signed_tx.sign(main.get_private_key(act_name, "active"), main.control->get_chain_id());
 
    // Replace the valid transaction with the invalid transaction
-   auto invalid_packed_tx = packed_transaction(signed_tx, packed_trx.get_compression());
+   auto invalid_packed_tx = packed_transaction(std::move(signed_tx), true, packed_trx.get_compression());
    copy_b->transactions.back().trx = invalid_packed_tx;
 
    // Re-calculate the transaction merkle

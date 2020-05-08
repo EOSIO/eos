@@ -26,8 +26,8 @@ public:
    {}
 
    /// connect to chain controller applied_transaction signal
-   void signal_applied_transaction( const chain::transaction_trace_ptr& trace, const chain::signed_transaction& strx ) {
-      on_applied_transaction( trace, strx );
+   void signal_applied_transaction( const chain::transaction_trace_ptr& trace, const chain::packed_transaction_ptr& ptrx ) {
+      on_applied_transaction( trace, ptrx );
    }
 
    /// connect to chain controller accepted_block signal
@@ -53,7 +53,7 @@ private:
              auth.permission == eosio::chain::config::active_name;
    }
 
-   void on_applied_transaction(const chain::transaction_trace_ptr& trace, const chain::signed_transaction& t) {
+   void on_applied_transaction(const chain::transaction_trace_ptr& trace, const chain::packed_transaction_ptr& t) {
       if( !trace->receipt ) return;
       // include only executed transactions; soft_fail included so that onerror (and any inlines via onerror) are included
       if((trace->receipt->status != chain::transaction_receipt_header::executed &&
@@ -63,9 +63,9 @@ private:
       if( is_onblock( trace )) {
          onblock_trace.emplace( trace );
       } else if( trace->failed_dtrx_trace ) {
-         cached_traces[trace->failed_dtrx_trace->id] = {trace, static_cast<const chain::transaction_header&>(t), t.signatures};
+         cached_traces[trace->failed_dtrx_trace->id] = {trace, t};
       } else {
-         cached_traces[trace->id] = {trace, static_cast<const chain::transaction_header&>(t), t.signatures};
+         cached_traces[trace->id] = {trace, t};
       }
    }
 

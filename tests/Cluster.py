@@ -1607,9 +1607,9 @@ class Cluster(object):
 
         self.printBlockLog()
 
-    def getBlockLog(self, nodeExtension, blockLogAction=BlockLogAction.return_blocks, outputFile=None, first=None, last=None, throwException=False, silentErrors=False, exitOnError=False):
-        blockLogDir=Utils.getNodeDataDir(nodeExtension, "blocks")
-        return Utils.getBlockLog(blockLogDir, blockLogAction=blockLogAction, outputFile=outputFile, first=first, last=last,  throwException=throwException, silentErrors=silentErrors, exitOnError=exitOnError)
+    def getBlockLog(self, nodeExtension, blockLogAction=BlockLogAction.return_blocks, outputFile=None, first=None, last=None, extraArgs="", throwException=False, silentErrors=False, exitOnError=False):
+        nodeDataDir=Utils.getNodeDataDir(nodeExtension)
+        return Utils.getBlockLog(nodeDataDir, blockLogAction=blockLogAction, outputFile=outputFile, first=first, last=last, extraArgs=extraArgs, throwException=throwException, silentErrors=silentErrors, exitOnError=exitOnError)
 
     def printBlockLog(self):
         blockLogBios=self.getBlockLog("bios")

@@ -254,8 +254,7 @@ private:
    }
 
    static uint64_t calc_size( const transaction_metadata_ptr& trx ) {
-      // packed_trx caches unpacked transaction so double
-      return (trx->packed_trx()->get_unprunable_size() + trx->packed_trx()->get_prunable_size()) * 2 + sizeof( *trx );
+      return sizeof(unapplied_transaction) + trx->get_estimated_size();
    }
 
 };
