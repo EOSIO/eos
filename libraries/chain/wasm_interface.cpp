@@ -2079,21 +2079,16 @@ REGISTER_INJECTED_INTRINSICS(softfloat_api,
 std::istream& operator>>(std::istream& in, wasm_interface::vm_type& runtime) {
    std::string s;
    in >> s;
-
-   bool found = false;
-   for (int i = 0; i < wasm_interface::vm_strings.size(); ++i)
-   {
-      auto vmtype = static_cast<wasm_interface::vm_type>(i);
-      if (s == wasm_interface::vm_type_string(vmtype)) {
-         runtime = vmtype;
-         found = true;
-         break;
-      }
-   }
-
-   if (!found) {
+   if (s == "wabt")
+      runtime = eosio::chain::wasm_interface::vm_type::wabt;
+   else if (s == "eos-vm")
+      runtime = eosio::chain::wasm_interface::vm_type::eos_vm;
+   else if (s == "eos-vm-jit")
+      runtime = eosio::chain::wasm_interface::vm_type::eos_vm_jit;
+   else if (s == "eos-vm-oc")
+      runtime = eosio::chain::wasm_interface::vm_type::eos_vm_oc;
+   else
       in.setstate(std::ios_base::failbit);
-   }
    return in;
 }
 
