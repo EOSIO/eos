@@ -6,6 +6,9 @@
 #include <eosio/chain/transaction_object.hpp>
 #include <eosio/chain/thread_utils.hpp>
 #include <eosio/chain/unapplied_transaction_queue.hpp>
+#ifdef __APPLE__
+#include <eosio/se-helpers/se-helpers.hpp>
+#endif
 
 #include <fc/io/json.hpp>
 #include <fc/log/logger_config.hpp>
@@ -703,6 +706,23 @@ make_key_signature_provider(const private_key_type& key) {
    };
 }
 
+#ifdef __APPLE__
+static producer_plugin_impl::signature_provider_type
+make_se_signature_provider(const public_key_type pubkey) {
+   EOS_ASSERT(secure_enclave::hardware_supports_secure_enclave(), secure_enclave_exception, "Secure Enclave not supported on this hardware");
+   EOS_ASSERT(secure_enclave::application_signed(), secure_enclave_exception, "Application is not signed, Secure Enclave use not supported");
+
+   std::set<secure_enclave::secure_enclave_key> allkeys = secure_enclave::get_all_keys();
+   for(const auto& se_key : secure_enclave::get_all_keys())
+      if(se_key.public_key() == pubkey)
+         return [se_key](const chain::digest_type& digest) {
+            return se_key.sign(digest);
+         };
+
+   EOS_THROW(secure_enclave_exception, "${k} configured for block signing not found in Secure Enclave", ("k", pubkey));
+}
+#endif
+
 static producer_plugin_impl::signature_provider_type
 make_keosd_signature_provider(const std::shared_ptr<producer_plugin_impl>& impl, const string& url_str, const public_key_type pubkey) {
    fc::url keosd_url;
@@ -778,7 +798,13 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
             } else if (spec_type_str == "KEOSD") {
                my->_signature_providers[pubkey] = make_keosd_signature_provider(my, spec_data, pubkey);
             }
-
+#ifdef __APPLE__
+            else if (spec_type_str == "SE") {
+               my->_signature_providers[pubkey] = make_se_signature_provider(pubkey);
+            }
+#endif
+         } catch(secure_enclave_exception& e) {
+            elog("Error with Secure Enclave signature provider: ${e}; ignoring ${val}", ("e", e.top_message())("val", key_spec_pair));
          } catch (...) {
             elog("Malformed signature provider: \"${val}\", ignoring!", ("val", key_spec_pair));
          }

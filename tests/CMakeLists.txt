@@ -162,6 +162,8 @@ set_property(TEST nodeos_repeat_transaction_lr_test PROPERTY LABELS long_running
 
 add_test(NAME cli_test COMMAND tests/cli_test.py WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
+add_subdirectory(se_tests)
+
 if(ENABLE_COVERAGE_TESTING)
 
   set(Coverage_NAME ${PROJECT_NAME}_coverage)
