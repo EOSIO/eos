@@ -557,17 +557,9 @@ namespace impl {
          out(name, std::move(mvo));
       }
 
-      /**
-       * overload of to_variant_object for transaction
-       *
-       * This matches the FC_REFLECT for this type, but this is provided to allow extracting the contents of trx.transaction_extensions
-       */
       template<typename Resolver>
-      static void add( mutable_variant_object &out, const char* name, const transaction& trx, Resolver resolver, abi_traverse_context& ctx )
+      static void add_transaction( mutable_variant_object& mvo, const transaction& trx, Resolver resolver, abi_traverse_context& ctx  )
       {
-         static_assert(fc::reflector<transaction>::total_member_count == 9);
-         auto h = ctx.enter_scope();
-         mutable_variant_object mvo;
          mvo("expiration", trx.expiration);
          mvo("ref_block_num", trx.ref_block_num);
          mvo("ref_block_prefix", trx.ref_block_prefix);
@@ -583,6 +575,38 @@ namespace impl {
             const auto& deferred_transaction_generation = std::get<deferred_transaction_generation_context>(exts.lower_bound(deferred_transaction_generation_context::extension_id())->second);
             mvo("deferred_transaction_generation", deferred_transaction_generation);
          }
+      }
+
+      /**
+       * overload of to_variant_object for transaction
+       *
+       * This matches the FC_REFLECT for this type, but this is provided to allow extracting the contents of trx.transaction_extensions
+       */
+      template<typename Resolver>
+      static void add( mutable_variant_object &out, const char* name, const transaction& trx, Resolver resolver, abi_traverse_context& ctx )
+      {
+         static_assert(fc::reflector<transaction>::total_member_count == 9);
+         auto h = ctx.enter_scope();
+         mutable_variant_object mvo;
+         add_transaction(mvo, trx, resolver, ctx);
+
+         out(name, std::move(mvo));
+      }
+
+      /**
+       * overload of to_variant_object for signed_transaction
+       *
+       * This matches the FC_REFLECT for this type, but this is provided to allow extracting the contents of trx.transaction_extensions
+       */
+      template<typename Resolver>
+      static void add( mutable_variant_object &out, const char* name, const signed_transaction& trx, Resolver resolver, abi_traverse_context& ctx )
+      {
+         static_assert(fc::reflector<signed_transaction>::total_member_count == 11);
+         auto h = ctx.enter_scope();
+         mutable_variant_object mvo;
+         add_transaction(mvo, trx, resolver, ctx);
+         mvo("signatures", trx.signatures);
+         mvo("context_free_data", trx.context_free_data);
 
          out(name, std::move(mvo));
       }
