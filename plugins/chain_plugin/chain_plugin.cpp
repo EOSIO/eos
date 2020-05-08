@@ -1106,7 +1106,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       my->pre_accepted_block_connection = my->chain->pre_accepted_block.connect([this](const signed_block_ptr& blk) {
          auto itr = my->loaded_checkpoints.find( blk->block_num() );
          if( itr != my->loaded_checkpoints.end() ) {
-            auto id = blk->id();
+            auto id = blk->calculate_id();
             EOS_ASSERT( itr->second == id, checkpoint_exception,
                         "Checkpoint does not match for block number ${num}: expected: ${expected} actual: ${actual}",
                         ("num", blk->block_num())("expected", itr->second)("actual", id)
@@ -1142,7 +1142,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
             } );
 
       my->applied_transaction_connection = my->chain->applied_transaction.connect(
-            [this]( std::tuple<const transaction_trace_ptr&, const signed_transaction&> t ) {
+            [this]( std::tuple<const transaction_trace_ptr&, const packed_transaction_ptr&> t ) {
                if (auto dm_logger = my->chain->get_deep_mind_logger()) {
                   fc_dlog(*dm_logger, "APPLIED_TRANSACTION ${block} ${traces}",
                      ("block", my->chain->head_block_num() + 1)
@@ -1233,11 +1233,6 @@ bool chain_plugin::accept_block(const signed_block_ptr& block, const block_id_ty
 
 void chain_plugin::accept_transaction(const chain::packed_transaction_ptr& trx, next_function<chain::transaction_trace_ptr> next) {
    my->incoming_transaction_async_method(trx, false, std::move(next));
-}
-
-bool chain_plugin::block_is_on_preferred_chain(const block_id_type& block_id) {
-   auto b = chain().fetch_block_by_number( block_header::num_from_id(block_id) );
-   return b && b->id() == block_id;
 }
 
 bool chain_plugin::recover_reversible_blocks( const fc::path& db_dir, uint32_t cache_size,
@@ -1371,7 +1366,7 @@ bool chain_plugin::import_reversible_blocks( const fc::path& reversible_dir,
    new_reversible.add_index<reversible_block_index>();
    try {
       while( reversible_blocks.tellg() < end_pos ) {
-         signed_block tmp;
+         signed_block_v0 tmp;
          fc::raw::unpack(reversible_blocks, tmp);
          num = tmp.block_num();
 
@@ -1386,7 +1381,7 @@ bool chain_plugin::import_reversible_blocks( const fc::path& reversible_dir,
 
          new_reversible.create<reversible_block_object>( [&]( auto& ubo ) {
             ubo.blocknum = num;
-            ubo.set_block( std::make_shared<signed_block>(std::move(tmp)) );
+            ubo.set_block( std::make_shared<signed_block>(std::move(tmp), true) );
          });
          end = num;
       }
@@ -1428,7 +1423,9 @@ bool chain_plugin::export_reversible_blocks( const fc::path& reversible_dir,
          signed_block tmp;
          fc::datastream<const char *> ds( itr->packedblock.data(), itr->packedblock.size() );
          fc::raw::unpack(ds, tmp); // Verify that packed block has not been corrupted.
-         reversible_blocks.write( itr->packedblock.data(), itr->packedblock.size() );
+         const auto v0 = tmp.to_signed_block_v0(); // store in signed_block_v0 format
+         auto packed_v0 = fc::raw::pack(*v0);
+         reversible_blocks.write( packed_v0.data(), packed_v0.size() );
          end = itr->blocknum;
          ++num;
       }
@@ -2137,14 +2134,16 @@ fc::variant read_only::get_block(const read_only::get_block_params& params) cons
 
    EOS_ASSERT( block, unknown_block_exception, "Could not find block: ${block}", ("block", params.block_num_or_id));
 
+   // serializes signed_block to variant in signed_block_v0 format
    fc::variant pretty_output;
    abi_serializer::to_variant(*block, pretty_output, make_resolver(this, abi_serializer::create_yield_function( abi_serializer_max_time )),
                               abi_serializer::create_yield_function( abi_serializer_max_time ));
 
-   uint32_t ref_block_prefix = block->id()._hash[1];
+   const auto id = block->calculate_id();
+   const uint32_t ref_block_prefix = id._hash[1];
 
    return fc::mutable_variant_object(pretty_output.get_object())
-           ("id", block->id())
+           ("id", id)
            ("block_num",block->block_num())
            ("ref_block_prefix", ref_block_prefix);
 }
@@ -2160,10 +2159,13 @@ fc::variant read_only::get_block_info(const read_only::get_block_info_params& pa
 
    EOS_ASSERT( block, unknown_block_exception, "Could not find block: ${block}", ("block", params.block_num));
 
+   const auto id = block->calculate_id();
+   const uint32_t ref_block_prefix = id._hash[1];
+
    return fc::mutable_variant_object ()
          ("block_num", block->block_num())
          ("ref_block_num", static_cast<uint16_t>(block->block_num()))
-         ("id", block->id())
+         ("id", id)
          ("timestamp", block->timestamp)
          ("producer", block->producer)
          ("confirmed", block->confirmed)
@@ -2172,7 +2174,7 @@ fc::variant read_only::get_block_info(const read_only::get_block_info_params& pa
          ("action_mroot", block->action_mroot)
          ("schedule_version", block->schedule_version)
          ("producer_signature", block->producer_signature)
-         ("ref_block_prefix", static_cast<uint32_t>(block->id()._hash[1]));
+         ("ref_block_prefix", ref_block_prefix);
 }
 
 fc::variant read_only::get_block_header_state(const get_block_header_state_params& params) const {
@@ -2200,7 +2202,7 @@ fc::variant read_only::get_block_header_state(const get_block_header_state_param
 
 void read_write::push_block(read_write::push_block_params&& params, next_function<read_write::push_block_results> next) {
    try {
-      app().get_method<incoming::methods::block_sync>()(std::make_shared<signed_block>(std::move(params)), {});
+      app().get_method<incoming::methods::block_sync>()(std::make_shared<signed_block>( std::move( params ), true), {});
       next(read_write::push_block_results{});
    } catch ( boost::interprocess::bad_alloc& ) {
       chain_plugin::handle_db_exhaustion();
@@ -2211,13 +2213,15 @@ void read_write::push_block(read_write::push_block_params&& params, next_functio
 
 void read_write::push_transaction(const read_write::push_transaction_params& params, next_function<read_write::push_transaction_results> next) {
    try {
-      auto pretty_input = std::make_shared<packed_transaction>();
+      packed_transaction_v0 input_trx_v0;
       auto resolver = make_resolver(this, abi_serializer::create_yield_function( abi_serializer_max_time ));
+      packed_transaction_ptr input_trx;
       try {
-         abi_serializer::from_variant(params, *pretty_input, std::move( resolver ), abi_serializer::create_yield_function( abi_serializer_max_time ));
+         abi_serializer::from_variant(params, input_trx_v0, std::move( resolver ), abi_serializer::create_yield_function( abi_serializer_max_time ));
+         input_trx = std::make_shared<packed_transaction>( std::move( input_trx_v0 ), true );
       } EOS_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid packed transaction")
 
-      app().get_method<incoming::methods::transaction_async>()(pretty_input, true,
+      app().get_method<incoming::methods::transaction_async>()(input_trx, true,
             [this, next](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
          if (result.contains<fc::exception_ptr>()) {
             next(result.get<fc::exception_ptr>());
@@ -2330,13 +2334,15 @@ void read_write::push_transactions(const read_write::push_transactions_params& p
 void read_write::send_transaction(const read_write::send_transaction_params& params, next_function<read_write::send_transaction_results> next) {
 
    try {
-      auto pretty_input = std::make_shared<packed_transaction>();
+      packed_transaction_v0 input_trx_v0;
       auto resolver = make_resolver(this, abi_serializer::create_yield_function( abi_serializer_max_time ));
+      packed_transaction_ptr input_trx;
       try {
-         abi_serializer::from_variant(params, *pretty_input, resolver, abi_serializer::create_yield_function( abi_serializer_max_time ));
+         abi_serializer::from_variant(params, input_trx_v0, std::move( resolver ), abi_serializer::create_yield_function( abi_serializer_max_time ));
+         input_trx = std::make_shared<packed_transaction>( std::move( input_trx_v0 ), true );
       } EOS_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid packed transaction")
 
-      app().get_method<incoming::methods::transaction_async>()(pretty_input, true,
+      app().get_method<incoming::methods::transaction_async>()(input_trx, true,
             [this, next](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
          if (result.contains<fc::exception_ptr>()) {
             next(result.get<fc::exception_ptr>());

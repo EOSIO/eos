@@ -105,12 +105,12 @@ struct connection : std::enable_shared_from_this<connection> {
       auto                     data = p->data();
       std::string              json{ (const char*)data.data(), data.size() };
       eosio::json_token_stream stream{ json.data() };
-      eosio::check_discard(from_json(abi, stream));
+      from_json(abi, stream);
       std::string error;
       if (!abieos::check_abi_version(abi.version, error))
          throw std::runtime_error(error);
       eosio::abi a;
-      eosio::check_discard(convert(abi, a));
+      convert(abi, a);
       abi_types = std::move(a.abi_types);
       have_abi  = true;
       if (callbacks)
@@ -122,9 +122,7 @@ struct connection : std::enable_shared_from_this<connection> {
       eosio::input_stream bin{ (const char*)data.data(), (const char*)data.data() + data.size() };
       auto                orig = bin;
       ship::result        result;
-      auto                r = from_bin(result, bin);
-      if (!r)
-         throw std::runtime_error{ r.error().message() };
+      from_bin(result, bin);
       return callbacks && std::visit([&](auto& r) { return callbacks->received(r, orig); }, result);
    }
 
@@ -162,9 +160,7 @@ struct connection : std::enable_shared_from_this<connection> {
 
    void send(const ship::request& req) {
       auto bin = std::make_shared<std::vector<char>>();
-      auto r   = eosio::convert_to_bin(req, *bin);
-      if (!r)
-         throw std::runtime_error{ r.error().message() };
+      eosio::convert_to_bin(req, *bin);
       stream.async_write(boost::asio::buffer(*bin), [self = shared_from_this(), bin, this](error_code ec, size_t) {
          enter_callback(ec, "async_write", [&] {});
       });

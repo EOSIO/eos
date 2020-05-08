@@ -8,7 +8,6 @@
 #pragma once
 #include <eosio/check.hpp>
 #include <eosio/varint.hpp>
-#include <eosio/eosio_outcome.hpp>
 #include <eosio/to_bin.hpp>
 #include <eosio/from_bin.hpp>
 
@@ -57,18 +56,18 @@ class datastream {
       datastream( T start, size_t s )
       :_start(start),_pos(start),_end(start+s){}
 
-      result<void> check_available(size_t size) {
+      bool check_available(size_t size) {
          if (size > size_t(_end - _pos))
-            return stream_error::overrun;
-         return outcome::success();
+            return false;
+         return true;
       }
 
-      result<void> read_reuse_storage(const char*& result, size_t size) {
+      bool read_reuse_storage(const char*& result, size_t size) {
          if (size > size_t(_end - _pos))
-            return stream_error::overrun;
+            return false;
          result = _pos;
          _pos += size;
-         return outcome::success();
+         return true;
       }
 
      /**
@@ -76,11 +75,11 @@ class datastream {
       *
       *  @param s - The number of bytes to skip
       */
-      inline result<void> skip( size_t s ){ 
+      inline bool skip( size_t s ){ 
          _pos += s; 
          if (_pos > _end )
-            return stream_error::overrun;
-         return outcome::success();
+            return false;
+         return true;
       }
 
      /**
@@ -90,11 +89,11 @@ class datastream {
       *  @param s - the number of bytes to read
       *  @return true
       */
-      inline result<void> read( char* d, size_t s ) {
+      inline bool read( char* d, size_t s ) {
         eosio::check( size_t(_end - _pos) >= (size_t)s, "read" );
         memcpy( d, _pos, s );
         _pos += s;
-        return outcome::success();
+        return true;
       }
 
      /**
@@ -104,11 +103,11 @@ class datastream {
       *  @param s - The number of bytes to write
       *  @return true
       */
-      inline result<void> write( const char* d, size_t s ) {
+      inline bool write( const char* d, size_t s ) {
         eosio::check( _end - _pos >= (int32_t)s, "write" );
         memcpy( (void*)_pos, d, s );
         _pos += s;
-        return outcome::success();
+        return true;
       }
 
      /**
@@ -118,14 +117,14 @@ class datastream {
       *  @param c byte to write
       *  @return true
       */
-      inline result<void> put(char c) {
+      inline bool put(char c) {
         eosio::check( _pos < _end, "put" );
         *_pos = c;
         ++_pos;
-        return outcome::success();
+        return true;
       }
 
-     inline result<void> write(char c) { return put(c); }
+     inline bool write(char c) { return put(c); }
 
      /**
       *  Reads a byte from the stream
@@ -134,7 +133,7 @@ class datastream {
       *  @param c - The reference to destination byte
       *  @return true
       */
-      inline result<void> get( unsigned char& c ) { return get( *(char*)&c ); }
+      inline bool get( unsigned char& c ) { return get( *(char*)&c ); }
 
      /**
       *  Reads a byte from the stream
@@ -143,12 +142,12 @@ class datastream {
       *  @param c - The reference to destination byte
       *  @return true
       */
-      inline result<void> get( char& c )
+      inline bool get( char& c )
       {
         eosio::check( _pos < _end, "get" );
         c = *_pos;
         ++_pos;
-        return outcome::success();
+        return true;
       }
 
      /**
@@ -226,7 +225,7 @@ class datastream<size_t> {
       *  @param s - The amount of size to increase
       *  @return true
       */
-     inline result<void> skip( size_t s ) { _size += s; return outcome::success();  }
+     inline bool skip( size_t s ) { _size += s; return true;  }
 
      /**
       *  Increment the size by s. This behaves the same as skip( size_t s )
@@ -234,16 +233,16 @@ class datastream<size_t> {
       *  @param s - The amount of size to increase
       *  @return true
       */
-     inline result<void>     write( const char* ,size_t s )  { _size += s; return outcome::success();  }
+     inline bool     write( const char* ,size_t s )  { _size += s; return true;  }
 
      /**
       *  Increment the size by one
       *
       *  @return true
       */
-     inline result<void>     put(char )                      { ++_size; return  outcome::success();    }
+     inline bool     put(char )                      { ++_size; return  true;    }
 
-     inline result<void> write(char c) { return put(c); }
+     inline bool write(char c) { return put(c); }
 
      /**
       *  Check validity. It's always valid
@@ -353,16 +352,15 @@ namespace _datastream_detail {
  */
 template<typename DataStream, typename T, std::enable_if_t<_datastream_detail::is_datastream<DataStream>::value>* = nullptr>
 DataStream& operator<<( DataStream& ds, const T& v ) {
-   check_discard(to_bin(v, ds));
+   to_bin(v, ds);
    return ds;
 }
 
 /* throws off gcc
 // Backwards compatibility: allow user defined datastream operators to work with from_bin
 template<typename DataStream, typename T, _datastream_detail::require_specialized_left_shift<datastream<DataStream>,T>* = nullptr>
-result<void> to_bin( const T& v, datastream<DataStream>& ds ) {
+void to_bin( const T& v, datastream<DataStream>& ds ) {
    ds << v;
-   return outcome::success();
 }
 */
 
@@ -378,15 +376,14 @@ result<void> to_bin( const T& v, datastream<DataStream>& ds ) {
  */
 template<typename DataStream, typename T, std::enable_if_t<_datastream_detail::is_datastream<DataStream>::value>* = nullptr>
 DataStream& operator>>( DataStream& ds, T& v ) {
-   check_discard(from_bin(v, ds));
+   from_bin(v, ds);
    return ds;
 }
 
 /* throws off gcc
 template<typename DataStream, typename T, _datastream_detail::require_specialized_right_shift<datastream<DataStream>,T>* = nullptr>
-result<void> from_bin( T& v, datastream<DataStream>& ds ) {
+void from_bin( T& v, datastream<DataStream>& ds ) {
    ds >> v;
-   return outcome::success();
 }
 */
 

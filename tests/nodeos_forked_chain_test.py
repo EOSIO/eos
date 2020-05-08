@@ -2,6 +2,7 @@
 
 from testUtils import Utils
 from datetime import datetime
+from datetime import timedelta
 import time
 from Cluster import Cluster
 import json
@@ -329,12 +330,12 @@ try:
             slotTime=0.5
             slotsDiff=int(timediff.total_seconds() / slotTime)
             if slotsDiff != 1:
-                slotTimeDelta=datetime.timedelta(slotTime)
+                slotTimeDelta=timedelta(slotTime)
                 first=lastTimestamp + slotTimeDelta
-                missed=datetime.strftime(first, Utils.TimeFmt)
+                missed=first.strftime(Utils.TimeFmt)
                 if slotsDiff > 2:
                     last=timestamp - slotTimeDelta
-                    missed+= " thru " + datetime.strftime(last, Utils.TimeFmt)
+                    missed+= " thru " + last.strftime(Utils.TimeFmt)
                 missedSlotAfter.append("%d (%s)" % (blockNum-1, missed))
             lastTimestamp=timestamp
 

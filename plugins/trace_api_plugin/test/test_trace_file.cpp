@@ -14,7 +14,79 @@ using open_state = slice_directory::open_state;
 namespace {
    struct test_fixture {
 
-      const block_trace_v0 bt {
+      const block_trace_v1 bt {
+         {
+            "0000000000000000000000000000000000000000000000000000000000000001"_h,
+            1,
+            "0000000000000000000000000000000000000000000000000000000000000003"_h,
+            chain::block_timestamp_type(1),
+            "bp.one"_n,
+            {}
+         },
+         "0000000000000000000000000000000000000000000000000000000000000000"_h,
+         "0000000000000000000000000000000000000000000000000000000000000000"_h,
+         0,
+         {
+            {
+               {
+                  "0000000000000000000000000000000000000000000000000000000000000001"_h,
+                  {
+                     {
+                        0,
+                        "eosio.token"_n, "eosio.token"_n, "transfer"_n,
+                        {{ "alice"_n, "active"_n }},
+                        make_transfer_data( "alice"_n, "bob"_n, "0.0001 SYS"_t, "Memo!" )
+                     },
+                     {
+                        1,
+                        "alice"_n, "eosio.token"_n, "transfer"_n,
+                        {{ "alice"_n, "active"_n }},
+                        make_transfer_data( "alice"_n, "bob"_n, "0.0001 SYS"_t, "Memo!" )
+                     },
+                     {
+                        2,
+                        "bob"_n, "eosio.token"_n, "transfer"_n,
+                        {{ "alice"_n, "active"_n }},
+                        make_transfer_data( "alice"_n, "bob"_n, "0.0001 SYS"_t, "Memo!" )
+                     }
+                  }
+               },
+               fc::enum_type<uint8_t, chain::transaction_receipt_header::status_enum>{chain::transaction_receipt_header::status_enum::executed},
+               10,
+               5,
+               std::vector<chain::signature_type>{chain::signature_type()},
+               chain::transaction_header{chain::time_point(), 1, 0, 100, 50, 0}
+            }
+         }
+      };
+      
+      const block_trace_v1 bt2 {
+         {
+            "0000000000000000000000000000000000000000000000000000000000000002"_h,
+            5,
+            "0000000000000000000000000000000000000000000000000000000000000005"_h,
+            chain::block_timestamp_type(2),
+            "bp.two"_n
+         },
+         "0000000000000000000000000000000000000000000000000000000000000000"_h,
+         "0000000000000000000000000000000000000000000000000000000000000000"_h,
+         0,
+         {
+            {
+               {
+                  "f000000000000000000000000000000000000000000000000000000000000004"_h,
+                  {}
+               },
+               fc::enum_type<uint8_t, chain::transaction_receipt_header::status_enum>{chain::transaction_receipt_header::status_enum::executed},
+               10,
+               5,
+               std::vector<chain::signature_type>{chain::signature_type()},
+               chain::transaction_header{chain::time_point(), 1, 0, 100, 50, 0}
+            }
+         }
+      };
+
+      const block_trace_v0 bt_v0 {
          "0000000000000000000000000000000000000000000000000000000000000001"_h,
          1,
          "0000000000000000000000000000000000000000000000000000000000000003"_h,
@@ -43,20 +115,6 @@ namespace {
                      make_transfer_data( "alice"_n, "bob"_n, "0.0001 SYS"_t, "Memo!" )
                   }
                }
-            }
-         }
-      };
-
-      const block_trace_v0 bt2 {
-         "0000000000000000000000000000000000000000000000000000000000000002"_h,
-         5,
-         "0000000000000000000000000000000000000000000000000000000000000005"_h,
-         chain::block_timestamp_type(2),
-         "bp.two"_n,
-         {
-            {
-               "f000000000000000000000000000000000000000000000000000000000000004"_h,
-               {}
             }
          }
       };
@@ -178,19 +236,37 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
    BOOST_FIXTURE_TEST_CASE(write_data_trace, test_fixture)
    {
       vslice vs;
-      const auto offset = append_store( bt, vs );
+      const auto offset = append_store(bt, vs );
       BOOST_REQUIRE_EQUAL(offset,0);
 
-      const auto offset2 = append_store( bt2, vs );
+      const auto offset2 = append_store(bt2, vs );
+      BOOST_REQUIRE(offset < offset2);
+
+      vs._pos = offset;
+      const auto bt_returned = extract_store<block_trace_v1>( vs );
+      BOOST_REQUIRE(bt_returned == bt);
+
+      vs._pos = offset2;
+      const auto bt_returned2 = extract_store<block_trace_v1>( vs );
+      BOOST_REQUIRE(bt_returned2 == bt2);
+   }
+
+   BOOST_FIXTURE_TEST_CASE(write_data_multi_trace_version, test_fixture)
+   {
+      vslice vs;
+      const auto offset = append_store(bt_v0, vs );
+      BOOST_REQUIRE_EQUAL(offset,0);
+
+      const auto offset2 = append_store(bt, vs );
       BOOST_REQUIRE(offset < offset2);
 
       vs._pos = offset;
       const auto bt_returned = extract_store<block_trace_v0>( vs );
-      BOOST_REQUIRE(bt_returned == bt);
+      BOOST_REQUIRE(bt_returned == bt_v0);
 
       vs._pos = offset2;
-      const auto bt_returned2 = extract_store<block_trace_v0>( vs );
-      BOOST_REQUIRE(bt_returned2 == bt2);
+      const auto bt_returned2 = extract_store<block_trace_v1>( vs );
+      BOOST_REQUIRE(bt_returned2 == bt);
    }
 
    BOOST_FIXTURE_TEST_CASE(write_metadata_trace, test_fixture)
@@ -736,7 +812,7 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       sp.append_lib(1);
       sp.append(bt2);
       int count = 0;
-      get_block_t block1 = sp.get_block(1,[&count]() {
+      get_block_t block1 = sp.get_block(1, [&count]() {
          if (++count >= 3) {
             throw yield_exception("");
          }
@@ -747,7 +823,7 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       BOOST_REQUIRE_EQUAL(block1_bt, bt);
 
       count = 0;
-      get_block_t block2 = sp.get_block(5,[&count]() {
+      get_block_t block2 = sp.get_block(5, [&count]() {
          if (++count >= 4) {
             throw yield_exception("");
          }

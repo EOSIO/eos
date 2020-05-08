@@ -145,7 +145,7 @@ void rodeos_db_snapshot::write_block_info(const ship_protocol::get_blocks_result
    uint32_t            block_num = result.this_block->block_num;
    eosio::input_stream bin       = *result.block;
    signed_block        block;
-   eosio::check_discard(from_bin(block, bin));
+   from_bin(block, bin);
 
    db_view_state view_state{ state_account, *db, *write_session, partition->contract_kv_prefix };
    view_state.kv_state.enable_write = true;
@@ -183,10 +183,10 @@ void rodeos_db_snapshot::write_deltas(const ship_protocol::get_blocks_result_v0&
    view_state.kv_disk.bypass_receiver_check = true;
    view_state.kv_state.enable_write         = true;
    uint32_t num;
-   eosio::check_discard(eosio::varuint32_from_bin(num, bin));
+   eosio::varuint32_from_bin(num, bin);
    for (uint32_t i = 0; i < num; ++i) {
       ship_protocol::table_delta delta;
-      eosio::check_discard(from_bin(delta, bin));
+      from_bin(delta, bin);
       auto&  delta_v0      = std::get<0>(delta);
       size_t num_processed = 0;
       store_delta({ view_state }, delta_v0, head == 0, [&]() {

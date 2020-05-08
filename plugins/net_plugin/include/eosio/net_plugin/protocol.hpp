@@ -135,6 +135,11 @@ namespace eosio {
       uint32_t end_block{0};
    };
 
+   struct trx_message_v1 {
+      fc::optional<transaction_id_type> trx_id; // only provided for large trx as trade-off for small trxs not worth it
+      std::shared_ptr<packed_transaction> trx;
+   };
+
    using net_message = static_variant<handshake_message,
                                       chain_size_message,
                                       go_away_message,
@@ -142,8 +147,10 @@ namespace eosio {
                                       notice_message,
                                       request_message,
                                       sync_request_message,
-                                      signed_block,         // which = 7
-                                      packed_transaction>;  // which = 8
+                                      signed_block_v0,         // which = 7
+                                      packed_transaction_v0,   // which = 8
+                                      signed_block,            // which = 9
+                                      trx_message_v1>;         // which = 10
 
 } // namespace eosio
 
@@ -162,6 +169,8 @@ FC_REFLECT( eosio::time_message, (org)(rec)(xmt)(dst) )
 FC_REFLECT( eosio::notice_message, (known_trx)(known_blocks) )
 FC_REFLECT( eosio::request_message, (req_trx)(req_blocks) )
 FC_REFLECT( eosio::sync_request_message, (start_block)(end_block) )
+FC_REFLECT( eosio::trx_message_v1, (trx_id)(trx) )
+
 
 /**
  *

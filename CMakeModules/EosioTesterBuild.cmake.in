@@ -37,7 +37,7 @@ endif ( APPLE )
 ### Remove after Boost 1.70 CMake fixes are in place
 set( Boost_NO_BOOST_CMAKE ON CACHE STRING "ON or OFF" )
 set( Boost_USE_STATIC_LIBS ON CACHE STRING "ON or OFF" )
-find_package(Boost 1.67 REQUIRED COMPONENTS
+find_package(Boost @Boost_MAJOR_VERSION@.@Boost_MINOR_VERSION@ EXACT REQUIRED COMPONENTS
    date_time
    filesystem
    system
@@ -68,12 +68,6 @@ get_filename_component(ssldir @OPENSSL_SSL_LIBRARY@ DIRECTORY)
 find_library(libosssl ssl "${ssldir}" NO_DEFAULT_PATH)
 find_library(libchainbase chainbase @CMAKE_BINARY_DIR@/libraries/chainbase NO_DEFAULT_PATH)
 find_library(libbuiltins builtins @CMAKE_BINARY_DIR@/libraries/builtins NO_DEFAULT_PATH)
-find_library(GMP_LIBRARIES NAMES libgmp.a gmp.lib gmp libgmp-10 mpir
-    HINTS ENV GMP_LIB_DIR
-          ENV GMP_DIR
-    PATH_SUFFIXES lib
-    DOC "Path to the GMP library"
-)
 
 set(EOSIO_WASM_RUNTIMES @EOSIO_WASM_RUNTIMES@)
 if("eos-vm-oc" IN_LIST EOSIO_WASM_RUNTIMES)
@@ -97,7 +91,7 @@ macro(add_eosio_test_executable test_name)
        ${libchainbase}
        ${libbuiltins}
        ${libsecp256k1}
-       ${GMP_LIBRARIES}
+       @GMP_LIBRARIES@
 
        ${Boost_FILESYSTEM_LIBRARY}
        ${Boost_SYSTEM_LIBRARY}

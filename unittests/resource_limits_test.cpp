@@ -497,7 +497,7 @@ BOOST_AUTO_TEST_SUITE(resource_limits_test)
       // Push trigger block to validator node.
       // This should fail because the NET bill calculated by the fully-validating node will differ from the one in the block.
       {
-         auto bs = validator.control->create_block_state_future( trigger_block );
+         auto bs = validator.control->create_block_state_future( trigger_block->calculate_id(), trigger_block );
          validator.control->abort_block();
          BOOST_REQUIRE_EXCEPTION(
             validator.control->push_block( bs, forked_branch_callback{}, trx_meta_cache_lookup{} ),
@@ -510,7 +510,7 @@ BOOST_AUTO_TEST_SUITE(resource_limits_test)
       // Because validator2 is in light validation mode, it does not compute the NET bill itself and instead only relies on the value in the block.
       // The failure will be due to failing check_net_usage within transaction_context::finalize because the NET bill in the block is too high.
       {
-         auto bs = validator2.control->create_block_state_future( trigger_block );
+         auto bs = validator2.control->create_block_state_future( trigger_block->calculate_id(), trigger_block );
          validator2.control->abort_block();
          BOOST_REQUIRE_EXCEPTION(
             validator2.control->push_block( bs, forked_branch_callback{}, trx_meta_cache_lookup{} ),
@@ -539,7 +539,7 @@ BOOST_AUTO_TEST_SUITE(resource_limits_test)
       // Push new trigger block to validator node.
       // This should still fail because the NET bill is incorrect.
       {
-         auto bs = validator.control->create_block_state_future( trigger_block );
+         auto bs = validator.control->create_block_state_future( trigger_block->calculate_id(), trigger_block );
          validator.control->abort_block();
          BOOST_REQUIRE_EXCEPTION(
             validator.control->push_block( bs, forked_branch_callback{}, trx_meta_cache_lookup{} ),
@@ -550,7 +550,7 @@ BOOST_AUTO_TEST_SUITE(resource_limits_test)
       // Push new trigger block to validator2 node.
       // Because validator2 is in light validation mode, this will not fail despite the fact that the NET bill is incorrect.
       {
-         auto bs = validator2.control->create_block_state_future( trigger_block );
+         auto bs = validator2.control->create_block_state_future( trigger_block->calculate_id(), trigger_block );
          validator2.control->abort_block();
          validator2.control->push_block( bs, forked_branch_callback{}, trx_meta_cache_lookup{} );
       }

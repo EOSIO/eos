@@ -1,5 +1,6 @@
 #include <b1/rodeos/embedded_rodeos.h>
 #include <b1/rodeos/rodeos.hpp>
+#include <fc/scoped_exit.hpp>
 
 struct rodeos_error_s {
    const char* msg = "no error";
@@ -131,7 +132,7 @@ template <typename F>
 void with_result(const char* data, uint64_t size, F f) {
    eosio::input_stream          bin{ data, data + size };
    eosio::ship_protocol::result result;
-   eosio::check_discard(from_bin(result, bin));
+   from_bin(result, bin);
    auto* result_v0 = std::get_if<eosio::ship_protocol::get_blocks_result_v0>(&result);
    if (!result_v0)
       throw std::runtime_error("expected a get_blocks_result_v0");
@@ -243,7 +244,7 @@ rodeos_bool rodeos_query_transaction(rodeos_error* error, rodeos_query_handler* 
 
       std::vector<std::vector<char>> memory;
       eosio::input_stream            s{ data, size };
-      auto trx = eosio::check(eosio::from_bin<eosio::ship_protocol::packed_transaction>(s)).value();
+      auto trx = eosio::from_bin<eosio::ship_protocol::packed_transaction>(s);
 
       auto                                    thread_state = handler->state_cache.get_state();
       eosio::ship_protocol::transaction_trace tt;
@@ -257,12 +258,22 @@ rodeos_bool rodeos_query_transaction(rodeos_error* error, rodeos_query_handler* 
 
       handler->state_cache.store_state(std::move(thread_state));
 
-      auto packed = eosio::check(eosio::convert_to_bin(tt)).value();
-      *result     = (char*)malloc(packed.size());
+      eosio::size_stream ss;
+      eosio::to_bin(tt, ss);
+      *result = (char*)malloc(ss.size);
       if (!result)
          throw std::bad_alloc();
-      *result_size = packed.size();
-      memcpy(*result, packed.data(), packed.size());
+      auto free_on_except = fc::make_scoped_exit([&]{
+         free(*result);
+         *result = nullptr;
+      });
+      eosio::fixed_buf_stream fbs(*result, ss.size);
+      to_bin(tt, fbs);
+      if (fbs.pos != fbs.end) {
+         eosio::check(false, eosio::convert_stream_error(eosio::stream_error::underrun));
+      }
+      *result_size = ss.size;
+      free_on_except.cancel();
       return true;
    });
 }
