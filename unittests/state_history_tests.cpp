@@ -76,14 +76,14 @@ BOOST_AUTO_TEST_CASE(test_deltas_account)
    BOOST_REQUIRE(get_owner_and_name_from_permission_stream(
                      it_permission->rows.obj[1].second)==std::make_pair(std::string("newacc"), std::string("active")));
 
-   auto& authorization = chain.control->get_mutable_authorization_manager();
-   const permission_object* ptr = authorization.find_permission({N(newacc), N(active)});
+   auto& authorization_manager = chain.control->get_authorization_manager();
+   const permission_object* ptr = authorization_manager.find_permission({N(newacc), N(active)});
    BOOST_REQUIRE(ptr!=nullptr);
 
    // Create new permission
    chain.set_authority(N(newacc), N(mypermission), ptr->auth,  N(active));
 
-   const permission_object* ptr_sub = authorization.find_permission({N(newacc), N(mypermission)});
+   const permission_object* ptr_sub = authorization_manager.find_permission({N(newacc), N(mypermission)});
    BOOST_REQUIRE(ptr_sub!=nullptr);
 
    // Verify that the new permission is present in the state delta
