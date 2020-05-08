@@ -63,6 +63,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_account)
    BOOST_REQUIRE_EQUAL(it_account->rows.obj.size(), 2);
    BOOST_REQUIRE_EQUAL(get_name_from_account_datastream(
                      it_account->rows.obj[0].second), "eosio");
+   BOOST_REQUIRE_EQUAL(it_account->rows.obj[1].first, true);
    BOOST_REQUIRE_EQUAL(get_name_from_account_datastream(
                      it_account->rows.obj[1].second), "newacc");
 
@@ -71,8 +72,10 @@ BOOST_AUTO_TEST_CASE(test_deltas_account)
    it_permission = std::find_if(v.begin(), v.end(), find_by_name);
    BOOST_REQUIRE(it_permission!=v.end());
    BOOST_REQUIRE_EQUAL(it_permission->rows.obj.size(), 2);
+   BOOST_REQUIRE_EQUAL(it_permission->rows.obj[0].first, true);
    BOOST_REQUIRE(get_owner_and_name_from_permission_stream(
                      it_permission->rows.obj[0].second)==std::make_pair(std::string("newacc"), std::string("owner")));
+   BOOST_REQUIRE_EQUAL(it_permission->rows.obj[1].first, true);
    BOOST_REQUIRE(get_owner_and_name_from_permission_stream(
                      it_permission->rows.obj[1].second)==std::make_pair(std::string("newacc"), std::string("active")));
 
@@ -95,6 +98,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_account)
                      it_permission->rows.obj[0].second)==std::make_pair(std::string("newacc"), std::string("owner")));
    BOOST_REQUIRE(get_owner_and_name_from_permission_stream(
                      it_permission->rows.obj[1].second)==std::make_pair(std::string("newacc"), std::string("active")));
+   BOOST_REQUIRE_EQUAL(it_permission->rows.obj[2].first, true);
    BOOST_REQUIRE(
        get_owner_and_name_from_permission_stream(
            it_permission->rows.obj[2].second)==std::make_pair(std::string("newacc"), std::string("mypermission")));
@@ -108,6 +112,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_account)
    it_permission = std::find_if(v.begin(), v.end(), find_by_name);
    BOOST_REQUIRE(it_permission!=v.end());
    BOOST_REQUIRE_EQUAL(it_permission->rows.obj.size(), 1);
+   BOOST_REQUIRE_EQUAL(it_permission->rows.obj[0].first, true);
    BOOST_REQUIRE(
        get_owner_and_name_from_permission_stream(
            it_permission->rows.obj[0].second)==std::make_pair(std::string("newacc"), std::string("mypermission")));
@@ -117,6 +122,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_account)
    v = eosio::state_history::create_deltas(chain.control->db(), false);
    it_permission = std::find_if(v.begin(), v.end(), find_by_name);
    BOOST_REQUIRE_EQUAL(it_permission->rows.obj.size(), 1);
+   BOOST_REQUIRE_EQUAL(it_permission->rows.obj[0].first, false);
    BOOST_REQUIRE(
        get_owner_and_name_from_permission_stream(
            it_permission->rows.obj[0].second)==std::make_pair(std::string("newacc"), std::string("mypermission")));
