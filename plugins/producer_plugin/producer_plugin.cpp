@@ -720,7 +720,7 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
       const std::vector<std::string> key_spec_pairs = options["signature-provider"].as<std::vector<std::string>>();
       for (const auto& key_spec_pair : key_spec_pairs) {
          try {
-            auto [pubkey, provider] = app().get_plugin<signature_provider_plugin>().signature_provider_for_specification(key_spec_pair);
+            const auto& [pubkey, provider] = app().get_plugin<signature_provider_plugin>().signature_provider_for_specification(key_spec_pair);
             my->_signature_providers[pubkey] = provider;
          } catch(secure_enclave_exception& e) {
             elog("Error with Secure Enclave signature provider: ${e}; ignoring ${val}", ("e", e.top_message())("val", key_spec_pair));
