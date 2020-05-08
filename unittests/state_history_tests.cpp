@@ -141,7 +141,7 @@ BOOST_AUTO_TEST_CASE(test_traces_present)
    tester chain;
 
    chain.control->applied_transaction.connect(
-      [&](std::tuple<const transaction_trace_ptr&, const signed_transaction&> t) {
+      [&](std::tuple<const transaction_trace_ptr&, const packed_transaction_ptr&> t) {
          const transaction_trace_ptr& trx_trace_ptr = std::get<0>(t);
          BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trx_trace_ptr->receipt->status);
          BOOST_REQUIRE_EQUAL(trx_trace_ptr->action_traces.size(), 1);
