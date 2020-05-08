@@ -2,14 +2,24 @@
 
 #include <appbase/application.hpp>
 
+#include <boost/container/flat_set.hpp>
+
+#include <eosio/chain/types.hpp>
+
+#include <fc/exception/exception.hpp>
+#include <fc/variant.hpp>
+
+#include <functional>
+#include <string>
+
 namespace eosio {
 
-class producer_plugin;
-static appbase::abstract_plugin& _producer_plugin = app().register_plugin<producer_plugin>();
-
+// class producer_plugin;
+// static appbase::abstract_plugin& _producer_plugin = app().register_plugin<producer_plugin>();
+// 
 class producer_plugin : public appbase::plugin<producer_plugin> {
 public:
-   APPBASE_PLUGIN_REQUIRES((chain_plugin)(http_client_plugin))
+   APPBASE_PLUGIN_REQUIRES((chain_plugin)(eosio::http_client_plugin))
 
    struct runtime_options {
       fc::optional<int32_t>   max_transaction_time;
@@ -23,30 +33,30 @@ public:
    };
 
    struct whitelist_blacklist {
-      fc::optional< flat_set<account_name> > actor_whitelist;
-      fc::optional< flat_set<account_name> > actor_blacklist;
-      fc::optional< flat_set<account_name> > contract_whitelist;
-      fc::optional< flat_set<account_name> > contract_blacklist;
-      fc::optional< flat_set< std::pair<account_name, action_name> > > action_blacklist;
-      fc::optional< flat_set<public_key_type> > key_blacklist;
+      fc::optional< boost::container::flat_set<eosio::chain::account_name> > actor_whitelist;
+      fc::optional< boost::container::flat_set<eosio::chain::account_name> > actor_blacklist;
+      fc::optional< boost::container::flat_set<eosio::chain::account_name> > contract_whitelist;
+      fc::optional< boost::container::flat_set<eosio::chain::account_name> > contract_blacklist;
+      fc::optional< boost::container::flat_set< std::pair<eosio::chain::account_name, eosio::chain::action_name> > > action_blacklist;
+      fc::optional< boost::container::flat_set<eosio::chain::public_key_type> > key_blacklist;
    };
 
    struct greylist_params {
-      std::vector<account_name> accounts;
+      std::vector<eosio::chain::account_name> accounts;
    };
 
    struct integrity_hash_information {
-      chain::block_id_type head_block_id;
-      chain::digest_type   integrity_hash;
+      eosio::chain::block_id_type head_block_id;
+      eosio::chain::digest_type   integrity_hash;
    };
 
    struct snapshot_information {
-      chain::block_id_type head_block_id;
-      std::string          snapshot_name;
+       eosio::chain::block_id_type head_block_id;
+       std::string          snapshot_name;
    };
 
    struct scheduled_protocol_feature_activations {
-      std::vector<chain::digest_type> protocol_features_to_activate;
+      std::vector<eosio::chain::digest_type> protocol_features_to_activate;
    };
 
    struct get_supported_protocol_features_params {
@@ -55,15 +65,15 @@ public:
    };
 
    struct get_account_ram_corrections_params {
-      optional<account_name>  lower_bound;
-      optional<account_name>  upper_bound;
+      fc::optional<eosio::chain::account_name>  lower_bound;
+      fc::optional<eosio::chain::account_name>  upper_bound;
       uint32_t                limit = 10;
       bool                    reverse = false;
    };
 
    struct get_account_ram_corrections_result {
       std::vector<fc::variant> rows;
-      optional<account_name>   more;
+       fc::optional<eosio::chain::account_name>   more;
    };
 
    template<typename T>
@@ -110,6 +120,7 @@ public:
 
 private:
    std::shared_ptr<class producer_plugin_impl> my;
+};
 };
 
 } //eosio

@@ -42,6 +42,8 @@ if( options.count(op_name) ) {                                                  
    }                                                                                      \
 }
 
+namespace eosio {
+
 enum class pending_block_mode {
    producing,
    speculating
@@ -118,4 +120,6 @@ void new_chain_banner(const eosio::chain::controller& db) {
          ;
    }
    return;
+}
+
 }

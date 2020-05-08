@@ -1,16 +1,19 @@
-# file(GLOB HEADERS "include/eosio/producer_plugin/*.hpp")
+file(GLOB HEADERS "include/eosio/producer_plugin/*.hpp")
 
-file(GLOB HEADERS "include/eosio/producer_plugin/producer_plugin_impl.hpp")
-
-# add_library( producer_plugin
-#              producer_plugin.cpp
-#              ${HEADERS}
-#            )
+# file(GLOB HEADERS "include/eosio/producer_plugin/producer_plugin_impl.hpp")
 
 add_library( producer_plugin
+             common.cpp
+             pending_snapshot.cpp
+             producer_plugin.cpp
              producer_plugin_impl.cpp
              ${HEADERS}
            )
+
+# add_library( producer_plugin
+#              producer_plugin_impl.cpp
+#              ${HEADERS}
+#            )
 
 target_link_libraries( producer_plugin chain_plugin http_client_plugin appbase eosio_chain )
 target_include_directories( producer_plugin
