@@ -200,16 +200,19 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
    std::string wasm_runtime_opt = "Override default WASM runtime (";
    std::string wasm_runtime_desc;
    std::string delim;
-#ifdef EOSIO_EOS_VM_JIT_RUNTIME_ENABLED
-   wasm_runtime_opt += " \"eos-vm-jit\"";
-   wasm_runtime_desc += "\"eos-vm-jit\" : A WebAssembly runtime that compiles WebAssembly code to native x86 code prior to execution.\n";
+
+   wasm_runtime_opt += " \"wabt\"";
+   wasm_runtime_desc += "\"wabt\" : The WebAssembly Binary Toolkit.\n";
    delim = ", ";
+
+#ifdef EOSIO_EOS_VM_JIT_RUNTIME_ENABLED
+   wasm_runtime_opt += delim + " \"eos-vm-jit\"";
+   wasm_runtime_desc += "\"eos-vm-jit\" : A WebAssembly runtime that compiles WebAssembly code to native x86 code prior to execution.\n";
 #endif
 
 #ifdef EOSIO_EOS_VM_RUNTIME_ENABLED
    wasm_runtime_opt += delim + "\"eos-vm\"";
    wasm_runtime_desc += "\"eos-vm\" : A WebAssembly interpreter.\n";
-   delim = ", ";
 #endif
 
 #ifdef EOSIO_EOS_VM_OC_DEVELOPER
@@ -217,6 +220,8 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
    wasm_runtime_desc += "\"eos-vm-oc\" : Unsupported. Instead, use one of the other runtimes along with the option enable-eos-vm-oc.\n";
 #endif
    wasm_runtime_opt += ")\n" + wasm_runtime_desc;
+
+   std::string default_wasm_runtime_str= eosio::chain::wasm_interface::vm_type_string(eosio::chain::config::default_wasm_runtime);
 
    cfg.add_options()
          ("blocks-dir", bpo::value<bfs::path>()->default_value("blocks"),
@@ -232,7 +237,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
                EOS_ASSERT(false, plugin_exception, "");
             }
 #endif
-         })->default_value(eosio::chain::wasm_interface::vm_type::eos_vm_jit, "eos-vm-jit"), wasm_runtime_opt.c_str()
+         })->default_value(eosio::chain::config::default_wasm_runtime, default_wasm_runtime_str), wasm_runtime_opt.c_str()
          )
          ("abi-serializer-max-time-ms", bpo::value<uint32_t>()->default_value(config::default_abi_serializer_max_time_us / 1000),
           "Override default maximum ABI serialization time allowed in ms")
