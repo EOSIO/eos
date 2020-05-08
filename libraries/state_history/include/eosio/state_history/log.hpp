@@ -8,8 +8,9 @@
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/types.hpp>
 #include <eosio/state_history/transaction_trace_cache.hpp>
-#include <eosio/state_history/datastream.hpp>
+#include <fc/io/datastream.hpp>
 #include <fc/log/logger.hpp>
+#include <fc/io/cfile.hpp>
 
 namespace eosio {
 

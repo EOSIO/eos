@@ -4,7 +4,7 @@
 #include <eosio/state_history/compression.hpp>
 #include <eosio/state_history/serialization.hpp>
 #include <eosio/state_history/types.hpp>
-#include <eosio/state_history/datastream.hpp>
+#include <fc/io/datastream.hpp>
 
 namespace eosio {
 namespace state_history {

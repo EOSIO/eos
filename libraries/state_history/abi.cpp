@@ -50,6 +50,17 @@ extern const char* const state_history_plugin_abi = R"({
             ]
         },
         {
+            "name": "get_blocks_result_v1", "fields": [
+                { "name": "head", "type": "block_position" },
+                { "name": "last_irreversible", "type": "block_position" },
+                { "name": "this_block", "type": "block_position?" },
+                { "name": "prev_block", "type": "block_position?" },
+                { "name": "block", "type": "signed_block?" },
+                { "name": "traces", "type": "transaction_trace[]" },
+                { "name": "deltas", "type": "bytes?" }
+            ]
+        },
+        {
             "name": "row", "fields": [
                 { "name": "present", "type": "bool" },
                 { "name": "data", "type": "bytes" }
@@ -138,6 +149,18 @@ extern const char* const state_history_plugin_abi = R"({
             ]
         },
         {
+            "name": "partial_transaction_v1", "fields": [
+                { "name": "expiration", "type": "time_point_sec" },
+                { "name": "ref_block_num", "type": "uint16" },
+                { "name": "ref_block_prefix", "type": "uint32" },
+                { "name": "max_net_usage_words", "type": "varuint32" },
+                { "name": "max_cpu_usage_ms", "type": "uint8" },
+                { "name": "delay_sec", "type": "varuint32" },
+                { "name": "transaction_extensions", "type": "extension[]" },
+                { "name": "prunable_data", "type": "prunable_data" },
+            ]
+        },
+        {
             "name": "transaction_trace_v0", "fields": [
                 { "name": "id", "type": "checksum256" },
                 { "name": "status", "type": "uint8" },
@@ -199,7 +222,13 @@ extern const char* const state_history_plugin_abi = R"({
             ]
         },
         {
-            "name": "signed_block", "base": "signed_block_header", "fields": [
+            "name": "signed_block_v0", "base": "signed_block_header", "fields": [
+                { "name": "transactions", "type": "transaction_receipt[]" },
+                { "name": "block_extensions", "type": "extension[]" }
+            ]
+        },
+        {
+            "name": "signed_block_v1", "base": "signed_block_header", "fields": [
                 { "name": "transactions", "type": "transaction_receipt[]" },
                 { "name": "block_extensions", "type": "extension[]" }
             ]
@@ -528,9 +557,11 @@ extern const char* const state_history_plugin_abi = R"({
 
         { "name": "action_receipt", "types": ["action_receipt_v0"] },
         { "name": "action_trace", "types": ["action_trace_v0", "action_trace_v1"] },
-        { "name": "partial_transaction", "types": ["partial_transaction_v0"] },
+        { "name": "partial_transaction", "types": ["partial_transaction_v0", "partial_transaction_v1"] },
         { "name": "transaction_trace", "types": ["transaction_trace_v0"] },
         { "name": "transaction_variant", "types": ["transaction_id", "packed_transaction"] },
+        { "name": "signed_block", "types": ["signed_block_v0", "signed_block_v1"] },
+        { "name": "prunable_data", "types": ["prunable_full_legacy", "prunable_none", "prunable_partial", "prunable_full"] },
 
         { "name": "table_delta", "types": ["table_delta_v0"] },
         { "name": "account", "types": ["account_v0"] },
