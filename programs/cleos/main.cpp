@@ -2621,6 +2621,42 @@ int main( int argc, char** argv ) {
       std::cout << fc::json::to_pretty_string(unpacked_action_data_json) << std::endl;
    });
 
+   // validate subcommand
+   auto validate = app.add_subcommand("validate", localized("Validate transactions")); 
+   validate->require_subcommand();
+
+   // validate signatures
+   string trx_json_to_validate;
+   string str_chain_id;
+   auto validate_signatures = validate->add_subcommand("signatures", localized("Validate signatures and recover public keys"));
+   validate_signatures->add_option("transaction", trx_json_to_validate,
+                                   localized("The JSON string or filename defining the transaction to validate"), true)->required();
+   validate_signatures->add_option("-c,--chain-id", str_chain_id, localized("The chain id that will be used in signature verification"));
+
+   validate_signatures->callback([&] {
+      fc::variant trx_var = json_from_file_or_string(trx_json_to_validate);
+      signed_transaction trx;
+      try {
+        abi_serializer::from_variant( trx_var, trx, abi_serializer_resolver_empty, abi_serializer::create_yield_function( abi_serializer_max_time ) );
+      } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Invalid transaction format: '${data}'",
+                               ("data", fc::json::to_string(trx_var, fc::time_point::maximum())))
+
+      fc::optional<chain_id_type> chain_id;
+
+      if( str_chain_id.size() == 0 ) {
+         ilog( "grabbing chain_id from ${n}", ("n", node_executable_name) );
+         auto info = get_info();
+         chain_id = info.chain_id;
+      } else {
+         chain_id = chain_id_type(str_chain_id);
+      }
+
+      flat_set<public_key_type> recovered_pub_keys;
+      trx.get_signature_keys( *chain_id, fc::time_point::maximum(), recovered_pub_keys, false );
+
+      std::cout << fc::json::to_pretty_string(recovered_pub_keys) << std::endl;
+   });
+
    // Get subcommand
    auto get = app.add_subcommand("get", localized("Retrieve various items and information from the blockchain"));
    get->require_subcommand();
@@ -3464,7 +3500,7 @@ int main( int argc, char** argv ) {
    // sign subcommand
    string trx_json_to_sign;
    string str_private_key;
-   string str_chain_id;
+   str_chain_id = {};
    string str_private_key_file;
    string str_public_key;
    bool push_trx = false;
