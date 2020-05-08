@@ -1,12 +1,16 @@
 #pragma once
 
 #include <ios>
+#include <thread>
+#include <mutex>
+#include <condition_variable>
 #include <fc/io/cfile.hpp>
 #include <boost/filesystem.hpp>
 #include <fc/variant.hpp>
 #include <eosio/trace_api/common.hpp>
 #include <eosio/trace_api/metadata_log.hpp>
 #include <eosio/trace_api/data_log.hpp>
+#include <eosio/trace_api/compressed_file.hpp>
 
 namespace eosio::trace_api {
    using namespace boost::filesystem;
@@ -96,7 +100,8 @@ namespace eosio::trace_api {
       };
 
       enum class open_state { read /*read from front to back*/, write /*write to end of file*/ };
-      slice_directory(const boost::filesystem::path& slice_dir, uint32_t width, std::optional<uint32_t> minimum_irreversible_history_blocks);
+      slice_directory(const boost::filesystem::path& slice_dir, uint32_t width, std::optional<uint32_t> minimum_irreversible_history_blocks,
+                      std::optional<uint32_t> minimum_uncompressed_irreversible_history_blocks, size_t compression_seek_point_stride);
 
       /**
        * Return the slice number that would include the passed in block_height
@@ -157,6 +162,17 @@ namespace eosio::trace_api {
       bool find_trace_slice(uint32_t slice_number, open_state state, fc::cfile& trace_file, bool open_file = true) const;
 
       /**
+       * Find the read-only compressed trace file associated with the indicated slice_number
+       *
+       * @param slice_number : slice number of the requested slice file
+       * @param open_file : indicate if the file should be opened (if found) or not
+       * @return if file was found (i.e. already existed) returns an optional containing a compressed_file which is
+       *         open (or not) depending on the `open_file` paraneter,
+       *         Otherwise, the returned optional is empty
+       */
+      std::optional<compressed_file> find_compressed_trace_slice(uint32_t slice_number, bool open_file = true) const;
+
+      /**
        * Find or create a trace and index file pair
        *
        * @param slice_number : slice number of the requested slice file
@@ -167,11 +183,28 @@ namespace eosio::trace_api {
       void find_or_create_slice_pair(uint32_t slice_number, open_state state, fc::cfile& trace, fc::cfile& index);
 
       /**
+       * set the LIB for maintenance
+       * @param lib
+       */
+      void set_lib(uint32_t lib);
+
+      /**
+       * Start a thread which does background maintenance
+       */
+      void start_maintenance_thread( log_handler log );
+
+      /**
+       * Stop and join the thread doing background maintenance
+       */
+      void stop_maintenance_thread();
+
+      /**
        * Cleans up all slices that are no longer needed to maintain the minimum number of blocks past lib
+       * Compresses up all slices that can be compressed
        *
        * @param lib : block number of the current lib
        */
-      void cleanup_old_slices(uint32_t lib);
+      void run_maintenance_tasks(uint32_t lib, const log_handler& log);
 
    private:
       // returns true if slice is found, slice_file will always be set to the appropriate path for
@@ -184,10 +217,23 @@ namespace eosio::trace_api {
       // take an open index slice file and verify its header is valid and prepare the file to be appended to (or read from)
       void validate_existing_index_slice_file(fc::cfile& index_file, open_state state) const;
 
+      // helper for methods that process irreversible slice files
+      template<typename F>
+      void process_irreversible_slice_range(uint32_t lib, uint32_t upper_bound_block, std::optional<uint32_t>& lower_bound_slice, F&& f);
+
       const boost::filesystem::path _slice_dir;
       const uint32_t _width;
       const std::optional<uint32_t> _minimum_irreversible_history_blocks;
       std::optional<uint32_t> _last_cleaned_up_slice;
+      const std::optional<uint32_t> _minimum_uncompressed_irreversible_history_blocks;
+      std::optional<uint32_t> _last_compressed_slice;
+      const size_t _compression_seek_point_stride;
+
+      std::atomic<uint32_t> _best_known_lib{0};
+      std::mutex _maintenance_mtx;
+      std::condition_variable _maintenance_condition;
+      std::thread _maintenance_thread;
+      std::atomic_bool _maintenance_shutdown{false};
    };
 
    /**
@@ -197,9 +243,10 @@ namespace eosio::trace_api {
    public:
       using open_state = slice_directory::open_state;
 
-      store_provider(const boost::filesystem::path& slice_dir, uint32_t stride_width, std::optional<uint32_t> minimum_irreversible_history_blocks);
+      store_provider(const boost::filesystem::path& slice_dir, uint32_t stride_width, std::optional<uint32_t> minimum_irreversible_history_blocks,
+            std::optional<uint32_t> minimum_uncompressed_irreversible_history_blocks, size_t compression_seek_point_stride);
 
-      void append(const block_trace_v0& bt);
+      void append(const block_trace_v1& bt);
       void append_lib(uint32_t lib);
 
       /**
@@ -210,7 +257,15 @@ namespace eosio::trace_api {
        */
       get_block_t get_block(uint32_t block_height, const yield_function& yield= {});
 
-   protected:
+      void start_maintenance_thread( log_handler log ) {
+         _slice_directory.start_maintenance_thread( std::move(log) );
+      }
+      void stop_maintenance_thread() {
+         _slice_directory.stop_maintenance_thread();
+      }
+
+
+      protected:
       /**
        * Read the metadata log font-to-back starting at an offset passing each entry to a provided functor/lambda
        *
@@ -255,8 +310,16 @@ namespace eosio::trace_api {
        */
       std::optional<data_log_entry> read_data_log( uint32_t block_height, uint64_t offset ) {
          const uint32_t slice_number = _slice_directory.slice_number(block_height);
+
          fc::cfile trace;
          if( !_slice_directory.find_trace_slice(slice_number, open_state::read, trace) ) {
+            // attempt to read a compressed trace if one exists
+            std::optional<compressed_file> ctrace = _slice_directory.find_compressed_trace_slice(slice_number);
+            if (ctrace) {
+               ctrace->seek(offset);
+               return extract_store<data_log_entry>(*ctrace);
+            }
+
             const std::string offset_str = boost::lexical_cast<std::string>(offset);
             const std::string bh_str = boost::lexical_cast<std::string>(block_height);
             throw malformed_slice_file("Requested offset: " + offset_str + " to retrieve block number: " + bh_str + " but this trace file is new, so there are no traces present.");

@@ -190,11 +190,21 @@ class apply_context {
                   o.payer         = payer;
                });
 
+               std::string event_id;
                context.db.modify( tab, [&]( auto& t ) {
                  ++t.count;
+
+                  if (context.control.get_deep_mind_logger() != nullptr) {
+                     event_id = STORAGE_EVENT_ID("${code}:${scope}:${table}:${index_name}",
+                        ("code", t.code)
+                        ("scope", t.scope)
+                        ("table", t.table)
+                        ("index_name", name(id))
+                     );
+                  }
                });
 
-               context.update_db_usage( payer, config::billable_size_v<ObjectType> );
+               context.update_db_usage( payer, config::billable_size_v<ObjectType>, storage_usage_trace(context.get_action_id(), event_id.c_str(), "secondary_index", "add", "secondary_index_add") );
 
                itr_cache.cache_table( tab );
                return itr_cache.add( obj );
@@ -202,10 +212,21 @@ class apply_context {
 
             void remove( int iterator ) {
                const auto& obj = itr_cache.get( iterator );
-               context.update_db_usage( obj.payer, -( config::billable_size_v<ObjectType> ) );
 
                const auto& table_obj = itr_cache.get_table( obj.t_id );
                EOS_ASSERT( table_obj.code == context.receiver, table_access_violation, "db access violation" );
+
+               std::string event_id;
+               if (context.control.get_deep_mind_logger() != nullptr) {
+                  event_id = STORAGE_EVENT_ID("${code}:${scope}:${table}:${index_name}",
+                     ("code", table_obj.code)
+                     ("scope", table_obj.scope)
+                     ("table", table_obj.table)
+                     ("index_name", name(obj.primary_key))
+                  );
+               }
+
+               context.update_db_usage( obj.payer, -( config::billable_size_v<ObjectType> ), storage_usage_trace(context.get_action_id(), event_id.c_str(), "secondary_index", "remove", "secondary_index_remove") );
 
 //               context.require_write_lock( table_obj.scope );
 
@@ -233,9 +254,19 @@ class apply_context {
 
                int64_t billing_size =  config::billable_size_v<ObjectType>;
 
+               std::string event_id;
+               if (context.control.get_deep_mind_logger() != nullptr) {
+                  event_id = STORAGE_EVENT_ID("${code}:${scope}:${table}:${index_name}",
+                     ("code", table_obj.code)
+                     ("scope", table_obj.scope)
+                     ("table", table_obj.table)
+                     ("index_name", name(obj.primary_key))
+                  );
+               }
+
                if( obj.payer != payer ) {
-                  context.update_db_usage( obj.payer, -(billing_size) );
-                  context.update_db_usage( payer, +(billing_size) );
+                  context.update_db_usage( obj.payer, -(billing_size), storage_usage_trace(context.get_action_id(), event_id.c_str(), "secondary_index", "remove", "secondary_index_update_remove_old_payer") );
+                  context.update_db_usage( payer, +(billing_size), storage_usage_trace(context.get_action_id(), event_id.c_str(), "secondary_index", "add", "secondary_index_update_add_new_payer") );
                }
 
                context.db.modify( obj, [&]( auto& o ) {
@@ -479,9 +510,9 @@ class apply_context {
        *
        * @throws missing_auth_exception If no sufficient permission was found
        */
-      void require_authorization(const account_name& account);
+      void require_authorization(const account_name& account) const;
       bool has_authorization(const account_name& account) const;
-      void require_authorization(const account_name& account, const permission_name& permission);
+      void require_authorization(const account_name& account, const permission_name& permission) const;
 
       /**
        * @return true if account exists, false if it does not
@@ -502,14 +533,14 @@ class apply_context {
    /// Console methods:
    public:
 
-      void console_append( const string& val ) {
+      void console_append( std::string_view val ) {
          _pending_console_output += val;
       }
 
    /// Database methods:
    public:
 
-      void update_db_usage( const account_name& payer, int64_t delta );
+      void update_db_usage( const account_name& payer, int64_t delta, const storage_usage_trace& trace );
 
       int  db_store_i64( name scope, name table, const account_name& payer, uint64_t id, const char* buffer, size_t buffer_size );
       void db_update_i64( int iterator, account_name payer, const char* buffer, size_t buffer_size );
@@ -542,9 +573,9 @@ class apply_context {
       int32_t  kv_it_compare(uint32_t itr_a, uint32_t itr_b);
       int32_t  kv_it_key_compare(uint32_t itr, const char* key, uint32_t size);
       int32_t  kv_it_move_to_end(uint32_t itr);
-      int32_t  kv_it_next(uint32_t itr);
-      int32_t  kv_it_prev(uint32_t itr);
-      int32_t  kv_it_lower_bound(uint32_t itr, const char* key, uint32_t size);
+      int32_t  kv_it_next(uint32_t itr, uint32_t* found_key_size, uint32_t* found_value_size);
+      int32_t  kv_it_prev(uint32_t itr, uint32_t* found_key_size, uint32_t* found_value_size);
+      int32_t  kv_it_lower_bound(uint32_t itr, const char* key, uint32_t size, uint32_t* found_key_size, uint32_t* found_value_size);
       int32_t  kv_it_key(uint32_t itr, uint32_t offset, char* dest, uint32_t size, uint32_t& actual_size);
       int32_t  kv_it_value(uint32_t itr, uint32_t offset, char* dest, uint32_t size, uint32_t& actual_size);
 
@@ -559,14 +590,13 @@ class apply_context {
       int get_action( uint32_t type, uint32_t index, char* buffer, size_t buffer_size )const;
       int get_context_free_data( uint32_t index, char* buffer, size_t buffer_size )const;
       vector<account_name> get_active_producers() const;
-      bytes  get_packed_transaction();
 
       uint64_t next_global_sequence();
       uint64_t next_recv_sequence( const account_metadata_object& receiver_account );
       uint64_t next_auth_sequence( account_name actor );
 
-      void add_ram_usage( account_name account, int64_t ram_delta );
-      void add_disk_usage( account_name account, int64_t disk_delta );
+      void add_ram_usage( account_name account, int64_t ram_delta, const storage_usage_trace& trace );
+      void add_disk_usage( account_name account, int64_t disk_delta, const storage_usage_trace& trace );
       void finalize_trace( action_trace& trace, const fc::time_point& start );
 
       bool is_context_free()const { return context_free; }
@@ -575,6 +605,9 @@ class apply_context {
       const action& get_action()const { return *act; }
 
       action_name get_sender() const;
+
+      uint32_t get_action_id() const;
+      void increment_action_id();
 
    /// Fields:
    public:

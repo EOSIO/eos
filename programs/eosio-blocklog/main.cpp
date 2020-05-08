@@ -4,6 +4,8 @@
 #include <eosio/chain/config.hpp>
 #include <eosio/chain/reversible_block_object.hpp>
 
+#include <eosio/state_history/log.hpp>
+
 #include <fc/io/json.hpp>
 #include <fc/filesystem.hpp>
 #include <fc/variant.hpp>
@@ -47,7 +49,8 @@ struct blocklog {
    bool                             make_index = false;
    bool                             trim_log = false;
    bool                             smoke_test = false;
-   bool                             help = false;
+   bool                             prune_transactions = false;
+   bool                             help               = false;
 };
 
 struct report_time {
@@ -68,7 +71,7 @@ struct report_time {
 void blocklog::read_log() {
    report_time rt("reading log");
    block_log block_logger(blocks_dir);
-   const auto end = block_logger.read_head();
+   const auto end = block_logger.head();
    EOS_ASSERT( end, block_log_exception, "No blocks found in block log" );
    EOS_ASSERT( end->block_num() > 1, block_log_exception, "Only one block found in block log" );
 
@@ -118,15 +121,14 @@ void blocklog::read_log() {
    if (as_json_array)
       *out << "[";
    uint32_t block_num = (first_block < 1) ? 1 : first_block;
-   signed_block_ptr next;
    fc::variant pretty_output;
    const fc::microseconds deadline = fc::seconds(10);
-   auto print_block = [&](signed_block_ptr& next) {
+   auto print_block = [&](auto& next) {
       abi_serializer::to_variant(*next,
                                  pretty_output,
                                  []( account_name n ) { return optional<abi_serializer>(); },
                                  abi_serializer::create_yield_function( deadline ));
-      const auto block_id = next->id();
+      const auto block_id = next->calculate_id();
       const uint32_t ref_block_prefix = block_id._hash[1];
       const auto enhanced_object = fc::mutable_variant_object
                  ("block_num",next->block_num())
@@ -140,10 +142,12 @@ void blocklog::read_log() {
          *out << fc::json::to_pretty_string(v) << "\n";
    };
    bool contains_obj = false;
-   while((block_num <= last_block) && (next = block_logger.read_block_by_num( block_num ))) {
+   while( block_num <= last_block ) {
+      auto sb = block_logger.read_signed_block_by_num( block_num );
+      if( !sb ) break;
       if (as_json_array && contains_obj)
          *out << ",";
-      print_block(next);
+      print_block(sb);
       ++block_num;
       contains_obj = true;
    }
@@ -170,6 +174,8 @@ void blocklog::set_program_options(options_description& cli)
    cli.add_options()
          ("blocks-dir", bpo::value<bfs::path>()->default_value("blocks"),
           "the location of the blocks directory (absolute path or relative to the current directory)")
+         ("state-history-dir", bpo::value<bfs::path>()->default_value("state-history"),
+           "the location of the state-history directory (absolute path or relative to the current dir)")
          ("output-file,o", bpo::value<bfs::path>(),
           "the file to write the output to (absolute or relative path).  If not specified then output is to stdout.")
          ("first,f", bpo::value<uint32_t>(&first_block)->default_value(0),
@@ -186,6 +192,10 @@ void blocklog::set_program_options(options_description& cli)
           "Trim blocks.log and blocks.index. Must give 'blocks-dir' and 'first and/or 'last'.")
          ("smoke-test", bpo::bool_switch(&smoke_test)->default_value(false),
           "Quick test that blocks.log and blocks.index are well formed and agree with each other.")
+         ("block-num", bpo::value<uint32_t>()->default_value(0), "The block number which contains the transactions to be pruned")
+         ("transaction,t", bpo::value<std::vector<std::string> >()->multitoken(), "The transaction id to be pruned")
+         ("prune-transactions", bpo::bool_switch(&prune_transactions)->default_value(false),
+          "Prune the context free data and signatures from specified transactions of specified block-num.")
          ("help,h", bpo::bool_switch(&help)->default_value(false), "Print this help message and exit.")
          ;
 }
@@ -210,26 +220,10 @@ void blocklog::initialize(const variables_map& options) {
 }
 
 int trim_blocklog_end(bfs::path block_dir, uint32_t n) {       //n is last block to keep (remove later blocks)
-   report_time rt("trimming blocklog end");
-   using namespace std;
-   trim_data td(block_dir);
-   cout << "\nIn directory " << block_dir << " will trim all blocks after block " << n << " from "
-        << td.block_file_name.generic_string() << " and " << td.index_file_name.generic_string() << ".\n";
-   if (n < td.first_block) {
-      cerr << "All blocks are after block " << n << " so do nothing (trim_end would delete entire blocks.log)\n";
-      return 1;
-   }
-   if (n >= td.last_block) {
-      cerr << "There are no blocks after block " << n << " so do nothing\n";
-      return 2;
-   }
-   const uint64_t end_of_new_file = td.block_pos(n + 1);
-   bfs::resize_file(td.block_file_name, end_of_new_file);
-   const uint64_t index_end= td.block_index(n) + sizeof(uint64_t);             //advance past record for block n
-   bfs::resize_file(td.index_file_name, index_end);
-   cout << "blocks.index has been trimmed to " << index_end << " bytes\n";
+   report_time rt("trimming blocklog end");   
+   int ret = block_log::trim_blocklog_end(block_dir, n);
    rt.report();
-   return 0;
+   return ret;
 }
 
 bool trim_blocklog_front(bfs::path block_dir, uint32_t n) {        //n is first block to keep (remove prior blocks)
@@ -243,31 +237,39 @@ bool trim_blocklog_front(bfs::path block_dir, uint32_t n) {        //n is first 
 void smoke_test(bfs::path block_dir) {
    using namespace std;
    cout << "\nSmoke test of blocks.log and blocks.index in directory " << block_dir << '\n';
-   trim_data td(block_dir);
-   auto status = fseek(td.blk_in, -sizeof(uint64_t), SEEK_END);             //get last_block from blocks.log, compare to from blocks.index
-   EOS_ASSERT( status == 0, block_log_exception, "cannot seek to ${file} ${pos} from beginning of file", ("file", td.block_file_name.string())("pos", sizeof(uint64_t)) );
-   uint64_t file_pos;
-   auto size = fread((void*)&file_pos, sizeof(uint64_t), 1, td.blk_in);
-   EOS_ASSERT( size == 1, block_log_exception, "${file} read fails", ("file", td.block_file_name.string()) );
-   status = fseek(td.blk_in, file_pos + trim_data::blknum_offset, SEEK_SET);
-   EOS_ASSERT( status == 0, block_log_exception, "cannot seek to ${file} ${pos} from beginning of file", ("file", td.block_file_name.string())("pos", file_pos + trim_data::blknum_offset) );
-   uint32_t bnum;
-   size = fread((void*)&bnum, sizeof(uint32_t), 1, td.blk_in);
-   EOS_ASSERT( size == 1, block_log_exception, "${file} read fails", ("file", td.block_file_name.string()) );
-   bnum = endian_reverse_u32(bnum) + 1;                       //convert from big endian to little endian and add 1
-   EOS_ASSERT( td.last_block == bnum, block_log_exception, "blocks.log says last block is ${lb} which disagrees with blocks.index", ("lb", bnum) );
-   cout << "blocks.log and blocks.index agree on number of blocks\n";
-   uint32_t delta = (td.last_block + 8 - td.first_block) >> 3;
-   if (delta < 1)
-      delta = 1;
-   for (uint32_t n = td.first_block; ; n += delta) {
-      if (n > td.last_block)
-         n = td.last_block;
-      td.block_pos(n);                                 //check block 'n' is where blocks.index says
-      if (n == td.last_block)
-         break;
+   block_log::smoke_test(block_dir, 0);
+   cout << "\nno problems found\n"; // if get here there were no exceptions
+}
+
+template <typename Log>
+int prune_transactions(const char* type, bfs::path dir, uint32_t block_num,
+                       std::vector<transaction_id_type> unpruned_ids) {
+   using namespace std;
+   if (Log::exists(dir)) {
+      Log log(dir);
+      log.prune_transactions(block_num, unpruned_ids);
+      if (unpruned_ids.size()) {
+         cerr << "block " << block_num << " in " << type << " does not contain the following transactions: ";
+         copy(unpruned_ids.begin(), unpruned_ids.end(), ostream_iterator<string>(cerr, " "));
+         cerr << "\n";
+      }
+   } else {
+      cerr << "No " << type << " is found in " << dir.native() << "\n";
    }
-   cout << "\nno problems found\n";                         //if get here there were no exceptions
+   return unpruned_ids.size();
+}
+
+int prune_transactions(bfs::path block_dir, bfs::path state_history_dir, uint32_t block_num,
+                       const std::vector<transaction_id_type>& ids) {
+
+   if (block_num == 0 || ids.size() == 0) {
+      std::cerr << "prune-transaction does nothing unless specify block-num and transaction\n";
+      return -1;
+   }
+
+   using eosio::state_history_traces_log;
+   return prune_transactions<block_log>("block log", block_dir, block_num, ids) +
+          prune_transactions<state_history_traces_log>("state history traces log", state_history_dir, block_num, ids);
 }
 
 int main(int argc, char** argv) {
@@ -317,6 +319,17 @@ int main(int argc, char** argv) {
          fc::logger::get(DEFAULT_LOGGER).set_log_level(log_level);
          rt.report();
          return 0;
+      }
+      if (blog.prune_transactions) {
+         const auto  blocks_dir        = vmap["blocks-dir"].as<bfs::path>();
+         const auto  state_history_dir = vmap["state-history-dir"].as<bfs::path>();
+         const auto  block_num         = vmap["block-num"].as<uint32_t>();
+         const auto  ids               = vmap.count("transaction") ? vmap["transaction"].as<std::vector<string>>() : std::vector<string>{};
+         
+         report_time                 rt("prune transactions");
+         int ret = prune_transactions(blocks_dir, state_history_dir, block_num, {ids.begin(), ids.end()});
+         rt.report();
+         return ret;
       }
       //else print blocks.log as JSON
       blog.initialize(vmap);

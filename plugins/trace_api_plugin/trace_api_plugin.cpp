@@ -72,7 +72,7 @@ namespace {
       :store(store)
       {}
 
-      void append( const block_trace_v0& trace ) {
+      void append( const block_trace_v1& trace ) {
          store->append(trace);
       }
 
@@ -103,6 +103,9 @@ struct trace_api_common_impl {
       cfg_options("trace-minimum-irreversible-history-blocks", boost::program_options::value<int32_t>()->default_value(-1),
                   "Number of blocks to ensure are kept past LIB for retrieval before \"slice\" files can be automatically removed.\n"
                   "A value of -1 indicates that automatic removal of \"slice\" files will be turned off.");
+      cfg_options("trace-minimum-uncompressed-irreversible-history-blocks", boost::program_options::value<int32_t>()->default_value(-1),
+                  "Number of blocks to ensure are uncompressed past LIB. Compressed \"slice\" files are still accessible but may carry a performance loss on retrieval\n"
+                  "A value of -1 indicates that automatic compression of \"slice\" files will be turned off.");
    }
 
    void plugin_initialize(const appbase::variables_map& options) {
@@ -121,7 +124,31 @@ struct trace_api_common_impl {
          minimum_irreversible_history_blocks = blocks;
       }
 
-      store = std::make_shared<store_provider>(trace_dir, slice_stride, minimum_irreversible_history_blocks);
+      const int32_t uncompressed_blocks = options.at("trace-minimum-uncompressed-irreversible-history-blocks").as<int32_t>();
+      EOS_ASSERT(uncompressed_blocks >= -1, chain::plugin_config_exception,
+                 "\"trace-minimum-uncompressed-irreversible-history-blocks\" must be greater to or equal to -1.");
+
+      if (uncompressed_blocks > manual_slice_file_value) {
+         minimum_uncompressed_irreversible_history_blocks = uncompressed_blocks;
+      }
+
+      store = std::make_shared<store_provider>(
+         trace_dir,
+         slice_stride,
+         minimum_irreversible_history_blocks,
+         minimum_uncompressed_irreversible_history_blocks,
+         compression_seek_point_stride
+      );
+   }
+
+   void plugin_startup() {
+      store->start_maintenance_thread([](const std::string& msg ){
+         fc_dlog( _log, msg );
+      });
+   }
+
+   void plugin_shutdown() {
+      store->stop_maintenance_thread();
    }
 
    // common configuration paramters
@@ -129,7 +156,10 @@ struct trace_api_common_impl {
    uint32_t slice_stride = 0;
 
    std::optional<uint32_t> minimum_irreversible_history_blocks;
-   static constexpr uint32_t manual_slice_file_value = -1;
+   std::optional<uint32_t> minimum_uncompressed_irreversible_history_blocks;
+
+   static constexpr int32_t manual_slice_file_value = -1;
+   static constexpr uint32_t compression_seek_point_stride = 6 * 1024 * 1024; // 6 MiB strides for clog seek points
 
    std::shared_ptr<store_provider> store;
 };
@@ -184,15 +214,30 @@ struct trace_api_rpc_plugin_impl : public std::enable_shared_from_this<trace_api
                     "Trace API is not configured with ABIs and trace-no-abis is not set");
       }
 
+
       req_handler = std::make_shared<request_handler_t>(
          shared_store_provider<store_provider>(common->store),
          abi_data_handler::shared_provider(data_handler)
       );
    }
 
+   fc::time_point calc_deadline( const fc::microseconds& max_serialization_time ) {
+      fc::time_point deadline = fc::time_point::now();
+      if( max_serialization_time > fc::microseconds::maximum() - deadline.time_since_epoch() ) {
+         deadline = fc::time_point::maximum();
+      } else {
+         deadline += max_serialization_time;
+      }
+      return deadline;
+   }
+
    void plugin_startup() {
       auto& http = app().get_plugin<http_plugin>();
-      http.add_handler("/v1/trace_api/get_block", [wthis=weak_from_this()](std::string, std::string body, url_response_callback cb){
+      fc::microseconds max_response_time = http.get_max_response_time();
+
+      http.add_async_handler("/v1/trace_api/get_block",
+            [wthis=weak_from_this(), max_response_time](std::string, std::string body, url_response_callback cb)
+      {
          auto that = wthis.lock();
          if (!that) {
             return;
@@ -223,7 +268,8 @@ struct trace_api_rpc_plugin_impl : public std::enable_shared_from_this<trace_api
 
          try {
 
-            auto resp = that->req_handler->get_block_trace(*block_number);
+            const auto deadline = that->calc_deadline( max_response_time );
+            auto resp = that->req_handler->get_block_trace(*block_number, [deadline]() { FC_CHECK_DEADLINE(deadline); });
             if (resp.is_null()) {
                error_results results{404, "Block trace missing"};
                cb( 404, fc::variant( results ));
@@ -264,7 +310,7 @@ struct trace_api_plugin_impl {
       auto& chain = app().find_plugin<chain_plugin>()->chain();
 
       applied_transaction_connection.emplace(
-         chain.applied_transaction.connect([this](std::tuple<const chain::transaction_trace_ptr&, const chain::signed_transaction&> t) {
+         chain.applied_transaction.connect([this](std::tuple<const chain::transaction_trace_ptr&, const chain::packed_transaction_ptr&> t) {
             emit_killer([&](){
                extraction->signal_applied_transaction(std::get<0>(t), std::get<1>(t));
             });
@@ -287,9 +333,11 @@ struct trace_api_plugin_impl {
    }
 
    void plugin_startup() {
+      common->plugin_startup();
    }
 
    void plugin_shutdown() {
+      common->plugin_shutdown();
    }
 
    std::shared_ptr<trace_api_common_impl> common;

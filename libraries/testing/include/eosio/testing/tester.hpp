@@ -62,6 +62,7 @@ namespace eosio { namespace testing {
       old_bios_only,
       preactivate_feature_only,
       preactivate_feature_and_new_bios,
+      old_wasm_parser,
       full
    };
 
@@ -162,8 +163,7 @@ namespace eosio { namespace testing {
          void              execute_setup_policy(const setup_policy policy);
 
          void              close();
-         template <typename Lambda>
-         void              open( protocol_feature_set&& pfs, fc::optional<chain_id_type> expected_chain_id, Lambda lambda );
+         void              open( protocol_feature_set&& pfs, fc::optional<chain_id_type> expected_chain_id, const std::function<void()>& lambda );
          void              open( protocol_feature_set&& pfs, const snapshot_reader_ptr& snapshot );
          void              open( protocol_feature_set&& pfs, const genesis_state& genesis );
          void              open( protocol_feature_set&& pfs, fc::optional<chain_id_type> expected_chain_id = {} );
@@ -196,8 +196,8 @@ namespace eosio { namespace testing {
          vector<transaction_id_type> get_scheduled_transactions() const;
          unapplied_transaction_queue& get_unapplied_transaction_queue() { return unapplied_transactions; }
 
-         transaction_trace_ptr    push_transaction( packed_transaction& trx, fc::time_point deadline = fc::time_point::maximum(), uint32_t billed_cpu_time_us = DEFAULT_BILLED_CPU_TIME_US );
-         transaction_trace_ptr    push_transaction( signed_transaction& trx, fc::time_point deadline = fc::time_point::maximum(), uint32_t billed_cpu_time_us = DEFAULT_BILLED_CPU_TIME_US, bool no_throw = false );
+         transaction_trace_ptr    push_transaction( const packed_transaction& trx, fc::time_point deadline = fc::time_point::maximum(), uint32_t billed_cpu_time_us = DEFAULT_BILLED_CPU_TIME_US );
+         transaction_trace_ptr    push_transaction( const signed_transaction& trx, fc::time_point deadline = fc::time_point::maximum(), uint32_t billed_cpu_time_us = DEFAULT_BILLED_CPU_TIME_US, bool no_throw = false );
 
          [[nodiscard]]
          action_result            push_action(action&& cert_act, uint64_t authorizer); // TODO/QUESTION: Is this needed?
@@ -380,6 +380,7 @@ namespace eosio { namespace testing {
 
          void schedule_protocol_features_wo_preactivation(const vector<digest_type> feature_digests);
          void preactivate_protocol_features(const vector<digest_type> feature_digests);
+         void preactivate_builtin_protocol_features(const std::vector<builtin_protocol_feature_t>& features);
          void preactivate_all_builtin_protocol_features();
 
          static genesis_state default_genesis() {
@@ -402,9 +403,7 @@ namespace eosio { namespace testing {
             cfg.eosvmoc_config.cache_size = 1024*1024*8;
 
             for(int i = 0; i < boost::unit_test::framework::master_test_suite().argc; ++i) {
-               if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--wabt"))
-                  cfg.wasm_runtime = chain::wasm_interface::vm_type::wabt;
-               else if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--eos-vm"))
+               if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--eos-vm"))
                   cfg.wasm_runtime = chain::wasm_interface::vm_type::eos_vm;
                else if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--eos-vm-jit"))
                   cfg.wasm_runtime = chain::wasm_interface::vm_type::eos_vm_jit;
@@ -511,7 +510,7 @@ namespace eosio { namespace testing {
          try {
             if( num_blocks_to_producer_before_shutdown > 0 )
                produce_blocks( num_blocks_to_producer_before_shutdown );
-            if (!skip_validate)
+            if (!skip_validate && std::uncaught_exceptions() == 0)
                BOOST_CHECK_EQUAL( validate(), true );
          } catch( const fc::exception& e ) {
             wdump((e.to_detail_string()));
@@ -586,7 +585,7 @@ namespace eosio { namespace testing {
 
       signed_block_ptr produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms) )override {
          auto sb = _produce_block(skip_time, false);
-         auto bsf = validating_node->create_block_state_future( sb );
+         auto bsf = validating_node->create_block_state_future( sb->calculate_id(), sb );
          validating_node->push_block( bsf, forked_branch_callback{}, trx_meta_cache_lookup{} );
 
          return sb;
@@ -597,14 +596,14 @@ namespace eosio { namespace testing {
       }
 
       void validate_push_block(const signed_block_ptr& sb) {
-         auto bs = validating_node->create_block_state_future( sb );
+         auto bs = validating_node->create_block_state_future( sb->calculate_id(), sb );
          validating_node->push_block( bs, forked_branch_callback{}, trx_meta_cache_lookup{} );
       }
 
       signed_block_ptr produce_empty_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms) )override {
          unapplied_transactions.add_aborted( control->abort_block() );
          auto sb = _produce_block(skip_time, true);
-         auto bsf = validating_node->create_block_state_future( sb );
+         auto bsf = validating_node->create_block_state_future( sb->calculate_id(), sb );
          validating_node->push_block( bsf, forked_branch_callback{}, trx_meta_cache_lookup{} );
 
          return sb;
@@ -637,6 +636,18 @@ namespace eosio { namespace testing {
       unique_ptr<controller>   validating_node;
       uint32_t                 num_blocks_to_producer_before_shutdown = 0;
       bool                     skip_validate = false;
+   };
+
+   /**
+    * Utility predicate to check whether an fc::exception code is equivalent to a given value
+    */
+   struct fc_exception_code_is {
+      fc_exception_code_is( int64_t code )
+            : expected( code ) {}
+
+      bool operator()( const fc::exception& ex );
+
+      int64_t expected;
    };
 
    /**

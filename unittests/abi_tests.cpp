@@ -1495,7 +1495,7 @@ BOOST_AUTO_TEST_CASE(packed_transaction)
    txn.max_cpu_usage_ms = 43;
 
    // pack the transaction to verify that the var unpacking logic is correct
-   auto packed_txn = chain::packed_transaction(txn);
+   auto packed_txn = chain::packed_transaction(signed_transaction(txn), true);
 
    const char* packed_transaction_abi = R"=====(
    {
@@ -1559,10 +1559,10 @@ BOOST_AUTO_TEST_CASE(packed_transaction)
    fc::variant var;
    abi_serializer::to_variant(packed_txn, var, get_resolver(fc::json::from_string(packed_transaction_abi).as<abi_def>()), abi_serializer::create_yield_function( max_serialization_time ));
 
-   chain::packed_transaction packed_txn2;
+   chain::packed_transaction_v0 packed_txn2;
    abi_serializer::from_variant(var, packed_txn2, get_resolver(fc::json::from_string(packed_transaction_abi).as<abi_def>()), abi_serializer::create_yield_function( max_serialization_time ));
 
-   const auto txn2 = packed_txn2.get_transaction();
+   const auto& txn2 = packed_txn2.get_transaction();
 
    BOOST_REQUIRE_EQUAL(txn.ref_block_num, txn2.ref_block_num);
    BOOST_REQUIRE_EQUAL(txn.ref_block_prefix, txn2.ref_block_prefix);

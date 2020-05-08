@@ -104,7 +104,6 @@ CHAINBASE_SET_INDEX_TYPE(eosio::chain::account_object, eosio::chain::account_ind
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::account_metadata_object, eosio::chain::account_metadata_index)
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::account_ram_correction_object, eosio::chain::account_ram_correction_index)
 
-
 FC_REFLECT(eosio::chain::account_object, (name)(creation_date)(abi))
 FC_REFLECT(eosio::chain::account_metadata_object, (name)(recv_sequence)(auth_sequence)(code_sequence)(abi_sequence)
                                                   (code_hash)(last_code_update)(flags)(vm_type)(vm_version))

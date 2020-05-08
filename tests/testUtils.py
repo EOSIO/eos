@@ -47,6 +47,7 @@ addEnum(BlockLogAction, "make_index")
 addEnum(BlockLogAction, "trim")
 addEnum(BlockLogAction, "smoke_test")
 addEnum(BlockLogAction, "return_blocks")
+addEnum(BlockLogAction, "prune_transactions")
 
 ###########################################################################################
 class Utils:
@@ -63,7 +64,6 @@ class Utils:
     EosServerPath="programs/nodeos/"+ EosServerName
 
     EosLauncherPath="programs/eosio-launcher/eosio-launcher"
-    MongoPath="mongo"
     ShuttingDown=False
     CheckOutputDeque=deque(maxlen=10)
 
@@ -72,6 +72,8 @@ class Utils:
     FileDivider="================================================================="
     DataDir="var/lib/"
     ConfigDir="etc/eosio/"
+
+    TimeFmt='%Y-%m-%dT%H:%M:%S.%f'
 
     @staticmethod
     def Print(*args, **kwargs):
@@ -268,13 +270,13 @@ class Utils:
             raise
 
     @staticmethod
-    def runCmdReturnStr(cmd, trace=False):
+    def runCmdReturnStr(cmd, trace=False, silentErrors=False):
         cmdArr=shlex.split(cmd)
-        return Utils.runCmdArrReturnStr(cmdArr)
+        return Utils.runCmdArrReturnStr(cmdArr, trace=trace, silentErrors=silentErrors)
 
     @staticmethod
-    def runCmdArrReturnStr(cmdArr, trace=False):
-        retStr=Utils.checkOutput(cmdArr)
+    def runCmdArrReturnStr(cmdArr, trace=False, silentErrors=False):
+        retStr=Utils.checkOutput(cmdArr,ignoreError=silentErrors)
         if trace: Utils.Print ("RAW > %s" % (retStr))
         return retStr
 
@@ -327,11 +329,12 @@ class Utils:
         return "pgrep %s %s" % (pgrepOpts, serverName)
 
     @staticmethod
-    def getBlockLog(blockLogLocation, blockLogAction=BlockLogAction.return_blocks, outputFile=None, first=None, last=None, throwException=False, silentErrors=False, exitOnError=False):
+    def getBlockLog(nodeDataDir, blockLogAction=BlockLogAction.return_blocks, outputFile=None, first=None, last=None, extraArgs="", throwException=False, silentErrors=False, exitOnError=False):
+        blockLogLocation = os.path.join(nodeDataDir, "blocks")
         assert(isinstance(blockLogLocation, str))
         outputFileStr=" --output-file %s " % (outputFile) if outputFile is not None else ""
         firstStr=" --first %s " % (first) if first is not None else ""
-        lastStr=" --last %s " % (last) if last is not None else ""
+        lastStr = " --last %s " % (last) if last is not None else ""
 
         blockLogActionStr=None
         returnType=ReturnType.raw
@@ -343,18 +346,20 @@ class Utils:
         elif blockLogAction==BlockLogAction.trim:
             blockLogActionStr=" --trim "
         elif blockLogAction==BlockLogAction.smoke_test:
-            blockLogActionStr=" --smoke-test "
+            blockLogActionStr = " --smoke-test "
+        elif blockLogAction == BlockLogAction.prune_transactions:
+            blockLogActionStr = " --state-history-dir {}/state-history --prune-transactions ".format(nodeDataDir)
         else:
             unhandledEnumType(blockLogAction)
 
-        cmd="%s --blocks-dir %s --as-json-array %s%s%s%s" % (Utils.EosBlockLogPath, blockLogLocation, outputFileStr, firstStr, lastStr, blockLogActionStr)
+        cmd="%s --blocks-dir %s --as-json-array %s%s%s%s %s" % (Utils.EosBlockLogPath, blockLogLocation, outputFileStr, firstStr, lastStr, blockLogActionStr, extraArgs)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         rtn=None
         try:
             if returnType==ReturnType.json:
                 rtn=Utils.runCmdReturnJson(cmd, silentErrors=silentErrors)
             else:
-                rtn=Utils.runCmdReturnStr(cmd)
+                rtn=Utils.runCmdReturnStr(cmd, silentErrors=silentErrors)
         except subprocess.CalledProcessError as ex:
             if throwException:
                 raise
@@ -436,6 +441,29 @@ class Utils:
 
         return "comparison of %s type is not supported, context=%s" % (typeName,context)
 
+    @staticmethod
+    def addAmount(assetStr: str, deltaStr: str) -> str:
+        asset = assetStr.split()
+        if len(asset) != 2:
+            return None
+        delta = deltaStr.split()
+        if len(delta) != 2:
+            return None
+        if asset[1] != delta[1]:
+            return None
+        return "{0} {1}".format(round(float(asset[0]) + float(delta[0]), 4), asset[1])
+
+    @staticmethod
+    def deduceAmount(assetStr: str, deltaStr: str) -> str:
+        asset = assetStr.split()
+        if len(asset) != 2:
+            return None
+        delta = deltaStr.split()
+        if len(delta) != 2:
+            return None
+        if asset[1] != delta[1]:
+            return None
+        return "{0} {1}".format(round(float(asset[0]) - float(delta[0]), 4), asset[1])
 ###########################################################################################
 class Account(object):
     # pylint: disable=too-few-public-methods

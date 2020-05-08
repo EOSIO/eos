@@ -2,6 +2,7 @@
 
 #include <fc/utility.hpp>
 #include <tuple>
+#include <eosio/trace_api/data_log.hpp>
 
 namespace eosio::trace_api {
    /**
@@ -39,9 +40,13 @@ namespace eosio::trace_api {
    using exception_with_context = std::tuple<const std::exception_ptr&, char const *, uint64_t, char const *>;
    using exception_handler = fc::optional_delegate<void(const exception_with_context&)>;
 
+   using log_handler = fc::optional_delegate<void(const std::string&)>;
+
    struct block_trace_v0;
+   struct block_trace_v1;
    // optional block trace and irreversibility paired data
-   using get_block_t = std::optional<std::tuple<block_trace_v0, bool>>;
+   using get_block_t = std::optional<std::tuple<data_log_entry, bool>>;
+
    /**
     * Normal use case: exception_handler except_handler;
     *   except_handler( MAKE_EXCEPTION_WITH_CONTEXT( std::current_exception() ) );

@@ -208,6 +208,17 @@ Enables usage of key-value database intrinsics.
 */
             {}
          } )
+         (  builtin_protocol_feature_t::configurable_wasm_limits, builtin_protocol_feature_spec{
+            "CONFIGURABLE_WASM_LIMITS",
+            fc::variant("67f5f1e92cbf6f7276e7b3fc8c2ad23e63448e657641a1e5de69bccd114542d6").as<digest_type>(),
+            // SHA256 hash of the raw message below within the comment delimiters (do not modify message below).
+/*
+Builtin protocol feature: CONFIGURABLE_WASM_LIMITS
+
+Allows privileged contracts to set the constraints on WebAssembly code.
+*/
+            {}
+         } )
    ;
 
 
@@ -514,8 +525,10 @@ Enables usage of key-value database intrinsics.
 
 
 
-   protocol_feature_manager::protocol_feature_manager( protocol_feature_set&& pfs )
-   :_protocol_feature_set( std::move(pfs) )
+   protocol_feature_manager::protocol_feature_manager(
+      protocol_feature_set&& pfs,
+      std::function<fc::logger*()> get_deep_mind_logger
+   ):_protocol_feature_set( std::move(pfs) ), _get_deep_mind_logger(get_deep_mind_logger)
    {
       _builtin_protocol_features.resize( _protocol_feature_set._recognized_builtin_protocol_features.size() );
    }
@@ -694,6 +707,13 @@ Enables usage of key-value database intrinsics.
                   "cannot activate already activated builtin feature with digest: ${digest}",
                   ("digest", feature_digest)
       );
+
+      if (auto dm_logger = _get_deep_mind_logger()) {
+         fc_dlog(*dm_logger, "FEATURE_OP ACTIVATE ${feature_digest} ${feature}",
+            ("feature_digest", feature_digest)
+            ("feature", itr->to_variant())
+         );
+      }
 
       _activated_protocol_features.push_back( protocol_feature_entry{itr, current_block_num} );
       _builtin_protocol_features[indx].previous = _head_of_builtin_activation_list;

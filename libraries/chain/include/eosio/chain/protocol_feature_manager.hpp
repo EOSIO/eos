@@ -25,6 +25,7 @@ enum class builtin_protocol_feature_t : uint32_t {
    wtmsig_block_signatures,
    action_return_value,
    kv_database,
+   configurable_wasm_limits,
 };
 
 struct protocol_feature_subjective_restrictions {
@@ -246,7 +247,7 @@ protected:
 class protocol_feature_manager {
 public:
 
-   protocol_feature_manager( protocol_feature_set&& pfs );
+   protocol_feature_manager( protocol_feature_set&& pfs, std::function<fc::logger*()> get_deep_mind_logger );
 
    class const_iterator : public std::iterator<std::bidirectional_iterator_tag, const protocol_feature> {
    protected:
@@ -366,6 +367,9 @@ protected:
    vector<builtin_protocol_feature_entry> _builtin_protocol_features;
    size_t                                 _head_of_builtin_activation_list = builtin_protocol_feature_entry::no_previous;
    bool                                   _initialized = false;
+
+private:
+   std::function<fc::logger*()>           _get_deep_mind_logger;
 };
 
 } } // namespace eosio::chain
@@ -373,8 +377,10 @@ protected:
 FC_REFLECT(eosio::chain::protocol_feature_subjective_restrictions,
                (earliest_allowed_activation_time)(preactivation_required)(enabled))
 
+// @ignore _type
 FC_REFLECT(eosio::chain::protocol_feature_base,
-               (protocol_feature_type)(dependencies)(description_digest)(subjective_restrictions))
+               (protocol_feature_type)(description_digest)(dependencies)(subjective_restrictions))
 
+// @ignore _codename
 FC_REFLECT_DERIVED(eosio::chain::builtin_protocol_feature, (eosio::chain::protocol_feature_base),
                      (builtin_feature_codename))

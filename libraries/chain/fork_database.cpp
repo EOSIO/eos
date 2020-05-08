@@ -277,7 +277,7 @@ namespace eosio { namespace chain {
 
       // Even though fork database no longer needs block or trxs when a block state becomes a root of the tree,
       // avoid mutating the block state at all, for example clearing the block shared pointer, because other
-      // parts of the code which run asynchronously (e.g. mongo_db_plugin) may later expect it remain unmodified.
+      // parts of the code which run asynchronously may later expect it remain unmodified.
 
       my->root = new_root;
    }
