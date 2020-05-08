@@ -36,6 +36,8 @@ std::string get_name_from_account_datastream(chain::bytes &bytes)
 BOOST_AUTO_TEST_CASE(test_deltas_account)
 {
    tester chain;
+   chain.produce_blocks(1);
+
    std::string name="account";
    auto find_by_name = [&name](const auto& x) {
       return x.name == name;
@@ -44,13 +46,11 @@ BOOST_AUTO_TEST_CASE(test_deltas_account)
    auto v = eosio::state_history::create_deltas(chain.control->db(), false);
 
    auto it_account = std::find_if(v.begin(), v.end(), find_by_name);
-   BOOST_REQUIRE(it_account!=v.end());
-   BOOST_REQUIRE_EQUAL(it_account->rows.obj.size(), 1);
-   BOOST_REQUIRE_EQUAL(get_name_from_account_datastream(it_account->rows.obj[0].second), "eosio");
+   BOOST_REQUIRE(it_account==v.end());
 
    name="permission";
    auto it_permission = std::find_if(v.begin(), v.end(), find_by_name);
-   BOOST_REQUIRE(it_permission == v .end());
+   BOOST_REQUIRE(it_permission==v.end());
 
    chain.create_account(N(newacc));
 
@@ -60,12 +60,9 @@ BOOST_AUTO_TEST_CASE(test_deltas_account)
    name="account";
    it_account = std::find_if(v.begin(), v.end(), find_by_name);
    BOOST_REQUIRE(it_account!=v.end());
-   BOOST_REQUIRE_EQUAL(it_account->rows.obj.size(), 2);
+   BOOST_REQUIRE_EQUAL(it_account->rows.obj.size(), 1);
    BOOST_REQUIRE_EQUAL(get_name_from_account_datastream(
-                     it_account->rows.obj[0].second), "eosio");
-   BOOST_REQUIRE_EQUAL(it_account->rows.obj[1].first, true);
-   BOOST_REQUIRE_EQUAL(get_name_from_account_datastream(
-                     it_account->rows.obj[1].second), "newacc");
+                     it_account->rows.obj[0].second), "newacc");
 
    // Check that the permissions of this new account are in the delta
    name="permission";
@@ -103,7 +100,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_account)
        get_owner_and_name_from_permission_stream(
            it_permission->rows.obj[2].second)==std::make_pair(std::string("newacc"), std::string("mypermission")));
 
-   chain.produce_blocks();
+   chain.produce_blocks(1);
 
    // Modify the permission authority
    auto empty_authority = authority(1, {}, {});
@@ -128,7 +125,8 @@ BOOST_AUTO_TEST_CASE(test_deltas_account)
            it_permission->rows.obj[0].second)==std::make_pair(std::string("newacc"), std::string("mypermission")));
 }
 
-BOOST_AUTO_TEST_CASE(test_traces_present) {
+BOOST_AUTO_TEST_CASE(test_traces_present)
+{
    tester chain;
 
    chain.control->applied_transaction.connect(
