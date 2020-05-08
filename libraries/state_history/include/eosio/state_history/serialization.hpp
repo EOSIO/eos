@@ -686,14 +686,16 @@ ST& operator<< (ST& ds, nullptr_t) { return ds; }
 
 template <typename ST, typename T>
 ST& operator<< (ST& ds, std::reference_wrapper<T> r) {
-   fc::raw::pack(ds, fc::unsigned_int(r.index()-1));
    fc::raw::pack(ds, r.get());
    return ds;
 }
 
 template <typename ST>
 ST& operator<<(ST& ds, const eosio::state_history::optional_signed_block& obj) {
-   fc::raw::pack(ds, bool(obj.index() != 0));   
+   fc::raw::pack(ds, bool(obj.index() != 0));   // pack optional flag
+   if (obj.index()) {
+      fc::raw::pack(ds, fc::unsigned_int(obj.index()-1)); // pack the version of the signed_block
+   }
    std::visit([&ds](auto v) { fc::raw::pack(ds, v);}, obj);
    return ds;
 }

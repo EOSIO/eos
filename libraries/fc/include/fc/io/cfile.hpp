@@ -1,6 +1,8 @@
 #pragma once
 #include <fc/filesystem.hpp>
+#include <fc/io/datastream.hpp>
 #include <cstdio>
+#include <ios>
 
 #ifndef _WIN32
 #define FC_FOPEN(p, m) fopen(p, m)
@@ -113,6 +115,17 @@ public:
       }
    }
 
+   bool eof() const { return feof(_file.get()) != 0; }
+
+   int getc() { 
+      int ret = fgetc(_file.get());  
+      if (ret == EOF) {
+         throw std::ios_base::failure( "cfile: " + _file_path.generic_string() +
+                                       " unable to read 1 byte");
+      }
+      return ret;
+   }
+
    void close() {
       _file.reset();
       _open = false;
@@ -158,6 +171,24 @@ public:
 inline cfile_datastream cfile::create_datastream() {
    return cfile_datastream(*this);
 }
+
+template <>
+class datastream<fc::cfile, void> : public fc::cfile {
+ public:
+   using fc::cfile::cfile;
+
+   bool seekp(size_t pos) { return this->seek(pos), true; }
+
+   bool get(char& c) {
+      c = this->getc();
+      return true;
+   }
+
+   bool remaining() { return !this->eof(); }
+
+   fc::cfile&       storage() { return *this; }
+   const fc::cfile& storage() const { return *this; }
+};
 
 
 } // namespace fc

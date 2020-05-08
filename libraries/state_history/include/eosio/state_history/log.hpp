@@ -8,7 +8,7 @@
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/types.hpp>
 #include <eosio/state_history/transaction_trace_cache.hpp>
-#include <eosio/state_history/binary_stream.hpp>
+#include <eosio/state_history/datastream.hpp>
 #include <fc/log/logger.hpp>
 
 namespace eosio {
@@ -46,7 +46,7 @@ static const int state_history_log_header_serial_size = sizeof(state_history_log
 
 class state_history_log {
  private:
-   using cfile_stream = fc::binary_stream<fc::cfile>;
+   using cfile_stream = fc::datastream<fc::cfile>;
    const char* const    name = "";
    std::string          log_filename;
    std::string          index_filename;

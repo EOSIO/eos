@@ -4,7 +4,7 @@
 #include <eosio/state_history/compression.hpp>
 #include <eosio/state_history/serialization.hpp>
 #include <eosio/state_history/types.hpp>
-#include <eosio/state_history/binary_stream.hpp>
+#include <eosio/state_history/datastream.hpp>
 
 namespace eosio {
 namespace state_history {
@@ -129,8 +129,8 @@ struct trace_pruner {
    bytes&   buffer; /// the address to the traces entry payload, data == read_strm._start == write_strm._start
    uint64_t last_read_pos = 0;
    std::vector<transaction_id_type>& ids;       /// the transaction ids to be pruned
-   fc::binary_stream<const char*>        read_strm; /// read_strm and write_strm share the same underlying buffer
-   fc::binary_stream<char*>              write_strm;
+   fc::datastream<const char*>        read_strm; /// read_strm and write_strm share the same underlying buffer
+   fc::datastream<char*>              write_strm;
    uint64_t change_position = 0; /// when it's nonzero, represents the offset to data where the content has been changed
    compression_type compression;
 

@@ -32,7 +32,7 @@ state_history::partial_transaction_v0 get_partial_from_traces(std::vector<state_
 
 state_history::partial_transaction_v0 get_partial_from_traces_bin(const std::vector<char>& entry,
                                                                   const transaction_id_type& id) {
-   fc::binary_stream<const char*> strm(entry);
+   fc::datastream<const char*> strm(entry);
    std::vector<state_history::transaction_trace> traces;
    state_history::trace_converter::unpack(strm, traces);
    return get_partial_from_traces(traces, id);
@@ -40,7 +40,7 @@ state_history::partial_transaction_v0 get_partial_from_traces_bin(const std::vec
 
 state_history::partial_transaction_v0 get_partial_from_serialized_traces(const std::vector<char>& entry,
                                                                          const transaction_id_type& id) {
-   fc::binary_stream<const char*> strm(entry);
+   fc::datastream<const char*> strm(entry);
    std::vector<state_history::transaction_trace> traces;
    fc::raw::unpack(strm, traces);
    return get_partial_from_traces(traces, id);
@@ -63,7 +63,7 @@ BOOST_AUTO_TEST_CASE(test_trace_converter) {
 
    chain.control->accepted_block.connect([&](const block_state_ptr& bs) {
          auto traces = cache.prepare_traces(bs);
-         fc::binary_stream<std::vector<char>> strm;
+         fc::datastream<std::vector<char>> strm;
          state_history::trace_converter::pack(strm, chain.control->db(), true, traces, state_history::compression_type::zlib);
          on_disk_log_entries[bs->block_num] = strm.storage();
    });
@@ -83,7 +83,7 @@ BOOST_AUTO_TEST_CASE(test_trace_converter) {
 
    // prune the cfd for the block
    std::vector<transaction_id_type> ids{cfd_trace->id};
-   fc::binary_stream<char*> rw_strm(cfd_entry);
+   fc::datastream<char*> rw_strm(cfd_entry);
    state_history::trace_converter::prune_traces(rw_strm, cfd_entry.size(), ids);
    BOOST_CHECK(ids.size() == 0);
 

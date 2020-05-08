@@ -47,7 +47,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
    uint16_t                                                   endpoint_port    = 8080;
    std::unique_ptr<tcp::acceptor>                             acceptor;
 
-   state_history::signed_block get_block(uint32_t block_num) {
+   state_history::optional_signed_block get_block(uint32_t block_num) {
       try {
          auto ptr = chain_plug->chain().fetch_block_by_number(block_num);
          if (ptr)
@@ -182,12 +182,11 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          send_update();
       }
 
-      void send_update(get_blocks_result_v0 result) {
+      void send_update(get_blocks_result_v1&& result) {
          need_to_send_update = true;
          if (!send_queue.empty() || !current_request || !current_request->max_messages_in_flight)
             return;
          auto& chain = plugin->chain_plug->chain();
-         get_blocks_result_v1 result;
          result.last_irreversible = {chain.last_irreversible_block_num(), chain.last_irreversible_block_id()};
          uint32_t current =
                current_request->irreversible_only ? result.last_irreversible.block_num : result.head.block_num;
@@ -220,7 +219,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          need_to_send_update = true;
          if (!send_queue.empty() || !current_request || !current_request->max_messages_in_flight)
             return;
-         get_blocks_result_v0 result;
+         get_blocks_result_v1 result;
          result.head = {block_state->block_num, block_state->id};
          send_update(std::move(result));
       }
@@ -232,7 +231,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
              !current_request->max_messages_in_flight)
             return;
          auto& chain = plugin->chain_plug->chain();
-         get_blocks_result_v0 result;
+         get_blocks_result_v1 result;
          result.head = {chain.head_block_num(), chain.head_block_id()};
          send_update(std::move(result));
       }
