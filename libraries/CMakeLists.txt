@@ -44,3 +44,10 @@ set_property(GLOBAL PROPERTY CTEST_CUSTOM_TESTS_IGNORE
   attest pbkdf2 parsing ${_CTEST_CUSTOM_TESTS_IGNORE}")
 
 add_subdirectory( rodeos )
+
+message(STATUS "Starting AMQP-CPP configuration...")
+find_package(OpenSSL REQUIRED)
+set(AMQP-CPP_LINUX_TCP ON)
+add_subdirectory( amqp-cpp )
+# target_link_libraries( amqpcpp OpenSSL::SSL )
+message(STATUS "AMQP-CPP configuration complete")

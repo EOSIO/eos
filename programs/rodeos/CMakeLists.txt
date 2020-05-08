@@ -30,14 +30,13 @@ endif()
 
 configure_file(config.hpp.in config.hpp ESCAPE_QUOTES)
 
-target_include_directories(${RODEOS_EXECUTABLE_NAME} PUBLIC ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/../../libraries/abieos/src )
-
-# todo: review dependency strategy for rabbit
-set(RABBIT_LIB SimpleAmqpClient)
+target_include_directories(${RODEOS_EXECUTABLE_NAME} PUBLIC ${CMAKE_CURRENT_BINARY_DIR}
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../libraries/abieos/src
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../libraries/amqp-cpp/include)
 
 target_link_libraries( ${RODEOS_EXECUTABLE_NAME}
         PRIVATE appbase version
-        PRIVATE rodeos_lib fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} ${RABBIT_LIB} )
+        PRIVATE rodeos_lib fc amqpcpp ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS})
 
 copy_bin( ${RODEOS_EXECUTABLE_NAME} )
 install( TARGETS

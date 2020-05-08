@@ -22,3 +22,6 @@
 [submodule "libraries/fc/include/fc/crypto/webauthn_json"]
 	path = libraries/fc/include/fc/crypto/webauthn_json
 	url = https://github.com/Tencent/rapidjson/
+[submodule "libraries/amqp-cpp"]
+	path = libraries/amqp-cpp
+	url = git@github.com:CopernicaMarketingSoftware/AMQP-CPP
