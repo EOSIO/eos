@@ -127,8 +127,10 @@ BOOST_AUTO_TEST_CASE(test_traces_present) {
 
    chain.control->applied_transaction.connect(
       [&](std::tuple<const transaction_trace_ptr&, const signed_transaction&> t) {
-         std::cout<<"transaction applied "<<std::endl;
-         std::cout<<std::get<0>(t)->action_traces.size()<<std::endl;
+         const transaction_trace_ptr& trx_trace_ptr = std::get<0>(t);
+         BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trx_trace_ptr->receipt->status);
+         BOOST_REQUIRE_EQUAL(trx_trace_ptr->action_traces.size(), 1);
+         BOOST_REQUIRE_EQUAL(trx_trace_ptr->action_traces[0].act.name.to_string(), "newaccount");
    });
 
    chain.control->accepted_block.connect(
@@ -138,7 +140,7 @@ BOOST_AUTO_TEST_CASE(test_traces_present) {
 
    chain.create_account(N(newacc));
 
-   chain.produce_blocks();
+   //chain.produce_blocks();
 }
 
 BOOST_AUTO_TEST_SUITE_END()
