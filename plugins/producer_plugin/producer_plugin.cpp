@@ -351,7 +351,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
             return false;
          }
 
-         const auto& id = block_id ? *block_id : block->calculate_id();
+         const auto& id = block_id ? *block_id : block->id();
          auto blk_num = block->block_num();
 
          fc_dlog(_log, "received incoming block ${n} ${id}", ("n", blk_num)("id", id));
@@ -364,7 +364,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          if( existing ) { return false; }
 
          // start processing of block
-         auto bsf = chain.create_block_state_future( id, block );
+         auto bsf = chain.create_block_state_future( block );
 
          // abort the pending block
          _unapplied_transactions.add_aborted( chain.abort_block() );

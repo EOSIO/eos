@@ -434,10 +434,10 @@ fc::variant push_transaction( signed_transaction& trx, const std::vector<public_
    packed_transaction::compression_type compression = to_compression_type( tx_compression );
    if (!tx_dont_broadcast) {
       if (tx_use_old_rpc) {
-         return call(push_txn_func, packed_transaction_v0(trx, compression));
+         return call(push_txn_func, packed_transaction(trx, compression));
       } else {
          try {
-            return call(send_txn_func, packed_transaction_v0(trx, compression));
+            return call(send_txn_func, packed_transaction(trx, compression));
          }
          catch (chain::missing_chain_api_plugin_exception &) {
             std::cerr << "New RPC send_transaction may not be supported. Add flag --use-old-rpc to use old RPC push_transaction instead." << std::endl;
@@ -454,7 +454,7 @@ fc::variant push_transaction( signed_transaction& trx, const std::vector<public_
             return fc::variant(trx);
          }
       } else {
-        return fc::variant(packed_transaction_v0(trx, compression));
+        return fc::variant(packed_transaction(trx, compression));
       }
    }
 }
@@ -2556,11 +2556,11 @@ int main( int argc, char** argv ) {
             abi_serializer::from_variant( trx_var, trx, abi_serializer_resolver, abi_serializer::create_yield_function( abi_serializer_max_time ) );
          } EOS_RETHROW_EXCEPTIONS( transaction_type_exception, "Invalid transaction format: '${data}'",
                                    ("data", fc::json::to_string(trx_var, fc::time_point::maximum())))
-         std::cout << fc::json::to_pretty_string( packed_transaction_v0( trx, packed_transaction_v0::compression_type::none )) << std::endl;
+         std::cout << fc::json::to_pretty_string( packed_transaction( trx, packed_transaction::compression_type::none )) << std::endl;
       } else {
          try {
             signed_transaction trx = trx_var.as<signed_transaction>();
-            std::cout << fc::json::to_pretty_string( fc::variant( packed_transaction_v0( trx, packed_transaction_v0::compression_type::none ))) << std::endl;
+            std::cout << fc::json::to_pretty_string( fc::variant( packed_transaction( trx, packed_transaction::compression_type::none ))) << std::endl;
          } EOS_RETHROW_EXCEPTIONS( transaction_type_exception, "Fail to convert transaction, --pack-action-data likely needed" )
       }
    });
@@ -2573,12 +2573,12 @@ int main( int argc, char** argv ) {
    unpack_transaction->add_flag("--unpack-action-data", unpack_action_data_flag, localized("Unpack all action data within transaction, needs interaction with ${n}", ("n", node_executable_name)));
    unpack_transaction->callback([&] {
       fc::variant packed_trx_var = json_from_file_or_string( packed_transaction_json );
-      packed_transaction_v0 packed_trx;
+      packed_transaction packed_trx;
       try {
-         fc::from_variant<packed_transaction_v0>( packed_trx_var, packed_trx );
+         fc::from_variant<packed_transaction>( packed_trx_var, packed_trx );
       } EOS_RETHROW_EXCEPTIONS( transaction_type_exception, "Invalid packed transaction format: '${data}'",
                                 ("data", fc::json::to_string(packed_trx_var, fc::time_point::maximum())))
-      const signed_transaction& strx = packed_trx.get_signed_transaction();
+      signed_transaction strx = packed_trx.get_signed_transaction();
       fc::variant trx_var;
       if( unpack_action_data_flag ) {
          abi_serializer::to_variant( strx, trx_var, abi_serializer_resolver, abi_serializer::create_yield_function( abi_serializer_max_time ) );
@@ -3519,7 +3519,7 @@ int main( int argc, char** argv ) {
       }
 
       if(push_trx) {
-         auto trx_result = call(push_txn_func, packed_transaction_v0(trx, packed_transaction_v0::compression_type::none));
+         auto trx_result = call(push_txn_func, packed_transaction(trx, packed_transaction::compression_type::none));
          std::cout << fc::json::to_pretty_string(trx_result) << std::endl;
       } else {
          std::cout << fc::json::to_pretty_string(trx) << std::endl;

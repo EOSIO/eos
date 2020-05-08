@@ -18,8 +18,7 @@ auto unique_trx_meta_data( fc::time_point expire = fc::time_point::now() + fc::s
    trx.expiration = expire;
    trx.actions.emplace_back( vector<permission_level>{{creator,config::active_name}},
                              onerror{ nextid, "test", 4 });
-   return transaction_metadata::create_no_recover_keys( std::make_shared<packed_transaction>( std::move(trx), true ),
-                                                        transaction_metadata::trx_type::input );
+   return transaction_metadata::create_no_recover_keys( packed_transaction( trx ), transaction_metadata::trx_type::input );
 }
 
 auto next( unapplied_transaction_queue& q ) {

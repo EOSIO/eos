@@ -51,9 +51,8 @@ inline transaction_trace_v1 to_transaction_trace_v1( const cache_trace& t ) {
         r.cpu_usage_us = t.trace->receipt->cpu_usage_us;
         r.net_usage_words = t.trace->receipt->net_usage_words;
     }
-    auto sigs = t.trx->get_signatures();
-    if( sigs ) r.signatures = *sigs;
-    r.trx_header = static_cast<const chain::transaction_header&>( t.trx->get_transaction() );
+    r.signatures = t.trx_signatures;
+    r.trx_header = t.trx_header;
     r.actions.reserve( t.trace->action_traces.size());
     for( const auto& at : t.trace->action_traces ) {
         if( !at.context_free ) { // not including CFA at this time

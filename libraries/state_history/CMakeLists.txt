@@ -4,7 +4,6 @@ add_library( state_history
              abi.cpp
              compression.cpp
              create_deltas.cpp
-             log.cpp
              trace_converter.cpp
              ${HEADERS}
            )
