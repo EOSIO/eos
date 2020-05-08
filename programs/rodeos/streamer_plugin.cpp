@@ -61,12 +61,9 @@ void streamer_plugin::plugin_shutdown() {}
 
 void streamer_plugin::stream_data(const char* data, uint64_t data_size) {
    eosio::input_stream bin(data, data_size);
-   if (eosio::result<stream_wrapper> res = eosio::from_bin<stream_wrapper>(bin)) {
-      auto& sw = std::get<stream_wrapper_v0>(res.value());
-      publish_to_streams(sw);
-   } else {
-      eosio::check(res.error());
-   }
+   stream_wrapper res = eosio::from_bin<stream_wrapper>(bin);
+   auto& sw = std::get<stream_wrapper_v0>(res);
+   publish_to_streams(sw);
 }
 
 void streamer_plugin::publish_to_streams(const stream_wrapper_v0& sw) {
