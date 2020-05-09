@@ -49,9 +49,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
 
    state_history::optional_signed_block get_block(uint32_t block_num) {
       try {
-         auto ptr = chain_plug->chain().fetch_block_by_number(block_num);
-         if (ptr)
-            return std::ref(*ptr);
+         return chain_plug->chain().fetch_block_by_number(block_num);
       } catch (...) {
       }
       return {};

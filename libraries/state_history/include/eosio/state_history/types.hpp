@@ -207,8 +207,7 @@ struct transaction_trace_recurse {
    transaction_trace recurse;
 };
 
-// we use std::variant instead of fc::static_variable because fc::static_variable requires every constituent type to be default constructable. 
-using optional_signed_block = std::variant<std::nullptr_t, std::reference_wrapper<chain::signed_block_v0>, std::reference_wrapper<chain::signed_block>>;
+using optional_signed_block = std::variant<chain::signed_block_v0_ptr, chain::signed_block_ptr>;
 
 struct get_blocks_result_v1 {
    block_position                 head;

@@ -681,22 +681,18 @@ ST& operator<<(ST& ds, const eosio::state_history::get_blocks_result_v0& obj) {
    return ds;
 }
 
-template <typename ST>
-ST& operator<< (ST& ds, nullptr_t) { return ds; }
-
-template <typename ST, typename T>
-ST& operator<< (ST& ds, std::reference_wrapper<T> r) {
-   fc::raw::pack(ds, r.get());
-   return ds;
-}
 
 template <typename ST>
 ST& operator<<(ST& ds, const eosio::state_history::optional_signed_block& obj) {
-   fc::raw::pack(ds, bool(obj.index() != 0));   // pack optional flag
-   if (obj.index()) {
-      fc::raw::pack(ds, fc::unsigned_int(obj.index()-1)); // pack the version of the signed_block
-   }
-   std::visit([&ds](auto v) { fc::raw::pack(ds, v);}, obj);
+   uint8_t which = obj.index();
+
+   std::visit([&ds, which](const auto& ptr) {
+      fc::raw::pack(ds, bool(ptr));
+      if (ptr) {
+         fc::raw::pack(ds, which);
+         fc::raw::pack(ds, *ptr);
+      }
+   }, obj);
    return ds;
 }
 

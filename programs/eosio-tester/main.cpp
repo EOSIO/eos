@@ -264,7 +264,7 @@ struct test_chain {
             block_position{ control->last_irreversible_block_num(), control->last_irreversible_block_id() };
       message.this_block = block_position{ block_state->block->block_num(), block_state->id };
       message.prev_block = prev_block;
-      message.block      = std::ref(*block_state->block);
+      message.block      = block_state->block;
       state_history::trace_converter::unpack(strm, message.traces);
       message.deltas     = fc::raw::pack(create_deltas(control->db(), !prev_block));
 
