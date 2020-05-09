@@ -101,7 +101,7 @@ struct local_identity {
     }
     catch (...) {
       // not an ip address
-      for (const auto n : names) {
+      for (const auto& n : names) {
         if (n == name)
           return true;
       }
@@ -1887,7 +1887,7 @@ void write_default_config(const bfs::path& cfg_file, const options_description &
    }
 
    std::ofstream out_cfg( bfs::path(cfg_file).make_preferred().string());
-   for(const boost::shared_ptr<bpo::option_description> od : cfg.options())
+   for(const boost::shared_ptr<bpo::option_description>& od : cfg.options())
    {
       if(!od->description().empty()) {
          out_cfg << "# " << od->description() << std::endl;
