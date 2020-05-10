@@ -1024,7 +1024,11 @@ class Cluster:
 
     def cleanup(self):
         self.print_begin("Shutdown cluster")
-        self.stop_cluster()
+        result = self.stop_cluster()
+        if len(result.response_dict["result"]):
+            missed_intervals = result.response_dict["result"]
+            intervals = [ "{}-{}".format(missed["start"], missed["stop"]) for missed in missed_intervals]
+            self.error("EXCESSIVE SYSTEM DELAYS DURING THE FOLLOWING {} BEGINNING-ENDING PERIODS: [{}]".format(len(missed_intervals), ", ".join(intervals)))
         self.print_end("Shutdown cluster")
 
 # --------------- simple queries: queries that are made directly via call() -------------------------------------------

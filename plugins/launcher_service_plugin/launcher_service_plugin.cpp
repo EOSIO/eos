@@ -72,17 +72,16 @@ namespace eosio {
 
       void start_timer();
       void stop_timer();
-   private:
-      void schedule_timer();
-      void timeout_processing();
-      void track_timeouts(const time_point& now);
 
-      steady_timer                              _timer;
       static const microseconds                 _half_timeout;
       static const steady_timer::duration       _timeout;
       static const microseconds                 _timeout_threshold;
-      time_point                                _last_timeout;
-      std::map<time_point, time_point>          _missing_intervals;
+
+   private:
+      void schedule_timer();
+      void timeout_processing();
+
+      steady_timer                              _timer;
       launcher_service_plugin_impl&             _impl;
    };
 
@@ -129,13 +128,14 @@ namespace eosio {
          cluster_def                                 def;
          std::map<int, node_state_ptr>               nodes; // node id => node_state
          std::map<public_key_type, private_key_type> imported_keys;
+         std::map<time_point, time_point>            missing_intervals;
 
          // possible transaction block-number for query purpose
          std::map<transaction_id_type, uint32_t>     transaction_blocknum;
       };
 
       struct to_remove {
-         to_remove(const node_state_ptr& n) : child(n->child), node(n) {}
+         explicit to_remove(const node_state_ptr& n) : child(n->child), node(n) {}
          to_remove() {}
 
          child_ptr           child;
@@ -155,6 +155,7 @@ namespace eosio {
       optional<time_point>                      _idle_timeout_deadline;
       uint32_t                                  _timer_correlation_id = 0;
       std::shared_ptr<launcher_interval_timer>  _interval_timer;
+      time_point                                _last_timeout;
 
    public:
       static std::string cluster_to_string(int id) {
@@ -204,10 +205,10 @@ namespace eosio {
       }
 
       // separate config generation logic to make unitest possible
-      static std::string generate_node_config(const launcher_config &_config, cluster_def &def, int node_id) {
+      static std::string generate_node_config(const launcher_config& _config, cluster_def& def, int node_id) {
          std::stringstream cfg;
 
-         const node_def &node_config = def.get_node_def(node_id);
+         const node_def& node_config = def.get_node_def(node_id);
 
          cfg << "http-server-address = " << _config.host_name << ":" << node_config.http_port(_config, def.cluster_id, node_id) << "\n";
          cfg << "http-validate-host = false\n";
@@ -265,7 +266,7 @@ namespace eosio {
          }
          cfg << "allowed-connection = any\n";
 
-         for (const auto &priKey: node_config.producing_keys) {
+         for (const auto& priKey: node_config.producing_keys) {
             cfg << "private-key = [\"" << std::string(priKey.get_public_key()) << "\",\""
                << std::string(priKey) << "\"]\n";
          }
@@ -274,23 +275,23 @@ namespace eosio {
             cfg << "private-key = [\"" << std::string(_config.default_key.get_public_key()) << "\",\""
                << std::string(_config.default_key) << "\"]\n";
          }
-         for (auto &p : node_config.producers) {
+         for (auto& p : node_config.producers) {
             cfg << "producer-name = " << p << "\n";
          }
          cfg << "plugin = eosio::net_plugin\n";
          cfg << "plugin = eosio::chain_api_plugin\n";
          cfg << "plugin = eosio::producer_api_plugin\n";
 
-         for (const std::string &s : def.extra_configs) {
+         for (const std::string& s : def.extra_configs) {
             cfg << s << "\n";
          }
-         for (const std::string &s : node_config.extra_configs) {
+         for (const std::string& s : node_config.extra_configs) {
             cfg << s << "\n";
          }
          return cfg.str();
       }
 
-      void setup_cluster(cluster_def &def) {
+      void setup_cluster(cluster_def& def) {
          create_path(bfs::path(_config.data_dir));
          create_path(bfs::path(_config.data_dir) / cluster_to_string(def.cluster_id), true);
          if (def.node_count <= 0 || def.node_count > _config.max_nodes_per_cluster) {
@@ -323,7 +324,7 @@ namespace eosio {
             uint16_t begin_port = _config.base_port + def.cluster_id * _config.cluster_span;
             uint16_t max_port = begin_port + _config.cluster_span;
             for (int i = 0; i < def.node_count; ++i) {
-               node_def &node_config = def.get_node_def(i);
+               node_def& node_config = def.get_node_def(i);
                begin_port = next_avail_port(begin_port, max_port);
                node_config.assigned_http_port = begin_port;
                ++begin_port;
@@ -333,8 +334,13 @@ namespace eosio {
             }
          }
 
+         auto itr = _running_clusters.find(def.cluster_id);
+         if (itr == _running_clusters.end()) {
+            itr = _running_clusters.emplace(def.cluster_id, cluster_state{}).first;
+         }
+
          for (int i = 0; i < def.node_count; ++i) {
-            node_def &node_config = def.get_node_def(i);
+            node_def& node_config = def.get_node_def(i);
             node_state_ptr state = std::make_shared<node_state>();
             state->id = i;
             state->http_port = node_config.http_port(_config, def.cluster_id, i);
@@ -356,19 +362,20 @@ namespace eosio {
             bfs::ofstream cfg(node_path / "config.ini");
             cfg << generate_node_config(_config, def, i);
             cfg.close();
-            _running_clusters[def.cluster_id].nodes[i] = std::move(state);
+            itr->second.nodes[i] = std::move(state);
          }
-         _running_clusters[def.cluster_id].def = def;
-         _running_clusters[def.cluster_id].imported_keys[_config.default_key.get_public_key()] = _config.default_key;
+         itr->second.def = def;
+         itr->second.imported_keys[_config.default_key.get_public_key()] = _config.default_key;
       }
 
-      void launch_nodes(cluster_def &def, int node_id, bool restart = false, std::string extra_args = "") {
+      void launch_nodes(cluster_def& def, int node_id, bool restart = false, std::string extra_args = "") {
+         auto& cluster_state = get_cluster_state(def.cluster_id)->second;
          for (int i = 0; i < def.node_count; ++i) {
             if (i != node_id && node_id != -1) {
                continue;
             }
 
-            node_state &state = *_running_clusters[def.cluster_id].nodes[i];
+            node_state& state = *cluster_state.nodes[i];
             node_def node_config = def.get_node_def(i);
 
             bfs::path node_path = bfs::path(_config.data_dir) / cluster_to_string(def.cluster_id) / node_to_string(i);
@@ -434,45 +441,44 @@ namespace eosio {
          }
       }
 
-      void launch_cluster(cluster_def &def) {
+      void launch_cluster(cluster_def& def) {
          if (def.cluster_id < 0 || def.cluster_id >= _config.max_clusters) {
             throw std::runtime_error("invalid cluster id");
          }
-         stop_cluster(def.cluster_id);
+         if (_running_clusters.count(def.cluster_id)) {
+            stop_cluster(def.cluster_id);
+         }
          setup_cluster(def);
          launch_nodes(def, -1, false);
       }
 
       void start_node(int cluster_id, int node_id, std::string extra_args) {
-         if (_running_clusters.find(cluster_id) == _running_clusters.end()) {
-            throw std::runtime_error("cluster is not running");
-         }
-         if (_running_clusters[cluster_id].nodes.find(node_id) != _running_clusters[cluster_id].nodes.end()) {
-            node_state &state = *_running_clusters[cluster_id].nodes[node_id];
+         auto& cluster_state = get_cluster_state(cluster_id)->second;
+         if (cluster_state.nodes.find(node_id) != cluster_state.nodes.end()) {
+            node_state& state = *cluster_state.nodes[node_id];
             if (state.child && state.child->running()) {
                throw std::runtime_error("node already running");
             }
          }
-         launch_nodes(_running_clusters[cluster_id].def, node_id, true, extra_args);
+         launch_nodes(cluster_state.def, node_id, true, extra_args);
       }
 
       void stop_node(int cluster_id, int node_id, int killsig) {
-         if (_running_clusters.find(cluster_id) != _running_clusters.end()) {
-            if (_running_clusters[cluster_id].nodes.find(node_id) != _running_clusters[cluster_id].nodes.end()) {
-               node_state_ptr state = _running_clusters[cluster_id].nodes[node_id];
-               if (state->child) {
-                  if (state->child->running()) {
-                     ilog("killing pid ${p} (cluster ${c}, node ${n}) with signal ${s}", ("p", state->child->id())("c", cluster_id)("n", node_id)("s", killsig));
-                     string kill_cmd = "kill " + boost::lexical_cast<std::string>(killsig) + " " + boost::lexical_cast<std::string>(state->child->id());
-                     boost::process::system( kill_cmd );
-                  }
-                  if (!state->child->running()) {
-                     dlog("Removing pid ${p} (cluster ${c}, node ${n}) with signal ${s}", ("p", state->child->id())("c", cluster_id)("n", node_id)("s", killsig));
-                     state->set_child();
-                  } else {
-                     dlog("Storing pid ${p} (cluster ${c}, node ${n}) to clean up later", ("p", state->child->id())("c", cluster_id)("n", node_id));
-                     _nodes_to_remove[state->pid] = to_remove(state);
-                  }
+         auto& cluster_state = get_cluster_state(cluster_id)->second;
+         if (cluster_state.nodes.find(node_id) != cluster_state.nodes.end()) {
+            node_state_ptr state = cluster_state.nodes[node_id];
+            if (state->child) {
+               if (state->child->running()) {
+                  ilog("killing pid ${p} (cluster ${c}, node ${n}) with signal ${s}", ("p", state->child->id())("c", cluster_id)("n", node_id)("s", killsig));
+                  string kill_cmd = "kill " + boost::lexical_cast<std::string>(killsig) + " " + boost::lexical_cast<std::string>(state->child->id());
+                  boost::process::system( kill_cmd );
+               }
+               if (!state->child->running()) {
+                  dlog("Removing pid ${p} (cluster ${c}, node ${n}) with signal ${s}", ("p", state->child->id())("c", cluster_id)("n", node_id)("s", killsig));
+                  state->set_child();
+               } else {
+                  dlog("Storing pid ${p} (cluster ${c}, node ${n}) to clean up later", ("p", state->child->id())("c", cluster_id)("n", node_id));
+                  _nodes_to_remove[state->pid] = to_remove(state);
                }
             }
          }
@@ -483,12 +489,28 @@ namespace eosio {
 
          // do this last, to allow everything else to happen prior to quit
          check_idle_timeout(now);
+
+         track_timeouts(now);
       }
 
       void initialize_timers() {
          schedule_node_remove_timeout();
          schedule_idle_timeout();
+         _last_timeout = time_point::now();
          _interval_timer->start_timer();
+      }
+
+      void track_timeouts(const time_point& now) {
+         const auto diff = now - _last_timeout;
+         if (diff > launcher_interval_timer::_timeout_threshold) {
+            const auto over_in_ms = (diff.count() - launcher_interval_timer::_half_timeout.count() * 2) / _milliseconds;
+            elog("System responsiveness is poor. Responsiveness delay occurred between ${last} and ${now} (overran time window by: ${over} ms)",
+                 ("last", _last_timeout)("now", now)("over", over_in_ms));
+            for (auto& cluster : _running_clusters) {
+               cluster.second.missing_intervals.insert({_last_timeout, now});
+            }
+         }
+         _last_timeout = now;
       }
 
       void remove_shutdown_nodes(const time_point& now) {
@@ -522,15 +544,18 @@ namespace eosio {
          }
       }
 
-      void stop_cluster(int cluster_id) {
-         if (_running_clusters.find(cluster_id) != _running_clusters.end()) {
-            ilog("Stopping cluster: ${cid}", ("cid", cluster_id));
-            for (auto &itr : _running_clusters[cluster_id].nodes) {
-               stop_node(cluster_id, itr.first, SIGKILL);
-            }
-            _running_clusters.erase(cluster_id);
+      std::map<time_point, time_point> stop_cluster(int cluster_id) {
+         auto cluster_state_itr = get_cluster_state(cluster_id);
+         ilog("Stopping cluster: ${cid}", ("cid", cluster_id));
+         for (auto& itr : cluster_state_itr->second.nodes) {
+            stop_node(cluster_id, itr.first, SIGKILL);
          }
+         std::map<time_point, time_point> missed_times = cluster_state_itr->second.missing_intervals;
+         ilog("cluster_id: ${id} experienced ${count} missed time intervals during operations", ("id", cluster_id)("count", missed_times.size()));
+         _running_clusters.erase(cluster_state_itr);
+         return missed_times;
       }
+
       void shutdown() {
          _interval_timer->stop_timer();
          stop_all_clusters();
@@ -551,7 +576,7 @@ namespace eosio {
       }
 
       template <typename T>
-      fc::variant call_(int cluster_id, int node_id, const std::string &func, const T &args, bool silence) {
+      fc::variant call_(int cluster_id, int node_id, const std::string& func, const T& args, bool silence) {
          if (_running_clusters.find(cluster_id) == _running_clusters.end()) {
             throw std::runtime_error("cluster is not running");
          }
@@ -574,10 +599,10 @@ namespace eosio {
          throw std::runtime_error(err.c_str());
       }
 
-      fc::variant call(int cluster_id, int node_id, const std::string &func, fc::variant args = fc::variant(), bool silence = false) {
+      fc::variant call(int cluster_id, int node_id, const std::string& func, fc::variant args = fc::variant(), bool silence = false) {
          return call_<fc::variant>(cluster_id, node_id, func, args, silence);
       }
-      fc::variant call_strdata(int cluster_id, int node_id, const std::string &func, const std::string &args, bool silence = false) {
+      fc::variant call_strdata(int cluster_id, int node_id, const std::string& func, const std::string& args, bool silence = false) {
          return call_<std::string>(cluster_id, node_id, func, args, silence);
       }
 
@@ -607,7 +632,7 @@ namespace eosio {
          }
          std::vector<public_key_type> pub_keys;
          pub_keys.reserve(_running_clusters[cluster_id].imported_keys.size());
-         for (auto &key : _running_clusters[cluster_id].imported_keys) {
+         for (auto& key : _running_clusters[cluster_id].imported_keys) {
             pub_keys.push_back(key.first);
          }
          auto get_arg = fc::mutable_variant_object("transaction", (chain::transaction)trx)
@@ -616,7 +641,7 @@ namespace eosio {
       }
 
       fc::optional<abi_serializer> abi_serializer_resolver(int cluster_id, int node_id, const name& account) {
-         auto &abi_cache = _running_clusters[cluster_id].nodes[node_id]->abi_cache;
+         auto& abi_cache = _running_clusters[cluster_id].nodes[node_id]->abi_cache;
          if (fc::time_point::now() >= _running_clusters[cluster_id].nodes[node_id]->abi_cache_time + fc::milliseconds(config::block_interval_ms)) {
             _running_clusters[cluster_id].nodes[node_id]->abi_cache_time = fc::time_point::now();
             abi_cache.clear();
@@ -656,10 +681,10 @@ namespace eosio {
       }
 
       fc::variant push_transaction(int cluster_id, int node_id, signed_transaction& trx,
-                                   const std::vector<public_key_type> &sign_keys = std::vector<public_key_type>(),
+                                   const std::vector<public_key_type>& sign_keys = std::vector<public_key_type>(),
                                    packed_transaction::compression_type compression = packed_transaction::compression_type::none) {
          const int port = _running_clusters[cluster_id].nodes[node_id]->http_port;
-         auto &info = _running_clusters[cluster_id].nodes[node_id]->get_info_cache;
+         auto& info = _running_clusters[cluster_id].nodes[node_id]->get_info_cache;
          if (fc::time_point::now() >= _running_clusters[cluster_id].nodes[node_id]->get_info_cache_time + fc::milliseconds(config::block_interval_ms)) {
             fc::variant info_ = get_info(cluster_id, node_id);
             info = info_.as<get_info_results>();
@@ -683,7 +708,7 @@ namespace eosio {
          }
 
          if (sign_keys.size()) {
-            for (const public_key_type &pub_key : sign_keys) {
+            for (const public_key_type& pub_key : sign_keys) {
                auto itr = _running_clusters[cluster_id].imported_keys.find(pub_key);
                if (itr != _running_clusters[cluster_id].imported_keys.end()) {
                   private_key_type pri_key = itr->second;
@@ -694,8 +719,8 @@ namespace eosio {
             }
          } else {
             fc::variant required_keys = determine_required_keys(cluster_id, node_id, trx);
-            const fc::variant &keys = required_keys["required_keys"];
-            for (const fc::variant &k : keys.get_array()) {
+            const fc::variant& keys = required_keys["required_keys"];
+            for (const fc::variant& k : keys.get_array()) {
                public_key_type pub_key = public_key_type(k.as_string());
                auto itr = _running_clusters[cluster_id].imported_keys.find(pub_key);
                if (itr != _running_clusters[cluster_id].imported_keys.end()) {
@@ -712,7 +737,7 @@ namespace eosio {
       }
 
       fc::variant push_actions(int cluster_id, int node_id, std::vector<chain::action>&& actions,
-                               const std::vector<public_key_type> &sign_keys = std::vector<public_key_type>(),
+                               const std::vector<public_key_type>& sign_keys = std::vector<public_key_type>(),
                                packed_transaction::compression_type compression = packed_transaction::compression_type::none ) {
          signed_transaction trx;
          trx.actions = std::move(actions);
@@ -722,7 +747,7 @@ namespace eosio {
       fc::variant push_actions(launcher_service::push_actions_param param) {
          std::vector<chain::action> actlist;
          actlist.reserve(param.actions.size());
-         for (const action_param &p : param.actions) {
+         for (const action_param& p : param.actions) {
             bytes data = action_variant_to_bin(param.cluster_id, param.node_id, p.account, p.action, p.data);
             actlist.emplace_back(p.permissions, p.account, p.action, std::move(data));
          }
@@ -746,13 +771,18 @@ namespace eosio {
          return push_actions(param.cluster_id, param.node_id, std::move(actlist), std::vector<public_key_type>(), packed_transaction::compression_type::zlib);
       }
 
+       std::map<int, cluster_state>::iterator get_cluster_state(int cluster_id) {
+          auto itr = _running_clusters.find(cluster_id);
+          if (itr == _running_clusters.end()) {
+              throw std::runtime_error("cluster is not running");
+          }
+          return itr;
+      }
+
       fc::variant import_keys(import_keys_param param) {
-         if (_running_clusters.find(param.cluster_id) == _running_clusters.end()) {
-            throw std::runtime_error("cluster is not running");
-         }
-         auto &cluster_state = _running_clusters[param.cluster_id];
+         auto& cluster_state = get_cluster_state(param.cluster_id)->second;
          std::vector<std::string> pub_keys;
-         for (auto &key : param.keys) {
+         for (auto& key : param.keys) {
             auto pkey = key.get_public_key();
             pub_keys.push_back(std::string(pkey));
             cluster_state.imported_keys[pkey] = key;
@@ -761,24 +791,20 @@ namespace eosio {
       }
 
       fc::variant generate_key(generate_key_param param) {
-         if (_running_clusters.find(param.cluster_id) == _running_clusters.end()) {
-            throw std::runtime_error("cluster is not running");
-         }
+         auto& cluster_state = get_cluster_state(param.cluster_id)->second;
          fc::sha256 digest(param.seed);
          private_key_type pri_key = private_key_type::regenerate(fc::ecc::private_key::generate_from_seed(digest).get_secret());
          public_key_type pub_key = pri_key.get_public_key();
-         _running_clusters[param.cluster_id].imported_keys[pub_key] = pri_key;
+         cluster_state.imported_keys[pub_key] = pri_key;
          return fc::mutable_variant_object("generated_key", std::string(pub_key));
       }
 
       fc::variant verify_transaction(launcher_service::verify_transaction_param param) {
-         if (_running_clusters.find(param.cluster_id) == _running_clusters.end()) {
-            throw std::runtime_error("cluster is not running");
-         }
+         auto& cluster_state = get_cluster_state(param.cluster_id)->second;
          uint32_t txn_block_num = param.block_num_hint;
          if (!txn_block_num) {
-            auto itr = _running_clusters[param.cluster_id].transaction_blocknum.find(param.transaction_id);
-            if (itr == _running_clusters[param.cluster_id].transaction_blocknum.end()) {
+            auto itr = cluster_state.transaction_blocknum.find(param.transaction_id);
+            if (itr == cluster_state.transaction_blocknum.end()) {
                return fc::mutable_variant_object("result", "transaction not found but block_num_hint was not given");
             }
             txn_block_num = itr->second;
@@ -795,11 +821,11 @@ namespace eosio {
             if (block_.is_object()) {
                const fc::variant_object& block = block_.get_object();
                if (block.find("transactions") != block.end()) {
-                  const fc::variant &txns_ = block["transactions"];
+                  const fc::variant& txns_ = block["transactions"];
                   if (txns_.is_array()) {
-                     const variants &txns = txns_.get_array();
-                     for (const variant &txn : txns) {
-                        const variant &trx = txn["trx"];
+                     const variants& txns = txns_.get_array();
+                     for (const variant& txn : txns) {
+                        const variant& trx = txn["trx"];
                         if (trx["id"] == txn_id) {
                            contained_blocknum = x;
                            break;
@@ -866,7 +892,7 @@ namespace eosio {
          return fc::mutable_variant_object("filesize", size)("offset", offset)("data", std::move(base64str));
       }
 
-      fc::variant send_raw(send_raw_param &param) {
+      fc::variant send_raw(send_raw_param& param) {
          if (param.string_data.length() == 0) {
             return call(param.cluster_id, param.node_id, param.url, param.json_data);
          } else {
@@ -904,7 +930,6 @@ launcher_interval_timer::~launcher_interval_timer() {
 
 void launcher_interval_timer::timeout_processing() {
    const time_point now = time_point::now();
-   track_timeouts(now);
    _impl.interval_callback(now);
    schedule_timer();
 }
@@ -915,8 +940,6 @@ void launcher_interval_timer::stop_timer() {
 
 void launcher_interval_timer::start_timer() {
    _timer.cancel();
-
-   _last_timeout = time_point::now();
    schedule_timer();
 }
 
@@ -926,22 +949,11 @@ void launcher_interval_timer::schedule_timer() {
 
    _timer.async_wait( app().get_priority_queue().wrap( priority::high,
                                                        [weak_this]( const boost::system::error_code& ec ) {
-                                                          ilog("timer fired: ${now}", ("now", time_point::now()));
                                                           auto self = weak_this.lock();
                                                           if( self && ec != boost::asio::error::operation_aborted ) {
                                                              self->timeout_processing();
                                                           }
                                                        } ) );
-}
-
-void launcher_interval_timer::track_timeouts(const time_point& now) {
-   const auto diff = now - _last_timeout;
-   if (diff > _timeout_threshold) {
-      _missing_intervals.insert( { _last_timeout, now} );
-      elog("System responsiveness is poor. Responsiveness delay occurred between ${last} and ${now}.",
-           ("last", _last_timeout)("now", now));
-   }
-   _last_timeout = now;
 }
 
 const microseconds launcher_service_plugin_impl::_node_remove_timeout {_seconds};
@@ -1064,12 +1076,10 @@ void launcher_service_plugin::plugin_shutdown() {
 
 fc::variant launcher_service_plugin::get_cluster_info(launcher_service::cluster_id_param param)
 {
-   if (_my->_running_clusters.find(param.cluster_id) == _my->_running_clusters.end()) {
-      throw std::runtime_error("cluster is not running");
-   }
+   auto& cluster_state = _my->get_cluster_state(param.cluster_id)->second;
    std::map<int, fc::variant> result;
    bool haserror = false, hasok = false;
-   const size_t nodecount = _my->_running_clusters[param.cluster_id].nodes.size();
+   const size_t nodecount = cluster_state.nodes.size();
    std::vector<std::thread> threads;
    std::vector<std::pair<int, fc::variant> > thread_result;
    std::vector<std::string> errstrs;
@@ -1078,7 +1088,7 @@ fc::variant launcher_service_plugin::get_cluster_info(launcher_service::cluster_
    threads.reserve(nodecount);
    int k = 0;
    bool set_errstr = true;
-   for (auto &itr : _my->_running_clusters[param.cluster_id].nodes) {
+   for (auto& itr : cluster_state.nodes) {
       const int id = itr.second->id;
       const int port = itr.second->http_port;
       thread_result[k].first = -1;
@@ -1093,7 +1103,7 @@ fc::variant launcher_service_plugin::get_cluster_info(launcher_service::cluster_
                errstrs[k] = e.what();
                std::string url = "http://" + _my->_config.host_name + ":" + _my->itoa(port);
                thread_result[k].second = fc::mutable_variant_object("error", e.what())("url", url);
-            } catch (fc::exception & e) {
+            } catch (fc::exception&  e) {
                haserror = true;
                errstrs[k] = e.what();
                std::string url = "http://" + _my->_config.host_name + ":" + _my->itoa(port);
@@ -1108,7 +1118,7 @@ fc::variant launcher_service_plugin::get_cluster_info(launcher_service::cluster_
       }
       ++k;
    }
-   for (auto &t: threads) {
+   for (auto& t: threads) {
       t.join();
    }
    for (int i = 0; i < k; ++i) {
@@ -1117,7 +1127,7 @@ fc::variant launcher_service_plugin::get_cluster_info(launcher_service::cluster_
       }
    }
    if (!hasok && haserror) {
-      for (auto &err: errstrs) {
+      for (auto& err: errstrs) {
          if (err.length())
             throw std::runtime_error(err);
       }
@@ -1127,11 +1137,9 @@ fc::variant launcher_service_plugin::get_cluster_info(launcher_service::cluster_
 
 fc::variant launcher_service_plugin::get_cluster_running_state(launcher_service::cluster_id_param param)
 {
-   if (_my->_running_clusters.find(param.cluster_id) == _my->_running_clusters.end()) {
-      throw std::runtime_error("cluster is not running");
-   }
-   for (auto &itr : _my->_running_clusters[param.cluster_id].nodes) {
-      launcher_service_plugin_impl::node_state &state = *itr.second;
+   auto& cluster_state = _my->get_cluster_state(param.cluster_id)->second;
+   for (auto& itr : cluster_state.nodes) {
+      launcher_service_plugin_impl::node_state& state = *itr.second;
       if (state.child && !state.child->running()) {
          ilog("child not running, removing child pid: ${pid}, node num: ${id}", ("pid", state.pid)("id", state.id));
          const auto pid = state.pid;
@@ -1161,8 +1169,14 @@ fc::variant launcher_service_plugin::stop_all_clusters(launcher_service::empty_p
 }
 
 fc::variant launcher_service_plugin::stop_cluster(launcher_service::cluster_id_param param) {
-   _my->stop_cluster(param.cluster_id);
-   return fc::mutable_variant_object("result", "OK");
+   auto missed_times = _my->stop_cluster(param.cluster_id);
+   vector<missed_interval> missing;
+   if (missed_times.size()) {
+      for (auto missed : missed_times) {
+         missing.push_back({missed.first, missed.second});
+      }
+   }
+   return fc::mutable_variant_object("result", missing);
 }
 
 fc::variant launcher_service_plugin::clean_cluster(launcher_service::cluster_id_param param) {
@@ -1211,11 +1225,11 @@ fc::variant launcher_service_plugin::verify_transaction(launcher_service::verify
 fc::variant launcher_service_plugin::set_contract(launcher_service::set_contract_param param) {
    try {
       return _my->set_contract(param);
-   } catch (fc::exception &e) {
+   } catch (fc::exception& e) {
       elog("FC exception: code ${code}, cluster ${cluster}, node ${node}, details: ${d}",
            ("code", e.code())("cluster", param.cluster_id)("node", param.node_id)("d", e.to_detail_string()));
       throw;
-   } catch (std::exception &e) {
+   } catch (std::exception& e) {
       elog("STD exception: cluster ${cluster}, node ${node}, details: ${d}",
            ("cluster", param.cluster_id)("node", param.node_id)("d", e.what()));
       throw;
@@ -1233,11 +1247,11 @@ fc::variant launcher_service_plugin::generate_key(launcher_service::generate_key
 fc::variant launcher_service_plugin::push_actions(launcher_service::push_actions_param param) {
    try {
       return _my->push_actions(param);
-   } catch (fc::exception &e) {
+   } catch (fc::exception& e) {
       elog("FC exception: code ${code}, cluster ${cluster}, node ${node}, details: ${d}",
            ("code", e.code())("cluster", param.cluster_id)("node", param.node_id)("d", e.to_detail_string()));
       throw;
-   } catch (std::exception &e) {
+   } catch (std::exception& e) {
       elog("STD exception: cluster ${cluster}, node ${node}, details: ${d}",
            ("cluster", param.cluster_id)("node", param.node_id)("d", e.what()));
       throw;
@@ -1251,18 +1265,18 @@ fc::variant launcher_service_plugin::get_log_data(launcher_service::get_log_data
 fc::variant launcher_service_plugin::send_raw(launcher_service::send_raw_param param) {
    try {
       return _my->send_raw(param);
-   } catch (fc::exception &e) {
+   } catch (fc::exception& e) {
       elog("FC exception: code ${code}, cluster ${cluster}, node ${node}, details: ${d}",
            ("code", e.code())("cluster", param.cluster_id)("node", param.node_id)("d", e.to_detail_string()));
       throw;
-   } catch (std::exception &e) {
+   } catch (std::exception& e) {
       elog("STD exception: cluster ${cluster}, node ${node}, details: ${d}",
            ("cluster", param.cluster_id)("node", param.node_id)("d", e.what()));
       throw;
    }
 }
 
-std::string launcher_service_plugin::generate_node_config(const launcher_service::launcher_config &_config, launcher_service::cluster_def &def, int node_id) {
+std::string launcher_service_plugin::generate_node_config(const launcher_service::launcher_config& _config, launcher_service::cluster_def& def, int node_id) {
    return launcher_service_plugin_impl::generate_node_config(_config, def, node_id);
 }
 

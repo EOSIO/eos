@@ -195,6 +195,7 @@ namespace launcher_service {
       int              node_id = 0;
       std::string      extra_args;
    };
+
    struct stop_node_param {
       int              cluster_id = 0;
       int              node_id = 0;
@@ -207,6 +208,11 @@ namespace launcher_service {
       std::string      url; // suburl of endpoint
       std::string      string_data; // either string or json
       fc::variant      json_data;
+   };
+
+   struct missed_interval {
+      fc::time_point   start;
+      fc::time_point   stop;
    };
 }
 
@@ -293,3 +299,4 @@ FC_REFLECT(eosio::launcher_service::node_id_param, (cluster_id)(node_id))
 FC_REFLECT(eosio::launcher_service::start_node_param, (cluster_id)(node_id)(extra_args))
 FC_REFLECT(eosio::launcher_service::stop_node_param, (cluster_id)(node_id)(kill_sig))
 FC_REFLECT(eosio::launcher_service::send_raw_param, (cluster_id)(node_id)(url)(string_data)(json_data))
+FC_REFLECT(eosio::launcher_service::missed_interval, (start)(stop))
