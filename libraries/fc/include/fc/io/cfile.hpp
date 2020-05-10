@@ -78,6 +78,13 @@ public:
       }
    }
 
+   void skip( long loc) {
+      if( 0 != fseek( _file.get(), loc, SEEK_CUR ) ) {
+         throw std::ios_base::failure( "cfile: " + _file_path.generic_string() +
+                                       " unable to SEEK_CUR to: " + std::to_string(loc) );
+      }
+   }
+
    void read( char* d, size_t n ) {
       size_t result = fread( d, 1, n, _file.get() );
       if( result != n ) {
