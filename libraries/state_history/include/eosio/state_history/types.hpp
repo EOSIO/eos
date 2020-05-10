@@ -167,6 +167,7 @@ struct partial_transaction_v0 {
    std::vector<bytes>                         context_free_data      = {};
 };
 
+using prunable_data_type = eosio::chain::packed_transaction::prunable_data_type;
 struct partial_transaction_v1 {
    eosio::chain::time_point_sec                         expiration             = {};
    uint16_t                                             ref_block_num          = {};
@@ -175,7 +176,7 @@ struct partial_transaction_v1 {
    uint8_t                                              max_cpu_usage_ms       = {};
    fc::unsigned_int                                     delay_sec              = {};
    std::vector<eosio::chain::extensions_type>           transaction_extensions = {};
-   eosio::chain::packed_transaction::prunable_data_type prunable_data          = {};
+   fc::optional<prunable_data_type>                     prunable_data          = {};
 };
 
 using partial_transaction = fc::static_variant<partial_transaction_v0, partial_transaction_v1>;

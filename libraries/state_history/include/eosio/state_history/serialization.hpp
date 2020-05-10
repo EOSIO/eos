@@ -653,7 +653,7 @@ ST& operator<<(
    if (include_packed_trx) {
       const auto& pt  = *obj.obj.packed_trx;
       const auto& trx = pt.get_transaction();
-      fc::raw::pack(ds, fc::unsigned_int(0));
+      fc::raw::pack(ds, fc::unsigned_int( eosio::state_history::partial_transaction::tag<eosio::state_history::partial_transaction_v1>::value ));
       fc::raw::pack(ds, as_type<eosio::chain::time_point_sec>(trx.expiration));
       fc::raw::pack(ds, as_type<uint16_t>(trx.ref_block_num));
       fc::raw::pack(ds, as_type<uint32_t>(trx.ref_block_prefix));
@@ -661,9 +661,7 @@ ST& operator<<(
       fc::raw::pack(ds, as_type<uint8_t>(trx.max_cpu_usage_ms));
       fc::raw::pack(ds, as_type<fc::unsigned_int>(trx.delay_sec));
       fc::raw::pack(ds, as_type<eosio::chain::extensions_type>(trx.transaction_extensions));
-      fc::raw::pack(ds, as_type<std::vector<eosio::chain::signature_type>>(
-                             std::vector<eosio::chain::signature_type>{}));
-      fc::raw::pack(ds, as_type<std::vector<eosio::chain::bytes>>( std::vector<eosio::chain::bytes>{}));
+      fc::raw::pack(ds, as_type<fc::optional<eosio::state_history::prunable_data_type>>({}));
    }
 
    return ds;

@@ -14,11 +14,55 @@
 using namespace eosio;
 using namespace testing;
 using namespace chain;
+using prunable_data_type = eosio::chain::packed_transaction::prunable_data_type;
+
 namespace bio = boost::iostreams;
 extern const char* const state_history_plugin_abi;
 
-state_history::partial_transaction_v0 get_partial_from_traces(std::vector<state_history::transaction_trace>& traces,
-                                                              const transaction_id_type&                     id) {
+namespace eosio {
+namespace state_history {
+struct get_blocks_result_v1_des {
+   block_position                                                  head;
+   block_position                                                  last_irreversible;
+   fc::optional<block_position>                                    this_block;
+   fc::optional<block_position>                                    prev_block;
+   fc::optional<fc::static_variant<signed_block_v0, signed_block>> block;
+   std::vector<transaction_trace>                                  traces;
+   fc::optional<bytes>                                             deltas;
+};
+
+using state_result_des = fc::static_variant<get_status_result_v0, get_blocks_result_v0, get_blocks_result_v1_des>;
+
+} // namespace state_history
+} // namespace eosio
+
+namespace fc {
+   template <typename ST>
+ST& operator>>(ST& ds, eosio::state_history::get_blocks_result_v0& obj) {
+   return ds;
+}
+
+template <typename ST>
+ST& operator>>(ST& ds, eosio::state_history::get_blocks_result_v1_des& obj) {
+   fc::raw::unpack(ds, obj.head);
+   fc::raw::unpack(ds, obj.last_irreversible);
+   fc::raw::unpack(ds, obj.this_block);
+   fc::raw::unpack(ds, obj.prev_block);
+   fc::raw::unpack(ds, obj.block);
+   fc::raw::unpack(ds, obj.traces);
+   uint32_t len;
+   fc::raw::unpack(ds, len);
+   if (len > 0) {
+      bytes content(len);
+      ds.read(content.data(), len);
+      obj.deltas = std::move(content);
+   }
+   return ds;
+}
+}
+
+prunable_data_type::prunable_data_t get_prunable_data_from_traces(std::vector<state_history::transaction_trace>& traces,
+                                                                  const transaction_id_type&                     id) {
    auto cfd_trace_itr = std::find_if(traces.begin(), traces.end(), [id](const state_history::transaction_trace& v) {
       return v.get<state_history::transaction_trace_v0>().id == id;
    });
@@ -28,24 +72,16 @@ state_history::partial_transaction_v0 get_partial_from_traces(std::vector<state_
    BOOST_REQUIRE(cfd_trace_itr->contains<state_history::transaction_trace_v0>());
    auto trace_v0 = cfd_trace_itr->get<state_history::transaction_trace_v0>();
    BOOST_REQUIRE(trace_v0.partial);
-   BOOST_REQUIRE(trace_v0.partial->contains<state_history::partial_transaction_v0>());
-   return trace_v0.partial->get<state_history::partial_transaction_v0>();
+   BOOST_REQUIRE(trace_v0.partial->contains<state_history::partial_transaction_v1>());
+   return trace_v0.partial->get<state_history::partial_transaction_v1>().prunable_data->prunable_data;
 }
 
-state_history::partial_transaction_v0 get_partial_from_traces_bin(const std::vector<char>&   entry,
-                                                                  const transaction_id_type& id) {
+prunable_data_type::prunable_data_t get_prunable_data_from_traces_bin(const std::vector<char>&   entry,
+                                                                      const transaction_id_type& id) {
    fc::datastream<const char*>                   strm(entry.data(), entry.size());
    std::vector<state_history::transaction_trace> traces;
    state_history::trace_converter::unpack(strm, traces);
-   return get_partial_from_traces(traces, id);
-}
-
-state_history::partial_transaction_v0 get_partial_from_serialized_traces(const std::vector<char>&   entry,
-                                                                         const transaction_id_type& id) {
-   fc::datastream<const char*>                   strm(entry.data(), entry.size());
-   std::vector<state_history::transaction_trace> traces;
-   fc::raw::unpack(strm, traces);
-   return get_partial_from_traces(traces, id);
+   return get_prunable_data_from_traces(traces, id);
 }
 
 BOOST_AUTO_TEST_SUITE(test_state_history)
@@ -79,9 +115,7 @@ BOOST_AUTO_TEST_CASE(test_trace_converter) {
 
    // Now deserialize the on disk trace log and make sure that the cfd exists
    auto& cfd_entry = on_disk_log_entries.at(cfd_trace->block_num);
-   auto  partial   = get_partial_from_traces_bin(cfd_entry, cfd_trace->id);
-   BOOST_REQUIRE(partial.context_free_data.size());
-   BOOST_REQUIRE(partial.signatures.size());
+   BOOST_REQUIRE(!get_prunable_data_from_traces_bin(cfd_entry, cfd_trace->id).contains<prunable_data_type::none>());
 
    // prune the cfd for the block
    std::vector<transaction_id_type> ids{cfd_trace->id};
@@ -89,10 +123,8 @@ BOOST_AUTO_TEST_CASE(test_trace_converter) {
    state_history::trace_converter::prune_traces(rw_strm, cfd_entry.size(), ids);
    BOOST_CHECK(ids.size() == 0);
 
-   // read the pruned trace and make sure the signature/cfd are empty
-   auto pruned_partial = get_partial_from_traces_bin(cfd_entry, cfd_trace->id);
-   BOOST_CHECK(pruned_partial.context_free_data.size() == 0);
-   BOOST_CHECK(pruned_partial.signatures.size() == 0);
+   // read the pruned trace and make sure it's pruned
+   BOOST_CHECK(get_prunable_data_from_traces_bin(cfd_entry, cfd_trace->id).contains<prunable_data_type::none>());
 }
 
 BOOST_AUTO_TEST_CASE(test_trace_log) {
@@ -117,9 +149,7 @@ BOOST_AUTO_TEST_CASE(test_trace_log) {
    auto traces = log.get_traces(cfd_trace->block_num);
    BOOST_REQUIRE(traces.size());
 
-   auto partial = get_partial_from_traces(traces, cfd_trace->id);
-   BOOST_REQUIRE(partial.context_free_data.size());
-   BOOST_REQUIRE(partial.signatures.size());
+   BOOST_REQUIRE(!get_prunable_data_from_traces(traces, cfd_trace->id).contains<prunable_data_type::none>());
 
    std::vector<transaction_id_type> ids{cfd_trace->id};
    log.prune_transactions(cfd_trace->block_num, ids);
@@ -131,9 +161,7 @@ BOOST_AUTO_TEST_CASE(test_trace_log) {
    auto                     pruned_traces = new_log.get_traces(cfd_trace->block_num);
    BOOST_REQUIRE(pruned_traces.size());
 
-   auto pruned_partial = get_partial_from_traces(pruned_traces, cfd_trace->id);
-   BOOST_CHECK(pruned_partial.context_free_data.empty());
-   BOOST_CHECK(pruned_partial.signatures.empty());
+   BOOST_CHECK(get_prunable_data_from_traces(pruned_traces, cfd_trace->id).contains<prunable_data_type::none>());
 }
 
 BOOST_AUTO_TEST_CASE(test_get_blocks_result_v1_abi) {
@@ -181,9 +209,12 @@ BOOST_AUTO_TEST_CASE(test_get_blocks_result_v1_abi) {
 
    for (auto& [key, value] : history) {
       fc::datastream<const char*> strm(value.data(), value.size());
-      BOOST_CHECK_NO_THROW(
-          auto r = serializer.binary_to_variant(
-              "result", strm, abi_serializer::create_yield_function(chain.abi_serializer_max_time)));
+      state_result_des    result;
+      fc::raw::unpack(strm, result);
+
+      // auto r = serializer.binary_to_variant("result", strm,
+      //                                       abi_serializer::create_yield_function(chain.abi_serializer_max_time));
+      break;
    }
 }
 
