@@ -19,48 +19,6 @@ using prunable_data_type = eosio::chain::packed_transaction::prunable_data_type;
 namespace bio = boost::iostreams;
 extern const char* const state_history_plugin_abi;
 
-namespace eosio {
-namespace state_history {
-struct get_blocks_result_v1_des {
-   block_position                                                  head;
-   block_position                                                  last_irreversible;
-   fc::optional<block_position>                                    this_block;
-   fc::optional<block_position>                                    prev_block;
-   fc::optional<fc::static_variant<signed_block_v0, signed_block>> block;
-   std::vector<transaction_trace>                                  traces;
-   fc::optional<bytes>                                             deltas;
-};
-
-using state_result_des = fc::static_variant<get_status_result_v0, get_blocks_result_v0, get_blocks_result_v1_des>;
-
-} // namespace state_history
-} // namespace eosio
-
-namespace fc {
-   template <typename ST>
-ST& operator>>(ST& ds, eosio::state_history::get_blocks_result_v0& obj) {
-   return ds;
-}
-
-template <typename ST>
-ST& operator>>(ST& ds, eosio::state_history::get_blocks_result_v1_des& obj) {
-   fc::raw::unpack(ds, obj.head);
-   fc::raw::unpack(ds, obj.last_irreversible);
-   fc::raw::unpack(ds, obj.this_block);
-   fc::raw::unpack(ds, obj.prev_block);
-   fc::raw::unpack(ds, obj.block);
-   fc::raw::unpack(ds, obj.traces);
-   uint32_t len;
-   fc::raw::unpack(ds, len);
-   if (len > 0) {
-      bytes content(len);
-      ds.read(content.data(), len);
-      obj.deltas = std::move(content);
-   }
-   return ds;
-}
-}
-
 prunable_data_type::prunable_data_t get_prunable_data_from_traces(std::vector<state_history::transaction_trace>& traces,
                                                                   const transaction_id_type&                     id) {
    auto cfd_trace_itr = std::find_if(traces.begin(), traces.end(), [id](const state_history::transaction_trace& v) {
@@ -209,12 +167,9 @@ BOOST_AUTO_TEST_CASE(test_get_blocks_result_v1_abi) {
 
    for (auto& [key, value] : history) {
       fc::datastream<const char*> strm(value.data(), value.size());
-      state_result_des    result;
-      fc::raw::unpack(strm, result);
-
-      // auto r = serializer.binary_to_variant("result", strm,
-      //                                       abi_serializer::create_yield_function(chain.abi_serializer_max_time));
-      break;
+      serializer.binary_to_variant("result", strm,
+                                   abi_serializer::create_yield_function(chain.abi_serializer_max_time));
+      BOOST_CHECK(value.size() == strm.tellp());
    }
 }
 

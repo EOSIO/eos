@@ -57,7 +57,7 @@ extern const char* const state_history_plugin_abi = R"({
                 { "name": "prev_block", "type": "block_position?" },
                 { "name": "block", "type": "signed_block?" },
                 { "name": "traces", "type": "transaction_trace[]" },
-                { "name": "deltas", "type": "bytes?" }
+                { "name": "deltas", "type": "bytes" }
             ]
         },
         {
@@ -241,6 +241,7 @@ extern const char* const state_history_plugin_abi = R"({
         },
         {
             "name": "signed_block_v1", "base": "signed_block_header", "fields": [
+                { "name": "prune_state", "type": "uint8" },
                 { "name": "transactions", "type": "transaction_receipt_v1[]" },
                 { "name": "block_extensions", "type": "extension[]" }
             ]

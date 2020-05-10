@@ -61,9 +61,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       if (chain_state_log && block_num >= chain_state_log->begin_block() && block_num < chain_state_log->end_block())
          return chain_state_log->get_block_id(block_num);
       try {
-         auto block = chain_plug->chain().fetch_block_by_number(block_num);
-         if (block)
-            return block->calculate_id();
+         return chain_plug->chain().get_block_id_for_num(block_num);
       } catch (...) {
       }
       return {};

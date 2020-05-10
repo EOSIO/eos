@@ -251,16 +251,6 @@ state_history_traces_log::state_history_traces_log(fc::path state_history_dir)
     : state_history_log("trace_history", (state_history_dir / "trace_history.log").string(),
                         (state_history_dir / "trace_history.index").string()) {}
 
-fc::optional<chain::bytes> state_history_traces_log::get_log_entry(block_num_type block_num) {
-   if (block_num < begin_block() || block_num >= end_block())
-      return {};
-   state_history_log_header header;
-   get_entry_header(block_num, header);
-   std::vector<state_history::transaction_trace> traces;
-   state_history::trace_converter::unpack(log, traces);
-   return fc::raw::pack(traces);
-}
-
 std::vector<state_history::transaction_trace> state_history_traces_log::get_traces(block_num_type block_num) {
    if (block_num < begin_block() || block_num >= end_block())
       return {};
@@ -300,7 +290,7 @@ state_history_chain_state_log::state_history_chain_state_log(fc::path state_hist
     : state_history_log("chain_state_history", (state_history_dir / "chain_state_history.log").string(),
                         (state_history_dir / "chain_state_history.index").string()) {}
 
-fc::optional<chain::bytes> state_history_chain_state_log::get_log_entry(block_num_type block_num) {
+chain::bytes state_history_chain_state_log::get_log_entry(block_num_type block_num) {
    if (block_num < begin_block() || block_num >= end_block())
       return {};
    state_history_log_header header;

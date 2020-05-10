@@ -702,7 +702,7 @@ ST& operator<<(ST& ds, const eosio::state_history::get_blocks_result_v1& obj) {
    fc::raw::pack(ds, obj.prev_block);
    fc::raw::pack(ds, obj.block);
    fc::raw::pack(ds, obj.traces);
-   history_pack_big_bytes(ds, obj.deltas);
+   fc::raw::pack(ds, obj.deltas);
    return ds;
 }
 

@@ -122,7 +122,6 @@ class state_history_traces_log : public state_history_log {
       cache.add_transaction(trace, transaction);
    }
 
-   fc::optional<chain::bytes> get_log_entry(block_num_type block_num);
    std::vector<state_history::transaction_trace> get_traces(block_num_type block_num);
 
    void store(const chainbase::database& db, const chain::block_state_ptr& block_state);
@@ -137,7 +136,7 @@ class state_history_chain_state_log : public state_history_log {
  public:
    state_history_chain_state_log(fc::path state_history_dir);
 
-   fc::optional<chain::bytes> get_log_entry(block_num_type block_num);
+   chain::bytes get_log_entry(block_num_type block_num);
 
    void store(const chainbase::database& db, const chain::block_state_ptr& block_state);
 };
