@@ -550,9 +550,9 @@ const std::vector<char>& query_send_transaction(wasm_ql::thread_state&   thread_
    }
    if (params.compression != "0" && params.compression != "none")
       throw std::runtime_error("Compression must be 0 or none"); // todo
-   ship_protocol::packed_transaction trx{ std::move(params.signatures), 0, params.packed_context_free_data.data,
-                                          params.packed_trx.data };
-   rocksdb::ManagedSnapshot          snapshot{ thread_state.shared->db->rdb.get() };
+   ship_protocol::packed_transaction_v0 trx{ std::move(params.signatures), 0, params.packed_context_free_data.data,
+                                             params.packed_trx.data };
+   rocksdb::ManagedSnapshot snapshot{ thread_state.shared->db->rdb.get() };
 
    std::vector<std::vector<char>> memory;
    send_transaction_results       results;
@@ -568,7 +568,7 @@ const std::vector<char>& query_send_transaction(wasm_ql::thread_state&   thread_
 
 transaction_trace_v0 query_send_transaction(wasm_ql::thread_state&                   thread_state,       //
                                             const std::vector<char>&                 contract_kv_prefix, //
-                                            const ship_protocol::packed_transaction& trx,                //
+                                            const ship_protocol::packed_transaction_v0& trx,             //
                                             const rocksdb::Snapshot*                 snapshot,           //
                                             std::vector<std::vector<char>>&          memory,             //
                                             bool                                     return_trace_on_except) {
