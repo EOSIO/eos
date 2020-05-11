@@ -17,7 +17,6 @@ using namespace std::literals;
 
 struct streamer_plugin_impl {
    std::vector<std::unique_ptr<stream_handler>> streams;
-   boost::asio::io_service                      service{ 1 };
 };
 
 static abstract_plugin& _streamer_plugin = app().register_plugin<streamer_plugin>();
