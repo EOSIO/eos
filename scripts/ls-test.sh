@@ -32,8 +32,10 @@ export PYTHONIOENCODING=UTF-8
 echo "PYTHONIOENCODING is $PYTHONIOENCODING"
 # run tests
 set +e # defer ctest error handling to end
-echo "$ ctest -j $JOBS -L ls_tests --output-on-failure -T Test"
-ctest -j $JOBS -L ls_tests --output-on-failure -T Test
+#echo "$ ctest -j $JOBS -L ls_tests --output-on-failure -T Test"
+#ctest -j $JOBS -L ls_tests --output-on-failure -T Test
+echo "$ ctest -j 1 -L ls_tests --output-on-failure -T Test"
+ctest -j 1 -L ls_tests --output-on-failure -T Test
 EXIT_STATUS=$?
 echo "killing launcher-service"
 pkill -9 launcher-service
