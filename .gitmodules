@@ -24,4 +24,4 @@
 	url = https://github.com/Tencent/rapidjson/
 [submodule "libraries/amqp-cpp"]
 	path = libraries/amqp-cpp
-	url = git@github.com:CopernicaMarketingSoftware/AMQP-CPP
+	url = https://github.com/CopernicaMarketingSoftware/AMQP-CPP
