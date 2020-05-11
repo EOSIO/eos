@@ -314,11 +314,11 @@ eosio::chain_apis::read_only::get_info_results get_info() {
 }
 
 string generate_nonce_string() {
-   return fc::to_string(fc::clock::now().time_since_epoch().count());
+   return fc::to_string(fc::now<fc::microseconds>().time_since_epoch().count());
 }
 
 chain::action generate_nonce_action() {
-   return chain::action( {}, config::null_account_name, name("nonce"), fc::raw::pack(fc::clock::now().time_since_epoch().count()));
+   return chain::action( {}, config::null_account_name, name("nonce"), fc::raw::pack(fc::now<fc::microseconds>().time_since_epoch().count()));
 }
 
 //resolver for ABI serializer to decode actions in proposed transaction in multisig contract
@@ -470,28 +470,6 @@ void print_action( const fc::variant& at ) {
       }
    }
 }
-
-//resolver for ABI serializer to decode actions in proposed transaction in multisig contract
-auto abi_serializer_resolver = [](const name& account) -> fc::optional<abi_serializer> {
-   static unordered_map<account_name, fc::optional<abi_serializer> > abi_cache;
-   auto it = abi_cache.find( account );
-   if ( it == abi_cache.end() ) {
-      auto result = call(get_abi_func, fc::mutable_variant_object("account_name", account));
-      auto abi_results = result.as<eosio::chain_apis::read_only::get_abi_results>();
-
-      fc::optional<abi_serializer> abis;
-      if( abi_results.abi.valid() ) {
-         abis.emplace( *abi_results.abi, abi_serializer::create_yield_function( abi_serializer_max_time ) );
-      } else {
-         std::cerr << "ABI for contract " << account.to_string() << " not found. Action data will be shown in hex only." << std::endl;
-      }
-      abi_cache.emplace( account, abis );
-
-      return abis;
-   }
-
-   return it->second;
-};
 
 bytes variant_to_bin( const account_name& account, const action_name& action, const fc::variant& action_args_var ) {
    auto abis = abi_serializer_resolver( account );
@@ -2376,8 +2354,7 @@ void get_account( const string& accountName, const string& coresym, bool json_fo
 
       if( res.refund_request.is_object() ) {
          auto obj = res.refund_request.get_object();
-	 fc::time_point_sec  request_time;
-	 fc::from_iso_string( obj["request_time"].as_string(), request_time );
+	      auto request_time = fc::from_iso_string<fc::time_point_sec>( obj["request_time"].as_string() );
          fc::time_point refund_time = request_time + fc::days(3);
          auto now = res.head_block_time;
          asset net = asset::from_string( obj["net_amount"].as_string() );
@@ -2657,7 +2634,7 @@ int main( int argc, char** argv ) {
    // get account
    string accountName;
    string coresym;
-   bool print_json = false;
+   bool print_json;
    auto getAccount = get->add_subcommand("account", localized("Retrieve an account from the blockchain"), false);
    getAccount->add_option("name", accountName, localized("The name of the account to retrieve"))->required();
    getAccount->add_option("core-symbol", coresym, localized("The expected core symbol of the chain you are querying"));
@@ -3558,7 +3535,7 @@ int main( int argc, char** argv ) {
          // unable to convert so try via abi
          signed_transaction trx;
          abi_serializer::from_variant( trx_var, trx, abi_serializer_resolver, abi_serializer::create_yield_function( abi_serializer_max_time ) );
-         std::cout << fc::json::to_pretty_string( push_transaction( trx )) << std::endl;
+         std::cout << fc::json::to_pretty_string( push_transaction( trx, signing_keys_opt.get_keys() )) << std::endl;
       }
    });
 

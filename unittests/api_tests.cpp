@@ -957,7 +957,7 @@ void call_test(TESTER& test, T ac, uint32_t billed_cpu_time_us , uint32_t max_cp
    auto sigs = trx.sign(test.get_private_key(N(testapi), "active"), test.control->get_chain_id());
    flat_set<public_key_type> keys;
    trx.get_signature_keys(test.control->get_chain_id(), fc::time_point::max(), keys);
-   auto res = test.push_transaction( trx, fc::clock::now() + fc::milliseconds(max_cpu_usage_ms), billed_cpu_time_us );
+   auto res = test.push_transaction( trx, fc::now<fc::microseconds>() + fc::milliseconds(max_cpu_usage_ms), billed_cpu_time_us );
    BOOST_CHECK_EQUAL(res->receipt->status, transaction_receipt::executed);
    test.produce_block();
 };
@@ -1241,7 +1241,8 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
       transaction_trace_ptr trace;
       auto c = control->applied_transaction.connect([&](std::tuple<const transaction_trace_ptr&, const signed_transaction&> x) {
          auto& t = std::get<0>(x);
-         if (t->scheduled) { trace = t; }
+         if (t->scheduled) {
+             trace = t; }
       } );
       CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_transaction", {} );
       BOOST_CHECK(!trace);

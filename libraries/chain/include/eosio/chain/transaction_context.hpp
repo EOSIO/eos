@@ -57,7 +57,7 @@ namespace eosio { namespace chain {
                               const signed_transaction& t,
                               const transaction_id_type& trx_id,
                               transaction_checktime_timer&& timer,
-                              fc::time_point start = fc::clock::now() );
+                              fc::time_point start = fc::now<fc::microseconds>() );
 
          void init_for_implicit_trx( uint64_t initial_net_usage = 0 );
 

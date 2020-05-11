@@ -345,7 +345,7 @@ if( options.count(op_name) ) { \
 fc::time_point calculate_genesis_timestamp( string tstr ) {
    fc::time_point genesis_timestamp;
    if( strcasecmp (tstr.c_str(), "now") == 0 ) {
-      genesis_timestamp = fc::clock::now();
+      genesis_timestamp = fc::now<fc::microseconds>();
    } else {
       fc::from_iso_string( tstr, genesis_timestamp );
    }
@@ -1267,7 +1267,7 @@ bool chain_plugin::recover_reversible_blocks( const fc::path& db_dir, uint32_t c
    }
    fc::path backup_dir;
 
-   auto now = fc::to_iso_string( fc::clock::now() );
+   auto now = fc::to_iso_string( fc::now<fc::microseconds>() );
 
    if( new_db_dir ) {
       backup_dir = reversible_dir;
@@ -1568,11 +1568,11 @@ read_only::get_activated_protocol_features( const read_only::get_activated_proto
       auto& activation_ordinal_value   = mvo["activation_ordinal"];
       auto& activation_block_num_value = mvo["activation_block_num"];
 
-      auto cur_time = fc::clock::now();
+      auto cur_time = fc::now<fc::microseconds>();
       auto end_time = cur_time + fc::microseconds(1000 * 10); /// 10ms max time
       for( unsigned int count = 0;
            cur_time <= end_time && count < params.limit && itr != end_itr;
-           ++itr, cur_time = fc::clock::now() )
+           ++itr, cur_time = fc::now<fc::microseconds>() )
       {
          const auto& conv_itr = convert_iterator( itr );
          activation_ordinal_value   = conv_itr.activation_ordinal();
@@ -1841,9 +1841,9 @@ read_only::get_table_by_scope_result read_only::get_table_by_scope( const read_o
       return result;
 
    auto walk_table_range = [&]( auto itr, auto end_itr ) {
-      auto cur_time = fc::clock::now();
+      auto cur_time = fc::now<fc::microseconds>();
       auto end_time = cur_time + fc::microseconds(1000 * 10); /// 10ms max time
-      for( unsigned int count = 0; cur_time <= end_time && count < p.limit && itr != end_itr; ++itr, cur_time = fc::clock::now() ) {
+      for( unsigned int count = 0; cur_time <= end_time && count < p.limit && itr != end_itr; ++itr, cur_time = fc::now<fc::microseconds>() ) {
          if( p.table && itr->table != p.table ) continue;
 
          result.rows.push_back( {itr->code, itr->scope, itr->table, itr->payer, itr->count} );
@@ -1955,7 +1955,7 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
    const auto& secondary_index_by_secondary = secondary_index.get<by_secondary>();
 
    read_only::get_producers_result result;
-   const auto stopTime = fc::clock::now() + fc::microseconds(1000 * 10); // 10ms
+   const auto stopTime = fc::now<fc::microseconds>() + fc::microseconds(1000 * 10); // 10ms
    vector<char> data;
 
    auto it = [&]{
@@ -1969,7 +1969,7 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
    }();
 
    for( ; it != secondary_index_by_secondary.end() && it->t_id == secondary_table_id->id; ++it ) {
-      if (result.rows.size() >= p.limit || fc::clock::now() > stopTime) {
+      if (result.rows.size() >= p.limit || fc::now<fc::microseconds>() > stopTime) {
          result.more = name{it->primary_key}.to_string();
          break;
       }
@@ -2075,8 +2075,8 @@ read_only::get_scheduled_transactions( const read_only::get_scheduled_transactio
    auto resolver = make_resolver(this, abi_serializer::create_yield_function( abi_serializer_max_time ));
 
    uint32_t remaining = p.limit;
-   auto time_limit = fc::clock::now() + fc::microseconds(1000 * 10); /// 10ms max time
-   while (itr != idx_by_delay.end() && remaining > 0 && time_limit > fc::clock::now()) {
+   auto time_limit = fc::now<fc::microseconds>() + fc::microseconds(1000 * 10); /// 10ms max time
+   while (itr != idx_by_delay.end() && remaining > 0 && time_limit > fc::now<fc::microseconds>()) {
       auto row = fc::mutable_variant_object()
               ("trx_id", itr->trx_id)
               ("sender", itr->sender)
@@ -2463,7 +2463,6 @@ read_only::get_account_results read_only::get_account( const get_account_params&
    result.created          = accnt_obj.creation_date;
 
    uint32_t greylist_limit = db.is_resource_greylisted(result.account_name) ? 1 : config::maximum_elastic_resource_multiplier;
-<<<<<<< HEAD
    const block_timestamp_type current_usage_time (db.head_block_time());
    result.net_limit.set( rm.get_account_net_limit_ex( result.account_name, greylist_limit, current_usage_time).first );
    if ( result.net_limit.last_usage_update_time.valid() && (result.net_limit.last_usage_update_time->slot == 0) ) {   // account has no action yet
@@ -2473,10 +2472,6 @@ read_only::get_account_results read_only::get_account( const get_account_params&
    if ( result.cpu_limit.last_usage_update_time.valid() && (result.cpu_limit.last_usage_update_time->slot == 0) ) {   // account has no action yet
       result.cpu_limit.last_usage_update_time = accnt_obj.creation_date;
    }
-=======
-   result.net_limit = rm.get_account_net_limit_ex( result.account_name, greylist_limit).first;
-   result.cpu_limit = rm.get_account_cpu_limit_ex( result.account_name, greylist_limit).first;
->>>>>>> de78b49b5765c88f4e005046d1489c3905985b94
    result.ram_usage = rm.get_account_ram_usage( result.account_name );
 
    const auto& permissions = d.get_index<permission_index,by_owner>();

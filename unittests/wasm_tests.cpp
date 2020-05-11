@@ -1048,7 +1048,7 @@ BOOST_FIXTURE_TEST_CASE(eosio_abi, TESTER) try {
    // see abi_serializer::to_abi()
    abi_serializer::to_variant(*result, pretty_output, get_resolver(), abi_serializer::create_yield_function( abi_serializer_max_time ));
 
-   BOOST_TEST(fc::json::to_string(pretty_output, fc::clock::now() + abi_serializer_max_time).find("newaccount") != std::string::npos);
+   BOOST_TEST(fc::json::to_string(pretty_output, fc::now<fc::microseconds>() + abi_serializer_max_time).find("newaccount") != std::string::npos);
 
    produce_block();
 } FC_LOG_AND_RETHROW()
@@ -1692,11 +1692,11 @@ BOOST_FIXTURE_TEST_CASE( fuzz, TESTER ) try {
    /*  TODO: update wasm to have apply(...) then call, claim is that this
     *  takes 1.6 seconds under wavm...
    {
-      auto start = fc::clock::now();
+      auto start = fc::now<fc::microseconds>();
       vector<uint8_t> wasm(gfuzz13Data, gfuzz13Data + gfuzz13Size);
       set_code(N(fuzzy), wasm);
       BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), fc::exception);
-      auto end = fc::clock::now();
+      auto end = fc::now<fc::microseconds>();
       edump((end-start));
    }
    */

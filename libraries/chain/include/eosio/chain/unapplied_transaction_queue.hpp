@@ -118,7 +118,7 @@ public:
          if( itr->expiry > pending_block_time ) {
             break;
          }
-         if( deadline <= fc::clock::now() ) {
+         if( deadline <= fc::now<fc::microseconds>() ) {
             return false;
          }
          callback( itr->id(), itr->trx_type );

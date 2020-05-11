@@ -349,7 +349,7 @@ namespace eosio { namespace chain {
       round_up_net_usage(); // Round up to nearest multiple of word size (8 bytes).
       check_net_usage();    // Check that NET usage satisfies limits (even when explicit_net_usage is true).
 
-      auto now = fc::clock::now();
+      auto now = fc::now<fc::microseconds>();
       trace->elapsed = now - start;
 
       update_billed_cpu_time( now );
@@ -390,7 +390,7 @@ namespace eosio { namespace chain {
       if(BOOST_LIKELY(transaction_timer.expired == false))
          return;
 
-      auto now = fc::clock::now();
+      auto now = fc::now<fc::microseconds>();
       if( explicit_billed_cpu_time || deadline_exception_code == deadline_exception::code_value ) {
          EOS_THROW( deadline_exception, "deadline exceeded ${billing_timer}us",
                      ("billing_timer", now - pseudo_start)("now", now)("deadline", _deadline)("start", start) );
@@ -420,7 +420,7 @@ namespace eosio { namespace chain {
    void transaction_context::pause_billing_timer() {
       if( explicit_billed_cpu_time || pseudo_start == fc::time_point() ) return; // either irrelevant or already paused
 
-      auto now = fc::clock::now();
+      auto now = fc::now<fc::microseconds>();
       billed_time = now - pseudo_start;
       deadline_exception_code = deadline_exception::code_value; // Other timeout exceptions cannot be thrown while billable timer is paused.
       pseudo_start = fc::time_point();
@@ -430,7 +430,7 @@ namespace eosio { namespace chain {
    void transaction_context::resume_billing_timer() {
       if( explicit_billed_cpu_time || pseudo_start != fc::time_point() ) return; // either irrelevant or already running
 
-      auto now = fc::clock::now();
+      auto now = fc::now<fc::microseconds>();
       pseudo_start = now - billed_time;
       if( (pseudo_start + billing_timer_duration_limit) <= deadline ) {
          _deadline = pseudo_start + billing_timer_duration_limit;
@@ -506,7 +506,9 @@ namespace eosio { namespace chain {
       if( explicit_billed_cpu_time ) return static_cast<uint32_t>(billed_cpu_time_us);
 
       const auto& cfg = control.get_global_properties().configuration;
-      billed_cpu_time_us = std::max( (now - pseudo_start).count(), static_cast<int64_t>(cfg.min_transaction_cpu_usage) );
+      billed_cpu_time_us =
+         std::max( static_cast<decltype(billed_cpu_time_us)>( (now - pseudo_start).count() ),
+                   static_cast<decltype(billed_cpu_time_us)>( cfg.min_transaction_cpu_usage) );
 
       return static_cast<uint32_t>(billed_cpu_time_us);
    }

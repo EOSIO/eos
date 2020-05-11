@@ -411,7 +411,7 @@ namespace eosio {
         auto start_itr = idx.lower_bound( boost::make_tuple( n, start ) );
         auto end_itr = idx.upper_bound( boost::make_tuple( n, end) );
 
-        auto start_time = fc::clock::now();
+        auto start_time = fc::now<fc::microseconds>();
         auto end_time = start_time;
 
         get_actions_result result;
@@ -428,7 +428,7 @@ namespace eosio {
                                  chain.to_variant_with_abi(t, abi_serializer::create_yield_function( abi_serializer_max_time ))
                                  });
 
-           end_time = fc::clock::now();
+           end_time = fc::now<fc::microseconds>();
            if( end_time - start_time > fc::microseconds(100000) ) {
               result.time_limit_exceeded_error = true;
               break;

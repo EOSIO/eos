@@ -222,7 +222,7 @@ struct trace_api_rpc_plugin_impl : public std::enable_shared_from_this<trace_api
    }
 
    fc::time_point calc_deadline( const fc::microseconds& max_serialization_time ) {
-      fc::time_point deadline = fc::clock::now();
+      fc::time_point deadline = fc::now<fc::microseconds>();
       if( max_serialization_time > fc::microseconds::max() - deadline.time_since_epoch() ) {
          deadline = fc::time_point::max();
       } else {

@@ -270,7 +270,7 @@ namespace eosio {
          template<class T>
          static void handle_exception(detail::connection_ptr<T> con) {
             string err = "Internal Service error, http: ";
-            const auto deadline = fc::clock::now() + fc::exception::format_time_limit;
+            const auto deadline = fc::now<fc::microseconds>() + fc::exception::format_time_limit;
             try {
                con->set_status( websocketpp::http::status_code::internal_server_error );
                try {
@@ -516,7 +516,7 @@ namespace eosio {
                // post  back to an HTTP thread to to allow the response handler to be called from any thread
                boost::asio::post( thread_pool->get_executor(), [this, con, code, tracked_response=std::move(tracked_response)]() {
                   try {
-                     std::string json = fc::json::to_string( *tracked_response, fc::clock::now() + max_response_time );
+                     std::string json = fc::json::to_string( *tracked_response, fc::now<fc::microseconds>() + max_response_time );
                      auto tracked_json = make_in_flight(std::move(json), *this);
                      con->set_body( std::move( *tracked_json ) );
                      con->set_status( websocketpp::http::status_code::value( code ) );
@@ -568,7 +568,7 @@ namespace eosio {
                   fc_dlog( logger, "404 - not found: ${ep}", ("ep", resource) );
                   error_results results{websocketpp::http::status_code::not_found,
                                         "Not Found", error_results::error_info(fc::exception( FC_LOG_MESSAGE( error, "Unknown Endpoint" )), verbose_http_errors )};
-                  con->set_body( fc::json::to_string( results, fc::clock::now() + max_response_time ));
+                  con->set_body( fc::json::to_string( results, fc::now<fc::microseconds>() + max_response_time ));
                   con->set_status( websocketpp::http::status_code::not_found );
                   con->send_http_response();
                }

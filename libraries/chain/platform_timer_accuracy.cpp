@@ -38,7 +38,7 @@ void compute_and_print_timer_accuracy(platform_timer& timer) {
 
       for(unsigned int i = 0; i < loops; ++i) {
          auto start = std::chrono::high_resolution_clock::now();
-         timer.start(fc::time_point(fc::clock::now().time_since_epoch() + fc::microseconds(interval)));
+         timer.start(fc::time_point(fc::now<fc::microseconds>().time_since_epoch() + fc::microseconds(interval)));
          while(!timer.expired) {}
          auto end = std::chrono::high_resolution_clock::now();
          int timer_slop = std::chrono::duration_cast<std::chrono::microseconds>(end-start).count() - interval;

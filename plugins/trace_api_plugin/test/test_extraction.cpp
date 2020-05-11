@@ -5,9 +5,13 @@
 #include <eosio/chain/contract_types.hpp>
 #include <eosio/chain/trace.hpp>
 #include <eosio/chain/transaction.hpp>
+#include <eosio/chain/block.hpp>
+#include <eosio/chain/block_state.hpp>
 
 #include <eosio/trace_api/test_common.hpp>
 #include <eosio/trace_api/chain_extraction.hpp>
+
+#include <fc/bitutil.hpp>
 
 using namespace eosio;
 using namespace eosio::trace_api;
@@ -48,6 +52,15 @@ namespace {
       return result;
    }
 
+   auto get_private_key( name keyname, std::string role = "owner" ) {
+      auto secret = fc::sha256::hash( keyname.to_string() + role );
+      return chain::private_key_type::regenerate<fc::ecc::private_key_shim>( secret );
+   }
+
+   auto get_public_key( name keyname, std::string role = "owner" ) {
+      return get_private_key( keyname, role ).get_public_key();
+   }
+
    auto make_transfer_action( chain::name from, chain::name to, chain::asset quantity, std::string memo ) {
       return chain::action( std::vector<chain::permission_level> {{from, chain::config::active_name}},
                             "eosio.token"_n, "transfer"_n, make_transfer_data( from, to, quantity, std::move(memo) ) );
@@ -79,6 +92,60 @@ namespace {
       result.receiver = receiver;
       result.act = std::move(act);
       return result;
+   }
+
+   auto make_block_state( chain::block_id_type previous, uint32_t height, uint32_t slot, chain::name producer,
+                          std::vector<chain::packed_transaction> trxs ) {
+      chain::signed_block_ptr block = std::make_shared<chain::signed_block>();
+      for( auto& trx : trxs ) {
+         block->transactions.emplace_back( trx );
+      }
+      block->producer = producer;
+      block->timestamp = chain::block_timestamp_type(slot);
+      // make sure previous contains correct block # so block_header::block_num() returns correct value
+      if( previous == chain::block_id_type() ) {
+         previous._hash[0] &= 0xffffffff00000000;
+         previous._hash[0] += fc::endian_reverse_u32(height - 1);
+      }
+      block->previous = previous;
+
+      auto priv_key = get_private_key( block->producer, "active" );
+      auto pub_key = get_public_key( block->producer, "active" );
+
+      auto prev = std::make_shared<chain::block_state>();
+      auto header_bmroot = digest_type::hash( std::make_pair( block->digest(), prev->blockroot_merkle.get_root()));
+      auto sig_digest = digest_type::hash( std::make_pair( header_bmroot, prev->pending_schedule.schedule_hash ));
+      block->producer_signature = priv_key.sign( sig_digest );
+
+      std::vector<chain::private_key_type> signing_keys;
+      signing_keys.emplace_back( std::move( priv_key ));
+      auto signer = [&]( digest_type d ) {
+         std::vector<chain::signature_type> result;
+         result.reserve( signing_keys.size());
+         for( const auto& k: signing_keys )
+            result.emplace_back( k.sign( d ));
+         return result;
+      };
+      chain::pending_block_header_state pbhs;
+      pbhs.producer = block->producer;
+      pbhs.timestamp = block->timestamp;
+      chain::producer_authority_schedule schedule = {0, {chain::producer_authority{block->producer,
+                                                                     chain::block_signing_authority_v0{1, {{pub_key, 1}}}}}};
+      pbhs.active_schedule = schedule;
+      pbhs.valid_block_signing_authority = chain::block_signing_authority_v0{1, {{pub_key, 1}}};
+      auto bsp = std::make_shared<chain::block_state>(
+            std::move( pbhs ),
+            std::move( block ),
+            eosio::chain::deque<chain::transaction_metadata_ptr>(),
+            chain::protocol_feature_set(),
+            []( chain::block_timestamp_type timestamp,
+                const fc::flat_set<digest_type>& cur_features,
+                const std::vector<digest_type>& new_features ) {},
+            signer
+      );
+      bsp->block_num = height;
+
+      return bsp;
    }
 
 }
@@ -146,12 +213,12 @@ BOOST_AUTO_TEST_SUITE(block_extraction)
             make_transaction_trace( ptrx1.id(), 1, 1, chain::transaction_receipt_header::executed,
                   { actt1, actt2, actt3 } ),
             ptrx1.get_signed_transaction() );
-      
+
       // accept the block with one transaction
       auto bsp1 = make_block_state( chain::block_id_type(), 1, 1, "bp.one"_n,
             { chain::packed_transaction(ptrx1) } );
       signal_accepted_block( bsp1 );
-      
+
       const uint32_t expected_lib = 0;
       const block_trace_v0 expected_trace { bsp1->id, 1, bsp1->prev(), chain::block_timestamp_type(1), "bp.one"_n,
          {
