@@ -46,9 +46,7 @@ set_property(GLOBAL PROPERTY CTEST_CUSTOM_TESTS_IGNORE
 
 add_subdirectory( rodeos )
 
-message(STATUS "Starting AMQP-CPP configuration...")
 find_package(OpenSSL REQUIRED)
-set(AMQP-CPP_LINUX_TCP ON)
+option(AMQP-CPP_LINUX_TCP CACHE ON)
 add_subdirectory( amqp-cpp EXCLUDE_FROM_ALL )
 target_include_directories(amqpcpp PRIVATE "${OPENSSL_INCLUDE_DIR}")
-message(STATUS "AMQP-CPP configuration complete")
