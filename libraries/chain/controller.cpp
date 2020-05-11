@@ -481,7 +481,11 @@ struct controller_impl {
       auto blog_head_time = blog_head->timestamp.to_time_point();
       replay_head_time = blog_head_time;
       auto start_block_num = head->block_num + 1;
+<<<<<<< HEAD
       auto start = fc::now();
+=======
+      auto start = fc::clock::now();
+>>>>>>> 8d4aa1bbba113355a3be2f715942a6639403f599
 
       std::exception_ptr except_ptr;
 
@@ -533,7 +537,11 @@ struct controller_impl {
          ilog( "${n} reversible blocks replayed", ("n",rev) );
       }
 
+<<<<<<< HEAD
       auto end = fc::now();
+=======
+      auto end = fc::clock::now();
+>>>>>>> 8d4aa1bbba113355a3be2f715942a6639403f599
       ilog( "replayed ${n} blocks in ${duration} seconds, ${mspb} ms/block",
             ("n", head->block_num + 1 - start_block_num)("duration", (end-start).count()/1000000)
             ("mspb", ((end-start).count()/1000.0)/(head->block_num-start_block_num)) );
@@ -1203,7 +1211,11 @@ struct controller_impl {
       } catch( const protocol_feature_bad_block_exception& ) {
          throw;
       } catch( const fc::exception& e ) {
+<<<<<<< HEAD
          cpu_time_to_bill_us = trx_context.update_billed_cpu_time( fc::now() );
+=======
+         cpu_time_to_bill_us = trx_context.update_billed_cpu_time( fc::clock::now() );
+>>>>>>> 8d4aa1bbba113355a3be2f715942a6639403f599
          trace->error_code = controller::convert_exception_to_error_code( e );
          trace->except = e;
          trace->except_ptr = std::current_exception();
@@ -1359,11 +1371,19 @@ struct controller_impl {
       } catch( const protocol_feature_bad_block_exception& ) {
          throw;
       } catch( const fc::exception& e ) {
+<<<<<<< HEAD
          cpu_time_to_bill_us = trx_context.update_billed_cpu_time( fc::now() );
          trace->error_code = controller::convert_exception_to_error_code( e );
          trace->except = e;
          trace->except_ptr = std::current_exception();
          trace->elapsed = fc::now() - trx_context.start;
+=======
+         cpu_time_to_bill_us = trx_context.update_billed_cpu_time( fc::clock::now() );
+         trace->error_code = controller::convert_exception_to_error_code( e );
+         trace->except = e;
+         trace->except_ptr = std::current_exception();
+         trace->elapsed = fc::clock::now() - trx_context.start;
+>>>>>>> 8d4aa1bbba113355a3be2f715942a6639403f599
 
          if (auto dm_logger = get_deep_mind_logger()) {
             fc_dlog(*dm_logger, "DTRX_OP FAILED ${action_id}",
@@ -1390,7 +1410,11 @@ struct controller_impl {
             undo_session.squash();
             return trace;
          }
+<<<<<<< HEAD
          trace->elapsed = fc::now() - trx_context.start;
+=======
+         trace->elapsed = fc::clock::now() - trx_context.start;
+>>>>>>> 8d4aa1bbba113355a3be2f715942a6639403f599
       }
 
       // Only subjective OR hard failure logic below:
@@ -1474,7 +1498,11 @@ struct controller_impl {
 
       transaction_trace_ptr trace;
       try {
+<<<<<<< HEAD
          auto start = fc::now();
+=======
+         auto start = fc::clock::now();
+>>>>>>> 8d4aa1bbba113355a3be2f715942a6639403f599
          const bool check_auth = !self.skip_auth_check() && !trx->implicit;
          const fc::microseconds sig_cpu_usage = trx->signature_cpu_usage();
 

@@ -520,7 +520,7 @@ namespace eosio { namespace chain {
       EOS_ASSERT( fc::is_directory(data_dir) && fc::is_regular_file(data_dir / "blocks.log"), block_log_not_found,
                  "Block log not found in '${blocks_dir}'", ("blocks_dir", data_dir)          );
 
-      auto now = fc::now<fc::microseconds>();
+      auto now = fc::now();
 
       auto blocks_dir = fc::canonical( data_dir );
       if( blocks_dir.filename().generic_string() == "." ) {
@@ -823,7 +823,7 @@ namespace eosio { namespace chain {
          _current_position_in_file = block_log::npos;
          return _current_position_in_file;
       }
-	 
+
       if (_start_of_buffer_position > _current_position_in_file) {
          update_buffer();
       }

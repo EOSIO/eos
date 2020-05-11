@@ -304,7 +304,7 @@ BOOST_AUTO_TEST_CASE( unapplied_transaction_queue_test ) try {
    q.add_aborted( { trx20, trx22 } );
    q.add_persisted( trx21 );
    q.add_persisted( trx23 );
-   q.clear_expired( fc::now<fc::microseconds>(), fc::now<fc::microseconds>() + fc::seconds( 300 ), [](auto, auto){} );
+   q.clear_expired( fc::now(), fc::now() + 300s, [](auto, auto){} );
    BOOST_CHECK( q.size() == 2 );
    BOOST_REQUIRE( next( q ) == trx23 );
    BOOST_REQUIRE( next( q ) == trx22 );

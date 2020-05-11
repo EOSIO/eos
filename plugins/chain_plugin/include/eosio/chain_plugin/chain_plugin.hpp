@@ -490,10 +490,10 @@ public:
             return result;
 
          auto walk_table_row_range = [&]( auto itr, auto end_itr ) {
-            auto cur_time = fc::now<fc::microseconds>();
-            auto end_time = cur_time + fc::microseconds(1000 * 10); /// 10ms max time
+            auto cur_time = fc::now();
+            auto end_time = cur_time + 10ms; /// 10ms max time
             vector<char> data;
-            for( unsigned int count = 0; cur_time <= end_time && count < p.limit && itr != end_itr; ++itr, cur_time = fc::now<fc::microseconds>() ) {
+            for( unsigned int count = 0; cur_time <= end_time && count < p.limit && itr != end_itr; ++itr, cur_time = fc::clock::now() ) {
                const auto* itr2 = d.find<chain::key_value_object, chain::by_scope_primary>( boost::make_tuple(t_id->id, itr->primary_key) );
                if( itr2 == nullptr ) continue;
                copy_inline_row(*itr2, data);
@@ -569,10 +569,10 @@ public:
             return result;
 
          auto walk_table_row_range = [&]( auto itr, auto end_itr ) {
-            auto cur_time = fc::now<fc::microseconds>();
+            auto cur_time = fc::now();
             auto end_time = cur_time + fc::microseconds(1000 * 10); /// 10ms max time
             vector<char> data;
-            for( unsigned int count = 0; cur_time <= end_time && count < p.limit && itr != end_itr; ++count, ++itr, cur_time = fc::now<fc::microseconds>() ) {
+            for( unsigned int count = 0; cur_time <= end_time && count < p.limit && itr != end_itr; ++count, ++itr, cur_time = fc::now() ) {
                copy_inline_row(*itr, data);
 
                fc::variant data_var;
@@ -667,7 +667,7 @@ public:
             // which is the format used by secondary index
             uint8_t buffer[32];
             memcpy(buffer, v.data(), 32);
-            fixed_bytes<32> fb(buffer); 
+            fixed_bytes<32> fb(buffer);
             return chain::key256_t(fb.get_array());
         };
      }
@@ -685,7 +685,7 @@ public:
             // which is the format used by secondary index
             uint8_t buffer[20];
             memcpy(buffer, v.data(), 20);
-            fixed_bytes<20> fb(buffer); 
+            fixed_bytes<20> fb(buffer);
             return chain::key256_t(fb.get_array());
         };
      }

@@ -957,7 +957,7 @@ void call_test(TESTER& test, T ac, uint32_t billed_cpu_time_us , uint32_t max_cp
    auto sigs = trx.sign(test.get_private_key(N(testapi), "active"), test.control->get_chain_id());
    flat_set<public_key_type> keys;
    trx.get_signature_keys(test.control->get_chain_id(), fc::time_point::max(), keys);
-   auto res = test.push_transaction( trx, fc::now<fc::microseconds>() + fc::milliseconds(max_cpu_usage_ms), billed_cpu_time_us );
+   auto res = test.push_transaction( trx, fc::now() + fc::milliseconds(max_cpu_usage_ms), billed_cpu_time_us );
    BOOST_CHECK_EQUAL(res->receipt->status, transaction_receipt::executed);
    test.produce_block();
 };
