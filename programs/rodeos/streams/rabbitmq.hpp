@@ -20,9 +20,9 @@ class rabbitmq : public stream_handler {
 
  public:
    rabbitmq(boost::asio::io_service& io_service, std::vector<eosio::name> routes, std::string address, std::string name)
-       : name_(name), routes_(routes) {
+       : name_(std::move(name)), routes_(std::move(routes)) {
       AMQP::Address amqp_address(address);
-      ilog("Connecting to RabbitMQ address ${a} - Queue: ${q}...", ("a", std::string(amqp_address))("q", name));
+      ilog("Connecting to RabbitMQ address ${a} - Queue: ${q}...", ("a", std::string(amqp_address))("q", name_));
 
       handler_    = std::make_shared<rabbitmq_handler>(io_service);
       connection_ = std::make_shared<AMQP::TcpConnection>(handler_.get(), amqp_address);
@@ -30,9 +30,9 @@ class rabbitmq : public stream_handler {
       declare_queue();
    }
 
-   std::vector<eosio::name>& get_routes() { return routes_; }
+   const std::vector<eosio::name>& get_routes() const override { return routes_; }
 
-   void publish(const char* data, uint64_t data_size) { channel_->publish("", name_, data, data_size, 0); }
+   void publish(const char* data, uint64_t data_size) override { channel_->publish("", name_, data, data_size, 0); }
 
  private:
    void declare_queue() {
@@ -49,7 +49,7 @@ class rabbitmq : public stream_handler {
 
 class rabbitmq_handler : public AMQP::LibBoostAsioHandler {
  public:
-   rabbitmq_handler(boost::asio::io_service& io_service) : AMQP::LibBoostAsioHandler(io_service) {}
+   explicit rabbitmq_handler(boost::asio::io_service& io_service) : AMQP::LibBoostAsioHandler(io_service) {}
 
    void onError(AMQP::TcpConnection* connection, const char* message) {
       throw std::runtime_error("rabbitmq connection failed: " + std::string(message));
@@ -59,7 +59,7 @@ class rabbitmq_handler : public AMQP::LibBoostAsioHandler {
 inline void initialize_rabbits(boost::asio::io_service&                      io_service,
                                std::vector<std::unique_ptr<stream_handler>>& streams,
                                const std::vector<std::string>&               rabbits) {
-   for (auto rabbit : rabbits) {
+   for (std::string rabbit : rabbits) {
       rabbit            = rabbit.substr(7, rabbit.length());
       size_t pos        = rabbit.find("/");
       size_t pos_router = rabbit.find_last_of("/");
@@ -78,8 +78,8 @@ inline void initialize_rabbits(boost::asio::io_service&                      io_
       }
 
       std::string address = "amqp://" + rabbit;
-      rabbitmq rmq{ io_service, routings, address, queue_name };
-      streams.emplace_back(std::make_unique<rabbitmq>(rmq));
+      rabbitmq rmq{ io_service, std::move(routings), std::move(address), std::move(queue_name) };
+      streams.emplace_back(std::make_unique<rabbitmq>(std::move(rmq)));
    }
 }
 

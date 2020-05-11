@@ -39,7 +39,7 @@ struct cloner_plugin_impl : std::enable_shared_from_this<cloner_plugin_impl> {
    std::shared_ptr<cloner_config>                                           config = std::make_shared<cloner_config>();
    std::shared_ptr<cloner_session>                                          session;
    boost::asio::deadline_timer                                              timer;
-   std::optional<std::function<void(const char* data, uint64_t data_size)>> streamer = {};
+   std::function<void(const char* data, uint64_t data_size)>                streamer = {};
 
    cloner_plugin_impl() : timer(app().get_io_service()) {}
 
@@ -161,7 +161,7 @@ struct cloner_session : ship_client::connection_callbacks, std::enable_shared_fr
       if (filter) {
          filter->process(*rodeos_snapshot, result, bin, [&](const char* data, uint64_t data_size) {
             if (my->streamer) {
-               (*my->streamer)(data, data_size);
+               my->streamer(data, data_size);
             }
          });
       }
