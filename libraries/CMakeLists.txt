@@ -45,3 +45,8 @@ set_property(GLOBAL PROPERTY CTEST_CUSTOM_TESTS_IGNORE
   attest pbkdf2 parsing ${_CTEST_CUSTOM_TESTS_IGNORE}")
 
 add_subdirectory( rodeos )
+
+find_package(OpenSSL REQUIRED)
+option(AMQP-CPP_LINUX_TCP CACHE ON)
+add_subdirectory( amqp-cpp EXCLUDE_FROM_ALL )
+target_include_directories(amqpcpp PRIVATE "${OPENSSL_INCLUDE_DIR}")
