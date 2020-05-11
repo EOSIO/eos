@@ -1,3 +1,4 @@
+file(GLOB HEADERS *.hpp streams/*.hpp)
 add_executable( ${RODEOS_EXECUTABLE_NAME}
   cloner_plugin.cpp
   streamer_plugin.cpp
@@ -5,6 +6,7 @@ add_executable( ${RODEOS_EXECUTABLE_NAME}
   rocksdb_plugin.cpp
   wasm_ql_http.cpp
   wasm_ql_plugin.cpp
+  ${HEADERS}
 )
 
 if( UNIX AND NOT APPLE )
