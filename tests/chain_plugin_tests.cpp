@@ -1,5 +1,6 @@
 #include <boost/test/unit_test.hpp>
 #include <boost/algorithm/string/predicate.hpp>
+#include <boost/process.hpp>
 
 #include <eosio/testing/tester.hpp>
 #include <eosio/chain/abi_serializer.hpp>
@@ -31,6 +32,17 @@ using namespace eosio;
 using namespace eosio::chain;
 using namespace eosio::testing;
 using namespace fc;
+
+namespace {
+   std::string get_command_result_str(const std::string& system_cmd)
+   {
+      boost::process::ipstream out;
+      boost::process::system(system_cmd, boost::process::std_out > out);
+      std::string out_str;
+      out >> out_str;
+      return out_str;
+   }
+}
 
 BOOST_AUTO_TEST_SUITE(chain_plugin_tests)
 
@@ -115,6 +127,17 @@ BOOST_FIXTURE_TEST_CASE( get_block_with_invalid_abi, TESTER ) try {
    BOOST_TEST(block_str2.find("condition") == std::string::npos); // decode failed
    BOOST_TEST(block_str2.find("Should Not Assert!") == std::string::npos); // decode failed
    BOOST_TEST(block_str2.find("011253686f756c64204e6f742041737365727421") != std::string::npos); //action data
+
+} FC_LOG_AND_RETHROW() /// get_block_with_invalid_abi
+
+BOOST_FIXTURE_TEST_CASE( chain_api_test, TESTER ) try {
+   produce_blocks(2);
+
+   create_accounts( {N(asserter)} );
+   produce_block();
+   string get_info_test_cmd_ret = get_command_result_str("curl http://127.0.0.1:8888/v1/chain/get_info");
+   auto get_info_variant = fc::json::from_string(get_info_test_cmd_ret);
+   BOOST_REQUIRE(get_info_variant["server_version_string"].as<string>().at(0) == 'v');
 
 } FC_LOG_AND_RETHROW() /// get_block_with_invalid_abi
 

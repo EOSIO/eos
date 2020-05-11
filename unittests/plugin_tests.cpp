@@ -20,7 +20,9 @@ auto call_parse_params_params_required(const string& body)
 }
 
 BOOST_AUTO_TEST_SUITE(plugin_tests)
+
 BOOST_AUTO_TEST_CASE( parse_params ) try {
+   // rest of api testings are carried out by system testing
    // empty with no_params_required
    {
       const std::string empty_str;
@@ -58,50 +60,6 @@ BOOST_AUTO_TEST_CASE( parse_params ) try {
          BOOST_REQUIRE(ret == exp_result);
       );
    }
-} FC_LOG_AND_RETHROW()
-
-BOOST_AUTO_TEST_CASE( chain_api_plugin ) try {
-   eosio::chain_api_plugin  chain_api;
-   chain_api.plugin_startup();
-   auto& http = app().get_plugin<http_plugin>();
-//   auto& chainPlugin = app().get_plugin<chain_plugin>();
-   auto apis_result = http.get_supported_apis();
-   std::cout << "Api size: " << apis_result.apis.size() << std::endl;
-   for(auto& api : apis_result.apis) {
-      std::cout << " [" << api << "] \n";
-   }
-   std::cout << std::endl;
-   eosio::url_response_callback cb_200 = [](const int ret_code, const fc::variant& result) {
-      std::cout << "-------hello-----" << std::endl;
-      std::cout << "return code: " << ret_code
-                << ", result: " << fc::json::to_pretty_string<fc::variant>(result) << std::endl;
-      BOOST_REQUIRE(ret_code == 200);
-   };
-   eosio::url_response_callback cb_202 = [](const int ret_code, const fc::variant& result) {
-      std::cout << "return code: " << ret_code
-                << ", result: " << fc::json::to_pretty_string<fc::variant>(result) << std::endl;
-      BOOST_REQUIRE(ret_code == 202);
-   };
-   eosio::url_response_callback cb_400 = [](const int ret_code, const fc::variant& result) {
-      std::cout << "return code: " << ret_code
-                << ", result: " << fc::json::to_pretty_string<fc::variant>(result) << std::endl;
-      BOOST_REQUIRE(ret_code == 400);
-   };
-   eosio::url_response_callback cb_500 = [](const int ret_code, const fc::variant& result) {
-      std::cout << "return code: " << ret_code
-                << ", result: " << fc::json::to_pretty_string<fc::variant>(result) << std::endl;
-      BOOST_REQUIRE(ret_code == 500);
-   };
-   const string empty_str;
-   // get_info
-   {
-      const string url = "/v1/chain/get_info";
-      BOOST_REQUIRE(empty_str.empty());
-      BOOST_REQUIRE_NO_THROW(
-         http.test_url_handler(url, empty_str, cb_200);
-      );
-   }
-   chain_api.plugin_shutdown();
 } FC_LOG_AND_RETHROW()
 
 BOOST_AUTO_TEST_SUITE_END()
