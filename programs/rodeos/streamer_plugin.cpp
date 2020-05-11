@@ -17,7 +17,7 @@ using namespace std::literals;
 
 struct streamer_plugin_impl {
    std::vector<std::unique_ptr<stream_handler>> streams;
-   boost::asio::io_service                      service(1);
+   boost::asio::io_service                      service{ 1 };
 };
 
 static abstract_plugin& _streamer_plugin = app().register_plugin<streamer_plugin>();
@@ -29,7 +29,7 @@ streamer_plugin::~streamer_plugin() {}
 void streamer_plugin::set_program_options(options_description& cli, options_description& cfg) {
    auto op = cfg.add_options();
    op("stream-rabbits", bpo::value<std::vector<string>>()->composing(),
-      "RabbitMQ Streams if any; Format: USER:PASSWORD@ADDRESS:PORT/QUEUE[/ROUTING_KEYS, ...]");
+      "RabbitMQ Streams if any; Format: amqp://USER:PASSWORD@ADDRESS:PORT/QUEUE[/ROUTING_KEYS, ...]");
    op("stream-loggers", bpo::value<std::vector<string>>()->composing(),
       "Logger Streams if any; Format: [routing_keys, ...]");
 }
@@ -43,7 +43,7 @@ void streamer_plugin::plugin_initialize(const variables_map& options) {
 
       if (options.count("stream-rabbits")) {
          auto rabbits = options.at("stream-rabbits").as<std::vector<std::string>>();
-         initialize_rabbits(my->streams, rabbits);
+         initialize_rabbits(app().get_io_service(), my->streams, rabbits);
       }
 
       ilog("initialized streams: ${streams}", ("streams", my->streams.size()));
@@ -55,9 +55,6 @@ void streamer_plugin::plugin_startup() {
    cloner_plugin* cloner = app().find_plugin<cloner_plugin>();
    if (cloner) {
       cloner->set_streamer([this](const char* data, uint64_t data_size) { stream_data(data, data_size); });
-      ilog("starting streamer event loop...");
-      my->service->run();
-      ilog("ending streamer event loop...");
    }
 }
 
