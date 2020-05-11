@@ -8,6 +8,8 @@
 #include <contracts.hpp>
 #include <eosio/state_history/log.hpp>
 #include <eosio/testing/tester.hpp>
+#include <eosio/stream.hpp>
+#include <eosio/ship_protocol.hpp>
 #include <fc/io/json.hpp>
 
 #include "test_cfd_transaction.hpp"
@@ -21,28 +23,6 @@ using namespace testing;
 using namespace chain;
 
 BOOST_AUTO_TEST_SUITE(test_state_history)
-
-std::pair<std::string, std::string> get_owner_and_name_from_permission_stream(chain::bytes &bytes)
-{
-   fc::datastream<const char *> ds(bytes.data(), bytes.size());
-   unsigned_int size;
-   fc::raw::unpack(ds, size);
-   uint64_t owner;
-   fc::raw::unpack(ds, owner);
-   uint64_t name;
-   fc::raw::unpack(ds, name);
-   return std::make_pair(chain::name(owner).to_string(), chain::name(name).to_string());
-}
-
-std::string get_name_from_account_datastream(chain::bytes &bytes)
-{
-   fc::datastream<const char *> ds(bytes.data(), bytes.size());
-   unsigned_int size;
-   fc::raw::unpack(ds, size);
-   uint64_t account_name;
-   fc::raw::unpack( ds, account_name );
-   return chain::name(account_name).to_string();
-}
 
 BOOST_AUTO_TEST_CASE(test_deltas_account)
 {
@@ -63,7 +43,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_account)
    auto it_permission = std::find_if(v.begin(), v.end(), find_by_name);
    BOOST_REQUIRE(it_permission==v.end());
 
-   chain.create_account(N(newacc));
+   chain.create_account(eosio::chain::string_to_name("newacc"));
 
    v = eosio::state_history::create_deltas(chain.control->db(), false);
 
@@ -72,8 +52,9 @@ BOOST_AUTO_TEST_CASE(test_deltas_account)
    it_account = std::find_if(v.begin(), v.end(), find_by_name);
    BOOST_REQUIRE(it_account!=v.end());
    BOOST_REQUIRE_EQUAL(it_account->rows.obj.size(), 1);
-   BOOST_REQUIRE_EQUAL(get_name_from_account_datastream(
-                     it_account->rows.obj[0].second), "newacc");
+   eosio::input_stream s{ it_account->rows.obj[0].second.data(), it_account->rows.obj[0].second.size() };
+   auto account = std::get<0>(eosio::from_bin<eosio::ship_protocol::account>(s));
+   BOOST_REQUIRE_EQUAL(account.name.to_string(),"newacc");
 
    // Check that the permissions of this new account are in the delta
    name="permission";
@@ -81,20 +62,24 @@ BOOST_AUTO_TEST_CASE(test_deltas_account)
    BOOST_REQUIRE(it_permission!=v.end());
    BOOST_REQUIRE_EQUAL(it_permission->rows.obj.size(), 2);
    BOOST_REQUIRE_EQUAL(it_permission->rows.obj[0].first, true);
-   BOOST_REQUIRE(get_owner_and_name_from_permission_stream(
-                     it_permission->rows.obj[0].second)==std::make_pair(std::string("newacc"), std::string("owner")));
-   BOOST_REQUIRE_EQUAL(it_permission->rows.obj[1].first, true);
-   BOOST_REQUIRE(get_owner_and_name_from_permission_stream(
-                     it_permission->rows.obj[1].second)==std::make_pair(std::string("newacc"), std::string("active")));
+
+   std::vector<std::string> expected_permission_names{"owner","active"};
+   for(int i=0;i<it_permission->rows.obj.size();i++)
+   {
+      eosio::input_stream ps{ it_permission->rows.obj[i].second.data(), it_permission->rows.obj[i].second.size() };
+      auto permission = std::get<0>(eosio::from_bin<eosio::ship_protocol::permission>(ps));
+      BOOST_REQUIRE_EQUAL(it_permission->rows.obj[i].first, true);
+      BOOST_REQUIRE(permission.owner.to_string()=="newacc" && permission.name.to_string()==expected_permission_names[i]);
+   }
 
    auto& authorization_manager = chain.control->get_authorization_manager();
-   const permission_object* ptr = authorization_manager.find_permission({N(newacc), N(active)});
+   const permission_object* ptr = authorization_manager.find_permission({eosio::chain::string_to_name("newacc"), eosio::chain::string_to_name("active")});
    BOOST_REQUIRE(ptr!=nullptr);
 
    // Create new permission
-   chain.set_authority(N(newacc), N(mypermission), ptr->auth,  N(active));
+   chain.set_authority(eosio::chain::string_to_name("newacc"), eosio::chain::string_to_name("mypermission"), ptr->auth,  eosio::chain::string_to_name("active"));
 
-   const permission_object* ptr_sub = authorization_manager.find_permission({N(newacc), N(mypermission)});
+   const permission_object* ptr_sub = authorization_manager.find_permission({eosio::chain::string_to_name("newacc"), eosio::chain::string_to_name("mypermission")});
    BOOST_REQUIRE(ptr_sub!=nullptr);
 
    // Verify that the new permission is present in the state delta
@@ -102,38 +87,43 @@ BOOST_AUTO_TEST_CASE(test_deltas_account)
    it_permission = std::find_if(v.begin(), v.end(), find_by_name);
    BOOST_REQUIRE(it_permission!=v.end());
    BOOST_REQUIRE_EQUAL(it_permission->rows.obj.size(), 3);
-   BOOST_REQUIRE(get_owner_and_name_from_permission_stream(
-                     it_permission->rows.obj[0].second)==std::make_pair(std::string("newacc"), std::string("owner")));
-   BOOST_REQUIRE(get_owner_and_name_from_permission_stream(
-                     it_permission->rows.obj[1].second)==std::make_pair(std::string("newacc"), std::string("active")));
-   BOOST_REQUIRE_EQUAL(it_permission->rows.obj[2].first, true);
-   BOOST_REQUIRE(
-       get_owner_and_name_from_permission_stream(
-           it_permission->rows.obj[2].second)==std::make_pair(std::string("newacc"), std::string("mypermission")));
+
+   expected_permission_names.push_back("mypermission");
+   for(int i=0;i<it_permission->rows.obj.size();i++)
+   {
+     eosio::input_stream ps{ it_permission->rows.obj[i].second.data(), it_permission->rows.obj[i].second.size() };
+     auto permission = std::get<0>(eosio::from_bin<eosio::ship_protocol::permission>(ps));
+     BOOST_REQUIRE_EQUAL(it_permission->rows.obj[i].first, true);
+     BOOST_REQUIRE(permission.owner.to_string()=="newacc" && permission.name.to_string()==expected_permission_names[i]);
+   }
 
    chain.produce_blocks(1);
 
    // Modify the permission authority
    auto empty_authority = authority(1, {}, {});
-   chain.set_authority(N(newacc), N(mypermission), ptr->auth,  N(active));
+   chain.set_authority(eosio::chain::string_to_name("newacc"), eosio::chain::string_to_name("mypermission"), ptr->auth,  eosio::chain::string_to_name("active"));
    v = eosio::state_history::create_deltas(chain.control->db(), false);
    it_permission = std::find_if(v.begin(), v.end(), find_by_name);
    BOOST_REQUIRE(it_permission!=v.end());
    BOOST_REQUIRE_EQUAL(it_permission->rows.obj.size(), 1);
    BOOST_REQUIRE_EQUAL(it_permission->rows.obj[0].first, true);
-   BOOST_REQUIRE(
-       get_owner_and_name_from_permission_stream(
-           it_permission->rows.obj[0].second)==std::make_pair(std::string("newacc"), std::string("mypermission")));
+   {
+      eosio::input_stream ps{ it_permission->rows.obj[0].second.data(), it_permission->rows.obj[0].second.size() };
+      auto permission = std::get<0>(eosio::from_bin<eosio::ship_protocol::permission>(ps));
+      BOOST_REQUIRE(permission.owner.to_string()=="newacc" && permission.name.to_string()=="mypermission");
+   }
 
    // Delete the permission
-   chain.delete_authority(N(newacc),N(mypermission));
+   chain.delete_authority(eosio::chain::string_to_name("newacc"),eosio::chain::string_to_name("mypermission"));
    v = eosio::state_history::create_deltas(chain.control->db(), false);
    it_permission = std::find_if(v.begin(), v.end(), find_by_name);
    BOOST_REQUIRE_EQUAL(it_permission->rows.obj.size(), 1);
    BOOST_REQUIRE_EQUAL(it_permission->rows.obj[0].first, false);
-   BOOST_REQUIRE(
-       get_owner_and_name_from_permission_stream(
-           it_permission->rows.obj[0].second)==std::make_pair(std::string("newacc"), std::string("mypermission")));
+   {
+      eosio::input_stream ps{ it_permission->rows.obj[0].second.data(), it_permission->rows.obj[0].second.size() };
+      auto permission = std::get<0>(eosio::from_bin<eosio::ship_protocol::permission>(ps));
+      BOOST_REQUIRE(permission.owner.to_string()=="newacc" && permission.name.to_string()=="mypermission");
+   }
 }
 
 BOOST_AUTO_TEST_CASE(test_traces_present)
@@ -153,7 +143,7 @@ BOOST_AUTO_TEST_CASE(test_traces_present)
          std::cout<<"block accepted "<<std::endl;
    });
 
-   chain.create_account(N(newacc));
+   chain.create_account(eosio::chain::string_to_name("newacc"));
 
    //chain.produce_blocks();
 }
