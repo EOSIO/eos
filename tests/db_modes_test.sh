@@ -1,11 +1,11 @@
-#!/usr/bin/env bash
+#!/usr/bin/env bash -x -v
 
 # This test is intended to verify that switching between DB modes "just works". Addtionally
 # it tries to make sure the dirty bit behaves as expected even in heap mode.
 
 set -euo pipefail
 
-VERBOSE=0
+VERBOSE=1
 TEST_LOCKED_MODE=0
 
 while getopts ":lv" opt; do
