@@ -1,6 +1,14 @@
 <!-- PLEASE FILL OUT THE FOLLOWING MARKDOWN TEMPLATE -->
 <!-- PR title alone should be sufficient to understand changes. -->
 
+## Change Type
+- [ ] Documentation
+- [ ] Stability bug fix
+- [ ] Other
+- [ ] Other - special case
+<!-- Other - special case is for when a change warrants additional explanation or description in the relase notes. -->
+
+
 ## Change Description
 <!-- Describe your changes, their justification, AND their impact. Reference issues or pull requests where possible (use '#XX' or 'GH-XX' where XX is the issue or pull request number). -->
 
