@@ -221,6 +221,8 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
 #endif
    wasm_runtime_opt += ")\n" + wasm_runtime_desc;
 
+   std::string default_wasm_runtime_str= eosio::chain::wasm_interface::vm_type_string(eosio::chain::config::default_wasm_runtime);
+
    cfg.add_options()
          ("blocks-dir", bpo::value<bfs::path>()->default_value("blocks"),
           "the location of the blocks directory (absolute path or relative to application data dir)")
@@ -235,7 +237,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
                EOS_ASSERT(false, plugin_exception, "");
             }
 #endif
-         })->default_value(eosio::chain::wasm_interface::vm_type::eos_vm_jit, "eos-vm-jit"), wasm_runtime_opt.c_str()
+         })->default_value(eosio::chain::config::default_wasm_runtime, default_wasm_runtime_str), wasm_runtime_opt.c_str()
          )
          ("abi-serializer-max-time-ms", bpo::value<uint32_t>()->default_value(config::default_abi_serializer_max_time_us / 1000),
           "Override default maximum ABI serialization time allowed in ms")
