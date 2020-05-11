@@ -60,7 +60,6 @@ try:
         loadSystemContract=False,
         specificExtraNodeosArgs={
             0: "--plugin eosio::state_history_plugin --trace-history --disable-replay-opts --sync-fetch-span 200 --state-history-endpoint 127.0.0.1:8080 --plugin eosio::net_api_plugin --enable-stale-production",
-            1: "",
             2: "--validation-mode light "})
 
     producerNodeIndex = 0
@@ -100,7 +99,7 @@ try:
     cfTrxId = trans["transaction_id"]
 
     # Wait until the block where create account is executed to become irreversible 
-    Utils.waitForBool(lambda: producerNode.getIrreversibleBlockNum >= cfTrxBlockNum, timeout=30, sleepTime=0.1)
+    Utils.waitForBool(lambda: producerNode.getIrreversibleBlockNum() >= cfTrxBlockNum, timeout=30, sleepTime=0.1)
     
     Utils.Print("verify the account payloadless from producer node")
     cmd = "get account -j payloadless"
@@ -140,7 +139,7 @@ try:
     # check whether the transaction has been pruned based on the tag of prunable_data, if the tag is 1, then it's a prunable_data_t::none
     assert trans["trx"]["receipt"]["trx"][1]["prunable_data"]["prunable_data"][0] == 1, "the the transaction with context free data has not been pruned"
 
-    Utils.waitForBool(lambda: isBlockNumIrr(producerNode), timeout=30, sleepTime=0.1)
+    Utils.waitForBool(lambda: producerNode.getIrreversibleBlockNum() >= cfTrxBlockNum, timeout=30, sleepTime=0.1)
     assert producerNode.waitForHeadToAdvance(), "the producer node stops producing"
 
     # kill the producer with un-pruned cfd
@@ -158,10 +157,10 @@ try:
     #
     # Check lightValidationNode keeping sync while the full fullValidationNode stop syncing after the cfd block
     #
-    Utils.waitForBool(lambda: lightValidationNode.getIrreversibleBlockNum >= cfTrxBlockNum, timeout=30, sleepTime=0.1)
+    Utils.waitForBool(lambda: lightValidationNode.getIrreversibleBlockNum() >= cfTrxBlockNum, timeout=30, sleepTime=0.1)
     assert lightValidationNode.waitForHeadToAdvance(), "the light validation node stops syncing"
 
-    Utils.waitForBool(lambda: fullValidationNode.getIrreversibleBlockNum >= cfTrxBlockNum-1, timeout=30, sleepTime=0.1)
+    Utils.waitForBool(lambda: fullValidationNode.getIrreversibleBlockNum() >= cfTrxBlockNum-1, timeout=30, sleepTime=0.1)
     assert not fullValidationNode.waitForHeadToAdvance(), "the full validation node is still syncing"
     
     testSuccessful = True
