@@ -222,6 +222,8 @@ configure_file(${CMAKE_SOURCE_DIR}/libraries/rocksdb/LICENSE.Apache
                ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE.rocksdb COPYONLY)
 configure_file(${CMAKE_SOURCE_DIR}/libraries/rocksdb/LICENSE.leveldb
                ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE.leveldb COPYONLY)
+configure_file(${CMAKE_SOURCE_DIR}/libraries/amqp-cpp/LICENSE
+               ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE.amqpcpp COPYONLY)
 
 install(FILES LICENSE DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ COMPONENT base)
 install(FILES libraries/softfloat/COPYING.txt DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ RENAME LICENSE.softfloat COMPONENT base)
