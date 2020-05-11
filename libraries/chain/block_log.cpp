@@ -1645,11 +1645,10 @@ namespace eosio { namespace chain {
       uint32_t num_indexes_to_append = num_blocks - num_indexes_existing;
 
       // Create a temporary file to store missing indexes
-      auto now = fc::time_point::now();
-      fc::path temp_file_name = index_file_name.generic_string().append("-").append( now );
+      fc::temp_file temp_file_name; // This will automatically create a temporary file in the system temporary directory and remove it after it goes out of scope
 
       // Construct missing indexes
-      detail::index_writer index(temp_file_name, num_indexes_to_append);
+      detail::index_writer index(temp_file_name.path(), num_indexes_to_append);
       uint64_t position;
       auto i = 0;
       while (i < num_indexes_to_append && (position = block_log_iter.previous()) != block_log::npos) {
@@ -1658,15 +1657,15 @@ namespace eosio { namespace chain {
       }
       index.complete();
 
-      // Append missing index file to original index file
-      std::ofstream index_stream;
-      index_stream.open(index_file_name.generic_string().c_str(), LOG_WRITE);
-      std::ifstream temp_stream;
-      temp_stream.open(temp_file_name.generic_string().c_str(), LOG_READ);
-
+      // Open original index file for appending
+      std::ofstream index_stream(index_file_name.generic_string().c_str(), LOG_WRITE);
       EOS_ASSERT(index_stream.is_open(), block_log_exception, "index_file not open");
+
+      // Open missing index file for reading
+      std::ifstream temp_stream(temp_file_name.path().generic_string().c_str(), LOG_READ);;
       EOS_ASSERT(temp_stream.is_open(), block_log_exception, "temp_stream not open");
 
+      // Append missing index file to original index file
       index_stream.seekp(0, std::ios_base::end);
       index_stream << temp_stream.rdbuf();
 
@@ -1676,9 +1675,6 @@ namespace eosio { namespace chain {
       // Close original index file handle
       fclose(ind_in);
       ind_in = FC_FOPEN(index_file_name.generic_string().c_str(), "rb");
-
-      // Temp index file no longer needed
-      fc::remove(temp_file_name);
    }
 
    // Head block is corrupt. Find the last good block in block file,
@@ -1688,8 +1684,10 @@ namespace eosio { namespace chain {
       // Get length of blocks.index (gives number of blocks)
       const auto status = fseek(ind_in, 0, SEEK_END);
       EOS_ASSERT( status == 0, block_log_exception, "cannot seek to ${file} end", ("file", index_file_name.string()) );
-      const uint64_t file_end = ftell(ind_in);
-      auto num_blocks = file_end/sizeof(uint64_t);
+
+      const int64_t file_end = ftell(ind_in);
+      EOS_ASSERT( file_end >= 0, block_log_exception, "ftell failed for${file}", ("file", index_file_name.string()) );
+      auto num_blocks = file_end/sizeof(int64_t);
 
       uint64_t block_pos = 0;
       uint64_t block_number = 0;
@@ -1697,7 +1695,7 @@ namespace eosio { namespace chain {
 
       // Starting from last index in index file, look at its corresponding
       // block in log file.
-      for (auto  i = 1; i <= num_blocks; ++i) {
+      for (uint64_t  i = 1; i <= num_blocks; ++i) {
          // get the location storing the last block's index
          // please note the negative sign and multiplication by i
          auto status = fseek(ind_in, -sizeof(uint64_t) * i, SEEK_END);
@@ -1725,6 +1723,7 @@ namespace eosio { namespace chain {
       // The header portion of a block can be valid if only a few bytes
       // at the end of its body are corrupt. 
       // To err on the safe side, discard the first block of good header.
+      ilog("Trim to good block ${block_number}", ("block_number", block_number - 1));
       boost::filesystem::resize_file(block_file_name, block_pos);
       boost::filesystem::resize_file(index_file_name, sizeof(uint64_t) * (block_number - first_block)); // block_number - first_block is the number of blocks remaining
    }
