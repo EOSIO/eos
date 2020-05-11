@@ -17,6 +17,7 @@ using namespace std::literals;
 
 struct streamer_plugin_impl {
    std::vector<std::unique_ptr<stream_handler>> streams;
+   boost::asio::io_service                      service(1);
 };
 
 static abstract_plugin& _streamer_plugin = app().register_plugin<streamer_plugin>();
@@ -54,6 +55,9 @@ void streamer_plugin::plugin_startup() {
    cloner_plugin* cloner = app().find_plugin<cloner_plugin>();
    if (cloner) {
       cloner->set_streamer([this](const char* data, uint64_t data_size) { stream_data(data, data_size); });
+      ilog("starting streamer event loop...");
+      my->service->run();
+      ilog("ending streamer event loop...");
    }
 }
 
@@ -61,8 +65,8 @@ void streamer_plugin::plugin_shutdown() {}
 
 void streamer_plugin::stream_data(const char* data, uint64_t data_size) {
    eosio::input_stream bin(data, data_size);
-   stream_wrapper res = eosio::from_bin<stream_wrapper>(bin);
-   auto& sw = std::get<stream_wrapper_v0>(res);
+   stream_wrapper      res = eosio::from_bin<stream_wrapper>(bin);
+   auto&               sw  = std::get<stream_wrapper_v0>(res);
    publish_to_streams(sw);
 }
 
