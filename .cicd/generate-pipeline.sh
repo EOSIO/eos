@@ -526,7 +526,10 @@ EOF
     done
     IFS=$oIFS
     if [[ "$ROUND" != "$ROUNDS" ]]; then
-        echo '  - wait'
+cat <<EOF
+  - wait:
+    continue_on_failure: true
+EOF
         echo ''
     fi
 done
