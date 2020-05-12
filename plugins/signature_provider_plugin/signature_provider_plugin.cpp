@@ -65,9 +65,7 @@ signature_provider_plugin::~signature_provider_plugin(){}
 
 void signature_provider_plugin::set_program_options(options_description&, options_description& cfg) {
    cfg.add_options()
-         ("keosd-provider-timeout", boost::program_options::value<int32_t>()->default_value(5)->notifier([this](auto to){
-            my->_keosd_provider_timeout_us = fc::milliseconds(to);
-         }),
+         ("keosd-provider-timeout", boost::program_options::value<int32_t>()->default_value(5),
           "Limits the maximum time (in milliseconds) that is allowed for sending requests to a keosd provider for signing")
          ;
 }
@@ -85,6 +83,10 @@ const char* const signature_provider_plugin::signature_provider_help_text() cons
 #endif
           ;
 
+}
+
+void signature_provider_plugin::plugin_initialize(const variables_map& options) {
+   my->_keosd_provider_timeout_us = fc::milliseconds( options.at("keosd-provider-timeout").as<int32_t>() );
 }
 
 std::pair<chain::public_key_type,signature_provider_plugin::signature_provider_type>
