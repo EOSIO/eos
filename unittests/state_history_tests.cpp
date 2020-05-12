@@ -8,8 +8,11 @@
 
 #include "test_cfd_transaction.hpp"
 #include <boost/filesystem.hpp>
-#include <boost/iostreams/filter/zlib.hpp>
-#include <boost/iostreams/filtering_stream.hpp>
+
+#undef N
+
+#include <eosio/stream.hpp>
+#include <eosio/ship_protocol.hpp>
 
 using namespace eosio;
 using namespace testing;
@@ -50,7 +53,7 @@ BOOST_AUTO_TEST_CASE(test_trace_converter) {
    using namespace eosio::state_history;
 
    state_history::transaction_trace_cache cache;
-   std::map<uint32_t, bytes>              on_disk_log_entries;
+   std::map<uint32_t, chain::bytes>              on_disk_log_entries;
 
    chain.control->applied_transaction.connect(
        [&](std::tuple<const transaction_trace_ptr&, const packed_transaction_ptr&> t) {
@@ -122,13 +125,13 @@ BOOST_AUTO_TEST_CASE(test_trace_log) {
    BOOST_CHECK(get_prunable_data_from_traces(pruned_traces, cfd_trace->id).contains<prunable_data_type::none>());
 }
 
-BOOST_AUTO_TEST_CASE(test_get_blocks_result_v1_abi) {
+BOOST_AUTO_TEST_CASE(test_state_result_abi) {
    using namespace state_history;
 
    tester chain;
 
    transaction_trace_cache      trace_cache;
-   std::map<uint32_t, bytes>    history;
+   std::map<uint32_t, chain::bytes>    history;
    fc::optional<block_position> prev_block;
 
    chain.control->applied_transaction.connect(
@@ -170,7 +173,15 @@ BOOST_AUTO_TEST_CASE(test_get_blocks_result_v1_abi) {
       serializer.binary_to_variant("result", strm,
                                    abi_serializer::create_yield_function(chain.abi_serializer_max_time));
       BOOST_CHECK(value.size() == strm.tellp());
+
+      eosio::input_stream  bin{ value.data(), value.data() + value.size() };
+      eosio::ship_protocol::result result;
+      eosio::check_discard(from_bin(result, bin));
+
+      std::vector<eosio::ship_protocol::table_delta> deltas;
+      eosio::check_discard(from_bin(deltas, std::get<eosio::ship_protocol::get_blocks_result_v1>(result).deltas));
    }
 }
+
 
 BOOST_AUTO_TEST_SUITE_END()

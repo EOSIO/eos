@@ -64,7 +64,7 @@ struct rodeos_db_snapshot {
  private:
    void write_block_info(uint32_t block_num, const eosio::checksum256& id,
                          const eosio::ship_protocol::signed_block_header& block);
-   void write_deltas(uint32_t block_num, eosio::input_stream& bin, std::function<bool()> shutdown);
+   void write_deltas(uint32_t block_num, eosio::input_stream bin, std::function<bool()> shutdown);
    void write_fill_status();
 };
 

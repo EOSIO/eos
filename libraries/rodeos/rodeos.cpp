@@ -183,17 +183,13 @@ void rodeos_db_snapshot::write_block_info(const ship_protocol::get_blocks_result
       return;
 
    uint32_t            block_num = result.this_block->block_num;
-   eosio::input_stream bin       = *result.block;
-   signed_block_variant sb;
-   eosio::check_discard(from_bin(sb, bin));
 
-   const signed_block_header* block = std::get_if<signed_block_v0>(&sb);
-   if (!block)
-      block = &std::get<signed_block>(sb);
-   write_block_info(block_num, result.this_block->block_id, *block);
+   const signed_block_header& header =
+         std::visit([](const auto& blk) { return static_cast<const signed_block_header&>(blk); }, *result.block);
+   write_block_info(block_num, result.this_block->block_id, header);
 }
 
-void rodeos_db_snapshot::write_deltas(uint32_t block_num, eosio::input_stream& bin, std::function<bool()> shutdown) {
+void rodeos_db_snapshot::write_deltas(uint32_t block_num, eosio::input_stream bin, std::function<bool()> shutdown) {
    db_view_state view_state{ state_account, *db, *write_session, partition->contract_kv_prefix };
    view_state.kv_ram.enable_write           = true;
    view_state.kv_ram.bypass_receiver_check  = true;
@@ -238,13 +234,11 @@ void rodeos_db_snapshot::write_deltas(const ship_protocol::get_blocks_result_v0&
 void rodeos_db_snapshot::write_deltas(const ship_protocol::get_blocks_result_v1& result,
                                       std::function<bool()> shutdown) {
    check_write(result);
-   if (!result.deltas)
+   if (!result.deltas.remaining())
       return;
 
    uint32_t            block_num = result.this_block->block_num;
-   eosio::input_stream bin       = *result.deltas;
-
-   write_deltas(block_num, bin, shutdown);
+   write_deltas(block_num, result.deltas, shutdown);
 }
 
 std::once_flag registered_filter_callbacks;
