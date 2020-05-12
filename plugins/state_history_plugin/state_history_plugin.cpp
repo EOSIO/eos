@@ -73,9 +73,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          return;
       }
       if (p) {
-         auto v0 = p->to_signed_block_v0();
-         if (v0)
-            result = fc::raw::pack(*v0);
+         result = fc::raw::pack(*p);
       }
    }
 
