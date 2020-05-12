@@ -3,14 +3,24 @@ ENV VERSION 1
 # install dependencies.
 RUN apt-get update && \
     apt-get upgrade -y && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential git automake \
-    libbz2-dev libssl-dev doxygen graphviz libgmp3-dev autotools-dev \
-    python2.7 python2.7-dev python3 python3-dev autoconf libtool curl zlib1g-dev \
-    sudo ruby libusb-1.0-0-dev build-essential apt-transport-https vim-common jq
+    DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential git \
+    libbz2-dev doxygen graphviz \
+    python3 python3-dev libtool curl zlib1g-dev \
+    sudo ruby libusb-1.0-0-dev apt-transport-https vim-common jq
+#build openssl
+RUN pwd && curl -LO  https://www.openssl.org/source/openssl-1.1.1g.tar.gz && \
+    tar -xf openssl-1.1.1g.tar.gz && \
+    cd openssl-1.1.1g && \
+    ./Configure no-shared no-ssl3-method  linux-x86_64 && \
+    make depend && \
+    make -j$(nproc) && \
+    make install_sw && \
+    cd .. && \
+    rm -r openssl-1.1.1g*
 # build cmake
-RUN curl -LO https://github.com/Kitware/CMake/releases/download/v3.16.2/cmake-3.16.2.tar.gz && \
-    tar -xzf cmake-3.16.2.tar.gz && \
-    cd cmake-3.16.2 && \
+RUN curl -LO https://github.com/Kitware/CMake/releases/download/v3.17.2/cmake-3.17.2.tar.gz && \
+    tar -xzf cmake-3.17.2.tar.gz && \
+    cd cmake-3.17.2 && \
     ./bootstrap --prefix=/usr/local && \
     make -j$(nproc) && \
     make install && \
