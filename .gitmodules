@@ -19,3 +19,9 @@
 [submodule "libraries/amqp-cpp"]
 	path = libraries/amqp-cpp
 	url = https://github.com/CopernicaMarketingSoftware/AMQP-CPP
+[submodule "libraries/fc/upstream"]
+	path = libraries/fc/upstream
+	url = https://github.com/cryptonomex/secp256k1-zkp
+[submodule "libraries/fc/include/fc/crypto/rapidjson"]
+	path = libraries/fc/include/fc/crypto/rapidjson
+	url = https://github.com/Tencent/rapidjson
