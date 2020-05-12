@@ -252,11 +252,11 @@ BOOST_AUTO_TEST_SUITE(resource_limits_test)
       process_account_limit_updates();
 
       for (uint64_t idx = 0; idx < expected_iterations - 1; idx++) {
-         add_pending_ram_usage(account, increment, generic_ram_trace(0));
+         add_pending_ram_usage(account, increment, generic_storage_usage_trace(0));
          verify_account_ram_usage(account);
       }
 
-      add_pending_ram_usage(account, increment, generic_ram_trace(0));
+      add_pending_ram_usage(account, increment, generic_storage_usage_trace(0));
       BOOST_REQUIRE_THROW(verify_account_ram_usage(account), ram_usage_exceeded);
    } FC_LOG_AND_RETHROW();
 
@@ -266,7 +266,7 @@ BOOST_AUTO_TEST_SUITE(resource_limits_test)
       set_account_limits(account, 100, -1, -1 );
       verify_account_ram_usage(account);
       process_account_limit_updates();
-      BOOST_REQUIRE_THROW(add_pending_ram_usage(account, -101, generic_ram_trace(0)), transaction_exception);
+      BOOST_REQUIRE_THROW(add_pending_ram_usage(account, -101, generic_storage_usage_trace(0)), transaction_exception);
 
    } FC_LOG_AND_RETHROW();
 
@@ -276,11 +276,11 @@ BOOST_AUTO_TEST_SUITE(resource_limits_test)
       set_account_limits(account, UINT64_MAX, -1, -1 );
       verify_account_ram_usage(account);
       process_account_limit_updates();
-      add_pending_ram_usage(account, UINT64_MAX/2, generic_ram_trace(0));
+      add_pending_ram_usage(account, UINT64_MAX/2, generic_storage_usage_trace(0));
       verify_account_ram_usage(account);
-      add_pending_ram_usage(account, UINT64_MAX/2, generic_ram_trace(0));
+      add_pending_ram_usage(account, UINT64_MAX/2, generic_storage_usage_trace(0));
       verify_account_ram_usage(account);
-      BOOST_REQUIRE_THROW(add_pending_ram_usage(account, 2, generic_ram_trace(0)), transaction_exception);
+      BOOST_REQUIRE_THROW(add_pending_ram_usage(account, 2, generic_storage_usage_trace(0)), transaction_exception);
 
    } FC_LOG_AND_RETHROW();
 
@@ -295,7 +295,7 @@ BOOST_AUTO_TEST_SUITE(resource_limits_test)
       initialize_account(account);
       set_account_limits(account, limit, -1, -1 );
       process_account_limit_updates();
-      add_pending_ram_usage(account, commit, generic_ram_trace(0));
+      add_pending_ram_usage(account, commit, generic_storage_usage_trace(0));
       verify_account_ram_usage(account);
 
       for (int idx = 0; idx < expected_iterations - 1; idx++) {

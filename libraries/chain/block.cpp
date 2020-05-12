@@ -133,12 +133,12 @@ namespace eosio { namespace chain {
       return validate_and_extract_block_extensions( block_extensions );
    }
 
-   signed_block_v0_ptr signed_block::to_signed_block_v0() const {
+   fc::optional<signed_block_v0> signed_block::to_signed_block_v0() const {
       if (prune_state != prune_state_type::complete_legacy)
-         return signed_block_v0_ptr{};
+         return {};
 
-      auto result = std::make_shared<signed_block_v0>(*static_cast<const signed_block_header*>(this));
-      result->block_extensions = this->block_extensions;
+      signed_block_v0 result(*static_cast<const signed_block_header*>(this));
+      result.block_extensions = this->block_extensions;
 
       auto visitor = overloaded{
           [](const transaction_id_type &id) -> transaction_receipt_v0::trx_type { return id; },
@@ -148,7 +148,7 @@ namespace eosio { namespace chain {
           }};
 
       for (const transaction_receipt &r : transactions){
-         result->transactions.emplace_back(transaction_receipt_v0{r, r.trx.visit(visitor)});
+         result.transactions.emplace_back(transaction_receipt_v0{r, r.trx.visit(visitor)});
       }
       return result;
    }

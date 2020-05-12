@@ -4,7 +4,6 @@ set -eo pipefail
 . ./.cicd/helpers/general.sh
 # tests
 if [[ $(uname) == 'Darwin' ]]; then # macOS
-    export PATH=$PATH:~/mongodb/bin
     set +e # defer error handling to end
     source ~/.bash_profile && ./"$@"
     EXIT_STATUS=$?
@@ -29,7 +28,6 @@ if [[ "$BUILDKITE" == 'true' ]]; then
     [[ -f config.ini ]] && buildkite-agent artifact upload config.ini
     [[ -f core.tar.gz ]] && buildkite-agent artifact upload core.tar.gz
     [[ -f genesis.json ]] && buildkite-agent artifact upload genesis.json
-    [[ -f mongod.log ]] && buildkite-agent artifact upload mongod.log
     buildkite-agent artifact upload test-results.xml
     echo 'Done uploading artifacts.'
 fi

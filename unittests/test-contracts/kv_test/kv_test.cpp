@@ -21,9 +21,9 @@ IMPORT it_stat  kv_it_status(uint32_t itr);
 IMPORT int      kv_it_compare(uint32_t itr_a, uint32_t itr_b);
 IMPORT int      kv_it_key_compare(uint32_t itr, const char* key, uint32_t size);
 IMPORT it_stat  kv_it_move_to_end(uint32_t itr);
-IMPORT it_stat  kv_it_next(uint32_t itr);
-IMPORT it_stat  kv_it_prev(uint32_t itr);
-IMPORT it_stat  kv_it_lower_bound(uint32_t itr, const char* key, uint32_t size);
+IMPORT it_stat  kv_it_next(uint32_t itr, uint32_t* found_key_size, uint32_t* found_value_size);
+IMPORT it_stat  kv_it_prev(uint32_t itr, uint32_t* found_key_size, uint32_t* found_value_size);
+IMPORT it_stat  kv_it_lower_bound(uint32_t itr, const char* key, uint32_t size, uint32_t* found_key_size, uint32_t* found_value_size);
 IMPORT it_stat  kv_it_key(uint32_t itr, uint32_t offset, char* dest, uint32_t size, uint32_t& actual_size);
 IMPORT it_stat  kv_it_value(uint32_t itr, uint32_t offset, char* dest, uint32_t size, uint32_t& actual_size);
 // clang-format on
@@ -190,13 +190,16 @@ class [[eosio::contract("kv_test")]] kvtest : public eosio::contract {
                                const std::optional<std::vector<char>>& lower, const std::vector<kv>& expected) {
       auto    itr = kv_it_create(db, contract, prefix.data(), prefix.size());
       it_stat stat;
+      uint32_t key_size, value_size;
       if (lower)
-         stat = kv_it_lower_bound(itr, lower->data(), lower->size());
+         stat = kv_it_lower_bound(itr, lower->data(), lower->size(), &key_size, &value_size);
       else
-         stat = kv_it_next(itr);
+         stat = kv_it_next(itr, &key_size, &value_size);
       for (auto& exp : expected) {
          check(stat == iterator_ok, "missing kv pairs");
          check(stat == kv_it_status(itr), "status mismatch (a)");
+         check(key_size == exp.k.size(), "wrong key_size from kv_it_next");
+         check(value_size == exp.v.size(), "wrong value_size from kv_it_next");
 
          // check kv_it_key
          for (uint32_t offset = 0; offset <= exp.k.size(); ++offset) {
@@ -256,8 +259,10 @@ class [[eosio::contract("kv_test")]] kvtest : public eosio::contract {
             }
          }
 
-         stat = kv_it_next(itr);
+         stat = kv_it_next(itr, &key_size, &value_size);
       }
+      check(key_size == 0, "expected end to have 0 key size");
+      check(value_size == 0, "expected end to have 0 value size");
       check(stat == iterator_end, "extra kv pair (g)");
       check(stat == kv_it_status(itr), "status mismatch (g)");
 
@@ -268,10 +273,11 @@ class [[eosio::contract("kv_test")]] kvtest : public eosio::contract {
                                   const std::optional<std::vector<char>>& lower, const std::vector<kv>& expected) {
       auto    itr = kv_it_create(db, contract, prefix.data(), prefix.size());
       it_stat stat;
+      uint32_t key_size = 0xffff'ffff, value_size = 0xffff'ffff;
       if (lower)
-         stat = kv_it_lower_bound(itr, lower->data(), lower->size());
+         stat = kv_it_lower_bound(itr, lower->data(), lower->size(), &key_size, &value_size);
       else
-         stat = kv_it_prev(itr);
+         stat = kv_it_prev(itr, &key_size, &value_size);
       for (auto& exp : expected) {
          std::string message = "missing kv pairs: ";
          message.append(exp.k.data(), exp.k.size());
@@ -281,6 +287,7 @@ class [[eosio::contract("kv_test")]] kvtest : public eosio::contract {
          // check kv_it_key
          {
             uint32_t k_size = 0xffff'ffff;
+            check(key_size == exp.k.size(), "wrong key_size from kv_it_prev");
             check(kv_it_key(itr, 0, nullptr, 0, k_size) == iterator_ok && k_size == exp.k.size(),
                   "key has wrong size (a)");
             std::vector<char> k(k_size);
@@ -296,6 +303,7 @@ class [[eosio::contract("kv_test")]] kvtest : public eosio::contract {
          // check kv_it_value
          {
             uint32_t v_size = 0xffff'ffff;
+            check(value_size == exp.v.size(), "wrong value_size from kv_it_prev");
             check(kv_it_value(itr, 0, nullptr, 0, v_size) == iterator_ok && v_size == exp.v.size(),
                   "value has wrong size (d)");
             std::vector<char> v(v_size);
@@ -308,8 +316,10 @@ class [[eosio::contract("kv_test")]] kvtest : public eosio::contract {
             check(v[v.size() - 2] == 42 && v[v.size() - 1] == 53, "buffer overrun (e)");
          }
 
-         stat = kv_it_prev(itr);
+         stat = kv_it_prev(itr, &key_size, &value_size);
       }
+      check(key_size == 0, "expected end to have 0 key size");
+      check(value_size == 0, "expected end to have 0 value size");
       check(stat == iterator_end, "extra kv pair (g)");
       check(stat == kv_it_status(itr), "status mismatch (g)");
 
@@ -321,7 +331,8 @@ class [[eosio::contract("kv_test")]] kvtest : public eosio::contract {
                                        int test_id, bool insert, bool reinsert) {
       if(insert) kv_set(db, contract, k.data(), k.size(), v.data(), v.size());
       auto it = kv_it_create(db, contract, prefix.data(), prefix.size());
-      it_stat stat = kv_it_lower_bound(it, k.data(), k.size());
+      uint32_t key_size, value_size;
+      it_stat stat = kv_it_lower_bound(it, k.data(), k.size(), &key_size, &value_size);
       kv_erase(db, contract, k.data(), k.size());
       check(kv_it_status(it) == iterator_erased, "iterator should be erased");
       auto check_status = [&](int test_id) {
@@ -357,11 +368,11 @@ class [[eosio::contract("kv_test")]] kvtest : public eosio::contract {
                return;
             }
             case 6: {
-               kv_it_next(it); // abort
+               kv_it_next(it, &key_size, &value_size); // abort
                return;
             }
             case 7: {
-               kv_it_prev(it); // abort
+               kv_it_prev(it, &key_size, &value_size); // abort
                return;
             }
             case 8: {
@@ -371,13 +382,13 @@ class [[eosio::contract("kv_test")]] kvtest : public eosio::contract {
             }
             case 9: {
                // For this test there must be no other elements in range
-               check(kv_it_lower_bound(it, "", 0) == iterator_end, "expected end");
+               check(kv_it_lower_bound(it, "", 0, &key_size, &value_size) == iterator_end, "expected end");
                check(kv_it_status(it) == iterator_end, "expected end");
                return;
             }
             case 10: {
                // For this test there must be at least one other element in range
-               check(kv_it_lower_bound(it, "", 0) == iterator_ok, "expected an element");
+               check(kv_it_lower_bound(it, "", 0, &key_size, &value_size) == iterator_ok, "expected an element");
                check(kv_it_status(it) == iterator_ok, "expected an element");
                return;
             }

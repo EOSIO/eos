@@ -101,7 +101,7 @@ struct local_identity {
     }
     catch (...) {
       // not an ip address
-      for (const auto n : names) {
+      for (const auto& n : names) {
         if (n == name)
           return true;
       }
@@ -200,7 +200,6 @@ public:
       p2p_port(),
       http_port(),
       file_size(),
-      has_db(false),
       name(),
       node(),
       host(),
@@ -213,7 +212,6 @@ public:
   uint16_t     p2p_port;
   uint16_t     http_port;
   uint16_t     file_size;
-  bool         has_db;
   string       name;
   tn_node_def* node;
   string       host;
@@ -842,16 +840,7 @@ launcher_def::define_network () {
 
       eosd_def eosd;
       assign_name(eosd, do_bios);
-      eosd.has_db = false;
 
-      if (servers.db.size()) {
-        for (auto &dbn : servers.db) {
-          if (lhost->host_name == dbn) {
-            eosd.has_db = true;
-            break;
-         }
-        }
-      }
       aliases.push_back(eosd.name);
       eosd.set_host (lhost, do_bios);
       do_bios = false;
@@ -1128,7 +1117,7 @@ launcher_def::write_config_file (tn_node_def &node) {
   for (const auto &p : node.peers) {
      cfg << "p2p-peer-address = " << network.nodes.find(p)->second.instance->p2p_endpoint << "\n";
   }
-  if (instance.has_db || node.producers.size()) {
+  if (node.producers.size()) {
     for (const auto &kp : node.keys ) {
        cfg << "private-key = [\"" << kp.get_public_key().to_string()
            << "\",\"" << kp.to_string() << "\"]\n";
@@ -1137,9 +1126,6 @@ launcher_def::write_config_file (tn_node_def &node) {
       cfg << "producer-name = " << p << "\n";
     }
     cfg << "plugin = eosio::producer_plugin\n";
-  }
-  if( instance.has_db ) {
-    cfg << "plugin = eosio::mongo_db_plugin\n";
   }
   cfg << "plugin = eosio::net_plugin\n";
   cfg << "plugin = eosio::chain_api_plugin\n"
@@ -1546,18 +1532,7 @@ launcher_def::launch (eosd_def &instance, string &gts) {
     eosdcmd += "--skip-transaction-signatures ";
   }
   if (!eosd_extra_args.empty()) {
-    if (instance.name == "bios") {
-       // Strip the mongo-related options out of the bios node so
-       // the plugins don't conflict between 00 and bios.
-       regex r("--plugin +eosio::mongo_db_plugin");
-       string args = std::regex_replace (eosd_extra_args,r,"");
-       regex r2("--mongodb-uri +[^ ]+");
-       args = std::regex_replace (args,r2,"");
-       eosdcmd += args + " ";
-    }
-    else {
-       eosdcmd += eosd_extra_args + " ";
-    }
+    eosdcmd += eosd_extra_args + " ";
   }
   if (instance.name != "bios" && !specific_nodeos_args.empty()) {
      const auto node_num = boost::lexical_cast<uint16_t,string>(instance.get_node_num());
@@ -1912,7 +1887,7 @@ void write_default_config(const bfs::path& cfg_file, const options_description &
    }
 
    std::ofstream out_cfg( bfs::path(cfg_file).make_preferred().string());
-   for(const boost::shared_ptr<bpo::option_description> od : cfg.options())
+   for(const boost::shared_ptr<bpo::option_description>& od : cfg.options())
    {
       if(!od->description().empty()) {
          out_cfg << "# " << od->description() << std::endl;
@@ -2085,7 +2060,7 @@ FC_REFLECT( host_def,
 // @ignore node, dot_label_str
 FC_REFLECT( eosd_def,
             (config_dir_name)(data_dir_name)(p2p_port)
-            (http_port)(file_size)(has_db)(name)(host)
+            (http_port)(file_size)(name)(host)
             (p2p_endpoint) )
 
 // @ignore instance, gelf_endpoint

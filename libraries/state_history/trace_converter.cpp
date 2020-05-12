@@ -16,7 +16,7 @@ using eosio::chain::state_history_exception;
 using prunable_data_type = packed_transaction::prunable_data_type;
 
 bool is_onblock(const transaction_trace_ptr& p) {
-   if (p->action_traces.size() != 1)
+   if (p->action_traces.empty())
       return false;
    auto& act = p->action_traces[0].act;
    if (act.account != eosio::chain::config::system_account_name || act.name != N(onblock) ||

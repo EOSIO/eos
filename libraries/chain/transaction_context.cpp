@@ -492,7 +492,7 @@ namespace eosio { namespace chain {
       }
    }
 
-   void transaction_context::add_ram_usage( account_name account, int64_t ram_delta, const ram_trace& trace ) {
+   void transaction_context::add_ram_usage( account_name account, int64_t ram_delta, const storage_usage_trace& trace ) {
       auto& rl = control.get_mutable_resource_limits_manager();
       rl.add_pending_ram_usage( account, ram_delta, trace );
       if( ram_delta > 0 ) {
@@ -500,9 +500,9 @@ namespace eosio { namespace chain {
       }
    }
 
-   void transaction_context::add_disk_usage( account_name account, int64_t disk_delta ) {
+   void transaction_context::add_disk_usage( account_name account, int64_t disk_delta, const storage_usage_trace& trace ) {
       auto& rl = control.get_mutable_resource_limits_manager();
-      rl.add_pending_disk_usage( account, disk_delta );
+      rl.add_pending_disk_usage( account, disk_delta, trace );
       if( disk_delta > 0 ) {
          validate_disk_usage.insert( account );
       }
@@ -659,7 +659,7 @@ namespace eosio { namespace chain {
         trx_size = gto.set( trx );
 
         if (auto dm_logger = control.get_deep_mind_logger()) {
-            event_id = RAM_EVENT_ID("${id}", ("id", gto.id));
+            event_id = STORAGE_EVENT_ID("${id}", ("id", gto.id));
 
             fc_dlog(*dm_logger, "DTRX_OP PUSH_CREATE ${action_id} ${sender} ${sender_id} ${payer} ${published} ${delay} ${expiration} ${trx_id} ${trx}",
                ("action_id", get_action_id())
@@ -676,7 +676,7 @@ namespace eosio { namespace chain {
       });
 
       int64_t ram_delta = (config::billable_size_v<generated_transaction_object> + trx_size);
-      add_ram_usage( cgto.payer, ram_delta, ram_trace(get_action_id(), event_id.c_str(), "deferred_trx", "push", "deferred_trx_pushed") );
+      add_ram_usage( cgto.payer, ram_delta, storage_usage_trace(get_action_id(), event_id.c_str(), "deferred_trx", "push", "deferred_trx_pushed") );
       trace->account_ram_delta = account_delta( cgto.payer, ram_delta );
    }
 

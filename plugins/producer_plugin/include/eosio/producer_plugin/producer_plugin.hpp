@@ -1,7 +1,7 @@
 #pragma once
 
 #include <eosio/chain_plugin/chain_plugin.hpp>
-#include <eosio/http_client_plugin/http_client_plugin.hpp>
+#include <eosio/signature_provider_plugin/signature_provider_plugin.hpp>
 
 #include <appbase/application.hpp>
 
@@ -11,7 +11,7 @@ using boost::signals2::signal;
 
 class producer_plugin : public appbase::plugin<producer_plugin> {
 public:
-   APPBASE_PLUGIN_REQUIRES((chain_plugin)(http_client_plugin))
+   APPBASE_PLUGIN_REQUIRES((chain_plugin)(signature_provider_plugin))
 
    struct runtime_options {
       fc::optional<int32_t>   max_transaction_time;
