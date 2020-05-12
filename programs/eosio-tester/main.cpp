@@ -252,8 +252,8 @@ struct test_chain {
    }
 
    void on_accepted_block(const block_state_ptr& block_state) {
-      auto block_bin  = fc::raw::pack(*block_state->block);
-      auto traces_bin = trace_converter.pack(control->db(), false, block_state, 1); // hard code version for now, will be changed in later commit
+      auto block_bin  = fc::raw::pack(*block_state->block->to_signed_block_v0());
+      auto traces_bin = trace_converter.to_traces_bin_v0(trace_converter.pack(control->db(), false, block_state, 1), 1); // hard code version for now, will be changed in later commit
       auto deltas_bin = fc::raw::pack(create_deltas(control->db(), !prev_block));
 
       get_blocks_result_v0 message;
@@ -922,7 +922,7 @@ struct callbacks {
       eosio::chain::signed_transaction signed_trx{ std::move(transaction), std::move(args.signatures),
                                                    std::move(args.context_free_data) };
       for (auto& key : args.keys) signed_trx.sign(key, chain.control->get_chain_id());
-      eosio::chain::packed_transaction ptrx{ std::move(signed_trx), true, eosio::chain::packed_transaction::compression_type::none };
+      eosio::chain::packed_transaction_v0 ptrx{ std::move(signed_trx), eosio::chain::packed_transaction_v0::compression_type::none };
       auto                             data       = fc::raw::pack(ptrx);
       auto                             start_time = std::chrono::steady_clock::now();
       auto result = r.query_handler->query_transaction(*r.write_snapshot, data.data(), data.size());
