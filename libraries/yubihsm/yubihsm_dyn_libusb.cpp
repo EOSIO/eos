@@ -73,7 +73,7 @@ struct libusb_api {
   bool good = _shlib._good;
    
 
-#define LOAD_IMPORT(n) decltype(n)* n = _shlib[#n];
+#define LOAD_IMPORT(n) decltype(::n)* n = _shlib[#n];
   LOAD_IMPORT(libusb_release_interface)
   LOAD_IMPORT(libusb_close)
   LOAD_IMPORT(libusb_exit)
