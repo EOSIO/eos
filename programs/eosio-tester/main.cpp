@@ -42,7 +42,6 @@ using eosio::chain::protocol_feature_exception;
 using eosio::chain::protocol_feature_set;
 using eosio::chain::signed_transaction;
 using eosio::chain::transaction_trace_ptr;
-using eosio::chain::packed_transaction_ptr;
 using eosio::state_history::block_position;
 using eosio::state_history::create_deltas;
 using eosio::state_history::get_blocks_result_v0;
@@ -113,19 +112,17 @@ struct transaction_checktime_factory {
 
 struct intrinsic_context {
    eosio::chain::controller&                          control;
-   eosio::chain::packed_transaction                   trx;
+   eosio::chain::signed_transaction                   trx;
    std::unique_ptr<eosio::chain::transaction_context> trx_ctx;
    std::unique_ptr<eosio::chain::apply_context>       apply_context;
 
    intrinsic_context(eosio::chain::controller& control) : control{ control } {
       static transaction_checktime_factory xxx_timer;
 
-      eosio::chain::signed_transaction strx;
-      strx.actions.emplace_back();
-      strx.actions.back().account = eosio::chain::name{ "eosio.null" };
-      strx.actions.back().authorization.push_back({ eosio::chain::name{ "eosio" }, eosio::chain::name{ "active" } });
-      trx = eosio::chain::packed_transaction( std::move(strx), true );
-      trx_ctx = std::make_unique<eosio::chain::transaction_context>(control, trx, xxx_timer.get(),
+      trx.actions.emplace_back();
+      trx.actions.back().account = eosio::chain::name{ "eosio.null" };
+      trx.actions.back().authorization.push_back({ eosio::chain::name{ "eosio" }, eosio::chain::name{ "active" } });
+      trx_ctx = std::make_unique<eosio::chain::transaction_context>(control, trx, trx.id(), xxx_timer.get(),
                                                                     fc::time_point::now());
       trx_ctx->init_for_implicit_trx(0);
       trx_ctx->exec();
@@ -223,7 +220,7 @@ struct test_chain {
       control->add_indices();
 
       applied_transaction_connection.emplace(control->applied_transaction.connect(
-            [&](std::tuple<const transaction_trace_ptr&, const packed_transaction_ptr&> t) {
+            [&](std::tuple<const transaction_trace_ptr&, const signed_transaction&> t) {
                on_applied_transaction(std::get<0>(t), std::get<1>(t));
             }));
       accepted_block_connection.emplace(
@@ -247,20 +244,20 @@ struct test_chain {
       for (auto* ref : refs) ref->chain = nullptr;
    }
 
-   void on_applied_transaction(const transaction_trace_ptr& p, const packed_transaction_ptr& t) {
+   void on_applied_transaction(const transaction_trace_ptr& p, const signed_transaction& t) {
       trace_converter.add_transaction(p, t);
    }
 
    void on_accepted_block(const block_state_ptr& block_state) {
       auto block_bin  = fc::raw::pack(*block_state->block);
-      auto traces_bin = trace_converter.pack(control->db(), false, block_state, 1); // hard code version for now, will be changed in later commit
+      auto traces_bin = trace_converter.pack(control->db(), false, block_state);
       auto deltas_bin = fc::raw::pack(create_deltas(control->db(), !prev_block));
 
       get_blocks_result_v0 message;
       message.head = block_position{ control->head_block_num(), control->head_block_id() };
       message.last_irreversible =
             block_position{ control->last_irreversible_block_num(), control->last_irreversible_block_id() };
-      message.this_block = block_position{ block_state->block->block_num(), block_state->id };
+      message.this_block = block_position{ block_state->block->block_num(), block_state->block->id() };
       message.prev_block = prev_block;
       message.block      = std::move(block_bin);
       message.traces     = std::move(traces_bin);
@@ -793,7 +790,7 @@ struct callbacks {
       chain.start_if_needed();
       for (auto& key : args.keys) signed_trx.sign(key, chain.control->get_chain_id());
       auto ptrx = std::make_shared<eosio::chain::packed_transaction>(
-            std::move(signed_trx), true, eosio::chain::packed_transaction::compression_type::none);
+            signed_trx, eosio::chain::packed_transaction::compression_type::none);
       auto fut = eosio::chain::transaction_metadata::start_recover_keys(
             ptrx, chain.control->get_thread_pool(), chain.control->get_chain_id(), fc::microseconds::maximum());
       auto start_time = std::chrono::steady_clock::now();
@@ -922,7 +919,7 @@ struct callbacks {
       eosio::chain::signed_transaction signed_trx{ std::move(transaction), std::move(args.signatures),
                                                    std::move(args.context_free_data) };
       for (auto& key : args.keys) signed_trx.sign(key, chain.control->get_chain_id());
-      eosio::chain::packed_transaction ptrx{ std::move(signed_trx), true, eosio::chain::packed_transaction::compression_type::none };
+      eosio::chain::packed_transaction ptrx{ signed_trx, eosio::chain::packed_transaction::compression_type::none };
       auto                             data       = fc::raw::pack(ptrx);
       auto                             start_time = std::chrono::steady_clock::now();
       auto result = r.query_handler->query_transaction(*r.write_snapshot, data.data(), data.size());
