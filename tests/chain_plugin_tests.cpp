@@ -560,11 +560,12 @@ BOOST_FIXTURE_TEST_CASE( chain_api_test, TESTER ) try {
       test_cmd += "\"{\"block\":1}\"";
       auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
       BOOST_REQUIRE(test_cmd_ret_variant["code"].as<int>() == 404);
-   }/*
+   }
+   // it returns empty instead of 500 error code. Need to address
    {  // push_block with valid parameter, but unknown account
       string test_cmd = "curl http://127.0.0.1:8888/v1/chain/push_block -X POST -d ";
-      test_cmd += "\"{\"transactions\":[],\"block_extensions\": [],\"producer_signature\": [\"SIG_K1_KeqfqiZu1GwUxQb7jzK9Fdks6HFaVBQ9AJtCZZj56eG9qGgvVMVtx8EerBdnzrhFoX437sgwtojf2gfz6S516Ty7c22oEp\"]}\"";
-      BOOST_REQUIRE( get_command_result_str(test_cmd) == "\"0be762a6406bab15530e87f21e02d1c58e77944ee55779a76f4112e3b65cac48\"");
+      test_cmd += "\"{\"block\":\"signed_block\"}\"";
+      BOOST_REQUIRE( get_command_result_str(test_cmd) == "{}");
    }
    {  // push_block with empty parameter
       string test_cmd = "curl http://127.0.0.1:8888/v1/chain/push_block";
@@ -578,7 +579,72 @@ BOOST_FIXTURE_TEST_CASE( chain_api_test, TESTER ) try {
       test_cmd += "\"{\"block\":1}\"";
       auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
       BOOST_REQUIRE(test_cmd_ret_variant["code"].as<int>() == 404);
-   }*/
+   }
+   {  // push_transaction with valid parameter, but unknown account
+      string test_cmd = "curl http://127.0.0.1:8888/v1/chain/push_transaction -X POST -d ";
+      test_cmd += "\"{\"signatures\":[\"SIG_K1_KeqfqiZu1GwUxQb7jzK9Fdks6HFaVBQ9AJtCZZj56eG9qGgvVMVtx8EerBdnzrhFoX437sgwtojf2gfz6S516Ty7c22oEp\"],";
+      test_cmd += "\"compression\": true, \"packed_context_free_data\": \"context_free_data\", \"packed_trx\": \"packed_trx\"}\"";
+      auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
+      // invalid transaction
+      BOOST_REQUIRE(test_cmd_ret_variant["code"].as<int>() == 500);
+   }
+   {  // push_transaction with empty parameter
+      string test_cmd = "curl http://127.0.0.1:8888/v1/chain/push_transaction";
+      auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
+      int err_code = test_cmd_ret_variant["error"]["code"].as<int>();
+      // invalid_http_request
+      BOOST_REQUIRE( (test_cmd_ret_variant["code"].as<int>() == 400) && (err_code == 3200006) );
+   }
+   {  // push_transaction with invalid parameter
+      string test_cmd = "curl http://127.0.0.1:8888/v1/chain/push_transaction";
+      test_cmd += "\"{\"block\":1}\"";
+      auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
+      BOOST_REQUIRE(test_cmd_ret_variant["code"].as<int>() == 404);
+   }
+   // does not return 500 when push_transactions failed
+   {  // push_transactions with valid parameter, but unknown account
+      string test_cmd = "curl http://127.0.0.1:8888/v1/chain/push_transactions -X POST -d ";
+      test_cmd += "\"[{\"signatures\":[\"SIG_K1_KeqfqiZu1GwUxQb7jzK9Fdks6HFaVBQ9AJtCZZj56eG9qGgvVMVtx8EerBdnzrhFoX437sgwtojf2gfz6S516Ty7c22oEp\"],";
+      test_cmd += "\"compression\": true, \"packed_context_free_data\": \"context_free_data\", \"packed_trx\": \"packed_trx\"}]\"";
+      auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
+      // invalid transaction
+      const size_t ret_pos = 0;
+      BOOST_REQUIRE(test_cmd_ret_variant[ret_pos]["transaction_id"].as<string>() == "0000000000000000000000000000000000000000000000000000000000000000");
+   }
+   {  // push_transaction with empty parameter
+      string test_cmd = "curl http://127.0.0.1:8888/v1/chain/push_transactions";
+      auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
+      int err_code = test_cmd_ret_variant["error"]["code"].as<int>();
+      // invalid_http_request
+      BOOST_REQUIRE( (test_cmd_ret_variant["code"].as<int>() == 400) && (err_code == 3200006) );
+   }
+   {  // push_transaction with invalid parameter
+      string test_cmd = "curl http://127.0.0.1:8888/v1/chain/push_transactions";
+      test_cmd += "\"{\"block\":1}\"";
+      auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
+      BOOST_REQUIRE(test_cmd_ret_variant["code"].as<int>() == 404);
+   }
+   {  // send_transaction with valid parameter,
+      string test_cmd = "curl http://127.0.0.1:8888/v1/chain/send_transaction -X POST -d ";
+      test_cmd += "\"{\"signatures\":[\"SIG_K1_KeqfqiZu1GwUxQb7jzK9Fdks6HFaVBQ9AJtCZZj56eG9qGgvVMVtx8EerBdnzrhFoX437sgwtojf2gfz6S516Ty7c22oEp\"],";
+      test_cmd += "\"compression\": true, \"packed_context_free_data\": \"context_free_data\", \"packed_trx\": \"packed_trx\"}\"";
+      auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
+      // invalid transaction
+      BOOST_REQUIRE(test_cmd_ret_variant["code"].as<int>() == 500);
+   }
+   {  // send_transaction with empty parameter
+      string test_cmd = "curl http://127.0.0.1:8888/v1/chain/send_transaction";
+      auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
+      int err_code = test_cmd_ret_variant["error"]["code"].as<int>();
+      // invalid_http_request
+      BOOST_REQUIRE( (test_cmd_ret_variant["code"].as<int>() == 400) && (err_code == 3200006) );
+   }
+   {  // send_transaction with invalid parameter
+      string test_cmd = "curl http://127.0.0.1:8888/v1/chain/send_transaction";
+      test_cmd += "\"{\"block\":1}\"";
+      auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
+      BOOST_REQUIRE(test_cmd_ret_variant["code"].as<int>() == 404);
+   }
 } FC_LOG_AND_RETHROW() /// get_block_with_invalid_abi
 
 BOOST_AUTO_TEST_SUITE_END()
