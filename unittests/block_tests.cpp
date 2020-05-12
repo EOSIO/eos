@@ -17,8 +17,8 @@ BOOST_AUTO_TEST_CASE(block_with_invalid_tx_test)
 
    // Make a copy of the valid block and corrupt the transaction
    auto copy_b = std::make_shared<signed_block>(std::move(*b));
-   auto signed_tx = copy_b->transactions.back().trx.get<packed_transaction>().get_signed_transaction();
-   auto& act = signed_tx.actions.back();
+   auto signed_tx = signed_transaction(copy_b->transactions.back().trx.get<packed_transaction>().to_packed_transaction_v0()->get_signed_transaction());
+   auto &act = signed_tx.actions.back();
    auto act_data = act.data_as<newaccount>();
    // Make the transaction invalid by having the new account name the same as the creator name
    act_data.name = act_data.creator;
@@ -27,30 +27,29 @@ BOOST_AUTO_TEST_CASE(block_with_invalid_tx_test)
    signed_tx.signatures.clear();
    signed_tx.sign(main.get_private_key(config::system_account_name, "active"), main.control->get_chain_id());
    // Replace the valid transaction with the invalid transaction
-   auto invalid_packed_tx = packed_transaction(signed_tx);
+   auto invalid_packed_tx = packed_transaction(std::move(signed_tx), true);
    copy_b->transactions.back().trx = invalid_packed_tx;
 
    // Re-calculate the transaction merkle
-   vector<digest_type> trx_digests;
-   const auto& trxs = copy_b->transactions;
-   for( const auto& a : trxs )
-      trx_digests.emplace_back( a.digest() );
-   copy_b->transaction_mroot = merkle( move(trx_digests) );
+   deque<digest_type> trx_digests;
+   const auto &trxs = copy_b->transactions;
+   for (const auto &a : trxs)
+      trx_digests.emplace_back(a.digest());
+   copy_b->transaction_mroot = merkle(move(trx_digests));
 
    // Re-sign the block
-   auto header_bmroot = digest_type::hash( std::make_pair( copy_b->digest(), main.control->head_block_state()->blockroot_merkle.get_root() ) );
-   auto sig_digest = digest_type::hash( std::make_pair(header_bmroot, main.control->head_block_state()->pending_schedule.schedule_hash) );
+   auto header_bmroot = digest_type::hash(std::make_pair(copy_b->digest(), main.control->head_block_state()->blockroot_merkle.get_root()));
+   auto sig_digest = digest_type::hash(std::make_pair(header_bmroot, main.control->head_block_state()->pending_schedule.schedule_hash));
    copy_b->producer_signature = main.get_private_key(config::system_account_name, "active").sign(sig_digest);
 
    // Push block with invalid transaction to other chain
    tester validator;
-   auto bs = validator.control->create_block_state_future( copy_b );
+   auto bs = validator.control->create_block_state_future(copy_b->calculate_id(), copy_b);
    validator.control->abort_block();
-   BOOST_REQUIRE_EXCEPTION(validator.control->push_block( bs, forked_branch_callback{}, trx_meta_cache_lookup{} ), fc::exception ,
-   [] (const fc::exception &e)->bool {
-      return e.code() == account_name_exists_exception::code_value ;
-   }) ;
-
+   BOOST_REQUIRE_EXCEPTION(validator.control->push_block(bs, forked_branch_callback{}, trx_meta_cache_lookup{}), fc::exception,
+                           [](const fc::exception &e) -> bool {
+                              return e.code() == account_name_exists_exception::code_value;
+                           });
 }
 
 std::pair<signed_block_ptr, signed_block_ptr> corrupt_trx_in_block(validating_tester& main, account_name act_name) {

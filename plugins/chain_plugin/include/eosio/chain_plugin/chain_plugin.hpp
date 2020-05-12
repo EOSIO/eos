@@ -17,6 +17,7 @@
 #include <boost/multiprecision/cpp_int.hpp>
 
 #include <fc/static_variant.hpp>
+#include <fc/time.hpp>
 
 namespace fc { class variant; }
 
@@ -39,6 +40,7 @@ namespace eosio {
    using chain::action_name;
    using chain::abi_def;
    using chain::abi_serializer;
+   using namespace std::chrono_literals;
 
 namespace chain_apis {
 struct empty{};
