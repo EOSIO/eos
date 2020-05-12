@@ -82,6 +82,20 @@ namespace eosio { namespace chain {
             eos_vm_oc
          };
 
+         //return string description of vm_type
+         static std::string vm_type_string(vm_type vmtype) {
+             switch (vmtype) {
+             case vm_type::eos_vm:
+                return "eos-vm";
+             case vm_type::eos_vm_jit:
+                return "eos-vm-jit";
+             case vm_type::eos_vm_oc:
+                return "eos-vm-oc";
+             default:
+                return "wabt";
+             }
+         }
+
          wasm_interface(vm_type vm, bool eosvmoc_tierup, const chainbase::database& d, const boost::filesystem::path data_dir, const eosvmoc::config& eosvmoc_config);
          ~wasm_interface();
 
