@@ -755,7 +755,7 @@ struct controller_impl {
          fc_dlog(*dm_logger, "DEEP_MIND_VERSION 12");
 
          fc_dlog(*dm_logger, "ABIDUMP START");
-         auto idx = db.get_index<account_index>();
+         const auto& idx = db.get_index<account_index>();
          for (auto& row : idx.indices()) {
             if (row.abi.size() != 0) {
                fc_dlog(*dm_logger, "ABIDUMP ABI ${block_num} ${contract} ${abi}",
