@@ -645,6 +645,162 @@ BOOST_FIXTURE_TEST_CASE( chain_api_test, TESTER ) try {
       auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
       BOOST_REQUIRE(test_cmd_ret_variant["code"].as<int>() == 404);
    }
-} FC_LOG_AND_RETHROW() /// get_block_with_invalid_abi
+} FC_LOG_AND_RETHROW()
+
+BOOST_FIXTURE_TEST_CASE( history_api_test, TESTER ) try {
+   produce_blocks(2);
+
+   create_accounts( {N(asserter)} );
+   produce_block();
+   {  // get_actions with valid parameter,
+      string test_cmd = "curl http://127.0.0.1:8888/v1/history/get_actions -X POST -d ";
+      test_cmd += "\"{\"account_name\":\"test\", \"pos\":-1, \"offset\":2}\"";
+      auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
+      // invalid transaction
+      BOOST_REQUIRE(test_cmd_ret_variant["last_irreversible_block"].as<int>() > 0);
+   }
+   {  // get_actions with empty parameter
+      string test_cmd = "curl http://127.0.0.1:8888/v1/history/get_actions";
+      auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
+      int err_code = test_cmd_ret_variant["error"]["code"].as<int>();
+      // invalid_http_request
+      BOOST_REQUIRE( (test_cmd_ret_variant["code"].as<int>() == 400) && (err_code == 3200006) );
+   }
+   {  // get_actions with invalid parameter
+      string test_cmd = "curl http://127.0.0.1:8888/v1/history/get_actions";
+      test_cmd += "\"{\"block\":1}\"";
+      auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
+      BOOST_REQUIRE(test_cmd_ret_variant["code"].as<int>() == 404);
+   }
+   {  // get_transaction with valid parameter,
+      string test_cmd = "curl http://127.0.0.1:8888/v1/history/get_transaction -X POST -d ";
+      test_cmd += "\"{\"id\":\"test\", \"block_num_hint\":1}\"";
+      auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
+      // invalid transaction
+      BOOST_REQUIRE(test_cmd_ret_variant["code"].as<int>() == 500);
+   }
+   {  // get_transaction with empty parameter
+      string test_cmd = "curl http://127.0.0.1:8888/v1/history/get_transaction";
+      auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
+      int err_code = test_cmd_ret_variant["error"]["code"].as<int>();
+      // invalid_http_request
+      BOOST_REQUIRE( (test_cmd_ret_variant["code"].as<int>() == 400) && (err_code == 3200006) );
+   }
+   {  // get_transaction with invalid parameter
+      string test_cmd = "curl http://127.0.0.1:8888/v1/history/get_transaction";
+      test_cmd += "\"{\"block\":1}\"";
+      auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
+      BOOST_REQUIRE(test_cmd_ret_variant["code"].as<int>() == 404);
+   }
+   {  // get_key_accounts with valid parameter,
+      string test_cmd = "curl http://127.0.0.1:8888/v1/history/get_key_accounts -X POST -d ";
+      test_cmd += "\"{\"public_key\":\"EOS6FxXbikY5ZUN9qEdeLbEYLKZzJwRYRr2PuC3rqfSu67LvhPARi\"}\"";
+      auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
+      // account can not be found
+      BOOST_REQUIRE(test_cmd_ret_variant["account_names"].get_type() == variant::type_id::array_type);
+   }
+   {  // get_key_accounts with empty parameter
+      string test_cmd = "curl http://127.0.0.1:8888/v1/history/get_key_accounts";
+      auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
+      int err_code = test_cmd_ret_variant["error"]["code"].as<int>();
+      // invalid_http_request
+      BOOST_REQUIRE( (test_cmd_ret_variant["code"].as<int>() == 400) && (err_code == 3200006) );
+   }
+   {  // get_key_accounts with invalid parameter
+      string test_cmd = "curl http://127.0.0.1:8888/v1/history/get_key_accounts";
+      test_cmd += "\"{\"block\":1}\"";
+      auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
+      BOOST_REQUIRE(test_cmd_ret_variant["code"].as<int>() == 404);
+   }
+   {  // get_controlled_accounts with valid parameter,
+      string test_cmd = "curl http://127.0.0.1:8888/v1/history/get_controlled_accounts -X POST -d ";
+      test_cmd += "\"{\"controlling_account\":\"test\"}\"";
+      auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
+      // account can not be found
+      BOOST_REQUIRE(test_cmd_ret_variant["controlled_accounts"].get_type() == variant::type_id::array_type);
+   }
+   {  // get_controlled_accounts with empty parameter
+      string test_cmd = "curl http://127.0.0.1:8888/v1/history/get_controlled_accounts";
+      auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
+      int err_code = test_cmd_ret_variant["error"]["code"].as<int>();
+      // invalid_http_request
+      BOOST_REQUIRE( (test_cmd_ret_variant["code"].as<int>() == 400) && (err_code == 3200006) );
+   }
+   {  // get_controlled_accounts with invalid parameter
+      string test_cmd = "curl http://127.0.0.1:8888/v1/history/get_controlled_accounts";
+      test_cmd += "\"{\"block\":1}\"";
+      auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
+      BOOST_REQUIRE(test_cmd_ret_variant["code"].as<int>() == 404);
+   }
+} FC_LOG_AND_RETHROW()
+
+BOOST_FIXTURE_TEST_CASE( net_api_test, TESTER ) try {
+   produce_blocks(2);
+
+   create_accounts( {N(asserter)} );
+   produce_block();
+   {  // connect with valid parameter,
+      string test_cmd = "curl http://127.0.0.1:8888/v1/net/connect -X POST -d ";
+      test_cmd += "\"{\"endpoint\": \"localhost\"}\"";
+      auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
+      BOOST_REQUIRE(test_cmd_ret_variant["code"].as<int>() == 404);
+   }
+   {  // connect with empty parameter
+      string test_cmd = "curl http://127.0.0.1:8888/v1/net/connect";
+      auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
+      BOOST_REQUIRE(test_cmd_ret_variant["code"].as<int>() == 404);
+   }
+   {  // connect with invalid parameter
+      string test_cmd = "curl http://127.0.0.1:8888/v1/net/connect";
+      test_cmd += "\"{\"block\":1}\"";
+      auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
+      BOOST_REQUIRE(test_cmd_ret_variant["code"].as<int>() == 404);
+   }
+   {  // disconnect with valid parameter,
+      string test_cmd = "curl http://127.0.0.1:8888/v1/net/disconnect -X POST -d ";
+      test_cmd += "\"{\"endpoint\": \"localhost\"}\"";
+      auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
+      BOOST_REQUIRE(test_cmd_ret_variant["code"].as<int>() == 404);
+   }
+   {  // disconnect with empty parameter
+      string test_cmd = "curl http://127.0.0.1:8888/v1/net/disconnect";
+      auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
+      BOOST_REQUIRE(test_cmd_ret_variant["code"].as<int>() == 404);
+   }
+   {  // disconnect with invalid parameter
+      string test_cmd = "curl http://127.0.0.1:8888/v1/net/disconnect";
+      test_cmd += "\"{\"block\":1}\"";
+      auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
+      BOOST_REQUIRE(test_cmd_ret_variant["code"].as<int>() == 404);
+   }
+   {  // status with valid parameter,
+      string test_cmd = "curl http://127.0.0.1:8888/v1/net/status -X POST -d ";
+      test_cmd += "\"{\"endpoint\": \"localhost\"}\"";
+      auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
+      BOOST_REQUIRE(test_cmd_ret_variant["code"].as<int>() == 404);
+   }
+   {  // status with empty parameter
+      string test_cmd = "curl http://127.0.0.1:8888/v1/net/status";
+      auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
+      BOOST_REQUIRE(test_cmd_ret_variant["code"].as<int>() == 404);
+   }
+   {  // status with invalid parameter
+      string test_cmd = "curl http://127.0.0.1:8888/v1/net/status";
+      test_cmd += "\"{\"block\":1}\"";
+      auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
+      BOOST_REQUIRE(test_cmd_ret_variant["code"].as<int>() == 404);
+   }
+   {  // connections with empty parameter
+      string test_cmd = "curl http://127.0.0.1:8888/v1/net/connections";
+      auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
+      BOOST_REQUIRE(test_cmd_ret_variant["code"].as<int>() == 404);
+   }
+   {  // connections with invalid parameter
+      string test_cmd = "curl http://127.0.0.1:8888/v1/net/connections";
+      test_cmd += "\"{\"block\":1}\"";
+      auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
+      BOOST_REQUIRE(test_cmd_ret_variant["code"].as<int>() == 404);
+   }
+} FC_LOG_AND_RETHROW()
 
 BOOST_AUTO_TEST_SUITE_END()
