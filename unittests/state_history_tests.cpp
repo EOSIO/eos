@@ -4,12 +4,15 @@
 #include <boost/test/unit_test.hpp>
 #include <eosio/testing/tester.hpp>
 #include <eosio/chain/authorization_manager.hpp>
-#include <boost/test/unit_test.hpp>
 #include <contracts.hpp>
 #include <eosio/state_history/log.hpp>
 #include <eosio/testing/tester.hpp>
+
+#pragma push_macro("N")
+#undef N
 #include <eosio/stream.hpp>
 #include <eosio/ship_protocol.hpp>
+#pragma pop_macro("N")
 #include <fc/io/json.hpp>
 
 #include "test_cfd_transaction.hpp"
@@ -43,7 +46,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_account)
    auto it_permission = std::find_if(v.begin(), v.end(), find_by_name);
    BOOST_REQUIRE(it_permission==v.end());
 
-   chain.create_account(eosio::chain::string_to_name("newacc"));
+   chain.create_account(N(newacc));
 
    v = eosio::state_history::create_deltas(chain.control->db(), false);
 
@@ -73,13 +76,13 @@ BOOST_AUTO_TEST_CASE(test_deltas_account)
    }
 
    auto& authorization_manager = chain.control->get_authorization_manager();
-   const permission_object* ptr = authorization_manager.find_permission({eosio::chain::string_to_name("newacc"), eosio::chain::string_to_name("active")});
+   const permission_object* ptr = authorization_manager.find_permission({N(newacc), N(active)});
    BOOST_REQUIRE(ptr!=nullptr);
 
    // Create new permission
-   chain.set_authority(eosio::chain::string_to_name("newacc"), eosio::chain::string_to_name("mypermission"), ptr->auth,  eosio::chain::string_to_name("active"));
+   chain.set_authority(N(newacc), N(mypermission), ptr->auth,  N(active));
 
-   const permission_object* ptr_sub = authorization_manager.find_permission({eosio::chain::string_to_name("newacc"), eosio::chain::string_to_name("mypermission")});
+   const permission_object* ptr_sub = authorization_manager.find_permission({N(newacc), N(mypermission)});
    BOOST_REQUIRE(ptr_sub!=nullptr);
 
    // Verify that the new permission is present in the state delta
@@ -101,7 +104,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_account)
 
    // Modify the permission authority
    auto empty_authority = authority(1, {}, {});
-   chain.set_authority(eosio::chain::string_to_name("newacc"), eosio::chain::string_to_name("mypermission"), ptr->auth,  eosio::chain::string_to_name("active"));
+   chain.set_authority(N(newacc), N(mypermission), ptr->auth,  N(active));
    v = eosio::state_history::create_deltas(chain.control->db(), false);
    it_permission = std::find_if(v.begin(), v.end(), find_by_name);
    BOOST_REQUIRE(it_permission!=v.end());
@@ -114,7 +117,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_account)
    }
 
    // Delete the permission
-   chain.delete_authority(eosio::chain::string_to_name("newacc"),eosio::chain::string_to_name("mypermission"));
+   chain.delete_authority(N(newacc), N(mypermission));
    v = eosio::state_history::create_deltas(chain.control->db(), false);
    it_permission = std::find_if(v.begin(), v.end(), find_by_name);
    BOOST_REQUIRE_EQUAL(it_permission->rows.obj.size(), 1);
@@ -128,24 +131,23 @@ BOOST_AUTO_TEST_CASE(test_deltas_account)
 
 BOOST_AUTO_TEST_CASE(test_traces_present)
 {
+   namespace bfs = boost::filesystem;
    tester chain;
+
+   scoped_temp_path state_history_dir;
+   fc::create_directories(state_history_dir.path);
+   state_history_traces_log log(state_history_dir.path);
 
    chain.control->applied_transaction.connect(
       [&](std::tuple<const transaction_trace_ptr&, const packed_transaction_ptr&> t) {
-         const transaction_trace_ptr& trx_trace_ptr = std::get<0>(t);
-         BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trx_trace_ptr->receipt->status);
-         BOOST_REQUIRE_EQUAL(trx_trace_ptr->action_traces.size(), 1);
-         BOOST_REQUIRE_EQUAL(trx_trace_ptr->action_traces[0].act.name.to_string(), "newaccount");
-   });
+         log.add_transaction(std::get<0>(t), std::get<1>(t));
+      });
 
-   chain.control->accepted_block.connect(
-      [&](const block_state_ptr& bs) {
-         std::cout<<"block accepted "<<std::endl;
-   });
+   chain.control->accepted_block.connect([&](const block_state_ptr& bs) { log.store(chain.control->db(), bs); });
 
-   chain.create_account(eosio::chain::string_to_name("newacc"));
+   auto tr_ptr = chain.create_account(N(newacc));
 
-   //chain.produce_blocks();
+   chain.produce_blocks(1);
 }
 
 state_history::partial_transaction_v0 get_partial_from_traces_bin(const bytes&               traces_bin,
