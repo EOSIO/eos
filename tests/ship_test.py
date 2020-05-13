@@ -177,7 +177,7 @@ try:
 
                     totalDelta += delta
                     timeCount += 1
-                    assert delta < timedelta(seconds=0.500), Print("ERROR: block_num: %s took %.3f seconds to be received." % (blockNum, delta.total_seconds()))
+                    assert delta < timedelta(seconds=5.000), Print("ERROR: block_num: %s took %.3f seconds to be received." % (blockNum, delta.total_seconds()))
 
             line = f.readline()
 
@@ -208,8 +208,8 @@ finally:
                 # output file should have lots of output, but if user passes in a huge number of requests, these could go on forever
                 printTruncatedFile("%s%d.out" % (shipClientFilePrefix, i), maxLines=20000)
 
-        if not keepLogs:
-            shutil.rmtree(shipTempDir, ignore_errors=True)
+        //if not keepLogs:
+        //   shutil.rmtree(shipTempDir, ignore_errors=True)
     if not testSuccessful and dumpErrorDetails:
         Print(Utils.FileDivider)
         Print("Compare Blocklog")
