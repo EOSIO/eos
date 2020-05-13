@@ -71,10 +71,47 @@ namespace eosio { namespace chain {
          signed_block  block;
       };
 
+      /*
+       *  @brief datastream adapter that adapts FILE* for use with fc unpack
+       *
+       *  This class supports unpack functionality but not pack.
+       */
+      class fileptr_datastream {
+      public:
+         explicit fileptr_datastream( FILE* file, const std::string& filename ) : _file(file), _filename(filename) {}
+
+         void skip( size_t s ) {
+            auto status = fseek(_file, s, SEEK_CUR);
+            EOS_ASSERT( status == 0, block_log_exception,
+                        "Could not seek past ${bytes} bytes in Block log file at '${blocks_log}'. Returned status: ${status}",
+                        ("bytes", s)("blocks_log", _filename)("status", status) );
+         }
+
+         bool read( char* d, size_t s ) {
+            size_t result = fread( d, 1, s, _file );
+            EOS_ASSERT( result == s, block_log_exception,
+                        "only able to read ${act} bytes of the expected ${exp} bytes in file: ${file}",
+                        ("act",result)("exp",s)("file", _filename) );
+            return true;
+         }
+
+         bool get( unsigned char& c ) { return get( *(char*)&c ); }
+
+         bool get( char& c ) { return read(&c, 1); }
+
+         size_t ftell( ) { return (size_t) ::ftell( _file ); }
+
+      private:
+         FILE* const _file;
+         const std::string _filename;
+      };
+
       size_t get_stream_pos(fc::cfile_datastream& ds) { return ds.tellp(); }
       size_t get_stream_pos(std::ifstream& ds) { return ds.tellg();  }
+      size_t get_stream_pos(fileptr_datastream& ds) { return ds.ftell(); }
       void   skip_streamm_pos(fc::cfile_datastream& ds, size_t n) { ds.skip(n);  }
       void   skip_streamm_pos(std::ifstream& ds, size_t n) { ds.seekg(n, ds.cur);  }
+      void   skip_streamm_pos(fileptr_datastream& ds, size_t n) { ds.skip(n); }
 
       template <typename Stream>
       log_entry_v4::metadata_type unpack(Stream& ds, signed_block& block){
@@ -272,38 +309,6 @@ namespace eosio { namespace chain {
          constexpr static uint64_t          _max_buffer_length        = file_location_to_buffer_location(_buffer_bytes);
       };
 
-      /*
-       *  @brief datastream adapter that adapts FILE* for use with fc unpack
-       *
-       *  This class supports unpack functionality but not pack.
-       */
-      class fileptr_datastream {
-      public:
-         explicit fileptr_datastream( FILE* file, const std::string& filename ) : _file(file), _filename(filename) {}
-
-         void skip( size_t s ) {
-            auto status = fseek(_file, s, SEEK_CUR);
-            EOS_ASSERT( status == 0, block_log_exception,
-                        "Could not seek past ${bytes} bytes in Block log file at '${blocks_log}'. Returned status: ${status}",
-                        ("bytes", s)("blocks_log", _filename)("status", status) );
-         }
-
-         bool read( char* d, size_t s ) {
-            size_t result = fread( d, 1, s, _file );
-            EOS_ASSERT( result == s, block_log_exception,
-                        "only able to read ${act} bytes of the expected ${exp} bytes in file: ${file}",
-                        ("act",result)("exp",s)("file", _filename) );
-            return true;
-         }
-
-         bool get( unsigned char& c ) { return get( *(char*)&c ); }
-
-         bool get( char& c ) { return read(&c, 1); }
-
-      private:
-         FILE* const _file;
-         const std::string _filename;
-      };
    } // namespace eosio::chain::detail
 
 
@@ -643,7 +648,7 @@ namespace eosio { namespace chain {
       }
 
       ilog("first block= ${first}         last block= ${last}",
-           ("first", block_log_iter.first_block_num())("last", (block_log_iter.first_block_num() + num_blocks)));
+           ("first", block_log_iter.first_block_num())("last", (block_log_iter.first_block_num() + num_blocks - 1)));
 
       detail::index_writer index(index_file_name, num_blocks);
       uint64_t position;
@@ -1131,6 +1136,7 @@ namespace eosio { namespace chain {
                  block_log_exception,
                  "Should have written buffer, starting at the 0 index block position, to '${blocks_index}' but instead writing ${pos} position",
                  ("blocks_index", _block_index_name)("pos", _current_position) );
+      fflush(_file.get()); // So index file is available for use after this function.
    }
 
    void detail::index_writer::update_buffer_position() {
@@ -1156,7 +1162,7 @@ namespace eosio { namespace chain {
    }
 
    struct trim_data {            //used by trim_blocklog_front(), trim_blocklog_end(), and smoke_test()
-      trim_data(fc::path block_dir);
+      trim_data(fc::path block_dir, bool check_file = false); // check_file ind icates whether to validate block and index files or not. For now set true by tri m_blocklog_end
       ~trim_data();
       uint64_t block_index(uint32_t n) const;
       uint64_t block_pos(uint32_t n);
@@ -1170,6 +1176,16 @@ namespace eosio { namespace chain {
       uint64_t first_block_pos = 0;                      //file position in blocks.log for the first block in the log
       uint64_t block_file_size = 0;
       chain_id_type chain_id;
+
+   private:
+      void check_blockfile_indexfile();
+      void make_indexfile_agree_with_blockfile();
+      uint32_t get_block_number(uint64_t block_pos);
+      bool is_block_deserializable(uint64_t pos);
+      bool is_head_block_valid();
+      void append_index(uint64_t num_indexes_existing);
+      void trim_index(uint64_t last_block_pos, uint64_t num_indexes_existing);
+      void trim_to_last_good_block();
    };
 
 
@@ -1282,7 +1298,7 @@ namespace eosio { namespace chain {
       return true;
    }
 
-   trim_data::trim_data(fc::path block_dir) {
+   trim_data::trim_data(fc::path block_dir, bool check_files) {
 
       // code should follow logic in block_log::repair_log
 
@@ -1338,7 +1354,14 @@ namespace eosio { namespace chain {
 
       index_file_name = block_dir / "blocks.index";
       ind_in = FC_FOPEN(index_file_name.generic_string().c_str(), "rb");
-      EOS_ASSERT( ind_in != nullptr, block_log_not_found, "cannot read file ${file}", ("file",index_file_name.string()) );
+
+      if (check_files) {
+         // check_blockfile_indexfile will construct index file if it
+         // does not exist. Do not assert ind_in != nullptr here.
+         check_blockfile_indexfile();
+      } else {
+         EOS_ASSERT( ind_in != nullptr, block_log_not_found, "cannot read file ${file}", ("file",index_file_name.string()) );
+      }
 
       const auto status = fseek(ind_in, 0, SEEK_END);                //get length of blocks.index (gives number of blocks)
       EOS_ASSERT( status == 0, block_log_exception, "cannot seek to ${file} end", ("file", index_file_name.string()) );
@@ -1422,18 +1445,28 @@ namespace eosio { namespace chain {
       return block_n_pos;
    }
 
+   // High level idea:
+   // 1. Before trimming is performed, block and index files are checked.
+   // 2. If head block in log file is invalid, search for the last 
+   //    good block and discard the rest.
+   // 3. Make sure index file agree with block file. Trim or pad index file
+   //    when necessary.
+   // 4. Trim block and index files according to specified block number.
    int block_log::trim_blocklog_end(fc::path block_dir, uint32_t n) {       //n is last block to keep (remove later blocks)
-      trim_data td(block_dir);
+      trim_data td(block_dir, true);
 
       ilog("In directory ${block_dir} will trim all blocks after block ${n} from ${block_file} and ${index_file}",
          ("block_dir", block_dir.generic_string())("n", n)("block_file",td.block_file_name.generic_string())("index_file", td.index_file_name.generic_string()));
 
       if (n < td.first_block) {
-         dlog("All blocks are after block ${n} so do nothing (trim_end would delete entire blocks.log)",("n", n));
+         ilog("All blocks are after block ${n} so do nothing (trim_end would delete entire blocks.log)",("n", n));
          return 1;
       }
+
+      // Log and index files are already trimmed to the last good block.
+      // Just let the user know about it
       if (n >= td.last_block) {
-         dlog("There are no blocks after block ${n} so do nothing",("n", n));
+         ilog("Block ${n} is outside of the last good block ${last_block}. Everything after the last good block in log file and index file has been trimmed.",("n", n)("last_block", td.last_block));
          return 2;
       }
       const uint64_t end_of_new_file = td.block_pos(n + 1);
@@ -1474,5 +1507,238 @@ namespace eosio { namespace chain {
 
    bool block_log::exists(const fc::path& data_dir) {
       return fc::exists(data_dir / "blocks.log") && fc::exists(data_dir / "blocks.index");
+   }
+
+   // For applications like trim from last, this function is used to
+   // make block and index files match each other.
+   // If head block in log file is invalid, search for the last 
+   // good block and discard the rest.
+   // If index file does not agree with block file, trim or pad index file
+   // when necessary.
+   void trim_data::check_blockfile_indexfile() {
+      if (ind_in == nullptr) {
+         block_log::construct_index(block_file_name, index_file_name);
+      
+         ind_in = FC_FOPEN(index_file_name.generic_string().c_str(), "rb");
+         EOS_ASSERT( ind_in != nullptr, block_log_not_found, "cannot open file ${file} after it is constructed", ("file",index_file_name.string()) );
+      }
+
+      if (is_head_block_valid()) {
+         // It is possible index file and
+         // block file do not agree with each other, make them match.
+         make_indexfile_agree_with_blockfile();
+      } else {
+         // Head block is bad. Find the last good block in block file,
+         // and make block file and index file agree with each other
+         trim_to_last_good_block();
+      }
+   }
+
+   bool trim_data::is_head_block_valid() {
+      // Go to the location storing head block's starting position
+      auto status = fseek(blk_in, -sizeof(uint64_t), SEEK_END);
+      EOS_ASSERT( status == 0, block_log_exception, "cannot seek to ${file} ${pos} from end of file", ("file", block_file_name.string())("pos", sizeof(uint64_t)) );
+
+      // Read head block's starting position
+      uint64_t head_pos;
+      auto size = fread((void*)&head_pos, sizeof(uint64_t), 1, blk_in);
+      EOS_ASSERT( size == 1, block_log_exception, "${file} read fails", ("file", block_file_name.string()) );
+
+      // If head block is deserializable, it is considered valid
+      return (is_block_deserializable(head_pos));
+   }
+
+   bool trim_data::is_block_deserializable(uint64_t pos) {
+      if (pos > block_file_size) {
+         ilog( "Returning false because pos ${pos} greater than ${block_file_size}", ("pos", pos) ("block_file_size", block_file_size) );
+         return false;
+      }
+
+      auto status = fseek(blk_in, pos, SEEK_SET);
+      if (status != 0) {
+         ilog( "Could not seek past ${bytes} bytes in Block log file at '${blocks_log}'. Returned status: ${status}",
+               ("bytes", pos)("blocks_log", block_file_name)("status",status) );
+         return false;
+      }
+
+      detail::fileptr_datastream ds(blk_in, block_file_name.string());
+
+      try {
+        detail::log_entry entry;
+        if (version < pruned_transaction_version) {
+           entry.emplace<signed_block_v0>();
+        }
+
+        eosio::chain::detail::unpack(ds, entry);
+      } catch (...) {
+         ilog("Failed to deserialize, returning false");
+         return false; // If we cannot unpack (deserialize), it is certain the block is corrupt
+      }
+
+      return true;
+   }
+
+   void trim_data::make_indexfile_agree_with_blockfile() {
+      // Find starting position of head block from block file
+      uint64_t block_pos;
+      fseek(blk_in, -sizeof(uint64_t), SEEK_END);
+      fread((void*)&block_pos, sizeof(block_pos), 1, blk_in);
+
+      // Find starting position of head block from index file
+      uint64_t index_pos;
+      fseek(ind_in, -sizeof(uint64_t), SEEK_END);
+      fread((void*)&index_pos, sizeof(index_pos), 1, ind_in);
+
+      // Find number of indexes in index file. To be used in
+      // later functions.
+      fseek(ind_in, 0, SEEK_END);
+      uint64_t num_indexes_existing = ftell(ind_in) / sizeof(uint64_t);
+
+      // block_pos should be the same as index_pos
+      if (index_pos > block_pos) {
+         ilog("Index file has extra entries, truncate it");
+         trim_index(block_pos, num_indexes_existing);
+      } else if (index_pos < block_pos) {
+         ilog("Index file is incomplete, append missing indexes to it");
+         append_index(num_indexes_existing);
+      }
+   }
+
+   // Trim index file until its last index matches head block's
+   // position in block file
+   void trim_data::trim_index(uint64_t head_block_pos, uint64_t num_indexes_existing) {
+      // It is much faster to traverse index file than traverse
+      // blocks in block file
+
+      // Starting from last index in index file, compare it with
+      // head_block_pos. If matches, truncate index file from there.
+      for (auto  i = 1; i <= num_indexes_existing; ++i) {
+         // get the location storing the last block's index
+         // please note the negative sign and multiplication by i
+         auto status = fseek(ind_in, -sizeof(uint64_t) * i, SEEK_END);
+
+         // read last block's position (index)
+         uint64_t block_pos_by_index = 0;
+         fread((void*)&block_pos_by_index, sizeof(uint64_t), 1, ind_in);
+
+         if (block_pos_by_index == head_block_pos) {
+            // Found the index matching the last good block.
+            // Truncate all indexes after the matching index.
+            boost::filesystem::resize_file(index_file_name, sizeof(uint64_t) * (num_indexes_existing - i + 1));
+            return;
+         }
+      }
+
+      // Either block file or index file is corrupt beyond fixable
+      // Assert it.
+      EOS_ASSERT(false, block_log_exception, "Index file has extra index, but cannot be trimmed due to no matching index of head block found in index file");
+   }
+
+   // When we already have an index file, it will be much faster to
+   // append missing indexes than build from the scratch
+   void trim_data::append_index(uint64_t num_indexes_existing) {
+      detail::reverse_iterator block_log_iter;
+
+      const uint32_t num_blocks = block_log_iter.open(block_file_name);
+      EOS_ASSERT(num_blocks > num_indexes_existing, block_log_exception, "Number of blocks in block file ${num_blocks} must be greater than blocks in index file ${num_indexes_existing}", ("num_blocks",num_blocks)("num_indexes_existing", num_indexes_existing));
+
+      uint32_t num_indexes_to_append = num_blocks - num_indexes_existing;
+
+      // Create a temporary file to store missing indexes
+      fc::temp_file temp_file_name; // This will automatically create a temporary file in the system temporary directory and remove it after it goes out of scope
+
+      // Construct missing indexes
+      detail::index_writer index(temp_file_name.path(), num_indexes_to_append);
+      uint64_t position;
+      auto i = 0;
+      while (i < num_indexes_to_append && (position = block_log_iter.previous()) != block_log::npos) {
+         index.write(position);
+         ++i;
+      }
+      index.complete();
+
+      // Open original index file for appending
+      std::ofstream index_stream(index_file_name.generic_string().c_str(), LOG_WRITE);
+      EOS_ASSERT(index_stream.is_open(), block_log_exception, "index_file not open");
+
+      // Open missing index file for reading
+      std::ifstream temp_stream(temp_file_name.path().generic_string().c_str(), LOG_READ);;
+      EOS_ASSERT(temp_stream.is_open(), block_log_exception, "temp_stream not open");
+
+      // Append missing index file to original index file
+      index_stream.seekp(0, std::ios_base::end);
+      index_stream << temp_stream.rdbuf();
+
+      index_stream.flush();
+
+      // Restore original index file handle
+      // Close original index file handle
+      fclose(ind_in);
+      ind_in = FC_FOPEN(index_file_name.generic_string().c_str(), "rb");
+   }
+
+   // Head block is corrupt. Find the last good block in block file,
+   // trim the bad portion, and make block file and index file 
+   // agree with each other
+   void trim_data::trim_to_last_good_block() {
+      // Get length of blocks.index (gives number of blocks)
+      const auto status = fseek(ind_in, 0, SEEK_END);
+      EOS_ASSERT( status == 0, block_log_exception, "cannot seek to ${file} end", ("file", index_file_name.string()) );
+
+      const int64_t file_end = ftell(ind_in);
+      EOS_ASSERT( file_end >= 0, block_log_exception, "ftell failed for${file}", ("file", index_file_name.string()) );
+      auto num_blocks = file_end/sizeof(int64_t);
+
+      uint64_t block_pos = 0;
+      uint64_t block_number = 0;
+      bool good_block_found = false;
+
+      // Starting from last index in index file, look at its corresponding
+      // block in log file.
+      for (uint64_t  i = 1; i <= num_blocks; ++i) {
+         // get the location storing the last block's index
+         // please note the negative sign and multiplication by i
+         auto status = fseek(ind_in, -sizeof(uint64_t) * i, SEEK_END);
+         EOS_ASSERT( status == 0, block_log_exception, "cannot seek to ${file} ${pos} from beginning of file", ("file", block_file_name.string())("pos", sizeof(uint64_t)) );
+
+         // read last block's position (index)
+         auto size = fread((void*)&block_pos, sizeof(uint64_t), 1, ind_in);
+         EOS_ASSERT( size == 1, block_log_exception, "${file} read fails", ("file", block_file_name.string()) );
+
+         if (block_pos <= block_file_size && is_block_deserializable(block_pos)) {
+            // Make sure block number matches
+            block_number = get_block_number(block_pos);
+            auto block_number_by_index_file = first_block + (num_blocks - i);
+            auto curr_pos = ftell(blk_in);
+
+            if (block_number == block_number_by_index_file) {
+               good_block_found = true;
+               break;
+            }
+         }
+      }
+
+      EOS_ASSERT( good_block_found, block_log_exception, "cannot find a good block in${file}", ("file", block_file_name.string()) );
+
+      // The header portion of a block can be valid if only a few bytes
+      // at the end of its body are corrupt. 
+      // To err on the safe side, discard the first block of good header.
+      ilog("Trim to good block ${block_number}", ("block_number", block_number - 1));
+      boost::filesystem::resize_file(block_file_name, block_pos);
+      boost::filesystem::resize_file(index_file_name, sizeof(uint64_t) * (block_number - first_block)); // block_number - first_block is the number of blocks remaining
+   }
+
+   // Find block number given its starting position
+   uint32_t trim_data::get_block_number(uint64_t block_pos) {
+      int blknum_offset = detail::block_log_impl::blknum_offset_from_block_entry(version);
+      auto status = fseek(blk_in, block_pos + blknum_offset, SEEK_SET);
+      EOS_ASSERT( status == 0, block_log_exception, "cannot seek to ${file} ${pos} from beginning of file", ("file", block_file_name.string())("pos", block_pos + blknum_offset) );
+
+      uint32_t bnum;
+      auto size = fread((void*)&bnum, sizeof(uint32_t), 1, blk_in);
+      EOS_ASSERT( size == 1, block_log_exception, "${file} read fails", ("file", block_file_name.string()) );
+      bnum = fc::endian_reverse_u32(bnum) + 1; //convert from big endian to little endian and add 1
+
+      return bnum;
    }
 }} /// eosio::chain
