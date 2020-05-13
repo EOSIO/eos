@@ -1988,6 +1988,7 @@ namespace eosio {
       return added;
    }
 
+   // only adds if tid already exists, returns have_txn( tid )
    bool dispatch_manager::add_peer_txn( const transaction_id_type& tid, uint32_t connection_id ) {
       std::lock_guard<std::mutex> g( local_txns_mtx );
       auto tptr = local_txns.get<by_id>().find( tid );
@@ -1995,12 +1996,10 @@ namespace eosio {
       const auto expiration = tptr->expires;
 
       tptr = local_txns.get<by_id>().find( std::make_tuple( std::ref( tid ), connection_id ) );
-      bool added = (tptr == local_txns.end());
-      if( added ) {
-         node_transaction_state nts = {tid, expiration, 0, connection_id};
-         local_txns.insert( std::move( nts ) );
+      if( tptr == local_txns.end() ) {
+         local_txns.insert( node_transaction_state{tid, expiration, 0, connection_id} );
       }
-      return added;
+      return true;
    }
 
 
@@ -2634,10 +2633,9 @@ namespace eosio {
          fc::optional<transaction_id_type> trx_id;
          fc::raw::unpack( ds, trx_id );
          if( trx_id ) {
-            have_trx = my_impl->dispatcher->have_txn( *trx_id );
+            have_trx = my_impl->dispatcher->add_peer_txn( *trx_id, connection_id );
          }
          if( have_trx ) {
-            my_impl->dispatcher->add_peer_txn( *trx_id, connection_id );
             const auto buff_size_current = pending_message_buffer.bytes_to_read();
             pending_message_buffer.advance_read_ptr( message_length - (buff_size_start - buff_size_current) );
          } else {
@@ -2646,6 +2644,9 @@ namespace eosio {
             ptr = std::move( trx );
             EOS_ASSERT( !trx_id || !ptr || *trx_id == ptr->id(), transaction_id_type_exception,
                         "Provided trx_id does not match provided packed_transaction" );
+            if( !trx_id ) {
+               have_trx = my_impl->dispatcher->have_txn( ptr->id() );
+            }
             node_transaction_state nts = {ptr->id(), ptr->expiration(), 0, connection_id};
             my_impl->dispatcher->add_peer_txn( nts );
          }
