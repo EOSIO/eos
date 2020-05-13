@@ -1,8 +1,20 @@
 <!-- PLEASE FILL OUT THE FOLLOWING MARKDOWN TEMPLATE -->
 <!-- PR title alone should be sufficient to understand changes. -->
-
 ## Change Description
 <!-- Describe your changes, their justification, AND their impact. Reference issues or pull requests where possible (use '#XX' or 'GH-XX' where XX is the issue or pull request number). -->
+
+
+## Change Type
+**Select ONE**
+- [ ] Documentation
+<!-- checked [x] = Documentation; unchecked [ ] = no changes, ignore this section -->
+- [ ] Stability bug fix
+<!-- checked [x] = Stability bug fix; unchecked [ ] = no changes, ignore this section -->
+- [ ] Other
+<!-- checked [x] = Other; unchecked [ ] = no changes, ignore this section -->
+- [ ] Other - special case
+<!-- checked [x] = Other - special case; unchecked [ ] = no changes, ignore this section -->
+<!-- Other - special case is for when a change warrants additional explanation or description in the relase notes. Please include a description of the change for inclusion in the release notes.-->
 
 
 ## Consensus Changes
