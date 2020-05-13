@@ -84,7 +84,7 @@ void platform_timer::start(fc::time_point tp) {
       expired = 0;
       return;
    }
-   fc::microseconds x = tp.time_since_epoch() - fc::now().time_since_epoch();
+   fc::microseconds x = tp - fc::now();
    if(x.count() <= 0)
       expired = 1;
    else {

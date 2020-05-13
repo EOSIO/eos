@@ -387,8 +387,8 @@ namespace eosio
 
          fc_dlog(_log, "received incoming block ${n} ${id}", ("n", blk_num)("id", id));
 
-         EOS_ASSERT(block->timestamp < (fc::now() + 7s), block_from_the_future,
-                    "received a block from the future, ignoring it: ${id}", ("id", id));
+         EOS_ASSERT( block->timestamp < ( fc::now() + 7s ), block_from_the_future,
+                     "received a block from the future, ignoring it: ${id}", ("id", id) );
 
          /* de-dupe here... no point in aborting block if we already know the block */
          auto existing = chain.fetch_block_by_id(id);
@@ -2304,7 +2304,6 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
          schedule_production_loop();
       });
 
-      try
       {
          produce_block();
          return true;

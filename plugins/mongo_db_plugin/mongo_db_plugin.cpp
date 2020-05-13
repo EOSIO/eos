@@ -1397,7 +1397,6 @@ void mongo_db_plugin_impl::init() {
       auto accounts = mongo_conn[db_name][accounts_col];
       if( accounts.estimated_document_count() == 0 ) {
          auto now = fc::now<fc::milliseconds>();
-
          auto doc = make_document( kvp( "name", name( chain::config::system_account_name ).to_string()),
                                    kvp( "createdAt", b_date{now} ));
 

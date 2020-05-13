@@ -823,7 +823,7 @@ namespace eosio { namespace chain {
          _current_position_in_file = block_log::npos;
          return _current_position_in_file;
       }
-	 
+
       if (_start_of_buffer_position > _current_position_in_file) {
          update_buffer();
       }

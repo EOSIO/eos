@@ -568,6 +568,7 @@ namespace eosio {
                   fc_dlog( logger, "404 - not found: ${ep}", ("ep", resource) );
                   error_results results{websocketpp::http::status_code::not_found,
                                         "Not Found", error_results::error_info(fc::exception( FC_LOG_MESSAGE( error, "Unknown Endpoint" )), verbose_http_errors )};
+
                   con->set_body( fc::json::to_string( results, fc::now() + max_response_time ));
                   con->set_status( websocketpp::http::status_code::not_found );
                   con->send_http_response();
@@ -625,7 +626,7 @@ namespace eosio {
       else
          cfg.add_options()
             ("unix-socket-path", bpo::value<string>(),
-             "The filename (relative to data-dir) to create a unix socket for HTTP RPC; set blank to disable.");   
+             "The filename (relative to data-dir) to create a unix socket for HTTP RPC; set blank to disable.");
 #endif
 
       if(current_http_plugin_defaults.default_http_port)
