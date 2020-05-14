@@ -2,7 +2,7 @@
 Validate signatures and recover public keys
 
 ## Positional Parameters
-- `transaction` _TEXT_ - The JSON string or filename defining the transaction to validate
+- `transaction` _TEXT_ - The JSON string or filename defining the signed transaction to validate
 
 ## Options
 - `-c,--chain-id` - The chain id that will be used in signature verification
