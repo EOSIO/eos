@@ -172,7 +172,7 @@ void rodeos_db_snapshot::write_block_info(const ship_protocol::get_blocks_result
    uint32_t            block_num = result.this_block->block_num;
    eosio::input_stream bin       = *result.block;
    signed_block_header block;
-   eosio::check_discard(from_bin(block, bin));
+   from_bin(block, bin);
 
    write_block_info(block_num, result.this_block->block_id, block);
 }

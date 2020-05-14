@@ -169,17 +169,22 @@ BOOST_AUTO_TEST_CASE(test_state_result_abi) {
                              abi_serializer::create_yield_function(chain.abi_serializer_max_time)};
 
    for (auto& [key, value] : history) {
+      // check the validity of the abi string
       fc::datastream<const char*> strm(value.data(), value.size());
       serializer.binary_to_variant("result", strm,
                                    abi_serializer::create_yield_function(chain.abi_serializer_max_time));
       BOOST_CHECK(value.size() == strm.tellp());
 
+      // check the validity of abieos ship_protocol type definitions
       eosio::input_stream  bin{ value.data(), value.data() + value.size() };
       eosio::ship_protocol::result result;
-      eosio::check_discard(from_bin(result, bin));
+      BOOST_CHECK_NO_THROW(from_bin(result, bin));
+      BOOST_CHECK(bin.remaining() == 0);
 
       std::vector<eosio::ship_protocol::table_delta> deltas;
-      eosio::check_discard(from_bin(deltas, std::get<eosio::ship_protocol::get_blocks_result_v1>(result).deltas));
+      auto deltas_bin =  std::get<eosio::ship_protocol::get_blocks_result_v1>(result).deltas;
+      BOOST_CHECK_NO_THROW(from_bin(deltas, deltas_bin));
+      BOOST_CHECK(deltas_bin.remaining() == 0);
    }
 }
 

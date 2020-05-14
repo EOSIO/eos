@@ -249,7 +249,7 @@ rodeos_bool rodeos_query_transaction(rodeos_error* error, rodeos_query_handler* 
 
       std::vector<std::vector<char>> memory;
       eosio::input_stream            s{ data, size };
-      auto trx = eosio::from_bin<eosio::ship_protocol::packed_transaction_v0>(s);
+      auto trx = eosio::from_bin<eosio::ship_protocol::packed_transaction>(s);
 
       auto                                    thread_state = handler->state_cache.get_state();
       eosio::ship_protocol::transaction_trace tt;
