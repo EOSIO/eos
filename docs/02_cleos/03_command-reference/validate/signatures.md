@@ -8,27 +8,36 @@ Validate signatures and recover public keys
 - `-c,--chain-id` - The chain id that will be used in signature verification
 
 ## Example
+<!--
+{
+  "expiration": "2020-04-23T04:47:23",
+  "ref_block_num": 20,
+  "ref_block_prefix": 3872940040,
+  "max_net_usage_words": 0,
+  "max_cpu_usage_ms": 0,
+  "delay_sec": 0,
+  "context_free_actions": [],
+  "actions": [
+    {
+      "account": "eosio",
+      "name": "voteproducer",
+      "authorization": [
+        {
+          "actor": "initb",
+          "permission": "active"
+        }
+      ],
+      "data": "000000008093dd74000000000000000001000000008093dd74"
+    }
+  ],
+  "transaction_extensions": [],
+  "signatures": [
+    "SIG_K1_Jy81u5yWSE4vGET1cm9TChKrzhAz4QE2hB2pWnUsHQExGafqhVwXtg7a7mbLZwXcon8bVQJ3J5jtZuecJQADTiz2kwcm7c"
+  ],
+  "context_free_data": []
+}
+-->
 ```sh
-cleos validate signatures '{ \
-  "expiration": "2018-08-02T20:24:36", \
-  "ref_block_num": 14207, \
-  "ref_block_prefix": 1438248607, \
-  "max_net_usage_words": 0, \
-  "max_cpu_usage_ms": 0, \
-  "delay_sec": 0, \
-  "context_free_actions": [], \
-  "actions": [{ \
-      "account": "eosio", \
-      "name": "newaccount", \
-      "authorization": [{ \
-          "actor": "eosio", \
-          "permission": "active" \
-        } \
-      ], \
-      "data": \
-      "0000000000ea305500a6823403ea30550100000001000240cc0bf90a5656c8bb81f0eb86f49f89613c5cd988c018715d4646c6bd0ad3d8010000000100000001000240cc0bf90a5656c8bb81f0eb86f49f89613c5cd988c018715d4646c6bd0ad3d801000000" \
-    } \
-  ], \
-  "transaction_extensions": [] \
-}'
+cleos -u https://api.testnet.eos.io validate signatures '{ "expiration": "2020-04-23T04:47:23", "ref_block_num": 20, "ref_block_prefix": 3872940040, 
+"max_net_usage_words": 0, "max_cpu_usage_ms": 0, "delay_sec": 0, "context_free_actions": [], "actions": [ { "account": "eosio", "name": "voteproducer", "authorization": [ { "actor": "initb", "permission": "active" } ], "data": "000000008093dd74000000000000000001000000008093dd74" } ], "transaction_extensions": [], "signatures": [ "SIG_K1_Jy81u5yWSE4vGET1cm9TChKrzhAz4QE2hB2pWnUsHQExGafqhVwXtg7a7mbLZwXcon8bVQJ3J5jtZuecJQADTiz2kwcm7c" ], "context_free_data": [] }'
 ```
