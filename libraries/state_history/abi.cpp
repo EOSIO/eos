@@ -157,7 +157,7 @@ extern const char* const state_history_plugin_abi = R"({
                 { "name": "max_cpu_usage_ms", "type": "uint8" },
                 { "name": "delay_sec", "type": "varuint32" },
                 { "name": "transaction_extensions", "type": "extension[]" },
-                { "name": "prunable_data", "type": "prunable_data_type?" },
+                { "name": "prunable_data", "type": "prunable_data_type?" }
             ]
         },
         {

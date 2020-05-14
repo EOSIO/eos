@@ -356,6 +356,8 @@ void state_history_plugin::set_program_options(options_description& cli, options
            "your internal network.");
    options("trace-history-debug-mode", bpo::bool_switch()->default_value(false),
            "enable debug mode for trace history");
+   options("context-free-data-compression", bpo::value<string>()->default_value("zlib"), 
+           "compression mode for context free data in transaction traces. Supported options are \"zlib\" and \"none\"");
 }
 
 void state_history_plugin::plugin_initialize(const variables_map& options) {
@@ -396,7 +398,16 @@ void state_history_plugin::plugin_initialize(const variables_map& options) {
       if (options.at("trace-history").as<bool>()) {
          my->trace_log.emplace(state_history_dir);
          if (options.at("trace-history-debug-mode").as<bool>()) 
-            my->trace_log->trace_debug_mode = true;                      
+            my->trace_log->trace_debug_mode = true;  
+
+         auto compression = options.at("context-free-data-compression").as<string>();
+         if (compression == "zlib") {
+            my->trace_log->compression = state_history::compression_type::zlib;
+         } else if (compression == "none") {
+            my->trace_log->compression = state_history::compression_type::none;
+         } else {
+            throw bpo::validation_error(bpo::validation_error::invalid_option_value);
+         }
       }
 
       if (options.at("chain-state-history").as<bool>())

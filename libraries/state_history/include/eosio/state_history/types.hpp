@@ -13,7 +13,7 @@ using chain::signature_type;
 using chain::signed_transaction;
 using chain::transaction_trace_ptr;
 
-enum class compression_type : unsigned char { zlib, none };
+using compression_type = chain::packed_transaction::prunable_data_type::compression_type;
 
 template <typename T>
 struct big_vector_wrapper {

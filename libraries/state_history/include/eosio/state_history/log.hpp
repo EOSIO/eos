@@ -110,7 +110,6 @@ class state_history_traces_log : public state_history_log {
    state_history::transaction_trace_cache cache;
 
  public:
-   using compression_type = chain::packed_transaction::prunable_data_type::compression_type;
    bool trace_debug_mode  = false;
    state_history::compression_type compression = state_history::compression_type::zlib;
 
