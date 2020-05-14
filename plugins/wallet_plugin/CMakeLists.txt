@@ -18,12 +18,9 @@ add_library( wallet_plugin
              yubihsm_wallet.cpp
              ${HEADERS} )
 
-target_link_libraries( wallet_plugin yubihsm_static eosio_chain appbase ${security_framework} ${corefoundation_framework} ${localauthentication_framework} ${cocoa_framework})
+target_link_libraries( wallet_plugin yubihsm eosio_chain appbase ${security_framework} ${corefoundation_framework} ${localauthentication_framework} ${cocoa_framework})
 target_include_directories( wallet_plugin PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" )
 
 if(APPLE)
    target_link_libraries( wallet_plugin se-helpers )
 endif()
-
-#sadly old cmake 2.8 support in yubihsm cmake prevents usage of target_include_directories there
-target_include_directories( wallet_plugin PRIVATE "${CMAKE_SOURCE_DIR}/libraries/yubihsm/lib" )
