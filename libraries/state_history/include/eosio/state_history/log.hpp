@@ -57,7 +57,9 @@ class state_history_log {
    chain::block_id_type last_block_id;
    uint32_t             version = ship_current_version;
  protected:
-   cfile_stream         log;
+   cfile_stream         write_log;
+   cfile_stream         read_log;
+
  public:
    // The type aliases below help to make it obvious about the meanings of member function return values.
    using block_num_type     = uint32_t;
@@ -74,15 +76,15 @@ class state_history_log {
 
    template <typename F>
    void write_entry(state_history_log_header& header, const chain::block_id_type& prev_id, F write_payload) {
-      auto start_pos = log.tellp();
+      auto start_pos = write_log.tellp();
       try {
          auto block_num      = write_entry_header(header, prev_id);
-         write_payload(log);
+         write_payload(write_log);
          write_entry_position(header, start_pos, block_num);
       } catch (...) {
-         log.close();
+         write_log.close();
          boost::filesystem::resize_file(log_filename, start_pos);
-         log.open("rb+");
+         write_log.open("rb+");
          throw;
       }
    }
