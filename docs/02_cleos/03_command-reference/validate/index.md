@@ -11,4 +11,4 @@ Options:
 ```
 
 ## Subcommands
-- [signatures](signatures) - Validate signatures and recover public keys
+- [signatures](validate-signatures) - Validate signatures and recover public keys
