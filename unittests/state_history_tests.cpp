@@ -145,9 +145,31 @@ BOOST_AUTO_TEST_CASE(test_traces_present)
 
    chain.control->accepted_block.connect([&](const block_state_ptr& bs) { log.store(chain.control->db(), bs); });
 
+   deploy_test_api(chain);
    auto tr_ptr = chain.create_account(N(newacc));
 
    chain.produce_blocks(1);
+
+   auto traces_bin = log.get_log_entry(tr_ptr->block_num);
+   BOOST_REQUIRE(traces_bin);
+
+   fc::datastream<const char*> strm(traces_bin->data(), traces_bin->size());
+   std::vector<state_history::transaction_trace> traces;
+   fc::raw::unpack(strm, traces);
+
+   auto trace_itr = std::find_if(traces.begin(), traces.end(), [tr_ptr](const state_history::transaction_trace& v) {
+       return v.get<state_history::transaction_trace_v0>().id == tr_ptr->id;
+   });
+
+   BOOST_REQUIRE(trace_itr!=traces.end());
+
+   auto &action_traces = trace_itr->get<state_history::transaction_trace_v0>().action_traces;
+
+   auto new_account_action_itr = std::find_if(action_traces.begin(), action_traces.end(), [](const state_history::action_trace& v) {
+      return v.get<state_history::action_trace_v1>().act.name == N(newaccount).to_uint64_t();
+   });
+
+   BOOST_REQUIRE(new_account_action_itr!=action_traces.end());
 }
 
 state_history::partial_transaction_v0 get_partial_from_traces_bin(const bytes&               traces_bin,
