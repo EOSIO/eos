@@ -49,3 +49,10 @@ cleos validate signatures transaction '{ "expiration": "2020-04-23T04:47:23", "r
 
 ## See Also
 - [How to submit a transaction](../../02_how-to-guides/how-to-submit-a-transaction.md)
+
+## Output
+```console
+[
+  "EOS7pCywBCz5zw2bc7teCVcT7MEWUr9s749qnYDNPEsBoH32vGqqN"
+]
+```
