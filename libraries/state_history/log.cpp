@@ -299,10 +299,7 @@ chain::bytes state_history_chain_state_log::get_log_entry(block_num_type block_n
       return {};
    state_history_log_header header;
    get_entry_header(block_num, header);
-   chain::bytes data;
-   state_history::zlib_unpack(read_log, data);
-   return data;
-
+   return state_history::zlib_decompress(read_log);
 }
 
 void state_history_chain_state_log::store(const chainbase::database& db, const chain::block_state_ptr& block_state) {

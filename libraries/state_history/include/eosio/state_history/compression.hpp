@@ -2,6 +2,8 @@
 #include <boost/iostreams/filter/zlib.hpp>
 #include <boost/iostreams/filtering_streambuf.hpp>
 #include <boost/iostreams/restrict.hpp>
+#include <boost/iostreams/copy.hpp>
+#include <boost/iostreams/device/back_inserter.hpp>
 #include <fc/io/raw.hpp>
 #include <fc/io/datastream.hpp>
 #include <fc/io/bio_device_adaptor.hpp>
@@ -61,6 +63,19 @@ void zlib_unpack(STREAM& strm, T& obj) {
       fc::datastream<bio::filtering_istreambuf> decompress_strm(bio::zlib_decompressor() | bio::restrict(fc::to_source(strm), 0, len));
       fc::raw::unpack(decompress_strm, obj);
    }
+}
+
+template <typename STREAM>
+std::vector<char> zlib_decompress(STREAM& strm) {
+   uint32_t          len;
+   fc::raw::unpack(strm, len);
+   if (len > 0) {
+      std::vector<char>         result;
+      bio::filtering_istreambuf decompress_buf(bio::zlib_decompressor() | bio::restrict(fc::to_source(strm), 0, len));
+      bio::copy(decompress_buf, bio::back_inserter(result));
+      return result;
+   }
+   return {};
 }
 
 } // namespace state_history

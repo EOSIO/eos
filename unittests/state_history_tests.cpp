@@ -125,6 +125,26 @@ BOOST_AUTO_TEST_CASE(test_trace_log) {
    BOOST_CHECK(get_prunable_data_from_traces(pruned_traces, cfd_trace->id).contains<prunable_data_type::none>());
 }
 
+BOOST_AUTO_TEST_CASE(test_chain_state_log) {
+
+   namespace bfs = boost::filesystem;
+   tester chain;
+
+   scoped_temp_path state_history_dir;
+   fc::create_directories(state_history_dir.path);
+   state_history_chain_state_log log(state_history_dir.path);
+
+   chain.control->accepted_block.connect(
+       [&](const block_state_ptr& block_state) { log.store(chain.control->db(), block_state); });
+
+   chain.produce_blocks(10);
+
+   chain::bytes entry = log.get_log_entry(7);
+   std::vector<eosio::ship_protocol::table_delta> deltas;
+   eosio::input_stream  deltas_bin{ entry.data(), entry.data() + entry.size() };
+   BOOST_CHECK_NO_THROW(from_bin(deltas, deltas_bin));
+}
+
 BOOST_AUTO_TEST_CASE(test_state_result_abi) {
    using namespace state_history;
 

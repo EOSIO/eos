@@ -217,7 +217,7 @@ struct get_blocks_result_v1 {
    fc::optional<block_position>   prev_block;
    optional_signed_block          block; // packed as fc::optional<fc::static_variant<signed_block_v0, signed_block>>
    std::vector<transaction_trace> traces;
-   bytes                          deltas;
+   bytes                          deltas; // stores the serialized std::vector<table_delta> 
 };
 
 using state_result  = fc::static_variant<get_status_result_v0, get_blocks_result_v0, get_blocks_result_v1>;
