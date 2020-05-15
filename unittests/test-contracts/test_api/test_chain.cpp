@@ -1,6 +1,6 @@
-#include <eosiolib/action.h>
-#include <eosiolib/chain.h>
-#include <eosiolib/eosio.hpp>
+#include <eosiolib/contracts/eosio/action.hpp>
+#include <eosiolib/capi/eosio/chain.h>
+#include <eosiolib/contracts/eosio/eosio.hpp>
 
 #include "test_api.hpp"
 
