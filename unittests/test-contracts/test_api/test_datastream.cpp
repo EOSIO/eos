@@ -1,7 +1,7 @@
 #include <cmath>
 
-#include <eosiolib/eosio.hpp>
-#include <eosiolib/datastream.hpp>
+#include <eosiolib/contracts/eosio/eosio.hpp>
+#include <eosiolib/core/eosio/datastream.hpp>
 
 #include "test_api.hpp"
 
