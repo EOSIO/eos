@@ -99,7 +99,7 @@ void test_action::test_cf_action() {
    if ( cfa.payload == 100 ) {
       // verify read of get_context_free_data, also verifies system api access
       int size = eosio::get_context_free_data( cfa.cfd_idx, nullptr, 0 );
-      check( size > 0, "size determination failed" );
+      eosio_assert( size > 0, "size determination failed" );
       std::vector<char> cfd( static_cast<size_t>(size) );
       size = eosio::get_context_free_data( cfa.cfd_idx, &cfd[0], static_cast<size_t>(size) );
       eosio_assert(static_cast<size_t>(size) == cfd.size(), "get_context_free_data failed" );
@@ -259,7 +259,7 @@ void test_action::test_assert_code() {
 void test_action::test_ram_billing_in_notify( uint64_t receiver, uint64_t code, uint64_t action ) {
    uint128_t tmp = 0;
    uint32_t total = eosio::read_action_data( &tmp, sizeof(uint128_t) );
-   check( total == sizeof(uint128_t), "total == sizeof(uint128_t)" );
+   eosio_assert( total == sizeof(uint128_t), "total == sizeof(uint128_t)" );
 
    uint64_t to_notify = tmp >> 64;
    uint64_t payer = tmp & 0xFFFFFFFFFFFFFFFFULL;
