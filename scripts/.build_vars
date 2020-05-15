@@ -64,7 +64,7 @@ export BUILD_CLANG=${BUILD_CLANG:-false}
 
 export CORE_SYMBOL_NAME=${CORE_SYMBOL_NAME:-SYS}
 
-export CPU_CORES=$(grep -c ^processor /proc/cpuinfo 2>/dev/null || sysctl -n hw.ncpu)
+export CPU_CORES=$(grep -c ^processor /proc/cpuinfo 2>/dev/null || sysctl -n hw.physicalcpu) 
 export CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release}
 
 export NONINTERACTIVE=${NONINTERACTIVE:-false}
