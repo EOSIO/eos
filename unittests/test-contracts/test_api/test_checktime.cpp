@@ -1,8 +1,8 @@
 #include <vector>
 
-#include <eosiolib/crypto.h>
-#include <eosiolib/eosio.hpp>
-#include <eosiolib/print.h>
+#include <eosiolib/capi/eosio/crypto.h>
+#include <eosiolib/contracts/eosio/eosio.hpp>
+#include <eosiolib/core/eosio/print.hpp>
 
 #include "test_api.hpp"
 

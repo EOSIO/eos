@@ -1,14 +1,32 @@
-#include <eosiolib/action.hpp>
-#include <eosiolib/chain.h>
-#include <eosiolib/crypto.h>
-#include <eosiolib/datastream.hpp>
-#include <eosiolib/db.h>
-#include <eosiolib/eosio.hpp>
-#include <eosiolib/print.hpp>
-#include <eosiolib/privileged.h>
-#include <eosiolib/transaction.hpp>
+#include <eosiolib/contracts/eosio/action.hpp>
+#include <eosiolib/capi/eosio/chain.h>
+#include <eosiolib/capi/eosio/crypto.h>
+#include <eosiolib/core/eosio/datastream.hpp>
+#include <eosiolib/capi/eosio/db.h>
+#include <eosiolib/contracts/eosio/eosio.hpp>
+#include <eosiolib/core/eosio/print.hpp>
+#include <eosiolib/capi/eosio/privileged.h>
+#include <eosiolib/contracts/eosio/transaction.hpp>
 
 #include "test_api.hpp"
+
+extern "C" {
+    __attribute__((eosio_wasm_import))
+    void set_action_return_value(const char*, size_t);
+
+    __attribute__((eosio_wasm_import))
+    void  eosio_assert( uint32_t test, const char* msg );
+
+    __attribute__((eosio_wasm_import))
+    void  eosio_assert_code( uint32_t test, uint64_t code );
+
+    __attribute__((eosio_wasm_import))
+    uint64_t  current_time();
+
+    __attribute__((eosio_wasm_import))
+    int get_action( uint32_t type, uint32_t index, char* buff, size_t size );
+
+}
 
 using namespace eosio;
 
@@ -56,7 +74,7 @@ void test_action::test_dummy_action() {
 
    if ( dum13.b == 200 ) {
       // attempt to access context free only api
-      get_context_free_data( 0, nullptr, 0 );
+      eosio::get_context_free_data( 0, nullptr, 0 );
       eosio_assert( false, "get_context_free_data() not allowed in non-context free action" );
    } else {
       eosio_assert( dum13.a == DUMMY_ACTION_DEFAULT_A, "dum13.a == DUMMY_ACTION_DEFAULT_A" );
@@ -79,10 +97,10 @@ void test_action::test_cf_action() {
    cf_action cfa = act.data_as<cf_action>();
    if ( cfa.payload == 100 ) {
       // verify read of get_context_free_data, also verifies system api access
-      int size = get_context_free_data( cfa.cfd_idx, nullptr, 0 );
+      int size = eosio::get_context_free_data( cfa.cfd_idx, nullptr, 0 );
       eosio_assert( size > 0, "size determination failed" );
       std::vector<char> cfd( static_cast<size_t>(size) );
-      size = get_context_free_data( cfa.cfd_idx, &cfd[0], static_cast<size_t>(size) );
+      size = eosio::get_context_free_data( cfa.cfd_idx, &cfd[0], static_cast<size_t>(size) );
       eosio_assert(static_cast<size_t>(size) == cfd.size(), "get_context_free_data failed" );
       uint32_t v = eosio::unpack<uint32_t>( &cfd[0], cfd.size() );
       eosio_assert( v == cfa.payload, "invalid value" );
@@ -100,7 +118,7 @@ void test_action::test_cf_action() {
       uint32_t i = 42;
       memccpy( &v, &i, sizeof(i), sizeof(i) );
       // verify transaction api access
-      eosio_assert(transaction_size() > 0, "transaction_size failed");
+      eosio_assert(eosio::transaction_size() > 0, "transaction_size failed");
       // verify softfloat api access
       float f1 = 1.0f, f2 = 2.0f;
       float f3 = f1 + f2;
@@ -137,20 +155,18 @@ void test_action::test_cf_action() {
    } else if ( cfa.payload == 206 ) {
       eosio::require_auth("test"_n);
       eosio_assert( false, "authorization_api should not be allowed" );
-   } else if ( cfa.payload == 207 ) {
-      now();
-      eosio_assert( false, "system_api should not be allowed" );
-   } else if ( cfa.payload == 208 ) {
+   } else if ( cfa.payload == 207 || cfa.payload == 208 ) {
+      // 207 is obsolete as now() is removed from system.h
       current_time();
       eosio_assert( false, "system_api should not be allowed" );
    } else if ( cfa.payload == 209 ) {
       publication_time();
       eosio_assert( false, "system_api should not be allowed" );
    } else if ( cfa.payload == 210 ) {
-      send_inline( (char*)"hello", 6 );
+      eosio::internal_use_do_not_use::send_inline( (char*)"hello", 6 );
       eosio_assert( false, "transaction_api should not be allowed" );
    } else if ( cfa.payload == 211 ) {
-      send_deferred( "testapi"_n.value, "testapi"_n.value, "hello", 6, 0 );
+      eosio::send_deferred( "testapi"_n.value, "testapi"_n, "hello", 6, 0 );
       eosio_assert( false, "transaction_api should not be allowed" );
    }
 
@@ -181,7 +197,7 @@ void test_action::require_notice_tests( uint64_t receiver, uint64_t code, uint64
 }
 
 void test_action::require_auth() {
-   prints("require_auth");
+   print("require_auth");
    eosio::require_auth("acc3"_n);
    eosio::require_auth("acc4"_n);
 }
@@ -207,7 +223,9 @@ void test_action::test_publication_time() {
    uint64_t pub_time = 0;
    uint32_t total = read_action_data( &pub_time, sizeof(uint64_t) );
    eosio_assert( total == sizeof(uint64_t), "total == sizeof(uint64_t)" );
-   eosio_assert( pub_time == publication_time(), "pub_time == publication_time()" );
+   time_point msec{ microseconds{static_cast<int64_t>(pub_time)}};
+   eosio_assert( msec == publication_time(), "pub_time == publication_time()" );
+
 }
 
 void test_action::test_current_receiver( uint64_t receiver, uint64_t code, uint64_t action ) {
@@ -234,7 +252,7 @@ void test_action::test_assert_code() {
 
 void test_action::test_ram_billing_in_notify( uint64_t receiver, uint64_t code, uint64_t action ) {
    uint128_t tmp = 0;
-   uint32_t total = read_action_data( &tmp, sizeof(uint128_t) );
+   uint32_t total = eosio::read_action_data( &tmp, sizeof(uint128_t) );
    eosio_assert( total == sizeof(uint128_t), "total == sizeof(uint128_t)" );
 
    uint64_t to_notify = tmp >> 64;
