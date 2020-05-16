@@ -88,8 +88,8 @@ public:
    void plugin_startup() {
       ilog("Creating and starting monitor thread");
       monitor_thread = std::thread( [this] {
-         fc::set_os_thread_name( "resource_monitor" );
-         monitor_task();;
+         fc::set_os_thread_name( "resmon" ); // console_appender uses 9 chars for thread name reporting. 
+         monitor_task();
       } );
    }
 
@@ -111,7 +111,7 @@ private:
    std::atomic_bool   done {false};
 
    uint32_t           sleep_time_in_ms {2000}; 
-   uint32_t           used_space_threshold_in_percentage {95};
+   uint32_t           used_space_threshold_in_percentage {90};
 
    struct filesystem_info {
       dev_t           st_dev; // device id of file system containing "file_path"
