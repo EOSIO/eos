@@ -156,10 +156,8 @@ void test_action::test_cf_action() {
    } else if ( cfa.payload == 206 ) {
       eosio::require_auth("test"_n);
       eosio_assert( false, "authorization_api should not be allowed" );
-   } else if ( cfa.payload == 207 ) {
-      // now();
-      eosio_assert( false, "system_api should not be allowed" );
-   } else if ( cfa.payload == 208 ) {
+   } else if ( cfa.payload == 207 || cfa.payload == 208 ) {
+      // 207 is obsolete as now() is removed from system.h
       current_time();
       eosio_assert( false, "system_api should not be allowed" );
    } else if ( cfa.payload == 209 ) {
