@@ -13,7 +13,10 @@ Deploy an EOSIO contract
 Execute:
 
 ```sh
-cleos set contract contract_account contract_directory_path
+cleos set contract contract_account contract_directory_path [wasm-file] [abi-file]
 ```
 
 Replace the `contract_directory_path` with the path points to your contract folder
+
+[[info | Default contract name]]
+| By default, `cleos` treats the last folder specified in `contract_directory_path` as the contract name. Therefore, it expects `.wasm` and `.abi` files with that contract name as filename. This can be overridden with the optional `wasm-file` and `abi-file` parameters.
