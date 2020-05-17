@@ -12,7 +12,7 @@ The `wallet_api_plugin` exposes functionality from the [`wallet_plugin`](../wall
 plugin = eosio::wallet_api_plugin
 
 # command-line
-nodeos ... --plugin eosio::wallet_api_plugin
+keosd ... --plugin eosio::wallet_api_plugin
 ```
 
 ## Options
@@ -34,6 +34,6 @@ plugin = eosio::http_plugin
 [options]
 
 # command-line
-nodeos ... --plugin eosio::wallet_plugin [options]  \
+keosd ... --plugin eosio::wallet_plugin [options]  \
            --plugin eosio::http_plugin [options]
 ```
