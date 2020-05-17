@@ -52,9 +52,9 @@ public:
       cfg.add_options()
          ( "resource-monitor-directory",  bpo::value<vector<bfs::path>>()->composing(),
            "The directory whose file system to be monitored. This is a mandatory option. It can appear multiple times for different directories")
-         ( "resource-monitor-interval-seconds", bpo::value<uint32_t>()->default_value(2),
+         ( "resource-monitor-interval-seconds", bpo::value<uint32_t>()->default_value(def_sleep_time_in_secs),
            "Time in seconds between two consecutive checks of resource usage. Should be greater than 1 and less than 60 (one minute)" )
-         ( "resource-monitor-space-threshold", bpo::value<uint32_t>()->default_value(95),
+         ( "resource-monitor-space-threshold", bpo::value<uint32_t>()->default_value(def_used_space_threshold_in_percentage),
              "Threshold in terms of percentage of used space vs total space. If used space is over the threshold, a graceful shutdown is initiated. The value should be greater than 1 to less than 99" )
          ;
    }
@@ -107,11 +107,14 @@ public:
    }
 
 private:
-   std::thread        monitor_thread;
-   std::atomic_bool   done {false};
+   std::thread               monitor_thread;
+   std::atomic_bool          done {false};
 
-   uint32_t           sleep_time_in_ms {2000}; 
-   uint32_t           used_space_threshold_in_percentage {90};
+   static constexpr uint32_t def_sleep_time_in_secs = 2;
+   static constexpr uint32_t def_used_space_threshold_in_percentage = 90;
+
+   uint32_t                  sleep_time_in_ms {def_sleep_time_in_secs * 1000}; 
+   uint32_t                  used_space_threshold_in_percentage {def_used_space_threshold_in_percentage};
 
    struct filesystem_info {
       dev_t           st_dev; // device id of file system containing "file_path"
