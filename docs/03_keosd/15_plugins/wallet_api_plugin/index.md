@@ -26,6 +26,8 @@ None
 
 ### Load Dependency Examples
 
+The following plugins are loaded with default settings if not specified on the command line or `config.ini`:
+
 ```sh
 # config.ini
 plugin = eosio::wallet_plugin
