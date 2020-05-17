@@ -15,20 +15,19 @@ import sys
 import signal
 import time
 import subprocess
+import os
+import shutil
 
 ###############################################################
-# eosio_blocklog_prune_test.py
+# rodeos_test.py
 #
-# Test eosio-blocklog prune-transaction 
+# rodeos integration test 
 # 
-# This test creates a producer node and 2 verification nodes. 
-# The verification node is configured with state history plugin.
-# A transaction with context free data is pushed to the producer node.
-# Afterwards, it uses eosio-blocklog to prune the transaction with context free
-# data and check if the context free data in the block log has actually been pruned. 
-# Notice that there's no verification on whether the pruning on the 
-# state history traces log has actually been pruned. We rely on the 
-# unittests/state_history_tests.cpp to perform this test. 
+# This test creates a producer node with state history plugin and a 
+# rodeos process with a test filter to connect to the producer. Pushes 
+# a few transactions to the producer and query rodeos get_block endpoint
+# to see if it sees one of the block containing the pushed transaction. 
+# Lastly, it verifies if rodeos get_info endpoint returns a head_block_num. 
 #
 ###############################################################
 
@@ -47,10 +46,14 @@ cluster=Cluster(walletd=True)
 cluster.setWalletMgr(walletMgr)
 
 testSuccessful = False
+rodeos = None
 try:
     TestHelper.printSystemInfo("BEGIN")
     cluster.killall(allInstances=killAll)
     cluster.cleanup()
+    rodeos_dir = os.path.join(os.getcwd(), 'var/lib/rodeos')
+    shutil.rmtree(rodeos_dir, ignore_errors=True)
+    os.makedirs(rodeos_dir, exist_ok=True)
 
     assert cluster.launch(
         pnodes=1,
@@ -60,11 +63,15 @@ try:
         useBiosBootFile=False,
         loadSystemContract=False,
         specificExtraNodeosArgs={
-            0: "--plugin eosio::state_history_plugin --trace-history --disable-replay-opts --sync-fetch-span 200 --state-history-endpoint 127.0.0.1:8080 --plugin eosio::net_api_plugin --enable-stale-production"})
+            0: ("--plugin eosio::state_history_plugin --trace-history --chain-state-history --disable-replay-opts " 
+                "--state-history-endpoint 127.0.0.1:8080 --plugin eosio::net_api_plugin --wasm-runtime eos-vm-jit")})
 
-    rodeos = subprocess.Popen(['./programs/rodeos/rodeos', '--rdb-database', './rocksdb', '--data-dir','./data',  '--clone-connect-to',  '127.0.0.1:8080', '--filter-name', 'voice.filter', '--filter-wasm', './voice_filter.wasm' ],
-                     stdout=subprocess.PIPE, 
-                     stderr=subprocess.PIPE)
+    rodeos_stdout = open(os.path.join(rodeos_dir, "stdout.out"), "w")
+    rodeos_stderr = open(os.path.join(rodeos_dir, "stderr.out"), "w")
+    rodeos = subprocess.Popen(['./programs/rodeos/rodeos', '--rdb-database', os.path.join(rodeos_dir,'rocksdb'), '--data-dir', os.path.join(rodeos_dir,'data'),
+                               '--clone-connect-to',  '127.0.0.1:8080', '--filter-name', 'test.filter', '--filter-wasm', './tests/test_filter.wasm' ],
+                     stdout=rodeos_stdout, 
+                     stderr=rodeos_stderr)
 
     producerNodeIndex = 0
     producerNode = cluster.getNode(producerNodeIndex)
@@ -110,20 +117,23 @@ try:
 
     trans_from_full = producerNode.processCleosCmd(cmd, cmd, silentErrors=False)
     assert trans_from_full, "Failed to get the transaction with context free data from the producer node"
-
-
-    # response = Utils.runCmdArrReturnJson(['curl', '-H', 'Content-Type: application/json', '-H', 'Accept: application/json', 'http://127.0.0.1:8880/v1/chain/get_info'])
     
-    # request_body = { "block_num_or_id": cfTrxBlockNum }
-    # response=Utils.runCmdArrReturnJson(['curl', '-X', 'POST',  '-H', 'Content-Type: application/json', '-H', 'Accept: application/json', 'http://127.0.0.1:8880/v1/chain/get_block', '--data', json.dumps(request_body)])
+    Utils.Print("Verify rodeos get_block endpoint works")
+    request_body = { "block_num_or_id": cfTrxBlockNum }
+    response=Utils.runCmdArrReturnJson(['curl', '-X', 'POST',  '-H', 'Content-Type: application/json', '-H', 'Accept: application/json', 'http://127.0.0.1:8880/v1/chain/get_block', '--data', json.dumps(request_body)])
+    assert 'id' in response, "Redeos response does not contain the block id"
 
-    # print("redoes responded ==> {}".format(response))
-
+    Utils.Print("Verify rodeos get_info endpoint works")
+    response = Utils.runCmdArrReturnJson(['curl', '-H', 'Accept: application/json', 'http://127.0.0.1:8880/v1/chain/get_info'])
+    assert 'head_block_num' in response, "Redeos response does not contain head_block_num, response body = {}".format(json.dumps(response))
     
     testSuccessful = True
 finally:
-    rodeos.kill()
+    if rodeos is not None:
+        rodeos.kill()
+    if testSuccessful and not keepLogs:
+        shutil.rmtree(rodeos_dir, ignore_errors=True)
     TestHelper.shutdown(cluster, walletMgr, testSuccessful, killEosInstances, killWallet, keepLogs, killAll, dumpErrorDetails)
-
+    
 exitCode = 0 if testSuccessful else 1
 exit(exitCode)

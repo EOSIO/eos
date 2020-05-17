@@ -7,12 +7,10 @@ namespace b1::rodeos {
 
 namespace ship_protocol = eosio::ship_protocol;
 
-using ship_protocol::get_blocks_result_base_v0;
+using ship_protocol::get_blocks_result_base;
 using ship_protocol::get_blocks_result_v0;
 using ship_protocol::get_blocks_result_v1;
 using ship_protocol::signed_block_header;
-using ship_protocol::signed_block_v0;
-using ship_protocol::signed_block;
 using ship_protocol::signed_block_variant;
 
 rodeos_db_snapshot::rodeos_db_snapshot(std::shared_ptr<rodeos_db_partition> partition, bool persistent)
@@ -80,7 +78,7 @@ void rodeos_db_snapshot::end_write(bool write_fill) {
    write_session->write_changes(*undo_stack);
 }
 
-void rodeos_db_snapshot::start_block(const get_blocks_result_base_v0& result) {
+void rodeos_db_snapshot::start_block(const get_blocks_result_base& result) {
    if (!undo_stack)
       throw std::runtime_error("Can only write to persistent snapshots");
    if (!result.this_block)
@@ -111,7 +109,7 @@ void rodeos_db_snapshot::start_block(const get_blocks_result_base_v0& result) {
    writing_block = result.this_block->block_num;
 }
 
-void rodeos_db_snapshot::end_block(const get_blocks_result_base_v0& result, bool force_write) {
+void rodeos_db_snapshot::end_block(const get_blocks_result_base& result, bool force_write) {
    if (!undo_stack)
       throw std::runtime_error("Can only write to persistent snapshots");
    if (!result.this_block)
@@ -133,7 +131,7 @@ void rodeos_db_snapshot::end_block(const get_blocks_result_base_v0& result, bool
       db->flush(false, false);
 }
 
-void rodeos_db_snapshot::check_write(const ship_protocol::get_blocks_result_base_v0& result) {
+void rodeos_db_snapshot::check_write(const ship_protocol::get_blocks_result_base& result) {
    if (!undo_stack)
       throw std::runtime_error("Can only write to persistent snapshots");
    if (!result.this_block)
@@ -189,18 +187,17 @@ void rodeos_db_snapshot::write_block_info(const ship_protocol::get_blocks_result
    write_block_info(block_num, result.this_block->block_id, header);
 }
 
-void rodeos_db_snapshot::write_deltas(uint32_t block_num, eosio::input_stream bin, std::function<bool()> shutdown) {
+void rodeos_db_snapshot::write_deltas(uint32_t block_num, eosio::opaque<std::vector<ship_protocol::table_delta>> deltas, std::function<bool()> shutdown) {
    db_view_state view_state{ state_account, *db, *write_session, partition->contract_kv_prefix };
    view_state.kv_ram.enable_write           = true;
    view_state.kv_ram.bypass_receiver_check  = true;
    view_state.kv_disk.enable_write          = true;
    view_state.kv_disk.bypass_receiver_check = true;
    view_state.kv_state.enable_write         = true;
-   uint32_t num;
-   eosio::varuint32_from_bin(num, bin);
+   uint32_t num = deltas.unpack_size();
    for (uint32_t i = 0; i < num; ++i) {
       ship_protocol::table_delta delta;
-      from_bin(delta, bin);
+      deltas.unpack_next(delta);
       auto&  delta_v0      = std::get<0>(delta);
       size_t num_processed = 0;
       store_delta({ view_state }, delta_v0, head == 0, [&]() {
@@ -226,15 +223,13 @@ void rodeos_db_snapshot::write_deltas(const ship_protocol::get_blocks_result_v0&
       return;
 
    uint32_t            block_num = result.this_block->block_num;
-   eosio::input_stream bin       = *result.deltas;
-
-   write_deltas(block_num, bin, shutdown);
+   write_deltas(block_num, eosio::opaque<std::vector<ship_protocol::table_delta>>(*result.deltas), shutdown);
 }
 
 void rodeos_db_snapshot::write_deltas(const ship_protocol::get_blocks_result_v1& result,
                                       std::function<bool()> shutdown) {
    check_write(result);
-   if (!result.deltas.remaining())
+   if (result.deltas.empty())
       return;
 
    uint32_t            block_num = result.this_block->block_num;
@@ -263,7 +258,7 @@ rodeos_filter::rodeos_filter(eosio::name name, const std::string& wasm_filename)
    filter::rhf_t::resolve(backend->get_module());
 }
 
-void rodeos_filter::process(rodeos_db_snapshot& snapshot, const ship_protocol::get_blocks_result_base_v0& result,
+void rodeos_filter::process(rodeos_db_snapshot& snapshot, const ship_protocol::get_blocks_result_base& result,
                             eosio::input_stream                                         bin,
                             const std::function<void(const char* data, uint64_t size)>& push_data) {
    // todo: timeout

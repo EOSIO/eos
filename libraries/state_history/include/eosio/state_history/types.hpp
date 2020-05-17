@@ -20,6 +20,31 @@ struct big_vector_wrapper {
    T obj;
 };
 
+template <typename T>
+class opaque {
+   std::vector<char> data;
+
+ public:
+   opaque() = default;
+   explicit opaque(std::vector<char>&& serialized)
+       : data(std::move(serialized)) {}
+   opaque(const T& value) { data = fc::raw::pack(value); }
+
+   opaque& operator=(const T& value) {
+      data = fc::raw::pack(value);
+      return *this;
+   }
+   opaque& operator=(std::vector<char>&& serialized) {
+      data = std::move(serialized);
+      return *this;
+   }
+
+   template <typename ST>
+   void pack_to(ST& ds) const {
+      fc::raw::pack(ds, this->data);
+   }
+};
+
 struct augmented_transaction_trace {
    transaction_trace_ptr         trace;
    chain::packed_transaction_ptr packed_trx;
@@ -169,14 +194,14 @@ struct partial_transaction_v0 {
 
 using prunable_data_type = eosio::chain::packed_transaction::prunable_data_type;
 struct partial_transaction_v1 {
-   eosio::chain::time_point_sec                         expiration             = {};
-   uint16_t                                             ref_block_num          = {};
-   uint32_t                                             ref_block_prefix       = {};
-   fc::unsigned_int                                     max_net_usage_words    = {};
-   uint8_t                                              max_cpu_usage_ms       = {};
-   fc::unsigned_int                                     delay_sec              = {};
-   std::vector<eosio::chain::extensions_type>           transaction_extensions = {};
-   fc::optional<prunable_data_type>                     prunable_data          = {};
+   eosio::chain::time_point_sec               expiration             = {};
+   uint16_t                                   ref_block_num          = {};
+   uint32_t                                   ref_block_prefix       = {};
+   fc::unsigned_int                           max_net_usage_words    = {};
+   uint8_t                                    max_cpu_usage_ms       = {};
+   fc::unsigned_int                           delay_sec              = {};
+   std::vector<eosio::chain::extensions_type> transaction_extensions = {};
+   fc::optional<prunable_data_type>           prunable_data          = {};
 };
 
 using partial_transaction = fc::static_variant<partial_transaction_v0, partial_transaction_v1>;
@@ -211,16 +236,16 @@ struct transaction_trace_recurse {
 using optional_signed_block = std::variant<chain::signed_block_v0_ptr, chain::signed_block_ptr>;
 
 struct get_blocks_result_v1 {
-   block_position                 head;
-   block_position                 last_irreversible;
-   fc::optional<block_position>   this_block;
-   fc::optional<block_position>   prev_block;
-   optional_signed_block          block; // packed as fc::optional<fc::static_variant<signed_block_v0, signed_block>>
-   std::vector<transaction_trace> traces;
-   bytes                          deltas; // stores the serialized std::vector<table_delta> 
+   block_position               head;
+   block_position               last_irreversible;
+   fc::optional<block_position> this_block;
+   fc::optional<block_position> prev_block;
+   optional_signed_block        block; // packed as fc::optional<fc::static_variant<signed_block_v0, signed_block>>
+   opaque<std::vector<transaction_trace>> traces;
+   opaque<std::vector<table_delta>>       deltas;
 };
 
-using state_result  = fc::static_variant<get_status_result_v0, get_blocks_result_v0, get_blocks_result_v1>;
+using state_result = fc::static_variant<get_status_result_v0, get_blocks_result_v0, get_blocks_result_v1>;
 
 } // namespace state_history
 } // namespace eosio
@@ -245,3 +270,11 @@ FC_REFLECT(eosio::state_history::partial_transaction_v1, (expiration)(ref_block_
 FC_REFLECT(eosio::state_history::transaction_trace_v0,(id)(status)(cpu_usage_us)(net_usage_words)(elapsed)(net_usage)(scheduled)(action_traces)(account_ram_delta)(except)(error_code)(failed_dtrx_trace)(partial));
 FC_REFLECT(eosio::state_history::transaction_trace_recurse, (recurse));
 // clang-format on
+
+namespace fc {
+template <typename ST, typename T>
+ST& operator<<(ST& strm, const eosio::state_history::opaque<T>& v) {
+   v.pack_to(strm);
+   return strm;
+}
+} // namespace fc

@@ -11,8 +11,8 @@
 
 #undef N
 
-#include <eosio/stream.hpp>
 #include <eosio/ship_protocol.hpp>
+#include <eosio/stream.hpp>
 
 using namespace eosio;
 using namespace testing;
@@ -45,15 +45,33 @@ prunable_data_type::prunable_data_t get_prunable_data_from_traces_bin(const std:
    return get_prunable_data_from_traces(traces, id);
 }
 
+struct state_history_abi_serializer {
+   tester&        chain;
+   abi_serializer sr;
+
+   state_history_abi_serializer(tester& chn)
+       : chain(chn)
+       , sr(fc::json::from_string(state_history_plugin_abi).as<abi_def>(),
+            abi_serializer::create_yield_function(chain.abi_serializer_max_time)) {}
+
+   fc::variant deserialize(const chain::bytes& data, const char* type) {
+      fc::datastream<const char*> strm(data.data(), data.size());
+      auto                        result =
+          sr.binary_to_variant(type, strm, abi_serializer::create_yield_function(chain.abi_serializer_max_time));
+      BOOST_CHECK(data.size() == strm.tellp());
+      return result;
+   }
+};
+
 BOOST_AUTO_TEST_SUITE(test_state_history)
 
-BOOST_AUTO_TEST_CASE(test_trace_converter) {
+    BOOST_AUTO_TEST_CASE(test_trace_converter) {
 
    tester chain;
    using namespace eosio::state_history;
 
    state_history::transaction_trace_cache cache;
-   std::map<uint32_t, chain::bytes>              on_disk_log_entries;
+   std::map<uint32_t, chain::bytes>       on_disk_log_entries;
 
    chain.control->applied_transaction.connect(
        [&](std::tuple<const transaction_trace_ptr&, const packed_transaction_ptr&> t) {
@@ -134,14 +152,18 @@ BOOST_AUTO_TEST_CASE(test_chain_state_log) {
    fc::create_directories(state_history_dir.path);
    state_history_chain_state_log log(state_history_dir.path);
 
-   chain.control->accepted_block.connect(
-       [&](const block_state_ptr& block_state) { log.store(chain.control->db(), block_state); });
+   uint32_t last_accepted_block_num = 0;
+
+   chain.control->accepted_block.connect([&](const block_state_ptr& block_state) {
+      log.store(chain.control->db(), block_state);
+      last_accepted_block_num = block_state->block_num;
+   });
 
    chain.produce_blocks(10);
 
-   chain::bytes entry = log.get_log_entry(7);
+   chain::bytes                                   entry = log.get_log_entry(last_accepted_block_num);
    std::vector<eosio::ship_protocol::table_delta> deltas;
-   eosio::input_stream  deltas_bin{ entry.data(), entry.data() + entry.size() };
+   eosio::input_stream                            deltas_bin{entry.data(), entry.data() + entry.size()};
    BOOST_CHECK_NO_THROW(from_bin(deltas, deltas_bin));
 }
 
@@ -150,9 +172,9 @@ BOOST_AUTO_TEST_CASE(test_state_result_abi) {
 
    tester chain;
 
-   transaction_trace_cache      trace_cache;
-   std::map<uint32_t, chain::bytes>    history;
-   fc::optional<block_position> prev_block;
+   transaction_trace_cache          trace_cache;
+   std::map<uint32_t, chain::bytes> history;
+   fc::optional<block_position>     prev_block;
 
    chain.control->applied_transaction.connect(
        [&](std::tuple<const transaction_trace_ptr&, const packed_transaction_ptr&> t) {
@@ -174,7 +196,9 @@ BOOST_AUTO_TEST_CASE(test_state_result_abi) {
       message.this_block = state_history::block_position{block_state->block->block_num(), block_state->id};
       message.prev_block = prev_block;
       message.block      = block_state->block;
-      state_history::trace_converter::unpack(strm, message.traces);
+      std::vector<state_history::transaction_trace> traces;
+      state_history::trace_converter::unpack(strm, traces);
+      message.traces = traces;
       message.deltas = fc::raw::pack(state_history::create_deltas(control->db(), !prev_block));
 
       prev_block                         = message.this_block;
@@ -185,28 +209,41 @@ BOOST_AUTO_TEST_CASE(test_state_result_abi) {
    auto cfd_trace = push_test_cfd_transaction(chain);
    chain.produce_blocks(1);
 
-   abi_serializer serializer{fc::json::from_string(state_history_plugin_abi).as<abi_def>(),
-                             abi_serializer::create_yield_function(chain.abi_serializer_max_time)};
+   state_history_abi_serializer serializer(chain);
 
    for (auto& [key, value] : history) {
-      // check the validity of the abi string
-      fc::datastream<const char*> strm(value.data(), value.size());
-      serializer.binary_to_variant("result", strm,
-                                   abi_serializer::create_yield_function(chain.abi_serializer_max_time));
-      BOOST_CHECK(value.size() == strm.tellp());
+      {
+         // check the validity of the abi string
+         auto result = serializer.deserialize(value, "result");
+        
+         auto& result_variant = result.get_array();
+         BOOST_CHECK(result_variant[0].as_string() == "get_blocks_result_v1");
+         auto& get_blocks_result_v1 = result_variant[1].get_object();
 
-      // check the validity of abieos ship_protocol type definitions
-      eosio::input_stream  bin{ value.data(), value.data() + value.size() };
-      eosio::ship_protocol::result result;
-      BOOST_CHECK_NO_THROW(from_bin(result, bin));
-      BOOST_CHECK(bin.remaining() == 0);
+         chain::bytes traces_bin;
+         fc::from_variant(get_blocks_result_v1["traces"], traces_bin);
+         BOOST_CHECK_NO_THROW( serializer.deserialize(traces_bin, "transaction_trace[]") );
+      
+         chain::bytes deltas_bin;
+         fc::from_variant(get_blocks_result_v1["deltas"], deltas_bin);
+         BOOST_CHECK_NO_THROW( serializer.deserialize(deltas_bin, "table_delta[]"));
+      }
+      {
+         // check the validity of abieos ship_protocol type definitions
+         eosio::input_stream          bin{value.data(), value.data() + value.size()};
+         eosio::ship_protocol::result result;
+         BOOST_CHECK_NO_THROW(from_bin(result, bin));
+         BOOST_CHECK(bin.remaining() == 0);
 
-      std::vector<eosio::ship_protocol::table_delta> deltas;
-      auto deltas_bin =  std::get<eosio::ship_protocol::get_blocks_result_v1>(result).deltas;
-      BOOST_CHECK_NO_THROW(from_bin(deltas, deltas_bin));
-      BOOST_CHECK(deltas_bin.remaining() == 0);
+         auto& blocks_result_v1 = std::get<eosio::ship_protocol::get_blocks_result_v1>(result);
+
+         std::vector<eosio::ship_protocol::transaction_trace> traces;
+         BOOST_CHECK_NO_THROW(blocks_result_v1.traces.unpack(traces));
+
+         std::vector<eosio::ship_protocol::table_delta> deltas;
+         BOOST_CHECK_NO_THROW(blocks_result_v1.deltas.unpack(deltas));
+      }
    }
 }
-
 
 BOOST_AUTO_TEST_SUITE_END()

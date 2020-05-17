@@ -1,5 +1,5 @@
 extern const char* const state_history_plugin_abi = R"({
-    "version": "eosio::abi/1.2",
+    "version": "eosio::abi/1.1",
     "structs": [
         {
             "name": "get_status_request_v0", "fields": []
@@ -56,7 +56,7 @@ extern const char* const state_history_plugin_abi = R"({
                 { "name": "this_block", "type": "block_position?" },
                 { "name": "prev_block", "type": "block_position?" },
                 { "name": "block", "type": "signed_block?" },
-                { "name": "traces", "type": "transaction_trace[]" },
+                { "name": "traces", "type": "bytes" },
                 { "name": "deltas", "type": "bytes" }
             ]
         },

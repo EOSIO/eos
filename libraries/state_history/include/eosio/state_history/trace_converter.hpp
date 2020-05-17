@@ -114,10 +114,10 @@ void visit_deserialized_trace(ISTREAM& strm, transaction_trace& trace, compressi
 
 template <typename OSTREAM>
 struct trace_pruner {
-   bytes&   buffer; /// the address to the traces entry payload, data == read_strm._start == write_strm._start
+   bytes&   buffer; // the buffer contains the entire prunable section, which is the storage used by read_strm
    uint64_t last_read_pos = 0;
    std::vector<transaction_id_type>& ids;       /// the transaction ids to be pruned
-   fc::datastream<const char*>       read_strm; /// read_strm and write_strm share the same underlying buffer
+   fc::datastream<const char*>       read_strm;
    OSTREAM&                          write_strm;
    uint64_t change_position = 0; /// when it's nonzero, represents the offset to data where the content has been changed
    compression_type compression;
@@ -130,12 +130,6 @@ struct trace_pruner {
       fc::raw::unpack(read_strm, compression);
    }
 
-   /// This member function prunes each trace by overriding the input buffer with the pruned content.
-   /// It relies on the fact that the serialized pruned data won't be larger than its un-pruned counterpart
-   /// which is subsequently based on:
-   ///   1) the presence of context free data requires the presence of signatures;
-   ///   2) prune() would never convert it to prunable_data::none when both the context free data and
-   ///      signature are empty, which is different from the behavior in prunable_data::prune_all().
    void operator()(transaction_trace_v0& trace, prunable_data_type&& incoming_prunable) {
       auto itr = std::find(ids.begin(), ids.end(), trace.id);
       if (itr != ids.end()) {
@@ -160,10 +154,10 @@ void pack(OSTREAM&& strm, const chainbase::database& db, bool trace_debug_mode,
           const std::vector<augmented_transaction_trace>& traces, compression_type compression) {
 
    // In version 1 of SHiP traces log disk format, it log entry consists of 3 parts.
-   //  2. a zlib compressed unprunable section contains the serialization of the vector of traces excluding
+   //  1. a zlib compressed unprunable section contains the serialization of the vector of traces excluding
    //     the prunable_data data (i.e. signatures and context free data)
-   //  3. a prunable section contains the serialization of the vector of prunable_data, where all the contained
-   //     context_free_segments are zlib compressed.
+   //  2. an uint8_t tag indicating the compression mechanism for the context free data inside the prunable section.
+   //  3. a prunable section contains the serialization of the vector of prunable_data.
    zlib_pack(strm, make_history_context_wrapper(db, trace_receipt_context{.debug_mode = trace_debug_mode}, traces));
    fc::raw::pack(strm, static_cast<uint8_t>(compression));
    auto   pos               = strm.tellp();
@@ -196,6 +190,7 @@ void prune_traces(IOSTREAM&& strm, uint32_t entry_len, std::vector<transaction_i
    size_t            prunable_section_pos = strm.tellp();
    std::vector<char> buffer(unprunable_section_pos + entry_len - prunable_section_pos);
    strm.read(buffer.data(), buffer.size());
+   // restore the stream position to the start of prunable section so it can used for writing
    strm.seekp(prunable_section_pos);
 
    auto pruner = trace_pruner<IOSTREAM>{buffer, ids, strm};

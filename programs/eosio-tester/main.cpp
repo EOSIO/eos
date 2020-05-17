@@ -265,8 +265,10 @@ struct test_chain {
       message.this_block = block_position{ block_state->block->block_num(), block_state->id };
       message.prev_block = prev_block;
       message.block      = block_state->block;
-      state_history::trace_converter::unpack(strm, message.traces);
-      message.deltas     = fc::raw::pack(create_deltas(control->db(), !prev_block));
+      std::vector<state_history::transaction_trace> traces;
+      state_history::trace_converter::unpack(strm, traces);
+      message.traces = traces;
+      message.deltas = fc::raw::pack(create_deltas(control->db(), !prev_block));
 
       prev_block                         = message.this_block;
       history[control->head_block_num()] = fc::raw::pack(state_result{ message });
