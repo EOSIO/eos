@@ -29,8 +29,7 @@ public:
    }
 
    uint16_t onNegotiate(AMQP::TcpConnection *connection, uint16_t interval) override {
-      // disable heartbeats
-      return 0;
+      return 0; // disable heartbeats
    }
 
 };
@@ -42,7 +41,7 @@ class rabbitmq {
    std::string                          name_;
 
 public:
-   rabbitmq(boost::asio::io_service& io_service, std::string address, std::string name)
+   rabbitmq(boost::asio::io_service& io_service, const std::string& address, std::string name)
          : name_(std::move(name)) {
       AMQP::Address amqp_address(address);
       fc_ilog( logger, "Connecting to RabbitMQ address ${a} - Queue: ${q}...", ("a", std::string(amqp_address))("q", name_) );
@@ -101,7 +100,8 @@ struct rabbitmq_trx_plugin_impl : std::enable_shared_from_this<rabbitmq_trx_plug
             case transaction_msg::tag<chain::packed_transaction_v0>::value: {
                chain::packed_transaction_v0 v0;
                fc::raw::unpack( ds, v0 );
-               handle_message( std::move( v0 ) );
+               auto ptr = std::make_shared<chain::packed_transaction>( std::move( v0 ), true );
+               handle_message( std::move( ptr ) );
                break;
             }
             case transaction_msg::tag<chain::packed_transaction>::value: {
@@ -121,30 +121,22 @@ struct rabbitmq_trx_plugin_impl : std::enable_shared_from_this<rabbitmq_trx_plug
 private:
 
    // called from rabbitmq thread
-   void handle_message( chain::packed_transaction_v0 pv0 ) {
-      const auto& tid = pv0.id();
-      fc_dlog( logger, "received packed_transaction_v0 ${id}", ("id", tid) );
-
-      chain::packed_transaction_ptr trx;
-      try {
-         trx = std::make_shared<chain::packed_transaction>( std::move( pv0 ), true );
-      } catch (...) {
-         // TODO: send error out publish trace channel
-      }
-      handle_message( std::move( trx ) );
-   }
-
-   // called from rabbitmq thread
    void handle_message( chain::packed_transaction_ptr trx ) {
       const auto& tid = trx->id();
       fc_dlog( logger, "received packed_transaction ${id}", ("id", tid) );
 
-      trx_in_progress_size += trx->get_estimated_size();
-      if( trx_in_progress_size > def_max_trx_in_progress_size ) {
-         fc_wlog( logger, "Dropping trx, too many trx in progress ${s} bytes", ("s", trx_in_progress_size.load()) );
-         // TODO: send error out publish trace channel
+      auto trx_in_progress = trx_in_progress_size.load();
+      if( trx_in_progress > def_max_trx_in_progress_size ) {
+         fc_wlog( logger, "Dropping trx, too many trx in progress ${s} bytes", ("s", trx_in_progress) );
+         transaction_trace_msg msg{ transaction_trace_exception{ chain::tx_resource_exhaustion::code_enum::code_value } };
+         msg.get<transaction_trace_exception>().error_message =
+               "Dropped trx, too many trx in progress " + std::to_string( trx_in_progress ) + " bytes";
+         auto buf = fc::raw::pack( msg );
+         rabbitmq_trace->publish( tid.str(), buf.data(), buf.size() );
          return;
       }
+
+      trx_in_progress_size += trx->get_estimated_size();
       app().post( priority::medium_low, [my=shared_from_this(), trx{std::move(trx)}]() {
          my->chain_plug->accept_transaction( trx,
             [my, trx](const fc::static_variant<fc::exception_ptr, chain::transaction_trace_ptr>& result) mutable {
@@ -178,7 +170,7 @@ private:
             rabbitmq_trace->publish( trx->id(), buf.data(), buf.size() );
 
          } else {
-            const chain::transaction_trace_ptr& trace = result.get<chain::transaction_trace_ptr>();
+            const auto& trace = result.get<chain::transaction_trace_ptr>();
             if( !trace->except ) {
                fc_dlog( logger, "chain accepted transaction, bcast ${id}", ("id", trace->id) );
             } else {
