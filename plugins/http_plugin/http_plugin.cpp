@@ -908,6 +908,9 @@ namespace eosio {
          } catch (chain::unknown_block_exception& e) {
             error_results results{400, "Unknown Block", error_results::error_info(e, verbose_http_errors)};
             cb( 400, fc::variant( results ));
+         } catch (chain::invalid_http_request& e) {
+            error_results results{400, "Invalid Request", error_results::error_info(e, verbose_http_errors)};
+            cb( 400, fc::variant( results ));
          } catch (chain::unsatisfied_authorization& e) {
             error_results results{401, "UnAuthorized", error_results::error_info(e, verbose_http_errors)};
             cb( 401, fc::variant( results ));
