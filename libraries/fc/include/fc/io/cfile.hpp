@@ -84,6 +84,10 @@ public:
       }
    }
 
+   void get(char& c) {
+      read(&c, 1);
+   }
+
    void write( const char* d, size_t n ) {
       size_t result = fwrite( d, 1, n, _file.get() );
       if( result != n ) {
