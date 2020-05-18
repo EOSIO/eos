@@ -106,4 +106,4 @@ Example:
 ```
 
 [[info]]
-| `net_plugin_impl`, `bnet_plugin`, `producer_plugin`, `transaction_tracing` are not enabled unless explicitly enabled in the `logging.json`
+| All loggers are enabled by default in the `logging.json`. All loggers have the `debug` logging level, except `net_plugin_impl` which is set to `info`.
