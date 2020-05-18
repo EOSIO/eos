@@ -20,8 +20,6 @@ fc::logger logger;
 
 namespace eosio {
 
-using transaction_type = fc::static_variant<chain::packed_transaction_v0, chain::packed_transaction>;
-
 class rabbitmq_handler : public AMQP::LibBoostAsioHandler {
 public:
    explicit rabbitmq_handler(boost::asio::io_service& io_service) : AMQP::LibBoostAsioHandler(io_service) {}
@@ -57,7 +55,11 @@ public:
 
    AMQP::TcpChannel& get_channel() { return *channel_; }
 
-   void publish(const char* data, size_t data_size) { channel_->publish("", name_, data, data_size, 0); }
+   void publish(const std::string& correlation_id, const char* data, size_t data_size) {
+      AMQP::Envelope env( data, data_size );
+      env.setCorrelationID( correlation_id );
+      channel_->publish("", name_, env, 0);
+   }
    auto& consume() { return channel_->consume(name_); }
 
 private:
@@ -82,26 +84,27 @@ struct rabbitmq_trx_plugin_impl : std::enable_shared_from_this<rabbitmq_trx_plug
    chain_plugin* chain_plug = nullptr;
    // use thread pool even though only one thread currently since it provides simple interface for ioc
    std::optional<eosio::chain::named_thread_pool> thread_pool;
-   std::optional<rabbitmq> trx_rabbitmq;
-   std::optional<rabbitmq> trace_rabbitmq;
+   std::optional<rabbitmq> rabbitmq_trx;
+   std::optional<rabbitmq> rabbitmq_trace;
 
    std::string rabbitmq_trx_address;
    bool rabbitmq_publish_all_traces = false;
    std::atomic<uint32_t>  trx_in_progress_size{0};
 
+   // called from rabbitmq thread
    bool consume_message( const char* buf, size_t s ) {
       try {
          fc::datastream<const char*> ds( buf, s );
          fc::unsigned_int which{};
          fc::raw::unpack( ds, which );
          switch( which ) {
-            case transaction_type::tag<chain::packed_transaction_v0>::value: {
+            case transaction_msg::tag<chain::packed_transaction_v0>::value: {
                chain::packed_transaction_v0 v0;
                fc::raw::unpack( ds, v0 );
-               handle_message( v0 );
+               handle_message( std::move( v0 ) );
                break;
             }
-            case transaction_type::tag<chain::packed_transaction>::value: {
+            case transaction_msg::tag<chain::packed_transaction>::value: {
                auto ptr = std::make_shared<chain::packed_transaction>();
                fc::raw::unpack( ds, *ptr );
                handle_message( std::move( ptr ) );
@@ -110,19 +113,28 @@ struct rabbitmq_trx_plugin_impl : std::enable_shared_from_this<rabbitmq_trx_plug
             default:
                FC_THROW_EXCEPTION( fc::out_of_range_exception, "Invalid which ${w} for consume of transaction_type message", ("w", which) );
          }
-         transaction_type msg = fc::raw::unpack<transaction_type>( buf, s );
-         if( msg.contains<chain::packed_transaction_v0>() ) {
-            auto& pv0 = msg.get<chain::packed_transaction_v0>();
-         }
          return true;
       } FC_LOG_AND_DROP()
       return false;
    }
 
-   void handle_message( const chain::packed_transaction_v0& trx ) {
+private:
 
+   // called from rabbitmq thread
+   void handle_message( chain::packed_transaction_v0 pv0 ) {
+      const auto& tid = pv0.id();
+      fc_dlog( logger, "received packed_transaction_v0 ${id}", ("id", tid) );
+
+      chain::packed_transaction_ptr trx;
+      try {
+         trx = std::make_shared<chain::packed_transaction>( std::move( pv0 ), true );
+      } catch (...) {
+         // TODO: send error out publish trace channel
+      }
+      handle_message( std::move( trx ) );
    }
 
+   // called from rabbitmq thread
    void handle_message( chain::packed_transaction_ptr trx ) {
       const auto& tid = trx->id();
       fc_dlog( logger, "received packed_transaction ${id}", ("id", tid) );
@@ -136,20 +148,54 @@ struct rabbitmq_trx_plugin_impl : std::enable_shared_from_this<rabbitmq_trx_plug
       app().post( priority::medium_low, [my=shared_from_this(), trx{std::move(trx)}]() {
          my->chain_plug->accept_transaction( trx,
             [my, trx](const fc::static_variant<fc::exception_ptr, chain::transaction_trace_ptr>& result) mutable {
-         // next (this lambda) called from application thread
-         if (result.contains<fc::exception_ptr>()) {
-            fc_dlog( logger, "bad packed_transaction : ${m}", ("m", result.get<fc::exception_ptr>()->what()) );
+               boost::asio::post( my->thread_pool->get_executor(), [my, trx = std::move( trx ), result=result]() {
+                  my->publish_result( trx, result );
+               } );
+            } );
+         } );
+   }
+
+   // called from rabbitmq thread
+   void publish_result( const chain::packed_transaction_ptr& trx,
+                        const fc::static_variant<fc::exception_ptr, chain::transaction_trace_ptr>& result ) {
+
+      try {
+         if( result.contains<fc::exception_ptr>() ) {
+            auto& ex = *result.get<fc::exception_ptr>();
+            std::string err = ex.to_string();
+            fc_dlog( logger, "bad packed_transaction : ${e}", ("e", err) );
+            transaction_trace_exception tex{ ex.code() };
+            fc::unsigned_int which = transaction_trace_msg::tag<transaction_trace_exception>::value;
+            // TODO; use fc::datastream<std::vector<char>> when available
+            uint32_t payload_size = fc::raw::pack_size( which );
+            payload_size += fc::raw::pack_size( tex.error_code );
+            payload_size += fc::raw::pack_size( err );
+            std::vector<char> buf( payload_size );
+            fc::datastream<char*> ds( buf.data(), payload_size );
+            fc::raw::pack( ds, which );
+            fc::raw::pack( ds, tex.error_code );
+            fc::raw::pack( ds, err );
+            rabbitmq_trace->publish( trx->id(), buf.data(), buf.size() );
+
          } else {
             const chain::transaction_trace_ptr& trace = result.get<chain::transaction_trace_ptr>();
             if( !trace->except ) {
                fc_dlog( logger, "chain accepted transaction, bcast ${id}", ("id", trace->id) );
             } else {
-               fc_elog( logger, "bad packed_transaction : ${m}", ("m", trace->except->what()));
+               fc_dlog( logger, "trace except : ${m}", ("m", trace->except->to_string()) );
             }
+            fc::unsigned_int which = transaction_trace_msg::tag<chain::transaction_trace>::value;
+            // TODO; use fc::datastream<std::vector<char>> when available
+            uint32_t payload_size = fc::raw::pack_size( which );
+            payload_size += fc::raw::pack_size( *trace );
+            std::vector<char> buf( payload_size );
+            fc::datastream<char*> ds( buf.data(), payload_size );
+            fc::raw::pack( ds, which );
+            fc::raw::pack( ds, *trace );
+            rabbitmq_trace->publish( trx->id(), buf.data(), buf.size() );
          }
-         my->trx_in_progress_size -= trx->get_estimated_size();
-        });
-      });
+      } FC_LOG_AND_DROP()
+      trx_in_progress_size -= trx->get_estimated_size();
    }
 
 };
@@ -186,10 +232,10 @@ void rabbitmq_trx_plugin::plugin_startup() {
 
       my->thread_pool.emplace( "rabmq", 1 );
 
-      my->trx_rabbitmq.emplace( my->thread_pool->get_executor(), my->rabbitmq_trx_address, "trx" );
-      my->trace_rabbitmq.emplace( my->thread_pool->get_executor(), my->rabbitmq_trx_address, "trace" );
+      my->rabbitmq_trx.emplace( my->thread_pool->get_executor(), my->rabbitmq_trx_address, "trx" );
+      my->rabbitmq_trace.emplace( my->thread_pool->get_executor(), my->rabbitmq_trx_address, "trace" );
 
-      auto& consumer = my->trx_rabbitmq->consume();
+      auto& consumer = my->rabbitmq_trx->consume();
       consumer.onSuccess( []( const std::string& consumer_tag ) {
          fc_dlog( logger, "consume started: ${tag}", ("tag", consumer_tag) );
       } );
@@ -197,7 +243,7 @@ void rabbitmq_trx_plugin::plugin_startup() {
          fc_wlog( logger, "consume failed: ${e}", ("e", message) );
       } );
       consumer.onReceived(
-            [&channel = my->trx_rabbitmq->get_channel(), my=my]
+            [&channel = my->rabbitmq_trx->get_channel(), my=my]
             (const AMQP::Message& message, uint64_t delivery_tag, bool redelivered) {
          if( my->consume_message( message.body(), message.bodySize() ) ) {
             channel.ack( delivery_tag );
