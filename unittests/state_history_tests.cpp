@@ -1,25 +1,26 @@
 #include <eosio/state_history/create_deltas.hpp>
 #include <eosio/state_history/serialization.hpp>
+#include <eosio/state_history/types.hpp>
 
+#include <boost/filesystem.hpp>
+#include <boost/iostreams/device/back_inserter.hpp>
+#include <boost/iostreams/filter/zlib.hpp>
+#include <boost/iostreams/filtering_stream.hpp>
 #include <boost/test/unit_test.hpp>
-#include <eosio/testing/tester.hpp>
-#include <eosio/chain/authorization_manager.hpp>
+
 #include <contracts.hpp>
-#include <eosio/state_history/log.hpp>
+#include <eosio/chain/authorization_manager.hpp>
 #include <eosio/testing/tester.hpp>
+#include <eosio/state_history/log.hpp>
+#include <fc/io/json.hpp>
 
 #pragma push_macro("N")
 #undef N
 #include <eosio/stream.hpp>
 #include <eosio/ship_protocol.hpp>
 #pragma pop_macro("N")
-#include <fc/io/json.hpp>
 
 #include "test_cfd_transaction.hpp"
-#include <boost/filesystem.hpp>
-#include <boost/iostreams/device/back_inserter.hpp>
-#include <boost/iostreams/filter/zlib.hpp>
-#include <boost/iostreams/filtering_stream.hpp>
 
 using namespace eosio;
 using namespace testing;
@@ -170,6 +171,38 @@ BOOST_AUTO_TEST_CASE(test_traces_present)
    });
 
    BOOST_REQUIRE(new_account_action_itr!=action_traces.end());
+}
+
+BOOST_AUTO_TEST_CASE(eosio_token_history_test)
+{
+   tester chain;
+   chain.produce_blocks( 2 );
+
+   chain.create_accounts( { N(alice), N(bob), N(carol), N(eosio.token) } );
+   chain.produce_blocks( 2 );
+
+   chain.set_code( N(eosio.token), contracts::eosio_token_wasm() );
+   chain.set_abi( N(eosio.token), contracts::eosio_token_abi().data() );
+
+   const auto& accnt = chain.control->db().get<account_object,by_name>( N(eosio.token) );
+   abi_def abi;
+   abi_serializer abi_ser;
+   BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
+   abi_ser.set_abi(abi, abi_serializer::create_yield_function( fc::microseconds(1000*1000) ));
+
+   auto v = eosio::state_history::create_deltas(chain.control->db(), false);
+
+   std::string name = "contract_table";
+   auto find_by_name = [&name](const auto& x) {
+      return x.name == name;
+   };
+
+   auto it = std::find_if(v.begin(), v.end(), find_by_name);
+   BOOST_REQUIRE(it!=v.end());
+
+   name = "contract_row";
+   it = std::find_if(v.begin(), v.end(), find_by_name);
+   BOOST_REQUIRE(it!=v.end());
 }
 
 state_history::partial_transaction_v0 get_partial_from_traces_bin(const bytes&               traces_bin,
