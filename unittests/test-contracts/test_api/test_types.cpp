@@ -1,4 +1,4 @@
-#include <eosiolib/eosio.hpp>
+#include <eosiolib/contracts/eosio/eosio.hpp>
 
 #include "test_api.hpp"
 
