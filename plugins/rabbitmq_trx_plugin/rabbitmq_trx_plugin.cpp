@@ -1,13 +1,10 @@
 #include <eosio/rabbitmq_trx_plugin/rabbitmq_trx_plugin.hpp>
+#include <eosio/rabbitmq_trx_plugin/rabbitmq.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
 
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/transaction.hpp>
 #include <eosio/chain/thread_utils.hpp>
-
-#include "amqpcpp.h"
-#include "amqpcpp/libboostasio.h"
-#include "amqpcpp/linux_tcp.h"
 
 namespace {
 
@@ -16,67 +13,11 @@ static appbase::abstract_plugin& rabbitmq_trx_plugin_ = appbase::app().register_
 const fc::string logger_name{"rabbitmq_trx"};
 fc::logger logger;
 
+constexpr auto def_max_trx_in_progress_size = 100*1024*1024; // 100 MB
+
 } // anonymous
 
 namespace eosio {
-
-class rabbitmq_handler : public AMQP::LibBoostAsioHandler {
-public:
-   explicit rabbitmq_handler(boost::asio::io_service& io_service) : AMQP::LibBoostAsioHandler(io_service) {}
-
-   void onError(AMQP::TcpConnection* connection, const char* message) override {
-      throw std::runtime_error("rabbitmq connection failed: " + std::string(message));
-   }
-
-   uint16_t onNegotiate(AMQP::TcpConnection *connection, uint16_t interval) override {
-      return 0; // disable heartbeats
-   }
-
-};
-
-class rabbitmq {
-   std::unique_ptr<rabbitmq_handler>    handler_;
-   std::unique_ptr<AMQP::TcpConnection> connection_;
-   std::unique_ptr<AMQP::TcpChannel>    channel_;
-   std::string                          name_;
-
-public:
-   rabbitmq(boost::asio::io_service& io_service, const std::string& address, std::string name)
-         : name_(std::move(name)) {
-      AMQP::Address amqp_address(address);
-      fc_ilog( logger, "Connecting to RabbitMQ address ${a} - Queue: ${q}...", ("a", std::string(amqp_address))("q", name_) );
-
-      handler_    = std::make_unique<rabbitmq_handler>(io_service);
-      connection_ = std::make_unique<AMQP::TcpConnection>(handler_.get(), amqp_address);
-      channel_    = std::make_unique<AMQP::TcpChannel>(connection_.get());
-      declare_queue();
-   }
-
-   AMQP::TcpChannel& get_channel() { return *channel_; }
-
-   void publish(const std::string& correlation_id, const char* data, size_t data_size) {
-      AMQP::Envelope env( data, data_size );
-      env.setCorrelationID( correlation_id );
-      channel_->publish("", name_, env, 0);
-   }
-   auto& consume() { return channel_->consume(name_); }
-
-private:
-   void declare_queue() {
-      auto& queue = channel_->declareQueue(name_, AMQP::durable);
-      queue.onSuccess([](const std::string& name, uint32_t messagecount, uint32_t consumercount) {
-         fc_ilog(logger, "RabbitMQ Connected Successfully!\n Queue ${q} - Messages: ${mc} - Consumers: ${cc}",
-              ("q", name)("mc", messagecount)("cc", consumercount));
-      });
-      queue.onError([](const char* error_message) {
-         std::string err = "RabbitMQ Queue error: " + std::string(error_message);
-         fc_wlog( logger, err );
-         throw std::runtime_error( err );
-      });
-   }
-};
-
-constexpr auto     def_max_trx_in_progress_size = 100*1024*1024; // 100 MB
 
 struct rabbitmq_trx_plugin_impl : std::enable_shared_from_this<rabbitmq_trx_plugin_impl> {
 
@@ -224,8 +165,8 @@ void rabbitmq_trx_plugin::plugin_startup() {
 
       my->thread_pool.emplace( "rabmq", 1 );
 
-      my->rabbitmq_trx.emplace( my->thread_pool->get_executor(), my->rabbitmq_trx_address, "trx" );
-      my->rabbitmq_trace.emplace( my->thread_pool->get_executor(), my->rabbitmq_trx_address, "trace" );
+      my->rabbitmq_trx.emplace( logger, my->thread_pool->get_executor(), my->rabbitmq_trx_address, "trx" );
+      my->rabbitmq_trace.emplace( logger, my->thread_pool->get_executor(), my->rabbitmq_trx_address, "trace" );
 
       auto& consumer = my->rabbitmq_trx->consume();
       consumer.onSuccess( []( const std::string& consumer_tag ) {
@@ -234,13 +175,11 @@ void rabbitmq_trx_plugin::plugin_startup() {
       consumer.onError( []( const char* message ) {
          fc_wlog( logger, "consume failed: ${e}", ("e", message) );
       } );
-      consumer.onReceived(
-            [&channel = my->rabbitmq_trx->get_channel(), my=my]
-            (const AMQP::Message& message, uint64_t delivery_tag, bool redelivered) {
+      consumer.onReceived( [my=my](const AMQP::Message& message, uint64_t delivery_tag, bool redelivered) {
          if( my->consume_message( message.body(), message.bodySize() ) ) {
-            channel.ack( delivery_tag );
+            my->rabbitmq_trx->ack( delivery_tag );
          } else {
-            channel.reject( delivery_tag );
+            my->rabbitmq_trx->reject( delivery_tag );
          }
       } );
 
