@@ -78,7 +78,7 @@ The logging library built into EOSIO currently supports the following loggers:
 
 - `default` - the default logger, always enabled.
 - `net_plugin_impl` - detailed logging for the net plugin.
-- `bnet_plugin` - detailed logging for the bnet plugin.
+- `http_plugin` - detailed logging for the http plugin.
 - `producer_plugin` - detailed logging for the producer plugin.
 - `transaction_tracing` - detailed log that emits verdicts from relay nodes on the P2P network.
 - `trace_api` - detailed logging for the trace_api plugin.
