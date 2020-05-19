@@ -207,9 +207,7 @@ struct key_type : private std::vector<char> {
 /* @cond PRIVATE */
 template <typename T>
 inline key_type make_key(T&& t) {
-   auto bytes = convert_to_key(std::forward<T>(t));
-   eosio::check((bool)bytes, "There was a failure in make_key."); 
-   return key_type(std::move(bytes.value()));
+   return key_type(convert_to_key(std::forward<T>(t)));
 }
 
 inline key_type make_prefix(eosio::name table_name, eosio::name index_name, uint8_t status = 1) {

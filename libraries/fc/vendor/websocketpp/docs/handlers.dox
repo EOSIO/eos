@@ -1,0 +1,165 @@
+/** \page reference.handlers Handler Reference
+
+Handlers allow WebSocket++ programs to receive notifications about events
+that happen in relation to their connections. Some handlers also behave as
+hooks that give the program a chance to modify state or adjust settings before
+the connection continues.
+
+Handlers are registered by calling the appropriate `set_*_handler` method on either an
+endpoint or connection. The * refers to the name of the handler (as 
+specified in the signature field below). For example, to set the open handler,
+call `set_open_handler(...)`.
+
+Setting handlers on an endpoint will result in them being copied as the default
+handler to all new connections created by that endpoint. Changing an endpoint's
+handlers will not affect connections that are already in progress. This includes
+connections that are in the listening state. As such, it is important to set any
+endpoint handlers before you call `endpoint::start_accept` or else the handlers
+will not be attached to your first connection.
+
+Setting handlers on a connection will result in the handler being changed for
+that connection only, starting at the next time that handler is called. This can
+be used to change the handler during a connection.
+
+Connection Handlers
+-------------------
+
+These handlers will be called at most once per connection in the order specified below.
+
+### Socket Init Handler
+
+| Event                 | Signature                                             | Availability         |
+| --------------------- | ----------------------------------------------------- | -------------------- |
+| Socket initialization | `socket_init(connection_hdl, asio::ip::tcp::socket&)` | 0.3.0 Asio Transport |
+
+This hook is triggered after the socket has been initialized but before a connection is established. 
+It allows setting arbitrary socket options before connections are sent/recieved.
+
+### TCP Pre-init Handler
+
+| Event                         | Signature                      | Availability         |
+| ----------------------------- | ------------------------------ | -------------------- |
+| TCP established, no data sent | `tcp_pre_init(connection_hdl)` | 0.3.0 Asio Transport |
+
+This hook is triggered after the TCP connection is established, but before any pre-WebSocket-handshake 
+operations have been run. Common pre-handshake operations include TLS handshakes and proxy connections.
+
+### TCP Post-init Handler
+
+| Event                   | Signature                                  | Availability                  |
+| ----------------------- | ------------------------------------------ | ----------------------------- |
+| Request for TLS context | `tls_context_ptr tls_init(connection_hdl)` | 0.3.0 Asio Transport with TLS |
+
+This hook is triggered before the TLS handshake to request the TLS context to use. You must 
+return a pointer to a configured TLS conext to continue. This provides the opportuinity to 
+set up the TLS settings, certificates, etc.
+
+### Validate Handler
+
+| Event                                 | Signature                       | Availability                 |
+| ------------------------------------- | ------------------------------- | ---------------------------- |
+| Hook to accept or reject a connection | `bool validate(connection_hdl)` | 0.3.0 Core, Server role only |
+
+This hook is triggered for servers during the opening handshake after the request has been 
+processed but before the response has been sent. It gives a program the opportunity to inspect
+headers and other connection details and either accept or reject the connection. Validate happens
+before the open or fail handler.
+
+Return true to accept the connection, false to reject. If no validate handler is registered, 
+all connections will be accepted.
+
+### Open Connection Handler
+
+| Event                     | Signature              | Availability |
+| ------------------------- | ---------------------- | ------------ |
+| Successful new connection | `open(connection_hdl)` | 0.3.0 Core   |
+
+Either open or fail will be called for each connection. Never both. All
+connections that begin with an open handler call will also have a matching
+close handler call when the connection ends.
+
+### Fail Connection Handler
+
+| Event                               | Signature              | Availability |
+| ----------------------------------- | ---------------------- | ------------ |
+| Connection failed (before opening)  | `fail(connection_hdl)` | 0.3.0 Core   |
+
+Either open or fail will be called for each connection. Never both. Connections
+that fail will never have a close handler called.
+
+### Close Connection Handler
+
+| Event                             | Signature               | Availability |
+| --------------------------------- | ----------------------- | ------------ |
+| Connection closed (after opening) | `close(connection_hdl)` | 0.3.0 Core   |
+
+Close will be called exactly once for every connection that open was called for.
+Close is not called for failed connections.
+
+Message Handlers
+----------------
+
+These handers are called in response to incoming messages or message like events. They only will be called while the connection is in the open state.
+
+### Message Handler
+
+| Event                 | Signature                              | Availability |
+| --------------------- | -------------------------------------- | ------------ |
+| Data message recieved | `message(connection_hdl, message_ptr)` | 0.3.0 Core   |
+
+Applies to all non-control messages, including both text and binary opcodes. The
+`message_ptr` type and its API depends on your endpoint type and its config.
+
+### Ping Handler
+
+| Event         | Signature                                | Availability |
+| ------------- | ---------------------------------------- | ------------ |
+| Ping recieved | `bool ping(connection_hdl, std::string)` | 0.3.0 Core   |
+
+Second (string) argument is the binary ping payload. Handler return value
+indicates whether or not to respond to the ping with a pong. If no ping handler
+is set, WebSocket++ will respond with a pong containing the same binary data as
+the ping (Per requirements in RFC6455).
+
+### Pong Handler
+
+| Event         | Signature                           | Availability |
+| ------------- | ----------------------------------- | ------------ |
+| Pong recieved | `pong(connection_hdl, std::string)` | 0.3.0 Core   |
+
+Second (string) argument is the binary pong payload.
+
+### Pong Timeout Handler
+
+| Event                              | Signature                                   | Availability                             |
+| ---------------------------------- | ------------------------------------------- | ---------------------------------------- |
+| Timed out while waiting for a pong | `pong_timeout(connection_hdl, std::string)` | 0.3.0 Core, transport with timer support |
+
+Triggered if there is no response to a ping after the configured duration. The second
+(string) argument is the binary payload of the unanswered ping.
+
+### HTTP Handler
+
+| Event                 | Signature             | Availability                 |
+| --------------------- | --------------------- | ---------------------------- |
+| HTTP request recieved | `http(connection_hdl` | 0.3.0 Core, Server role only |
+
+Called when HTTP requests that are not WebSocket handshake upgrade requests are
+recieved. Allows responding to regular HTTP requests. If no handler is registered
+a 426/Upgrade Required error is returned.
+
+### Interrupt Handler
+
+| Event                               | Signature                   | Availability |
+| ----------------------------------- | --------------------------- | ------------ |
+| Connection was manually interrupted | `interrupt(connection_hdl)` | 0.3.0 Core   |
+
+Interrupt events can be triggered by calling `endpoint::interrupt` or `connection::interrupt`. 
+Interrupt is similar to a timer event with duration zero but with lower overhead. It is useful
+for single threaded programs to allow breaking up a very long handler into multiple parts and 
+for multi threaded programs as a way for worker threads to signale to the main/network thread 
+that an event is ready.
+
+todo: write low and high watermark handlers
+
+*/

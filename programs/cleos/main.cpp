@@ -189,6 +189,24 @@ vector<string> tx_permission;
 
 eosio::client::http::http_context context;
 
+enum class tx_compression_type {
+   none,
+   zlib,
+   default_compression
+};
+static std::map<std::string, tx_compression_type> compression_type_map{
+   {"none", tx_compression_type::none },
+   {"zlib", tx_compression_type::zlib }
+};
+tx_compression_type tx_compression = tx_compression_type::default_compression;
+packed_transaction::compression_type to_compression_type( tx_compression_type t ) {
+   switch( t ) {
+      case tx_compression_type::none: return packed_transaction::compression_type::none;
+      case tx_compression_type::zlib: return packed_transaction::compression_type::zlib;
+      case tx_compression_type::default_compression: return packed_transaction::compression_type::none;
+   }
+}
+
 void add_standard_transaction_options(CLI::App* cmd, string default_permission = "") {
    CLI::callback_t parse_expiration = [](CLI::results_t res) -> bool {
       double value_s;
@@ -209,6 +227,8 @@ void add_standard_transaction_options(CLI::App* cmd, string default_permission =
    cmd->add_flag("--return-packed", tx_return_packed, localized("Used in conjunction with --dont-broadcast to get the packed transaction"));
    cmd->add_option("-r,--ref-block", tx_ref_block_num_or_id, (localized("Set the reference block num or block id used for TAPOS (Transaction as Proof-of-Stake)")));
    cmd->add_flag("--use-old-rpc", tx_use_old_rpc, localized("Use old RPC push_transaction, rather than new RPC send_transaction"));
+   cmd->add_option("--compression", tx_compression, localized("Compression for transaction 'none' or 'zlib'"))->transform(
+         CLI::CheckedTransformer(compression_type_map, CLI::ignore_case));
 
    string msg = "An account and permission level to authorize, as in 'account@permission'";
    if(!default_permission.empty())
@@ -373,8 +393,8 @@ void sign_transaction(signed_transaction& trx, fc::variant& required_keys, const
    trx = signed_trx.as<signed_transaction>();
 }
 
-fc::variant push_transaction( signed_transaction& trx, const std::vector<public_key_type>& signing_keys = std::vector<public_key_type>(),
-                              packed_transaction::compression_type compression = packed_transaction::compression_type::none ) {
+fc::variant push_transaction( signed_transaction& trx, const std::vector<public_key_type>& signing_keys = std::vector<public_key_type>() )
+{
    auto info = get_info();
 
    if (trx.signatures.size() == 0) { // #5445 can't change txn content if already signed
@@ -411,12 +431,13 @@ fc::variant push_transaction( signed_transaction& trx, const std::vector<public_
       sign_transaction(trx, required_keys, info.chain_id);
    }
 
+   packed_transaction::compression_type compression = to_compression_type( tx_compression );
    if (!tx_dont_broadcast) {
       if (tx_use_old_rpc) {
-         return call(push_txn_func, packed_transaction(trx, compression));
+         return call(push_txn_func, packed_transaction_v0(trx, compression));
       } else {
          try {
-            return call(send_txn_func, packed_transaction(trx, compression));
+            return call(send_txn_func, packed_transaction_v0(trx, compression));
          }
          catch (chain::missing_chain_api_plugin_exception &) {
             std::cerr << "New RPC send_transaction may not be supported. Add flag --use-old-rpc to use old RPC push_transaction instead." << std::endl;
@@ -433,16 +454,16 @@ fc::variant push_transaction( signed_transaction& trx, const std::vector<public_
             return fc::variant(trx);
          }
       } else {
-        return fc::variant(packed_transaction(trx, compression));
+        return fc::variant(packed_transaction_v0(trx, compression));
       }
    }
 }
 
-fc::variant push_actions(std::vector<chain::action>&& actions, packed_transaction::compression_type compression = packed_transaction::compression_type::none, const std::vector<public_key_type>& signing_keys = std::vector<public_key_type>() ) {
+fc::variant push_actions(std::vector<chain::action>&& actions, const std::vector<public_key_type>& signing_keys = std::vector<public_key_type>() ) {
    signed_transaction trx;
    trx.actions = std::forward<decltype(actions)>(actions);
 
-   return push_transaction(trx, signing_keys, compression);
+   return push_transaction(trx, signing_keys);
 }
 
 void print_action( const fc::variant& at ) {
@@ -571,13 +592,13 @@ void print_result( const fc::variant& result ) { try {
 } FC_CAPTURE_AND_RETHROW( (result) ) }
 
 using std::cout;
-void send_actions(std::vector<chain::action>&& actions, const std::vector<public_key_type>& signing_keys = std::vector<public_key_type>(), packed_transaction::compression_type compression = packed_transaction::compression_type::none ) {
+void send_actions(std::vector<chain::action>&& actions, const std::vector<public_key_type>& signing_keys = std::vector<public_key_type>() ) {
    std::ofstream out;
    if (tx_json_save_file.length()) {
       out.open(tx_json_save_file);
       EOSC_ASSERT(!out.fail(), "ERROR: Failed to create file \"${p}\"", ("p", tx_json_save_file));
    }
-   auto result = push_actions( move(actions), compression, signing_keys);
+   auto result = push_actions( move(actions), signing_keys);
 
    string jsonstr;
    if (tx_json_save_file.length()) {
@@ -781,8 +802,8 @@ struct set_account_permission_subcommand {
    string permission;
    string authority_json_or_file;
    string parent;
-   bool add_code;
-   bool remove_code;
+   bool add_code = false;
+   bool remove_code = false;
 
    set_account_permission_subcommand(CLI::App* accountCmd) {
       auto permissions = accountCmd->add_subcommand("permission", localized("Set parameters dealing with account permissions"));
@@ -1067,8 +1088,8 @@ struct create_account_subcommand {
    uint32_t buy_ram_bytes_in_kbytes = 0;
    uint32_t buy_ram_bytes = 0;
    string buy_ram_eos;
-   bool transfer;
-   bool simple;
+   bool transfer = false;
+   bool simple = false;
 
    create_account_subcommand(CLI::App* actionRoot, bool s) : simple(s) {
       auto createAccount = actionRoot->add_subcommand(
@@ -2535,11 +2556,11 @@ int main( int argc, char** argv ) {
             abi_serializer::from_variant( trx_var, trx, abi_serializer_resolver, abi_serializer::create_yield_function( abi_serializer_max_time ) );
          } EOS_RETHROW_EXCEPTIONS( transaction_type_exception, "Invalid transaction format: '${data}'",
                                    ("data", fc::json::to_string(trx_var, fc::time_point::maximum())))
-         std::cout << fc::json::to_pretty_string( packed_transaction( trx, packed_transaction::compression_type::none )) << std::endl;
+         std::cout << fc::json::to_pretty_string( packed_transaction_v0( trx, packed_transaction_v0::compression_type::none )) << std::endl;
       } else {
          try {
             signed_transaction trx = trx_var.as<signed_transaction>();
-            std::cout << fc::json::to_pretty_string( fc::variant( packed_transaction( trx, packed_transaction::compression_type::none ))) << std::endl;
+            std::cout << fc::json::to_pretty_string( fc::variant( packed_transaction_v0( trx, packed_transaction_v0::compression_type::none ))) << std::endl;
          } EOS_RETHROW_EXCEPTIONS( transaction_type_exception, "Fail to convert transaction, --pack-action-data likely needed" )
       }
    });
@@ -2552,12 +2573,12 @@ int main( int argc, char** argv ) {
    unpack_transaction->add_flag("--unpack-action-data", unpack_action_data_flag, localized("Unpack all action data within transaction, needs interaction with ${n}", ("n", node_executable_name)));
    unpack_transaction->callback([&] {
       fc::variant packed_trx_var = json_from_file_or_string( packed_transaction_json );
-      packed_transaction packed_trx;
+      packed_transaction_v0 packed_trx;
       try {
-         fc::from_variant<packed_transaction>( packed_trx_var, packed_trx );
+         fc::from_variant<packed_transaction_v0>( packed_trx_var, packed_trx );
       } EOS_RETHROW_EXCEPTIONS( transaction_type_exception, "Invalid packed transaction format: '${data}'",
                                 ("data", fc::json::to_string(packed_trx_var, fc::time_point::maximum())))
-      signed_transaction strx = packed_trx.get_signed_transaction();
+      const signed_transaction& strx = packed_trx.get_signed_transaction();
       fc::variant trx_var;
       if( unpack_action_data_flag ) {
          abi_serializer::to_variant( strx, trx_var, abi_serializer_resolver, abi_serializer::create_yield_function( abi_serializer_max_time ) );
@@ -2598,6 +2619,42 @@ int main( int argc, char** argv ) {
       fc::from_hex(packed_action_data_string, packed_action_data_blob.data(), packed_action_data_blob.size());
       fc::variant unpacked_action_data_json = bin_to_variant(name(packed_action_data_account_string), name(packed_action_data_name_string), packed_action_data_blob);
       std::cout << fc::json::to_pretty_string(unpacked_action_data_json) << std::endl;
+   });
+
+   // validate subcommand
+   auto validate = app.add_subcommand("validate", localized("Validate transactions")); 
+   validate->require_subcommand();
+
+   // validate signatures
+   string trx_json_to_validate;
+   string str_chain_id;
+   auto validate_signatures = validate->add_subcommand("signatures", localized("Validate signatures and recover public keys"));
+   validate_signatures->add_option("transaction", trx_json_to_validate,
+                                   localized("The JSON string or filename defining the transaction to validate"), true)->required();
+   validate_signatures->add_option("-c,--chain-id", str_chain_id, localized("The chain id that will be used in signature verification"));
+
+   validate_signatures->callback([&] {
+      fc::variant trx_var = json_from_file_or_string(trx_json_to_validate);
+      signed_transaction trx;
+      try {
+        abi_serializer::from_variant( trx_var, trx, abi_serializer_resolver_empty, abi_serializer::create_yield_function( abi_serializer_max_time ) );
+      } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Invalid transaction format: '${data}'",
+                               ("data", fc::json::to_string(trx_var, fc::time_point::maximum())))
+
+      fc::optional<chain_id_type> chain_id;
+
+      if( str_chain_id.size() == 0 ) {
+         ilog( "grabbing chain_id from ${n}", ("n", node_executable_name) );
+         auto info = get_info();
+         chain_id = info.chain_id;
+      } else {
+         chain_id = chain_id_type(str_chain_id);
+      }
+
+      flat_set<public_key_type> recovered_pub_keys;
+      trx.get_signature_keys( *chain_id, fc::time_point::maximum(), recovered_pub_keys, false );
+
+      std::cout << fc::json::to_pretty_string(recovered_pub_keys) << std::endl;
    });
 
    // Get subcommand
@@ -3124,7 +3181,9 @@ int main( int argc, char** argv ) {
          actions.emplace_back( create_setcode(name(account), code_bytes ) );
          if ( shouldSend ) {
             std::cerr << localized("Setting Code...") << std::endl;
-            send_actions(std::move(actions), signing_keys_opt.get_keys(), packed_transaction::compression_type::zlib);
+            if( tx_compression == tx_compression_type::default_compression )
+               tx_compression = tx_compression_type::zlib;
+            send_actions(std::move(actions), signing_keys_opt.get_keys());
          }
       } else {
          std::cerr << localized("Skipping set code because the new code is the same as the existing code") << std::endl;
@@ -3172,7 +3231,9 @@ int main( int argc, char** argv ) {
          } EOS_RETHROW_EXCEPTIONS(abi_type_exception,  "Fail to parse ABI JSON")
          if ( shouldSend ) {
             std::cerr << localized("Setting ABI...") << std::endl;
-            send_actions(std::move(actions), signing_keys_opt.get_keys(), packed_transaction::compression_type::zlib);
+            if( tx_compression == tx_compression_type::default_compression )
+               tx_compression = tx_compression_type::zlib;
+            send_actions(std::move(actions), signing_keys_opt.get_keys());
          }
       } else {
          std::cerr << localized("Skipping set abi because the new abi is the same as the existing abi") << std::endl;
@@ -3189,7 +3250,9 @@ int main( int argc, char** argv ) {
       set_abi_callback();
       if (actions.size()) {
          std::cerr << localized("Publishing contract...") << std::endl;
-         send_actions(std::move(actions), signing_keys_opt.get_keys(), packed_transaction::compression_type::zlib);
+         if( tx_compression == tx_compression_type::default_compression )
+            tx_compression = tx_compression_type::zlib;
+         send_actions(std::move(actions), signing_keys_opt.get_keys());
       } else {
          std::cout << "no transaction is sent" << std::endl;
       }
@@ -3437,7 +3500,7 @@ int main( int argc, char** argv ) {
    // sign subcommand
    string trx_json_to_sign;
    string str_private_key;
-   string str_chain_id;
+   str_chain_id = {};
    string str_private_key_file;
    string str_public_key;
    bool push_trx = false;
@@ -3492,7 +3555,7 @@ int main( int argc, char** argv ) {
       }
 
       if(push_trx) {
-         auto trx_result = call(push_txn_func, packed_transaction(trx, packed_transaction::compression_type::none));
+         auto trx_result = call(push_txn_func, packed_transaction_v0(trx, packed_transaction_v0::compression_type::none));
          std::cout << fc::json::to_pretty_string(trx_result) << std::endl;
       } else {
          std::cout << fc::json::to_pretty_string(trx) << std::endl;

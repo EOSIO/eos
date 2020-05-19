@@ -36,9 +36,10 @@ struct cloner_config : ship_client::connection_config {
 };
 
 struct cloner_plugin_impl : std::enable_shared_from_this<cloner_plugin_impl> {
-   std::shared_ptr<cloner_config>  config = std::make_shared<cloner_config>();
-   std::shared_ptr<cloner_session> session;
-   boost::asio::deadline_timer     timer;
+   std::shared_ptr<cloner_config>                                           config = std::make_shared<cloner_config>();
+   std::shared_ptr<cloner_session>                                          session;
+   boost::asio::deadline_timer                                              timer;
+   std::function<void(const char* data, uint64_t data_size)>                streamer = {};
 
    cloner_plugin_impl() : timer(app().get_io_service()) {}
 
@@ -79,12 +80,12 @@ struct cloner_session : ship_client::connection_callbacks, std::enable_shared_fr
       ilog("cloner database status:");
       ilog("    revisions:    ${f} - ${r}",
            ("f", rodeos_snapshot->undo_stack->first_revision())("r", rodeos_snapshot->undo_stack->revision()));
-      ilog("    chain:        ${a}", ("a", eosio::check(eosio::convert_to_json(rodeos_snapshot->chain_id)).value()));
+      ilog("    chain:        ${a}", ("a", eosio::convert_to_json(rodeos_snapshot->chain_id)));
       ilog("    head:         ${a} ${b}",
-           ("a", rodeos_snapshot->head)("b", eosio::check(eosio::convert_to_json(rodeos_snapshot->head_id)).value()));
+           ("a", rodeos_snapshot->head)("b", eosio::convert_to_json(rodeos_snapshot->head_id)));
       ilog("    irreversible: ${a} ${b}",
            ("a", rodeos_snapshot->irreversible)(
-                 "b", eosio::check(eosio::convert_to_json(rodeos_snapshot->irreversible_id)).value()));
+                 "b", eosio::convert_to_json(rodeos_snapshot->irreversible_id)));
 
       rodeos_snapshot->end_write(true);
       db->flush(true, true);
@@ -99,13 +100,13 @@ struct cloner_session : ship_client::connection_callbacks, std::enable_shared_fr
    }
 
    bool received(get_status_result_v0& status, eosio::input_stream bin) override {
-      ilog("nodeos has chain ${c}", ("c", eosio::check(eosio::convert_to_json(status.chain_id)).value()));
+      ilog("nodeos has chain ${c}", ("c", eosio::convert_to_json(status.chain_id)));
       if (rodeos_snapshot->chain_id == eosio::checksum256{})
          rodeos_snapshot->chain_id = status.chain_id;
       if (rodeos_snapshot->chain_id != status.chain_id)
          throw std::runtime_error(
-               "database is for chain " + eosio::check(eosio::convert_to_json(rodeos_snapshot->chain_id)).value() +
-               " but nodeos has chain " + eosio::check(eosio::convert_to_json(status.chain_id)).value());
+               "database is for chain " + eosio::convert_to_json(rodeos_snapshot->chain_id) +
+               " but nodeos has chain " + eosio::convert_to_json(status.chain_id));
       ilog("request blocks");
       connection->request_blocks(status, std::max(config->skip_to, rodeos_snapshot->head + 1), get_positions(),
                                  ship_client::request_block | ship_client::request_traces |
@@ -157,9 +158,13 @@ struct cloner_session : ship_client::connection_callbacks, std::enable_shared_fr
       rodeos_snapshot->write_block_info(result);
       rodeos_snapshot->write_deltas(result, [] { return app().is_quiting(); });
 
-      // todo: remove
-      if (filter)
-         filter->process(*rodeos_snapshot, result, bin, [](const char*, uint64_t) {});
+      if (filter) {
+         filter->process(*rodeos_snapshot, result, bin, [&](const char* data, uint64_t data_size) {
+            if (my->streamer) {
+               my->streamer(data, data_size);
+            }
+         });
+      }
 
       rodeos_snapshot->end_block(result, false);
       return true;
@@ -233,6 +238,10 @@ void cloner_plugin::plugin_shutdown() {
       my->session->connection->close(false);
    my->timer.cancel();
    ilog("cloner_plugin stopped");
+}
+
+void cloner_plugin::set_streamer(std::function<void(const char* data, uint64_t data_size)> streamer_func) {
+   my->streamer = streamer_func;
 }
 
 } // namespace b1

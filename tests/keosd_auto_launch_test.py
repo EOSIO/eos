@@ -26,6 +26,12 @@ def stop_keosd():
     run_cleos_wallet_command('stop', no_auto_keosd=True)
 
 
+def check_cleos_stderr(stderr: bytes, expected_match: bytes):
+    if expected_match not in stderr:
+        raise RuntimeError("'{}' not found in {}'".format(
+            expected_match.decode(), stderr.decode()))
+
+
 def keosd_auto_launch_test():
     """Test that keos auto-launching works but can be optionally inhibited."""
     stop_keosd()
@@ -34,12 +40,15 @@ def keosd_auto_launch_test():
     # cleos.
     completed_process = run_cleos_wallet_command('list', no_auto_keosd=True)
     assert completed_process.returncode != 0
-    assert b'Failed to connect to keosd' in completed_process.stderr
+    check_cleos_stderr(completed_process.stderr, b'Failed to connect to keosd')
 
     # Verify that keosd auto-launching works.
     completed_process = run_cleos_wallet_command('list', no_auto_keosd=False)
-    assert completed_process.returncode == 0
-    assert b'launched' in completed_process.stderr
+    if completed_process.returncode != 0:
+        raise RuntimeError("Expected that keosd would be started, "
+                           "but got an error instead: {}".format(
+                               completed_process.stderr.decode()))
+    check_cleos_stderr(completed_process.stderr, b'launched')
 
 
 try:

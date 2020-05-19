@@ -8,7 +8,7 @@ target_include_directories(eosio-blocklog PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
 
 target_link_libraries( eosio-blocklog
         PRIVATE appbase
-        PRIVATE eosio_chain fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )
+        PRIVATE eosio_chain fc state_history ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )
 
 copy_bin( eosio-blocklog )
 install( TARGETS

@@ -320,7 +320,7 @@ namespace eosio { namespace testing {
    }
 
    void base_tester::push_block(signed_block_ptr b) {
-      auto bsf = control->create_block_state_future(b);
+      auto bsf = control->create_block_state_future(b->calculate_id(), b);
       unapplied_transactions.add_aborted( control->abort_block() );
       control->push_block( bsf, [this]( const branch_type& forked_branch ) {
          unapplied_transactions.add_forked( forked_branch );
@@ -329,8 +329,8 @@ namespace eosio { namespace testing {
       } );
 
       auto itr = last_produced_block.find(b->producer);
-      if (itr == last_produced_block.end() || block_header::num_from_id(b->id()) > block_header::num_from_id(itr->second)) {
-         last_produced_block[b->producer] = b->id();
+      if (itr == last_produced_block.end() || b->block_num() > block_header::num_from_id(itr->second)) {
+         last_produced_block[b->producer] = b->calculate_id();
       }
    }
 
@@ -556,7 +556,7 @@ namespace eosio { namespace testing {
       return push_transaction( trx );
    }
 
-   transaction_trace_ptr base_tester::push_transaction( packed_transaction& trx,
+   transaction_trace_ptr base_tester::push_transaction( const packed_transaction& trx,
                                                         fc::time_point deadline,
                                                         uint32_t billed_cpu_time_us
                                                       )
@@ -575,7 +575,7 @@ namespace eosio { namespace testing {
       return r;
    } FC_RETHROW_EXCEPTIONS( warn, "transaction_header: ${header}", ("header", transaction_header(trx.get_transaction()) )) }
 
-   transaction_trace_ptr base_tester::push_transaction( signed_transaction& trx,
+   transaction_trace_ptr base_tester::push_transaction( const signed_transaction& trx,
                                                         fc::time_point deadline,
                                                         uint32_t billed_cpu_time_us,
                                                         bool no_throw
@@ -592,8 +592,8 @@ namespace eosio { namespace testing {
       auto time_limit = deadline == fc::time_point::maximum() ?
             fc::microseconds::maximum() :
             fc::microseconds( deadline - fc::time_point::now() );
-      auto ptrx = std::make_shared<packed_transaction>( trx, c );
-      auto fut = transaction_metadata::start_recover_keys( ptrx, control->get_thread_pool(), control->get_chain_id(), time_limit );
+      auto ptrx = std::make_shared<packed_transaction>( signed_transaction(trx), true, c );
+      auto fut = transaction_metadata::start_recover_keys( std::move( ptrx ), control->get_thread_pool(), control->get_chain_id(), time_limit );
       auto r = control->push_transaction( fut.get(), deadline, billed_cpu_time_us, billed_cpu_time_us > 0 );
       if (no_throw) return r;
       if( r->except_ptr ) std::rethrow_exception( r->except_ptr );
@@ -1046,7 +1046,7 @@ namespace eosio { namespace testing {
 
             auto block = a.control->fetch_block_by_number(i);
             if( block ) { //&& !b.control->is_known_block(block->id()) ) {
-               auto bsf = b.control->create_block_state_future( block );
+               auto bsf = b.control->create_block_state_future( block->calculate_id(), block );
                b.control->abort_block();
                b.control->push_block(bsf, forked_branch_callback{}, trx_meta_cache_lookup{}); //, eosio::chain::validation_steps::created_block);
             }
