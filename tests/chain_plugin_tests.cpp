@@ -137,11 +137,7 @@ BOOST_FIXTURE_TEST_CASE( get_block_with_invalid_abi, TESTER ) try {
 
 } FC_LOG_AND_RETHROW() /// get_block_with_invalid_abi
 
-BOOST_FIXTURE_TEST_CASE( chain_api_test, TESTER ) try {
-   produce_blocks(2);
-
-   create_accounts( {N(asserter)} );
-   produce_block();
+BOOST_AUTO_TEST_CASE( chain_api_test ) try {
    {  // get_info without parameter
       string test_cmd = "curl http://127.0.0.1:8888/v1/chain/get_info";
       auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
@@ -653,11 +649,7 @@ BOOST_FIXTURE_TEST_CASE( chain_api_test, TESTER ) try {
    }
 } FC_LOG_AND_RETHROW()
 
-BOOST_FIXTURE_TEST_CASE( history_api_test, TESTER ) try {
-   produce_blocks(2);
-
-   create_accounts( {N(asserter)} );
-   produce_block();
+BOOST_AUTO_TEST_CASE( history_api_test ) try {
    {  // get_actions with valid parameter,
       string test_cmd = "curl http://127.0.0.1:8888/v1/history/get_actions -X POST -d ";
       test_cmd += "\"{\"account_name\":\"test\", \"pos\":-1, \"offset\":2}\"";
@@ -740,11 +732,7 @@ BOOST_FIXTURE_TEST_CASE( history_api_test, TESTER ) try {
    }
 } FC_LOG_AND_RETHROW()
 
-BOOST_FIXTURE_TEST_CASE( net_api_test, TESTER ) try {
-   produce_blocks(2);
-
-   create_accounts( {N(asserter)} );
-   produce_block();
+BOOST_AUTO_TEST_CASE( net_api_test ) try {
    {  // connect with valid parameter,
       string test_cmd = "curl http://127.0.0.1:8888/v1/net/connect -X POST -d ";
       test_cmd += "\"{\"endpoint\": \"localhost\"}\"";
@@ -811,11 +799,7 @@ BOOST_FIXTURE_TEST_CASE( net_api_test, TESTER ) try {
    }
 } FC_LOG_AND_RETHROW()
 
-BOOST_FIXTURE_TEST_CASE( producer_api_test, TESTER ) try {
-   produce_blocks(2);
-   create_accounts( {N(asserter)} );
-   produce_block();
-
+BOOST_AUTO_TEST_CASE( producer_api_test ) try {
    {  // pause with empty parameter
       string test_cmd = "curl http://127.0.0.1:8888/v1/producer/pause";
       auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
@@ -1069,11 +1053,7 @@ BOOST_FIXTURE_TEST_CASE( producer_api_test, TESTER ) try {
    }
 } FC_LOG_AND_RETHROW()
 
-BOOST_FIXTURE_TEST_CASE( wallet_api_test, TESTER ) try {
-   produce_blocks(2);
-   create_accounts( {N(asserter)} );
-   produce_block();
-
+BOOST_AUTO_TEST_CASE( wallet_api_test ) try {
    {  // set_timeout with valid parameter
       string test_cmd = "curl http://127.0.0.1:7777/v1/wallet/set_timeout  -X POST -d ";
       test_cmd += "\"1234567\"";
@@ -1285,7 +1265,7 @@ BOOST_FIXTURE_TEST_CASE( wallet_api_test, TESTER ) try {
    }
 } FC_LOG_AND_RETHROW()
 
-BOOST_FIXTURE_TEST_CASE( test_control_api_test, TESTER ) try {
+BOOST_AUTO_TEST_CASE( test_control_api_test ) try {
    {  // kill_node_on_producer with valid parameter,
       string test_cmd = "curl http://127.0.0.1:8888/v1/test_control/kill_node_on_producer -X POST -d ";
       test_cmd += "\"{\"name\":\"auser\", \"where_in_sequence\":12, \"based_on_lib\":true}\"";
@@ -1305,7 +1285,7 @@ BOOST_FIXTURE_TEST_CASE( test_control_api_test, TESTER ) try {
    }
 } FC_LOG_AND_RETHROW()
 
-BOOST_FIXTURE_TEST_CASE( trace_api_test, TESTER ) try {
+BOOST_AUTO_TEST_CASE( trace_api_test ) try {
    {  // get_block with valid parameter,
       string test_cmd = "curl http://127.0.0.1:8888/v1/trace_api/get_block -X POST -d ";
       test_cmd += "\"{\"block_num\":1}\"";
