@@ -106,4 +106,4 @@ Example:
 ```
 
 [[info]]
-| All loggers are enabled by default in the `logging.json`. All loggers have the `debug` logging level, except `net_plugin_impl` which is set to `info`.
+| The default logging level for all loggers if no `logging.json` is provided is `info`. Each logger can be configured independently in the `logging.json` file.
