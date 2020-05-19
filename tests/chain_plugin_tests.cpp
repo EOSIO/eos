@@ -1285,4 +1285,45 @@ BOOST_FIXTURE_TEST_CASE( wallet_api_test, TESTER ) try {
    }
 } FC_LOG_AND_RETHROW()
 
+BOOST_FIXTURE_TEST_CASE( test_control_api_test, TESTER ) try {
+   {  // kill_node_on_producer with valid parameter,
+      string test_cmd = "curl http://127.0.0.1:8888/v1/test_control/kill_node_on_producer -X POST -d ";
+      test_cmd += "\"{\"name\":\"auser\", \"where_in_sequence\":12, \"based_on_lib\":true}\"";
+      BOOST_REQUIRE(get_command_result_str(test_cmd) == "{}");
+   }
+   {  // kill_node_on_producer with empty parameter
+      string test_cmd = "curl http://127.0.0.1:8888/v1/test_control/kill_node_on_producer";
+      auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
+      BOOST_REQUIRE(test_cmd_ret_variant["code"].as<int>() == 400);
+   }
+   {  // kill_node_on_producer with invalid parameter
+      string test_cmd = "curl http://127.0.0.1:8888/v1/test_control/kill_node_on_producer -X POST -d ";
+      test_cmd += "\"{\"block\":1}\"";
+      auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
+      // should be 400 instead
+      BOOST_REQUIRE(get_command_result_str(test_cmd) == "{}");
+   }
+} FC_LOG_AND_RETHROW()
+
+BOOST_FIXTURE_TEST_CASE( trace_api_test, TESTER ) try {
+   {  // get_block with valid parameter,
+      string test_cmd = "curl http://127.0.0.1:8888/v1/trace_api/get_block -X POST -d ";
+      test_cmd += "\"{\"block_num\":1}\"";
+      auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
+      BOOST_REQUIRE(test_cmd_ret_variant["code"].as<int>() == 404);
+   }
+   {  // get_block with empty parameter
+      string test_cmd = "curl http://127.0.0.1:8888/v1/trace_api/get_block";
+      auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
+      BOOST_REQUIRE(test_cmd_ret_variant["code"].as<int>() == 400);
+   }
+   {  // get_block with invalid parameter
+      string test_cmd = "curl http://127.0.0.1:8888/v1/trace_api/get_block -X POST -d ";
+      test_cmd += "\"{\"block\":1}\"";
+      auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
+      BOOST_REQUIRE(test_cmd_ret_variant["code"].as<int>() == 400);
+   }
+} FC_LOG_AND_RETHROW()
+
+
 BOOST_AUTO_TEST_SUITE_END()
