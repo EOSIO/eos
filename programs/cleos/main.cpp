@@ -84,6 +84,10 @@ Options:
 #include <eosio/chain/trace.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
 #include <eosio/chain/contract_types.hpp>
+#include <eosio/chain/thread_utils.hpp>
+
+#include <eosio/rabbitmq_trx_plugin/rabbitmq_trx_plugin.hpp>
+#include <eosio/rabbitmq_trx_plugin/rabbitmq.hpp>
 
 #include <eosio/version/version.hpp>
 
@@ -436,12 +440,27 @@ fc::variant push_transaction( signed_transaction& trx, const std::vector<public_
       if (tx_use_old_rpc) {
          return call(push_txn_func, packed_transaction_v0(trx, compression));
       } else {
-         try {
-            return call(send_txn_func, packed_transaction_v0(trx, compression));
-         }
-         catch (chain::missing_chain_api_plugin_exception &) {
-            std::cerr << "New RPC send_transaction may not be supported. Add flag --use-old-rpc to use old RPC push_transaction instead." << std::endl;
-            throw;
+         if( boost::ifind_first(url, "amqp://") ) {
+            eosio::chain::named_thread_pool thread_pool( "rabmq", 1 );
+            eosio::rabbitmq qp_trx( fc::logger::get( DEFAULT_LOGGER ), thread_pool.get_executor(), url, "trx" );
+            eosio::rabbitmq qp_trace( fc::logger::get( DEFAULT_LOGGER ), thread_pool.get_executor(), url, "trace" );
+
+            packed_transaction ptrx( std::move(trx), true, packed_transaction::compression_type::zlib );
+            using transaction_msg = fc::static_variant<packed_transaction_v0, packed_transaction>;
+            transaction_msg msg{ packed_transaction( std::move(trx), true, packed_transaction::compression_type::zlib ) };
+            auto buf = fc::raw::pack( msg );
+            qp_trx.publish( msg.get<packed_transaction>().id(), buf.data(), buf.size() );
+
+            thread_pool.stop();
+            return fc::variant();
+         } else {
+            try {
+               return call( send_txn_func, packed_transaction_v0( trx, compression ) );
+            } catch( chain::missing_chain_api_plugin_exception& ) {
+               std::cerr << "New RPC send_transaction may not be supported. "
+                            "Add flag --use-old-rpc to use old RPC push_transaction instead." << std::endl;
+               throw;
+            }
          }
       }
    } else {
