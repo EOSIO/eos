@@ -62,7 +62,6 @@ struct async_result_visitor : public fc::visitor<fc::variant> {
      auto result = api_handle.call_name(std::move(params));
 
 #define INVOKE_R_V(api_handle, call_name) \
-     if (body.empty()) body = "{}"; \
      auto result = api_handle.call_name();
 
 #define INVOKE_R_V_ASYNC(api_handle, call_name)\
