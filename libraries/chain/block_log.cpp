@@ -104,15 +104,20 @@ namespace eosio { namespace chain {
       }
    };
 
-   struct log_entry_v4 : signed_block {
-      // In version 4 of the irreversible blocks log format, these log entries consists of the following in order:
-      //    1. An uint32_t size for number of bytes from the start of this log entry to the start of the next log entry.
-      //    2. An uint8_t indicating the compression status for the serialization of the pruned_block following this.
-      //    3. The serialization of a signed_block representation of the block for the entry including padding.
-      packed_transaction::cf_compression_type compression = packed_transaction::cf_compression_type::none;
-      uint32_t size = 0; // the size of the log entry
-   };
+   struct log_entry_v4 {
+         // In version 4 of the irreversible blocks log format, these log entries consists of the following in order:
+         //    1. An uint32_t size for number of bytes from the start of this log entry to the start of the next log entry.
+         //    2. An uint8_t indicating the compression status for the serialization of the pruned_block following this.
+         //    3. The serialization of a signed_block representation of the block for the entry including padding.
 
+         struct metadata_type {
+            packed_transaction::cf_compression_type compression = packed_transaction::cf_compression_type::none;
+            uint32_t size = 0; // the size of the log entry
+         };
+
+         metadata_type meta;
+         signed_block  block;
+   };
 
    namespace {
 
@@ -129,24 +134,33 @@ namespace eosio { namespace chain {
       }
 
       template <typename Stream>
-      void unpack(Stream& ds, log_entry_v4& entry){
-         const auto start_pos = ds.tellp(); ;
-         fc::raw::unpack(ds, entry.size);
+      log_entry_v4::metadata_type unpack(Stream& ds, signed_block& block){
+         log_entry_v4::metadata_type meta;
+         const auto                  start_pos = ds.tellp();
+         fc::raw::unpack(ds, meta.size);
          uint8_t compression;
          fc::raw::unpack(ds, compression);
-         entry.compression = static_cast<packed_transaction::cf_compression_type>(compression);
-         EOS_ASSERT(entry.compression == packed_transaction::cf_compression_type::none, block_log_exception,
-                  "Only support compression_type none");
-         static_cast<signed_block&>(entry).unpack(ds, entry.compression);
+         EOS_ASSERT(compression < static_cast<uint8_t>(packed_transaction::cf_compression_type::COMPRESSION_TYPE_COUNT), block_log_exception, 
+                  "Unknown compression_type");
+         meta.compression = static_cast<packed_transaction::cf_compression_type>(compression);
+         EOS_ASSERT(meta.compression == packed_transaction::cf_compression_type::none, block_log_exception,
+                  "Only support compression_type none");         
+         block.unpack(ds, meta.compression);
          const uint64_t current_stream_offset = ds.tellp() - start_pos;
          // For a block which contains CFD (context free data) and the CFD is pruned afterwards, the entry.size may
          // be the size before the CFD has been pruned while the actual serialized block does not have the CFD anymore.
          // In this case, the serialized block has fewer bytes than what's indicated by entry.size. We need to
          // skip over the extra bytes to allow ds to position to the last 8 bytes of the entry.  
-         const int64_t bytes_to_skip = static_cast<int64_t>(entry.size) - sizeof(uint64_t) - current_stream_offset;
+         const int64_t bytes_to_skip = static_cast<int64_t>(meta.size) - sizeof(uint64_t) - current_stream_offset;
          EOS_ASSERT(bytes_to_skip >= 0, block_log_exception,
-                    "Invalid block log entry offset");
+                    "Invalid block log entry size");
          ds.skip(bytes_to_skip);
+         return meta;
+      }
+
+      template <typename Stream>
+      void unpack(Stream& ds, log_entry_v4& entry){
+         entry.meta = unpack(ds, entry.block);
       }
 
       std::vector<char> pack(const signed_block& block, packed_transaction::cf_compression_type compression) {
@@ -244,12 +258,6 @@ namespace eosio { namespace chain {
       std::ptrdiff_t                     current_offset = 0;
       boost::iostreams::mapped_file_sink index;
    };
-}}} // namespace eosio::chain
-
-FC_REFLECT_DERIVED(eosio::chain::log_entry_v4, (eosio::chain::signed_block), (compression)(size) )
-
-namespace eosio { namespace chain {   
-namespace {
 
    struct bad_block_excpetion {
       std::exception_ptr inner;
@@ -263,6 +271,8 @@ namespace {
     public:
       block_log_data() = default;
       block_log_data(const fc::path& path) { open(path); }
+
+      const block_log_preamble& get_preamble() const { return preamble; }
 
       fc::datastream<const char*> open(const fc::path& path) {
          file.open(path.generic_string());
@@ -311,7 +321,7 @@ namespace {
        *  Validate a block log entry WITHOUT deserializing the entire block data. 
        **/
       void light_validate_block_entry_at(uint64_t pos, uint32_t expected_block_num) const {
-         uint32_t actual_block_num = block_num_at(pos);
+         const uint32_t actual_block_num = block_num_at(pos);
 
          EOS_ASSERT(actual_block_num == expected_block_num, block_log_exception,
                     "At position ${pos} expected to find block number ${exp_bnum} but found ${act_bnum}",
@@ -340,13 +350,19 @@ namespace {
             throw bad_block_excpetion{std::current_exception()};
          }
 
-         const block_header& header    = std::visit([](const auto& v) -> const block_header& { return v; }, entry);
+         const block_header& header =
+             std::visit(overloaded{[](const signed_block_v0& v) -> const block_header& { return v; },
+                                   [](const log_entry_v4& v) -> const block_header& { return v.block; }},
+                        entry);
+
          auto                id        = header.calculate_id();
          auto                block_num = block_header::num_from_id(id);
 
-         EOS_ASSERT(block_num == previous_block_num + 1, block_log_exception,
-                    "At position ${pos} expected to find block number ${exp_bnum} but found ${act_bnum}",
-                    ("pos", pos)("exp_bnum", previous_block_num +1)("act_bnum", block_num));
+         if (block_num != previous_block_num + 1) {
+            elog( "Block ${num} (${id}) skips blocks. Previous block in block log is block ${prev_num} (${previous})",
+                  ("num", block_num)("id", id)
+                  ("prev_num", previous_block_num)("previous", previous_block_id) );
+         }
 
          if (previous_block_id != block_id_type() && previous_block_id != header.previous) {
             elog("Block ${num} (${id}) does not link back to previous block. "
@@ -359,7 +375,7 @@ namespace {
             ds.read(reinterpret_cast<char*>(&tmp_pos), sizeof(tmp_pos));
          }
 
-         EOS_ASSERT(pos == tmp_pos, block_log_exception, "the block position at the end of a block entry is incorrect");
+         EOS_ASSERT(pos == tmp_pos, block_log_exception, "the block position for block ${num} at the end of a block entry is incorrect", ("num", block_num));
          return std::make_tuple(block_num, id);
       }
    };
@@ -493,8 +509,7 @@ namespace {
       if (log_size) {
          ilog("Log is nonempty");
          block_log_data log_data(block_file.get_file_path());
-         preamble.version = log_data.version();
-         preamble.first_block_num = log_data.first_block_num();
+         preamble = log_data.get_preamble();
 
          genesis_written_to_block_log = true; // Assume it was constructed properly.
 
@@ -600,9 +615,9 @@ namespace {
       block_file.seek(pos);
       auto ds = block_file.create_datastream();
       if (preamble.version >= pruned_transaction_version) {
-         auto entry = std::make_unique<log_entry_v4>();
-         unpack(ds, *entry);
-         return entry;
+         auto block = std::make_unique<signed_block>();
+         unpack(ds, *block);
+         return block;
       } else {
          signed_block_v0 block;
          fc::raw::unpack(ds, block);
@@ -824,7 +839,7 @@ namespace {
          auto ds = my->block_file.create_datastream();
          unpack(ds, entry);
 
-         EOS_ASSERT(entry.block_num() == block_num, block_log_exception,
+         EOS_ASSERT(entry.block.block_num() == block_num, block_log_exception,
                      "Wrong block was read from block log.");
 
          auto pruner = overloaded{[](transaction_id_type&) { return false; },
@@ -840,7 +855,7 @@ namespace {
                                   }};
 
          size_t num_trx_pruned = 0;
-         for (auto& trx : entry.transactions) {
+         for (auto& trx : entry.block.transactions) {
             num_trx_pruned += trx.trx.visit(pruner);
          }
 
@@ -848,10 +863,10 @@ namespace {
             // we don't want to rewrite entire entry, just the block data itself.
             const auto block_offset = offset_to_block_start(my->preamble.version);
             my->block_file.seek(pos + block_offset);
-            const uint32_t max_block_size = entry.size - block_offset - sizeof(uint64_t);
+            const uint32_t max_block_size = entry.meta.size - block_offset - sizeof(uint64_t);
             std::vector<char> buffer(max_block_size);
             fc::datastream<char*> stream(buffer.data(), buffer.size());
-            static_cast<signed_block&>(entry).pack(stream, entry.compression);
+            entry.block.pack(stream, entry.meta.compression);
             my->block_file.write(buffer.data(), buffer.size());
             my->block_file.flush();
          }
@@ -894,7 +909,7 @@ namespace {
       fc::path new_block_filename = temp_dir / "blocks.log";
    
       static_assert( block_log::max_supported_version == pruned_transaction_version,
-                     "Code was written to support format of version 4, need to update this code for latest format." );
+                     "Code was written to support format of version 4 or lower, need to update this code for latest format." );
       
       const auto     preamble_size           = block_log_preamble::nbytes_with_chain_id;
       const auto     num_blocks_to_truncate  = truncate_at_block - archive.log_data.first_block_num();
