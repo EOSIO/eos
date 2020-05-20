@@ -160,7 +160,7 @@ void pack(OSTREAM&& strm, const chainbase::database& db, bool trace_debug_mode,
    //  3. a prunable section contains the serialization of the vector of prunable_data.
    zlib_pack(strm, make_history_context_wrapper(db, trace_receipt_context{.debug_mode = trace_debug_mode}, traces));
    fc::raw::pack(strm, static_cast<uint8_t>(compression));
-   auto   pos               = strm.tellp();
+   const auto   pos         = strm.tellp();
    size_t size_with_padding = 0;
    for_each_packed_transaction(traces, [&strm, &size_with_padding, compression](const chain::packed_transaction& pt) {
       size_with_padding += trace_converter::pack(strm, pt.get_prunable_data(), compression);
