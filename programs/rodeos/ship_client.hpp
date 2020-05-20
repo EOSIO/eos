@@ -199,8 +199,6 @@ struct connection : std::enable_shared_from_this<connection> {
       if (callbacks)
          callbacks->closed(retry);
       callbacks.reset();
-      if (!retry)
-         appbase::app().quit();
    }
 }; // connection
 
