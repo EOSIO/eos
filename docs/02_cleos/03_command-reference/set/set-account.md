@@ -33,7 +33,7 @@ set parameters dealing with account permissions
 `--delay-sec` _UINT_ - set the delay_sec seconds, defaults to 0s
 
 ## Command
-To modify the permissions of an account, you must have the authority over the account and the permission of which you are modifying.
+To modify the permissions of an account, you must have the authority over the account and the permission of which you are modifying. The set account permission command is subject to change so it's associated Class is not fully documented.
 
 The first example associates a new key to the active permissions of an account.
 
@@ -43,7 +43,7 @@ cleos set account permission test active '{"threshold":1,"keys":[{"key":"EOS8X7M
 This second example modifies the same account permission, but removes the key set in the last example, and grants active authority of the test account to another account.
 
 ```sh
-cleos set account permission test active '{"threshold":1,"keys":[],"accounts":[{"permission":{"actor":"acc1","permission":"active"},"weight":50},{"permission":{"actor":"sandwich","permission":"active"},"weight":1}],"waits":[]}' owner
+cleos set account permission test active '{"threshold":1,"keys":[],"accounts":[{"permission":{"actor":"acc1","permission":"active"},"weight":50},{"permission":{"actor":"sandwich","permission":"active"},"weight":1}]}' owner
 ```
 
 The third example demonstrates how to set up permissions for multisig.
