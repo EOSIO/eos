@@ -19,6 +19,7 @@ add_subdirectory( abieos )
 add_subdirectory( rocksdb EXCLUDE_FROM_ALL )
 add_subdirectory( chain_kv )
 add_subdirectory( se-helpers )
+add_subdirectory( reliable_amqp_publisher )
 
 set(USE_EXISTING_SOFTFLOAT ON CACHE BOOL "use pre-exisiting softfloat lib")
 set(ENABLE_TOOLS OFF CACHE BOOL "Build tools")
