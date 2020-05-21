@@ -47,9 +47,10 @@ def main():
                                                                                        "eosio::history_api_plugin")
     nodeos_flags = (" --data-dir={0} --trace-dir={0} --trace-no-abis --filter-on={1} --access-control-allow-origin={2} "
                     "--contracts-console --http-validate-host={3} --verbose-http-errors ").format(data_dir, "\"*\"", "\'*\'", "false")
-    start_nodeos_cmd = ("{0} -e -p eosio {1} {2} ").format(Utils.EosServerPath, nodeos_plugins, nodeos_flags )
+    start_nodeos_cmd = ("{0} -p eosio {1} {2} ").format(Utils.EosServerPath, nodeos_plugins, nodeos_flags )
     createDataDir(data_dir)
     start(keosd, nodeos, start_nodeos_cmd, node_id)
-    time.sleep(1000)
+    clean(keosd, data_dir)
+
 if __name__ == "__main__":
     main()
