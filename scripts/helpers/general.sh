@@ -72,7 +72,9 @@ function set_system_vars() {
     export DISK_INSTALL=$1
     export DISK_TOTAL=$(($2 / 1024 / 1024))
     export DISK_AVAIL=$(($4 / 1024 / 1024))
-    export JOBS=${JOBS:-$(( MEM_GIG > CPU_CORES ? CPU_CORES : MEM_GIG ))}
+    # For a basic hueristic here, let's require at least 2GB of available RAM per parallel job.
+    # CPU_CORES is the number of logical cores available.
+    export JOBS=${JOBS:-$(( MEM_GIG / 2 >= CPU_CORES ? CPU_CORES : MEM_GIG / 2 ))}
 }
 
 function install-package() {
