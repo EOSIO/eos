@@ -43,12 +43,13 @@ cleos set account permission test active '{"threshold":1,"keys":[{"key":"EOS8X7M
 This second example modifies the same account permission, but removes the key set in the last example, and grants active authority of the @test account to another account.
 
 ```sh
-cleos set account permission test active '{"threshold" : 1, "keys" : [], "accounts" : [{"permission":{"account":"sandwich","permission":"active"},"weight":1},{"permission":{"account":"acc1","permission":"active"},"weight":50}]}' owner
+cleos set account permission test active '{"threshold":1,"keys":[],"accounts":[{"permission":{"actor":"acc1","permission":"active"},"weight":50},{"permission":{"actor":"sandwich","permission":"active"},"weight":1}],"waits":[]}' owner
 ```
-The third example demonstrates how to setup permissions for multisig.
+
+The third example demonstrates how to set up permissions for multisig.
 
 ```sh
-cleos set account permission test active '{"threshold" : 100, "keys" : [{"permission":{"key":"EOS8X7Mp7apQWtL6T2sfSZzBcQNUqZB7tARFEm9gA9Tn9nbMdsvBB","permission":"active"},"weight":25}], "accounts" : [{"permission":{"account":"@sandwich","permission":"active"},"weight":75}]}' owner
+cleos set account permission test active '{"threshold" : 100, "keys" : [{"permission":{"key":"EOS8X7Mp7apQWtL6T2sfSZzBcQNUqZB7tARFEm9gA9Tn9nbMdsvBB","permission":"active"},"weight":25}], "accounts" : [{"permission":{"actor":"sandwich","permission":"active"},"weight":75}]}' owner
 ```
 The JSON object used in this command is actually composed of two different types of objects
 
