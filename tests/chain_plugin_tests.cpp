@@ -18,7 +18,7 @@
 
 #include <fc/variant_object.hpp>
 #include <fc/io/json.hpp>
-
+#include <cstdlib>
 #include <array>
 #include <utility>
 
@@ -48,6 +48,11 @@ namespace {
       }
       std::cout << "cmd out: " << out_str << std::endl;
       return out_str;
+   }
+   void bounce_nodeos()
+   {
+      const std::string kill_nodeos_str = "pkill -9 -f \"nodeos\"";
+      system(kill_nodeos_str.c_str());
    }
 }
 
@@ -138,6 +143,8 @@ BOOST_FIXTURE_TEST_CASE( get_block_with_invalid_abi, TESTER ) try {
 } FC_LOG_AND_RETHROW() /// get_block_with_invalid_abi
 
 BOOST_AUTO_TEST_CASE( chain_api_test ) try {
+
+   bounce_nodeos();
    {  // get_info without parameter
       string test_cmd = "curl http://127.0.0.1:8888/v1/chain/get_info";
       auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
