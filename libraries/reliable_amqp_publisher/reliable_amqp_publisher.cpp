@@ -166,7 +166,7 @@ struct reliable_amqp_publisher_impl final : reliable_amqp_publisher_callbacks {
       const unsigned msgs_this_transaction = std::min(message_deque.size(), max_msg_single_transaction);
 
       channel->startTransaction();
-      std::for_each_n(message_deque.begin(), msgs_this_transaction, [this](const std::vector<char>& msg) {
+      std::for_each(message_deque.begin(), message_deque.begin()+msgs_this_transaction, [this](const std::vector<char>& msg) {
          channel->publish(exchange, "", msg.data(), msg.size());
       });
 
