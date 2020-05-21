@@ -5,7 +5,7 @@
 #include <eosio/state_history/compression.hpp>
 #include <eosio/state_history/serialization.hpp>
 #include <eosio/state_history/trace_converter.hpp>
-extern const char* state_history_plugin_abi;
+extern const char* const state_history_plugin_abi;
 
 namespace bio = boost::iostreams;
 namespace eosio {

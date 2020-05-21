@@ -63,10 +63,11 @@ namespace fc { namespace ecc {
     }
 
     static const public_key_data empty_pub;
-    static const private_key_secret empty_priv;
+    
 
     fc::sha512 private_key::get_shared_secret( const public_key& other )const
     {
+      static const private_key_secret empty_priv;
       FC_ASSERT( my->_key != empty_priv );
       FC_ASSERT( other.my->_key != empty_pub );
       public_key_data pub(other.my->_key);
