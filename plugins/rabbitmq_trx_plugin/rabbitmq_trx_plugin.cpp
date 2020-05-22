@@ -35,24 +35,17 @@ struct rabbitmq_trx_plugin_impl : std::enable_shared_from_this<rabbitmq_trx_plug
    bool consume_message( const char* buf, size_t s ) {
       try {
          fc::datastream<const char*> ds( buf, s );
-         fc::unsigned_int which{};
-         fc::raw::unpack( ds, which );
-         switch( which ) {
-            case transaction_msg::tag<chain::packed_transaction_v0>::value: {
-               chain::packed_transaction_v0 v0;
-               fc::raw::unpack( ds, v0 );
-               auto ptr = std::make_shared<chain::packed_transaction>( std::move( v0 ), true );
-               handle_message( std::move( ptr ) );
-               break;
-            }
-            case transaction_msg::tag<chain::packed_transaction>::value: {
-               auto ptr = std::make_shared<chain::packed_transaction>();
-               fc::raw::unpack( ds, *ptr );
-               handle_message( std::move( ptr ) );
-               break;
-            }
-            default:
-               FC_THROW_EXCEPTION( fc::out_of_range_exception, "Invalid which ${w} for consume of transaction_type message", ("w", which) );
+         transaction_msg msg;
+         fc::raw::unpack(ds, msg);
+         if( msg.contains<chain::packed_transaction_v0>() ) {
+            auto ptr = std::make_shared<chain::packed_transaction>( std::move( msg.get<chain::packed_transaction_v0>() ), true );
+            handle_message( std::move( ptr ) );
+         } else if( msg.contains<chain::packed_transaction>() ) {
+            auto ptr = std::make_shared<chain::packed_transaction>( std::move( msg.get<chain::packed_transaction>() ) );
+            handle_message( std::move( ptr ) );
+         } else {
+            FC_THROW_EXCEPTION( fc::out_of_range_exception, "Invalid which ${w} for consume of transaction_type message",
+                                ("w", msg.which()) );
          }
          return true;
       } FC_LOG_AND_DROP()
