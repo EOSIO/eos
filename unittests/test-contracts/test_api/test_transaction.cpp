@@ -1,6 +1,6 @@
-#include <eosiolib/contracts/eosio/action.hpp>
-#include <eosiolib/capi/eosio/crypto.h>
-#include <eosiolib/contracts/eosio/transaction.hpp>
+#include <eosio/action.hpp>
+#include <eosio/crypto.hpp>
+#include <eosio/transaction.hpp>
 
 #include "test_api.hpp"
 
