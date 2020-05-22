@@ -54,6 +54,8 @@ class rabbitmq_handler : public AMQP::LibBoostAsioHandler {
    void onError(AMQP::TcpConnection* connection, const char* message) {
       throw std::runtime_error("rabbitmq connection failed: " + std::string(message));
    }
+
+   uint16_t onNegotiate(AMQP::TcpConnection* connection, uint16_t interval) { return 0; }
 };
 
 inline void initialize_rabbits(boost::asio::io_service&                      io_service,
