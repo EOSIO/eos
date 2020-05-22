@@ -12,7 +12,7 @@ public:
    explicit rabbitmq_handler( boost::asio::io_service& io_service ) : AMQP::LibBoostAsioHandler( io_service ) {}
 
    void onError( AMQP::TcpConnection* connection, const char* message ) override {
-      throw std::runtime_error( "rabbitmq connection failed: " + std::string( message ) );
+      elog( "rabbitmq connection failed: ${m}", ("m", message) );
    }
 
    uint16_t onNegotiate( AMQP::TcpConnection* connection, uint16_t interval ) override {
@@ -33,7 +33,7 @@ public:
          , name_( std::move( name ) )
    {
       AMQP::Address amqp_address( address );
-      fc_ilog( logger_, "Connecting to RabbitMQ address ${a} - Queue: ${q}...",
+      fc_dlog( logger_, "Connecting to RabbitMQ address ${a} - Queue: ${q}...",
                ("a", std::string( amqp_address ))( "q", name_ ) );
 
       handler_ = std::make_unique<rabbitmq_handler>( io_service );
@@ -62,13 +62,13 @@ private:
    void declare_queue() {
       auto& queue = channel_->declareQueue( name_, AMQP::durable );
       queue.onSuccess( [this]( const std::string& name, uint32_t messagecount, uint32_t consumercount ) {
-         fc_ilog( logger_, "RabbitMQ Connected Successfully!\n Queue ${q} - Messages: ${mc} - Consumers: ${cc}",
+         fc_dlog( logger_, "RabbitMQ Connected Successfully!\n Queue ${q} - Messages: ${mc} - Consumers: ${cc}",
                   ("q", name)( "mc", messagecount )( "cc", consumercount ) );
       } );
       queue.onError( [this]( const char* error_message ) {
          std::string err = "RabbitMQ Queue error: " + std::string( error_message );
-         fc_wlog( logger_, err );
-         throw std::runtime_error( err );
+         fc_elog( logger_, err );
+         app().quit();
       } );
    }
 };
