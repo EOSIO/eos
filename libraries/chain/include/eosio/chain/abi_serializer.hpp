@@ -35,13 +35,19 @@ struct abi_serializer {
 
    abi_serializer(){ configure_built_in_types(); }
    abi_serializer( const abi_def& abi, const yield_function_t& yield );
+   [[deprecated("use the overload with yield_function_t[=create_yield_function(max_serialization_time)]")]]
+   abi_serializer( const abi_def& abi, const fc::microseconds& max_serialization_time );
    void set_abi( const abi_def& abi, const yield_function_t& yield );
+   [[deprecated("use the overload with yield_function_t[=create_yield_function(max_serialization_time)]")]]
+   void set_abi(const abi_def& abi, const fc::microseconds& max_serialization_time);
 
    /// @return string_view of `t` or internal string type
    std::string_view resolve_type(const std::string_view& t)const;
    bool      is_array(const std::string_view& type)const;
    bool      is_optional(const std::string_view& type)const;
    bool      is_type( const std::string_view& type, const yield_function_t& yield )const;
+   [[deprecated("use the overload with yield_function_t[=create_yield_function(max_serialization_time)]")]]
+   bool      is_type(const std::string_view& type, const fc::microseconds& max_serialization_time)const;
    bool      is_builtin_type(const std::string_view& type)const;
    bool      is_integer(const std::string_view& type) const;
    int       get_integer_size(const std::string_view& type) const;
@@ -58,16 +64,30 @@ struct abi_serializer {
    optional<string>  get_error_message( uint64_t error_code )const;
 
    fc::variant binary_to_variant( const std::string_view& type, const bytes& binary, const yield_function_t& yield, bool short_path = false )const;
+   [[deprecated("use the overload with yield_function_t[=create_yield_function(max_serialization_time)]")]]
+   fc::variant binary_to_variant( const std::string_view& type, const bytes& binary, const fc::microseconds& max_serialization_time, bool short_path = false )const;
    fc::variant binary_to_variant( const std::string_view& type, fc::datastream<const char*>& binary, const yield_function_t& yield, bool short_path = false )const;
+   [[deprecated("use the overload with yield_function_t[=create_yield_function(max_serialization_time)]")]]
+   fc::variant binary_to_variant( const std::string_view& type, fc::datastream<const char*>& binary, const fc::microseconds& max_serialization_time, bool short_path = false )const;
 
+   [[deprecated("use the overload with yield_function_t[=create_yield_function(max_serialization_time)]")]]
+   bytes       variant_to_binary( const std::string_view& type, const fc::variant& var, const fc::microseconds& max_serialization_time, bool short_path = false )const;
    bytes       variant_to_binary( const std::string_view& type, const fc::variant& var, const yield_function_t& yield, bool short_path = false )const;
+   [[deprecated("use the overload with yield_function_t[=create_yield_function(max_serialization_time)]")]]
+   void        variant_to_binary( const std::string_view& type, const fc::variant& var, fc::datastream<char*>& ds, const fc::microseconds& max_serialization_time, bool short_path = false )const;
    void        variant_to_binary( const std::string_view& type, const fc::variant& var, fc::datastream<char*>& ds, const yield_function_t& yield, bool short_path = false )const;
 
    template<typename T, typename Resolver>
    static void to_variant( const T& o, fc::variant& vo, Resolver resolver, const yield_function_t& yield );
+   template<typename T, typename Resolver>
+   [[deprecated("use the overload with yield_function_t[=create_yield_function(max_serialization_time)]")]]
+   static void to_variant( const T& o, fc::variant& vo, Resolver resolver, const fc::microseconds& max_serialization_time );
 
    template<typename T, typename Resolver>
    static void from_variant( const fc::variant& v, T& o, Resolver resolver, const yield_function_t& yield );
+   template<typename T, typename Resolver>
+   [[deprecated("use the overload with yield_function_t[=create_yield_function(max_serialization_time)]")]]
+   static void from_variant( const fc::variant& v, T& o, Resolver resolver, const fc::microseconds& max_serialization_time );
 
    template<typename Vec>
    static bool is_empty_abi(const Vec& abi_vec)
@@ -787,10 +807,20 @@ void abi_serializer::to_variant( const T& o, variant& vo, Resolver resolver, con
 } FC_RETHROW_EXCEPTIONS(error, "Failed to serialize: ${type}", ("type", boost::core::demangle( typeid(o).name() ) ))
 
 template<typename T, typename Resolver>
+void abi_serializer::to_variant( const T& o, variant& vo, Resolver resolver, const fc::microseconds& max_serialization_time ) {
+   to_variant( o, vo, resolver, create_yield_function(max_serialization_time) );
+}
+
+template<typename T, typename Resolver>
 void abi_serializer::from_variant( const variant& v, T& o, Resolver resolver, const yield_function_t& yield ) try {
    impl::abi_traverse_context ctx( yield );
    impl::abi_from_variant::extract(v, o, resolver, ctx);
 } FC_RETHROW_EXCEPTIONS(error, "Failed to deserialize variant", ("variant",v))
+
+template<typename T, typename Resolver>
+void abi_serializer::from_variant( const variant& v, T& o, Resolver resolver, const fc::microseconds& max_serialization_time ) {
+   from_variant( v, o, resolver, create_yield_function(max_serialization_time) );
+}
 
 
 } } // eosio::chain
