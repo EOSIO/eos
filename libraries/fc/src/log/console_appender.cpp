@@ -20,7 +20,7 @@ namespace fc {
    public:
      config                      cfg;
      color::type                 lc[log_level::off+1];
-     bool                        use_syslog_header{getenv("JOURNAL_STREAM")};
+     bool                        use_syslog_header{getenv("JOURNAL_STREAM") != nullptr};
 #ifdef WIN32
      HANDLE                      console_handle;
 #endif
