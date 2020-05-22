@@ -61,7 +61,7 @@ private:
          return;
       }
       if( is_onblock( trace )) {
-         onblock_trace.emplace( trace );
+         onblock_trace.emplace( cache_trace{trace, t} );
       } else if( trace->failed_dtrx_trace ) {
          cached_traces[trace->failed_dtrx_trace->id] = {trace, t};
       } else {
@@ -119,7 +119,7 @@ private:
    StoreProvider                                                store;
    exception_handler                                            except_handler;
    std::map<transaction_id_type, cache_trace>                   cached_traces;
-   fc::optional<chain::transaction_trace_ptr>                   onblock_trace;
+   fc::optional<cache_trace>                                    onblock_trace;
 
 };
 
