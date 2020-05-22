@@ -8,7 +8,7 @@ class stream_handler {
  public:
    virtual ~stream_handler() {}
    virtual const std::vector<eosio::name>& get_routes() const = 0;
-   virtual void publish(const char* data, uint64_t data_size) = 0;
+   virtual void publish(const char* data, uint64_t data_size, const std::string& route) = 0;
 
    bool check_route(const eosio::name& stream_route) {
       if (get_routes().size() == 0) {

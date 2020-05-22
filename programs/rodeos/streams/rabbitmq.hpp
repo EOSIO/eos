@@ -15,34 +15,61 @@ class rabbitmq : public stream_handler {
    std::shared_ptr<rabbitmq_handler>    handler_;
    std::shared_ptr<AMQP::TcpConnection> connection_;
    std::shared_ptr<AMQP::TcpChannel>    channel_;
-   std::string                          name_;
+   std::string                          exchangeName_;
+   std::string                          queueName_;
    std::vector<eosio::name>             routes_;
 
  public:
-   rabbitmq(boost::asio::io_service& io_service, std::vector<eosio::name> routes, std::string address, std::string name)
-       : name_(std::move(name)), routes_(std::move(routes)) {
+   rabbitmq(boost::asio::io_service& io_service, std::vector<eosio::name> routes, std::string address, std::string exchange_name, std::string queue_name)
+       : exchangeName_(std::move(exchange_name)), queueName_(std::move(queue_name)), routes_(std::move(routes)) {
       AMQP::Address amqp_address(address);
-      ilog("Connecting to RabbitMQ address ${a} - Queue: ${q}...", ("a", std::string(amqp_address))("q", name_));
+      ilog("Connecting to RabbitMQ address ${a} - Queue: ${q}...", ("a", std::string(amqp_address))("q", queueName_));
 
-      handler_    = std::make_shared<rabbitmq_handler>(io_service);
-      connection_ = std::make_shared<AMQP::TcpConnection>(handler_.get(), amqp_address);
-      channel_    = std::make_shared<AMQP::TcpChannel>(connection_.get());
+      init(io_service, routes, amqp_address)
+
       declare_queue();
+   }
+
+   rabbitmq(boost::asio::io_service& io_service, std::vector<eosio::name> routes, std::string address, std::string exchange_name)
+           : exchangeName_(std::move(exchange_name)), routes_(std::move(routes)) {
+      AMQP::Address amqp_address(address);
+      ilog("Connecting to RabbitMQ address ${a} - Exchange: ${e}...", ("a", std::string(amqp_address))("e", exchangeName_));
+
+      init(io_service, routes, amqp_address)
+
+      declare_exchange();
    }
 
    const std::vector<eosio::name>& get_routes() const override { return routes_; }
 
-   void publish(const char* data, uint64_t data_size) override { channel_->publish("", name_, data, data_size, 0); }
+   void publish(const char* data, uint64_t data_size, const std::string& route) override { channel_->publish(exchangeName_, route, data, data_size, 0); }
 
  private:
+   void init(boost::asio::io_service& io_service, std::vector<eosio::name> routes, AMQP::Address amqp_address) {
+      handler_    = std::make_shared<rabbitmq_handler>(io_service);
+      connection_ = std::make_shared<AMQP::TcpConnection>(handler_.get(), amqp_address);
+      channel_    = std::make_shared<AMQP::TcpChannel>(connection_.get());
+   }
+
    void declare_queue() {
-      auto& queue = channel_->declareQueue(name_, AMQP::durable);
+      auto& queue = channel_->declareQueue(queueName_, AMQP::durable);
       queue.onSuccess([](const std::string& name, uint32_t messagecount, uint32_t consumercount) {
          ilog("RabbitMQ Connected Successfully!\n Queue ${q} - Messages: ${mc} - Consumers: ${cc}",
               ("q", name)("mc", messagecount)("cc", consumercount));
       });
       queue.onError([](const char* error_message) {
          throw std::runtime_error("RabbitMQ Queue error: " + std::string(error_message));
+      });
+   }
+
+   void declare_exchange() {
+      auto& exchange = channel_->declareExchange(exchangeName_, AMQP::direct);
+      exchange.onSuccess([](const std::string& name, uint32_t messagecount, uint32_t consumercount) {
+         ilog("RabbitMQ Connected Successfully!\n Exchange ${e} - Messages: ${mc} - Consumers: ${cc}",
+              ("e", name)("mc", messagecount)("cc", consumercount));
+      });
+      exchange.onError([](const char* error_message) {
+         throw std::runtime_error("RabbitMQ Exchange error: " + std::string(error_message));
       });
    }
 };
@@ -60,7 +87,8 @@ class rabbitmq_handler : public AMQP::LibBoostAsioHandler {
 
 inline void initialize_rabbits(boost::asio::io_service&                      io_service,
                                std::vector<std::unique_ptr<stream_handler>>& streams,
-                               const std::vector<std::string>&               rabbits) {
+                               const std::vector<std::string>&               rabbits,
+                               const bool                                    exchange = false) {
    for (std::string rabbit : rabbits) {
       rabbit            = rabbit.substr(7, rabbit.length());
       size_t pos        = rabbit.find("/");
@@ -73,15 +101,22 @@ inline void initialize_rabbits(boost::asio::io_service&                      io_
          rabbit.erase(pos_router, rabbit.length());
       }
 
-      std::string queue_name = "stream.default";
+      std::string resource_name = exchange ? "" : "stream.default"
+
       if (pos != std::string::npos) {
-         queue_name = rabbit.substr(pos + 1, rabbit.length());
+         resource_name = rabbit.substr(pos + 1, rabbit.length());
          rabbit.erase(pos, rabbit.length());
       }
 
       std::string address = "amqp://" + rabbit;
-      rabbitmq rmq{ io_service, std::move(routings), std::move(address), std::move(queue_name) };
-      streams.emplace_back(std::make_unique<rabbitmq>(std::move(rmq)));
+      if (exchange) {
+         rabbitmq rmq{ io_service, std::move(routings), std::move(address), std::move(resource_name) };
+         streams.emplace_back(std::make_unique<rabbitmq>(std::move(rmq)));
+      } else {
+         rabbitmq rmq{ io_service, std::move(routings), std::move(address), "", std::move(resource_name) };
+         streams.emplace_back(std::make_unique<rabbitmq>(std::move(rmq)));
+      }
+
    }
 }
 
