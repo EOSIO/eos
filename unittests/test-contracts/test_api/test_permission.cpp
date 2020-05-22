@@ -1,11 +1,10 @@
 #include <limits>
 
-#include <eosiolib/contracts/eosio/action.hpp>
-#include <eosiolib/capi/eosio/db.h>
-#include <eosiolib/contracts/eosio/eosio.hpp>
-#include <eosiolib/contracts/eosio/permission.hpp>
-#include <eosiolib/core/eosio/print.hpp>
-#include <eosiolib/core/eosio/serialize.hpp>
+#include <eosio/action.hpp>
+#include <eosio/eosio.hpp>
+#include <eosio/permission.hpp>
+#include <eosio/print.hpp>
+#include <eosio/serialize.hpp>
 
 #include "test_api.hpp"
 

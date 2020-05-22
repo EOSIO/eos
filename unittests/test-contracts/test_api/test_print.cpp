@@ -1,5 +1,5 @@
- #include <eosiolib/contracts/eosio/eosio.hpp>
- #include <eosiolib/core/eosio/print.hpp>
+ #include <eosio/eosio.hpp>
+ #include <eosio/print.hpp>
 
 #include "test_api.hpp"
 

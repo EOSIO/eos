@@ -1,32 +1,11 @@
-#include <eosiolib/contracts/eosio/action.hpp>
-#include <eosiolib/capi/eosio/chain.h>
-#include <eosiolib/capi/eosio/crypto.h>
-#include <eosiolib/core/eosio/datastream.hpp>
-#include <eosiolib/capi/eosio/db.h>
-#include <eosiolib/contracts/eosio/eosio.hpp>
-#include <eosiolib/core/eosio/print.hpp>
-#include <eosiolib/capi/eosio/privileged.h>
-#include <eosiolib/contracts/eosio/transaction.hpp>
+#include <eosio/action.hpp>
+#include <eosio/crypto.hpp>
+#include <eosio/datastream.hpp>
+#include <eosio/eosio.hpp>
+#include <eosio/print.hpp>
+#include <eosio/transaction.hpp>
 
 #include "test_api.hpp"
-
-extern "C" {
-    __attribute__((eosio_wasm_import))
-    void set_action_return_value(const char*, size_t);
-
-    __attribute__((eosio_wasm_import))
-    void  eosio_assert( uint32_t test, const char* msg );
-
-    __attribute__((eosio_wasm_import))
-    void  eosio_assert_code( uint32_t test, uint64_t code );
-
-    __attribute__((eosio_wasm_import))
-    uint64_t  current_time();
-
-    __attribute__((eosio_wasm_import))
-    int get_action( uint32_t type, uint32_t index, char* buff, size_t size );
-
-}
 
 using namespace eosio;
 
@@ -106,10 +85,9 @@ void test_action::test_cf_action() {
       eosio_assert( v == cfa.payload, "invalid value" );
 
       // verify crypto api access
-      capi_checksum256 hash;
       char test[] = "test";
-      sha256( test, sizeof(test), &hash );
-      assert_sha256( test, sizeof(test), &hash );
+      auto hash = sha256( test, sizeof(test) );
+      eosio::assert_sha256( test, sizeof(test), hash );
       // verify action api access
       action_data_size();
       // verify console api access
