@@ -276,14 +276,24 @@ void rodeos_filter::process(rodeos_db_snapshot& snapshot, const ship_protocol::g
    backend->initialize(&cb);
    try {
       (*backend)(cb, "env", "apply", uint64_t(0), uint64_t(0), uint64_t(0));
+
+      if (!filter_state->console.empty())
+         ilog("filter ${n} console output: <<<\n${c}>>>", ("n", name.to_string())("c", filter_state->console));
    } catch (...) {
+      try {
+         throw;
+      } catch( const std::exception& e ) {
+         elog( "std::exception processing filter wasm: ${e}", ("e", e.what()) );
+      } catch( const fc::exception& e ) {
+         elog( "fc::exception processing filter wasm: ${e}", ("e", e.to_detail_string()) );
+      } catch( ... ) {
+         elog( "unknown exception processing filter wasm" );
+      }
       if (!filter_state->console.empty())
          ilog("filter ${n} console output before exception: <<<\n${c}>>>",
               ("n", name.to_string())("c", filter_state->console));
       throw;
    }
-   if (!filter_state->console.empty())
-      ilog("filter ${n} console output: <<<\n${c}>>>", ("n", name.to_string())("c", filter_state->console));
 }
 
 rodeos_query_handler::rodeos_query_handler(std::shared_ptr<rodeos_db_partition>         partition,
