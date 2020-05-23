@@ -13,10 +13,9 @@
 
 #undef N
 
-#include "chain_types.hpp"
 #include <b1/rodeos/embedded_rodeos.hpp>
 #include <eosio/fixed_bytes.hpp>
-#include <eosio/ship_protocol.hpp>
+#include <eosio/chain_types.hpp>
 #include <eosio/to_bin.hpp>
 #include <eosio/vm/backend.hpp>
 
