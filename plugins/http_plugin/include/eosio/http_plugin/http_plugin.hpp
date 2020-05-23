@@ -180,6 +180,7 @@ namespace eosio {
                if (body.empty()) {
                   return {};
                }
+               EOS_THROW(chain::invalid_http_request, "no parameter should be given");
             }
             return fc::json::from_string(body).as<T>();
          } catch (const chain::chain_exception& e) { // EOS_RETHROW_EXCEPTIONS does not re-type these so, re-code it
