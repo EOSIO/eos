@@ -192,12 +192,37 @@ chain_plugin::chain_plugin()
    app().register_config_type<eosio::chain::db_read_mode>();
    app().register_config_type<eosio::chain::validation_mode>();
    app().register_config_type<chainbase::pinnable_mapped_file::map_mode>();
+   app().register_config_type<eosio::chain::wasm_interface::vm_type>();
 }
 
 chain_plugin::~chain_plugin(){}
 
 void chain_plugin::set_program_options(options_description& cli, options_description& cfg)
 {
+   // build wasm_runtime help text
+   std::string wasm_runtime_opt = "Override default WASM runtime (";
+   std::string wasm_runtime_desc;
+   std::string delim;
+#ifdef EOSIO_EOS_VM_JIT_RUNTIME_ENABLED
+   wasm_runtime_opt += " \"eos-vm-jit\"";
+   wasm_runtime_desc += "\"eos-vm-jit\" : A WebAssembly runtime that compiles WebAssembly code to native x86 code prior to execution.\n";
+   delim = ", ";
+#endif
+
+#ifdef EOSIO_EOS_VM_RUNTIME_ENABLED
+   wasm_runtime_opt += delim + "\"eos-vm\"";
+   wasm_runtime_desc += "\"eos-vm\" : A WebAssembly interpreter.\n";
+   delim = ", ";
+#endif
+
+#ifdef EOSIO_EOS_VM_OC_DEVELOPER
+   wasm_runtime_opt += delim + "\"eos-vm-oc\"";
+   wasm_runtime_desc += "\"eos-vm-oc\" : Unsupported. Instead, use one of the other runtimes along with the option enable-eos-vm-oc.\n";
+#endif
+   wasm_runtime_opt += ")\n" + wasm_runtime_desc;
+
+   std::string default_wasm_runtime_str= eosio::chain::wasm_interface::vm_type_string(eosio::chain::config::default_wasm_runtime);
+
    cfg.add_options()
          ("blocks-dir", bpo::value<bfs::path>()->default_value("blocks"),
           "the location of the blocks directory (absolute path or relative to application data dir)")
@@ -212,7 +237,8 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
                EOS_ASSERT(false, plugin_exception, "");
             }
 #endif
-         }), "Override default WASM runtime")
+         })->default_value(eosio::chain::config::default_wasm_runtime, default_wasm_runtime_str), wasm_runtime_opt.c_str()
+         )
          ("abi-serializer-max-time-ms", bpo::value<uint32_t>()->default_value(config::default_abi_serializer_max_time_us / 1000),
           "Override default maximum ABI serialization time allowed in ms")
          ("chain-state-db-size-mb", bpo::value<uint64_t>()->default_value(config::default_state_size / (1024  * 1024)), "Maximum size (in MiB) of the chain state database")

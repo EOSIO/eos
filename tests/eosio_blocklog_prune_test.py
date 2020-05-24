@@ -6,19 +6,21 @@ from Cluster import Cluster
 from WalletMgr import WalletMgr
 from Node import Node
 from Node import ReturnType
+from Node import BlockType
 from TestHelper import TestHelper
 from TestHelper import AppArgs
 from testUtils import BlockLogAction
 import json
 import sys
 import signal
+import time
 
 ###############################################################
 # eosio_blocklog_prune_test.py
 #
 # Test eosio-blocklog prune-transaction 
 # 
-# This test creates a producer node and a verification node. 
+# This test creates a producer node and 2 verification nodes. 
 # The verification node is configured with state history plugin.
 # A transaction with context free data is pushed to the producer node.
 # Afterwards, it uses eosio-blocklog to prune the transaction with context free
@@ -53,14 +55,17 @@ try:
         pnodes=1,
         prodCount=1,
         totalProducers=1,
-        totalNodes=2,
+        totalNodes=3,
         useBiosBootFile=False,
         loadSystemContract=False,
         specificExtraNodeosArgs={
-            1:"--plugin eosio::state_history_plugin --trace-history --disable-replay-opts --sync-fetch-span 200 --plugin eosio::net_api_plugin "})
+            0: "--plugin eosio::state_history_plugin --trace-history --disable-replay-opts --sync-fetch-span 200 --state-history-endpoint 127.0.0.1:8080 --plugin eosio::net_api_plugin --enable-stale-production",
+            2: "--validation-mode light "})
 
-    producerNode = cluster.getNode(0)
-    validationNode = cluster.getNode(1)
+    producerNodeIndex = 0
+    producerNode = cluster.getNode(producerNodeIndex)
+    fullValidationNode = cluster.getNode(1)
+    lightValidationNode = cluster.getNode(2)
 
     # Create a transaction to create an account
     Utils.Print("create a new account payloadless from the producer node")
@@ -75,6 +80,9 @@ try:
     abiFile="payloadless.abi"
     Utils.Print("Publish payloadless contract")
     trans = producerNode.publishContract(payloadlessAcc, contractDir, wasmFile, abiFile, waitForTransBlock=True)
+
+    fullValidationNode.kill(signal.SIGTERM)
+    lightValidationNode.kill(signal.SIGTERM)
 
     trx = {
         "actions": [{"account": "payloadless", "name": "doit", "authorization": [{
@@ -91,41 +99,70 @@ try:
     cfTrxId = trans["transaction_id"]
 
     # Wait until the block where create account is executed to become irreversible 
-    def isBlockNumIrr():
-        return validationNode.getIrreversibleBlockNum() >= cfTrxBlockNum
-    Utils.waitForBool(isBlockNumIrr, timeout=30, sleepTime=0.1)
+    Utils.waitForBool(lambda: producerNode.getIrreversibleBlockNum() >= cfTrxBlockNum, timeout=30, sleepTime=0.1)
     
-    Utils.Print("verify the account payloadless from validation node")
+    Utils.Print("verify the account payloadless from producer node")
     cmd = "get account -j payloadless"
-    trans = validationNode.processCleosCmd(cmd, cmd, silentErrors=False)
+    trans = producerNode.processCleosCmd(cmd, cmd, silentErrors=False)
     assert trans["account_name"], "Failed to get the account payloadless"
 
-    Utils.Print("verify the context free transaction from validation node")
+    Utils.Print("verify the context free transaction from producer node")
     cmd = "get transaction " + cfTrxId
-    trans = validationNode.processCleosCmd(cmd, cmd, silentErrors=False)
-    assert trans, "Failed to get the transaction with context free data from the light validation node"
 
-    validationNode.kill(signal.SIGTERM)
+    trans_from_full = producerNode.processCleosCmd(cmd, cmd, silentErrors=False)
+    assert trans_from_full, "Failed to get the transaction with context free data from the producer node"
+
+    producerNode.kill(signal.SIGTERM)
 
     # prune the transaction with block-num=trans["block_num"], id=cfTrxId
-    cluster.getBlockLog(1, blockLogAction=BlockLogAction.prune_transactions, extraArgs=" --block-num {} --transaction {}".format(trans["block_num"], cfTrxId), exitOnError=True)
+    cluster.getBlockLog(producerNodeIndex, blockLogAction=BlockLogAction.prune_transactions, extraArgs=" --block-num {} --transaction {}".format(trans_from_full["block_num"], cfTrxId), exitOnError=True)
 
     # try to prune the transaction where it doesn't belong
     try:
-        cluster.getBlockLog(1, blockLogAction=BlockLogAction.prune_transactions, extraArgs=" --block-num {} --transaction {}".format(cfTrxBlockNum - 1, cfTrxId), throwException=True, silentErrors=True)
+        cluster.getBlockLog(producerNodeIndex, blockLogAction=BlockLogAction.prune_transactions, extraArgs=" --block-num {} --transaction {}".format(cfTrxBlockNum - 1, cfTrxId), throwException=True, silentErrors=True)
     except:
         ex = sys.exc_info()[0]
         msg=ex.output.decode("utf-8")
         assert "does not contain the following transactions: " + cfTrxId in msg, "The transaction id is not displayed in the console when it cannot be found"
 
-    isRelaunchSuccess = validationNode.relaunch(1)
-    assert isRelaunchSuccess, "Fail to relaunch verification node"
+    #
+    #  restart the producer node with pruned cfd
+    #
+    isRelaunchSuccess = producerNode.relaunch(1)
+    assert isRelaunchSuccess, "Fail to relaunch full producer node"
 
-    trans = validationNode.processCleosCmd(cmd, cmd, silentErrors=False)
-    assert trans, "Failed to get the transaction with context free data from the light validation node"
+    #
+    #  check if the cfd has been pruned from producer node
+    #
+    trans = producerNode.processCleosCmd(cmd, cmd, silentErrors=False)
+    assert trans, "Failed to get the transaction with context free data from the producer node"
     # check whether the transaction has been pruned based on the tag of prunable_data, if the tag is 1, then it's a prunable_data_t::none
     assert trans["trx"]["receipt"]["trx"][1]["prunable_data"]["prunable_data"][0] == 1, "the the transaction with context free data has not been pruned"
 
+    Utils.waitForBool(lambda: producerNode.getIrreversibleBlockNum() >= cfTrxBlockNum, timeout=30, sleepTime=0.1)
+    assert producerNode.waitForHeadToAdvance(), "the producer node stops producing"
+
+    # kill the producer with un-pruned cfd
+    cluster.biosNode.kill(signal.SIGTERM)
+
+    #
+    #  restart both full and light validation node
+    #
+    isRelaunchSuccess = fullValidationNode.relaunch(1)
+    assert isRelaunchSuccess, "Fail to relaunch full verification node"
+
+    isRelaunchSuccess = lightValidationNode.relaunch(1)
+    assert isRelaunchSuccess, "Fail to relaunch light verification node"
+
+    #
+    # Check lightValidationNode keeping sync while the full fullValidationNode stop syncing after the cfd block
+    #
+    Utils.waitForBool(lambda: lightValidationNode.getIrreversibleBlockNum() >= cfTrxBlockNum, timeout=30, sleepTime=0.1)
+    assert lightValidationNode.waitForHeadToAdvance(), "the light validation node stops syncing"
+
+    Utils.waitForBool(lambda: fullValidationNode.getIrreversibleBlockNum() >= cfTrxBlockNum-1, timeout=30, sleepTime=0.1)
+    assert not fullValidationNode.waitForHeadToAdvance(), "the full validation node is still syncing"
+    
     testSuccessful = True
 finally:
     TestHelper.shutdown(cluster, walletMgr, testSuccessful, killEosInstances, killWallet, keepLogs, killAll, dumpErrorDetails)

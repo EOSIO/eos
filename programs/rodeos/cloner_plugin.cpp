@@ -31,14 +31,16 @@ struct cloner_session;
 struct cloner_config : ship_client::connection_config {
    uint32_t    skip_to     = 0;
    uint32_t    stop_before = 0;
+   bool        exit_on_filter_wasm_error = false;
    eosio::name filter_name = {}; // todo: remove
    std::string filter_wasm = {}; // todo: remove
 };
 
 struct cloner_plugin_impl : std::enable_shared_from_this<cloner_plugin_impl> {
-   std::shared_ptr<cloner_config>  config = std::make_shared<cloner_config>();
-   std::shared_ptr<cloner_session> session;
-   boost::asio::deadline_timer     timer;
+   std::shared_ptr<cloner_config>                                           config = std::make_shared<cloner_config>();
+   std::shared_ptr<cloner_session>                                          session;
+   boost::asio::deadline_timer                                              timer;
+   std::function<void(const char* data, uint64_t data_size)>                streamer = {};
 
    cloner_plugin_impl() : timer(app().get_io_service()) {}
 
@@ -157,9 +159,13 @@ struct cloner_session : ship_client::connection_callbacks, std::enable_shared_fr
       rodeos_snapshot->write_block_info(result);
       rodeos_snapshot->write_deltas(result, [] { return app().is_quiting(); });
 
-      // todo: remove
-      if (filter)
-         filter->process(*rodeos_snapshot, result, bin, [](const char*, uint64_t) {});
+      if (filter) {
+         filter->process(*rodeos_snapshot, result, bin, [&](const char* data, uint64_t data_size) {
+            if (my->streamer) {
+               my->streamer(data, data_size);
+            }
+         });
+      }
 
       rodeos_snapshot->end_block(result, false);
       return true;
@@ -168,8 +174,11 @@ struct cloner_session : ship_client::connection_callbacks, std::enable_shared_fr
    void closed(bool retry) override {
       if (my) {
          my->session.reset();
-         if (retry)
+         if (retry) {
             my->schedule_retry();
+         } else if (my->config->exit_on_filter_wasm_error) {
+            appbase::app().quit();
+         }
       }
    }
 
@@ -199,6 +208,8 @@ void cloner_plugin::set_program_options(options_description& cli, options_descri
       "State-history endpoint to connect to (nodeos)");
    clop("clone-skip-to,k", bpo::value<uint32_t>(), "Skip blocks before [arg]");
    clop("clone-stop,x", bpo::value<uint32_t>(), "Stop before block [arg]");
+   op("clone-exit-on-filter-wasm-error", bpo::bool_switch()->default_value(false),
+      "Shutdown application if filter wasm throws an exception");
    // todo: remove
    op("filter-name", bpo::value<std::string>(), "Filter name");
    op("filter-wasm", bpo::value<std::string>(), "Filter wasm");
@@ -216,6 +227,7 @@ void cloner_plugin::plugin_initialize(const variables_map& options) {
       my->config->port        = port;
       my->config->skip_to     = options.count("clone-skip-to") ? options["clone-skip-to"].as<uint32_t>() : 0;
       my->config->stop_before = options.count("clone-stop") ? options["clone-stop"].as<uint32_t>() : 0;
+      my->config->exit_on_filter_wasm_error = options["clone-exit-on-filter-wasm-error"].as<bool>();
       if (options.count("filter-name") && options.count("filter-wasm")) {
          my->config->filter_name = eosio::name{ options["filter-name"].as<std::string>() };
          my->config->filter_wasm = options["filter-wasm"].as<std::string>();
@@ -233,6 +245,10 @@ void cloner_plugin::plugin_shutdown() {
       my->session->connection->close(false);
    my->timer.cancel();
    ilog("cloner_plugin stopped");
+}
+
+void cloner_plugin::set_streamer(std::function<void(const char* data, uint64_t data_size)> streamer_func) {
+   my->streamer = streamer_func;
 }
 
 } // namespace b1

@@ -35,7 +35,7 @@ set(CMAKE_MACOSX_RPATH OFF)
 set(BUILD_ONLY_LIB ON CACHE BOOL "Library only build")
 message(STATUS "Starting yubihsm configuration...")
 add_subdirectory( yubihsm EXCLUDE_FROM_ALL )
-set_target_properties(yubihsm_static PROPERTIES COMPILE_OPTIONS "-fno-lto")
+target_compile_options(yubihsm_static PRIVATE -fno-lto -fcommon)
 message(STATUS "yubihsm configuration complete")
 
 get_property(_CTEST_CUSTOM_TESTS_IGNORE GLOBAL PROPERTY CTEST_CUSTOM_TESTS_IGNORE)
@@ -45,3 +45,8 @@ set_property(GLOBAL PROPERTY CTEST_CUSTOM_TESTS_IGNORE
   attest pbkdf2 parsing ${_CTEST_CUSTOM_TESTS_IGNORE}")
 
 add_subdirectory( rodeos )
+
+find_package(OpenSSL REQUIRED)
+option(AMQP-CPP_LINUX_TCP CACHE ON)
+add_subdirectory( amqp-cpp EXCLUDE_FROM_ALL )
+target_include_directories(amqpcpp PRIVATE "${OPENSSL_INCLUDE_DIR}")
