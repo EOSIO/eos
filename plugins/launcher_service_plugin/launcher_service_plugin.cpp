@@ -22,6 +22,7 @@
 #include <appbase/application.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
+#include <eosio/chain/thread_utils.hpp>
 
 namespace eosio {
    static appbase::abstract_plugin& _launcher_service_plugin = app().register_plugin<launcher_service_plugin>();
@@ -67,11 +68,13 @@ namespace eosio {
 
    class launcher_interval_timer : public std::enable_shared_from_this<launcher_interval_timer> {
    public:
-      launcher_interval_timer(launcher_service_plugin_impl& impl, boost::asio::io_service& io) : _timer(io), _impl(impl) {}
+      launcher_interval_timer(launcher_service_plugin_impl& impl) : _impl(impl) {}
       ~launcher_interval_timer();
 
       void start_timer();
       void stop_timer();
+
+      map<time_point, time_point> missed_intervals(const time_point& report_from, const time_point& oldest_active_time);
 
       static const microseconds                 _half_timeout;
       static const steady_timer::duration       _timeout;
@@ -80,15 +83,20 @@ namespace eosio {
    private:
       void schedule_timer();
       void timeout_processing();
+      void track_timeouts(const time_point& now);
 
-      steady_timer                              _timer;
+      optional<eosio::chain::named_thread_pool> _thread_pool;
+      optional<steady_timer>                    _timer;
       launcher_service_plugin_impl&             _impl;
+      time_point                                _last_timeout;
+      mutable std::mutex                        _missed_times_mtx;
+      map<time_point, time_point>               _missed_times;
    };
 
-   class launcher_service_plugin_impl {
+   class launcher_service_plugin_impl : public std::enable_shared_from_this<launcher_service_plugin_impl> {
 
    public:
-      launcher_service_plugin_impl(boost::asio::io_service& io) : _interval_timer(std::make_shared<launcher_interval_timer>(*this, io)) {}
+      launcher_service_plugin_impl() : _interval_timer(std::make_shared<launcher_interval_timer>(*this)) {}
 
       using child_ptr = std::shared_ptr<bp::child>;
       struct node_state {
@@ -128,7 +136,7 @@ namespace eosio {
          cluster_def                                 def;
          std::map<int, node_state_ptr>               nodes; // node id => node_state
          std::map<public_key_type, private_key_type> imported_keys;
-         std::map<time_point, time_point>            missing_intervals;
+         time_point                                  started = time_point::now();
 
          // possible transaction block-number for query purpose
          std::map<transaction_id_type, uint32_t>     transaction_blocknum;
@@ -155,7 +163,6 @@ namespace eosio {
       optional<time_point>                      _idle_timeout_deadline;
       uint32_t                                  _timer_correlation_id = 0;
       std::shared_ptr<launcher_interval_timer>  _interval_timer;
-      time_point                                _last_timeout;
 
    public:
       static std::string cluster_to_string(int id) {
@@ -485,32 +492,23 @@ namespace eosio {
       }
 
       void interval_callback(const time_point& now) {
-         remove_shutdown_nodes(now);
+         std::weak_ptr<launcher_service_plugin_impl> weak_this = weak_from_this();
+         app().post( priority::low,
+                [weak_this, now]() {
+                        auto self = weak_this.lock();
+                        if( self ) {
+                           self->remove_shutdown_nodes(now);
 
-         // do this last, to allow everything else to happen prior to quit
-         check_idle_timeout(now);
-
-         track_timeouts(now);
+                           // do this last, to allow everything else to happen prior to quit
+                           self->check_idle_timeout(now);
+                        }
+                     } );
       }
 
       void initialize_timers() {
          schedule_node_remove_timeout();
          schedule_idle_timeout();
-         _last_timeout = time_point::now();
          _interval_timer->start_timer();
-      }
-
-      void track_timeouts(const time_point& now) {
-         const auto diff = now - _last_timeout;
-         if (diff > launcher_interval_timer::_timeout_threshold) {
-            const auto over_in_ms = (diff.count() - launcher_interval_timer::_half_timeout.count() * 2) / _milliseconds;
-            elog("System responsiveness is poor. Responsiveness delay occurred between ${last} and ${now} (overran time window by: ${over} ms)",
-                 ("last", _last_timeout)("now", now)("over", over_in_ms));
-            for (auto& cluster : _running_clusters) {
-               cluster.second.missing_intervals.insert({_last_timeout, now});
-            }
-         }
-         _last_timeout = now;
       }
 
       void remove_shutdown_nodes(const time_point& now) {
@@ -518,6 +516,8 @@ namespace eosio {
             return;
 
          schedule_node_remove_timeout();
+         dlog("Checking ${count} nodes to determine if they have shutdown and are ready to be cleaned up",
+              ("count", _nodes_to_remove.size()));
          if (_nodes_to_remove.empty())
             return;
 
@@ -550,9 +550,16 @@ namespace eosio {
          for (auto& itr : cluster_state_itr->second.nodes) {
             stop_node(cluster_id, itr.first, SIGKILL);
          }
-         std::map<time_point, time_point> missed_times = cluster_state_itr->second.missing_intervals;
-         ilog("cluster_id: ${id} experienced ${count} missed time intervals during operations", ("id", cluster_id)("count", missed_times.size()));
+         const time_point started = cluster_state_itr->second.started;
          _running_clusters.erase(cluster_state_itr);
+
+         time_point last_needed_time = time_point::now();
+         for (const auto& itr : _running_clusters) {
+            last_needed_time = std::min(itr.second.started, last_needed_time);
+         }
+
+         std::map<time_point, time_point> missed_times = _interval_timer->missed_intervals(started, last_needed_time);
+         ilog("cluster_id: ${id} experienced ${count} missed time intervals during operations", ("id", cluster_id)("count", missed_times.size()));
          return missed_times;
       }
 
@@ -931,29 +938,65 @@ launcher_interval_timer::~launcher_interval_timer() {
 void launcher_interval_timer::timeout_processing() {
    const time_point now = time_point::now();
    _impl.interval_callback(now);
+   track_timeouts(now);
    schedule_timer();
 }
 
+map<time_point, time_point> launcher_interval_timer::missed_intervals(const time_point& report_from, const time_point& oldest_active_time) {
+   std::lock_guard<std::mutex> g(_missed_times_mtx);
+   if (_missed_times.empty()) {
+      return {};
+   }
+   auto itr = _missed_times.lower_bound(report_from);
+   map<time_point, time_point> missed;
+   missed.insert(itr, _missed_times.end());
+   auto del_itr = _missed_times.upper_bound(oldest_active_time);
+   if (del_itr != _missed_times.begin()) {
+      _missed_times.erase(_missed_times.begin(), del_itr);
+   }
+   return missed;
+}
+
+void launcher_interval_timer::track_timeouts(const time_point& now) {
+   const auto diff = now - _last_timeout;
+   if (diff > launcher_interval_timer::_timeout_threshold) {
+      const auto over_in_ms = (diff.count() - launcher_interval_timer::_half_timeout.count() * 2) / _milliseconds;
+      elog("System responsiveness is poor. Responsiveness delay occurred between ${last} and ${now} "
+           "(overran time window by: ${over} ms).",
+           ("last", _last_timeout)("now", now)("over", over_in_ms));
+      std::lock_guard<std::mutex> g(_missed_times_mtx);
+      _missed_times.emplace(_last_timeout, now);
+   }
+   const auto over_in_ms = (diff.count() - launcher_interval_timer::_half_timeout.count() * 2) / _milliseconds;
+   ilog("REMOVE ${last} and ${now}, (overran time window by: ${over} ms)",("last", _last_timeout)("now", now)("over", over_in_ms));
+   _last_timeout = now;
+}
+
 void launcher_interval_timer::stop_timer() {
-   _timer.cancel();
+   _timer->cancel();
+   _timer.reset();
+   _thread_pool->stop();
+   _thread_pool.reset();
 }
 
 void launcher_interval_timer::start_timer() {
-   _timer.cancel();
+   ilog("start_timer");
+   _last_timeout = time_point::now();
+   _thread_pool.emplace("watchdog", 1);
+   _timer.emplace(_thread_pool->get_executor());
    schedule_timer();
 }
 
 void launcher_interval_timer::schedule_timer() {
-   _timer.expires_from_now( _timeout );
+   _timer->expires_from_now( _timeout );
    std::weak_ptr<launcher_interval_timer> weak_this = weak_from_this();
 
-   _timer.async_wait( app().get_priority_queue().wrap( priority::high,
-                                                       [weak_this]( const boost::system::error_code& ec ) {
-                                                          auto self = weak_this.lock();
-                                                          if( self && ec != boost::asio::error::operation_aborted ) {
-                                                             self->timeout_processing();
-                                                          }
-                                                       } ) );
+   _timer->async_wait([weak_this]( const boost::system::error_code& ec ) {
+                         auto self = weak_this.lock();
+                         if( self && ec != boost::asio::error::operation_aborted ) {
+                            self->timeout_processing();
+                         }
+                      } );
 }
 
 const microseconds launcher_service_plugin_impl::_node_remove_timeout {_seconds};
@@ -971,7 +1014,7 @@ launcher_service_plugin::reschedule_idle_timeout launcher_service_plugin::ensure
 }
 
 
-launcher_service_plugin::launcher_service_plugin():_my(new launcher_service_plugin_impl(app().get_io_service())){}
+launcher_service_plugin::launcher_service_plugin():_my(new launcher_service_plugin_impl()){}
 launcher_service_plugin::~launcher_service_plugin(){}
 
 void launcher_service_plugin::set_program_options(options_description&, options_description& cfg) {

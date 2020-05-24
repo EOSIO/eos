@@ -283,8 +283,6 @@ class Logger:
                 self.warn(f"Within {self.percent_reduction} % of declared maximum launcher-service idle time.  "
                           "launcher-service may shutdown.  Test should increase launcher_maximum_idle_time passed "
                           "to service. " + f"remaining={remaining_duration}, deadline={self.launcher_idle_time_deadline}, time={time.time()}")
-            else:
-                self.warn(f"Within {remaining_duration} seconds of launcher-service shutting down, deadline={self.launcher_idle_time_deadline}, time={time.time()}")
         self.launcher_idle_time_deadline = idle_time_minutes
         if self.launcher_idle_time_deadline is not None:
             minutes_to_seconds = 60
