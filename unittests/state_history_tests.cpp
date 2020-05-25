@@ -41,35 +41,40 @@ BOOST_AUTO_TEST_CASE(test_deltas_account)
 
    auto v = eosio::state_history::create_deltas(chain.control->db(), false);
 
+   // Check that no account table deltas are present
    auto it_account = std::find_if(v.begin(), v.end(), find_by_name);
    BOOST_REQUIRE(it_account==v.end());
 
+   // Check that no permission table deltas are present
    name="permission";
    auto it_permission = std::find_if(v.begin(), v.end(), find_by_name);
    BOOST_REQUIRE(it_permission==v.end());
 
+   // Create new account
    chain.create_account(N(newacc));
 
    v = eosio::state_history::create_deltas(chain.control->db(), false);
 
-   // Verify that a new record for that account in the state delta of the block
+   // Verify that a new record for the new account in the state delta of the block
    name="account";
    it_account = std::find_if(v.begin(), v.end(), find_by_name);
-   BOOST_REQUIRE(it_account!=v.end());
+   BOOST_REQUIRE(it_account != v.end());
    BOOST_REQUIRE_EQUAL(it_account->rows.obj.size(), 1);
-   eosio::input_stream s{ it_account->rows.obj[0].second.data(), it_account->rows.obj[0].second.size() };
-   auto account = std::get<0>(eosio::from_bin<eosio::ship_protocol::account>(s));
-   BOOST_REQUIRE_EQUAL(account.name.to_string(),"newacc");
+   {
+      // Deserialize account data
+      eosio::input_stream s{it_account->rows.obj[0].second.data(), it_account->rows.obj[0].second.size()};
+      auto account = std::get<0>(eosio::from_bin<eosio::ship_protocol::account>(s));
+      BOOST_REQUIRE_EQUAL(account.name.to_string(), "newacc");
+   }
 
    // Check that the permissions of this new account are in the delta
-   name="permission";
+   std::vector<std::string> expected_permission_names{"owner", "active"};
+   name = "permission";
    it_permission = std::find_if(v.begin(), v.end(), find_by_name);
-   BOOST_REQUIRE(it_permission!=v.end());
+   BOOST_REQUIRE(it_permission != v.end());
    BOOST_REQUIRE_EQUAL(it_permission->rows.obj.size(), 2);
    BOOST_REQUIRE_EQUAL(it_permission->rows.obj[0].first, true);
-
-   std::vector<std::string> expected_permission_names{"owner","active"};
-   for(int i=0;i<it_permission->rows.obj.size();i++)
+   for(int i = 0; i < it_permission->rows.obj.size(); i++)
    {
       eosio::input_stream ps{ it_permission->rows.obj[i].second.data(), it_permission->rows.obj[i].second.size() };
       auto permission = std::get<0>(eosio::from_bin<eosio::ship_protocol::permission>(ps));
@@ -79,13 +84,13 @@ BOOST_AUTO_TEST_CASE(test_deltas_account)
 
    auto& authorization_manager = chain.control->get_authorization_manager();
    const permission_object* ptr = authorization_manager.find_permission({N(newacc), N(active)});
-   BOOST_REQUIRE(ptr!=nullptr);
+   BOOST_REQUIRE(ptr != nullptr);
 
    // Create new permission
    chain.set_authority(N(newacc), N(mypermission), ptr->auth,  N(active));
 
    const permission_object* ptr_sub = authorization_manager.find_permission({N(newacc), N(mypermission)});
-   BOOST_REQUIRE(ptr_sub!=nullptr);
+   BOOST_REQUIRE(ptr_sub != nullptr);
 
    // Verify that the new permission is present in the state delta
    v = eosio::state_history::create_deltas(chain.control->db(), false);
@@ -94,12 +99,12 @@ BOOST_AUTO_TEST_CASE(test_deltas_account)
    BOOST_REQUIRE_EQUAL(it_permission->rows.obj.size(), 3);
 
    expected_permission_names.push_back("mypermission");
-   for(int i=0;i<it_permission->rows.obj.size();i++)
+   for(int i = 0; i < it_permission->rows.obj.size(); i++)
    {
-     eosio::input_stream ps{ it_permission->rows.obj[i].second.data(), it_permission->rows.obj[i].second.size() };
-     auto permission = std::get<0>(eosio::from_bin<eosio::ship_protocol::permission>(ps));
-     BOOST_REQUIRE_EQUAL(it_permission->rows.obj[i].first, true);
-     BOOST_REQUIRE(permission.owner.to_string()=="newacc" && permission.name.to_string()==expected_permission_names[i]);
+      eosio::input_stream ps{ it_permission->rows.obj[i].second.data(), it_permission->rows.obj[i].second.size() };
+      auto permission = std::get<0>(eosio::from_bin<eosio::ship_protocol::permission>(ps));
+      BOOST_REQUIRE_EQUAL(it_permission->rows.obj[i].first, true);
+      BOOST_REQUIRE(permission.owner.to_string()=="newacc" && permission.name.to_string()==expected_permission_names[i]);
    }
 
    chain.produce_blocks(1);
@@ -117,6 +122,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_account)
       auto permission = std::get<0>(eosio::from_bin<eosio::ship_protocol::permission>(ps));
       BOOST_REQUIRE(permission.owner.to_string()=="newacc" && permission.name.to_string()=="mypermission");
       BOOST_REQUIRE_EQUAL(permission.auth.keys.size(), 1);
+      // Test for correct serialization of WA key, see issue #9087
       BOOST_REQUIRE_EQUAL(public_key_to_string(permission.auth.keys[0].key), "PUB_WA_WdCPfafVNxVMiW5ybdNs83oWjenQXvSt1F49fg9mv7qrCiRwHj5b38U3ponCFWxQTkDsMC");
    }
 
