@@ -121,7 +121,7 @@ inline void initialize_rabbits_queue(boost::asio::io_service&                   
       rabbit            = rabbit.substr(7, rabbit.length());
       size_t pos        = rabbit.find("/");
 
-      auto routings = extract_rabbit_routes(rabbit, pos);
+      auto routes = extract_rabbit_routes(rabbit, pos);
 
       std::string queue_name = "stream.default";
       if (pos != std::string::npos) {
@@ -130,7 +130,7 @@ inline void initialize_rabbits_queue(boost::asio::io_service&                   
       }
 
       std::string address = "amqp://" + rabbit;
-      rabbitmq rmq{ io_service, std::move(routings), std::move(address), std::move(queue_name) };
+      rabbitmq rmq{ io_service, std::move(routes), std::move(address), std::move(queue_name) };
       streams.emplace_back(std::make_unique<rabbitmq>(std::move(rmq)));
    }
 }
@@ -142,7 +142,7 @@ inline void initialize_rabbits_exchange(boost::asio::io_service&                
       rabbit            = rabbit.substr(7, rabbit.length());
       size_t pos        = rabbit.find("/");
 
-      auto routings = extract_rabbit_routes(rabbit, pos);
+      auto routes = extract_rabbit_routes(rabbit, pos);
 
       size_t pos_exchange_type = rabbit.find_last_of("::");
       bool   has_exchange_type = pos_exchange_type != pos;
@@ -160,7 +160,7 @@ inline void initialize_rabbits_exchange(boost::asio::io_service&                
       }
 
       std::string address = "amqp://" + rabbit;
-      rabbitmq rmq{ io_service, std::move(routings), std::move(address), std::move(exchange_name), std::move(exchange_type) };
+      rabbitmq rmq{ io_service, std::move(routes), std::move(address), std::move(exchange_name), std::move(exchange_type) };
       streams.emplace_back(std::make_unique<rabbitmq>(std::move(rmq)));
    }
 }
