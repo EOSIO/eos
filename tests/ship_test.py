@@ -210,14 +210,6 @@ finally:
 
         if testSuccessful and not keepLogs:
             shutil.rmtree(shipTempDir, ignore_errors=True)
-    if not testSuccessful and dumpErrorDetails:
-        Print(Utils.FileDivider)
-        Print("Compare Blocklog")
-        cluster.compareBlockLogs()
-        Print(Utils.FileDivider)
-        Print("Print Blocklog")
-        cluster.printBlockLog()
-        Print(Utils.FileDivider)
 
 errorCode = 0 if testSuccessful else 1
 exit(errorCode)
