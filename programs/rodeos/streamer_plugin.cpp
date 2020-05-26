@@ -31,7 +31,7 @@ void streamer_plugin::set_program_options(options_description& cli, options_desc
    op("stream-rabbits", bpo::value<std::vector<string>>()->composing(),
       "RabbitMQ Streams to queues if any; Format: amqp://USER:PASSWORD@ADDRESS:PORT/QUEUE[/ROUTING_KEYS, ...]");
    op("stream-rabbits-exchange", bpo::value<std::vector<string>>()->composing(),
-      "RabbitMQ Streams to exchanges if any; Format: amqp://USER:PASSWORD@ADDRESS:PORT/EXCHANGE[/ROUTING_KEYS, ...]");
+      "RabbitMQ Streams to exchanges if any; Format: amqp://USER:PASSWORD@ADDRESS:PORT/EXCHANGE[::EXCHANGE_TYPE]");
    op("stream-loggers", bpo::value<std::vector<string>>()->composing(),
       "Logger Streams if any; Format: [routing_keys, ...]");
 }
@@ -50,7 +50,7 @@ void streamer_plugin::plugin_initialize(const variables_map& options) {
 
       if (options.count("stream-rabbits-exchange")) {
          auto rabbits = options.at("stream-rabbits-exchange").as<std::vector<std::string>>();
-         initialize_rabbits(app().get_io_service(), my->streams, rabbits, true);
+         initialize_rabbits_exchange(app().get_io_service(), my->streams, rabbits);
       }
 
       ilog("initialized streams: ${streams}", ("streams", my->streams.size()));
