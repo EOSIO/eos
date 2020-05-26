@@ -6,6 +6,8 @@
 #include <eosio/chain/transaction.hpp>
 #include <eosio/chain/thread_utils.hpp>
 
+#include <boost/signals2/connection.hpp>
+
 namespace {
 
 static appbase::abstract_plugin& rabbitmq_trx_plugin_ = appbase::app().register_plugin<eosio::rabbitmq_trx_plugin>();
@@ -19,6 +21,8 @@ constexpr auto def_max_trx_in_progress_size = 100*1024*1024; // 100 MB
 
 namespace eosio {
 
+using boost::signals2::scoped_connection;
+
 struct rabbitmq_trx_plugin_impl : std::enable_shared_from_this<rabbitmq_trx_plugin_impl> {
 
    chain_plugin* chain_plug = nullptr;
@@ -26,6 +30,7 @@ struct rabbitmq_trx_plugin_impl : std::enable_shared_from_this<rabbitmq_trx_plug
    std::optional<eosio::chain::named_thread_pool> thread_pool;
    std::optional<rabbitmq> rabbitmq_trx;
    std::optional<rabbitmq> rabbitmq_trace;
+   std::optional<scoped_connection> applied_transaction_connection;
 
    std::string rabbitmq_trx_address;
    std::string rabbitmq_exchange;
@@ -53,6 +58,16 @@ struct rabbitmq_trx_plugin_impl : std::enable_shared_from_this<rabbitmq_trx_plug
       return false;
    }
 
+   // only called if rabbitmq-publish-all-traces=true
+   // called on application thread
+   void on_applied_transaction(const chain::transaction_trace_ptr& trace, const chain::packed_transaction_ptr& t) {
+      try {
+         boost::asio::post( thread_pool->get_executor(), [my=shared_from_this(), trace, t]() {
+            my->publish_result( t, trace );
+         } );
+      } FC_LOG_AND_DROP()
+   }
+
 private:
 
    // called from rabbitmq thread
@@ -75,10 +90,15 @@ private:
       app().post( priority::medium_low, [my=shared_from_this(), trx{std::move(trx)}]() {
          my->chain_plug->accept_transaction( trx,
             [my, trx](const fc::static_variant<fc::exception_ptr, chain::transaction_trace_ptr>& result) mutable {
-               boost::asio::post( my->thread_pool->get_executor(), [my, trx = std::move( trx ), result=result]() {
-                  my->publish_result( trx, result );
+               // if rabbitmq-publish-all-traces=true and a transaction trace then no need to publish here as already published
+               if( my->rabbitmq_publish_all_traces && result.contains<chain::transaction_trace_ptr>() ) {
                   my->trx_in_progress_size -= trx->get_estimated_size();
-               } );
+               } else {
+                  boost::asio::post( my->thread_pool->get_executor(), [my, trx = std::move( trx ), result = result]() {
+                     my->publish_result( trx, result );
+                     my->trx_in_progress_size -= trx->get_estimated_size();
+                  } );
+               }
             } );
          } );
    }
@@ -180,6 +200,15 @@ void rabbitmq_trx_plugin::plugin_startup() {
          }
       } );
 
+      if( my->rabbitmq_publish_all_traces ) {
+         auto& chain_plug = app().get_plugin<chain_plugin>();
+         my->applied_transaction_connection.emplace(
+               chain_plug.chain().applied_transaction.connect(
+                     [&]( std::tuple<const chain::transaction_trace_ptr&, const chain::packed_transaction_ptr&> t ) {
+                        my->on_applied_transaction( std::get<0>( t ), std::get<1>( t ) );
+                     } ) );
+      }
+
    } catch( ... ) {
       // always want plugin_shutdown even on exception
       plugin_shutdown();
@@ -190,10 +219,10 @@ void rabbitmq_trx_plugin::plugin_startup() {
 void rabbitmq_trx_plugin::plugin_shutdown() {
    try {
       fc_dlog( logger, "shutdown.." );
+      my->applied_transaction_connection.reset();
       if( my->thread_pool ) {
          my->thread_pool->stop();
       }
-
       app().post( priority::lowest, [me = my](){} ); // keep my pointer alive until queue is drained
       fc_dlog( logger, "exit shutdown" );
    }
