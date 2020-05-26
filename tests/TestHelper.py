@@ -157,10 +157,6 @@ class TestHelper(object):
             Utils.Print(Utils.FileDivider)
             psOut=Cluster.pgrepEosServers(timeout=60)
             Utils.Print("pgrep output:\n%s" % (psOut))
-            cluster.dumpErrorDetails()
-            if walletMgr:
-                walletMgr.dumpErrorDetails()
-            cluster.printBlockLogIfNeeded()
             Utils.Print("== Errors see above ==")
             if len(Utils.CheckOutputDeque)>0:
                 Utils.Print("== cout/cerr pairs from last %d calls to Utils. ==" % len(Utils.CheckOutputDeque))
