@@ -29,8 +29,6 @@ class rabbitmq : public stream_handler {
 
       exchangeName_ = DEFAULT_EXCHANGE;
 
-      ilog("RabbitMQ Connected Successfully!\n Exchange ${e}",
-           ("e", exchangeName_));
       declare_queue();
    }
 
