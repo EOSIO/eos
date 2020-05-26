@@ -182,6 +182,33 @@ BOOST_AUTO_TEST_CASE(test_traces_present)
    BOOST_REQUIRE(new_account_action_itr!=action_traces.end());
 }
 
+BOOST_AUTO_TEST_CASE(global_property_history) { try {
+   // Assuming max transaction delay is 45 days (default in config.hpp)
+   tester chain;
+
+   std::string name="global_property";
+   auto find_by_name = [&name](const auto& x) {
+      return x.name == name;
+   };
+
+   // Change max_transaction_delay to 60 sec
+   auto params = chain.control->get_global_properties().configuration;
+   params.max_transaction_delay = 60;
+   chain.push_action( config::system_account_name, N(setparams), config::system_account_name, mutable_variant_object()
+                                                                     ("params", params) );
+
+   auto v = eosio::state_history::create_deltas(chain.control->db(), false);
+   auto it_global_property = std::find_if(v.begin(), v.end(), find_by_name);
+   BOOST_REQUIRE(it_global_property != v.end());
+   BOOST_REQUIRE_EQUAL(it_global_property->rows.obj.size(), 1);
+
+   // Deserialize and spot onto some data
+   eosio::input_stream strm{it_global_property->rows.obj[0].second.data(), it_global_property->rows.obj[0].second.size()};
+   auto global_property = std::get<eosio::ship_protocol::global_property_v1>(eosio::from_bin<eosio::ship_protocol::global_property>(strm));
+   auto configuration = std::get<eosio::ship_protocol::chain_config_v0>(global_property.configuration);
+   BOOST_REQUIRE_EQUAL(configuration.max_transaction_delay, 60);
+} FC_LOG_AND_RETHROW() }
+
 BOOST_AUTO_TEST_CASE(eosio_token_history_test)
 {
    tester chain;
