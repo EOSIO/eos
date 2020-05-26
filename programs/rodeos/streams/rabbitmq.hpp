@@ -25,9 +25,9 @@ class rabbitmq : public stream_handler {
       AMQP::Address amqp_address(address);
       ilog("Connecting to RabbitMQ address ${a} - Queue: ${q}...", ("a", std::string(amqp_address))("q", queueName_));
 
-      init(io_service, amqp_address)
+      init(io_service, amqp_address);
 
-      exchangeName_ = DEFAULT_EXCHANGE
+      exchangeName_ = DEFAULT_EXCHANGE;
       declare_queue();
    }
 
@@ -36,7 +36,7 @@ class rabbitmq : public stream_handler {
       AMQP::Address amqp_address(address);
       ilog("Connecting to RabbitMQ address ${a} - Exchange: ${e}...", ("a", std::string(amqp_address))("e", exchangeName_));
 
-      init(io_service, amqp_address)
+      init(io_service, amqp_address);
 
       declare_exchange(exchange_type);
    }
@@ -49,7 +49,6 @@ class rabbitmq : public stream_handler {
       } else {
          channel_->publish(exchangeName_, route, data, data_size, 0);
       }
-
    }
 
  private:
@@ -120,7 +119,7 @@ inline void initialize_rabbits(boost::asio::io_service&                      io_
          rabbit.erase(pos_router, rabbit.length());
       }
 
-      std::string queue_name = "stream.default"
+      std::string queue_name = "stream.default";
 
       if (pos != std::string::npos) {
          queue_name = rabbit.substr(pos + 1, rabbit.length());
@@ -149,7 +148,7 @@ inline void initialize_rabbits(boost::asio::io_service&                      io_
             rabbit.erase(pos_router, rabbit.length());
          }
 
-         std::string exchange_name = ""
+         std::string exchange_name = "";
          if (pos != std::string::npos) {
             exchange_name = rabbit.substr(pos + 1, rabbit.length());
             rabbit.erase(pos, rabbit.length());
