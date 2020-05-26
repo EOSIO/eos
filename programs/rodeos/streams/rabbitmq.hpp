@@ -43,11 +43,11 @@ class rabbitmq : public stream_handler {
 
    const std::vector<eosio::name>& get_routes() const override { return routes_; }
 
-   void publish(const char* data, uint64_t data_size, const std::string& route) override {
+   void publish(const char* data, uint64_t data_size, const std::string& routing_key) override {
       if (DEFAULT_EXCHANGE == exchangeName_) {
          channel_->publish(exchangeName_, queueName_, data, data_size, 0);
       } else {
-         channel_->publish(exchangeName_, route, data, data_size, 0);
+         channel_->publish(exchangeName_, routing_key, data, data_size, 0);
       }
    }
 
@@ -77,8 +77,8 @@ class rabbitmq : public stream_handler {
          case "fanout"  :
             type = AMQP::fanout;
             break;
-         case "topic"  :
-            type = AMQP::topic;
+         case "direct"  :
+            type = AMQP::direct;
             break;
       }
 
