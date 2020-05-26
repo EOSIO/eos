@@ -25,9 +25,12 @@ class rabbitmq : public stream_handler {
       AMQP::Address amqp_address(address);
       ilog("Connecting to RabbitMQ address ${a} - Queue: ${q}...", ("a", std::string(amqp_address))("q", queueName_));
 
-      init(io_service, amqp_address);
+      init(io_service, std::move(amqp_address));
 
       exchangeName_ = DEFAULT_EXCHANGE;
+
+      ilog("RabbitMQ Connected Successfully!\n Exchange ${e}",
+           ("e", exchangeName_));
       declare_queue();
    }
 
@@ -36,7 +39,7 @@ class rabbitmq : public stream_handler {
       AMQP::Address amqp_address(address);
       ilog("Connecting to RabbitMQ address ${a} - Exchange: ${e}...", ("a", std::string(amqp_address))("e", exchangeName_));
 
-      init(io_service, amqp_address);
+      init(io_service, std::move(amqp_address));
 
       declare_exchange(exchange_type);
    }
@@ -54,7 +57,7 @@ class rabbitmq : public stream_handler {
  private:
    inline static const std::string DEFAULT_EXCHANGE = "";
 
-   void init(boost::asio::io_service& io_service, AMQP::Address& amqp_address) {
+   void init(boost::asio::io_service& io_service, AMQP::Address amqp_address) {
       handler_    = std::make_shared<rabbitmq_handler>(io_service);
       connection_ = std::make_shared<AMQP::TcpConnection>(handler_.get(), amqp_address);
       channel_    = std::make_shared<AMQP::TcpChannel>(connection_.get());
