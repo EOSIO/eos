@@ -54,7 +54,7 @@ class rabbitmq : public stream_handler {
  private:
    inline static const string DEFAULT_EXCHANGE = "";
 
-   void init(boost::asio::io_service& io_service, AMQP::Address amqp_address) {
+   void init(boost::asio::io_service& io_service, AMQP::Address& amqp_address) {
       handler_    = std::make_shared<rabbitmq_handler>(io_service);
       connection_ = std::make_shared<AMQP::TcpConnection>(handler_.get(), amqp_address);
       channel_    = std::make_shared<AMQP::TcpChannel>(connection_.get());
@@ -71,7 +71,7 @@ class rabbitmq : public stream_handler {
       });
    }
 
-   void declare_exchange(std::string exchange_type) {
+   void declare_exchange(std::string& exchange_type) {
       auto type = AMQP::direct;
       switch(exchange_type) {
          case "fanout"  :
