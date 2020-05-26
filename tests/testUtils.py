@@ -72,7 +72,6 @@ class Utils:
     DataRoot="var"
     DataDir="%s/lib/" % (DataRoot)
     ConfigDir="etc/eosio/"
-    CheckOutputFilename="%s/subprocess_results.log" % (DataRoot)
 
     TimeFmt='%Y-%m-%dT%H:%M:%S.%f'
 
@@ -84,8 +83,12 @@ class Utils:
     def checkOutputFileWrite(time, cmd, output, error):
         stop=Utils.timestamp()
         if not hasattr(Utils, "checkOutputFile"):
-            if Utils.Debug: Utils.Print("opening %s in dir: %s" % (Utils.CheckOutputFilename, os.getcwd()))
-            Utils.checkOutputFile=open(Utils.CheckOutputFilename,"w")
+            if not os.path.isdir(Utils.DataRoot):
+                if Utils.Debug: Utils.Print("creating dir %s in dir: %s" % (Utils.DataRoot, os.getcwd()))
+                os.mkdir(Utils.DataRoot)
+            filename="%s/subprocess_results.log" % (Utils.DataRoot)
+            if Utils.Debug: Utils.Print("opening %s in dir: %s" % (filename, os.getcwd()))
+            Utils.checkOutputFile=open(filename,"w")
 
         Utils.checkOutputFile.write(Utils.FileDivider + "\n")
         Utils.checkOutputFile.write("start={%s}\n" % (time))
