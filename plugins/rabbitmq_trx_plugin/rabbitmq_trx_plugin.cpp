@@ -28,6 +28,7 @@ struct rabbitmq_trx_plugin_impl : std::enable_shared_from_this<rabbitmq_trx_plug
    std::optional<rabbitmq> rabbitmq_trace;
 
    std::string rabbitmq_trx_address;
+   std::string rabbitmq_exchange;
    bool rabbitmq_publish_all_traces = false;
    std::atomic<uint32_t>  trx_in_progress_size{0};
 
@@ -66,7 +67,7 @@ private:
          msg.get<transaction_trace_exception>().error_message =
                "Dropped trx, too many trx in progress " + std::to_string( trx_in_progress ) + " bytes";
          auto buf = fc::raw::pack( msg );
-         rabbitmq_trace->publish( tid.str(), buf.data(), buf.size() );
+         rabbitmq_trace->publish( rabbitmq_exchange, tid.str(), buf.data(), buf.size() );
          return;
       }
 
@@ -76,6 +77,7 @@ private:
             [my, trx](const fc::static_variant<fc::exception_ptr, chain::transaction_trace_ptr>& result) mutable {
                boost::asio::post( my->thread_pool->get_executor(), [my, trx = std::move( trx ), result=result]() {
                   my->publish_result( trx, result );
+                  my->trx_in_progress_size -= trx->get_estimated_size();
                } );
             } );
          } );
@@ -101,7 +103,7 @@ private:
             fc::raw::pack( ds, which );
             fc::raw::pack( ds, tex.error_code );
             fc::raw::pack( ds, err );
-            rabbitmq_trace->publish( trx->id(), buf.data(), buf.size() );
+            rabbitmq_trace->publish( rabbitmq_exchange, trx->id(), buf.data(), buf.size() );
 
          } else {
             const auto& trace = result.get<chain::transaction_trace_ptr>();
@@ -118,10 +120,9 @@ private:
             fc::datastream<char*> ds( buf.data(), payload_size );
             fc::raw::pack( ds, which );
             fc::raw::pack( ds, *trace );
-            rabbitmq_trace->publish( trx->id(), buf.data(), buf.size() );
+            rabbitmq_trace->publish( rabbitmq_exchange, trx->id(), buf.data(), buf.size() );
          }
       } FC_LOG_AND_DROP()
-      trx_in_progress_size -= trx->get_estimated_size();
    }
 
 };
@@ -136,6 +137,8 @@ void rabbitmq_trx_plugin::set_program_options(options_description& cli, options_
    op("rabbitmq-trx-address", bpo::value<std::string>(),
       "RabbitMQ address: Format: amqp://USER:PASSWORD@ADDRESS:PORT\n"
       "Will consume from 'trx' queue and publish to 'trace' queue.");
+   op("rabbitmq-trx-exchange", bpo::value<std::string>()->default_value(""),
+      "Existing RabbitMQ exchange to send transaction trace messages.");
    op("rabbitmq-publish-all-traces", bpo::bool_switch()->default_value(false),
       "If specified then all traces will be published; otherwise only traces for consumed 'trx' queue transactions.");
 }
@@ -147,6 +150,7 @@ void rabbitmq_trx_plugin::plugin_initialize(const variables_map& options) {
 
       EOS_ASSERT( options.count("rabbitmq-trx-address"), chain::plugin_config_exception, "rabbitmq-trx-address required" );
       my->rabbitmq_trx_address = options.at("rabbitmq-trx-address").as<std::string>();
+      my->rabbitmq_exchange = options.at("rabbitmq-trx-exchange").as<std::string>();
       my->rabbitmq_publish_all_traces = options.at("rabbitmq-publish-all-traces").as<bool>();
    }
    FC_LOG_AND_RETHROW()
