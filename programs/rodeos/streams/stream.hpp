@@ -42,7 +42,7 @@ inline std::vector<eosio::name> extract_routes(const std::string& routes_str) {
       routings.erase(0, route_length + 1);
    }
    if (star && !stream_routes.empty()) {
-      throw std::runtime_error(std::string("Invalid routings '") + routes_str + "'");
+      throw std::runtime_error(std::string("Invalid routes '") + routes_str + "'");
    }
    return stream_routes;
 }
