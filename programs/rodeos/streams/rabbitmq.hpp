@@ -75,8 +75,6 @@ class rabbitmq : public stream_handler {
       auto type = AMQP::direct;
       if (exchange_type == "fanout") {
          type = AMQP::fanout;
-      } else if (exchange_type == "direct") {
-         type = AMQP::direct;
       }
 
       auto& exchange = channel_->declareExchange(exchangeName_, type);
