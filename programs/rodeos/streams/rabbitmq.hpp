@@ -105,13 +105,13 @@ inline std::vector<eosio::name> extract_rabbit_routes(std::string& rabbit, size_
    size_t pos_router = rabbit.find_last_of("/");
    bool   has_router = pos_router != pos;
 
-   std::vector<eosio::name> routings = {};
+   std::vector<eosio::name> routes = {};
    if (has_router) {
-      routings = extract_routes(rabbit.substr(pos_router + 1, rabbit.length()));
+      routes = extract_routes(rabbit.substr(pos_router + 1, rabbit.length()));
       rabbit.erase(pos_router, rabbit.length());
    }
 
-   return routings;
+   return routes;
 }
 
 inline void initialize_rabbits_queue(boost::asio::io_service&                      io_service,
@@ -144,8 +144,8 @@ inline void initialize_rabbits_exchange(boost::asio::io_service&                
 
       auto routes = extract_rabbit_routes(rabbit, pos);
 
-      size_t pos_exchange_type = rabbit.find_last_of("::");
-      bool   has_exchange_type = pos_exchange_type != pos;
+      size_t pos_exchange_type = rabbit.find("::");
+      bool   has_exchange_type = pos_exchange_type != std::string::npos;
 
       std::string exchange_type = "";
       if (has_exchange_type) {
