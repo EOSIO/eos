@@ -296,6 +296,7 @@ class Cluster(object):
                 Utils.Print("ERROR: Launcher failed to create shape file \"%s\"." % (shapeFile))
                 return False
 
+            Utils.Print("opening %s shape file: %s, current dir: %s" % (topo, shapeFile, os.getcwd()))
             f = open(shapeFile, "r")
             shapeFileJsonStr = f.read()
             f.close()
