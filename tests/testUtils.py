@@ -73,15 +73,32 @@ class Utils:
     DataDir="%s/lib/" % (DataRoot)
     ConfigDir="etc/eosio/"
     CheckOutputFilename="%s/subprocess_results.log" % (DataRoot)
-    CheckOutputFile=open(CheckOutputFilename,"w")
 
     TimeFmt='%Y-%m-%dT%H:%M:%S.%f'
+
+    @staticmethod
+    def timestamp():
+        return datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%f")
+
+    @staticmethod
+    def checkOutputFileWrite(time, cmd, output, error):
+        stop=Utils.timestamp()
+        if not hasattr(Utils, "checkOutputFile"):
+            if Utils.Debug: Utils.Print("opening %s in dir: %s" % (Utils.CheckOutputFilename, os.getcwd()))
+            Utils.checkOutputFile=open(Utils.CheckOutputFilename,"w")
+
+        Utils.checkOutputFile.write(Utils.FileDivider + "\n")
+        Utils.checkOutputFile.write("start={%s}\n" % (time))
+        Utils.checkOutputFile.write("cmd={%s}\n" % (" ".join(cmd)))
+        Utils.checkOutputFile.write("cout={%s}\n" % (output))
+        Utils.checkOutputFile.write("cerr={%s}\n" % (error))
+        Utils.checkOutputFile.write("stop={%s}\n" % (stop))
 
     @staticmethod
     def Print(*args, **kwargs):
         stackDepth=len(inspect.stack())-2
         s=' '*stackDepth
-        stdout.write(datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%f "))
+        stdout.write(Utils.timestamp() + " ")
         stdout.write(s)
         print(*args, **kwargs)
 
@@ -173,11 +190,9 @@ class Utils:
     def checkDelayedOutput(popen, cmd, ignoreError=False):
         assert isinstance(popen, subprocess.Popen)
         assert isinstance(cmd, (str,list))
+        start=Utils.timestamp()
         (output,error)=popen.communicate()
-        Utils.CheckOutputFile.write(Utils.FileDivider + "\n")
-        Utils.CheckOutputFile.write("cmd={%s}\n" % (" ".join(cmd)))
-        Utils.CheckOutputFile.write("cout={%s}\n" % (output))
-        Utils.CheckOutputFile.write("cerr={%s}\n" % (error))
+        Utils.checkOutputFileWrite(start, cmd, output, error)
         if popen.returncode != 0 and not ignoreError:
             raise subprocess.CalledProcessError(returncode=popen.returncode, cmd=cmd, output=error)
         return output.decode("utf-8")
