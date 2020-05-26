@@ -148,7 +148,7 @@ inline void initialize_rabbits_exchange(boost::asio::io_service&                
 
       std::string exchange_type = "";
       if (has_exchange_type) {
-         exchange_type = rabbit.substr(pos_exchange_type + 1, rabbit.length());
+         exchange_type = rabbit.substr(pos_exchange_type + 2, rabbit.length());
          rabbit.erase(pos_exchange_type, rabbit.length());
       }
 
