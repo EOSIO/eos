@@ -241,6 +241,44 @@ BOOST_AUTO_TEST_CASE(eosio_token_history_test)
    BOOST_REQUIRE(it!=v.end());
 }
 
+BOOST_AUTO_TEST_CASE(protocol_feature_history) try {
+   tester chain(setup_policy::none);
+   const auto &pfm = chain.control->get_protocol_feature_manager();
+
+   std::string name = "protocol_state";
+   auto find_by_name = [&name](const auto &x) { return x.name == name; };
+
+   chain.produce_block();
+
+   auto d = pfm.get_builtin_digest(builtin_protocol_feature_t::preactivate_feature);
+   BOOST_REQUIRE(d);
+
+   // Activate PREACTIVATE_FEATURE.
+   chain.schedule_protocol_features_wo_preactivation({*d});
+
+   chain.produce_block();
+
+   // Now the latest bios contract can be set.
+   chain.set_before_producer_authority_bios_contract();
+   auto v = eosio::state_history::create_deltas(chain.control->db(), false);
+   auto it_protocol_state = std::find_if(v.begin(), v.end(), find_by_name);
+   BOOST_REQUIRE(it_protocol_state != v.end());
+   BOOST_REQUIRE_EQUAL(it_protocol_state->rows.obj.size(), 1);
+
+   // Spot onto some data of the protocol state table delta
+   eosio::input_stream strm{it_protocol_state->rows.obj[0].second.data(), it_protocol_state->rows.obj[0].second.size()};
+   auto protocol_state = std::get<eosio::ship_protocol::protocol_state_v0>(eosio::from_bin<eosio::ship_protocol::protocol_state>(strm));
+   BOOST_REQUIRE_EQUAL(protocol_state.activated_protocol_features.size(), 1);
+   auto protocol_feature = std::get<eosio::ship_protocol::activated_protocol_feature_v0>(protocol_state.activated_protocol_features[0]);
+
+   auto digest_byte_array = protocol_feature.feature_digest.extract_as_byte_array();
+   char digest_array[digest_byte_array.size()];
+   for(int i=0; i < digest_byte_array.size(); i++) digest_array[i] = digest_byte_array[i];
+   eosio::chain::digest_type digest_in_delta(digest_array, digest_byte_array.size());
+
+   BOOST_REQUIRE(digest_in_delta == *d);
+} FC_LOG_AND_RETHROW()
+
 state_history::partial_transaction_v0 get_partial_from_traces_bin(const bytes&               traces_bin,
                                                                   const transaction_id_type& id) {
    fc::datastream<const char*>                   strm(traces_bin.data(), traces_bin.size());
