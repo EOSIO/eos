@@ -32,7 +32,7 @@ class rabbitmq : public stream_handler {
    }
 
    rabbitmq(boost::asio::io_service& io_service, std::vector<eosio::name> routes, std::string address, std::string exchange_name, std::string exchange_type)
-       : exchangeName_(std::move(exchange_name), routes_(std::move(routes)) {
+       : exchangeName_(std::move(exchange_name)), routes_(std::move(routes)) {
       AMQP::Address amqp_address(address);
       ilog("Connecting to RabbitMQ address ${a} - Exchange: ${e}...", ("a", std::string(amqp_address))("e", exchangeName_));
 
