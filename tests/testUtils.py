@@ -72,7 +72,7 @@ class Utils:
     DataRoot="var"
     DataDir="%s/lib/" % (DataRoot)
     ConfigDir="etc/eosio/"
-    CheckOutputFilename="%s/subprocess_results.log"
+    CheckOutputFilename="%s/subprocess_results.log" % (DataRoot)
     CheckOutputFile=open(CheckOutputFilename,"w")
 
     TimeFmt='%Y-%m-%dT%H:%M:%S.%f'
@@ -174,8 +174,10 @@ class Utils:
         assert isinstance(popen, subprocess.Popen)
         assert isinstance(cmd, (str,list))
         (output,error)=popen.communicate()
-        checkOutputDict={ "cmd": cmd, "output": output, "error": error }
-        Utils.CheckOutputFile.write(json.dumps(checkOutputDict, indent=4, sort_keys=True))
+        Utils.CheckOutputFile.write(Utils.FileDivider + "\n")
+        Utils.CheckOutputFile.write("cmd={%s}\n" % (" ".join(cmd)))
+        Utils.CheckOutputFile.write("cout={%s}\n" % (output))
+        Utils.CheckOutputFile.write("cerr={%s}\n" % (error))
         if popen.returncode != 0 and not ignoreError:
             raise subprocess.CalledProcessError(returncode=popen.returncode, cmd=cmd, output=error)
         return output.decode("utf-8")
