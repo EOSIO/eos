@@ -34,6 +34,7 @@ if [[ "$BUILDKITE" == 'true' ]]; then
     [[ -f core.tar.gz ]] && buildkite-agent artifact upload core.tar.gz
     [[ -f genesis.json ]] && buildkite-agent artifact upload genesis.json
     [[ -f etc.tar.gz ]] && buildkite-agent artifact upload etc.tar.gz
+    [[ -f ctest-output.log ]] && buildkite-agent artifact upload ctest-output.log
     [[ -f var.tar.gz ]] && buildkite-agent artifact upload var.tar.gz
     [[ -f eosio-ignition-wd.tar.gz ]] && buildkite-agent artifact upload eosio-ignition-wd.tar.gz
     [[ -f bios_boot.sh ]] && buildkite-agent artifact upload bios_boot.sh
