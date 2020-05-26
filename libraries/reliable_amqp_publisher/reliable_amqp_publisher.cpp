@@ -167,7 +167,9 @@ struct reliable_amqp_publisher_impl final : reliable_amqp_publisher_callbacks {
 
       channel->startTransaction();
       std::for_each(message_deque.begin(), message_deque.begin()+msgs_this_transaction, [this](const std::vector<char>& msg) {
-         channel->publish(exchange, "", msg.data(), msg.size());
+         AMQP::Envelope envelope(msg.data(), msg.size());
+         envelope.setPersistent();
+         channel->publish(exchange, "", envelope);
       });
 
       in_flight = msgs_this_transaction;
