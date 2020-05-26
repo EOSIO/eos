@@ -161,7 +161,7 @@ class TestHelper(object):
 
         if killEosInstances:
             Utils.Print("Shut down the cluster.")
-            cluster.killall(allInstances=cleanRun)
+            cluster.killall(allInstances=cleanRun, kill=testSuccessful)
             if testSuccessful and not keepLogs:
                 Utils.Print("Cleanup cluster data.")
                 cluster.cleanup()
