@@ -15,7 +15,7 @@ class logger : public stream_handler {
 
    const std::vector<eosio::name>& get_routes() const override { return routes_; }
 
-   void publish(const char* data, uint64_t data_size, const std::string& routing_key) override {
+   void publish(const char* data, uint64_t data_size, const eosio::name& routing_key) override {
       ilog("logger stream [${data_size}] >> ${data}", ("data", data)("data_size", data_size));
    }
 };

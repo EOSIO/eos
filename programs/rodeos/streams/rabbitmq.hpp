@@ -32,7 +32,7 @@ class rabbitmq : public stream_handler {
    }
 
    rabbitmq(boost::asio::io_service& io_service, std::string address, std::string exchange_name, std::string exchange_type)
-           : exchangeName_(std::move(exchange_name))) {
+           : exchangeName_(std::move(exchange_name)) {
       AMQP::Address amqp_address(address);
       ilog("Connecting to RabbitMQ address ${a} - Exchange: ${e}...", ("a", std::string(amqp_address))("e", exchangeName_));
 
@@ -43,16 +43,16 @@ class rabbitmq : public stream_handler {
 
    const std::vector<eosio::name>& get_routes() const override { return routes_; }
 
-   void publish(const char* data, uint64_t data_size, const std::string& routing_key) override {
+   void publish(const char* data, uint64_t data_size, const eosio::name& routing_key) override {
       if (DEFAULT_EXCHANGE == exchangeName_) {
          channel_->publish(exchangeName_, queueName_, data, data_size, 0);
       } else {
-         channel_->publish(exchangeName_, routing_key, data, data_size, 0);
+         channel_->publish(exchangeName_, routing_key.to_string(), data, data_size, 0);
       }
    }
 
  private:
-   inline static const string DEFAULT_EXCHANGE = "";
+   inline static const std::string DEFAULT_EXCHANGE = "";
 
    void init(boost::asio::io_service& io_service, AMQP::Address& amqp_address) {
       handler_    = std::make_shared<rabbitmq_handler>(io_service);
@@ -73,19 +73,16 @@ class rabbitmq : public stream_handler {
 
    void declare_exchange(std::string& exchange_type) {
       auto type = AMQP::direct;
-      switch(exchange_type) {
-         case "fanout"  :
-            type = AMQP::fanout;
-            break;
-         case "direct"  :
-            type = AMQP::direct;
-            break;
+      if (exchange_type == "fanout") {
+         type = AMQP::fanout;
+      } else if (exchange_type == "direct") {
+         type = AMQP::direct;
       }
 
       auto& exchange = channel_->declareExchange(exchangeName_, type);
-      exchange.onSuccess([](const std::string& name, uint32_t messagecount, uint32_t consumercount) {
-         ilog("RabbitMQ Connected Successfully!\n Exchange ${e} - Messages: ${mc} - Consumers: ${cc}",
-              ("e", name)("mc", messagecount)("cc", consumercount));
+      exchange.onSuccess([this]() {
+         ilog("RabbitMQ Connected Successfully!\n Exchange ${e}",
+              ("e", exchangeName_));
       });
       exchange.onError([](const char* error_message) {
          throw std::runtime_error("RabbitMQ Exchange error: " + std::string(error_message));
@@ -142,8 +139,8 @@ inline void initialize_rabbits(boost::asio::io_service&                      io_
 
          std::string exchange_type = "";
          if (has_exchange_type) {
-            exchange_type = rabbit.substr(pos_router + 1, rabbit.length());
-            rabbit.erase(pos_router, rabbit.length());
+            exchange_type = rabbit.substr(pos_exchange_type + 1, rabbit.length());
+            rabbit.erase(pos_exchange_type, rabbit.length());
          }
 
          std::string exchange_name = "";
