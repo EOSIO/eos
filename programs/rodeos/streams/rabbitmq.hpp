@@ -31,8 +31,8 @@ class rabbitmq : public stream_handler {
       declare_queue();
    }
 
-   rabbitmq(boost::asio::io_service& io_service, std::string address, std::string exchange_name, std::string exchange_type)
-           : exchangeName_(std::move(exchange_name)) {
+   rabbitmq(boost::asio::io_service& io_service, std::vector<eosio::name> routes, std::string address, std::string exchange_name, std::string exchange_type)
+       : exchangeName_(std::move(exchange_name), routes_(std::move(routes)) {
       AMQP::Address amqp_address(address);
       ilog("Connecting to RabbitMQ address ${a} - Exchange: ${e}...", ("a", std::string(amqp_address))("e", exchangeName_));
 
@@ -101,20 +101,27 @@ class rabbitmq_handler : public AMQP::LibBoostAsioHandler {
    uint16_t onNegotiate(AMQP::TcpConnection* connection, uint16_t interval) { return 0; }
 };
 
-inline void initialize_rabbits(boost::asio::io_service&                      io_service,
+inline std::vector<eosio::name> extract_rabbit_routes(std::string& rabbit, size_t& pos) {
+   size_t pos_router = rabbit.find_last_of("/");
+   bool   has_router = pos_router != pos;
+
+   std::vector<eosio::name> routings = {};
+   if (has_router) {
+      routings = extract_routes(rabbit.substr(pos_router + 1, rabbit.length()));
+      rabbit.erase(pos_router, rabbit.length());
+   }
+
+   return routings;
+}
+
+inline void initialize_rabbits_queue(boost::asio::io_service&                      io_service,
                                std::vector<std::unique_ptr<stream_handler>>& streams,
                                const std::vector<std::string>&               rabbits) {
    for (std::string rabbit : rabbits) {
       rabbit            = rabbit.substr(7, rabbit.length());
       size_t pos        = rabbit.find("/");
-      size_t pos_router = rabbit.find_last_of("/");
-      bool   has_router = pos_router != pos;
 
-      std::vector<eosio::name> routings = {};
-      if (has_router) {
-         routings = extract_routings(rabbit.substr(pos_router + 1, rabbit.length()));
-         rabbit.erase(pos_router, rabbit.length());
-      }
+      auto routings = extract_rabbit_routes(rabbit, pos);
 
       std::string queue_name = "stream.default";
       if (pos != std::string::npos) {
@@ -128,31 +135,34 @@ inline void initialize_rabbits(boost::asio::io_service&                      io_
    }
 }
 
-   inline void initialize_rabbits_exchange(boost::asio::io_service&                      io_service,
-                                           std::vector<std::unique_ptr<stream_handler>>& streams,
-                                           const std::vector<std::string>&               rabbits) {
-      for (std::string rabbit : rabbits) {
-         rabbit            = rabbit.substr(7, rabbit.length());
-         size_t pos        = rabbit.find("/");
-         size_t pos_exchange_type = rabbit.find_last_of("::");
-         bool   has_exchange_type = pos_exchange_type != pos;
+inline void initialize_rabbits_exchange(boost::asio::io_service&                      io_service,
+                                        std::vector<std::unique_ptr<stream_handler>>& streams,
+                                        const std::vector<std::string>&               rabbits) {
+   for (std::string rabbit : rabbits) {
+      rabbit            = rabbit.substr(7, rabbit.length());
+      size_t pos        = rabbit.find("/");
 
-         std::string exchange_type = "";
-         if (has_exchange_type) {
-            exchange_type = rabbit.substr(pos_exchange_type + 1, rabbit.length());
-            rabbit.erase(pos_exchange_type, rabbit.length());
-         }
+      auto routings = extract_rabbit_routes(rabbit, pos);
 
-         std::string exchange_name = "";
-         if (pos != std::string::npos) {
-            exchange_name = rabbit.substr(pos + 1, rabbit.length());
-            rabbit.erase(pos, rabbit.length());
-         }
+      size_t pos_exchange_type = rabbit.find_last_of("::");
+      bool   has_exchange_type = pos_exchange_type != pos;
 
-         std::string address = "amqp://" + rabbit;
-         rabbitmq rmq{ io_service, std::move(address), std::move(exchange_name), std::move(exchange_type) };
-         streams.emplace_back(std::make_unique<rabbitmq>(std::move(rmq)));
+      std::string exchange_type = "";
+      if (has_exchange_type) {
+         exchange_type = rabbit.substr(pos_exchange_type + 1, rabbit.length());
+         rabbit.erase(pos_exchange_type, rabbit.length());
       }
+
+      std::string exchange_name = "";
+      if (pos != std::string::npos) {
+         exchange_name = rabbit.substr(pos + 1, rabbit.length());
+         rabbit.erase(pos, rabbit.length());
+      }
+
+      std::string address = "amqp://" + rabbit;
+      rabbitmq rmq{ io_service, std::move(routings), std::move(address), std::move(exchange_name), std::move(exchange_type) };
+      streams.emplace_back(std::make_unique<rabbitmq>(std::move(rmq)));
    }
+}
 
 } // namespace b1

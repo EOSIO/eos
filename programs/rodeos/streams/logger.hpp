@@ -23,7 +23,7 @@ class logger : public stream_handler {
 inline void initialize_loggers(std::vector<std::unique_ptr<stream_handler>>& streams,
                                const std::vector<std::string>&               loggers) {
    for (const auto& routings : loggers) {
-      std::vector<eosio::name> routing_keys = extract_routings(routings);
+      std::vector<eosio::name> routing_keys = extract_routes(routings);
       logger                   logger_streamer{ std::move(routing_keys) };
       streams.emplace_back(std::make_unique<logger>(std::move(logger_streamer)));
    }

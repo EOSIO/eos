@@ -25,26 +25,26 @@ class stream_handler {
    }
 };
 
-inline std::vector<eosio::name> extract_routings(const std::string& routings_str) {
-   std::vector<eosio::name> routing_keys{};
+inline std::vector<eosio::name> extract_routes(const std::string& routes_str) {
+   std::vector<eosio::name> stream_routes{};
    bool star = false;
-   std::string routings = routings_str;
+   std::string routings = routes_str;
    while (routings.size() > 0) {
       size_t      pos          = routings.find(",");
       size_t      route_length = pos == std::string::npos ? routings.length() : pos;
       std::string route        = routings.substr(0, pos);
       ilog("extracting route ${route}", ("route", route));
       if (route != "*") {
-         routing_keys.emplace_back(eosio::name(route));
+         stream_routes.emplace_back(eosio::name(route));
       } else {
          star = true;
       }
       routings.erase(0, route_length + 1);
    }
-   if (star && !routing_keys.empty()) {
-      throw std::runtime_error(std::string("Invalid routings '") + routings_str + "'");
+   if (star && !stream_routes.empty()) {
+      throw std::runtime_error(std::string("Invalid routings '") + routes_str + "'");
    }
-   return routing_keys;
+   return stream_routes;
 }
 
 } // namespace b1
