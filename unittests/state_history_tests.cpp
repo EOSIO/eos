@@ -209,38 +209,6 @@ BOOST_AUTO_TEST_CASE(global_property_history) { try {
    BOOST_REQUIRE_EQUAL(configuration.max_transaction_delay, 60);
 } FC_LOG_AND_RETHROW() }
 
-BOOST_AUTO_TEST_CASE(eosio_token_history_test)
-{
-   tester chain;
-   chain.produce_blocks( 2 );
-
-   chain.create_accounts( { N(alice), N(bob), N(carol), N(eosio.token) } );
-   chain.produce_blocks( 2 );
-
-   chain.set_code( N(eosio.token), contracts::eosio_token_wasm() );
-   chain.set_abi( N(eosio.token), contracts::eosio_token_abi().data() );
-
-   const auto& accnt = chain.control->db().get<account_object,by_name>( N(eosio.token) );
-   abi_def abi;
-   abi_serializer abi_ser;
-   BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
-   abi_ser.set_abi(abi, abi_serializer::create_yield_function( fc::microseconds(1000*1000) ));
-
-   auto v = eosio::state_history::create_deltas(chain.control->db(), false);
-
-   std::string name = "contract_table";
-   auto find_by_name = [&name](const auto& x) {
-      return x.name == name;
-   };
-
-   auto it = std::find_if(v.begin(), v.end(), find_by_name);
-   BOOST_REQUIRE(it!=v.end());
-
-   name = "contract_row";
-   it = std::find_if(v.begin(), v.end(), find_by_name);
-   BOOST_REQUIRE(it!=v.end());
-}
-
 BOOST_AUTO_TEST_CASE(protocol_feature_history) try {
    tester chain(setup_policy::none);
    const auto &pfm = chain.control->get_protocol_feature_manager();
@@ -278,6 +246,59 @@ BOOST_AUTO_TEST_CASE(protocol_feature_history) try {
 
    BOOST_REQUIRE(digest_in_delta == *d);
 } FC_LOG_AND_RETHROW()
+
+BOOST_AUTO_TEST_CASE(contract_history) { try {
+   tester chain;
+   chain.produce_blocks(1);
+
+   std::string name = "contract_table";
+   auto find_by_name = [&name](const auto& x) {
+      return x.name == name;
+   };
+
+   chain.create_account(N(tester));
+
+   chain.set_code(N(tester), contracts::get_table_test_wasm());
+   chain.set_abi(N(tester), contracts::get_table_test_abi().data());
+
+   chain.produce_blocks(1);
+
+   auto trace = chain.push_action(N(tester), N(addhashobj), N(tester), mutable_variant_object()
+      ("hashinput", "hello" )
+   );
+
+   BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt->status);
+
+   auto v = eosio::state_history::create_deltas(chain.control->db(), false);
+
+   // Spot onto contract table
+   auto it_contract_table = std::find_if(v.begin(), v.end(), find_by_name);
+   BOOST_REQUIRE(it_contract_table != v.end());
+   BOOST_REQUIRE_EQUAL(it_contract_table->rows.obj.size(), 2);
+
+   // Spot onto contract row
+   name = "contract_row";
+   auto it_contract_row = std::find_if(v.begin(), v.end(), find_by_name);
+   BOOST_REQUIRE(it_contract_row != v.end());
+   BOOST_REQUIRE_EQUAL(it_contract_row->rows.obj.size(), 1);
+   {
+      eosio::input_stream strm{ it_contract_row->rows.obj[0].second.data(), it_contract_row->rows.obj[0].second.size() };
+      auto contract_row = std::get<eosio::ship_protocol::contract_row_v0>(eosio::from_bin<eosio::ship_protocol::contract_row>(strm));
+      BOOST_REQUIRE(contract_row.table.to_string()=="hashobjs");
+   }
+
+   // Spot onto contract_index256
+   name = "contract_index256";
+   auto it_contract_index256 = std::find_if(v.begin(), v.end(), find_by_name);
+   BOOST_REQUIRE(it_contract_index256 != v.end());
+   BOOST_REQUIRE_EQUAL(it_contract_index256->rows.obj.size(), 2);
+   {
+      // Deserialize value
+      eosio::input_stream strm{ it_contract_index256->rows.obj[0].second.data(), it_contract_index256->rows.obj[0].second.size() };
+      auto contract_index = std::get<eosio::ship_protocol::contract_index256_v0>(eosio::from_bin<eosio::ship_protocol::contract_index256>(strm));
+      BOOST_REQUIRE(contract_index.table.to_string()=="hashobjs");
+   }
+} FC_LOG_AND_RETHROW() }
 
 state_history::partial_transaction_v0 get_partial_from_traces_bin(const bytes&               traces_bin,
                                                                   const transaction_id_type& id) {
