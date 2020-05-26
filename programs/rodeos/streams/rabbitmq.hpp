@@ -120,7 +120,6 @@ inline void initialize_rabbits(boost::asio::io_service&                      io_
       }
 
       std::string queue_name = "stream.default";
-
       if (pos != std::string::npos) {
          queue_name = rabbit.substr(pos + 1, rabbit.length());
          rabbit.erase(pos, rabbit.length());
@@ -129,7 +128,6 @@ inline void initialize_rabbits(boost::asio::io_service&                      io_
       std::string address = "amqp://" + rabbit;
       rabbitmq rmq{ io_service, std::move(routings), std::move(address), std::move(queue_name) };
       streams.emplace_back(std::make_unique<rabbitmq>(std::move(rmq)));
-
    }
 }
 
