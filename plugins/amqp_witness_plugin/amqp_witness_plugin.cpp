@@ -23,7 +23,7 @@ struct amqp_witness_plugin_impl {
    std::unique_ptr<reliable_amqp_publisher> rqueue;
 
    struct amqp_witness_msg {
-      bool is_sig_digest;
+      bool is_sig_digest = false;
       chain::digest_type digest;
       chain::signature_type sig;
    };
