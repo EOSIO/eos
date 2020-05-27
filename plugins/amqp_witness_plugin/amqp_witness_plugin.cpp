@@ -13,10 +13,11 @@ struct amqp_witness_plugin_impl {
    };
 
    signature_provider_plugin::signature_provider_type signature_provider;
-   unsigned staleness_limit;
-   std::string amqp_server;
-   std::string exchange;
-   witness_signature_over witness_signature_type;
+   unsigned staleness_limit = 600;
+   std::string amqp_server = "amqp://";
+   std::string exchange = "witness_signatures";
+   std::optional<std::string> routing_key;
+   witness_signature_over witness_signature_type = witness_signature_over::action_mroot;
    bool delete_previous = false;
 
    std::unique_ptr<reliable_amqp_publisher> rqueue;
@@ -59,17 +60,20 @@ void amqp_witness_plugin::set_program_options(options_description& cli, options_
          ("witness-signature-provider", boost::program_options::value<string>()->default_value(
                default_priv_key.get_public_key().to_string() + "=KEY:" + default_priv_key.to_string()),
                app().get_plugin<signature_provider_plugin>().signature_provider_help_text())
-         ("witness-staleness-limit", boost::program_options::value<unsigned>()->default_value(600)->notifier([this](const unsigned& v) {
+         ("witness-staleness-limit", boost::program_options::value<unsigned>()->default_value(my->staleness_limit)->notifier([this](const unsigned& v) {
                   my->staleness_limit = v;
                }), "Blocks older than this many seconds are not signed by the witness plugin")
-         ("witness-amqp-server", boost::program_options::value<string>()->default_value("amqp://")->notifier([this](const string& v) {
+         ("witness-amqp-server", boost::program_options::value<string>()->default_value(my->amqp_server)->notifier([this](const string& v) {
                   my->amqp_server = v;
                }), "AMQP server to send witness signatures in form of amqp://user:password@host:port/vhost")
-         ("witness-amqp-exchange", boost::program_options::value<string>()->default_value("witness_signatures")->notifier([this](const string& v) {
+         ("witness-amqp-exchange", boost::program_options::value<string>()->default_value(my->exchange)->notifier([this](const string& v) {
                   my->exchange = v;
                }), "Existing AMQP exchange to send witness signature messages to")
+         ("witness-amqp-routing-key", boost::program_options::value<string>()->notifier([this](const string& v) {
+                  my->routing_key = v;
+               }), "AMQP routing key to set on published messages")
          ("witness-signature-type", boost::program_options::value<amqp_witness_plugin_impl::witness_signature_over>()
-                                    ->default_value(amqp_witness_plugin_impl::witness_signature_over::action_mroot)->value_name("action_mroot/block_id")
+                                    ->default_value(my->witness_signature_type)->value_name("action_mroot/block_id")
                                     ->notifier([this](const amqp_witness_plugin_impl::witness_signature_over& v) {
                   my->witness_signature_type = v;
                }), "What the witness signature should sign:\n"
@@ -97,7 +101,7 @@ void amqp_witness_plugin::plugin_startup() {
    if(boost::filesystem::exists(witness_data_file_path) && my->delete_previous)
       boost::filesystem::remove(witness_data_file_path);
 
-   my->rqueue = std::make_unique<reliable_amqp_publisher>(my->amqp_server, my->exchange, witness_data_file_path);
+   my->rqueue = std::make_unique<reliable_amqp_publisher>(my->amqp_server, my->exchange, my->routing_key ? *my->routing_key : "", witness_data_file_path);
 
    app().get_plugin<chain_plugin>().chain().irreversible_block.connect([&](const chain::block_state_ptr& bsp) {
       if(bsp->block->timestamp.to_time_point() < fc::time_point::now() - fc::seconds(my->staleness_limit))
