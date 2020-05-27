@@ -883,9 +883,7 @@ class PluginHttpTest(unittest.TestCase):
         ret_json = Utils.runCmdReturnJson(invalid_cmd)
         self.assertEqual(ret_json["code"], 400)
         self.assertEqual(ret_json["error"]["code"], 3200006)
-
         # sign_transaction with valid parameter
-        # get_transaction_id with valid parameter
         signed_transaction = ("{%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s}") % ("\"expiration\":\"2020-08-01T07:15:49\"",
                                                                         "\"ref_block_num\": 34881",
                                                                         "\"ref_block_prefix\":2972818865",
@@ -893,16 +891,14 @@ class PluginHttpTest(unittest.TestCase):
                                                                         "\"max_cpu_usage_ms\":0",
                                                                         "\"delay_sec\":0",
                                                                         "\"context_free_actions\":[]",
-                                                                        "\"actions\":[]",
+                                                                        "\"actions\": []",
                                                                         "\"transaction_extensions\": []",
                                                                         "\"signatures\": [\"SIG_K1_KeqfqiZu1GwUxQb7jzK9Fdks6HFaVBQ9AJtCZZj56eG9qGgvVMVtx8EerBdnzrhFoX437sgwtojf2gfz6S516Ty7c22oEp\"]",
                                                                         "\"context_free_data\": []")
-        valid_cmd = default_cmd + self.http_post_str + ("'{\"txn\":%s, %s, %s}'") % (signed_transaction,
-                                                                             "\"keys\":[]",
-                                                                             "\"id\":\"cf057bbfb72640471fd910bcb67639c22df9f92470936cddc1ade0e2f2e7dc4f\"")
-        print(valid_cmd)
+        valid_cmd = default_cmd + self.http_post_str + ("'[%s, %s, %s]'") % (signed_transaction,
+                                                                             "[\"EOS696giL6VxeJhtEgKtWPK8aQeT8YXNjw2a7vE5wHunffhfa5QSQ\"]",
+                                                                             "\"cf057bbfb72640471fd910bcb67639c22df9f92470936cddc1ade0e2f2e7dc4f\"")
         ret_json = Utils.runCmdReturnJson(valid_cmd)
-        print(ret_json)
         self.assertEqual(ret_json["code"], 500)
         self.assertEqual(ret_json["error"]["code"], 3120004)
 
