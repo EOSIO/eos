@@ -41,11 +41,14 @@ using namespace eosio;
 
 // chain_id_type does not have default constructor, keep it unchanged
 #define INVOKE_R_R_R_R(api_handle, call_name, in_param0, in_param1, in_param2) \
-     const auto& vs = fc::json::json::from_string(body).as<fc::variants>(); \
+     const auto& vs = parse_params<fc::variants, http_params_types::params_required>(body);\
+     if (vs.size() != 3) { \
+        EOS_THROW(chain::invalid_http_request, "Missing valid input from POST body"); \
+     } \
      auto result = api_handle.call_name(vs.at(0).as<in_param0>(), vs.at(1).as<in_param1>(), vs.at(2).as<in_param2>());
 
 #define INVOKE_R_V(api_handle, call_name) \
-     if (body.empty()) body = "{}"; \
+     body = parse_params<std::string, http_params_types::no_params_required>(body); \
      auto result = api_handle.call_name();
 
 #define INVOKE_V_R(api_handle, call_name, in_param) \
@@ -64,7 +67,7 @@ using namespace eosio;
      eosio::detail::wallet_api_plugin_empty result;
 
 #define INVOKE_V_V(api_handle, call_name) \
-     if (body.empty()) body = "{}"; \
+     body = parse_params<std::string, http_params_types::no_params_required>(body); \
      api_handle.call_name(); \
      eosio::detail::wallet_api_plugin_empty result;
 
@@ -76,6 +79,7 @@ void wallet_api_plugin::plugin_startup() {
    app().get_plugin<http_plugin>().add_api({
        CALL_WITH_400(wallet, wallet_mgr, set_timeout,
             INVOKE_V_R(wallet_mgr, set_timeout, int64_t), 200),
+       //  chain::chain_id_type has an inaccessible default constructor
        CALL_WITH_400(wallet, wallet_mgr, sign_transaction,
             INVOKE_R_R_R_R(wallet_mgr, sign_transaction, chain::signed_transaction, chain::flat_set<public_key_type>, chain::chain_id_type), 201),
        CALL_WITH_400(wallet, wallet_mgr, sign_digest,

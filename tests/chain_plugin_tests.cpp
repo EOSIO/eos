@@ -269,6 +269,9 @@ BOOST_AUTO_TEST_CASE( chain_api_test ) try {
       auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
       BOOST_REQUIRE(test_cmd_ret_variant["code"].as<int>() == 404);
    }
+
+
+
    {  // get_code_hash with valid parameter, but unknown account name
       string test_cmd = "curl http://127.0.0.1:8888/v1/chain/get_code_hash -X POST -d ";
       test_cmd += "\"{\"account_name\":\"default\"}\"";
@@ -289,6 +292,9 @@ BOOST_AUTO_TEST_CASE( chain_api_test ) try {
       auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
       BOOST_REQUIRE(test_cmd_ret_variant["code"].as<int>() == 404);
    }
+
+
+
    {  // get_abi with valid parameter, but unknown account name
       string test_cmd = "curl http://127.0.0.1:8888/v1/chain/get_abi -X POST -d ";
       test_cmd += "\"{\"account_name\":\"default\"}\"";
@@ -309,6 +315,8 @@ BOOST_AUTO_TEST_CASE( chain_api_test ) try {
       auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
       BOOST_REQUIRE(test_cmd_ret_variant["code"].as<int>() == 404);
    }
+
+
    {  // get_raw_code_and_abi with valid parameter, but unknown account name
       string test_cmd = "curl http://127.0.0.1:8888/v1/chain/get_raw_code_and_abi -X POST -d ";
       test_cmd += "\"{\"account_name\":\"default\"}\"";
@@ -329,6 +337,8 @@ BOOST_AUTO_TEST_CASE( chain_api_test ) try {
       auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
       BOOST_REQUIRE(test_cmd_ret_variant["code"].as<int>() == 404);
    }
+
+
    {  // get_raw_abi with valid parameter, but unknown account name
       string test_cmd = "curl http://127.0.0.1:8888/v1/chain/get_raw_abi -X POST -d ";
       test_cmd += "\"{\"account_name\":\"default\"}\"";
@@ -349,6 +359,8 @@ BOOST_AUTO_TEST_CASE( chain_api_test ) try {
       auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
       BOOST_REQUIRE(test_cmd_ret_variant["code"].as<int>() == 404);
    }
+
+
    {  // get_table_rows with valid parameter, but unknown table
       string test_cmd = "curl http://127.0.0.1:8888/v1/chain/get_table_rows -X POST -d ";
       test_cmd += "\"{\"json\":true,\"code\":\"cancancan345\",\"scope\":\"cancancan345\",\"table\":\"vote\", \"index_position\":2,\"key_type\":\"i128\",\"lower_bound\":\"0x0000000000000000D0F2A472A8EB6A57\",\"upper_bound\":\"0xFFFFFFFFFFFFFFFFD0F2A472A8EB6A57\"}\"";
@@ -369,6 +381,8 @@ BOOST_AUTO_TEST_CASE( chain_api_test ) try {
       auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
       BOOST_REQUIRE(test_cmd_ret_variant["code"].as<int>() == 404);
    }
+
+
    {  // get_table_by_scope with valid parameter, but unknown table
       string test_cmd = "curl http://127.0.0.1:8888/v1/chain/get_table_by_scope -X POST -d ";
       test_cmd += "\"{\"code\":\"cancancan345\",\"table\":\"vote\", \"index_position\":2,\"lower_bound\":\"0x0000000000000000D0F2A472A8EB6A57\",\"upper_bound\":\"0xFFFFFFFFFFFFFFFFD0F2A472A8EB6A57\"}\"";
@@ -389,6 +403,10 @@ BOOST_AUTO_TEST_CASE( chain_api_test ) try {
       auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
       BOOST_REQUIRE(test_cmd_ret_variant["code"].as<int>() == 404);
    }
+
+
+
+
    {  // get_currency_balance with valid parameter, but unknown account
       string test_cmd = "curl http://127.0.0.1:8888/v1/chain/get_currency_balance -X POST -d ";
       test_cmd += "\"{\"code\":\"eosio.token\",\"account\":\"unknown\"}\"";
@@ -409,6 +427,11 @@ BOOST_AUTO_TEST_CASE( chain_api_test ) try {
       auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
       BOOST_REQUIRE(test_cmd_ret_variant["code"].as<int>() == 404);
    }
+
+
+
+
+
    {  // get_currency_stats with valid parameter, but unknown account
       string test_cmd = "curl http://127.0.0.1:8888/v1/chain/get_currency_stats -X POST -d ";
       test_cmd += "\"{\"code\":\"eosio.token\",\"symbol\":\"SYS\"}\"";
@@ -428,6 +451,9 @@ BOOST_AUTO_TEST_CASE( chain_api_test ) try {
       auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
       BOOST_REQUIRE(test_cmd_ret_variant["code"].as<int>() == 404);
    }
+
+
+
    {  // get_producers with valid parameter, but unknown account
       string test_cmd = "curl http://127.0.0.1:8888/v1/chain/get_producers -X POST -d ";
       test_cmd += "\"{\"json\":true,\"lower_bound\":\"\"}\"";
@@ -447,6 +473,9 @@ BOOST_AUTO_TEST_CASE( chain_api_test ) try {
       auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
       BOOST_REQUIRE(test_cmd_ret_variant["code"].as<int>() == 404);
    }
+
+
+
    {  // get_producer_schedule without parameter
       string test_cmd = "curl http://127.0.0.1:8888/v1/chain/get_producer_schedule";
       auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
@@ -458,6 +487,8 @@ BOOST_AUTO_TEST_CASE( chain_api_test ) try {
       auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
       BOOST_REQUIRE(test_cmd_ret_variant["code"].as<int>() == 400);
    }
+
+
    {  // get_scheduled_transactions with valid parameter, but unknown account
       string test_cmd = "curl http://127.0.0.1:8888/v1/chain/get_scheduled_transactions -X POST -d ";
       test_cmd += "\"{\"json\":true,\"lower_bound\":\"\"}\"";
@@ -477,6 +508,10 @@ BOOST_AUTO_TEST_CASE( chain_api_test ) try {
       auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
       BOOST_REQUIRE(test_cmd_ret_variant["code"].as<int>() == 404);
    }
+
+
+
+
    {  // abi_json_to_bin with valid parameter, but unknown account
       string test_cmd = "curl http://127.0.0.1:8888/v1/chain/abi_json_to_bin -X POST -d ";
       test_cmd += "\"{\"code\":\"eosio.token\",\"action\":\"issue\",\"args\":{\"to\":\"eosio.token\", \"quantity\":\"1.0000\%20EOS\",\"memo\":\"m\"}}\"";
@@ -497,6 +532,8 @@ BOOST_AUTO_TEST_CASE( chain_api_test ) try {
       auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
       BOOST_REQUIRE(test_cmd_ret_variant["code"].as<int>() == 404);
    }
+
+
    {  // abi_bin_to_json with valid parameter, but unknown account
       string test_cmd = "curl http://127.0.0.1:8888/v1/chain/abi_bin_to_json -X POST -d ";
       test_cmd += "\"{\"code\":\"eosio.token\",\"action\":\"issue\",\"args\":\"ee6fff5a5c02c55b6304000000000100a6823403ea3055000000572d3ccdcd0100000000007015d600000000a8ed32322a00000000007015d6000000005c95b1ca102700000000000004454f53000000000968656c6c6f206d616e00\"}\"";
@@ -517,10 +554,11 @@ BOOST_AUTO_TEST_CASE( chain_api_test ) try {
       auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
       BOOST_REQUIRE(test_cmd_ret_variant["code"].as<int>() == 404);
    }
+
+
    {  // get_required_keys with valid parameter, but unknown account
       string test_cmd = "curl http://127.0.0.1:8888/v1/chain/get_required_keys -X POST -d ";
-      test_cmd += "\"{\"transaction\": {";
-      test_cmd += "\"ref_block_num\":\"100\", \"ref_block_prefix\": \"137469861\",\"expiration\": \"2020-09-25T06:28:49\",\"scope\":[\"initb\", \"initc\"],";
+      test_cmd += "\"{\"transaction\": {\"ref_block_num\":\"100\", \"ref_block_prefix\": \"137469861\",\"expiration\": \"2020-09-25T06:28:49\",\"scope\":[\"initb\", \"initc\"],";
       test_cmd += "\"actions\": [{\"code\": \"currency\",\"type\":\"transfer\",\"recipients\": [\"initb\", \"initc\"],";
       test_cmd += "\"authorization\": [{\"account\": \"initb\",\"permission\": \"active\"}],\"data\":\"000000000041934b000000008041934be803000000000000\"}],";
       test_cmd += "\"signatures\": [],\"authorizations\": []},";
@@ -543,6 +581,8 @@ BOOST_AUTO_TEST_CASE( chain_api_test ) try {
       auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
       BOOST_REQUIRE(test_cmd_ret_variant["code"].as<int>() == 404);
    }
+
+
    {  // get_transaction_id with valid parameter, but unknown account
       string test_cmd = "curl http://127.0.0.1:8888/v1/chain/get_transaction_id -X POST -d ";
       test_cmd += "\"{\"expiration\":\"2020-08-01T07:15:49\",\"ref_block_num\": 34881,\"ref_block_prefix\": 2972818865,\"max_net_usage_words\": 0,\"max_cpu_usage_ms\": 0,\"delay_sec\": 0,";
@@ -564,6 +604,8 @@ BOOST_AUTO_TEST_CASE( chain_api_test ) try {
       auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
       BOOST_REQUIRE(test_cmd_ret_variant["code"].as<int>() == 404);
    }
+
+
    // the result seems not consistent, returns 500 error or just {}
    {  // push_block with valid parameter, but invalid transaction
       string test_cmd = "curl http://127.0.0.1:8888/v1/chain/push_block -X POST -d ";
@@ -589,6 +631,8 @@ BOOST_AUTO_TEST_CASE( chain_api_test ) try {
       auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
       BOOST_REQUIRE(test_cmd_ret_variant["code"].as<int>() == 404);
    }
+
+
    {  // push_transaction with valid parameter, but unknown account
       string test_cmd = "curl http://127.0.0.1:8888/v1/chain/push_transaction -X POST -d ";
       test_cmd += "\"{\"signatures\":[\"SIG_K1_KeqfqiZu1GwUxQb7jzK9Fdks6HFaVBQ9AJtCZZj56eG9qGgvVMVtx8EerBdnzrhFoX437sgwtojf2gfz6S516Ty7c22oEp\"],";
@@ -610,6 +654,8 @@ BOOST_AUTO_TEST_CASE( chain_api_test ) try {
       auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
       BOOST_REQUIRE(test_cmd_ret_variant["code"].as<int>() == 404);
    }
+
+
    // does not return 500 when push_transactions failed
    {  // push_transactions with valid parameter, but unknown account
       string test_cmd = "curl http://127.0.0.1:8888/v1/chain/push_transactions -X POST -d ";
@@ -633,6 +679,8 @@ BOOST_AUTO_TEST_CASE( chain_api_test ) try {
       auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
       BOOST_REQUIRE(test_cmd_ret_variant["code"].as<int>() == 404);
    }
+
+
    {  // send_transaction with valid parameter,
       string test_cmd = "curl http://127.0.0.1:8888/v1/chain/send_transaction -X POST -d ";
       test_cmd += "\"{\"signatures\":[\"SIG_K1_KeqfqiZu1GwUxQb7jzK9Fdks6HFaVBQ9AJtCZZj56eG9qGgvVMVtx8EerBdnzrhFoX437sgwtojf2gfz6S516Ty7c22oEp\"],";
@@ -677,6 +725,8 @@ BOOST_AUTO_TEST_CASE( history_api_test ) try {
       auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
       BOOST_REQUIRE(test_cmd_ret_variant["code"].as<int>() == 404);
    }
+
+
    {  // get_transaction with valid parameter,
       string test_cmd = "curl http://127.0.0.1:8888/v1/history/get_transaction -X POST -d ";
       test_cmd += "\"{\"id\":\"test\", \"block_num_hint\":1}\"";
@@ -697,6 +747,8 @@ BOOST_AUTO_TEST_CASE( history_api_test ) try {
       auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
       BOOST_REQUIRE(test_cmd_ret_variant["code"].as<int>() == 404);
    }
+
+
    {  // get_key_accounts with valid parameter,
       string test_cmd = "curl http://127.0.0.1:8888/v1/history/get_key_accounts -X POST -d ";
       test_cmd += "\"{\"public_key\":\"EOS6FxXbikY5ZUN9qEdeLbEYLKZzJwRYRr2PuC3rqfSu67LvhPARi\"}\"";
@@ -717,6 +769,8 @@ BOOST_AUTO_TEST_CASE( history_api_test ) try {
       auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
       BOOST_REQUIRE(test_cmd_ret_variant["code"].as<int>() == 404);
    }
+
+
    {  // get_controlled_accounts with valid parameter,
       string test_cmd = "curl http://127.0.0.1:8888/v1/history/get_controlled_accounts -X POST -d ";
       test_cmd += "\"{\"controlling_account\":\"test\"}\"";
@@ -757,6 +811,8 @@ BOOST_AUTO_TEST_CASE( net_api_test ) try {
       auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
       BOOST_REQUIRE(test_cmd_ret_variant["code"].as<int>() == 404);
    }
+
+
    {  // disconnect with valid parameter,
       string test_cmd = "curl http://127.0.0.1:8888/v1/net/disconnect -X POST -d ";
       test_cmd += "\"{\"endpoint\": \"localhost\"}\"";
@@ -774,6 +830,7 @@ BOOST_AUTO_TEST_CASE( net_api_test ) try {
       auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
       BOOST_REQUIRE(test_cmd_ret_variant["code"].as<int>() == 400);
    }
+
    {  // status with valid parameter,
       string test_cmd = "curl http://127.0.0.1:8888/v1/net/status -X POST -d ";
       test_cmd += "\"{\"endpoint\": \"localhost\"}\"";
@@ -791,6 +848,7 @@ BOOST_AUTO_TEST_CASE( net_api_test ) try {
       auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
       BOOST_REQUIRE(test_cmd_ret_variant["code"].as<int>() == 400);
    }
+
    {  // connections with empty parameter
       string test_cmd = "curl http://127.0.0.1:8888/v1/net/connections";
       BOOST_REQUIRE(get_command_result_str(test_cmd) == "[]");
@@ -844,6 +902,8 @@ BOOST_AUTO_TEST_CASE( producer_api_test ) try {
       BOOST_REQUIRE( test_cmd_ret_str == "false" || test_cmd_ret_str == "true" );
 //      BOOST_REQUIRE(test_cmd_ret_variant["code"].as<int>() == 404);
    }
+
+
    {  // get_runtime_options with empty parameter
       string test_cmd = "curl http://127.0.0.1:8888/v1/producer/get_runtime_options";
       auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
@@ -879,6 +939,7 @@ BOOST_AUTO_TEST_CASE( producer_api_test ) try {
       auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
       BOOST_REQUIRE(test_cmd_ret_variant["result"].as<string>() == "ok");
    }
+
    {  // add_greylist_accounts with valid parameter
       string test_cmd = "curl http://127.0.0.1:8888/v1/producer/add_greylist_accounts  -X POST -d ";
       test_cmd += "\"{\"accounts\":[\"test1\", \"test2\"]}\"";
@@ -896,6 +957,7 @@ BOOST_AUTO_TEST_CASE( producer_api_test ) try {
       auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
       BOOST_REQUIRE(test_cmd_ret_variant["result"].as<string>() == "ok");
    }
+
    {  // remove_greylist_accounts with valid parameter
       string test_cmd = "curl http://127.0.0.1:8888/v1/producer/remove_greylist_accounts  -X POST -d ";
       test_cmd += "\"{\"accounts\":[\"test1\", \"test2\"]}\"";
@@ -913,6 +975,7 @@ BOOST_AUTO_TEST_CASE( producer_api_test ) try {
       auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
       BOOST_REQUIRE(test_cmd_ret_variant["result"].as<string>() == "ok");
    }
+
    {  // get_greylist with empty parameter
       string test_cmd = "curl http://127.0.0.1:8888/v1/producer/get_greylist ";
       auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
@@ -963,6 +1026,7 @@ BOOST_AUTO_TEST_CASE( producer_api_test ) try {
       auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
       BOOST_REQUIRE(test_cmd_ret_variant["result"].as<string>() == "ok");
    }
+
    {  // get_integrity_hash with empty parameter
       string test_cmd = "curl http://127.0.0.1:8888/v1/producer/get_integrity_hash ";
       auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
@@ -976,6 +1040,7 @@ BOOST_AUTO_TEST_CASE( producer_api_test ) try {
       BOOST_REQUIRE( test_cmd_ret_variant["head_block_id"].get_type() == variant::type_id::string_type &&
             test_cmd_ret_variant["integrity_hash"].get_type() == variant::type_id::string_type);
    }
+
    {  // create_snapshot with valid parameter
       string test_cmd = "curl http://127.0.0.1:8888/v1/producer/create_snapshot  -X POST -d ";
       test_cmd += "\"content-type: application/x-www-form-urlencoded; charset=UTF-8\"";
@@ -996,6 +1061,7 @@ BOOST_AUTO_TEST_CASE( producer_api_test ) try {
       // create_snapshot is disabled
       BOOST_REQUIRE(test_cmd_ret_variant["code"].as<int>() == 500);
    }
+
    {  // get_scheduled_protocol_feature_activations with empty parameter
       string test_cmd = "curl http://127.0.0.1:8888/v1/producer/get_scheduled_protocol_feature_activations ";
       auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
@@ -1007,6 +1073,7 @@ BOOST_AUTO_TEST_CASE( producer_api_test ) try {
       auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
       BOOST_REQUIRE( test_cmd_ret_variant["protocol_features_to_activate"].get_type() == variant::type_id::array_type);
    }
+
    {  // schedule_protocol_feature_activations with valid parameter
       string test_cmd = "curl http://127.0.0.1:8888/v1/producer/schedule_protocol_feature_activations  -X POST -d ";
       test_cmd += "\"{\"protocol_features_to_activate\":[]}\"";
@@ -1024,6 +1091,8 @@ BOOST_AUTO_TEST_CASE( producer_api_test ) try {
       auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
       BOOST_REQUIRE(test_cmd_ret_variant["result"].as<string>() == "ok");
    }
+
+
    {  // get_supported_protocol_features with valid parameter
       string test_cmd = "curl http://127.0.0.1:8888/v1/producer/get_supported_protocol_features  -X POST -d ";
       test_cmd += "\"{\"exclude_disabled\":true, \"exclude_unactivatable\":true}\"";
@@ -1041,6 +1110,7 @@ BOOST_AUTO_TEST_CASE( producer_api_test ) try {
       auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
       BOOST_REQUIRE(test_cmd_ret_variant[(size_t)0]["feature_digest"].get_type() == variant::type_id::string_type);
    }
+
    {  // get_account_ram_corrections with valid parameter
       string test_cmd = "curl http://127.0.0.1:8888/v1/producer/get_account_ram_corrections  -X POST -d ";
       test_cmd += "\"{\"lower_bound\":\"\", \"upper_bound\":\"\", \"limit\":1, \"reverse\":false}\"";
@@ -1098,6 +1168,7 @@ BOOST_AUTO_TEST_CASE( wallet_api_test ) try {
       auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
       BOOST_REQUIRE(test_cmd_ret_variant["code"].as<int>() == 500);
    }
+
    {  // create with valid parameter
       string test_cmd = "curl http://127.0.0.1:7777/v1/wallet/create  -X POST -d ";
       test_cmd += "\"test1\"";
@@ -1114,6 +1185,7 @@ BOOST_AUTO_TEST_CASE( wallet_api_test ) try {
       auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
       BOOST_REQUIRE(test_cmd_ret_variant["code"].as<int>() == 400);
    }
+
    {  // open with valid parameter
       string test_cmd = "curl http://127.0.0.1:7777/v1/wallet/open  -X POST -d ";
       test_cmd += "\"test1\"";
@@ -1130,6 +1202,7 @@ BOOST_AUTO_TEST_CASE( wallet_api_test ) try {
       auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
       BOOST_REQUIRE(test_cmd_ret_variant["code"].as<int>() == 400);
    }
+
    {  // lock_all with empty parameter
       string test_cmd = "curl http://127.0.0.1:7777/v1/wallet/lock_all ";
       BOOST_REQUIRE(get_command_result_str(test_cmd) == "{}");
@@ -1156,6 +1229,7 @@ BOOST_AUTO_TEST_CASE( wallet_api_test ) try {
       auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
       BOOST_REQUIRE(test_cmd_ret_variant["code"].as<int>() == 400);
    }
+
    {  // unlock with valid parameter
       string test_cmd = "curl http://127.0.0.1:7777/v1/wallet/unlock -X POST -d ";
       test_cmd += "\"{\"name\":\"auser\", \"password\":\"nopassword\"}\"";
@@ -1174,6 +1248,9 @@ BOOST_AUTO_TEST_CASE( wallet_api_test ) try {
       /// TODO: need to throw invalid http exception with error return code 400
       BOOST_REQUIRE(test_cmd_ret_variant["code"].as<int>() == 500);
    }
+
+
+
    {  // import_key with valid parameter
       string test_cmd = "curl http://127.0.0.1:7777/v1/wallet/import_key -X POST -d ";
       test_cmd += "\"{\"name\":\"auser\", \"wif_key\":\"nokey\"}\"";
@@ -1192,6 +1269,7 @@ BOOST_AUTO_TEST_CASE( wallet_api_test ) try {
       /// TODO: need to throw invalid http exception with error return code 400
       BOOST_REQUIRE(test_cmd_ret_variant["code"].as<int>() == 500);
    }
+
    {  // remove_key with valid parameter
       string test_cmd = "curl http://127.0.0.1:7777/v1/wallet/remove_key -X POST -d ";
       test_cmd += "\"{\"name\":\"auser\", \"password\":\"nopassword\", \"key\":\"unknownkey\"}\"";
@@ -1210,6 +1288,7 @@ BOOST_AUTO_TEST_CASE( wallet_api_test ) try {
       /// TODO: need to throw invalid http exception with error return code 400
       BOOST_REQUIRE(test_cmd_ret_variant["code"].as<int>() == 500);
    }
+
    {  // create_key with valid parameter
       string test_cmd = "curl http://127.0.0.1:7777/v1/wallet/create_key -X POST -d ";
       test_cmd += "\"{\"name\":\"auser\", \"key_type\":\"unknownkey\"}\"";
@@ -1228,6 +1307,7 @@ BOOST_AUTO_TEST_CASE( wallet_api_test ) try {
       /// TODO: need to throw invalid http exception with error return code 400
       BOOST_REQUIRE(test_cmd_ret_variant["code"].as<int>() == 500);
    }
+
    {  // list_wallets with empty parameter
       string test_cmd = "curl http://127.0.0.1:7777/v1/wallet/list_wallets ";
       auto test_cmd_ret_variant = fc::json::from_string(get_command_result_str(test_cmd));
@@ -1240,6 +1320,7 @@ BOOST_AUTO_TEST_CASE( wallet_api_test ) try {
       /// TODO: need to throw invalid http exception with error return code 400
       BOOST_REQUIRE(test_cmd_ret_variant.get_type() == variant::type_id::array_type);
    }
+
    {  // list_keys with valid parameter
       string test_cmd = "curl http://127.0.0.1:7777/v1/wallet/list_keys -X POST -d ";
       test_cmd += "\"{\"name\":\"auser\", \"pw\":\"unknownkey\"}\"";

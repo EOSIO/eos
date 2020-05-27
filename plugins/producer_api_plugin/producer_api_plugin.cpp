@@ -62,6 +62,7 @@ struct async_result_visitor : public fc::visitor<fc::variant> {
      auto result = api_handle.call_name(std::move(params));
 
 #define INVOKE_R_V(api_handle, call_name) \
+     body = parse_params<std::string, http_params_types::no_params_required>(body); \
      auto result = api_handle.call_name();
 
 #define INVOKE_R_V_ASYNC(api_handle, call_name)\
@@ -73,7 +74,7 @@ struct async_result_visitor : public fc::visitor<fc::variant> {
      eosio::detail::producer_api_plugin_response result{"ok"};
 
 #define INVOKE_V_V(api_handle, call_name) \
-     if (body.empty()) body = "{}"; \
+     body = parse_params<std::string, http_params_types::no_params_required>(body); \
      api_handle.call_name(); \
      eosio::detail::producer_api_plugin_response result{"ok"};
 

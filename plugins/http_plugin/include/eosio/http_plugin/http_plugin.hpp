@@ -109,7 +109,8 @@ namespace eosio {
 
         // for testing only
         bool test_url_handler(const std::string& url, const std::string& body, url_response_callback cb) const;
-   private:
+
+  private:
         std::shared_ptr<class http_plugin_impl> my;
    };
 
@@ -178,7 +179,11 @@ namespace eosio {
          try {
             if constexpr (params_type == http_params_types::no_params_required) {
                if (body.empty()) {
-                  return {};
+                  if constexpr (std::is_same_v<T, std::string>) {
+                     return std::string("{}");
+                  } else {
+                     return {};
+                  }
                }
                EOS_THROW(chain::invalid_http_request, "no parameter should be given");
             }

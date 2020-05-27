@@ -35,7 +35,7 @@ using namespace eosio;
      fc::variant result( api_handle.call_name( std::move(params) ) );
 
 #define INVOKE_R_V(api_handle, call_name) \
-     if (body.empty()) body = "{}"; \
+     body = parse_params<std::string, http_params_types::no_params_required>(body); \
      auto result = api_handle.call_name();
 
 #define INVOKE_V_R(api_handle, call_name, in_param) \
@@ -44,7 +44,7 @@ using namespace eosio;
      eosio::detail::net_api_plugin_empty result;
 
 #define INVOKE_V_V(api_handle, call_name) \
-     if (body.empty()) body = "{}"; \
+     body = parse_params<std::string, http_params_types::no_params_required>(body); \
      api_handle.call_name(); \
      eosio::detail::net_api_plugin_empty result;
 
