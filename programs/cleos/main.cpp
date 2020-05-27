@@ -86,8 +86,8 @@ Options:
 #include <eosio/chain/contract_types.hpp>
 #include <eosio/chain/thread_utils.hpp>
 
-#include <eosio/rabbitmq_trx_plugin/rabbitmq_trx_plugin.hpp>
-#include <eosio/rabbitmq_trx_plugin/rabbitmq.hpp>
+#include <eosio/amqp_trx_plugin/amqp_trx_plugin.hpp>
+#include <eosio/amqp_trx_plugin/amqp_handler.hpp>
 
 #include <eosio/version/version.hpp>
 
@@ -156,7 +156,7 @@ bfs::path determine_home_directory()
 string url = "http://127.0.0.1:8888/";
 string default_wallet_url = "unix://" + (determine_home_directory() / "eosio-wallet" / (string(key_store_executable_name) + ".sock")).string();
 string wallet_url; //to be set to default_wallet_url in main
-string amqp;
+string amqp_address;
 bool no_verify = false;
 vector<string> headers;
 
@@ -431,16 +431,16 @@ fc::variant push_transaction( signed_transaction& trx, const std::vector<public_
       if (tx_use_old_rpc) {
          return call(push_txn_func, packed_transaction_v0(trx, compression));
       } else {
-         if( !amqp.empty() ) {
-            eosio::chain::named_thread_pool thread_pool( "rabmq", 1 );
-            eosio::rabbitmq qp_trx( fc::logger::get( DEFAULT_LOGGER ), thread_pool.get_executor(), amqp, "trx" );
-            eosio::rabbitmq qp_trace( fc::logger::get( DEFAULT_LOGGER ), thread_pool.get_executor(), amqp, "trace" );
+         if( !amqp_address.empty() ) {
+            eosio::chain::named_thread_pool thread_pool( "amqp", 1 );
+            eosio::amqp qp_trx( fc::logger::get( DEFAULT_LOGGER ), thread_pool.get_executor(), amqp_address, "trx" );
+            eosio::amqp qp_trace( fc::logger::get( DEFAULT_LOGGER ), thread_pool.get_executor(), amqp_address, "trace" );
 
             eosio::transaction_msg msg{ packed_transaction( std::move(trx), true, compression ) };
             auto buf = fc::raw::pack( msg );
             const auto& tid = msg.get<packed_transaction>().id();
             const string id = tid.str();
-            qp_trx.publish( id, buf.data(), buf.size() );
+            qp_trx.publish( "", id, buf.data(), buf.size() );
 
             fc::variant result;
             std::promise<void> received_trace;
@@ -2514,7 +2514,7 @@ int main( int argc, char** argv ) {
 
    app.add_option( "-u,--url", url, localized("The http/https URL where ${n} is running", ("n", node_executable_name)), true );
    app.add_option( "--wallet-url", wallet_url, localized("The http/https URL where ${k} is running", ("k", key_store_executable_name)), true );
-   app.add_option( "--amqp", amqp, localized("The ampq URL where rabbitmq is running amqp://USER:PASSWORD@ADDRESS:PORT"), false );
+   app.add_option( "--amqp", amqp_address, localized("The ampq URL where AMQP is running amqp://USER:PASSWORD@ADDRESS:PORT"), false );
 
    app.add_option( "-r,--header", header_opt_callback, localized("Pass specific HTTP header; repeat this option to pass multiple headers"));
    app.add_flag( "-n,--no-verify", no_verify, localized("Don't verify peer certificate when using HTTPS"));
