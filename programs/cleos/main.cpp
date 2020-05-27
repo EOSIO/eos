@@ -167,7 +167,7 @@ bfs::path determine_home_directory()
 
 std::string clean_output( std::string str ) {
    const bool escape_control_chars = false;
-   return fc::escape_string( str, nullptr, escape_control_chars );
+   return fc::escape_string( str, fc::time_point::maximum(), escape_control_chars );
 }
 
 string url = "http://127.0.0.1:8888/";
