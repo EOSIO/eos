@@ -190,18 +190,6 @@ namespace eosio {
          }
       } EOS_RETHROW_EXCEPTIONS(chain::invalid_http_request, "Unable to parse valid input from POST body");
    }
-   template<typename T1, typename T2>
-   struct two_params {
-      T1 p1;
-      T2 p2;
-   };
-
-   template<typename T1, typename T2, typename T3>
-   struct three_params {
-      T1 p1;
-      T2 p2;
-      T3 p3;
-   };
 }
 
 FC_REFLECT(eosio::error_results::error_info::error_detail, (message)(file)(line_number)(method))

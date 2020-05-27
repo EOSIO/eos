@@ -968,7 +968,7 @@ class PluginHttpTest(unittest.TestCase):
         self.assertEqual(ret_json["code"], 400)
         self.assertEqual(ret_json["error"]["code"], 3200006)
         # unlock with valid parameter
-        valid_cmd = default_cmd + self.http_post_str + ("'{\"name\":\"auser\", \"password\":\"nopassword\"}'")
+        valid_cmd = default_cmd + self.http_post_str + ("'[\"auser\", \"nopassword\"]'")
         ret_json = Utils.runCmdReturnJson(valid_cmd)
         self.assertEqual(ret_json["code"], 500)
 
@@ -983,7 +983,7 @@ class PluginHttpTest(unittest.TestCase):
         self.assertEqual(ret_json["code"], 400)
         self.assertEqual(ret_json["error"]["code"], 3200006)
         # import_key with valid parameter
-        valid_cmd = default_cmd + self.http_post_str + ("{'\"name\":\"auser\", \"wif_key\":\"nokey\"'}")
+        valid_cmd = default_cmd + self.http_post_str + ("'[\"auser\", \"nokey\"]'")
         ret_json = Utils.runCmdReturnJson(valid_cmd)
         self.assertEqual(ret_json["code"], 500)
 
@@ -998,7 +998,7 @@ class PluginHttpTest(unittest.TestCase):
         self.assertEqual(ret_json["code"], 400)
         self.assertEqual(ret_json["error"]["code"], 3200006)
         # remove_key with valid parameter
-        valid_cmd = default_cmd + self.http_post_str + ("{'\"name\":\"auser\", \"password\":\"none\", \"key\":\"none\"'}")
+        valid_cmd = default_cmd + self.http_post_str + ("'[\"auser\", \"none\", \"none\"]'")
         ret_json = Utils.runCmdReturnJson(valid_cmd)
         self.assertEqual(ret_json["code"], 500)
 
@@ -1013,7 +1013,7 @@ class PluginHttpTest(unittest.TestCase):
         self.assertEqual(ret_json["code"], 400)
         self.assertEqual(ret_json["error"]["code"], 3200006)
         # create_key with valid parameter
-        valid_cmd = default_cmd + self.http_post_str + ("{'\"name\":\"auser\", \"key_type\":\"none\"'}")
+        valid_cmd = default_cmd + self.http_post_str + ("'[\"auser\", \"none\", \"none\"]'")
         ret_json = Utils.runCmdReturnJson(valid_cmd)
         self.assertEqual(ret_json["code"], 500)
 
@@ -1038,7 +1038,7 @@ class PluginHttpTest(unittest.TestCase):
         self.assertEqual(ret_json["code"], 400)
         self.assertEqual(ret_json["error"]["code"], 3200006)
         # list_keys with valid parameter
-        valid_cmd = default_cmd + self.http_post_str + ("{'\"name\":\"auser\", \"pw\":\"unknownkey\"'}")
+        valid_cmd = default_cmd + self.http_post_str + ("'[\"auser\", \"unknownkey\"]'")
         ret_json = Utils.runCmdReturnJson(valid_cmd)
         self.assertEqual(ret_json["code"], 500)
 

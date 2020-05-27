@@ -164,8 +164,8 @@ set_property(TEST nodeos_repeat_transaction_lr_test PROPERTY LABELS long_running
 add_test(NAME cli_test COMMAND tests/cli_test.py WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
 add_test(NAME plugin_http_api_test COMMAND tests/plugin_http_api_test.py -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-set_tests_properties(plugin_http_api_test PROPERTIES TIMEOUT 3000)
-set_property(TEST plugin_http_api_test PROPERTY LABELS plugin_http_api_tests)
+set_tests_properties(plugin_http_api_test PROPERTIES TIMEOUT 40)
+set_property(TEST plugin_http_api_test PROPERTY LABELS nonparallelizable_tests)
 
 add_subdirectory(se_tests)
 
