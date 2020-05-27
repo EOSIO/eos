@@ -1,5 +1,5 @@
-#include <eosio/rabbitmq_trx_plugin/rabbitmq_trx_plugin.hpp>
-#include <eosio/rabbitmq_trx_plugin/rabbitmq.hpp>
+#include <eosio/amqp_trx_plugin/amqp_trx_plugin.hpp>
+#include <eosio/amqp_trx_plugin/amqp_handler.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
 
 #include <eosio/chain/exceptions.hpp>
@@ -10,9 +10,9 @@
 
 namespace {
 
-static appbase::abstract_plugin& rabbitmq_trx_plugin_ = appbase::app().register_plugin<eosio::rabbitmq_trx_plugin>();
+static appbase::abstract_plugin& amqp_trx_plugin_ = appbase::app().register_plugin<eosio::amqp_trx_plugin>();
 
-const fc::string logger_name{"rabbitmq_trx"};
+const fc::string logger_name{"amqp_trx"};
 fc::logger logger;
 
 constexpr auto def_max_trx_in_progress_size = 100*1024*1024; // 100 MB
@@ -23,21 +23,21 @@ namespace eosio {
 
 using boost::signals2::scoped_connection;
 
-struct rabbitmq_trx_plugin_impl : std::enable_shared_from_this<rabbitmq_trx_plugin_impl> {
+struct amqp_trx_plugin_impl : std::enable_shared_from_this<amqp_trx_plugin_impl> {
 
    chain_plugin* chain_plug = nullptr;
    // use thread pool even though only one thread currently since it provides simple interface for ioc
    std::optional<eosio::chain::named_thread_pool> thread_pool;
-   std::optional<rabbitmq> rabbitmq_trx;
-   std::optional<rabbitmq> rabbitmq_trace;
+   std::optional<amqp> amqp_trx;
+   std::optional<amqp> amqp_trace;
    std::optional<scoped_connection> applied_transaction_connection;
 
-   std::string rabbitmq_trx_address;
-   std::string rabbitmq_exchange;
-   bool rabbitmq_publish_all_traces = false;
+   std::string amqp_trx_address;
+   std::string amqp_trx_exchange;
+   bool amqp_trx_publish_all_traces = false;
    std::atomic<uint32_t>  trx_in_progress_size{0};
 
-   // called from rabbitmq thread
+   // called from amqp thread
    bool consume_message( const char* buf, size_t s ) {
       try {
          fc::datastream<const char*> ds( buf, s );
@@ -58,7 +58,7 @@ struct rabbitmq_trx_plugin_impl : std::enable_shared_from_this<rabbitmq_trx_plug
       return false;
    }
 
-   // only called if rabbitmq-publish-all-traces=true
+   // only called if amqp-trx-publish-all-traces=true
    // called on application thread
    void on_applied_transaction(const chain::transaction_trace_ptr& trace, const chain::packed_transaction_ptr& t) {
       try {
@@ -70,7 +70,7 @@ struct rabbitmq_trx_plugin_impl : std::enable_shared_from_this<rabbitmq_trx_plug
 
 private:
 
-   // called from rabbitmq thread
+   // called from amqp thread
    void handle_message( chain::packed_transaction_ptr trx ) {
       const auto& tid = trx->id();
       fc_dlog( logger, "received packed_transaction ${id}", ("id", tid) );
@@ -82,7 +82,7 @@ private:
          msg.get<transaction_trace_exception>().error_message =
                "Dropped trx, too many trx in progress " + std::to_string( trx_in_progress ) + " bytes";
          auto buf = fc::raw::pack( msg );
-         rabbitmq_trace->publish( rabbitmq_exchange, tid.str(), buf.data(), buf.size() );
+         amqp_trace->publish( amqp_trx_exchange, tid.str(), buf.data(), buf.size() );
          return;
       }
 
@@ -90,8 +90,8 @@ private:
       app().post( priority::medium_low, [my=shared_from_this(), trx{std::move(trx)}]() {
          my->chain_plug->accept_transaction( trx,
             [my, trx](const fc::static_variant<fc::exception_ptr, chain::transaction_trace_ptr>& result) mutable {
-               // if rabbitmq-publish-all-traces=true and a transaction trace then no need to publish here as already published
-               if( my->rabbitmq_publish_all_traces && result.contains<chain::transaction_trace_ptr>() ) {
+               // if amqp-trx-publish-all-traces=true and a transaction trace then no need to publish here as already published
+               if( my->amqp_trx_publish_all_traces && result.contains<chain::transaction_trace_ptr>() ) {
                   my->trx_in_progress_size -= trx->get_estimated_size();
                } else {
                   boost::asio::post( my->thread_pool->get_executor(), [my, trx = std::move( trx ), result = result]() {
@@ -103,7 +103,7 @@ private:
          } );
    }
 
-   // called from rabbitmq thread
+   // called from amqp thread
    void publish_result( const chain::packed_transaction_ptr& trx,
                         const fc::static_variant<fc::exception_ptr, chain::transaction_trace_ptr>& result ) {
 
@@ -123,7 +123,7 @@ private:
             fc::raw::pack( ds, which );
             fc::raw::pack( ds, tex.error_code );
             fc::raw::pack( ds, err );
-            rabbitmq_trace->publish( rabbitmq_exchange, trx->id(), buf.data(), buf.size() );
+            amqp_trace->publish( amqp_trx_exchange, trx->id(), buf.data(), buf.size() );
 
          } else {
             const auto& trace = result.get<chain::transaction_trace_ptr>();
@@ -140,52 +140,52 @@ private:
             fc::datastream<char*> ds( buf.data(), payload_size );
             fc::raw::pack( ds, which );
             fc::raw::pack( ds, *trace );
-            rabbitmq_trace->publish( rabbitmq_exchange, trx->id(), buf.data(), buf.size() );
+            amqp_trace->publish( amqp_trx_exchange, trx->id(), buf.data(), buf.size() );
          }
       } FC_LOG_AND_DROP()
    }
 
 };
 
-rabbitmq_trx_plugin::rabbitmq_trx_plugin()
-: my(std::make_shared<rabbitmq_trx_plugin_impl>()) {}
+amqp_trx_plugin::amqp_trx_plugin()
+: my(std::make_shared<amqp_trx_plugin_impl>()) {}
 
-rabbitmq_trx_plugin::~rabbitmq_trx_plugin() {}
+amqp_trx_plugin::~amqp_trx_plugin() {}
 
-void rabbitmq_trx_plugin::set_program_options(options_description& cli, options_description& cfg) {
+void amqp_trx_plugin::set_program_options(options_description& cli, options_description& cfg) {
    auto op = cfg.add_options();
-   op("rabbitmq-trx-address", bpo::value<std::string>(),
-      "RabbitMQ address: Format: amqp://USER:PASSWORD@ADDRESS:PORT\n"
+   op("amqp-trx-address", bpo::value<std::string>(),
+      "AMQP address: Format: amqp://USER:PASSWORD@ADDRESS:PORT\n"
       "Will consume from 'trx' queue and publish to 'trace' queue.");
-   op("rabbitmq-trx-exchange", bpo::value<std::string>()->default_value(""),
-      "Existing RabbitMQ exchange to send transaction trace messages.");
-   op("rabbitmq-publish-all-traces", bpo::bool_switch()->default_value(false),
+   op("amqp-trx-exchange", bpo::value<std::string>()->default_value(""),
+      "Existing AMQP exchange to send transaction trace messages.");
+   op("amqp-trx-publish-all-traces", bpo::bool_switch()->default_value(false),
       "If specified then all traces will be published; otherwise only traces for consumed 'trx' queue transactions.");
 }
 
-void rabbitmq_trx_plugin::plugin_initialize(const variables_map& options) {
+void amqp_trx_plugin::plugin_initialize(const variables_map& options) {
    try {
       my->chain_plug = app().find_plugin<chain_plugin>();
       EOS_ASSERT( my->chain_plug, chain::missing_chain_plugin_exception, "chain_plugin required" );
 
-      EOS_ASSERT( options.count("rabbitmq-trx-address"), chain::plugin_config_exception, "rabbitmq-trx-address required" );
-      my->rabbitmq_trx_address = options.at("rabbitmq-trx-address").as<std::string>();
-      my->rabbitmq_exchange = options.at("rabbitmq-trx-exchange").as<std::string>();
-      my->rabbitmq_publish_all_traces = options.at("rabbitmq-publish-all-traces").as<bool>();
+      EOS_ASSERT( options.count("amqp-trx-address"), chain::plugin_config_exception, "amqp-trx-address required" );
+      my->amqp_trx_address = options.at("amqp-trx-address").as<std::string>();
+      my->amqp_trx_exchange = options.at("amqp-trx-exchange").as<std::string>();
+      my->amqp_trx_publish_all_traces = options.at("amqp-trx-publish-all-traces").as<bool>();
    }
    FC_LOG_AND_RETHROW()
 }
 
-void rabbitmq_trx_plugin::plugin_startup() {
+void amqp_trx_plugin::plugin_startup() {
    handle_sighup();
    try {
 
-      my->thread_pool.emplace( "rabmq", 1 );
+      my->thread_pool.emplace( "amqp_t", 1 );
 
-      my->rabbitmq_trx.emplace( logger, my->thread_pool->get_executor(), my->rabbitmq_trx_address, "trx" );
-      my->rabbitmq_trace.emplace( logger, my->thread_pool->get_executor(), my->rabbitmq_trx_address, "trace" );
+      my->amqp_trx.emplace( logger, my->thread_pool->get_executor(), my->amqp_trx_address, "trx" );
+      my->amqp_trace.emplace( logger, my->thread_pool->get_executor(), my->amqp_trx_address, "trace" );
 
-      auto& consumer = my->rabbitmq_trx->consume();
+      auto& consumer = my->amqp_trx->consume();
       consumer.onSuccess( []( const std::string& consumer_tag ) {
          fc_dlog( logger, "consume started: ${tag}", ("tag", consumer_tag) );
       } );
@@ -194,13 +194,13 @@ void rabbitmq_trx_plugin::plugin_startup() {
       } );
       consumer.onReceived( [my=my](const AMQP::Message& message, uint64_t delivery_tag, bool redelivered) {
          if( my->consume_message( message.body(), message.bodySize() ) ) {
-            my->rabbitmq_trx->ack( delivery_tag );
+            my->amqp_trx->ack( delivery_tag );
          } else {
-            my->rabbitmq_trx->reject( delivery_tag );
+            my->amqp_trx->reject( delivery_tag );
          }
       } );
 
-      if( my->rabbitmq_publish_all_traces ) {
+      if( my->amqp_trx_publish_all_traces ) {
          auto& chain_plug = app().get_plugin<chain_plugin>();
          my->applied_transaction_connection.emplace(
                chain_plug.chain().applied_transaction.connect(
@@ -216,7 +216,7 @@ void rabbitmq_trx_plugin::plugin_startup() {
    }
 }
 
-void rabbitmq_trx_plugin::plugin_shutdown() {
+void amqp_trx_plugin::plugin_shutdown() {
    try {
       fc_dlog( logger, "shutdown.." );
       my->applied_transaction_connection.reset();
@@ -229,7 +229,7 @@ void rabbitmq_trx_plugin::plugin_shutdown() {
    FC_CAPTURE_AND_RETHROW()
 }
 
-void rabbitmq_trx_plugin::handle_sighup() {
+void amqp_trx_plugin::handle_sighup() {
    fc::logger::update( logger_name, logger );
 }
 

@@ -14,13 +14,13 @@ struct transaction_trace_exception {
 };
 using transaction_trace_msg = fc::static_variant<transaction_trace_exception, chain::transaction_trace>;
 
-class rabbitmq_trx_plugin : public appbase::plugin<rabbitmq_trx_plugin> {
+class amqp_trx_plugin : public appbase::plugin<amqp_trx_plugin> {
 
  public:
    APPBASE_PLUGIN_REQUIRES((chain_plugin))
 
-   rabbitmq_trx_plugin();
-   virtual ~rabbitmq_trx_plugin();
+   amqp_trx_plugin();
+   virtual ~amqp_trx_plugin();
 
    virtual void set_program_options(options_description& cli, options_description& cfg) override;
    void plugin_initialize(const variables_map& options);
@@ -29,7 +29,7 @@ class rabbitmq_trx_plugin : public appbase::plugin<rabbitmq_trx_plugin> {
    void handle_sighup() override;
 
  private:
-   std::shared_ptr<struct rabbitmq_trx_plugin_impl> my;
+   std::shared_ptr<struct amqp_trx_plugin_impl> my;
 };
 
 } // namespace eosio
