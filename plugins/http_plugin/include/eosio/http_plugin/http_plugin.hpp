@@ -107,10 +107,7 @@ namespace eosio {
         /// @return the configured http-max-response-time-ms
         fc::microseconds get_max_response_time()const;
 
-        // for testing only
-        bool test_url_handler(const std::string& url, const std::string& body, url_response_callback cb) const;
-
-  private:
+   private:
         std::shared_ptr<class http_plugin_impl> my;
    };
 

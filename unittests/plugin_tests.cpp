@@ -1,7 +1,6 @@
 #include <boost/test/unit_test.hpp>
 #include <eosio/testing/tester.hpp>
 #include <eosio/http_plugin/http_plugin.hpp>
-#include <eosio/chain_api_plugin/chain_api_plugin.hpp>
 
 using namespace eosio;
 using namespace eosio::chain;

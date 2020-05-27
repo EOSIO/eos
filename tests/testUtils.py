@@ -487,7 +487,6 @@ class Utils:
         if asset[1] != delta[1]:
             return None
         return "{0} {1}".format(round(float(asset[0]) - float(delta[0]), 4), asset[1])
-
 ###########################################################################################
 class Account(object):
     # pylint: disable=too-few-public-methods
