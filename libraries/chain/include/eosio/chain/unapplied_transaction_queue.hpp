@@ -141,16 +141,20 @@ public:
       for( const auto& receipt : bs->block->transactions ) {
          if( receipt.trx.contains<packed_transaction>() ) {
             const auto& pt = receipt.trx.get<packed_transaction>();
-            auto itr = queue.get<by_trx_id>().find( pt.id() );
-            if( itr != queue.get<by_trx_id>().end() ) {
+            auto itr = idx.find( pt.id() );
+            if( itr != idx.end() ) {
+               if( itr->next ) {
+                  itr->next( std::static_pointer_cast<fc::exception>( std::make_shared<tx_duplicate>(
+                                FC_LOG_MESSAGE( info, "duplicate transaction ${id}", ("id", itr->trx_meta->id())))));
+               }
                if( itr->trx_type != trx_enum_type::persisted &&
                    itr->trx_type != trx_enum_type::incoming_persisted ) {
-                  if( itr->next ) {
-                     itr->next( std::static_pointer_cast<fc::exception>( std::make_shared<tx_duplicate>(
-                                   FC_LOG_MESSAGE( info, "duplicate transaction ${id}", ("id", itr->trx_meta->id())))));
-                  }
                   removed( itr );
                   idx.erase( itr );
+               } else if( itr->next ) {
+                  idx.modify( itr, [](auto& un){
+                     un.next = nullptr;
+                  } );
                }
             }
          }
