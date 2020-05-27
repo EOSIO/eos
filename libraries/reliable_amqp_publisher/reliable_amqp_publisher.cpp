@@ -72,7 +72,11 @@ struct reliable_amqp_publisher_impl final : reliable_amqp_publisher_callbacks {
             file.set_file_path(data_file_path);
             file.open("rb");
             fc::raw::unpack(file, message_deque);
-         } FC_RETHROW_EXCEPTIONS(error, "Failed to load previously cached AMQP messages from ${f}", ("f", (fc::path)data_file_path));
+         } FC_RETHROW_EXCEPTIONS(error, "Failed to load previously unconfirmed AMQP messages from ${f}", ("f", (fc::path)data_file_path));
+      }
+      else {
+         boost::filesystem::ofstream o(data_file_path);
+         FC_ASSERT(o.good(), "Failed to create unconfirmed AMQP message file at ${f}", ("f", (fc::path)data_file_path));
       }
       boost::system::error_code ec;
       boost::filesystem::remove(data_file_path, ec);
