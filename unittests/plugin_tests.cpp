@@ -22,14 +22,16 @@ auto call_parse_params_params_required(const string& body)
 BOOST_AUTO_TEST_SUITE(plugin_tests)
 
 BOOST_AUTO_TEST_CASE( parse_params ) try {
-   // rest of api testings are carried out by system testing
-   // empty with no_params_required
-   {
+   { // empty body, no input
       const std::string empty_str;
       BOOST_REQUIRE(empty_str.empty());
       BOOST_REQUIRE_NO_THROW(
          auto test_result = call_parse_params_no_params_required<int>(empty_str);
          BOOST_REQUIRE(test_result == 0);
+      );
+      BOOST_REQUIRE_NO_THROW(
+         auto test_result = call_parse_params_no_params_required<std::string>(empty_str);
+         BOOST_REQUIRE(test_result == "{}");
       );
       BOOST_REQUIRE_THROW(
             call_parse_params_params_required<int>(empty_str), chain::invalid_http_request
@@ -51,9 +53,8 @@ BOOST_AUTO_TEST_CASE( parse_params ) try {
       const int exp_result = 1234;
       const std::string valid_int_str = std::to_string(exp_result);
       BOOST_REQUIRE(!valid_int_str.empty());
-      BOOST_REQUIRE_NO_THROW(
-         const auto ret = call_parse_params_no_params_required<int>(valid_int_str);
-         BOOST_REQUIRE(ret == exp_result);
+      BOOST_REQUIRE_THROW(
+            call_parse_params_no_params_required<int>(valid_int_str), chain::invalid_http_request
       );
       BOOST_REQUIRE_NO_THROW(
          const auto ret = call_parse_params_params_required<int>(valid_int_str);
