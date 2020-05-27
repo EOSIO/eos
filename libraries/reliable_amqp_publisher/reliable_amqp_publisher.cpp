@@ -45,8 +45,8 @@ struct reliable_amqp_publisher_handler : AMQP::LibBoostAsioHandler {
 };
 
 struct reliable_amqp_publisher_impl final : reliable_amqp_publisher_callbacks {
-   reliable_amqp_publisher_impl(const std::string& url, const std::string& exchange, const boost::filesystem::path& unconfirmed_path) :
-     data_file_path(unconfirmed_path), exchange(exchange) {
+   reliable_amqp_publisher_impl(const std::string url, const std::string exchange, const std::string routing_key, const boost::filesystem::path unconfirmed_path) :
+     data_file_path(unconfirmed_path), exchange(exchange), routing_key(routing_key) {
       std::string host = "localhost", user = "guest", pass = "guest", path;
       uint16_t port = 5672;
       fc::url parsed_url(url);
@@ -72,7 +72,11 @@ struct reliable_amqp_publisher_impl final : reliable_amqp_publisher_callbacks {
             file.set_file_path(data_file_path);
             file.open("rb");
             fc::raw::unpack(file, message_deque);
-         } FC_RETHROW_EXCEPTIONS(error, "Failed to load previously cached AMQP messages from ${f}", ("f", (fc::path)data_file_path));
+         } FC_RETHROW_EXCEPTIONS(error, "Failed to load previously unconfirmed AMQP messages from ${f}", ("f", (fc::path)data_file_path));
+      }
+      else {
+         boost::filesystem::ofstream o(data_file_path);
+         FC_ASSERT(o.good(), "Failed to create unconfirmed AMQP message file at ${f}", ("f", (fc::path)data_file_path));
       }
       boost::system::error_code ec;
       boost::filesystem::remove(data_file_path, ec);
@@ -166,8 +170,10 @@ struct reliable_amqp_publisher_impl final : reliable_amqp_publisher_callbacks {
       const unsigned msgs_this_transaction = std::min(message_deque.size(), max_msg_single_transaction);
 
       channel->startTransaction();
-      std::for_each_n(message_deque.begin(), msgs_this_transaction, [this](const std::vector<char>& msg) {
-         channel->publish(exchange, "", msg.data(), msg.size());
+      std::for_each(message_deque.begin(), message_deque.begin()+msgs_this_transaction, [this](const std::vector<char>& msg) {
+         AMQP::Envelope envelope(msg.data(), msg.size());
+         envelope.setPersistent();
+         channel->publish(exchange, routing_key, envelope);
       });
 
       in_flight = msgs_this_transaction;
@@ -206,11 +212,12 @@ struct reliable_amqp_publisher_impl final : reliable_amqp_publisher_callbacks {
    const boost::filesystem::path data_file_path;
 
    const std::string exchange;
+   const std::string routing_key;
    bool logged_exceeded_max_depth = false;
 };
 
-reliable_amqp_publisher::reliable_amqp_publisher(const std::string& url, const std::string& exchange, const boost::filesystem::path& unconfirmed_path) :
-   my(new reliable_amqp_publisher_impl(url, exchange, unconfirmed_path)) {}
+reliable_amqp_publisher::reliable_amqp_publisher(const std::string url, const std::string exchange, const std::string routing_key,  const boost::filesystem::path unconfirmed_path) :
+   my(new reliable_amqp_publisher_impl(url, exchange, routing_key, unconfirmed_path)) {}
 
 void reliable_amqp_publisher::publish_message(std::vector<char>&& data) {
    my->ctx.dispatch([this, d=std::move(data)]() mutable {
