@@ -181,9 +181,8 @@ compressed_proof_generator::compressed_proof_generator(const boost::filesystem::
       } FC_RETHROW_EXCEPTIONS(error, "Failed to load compressed merkle generator reversible state file ${f}", ("f", (fc::path)*my->reversible_path));
    }
    else {
-      try {
-         boost::filesystem::ofstream s(*my->reversible_path);
-      } FC_RETHROW_EXCEPTIONS(error, "Unable to create compressed merkle generator reversible state file ${f}", ("f", (fc::path)*my->reversible_path));
+      boost::filesystem::ofstream s(*my->reversible_path);
+      EOS_ASSERT(s.good(), chain::plugin_config_exception, "Unable to create compressed merkle generator reversible state file ${f}", ("f", (fc::path)*my->reversible_path));
    }
    boost::system::error_code ec;
    boost::filesystem::remove(*my->reversible_path, ec);
