@@ -157,10 +157,10 @@ try:
     #
     # Check lightValidationNode keeping sync while the full fullValidationNode stop syncing after the cfd block
     #
-    Utils.waitForBool(lambda: lightValidationNode.getIrreversibleBlockNum() >= cfTrxBlockNum, timeout=30, sleepTime=0.1)
+    Utils.waitForBool(lambda: lightValidationNode.getIrreversibleBlockNum() >= cfTrxBlockNum, timeout=60, sleepTime=0.1)
     assert lightValidationNode.waitForHeadToAdvance(), "the light validation node stops syncing"
 
-    Utils.waitForBool(lambda: fullValidationNode.getIrreversibleBlockNum() >= cfTrxBlockNum-1, timeout=30, sleepTime=0.1)
+    Utils.waitForBool(lambda: fullValidationNode.getIrreversibleBlockNum() >= cfTrxBlockNum-1, timeout=60, sleepTime=0.1)
     assert not fullValidationNode.waitForHeadToAdvance(), "the full validation node is still syncing"
     
     testSuccessful = True
