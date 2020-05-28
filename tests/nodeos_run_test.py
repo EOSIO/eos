@@ -27,7 +27,7 @@ from core_symbol import CORE_SYMBOL
 
 args = TestHelper.parse_args({"--host","--port","--prod-count","--defproducera_prvt_key","--defproducerb_prvt_key"
                               ,"--dump-error-details","--dont-launch","--keep-logs","-v","--leave-running","--only-bios","--clean-run"
-                              ,"--sanity-test","--wallet-port"})
+                              ,"--sanity-test","--wallet-port","--amqp-address"})
 server=args.host
 port=args.port
 debug=args.v
@@ -42,6 +42,7 @@ onlyBios=args.only_bios
 killAll=args.clean_run
 sanityTest=args.sanity_test
 walletPort=args.wallet_port
+amqpAddr=args.amqp_address
 
 Utils.Debug=debug
 localTest=True if server == TestHelper.LOCAL_HOST else False
@@ -67,7 +68,15 @@ try:
         cluster.killall(allInstances=killAll)
         cluster.cleanup()
         Print("Stand up cluster")
-        if cluster.launch(prodCount=prodCount, onlyBios=onlyBios, dontBootstrap=dontBootstrap) is False:
+
+        if not amqpAddr:
+            launched = cluster.launch(prodCount=prodCount, onlyBios=onlyBios, dontBootstrap=dontBootstrap)
+        else:
+            launched = cluster.launch(prodCount=prodCount, onlyBios=onlyBios, dontBootstrap=dontBootstrap,
+                                      specificExtraNodeosArgs={
+                                        0: "--plugin eosio::amqp_trx_plugin --amqp-trx-address %s" % (amqpAddr) })
+
+        if launched is False:
             cmdError("launcher")
             errorExit("Failed to stand up eos cluster.")
     else:
@@ -205,6 +214,8 @@ try:
         errorExit("FAILURE - wallet keys did not include %s" % (noMatch), raw=True)
 
     node=cluster.getNode(0)
+    if not amqpAddr:
+        node.setAMQPAddress(amqpAddr)
 
     Print("Validating accounts before user accounts creation")
     cluster.validateAccounts(None)

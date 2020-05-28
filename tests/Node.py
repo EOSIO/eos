@@ -27,7 +27,7 @@ class Node(object):
 
     # pylint: disable=too-many-instance-attributes
     # pylint: disable=too-many-arguments
-    def __init__(self, host, port, pid=None, cmd=None, walletMgr=None):
+    def __init__(self, host, port, pid=None, cmd=None, walletMgr=None, amqpAddr=None):
         self.host=host
         self.port=port
         self.pid=pid
@@ -42,6 +42,7 @@ class Node(object):
         self.lastRetrievedHeadBlockProducer=""
         self.transCache={}
         self.walletMgr=walletMgr
+        self.amqpAddr=amqpAddr
         self.missingTransaction=False
         self.popenProc=None           # initial process is started by launcher, this will only be set on relaunch
 
@@ -52,6 +53,9 @@ class Node(object):
     def __str__(self):
         #return "Host: %s, Port:%d, Pid:%s, Cmd:\"%s\"" % (self.host, self.port, self.pid, self.cmd)
         return "Host: %s, Port:%d, Pid:%s" % (self.host, self.port, self.pid)
+
+    def setAMQPAddress(self, ampqAddr=None):
+        self.amqpAddr=ampqAddr
 
     @staticmethod
     def validateTransaction(trans):
@@ -522,6 +526,10 @@ class Node(object):
         assert(isinstance(destination, Account))
         assert(expiration is None or isinstance(expiration, int))
 
+        amqpAddrStr = ""
+        if self.amqpAddr is not None:
+            amqpAddrStr = "--amqp %s " % self.amqpAddr
+
         dontSendStr = ""
         if dontSend:
             dontSendStr = "--dont-broadcast "
@@ -532,8 +540,8 @@ class Node(object):
         expirationStr = ""
         if expiration is not None:
             expirationStr = "--expiration %d " % (expiration)
-        cmd="%s %s -v transfer -j %s %s" % (
-            Utils.EosClientPath, self.eosClientArgs(), dontSendStr, expirationStr)
+        cmd="%s %s %s -v transfer -j %s %s" % (
+            Utils.EosClientPath, amqpAddrStr, self.eosClientArgs(), dontSendStr, expirationStr)
         cmdArr=cmd.split()
         # not using __sign_str, since cmdArr messes up the string
         if sign:
@@ -776,7 +784,10 @@ class Node(object):
 
     # returns tuple with indication if transaction was successfully sent and either the transaction or else the exception output
     def pushMessage(self, account, action, data, opts, silentErrors=False, signatures=None):
-        cmd="%s %s push action -j %s %s" % (Utils.EosClientPath, self.eosClientArgs(), account, action)
+        amqpAddrStr = ""
+        if self.amqpAddr is not None:
+            amqpAddrStr = "--amqp %s " % self.amqpAddr
+        cmd="%s %s %s push action -j %s %s" % (Utils.EosClientPath, amqpAddrStr, self.eosClientArgs(), account, action)
         cmdArr=cmd.split()
         # not using __sign_str, since cmdArr messes up the string
         if signatures is not None:
@@ -805,7 +816,10 @@ class Node(object):
     # returns tuple with indication if transaction was successfully sent and either the transaction or else the exception output
     def pushTransaction(self, trans, opts="--skip-sign", silentErrors=False):
         assert(isinstance(trans, dict))
-        cmd="%s %s push transaction -j" % (Utils.EosClientPath, self.eosClientArgs())
+        amqpAddrStr = ""
+        if self.amqpAddr is not None:
+            amqpAddrStr = "--amqp %s " % self.amqpAddr
+        cmd="%s %s %s push transaction -j" % (Utils.EosClientPath, amqpAddrStr, self.eosClientArgs())
         cmdArr=cmd.split()
         transStr = json.dumps(trans, separators=(',', ':'))
         transStr = transStr.replace("'", '"')

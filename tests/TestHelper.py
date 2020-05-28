@@ -83,6 +83,8 @@ class TestHelper(object):
         if "--wallet-port" in includeArgs:
             parser.add_argument("--wallet-port", type=int, help="%s port" % Utils.EosWalletName,
                                      default=TestHelper.DEFAULT_WALLET_PORT)
+        if "--amqp-address" in includeArgs:
+            parser.add_argument("--amqp-address", type=str, help="AMQP address.")
         if "--prod-count" in includeArgs:
             parser.add_argument("-c", "--prod-count", type=int, help="Per node producer count", default=1)
         if "--defproducera_prvt_key" in includeArgs:
