@@ -74,11 +74,31 @@ class PluginHttpTest(unittest.TestCase):
         # get_activated_protocol_features without parameter
         default_cmd = cmd_base + "get_activated_protocol_features"
         ret_json = Utils.runCmdReturnJson(default_cmd)
-        self.assertEqual(ret_json["code"], 400)
+        self.assertEqual(type(ret_json["activated_protocol_features"]), list)
         # get_activated_protocol_features with invalid parameter
         invalid_cmd = default_cmd + self.http_post_str + self.http_post_invalid_param
         ret_json = Utils.runCmdReturnJson(invalid_cmd)
         self.assertEqual(ret_json["code"], 400)
+        # get_activated_protocol_features with 1st param
+        param_1st_cmd = default_cmd + self.http_post_str + "'{\"lower_bound\":1}'"
+        ret_json = Utils.runCmdReturnJson(param_1st_cmd)
+        self.assertEqual(type(ret_json["activated_protocol_features"]), list)
+        # get_activated_protocol_features with 2nd param
+        param_2nd_cmd = default_cmd + self.http_post_str + "'{\"upper_bound\":1000}'"
+        ret_json = Utils.runCmdReturnJson(param_2nd_cmd)
+        self.assertEqual(type(ret_json["activated_protocol_features"]), list)
+        # get_activated_protocol_features with 3rd param
+        param_3rd_cmd = default_cmd + self.http_post_str + "'{\"limit\":1}'"
+        ret_json = Utils.runCmdReturnJson(param_3rd_cmd)
+        self.assertEqual(type(ret_json["activated_protocol_features"]), list)
+        # get_activated_protocol_features with 4th param
+        param_4th_cmd = default_cmd + self.http_post_str + "'{\"search_by_block_num\":true}'"
+        ret_json = Utils.runCmdReturnJson(param_4th_cmd)
+        self.assertEqual(type(ret_json["activated_protocol_features"]), list)
+        # get_activated_protocol_features with 5th param
+        param_5th_cmd = default_cmd + self.http_post_str + "'{\"reverse\":true}'"
+        ret_json = Utils.runCmdReturnJson(param_5th_cmd)
+        self.assertEqual(type(ret_json["activated_protocol_features"]), list)
         # get_activated_protocol_features with valid parameter
         valid_cmd = ("%s%s '{%s,%s,%s,%s,%s}'") % ( default_cmd,
                                                     self.http_post_str,

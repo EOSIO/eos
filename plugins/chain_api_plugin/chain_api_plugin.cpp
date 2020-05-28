@@ -85,7 +85,7 @@ void chain_api_plugin::plugin_startup() {
    _http_plugin.add_api({
       CHAIN_RO_CALL(get_info, 200, http_params_types::no_params_required)}, appbase::priority::medium_high);
    _http_plugin.add_api({
-      CHAIN_RO_CALL(get_activated_protocol_features, 200, http_params_types::params_required),
+      CHAIN_RO_CALL(get_activated_protocol_features, 200, http_params_types::possible_no_params),
       CHAIN_RO_CALL(get_block, 200, http_params_types::params_required),
       CHAIN_RO_CALL(get_block_info, 200, http_params_types::params_required),
       CHAIN_RO_CALL(get_block_header_state, 200, http_params_types::params_required),
