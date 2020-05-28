@@ -489,8 +489,7 @@ class Node(object):
         ret=Utils.waitForBool(lam, timeout)
         return ret
 
-    def waitForBlock(self, blockNum, timeout=None, blockType=BlockType.head, reportInterval=None):
-        lam = lambda: self.getBlockNum(blockType=blockType) > blockNum
+    def waitForBlock(self, blockNum, timeout=None, blockType=BlockType.head, reportInterval=None, errorContext=None):
         blockDesc = "head" if blockType == BlockType.head else "LIB"
         count = 0
 
@@ -506,8 +505,41 @@ class Node(object):
                     info = self.node.getInfo()
                     Utils.Print("Waiting on %s block num %d, get info = {\n%s\n}" % (blockDesc, blockNum, info))
 
-        reporter = WaitReporter(self, reportInterval) if reportInterval is not None else None
-        ret=Utils.waitForBool(lam, timeout, reporter=reporter)
+        class RequireBlockNum:
+            def __init__(self, node, blockNum):
+                self.node = node
+                self.blockNum = blockNum
+                self.lastBlockNum = None
+                self.passed = False
+                self.advanced = None
+
+            def __call__(self):
+                currentBlockNum = self.node.getBlockNum(blockType=blockType)
+                self.advanced = False
+                if self.lastBlockNum is None or self.lastBlockNum < currentBlockNum:
+                    self.advanced = True
+                elif self.lastBlockNum > currentBlockNum:
+                    Utils.Print("waitForBlock is waiting to reach block number: %d and the block number has rolled back from %d to %d." %
+                                (self.blockNum, self.lastBlockNum, currentBlockNum))
+                self.lastBlockNum = currentBlockNum
+                self.passed = self.lastBlockNum > self.blockNum
+                return self.passed
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc_value, exc_traceback):
+                if not self.passed:
+                    notAdvanceStr="(but has not change since last sleep)" if self.advanced else ""
+                    Utils.Print("waitForBlock never reached block number: %d.  It started at: %d and had progressed%s to: %d after %d seconds." %
+                                (blockNum, currentBlockNum, notAdvanceStr, self.lastBlockNum, time.time()-currentTime))
+
+        with RequireBlockNum(self, blockNum) as lam:
+
+            reporter = WaitReporter(self, reportInterval) if reportInterval is not None else None
+            ret=Utils.waitForBool(lam, timeout, reporter=reporter)
+
+        assert ret is not None or errorContext is None, Utils.errorExit("%s." % (errorContext))
         return ret
 
     def waitForIrreversibleBlock(self, blockNum, timeout=None, blockType=BlockType.head):
