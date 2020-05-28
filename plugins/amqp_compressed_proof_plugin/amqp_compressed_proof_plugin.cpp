@@ -276,8 +276,8 @@ void compressed_proof_generator::add_result_callback(action_filter_func&& filter
 struct amqp_compressed_proof_plugin_impl {
    bool delete_data = false;
 
-   std::map<std::string, compressed_proof_generator> proof_generators;
-   std::list<reliable_amqp_publisher>                publishers;
+   std::unique_ptr<compressed_proof_generator> proof_generator;
+   std::list<reliable_amqp_publisher>          publishers;
 };
 
 amqp_compressed_proof_plugin::amqp_compressed_proof_plugin():my(new amqp_compressed_proof_plugin_impl()){}
@@ -317,44 +317,43 @@ void amqp_compressed_proof_plugin::plugin_initialize(const variables_map& option
             boost::filesystem::remove(p.path(), ec);
       }
 
+      const boost::filesystem::path reversible_blocks_file = dir / (file_prefix + "-reversible.bin"s);
+      my->proof_generator = std::make_unique<compressed_proof_generator>(reversible_blocks_file);
+      controller.irreversible_block.connect([&generator=*my->proof_generator,&controller](const chain::block_state_ptr& bsp) {
+         generator.on_irreversible_block(bsp, controller);
+      });
+      controller.applied_transaction.connect([&generator=*my->proof_generator](std::tuple<const chain::transaction_trace_ptr&, const chain::packed_transaction_ptr&> t) {
+         generator.on_applied_transaction(std::get<0>(t));
+      });
+      controller.accepted_block.connect([&generator=*my->proof_generator](const chain::block_state_ptr& p) {
+         generator.on_accepted_block(p);
+      });
+
       if(options.count("compressed-proof")) {
          const std::vector<std::string>& descs = options.at("compressed-proof").as<std::vector<std::string>>();
+         std::set<std::string> names_used;
+
          for(const std::string& desc : descs) {
             std::vector<std::string> tokens;
             boost::split(tokens, desc, boost::is_any_of("="));
             EOS_ASSERT(tokens.size() >= 4, chain::plugin_config_exception, "Did not find 4 tokens in compressed-proof option \"${o}\"", ("o", desc));
 
-            std::string& name = tokens[0];
+            const std::string& name = tokens[0];
             EOS_ASSERT(name.size(), chain::plugin_config_exception, "Cannot have empty name for compressed-proof \"${o}\"", ("o", desc));
-            EOS_ASSERT(my->proof_generators.find(name) == my->proof_generators.end(),
+            EOS_ASSERT(names_used.emplace(name).second,
                        chain::plugin_config_exception, "Name \"${n}\" used for more than one compressed-proof", ("n", name));
             std::vector<std::string> filtered_receivers;
             boost::split(filtered_receivers, tokens[1], boost::is_any_of(","));
             EOS_ASSERT(filtered_receivers.size(), chain::plugin_config_exception, "Cannot have empty filter list for compressed-proof");
 
-            boost::filesystem::path amqp_unconfimed_file   = dir / (file_prefix + "-unconfirmed-"s + name + ".bin"s);
-            boost::filesystem::path reversible_blocks_file = dir / (file_prefix + "-reversible-"s + name + ".bin"s);
-
-            compressed_proof_generator& generator = my->proof_generators.emplace(std::piecewise_construct,
-                                                                                 std::forward_as_tuple(name),
-                                                                                 std::forward_as_tuple(reversible_blocks_file)).first->second;
+            const boost::filesystem::path amqp_unconfimed_file   = dir / (file_prefix + "-unconfirmed-"s + name + ".bin"s);
             reliable_amqp_publisher& publisher = my->publishers.emplace_back(tokens[2], tokens[3], amqp_unconfimed_file);
-
-            controller.irreversible_block.connect([&generator,&controller](const chain::block_state_ptr& bsp) {
-               generator.on_irreversible_block(bsp, controller);
-            });
-            controller.applied_transaction.connect([&generator](std::tuple<const chain::transaction_trace_ptr&, const chain::packed_transaction_ptr&> t) {
-               generator.on_applied_transaction(std::get<0>(t));
-            });
-            controller.accepted_block.connect([&generator](const chain::block_state_ptr& p) {
-               generator.on_accepted_block(p);
-            });
 
             std::set<chain::name> filter_on_names;
             for(const std::string& name_string : filtered_receivers)
                filter_on_names.emplace(name_string);
 
-            generator.add_result_callback(
+            my->proof_generator->add_result_callback(
                [filter_on_names](const chain::action& act) {
                   return filter_on_names.find(act.account) != filter_on_names.end();
                },
