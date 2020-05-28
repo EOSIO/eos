@@ -74,13 +74,14 @@ Example:
 
 ## Loggers
 
-The logging library built into EOSIO currently supports five loggers:
+The logging library built into EOSIO currently supports the following loggers:
 
 - `default` - the default logger, always enabled.
 - `net_plugin_impl` - detailed logging for the net plugin.
-- `bnet_plugin` - detailed logging for the bnet plugin.
+- `http_plugin` - detailed logging for the http plugin.
 - `producer_plugin` - detailed logging for the producer plugin.
 - `transaction_tracing` - detailed log that emits verdicts from relay nodes on the P2P network.
+- `trace_api` - detailed logging for the trace_api plugin.
 
 The configuration options are:
 
@@ -105,4 +106,4 @@ Example:
 ```
 
 [[info]]
-| `net_plugin_impl`, `bnet_plugin`, `producer_plugin`, `transaction_tracing` are not enabled unless explicitly enabled in the `logging.json`
+| The default logging level for all loggers if no `logging.json` is provided is `info`. Each logger can be configured independently in the `logging.json` file.

@@ -164,7 +164,8 @@ namespace eosio::chain_apis {
 
          // for each key, add this permission info's non-owning reference to the bimap for keys
          for (const auto& k: po.auth.keys) {
-            key_bimap.insert(key_bimap_t::value_type {{(chain::public_key_type)k.key, k.weight}, pi});
+            chain::public_key_type key = k.key;
+            key_bimap.insert(key_bimap_t::value_type {{std::move(key), k.weight}, pi});
          }
       }
 
