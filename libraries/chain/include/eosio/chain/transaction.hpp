@@ -49,12 +49,6 @@ namespace eosio { namespace chain {
     *  with a block_header::timestamp greater than expiration is
     *  deemed irreversible, then a user can safely trust the transaction
     *  will never be included.
-    *
-
-    *  Each region is an independent blockchain, it is included as routing
-    *  information for inter-blockchain communication. A contract in this
-    *  region might generate or authorize a transaction intended for a foreign
-    *  region.
     */
    struct transaction_header {
       time_point_sec         expiration;   ///< the time at which a transaction expires
