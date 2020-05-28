@@ -61,6 +61,10 @@ struct async_result_visitor : public fc::visitor<fc::variant> {
      auto params = parse_params<in_param, http_params_types::params_required>(body);\
      auto result = api_handle.call_name(std::move(params));
 
+#define INVOKE_R_R_II(api_handle, call_name, in_param) \
+     auto params = parse_params<in_param, http_params_types::possible_no_params>(body);\
+     auto result = api_handle.call_name(std::move(params));
+
 #define INVOKE_R_V(api_handle, call_name) \
      body = parse_params<std::string, http_params_types::no_params_required>(body); \
      auto result = api_handle.call_name();
@@ -114,7 +118,7 @@ void producer_api_plugin::plugin_startup() {
        CALL_WITH_400(producer, producer, schedule_protocol_feature_activations,
             INVOKE_V_R(producer, schedule_protocol_feature_activations, producer_plugin::scheduled_protocol_feature_activations), 201),
        CALL_WITH_400(producer, producer, get_supported_protocol_features,
-            INVOKE_R_R(producer, get_supported_protocol_features,
+            INVOKE_R_R_II(producer, get_supported_protocol_features,
                                  producer_plugin::get_supported_protocol_features_params), 201),
        CALL_WITH_400(producer, producer, get_account_ram_corrections,
             INVOKE_R_R(producer, get_account_ram_corrections, producer_plugin::get_account_ram_corrections_params), 201),

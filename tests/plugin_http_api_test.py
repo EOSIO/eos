@@ -826,13 +826,23 @@ class PluginHttpTest(unittest.TestCase):
         # get_supported_protocol_features with empty parameter
         default_cmd = cmd_base + "get_supported_protocol_features"
         ret_json = Utils.runCmdReturnJson(default_cmd)
-        self.assertEqual(ret_json["code"], 400)
-        self.assertEqual(ret_json["error"]["code"], 3200006)
+        self.assertIn("feature_digest", ret_json[0])
+        self.assertIn("subjective_restrictions", ret_json[0])
         # get_supported_protocol_features with invalid parameter
         invalid_cmd = default_cmd + self.http_post_str + self.http_post_invalid_param
         ret_json = Utils.runCmdReturnJson(invalid_cmd)
         self.assertEqual(ret_json["code"], 400)
         self.assertEqual(ret_json["error"]["code"], 3200006)
+        # get_supported_protocol_features with 1st parameter
+        params_1st_cmd = default_cmd + self.http_post_str + ("'{\"exclude_disabled\":true}'")
+        ret_json = Utils.runCmdReturnJson(params_1st_cmd)
+        self.assertIn("feature_digest", ret_json[0])
+        self.assertIn("subjective_restrictions", ret_json[0])
+        # get_supported_protocol_features with 2nd parameter
+        params_2nd_cmd = default_cmd + self.http_post_str + ("'{\"exclude_unactivatable\":true}'")
+        ret_json = Utils.runCmdReturnJson(params_2nd_cmd)
+        self.assertIn("feature_digest", ret_json[0])
+        self.assertIn("subjective_restrictions", ret_json[0])
         # get_supported_protocol_features with valid parameter
         valid_cmd = default_cmd + self.http_post_str + ("'{\"exclude_disabled\":true, \"exclude_unactivatable\":true}'")
         ret_json = Utils.runCmdReturnJson(valid_cmd)

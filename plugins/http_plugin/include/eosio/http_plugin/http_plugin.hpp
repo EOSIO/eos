@@ -161,7 +161,8 @@ namespace eosio {
 
    enum class http_params_types {
       no_params_required = 0,
-      params_required = 1
+      params_required = 1,
+      possible_no_params = 2
    };
 
    template<typename T, http_params_types params_type>
@@ -174,15 +175,16 @@ namespace eosio {
 
       try {
          try {
-            if constexpr (params_type == http_params_types::no_params_required) {
+            if constexpr (params_type == http_params_types::no_params_required || params_type == http_params_types::possible_no_params) {
                if (body.empty()) {
                   if constexpr (std::is_same_v<T, std::string>) {
                      return std::string("{}");
-                  } else {
-                     return {};
                   }
+                  return {};
                }
-               EOS_THROW(chain::invalid_http_request, "no parameter should be given");
+               if constexpr (params_type == http_params_types::no_params_required) {
+                  EOS_THROW(chain::invalid_http_request, "no parameter should be given");
+               }
             }
             return fc::json::from_string(body).as<T>();
          } catch (const chain::chain_exception& e) { // EOS_RETHROW_EXCEPTIONS does not re-type these so, re-code it
