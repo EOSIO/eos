@@ -39,4 +39,4 @@ If `nodeos` fails to receive blocks from the network, then try the above using `
 | If you run a database filler after this point, use the `--fill-trim` option. Only use `--fpg-create` and `--fill-skip-to` the first time.
 
 [[info]]
-| On large chains, this procedure creates a delta record that is too large for javascript processes to handle. 64-bit C++ processes can handle the large record. For database fillers, `fill-pg` and `fill-lmdb` break up the large record into smaller records when filling databases.
+| On large chains, this procedure creates a delta record that is too large for javascript processes to handle. 64-bit C++ processes can handle the large record. If using a database filler, `fill-pg` and `fill-lmdb` break up the large record into smaller records when filling databases.
