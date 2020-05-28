@@ -155,6 +155,7 @@ struct reliable_amqp_publisher_impl final : reliable_amqp_publisher_callbacks {
          elog("Channel error for AMQP connection ${s} publishing to \"${e}\": ${m}; restarting connection", ("s", (std::string)*amqp_address)("e", exchange)("m",s));
          retry_connection();
       });
+      pump_queue();
    }
 
    void amqp_error(const char* message) override {
