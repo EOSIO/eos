@@ -83,7 +83,12 @@ class Timeout:
 
         timeout = self.leeway if self.leeway is not None else 10
         if (endBlockNum > startBlockNum):
-            timeout += (endBlockNum - startBlockNum + 1) / 2
+            # calculation is performing worst case (irreversible block progression) which at worst will waste 5 seconds
+            blocksPerWindow = 12
+            blockWindowsToWait = (endBlockNum - startBlockNum + blocksPerWindow - 1) / blocksPerWindow
+            secondsPerWindow = blocksPerWindow / 2
+            timeout += blockWindowsToWait * secondsPerWindow
+
         self.value = timeout
         if self.sleep_interval is None:
             self.sleep_interval = max(timeout / 10, 1)
