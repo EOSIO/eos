@@ -137,7 +137,7 @@ try:
     if secwait <= 0:
        errorExit("No producer of node 0")
 
-    cmd = "curl --data-binary '{\"protocol_features_to_activate\":[\"%s\"]}' %s/v1/producer/schedule_protocol_feature_activations" % (digest, node.endpointHttp)
+    cmd = "curl %s/v1/producer/schedule_protocol_feature_activations -X POST --data-binary '{\"protocol_features_to_activate\":[\"%s\"]}'" % (node.endpointHttp, digest)
 
     Print("try to preactivate feature on node 1, cmd: %s" % (cmd))
     result = Utils.runCmdReturnJson(cmd)
