@@ -803,8 +803,10 @@ class Node(object):
             return (False, msg)
 
     # returns tuple with indication if transaction was successfully sent and either the transaction or else the exception output
-    def pushTransaction(self, trans, opts="--skip-sign", silentErrors=False):
+    def pushTransaction(self, trans, opts="--skip-sign", silentErrors=False, permissions=None):
         assert(isinstance(trans, dict))
+        if isinstance(permissions, str):
+            permissions=[permissions]
         cmd="%s %s push transaction -j" % (Utils.EosClientPath, self.eosClientArgs())
         cmdArr=cmd.split()
         transStr = json.dumps(trans, separators=(',', ':'))
@@ -812,6 +814,11 @@ class Node(object):
         cmdArr.append(transStr)
         if opts is not None:
             cmdArr += opts.split()
+        if permissions is not None:
+            for permission in permissions:
+                cmdArr.append("-p")
+                cmdArr.append(permission)
+
         s=" ".join(cmdArr)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmdArr))
         start=time.perf_counter()
