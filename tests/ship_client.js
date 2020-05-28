@@ -114,6 +114,7 @@ class Connection {
             this.blockNumChangeTime = currentTime;
         }
         response["time_since_last_block"] = (currentTime - this.lastResponseTime) / 1000;
+        response["current_time"] = currentTime.toISOString()
         this.lastResponseTime = currentTime;
         console.log(JSON.stringify(response, null, 4));
         console.log('}');

@@ -64,8 +64,10 @@ try:
 
     producerNodeIndex = 0
     producerNode = cluster.getNode(producerNodeIndex)
-    fullValidationNode = cluster.getNode(1)
-    lightValidationNode = cluster.getNode(2)
+    fullValidationNodeIndex = 1
+    fullValidationNode = cluster.getNode(fullValidationNodeIndex)
+    lightValidationNodeIndex = 2
+    lightValidationNode = cluster.getNode(lightValidationNodeIndex)
 
     # Create a transaction to create an account
     Utils.Print("create a new account payloadless from the producer node")
@@ -91,25 +93,21 @@ try:
         "context_free_data": ["a1b2c3", "1a2b3c"],
     } 
 
-    cmd = "push transaction '{}' -p payloadless".format(json.dumps(trx))
-    trans = producerNode.processCleosCmd(cmd, cmd, silentErrors=False)
-    assert trans, "Failed to push transaction with context free data"
+    (success, trans) = producerNode.pushTransaction(trx, permissions="payloadless", opts=None)
+    assert success and trans, "Failed to push transaction with context free data"
     
     cfTrxBlockNum = int(trans["processed"]["block_num"])
     cfTrxId = trans["transaction_id"]
 
-    # Wait until the block where create account is executed to become irreversible 
-    Utils.waitForBool(lambda: producerNode.getIrreversibleBlockNum() >= cfTrxBlockNum, timeout=30, sleepTime=0.1)
-    
+    # Wait until the block where create account is executed to become irreversible
+    producerNode.waitForBlock(cfTrxBlockNum, blockType=BlockType.lib, timeout=Timeout.calculate, errorContext="producerNode LIB did not advance")
+
     Utils.Print("verify the account payloadless from producer node")
-    cmd = "get account -j payloadless"
-    trans = producerNode.processCleosCmd(cmd, cmd, silentErrors=False)
+    trans = producerNode.getEosAccount("payloadless")
     assert trans["account_name"], "Failed to get the account payloadless"
 
     Utils.Print("verify the context free transaction from producer node")
-    cmd = "get transaction " + cfTrxId
-
-    trans_from_full = producerNode.processCleosCmd(cmd, cmd, silentErrors=False)
+    trans_from_full = producerNode.getTransaction(cfTrxId)
     assert trans_from_full, "Failed to get the transaction with context free data from the producer node"
 
     producerNode.kill(signal.SIGTERM)
@@ -128,18 +126,18 @@ try:
     #
     #  restart the producer node with pruned cfd
     #
-    isRelaunchSuccess = producerNode.relaunch(1)
+    isRelaunchSuccess = producerNode.relaunch(producerNodeIndex)
     assert isRelaunchSuccess, "Fail to relaunch full producer node"
 
     #
     #  check if the cfd has been pruned from producer node
     #
-    trans = producerNode.processCleosCmd(cmd, cmd, silentErrors=False)
+    trans = producerNode.getTransaction(cfTrxId)
     assert trans, "Failed to get the transaction with context free data from the producer node"
     # check whether the transaction has been pruned based on the tag of prunable_data, if the tag is 1, then it's a prunable_data_t::none
     assert trans["trx"]["receipt"]["trx"][1]["prunable_data"]["prunable_data"][0] == 1, "the the transaction with context free data has not been pruned"
 
-    Utils.waitForBool(lambda: producerNode.getIrreversibleBlockNum() >= cfTrxBlockNum, timeout=30, sleepTime=0.1)
+    producerNode.waitForBlock(cfTrxBlockNum, blockType=BlockType.lib, timeout=Timeout.calculate, errorContext="producerNode LIB did not advance")
     assert producerNode.waitForHeadToAdvance(), "the producer node stops producing"
 
     # kill the producer with un-pruned cfd
@@ -148,19 +146,19 @@ try:
     #
     #  restart both full and light validation node
     #
-    isRelaunchSuccess = fullValidationNode.relaunch(1)
+    isRelaunchSuccess = fullValidationNode.relaunch(fullValidationNodeIndex)
     assert isRelaunchSuccess, "Fail to relaunch full verification node"
 
-    isRelaunchSuccess = lightValidationNode.relaunch(1)
+    isRelaunchSuccess = lightValidationNode.relaunch(lightValidationNodeIndex)
     assert isRelaunchSuccess, "Fail to relaunch light verification node"
 
     #
     # Check lightValidationNode keeping sync while the full fullValidationNode stop syncing after the cfd block
     #
-    Utils.waitForBool(lambda: lightValidationNode.getIrreversibleBlockNum() >= cfTrxBlockNum, timeout=30, sleepTime=0.1)
+    lightValidationNode.waitForBlock(cfTrxBlockNum, blockType=BlockType.lib, timeout=Timeout.calculate, errorContext="ligtValidationNode did not advance")
     assert lightValidationNode.waitForHeadToAdvance(), "the light validation node stops syncing"
 
-    Utils.waitForBool(lambda: fullValidationNode.getIrreversibleBlockNum() >= cfTrxBlockNum-1, timeout=30, sleepTime=0.1)
+    fullValidationNode.waitForBlock(cfTrxBlockNum-1, blockType=BlockType.lib, timeout=Timeout.calculate, errorContext="fullValidationNode LIB did not advance")
     assert not fullValidationNode.waitForHeadToAdvance(), "the full validation node is still syncing"
     
     testSuccessful = True
