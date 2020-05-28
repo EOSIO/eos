@@ -274,8 +274,6 @@ void compressed_proof_generator::add_result_callback(action_filter_func&& filter
 }
 
 struct amqp_compressed_proof_plugin_impl {
-   bool delete_data = false;
-
    std::unique_ptr<compressed_proof_generator> proof_generator;
    std::list<reliable_amqp_publisher>          publishers;
 };
@@ -298,7 +296,7 @@ void amqp_compressed_proof_plugin::set_program_options(options_description& cli,
          ;
 
    cli.add_options()
-         ("compressed-proof-delete", bpo::bool_switch(&my->delete_data),
+         ("compressed-proof-delete", bpo::bool_switch(),
           "Delete all compressed proof data files for unconfirmed messages and blocks");
 }
 
@@ -312,10 +310,10 @@ void amqp_compressed_proof_plugin::plugin_initialize(const variables_map& option
 
       chain::controller& controller = app().get_plugin<chain_plugin>().chain();
 
-      for(const auto& p : boost::filesystem::directory_iterator(dir)) {
-         if(boost::starts_with(p.path().filename().generic_string(), file_prefix))
-            boost::filesystem::remove(p.path(), ec);
-      }
+      if(options.count("compressed-proof-delete") && options.at("compressed-proof-delete").as<bool>())
+         for(const auto& p : boost::filesystem::directory_iterator(dir))
+            if(boost::starts_with(p.path().filename().generic_string(), file_prefix))
+               boost::filesystem::remove(p.path(), ec);
 
       const boost::filesystem::path reversible_blocks_file = dir / (file_prefix + "-reversible.bin"s);
       my->proof_generator = std::make_unique<compressed_proof_generator>(reversible_blocks_file);
