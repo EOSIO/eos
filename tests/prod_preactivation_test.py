@@ -72,12 +72,12 @@ try:
     cluster.validateAccounts(None)
 
     node = cluster.getNode(0)
-    cmd = "curl %s/v1/producer/get_supported_protocol_features" % (node.endpointHttp)
+    cmd = "curl %s/v1/producer/get_supported_protocol_features -X POST -d '{\"exclude_disabled\":true, \"exclude_unactivatable\":true}'" % (node.endpointHttp)
     Print("try to get supported feature list from Node 0 with cmd: %s" % (cmd))
     feature0=Utils.runCmdReturnJson(cmd)
 
     node = cluster.getNode(1)
-    cmd = "curl %s/v1/producer/get_supported_protocol_features" % (node.endpointHttp)
+    cmd = "curl %s/v1/producer/get_supported_protocol_features -X POST -d '{\"exclude_disabled\":true, \"exclude_unactivatable\":true}'" % (node.endpointHttp)
     Print("try to get supported feature list from Node 1 with cmd: %s" % (cmd))
     feature1=Utils.runCmdReturnJson(cmd)
 
