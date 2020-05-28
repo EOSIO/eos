@@ -15,6 +15,7 @@ from testUtils import EnumType
 from testUtils import addEnum
 from testUtils import unhandledEnumType
 from testUtils import ReturnType
+from testUtils import Timeout
 
 class BlockType(EnumType):
     pass
@@ -483,13 +484,21 @@ class Node(object):
         ret=Utils.waitForBool(lam, timeout)
         return ret
 
-    def waitForNextBlock(self, timeout=None, blockType=BlockType.head):
+    def waitForNextBlock(self, timeout=Timeout.default, blockType=BlockType.head):
         num=self.getBlockNum(blockType=blockType)
+        if isinstance(timeout, Timeout):
+            timeout = timeout.seconds(num, num+1)
         lam = lambda: self.getHeadBlockNum() > num
         ret=Utils.waitForBool(lam, timeout)
         return ret
 
     def waitForBlock(self, blockNum, timeout=None, blockType=BlockType.head, reportInterval=None, errorContext=None):
+#    def waitForBlock(self, blockNum, timeout=Timeout.default, blockType=BlockType.head, reportInterval=None, errorContext=None):
+        currentBlockNum=self.getBlockNum(blockType=blockType)
+        currentTime=time.time()
+        if isinstance(timeout, Timeout):
+            timeout.convert(currentBlockNum, blockNum)
+
         blockDesc = "head" if blockType == BlockType.head else "LIB"
         count = 0
 
@@ -542,7 +551,7 @@ class Node(object):
         assert ret is not None or errorContext is None, Utils.errorExit("%s." % (errorContext))
         return ret
 
-    def waitForIrreversibleBlock(self, blockNum, timeout=None, blockType=BlockType.head):
+    def waitForIrreversibleBlock(self, blockNum, timeout=Timeout.default, blockType=BlockType.head):
         return self.waitForBlock(blockNum, timeout=timeout, blockType=blockType)
 
     # Trasfer funds. Returns "transfer" json return object

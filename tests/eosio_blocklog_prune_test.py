@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 from testUtils import Account
+from testUtils import Timeout
 from testUtils import Utils
 from Cluster import Cluster
 from WalletMgr import WalletMgr

@@ -31,6 +31,7 @@ class EnumType:
     def __str__(self):
         return self.type
 
+###########################################################################################
 
 class ReturnType(EnumType):
     pass
@@ -50,6 +51,60 @@ addEnum(BlockLogAction, "return_blocks")
 addEnum(BlockLogAction, "prune_transactions")
 
 ###########################################################################################
+
+class Timeout:
+
+    def __init__(self, value, sleep_interval=None, leeway=None):
+        self.toCalculate = True if value == -1 else False
+        if value is not None:
+            assert isinstance(value, (int))
+            assert value >= -1
+        if sleep_interval is not None:
+            assert isinstance(sleep_interval, (int))
+            assert sleep_interval > 0
+        self.value = value
+        self.sleep_interval = sleep_interval
+        self.leeway = leeway
+
+    def __str__(self):
+        append = "[calculated based on block production]" if self.toCalculate else ""
+        desc = None
+        if self.value is None:
+            desc = "defaulted"
+        elif self.value >= 0:
+            desc = "%d sec" % (self.value)
+        else:
+            desc = ""
+        return "Timeout %s%s" % (desc, append)
+
+    def convert(self, startBlockNum, endBlockNum):
+        if self.value is None or self.value != -1:
+            return
+
+        timeout = self.leeway if self.leeway is not None else 10
+        if (endBlockNum > startBlockNum):
+            timeout += (endBlockNum - startBlockNum + 1) / 2
+        self.value = timeout
+        if self.sleep_interval is None:
+            self.sleep_interval = max(timeout / 10, 1)
+
+    def sleepTime(self, default=None):
+        time = self.sleep_interval if self.sleep_interval is not None else default
+        return time if time is not None else Timeout.default_interval_seconds
+
+    def asSeconds(self):
+        assert self.value != -1, "Timeout.calculate was used, but calculate method never called."
+        retVal = self.value if self.value is not None else Timeout.default_seconds
+        return retVal
+
+    default_seconds = 60
+    default_interval_seconds = 3
+
+setattr(Timeout, "default", Timeout(None))
+setattr(Timeout, "calculate", Timeout(-1))
+
+###########################################################################################
+
 class Utils:
     Debug=False
     FNull = open(os.devnull, 'w')
@@ -217,18 +272,25 @@ class Utils:
     @staticmethod
     def waitForObj(lam, timeout=None, sleepTime=3, reporter=None):
         if timeout is None:
-            timeout=60
+            timeout=Timeout.default
+        if isinstance(timeout, Timeout):
+            sleepTime = timeout.sleepTime(sleepTime)
+            timeout = timeout.asSeconds()
 
-        endTime=time.time()+timeout
+        currentTime=time.time()
+        endTime=currentTime+timeout
         needsNewLine=False
         try:
-            while endTime > time.time():
+            while endTime > currentTime:
                 ret=lam()
                 if ret is not None:
                     return ret
+                remaining = endTime - currentTime
+                if sleepTime > remaining:
+                    sleepTime = remaining
                 if Utils.Debug:
                     Utils.Print("cmd: sleep %d seconds, remaining time: %d seconds" %
-                                (sleepTime, endTime - time.time()))
+                                (sleepTime, remaining))
                 else:
                     stdout.write('.')
                     stdout.flush()
@@ -236,6 +298,7 @@ class Utils:
                 if reporter is not None:
                     reporter()
                 time.sleep(sleepTime)
+                currentTime=time.time()
         finally:
             if needsNewLine:
                 Utils.Print()
@@ -244,6 +307,8 @@ class Utils:
 
     @staticmethod
     def waitForBool(lam, timeout=None, sleepTime=3, reporter=None):
+        if isinstance(timeout, Timeout):
+            sleepTime = timeout.sleepTime(sleepTime)
         myLam = lambda: True if lam() else None
         ret=Utils.waitForObj(myLam, timeout, sleepTime, reporter=reporter)
         return False if ret is None else ret
