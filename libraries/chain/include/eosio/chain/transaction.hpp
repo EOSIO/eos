@@ -64,7 +64,7 @@ namespace eosio { namespace chain {
    };
 
    /**
-    *  A transaction consits of a set of messages which must all be applied or
+    *  A transaction consists of a set of messages which must all be applied or
     *  all are rejected. These messages have access to data within the given
     *  read and write scopes.
     */
