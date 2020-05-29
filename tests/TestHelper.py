@@ -159,22 +159,11 @@ class TestHelper(object):
             Utils.Print(Utils.FileDivider)
             psOut=Cluster.pgrepEosServers(timeout=60)
             Utils.Print("pgrep output:\n%s" % (psOut))
-            cluster.dumpErrorDetails()
-            if walletMgr:
-                walletMgr.dumpErrorDetails()
-            cluster.printBlockLogIfNeeded()
             Utils.Print("== Errors see above ==")
-            if len(Utils.CheckOutputDeque)>0:
-                Utils.Print("== cout/cerr pairs from last %d calls to Utils. ==" % len(Utils.CheckOutputDeque))
-                for out, err, cmd in reversed(Utils.CheckOutputDeque):
-                    Utils.Print("cmd={%s}" % (" ".join(cmd)))
-                    Utils.Print("cout={%s}" % (out))
-                    Utils.Print("cerr={%s}\n" % (err))
-                Utils.Print("== cmd/cout/cerr pairs done. ==")
 
         if killEosInstances:
             Utils.Print("Shut down the cluster.")
-            cluster.killall(allInstances=cleanRun)
+            cluster.killall(allInstances=cleanRun, kill=testSuccessful)
             if testSuccessful and not keepLogs:
                 Utils.Print("Cleanup cluster data.")
                 cluster.cleanup()
