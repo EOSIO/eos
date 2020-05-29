@@ -7,6 +7,7 @@
 #include <boost/filesystem.hpp>
 #include <variant>
 #include <algorithm>
+#include <regex>
 
 namespace eosio { namespace chain {
 
@@ -63,7 +64,7 @@ namespace eosio { namespace chain {
             chain_context.emplace<genesis_state>();
             fc::raw::unpack(ds, std::get<genesis_state>(chain_context));
          } else if (block_log::contains_chain_id(version, first_block_num)) {
-            chain_context = chain_id_type{}; 
+            chain_context = chain_id_type{};
             ds >> std::get<chain_id_type>(chain_context);
          } else {
             EOS_THROW(block_log_exception,
@@ -186,51 +187,6 @@ namespace eosio { namespace chain {
                         [&ds](log_entry_v4& v) { unpack(ds, v); }},
              entry);
       }
-   } // namespace
-
-  namespace detail {
-
-     /**
-      * The implementation detail for the read/write access to the block log/index 
-      *
-      * @note All the non-static member functions require to fullfill the class invariant after execution unless exceptions are thrown.
-      * @invariant block_file.is_open() && index_file.is_open()
-      **/
-      class block_log_impl {
-         public:
-            signed_block_ptr   head;
-            fc::cfile          block_file;
-            fc::cfile          index_file;
-            bool               genesis_written_to_block_log = false;
-            block_log_preamble preamble;
-
-            block_log_impl(const fc::path& data_dir);
-
-            static void ensure_file_exists(fc::cfile& f) {
-               if (fc::exists(f.get_file_path())) return; 
-               f.open(fc::cfile::create_or_update_rw_mode);
-               f.close();
-            }
-
-            uint64_t get_block_pos(uint32_t block_num);
-
-            void reset(uint32_t first_block_num, std::variant<genesis_state, chain_id_type>&& chain_context);
-
-            void flush();
-
-            uint64_t append(const signed_block_ptr& b, packed_transaction::cf_compression_type segment_compression);
-
-            uint64_t write_log_entry(const signed_block& b,
-                                     packed_transaction::cf_compression_type segment_compression);
-
-
-            void                          read_block_header(block_header& bh, uint64_t file_pos);
-            std::unique_ptr<signed_block> read_block(uint64_t pos);
-            void                          read_head();            
-      };
-   } // namespace detail
-
-   namespace {
 
    void create_mapped_file(boost::iostreams::mapped_file_sink& sink, const std::string& path, uint64_t size) {
       using namespace boost::iostreams;
@@ -254,6 +210,7 @@ namespace eosio { namespace chain {
       }
 
       void close() { index.close(); }
+
     private:
       std::ptrdiff_t                     current_offset = 0;
       boost::iostreams::mapped_file_sink index;
@@ -263,24 +220,68 @@ namespace eosio { namespace chain {
       std::exception_ptr inner;
    };
 
+   template <typename Stream>
+   std::unique_ptr<signed_block> read_block(Stream&& ds, uint32_t version, uint32_t expect_block_num = 0) {
+      std::unique_ptr<signed_block> block;
+      if (version >= pruned_transaction_version) {
+         block = std::make_unique<signed_block>();
+         unpack(ds, *block);
+      } else {
+         signed_block_v0 block_v0;
+         fc::raw::unpack(ds, block_v0);
+         block = std::make_unique<signed_block>(std::move(block_v0), true);
+      }
+
+      if (expect_block_num != 0) {
+         EOS_ASSERT(!!block && block->block_num() == expect_block_num, block_log_exception,
+                     "Wrong block was read from block log.");
+      }
+
+      return block;
+   }
+
+   template <typename Stream>
+   block_id_type read_block_id(Stream&& ds, uint32_t version, uint32_t expect_block_num) {
+      if (version >= pruned_transaction_version) {
+         uint32_t size;
+         uint8_t  compression;
+         fc::raw::unpack(ds, size);
+         fc::raw::unpack(ds, compression);
+         EOS_ASSERT(compression == static_cast<uint8_t>(packed_transaction::cf_compression_type::none),
+                     block_log_exception, "Only \"none\" compression type is supported.");
+      }
+      block_header bh;
+      fc::raw::unpack(ds, bh);
+
+      EOS_ASSERT(bh.block_num() == expect_block_num, block_log_exception,
+                  "Wrong block header was read from block log.",
+                  ("returned", bh.block_num())("expected", expect_block_num));
+
+      return bh.calculate_id();
+   }
+
    /// Provide the read only view of the blocks.log file
    class block_log_data {
       boost::iostreams::mapped_file_source file;
       block_log_preamble                   preamble;
       uint64_t                             first_block_pos = block_log::npos;
-    public:
+   public:
       block_log_data() = default;
       block_log_data(const fc::path& path) { open(path); }
 
       const block_log_preamble& get_preamble() const { return preamble; }
 
       fc::datastream<const char*> open(const fc::path& path) {
+         if (file.is_open())
+            file.close();
          file.open(path.generic_string());
          fc::datastream<const char*> ds(file.data(), file.size());
          preamble.read_from(ds);
          first_block_pos = ds.tellp();
          return ds;
       }
+      
+      bool is_open() const { return file.is_open(); }
 
       const char*   data() const { return file.data(); }
       uint64_t      size() const { return file.size(); }
@@ -317,8 +318,12 @@ namespace eosio { namespace chain {
          return last_block_num() - first_block_num() + 1;
       }
 
+      fc::datastream<const char*> datastream_at(uint64_t pos) {
+         return fc::datastream<const char*>(data() + pos, file.size() - pos);
+      }
+
       /**
-       *  Validate a block log entry WITHOUT deserializing the entire block data. 
+       *  Validate a block log entry WITHOUT deserializing the entire block data.
        **/
       void light_validate_block_entry_at(uint64_t pos, uint32_t expected_block_num) const {
          const uint32_t actual_block_num = block_num_at(pos);
@@ -389,10 +394,14 @@ namespace eosio { namespace chain {
       block_log_index(const fc::path& path) { open(path); }
 
       void open(const fc::path& path) { 
+         if (file.is_open())
+            file.close();
          file.open(path.generic_string());
          EOS_ASSERT(file.size() % sizeof(uint64_t) == 0, block_log_exception, "The size of ${file} is not the multiple of sizeof(uint64_t)",
             ("file", path.generic_string()));
       }
+
+      bool is_open() const { return file.is_open(); }
 
       using iterator = const uint64_t*;
       iterator begin() const { return reinterpret_cast<iterator>(file.data()); }
@@ -469,20 +478,219 @@ namespace eosio { namespace chain {
                                                                                      uint64_t first_block_position) {
       return reverse_block_position_iterator<BlockLogData>(t, first_block_position);
    }
+
+   template <typename Lambda>
+   void for_each_file_in_dir_matches(const fc::path& dir, const char* pattern, Lambda&& lambda) {
+      const std::regex my_filter(pattern);
+      std::smatch      what;
+      boost::filesystem::directory_iterator end_itr; // Default ctor yields past-the-end
+      for (boost::filesystem::directory_iterator p(dir); p != end_itr; ++p) {
+         // Skip if not a file
+         if (!boost::filesystem::is_regular_file(p->status()))
+            continue;
+         // skip if it's not match blocks-*-*.log
+         if (!std::regex_match(p->path().filename().string(), what, my_filter))
+            continue;
+         lambda(p->path());
+      }
+   } 
    } // namespace
 
-   block_log::block_log(const fc::path& data_dir)
-       : my(new detail::block_log_impl(data_dir)) {
-   }
+   struct block_log_catalog {
+      using block_num_t = uint32_t;
 
-   block_log::~block_log(){}
+      struct mapped_type {
+         block_num_t             last_block_num;
+         boost::filesystem::path filename_base;
+      };
+      using collection_t              = boost::container::flat_map<block_num_t, mapped_type>;
+      using size_type                 = collection_t::size_type;
+      static constexpr size_type npos = std::numeric_limits<size_type>::max();
 
-   detail::block_log_impl::block_log_impl(const fc::path& data_dir) {
+      boost::filesystem::path    archive_dir;
+      size_type                  max_retained_files = 10;
+      collection_t               collection;
+      size_type                  active_index = npos;
+      block_log_data             log_data;
+      block_log_index            log_index;
+      chain_id_type              chain_id;
+
+      bool empty() const { return collection.empty();  }
+
+      void open(fc::path block_dir) {
+         for_each_file_in_dir_matches(block_dir, R"(blocks-\d+-\d+\.log)", [this](boost::filesystem::path path) {
+            auto log_path               = path;
+            auto index_path             = path.replace_extension("index");
+            auto path_without_extension = log_path.stem().string();
+
+            block_log_data log(log_path);
+
+            if (chain_id.empty()) {
+               chain_id = log.chain_id();
+            } else {
+               EOS_ASSERT(chain_id == log.chain_id(), block_log_exception, "block log file ${path} has a different chain id",
+                           ("path", log_path.generic_string()));
+            }
+
+            // check if index file matches the log file
+            if (!index_matches_data(index_path, log))
+               block_log::construct_index(log_path, index_path);
+
+            auto [itr, _]      = collection.emplace(log.first_block_num(),
+                                                    mapped_type{ log.last_block_num(), path_without_extension });
+            this->active_index = collection.index_of(itr);
+         });
+      }  
+
+      bool index_matches_data(const boost::filesystem::path& index_path, const block_log_data& log) const {
+         if (boost::filesystem::exists(index_path) &&
+             boost::filesystem::file_size(index_path) / sizeof(uint64_t) != log.num_blocks()) {
+            // make sure the last 8 bytes of index and log matches
+
+            fc::cfile index_file;
+            index_file.set_file_path(index_path);
+            index_file.open("r");
+            index_file.seek_end(-sizeof(uint64_t));
+            uint64_t pos;
+            index_file.read(reinterpret_cast<char*>(&pos), sizeof(pos));
+            return pos == log.last_block_position();
+         }
+         return false;
+      }
+
+      bool set_active_item(uint32_t block_num) {
+         try {
+            if (active_index != npos) {
+               auto active_item = collection.nth(active_index);
+               if (active_item->first <= block_num && block_num <= active_item->second.last_block_num) {
+                  if (!log_index.is_open()) {
+                     log_index.open(active_item->second.filename_base.replace_extension("index"));
+                  }
+                  return true;
+               }
+            }
+            if (collection.empty() || block_num < collection.begin()->first )
+               return false;
+
+            auto it = --collection.upper_bound(block_num);
+
+            if (block_num <= it->second.last_block_num ) {
+               auto name = it->second.filename_base;
+               log_data.open(name.replace_extension("log"));
+               log_index.open(name.replace_extension("index"));
+               this->active_index = collection.index_of(it);
+               return true;
+            }
+            return false;
+         } catch (...) {
+            this->active_index = npos;
+            return false;
+         }
+      }
+
+      std::pair<fc::datastream<const char*>, uint32_t> datastream_for_block(uint32_t block_num) {
+         auto pos = log_index.nth_block_position(block_num - log_data.first_block_num());
+         return std::make_pair(log_data.datastream_at(pos), log_data.get_preamble().version);
+      }
+
+      void add(uint32_t start_block_num, uint32_t end_block_num, fc::path filename_base) {
+         if (this->collection.size() >= max_retained_files) {
+            auto items_to_erase = max_retained_files - this->collection.size() + 1;
+            for (auto it = this->collection.begin(); it < this->collection.begin() + items_to_erase; ++it) {
+               auto name = it->second.filename_base;
+               if (archive_dir.empty()) {
+                  // delete the old files when no backup dir is specified
+                  boost::filesystem::remove(name.replace_extension("log"));
+                  boost::filesystem::remove(name.replace_extension("index"));
+               } else {
+                  // move the the backup dir
+                  auto new_name = archive_dir / boost::filesystem::path(name).filename();
+                  boost::filesystem::rename(name.replace_extension("log"), new_name.replace_extension("log"));
+                  boost::filesystem::rename(name.replace_extension("index"), new_name.replace_extension("index"));
+               }
+            }
+            this->collection.erase(this->collection.begin(), this->collection.begin() + items_to_erase);
+            this->active_index = this->active_index == npos ? npos : this->active_index - items_to_erase;
+         }
+         this->collection.emplace(start_block_num, mapped_type{end_block_num, filename_base});
+      }
+   };
+
+   namespace detail {
+
+      /**
+       * The implementation detail for the read/write access to the block log/index
+       *
+       * @note All the non-static member functions require to fullfill the class invariant after execution unless
+       *exceptions are thrown.
+       * @invariant block_file.is_open() && index_file.is_open()
+       **/
+      class block_log_impl {
+       public:
+         signed_block_ptr          head;
+         block_log_catalog         catalog;
+         fc::datastream<fc::cfile> block_file;
+         fc::datastream<fc::cfile> index_file;
+         bool                      genesis_written_to_block_log = false;
+         block_log_preamble        preamble;
+         size_t                    split_factor = std::numeric_limits<size_t>::max();
+
+         block_log_impl(const fc::path& data_dir, fc::path archive_dir, uint64_t split_factor, uint16_t max_retained_files);
+
+         static void ensure_file_exists(fc::cfile& f) {
+            if (fc::exists(f.get_file_path()))
+               return;
+            f.open(fc::cfile::create_or_update_rw_mode);
+            f.close();
+         }
+
+         uint64_t get_block_pos(uint32_t block_num);
+
+         void reset(uint32_t first_block_num, std::variant<genesis_state, chain_id_type>&& chain_context);
+
+         void flush();
+
+         uint64_t append(const signed_block_ptr& b, packed_transaction::cf_compression_type segment_compression);
+
+         uint64_t write_log_entry(const signed_block& b, packed_transaction::cf_compression_type segment_compression);
+
+         void split_log();
+
+         block_id_type                 read_block_id_by_num(uint32_t block_num);
+         std::unique_ptr<signed_block> read_block_by_num(uint32_t block_num);
+         void                          read_head();
+      };
+   } // namespace detail
+
+   block_log::block_log(const fc::path& data_dir, fc::path archive_dir, uint64_t split_factor,
+                        uint16_t max_retained_files)
+       : my(new detail::block_log_impl(data_dir, archive_dir, split_factor, max_retained_files)) {}
+
+   block_log::~block_log() {}
+
+   detail::block_log_impl::block_log_impl(const fc::path& data_dir, fc::path archive_dir, uint64_t split_factor,
+                                          uint16_t max_retained_files) {
+
       if (!fc::is_directory(data_dir))
          fc::create_directories(data_dir);
+      else
+         catalog.open(data_dir);
 
-      block_file.set_file_path( data_dir / "blocks.log" );
-      index_file.set_file_path( data_dir / "blocks.index" );
+      if (! archive_dir.empty()) {
+         if (archive_dir.is_relative())
+            archive_dir = data_dir / archive_dir;
+
+         if (!fc::is_directory(archive_dir))
+            fc::create_directories(archive_dir);
+      }
+      
+
+      catalog.archive_dir        = archive_dir;
+      catalog.max_retained_files = max_retained_files;
+      this->split_factor         = split_factor;
+
+      block_file.set_file_path(data_dir / "blocks.log");
+      index_file.set_file_path(data_dir / "blocks.index");
       /* On startup of the block log, there are several states the log file and the index file can be
        * in relation to each other.
        *
@@ -510,6 +718,9 @@ namespace eosio { namespace chain {
          ilog("Log is nonempty");
          block_log_data log_data(block_file.get_file_path());
          preamble = log_data.get_preamble();
+
+         EOS_ASSERT(catalog.chain_id.empty() || catalog.chain_id == preamble.chain_id(), block_log_exception,
+                    "block log file ${path} has a different chain id", ("path", block_file.get_file_path()));
 
          genesis_written_to_block_log = true; // Assume it was constructed properly.
 
@@ -573,10 +784,35 @@ namespace eosio { namespace chain {
                    ("expected", (b->block_num() - preamble.first_block_num) * sizeof(uint64_t)));
 
          auto pos = write_log_entry(*b, segment_compression);
-         head = b;
+         head     = b;
+         if (b->block_num() % split_factor == 0) {
+            split_log();
+         }
          return pos;
       }
       FC_LOG_AND_RETHROW()
+   }
+
+   void detail::block_log_impl::split_log() { 
+      block_file.close();
+      index_file.close();
+
+      auto      data_dir = block_file.get_file_path().parent_path();
+      const int bufsize  = 64;
+      char      filename[bufsize];
+      int n = snprintf(filename, bufsize, "blocks-%d-%d", preamble.first_block_num, this->head->block_num());
+      catalog.add(preamble.first_block_num, this->head->block_num(), data_dir / filename);
+      strncpy(filename + n, ".log", bufsize-n);
+      boost::filesystem::rename(block_file.get_file_path(), data_dir / filename);
+      strncpy(filename + n, ".index", bufsize-n);
+      boost::filesystem::rename(index_file.get_file_path(), data_dir / filename);
+      
+      block_file.open(fc::cfile::truncate_rw_mode);
+      index_file.open(fc::cfile::truncate_rw_mode);
+      preamble.chain_context   = preamble.chain_id();
+      preamble.first_block_num = this->head->block_num() + 1;
+      preamble.write_to(block_file);
+      flush();
    }
 
    void detail::block_log_impl::flush() {
@@ -604,67 +840,47 @@ namespace eosio { namespace chain {
       append(first_block, segment_compression);
    }
 
-   void block_log::reset( const chain_id_type& chain_id, uint32_t first_block_num ) {
-      EOS_ASSERT( first_block_num > 1, block_log_exception,
-                  "Block log version ${ver} needs to be created with a genesis state if starting from block number 1." );
+   void block_log::reset(const chain_id_type& chain_id, uint32_t first_block_num) {
+      EOS_ASSERT(first_block_num > 1, block_log_exception,
+                 "Block log version ${ver} needs to be created with a genesis state if starting from block number 1.");
+
+      EOS_ASSERT(my->catalog.chain_id.empty() || chain_id == my->catalog.chain_id, block_log_exception,
+                 "Trying to reset to the chain to a different chain id");
+
       my->reset(first_block_num, chain_id);
       my->head.reset();
    }
 
-   std::unique_ptr<signed_block> detail::block_log_impl::read_block(uint64_t pos) {
-      block_file.seek(pos);
-      auto ds = block_file.create_datastream();
-      if (preamble.version >= pruned_transaction_version) {
-         auto block = std::make_unique<signed_block>();
-         unpack(ds, *block);
-         return block;
-      } else {
-         signed_block_v0 block;
-         fc::raw::unpack(ds, block);
-         return std::make_unique<signed_block>(std::move(block), true);
+   std::unique_ptr<signed_block> detail::block_log_impl::read_block_by_num(uint32_t block_num) {
+      uint64_t pos = get_block_pos(block_num);
+      if (pos != block_log::npos) {
+         block_file.seek(pos);
+         return read_block(block_file, preamble.version, block_num);
+      } else if (catalog.set_active_item(block_num)) {
+         auto [ds, version] = catalog.datastream_for_block(block_num);
+         return read_block(ds, version, block_num);
       }
+      return {};
    }
 
-   void detail::block_log_impl::read_block_header(block_header& bh, uint64_t pos) {
-      block_file.seek(pos);
-      auto ds = block_file.create_datastream();
-
-      if (preamble.version >= pruned_transaction_version ) {
-         uint32_t size;
-         uint8_t  compression;
-         fc::raw::unpack(ds, size);
-         fc::raw::unpack(ds, compression);
-         EOS_ASSERT( compression == static_cast<uint8_t>(packed_transaction::cf_compression_type::none), block_log_exception ,
-                     "Only \"none\" compression type is supported.");
+   block_id_type detail::block_log_impl::read_block_id_by_num(uint32_t block_num) {
+      uint64_t pos = get_block_pos(block_num);
+      if (pos != block_log::npos) {
+         block_file.seek(pos);
+         return read_block_id(block_file, preamble.version, block_num);
+      } else if (catalog.set_active_item(block_num)) {
+         auto [ds, version] = catalog.datastream_for_block(block_num);
+         return read_block_id(ds, version, block_num);
       }
-      fc::raw::unpack(ds, bh);
+      return {};
    }
 
    std::unique_ptr<signed_block> block_log::read_signed_block_by_num(uint32_t block_num) const {
-      try {
-         std::unique_ptr<signed_block> b;
-         uint64_t pos = my->get_block_pos(block_num);
-         if (pos != npos) {
-            b = my->read_block(pos);
-            EOS_ASSERT(b->block_num() == block_num, block_log_exception,
-                      "Wrong block was read from block log.");
-         }
-         return b;
-      } FC_LOG_AND_RETHROW()
+      return my->read_block_by_num(block_num);
    }
 
    block_id_type block_log::read_block_id_by_num(uint32_t block_num) const {
-      try {
-         uint64_t pos = my->get_block_pos(block_num);
-         if (pos != npos) {
-            block_header bh;
-            my->read_block_header(bh, pos);
-            EOS_ASSERT(bh.block_num() == block_num, block_log_exception,
-                       "Wrong block header was read from block log.", ("returned", bh.block_num())("expected", block_num));
-            return bh.calculate_id();
-         }
-         return {};
-      } FC_LOG_AND_RETHROW()
+      return my->read_block_id_by_num(block_num);
    }
 
    uint64_t detail::block_log_impl::get_block_pos(uint32_t block_num) {
@@ -682,8 +898,9 @@ namespace eosio { namespace chain {
       block_file.seek_end(-sizeof(pos));
       block_file.read((char*)&pos, sizeof(pos));
       if (pos != block_log::npos) {
-         head = read_block(pos);
-      } 
+         block_file.seek(pos);
+         head = read_block(block_file, preamble.version);
+      }
    }
 
    const signed_block_ptr& block_log::head() const {
@@ -691,6 +908,8 @@ namespace eosio { namespace chain {
    }
 
    uint32_t block_log::first_block_num() const {
+      if (!my->catalog.empty())
+         return my->catalog.collection.begin()->first;
       return my->preamble.first_block_num;
    }
 
@@ -817,8 +1036,10 @@ namespace eosio { namespace chain {
       return backup_dir;
    }
 
-   fc::optional<genesis_state> block_log::extract_genesis_state( const fc::path& data_dir ) {
-      return block_log_data(data_dir / "blocks.log").get_genesis_state();
+   fc::optional<genesis_state> block_log::extract_genesis_state( const fc::path& block_dir ) {
+      boost::filesystem::path p(block_dir / "blocks.log");
+      for_each_file_in_dir_matches(block_dir, R"(blocks-1-\d+\.log)", [&p](boost::filesystem::path log_path) { p = log_path; });
+      return block_log_data(p).get_genesis_state();
    }
       
    chain_id_type block_log::extract_chain_id( const fc::path& data_dir ) {

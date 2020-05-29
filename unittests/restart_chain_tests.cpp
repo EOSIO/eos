@@ -255,4 +255,120 @@ BOOST_AUTO_TEST_CASE(test_trim_blocklog_front) {
    BOOST_CHECK(new_log.head()->block_num() == old_log.head()->block_num());
 }
 
+BOOST_AUTO_TEST_CASE(test_split_log) {
+   namespace bfs = boost::filesystem;
+   fc::temp_directory temp_dir;
+
+   tester chain(
+         temp_dir,
+         [](controller::config& config) {
+            config.blocks_split_factor      = 10;
+            config.max_retained_block_files = 5;
+         },
+         true);
+   chain.produce_blocks(75);
+
+   auto blocks_dir = chain.get_config().blocks_dir;
+   auto blocks_archive_dir = chain.get_config().blocks_dir / chain.get_config().blocks_archive_dir;
+
+   BOOST_CHECK(bfs::exists( blocks_archive_dir / "blocks-1-10.log" ));
+   BOOST_CHECK(bfs::exists( blocks_archive_dir / "blocks-1-10.index" ));
+   BOOST_CHECK(bfs::exists( blocks_archive_dir / "blocks-11-20.log" ));
+   BOOST_CHECK(bfs::exists( blocks_archive_dir / "blocks-11-20.index" ));
+
+   BOOST_CHECK(bfs::exists( blocks_dir / "blocks-21-30.log" ));
+   BOOST_CHECK(bfs::exists( blocks_dir / "blocks-21-30.index" ));
+   BOOST_CHECK(bfs::exists( blocks_dir / "blocks-31-40.log" ));
+   BOOST_CHECK(bfs::exists( blocks_dir / "blocks-31-40.index" ));
+   BOOST_CHECK(bfs::exists( blocks_dir / "blocks-41-50.log" ));
+   BOOST_CHECK(bfs::exists( blocks_dir / "blocks-41-50.index" ));
+   BOOST_CHECK(bfs::exists( blocks_dir / "blocks-51-60.log" ));
+   BOOST_CHECK(bfs::exists( blocks_dir / "blocks-51-60.index" ));
+   BOOST_CHECK(bfs::exists( blocks_dir / "blocks-61-70.log" ));
+   BOOST_CHECK(bfs::exists( blocks_dir / "blocks-61-70.index" ));
+
+   BOOST_CHECK( ! chain.control->fetch_block_by_number(20) );
+   
+   BOOST_CHECK( chain.control->fetch_block_by_number(31)->block_num() == 31 );
+   BOOST_CHECK( chain.control->fetch_block_by_number(35)->block_num() == 35 );
+   BOOST_CHECK( chain.control->fetch_block_by_number(40)->block_num() == 40 );
+
+   BOOST_CHECK( chain.control->fetch_block_by_number(21)->block_num() == 21 );
+   BOOST_CHECK( chain.control->fetch_block_by_number(25)->block_num() == 25 );
+   BOOST_CHECK( chain.control->fetch_block_by_number(30)->block_num() == 30 );
+
+   BOOST_CHECK( chain.control->fetch_block_by_number(61)->block_num() == 61 );
+   BOOST_CHECK( chain.control->fetch_block_by_number(65)->block_num() == 65 );
+   BOOST_CHECK( chain.control->fetch_block_by_number(70)->block_num() == 70 );
+
+   BOOST_CHECK( chain.control->fetch_block_by_number(73)->block_num() == 73);
+
+   BOOST_CHECK( ! chain.control->fetch_block_by_number(80));
+}
+
+BOOST_AUTO_TEST_CASE(test_split_log_no_archive) {
+
+   namespace bfs = boost::filesystem;
+   fc::temp_directory temp_dir;
+
+   tester chain(
+         temp_dir,
+         [](controller::config& config) {
+            config.blocks_archive_dir       = "";
+            config.blocks_split_factor      = 10;
+            config.max_retained_block_files = 5;
+         },
+         true);
+   chain.produce_blocks(75);
+
+   auto blocks_dir = chain.get_config().blocks_dir;
+   auto blocks_archive_dir = chain.get_config().blocks_dir / chain.get_config().blocks_archive_dir;
+
+   BOOST_CHECK(!bfs::exists( blocks_archive_dir / "blocks-1-10.log" ));
+   BOOST_CHECK(!bfs::exists( blocks_archive_dir / "blocks-1-10.index" ));
+   BOOST_CHECK(!bfs::exists( blocks_archive_dir / "blocks-11-20.log" ));
+   BOOST_CHECK(!bfs::exists( blocks_archive_dir / "blocks-11-20.index" ));
+   BOOST_CHECK(!bfs::exists( blocks_dir / "blocks-1-10.log" ));
+   BOOST_CHECK(!bfs::exists( blocks_dir / "blocks-1-10.index" ));
+   BOOST_CHECK(!bfs::exists( blocks_dir / "blocks-11-20.log" ));
+   BOOST_CHECK(!bfs::exists( blocks_dir / "blocks-11-20.index" ));
+
+   BOOST_CHECK(bfs::exists( blocks_dir / "blocks-21-30.log" ));
+   BOOST_CHECK(bfs::exists( blocks_dir / "blocks-21-30.index" ));
+   BOOST_CHECK(bfs::exists( blocks_dir / "blocks-31-40.log" ));
+   BOOST_CHECK(bfs::exists( blocks_dir / "blocks-31-40.index" ));
+   BOOST_CHECK(bfs::exists( blocks_dir / "blocks-41-50.log" ));
+   BOOST_CHECK(bfs::exists( blocks_dir / "blocks-41-50.index" ));
+   BOOST_CHECK(bfs::exists( blocks_dir / "blocks-51-60.log" ));
+   BOOST_CHECK(bfs::exists( blocks_dir / "blocks-51-60.index" ));
+   BOOST_CHECK(bfs::exists( blocks_dir / "blocks-61-70.log" ));
+   BOOST_CHECK(bfs::exists( blocks_dir / "blocks-61-70.index" ));
+}
+
+BOOST_AUTO_TEST_CASE(test_split_log_replay) {
+
+   namespace bfs = boost::filesystem;
+   fc::temp_directory temp_dir;
+
+   tester chain(
+         temp_dir,
+         [](controller::config& config) {
+            config.blocks_split_factor      = 10;
+            config.max_retained_block_files = 10;
+         },
+         true);
+   chain.produce_blocks(75);
+   
+   controller::config copied_config = chain.get_config();
+   auto               genesis       = chain::block_log::extract_genesis_state(chain.get_config().blocks_dir);
+   BOOST_REQUIRE(genesis);
+
+   chain.close();
+
+   // remove the state files to make sure we are starting from block log
+   remove_existing_states(copied_config);
+   tester from_block_log_chain(copied_config, *genesis);
+   BOOST_CHECK( from_block_log_chain.control->fetch_block_by_number(75)->block_num() == 75);
+
+}
 BOOST_AUTO_TEST_SUITE_END()

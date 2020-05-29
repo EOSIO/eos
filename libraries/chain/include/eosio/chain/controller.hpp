@@ -66,6 +66,7 @@ namespace eosio { namespace chain {
             flat_set< pair<account_name, action_name> > action_blacklist;
             flat_set<public_key_type> key_blacklist;
             path                     blocks_dir                 = chain::config::default_blocks_dir_name;
+            path                     blocks_archive_dir         = chain::config::default_blocks_archive_dir_name;
             path                     state_dir                  = chain::config::default_state_dir_name;
             uint64_t                 state_size                 = chain::config::default_state_size;
             uint64_t                 state_guard_size           = chain::config::default_state_guard_size;
@@ -73,6 +74,8 @@ namespace eosio { namespace chain {
             uint64_t                 reversible_guard_size      = chain::config::default_reversible_guard_size;
             uint32_t                 sig_cpu_bill_pct           = chain::config::default_sig_cpu_bill_pct;
             uint16_t                 thread_pool_size           = chain::config::default_controller_thread_pool_size;
+            uint16_t                 max_retained_block_files   = chain::config::default_max_retained_block_files;
+            uint64_t                 blocks_split_factor        = chain::config::default_blocks_split_factor;
             fc::microseconds         abi_serializer_max_time_us = fc::microseconds(chain::config::default_abi_serializer_max_time_us);
             bool                     read_only                  = false;
             bool                     force_all_checks           = false;

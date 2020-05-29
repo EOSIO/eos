@@ -310,7 +310,7 @@ struct controller_impl {
     reversible_blocks( cfg.blocks_dir/config::reversible_blocks_dir_name,
         cfg.read_only ? database::read_only : database::read_write,
         cfg.reversible_cache_size, false, cfg.db_map_mode, cfg.db_hugepage_paths ),
-    blog( cfg.blocks_dir ),
+    blog( cfg.blocks_dir, cfg.blocks_archive_dir, cfg.blocks_split_factor, cfg.max_retained_block_files),
     fork_db( cfg.state_dir ),
     wasmif( cfg.wasm_runtime, cfg.eosvmoc_tierup, db, cfg.state_dir, cfg.eosvmoc_config ),
     resource_limits( db, [&s]() { return s.get_deep_mind_logger(); }),
