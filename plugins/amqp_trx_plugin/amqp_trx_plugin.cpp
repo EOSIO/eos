@@ -36,6 +36,7 @@ struct amqp_trx_plugin_impl : std::enable_shared_from_this<amqp_trx_plugin_impl>
    std::string amqp_trx_exchange;
    bool amqp_trx_publish_all_traces = false;
    std::atomic<uint32_t>  trx_in_progress_size{0};
+   std::atomic<bool> shutting_down = false;
 
    // called from amqp thread
    bool consume_message( const char* buf, size_t s ) {
@@ -193,6 +194,7 @@ void amqp_trx_plugin::plugin_startup() {
          fc_wlog( logger, "consume failed: ${e}", ("e", message) );
       } );
       consumer.onReceived( [my=my](const AMQP::Message& message, uint64_t delivery_tag, bool redelivered) {
+         if( my->shutting_down ) return;
          if( my->consume_message( message.body(), message.bodySize() ) ) {
             my->amqp_trx->ack( delivery_tag );
          } else {
@@ -219,7 +221,10 @@ void amqp_trx_plugin::plugin_startup() {
 void amqp_trx_plugin::plugin_shutdown() {
    try {
       fc_dlog( logger, "shutdown.." );
+      my->shutting_down = true; // stop receiving transactions to consume
       my->applied_transaction_connection.reset();
+      // drain queue so all traces are published
+      app().post( priority::lowest, [me = my](){} );
       if( my->thread_pool ) {
          my->thread_pool->stop();
       }
