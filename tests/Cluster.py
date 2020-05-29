@@ -296,7 +296,6 @@ class Cluster(object):
                 Utils.Print("ERROR: Launcher failed to create shape file \"%s\"." % (shapeFile))
                 return False
 
-            Utils.Print("opening %s shape file: %s, current dir: %s" % (topo, shapeFile, os.getcwd()))
             f = open(shapeFile, "r")
             shapeFileJsonStr = f.read()
             f.close()
@@ -1470,10 +1469,9 @@ class Cluster(object):
         if self.useBiosBootFile:
             Cluster.dumpErrorDetailImpl(Cluster.__bootlog)
 
-    def killall(self, kill=True, silent=True, allInstances=False):
+    def killall(self, silent=True, allInstances=False):
         """Kill cluster nodeos instances. allInstances will kill all nodeos instances running on the system."""
-        signalNum=9 if kill else 15
-        cmd="%s -k %d" % (Utils.EosLauncherPath, signalNum)
+        cmd="%s -k 9" % (Utils.EosLauncherPath)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         if 0 != subprocess.call(cmd.split(), stdout=Utils.FNull):
             if not silent: Utils.Print("Launcher failed to shut down eos cluster.")
@@ -1592,6 +1590,22 @@ class Cluster(object):
                     node.reportStatus()
                 except:
                     Utils.Print("No reportStatus")
+
+    def printBlockLogIfNeeded(self):
+        printBlockLog=False
+        if hasattr(self, "nodes") and self.nodes is not None:
+            for node in self.nodes:
+                if node.missingTransaction:
+                    printBlockLog=True
+                    break
+
+        if hasattr(self, "biosNode") and self.biosNode is not None and self.biosNode.missingTransaction:
+            printBlockLog=True
+
+        if not printBlockLog:
+            return
+
+        self.printBlockLog()
 
     def getBlockLog(self, nodeExtension, blockLogAction=BlockLogAction.return_blocks, outputFile=None, first=None, last=None, extraArgs="", throwException=False, silentErrors=False, exitOnError=False):
         nodeDataDir=Utils.getNodeDataDir(nodeExtension)
