@@ -100,9 +100,10 @@ class Connection {
         }
         console.log('{ \"get_status_result_v0\":');
         response["resp_num"] = this.numRequests;
-        var currentTime = Date.now();
-        response["resp_time"] = (currentTime - this.startTime) / 1000;
-        var timeSinceBlockNumChange = (currentTime - this.blockNumChangeTime) / 1000;
+        var currentTime = Date();
+        var currentTimeSec = currentTime.getTime()
+        response["resp_time"] = (currentTimeSec - this.startTime) / 1000;
+        var timeSinceBlockNumChange = (currentTimeSec - this.blockNumChangeTime) / 1000;
         response["time_since_block_num_change"] = timeSinceBlockNumChange;
         var blockNum = response["head"]["block_num"]
         if (blockNum != this.blockNum) {
@@ -111,11 +112,11 @@ class Connection {
                 this.max["time"] = timeSinceBlockNumChange;
                 this.max["blockNum"] = blockNum;
             }
-            this.blockNumChangeTime = currentTime;
+            this.blockNumChangeTime = currentTimeSec;
         }
-        response["time_since_last_block"] = (currentTime - this.lastResponseTime) / 1000;
+        response["time_since_last_block"] = (currentTimeSec - this.lastResponseTime) / 1000;
         response["current_time"] = currentTime.toISOString()
-        this.lastResponseTime = currentTime;
+        this.lastResponseTime = currentTimeSec;
         console.log(JSON.stringify(response, null, 4));
         console.log('}');
         if (this.numRequests < 0) { // request forever
@@ -136,7 +137,7 @@ class Connection {
             status["last_block_num"] = blockNum;
             status["abi_rcv_delta_time"] = (this.abiTime - this.createTime)/1000;
             status["req_rcv_delta_time"] = (this.startTime - this.createTime)/1000;
-            status["done_delta_time"] = (currentTime - this.createTime)/1000;
+            status["done_delta_time"] = (currentTimeSec - this.createTime)/1000;
 
             console.error(JSON.stringify(status, null, 4));
             console.error(']');
