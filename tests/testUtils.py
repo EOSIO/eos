@@ -89,7 +89,8 @@ class WaitSpec:
 
     def asSeconds(self):
         assert self.value != -1, "Called method with WaitSpec for calculating the appropriate timeout (WaitSpec.convert)," +\
-                                 " but convert method was never called."
+                                 " but convert method was never called. This means that either one of the methods the WaitSpec" +\
+                                 " is passed to needs to call convert, or else WaitSpec.calculate(...) should not have been passed."
         retVal = self.value if self.value is not None else WaitSpec.default_seconds
         return retVal
 
