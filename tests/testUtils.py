@@ -54,13 +54,13 @@ addEnum(BlockLogAction, "prune_transactions")
 
 class WaitSpec:
 
-    def __init__(self, value, leeway=10):
+    def __init__(self, value, leeway=None):
         self.toCalculate = True if value == -1 else False
         if value is not None:
             assert isinstance(value, (int))
             assert value >= -1
         self.value = value
-        self.leeway = leeway
+        self.leeway = leeway if leeway is not None else WaitSpec.default_leeway
 
     def __str__(self):
         append = "[calculated based on block production]" if self.toCalculate else ""
@@ -93,10 +93,16 @@ class WaitSpec:
         retVal = self.value if self.value is not None else WaitSpec.default_seconds
         return retVal
 
-    default_seconds = 60
+    @staticmethod
+    def calculate(leeway=None):
+        return WaitSpec(value=-1, leeway=leeway)
 
-setattr(WaitSpec, "default", WaitSpec(None))
-setattr(WaitSpec, "calculate", WaitSpec(-1))
+    @staticmethod
+    def default(leeway=None):
+        return WaitSpec(value=None, leeway=leeway)
+
+    default_seconds = 60
+    default_leeway = 10
 
 ###########################################################################################
 
