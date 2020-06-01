@@ -273,7 +273,7 @@ class Utils:
     @staticmethod
     def waitForTruth(lam, timeout=None, sleepTime=3, reporter=None):
         if timeout is None:
-            timeout=WaitSpec.default
+            timeout=WaitSpec.default()
         if isinstance(timeout, WaitSpec):
             timeout = timeout.asSeconds()
 

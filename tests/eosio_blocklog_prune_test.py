@@ -101,7 +101,7 @@ try:
     cfTrxId = trans["transaction_id"]
 
     # Wait until the block where create account is executed to become irreversible
-    producerNode.waitForBlock(cfTrxBlockNum, blockType=BlockType.lib, timeout=WaitSpec.calculate, errorContext="producerNode LIB did not advance")
+    producerNode.waitForBlock(cfTrxBlockNum, blockType=BlockType.lib, timeout=WaitSpec.calculate(), errorContext="producerNode LIB did not advance")
 
     Utils.Print("verify the account payloadless from producer node")
     trans = producerNode.getEosAccount("payloadless")
@@ -138,7 +138,7 @@ try:
     # check whether the transaction has been pruned based on the tag of prunable_data, if the tag is 1, then it's a prunable_data_t::none
     assert trans["trx"]["receipt"]["trx"][1]["prunable_data"]["prunable_data"][0] == 1, "the the transaction with context free data has not been pruned"
 
-    producerNode.waitForBlock(cfTrxBlockNum, blockType=BlockType.lib, timeout=WaitSpec.calculate, errorContext="producerNode LIB did not advance")
+    producerNode.waitForBlock(cfTrxBlockNum, blockType=BlockType.lib, timeout=WaitSpec.calculate(), errorContext="producerNode LIB did not advance")
     assert producerNode.waitForHeadToAdvance(), "the producer node stops producing"
 
     # kill the producer with un-pruned cfd
@@ -156,12 +156,12 @@ try:
     #
     # Check lightValidationNode keeping sync while the full fullValidationNode stop syncing after the cfd block
     #
-    lightValidationNode.waitForBlock(cfTrxBlockNum, blockType=BlockType.lib, timeout=WaitSpec.calculate, errorContext="ligtValidationNode did not advance")
+    lightValidationNode.waitForBlock(cfTrxBlockNum, blockType=BlockType.lib, timeout=WaitSpec.calculate(), errorContext="ligtValidationNode did not advance")
     assert lightValidationNode.waitForHeadToAdvance(), "the light validation node stops syncing"
 
-    fullValidationNode.waitForBlock(cfTrxBlockNum-1, blockType=BlockType.lib, timeout=WaitSpec.calculate, errorContext="fullValidationNode LIB did not advance")
+    fullValidationNode.waitForBlock(cfTrxBlockNum-1, blockType=BlockType.lib, timeout=WaitSpec.calculate(), errorContext="fullValidationNode LIB did not advance")
     assert not fullValidationNode.waitForHeadToAdvance(), "the full validation node is still syncing"
-    
+
     testSuccessful = True
 finally:
     TestHelper.shutdown(cluster, walletMgr, testSuccessful, killEosInstances, killWallet, keepLogs, killAll, dumpErrorDetails)

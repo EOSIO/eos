@@ -484,7 +484,7 @@ class Node(object):
         ret=Utils.waitForTruth(lam, timeout)
         return ret
 
-    def waitForNextBlock(self, timeout=WaitSpec.default, blockType=BlockType.head):
+    def waitForNextBlock(self, timeout=WaitSpec.default(), blockType=BlockType.head):
         num=self.getBlockNum(blockType=blockType)
         if isinstance(timeout, WaitSpec):
             timeout = timeout.seconds(num, num+1)
@@ -492,7 +492,7 @@ class Node(object):
         ret=Utils.waitForTruth(lam, timeout)
         return ret
 
-    def waitForBlock(self, blockNum, timeout=WaitSpec.default, blockType=BlockType.head, reportInterval=None, errorContext=None):
+    def waitForBlock(self, blockNum, timeout=WaitSpec.default(), blockType=BlockType.head, reportInterval=None, errorContext=None):
         currentBlockNum=self.getBlockNum(blockType=blockType)
         currentTime=time.time()
         if isinstance(timeout, WaitSpec):
@@ -550,7 +550,7 @@ class Node(object):
         assert ret is not None or errorContext is None, Utils.errorExit("%s." % (errorContext))
         return ret
 
-    def waitForIrreversibleBlock(self, blockNum, timeout=WaitSpec.default, blockType=BlockType.head):
+    def waitForIrreversibleBlock(self, blockNum, timeout=WaitSpec.default(), blockType=BlockType.head):
         return self.waitForBlock(blockNum, timeout=timeout, blockType=blockType)
 
     # Trasfer funds. Returns "transfer" json return object
