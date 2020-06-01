@@ -699,7 +699,6 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
             my->blocks_dir = app().data_dir() / bld;
          else
             my->blocks_dir = bld;
-         resource_monitor_plugin::monitor_directory(my->blocks_dir);
       }
 
       protocol_feature_set pfs;
@@ -710,7 +709,6 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
             protocol_features_dir = app().config_dir() / pfd;
          else
             protocol_features_dir = pfd;
-         resource_monitor_plugin::monitor_directory(protocol_features_dir);
 
          pfs = initialize_protocol_features( protocol_features_dir );
       }
@@ -744,6 +742,11 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       my->chain_config->blocks_dir = my->blocks_dir;
       my->chain_config->state_dir = app().data_dir() / config::default_state_dir_name;
       my->chain_config->read_only = my->readonly;
+
+      if (auto resmon_plugin = app().find_plugin<resource_monitor_plugin>()) {
+        resmon_plugin->monitor_directory(my->chain_config->blocks_dir);
+        resmon_plugin->monitor_directory(my->chain_config->state_dir);
+      }
 
       if( options.count( "chain-state-db-size-mb" ))
          my->chain_config->state_size = options.at( "chain-state-db-size-mb" ).as<uint64_t>() * 1024 * 1024;

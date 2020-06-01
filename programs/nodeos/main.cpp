@@ -126,7 +126,8 @@ int main(int argc, char** argv)
          }
          return INITIALIZE_FAIL;
       }
-      resource_monitor_plugin::monitor_directory(app().data_dir());
+      if (auto resmon_plugin = app().find_plugin<resource_monitor_plugin>())
+        resmon_plugin->monitor_directory(app().data_dir());
       initialize_logging();
       ilog( "${name} version ${ver} ${fv}",
             ("name", nodeos::config::node_executable_name)("ver", app().version_string())

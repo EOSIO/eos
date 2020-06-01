@@ -397,7 +397,8 @@ void state_history_plugin::plugin_initialize(const variables_map& options) {
          state_history_dir = app().data_dir() / dir_option;
       else
          state_history_dir = dir_option;
-      resource_monitor_plugin::monitor_directory(state_history_dir);
+      if (auto resmon_plugin = app().find_plugin<resource_monitor_plugin>())
+         resmon_plugin->monitor_directory(state_history_dir);
 
       auto ip_port         = options.at("state-history-endpoint").as<string>();
       auto port            = ip_port.substr(ip_port.find(':') + 1, ip_port.size());
