@@ -41,17 +41,6 @@ public:
    }
 
 private:
-   static bool is_onblock(const chain::transaction_trace_ptr& p) {
-      if (p->action_traces.empty())
-         return false;
-      const auto& act = p->action_traces[0].act;
-      if (act.account != eosio::chain::config::system_account_name || act.name != N(onblock) ||
-          act.authorization.size() != 1)
-         return false;
-      const auto& auth = act.authorization[0];
-      return auth.actor == eosio::chain::config::system_account_name &&
-             auth.permission == eosio::chain::config::active_name;
-   }
 
    void on_applied_transaction(const chain::transaction_trace_ptr& trace, const chain::signed_transaction& t) {
       if( !trace->receipt ) return;
@@ -60,7 +49,7 @@ private:
           trace->receipt->status != chain::transaction_receipt_header::soft_fail)) {
          return;
       }
-      if( is_onblock( trace )) {
+      if( chain::is_onblock( *trace )) {
          onblock_trace.emplace( cache_trace{trace, static_cast<const chain::transaction_header&>(t), t.signatures} );
       } else if( trace->failed_dtrx_trace ) {
          cached_traces[trace->failed_dtrx_trace->id] = {trace, static_cast<const chain::transaction_header&>(t), t.signatures};
@@ -83,7 +72,8 @@ private:
 
          std::vector<transaction_trace_v1>& traces = bt.transactions_v1;
          traces.reserve( block_state->block->transactions.size() + 1 );
-         if( onblock_trace )
+         // verify block_num of onblock_trace because last block could have been aborted & new block have no onblock
+         if( onblock_trace && onblock_trace->trace->block_num == block_state->block_num )
             traces.emplace_back( to_transaction_trace_v1( *onblock_trace ));
          for( const auto& r : block_state->block->transactions ) {
             transaction_id_type id;
