@@ -51,7 +51,12 @@ if ("${CMAKE_GENERATOR}" STREQUAL "Ninja")
    add_compile_options(-fdiagnostics-color=always)
 endif()
 
-set(CMAKE_EXPORT_COMPILE_COMMANDS "ON")
+if (ENABLE_UNITY_BUILD)
+  set(CMAKE_EXPORT_COMPILE_COMMANDS "OFF")
+else()
+  set(CMAKE_EXPORT_COMPILE_COMMANDS "ON")
+endif()
+
 set(BUILD_DOXYGEN FALSE CACHE BOOL "Build doxygen documentation on every make")
 set(ENABLE_MULTIVERSION_PROTOCOL_TEST FALSE CACHE BOOL "Enable nodeos multiversion protocol test")
 

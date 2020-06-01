@@ -16,3 +16,7 @@ target_link_libraries( state_history
 target_include_directories( state_history
                             PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include"
                           )
+
+if(ENABLE_UNITY_BUILD)
+   set_target_properties(state_history PROPERTIES UNITY_BUILD TRUE)
+endif() 
