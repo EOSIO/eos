@@ -66,40 +66,44 @@ run_test "Interval too big" "--plugin eosio::resource_monitor_plugin --resource-
 
 run_test "Interval too small" "--plugin eosio::resource_monitor_plugin --resource-monitor-interval-seconds=0" "plugin_config_exception" "must be greater than 0 and less than 60"
 
-run_test "Interval at lower boundary" "--plugin eosio::resource_monitor_plugin --resource-monitor-interval-seconds=1 --resource-monitor-space-threshold=2" "nodeos successfully exiting" "sleep_time = 1"
+run_test "Interval at lower boundary" "--plugin eosio::resource_monitor_plugin --resource-monitor-interval-seconds=1" "Produced block" "interval set to 1"
 
-run_test "Interval at upper boundary" "--plugin eosio::resource_monitor_plugin --resource-monitor-interval-seconds=59 --resource-monitor-space-threshold=2" "nodeos successfully exiting" "sleep_time = 59"
+run_test "Interval at upper boundary" "--plugin eosio::resource_monitor_plugin --resource-monitor-interval-seconds=59" "Produced block" "interval set to 59"
 
-run_test "Interval not supplied" "--plugin eosio::resource_monitor_plugin --resource-monitor-space-threshold=2" "nodeos successfully exiting" "sleep_time = 2"
+run_test "Interval not supplied" "--plugin eosio::resource_monitor_plugin --resource-monitor-space-threshold=2" "nodeos successfully exiting" "interval set to 2"
 
-run_test "Threshold too big" "--plugin eosio::resource_monitor_plugin --resource-monitor-space-threshold=100" "plugin_config_exception" "must be greater than 0 and less than 100"
+run_test "Threshold too big" "--plugin eosio::resource_monitor_plugin --resource-monitor-space-threshold=100" "plugin_config_exception" "must be greater than 5 and less than 100"
 
-run_test "Threshold too small" "--plugin eosio::resource_monitor_plugin --resource-monitor-space-threshold=0" "plugin_config_exception" "must be greater than 0 and less than 100"
+run_test "Threshold too small" "--plugin eosio::resource_monitor_plugin --resource-monitor-space-threshold=5" "plugin_config_exception" "must be greater than 5 and less than 100"
 
-run_test "Threshold at lower boundary" "--plugin eosio::resource_monitor_plugin --resource-monitor-space-threshold=1" "nodeos successfully exiting" "file system exceeded configured threshold 1%"
+run_test "Threshold at lower boundary" "--plugin eosio::resource_monitor_plugin --resource-monitor-space-threshold=6" "Produced block" "threshold set to 6"
 
-run_test "Threshold at upper boundary" "--plugin eosio::resource_monitor_plugin --resource-monitor-space-threshold=99" "Produced block" "threshold = 99" "sleep_time = 2"
+run_test "Threshold at upper boundary" "--plugin eosio::resource_monitor_plugin --resource-monitor-space-threshold=99" "Produced block" "threshold set to 99"
 
-run_test "Threshold or Interval not supplied" "--plugin eosio::resource_monitor_plugin" "Produced block" "threshold = 90" "sleep_time = 2"
+run_test "Threshold or Interval not supplied" "--plugin eosio::resource_monitor_plugin" "Produced block" "threshold set to 90"
 
-run_test "TraceApi plugin without Resource Monitor" "--plugin eosio::trace_api_plugin --trace-dir=/tmp/trace --trace-no-abis" "Produced block" "/tmp/trace registered to be monitored"
+run_test "shutdown on exceeded true" "--plugin eosio::resource_monitor_plugin --resource-monitor-shutdown-on-threshold-exceeded" "Produced block" "Shutdown flag when threshold exceeded set to true"
+
+run_test "shutdown on exceeded not supplied" "--plugin eosio::resource_monitor_plugin" "Produced block" "Shutdown flag when threshold exceeded set to false"
+
+run_test "TraceApi plugin without Resource Monitor" "--plugin eosio::trace_api_plugin --trace-dir=/tmp/trace --trace-no-abis" "Produced block" "Produced block"
 
 run_test "TraceApi plugin with Resource Monitor first" " --plugin eosio::resource_monitor_plugin --plugin eosio::trace_api_plugin --trace-dir=/tmp/trace --trace-no-abis" "Produced block" "/tmp/trace's file system already monitored"
 
 run_test "TraceApi plugin with Resource Monitor last" "--plugin eosio::trace_api_plugin --trace-dir=/tmp/trace --trace-no-abis --plugin eosio::resource_monitor_plugin" "Produced block" "/tmp/trace's file system already monitored"
 
-run_test "Producer plugin without Resource Monitor" " " "Produced block" "/tmp/data/snapshots registered to be monitored"
+run_test "Producer plugin without Resource Monitor" " " "Produced block" "Produced block"
 
 run_test "Producer plugin with Resource Monitor" "--plugin eosio::resource_monitor_plugin" "Produced block" "/tmp/data/snapshots's file system already monitored"
 
-run_test "Chain plugin without Resource Monitor" " " "Produced block" "/tmp/data/blocks registered to be monitored" "protocol_features registered to be monitored"
+run_test "Chain plugin without Resource Monitor" " " "Produced block" "Produced block"
 
-run_test "Chain plugin with Resource Monitor" "--plugin eosio::resource_monitor_plugin" "Produced block" "blocks's file system already monitored" "protocol_features's file system already monitored"
+run_test "Chain plugin with Resource Monitor" "--plugin eosio::resource_monitor_plugin" "Produced block" "blocks's file system already monitored" "state's file system already monitored"
 
-run_test "State History plugin without Resource Monitor" "--plugin eosio::state_history_plugin --state-history-dir=/tmp/state-history --disable-replay-opts" "Produced block" "/tmp/state-history registered to be monitored"
+run_test "State History plugin without Resource Monitor" "--plugin eosio::state_history_plugin --state-history-dir=/tmp/state-history --disable-replay-opts" "Produced block" "Produced block"
 
 run_test "State History plugin with Resource Monitor first" "--plugin eosio::resource_monitor_plugin --plugin eosio::state_history_plugin --state-history-dir=/tmp/state-history --disable-replay-opts" "Produced block" "/tmp/state-history's file system already monitored"
 
 run_test "State History plugin with Resource Monitor last" "--plugin eosio::state_history_plugin --state-history-dir=/tmp/state-history --disable-replay-opts --plugin eosio::resource_monitor_plugin" "Produced block" "/tmp/state-history's file system already monitored"
 
-run_test "State History and Trace Api  with Resource Monitor" "--plugin eosio::state_history_plugin --state-history-dir=/tmp/state-history --disable-replay-opts --plugin eosio::trace_api_plugin --trace-dir=/tmp/trace --trace-no-abis  --plugin eosio::resource_monitor_plugin" "Produced block" "/tmp/state-history's file system already monitored" "/tmp/trace's file system already monitored"
+run_test "State History and Trace Api with Resource Monitor" "--plugin eosio::state_history_plugin --state-history-dir=/tmp/state-history --disable-replay-opts --plugin eosio::trace_api_plugin --trace-dir=/tmp/trace --trace-no-abis  --plugin eosio::resource_monitor_plugin" "Produced block" "/tmp/state-history's file system already monitored" "/tmp/trace's file system already monitored"

@@ -1,9 +1,5 @@
 #include <eosio/resource_monitor_plugin/system_file_space_provider.hpp>
 
-//#include <boost/filesystem.hpp>
-
-//#include <sys/stat.h>
-
 namespace bfs = boost::filesystem;
 
 namespace eosio::resource_monitor {

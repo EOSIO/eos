@@ -46,6 +46,14 @@ struct space_handler_fixture {
       space_handler.set_sleep_time( sleep_time );
    }
 
+   void set_threshold_warning(uint32_t threshold_warning) {
+      space_handler.set_threshold_warning( threshold_warning );
+   }
+
+   void set_shutdown_on_exceeded(bool shutdown_on_exceeded) {
+      space_handler.set_shutdown_on_exceeded(shutdown_on_exceeded);
+   }
+
    bool is_threshold_exceeded() const {
       return space_handler.is_threshold_exceeded();
    }
@@ -79,6 +87,8 @@ BOOST_AUTO_TEST_SUITE(monitor_loop_tests)
       };
 
       set_threshold(80);
+      set_threshold_warning(75);
+      set_shutdown_on_exceeded(true);
       set_sleep_time(1);
       add_file_system("/test");
 
@@ -117,6 +127,8 @@ BOOST_AUTO_TEST_SUITE(monitor_loop_tests)
       };
 
       set_threshold(80);
+      set_threshold_warning(75);
+      set_shutdown_on_exceeded(true);
       set_sleep_time(interval);
       add_file_system("/test");
 

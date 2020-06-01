@@ -26,6 +26,14 @@ namespace eosio::resource_monitor {
          threshold = new_threshold;
       }
 
+      void set_threshold_warning(uint32_t new_threshold_warning) {
+         threshold_warning = new_threshold_warning;
+      }
+
+      void set_shutdown_on_exceeded(bool new_shutdown_on_exceeded) {
+         shutdown_on_exceeded = new_shutdown_on_exceeded;
+      }
+
       bool is_threshold_exceeded() const {
          // Go over each monitored file system
          for (auto& fs: filesystems) {
@@ -43,10 +51,17 @@ namespace eosio::resource_monitor {
                continue;
             }
 
-            if (info.available < fs.available_required) {
-               wlog("Space usage on ${path}'s file system exceeded configured threshold ${threshold}%, available: ${available}, Capacity: ${capacity}, available_required: ${available_required}", ("path", fs.path_name.string()) ("threshold", threshold) ("available", info.available) ("capacity", info.capacity) ("available_required", fs.available_required));
+            if ( info.available < fs.available_warning ) {
+               wlog("Space usage on ${path}'s file system approaching configured threshold ${threshold}%, available: ${available}, Capacity: ${capacity}, available_required: ${available_required}", ("path", fs.path_name.string()) ("threshold", threshold) ("available", info.available) ("capacity", info.capacity) ("available_required", fs.available_required));
+               if ( shutdown_on_exceeded ) {
+                  wlog("nodeos will shutdown when space usage exceeds configured threshold ${threshold}%", ("threshold", threshold));
+               }
 
-               return true;
+               if ( info.available < fs.available_required ) {
+                  wlog("Space usage on ${path}'s file system exceeded configured threshold ${threshold}%, available: ${available}, Capacity: ${capacity}, available_required: ${available_required}", ("path", fs.path_name.string()) ("threshold", threshold) ("available", info.available) ("capacity", info.capacity) ("available_required", fs.available_required));
+
+                  return true;
+               }
             }
          }
 
@@ -82,15 +97,16 @@ namespace eosio::resource_monitor {
             ("message", ec.message()));
 
          auto available_required = (100 - threshold) * (info.capacity / 100); // (100 - threshold) is the percentage of minimum number of available bytes the file system must maintain  
+         auto available_warning = (100 - threshold_warning) * (info.capacity / 100);
 
          // Add to the list
-         filesystems.emplace_back(statbuf.st_dev, available_required, path_name);
+         filesystems.emplace_back(statbuf.st_dev, available_required, path_name, available_warning);
          
          ilog("${path_name}'s file system monitored. available_required: ${available_required}, capacity: ${capacity}, threshold: ${threshold}", ("path_name", path_name.string()) ("available_required", available_required) ("capacity", info.capacity) ("threshold", threshold) );
       }
    
    int space_monitor_loop() {
-      if ( is_threshold_exceeded() ) {
+      if ( is_threshold_exceeded() && shutdown_on_exceeded ) {
          wlog("Shut down");
          appbase::app().quit(); // This will gracefully stop Nodeos
          return 0;
@@ -119,18 +135,22 @@ namespace eosio::resource_monitor {
 
       boost::asio::deadline_timer timer;
    
-      uint32_t sleep_time_in_secs;
-      uint32_t threshold;
+      uint32_t sleep_time_in_secs {0};
+      uint32_t threshold {0};
+      uint32_t threshold_warning {0};
+      bool     shutdown_on_exceeded {false};
 
       struct   filesystem_info {
          dev_t      st_dev; // device id of file system containing "file_path"
-         uintmax_t  available_required; // minimum number of available bytes the file system must maintain
+         uintmax_t  available_required {0}; // minimum number of available bytes the file system must maintain
          bfs::path  path_name;
+         uintmax_t available_warning {0};
 
-         filesystem_info(dev_t dev, uintmax_t available, const bfs::path& path)
+         filesystem_info(dev_t dev, uintmax_t available, const bfs::path& path, uintmax_t warning)
          : st_dev(dev),
          available_required(available),
-         path_name(path)
+         path_name(path),
+         available_warning(warning)
          {
          }
       };
