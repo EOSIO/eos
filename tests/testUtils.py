@@ -54,16 +54,12 @@ addEnum(BlockLogAction, "prune_transactions")
 
 class WaitSpec:
 
-    def __init__(self, value, sleep_interval=None, leeway=None):
+    def __init__(self, value, leeway=10):
         self.toCalculate = True if value == -1 else False
         if value is not None:
             assert isinstance(value, (int))
             assert value >= -1
-        if sleep_interval is not None:
-            assert isinstance(sleep_interval, (int))
-            assert sleep_interval > 0
         self.value = value
-        self.sleep_interval = sleep_interval
         self.leeway = leeway
 
     def __str__(self):
@@ -81,7 +77,7 @@ class WaitSpec:
         if self.value is None or self.value != -1:
             return
 
-        timeout = self.leeway if self.leeway is not None else 10
+        timeout = self.leeway
         if (endBlockNum > startBlockNum):
             # calculation is performing worst case (irreversible block progression) which at worst will waste 5 seconds
             blocksPerWindow = 12
@@ -90,15 +86,6 @@ class WaitSpec:
             timeout += blockWindowsToWait * secondsPerWindow
 
         self.value = timeout
-        if self.sleep_interval is None:
-            self.sleep_interval = max(timeout / 10, 1)
-
-    def sleepTime(self, default=None):
-        # if sleep_interval is set to a value greater than 0 in __init__, that will be used here, if it was set
-        # to None and value was also None (to convert/calculate based on blocks) it will be calculated and that
-        # value is used, otherwise passed in default is used, and if still not set, it uses default_interval_seconds
-        time = self.sleep_interval if self.sleep_interval is not None else default
-        return time if time is not None else WaitSpec.default_interval_seconds
 
     def asSeconds(self):
         assert self.value != -1, "Called method with WaitSpec for calculating the appropriate timeout (WaitSpec.calculate)," +\
@@ -107,7 +94,6 @@ class WaitSpec:
         return retVal
 
     default_seconds = 60
-    default_interval_seconds = 3
 
 setattr(WaitSpec, "default", WaitSpec(None))
 setattr(WaitSpec, "calculate", WaitSpec(-1))
@@ -283,7 +269,6 @@ class Utils:
         if timeout is None:
             timeout=WaitSpec.default
         if isinstance(timeout, WaitSpec):
-            sleepTime = timeout.sleepTime(sleepTime)
             timeout = timeout.asSeconds()
 
         currentTime=time.time()
