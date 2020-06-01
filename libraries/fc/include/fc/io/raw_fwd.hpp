@@ -12,8 +12,10 @@
 #include <set>
 
 namespace fc {
+/*
    class time_point;
    class time_point_sec;
+*/
    class variant;
    class variant_object;
    class path;

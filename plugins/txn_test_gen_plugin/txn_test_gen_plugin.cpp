@@ -179,7 +179,7 @@ struct txn_test_gen_plugin_impl {
             trx.actions.emplace_back(vector<chain::permission_level>{{creator,name("active")}}, newaccount{creator, newaccountT, owner_auth, active_auth});
             }
 
-            trx.expiration = cc.head_block_time() + fc::seconds(180);
+            trx.expiration = fc::time_point_cast<fc::seconds>(cc.head_block_time()) + fc::seconds(180);
             trx.set_reference_block(cc.head_block_id());
             trx.sign(creator_priv_key, chainid);
             trxs.emplace_back(std::move(trx));
@@ -249,7 +249,7 @@ struct txn_test_gen_plugin_impl {
                trx.actions.push_back(act);
             }
 
-            trx.expiration = cc.head_block_time() + fc::seconds(180);
+            trx.expiration = fc::time_point_cast<fc::seconds>(cc.head_block_time()) + fc::seconds(180);
             trx.set_reference_block(cc.head_block_id());
             trx.max_net_usage_words = 5000;
             trx.sign(txn_test_receiver_C_priv_key, chainid);
@@ -342,7 +342,7 @@ struct txn_test_gen_plugin_impl {
          static fc::crypto::private_key a_priv_key = fc::crypto::private_key::regenerate(fc::sha256(std::string(64, 'a')));
          static fc::crypto::private_key b_priv_key = fc::crypto::private_key::regenerate(fc::sha256(std::string(64, 'b')));
 
-         static uint64_t nonce = static_cast<uint64_t>(fc::time_point::now().sec_since_epoch()) << 32;
+         static uint64_t nonce = static_cast<uint64_t>(fc::now().time_since_epoch().count()) << 32;
 
          uint32_t reference_block_num = cc.last_irreversible_block_num();
          if (txn_reference_block_lag >= 0) {
@@ -362,7 +362,7 @@ struct txn_test_gen_plugin_impl {
          trx.actions.push_back(act_a_to_b);
          trx.context_free_actions.emplace_back(action({}, config::null_account_name, name("nonce"), fc::raw::pack( std::to_string(nonce_prefix)+std::to_string(nonce++) )));
          trx.set_reference_block(reference_block_id);
-         trx.expiration = cc.head_block_time() + fc::seconds(30);
+         trx.expiration = fc::time_point_cast<fc::seconds>(cc.head_block_time()) + fc::seconds(30);
          trx.max_net_usage_words = 100;
          trx.sign(a_priv_key, chainid);
          trxs.emplace_back(std::move(trx));
@@ -373,7 +373,7 @@ struct txn_test_gen_plugin_impl {
          trx.actions.push_back(act_b_to_a);
          trx.context_free_actions.emplace_back(action({}, config::null_account_name, name("nonce"), fc::raw::pack( std::to_string(nonce_prefix)+std::to_string(nonce++) )));
          trx.set_reference_block(reference_block_id);
-         trx.expiration = cc.head_block_time() + fc::seconds(30);
+         trx.expiration = fc::time_point_cast<fc::seconds>(cc.head_block_time()) + fc::seconds(30);
          trx.max_net_usage_words = 100;
          trx.sign(b_priv_key, chainid);
          trxs.emplace_back(std::move(trx));

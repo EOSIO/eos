@@ -111,7 +111,7 @@ namespace fc
     gelf_message["short_message"] = format_string(message.get_format(), message.get_data(), true);
 
     // use now() instead of context.get_timestamp() because log_message construction can include user provided long running calls
-    const auto time_ns = time_point::now().time_since_epoch().count();
+    const auto time_ns = fc::now().time_since_epoch().count();
     gelf_message["timestamp"] = time_ns / 1000000.;
     gelf_message["_timestamp_ns"] = time_ns;
 
@@ -149,7 +149,7 @@ namespace fc
       gelf_message["_task_name"] = context.get_task_name();
 
     string gelf_message_as_string = json::to_string(gelf_message,
-          fc::time_point::now() + fc::exception::format_time_limit,
+          fc::now() + fc::exception::format_time_limit,
           json::output_formatting::legacy_generator); // GELF 1.1 specifies unstringified numbers
     //unsigned uncompressed_size = gelf_message_as_string.size();
     gelf_message_as_string = zlib_compress(gelf_message_as_string);

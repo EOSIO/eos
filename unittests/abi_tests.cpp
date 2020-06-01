@@ -35,7 +35,7 @@ fc::variant verify_byte_round_trip_conversion( const abi_serializer& abis, const
 
    auto var2 = abis.binary_to_variant(type, bytes, abi_serializer::create_yield_function( max_serialization_time ));
 
-   std::string r = fc::json::to_string(var2, fc::time_point::now() + max_serialization_time);
+   std::string r = fc::json::to_string(var2, fc::now() + max_serialization_time);
 
    auto bytes2 = abis.variant_to_binary(type, var2, abi_serializer::create_yield_function( max_serialization_time ));
 
@@ -50,7 +50,7 @@ void verify_round_trip_conversion( const abi_serializer& abis, const type_name& 
    auto bytes = abis.variant_to_binary(type, var, abi_serializer::create_yield_function( max_serialization_time ));
    BOOST_REQUIRE_EQUAL(fc::to_hex(bytes), hex);
    auto var2 = abis.binary_to_variant(type, bytes, abi_serializer::create_yield_function( max_serialization_time ));
-   BOOST_REQUIRE_EQUAL(fc::json::to_string(var2, fc::time_point::now() + max_serialization_time), expected_json);
+   BOOST_REQUIRE_EQUAL(fc::json::to_string(var2, fc::now() + max_serialization_time), expected_json);
    auto bytes2 = abis.variant_to_binary(type, var2, abi_serializer::create_yield_function( max_serialization_time ));
    BOOST_REQUIRE_EQUAL(fc::to_hex(bytes2), hex);
 }
@@ -80,7 +80,7 @@ fc::variant verify_type_round_trip_conversion( const abi_serializer& abis, const
    fc::variant var2;
    abi_serializer::to_variant(obj, var2, get_resolver(), abi_serializer::create_yield_function( max_serialization_time ));
 
-   std::string r = fc::json::to_string(var2, fc::time_point::now() + max_serialization_time);
+   std::string r = fc::json::to_string(var2, fc::now() + max_serialization_time);
 
 
    auto bytes2 = abis.variant_to_binary(type, var2, abi_serializer::create_yield_function( max_serialization_time ));
@@ -1472,7 +1472,7 @@ BOOST_AUTO_TEST_CASE(packed_transaction)
    chain::signed_transaction txn;
    txn.ref_block_num = 1;
    txn.ref_block_prefix = 2;
-   txn.expiration.from_iso_string("2021-12-20T15:30");
+   txn.expiration = fc::from_iso_string<fc::time_point_sec>("2021-12-20T15:30");
    name a = N(alice);
    txn.context_free_actions.emplace_back(
          vector<permission_level>{{N(testapi1), config::active_name}},

@@ -775,7 +775,7 @@ namespace fc
    bool json::save_to_file( const variant& v, const fc::path& fi, const bool pretty, const json::output_formatting format )
    {
       if( pretty ) {
-         auto str = json::to_pretty_string( v, fc::time_point::maximum(), format, max_length_limit );
+         auto str = json::to_pretty_string( v, fc::time_point::max(), format, max_length_limit );
          std::ofstream o(fi.generic_string().c_str());
          o.write( str.c_str(), str.size() );
          return o.good();

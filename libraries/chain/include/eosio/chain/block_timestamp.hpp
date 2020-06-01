@@ -68,13 +68,23 @@ namespace eosio { namespace chain {
       }
 
       void set_time_point(const fc::time_point_sec& t) {
-         uint64_t  sec_since_epoch = t.sec_since_epoch();
+         uint64_t  sec_since_epoch = t.time_since_epoch().count();
          slot = (sec_since_epoch * 1000 - EpochMs) / IntervalMs;
       }
    }; // block_timestamp
 
-   typedef block_timestamp<config::block_interval_ms,config::block_timestamp_epoch> block_timestamp_type; 
+   typedef block_timestamp<config::block_interval_ms,config::block_timestamp_epoch> block_timestamp_type;
 
+   template <uint16_t IntervalMs, uint64_t msSinceEpoch>
+   constexpr fc::microseconds operator-(const block_timestamp<IntervalMs, msSinceEpoch> &bts, const fc::time_point &tp)
+   {
+      return fc::duration_cast<fc::microseconds>(fc::time_point(bts) - tp);
+   }
+   template <uint16_t IntervalMs, uint64_t msSinceEpoch>
+   constexpr fc::microseconds operator-(const fc::time_point &tp, const block_timestamp<IntervalMs, msSinceEpoch> &bts)
+   {
+      return fc::duration_cast<fc::microseconds>(tp - fc::time_point(bts));
+   }
 } } /// eosio::chain
 
 

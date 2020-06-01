@@ -55,7 +55,7 @@ namespace {
                10,
                5,
                std::vector<chain::signature_type>{chain::signature_type()},
-               chain::transaction_header{chain::time_point(), 1, 0, 100, 50, 0}
+               {chain::time_point_sec(), 1, 0, 100, 50, 0}
             }
          }
       };
@@ -81,7 +81,7 @@ namespace {
                10,
                5,
                std::vector<chain::signature_type>{chain::signature_type()},
-               chain::transaction_header{chain::time_point(), 1, 0, 100, 50, 0}
+               {chain::time_point_sec(), 1, 0, 100, 50, 0}
             }
          }
       };

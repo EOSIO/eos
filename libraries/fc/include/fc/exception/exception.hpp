@@ -539,9 +539,9 @@ namespace fc
 
 #define FC_CHECK_DEADLINE( DEADLINE, ... ) \
   FC_MULTILINE_MACRO_BEGIN \
-    if( DEADLINE < fc::time_point::maximum() && DEADLINE < fc::time_point::now() ) { \
+    if( DEADLINE < fc::time_point::max() && DEADLINE < fc::now() ) { \
        auto log_mgs = FC_LOG_MESSAGE( error, "deadline ${d} exceeded by ${t}us ", \
-             FC_FORMAT_ARG_PARAMS(__VA_ARGS__)("d", DEADLINE)("t", fc::time_point::now() - DEADLINE) ); \
+             FC_FORMAT_ARG_PARAMS(__VA_ARGS__)("d", DEADLINE)("t", fc::now() - DEADLINE) ); \
        auto msg = log_mgs.get_limited_message(); \
        throw fc::timeout_exception( std::move( log_mgs ), fc::timeout_exception_code, "timeout_exception", std::move( msg ) ); \
     } \

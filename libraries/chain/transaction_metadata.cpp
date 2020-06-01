@@ -11,8 +11,8 @@ recover_keys_future transaction_metadata::start_recover_keys( packed_transaction
                                                               uint32_t max_variable_sig_size )
 {
    return async_thread_pool( thread_pool, [trx{std::move(trx)}, chain_id, time_limit, max_variable_sig_size]() mutable {
-         fc::time_point deadline = time_limit == fc::microseconds::maximum() ?
-                                   fc::time_point::maximum() : fc::time_point::now() + time_limit;
+         fc::time_point deadline = time_limit == fc::microseconds::max() ?
+                                   fc::time_point::max() : fc::now() + time_limit;
          const vector<signature_type>& sigs = check_variable_sig_size( trx, max_variable_sig_size );
          const vector<bytes>* context_free_data = trx->get_context_free_data();
          EOS_ASSERT( context_free_data, tx_no_context_free_data, "context free data pruned from packed_transaction" );

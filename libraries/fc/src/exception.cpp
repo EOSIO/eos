@@ -157,7 +157,7 @@ namespace fc
     */
    string exception::to_detail_string( log_level ll  )const
    {
-      const auto deadline = fc::time_point::now() + format_time_limit;
+      const auto deadline = fc::now() + format_time_limit;
       std::stringstream ss;
       try {
          try {
@@ -195,7 +195,7 @@ namespace fc
     */
    string exception::to_string( log_level ll   )const
    {
-      const auto deadline = fc::time_point::now() + format_time_limit;
+      const auto deadline = fc::now() + format_time_limit;
       std::stringstream ss;
       try {
          ss << my->_what;

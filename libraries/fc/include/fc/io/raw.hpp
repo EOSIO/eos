@@ -98,7 +98,7 @@ namespace fc {
     template<typename Stream>
     inline void pack( Stream& s, const fc::time_point_sec& tp )
     {
-       uint32_t usec = tp.sec_since_epoch();
+       uint32_t usec = tp.time_since_epoch().count();
        s.write( (const char*)&usec, sizeof(usec) );
     }
 
@@ -107,7 +107,7 @@ namespace fc {
     { try {
        uint32_t sec;
        s.read( (char*)&sec, sizeof(sec) );
-       tp = fc::time_point() + fc::seconds(sec);
+       tp = fc::time_point_sec() + fc::seconds(sec);
     } FC_RETHROW_EXCEPTIONS( warn, "" ) }
 
     template<typename Stream>

@@ -201,7 +201,7 @@ transaction_trace_ptr CallAction(TESTER& test, T ac, const vector<account_name>&
    test.set_transaction_headers(trx);
    auto sigs = trx.sign(test.get_private_key(scope[0], "active"), test.control->get_chain_id());
    flat_set<public_key_type> keys;
-   trx.get_signature_keys(test.control->get_chain_id(), fc::time_point::maximum(), keys);
+   trx.get_signature_keys(test.control->get_chain_id(), fc::time_point::max(), keys);
    auto res = test.push_transaction(trx);
    BOOST_CHECK_EQUAL(res->receipt->status, transaction_receipt::executed);
    test.produce_block();
@@ -227,9 +227,9 @@ transaction_trace_ptr CallFunction(TESTER& test, T ac, const vector<char>& data,
       auto sigs = trx.sign(test.get_private_key(scope[0], "active"), test.control->get_chain_id());
 
       flat_set<public_key_type> keys;
-      trx.get_signature_keys(test.control->get_chain_id(), fc::time_point::maximum(), keys);
+      trx.get_signature_keys(test.control->get_chain_id(), fc::time_point::max(), keys);
 
-      auto res = test.push_transaction(trx, fc::time_point::maximum(), TESTER::DEFAULT_BILLED_CPU_TIME_US, no_throw);
+      auto res = test.push_transaction(trx, fc::time_point::max(), TESTER::DEFAULT_BILLED_CPU_TIME_US, no_throw);
       if (!no_throw) {
          BOOST_CHECK_EQUAL(res->receipt->status, transaction_receipt::executed);
       }
@@ -956,8 +956,8 @@ void call_test(TESTER& test, T ac, uint32_t billed_cpu_time_us , uint32_t max_cp
    test.set_transaction_headers(trx);
    auto sigs = trx.sign(test.get_private_key(N(testapi), "active"), test.control->get_chain_id());
    flat_set<public_key_type> keys;
-   trx.get_signature_keys(test.control->get_chain_id(), fc::time_point::maximum(), keys);
-   auto res = test.push_transaction( trx, fc::time_point::now() + fc::milliseconds(max_cpu_usage_ms), billed_cpu_time_us );
+   trx.get_signature_keys(test.control->get_chain_id(), fc::time_point::max(), keys);
+   auto res = test.push_transaction( trx, fc::now() + fc::milliseconds(max_cpu_usage_ms), billed_cpu_time_us );
    BOOST_CHECK_EQUAL(res->receipt->status, transaction_receipt::executed);
    test.produce_block();
 };
@@ -1274,7 +1274,7 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
       auto dtrxs = get_scheduled_transactions();
       BOOST_CHECK_EQUAL(dtrxs.size(), 1);
       for (const auto& trx: dtrxs) {
-         control->push_scheduled_transaction(trx, fc::time_point::maximum(), 0, false);
+         control->push_scheduled_transaction(trx, fc::time_point::max(), 0, false);
       }
       BOOST_CHECK_EQUAL(1, count);
       BOOST_REQUIRE(trace);
@@ -1301,7 +1301,7 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
       auto dtrxs = get_scheduled_transactions();
       BOOST_CHECK_EQUAL(dtrxs.size(), 1);
       for (const auto& trx: dtrxs) {
-         control->push_scheduled_transaction(trx, fc::time_point::maximum(), billed_cpu_time_us, true);
+         control->push_scheduled_transaction(trx, fc::time_point::max(), billed_cpu_time_us, true);
       }
       BOOST_CHECK_EQUAL(1, count);
       BOOST_CHECK(trace);

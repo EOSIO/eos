@@ -371,9 +371,9 @@ if( options.count(op_name) ) { \
 fc::time_point calculate_genesis_timestamp( string tstr ) {
    fc::time_point genesis_timestamp;
    if( strcasecmp (tstr.c_str(), "now") == 0 ) {
-      genesis_timestamp = fc::time_point::now();
+      genesis_timestamp = fc::now();
    } else {
-      genesis_timestamp = time_point::from_iso_string( tstr );
+      genesis_timestamp = fc::from_iso_string<fc::time_point>( tstr );
    }
 
    auto epoch_us = genesis_timestamp.time_since_epoch().count();
@@ -1216,7 +1216,7 @@ void chain_plugin::plugin_startup()
 
    if (my->genesis) {
       ilog("Blockchain started; head block is #${num}, genesis timestamp is ${ts}",
-           ("num", my->chain->head_block_num())("ts", (std::string)my->genesis->initial_timestamp));
+           ("num", my->chain->head_block_num())("ts", fc::to_iso_string( my->genesis->initial_timestamp )));
    }
    else {
       ilog("Blockchain started; head block is #${num}", ("num", my->chain->head_block_num()));
@@ -1288,7 +1288,7 @@ bool chain_plugin::recover_reversible_blocks( const fc::path& db_dir, uint32_t c
    }
    fc::path backup_dir;
 
-   auto now = fc::time_point::now();
+   auto now = fc::now();
 
    if( new_db_dir ) {
       backup_dir = reversible_dir;
@@ -1296,7 +1296,7 @@ bool chain_plugin::recover_reversible_blocks( const fc::path& db_dir, uint32_t c
    } else {
       auto reversible_dir_name = reversible_dir.filename().generic_string();
       EOS_ASSERT( reversible_dir_name != ".", invalid_reversible_blocks_dir, "Invalid path to reversible directory" );
-      backup_dir = reversible_dir.parent_path() / reversible_dir_name.append("-").append( now );
+      backup_dir = reversible_dir.parent_path() / reversible_dir_name.append("-").append( fc::to_iso_string( now ) );
 
       EOS_ASSERT( !fc::exists(backup_dir),
                   reversible_blocks_backup_dir_exist,
@@ -1323,7 +1323,7 @@ bool chain_plugin::recover_reversible_blocks( const fc::path& db_dir, uint32_t c
 
    chainbase::database  new_reversible( reversible_dir, database::read_write, cache_size );
    std::fstream         reversible_blocks;
-   reversible_blocks.open( (reversible_dir.parent_path() / std::string("portable-reversible-blocks-").append( now ) ).generic_string().c_str(),
+   reversible_blocks.open( (reversible_dir.parent_path() / std::string("portable-reversible-blocks-").append( fc::to_iso_string( now ) ) ).generic_string().c_str(),
                            std::ios::out | std::ios::binary );
 
    uint32_t num = 0;
@@ -1592,11 +1592,11 @@ read_only::get_activated_protocol_features( const read_only::get_activated_proto
       auto& activation_ordinal_value   = mvo["activation_ordinal"];
       auto& activation_block_num_value = mvo["activation_block_num"];
 
-      auto cur_time = fc::time_point::now();
+      auto cur_time = fc::now();
       auto end_time = cur_time + fc::microseconds(1000 * 10); /// 10ms max time
       for( unsigned int count = 0;
            cur_time <= end_time && count < params.limit && itr != end_itr;
-           ++itr, cur_time = fc::time_point::now() )
+           ++itr, cur_time = fc::now() )
       {
          const auto& conv_itr = convert_iterator( itr );
          activation_ordinal_value   = conv_itr.activation_ordinal();
@@ -1865,9 +1865,9 @@ read_only::get_table_by_scope_result read_only::get_table_by_scope( const read_o
       return result;
 
    auto walk_table_range = [&]( auto itr, auto end_itr ) {
-      auto cur_time = fc::time_point::now();
+      auto cur_time = fc::now();
       auto end_time = cur_time + fc::microseconds(1000 * 10); /// 10ms max time
-      for( unsigned int count = 0; cur_time <= end_time && count < p.limit && itr != end_itr; ++itr, cur_time = fc::time_point::now() ) {
+      for( unsigned int count = 0; cur_time <= end_time && count < p.limit && itr != end_itr; ++itr, cur_time = fc::now() ) {
          if( p.table && itr->table != p.table ) continue;
 
          result.rows.push_back( {itr->code, itr->scope, itr->table, itr->payer, itr->count} );
@@ -1979,7 +1979,7 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
    const auto& secondary_index_by_secondary = secondary_index.get<by_secondary>();
 
    read_only::get_producers_result result;
-   const auto stopTime = fc::time_point::now() + fc::microseconds(1000 * 10); // 10ms
+   const auto stopTime = fc::now() + fc::microseconds(1000 * 10); // 10ms
    vector<char> data;
 
    auto it = [&]{
@@ -1993,7 +1993,7 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
    }();
 
    for( ; it != secondary_index_by_secondary.end() && it->t_id == secondary_table_id->id; ++it ) {
-      if (result.rows.size() >= p.limit || fc::time_point::now() > stopTime) {
+      if (result.rows.size() >= p.limit || fc::now() > stopTime) {
          result.more = name{it->primary_key}.to_string();
          break;
       }
@@ -2072,7 +2072,7 @@ read_only::get_scheduled_transactions( const read_only::get_scheduled_transactio
    auto itr = ([&](){
       if (!p.lower_bound.empty()) {
          try {
-            auto when = time_point::from_iso_string( p.lower_bound );
+            auto when = fc::from_iso_string<fc::time_point>( p.lower_bound );
             return idx_by_delay.lower_bound(boost::make_tuple(when));
          } catch (...) {
             try {
@@ -2099,8 +2099,8 @@ read_only::get_scheduled_transactions( const read_only::get_scheduled_transactio
    auto resolver = make_resolver(this, abi_serializer::create_yield_function( abi_serializer_max_time ));
 
    uint32_t remaining = p.limit;
-   auto time_limit = fc::time_point::now() + fc::microseconds(1000 * 10); /// 10ms max time
-   while (itr != idx_by_delay.end() && remaining > 0 && time_limit > fc::time_point::now()) {
+   auto time_limit = fc::now() + fc::microseconds(1000 * 10); /// 10ms max time
+   while (itr != idx_by_delay.end() && remaining > 0 && time_limit > fc::now()) {
       auto row = fc::mutable_variant_object()
               ("trx_id", itr->trx_id)
               ("sender", itr->sender)

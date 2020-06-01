@@ -56,7 +56,7 @@ namespace eosio { namespace chain {
          transaction_context( controller& c,
                               const packed_transaction& t,
                               transaction_checktime_timer&& timer,
-                              fc::time_point start = fc::time_point::now() );
+                              fc::time_point start = fc::now() );
 
          void init_for_implicit_trx( uint64_t initial_net_usage = 0 );
 
@@ -173,7 +173,7 @@ namespace eosio { namespace chain {
          bool                          apply_context_free = true;
          bool                          enforce_whiteblacklist = true;
 
-         fc::time_point                deadline = fc::time_point::maximum();
+         fc::time_point                deadline = fc::time_point::max();
          fc::microseconds              leeway = fc::microseconds( config::default_subjective_cpu_leeway_us );
          int64_t                       billed_cpu_time_us = 0;
          bool                          explicit_billed_cpu_time = false;
@@ -198,7 +198,7 @@ namespace eosio { namespace chain {
 
          fc::microseconds              initial_objective_duration_limit;
          fc::microseconds              objective_duration_limit;
-         fc::time_point                _deadline = fc::time_point::maximum();
+         fc::time_point                _deadline = fc::time_point::max();
          int64_t                       deadline_exception_code = block_cpu_usage_exceeded::code_value;
          int64_t                       billing_timer_exception_code = block_cpu_usage_exceeded::code_value;
          fc::time_point                pseudo_start;

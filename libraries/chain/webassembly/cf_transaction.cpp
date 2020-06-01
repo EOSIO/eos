@@ -27,7 +27,7 @@ namespace eosio { namespace chain { namespace webassembly {
    }
 
    int32_t interface::expiration() const {
-     return context.trx_context.packed_trx.get_transaction().expiration.sec_since_epoch();
+     return context.trx_context.packed_trx.get_transaction().expiration.time_since_epoch().count();
    }
 
    int32_t interface::tapos_block_num() const {

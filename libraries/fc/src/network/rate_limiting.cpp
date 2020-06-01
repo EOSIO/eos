@@ -149,7 +149,7 @@ namespace fc
     average_rate_meter::average_rate_meter(const microseconds& time_constant) :
       _average_rate(0.),
       _unaccounted_bytes(0),
-      _last_update_time(time_point_sec::min()),
+      _last_update_time(time_point_sec()),
       _time_constant(time_constant)
     {}
     void average_rate_meter::set_time_constant(const microseconds& time_constant)
@@ -162,7 +162,7 @@ namespace fc
     }
     void average_rate_meter::update_const(uint32_t bytes_transferred /* = 0 */) const
     {
-      time_point now = time_point::now();
+      time_point now = fc::now();
       if (now <= _last_update_time)
         _unaccounted_bytes += bytes_transferred;
       else
@@ -420,7 +420,7 @@ namespace fc
       operations_for_next_iteration.clear();
 
       // find out how much time since our last read/write
-      time_point this_iteration_start_time = time_point::now();
+      time_point this_iteration_start_time = fc::now();
       if (limit_bytes_per_second) // the we are limiting up/download speed
       {
         microseconds time_since_last_iteration = this_iteration_start_time - last_iteration_start_time;

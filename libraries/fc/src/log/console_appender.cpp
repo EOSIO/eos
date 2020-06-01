@@ -123,7 +123,7 @@ namespace fc {
       }
       line += fixed_size(  5, context.get_log_level().to_string() ); line += ' ';
       // use now() instead of context.get_timestamp() because log_message construction can include user provided long running calls
-      line += string( time_point::now() ); line += ' ';
+      line += fc::to_iso_string( fc::now() ); line += ' ';
       line += fixed_size(  9, context.get_thread_name() ); line += ' ';
       line += fixed_size( 29, file_line ); line += ' ';
 

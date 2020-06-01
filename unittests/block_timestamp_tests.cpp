@@ -23,12 +23,11 @@ BOOST_AUTO_TEST_CASE(constructor_test) {
 BOOST_AUTO_TEST_CASE(conversion_test) {
 	block_timestamp_type bt;
 	fc::time_point t = (fc::time_point)bt;
-	BOOST_TEST(t.time_since_epoch().to_seconds() == 946684800ll, "Time point conversion failed");
+	BOOST_TEST(t.time_since_epoch().count() == 946684800ll, "Time point conversion failed");
 
 	block_timestamp_type bt1(200);
 	t = (fc::time_point)bt1;
-	BOOST_TEST(t.time_since_epoch().to_seconds() == 946684900ll, "Time point conversion failed");
-
+	BOOST_TEST(t.time_since_epoch().count() == 946684900ll, "Time point conversion failed");
 }
 
 BOOST_AUTO_TEST_SUITE_END()

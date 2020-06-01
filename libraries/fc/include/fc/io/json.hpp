@@ -73,7 +73,7 @@ namespace fc
          }
 
          template<typename T>
-         static string   to_pretty_string( const T& v, const fc::time_point& deadline = fc::time_point::maximum(), const output_formatting format = output_formatting::stringify_large_ints_and_doubles, const uint64_t max_len = max_length_limit )
+         static string   to_pretty_string( const T& v, const fc::time_point& deadline = fc::time_point::max(), const output_formatting format = output_formatting::stringify_large_ints_and_doubles, const uint64_t max_len = max_length_limit )
          {
             const auto yield = [&](std::ostream& os) {
                FC_CHECK_DEADLINE(deadline);

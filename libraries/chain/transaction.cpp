@@ -60,12 +60,12 @@ fc::microseconds transaction::get_signature_keys( const vector<signature_type>& 
       const chain_id_type& chain_id, fc::time_point deadline, const vector<bytes>& cfd,
       flat_set<public_key_type>& recovered_pub_keys, bool allow_duplicate_keys)const
 { try {
-   auto start = fc::time_point::now();
+   auto start = fc::now();
    recovered_pub_keys.clear();
    const digest_type digest = sig_digest(chain_id, cfd);
 
    for(const signature_type& sig : signatures) {
-      auto now = fc::time_point::now();
+      auto now = fc::now();
       EOS_ASSERT( now < deadline, tx_cpu_usage_exceeded, "transaction signature verification executed for too long ${time}us",
                   ("time", now - start)("now", now)("deadline", deadline)("start", start) );
       auto[ itr, successful_insertion ] = recovered_pub_keys.emplace( sig, digest );
@@ -74,7 +74,7 @@ fc::microseconds transaction::get_signature_keys( const vector<signature_type>& 
                   ("key", *itr ) );
    }
 
-   return fc::time_point::now() - start;
+   return fc::now() - start;
 } FC_CAPTURE_AND_RETHROW() }
 
 flat_multimap<uint16_t, transaction_extension> transaction::validate_and_extract_extensions()const {

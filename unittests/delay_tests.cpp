@@ -76,7 +76,7 @@ BOOST_FIXTURE_TEST_CASE( delay_error_create_account, validating_tester) { try {
    BOOST_REQUIRE_EQUAL(scheduled_trxs.size(), 1u);
 
    auto billed_cpu_time_us = control->get_global_properties().configuration.min_transaction_cpu_usage;
-   auto dtrace = control->push_scheduled_transaction(scheduled_trxs.front(), fc::time_point::maximum(), billed_cpu_time_us, true);
+   auto dtrace = control->push_scheduled_transaction(scheduled_trxs.front(), fc::time_point::max(), billed_cpu_time_us, true);
    BOOST_REQUIRE_EQUAL(dtrace->except.valid(), true);
    BOOST_REQUIRE_EQUAL(dtrace->except->code(), missing_auth_exception::code_value);
 
@@ -2366,7 +2366,7 @@ BOOST_FIXTURE_TEST_CASE( delay_expired, validating_tester) { try {
                              });
    set_transaction_headers(trx);
    trx.delay_sec = 3;
-   trx.expiration = control->head_block_time() + fc::microseconds(1000000);
+   trx.expiration = fc::time_point_cast<fc::seconds>(control->head_block_time()) + fc::seconds(1);
    trx.sign( get_private_key( creator, "active" ), control->get_chain_id()  );
 
    auto trace = push_transaction( trx );

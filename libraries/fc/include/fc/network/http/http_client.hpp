@@ -17,10 +17,10 @@ class http_client {
       http_client();
       ~http_client();
 
-      variant post_sync(const url& dest, const variant& payload, const time_point& deadline = time_point::maximum());
+      variant post_sync(const url& dest, const variant& payload, const time_point& deadline = fc::time_point::max());
 
       template<typename T>
-      variant post_sync(const url& dest, const T& payload, const time_point& deadline = time_point::maximum()) {
+      variant post_sync(const url& dest, const T& payload, const time_point& deadline = fc::time_point::max()) {
          variant payload_v;
          to_variant(payload, payload_v);
          return post_sync(dest, payload_v, deadline);

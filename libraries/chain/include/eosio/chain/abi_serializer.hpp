@@ -96,9 +96,9 @@ struct abi_serializer {
    // create standard yield function that checks for max_serialization_time and max_recursion_depth.
    // now() deadline caputered at time of this call
    static yield_function_t create_yield_function(const fc::microseconds& max_serialization_time) {
-      fc::time_point deadline = fc::time_point::now();
-      if( max_serialization_time > fc::microseconds::maximum() - deadline.time_since_epoch() ) {
-         deadline = fc::time_point::maximum();
+      fc::time_point deadline = fc::now();
+      if( max_serialization_time > fc::microseconds::max() - deadline.time_since_epoch() ) {
+         deadline = fc::time_point::max();
       } else {
          deadline += max_serialization_time;
       }
@@ -106,7 +106,7 @@ struct abi_serializer {
          EOS_ASSERT( recursion_depth < max_recursion_depth, abi_recursion_depth_exception,
                      "recursive definition, max_recursion_depth ${r} ", ("r", max_recursion_depth) );
 
-         EOS_ASSERT( fc::time_point::now() < deadline, abi_serialization_deadline_exception,
+         EOS_ASSERT( fc::now() < deadline, abi_serialization_deadline_exception,
                      "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
       };
    }

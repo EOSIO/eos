@@ -779,7 +779,7 @@ string format_string( const string& frmt, const variant_object& args, bool minim
                   } else {
                      const auto max_length = minimize ? minimize_sub_max_size : std::numeric_limits<uint64_t>::max();
                      try {
-                        result += json::to_string(val->value(), fc::time_point::maximum(), json::output_formatting::stringify_large_ints_and_doubles, max_length);
+                        result += json::to_string(val->value(), fc::time_point::max(), json::output_formatting::stringify_large_ints_and_doubles, max_length);
                      } catch (...) {
                         replaced = false;
                      }

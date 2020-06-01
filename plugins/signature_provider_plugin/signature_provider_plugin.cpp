@@ -54,7 +54,7 @@ class signature_provider_plugin_impl {
          return [to=_keosd_provider_timeout_us, keosd_url, pubkey](const chain::digest_type& digest) {
             fc::variant params;
             fc::to_variant(std::make_pair(digest, pubkey), params);
-            auto deadline = to.count() >= 0 ? fc::time_point::now() + to : fc::time_point::maximum();
+            auto deadline = to.count() >= 0 ? fc::now() + to : fc::time_point::max();
             return app().get_plugin<http_client_plugin>().get_client().post_sync(keosd_url, params, deadline).as<chain::signature_type>();
          };
       }

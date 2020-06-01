@@ -37,9 +37,11 @@ namespace fc
    class variant;
    class variant_object;
    class mutable_variant_object;
+/* 
    class time_point;
    class time_point_sec;
    class microseconds;
+*/
    template<typename T> struct safe;
    template<typename... Types>
    class static_variant;
@@ -148,7 +150,7 @@ namespace fc
    void to_variant( const std::array<T,S>& var,  variant& vo );
    template<typename T, std::size_t S>
    void from_variant( const variant& var,  std::array<T,S>& vo );
-
+/*
    void to_variant( const time_point& var,  variant& vo );
    void from_variant( const variant& var,  time_point& vo );
 
@@ -157,7 +159,7 @@ namespace fc
 
    void to_variant( const microseconds& input_microseconds,  variant& output_variant );
    void from_variant( const variant& input_variant,  microseconds& output_microseconds );
-
+*/
    #ifdef __APPLE__
    void to_variant( size_t s, variant& v );
    #elif !defined(_MSC_VER)

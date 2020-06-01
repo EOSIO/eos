@@ -329,7 +329,7 @@ public:
    }
 
    uint32_t last_block_time() const {
-      return time_point_sec( control->head_block_time() ).sec_since_epoch();
+      return fc::duration_cast<fc::seconds>( control->head_block_time().time_since_epoch() ).count();
    }
 
    asset get_balance( const account_name& act ) {

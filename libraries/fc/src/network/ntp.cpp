@@ -91,7 +91,7 @@ namespace fc
               std::array<unsigned char, 48> packet_to_send { {010,0,0,0,0,0,0,0,0} };
               memcpy(send_buffer.get(), packet_to_send.data(), packet_to_send.size());
               uint64_t* send_buf_as_64_array = (uint64_t*)send_buffer.get();
-              send_buf_as_64_array[5] = fc_time_point_to_ntp_timestamp(fc::time_point::now()); // 5 = Transmit Timestamp
+              send_buf_as_64_array[5] = fc_time_point_to_ntp_timestamp(fc::now()); // 5 = Transmit Timestamp
               _sock.send_to(send_buffer, packet_to_send.size(), ep);
               break;
             }
@@ -144,7 +144,7 @@ namespace fc
           //  wlog("received ntp reply from ${from}",("from",from) );
           } FC_RETHROW_EXCEPTIONS(error, "Error reading from NTP socket");
 
-          fc::time_point receive_time = fc::time_point::now();
+          fc::time_point receive_time = fc::now();
           fc::time_point origin_time = ntp_timestamp_to_fc_time_point(recv_buf[3]);
           fc::time_point server_receive_time = ntp_timestamp_to_fc_time_point(recv_buf[4]);
           fc::time_point server_transmit_time = ntp_timestamp_to_fc_time_point(recv_buf[5]);
@@ -175,7 +175,7 @@ namespace fc
             }
             else
               elog( "NTP time and local time vary by more than a day! ntp:${ntp_time} local:${local}",
-                   ("ntp_time", receive_time + offset)("local", fc::time_point::now()) );
+                   ("ntp_time", receive_time + offset)("local", fc::now()) );
           }
         }
         wlog("exiting ntp read_loop");
@@ -190,7 +190,7 @@ namespace fc
                request_now();
                reschedule();
             },
-          fc::time_point::now() + fc::seconds(_request_interval_sec) );
+          fc::now() + fc::seconds(_request_interval_sec) );
       }
     }; //ntp_impl
 
@@ -246,7 +246,7 @@ namespace fc
   optional<time_point> ntp::get_time()const
   {
     if( my->_last_ntp_delta_initialized )
-      return fc::time_point::now() + fc::microseconds(my->_last_ntp_delta_microseconds);
+      return fc::now() + fc::microseconds(my->_last_ntp_delta_microseconds);
     return optional<time_point>();
   }
 
