@@ -15,21 +15,9 @@ using eosio::chain::packed_transaction;
 using eosio::chain::state_history_exception;
 using prunable_data_type = packed_transaction::prunable_data_type;
 
-bool is_onblock(const transaction_trace_ptr& p) {
-   if (p->action_traces.empty())
-      return false;
-   auto& act = p->action_traces[0].act;
-   if (act.account != eosio::chain::config::system_account_name || act.name != N(onblock) ||
-       act.authorization.size() != 1)
-      return false;
-   auto& auth = act.authorization[0];
-   return auth.actor == eosio::chain::config::system_account_name &&
-          auth.permission == eosio::chain::config::active_name;
-}
-
 void trace_converter::add_transaction(const transaction_trace_ptr& trace, const packed_transaction_ptr& transaction) {
    if (trace->receipt) {
-      if (is_onblock(trace))
+      if (chain::is_onblock(*trace))
          onblock_trace.emplace(trace, transaction);
       else if (trace->failed_dtrx_trace)
          cached_traces[trace->failed_dtrx_trace->id] = augmented_transaction_trace{trace, transaction};
@@ -66,7 +54,8 @@ Object unpack_zlib_compressed(const char* buffer, fc::datastream<const char*>& d
 std::vector<augmented_transaction_trace> prepare_traces(trace_converter&       converter,
                                                         const block_state_ptr& block_state) {
    std::vector<augmented_transaction_trace> traces;
-   if (converter.onblock_trace)
+   // verify block_num of onblock_trace because last block could have been aborted & new block have no onblock
+   if (converter.onblock_trace && converter.onblock_trace->trace->block_num == block_state->block_num)
       traces.push_back(*converter.onblock_trace);
    for (auto& r : block_state->block->transactions) {
       transaction_id_type id;
