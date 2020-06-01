@@ -15,6 +15,8 @@
 
 #include <eosio/chain/eosio_contract.hpp>
 
+#include <eosio/resource_monitor_plugin/resource_monitor_plugin.hpp>
+
 #include <chainbase/environment.hpp>
 
 #include <boost/signals2/connection.hpp>
@@ -689,6 +691,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
             my->blocks_dir = app().data_dir() / bld;
          else
             my->blocks_dir = bld;
+         resource_monitor_plugin::monitor_directory(my->blocks_dir);
       }
 
       protocol_feature_set pfs;
@@ -699,6 +702,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
             protocol_features_dir = app().config_dir() / pfd;
          else
             protocol_features_dir = pfd;
+         resource_monitor_plugin::monitor_directory(protocol_features_dir);
 
          pfs = initialize_protocol_features( protocol_features_dir );
       }

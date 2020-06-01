@@ -4,6 +4,7 @@
 #include <eosio/http_plugin/http_plugin.hpp>
 #include <eosio/net_plugin/net_plugin.hpp>
 #include <eosio/producer_plugin/producer_plugin.hpp>
+#include <eosio/resource_monitor_plugin/resource_monitor_plugin.hpp>
 #include <eosio/version/version.hpp>
 
 #include <fc/log/logger_config.hpp>
@@ -100,6 +101,7 @@ int main(int argc, char** argv)
          }
          return INITIALIZE_FAIL;
       }
+      resource_monitor_plugin::monitor_directory(app().data_dir());
       initialize_logging();
       ilog( "${name} version ${ver} ${fv}",
             ("name", nodeos::config::node_executable_name)("ver", app().version_string())
