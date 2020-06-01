@@ -7,6 +7,8 @@
 
 #include <eosio/trace_api/configuration_utils.hpp>
 
+#include <eosio/resource_monitor_plugin/resource_monitor_plugin.hpp>
+
 #include <boost/signals2/connection.hpp>
 
 using namespace eosio::trace_api;
@@ -114,6 +116,7 @@ struct trace_api_common_impl {
          trace_dir = app().data_dir() / dir_option;
       else
          trace_dir = dir_option;
+      resource_monitor_plugin::monitor_directory(trace_dir);
 
       slice_stride = options.at("trace-slice-stride").as<uint32_t>();
 

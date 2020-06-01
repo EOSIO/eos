@@ -18,6 +18,10 @@ public:
    void plugin_startup();
    void plugin_shutdown();
 
+   // Called by plugins and other components to request
+   // directory monitoring
+   static void monitor_directory(const bfs::path& path);
+
 private:
    std::unique_ptr<class resource_monitor_plugin_impl> my;
 };
