@@ -52,7 +52,7 @@ addEnum(BlockLogAction, "prune_transactions")
 
 ###########################################################################################
 
-class Timeout:
+class WaitSpec:
 
     def __init__(self, value, sleep_interval=None, leeway=None):
         self.toCalculate = True if value == -1 else False
@@ -75,7 +75,7 @@ class Timeout:
             desc = "%d sec" % (self.value)
         else:
             desc = ""
-        return "Timeout %s%s" % (desc, append)
+        return "WaitSpec timeout %s%s" % (desc, append)
 
     def convert(self, startBlockNum, endBlockNum):
         if self.value is None or self.value != -1:
@@ -94,19 +94,23 @@ class Timeout:
             self.sleep_interval = max(timeout / 10, 1)
 
     def sleepTime(self, default=None):
+        # if sleep_interval is set to a value greater than 0 in __init__, that will be used here, if it was set
+        # to None and value was also None (to convert/calculate based on blocks) it will be calculated and that
+        # value is used, otherwise passed in default is used, and if still not set, it uses default_interval_seconds
         time = self.sleep_interval if self.sleep_interval is not None else default
-        return time if time is not None else Timeout.default_interval_seconds
+        return time if time is not None else WaitSpec.default_interval_seconds
 
     def asSeconds(self):
-        assert self.value != -1, "Timeout.calculate was used, but calculate method never called."
-        retVal = self.value if self.value is not None else Timeout.default_seconds
+        assert self.value != -1, "Called method with WaitSpec for calculating the appropriate timeout (WaitSpec.calculate)," +\
+                                 " but convert method was never called."
+        retVal = self.value if self.value is not None else WaitSpec.default_seconds
         return retVal
 
     default_seconds = 60
     default_interval_seconds = 3
 
-setattr(Timeout, "default", Timeout(None))
-setattr(Timeout, "calculate", Timeout(-1))
+setattr(WaitSpec, "default", WaitSpec(None))
+setattr(WaitSpec, "calculate", WaitSpec(-1))
 
 ###########################################################################################
 
@@ -277,8 +281,8 @@ class Utils:
     @staticmethod
     def waitForTruth(lam, timeout=None, sleepTime=3, reporter=None):
         if timeout is None:
-            timeout=Timeout.default
-        if isinstance(timeout, Timeout):
+            timeout=WaitSpec.default
+        if isinstance(timeout, WaitSpec):
             sleepTime = timeout.sleepTime(sleepTime)
             timeout = timeout.asSeconds()
 

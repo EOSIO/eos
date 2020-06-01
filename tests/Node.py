@@ -15,7 +15,7 @@ from testUtils import EnumType
 from testUtils import addEnum
 from testUtils import unhandledEnumType
 from testUtils import ReturnType
-from testUtils import Timeout
+from testUtils import WaitSpec
 
 class BlockType(EnumType):
     pass
@@ -484,19 +484,18 @@ class Node(object):
         ret=Utils.waitForTruth(lam, timeout)
         return ret
 
-    def waitForNextBlock(self, timeout=Timeout.default, blockType=BlockType.head):
+    def waitForNextBlock(self, timeout=WaitSpec.default, blockType=BlockType.head):
         num=self.getBlockNum(blockType=blockType)
-        if isinstance(timeout, Timeout):
+        if isinstance(timeout, WaitSpec):
             timeout = timeout.seconds(num, num+1)
         lam = lambda: self.getHeadBlockNum() > num
         ret=Utils.waitForTruth(lam, timeout)
         return ret
 
-    def waitForBlock(self, blockNum, timeout=None, blockType=BlockType.head, reportInterval=None, errorContext=None):
-#    def waitForBlock(self, blockNum, timeout=Timeout.default, blockType=BlockType.head, reportInterval=None, errorContext=None):
+    def waitForBlock(self, blockNum, timeout=WaitSpec.default, blockType=BlockType.head, reportInterval=None, errorContext=None):
         currentBlockNum=self.getBlockNum(blockType=blockType)
         currentTime=time.time()
-        if isinstance(timeout, Timeout):
+        if isinstance(timeout, WaitSpec):
             timeout.convert(currentBlockNum, blockNum)
 
         blockDesc = "head" if blockType == BlockType.head else "LIB"
@@ -539,7 +538,7 @@ class Node(object):
 
             def __exit__(self, exc_type, exc_value, exc_traceback):
                 if not self.passed:
-                    notAdvanceStr="(but has not change since last sleep)" if self.advanced else ""
+                    notAdvanceStr="(but has not changed since last sleep)" if not self.advanced else ""
                     Utils.Print("waitForBlock never reached block number: %d.  It started at: %d and had progressed%s to: %d after %d seconds." %
                                 (blockNum, currentBlockNum, notAdvanceStr, self.lastBlockNum, time.time()-currentTime))
 
@@ -551,7 +550,7 @@ class Node(object):
         assert ret is not None or errorContext is None, Utils.errorExit("%s." % (errorContext))
         return ret
 
-    def waitForIrreversibleBlock(self, blockNum, timeout=Timeout.default, blockType=BlockType.head):
+    def waitForIrreversibleBlock(self, blockNum, timeout=WaitSpec.default, blockType=BlockType.head):
         return self.waitForBlock(blockNum, timeout=timeout, blockType=blockType)
 
     # Trasfer funds. Returns "transfer" json return object
@@ -1276,16 +1275,21 @@ class Node(object):
                 pass
             return False
 
-        def didNodeExitGracefully(popen, timeout):
-            try:
-                popen.communicate(timeout=timeout)
-            except TimeoutExpired:
-                return False
-            with open(popen.errfile.name, 'r') as f:
-                if "Reached configured maximum block 10; terminating" in f.read():
-                    return True
-                else:
+        class DidProcessExitGracefully:
+            def __init__(self, popen, timeout):
+                self.popen = popen
+                self.timeout = timeout
+
+            def __call__(self):
+                try:
+                    self.popen.communicate(timeout=self.timeout)
+                except TimeoutExpired:
                     return False
+                with open(self.popen.errfile.name, 'r') as f:
+                    if "Reached configured maximum block 10; terminating" in f.read():
+                        return True
+                    else:
+                        return False
 
         if "terminate-at-block" not in cmd:
             isAlive=Utils.waitForTruth(isNodeAlive, timeout, sleepTime=1)
