@@ -88,7 +88,7 @@ class WaitSpec:
         self.value = timeout
 
     def asSeconds(self):
-        assert self.value != -1, "Called method with WaitSpec for calculating the appropriate timeout (WaitSpec.calculate)," +\
+        assert self.value != -1, "Called method with WaitSpec for calculating the appropriate timeout (WaitSpec.convert)," +\
                                  " but convert method was never called."
         retVal = self.value if self.value is not None else WaitSpec.default_seconds
         return retVal
