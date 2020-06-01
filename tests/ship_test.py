@@ -208,16 +208,8 @@ finally:
                 # output file should have lots of output, but if user passes in a huge number of requests, these could go on forever
                 printTruncatedFile("%s%d.out" % (shipClientFilePrefix, i), maxLines=20000)
 
-        if not keepLogs:
+        if testSuccessful and not keepLogs:
             shutil.rmtree(shipTempDir, ignore_errors=True)
-    if not testSuccessful and dumpErrorDetails:
-        Print(Utils.FileDivider)
-        Print("Compare Blocklog")
-        cluster.compareBlockLogs()
-        Print(Utils.FileDivider)
-        Print("Print Blocklog")
-        cluster.printBlockLog()
-        Print(Utils.FileDivider)
 
 errorCode = 0 if testSuccessful else 1
 exit(errorCode)
