@@ -56,7 +56,7 @@ def waitUntilBeginningOfProdTurn(node, producerName, timeout=30, sleepTime=0.4):
         res =  node.getBlock(headBlockNum)["producer"] == producerName and \
                node.getBlock(headBlockNum-1)["producer"] != producerName
         return res
-    Utils.waitForBool(isDesiredProdTurn, timeout, sleepTime)
+    Utils.waitForTruth(isDesiredProdTurn, timeout, sleepTime)
 
 def waitForOneRound():
     time.sleep(24) # We have 4 producers for this test
@@ -75,7 +75,7 @@ def setValidityOfActTimeSubjRestriction(node, nodeId, codename, valid):
 def waitUntilBlockBecomeIrr(node, blockNum, timeout=60):
     def hasBlockBecomeIrr():
         return node.getIrreversibleBlockNum() >= blockNum
-    return Utils.waitForBool(hasBlockBecomeIrr, timeout)
+    return Utils.waitForTruth(hasBlockBecomeIrr, timeout)
 
 # List to contain the test result message
 testSuccessful = False

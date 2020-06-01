@@ -427,7 +427,7 @@ class Cluster(object):
             self.unstartedNodes=self.discoverUnstartedLocalNodes(unstartedNodes, totalNodes)
 
         biosNode=self.discoverBiosNode(timeout=Utils.systemWaitTimeout)
-        if not biosNode or not Utils.waitForBool(biosNode.checkPulse, Utils.systemWaitTimeout):
+        if not biosNode or not Utils.waitForTruth(biosNode.checkPulse, Utils.systemWaitTimeout):
             Utils.Print("ERROR: Bios node doesn't appear to be running...")
             return False
 
@@ -589,7 +589,7 @@ class Cluster(object):
 
         printCount=0
         lam = lambda: doNodesHaveBlockNum(self.nodes, targetBlockNum, blockType, printCount)
-        ret=Utils.waitForBool(lam, timeout)
+        ret=Utils.waitForTruth(lam, timeout)
         return ret
 
     @staticmethod
@@ -1181,7 +1181,7 @@ class Cluster(object):
 
             # wait for block production handover (essentially a block produced by anyone but eosio).
             lam = lambda: biosNode.getInfo(exitOnError=True)["head_block_producer"] != "eosio"
-            ret=Utils.waitForBool(lam)
+            ret=Utils.waitForTruth(lam)
             if not ret:
                 Utils.Print("ERROR: Block production handover failed.")
                 return None
@@ -1338,7 +1338,7 @@ class Cluster(object):
                 return None
             return None
 
-        return Utils.waitForObj(myFunc, timeout)
+        return Utils.waitForTruth(myFunc, timeout)
 
     @staticmethod
     def pgrepEosServerPattern(nodeInstance):
