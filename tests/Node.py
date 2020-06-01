@@ -474,14 +474,14 @@ class Node(object):
         """Wait for trans id to be finalized."""
         assert(isinstance(transId, str))
         lam = lambda: self.isTransInAnyBlock(transId)
-        ret=Utils.waitForBool(lam, timeout)
+        ret=Utils.waitForTruth(lam, timeout)
         return ret
 
     def waitForTransFinalization(self, transId, timeout=None):
         """Wait for trans id to be finalized."""
         assert(isinstance(transId, str))
         lam = lambda: self.isTransFinalized(transId)
-        ret=Utils.waitForBool(lam, timeout)
+        ret=Utils.waitForTruth(lam, timeout)
         return ret
 
     def waitForNextBlock(self, timeout=Timeout.default, blockType=BlockType.head):
@@ -489,7 +489,7 @@ class Node(object):
         if isinstance(timeout, Timeout):
             timeout = timeout.seconds(num, num+1)
         lam = lambda: self.getHeadBlockNum() > num
-        ret=Utils.waitForBool(lam, timeout)
+        ret=Utils.waitForTruth(lam, timeout)
         return ret
 
     def waitForBlock(self, blockNum, timeout=None, blockType=BlockType.head, reportInterval=None, errorContext=None):
@@ -546,7 +546,7 @@ class Node(object):
         with RequireBlockNum(self, blockNum) as lam:
 
             reporter = WaitReporter(self, reportInterval) if reportInterval is not None else None
-            ret=Utils.waitForBool(lam, timeout, reporter=reporter)
+            ret=Utils.waitForTruth(lam, timeout, reporter=reporter)
 
         assert ret is not None or errorContext is None, Utils.errorExit("%s." % (errorContext))
         return ret
@@ -1125,7 +1125,7 @@ class Node(object):
                 return True
             return False
 
-        if not Utils.waitForBool(myFunc):
+        if not Utils.waitForTruth(myFunc):
             Utils.Print("ERROR: Failed to validate node shutdown.")
             return False
 
@@ -1288,9 +1288,10 @@ class Node(object):
                     return False
 
         if "terminate-at-block" not in cmd:
-            isAlive=Utils.waitForBool(isNodeAlive, timeout, sleepTime=1)
+            isAlive=Utils.waitForTruth(isNodeAlive, timeout, sleepTime=1)
         else:
-            isAlive=Utils.waitForBoolWithArg(didNodeExitGracefully, self.popenProc, timeout, sleepTime=1)
+            lam=DidProcessExitGracefully(self.popenProc, timeout)
+            isAlive=Utils.waitForTruth(lam, timeout, sleepTime=1)
         if isAlive:
             Utils.Print("Node relaunch was successful.")
         else:
@@ -1405,13 +1406,13 @@ class Node(object):
         currentHead = self.getHeadBlockNum()
         def isHeadAdvancing():
             return self.getHeadBlockNum() > currentHead
-        return Utils.waitForBool(isHeadAdvancing, timeout)
+        return Utils.waitForTruth(isHeadAdvancing, timeout)
 
     def waitForLibToAdvance(self, timeout=30):
         currentLib = self.getIrreversibleBlockNum()
         def isLibAdvancing():
             return self.getIrreversibleBlockNum() > currentLib
-        return Utils.waitForBool(isLibAdvancing, timeout)
+        return Utils.waitForTruth(isLibAdvancing, timeout)
 
     # Require producer_api_plugin
     def activatePreactivateFeature(self):

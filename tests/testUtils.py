@@ -275,7 +275,7 @@ class Utils:
         Utils.Print(msg)
 
     @staticmethod
-    def waitForObj(lam, timeout=None, sleepTime=3, reporter=None):
+    def waitForTruth(lam, timeout=None, sleepTime=3, reporter=None):
         if timeout is None:
             timeout=Timeout.default
         if isinstance(timeout, Timeout):
@@ -285,11 +285,14 @@ class Utils:
         currentTime=time.time()
         endTime=currentTime+timeout
         needsNewLine=False
+        failReturnVal=None
         try:
             while endTime > currentTime:
                 ret=lam()
-                if ret is not None:
+                if ret:
                     return ret
+                # save this to return the not Truth state for the passed in method
+                failReturnVal=ret
                 remaining = endTime - currentTime
                 if sleepTime > remaining:
                     sleepTime = remaining
@@ -308,21 +311,8 @@ class Utils:
             if needsNewLine:
                 Utils.Print()
 
-        return None
+        return failReturnVal
 
-    @staticmethod
-    def waitForBool(lam, timeout=None, sleepTime=3, reporter=None):
-        if isinstance(timeout, Timeout):
-            sleepTime = timeout.sleepTime(sleepTime)
-        myLam = lambda: True if lam() else None
-        ret=Utils.waitForObj(myLam, timeout, sleepTime, reporter=reporter)
-        return False if ret is None else ret
-
-    @staticmethod
-    def waitForBoolWithArg(lam, arg, timeout=None, sleepTime=3, reporter=None):
-        myLam = lambda: True if lam(arg, timeout) else None
-        ret=Utils.waitForObj(myLam, timeout, sleepTime, reporter=reporter)
-        return False if ret is None else ret
 
     @staticmethod
     def filterJsonObjectOrArray(data):
