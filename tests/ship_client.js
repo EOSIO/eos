@@ -100,7 +100,7 @@ class Connection {
         }
         console.log('{ \"get_status_result_v0\":');
         response["resp_num"] = this.numRequests;
-        var currentTime = Date();
+        var currentTime = new Date();
         var currentTimeSec = currentTime.getTime()
         response["resp_time"] = (currentTimeSec - this.startTime) / 1000;
         var timeSinceBlockNumChange = (currentTimeSec - this.blockNumChangeTime) / 1000;
