@@ -219,8 +219,11 @@ void compressed_proof_generator::on_applied_transaction(const chain::transaction
 void compressed_proof_generator::on_accepted_block(const chain::block_state_ptr& bsp) {
    std::set<action_entry> action_entries_this_block;
 
-   if(my->onblock_trace)
-      action_entries_this_block.emplace((*my->onblock_trace)->action_traces.front());
+   // verify block_num of onblock_trace because last block could have been aborted & new block have no onblock
+   if(my->onblock_trace && (*my->onblock_trace)->block_num == bsp->block_num) {
+      for(const chain::action_trace& at : (*my->onblock_trace)->action_traces)
+         action_entries_this_block.emplace(at);
+   }
    for(const chain::transaction_receipt& r : bsp->block->transactions) {
       transaction_id_type id;
       if(r.trx.contains<chain::transaction_id_type>())
