@@ -118,7 +118,7 @@ namespace fc { namespace crypto {
       if (which == 0) {
          using default_type = storage_type::template type_at<0>;
          return to_wif(_storage.template get<default_type>(), yield);
-      }      
+      }
 
       auto data_str = _storage.visit(base58str_visitor<storage_type, config::private_key_prefix>(yield));
       return std::string(config::private_key_base_prefix) + "_" + data_str;
