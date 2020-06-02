@@ -300,6 +300,107 @@ BOOST_AUTO_TEST_CASE(contract_history) { try {
    }
 } FC_LOG_AND_RETHROW() }
 
+BOOST_AUTO_TEST_CASE(resources_history) { try {
+    tester chain;
+    chain.produce_blocks(1);
+
+    std::string name = "resource_limits";
+    auto find_by_name = [&name](const auto& x) {
+      return x.name == name;
+    };
+
+    chain.create_accounts({ N(eosio.token), N(eosio.ram), N(eosio.ramfee), N(eosio.stake)});
+
+    chain.produce_blocks( 100 );
+
+    chain.set_code( N(eosio.token), contracts::eosio_token_wasm() );
+    chain.set_abi( N(eosio.token), contracts::eosio_token_abi().data() );
+
+    chain.produce_blocks();
+
+    chain.push_action(N(eosio.token), N(create), N(eosio.token), mutable_variant_object()
+       ("issuer", "eosio.token" )
+       ("maximum_supply", core_from_string("1000000000.0000") )
+    );
+
+    chain.push_action(N(eosio.token), N(issue), N(eosio.token), fc::mutable_variant_object()
+       ("to",       "eosio")
+       ("quantity", core_from_string("90.0000"))
+       ("memo", "for stuff")
+    );
+
+    chain.produce_blocks(10);
+
+    chain.set_code( config::system_account_name, contracts::eosio_system_wasm() );
+    chain.set_abi( config::system_account_name, contracts::eosio_system_abi().data() );
+
+    chain.push_action(config::system_account_name, N(init),
+                             config::system_account_name,  mutable_variant_object()
+                                 ("version", 0)
+                                 ("core", CORE_SYM_STR));
+
+    signed_transaction trx;
+    chain.set_transaction_headers(trx);
+
+    authority owner_auth;
+    owner_auth =  authority( chain.get_public_key( N(alice), "owner" ) );
+
+    trx.actions.emplace_back( vector<permission_level>{{config::system_account_name,config::active_name}},
+                                 newaccount{
+                                    .creator  = config::system_account_name,
+                                    .name     =  N(alice),
+                                    .owner    = owner_auth,
+                                    .active   = authority( chain.get_public_key( N(alice), "active" ) )
+                                });
+
+    trx.actions.emplace_back( chain.get_action( config::system_account_name, N(buyram), vector<permission_level>{{config::system_account_name,config::active_name}},
+                                 mutable_variant_object()
+                                 ("payer", config::system_account_name)
+                                 ("receiver",  N(alice))
+                                 ("quant", core_from_string("1.0000"))));
+
+    trx.actions.emplace_back( chain.get_action( config::system_account_name, N(delegatebw), vector<permission_level>{{config::system_account_name,config::active_name}},
+                                 mutable_variant_object()
+                                 ("from", config::system_account_name)
+                                 ("receiver",  N(alice))
+                                 ("stake_net_quantity", core_from_string("10.0000") )
+                                 ("stake_cpu_quantity", core_from_string("10.0000") )
+                                 ("transfer", 0 )));
+
+    chain.set_transaction_headers(trx);
+    trx.sign( chain.get_private_key( config::system_account_name, "active" ), chain.control->get_chain_id()  );
+    chain.push_transaction( trx );
+
+    auto v = eosio::state_history::create_deltas(chain.control->db(), false);
+
+    {
+       name = "resource_limits";
+       auto it_resource_limits = std::find_if(v.begin(), v.end(), find_by_name);
+       BOOST_REQUIRE(it_resource_limits != v.end());
+       BOOST_REQUIRE_EQUAL(it_resource_limits->rows.obj.size(), 2);
+
+       eosio::input_stream stream{it_resource_limits->rows.obj[1].second.data(), it_resource_limits->rows.obj[1].second.size()};
+       auto resource_limit = std::get<eosio::ship_protocol::resource_limits_v0>(eosio::from_bin<eosio::ship_protocol::resource_limits>(stream));
+       BOOST_REQUIRE(resource_limit.owner.to_string() == "alice");
+       BOOST_REQUIRE(resource_limit.ram_bytes != -1);
+    }
+
+    {
+      name = "resource_usage";
+      auto it_resource_usage = std::find_if(v.begin(), v.end(), find_by_name);
+      BOOST_REQUIRE(it_resource_usage != v.end());
+      BOOST_REQUIRE_EQUAL(it_resource_usage->rows.obj.size(), 4);
+
+      eosio::input_stream stream{it_resource_usage->rows.obj[3].second.data(), it_resource_usage->rows.obj[3].second.size()};
+      auto resource_usage = std::get<eosio::ship_protocol::resource_usage_v0>(eosio::from_bin<eosio::ship_protocol::resource_usage>(stream));
+      BOOST_REQUIRE(resource_usage.owner.to_string() == "alice");
+      BOOST_REQUIRE(resource_usage.ram_usage > 0);
+    }
+
+    chain.produce_blocks(1);
+  } FC_LOG_AND_RETHROW() }
+
+
 state_history::partial_transaction_v0 get_partial_from_traces_bin(const bytes&               traces_bin,
                                                                   const transaction_id_type& id) {
    fc::datastream<const char*>                   strm(traces_bin.data(), traces_bin.size());
