@@ -72,7 +72,7 @@ endif(NODE_FOUND)
 add_test(NAME p2p_dawn515_test COMMAND tests/p2p_tests/dawn_515/test.sh WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_property(TEST p2p_dawn515_test PROPERTY LABELS nonparallelizable_tests)
 
-add_test(NAME nodeos_run_test-rabbitmq COMMAND tests/nodeos_run_test.py --amqp-address amqp://guest:guest@eos-rabbitmq.default.svc.cluster.local:5672 -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+add_test(NAME nodeos_run_test-rabbitmq COMMAND tests/nodeos_run_test.py --amqp-address amqp://guest:guest@ae4f5530984c84a158c698f77157ceb1-1292367959.us-west-2.elb.amazonaws.com:5672 -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_property(TEST nodeos_run_test-rabbitmq PROPERTY LABELS nonparallelizable_tests)
 
 add_test(NAME producer-preactivate-feature-test COMMAND tests/prod_preactivation_test.py --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
