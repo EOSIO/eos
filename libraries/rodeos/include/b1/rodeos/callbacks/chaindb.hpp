@@ -88,6 +88,7 @@ class iterator_cache {
             it->table_index = rk.table_index;
             it->primary     = row.primary_key;
             it->value.insert(it->value.end(), row.value.pos, row.value.end);
+            key_to_iterator_index[rk] = result;
          }
       }
       if (!it->view_it)
@@ -146,7 +147,7 @@ class iterator_cache {
       }
       ++*view_it;
       if (view_it->is_end()) {
-         it.next = index_to_end_iterator(itr);
+         it.next = index_to_end_iterator(it.table_index);
          return it.next;
       } else {
          eosio::input_stream stream{ view_it->get_kv()->value.data(), view_it->get_kv()->value.size() };
