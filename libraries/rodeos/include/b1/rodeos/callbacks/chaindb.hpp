@@ -68,28 +68,31 @@ class iterator_cache {
       iterator* it;
       int32_t   result;
       if (view_it.is_end()) {
-         // std::cout << "...end\n";
          it     = &end_iterators[rk.table_index];
          result = index_to_end_iterator(rk.table_index);
       } else {
          auto map_it = key_to_iterator_index.find(rk);
          if (map_it != key_to_iterator_index.end()) {
-            // std::cout << "...existing it (b)\n";
             it     = &iterators[map_it->second];
             result = map_it->second;
          } else {
-            // std::cout << "...new it\n";
-            if (iterators.size() > std::numeric_limits<int32_t>::max())
-               throw std::runtime_error("too many iterators");
-            result = iterators.size();
-            iterators.emplace_back();
-            it = &iterators.back();
             eosio::input_stream stream{ view_it.get_kv()->value.data(), view_it.get_kv()->value.size() };
-            auto row = std::get<0>(eosio::from_bin<eosio::ship_protocol::contract_row>(stream));
-            it->table_index = rk.table_index;
-            it->primary     = row.primary_key;
-            it->value.insert(it->value.end(), row.value.pos, row.value.end);
-            key_to_iterator_index[rk] = result;
+            auto                row = std::get<0>(eosio::from_bin<eosio::ship_protocol::contract_row>(stream));
+            map_it                  = key_to_iterator_index.find({ rk.table_index, row.primary_key });
+            if (map_it != key_to_iterator_index.end()) {
+               it     = &iterators[map_it->second];
+               result = map_it->second;
+            } else {
+               if (iterators.size() > std::numeric_limits<int32_t>::max())
+                  throw std::runtime_error("too many iterators");
+               result = iterators.size();
+               iterators.emplace_back();
+               it              = &iterators.back();
+               it->table_index = rk.table_index;
+               it->primary     = row.primary_key;
+               it->value.insert(it->value.end(), row.value.pos, row.value.end);
+               key_to_iterator_index[{ rk.table_index, row.primary_key }] = result;
+            }
          }
       }
       if (!it->view_it)

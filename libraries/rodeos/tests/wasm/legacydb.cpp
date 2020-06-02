@@ -5,10 +5,10 @@ using namespace eosio;
 using namespace eosio::internal_use_do_not_use;
 using namespace legacydb;
 
-const std::vector<char> data_empty{};
+const std::vector<char> data_0{ 9, 7, 6 };
 const std::vector<char> data_1{ 1, 2, 3, 4, 0, 4, 3, 2, 1 };
 const std::vector<char> data_2{ 3, 4, 3, 4 };
-const std::vector<char> data_3{ 3, 3, 3, 3, 3, 3, 3 };
+const std::vector<char> data_3{};
 const std::vector<char> data_4{ 4, 5, 6, 7 };
 
 void store_i64(name scope, name table, name payer, uint64_t id, const std::vector<char>& data) {
@@ -27,8 +27,13 @@ std::vector<char> get_i64(int itr) {
 
 void check_lowerbound_i64(name code, name scope, name table, uint64_t id, int expected_itr,
                           const std::vector<char>& expected_data) {
-   eosio::check(lowerbound_i64(code, scope, table, id) == expected_itr, "check_lowerbound_i64 failure: wrong iterator");
-   eosio::check(get_i64(expected_itr) == expected_data, "check_lowerbound_i64 failure: wrong data");
+   auto itr = lowerbound_i64(code, scope, table, id);
+   eosio::check(itr == expected_itr, "check_lowerbound_i64 failure: wrong iterator. code: " + code.to_string() +
+                                           " scope: " + scope.to_string() + " table: " + table.to_string() +
+                                           " id: " + to_string(id) + " itr: " + to_string(itr) +
+                                           " expected_itr: " + to_string(expected_itr) + "\n");
+   if (expected_itr >= 0)
+      eosio::check(get_i64(expected_itr) == expected_data, "check_lowerbound_i64 failure: wrong data");
 }
 
 void check_next_i64(int itr, int expected_itr, uint64_t expected_id) {
@@ -55,28 +60,44 @@ void check_prev_i64(int itr, int expected_itr, uint64_t expected_id) {
 
 void legacydb_contract::write() {
    print("write\n");
-   store_i64("scope1"_n, "table1"_n, get_self(), 20, data_empty);
+   store_i64("scope1"_n, "table1"_n, get_self(), 20, data_0);
    store_i64("scope1"_n, "table1"_n, get_self(), 21, data_1);
    store_i64("scope1"_n, "table1"_n, get_self(), 22, data_2);
    store_i64("scope1"_n, "table1"_n, get_self(), 23, data_3);
    store_i64("scope1"_n, "table1"_n, get_self(), 24, data_4);
 
    store_i64("scope1"_n, "table2"_n, get_self(), 30, data_4);
-   store_i64("scope1"_n, "table2"_n, get_self(), 31, data_empty);
+   store_i64("scope1"_n, "table2"_n, get_self(), 31, data_0);
    store_i64("scope1"_n, "table2"_n, get_self(), 32, data_2);
    store_i64("scope1"_n, "table2"_n, get_self(), 33, data_1);
    store_i64("scope1"_n, "table2"_n, get_self(), 34, data_3);
-}
+
+   store_i64("scope1"_n, "table3"_n, get_self(), 40, data_0);
+   store_i64("scope1"_n, "table3"_n, get_self(), 41, data_1);
+   store_i64("scope1"_n, "table3"_n, get_self(), 42, data_2);
+   store_i64("scope1"_n, "table3"_n, get_self(), 43, data_3);
+   store_i64("scope1"_n, "table3"_n, get_self(), 44, data_4);
+
+   store_i64("scope2"_n, "table1"_n, get_self(), 50, data_0);
+   store_i64("scope2"_n, "table1"_n, get_self(), 51, data_1);
+   store_i64("scope2"_n, "table1"_n, get_self(), 52, data_2);
+   store_i64("scope2"_n, "table1"_n, get_self(), 53, data_3);
+   store_i64("scope2"_n, "table1"_n, get_self(), 54, data_4);
+} // legacydb_contract::write()
 
 void legacydb_contract::read() {
    print("read\n");
 
    // find items in order -> produces iterator indexes in order
-   check_lowerbound_i64(get_self(), "scope1"_n, "table1"_n, 20, 0, data_empty);
+   // creates iterators -2, 0 - 4
+   check_lowerbound_i64(get_self(), "scope1"_n, "table1"_n, 0, 0, data_0);
+   check_lowerbound_i64(get_self(), "scope1"_n, "table1"_n, 20, 0, data_0); // reuse existing itr
    check_lowerbound_i64(get_self(), "scope1"_n, "table1"_n, 21, 1, data_1);
+   check_lowerbound_i64(get_self(), "scope1"_n, "table1"_n, 21, 1, data_1); // reuse existing itr
    check_lowerbound_i64(get_self(), "scope1"_n, "table1"_n, 22, 2, data_2);
    check_lowerbound_i64(get_self(), "scope1"_n, "table1"_n, 23, 3, data_3);
    check_lowerbound_i64(get_self(), "scope1"_n, "table1"_n, 24, 4, data_4);
+   check_lowerbound_i64(get_self(), "scope1"_n, "table1"_n, 25, -2, {});
 
    check_next_i64(0, 1, 21);
    check_next_i64(1, 2, 22);
@@ -93,11 +114,14 @@ void legacydb_contract::read() {
    check_prev_i64(0, -1, 0);
 
    // find items out of order -> produces iterator indexes out of order
-   check_lowerbound_i64(get_self(), "scope1"_n, "table2"_n, 31, 5, data_empty);
+   // creates iterators -3, 5 - 9
+   check_lowerbound_i64(get_self(), "scope1"_n, "table2"_n, 31, 5, data_0);
    check_lowerbound_i64(get_self(), "scope1"_n, "table2"_n, 33, 6, data_1);
    check_lowerbound_i64(get_self(), "scope1"_n, "table2"_n, 32, 7, data_2);
    check_lowerbound_i64(get_self(), "scope1"_n, "table2"_n, 34, 8, data_3);
    check_lowerbound_i64(get_self(), "scope1"_n, "table2"_n, 30, 9, data_4);
+   check_lowerbound_i64(get_self(), "scope1"_n, "table2"_n, 0, 9, data_4);
+   check_lowerbound_i64(get_self(), "scope1"_n, "table2"_n, 35, -3, {});
 
    check_next_i64(9, 5, 31);
    check_next_i64(5, 7, 32);
@@ -112,6 +136,58 @@ void legacydb_contract::read() {
    check_prev_i64(7, 5, 31);
    check_prev_i64(5, 9, 30);
    check_prev_i64(9, -1, 0);
-}
+
+   // iterate through table that has been only partially searched through
+   // creates iterators -4, 10 - 14
+   check_lowerbound_i64(get_self(), "scope1"_n, "table3"_n, 40, 10, data_0);
+   check_lowerbound_i64(get_self(), "scope1"_n, "table3"_n, 43, 11, data_3);
+   check_next_i64(10, 12, 41);
+   check_next_i64(12, 13, 42);
+   check_next_i64(13, 11, 43);
+   check_next_i64(11, 14, 44);
+   check_next_i64(14, -4, 0);
+   check_next_i64(-4, -1, 0);
+
+   check_prev_i64(-4, 14, 44);
+   check_prev_i64(14, 11, 43);
+   check_prev_i64(11, 13, 42);
+   check_prev_i64(13, 12, 41);
+   check_prev_i64(12, 10, 40);
+   check_prev_i64(10, -1, 0);
+
+   check_lowerbound_i64(get_self(), "scope1"_n, "table3"_n, 40, 10, data_0);
+   check_lowerbound_i64(get_self(), "scope1"_n, "table3"_n, 0, 10, data_0);
+   check_lowerbound_i64(get_self(), "scope1"_n, "table3"_n, 41, 12, data_1);
+   check_lowerbound_i64(get_self(), "scope1"_n, "table3"_n, 42, 13, data_2);
+   check_lowerbound_i64(get_self(), "scope1"_n, "table3"_n, 43, 11, data_3);
+   check_lowerbound_i64(get_self(), "scope1"_n, "table3"_n, 44, 14, data_4);
+   check_lowerbound_i64(get_self(), "scope1"_n, "table3"_n, 45, -4, {});
+
+   // iterate (reverse) through table that has been only partially searched through
+   // creates iterators -5, 15 - 19
+   check_lowerbound_i64(get_self(), "scope2"_n, "table1"_n, 50, 15, data_0);
+   check_lowerbound_i64(get_self(), "scope2"_n, "table1"_n, 53, 16, data_3);
+   check_prev_i64(-5, 17, 54);
+   check_prev_i64(17, 16, 53);
+   check_prev_i64(16, 18, 52);
+   check_prev_i64(18, 19, 51);
+   check_prev_i64(19, 15, 50);
+   check_prev_i64(15, -1, 0);
+
+   check_next_i64(15, 19, 51);
+   check_next_i64(19, 18, 52);
+   check_next_i64(18, 16, 53);
+   check_next_i64(16, 17, 54);
+   check_next_i64(17, -5, 0);
+   check_next_i64(-5, -1, 0);
+
+   check_lowerbound_i64(get_self(), "scope2"_n, "table1"_n, 0, 15, data_0);
+   check_lowerbound_i64(get_self(), "scope2"_n, "table1"_n, 50, 15, data_0);
+   check_lowerbound_i64(get_self(), "scope2"_n, "table1"_n, 51, 19, data_1);
+   check_lowerbound_i64(get_self(), "scope2"_n, "table1"_n, 52, 18, data_2);
+   check_lowerbound_i64(get_self(), "scope2"_n, "table1"_n, 53, 16, data_3);
+   check_lowerbound_i64(get_self(), "scope2"_n, "table1"_n, 54, 17, data_4);
+   check_lowerbound_i64(get_self(), "scope2"_n, "table1"_n, 55, -5, {});
+} // legacydb_contract::read()
 
 EOSIO_ACTION_DISPATCHER(legacydb::actions)
