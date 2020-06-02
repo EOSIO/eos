@@ -35,6 +35,7 @@ class iterator_cache {
       uint64_t                                primary     = {};
       std::vector<char>                       value;
       int32_t                                 next = -1;
+      std::optional<int32_t>                  prev;
       std::optional<chain_kv::view::iterator> view_it;
    };
    std::vector<iterator>      iterators;
@@ -133,7 +134,6 @@ class iterator_cache {
       std::optional<chain_kv::view::iterator> view_it = std::move(it.view_it);
       it.view_it.reset();
       if (!view_it) {
-         // std::cout << "db_next_i64: db_view::iterator\n";
          const auto& table_key = tables[it.table_index];
          view_it               = chain_kv::view::iterator{
             view, state_account.value,
@@ -156,7 +156,53 @@ class iterator_cache {
          it.next  = get_iterator({ it.table_index, primary }, std::move(*view_it));
          return it.next;
       }
-   }
+   } // db_next_i64
+
+   int db_previous_i64(int itr, uint64_t& primary) {
+      if (itr == -1)
+         throw std::runtime_error("decrement invalid iterator");
+      iterator* it = nullptr;
+      if (std::numeric_limits<int32_t>::min() < itr && itr < -1) {
+         size_t table_index = end_iterator_to_index(itr);
+         if (table_index >= end_iterators.size())
+            throw std::runtime_error("decrement non-existing iterator");
+         it = &end_iterators[table_index];
+      } else {
+         if (size_t(itr) >= iterators.size())
+            throw std::runtime_error("decrement non-existing iterator");
+         it = &iterators[itr];
+      }
+      if (it->prev) {
+         if (*it->prev >= 0)
+            primary = iterators[*it->prev].primary;
+         return *it->prev;
+      }
+      std::optional<chain_kv::view::iterator> view_it = std::move(it->view_it);
+      it->view_it.reset();
+      if (!view_it) {
+         const auto& table_key = tables[it->table_index];
+         view_it =
+               chain_kv::view::iterator{ view, state_account.value,
+                                         chain_kv::to_slice(eosio::convert_to_key(std::make_tuple( //
+                                               (uint8_t)0x01, eosio::name{ "contract.row" }, eosio::name{ "primary" },
+                                               table_key.code, table_key.table, table_key.scope))) };
+         if (itr >= 0)
+            view_it->lower_bound(eosio::convert_to_key(std::make_tuple((uint8_t)0x01, eosio::name{ "contract.row" },
+                                                                       eosio::name{ "primary" }, table_key.code,
+                                                                       table_key.table, table_key.scope, it->primary)));
+      }
+      --*view_it;
+      if (view_it->is_end()) {
+         it->prev = -1;
+         return *it->prev;
+      } else {
+         eosio::input_stream stream{ view_it->get_kv()->value.data(), view_it->get_kv()->value.size() };
+         auto                row = std::get<0>(eosio::from_bin<eosio::ship_protocol::contract_row>(stream));
+         primary                 = row.primary_key;
+         it->prev                = get_iterator({ it->table_index, primary }, std::move(*view_it));
+         return *it->prev;
+      }
+   } // db_previous_i64
 
    int32_t lower_bound(uint64_t code, uint64_t scope, uint64_t table, uint64_t key) {
       int32_t table_index = get_table_index({ code, table, scope });
@@ -215,7 +261,7 @@ struct chaindb_callbacks {
    }
 
    int32_t db_previous_i64(int32_t itr, legacy_ptr<uint64_t> primary) {
-      throw std::runtime_error("unimplemented: db_previous_i64");
+      return get_iterator_cache().db_previous_i64(itr, *primary);
    }
 
    int db_find_i64(uint64_t code, uint64_t scope, uint64_t table, uint64_t id) {

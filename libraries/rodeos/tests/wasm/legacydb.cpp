@@ -42,6 +42,17 @@ void check_next_i64(int itr, int expected_itr, uint64_t expected_id) {
                                             " expected: " + to_string(expected_id));
 }
 
+void check_prev_i64(int itr, int expected_itr, uint64_t expected_id) {
+   uint64_t id       = 0;
+   auto     next_itr = db_previous_i64(itr, &id);
+   eosio::check(next_itr == expected_itr, "check_prev_i64 failure: wrong iterator. itr: " + to_string(itr) + " prev: " +
+                                                to_string(next_itr) + " expected: " + to_string(expected_itr) + "\n");
+   if (expected_itr >= 0)
+      eosio::check(id == expected_id, "check_prev_i64 failure: wrong id. itr: " + to_string(itr) +
+                                            " prev: " + to_string(next_itr) + " id: " + to_string(id) +
+                                            " expected: " + to_string(expected_id));
+}
+
 void legacydb_contract::write() {
    print("write\n");
    store_i64("scope1"_n, "table1"_n, get_self(), 20, data_empty);
@@ -60,7 +71,7 @@ void legacydb_contract::write() {
 void legacydb_contract::read() {
    print("read\n");
 
-   // in order
+   // find items in order -> produces iterator indexes in order
    check_lowerbound_i64(get_self(), "scope1"_n, "table1"_n, 20, 0, data_empty);
    check_lowerbound_i64(get_self(), "scope1"_n, "table1"_n, 21, 1, data_1);
    check_lowerbound_i64(get_self(), "scope1"_n, "table1"_n, 22, 2, data_2);
@@ -73,6 +84,34 @@ void legacydb_contract::read() {
    check_next_i64(3, 4, 24);
    check_next_i64(4, -2, 0);
    check_next_i64(-2, -1, 0);
+
+   check_prev_i64(-2, 4, 24);
+   check_prev_i64(4, 3, 23);
+   check_prev_i64(3, 2, 22);
+   check_prev_i64(2, 1, 21);
+   check_prev_i64(1, 0, 20);
+   check_prev_i64(0, -1, 0);
+
+   // find items out of order -> produces iterator indexes out of order
+   check_lowerbound_i64(get_self(), "scope1"_n, "table2"_n, 31, 5, data_empty);
+   check_lowerbound_i64(get_self(), "scope1"_n, "table2"_n, 33, 6, data_1);
+   check_lowerbound_i64(get_self(), "scope1"_n, "table2"_n, 32, 7, data_2);
+   check_lowerbound_i64(get_self(), "scope1"_n, "table2"_n, 34, 8, data_3);
+   check_lowerbound_i64(get_self(), "scope1"_n, "table2"_n, 30, 9, data_4);
+
+   check_next_i64(9, 5, 31);
+   check_next_i64(5, 7, 32);
+   check_next_i64(7, 6, 33);
+   check_next_i64(6, 8, 34);
+   check_next_i64(8, -3, 0);
+   check_next_i64(-3, -1, 0);
+
+   check_prev_i64(-3, 8, 34);
+   check_prev_i64(8, 6, 33);
+   check_prev_i64(6, 7, 32);
+   check_prev_i64(7, 5, 31);
+   check_prev_i64(5, 9, 30);
+   check_prev_i64(9, -1, 0);
 }
 
 EOSIO_ACTION_DISPATCHER(legacydb::actions)
