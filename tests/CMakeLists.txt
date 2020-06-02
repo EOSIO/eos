@@ -72,8 +72,8 @@ endif(NODE_FOUND)
 add_test(NAME p2p_dawn515_test COMMAND tests/p2p_tests/dawn_515/test.sh WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_property(TEST p2p_dawn515_test PROPERTY LABELS nonparallelizable_tests)
 
-if (NOT "${AMQP_CONN_STR}" STREQUAL "")
-  add_test(NAME nodeos_run_test-rabbitmq COMMAND tests/nodeos_run_test.py ${AMQP_CONN_STR} -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+if (DEFINED AMQP_CONN_STR)
+  add_test(NAME nodeos_run_test-rabbitmq COMMAND tests/nodeos_run_test.py --amqp-address ${AMQP_CONN_STR} -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
   set_property(TEST nodeos_run_test-rabbitmq PROPERTY LABELS nonparallelizable_tests)
 endif()
 
