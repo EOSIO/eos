@@ -64,7 +64,7 @@ class iterator_cache {
       return result;
    }
 
-   int32_t get_iterator(row_key rk, chain_kv::view::iterator&& view_it) {
+   int32_t get_iterator(row_key rk, chain_kv::view::iterator&& view_it, bool require_exact = false) {
       iterator* it;
       int32_t   result;
       if (view_it.is_end()) {
@@ -78,7 +78,9 @@ class iterator_cache {
          } else {
             eosio::input_stream stream{ view_it.get_kv()->value.data(), view_it.get_kv()->value.size() };
             auto                row = std::get<0>(eosio::from_bin<eosio::ship_protocol::contract_row>(stream));
-            map_it                  = key_to_iterator_index.find({ rk.table_index, row.primary_key });
+            if (require_exact && row.primary_key != rk.key)
+               return index_to_end_iterator(rk.table_index);
+            map_it = key_to_iterator_index.find({ rk.table_index, row.primary_key });
             if (map_it != key_to_iterator_index.end()) {
                it     = &iterators[map_it->second];
                result = map_it->second;
@@ -207,26 +209,21 @@ class iterator_cache {
       }
    } // db_previous_i64
 
-   int32_t lower_bound(uint64_t code, uint64_t scope, uint64_t table, uint64_t key) {
+   int32_t lower_bound(uint64_t code, uint64_t scope, uint64_t table, uint64_t key, bool require_exact) {
       int32_t table_index = get_table_index({ code, table, scope });
-      if (table_index < 0) {
-         // std::cout << "...no table\n";
+      if (table_index < 0)
          return -1;
-      }
       row_key rk{ table_index, key };
       auto    map_it = key_to_iterator_index.find(rk);
-      if (map_it != key_to_iterator_index.end()) {
-         // std::cout << "...existing it (a)\n";
+      if (map_it != key_to_iterator_index.end())
          return map_it->second;
-      }
-      // std::cout << "lower_bound: db_view::iterator\n";
       chain_kv::view::iterator it{ view, state_account.value,
-                                   chain_kv::to_slice(eosio::convert_to_key(std::make_tuple(
-                                                                         (uint8_t)0x01, eosio::name{ "contract.row" },
-                                                                         eosio::name{ "primary" }, code, table, scope))) };
+                                   chain_kv::to_slice(eosio::convert_to_key(
+                                         std::make_tuple((uint8_t)0x01, eosio::name{ "contract.row" },
+                                                         eosio::name{ "primary" }, code, table, scope))) };
       it.lower_bound(eosio::convert_to_key(std::make_tuple((uint8_t)0x01, eosio::name{ "contract.row" },
-                                                               eosio::name{ "primary" }, code, table, scope, key)));
-      return get_iterator(rk, std::move(it));
+                                                           eosio::name{ "primary" }, code, table, scope, key)));
+      return get_iterator(rk, std::move(it), require_exact);
    }
 }; // iterator_cache
 
@@ -268,11 +265,11 @@ struct chaindb_callbacks {
    }
 
    int db_find_i64(uint64_t code, uint64_t scope, uint64_t table, uint64_t id) {
-      throw std::runtime_error("unimplemented: db_find_i64");
+      return get_iterator_cache().lower_bound(code, scope, table, id, true);
    }
 
    int db_lowerbound_i64(uint64_t code, uint64_t scope, uint64_t table, uint64_t id) {
-      return get_iterator_cache().lower_bound(code, scope, table, id);
+      return get_iterator_cache().lower_bound(code, scope, table, id, false);
    }
 
    int db_upperbound_i64(uint64_t code, uint64_t scope, uint64_t table, uint64_t id) {
