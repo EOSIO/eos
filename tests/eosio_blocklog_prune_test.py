@@ -156,7 +156,8 @@ try:
     #
     # Check lightValidationNode keeping sync while the full fullValidationNode stop syncing after the cfd block
     #
-    lightValidationNode.waitForBlock(cfTrxBlockNum, blockType=BlockType.lib, timeout=WaitSpec.calculate(), errorContext="ligtValidationNode did not advance")
+    timeForNodesToWorkOutReconnect=30 + 10    # 30 is reconnect cycle since all nodes are restarting and giving time for a little churn
+    lightValidationNode.waitForBlock(cfTrxBlockNum, blockType=BlockType.lib, timeout=WaitSpec.calculate(leeway=timeForNodesToWorkOutReconnect), errorContext="lightValidationNode did not advance")
     assert lightValidationNode.waitForHeadToAdvance(), "the light validation node stops syncing"
 
     fullValidationNode.waitForBlock(cfTrxBlockNum-1, blockType=BlockType.lib, timeout=WaitSpec.calculate(), errorContext="fullValidationNode LIB did not advance")
