@@ -14,7 +14,6 @@
 
 #include <fc/io/cfile.hpp>
 
-//using boost::multi_index_container;
 using namespace boost::multi_index;
 using namespace std::string_literals;
 
