@@ -38,7 +38,7 @@ To modify the permissions of an account, you must have the authority over the ac
 The first example associates a new key to the active permissions of an account.
 
 ```sh
-cleos set account permission test active '{"threshold":1,"keys":[{"key":"EOS8X7Mp7apQWtL6T2sfSZzBcQNUqZB7tARFEm9gA9Tn9nbMdsvBB","permission":"active","weight":1}],"accounts":[{"permission":{"actor":"acc2","permission":"active"},"weight":50}]}' owner
+cleos set account permission test active '{"threshold":1,"keys":[{"key":"EOS8X7Mp7apQWtL6T2sfSZzBcQNUqZB7tARFEm9gA9Tn9nbMdsvBB","weight":1}],"accounts":[{"permission":{"actor":"acc2","permission":"active"},"weight":50}]}' owner
 ```
 This second example modifies the same account permission, but removes the key set in the last example, and grants active authority of the test account to another account.
 
