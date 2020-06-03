@@ -299,6 +299,7 @@ namespace eosio { namespace chain {
 
          static fc::optional<uint64_t> convert_exception_to_error_code( const fc::exception& e );
 
+         signal<void(uint32_t)>                        block_start; // block_num
          signal<void(const signed_block_ptr&)>         pre_accepted_block;
          signal<void(const block_state_ptr&)>          accepted_block_header;
          signal<void(const block_state_ptr&)>          accepted_block;
