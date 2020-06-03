@@ -4,10 +4,11 @@ import subprocess
 import time
 import os
 import re
-import datetime
 import json
 import signal
 
+from datetime import datetime
+from datetime import timedelta
 from core_symbol import CORE_SYMBOL
 from testUtils import Utils
 from testUtils import Account
@@ -28,11 +29,14 @@ class Node(object):
 
     # pylint: disable=too-many-instance-attributes
     # pylint: disable=too-many-arguments
-    def __init__(self, host, port, pid=None, cmd=None, walletMgr=None):
+    def __init__(self, host, port, nodeId, pid=None, cmd=None, walletMgr=None):
         self.host=host
         self.port=port
         self.pid=pid
         self.cmd=cmd
+        if nodeId != "bios":
+            assert isinstance(nodeId, int)
+        self.nodeId=nodeId
         if Utils.Debug: Utils.Print("new Node host=%s, port=%s, pid=%s, cmd=%s" % (self.host, self.port, self.pid, self.cmd))
         self.killed=False # marks node as killed
         self.endpointHttp="http://%s:%d" % (self.host, self.port)
@@ -51,8 +55,7 @@ class Node(object):
         return self.endpointArgs + walletArgs + " " + Utils.MiscEosClientArgs
 
     def __str__(self):
-        #return "Host: %s, Port:%d, Pid:%s, Cmd:\"%s\"" % (self.host, self.port, self.pid, self.cmd)
-        return "Host: %s, Port:%d, Pid:%s" % (self.host, self.port, self.pid)
+        return "Host: %s, Port:%d, NodeNum:%s, Pid:%s" % (self.host, self.port, self.nodeId, self.pid)
 
     @staticmethod
     def validateTransaction(trans):
@@ -1222,16 +1225,14 @@ class Node(object):
         return blockNum
 
 
-    # TBD: make nodeId an internal property
     # pylint: disable=too-many-locals
     # If nodeosPath is equal to None, it will use the existing nodeos path
-    def relaunch(self, nodeId, chainArg=None, newChain=False, timeout=Utils.systemWaitTimeout, addSwapFlags=None, cachePopen=False, nodeosPath=None):
+    def relaunch(self, chainArg=None, newChain=False, timeout=Utils.systemWaitTimeout, addSwapFlags=None, cachePopen=False, nodeosPath=None):
 
         assert(self.pid is None)
         assert(self.killed)
-        assert isinstance(nodeId, int) or (isinstance(nodeId, str) and nodeId == "bios"), "Invalid Node ID is passed"
 
-        if Utils.Debug: Utils.Print("Launching node process, Id: {}".format(nodeId))
+        if Utils.Debug: Utils.Print("Launching node process, Id: {}".format(self.nodeId))
 
         cmdArr=[]
         splittedCmd=self.cmd.split()
@@ -1265,7 +1266,7 @@ class Node(object):
             myCmd=" ".join(cmdArr)
 
         cmd=myCmd + ("" if chainArg is None else (" " + chainArg))
-        self.launchCmd(cmd, nodeId, cachePopen)
+        self.launchCmd(cmd, cachePopen)
 
         def isNodeAlive():
             """wait for node to be responsive."""
@@ -1319,13 +1320,13 @@ class Node(object):
             Utils.errorExit("Cannot find unstarted node since %s file does not exist" % startFile)
         return startFile
 
-    def launchUnstarted(self, nodeId, cachePopen=False):
+    def launchUnstarted(self, cachePopen=False):
         Utils.Print("launchUnstarted cmd: %s" % (self.cmd))
-        self.launchCmd(self.cmd, nodeId, cachePopen)
+        self.launchCmd(self.cmd, cachePopen)
 
-    def launchCmd(self, cmd, nodeId, cachePopen=False):
-        dataDir=Utils.getNodeDataDir(nodeId)
-        dt = datetime.datetime.now()
+    def launchCmd(self, cmd, cachePopen=False):
+        dataDir=Utils.getNodeDataDir(self.nodeId)
+        dt = datetime.now()
         dateStr=Utils.getDateString(dt)
         stdoutFile="%s/stdout.%s.txt" % (dataDir, dateStr)
         stderrFile="%s/stderr.%s.txt" % (dataDir, dateStr)
@@ -1471,8 +1472,8 @@ class Node(object):
         latestBlockHeaderState = self.getLatestBlockHeaderState()
         return latestBlockHeaderState["activated_protocol_features"]["protocol_features"]
 
-    def modifyBuiltinPFSubjRestrictions(self, nodeId, featureCodename, subjectiveRestriction={}):
-        jsonPath = os.path.join(Utils.getNodeConfigDir(nodeId),
+    def modifyBuiltinPFSubjRestrictions(self, featureCodename, subjectiveRestriction={}):
+        jsonPath = os.path.join(Utils.getNodeConfigDir(self.nodeId),
                                 "protocol_features",
                                 "BUILTIN-{}.json".format(featureCodename))
         protocolFeatureJson = []
