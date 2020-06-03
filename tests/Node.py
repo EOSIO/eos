@@ -15,6 +15,7 @@ from testUtils import EnumType
 from testUtils import addEnum
 from testUtils import unhandledEnumType
 from testUtils import ReturnType
+from testUtils import WaitSpec
 
 class BlockType(EnumType):
     pass
@@ -473,24 +474,30 @@ class Node(object):
         """Wait for trans id to be finalized."""
         assert(isinstance(transId, str))
         lam = lambda: self.isTransInAnyBlock(transId)
-        ret=Utils.waitForBool(lam, timeout)
+        ret=Utils.waitForTruth(lam, timeout)
         return ret
 
     def waitForTransFinalization(self, transId, timeout=None):
         """Wait for trans id to be finalized."""
         assert(isinstance(transId, str))
         lam = lambda: self.isTransFinalized(transId)
-        ret=Utils.waitForBool(lam, timeout)
+        ret=Utils.waitForTruth(lam, timeout)
         return ret
 
-    def waitForNextBlock(self, timeout=None, blockType=BlockType.head):
+    def waitForNextBlock(self, timeout=WaitSpec.default(), blockType=BlockType.head):
         num=self.getBlockNum(blockType=blockType)
+        if isinstance(timeout, WaitSpec):
+            timeout = timeout.seconds(num, num+1)
         lam = lambda: self.getHeadBlockNum() > num
-        ret=Utils.waitForBool(lam, timeout)
+        ret=Utils.waitForTruth(lam, timeout)
         return ret
 
-    def waitForBlock(self, blockNum, timeout=None, blockType=BlockType.head, reportInterval=None):
-        lam = lambda: self.getBlockNum(blockType=blockType) > blockNum
+    def waitForBlock(self, blockNum, timeout=WaitSpec.default(), blockType=BlockType.head, reportInterval=None, errorContext=None):
+        currentBlockNum=self.getBlockNum(blockType=blockType)
+        currentTime=time.time()
+        if isinstance(timeout, WaitSpec):
+            timeout.convert(currentBlockNum, blockNum)
+
         blockDesc = "head" if blockType == BlockType.head else "LIB"
         count = 0
 
@@ -506,11 +513,44 @@ class Node(object):
                     info = self.node.getInfo()
                     Utils.Print("Waiting on %s block num %d, get info = {\n%s\n}" % (blockDesc, blockNum, info))
 
-        reporter = WaitReporter(self, reportInterval) if reportInterval is not None else None
-        ret=Utils.waitForBool(lam, timeout, reporter=reporter)
+        class RequireBlockNum:
+            def __init__(self, node, blockNum):
+                self.node = node
+                self.blockNum = blockNum
+                self.lastBlockNum = None
+                self.passed = False
+                self.advanced = None
+
+            def __call__(self):
+                currentBlockNum = self.node.getBlockNum(blockType=blockType)
+                self.advanced = False
+                if self.lastBlockNum is None or self.lastBlockNum < currentBlockNum:
+                    self.advanced = True
+                elif self.lastBlockNum > currentBlockNum:
+                    Utils.Print("waitForBlock is waiting to reach block number: %d and the block number has rolled back from %d to %d." %
+                                (self.blockNum, self.lastBlockNum, currentBlockNum))
+                self.lastBlockNum = currentBlockNum
+                self.passed = self.lastBlockNum > self.blockNum
+                return self.passed
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc_value, exc_traceback):
+                if not self.passed:
+                    notAdvanceStr="(but has not changed since last sleep)" if not self.advanced else ""
+                    Utils.Print("waitForBlock never reached block number: %d.  It started at: %d and had progressed%s to: %d after %d seconds." %
+                                (blockNum, currentBlockNum, notAdvanceStr, self.lastBlockNum, time.time()-currentTime))
+
+        with RequireBlockNum(self, blockNum) as lam:
+
+            reporter = WaitReporter(self, reportInterval) if reportInterval is not None else None
+            ret=Utils.waitForTruth(lam, timeout, reporter=reporter)
+
+        assert ret is not None or errorContext is None, Utils.errorExit("%s." % (errorContext))
         return ret
 
-    def waitForIrreversibleBlock(self, blockNum, timeout=None, blockType=BlockType.head):
+    def waitForIrreversibleBlock(self, blockNum, timeout=WaitSpec.default(), blockType=BlockType.head):
         return self.waitForBlock(blockNum, timeout=timeout, blockType=blockType)
 
     # Trasfer funds. Returns "transfer" json return object
@@ -803,8 +843,10 @@ class Node(object):
             return (False, msg)
 
     # returns tuple with indication if transaction was successfully sent and either the transaction or else the exception output
-    def pushTransaction(self, trans, opts="--skip-sign", silentErrors=False):
+    def pushTransaction(self, trans, opts="--skip-sign", silentErrors=False, permissions=None):
         assert(isinstance(trans, dict))
+        if isinstance(permissions, str):
+            permissions=[permissions]
         cmd="%s %s push transaction -j" % (Utils.EosClientPath, self.eosClientArgs())
         cmdArr=cmd.split()
         transStr = json.dumps(trans, separators=(',', ':'))
@@ -812,6 +854,11 @@ class Node(object):
         cmdArr.append(transStr)
         if opts is not None:
             cmdArr += opts.split()
+        if permissions is not None:
+            for permission in permissions:
+                cmdArr.append("-p")
+                cmdArr.append(permission)
+
         s=" ".join(cmdArr)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmdArr))
         start=time.perf_counter()
@@ -1077,7 +1124,7 @@ class Node(object):
                 return True
             return False
 
-        if not Utils.waitForBool(myFunc):
+        if not Utils.waitForTruth(myFunc):
             Utils.Print("ERROR: Failed to validate node shutdown.")
             return False
 
@@ -1228,21 +1275,27 @@ class Node(object):
                 pass
             return False
 
-        def didNodeExitGracefully(popen, timeout):
-            try:
-                popen.communicate(timeout=timeout)
-            except TimeoutExpired:
-                return False
-            with open(popen.errfile.name, 'r') as f:
-                if "Reached configured maximum block 10; terminating" in f.read():
-                    return True
-                else:
+        class DidProcessExitGracefully:
+            def __init__(self, popen, timeout):
+                self.popen = popen
+                self.timeout = timeout
+
+            def __call__(self):
+                try:
+                    self.popen.communicate(timeout=self.timeout)
+                except TimeoutExpired:
                     return False
+                with open(self.popen.errfile.name, 'r') as f:
+                    if "Reached configured maximum block 10; terminating" in f.read():
+                        return True
+                    else:
+                        return False
 
         if "terminate-at-block" not in cmd:
-            isAlive=Utils.waitForBool(isNodeAlive, timeout, sleepTime=1)
+            isAlive=Utils.waitForTruth(isNodeAlive, timeout, sleepTime=1)
         else:
-            isAlive=Utils.waitForBoolWithArg(didNodeExitGracefully, self.popenProc, timeout, sleepTime=1)
+            lam=DidProcessExitGracefully(self.popenProc, timeout)
+            isAlive=Utils.waitForTruth(lam, timeout, sleepTime=1)
         if isAlive:
             Utils.Print("Node relaunch was successful.")
         else:
@@ -1357,13 +1410,13 @@ class Node(object):
         currentHead = self.getHeadBlockNum()
         def isHeadAdvancing():
             return self.getHeadBlockNum() > currentHead
-        return Utils.waitForBool(isHeadAdvancing, timeout)
+        return Utils.waitForTruth(isHeadAdvancing, timeout)
 
     def waitForLibToAdvance(self, timeout=30):
         currentLib = self.getIrreversibleBlockNum()
         def isLibAdvancing():
             return self.getIrreversibleBlockNum() > currentLib
-        return Utils.waitForBool(isLibAdvancing, timeout)
+        return Utils.waitForTruth(isLibAdvancing, timeout)
 
     # Require producer_api_plugin
     def activatePreactivateFeature(self):

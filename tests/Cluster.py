@@ -296,6 +296,7 @@ class Cluster(object):
                 Utils.Print("ERROR: Launcher failed to create shape file \"%s\"." % (shapeFile))
                 return False
 
+            Utils.Print("opening %s shape file: %s, current dir: %s" % (topo, shapeFile, os.getcwd()))
             f = open(shapeFile, "r")
             shapeFileJsonStr = f.read()
             f.close()
@@ -426,7 +427,7 @@ class Cluster(object):
             self.unstartedNodes=self.discoverUnstartedLocalNodes(unstartedNodes, totalNodes)
 
         biosNode=self.discoverBiosNode(timeout=Utils.systemWaitTimeout)
-        if not biosNode or not Utils.waitForBool(biosNode.checkPulse, Utils.systemWaitTimeout):
+        if not biosNode or not Utils.waitForTruth(biosNode.checkPulse, Utils.systemWaitTimeout):
             Utils.Print("ERROR: Bios node doesn't appear to be running...")
             return False
 
@@ -588,7 +589,7 @@ class Cluster(object):
 
         printCount=0
         lam = lambda: doNodesHaveBlockNum(self.nodes, targetBlockNum, blockType, printCount)
-        ret=Utils.waitForBool(lam, timeout)
+        ret=Utils.waitForTruth(lam, timeout)
         return ret
 
     @staticmethod
@@ -1180,7 +1181,7 @@ class Cluster(object):
 
             # wait for block production handover (essentially a block produced by anyone but eosio).
             lam = lambda: biosNode.getInfo(exitOnError=True)["head_block_producer"] != "eosio"
-            ret=Utils.waitForBool(lam)
+            ret=Utils.waitForTruth(lam)
             if not ret:
                 Utils.Print("ERROR: Block production handover failed.")
                 return None
@@ -1337,7 +1338,7 @@ class Cluster(object):
                 return None
             return None
 
-        return Utils.waitForObj(myFunc, timeout)
+        return Utils.waitForTruth(myFunc, timeout)
 
     @staticmethod
     def pgrepEosServerPattern(nodeInstance):
@@ -1469,9 +1470,10 @@ class Cluster(object):
         if self.useBiosBootFile:
             Cluster.dumpErrorDetailImpl(Cluster.__bootlog)
 
-    def killall(self, silent=True, allInstances=False):
+    def killall(self, kill=True, silent=True, allInstances=False):
         """Kill cluster nodeos instances. allInstances will kill all nodeos instances running on the system."""
-        cmd="%s -k 9" % (Utils.EosLauncherPath)
+        signalNum=9 if kill else 15
+        cmd="%s -k %d" % (Utils.EosLauncherPath, signalNum)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         if 0 != subprocess.call(cmd.split(), stdout=Utils.FNull):
             if not silent: Utils.Print("Launcher failed to shut down eos cluster.")
@@ -1590,22 +1592,6 @@ class Cluster(object):
                     node.reportStatus()
                 except:
                     Utils.Print("No reportStatus")
-
-    def printBlockLogIfNeeded(self):
-        printBlockLog=False
-        if hasattr(self, "nodes") and self.nodes is not None:
-            for node in self.nodes:
-                if node.missingTransaction:
-                    printBlockLog=True
-                    break
-
-        if hasattr(self, "biosNode") and self.biosNode is not None and self.biosNode.missingTransaction:
-            printBlockLog=True
-
-        if not printBlockLog:
-            return
-
-        self.printBlockLog()
 
     def getBlockLog(self, nodeExtension, blockLogAction=BlockLogAction.return_blocks, outputFile=None, first=None, last=None, extraArgs="", throwException=False, silentErrors=False, exitOnError=False):
         nodeDataDir=Utils.getNodeDataDir(nodeExtension)

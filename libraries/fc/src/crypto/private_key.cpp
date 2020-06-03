@@ -88,7 +88,7 @@ namespace fc { namespace crypto {
       return Data(fc::variant(key_bytes).as<typename Data::data_type>());
    }
 
-   static private_key::storage_type parse_base58(const string& base58str)
+   static private_key::storage_type priv_parse_base58(const string& base58str)
    {
       const auto pivot = base58str.find('_');
 
@@ -108,7 +108,7 @@ namespace fc { namespace crypto {
    }
 
    private_key::private_key(const std::string& base58str)
-   :_storage(parse_base58(base58str))
+   :_storage(priv_parse_base58(base58str))
    {}
 
    std::string private_key::to_string(const fc::yield_function_t& yield) const
