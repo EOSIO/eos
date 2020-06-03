@@ -59,8 +59,7 @@ Object unpack_zlib_compressed(const char* buffer, fc::datastream<const char*>& d
 std::vector<augmented_transaction_trace> prepare_traces(trace_converter&       converter,
                                                         const block_state_ptr& block_state) {
    std::vector<augmented_transaction_trace> traces;
-   // verify block_num of onblock_trace because last block could have been aborted & new block have no onblock
-   if (converter.onblock_trace && converter.onblock_trace->trace->block_num == block_state->block_num)
+   if (converter.onblock_trace)
       traces.push_back(*converter.onblock_trace);
    for (auto& r : block_state->block->transactions) {
       transaction_id_type id;

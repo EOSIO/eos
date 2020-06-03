@@ -85,8 +85,7 @@ private:
 
          std::vector<transaction_trace_v1>& traces = bt.transactions_v1;
          traces.reserve( block_state->block->transactions.size() + 1 );
-         // verify block_num of onblock_trace because last block could have been aborted & new block have no onblock
-         if( onblock_trace && onblock_trace->trace->block_num == block_state->block_num )
+         if( onblock_trace )
             traces.emplace_back( to_transaction_trace_v1( *onblock_trace ));
          for( const auto& r : block_state->block->transactions ) {
             transaction_id_type id;
