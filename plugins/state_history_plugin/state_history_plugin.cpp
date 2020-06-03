@@ -117,6 +117,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
    bool                                                       trace_debug_mode = false;
    bool                                                       stopping = false;
    fc::optional<scoped_connection>                            applied_transaction_connection;
+   fc::optional<scoped_connection>                            block_start_connection;
    fc::optional<scoped_connection>                            accepted_block_connection;
    string                                                     endpoint_address = "0.0.0.0";
    uint16_t                                                   endpoint_port    = 8080;
@@ -614,6 +615,8 @@ void state_history_plugin::plugin_initialize(const variables_map& options) {
           }));
       my->accepted_block_connection.emplace(
           chain.accepted_block.connect([&](const block_state_ptr& p) { my->on_accepted_block(p); }));
+      my->block_start_connection.emplace(
+          chain.block_start.connect([&](uint32_t block_num) { my->on_block_start(block_num); }));
 
       auto                    dir_option = options.at("state-history-dir").as<bfs::path>();
       boost::filesystem::path state_history_dir;
@@ -654,6 +657,7 @@ void state_history_plugin::plugin_startup() { my->listen(); }
 void state_history_plugin::plugin_shutdown() {
    my->applied_transaction_connection.reset();
    my->accepted_block_connection.reset();
+   my->block_start_connection.reset();
    while (!my->sessions.empty())
       my->sessions.begin()->second->close();
    my->stopping = true;
