@@ -26,6 +26,11 @@ void trace_converter::add_transaction(const transaction_trace_ptr& trace, const 
    }
 }
 
+void trace_converter::clear_cache() {
+   cached_traces.clear();
+   onblock_trace.reset();
+}
+
 namespace {
 
 template <typename Object>
@@ -68,8 +73,7 @@ std::vector<augmented_transaction_trace> prepare_traces(trace_converter&       c
                  "missing trace for transaction ${id}", ("id", id));
       traces.push_back(it->second);
    }
-   converter.cached_traces.clear();
-   converter.onblock_trace.reset();
+   converter.clear_cache();
    return traces;
 }
 
