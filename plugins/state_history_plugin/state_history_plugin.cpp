@@ -411,7 +411,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
    }
 
    static bool is_onblock(const transaction_trace_ptr& p) {
-      if (p->action_traces.size() != 1)
+      if (p->action_traces.empty())
          return false;
       auto& act = p->action_traces[0].act;
       if (act.account != eosio::chain::config::system_account_name || act.name != N(onblock) ||

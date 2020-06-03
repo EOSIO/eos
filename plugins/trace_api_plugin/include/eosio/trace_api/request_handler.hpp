@@ -11,7 +11,7 @@ namespace eosio::trace_api {
    namespace detail {
       class response_formatter {
       public:
-         static fc::variant process_block( const block_trace_v0& trace, bool irreversible, const data_handler_function& data_handler, const yield_function& yield );
+         static fc::variant process_block( const data_log_entry& trace, bool irreversible, const data_handler_function& data_handler, const yield_function& yield );
       };
    }
 

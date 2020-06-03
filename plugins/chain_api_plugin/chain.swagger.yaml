@@ -680,3 +680,63 @@ paths:
                   more:
                     type: integer
                     description: "In case there's more activated protocol features than the input parameter `limit` requested, returns the ordinal of the next activated protocol feature which was not returned, otherwise zero."
+  /get_accounts_by_authorizers:
+    post:
+      description: Given a set of account names and public keys, find all account permission authorities that are, in part or whole, satisfiable
+      operationId: get_accounts_by_authorizers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                accounts:
+                  type: array
+                  description: List of authorizing accounts and/or actor/permissions
+                  items:
+                    anyOf:
+                      - $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
+                      - $ref: "https://eosio.github.io/schemata/v2.0/oas/Authority.yaml"
+                keys:
+                  type: array
+                  description: List of authorizing keys
+                  items:
+                    $ref: "https://eosio.github.io/schemata/v2.0/oas/PublicKey.yaml"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                description: Result containing a list of accounts which are authorized, in whole or part, by the provided accounts and keys
+                required:
+                  - accounts
+                properties:
+                  accounts:
+                    type: array
+                    description: An array of each account,permission,authorizing-data triplet in the response
+                    items:
+                      type: object
+                      description: the information for a single account,permission,authorizing-data triplet
+                      required:
+                        - account_name
+                        - permission_name
+                        - authorizer
+                        - weight
+                        - threshold
+                      properties:
+                        account_name:
+                          $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
+                        permission_name:
+                          $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
+                        authorizer:
+                          oneOf:
+                            - $ref: "https://eosio.github.io/schemata/v2.0/oas/PublicKey.yaml"
+                            - $ref: "https://eosio.github.io/schemata/v2.0/oas/Authority.yaml"
+                        weight:
+                          type: "integer"
+                          description: the weight that this authorizer adds to satisfy the permission
+                        threshold:
+                          type: "integer"
+                          description: the sum of weights that must be met or exceeded to satisfy the permission

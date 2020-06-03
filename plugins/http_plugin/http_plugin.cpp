@@ -625,7 +625,7 @@ namespace eosio {
       else
          cfg.add_options()
             ("unix-socket-path", bpo::value<string>(),
-             "The filename (relative to data-dir) to create a unix socket for HTTP RPC; set blank to disable.");   
+             "The filename (relative to data-dir) to create a unix socket for HTTP RPC; set blank to disable.");
 #endif
 
       if(current_http_plugin_defaults.default_http_port)
@@ -783,86 +783,91 @@ namespace eosio {
    void http_plugin::plugin_startup() {
 
       handle_sighup(); // setup logging
-
-      my->thread_pool.emplace( "http", my->thread_pool_size );
-
-      if(my->listen_endpoint) {
+      app().post(appbase::priority::high, [this] ()
+      {
          try {
-            my->create_server_for_endpoint(*my->listen_endpoint, my->server);
+            my->thread_pool.emplace( "http", my->thread_pool_size );
+            if(my->listen_endpoint) {
+               try {
+                  my->create_server_for_endpoint(*my->listen_endpoint, my->server);
 
-            fc_ilog( logger, "start listening for http requests" );
-            my->server.listen(*my->listen_endpoint);
-            my->server.start_accept();
-         } catch ( const fc::exception& e ){
-            fc_elog( logger, "http service failed to start: ${e}", ("e", e.to_detail_string()) );
-            throw;
-         } catch ( const std::exception& e ){
-            fc_elog( logger, "http service failed to start: ${e}", ("e", e.what()) );
-            throw;
-         } catch (...) {
-            fc_elog( logger, "error thrown from http io service" );
-            throw;
-         }
-      }
+                  fc_ilog( logger, "start listening for http requests" );
+                  my->server.listen(*my->listen_endpoint);
+                  my->server.start_accept();
+               } catch ( const fc::exception& e ){
+                  fc_elog( logger, "http service failed to start: ${e}", ("e", e.to_detail_string()) );
+                  throw;
+               } catch ( const std::exception& e ){
+                  fc_elog( logger, "http service failed to start: ${e}", ("e", e.what()) );
+                  throw;
+               } catch (...) {
+                  fc_elog( logger, "error thrown from http io service" );
+                  throw;
+               }
+            }
 
 #ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
-      if(my->unix_endpoint) {
-         try {
-            my->unix_server.clear_access_channels(websocketpp::log::alevel::all);
-            my->unix_server.init_asio( &my->thread_pool->get_executor() );
-            my->unix_server.set_max_http_body_size(my->max_body_size);
-            my->unix_server.listen(*my->unix_endpoint);
-            my->unix_server.set_http_handler([&, &ioc = my->thread_pool->get_executor()](connection_hdl hdl) {
-               my->handle_http_request<detail::asio_local_with_stub_log>( my->unix_server.get_con_from_hdl(hdl));
-            });
-            my->unix_server.start_accept();
-         } catch ( const fc::exception& e ){
-            fc_elog( logger, "unix socket service (${path}) failed to start: ${e}", ("e", e.to_detail_string())("path",my->unix_endpoint->path()) );
-            throw;
-         } catch ( const std::exception& e ){
-            fc_elog( logger, "unix socket service (${path}) failed to start: ${e}", ("e", e.what())("path",my->unix_endpoint->path()) );
-            throw;
-         } catch (...) {
-            fc_elog( logger, "error thrown from unix socket (${path}) io service", ("path",my->unix_endpoint->path()) );
-            throw;
-         }
-      }
-#endif
-
-      if(my->https_listen_endpoint) {
-         try {
-            my->create_server_for_endpoint(*my->https_listen_endpoint, my->https_server);
-            my->https_server.set_tls_init_handler([this](websocketpp::connection_hdl hdl) -> ssl_context_ptr{
-               return my->on_tls_init(hdl);
-            });
-
-            fc_ilog( logger, "start listening for https requests" );
-            my->https_server.listen(*my->https_listen_endpoint);
-            my->https_server.start_accept();
-         } catch ( const fc::exception& e ){
-            fc_elog( logger, "https service failed to start: ${e}", ("e", e.to_detail_string()) );
-            throw;
-         } catch ( const std::exception& e ){
-            fc_elog( logger, "https service failed to start: ${e}", ("e", e.what()) );
-            throw;
-         } catch (...) {
-            fc_elog( logger, "error thrown from https io service" );
-            throw;
-         }
-      }
-
-      add_api({{
-         std::string("/v1/node/get_supported_apis"),
-         [&](string, string body, url_response_callback cb) mutable {
-            try {
-               if (body.empty()) body = "{}";
-               auto result = (*this).get_supported_apis();
-               cb(200, fc::variant(result));
-            } catch (...) {
-               handle_exception("node", "get_supported_apis", body, cb);
+            if(my->unix_endpoint) {
+               try {
+                  my->unix_server.clear_access_channels(websocketpp::log::alevel::all);
+                  my->unix_server.init_asio( &my->thread_pool->get_executor() );
+                  my->unix_server.set_max_http_body_size(my->max_body_size);
+                  my->unix_server.listen(*my->unix_endpoint);
+                  my->unix_server.set_http_handler([&, &ioc = my->thread_pool->get_executor()](connection_hdl hdl) {
+                     my->handle_http_request<detail::asio_local_with_stub_log>( my->unix_server.get_con_from_hdl(hdl));
+                  });
+                  my->unix_server.start_accept();
+               } catch ( const fc::exception& e ){
+                  fc_elog( logger, "unix socket service (${path}) failed to start: ${e}", ("e", e.to_detail_string())("path",my->unix_endpoint->path()) );
+                  throw;
+               } catch ( const std::exception& e ){
+                  fc_elog( logger, "unix socket service (${path}) failed to start: ${e}", ("e", e.what())("path",my->unix_endpoint->path()) );
+                  throw;
+               } catch (...) {
+                  fc_elog( logger, "error thrown from unix socket (${path}) io service", ("path",my->unix_endpoint->path()) );
+                  throw;
+               }
             }
+#endif
+            if(my->https_listen_endpoint) {
+               try {
+                  my->create_server_for_endpoint(*my->https_listen_endpoint, my->https_server);
+                  my->https_server.set_tls_init_handler([this](websocketpp::connection_hdl hdl) -> ssl_context_ptr{
+                     return my->on_tls_init(hdl);
+                  });
+
+                  fc_ilog( logger, "start listening for https requests" );
+                  my->https_server.listen(*my->https_listen_endpoint);
+                  my->https_server.start_accept();
+               } catch ( const fc::exception& e ){
+                  fc_elog( logger, "https service failed to start: ${e}", ("e", e.to_detail_string()) );
+                  throw;
+               } catch ( const std::exception& e ){
+                  fc_elog( logger, "https service failed to start: ${e}", ("e", e.what()) );
+                  throw;
+               } catch (...) {
+                  fc_elog( logger, "error thrown from https io service" );
+                  throw;
+               }
+            }
+
+            add_api({{
+               std::string("/v1/node/get_supported_apis"),
+               [&](string, string body, url_response_callback cb) mutable {
+                  try {
+                     if (body.empty()) body = "{}";
+                     auto result = (*this).get_supported_apis();
+                     cb(200, fc::variant(result));
+                  } catch (...) {
+                     handle_exception("node", "get_supported_apis", body, cb);
+                  }
+               }
+            }});
+         } catch (...) {
+            fc_elog(logger, "http_plugin startup fails, shutting down");
+            app().shutdown();
          }
-      }});
+      });
    }
 
    void http_plugin::handle_sighup() {
@@ -902,6 +907,9 @@ namespace eosio {
             throw;
          } catch (chain::unknown_block_exception& e) {
             error_results results{400, "Unknown Block", error_results::error_info(e, verbose_http_errors)};
+            cb( 400, fc::variant( results ));
+         } catch (chain::invalid_http_request& e) {
+            error_results results{400, "Invalid Request", error_results::error_info(e, verbose_http_errors)};
             cb( 400, fc::variant( results ));
          } catch (chain::unsatisfied_authorization& e) {
             error_results results{401, "UnAuthorized", error_results::error_info(e, verbose_http_errors)};
