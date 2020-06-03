@@ -38,12 +38,38 @@ struct add_file_system_fixture {
       space_handler.add_file_system(path_name);
    }
 
-   void set_threshold(uint32_t threshold) {
-      space_handler.set_threshold(threshold);
+   void set_threshold(uint32_t threshold, uint32_t warning_threshold) {
+      space_handler.set_threshold( threshold, warning_threshold );
    }
 
    bool is_threshold_exceeded() const {
       return space_handler.is_threshold_exceeded();
+   }
+
+   void test_add_file_systems_common(std::vector<int>& capacity, std::vector<int>& available, std::vector<int>& devs) {
+      mock_get_space = [ i = 0, capacity, available ]( const bfs::path& p, boost::system::error_code& ec) mutable -> bfs::space_info {
+         ec = boost::system::errc::make_error_code(errc::success);
+
+         bfs::space_info rc;
+         rc.capacity  = capacity[i];
+         rc.available = available[i];
+         i++;
+
+         return rc;
+      };
+
+      mock_get_stat = [ j = 0, devs ]( const char *path, struct stat *buf ) mutable -> int {
+         buf->st_dev = devs[j];
+         j++;
+
+         return 0;
+      };
+
+      set_threshold(80, 75);
+
+      for (auto k = 0; k < capacity.size(); k++) {
+         add_file_system("/test" + std::to_string(k));
+      }
    }
 
    // fixture data and methods
@@ -57,7 +83,7 @@ BOOST_AUTO_TEST_SUITE(space_handler_tests)
    BOOST_FIXTURE_TEST_CASE(get_stat_failure, add_file_system_fixture)
    {
       mock_get_stat = []( const char *path, struct stat *buf ) -> int {
-         return 1;
+         return 1;  // anything other than 0 is an error in stat
       };
 
       BOOST_REQUIRE_THROW(add_file_system("/test"), chain::plugin_config_exception);
@@ -81,70 +107,36 @@ BOOST_AUTO_TEST_SUITE(space_handler_tests)
 
    BOOST_FIXTURE_TEST_CASE(different_file_systems, add_file_system_fixture)
    {
-      mock_get_space = [ i = 0 ]( const bfs::path& p, boost::system::error_code& ec) mutable -> bfs::space_info {
-         ec = boost::system::errc::make_error_code(errc::success);
+      std::vector<int> capacity  {1000000, 2000000, 3000000, 4000000};
+      std::vector<int> available {500000,  1500000, 2500000, 3500000};
+      std::vector<int> devs      {0,       1,       2,       3};
 
-         int capacity[]  = {1000000, 2000000, 3000000, 4000000};
-         int available[] = {500000,  1500000, 2500000, 3500000};
+      test_add_file_systems_common(capacity, available, devs);
 
-         bfs::space_info rc;
-         rc.capacity  = capacity[i];
-         rc.available = available[i];
-         i++;
-
-         return rc;
-      };
-
-      mock_get_stat = [ j = 0 ]( const char *path, struct stat *buf ) mutable -> int {
-         int devs [] = {0, 1, 2, 3};
-         buf->st_dev = devs[j];
-         j++;
-
-         return 0;
-      };
-
-      set_threshold(80);
-
-      // Just invoke the function
-      add_file_system("/test0");
-      add_file_system("/test1");
-      add_file_system("/test2");
-      add_file_system("/test3");
-
+      // As long as no exceptions, it is considered success.
       BOOST_TEST(true == true);
    }
 
    BOOST_FIXTURE_TEST_CASE(same_file_system, add_file_system_fixture)
    {
-      mock_get_space = [ i = 0 ]( const bfs::path& p, boost::system::error_code& ec) mutable -> bfs::space_info {
-         ec = boost::system::errc::make_error_code(errc::success);
+      std::vector<int> capacity  {1000000, 2000000, 3000000, 4000000};
+      std::vector<int> available {500000,  1500000, 2500000, 3500000};
+      std::vector<int> devs      {0,       0,       0,       0};
 
-         int capacity[]  = {1000000, 2000000, 3000000, 4000000};
-         int available[] = {500000,  1500000, 2500000, 3500000};
+      // As long as no exceptions, it is considered success.
+      test_add_file_systems_common(capacity, available, devs);
 
-         bfs::space_info rc;
-         rc.capacity  = capacity[i];
-         rc.available = available[i];
-         i++;
+      BOOST_TEST(true == true);
+   }
 
-         return rc;
-      };
+   BOOST_FIXTURE_TEST_CASE(mixed_file_systems, add_file_system_fixture)
+   {
+      std::vector<int> capacity  {1000000, 2000000, 3000000, 4000000, 50000};
+      std::vector<int> available {500000,  1500000, 2500000, 3500000, 20000};
+      std::vector<int> devs      {0,       2,       2,       0,       3};
 
-      mock_get_stat = [ j = 0 ]( const char *path, struct stat *buf ) mutable -> int {
-         int devs [] = {0, 0, 0, 0};
-         buf->st_dev = devs[j];
-         j++;
-
-         return 0;
-      };
-
-      set_threshold(80);
-
-      // Just invoke the function
-      add_file_system("/test0");
-      add_file_system("/test1");
-      add_file_system("/test2");
-      add_file_system("/test3");
+      // As long as no exceptions, it is considered success.
+      test_add_file_systems_common(capacity, available, devs);
 
       BOOST_TEST(true == true);
    }

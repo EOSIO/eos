@@ -22,11 +22,13 @@ namespace eosio::resource_monitor {
          sleep_time_in_secs = sleep_time;
       }
 
-      void set_threshold(uint32_t new_threshold) {
-         threshold = new_threshold;
-      }
+      // threshold_warning must be less than threshold.
+      // set them together so it is simpler to check.
+      void set_threshold(uint32_t new_threshold, uint32_t new_threshold_warning) {
+         EOS_ASSERT(new_threshold_warning < new_threshold, chain::plugin_config_exception,
+                    "threshold_warning ${new_threshold_warning} must be less than threshold ${new_threshold}", ("new_threshold_warning", new_threshold_warning) ("new_threshold", new_threshold));
 
-      void set_threshold_warning(uint32_t new_threshold_warning) {
+         threshold = new_threshold;
          threshold_warning = new_threshold_warning;
       }
 
@@ -135,16 +137,16 @@ namespace eosio::resource_monitor {
 
       boost::asio::deadline_timer timer;
    
-      uint32_t sleep_time_in_secs {0};
-      uint32_t threshold {0};
-      uint32_t threshold_warning {0};
-      bool     shutdown_on_exceeded {false};
+      uint32_t sleep_time_in_secs {2};
+      uint32_t threshold {90};
+      uint32_t threshold_warning {85};
+      bool     shutdown_on_exceeded {true};
 
       struct   filesystem_info {
          dev_t      st_dev; // device id of file system containing "file_path"
          uintmax_t  available_required {0}; // minimum number of available bytes the file system must maintain
          bfs::path  path_name;
-         uintmax_t available_warning {0};
+         uintmax_t available_warning {0};  // warning is issued when availabla number of bytese drops below available_warning
 
          filesystem_info(dev_t dev, uintmax_t available, const bfs::path& path, uintmax_t warning)
          : st_dev(dev),

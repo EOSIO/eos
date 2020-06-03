@@ -62,13 +62,13 @@ run_test() {
 
 ######### Tests #########
 
-run_test "Interval too big" "--plugin eosio::resource_monitor_plugin --resource-monitor-interval-seconds=60" "plugin_config_exception" "must be greater than 0 and less than 60"
+run_test "Interval too big" "--plugin eosio::resource_monitor_plugin --resource-monitor-interval-seconds=300" "plugin_config_exception" "must be greater than 0 and less than 300"
 
-run_test "Interval too small" "--plugin eosio::resource_monitor_plugin --resource-monitor-interval-seconds=0" "plugin_config_exception" "must be greater than 0 and less than 60"
+run_test "Interval too small" "--plugin eosio::resource_monitor_plugin --resource-monitor-interval-seconds=0" "plugin_config_exception" "must be greater than 0 and less than 300"
 
 run_test "Interval at lower boundary" "--plugin eosio::resource_monitor_plugin --resource-monitor-interval-seconds=1" "Produced block" "interval set to 1"
 
-run_test "Interval at upper boundary" "--plugin eosio::resource_monitor_plugin --resource-monitor-interval-seconds=59" "Produced block" "interval set to 59"
+run_test "Interval at upper boundary" "--plugin eosio::resource_monitor_plugin --resource-monitor-interval-seconds=299" "Produced block" "interval set to 299"
 
 run_test "Interval not supplied" "--plugin eosio::resource_monitor_plugin --resource-monitor-space-threshold=2" "nodeos successfully exiting" "interval set to 2"
 
@@ -82,9 +82,9 @@ run_test "Threshold at upper boundary" "--plugin eosio::resource_monitor_plugin 
 
 run_test "Threshold or Interval not supplied" "--plugin eosio::resource_monitor_plugin" "Produced block" "threshold set to 90"
 
-run_test "shutdown on exceeded true" "--plugin eosio::resource_monitor_plugin --resource-monitor-shutdown-on-threshold-exceeded" "Produced block" "Shutdown flag when threshold exceeded set to true"
+run_test "not shutdown on exceeded not supplied" "--plugin eosio::resource_monitor_plugin" "Produced block" "Shutdown flag when threshold exceeded set to true"
 
-run_test "shutdown on exceeded not supplied" "--plugin eosio::resource_monitor_plugin" "Produced block" "Shutdown flag when threshold exceeded set to false"
+run_test "not shutdown on exceeded set" "--plugin eosio::resource_monitor_plugin --resource-monitor-not-shutdown-on-threshold-exceeded" "Produced block" "Shutdown flag when threshold exceeded set to false"
 
 run_test "TraceApi plugin without Resource Monitor" "--plugin eosio::trace_api_plugin --trace-dir=/tmp/trace --trace-no-abis" "Produced block" "Produced block"
 
