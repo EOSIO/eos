@@ -1548,7 +1548,7 @@ class Node(object):
                         if specificBlockNum is not None:
                             return blockAnalysis
                     elif specificBlockNum is not None:
-                        blockAnalysis[blockNum] = { "slot": None, "prod": None}
+                        blockAnalysis[specificBlockNum] = { "slot": None, "prod": None}
                         return
 
                     if readLine:
