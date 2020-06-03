@@ -179,8 +179,7 @@ try:
                     limit = timedelta(seconds=0.500)
                     if delta >= limit:
                         actualProducerTimeStr=None
-                        nodes = cluster.getAllNodes()
-                        nodes.remove(shipNodeNum)
+                        nodes = [node for node in cluster.getAllNodes() if node.nodeId != shipNodeNum]
                         for node in nodes:
                             threshold=-500   # set negative to guarantee the block analysis gets returned
                             blockAnalysis = node.analyzeProduction(specificBlockNum=blockNum, thresholdMs=threshold)
