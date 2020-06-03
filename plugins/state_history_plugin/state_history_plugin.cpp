@@ -411,21 +411,9 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       });
    }
 
-   static bool is_onblock(const transaction_trace_ptr& p) {
-      if (p->action_traces.empty())
-         return false;
-      auto& act = p->action_traces[0].act;
-      if (act.account != eosio::chain::config::system_account_name || act.name != N(onblock) ||
-          act.authorization.size() != 1)
-         return false;
-      auto& auth = act.authorization[0];
-      return auth.actor == eosio::chain::config::system_account_name &&
-             auth.permission == eosio::chain::config::active_name;
-   }
-
    void on_applied_transaction(const transaction_trace_ptr& p, const signed_transaction& t) {
       if (p->receipt && trace_log) {
-         if (is_onblock(p))
+         if (chain::is_onblock(*p))
             onblock_trace.emplace(p, t);
          else if (p->failed_dtrx_trace)
             cached_traces[p->failed_dtrx_trace->id] = augmented_transaction_trace{p, t};
