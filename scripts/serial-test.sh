@@ -48,6 +48,7 @@ else # run specific serial test
         else
             echo "$TEST PASSED"
         fi
+        grep "produced the following blocks late" ctest-output.log
         echo "Done running $TEST."
     else
         echo "+++ $([[ "$BUILDKITE" == 'true' ]] && echo ':no_entry: ')ERROR: No tests matching \"$TEST\" registered with ctest! Exiting..."
