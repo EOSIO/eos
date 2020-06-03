@@ -3,13 +3,21 @@ set -eo pipefail
 . ./.cicd/helpers/general.sh
 mkdir -p $BUILD_DIR
 CMAKE_EXTRAS="-DCMAKE_BUILD_TYPE='Release' -DENABLE_MULTIVERSION_PROTOCOL_TEST=true"
-[[ ! $TRAVIS  == true ]] && CMAKE_EXTRAS="$CMAKE_EXTRAS -DAMQP_CONN_STR='"$AMQP_CONNECTION_STRING"'"
 if [[ "$(uname)" == 'Darwin' && $FORCE_LINUX != true ]]; then
     # You can't use chained commands in execute
     if [[ "$GITHUB_ACTIONS" == 'true' ]]; then
         export PINNED=false
     fi
     [[ ! "$PINNED" == 'false' ]] && CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_TOOLCHAIN_FILE=$HELPERS_DIR/clang.make"
+
+    if [[ ! "$GITHUB_ACTIONS" == 'true' ]]; then
+        SECRETS_DIR=/System/Volumes/Data/Network/NAS/MAC_FLEET/ANKA/secrets
+        if [[ -d "$SECRETS_DIR" ]]; then
+            AMQP_CONNECTION_STRING=$(cat $SECRETS_DIR/amqp-connection-string.txt)
+            CMAKE_EXTRAS="$CMAKE_EXTRAS -DAMQP_CONN_STR='"$AMQP_CONNECTION_STRING"'"
+        fi
+    fi
+
     cd $BUILD_DIR
     if [[ $TRAVIS == true ]]; then
         ccache -s
@@ -30,6 +38,7 @@ else # Linux
     PRE_COMMANDS="cd $MOUNTED_DIR/build"
     # PRE_COMMANDS: Executed pre-cmake
     # CMAKE_EXTRAS: Executed within and right before the cmake path (cmake CMAKE_EXTRAS ..)
+    [[ ! "$GITHUB_ACTIONS"  == 'true' ]] && CMAKE_EXTRAS="$CMAKE_EXTRAS -DAMQP_CONN_STR='"$AMQP_CONNECTION_STRING"'"
     [[ ! "$IMAGE_TAG" =~ 'unpinned' ]] && CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_TOOLCHAIN_FILE=$MOUNTED_DIR/.cicd/helpers/clang.make"
     if [[ "$IMAGE_TAG" == 'amazon_linux-2-unpinned' ]]; then
         CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_CXX_COMPILER='clang++' -DCMAKE_C_COMPILER='clang'"
