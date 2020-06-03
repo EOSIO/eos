@@ -27,7 +27,8 @@ class reliable_amqp_publisher {
       /// \param exchange the exchange to publish to
       /// \param routing_key on published messages
       /// \param unconfirmed_path path to save/load unconfirmed message to be tried again after stop/start
-      reliable_amqp_publisher(const std::string server_url, const std::string exchange, const std::string routing_key, const boost::filesystem::path unconfirmed_path);
+      reliable_amqp_publisher(const std::string server_url, const std::string exchange, const std::string routing_key,
+                              const boost::filesystem::path unconfirmed_path, const std::optional<std::string> message_id = {});
 
       /// Publish a message. May be called from any thread.
       /// \param t serializable object
