@@ -72,6 +72,10 @@ private:
    }
 
    void on_block_start( uint32_t block_num ) {
+      clear_caches();
+   }
+
+   void clear_caches() {
       cached_traces.clear();
       onblock_trace.reset();
    }
@@ -97,8 +101,7 @@ private:
                traces.emplace_back( to_transaction_trace_v1( it->second ));
             }
          }
-         cached_traces.clear();
-         onblock_trace.reset();
+         clear_caches();
 
          store.append( std::move( bt ) );
 
