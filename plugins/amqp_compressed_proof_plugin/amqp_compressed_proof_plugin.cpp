@@ -140,10 +140,10 @@ struct compressed_proof_generator_impl {
    reversible_action_entries_index_type reversible_action_entries_index;
 
    static bool is_onblock(const chain::transaction_trace_ptr& p) {
-      if (p->action_traces.size() != 1)
+      if(p->action_traces.empty())
          return false;
       auto& act = p->action_traces[0].act;
-      if (act.account != eosio::chain::config::system_account_name || act.name != N(onblock) ||
+      if(act.account != eosio::chain::config::system_account_name || act.name != N(onblock) ||
           act.authorization.size() != 1)
          return false;
       auto& auth = act.authorization[0];
