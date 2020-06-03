@@ -1108,7 +1108,7 @@ class PluginHttpTest(unittest.TestCase):
         # get_block with empty parameter
         default_cmd = cmd_base + "get_block"
         ret_json = Utils.runCmdReturnJson(default_cmd)
-        self.assertEqual(ret_json["code"], 400)
+        self.assertEqual(ret_json["code"], 4)
         # get_block with invalid parameter
         invalid_cmd = default_cmd + self.http_post_str + self.http_post_invalid_param
         ret_json = Utils.runCmdReturnJson(invalid_cmd)
