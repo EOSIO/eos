@@ -152,12 +152,24 @@ class TestHelper(object):
             Utils.Print("Test succeeded.")
         else:
             Utils.Print("Test failed.")
+
+        def reportProductionAnalysis():
+            Utils.Print(Utils.FileDivider)
+            for node in cluster.getAllNodes():
+                missedBlocks=node.analyzeProduction(thresholdMs=0)
+                if len(missedBlocks) > 0:
+                    Utils.Print("NodeId: %s produced the following blocks late: %s" % (node.nodeId, missedBlocks))
+
         if not testSuccessful and dumpErrorDetails:
             cluster.reportStatus()
             Utils.Print(Utils.FileDivider)
-            psOut=Cluster.pgrepEosServers(timeout=60)
+            psOut = Cluster.pgrepEosServers(timeout=60)
             Utils.Print("pgrep output:\n%s" % (psOut))
+            reportProductionAnalysis()
             Utils.Print("== Errors see above ==")
+        elif dumpErrorDetails:
+            # for now report these to know how many blocks we are missing production windows for
+            reportProductionAnalysis()
 
         if killEosInstances:
             Utils.Print("Shut down the cluster.")

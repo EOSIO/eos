@@ -1499,3 +1499,60 @@ class Node(object):
                     files.append(os.path.join(path, entry.name))
         files.sort()
         return files
+
+    def analyzeProduction(self, specificBlockNum=None, thresholdMs=500):
+        dataDir=Utils.getNodeDataDir(self.nodeId)
+        files=Node.findFiles(dataDir)
+        blockAnalysis={}
+        anyBlockStr=r'[0-9]+'
+        initialTimestamp=r'\s+([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{3})\s'
+        producedBlockPreStr=r'.+Produced\sblock\s+.+\s#('
+        producedBlockPostStr=r')\s@\s([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{3})'
+        anyBlockPtrn=re.compile(initialTimestamp + producedBlockPreStr + anyBlockStr + producedBlockPostStr)
+        producedBlockPtrn=re.compile(initialTimestamp + producedBlockPreStr + str(specificBlockNum) + producedBlockPostStr) if specificBlockNum is not None else anyBlockPtrn
+        producedBlockDonePtrn=re.compile(initialTimestamp + r'.+Producing\sBlock\s+#' + anyBlockStr + '\sreturned:\strue')
+        for file in files:
+            with open(file, 'r') as f:
+                line = f.readline()
+                while line:
+                    readLine=True  # assume we need to read the next line before the next pass
+                    match = producedBlockPtrn.search(line)
+                    if match:
+                        prodTimeStr = match.group(1)
+                        slotTimeStr = match.group(3)
+                        blockNum = int(match.group(2))
+
+                        line = f.readline()
+                        while line:
+                            matchNextBlock = anyBlockPtrn.search(line)
+                            if matchNextBlock:
+                                readLine=False  #already have the next line ready to check on next pass
+                                break
+
+                            matchBlockActuallyProduced = producedBlockDonePtrn.search(line)
+                            if matchBlockActuallyProduced:
+                                prodTimeStr = matchBlockActuallyProduced.group(1)
+                                break
+
+                            line = f.readline()
+
+                        prodTime = datetime.strptime(prodTimeStr, Utils.TimeFmt)
+                        slotTime = datetime.strptime(slotTimeStr, Utils.TimeFmt)
+                        delta = prodTime - slotTime
+                        millisecondsPerSecond=1000
+                        limit = timedelta(seconds=thresholdMs/millisecondsPerSecond)
+                        if delta > limit:
+                            if blockNum in blockAnalysis:
+                                Utils.errorExit("Found repeat production of the same block num: %d in one of the stderr files in: %s" % (blockNum, dataDir))
+                            blockAnalysis[blockNum] = { "slot": slotTimeStr, "prod": prodTimeStr }
+
+                        if specificBlockNum is not None:
+                            return blockAnalysis
+                    elif specificBlockNum is not None:
+                        blockAnalysis[blockNum] = { "slot": None, "prod": None}
+                        return
+
+                    if readLine:
+                        line = f.readline()
+
+        return blockAnalysis
