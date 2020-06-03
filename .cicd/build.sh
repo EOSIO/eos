@@ -3,6 +3,11 @@ set -eo pipefail
 . ./.cicd/helpers/general.sh
 mkdir -p $BUILD_DIR
 CMAKE_EXTRAS="-DCMAKE_BUILD_TYPE='Release' -DENABLE_MULTIVERSION_PROTOCOL_TEST=true -DENABLE_UNITY_BUILD=ON"
+if [[ "$BUILDKITE" == 'true' ]]; then
+    SECRETS_DIR='/System/Volumes/Data/Network/NAS/MAC_FLEET/ANKA/secrets'
+    AMQP_CONNECTION_STRING=${AMQP_CONNECTION_STRING:-"$(cat $SECRETS_DIR/amqp-connection-string.txt)"}
+    CMAKE_EXTRAS="$CMAKE_EXTRAS -DAMQP_CONN_STR='"$AMQP_CONNECTION_STRING"'"
+fi
 if [[ "$(uname)" == 'Darwin' && $FORCE_LINUX != true ]]; then
     # You can't use chained commands in execute
     if [[ "$GITHUB_ACTIONS" == 'true' ]]; then
