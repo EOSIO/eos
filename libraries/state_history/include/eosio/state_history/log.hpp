@@ -127,8 +127,7 @@ class state_history_traces_log : public state_history_log {
    }
 
    void block_start(uint32_t block_num) {
-      trace_convert.cached_traces.clear();
-      trace_convert.onblock_trace.reset();
+      trace_convert.clear_cache();
    }
 
    fc::optional<chain::bytes> get_log_entry(block_num_type block_num);
