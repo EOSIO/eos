@@ -94,7 +94,7 @@ class Cluster(object):
         defproducerbPrvtKey: Defproducerb account private key
         """
         self.accounts={}
-        self.nodes={}
+        self.nodes=[]
         self.unstartedNodes=[]
         self.localCluster=localCluster
         self.wallet=None
@@ -710,10 +710,7 @@ class Cluster(object):
         return self.nodes[nodeId]
 
     def getNodes(self):
-        nodes = []
-        if hasattr(self, "nodes") and self.nodes is not None:
-            nodes += self.nodes
-        return nodes
+        return self.nodes[:]
 
     def getAllNodes(self):
         nodes = []
@@ -1453,7 +1450,7 @@ class Cluster(object):
         fileName=Utils.getNodeConfigDir("bios", "config.ini")
         Cluster.dumpErrorDetailImpl(fileName)
         path=Utils.getNodeDataDir("bios")
-        fileNames=Node.findFiles(path)
+        fileNames=Node.findStderrFiles(path)
         for fileName in fileNames:
             Cluster.dumpErrorDetailImpl(fileName)
 
@@ -1464,7 +1461,7 @@ class Cluster(object):
             fileName=os.path.join(configLocation, "genesis.json")
             Cluster.dumpErrorDetailImpl(fileName)
             path=Utils.getNodeDataDir(i)
-            fileNames=Node.findFiles(path)
+            fileNames=Node.findStderrFiles(path)
             for fileName in fileNames:
                 Cluster.dumpErrorDetailImpl(fileName)
 

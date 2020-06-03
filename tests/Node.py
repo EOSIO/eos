@@ -1489,7 +1489,7 @@ class Node(object):
         return self.processCurlCmd("producer", "create_snapshot", json.dumps(param))
 
     @staticmethod
-    def findFiles(path):
+    def findStderrFiles(path):
         files=[]
         it=os.scandir(path)
         for entry in it:
@@ -1502,7 +1502,7 @@ class Node(object):
 
     def analyzeProduction(self, specificBlockNum=None, thresholdMs=500):
         dataDir=Utils.getNodeDataDir(self.nodeId)
-        files=Node.findFiles(dataDir)
+        files=Node.findStderrFiles(dataDir)
         blockAnalysis={}
         anyBlockStr=r'[0-9]+'
         initialTimestamp=r'\s+([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{3})\s'
