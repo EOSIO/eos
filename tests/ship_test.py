@@ -203,26 +203,6 @@ try:
 finally:
     TestHelper.shutdown(cluster, walletMgr, testSuccessful=testSuccessful, killEosInstances=killEosInstances, killWallet=killWallet, keepLogs=keepLogs, cleanRun=killAll, dumpErrorDetails=dumpErrorDetails)
     if shipTempDir is not None:
-        if dumpErrorDetails and not testSuccessful:
-            def printTruncatedFile(filename, maxLines):
-                Print(Utils.FileDivider)
-                with open(filename, "r") as f:
-                    Print("Contents of %s" % (filename))
-                    line = f.readline()
-                    lineCount = 0
-                    while line and lineCount < maxLines:
-                        Print(line)
-                        lineCount += 1
-                        line = f.readline()
-                    if line:
-                        Print("...       CONTENT TRUNCATED AT %d lines" % (maxLines))
-
-            for index in range(0, args.num_clients):
-                # error file should not contain much content, so if there are lots of lines it is likely useless
-                printTruncatedFile("%s%d.err" % (shipClientFilePrefix, i), maxLines=1000)
-                # output file should have lots of output, but if user passes in a huge number of requests, these could go on forever
-                printTruncatedFile("%s%d.out" % (shipClientFilePrefix, i), maxLines=20000)
-
         if testSuccessful and not keepLogs:
             shutil.rmtree(shipTempDir, ignore_errors=True)
 
