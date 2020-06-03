@@ -169,15 +169,31 @@ try:
                 blockNum = int(match.group(2))
                 if blockNum > maxFirstBN:
                     # ship requests can only affect time after clients started
-                    timeFmt = '%Y-%m-%dT%H:%M:%S.%f'
-                    rcvTime = datetime.strptime(rcvTimeStr, timeFmt)
-                    prodTime = datetime.strptime(prodTimeStr, timeFmt)
+                    rcvTime = datetime.strptime(rcvTimeStr, Utils.TimeFmt)
+                    prodTime = datetime.strptime(prodTimeStr, Utils.TimeFmt)
                     delta = rcvTime - prodTime
                     biggestDelta = max(delta, biggestDelta)
 
                     totalDelta += delta
                     timeCount += 1
-                    assert delta < timedelta(seconds=0.500), Print("ERROR: block_num: %s took %.3f seconds to be received." % (blockNum, delta.total_seconds()))
+                    limit = timedelta(seconds=0.500)
+                    if delta >= limit:
+                        actualProducerTimeStr=None
+                        nodes = cluster.getAllNodes()
+                        nodes.remove(shipNodeNum)
+                        for node in nodes:
+                            threshold=-500   # set negative to guarantee the block analysis gets returned
+                            blockAnalysis = node.analyzeProduction(specificBlockNum=blockNum, thresholdMs=threshold)
+                            actualProducerTimeStr = blockAnalysis[blockNum]["prod"]
+                            if actualProducerTimeStr is not None:
+                                break
+                        if actualProducerTimeStr is not None:
+                            actualProducerTime = datetime.strptime(actualProducerTimeStr, Utils.TimeFmt)
+                            if rcvTime - actualProducerTime >= limit:
+                                actualProducerTime = None   # let it fail below
+
+                        if actualProducerTimeStr is None:
+                            Utils.errorExit("block_num: %s took %.3f seconds to be received." % (blockNum, delta.total_seconds()))
 
             line = f.readline()
 
