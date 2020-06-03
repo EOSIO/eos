@@ -1449,23 +1449,11 @@ class Cluster(object):
         else:
             Utils.Print("File %s not found." % (fileName))
 
-    @staticmethod
-    def __findFiles(path):
-        files=[]
-        it=os.scandir(path)
-        for entry in it:
-            if entry.is_file(follow_symlinks=False):
-                match=re.match("stderr\..+\.txt", entry.name)
-                if match:
-                    files.append(os.path.join(path, entry.name))
-        files.sort()
-        return files
-
     def dumpErrorDetails(self):
         fileName=Utils.getNodeConfigDir("bios", "config.ini")
         Cluster.dumpErrorDetailImpl(fileName)
         path=Utils.getNodeDataDir("bios")
-        fileNames=Cluster.__findFiles(path)
+        fileNames=Node.findFiles(path)
         for fileName in fileNames:
             Cluster.dumpErrorDetailImpl(fileName)
 
@@ -1476,7 +1464,7 @@ class Cluster(object):
             fileName=os.path.join(configLocation, "genesis.json")
             Cluster.dumpErrorDetailImpl(fileName)
             path=Utils.getNodeDataDir(i)
-            fileNames=Cluster.__findFiles(path)
+            fileNames=Node.findFiles(path)
             for fileName in fileNames:
                 Cluster.dumpErrorDetailImpl(fileName)
 
@@ -1596,14 +1584,12 @@ class Cluster(object):
         return infos
 
     def reportStatus(self):
-        if hasattr(self, "biosNode") and self.biosNode is not None:
-            self.biosNode.reportStatus()
-        if hasattr(self, "nodes"):
-            for node in self.nodes:
-                try:
-                    node.reportStatus()
-                except:
-                    Utils.Print("No reportStatus")
+        nodes = self.getAllNodes()
+        for node in nodes:
+            try:
+                node.reportStatus()
+            except:
+                Utils.Print("No reportStatus for nodeId: %s" % (node.nodeId))
 
     def getBlockLog(self, nodeExtension, blockLogAction=BlockLogAction.return_blocks, outputFile=None, first=None, last=None, extraArgs="", throwException=False, silentErrors=False, exitOnError=False):
         nodeDataDir=Utils.getNodeDataDir(nodeExtension)
