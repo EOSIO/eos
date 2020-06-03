@@ -40,6 +40,11 @@ public:
       on_irreversible_block( bsp );
    }
 
+   /// connect to chain controller block_start signal
+   void signal_block_start( uint32_t block_num ) {
+      on_block_start( block_num );
+   }
+
 private:
    void on_applied_transaction(const chain::transaction_trace_ptr& trace, const chain::packed_transaction_ptr& t) {
       if( !trace->receipt ) return;
@@ -63,6 +68,11 @@ private:
 
    void on_irreversible_block( const chain::block_state_ptr& block_state ) {
       store_lib( block_state );
+   }
+
+   void on_block_start( uint32_t block_num ) {
+      cached_traces.clear();
+      onblock_trace.reset();
    }
 
    void store_block_trace( const chain::block_state_ptr& block_state ) {
