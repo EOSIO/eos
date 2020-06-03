@@ -38,16 +38,12 @@ struct space_handler_fixture {
       space_handler.add_file_system( path_name );
    }
 
-   void set_threshold(uint32_t threshold) {
-      space_handler.set_threshold( threshold );
+   void set_threshold(uint32_t threshold, uint32_t warning_threshold) {
+      space_handler.set_threshold( threshold, warning_threshold );
    }
 
    void set_sleep_time(uint32_t sleep_time) {
       space_handler.set_sleep_time( sleep_time );
-   }
-
-   void set_threshold_warning(uint32_t threshold_warning) {
-      space_handler.set_threshold_warning( threshold_warning );
    }
 
    void set_shutdown_on_exceeded(bool shutdown_on_exceeded) {
@@ -62,6 +58,55 @@ struct space_handler_fixture {
       return space_handler.space_monitor_loop();
    }
 
+   bool test_loop_common(int num_loops, int interval)
+   {
+      mock_get_space = [ i = 0, num_loops ]( const bfs::path& p, boost::system::error_code& ec) mutable -> bfs::space_info {
+         ec = boost::system::errc::make_error_code(errc::success);
+
+         bfs::space_info rc;
+         rc.capacity  = 1000000;
+
+         if ( i < num_loops + 1 ) {  // "+ 1" for the get_space in add_file_system
+            rc.available = 300000;
+         } else {
+            rc.available = 100000;
+         }
+
+         i++;
+
+         return rc;
+      };
+
+      mock_get_stat = []( const char *path, struct stat *buf ) -> int {
+         buf->st_dev = 0;
+         return 0;
+      };
+
+      set_threshold(80, 75);
+      set_shutdown_on_exceeded(true);
+      set_sleep_time(interval);
+      add_file_system("/test");
+
+      auto start = std::chrono::system_clock::now();
+
+      auto monitor_thread = std::thread( [this] {
+         space_monitor_loop();
+         ctx.run();
+      });
+
+      monitor_thread.join();
+
+      auto end = std::chrono::system_clock::now();
+      std::chrono::duration<double> diff = end - start;
+
+      // As long as the thread ends within a margin (2 seconds for now)
+      // of the product of the number of loops by interval per loop,
+      // test is considered successful.
+      bool finished_in_time = (diff >= std::chrono::duration<double>(num_loops * interval) && diff <= std::chrono::duration<double>(num_loops * interval + 2)) ? true : false;
+
+      return finished_in_time;
+   }
+
    // fixture data and methods
    std::function<bfs::space_info(const bfs::path& p, boost::system::error_code& ec)> mock_get_space;
    std::function<int(const char *path, struct stat *buf)> mock_get_stat;
@@ -72,371 +117,47 @@ struct space_handler_fixture {
 BOOST_AUTO_TEST_SUITE(monitor_loop_tests)
    BOOST_FIXTURE_TEST_CASE(zero_loop, space_handler_fixture)
    {
-      mock_get_space = []( const bfs::path& p, boost::system::error_code& ec) -> bfs::space_info {
-         ec = boost::system::errc::make_error_code(errc::success);
-         bfs::space_info rc;
-         rc.capacity  = 1000000;
-         rc.available = 199999;
-
-         return rc;
-      };
-
-      mock_get_stat = []( const char *path, struct stat *buf ) -> int {
-         buf->st_dev = 0;
-         return 0;
-      };
-
-      set_threshold(80);
-      set_threshold_warning(75);
-      set_shutdown_on_exceeded(true);
-      set_sleep_time(1);
-      add_file_system("/test");
-
-      auto expected_response = 0;
-      auto actual_response = space_monitor_loop();
-
-      BOOST_TEST(expected_response == actual_response);
-
+      BOOST_TEST(test_loop_common(0, 1)  == true);
    }
 
    BOOST_FIXTURE_TEST_CASE(one_loop_1_secs_interval, space_handler_fixture)
    {
-      auto constexpr num_loops = 1;
-      auto constexpr interval  = 1;
-
-      mock_get_space = [ i = 0 ]( const bfs::path& p, boost::system::error_code& ec) mutable -> bfs::space_info {
-         ec = boost::system::errc::make_error_code(errc::success);
-
-         bfs::space_info rc;
-         rc.capacity  = 1000000;
-
-         if ( i < num_loops + 1 ) {  // "+ 1" for the get_space in add_file_system
-            rc.available = 300000;
-         } else {
-            rc.available = 100000;
-         }
-
-         i++;
-
-         return rc;
-      };
-
-      mock_get_stat = []( const char *path, struct stat *buf ) -> int {
-         buf->st_dev = 0;
-         return 0;
-      };
-
-      set_threshold(80);
-      set_threshold_warning(75);
-      set_shutdown_on_exceeded(true);
-      set_sleep_time(interval);
-      add_file_system("/test");
-
-      auto start = std::chrono::system_clock::now();
-
-      auto monitor_thread = std::thread( [this] {
-         space_monitor_loop();
-         ctx.run();
-      });
-
-      monitor_thread.join();
-
-      auto end = std::chrono::system_clock::now();
-      std::chrono::duration<double> diff = end - start;
-
-      // The thread should end within a tight limit.
-      bool finished_in_time = (diff >= std::chrono::duration<double>(num_loops * interval) && diff <= std::chrono::duration<double>(num_loops * interval + 1)) ? true : false;
-
-      BOOST_TEST(finished_in_time == true);
+     BOOST_TEST(test_loop_common(1, 1)  == true);
    }
 
    BOOST_FIXTURE_TEST_CASE(two_loops_1_sec_interval, space_handler_fixture)
    {
-      auto constexpr num_loops = 2;
-      auto constexpr interval  = 1;
-
-      mock_get_space = [ i = 0 ]( const bfs::path& p, boost::system::error_code& ec) mutable -> bfs::space_info {
-         ec = boost::system::errc::make_error_code(errc::success);
-
-         bfs::space_info rc;
-         rc.capacity  = 1000000;
-
-         if ( i < num_loops + 1 ) {  // "+ 1" for the get_space in add_file_system
-            rc.available = 300000;
-         } else {
-            rc.available = 100000;
-         }
-
-         i++;
-
-         return rc;
-      };
-
-      mock_get_stat = []( const char *path, struct stat *buf ) -> int {
-         buf->st_dev = 0;
-         return 0;
-      };
-
-      set_threshold(80);
-      set_sleep_time(interval);
-      add_file_system("/test");
-
-      auto start = std::chrono::system_clock::now();
-
-      auto monitor_thread = std::thread( [this] {
-         space_monitor_loop();
-         ctx.run();
-      });
-
-      monitor_thread.join();
-
-      auto end = std::chrono::system_clock::now();
-      std::chrono::duration<double> diff = end - start;
-
-      bool finished_in_time = (diff >= std::chrono::duration<double>(num_loops * interval) && diff <= std::chrono::duration<double>(num_loops * interval + 1)) ? true : false;
-
-      BOOST_TEST(finished_in_time == true);
+      BOOST_TEST(test_loop_common(2, 1)  == true);
    }
 
    BOOST_FIXTURE_TEST_CASE(ten_loops_1_sec_interval, space_handler_fixture)
    {
-      auto constexpr num_loops = 10;
-      auto constexpr interval  = 1;
-
-      mock_get_space = [ i = 0 ]( const bfs::path& p, boost::system::error_code& ec) mutable -> bfs::space_info {
-         ec = boost::system::errc::make_error_code(errc::success);
-
-         bfs::space_info rc;
-         rc.capacity  = 1000000;
-
-         if ( i < num_loops + 1 ) {  // "+ 1" for the get_space in add_file_system
-            rc.available = 300000;
-         } else {
-            rc.available = 100000;
-         }
-
-         i++;
-
-         return rc;
-      };
-
-      mock_get_stat = []( const char *path, struct stat *buf ) -> int {
-         buf->st_dev = 0;
-         return 0;
-      };
-
-      set_threshold(80);
-      set_sleep_time(interval);
-      add_file_system("/test");
-
-      auto start = std::chrono::system_clock::now();
-
-      auto monitor_thread = std::thread( [this] {
-         space_monitor_loop();
-         ctx.run();
-      });
-
-      monitor_thread.join();
-
-      auto end = std::chrono::system_clock::now();
-      std::chrono::duration<double> diff = end - start;
-
-      bool finished_in_time = (diff >= std::chrono::duration<double>(num_loops * interval) && diff <= std::chrono::duration<double>(num_loops * interval + 1)) ? true : false;
-
-      BOOST_TEST(finished_in_time == true);
+      BOOST_TEST(test_loop_common(10, 1)  == true);
    }
 
    BOOST_FIXTURE_TEST_CASE(one_loop_5_secs_interval, space_handler_fixture)
    {
-      auto constexpr num_loops = 1;
-      auto constexpr interval  = 5;
-
-      mock_get_space = [ i = 0 ]( const bfs::path& p, boost::system::error_code& ec) mutable -> bfs::space_info {
-         ec = boost::system::errc::make_error_code(errc::success);
-
-         bfs::space_info rc;
-         rc.capacity  = 1000000;
-
-         if ( i < num_loops + 1 ) {  // "+ 1" for the get_space in add_file_system
-            rc.available = 300000;
-         } else {
-            rc.available = 100000;
-         }
-
-         i++;
-
-         return rc;
-      };
-
-      mock_get_stat = []( const char *path, struct stat *buf ) -> int {
-         buf->st_dev = 0;
-         return 0;
-      };
-
-      set_threshold(80);
-      set_sleep_time(interval);
-      add_file_system("/test");
-
-      auto start = std::chrono::system_clock::now();
-
-      auto monitor_thread = std::thread( [this] {
-         space_monitor_loop();
-         ctx.run();
-      });
-
-      monitor_thread.join();
-
-      auto end = std::chrono::system_clock::now();
-      std::chrono::duration<double> diff = end - start;
-
-      bool finished_in_time = (diff >= std::chrono::duration<double>(num_loops * interval) && diff <= std::chrono::duration<double>(num_loops * interval + 1)) ? true : false;
-
-      BOOST_TEST(finished_in_time == true);
+      BOOST_TEST(test_loop_common(1, 5)  == true);
    }
 
    BOOST_FIXTURE_TEST_CASE(two_loops_5_sec_interval, space_handler_fixture)
    {
-      auto constexpr num_loops = 2;
-      auto constexpr interval  = 5;
-
-      mock_get_space = [ i = 0 ]( const bfs::path& p, boost::system::error_code& ec) mutable -> bfs::space_info {
-         ec = boost::system::errc::make_error_code(errc::success);
-
-         bfs::space_info rc;
-         rc.capacity  = 1000000;
-
-         if ( i < num_loops + 1 ) {  // "+ 1" for the get_space in add_file_system
-            rc.available = 300000;
-         } else {
-            rc.available = 100000;
-         }
-
-         i++;
-
-         return rc;
-      };
-
-      mock_get_stat = []( const char *path, struct stat *buf ) -> int {
-         buf->st_dev = 0;
-         return 0;
-      };
-
-      set_threshold(80);
-      set_sleep_time(interval);
-      add_file_system("/test");
-
-      auto start = std::chrono::system_clock::now();
-
-      auto monitor_thread = std::thread( [this] {
-         space_monitor_loop();
-         ctx.run();
-      });
-
-      monitor_thread.join();
-
-      auto end = std::chrono::system_clock::now();
-      std::chrono::duration<double> diff = end - start;
-
-      bool finished_in_time = (diff >= std::chrono::duration<double>(num_loops * interval) && diff <= std::chrono::duration<double>(num_loops * interval + 1)) ? true : false;
-
-      BOOST_TEST(finished_in_time == true);
+      BOOST_TEST(test_loop_common(2, 5)  == true);
    }
 
    BOOST_FIXTURE_TEST_CASE(ten_loops_5_sec_interval, space_handler_fixture)
    {
-      auto constexpr num_loops = 10;
-      auto constexpr interval  = 5;
+      BOOST_TEST(test_loop_common(10, 5)  == true);
+   }
 
-      mock_get_space = [ i = 0 ]( const bfs::path& p, boost::system::error_code& ec) mutable -> bfs::space_info {
-         ec = boost::system::errc::make_error_code(errc::success);
-
-         bfs::space_info rc;
-         rc.capacity  = 1000000;
-
-         if ( i < num_loops + 1 ) {  // "+ 1" for the get_space in add_file_system
-            rc.available = 300000;
-         } else {
-            rc.available = 100000;
-         }
-
-         i++;
-
-         return rc;
-      };
-
-      mock_get_stat = []( const char *path, struct stat *buf ) -> int {
-         buf->st_dev = 0;
-         return 0;
-      };
-
-      set_threshold(80);
-      set_sleep_time(interval);
-      add_file_system("/test");
-
-      auto start = std::chrono::system_clock::now();
-
-      auto monitor_thread = std::thread( [this] {
-         space_monitor_loop();
-         ctx.run();
-      });
-
-      monitor_thread.join();
-
-      auto end = std::chrono::system_clock::now();
-      std::chrono::duration<double> diff = end - start;
-
-      bool finished_in_time = (diff >= std::chrono::duration<double>(num_loops * interval) && diff <= std::chrono::duration<double>(num_loops * interval + 1)) ? true : false;
-
-      BOOST_TEST(finished_in_time == true);
+   BOOST_FIXTURE_TEST_CASE(one_hundred_twenty_loops_1_sec_interval, space_handler_fixture)
+   {
+      BOOST_TEST(test_loop_common(120, 1)  == true);
    }
 
    BOOST_FIXTURE_TEST_CASE(one_loop_59_sec_interval, space_handler_fixture)
    {
-      auto constexpr num_loops = 1;
-      auto constexpr interval  = 59;
-
-      mock_get_space = [ i = 0 ]( const bfs::path& p, boost::system::error_code& ec) mutable -> bfs::space_info {
-         ec = boost::system::errc::make_error_code(errc::success);
-
-         bfs::space_info rc;
-         rc.capacity  = 1000000;
-
-         if ( i < num_loops + 1 ) {  // "+ 1" for the get_space in add_file_system
-            rc.available = 300000;
-         } else {
-            rc.available = 100000;
-         }
-
-         i++;
-
-         return rc;
-      };
-
-      mock_get_stat = []( const char *path, struct stat *buf ) -> int {
-         buf->st_dev = 0;
-         return 0;
-      };
-
-      set_threshold(80);
-      set_sleep_time(interval);
-      add_file_system("/test");
-
-      auto start = std::chrono::system_clock::now();
-
-      auto monitor_thread = std::thread( [this] {
-         space_monitor_loop();
-         ctx.run();
-      });
-
-      monitor_thread.join();
-
-      auto end = std::chrono::system_clock::now();
-      std::chrono::duration<double> diff = end - start;
-
-      bool finished_in_time = (diff >= std::chrono::duration<double>(num_loops * interval) && diff <= std::chrono::duration<double>(num_loops * interval + 1)) ? true : false;
-
-      BOOST_TEST(finished_in_time == true);
+      BOOST_TEST(test_loop_common(1, 59)  == true);
    }
-
 
 BOOST_AUTO_TEST_SUITE_END()

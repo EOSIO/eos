@@ -47,11 +47,11 @@ public:
    void set_program_options(options_description&, options_description& cfg) {
       cfg.add_options()
          ( "resource-monitor-interval-seconds", bpo::value<uint32_t>()->default_value(def_sleep_time_in_secs),
-           "Time in seconds between two consecutive checks of resource usage. Should be greater than 1 and less than 60 (one minute)" )
+           "Time in seconds between two consecutive checks of resource usage. Should be greater than 1 and less than 300 (five minutes)" )
          ( "resource-monitor-space-threshold", bpo::value<uint32_t>()->default_value(def_used_space_threshold_in_percentage),
            "Threshold in terms of percentage of used space vs total space. If used space is over the threshold, a graceful shutdown is initiated. The value should be greater than 5 to less than 99" )
-         ( "resource-monitor-shutdown-on-threshold-exceeded",
-           "Used to indicate nodeos will shutdown when threshold is exceeded." )
+         ( "resource-monitor-not-shutdown-on-threshold-exceeded",
+           "Used to indicate nodeos will not shutdown when threshold is exceeded." )
          ;
    }
 
@@ -59,24 +59,23 @@ public:
       dlog("plugin_initialize");
    
       auto sleep_time= options.at("resource-monitor-interval-seconds").as<uint32_t>();
-      EOS_ASSERT(sleep_time> 0 && sleep_time < 60, chain::plugin_config_exception,
-         "\"resource-monitor-interval-seconds\" must be greater than 0 and less than 60 (1 minute)");
+      EOS_ASSERT(sleep_time> 0 && sleep_time < 300, chain::plugin_config_exception,
+         "\"resource-monitor-interval-seconds\" must be greater than 0 and less than 300 (5 minutes)");
       space_handler.set_sleep_time(sleep_time);
       ilog("Monitoring interval set to ${sleep_time}", ("sleep_time", sleep_time));
 
       auto threshold = options.at("resource-monitor-space-threshold").as<uint32_t>();
       EOS_ASSERT(threshold > threshold_warning_range  && threshold < 100, chain::plugin_config_exception,
          "\"resource-monitor-space-threshold\" must be greater than ${threshold_warning_range} and less than 100", ("threshold_warning_range", threshold_warning_range));
-      space_handler.set_threshold(threshold);
+      space_handler.set_threshold(threshold, threshold - threshold_warning_range);
       ilog("Resource usage threshold set to ${threshold}", ("threshold", threshold));
-      space_handler.set_threshold_warning(threshold - threshold_warning_range);
 
-      if (options.count("resource-monitor-shutdown-on-threshold-exceeded")) {
-         space_handler.set_shutdown_on_exceeded(true);
-         ilog("Shutdown flag when threshold exceeded set to true");
-      } else {
+      if (options.count("resource-monitor-not-shutdown-on-threshold-exceeded")) {
          space_handler.set_shutdown_on_exceeded(false);
          ilog("Shutdown flag when threshold exceeded set to false");
+      } else {
+         space_handler.set_shutdown_on_exceeded(true);
+         ilog("Shutdown flag when threshold exceeded set to true");
       }
    }
 
