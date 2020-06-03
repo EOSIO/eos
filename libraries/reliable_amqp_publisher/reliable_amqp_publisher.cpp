@@ -45,8 +45,8 @@ struct reliable_amqp_publisher_handler : AMQP::LibBoostAsioHandler {
 };
 
 struct reliable_amqp_publisher_impl final : reliable_amqp_publisher_callbacks {
-   reliable_amqp_publisher_impl(const std::string url, const std::string exchange, const std::string routing_key, const boost::filesystem::path unconfirmed_path) :
-     data_file_path(unconfirmed_path), exchange(exchange), routing_key(routing_key) {
+   reliable_amqp_publisher_impl(const std::string url, const std::string exchange, const std::string routing_key, const boost::filesystem::path unconfirmed_path, const std::optional<std::string> message_id) :
+     data_file_path(unconfirmed_path), exchange(exchange), routing_key(routing_key), message_id(message_id) {
       std::string host = "localhost", user = "guest", pass = "guest", path;
       uint16_t port = 5672;
       fc::url parsed_url(url);
@@ -174,6 +174,8 @@ struct reliable_amqp_publisher_impl final : reliable_amqp_publisher_callbacks {
       std::for_each(message_deque.begin(), message_deque.begin()+msgs_this_transaction, [this](const std::vector<char>& msg) {
          AMQP::Envelope envelope(msg.data(), msg.size());
          envelope.setPersistent();
+         if(message_id)
+            envelope.setMessageID(*message_id);
          channel->publish(exchange, routing_key, envelope);
       });
 
@@ -214,11 +216,12 @@ struct reliable_amqp_publisher_impl final : reliable_amqp_publisher_callbacks {
 
    const std::string exchange;
    const std::string routing_key;
+   const std::optional<std::string> message_id;
    bool logged_exceeded_max_depth = false;
 };
 
-reliable_amqp_publisher::reliable_amqp_publisher(const std::string url, const std::string exchange, const std::string routing_key,  const boost::filesystem::path unconfirmed_path) :
-   my(new reliable_amqp_publisher_impl(url, exchange, routing_key, unconfirmed_path)) {}
+reliable_amqp_publisher::reliable_amqp_publisher(const std::string url, const std::string exchange, const std::string routing_key, const boost::filesystem::path unconfirmed_path, const std::optional<std::string> message_id) :
+   my(new reliable_amqp_publisher_impl(url, exchange, routing_key, unconfirmed_path, message_id)) {}
 
 void reliable_amqp_publisher::publish_message(std::vector<char>&& data) {
    my->ctx.dispatch([this, d=std::move(data)]() mutable {
