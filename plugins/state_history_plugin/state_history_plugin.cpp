@@ -447,6 +447,15 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       }
    }
 
+   void on_block_start(uint32_t block_num) {
+      clear_caches();
+   }
+
+   void clear_caches() {
+      cached_traces.clear();
+      onblock_trace.reset();
+   }
+
    void store_traces(const block_state_ptr& block_state) {
       if (!trace_log)
          return;
@@ -464,8 +473,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
                     "missing trace for transaction ${id}", ("id", id));
          traces.push_back(it->second);
       }
-      cached_traces.clear();
-      onblock_trace.reset();
+      clear_caches();
 
       auto& db         = chain_plug->chain().db();
       auto  traces_bin = zlib_compress_bytes(fc::raw::pack(make_history_context_wrapper(db, trace_debug_mode, traces)));
