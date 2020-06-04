@@ -53,11 +53,11 @@ public:
       handle_input_action(merkle_creator_node{chain::digest_type::hash(ae.action_receipt), {ae}});
    }
 
-   std::vector<char> generate_serialized_proof(bool arv_activated) {
+   std::vector<char> generate_serialized_proof(const bool arv_activated) {
       if(!first_input_pair && curent_level.empty())
          return std::vector<char>();
       if(first_input_pair && curent_level.empty())
-         return fc::raw::pack<bool, std::list<merkle_cmd>>((bool)arv_activated, first_input_pair->cmd_stream);
+         return fc::raw::pack((const bool)arv_activated, first_input_pair->cmd_stream);
 
 
       if(first_input_pair) {
@@ -246,7 +246,7 @@ void compressed_proof_generator::on_irreversible_block(const chain::block_state_
 
       const chain::digest_type arv_dig = *controller.get_protocol_feature_manager().get_builtin_digest(chain::builtin_protocol_feature_t::action_return_value);
       const auto& protocol_features_this_block = bsp->activated_protocol_features->protocol_features;
-      bool action_return_value_active_this_block = protocol_features_this_block.find(arv_dig) != protocol_features_this_block.end();
+      const bool action_return_value_active_this_block = protocol_features_this_block.find(arv_dig) != protocol_features_this_block.end();
 
       for(const auto& cb : my->callbacks) {
          merkle_cmd_creator cc;
