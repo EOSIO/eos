@@ -31,6 +31,7 @@ class EnumType:
     def __str__(self):
         return self.type
 
+###########################################################################################
 
 class ReturnType(EnumType):
     pass
@@ -50,6 +51,62 @@ addEnum(BlockLogAction, "return_blocks")
 addEnum(BlockLogAction, "prune_transactions")
 
 ###########################################################################################
+
+class WaitSpec:
+
+    def __init__(self, value, leeway=None):
+        self.toCalculate = True if value == -1 else False
+        if value is not None:
+            assert isinstance(value, (int))
+            assert value >= -1
+        self.value = value
+        self.leeway = leeway if leeway is not None else WaitSpec.default_leeway
+
+    def __str__(self):
+        append = "[calculated based on block production]" if self.toCalculate else ""
+        desc = None
+        if self.value is None:
+            desc = "defaulted"
+        elif self.value >= 0:
+            desc = "%d sec" % (self.value)
+        else:
+            desc = ""
+        return "WaitSpec timeout %s%s" % (desc, append)
+
+    def convert(self, startBlockNum, endBlockNum):
+        if self.value is None or self.value != -1:
+            return
+
+        timeout = self.leeway
+        if (endBlockNum > startBlockNum):
+            # calculation is performing worst case (irreversible block progression) which at worst will waste 5 seconds
+            blocksPerWindow = 12
+            blockWindowsToWait = (endBlockNum - startBlockNum + blocksPerWindow - 1) / blocksPerWindow
+            secondsPerWindow = blocksPerWindow / 2
+            timeout += blockWindowsToWait * secondsPerWindow
+
+        self.value = timeout
+
+    def asSeconds(self):
+        assert self.value != -1, "Called method with WaitSpec for calculating the appropriate timeout (WaitSpec.convert)," +\
+                                 " but convert method was never called. This means that either one of the methods the WaitSpec" +\
+                                 " is passed to needs to call convert, or else WaitSpec.calculate(...) should not have been passed."
+        retVal = self.value if self.value is not None else WaitSpec.default_seconds
+        return retVal
+
+    @staticmethod
+    def calculate(leeway=None):
+        return WaitSpec(value=-1, leeway=leeway)
+
+    @staticmethod
+    def default(leeway=None):
+        return WaitSpec(value=None, leeway=leeway)
+
+    default_seconds = 60
+    default_leeway = 10
+
+###########################################################################################
+
 class Utils:
     Debug=False
     FNull = open(os.devnull, 'w')
@@ -215,20 +272,29 @@ class Utils:
         Utils.Print(msg)
 
     @staticmethod
-    def waitForObj(lam, timeout=None, sleepTime=3, reporter=None):
+    def waitForTruth(lam, timeout=None, sleepTime=3, reporter=None):
         if timeout is None:
-            timeout=60
+            timeout=WaitSpec.default()
+        if isinstance(timeout, WaitSpec):
+            timeout = timeout.asSeconds()
 
-        endTime=time.time()+timeout
+        currentTime=time.time()
+        endTime=currentTime+timeout
         needsNewLine=False
+        failReturnVal=None
         try:
-            while endTime > time.time():
+            while endTime > currentTime:
                 ret=lam()
-                if ret is not None:
+                if ret:
                     return ret
+                # save this to return the not Truth state for the passed in method
+                failReturnVal=ret
+                remaining = endTime - currentTime
+                if sleepTime > remaining:
+                    sleepTime = remaining
                 if Utils.Debug:
                     Utils.Print("cmd: sleep %d seconds, remaining time: %d seconds" %
-                                (sleepTime, endTime - time.time()))
+                                (sleepTime, remaining))
                 else:
                     stdout.write('.')
                     stdout.flush()
@@ -236,23 +302,13 @@ class Utils:
                 if reporter is not None:
                     reporter()
                 time.sleep(sleepTime)
+                currentTime=time.time()
         finally:
             if needsNewLine:
                 Utils.Print()
 
-        return None
+        return failReturnVal
 
-    @staticmethod
-    def waitForBool(lam, timeout=None, sleepTime=3, reporter=None):
-        myLam = lambda: True if lam() else None
-        ret=Utils.waitForObj(myLam, timeout, sleepTime, reporter=reporter)
-        return False if ret is None else ret
-
-    @staticmethod
-    def waitForBoolWithArg(lam, arg, timeout=None, sleepTime=3, reporter=None):
-        myLam = lambda: True if lam(arg, timeout) else None
-        ret=Utils.waitForObj(myLam, timeout, sleepTime, reporter=reporter)
-        return False if ret is None else ret
 
     @staticmethod
     def filterJsonObjectOrArray(data):

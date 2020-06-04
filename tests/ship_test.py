@@ -169,15 +169,30 @@ try:
                 blockNum = int(match.group(2))
                 if blockNum > maxFirstBN:
                     # ship requests can only affect time after clients started
-                    timeFmt = '%Y-%m-%dT%H:%M:%S.%f'
-                    rcvTime = datetime.strptime(rcvTimeStr, timeFmt)
-                    prodTime = datetime.strptime(prodTimeStr, timeFmt)
+                    rcvTime = datetime.strptime(rcvTimeStr, Utils.TimeFmt)
+                    prodTime = datetime.strptime(prodTimeStr, Utils.TimeFmt)
                     delta = rcvTime - prodTime
                     biggestDelta = max(delta, biggestDelta)
 
                     totalDelta += delta
                     timeCount += 1
-                    assert delta < timedelta(seconds=0.500), Print("ERROR: block_num: %s took %.3f seconds to be received." % (blockNum, delta.total_seconds()))
+                    limit = timedelta(seconds=0.500)
+                    if delta >= limit:
+                        actualProducerTimeStr=None
+                        nodes = [node for node in cluster.getAllNodes() if node.nodeId != shipNodeNum]
+                        for node in nodes:
+                            threshold=-500   # set negative to guarantee the block analysis gets returned
+                            blockAnalysis = node.analyzeProduction(specificBlockNum=blockNum, thresholdMs=threshold)
+                            actualProducerTimeStr = blockAnalysis[blockNum]["prod"]
+                            if actualProducerTimeStr is not None:
+                                break
+                        if actualProducerTimeStr is not None:
+                            actualProducerTime = datetime.strptime(actualProducerTimeStr, Utils.TimeFmt)
+                            if rcvTime - actualProducerTime >= limit:
+                                actualProducerTime = None   # let it fail below
+
+                        if actualProducerTimeStr is None:
+                            Utils.errorExit("block_num: %s took %.3f seconds to be received." % (blockNum, delta.total_seconds()))
 
             line = f.readline()
 
@@ -188,26 +203,6 @@ try:
 finally:
     TestHelper.shutdown(cluster, walletMgr, testSuccessful=testSuccessful, killEosInstances=killEosInstances, killWallet=killWallet, keepLogs=keepLogs, cleanRun=killAll, dumpErrorDetails=dumpErrorDetails)
     if shipTempDir is not None:
-        if dumpErrorDetails and not testSuccessful:
-            def printTruncatedFile(filename, maxLines):
-                Print(Utils.FileDivider)
-                with open(filename, "r") as f:
-                    Print("Contents of %s" % (filename))
-                    line = f.readline()
-                    lineCount = 0
-                    while line and lineCount < maxLines:
-                        Print(line)
-                        lineCount += 1
-                        line = f.readline()
-                    if line:
-                        Print("...       CONTENT TRUNCATED AT %d lines" % (maxLines))
-
-            for index in range(0, args.num_clients):
-                # error file should not contain much content, so if there are lots of lines it is likely useless
-                printTruncatedFile("%s%d.err" % (shipClientFilePrefix, i), maxLines=1000)
-                # output file should have lots of output, but if user passes in a huge number of requests, these could go on forever
-                printTruncatedFile("%s%d.out" % (shipClientFilePrefix, i), maxLines=20000)
-
         if testSuccessful and not keepLogs:
             shutil.rmtree(shipTempDir, ignore_errors=True)
 
