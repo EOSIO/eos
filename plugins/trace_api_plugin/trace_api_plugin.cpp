@@ -316,6 +316,13 @@ struct trace_api_plugin_impl {
             });
          }));
 
+      block_start_connection.emplace(
+            chain.block_start.connect([this](uint32_t block_num) {
+               emit_killer([&](){
+                  extraction->signal_block_start(block_num);
+               });
+            }));
+
       accepted_block_connection.emplace(
          chain.accepted_block.connect([this](const chain::block_state_ptr& p) {
             emit_killer([&](){
@@ -346,6 +353,7 @@ struct trace_api_plugin_impl {
    std::shared_ptr<chain_extraction_t> extraction;
 
    fc::optional<scoped_connection>                            applied_transaction_connection;
+   fc::optional<scoped_connection>                            block_start_connection;
    fc::optional<scoped_connection>                            accepted_block_connection;
    fc::optional<scoped_connection>                            irreversible_block_connection;
 };

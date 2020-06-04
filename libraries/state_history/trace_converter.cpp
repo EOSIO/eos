@@ -15,27 +15,20 @@ using eosio::chain::packed_transaction;
 using eosio::chain::state_history_exception;
 using prunable_data_type = packed_transaction::prunable_data_type;
 
-bool is_onblock(const transaction_trace_ptr& p) {
-   if (p->action_traces.empty())
-      return false;
-   auto& act = p->action_traces[0].act;
-   if (act.account != eosio::chain::config::system_account_name || act.name != N(onblock) ||
-       act.authorization.size() != 1)
-      return false;
-   auto& auth = act.authorization[0];
-   return auth.actor == eosio::chain::config::system_account_name &&
-          auth.permission == eosio::chain::config::active_name;
-}
-
 void trace_converter::add_transaction(const transaction_trace_ptr& trace, const packed_transaction_ptr& transaction) {
    if (trace->receipt) {
-      if (is_onblock(trace))
+      if (chain::is_onblock(*trace))
          onblock_trace.emplace(trace, transaction);
       else if (trace->failed_dtrx_trace)
          cached_traces[trace->failed_dtrx_trace->id] = augmented_transaction_trace{trace, transaction};
       else
          cached_traces[trace->id] = augmented_transaction_trace{trace, transaction};
    }
+}
+
+void trace_converter::clear_cache() {
+   cached_traces.clear();
+   onblock_trace.reset();
 }
 
 namespace {
@@ -79,8 +72,7 @@ std::vector<augmented_transaction_trace> prepare_traces(trace_converter&       c
                  "missing trace for transaction ${id}", ("id", id));
       traces.push_back(it->second);
    }
-   converter.cached_traces.clear();
-   converter.onblock_trace.reset();
+   converter.clear_cache();
    return traces;
 }
 
