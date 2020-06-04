@@ -94,7 +94,7 @@ class Cluster(object):
         defproducerbPrvtKey: Defproducerb account private key
         """
         self.accounts={}
-        self.nodes={}
+        self.nodes=[]
         self.unstartedNodes=[]
         self.localCluster=localCluster
         self.wallet=None
@@ -119,6 +119,7 @@ class Cluster(object):
         self.useBiosBootFile=False
         self.filesToCleanup=[]
         self.alternateVersionLabels=Cluster.__defaultAlternateVersionLabels()
+        self.biosNode = None
 
 
     def setChainStrategy(self, chainSyncStrategy=Utils.SyncReplayTag):
@@ -496,7 +497,8 @@ class Cluster(object):
     def initializeNodes(self, defproduceraPrvtKey=None, defproducerbPrvtKey=None, onlyBios=False):
         port=Cluster.__BiosPort if onlyBios else self.port
         host=Cluster.__BiosHost if onlyBios else self.host
-        node=Node(host, port, walletMgr=self.walletMgr)
+        nodeNum="bios" if onlyBios else 0
+        node=Node(host, port, nodeNum, walletMgr=self.walletMgr)
         if Utils.Debug: Utils.Print("Node: %s", str(node))
 
         node.checkPulse(exitOnError=True)
@@ -535,11 +537,12 @@ class Cluster(object):
         for n in nArr:
             port=n["port"]
             host=n["host"]
-            node=Node(host, port, walletMgr=self.walletMgr)
+            node=Node(host, port, nodeId=len(nodes), walletMgr=self.walletMgr)
             if Utils.Debug: Utils.Print("Node:", node)
 
             node.checkPulse(exitOnError=True)
             nodes.append(node)
+
 
         self.nodes=nodes
         return True
@@ -707,7 +710,14 @@ class Cluster(object):
         return self.nodes[nodeId]
 
     def getNodes(self):
-        return self.nodes
+        return self.nodes[:]
+
+    def getAllNodes(self):
+        nodes = []
+        if self.biosNode is not None:
+            nodes.append(self.biosNode)
+        nodes += self.getNodes()
+        return nodes
 
     def launchUnstarted(self, numToLaunch=1, cachePopen=False):
         assert(isinstance(numToLaunch, int))
@@ -716,7 +726,7 @@ class Cluster(object):
         del self.unstartedNodes[:numToLaunch]
         for node in launchList:
             # the node number is indexed off of the started nodes list
-            node.launchUnstarted(len(self.nodes), cachePopen=cachePopen)
+            node.launchUnstarted(cachePopen=cachePopen)
             self.nodes.append(node)
 
     # Spread funds across accounts with transactions spread through cluster nodes.
@@ -1380,7 +1390,7 @@ class Cluster(object):
         if m is None:
             Utils.Print("ERROR: Failed to find %s pid. Pattern %s" % (Utils.EosServerName, pattern))
             return None
-        instance=Node(self.host, self.port + nodeNum, pid=int(m.group(1)), cmd=m.group(2), walletMgr=self.walletMgr)
+        instance=Node(self.host, self.port + nodeNum, nodeNum, pid=int(m.group(1)), cmd=m.group(2), walletMgr=self.walletMgr)
         if Utils.Debug: Utils.Print("Node>", instance)
         return instance
 
@@ -1393,7 +1403,7 @@ class Cluster(object):
             Utils.Print("ERROR: Failed to find %s pid. Pattern %s" % (Utils.EosServerName, pattern))
             return None
         else:
-            return Node(Cluster.__BiosHost, Cluster.__BiosPort, pid=int(m.group(1)), cmd=m.group(2), walletMgr=self.walletMgr)
+            return Node(Cluster.__BiosHost, Cluster.__BiosPort, "bios", pid=int(m.group(1)), cmd=m.group(2), walletMgr=self.walletMgr)
 
     # Kills a percentange of Eos instances starting from the tail and update eosInstanceInfos state
     def killSomeEosInstances(self, killCount, killSignalStr=Utils.SigKillTag):
@@ -1421,7 +1431,7 @@ class Cluster(object):
         newChain= False if self.__chainSyncStrategy.name in [Utils.SyncHardReplayTag, Utils.SyncNoneTag] else True
         for i in range(0, len(self.nodes)):
             node=self.nodes[i]
-            if node.killed and not node.relaunch(i, chainArg, newChain=newChain, cachePopen=cachePopen):
+            if node.killed and not node.relaunch(chainArg, newChain=newChain, cachePopen=cachePopen):
                 return False
 
         return True
@@ -1436,23 +1446,11 @@ class Cluster(object):
         else:
             Utils.Print("File %s not found." % (fileName))
 
-    @staticmethod
-    def __findFiles(path):
-        files=[]
-        it=os.scandir(path)
-        for entry in it:
-            if entry.is_file(follow_symlinks=False):
-                match=re.match("stderr\..+\.txt", entry.name)
-                if match:
-                    files.append(os.path.join(path, entry.name))
-        files.sort()
-        return files
-
     def dumpErrorDetails(self):
         fileName=Utils.getNodeConfigDir("bios", "config.ini")
         Cluster.dumpErrorDetailImpl(fileName)
         path=Utils.getNodeDataDir("bios")
-        fileNames=Cluster.__findFiles(path)
+        fileNames=Node.findStderrFiles(path)
         for fileName in fileNames:
             Cluster.dumpErrorDetailImpl(fileName)
 
@@ -1463,7 +1461,7 @@ class Cluster(object):
             fileName=os.path.join(configLocation, "genesis.json")
             Cluster.dumpErrorDetailImpl(fileName)
             path=Utils.getNodeDataDir(i)
-            fileNames=Cluster.__findFiles(path)
+            fileNames=Node.findStderrFiles(path)
             for fileName in fileNames:
                 Cluster.dumpErrorDetailImpl(fileName)
 
@@ -1571,8 +1569,7 @@ class Cluster(object):
         with open(startFile, 'r') as file:
             cmd=file.read()
             Utils.Print("unstarted local node cmd: %s" % (cmd))
-        p=re.compile(r'^\s*(\w+)\s*=\s*([^\s](?:.*[^\s])?)\s*$')
-        instance=Node(self.host, port=self.port+nodeId, pid=None, cmd=cmd, walletMgr=self.walletMgr)
+        instance=Node(self.host, port=self.port+nodeId, nodeId=nodeId, pid=None, cmd=cmd, walletMgr=self.walletMgr)
         if Utils.Debug: Utils.Print("Unstarted Node>", instance)
         return instance
 
@@ -1584,14 +1581,12 @@ class Cluster(object):
         return infos
 
     def reportStatus(self):
-        if hasattr(self, "biosNode") and self.biosNode is not None:
-            self.biosNode.reportStatus()
-        if hasattr(self, "nodes"):
-            for node in self.nodes:
-                try:
-                    node.reportStatus()
-                except:
-                    Utils.Print("No reportStatus")
+        nodes = self.getAllNodes()
+        for node in nodes:
+            try:
+                node.reportStatus()
+            except:
+                Utils.Print("No reportStatus for nodeId: %s" % (node.nodeId))
 
     def getBlockLog(self, nodeExtension, blockLogAction=BlockLogAction.return_blocks, outputFile=None, first=None, last=None, extraArgs="", throwException=False, silentErrors=False, exitOnError=False):
         nodeDataDir=Utils.getNodeDataDir(nodeExtension)
