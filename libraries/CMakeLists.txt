@@ -5,6 +5,9 @@ option(WITH_TOOLS CACHE OFF)            # rocksdb: don't build this
 option(WITH_BENCHMARK_TOOLS CACHE OFF)  # rocksdb: don't build this
 option(FAIL_ON_WARNINGS CACHE OFF)      # rocksdb: stop the madness: warnings change over time
 
+#on Linux, rocksdb will monkey with CMAKE_INSTALL_PREFIX is this is on
+set(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT OFF)
+
 add_subdirectory( fc )
 add_subdirectory( builtins )
 add_subdirectory( softfloat )
