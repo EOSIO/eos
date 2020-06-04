@@ -1547,11 +1547,11 @@ class Node(object):
 
                         if specificBlockNum is not None:
                             return blockAnalysis
-                    elif specificBlockNum is not None:
-                        blockAnalysis[specificBlockNum] = { "slot": None, "prod": None}
-                        return
 
                     if readLine:
                         line = f.readline()
+
+        if specificBlockNum is not None and specificBlockNum not in blockAnalysis:
+            blockAnalysis[specificBlockNum] = { "slot": None, "prod": None}
 
         return blockAnalysis
