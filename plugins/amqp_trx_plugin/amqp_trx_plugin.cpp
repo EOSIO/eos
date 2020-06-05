@@ -222,9 +222,9 @@ void amqp_trx_plugin::plugin_shutdown() {
    try {
       fc_dlog( logger, "shutdown.." );
       my->shutting_down = true; // stop receiving transactions to consume
-      my->applied_transaction_connection.reset();
       // drain queue so all traces are published
       app().post( priority::lowest, [me = my](){} );
+      my->applied_transaction_connection.reset();
       if( my->thread_pool ) {
          my->thread_pool->stop();
       }
