@@ -454,7 +454,7 @@ fc::variant push_transaction( signed_transaction& trx, const std::vector<public_
                   if( message.hasCorrelationID() && message.correlationID() == id ) {
                      fc::datastream<const char*> ds( message.body(), message.bodySize() );
                      fc::raw::unpack( ds, trace_msg );
-                     qp_trace.ack( delivery_tag );
+                     // don't ack as other consumers may be interested in trace: qp_trace.ack( delivery_tag );
                      received_trace.set_value();
                   }
                } );
