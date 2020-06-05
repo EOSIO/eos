@@ -199,7 +199,7 @@ try:
         if not enabledStaleProduction:
             addSwapFlags["--enable-stale-production"]=""   # just enable stale production for the first node
             enabledStaleProduction=True
-        if not nodes[nodeIndex].relaunch(nodeIndex, "", newChain=False, addSwapFlags=addSwapFlags):
+        if not nodes[nodeIndex].relaunch(newChain=False, addSwapFlags=addSwapFlags):
             Utils.cmdError("Failed to restart node0 with new capacity %s" % (maxRAMValue))
             errorExit("Failure - Node should have restarted")
         addSwapFlags={}
@@ -262,7 +262,7 @@ try:
     maxRAMValue=currentMinimumMaxRAM+5
     currentMinimumMaxRAM=maxRAMValue
     addSwapFlags[maxRAMFlag]=str(maxRAMValue)
-    if not nodes[len(nodes)-1].relaunch(nodeIndex, "", newChain=False, addSwapFlags=addSwapFlags):
+    if not nodes[len(nodes)-1].relaunch(newChain=False, addSwapFlags=addSwapFlags):
         Utils.cmdError("Failed to restart node %d with new capacity %s" % (numNodes-1, maxRAMValue))
         errorExit("Failure - Node should have restarted")
     addSwapFlags={}
