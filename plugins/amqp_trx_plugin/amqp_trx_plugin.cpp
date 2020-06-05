@@ -194,7 +194,10 @@ void amqp_trx_plugin::plugin_startup() {
          fc_wlog( logger, "consume failed: ${e}", ("e", message) );
       } );
       consumer.onReceived( [my=my](const AMQP::Message& message, uint64_t delivery_tag, bool redelivered) {
-         if( my->shutting_down ) return;
+         if( my->shutting_down ) {
+            my->amqp_trx->reject( delivery_tag );
+            return;
+         }
          if( my->consume_message( message.body(), message.bodySize() ) ) {
             my->amqp_trx->ack( delivery_tag );
          } else {
@@ -222,14 +225,19 @@ void amqp_trx_plugin::plugin_shutdown() {
    try {
       fc_dlog( logger, "shutdown.." );
       my->shutting_down = true; // stop receiving transactions to consume
+
       // drain queue so all traces are published
-      app().post( priority::lowest, [me = my](){} );
-      my->applied_transaction_connection.reset();
-      if( my->thread_pool ) {
-         my->thread_pool->stop();
-      }
-      app().post( priority::lowest, [me = my](){} ); // keep my pointer alive until queue is drained
-      fc_dlog( logger, "exit shutdown" );
+      app().post( priority::lowest, [me = my](){
+         me->applied_transaction_connection.reset();
+         if( me->thread_pool ) {
+            me->thread_pool->stop();
+         }
+         // keep my pointer alive until queue is drained
+         app().post( priority::lowest, [my = me](){} );
+
+         fc_dlog( logger, "exit amqp_trx_plugin" );
+      } );
+
    }
    FC_CAPTURE_AND_RETHROW()
 }
