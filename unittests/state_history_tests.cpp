@@ -1,6 +1,7 @@
 #include <eosio/state_history/create_deltas.hpp>
 #include <eosio/state_history/serialization.hpp>
 #include <eosio/state_history/types.hpp>
+#include <eosio/state_history/trace_converter.hpp>
 
 #include <boost/filesystem.hpp>
 #include <boost/iostreams/device/back_inserter.hpp>
@@ -148,15 +149,27 @@ BOOST_AUTO_TEST_CASE(test_traces_present)
    fc::create_directories(state_history_dir.path);
    state_history_traces_log log(state_history_dir.path);
 
+   bool onblock_test_executed = false;
    chain.control->applied_transaction.connect(
       [&](std::tuple<const transaction_trace_ptr&, const packed_transaction_ptr&> t) {
-         log.add_transaction(std::get<0>(t), std::get<1>(t));
+         const transaction_trace_ptr& trace_ptr = std::get<0>(t);
+         const chain::packed_transaction_ptr& transaction = std::get<1>(t);
+         log.add_transaction(trace_ptr, transaction);
+
+         if(!trace_ptr->action_traces.empty() && trace_ptr->action_traces[0].act.name==N(onblock)) {
+            BOOST_CHECK(eosio::state_history::is_onblock(trace_ptr));
+            trace_ptr->action_traces.clear();
+            BOOST_CHECK(!eosio::state_history::is_onblock(trace_ptr));
+            onblock_test_executed = true;
+         }
       });
 
    chain.control->accepted_block.connect([&](const block_state_ptr& bs) { log.store(chain.control->db(), bs); });
 
    deploy_test_api(chain);
    auto tr_ptr = chain.create_account(N(newacc));
+
+   BOOST_CHECK(onblock_test_executed);
 
    chain.produce_blocks(1);
 

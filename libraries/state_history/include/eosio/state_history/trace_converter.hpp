@@ -11,6 +11,8 @@ using chain::transaction_id_type;
 using chain::packed_transaction_ptr;
 using compression_type = chain::packed_transaction::prunable_data_type::compression_type;
 
+bool is_onblock(const transaction_trace_ptr& p);
+
 struct trace_converter {
    std::map<transaction_id_type, augmented_transaction_trace> cached_traces;
    fc::optional<augmented_transaction_trace>                  onblock_trace;
