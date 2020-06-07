@@ -68,9 +68,9 @@ for FILE in $(ls $CICD_DIR/platforms/$PLATFORM_TYPE); do
     # Anka Template and Tags
     export ANKA_TAG_BASE='clean::cicd::git-ssh::nas::brew::buildkite-agent'
     if [[ $FILE_NAME =~ 'macos-10.14' ]]; then
-      export ANKA_TEMPLATE_NAME='10.14.6_6C_14G_40G'
+      export ANKA_TEMPLATE_NAME='10.14.6_6C_14G_80G'
     elif [[ $FILE_NAME =~ 'macos-10.15' ]]; then
-      export ANKA_TEMPLATE_NAME='10.15.5_6C_14G_50G'
+      export ANKA_TEMPLATE_NAME='10.15.5_6C_14G_80G'
     else # Linux
       export ANKA_TAG_BASE=''
       export ANKA_TEMPLATE_NAME=''
@@ -621,7 +621,7 @@ cat <<EOF
       - EOSIO/anka#v0.6.1:
           no-volume: true
           inherit-environment-vars: true
-          vm-name: 10.14.6_6C_14G_40G
+          vm-name: 10.14.6_6C_14G_80G
           vm-registry-tag: "clean::cicd::git-ssh::nas::brew::buildkite-agent"
           always-pull: true
           debug: true
@@ -645,7 +645,7 @@ cat <<EOF
       - EOSIO/anka#v0.6.1:
           no-volume: true
           inherit-environment-vars: true
-          vm-name: 10.15.5_6C_14G_50G
+          vm-name: 10.15.5_6C_14G_80G
           vm-registry-tag: "clean::cicd::git-ssh::nas::brew::buildkite-agent"
           always-pull: true
           debug: true
