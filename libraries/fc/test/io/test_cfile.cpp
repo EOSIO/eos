@@ -1,5 +1,6 @@
 #define BOOST_TEST_MODULE io
 #include <boost/test/included/unit_test.hpp>
+#include <boost/filesystem/fstream.hpp>
 
 #include <fc/io/cfile.hpp>
 
@@ -56,6 +57,49 @@ BOOST_AUTO_TEST_SUITE(cfile_test_suite)
       t.close();
       fc::remove_all( t.get_file_path() );
       BOOST_CHECK( !fc::exists( tempdir.path() / "test") );
+   }
+
+   BOOST_AUTO_TEST_CASE(test_eof)
+   {
+      fc::temp_file tmpfile;
+      {
+         boost::filesystem::ofstream ofs(tmpfile.path());
+         ofs << "the quick brown fox";
+      }
+
+      cfile t;
+      t.set_file_path(tmpfile.path());
+      t.open("r");
+      BOOST_CHECK(t.is_open());
+      BOOST_CHECK(!t.eof());
+      BOOST_CHECK(t.getc() == 't');
+      t.skip(10);
+      BOOST_CHECK(!t.eof());
+      BOOST_CHECK(t.getc() == 'r');
+      t.skip(7);
+      BOOST_CHECK(t.eof());
+      BOOST_CHECK_THROW(t.getc(), std::ios_base::failure);
+
+      t.close();
+      t.open("r");
+      BOOST_CHECK(!t.eof());
+      BOOST_CHECK_THROW(t.skip(30), std::ios_base::failure);
+      BOOST_CHECK(t.eof());
+
+      t.close();
+      t.open("r");
+      BOOST_CHECK(!t.eof());
+      BOOST_CHECK_THROW(t.skip(-2), std::ios_base::failure);
+
+      t.close();
+      t.open("r");
+      BOOST_CHECK(!t.eof());
+      t.seek(4);
+      BOOST_CHECK(!t.eof());
+      BOOST_CHECK(t.getc() == 'q');
+      t.seek(19);
+      BOOST_CHECK(t.eof());
+      BOOST_CHECK_THROW(t.seek(25), std::ios_base::failure);
    }
 
 BOOST_AUTO_TEST_SUITE_END()

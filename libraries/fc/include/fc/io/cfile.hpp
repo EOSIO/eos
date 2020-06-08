@@ -65,6 +65,11 @@ public:
    }
 
    void seek( long loc ) {
+      seek_end( 0 );
+      size_t sz = tellp();
+      if( loc > sz )
+         throw std::ios_base::failure( "cfile: " + _file_path.generic_string() +
+                                       " unable to seek to: " + std::to_string(loc) );
       if( 0 != fseek( _file.get(), loc, SEEK_SET ) ) {
          throw std::ios_base::failure( "cfile: " + _file_path.generic_string() +
                                        " unable to SEEK_SET to: " + std::to_string(loc) );
@@ -79,9 +84,17 @@ public:
    }
 
    void skip( long loc) {
-      if( 0 != fseek( _file.get(), loc, SEEK_CUR ) ) {
-         throw std::ios_base::failure( "cfile: " + _file_path.generic_string() +
-                                       " unable to SEEK_CUR to: " + std::to_string(loc) );
+      if( loc < 0 ) {
+         if( 0 != fseek( _file.get(), loc, SEEK_CUR ) ) {
+            throw std::ios_base::failure( "cfile: " + _file_path.generic_string() +
+                                          " unable to SEEK_CUR to: " + std::to_string(loc) );
+         }
+      }
+      else while( loc > 0 ) {
+         char bit_bucket[4096];
+         auto read_max = std::min( long(sizeof(bit_bucket)), loc );
+         read( bit_bucket, read_max );
+         loc -= read_max;
       }
    }
 
@@ -122,7 +135,14 @@ public:
       }
    }
 
-   bool eof() const { return feof(_file.get()) != 0; }
+   bool eof() const {
+      if (feof(_file.get()))
+         return true;
+      int c = fgetc(_file.get());
+      if (c == EOF)
+         return true;
+      return ungetc(c, _file.get()) == EOF;
+   }
 
    int getc() { 
       int ret = fgetc(_file.get());  
