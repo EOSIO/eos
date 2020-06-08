@@ -38,11 +38,11 @@ using eosio::chain::kv_bad_iter;
 using eosio::chain::kv_context;
 using eosio::chain::kvdisk_id;
 using eosio::chain::kvram_id;
+using eosio::chain::packed_transaction_ptr;
 using eosio::chain::protocol_feature_exception;
 using eosio::chain::protocol_feature_set;
 using eosio::chain::signed_transaction;
 using eosio::chain::transaction_trace_ptr;
-using eosio::chain::packed_transaction_ptr;
 using eosio::state_history::block_position;
 using eosio::state_history::create_deltas;
 using eosio::state_history::get_blocks_result_v0;
@@ -124,9 +124,9 @@ struct intrinsic_context {
       strx.actions.emplace_back();
       strx.actions.back().account = eosio::chain::name{ "eosio.null" };
       strx.actions.back().authorization.push_back({ eosio::chain::name{ "eosio" }, eosio::chain::name{ "active" } });
-      trx = eosio::chain::packed_transaction( std::move(strx), true );
-      trx_ctx = std::make_unique<eosio::chain::transaction_context>(control, trx, xxx_timer.get(),
-                                                                    fc::time_point::now());
+      trx = eosio::chain::packed_transaction(std::move(strx), true);
+      trx_ctx =
+            std::make_unique<eosio::chain::transaction_context>(control, trx, xxx_timer.get(), fc::time_point::now());
       trx_ctx->init_for_implicit_trx(0);
       trx_ctx->exec();
       apply_context = std::make_unique<eosio::chain::apply_context>(control, *trx_ctx, 1, 0);
@@ -177,9 +177,9 @@ struct test_chain_ref {
    test_chain_ref& operator=(const test_chain_ref&);
 };
 
-struct test_chain {
-   eosio::chain::private_key_type producer_key{ "5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3"s };
+eosio::chain::private_key_type default_signing_key{ "5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3"s };
 
+struct test_chain {
    fc::temp_directory                                dir;
    std::unique_ptr<eosio::chain::controller::config> cfg;
    std::unique_ptr<eosio::chain::controller>         control;
@@ -190,8 +190,11 @@ struct test_chain {
    std::map<uint32_t, std::vector<char>>             history;
    std::unique_ptr<intrinsic_context>                intr_ctx;
    std::set<test_chain_ref*>                         refs;
+   std::vector<eosio::chain::private_key_type>       producer_private_keys;
 
    test_chain(const char* snapshot) {
+      reset_producer_private_keys();
+
       eosio::chain::genesis_state genesis;
       genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
       cfg                       = std::make_unique<eosio::chain::controller::config>();
@@ -252,8 +255,10 @@ struct test_chain {
    }
 
    void on_accepted_block(const block_state_ptr& block_state) {
-      auto block_bin  = fc::raw::pack(*block_state->block->to_signed_block_v0());
-      auto traces_bin = trace_converter.to_traces_bin_v0(trace_converter.pack(control->db(), false, block_state, 1), 1); // hard code version for now, will be changed in later commit
+      auto block_bin = fc::raw::pack(*block_state->block->to_signed_block_v0());
+      auto traces_bin =
+            trace_converter.to_traces_bin_v0(trace_converter.pack(control->db(), false, block_state, 1),
+                                             1); // hard code version for now, will be changed in later commit
       auto deltas_bin = fc::raw::pack(create_deltas(control->db(), !prev_block));
 
       get_blocks_result_v0 message;
@@ -297,8 +302,22 @@ struct test_chain {
    void finish_block() {
       start_if_needed();
       ilog("finish block ${n}", ("n", control->head_block_num()));
-      control->finalize_block([&](eosio::chain::digest_type d) { return std::vector{ producer_key.sign(d) }; });
+      control->finalize_block([&](eosio::chain::digest_type d) {
+         std::vector<eosio::chain::signature_type> result;
+         result.reserve(producer_private_keys.size());
+         for (const auto& key : producer_private_keys) { result.emplace_back(key.sign(d)); }
+         return result;
+      });
       control->commit_block();
+   }
+
+   void reset_producer_private_keys() {
+      producer_private_keys.clear();
+      producer_private_keys.emplace_back(default_signing_key);
+   }
+
+   void reset_producer_private_keys(std::vector<eosio::chain::private_key_type> new_producer_private_keys) {
+      producer_private_keys.swap(new_producer_private_keys);
    }
 };
 
@@ -756,6 +775,16 @@ struct callbacks {
       return s.size();
    }
 
+   void reset_producer_private_keys(uint32_t chain_index, span<const char> keys) {
+      auto& chain = assert_chain(chain_index);
+      if (keys.size() == 0) {
+         chain.reset_producer_private_keys();
+      } else {
+         auto k = unpack<std::vector<eosio::chain::private_key_type>>(keys);
+         chain.reset_producer_private_keys(k);
+      }
+   }
+
    void replace_producer_keys(uint32_t chain_index, span<const char> key) {
       auto& chain = assert_chain(chain_index);
       auto  k     = unpack<eosio::chain::public_key_type>(key);
@@ -801,8 +830,7 @@ struct callbacks {
       auto us = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - start_time);
       ilog("chainlib transaction took ${u} us", ("u", us.count()));
       // ilog("${r}", ("r", fc::json::to_pretty_string(result)));
-      set_data(cb_alloc_data, cb_alloc,
-               convert_to_bin(chain_types::transaction_trace{ convert(*result) }));
+      set_data(cb_alloc_data, cb_alloc, convert_to_bin(chain_types::transaction_trace{ convert(*result) }));
    }
 
    bool exec_deferred(uint32_t chain_index, uint32_t cb_alloc_data, uint32_t cb_alloc) {
@@ -814,8 +842,7 @@ struct callbacks {
       if (itr != idx.end() && itr->delay_until <= chain.control->pending_block_time()) {
          auto trace = chain.control->push_scheduled_transaction(itr->trx_id, fc::time_point::maximum(),
                                                                 billed_cpu_time_use, true);
-         set_data(cb_alloc_data, cb_alloc,
-                  convert_to_bin(chain_types::transaction_trace{ convert(*trace) }));
+         set_data(cb_alloc_data, cb_alloc, convert_to_bin(chain_types::transaction_trace{ convert(*trace) }));
          return true;
       }
       return false;
@@ -922,14 +949,15 @@ struct callbacks {
       eosio::chain::signed_transaction signed_trx{ std::move(transaction), std::move(args.signatures),
                                                    std::move(args.context_free_data) };
       for (auto& key : args.keys) signed_trx.sign(key, chain.control->get_chain_id());
-      eosio::chain::packed_transaction_v0 ptrx{ std::move(signed_trx), eosio::chain::packed_transaction_v0::compression_type::none };
-      auto                             data       = fc::raw::pack(ptrx);
-      auto                             start_time = std::chrono::steady_clock::now();
+      eosio::chain::packed_transaction_v0 ptrx{ std::move(signed_trx),
+                                                eosio::chain::packed_transaction_v0::compression_type::none };
+      auto                                data       = fc::raw::pack(ptrx);
+      auto                                start_time = std::chrono::steady_clock::now();
       auto result = r.query_handler->query_transaction(*r.write_snapshot, data.data(), data.size());
       auto us = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - start_time);
       ilog("rodeos transaction took ${u} us", ("u", us.count()));
       auto tt = eosio::convert_from_bin<eosio::ship_protocol::transaction_trace>(
-                                   { result.data, result.data + result.size });
+            { result.data, result.data + result.size });
       auto& tt0 = std::get<eosio::ship_protocol::transaction_trace_v0>(tt);
       for (auto& at : tt0.action_traces) {
          auto& at1 = std::get<eosio::ship_protocol::action_trace_v1>(at);
@@ -1130,6 +1158,7 @@ void register_callbacks() {
    rhf_t::add<&callbacks::destroy_chain>("env", "destroy_chain");
    rhf_t::add<&callbacks::shutdown_chain>("env", "shutdown_chain");
    rhf_t::add<&callbacks::get_chain_path>("env", "get_chain_path");
+   rhf_t::add<&callbacks::reset_producer_private_keys>("env", "reset_producer_private_keys");
    rhf_t::add<&callbacks::replace_producer_keys>("env", "replace_producer_keys");
    rhf_t::add<&callbacks::replace_account_keys>("env", "replace_account_keys");
    rhf_t::add<&callbacks::start_block>("env", "start_block");
