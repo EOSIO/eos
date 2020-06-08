@@ -925,7 +925,7 @@ struct callbacks {
       eosio::chain::signed_transaction signed_trx{ std::move(transaction), std::move(args.signatures),
                                                    std::move(args.context_free_data) };
       for (auto& key : args.keys) signed_trx.sign(key, chain.control->get_chain_id());
-      eosio::chain::packed_transaction_v0 ptrx{ std::move(signed_trx), eosio::chain::packed_transaction_v0::compression_type::none };
+      eosio::chain::packed_transaction ptrx{ std::move(signed_trx), true, eosio::chain::packed_transaction::compression_type::none };
       auto                             data       = fc::raw::pack(ptrx);
       auto                             start_time = std::chrono::steady_clock::now();
       auto result = r.query_handler->query_transaction(*r.write_snapshot, data.data(), data.size());
@@ -944,7 +944,7 @@ struct callbacks {
 
    uint32_t rodeos_get_num_pushed_data(uint32_t rodeos) {
       auto& r = assert_rodeos(rodeos);
-      return r.pushed_data.size();
+      return r.pushed_data.size(); 
    }
 
    uint32_t rodeos_get_pushed_data(uint32_t rodeos, uint32_t index, span<char> dest) {

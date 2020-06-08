@@ -584,7 +584,7 @@ bool is_signatures_empty(const ship_protocol::prunable_data_type& data) {
 bool is_context_free_data_empty(const ship_protocol::prunable_data_type& data) {
    return std::visit(overloaded{ [](const ship_protocol::prunable_data_type::none&) { return true; },
                                  [](const ship_protocol::prunable_data_type::full_legacy& v) {
-                                    return v.packed_context_free_data.pos != v.packed_context_free_data.end;
+                                    return v.packed_context_free_data.pos == v.packed_context_free_data.end;
                                  },
                                  [](const auto& v) { return v.context_free_segments.empty(); } },
                      data.prunable_data);
