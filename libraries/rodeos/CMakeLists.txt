@@ -14,3 +14,7 @@ target_link_libraries( rodeos_lib
 target_include_directories( rodeos_lib
                             PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include"
                           )
+
+if(ENABLE_UNITY_BUILD)
+   set_target_properties(rodeos_lib PROPERTIES UNITY_BUILD TRUE)
+endif() 

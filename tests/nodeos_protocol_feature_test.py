@@ -30,10 +30,10 @@ keepLogs=args.keep_logs
 
 # The following test case will test the Protocol Feature JSON reader of the blockchain
 
-def restartNode(node: Node, nodeId, chainArg=None, addSwapFlags=None):
+def restartNode(node: Node, chainArg=None, addSwapFlags=None):
     if not node.killed:
         node.kill(signal.SIGTERM)
-    isRelaunchSuccess = node.relaunch(nodeId, chainArg, addSwapFlags=addSwapFlags, timeout=5, cachePopen=True)
+    isRelaunchSuccess = node.relaunch(chainArg, addSwapFlags=addSwapFlags, timeout=5, cachePopen=True)
     assert isRelaunchSuccess, "Fail to relaunch"
 
 walletMgr=WalletMgr(True)
@@ -56,8 +56,8 @@ try:
         "preactivation_required": True,
         "enabled": False
     }
-    biosNode.modifyBuiltinPFSubjRestrictions("bios", "PREACTIVATE_FEATURE", newSubjectiveRestrictions)
-    restartNode(biosNode, "bios")
+    biosNode.modifyBuiltinPFSubjRestrictions("PREACTIVATE_FEATURE", newSubjectiveRestrictions)
+    restartNode(biosNode)
 
     supportedProtocolFeatureDict = biosNode.getSupportedProtocolFeatureDict()
     preactivateFeatureSubjectiveRestrictions = supportedProtocolFeatureDict["PREACTIVATE_FEATURE"]["subjective_restrictions"]
