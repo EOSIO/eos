@@ -42,6 +42,10 @@ struct reliable_amqp_publisher_handler : AMQP::LibBoostAsioHandler {
       cbs->amqp_error(message);
    }
 
+   auto amqp_strand() {
+      return _strand;
+   }
+
    reliable_amqp_publisher_callbacks* cbs;
 };
 
@@ -98,9 +102,9 @@ struct reliable_amqp_publisher_impl final : reliable_amqp_publisher_callbacks {
    ~reliable_amqp_publisher_impl() {
       stopping = true;
 
-      //drain any remaining items on queue
+      //drain any remaining items on user submitted queue
       std::promise<void> shutdown_promise;
-      ctx.post([&]() {
+      boost::asio::post(user_submitted_work_strand, [&]() {
          shutdown_promise.set_value();
       });
       shutdown_promise.get_future().wait();
@@ -191,7 +195,7 @@ struct reliable_amqp_publisher_impl final : reliable_amqp_publisher_callbacks {
          //unfortuately we don't know if an error is due to something recoverable or if an error is due
          // to something unrecoverable. To know that, we need to pump the event queue some so that Channel's or
          // Connection's onError is delivered. Failure to pump the event queue here can result in runaway recursion.
-         ctx.post([this]() {
+         handler->amqp_strand()->post([this]() {
             pump_queue();
          });
       });
@@ -219,6 +223,8 @@ struct reliable_amqp_publisher_impl final : reliable_amqp_publisher_callbacks {
    const std::string routing_key;
    const std::optional<std::string> message_id;
    bool logged_exceeded_max_depth = false;
+
+   boost::asio::strand<boost::asio::io_context::executor_type> user_submitted_work_strand = boost::asio::make_strand(ctx);
 };
 
 reliable_amqp_publisher::reliable_amqp_publisher(const std::string url, const std::string exchange, const std::string routing_key, const boost::filesystem::path unconfirmed_path, const std::optional<std::string> message_id) :
@@ -240,7 +246,7 @@ void reliable_amqp_publisher::publish_message(std::vector<char>&& data) {
 }
 
 void reliable_amqp_publisher::post_on_io_context(std::function<void()>&& f) {
-   my->ctx.post(f);
+   boost::asio::post(my->user_submitted_work_strand, f);
 }
 
 reliable_amqp_publisher::~reliable_amqp_publisher() = default;
