@@ -1,6 +1,7 @@
 #include <eosio/chain/apply_context.hpp>
 #include <eosio/chain/controller.hpp>
 #include <eosio/chain/transaction_context.hpp>
+#include <eosio/chain/block_log.hpp>
 #include <eosio/state_history/create_deltas.hpp>
 #include <eosio/state_history/serialization.hpp>
 #include <eosio/state_history/trace_converter.hpp>
@@ -192,7 +193,7 @@ struct test_chain {
    std::set<test_chain_ref*>                         refs;
    std::vector<eosio::chain::private_key_type>       producer_private_keys;
 
-   test_chain(const char* snapshot) {
+   test_chain(const char* snapshot, const char* blocks_dir) {
       reset_producer_private_keys();
 
       eosio::chain::genesis_state genesis;
@@ -202,6 +203,26 @@ struct test_chain {
       cfg->state_dir            = dir.path() / "state";
       cfg->contracts_console    = true;
       cfg->wasm_runtime         = eosio::chain::wasm_interface::vm_type::eos_vm_jit;
+
+      fc::optional<eosio::chain::chain_id_type> expected_chain_id;
+
+      if (blocks_dir && *blocks_dir) {
+         fc::path bdir(blocks_dir);
+         EOS_ASSERT(fc::is_directory(bdir), eosio::chain::block_log_exception, "specified blocks directory does not exist");
+         EOS_ASSERT(fc::is_regular_file(bdir / "blocks.log"), eosio::chain::block_log_exception, "missing blocks.log file");
+         EOS_ASSERT(fc::is_regular_file(bdir / "blocks.index"), eosio::chain::block_log_exception, "missing blocks.index file");
+         auto gs = eosio::chain::block_log::extract_genesis_state(bdir);
+         if (gs) {
+            genesis = *gs;
+            expected_chain_id = genesis.compute_chain_id();
+         } else {
+            FC_ASSERT(snapshot && *snapshot, "incomplete block log requires a snapshot to be provided");
+            expected_chain_id = eosio::chain::block_log::extract_chain_id(bdir);
+         }
+         fc::create_directories(cfg->blocks_dir);
+         fc::copy(bdir / "blocks.log", cfg->blocks_dir / "blocks.log");
+         fc::copy(bdir / "blocks.index", cfg->blocks_dir / "blocks.index");
+      }
 
       std::optional<std::ifstream>                           snapshot_file;
       std::shared_ptr<eosio::chain::istream_snapshot_reader> snapshot_reader;
@@ -214,6 +235,9 @@ struct test_chain {
             eosio::chain::istream_snapshot_reader tmp_reader(temp_file);
             tmp_reader.validate();
             chain_id = eosio::chain::controller::extract_chain_id(tmp_reader);
+            if (expected_chain_id) {
+               FC_ASSERT(chain_id = *expected_chain_id, "chain IDs of snapshot and blocks log do not match");
+            }
          }
          snapshot_file.emplace(snapshot, std::ios::in | std::ios::binary);
          snapshot_reader = std::make_shared<eosio::chain::istream_snapshot_reader>(*snapshot_file);
@@ -748,8 +772,8 @@ struct callbacks {
       return result;
    }
 
-   uint32_t create_chain(span<const char> snapshot) {
-      state.chains.push_back(std::make_unique<test_chain>(span_str(snapshot).c_str()));
+   uint32_t create_chain(span<const char> snapshot, span<const char> blocks_dir) {
+      state.chains.push_back(std::make_unique<test_chain>(span_str(snapshot).c_str(), span_str(blocks_dir).c_str()));
       if (state.chains.size() == 1)
          state.selected_chain_index = 0;
       return state.chains.size() - 1;
