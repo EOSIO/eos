@@ -29,6 +29,40 @@ int upperbound_i64(name code, name scope, name table, uint64_t id) {
 
 int end_i64(name code, name scope, name table) { return db_end_i64(code.value, scope.value, table.value); }
 
+#define WRAP_SECONDARY(NAME, TYPE)                                                                                     \
+   struct NAME {                                                                                                       \
+      static int32_t store(name scope, name table, name payer, uint64_t id, const TYPE& secondary) {                   \
+         return db_##NAME##_store(scope.value, table.value, payer.value, id, &secondary);                              \
+      }                                                                                                                \
+      static void update(int32_t iterator, name payer, const TYPE& secondary) {                                        \
+         return db_##NAME##_update(iterator, payer.value, &secondary);                                                 \
+      }                                                                                                                \
+      static void    remove(int32_t iterator) { return db_##NAME##_remove(iterator); }                                 \
+      static int32_t find_secondary(uint64_t code, name scope, name table, const TYPE& secondary, uint64_t& primary) { \
+         return db_##NAME##_find_secondary(code, scope.value, table.value, &secondary, &primary);                      \
+      }                                                                                                                \
+      static int32_t find_primary(uint64_t code, name scope, name table, TYPE& secondary, uint64_t primary) {          \
+         return db_##NAME##_find_primary(code, scope.value, table.value, &secondary, primary);                         \
+      }                                                                                                                \
+      static int32_t lowerbound(uint64_t code, name scope, name table, TYPE& secondary, uint64_t& primary) {           \
+         return db_##NAME##_lowerbound(code, scope.value, table.value, &secondary, &primary);                          \
+      }                                                                                                                \
+      static int32_t upperbound(uint64_t code, name scope, name table, TYPE& secondary, uint64_t& primary) {           \
+         return db_##NAME##_upperbound(code, scope.value, table.value, &secondary, &primary);                          \
+      }                                                                                                                \
+      static int32_t end(uint64_t code, name scope, name table) {                                                      \
+         return db_##NAME##_end(code, scope.value, table.value);                                                       \
+      }                                                                                                                \
+      static int32_t next(int32_t iterator, uint64_t& primary) { return db_##NAME##_next(iterator, &primary); }        \
+      static int32_t previous(int32_t iterator, uint64_t& primary) {                                                   \
+         return db_##NAME##_previous(iterator, &primary);                                                              \
+      }                                                                                                                \
+   };
+
+WRAP_SECONDARY(idx64, uint64_t);
+WRAP_SECONDARY(idx128, uint128_t);
+WRAP_SECONDARY(idx_double, double);
+
 std::vector<char> get_i64(int itr) {
    std::vector<char> result(db_get_i64(itr, nullptr, 0));
    db_get_i64(itr, result.data(), result.size());
@@ -133,6 +167,8 @@ void legacydb_contract::write() {
 
    store_i64("scope.x"_n, "table1"_n, get_self(), 54, data_0);
    store_i64("scope.x"_n, "table2"_n, get_self(), 54, data_1);
+
+   idx64::store("nope"_n, "just.2nd"_n, get_self(), 42, 42);
 } // legacydb_contract::write()
 
 void legacydb_contract::read() {
@@ -310,6 +346,7 @@ void legacydb_contract::read() {
    check_lowerbound_i64(get_self(), "scope2"_n, "atable"_n, 63, 26, data_3);
 
    // check end
+   // creates iterators -7, -8
    check_end_i64(get_self(), "scope1"_n, "table1"_n, -2);
    check_end_i64(get_self(), "scope1"_n, "table2"_n, -3);
    check_end_i64(get_self(), "scope1"_n, "table3"_n, -4);
@@ -318,6 +355,20 @@ void legacydb_contract::read() {
    check_end_i64(get_self(), "scope.x"_n, "table2"_n, -7); // not searched for yet
    check_end_i64(get_self(), "scope.x"_n, "table1"_n, -8); // not searched for yet
    check_end_i64(get_self(), "nope"_n, "nada"_n, -1);
+
+   // non-existing table
+   check_lowerbound_i64(get_self(), "nope"_n, "nada"_n, 25, -1, {});
+   check_find_i64(get_self(), "nope"_n, "nada"_n, 25, -1, {});
+   check_upperbound_i64(get_self(), "nope"_n, "nada"_n, 25, -1, {});
+   check_end_i64(get_self(), "nope"_n, "nada"_n, -1);
+
+   // empty table
+   // creates iterators -9
+   check_lowerbound_i64(get_self(), "nope"_n, "just.2nd"_n, 42, -9, {});
+   check_find_i64(get_self(), "nope"_n, "just.2nd"_n, 42, -9, {});
+   check_upperbound_i64(get_self(), "nope"_n, "just.2nd"_n, 42, -9, {});
+   check_end_i64(get_self(), "nope"_n, "just.2nd"_n, -9);
+
 } // legacydb_contract::read()
 
 EOSIO_ACTION_DISPATCHER(legacydb::actions)
