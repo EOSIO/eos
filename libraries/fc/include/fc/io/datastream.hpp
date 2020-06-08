@@ -104,7 +104,7 @@ class datastream<Streambuf, typename std::enable_if_t<std::is_base_of_v<std::str
 
  public:
    template <typename... Args>
-   datastream(Args&&... args)
+   explicit datastream(Args&&... args)
        : buf(std::forward<Args>(args)...) {}
 
    size_t read(char* data, size_t n) { return buf.sgetn(data, n); }
@@ -134,7 +134,7 @@ class datastream<Container, typename std::enable_if_t<(std::is_same_v<std::vecto
 
  public:
    template <typename... Args>
-   datastream(Args&&... args)
+   explicit datastream(Args&&... args)
        : _container(std::forward<Args>(args)...)
        , cur(0) {}
 
