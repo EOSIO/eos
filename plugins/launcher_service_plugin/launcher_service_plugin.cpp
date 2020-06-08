@@ -968,7 +968,6 @@ void launcher_interval_timer::track_timeouts(const time_point& now) {
       _missed_times.emplace(_last_timeout, now);
    }
    const auto over_in_ms = (diff.count() - launcher_interval_timer::_half_timeout.count() * 2) / _milliseconds;
-   ilog("REMOVE ${last} and ${now}, (overran time window by: ${over} ms)",("last", _last_timeout)("now", now)("over", over_in_ms));
    _last_timeout = now;
 }
 
