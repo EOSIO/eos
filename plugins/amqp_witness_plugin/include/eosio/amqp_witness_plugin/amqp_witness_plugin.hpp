@@ -7,9 +7,6 @@ namespace eosio {
 
 using namespace appbase;
 
-/**
- *  This is a template plugin, intended to serve as a starting point for making new plugins
- */
 class amqp_witness_plugin : public appbase::plugin<amqp_witness_plugin> {
 public:
    amqp_witness_plugin();
