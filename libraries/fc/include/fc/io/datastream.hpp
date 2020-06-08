@@ -119,7 +119,7 @@ class datastream<Streambuf, typename std::enable_if_t<std::is_base_of_v<std::str
       buf.pubseekoff(off, std::ios::beg);
       return true;
    }
-   bool remaining() { return buf.in_avail(); }
+   bool remaining() { return buf.in_avail() >= 0; }
 
    Streambuf&       storage() { return buf; }
    const Streambuf& storage() const { return buf; }
