@@ -1,4 +1,4 @@
-#include "legacydb.hpp"
+#include "legacydb-test-contract.hpp"
 
 using namespace std;
 using namespace eosio;

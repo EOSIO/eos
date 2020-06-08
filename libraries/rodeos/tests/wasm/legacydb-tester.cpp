@@ -1,4 +1,4 @@
-#include "legacydb.hpp"
+#include "legacydb-test-contract.hpp"
 #include <eosio/tester.hpp>
 
 #define CATCH_CONFIG_MAIN

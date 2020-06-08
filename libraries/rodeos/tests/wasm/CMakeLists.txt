@@ -9,5 +9,5 @@ function(add_tester NAME SRC)
     add_test(NAME ${NAME}.wasm COMMAND eosio-tester ${NAME}.wasm WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 endfunction()
 
-add_contract(legacydb legacydb legacydb.cpp)
+add_contract(legacydb legacydb legacydb-test-contract.cpp)
 add_tester(legacydb-tester legacydb-tester.cpp)
