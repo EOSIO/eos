@@ -12,6 +12,7 @@
 #include <chrono>
 #include <future>
 #include <algorithm>
+#include <atomic>
 
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/filesystem.hpp>
@@ -202,7 +203,7 @@ struct reliable_amqp_publisher_impl final : reliable_amqp_publisher_callbacks {
    std::unique_ptr<AMQP::TcpChannel> channel;
 
    bool connected = false;
-   bool stopping = false;
+   std::atomic_bool stopping = false;
 
    unsigned in_flight = 0;
    std::deque<std::vector<char>> message_deque;
