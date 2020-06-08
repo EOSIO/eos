@@ -86,7 +86,7 @@ try:
     # Wait until the block where create account is executed to become irreversible 
     def isBlockNumIrr():
         return validationNode.getIrreversibleBlockNum() >= cfTrxBlockNum
-    Utils.waitForBool(isBlockNumIrr, timeout=30, sleepTime=0.1)
+    Utils.waitForTruth(isBlockNumIrr, timeout=30, sleepTime=0.1)
     
     Utils.Print("verify the account payloadless from validation node")
     cmd = "get account -j payloadless"

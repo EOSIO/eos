@@ -16,7 +16,7 @@ namespace fc { namespace crypto {
       }
    };
 
-   static signature::storage_type parse_base58(const std::string& base58str)
+   static signature::storage_type sig_parse_base58(const std::string& base58str)
    { try {
       constexpr auto prefix = config::signature_base_prefix;
 
@@ -32,7 +32,7 @@ namespace fc { namespace crypto {
    } FC_RETHROW_EXCEPTIONS( warn, "error parsing signature", ("str", base58str ) ) }
 
    signature::signature(const std::string& base58str)
-      :_storage(parse_base58(base58str))
+      :_storage(sig_parse_base58(base58str))
    {}
 
    int signature::which() const {

@@ -5,6 +5,10 @@
 extern "C" __attribute__((eosio_wasm_import)) void set_resource_limit(int64_t, int64_t, int64_t);
 extern "C" __attribute__((eosio_wasm_import)) uint32_t get_kv_parameters_packed(uint64_t db, void* params, uint32_t size, uint32_t max_version);
 extern "C" __attribute__((eosio_wasm_import)) void set_kv_parameters_packed(uint64_t db, const void* params, uint32_t size);
+#ifdef USE_EOSIO_CDT_1_7_X
+extern "C" __attribute__((eosio_wasm_import)) uint32_t read_action_data( void* msg, uint32_t len );
+extern "C" __attribute__((eosio_wasm_import))    uint32_t action_data_size();
+#endif
 
 using namespace eosio;
 

@@ -39,9 +39,16 @@ else # run specific serial test
         echo "$TEST found."
         # run tests
         set +e # defer ctest error handling to end
-        echo "$ ctest -R ^$TEST$ --output-on-failure -T Test"
-        ctest -R ^$TEST$ --output-on-failure -T Test
+        echo "$ ctest -R ^$TEST$ -V -T Test > ctest-output.log 2>&1"
+        ctest -R ^$TEST$ -V -T Test > ctest-output.log 2>&1
         EXIT_STATUS=$?
+        if  [[ $EXIT_STATUS -ne 0 ]]; then
+            cat ctest-output.log
+            echo "$TEST FAILED - see ctest-output.log in archive"
+        else
+            echo "$TEST PASSED"
+        fi
+        grep "produced the following blocks late" ctest-output.log
         echo "Done running $TEST."
     else
         echo "+++ $([[ "$BUILDKITE" == 'true' ]] && echo ':no_entry: ')ERROR: No tests matching \"$TEST\" registered with ctest! Exiting..."

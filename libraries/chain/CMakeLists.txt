@@ -140,6 +140,10 @@ target_include_directories( eosio_chain
 add_library(eosio_chain_wrap INTERFACE )
 target_link_libraries(eosio_chain_wrap INTERFACE eosio_chain)
 
+if(ENABLE_UNITY_BUILD)
+   set_target_properties(eosio_chain PROPERTIES UNITY_BUILD TRUE)
+endif() 
+
 if("eos-vm-oc" IN_LIST EOSIO_WASM_RUNTIMES)
    target_link_libraries(eosio_chain_wrap INTERFACE "-Wl,-wrap=main")
 endif()

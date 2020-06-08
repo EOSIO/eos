@@ -19,6 +19,8 @@ struct trace_converter {
    
    void  add_transaction(const transaction_trace_ptr& trace, const packed_transaction_ptr& transaction);
 
+   void clear_cache();
+
    bytes pack(const chainbase::database& db, bool trace_debug_mode, const block_state_ptr& block_state,
               uint32_t version);
    static bytes to_traces_bin_v0(const bytes& entry_payload, uint32_t version); 

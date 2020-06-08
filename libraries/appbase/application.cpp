@@ -465,7 +465,7 @@ void application::print_default_config(std::ostream& os) {
          else {
             // The string is formatted "arg (=<interesting part>)"
             example.erase(0, 6);
-            example.erase(example.length()-1);
+            if(!example.empty()) example.erase(example.length()-1);
             os << "# " << od->long_name() << " = " << example << std::endl;
          }
       }

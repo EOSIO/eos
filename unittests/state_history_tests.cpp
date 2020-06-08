@@ -453,6 +453,11 @@ BOOST_AUTO_TEST_CASE(test_trace_converter_test) {
       on_disk_log_entries_v1[bs->block_num] = converter_v1.pack(chain.control->db(), true, bs, 1);
    });
 
+   chain.control->block_start.connect([&](uint32_t block_num) {
+      converter_v0.clear_cache();
+      converter_v1.clear_cache();
+   });
+
    deploy_test_api(chain);
    auto cfd_trace = push_test_cfd_transaction(chain);
    chain.produce_blocks(1);
@@ -501,6 +506,7 @@ BOOST_AUTO_TEST_CASE(test_trace_log) {
        });
 
    chain.control->accepted_block.connect([&](const block_state_ptr& bs) { log.store(chain.control->db(), bs); });
+   chain.control->block_start.connect([&](uint32_t block_num) { log.block_start(block_num); } );
 
    deploy_test_api(chain);
    auto cfd_trace = push_test_cfd_transaction(chain);
