@@ -158,9 +158,9 @@ BOOST_AUTO_TEST_CASE(test_traces_present)
 
          // see issue #9159
          if(!trace_ptr->action_traces.empty() && trace_ptr->action_traces[0].act.name == N(onblock)) {
-            BOOST_CHECK(eosio::state_history::is_onblock(trace_ptr));
+            BOOST_CHECK(chain::is_onblock(*trace_ptr));
             trace_ptr->action_traces.clear();
-            BOOST_CHECK(!eosio::state_history::is_onblock(trace_ptr));
+            BOOST_CHECK(!chain::is_onblock(*trace_ptr));
             onblock_test_executed = true;
          }
       });
