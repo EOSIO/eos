@@ -4,6 +4,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <type_traits>
+#include <iosfwd>
 
 #include <boost/multiprecision/cpp_int.hpp>
 
