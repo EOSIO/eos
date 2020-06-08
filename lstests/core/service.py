@@ -221,6 +221,7 @@ class CommandLineArguments:
         self.extra_configs = cla.extra_configs
         if self.extra_configs:
             self.extra_configs = self.extra_configs.split(" ")
+
         self.dont_newacco = cla.dont_newacco
         self.dont_setprod = cla.dont_setprod
         self.http_retry = cla.http_retry
@@ -881,6 +882,27 @@ class Cluster:
         self.sync_retry      = helper.override(DEFAULT_SYNC_RETRY,      sync_retry,      self.cla.sync_retry)
         self.sync_sleep      = helper.override(DEFAULT_SYNC_SLEEP,      sync_sleep,      self.cla.sync_sleep)
         self.special_log_levels = helper.override(DEFAULT_SPECIAL_LOG_LEVELS, special_log_levels)
+
+
+        # ensure these extra config parameters are always passed
+        additional_extra_configs = [ "abi-serializer-max-time-ms", "http-max-response-time-ms" ]
+        for extra_config in self.extra_configs:
+            for additional in additional_extra_configs:
+                if extra_config.startswith(f"{additional}="):
+                    additional_extra_configs.remove(additional)
+                    break
+
+        for additional in additional_extra_configs:
+            self.extra_configs.append(f"{additional}=990000")
+
+        # ensure that net_plugin_impl always has an explicitly provided logging level
+        new_logger = "net_plugin_impl"
+        for logger in self.special_log_levels:
+            if logger[0] == new_logger:
+                new_logger = None
+                break
+        if new_logger:
+            self.special_log_levels.append( [new_logger, "debug"] )
         # check for logical errors in config
         self.check_config()
         # establish mappings between nodes and producers
