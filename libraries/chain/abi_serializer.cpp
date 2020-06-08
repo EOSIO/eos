@@ -79,6 +79,11 @@ namespace eosio { namespace chain {
       set_abi(abi, yield);
    }
 
+   abi_serializer::abi_serializer( const abi_def& abi, const fc::microseconds& max_serialization_time) {
+      configure_built_in_types();
+      set_abi(abi, max_serialization_time);
+   }
+
    void abi_serializer::add_specialized_unpack_pack( const string& name,
                                                      std::pair<abi_serializer::unpack_function, abi_serializer::pack_function> unpack_pack ) {
       built_in_types[name] = std::move( unpack_pack );
@@ -174,6 +179,10 @@ namespace eosio { namespace chain {
       validate(ctx);
    }
 
+   void abi_serializer::set_abi(const abi_def& abi, const fc::microseconds& max_serialization_time) {
+      return set_abi(abi, create_yield_function(max_serialization_time));
+   }
+
    bool abi_serializer::is_builtin_type(const std::string_view& type)const {
       return built_in_types.find(type) != built_in_types.end();
    }
@@ -206,6 +215,10 @@ namespace eosio { namespace chain {
    bool abi_serializer::is_type(const std::string_view& type, const yield_function_t& yield)const {
       impl::abi_traverse_context ctx(yield);
       return _is_type(type, ctx);
+   }
+
+   bool abi_serializer::is_type(const std::string_view& type, const fc::microseconds& max_serialization_time) const {
+      return is_type(type, create_yield_function(max_serialization_time));
    }
 
    std::string_view abi_serializer::fundamental_type(const std::string_view& type)const {
@@ -415,10 +428,18 @@ namespace eosio { namespace chain {
       return _binary_to_variant(type, binary, ctx);
    }
 
+   fc::variant abi_serializer::binary_to_variant( const std::string_view& type, const bytes& binary, const fc::microseconds& max_serialization_time, bool short_path )const {
+      return binary_to_variant( type, binary, create_yield_function(max_serialization_time), short_path );
+   }
+
    fc::variant abi_serializer::binary_to_variant( const std::string_view& type, fc::datastream<const char*>& binary, const yield_function_t& yield, bool short_path )const {
       impl::binary_to_variant_context ctx(*this, yield, type);
       ctx.short_path = short_path;
       return _binary_to_variant(type, binary, ctx);
+   }
+
+   fc::variant abi_serializer::binary_to_variant( const std::string_view& type, fc::datastream<const char*>& binary, const fc::microseconds& max_serialization_time, bool short_path )const {
+      return binary_to_variant( type, binary, create_yield_function(max_serialization_time), short_path );
    }
 
    void abi_serializer::_variant_to_binary( const std::string_view& type, const fc::variant& var, fc::datastream<char *>& ds, impl::variant_to_binary_context& ctx )const
@@ -546,10 +567,18 @@ namespace eosio { namespace chain {
       return _variant_to_binary(type, var, ctx);
    }
 
+   bytes abi_serializer::variant_to_binary( const std::string_view& type, const fc::variant& var, const fc::microseconds& max_serialization_time, bool short_path ) const {
+       return variant_to_binary( type, var, create_yield_function(max_serialization_time), short_path );
+   }
+
    void  abi_serializer::variant_to_binary( const std::string_view& type, const fc::variant& var, fc::datastream<char*>& ds, const yield_function_t& yield, bool short_path )const {
       impl::variant_to_binary_context ctx(*this, yield, type);
       ctx.short_path = short_path;
       _variant_to_binary(type, var, ds, ctx);
+   }
+
+   void  abi_serializer::variant_to_binary( const std::string_view& type, const fc::variant& var, fc::datastream<char*>& ds, const fc::microseconds& max_serialization_time, bool short_path ) const {
+       variant_to_binary( type, var, create_yield_function(max_serialization_time), short_path );
    }
 
    type_name abi_serializer::get_action_type(name action)const {
