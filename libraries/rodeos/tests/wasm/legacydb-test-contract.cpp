@@ -23,6 +23,12 @@ int lowerbound_i64(name code, name scope, name table, uint64_t id) {
    return db_lowerbound_i64(code.value, scope.value, table.value, id);
 }
 
+int upperbound_i64(name code, name scope, name table, uint64_t id) {
+   return db_upperbound_i64(code.value, scope.value, table.value, id);
+}
+
+int end_i64(name code, name scope, name table) { return db_end_i64(code.value, scope.value, table.value); }
+
 std::vector<char> get_i64(int itr) {
    std::vector<char> result(db_get_i64(itr, nullptr, 0));
    db_get_i64(itr, result.data(), result.size());
@@ -40,6 +46,17 @@ void check_lowerbound_i64(name code, name scope, name table, uint64_t id, int ex
       eosio::check(get_i64(expected_itr) == expected_data, "check_lowerbound_i64 failure: wrong data");
 }
 
+void check_upperbound_i64(name code, name scope, name table, uint64_t id, int expected_itr,
+                          const std::vector<char>& expected_data) {
+   auto itr = upperbound_i64(code, scope, table, id);
+   eosio::check(itr == expected_itr, "check_upperbound_i64 failure: wrong iterator. code: " + code.to_string() +
+                                           " scope: " + scope.to_string() + " table: " + table.to_string() +
+                                           " id: " + to_string(id) + " itr: " + to_string(itr) +
+                                           " expected_itr: " + to_string(expected_itr) + "\n");
+   if (expected_itr >= 0)
+      eosio::check(get_i64(expected_itr) == expected_data, "check_upperbound_i64 failure: wrong data");
+}
+
 void check_find_i64(name code, name scope, name table, uint64_t id, int expected_itr,
                     const std::vector<char>& expected_data) {
    auto itr = find_i64(code, scope, table, id);
@@ -49,6 +66,13 @@ void check_find_i64(name code, name scope, name table, uint64_t id, int expected
                                            " expected_itr: " + to_string(expected_itr) + "\n");
    if (expected_itr >= 0)
       eosio::check(get_i64(expected_itr) == expected_data, "check_find_i64 failure: wrong data");
+}
+
+void check_end_i64(name code, name scope, name table, int expected_itr) {
+   auto itr = end_i64(code, scope, table);
+   eosio::check(itr == expected_itr, "check_end_i64 failure: wrong iterator. code: " + code.to_string() +
+                                           " scope: " + scope.to_string() + " table: " + table.to_string() + " itr: " +
+                                           to_string(itr) + " expected_itr: " + to_string(expected_itr) + "\n");
 }
 
 void check_next_i64(int itr, int expected_itr, uint64_t expected_id) {
@@ -98,6 +122,17 @@ void legacydb_contract::write() {
    store_i64("scope2"_n, "table1"_n, get_self(), 52, data_2);
    store_i64("scope2"_n, "table1"_n, get_self(), 53, data_3);
    store_i64("scope2"_n, "table1"_n, get_self(), 54, data_4);
+
+   store_i64("scope2"_n, "atable"_n, get_self(), 60, data_0);
+   store_i64("scope2"_n, "atable"_n, get_self(), 61, data_1);
+   store_i64("scope2"_n, "atable"_n, get_self(), 62, data_2);
+   store_i64("scope2"_n, "atable"_n, get_self(), 63, data_3);
+   store_i64("scope2"_n, "atable"_n, get_self(), 64, data_4);
+   store_i64("scope2"_n, "atable"_n, get_self(), 0xffff'ffff'ffff'fffe, data_2);
+   store_i64("scope2"_n, "atable"_n, get_self(), 0xffff'ffff'ffff'ffff, data_3);
+
+   store_i64("scope.x"_n, "table1"_n, get_self(), 54, data_0);
+   store_i64("scope.x"_n, "table2"_n, get_self(), 54, data_1);
 } // legacydb_contract::write()
 
 void legacydb_contract::read() {
@@ -113,6 +148,7 @@ void legacydb_contract::read() {
    check_lowerbound_i64(get_self(), "scope1"_n, "table1"_n, 23, 3, data_3);
    check_lowerbound_i64(get_self(), "scope1"_n, "table1"_n, 24, 4, data_4);
    check_lowerbound_i64(get_self(), "scope1"_n, "table1"_n, 25, -2, {});
+   check_lowerbound_i64(get_self(), "nope"_n, "nada"_n, 25, -1, {});
 
    check_find_i64(get_self(), "scope1"_n, "table1"_n, 0, -2, {});
    check_find_i64(get_self(), "scope1"_n, "table1"_n, 20, 0, data_0);
@@ -121,6 +157,19 @@ void legacydb_contract::read() {
    check_find_i64(get_self(), "scope1"_n, "table1"_n, 23, 3, data_3);
    check_find_i64(get_self(), "scope1"_n, "table1"_n, 24, 4, data_4);
    check_find_i64(get_self(), "scope1"_n, "table1"_n, 25, -2, {});
+   check_find_i64(get_self(), "nope"_n, "nada"_n, 25, -1, {});
+
+   check_upperbound_i64(get_self(), "scope1"_n, "table1"_n, 0, 0, data_0);
+   check_upperbound_i64(get_self(), "scope1"_n, "table1"_n, 19, 0, data_0);
+   check_upperbound_i64(get_self(), "scope1"_n, "table1"_n, 20, 1, data_1);
+   check_upperbound_i64(get_self(), "scope1"_n, "table1"_n, 21, 2, data_2);
+   check_upperbound_i64(get_self(), "scope1"_n, "table1"_n, 22, 3, data_3);
+   check_upperbound_i64(get_self(), "scope1"_n, "table1"_n, 23, 4, data_4);
+   check_upperbound_i64(get_self(), "scope1"_n, "table1"_n, 24, -2, {});
+   check_upperbound_i64(get_self(), "scope1"_n, "table1"_n, 25, -2, {});
+   check_upperbound_i64(get_self(), "scope1"_n, "table1"_n, 0xffff'ffff'ffff'fffe, -2, {});
+   check_upperbound_i64(get_self(), "scope1"_n, "table1"_n, 0xffff'ffff'ffff'ffff, -2, {});
+   check_upperbound_i64(get_self(), "nope"_n, "nada"_n, 25, -1, {});
 
    check_next_i64(0, 1, 21);
    check_next_i64(1, 2, 22);
@@ -235,6 +284,40 @@ void legacydb_contract::read() {
    check_lowerbound_i64(get_self(), "scope2"_n, "table1"_n, 53, 16, data_3);
    check_lowerbound_i64(get_self(), "scope2"_n, "table1"_n, 54, 17, data_4);
    check_lowerbound_i64(get_self(), "scope2"_n, "table1"_n, 55, -5, {});
+
+   // find items out of order using upperbound
+   // creates iterators -6, 20 - 26
+   check_upperbound_i64(get_self(), "scope2"_n, "atable"_n, 63, 20, data_4);
+   check_upperbound_i64(get_self(), "scope2"_n, "atable"_n, 60, 21, data_1);
+   check_upperbound_i64(get_self(), "scope2"_n, "atable"_n, 0xffff'ffff'ffff'fffe, 22, data_3);
+   check_upperbound_i64(get_self(), "scope2"_n, "atable"_n, 60, 21, data_1); // reuse existing itr
+   check_upperbound_i64(get_self(), "scope2"_n, "atable"_n, 61, 23, data_2);
+   check_upperbound_i64(get_self(), "scope2"_n, "atable"_n, 0xffff'ffff'ffff'ffff, -6, {});
+   check_upperbound_i64(get_self(), "scope2"_n, "atable"_n, 59, 24, data_0);
+   check_upperbound_i64(get_self(), "scope2"_n, "atable"_n, 58, 24, data_0); // reuse existing itr
+   check_upperbound_i64(get_self(), "scope2"_n, "atable"_n, 0xffff'ffff'ffff'fffd, 25, data_2);
+   check_upperbound_i64(get_self(), "scope2"_n, "atable"_n, 62, 26, data_3);
+
+   check_lowerbound_i64(get_self(), "scope2"_n, "atable"_n, 64, 20, data_4);
+   check_lowerbound_i64(get_self(), "scope2"_n, "atable"_n, 65, 25, data_2);
+   check_lowerbound_i64(get_self(), "scope2"_n, "atable"_n, 61, 21, data_1);
+   check_lowerbound_i64(get_self(), "scope2"_n, "atable"_n, 0xffff'ffff'ffff'ffff, 22, data_3);
+   check_lowerbound_i64(get_self(), "scope2"_n, "atable"_n, 62, 23, data_2);
+   check_lowerbound_i64(get_self(), "scope2"_n, "atable"_n, 60, 24, data_0);
+   check_lowerbound_i64(get_self(), "scope2"_n, "atable"_n, 59, 24, data_0);
+   check_lowerbound_i64(get_self(), "scope2"_n, "atable"_n, 0xffff'ffff'ffff'fffe, 25, data_2);
+   check_lowerbound_i64(get_self(), "scope2"_n, "atable"_n, 0xffff'ffff'ffff'fffd, 25, data_2);
+   check_lowerbound_i64(get_self(), "scope2"_n, "atable"_n, 63, 26, data_3);
+
+   // check end
+   check_end_i64(get_self(), "scope1"_n, "table1"_n, -2);
+   check_end_i64(get_self(), "scope1"_n, "table2"_n, -3);
+   check_end_i64(get_self(), "scope1"_n, "table3"_n, -4);
+   check_end_i64(get_self(), "scope2"_n, "table1"_n, -5);
+   check_end_i64(get_self(), "scope2"_n, "atable"_n, -6);
+   check_end_i64(get_self(), "scope.x"_n, "table2"_n, -7); // not searched for yet
+   check_end_i64(get_self(), "scope.x"_n, "table1"_n, -8); // not searched for yet
+   check_end_i64(get_self(), "nope"_n, "nada"_n, -1);
 } // legacydb_contract::read()
 
 EOSIO_ACTION_DISPATCHER(legacydb::actions)

@@ -46,10 +46,9 @@ class iterator_cache {
       auto map_it = table_to_index.find(key);
       if (map_it != table_to_index.end())
          return map_it->second;
-      if (!view.get(state_account.value,
-                    chain_kv::to_slice(eosio::convert_to_key(std::make_tuple(
-                                                          (uint8_t)0x01, eosio::name{ "contract.tab" },
-                                                          eosio::name{ "primary" }, key.code, key.table, key.scope)))))
+      if (!view.get(state_account.value, chain_kv::to_slice(eosio::convert_to_key(std::make_tuple(
+                                               (uint8_t)0x01, eosio::name{ "contract.tab" }, eosio::name{ "primary" },
+                                               key.code, key.table, key.scope)))))
          return -1;
       if (tables.size() != table_to_index.size() || tables.size() != end_iterators.size())
          throw std::runtime_error("internal error: tables.size() mismatch");
@@ -140,15 +139,14 @@ class iterator_cache {
       it.view_it.reset();
       if (!view_it) {
          const auto& table_key = tables[it.table_index];
-         view_it               = chain_kv::view::iterator{
-            view, state_account.value,
-            chain_kv::to_slice(eosio::convert_to_key(std::make_tuple( //
-                                     (uint8_t)0x01, eosio::name{ "contract.row" }, eosio::name{ "primary" },
-                                     table_key.code, table_key.table, table_key.scope)))
-         };
-         view_it->lower_bound(eosio::convert_to_key(std::make_tuple(
-                                                 (uint8_t)0x01, eosio::name{ "contract.row" }, eosio::name{ "primary" },
-                                                 table_key.code, table_key.table, table_key.scope, it.primary)));
+         view_it =
+               chain_kv::view::iterator{ view, state_account.value,
+                                         chain_kv::to_slice(eosio::convert_to_key(std::make_tuple( //
+                                               (uint8_t)0x01, eosio::name{ "contract.row" }, eosio::name{ "primary" },
+                                               table_key.code, table_key.table, table_key.scope))) };
+         view_it->lower_bound(eosio::convert_to_key(std::make_tuple((uint8_t)0x01, eosio::name{ "contract.row" },
+                                                                    eosio::name{ "primary" }, table_key.code,
+                                                                    table_key.table, table_key.scope, it.primary)));
       }
       ++*view_it;
       if (view_it->is_end()) {
@@ -156,9 +154,9 @@ class iterator_cache {
          return it.next;
       } else {
          eosio::input_stream stream{ view_it->get_kv()->value.data(), view_it->get_kv()->value.size() };
-         auto row = std::get<0>(eosio::from_bin<eosio::ship_protocol::contract_row>(stream));
-         primary  = row.primary_key;
-         it.next  = get_iterator({ it.table_index, primary }, std::move(*view_it));
+         auto                row = std::get<0>(eosio::from_bin<eosio::ship_protocol::contract_row>(stream));
+         primary                 = row.primary_key;
+         it.next                 = get_iterator({ it.table_index, primary }, std::move(*view_it));
          return it.next;
       }
    } // db_next_i64
@@ -225,6 +223,16 @@ class iterator_cache {
                                                            eosio::name{ "primary" }, code, table, scope, key)));
       return get_iterator(rk, std::move(it), require_exact);
    }
+
+   int32_t upper_bound(uint64_t code, uint64_t scope, uint64_t table, uint64_t key) {
+      if (key + 1 == 0)
+         return end(code, scope, table);
+      return lower_bound(code, scope, table, key + 1, false);
+   }
+
+   int32_t end(uint64_t code, uint64_t scope, uint64_t table) {
+      return index_to_end_iterator(get_table_index({ code, table, scope }));
+   }
 }; // iterator_cache
 
 struct chaindb_state {
@@ -273,11 +281,11 @@ struct chaindb_callbacks {
    }
 
    int db_upperbound_i64(uint64_t code, uint64_t scope, uint64_t table, uint64_t id) {
-      throw std::runtime_error("unimplemented: db_upperbound_i64");
+      return get_iterator_cache().upper_bound(code, scope, table, id);
    }
 
    int db_end_i64(uint64_t code, uint64_t scope, uint64_t table) {
-      throw std::runtime_error("unimplemented: db_end_i64");
+      return get_iterator_cache().end(code, scope, table);
    }
 
    template <typename Rft>
