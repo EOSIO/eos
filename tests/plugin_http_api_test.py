@@ -11,12 +11,12 @@ from Node import Node
 from WalletMgr import WalletMgr
 
 class PluginHttpTest(unittest.TestCase):
-    sleep_ms = 5
+    sleep_s = 2
     base_node_cmd_str = ("curl http://%s:%s/v1/") % (TestHelper.LOCAL_HOST, TestHelper.DEFAULT_PORT)
     base_wallet_cmd_str = ("curl http://%s:%s/v1/") % (TestHelper.LOCAL_HOST, TestHelper.DEFAULT_WALLET_PORT)
     keosd = WalletMgr(True, TestHelper.DEFAULT_PORT, TestHelper.LOCAL_HOST, TestHelper.DEFAULT_WALLET_PORT, TestHelper.LOCAL_HOST)
-    nodeos = Node(TestHelper.LOCAL_HOST, TestHelper.DEFAULT_PORT)
     node_id = 1
+    nodeos = Node(TestHelper.LOCAL_HOST, TestHelper.DEFAULT_PORT, node_id)
     data_dir = Utils.getNodeDataDir(node_id)
     http_post_str = " -X POST -d "
     http_post_invalid_param = " '{invalid}' "
@@ -34,7 +34,7 @@ class PluginHttpTest(unittest.TestCase):
         Node.killAllNodeos()
         if os.path.exists(self.data_dir):
             shutil.rmtree(self.data_dir)
-        time.sleep(self.sleep_ms)
+        time.sleep(self.sleep_s)
 
     # start keosd and nodeos
     def startEnv(self) :
@@ -56,7 +56,7 @@ class PluginHttpTest(unittest.TestCase):
                         "--contracts-console --http-validate-host=%s --verbose-http-errors ") % (self.data_dir, self.data_dir, "\"*\"", "\'*\'", "false")
         start_nodeos_cmd = ("%s -e -p eosio %s %s ") % (Utils.EosServerPath, nodeos_plugins, nodeos_flags)
         self.nodeos.launchCmd(start_nodeos_cmd, self.node_id)
-        time.sleep(self.sleep_ms)
+        time.sleep(self.sleep_s)
 
     # test all chain api
     def test_ChainApi(self) :
