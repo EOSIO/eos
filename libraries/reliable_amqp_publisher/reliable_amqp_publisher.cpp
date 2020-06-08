@@ -89,7 +89,7 @@ struct reliable_amqp_publisher_impl final : reliable_amqp_publisher_callbacks {
       thread = std::thread([this]() {
          try {
             fc::set_os_thread_name("amqp");
-            retry_connection();
+            bringup_connection();
             ctx.run();
          }
          catch(...) {
@@ -136,19 +136,24 @@ struct reliable_amqp_publisher_impl final : reliable_amqp_publisher_callbacks {
       channel.reset();
       connection.reset();
       handler.reset();
-      next_retry_time = std::min(next_retry_time, 30u);
+      const unsigned max_retry_seconds = 30u;
+      next_retry_time = std::min(next_retry_time, max_retry_seconds);
       retry_timer.expires_from_now(boost::posix_time::seconds(next_retry_time));
       retry_timer.async_wait([&](auto ec) {
          if(ec)
             return;
-         handler = std::make_unique<reliable_amqp_publisher_handler>(this, ctx);
-         try {
-            connection = std::make_unique<AMQP::TcpConnection>(handler.get(), *amqp_address);
-         } catch(...) { //this should never happen, but it could technically have thrown
-            retry_connection();
-         }
+         bringup_connection();
       });
       next_retry_time *= 2;
+   }
+
+   void bringup_connection() {
+      handler = std::make_unique<reliable_amqp_publisher_handler>(this, ctx);
+      try {
+         connection = std::make_unique<AMQP::TcpConnection>(handler.get(), *amqp_address);
+      } catch(...) { //this should never happen, but it could technically have thrown
+         retry_connection();
+      }
    }
 
    void amqp_ready() override {
