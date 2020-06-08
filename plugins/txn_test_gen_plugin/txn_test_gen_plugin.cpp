@@ -355,27 +355,27 @@ struct txn_test_gen_plugin_impl {
          block_id_type reference_block_id = cc.get_block_id_for_num(reference_block_num);
 
          for(unsigned int i = 0; i < batch; ++i) {
-         {
-         signed_transaction trx;
-         trx.actions.push_back(act_a_to_b);
-         trx.context_free_actions.emplace_back(action({}, config::null_account_name, name("nonce"), fc::raw::pack( std::to_string(nonce_prefix)+std::to_string(nonce++) )));
-         trx.set_reference_block(reference_block_id);
-         trx.expiration = cc.head_block_time() + fc::seconds(600);
-         trx.max_net_usage_words = 100;
-         trx.sign(a_priv_key, chainid);
-         trxs.emplace_back(std::move(trx));
-         }
+            {
+               signed_transaction trx;
+               trx.actions.push_back(act_a_to_b);
+               trx.context_free_actions.emplace_back(action({}, config::null_account_name, name("nonce"), fc::raw::pack( std::to_string(nonce_prefix)+std::to_string(nonce++) )));
+               trx.set_reference_block(reference_block_id);
+               trx.expiration = cc.head_block_time() + fc::seconds(600);
+               trx.max_net_usage_words = 100;
+               trx.sign(a_priv_key, chainid);
+               trxs.emplace_back(std::move(trx));
+            }
 
-         {
-         signed_transaction trx;
-         trx.actions.push_back(act_b_to_a);
-         trx.context_free_actions.emplace_back(action({}, config::null_account_name, name("nonce"), fc::raw::pack( std::to_string(nonce_prefix)+std::to_string(nonce++) )));
-         trx.set_reference_block(reference_block_id);
-         trx.expiration = cc.head_block_time() + fc::seconds(30);
-         trx.max_net_usage_words = 100;
-         trx.sign(b_priv_key, chainid);
-         trxs.emplace_back(std::move(trx));
-         }
+            {
+               signed_transaction trx;
+               trx.actions.push_back(act_b_to_a);
+               trx.context_free_actions.emplace_back(action({}, config::null_account_name, name("nonce"), fc::raw::pack( std::to_string(nonce_prefix)+std::to_string(nonce++) )));
+               trx.set_reference_block(reference_block_id);
+               trx.expiration = cc.head_block_time() + fc::seconds(600);
+               trx.max_net_usage_words = 100;
+               trx.sign(b_priv_key, chainid);
+               trxs.emplace_back(std::move(trx));
+            }
          }
       } catch ( const fc::exception& e ) {
          next(e.dynamic_copy_exception());
