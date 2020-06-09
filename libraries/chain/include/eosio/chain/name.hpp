@@ -22,8 +22,8 @@ namespace eosio::chain {
          return (c - '1') + 1;
       else if( c == '.')
          return 0;
-      
-      EOS_ASSERT(0, name_type_exception, "Name contains invalid character: (${c}) ", ("c", std::string(1, c)));
+      else
+         FC_THROW_EXCEPTION(name_type_exception, "Name contains invalid character: (${c}) ", ("c", std::string(1, c)));
       
       //unreachable
       return 0;
