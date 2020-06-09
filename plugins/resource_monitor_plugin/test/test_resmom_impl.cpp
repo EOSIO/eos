@@ -139,6 +139,6 @@ BOOST_AUTO_TEST_SUITE(resmom_impl_tests)
 
    BOOST_FIXTURE_TEST_CASE(startupLongRun, resmom_fixture)
    {
-      BOOST_REQUIRE_NO_THROW( plugin_startup({"/tmp"}, 300));
+      BOOST_REQUIRE_NO_THROW( plugin_startup({"/tmp"}, 120));
    }
 BOOST_AUTO_TEST_SUITE_END()

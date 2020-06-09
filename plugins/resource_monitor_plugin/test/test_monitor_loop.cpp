@@ -97,12 +97,13 @@ struct space_handler_fixture {
       monitor_thread.join();
 
       auto end = std::chrono::system_clock::now();
-      std::chrono::duration<double> diff = end - start;
+      std::chrono::duration<double> test_duration = end - start;
 
-      // As long as the thread ends within a margin (2 seconds for now)
-      // of the product of the number of loops by interval per loop,
-      // test is considered successful.
-      bool finished_in_time = (diff >= std::chrono::duration<double>(num_loops * interval) && diff <= std::chrono::duration<double>(num_loops * interval + 2)) ? true : false;
+      // For tests to be repeatable on any platforms under any loads,
+      // particularly for longer runs,
+      // we just make sure the test duration is longer than a margin
+      // of theroretical duration. 
+      bool finished_in_time = (test_duration >= std::chrono::duration<double>((num_loops - 1) * interval));
 
       return finished_in_time;
    }
@@ -150,9 +151,9 @@ BOOST_AUTO_TEST_SUITE(monitor_loop_tests)
       BOOST_TEST( test_loop_common(10, 5) );
    }
 
-   BOOST_FIXTURE_TEST_CASE(two_hundred_forty_loops_1_sec_interval, space_handler_fixture)
+   BOOST_FIXTURE_TEST_CASE(one_hundred_twenty_loops_1_sec_interval, space_handler_fixture)
    {
-      BOOST_TEST( test_loop_common(240, 1) );
+      BOOST_TEST( test_loop_common(120, 1) );
    }
 
 BOOST_AUTO_TEST_SUITE_END()
