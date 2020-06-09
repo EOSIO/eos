@@ -203,8 +203,12 @@ namespace eosio { namespace chain {
             fc::cfile          index_file;
             bool               genesis_written_to_block_log = false;
             block_log_preamble preamble;
+            fc::path           data_dir;
+            // number of successful blocks  parsed to be certain we have a good file
+            const int          num_good_blocks_parsed = 12;
 
-            block_log_impl(const fc::path& data_dir);
+            block_log_impl(const fc::path& data_path, bool fix_index = true);
+            void fix_index_file();
 
             static void ensure_file_exists(fc::cfile& f) {
                if (fc::exists(f.get_file_path())) return; 
@@ -212,7 +216,14 @@ namespace eosio { namespace chain {
                f.close();
             }
 
-            uint64_t get_block_pos(uint32_t block_num);
+         std::tuple<uint64_t, uint64_t> prepare_files();
+         bool check_corrupted_file();
+         void fix_corrupted_file();
+         bool check_corrupted_blockindex(uint64_t index_size, bool modify = false);
+         bool check_corrupted_blocklog(uint64_t log_size, bool modify = false);
+         void check_files();
+
+         uint64_t get_block_pos(uint32_t block_num);
 
             void reset(uint32_t first_block_num, std::variant<genesis_state, chain_id_type>&& chain_context);
 
@@ -226,7 +237,7 @@ namespace eosio { namespace chain {
 
             void                          read_block_header(block_header& bh, uint64_t file_pos);
             std::unique_ptr<signed_block> read_block(uint64_t pos);
-            void                          read_head();            
+            void                          read_head();
       };
    } // namespace detail
 
@@ -242,20 +253,39 @@ namespace eosio { namespace chain {
       sink.open(params);
    }
 
+   void map_existing_file(boost::iostreams::mapped_file_sink& sink, const std::string& path, uint64_t size, uint64_t offset) {
+         using namespace boost::iostreams;
+         mapped_file_params params(path);
+         params.flags         = mapped_file::readwrite;
+         params.length        = size - offset;
+         params.offset        = offset;
+         sink.open(params);
+      }
+
    class index_writer {
     public:
       index_writer(const fc::path& block_index_name, uint32_t blocks_expected)
           : current_offset(blocks_expected * sizeof(uint64_t)) {
          create_mapped_file(index, block_index_name.generic_string(), current_offset);
       }
+
+      index_writer(const fc::path& block_index_name, uint32_t blocks_expected, uint32_t first_mapped_block)
+            : current_offset(blocks_expected * sizeof(uint64_t)), begin_offset(first_mapped_block * sizeof(uint64_t)) {
+         auto alignment = boost::iostreams::mapped_file::alignment();
+         begin_offset -= begin_offset % alignment;
+         if (begin_offset < 0) begin_offset = 0;
+         map_existing_file(index, block_index_name.generic_string(), current_offset, begin_offset);
+      }
+
       void write(uint64_t pos) {
          current_offset -= sizeof(pos);
-         memcpy(index.data() + current_offset, &pos, sizeof(pos));
+         memcpy(index.data() + current_offset - begin_offset, &pos, sizeof(pos));
       }
 
       void close() { index.close(); }
     private:
       std::ptrdiff_t                     current_offset = 0;
+      std::ptrdiff_t                     begin_offset = 0;
       boost::iostreams::mapped_file_sink index;
    };
 
@@ -471,18 +501,20 @@ namespace eosio { namespace chain {
    }
    } // namespace
 
-   block_log::block_log(const fc::path& data_dir)
-       : my(new detail::block_log_impl(data_dir)) {
-   }
+
+
+   block_log::block_log(const fc::path& data_dir, bool fix_index)
+       : my(new detail::block_log_impl(data_dir, fix_index)) {}
+
 
    block_log::~block_log(){}
 
-   detail::block_log_impl::block_log_impl(const fc::path& data_dir) {
-      if (!fc::is_directory(data_dir))
-         fc::create_directories(data_dir);
+   detail::block_log_impl::block_log_impl(const fc::path& data_path, bool fix_index)
+      : data_dir(data_path) {
+      if(fix_index) fix_index_file();
+   }
 
-      block_file.set_file_path( data_dir / "blocks.log" );
-      index_file.set_file_path( data_dir / "blocks.index" );
+   void detail::block_log_impl::fix_index_file() {
       /* On startup of the block log, there are several states the log file and the index file can be
        * in relation to each other.
        *
@@ -501,11 +533,8 @@ namespace eosio { namespace chain {
        *  - If the index file head is not in the log file, delete the index and replay.
        *  - If the index file head is in the log, but not up to date, replay from index head.
        */
-      ensure_file_exists(block_file);
-      ensure_file_exists(index_file);
-      const auto log_size   = fc::file_size(block_file.get_file_path());
-      const auto index_size = fc::file_size(index_file.get_file_path());
-
+      auto [log_size, index_size] = prepare_files();
+      
       if (log_size) {
          ilog("Log is nonempty");
          block_log_data log_data(block_file.get_file_path());
@@ -515,11 +544,32 @@ namespace eosio { namespace chain {
 
          if (index_size) {
             ilog("Index is nonempty");
-            block_log_index index(index_file.get_file_path());
-            
-            if (log_data.last_block_position() != index.back()) {
+            block_log_index log_index(index_file.get_file_path());
+            const uint32_t num_blocks = log_data.num_blocks();
+            const uint32_t num_indexes = log_index.num_blocks();
+            const auto &last_block_pos = log_data.last_block_position();
+            const auto &last_index_pos = log_index.back();
+
+            if (last_block_pos != last_index_pos) {
                ilog("The last block positions from blocks.log and blocks.index are different, Reconstructing index...");
-               block_log::construct_index(block_file.get_file_path(), index_file.get_file_path());
+
+               if (last_block_pos < last_index_pos) {
+                  ilog("Need to update index file");
+                  boost::filesystem::resize_file(index_file.get_file_path(), index_size - sizeof(uint64_t) * (num_indexes - num_blocks));
+               } else {   // if (last_index_pos < last_block_pos)
+                  // expand the index file size
+                  ilog("Need to update index file");
+                  boost::filesystem::resize_file(index_file.get_file_path(),
+                                                 index_size + sizeof(uint64_t) * (num_blocks - num_indexes));
+
+                  // update the mapped_file for the missing ranges of indexes
+                  auto[log_size, index_size] = prepare_files();
+                  index_writer index(index_file.get_file_path(), num_blocks, num_indexes);
+                  for (auto iter = make_reverse_block_position_iterator(log_data);
+                       iter.get_value() != last_index_pos; ++iter) {
+                     index.write(iter.get_value());
+                  }
+               }
             }
          } else {
             ilog("Index is empty. Reconstructing index...");
@@ -535,6 +585,188 @@ namespace eosio { namespace chain {
       if (log_size)
          read_head();
    }
+
+   /**
+    * check blocks.index file and blocks.log file.
+    *  assertion if files are corrupted or index needs to be updated.
+    */
+  void detail::block_log_impl::check_files() {
+       auto[log_size, index_size] = prepare_files();
+
+       // Check if blocks.log and blocks.index has incomplete block at the end of the file.
+       bool chk_corrupt = check_corrupted_file();
+       EOS_ASSERT(!chk_corrupt, block_log_exception, "corrupted blocks.log/blocks.index.");
+
+       block_log_data log_data(block_file.get_file_path());
+       block_log_index log_index(index_file.get_file_path());
+       const uint32_t num_blocks = log_data.num_blocks();
+       const uint32_t num_indexes = log_index.num_blocks();
+
+       preamble = log_data.get_preamble();
+       genesis_written_to_block_log = true; // Assume it was constructed properly.
+
+       ilog("blocks.log file ${file} has ${num_blocks} blocks", ("file", block_file.get_file_path().generic_string())("num_blocks", num_blocks));
+       ilog("blocks.index file ${file} has ${num_indexes} blocks", ("file", index_file.get_file_path().generic_string())("num_indexes", num_indexes));
+
+       if (num_blocks == 0 && num_indexes == 0) {
+          ilog("Index is up-to-date");
+          return;
+       }
+
+       EOS_ASSERT((num_blocks != 0 || num_indexes == 0), block_log_exception, "Log file is empty while the index file is nonempty, discard the index file");
+       EOS_ASSERT((num_blocks == 0 || num_indexes != 0), block_log_exception, "Index is empty. Reconstruct index...");
+
+       // num_blocks != 0 && num_indexes != 0
+       const auto &first_block_pos = log_data.first_block_position();
+       const auto &first_index_pos = *log_index.begin();
+
+       if (num_blocks == 1) {
+          if (first_block_pos == first_index_pos) return;
+          EOS_ASSERT(first_block_pos != first_index_pos, block_log_exception, "Index is empty. Reconstruct index...");
+       }
+
+       const auto &last_block_pos = log_data.last_block_position();
+       const auto &last_index_pos = log_index.back();
+
+       EOS_ASSERT(first_block_pos == first_index_pos, block_log_exception, "Begining of index dosn't match . Reconstruct index...");
+
+       EOS_ASSERT(last_block_pos == last_index_pos, block_log_exception, "Need to update index...");
+
+       ilog("Index is up-to-date");
+  }
+
+   std::tuple<uint64_t, uint64_t> detail::block_log_impl::prepare_files() {
+      if (!fc::is_directory(data_dir))
+         fc::create_directories(data_dir);
+
+      block_file.set_file_path(data_dir / "blocks.log");
+      index_file.set_file_path(data_dir / "blocks.index");
+      ensure_file_exists(block_file);
+      ensure_file_exists(index_file);
+      const auto log_size = fc::file_size(block_file.get_file_path());
+      const auto index_size = fc::file_size(index_file.get_file_path());
+
+      return std::tuple(log_size, index_size);
+   }
+
+   bool detail::block_log_impl::check_corrupted_file() {
+      auto [log_size, index_size] = prepare_files();
+      bool index_corrupted = check_corrupted_blockindex(index_size, false);
+      bool log_corrupted = check_corrupted_blocklog(log_size, false);
+
+      if(!index_corrupted && !log_corrupted) {
+         ilog("No corrupted block or index found!");
+      }
+      
+      return index_corrupted || log_corrupted;
+   }
+
+   void detail::block_log_impl::fix_corrupted_file() {
+      auto [log_size, index_size] = prepare_files();
+      check_corrupted_blockindex(index_size, true);
+      check_corrupted_blocklog(log_size, true);
+   }
+
+   bool detail::block_log_impl::check_corrupted_blockindex(uint64_t index_size, bool modify) {
+      auto partial_bytes = index_size % sizeof(uint64_t);
+      if (partial_bytes == 0) {
+         ilog(" blocks.index file looks good with size of ${size} bytes.", ("size", index_size));
+         return false;
+      }
+
+      if (modify) {
+         boost::filesystem::resize_file(index_file.get_file_path(), index_size - partial_bytes);
+         ilog("Blocks.index file trimmed ${partial_bytes} bytes.", ("partial_bytes", partial_bytes));
+      } else {
+         ilog("Blocks.index file has incomplete last entry of ${partial_bytes} bytes.", ("partial_bytes", partial_bytes));
+      }
+      return true;
+   }
+
+   /**
+    * Check if blocks.log is corrupted, if modify is true, it will be fixed
+    * @param log_size size of blocks.log file
+    * @param modify fix blocks.log file if flag is true. Otherwise just return the status
+    * @return true if blocks.log file is corrupted.
+    */
+   bool detail::block_log_impl::check_corrupted_blocklog(uint64_t log_size, bool modify) {
+      bool corrupted = false;
+      bool found_good_block = false;
+      uint64_t partial_bytes = 0;
+      uint32_t block_num = 0;
+      int num_good_block = 0;
+      int cur_min_good_blocks = num_good_blocks_parsed;
+
+      chain::block_log_data log_data(block_file.get_file_path());
+
+      /*
+       * if the blocks.log contains incomplete block at the end of the file. We scan the file from partial_bytes = 0
+       * and increasing by 1, if we can get  several(min_good_blocks) good blocks successfully, we found the partial_bytes.
+       * If blocks.log is too small and the number of good block is less than min_go0d_blocks, it can't be fixed.
+       */
+      auto find_good_blocks = [&](int min_good_blocks) {
+         found_good_block = false;
+         partial_bytes = 0;
+         block_num = 0;
+         num_good_block = 0;
+
+         while (partial_bytes < log_data.size()) {
+            num_good_block = 0;
+            // scan from the end of incomplete block in the blocks.log
+            const char *rbegin_address = log_data.data() + log_data.size() - partial_bytes;
+
+            uint64_t cur_pos = rbegin_address - log_data.data();
+            // if we can get good blocks (min_good_blocks - 1) times
+            for (int i = 0; i < min_good_blocks; ++i) {
+               cur_pos = read_buffer<uint64_t>(log_data.data() + cur_pos - sizeof(uint64_t));
+               // 1st sanity check of pointer: check pointer if it is in proper range.
+               if (cur_pos > log_data.size() || cur_pos < log_data.size() / 2)
+                  break;   // make sure  0 <= cur_pos < log_data.size()
+               auto cur_block_num = log_data.block_num_at(cur_pos);
+               // 2nd check, if block number is sequential
+               if (cur_block_num + 1 == block_num) {
+                  ++num_good_block; // we found one good block.
+               }
+               block_num = cur_block_num;
+            }
+
+            if (num_good_block == min_good_blocks - 1) {
+               found_good_block = true;
+               break;
+            }
+            ++partial_bytes;
+         }
+      };
+
+      // scan
+      for ( int i = num_good_blocks_parsed; i > 0; i /= 2) {
+
+         find_good_blocks(i);
+
+         if (partial_bytes == 0) {
+            ilog("blocks.log file looks good with size of ${size} bytes.", ("size", log_size));
+            return false;
+         }
+
+         if (found_good_block) {
+            auto last_good_block_num = log_data.block_num_at(log_data.size() - partial_bytes);
+
+            ilog("Found incomplete ${partial_bytes} bytes in blocks.log file", ("partial_bytes", partial_bytes));
+            if (modify) {
+                auto now = fc::time_point::now();
+                boost::filesystem::resize_file(block_file.get_file_path(), log_size - partial_bytes);
+                ilog("Fixed blocks.log file by trimming ${partial_bytes} bytes.", ("partial_bytes", partial_bytes));
+            }
+            return true;
+         }
+         // blocks.log is corrupted but we couldn't find required number of good blocks. Re-scan it with lower number of good blocks requirement.
+      }
+
+      EOS_ASSERT(found_good_block, block_log_exception, "Can't fix corrupted blocks.log file");
+
+      return true;
+   }
+
 
    uint64_t detail::block_log_impl::write_log_entry(const signed_block& b, packed_transaction::cf_compression_type segment_compression) {
       uint64_t pos = block_file.tellp();
@@ -736,7 +968,7 @@ namespace eosio { namespace chain {
       ilog("Data at tail end of block log which should contain the (incomplete) serialization of block ${num} "
             "has been written out to '${tail_path}'.",
             ("num", block_num + 1)("tail_path", tail_path));
-      
+
    }
 
    fc::path block_log::repair_log(const fc::path& data_dir, uint32_t truncate_at_block) {
@@ -979,8 +1211,15 @@ namespace eosio { namespace chain {
       return 0;
    }
 
-   void block_log::smoke_test(fc::path block_dir, uint32_t interval) {
+   void block_log::fix_corrupted_file(const fc::path& data_dir) {
+      my->fix_corrupted_file();
+   }
 
+   void block_log::check_files() {
+       my->check_files();
+   }
+
+   void block_log::smoke_test(fc::path block_dir, uint32_t interval) {
       block_log_archive archive(block_dir);
 
       ilog("blocks.log and blocks.index agree on number of blocks");

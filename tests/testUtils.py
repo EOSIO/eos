@@ -49,6 +49,9 @@ addEnum(BlockLogAction, "trim")
 addEnum(BlockLogAction, "smoke_test")
 addEnum(BlockLogAction, "return_blocks")
 addEnum(BlockLogAction, "prune_transactions")
+addEnum(BlockLogAction, "update_index")
+addEnum(BlockLogAction, "check_files")
+addEnum(BlockLogAction, "fix_corrupted_file")
 
 ###########################################################################################
 
@@ -422,6 +425,12 @@ class Utils:
             returnType=ReturnType.json
         elif blockLogAction==BlockLogAction.make_index:
             blockLogActionStr=" --make-index "
+        elif blockLogAction==BlockLogAction.update_index:
+            blockLogActionStr=" --update-index "
+        elif blockLogAction==BlockLogAction.check_files:
+            blockLogActionStr=" --check-files "
+        elif blockLogAction==BlockLogAction.fix_corrupted_file:
+            blockLogActionStr=" --fix-corrupted-file "
         elif blockLogAction==BlockLogAction.trim:
             blockLogActionStr=" --trim "
         elif blockLogAction==BlockLogAction.smoke_test:
