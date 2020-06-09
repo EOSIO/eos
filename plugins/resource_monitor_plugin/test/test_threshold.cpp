@@ -92,7 +92,7 @@ BOOST_AUTO_TEST_SUITE(threshol_tests)
       std::map<bfs::path, uintmax_t> availables {{"/test0", 200000}};
       std::map<bfs::path, int>       devs       {{"/test0", 0}};
 
-      BOOST_TEST(test_threshold_common(availables, devs) == false);
+      BOOST_TEST( !test_threshold_common(availables, devs) );
    }
 
    BOOST_FIXTURE_TEST_CASE(above_threshold_1_byte, threshold_fixture)
@@ -100,7 +100,7 @@ BOOST_AUTO_TEST_SUITE(threshol_tests)
       std::map<bfs::path, uintmax_t> availables {{"/test0", 199999}};
       std::map<bfs::path, int>       devs       {{"/test0", 0}};
 
-      BOOST_TEST(test_threshold_common(availables, devs)  == true);
+      BOOST_TEST( test_threshold_common(availables, devs) );
    }
 
    BOOST_FIXTURE_TEST_CASE(above_threshold_1000_byte, threshold_fixture)
@@ -108,7 +108,23 @@ BOOST_AUTO_TEST_SUITE(threshol_tests)
       std::map<bfs::path, uintmax_t> availables {{"/test0", 199000}};
       std::map<bfs::path, int>       devs       {{"/test0", 0}};
 
-      BOOST_TEST(test_threshold_common(availables, devs) == true);
+      BOOST_TEST( test_threshold_common(availables, devs) );
+   }
+
+   BOOST_FIXTURE_TEST_CASE(within_warning, threshold_fixture)
+   {
+      std::map<bfs::path, uintmax_t> availables {{"/test0", 249999}};
+      std::map<bfs::path, int>       devs       {{"/test0", 0}};
+
+      BOOST_TEST( !test_threshold_common(availables, devs) );
+   }
+
+   BOOST_FIXTURE_TEST_CASE(not_yet_warning, threshold_fixture)
+   {
+      std::map<bfs::path, uintmax_t> availables {{"/test0", 250001}};
+      std::map<bfs::path, int>       devs       {{"/test0", 0}};
+
+      BOOST_TEST( !test_threshold_common(availables, devs) );
    }
 
    BOOST_FIXTURE_TEST_CASE(below_threshold_1_byte, threshold_fixture)
@@ -116,7 +132,7 @@ BOOST_AUTO_TEST_SUITE(threshol_tests)
       std::map<bfs::path, uintmax_t> availables {{"/test0", 200001}};
       std::map<bfs::path, int>       devs       {{"/test0", 0}};
 
-      BOOST_TEST(test_threshold_common(availables, devs) == false);
+      BOOST_TEST( !test_threshold_common(availables, devs) );
    }
 
    BOOST_FIXTURE_TEST_CASE(below_threshold_500_byte, threshold_fixture)
@@ -124,7 +140,7 @@ BOOST_AUTO_TEST_SUITE(threshol_tests)
       std::map<bfs::path, uintmax_t> availables {{"/test0", 200500}};
       std::map<bfs::path, int>       devs       {{"/test0", 0}};
 
-      BOOST_TEST(test_threshold_common(availables, devs) == false);
+      BOOST_TEST( !test_threshold_common(availables, devs) );
    }
 
    BOOST_FIXTURE_TEST_CASE(first_file_system_over_threshold, threshold_fixture)
@@ -134,7 +150,7 @@ BOOST_AUTO_TEST_SUITE(threshol_tests)
       std::map<bfs::path, int>       devs       {{"/test0", 0},
                                                  {"/test1", 1}};
 
-      BOOST_TEST(test_threshold_common(availables, devs) == true);
+      BOOST_TEST( test_threshold_common(availables, devs) );
    }
 
    BOOST_FIXTURE_TEST_CASE(second_file_system_over_threshold, threshold_fixture)
@@ -144,7 +160,7 @@ BOOST_AUTO_TEST_SUITE(threshol_tests)
       std::map<bfs::path, int>       devs       {{"/test0", 0},
                                                  {"/test1", 1}};
 
-      BOOST_TEST(test_threshold_common(availables, devs) == true);
+      BOOST_TEST( test_threshold_common(availables, devs) );
    }
 
    BOOST_FIXTURE_TEST_CASE(no_file_system_over_threshold, threshold_fixture)
@@ -154,7 +170,7 @@ BOOST_AUTO_TEST_SUITE(threshol_tests)
       std::map<bfs::path, int>       devs       {{"/test0", 0},
                                                  {"/test1", 1}};
 
-      BOOST_TEST(test_threshold_common(availables, devs) == false);
+      BOOST_TEST( !test_threshold_common(availables, devs) );
    }
 
    BOOST_FIXTURE_TEST_CASE(both_file_systems_over_threshold, threshold_fixture)
@@ -164,7 +180,7 @@ BOOST_AUTO_TEST_SUITE(threshol_tests)
       std::map<bfs::path, int>       devs       {{"/test0", 0},
                                                  {"/test1", 1}};
 
-      BOOST_TEST(test_threshold_common(availables, devs) == true);
+      BOOST_TEST( test_threshold_common(availables, devs) );
    }
 
    BOOST_FIXTURE_TEST_CASE(one_of_three_over_threshold, threshold_fixture)
@@ -176,7 +192,7 @@ BOOST_AUTO_TEST_SUITE(threshol_tests)
                                                  {"/test1", 1},
                                                  {"/test2", 2}};
 
-      BOOST_TEST(test_threshold_common(availables, devs) == true);
+      BOOST_TEST( test_threshold_common(availables, devs) );
    }
 
    BOOST_FIXTURE_TEST_CASE(one_of_three_over_threshold_dup, threshold_fixture)
@@ -188,7 +204,7 @@ BOOST_AUTO_TEST_SUITE(threshol_tests)
                                                  {"/test1", 1},  // dup
                                                  {"/test2", 1}}; // dup
 
-      BOOST_TEST(test_threshold_common(availables, devs) == true);
+      BOOST_TEST( test_threshold_common(availables, devs) );
    }
 
    BOOST_FIXTURE_TEST_CASE(none_of_three_over_threshold, threshold_fixture)
@@ -200,7 +216,7 @@ BOOST_AUTO_TEST_SUITE(threshol_tests)
                                                  {"/test1", 1},
                                                  {"/test2", 2}};
 
-      BOOST_TEST(test_threshold_common(availables, devs) == false);
+      BOOST_TEST( !test_threshold_common(availables, devs) );
    }
 
    BOOST_FIXTURE_TEST_CASE(none_of_three_over_threshold_dup, threshold_fixture)
@@ -212,7 +228,7 @@ BOOST_AUTO_TEST_SUITE(threshol_tests)
                                                  {"/test1", 1},  // dup
                                                  {"/test2", 1}}; // dup
 
-      BOOST_TEST(test_threshold_common(availables, devs) == false);
+      BOOST_TEST( !test_threshold_common(availables, devs) );
    }
 
    BOOST_FIXTURE_TEST_CASE(warning_threshold_equal_to_threshold, threshold_fixture)
@@ -236,7 +252,7 @@ BOOST_AUTO_TEST_SUITE(threshol_tests)
       std::map<bfs::path, uintmax_t> availables {{"/test0", 200000}};
       std::map<bfs::path, int>       devs       {{"/test0", 0}};
 
-      BOOST_TEST( test_threshold_common(availables, devs, 70) == false );
+      BOOST_TEST( !test_threshold_common(availables, devs, 70) );
    }
 
    BOOST_FIXTURE_TEST_CASE(get_space_failure_in_middle, threshold_fixture)

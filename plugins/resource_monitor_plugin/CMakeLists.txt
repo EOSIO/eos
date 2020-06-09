@@ -2,6 +2,7 @@ file(GLOB HEADERS "include/eosio/resource_monitor_plugin/*.hpp")
 add_library( resource_monitor_plugin
              resource_monitor_plugin.cpp
              system_file_space_provider.cpp
+             resmon_impl.cpp
              ${HEADERS} )
 
 target_link_libraries( resource_monitor_plugin appbase fc chain_plugin)

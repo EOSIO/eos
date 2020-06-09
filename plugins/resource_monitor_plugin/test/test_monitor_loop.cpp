@@ -54,7 +54,7 @@ struct space_handler_fixture {
       return space_handler.is_threshold_exceeded();
    }
 
-   int space_monitor_loop() {
+   void space_monitor_loop() {
       return space_handler.space_monitor_loop();
    }
 
@@ -117,47 +117,42 @@ struct space_handler_fixture {
 BOOST_AUTO_TEST_SUITE(monitor_loop_tests)
    BOOST_FIXTURE_TEST_CASE(zero_loop, space_handler_fixture)
    {
-      BOOST_TEST(test_loop_common(0, 1)  == true);
+      BOOST_TEST( test_loop_common(0, 1) );
    }
 
    BOOST_FIXTURE_TEST_CASE(one_loop_1_secs_interval, space_handler_fixture)
    {
-     BOOST_TEST(test_loop_common(1, 1)  == true);
+     BOOST_TEST( test_loop_common(1, 1) );
    }
 
    BOOST_FIXTURE_TEST_CASE(two_loops_1_sec_interval, space_handler_fixture)
    {
-      BOOST_TEST(test_loop_common(2, 1)  == true);
+      BOOST_TEST( test_loop_common(2, 1) );
    }
 
    BOOST_FIXTURE_TEST_CASE(ten_loops_1_sec_interval, space_handler_fixture)
    {
-      BOOST_TEST(test_loop_common(10, 1)  == true);
+      BOOST_TEST( test_loop_common(10, 1) );
    }
 
    BOOST_FIXTURE_TEST_CASE(one_loop_5_secs_interval, space_handler_fixture)
    {
-      BOOST_TEST(test_loop_common(1, 5)  == true);
+      BOOST_TEST( test_loop_common(1, 5) );
    }
 
    BOOST_FIXTURE_TEST_CASE(two_loops_5_sec_interval, space_handler_fixture)
    {
-      BOOST_TEST(test_loop_common(2, 5)  == true);
+      BOOST_TEST( test_loop_common(2, 5) );
    }
 
    BOOST_FIXTURE_TEST_CASE(ten_loops_5_sec_interval, space_handler_fixture)
    {
-      BOOST_TEST(test_loop_common(10, 5)  == true);
+      BOOST_TEST( test_loop_common(10, 5) );
    }
 
-   BOOST_FIXTURE_TEST_CASE(one_hundred_twenty_loops_1_sec_interval, space_handler_fixture)
+   BOOST_FIXTURE_TEST_CASE(two_hundred_forty_loops_1_sec_interval, space_handler_fixture)
    {
-      BOOST_TEST(test_loop_common(120, 1)  == true);
-   }
-
-   BOOST_FIXTURE_TEST_CASE(one_loop_59_sec_interval, space_handler_fixture)
-   {
-      BOOST_TEST(test_loop_common(1, 59)  == true);
+      BOOST_TEST( test_loop_common(240, 1) );
    }
 
 BOOST_AUTO_TEST_SUITE_END()
