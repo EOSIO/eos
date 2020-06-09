@@ -48,6 +48,9 @@ struct blocklog {
    bool                             as_json_array = false;
    bool                             make_index = false;
    bool                             trim_log = false;
+   bool                             update_index = false;
+   bool                             fix_corrupted_file = false;
+   bool                             check_files = false;
    bool                             smoke_test = false;
    bool                             prune_transactions = false;
    bool                             help               = false;
@@ -186,10 +189,16 @@ void blocklog::set_program_options(options_description& cli)
           "Do not pretty print the output.  Useful if piping to jq to improve performance.")
          ("as-json-array", bpo::bool_switch(&as_json_array)->default_value(false),
           "Print out json blocks wrapped in json array (otherwise the output is free-standing json objects).")
+         ("check-files", bpo::bool_switch(&check_files)->default_value(false),
+          "Check  blocks.index and blocks.log. Must give 'blocks-dir'.")
          ("make-index", bpo::bool_switch(&make_index)->default_value(false),
-          "Create blocks.index from blocks.log. Must give 'blocks-dir'. Give 'output-file' relative to current directory or absolute path (default is <blocks-dir>/blocks.index).")
+          "Create a new blocks.index from blocks.log. Must give 'blocks-dir'. Give 'output-file' relative to current directory or absolute path (default is <blocks-dir>/blocks.index).")
+         ("update-index", bpo::bool_switch(&update_index)->default_value(false),
+          "Update blocks.index with the best effort to avoid creating a new index file. Must give 'blocks-dir'. Give 'output-file' relative to current directory or absolute path (default is <blocks-dir>/blocks.index).")
          ("trim-blocklog", bpo::bool_switch(&trim_log)->default_value(false),
           "Trim blocks.log and blocks.index. Must give 'blocks-dir' and 'first and/or 'last'.")
+         ("fix-corrupted-file", bpo::bool_switch(&fix_corrupted_file)->default_value(false),
+          "fix the corrupted end of blocks.log and blocks.index files by trimming the incomplete block. Must give 'blocks-dir'.")
          ("smoke-test", bpo::bool_switch(&smoke_test)->default_value(false),
           "Quick test that blocks.log and blocks.index are well formed and agree with each other.")
          ("block-num", bpo::value<uint32_t>()->default_value(0), "The block number which contains the transactions to be pruned")
@@ -233,6 +242,28 @@ bool trim_blocklog_front(bfs::path block_dir, uint32_t n) {        //n is first 
    return status;
 }
 
+void fix_corrupted_file(bfs::path block_dir) {
+   using namespace std;
+   cout << "\nFix corrupted blocks.log and blocks.index files in " << block_dir << '\n';
+   block_log log(block_dir, false);
+   log.fix_corrupted_file(block_dir);
+   cout << "\nno problems found\n";
+}
+
+void update_index(bfs::path block_dir) {
+   using namespace std;
+   cout << "\nUpdate blocks.index to blocks.log in " << block_dir << '\n';
+   block_log log(block_dir, true);
+   cout << "\nno problems found\n";
+}
+
+void check_files(bfs::path block_dir) {
+   using namespace std;
+   cout << "\nCheck blocks.index and blocks.log in " << block_dir << '\n';
+   block_log log(block_dir, false);
+   log.check_files();
+   cout << "\nno problems found\n";
+}
 
 void smoke_test(bfs::path block_dir) {
    using namespace std;
@@ -285,6 +316,14 @@ int main(int argc, char** argv) {
          cli.print(std::cerr);
          return 0;
       }
+      if (blog.fix_corrupted_file) {
+         fix_corrupted_file(vmap.at("blocks-dir").as<bfs::path>());
+         return 0;
+      }
+      if (blog.check_files) {
+         check_files(vmap.at("blocks-dir").as<bfs::path>());
+         return 0;
+      }
       if (blog.smoke_test) {
          smoke_test(vmap.at("blocks-dir").as<bfs::path>());
          return 0;
@@ -318,6 +357,10 @@ int main(int argc, char** argv) {
          block_log::construct_index(block_file.generic_string(), out_file.generic_string());
          fc::logger::get(DEFAULT_LOGGER).set_log_level(log_level);
          rt.report();
+         return 0;
+      }
+      if (blog.update_index) {
+         update_index(vmap.at("blocks-dir").as<bfs::path>());
          return 0;
       }
       if (blog.prune_transactions) {

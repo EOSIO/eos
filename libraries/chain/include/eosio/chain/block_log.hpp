@@ -34,7 +34,14 @@ namespace eosio { namespace chain {
 
    class block_log {
       public:
-         block_log(const fc::path& data_dir);
+         /**
+          * Constructor
+          * @param data_dir Directory of blocks.log and blocks.index files
+          * @param fix_index flag to indicate to fix blocks.index. By default it fixes the blocks.index
+          *                  For corrupted files, we need to disable the fixing index here.
+          */
+         block_log(const fc::path& data_dir, bool fix_index = true);
+
          block_log(block_log&& other) = default;
          ~block_log();
          
@@ -42,13 +49,25 @@ namespace eosio { namespace chain {
 
          void reset( const genesis_state& gs, const signed_block_ptr& genesis_block, packed_transaction::cf_compression_type segment_compression);
          void reset( const chain_id_type& chain_id, uint32_t first_block_num );
-         
+
          block_id_type    read_block_id_by_num(uint32_t block_num)const;
 
          std::unique_ptr<signed_block>   read_signed_block_by_num(uint32_t block_num) const;
 
          const signed_block_ptr&        head() const;
          uint32_t                       first_block_num() const;
+
+         /**
+          * fix blocks.log and/or blocks.index files if they have incomplete block at the end of file
+          * @param block_dir  Directory of blocks.log and blocks.index files
+          */
+         void fix_corrupted_file(const fc::path& block_dir);
+
+         /**
+          *
+          * @return
+          */
+         void check_files();
 
          static bool exists(const fc::path& data_dir);
          /**

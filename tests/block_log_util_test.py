@@ -203,6 +203,78 @@ try:
     # verify it shuts down cleanly
     cluster.getNode(2).interruptAndVerifyExitStatus()
 
+    # test for blocks.index
+    blockIndexFile.close();
+    blockIndexFileSize = os.path.getsize(blockIndexFileName)
+
+    #check_files call should succeed
+    output=cluster.getBlockLog(0, blockLogAction=BlockLogAction.check_files)
+    expectedStr="no problems found"
+    assert output.find(expectedStr) != -1, "Couldn't find \"%s\" in:\n\"%s\"\n" % (expectedStr, output)
+
+    blockIndexFile = open(blockIndexFileName, 'a')
+    # truncate blocks.index by 10 bytes
+    blockIndexFile.truncate(blockIndexFileSize - 10)
+    blockIndexFile.close()
+    truncatedBlockIndexFileSize = os.path.getsize(blockIndexFileName)
+    assert truncatedBlockIndexFileSize == blockIndexFileSize - 10, "blocks.index not truncated properly\n"
+
+    # check_files call should throw an exception
+    try:
+        output=cluster.getBlockLog(0, blockLogAction=BlockLogAction.check_files)
+        assert false,  "check_files call should have been failed!\n"
+    except:
+        Print("Caught an expected exception from check_files on corrupted blocks.index")
+
+    # fix-corrupted-file
+    output=cluster.getBlockLog(0, blockLogAction=BlockLogAction.fix_corrupted_file)
+    fixedBlockIndexFileSize = os.path.getsize(blockIndexFileName)
+    assert fixedBlockIndexFileSize == blockIndexFileSize - 16, "blocks.index not fixed properly\n"
+
+    # update-index
+    output=cluster.getBlockLog(0, blockLogAction=BlockLogAction.update_index)
+    updatedBlockIndexFileSize = os.path.getsize(blockIndexFileName)
+    assert updatedBlockIndexFileSize == blockIndexFileSize, "blocks.index not updated properly\n"
+
+    # check_files
+    output=cluster.getBlockLog(0, blockLogAction=BlockLogAction.check_files)
+    expectedStr="no problems found"
+    assert output.find(expectedStr) != -1, "Couldn't find \"%s\" in:\n\"%s\"\n" % (expectedStr, output)
+
+    # test for blocks.log
+    blockLogFileName=os.path.join(blockLogDir, "blocks.log")
+    blockIndexFileSize = os.path.getsize(blockIndexFileName)
+    blockLogFileSize = os.path.getsize(blockLogFileName)
+
+    blockLogFile = open(blockLogFileName, 'a')
+    # truncate blocks.log by 100 bytes
+    blockLogFile.truncate(blockLogFileSize - 100)
+    blockLogFile.close()
+    truncatedBlockLogFileSize = os.path.getsize(blockLogFileName)
+    assert truncatedBlockLogFileSize == blockLogFileSize - 100, "blocks.log not truncated properly\n"
+
+    # check_files should throw an exception
+    try:
+        output=cluster.getBlockLog(0, blockLogAction=BlockLogAction.check_files)
+        assert false, "check_files should have been failed on corrupted blocks.log"
+    except:
+        Print("Caught an expected exception from check_files on corrupted blocks.log")
+
+    # fix-corrupted-file
+    output=cluster.getBlockLog(0, blockLogAction=BlockLogAction.fix_corrupted_file)
+
+    # update-index
+    output=cluster.getBlockLog(0, blockLogAction=BlockLogAction.update_index)
+
+    # check_files
+    output=cluster.getBlockLog(0, blockLogAction=BlockLogAction.check_files)
+    expectedStr="no problems found"
+    assert output.find(expectedStr) != -1, "Couldn't find \"%s\" in:\n\"%s\"\n" % (expectedStr, output)
+
+    output=cluster.getBlockLog(0, blockLogAction=BlockLogAction.smoke_test)
+    expectedStr="no problems found"
+    assert output.find(expectedStr) != -1, "Couldn't find \"%s\" in:\n\"%s\"\n" % (expectedStr, output)
+
     testSuccessful=True
 
 finally:
