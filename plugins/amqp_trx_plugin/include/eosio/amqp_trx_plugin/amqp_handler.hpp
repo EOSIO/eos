@@ -68,7 +68,7 @@ private:
       queue.onError( [this]( const char* error_message ) {
          std::string err = "AMQP Queue error: " + std::string( error_message );
          fc_elog( logger_, err );
-         app().quit();
+         //app().quit();
       } );
    }
 };
