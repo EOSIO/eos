@@ -84,17 +84,9 @@ public:
    }
 
    void skip( long loc) {
-      if( loc < 0 ) {
-         if( 0 != fseek( _file.get(), loc, SEEK_CUR ) ) {
-            throw std::ios_base::failure( "cfile: " + _file_path.generic_string() +
-                                          " unable to SEEK_CUR to: " + std::to_string(loc) );
-         }
-      }
-      else while( loc > 0 ) {
-         char bit_bucket[4096];
-         auto read_max = std::min( long(sizeof(bit_bucket)), loc );
-         read( bit_bucket, read_max );
-         loc -= read_max;
+      if( 0 != fseek( _file.get(), loc, SEEK_CUR ) ) {
+         throw std::ios_base::failure( "cfile: " + _file_path.generic_string() +
+                                       " unable to SEEK_CUR to: " + std::to_string(loc) );
       }
    }
 

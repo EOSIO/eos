@@ -83,7 +83,7 @@ BOOST_AUTO_TEST_SUITE(cfile_test_suite)
       t.close();
       t.open("r");
       BOOST_CHECK(!t.eof());
-      BOOST_CHECK_THROW(t.skip(30), std::ios_base::failure);
+      t.skip(30);
       BOOST_CHECK(t.eof());
 
       t.close();
