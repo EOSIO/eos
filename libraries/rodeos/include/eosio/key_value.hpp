@@ -594,7 +594,7 @@ public:
             free(buffer);
          }
 
-         if (is_primary && actual_data_size > detail::max_stack_buffer_size) {
+         if (!is_primary && actual_data_size > detail::max_stack_buffer_size) {
             free(deserialize_buffer);
          }
 

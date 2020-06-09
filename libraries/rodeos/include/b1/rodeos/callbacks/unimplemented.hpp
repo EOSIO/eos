@@ -69,8 +69,6 @@ struct unimplemented_callbacks {
    int db_##IDX##_previous(int, int) { return unimplemented<int>("db_" #IDX "_previous"); }
 
    // database_api
-   DB_SECONDARY_INDEX_METHODS_SIMPLE(idx64)
-   DB_SECONDARY_INDEX_METHODS_SIMPLE(idx128)
    DB_SECONDARY_INDEX_METHODS_ARRAY(idx256)
    DB_SECONDARY_INDEX_METHODS_SIMPLE(idx_double)
    DB_SECONDARY_INDEX_METHODS_SIMPLE(idx_long_double)
@@ -177,8 +175,6 @@ struct unimplemented_callbacks {
    Rft::template add<&Derived::db_##IDX##_previous>("env", "db_" #IDX "_previous");
 
       // database_api
-      DB_SECONDARY_INDEX_METHODS_SIMPLE(idx64)
-      DB_SECONDARY_INDEX_METHODS_SIMPLE(idx128)
       DB_SECONDARY_INDEX_METHODS_ARRAY(idx256)
       DB_SECONDARY_INDEX_METHODS_SIMPLE(idx_double)
       DB_SECONDARY_INDEX_METHODS_SIMPLE(idx_long_double)

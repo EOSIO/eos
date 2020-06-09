@@ -7,8 +7,25 @@
 
 namespace b1::rodeos {
 
-class iterator_cache {
- private:
+using contract_index128 = eosio::ship_protocol::contract_index128;
+using contract_index64  = eosio::ship_protocol::contract_index64;
+using contract_row      = eosio::ship_protocol::contract_row;
+using contract_table    = eosio::ship_protocol::contract_table;
+
+struct chaindb_iterator_base {
+   int32_t                                 table_index = {};
+   uint64_t                                primary     = {};
+   std::vector<char>                       value;
+   int32_t                                 next = -1;
+   std::optional<int32_t>                  prev;
+   std::optional<chain_kv::view::iterator> view_it;
+};
+
+template <typename Derived, typename Iterator>
+class iterator_cache_base {
+ protected:
+   using iterator = Iterator;
+
    chain_kv::view& view;
 
    struct table_key {
@@ -30,17 +47,13 @@ class iterator_cache {
       friend bool                   operator<(const row_key& a, const row_key& b) { return a.order() < b.order(); }
    };
 
-   struct iterator {
-      int32_t                                 table_index = {};
-      uint64_t                                primary     = {};
-      std::vector<char>                       value;
-      int32_t                                 next = -1;
-      std::optional<int32_t>                  prev;
-      std::optional<chain_kv::view::iterator> view_it;
-   };
    std::vector<iterator>      iterators;
    std::vector<iterator>      end_iterators;
    std::map<row_key, int32_t> key_to_iterator_index;
+
+   iterator_cache_base(chain_kv::view& view) : view{ view } {}
+
+   Derived& derived() { return static_cast<Derived&>(*this); } // !!!
 
    int32_t get_table_index(table_key key) {
       auto map_it = table_to_index.find(key);
@@ -76,7 +89,7 @@ class iterator_cache {
             result = map_it->second;
          } else {
             eosio::input_stream stream{ view_it.get_kv()->value.data(), view_it.get_kv()->value.size() };
-            auto                row = std::get<0>(eosio::from_bin<eosio::ship_protocol::contract_row>(stream));
+            auto                row = std::get<0>(eosio::from_bin<contract_row>(stream));
             if (require_exact && row.primary_key != rk.key)
                return index_to_end_iterator(rk.table_index);
             map_it = key_to_iterator_index.find({ rk.table_index, row.primary_key });
@@ -106,9 +119,13 @@ class iterator_cache {
    size_t end_iterator_to_index(int32_t ei) const { return (-ei - 2); }
    // Precondition: indx < tables.size() <= std::numeric_limits<int32_t>::max()
    int32_t index_to_end_iterator(size_t indx) const { return -(indx + 2); }
+};
 
+struct chaindb_primary_iterator : chaindb_iterator_base {};
+
+class iterator_cache : public iterator_cache_base<iterator_cache, chaindb_primary_iterator> {
  public:
-   iterator_cache(chain_kv::view& view) : view{ view } {}
+   iterator_cache(chain_kv::view& view) : iterator_cache_base{ view } {}
 
    size_t db_get_i64(int itr, char* buffer, uint32_t buffer_size) {
       if (itr == -1)
@@ -154,7 +171,7 @@ class iterator_cache {
          return it.next;
       } else {
          eosio::input_stream stream{ view_it->get_kv()->value.data(), view_it->get_kv()->value.size() };
-         auto                row = std::get<0>(eosio::from_bin<eosio::ship_protocol::contract_row>(stream));
+         auto                row = std::get<0>(eosio::from_bin<contract_row>(stream));
          primary                 = row.primary_key;
          it.next                 = get_iterator({ it.table_index, primary }, std::move(*view_it));
          return it.next;
@@ -200,7 +217,7 @@ class iterator_cache {
          return *it->prev;
       } else {
          eosio::input_stream stream{ view_it->get_kv()->value.data(), view_it->get_kv()->value.size() };
-         auto                row = std::get<0>(eosio::from_bin<eosio::ship_protocol::contract_row>(stream));
+         auto                row = std::get<0>(eosio::from_bin<contract_row>(stream));
          primary                 = row.primary_key;
          it->prev                = get_iterator({ it->table_index, primary }, std::move(*view_it));
          return *it->prev;
@@ -235,8 +252,26 @@ class iterator_cache {
    }
 }; // iterator_cache
 
+template <typename Ship_index_type>
+struct chaindb_secondary_iterator : chaindb_iterator_base {};
+
+template <typename Ship_index_type>
+class secondary_iterator_cache : public iterator_cache_base<secondary_iterator_cache<Ship_index_type>,
+                                                            chaindb_secondary_iterator<Ship_index_type>> {
+ public:
+   using base =
+         iterator_cache_base<secondary_iterator_cache<Ship_index_type>, chaindb_secondary_iterator<Ship_index_type>>;
+   using secondary_type = std::decay_t<decltype(std::get<0>(std::declval<Ship_index_type>()).secondary_key)>;
+
+   eosio::name table_name;
+
+   secondary_iterator_cache(chain_kv::view& view, eosio::name table_name) : base{ view }, table_name{ table_name } {}
+};
+
 struct chaindb_state {
-   std::unique_ptr<rodeos::iterator_cache> iterator_cache;
+   std::unique_ptr<rodeos::iterator_cache>                      iterator_cache;
+   std::unique_ptr<secondary_iterator_cache<contract_index64>>  idx64;
+   std::unique_ptr<secondary_iterator_cache<contract_index128>> idx128;
 };
 
 template <typename Derived>
@@ -288,6 +323,65 @@ struct chaindb_callbacks {
       return get_iterator_cache().end(code, scope, table);
    }
 
+#define DB_SECONDARY_INDEX_METHODS_SIMPLE(NAME, TYPE)                                                                  \
+   auto& get_##NAME() {                                                                                                \
+      auto& chaindb_state = derived().get_chaindb_state();                                                             \
+      if (!chaindb_state.NAME)                                                                                         \
+         chaindb_state.NAME =                                                                                          \
+               std::make_unique<decltype(*chaindb_state.NAME)>(derived().get_db_view_state().kv_state.view);           \
+      return *chaindb_state.NAME;                                                                                      \
+   }                                                                                                                   \
+   int32_t db_##NAME##_store(uint64_t scope, uint64_t table, uint64_t payer, uint64_t id,                              \
+                             legacy_ptr<const TYPE> secondary) {                                                       \
+      throw std::runtime_error("unimplemented: db_" #NAME "_store");                                                   \
+   }                                                                                                                   \
+   void db_##NAME##_update(int32_t iterator, uint64_t payer, legacy_ptr<const TYPE> secondary) {                       \
+      throw std::runtime_error("unimplemented: db_" #NAME "_update");                                                  \
+   }                                                                                                                   \
+   void    db_##NAME##_remove(int32_t iterator) { throw std::runtime_error("unimplemented: db_" #NAME "_remove"); }    \
+   int32_t db_##NAME##_next(int32_t iterator, legacy_ptr<uint64_t> primary) {                                          \
+      throw std::runtime_error("unimplemented: db_" #NAME "_next");                                                    \
+   }                                                                                                                   \
+   int32_t db_##NAME##_previous(int32_t iterator, legacy_ptr<uint64_t> primary) {                                      \
+      throw std::runtime_error("unimplemented: db_" #NAME "_previous");                                                \
+   }                                                                                                                   \
+   int32_t db_##NAME##_find_primary(uint64_t code, uint64_t scope, uint64_t table, legacy_ptr<TYPE> secondary,         \
+                                    uint64_t primary) {                                                                \
+      throw std::runtime_error("unimplemented: db_" #NAME "_find_primary");                                            \
+   }                                                                                                                   \
+   int32_t db_##NAME##_find_secondary(uint64_t code, uint64_t scope, uint64_t table, legacy_ptr<const TYPE> secondary, \
+                                      legacy_ptr<uint64_t> primary) {                                                  \
+      throw std::runtime_error("unimplemented: db_" #NAME "_find_secondary");                                          \
+   }                                                                                                                   \
+   int32_t db_##NAME##_lowerbound(uint64_t code, uint64_t scope, uint64_t table, legacy_ptr<TYPE> secondary,           \
+                                  legacy_ptr<uint64_t> primary) {                                                      \
+      throw std::runtime_error("unimplemented: db_" #NAME "_lowerbound");                                              \
+   }                                                                                                                   \
+   int32_t db_##NAME##_upperbound(uint64_t code, uint64_t scope, uint64_t table, legacy_ptr<TYPE> secondary,           \
+                                  legacy_ptr<uint64_t> primary) {                                                      \
+      throw std::runtime_error("unimplemented: db_" #NAME "_upperbound");                                              \
+   }                                                                                                                   \
+   int32_t db_##NAME##_end(uint64_t code, uint64_t scope, uint64_t table) {                                            \
+      throw std::runtime_error("unimplemented: db_" #NAME "_end");                                                     \
+   }
+
+   DB_SECONDARY_INDEX_METHODS_SIMPLE(idx64, uint64_t)
+   DB_SECONDARY_INDEX_METHODS_SIMPLE(idx128, __uint128_t)
+
+#undef DB_SECONDARY_INDEX_METHODS_SIMPLE
+
+#define DB_SECONDARY_INDEX_METHODS_SIMPLE(IDX)                                                                         \
+   Rft::template add<&Derived::db_##IDX##_store>("env", "db_" #IDX "_store");                                          \
+   Rft::template add<&Derived::db_##IDX##_remove>("env", "db_" #IDX "_remove");                                        \
+   Rft::template add<&Derived::db_##IDX##_update>("env", "db_" #IDX "_update");                                        \
+   Rft::template add<&Derived::db_##IDX##_find_primary>("env", "db_" #IDX "_find_primary");                            \
+   Rft::template add<&Derived::db_##IDX##_find_secondary>("env", "db_" #IDX "_find_secondary");                        \
+   Rft::template add<&Derived::db_##IDX##_lowerbound>("env", "db_" #IDX "_lowerbound");                                \
+   Rft::template add<&Derived::db_##IDX##_upperbound>("env", "db_" #IDX "_upperbound");                                \
+   Rft::template add<&Derived::db_##IDX##_end>("env", "db_" #IDX "_end");                                              \
+   Rft::template add<&Derived::db_##IDX##_next>("env", "db_" #IDX "_next");                                            \
+   Rft::template add<&Derived::db_##IDX##_previous>("env", "db_" #IDX "_previous");
+
    template <typename Rft>
    static void register_callbacks() {
       // todo: preconditions
@@ -301,7 +395,12 @@ struct chaindb_callbacks {
       Rft::template add<&Derived::db_lowerbound_i64>("env", "db_lowerbound_i64");
       Rft::template add<&Derived::db_upperbound_i64>("env", "db_upperbound_i64");
       Rft::template add<&Derived::db_end_i64>("env", "db_end_i64");
+
+      DB_SECONDARY_INDEX_METHODS_SIMPLE(idx64)
+      DB_SECONDARY_INDEX_METHODS_SIMPLE(idx128)
    }
+
+#undef DB_SECONDARY_INDEX_METHODS_SIMPLE
 };
 
 } // namespace b1::rodeos
