@@ -111,10 +111,8 @@ BOOST_AUTO_TEST_SUITE(space_handler_tests)
       std::vector<int> available {500000,  1500000, 2500000, 3500000};
       std::vector<int> devs      {0,       1,       2,       3};
 
-      test_add_file_systems_common(capacity, available, devs);
-
       // As long as no exceptions, it is considered success.
-      BOOST_TEST(true == true);
+      BOOST_REQUIRE_NO_THROW(test_add_file_systems_common(capacity, available, devs));
    }
 
    BOOST_FIXTURE_TEST_CASE(same_file_system, add_file_system_fixture)
@@ -124,9 +122,7 @@ BOOST_AUTO_TEST_SUITE(space_handler_tests)
       std::vector<int> devs      {0,       0,       0,       0};
 
       // As long as no exceptions, it is considered success.
-      test_add_file_systems_common(capacity, available, devs);
-
-      BOOST_TEST(true == true);
+      BOOST_REQUIRE_NO_THROW(test_add_file_systems_common(capacity, available, devs));
    }
 
    BOOST_FIXTURE_TEST_CASE(mixed_file_systems, add_file_system_fixture)
@@ -136,9 +132,7 @@ BOOST_AUTO_TEST_SUITE(space_handler_tests)
       std::vector<int> devs      {0,       2,       2,       0,       3};
 
       // As long as no exceptions, it is considered success.
-      test_add_file_systems_common(capacity, available, devs);
-
-      BOOST_TEST(true == true);
+      BOOST_REQUIRE_NO_THROW(test_add_file_systems_common(capacity, available, devs));
    }
 
 BOOST_AUTO_TEST_SUITE_END()
