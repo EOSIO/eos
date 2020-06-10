@@ -16,7 +16,7 @@ target_include_directories( test_add_file_system PUBLIC "${CMAKE_CURRENT_SOURCE_
 
 add_test(NAME test_add_file_system COMMAND plugins/resource_monitor_plugin/test/test_add_file_system WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
-add_executable( test_resmom_impl test_resmom_impl.cpp )
-target_link_libraries( test_resmom_impl resource_monitor_plugin )
-target_include_directories( test_resmom_impl PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" )
-add_test(NAME test_resmom_impl COMMAND plugins/resource_monitor_plugin/test/test_resmom_impl WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+add_executable( test_resmon_plugin test_resmon_plugin.cpp )
+target_link_libraries( test_resmon_plugin resource_monitor_plugin )
+target_include_directories( test_resmon_plugin PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" )
+add_test(NAME test_resmon_plugin COMMAND plugins/resource_monitor_plugin/test/test_resmon_plugin WORKING_DIRECTORY ${CMAKE_BINARY_DIR})

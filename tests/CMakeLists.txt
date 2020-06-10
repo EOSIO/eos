@@ -164,16 +164,14 @@ set_property(TEST nodeos_repeat_transaction_lr_test PROPERTY LABELS long_running
 
 add_test(NAME cli_test COMMAND tests/cli_test.py WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
-<<<<<<< HEAD
 add_test(NAME plugin_http_api_test COMMAND tests/plugin_http_api_test.py WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_tests_properties(plugin_http_api_test PROPERTIES TIMEOUT 40)
 set_property(TEST plugin_http_api_test PROPERTY LABELS nonparallelizable_tests)
 
 add_subdirectory(se_tests)
-=======
+
 add_test(NAME resource_monitor_plugin_test COMMAND tests/resource_monitor_plugin_test.py WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_property(TEST resource_monitor_plugin_test PROPERTY LABELS long_running_tests)
->>>>>>> c931cfda3... Incorporated Bucky's comments, restructured to enable to test resource_monitor_plugin_impl, changed integration test script from Bash to Python
 
 if(ENABLE_COVERAGE_TESTING)
 

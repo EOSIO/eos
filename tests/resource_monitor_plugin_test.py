@@ -76,7 +76,7 @@ def prepareDirectories():
 def runNodeos(extraNodeosArgs, myTimeout):
     """Startup nodeos, wait for timeout (before forced shutdown) and collect output."""
     if debug: Print("Launching nodeos process.")
-    cmd="programs/nodeos/nodeos --config-dir rsmStaging/etc -e -p eosio --plugin eosio::chain_api_plugin --plugin eosio::history_api_plugin --plugin eosio::resource_monitor_plugin --data-dir " + dataDir + " "
+    cmd="programs/nodeos/nodeos --config-dir rsmStaging/etc -e -p eosio --plugin eosio::chain_api_plugin --plugin eosio::history_api_plugin --data-dir " + dataDir + " "
 
     cmd=cmd + extraNodeosArgs;
     if debug: Print("cmd: %s" % (cmd))
@@ -105,7 +105,7 @@ def testCommon(title, extraNodeosArgs, expectedMsgs):
 
     prepareDirectories()
 
-    timeout=90  # Leave sufficient time such nodeos can start up fully in any platforms
+    timeout=120  # Leave sufficient time such nodeos can start up fully in any platforms
     runNodeos(extraNodeosArgs, timeout)
 
     for msg in expectedMsgs:
@@ -113,11 +113,15 @@ def testCommon(title, extraNodeosArgs, expectedMsgs):
             errorExit ("Log should have contained \"%s\"" % (expectedMsgs))
 
 def testAll():
-    testCommon("All arguments", "--resource-monitor-space-threshold=85 --resource-monitor-interval-seconds=5 --resource-monitor-not-shutdown-on-threshold-exceeded", ["threshold set to 85", "interval set to 5", "Shutdown flag when threshold exceeded set to false"])
+    testCommon("Resmon enabled: all arguments", "--plugin  eosio::resource_monitor_plugin --resource-monitor-space-threshold=85 --resource-monitor-interval-seconds=5 --resource-monitor-not-shutdown-on-threshold-exceeded", ["threshold set to 85", "interval set to 5", "Shutdown flag when threshold exceeded set to false", "Creating and starting monitor thread"])
 
-    testCommon("No arguments supplied", "", ["interval set to 2", "threshold set to 90", "Shutdown flag when threshold exceeded set to true"])
+    # default arguments and default directories to be monitored
+    testCommon("Resmon not enabled: no arguments", "", ["interval set to 2", "threshold set to 90", "Shutdown flag when threshold exceeded set to true", "Creating and starting monitor thread", "snapshots's file system to be monitored", "blocks's file system to be monitored", "state's file system to be monitored"])
     
-    testCommon("Producer, Chain, State History and Trace Api with Resource Monitor", "--plugin eosio::state_history_plugin --state-history-dir=/tmp/state-history --disable-replay-opts --plugin eosio::trace_api_plugin --trace-dir=/tmp/trace --trace-no-abis", ["snapshots's file system to be monitored", "blocks's file system to be monitored", "state's file system to be monitored", "state-history's file system to be monitored", "trace's file system to be monitored"])
+    # default arguments with registered directories
+    testCommon("Resmon not enabled: Producer, Chain, State History and Trace Api", "--plugin eosio::state_history_plugin --state-history-dir=/tmp/state-history --disable-replay-opts --plugin eosio::trace_api_plugin --trace-dir=/tmp/trace --trace-no-abis", ["interval set to 2", "threshold set to 90", "Shutdown flag when threshold exceeded set to true", "snapshots's file system to be monitored", "blocks's file system to be monitored", "state's file system to be monitored", "state-history's file system to be monitored", "trace's file system to be monitored", "Creating and starting monitor thread"])
+
+    testCommon("Resmon enabled: Producer, Chain, State History and Trace Api", "--plugin  eosio::resource_monitor_plugin --plugin eosio::state_history_plugin --state-history-dir=/tmp/state-history --disable-replay-opts --plugin eosio::trace_api_plugin --trace-dir=/tmp/trace --trace-no-abis --resource-monitor-space-threshold=80 --resource-monitor-interval-seconds=3", ["snapshots's file system to be monitored", "blocks's file system to be monitored", "state's file system to be monitored", "state-history's file system to be monitored", "trace's file system to be monitored", "Creating and starting monitor thread", "threshold set to 80", "interval set to 3", "Shutdown flag when threshold exceeded set to true"])
 
 args = TestHelper.parse_args({"--keep-logs","--dump-error-details","-v","--leave-running","--clean-run"})
 debug=args.v
