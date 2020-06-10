@@ -33,7 +33,7 @@ public:
          , name_( std::move( name ) )
    {
       AMQP::Address amqp_address( address );
-      fc_dlog( logger_, "Connecting to AMQP address ${a} - Queue: ${q}...",
+      fc_ilog( logger_, "Connecting to AMQP address ${a} - Queue: ${q}...",
                ("a", std::string( amqp_address ))( "q", name_ ) );
 
       handler_ = std::make_unique<amqp_handler>( io_service );
