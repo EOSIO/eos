@@ -82,7 +82,7 @@ class Rodeos:
             shutil.rmtree(self.rodeosDir, ignore_errors=True)
 
     def waitTillReady(self):
-        Utils.waitForBool(lambda:  Utils.runCmdArrReturnStr(['curl', '-H', 'Accept: application/json', self.endpoint + 'v1/chain/get_info'], silentErrors=True) != "" , timeout=30)
+        Utils.waitForTruth(lambda:  Utils.runCmdArrReturnStr(['curl', '-H', 'Accept: application/json', self.endpoint + 'v1/chain/get_info'], silentErrors=True) != "" , timeout=30)
 
     def get_block(self, blockNum):
         request_body = { "block_num_or_id": blockNum }
