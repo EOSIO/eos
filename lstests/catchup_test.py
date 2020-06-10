@@ -39,18 +39,28 @@ def create_accounts(clus):
     raise BlockchainError(f"Failed to create test accounts with {TEST_PLUGIN}")
 
 
-def start_gen(clus, begin):
+def start_gen(clus):
     clus.info(">>> [Catch-up Test] Generate Transactions")
     clus.call("send_raw", url=START_URL, string_data=START_STR, node_id=1, level="trace")
     blks = 30
-    clus.info(f"Generation begins at block num {begin}")
+    begin = clus.get_head_block_number(node_id=0)
+    clus.info(f"Generation begins around block num {begin}")
     clus.debug(f"Wait {blks * 0.5} seconds for {blks} blocks...")
     time.sleep(blks * 0.5)
     end = clus.check_sync().block_num
     if end - begin < blks:
         raise BlockchainError(f"Blocks produced ({end - begin}) are fewer than expected ({blks})")
     clus.info(f"Generation ends at block num {end}")
-    return end
+    return (begin, end)
+
+
+def stop_gen(clus):
+    clus.info(">>> [Catch-up Test] Stop Generating Transactions")
+    begin = clus.get_head_block_number(node_id=0)
+    clus.call("send_raw", url=STOP_URL, node_id=1, level="trace")
+    blks = 5
+    clus.info(f"Generation stops around block num {begin}")
+    return begin
 
 
 def count_gen(clus, begin, end):
@@ -109,10 +119,12 @@ def main():
         testname = "Catch-up Test"
         clus.print_begin(testname)
         begin = create_accounts(clus)
-        end = start_gen(clus, begin)
-        count_gen(clus, begin, end)
+        (begin, end) = start_gen(clus)
         for i in range(CATCHUP_ROUNDS):
             end = catchup(clus, end, i+1)
+        end = stop_gen()
+        # ensure transaction generation was maintained the entire time
+        count_gen(clus, begin, end)
         clus.print_end(testname)
 
 if __name__ == "__main__":
