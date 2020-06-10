@@ -57,7 +57,12 @@ def start_gen(clus):
 def stop_gen(clus):
     clus.info(">>> [Catch-up Test] Stop Generating Transactions")
     begin = clus.get_head_block_number(node_id=0)
-    clus.call("send_raw", url=STOP_URL, node_id=1, level="trace")
+    try:
+        clus.call("send_raw", url=STOP_URL, node_id=1, level="trace")
+    except LauncherServiceError:
+        clus.warn("Failed to stop generation, this is likely due to the txn_test_gen_plugin having already stopped." +
+                  "If this is a problem, count_gen will identify it.")
+
     blks = 5
     clus.info(f"Generation stops around block num {begin}")
     return begin

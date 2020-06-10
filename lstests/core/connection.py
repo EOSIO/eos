@@ -135,5 +135,6 @@ class Connection:
         ret["url"] = self.url
         ret["data"] = self.data
         ret["send_time"] = self.send_time
+        ret["current_time"] = helper.get_time()
         ret["response"] = self.response_text
         return ret
