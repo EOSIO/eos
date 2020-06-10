@@ -184,7 +184,7 @@ class iterator_cache : public iterator_cache_base<iterator_cache, chaindb_primar
          const auto& table_key = tables[it.table_index];
          view_it =
                chain_kv::view::iterator{ view, state_account.value,
-                                         chain_kv::to_slice(eosio::convert_to_key(std::make_tuple( //
+                                         chain_kv::to_slice(eosio::convert_to_key(std::make_tuple(
                                                (uint8_t)0x01, eosio::name{ "contract.row" }, eosio::name{ "primary" },
                                                table_key.code, table_key.table, table_key.scope))) };
          view_it->lower_bound(eosio::convert_to_key(std::make_tuple((uint8_t)0x01, eosio::name{ "contract.row" },
@@ -278,7 +278,11 @@ class iterator_cache : public iterator_cache_base<iterator_cache, chaindb_primar
 }; // iterator_cache
 
 template <typename Ship_index_type>
-struct chaindb_secondary_iterator : chaindb_iterator_base {};
+struct chaindb_secondary_iterator : chaindb_iterator_base {
+   using secondary_type = std::decay_t<decltype(std::get<0>(std::declval<Ship_index_type>()).secondary_key)>;
+
+   secondary_type secondary = {};
+};
 
 template <typename Ship_index_type>
 class secondary_iterator_cache : public iterator_cache_base<secondary_iterator_cache<Ship_index_type>,
@@ -287,10 +291,60 @@ class secondary_iterator_cache : public iterator_cache_base<secondary_iterator_c
    using base =
          iterator_cache_base<secondary_iterator_cache<Ship_index_type>, chaindb_secondary_iterator<Ship_index_type>>;
    using secondary_type = std::decay_t<decltype(std::get<0>(std::declval<Ship_index_type>()).secondary_key)>;
+   using typename base::iterator;
 
    eosio::name table_name;
 
+   struct whole_key {
+      secondary_type secondary = {};
+      uint64_t       primary   = {};
+
+      auto        order() const { return std::tie(secondary, primary); }
+      friend bool operator<(const whole_key& a, const whole_key& b) { return a.order() < b.order(); }
+   };
+
+   std::map<typename base::template table_index_key<whole_key>, int32_t> secondary_to_iterator_index;
+
    secondary_iterator_cache(chain_kv::view& view, eosio::name table_name) : base{ view }, table_name{ table_name } {}
+
+   template <typename T>
+   std::pair<size_t, iterator*> create_iterator(int32_t table_index, T& record) {
+      auto [pos, it] = base::create_iterator(table_index, record);
+      it->secondary  = record.secondary_key;
+      secondary_to_iterator_index[{ table_index, { record.secondary_key, record.primary_key } }] = pos;
+      return { pos, it };
+   }
+
+   int32_t get_iterator(int32_t table_index, chain_kv::view::iterator&& view_it, secondary_type& secondary,
+                        uint64_t& primary, bool require_exact) {
+      auto itr = base::template get_iterator_impl<Ship_index_type>(
+            table_index, whole_key{ secondary, 0 }, std::move(view_it), secondary_to_iterator_index,
+            [&](auto& record) { return !require_exact || record.secondary_key == secondary; },
+            [&](auto& record) {
+               return whole_key{ record.secondary_key, record.primary_key };
+            });
+      if (itr < 0)
+         return itr;
+      secondary = base::iterators[itr].secondary;
+      primary   = base::iterators[itr].primary;
+      return itr;
+   }
+
+   int32_t lower_bound(uint64_t code, uint64_t scope, uint64_t table, secondary_type& secondary, uint64_t& primary,
+                       bool require_exact) {
+      int32_t table_index = base::get_table_index({ code, table, scope });
+      if (table_index < 0)
+         return -1;
+      auto map_it = secondary_to_iterator_index.lower_bound({ table_index, { secondary, 0 } });
+      if (map_it != secondary_to_iterator_index.end() && map_it->first.key.secondary == secondary)
+         return map_it->second;
+      chain_kv::view::iterator it{ base::view, state_account.value,
+                                   chain_kv::to_slice(eosio::convert_to_key(std::make_tuple(
+                                         (uint8_t)0x01, table_name, eosio::name{ "secondary" }, code, table, scope))) };
+      it.lower_bound(eosio::convert_to_key(
+            std::make_tuple((uint8_t)0x01, table_name, eosio::name{ "secondary" }, code, table, scope, secondary, 0)));
+      return get_iterator(table_index, std::move(it), secondary, primary, require_exact);
+   }
 };
 
 struct chaindb_state {
@@ -348,12 +402,12 @@ struct chaindb_callbacks {
       return get_iterator_cache().end(code, scope, table);
    }
 
-#define DB_SECONDARY_INDEX_METHODS_SIMPLE(NAME, TYPE)                                                                  \
+#define IMPL_SECONDARY(NAME, TYPE, TABLE_NAME)                                                                         \
    auto& get_##NAME() {                                                                                                \
       auto& chaindb_state = derived().get_chaindb_state();                                                             \
       if (!chaindb_state.NAME)                                                                                         \
-         chaindb_state.NAME =                                                                                          \
-               std::make_unique<decltype(*chaindb_state.NAME)>(derived().get_db_view_state().kv_state.view);           \
+         chaindb_state.NAME = std::make_unique<decltype(chaindb_state::NAME)::element_type>(                           \
+               derived().get_db_view_state().kv_state.view, TABLE_NAME);                                               \
       return *chaindb_state.NAME;                                                                                      \
    }                                                                                                                   \
    int32_t db_##NAME##_store(uint64_t scope, uint64_t table, uint64_t payer, uint64_t id,                              \
@@ -380,7 +434,7 @@ struct chaindb_callbacks {
    }                                                                                                                   \
    int32_t db_##NAME##_lowerbound(uint64_t code, uint64_t scope, uint64_t table, legacy_ptr<TYPE> secondary,           \
                                   legacy_ptr<uint64_t> primary) {                                                      \
-      throw std::runtime_error("unimplemented: db_" #NAME "_lowerbound");                                              \
+      return get_##NAME().lower_bound(code, scope, table, *secondary, *primary, false);                                \
    }                                                                                                                   \
    int32_t db_##NAME##_upperbound(uint64_t code, uint64_t scope, uint64_t table, legacy_ptr<TYPE> secondary,           \
                                   legacy_ptr<uint64_t> primary) {                                                      \
@@ -390,12 +444,12 @@ struct chaindb_callbacks {
       throw std::runtime_error("unimplemented: db_" #NAME "_end");                                                     \
    }
 
-   DB_SECONDARY_INDEX_METHODS_SIMPLE(idx64, uint64_t)
-   DB_SECONDARY_INDEX_METHODS_SIMPLE(idx128, __uint128_t)
+   IMPL_SECONDARY(idx64, uint64_t, eosio::name{ "contract.i1" })
+   IMPL_SECONDARY(idx128, __uint128_t, eosio::name{ "contract.i2" })
 
-#undef DB_SECONDARY_INDEX_METHODS_SIMPLE
+#undef IMPL_SECONDARY
 
-#define DB_SECONDARY_INDEX_METHODS_SIMPLE(IDX)                                                                         \
+#define REGISTER_SECONDARY(IDX)                                                                                        \
    Rft::template add<&Derived::db_##IDX##_store>("env", "db_" #IDX "_store");                                          \
    Rft::template add<&Derived::db_##IDX##_remove>("env", "db_" #IDX "_remove");                                        \
    Rft::template add<&Derived::db_##IDX##_update>("env", "db_" #IDX "_update");                                        \
@@ -421,11 +475,11 @@ struct chaindb_callbacks {
       Rft::template add<&Derived::db_upperbound_i64>("env", "db_upperbound_i64");
       Rft::template add<&Derived::db_end_i64>("env", "db_end_i64");
 
-      DB_SECONDARY_INDEX_METHODS_SIMPLE(idx64)
-      DB_SECONDARY_INDEX_METHODS_SIMPLE(idx128)
+      REGISTER_SECONDARY(idx64)
+      REGISTER_SECONDARY(idx128)
    }
 
-#undef DB_SECONDARY_INDEX_METHODS_SIMPLE
+#undef REGISTER_SECONDARY
 };
 
 } // namespace b1::rodeos
