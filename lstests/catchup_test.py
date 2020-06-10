@@ -122,7 +122,7 @@ def main():
         (begin, end) = start_gen(clus)
         for i in range(CATCHUP_ROUNDS):
             end = catchup(clus, end, i+1)
-        end = stop_gen()
+        end = stop_gen(clus)
         # ensure transaction generation was maintained the entire time
         count_gen(clus, begin, end)
         clus.print_end(testname)
