@@ -181,6 +181,7 @@ void amqp_trx_plugin::plugin_startup() {
    handle_sighup();
    try {
 
+      fc_ilog( logger, "Starting amqp_trx_plugin" );
       my->thread_pool.emplace( "amqp_t", 1 );
 
       my->amqp_trx.emplace( logger, my->thread_pool->get_executor(), my->amqp_trx_address, "trx" );
