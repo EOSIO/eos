@@ -225,7 +225,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
    cfg.add_options()
          ("blocks-dir", bpo::value<bfs::path>()->default_value("blocks"),
           "the location of the blocks directory (absolute path or relative to application data dir)")
-         ("blocks-split-factor", bpo::value<uint64_t>()->default_value(config::default_blocks_split_factor),
+         ("blocks-split-factor", bpo::value<uint32_t>()->default_value(config::default_blocks_log_stride),
          "split the block log file when the head block number is the multiple of the split factor")
          ("max-retained-block-files", bpo::value<uint16_t>()->default_value(config::default_max_retained_block_files),
           "the maximum number of blocks files to retain so that the blocks in those files can be queried.\n" 
@@ -747,8 +747,8 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       my->chain_config->blocks_dir = my->blocks_dir;
       my->chain_config->state_dir = app().data_dir() / config::default_state_dir_name;
       my->chain_config->read_only = my->readonly;
-      my->chain_config->blocks_archive_dir = options.at("blocks-archive-dir").as<std::string>();
-      my->chain_config->blocks_split_factor = options.at("blocks-split-factor").as<uint32_t>();
+      my->chain_config->blocks_archive_dir = options.at("blocks-archive-dir").as<bfs::path>();
+      my->chain_config->blocks_log_stride  = options.at("blocks-split-factor").as<uint32_t>();
       my->chain_config->max_retained_block_files = options.at("max-retained-block-files").as<uint16_t>();
 
       if( options.count( "chain-state-db-size-mb" ))

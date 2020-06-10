@@ -75,7 +75,7 @@ namespace eosio { namespace chain {
             uint32_t                 sig_cpu_bill_pct           = chain::config::default_sig_cpu_bill_pct;
             uint16_t                 thread_pool_size           = chain::config::default_controller_thread_pool_size;
             uint16_t                 max_retained_block_files   = chain::config::default_max_retained_block_files;
-            uint64_t                 blocks_split_factor        = chain::config::default_blocks_split_factor;
+            uint64_t                 blocks_log_stride          = chain::config::default_blocks_log_stride;
             fc::microseconds         abi_serializer_max_time_us = fc::microseconds(chain::config::default_abi_serializer_max_time_us);
             bool                     read_only                  = false;
             bool                     force_all_checks           = false;
