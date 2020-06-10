@@ -1072,6 +1072,16 @@ struct callbacks {
                  "Bad key-value iterator");
    }
 
+   uint32_t sign(span<const char> private_key, const void* hash_val, span<char> signature) {
+      auto k = unpack<fc::crypto::private_key>(private_key);
+      fc::sha256 hash;
+      std::memcpy(hash.data(), hash_val, hash.data_size());
+      auto sig = k.sign(hash);
+      auto data = fc::raw::pack(sig);
+      std::memcpy(signature.data(), data.data(), std::min(signature.size(), data.size()));
+      return data.size();
+   }
+
    void sha1(span<const char> data, void* hash_val) {
       auto hash = fc::sha1::hash(data.data(), data.size());
       check_bounds(hash_val, hash.data_size());
@@ -1170,6 +1180,7 @@ void register_callbacks() {
    rhf_t::add<&callbacks::kv_it_lower_bound>("env", "kv_it_lower_bound");
    rhf_t::add<&callbacks::kv_it_key>("env", "kv_it_key");
    rhf_t::add<&callbacks::kv_it_value>("env", "kv_it_value");
+   rhf_t::add<&callbacks::sign>("env", "sign");
    rhf_t::add<&callbacks::sha1>("env", "sha1");
    rhf_t::add<&callbacks::sha256>("env", "sha256");
    rhf_t::add<&callbacks::sha512>("env", "sha512");

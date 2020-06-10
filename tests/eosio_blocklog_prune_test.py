@@ -127,7 +127,7 @@ try:
     #
     #  restart the producer node with pruned cfd
     #
-    isRelaunchSuccess = producerNode.relaunch(producerNodeIndex)
+    isRelaunchSuccess = producerNode.relaunch()
     assert isRelaunchSuccess, "Fail to relaunch full producer node"
 
     #
@@ -147,10 +147,10 @@ try:
     #
     #  restart both full and light validation node
     #
-    isRelaunchSuccess = fullValidationNode.relaunch(fullValidationNodeIndex)
+    isRelaunchSuccess = fullValidationNode.relaunch()
     assert isRelaunchSuccess, "Fail to relaunch full verification node"
 
-    isRelaunchSuccess = lightValidationNode.relaunch(lightValidationNodeIndex)
+    isRelaunchSuccess = lightValidationNode.relaunch()
     assert isRelaunchSuccess, "Fail to relaunch light verification node"
 
     #

@@ -1,8 +1,9 @@
 #pragma once
 #include <appbase/application.hpp>
 #include <fc/exception/exception.hpp>
-
 #include <fc/reflect/reflect.hpp>
+#include <fc/io/json.hpp>
+#include <eosio/chain/exceptions.hpp>
 
 namespace eosio {
    using namespace appbase;
@@ -157,6 +158,40 @@ namespace eosio {
 
       error_info error;
    };
+
+   enum class http_params_types {
+      no_params_required = 0,
+      params_required = 1,
+      possible_no_params = 2
+   };
+
+   template<typename T, http_params_types params_type>
+   T parse_params(const std::string& body) {
+      if constexpr (params_type == http_params_types::params_required) {
+         if (body.empty()) {
+            EOS_THROW(chain::invalid_http_request, "A Request body is required");
+         }
+      }
+
+      try {
+         try {
+            if constexpr (params_type == http_params_types::no_params_required || params_type == http_params_types::possible_no_params) {
+               if (body.empty()) {
+                  if constexpr (std::is_same_v<T, std::string>) {
+                     return std::string("{}");
+                  }
+                  return {};
+               }
+               if constexpr (params_type == http_params_types::no_params_required) {
+                  EOS_THROW(chain::invalid_http_request, "no parameter should be given");
+               }
+            }
+            return fc::json::from_string(body).as<T>();
+         } catch (const chain::chain_exception& e) { // EOS_RETHROW_EXCEPTIONS does not re-type these so, re-code it
+            throw fc::exception(e);
+         }
+      } EOS_RETHROW_EXCEPTIONS(chain::invalid_http_request, "Unable to parse valid input from POST body");
+   }
 }
 
 FC_REFLECT(eosio::error_results::error_info::error_detail, (message)(file)(line_number)(method))

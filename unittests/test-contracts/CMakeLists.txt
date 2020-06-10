@@ -7,6 +7,10 @@ if ("${CMAKE_GENERATOR}" STREQUAL "Ninja")
    add_compile_options(-fcolor-diagnostics)
 endif()
 
+if( USE_EOSIO_CDT_1_7_X )
+   add_definitions(-DUSE_EOSIO_CDT_1_7_X=true)
+endif()
+
 add_subdirectory( asserter )
 add_subdirectory( deferred_test )
 add_subdirectory( get_sender_test )

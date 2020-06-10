@@ -46,9 +46,13 @@ std::vector<augmented_transaction_trace> transaction_trace_cache::prepare_traces
                  "missing trace for transaction ${id}", ("id", id));
       traces.push_back(it->second);
    }
+   clear();
+   return traces;
+}
+
+void transaction_trace_cache::clear() {
    this->cached_traces.clear();
    this->onblock_trace.reset();
-   return traces;
 }
 
 }} // namespace eosio::state_history

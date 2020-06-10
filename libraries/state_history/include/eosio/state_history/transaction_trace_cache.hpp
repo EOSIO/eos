@@ -17,6 +17,8 @@ struct transaction_trace_cache {
    void add_transaction(const transaction_trace_ptr& trace, const packed_transaction_ptr& transaction);
 
    std::vector<augmented_transaction_trace> prepare_traces(const block_state_ptr& block_state);
+
+   void clear();
 };
 
 } // namespace state_history

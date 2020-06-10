@@ -102,7 +102,7 @@ try:
 
     # Restart irr node and ensure the snapshot is still identical
     irrNode.kill(signal.SIGTERM)
-    isRelaunchSuccess = irrNode.relaunch(irrNodeId, "", timeout=5, cachePopen=True)
+    isRelaunchSuccess = irrNode.relaunch(timeout=5, cachePopen=True)
     assert isRelaunchSuccess, "Fail to relaunch"
     res = irrNode.createSnapshot()
     afterShutdownSnapshotPath = res["snapshot_name"]

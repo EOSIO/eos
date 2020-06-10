@@ -125,6 +125,10 @@ class state_history_traces_log : public state_history_log {
 
    std::vector<state_history::transaction_trace> get_traces(block_num_type block_num);
 
+   void block_start(uint32_t block_num) {
+      cache.clear();
+   }
+
    void store(const chainbase::database& db, const chain::block_state_ptr& block_state);
 
    /**

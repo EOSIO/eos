@@ -36,10 +36,10 @@ walletMgr=WalletMgr(True)
 cluster=Cluster(walletd=True)
 cluster.setWalletMgr(walletMgr)
 
-def restartNode(node: Node, nodeId, chainArg=None, addSwapFlags=None, nodeosPath=None):
+def restartNode(node: Node, chainArg=None, addSwapFlags=None, nodeosPath=None):
     if not node.killed:
         node.kill(signal.SIGTERM)
-    isRelaunchSuccess = node.relaunch(nodeId, chainArg, addSwapFlags=addSwapFlags,
+    isRelaunchSuccess = node.relaunch(chainArg, addSwapFlags=addSwapFlags,
                                       timeout=5, cachePopen=True, nodeosPath=nodeosPath)
     assert isRelaunchSuccess, "Fail to relaunch"
 
@@ -61,7 +61,7 @@ def waitUntilBeginningOfProdTurn(node, producerName, timeout=30, sleepTime=0.4):
 def waitForOneRound():
     time.sleep(24) # We have 4 producers for this test
 
-def setValidityOfActTimeSubjRestriction(node, nodeId, codename, valid):
+def setValidityOfActTimeSubjRestriction(node, codename, valid):
     invalidActTimeSubjRestriction = {
         "earliest_allowed_activation_time": "2030-01-01T00:00:00.000",
     }
@@ -69,8 +69,8 @@ def setValidityOfActTimeSubjRestriction(node, nodeId, codename, valid):
         "earliest_allowed_activation_time": "1970-01-01T00:00:00.000",
     }
     actTimeSubjRestriction = validActTimeSubjRestriction if valid else invalidActTimeSubjRestriction
-    node.modifyBuiltinPFSubjRestrictions(nodeId, codename, actTimeSubjRestriction)
-    restartNode(node, nodeId)
+    node.modifyBuiltinPFSubjRestrictions(codename, actTimeSubjRestriction)
+    restartNode(node)
 
 def waitUntilBlockBecomeIrr(node, blockNum, timeout=60):
     def hasBlockBecomeIrr():
@@ -142,8 +142,8 @@ try:
     # Therefore, 1st node will be out of sync with 2nd, 3rd, and 4th node
     # After a round has passed though, 1st node will realize he's in minority fork and then join the other nodes
     # Hence, the PREACTIVATE_FEATURE that was previously activated will be dropped and all of the nodes should be in sync
-    setValidityOfActTimeSubjRestriction(newNodes[1], newNodeIds[1], "PREACTIVATE_FEATURE", False)
-    setValidityOfActTimeSubjRestriction(newNodes[2], newNodeIds[2], "PREACTIVATE_FEATURE", False)
+    setValidityOfActTimeSubjRestriction(newNodes[1], "PREACTIVATE_FEATURE", False)
+    setValidityOfActTimeSubjRestriction(newNodes[2], "PREACTIVATE_FEATURE", False)
 
     waitUntilBeginningOfProdTurn(newNodes[0], "defproducera")
     newNodes[0].activatePreactivateFeature()
@@ -163,8 +163,8 @@ try:
     # They will be in sync and their LIB will advance since they control > 2/3 of the producers
     # Also the LIB should be able to advance past the block that contains PREACTIVATE_FEATURE
     # However, the 4th node will be out of sync with them, and its LIB will stuck
-    setValidityOfActTimeSubjRestriction(newNodes[1], newNodeIds[1], "PREACTIVATE_FEATURE", True)
-    setValidityOfActTimeSubjRestriction(newNodes[2], newNodeIds[2], "PREACTIVATE_FEATURE", True)
+    setValidityOfActTimeSubjRestriction(newNodes[1], "PREACTIVATE_FEATURE", True)
+    setValidityOfActTimeSubjRestriction(newNodes[2], "PREACTIVATE_FEATURE", True)
 
     waitUntilBeginningOfProdTurn(newNodes[0], "defproducera")
     libBeforePreactivation = newNodes[0].getIrreversibleBlockNum()
@@ -191,11 +191,11 @@ try:
     portableRevBlkPath = os.path.join(Utils.getNodeDataDir(oldNodeId), "rev_blk_portable_format")
     oldNode.kill(signal.SIGTERM)
     # Note, for the following relaunch, these will fail to relaunch immediately (expected behavior of export/import), so the chainArg will not replace the old cmd
-    oldNode.relaunch(oldNodeId, chainArg="--export-reversible-blocks {}".format(portableRevBlkPath), timeout=1)
-    oldNode.relaunch(oldNodeId, chainArg="--import-reversible-blocks {}".format(portableRevBlkPath), timeout=1, nodeosPath="programs/nodeos/nodeos")
+    oldNode.relaunch(chainArg="--export-reversible-blocks {}".format(portableRevBlkPath), timeout=1)
+    oldNode.relaunch(chainArg="--import-reversible-blocks {}".format(portableRevBlkPath), timeout=1, nodeosPath="programs/nodeos/nodeos")
     os.remove(portableRevBlkPath)
 
-    restartNode(oldNode, oldNodeId, chainArg="--replay", nodeosPath="programs/nodeos/nodeos")
+    restartNode(oldNode, chainArg="--replay", nodeosPath="programs/nodeos/nodeos")
     time.sleep(2) # Give some time to replay
 
     assert areNodesInSync(allNodes), "All nodes should be in sync"
