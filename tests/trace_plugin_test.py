@@ -16,9 +16,10 @@ from core_symbol import CORE_SYMBOL
 class TraceApiPluginTest(unittest.TestCase):
     sleep_s = 1
     cluster=Cluster(walletd=True, defproduceraPrvtKey=None)
-    walletMgr=WalletMgr(True, TestHelper.DEFAULT_PORT, TestHelper.LOCAL_HOST, TestHelper.DEFAULT_WALLET_PORT, TestHelper.LOCAL_HOST)
+    walletMgr=WalletMgr(True)
     accounts = []
     account_names = ["alice", "bob", "charlie"]
+    cluster.setWalletMgr(walletMgr)
 
     # kill nodeos and keosd and clean up dir
     def cleanEnv(self) :
@@ -29,9 +30,8 @@ class TraceApiPluginTest(unittest.TestCase):
 
     # start keosd and nodeos
     def startEnv(self) :
-        self.walletMgr.launch()
-#        self.cluster.setWalletMgr(self.walletMgr)
         self.cluster.launch(totalNodes=1, enableTrace=True)
+        self.walletMgr.launch()
         testWalletName="testwallet"
         testWallet=self.walletMgr.create(testWalletName, [self.cluster.eosioAccount, self.cluster.defproduceraAccount])
         self.cluster.validateAccounts(None)
@@ -81,9 +81,9 @@ class TraceApiPluginTest(unittest.TestCase):
         self.cleanEnv(self)
         self.startEnv(self)
 
-    #@classmethod
-    #def tearDownClass(self):
-    #    self.cleanEnv(self)
+    @classmethod
+    def tearDownClass(self):
+        self.cleanEnv(self)
 
 if __name__ == "__main__":
     unittest.main()
