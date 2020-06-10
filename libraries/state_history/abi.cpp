@@ -50,6 +50,17 @@ extern const char* const state_history_plugin_abi = R"({
             ]
         },
         {
+            "name": "get_blocks_result_v1", "fields": [
+                { "name": "head", "type": "block_position" },
+                { "name": "last_irreversible", "type": "block_position" },
+                { "name": "this_block", "type": "block_position?" },
+                { "name": "prev_block", "type": "block_position?" },
+                { "name": "block", "type": "signed_block?" },
+                { "name": "traces", "type": "bytes" },
+                { "name": "deltas", "type": "bytes" }
+            ]
+        },
+        {
             "name": "row", "fields": [
                 { "name": "present", "type": "bool" },
                 { "name": "data", "type": "bytes" }
@@ -138,6 +149,18 @@ extern const char* const state_history_plugin_abi = R"({
             ]
         },
         {
+            "name": "partial_transaction_v1", "fields": [
+                { "name": "expiration", "type": "time_point_sec" },
+                { "name": "ref_block_num", "type": "uint16" },
+                { "name": "ref_block_prefix", "type": "uint32" },
+                { "name": "max_net_usage_words", "type": "varuint32" },
+                { "name": "max_cpu_usage_ms", "type": "uint8" },
+                { "name": "delay_sec", "type": "varuint32" },
+                { "name": "transaction_extensions", "type": "extension[]" },
+                { "name": "prunable_data", "type": "prunable_data_type?" }
+            ]
+        },
+        {
             "name": "transaction_trace_v0", "fields": [
                 { "name": "id", "type": "checksum256" },
                 { "name": "status", "type": "uint8" },
@@ -155,10 +178,17 @@ extern const char* const state_history_plugin_abi = R"({
             ]
         },
         {
-            "name": "packed_transaction", "fields": [
+            "name": "packed_transaction_v0", "fields": [
                 { "name": "signatures", "type": "signature[]" },
                 { "name": "compression", "type": "uint8" },
                 { "name": "packed_context_free_data", "type": "bytes" },
+                { "name": "packed_trx", "type": "bytes" }
+            ]
+        },
+        {
+            "name": "packed_transaction_v1", "fields": [
+                { "name": "compression", "type": "uint8" },
+                { "name": "prunable_data", "type": "prunable_data_type" },
                 { "name": "packed_trx", "type": "bytes" }
             ]
         },
@@ -170,8 +200,13 @@ extern const char* const state_history_plugin_abi = R"({
             ]
         },
         {
-            "name": "transaction_receipt", "base": "transaction_receipt_header", "fields": [
-                { "name": "trx", "type": "transaction_variant" }
+            "name": "transaction_receipt_v0", "base": "transaction_receipt_header", "fields": [
+                { "name": "trx", "type": "transaction_variant_v0" }
+            ]
+        },
+        {
+            "name": "transaction_receipt_v1", "base": "transaction_receipt_header", "fields": [
+                { "name": "trx", "type": "transaction_variant_v1" }
             ]
         },
         {
@@ -199,8 +234,15 @@ extern const char* const state_history_plugin_abi = R"({
             ]
         },
         {
-            "name": "signed_block", "base": "signed_block_header", "fields": [
-                { "name": "transactions", "type": "transaction_receipt[]" },
+            "name": "signed_block_v0", "base": "signed_block_header", "fields": [
+                { "name": "transactions", "type": "transaction_receipt_v0[]" },
+                { "name": "block_extensions", "type": "extension[]" }
+            ]
+        },
+        {
+            "name": "signed_block_v1", "base": "signed_block_header", "fields": [
+                { "name": "prune_state", "type": "uint8" },
+                { "name": "transactions", "type": "transaction_receipt_v1[]" },
                 { "name": "block_extensions", "type": "extension[]" }
             ]
         },
@@ -517,6 +559,29 @@ extern const char* const state_history_plugin_abi = R"({
                 { "type": "uint32", "name": "account_cpu_usage_average_window" },
                 { "type": "uint32", "name": "account_net_usage_average_window" }
             ]
+        },
+        {
+            "name": "prunable_data_full_legacy", "fields": [
+                { "name": "signatures", "type": "signature[]" },
+                { "name": "packed_context_segments", "type": "bytes" }
+            ]
+        },
+        {
+            "name": "prunable_data_full", "fields": [
+                { "name": "signatures", "type": "signature[]" },
+                { "name": "context_free_segments", "type": "bytes[]" }
+            ]
+        },
+        {
+            "name": "prunable_data_partial", "fields": [
+                { "name": "signatures", "type": "signature[]" },
+                { "name": "context_free_segments", "type": "context_free_segment_type[]" }
+            ]
+        },
+        {
+            "name": "prunable_data_none", "fields": [
+                { "name": "prunable_digest", "type": "signature" }
+            ]
         }
     ],
     "types": [
@@ -524,13 +589,17 @@ extern const char* const state_history_plugin_abi = R"({
     ],
     "variants": [
         { "name": "request", "types": ["get_status_request_v0", "get_blocks_request_v0", "get_blocks_ack_request_v0"] },
-        { "name": "result", "types": ["get_status_result_v0", "get_blocks_result_v0"] },
+        { "name": "result", "types": ["get_status_result_v0", "get_blocks_result_v0", "get_blocks_result_v1"] },
 
         { "name": "action_receipt", "types": ["action_receipt_v0"] },
         { "name": "action_trace", "types": ["action_trace_v0", "action_trace_v1"] },
-        { "name": "partial_transaction", "types": ["partial_transaction_v0"] },
+        { "name": "partial_transaction", "types": ["partial_transaction_v0", "partial_transaction_v1"] },
         { "name": "transaction_trace", "types": ["transaction_trace_v0"] },
-        { "name": "transaction_variant", "types": ["transaction_id", "packed_transaction"] },
+        { "name": "transaction_variant_v0", "types": ["transaction_id", "packed_transaction_v0"] },
+        { "name": "transaction_variant_v1", "types": ["transaction_id", "packed_transaction_v1"] },
+        { "name": "signed_block", "types": ["signed_block_v0", "signed_block_v1"] },
+        { "name": "prunable_data_type", "types": ["prunable_data_full_legacy", "prunable_data_none", "prunable_data_partial", "prunable_data_full"] },
+        { "name": "context_free_segment_type", "types": ["signature", "bytes"] },
 
         { "name": "table_delta", "types": ["table_delta_v0"] },
         { "name": "account", "types": ["account_v0"] },
@@ -562,24 +631,24 @@ extern const char* const state_history_plugin_abi = R"({
     ],
     "tables": [
         { "name": "account", "type": "account", "key_names": ["name"] },
-        { "name": "account_metadata", "type": "account_metadata", "key_names": ["name"] },
+        { "name": "actmetadata", "type": "account_metadata", "key_names": ["name"] },
         { "name": "code", "type": "code", "key_names": ["vm_type", "vm_version", "code_hash"] },
-        { "name": "contract_table", "type": "contract_table", "key_names": ["code", "scope", "table"] },
-        { "name": "contract_row", "type": "contract_row", "key_names": ["code", "scope", "table", "primary_key"] },
-        { "name": "contract_index64", "type": "contract_index64", "key_names": ["code", "scope", "table", "primary_key"] },
-        { "name": "contract_index128", "type": "contract_index128", "key_names": ["code", "scope", "table", "primary_key"] },
-        { "name": "contract_index256", "type": "contract_index256", "key_names": ["code", "scope", "table", "primary_key"] },
-        { "name": "contract_index_double", "type": "contract_index_double", "key_names": ["code", "scope", "table", "primary_key"] },
-        { "name": "contract_index_long_double", "type": "contract_index_long_double", "key_names": ["code", "scope", "table", "primary_key"] },
-        { "name": "key_value", "type": "key_value", "key_names": ["database", "contract", "key"] },
-        { "name": "global_property", "type": "global_property", "key_names": [] },
-        { "name": "generated_transaction", "type": "generated_transaction", "key_names": ["sender", "sender_id"] },
-        { "name": "protocol_state", "type": "protocol_state", "key_names": [] },
+        { "name": "contracttbl", "type": "contract_table", "key_names": ["code", "scope", "table"] },
+        { "name": "contractrow", "type": "contract_row", "key_names": ["code", "scope", "table", "primary_key"] },
+        { "name": "cntrctidx1", "type": "contract_index64", "key_names": ["code", "scope", "table", "primary_key"] },
+        { "name": "cntrctidx2", "type": "contract_index128", "key_names": ["code", "scope", "table", "primary_key"] },
+        { "name": "cntrctidx3", "type": "contract_index256", "key_names": ["code", "scope", "table", "primary_key"] },
+        { "name": "cntrctidx4", "type": "contract_index_double", "key_names": ["code", "scope", "table", "primary_key"] },
+        { "name": "cntrctidx5", "type": "contract_index_long_double", "key_names": ["code", "scope", "table", "primary_key"] },
+        { "name": "keyvalue", "type": "key_value", "key_names": ["database", "contract", "key"] },
+        { "name": "global.pty", "type": "global_property", "key_names": [] },
+        { "name": "generatedtrx", "type": "generated_transaction", "key_names": ["sender", "sender_id"] },
+        { "name": "protocolst", "type": "protocol_state", "key_names": [] },
         { "name": "permission", "type": "permission", "key_names": ["owner", "name"] },
-        { "name": "permission_link", "type": "permission_link", "key_names": ["account", "code", "message_type"] },
-        { "name": "resource_limits", "type": "resource_limits", "key_names": ["owner"] },
-        { "name": "resource_usage", "type": "resource_usage", "key_names": ["owner"] },
-        { "name": "resource_limits_state", "type": "resource_limits_state", "key_names": [] },
-        { "name": "resource_limits_config", "type": "resource_limits_config", "key_names": [] }
+        { "name": "permlink", "type": "permission_link", "key_names": ["account", "code", "message_type"] },
+        { "name": "rsclimits", "type": "resource_limits", "key_names": ["owner"] },
+        { "name": "rscusage", "type": "resource_usage", "key_names": ["owner"] },
+        { "name": "rsclimitsst", "type": "resource_limits_state", "key_names": [] },
+        { "name": "rsclimitscfg", "type": "resource_limits_config", "key_names": [] }
     ]
 })";
