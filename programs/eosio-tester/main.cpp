@@ -4,6 +4,7 @@
 #include <eosio/state_history/create_deltas.hpp>
 #include <eosio/state_history/serialization.hpp>
 #include <eosio/state_history/trace_converter.hpp>
+#include <eosio/state_history/transaction_trace_cache.hpp>
 #include <fc/crypto/ripemd160.hpp>
 #include <fc/crypto/sha1.hpp>
 #include <fc/crypto/sha256.hpp>
@@ -12,10 +13,9 @@
 
 #undef N
 
-#include "chain_types.hpp"
 #include <b1/rodeos/embedded_rodeos.hpp>
 #include <eosio/fixed_bytes.hpp>
-#include <eosio/ship_protocol.hpp>
+#include <eosio/chain_types.hpp>
 #include <eosio/to_bin.hpp>
 #include <eosio/vm/backend.hpp>
 
@@ -45,7 +45,7 @@ using eosio::chain::transaction_trace_ptr;
 using eosio::chain::packed_transaction_ptr;
 using eosio::state_history::block_position;
 using eosio::state_history::create_deltas;
-using eosio::state_history::get_blocks_result_v0;
+using eosio::state_history::get_blocks_result_v1;
 using eosio::state_history::state_result;
 using eosio::vm::span;
 
@@ -185,7 +185,7 @@ struct test_chain {
    std::unique_ptr<eosio::chain::controller>         control;
    fc::optional<scoped_connection>                   applied_transaction_connection;
    fc::optional<scoped_connection>                   accepted_block_connection;
-   eosio::state_history::trace_converter             trace_converter;
+   eosio::state_history::transaction_trace_cache     trace_cache;
    fc::optional<block_position>                      prev_block;
    std::map<uint32_t, std::vector<char>>             history;
    std::unique_ptr<intrinsic_context>                intr_ctx;
@@ -248,23 +248,26 @@ struct test_chain {
    }
 
    void on_applied_transaction(const transaction_trace_ptr& p, const packed_transaction_ptr& t) {
-      trace_converter.add_transaction(p, t);
+      trace_cache.add_transaction(p, t);
    }
 
    void on_accepted_block(const block_state_ptr& block_state) {
-      auto block_bin  = fc::raw::pack(*block_state->block->to_signed_block_v0());
-      auto traces_bin = trace_converter.to_traces_bin_v0(trace_converter.pack(control->db(), false, block_state, 1), 1); // hard code version for now, will be changed in later commit
-      auto deltas_bin = fc::raw::pack(create_deltas(control->db(), !prev_block));
+      using namespace eosio;
+      fc::datastream<std::vector<char>> strm;
+      state_history::trace_converter::pack(strm, control->db(), false, trace_cache.prepare_traces(block_state), state_history::compression_type::none);
+      strm.seekp(0);
 
-      get_blocks_result_v0 message;
+      get_blocks_result_v1 message;
       message.head = block_position{ control->head_block_num(), control->head_block_id() };
       message.last_irreversible =
             block_position{ control->last_irreversible_block_num(), control->last_irreversible_block_id() };
       message.this_block = block_position{ block_state->block->block_num(), block_state->id };
       message.prev_block = prev_block;
-      message.block      = std::move(block_bin);
-      message.traces     = std::move(traces_bin);
-      message.deltas     = std::move(deltas_bin);
+      message.block      = block_state->block;
+      std::vector<state_history::transaction_trace> traces;
+      state_history::trace_converter::unpack(strm, traces);
+      message.traces = traces;
+      message.deltas = fc::raw::pack(create_deltas(control->db(), !prev_block));
 
       prev_block                         = message.this_block;
       history[control->head_block_num()] = fc::raw::pack(state_result{ message });
@@ -922,7 +925,7 @@ struct callbacks {
       eosio::chain::signed_transaction signed_trx{ std::move(transaction), std::move(args.signatures),
                                                    std::move(args.context_free_data) };
       for (auto& key : args.keys) signed_trx.sign(key, chain.control->get_chain_id());
-      eosio::chain::packed_transaction_v0 ptrx{ std::move(signed_trx), eosio::chain::packed_transaction_v0::compression_type::none };
+      eosio::chain::packed_transaction ptrx{ std::move(signed_trx), true, eosio::chain::packed_transaction::compression_type::none };
       auto                             data       = fc::raw::pack(ptrx);
       auto                             start_time = std::chrono::steady_clock::now();
       auto result = r.query_handler->query_transaction(*r.write_snapshot, data.data(), data.size());
@@ -941,7 +944,7 @@ struct callbacks {
 
    uint32_t rodeos_get_num_pushed_data(uint32_t rodeos) {
       auto& r = assert_rodeos(rodeos);
-      return r.pushed_data.size();
+      return r.pushed_data.size(); 
    }
 
    uint32_t rodeos_get_pushed_data(uint32_t rodeos, uint32_t index, span<char> dest) {
