@@ -1,12 +1,8 @@
 #!/usr/bin/env python3
-import json
-import os
-import shutil
 import time
 import unittest
 
 from testUtils import Utils
-from testUtils import Account
 from Cluster import Cluster
 from TestHelper import TestHelper
 from Node import Node
