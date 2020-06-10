@@ -45,11 +45,13 @@ class Connection:
         """
         self.url = url
         self.data = data
+        self.send_time = None
         if not dont_attempt:
             self.attempt()
 
     def attempt(self) -> None:
         """Post the HTTP request and store the response in the object."""
+        self.send_time = helper.get_time()
         self.response = requests.post(self.url, json=self.data)
 
     @property
@@ -126,3 +128,12 @@ class Connection:
             else:
                 self._transaction_id = ""
         return self._transaction_id
+
+    def summation(self):
+        """Returns summation of interaction in str type (json string format)."""
+        ret = {}
+        ret["url"] = self.url
+        ret["data"] = self.data
+        ret["send_time"] = self.send_time
+        ret["response"] = self.response_text
+        return ret

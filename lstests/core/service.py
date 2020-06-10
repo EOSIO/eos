@@ -1651,7 +1651,7 @@ class Cluster:
             self.log(cx.response_code, level=error_level, buffer=buffer)
             self.log(cx.response_text, level=error_text_level, buffer=buffer)
             if not dont_raise:
-                raise LauncherServiceError(cx.response_text)
+                raise LauncherServiceError(cx.summation())
         # verification of transaction
         if verify_key:
             self.verify(transaction_id=cx.transaction_id,
