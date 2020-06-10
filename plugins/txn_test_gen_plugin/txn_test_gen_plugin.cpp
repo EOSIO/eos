@@ -317,8 +317,11 @@ struct txn_test_gen_plugin_impl {
          send_transaction([this](const fc::exception_ptr& e){
             if (e) {
                elog("pushing transaction failed: ${e}", ("e", e->to_detail_string()));
-               if(running)
+               if(running && ++repeat_exceptions > 2)
                   stop_generation();
+            }
+            else {
+               repeat_exceptions = 0;
             }
          }, nonce_prefix++);
       });
@@ -401,6 +404,7 @@ struct txn_test_gen_plugin_impl {
    }
 
    bool running{false};
+   unsigned int repeat_exceptions = 0;
 
    unsigned timer_timeout;
    unsigned batch;
