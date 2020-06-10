@@ -11,76 +11,79 @@ from Cluster import Cluster
 from TestHelper import TestHelper
 from Node import Node
 from WalletMgr import WalletMgr
+from core_symbol import CORE_SYMBOL
 
 class TraceApiPluginTest(unittest.TestCase):
-    sleep_s = 2
-    base_node_cmd_str = ("curl http://%s:%s/v1/") % (TestHelper.LOCAL_HOST, TestHelper.DEFAULT_PORT)
-    base_wallet_cmd_str = ("curl http://%s:%s/v1/") % (TestHelper.LOCAL_HOST, TestHelper.DEFAULT_WALLET_PORT)
-    keosd = WalletMgr(True, TestHelper.DEFAULT_PORT, TestHelper.LOCAL_HOST, TestHelper.DEFAULT_WALLET_PORT, TestHelper.LOCAL_HOST)
-    node_id = 1
-    nodeos = Node(TestHelper.LOCAL_HOST, TestHelper.DEFAULT_PORT, node_id, None, None, keosd)
-    data_dir = Utils.getNodeDataDir(node_id)
-    test_wallet_name="testwallet"
-    acct_list = None
-    test_wallet=None
-
-    # make a fresh data dir
-    def createDataDir(self):
-        if os.path.exists(self.data_dir):
-            shutil.rmtree(self.data_dir)
-        os.makedirs(self.data_dir)
+    sleep_s = 1
+    cluster=Cluster(walletd=True, defproduceraPrvtKey=None)
+    walletMgr=WalletMgr(True, TestHelper.DEFAULT_PORT, TestHelper.LOCAL_HOST, TestHelper.DEFAULT_WALLET_PORT, TestHelper.LOCAL_HOST)
+    accounts = []
+    account_names = ["alice", "bob", "charlie"]
 
     # kill nodeos and keosd and clean up dir
     def cleanEnv(self) :
-        self.keosd.killall(True)
-        WalletMgr.cleanup()
-        Node.killAllNodeos()
-        if os.path.exists(self.data_dir):
-            shutil.rmtree(self.data_dir)
-        time.sleep(self.sleep_s)
+        self.cluster.killall(allInstances=True)
+        self.cluster.cleanup()
+        self.walletMgr.killall(allInstances=True)
+        self.walletMgr.cleanup()
 
     # start keosd and nodeos
     def startEnv(self) :
-        self.createDataDir(self)
-        self.keosd.launch()
-        nodeos_plugins = (" --plugin %s --plugin %s --plugin %s --plugin %s --plugin %s ") % (  "eosio::trace_api_plugin",
-                                                                                                "eosio::producer_plugin",
-                                                                                                "eosio::producer_api_plugin",
-                                                                                                "eosio::chain_api_plugin",
-                                                                                                "eosio::http_plugin")
-        nodeos_flags = (" --data-dir=%s --trace-dir=%s --trace-no-abis --filter-on=%s --access-control-allow-origin=%s "
-                        "--contracts-console --http-validate-host=%s --verbose-http-errors ") % (self.data_dir, self.data_dir, "\"*\"", "\'*\'", "false")
-        start_nodeos_cmd = ("%s -e -p eosio %s %s ") % (Utils.EosServerPath, nodeos_plugins, nodeos_flags)
-        self.nodeos.launchCmd(start_nodeos_cmd, self.node_id)
+        self.walletMgr.launch()
+#        self.cluster.setWalletMgr(self.walletMgr)
+        self.cluster.launch(totalNodes=1, enableTrace=True)
+        testWalletName="testwallet"
+        testWallet=self.walletMgr.create(testWalletName, [self.cluster.eosioAccount, self.cluster.defproduceraAccount])
+        self.cluster.validateAccounts(None)
+        self.accounts=Cluster.createAccountKeys(len(self.account_names))
+        node = self.cluster.getNode(0)
+        for idx in range(len(self.account_names)):
+            self.accounts[idx].name =  self.account_names[idx]
+            self.walletMgr.importKey(self.accounts[idx], testWallet)
+        for account in self.accounts:
+            node.createInitializeAccount(account, self.cluster.eosioAccount, buyRAM=1000000, stakedDeposit=5000000, waitForTransBlock=True, exitOnError=True)
         time.sleep(self.sleep_s)
 
-    def add_accounts(self) :
-        ''' add user account '''
-        for acct in self.acct_list:
-            self.nodeos.createInitializeAccount(acct, creatorAccount)
-
-    def add_transactions(self) :
-        ''' add transactions '''
-
     def test_TraceApi(self) :
-        ''' 1. add accounts,
-            2. push a few transactions,
-            3. verify via get_block
-        '''
+        node = self.cluster.getNode(0)
+        for account in self.accounts:
+            self.assertIsNotNone(node.verifyAccount(account))
+
+        expectedAmount = Node.currencyIntToStr(5000000, CORE_SYMBOL)
+        account_balances = []
+        for account in self.accounts:
+            amount = node.getAccountEosBalanceStr(account.name)
+            self.assertEqual(amount, expectedAmount)
+            account_balances.append(amount)
+
+        xferAmount = Node.currencyIntToStr(123456, CORE_SYMBOL)
+        trans = node.transferFunds(self.accounts[0], self.accounts[1], xferAmount, "test transfer a->b")
+        transId = Node.getTransId(trans)
+        blockNum = Node.getTransBlockNum(trans)
+
+        self.assertEqual(node.getAccountEosBalanceStr(self.accounts[0].name), Utils.deduceAmount(expectedAmount, xferAmount))
+        self.assertEqual(node.getAccountEosBalanceStr(self.accounts[1].name), Utils.addAmount(expectedAmount, xferAmount))
+        time.sleep(self.sleep_s)
+        base_cmd_str = ("curl http://%s:%s/v1/") % (TestHelper.LOCAL_HOST, node.port)
+        cmd_str = base_cmd_str + "trace_api/get_block  -X POST -d " + ("'{\"block_num\":%s}'") % blockNum
+        ret_json = Utils.runCmdReturnJson(cmd_str)
+        self.assertIn("transactions", ret_json)
+
+        isTrxInBlock = False
+        for trx in ret_json["transactions"]:
+            self.assertIn("id", trx)
+            if (trx["id"] == transId) :
+                isTrxInBlock = True
+        self.assertTrue(isTrxInBlock)
 
     @classmethod
     def setUpClass(self):
         self.cleanEnv(self)
         self.startEnv(self)
-        self.test_wallet=self.keosd.create(self.test_wallet_name, self.acct_list)
-        self.acct_list = Cluster.createAccountKeys(3)
-        self.acct_list[0].name = "alice"
-        self.acct_list[1].name = "bob"
-        self.acct_list[2].name = "charlie"
 
-    @classmethod
-    def tearDownClass(self):
-        self.cleanEnv(self)
+    #@classmethod
+    #def tearDownClass(self):
+    #    self.cleanEnv(self)
 
 if __name__ == "__main__":
     unittest.main()
