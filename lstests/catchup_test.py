@@ -24,8 +24,7 @@ def init_cluster():
                     FileWriter(filename=f"{test}-trace.log", threshold="trace", monochrome=True))
     service = Service(logger=logger)
     cluster = Cluster(service=service, node_count=3, pnode_count=3, producer_count=3,
-                      dont_newacco=True, extra_configs=[f"plugin={TEST_PLUGIN}"],
-                      special_log_levels=[["net_plugin_impl", "debug"]])
+                      dont_newacco=True, extra_configs=[f"plugin={TEST_PLUGIN}"])
     return cluster
 
 
