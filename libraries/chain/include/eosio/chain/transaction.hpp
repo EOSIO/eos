@@ -49,12 +49,6 @@ namespace eosio { namespace chain {
     *  with a block_header::timestamp greater than expiration is
     *  deemed irreversible, then a user can safely trust the transaction
     *  will never be included.
-    *
-
-    *  Each region is an independent blockchain, it is included as routing
-    *  information for inter-blockchain communication. A contract in this
-    *  region might generate or authorize a transaction intended for a foreign
-    *  region.
     */
    struct transaction_header {
       time_point_sec         expiration;   ///< the time at which a transaction expires
@@ -70,7 +64,7 @@ namespace eosio { namespace chain {
    };
 
    /**
-    *  A transaction consits of a set of messages which must all be applied or
+    *  A transaction consists of a set of messages which must all be applied or
     *  all are rejected. These messages have access to data within the given
     *  read and write scopes.
     */
@@ -216,7 +210,8 @@ namespace eosio { namespace chain {
          static_assert( static_cast<uint8_t>(compression_type::COMPRESSION_TYPE_COUNT) <= 127 );
 
          struct none {
-            digest_type                     prunable_digest;
+            digest_type                     digest;
+            digest_type                     prunable_digest() const;
          };
 
          using segment_type = fc::static_variant<digest_type, bytes>;
@@ -224,17 +219,20 @@ namespace eosio { namespace chain {
          struct partial {
             std::vector<signature_type>     signatures;
             std::vector<segment_type>       context_free_segments;
+            digest_type                     prunable_digest() const;
          };
 
          struct full {
             std::vector<signature_type>     signatures;
             std::vector<bytes>              context_free_segments;
+            digest_type                     prunable_digest() const;
          };
 
          struct full_legacy {
             std::vector<signature_type>     signatures;
             bytes                           packed_context_free_data;
             vector<bytes>                   context_free_segments;
+            digest_type                     prunable_digest() const;
          };
 
          using prunable_data_t = fc::static_variant< full_legacy,
@@ -326,7 +324,7 @@ FC_REFLECT( eosio::chain::packed_transaction_v0, (signatures)(compression)(packe
 // @ignore estimated_size unpacked_trx trx_id
 FC_REFLECT( eosio::chain::packed_transaction, (compression)(prunable_data)(packed_trx) )
 FC_REFLECT( eosio::chain::packed_transaction::prunable_data_type, (prunable_data));
-FC_REFLECT( eosio::chain::packed_transaction::prunable_data_type::none, (prunable_digest))
+FC_REFLECT( eosio::chain::packed_transaction::prunable_data_type::none, (digest))
 FC_REFLECT( eosio::chain::packed_transaction::prunable_data_type::partial, (signatures)( context_free_segments))
 FC_REFLECT( eosio::chain::packed_transaction::prunable_data_type::full, (signatures)( context_free_segments))
 // @ignore context_free_segments

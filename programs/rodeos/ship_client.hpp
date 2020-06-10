@@ -27,6 +27,7 @@ struct connection_callbacks {
    virtual void received_abi() {}
    virtual bool received(ship::get_status_result_v0& status, eosio::input_stream bin) { return true; }
    virtual bool received(ship::get_blocks_result_v0& result, eosio::input_stream bin) { return true; }
+   virtual bool received(ship::get_blocks_result_v1& result, eosio::input_stream bin) { return true; }
    virtual void closed(bool retry) = 0;
 };
 

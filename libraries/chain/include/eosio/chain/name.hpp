@@ -1,6 +1,8 @@
 #pragma once
 #include <string>
 #include <fc/reflect/reflect.hpp>
+#include <fc/exception/exception.hpp>
+#include <eosio/chain/exceptions.hpp>
 #include <iosfwd>
 
 namespace eosio::chain {
@@ -18,24 +20,36 @@ namespace eosio::chain {
          return (c - 'a') + 6;
       if( c >= '1' && c <= '5' )
          return (c - '1') + 1;
+      else if( c == '.')
+         return 0;
+      else
+         FC_THROW_EXCEPTION(name_type_exception, "Name contains invalid character: (${c}) ", ("c", std::string(1, c)));
+      
+      //unreachable
       return 0;
    }
 
    static constexpr uint64_t string_to_uint64_t( std::string_view str ) {
+      EOS_ASSERT(str.size() <= 13, name_type_exception, "Name is longer than 13 characters (${name}) ", ("name", std::string(str)));
+
       uint64_t n = 0;
       int i = 0;
       for ( ; str[i] && i < 12; ++i) {
          // NOTE: char_to_symbol() returns char type, and without this explicit
          // expansion to uint64 type, the compilation fails at the point of usage
          // of string_to_name(), where the usage requires constant (compile time) expression.
-         n |= (char_to_symbol(str[i]) & 0x1f) << (64 - 5 * (i + 1));
+         n |= char_to_symbol(str[i]) << (64 - 5 * (i + 1));
       }
 
       // The for-loop encoded up to 60 high bits into uint64 'name' variable,
       // if (strlen(str) > 12) then encode str[12] into the low (remaining)
       // 4 bits of 'name'
-      if (i == 12)
-         n |= char_to_symbol(str[12]) & 0x0F;
+      if (i == 12 && str[12])
+      {
+         uint64_t cur_v = char_to_symbol(str[12]);
+         EOS_ASSERT(cur_v <= 0x0Full, name_type_exception, "invalid 13th character: (${c})", ("c", std::string(1, str[12])));
+         n |= cur_v;
+      }
       return n;
    }
 

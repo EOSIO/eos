@@ -4,10 +4,11 @@ import subprocess
 import time
 import os
 import re
-import datetime
 import json
 import signal
 
+from datetime import datetime
+from datetime import timedelta
 from core_symbol import CORE_SYMBOL
 from testUtils import Utils
 from testUtils import Account
@@ -28,11 +29,14 @@ class Node(object):
 
     # pylint: disable=too-many-instance-attributes
     # pylint: disable=too-many-arguments
-    def __init__(self, host, port, pid=None, cmd=None, walletMgr=None):
+    def __init__(self, host, port, nodeId, pid=None, cmd=None, walletMgr=None):
         self.host=host
         self.port=port
         self.pid=pid
         self.cmd=cmd
+        if nodeId != "bios":
+            assert isinstance(nodeId, int)
+        self.nodeId=nodeId
         if Utils.Debug: Utils.Print("new Node host=%s, port=%s, pid=%s, cmd=%s" % (self.host, self.port, self.pid, self.cmd))
         self.killed=False # marks node as killed
         self.endpointHttp="http://%s:%d" % (self.host, self.port)
@@ -51,8 +55,7 @@ class Node(object):
         return self.endpointArgs + walletArgs + " " + Utils.MiscEosClientArgs
 
     def __str__(self):
-        #return "Host: %s, Port:%d, Pid:%s, Cmd:\"%s\"" % (self.host, self.port, self.pid, self.cmd)
-        return "Host: %s, Port:%d, Pid:%s" % (self.host, self.port, self.pid)
+        return "Host: %s, Port:%d, NodeNum:%s, Pid:%s" % (self.host, self.port, self.nodeId, self.pid)
 
     @staticmethod
     def validateTransaction(trans):
@@ -1222,16 +1225,14 @@ class Node(object):
         return blockNum
 
 
-    # TBD: make nodeId an internal property
     # pylint: disable=too-many-locals
     # If nodeosPath is equal to None, it will use the existing nodeos path
-    def relaunch(self, nodeId, chainArg=None, newChain=False, timeout=Utils.systemWaitTimeout, addSwapFlags=None, cachePopen=False, nodeosPath=None):
+    def relaunch(self, chainArg=None, newChain=False, timeout=Utils.systemWaitTimeout, addSwapFlags=None, cachePopen=False, nodeosPath=None):
 
         assert(self.pid is None)
         assert(self.killed)
-        assert isinstance(nodeId, int) or (isinstance(nodeId, str) and nodeId == "bios"), "Invalid Node ID is passed"
 
-        if Utils.Debug: Utils.Print("Launching node process, Id: {}".format(nodeId))
+        if Utils.Debug: Utils.Print("Launching node process, Id: {}".format(self.nodeId))
 
         cmdArr=[]
         splittedCmd=self.cmd.split()
@@ -1265,7 +1266,7 @@ class Node(object):
             myCmd=" ".join(cmdArr)
 
         cmd=myCmd + ("" if chainArg is None else (" " + chainArg))
-        self.launchCmd(cmd, nodeId, cachePopen)
+        self.launchCmd(cmd, cachePopen)
 
         def isNodeAlive():
             """wait for node to be responsive."""
@@ -1319,13 +1320,13 @@ class Node(object):
             Utils.errorExit("Cannot find unstarted node since %s file does not exist" % startFile)
         return startFile
 
-    def launchUnstarted(self, nodeId, cachePopen=False):
+    def launchUnstarted(self, cachePopen=False):
         Utils.Print("launchUnstarted cmd: %s" % (self.cmd))
-        self.launchCmd(self.cmd, nodeId, cachePopen)
+        self.launchCmd(self.cmd, cachePopen)
 
-    def launchCmd(self, cmd, nodeId, cachePopen=False):
-        dataDir=Utils.getNodeDataDir(nodeId)
-        dt = datetime.datetime.now()
+    def launchCmd(self, cmd, cachePopen=False):
+        dataDir=Utils.getNodeDataDir(self.nodeId)
+        dt = datetime.now()
         dateStr=Utils.getDateString(dt)
         stdoutFile="%s/stdout.%s.txt" % (dataDir, dateStr)
         stderrFile="%s/stderr.%s.txt" % (dataDir, dateStr)
@@ -1471,8 +1472,8 @@ class Node(object):
         latestBlockHeaderState = self.getLatestBlockHeaderState()
         return latestBlockHeaderState["activated_protocol_features"]["protocol_features"]
 
-    def modifyBuiltinPFSubjRestrictions(self, nodeId, featureCodename, subjectiveRestriction={}):
-        jsonPath = os.path.join(Utils.getNodeConfigDir(nodeId),
+    def modifyBuiltinPFSubjRestrictions(self, featureCodename, subjectiveRestriction={}):
+        jsonPath = os.path.join(Utils.getNodeConfigDir(self.nodeId),
                                 "protocol_features",
                                 "BUILTIN-{}.json".format(featureCodename))
         protocolFeatureJson = []
@@ -1486,3 +1487,79 @@ class Node(object):
     def createSnapshot(self):
         param = { }
         return self.processCurlCmd("producer", "create_snapshot", json.dumps(param))
+
+    # kill all exsiting nodeos in case lingering from previous test
+    @staticmethod
+    def killAllNodeos():
+        # kill the eos server
+        cmd="pkill -9 %s" % (Utils.EosServerName)
+        ret_code = subprocess.call(cmd.split(), stdout=Utils.FNull)
+        Utils.Print("cmd: %s, ret:%d" % (cmd, ret_code))
+
+    @staticmethod
+    def findStderrFiles(path):
+        files=[]
+        it=os.scandir(path)
+        for entry in it:
+            if entry.is_file(follow_symlinks=False):
+                match=re.match("stderr\..+\.txt", entry.name)
+                if match:
+                    files.append(os.path.join(path, entry.name))
+        files.sort()
+        return files
+
+    def analyzeProduction(self, specificBlockNum=None, thresholdMs=500):
+        dataDir=Utils.getNodeDataDir(self.nodeId)
+        files=Node.findStderrFiles(dataDir)
+        blockAnalysis={}
+        anyBlockStr=r'[0-9]+'
+        initialTimestamp=r'\s+([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{3})\s'
+        producedBlockPreStr=r'.+Produced\sblock\s+.+\s#('
+        producedBlockPostStr=r')\s@\s([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{3})'
+        anyBlockPtrn=re.compile(initialTimestamp + producedBlockPreStr + anyBlockStr + producedBlockPostStr)
+        producedBlockPtrn=re.compile(initialTimestamp + producedBlockPreStr + str(specificBlockNum) + producedBlockPostStr) if specificBlockNum is not None else anyBlockPtrn
+        producedBlockDonePtrn=re.compile(initialTimestamp + r'.+Producing\sBlock\s+#' + anyBlockStr + '\sreturned:\strue')
+        for file in files:
+            with open(file, 'r') as f:
+                line = f.readline()
+                while line:
+                    readLine=True  # assume we need to read the next line before the next pass
+                    match = producedBlockPtrn.search(line)
+                    if match:
+                        prodTimeStr = match.group(1)
+                        slotTimeStr = match.group(3)
+                        blockNum = int(match.group(2))
+
+                        line = f.readline()
+                        while line:
+                            matchNextBlock = anyBlockPtrn.search(line)
+                            if matchNextBlock:
+                                readLine=False  #already have the next line ready to check on next pass
+                                break
+
+                            matchBlockActuallyProduced = producedBlockDonePtrn.search(line)
+                            if matchBlockActuallyProduced:
+                                prodTimeStr = matchBlockActuallyProduced.group(1)
+                                break
+
+                            line = f.readline()
+
+                        prodTime = datetime.strptime(prodTimeStr, Utils.TimeFmt)
+                        slotTime = datetime.strptime(slotTimeStr, Utils.TimeFmt)
+                        delta = prodTime - slotTime
+                        limit = timedelta(milliseconds=thresholdMs)
+                        if delta > limit:
+                            if blockNum in blockAnalysis:
+                                Utils.errorExit("Found repeat production of the same block num: %d in one of the stderr files in: %s" % (blockNum, dataDir))
+                            blockAnalysis[blockNum] = { "slot": slotTimeStr, "prod": prodTimeStr }
+
+                        if specificBlockNum is not None:
+                            return blockAnalysis
+
+                    if readLine:
+                        line = f.readline()
+
+        if specificBlockNum is not None and specificBlockNum not in blockAnalysis:
+            blockAnalysis[specificBlockNum] = { "slot": None, "prod": None}
+
+        return blockAnalysis

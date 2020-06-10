@@ -1,6 +1,8 @@
 #pragma once
 #include <fc/filesystem.hpp>
+#include <fc/io/datastream.hpp>
 #include <cstdio>
+#include <ios>
 
 #ifndef _WIN32
 #define FC_FOPEN(p, m) fopen(p, m)
@@ -76,6 +78,13 @@ public:
       }
    }
 
+   void skip( long loc) {
+      if( 0 != fseek( _file.get(), loc, SEEK_CUR ) ) {
+         throw std::ios_base::failure( "cfile: " + _file_path.generic_string() +
+                                       " unable to SEEK_CUR to: " + std::to_string(loc) );
+      }
+   }
+
    void read( char* d, size_t n ) {
       size_t result = fread( d, 1, n, _file.get() );
       if( result != n ) {
@@ -111,6 +120,17 @@ public:
          throw std::ios_base::failure( "cfile: " + _file_path.generic_string() +
                                        " unable to sync file, error: " + std::to_string( errno ) );
       }
+   }
+
+   bool eof() const { return feof(_file.get()) != 0; }
+
+   int getc() { 
+      int ret = fgetc(_file.get());  
+      if (ret == EOF) {
+         throw std::ios_base::failure( "cfile: " + _file_path.generic_string() +
+                                       " unable to read 1 byte");
+      }
+      return ret;
    }
 
    void close() {
@@ -158,6 +178,24 @@ public:
 inline cfile_datastream cfile::create_datastream() {
    return cfile_datastream(*this);
 }
+
+template <>
+class datastream<fc::cfile, void> : public fc::cfile {
+ public:
+   using fc::cfile::cfile;
+
+   bool seekp(size_t pos) { return this->seek(pos), true; }
+
+   bool get(char& c) {
+      c = this->getc();
+      return true;
+   }
+
+   bool remaining() { return !this->eof(); }
+
+   fc::cfile&       storage() { return *this; }
+   const fc::cfile& storage() const { return *this; }
+};
 
 
 } // namespace fc

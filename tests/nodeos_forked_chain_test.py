@@ -478,7 +478,7 @@ try:
 
     Print("Relaunching the non-producing bridge node to connect the producing nodes again")
 
-    if not nonProdNode.relaunch(nonProdNode.nodeNum, None):
+    if not nonProdNode.relaunch():
         errorExit("Failure - (non-production) node %d should have restarted" % (nonProdNode.nodeNum))
 
 

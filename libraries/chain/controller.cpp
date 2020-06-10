@@ -1601,6 +1601,8 @@ struct controller_impl {
          fc_dlog(*dm_logger, "START_BLOCK ${block_num}", ("block_num", head->block_num + 1));
       }
 
+      emit( self.block_start, head->block_num + 1 );
+
       auto guard_pending = fc::make_scoped_exit([this, head_block_num=head->block_num](){
          protocol_features.popped_blocks_to( head_block_num );
          pending.reset();
