@@ -16,6 +16,26 @@ using eosio::chain::state_history_exception;
 using eosio::chain::transaction_id_type;
 using prunable_data_type = packed_transaction::prunable_data_type;
 
+struct ondisk_prunable_full_legacy {
+   std::vector<signature_type> signatures;
+   std::vector<bytes>          context_free_segments;
+   eosio::chain::digest_type   digest;
+   eosio::chain::digest_type   prunable_digest() const { return digest; }
+};
+
+using ondisk_prunable_data_t = fc::static_variant<ondisk_prunable_full_legacy, prunable_data_type::none,
+                                            prunable_data_type::partial, prunable_data_type::full>;
+
+
+inline prunable_data_type to_prunable_data_type(ondisk_prunable_data_t&& data) {
+   return std::move(data).visit(
+       overloaded{[](ondisk_prunable_full_legacy&& v) {
+                     prunable_data_type::full y{std::move(v.signatures), std::move(v.context_free_segments)};
+                     return prunable_data_type{y};
+                  },
+                  [](auto&& v) { return prunable_data_type{std::move(v)}; }});
+}
+
 template <typename Lambda>
 void for_each_packed_transaction(const eosio::state_history::augmented_transaction_trace& obj, const Lambda& lambda) {
    auto& trace = *obj.trace;
@@ -71,28 +91,36 @@ size_t pack(OSTREAM&& strm, const prunable_data_type& obj, compression_type comp
    auto start_pos = strm.tellp();
    fc::raw::pack(strm, static_cast<uint8_t>(obj.prunable_data.which()));
 
-   obj.prunable_data.visit(
-       overloaded{[&strm](const prunable_data_type::none& data) { fc::raw::pack(strm, data); },
-                  [&strm](const prunable_data_type::full_legacy& data) { fc::raw::pack(strm, data); },
-                  [&strm, compression](const auto& data) {
-                     fc::raw::pack(strm, data.signatures);
-                     pack(strm, data.context_free_segments, compression);
-                  }});
+   obj.prunable_data.visit(overloaded{[&strm](const prunable_data_type::none& data) { fc::raw::pack(strm, data); },
+                                      [&strm, compression](const prunable_data_type::full_legacy& data) {
+                                         fc::raw::pack(strm, data.signatures);
+                                         pack(strm, data.context_free_segments, compression);
+                                         fc::raw::pack(strm, data.prunable_digest());
+                                      },
+                                      [&strm, compression](const auto& data) {
+                                         fc::raw::pack(strm, data.signatures);
+                                         pack(strm, data.context_free_segments, compression);
+                                      }});
    auto consumed = strm.tellp() - start_pos;
    return std::max(sizeof(uint8_t) + sizeof(chain::digest_type), consumed);
 }
 
 template <typename ISTREAM>
-void unpack(ISTREAM&& strm, prunable_data_type& prunable, compression_type compression) {
+void unpack(ISTREAM&& strm, ondisk_prunable_data_t& prunable, compression_type compression) {
    uint8_t tag;
    fc::raw::unpack(strm, tag);
-   prunable.prunable_data.set_which(tag);
-   prunable.prunable_data.visit(overloaded{[&strm](prunable_data_type::none& data) { fc::raw::unpack(strm, data); },
-                                           [&strm](prunable_data_type::full_legacy& data) { fc::raw::unpack(strm, data); },
-                                           [&strm, compression](auto& data) {
-                                              fc::raw::unpack(strm, data.signatures);
-                                              unpack(strm, data.context_free_segments, compression);
-                                           }});
+   // set_variant_by_index(prunable, tag);
+   prunable.set_which(tag);
+   prunable.visit(overloaded{[&strm](prunable_data_type::none& data) { fc::raw::unpack(strm, data); },
+                         [&strm, compression](ondisk_prunable_full_legacy& data) {
+                            fc::raw::unpack(strm, data.signatures);
+                            unpack(strm, data.context_free_segments, compression);
+                            fc::raw::unpack(strm, data.digest);
+                         },
+                         [&strm, compression](auto& data) {
+                            fc::raw::unpack(strm, data.signatures);
+                            unpack(strm, data.context_free_segments, compression);
+                         }});
 }
 
 /// used to traverse each trace along with its associated unpacked prunable_data
@@ -106,7 +134,7 @@ void visit_deserialized_trace(ISTREAM& strm, transaction_trace& trace, compressi
                                std::forward<Visitor>(visitor));
    }
    if (trace_v0.partial) {
-      prunable_data_type prunable;
+      ondisk_prunable_data_t prunable;
       unpack(strm, prunable, compression);
       visitor(trace_v0, std::move(prunable));
    }
@@ -116,7 +144,7 @@ template <typename OSTREAM>
 struct trace_pruner {
    bytes&   buffer; // the buffer contains the entire prunable section, which is the storage used by read_strm
    uint64_t last_read_pos = 0;
-   std::vector<transaction_id_type>& ids;       /// the transaction ids to be pruned
+   std::vector<transaction_id_type>& ids; /// the transaction ids to be pruned
    fc::datastream<const char*>       read_strm;
    OSTREAM&                          write_strm;
    uint64_t change_position = 0; /// when it's nonzero, represents the offset to data where the content has been changed
@@ -130,13 +158,15 @@ struct trace_pruner {
       fc::raw::unpack(read_strm, compression);
    }
 
-   void operator()(transaction_trace_v0& trace, prunable_data_type&& incoming_prunable) {
+   void operator()(transaction_trace_v0& trace, ondisk_prunable_data_t&& incoming_prunable) {
       auto itr = std::find(ids.begin(), ids.end(), trace.id);
       if (itr != ids.end()) {
          // the incoming trace matches the one of ids to be pruned
          if (change_position == 0)
             change_position = write_strm.tellp();
-         pack(write_strm, incoming_prunable.prune_all(), compression);
+         auto digest = incoming_prunable.visit([](const auto& v) { return v.prunable_digest(); });
+         uint8_t which = ondisk_prunable_data_t::tag<prunable_data_type::none>::value;
+         fc::raw::pack(write_strm, std::make_pair(which, digest));
          ids.erase(itr);
       } else if (change_position == 0) {
          // no change so far, skip the original serialized prunable_data bytes
@@ -157,11 +187,11 @@ void pack(OSTREAM&& strm, const chainbase::database& db, bool trace_debug_mode,
    //  1. a zlib compressed unprunable section contains the serialization of the vector of traces excluding
    //     the prunable_data data (i.e. signatures and context free data)
    //  2. an uint8_t tag indicating the compression mechanism for the context free data inside the prunable section.
-   //  3. a prunable section contains the serialization of the vector of prunable_data.
+   //  3. a prunable section contains the serialization of the vector of ondisk_prunable_data_t.
    zlib_pack(strm, make_history_context_wrapper(db, trace_receipt_context{.debug_mode = trace_debug_mode}, traces));
    fc::raw::pack(strm, static_cast<uint8_t>(compression));
-   const auto   pos         = strm.tellp();
-   size_t size_with_padding = 0;
+   const auto pos               = strm.tellp();
+   size_t     size_with_padding = 0;
    for_each_packed_transaction(traces, [&strm, &size_with_padding, compression](const chain::packed_transaction& pt) {
       size_with_padding += trace_converter::pack(strm, pt.get_prunable_data(), compression);
    });
@@ -175,9 +205,9 @@ void unpack(ISTREAM&& strm, std::vector<transaction_trace>& traces) {
    fc::raw::unpack(strm, compression);
    for (auto& trace : traces) {
       visit_deserialized_trace(strm, trace, static_cast<compression_type>(compression),
-                               [](transaction_trace_v0& trace, prunable_data_type&& prunable_data) {
+                               [](transaction_trace_v0& trace, ondisk_prunable_data_t&& prunable_data) {
                                   auto& ptrx         = trace.partial->get<partial_transaction_v1>();
-                                  ptrx.prunable_data = std::move(prunable_data);
+                                  ptrx.prunable_data = to_prunable_data_type(std::move(prunable_data));
                                });
    }
 }
@@ -202,3 +232,6 @@ void prune_traces(IOSTREAM&& strm, uint32_t entry_len, std::vector<transaction_i
 } // namespace trace_converter
 } // namespace state_history
 } // namespace eosio
+
+FC_REFLECT(eosio::state_history::trace_converter::ondisk_prunable_full_legacy,
+           (signatures)(context_free_segments)(digest))
