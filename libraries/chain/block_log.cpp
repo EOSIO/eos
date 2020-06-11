@@ -633,9 +633,9 @@ namespace eosio { namespace chain {
          fc::datastream<fc::cfile> index_file;
          bool                      genesis_written_to_block_log = false;
          block_log_preamble        preamble;
-         size_t                    split_factor = std::numeric_limits<size_t>::max();
+         size_t                    stride = std::numeric_limits<size_t>::max();
 
-         block_log_impl(const fc::path& data_dir, fc::path archive_dir, uint64_t split_factor, uint16_t max_retained_files);
+         block_log_impl(const fc::path& data_dir, fc::path archive_dir, uint64_t stride, uint16_t max_retained_files);
 
          static void ensure_file_exists(fc::cfile& f) {
             if (fc::exists(f.get_file_path()))
@@ -687,7 +687,7 @@ namespace eosio { namespace chain {
 
       catalog.archive_dir        = archive_dir;
       catalog.max_retained_files = max_retained_files;
-      this->split_factor         = split_factor;
+      this->stride               = stride;
 
       block_file.set_file_path(data_dir / "blocks.log");
       index_file.set_file_path(data_dir / "blocks.index");
@@ -785,7 +785,7 @@ namespace eosio { namespace chain {
 
          auto pos = write_log_entry(*b, segment_compression);
          head     = b;
-         if (b->block_num() % split_factor == 0) {
+         if (b->block_num() % stride == 0) {
             split_log();
          }
          return pos;
@@ -809,6 +809,7 @@ namespace eosio { namespace chain {
       
       block_file.open(fc::cfile::truncate_rw_mode);
       index_file.open(fc::cfile::truncate_rw_mode);
+      preamble.version         = block_log::max_supported_version;
       preamble.chain_context   = preamble.chain_id();
       preamble.first_block_num = this->head->block_num() + 1;
       preamble.write_to(block_file);
