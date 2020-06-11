@@ -655,6 +655,7 @@ namespace eosio { namespace chain {
          uint64_t write_log_entry(const signed_block& b, packed_transaction::cf_compression_type segment_compression);
 
          void split_log();
+         bool recover_from_incomplete_block_head(block_log_data& log_data, block_log_index& index);
 
          block_id_type                 read_block_id_by_num(uint32_t block_num);
          std::unique_ptr<signed_block> read_block_by_num(uint32_t block_num);
@@ -668,7 +669,30 @@ namespace eosio { namespace chain {
 
    block_log::~block_log() {}
 
-   detail::block_log_impl::block_log_impl(const fc::path& data_dir, fc::path archive_dir, uint64_t split_factor,
+   bool detail::block_log_impl::recover_from_incomplete_block_head(block_log_data& log_data, block_log_index& index) {
+      if (preamble.version >= pruned_transaction_version) {
+         // check if the last block position
+         if (log_data.size() > index.back() + sizeof(uint32_t)) {
+            const uint32_t entry_size              = read_buffer<uint32_t>(log_data.data() + index.back());
+            const uint64_t trimmed_block_file_size = index.back() + entry_size;
+            const uint32_t expected_block_num      = log_data.first_block_num() + index.num_blocks() - 1;
+            if (log_data.size() > trimmed_block_file_size) {
+               try {
+                  log_data.light_validate_block_entry_at(index.back(), expected_block_num);
+                  ilog("The last block from blocks.log is incomplete, trim it.");
+                  boost::filesystem::resize_file(block_file.get_file_path(), trimmed_block_file_size);
+                  return true;
+               }
+               catch(...) {
+                  return false;
+               }
+            }
+         }
+      }
+      return false;
+   }
+
+   detail::block_log_impl::block_log_impl(const fc::path& data_dir, fc::path archive_dir, uint64_t stride,
                                           uint16_t max_retained_files) {
 
       if (!fc::is_directory(data_dir))
@@ -728,9 +752,11 @@ namespace eosio { namespace chain {
             ilog("Index is nonempty");
             block_log_index index(index_file.get_file_path());
             
-            if (log_data.last_block_position() != index.back()) {
-               ilog("The last block positions from blocks.log and blocks.index are different, Reconstructing index...");
-               block_log::construct_index(block_file.get_file_path(), index_file.get_file_path());
+            if (log_data.last_block_position() != index.back()) {              
+               if (!recover_from_incomplete_block_head(log_data, index)) {
+                  ilog("The last block positions from blocks.log and blocks.index are different, Reconstructing index...");
+                  block_log::construct_index(block_file.get_file_path(), index_file.get_file_path());
+               }  
             }
          } else {
             ilog("Index is empty. Reconstructing index...");

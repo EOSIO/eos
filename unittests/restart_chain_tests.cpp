@@ -11,6 +11,7 @@
 #include <contracts.hpp>
 #include <snapshots.hpp>
 #include <boost/iostreams/device/mapped_file.hpp>
+#include <fc/io/cfile.hpp>
 #include "test_cfd_transaction.hpp"
 
 using namespace eosio;
@@ -375,4 +376,16 @@ BOOST_AUTO_TEST_CASE(test_split_log_replay) {
    BOOST_CHECK( from_block_log_chain.control->fetch_block_by_number(75)->block_num() == 75);
 
 }
+
+BOOST_FIXTURE_TEST_CASE(restart_from_block_log_with_incomplete_head,restart_from_block_log_test_fixture) {
+   auto& config = chain.get_config();
+   auto blocks_path = config.blocks_dir;
+   // write a few random bytes to block log indicating the last block entry is incomplete
+   fc::cfile logfile;
+   logfile.set_file_path(config.blocks_dir / "blocks.log");
+   logfile.open("ab");
+   const char random_data[] = "12345678901231876983271649837";
+   logfile.write(random_data, sizeof(random_data));
+}
+
 BOOST_AUTO_TEST_SUITE_END()
