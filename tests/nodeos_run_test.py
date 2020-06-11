@@ -214,7 +214,7 @@ try:
         errorExit("FAILURE - wallet keys did not include %s" % (noMatch), raw=True)
 
     node=cluster.getNode(0)
-    if not amqpAddr:
+    if amqpAddr:
         node.setAMQPAddress(amqpAddr)
 
     Print("Validating accounts before user accounts creation")
