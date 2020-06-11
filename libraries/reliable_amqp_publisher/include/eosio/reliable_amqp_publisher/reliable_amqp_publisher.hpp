@@ -42,7 +42,9 @@ class reliable_amqp_publisher {
       void publish_message_raw(std::vector<char>&& data);
 
       /// reliable_amqp_publisher runs its own thread. In some cases it may be desirable to skip a needless thread jump
-      ///  when performing work. This method will allow submission of work to reliable_amqp_publisher's thread
+      ///  when performing work. This method will allow submission of work to reliable_amqp_publisher's thread.
+      ///  To ensure proper shutdown semantics, the function passed should call publish_message() before returning. That is,
+      ///  it shouldn't call another post_on_io_context() or attempt to defer more work.
       void post_on_io_context(std::function<void()>&& f);
 
       ~reliable_amqp_publisher();
