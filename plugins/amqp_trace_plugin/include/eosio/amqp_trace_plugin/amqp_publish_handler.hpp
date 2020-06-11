@@ -24,6 +24,7 @@ public:
 class amqp_publish {
 public:
    using on_error_t = std::function<void(const std::string& err)>;
+
    amqp_publish( boost::asio::io_service& io_service, const std::string& address, std::string name, on_error_t on_err )
          : name_( std::move( name ) )
          , on_error( std::move(on_err) )
@@ -40,14 +41,7 @@ public:
    void publish( const string& exchange, const std::string& correlation_id, const char* data, size_t data_size ) {
       AMQP::Envelope env( data, data_size );
       env.setCorrelationID( correlation_id );
-      std::cerr << "amqp publish " << correlation_id << std::endl;
-      auto& result = channel_->publish( exchange, name_, env, 0 );
-      result.onSuccess([correlation_id](){
-         std::cerr << "Success send: " << correlation_id << std::endl;
-      });
-      result.onError([](const char* err){
-         std::cerr << "Error on publish: " << err << std::endl;
-      });
+      channel_->publish( exchange, name_, env, 0 );
    }
 
 private:

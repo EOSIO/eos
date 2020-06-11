@@ -21,20 +21,14 @@ public:
 };
 
 class amqp {
-   fc::logger logger_;
-   std::unique_ptr<amqp_handler> handler_;
-   std::unique_ptr<AMQP::TcpConnection> connection_;
-   std::unique_ptr<AMQP::TcpChannel> channel_;
-   std::string name_;
-
 public:
-   amqp( fc::logger logger, boost::asio::io_service& io_service, const std::string& address, std::string name )
-         : logger_(std::move( logger ) )
-         , name_( std::move( name ) )
+   using on_error_t = std::function<void(const std::string& err)>;
+   amqp( boost::asio::io_service& io_service, const std::string& address, std::string name, on_error_t on_err )
+         : name_( std::move( name ) )
+         , on_error( std::move(on_err) )
    {
       AMQP::Address amqp_address( address );
-      fc_ilog( logger_, "Connecting to AMQP address ${a} - Queue: ${q}...",
-               ("a", std::string( amqp_address ))( "q", name_ ) );
+      ilog( "Connecting to AMQP address ${a} - Queue: ${q}...", ("a", std::string( amqp_address ))( "q", name_ ) );
 
       handler_ = std::make_unique<amqp_handler>( io_service );
       connection_ = std::make_unique<AMQP::TcpConnection>( handler_.get(), amqp_address );
@@ -61,16 +55,21 @@ public:
 private:
    void declare_queue() {
       auto& queue = channel_->declareQueue( name_, AMQP::durable );
-      queue.onSuccess( [this]( const std::string& name, uint32_t messagecount, uint32_t consumercount ) {
-         fc_dlog( logger_, "AMQP Connected Successfully!\n Queue ${q} - Messages: ${mc} - Consumers: ${cc}",
-                  ("q", name)( "mc", messagecount )( "cc", consumercount ) );
+      queue.onSuccess( []( const std::string& name, uint32_t messagecount, uint32_t consumercount ) {
+         dlog( "AMQP Connected Successfully!\n Queue ${q} - Messages: ${mc} - Consumers: ${cc}",
+               ("q", name)( "mc", messagecount )( "cc", consumercount ) );
       } );
-      queue.onError( [this]( const char* error_message ) {
-         std::string err = "AMQP Queue error: " + std::string( error_message );
-         fc_elog( logger_, err );
-         //app().quit();
+      queue.onError( [on_err=on_error]( const char* error_message ) {
+         on_err( error_message );
       } );
    }
+
+private:
+   std::unique_ptr<amqp_handler> handler_;
+   std::unique_ptr<AMQP::TcpConnection> connection_;
+   std::unique_ptr<AMQP::TcpChannel> channel_;
+   std::string name_;
+   on_error_t on_error;
 };
 
 } // namespace eosio
