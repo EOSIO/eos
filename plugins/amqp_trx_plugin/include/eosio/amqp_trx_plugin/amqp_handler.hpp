@@ -45,6 +45,7 @@ public:
    void publish( const string& exchange, const std::string& correlation_id, const char* data, size_t data_size ) {
       AMQP::Envelope env( data, data_size );
       env.setCorrelationID( correlation_id );
+      std::cerr << "amqp publish " << correlation_id << std::endl;
       auto& result = channel_->publish( exchange, name_, env, 0 );
       result.onSuccess([correlation_id](){
          std::cerr << "Success send: " << correlation_id << std::endl;
