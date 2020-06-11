@@ -78,7 +78,7 @@ class iterator_cache_base {
 
    template <typename Ship_index_type, typename T, typename M, typename F1, typename F2>
    int32_t get_iterator_impl(int32_t table_index, const T& key, chain_kv::view::iterator&& view_it,
-                             const M& key_to_iterator_index, F1 match, F2 get_key) {
+                             const M& key_to_iterator_index, bool view_it_is_secondary, F1 match, F2 get_key) {
       iterator* it;
       int32_t   result;
       if (view_it.is_end()) {
@@ -90,8 +90,15 @@ class iterator_cache_base {
             it     = &iterators[map_it->second];
             result = map_it->second;
          } else {
-            eosio::input_stream stream{ view_it.get_kv()->value.data(), view_it.get_kv()->value.size() };
-            auto                record = std::get<0>(eosio::from_bin<Ship_index_type>(stream));
+            eosio::input_stream                    stream;
+            std::shared_ptr<const chain_kv::bytes> v;
+            if (view_it_is_secondary) {
+               v      = view.get(state_account.value, view_it.get_kv()->value);
+               stream = { v->data(), v->size() };
+            } else {
+               stream = { view_it.get_kv()->value.data(), view_it.get_kv()->value.size() };
+            }
+            auto record = std::get<0>(eosio::from_bin<Ship_index_type>(stream));
             if (!match(record))
                return index_to_end_iterator(table_index);
             map_it = key_to_iterator_index.find({ table_index, get_key(record) });
@@ -141,7 +148,7 @@ class iterator_cache : public iterator_cache_base<iterator_cache, chaindb_primar
    int32_t get_iterator(int32_t table_index, uint64_t key, chain_kv::view::iterator&& view_it,
                         bool require_match_primary = false) {
       return get_iterator_impl<contract_row>(
-            table_index, key, std::move(view_it), primary_key_to_iterator_index,
+            table_index, key, std::move(view_it), primary_key_to_iterator_index, false,
             [&](auto& record) { return !require_match_primary || record.primary_key == key; },
             [&](auto& record) { return record.primary_key; });
    }
@@ -318,7 +325,7 @@ class secondary_iterator_cache : public iterator_cache_base<secondary_iterator_c
    int32_t get_iterator(int32_t table_index, chain_kv::view::iterator&& view_it, secondary_type& secondary,
                         uint64_t& primary, bool require_exact) {
       auto itr = base::template get_iterator_impl<Ship_index_type>(
-            table_index, whole_key{ secondary, 0 }, std::move(view_it), secondary_to_iterator_index,
+            table_index, whole_key{ secondary, 0 }, std::move(view_it), secondary_to_iterator_index, true,
             [&](auto& record) { return !require_exact || record.secondary_key == secondary; },
             [&](auto& record) {
                return whole_key{ record.secondary_key, record.primary_key };
@@ -336,13 +343,15 @@ class secondary_iterator_cache : public iterator_cache_base<secondary_iterator_c
       if (table_index < 0)
          return -1;
       auto map_it = secondary_to_iterator_index.lower_bound({ table_index, { secondary, 0 } });
-      if (map_it != secondary_to_iterator_index.end() && map_it->first.key.secondary == secondary)
+      if (map_it != secondary_to_iterator_index.end() && map_it->first.key.secondary == secondary) {
+         primary = map_it->first.key.primary;
          return map_it->second;
+      }
       chain_kv::view::iterator it{ base::view, state_account.value,
                                    chain_kv::to_slice(eosio::convert_to_key(std::make_tuple(
                                          (uint8_t)0x01, table_name, eosio::name{ "secondary" }, code, table, scope))) };
       it.lower_bound(eosio::convert_to_key(
-            std::make_tuple((uint8_t)0x01, table_name, eosio::name{ "secondary" }, code, table, scope, secondary, 0)));
+            std::make_tuple((uint8_t)0x01, table_name, eosio::name{ "secondary" }, code, table, scope, secondary)));
       return get_iterator(table_index, std::move(it), secondary, primary, require_exact);
    }
 };
@@ -463,7 +472,6 @@ struct chaindb_callbacks {
 
    template <typename Rft>
    static void register_callbacks() {
-      // todo: preconditions
       Rft::template add<&Derived::db_store_i64>("env", "db_store_i64");
       Rft::template add<&Derived::db_update_i64>("env", "db_update_i64");
       Rft::template add<&Derived::db_remove_i64>("env", "db_remove_i64");
