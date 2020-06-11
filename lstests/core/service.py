@@ -1397,8 +1397,69 @@ class Cluster:
                     assert self.min_block_num == math.inf or self.min_block_num <= self.max_block_num
                     self.block_num = -1
         def get_sync_result():
-            for _ in range(retry + 1):
+            class TimeTrack:
+                def __init__(self, log, desc: str, always_report_over_this_time=None):
+                    self.log = log
+                    self.max = None
+                    self.init_time = time.time()
+                    self.start_time = self.init_time
+                    self.last = None
+                    self.desc = desc
+                    self.always_report_over_this_time = always_report_over_this_time
+                    self.last = None
+                    self.total = None
+
+                def start(self):
+                    self.start_time = time.time()
+
+                def stop(self, restart_interval=False):
+                    current = time.time()
+                    self.last = current - self.start_time
+                    self.total = current - self.init_time
+                    reported = self._set_max()
+                    if not reported and self.always_report_over_this_time is not None and self.last > self.always_report_over_this_time:
+                        self.log(f"{self.desc} took {TimeTrack._format(self.last)} seconds to be performed.",
+                                 level=level)
+
+                    if restart_interval:
+                        self.start_time = current
+
+                    return self.last
+
+                @staticmethod
+                def _format(val):
+                    return "{:.2f}".format(val)
+
+                def _set_max(self):
+                    reported = False
+                    if self.max is None:
+                        self.max = self.last
+                    elif self.max < self.last:
+                        diff = self.last - self.max
+                        # only report if new max is over 2.0 sec, and more than double the previous
+                        if 2.0 < self.last and self.max < diff:
+                            percent = int(100 * diff / self.max)
+                            self.log(f"{self.desc} took {percent}% more time than the previous max time for this action (new max={TimeTrack._format(self.last)} seconds).",
+                                     level=level)
+                            reported = True
+
+                        self.max = self.last
+
+                    return reported
+
+            # track the total time for this method
+            total_time = TimeTrack(log = self.log, desc = "Getting sync results")
+            limit_running_time = 10 * sleep * retry
+
+            # track retrieving cluster info and calling sleep individually
+            ci_time = TimeTrack(log = self.log, desc = "Retrieving cluster info")
+            sleep_time = TimeTrack(log = self.log, desc = f"Fixed Sleep time of {sleep} seconds", always_report_over_this_time=sleep*5)
+
+            for try_num in range(retry + 1):
+                ci_time.start()
                 cx = self.get_cluster_info(level="trace")
+                ci_time.stop()
+
                 has_head_block_id = lambda node_id: "head_block_id" in cx.response_dict["result"][node_id][1]
                 extract_head_block_id = lambda node_id: cx.response_dict["result"][node_id][1]["head_block_id"]
                 extract_head_block_num = lambda node_id: cx.response_dict["result"][node_id][1]["head_block_num"]
@@ -1434,7 +1495,16 @@ class Cluster:
                     self.log(f"Lag between min and max block numbers (={max_block_num - min_block_num}) "
                              f"is larger than tolerance (={max_block_lag}).", level=level)
                     break
+
+                total_time.stop(restart_interval=True)
+                if total_time.total > limit_running_time:
+                    msg = f"get_sync_result taking considerably longer than expected: {total_time.total} seconds," +\
+                          f" after running {try_num} of {retry} retries"
+                    self.error(color.black_on_red(msg))
+                    raise SyncError(msg)
+                sleep_time.start()
                 time.sleep(sleep)
+                sleep_time.stop()
             msg = "Nodes out of sync"
             if not dont_raise:
                 self.error(color.black_on_red(msg))
