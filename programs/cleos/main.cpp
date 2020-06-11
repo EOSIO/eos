@@ -86,6 +86,7 @@ Options:
 #include <eosio/chain/contract_types.hpp>
 #include <eosio/chain/thread_utils.hpp>
 
+#include <eosio/amqp_trace_plugin/amqp_trace_plugin.hpp>
 #include <eosio/amqp_trx_plugin/amqp_trx_plugin.hpp>
 #include <eosio/amqp_trx_plugin/amqp_handler.hpp>
 
@@ -439,9 +440,14 @@ fc::variant push_transaction( signed_transaction& trx, const std::vector<public_
             const auto& tid = msg.get<packed_transaction>().id();
             const string id = tid.str();
             {
-               eosio::amqp qp_trx( fc::logger::get( DEFAULT_LOGGER ), thread_pool.get_executor(), amqp_address, "trx" );
-               eosio::amqp qp_trace( fc::logger::get( DEFAULT_LOGGER ), thread_pool.get_executor(), amqp_address,
-                                     "trace" );
+               eosio::amqp qp_trx( thread_pool.get_executor(), amqp_address, "trx", [](const std::string& err){
+                  std::cerr << "AMQP trx error: " << err << std::endl;
+                  exit(1);
+               } );
+               eosio::amqp qp_trace( thread_pool.get_executor(), amqp_address, "trace", [](const std::string& err){
+                  std::cerr << "AMQP trace error: " << err << std::endl;
+                  exit(1);
+               } );
 
                qp_trx.publish( "", id, buf.data(), buf.size() );
 

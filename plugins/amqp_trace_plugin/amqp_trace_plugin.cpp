@@ -28,6 +28,20 @@ struct amqp_trace_plugin_impl : std::enable_shared_from_this<amqp_trace_plugin_i
    std::string amqp_trace_address;
    std::string amqp_trace_exchange;
 
+public:
+
+   // called from any thread
+   void publish_error( std::string tid, int64_t error_code, std::string error_message ) {
+      try {
+         transaction_trace_msg msg{transaction_trace_exception{error_code}};
+         msg.get<transaction_trace_exception>().error_message = std::move( error_message );
+         auto buf = fc::raw::pack( msg );
+         boost::asio::post( thread_pool->get_executor(), [my=shared_from_this(), buf=std::move(buf), tid=std::move(tid)]() {
+            my->amqp_trace->publish( my->amqp_trace_exchange, tid, buf.data(), buf.size() );
+         } );
+      } FC_LOG_AND_DROP()
+   }
+
    // called on application thread
    void on_applied_transaction(const chain::transaction_trace_ptr& trace, const chain::packed_transaction_ptr& t) {
       try {
@@ -40,42 +54,21 @@ struct amqp_trace_plugin_impl : std::enable_shared_from_this<amqp_trace_plugin_i
 private:
 
    // called from amqp thread
-   void publish_result( const chain::packed_transaction_ptr& trx,
-                        const fc::static_variant<fc::exception_ptr, chain::transaction_trace_ptr>& result ) {
-
+   void publish_result( const chain::packed_transaction_ptr& trx, const chain::transaction_trace_ptr& trace ) {
       try {
-         if( result.contains<fc::exception_ptr>() ) {
-            auto& ex = *result.get<fc::exception_ptr>();
-            std::string err = ex.to_string();
-            dlog( "bad packed_transaction : ${e}", ("e", err) );
-            transaction_trace_exception tex{ ex.code() };
-            fc::unsigned_int which = transaction_trace_msg::tag<transaction_trace_exception>::value;
-            uint32_t payload_size = fc::raw::pack_size( which );
-            payload_size += fc::raw::pack_size( tex.error_code );
-            payload_size += fc::raw::pack_size( err );
-            std::vector<char> buf( payload_size );
-            fc::datastream<char*> ds( buf.data(), payload_size );
-            fc::raw::pack( ds, which );
-            fc::raw::pack( ds, tex.error_code );
-            fc::raw::pack( ds, err );
-            amqp_trace->publish( amqp_trace_exchange, trx->id(), buf.data(), buf.size() );
-
+         if( !trace->except ) {
+            dlog( "chain accepted transaction, bcast ${id}", ("id", trace->id) );
          } else {
-            const auto& trace = result.get<chain::transaction_trace_ptr>();
-            if( !trace->except ) {
-               dlog( "chain accepted transaction, bcast ${id}", ("id", trace->id) );
-            } else {
-               dlog( "trace except : ${m}", ("m", trace->except->to_string()) );
-            }
-            fc::unsigned_int which = transaction_trace_msg::tag<chain::transaction_trace>::value;
-            uint32_t payload_size = fc::raw::pack_size( which );
-            payload_size += fc::raw::pack_size( *trace );
-            std::vector<char> buf( payload_size );
-            fc::datastream<char*> ds( buf.data(), payload_size );
-            fc::raw::pack( ds, which );
-            fc::raw::pack( ds, *trace );
-            amqp_trace->publish( amqp_trace_exchange, trx->id(), buf.data(), buf.size() );
+            dlog( "trace except : ${m}", ("m", trace->except->to_string()) );
          }
+         fc::unsigned_int which = transaction_trace_msg::tag<chain::transaction_trace>::value;
+         uint32_t payload_size = fc::raw::pack_size( which );
+         payload_size += fc::raw::pack_size( *trace );
+         std::vector<char> buf( payload_size );
+         fc::datastream<char*> ds( buf.data(), payload_size );
+         fc::raw::pack( ds, which );
+         fc::raw::pack( ds, *trace );
+         amqp_trace->publish( amqp_trace_exchange, trx->id(), buf.data(), buf.size() );
       } FC_LOG_AND_DROP()
    }
 
@@ -85,6 +78,10 @@ amqp_trace_plugin::amqp_trace_plugin()
 : my(std::make_shared<amqp_trace_plugin_impl>()) {}
 
 amqp_trace_plugin::~amqp_trace_plugin() {}
+
+void amqp_trace_plugin::publish_error( std::string tid, int64_t error_code, std::string error_message ) {
+   my->publish_error( std::move(tid), error_code, std::move(error_message) );
+}
 
 void amqp_trace_plugin::set_program_options(options_description& cli, options_description& cfg) {
    auto op = cfg.add_options();
