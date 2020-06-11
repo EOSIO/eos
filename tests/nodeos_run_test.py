@@ -74,7 +74,7 @@ try:
         else:
             launched = cluster.launch(prodCount=prodCount, onlyBios=onlyBios, dontBootstrap=dontBootstrap,
                                       specificExtraNodeosArgs={
-                                        0: "--plugin eosio::amqp_trx_plugin --amqp-trx-address %s" % (amqpAddr) })
+                                        0: "--plugin eosio::amqp_trx_plugin --amqp-trx-address %s --plugin eosio::amqp_trace_plugin --amqp-trace-address %s" % (amqpAddr, amqpAddr) })
 
         if launched is False:
             cmdError("launcher")
