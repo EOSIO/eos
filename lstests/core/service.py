@@ -1473,8 +1473,16 @@ class Cluster:
             raise SyncError(msg)
         return res
 
-    def check_production_round(self, expected_producers: typing.List[str], new_producers={}, level="debug", dont_raise=False):
+    def check_production_round(self, expected_producers: typing.List[str], new_producers={}, level="debug", dont_raise=False, min_required_per_round=10):
         self.print_header("check production round", level=level)
+        full_round = 12
+        if min_required_per_round is None:
+            min_required_per_round = full_round
+        if min_required_per_round > full_round:
+            msg = f"Cannot set min_required_per_round (={min_required_per_round}) greater than full_round (={full_round})"
+            self.error(msg)
+            raise BlockchainError(msg)
+
         # list expected producers
         self.log("Expected producers:", level=level)
         for i, v in enumerate(expected_producers):
@@ -1491,13 +1499,13 @@ class Cluster:
             curr_prod = self.wait_get_producer_by_block(begin_block_num, level="trace")
         # formally start
         self.log(f">>> Production check formally starts, as expected producer \"{curr_prod}\" has come to produce.", level=level)
-        rest = 12 * len(expected_producers) - 1
+        rest = full_round * len(expected_producers) - 1
         self.log(f"Block #{begin_block_num}: {curr_prod} has produced 1 block in this round. "
                  f"{rest} {helper.plural('block', rest)} {helper.singular('remain', rest)} to to be checked.", level=level)
         counter = {x: 0 for x in expected_producers}
         counter[curr_prod] += 1
         entr_prod = last_prod = curr_prod
-        end_block_num = begin_block_num + 12 * len(expected_producers)
+        end_block_num = begin_block_num + full_round * len(expected_producers)
         for num in range(begin_block_num + 1, end_block_num):
             curr_prod = self.wait_get_producer_by_block(num, level="trace")
             counter[curr_prod] += 1
@@ -1506,31 +1514,44 @@ class Cluster:
                 self.error(msg)
                 if not dont_raise:
                     raise BlockchainError(msg)
-            if curr_prod != last_prod and last_prod != entr_prod and counter[last_prod] != 12:
-                count = counter[last_prod]
-                msg = (f"Producer changes to \"{curr_prod}\" after last producer \"{last_prod}\" "
-                       f"produces {count} {helper.plural('block', count)}.")
-                self.error(msg)
-                if not dont_raise:
-                    raise BlockchainError(msg)
+            if curr_prod != last_prod and last_prod != entr_prod:
+                if counter[last_prod] < min_required_per_round or counter[last_prod] > full_round:
+                    count = counter[last_prod]
+                    msg = (f"Producer changes to \"{curr_prod}\" after last producer \"{last_prod}\" "
+                           f"produces {count} {helper.plural('block', count)}.")
+                    self.error(msg)
+                    if not dont_raise:
+                        raise BlockchainError(msg)
             rest = end_block_num - num - 1
             count = counter[curr_prod]
             self.log(f"Block #{num}: {curr_prod} has produced {count} {helper.plural('block', count)} in this round. "
                      f"{rest} {helper.plural('block', rest)} {helper.singular('remain', rest)} to to be checked.", level=level)
             last_prod = curr_prod
         # summarize
-        expected_counter = {x: 12 for x in expected_producers}
-        if counter == expected_counter:
+        expected_counter = {x: full_round for x in expected_producers}
+        success = counter == expected_counter
+        if not success:
+            # check if we succeeded by the min_required_per_round requirements
+            if min_required_per_round < full_round:
+                for key, value in expected_producers.items():
+                    if key not in expected_counter or value < min_required_per_round or value > full_round:
+                        success = True
+                        break
+                if not failed:
+                    self.log(">>> Production check succeeded.", level=level)
+                    return True
+
+        if success:
             self.log(">>> Production check succeeded.", level=level)
             return True
-        else:
-            msg = ">>> Production check failed."
-            for prod in counter:
-                msg += f"\n{prod} produced {counter[prod]} {helper.plural('block', {counter[prod]})}."
-            self.error(msg)
-            if not dont_raise:
-                raise BlockchainError(msg)
-            return False
+
+        msg = ">>> Production check failed."
+        for prod in counter:
+            msg += f"\n{prod} produced {counter[prod]} {helper.plural('block', {counter[prod]})}."
+        self.error(msg)
+        if not dont_raise:
+            raise BlockchainError(msg)
+        return False
 
 # --------------- call ------------------------------------------------------------------------------------------------
 
