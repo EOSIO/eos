@@ -452,15 +452,17 @@ fc::variant push_transaction( signed_transaction& trx, const std::vector<public_
                qp_trx.publish( "", id, buf.data(), buf.size() );
 
                std::promise<void> received_trace;
+               std::atomic_bool received = false;
                auto& consumer = qp_trace.consume();
                consumer.onError( []( const char* message ) {
                   std::cerr << "consume failed: " << message << std::endl;
                } );
                consumer.onReceived( [&]( const AMQP::Message& message, uint64_t delivery_tag, bool redelivered ) {
-                  if( message.hasCorrelationID() && message.correlationID() == id ) {
+                  if( message.hasCorrelationID() && message.correlationID() == id && !received) {
                      fc::datastream<const char*> ds( message.body(), message.bodySize() );
                      fc::raw::unpack( ds, trace_msg );
                      // don't ack as other consumers may be interested in trace: qp_trace.ack( delivery_tag );
+                     received = true;
                      received_trace.set_value();
                   }
                } );
