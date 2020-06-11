@@ -71,6 +71,9 @@ struct reliable_amqp_publisher_impl final : reliable_amqp_publisher_callbacks {
       hostss << "amqp://" << user << ":" << pass << "@" << host << ":" << port << "/" << path;
       amqp_address = std::make_unique<AMQP::Address>(hostss.str());
 
+      boost::system::error_code ec;
+      boost::filesystem::create_directories(data_file_path.parent_path(), ec);
+
       if(boost::filesystem::exists(data_file_path)) {
          try {
             fc::datastream<fc::cfile> file;
@@ -83,7 +86,6 @@ struct reliable_amqp_publisher_impl final : reliable_amqp_publisher_callbacks {
          boost::filesystem::ofstream o(data_file_path);
          FC_ASSERT(o.good(), "Failed to create unconfirmed AMQP message file at ${f}", ("f", (fc::path)data_file_path));
       }
-      boost::system::error_code ec;
       boost::filesystem::remove(data_file_path, ec);
 
       thread = std::thread([this]() {
@@ -121,8 +123,6 @@ struct reliable_amqp_publisher_impl final : reliable_amqp_publisher_callbacks {
 
       if(message_deque.size()) {
          try {
-            boost::filesystem::create_directories(data_file_path.parent_path());
-
             fc::datastream<fc::cfile> file;
             file.set_file_path(data_file_path);
             file.open("wb");
