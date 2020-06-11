@@ -119,7 +119,7 @@ void amqp_trx_plugin::plugin_startup() {
       ilog( "Starting amqp_trx_plugin" );
       my->thread_pool.emplace( "amqp_t", 1 );
 
-      my->amqp_trx.emplace( my->thread_pool->get_executor(), my->amqp_trx_address, "trace", [](const std::string& err) {
+      my->amqp_trx.emplace( my->thread_pool->get_executor(), my->amqp_trx_address, "trx", [](const std::string& err) {
          elog( "amqp error: ${e}", ("e", err) );
          app().quit();
       });
