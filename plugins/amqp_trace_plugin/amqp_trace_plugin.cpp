@@ -94,8 +94,8 @@ void amqp_trace_plugin::set_program_options(options_description& cli, options_de
 
 void amqp_trace_plugin::plugin_initialize(const variables_map& options) {
    try {
-      EOS_ASSERT( options.count("amqp-trace-address"), chain::plugin_config_exception, "amqp-trace-address required" );
-      my->amqp_trace_address = options.at("amqp-trace-address").as<std::string>();
+      if( options.count("amqp-trace-address") )
+         my->amqp_trace_address = options.at("amqp-trace-address").as<std::string>();
       my->amqp_trace_exchange = options.at("amqp-trace-exchange").as<std::string>();
    }
    FC_LOG_AND_RETHROW()
@@ -104,6 +104,8 @@ void amqp_trace_plugin::plugin_initialize(const variables_map& options) {
 void amqp_trace_plugin::plugin_startup() {
    handle_sighup();
    try {
+
+      if( my->amqp_trace_address.empty() ) return;
 
       ilog( "Starting amqp_trace_plugin" );
       my->thread_pool.emplace( "amqp_t", 1 );
