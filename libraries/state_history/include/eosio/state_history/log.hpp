@@ -7,9 +7,10 @@
 #include <eosio/chain/block_header.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/types.hpp>
-#include <fc/io/cfile.hpp>
+#include <eosio/state_history/transaction_trace_cache.hpp>
+#include <fc/io/datastream.hpp>
 #include <fc/log/logger.hpp>
-#include <eosio/state_history/trace_converter.hpp>
+#include <fc/io/cfile.hpp>
 
 namespace eosio {
 
@@ -46,15 +47,19 @@ static const int state_history_log_header_serial_size = sizeof(state_history_log
 
 class state_history_log {
  private:
+   using cfile_stream = fc::datastream<fc::cfile>;
    const char* const    name = "";
    std::string          log_filename;
    std::string          index_filename;
-   fc::cfile            log;
-   fc::cfile            index;
+   cfile_stream         index;
    uint32_t             _begin_block = 0;
    uint32_t             _end_block   = 0;
    chain::block_id_type last_block_id;
    uint32_t             version = ship_current_version;
+ protected:
+   cfile_stream         write_log;
+   cfile_stream         read_log;
+
  public:
    // The type aliases below help to make it obvious about the meanings of member function return values.
    using block_num_type     = uint32_t;
@@ -70,31 +75,23 @@ class state_history_log {
    void write_header(const state_history_log_header& header);
 
    template <typename F>
-   void write_entry(const state_history_log_header& header, const chain::block_id_type& prev_id, F write_payload) {
-      auto [pos, block_num] = write_entry_header(header, prev_id);
-      write_payload(log);
-      write_entry_position(header, pos, block_num);
+   void write_entry(state_history_log_header& header, const chain::block_id_type& prev_id, F write_payload) {
+      auto start_pos = write_log.tellp();
+      try {
+         auto block_num      = write_entry_header(header, prev_id);
+         write_payload(write_log);
+         write_entry_position(header, start_pos, block_num);
+      } catch (...) {
+         write_log.close();
+         boost::filesystem::resize_file(log_filename, start_pos);
+         write_log.open("rb+");
+         throw;
+      }
    }
 
-   /// @returns cfile positioned at payload
-   fc::cfile&           get_entry_header(block_num_type block_num, state_history_log_header& header);
+   void                 get_entry_header(block_num_type block_num, state_history_log_header& header);
    chain::block_id_type get_block_id(block_num_type block_num);
 
-   /**
-    * @returns the entry payload and its version if existed
-    **/
-   fc::optional<std::pair<chain::bytes, version_type>> get_entry(block_num_type block_num);
-
-   template <typename Converter>
-   fc::optional<chain::bytes> get_entry(uint32_t block_num, Converter conv) {
-      auto entry = this->get_entry(block_num);
-      if (entry)
-         return conv(entry->first, entry->second);
-      return {};
-   }
-
- protected:
-   fc::cfile& get_log() { return log; }
  private:
    bool               get_last_block(uint64_t size);
    void               recover_blocks(uint64_t size);
@@ -104,33 +101,33 @@ class state_history_log {
    void               truncate(block_num_type block_num);
 
    /**
-    *  @returns the file position of the written entry and its block num
+    *  @returns the block num
     **/
-   std::pair<file_position_type, block_num_type> write_entry_header(const state_history_log_header& header,
-                                                                    const chain::block_id_type&     prev_id);
+   block_num_type write_entry_header(const state_history_log_header& header,
+                                     const chain::block_id_type&     prev_id);
    void write_entry_position(const state_history_log_header& header, file_position_type pos, block_num_type block_num);
 }; // state_history_log
 
 class state_history_traces_log : public state_history_log {
-   state_history::trace_converter trace_convert;
+   state_history::transaction_trace_cache cache;
 
  public:
-   using compression_type            = chain::packed_transaction::prunable_data_type::compression_type;
-   bool             trace_debug_mode = false;
+   bool trace_debug_mode  = false;
+   state_history::compression_type compression = state_history::compression_type::zlib;
 
    state_history_traces_log(fc::path state_history_dir);
 
    static bool exists(fc::path state_history_dir);
 
    void add_transaction(const chain::transaction_trace_ptr& trace, const chain::packed_transaction_ptr& transaction) {
-      trace_convert.add_transaction(trace, transaction);
+      cache.add_transaction(trace, transaction);
    }
+
+   std::vector<state_history::transaction_trace> get_traces(block_num_type block_num);
 
    void block_start(uint32_t block_num) {
-      trace_convert.clear_cache();
+      cache.clear();
    }
-
-   fc::optional<chain::bytes> get_log_entry(block_num_type block_num);
 
    void store(const chainbase::database& db, const chain::block_state_ptr& block_state);
 
@@ -143,8 +140,8 @@ class state_history_traces_log : public state_history_log {
 class state_history_chain_state_log : public state_history_log {
  public:
    state_history_chain_state_log(fc::path state_history_dir);
-   
-   fc::optional<chain::bytes> get_log_entry(block_num_type block_num);
+
+   chain::bytes get_log_entry(block_num_type block_num);
 
    void store(const chainbase::database& db, const chain::block_state_ptr& block_state);
 };

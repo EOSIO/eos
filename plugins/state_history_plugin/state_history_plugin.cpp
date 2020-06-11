@@ -48,18 +48,12 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
    uint16_t                                                   endpoint_port    = 8080;
    std::unique_ptr<tcp::acceptor>                             acceptor;
 
-   void get_block(uint32_t block_num, fc::optional<bytes>& result) {
-      chain::signed_block_ptr p;
+   state_history::optional_signed_block get_block(uint32_t block_num) {
       try {
-         p = chain_plug->chain().fetch_block_by_number(block_num);
+         return chain_plug->chain().fetch_block_by_number(block_num);
       } catch (...) {
-         return;
       }
-      if (p) {
-         auto v0 = p->to_signed_block_v0();
-         if (v0)
-            result = fc::raw::pack(*v0);
-      }
+      return {};
    }
 
    fc::optional<chain::block_id_type> get_block_id(uint32_t block_num) {
@@ -68,9 +62,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       if (chain_state_log && block_num >= chain_state_log->begin_block() && block_num < chain_state_log->end_block())
          return chain_state_log->get_block_id(block_num);
       try {
-         auto block = chain_plug->chain().fetch_block_by_number(block_num);
-         if (block)
-            return block->calculate_id();
+         return chain_plug->chain().get_block_id_for_num(block_num);
       } catch (...) {
       }
       return {};
@@ -187,7 +179,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          send_update();
       }
 
-      void send_update(get_blocks_result_v0 result) {
+      void send_update(get_blocks_result_v1&& result) {
          need_to_send_update = true;
          if (!send_queue.empty() || !current_request || !current_request->max_messages_in_flight)
             return;
@@ -204,9 +196,9 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
                if (prev_block_id)
                   result.prev_block = block_position{current_request->start_block_num - 1, *prev_block_id};
                if (current_request->fetch_block)
-                  plugin->get_block(current_request->start_block_num, result.block);
+                  result.block = plugin->get_block(current_request->start_block_num);
                if (current_request->fetch_traces && plugin->trace_log) {
-                  result.traces = plugin->trace_log->get_log_entry(current_request->start_block_num);
+                  result.traces = plugin->trace_log->get_traces(current_request->start_block_num);
                }
                if (current_request->fetch_deltas && plugin->chain_state_log) {
                   result.deltas = plugin->chain_state_log->get_log_entry(current_request->start_block_num);
@@ -224,7 +216,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          need_to_send_update = true;
          if (!send_queue.empty() || !current_request || !current_request->max_messages_in_flight)
             return;
-         get_blocks_result_v0 result;
+         get_blocks_result_v1 result;
          result.head = {block_state->block_num, block_state->id};
          send_update(std::move(result));
       }
@@ -236,7 +228,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
              !current_request->max_messages_in_flight)
             return;
          auto& chain = plugin->chain_plug->chain();
-         get_blocks_result_v0 result;
+         get_blocks_result_v1 result;
          result.head = {chain.head_block_num(), chain.head_block_id()};
          send_update(std::move(result));
       }
@@ -371,6 +363,8 @@ void state_history_plugin::set_program_options(options_description& cli, options
            "your internal network.");
    options("trace-history-debug-mode", bpo::bool_switch()->default_value(false),
            "enable debug mode for trace history");
+   options("context-free-data-compression", bpo::value<string>()->default_value("zlib"), 
+           "compression mode for context free data in transaction traces. Supported options are \"zlib\" and \"none\"");
 }
 
 void state_history_plugin::plugin_initialize(const variables_map& options) {
@@ -413,7 +407,16 @@ void state_history_plugin::plugin_initialize(const variables_map& options) {
       if (options.at("trace-history").as<bool>()) {
          my->trace_log.emplace(state_history_dir);
          if (options.at("trace-history-debug-mode").as<bool>()) 
-            my->trace_log->trace_debug_mode = true;                      
+            my->trace_log->trace_debug_mode = true;  
+
+         auto compression = options.at("context-free-data-compression").as<string>();
+         if (compression == "zlib") {
+            my->trace_log->compression = state_history::compression_type::zlib;
+         } else if (compression == "none") {
+            my->trace_log->compression = state_history::compression_type::none;
+         } else {
+            throw bpo::validation_error(bpo::validation_error::invalid_option_value);
+         }
       }
 
       if (options.at("chain-state-history").as<bool>())
