@@ -439,8 +439,7 @@ fc::variant push_transaction( signed_transaction& trx, const std::vector<public_
             const auto& tid = msg.get<packed_transaction>().id();
             const string id = tid.str();
             {
-               boost::asio::io_service ioservice;
-               eosio::amqp qp_trx( fc::logger::get( DEFAULT_LOGGER ), ioservice, amqp_address, "trx" );
+               eosio::amqp qp_trx( fc::logger::get( DEFAULT_LOGGER ), thread_pool.get_executor(), amqp_address, "trx" );
                eosio::amqp qp_trace( fc::logger::get( DEFAULT_LOGGER ), thread_pool.get_executor(), amqp_address,
                                      "trace" );
 
