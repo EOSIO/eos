@@ -236,18 +236,24 @@ reliable_amqp_publisher::reliable_amqp_publisher(const std::string url, const st
    my(new reliable_amqp_publisher_impl(url, exchange, routing_key, unconfirmed_path, message_id)) {}
 
 void reliable_amqp_publisher::publish_message_raw(std::vector<char>&& data) {
-   my->ctx.dispatch([this, d=std::move(data)]() mutable {
-      constexpr unsigned max_queued_messages = 1u<<20u;
-      if(my->message_deque.size() > max_queued_messages) {
-         if(my->logged_exceeded_max_depth == false)
-            elog("AMQP connection ${a} publishing to \"${e}\" has reached ${max} unconfirmed messages; further messages will be dropped",
-                 ("a", (std::string)*my->amqp_address)("e", my->exchange)("max", max_queued_messages));
-         my->logged_exceeded_max_depth = true;
-         return;
-      }
-      my->message_deque.emplace_back(std::move(d));
-      my->pump_queue();
-   });
+   if(!my->ctx.get_executor().running_in_this_thread()) {
+      boost::asio::post(my->user_submitted_work_strand, [this, d=std::move(data)]() mutable {
+         publish_message_raw(std::move(d));
+      });
+      return;
+   }
+
+   constexpr unsigned max_queued_messages = 1u<<20u;
+
+   if(my->message_deque.size() > max_queued_messages) {
+      if(my->logged_exceeded_max_depth == false)
+         elog("AMQP connection ${a} publishing to \"${e}\" has reached ${max} unconfirmed messages; further messages will be dropped",
+              ("a", (std::string)*my->amqp_address)("e", my->exchange)("max", max_queued_messages));
+      my->logged_exceeded_max_depth = true;
+      return;
+   }
+   my->message_deque.emplace_back(std::move(data));
+   my->pump_queue();
 }
 
 void reliable_amqp_publisher::post_on_io_context(std::function<void()>&& f) {
