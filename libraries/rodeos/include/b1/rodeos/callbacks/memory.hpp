@@ -43,7 +43,6 @@ struct memory_callbacks {
 
    template <typename Rft>
    static void register_callbacks() {
-      // todo: preconditions
       Rft::template add<&Derived::memcpy_impl>("env", "memcpy");
       Rft::template add<&Derived::memmove_impl>("env", "memmove");
       Rft::template add<&Derived::memcmp_impl>("env", "memcmp");

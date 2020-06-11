@@ -352,7 +352,6 @@ struct db_callbacks {
 
    template <typename Rft>
    static void register_callbacks() {
-      // todo: preconditions
       Rft::template add<&Derived::kv_erase>("env", "kv_erase");
       Rft::template add<&Derived::kv_set>("env", "kv_set");
       Rft::template add<&Derived::kv_get>("env", "kv_get");

@@ -37,7 +37,6 @@ struct action_callbacks {
 
    template <typename Rft>
    static void register_callbacks() {
-      // todo: preconditions
       Rft::template add<&Derived::read_action_data>("env", "read_action_data");
       Rft::template add<&Derived::action_data_size>("env", "action_data_size");
       Rft::template add<&Derived::current_receiver>("env", "current_receiver");

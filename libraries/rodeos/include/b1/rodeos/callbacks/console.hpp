@@ -64,7 +64,6 @@ struct console_callbacks {
 
    template <typename Rft>
    static void register_callbacks() {
-      // todo: preconditions
       Rft::template add<&Derived::prints>("env", "prints");
       Rft::template add<&Derived::prints_l>("env", "prints_l");
       Rft::template add<&Derived::printi>("env", "printi");

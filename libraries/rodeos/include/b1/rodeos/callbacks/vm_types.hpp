@@ -8,11 +8,17 @@ namespace b1::rodeos {
 
 using wasm_size_t = eosio::vm::wasm_size_t;
 
-template <typename T, std::size_t Align = alignof(T)>
-using legacy_ptr = eosio::vm::argument_proxy<T*, Align>;
+// This is marked "legacy" just to indicate the nodeos implementation uses the
+// legacy semantics. Since rodeos doesn't have to meet consensus reqs, it's
+// free to use the new semantics.
+template <typename T>
+using legacy_ptr = eosio::vm::argument_proxy<T*>;
 
-template <typename T, std::size_t Align = alignof(T)>
-using legacy_span = eosio::vm::argument_proxy<eosio::vm::span<T>, Align>;
+// This is marked "legacy" just to indicate the nodeos implementation uses the
+// legacy semantics. Since rodeos doesn't have to meet consensus reqs, it's
+// free to use the new semantics.
+template <typename T>
+using legacy_span = eosio::vm::argument_proxy<eosio::vm::span<T>>;
 
 struct null_terminated_ptr : eosio::vm::span<const char> {
    using base_type = eosio::vm::span<const char>;

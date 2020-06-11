@@ -133,8 +133,6 @@ struct unimplemented_callbacks {
 
    template <typename Rft>
    static void register_callbacks() {
-      // todo: preconditions
-
       // privileged_api
       Rft::template add<&Derived::is_feature_active>("env", "is_feature_active");
       Rft::template add<&Derived::activate_feature>("env", "activate_feature");
