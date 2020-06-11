@@ -662,9 +662,9 @@ namespace eosio { namespace chain {
       };
    } // namespace detail
 
-   block_log::block_log(const fc::path& data_dir, fc::path archive_dir, uint64_t split_factor,
+   block_log::block_log(const fc::path& data_dir, fc::path archive_dir, uint64_t stride,
                         uint16_t max_retained_files)
-       : my(new detail::block_log_impl(data_dir, archive_dir, split_factor, max_retained_files)) {}
+       : my(new detail::block_log_impl(data_dir, archive_dir, stride, max_retained_files)) {}
 
    block_log::~block_log() {}
 
