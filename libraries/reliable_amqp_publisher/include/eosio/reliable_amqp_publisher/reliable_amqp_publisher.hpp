@@ -36,10 +36,10 @@ class reliable_amqp_publisher {
       template<typename T>
       void publish_message(const T& t) {
          std::vector<char> v = fc::raw::pack(t);
-         publish_message(std::move(v));
+         publish_message_raw(std::move(v));
       }
 
-      void publish_message(std::vector<char>&& data);
+      void publish_message_raw(std::vector<char>&& data);
 
       /// reliable_amqp_publisher runs its own thread. In some cases it may be desirable to skip a needless thread jump
       ///  when performing work. This method will allow submission of work to reliable_amqp_publisher's thread

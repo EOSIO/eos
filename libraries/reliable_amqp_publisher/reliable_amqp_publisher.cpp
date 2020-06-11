@@ -235,7 +235,7 @@ struct reliable_amqp_publisher_impl final : reliable_amqp_publisher_callbacks {
 reliable_amqp_publisher::reliable_amqp_publisher(const std::string url, const std::string exchange, const std::string routing_key, const boost::filesystem::path unconfirmed_path, const std::optional<std::string> message_id) :
    my(new reliable_amqp_publisher_impl(url, exchange, routing_key, unconfirmed_path, message_id)) {}
 
-void reliable_amqp_publisher::publish_message(std::vector<char>&& data) {
+void reliable_amqp_publisher::publish_message_raw(std::vector<char>&& data) {
    my->ctx.dispatch([this, d=std::move(data)]() mutable {
       constexpr unsigned max_queued_messages = 1u<<20u;
       if(my->message_deque.size() > max_queued_messages) {
