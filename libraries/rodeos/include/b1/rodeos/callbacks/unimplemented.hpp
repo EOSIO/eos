@@ -70,7 +70,6 @@ struct unimplemented_callbacks {
 
    // database_api
    DB_SECONDARY_INDEX_METHODS_ARRAY(idx256)
-   DB_SECONDARY_INDEX_METHODS_SIMPLE(idx_double)
    DB_SECONDARY_INDEX_METHODS_SIMPLE(idx_long_double)
 
 #undef DB_SECONDARY_INDEX_METHODS_SIMPLE
@@ -174,7 +173,6 @@ struct unimplemented_callbacks {
 
       // database_api
       DB_SECONDARY_INDEX_METHODS_ARRAY(idx256)
-      DB_SECONDARY_INDEX_METHODS_SIMPLE(idx_double)
       DB_SECONDARY_INDEX_METHODS_SIMPLE(idx_long_double)
 
 #undef DB_SECONDARY_INDEX_METHODS_SIMPLE

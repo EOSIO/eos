@@ -7,10 +7,11 @@
 
 namespace b1::rodeos {
 
-using contract_index128 = eosio::ship_protocol::contract_index128;
-using contract_index64  = eosio::ship_protocol::contract_index64;
-using contract_row      = eosio::ship_protocol::contract_row;
-using contract_table    = eosio::ship_protocol::contract_table;
+using contract_index_double = eosio::ship_protocol::contract_index_double;
+using contract_index128     = eosio::ship_protocol::contract_index128;
+using contract_index64      = eosio::ship_protocol::contract_index64;
+using contract_row          = eosio::ship_protocol::contract_row;
+using contract_table        = eosio::ship_protocol::contract_table;
 
 struct chaindb_iterator_base {
    int32_t                                 table_index = {};
@@ -357,9 +358,10 @@ class secondary_iterator_cache : public iterator_cache_base<secondary_iterator_c
 };
 
 struct chaindb_state {
-   std::unique_ptr<rodeos::iterator_cache>                      iterator_cache;
-   std::unique_ptr<secondary_iterator_cache<contract_index64>>  idx64;
-   std::unique_ptr<secondary_iterator_cache<contract_index128>> idx128;
+   std::unique_ptr<rodeos::iterator_cache>                          iterator_cache;
+   std::unique_ptr<secondary_iterator_cache<contract_index64>>      idx64;
+   std::unique_ptr<secondary_iterator_cache<contract_index128>>     idx128;
+   std::unique_ptr<secondary_iterator_cache<contract_index_double>> idx_double;
 };
 
 template <typename Derived>
@@ -455,6 +457,7 @@ struct chaindb_callbacks {
 
    IMPL_SECONDARY(idx64, uint64_t, eosio::name{ "contract.i1" })
    IMPL_SECONDARY(idx128, __uint128_t, eosio::name{ "contract.i2" })
+   IMPL_SECONDARY(idx_double, double, eosio::name{ "contract.dbl" })
 
 #undef IMPL_SECONDARY
 
@@ -485,6 +488,7 @@ struct chaindb_callbacks {
 
       REGISTER_SECONDARY(idx64)
       REGISTER_SECONDARY(idx128)
+      REGISTER_SECONDARY(idx_double)
    }
 
 #undef REGISTER_SECONDARY
