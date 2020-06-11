@@ -6,7 +6,6 @@
 #include <eosio/resource_monitor_plugin/resource_monitor_plugin.hpp>
 
 using namespace eosio;
-//using namespace eosio::resource_monitor;
 using namespace boost::system;
 
 namespace bfs = boost::filesystem;
@@ -26,6 +25,8 @@ struct resmon_fixture {
       // We only have at most 3 arguments. OK to hardcodied in test
       // programs.
       const char* argv[10];
+      EOS_ASSERT(args.size() < 10, chain::plugin_exception, "number of arguments  (${size}) must be less than 10", ("size", args.size()));
+
       // argv[0] is program name, no need to fill in
       for (auto i=0; i<args.size(); ++i) {
          argv[i+1] = args[i].c_str();
