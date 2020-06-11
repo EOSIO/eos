@@ -305,7 +305,7 @@ namespace LLVMJIT
 
 		unsigned num_functions_stack_size_found = 0;
 		for(const auto& stacksizes : jitModule->unitmemorymanager->stack_sizes) {
-			fc::datastream<const unsigned char*> ds(stacksizes.data(), stacksizes.size());
+			fc::datastream<const char*> ds(reinterpret_cast<const char*>(stacksizes.data()), stacksizes.size());
 			while(ds.remaining()) {
 				uint64_t funcaddr;
 				fc::unsigned_int stack_size;

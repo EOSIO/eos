@@ -4,35 +4,62 @@
 #include <eosio/chain/webassembly/common.hpp>
 #include <eosio/chain/webassembly/eos-vm.hpp>
 #include <eosio/chain/webassembly/preconditions.hpp>
+#ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
+#include <eosio/chain/webassembly/eos-vm-oc.hpp>
+#endif
 #include <fc/crypto/sha1.hpp>
+#include <boost/hana/string.hpp>
 
 namespace eosio { namespace chain { namespace webassembly {
 
    template <auto HostFunction, typename... Preconditions>
    struct host_function_registrator {
-      constexpr host_function_registrator(const std::string& mod_name, const std::string& fn_name) {
+     template<typename Mod, typename Name>
+     constexpr host_function_registrator(Mod mod_name, Name fn_name) {
          using rhf_t = eos_vm_host_functions_t;
-         rhf_t::add<HostFunction, Preconditions...>(mod_name, fn_name);
+         rhf_t::add<HostFunction, Preconditions...>(mod_name.c_str(), fn_name.c_str());
+#ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
+         constexpr bool is_injected = (Mod() == BOOST_HANA_STRING(EOSIO_INJECTED_MODULE_NAME));
+         eosvmoc::register_eosvm_oc<HostFunction, is_injected, std::tuple<Preconditions...>>(mod_name + BOOST_HANA_STRING(".") + fn_name);
+#endif
       }
    };
 
 #define REGISTER_INJECTED_HOST_FUNCTION(NAME, ...) \
-   inline static host_function_registrator<&interface::NAME, ##__VA_ARGS__> NAME ## _registrator = {eosio_injected_module_name, #NAME};
+   static host_function_registrator<&interface::NAME, ##__VA_ARGS__> NAME ## _registrator_impl() { \
+      return {BOOST_HANA_STRING(EOSIO_INJECTED_MODULE_NAME), BOOST_HANA_STRING(#NAME)}; \
+   } \
+   inline static auto NAME ## _registrator = NAME ## _registrator_impl();
 
 #define REGISTER_HOST_FUNCTION(NAME, ...) \
-   inline static host_function_registrator<&interface::NAME, core_precondition, context_aware_check, ##__VA_ARGS__> NAME ## _registrator = {"env", #NAME};
+   static host_function_registrator<&interface::NAME, core_precondition, context_aware_check, ##__VA_ARGS__> NAME ## _registrator_impl() { \
+      return {BOOST_HANA_STRING("env"), BOOST_HANA_STRING(#NAME)}; \
+   } \
+   inline static auto NAME ## _registrator = NAME ## _registrator_impl();
 
 #define REGISTER_CF_HOST_FUNCTION(NAME, ...) \
-   inline static host_function_registrator<&interface::NAME, core_precondition, ##__VA_ARGS__> NAME ## _registrator = {"env", #NAME};
+   static host_function_registrator<&interface::NAME, core_precondition, ##__VA_ARGS__> NAME ## _registrator_impl() { \
+      return {BOOST_HANA_STRING("env"), BOOST_HANA_STRING(#NAME)}; \
+   } \
+   inline static auto NAME ## _registrator = NAME ## _registrator_impl();
 
 #define REGISTER_LEGACY_HOST_FUNCTION(NAME, ...) \
-   inline static host_function_registrator<&interface::NAME, null_pointer_check, legacy_static_check_wl_args, context_aware_check, ##__VA_ARGS__> NAME ## _registrator = {"env", #NAME};
+   static host_function_registrator<&interface::NAME, null_pointer_check, legacy_static_check_wl_args, context_aware_check, ##__VA_ARGS__> NAME ## _registrator_impl() { \
+      return {BOOST_HANA_STRING("env"), BOOST_HANA_STRING(#NAME)}; \
+   } \
+   inline static auto NAME ## _registrator = NAME ## _registrator_impl();
 
 #define REGISTER_LEGACY_CF_HOST_FUNCTION(NAME, ...) \
-   inline static host_function_registrator<&interface::NAME, null_pointer_check, legacy_static_check_wl_args, ##__VA_ARGS__> NAME ## _registrator = {"env", #NAME};
+   static host_function_registrator<&interface::NAME, null_pointer_check, legacy_static_check_wl_args, ##__VA_ARGS__> NAME ## _registrator_impl() { \
+      return {BOOST_HANA_STRING("env"), BOOST_HANA_STRING(#NAME)}; \
+   } \
+   inline static auto NAME ## _registrator = NAME ## _registrator_impl();
 
 #define REGISTER_LEGACY_CF_ONLY_HOST_FUNCTION(NAME, ...) \
-   inline static host_function_registrator<&interface::NAME, null_pointer_check, legacy_static_check_wl_args, context_free_check, ##__VA_ARGS__> NAME ## _registrator = {"env", #NAME};
+   static host_function_registrator<&interface::NAME, null_pointer_check, legacy_static_check_wl_args, context_free_check, ##__VA_ARGS__> NAME ## _registrator_impl() { \
+      return {BOOST_HANA_STRING("env"), BOOST_HANA_STRING(#NAME)}; \
+   } \
+   inline static auto NAME ## _registrator = NAME ## _registrator_impl();
 
    class interface {
       public:
@@ -487,10 +514,10 @@ namespace eosio { namespace chain { namespace webassembly {
          REGISTER_HOST_FUNCTION(kv_it_value);
 
          // memory api
-         void* memcpy(unvalidated_ptr<char>, unvalidated_ptr<const char>, wasm_size_t) const;
-         void* memmove(unvalidated_ptr<char>, unvalidated_ptr<const char>, wasm_size_t) const;
-         int32_t memcmp(unvalidated_ptr<const char>, unvalidated_ptr<const char>, wasm_size_t) const;
-         void* memset(unvalidated_ptr<char>, int32_t, wasm_size_t) const;
+         void* memcpy(memcpy_params) const;
+         void* memmove(memcpy_params) const;
+         int32_t memcmp(memcmp_params) const;
+         void* memset(memset_params) const;
 
          REGISTER_LEGACY_CF_HOST_FUNCTION(memcpy);
          REGISTER_LEGACY_CF_HOST_FUNCTION(memmove);
