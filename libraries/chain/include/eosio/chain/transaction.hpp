@@ -210,7 +210,8 @@ namespace eosio { namespace chain {
          static_assert( static_cast<uint8_t>(compression_type::COMPRESSION_TYPE_COUNT) <= 127 );
 
          struct none {
-            digest_type                     prunable_digest;
+            digest_type                     digest;
+            digest_type                     prunable_digest() const;
          };
 
          using segment_type = fc::static_variant<digest_type, bytes>;
@@ -218,17 +219,20 @@ namespace eosio { namespace chain {
          struct partial {
             std::vector<signature_type>     signatures;
             std::vector<segment_type>       context_free_segments;
+            digest_type                     prunable_digest() const;
          };
 
          struct full {
             std::vector<signature_type>     signatures;
             std::vector<bytes>              context_free_segments;
+            digest_type                     prunable_digest() const;
          };
 
          struct full_legacy {
             std::vector<signature_type>     signatures;
             bytes                           packed_context_free_data;
             vector<bytes>                   context_free_segments;
+            digest_type                     prunable_digest() const;
          };
 
          using prunable_data_t = fc::static_variant< full_legacy,
@@ -320,7 +324,7 @@ FC_REFLECT( eosio::chain::packed_transaction_v0, (signatures)(compression)(packe
 // @ignore estimated_size unpacked_trx trx_id
 FC_REFLECT( eosio::chain::packed_transaction, (compression)(prunable_data)(packed_trx) )
 FC_REFLECT( eosio::chain::packed_transaction::prunable_data_type, (prunable_data));
-FC_REFLECT( eosio::chain::packed_transaction::prunable_data_type::none, (prunable_digest))
+FC_REFLECT( eosio::chain::packed_transaction::prunable_data_type::none, (digest))
 FC_REFLECT( eosio::chain::packed_transaction::prunable_data_type::partial, (signatures)( context_free_segments))
 FC_REFLECT( eosio::chain::packed_transaction::prunable_data_type::full, (signatures)( context_free_segments))
 // @ignore context_free_segments

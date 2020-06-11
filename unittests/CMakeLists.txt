@@ -42,7 +42,7 @@ add_custom_command(
 file(GLOB UNIT_TESTS "*.cpp") # find all unit test suites
 add_executable( unit_test ${UNIT_TESTS} protocol_feature_digest_tests.cpp) # build unit tests as one executable
 
-target_link_libraries( unit_test eosio_chain_wrap chainbase eosio_testing fc appbase state_history ${PLATFORM_SPECIFIC_LIBS} )
+target_link_libraries( unit_test eosio_chain_wrap chainbase eosio_testing fc appbase state_history abieos ${PLATFORM_SPECIFIC_LIBS} )
 
 target_compile_options(unit_test PUBLIC -DDISABLE_EOSLIB_SERIALIZE)
 target_include_directories( unit_test PUBLIC

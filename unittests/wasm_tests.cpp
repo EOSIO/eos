@@ -224,20 +224,20 @@ BOOST_FIXTURE_TEST_CASE( abi_from_variant, TESTER ) try {
 BOOST_FIXTURE_TEST_CASE( f32_tests, TESTER ) try {
    produce_blocks(2);
    produce_block();
-   create_accounts( {N(f32_tests)} );
+   create_accounts( {N(f32.tests)} );
    {
-      set_code(N(f32_tests), f32_test_wast);
+      set_code(N(f32.tests), f32_test_wast);
       produce_blocks(10);
 
       signed_transaction trx;
       action act;
-      act.account = N(f32_tests);
+      act.account = N(f32.tests);
       act.name = N();
-      act.authorization = vector<permission_level>{{N(f32_tests),config::active_name}};
+      act.authorization = vector<permission_level>{{N(f32.tests),config::active_name}};
       trx.actions.push_back(act);
 
       set_transaction_headers(trx);
-      trx.sign(get_private_key( N(f32_tests), "active" ), control->get_chain_id());
+      trx.sign(get_private_key( N(f32.tests), "active" ), control->get_chain_id());
       push_transaction(trx);
       produce_blocks(1);
       BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
@@ -246,21 +246,21 @@ BOOST_FIXTURE_TEST_CASE( f32_tests, TESTER ) try {
 } FC_LOG_AND_RETHROW()
 BOOST_FIXTURE_TEST_CASE( f32_test_bitwise, TESTER ) try {
    produce_blocks(2);
-   create_accounts( {N(f32_tests)} );
+   create_accounts( {N(f32.tests)} );
    produce_block();
    {
-      set_code(N(f32_tests), f32_bitwise_test_wast);
+      set_code(N(f32.tests), f32_bitwise_test_wast);
       produce_blocks(10);
 
       signed_transaction trx;
       action act;
-      act.account = N(f32_tests);
+      act.account = N(f32.tests);
       act.name = N();
-      act.authorization = vector<permission_level>{{N(f32_tests),config::active_name}};
+      act.authorization = vector<permission_level>{{N(f32.tests),config::active_name}};
       trx.actions.push_back(act);
 
       set_transaction_headers(trx);
-      trx.sign(get_private_key( N(f32_tests), "active" ), control->get_chain_id());
+      trx.sign(get_private_key( N(f32.tests), "active" ), control->get_chain_id());
       push_transaction(trx);
       produce_blocks(1);
       BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
@@ -269,21 +269,21 @@ BOOST_FIXTURE_TEST_CASE( f32_test_bitwise, TESTER ) try {
 } FC_LOG_AND_RETHROW()
 BOOST_FIXTURE_TEST_CASE( f32_test_cmp, TESTER ) try {
    produce_blocks(2);
-   create_accounts( {N(f32_tests)} );
+   create_accounts( {N(f32.tests)} );
    produce_block();
    {
-      set_code(N(f32_tests), f32_cmp_test_wast);
+      set_code(N(f32.tests), f32_cmp_test_wast);
       produce_blocks(10);
 
       signed_transaction trx;
       action act;
-      act.account = N(f32_tests);
+      act.account = N(f32.tests);
       act.name = N();
-      act.authorization = vector<permission_level>{{N(f32_tests),config::active_name}};
+      act.authorization = vector<permission_level>{{N(f32.tests),config::active_name}};
       trx.actions.push_back(act);
 
       set_transaction_headers(trx);
-      trx.sign(get_private_key( N(f32_tests), "active" ), control->get_chain_id());
+      trx.sign(get_private_key( N(f32.tests), "active" ), control->get_chain_id());
       push_transaction(trx);
       produce_blocks(1);
       BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
@@ -294,21 +294,21 @@ BOOST_FIXTURE_TEST_CASE( f32_test_cmp, TESTER ) try {
 // test softfloat 64 bit operations
 BOOST_FIXTURE_TEST_CASE( f64_tests, TESTER ) try {
    produce_blocks(2);
-   create_accounts( {N(f_tests)} );
+   create_accounts( {N(f.tests)} );
    produce_block();
    {
-      set_code(N(f_tests), f64_test_wast);
+      set_code(N(f.tests), f64_test_wast);
       produce_blocks(10);
 
       signed_transaction trx;
       action act;
-      act.account = N(f_tests);
+      act.account = N(f.tests);
       act.name = N();
-      act.authorization = vector<permission_level>{{N(f_tests),config::active_name}};
+      act.authorization = vector<permission_level>{{N(f.tests),config::active_name}};
       trx.actions.push_back(act);
 
       set_transaction_headers(trx);
-      trx.sign(get_private_key( N(f_tests), "active" ), control->get_chain_id());
+      trx.sign(get_private_key( N(f.tests), "active" ), control->get_chain_id());
       push_transaction(trx);
       produce_blocks(1);
       BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
@@ -317,21 +317,21 @@ BOOST_FIXTURE_TEST_CASE( f64_tests, TESTER ) try {
 } FC_LOG_AND_RETHROW()
 BOOST_FIXTURE_TEST_CASE( f64_test_bitwise, TESTER ) try {
    produce_blocks(2);
-   create_accounts( {N(f_tests)} );
+   create_accounts( {N(f.tests)} );
    produce_block();
    {
-      set_code(N(f_tests), f64_bitwise_test_wast);
+      set_code(N(f.tests), f64_bitwise_test_wast);
       produce_blocks(10);
 
       signed_transaction trx;
       action act;
-      act.account = N(f_tests);
+      act.account = N(f.tests);
       act.name = N();
-      act.authorization = vector<permission_level>{{N(f_tests),config::active_name}};
+      act.authorization = vector<permission_level>{{N(f.tests),config::active_name}};
       trx.actions.push_back(act);
 
       set_transaction_headers(trx);
-      trx.sign(get_private_key( N(f_tests), "active" ), control->get_chain_id());
+      trx.sign(get_private_key( N(f.tests), "active" ), control->get_chain_id());
       push_transaction(trx);
       produce_blocks(1);
       BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
@@ -340,21 +340,21 @@ BOOST_FIXTURE_TEST_CASE( f64_test_bitwise, TESTER ) try {
 } FC_LOG_AND_RETHROW()
 BOOST_FIXTURE_TEST_CASE( f64_test_cmp, TESTER ) try {
    produce_blocks(2);
-   create_accounts( {N(f_tests)} );
+   create_accounts( {N(f.tests)} );
    produce_block();
    {
-      set_code(N(f_tests), f64_cmp_test_wast);
+      set_code(N(f.tests), f64_cmp_test_wast);
       produce_blocks(10);
 
       signed_transaction trx;
       action act;
-      act.account = N(f_tests);
+      act.account = N(f.tests);
       act.name = N();
-      act.authorization = vector<permission_level>{{N(f_tests),config::active_name}};
+      act.authorization = vector<permission_level>{{N(f.tests),config::active_name}};
       trx.actions.push_back(act);
 
       set_transaction_headers(trx);
-      trx.sign(get_private_key( N(f_tests), "active" ), control->get_chain_id());
+      trx.sign(get_private_key( N(f.tests), "active" ), control->get_chain_id());
       push_transaction(trx);
       produce_blocks(1);
       BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
@@ -366,21 +366,21 @@ BOOST_FIXTURE_TEST_CASE( f64_test_cmp, TESTER ) try {
 BOOST_FIXTURE_TEST_CASE( f32_f64_conversion_tests, tester ) try {
    produce_blocks(2);
 
-   create_accounts( {N(f_tests)} );
+   create_accounts( {N(ftests)} );
    produce_block();
    {
-      set_code(N(f_tests), f32_f64_conv_wast);
+      set_code(N(ftests), f32_f64_conv_wast);
       produce_blocks(10);
 
       signed_transaction trx;
       action act;
-      act.account = N(f_tests);
+      act.account = N(ftests);
       act.name = N();
-      act.authorization = vector<permission_level>{{N(f_tests),config::active_name}};
+      act.authorization = vector<permission_level>{{N(ftests),config::active_name}};
       trx.actions.push_back(act);
 
       set_transaction_headers(trx);
-      trx.sign(get_private_key( N(f_tests), "active" ), control->get_chain_id());
+      trx.sign(get_private_key( N(ftests), "active" ), control->get_chain_id());
       push_transaction(trx);
       produce_blocks(1);
       BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
@@ -393,23 +393,23 @@ BOOST_FIXTURE_TEST_CASE( f32_f64_overflow_tests, tester ) try {
    int count = 0;
    auto check = [&](const char *wast_template, const char *op, const char *param) -> bool {
       count+=16;
-      create_accounts( {name(N(f_tests).to_uint64_t()+count)} );
+      create_accounts( {name(N(ftests).to_uint64_t()+count)} );
       produce_blocks(1);
       std::vector<char> wast;
       wast.resize(strlen(wast_template) + 128);
       sprintf(&(wast[0]), wast_template, op, param);
-      set_code(name(N(f_tests).to_uint64_t()+count), &(wast[0]));
+      set_code(name(N(ftests).to_uint64_t()+count), &(wast[0]));
       produce_blocks(10);
 
       signed_transaction trx;
       action act;
-      act.account = name(N(f_tests).to_uint64_t()+count);
+      act.account = name(N(ftests).to_uint64_t()+count);
       act.name = N();
-      act.authorization = vector<permission_level>{{name(N(f_tests).to_uint64_t()+count),config::active_name}};
+      act.authorization = vector<permission_level>{{name(N(ftests).to_uint64_t()+count),config::active_name}};
       trx.actions.push_back(act);
 
       set_transaction_headers(trx);
-      trx.sign(get_private_key( name(N(f_tests).to_uint64_t()+count), "active" ), control->get_chain_id());
+      trx.sign(get_private_key( name(N(ftests).to_uint64_t()+count), "active" ), control->get_chain_id());
 
       try {
          push_transaction(trx);
