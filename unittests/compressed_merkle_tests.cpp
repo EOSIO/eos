@@ -19,6 +19,31 @@ static const char fail_everything_wast[] = R"=====(
 )
 )=====";
 
+static const char inliner_wast[] = R"=====(
+(module
+ (export "apply" (func $apply))
+ (import "env" "send_inline" (func $send_inline (param i32 i32)))
+ (memory $0 1)
+ (data (i32.const  4) "\00\00\00\00\00\00\00\00")             ;;account (to be filled)
+ (data (i32.const 12) "\00\00\00\00\00\00\00\00")             ;;action (to be filled)
+ (data (i32.const 20) "\00")                                  ;;no permission (will get eosio.code implictly)
+ (data (i32.const 21) "\00")                                  ;;no data
+ (func $apply (param $0 i64) (param $1 i64) (param $2 i64)
+   (i64.store (i32.const 4) (get_local $0))                   ;;copy over account
+   (set_local $2 (i64.sub (get_local $2) (i64.const 1)))      ;;subtract 1 from action
+   (if (i64.eq (get_local $2) (i64.const 0)) (then            ;;if action is 0 now, return
+    (return)
+   ))
+   (i64.store (i32.const 12) (get_local $2))                  ;;copy over action
+   (loop
+     (call $send_inline (i32.const 4) (i32.const 18))
+     (set_local $2 (i64.sub (get_local $2) (i64.const 1)))    ;;subtract 1 from loop
+     (br_if 0 (i32.wrap/i64 (get_local $2)))                  ;;if non-zero loop back around
+   )
+ )
+)
+)=====";
+
 static const char test_account_abi[] = R"=====(
 {
    "version": "eosio::abi/1.0",
@@ -204,6 +229,91 @@ BOOST_AUTO_TEST_CASE(test_proof_presist_reversible) try {
 
    //so should have seen 5 blocks from callback
    BOOST_CHECK(blocks_seen == 5);
+} FC_LOG_AND_RETHROW()
+
+BOOST_AUTO_TEST_CASE(test_proof_ooo_sequence) try {
+   tester chain(setup_policy::none);
+
+   compressed_proof_generator proof_generator;
+   auto signal_connections = wire_signals_to_generator(proof_generator, *chain.control);
+
+   unsigned num_actions = 0;
+   fc::sha256 computed_action_mroot;
+
+   proof_generator.add_result_callback(
+      [&](const chain::action& act) {
+         return act.account == N(interested);
+      },
+      [&](std::vector<char>&& serialized_compressed_proof) {
+         computed_action_mroot = validate_compressed_merkle_proof(serialized_compressed_proof, [&](uint64_t receiver) {
+            BOOST_CHECK(name(receiver) == N(interested));
+            num_actions++;
+         });
+      }
+   );
+
+   chain.create_account(N(interested));
+   chain.set_code(N(interested), inliner_wast);
+   chain.set_abi(N(interested), test_account_abi);
+   chain.produce_block();
+
+   signed_transaction trx;
+   trx.actions.emplace_back(action({permission_level{N(interested), N(owner)}}, N(interested), name(5ull), {}));
+   chain.set_transaction_headers(trx, 10, 0);
+   trx.sign(chain.get_private_key(N(interested)), chain.control->get_chain_id() );
+   chain.push_transaction( trx );
+
+   sha256 expected_mroot = chain.produce_block()->action_mroot;
+   chain.produce_block();
+   BOOST_CHECK(expected_mroot == computed_action_mroot);
+   BOOST_CHECK(num_actions == 65);
+} FC_LOG_AND_RETHROW()
+
+BOOST_AUTO_TEST_CASE(test_proof_delayed) try {
+   tester chain(setup_policy::none);
+
+   compressed_proof_generator proof_generator;
+   auto signal_connections = wire_signals_to_generator(proof_generator, *chain.control);
+
+   fc::sha256 computed_action_mroot;
+   bool seen_interested = false;
+
+   std::optional<sha256> reversible_action_mroot;
+   auto produce_and_check = [&]() {
+      sha256 new_mroot = chain.produce_block()->action_mroot;
+      if(reversible_action_mroot)
+         BOOST_CHECK(*reversible_action_mroot == computed_action_mroot);
+      reversible_action_mroot = new_mroot;
+   };
+
+   proof_generator.add_result_callback(
+      [&](const chain::action& act) {
+         return true;
+      },
+      [&](std::vector<char>&& serialized_compressed_proof) {
+         computed_action_mroot = validate_compressed_merkle_proof(serialized_compressed_proof, [&](uint64_t receiver) {
+            seen_interested |= name(receiver) == N(interested);
+         });
+      }
+   );
+
+   chain.create_account(N(interested));
+   chain.set_abi(N(interested), test_account_abi);
+   produce_and_check();
+
+   chain.push_action(N(interested), N(dothedew), N(interested), fc::mutable_variant_object()("nonce", 0), 100, 2);
+
+   produce_and_check();
+   produce_and_check();
+   BOOST_CHECK(seen_interested == false);
+
+   //no specific number, but enough for delayed to execute
+   produce_and_check();
+   produce_and_check();
+   produce_and_check();
+   produce_and_check();
+   produce_and_check();
+   BOOST_CHECK(seen_interested);
 } FC_LOG_AND_RETHROW()
 
 BOOST_AUTO_TEST_SUITE_END()
