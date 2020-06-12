@@ -52,9 +52,7 @@ struct wasm_config_tester : TESTER {
    }
    chain::abi_serializer bios_abi_ser;
 };
-struct old_wasm_tester : tester {
-   old_wasm_tester() : tester{setup_policy::old_wasm_parser} {}
-};
+
 
 std::string make_locals_wasm(int n_params, int n_locals, int n_stack)
 {
@@ -78,6 +76,10 @@ std::string make_locals_wasm(int n_params, int n_locals, int n_stack)
 }
 
 BOOST_AUTO_TEST_SUITE(wasm_config_tests)
+
+struct old_wasm_tester : tester {
+   old_wasm_tester() : tester{setup_policy::old_wasm_parser} {}
+};
 
 BOOST_DATA_TEST_CASE_F(wasm_config_tester, max_mutable_global_bytes, data::make({ 4096, 8192 , 16384 }) * data::make({0, 1}), n_globals, oversize) {
    produce_block();

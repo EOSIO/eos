@@ -72,8 +72,7 @@ set( fc_sources
      src/log/log_message.cpp
      src/log/logger.cpp
      src/log/appender.cpp
-     src/log/console_appender.cpp
-     src/log/gelf_appender.cpp
+     src/log/console_appender.cpp    
      src/log/dmlog_appender.cpp
      src/log/logger_config.cpp
      src/crypto/_digest_common.cpp
@@ -111,6 +110,7 @@ set( fc_sources
      src/network/http/http_client.cpp
      src/compress/smaz.cpp
      src/compress/zlib.cpp
+     src/log/gelf_appender.cpp
      )
 
 file( GLOB_RECURSE fc_headers ${CMAKE_CURRENT_SOURCE_DIR} *.hpp *.h )
@@ -125,6 +125,8 @@ setup_library( fc SOURCES ${sources} LIBRARY_TYPE STATIC DONT_INSTALL_LIBRARY )
 
 if(ENABLE_UNITY_BUILD)
    set_target_properties(fc PROPERTIES UNITY_BUILD TRUE)
+   set_source_files_properties(src/io/json.cpp 
+                               PROPERTIES SKIP_UNITY_BUILD_INCLUSION TRUE)
 endif() 
 
 
