@@ -108,13 +108,16 @@ void amqp_witness_plugin::plugin_startup() {
          return;
 
       my->rqueue->post_on_io_context([this, bsp]() {
-         amqp_witness_plugin_impl::amqp_witness_msg msg = {
-            .is_sig_digest = my->witness_signature_type == amqp_witness_plugin_impl::witness_signature_over::sig_digest,
-            .digest = msg.is_sig_digest ? bsp->sig_digest() : bsp->header.action_mroot,
-            .sig = my->signature_provider(msg.digest)
-         };
+         try {
+            amqp_witness_plugin_impl::amqp_witness_msg msg = {
+               .is_sig_digest = my->witness_signature_type == amqp_witness_plugin_impl::witness_signature_over::sig_digest,
+               .digest = msg.is_sig_digest ? bsp->sig_digest() : bsp->header.action_mroot,
+               .sig = my->signature_provider(msg.digest)
+            };
 
-         my->rqueue->publish_message(msg);
+            my->rqueue->publish_message(msg);
+         }
+         FC_LOG_AND_DROP();
       });
    });
 }
