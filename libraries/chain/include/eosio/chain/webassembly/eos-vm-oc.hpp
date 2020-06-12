@@ -185,8 +185,6 @@ struct wasm_function_type_provider<Ret(Args...)> {
 };
 
 struct eos_vm_oc_execution_interface {
-   // FIXME: This is not particularly efficient
-   void* get_memory() const { return array_ptr_impl<char>(0, 0); }
    inline const auto& operand_from_back(std::size_t index) const { return *(os - index - 1); }
    eosio::vm::native_value* os;
 };
@@ -246,6 +244,9 @@ struct eos_vm_oc_type_converter : public eosio::vm::type_converter<webassembly::
    auto from_wasm(vm::wasm_ptr_t ptr, vm::tag<T> = {}) const
       -> std::enable_if_t< vm::is_argument_proxy_type_v<T> &&
                            std::is_pointer_v<typename T::proxy_type>, T> {
+      if constexpr(T::is_legacy()) {
+         EOS_ASSERT(ptr != 0, wasm_execution_error, "references cannot be created for null pointers");
+      }
       void* p = array_ptr_impl<typename T::pointee_type>(ptr, 1);
       return {p};
    }

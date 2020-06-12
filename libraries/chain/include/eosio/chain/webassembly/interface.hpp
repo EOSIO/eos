@@ -44,19 +44,19 @@ namespace eosio { namespace chain { namespace webassembly {
    inline static auto NAME ## _registrator = NAME ## _registrator_impl();
 
 #define REGISTER_LEGACY_HOST_FUNCTION(NAME, ...) \
-   static host_function_registrator<&interface::NAME, null_pointer_check, legacy_static_check_wl_args, context_aware_check, ##__VA_ARGS__> NAME ## _registrator_impl() { \
+   static host_function_registrator<&interface::NAME, legacy_static_check_wl_args, context_aware_check, ##__VA_ARGS__> NAME ## _registrator_impl() { \
       return {BOOST_HANA_STRING("env"), BOOST_HANA_STRING(#NAME)}; \
    } \
    inline static auto NAME ## _registrator = NAME ## _registrator_impl();
 
 #define REGISTER_LEGACY_CF_HOST_FUNCTION(NAME, ...) \
-   static host_function_registrator<&interface::NAME, null_pointer_check, legacy_static_check_wl_args, ##__VA_ARGS__> NAME ## _registrator_impl() { \
+   static host_function_registrator<&interface::NAME, legacy_static_check_wl_args, ##__VA_ARGS__> NAME ## _registrator_impl() { \
       return {BOOST_HANA_STRING("env"), BOOST_HANA_STRING(#NAME)}; \
    } \
    inline static auto NAME ## _registrator = NAME ## _registrator_impl();
 
 #define REGISTER_LEGACY_CF_ONLY_HOST_FUNCTION(NAME, ...) \
-   static host_function_registrator<&interface::NAME, null_pointer_check, legacy_static_check_wl_args, context_free_check, ##__VA_ARGS__> NAME ## _registrator_impl() { \
+   static host_function_registrator<&interface::NAME, legacy_static_check_wl_args, context_free_check, ##__VA_ARGS__> NAME ## _registrator_impl() { \
       return {BOOST_HANA_STRING("env"), BOOST_HANA_STRING(#NAME)}; \
    } \
    inline static auto NAME ## _registrator = NAME ## _registrator_impl();

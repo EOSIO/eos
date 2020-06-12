@@ -94,6 +94,17 @@ namespace eosio { namespace chain {
          return {ptr};
       }
 
+      template <typename T>
+      auto from_wasm(void* ptr, vm::tag<T> = {}) const
+         -> std::enable_if_t< vm::is_argument_proxy_type_v<T> &&
+                              std::is_pointer_v<typename T::proxy_type>, T> {
+         if constexpr(T::is_legacy()) {
+            EOS_ASSERT(ptr != this->get_interface().get_memory(), wasm_execution_error, "references cannot be created for null pointers");
+         }
+         this->template validate_pointer<typename T::pointee_type>(ptr, 1);
+         return {ptr};
+      }
+
       EOS_VM_FROM_WASM(null_terminated_ptr, (const void* ptr)) {
          validate_null_terminated_pointer(ptr);
          return {static_cast<const char*>(ptr)};

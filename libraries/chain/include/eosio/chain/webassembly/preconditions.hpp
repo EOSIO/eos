@@ -102,15 +102,6 @@ namespace eosio { namespace chain { namespace webassembly {
       return f128_is_nan( f );
    }
 
-   EOS_VM_PRECONDITION(null_pointer_check,
-         EOS_VM_INVOKE_ON_ALL([&](auto&& arg, auto&&... rest) {
-            using namespace eosio::vm;
-            using arg_t = std::decay_t<decltype(arg)>;
-            if constexpr (decltype(detail::is_legacy_ptr(std::declval<arg_t>()))::value) {
-               EOS_ASSERT(arg.get_original_pointer() != ctx.get_interface().get_memory(), wasm_execution_error, "references cannot be created for null pointers");
-            }
-         }));
-
    EOS_VM_PRECONDITION(context_free_check,
          EOS_VM_INVOKE_ONCE([&](auto&&...) {
             EOS_ASSERT(ctx.get_host().get_context().is_context_free(), unaccessible_api, "this API may only be called from context_free apply");
