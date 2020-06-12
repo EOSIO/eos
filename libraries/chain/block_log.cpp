@@ -186,10 +186,11 @@ namespace eosio { namespace chain {
                         [&ds](log_entry_v4& v) { unpack(ds, v); }},
              entry);
       }
+
+      class block_log_data;
    } // namespace
 
-  namespace detail {
-
+   namespace detail {
      /**
       * The implementation detail for the read/write access to the block log/index 
       *
@@ -220,7 +221,8 @@ namespace eosio { namespace chain {
          bool check_corrupted_file();
          void fix_corrupted_file();
          bool check_corrupted_blockindex(uint64_t index_size, bool modify = false);
-         bool check_corrupted_blocklog(uint64_t log_size, bool modify = false);
+         bool check_corrupted_blocklog(uint64_t index_size, uint64_t log_size, bool modify = false);
+         bool check_corrupted_blocklog_scan(block_log_data& log_data, uint64_t log_size, bool modify = false);
          void check_files();
 
          uint64_t get_block_pos(uint32_t block_num);
@@ -599,6 +601,7 @@ namespace eosio { namespace chain {
 
        block_log_data log_data(block_file.get_file_path());
        block_log_index log_index(index_file.get_file_path());
+
        const uint32_t num_blocks = log_data.num_blocks();
        const uint32_t num_indexes = log_index.num_blocks();
 
@@ -651,20 +654,18 @@ namespace eosio { namespace chain {
 
    bool detail::block_log_impl::check_corrupted_file() {
       auto [log_size, index_size] = prepare_files();
-      bool index_corrupted = check_corrupted_blockindex(index_size, false);
-      bool log_corrupted = check_corrupted_blocklog(log_size, false);
+      EOS_ASSERT(!check_corrupted_blockindex(index_size, false), block_log_exception, "Corrupted Blocks.index");
 
-      if(!index_corrupted && !log_corrupted) {
-         ilog("No corrupted block or index found!");
-      }
-      
-      return index_corrupted || log_corrupted;
-   }
+      EOS_ASSERT(!check_corrupted_blocklog(index_size, log_size, false), block_log_exception, "Corrupted Blocks.index");
+
+      ilog("blocks.log and blocks.index looks good!");
+      return false;
+  }
 
    void detail::block_log_impl::fix_corrupted_file() {
       auto [log_size, index_size] = prepare_files();
       check_corrupted_blockindex(index_size, true);
-      check_corrupted_blocklog(log_size, true);
+      check_corrupted_blocklog(index_size, log_size, true);
    }
 
    bool detail::block_log_impl::check_corrupted_blockindex(uint64_t index_size, bool modify) {
@@ -684,12 +685,67 @@ namespace eosio { namespace chain {
    }
 
    /**
+    * Check if blocks.log is corrupted.
+    * blocks.index already checked and in good shape.
+    * @param index_size size of blocks.index file
+    * @param log_size size of blocks.log file
+    * @param modify  fix blocks.log file if true
+    * @return true for corrupted blocks.log
+    */
+   bool detail::block_log_impl::check_corrupted_blocklog(uint64_t index_size, uint64_t log_size, bool modify) {
+      block_log_index log_index(index_file.get_file_path());
+      chain::block_log_data log_data;
+      auto ds = log_data.open(block_file.get_file_path());
+
+      // if preamble version >= pruned_transaction_version and blocks.index has valid entries, blocks.log may be corrupted
+      // try using blocks.index to recover blocks.log. Otherwise call check_corrupted_blocklog_scan() for a full scan
+      if (log_data.get_preamble().version >= pruned_transaction_version && index_size > sizeof(uint64_t)) {
+         const uint32_t num_indexes = log_index.num_blocks();
+
+         // try to recover blocks.log using two latest indexes of blocks.index
+         for (int i = num_indexes - 1; i > 0 && i > num_indexes - 2; --i) {
+            const auto index_pos = log_index.nth_block_position(i);
+            // the bytes after index_pos supposed to include the last good block
+            auto bytes_after_index_pos = log_size - index_pos;
+            // initialize expected_block_size greater than bytes_after_index_pos
+            decltype(log_entry_v4::metadata_type::size) expected_block_size = bytes_after_index_pos + 1;
+
+            // we have enough bytes to find out the size of block
+            if (bytes_after_index_pos > sizeof(expected_block_size)) {
+               ds.seekp(index_pos);
+               fc::raw::unpack(ds, expected_block_size);
+            } // else  expected_block_size is greater than bytes_after_index_pos
+
+            // blocks.log has complete head block
+            if (bytes_after_index_pos == expected_block_size) {
+               return false; // no corruption
+            } else if (bytes_after_index_pos > expected_block_size) { 
+               // Now we have complete head-1 block and incomplete head block
+               // resize blocks.log to index_pos + meta.size and throw away the incomplete head block
+               if (modify) {
+                  // resize blocks.log to index_pos + meta.size
+                  boost::filesystem::resize_file(block_file.get_file_path(), index_pos + expected_block_size);
+               }
+               return true;
+            }
+         }
+      }
+
+      // If using blocks.index above didn't work, try full scan of blocks.log file
+      ilog("Checking blocks.log file.");
+      return check_corrupted_blocklog_scan(log_data, log_size, modify);
+   }
+
+
+   /**
     * Check if blocks.log is corrupted, if modify is true, it will be fixed
+    * We tried to use blocks.index but failed. Now we need to scan from back of blocks.log
+    * @param log_data  ref of block_log_data
     * @param log_size size of blocks.log file
     * @param modify fix blocks.log file if flag is true. Otherwise just return the status
     * @return true if blocks.log file is corrupted.
     */
-   bool detail::block_log_impl::check_corrupted_blocklog(uint64_t log_size, bool modify) {
+   bool detail::block_log_impl::check_corrupted_blocklog_scan(block_log_data& log_data, uint64_t log_size, bool modify) {
       bool corrupted = false;
       bool found_good_block = false;
       uint64_t partial_bytes = 0;
@@ -697,71 +753,58 @@ namespace eosio { namespace chain {
       int num_good_block = 0;
       int cur_min_good_blocks = num_good_blocks_parsed;
 
-      chain::block_log_data log_data(block_file.get_file_path());
-
       /*
        * if the blocks.log contains incomplete block at the end of the file. We scan the file from partial_bytes = 0
-       * and increasing by 1, if we can get  several(min_good_blocks) good blocks successfully, we found the partial_bytes.
+       * and increasing by 1, if we can get several(min_good_blocks) good blocks successfully, we found the partial_bytes.
        * If blocks.log is too small and the number of good block is less than min_go0d_blocks, it can't be fixed.
        */
-      auto find_good_blocks = [&](int min_good_blocks) {
-         found_good_block = false;
-         partial_bytes = 0;
-         block_num = 0;
+      while (partial_bytes < log_data.size()) {
          num_good_block = 0;
+         // scan from the end of incomplete block in the blocks.log
+         const char *rbegin_address = log_data.data() + log_data.size() - partial_bytes;
 
-         while (partial_bytes < log_data.size()) {
-            num_good_block = 0;
-            // scan from the end of incomplete block in the blocks.log
-            const char *rbegin_address = log_data.data() + log_data.size() - partial_bytes;
-
-            uint64_t cur_pos = rbegin_address - log_data.data();
-            // if we can get good blocks (min_good_blocks - 1) times
-            for (int i = 0; i < min_good_blocks; ++i) {
-               cur_pos = read_buffer<uint64_t>(log_data.data() + cur_pos - sizeof(uint64_t));
-               // 1st sanity check of pointer: check pointer if it is in proper range.
-               if (cur_pos > log_data.size() || cur_pos < log_data.size() / 2)
-                  break;   // make sure  0 <= cur_pos < log_data.size()
-               auto cur_block_num = log_data.block_num_at(cur_pos);
-               // 2nd check, if block number is sequential
-               if (cur_block_num + 1 == block_num) {
-                  ++num_good_block; // we found one good block.
-               }
-               block_num = cur_block_num;
-            }
-
-            if (num_good_block == min_good_blocks - 1) {
-               found_good_block = true;
-               break;
-            }
-            ++partial_bytes;
-         }
-      };
-
-      // scan
-      for ( int i = num_good_blocks_parsed; i > 0; i /= 2) {
-
-         find_good_blocks(i);
-
-         if (partial_bytes == 0) {
-            ilog("blocks.log file looks good with size of ${size} bytes.", ("size", log_size));
-            return false;
+         uint64_t cur_pos = rbegin_address - log_data.data();
+         // if we can get good blocks (min_good_blocks - 1) times
+         for (int i = 0; i < num_good_blocks_parsed; ++i) {
+            cur_pos = read_buffer<uint64_t>(log_data.data() + cur_pos - sizeof(uint64_t));
+            // 1st sanity check of pointer: check pointer if it is in proper range.
+            if (cur_pos > log_data.size() || cur_pos < log_data.size() / 2)
+               break;   // make sure  0 <= cur_pos < log_data.size()
+            auto cur_block_num = log_data.block_num_at(cur_pos);
+            // 2nd check, if block number is sequential
+            if (cur_block_num + 1 == block_num) {
+               ++num_good_block; // we found one good block.
+            } else if (i > 0) break; // can't find good block if i > 0, we don't need to look any more
+            block_num = cur_block_num;
          }
 
-         if (found_good_block) {
-            auto last_good_block_num = log_data.block_num_at(log_data.size() - partial_bytes);
-
-            ilog("Found incomplete ${partial_bytes} bytes in blocks.log file", ("partial_bytes", partial_bytes));
-            if (modify) {
-                auto now = fc::time_point::now();
-                boost::filesystem::resize_file(block_file.get_file_path(), log_size - partial_bytes);
-                ilog("Fixed blocks.log file by trimming ${partial_bytes} bytes.", ("partial_bytes", partial_bytes));
-            }
-            return true;
+         if (num_good_block == num_good_blocks_parsed - 1) {
+            found_good_block = true;
+            break;
          }
-         // blocks.log is corrupted but we couldn't find required number of good blocks. Re-scan it with lower number of good blocks requirement.
+         ++partial_bytes;
+         // If you don't modify, stop here as the file is corrupted
+         if (!modify) break;
       }
 
+      if (partial_bytes == 0) {
+         ilog("blocks.log file looks good with size of ${size} bytes.", ("size", log_size));
+         return false;
+      }
+
+      // if we don't fix, stop here
+      if (!modify) return true;
+
+      if (found_good_block) {
+         auto last_good_block_num = log_data.block_num_at(log_data.size() - partial_bytes);
+
+         ilog("Found incomplete ${partial_bytes} bytes in blocks.log file", ("partial_bytes", partial_bytes));
+         auto now = fc::time_point::now();
+         boost::filesystem::resize_file(block_file.get_file_path(), log_size - partial_bytes);
+         ilog("Fixed blocks.log file by trimming ${partial_bytes} bytes.", ("partial_bytes", partial_bytes));
+         return true;
+      }
+      // blocks.log is corrupted but we couldn't find required number of good blocks. Re-scan it with lower number of good blocks requirement.
       EOS_ASSERT(found_good_block, block_log_exception, "Can't fix corrupted blocks.log file");
 
       return true;
