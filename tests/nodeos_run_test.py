@@ -399,6 +399,10 @@ try:
         Print("ERROR: Failed get currecy stats assertion. %s" % (res))
         raise
 
+    # disable amqp since cleos not set up to handle duplicates
+    if amqpAddr:
+        node.setAMQPAddress(None)
+
     dupRejected=False
     dupTransAmount=10
     totalTransfer=dupTransAmount
