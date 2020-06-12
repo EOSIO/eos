@@ -30,27 +30,71 @@ struct thread_state : action_state, console_state, query_state {
    eosio::vm::wasm_allocator           wa     = {};
 };
 
-class thread_state_cache {
+class thread_state_cache : public std::enable_shared_from_this<thread_state_cache> {
  private:
    std::mutex                                   mutex;
    std::shared_ptr<const wasm_ql::shared_state> shared_state;
    std::vector<std::unique_ptr<thread_state>>   states;
+   uint64_t                                     num_created = 0;
 
  public:
    thread_state_cache(const std::shared_ptr<const wasm_ql::shared_state>& shared_state) : shared_state(shared_state) {}
 
-   std::unique_ptr<thread_state> get_state() {
+   class handle {
+      friend thread_state_cache;
+
+    private:
+      std::shared_ptr<thread_state_cache> cache;
+      std::unique_ptr<thread_state>       state;
+
+      handle(std::shared_ptr<thread_state_cache> cache, std::unique_ptr<thread_state> state)
+          : cache{ std::move(cache) }, state{ std::move(state) } {}
+
+    public:
+      handle(const handle&) = delete;
+      handle(handle&&)      = default;
+
+      ~handle() {
+         if (cache && state)
+            cache->store_state(std::move(state));
+      }
+
+      handle& operator=(handle&&) = default;
+
+      thread_state& operator*() { return *state; }
+      thread_state* operator->() { return state.get(); }
+   };
+
+   handle get_state() {
       std::lock_guard<std::mutex> lock{ mutex };
       if (states.empty()) {
-         auto result    = std::make_unique<thread_state>();
-         result->shared = shared_state;
-         return result;
+         try {
+            auto result    = std::make_unique<thread_state>();
+            result->shared = shared_state;
+            ++num_created;
+            return { shared_from_this(), std::move(result) };
+         } catch (const eosio::vm::exception& e) {
+            elog("vm::exception creating thread_state: ${w}: ${d}", ("w", e.what())("d", e.detail()));
+            elog("number of thread_states created so far: ${n}", ("n", num_created));
+            throw std::runtime_error(std::string("creating thread_state: ") + e.what() + ": " + e.detail());
+         } catch (const std::exception& e) {
+            elog("std::exception creating thread_state: ${w}", ("w", e.what()));
+            elog("number of thread_states created so far: ${n}", ("n", num_created));
+            throw std::runtime_error(std::string("creating thread_state: ") + e.what());
+         }
       }
       auto result = std::move(states.back());
       states.pop_back();
-      return result;
+      return { shared_from_this(), std::move(result) };
    }
 
+   void preallocate(unsigned n) {
+      std::vector<handle> handles;
+      for (unsigned i = 0; i < n; ++i) //
+         handles.push_back(get_state());
+   }
+
+ private:
    void store_state(std::unique_ptr<thread_state> state) {
       std::lock_guard<std::mutex> lock{ mutex };
       states.push_back(std::move(state));

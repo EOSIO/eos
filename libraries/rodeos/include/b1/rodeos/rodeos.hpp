@@ -83,7 +83,7 @@ struct rodeos_filter {
 struct rodeos_query_handler {
    std::shared_ptr<rodeos_db_partition>               partition;
    const std::shared_ptr<const wasm_ql::shared_state> shared_state;
-   wasm_ql::thread_state_cache                        state_cache;
+   const std::shared_ptr<wasm_ql::thread_state_cache> state_cache;
 
    rodeos_query_handler(std::shared_ptr<rodeos_db_partition>         partition,
                         std::shared_ptr<const wasm_ql::shared_state> shared_state);
