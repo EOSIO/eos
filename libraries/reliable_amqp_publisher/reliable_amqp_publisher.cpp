@@ -122,14 +122,14 @@ reliable_amqp_publisher_impl::reliable_amqp_publisher_impl(const std::string url
    boost::filesystem::remove(data_file_path, ec);
 
    thread = std::thread([this]() {
-      try {
-         fc::set_os_thread_name("amqp");
-         bringup_connection();
-         ctx.run();
-      }
-      catch(...) {
-         elog("Exception escaped from AMQP connection ${s} publishing to \"${e}\", this connection is permanently disabled now",
-              ("s", (std::string)*amqp_address)("e", this->exchange));
+      fc::set_os_thread_name("amqp");
+      bringup_connection();
+      while(true) {
+         try {
+            ctx.run();
+            break;
+         }
+         FC_LOG_AND_DROP();
       }
    });
 }
