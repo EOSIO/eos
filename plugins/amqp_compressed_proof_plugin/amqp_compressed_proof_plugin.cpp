@@ -65,7 +65,7 @@ public:
          curent_level.resize(curent_level.size()/2);
       }
 
-      return fc::raw::pack<bool, std::list<merkle_cmd>>((bool)arv_activated, curent_level[0].cmd_stream);
+      return fc::raw::pack((const bool)arv_activated, curent_level[0].cmd_stream);
    }
 
 private:
