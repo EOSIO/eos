@@ -65,12 +65,13 @@ BOOST_AUTO_TEST_CASE(test_proof_no_actions) try {
    chain.set_code(N(eosio), fail_everything_wast);
    chain.produce_block();
 
-   compressed_proof_generator proof_generator(*chain.control);
-
-   proof_generator.add_result_callback([&](const auto&){return true;}, [&](auto&& x) {
-      //no actions means no callback should ever be fired
-      BOOST_FAIL("Callback should not be called");
-   });
+   compressed_proof_generator proof_generator(*chain.control, {std::make_pair(
+      [&](const auto&){return true;},  //include all actions in proof
+      [&](auto&& x) {
+         //but no actions in block means no callback should ever be fired
+         BOOST_FAIL("Callback should not be called");
+      }
+   )});
 
    chain.produce_blocks(2);
 } FC_LOG_AND_RETHROW()
@@ -89,12 +90,10 @@ BOOST_DATA_TEST_CASE(test_proof_actions, boost::unit_test::data::xrange(1u, 10u)
    chain.set_code(N(eosio), fail_everything_wast);
    chain.produce_block();
 
-   compressed_proof_generator proof_generator(*chain.control);
-
    bool expecting_callback = false;
    fc::sha256 computed_action_mroot;
 
-   proof_generator.add_result_callback(
+   compressed_proof_generator proof_generator(*chain.control, {std::make_pair(
       [&](const chain::action& act){
          return act.account == N(interested);
       },
@@ -104,7 +103,7 @@ BOOST_DATA_TEST_CASE(test_proof_actions, boost::unit_test::data::xrange(1u, 10u)
             BOOST_CHECK(name(receiver) == N(interested));
          });
       }
-   );
+   )});
 
    unsigned nonce = 0;
    for(unsigned action_mask = 0; action_mask < 1<<n_actions; action_mask++) {
@@ -117,10 +116,8 @@ BOOST_DATA_TEST_CASE(test_proof_actions, boost::unit_test::data::xrange(1u, 10u)
             chain.push_action(N(nointerested), N(dothedew), N(nointerested), fc::mutable_variant_object()("nonce", nonce++));
       }
 
-      expecting_callback = false;
-      fc::sha256 expected_action_mroot = chain.produce_block()->action_mroot;
       expecting_callback = action_mask; //when action_mask is 0, no interested action pushed meaning no callback called
-      chain.produce_block();
+      fc::sha256 expected_action_mroot = chain.produce_block()->action_mroot;
 
       if(expecting_callback)
          BOOST_CHECK(expected_action_mroot == computed_action_mroot);
@@ -130,25 +127,20 @@ BOOST_DATA_TEST_CASE(test_proof_actions, boost::unit_test::data::xrange(1u, 10u)
 
 BOOST_AUTO_TEST_CASE(test_proof_arv_activation) try {
    tester chain(setup_policy::none);
-   compressed_proof_generator proof_generator(*chain.control);
-
    fc::sha256 computed_action_mroot;
 
-   proof_generator.add_result_callback(
+   compressed_proof_generator proof_generator(*chain.control, {std::make_pair(
       [&](const chain::action& act){
          return true;
       },
       [&](std::vector<char>&& serialized_compressed_proof) {
          computed_action_mroot = validate_compressed_merkle_proof(serialized_compressed_proof, [](uint64_t receiver) {});
       }
-   );
+   )});
 
-   std::optional<sha256> reversible_action_mroot;
    auto produce_and_check = [&]() {
       sha256 new_mroot = chain.produce_block()->action_mroot;
-      if(reversible_action_mroot)
-         BOOST_CHECK(*reversible_action_mroot == computed_action_mroot);
-      reversible_action_mroot = new_mroot;
+      BOOST_CHECK(new_mroot == computed_action_mroot);
    };
    chain.execute_setup_policy(setup_policy::preactivate_feature_and_new_bios);
 
@@ -176,36 +168,46 @@ BOOST_AUTO_TEST_CASE(test_proof_arv_activation) try {
 } FC_LOG_AND_RETHROW()
 
 BOOST_AUTO_TEST_CASE(test_proof_presist_reversible) try {
-   tester chain(setup_policy::none);
+   tester base_chain(setup_policy::none);
+   base_chain.produce_blocks(10);
+
+   auto push_blocks = [](tester& from, tester& to, uint32_t block_num_limit) {
+      while(to.control->fork_db_pending_head_block_num()
+               < std::min( from.control->fork_db_pending_head_block_num(), block_num_limit)) {
+         auto fb = from.control->fetch_block_by_number( to.control->fork_db_pending_head_block_num()+1 );
+         to.push_block( fb );
+      }
+   };
+
+   tester chain(setup_policy::none, chain::db_read_mode::IRREVERSIBLE);
    fc::temp_file tempfile;
 
    unsigned blocks_seen = 0;
 
    {
-      compressed_proof_generator proof_generator(*chain.control, tempfile.path());
-      proof_generator.add_result_callback(
+      compressed_proof_generator proof_generator(*chain.control, {std::make_pair(
          [&](const chain::action& act){
             return true;
          },
          [&](std::vector<char>&& serialized_compressed_proof) {
             blocks_seen++;
          }
-      );
+      )}, tempfile.path());
 
-      chain.produce_blocks(5); //make 4 irreversible blocks; calling result callback 4 times
+      push_blocks(base_chain, chain, 6); //make 4 irreversible blocks (2, 3, 4, 5); calling result callback 4 times
    }
 
    {
-      compressed_proof_generator proof_generator(*chain.control, tempfile.path());
-      proof_generator.add_result_callback(
+      compressed_proof_generator proof_generator(*chain.control, {std::make_pair(
          [&](const chain::action& act){
             return true;
          },
          [&](std::vector<char>&& serialized_compressed_proof) {
             blocks_seen++;
          }
-      );
-      chain.produce_block(); //makes one more irreversible block
+      )}, tempfile.path());
+
+      push_blocks(base_chain, chain, 7); //makes one more irreversible block
    }
 
    //so should have seen 5 blocks from callback
@@ -215,12 +217,10 @@ BOOST_AUTO_TEST_CASE(test_proof_presist_reversible) try {
 BOOST_AUTO_TEST_CASE(test_proof_ooo_sequence) try {
    tester chain(setup_policy::none);
 
-   compressed_proof_generator proof_generator(*chain.control);
-
    unsigned num_actions = 0;
    fc::sha256 computed_action_mroot;
 
-   proof_generator.add_result_callback(
+   compressed_proof_generator proof_generator(*chain.control, {std::make_pair(
       [&](const chain::action& act) {
          return act.account == N(interested);
       },
@@ -230,7 +230,7 @@ BOOST_AUTO_TEST_CASE(test_proof_ooo_sequence) try {
             num_actions++;
          });
       }
-   );
+   )});
 
    chain.create_account(N(interested));
    chain.set_code(N(interested), inliner_wast);
@@ -244,28 +244,16 @@ BOOST_AUTO_TEST_CASE(test_proof_ooo_sequence) try {
    chain.push_transaction( trx );
 
    sha256 expected_mroot = chain.produce_block()->action_mroot;
-   chain.produce_block();
    BOOST_CHECK(expected_mroot == computed_action_mroot);
    BOOST_CHECK(num_actions == 65);
 } FC_LOG_AND_RETHROW()
 
 BOOST_AUTO_TEST_CASE(test_proof_delayed) try {
    tester chain(setup_policy::none);
-
-   compressed_proof_generator proof_generator(*chain.control);
-
    fc::sha256 computed_action_mroot;
    bool seen_interested = false;
 
-   std::optional<sha256> reversible_action_mroot;
-   auto produce_and_check = [&]() {
-      sha256 new_mroot = chain.produce_block()->action_mroot;
-      if(reversible_action_mroot)
-         BOOST_CHECK(*reversible_action_mroot == computed_action_mroot);
-      reversible_action_mroot = new_mroot;
-   };
-
-   proof_generator.add_result_callback(
+   compressed_proof_generator proof_generator(*chain.control, {std::make_pair(
       [&](const chain::action& act) {
          return true;
       },
@@ -274,7 +262,12 @@ BOOST_AUTO_TEST_CASE(test_proof_delayed) try {
             seen_interested |= name(receiver) == N(interested);
          });
       }
-   );
+   )});
+
+   auto produce_and_check = [&]() {
+      sha256 new_mroot = chain.produce_block()->action_mroot;
+      BOOST_CHECK(new_mroot == computed_action_mroot);
+   };
 
    chain.create_account(N(interested));
    chain.set_abi(N(interested), test_account_abi);

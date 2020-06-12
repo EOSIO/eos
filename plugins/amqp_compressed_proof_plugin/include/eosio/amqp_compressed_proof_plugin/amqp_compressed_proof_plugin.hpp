@@ -9,16 +9,17 @@ using namespace appbase;
 
 class compressed_proof_generator {
 public:
-   compressed_proof_generator(chain::controller& controller);
-   compressed_proof_generator(chain::controller& controller, const boost::filesystem::path& reversible_path);
+   using action_filter_func = std::function<bool(const chain::action& a)>;
+   using merkle_proof_result_func = std::function<void(std::vector<char>&&)>;
+   using result_callback_funcs = std::pair<action_filter_func, merkle_proof_result_func>;
+
+   compressed_proof_generator(chain::controller& controller, std::vector<result_callback_funcs>&& callbacks);
+   compressed_proof_generator(chain::controller& controller, std::vector<result_callback_funcs>&& callbacks, const boost::filesystem::path& reversible_path);
    ~compressed_proof_generator();
 
    compressed_proof_generator(const compressed_proof_generator&) = delete;
    compressed_proof_generator& operator=(const compressed_proof_generator&) = delete;
 
-   using action_filter_func = std::function<bool(const chain::action& a)>;
-   using merkle_proof_result_func = std::function<void(std::vector<char>&&)>;
-   void add_result_callback(action_filter_func&& filter, merkle_proof_result_func&& result);
 private:
    std::unique_ptr<struct compressed_proof_generator_impl> my;
 };
