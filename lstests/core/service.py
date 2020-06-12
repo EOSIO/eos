@@ -1567,6 +1567,15 @@ class Cluster:
                      "Waiting for schedule change.", level=level)
             begin_block_num += 1
             curr_prod = self.wait_get_producer_by_block(begin_block_num, level="trace")
+
+        # when a new schedule has started, if the first producer is new, it will start after the first block in the slot
+        # since the first block of the slot will provide the confirmation to make the new schedule be confirmed
+        last_prod = curr_prod
+        while curr_prod == last_prod:
+            self.log(f"Block #{begin_block_num}: {curr_prod}, waiting for schedule change to ensure complete first round.",
+                     level=level)
+            begin_block_num += 1
+            curr_prod = self.wait_get_producer_by_block(begin_block_num, level="trace")
         # formally start
         self.log(f">>> Production check formally starts, as expected producer \"{curr_prod}\" has come to produce.", level=level)
         rest = full_round * len(expected_producers) - 1
@@ -1603,13 +1612,14 @@ class Cluster:
         if not success:
             # check if we succeeded by the min_required_per_round requirements
             if min_required_per_round < full_round:
-                for key, value in expected_producers.items():
+                success = True
+                for key, value in counter.items():
                     if key not in expected_counter or value < min_required_per_round or value > full_round:
-                        success = True
+                        success = False
                         break
-                if not failed:
-                    self.log(">>> Production check succeeded.", level=level)
-                    return True
+                    del expected_counter[key]
+                if len(expected_counter) > 0:
+                    success = False
 
         if success:
             self.log(">>> Production check succeeded.", level=level)
