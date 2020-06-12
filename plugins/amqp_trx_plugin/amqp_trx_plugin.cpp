@@ -77,11 +77,17 @@ private:
          my->chain_plug->accept_transaction( trx,
             [my, trx](const fc::static_variant<fc::exception_ptr, chain::transaction_trace_ptr>& result) mutable {
                // publish to trace plugin as execptions are not reported via controller signal applied_transaction
-               if( result.contains<chain::exception_ptr>() && my->trace_plug ) {
+               if( result.contains<chain::exception_ptr>() ) {
                   auto& eptr = result.get<chain::exception_ptr>();
-                  my->trace_plug->publish_error( trx->id().str(), eptr->code(), eptr->to_string() );
+                  if( my->trace_plug ) {
+                     my->trace_plug->publish_error( trx->id().str(), eptr->code(), eptr->to_string() );
+                  }
+                  dlog( "accept_transaction ${id} exception: ${e}", ("id", trx->id())("e", eptr->to_string()) );
+               } else {
+                  dlog( "accept_transaction ${id}", ("id", trx->id()) );
                }
                my->trx_in_progress_size -= trx->get_estimated_size();
+
             } );
          } );
    }
