@@ -2,6 +2,7 @@
 #include <amqpcpp.h>
 #include <amqpcpp/libboostasio.h>
 #include <amqpcpp/linux_tcp.h>
+#include <string>
 
 #include <fc/log/logger.hpp>
 
@@ -20,10 +21,11 @@ public:
    }
 };
 
-class amqp {
+class amqp_publish {
 public:
    using on_error_t = std::function<void(const std::string& err)>;
-   amqp( boost::asio::io_service& io_service, const std::string& address, std::string name, on_error_t on_err )
+
+   amqp_publish( boost::asio::io_service& io_service, const std::string& address, std::string name, on_error_t on_err )
          : name_( std::move( name ) )
          , on_error( std::move(on_err) )
    {
@@ -36,20 +38,10 @@ public:
       declare_queue();
    }
 
-   void publish( const std::string& exchange, const std::string& correlation_id, const char* data, size_t data_size ) {
+   void publish( const string& exchange, const std::string& correlation_id, const char* data, size_t data_size ) {
       AMQP::Envelope env( data, data_size );
       env.setCorrelationID( correlation_id );
-      auto& result = channel_->publish( exchange, name_, env, 0 );
-   }
-
-   auto& consume() { return channel_->consume( name_ ); }
-
-   void ack( uint64_t delivery_tag ) {
-      channel_->ack( delivery_tag );
-   }
-
-   void reject( uint64_t delivery_tag ) {
-      channel_->reject( delivery_tag );
+      channel_->publish( exchange, name_, env, 0 );
    }
 
 private:
@@ -57,7 +49,7 @@ private:
       auto& queue = channel_->declareQueue( name_, AMQP::durable );
       queue.onSuccess( []( const std::string& name, uint32_t messagecount, uint32_t consumercount ) {
          dlog( "AMQP Connected Successfully!\n Queue ${q} - Messages: ${mc} - Consumers: ${cc}",
-               ("q", name)( "mc", messagecount )( "cc", consumercount ) );
+                  ("q", name)( "mc", messagecount )( "cc", consumercount ) );
       } );
       queue.onError( [on_err=on_error]( const char* error_message ) {
          on_err( error_message );

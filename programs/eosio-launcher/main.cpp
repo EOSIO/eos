@@ -1152,6 +1152,9 @@ launcher_def::write_logging_config_file(tn_node_def &node) {
   }
 
   auto log_config = fc::logging_config::default_config();
+  // make default logger debug level
+  if( !log_config.loggers.empty() )
+     log_config.loggers[0].level = fc::log_level::debug;
   if(gelf_enabled) {
      log_config.appenders.push_back(
            fc::appender_config( "net", "gelf",

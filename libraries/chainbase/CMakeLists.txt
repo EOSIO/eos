@@ -67,6 +67,10 @@ add_library( chainbase src/chainbase.cpp src/pinnable_mapped_file.cpp ${HEADERS}
 target_link_libraries( chainbase Boost::filesystem ${PLATFORM_LIBRARIES} )
 target_include_directories( chainbase PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" )
 
+if(ENABLE_UNITY_BUILD)
+   set_target_properties(chainbase PROPERTIES UNITY_BUILD TRUE)
+endif() 
+
 if(WIN32)
    target_link_libraries( chainbase ws2_32 mswsock )
 endif()

@@ -74,7 +74,7 @@ try:
         else:
             launched = cluster.launch(prodCount=prodCount, onlyBios=onlyBios, dontBootstrap=dontBootstrap,
                                       specificExtraNodeosArgs={
-                                        0: "--plugin eosio::amqp_trx_plugin --amqp-trx-address %s" % (amqpAddr) })
+                                        0: "--plugin eosio::amqp_trx_plugin --amqp-trx-address %s --plugin eosio::amqp_trace_plugin --amqp-trace-address %s" % (amqpAddr, amqpAddr) })
 
         if launched is False:
             cmdError("launcher")
@@ -214,7 +214,7 @@ try:
         errorExit("FAILURE - wallet keys did not include %s" % (noMatch), raw=True)
 
     node=cluster.getNode(0)
-    if not amqpAddr:
+    if amqpAddr:
         node.setAMQPAddress(amqpAddr)
 
     Print("Validating accounts before user accounts creation")
@@ -398,6 +398,10 @@ try:
     except (AssertionError, KeyError) as _:
         Print("ERROR: Failed get currecy stats assertion. %s" % (res))
         raise
+
+    # disable amqp since cleos not set up to handle duplicates
+    if amqpAddr:
+        node.setAMQPAddress(None)
 
     dupRejected=False
     dupTransAmount=10
