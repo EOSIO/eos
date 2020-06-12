@@ -156,7 +156,7 @@ try:
 
     # relaunch the node with the truncated block log and ensure it catches back up with the producers
     current_head_block_num = node1.getInfo()["head_block_num"]
-    cluster.getNode(2).relaunch(2, cachePopen=True)
+    cluster.getNode(2).relaunch(cachePopen=True)
     assert cluster.getNode(2).waitForBlock(current_head_block_num, timeout=60, reportInterval=15)
 
     # ensure it continues to advance
@@ -186,7 +186,7 @@ try:
     # relaunch the node with the truncated block log and ensure it catches back up with the producers
     current_head_block_num = node1.getInfo()["head_block_num"]
     assert current_head_block_num >= info["head_block_num"]
-    cluster.getNode(2).relaunch(2, cachePopen=True)
+    cluster.getNode(2).relaunch(cachePopen=True)
     assert cluster.getNode(2).waitForBlock(current_head_block_num, timeout=60, reportInterval=15)
 
     # ensure it continues to advance
@@ -229,12 +229,7 @@ try:
     # fix-corrupted-file
     output=cluster.getBlockLog(0, blockLogAction=BlockLogAction.fix_corrupted_file)
     fixedBlockIndexFileSize = os.path.getsize(blockIndexFileName)
-    assert fixedBlockIndexFileSize == blockIndexFileSize - 16, "blocks.index not fixed properly\n"
-
-    # update-index
-    output=cluster.getBlockLog(0, blockLogAction=BlockLogAction.update_index)
-    updatedBlockIndexFileSize = os.path.getsize(blockIndexFileName)
-    assert updatedBlockIndexFileSize == blockIndexFileSize, "blocks.index not updated properly\n"
+    assert fixedBlockIndexFileSize == blockIndexFileSize, "blocks.index not fixed properly\n"
 
     # check_files
     output=cluster.getBlockLog(0, blockLogAction=BlockLogAction.check_files)
