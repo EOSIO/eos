@@ -138,24 +138,17 @@ struct compressed_proof_generator_impl {
    > reversible_action_entries_index_type;
    reversible_action_entries_index_type reversible_action_entries_index;
 
-   static bool is_onblock(const chain::transaction_trace_ptr& p) {
-      if(p->action_traces.empty())
-         return false;
-      auto& act = p->action_traces[0].act;
-      if(act.account != eosio::chain::config::system_account_name || act.name != N(onblock) ||
-          act.authorization.size() != 1)
-         return false;
-      auto& auth = act.authorization[0];
-      return auth.actor == eosio::chain::config::system_account_name &&
-             auth.permission == eosio::chain::config::active_name;
-   }
-
    std::map<transaction_id_type, chain::transaction_trace_ptr> cached_traces;
    std::optional<chain::transaction_trace_ptr>                 onblock_trace;
    std::vector<std::pair<compressed_proof_generator::action_filter_func,
                          compressed_proof_generator::merkle_proof_result_func>>  callbacks;
 
    fc::optional<boost::filesystem::path> reversible_path;
+
+   void clear_caches() {
+      cached_traces.clear();
+      onblock_trace.reset();
+   }
 };
 
 using generator_impl = compressed_proof_generator_impl;
@@ -209,7 +202,7 @@ void compressed_proof_generator::on_applied_transaction(const chain::transaction
       trace->receipt->status != chain::transaction_receipt::status_enum::delayed)
       return;
 
-   if(my->is_onblock(trace))
+   if(chain::is_onblock(*trace))
       my->onblock_trace.emplace(trace);
    else
       my->cached_traces[trace->id] = trace;
@@ -218,8 +211,7 @@ void compressed_proof_generator::on_applied_transaction(const chain::transaction
 void compressed_proof_generator::on_accepted_block(const chain::block_state_ptr& bsp) {
    std::set<action_entry> action_entries_this_block;
 
-   // verify block_num of onblock_trace because last block could have been aborted & new block have no onblock
-   if(my->onblock_trace && (*my->onblock_trace)->block_num == bsp->block_num) {
+   if(my->onblock_trace) {
       for(const chain::action_trace& at : (*my->onblock_trace)->action_traces)
          action_entries_this_block.emplace(at);
    }
@@ -234,8 +226,7 @@ void compressed_proof_generator::on_accepted_block(const chain::block_state_ptr&
       for(const chain::action_trace& at : it->second->action_traces)
          action_entries_this_block.emplace(at);
    }
-   my->cached_traces.clear();
-   my->onblock_trace.reset();
+   my->clear_caches();
 
    my->reversible_action_entries_index.emplace(generator_impl::reversible_action_entries{bsp->block_num, bsp->id, std::move(action_entries_this_block)});
 }
@@ -269,6 +260,10 @@ void compressed_proof_generator::on_irreversible_block(const chain::block_state_
            my->reversible_action_entries_index.get<generator_impl::by_block_num>().begin(),
            my->reversible_action_entries_index.get<generator_impl::by_block_num>().upper_bound(bsp->block_num)
    );
+}
+
+void compressed_proof_generator::on_block_start(uint32_t block_num) {
+   my->clear_caches();
 }
 
 void compressed_proof_generator::add_result_callback(action_filter_func&& filter, merkle_proof_result_func&& result) {
@@ -327,6 +322,9 @@ void amqp_compressed_proof_plugin::plugin_initialize(const variables_map& option
       });
       controller.accepted_block.connect([&generator=*my->proof_generator](const chain::block_state_ptr& p) {
          generator.on_accepted_block(p);
+      });
+      controller.block_start.connect([&generator=*my->proof_generator](uint32_t block_num) {
+         generator.on_block_start(block_num);
       });
 
       if(options.count("compressed-proof")) {

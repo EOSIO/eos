@@ -19,6 +19,7 @@ public:
    void on_applied_transaction(const chain::transaction_trace_ptr& trace);
    void on_accepted_block(const chain::block_state_ptr& p);
    void on_irreversible_block(const chain::block_state_ptr& bsp, const chain::controller& controller);
+   void on_block_start(uint32_t block_num);
 
    using action_filter_func = std::function<bool(const chain::action& a)>;
    using merkle_proof_result_func = std::function<void(std::vector<char>&&)>;
