@@ -57,20 +57,6 @@ static const char test_account_abi[] = R"=====(
 }
 )=====";
 
-static auto wire_signals_to_generator(compressed_proof_generator& generator, controller& ctrl) {
-   std::vector<boost::signals2::scoped_connection> conns;
-   conns.emplace_back(ctrl.irreversible_block.connect([&](const block_state_ptr& bsp) {
-      generator.on_irreversible_block(bsp, ctrl);
-   }));
-   conns.emplace_back(ctrl.applied_transaction.connect([&](std::tuple<const transaction_trace_ptr&, const packed_transaction_ptr&> t) {
-      generator.on_applied_transaction(std::get<0>(t));
-   }));
-   conns.emplace_back(ctrl.accepted_block.connect([&](const block_state_ptr& p) {
-      generator.on_accepted_block(p);
-   }));
-   return conns;
-}
-
 BOOST_AUTO_TEST_SUITE(test_compressed_proof)
 
 BOOST_AUTO_TEST_CASE(test_proof_no_actions) try {
@@ -79,8 +65,7 @@ BOOST_AUTO_TEST_CASE(test_proof_no_actions) try {
    chain.set_code(N(eosio), fail_everything_wast);
    chain.produce_block();
 
-   compressed_proof_generator proof_generator;
-   auto signal_connections = wire_signals_to_generator(proof_generator, *chain.control);
+   compressed_proof_generator proof_generator(*chain.control);
 
    proof_generator.add_result_callback([&](const auto&){return true;}, [&](auto&& x) {
       //no actions means no callback should ever be fired
@@ -104,8 +89,7 @@ BOOST_DATA_TEST_CASE(test_proof_actions, boost::unit_test::data::xrange(1u, 10u)
    chain.set_code(N(eosio), fail_everything_wast);
    chain.produce_block();
 
-   compressed_proof_generator proof_generator;
-   auto signal_connections = wire_signals_to_generator(proof_generator, *chain.control);
+   compressed_proof_generator proof_generator(*chain.control);
 
    bool expecting_callback = false;
    fc::sha256 computed_action_mroot;
@@ -146,8 +130,7 @@ BOOST_DATA_TEST_CASE(test_proof_actions, boost::unit_test::data::xrange(1u, 10u)
 
 BOOST_AUTO_TEST_CASE(test_proof_arv_activation) try {
    tester chain(setup_policy::none);
-   compressed_proof_generator proof_generator;
-   auto signal_connections = wire_signals_to_generator(proof_generator, *chain.control);
+   compressed_proof_generator proof_generator(*chain.control);
 
    fc::sha256 computed_action_mroot;
 
@@ -199,8 +182,7 @@ BOOST_AUTO_TEST_CASE(test_proof_presist_reversible) try {
    unsigned blocks_seen = 0;
 
    {
-      compressed_proof_generator proof_generator(tempfile.path());
-      auto signal_connections = wire_signals_to_generator(proof_generator, *chain.control);
+      compressed_proof_generator proof_generator(*chain.control, tempfile.path());
       proof_generator.add_result_callback(
          [&](const chain::action& act){
             return true;
@@ -214,8 +196,7 @@ BOOST_AUTO_TEST_CASE(test_proof_presist_reversible) try {
    }
 
    {
-      compressed_proof_generator proof_generator(tempfile.path());
-      auto signal_connections = wire_signals_to_generator(proof_generator, *chain.control);
+      compressed_proof_generator proof_generator(*chain.control, tempfile.path());
       proof_generator.add_result_callback(
          [&](const chain::action& act){
             return true;
@@ -234,8 +215,7 @@ BOOST_AUTO_TEST_CASE(test_proof_presist_reversible) try {
 BOOST_AUTO_TEST_CASE(test_proof_ooo_sequence) try {
    tester chain(setup_policy::none);
 
-   compressed_proof_generator proof_generator;
-   auto signal_connections = wire_signals_to_generator(proof_generator, *chain.control);
+   compressed_proof_generator proof_generator(*chain.control);
 
    unsigned num_actions = 0;
    fc::sha256 computed_action_mroot;
@@ -272,8 +252,7 @@ BOOST_AUTO_TEST_CASE(test_proof_ooo_sequence) try {
 BOOST_AUTO_TEST_CASE(test_proof_delayed) try {
    tester chain(setup_policy::none);
 
-   compressed_proof_generator proof_generator;
-   auto signal_connections = wire_signals_to_generator(proof_generator, *chain.control);
+   compressed_proof_generator proof_generator(*chain.control);
 
    fc::sha256 computed_action_mroot;
    bool seen_interested = false;

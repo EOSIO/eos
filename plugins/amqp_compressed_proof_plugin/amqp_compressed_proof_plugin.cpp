@@ -101,6 +101,98 @@ private:
 };
 
 struct compressed_proof_generator_impl {
+   compressed_proof_generator_impl(chain::controller& controller) {
+      controller_connections.emplace_back(controller.irreversible_block.connect([this,&controller](const chain::block_state_ptr& bsp) {
+         on_irreversible_block(bsp, controller);
+      }));
+      controller_connections.emplace_back(controller.applied_transaction.connect([this](std::tuple<const chain::transaction_trace_ptr&, const chain::packed_transaction_ptr&> t) {
+         on_applied_transaction(std::get<0>(t));
+      }));
+      controller_connections.emplace_back(controller.accepted_block.connect([this](const chain::block_state_ptr& p) {
+         on_accepted_block(p);
+      }));
+      controller_connections.emplace_back(controller.block_start.connect([this](uint32_t block_num) {
+         on_block_start(block_num);
+      }));
+   }
+
+   void on_applied_transaction(const chain::transaction_trace_ptr& trace) {
+      if(!trace->receipt)
+         return;
+      //only executed & delayed transaction traces would make it in to action_mroot
+      if(trace->receipt->status != chain::transaction_receipt::status_enum::executed &&
+         trace->receipt->status != chain::transaction_receipt::status_enum::delayed)
+         return;
+
+      if(chain::is_onblock(*trace))
+         onblock_trace.emplace(trace);
+      else
+         cached_traces[trace->id] = trace;
+   }
+
+   void on_accepted_block(const chain::block_state_ptr& bsp) {
+      std::set<action_entry> action_entries_this_block;
+
+      if(onblock_trace) {
+         for(const chain::action_trace& at : (*onblock_trace)->action_traces)
+            action_entries_this_block.emplace(at);
+      }
+      for(const chain::transaction_receipt& r : bsp->block->transactions) {
+         transaction_id_type id;
+         if(r.trx.contains<chain::transaction_id_type>())
+            id = r.trx.get<chain::transaction_id_type>();
+         else
+            id = r.trx.get<chain::packed_transaction>().id();
+         auto it = cached_traces.find(id);
+         EOS_ASSERT(it != cached_traces.end(), chain::misc_exception, "missing trace for transaction ${id}", ("id", id));
+         for(const chain::action_trace& at : it->second->action_traces)
+            action_entries_this_block.emplace(at);
+      }
+      clear_caches();
+
+      reversible_action_entries_index.emplace(reversible_action_entries{bsp->block_num, bsp->id, std::move(action_entries_this_block)});
+   }
+
+   void on_irreversible_block(const chain::block_state_ptr& bsp, const chain::controller& controller) {
+      if(const auto it = reversible_action_entries_index.find(bsp->id); it != reversible_action_entries_index.end()) {
+         const std::set<action_entry>& action_entries = it->action_entries;
+
+         const chain::digest_type arv_dig = *controller.get_protocol_feature_manager().get_builtin_digest(chain::builtin_protocol_feature_t::action_return_value);
+         const auto& protocol_features_this_block = bsp->activated_protocol_features->protocol_features;
+         const bool action_return_value_active_this_block = protocol_features_this_block.find(arv_dig) != protocol_features_this_block.end();
+
+         for(const auto& cb : callbacks) {
+            merkle_cmd_creator cc;
+            bool any_interested = false;
+            for(const action_entry& ae : action_entries) {
+               if(cb.first(ae.action)) {
+                  cc.add_interested_action(ae);
+                  any_interested = true;
+               }
+               else
+                  cc.add_noninterested_action(ae);
+            }
+
+            if(any_interested)
+               cb.second(cc.generate_serialized_proof(action_return_value_active_this_block));
+         }
+      }
+
+      reversible_action_entries_index.get<by_block_num>().erase(
+              reversible_action_entries_index.get<by_block_num>().begin(),
+              reversible_action_entries_index.get<by_block_num>().upper_bound(bsp->block_num)
+      );
+   }
+
+   void on_block_start(uint32_t block_num) {
+      clear_caches();
+   }
+
+   void clear_caches() {
+      cached_traces.clear();
+      onblock_trace.reset();
+   }
+
    struct reversible_action_entries {
       chain::block_num_type  block_num;
       chain::block_id_type   block_id;
@@ -126,17 +218,14 @@ struct compressed_proof_generator_impl {
 
    fc::optional<boost::filesystem::path> reversible_path;
 
-   void clear_caches() {
-      cached_traces.clear();
-      onblock_trace.reset();
-   }
+   std::list<boost::signals2::scoped_connection> controller_connections;
 };
 
 using generator_impl = compressed_proof_generator_impl;
 
-compressed_proof_generator::compressed_proof_generator() : my(new compressed_proof_generator_impl) {}
+compressed_proof_generator::compressed_proof_generator(chain::controller& controller) : my(new compressed_proof_generator_impl(controller)) {}
 
-compressed_proof_generator::compressed_proof_generator(const boost::filesystem::path& p) : my(new compressed_proof_generator_impl) {
+compressed_proof_generator::compressed_proof_generator(chain::controller& controller, const boost::filesystem::path& p) : my(new compressed_proof_generator_impl(controller)) {
    my->reversible_path = p;
 
    if(boost::filesystem::exists(*my->reversible_path)) {
@@ -173,78 +262,6 @@ compressed_proof_generator::~compressed_proof_generator() {
             fc::raw::pack(file, v);
       } FC_LOG_AND_DROP();
    }
-}
-
-void compressed_proof_generator::on_applied_transaction(const chain::transaction_trace_ptr& trace) {
-   if(!trace->receipt)
-      return;
-   //only executed & delayed transaction traces would make it in to action_mroot
-   if(trace->receipt->status != chain::transaction_receipt::status_enum::executed &&
-      trace->receipt->status != chain::transaction_receipt::status_enum::delayed)
-      return;
-
-   if(chain::is_onblock(*trace))
-      my->onblock_trace.emplace(trace);
-   else
-      my->cached_traces[trace->id] = trace;
-}
-
-void compressed_proof_generator::on_accepted_block(const chain::block_state_ptr& bsp) {
-   std::set<action_entry> action_entries_this_block;
-
-   if(my->onblock_trace) {
-      for(const chain::action_trace& at : (*my->onblock_trace)->action_traces)
-         action_entries_this_block.emplace(at);
-   }
-   for(const chain::transaction_receipt& r : bsp->block->transactions) {
-      transaction_id_type id;
-      if(r.trx.contains<chain::transaction_id_type>())
-         id = r.trx.get<chain::transaction_id_type>();
-      else
-         id = r.trx.get<chain::packed_transaction>().id();
-      auto it = my->cached_traces.find(id);
-      EOS_ASSERT(it != my->cached_traces.end(), chain::misc_exception, "missing trace for transaction ${id}", ("id", id));
-      for(const chain::action_trace& at : it->second->action_traces)
-         action_entries_this_block.emplace(at);
-   }
-   my->clear_caches();
-
-   my->reversible_action_entries_index.emplace(generator_impl::reversible_action_entries{bsp->block_num, bsp->id, std::move(action_entries_this_block)});
-}
-
-void compressed_proof_generator::on_irreversible_block(const chain::block_state_ptr& bsp, const chain::controller& controller) {
-   if(const auto it = my->reversible_action_entries_index.find(bsp->id); it != my->reversible_action_entries_index.end()) {
-      const std::set<action_entry>& action_entries = it->action_entries;
-
-      const chain::digest_type arv_dig = *controller.get_protocol_feature_manager().get_builtin_digest(chain::builtin_protocol_feature_t::action_return_value);
-      const auto& protocol_features_this_block = bsp->activated_protocol_features->protocol_features;
-      const bool action_return_value_active_this_block = protocol_features_this_block.find(arv_dig) != protocol_features_this_block.end();
-
-      for(const auto& cb : my->callbacks) {
-         merkle_cmd_creator cc;
-         bool any_interested = false;
-         for(const action_entry& ae : action_entries) {
-            if(cb.first(ae.action)) {
-               cc.add_interested_action(ae);
-               any_interested = true;
-            }
-            else
-               cc.add_noninterested_action(ae);
-         }
-
-         if(any_interested)
-            cb.second(cc.generate_serialized_proof(action_return_value_active_this_block));
-      }
-   }
-
-   my->reversible_action_entries_index.get<generator_impl::by_block_num>().erase(
-           my->reversible_action_entries_index.get<generator_impl::by_block_num>().begin(),
-           my->reversible_action_entries_index.get<generator_impl::by_block_num>().upper_bound(bsp->block_num)
-   );
-}
-
-void compressed_proof_generator::on_block_start(uint32_t block_num) {
-   my->clear_caches();
 }
 
 void compressed_proof_generator::add_result_callback(action_filter_func&& filter, merkle_proof_result_func&& result) {
@@ -294,19 +311,7 @@ void amqp_compressed_proof_plugin::plugin_initialize(const variables_map& option
                boost::filesystem::remove(p.path(), ec);
 
       const boost::filesystem::path reversible_blocks_file = dir / (file_prefix + "-reversible.bin"s);
-      my->proof_generator = std::make_unique<compressed_proof_generator>(reversible_blocks_file);
-      controller.irreversible_block.connect([&generator=*my->proof_generator,&controller](const chain::block_state_ptr& bsp) {
-         generator.on_irreversible_block(bsp, controller);
-      });
-      controller.applied_transaction.connect([&generator=*my->proof_generator](std::tuple<const chain::transaction_trace_ptr&, const chain::packed_transaction_ptr&> t) {
-         generator.on_applied_transaction(std::get<0>(t));
-      });
-      controller.accepted_block.connect([&generator=*my->proof_generator](const chain::block_state_ptr& p) {
-         generator.on_accepted_block(p);
-      });
-      controller.block_start.connect([&generator=*my->proof_generator](uint32_t block_num) {
-         generator.on_block_start(block_num);
-      });
+      my->proof_generator = std::make_unique<compressed_proof_generator>(controller, reversible_blocks_file);
 
       if(options.count("compressed-proof")) {
          const std::vector<std::string>& descs = options.at("compressed-proof").as<std::vector<std::string>>();

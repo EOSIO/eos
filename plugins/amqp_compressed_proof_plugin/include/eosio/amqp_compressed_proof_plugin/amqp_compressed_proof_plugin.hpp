@@ -9,17 +9,12 @@ using namespace appbase;
 
 class compressed_proof_generator {
 public:
-   compressed_proof_generator();
-   compressed_proof_generator(const boost::filesystem::path& reversible_path);
+   compressed_proof_generator(chain::controller& controller);
+   compressed_proof_generator(chain::controller& controller, const boost::filesystem::path& reversible_path);
    ~compressed_proof_generator();
 
    compressed_proof_generator(const compressed_proof_generator&) = delete;
    compressed_proof_generator& operator=(const compressed_proof_generator&) = delete;
-
-   void on_applied_transaction(const chain::transaction_trace_ptr& trace);
-   void on_accepted_block(const chain::block_state_ptr& p);
-   void on_irreversible_block(const chain::block_state_ptr& bsp, const chain::controller& controller);
-   void on_block_start(uint32_t block_num);
 
    using action_filter_func = std::function<bool(const chain::action& a)>;
    using merkle_proof_result_func = std::function<void(std::vector<char>&&)>;
