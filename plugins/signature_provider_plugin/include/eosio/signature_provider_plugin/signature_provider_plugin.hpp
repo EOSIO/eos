@@ -7,6 +7,20 @@ namespace eosio {
 
 using namespace appbase;
 
+class signature_provider_func {
+public:
+   chain::signature_type operator()(const chain::digest_type& d, const bool canonical = true) const { return f(d, canonical); }
+
+   signature_provider_func() = default;
+private:
+   using signature_provider_func_type = std::function<chain::signature_type(const chain::digest_type&, const bool)>;
+
+   signature_provider_func(signature_provider_func_type f) : f(std::move(f)) {}
+   signature_provider_func_type f;
+
+   friend class signature_provider_plugin_impl;
+};
+
 class signature_provider_plugin : public appbase::plugin<signature_provider_plugin> {
 public:
    signature_provider_plugin();
@@ -21,7 +35,7 @@ public:
 
    const char* const signature_provider_help_text() const;
 
-   using signature_provider_type = std::function<chain::signature_type(chain::digest_type)>;
+   using signature_provider_type = signature_provider_func;
 
    std::pair<chain::public_key_type,signature_provider_type> signature_provider_for_specification(const std::string& spec) const;
    signature_provider_type signature_provider_for_private_key(const chain::private_key_type priv) const;

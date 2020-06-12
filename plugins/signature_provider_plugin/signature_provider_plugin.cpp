@@ -19,9 +19,9 @@ class signature_provider_plugin_impl {
 
       signature_provider_plugin::signature_provider_type
       make_key_signature_provider(const chain::private_key_type& key) const {
-         return [key]( const chain::digest_type& digest ) {
-            return key.sign(digest);
-         };
+         return signature_provider_func([key](const chain::digest_type& digest, const bool canonical) {
+            return key.sign(digest, canonical);
+         });
       }
 
 #ifdef __APPLE__
@@ -33,9 +33,9 @@ class signature_provider_plugin_impl {
          std::set<secure_enclave::secure_enclave_key> allkeys = secure_enclave::get_all_keys();
          for(const auto& se_key : secure_enclave::get_all_keys())
             if(se_key.public_key() == pubkey)
-               return [se_key](const chain::digest_type& digest) {
+               return signature_provider_func([se_key](const chain::digest_type& digest, const bool canonical) {
                   return se_key.sign(digest);
-               };
+               });
 
          EOS_THROW(chain::secure_enclave_exception, "${k} not found in Secure Enclave", ("k", pubkey));
       }
@@ -51,12 +51,12 @@ class signature_provider_plugin_impl {
          else
             keosd_url = fc::url(url_str);
 
-         return [to=_keosd_provider_timeout_us, keosd_url, pubkey](const chain::digest_type& digest) {
+         return signature_provider_func([to=_keosd_provider_timeout_us, keosd_url, pubkey](const chain::digest_type& digest, const bool canonical) {
             fc::variant params;
             fc::to_variant(std::make_pair(digest, pubkey), params);
             auto deadline = to.count() >= 0 ? fc::time_point::now() + to : fc::time_point::maximum();
             return app().get_plugin<http_client_plugin>().get_client().post_sync(keosd_url, params, deadline).as<chain::signature_type>();
-         };
+         });
       }
 };
 
