@@ -46,24 +46,16 @@ struct merkle_creator_node {
 class merkle_cmd_creator {
 public:
    void add_noninterested_action(const action_entry& ae) {
-      handle_input_action(merkle_creator_node{chain::digest_type::hash(ae.action_receipt)});
+      curent_level.emplace_back(merkle_creator_node{chain::digest_type::hash(ae.action_receipt)});
    }
 
    void add_interested_action(const action_entry& ae) {
-      handle_input_action(merkle_creator_node{chain::digest_type::hash(ae.action_receipt), {ae}});
+      curent_level.emplace_back(merkle_creator_node{chain::digest_type::hash(ae.action_receipt), {ae}});
    }
 
    std::vector<char> generate_serialized_proof(const bool arv_activated) {
-      if(!first_input_pair && curent_level.empty())
+      if(curent_level.empty())
          return std::vector<char>();
-      if(first_input_pair && curent_level.empty())
-         return fc::raw::pack((const bool)arv_activated, first_input_pair->cmd_stream);
-
-
-      if(first_input_pair) {
-         merkle_creator_node even_pair{first_input_pair->hash};
-         curent_level.emplace_back(combine(*first_input_pair, even_pair));
-      }
 
       while(curent_level.size() > 1) {
          if(curent_level.size() % 2)
@@ -77,16 +69,6 @@ public:
    }
 
 private:
-   void handle_input_action(merkle_creator_node input) {
-      if(!first_input_pair) {
-         first_input_pair = input;
-         return;
-      }
-
-      curent_level.emplace_back(combine(*first_input_pair, input));
-      first_input_pair.reset();
-   }
-
    merkle_creator_node combine(merkle_creator_node& left, merkle_creator_node& right) {
       chain::digest_type::encoder digest_enc;
       fc::raw::pack(digest_enc, chain::make_canonical_left(left.hash), chain::make_canonical_right(right.hash));
@@ -115,7 +97,6 @@ private:
       return new_node;
    }
 
-   std::optional<merkle_creator_node> first_input_pair;
    std::vector<merkle_creator_node>   curent_level;
 };
 
