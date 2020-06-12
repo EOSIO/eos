@@ -229,12 +229,7 @@ try:
     # fix-corrupted-file
     output=cluster.getBlockLog(0, blockLogAction=BlockLogAction.fix_corrupted_file)
     fixedBlockIndexFileSize = os.path.getsize(blockIndexFileName)
-    assert fixedBlockIndexFileSize == blockIndexFileSize - 16, "blocks.index not fixed properly\n"
-
-    # update-index
-    output=cluster.getBlockLog(0, blockLogAction=BlockLogAction.update_index)
-    updatedBlockIndexFileSize = os.path.getsize(blockIndexFileName)
-    assert updatedBlockIndexFileSize == blockIndexFileSize, "blocks.index not updated properly\n"
+    assert fixedBlockIndexFileSize == blockIndexFileSize, "blocks.index not fixed properly\n"
 
     # check_files
     output=cluster.getBlockLog(0, blockLogAction=BlockLogAction.check_files)
