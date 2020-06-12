@@ -318,6 +318,11 @@ int main(int argc, char** argv) {
       }
       if (blog.fix_corrupted_file) {
          fix_corrupted_file(vmap.at("blocks-dir").as<bfs::path>());
+         update_index(vmap.at("blocks-dir").as<bfs::path>());
+         return 0;
+      }
+      if (blog.update_index) {
+         update_index(vmap.at("blocks-dir").as<bfs::path>());
          return 0;
       }
       if (blog.check_files) {
@@ -357,10 +362,6 @@ int main(int argc, char** argv) {
          block_log::construct_index(block_file.generic_string(), out_file.generic_string());
          fc::logger::get(DEFAULT_LOGGER).set_log_level(log_level);
          rt.report();
-         return 0;
-      }
-      if (blog.update_index) {
-         update_index(vmap.at("blocks-dir").as<bfs::path>());
          return 0;
       }
       if (blog.prune_transactions) {

@@ -263,9 +263,6 @@ try:
     # fix-corrupted-file
     output=cluster.getBlockLog(0, blockLogAction=BlockLogAction.fix_corrupted_file)
 
-    # update-index
-    output=cluster.getBlockLog(0, blockLogAction=BlockLogAction.update_index)
-
     # check_files
     output=cluster.getBlockLog(0, blockLogAction=BlockLogAction.check_files)
     expectedStr="no problems found"
