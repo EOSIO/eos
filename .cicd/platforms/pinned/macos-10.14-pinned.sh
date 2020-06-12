@@ -2,7 +2,7 @@
 set -eo pipefail
 VERSION=1
 brew update
-brew install git cmake python libtool libusb graphviz automake wget gmp pkgconfig doxygen openssl@1.1 jq || :
+brew install git cmake python libtool libusb graphviz automake wget gmp pkgconfig doxygen openssl@1.1 jq rabbitmq || :
 # install clang from source
 git clone --single-branch --branch llvmorg-10.0.0 https://github.com/llvm/llvm-project clang10
 mkdir clang10/build
@@ -24,3 +24,5 @@ cd ..
 sudo rm -rf boost_1_72_0.tar.bz2 boost_1_72_0
 # install nvm for ship_test
 cd ~ && brew install nvm && mkdir -p ~/.nvm && echo "export NVM_DIR=$HOME/.nvm" >> ~/.bash_profile && echo 'source $(brew --prefix nvm)/nvm.sh' >> ~/.bash_profile && cat ~/.bash_profile && source ~/.bash_profile && echo $NVM_DIR && nvm install --lts=dubnium
+# Add sbin to path for rabbitmq
+echo "export PATH=$PATH:/usr/local/sbin" >> ~/.bash_profile
