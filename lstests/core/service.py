@@ -1458,6 +1458,8 @@ class Cluster:
             for try_num in range(retry + 1):
                 ci_time.start()
                 cx = self.get_cluster_info(level="trace")
+                for resp in cx.response_dict["result"][node_id]:
+                    self.log(f"get_cluster_info partial result for node {resp[0]}: {resp[1]}")
                 ci_time.stop()
 
                 has_head_block_id = lambda node_id: "head_block_id" in cx.response_dict["result"][node_id][1]
