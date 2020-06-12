@@ -467,8 +467,8 @@ fc::variant push_transaction( signed_transaction& trx, const std::vector<public_
                   }
                } );
                received_trace.get_future().wait();
+               thread_pool.stop();
             }
-            thread_pool.stop();
             fc::variant result;
             if( trace_msg.contains<transaction_trace>() ) {
                result = eosio::chain_apis::read_write::send_transaction_results{tid, fc::variant(
