@@ -340,6 +340,13 @@ bool application::initialize_impl(int argc, char** argv, vector<abstract_plugin*
       std::cerr << "         removing these items." << std::endl;
    }
 
+   try {
+      bpo::notify(options);
+   } catch(...) {
+      std::cerr << "Failed to notify plugins of options\n";
+      return false;
+   }
+
    if(options.count("plugin") > 0)
    {
       auto plugins = options.at("plugin").as<std::vector<std::string>>();
@@ -355,8 +362,6 @@ bool application::initialize_impl(int argc, char** argv, vector<abstract_plugin*
       for (auto plugin : autostart_plugins)
          if (plugin != nullptr && plugin->get_state() == abstract_plugin::registered)
             plugin->initialize(options);
-
-      bpo::notify(options);
    } catch (...) {
       std::cerr << "Failed to initialize\n";
       return false;
