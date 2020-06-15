@@ -4,6 +4,7 @@
 #include <fc/reflect/reflect.hpp>
 #include <fc/io/json.hpp>
 #include <eosio/chain/exceptions.hpp>
+#include<boost/algorithm/string.hpp>
 
 namespace eosio {
    using namespace appbase;
@@ -159,6 +160,27 @@ namespace eosio {
       error_info error;
    };
 
+   static inline bool isEmptyContent(std::string& body) {
+      boost::algorithm::trim(body);
+
+      if (body.empty()) {
+         return true;
+      }
+      const size_t body_size = body.size();
+      if ((body_size > 1) && (body.at(0) == '{') && (body.at(body_size - 1) == '}')) {
+         for(size_t idx=1; idx<body_size-1; ++idx)
+         {
+            if ((body.at(idx) != ' ') && (body.at(idx) != '\t'))
+            {
+               return false;
+            }
+         }
+      } else {
+         return false;
+      }
+      return true;
+   }
+
    enum class http_params_types {
       no_params_required = 0,
       params_required = 1,
@@ -166,9 +188,9 @@ namespace eosio {
    };
 
    template<typename T, http_params_types params_type>
-   T parse_params(const std::string& body) {
+   T parse_params(std::string& body) {  // needs to trim space,
       if constexpr (params_type == http_params_types::params_required) {
-         if (body.empty()) {
+         if (isEmptyContent(body)) {
             EOS_THROW(chain::invalid_http_request, "A Request body is required");
          }
       }
@@ -176,13 +198,14 @@ namespace eosio {
       try {
          try {
             if constexpr (params_type == http_params_types::no_params_required || params_type == http_params_types::possible_no_params) {
-               if (body.empty()) {
+               if (isEmptyContent(body)) {
                   if constexpr (std::is_same_v<T, std::string>) {
                      return std::string("{}");
                   }
                   return {};
                }
                if constexpr (params_type == http_params_types::no_params_required) {
+
                   EOS_THROW(chain::invalid_http_request, "no parameter should be given");
                }
             }
