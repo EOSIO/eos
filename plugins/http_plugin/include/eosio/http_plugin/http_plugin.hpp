@@ -160,7 +160,7 @@ namespace eosio {
       error_info error;
    };
 
-   static inline bool isEmptyContent(std::string& body) {
+   inline bool isEmptyContent(std::string& body) {
       boost::algorithm::trim(body);
 
       if (body.empty()) {
