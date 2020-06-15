@@ -293,7 +293,7 @@ void amqp_compressed_proof_plugin::set_program_options(options_description& cli,
           "  <name>=<filter>=<server>=<exchange>\n"
           "Where:\n"
           "   <name>     \tis a unique name identifying this proof; used for persistent filenames\n"
-          "   <filter>   \tis a comma separated list of account names to filter actions on\n"
+          "   <filter>   \tis a comma separated list of receiver[:action] to filter actions on\n"
           "   <server>   \tis the AMQP server URI\n"
           "   <exchange> \tis the AMQP exchange to publish to\n"
           )
@@ -343,13 +343,35 @@ void amqp_compressed_proof_plugin::plugin_initialize(const variables_map& option
             const boost::filesystem::path amqp_unconfimed_file   = dir / (file_prefix + "-unconfirmed-"s + name + ".bin"s);
             reliable_amqp_publisher& publisher = my->publishers.emplace_back(tokens[2], tokens[3], "", amqp_unconfimed_file, "eosio.node.compressed_proof_v0");
 
-            std::set<chain::name> filter_on_names;
-            for(const std::string& name_string : filtered_receivers)
-               filter_on_names.emplace(name_string);
+            //the presence of an empty set means any action on that receiver
+            std::map<chain::name, std::set<chain::name>> filter_on_names_and_actions;
+            for(const std::string& name_action_string : filtered_receivers) {
+               std::vector<std::string> receiver_action_split;
+               boost::split(receiver_action_split, name_action_string, boost::is_any_of(":"));
+               EOS_ASSERT(receiver_action_split.size() == 1 || receiver_action_split.size() == 2, chain::plugin_config_exception, "Malformed receiver:action filter: ${a}", ("a", name_action_string));
+
+               const eosio::name receiver_name = eosio::name(receiver_action_split[0]);
+
+               if(receiver_action_split.size() == 1)
+                  filter_on_names_and_actions[receiver_name].clear(); //empty set = wildcard
+               else {
+                  auto it = filter_on_names_and_actions.find(receiver_name);
+                  //if the receiver doesn't exist, or the receiver does exist and already has an action filter; add this action to filter
+                  if(it == filter_on_names_and_actions.end() || it->second.size())
+                     filter_on_names_and_actions[receiver_name].emplace(eosio::name(receiver_action_split[1]));
+                  //else do nothing, wildcard already set on this receiver
+               }
+            }
 
             callbacks.emplace_back(std::make_pair(
-               [filter_on_names](const chain::action& act) {
-                  return filter_on_names.find(act.account) != filter_on_names.end();
+               [filter_on_names_and_actions](const chain::action& act) {
+                  if(auto it = filter_on_names_and_actions.find(act.account); it != filter_on_names_and_actions.end()) {
+                     if(it->second.empty())  //empty set means all actions
+                        return true;
+                     else
+                        return it->second.find(act.name) != it->second.end();
+                  }
+                  return false;
                },
                [&publisher](std::vector<char>&& serialized_proof) {
                   publisher.publish_message_raw(std::move(serialized_proof));

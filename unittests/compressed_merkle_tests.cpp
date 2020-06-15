@@ -57,6 +57,21 @@ static const char test_account_abi[] = R"=====(
 }
 )=====";
 
+static const char multi_account_abi[] = R"=====(
+{
+   "version": "eosio::abi/1.0",
+   "types": [],
+   "structs": [{"name":"dothedew", "base": "", "fields": [{"name":"nonce", "type":"uint32"}]}],
+   "actions": [{"name":"apple", "type": "dothedew", "ricardian_contract":""},
+               {"name":"banana", "type": "dothedew", "ricardian_contract":""},
+               {"name":"carrot", "type": "dothedew", "ricardian_contract":""}],
+   "tables": [],
+   "ricardian_clauses": [],
+   "variants": [],
+   "action_results": []
+}
+)=====";
+
 BOOST_AUTO_TEST_SUITE(test_compressed_proof)
 
 BOOST_AUTO_TEST_CASE(test_proof_no_actions) try {
@@ -286,6 +301,61 @@ BOOST_AUTO_TEST_CASE(test_proof_delayed) try {
    produce_and_check();
    produce_and_check();
    BOOST_CHECK(seen_interested);
+} FC_LOG_AND_RETHROW()
+
+BOOST_AUTO_TEST_CASE(test_proof_multiple) try {
+   tester chain(setup_policy::none);
+
+   fc::sha256 computed_action_mroot1, computed_action_mroot2, expected_mroot;
+   bool expect_banana = false, expect_spoon = false;
+
+   compressed_proof_generator proof_generator(*chain.control, {std::make_pair(
+      //first up, this callback cares about everything on the spoon account
+      [&](const chain::action& act){
+         return act.account == N(spoon);
+      },
+      [&](std::vector<char>&& serialized_compressed_proof) {
+         BOOST_CHECK(expect_spoon);
+         computed_action_mroot1 = validate_compressed_merkle_proof(serialized_compressed_proof, [](uint64_t receiver) {
+            BOOST_CHECK(name(receiver) == N(spoon));
+         });
+      }
+   ),
+   std::make_pair(
+      //next up, this callback only cares about bananas on the spoon account
+      [&](const chain::action& act){
+         return act.account == N(spoon) && act.name == N(banana);
+      },
+      [&](std::vector<char>&& serialized_compressed_proof) {
+         BOOST_CHECK(expect_banana);
+         computed_action_mroot2 = validate_compressed_merkle_proof(serialized_compressed_proof, [](uint64_t receiver) {
+            BOOST_CHECK(name(receiver) == N(spoon));
+         });
+      }
+   )});
+
+   chain.create_account(N(spoon));
+   chain.set_abi(N(spoon), multi_account_abi);
+   chain.produce_block();
+
+   unsigned nonce = 0;
+
+   //block with an apple
+   chain.push_action(N(spoon), N(apple), N(spoon), fc::mutable_variant_object()("nonce", nonce++));
+   expect_spoon = true;
+   BOOST_CHECK(chain.produce_block()->action_mroot == computed_action_mroot1);
+
+   //block with a couple apples and a banana
+   chain.push_action(N(spoon), N(apple), N(spoon), fc::mutable_variant_object()("nonce", nonce++));
+   chain.push_action(N(spoon), N(apple), N(spoon), fc::mutable_variant_object()("nonce", nonce++));
+   chain.push_action(N(spoon), N(banana), N(spoon), fc::mutable_variant_object()("nonce", nonce++));
+   expect_banana = true;
+   BOOST_CHECK(chain.produce_block()->action_mroot == computed_action_mroot1 && computed_action_mroot1 == computed_action_mroot2);
+
+   //block with nothing (except onblock)
+   expect_spoon = expect_banana = false;
+   chain.produce_block();
+
 } FC_LOG_AND_RETHROW()
 
 BOOST_AUTO_TEST_SUITE_END()
