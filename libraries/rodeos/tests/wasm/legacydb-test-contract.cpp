@@ -31,31 +31,34 @@ int end_i64(name code, name scope, name table) { return db_end_i64(code.value, s
 
 #define WRAP_SECONDARY(NAME, TYPE)                                                                                     \
    struct NAME {                                                                                                       \
+      using cdt_wrapper = eosio::_multi_index_detail::secondary_index_db_functions<TYPE>;                              \
       static int32_t store(name scope, name table, name payer, uint64_t id, const TYPE& secondary) {                   \
-         return db_##NAME##_store(scope.value, table.value, payer.value, id, &secondary);                              \
+         return cdt_wrapper::db_idx_store(scope.value, table.value, payer.value, id, secondary);                       \
       }                                                                                                                \
       static void update(int32_t iterator, name payer, const TYPE& secondary) {                                        \
-         return db_##NAME##_update(iterator, payer.value, &secondary);                                                 \
+         return cdt_wrapper::db_idx_update(iterator, payer.value, secondary);                                          \
       }                                                                                                                \
-      static void    remove(int32_t iterator) { return db_##NAME##_remove(iterator); }                                 \
+      static void    remove(int32_t iterator) { return cdt_wrapper::db_idx_remove(iterator); }                         \
       static int32_t find_secondary(name code, name scope, name table, const TYPE& secondary, uint64_t& primary) {     \
-         return db_##NAME##_find_secondary(code.value, scope.value, table.value, &secondary, &primary);                \
+         return cdt_wrapper::db_idx_find_secondary(code.value, scope.value, table.value, secondary, primary);          \
       }                                                                                                                \
       static int32_t find_primary(name code, name scope, name table, TYPE& secondary, uint64_t primary) {              \
-         return db_##NAME##_find_primary(code.value, scope.value, table.value, &secondary, primary);                   \
+         return cdt_wrapper::db_idx_find_primary(code.value, scope.value, table.value, primary, secondary);            \
       }                                                                                                                \
       static int32_t lowerbound(name code, name scope, name table, TYPE& secondary, uint64_t& primary) {               \
-         return db_##NAME##_lowerbound(code.value, scope.value, table.value, &secondary, &primary);                    \
+         return cdt_wrapper::db_idx_lowerbound(code.value, scope.value, table.value, secondary, primary);              \
       }                                                                                                                \
       static int32_t upperbound(name code, name scope, name table, TYPE& secondary, uint64_t& primary) {               \
-         return db_##NAME##_upperbound(code.value, scope.value, table.value, &secondary, &primary);                    \
+         return cdt_wrapper::db_idx_upperbound(code.value, scope.value, table.value, secondary, primary);              \
       }                                                                                                                \
       static int32_t end(name code, name scope, name table) {                                                          \
-         return db_##NAME##_end(code.value, scope.value, table.value);                                                 \
+         return cdt_wrapper::db_idx_end(code.value, scope.value, table.value);                                         \
       }                                                                                                                \
-      static int32_t next(int32_t iterator, uint64_t& primary) { return db_##NAME##_next(iterator, &primary); }        \
+      static int32_t next(int32_t iterator, uint64_t& primary) {                                                       \
+         return cdt_wrapper::db_idx_next(iterator, &primary);                                                          \
+      }                                                                                                                \
       static int32_t previous(int32_t iterator, uint64_t& primary) {                                                   \
-         return db_##NAME##_previous(iterator, &primary);                                                              \
+         return cdt_wrapper::db_idx_previous(iterator, &primary);                                                      \
       }                                                                                                                \
       static void check_lowerbound(name code, name scope, name table, int expected_itr, uint64_t expected_primary,     \
                                    const TYPE& secondary_search, const TYPE& expected_secondary) {                     \
@@ -76,6 +79,7 @@ int end_i64(name code, name scope, name table) { return db_end_i64(code.value, s
 WRAP_SECONDARY(idx64, uint64_t);
 WRAP_SECONDARY(idx128, uint128_t);
 WRAP_SECONDARY(idx_double, double);
+WRAP_SECONDARY(idx256, checksum256);
 
 std::vector<char> get_i64(int itr) {
    std::vector<char> result(db_get_i64(itr, nullptr, 0));
@@ -147,23 +151,33 @@ void check_prev_i64(int itr, int expected_itr, uint64_t expected_id) {
 
 name p(name prefix, name suffix) { return name{ prefix.value | (suffix.value >> 10) }; }
 
+checksum256 to_cs(const char (&cs)[65]) {
+   uint8_t bytes[32];
+   unhex(bytes, cs, cs + 64);
+   return checksum256{ bytes };
+}
+
 void store_multiple(name scope, name table, name payer, uint64_t id, const std::vector<char>& data, uint64_t i64,
-                    uint128_t i128, double d) {
+                    uint128_t i128, double d, const char (&cs)[65]) {
    store_i64(scope, table, payer, id, data);
    idx64::store(p("a"_n, scope), p("a"_n, table), payer, id, i64);
    idx128::store(p("b"_n, scope), p("b"_n, table), payer, id, i128);
    idx_double::store(p("c"_n, scope), p("c"_n, table), payer, id, d);
+   idx256::store(p("d"_n, scope), p("d"_n, table), payer, id, to_cs(cs));
 }
 
 void check_lowerbound_multiple(name code, name scope, name table, int expected_itr, uint64_t expected_primary,
                                uint64_t idx64_search, uint64_t idx64_expected, uint128_t idx128_search,
-                               uint128_t idx128_expected, double dbl_search, double dbl_expected) {
+                               uint128_t idx128_expected, double dbl_search, double dbl_expected,
+                               const char (&cs_search)[65], const char (&cs_expected)[65]) {
    idx64::check_lowerbound(code, p("a"_n, scope), p("a"_n, table), expected_itr, expected_primary, idx64_search,
                            idx64_expected);
    idx128::check_lowerbound(code, p("b"_n, scope), p("b"_n, table), expected_itr, expected_primary, idx128_search,
                             idx128_expected);
    idx_double::check_lowerbound(code, p("c"_n, scope), p("c"_n, table), expected_itr, expected_primary, dbl_search,
                                 dbl_expected);
+   idx256::check_lowerbound(code, p("d"_n, scope), p("d"_n, table), expected_itr, expected_primary, to_cs(cs_search),
+                            to_cs(cs_expected));
 }
 
 auto big(uint64_t msb, uint64_t lsb) { return (uint128_t(msb) << 64) | lsb; }
@@ -172,42 +186,42 @@ auto big(uint64_t lsb) { return big(0xffff'ffff'ffff'ffff, lsb); }
 
 void legacydb_contract::write() {
    print("write\n");
-   store_multiple("scope1"_n, "table1"_n, get_self(), 20, data_0, 0x2020, 0x2020'2020, -0.25);
-   store_multiple("scope1"_n, "table1"_n, get_self(), 21, data_1, 0x2121, 0x2121'2121, -0.125);
-   store_multiple("scope1"_n, "table1"_n, get_self(), 22, data_2, 0x2222, 0x2222'2222, 0.0);
-   store_multiple("scope1"_n, "table1"_n, get_self(), 23, data_3, 0x2323, 0x2323'2323, 0.125);
-   store_multiple("scope1"_n, "table1"_n, get_self(), 24, data_4, 0x2424, 0x2424'2424, 0.25);
+   // clang-format off
+   store_multiple("scope1"_n, "table1"_n, get_self(), 20, data_0, 0x2020, 0x2020'2020, -0.25,                                                                  "00000000000000000000000000000000000000000000000000000000000000ff");
+   store_multiple("scope1"_n, "table1"_n, get_self(), 21, data_1, 0x2121, 0x2121'2121, -0.125,                                                                 "000000000000000000000000000000000000000000000000000000000000ff00");
+   store_multiple("scope1"_n, "table1"_n, get_self(), 22, data_2, 0x2222, 0x2222'2222, 0.0,                                                                    "0000000000000000000000000000000000000000000000000000000000ff0000");
+   store_multiple("scope1"_n, "table1"_n, get_self(), 23, data_3, 0x2323, 0x2323'2323, 0.125,                                                                  "00000000000000000000000000000000000000000000000000000000ff000000");
+   store_multiple("scope1"_n, "table1"_n, get_self(), 24, data_4, 0x2424, 0x2424'2424, 0.25,                                                                   "000000000000000000000000000000000000000000000000000000ff00000000");
 
-   store_multiple("scope1"_n, "table2"_n, get_self(), 30, data_4, 0x3030, 0x3030'3030, -2.0);
-   store_multiple("scope1"_n, "table2"_n, get_self(), 31, data_0, 0x3131, 0x3131'3131, -1.0);
-   store_multiple("scope1"_n, "table2"_n, get_self(), 32, data_2, 0x3232, 0x3232'3232, -0.0);
-   store_multiple("scope1"_n, "table2"_n, get_self(), 33, data_1, 0x3333, 0x3333'3333, 1.0);
-   store_multiple("scope1"_n, "table2"_n, get_self(), 34, data_3, 0x3434, 0x3434'3434, 2.0);
+   store_multiple("scope1"_n, "table2"_n, get_self(), 30, data_4, 0x3030, 0x3030'3030, -2.0,                                                                   "00000000000000000000000000000000000000000000000000000000000000ff");
+   store_multiple("scope1"_n, "table2"_n, get_self(), 31, data_0, 0x3131, 0x3131'3131, -1.0,                                                                   "0000000000000000000000000000000000000000000000ff0000000000000000");
+   store_multiple("scope1"_n, "table2"_n, get_self(), 32, data_2, 0x3232, 0x3232'3232, -0.0,                                                                   "000000000000000000000000000000ff00000000000000000000000000000000");
+   store_multiple("scope1"_n, "table2"_n, get_self(), 33, data_1, 0x3333, 0x3333'3333, 1.0,                                                                    "00000000000000ff000000000000000000000000000000000000000000000000");
+   store_multiple("scope1"_n, "table2"_n, get_self(), 34, data_3, 0x3434, 0x3434'3434, 2.0,                                                                    "000000ff00000000000000000000000000000000000000000000000000000000");
 
-   store_multiple("scope1"_n, "table3"_n, get_self(), 40, data_0, 0x4040, 0x4040'4040, exp2(-500));
-   store_multiple("scope1"_n, "table3"_n, get_self(), 41, data_1, 0x4141, 0x4141'4141, exp2(-200));
-   store_multiple("scope1"_n, "table3"_n, get_self(), 42, data_2, 0x4242, 0x4242'4242, exp2(0));
-   store_multiple("scope1"_n, "table3"_n, get_self(), 43, data_3, 0x4343, 0x4343'4343, exp2(200));
-   store_multiple("scope1"_n, "table3"_n, get_self(), 44, data_4, 0x4444, 0x4444'4444, exp2(500));
+   store_multiple("scope1"_n, "table3"_n, get_self(), 40, data_0, 0x4040, 0x4040'4040, exp2(-500),                                                             "00000000000000000000000000000000000000000000000000000000000000ff");
+   store_multiple("scope1"_n, "table3"_n, get_self(), 41, data_1, 0x4141, 0x4141'4141, exp2(-200),                                                             "000000000000000000000000000000000000000000000000000000ff00000000");
+   store_multiple("scope1"_n, "table3"_n, get_self(), 42, data_2, 0x4242, 0x4242'4242, exp2(0),                                                                "0000000000000000000000000000000000000000000000ff0000000000000000");
+   store_multiple("scope1"_n, "table3"_n, get_self(), 43, data_3, 0x4343, 0x4343'4343, exp2(200),                                                              "00000000000000000000000000000000000000ff000000000000000000000000");
+   store_multiple("scope1"_n, "table3"_n, get_self(), 44, data_4, 0x4444, 0x4444'4444, exp2(500),                                                              "000000000000000000000000000000ff00000000000000000000000000000000");
 
-   store_multiple("scope2"_n, "table1"_n, get_self(), 50, data_0, 0x5050, 0x5050'5050, pow(2, 0));
-   store_multiple("scope2"_n, "table1"_n, get_self(), 51, data_1, 0x5151, 0x5151'5151, pow(2, 100));
-   store_multiple("scope2"_n, "table1"_n, get_self(), 52, data_2, 0x5252, 0x5252'5252, pow(2, 200));
-   store_multiple("scope2"_n, "table1"_n, get_self(), 53, data_3, 0x5353, 0x5353'5353, pow(2, 300));
-   store_multiple("scope2"_n, "table1"_n, get_self(), 54, data_4, 0x5454, 0x5454'5454, pow(2, 400));
+   store_multiple("scope2"_n, "table1"_n, get_self(), 50, data_0, 0x5050, 0x5050'5050, pow(2, 0),                                                              "000000000000000000000000000000ff00000000000000000000000000000000");
+   store_multiple("scope2"_n, "table1"_n, get_self(), 51, data_1, 0x5151, 0x5151'5151, pow(2, 100),                                                            "0000000000000000000000ff0000000000000000000000000000000000000000");
+   store_multiple("scope2"_n, "table1"_n, get_self(), 52, data_2, 0x5252, 0x5252'5252, pow(2, 200),                                                            "00000000000000ff000000000000000000000000000000000000000000000000");
+   store_multiple("scope2"_n, "table1"_n, get_self(), 53, data_3, 0x5353, 0x5353'5353, pow(2, 300),                                                            "000000ff00000000000000000000000000000000000000000000000000000000");
+   store_multiple("scope2"_n, "table1"_n, get_self(), 54, data_4, 0x5454, 0x5454'5454, pow(2, 400),                                                            "00ff000000000000000000000000000000000000000000000000000000000000");
 
-   store_multiple("scope2"_n, "atable"_n, get_self(), 60, data_0, 0x6060, 0x6060'6060, -pow(2, 400));
-   store_multiple("scope2"_n, "atable"_n, get_self(), 61, data_1, 0x6161, 0x6161'6161, -pow(2, 300));
-   store_multiple("scope2"_n, "atable"_n, get_self(), 62, data_2, 0x6262, 0x6262'6262, -pow(2, 200));
-   store_multiple("scope2"_n, "atable"_n, get_self(), 63, data_3, 0x6363, 0x6363'6363, -pow(2, 100));
-   store_multiple("scope2"_n, "atable"_n, get_self(), 64, data_4, 0x6464, 0x6464'6464, -pow(2, 0));
-   store_multiple("scope2"_n, "atable"_n, get_self(), 0xffff'ffff'ffff'fffe, data_2, 0xffff'ffff'ffff'fffe,
-                  big(0xffff'ffff'ffff'fffe), pow(2, 1000));
-   store_multiple("scope2"_n, "atable"_n, get_self(), 0xffff'ffff'ffff'ffff, data_3, 0xffff'ffff'ffff'ffff,
-                  big(0xffff'ffff'ffff'ffff), pow(2, 1000) * 1.125);
+   store_multiple("scope2"_n, "atable"_n, get_self(), 60, data_0, 0x6060, 0x6060'6060, -pow(2, 400),                                                           "0000000000000000000000000000000000000000000000000000000000000000");
+   store_multiple("scope2"_n, "atable"_n, get_self(), 61, data_1, 0x6161, 0x6161'6161, -pow(2, 300),                                                           "0000000000000000000000000000000000000000000000000000000000000000");
+   store_multiple("scope2"_n, "atable"_n, get_self(), 62, data_2, 0x6262, 0x6262'6262, -pow(2, 200),                                                           "0000000000000000000000000000000000000000000000000000000000000000");
+   store_multiple("scope2"_n, "atable"_n, get_self(), 63, data_3, 0x6363, 0x6363'6363, -pow(2, 100),                                                           "0000000000000000000000000000000000000000000000000000000000000000");
+   store_multiple("scope2"_n, "atable"_n, get_self(), 64, data_4, 0x6464, 0x6464'6464, -pow(2, 0),                                                             "0000000000000000000000000000000000000000000000000000000000000000");
+   store_multiple("scope2"_n, "atable"_n, get_self(), 0xffff'ffff'ffff'fffe, data_2, 0xffff'ffff'ffff'fffe, big(0xffff'ffff'ffff'fffe), pow(2, 1000),          "0000000000000000000000000000000000000000000000000000000000000000");
+   store_multiple("scope2"_n, "atable"_n, get_self(), 0xffff'ffff'ffff'ffff, data_3, 0xffff'ffff'ffff'ffff, big(0xffff'ffff'ffff'ffff), pow(2, 1000) * 1.125,  "0000000000000000000000000000000000000000000000000000000000000000");
 
-   store_multiple("scope.x"_n, "table1"_n, get_self(), 54, data_0, 0x5454, 0x5454'5454, -1.0);
-   store_multiple("scope.x"_n, "table2"_n, get_self(), 54, data_1, 0x5454, 0x5454'5454, 1.0);
+   store_multiple("scope.x"_n, "table1"_n, get_self(), 54, data_0, 0x5454, 0x5454'5454, -1.0,                                                                  "0000000000000000000000000000000000000000000000000000000000000000");
+   store_multiple("scope.x"_n, "table2"_n, get_self(), 54, data_1, 0x5454, 0x5454'5454, 1.0,                                                                   "0000000000000000000000000000000000000000000000000000000000000000");
+   // clang-format on
 
    idx64::store("nope"_n, "just.2nd"_n, get_self(), 42, 42);
 } // legacydb_contract::write()
@@ -228,15 +242,15 @@ void legacydb_contract::read() {
    check_lowerbound_i64(get_self(), "nope"_n, "nada"_n, 25, -1, {});
 
    // clang-format off
-   check_lowerbound_multiple(get_self(), "scope1"_n, "table1"_n, 0,  20,           0x0,    0x2020,  0x0,         0x2020'2020,  -0.25,  -0.25  );
-   check_lowerbound_multiple(get_self(), "scope1"_n, "table1"_n, 0,  20,           0x2020, 0x2020,  0x2020'2020, 0x2020'2020,  -0.25,  -0.25  ); // reuse existing itr
-   check_lowerbound_multiple(get_self(), "scope1"_n, "table1"_n, 1,  21,           0x2121, 0x2121,  0x2121'2121, 0x2121'2121,  -0.125, -0.125 );
-   check_lowerbound_multiple(get_self(), "scope1"_n, "table1"_n, 1,  21,           0x2121, 0x2121,  0x2121'2121, 0x2121'2121,  -0.125, -0.125 ); // reuse existing itr
-   check_lowerbound_multiple(get_self(), "scope1"_n, "table1"_n, 2,  22,           0x2222, 0x2222,  0x2222'2222, 0x2222'2222,   0.0,    0.0   );
-   check_lowerbound_multiple(get_self(), "scope1"_n, "table1"_n, 3,  23,           0x2323, 0x2323,  0x2323'2323, 0x2323'2323,   0.125,  0.125 );
-   check_lowerbound_multiple(get_self(), "scope1"_n, "table1"_n, 4,  24,           0x2424, 0x2424,  0x2424'2424, 0x2424'2424,   0.25,   0.25  );
-   check_lowerbound_multiple(get_self(), "scope1"_n, "table1"_n, -2, 0xfeedbeef,   0x2525, 0x2525,  0x2525'2525, 0x2525'2525,   1.25,   1.25  );
-   check_lowerbound_multiple(get_self(), "nope"_n,   "nada"_n,   -1, 0xfeedbeef,   0x2525, 0x2525,  0x2525'2525, 0x2525'2525,   1.25,   1.25  );
+   check_lowerbound_multiple(get_self(), "scope1"_n, "table1"_n, 0,  20,           0x0,    0x2020,  0x0,         0x2020'2020,  -9.0,   -0.25,  "0000000000000000000000000000000000000000000000000000000000000000", "00000000000000000000000000000000000000000000000000000000000000ff");
+   check_lowerbound_multiple(get_self(), "scope1"_n, "table1"_n, 0,  20,           0x2020, 0x2020,  0x2020'2020, 0x2020'2020,  -0.25,  -0.25,  "00000000000000000000000000000000000000000000000000000000000000ff", "00000000000000000000000000000000000000000000000000000000000000ff"); // reuse existing itr
+   check_lowerbound_multiple(get_self(), "scope1"_n, "table1"_n, 1,  21,           0x2121, 0x2121,  0x2121'2121, 0x2121'2121,  -0.125, -0.125, "000000000000000000000000000000000000000000000000000000000000ff00", "000000000000000000000000000000000000000000000000000000000000ff00");
+   check_lowerbound_multiple(get_self(), "scope1"_n, "table1"_n, 1,  21,           0x2121, 0x2121,  0x2121'2121, 0x2121'2121,  -0.125, -0.125, "000000000000000000000000000000000000000000000000000000000000ff00", "000000000000000000000000000000000000000000000000000000000000ff00"); // reuse existing itr
+   check_lowerbound_multiple(get_self(), "scope1"_n, "table1"_n, 2,  22,           0x2222, 0x2222,  0x2222'2222, 0x2222'2222,   0.0,    0.0,   "0000000000000000000000000000000000000000000000000000000000ff0000", "0000000000000000000000000000000000000000000000000000000000ff0000");
+   check_lowerbound_multiple(get_self(), "scope1"_n, "table1"_n, 3,  23,           0x2323, 0x2323,  0x2323'2323, 0x2323'2323,   0.125,  0.125, "00000000000000000000000000000000000000000000000000000000ff000000", "00000000000000000000000000000000000000000000000000000000ff000000");
+   check_lowerbound_multiple(get_self(), "scope1"_n, "table1"_n, 4,  24,           0x2424, 0x2424,  0x2424'2424, 0x2424'2424,   0.25,   0.25,  "000000000000000000000000000000000000000000000000000000ff00000000", "000000000000000000000000000000000000000000000000000000ff00000000");
+   check_lowerbound_multiple(get_self(), "scope1"_n, "table1"_n, -2, 0xfeedbeef,   0x2525, 0x2525,  0x2525'2525, 0x2525'2525,   1.25,   1.25,  "123456789ABCDEF0837489273953467859372347722281123322823842835835", "123456789ABCDEF0837489273953467859372347722281123322823842835835");
+   check_lowerbound_multiple(get_self(), "nope"_n,   "nada"_n,   -1, 0xfeedbeef,   0x2525, 0x2525,  0x2525'2525, 0x2525'2525,   1.25,   1.25,  "9837438972347345793474567058969803274923874743573458967498567948", "9837438972347345793474567058969803274923874743573458967498567948");
    // clang-format on
 
    check_find_i64(get_self(), "scope1"_n, "table1"_n, 0, -2, {});
@@ -293,13 +307,13 @@ void legacydb_contract::read() {
    check_lowerbound_i64(get_self(), "scope1"_n, "table2"_n, 35, -3, {});
 
    // clang-format off
-   check_lowerbound_multiple(get_self(), "scope1"_n, "table2"_n,  5, 31,         0x3131, 0x3131,   0x3131'3131, 0x3131'3131, -1.0, -1.0);
-   check_lowerbound_multiple(get_self(), "scope1"_n, "table2"_n,  6, 33,         0x3333, 0x3333,   0x3333'3333, 0x3333'3333,  1.0,  1.0);
-   check_lowerbound_multiple(get_self(), "scope1"_n, "table2"_n,  7, 32,         0x3232, 0x3232,   0x3232'3232, 0x3232'3232,  0.0,  0.0);
-   check_lowerbound_multiple(get_self(), "scope1"_n, "table2"_n,  8, 34,         0x3434, 0x3434,   0x3434'3434, 0x3434'3434,  2.0,  2.0);
-   check_lowerbound_multiple(get_self(), "scope1"_n, "table2"_n,  9, 30,         0x3030, 0x3030,   0x3030'3030, 0x3030'3030, -2.0, -2.0);
-   check_lowerbound_multiple(get_self(), "scope1"_n, "table2"_n,  9, 30,         0x0000, 0x3030,   0x0000'0000, 0x3030'3030, -2.0, -2.0);
-   check_lowerbound_multiple(get_self(), "scope1"_n, "table2"_n, -3, 0xfeedbeef, 0x3535, 0x3535,   0x3535'3535, 0x3535'3535,  7.5,  7.5);
+   check_lowerbound_multiple(get_self(), "scope1"_n, "table2"_n,  5, 31,         0x3131, 0x3131,   0x3131'3131, 0x3131'3131, -1.0, -1.0, "0000000000000000000000000000000000000000000000ff0000000000000000", "0000000000000000000000000000000000000000000000ff0000000000000000");
+   check_lowerbound_multiple(get_self(), "scope1"_n, "table2"_n,  6, 33,         0x3333, 0x3333,   0x3333'3333, 0x3333'3333,  1.0,  1.0, "00000000000000ff000000000000000000000000000000000000000000000000", "00000000000000ff000000000000000000000000000000000000000000000000");
+   check_lowerbound_multiple(get_self(), "scope1"_n, "table2"_n,  7, 32,         0x3232, 0x3232,   0x3232'3232, 0x3232'3232,  0.0,  0.0, "000000000000000000000000000000ff00000000000000000000000000000000", "000000000000000000000000000000ff00000000000000000000000000000000");
+   check_lowerbound_multiple(get_self(), "scope1"_n, "table2"_n,  8, 34,         0x3434, 0x3434,   0x3434'3434, 0x3434'3434,  2.0,  2.0, "000000ff00000000000000000000000000000000000000000000000000000000", "000000ff00000000000000000000000000000000000000000000000000000000");
+   check_lowerbound_multiple(get_self(), "scope1"_n, "table2"_n,  9, 30,         0x3030, 0x3030,   0x3030'3030, 0x3030'3030, -2.0, -2.0, "00000000000000000000000000000000000000000000000000000000000000ff", "00000000000000000000000000000000000000000000000000000000000000ff");
+   check_lowerbound_multiple(get_self(), "scope1"_n, "table2"_n,  9, 30,         0x0000, 0x3030,   0x0000'0000, 0x3030'3030, -2.0, -2.0, "0000000000000000000000000000000000000000000000000000000000000000", "00000000000000000000000000000000000000000000000000000000000000ff");
+   check_lowerbound_multiple(get_self(), "scope1"_n, "table2"_n, -3, 0xfeedbeef, 0x3535, 0x3535,   0x3535'3535, 0x3535'3535,  7.5,  7.5, "ff00000000000000000000000000000000000000000000000000000000000000", "ff00000000000000000000000000000000000000000000000000000000000000");
    // clang-format on
 
    check_next_i64(9, 5, 31);

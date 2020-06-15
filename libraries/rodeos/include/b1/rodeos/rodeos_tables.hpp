@@ -18,6 +18,7 @@ using account_metadata      = eosio::ship_protocol::account_metadata;
 using code                  = eosio::ship_protocol::code;
 using contract_index_double = eosio::ship_protocol::contract_index_double;
 using contract_index128     = eosio::ship_protocol::contract_index128;
+using contract_index256     = eosio::ship_protocol::contract_index256;
 using contract_index64      = eosio::ship_protocol::contract_index64;
 using contract_row          = eosio::ship_protocol::contract_row;
 using contract_table        = eosio::ship_protocol::contract_table;
@@ -233,6 +234,32 @@ struct contract_index_double_kv : eosio::kv_table<contract_index_double> {
    }
 };
 
+struct contract_index256_kv : eosio::kv_table<contract_index256> {
+   using PT = typename std::tuple<const eosio::name&, const eosio::name&, const eosio::name&, const uint64_t&>;
+   index<PT> primary_index{ eosio::name{ "primary" }, [](const auto& var) {
+                              return std::visit(
+                                    [](const auto& obj) {
+                                       return std::tie(obj.code, obj.table, obj.scope, obj.primary_key);
+                                    },
+                                    *var);
+                           } };
+   using ST = typename std::tuple<const eosio::name&, const eosio::name&, const eosio::name&, const eosio::checksum256&,
+                                  const uint64_t&>;
+   index<ST> secondary_index{ eosio::name{ "secondary" }, [](const auto& var) {
+                                return std::visit(
+                                      [](const auto& obj) {
+                                         return std::tie(obj.code, obj.table, obj.scope, obj.secondary_key,
+                                                         obj.primary_key);
+                                      },
+                                      *var);
+                             } };
+
+   contract_index256_kv(eosio::kv_environment environment)
+       : eosio::kv_table<contract_index256>{ std::move(environment) } {
+      init(state_account, eosio::name{ "contract.cs" }, state_database, primary_index, secondary_index);
+   }
+};
+
 template <typename Table, typename F>
 void store_delta_typed(eosio::kv_environment environment, table_delta_v0& delta, bool bypass_preexist_check, F f) {
    Table table{ environment };
@@ -264,23 +291,25 @@ template <typename F>
 inline void store_delta(eosio::kv_environment environment, table_delta_v0& delta, bool bypass_preexist_check, F f) {
    if (delta.name == "global_property")
       store_delta_typed<global_property_kv>(environment, delta, bypass_preexist_check, f);
-   if (delta.name == "account")
+   else if (delta.name == "account")
       store_delta_typed<account_kv>(environment, delta, bypass_preexist_check, f);
-   if (delta.name == "account_metadata")
+   else if (delta.name == "account_metadata")
       store_delta_typed<account_metadata_kv>(environment, delta, bypass_preexist_check, f);
-   if (delta.name == "code")
+   else if (delta.name == "code")
       store_delta_typed<code_kv>(environment, delta, bypass_preexist_check, f);
-   if (delta.name == "contract_table")
+   else if (delta.name == "contract_table")
       store_delta_typed<contract_table_kv>(environment, delta, bypass_preexist_check, f);
-   if (delta.name == "contract_row")
+   else if (delta.name == "contract_row")
       store_delta_typed<contract_row_kv>(environment, delta, bypass_preexist_check, f);
-   if (delta.name == "contract_index64")
+   else if (delta.name == "contract_index64")
       store_delta_typed<contract_index64_kv>(environment, delta, bypass_preexist_check, f);
-   if (delta.name == "contract_index128")
+   else if (delta.name == "contract_index128")
       store_delta_typed<contract_index128_kv>(environment, delta, bypass_preexist_check, f);
-   if (delta.name == "contract_index_double")
+   else if (delta.name == "contract_index_double")
       store_delta_typed<contract_index_double_kv>(environment, delta, bypass_preexist_check, f);
-   if (delta.name == "key_value")
+   else if (delta.name == "contract_index256")
+      store_delta_typed<contract_index256_kv>(environment, delta, bypass_preexist_check, f);
+   else if (delta.name == "key_value")
       store_delta_kv(environment, delta, f);
 }
 

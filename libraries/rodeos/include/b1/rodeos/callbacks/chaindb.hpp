@@ -9,6 +9,7 @@ namespace b1::rodeos {
 
 using contract_index_double = eosio::ship_protocol::contract_index_double;
 using contract_index128     = eosio::ship_protocol::contract_index128;
+using contract_index256     = eosio::ship_protocol::contract_index256;
 using contract_index64      = eosio::ship_protocol::contract_index64;
 using contract_row          = eosio::ship_protocol::contract_row;
 using contract_table        = eosio::ship_protocol::contract_table;
@@ -362,6 +363,7 @@ struct chaindb_state {
    std::unique_ptr<secondary_iterator_cache<contract_index64>>      idx64;
    std::unique_ptr<secondary_iterator_cache<contract_index128>>     idx128;
    std::unique_ptr<secondary_iterator_cache<contract_index_double>> idx_double;
+   std::unique_ptr<secondary_iterator_cache<contract_index256>>     idx256;
 };
 
 template <typename Derived>
@@ -461,6 +463,64 @@ struct chaindb_callbacks {
 
 #undef IMPL_SECONDARY
 
+   auto& get_idx256() {
+      auto& chaindb_state = derived().get_chaindb_state();
+      if (!chaindb_state.idx256)
+         chaindb_state.idx256 = std::make_unique<decltype(chaindb_state::idx256)::element_type>(
+               derived().get_db_view_state().kv_state.view, eosio::name{ "contract.cs" });
+      return *chaindb_state.idx256;
+   }
+   template <typename T>
+   eosio::checksum256 read_cs(legacy_span<T>& arr_128) {
+      if (arr_128.size_bytes() != 32)
+         throw std::runtime_error("checksum256 must be 32 bytes");
+      __uint128_t a[2];
+      memcpy(a, arr_128.data(), 32);
+      return { a };
+   }
+   void write_cs(legacy_span<__uint128_t>& arr_128, const eosio::checksum256 cs) {
+      if (arr_128.size_bytes() != 32)
+         throw std::runtime_error("checksum256 must be 32 bytes");
+      auto a = cs.extract_as_word_array<__uint128_t>();
+      memcpy(arr_128.data(), a.data(), 32);
+   }
+   int32_t db_idx256_store(uint64_t scope, uint64_t table, uint64_t payer, uint64_t id,
+                           legacy_span<const __uint128_t> secondary) {
+      throw std::runtime_error("unimplemented: db_idx256_store");
+   }
+   void db_idx256_update(int32_t iterator, uint64_t payer, legacy_span<const __uint128_t> secondary) {
+      throw std::runtime_error("unimplemented: db_idx256_update");
+   }
+   void    db_idx256_remove(int32_t iterator) { throw std::runtime_error("unimplemented: db_idx256_remove"); }
+   int32_t db_idx256_next(int32_t iterator, legacy_ptr<uint64_t> primary) {
+      throw std::runtime_error("unimplemented: db_idx256_next");
+   }
+   int32_t db_idx256_previous(int32_t iterator, legacy_ptr<uint64_t> primary) {
+      throw std::runtime_error("unimplemented: db_idx256_previous");
+   }
+   int32_t db_idx256_find_primary(uint64_t code, uint64_t scope, uint64_t table, legacy_span<__uint128_t> secondary,
+                                  uint64_t primary) {
+      throw std::runtime_error("unimplemented: db_idx256_find_primary");
+   }
+   int32_t db_idx256_find_secondary(uint64_t code, uint64_t scope, uint64_t table,
+                                    legacy_span<const __uint128_t> secondary, legacy_ptr<uint64_t> primary) {
+      throw std::runtime_error("unimplemented: db_idx256_find_secondary");
+   }
+   int32_t db_idx256_lowerbound(uint64_t code, uint64_t scope, uint64_t table, legacy_span<__uint128_t> secondary,
+                                legacy_ptr<uint64_t> primary) {
+      auto cs = read_cs(secondary);
+      auto result = get_idx256().lower_bound(code, scope, table, cs, *primary, false);
+      write_cs(secondary, cs);
+      return result;
+   }
+   int32_t db_idx256_upperbound(uint64_t code, uint64_t scope, uint64_t table, legacy_span<__uint128_t> secondary,
+                                legacy_ptr<uint64_t> primary) {
+      throw std::runtime_error("unimplemented: db_idx256_upperbound");
+   }
+   int32_t db_idx256_end(uint64_t code, uint64_t scope, uint64_t table) {
+      throw std::runtime_error("unimplemented: db_idx256_end");
+   }
+
 #define REGISTER_SECONDARY(IDX)                                                                                        \
    Rft::template add<&Derived::db_##IDX##_store>("env", "db_" #IDX "_store");                                          \
    Rft::template add<&Derived::db_##IDX##_remove>("env", "db_" #IDX "_remove");                                        \
@@ -489,6 +549,7 @@ struct chaindb_callbacks {
       REGISTER_SECONDARY(idx64)
       REGISTER_SECONDARY(idx128)
       REGISTER_SECONDARY(idx_double)
+      REGISTER_SECONDARY(idx256)
    }
 
 #undef REGISTER_SECONDARY
