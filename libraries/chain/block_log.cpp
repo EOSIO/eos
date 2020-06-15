@@ -521,7 +521,7 @@ namespace eosio { namespace chain {
          for_each_file_in_dir_matches(block_dir, R"(blocks-\d+-\d+\.log)", [this](boost::filesystem::path path) {
             auto log_path               = path;
             auto index_path             = path.replace_extension("index");
-            auto path_without_extension = log_path.stem().string();
+            auto path_without_extension = log_path.parent_path() / log_path.stem().string();
 
             block_log_data log(log_path);
 

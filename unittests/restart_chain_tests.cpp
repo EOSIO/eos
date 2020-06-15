@@ -358,11 +358,11 @@ BOOST_AUTO_TEST_CASE(test_split_log_replay) {
    tester chain(
          temp_dir,
          [](controller::config& config) {
-            config.blocks_log_stride        = 10;
+            config.blocks_log_stride        = 20;
             config.max_retained_block_files = 10;
          },
          true);
-   chain.produce_blocks(75);
+   chain.produce_blocks(150);
    
    controller::config copied_config = chain.get_config();
    auto               genesis       = chain::block_log::extract_genesis_state(chain.get_config().blocks_dir);
@@ -373,8 +373,10 @@ BOOST_AUTO_TEST_CASE(test_split_log_replay) {
    // remove the state files to make sure we are starting from block log
    remove_existing_states(copied_config);
    tester from_block_log_chain(copied_config, *genesis);
+   BOOST_CHECK( from_block_log_chain.control->fetch_block_by_number(1)->block_num() == 1);
    BOOST_CHECK( from_block_log_chain.control->fetch_block_by_number(75)->block_num() == 75);
-
+   BOOST_CHECK( from_block_log_chain.control->fetch_block_by_number(100)->block_num() == 100);
+   BOOST_CHECK( from_block_log_chain.control->fetch_block_by_number(150)->block_num() == 150);
 }
 
 BOOST_FIXTURE_TEST_CASE(restart_from_block_log_with_incomplete_head,restart_from_block_log_test_fixture) {
