@@ -209,7 +209,6 @@ void handle_request(const wasm_ql::http_config& http_config, const wasm_ql::shar
       if (req.target() == "/v1/chain/get_info") {
          auto thread_state = state_cache.get_state();
          send(ok(query_get_info(*thread_state, temp_contract_kv_prefix), "application/json"));
-         state_cache.store_state(std::move(thread_state));
          return;
       } else if (req.target() ==
                  "/v1/chain/get_block") { // todo: replace with /v1/chain/get_block_header. upgrade cleos.
@@ -220,7 +219,6 @@ void handle_request(const wasm_ql::http_config& http_config, const wasm_ql::shar
          send(ok(query_get_block(*thread_state, temp_contract_kv_prefix,
                                  std::string_view{ req.body().data(), req.body().size() }),
                  "application/json"));
-         state_cache.store_state(std::move(thread_state));
          return;
       } else if (req.target() == "/v1/chain/get_abi") { // todo: get_raw_abi. upgrade cleos to use get_raw_abi.
          if (req.method() != http::verb::post)
@@ -230,7 +228,6 @@ void handle_request(const wasm_ql::http_config& http_config, const wasm_ql::shar
          send(ok(query_get_abi(*thread_state, temp_contract_kv_prefix,
                                std::string_view{ req.body().data(), req.body().size() }),
                  "application/json"));
-         state_cache.store_state(std::move(thread_state));
          return;
       } else if (req.target() == "/v1/chain/get_required_keys") { // todo: replace with a binary endpoint?
          if (req.method() != http::verb::post)
@@ -239,7 +236,6 @@ void handle_request(const wasm_ql::http_config& http_config, const wasm_ql::shar
          auto thread_state = state_cache.get_state();
          send(ok(query_get_required_keys(*thread_state, std::string_view{ req.body().data(), req.body().size() }),
                  "application/json"));
-         state_cache.store_state(std::move(thread_state));
          return;
       } else if (req.target() == "/v1/chain/send_transaction") {
          // todo: replace with /v1/chain/send_transaction2?
@@ -253,7 +249,6 @@ void handle_request(const wasm_ql::http_config& http_config, const wasm_ql::shar
                                         false // todo: switch to true when /v1/chain/send_transaction2
                                         ),
                  "application/json"));
-         state_cache.store_state(std::move(thread_state));
          return;
       } else if (req.target().starts_with("/v1/") || http_config.static_dir.empty()) {
          // todo: redirect if /v1/?
@@ -312,6 +307,18 @@ void handle_request(const wasm_ql::http_config& http_config, const wasm_ql::shar
          res.keep_alive(req.keep_alive());
          return send(std::move(res));
       }
+   } catch (const eosio::vm::exception& e) {
+      try {
+         // elog("query failed: ${s}", ("s", e.what()));
+         error_results err;
+         err.code       = (uint16_t)http::status::internal_server_error;
+         err.message    = "Internal Service Error";
+         err.error.name = "exception";
+         err.error.what = e.what() + std::string(": ") + e.detail();
+         return send(error(http::status::internal_server_error, eosio::convert_to_json(err), "application/json"));
+      } catch (...) { //
+         return send(error(http::status::internal_server_error, "failure reporting failure\n"));
+      }
    } catch (const std::exception& e) {
       try {
          // elog("query failed: ${s}", ("s", e.what()));
@@ -320,8 +327,7 @@ void handle_request(const wasm_ql::http_config& http_config, const wasm_ql::shar
          err.message    = "Internal Service Error";
          err.error.name = "exception";
          err.error.what = e.what();
-         return send(error(http::status::internal_server_error, eosio::convert_to_json(err),
-                           "application/json"));
+         return send(error(http::status::internal_server_error, eosio::convert_to_json(err), "application/json"));
       } catch (...) { //
          return send(error(http::status::internal_server_error, "failure reporting failure\n"));
       }
@@ -496,6 +502,8 @@ class listener : public std::enable_shared_from_this<listener> {
             tcp::endpoint endpoint)
        : http_config{ http_config }, shared_state{ shared_state }, ioc(ioc), acceptor(net::make_strand(ioc)),
          state_cache(std::make_shared<thread_state_cache>(shared_state)) {
+
+      state_cache->preallocate(http_config->num_threads);
 
       beast::error_code ec;
 
