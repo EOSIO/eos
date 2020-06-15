@@ -352,7 +352,7 @@ void amqp_compressed_proof_plugin::plugin_initialize(const variables_map& option
                   return filter_on_names.find(act.account) != filter_on_names.end();
                },
                [&publisher](std::vector<char>&& serialized_proof) {
-                  publisher.publish_message(std::move(serialized_proof));
+                  publisher.publish_message_raw(std::move(serialized_proof));
                }
             ));
          }
