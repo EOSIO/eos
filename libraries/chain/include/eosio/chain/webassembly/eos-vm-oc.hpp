@@ -56,14 +56,13 @@ inline void* array_ptr_impl (size_t ptr, size_t length)
 
    asm volatile("cmp %%gs:%c[firstInvalidMemory], %[End]\n"
                 "jle 1f\n"
-                "mov %%gs:%c[maximumEosioWasmMemory], %[Ptr]\n"      //always invalid address
+                "mov %%gs:(%[End]), %[Ptr]\n"      // invalid pointer if out of range
                 "1:\n"
                 "add %%gs:%c[linearMemoryStart], %[Ptr]\n"
                 : [Ptr] "+r" (ptr),
                   [End] "+r" (end)
                 : [linearMemoryStart] "i" (cb_full_linear_memory_start_segment_offset),
-                  [firstInvalidMemory] "i" (cb_first_invalid_memory_address_segment_offset),
-                  [maximumEosioWasmMemory] "i" (wasm_constraints::maximum_linear_memory)
+                  [firstInvalidMemory] "i" (cb_first_invalid_memory_address_segment_offset)
                 : "cc"
                );
 
