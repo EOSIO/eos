@@ -26,55 +26,58 @@ auto call_parse_possible_no_params(string& body)
 
 BOOST_AUTO_TEST_SUITE(plugin_tests)
 
-BOOST_AUTO_TEST_CASE( isEmptyContent ) try {
+BOOST_AUTO_TEST_CASE( is_empty_content ) try {
    {  // empty string
-      std::string empty_str;
+      const std::string empty_str;
       BOOST_REQUIRE(empty_str.empty());
-      BOOST_REQUIRE(eosio::isEmptyContent(empty_str) == true);
+      BOOST_REQUIRE(eosio::is_empty_content(empty_str) == true);
    }
    {  // empty content string
-      std::string empty_content_str = "{}";
-      BOOST_REQUIRE(!empty_content_str.empty());
-      BOOST_REQUIRE(eosio::isEmptyContent(empty_content_str) == true);
-      empty_content_str = " {} ";
-      BOOST_REQUIRE(!empty_content_str.empty());
-      BOOST_REQUIRE(eosio::isEmptyContent(empty_content_str) == true);
-      empty_content_str = " { } ";
-      BOOST_REQUIRE(!empty_content_str.empty());
-      BOOST_REQUIRE(eosio::isEmptyContent(empty_content_str) == true);
-      empty_content_str = " { \t} ";
-      BOOST_REQUIRE(!empty_content_str.empty());
-      BOOST_REQUIRE(eosio::isEmptyContent(empty_content_str) == true);
+      const std::string empty_content_str_1 = "{}";
+      BOOST_REQUIRE(!empty_content_str_1.empty());
+      BOOST_REQUIRE(eosio::is_empty_content(empty_content_str_1) == true);
+      const std::string empty_content_str_2 = "{ }";
+      BOOST_REQUIRE(!empty_content_str_2.empty());
+      BOOST_REQUIRE(eosio::is_empty_content(empty_content_str_2) == true);
+      const std::string empty_content_str_3 = "{ \t}";
+      BOOST_REQUIRE(!empty_content_str_3.empty());
+      BOOST_REQUIRE(eosio::is_empty_content(empty_content_str_3) == true);
    }
    {  // one char string
-      std::string one_char_str = "{";
-      BOOST_REQUIRE(!one_char_str.empty());
-      BOOST_REQUIRE(eosio::isEmptyContent(one_char_str) == false) ;
-      one_char_str = "}";
-      BOOST_REQUIRE(!one_char_str.empty());
-      BOOST_REQUIRE(eosio::isEmptyContent(one_char_str) == false) ;
-      one_char_str = " ";  // it will be trimmed
-      BOOST_REQUIRE(!one_char_str.empty());
-      BOOST_REQUIRE(eosio::isEmptyContent(one_char_str) == true) ;
+      const std::string one_char_str_1 = "{";
+      BOOST_REQUIRE(!one_char_str_1.empty());
+      BOOST_REQUIRE(eosio::is_empty_content(one_char_str_1) == false) ;
+      const std::string one_char_str_2 = "}";
+      BOOST_REQUIRE(!one_char_str_2.empty());
+      BOOST_REQUIRE(eosio::is_empty_content(one_char_str_2) == false) ;
+      const std::string one_char_str_3 = " ";
+      BOOST_REQUIRE(!one_char_str_3.empty());
+      BOOST_REQUIRE(eosio::is_empty_content(one_char_str_3) == false) ;
    }
    {  // some content string
-      std::string empty_content_str = "{a}";
-      BOOST_REQUIRE(!empty_content_str.empty());
-      BOOST_REQUIRE(eosio::isEmptyContent(empty_content_str) == false);
-      empty_content_str = " {\'\'} ";
-      BOOST_REQUIRE(!empty_content_str.empty());
-      BOOST_REQUIRE(eosio::isEmptyContent(empty_content_str) == false);
-      empty_content_str = " {\" \"} ";
-      BOOST_REQUIRE(!empty_content_str.empty());
-      BOOST_REQUIRE(eosio::isEmptyContent(empty_content_str) == false);
+      const std::string empty_content_str_1 = "{a}";
+      BOOST_REQUIRE(!empty_content_str_1.empty());
+      BOOST_REQUIRE(eosio::is_empty_content(empty_content_str_1) == false);
+      const std::string empty_content_str_2 = "{\'\'}";
+      BOOST_REQUIRE(!empty_content_str_2.empty());
+      BOOST_REQUIRE(eosio::is_empty_content(empty_content_str_2) == false);
+      const std::string empty_content_str_3 = "{\" \"}";
+      BOOST_REQUIRE(!empty_content_str_3.empty());
+      BOOST_REQUIRE(eosio::is_empty_content(empty_content_str_3) == false);
    }
    {  // invalid string
-      std::string invalid_str = "{  a";
-      BOOST_REQUIRE(!invalid_str.empty());
-      BOOST_REQUIRE(eosio::isEmptyContent(invalid_str) == false);
-invalid_str = " a } ";
-      BOOST_REQUIRE(! invalid_str.empty());
-      BOOST_REQUIRE(eosio::isEmptyContent(invalid_str) == false);
+      const std::string invalid_str_1 = "{  a";
+      BOOST_REQUIRE(!invalid_str_1.empty());
+      BOOST_REQUIRE(eosio::is_empty_content(invalid_str_1) == false);
+      const std::string invalid_str_2 = " a }";
+      BOOST_REQUIRE(! invalid_str_2.empty());
+      BOOST_REQUIRE(eosio::is_empty_content(invalid_str_2) == false);
+      const std::string invalid_str_3 =  " {}";
+      BOOST_REQUIRE(!invalid_str_3.empty());
+      BOOST_REQUIRE(eosio::is_empty_content(invalid_str_3) == false);
+      const std::string invalid_str_4 =  "{} ";
+      BOOST_REQUIRE(!invalid_str_4.empty());
+      BOOST_REQUIRE(eosio::is_empty_content(invalid_str_4 ) == false);
    }
 } FC_LOG_AND_RETHROW()
 

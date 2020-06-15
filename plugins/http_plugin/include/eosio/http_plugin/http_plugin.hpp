@@ -159,10 +159,8 @@ namespace eosio {
 
       error_info error;
    };
-
-   inline bool isEmptyContent(std::string& body) {
-      boost::algorithm::trim(body);
-
+   // @pre requires no leading and trailing spaces
+   inline bool is_empty_content(const std::string_view& body) {
       if (body.empty()) {
          return true;
       }
@@ -189,8 +187,9 @@ namespace eosio {
 
    template<typename T, http_params_types params_type>
    T parse_params(std::string& body) {  // needs to trim space,
+      boost::algorithm::trim(body);
       if constexpr (params_type == http_params_types::params_required) {
-         if (isEmptyContent(body)) {
+         if (is_empty_content(body)) {
             EOS_THROW(chain::invalid_http_request, "A Request body is required");
          }
       }
@@ -198,7 +197,7 @@ namespace eosio {
       try {
          try {
             if constexpr (params_type == http_params_types::no_params_required || params_type == http_params_types::possible_no_params) {
-               if (isEmptyContent(body)) {
+               if (is_empty_content(body)) {
                   if constexpr (std::is_same_v<T, std::string>) {
                      return std::string("{}");
                   }
