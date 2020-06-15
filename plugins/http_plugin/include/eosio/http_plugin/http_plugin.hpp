@@ -159,7 +159,7 @@ namespace eosio {
       error_info error;
    };
 
-   inline std::string_view get_trimmed_string_view(const std::string& body) {
+   inline std::string_view make_trimmed_string_view(const std::string& body) {
       if (body.empty()) {
          return {};
       }
@@ -188,9 +188,8 @@ namespace eosio {
       return {body.substr(left, right-left+1)};
    }
 
-   // @pre requires no leading and trailing spaces
    inline bool is_empty_content(const std::string& body) {
-      const auto trimmed_body_view = get_trimmed_string_view(body);
+      const auto trimmed_body_view = make_trimmed_string_view(body);
       if (trimmed_body_view.empty()) {
          return true;
       }
