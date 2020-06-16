@@ -814,9 +814,9 @@ namespace eosio {
    connection::connection( string endpoint )
       : peer_addr( endpoint ),
         strand( my_impl->thread_pool->get_executor() ),
-        socket( new tcp::socket( my_impl->thread_pool->get_executor() ) ),
+        socket( new tcp::socket( strand.context() ) ),
         connection_id( ++my_impl->current_connection_id ),
-        response_expected_timer( my_impl->thread_pool->get_executor() ),
+        response_expected_timer( strand.context() ),
         last_handshake_recv(),
         last_handshake_sent()
    {
@@ -826,9 +826,9 @@ namespace eosio {
    connection::connection()
       : peer_addr(),
         strand( my_impl->thread_pool->get_executor() ),
-        socket( new tcp::socket( my_impl->thread_pool->get_executor() ) ),
+        socket( new tcp::socket( strand.context() ) ),
         connection_id( ++my_impl->current_connection_id ),
-        response_expected_timer( my_impl->thread_pool->get_executor() ),
+        response_expected_timer( strand.context() ),
         last_handshake_recv(),
         last_handshake_sent()
    {
@@ -926,7 +926,7 @@ namespace eosio {
          self->socket->shutdown( tcp::socket::shutdown_both, ec );
          self->socket->close( ec );
       }
-      self->socket.reset( new tcp::socket( my_impl->thread_pool->get_executor() ) );
+      self->socket.reset( new tcp::socket( self->strand.context() ) );
       self->flush_queues();
       self->connecting = false;
       self->syncing = false;

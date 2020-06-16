@@ -811,7 +811,7 @@ namespace eosio {
                   my->unix_server.init_asio( &my->thread_pool->get_executor() );
                   my->unix_server.set_max_http_body_size(my->max_body_size);
                   my->unix_server.listen(*my->unix_endpoint);
-                  my->unix_server.set_http_handler([&, &ioc = my->thread_pool->get_executor()](connection_hdl hdl) {
+                  my->unix_server.set_http_handler([&](connection_hdl hdl) {
                      my->handle_http_request<detail::asio_local_with_stub_log>( my->unix_server.get_con_from_hdl(hdl));
                   });
                   my->unix_server.start_accept();

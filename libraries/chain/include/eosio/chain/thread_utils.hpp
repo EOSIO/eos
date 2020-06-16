@@ -22,7 +22,8 @@ namespace eosio { namespace chain {
       // calls stop()
       ~named_thread_pool();
 
-      boost::asio::io_context& get_executor() { return _ioc; }
+      // round robin executor from pool
+      boost::asio::io_context& get_executor();
 
       // destroy work guard, stop io_context, join thread_pool, and stop thread_pool
       void stop();
@@ -30,9 +31,10 @@ namespace eosio { namespace chain {
    private:
       using ioc_work_t = boost::asio::executor_work_guard<boost::asio::io_context::executor_type>;
 
-      boost::asio::thread_pool       _thread_pool;
-      boost::asio::io_context        _ioc;
-      fc::optional<ioc_work_t>       _ioc_work;
+      std::vector<std::thread>                               _thread_pool;
+      std::vector<std::unique_ptr<boost::asio::io_context>>  _iocs;
+      std::optional<std::vector<ioc_work_t>>                 _ioc_works;
+      std::atomic<size_t>                                    _next_ioc = 0;
    };
 
 
