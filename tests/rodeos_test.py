@@ -40,13 +40,61 @@ dontKill=args.leave_running
 killEosInstances=not dontKill
 killWallet=not dontKill
 keepLogs=args.keep_logs
-stateHistoryEndpoint="127.0.0.1:8080"
+stateHistoryEndpoint = "127.0.0.1:8080"
+
+loggingFile="logging.json"
+
+
+logging="""{
+  "includes": [],
+  "appenders": [{
+      "name": "stderr",
+      "type": "console",
+      "args": {
+        "stream": "std_error",
+        "level_colors": [{
+            "level": "debug",
+            "color": "green"
+          },{
+            "level": "warn",
+            "color": "brown"
+          },{
+            "level": "error",
+            "color": "red"
+          }
+        ]
+      },
+      "enabled": true
+    }
+  ],
+  "loggers": [{
+      "name": "default",
+      "level": "debug",
+      "enabled": true,
+      "additivity": false,
+      "appenders": [
+        "stderr"
+      ]
+    },{
+      "name": "state_history",
+      "level": "debug",
+      "enabled": true,
+      "additivity": false,
+      "appenders": [
+        "stderr"
+      ]
+    }
+  ]
+}"""
 
 walletMgr=WalletMgr(True)
 cluster=Cluster(walletd=True)
 cluster.setWalletMgr(walletMgr)
 
 testSuccessful = False
+
+with open(loggingFile, "w") as textFile:
+        print(logging,file=textFile)
 
 class Rodeos:
     def __init__(self, stateHistoryEndpoint, filterName, filterWasm):
@@ -107,7 +155,7 @@ try:
         loadSystemContract=False,
         specificExtraNodeosArgs={
             0: ("--plugin eosio::state_history_plugin --trace-history --chain-state-history --disable-replay-opts " 
-                "--state-history-endpoint {} --plugin eosio::net_api_plugin --wasm-runtime eos-vm-jit").format(stateHistoryEndpoint)})
+                "--state-history-endpoint {} --plugin eosio::net_api_plugin --wasm-runtime eos-vm-jit -l logging.json").format(stateHistoryEndpoint)})
 
     producerNodeIndex = 0
     producerNode = cluster.getNode(producerNodeIndex)
