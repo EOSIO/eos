@@ -433,14 +433,14 @@ fc::variant push_transaction( signed_transaction& trx, const std::vector<public_
          return call(push_txn_func, packed_transaction_v0(trx, compression));
       } else {
          if( !amqp_address.empty() ) {
-            eosio::chain::named_thread_pool trx_thread_pool( "mqtrx", 1 );
-            eosio::chain::named_thread_pool trace_thread_pool( "mqtrac", 1 );
             transaction_trace_msg trace_msg;
             eosio::transaction_msg msg{packed_transaction( std::move( trx ), true, compression )};
             auto buf = fc::raw::pack( msg );
             const auto& tid = msg.get<packed_transaction>().id();
             const string id = tid.str();
             {
+               eosio::chain::named_thread_pool trx_thread_pool( "mqtrx", 1 );
+               eosio::chain::named_thread_pool trace_thread_pool( "mqtrac", 1 );
                eosio::amqp qp_trx( trx_thread_pool.get_executor(), amqp_address, "trx", [](const std::string& err){
                   std::cerr << "AMQP trx error: " << err << std::endl;
                   exit(1);
