@@ -41,7 +41,7 @@ class PluginHttpTest(unittest.TestCase):
     def startEnv(self) :
         self.createDataDir(self)
         self.keosd.launch()
-        nodeos_plugins = (" --plugin %s --plugin %s --plugin %s --plugin %s --plugin %s --plugin %s --plugin %s"
+        nodeos_plugins = (" --plugin %s --plugin %s --plugin %s --plugin %s --plugin %s --plugin %s --plugin %s --plugin %s "
                           " --plugin %s --plugin %s --plugin %s --plugin %s ") % ( "eosio::trace_api_plugin",
                                                                                    "eosio::test_control_api_plugin",
                                                                                    "eosio::test_control_plugin",
@@ -51,6 +51,7 @@ class PluginHttpTest(unittest.TestCase):
                                                                                    "eosio::producer_api_plugin",
                                                                                    "eosio::chain_api_plugin",
                                                                                    "eosio::http_plugin",
+                                                                                   "eosio::db_size_api_plugin",
                                                                                    "eosio::history_plugin",
                                                                                    "eosio::history_api_plugin")
         nodeos_flags = (" --data-dir=%s --trace-dir=%s --trace-no-abis --filter-on=%s --access-control-allow-origin=%s "
@@ -1396,7 +1397,7 @@ class PluginHttpTest(unittest.TestCase):
         ret_json = Utils.runCmdReturnJson(default_cmd)
         self.assertEqual(ret_json["code"], 400)
         self.assertEqual(ret_json["error"]["code"], 3200006)
-        # get_info with empty content parameter
+        # kill_node_on_producer with empty content parameter
         empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
         ret_json = Utils.runCmdReturnJson(empty_content_cmd)
         self.assertEqual(ret_json["code"], 400)
@@ -1419,7 +1420,7 @@ class PluginHttpTest(unittest.TestCase):
         default_cmd = cmd_base + "get_block"
         ret_json = Utils.runCmdReturnJson(default_cmd)
         self.assertEqual(ret_json["code"], 400)
-        # get_info with empty content parameter
+        # get_block with empty content parameter
         empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
         ret_json = Utils.runCmdReturnJson(empty_content_cmd)
         self.assertEqual(ret_json["code"], 400)
@@ -1432,6 +1433,49 @@ class PluginHttpTest(unittest.TestCase):
         ret_json = Utils.runCmdReturnJson(valid_cmd)
         self.assertEqual(ret_json["code"], 404)
         self.assertEqual(ret_json["error"]["code"], 0)
+
+    # test all db_size api
+    def test_DbSizeApi(self) :
+        cmd_base = self.base_node_cmd_str + "db_size/"
+
+        # get with empty parameter
+        default_cmd = cmd_base + "get"
+        ret_json = Utils.runCmdReturnJson(default_cmd)
+        self.assertIn("free_bytes", ret_json)
+        self.assertIn("used_bytes", ret_json)
+        self.assertIn("size", ret_json)
+        self.assertIn("indices", ret_json)
+        # get with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
+        self.assertIn("free_bytes", ret_json)
+        self.assertIn("used_bytes", ret_json)
+        self.assertIn("size", ret_json)
+        self.assertIn("indices", ret_json)
+        # get with invalid parameter
+        invalid_cmd = default_cmd + self.http_post_str + self.http_post_invalid_param
+        ret_json = Utils.runCmdReturnJson(invalid_cmd)
+        self.assertEqual(ret_json["code"], 400)
+
+        # get_reversible with empty parameter
+        default_cmd = cmd_base + "get_reversible"
+        ret_json = Utils.runCmdReturnJson(default_cmd)
+        self.assertIn("free_bytes", ret_json)
+        self.assertIn("used_bytes", ret_json)
+        self.assertIn("size", ret_json)
+        self.assertIn("indices", ret_json)
+        # get_reversible with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
+        self.assertIn("free_bytes", ret_json)
+        self.assertIn("used_bytes", ret_json)
+        self.assertIn("size", ret_json)
+        self.assertIn("indices", ret_json)
+        # get_reversible with invalid parameter
+        invalid_cmd = default_cmd + self.http_post_str + self.http_post_invalid_param
+        ret_json = Utils.runCmdReturnJson(invalid_cmd)
+        self.assertEqual(ret_json["code"], 400)
+
 
     @classmethod
     def setUpClass(self):
