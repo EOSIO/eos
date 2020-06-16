@@ -42,7 +42,7 @@ BOOST_AUTO_TEST_CASE( activate_preactivate_feature ) try {
 
    auto d = pfm.get_builtin_digest( builtin_protocol_feature_t::preactivate_feature );
 
-   BOOST_REQUIRE( d );
+   BOOST_REQUIRE( d.has_value() );
 
    // Activate PREACTIVATE_FEATURE.
    c.schedule_protocol_features_wo_preactivation({ *d });
@@ -79,7 +79,7 @@ BOOST_AUTO_TEST_CASE( activate_and_restart ) try {
    auto pfs = pfm.get_protocol_feature_set(); // make copy of protocol feature set
 
    auto d = pfm.get_builtin_digest( builtin_protocol_feature_t::preactivate_feature );
-   BOOST_REQUIRE( d );
+   BOOST_REQUIRE( d.has_value() );
 
    BOOST_CHECK( !c.control->is_builtin_activated( builtin_protocol_feature_t::preactivate_feature ) );
 
@@ -105,7 +105,7 @@ BOOST_AUTO_TEST_CASE( double_preactivation ) try {
    const auto& pfm = c.control->get_protocol_feature_manager();
 
    auto d = pfm.get_builtin_digest( builtin_protocol_feature_t::only_link_to_existing_permission );
-   BOOST_REQUIRE( d );
+   BOOST_REQUIRE( d.has_value() );
 
    c.push_action( config::system_account_name, N(activate), config::system_account_name,
                   fc::mutable_variant_object()("feature_digest", *d), 10 );
@@ -131,7 +131,7 @@ BOOST_AUTO_TEST_CASE( double_activation ) try {
    const auto& pfm = c.control->get_protocol_feature_manager();
 
    auto d = pfm.get_builtin_digest( builtin_protocol_feature_t::only_link_to_existing_permission );
-   BOOST_REQUIRE( d );
+   BOOST_REQUIRE( d.has_value() );
 
    BOOST_CHECK( !c.control->is_builtin_activated( builtin_protocol_feature_t::only_link_to_existing_permission ) );
 
@@ -165,7 +165,7 @@ BOOST_AUTO_TEST_CASE( require_preactivation_test ) try {
    const auto& pfm = c.control->get_protocol_feature_manager();
 
    auto d = pfm.get_builtin_digest( builtin_protocol_feature_t::only_link_to_existing_permission );
-   BOOST_REQUIRE( d );
+   BOOST_REQUIRE( d.has_value() );
 
    BOOST_CHECK( !c.control->is_builtin_activated( builtin_protocol_feature_t::only_link_to_existing_permission ) );
 
@@ -206,7 +206,7 @@ BOOST_AUTO_TEST_CASE( only_link_to_existing_permission_test ) try {
    const auto& pfm = c.control->get_protocol_feature_manager();
 
    auto d = pfm.get_builtin_digest( builtin_protocol_feature_t::only_link_to_existing_permission );
-   BOOST_REQUIRE( d );
+   BOOST_REQUIRE( d.has_value() );
 
    c.create_accounts( {N(alice), N(bob), N(charlie)} );
 
@@ -271,7 +271,7 @@ BOOST_AUTO_TEST_CASE( subjective_restrictions_test ) try {
 
    auto get_builtin_digest = [&pfm]( builtin_protocol_feature_t codename ) -> digest_type {
       auto res = pfm.get_builtin_digest( codename );
-      BOOST_REQUIRE( res );
+      BOOST_REQUIRE( res.has_value() );
       return *res;
    };
 
@@ -456,7 +456,7 @@ BOOST_AUTO_TEST_CASE( replace_deferred_test ) try {
    const auto& pfm = c.control->get_protocol_feature_manager();
 
    auto d = pfm.get_builtin_digest( builtin_protocol_feature_t::replace_deferred );
-   BOOST_REQUIRE( d );
+   BOOST_REQUIRE( d.has_value() );
 
    c.preactivate_protocol_features( {*d} );
    c.produce_block();
@@ -577,9 +577,9 @@ BOOST_AUTO_TEST_CASE( no_duplicate_deferred_id_test ) try {
    const auto& pfm = c.control->get_protocol_feature_manager();
 
    auto d1 = pfm.get_builtin_digest( builtin_protocol_feature_t::replace_deferred );
-   BOOST_REQUIRE( d1 );
+   BOOST_REQUIRE( d1.has_value() );
    auto d2 = pfm.get_builtin_digest( builtin_protocol_feature_t::no_duplicate_deferred_id );
-   BOOST_REQUIRE( d2 );
+   BOOST_REQUIRE( d2.has_value() );
 
    c.push_action( N(test), N(defercall), N(alice), fc::mutable_variant_object()
       ("payer", "alice")
@@ -724,7 +724,7 @@ BOOST_AUTO_TEST_CASE( fix_linkauth_restriction ) { try {
 
    const auto& pfm = chain.control->get_protocol_feature_manager();
    auto d = pfm.get_builtin_digest( builtin_protocol_feature_t::fix_linkauth_restriction );
-   BOOST_REQUIRE( d );
+   BOOST_REQUIRE( d.has_value() );
 
    chain.preactivate_protocol_features( {*d} );
    chain.produce_block();
@@ -756,7 +756,7 @@ BOOST_AUTO_TEST_CASE( disallow_empty_producer_schedule_test ) { try {
 
    const auto& pfm = c.control->get_protocol_feature_manager();
    const auto& d = pfm.get_builtin_digest( builtin_protocol_feature_t::disallow_empty_producer_schedule );
-   BOOST_REQUIRE( d );
+   BOOST_REQUIRE( d.has_value() );
 
    // Before activation, it is allowed to set empty producer schedule
    c.set_producers_legacy( {} );
@@ -783,7 +783,7 @@ BOOST_AUTO_TEST_CASE( restrict_action_to_self_test ) { try {
 
    const auto& pfm = c.control->get_protocol_feature_manager();
    const auto& d = pfm.get_builtin_digest( builtin_protocol_feature_t::restrict_action_to_self );
-   BOOST_REQUIRE( d );
+   BOOST_REQUIRE( d.has_value() );
 
    c.create_accounts( {N(testacc), N(acctonotify), N(alice)} );
    c.set_code( N(testacc), contracts::restrict_action_test_wasm() );
@@ -904,7 +904,7 @@ BOOST_AUTO_TEST_CASE( only_bill_to_first_authorizer ) { try {
 
    const auto& pfm = chain.control->get_protocol_feature_manager();
    const auto& d = pfm.get_builtin_digest( builtin_protocol_feature_t::only_bill_first_authorizer );
-   BOOST_REQUIRE( d );
+   BOOST_REQUIRE( d.has_value() );
 
    chain.preactivate_protocol_features( {*d} );
    chain.produce_blocks();
@@ -964,7 +964,7 @@ BOOST_AUTO_TEST_CASE( forward_setcode_test ) { try {
    // Activate FORWARD_SETCODE protocol feature and then return contract on eosio back to what it was.
    const auto& pfm = c.control->get_protocol_feature_manager();
    const auto& d = pfm.get_builtin_digest( builtin_protocol_feature_t::forward_setcode );
-   BOOST_REQUIRE( d );
+   BOOST_REQUIRE( d.has_value() );
    c.set_before_producer_authority_bios_contract();
    c.preactivate_protocol_features( {*d} );
    c.produce_block();
@@ -1019,7 +1019,7 @@ BOOST_AUTO_TEST_CASE( get_sender_test ) { try {
 
    const auto& pfm = c.control->get_protocol_feature_manager();
    const auto& d = pfm.get_builtin_digest( builtin_protocol_feature_t::get_sender );
-   BOOST_REQUIRE( d );
+   BOOST_REQUIRE( d.has_value() );
 
    c.preactivate_protocol_features( {*d} );
    c.produce_block();
@@ -1221,7 +1221,7 @@ BOOST_AUTO_TEST_CASE( ram_restrictions_test ) { try {
 
    const auto& pfm = c.control->get_protocol_feature_manager();
    const auto& d = pfm.get_builtin_digest( builtin_protocol_feature_t::ram_restrictions );
-   BOOST_REQUIRE( d );
+   BOOST_REQUIRE( d.has_value() );
 
    // Activate RAM_RESTRICTIONS protocol feature (this would also disable the subjective mitigation).
    c.preactivate_protocol_features( {*d} );
@@ -1329,7 +1329,7 @@ BOOST_AUTO_TEST_CASE( webauthn_producer ) { try {
 
    const auto& pfm = c.control->get_protocol_feature_manager();
    const auto& d = pfm.get_builtin_digest( builtin_protocol_feature_t::webauthn_key );
-   BOOST_REQUIRE( d );
+   BOOST_REQUIRE( d.has_value() );
 
    c.create_account(N(waprod));
    c.produce_block();
@@ -1352,7 +1352,7 @@ BOOST_AUTO_TEST_CASE( webauthn_create_account ) { try {
 
    const auto& pfm = c.control->get_protocol_feature_manager();
    const auto& d = pfm.get_builtin_digest(builtin_protocol_feature_t::webauthn_key);
-   BOOST_REQUIRE(d);
+   BOOST_REQUIRE(d.has_value());
 
    signed_transaction trx;
    c.set_transaction_headers(trx);
@@ -1380,7 +1380,7 @@ BOOST_AUTO_TEST_CASE( webauthn_update_account_auth ) { try {
 
    const auto& pfm = c.control->get_protocol_feature_manager();
    const auto& d = pfm.get_builtin_digest(builtin_protocol_feature_t::webauthn_key);
-   BOOST_REQUIRE(d);
+   BOOST_REQUIRE(d.has_value());
 
    c.create_account(N(billy));
    c.produce_block();
@@ -1431,7 +1431,7 @@ BOOST_AUTO_TEST_CASE( webauthn_recover_key ) { try {
 
    const auto& pfm = c.control->get_protocol_feature_manager();
    const auto& d = pfm.get_builtin_digest(builtin_protocol_feature_t::webauthn_key);
-   BOOST_REQUIRE(d);
+   BOOST_REQUIRE(d.has_value());
 
    c.create_account(N(bob));
    c.set_code(N(bob), webauthn_recover_key_wast);
@@ -1479,7 +1479,7 @@ BOOST_AUTO_TEST_CASE( webauthn_assert_recover_key ) { try {
 
    const auto& pfm = c.control->get_protocol_feature_manager();
    const auto& d = pfm.get_builtin_digest(builtin_protocol_feature_t::webauthn_key);
-   BOOST_REQUIRE(d);
+   BOOST_REQUIRE(d.has_value());
 
    c.create_account(N(bob));
    c.set_code(N(bob), webauthn_assert_recover_key_wast);
@@ -1525,7 +1525,7 @@ BOOST_AUTO_TEST_CASE( set_proposed_producers_ex_test ) { try {
 
    const auto& pfm = c.control->get_protocol_feature_manager();
    const auto& d = pfm.get_builtin_digest(builtin_protocol_feature_t::wtmsig_block_signatures);
-   BOOST_REQUIRE(d);
+   BOOST_REQUIRE(d.has_value());
 
    const auto& alice_account = account_name("alice");
    c.create_accounts( {alice_account} );
@@ -1560,7 +1560,7 @@ BOOST_AUTO_TEST_CASE( producer_schedule_change_extension_test ) { try {
 
    const auto& pfm = c.control->get_protocol_feature_manager();
    const auto& d = pfm.get_builtin_digest(builtin_protocol_feature_t::wtmsig_block_signatures);
-   BOOST_REQUIRE(d);
+   BOOST_REQUIRE(d.has_value());
 
    c.produce_blocks(2);
 
@@ -1677,7 +1677,7 @@ BOOST_AUTO_TEST_CASE( wtmsig_block_signing_inflight_legacy_test ) { try {
 
    const auto& pfm = c.control->get_protocol_feature_manager();
    const auto& d = pfm.get_builtin_digest(builtin_protocol_feature_t::wtmsig_block_signatures);
-   BOOST_REQUIRE(d);
+   BOOST_REQUIRE(d.has_value());
 
    c.produce_blocks(2);
 
@@ -1689,7 +1689,7 @@ BOOST_AUTO_TEST_CASE( wtmsig_block_signing_inflight_legacy_test ) { try {
 
    // ensure the last legacy block contains a new_producers
    auto last_legacy_block = c.produce_block();
-   BOOST_REQUIRE_EQUAL(last_legacy_block->new_producers.valid(), true);
+   BOOST_REQUIRE_EQUAL(last_legacy_block->new_producers.has_value(), true);
 
    // promote to active schedule
    c.produce_block();
@@ -1708,7 +1708,7 @@ BOOST_AUTO_TEST_CASE( wtmsig_block_signing_inflight_extension_test ) { try {
 
    const auto& pfm = c.control->get_protocol_feature_manager();
    const auto& d = pfm.get_builtin_digest(builtin_protocol_feature_t::wtmsig_block_signatures);
-   BOOST_REQUIRE(d);
+   BOOST_REQUIRE(d.has_value());
 
    c.produce_blocks(2);
 
@@ -1723,7 +1723,7 @@ BOOST_AUTO_TEST_CASE( wtmsig_block_signing_inflight_extension_test ) { try {
 
    // ensure the first possible new block contains a producer_schedule_change_extension
    auto first_new_block = c.produce_block();
-   BOOST_REQUIRE_EQUAL(first_new_block->new_producers.valid(), false);
+   BOOST_REQUIRE_EQUAL(first_new_block->new_producers.has_value(), false);
    BOOST_REQUIRE_EQUAL(first_new_block->header_extensions.size(), 1);
    BOOST_REQUIRE_EQUAL(first_new_block->header_extensions.at(0).first, producer_schedule_change_extension::extension_id());
 
@@ -1759,7 +1759,7 @@ BOOST_AUTO_TEST_CASE( set_action_return_value_test ) { try {
 
    const auto& pfm = c.control->get_protocol_feature_manager();
    const auto& d = pfm.get_builtin_digest(builtin_protocol_feature_t::action_return_value);
-   BOOST_REQUIRE(d);
+   BOOST_REQUIRE(d.has_value());
 
    const auto& alice_account = account_name("alice");
    c.create_accounts( {alice_account} );

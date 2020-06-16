@@ -14,23 +14,23 @@ public:
    APPBASE_PLUGIN_REQUIRES((chain_plugin)(signature_provider_plugin))
 
    struct runtime_options {
-      fc::optional<int32_t>   max_transaction_time;
-      fc::optional<int32_t>   max_irreversible_block_age;
-      fc::optional<int32_t>   produce_time_offset_us;
-      fc::optional<int32_t>   last_block_time_offset_us;
-      fc::optional<int32_t>   max_scheduled_transaction_time_per_block_ms;
-      fc::optional<int32_t>   subjective_cpu_leeway_us;
-      fc::optional<double>    incoming_defer_ratio;
-      fc::optional<uint32_t>  greylist_limit;
+      std::optional<int32_t>   max_transaction_time;
+      std::optional<int32_t>   max_irreversible_block_age;
+      std::optional<int32_t>   produce_time_offset_us;
+      std::optional<int32_t>   last_block_time_offset_us;
+      std::optional<int32_t>   max_scheduled_transaction_time_per_block_ms;
+      std::optional<int32_t>   subjective_cpu_leeway_us;
+      std::optional<double>    incoming_defer_ratio;
+      std::optional<uint32_t>  greylist_limit;
    };
 
    struct whitelist_blacklist {
-      fc::optional< flat_set<account_name> > actor_whitelist;
-      fc::optional< flat_set<account_name> > actor_blacklist;
-      fc::optional< flat_set<account_name> > contract_whitelist;
-      fc::optional< flat_set<account_name> > contract_blacklist;
-      fc::optional< flat_set< std::pair<account_name, action_name> > > action_blacklist;
-      fc::optional< flat_set<public_key_type> > key_blacklist;
+      std::optional< flat_set<account_name> > actor_whitelist;
+      std::optional< flat_set<account_name> > actor_blacklist;
+      std::optional< flat_set<account_name> > contract_whitelist;
+      std::optional< flat_set<account_name> > contract_blacklist;
+      std::optional< flat_set< std::pair<account_name, action_name> > > action_blacklist;
+      std::optional< flat_set<public_key_type> > key_blacklist;
    };
 
    struct greylist_params {
@@ -57,15 +57,15 @@ public:
    };
 
    struct get_account_ram_corrections_params {
-      optional<account_name>  lower_bound;
-      optional<account_name>  upper_bound;
+      std::optional<account_name>  lower_bound;
+      std::optional<account_name>  upper_bound;
       uint32_t                limit = 10;
       bool                    reverse = false;
    };
 
    struct get_account_ram_corrections_result {
       std::vector<fc::variant> rows;
-      optional<account_name>   more;
+      std::optional<account_name>   more;
    };
 
    template<typename T>

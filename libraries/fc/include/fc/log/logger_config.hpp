@@ -28,7 +28,7 @@ namespace fc {
       string                           name;
       ostring                          parent;
       /// if not set, then parents level is used.
-      fc::optional<log_level>          level;
+      std::optional<log_level>          level;
       bool                             enabled;
       /// if any appenders are sepecified, then parent's appenders are not set.
       bool                             additivity;

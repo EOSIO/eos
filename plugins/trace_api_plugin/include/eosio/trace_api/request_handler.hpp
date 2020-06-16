@@ -37,7 +37,7 @@ namespace eosio::trace_api {
        */
       fc::variant get_block_trace( uint32_t block_height, const yield_function& yield = {}) {
          auto data = logfile_provider.get_block(block_height, yield);
-         if (!data) {
+         if (!data.has_value()) {
             return {};
          }
 

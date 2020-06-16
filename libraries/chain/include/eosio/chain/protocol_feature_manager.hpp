@@ -99,7 +99,7 @@ struct protocol_feature {
    time_point                            earliest_allowed_activation_time;
    bool                                  preactivation_required = false;
    bool                                  enabled = false;
-   optional<builtin_protocol_feature_t>  builtin_feature;
+   std::optional<builtin_protocol_feature_t>  builtin_feature;
 
    fc::variant to_variant( bool include_subjective_restrictions = true,
                            fc::mutable_variant_object* additional_fields = nullptr )const;
@@ -133,7 +133,7 @@ public:
 
    recognized_t is_recognized( const digest_type& feature_digest, time_point now )const;
 
-   optional<digest_type> get_builtin_digest( builtin_protocol_feature_t feature_codename )const;
+   std::optional<digest_type> get_builtin_digest( builtin_protocol_feature_t feature_codename )const;
 
    const protocol_feature& get_protocol_feature( const digest_type& feature_digest )const;
 
@@ -316,7 +316,7 @@ public:
 
    const protocol_feature_set& get_protocol_feature_set()const { return _protocol_feature_set; }
 
-   optional<digest_type> get_builtin_digest( builtin_protocol_feature_t feature_codename )const {
+   std::optional<digest_type> get_builtin_digest( builtin_protocol_feature_t feature_codename )const {
       return _protocol_feature_set.get_builtin_digest( feature_codename );
    }
 

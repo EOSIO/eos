@@ -144,7 +144,7 @@ namespace eosio { namespace chain {
       signed_block& operator=(const signed_block&) = delete;
       signed_block& operator=(signed_block&&) = default;
       signed_block clone() const { return *this; }
-      fc::optional<signed_block_v0> to_signed_block_v0() const;
+      std::optional<signed_block_v0> to_signed_block_v0() const;
 
       fc::enum_type<uint8_t,prune_state_type> prune_state{prune_state_type::complete_legacy};
       deque<transaction_receipt>              transactions; /// new or generated transactions

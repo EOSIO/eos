@@ -276,7 +276,7 @@ namespace eosio { namespace chain {
       return _db.get<permission_object, by_owner>( boost::make_tuple(level.actor,level.permission) );
    } EOS_RETHROW_EXCEPTIONS( chain::permission_query_exception, "Failed to retrieve permission: ${level}", ("level", level) ) }
 
-   optional<permission_name> authorization_manager::lookup_linked_permission( account_name authorizer_account,
+   std::optional<permission_name> authorization_manager::lookup_linked_permission( account_name authorizer_account,
                                                                               account_name scope,
                                                                               action_name act_name
                                                                             )const
@@ -295,13 +295,13 @@ namespace eosio { namespace chain {
          if (link != nullptr) {
             return link->required_permission;
          }
-         return optional<permission_name>();
+         return std::optional<permission_name>();
 
-       //  return optional<permission_name>();
+       //  return std::optional<permission_name>();
       } FC_CAPTURE_AND_RETHROW((authorizer_account)(scope)(act_name))
    }
 
-   optional<permission_name> authorization_manager::lookup_minimum_permission( account_name authorizer_account,
+   std::optional<permission_name> authorization_manager::lookup_minimum_permission( account_name authorizer_account,
                                                                                account_name scope,
                                                                                action_name act_name
                                                                              )const
@@ -318,12 +318,12 @@ namespace eosio { namespace chain {
       }
 
       try {
-         optional<permission_name> linked_permission = lookup_linked_permission(authorizer_account, scope, act_name);
-         if( !linked_permission )
+         std::optional<permission_name> linked_permission = lookup_linked_permission(authorizer_account, scope, act_name);
+         if( !linked_permission.has_value() )
             return config::active_name;
 
          if( *linked_permission == config::eosio_any_name )
-            return optional<permission_name>();
+            return std::optional<permission_name>();
 
          return linked_permission;
       } FC_CAPTURE_AND_RETHROW((authorizer_account)(scope)(act_name))
@@ -397,7 +397,7 @@ namespace eosio { namespace chain {
 
       const auto linked_permission_name = lookup_minimum_permission(link.account, link.code, link.type);
 
-      if( !linked_permission_name ) // if action is linked to eosio.any permission
+      if( !linked_permission_name.has_value() ) // if action is linked to eosio.any permission
          return;
 
       EOS_ASSERT( get_permission(auth).satisfies( get_permission({link.account, *linked_permission_name}),
@@ -418,7 +418,7 @@ namespace eosio { namespace chain {
                   "the owner of the linked permission needs to be the actor of the declared authorization" );
 
       const auto unlinked_permission_name = lookup_linked_permission(unlink.account, unlink.code, unlink.type);
-      EOS_ASSERT( unlinked_permission_name.valid(), transaction_exception,
+      EOS_ASSERT( unlinked_permission_name.has_value(), transaction_exception,
                   "cannot unlink non-existent permission link of account '${account}' for actions matching '${code}::${action}'",
                   ("account", unlink.account)("code", unlink.code)("action", unlink.type) );
 

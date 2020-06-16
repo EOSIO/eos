@@ -136,7 +136,7 @@ namespace eosio {
    };
 
    struct trx_message_v1 {
-      fc::optional<transaction_id_type> trx_id; // only provided for large trx as trade-off for small trxs not worth it
+      std::optional<transaction_id_type> trx_id; // only provided for large trx as trade-off for small trxs not worth it
       std::shared_ptr<packed_transaction> trx;
    };
 

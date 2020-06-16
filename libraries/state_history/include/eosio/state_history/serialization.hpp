@@ -108,8 +108,8 @@ void history_pack_big_bytes(ST& ds, const eosio::chain::bytes& v) {
 }
 
 template <typename ST>
-void history_pack_big_bytes(ST& ds, const fc::optional<eosio::chain::bytes>& v) {
-   fc::raw::pack(ds, v.valid());
+void history_pack_big_bytes(ST& ds, const std::optional<eosio::chain::bytes>& v) {
+   fc::raw::pack(ds, v.has_value());
    if (v)
       history_pack_big_bytes(ds, *v);
 }
@@ -319,7 +319,7 @@ ST& operator<<(ST& ds, const history_serial_wrapper<eosio::chain::chain_config>&
 template <typename ST>
 ST& operator<<(ST& ds, const history_serial_wrapper<eosio::chain::global_property_object>& obj) {
    fc::raw::pack(ds, fc::unsigned_int(1));
-   fc::raw::pack(ds, as_type<optional<eosio::chain::block_num_type>>(obj.obj.proposed_schedule_block_num));
+   fc::raw::pack(ds, as_type<std::optional<eosio::chain::block_num_type>>(obj.obj.proposed_schedule_block_num));
    fc::raw::pack(ds, make_history_serial_wrapper(
                          obj.db, as_type<eosio::chain::shared_producer_authority_schedule>(obj.obj.proposed_schedule)));
    fc::raw::pack(ds, make_history_serial_wrapper(obj.db, as_type<eosio::chain::chain_config>(obj.obj.configuration)));
@@ -541,10 +541,10 @@ ST& operator<<(ST& ds, const history_serial_wrapper<eosio::chain::account_delta>
    return ds;
 }
 
-inline fc::optional<uint64_t> cap_error_code(const fc::optional<uint64_t>& error_code) {
-   fc::optional<uint64_t> result;
+inline std::optional<uint64_t> cap_error_code(const std::optional<uint64_t>& error_code) {
+   std::optional<uint64_t> result;
 
-   if (!error_code)
+   if (!error_code.has_value())
       return result;
 
    const uint64_t upper_limit = static_cast<uint64_t>(eosio::chain::system_error_code::generic_system_error);
@@ -579,16 +579,16 @@ ST& operator<<(ST& ds, const history_context_wrapper<bool, eosio::chain::action_
    history_serialize_container(ds, obj.db, as_type<flat_set<eosio::chain::account_delta>>(obj.obj.account_ram_deltas));
    history_serialize_container(ds, obj.db, as_type<flat_set<eosio::chain::account_delta>>(obj.obj.account_disk_deltas));
 
-   fc::optional<std::string> e;
+   std::optional<std::string> e;
    if (obj.obj.except) {
       if (debug_mode)
          e = obj.obj.except->to_string();
       else
          e = "Y";
    }
-   fc::raw::pack(ds, as_type<fc::optional<std::string>>(e));
+   fc::raw::pack(ds, as_type<std::optional<std::string>>(e));
    fc::raw::pack(ds,
-                 as_type<fc::optional<uint64_t>>(debug_mode ? obj.obj.error_code : cap_error_code(obj.obj.error_code)));
+                 as_type<std::optional<uint64_t>>(debug_mode ? obj.obj.error_code : cap_error_code(obj.obj.error_code)));
    fc::raw::pack(ds, as_type<eosio::chain::bytes>(obj.obj.return_value));
    return ds;
 }
@@ -626,15 +626,15 @@ ST& operator<<(
           ds, make_history_serial_wrapper(obj.db, as_type<eosio::chain::account_delta>(*trace.account_ram_delta)));
    }
 
-   fc::optional<std::string> e;
+   std::optional<std::string> e;
    if (trace.except) {
       if (debug_mode)
          e = trace.except->to_string();
       else
          e = "Y";
    }
-   fc::raw::pack(ds, as_type<fc::optional<std::string>>(e));
-   fc::raw::pack(ds, as_type<fc::optional<uint64_t>>(debug_mode ? trace.error_code : cap_error_code(trace.error_code)));
+   fc::raw::pack(ds, as_type<std::optional<std::string>>(e));
+   fc::raw::pack(ds, as_type<std::optional<uint64_t>>(debug_mode ? trace.error_code : cap_error_code(trace.error_code)));
 
    fc::raw::pack(ds, bool(trace.failed_dtrx_trace));
    if (trace.failed_dtrx_trace) {
@@ -661,7 +661,7 @@ ST& operator<<(
       fc::raw::pack(ds, as_type<uint8_t>(trx.max_cpu_usage_ms));
       fc::raw::pack(ds, as_type<fc::unsigned_int>(trx.delay_sec));
       fc::raw::pack(ds, as_type<eosio::chain::extensions_type>(trx.transaction_extensions));
-      fc::raw::pack(ds, as_type<fc::optional<eosio::state_history::prunable_data_type>>({}));
+      fc::raw::pack(ds, as_type<std::optional<eosio::state_history::prunable_data_type>>({}));
    }
 
    return ds;

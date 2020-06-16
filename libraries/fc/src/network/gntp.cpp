@@ -45,19 +45,19 @@ namespace fc
     class gntp_notifier_impl 
     {
     public:
-      gntp_notifier_impl(const std::string& host_to_notify = "127.0.0.1", uint16_t port = 23053, const optional<std::string>& password = optional<std::string>());
+      gntp_notifier_impl(const std::string& host_to_notify = "127.0.0.1", uint16_t port = 23053, const std::optional<std::string>& password = std::optional<std::string>());
 
       // there's no API to change these right now, it will always notify localhost at the default GNTP port
       std::string hostname;
       uint16_t port;
-      optional<std::string> password;
+      std::optional<std::string> password;
 
       std::string application_name;
       gntp_icon_ptr application_icon;
 
       gntp_notification_type_list notification_types; // list of all notification types we're registered to send
 
-      optional<boost::asio::ip::tcp::endpoint> endpoint; // cache the last endpoint we've connected to
+      std::optional<boost::asio::ip::tcp::endpoint> endpoint; // cache the last endpoint we've connected to
 
       bool connection_failed; // true after we've tried to connect and failed
       bool is_registered; // true after we've registered
@@ -66,7 +66,7 @@ namespace fc
     };
 
     gntp_notifier_impl::gntp_notifier_impl(const std::string& host_to_notify /* = "127.0.0.1" */, uint16_t port /* = 23053 */,
-                                           const optional<std::string>& password /* = optional<std::string>() */) :
+                                           const std::optional<std::string>& password /* = std::optional<std::string>() */) :
       hostname(host_to_notify),
       port(port),
       password(password),
@@ -94,14 +94,14 @@ namespace fc
               ("error_report", er.to_detail_string()));
           sock->close();
           // clear the cached endpoint and fall through to the full connection procedure
-          endpoint = optional<boost::asio::ip::tcp::endpoint>();
+          endpoint = std::optional<boost::asio::ip::tcp::endpoint>();
         }
         catch (...)
         {
           ilog("Failed to connect to GNTP service using an endpoint that previously worked");
           sock->close();
           // clear the cached endpoint and fall through to the full connection procedure
-          endpoint = optional<boost::asio::ip::tcp::endpoint>();
+          endpoint = std::optional<boost::asio::ip::tcp::endpoint>();
         }
       }
       if (!connected)
@@ -165,7 +165,7 @@ namespace fc
   }
    
   gntp_notifier::gntp_notifier(const std::string& host_to_notify /* = "127.0.0.1" */, uint16_t port /* = 23053 */,
-                               const optional<std::string>& password /* = optional<std::string>() */) :
+                               const std::optional<std::string>& password /* = std::optional<std::string>() */) :
     my(new detail::gntp_notifier_impl(host_to_notify, port, password))
   {
   }
@@ -243,7 +243,7 @@ namespace fc
     }
   }
   gntp_guid gntp_notifier::send_notification(std::string name, std::string title, std::string text, 
-                                             const gntp_icon_ptr& icon, optional<gntp_guid> coalescingId /* = optional<gntp_guid>() */)
+                                             const gntp_icon_ptr& icon, std::optional<gntp_guid> coalescingId /* = std::optional<gntp_guid>() */)
   {
     if (my->connection_failed)
       return gntp_guid();
