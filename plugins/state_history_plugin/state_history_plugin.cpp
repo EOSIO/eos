@@ -24,16 +24,19 @@ using boost::signals2::scoped_connection;
 
 static appbase::abstract_plugin& _state_history_plugin = app().register_plugin<state_history_plugin>();
 
+const std::string logger_name("state_history");
+fc::logger _log;
+
 template <typename F>
 auto catch_and_log(F f) {
    try {
       return f();
    } catch (const fc::exception& e) {
-      elog("${e}", ("e", e.to_detail_string()));
+      fc_elog(_log, "${e}", ("e", e.to_detail_string()));
    } catch (const std::exception& e) {
-      elog("${e}", ("e", e.what()));
+      fc_elog(_log, "${e}", ("e", e.what()));
    } catch (...) {
-      elog("unknown exception");
+      fc_elog(_log, "unknown exception");
    }
 }
 
@@ -82,7 +85,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
           : plugin(std::move(plugin)) {}
 
       void start(tcp::socket socket) {
-         ilog("incoming connection");
+         fc_ilog(_log, "incoming connection");
          socket_stream = std::make_unique<ws::stream<tcp::socket>>(std::move(socket));
          socket_stream->binary(true);
          socket_stream->next_layer().set_option(boost::asio::ip::tcp::no_delay(true));
@@ -144,6 +147,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
 
       using result_type = void;
       void operator()(get_status_request_v0&) {
+         fc_ilog(_log, "got get_status_request_v0");
          auto&                chain = plugin->chain_plug->chain();
          get_status_result_v0 result;
          result.head              = {chain.head_block_num(), chain.head_block_id()};
@@ -157,25 +161,37 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
             result.chain_state_begin_block = plugin->chain_state_log->begin_block();
             result.chain_state_end_block   = plugin->chain_state_log->end_block();
          }
+         fc_ilog(_log, "pushing get_status_result_v0 to send queue");
          send(std::move(result));
       }
 
       void operator()(get_blocks_request_v0& req) {
+         fc_ilog(_log, "received get_blocks_request_v0 = ${req}", ("req",req) );
          for (auto& cp : req.have_positions) {
             if (req.start_block_num <= cp.block_num)
                continue;
             auto id = plugin->get_block_id(cp.block_num);
             if (!id || *id != cp.block_id)
                req.start_block_num = std::min(req.start_block_num, cp.block_num);
+
+            if (!id) {
+               fc_dlog(_log, "block ${block_num} is not available", ("block_num", cp.block_num));
+            } else if (*id != cp.block_id) {
+               fc_dlog(_log, "the id for block ${block_num} in block request have_positions does not match the existing", ("block_num", cp.block_num));
+            }         
          }
          req.have_positions.clear();
+         fc_dlog(_log, "  get_blocks_request_v0 start_block_num set to ${num}", ("num", req.start_block_num));
          current_request = req;
          send_update(true);
       }
 
       void operator()(get_blocks_ack_request_v0& req) {
-         if (!current_request)
+         fc_ilog(_log, "received get_blocks_ack_request_v0 = ${req}", ("req",req));
+         if (!current_request) {
+            fc_dlog(_log, " no current get_blocks_request_v0, discarding the get_blocks_ack_request_v0");
             return;
+         }
          current_request->max_messages_in_flight += req.num_messages;
          send_update();
       }
@@ -207,6 +223,8 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
             }
             ++current_request->start_block_num;
          }
+         fc_ilog(_log, "pushing result {\"head\":{\"block_num\":${head}},\"last_irreversible\":{\"block_num\":${last_irr}},\"this_block\":{\"block_num\":${this_block}}} to send queue", 
+               ("head", result.head.block_num) ("last_irr", result.last_irreversible.block_num)("this_block", result.this_block->block_num));
          send(std::move(result));
          --current_request->max_messages_in_flight;
          need_to_send_update = current_request->start_block_num <= current &&
@@ -239,13 +257,13 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          try {
             f();
          } catch (const fc::exception& e) {
-            elog("${e}", ("e", e.to_detail_string()));
+            fc_elog(_log, "${e}", ("e", e.to_detail_string()));
             close();
          } catch (const std::exception& e) {
-            elog("${e}", ("e", e.what()));
+            fc_elog(_log,"${e}", ("e", e.what()));
             close();
          } catch (...) {
-            elog("unknown exception");
+            fc_elog(_log, "unknown exception");
             close();
          }
       }
@@ -263,10 +281,10 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
 
       void on_fail(boost::system::error_code ec, const char* what) {
          try {
-            elog("${w}: ${m}", ("w", what)("m", ec.message()));
+            fc_elog(_log,"${w}: ${m}", ("w", what)("m", ec.message()));
             close();
          } catch (...) {
-            elog("uncaught exception on close");
+            fc_elog(_log,"uncaught exception on close");
          }
       }
 
@@ -287,7 +305,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       auto check_ec = [&](const char* what) {
          if (!ec)
             return;
-         elog("${w}: ${m}", ("w", what)("m", ec.message()));
+         fc_elog(_log,"${w}: ${m}", ("w", what)("m", ec.message()));
          EOS_ASSERT(false, plugin_exception, "unable to open listen socket");
       };
 
@@ -402,7 +420,7 @@ void state_history_plugin::plugin_initialize(const variables_map& options) {
       idump((ip_port)(host)(port));
 
       if (options.at("delete-state-history").as<bool>()) {
-         ilog("Deleting state history");
+         fc_ilog(_log, "Deleting state history");
          boost::filesystem::remove_all(state_history_dir);
       }
       boost::filesystem::create_directories(state_history_dir);
@@ -428,7 +446,10 @@ void state_history_plugin::plugin_initialize(const variables_map& options) {
    FC_LOG_AND_RETHROW()
 } // state_history_plugin::plugin_initialize
 
-void state_history_plugin::plugin_startup() { my->listen(); }
+void state_history_plugin::plugin_startup() { 
+   handle_sighup(); // setup logging
+   my->listen(); 
+}
 
 void state_history_plugin::plugin_shutdown() {
    my->applied_transaction_connection.reset();
@@ -437,6 +458,10 @@ void state_history_plugin::plugin_shutdown() {
    while (!my->sessions.empty())
       my->sessions.begin()->second->close();
    my->stopping = true;
+}
+
+void state_history_plugin::handle_sighup() {
+   fc::logger::update( logger_name, _log );
 }
 
 } // namespace eosio
