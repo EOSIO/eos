@@ -48,6 +48,13 @@ void to_json(const std::pair<uint16_t, std::vector<char>>&, S& stream) {
 
 namespace b1::rodeos::wasm_ql {
 
+template <class... Ts>
+struct overloaded : Ts... {
+   using Ts::operator()...;
+};
+template <class... Ts>
+overloaded(Ts...)->overloaded<Ts...>;
+
 // todo: relax some of these limits
 // todo: restore max_function_section_elements to 1023 and use nodeos's hard fork
 struct wasm_ql_backend_options {
@@ -65,8 +72,8 @@ struct wasm_ql_backend_options {
    // static constexpr std::uint32_t max_br_table_elements         = 8191;
    // static constexpr std::uint32_t max_symbol_bytes              = 8191;
    // static constexpr std::uint32_t max_memory_offset             = (33 * 1024 * 1024 - 1);
-   static constexpr std::uint32_t max_pages                     = 528; // 33 MiB
-   static constexpr std::uint32_t max_call_depth                = 251;
+   static constexpr std::uint32_t max_pages      = 528; // 33 MiB
+   static constexpr std::uint32_t max_call_depth = 251;
 };
 
 struct callbacks;
@@ -324,8 +331,7 @@ const std::vector<char>& query_get_info(wasm_ql::thread_state&   thread_state,
                   result += ",\"head_block_num\":\"" + std::to_string(obj.head) + "\"";
                   result += ",\"head_block_id\":" + eosio::convert_to_json(obj.head_id);
                   result += ",\"last_irreversible_block_num\":\"" + std::to_string(obj.irreversible) + "\"";
-                  result += ",\"last_irreversible_block_id\":" +
-                            eosio::convert_to_json(obj.irreversible_id);
+                  result += ",\"last_irreversible_block_id\":" + eosio::convert_to_json(obj.irreversible_id);
                },
                sing.get());
       } else
@@ -351,7 +357,7 @@ const std::vector<char>& query_get_block(wasm_ql::thread_state&   thread_state,
    eosio::json_token_stream stream{ s.data() };
    try {
       from_json(params, stream);
-   } catch(std::exception& e) {
+   } catch (std::exception& e) {
       throw std::runtime_error("An error occurred deserializing get_block_params: "s + e.what());
    }
 
@@ -367,7 +373,7 @@ const std::vector<char>& query_get_block(wasm_ql::thread_state&   thread_state,
       eosio::checksum256 id;
       try {
          from_json(id, bn_stream);
-      } catch(std::exception& e) {
+      } catch (std::exception& e) {
          throw std::runtime_error("An error occurred deserializing block_num_or_id: "s + e.what());
       }
       info = get_state_row_secondary<block_info>(db_view_state.kv_state.view,
@@ -376,7 +382,7 @@ const std::vector<char>& query_get_block(wasm_ql::thread_state&   thread_state,
       uint32_t num;
       try {
          from_json(num, bn_stream);
-      } catch(std::exception& e) {
+      } catch (std::exception& e) {
          throw std::runtime_error("An error occurred deserializing block_num_or_id: "s + e.what());
       }
       info = get_state_row<block_info>(db_view_state.kv_state.view,
@@ -429,7 +435,7 @@ const std::vector<char>& query_get_abi(wasm_ql::thread_state& thread_state, cons
    eosio::json_token_stream stream{ s.data() };
    try {
       from_json(params, stream);
-   } catch(std::exception& e) {
+   } catch (std::exception& e) {
       throw std::runtime_error("An error occurred deserializing get_abi_params: "s + e.what());
    }
 
@@ -501,7 +507,7 @@ const std::vector<char>& query_get_required_keys(wasm_ql::thread_state& thread_s
    eosio::json_token_stream stream{ s.data() };
    try {
       from_json(params, stream);
-   } catch(std::exception& e) {
+   } catch (std::exception& e) {
       throw std::runtime_error("An error occurred deserializing get_required_keys_params: "s + e.what());
    }
 
@@ -544,15 +550,18 @@ const std::vector<char>& query_send_transaction(wasm_ql::thread_state&   thread_
       eosio::json_token_stream stream{ s.data() };
       try {
          from_json(params, stream);
-      } catch(std::exception& e) {
+      } catch (std::exception& e) {
          throw std::runtime_error("An error occurred deserializing send_transaction_params: "s + e.what());
       }
    }
    if (params.compression != "0" && params.compression != "none")
       throw std::runtime_error("Compression must be 0 or none"); // todo
-   ship_protocol::packed_transaction trx{ std::move(params.signatures), 0, params.packed_context_free_data.data,
+   ship_protocol::packed_transaction trx{ 0,
+                                          { ship_protocol::prunable_data_type::full_legacy{
+                                                std::move(params.signatures), params.packed_context_free_data.data } },
                                           params.packed_trx.data };
-   rocksdb::ManagedSnapshot          snapshot{ thread_state.shared->db->rdb.get() };
+
+   rocksdb::ManagedSnapshot snapshot{ thread_state.shared->db->rdb.get() };
 
    std::vector<std::vector<char>> memory;
    send_transaction_results       results;
@@ -566,28 +575,44 @@ const std::vector<char>& query_send_transaction(wasm_ql::thread_state&   thread_
    return thread_state.action_return_value;
 } // query_send_transaction
 
+bool is_signatures_empty(const ship_protocol::prunable_data_type& data) {
+   return std::visit(overloaded{ [](const ship_protocol::prunable_data_type::none&) { return true; },
+                                 [](const auto& v) { return v.signatures.empty(); } },
+                     data.prunable_data);
+}
+
+bool is_context_free_data_empty(const ship_protocol::prunable_data_type& data) {
+   return std::visit(overloaded{ [](const ship_protocol::prunable_data_type::none&) { return true; },
+                                 [](const ship_protocol::prunable_data_type::full_legacy& v) {
+                                    return v.packed_context_free_data.pos == v.packed_context_free_data.end;
+                                 },
+                                 [](const auto& v) { return v.context_free_segments.empty(); } },
+                     data.prunable_data);
+}
+
 transaction_trace_v0 query_send_transaction(wasm_ql::thread_state&                   thread_state,       //
                                             const std::vector<char>&                 contract_kv_prefix, //
                                             const ship_protocol::packed_transaction& trx,                //
                                             const rocksdb::Snapshot*                 snapshot,           //
                                             std::vector<std::vector<char>>&          memory,             //
                                             bool                                     return_trace_on_except) {
-   eosio::input_stream s{ trx.packed_trx };
+   eosio::input_stream        s{ trx.packed_trx };
    ship_protocol::transaction unpacked;
    try {
       eosio::from_bin(unpacked, s);
-   } catch(std::exception& e) {
-      throw std::runtime_error("An error occurred deserializing packed_trx: "s + e.what());
-   }
+   } catch (std::exception& e) { throw std::runtime_error("An error occurred deserializing packed_trx: "s + e.what()); }
    if (s.end != s.pos)
       throw std::runtime_error("Extra data in packed_trx");
 
-   if (!trx.signatures.empty())
+   if (!is_signatures_empty(trx.prunable_data))
       throw std::runtime_error("Signatures must be empty"); // todo
+
    if (trx.compression)
       throw std::runtime_error("Compression must be 0 or none"); // todo
-   if (trx.packed_context_free_data.pos != trx.packed_context_free_data.end)
+
+   if (!is_context_free_data_empty(trx.prunable_data))
       throw std::runtime_error("packed_context_free_data must be empty");
+
    // todo: verify query transaction extension is present, but no others
    // todo: redirect if transaction extension not present?
    if (!unpacked.transaction_extensions.empty())

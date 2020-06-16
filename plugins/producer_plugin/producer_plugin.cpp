@@ -6,6 +6,7 @@
 #include <eosio/chain/transaction_object.hpp>
 #include <eosio/chain/thread_utils.hpp>
 #include <eosio/chain/unapplied_transaction_queue.hpp>
+#include <eosio/resource_monitor_plugin/resource_monitor_plugin.hpp>
 
 #include <fc/io/json.hpp>
 #include <fc/log/logger_config.hpp>
@@ -798,6 +799,10 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
 
       EOS_ASSERT( fc::is_directory(my->_snapshots_dir), snapshot_directory_not_found_exception,
                   "No such directory '${dir}'", ("dir", my->_snapshots_dir.generic_string()) );
+
+      if (auto resmon_plugin = app().find_plugin<resource_monitor_plugin>()) {
+         resmon_plugin->monitor_directory(my->_snapshots_dir);
+      }
    }
 
    my->_incoming_block_subscription = app().get_channel<incoming::channels::block>().subscribe(

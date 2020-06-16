@@ -88,20 +88,25 @@ namespace eosio { namespace chain {
 
       template <typename Stream>
       void write_to(Stream& ds) const {
-         EOS_ASSERT(version >= block_x_start_version, block_log_exception, "this method does not support writeing block log ${version}",
-                    ("version", version));
          ds.write(reinterpret_cast<const char*>(&version), sizeof(version));
-         ds.write(reinterpret_cast<const char*>(&first_block_num), sizeof(first_block_num));
+         if (version != initial_version) {
+            ds.write(reinterpret_cast<const char*>(&first_block_num), sizeof(first_block_num));
 
-         std::visit(overloaded{[&ds](const chain_id_type& id) { ds << id; },
-                               [&ds](const genesis_state& state) {
-                                  auto data = fc::raw::pack(state);
-                                  ds.write(data.data(), data.size());
-                               }},
-                    chain_context);
+            std::visit(overloaded{[&ds](const chain_id_type& id) { ds << id; },
+                                 [&ds](const genesis_state& state) {
+                                    auto data = fc::raw::pack(state);
+                                    ds.write(data.data(), data.size());
+                                 }},
+                     chain_context);
 
-         auto totem = block_log::npos;
-         ds.write(reinterpret_cast<const char*>(&totem), sizeof(totem));
+            auto totem = block_log::npos;
+            ds.write(reinterpret_cast<const char*>(&totem), sizeof(totem));
+         }
+         else {
+            const auto& state = std::get<genesis_state>(chain_context);
+            auto data = fc::raw::pack(state);
+            ds.write(data.data(), data.size());
+         }
       }
    };
 
@@ -634,6 +639,7 @@ namespace eosio { namespace chain {
          bool                      genesis_written_to_block_log = false;
          block_log_preamble        preamble;
          size_t                    stride = std::numeric_limits<size_t>::max();
+         static uint32_t           default_version;
 
          block_log_impl(const fc::path& data_dir, fc::path archive_dir, uint64_t stride, uint16_t max_retained_files);
 
@@ -661,6 +667,7 @@ namespace eosio { namespace chain {
          std::unique_ptr<signed_block> read_block_by_num(uint32_t block_num);
          void                          read_head();
       };
+      uint32_t block_log_impl::default_version = block_log::max_supported_version;
    } // namespace detail
 
    block_log::block_log(const fc::path& data_dir, fc::path archive_dir, uint64_t stride,
@@ -691,6 +698,8 @@ namespace eosio { namespace chain {
       }
       return false;
    }
+
+   void block_log::set_version(uint32_t ver) { detail::block_log_impl::default_version = ver; }
 
    detail::block_log_impl::block_log_impl(const fc::path& data_dir, fc::path archive_dir, uint64_t stride,
                                           uint16_t max_retained_files) {
@@ -852,7 +861,7 @@ namespace eosio { namespace chain {
       block_file.open(fc::cfile::truncate_rw_mode);
       index_file.open(fc::cfile::truncate_rw_mode);
 
-      preamble.version         = block_log::max_supported_version; 
+      preamble.version         = block_log_impl::default_version; 
       preamble.first_block_num = first_bnum;
       preamble.chain_context   = std::move(chain_context);
       preamble.write_to(block_file);
@@ -1170,7 +1179,8 @@ namespace eosio { namespace chain {
       fc::datastream<char*> ds(new_block_file.data(), new_block_file.size());
 
       block_log_preamble preamble;
-      preamble.version         = block_log::max_supported_version;
+      // version 4 or above have different log entry format; therefore version 1 to 3 can only be upgrade up to version 3 format.
+      preamble.version         = archive.log_data.version() < pruned_transaction_version ? genesis_state_or_chain_id_version : block_log::max_supported_version;
       preamble.first_block_num = truncate_at_block;
       preamble.chain_context   = archive.log_data.chain_id();
       preamble.write_to(ds);
@@ -1223,7 +1233,7 @@ namespace eosio { namespace chain {
 
       boost::filesystem::resize_file(archive.block_file_name, to_trim_block_position);
       boost::filesystem::resize_file(archive.index_file_name, index_file_size);
-      ilog("blocks.index has been trimmed to ${index_file_size} bytes", ("index_size", index_file_size));
+      ilog("blocks.index has been trimmed to ${index_file_size} bytes", ("index_file_size", index_file_size));
       return 0;
    }
 

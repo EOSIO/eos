@@ -219,8 +219,11 @@ BOOST_FIXTURE_TEST_CASE(test_restart_from_trimmed_block_log, restart_from_block_
    auto blocks_path = config.blocks_dir;
    remove_all(blocks_path/"reversible");
    BOOST_REQUIRE_NO_THROW(block_log::trim_blocklog_end(config.blocks_dir, cutoff_block_num));
+   block_log log(chain.get_config().blocks_dir);
+   BOOST_CHECK(log.head()->block_num() == cutoff_block_num);
+   BOOST_CHECK(fc::file_size(blocks_path / "blocks.index") == cutoff_block_num * sizeof(uint64_t));
 }
-   
+
 BOOST_FIXTURE_TEST_CASE(test_light_validation_restart_from_block_log, light_validation_restart_from_block_log_test_fixture) {
 }
 
@@ -233,7 +236,8 @@ BOOST_FIXTURE_TEST_CASE(test_light_validation_restart_from_block_log_with_pruned
    BOOST_REQUIRE_NO_THROW(block_log::repair_log(blocks_dir));
 }
 
-BOOST_AUTO_TEST_CASE(test_trim_blocklog_front) {
+
+void trim_blocklog_front() {
    tester chain;
    chain.produce_blocks(10);
    chain.produce_blocks(20);
@@ -242,6 +246,7 @@ BOOST_AUTO_TEST_CASE(test_trim_blocklog_front) {
    namespace bfs = boost::filesystem;
 
    auto  blocks_dir = chain.get_config().blocks_dir;
+   auto  old_index_size = fc::file_size(blocks_dir / "blocks.index");
 
    scoped_temp_path temp1, temp2;
    boost::filesystem::create_directory(temp1.path);
@@ -254,6 +259,26 @@ BOOST_AUTO_TEST_CASE(test_trim_blocklog_front) {
    block_log new_log(temp1.path);
    BOOST_CHECK(new_log.first_block_num() == 10);
    BOOST_CHECK(new_log.head()->block_num() == old_log.head()->block_num());
+
+   int num_blocks_trimmed = 10 - 1;
+   BOOST_CHECK(fc::file_size(temp1.path / "blocks.index") == old_index_size - sizeof(uint64_t) * num_blocks_trimmed);
+}
+
+BOOST_AUTO_TEST_CASE(test_trim_blocklog_front) { trim_blocklog_front(); }
+
+BOOST_AUTO_TEST_CASE(test_trim_blocklog_front_v1) {
+   block_log::set_version(1);
+   trim_blocklog_front();
+}
+
+BOOST_AUTO_TEST_CASE(test_trim_blocklog_front_v2) {
+   block_log::set_version(2);
+   trim_blocklog_front();
+}
+
+BOOST_AUTO_TEST_CASE(test_trim_blocklog_front_v3) {
+   block_log::set_version(3);
+   trim_blocklog_front();
 }
 
 BOOST_AUTO_TEST_CASE(test_split_log) {

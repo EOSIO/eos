@@ -81,6 +81,9 @@ namespace eosio { namespace chain {
          static bool trim_blocklog_front(const fc::path& block_dir, const fc::path& temp_dir, uint32_t truncate_at_block);
          static int  trim_blocklog_end(fc::path block_dir, uint32_t n);
 
+         // used for unit test to generate older version blocklog
+         static void set_version(uint32_t);
+
          /**
           * @param n Only test 1 block out of every n blocks. If n is 0, it is maximum between 1 and the ceiling of the total number blocks divided by 8.
           */

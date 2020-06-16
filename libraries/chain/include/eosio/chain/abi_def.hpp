@@ -143,13 +143,13 @@ extern unsigned char eosio_abi_bin[2132];
 namespace fc {
 
 template<typename ST, typename T>
-datastream<ST>& operator << (datastream<ST>& s, const eosio::chain::may_not_exist<T>& v) {
+ST& operator << (ST& s, const eosio::chain::may_not_exist<T>& v) {
    raw::pack(s, v.value);
    return s;
 }
 
 template<typename ST, typename T>
-datastream<ST>& operator >> (datastream<ST>& s, eosio::chain::may_not_exist<T>& v) {
+ST& operator >> (ST& s, eosio::chain::may_not_exist<T>& v) {
    if (s.remaining())
       raw::unpack(s, v.value);
    return s;
