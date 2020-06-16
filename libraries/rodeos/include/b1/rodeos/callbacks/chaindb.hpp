@@ -443,7 +443,8 @@ struct chaindb_callbacks {
    }                                                                                                                   \
    int32_t db_##NAME##_find_secondary(uint64_t code, uint64_t scope, uint64_t table, legacy_ptr<const TYPE> secondary, \
                                       legacy_ptr<uint64_t> primary) {                                                  \
-      throw std::runtime_error("unimplemented: db_" #NAME "_find_secondary");                                          \
+      auto s = *secondary;                                                                                             \
+      return get_##NAME().lower_bound(code, scope, table, s, *primary, true);                                          \
    }                                                                                                                   \
    int32_t db_##NAME##_lowerbound(uint64_t code, uint64_t scope, uint64_t table, legacy_ptr<TYPE> secondary,           \
                                   legacy_ptr<uint64_t> primary) {                                                      \
@@ -504,11 +505,13 @@ struct chaindb_callbacks {
    }
    int32_t db_idx256_find_secondary(uint64_t code, uint64_t scope, uint64_t table,
                                     legacy_span<const __uint128_t> secondary, legacy_ptr<uint64_t> primary) {
-      throw std::runtime_error("unimplemented: db_idx256_find_secondary");
+      auto cs     = read_cs(secondary);
+      auto result = get_idx256().lower_bound(code, scope, table, cs, *primary, true);
+      return result;
    }
    int32_t db_idx256_lowerbound(uint64_t code, uint64_t scope, uint64_t table, legacy_span<__uint128_t> secondary,
                                 legacy_ptr<uint64_t> primary) {
-      auto cs = read_cs(secondary);
+      auto cs     = read_cs(secondary);
       auto result = get_idx256().lower_bound(code, scope, table, cs, *primary, false);
       write_cs(secondary, cs);
       return result;
