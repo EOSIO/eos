@@ -18,11 +18,13 @@ class TraceApiPluginTest(unittest.TestCase):
     cluster.setWalletMgr(walletMgr)
 
     # kill nodeos and keosd and clean up dir
-    def cleanEnv(self) :
+    def cleanEnv(self, shouldCleanup: bool) :
         self.cluster.killall(allInstances=True)
-        self.cluster.cleanup()
+        if shouldCleanup:
+            self.cluster.cleanup()
         self.walletMgr.killall(allInstances=True)
-        self.walletMgr.cleanup()
+        if shouldCleanup:
+            self.walletMgr.cleanup()
 
     # start keosd and nodeos
     def startEnv(self) :
@@ -43,7 +45,6 @@ class TraceApiPluginTest(unittest.TestCase):
         time.sleep(self.sleep_s)
 
     def get_block(self, params: str, node: Node) -> json:
-        time.sleep(self.sleep_s)
         base_cmd_str = ("curl http://%s:%s/v1/") % (TestHelper.LOCAL_HOST, node.port)
         cmd_str = base_cmd_str + "trace_api/get_block  -X POST -d " + ("'{\"block_num\":%s}'") % params
         return Utils.runCmdReturnJson(cmd_str)
@@ -67,25 +68,39 @@ class TraceApiPluginTest(unittest.TestCase):
 
         self.assertEqual(node.getAccountEosBalanceStr(self.accounts[0].name), Utils.deduceAmount(expectedAmount, xferAmount))
         self.assertEqual(node.getAccountEosBalanceStr(self.accounts[1].name), Utils.addAmount(expectedAmount, xferAmount))
-        ret_json = self.get_block(blockNum, node)
-        print(ret_json)
-        self.assertIn("transactions", ret_json)
+        time.sleep(self.sleep_s)
 
-        isTrxInBlock = False
-        for trx in ret_json["transactions"]:
+        # verify trans via node api before calling trace_api RPC
+        blockFromNode = node.getBlock(blockNum)
+        self.assertIn("transactions", blockFromNode)
+        isTrxInBlockFromNode = False
+        for trx in blockFromNode["transactions"]:
+            self.assertIn("trx", trx)
+            self.assertIn("id", trx["trx"])
+            if (trx["trx"]["id"] == transId) :
+                isTrxInBlockFromNode = True
+                break
+        self.assertTrue(isTrxInBlockFromNode)
+
+        # verify trans via trace_api by calling get_block RPC
+        blockFromTraceApi = self.get_block(blockNum, node)
+        self.assertIn("transactions", blockFromTraceApi)
+        isTrxInBlockFromTraceApi = False
+        for trx in blockFromTraceApi["transactions"]:
             self.assertIn("id", trx)
             if (trx["id"] == transId) :
-                isTrxInBlock = True
-        self.assertTrue(isTrxInBlock)
+                isTrxInBlockFromTraceApi = True
+                break
+        self.assertTrue(isTrxInBlockFromTraceApi)
 
     @classmethod
     def setUpClass(self):
-        self.cleanEnv(self)
+        self.cleanEnv(self, shouldCleanup=True)
         self.startEnv(self)
 
     @classmethod
     def tearDownClass(self):
-        self.cleanEnv(self)
+        self.cleanEnv(self, shouldCleanup=False)   # not cleanup to save log in case for further investigation
 
 if __name__ == "__main__":
     unittest.main()
