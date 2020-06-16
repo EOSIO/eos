@@ -784,7 +784,7 @@ namespace eosio {
       app().post(appbase::priority::high, [this] ()
       {
          try {
-            my->thread_pool.emplace( "http", my->thread_pool_size );
+            my->thread_pool.emplace( "http", my->thread_pool_size, true );
             if(my->listen_endpoint) {
                try {
                   my->create_server_for_endpoint(*my->listen_endpoint, my->server);

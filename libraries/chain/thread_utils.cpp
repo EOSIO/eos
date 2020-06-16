@@ -8,12 +8,15 @@ namespace eosio { namespace chain {
 //
 // named_thread_pool
 //
-named_thread_pool::named_thread_pool( std::string name_prefix, size_t num_threads )
+named_thread_pool::named_thread_pool( std::string name_prefix, size_t num_threads, bool one_io_context )
 {
+   FC_ASSERT( num_threads > 0, "num_threads should not be zero" );
    _ioc_works.emplace();
    for( size_t i = 0; i < num_threads; ++i ) {
-      _iocs.emplace_back(new boost::asio::io_context);
-      _ioc_works->emplace_back(boost::asio::make_work_guard(*_iocs.back()));
+      if( !one_io_context || i == 0) {
+         _iocs.emplace_back( new boost::asio::io_context );
+         _ioc_works->emplace_back( boost::asio::make_work_guard( *_iocs.back() ) );
+      }
       _thread_pool.emplace_back([i, name_prefix, &ioc = *_iocs.back()](){
          std::string tn = name_prefix + "-" + std::to_string( i );
          fc::set_os_thread_name( tn );
@@ -23,8 +26,12 @@ named_thread_pool::named_thread_pool( std::string name_prefix, size_t num_thread
 }
 
 boost::asio::io_context& named_thread_pool::get_executor() {
-   size_t i = _next_ioc.fetch_add(1);
-   return *_iocs.at( i % _iocs.size() );
+   if( _iocs.size() > 1 ) {
+      size_t i = _next_ioc.fetch_add( 1 );
+      return *_iocs.at( i % _iocs.size() );
+   } else {
+      return *_iocs.back();
+   }
 }
 
 named_thread_pool::~named_thread_pool() {

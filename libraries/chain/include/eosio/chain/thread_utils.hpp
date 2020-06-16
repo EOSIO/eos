@@ -17,7 +17,7 @@ namespace eosio { namespace chain {
    public:
       // name_prefix is name appended with -## of thread.
       // short name_prefix (6 chars or under) is recommended as console_appender uses 9 chars for thread name
-      named_thread_pool( std::string name_prefix, size_t num_threads );
+      named_thread_pool( std::string name_prefix, size_t num_threads, bool one_io_context = false );
 
       // calls stop()
       ~named_thread_pool();
