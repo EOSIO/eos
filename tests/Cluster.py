@@ -166,7 +166,7 @@ class Cluster(object):
     # pylint: disable=too-many-statements
     def launch(self, pnodes=1, unstartedNodes=0, totalNodes=1, prodCount=1, topo="mesh", delay=1, onlyBios=False, dontBootstrap=False,
                totalProducers=None, sharedProducers=0, extraNodeosArgs=" --http-max-response-time-ms 990000 ", useBiosBootFile=True, specificExtraNodeosArgs=None, onlySetProds=False,
-               pfSetupPolicy=PFSetupPolicy.FULL, alternateVersionLabelsFile=None, associatedNodeLabels=None, loadSystemContract=True, enableTrace=False):
+               pfSetupPolicy=PFSetupPolicy.FULL, alternateVersionLabelsFile=None, associatedNodeLabels=None, loadSystemContract=True):
         """Launch cluster.
         pnodes: producer nodes count
         unstartedNodes: non-producer nodes that are configured into the launch, but not started.  Should be included in totalNodes.
@@ -251,11 +251,6 @@ class Cluster(object):
             nodeosArgs += " --contracts-console"
         if PFSetupPolicy.hasPreactivateFeature(pfSetupPolicy):
             nodeosArgs += " --plugin eosio::producer_api_plugin"
-
-        if enableTrace :
-            nodeosArgs += " --plugin eosio::trace_api_plugin"
-            nodeosArgs += " --trace-no-abis"
-            nodeosArgs += " --trace-dir=."
 
         if nodeosArgs:
             cmdArr.append("--nodeos")

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import json
 import time
 import unittest
 
@@ -14,7 +15,6 @@ class TraceApiPluginTest(unittest.TestCase):
     cluster=Cluster(walletd=True, defproduceraPrvtKey=None)
     walletMgr=WalletMgr(True)
     accounts = []
-    account_names = ["alice", "bob", "charlie"]
     cluster.setWalletMgr(walletMgr)
 
     # kill nodeos and keosd and clean up dir
@@ -26,19 +26,27 @@ class TraceApiPluginTest(unittest.TestCase):
 
     # start keosd and nodeos
     def startEnv(self) :
-        self.cluster.launch(totalNodes=1, enableTrace=True)
+        account_names = ["alice", "bob", "charlie"]
+        traceNodeosArgs = " --plugin eosio::trace_api_plugin --trace-no-abis --trace-dir=."
+        self.cluster.launch(totalNodes=1, extraNodeosArgs=traceNodeosArgs)
         self.walletMgr.launch()
         testWalletName="testwallet"
         testWallet=self.walletMgr.create(testWalletName, [self.cluster.eosioAccount, self.cluster.defproduceraAccount])
         self.cluster.validateAccounts(None)
-        self.accounts=Cluster.createAccountKeys(len(self.account_names))
+        self.accounts=Cluster.createAccountKeys(len(account_names))
         node = self.cluster.getNode(0)
-        for idx in range(len(self.account_names)):
-            self.accounts[idx].name =  self.account_names[idx]
+        for idx in range(len(account_names)):
+            self.accounts[idx].name =  account_names[idx]
             self.walletMgr.importKey(self.accounts[idx], testWallet)
         for account in self.accounts:
             node.createInitializeAccount(account, self.cluster.eosioAccount, buyRAM=1000000, stakedDeposit=5000000, waitForTransBlock=True, exitOnError=True)
         time.sleep(self.sleep_s)
+
+    def get_block(self, params: str, node: Node) -> json:
+        time.sleep(self.sleep_s)
+        base_cmd_str = ("curl http://%s:%s/v1/") % (TestHelper.LOCAL_HOST, node.port)
+        cmd_str = base_cmd_str + "trace_api/get_block  -X POST -d " + ("'{\"block_num\":%s}'") % params
+        return Utils.runCmdReturnJson(cmd_str)
 
     def test_TraceApi(self) :
         node = self.cluster.getNode(0)
@@ -59,10 +67,8 @@ class TraceApiPluginTest(unittest.TestCase):
 
         self.assertEqual(node.getAccountEosBalanceStr(self.accounts[0].name), Utils.deduceAmount(expectedAmount, xferAmount))
         self.assertEqual(node.getAccountEosBalanceStr(self.accounts[1].name), Utils.addAmount(expectedAmount, xferAmount))
-        time.sleep(self.sleep_s)
-        base_cmd_str = ("curl http://%s:%s/v1/") % (TestHelper.LOCAL_HOST, node.port)
-        cmd_str = base_cmd_str + "trace_api/get_block  -X POST -d " + ("'{\"block_num\":%s}'") % blockNum
-        ret_json = Utils.runCmdReturnJson(cmd_str)
+        ret_json = self.get_block(blockNum, node)
+        print(ret_json)
         self.assertIn("transactions", ret_json)
 
         isTrxInBlock = False
