@@ -130,6 +130,45 @@ class iterator_cache_base {
       return { pos, it };
    }
 
+   template <typename Ship_index_type, typename F1, typename F2>
+   int32_t next_impl(int itr, uint64_t& primary, bool view_it_is_secondary, F1 create_view_it, F2 get_iterator) {
+      if (itr == -1)
+         throw std::runtime_error("increment invalid iterator");
+      if (itr < 0)
+         return -1;
+      if (size_t(itr) >= iterators.size())
+         throw std::runtime_error("increment non-existing iterator");
+      auto& it = iterators[itr];
+      if (it.next >= 0) {
+         primary = iterators[it.next].primary;
+         return it.next;
+      } else if (it.next < -1) {
+         return it.next;
+      }
+      std::optional<chain_kv::view::iterator> view_it = std::move(it.view_it);
+      it.view_it.reset();
+      if (!view_it)
+         view_it = create_view_it(it, true);
+      ++*view_it;
+      if (view_it->is_end()) {
+         it.next = index_to_end_iterator(it.table_index);
+         return it.next;
+      } else {
+         eosio::input_stream                    stream;
+         std::shared_ptr<const chain_kv::bytes> v;
+         if (view_it_is_secondary) {
+            v      = view.get(state_account.value, view_it->get_kv()->value);
+            stream = { v->data(), v->size() };
+         } else {
+            stream = { view_it->get_kv()->value.data(), view_it->get_kv()->value.size() };
+         }
+         auto record = std::get<0>(eosio::from_bin<Ship_index_type>(stream));
+         primary     = record.primary_key;
+         it.next     = get_iterator(it.table_index, primary, std::move(*view_it));
+         return it.next;
+      }
+   } // next_impl
+
    // Precondition: std::numeric_limits<int32_t>::min() < ei < -1
    // Iterator of -1 is reserved for invalid iterators (i.e. when the appropriate table has not yet been created).
    size_t end_iterator_to_index(int32_t ei) const { return (-ei - 2); }
@@ -173,45 +212,25 @@ class iterator_cache : public iterator_cache_base<iterator_cache, chaindb_primar
       return legacy_copy_to_wasm(buffer, buffer_size, it.value.data(), it.value.size());
    }
 
+   auto create_view_it(const iterator& it, bool exists) {
+      const auto&              table_key = tables[it.table_index];
+      chain_kv::view::iterator view_it{ view, state_account.value,
+                                        chain_kv::to_slice(eosio::convert_to_key(std::make_tuple(
+                                              (uint8_t)0x01, eosio::name{ "contract.row" }, eosio::name{ "primary" },
+                                              table_key.code, table_key.table, table_key.scope))) };
+      if (exists)
+         view_it.lower_bound(eosio::convert_to_key(std::make_tuple((uint8_t)0x01, eosio::name{ "contract.row" },
+                                                                   eosio::name{ "primary" }, table_key.code,
+                                                                   table_key.table, table_key.scope, it.primary)));
+      return view_it;
+   }
+
    int db_next_i64(int itr, uint64_t& primary) {
-      if (itr == -1)
-         throw std::runtime_error("increment invalid iterator");
-      if (itr < 0)
-         return -1;
-      if (size_t(itr) >= iterators.size())
-         throw std::runtime_error("increment non-existing iterator");
-      auto& it = iterators[itr];
-      if (it.next >= 0) {
-         primary = iterators[it.next].primary;
-         return it.next;
-      } else if (it.next < -1) {
-         return it.next;
-      }
-      std::optional<chain_kv::view::iterator> view_it = std::move(it.view_it);
-      it.view_it.reset();
-      if (!view_it) {
-         const auto& table_key = tables[it.table_index];
-         view_it =
-               chain_kv::view::iterator{ view, state_account.value,
-                                         chain_kv::to_slice(eosio::convert_to_key(std::make_tuple(
-                                               (uint8_t)0x01, eosio::name{ "contract.row" }, eosio::name{ "primary" },
-                                               table_key.code, table_key.table, table_key.scope))) };
-         view_it->lower_bound(eosio::convert_to_key(std::make_tuple((uint8_t)0x01, eosio::name{ "contract.row" },
-                                                                    eosio::name{ "primary" }, table_key.code,
-                                                                    table_key.table, table_key.scope, it.primary)));
-      }
-      ++*view_it;
-      if (view_it->is_end()) {
-         it.next = index_to_end_iterator(it.table_index);
-         return it.next;
-      } else {
-         eosio::input_stream stream{ view_it->get_kv()->value.data(), view_it->get_kv()->value.size() };
-         auto                row = std::get<0>(eosio::from_bin<contract_row>(stream));
-         primary                 = row.primary_key;
-         it.next                 = get_iterator(it.table_index, primary, std::move(*view_it));
-         return it.next;
-      }
-   } // db_next_i64
+      return next_impl<contract_row>(
+            itr, primary, false,
+            [this](auto&&... args) { return create_view_it(std::forward<decltype(args)>(args)...); },
+            [this](auto&&... args) { return get_iterator(std::forward<decltype(args)>(args)...); });
+   }
 
    int db_previous_i64(int itr, uint64_t& primary) {
       if (itr == -1)
@@ -234,18 +253,8 @@ class iterator_cache : public iterator_cache_base<iterator_cache, chaindb_primar
       }
       std::optional<chain_kv::view::iterator> view_it = std::move(it->view_it);
       it->view_it.reset();
-      if (!view_it) {
-         const auto& table_key = tables[it->table_index];
-         view_it =
-               chain_kv::view::iterator{ view, state_account.value,
-                                         chain_kv::to_slice(eosio::convert_to_key(std::make_tuple( //
-                                               (uint8_t)0x01, eosio::name{ "contract.row" }, eosio::name{ "primary" },
-                                               table_key.code, table_key.table, table_key.scope))) };
-         if (itr >= 0)
-            view_it->lower_bound(eosio::convert_to_key(std::make_tuple((uint8_t)0x01, eosio::name{ "contract.row" },
-                                                                       eosio::name{ "primary" }, table_key.code,
-                                                                       table_key.table, table_key.scope, it->primary)));
-      }
+      if (!view_it)
+         view_it = create_view_it(*it, itr >= 0);
       --*view_it;
       if (view_it->is_end()) {
          it->prev = -1;
@@ -324,8 +333,16 @@ class secondary_iterator_cache : public iterator_cache_base<secondary_iterator_c
       return { pos, it };
    }
 
-   int32_t get_iterator(int32_t table_index, chain_kv::view::iterator&& view_it, secondary_type& secondary,
-                        uint64_t& primary, bool require_exact) {
+   int32_t get_primary_iterator(int32_t table_index, uint64_t key, chain_kv::view::iterator&& view_it,
+                                bool require_match_primary = false) {
+      return base::template get_iterator_impl<Ship_index_type>(
+            table_index, key, std::move(view_it), base::primary_key_to_iterator_index, false,
+            [&](auto& record) { return !require_match_primary || record.primary_key == key; },
+            [&](auto& record) { return record.primary_key; });
+   }
+
+   int32_t get_secondary_iterator(int32_t table_index, chain_kv::view::iterator&& view_it, secondary_type& secondary,
+                                  uint64_t& primary, bool require_exact) {
       auto itr = base::template get_iterator_impl<Ship_index_type>(
             table_index, whole_key{ secondary, 0 }, std::move(view_it), secondary_to_iterator_index, true,
             [&](auto& record) { return !require_exact || record.secondary_key == secondary; },
@@ -337,6 +354,26 @@ class secondary_iterator_cache : public iterator_cache_base<secondary_iterator_c
       secondary = base::iterators[itr].secondary;
       primary   = base::iterators[itr].primary;
       return itr;
+   }
+
+   auto create_view_it(const iterator& it, bool exists) {
+      const auto&              table_key = base::tables[it.table_index];
+      chain_kv::view::iterator view_it{ base::view, state_account.value,
+                                        chain_kv::to_slice(eosio::convert_to_key(
+                                              std::make_tuple((uint8_t)0x01, table_name, eosio::name{ "secondary" },
+                                                              table_key.code, table_key.table, table_key.scope))) };
+      if (exists)
+         view_it.lower_bound(eosio::convert_to_key(
+               std::make_tuple((uint8_t)0x01, table_name, eosio::name{ "secondary" }, table_key.code, table_key.table,
+                               table_key.scope, it.secondary, it.primary)));
+      return view_it;
+   }
+
+   int next(int itr, uint64_t& primary) {
+      return base::template next_impl<Ship_index_type>(
+            itr, primary, true,
+            [this](auto&&... args) { return create_view_it(std::forward<decltype(args)>(args)...); },
+            [this](auto&&... args) { return get_primary_iterator(std::forward<decltype(args)>(args)...); });
    }
 
    int32_t lower_bound(uint64_t code, uint64_t scope, uint64_t table, secondary_type& secondary, uint64_t& primary,
@@ -354,7 +391,7 @@ class secondary_iterator_cache : public iterator_cache_base<secondary_iterator_c
                                          (uint8_t)0x01, table_name, eosio::name{ "secondary" }, code, table, scope))) };
       it.lower_bound(eosio::convert_to_key(
             std::make_tuple((uint8_t)0x01, table_name, eosio::name{ "secondary" }, code, table, scope, secondary)));
-      return get_iterator(table_index, std::move(it), secondary, primary, require_exact);
+      return get_secondary_iterator(table_index, std::move(it), secondary, primary, require_exact);
    }
 
    int32_t upper_bound(uint64_t code, uint64_t scope, uint64_t table, secondary_type& secondary, uint64_t& primary) {
@@ -366,7 +403,7 @@ class secondary_iterator_cache : public iterator_cache_base<secondary_iterator_c
                                          (uint8_t)0x01, table_name, eosio::name{ "secondary" }, code, table, scope))) };
       it.lower_bound(eosio::convert_to_key(std::make_tuple((uint8_t)0x01, table_name, eosio::name{ "secondary" }, code,
                                                            table, scope, secondary, ~uint64_t(0), uint8_t(0))));
-      return get_iterator(table_index, std::move(it), secondary, primary, false);
+      return get_secondary_iterator(table_index, std::move(it), secondary, primary, false);
    }
 };
 
@@ -444,7 +481,7 @@ struct chaindb_callbacks {
    }                                                                                                                   \
    void    db_##NAME##_remove(int32_t iterator) { throw std::runtime_error("unimplemented: db_" #NAME "_remove"); }    \
    int32_t db_##NAME##_next(int32_t iterator, legacy_ptr<uint64_t> primary) {                                          \
-      throw std::runtime_error("unimplemented: db_" #NAME "_next");                                                    \
+      return get_##NAME().next(iterator, *primary);                                                                    \
    }                                                                                                                   \
    int32_t db_##NAME##_previous(int32_t iterator, legacy_ptr<uint64_t> primary) {                                      \
       throw std::runtime_error("unimplemented: db_" #NAME "_previous");                                                \
@@ -506,7 +543,7 @@ struct chaindb_callbacks {
    }
    void    db_idx256_remove(int32_t iterator) { throw std::runtime_error("unimplemented: db_idx256_remove"); }
    int32_t db_idx256_next(int32_t iterator, legacy_ptr<uint64_t> primary) {
-      throw std::runtime_error("unimplemented: db_idx256_next");
+      return get_idx256().next(iterator, *primary);
    }
    int32_t db_idx256_previous(int32_t iterator, legacy_ptr<uint64_t> primary) {
       throw std::runtime_error("unimplemented: db_idx256_previous");

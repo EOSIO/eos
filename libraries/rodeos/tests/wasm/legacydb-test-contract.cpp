@@ -72,6 +72,14 @@ int end_i64(name code, name scope, name table) { return db_end_i64(code.value, s
                             " secondary: " + convert_to_json(secondary) + " primary: " + convert_to_json(primary) +    \
                             " expected_primary: " + convert_to_json(expected_primary) + "\n");                         \
       }                                                                                                                \
+      static void check_next(int32_t iterator, int expected_itr, uint64_t expected_primary) {                          \
+         uint64_t primary = 0xfeedbeef;                                                                                \
+         auto     itr     = next(iterator, primary);                                                                   \
+         eosio::check(itr == expected_itr && primary == expected_primary,                                              \
+                      "check_next failure: itr: " + convert_to_json(itr) + " expected_itr: " +                         \
+                            convert_to_json(expected_itr) + " primary: " + convert_to_json(primary) +                  \
+                            " expected_primary: " + convert_to_json(expected_primary) + "\n");                         \
+      }                                                                                                                \
       static void check_lowerbound(name code, name scope, name table, int expected_itr, uint64_t expected_primary,     \
                                    const TYPE& secondary_search, const TYPE& expected_secondary) {                     \
          uint64_t primary   = 0xfeedbeef;                                                                              \
@@ -154,25 +162,23 @@ void check_end_i64(name code, name scope, name table, int expected_itr) {
 }
 
 void check_next_i64(int itr, int expected_itr, uint64_t expected_id) {
-   uint64_t id       = 0;
+   uint64_t id       = 0xfeedbeef;
    auto     next_itr = db_next_i64(itr, &id);
    eosio::check(next_itr == expected_itr, "check_next_i64 failure: wrong iterator. itr: " + to_string(itr) + " next: " +
                                                 to_string(next_itr) + " expected: " + to_string(expected_itr) + "\n");
-   if (expected_itr >= 0)
-      eosio::check(id == expected_id, "check_next_i64 failure: wrong id. itr: " + to_string(itr) +
-                                            " next: " + to_string(next_itr) + " id: " + to_string(id) +
-                                            " expected: " + to_string(expected_id));
+   eosio::check(id == expected_id, "check_next_i64 failure: wrong id. itr: " + to_string(itr) +
+                                         " next: " + to_string(next_itr) + " id: " + to_string(id) +
+                                         " expected: " + to_string(expected_id));
 }
 
 void check_prev_i64(int itr, int expected_itr, uint64_t expected_id) {
-   uint64_t id       = 0;
+   uint64_t id       = 0xfeedbeef;
    auto     next_itr = db_previous_i64(itr, &id);
    eosio::check(next_itr == expected_itr, "check_prev_i64 failure: wrong iterator. itr: " + to_string(itr) + " prev: " +
                                                 to_string(next_itr) + " expected: " + to_string(expected_itr) + "\n");
-   if (expected_itr >= 0)
-      eosio::check(id == expected_id, "check_prev_i64 failure: wrong id. itr: " + to_string(itr) +
-                                            " prev: " + to_string(next_itr) + " id: " + to_string(id) +
-                                            " expected: " + to_string(expected_id));
+   eosio::check(id == expected_id, "check_prev_i64 failure: wrong id. itr: " + to_string(itr) +
+                                         " prev: " + to_string(next_itr) + " id: " + to_string(id) +
+                                         " expected: " + to_string(expected_id));
 }
 
 name p(name prefix, name suffix) { return name{ prefix.value | (suffix.value >> 10) }; }
@@ -204,6 +210,13 @@ void check_lowerbound_multiple(name code, name scope, name table, int expected_i
                                 dbl_expected);
    idx256::check_lowerbound(code, p("d"_n, scope), p("d"_n, table), expected_itr, expected_primary, to_cs(cs_search),
                             to_cs(cs_expected));
+}
+
+void check_next_multiple(int32_t iterator, int expected_itr, uint64_t expected_primary) {
+   idx64::check_next(iterator, expected_itr, expected_primary);
+   idx128::check_next(iterator, expected_itr, expected_primary);
+   idx_double::check_next(iterator, expected_itr, expected_primary);
+   idx256::check_next(iterator, expected_itr, expected_primary);
 }
 
 void check_upperbound_multiple(name code, name scope, name table, int expected_itr, uint64_t expected_primary,
@@ -366,15 +379,22 @@ void legacydb_contract::read() {
    check_next_i64(1, 2, 22);
    check_next_i64(2, 3, 23);
    check_next_i64(3, 4, 24);
-   check_next_i64(4, -2, 0);
-   check_next_i64(-2, -1, 0);
+   check_next_i64(4, -2, 0xfeedbeef);
+   check_next_i64(-2, -1, 0xfeedbeef);
+
+   check_next_multiple(0, 1, 21);
+   check_next_multiple(1, 2, 22);
+   check_next_multiple(2, 3, 23);
+   check_next_multiple(3, 4, 24);
+   check_next_multiple(4, -2, 0xfeedbeef);
+   check_next_multiple(-2, -1, 0xfeedbeef);
 
    check_prev_i64(-2, 4, 24);
    check_prev_i64(4, 3, 23);
    check_prev_i64(3, 2, 22);
    check_prev_i64(2, 1, 21);
    check_prev_i64(1, 0, 20);
-   check_prev_i64(0, -1, 0);
+   check_prev_i64(0, -1, 0xfeedbeef);
 
    /////////////////////////////////
    // find items out of order -> produces iterator indexes out of order
@@ -421,15 +441,22 @@ void legacydb_contract::read() {
    check_next_i64(5, 7, 32);
    check_next_i64(7, 6, 33);
    check_next_i64(6, 8, 34);
-   check_next_i64(8, -3, 0);
-   check_next_i64(-3, -1, 0);
+   check_next_i64(8, -3, 0xfeedbeef);
+   check_next_i64(-3, -1, 0xfeedbeef);
+
+   check_next_multiple(9, 5, 31);
+   check_next_multiple(5, 7, 32);
+   check_next_multiple(7, 6, 33);
+   check_next_multiple(6, 8, 34);
+   check_next_multiple(8, -3, 0xfeedbeef);
+   check_next_multiple(-3, -1, 0xfeedbeef);
 
    check_prev_i64(-3, 8, 34);
    check_prev_i64(8, 6, 33);
    check_prev_i64(6, 7, 32);
    check_prev_i64(7, 5, 31);
    check_prev_i64(5, 9, 30);
-   check_prev_i64(9, -1, 0);
+   check_prev_i64(9, -1, 0xfeedbeef);
 
    /////////////////////////////////
    // iterate through table that has been only partially searched through
@@ -442,15 +469,15 @@ void legacydb_contract::read() {
    check_next_i64(12, 13, 42);
    check_next_i64(13, 11, 43);
    check_next_i64(11, 14, 44);
-   check_next_i64(14, -4, 0);
-   check_next_i64(-4, -1, 0);
+   check_next_i64(14, -4, 0xfeedbeef);
+   check_next_i64(-4, -1, 0xfeedbeef);
 
    check_prev_i64(-4, 14, 44);
    check_prev_i64(14, 11, 43);
    check_prev_i64(11, 13, 42);
    check_prev_i64(13, 12, 41);
    check_prev_i64(12, 10, 40);
-   check_prev_i64(10, -1, 0);
+   check_prev_i64(10, -1, 0xfeedbeef);
 
    check_lowerbound_i64(get_self(), "scope1"_n, "table3"_n, 40, 10, data_0);
    check_lowerbound_i64(get_self(), "scope1"_n, "table3"_n, 0, 10, data_0);
@@ -480,14 +507,14 @@ void legacydb_contract::read() {
    check_prev_i64(16, 18, 52);
    check_prev_i64(18, 19, 51);
    check_prev_i64(19, 15, 50);
-   check_prev_i64(15, -1, 0);
+   check_prev_i64(15, -1, 0xfeedbeef);
 
    check_next_i64(15, 19, 51);
    check_next_i64(19, 18, 52);
    check_next_i64(18, 16, 53);
    check_next_i64(16, 17, 54);
-   check_next_i64(17, -5, 0);
-   check_next_i64(-5, -1, 0);
+   check_next_i64(17, -5, 0xfeedbeef);
+   check_next_i64(-5, -1, 0xfeedbeef);
 
    check_find_i64(get_self(), "scope2"_n, "table1"_n, 0, -5, {});
    check_find_i64(get_self(), "scope2"_n, "table1"_n, 50, 15, data_0);
@@ -567,6 +594,8 @@ void legacydb_contract::read() {
 
    // TODO: verify secondaries doen't share itr indexes with each other or with primary
    // TODO: verify secondary order when it doesn't match primary order
+   // TODO: duplicate secondaries
+
 } // legacydb_contract::read()
 
 EOSIO_ACTION_DISPATCHER(legacydb::actions)
