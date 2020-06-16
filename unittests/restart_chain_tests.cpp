@@ -370,10 +370,15 @@ BOOST_FIXTURE_TEST_CASE(restart_from_block_log_with_incomplete_head,restart_from
    logfile.write(random_data, sizeof(random_data));
 }
 
+struct blocklog_version_setter {
+   blocklog_version_setter(uint32_t ver) { block_log::set_version(ver); };
+   ~blocklog_version_setter() { block_log::set_version(block_log::max_supported_version); };
+};
+
 BOOST_AUTO_TEST_CASE(test_split_from_v1_log) {
    namespace bfs = boost::filesystem;
    fc::temp_directory temp_dir;
-   block_log::set_version(1); 
+   blocklog_version_setter set_version(1); 
    tester chain(
          temp_dir,
          [](controller::config& config) {
@@ -387,11 +392,10 @@ BOOST_AUTO_TEST_CASE(test_split_from_v1_log) {
    BOOST_CHECK( chain.control->fetch_block_by_number(21)->block_num() == 21 );
    BOOST_CHECK( chain.control->fetch_block_by_number(41)->block_num() == 41 );
    BOOST_CHECK( chain.control->fetch_block_by_number(75)->block_num() == 75 );
-   block_log::set_version(block_log::max_supported_version); 
 }
 
 void trim_blocklog_front(uint32_t version) {
-   block_log::set_version(version); 
+   blocklog_version_setter set_version(version); 
    tester chain;
    chain.produce_blocks(10);
    chain.produce_blocks(20);
@@ -418,7 +422,6 @@ void trim_blocklog_front(uint32_t version) {
 
    int num_blocks_trimmed = 10 - 1;
    BOOST_CHECK(fc::file_size(temp1.path / "blocks.index") == old_index_size - sizeof(uint64_t) * num_blocks_trimmed);
-   block_log::set_version(block_log::max_supported_version); 
 }
 
 BOOST_AUTO_TEST_CASE(test_trim_blocklog_front) { 
