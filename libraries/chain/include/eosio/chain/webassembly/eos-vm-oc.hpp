@@ -307,6 +307,8 @@ auto get_ct_args(std::index_sequence<Is...>) {
 }
 
 struct result_resolver {
+   // Suppress "expression result unused" warnings
+   result_resolver(eos_vm_oc_type_converter& tc) : tc(tc) {}
    template<typename T>
    auto operator,(T&& res) {
       return make_native_type(vm::detail::resolve_result(tc, static_cast<T&&>(res)));
