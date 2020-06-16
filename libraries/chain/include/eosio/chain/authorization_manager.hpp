@@ -61,7 +61,7 @@ namespace eosio { namespace chain {
           * @param code_account The account which publishes the contract that handles the message
           * @param type The type of message
           */
-         optional<permission_name> lookup_minimum_permission( account_name authorizer_account,
+         std::optional<permission_name> lookup_minimum_permission( account_name authorizer_account,
                                                               scope_name code_account,
                                                               action_name type
                                                             )const;
@@ -126,7 +126,7 @@ namespace eosio { namespace chain {
          void             check_unlinkauth_authorization( const unlinkauth& unlink, const vector<permission_level>& auths )const;
          fc::microseconds check_canceldelay_authorization( const canceldelay& cancel, const vector<permission_level>& auths )const;
 
-         optional<permission_name> lookup_linked_permission( account_name authorizer_account,
+         std::optional<permission_name> lookup_linked_permission( account_name authorizer_account,
                                                              scope_name code_account,
                                                              action_name type
                                                            )const;

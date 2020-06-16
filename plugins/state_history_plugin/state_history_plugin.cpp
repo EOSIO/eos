@@ -42,12 +42,12 @@ auto catch_and_log(F f) {
 
 struct state_history_plugin_impl : std::enable_shared_from_this<state_history_plugin_impl> {
    chain_plugin*                                              chain_plug = nullptr;
-   fc::optional<state_history_traces_log>                     trace_log;
-   fc::optional<state_history_chain_state_log>                chain_state_log;
+   std::optional<state_history_traces_log>                     trace_log;
+   std::optional<state_history_chain_state_log>                chain_state_log;
    bool                                                       stopping = false;
-   fc::optional<scoped_connection>                            applied_transaction_connection;
-   fc::optional<scoped_connection>                            block_start_connection;
-   fc::optional<scoped_connection>                            accepted_block_connection;
+   std::optional<scoped_connection>                            applied_transaction_connection;
+   std::optional<scoped_connection>                            block_start_connection;
+   std::optional<scoped_connection>                            accepted_block_connection;
    string                                                     endpoint_address = "0.0.0.0";
    uint16_t                                                   endpoint_port    = 8080;
    std::unique_ptr<tcp::acceptor>                             acceptor;
@@ -60,7 +60,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       return {};
    }
 
-   fc::optional<chain::block_id_type> get_block_id(uint32_t block_num) {
+   std::optional<chain::block_id_type> get_block_id(uint32_t block_num) {
       if (trace_log && block_num >= trace_log->begin_block() && block_num < trace_log->end_block())
          return trace_log->get_block_id(block_num);
       if (chain_state_log && block_num >= chain_state_log->begin_block() && block_num < chain_state_log->end_block())
@@ -78,7 +78,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       bool                                       sending  = false;
       bool                                       sent_abi = false;
       std::vector<std::vector<char>>             send_queue;
-      fc::optional<get_blocks_request_v0>        current_request;
+      std::optional<get_blocks_request_v0>        current_request;
       bool                                       need_to_send_update = false;
 
       session(std::shared_ptr<state_history_plugin_impl> plugin)
@@ -171,7 +171,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
             if (req.start_block_num <= cp.block_num)
                continue;
             auto id = plugin->get_block_id(cp.block_num);
-            if (!id || *id != cp.block_id)
+            if (!id.has_value() || *id != cp.block_id)
                req.start_block_num = std::min(req.start_block_num, cp.block_num);
 
             if (!id) {
@@ -188,7 +188,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
 
       void operator()(get_blocks_ack_request_v0& req) {
          fc_ilog(_log, "received get_blocks_ack_request_v0 = ${req}", ("req",req));
-         if (!current_request) {
+         if (!current_request.has_value()) {
             fc_dlog(_log, " no current get_blocks_request_v0, discarding the get_blocks_ack_request_v0");
             return;
          }
@@ -198,7 +198,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
 
       void send_update(get_blocks_result_v1&& result) {
          need_to_send_update = true;
-         if (!send_queue.empty() || !current_request || !current_request->max_messages_in_flight)
+         if (!send_queue.empty() || !current_request.has_value() || !current_request->max_messages_in_flight)
             return;
          auto& chain = plugin->chain_plug->chain();
          result.last_irreversible = {chain.last_irreversible_block_num(), chain.last_irreversible_block_id()};
@@ -233,7 +233,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
 
       void send_update(const block_state_ptr& block_state) {
          need_to_send_update = true;
-         if (!send_queue.empty() || !current_request || !current_request->max_messages_in_flight)
+         if (!send_queue.empty() || !current_request.has_value() || !current_request->max_messages_in_flight)
             return;
          get_blocks_result_v1 result;
          result.head = {block_state->block_num, block_state->id};
@@ -243,7 +243,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       void send_update(bool changed = false) {
          if (changed)
             need_to_send_update = true;
-         if (!send_queue.empty() || !need_to_send_update || !current_request ||
+         if (!send_queue.empty() || !need_to_send_update || !current_request.has_value() ||
              !current_request->max_messages_in_flight)
             return;
          auto& chain = plugin->chain_plug->chain();

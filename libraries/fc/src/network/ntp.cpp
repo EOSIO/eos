@@ -243,11 +243,11 @@ namespace fc
     my->_ntp_thread.async( [=](){ my->request_now(); } ).get();
   }
 
-  optional<time_point> ntp::get_time()const
+  std::optional<time_point> ntp::get_time()const
   {
     if( my->_last_ntp_delta_initialized )
       return fc::time_point::now() + fc::microseconds(my->_last_ntp_delta_microseconds);
-    return optional<time_point>();
+    return std::optional<time_point>();
   }
 
 } //namespace fc

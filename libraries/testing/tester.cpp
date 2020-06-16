@@ -110,14 +110,14 @@ namespace eosio { namespace testing {
    protocol_feature_set make_protocol_feature_set(const subjective_restriction_map& custom_subjective_restrictions) {
       protocol_feature_set pfs;
 
-      map< builtin_protocol_feature_t, optional<digest_type> > visited_builtins;
+      map< builtin_protocol_feature_t, std::optional<digest_type> > visited_builtins;
 
       std::function<digest_type(builtin_protocol_feature_t)> add_builtins =
       [&pfs, &visited_builtins, &add_builtins, &custom_subjective_restrictions]
       ( builtin_protocol_feature_t codename ) -> digest_type {
-         auto res = visited_builtins.emplace( codename, optional<digest_type>() );
+         auto res = visited_builtins.emplace( codename, std::optional<digest_type>() );
          if( !res.second ) {
-            EOS_ASSERT( res.first->second, protocol_feature_exception,
+            EOS_ASSERT( res.first->second.has_value(), protocol_feature_exception,
                         "invariant failure: cycle found in builtin protocol feature dependencies"
             );
             return *res.first->second;
@@ -194,7 +194,7 @@ namespace eosio { namespace testing {
 
       auto schedule_preactivate_protocol_feature = [&]() {
          auto preactivate_feature_digest = pfm.get_builtin_digest(builtin_protocol_feature_t::preactivate_feature);
-         FC_ASSERT( preactivate_feature_digest, "PREACTIVATE_FEATURE not found" );
+         FC_ASSERT( preactivate_feature_digest.has_value(), "PREACTIVATE_FEATURE not found" );
          schedule_protocol_features_wo_preactivation( { *preactivate_feature_digest } );
       };
 
@@ -265,14 +265,14 @@ namespace eosio { namespace testing {
       open( make_protocol_feature_set(), genesis );
    }
 
-   void base_tester::open( fc::optional<chain_id_type> expected_chain_id ) {
+   void base_tester::open( std::optional<chain_id_type> expected_chain_id ) {
       open( make_protocol_feature_set(), expected_chain_id );
    }
 
-   void base_tester::open( protocol_feature_set&& pfs, fc::optional<chain_id_type> expected_chain_id, const std::function<void()>& lambda ) {
-      if( !expected_chain_id ) {
+   void base_tester::open( protocol_feature_set&& pfs, std::optional<chain_id_type> expected_chain_id, const std::function<void()>& lambda ) {
+      if( !expected_chain_id.has_value() ) {
          expected_chain_id = controller::extract_chain_id_from_db( cfg.state_dir );
-         if( !expected_chain_id ) {
+         if( !expected_chain_id.has_value() ) {
             if( fc::is_regular_file( cfg.blocks_dir / "blocks.log" ) ) {
                expected_chain_id = block_log::extract_chain_id( cfg.blocks_dir );
             } else {
@@ -313,7 +313,7 @@ namespace eosio { namespace testing {
       });
    }
 
-   void base_tester::open( protocol_feature_set&& pfs, fc::optional<chain_id_type> expected_chain_id ) {
+   void base_tester::open( protocol_feature_set&& pfs, std::optional<chain_id_type> expected_chain_id ) {
       open(std::move(pfs), expected_chain_id, [&control=this->control]() {
          control->startup( [](){}, []() { return false; } );
       });
@@ -1166,7 +1166,7 @@ namespace eosio { namespace testing {
       [&pfm, &pfs, current_block_num, current_block_time, &preactivation_set, &preactivations, &add_digests]
       ( const digest_type& feature_digest ) {
          const auto& pf = pfs.get_protocol_feature( feature_digest );
-         FC_ASSERT( pf.builtin_feature, "called add_digests on a non-builtin protocol feature" );
+         FC_ASSERT( pf.builtin_feature.has_value(), "called add_digests on a non-builtin protocol feature" );
          if( !pf.enabled || pf.earliest_allowed_activation_time > current_block_time
              || pfm.is_builtin_activated( *pf.builtin_feature, current_block_num ) ) return;
 
@@ -1182,7 +1182,7 @@ namespace eosio { namespace testing {
 
       for( const auto& f : builtin_protocol_feature_codenames ) {
          auto digest = pfs.get_builtin_digest( f.first );
-         if( !digest ) continue;
+         if( !digest.has_value() ) continue;
          add_digests( *digest );
       }
 

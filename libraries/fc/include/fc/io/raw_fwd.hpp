@@ -83,9 +83,9 @@ namespace fc {
     template<typename Stream> inline void unpack( Stream& s, ip::endpoint& v );
 
 
-    template<typename Stream, typename T> void unpack( Stream& s, fc::optional<T>& v );
+    template<typename Stream, typename T> void unpack( Stream& s, std::optional<T>& v );
     template<typename Stream, typename T> void unpack( Stream& s, const T& v );
-    template<typename Stream, typename T> void pack( Stream& s, const fc::optional<T>& v );
+    template<typename Stream, typename T> void pack( Stream& s, const std::optional<T>& v );
     template<typename Stream, typename T> void pack( Stream& s, const safe<T>& v );
     template<typename Stream, typename T> void unpack( Stream& s, fc::safe<T>& v );
 

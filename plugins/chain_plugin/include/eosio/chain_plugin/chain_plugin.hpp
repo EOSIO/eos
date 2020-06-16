@@ -30,7 +30,6 @@ namespace eosio {
    using chain::public_key_type;
    using chain::transaction;
    using chain::transaction_id_type;
-   using fc::optional;
    using boost::container::flat_set;
    using chain::asset;
    using chain::symbol;
@@ -110,16 +109,16 @@ public:
       uint64_t                block_net_limit = 0;
       //string                  recent_slots;
       //double                  participation_rate = 0;
-      optional<string>        server_version_string;
-      optional<uint32_t>              fork_db_head_block_num;
-      optional<chain::block_id_type>  fork_db_head_block_id;
-      optional<string>        server_full_version_string;
+      std::optional<string>        server_version_string;
+      std::optional<uint32_t>              fork_db_head_block_num;
+      std::optional<chain::block_id_type>  fork_db_head_block_id;
+      std::optional<string>        server_full_version_string;
    };
    get_info_results get_info(const get_info_params&) const;
 
    struct get_activated_protocol_features_params {
-      optional<uint32_t>  lower_bound;
-      optional<uint32_t>  upper_bound;
+      std::optional<uint32_t>  lower_bound;
+      std::optional<uint32_t>  upper_bound;
       uint32_t            limit = 10;
       bool                search_by_block_num = false;
       bool                reverse = false;
@@ -127,7 +126,7 @@ public:
 
    struct get_activated_protocol_features_results {
       fc::variants        activated_protocol_features;
-      optional<uint32_t>  more;
+      std::optional<uint32_t>  more;
    };
 
    get_activated_protocol_features_results get_activated_protocol_features( const get_activated_protocol_features_params& params )const;
@@ -141,8 +140,8 @@ public:
       int64_t used = 0;
       int64_t available = 0;
       int64_t max = 0;
-      optional<chain::block_timestamp_type> last_usage_update_time;    // optional for backward nodeos support
-      optional<int64_t> current_used;  // optional for backward nodeos support
+      std::optional<chain::block_timestamp_type> last_usage_update_time;    // optional for backward nodeos support
+      std::optional<int64_t> current_used;  // optional for backward nodeos support
       void set( const chain::resource_limits::account_resource_limit& arl)
       {
          used = arl.used;
@@ -162,7 +161,7 @@ public:
       fc::time_point             last_code_update;
       fc::time_point             created;
 
-      optional<asset>            core_liquid_balance;
+      std::optional<asset>            core_liquid_balance;
 
       int64_t                    ram_quota  = 0;
       int64_t                    net_weight = 0;
@@ -183,7 +182,7 @@ public:
 
    struct get_account_params {
       name             account_name;
-      optional<symbol> expected_core_symbol;
+      std::optional<symbol> expected_core_symbol;
    };
    get_account_results get_account( const get_account_params& params )const;
 
@@ -193,7 +192,7 @@ public:
       string                 wast;
       string                 wasm;
       fc::sha256             code_hash;
-      optional<abi_def>      abi;
+      std::optional<abi_def>      abi;
    };
 
    struct get_code_params {
@@ -212,7 +211,7 @@ public:
 
    struct get_abi_results {
       name                   account_name;
-      optional<abi_def>      abi;
+      std::optional<abi_def>      abi;
    };
 
    struct get_abi_params {
@@ -231,14 +230,14 @@ public:
 
    struct get_raw_abi_params {
       name                   account_name;
-      optional<fc::sha256>   abi_hash;
+      std::optional<fc::sha256>   abi_hash;
    };
 
    struct get_raw_abi_results {
       name                   account_name;
       fc::sha256             code_hash;
       fc::sha256             abi_hash;
-      optional<chain::blob>  abi;
+      std::optional<chain::blob>  abi;
    };
 
 
@@ -319,8 +318,8 @@ public:
       string      key_type;  // type of key specified by index_position
       string      index_position; // 1 - primary (first), 2 - secondary index (in order defined by multi_index), 3 - third index, etc
       string      encode_type{"dec"}; //dec, hex , default=dec
-      optional<bool>  reverse;
-      optional<bool>  show_payer; // show RAM pyer
+      std::optional<bool>  reverse;
+      std::optional<bool>  show_payer; // show RAM pyer
     };
 
    struct get_table_rows_result {
@@ -337,7 +336,7 @@ public:
       string      lower_bound; // lower bound of scope, optional
       string      upper_bound; // upper bound of scope, optional
       uint32_t    limit = 10;
-      optional<bool>  reverse;
+      std::optional<bool>  reverse;
    };
    struct get_table_by_scope_result_row {
       name        code;
@@ -356,7 +355,7 @@ public:
    struct get_currency_balance_params {
       name             code;
       name             account;
-      optional<string> symbol;
+      std::optional<string> symbol;
    };
 
    vector<asset> get_currency_balance( const get_currency_balance_params& params )const;
@@ -734,7 +733,7 @@ public:
 
    static bool recover_reversible_blocks( const fc::path& db_dir,
                                           uint32_t cache_size,
-                                          optional<fc::path> new_db_dir = optional<fc::path>(),
+                                          std::optional<fc::path> new_db_dir = std::optional<fc::path>(),
                                           uint32_t truncate_at_block = 0
                                         );
 

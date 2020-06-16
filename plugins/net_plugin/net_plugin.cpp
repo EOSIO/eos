@@ -270,7 +270,7 @@ namespace eosio {
       compat::channels::transaction_ack::channel_type::handle  incoming_transaction_ack_subscription;
 
       uint16_t                                  thread_pool_size = 2;
-      optional<eosio::chain::named_thread_pool> thread_pool;
+      std::optional<eosio::chain::named_thread_pool> thread_pool;
 
    private:
       mutable std::mutex            chain_info_mtx; // protects chain_*
@@ -551,7 +551,7 @@ namespace eosio {
 
       void update_endpoints();
 
-      optional<peer_sync_state>    peer_requested;  // this peer is requesting info from us
+      std::optional<peer_sync_state>    peer_requested;  // this peer is requesting info from us
 
       std::atomic<bool>                         socket_open{false};
 
@@ -588,7 +588,7 @@ namespace eosio {
       std::atomic<go_away_reason>           no_retry{no_reason};
 
       mutable std::mutex          conn_mtx; //< mtx for last_req .. local_endpoint_port
-      optional<request_message>   last_req;
+      std::optional<request_message>   last_req;
       handshake_message           last_handshake_recv;
       handshake_message           last_handshake_sent;
       block_id_type               fork_head;
@@ -935,7 +935,7 @@ namespace eosio {
       bool has_last_req = false;
       {
          std::lock_guard<std::mutex> g_conn( self->conn_mtx );
-         has_last_req = !!self->last_req;
+         has_last_req = self->last_req.has_value();
          self->last_handshake_recv = handshake_message();
          self->last_handshake_sent = handshake_message();
          self->last_close = fc::time_point::now();
@@ -1013,7 +1013,7 @@ namespace eosio {
    }
 
    void connection::blk_send_branch_impl( uint32_t msg_head_num, uint32_t lib_num, uint32_t head_num ) {
-      if( !peer_requested ) {
+      if( !peer_requested.has_value() ) {
          auto last = msg_head_num != 0 ? msg_head_num : lib_num;
          peer_requested = peer_sync_state( last+1, head_num, last );
       } else {
@@ -1174,7 +1174,7 @@ namespace eosio {
    }
 
    bool connection::enqueue_sync_block() {
-      if( !peer_requested ) {
+      if( !peer_requested.has_value() ) {
          return false;
       } else {
          fc_dlog( logger, "enqueue sync block ${num}", ("num", peer_requested->last + 1) );
@@ -1277,7 +1277,7 @@ namespace eosio {
          } else {
             if( !send_buffer_v0 ) {
                const auto v0 = sb->to_signed_block_v0();
-               if( !v0 ) return send_buffer_v0;
+               if( !v0.has_value() ) return send_buffer_v0;
                send_buffer_v0 = create_send_buffer( *v0 );
             }
             return send_buffer_v0;
@@ -1333,7 +1333,7 @@ namespace eosio {
 
       static std::shared_ptr<std::vector<char>> create_send_buffer( const packed_transaction_ptr& trx ) {
          static_assert( trx_message_v1_which == net_message::position<trx_message_v1>() );
-         fc::optional<transaction_id_type> trx_id;
+         std::optional<transaction_id_type> trx_id;
          if( trx->get_estimated_size() > 1024 ) { // simple guess on threshold
             fc_dlog( logger, "including trx id, est size: ${es}", ("es", trx->get_estimated_size()) );
             trx_id = trx->id();
@@ -2184,7 +2184,7 @@ namespace eosio {
       block_id_type bid;
       {
          std::lock_guard<std::mutex> g_c_conn( c->conn_mtx );
-         if( !c->last_req ) {
+         if( !c->last_req.has_value() ) {
             return;
          }
          fc_wlog( logger, "failed to fetch from ${p}", ("p", c->peer_address()) );
@@ -2630,7 +2630,7 @@ namespace eosio {
       unsigned_int which{};
       fc::raw::unpack( ds, which );
       if( which == trx_message_v1_which ) {
-         fc::optional<transaction_id_type> trx_id;
+         std::optional<transaction_id_type> trx_id;
          fc::raw::unpack( ds, trx_id );
          if( trx_id ) {
             have_trx = my_impl->dispatcher->add_peer_txn( *trx_id, connection_id );
@@ -2642,9 +2642,9 @@ namespace eosio {
             std::shared_ptr<packed_transaction> trx;
             fc::raw::unpack( ds, trx );
             ptr = std::move( trx );
-            EOS_ASSERT( !trx_id || !ptr || *trx_id == ptr->id(), transaction_id_type_exception,
+            EOS_ASSERT( !trx_id.has_value() || !ptr || *trx_id == ptr->id(), transaction_id_type_exception,
                         "Provided trx_id does not match provided packed_transaction" );
-            if( !trx_id ) {
+            if( !trx_id.has_value() ) {
                have_trx = my_impl->dispatcher->have_txn( ptr->id() );
             }
             node_transaction_state nts = {ptr->id(), ptr->expiration(), 0, connection_id};
@@ -3049,7 +3049,7 @@ namespace eosio {
             fc_dlog( logger, "bad packed_transaction : ${m}", ("m", result.get<fc::exception_ptr>()->what()) );
          } else {
             const transaction_trace_ptr& trace = result.get<transaction_trace_ptr>();
-            if( !trace->except ) {
+            if( !trace->except.has_value() ) {
                fc_dlog( logger, "chain accepted transaction, bcast ${id}", ("id", trace->id) );
             } else {
                fc_elog( logger, "bad packed_transaction : ${m}", ("m", trace->except->what()));
@@ -3765,12 +3765,12 @@ namespace eosio {
       return "no known connection for host";
    }
 
-   optional<connection_status> net_plugin::status( const string& host )const {
+   std::optional<connection_status> net_plugin::status( const string& host )const {
       std::shared_lock<std::shared_mutex> g( my->connections_mtx );
       auto con = my->find_connection( host );
       if( con )
          return con->get_status();
-      return optional<connection_status>();
+      return std::optional<connection_status>();
    }
 
    vector<connection_status> net_plugin::connections()const {

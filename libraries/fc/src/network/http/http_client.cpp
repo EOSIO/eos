@@ -85,7 +85,7 @@ public:
          }
       });
 
-      optional<error_code> f_result;
+      std::optional<error_code> f_result;
       f(f_result);
 
       _ioc.restart();
@@ -118,7 +118,7 @@ public:
       tcp::resolver local_resolver(_ioc);
       bool cancelled = false;
 
-      auto res = sync_do_with_deadline(s, deadline, [&local_resolver, &cancelled, &s, &host, &port](optional<error_code>& final_ec){
+      auto res = sync_do_with_deadline(s, deadline, [&local_resolver, &cancelled, &s, &host, &port](std::optional<error_code>& final_ec){
          local_resolver.async_resolve(host, port, [&cancelled, &s, &final_ec](const error_code& ec, tcp::resolver::results_type resolved ){
             if (ec) {
                final_ec.emplace(ec);
@@ -141,7 +141,7 @@ public:
 
    template<typename SyncReadStream>
    error_code sync_write_with_timeout(SyncReadStream& s, http::request<http::string_body>& req, const deadline_type& deadline ) {
-      return sync_do_with_deadline(s, deadline, [&s, &req](optional<error_code>& final_ec){
+      return sync_do_with_deadline(s, deadline, [&s, &req](std::optional<error_code>& final_ec){
          http::async_write(s, req, [&final_ec]( const error_code& ec, std::size_t ) {
             final_ec.emplace(ec);
          });
@@ -150,7 +150,7 @@ public:
 
    template<typename SyncReadStream>
    error_code sync_read_with_timeout(SyncReadStream& s, boost::beast::flat_buffer& buffer, http::response<http::string_body>& res, const deadline_type& deadline ) {
-      return sync_do_with_deadline(s, deadline, [&s, &buffer, &res](optional<error_code>& final_ec){
+      return sync_do_with_deadline(s, deadline, [&s, &buffer, &res](std::optional<error_code>& final_ec){
          http::async_read(s, buffer, res, [&final_ec]( const error_code& ec, std::size_t ) {
             final_ec.emplace(ec);
          });
@@ -158,7 +158,7 @@ public:
    }
 
    host_key url_to_host_key( const url& dest ) {
-      FC_ASSERT(dest.host(), "Provided URL has no host");
+      FC_ASSERT(dest.host().has_value(), "Provided URL has no host");
       uint16_t port = 80;
       if (dest.port()) {
          port = *dest.port();
@@ -213,7 +213,7 @@ public:
 
       error_code ec = sync_connect_with_timeout(ssl_socket->next_layer(), *dest.host(), dest.port() ? std::to_string(*dest.port()) : "443", deadline);
       if (!ec) {
-         ec = sync_do_with_deadline(ssl_socket->next_layer(), deadline, [&ssl_socket](optional<error_code>& final_ec) {
+         ec = sync_do_with_deadline(ssl_socket->next_layer(), deadline, [&ssl_socket](std::optional<error_code>& final_ec) {
             ssl_socket->async_handshake(ssl::stream_base::client, [&final_ec](const error_code& ec) {
                final_ec.emplace(ec);
             });
@@ -316,7 +316,7 @@ public:
    variant post_sync(const url& dest, const variant& payload, const fc::time_point& _deadline) {
       static const deadline_type epoch(boost::gregorian::date(1970, 1, 1));
       auto deadline = epoch + boost::posix_time::microseconds(_deadline.time_since_epoch().count());
-      FC_ASSERT(dest.host(), "No host set on URL");
+      FC_ASSERT(dest.host().has_value(), "No host set on URL");
 
       string path = dest.path() ? dest.path()->generic_string() : "/";
       if (dest.query()) {
@@ -426,7 +426,7 @@ public:
       if(socket_file.empty())
          FC_THROW_EXCEPTION( parse_error_exception, "couldn't discover socket path");
       url_path = "/" / url_path;
-      return _unix_url_paths.emplace(full_url, fc::url("unix", socket_file.string(), ostring(), ostring(), url_path.string(), ostring(), ovariant_object(), fc::optional<uint16_t>())).first->second;
+      return _unix_url_paths.emplace(full_url, fc::url("unix", socket_file.string(), ostring(), ostring(), url_path.string(), ostring(), ovariant_object(), std::optional<uint16_t>())).first->second;
    }
 #endif
 

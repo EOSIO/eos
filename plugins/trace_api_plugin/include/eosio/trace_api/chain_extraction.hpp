@@ -120,7 +120,7 @@ private:
    StoreProvider                                                store;
    exception_handler                                            except_handler;
    std::map<transaction_id_type, cache_trace>                   cached_traces;
-   fc::optional<cache_trace>                                    onblock_trace;
+   std::optional<cache_trace>                                    onblock_trace;
 
 };
 

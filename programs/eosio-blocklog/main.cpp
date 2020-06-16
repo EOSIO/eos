@@ -82,7 +82,7 @@ void blocklog::read_log() {
       first_block = block_logger.first_block_num();
    }
 
-   optional<chainbase::database> reversible_blocks;
+   std::optional<chainbase::database> reversible_blocks;
    try {
       ilog("opening reversible db");
       reversible_blocks.emplace(blocks_dir / config::reversible_blocks_dir_name, chainbase::database::read_only, config::default_reversible_cache_size);
@@ -126,7 +126,7 @@ void blocklog::read_log() {
    auto print_block = [&](auto& next) {
       abi_serializer::to_variant(*next,
                                  pretty_output,
-                                 []( account_name n ) { return optional<abi_serializer>(); },
+                                 []( account_name n ) { return std::optional<abi_serializer>(); },
                                  abi_serializer::create_yield_function( deadline ));
       const auto block_id = next->calculate_id();
       const uint32_t ref_block_prefix = block_id._hash[1];

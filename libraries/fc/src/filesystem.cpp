@@ -419,7 +419,7 @@ namespace fc {
 
    const fc::path& temp_file_base::path() const
    {
-      if (!_path)
+      if (!_path.has_value())
       {
          FC_THROW( "Temporary directory has been released." );
       }
@@ -428,7 +428,7 @@ namespace fc {
 
    void temp_file_base::remove()
    {
-      if (_path.valid())
+      if (_path.has_value())
       {
          try
          {
@@ -444,7 +444,7 @@ namespace fc {
 
    void temp_file_base::release()
    {
-      _path = fc::optional<fc::path>();
+      _path = std::optional<fc::path>();
    }
 
    const fc::path& home_path()

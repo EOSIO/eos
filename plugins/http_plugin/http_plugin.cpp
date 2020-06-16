@@ -183,7 +183,7 @@ namespace eosio {
       public:
          // key -> priority, url_handler
          map<string,detail::internal_url_handler>  url_handlers;
-         optional<tcp::endpoint>  listen_endpoint;
+         std::optional<tcp::endpoint>  listen_endpoint;
          string                   access_control_allow_origin;
          string                   access_control_allow_headers;
          string                   access_control_max_age;
@@ -193,12 +193,12 @@ namespace eosio {
          websocket_server_type    server;
 
          uint16_t                                    thread_pool_size = 2;
-         optional<eosio::chain::named_thread_pool>   thread_pool;
+         std::optional<eosio::chain::named_thread_pool>   thread_pool;
          std::atomic<size_t>                         bytes_in_flight{0};
          size_t                                      max_bytes_in_flight = 0;
          fc::microseconds                            max_response_time{30*1000};
 
-         optional<tcp::endpoint>  https_listen_endpoint;
+         std::optional<tcp::endpoint>  https_listen_endpoint;
          string                   https_cert_chain;
          string                   https_key;
          https_ecdh_curve_t       https_ecdh_curve = SECP384R1;
@@ -206,7 +206,7 @@ namespace eosio {
          websocket_server_tls_type https_server;
 
 #ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
-         optional<asio::local::stream_protocol::endpoint> unix_endpoint;
+         std::optional<asio::local::stream_protocol::endpoint> unix_endpoint;
          websocket_local_server_type unix_server;
 #endif
 

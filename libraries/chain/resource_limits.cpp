@@ -506,7 +506,7 @@ std::pair<int64_t, bool> resource_limits_manager::get_account_cpu_limit( const a
 }
 
 std::pair<account_resource_limit, bool>
-resource_limits_manager::get_account_cpu_limit_ex( const account_name& name, uint32_t greylist_limit, const fc::optional<block_timestamp_type>& current_time) const {
+resource_limits_manager::get_account_cpu_limit_ex( const account_name& name, uint32_t greylist_limit, const std::optional<block_timestamp_type>& current_time) const {
 
    const auto& state = _db.get<resource_limits_state_object>();
    const auto& usage = _db.get<resource_usage_object, by_owner>(name);
@@ -552,7 +552,7 @@ resource_limits_manager::get_account_cpu_limit_ex( const account_name& name, uin
    arl.max = impl::downgrade_cast<int64_t>(max_user_use_in_window);
    arl.last_usage_update_time = block_timestamp_type(usage.cpu_usage.last_ordinal);
    arl.current_used = arl.used;
-   if ( current_time.valid() ) {
+   if ( current_time.has_value() ) {
       if (current_time->slot > usage.cpu_usage.last_ordinal) {
          auto history_usage = usage.cpu_usage;
          history_usage.add(0, current_time->slot, window_size);
@@ -568,7 +568,7 @@ std::pair<int64_t, bool> resource_limits_manager::get_account_net_limit( const a
 }
 
 std::pair<account_resource_limit, bool>
-resource_limits_manager::get_account_net_limit_ex( const account_name& name, uint32_t greylist_limit, const fc::optional<block_timestamp_type>& current_time) const {
+resource_limits_manager::get_account_net_limit_ex( const account_name& name, uint32_t greylist_limit, const std::optional<block_timestamp_type>& current_time) const {
    const auto& config = _db.get<resource_limits_config_object>();
    const auto& state  = _db.get<resource_limits_state_object>();
    const auto& usage  = _db.get<resource_usage_object, by_owner>(name);
@@ -613,7 +613,7 @@ resource_limits_manager::get_account_net_limit_ex( const account_name& name, uin
    arl.max = impl::downgrade_cast<int64_t>(max_user_use_in_window);
    arl.last_usage_update_time = block_timestamp_type(usage.net_usage.last_ordinal);
    arl.current_used = arl.used;
-   if ( current_time.valid() ) {
+   if ( current_time.has_value() ) {
       if (current_time->slot > usage.net_usage.last_ordinal) {
          auto history_usage = usage.net_usage;
          history_usage.add(0, current_time->slot, window_size);

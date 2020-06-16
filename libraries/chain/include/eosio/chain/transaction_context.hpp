@@ -153,7 +153,7 @@ namespace eosio { namespace chain {
 
          controller&                   control;
          const packed_transaction&     packed_trx;
-         optional<chainbase::database::session>  undo_session;
+         std::optional<chainbase::database::session>  undo_session;
          transaction_trace_ptr         trace;
          fc::time_point                start;
 

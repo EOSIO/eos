@@ -74,7 +74,7 @@ class maybe_session {
       }
 
       explicit maybe_session(database& db) {
-         _session = db.start_undo_session(true);
+         _session.emplace(db.start_undo_session(true));
       }
 
       maybe_session(const maybe_session&) = delete;
@@ -96,7 +96,7 @@ class maybe_session {
 
       maybe_session& operator = ( maybe_session&& mv ) {
          if (mv._session) {
-            _session = move(*mv._session);
+            _session.emplace(move(*mv._session));
             mv._session.reset();
          } else {
             _session.reset();
@@ -106,7 +106,7 @@ class maybe_session {
       };
 
    private:
-      optional<database::session>     _session;
+      std::optional<database::session>     _session;
 };
 
 struct building_block {
@@ -120,7 +120,7 @@ struct building_block {
    {}
 
    pending_block_header_state            _pending_block_header_state;
-   optional<producer_authority_schedule> _new_pending_producer_schedule;
+   std::optional<producer_authority_schedule> _new_pending_producer_schedule;
    vector<digest_type>                   _new_protocol_feature_activations;
    size_t                                _num_new_protocol_features_that_have_activated = 0;
    deque<transaction_metadata_ptr>       _pending_trx_metas;
@@ -136,7 +136,7 @@ struct assembled_block {
    signed_block_ptr                  _unsigned_block;
 
    // if the _unsigned_block pre-dates block-signing authorities this may be present.
-   optional<producer_authority_schedule> _new_producer_authority_cache;
+   std::optional<producer_authority_schedule> _new_producer_authority_cache;
 };
 
 struct completed_block {
@@ -157,7 +157,7 @@ struct pending_state {
    maybe_session                      _db_session;
    block_stage_type                   _block_stage;
    controller::block_status           _block_status = controller::block_status::incomplete;
-   optional<block_id_type>            _producer_block_id;
+   std::optional<block_id_type>            _producer_block_id;
 
    /** @pre _block_stage cannot hold completed_block alternative */
    const pending_block_header_state& get_pending_block_header_state()const {
@@ -232,7 +232,7 @@ struct controller_impl {
    chainbase::database            db;
    chainbase::database            reversible_blocks; ///< a special database to persist blocks that have successfully been applied but are still reversible
    block_log                      blog;
-   optional<pending_state>        pending;
+   std::optional<pending_state>        pending;
    block_state_ptr                head;
    fork_database                  fork_db;
    wasm_interface                 wasmif;
@@ -241,10 +241,10 @@ struct controller_impl {
    protocol_feature_manager       protocol_features;
    controller::config             conf;
    const chain_id_type            chain_id; // read by thread_pool threads, value will not be changed
-   optional<fc::time_point>       replay_head_time;
+   std::optional<fc::time_point>       replay_head_time;
    db_read_mode                   read_mode = db_read_mode::SPECULATIVE;
    bool                           in_trx_requiring_checks = false; ///< if true, checks that are normally skipped on replay (e.g. auth checks) cannot be skipped
-   optional<fc::microseconds>     subjective_cpu_leeway;
+   std::optional<fc::microseconds>     subjective_cpu_leeway;
    bool                           trusted_producer_light_validation = false;
    uint32_t                       snapshot_head_block = 0;
    named_thread_pool              thread_pool;
@@ -891,8 +891,8 @@ struct controller_impl {
       resource_limits.add_to_snapshot(snapshot);
    }
 
-   static fc::optional<genesis_state> extract_legacy_genesis_state( snapshot_reader& snapshot, uint32_t version ) {
-      fc::optional<genesis_state> genesis;
+   static std::optional<genesis_state> extract_legacy_genesis_state( snapshot_reader& snapshot, uint32_t version ) {
+      std::optional<genesis_state> genesis;
       using v2 = legacy::snapshot_global_property_object_v2;
 
       if (std::clamp(version, v2::minimum_version, v2::maximum_version) == version ) {
@@ -961,8 +961,8 @@ struct controller_impl {
             using v3 = legacy::snapshot_global_property_object_v3;
 
             if (std::clamp(header.version, v2::minimum_version, v2::maximum_version) == header.version ) {
-               fc::optional<genesis_state> genesis = extract_legacy_genesis_state(*snapshot, header.version);
-               EOS_ASSERT( genesis, snapshot_exception,
+               std::optional<genesis_state> genesis = extract_legacy_genesis_state(*snapshot, header.version);
+               EOS_ASSERT( genesis.has_value(), snapshot_exception,
                            "Snapshot indicates chain_snapshot_header version 2, but does not contain a genesis_state. "
                            "It must be corrupted.");
                snapshot->read_section<global_property_object>([&db=this->db,gs_chain_id=genesis->compute_chain_id()]( auto &section ) {
@@ -1476,7 +1476,7 @@ struct controller_impl {
                                            fc::time_point deadline,
                                            uint32_t billed_cpu_time_us,
                                            bool explicit_billed_cpu_time,
-                                           fc::optional<uint32_t> explicit_net_usage_words )
+                                           std::optional<uint32_t> explicit_net_usage_words )
    {
       EOS_ASSERT(deadline != fc::time_point(), transaction_exception, "deadline cannot be uninitialized");
 
@@ -1508,7 +1508,7 @@ struct controller_impl {
          try {
             const transaction& trn = trx->packed_trx()->get_transaction();
             if( trx->implicit ) {
-               EOS_ASSERT( !explicit_net_usage_words.valid(), transaction_exception, "NET usage cannot be explicitly set for implicit transactions" );
+               EOS_ASSERT( !explicit_net_usage_words.has_value(), transaction_exception, "NET usage cannot be explicitly set for implicit transactions" );
                trx_context.init_for_implicit_trx();
                trx_context.enforce_whiteblacklist = false;
             } else {
@@ -1594,9 +1594,9 @@ struct controller_impl {
                      uint16_t confirm_block_count,
                      const vector<digest_type>& new_protocol_feature_activations,
                      controller::block_status s,
-                     const optional<block_id_type>& producer_block_id )
+                     const std::optional<block_id_type>& producer_block_id )
    {
-      EOS_ASSERT( !pending, block_validate_exception, "pending block already exists" );
+      EOS_ASSERT( !pending.has_value(), block_validate_exception, "pending block already exists" );
 
       if (auto dm_logger = get_deep_mind_logger()) {
          // The head block represents the block just before this one that is about to start, so add 1 to get this block num
@@ -1695,13 +1695,13 @@ struct controller_impl {
 
          const auto& gpo = self.get_global_properties();
 
-         if( gpo.proposed_schedule_block_num.valid() && // if there is a proposed schedule that was proposed in a block ...
+         if( gpo.proposed_schedule_block_num.has_value() && // if there is a proposed schedule that was proposed in a block ...
              ( *gpo.proposed_schedule_block_num <= pbhs.dpos_irreversible_blocknum ) && // ... that has now become irreversible ...
              pbhs.prev_pending_schedule.schedule.producers.size() == 0 // ... and there was room for a new pending schedule prior to any possible promotion
          )
          {
             // Promote proposed schedule to pending schedule.
-            if( !replay_head_time ) {
+            if( !replay_head_time.has_value() ) {
                ilog( "promoting proposed schedule (set in block ${proposed_num}) to pending; current block: ${n} lib: ${lib} schedule: ${schedule} ",
                      ("proposed_num", *gpo.proposed_schedule_block_num)("n", pbhs.block_num)
                      ("lib", pbhs.dpos_irreversible_blocknum)
@@ -1713,7 +1713,7 @@ struct controller_impl {
 
             pending->_block_stage.get<building_block>()._new_pending_producer_schedule = producer_authority_schedule::from_shared(gpo.proposed_schedule);
             db.modify( gpo, [&]( auto& gp ) {
-               gp.proposed_schedule_block_num = optional<block_num_type>();
+               gp.proposed_schedule_block_num = std::optional<block_num_type>();
                gp.proposed_schedule.version=0;
                gp.proposed_schedule.producers.clear();
             });
@@ -1750,7 +1750,7 @@ struct controller_impl {
 
    void finalize_block()
    {
-      EOS_ASSERT( pending, block_validate_exception, "it is not valid to finalize when there is no pending block");
+      EOS_ASSERT( pending.has_value(), block_validate_exception, "it is not valid to finalize when there is no pending block");
       EOS_ASSERT( pending->_block_stage.contains<building_block>(), block_validate_exception, "already called finalize_block");
 
       try {
@@ -1832,7 +1832,7 @@ struct controller_impl {
             EOS_ASSERT( bsp == head, fork_database_exception, "committed block did not become the new head in fork database");
          }
 
-         if( !replay_head_time && read_mode != db_read_mode::IRREVERSIBLE ) {
+         if( !replay_head_time.has_value() && read_mode != db_read_mode::IRREVERSIBLE ) {
             reversible_blocks.create<reversible_block_object>( [&]( auto& ubo ) {
                ubo.blocknum = bsp->block_num;
                ubo.set_block( bsp->block );
@@ -1971,7 +1971,7 @@ struct controller_impl {
                                                        : ( !!std::get<0>( trx_metas.at( packed_idx ) ) ?
                                                              std::get<0>( trx_metas.at( packed_idx ) )
                                                              : std::get<1>( trx_metas.at( packed_idx ) ).get() ) );
-               fc::optional<uint32_t> explicit_net_usage_words;
+               std::optional<uint32_t> explicit_net_usage_words;
                if( explicit_net ) {
                   explicit_net_usage_words = receipt.net_usage_words.value;
                }
@@ -2066,7 +2066,7 @@ struct controller_impl {
                     const forked_branch_callback& forked_branch_cb, const trx_meta_cache_lookup& trx_lookup )
    {
       controller::block_status s = controller::block_status::complete;
-      EOS_ASSERT(!pending, block_validate_exception, "it is not valid to push a block when there is a pending block");
+      EOS_ASSERT(!pending.has_value(), block_validate_exception, "it is not valid to push a block when there is a pending block");
 
       auto reset_prod_light_validation = fc::make_scoped_exit([old_value=trusted_producer_light_validation, this]() {
          trusted_producer_light_validation = old_value;
@@ -2104,7 +2104,7 @@ struct controller_impl {
       self.validate_db_available_size();
       self.validate_reversible_available_size();
 
-      EOS_ASSERT(!pending, block_validate_exception, "it is not valid to push a block when there is a pending block");
+      EOS_ASSERT(!pending.has_value(), block_validate_exception, "it is not valid to push a block when there is a pending block");
 
       try {
          EOS_ASSERT( b, block_validate_exception, "trying to push empty block" );
@@ -2196,7 +2196,7 @@ struct controller_impl {
          }
 
          for( auto ritr = branches.first.rbegin(); ritr != branches.first.rend(); ++ritr ) {
-            optional<fc::exception> except;
+            std::optional<fc::exception> except;
             try {
                apply_block( *ritr, (*ritr)->is_valid() ? controller::block_status::validated
                                                        : controller::block_status::complete, trx_lookup );
@@ -2699,7 +2699,7 @@ void controller::start_block( block_timestamp_type when, uint16_t confirm_block_
 {
    validate_db_available_size();
 
-   EOS_ASSERT( !my->pending, block_validate_exception, "pending block already exists" );
+   EOS_ASSERT( !my->pending.has_value(), block_validate_exception, "pending block already exists" );
 
    vector<digest_type> new_protocol_feature_activations;
 
@@ -2715,7 +2715,7 @@ void controller::start_block( block_timestamp_type when, uint16_t confirm_block_
    }
 
    my->start_block( when, confirm_block_count, new_protocol_feature_activations,
-                    block_status::incomplete, optional<block_id_type>() );
+                    block_status::incomplete, std::optional<block_id_type>() );
 }
 
 void controller::start_block( block_timestamp_type when,
@@ -2729,7 +2729,7 @@ void controller::start_block( block_timestamp_type when,
    }
 
    my->start_block( when, confirm_block_count, new_protocol_feature_activations,
-                    block_status::incomplete, optional<block_id_type>() );
+                    block_status::incomplete, std::optional<block_id_type>() );
 }
 
 block_state_ptr controller::finalize_block( const signer_callback_type& signer_callback ) {
@@ -2892,7 +2892,7 @@ account_name  controller::fork_db_pending_head_block_producer()const {
 }
 
 time_point controller::pending_block_time()const {
-   EOS_ASSERT( my->pending, block_validate_exception, "no pending block" );
+   EOS_ASSERT( my->pending.has_value(), block_validate_exception, "no pending block" );
 
    if( my->pending->_block_stage.contains<completed_block>() )
       return my->pending->_block_stage.get<completed_block>()._block_state->header.timestamp;
@@ -2901,7 +2901,7 @@ time_point controller::pending_block_time()const {
 }
 
 account_name controller::pending_block_producer()const {
-   EOS_ASSERT( my->pending, block_validate_exception, "no pending block" );
+   EOS_ASSERT( my->pending.has_value(), block_validate_exception, "no pending block" );
 
    if( my->pending->_block_stage.contains<completed_block>() )
       return my->pending->_block_stage.get<completed_block>()._block_state->header.producer;
@@ -2910,7 +2910,7 @@ account_name controller::pending_block_producer()const {
 }
 
 const block_signing_authority& controller::pending_block_signing_authority()const {
-   EOS_ASSERT( my->pending, block_validate_exception, "no pending block" );
+   EOS_ASSERT( my->pending.has_value(), block_validate_exception, "no pending block" );
 
    if( my->pending->_block_stage.contains<completed_block>() )
       return my->pending->_block_stage.get<completed_block>()._block_state->valid_block_signing_authority;
@@ -2918,13 +2918,13 @@ const block_signing_authority& controller::pending_block_signing_authority()cons
    return my->pending->get_pending_block_header_state().valid_block_signing_authority;
 }
 
-optional<block_id_type> controller::pending_producer_block_id()const {
-   EOS_ASSERT( my->pending, block_validate_exception, "no pending block" );
+std::optional<block_id_type> controller::pending_producer_block_id()const {
+   EOS_ASSERT( my->pending.has_value(), block_validate_exception, "no pending block" );
    return my->pending->_producer_block_id;
 }
 
 const deque<transaction_receipt>& controller::get_pending_trx_receipts()const {
-   EOS_ASSERT( my->pending, block_validate_exception, "no pending block" );
+   EOS_ASSERT( my->pending.has_value(), block_validate_exception, "no pending block" );
    return my->pending->get_trx_receipts();
 }
 
@@ -3024,7 +3024,7 @@ sha256 controller::calculate_integrity_hash()const { try {
 } FC_LOG_AND_RETHROW() }
 
 void controller::write_snapshot( const snapshot_writer_ptr& snapshot ) const {
-   EOS_ASSERT( !my->pending, block_validate_exception, "cannot take a consistent snapshot with a pending block" );
+   EOS_ASSERT( !my->pending.has_value(), block_validate_exception, "cannot take a consistent snapshot with a pending block" );
    return my->add_to_snapshot(snapshot);
 }
 
@@ -3036,7 +3036,7 @@ int64_t controller::set_proposed_producers( vector<producer_authority> producers
       return -1;
    }
 
-   if( gpo.proposed_schedule_block_num.valid() ) {
+   if( gpo.proposed_schedule_block_num.has_value() ) {
       if( *gpo.proposed_schedule_block_num != cur_block_num )
          return -1; // there is already a proposed schedule set in a previous block, wait for it to become pending
 
@@ -3080,7 +3080,7 @@ int64_t controller::set_proposed_producers( vector<producer_authority> producers
 }
 
 const producer_authority_schedule&    controller::active_producers()const {
-   if( !(my->pending) )
+   if( !(my->pending.has_value()) )
       return  my->head->active_schedule;
 
    if( my->pending->_block_stage.contains<completed_block>() )
@@ -3090,7 +3090,7 @@ const producer_authority_schedule&    controller::active_producers()const {
 }
 
 const producer_authority_schedule& controller::pending_producers()const {
-   if( !(my->pending) )
+   if( !(my->pending.has_value()) )
       return  my->head->pending_schedule.schedule;
 
    if( my->pending->_block_stage.contains<completed_block>() )
@@ -3111,16 +3111,16 @@ const producer_authority_schedule& controller::pending_producers()const {
    return bb._pending_block_header_state.prev_pending_schedule.schedule;
 }
 
-optional<producer_authority_schedule> controller::proposed_producers()const {
+std::optional<producer_authority_schedule> controller::proposed_producers()const {
    const auto& gpo = get_global_properties();
-   if( !gpo.proposed_schedule_block_num.valid() )
-      return optional<producer_authority_schedule>();
+   if( !gpo.proposed_schedule_block_num.has_value() )
+      return std::optional<producer_authority_schedule>();
 
    return producer_authority_schedule::from_shared(gpo.proposed_schedule);
 }
 
 bool controller::light_validation_allowed() const {
-   if (!my->pending || my->in_trx_requiring_checks) {
+   if (!my->pending.has_value() || my->in_trx_requiring_checks) {
       return false;
    }
 
@@ -3225,11 +3225,11 @@ void controller::check_key_list( const public_key_type& key )const {
 }
 
 bool controller::is_building_block()const {
-   return my->pending.valid();
+   return my->pending.has_value();
 }
 
 bool controller::is_producing_block()const {
-   if( !my->pending ) return false;
+   if( !my->pending.has_value() ) return false;
 
    return (my->pending->_block_status == block_status::incomplete);
 }
@@ -3305,7 +3305,7 @@ void controller::set_subjective_cpu_leeway(fc::microseconds leeway) {
    my->subjective_cpu_leeway = leeway;
 }
 
-fc::optional<fc::microseconds> controller::get_subjective_cpu_leeway() const {
+std::optional<fc::microseconds> controller::get_subjective_cpu_leeway() const {
     return my->subjective_cpu_leeway;
 }
 
@@ -3390,12 +3390,12 @@ vm::wasm_allocator& controller::get_wasm_allocator() {
 }
 #endif
 
-fc::optional<uint64_t> controller::convert_exception_to_error_code( const fc::exception& e ) {
+std::optional<uint64_t> controller::convert_exception_to_error_code( const fc::exception& e ) {
    const chain_exception* e_ptr = dynamic_cast<const chain_exception*>( &e );
 
    if( e_ptr == nullptr ) return {};
 
-   if( !e_ptr->error_code ) return static_cast<uint64_t>(system_error_code::generic_system_error);
+   if( !e_ptr->error_code.has_value() ) return static_cast<uint64_t>(system_error_code::generic_system_error);
 
    return e_ptr->error_code;
 }
@@ -3408,7 +3408,7 @@ chain_id_type controller::extract_chain_id(snapshot_reader& snapshot) {
    });
 
    // check if this is a legacy version of the snapshot, which has a genesis state instead of chain id
-   fc::optional<genesis_state> genesis = controller_impl::extract_legacy_genesis_state(snapshot, header.version);
+   std::optional<genesis_state> genesis = controller_impl::extract_legacy_genesis_state(snapshot, header.version);
    if (genesis) {
       return genesis->compute_chain_id();
    }
@@ -3422,7 +3422,7 @@ chain_id_type controller::extract_chain_id(snapshot_reader& snapshot) {
    return chain_id;
 }
 
-fc::optional<chain_id_type> controller::extract_chain_id_from_db( const path& state_dir ) {
+std::optional<chain_id_type> controller::extract_chain_id_from_db( const path& state_dir ) {
    try {
       chainbase::database db( state_dir, chainbase::database::read_only );
 

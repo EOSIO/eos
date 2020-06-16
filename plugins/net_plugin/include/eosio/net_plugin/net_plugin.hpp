@@ -29,7 +29,7 @@ namespace eosio {
 
         string                       connect( const string& endpoint );
         string                       disconnect( const string& endpoint );
-        optional<connection_status>  status( const string& endpoint )const;
+        std::optional<connection_status>  status( const string& endpoint )const;
         vector<connection_status>    connections()const;
 
       private:

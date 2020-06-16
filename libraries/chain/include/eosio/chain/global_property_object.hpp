@@ -26,7 +26,7 @@ namespace eosio { namespace chain {
          static constexpr uint32_t maximum_version = 2;
          static_assert(chain_snapshot_header::minimum_compatible_version <= maximum_version, "snapshot_global_property_object_v2 is no longer needed");
 
-         optional<block_num_type>         proposed_schedule_block_num;
+         std::optional<block_num_type>         proposed_schedule_block_num;
          producer_schedule_type           proposed_schedule;
          chain_config                     configuration;
       };
@@ -35,7 +35,7 @@ namespace eosio { namespace chain {
          static constexpr uint32_t maximum_version = 3;
          static_assert(chain_snapshot_header::minimum_compatible_version <= maximum_version, "snapshot_global_property_object_v3 is no longer needed");
 
-         optional<block_num_type>            proposed_schedule_block_num;
+         std::optional<block_num_type>            proposed_schedule_block_num;
          producer_authority_schedule         proposed_schedule;
          chain_config                        configuration;
          chain_id_type                       chain_id;
@@ -54,7 +54,7 @@ namespace eosio { namespace chain {
 
    public:
       id_type                             id;
-      optional<block_num_type>            proposed_schedule_block_num;
+      std::optional<block_num_type>            proposed_schedule_block_num;
       shared_producer_authority_schedule  proposed_schedule;
       chain_config                        configuration;
       chain_id_type                       chain_id;
@@ -91,7 +91,7 @@ namespace eosio { namespace chain {
    >;
 
    struct snapshot_global_property_object {
-      optional<block_num_type>            proposed_schedule_block_num;
+      std::optional<block_num_type>            proposed_schedule_block_num;
       producer_authority_schedule         proposed_schedule;
       chain_config                        configuration;
       chain_id_type                       chain_id;

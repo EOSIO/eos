@@ -32,7 +32,7 @@ prunable_data_type::prunable_data_t get_prunable_data_from_traces(std::vector<st
    BOOST_REQUIRE(cfd_trace_itr != traces.end());
    BOOST_REQUIRE(cfd_trace_itr->contains<state_history::transaction_trace_v0>());
    auto trace_v0 = cfd_trace_itr->get<state_history::transaction_trace_v0>();
-   BOOST_REQUIRE(trace_v0.partial);
+   BOOST_REQUIRE(trace_v0.partial.has_value());
    BOOST_REQUIRE(trace_v0.partial->contains<state_history::partial_transaction_v1>());
    return trace_v0.partial->get<state_history::partial_transaction_v1>().prunable_data->prunable_data;
 }
@@ -179,7 +179,7 @@ BOOST_AUTO_TEST_CASE(test_state_result_abi) {
 
    transaction_trace_cache          trace_cache;
    std::map<uint32_t, chain::bytes> history;
-   fc::optional<block_position>     prev_block;
+   std::optional<block_position>     prev_block;
 
    chain.control->applied_transaction.connect(
        [&](std::tuple<const transaction_trace_ptr&, const packed_transaction_ptr&> t) {
@@ -204,7 +204,7 @@ BOOST_AUTO_TEST_CASE(test_state_result_abi) {
       std::vector<state_history::transaction_trace> traces;
       state_history::trace_converter::unpack(strm, traces);
       message.traces = traces;
-      message.deltas = fc::raw::pack(state_history::create_deltas(control->db(), !prev_block));
+      message.deltas = fc::raw::pack(state_history::create_deltas(control->db(), !prev_block.has_value()));
 
       prev_block                         = message.this_block;
       history[control->head_block_num()] = fc::raw::pack(state_history::state_result{message});

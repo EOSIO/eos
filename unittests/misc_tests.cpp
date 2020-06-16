@@ -1051,7 +1051,7 @@ BOOST_AUTO_TEST_CASE(pruned_block_test) {
    deserialized.pack(out, packed_transaction::cf_compression_type::none);
    BOOST_TEST(out.tellp() <= buffer.size());
 
-   BOOST_TEST(!deserialized.to_signed_block_v0());
+   BOOST_TEST(!deserialized.to_signed_block_v0().has_value());
 }
 
 BOOST_AUTO_TEST_CASE(reflector_init_test) {

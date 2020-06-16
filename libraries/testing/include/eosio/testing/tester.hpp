@@ -163,13 +163,13 @@ namespace eosio { namespace testing {
          void              execute_setup_policy(const setup_policy policy);
 
          void              close();
-         void              open( protocol_feature_set&& pfs, fc::optional<chain_id_type> expected_chain_id, const std::function<void()>& lambda );
+         void              open( protocol_feature_set&& pfs, std::optional<chain_id_type> expected_chain_id, const std::function<void()>& lambda );
          void              open( protocol_feature_set&& pfs, const snapshot_reader_ptr& snapshot );
          void              open( protocol_feature_set&& pfs, const genesis_state& genesis );
-         void              open( protocol_feature_set&& pfs, fc::optional<chain_id_type> expected_chain_id = {} );
+         void              open( protocol_feature_set&& pfs, std::optional<chain_id_type> expected_chain_id = {} );
          void              open( const snapshot_reader_ptr& snapshot );
          void              open( const genesis_state& genesis );
-         void              open( fc::optional<chain_id_type> expected_chain_id = {} );
+         void              open( std::optional<chain_id_type> expected_chain_id = {} );
          bool              is_same_chain( base_tester& other );
 
          virtual signed_block_ptr produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms) ) = 0;
@@ -335,14 +335,14 @@ namespace eosio { namespace testing {
          static action_result wasm_assert_code( uint64_t error_code ) { return "assertion failure with error code: " + std::to_string(error_code); }
 
          auto get_resolver() {
-            return [this]( const account_name& name ) -> optional<abi_serializer> {
+            return [this]( const account_name& name ) -> std::optional<abi_serializer> {
                try {
                   const auto& accnt = control->db().get<account_object, by_name>( name );
                   abi_def abi;
                   if( abi_serializer::to_abi( accnt.abi, abi )) {
                      return abi_serializer( abi, abi_serializer::create_yield_function( abi_serializer_max_time ) );
                   }
-                  return optional<abi_serializer>();
+                  return std::optional<abi_serializer>();
                } FC_RETHROW_EXCEPTIONS( error, "Failed to find or parse ABI for ${name}", ("name", name))
             };
          }

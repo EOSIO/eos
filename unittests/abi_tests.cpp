@@ -62,7 +62,7 @@ void verify_round_trip_conversion( const abi_serializer& abis, const type_name& 
 
 auto get_resolver(const abi_def& abi = abi_def())
 {
-   return [&abi](const account_name &name) -> optional<abi_serializer> {
+   return [&abi](const account_name &name) -> std::optional<abi_serializer> {
       return abi_serializer(eosio_contract_abi(abi), abi_serializer::create_yield_function( max_serialization_time ));
    };
 }

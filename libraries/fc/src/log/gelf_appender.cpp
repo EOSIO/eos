@@ -30,7 +30,7 @@ namespace fc
   {
   public:
     config                                    cfg;
-    optional<boost::asio::ip::udp::endpoint>  gelf_endpoint;
+    std::optional<boost::asio::ip::udp::endpoint>  gelf_endpoint;
     udp_socket                                gelf_socket;
 
     impl(const config& c) :
@@ -60,7 +60,7 @@ namespace fc
       catch (...)
       {
       }
-      if (!my->gelf_endpoint)
+      if (!my->gelf_endpoint.has_value())
       {
         // couldn't parse as a numeric ip address, try resolving as a DNS name.
         // This can yield, so don't do it in the catch block above
@@ -100,7 +100,7 @@ namespace fc
 
   void gelf_appender::log(const log_message& message)
   {
-    if (!my->gelf_endpoint)
+    if (!my->gelf_endpoint.has_value())
       return;
 
     log_context context = message.get_context();

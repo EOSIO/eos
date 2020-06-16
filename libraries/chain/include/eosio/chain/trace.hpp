@@ -31,7 +31,7 @@ namespace eosio { namespace chain {
       fc::unsigned_int                action_ordinal;
       fc::unsigned_int                creator_action_ordinal;
       fc::unsigned_int                closest_unnotified_ancestor_action_ordinal;
-      fc::optional<action_receipt>    receipt;
+      std::optional<action_receipt>    receipt;
       action_name                     receiver;
       action                          act;
       bool                            context_free = false;
@@ -40,11 +40,11 @@ namespace eosio { namespace chain {
       transaction_id_type             trx_id; ///< the transaction that generated this action
       uint32_t                        block_num = 0;
       block_timestamp_type            block_time;
-      fc::optional<block_id_type>     producer_block_id;
+      std::optional<block_id_type>     producer_block_id;
       flat_set<account_delta>         account_ram_deltas;
       flat_set<account_delta>         account_disk_deltas;
-      fc::optional<fc::exception>     except;
-      fc::optional<uint64_t>          error_code;
+      std::optional<fc::exception>     except;
+      std::optional<uint64_t>          error_code;
       std::vector<char>               return_value;
    };
 
@@ -52,17 +52,17 @@ namespace eosio { namespace chain {
       transaction_id_type                        id;
       uint32_t                                   block_num = 0;
       block_timestamp_type                       block_time;
-      fc::optional<block_id_type>                producer_block_id;
-      fc::optional<transaction_receipt_header>   receipt;
+      std::optional<block_id_type>                producer_block_id;
+      std::optional<transaction_receipt_header>   receipt;
       fc::microseconds                           elapsed;
       uint64_t                                   net_usage = 0;
       bool                                       scheduled = false;
       vector<action_trace>                       action_traces;
-      fc::optional<account_delta>                account_ram_delta;
+      std::optional<account_delta>                account_ram_delta;
 
       transaction_trace_ptr                      failed_dtrx_trace;
-      fc::optional<fc::exception>                except;
-      fc::optional<uint64_t>                     error_code;
+      std::optional<fc::exception>                except;
+      std::optional<uint64_t>                     error_code;
       std::exception_ptr                         except_ptr;
    };
 

@@ -220,13 +220,13 @@ namespace eosio { namespace chain {
          time_point                     pending_block_time()const;
          account_name                   pending_block_producer()const;
          const block_signing_authority& pending_block_signing_authority()const;
-         optional<block_id_type>        pending_producer_block_id()const;
+         std::optional<block_id_type>        pending_producer_block_id()const;
 
          const deque<transaction_receipt>& get_pending_trx_receipts()const;
 
          const producer_authority_schedule&    active_producers()const;
          const producer_authority_schedule&    pending_producers()const;
-         optional<producer_authority_schedule> proposed_producers()const;
+         std::optional<producer_authority_schedule> proposed_producers()const;
 
          uint32_t last_irreversible_block_num() const;
          block_id_type last_irreversible_block_id() const;
@@ -291,7 +291,7 @@ namespace eosio { namespace chain {
          uint32_t get_terminate_at_block()const;
 
          void set_subjective_cpu_leeway(fc::microseconds leeway);
-         fc::optional<fc::microseconds> get_subjective_cpu_leeway() const;
+         std::optional<fc::microseconds> get_subjective_cpu_leeway() const;
          void set_greylist_limit( uint32_t limit );
          uint32_t get_greylist_limit()const;
 
@@ -307,7 +307,7 @@ namespace eosio { namespace chain {
          vm::wasm_allocator&  get_wasm_allocator();
 #endif
 
-         static fc::optional<uint64_t> convert_exception_to_error_code( const fc::exception& e );
+         static std::optional<uint64_t> convert_exception_to_error_code( const fc::exception& e );
 
          signal<void(uint32_t)>                        block_start; // block_num
          signal<void(const signed_block_ptr&)>         pre_accepted_block;
@@ -332,7 +332,7 @@ namespace eosio { namespace chain {
          wasm_interface& get_wasm_interface();
 
 
-         optional<abi_serializer> get_abi_serializer( account_name n, const abi_serializer::yield_function_t& yield )const {
+         std::optional<abi_serializer> get_abi_serializer( account_name n, const abi_serializer::yield_function_t& yield )const {
             if( n.good() ) {
                try {
                   const auto& a = get_account( n );
@@ -341,7 +341,7 @@ namespace eosio { namespace chain {
                      return abi_serializer( abi, yield );
                } FC_CAPTURE_AND_LOG((n))
             }
-            return optional<abi_serializer>();
+            return std::optional<abi_serializer>();
          }
 
          template<typename T>
@@ -364,7 +364,7 @@ namespace eosio { namespace chain {
 
       static chain_id_type extract_chain_id(snapshot_reader& snapshot);
 
-      static fc::optional<chain_id_type> extract_chain_id_from_db( const path& state_dir );
+      static std::optional<chain_id_type> extract_chain_id_from_db( const path& state_dir );
 
          void replace_producer_keys( const public_key_type& key );
          void replace_account_keys( name account, name permission, const public_key_type& key );

@@ -141,7 +141,7 @@ namespace eosio {
          std::set<filter_entry> filter_on;
          std::set<filter_entry> filter_out;
          chain_plugin*          chain_plug = nullptr;
-         fc::optional<scoped_connection> applied_transaction_connection;
+         std::optional<scoped_connection> applied_transaction_connection;
 
           bool filter(const action_trace& act) {
             bool pass_on = false;
@@ -278,11 +278,11 @@ namespace eosio {
          }
 
          void on_applied_transaction( const transaction_trace_ptr& trace ) {
-            if( !trace->receipt || (trace->receipt->status != transaction_receipt_header::executed &&
+            if( !trace->receipt.has_value() || (trace->receipt->status != transaction_receipt_header::executed &&
                   trace->receipt->status != transaction_receipt_header::soft_fail) )
                return;
             for( const auto& atrace : trace->action_traces ) {
-               if( !atrace.receipt ) continue;
+               if( !atrace.receipt.has_value() ) continue;
                on_action_trace( atrace );
             }
          }
@@ -468,7 +468,7 @@ namespace eosio {
 
          bool in_history = (itr != idx.end() && txn_id_matched(itr->trx_id) );
 
-         if( !in_history && !p.block_num_hint ) {
+         if( !in_history && !p.block_num_hint.has_value() ) {
             EOS_THROW(tx_not_found, "Transaction ${id} not found in history and no block hint was given", ("id",p.id));
          }
 

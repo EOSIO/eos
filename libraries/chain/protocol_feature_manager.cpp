@@ -377,7 +377,7 @@ Allows privileged contracts to set the constraints on WebAssembly code.
       return recognized_t::ready;
    }
 
-   optional<digest_type> protocol_feature_set::get_builtin_digest( builtin_protocol_feature_t feature_codename )const {
+   std::optional<digest_type> protocol_feature_set::get_builtin_digest( builtin_protocol_feature_t feature_codename )const {
       uint32_t indx = static_cast<uint32_t>( feature_codename );
 
       if( indx >= _recognized_builtin_protocol_features.size() )

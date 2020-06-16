@@ -342,14 +342,14 @@ chain::action generate_nonce_action() {
 }
 
 //resolver for ABI serializer to decode actions in proposed transaction in multisig contract
-auto abi_serializer_resolver = [](const name& account) -> fc::optional<abi_serializer> {
-  static unordered_map<account_name, fc::optional<abi_serializer> > abi_cache;
+auto abi_serializer_resolver = [](const name& account) -> std::optional<abi_serializer> {
+  static unordered_map<account_name, std::optional<abi_serializer> > abi_cache;
   auto it = abi_cache.find( account );
   if ( it == abi_cache.end() ) {
     const auto raw_abi_result = call(get_raw_abi_func, fc::mutable_variant_object("account_name", account));
     const auto raw_abi_blob = raw_abi_result["abi"].as_blob().data;
 
-    fc::optional<abi_serializer> abis;
+    std::optional<abi_serializer> abis;
     if (raw_abi_blob.size() != 0) {
       abis.emplace(fc::raw::unpack<abi_def>(raw_abi_blob), abi_serializer::create_yield_function( abi_serializer_max_time ));
     } else {
@@ -363,8 +363,8 @@ auto abi_serializer_resolver = [](const name& account) -> fc::optional<abi_seria
   return it->second;
 };
 
-auto abi_serializer_resolver_empty = [](const name& account) -> fc::optional<abi_serializer> {
-   return fc::optional<abi_serializer>();
+auto abi_serializer_resolver_empty = [](const name& account) -> std::optional<abi_serializer> {
+   return std::optional<abi_serializer>();
 };
 
 void prompt_for_wallet_password(string& pw, const string& name) {
@@ -494,7 +494,7 @@ void print_action( const fc::variant& at ) {
 
 bytes variant_to_bin( const account_name& account, const action_name& action, const fc::variant& action_args_var ) {
    auto abis = abi_serializer_resolver( account );
-   FC_ASSERT( abis.valid(), "No ABI found for ${contract}", ("contract", account));
+   FC_ASSERT( abis.has_value(), "No ABI found for ${contract}", ("contract", account));
 
    auto action_type = abis->get_action_type( action );
    FC_ASSERT( !action_type.empty(), "Unknown action ${action} in contract ${contract}", ("action", action)( "contract", account ));
@@ -503,7 +503,7 @@ bytes variant_to_bin( const account_name& account, const action_name& action, co
 
 fc::variant bin_to_variant( const account_name& account, const action_name& action, const bytes& action_args) {
    auto abis = abi_serializer_resolver( account );
-   FC_ASSERT( abis.valid(), "No ABI found for ${contract}", ("contract", account));
+   FC_ASSERT( abis.has_value(), "No ABI found for ${contract}", ("contract", account));
 
    auto action_type = abis->get_action_type( action );
    FC_ASSERT( !action_type.empty(), "Unknown action ${action} in contract ${contract}", ("action", action)( "contract", account ));
@@ -575,7 +575,7 @@ void print_result( const fc::variant& result ) { try {
          cerr << " us\n";
 
          if( status == "failed" ) {
-            auto soft_except = processed["except"].as<fc::optional<fc::exception>>();
+            auto soft_except = processed["except"].as<std::optional<fc::exception>>();
             if( soft_except ) {
                edump((soft_except->to_detail_string()));
             }
@@ -2185,7 +2185,7 @@ void get_account( const string& accountName, const string& coresym, bool json_fo
       asset staked;
       asset unstaking;
 
-      if( res.core_liquid_balance.valid() ) {
+      if( res.core_liquid_balance.has_value() ) {
          unstaking = asset( 0, res.core_liquid_balance->get_symbol() ); // Correct core symbol for unstaking asset.
          staked = asset( 0, res.core_liquid_balance->get_symbol() );    // Correct core symbol for staked asset.
       }
@@ -2405,7 +2405,7 @@ void get_account( const string& accountName, const string& coresym, bool json_fo
          }
       }
 
-      if( res.core_liquid_balance.valid() ) {
+      if( res.core_liquid_balance.has_value() ) {
          std::cout << res.core_liquid_balance->get_symbol().name() << " balances: " << std::endl;
          std::cout << indent << std::left << std::setw(11)
                    << "liquid:" << std::right << std::setw(18) << *res.core_liquid_balance << std::endl;
@@ -2641,7 +2641,7 @@ int main( int argc, char** argv ) {
       } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Invalid transaction format: '${data}'",
                                ("data", fc::json::to_string(trx_var, fc::time_point::maximum())))
 
-      fc::optional<chain_id_type> chain_id;
+      std::optional<chain_id_type> chain_id;
 
       if( str_chain_id.size() == 0 ) {
          ilog( "grabbing chain_id from ${n}", ("n", node_executable_name) );
@@ -2677,13 +2677,13 @@ int main( int argc, char** argv ) {
    getBlock->callback([&blockArg, &get_bhs, &get_binfo] {
       EOSC_ASSERT( !(get_bhs && get_binfo), "ERROR: Either --header-state or --info can be set" );
       if (get_binfo) {
-         fc::optional<int64_t> block_num;
+         std::optional<int64_t> block_num;
          try {
             block_num = fc::to_int64(blockArg);
          } catch (...) {
             // error is handled in assertion below
          }
-         EOSC_ASSERT( block_num.valid() && (*block_num > 0), "Invalid block num: ${block_num}", ("block_num", blockArg) );
+         EOSC_ASSERT( block_num.has_value() && (*block_num > 0), "Invalid block num: ${block_num}", ("block_num", blockArg) );
          const auto arg = fc::variant_object("block_num", static_cast<uint32_t>(*block_num));
          std::cout << fc::json::to_pretty_string(call(get_block_info_func, arg)) << std::endl;
       } else {
@@ -3523,7 +3523,7 @@ int main( int argc, char** argv ) {
       } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Invalid transaction format: '${data}'",
                                ("data", fc::json::to_string(trx_var, fc::time_point::maximum())))
 
-      fc::optional<chain_id_type> chain_id;
+      std::optional<chain_id_type> chain_id;
 
       if( str_chain_id.size() == 0 ) {
          ilog( "grabbing chain_id from ${n}", ("n", node_executable_name) );

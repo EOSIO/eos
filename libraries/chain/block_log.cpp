@@ -299,9 +299,9 @@ namespace eosio { namespace chain {
       uint64_t      last_block_position() const { return read_buffer<uint64_t>(data() + size() - sizeof(uint64_t)); }
       chain_id_type chain_id() const { return preamble.chain_id(); }
 
-      fc::optional<genesis_state> get_genesis_state() const {
-         return std::visit(overloaded{[](const chain_id_type&) { return fc::optional<genesis_state>{}; },
-                                      [](const genesis_state& state) { return fc::optional<genesis_state>{state}; }},
+      std::optional<genesis_state> get_genesis_state() const {
+         return std::visit(overloaded{[](const chain_id_type&) { return std::optional<genesis_state>{}; },
+                                      [](const genesis_state& state) { return std::optional<genesis_state>{state}; }},
                            preamble.chain_context);
       }
 
@@ -827,7 +827,7 @@ namespace eosio { namespace chain {
       return backup_dir;
    }
 
-   fc::optional<genesis_state> block_log::extract_genesis_state( const fc::path& data_dir ) {
+   std::optional<genesis_state> block_log::extract_genesis_state( const fc::path& data_dir ) {
       return block_log_data(data_dir / "blocks.log").get_genesis_state();
    }
       

@@ -125,7 +125,7 @@
        { if( code() == CODE ) throw *this;\
          else fc::exception::dynamic_rethrow_exception(); \
        } \
-       fc::optional<uint64_t> error_code; \
+       std::optional<uint64_t> error_code; \
    };
 
 namespace eosio { namespace chain {

@@ -177,7 +177,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       {
       }
 
-      optional<fc::time_point> calculate_next_block_time(const account_name& producer_name, const block_timestamp_type& current_block_time) const;
+      std::optional<fc::time_point> calculate_next_block_time(const account_name& producer_name, const block_timestamp_type& current_block_time) const;
       void schedule_production_loop();
       void schedule_maybe_produce_block( bool exhausted );
       void produce_block();
@@ -201,7 +201,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       std::map<chain::account_name, producer_watermark>         _producer_watermarks;
       pending_block_mode                                        _pending_block_mode = pending_block_mode::speculating;
       unapplied_transaction_queue                               _unapplied_transactions;
-      fc::optional<named_thread_pool>                           _thread_pool;
+      std::optional<named_thread_pool>                           _thread_pool;
 
       std::atomic<int32_t>                                      _max_transaction_time_ms; // modified by app thread, read by net_plugin thread pool
       fc::microseconds                                          _max_irreversible_block_age_us;
@@ -228,9 +228,9 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       transaction_id_with_expiry_index                         _blacklisted_transactions;
       pending_snapshot_index                                   _pending_snapshot_index;
 
-      fc::optional<scoped_connection>                          _accepted_block_connection;
-      fc::optional<scoped_connection>                          _accepted_block_header_connection;
-      fc::optional<scoped_connection>                          _irreversible_block_connection;
+      std::optional<scoped_connection>                          _accepted_block_connection;
+      std::optional<scoped_connection>                          _accepted_block_header_connection;
+      std::optional<scoped_connection>                          _irreversible_block_connection;
 
       /*
        * HACK ALERT
@@ -564,8 +564,8 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
 
       fc::time_point calculate_pending_block_time() const;
       fc::time_point calculate_block_deadline( const fc::time_point& ) const;
-      void schedule_delayed_production_loop(const std::weak_ptr<producer_plugin_impl>& weak_this, optional<fc::time_point> wake_up_time);
-      optional<fc::time_point> calculate_producer_wake_up_time( const block_timestamp_type& ref_block_time ) const;
+      void schedule_delayed_production_loop(const std::weak_ptr<producer_plugin_impl>& weak_this, std::optional<fc::time_point> wake_up_time);
+      std::optional<fc::time_point> calculate_producer_wake_up_time( const block_timestamp_type& ref_block_time ) const;
 
 };
 
@@ -989,7 +989,7 @@ producer_plugin::runtime_options producer_plugin::get_runtime_options() const {
       my->_max_scheduled_transaction_time_per_block_ms,
       my->chain_plug->chain().get_subjective_cpu_leeway() ?
             my->chain_plug->chain().get_subjective_cpu_leeway()->count() :
-            fc::optional<int32_t>(),
+            std::optional<int32_t>(),
       my->_incoming_defer_ratio,
       my->chain_plug->chain().get_greylist_limit()
    };
@@ -1034,12 +1034,12 @@ producer_plugin::whitelist_blacklist producer_plugin::get_whitelist_blacklist() 
 
 void producer_plugin::set_whitelist_blacklist(const producer_plugin::whitelist_blacklist& params) {
    chain::controller& chain = my->chain_plug->chain();
-   if(params.actor_whitelist.valid()) chain.set_actor_whitelist(*params.actor_whitelist);
-   if(params.actor_blacklist.valid()) chain.set_actor_blacklist(*params.actor_blacklist);
-   if(params.contract_whitelist.valid()) chain.set_contract_whitelist(*params.contract_whitelist);
-   if(params.contract_blacklist.valid()) chain.set_contract_blacklist(*params.contract_blacklist);
-   if(params.action_blacklist.valid()) chain.set_action_blacklist(*params.action_blacklist);
-   if(params.key_blacklist.valid()) chain.set_key_blacklist(*params.key_blacklist);
+   if(params.actor_whitelist.has_value()) chain.set_actor_whitelist(*params.actor_whitelist);
+   if(params.actor_blacklist.has_value()) chain.set_actor_blacklist(*params.actor_blacklist);
+   if(params.contract_whitelist.has_value()) chain.set_contract_whitelist(*params.contract_whitelist);
+   if(params.contract_blacklist.has_value()) chain.set_contract_blacklist(*params.contract_blacklist);
+   if(params.action_blacklist.has_value()) chain.set_action_blacklist(*params.action_blacklist);
+   if(params.key_blacklist.has_value()) chain.set_key_blacklist(*params.key_blacklist);
 }
 
 producer_plugin::integrity_hash_information producer_plugin::get_integrity_hash() const {
@@ -1256,7 +1256,7 @@ producer_plugin::get_account_ram_corrections( const get_account_ram_corrections_
    return result;
 }
 
-optional<fc::time_point> producer_plugin_impl::calculate_next_block_time(const account_name& producer_name, const block_timestamp_type& current_block_time) const {
+std::optional<fc::time_point> producer_plugin_impl::calculate_next_block_time(const account_name& producer_name, const block_timestamp_type& current_block_time) const {
    chain::controller& chain = chain_plug->chain();
    const auto& hbs = chain.head_block_state();
    const auto& active_schedule = hbs->active_schedule.producers;
@@ -1265,7 +1265,7 @@ optional<fc::time_point> producer_plugin_impl::calculate_next_block_time(const a
    auto itr = std::find_if(active_schedule.begin(), active_schedule.end(), [&](const auto& asp){ return asp.producer_name == producer_name; });
    if (itr == active_schedule.end()) {
       // this producer is not in the active producer set
-      return optional<fc::time_point>();
+      return std::optional<fc::time_point>();
    }
 
    size_t producer_index = itr - active_schedule.begin();
@@ -1907,9 +1907,9 @@ void producer_plugin_impl::schedule_maybe_produce_block( bool exhausted ) {
          } ) );
 }
 
-optional<fc::time_point> producer_plugin_impl::calculate_producer_wake_up_time( const block_timestamp_type& ref_block_time ) const {
+std::optional<fc::time_point> producer_plugin_impl::calculate_producer_wake_up_time( const block_timestamp_type& ref_block_time ) const {
    // if we have any producers then we should at least set a timer for our next available slot
-   optional<fc::time_point> wake_up_time;
+   std::optional<fc::time_point> wake_up_time;
    for (const auto& p : _producers) {
       auto next_producer_block_time = calculate_next_block_time(p, ref_block_time);
       if (next_producer_block_time) {
@@ -1924,14 +1924,14 @@ optional<fc::time_point> producer_plugin_impl::calculate_producer_wake_up_time( 
          }
       }
    }
-   if( !wake_up_time ) {
+   if( !wake_up_time.has_value() ) {
       fc_dlog(_log, "Not Scheduling Speculative/Production, no local producers had valid wake up times");
    }
 
    return wake_up_time;
 }
 
-void producer_plugin_impl::schedule_delayed_production_loop(const std::weak_ptr<producer_plugin_impl>& weak_this, optional<fc::time_point> wake_up_time) {
+void producer_plugin_impl::schedule_delayed_production_loop(const std::weak_ptr<producer_plugin_impl>& weak_this, std::optional<fc::time_point> wake_up_time) {
    if (wake_up_time) {
       fc_dlog(_log, "Scheduling Speculative/Production Change at ${time}", ("time", wake_up_time));
       static const boost::posix_time::ptime epoch(boost::gregorian::date(1970, 1, 1));
@@ -1970,7 +1970,7 @@ static auto make_debug_time_logger() {
    });
 }
 
-static auto maybe_make_debug_time_logger() -> fc::optional<decltype(make_debug_time_logger())> {
+static auto maybe_make_debug_time_logger() -> std::optional<decltype(make_debug_time_logger())> {
    if (_log.is_enabled( fc::log_level::debug ) ){
       return make_debug_time_logger();
    } else {
