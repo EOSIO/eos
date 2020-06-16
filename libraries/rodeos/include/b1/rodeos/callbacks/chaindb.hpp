@@ -356,6 +356,18 @@ class secondary_iterator_cache : public iterator_cache_base<secondary_iterator_c
             std::make_tuple((uint8_t)0x01, table_name, eosio::name{ "secondary" }, code, table, scope, secondary)));
       return get_iterator(table_index, std::move(it), secondary, primary, require_exact);
    }
+
+   int32_t upper_bound(uint64_t code, uint64_t scope, uint64_t table, secondary_type& secondary, uint64_t& primary) {
+      int32_t table_index = base::get_table_index({ code, table, scope });
+      if (table_index < 0)
+         return -1;
+      chain_kv::view::iterator it{ base::view, state_account.value,
+                                   chain_kv::to_slice(eosio::convert_to_key(std::make_tuple(
+                                         (uint8_t)0x01, table_name, eosio::name{ "secondary" }, code, table, scope))) };
+      it.lower_bound(eosio::convert_to_key(std::make_tuple((uint8_t)0x01, table_name, eosio::name{ "secondary" }, code,
+                                                           table, scope, secondary, ~uint64_t(0), uint8_t(0))));
+      return get_iterator(table_index, std::move(it), secondary, primary, false);
+   }
 };
 
 struct chaindb_state {
@@ -452,7 +464,7 @@ struct chaindb_callbacks {
    }                                                                                                                   \
    int32_t db_##NAME##_upperbound(uint64_t code, uint64_t scope, uint64_t table, legacy_ptr<TYPE> secondary,           \
                                   legacy_ptr<uint64_t> primary) {                                                      \
-      throw std::runtime_error("unimplemented: db_" #NAME "_upperbound");                                              \
+      return get_##NAME().upper_bound(code, scope, table, *secondary, *primary);                                       \
    }                                                                                                                   \
    int32_t db_##NAME##_end(uint64_t code, uint64_t scope, uint64_t table) {                                            \
       throw std::runtime_error("unimplemented: db_" #NAME "_end");                                                     \
@@ -518,7 +530,10 @@ struct chaindb_callbacks {
    }
    int32_t db_idx256_upperbound(uint64_t code, uint64_t scope, uint64_t table, legacy_span<__uint128_t> secondary,
                                 legacy_ptr<uint64_t> primary) {
-      throw std::runtime_error("unimplemented: db_idx256_upperbound");
+      auto cs     = read_cs(secondary);
+      auto result = get_idx256().upper_bound(code, scope, table, cs, *primary);
+      write_cs(secondary, cs);
+      return result;
    }
    int32_t db_idx256_end(uint64_t code, uint64_t scope, uint64_t table) {
       throw std::runtime_error("unimplemented: db_idx256_end");
