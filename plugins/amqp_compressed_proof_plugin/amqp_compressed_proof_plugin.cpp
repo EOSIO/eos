@@ -102,10 +102,7 @@ private:
 
 struct compressed_proof_generator_impl {
    compressed_proof_generator_impl(chain::controller& controller, std::vector<compressed_proof_generator::result_callback_funcs>&& callbacks) :
-     callbacks(callbacks), irreversible(controller.get_read_mode() == chain::db_read_mode::IRREVERSIBLE) {
-      controller_connections.emplace_back(controller.irreversible_block.connect([this,&controller](const chain::block_state_ptr& bsp) {
-         on_irreversible_block(bsp, controller);
-      }));
+     callbacks(callbacks) {
       controller_connections.emplace_back(controller.applied_transaction.connect([this](std::tuple<const chain::transaction_trace_ptr&, const chain::packed_transaction_ptr&> t) {
          on_applied_transaction(std::get<0>(t));
       }));
@@ -151,26 +148,7 @@ struct compressed_proof_generator_impl {
       }
       clear_caches();
 
-      if(irreversible)
-         reversible_action_entries_index.emplace(reversible_action_entries{bsp->block_num, bsp->id, std::move(action_entries_this_block)});
-      else
-         run_callbacks_on_block(bsp, action_entries_this_block, controller);
-   }
-
-   void on_irreversible_block(const chain::block_state_ptr& bsp, const chain::controller& controller) {
-      if(!irreversible)
-         return;
-
-      if(const auto it = reversible_action_entries_index.find(bsp->id); it != reversible_action_entries_index.end()) {
-         const std::set<action_entry>& action_entries = it->action_entries;
-
-         run_callbacks_on_block(bsp, action_entries, controller);
-
-         reversible_action_entries_index.get<by_block_num>().erase(
-                 reversible_action_entries_index.get<by_block_num>().begin(),
-                 reversible_action_entries_index.get<by_block_num>().upper_bound(bsp->block_num)
-         );
-      }
+      run_callbacks_on_block(bsp, action_entries_this_block, controller);
    }
 
    void run_callbacks_on_block(const chain::block_state_ptr& bsp, const std::set<action_entry>& action_entries, const chain::controller& controller) {
@@ -204,32 +182,11 @@ struct compressed_proof_generator_impl {
       onblock_trace.reset();
    }
 
-   struct reversible_action_entries {
-      chain::block_num_type  block_num;
-      chain::block_id_type   block_id;
-      std::set<action_entry> action_entries;
-   };
-
-   struct by_block_id;
-   struct by_block_num;
-
-   typedef multi_index_container<
-      reversible_action_entries,
-      indexed_by<
-         hashed_unique<tag<by_block_id>,   key<&reversible_action_entries::block_id>, std::hash<fc::sha256>>,
-         ordered_unique<tag<by_block_num>, key<&reversible_action_entries::block_num>>
-      >
-   > reversible_action_entries_index_type;
-   reversible_action_entries_index_type reversible_action_entries_index;
-
    std::map<transaction_id_type, chain::transaction_trace_ptr>    cached_traces;
    std::optional<chain::transaction_trace_ptr>                    onblock_trace;
    std::vector<compressed_proof_generator::result_callback_funcs> callbacks;
 
-   fc::optional<boost::filesystem::path> reversible_path;
-
    std::list<boost::signals2::scoped_connection> controller_connections;
-   bool irreversible;
 };
 
 using generator_impl = compressed_proof_generator_impl;
@@ -237,45 +194,7 @@ using generator_impl = compressed_proof_generator_impl;
 compressed_proof_generator::compressed_proof_generator(chain::controller& controller, std::vector<result_callback_funcs>&& callbacks) :
   my(new compressed_proof_generator_impl(controller, std::move(callbacks))) {}
 
-compressed_proof_generator::compressed_proof_generator(chain::controller& controller, std::vector<result_callback_funcs>&& callbacks, const boost::filesystem::path& p) :
-  my(new compressed_proof_generator_impl(controller, std::move(callbacks))) {
-   my->reversible_path = p;
-
-   if(boost::filesystem::exists(*my->reversible_path)) {
-      try {
-         fc::datastream<fc::cfile> file;
-         file.set_file_path(*my->reversible_path);
-         file.open("rb");
-         fc::unsigned_int count;
-         fc::raw::unpack(file, count);
-         while(count.value--) {
-            compressed_proof_generator_impl::reversible_action_entries entry;
-            fc::raw::unpack(file, entry);
-            my->reversible_action_entries_index.emplace(entry);
-         }
-      } FC_RETHROW_EXCEPTIONS(error, "Failed to load compressed merkle generator reversible state file ${f}", ("f", (fc::path)*my->reversible_path));
-   }
-   else {
-      boost::filesystem::ofstream s(*my->reversible_path);
-      EOS_ASSERT(s.good(), chain::plugin_config_exception, "Unable to create compressed merkle generator reversible state file ${f}", ("f", (fc::path)*my->reversible_path));
-   }
-   boost::system::error_code ec;
-   boost::filesystem::remove(*my->reversible_path, ec);
-}
-
-compressed_proof_generator::~compressed_proof_generator() {
-   if(my->reversible_path) {
-      try {
-         fc::unsigned_int num = my->reversible_action_entries_index.size();
-         fc::datastream<fc::cfile> file;
-         file.set_file_path(*my->reversible_path);
-         file.open("wb");
-         fc::raw::pack(file, num);
-         for(const auto& v : my->reversible_action_entries_index)
-            fc::raw::pack(file, v);
-      } FC_LOG_AND_DROP();
-   }
-}
+compressed_proof_generator::~compressed_proof_generator() = default;
 
 struct amqp_compressed_proof_plugin_impl {
    std::unique_ptr<compressed_proof_generator> proof_generator;
@@ -318,8 +237,6 @@ void amqp_compressed_proof_plugin::plugin_initialize(const variables_map& option
          for(const auto& p : boost::filesystem::directory_iterator(dir))
             if(boost::starts_with(p.path().filename().generic_string(), file_prefix))
                boost::filesystem::remove(p.path(), ec);
-
-      const boost::filesystem::path reversible_blocks_file = dir / (file_prefix + "-reversible.bin"s);
 
       std::vector<compressed_proof_generator::result_callback_funcs> callbacks;
 
@@ -380,7 +297,7 @@ void amqp_compressed_proof_plugin::plugin_initialize(const variables_map& option
          }
       }
 
-      my->proof_generator = std::make_unique<compressed_proof_generator>(controller, std::move(callbacks), reversible_blocks_file);
+      my->proof_generator = std::make_unique<compressed_proof_generator>(controller, std::move(callbacks));
    }
    FC_LOG_AND_RETHROW()
 }
@@ -410,4 +327,3 @@ inline T& operator<<(T& ds, const std::set<eosio::action_entry>& aes) {
 
 FC_REFLECT(eosio::combine_nodes, );
 FC_REFLECT(eosio::action_entry, (action)(return_value)(action_receipt));
-FC_REFLECT(eosio::compressed_proof_generator_impl::reversible_action_entries, (block_num)(block_id)(action_entries));

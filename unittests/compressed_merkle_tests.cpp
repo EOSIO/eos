@@ -182,6 +182,7 @@ BOOST_AUTO_TEST_CASE(test_proof_arv_activation) try {
    produce_and_check();
 } FC_LOG_AND_RETHROW()
 
+//This test isn't as interesting now that reversibility is completely handled by db mode, keeping it around anyways
 BOOST_AUTO_TEST_CASE(test_proof_presist_reversible) try {
    tester base_chain(setup_policy::none);
    base_chain.produce_blocks(10);
@@ -195,8 +196,6 @@ BOOST_AUTO_TEST_CASE(test_proof_presist_reversible) try {
    };
 
    tester chain(setup_policy::none, chain::db_read_mode::IRREVERSIBLE);
-   fc::temp_file tempfile;
-
    unsigned blocks_seen = 0;
 
    {
@@ -207,7 +206,7 @@ BOOST_AUTO_TEST_CASE(test_proof_presist_reversible) try {
          [&](std::vector<char>&& serialized_compressed_proof) {
             blocks_seen++;
          }
-      )}, tempfile.path());
+      )});
 
       push_blocks(base_chain, chain, 6); //make 4 irreversible blocks (2, 3, 4, 5); calling result callback 4 times
    }
@@ -220,7 +219,7 @@ BOOST_AUTO_TEST_CASE(test_proof_presist_reversible) try {
          [&](std::vector<char>&& serialized_compressed_proof) {
             blocks_seen++;
          }
-      )}, tempfile.path());
+      )});
 
       push_blocks(base_chain, chain, 7); //makes one more irreversible block
    }
