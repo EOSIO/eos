@@ -5,10 +5,10 @@ set -eo pipefail
 # tests
 if [[ $(uname) == 'Darwin' ]]; then # macOS
     set +e # defer error handling to end
-    source ~/.bash_profile && ./"$@"
+    source ~/.bash_profile && rabbitmq-server -detached && sleep 10 && ./"$@"
     EXIT_STATUS=$?
 else # Linux
-    COMMANDS="$MOUNTED_DIR/$@"
+    COMMANDS="rabbitmq-server -detached && sleep 10 && $MOUNTED_DIR/$@"
     . $HELPERS_DIR/file-hash.sh $CICD_DIR/platforms/$PLATFORM_TYPE/$IMAGE_TAG.dockerfile
     echo "$ docker run --rm --init -v $(pwd):$MOUNTED_DIR $(buildkite-intrinsics) -e JOBS -e BUILDKITE_API_KEY $FULL_TAG bash -c \"$COMMANDS\""
     set +e # defer error handling to end
