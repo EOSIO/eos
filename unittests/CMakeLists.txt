@@ -54,10 +54,6 @@ target_include_directories( unit_test PUBLIC
                             ${CMAKE_CURRENT_BINARY_DIR}/include
                             ${CMAKE_SOURCE_DIR}/plugins/http_plugin/include )
 
-if (ENABLE_UNITY_BUILD)
-  set_target_properties(unit_test PROPERTIES UNITY_BUILD TRUE)
-endif(ENABLE_UNITY_BUILD)
-
 ### MARK TEST SUITES FOR EXECUTION ###
 add_test(NAME protocol_feature_digest_unit_test COMMAND unit_test --run_test=protocol_feature_digest_tests --report_level=detailed --color_output --catch_system_errors=no)
 set(ctest_tests "protocol_feature_digest_tests")

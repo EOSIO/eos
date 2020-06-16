@@ -124,7 +124,6 @@ list(APPEND sources ${fc_headers})
 setup_library( fc SOURCES ${sources} LIBRARY_TYPE STATIC DONT_INSTALL_LIBRARY )
 
 if(ENABLE_UNITY_BUILD)
-   set_target_properties(fc PROPERTIES UNITY_BUILD TRUE)
    set_source_files_properties(src/io/json.cpp 
                                PROPERTIES SKIP_UNITY_BUILD_INCLUSION TRUE)
 endif() 
