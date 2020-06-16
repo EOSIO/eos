@@ -236,51 +236,6 @@ BOOST_FIXTURE_TEST_CASE(test_light_validation_restart_from_block_log_with_pruned
    BOOST_REQUIRE_NO_THROW(block_log::repair_log(blocks_dir));
 }
 
-
-void trim_blocklog_front() {
-   tester chain;
-   chain.produce_blocks(10);
-   chain.produce_blocks(20);
-   chain.close();
-
-   namespace bfs = boost::filesystem;
-
-   auto  blocks_dir = chain.get_config().blocks_dir;
-   auto  old_index_size = fc::file_size(blocks_dir / "blocks.index");
-
-   scoped_temp_path temp1, temp2;
-   boost::filesystem::create_directory(temp1.path);
-   bfs::copy(blocks_dir / "blocks.log", temp1.path / "blocks.log");
-   bfs::copy(blocks_dir / "blocks.index", temp1.path / "blocks.index");
-   BOOST_REQUIRE_NO_THROW(block_log::trim_blocklog_front(temp1.path, temp2.path, 10));
-   BOOST_REQUIRE_NO_THROW(block_log::smoke_test(temp1.path, 1));
-
-   block_log old_log(blocks_dir);
-   block_log new_log(temp1.path);
-   BOOST_CHECK(new_log.first_block_num() == 10);
-   BOOST_CHECK(new_log.head()->block_num() == old_log.head()->block_num());
-
-   int num_blocks_trimmed = 10 - 1;
-   BOOST_CHECK(fc::file_size(temp1.path / "blocks.index") == old_index_size - sizeof(uint64_t) * num_blocks_trimmed);
-}
-
-BOOST_AUTO_TEST_CASE(test_trim_blocklog_front) { trim_blocklog_front(); }
-
-BOOST_AUTO_TEST_CASE(test_trim_blocklog_front_v1) {
-   block_log::set_version(1);
-   trim_blocklog_front();
-}
-
-BOOST_AUTO_TEST_CASE(test_trim_blocklog_front_v2) {
-   block_log::set_version(2);
-   trim_blocklog_front();
-}
-
-BOOST_AUTO_TEST_CASE(test_trim_blocklog_front_v3) {
-   block_log::set_version(3);
-   trim_blocklog_front();
-}
-
 BOOST_AUTO_TEST_CASE(test_split_log) {
    namespace bfs = boost::filesystem;
    fc::temp_directory temp_dir;
@@ -413,6 +368,74 @@ BOOST_FIXTURE_TEST_CASE(restart_from_block_log_with_incomplete_head,restart_from
    logfile.open("ab");
    const char random_data[] = "12345678901231876983271649837";
    logfile.write(random_data, sizeof(random_data));
+}
+
+BOOST_AUTO_TEST_CASE(test_split_from_v1_log) {
+   namespace bfs = boost::filesystem;
+   fc::temp_directory temp_dir;
+   block_log::set_version(1); 
+   tester chain(
+         temp_dir,
+         [](controller::config& config) {
+            config.blocks_log_stride        = 20;
+            config.max_retained_block_files = 5;
+         },
+         true);
+   chain.produce_blocks(75);
+
+   BOOST_CHECK( chain.control->fetch_block_by_number(1)->block_num() == 1 );
+   BOOST_CHECK( chain.control->fetch_block_by_number(21)->block_num() == 21 );
+   BOOST_CHECK( chain.control->fetch_block_by_number(41)->block_num() == 41 );
+   BOOST_CHECK( chain.control->fetch_block_by_number(75)->block_num() == 75 );
+   block_log::set_version(block_log::max_supported_version); 
+}
+
+void trim_blocklog_front(uint32_t version) {
+   block_log::set_version(version); 
+   tester chain;
+   chain.produce_blocks(10);
+   chain.produce_blocks(20);
+   chain.close();
+
+   namespace bfs = boost::filesystem;
+
+   auto  blocks_dir = chain.get_config().blocks_dir;
+   auto  old_index_size = fc::file_size(blocks_dir / "blocks.index");
+
+   scoped_temp_path temp1, temp2;
+   boost::filesystem::create_directory(temp1.path);
+   bfs::copy(blocks_dir / "blocks.log", temp1.path / "blocks.log");
+   bfs::copy(blocks_dir / "blocks.index", temp1.path / "blocks.index");
+   BOOST_REQUIRE_NO_THROW(block_log::trim_blocklog_front(temp1.path, temp2.path, 10));
+   BOOST_REQUIRE_NO_THROW(block_log::smoke_test(temp1.path, 1));
+
+   block_log old_log(blocks_dir);
+   block_log new_log(temp1.path);
+   // double check if the version has been set to the desired version
+   BOOST_CHECK(old_log.version() == version); 
+   BOOST_CHECK(new_log.first_block_num() == 10);
+   BOOST_CHECK(new_log.head()->block_num() == old_log.head()->block_num());
+
+   int num_blocks_trimmed = 10 - 1;
+   BOOST_CHECK(fc::file_size(temp1.path / "blocks.index") == old_index_size - sizeof(uint64_t) * num_blocks_trimmed);
+   block_log::set_version(block_log::max_supported_version); 
+}
+
+BOOST_AUTO_TEST_CASE(test_trim_blocklog_front) { 
+   trim_blocklog_front(block_log::max_supported_version); 
+}
+
+BOOST_AUTO_TEST_CASE(test_trim_blocklog_front_v1) {
+   block_log::set_version(1); 
+   trim_blocklog_front(1);
+}
+
+BOOST_AUTO_TEST_CASE(test_trim_blocklog_front_v2) {
+   trim_blocklog_front(2);
+}
+
+BOOST_AUTO_TEST_CASE(test_trim_blocklog_front_v3) {
+   trim_blocklog_front(3);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

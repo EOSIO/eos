@@ -83,6 +83,7 @@ namespace eosio { namespace chain {
 
          // used for unit test to generate older version blocklog
          static void set_version(uint32_t);
+         uint32_t    version() const;
 
          /**
           * @param n Only test 1 block out of every n blocks. If n is 0, it is maximum between 1 and the ceiling of the total number blocks divided by 8.

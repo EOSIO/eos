@@ -700,6 +700,7 @@ namespace eosio { namespace chain {
    }
 
    void block_log::set_version(uint32_t ver) { detail::block_log_impl::default_version = ver; }
+   uint32_t block_log::version() const { return my->preamble.version; }
 
    detail::block_log_impl::block_log_impl(const fc::path& data_dir, fc::path archive_dir, uint64_t stride,
                                           uint16_t max_retained_files) {
