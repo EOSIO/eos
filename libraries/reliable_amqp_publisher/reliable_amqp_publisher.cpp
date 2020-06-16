@@ -22,8 +22,8 @@ namespace eosio {
 struct reliable_amqp_publisher_handler;
 
 struct reliable_amqp_publisher_impl {
-   reliable_amqp_publisher_impl(const std::string url, const std::string exchange, const std::string routing_key,
-                                const boost::filesystem::path unconfirmed_path, const std::optional<std::string> message_id);
+   reliable_amqp_publisher_impl(const std::string& url, const std::string& exchange, const std::string& routing_key,
+                                const boost::filesystem::path& unconfirmed_path, const std::optional<std::string>& message_id);
    ~reliable_amqp_publisher_impl();
    void retry_connection();
    void bringup_connection();
@@ -82,8 +82,8 @@ struct reliable_amqp_publisher_handler : AMQP::LibBoostAsioHandler {
    reliable_amqp_publisher_impl& impl;
 };
 
-reliable_amqp_publisher_impl::reliable_amqp_publisher_impl(const std::string url, const std::string exchange, const std::string routing_key,
-                                                           const boost::filesystem::path unconfirmed_path, const std::optional<std::string> message_id) :
+reliable_amqp_publisher_impl::reliable_amqp_publisher_impl(const std::string& url, const std::string& exchange, const std::string& routing_key,
+                                                           const boost::filesystem::path& unconfirmed_path, const std::optional<std::string>& message_id) :
   data_file_path(unconfirmed_path), exchange(exchange), routing_key(routing_key), message_id(message_id) {
    std::string host = "localhost", user = "guest", pass = "guest", path;
    uint16_t port = 5672;
@@ -239,7 +239,7 @@ void reliable_amqp_publisher_impl::pump_queue() {
    });
 }
 
-reliable_amqp_publisher::reliable_amqp_publisher(const std::string url, const std::string exchange, const std::string routing_key, const boost::filesystem::path unconfirmed_path, const std::optional<std::string> message_id) :
+reliable_amqp_publisher::reliable_amqp_publisher(const std::string& url, const std::string& exchange, const std::string& routing_key, const boost::filesystem::path& unconfirmed_path, const std::optional<std::string>& message_id) :
    my(new reliable_amqp_publisher_impl(url, exchange, routing_key, unconfirmed_path, message_id)) {}
 
 void reliable_amqp_publisher::publish_message_raw(std::vector<char>&& data) {
