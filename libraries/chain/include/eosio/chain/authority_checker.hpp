@@ -210,7 +210,7 @@ namespace detail {
 
             template<typename KeyWeight, typename = std::enable_if_t<detail::is_any_of_v<KeyWeight, shared_key_weight, key_weight>>>
             uint32_t operator()(const KeyWeight& permission) {
-               auto itr = boost::find( checker.provided_keys, permission.key );
+               auto itr = boost::range::find( checker.provided_keys, permission.key );
                if( itr != checker.provided_keys.end() ) {
                   checker._used_keys[itr - checker.provided_keys.begin()] = true;
                   total_weight += permission.weight;

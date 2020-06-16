@@ -51,12 +51,6 @@ if ("${CMAKE_GENERATOR}" STREQUAL "Ninja")
    add_compile_options(-fdiagnostics-color=always)
 endif()
 
-if (ENABLE_UNITY_BUILD)
-  set(CMAKE_EXPORT_COMPILE_COMMANDS "OFF")
-else()
-  set(CMAKE_EXPORT_COMPILE_COMMANDS "ON")
-endif()
-
 set(BUILD_DOXYGEN FALSE CACHE BOOL "Build doxygen documentation on every make")
 set(ENABLE_MULTIVERSION_PROTOCOL_TEST FALSE CACHE BOOL "Enable nodeos multiversion protocol test")
 
@@ -185,6 +179,15 @@ option(DISABLE_WASM_SPEC_TESTS "disable building of wasm spec unit tests" OFF)
 
 if (NOT DISABLE_WASM_SPEC_TESTS)
 add_subdirectory( eosio-wasm-spec-tests/generated-tests )
+endif()
+
+
+if (ENABLE_UNITY_BUILD)
+  set(CMAKE_EXPORT_COMPILE_COMMANDS "OFF")
+  set_target_properties(eosio_chain chainbase fc rodeos_lib state_history unit_test wasm_spec_test trace_api_plugin
+                        PROPERTIES UNITY_BUILD TRUE)
+else()
+  set(CMAKE_EXPORT_COMPILE_COMMANDS "ON")
 endif()
 
 install_directory_permissions(DIRECTORY ${CMAKE_INSTALL_FULL_SYSCONFDIR}/eosio)

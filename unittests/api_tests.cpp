@@ -31,6 +31,7 @@
 #include <Runtime/Runtime.h>
 
 #include <contracts.hpp>
+#include "test_cfd_transaction.hpp"
 
 #define DUMMY_ACTION_DEFAULT_A 0x45
 #define DUMMY_ACTION_DEFAULT_B 0xab11cd1244556677
@@ -49,33 +50,8 @@ static constexpr unsigned long long WASM_TEST_ACTION(const char* cls, const char
   return static_cast<unsigned long long>(DJBH(cls)) << 32 | static_cast<unsigned long long>(DJBH(method));
 }
 
-struct dummy_action {
-   static eosio::chain::name get_name() {
-      return N(dummyaction);
-   }
-   static eosio::chain::name get_account() {
-      return N(testapi);
-   }
-
-  char a; //1
-  uint64_t b; //8
-  int32_t  c; //4
-};
-
 struct u128_action {
   unsigned __int128  values[3]; //16*3
-};
-
-struct cf_action {
-   static eosio::chain::name get_name() {
-      return N(cfaction);
-   }
-   static eosio::chain::name get_account() {
-      return N(testapi);
-   }
-
-   uint32_t       payload = 100;
-   uint32_t       cfd_idx = 0; // context free data index
 };
 
 // Deferred Transaction Trigger Action
@@ -101,9 +77,7 @@ struct invalid_access_action {
    bool store;
 };
 
-FC_REFLECT( dummy_action, (a)(b)(c) )
 FC_REFLECT( u128_action, (values) )
-FC_REFLECT( cf_action, (payload)(cfd_idx) )
 FC_REFLECT( dtt_action, (payer)(deferred_account)(deferred_action)(permission_name)(delay_sec) )
 FC_REFLECT( invalid_access_action, (code)(val)(index)(store) )
 
