@@ -27,7 +27,7 @@ Print=Utils.Print
 
 appArgs = AppArgs()
 minTotalAccounts = 20
-extraArgs = appArgs.add(flag="--transaction-time-delta", type=int, help="How many seconds seconds behind an earlier sent transaction should be received after a later one", default=5)
+extraArgs = appArgs.add(flag="--transaction-time-delta", type=int, help="How many seconds seconds behind an earlier sent transaction should be received after a later one", default=7)
 extraArgs = appArgs.add(flag="--num-transactions", type=int, help="How many total transactions should be sent", default=10000)
 extraArgs = appArgs.add(flag="--max-transactions-per-second", type=int, help="How many transactions per second should be sent", default=500)
 extraArgs = appArgs.add(flag="--total-accounts", type=int, help="How many accounts should be involved in sending transfers.  Must be greater than %d" % (minTotalAccounts), default=100)
