@@ -87,7 +87,7 @@ void amqp_trace_plugin::set_program_options(options_description& cli, options_de
    auto op = cfg.add_options();
    op("amqp-trace-address", bpo::value<std::string>(),
       "AMQP address: Format: amqp://USER:PASSWORD@ADDRESS:PORT\n"
-      "Will consume from 'trx' queue and publish to 'trace' queue.");
+      "Will publish to 'trace' queue.");
    op("amqp-trace-exchange", bpo::value<std::string>()->default_value(""),
       "Existing AMQP exchange to send transaction trace messages.");
 }
