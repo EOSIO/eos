@@ -80,6 +80,14 @@ int end_i64(name code, name scope, name table) { return db_end_i64(code.value, s
                             convert_to_json(expected_itr) + " primary: " + convert_to_json(primary) +                  \
                             " expected_primary: " + convert_to_json(expected_primary) + "\n");                         \
       }                                                                                                                \
+      static void check_prev(int32_t iterator, int expected_itr, uint64_t expected_primary) {                          \
+         uint64_t primary = 0xfeedbeef;                                                                                \
+         auto     itr     = previous(iterator, primary);                                                               \
+         eosio::check(itr == expected_itr && primary == expected_primary,                                              \
+                      "check_prev failure: itr: " + convert_to_json(itr) + " expected_itr: " +                         \
+                            convert_to_json(expected_itr) + " primary: " + convert_to_json(primary) +                  \
+                            " expected_primary: " + convert_to_json(expected_primary) + "\n");                         \
+      }                                                                                                                \
       static void check_lowerbound(name code, name scope, name table, int expected_itr, uint64_t expected_primary,     \
                                    const TYPE& secondary_search, const TYPE& expected_secondary) {                     \
          uint64_t primary   = 0xfeedbeef;                                                                              \
@@ -217,6 +225,13 @@ void check_next_multiple(int32_t iterator, int expected_itr, uint64_t expected_p
    idx128::check_next(iterator, expected_itr, expected_primary);
    idx_double::check_next(iterator, expected_itr, expected_primary);
    idx256::check_next(iterator, expected_itr, expected_primary);
+}
+
+void check_prev_multiple(int32_t iterator, int expected_itr, uint64_t expected_primary) {
+   idx64::check_prev(iterator, expected_itr, expected_primary);
+   idx128::check_prev(iterator, expected_itr, expected_primary);
+   idx_double::check_prev(iterator, expected_itr, expected_primary);
+   idx256::check_prev(iterator, expected_itr, expected_primary);
 }
 
 void check_upperbound_multiple(name code, name scope, name table, int expected_itr, uint64_t expected_primary,
@@ -396,6 +411,13 @@ void legacydb_contract::read() {
    check_prev_i64(1, 0, 20);
    check_prev_i64(0, -1, 0xfeedbeef);
 
+   check_prev_multiple(-2, 4, 24);
+   check_prev_multiple(4, 3, 23);
+   check_prev_multiple(3, 2, 22);
+   check_prev_multiple(2, 1, 21);
+   check_prev_multiple(1, 0, 20);
+   check_prev_multiple(0, -1, 0xfeedbeef);
+
    /////////////////////////////////
    // find items out of order -> produces iterator indexes out of order
    // creates iterators -3, 5 - 9
@@ -458,6 +480,13 @@ void legacydb_contract::read() {
    check_prev_i64(5, 9, 30);
    check_prev_i64(9, -1, 0xfeedbeef);
 
+   check_prev_multiple(-3, 8, 34);
+   check_prev_multiple(8, 6, 33);
+   check_prev_multiple(6, 7, 32);
+   check_prev_multiple(7, 5, 31);
+   check_prev_multiple(5, 9, 30);
+   check_prev_multiple(9, -1, 0xfeedbeef);
+
    /////////////////////////////////
    // iterate through table that has been only partially searched through
    // creates iterators -4, 10 - 14
@@ -472,12 +501,30 @@ void legacydb_contract::read() {
    check_next_i64(14, -4, 0xfeedbeef);
    check_next_i64(-4, -1, 0xfeedbeef);
 
+   // clang-format off
+   check_lowerbound_multiple(get_self(), "scope1"_n, "table3"_n, 10, 40, 0x4040, 0x4040, 0x4040'4040, 0x4040'4040, exp2(-500), exp2(-500), "00000000000000000000000000000000000000000000000000000000000000ff", "00000000000000000000000000000000000000000000000000000000000000ff");
+   check_lowerbound_multiple(get_self(), "scope1"_n, "table3"_n, 11, 43, 0x4343, 0x4343, 0x4343'4343, 0x4343'4343, exp2(200),  exp2(200),  "00000000000000000000000000000000000000ff000000000000000000000000", "00000000000000000000000000000000000000ff000000000000000000000000");
+   check_next_multiple(10, 12, 41);
+   check_next_multiple(12, 13, 42);
+   check_next_multiple(13, 11, 43);
+   check_next_multiple(11, 14, 44);
+   check_next_multiple(14, -4, 0xfeedbeef);
+   check_next_multiple(-4, -1, 0xfeedbeef);
+   // clang-format on
+
    check_prev_i64(-4, 14, 44);
    check_prev_i64(14, 11, 43);
    check_prev_i64(11, 13, 42);
    check_prev_i64(13, 12, 41);
    check_prev_i64(12, 10, 40);
    check_prev_i64(10, -1, 0xfeedbeef);
+
+   check_prev_multiple(-4, 14, 44);
+   check_prev_multiple(14, 11, 43);
+   check_prev_multiple(11, 13, 42);
+   check_prev_multiple(13, 12, 41);
+   check_prev_multiple(12, 10, 40);
+   check_prev_multiple(10, -1, 0xfeedbeef);
 
    check_lowerbound_i64(get_self(), "scope1"_n, "table3"_n, 40, 10, data_0);
    check_lowerbound_i64(get_self(), "scope1"_n, "table3"_n, 0, 10, data_0);
@@ -486,6 +533,16 @@ void legacydb_contract::read() {
    check_lowerbound_i64(get_self(), "scope1"_n, "table3"_n, 43, 11, data_3);
    check_lowerbound_i64(get_self(), "scope1"_n, "table3"_n, 44, 14, data_4);
    check_lowerbound_i64(get_self(), "scope1"_n, "table3"_n, 45, -4, {});
+
+   // clang-format off
+   check_lowerbound_multiple(get_self(), "scope1"_n, "table3"_n, 10, 40,         0x4040, 0x4040, 0x4040'4040, 0x4040'4040, exp2(-500), exp2(-500), "00000000000000000000000000000000000000000000000000000000000000ff", "00000000000000000000000000000000000000000000000000000000000000ff");
+   check_lowerbound_multiple(get_self(), "scope1"_n, "table3"_n, 10, 40,         0x0000, 0x4040, 0x0000'0000, 0x4040'4040, 0.0,        exp2(-500), "0000000000000000000000000000000000000000000000000000000000000000", "00000000000000000000000000000000000000000000000000000000000000ff");
+   check_lowerbound_multiple(get_self(), "scope1"_n, "table3"_n, 12, 41,         0x4141, 0x4141, 0x4141'4141, 0x4141'4141, exp2(-200), exp2(-200), "000000000000000000000000000000000000000000000000000000ff00000000", "000000000000000000000000000000000000000000000000000000ff00000000");
+   check_lowerbound_multiple(get_self(), "scope1"_n, "table3"_n, 13, 42,         0x4242, 0x4242, 0x4242'4242, 0x4242'4242, exp2(0),    exp2(0),    "0000000000000000000000000000000000000000000000ff0000000000000000", "0000000000000000000000000000000000000000000000ff0000000000000000");
+   check_lowerbound_multiple(get_self(), "scope1"_n, "table3"_n, 11, 43,         0x4343, 0x4343, 0x4343'4343, 0x4343'4343, exp2(200),  exp2(200),  "00000000000000000000000000000000000000ff000000000000000000000000", "00000000000000000000000000000000000000ff000000000000000000000000");
+   check_lowerbound_multiple(get_self(), "scope1"_n, "table3"_n, 14, 44,         0x4444, 0x4444, 0x4444'4444, 0x4444'4444, exp2(500),  exp2(500),  "000000000000000000000000000000ff00000000000000000000000000000000", "000000000000000000000000000000ff00000000000000000000000000000000");
+   check_lowerbound_multiple(get_self(), "scope1"_n, "table3"_n, -4, 0xfeedbeef, 0x4445, 0x4445, 0x4444'4445, 0x4444'4445, exp2(501),  exp2(501),  "000000000000000000000000000000ff00000000000000000000000000000001", "000000000000000000000000000000ff00000000000000000000000000000001");
+   // clang-format on
 
    check_find_i64(get_self(), "scope1"_n, "table3"_n, 40, 10, data_0);
    check_find_i64(get_self(), "scope1"_n, "table3"_n, 0, -4, {});
