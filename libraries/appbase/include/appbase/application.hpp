@@ -156,6 +156,18 @@ namespace appbase {
             return *ptr;
          }
 
+         template<typename Plugin>
+         bool is_plugin_initialized()const {
+            string name = boost::core::demangle(typeid(Plugin).name());
+            for ( const auto& plugin: initialized_plugins ) {
+               if ( plugin->name() == name ) {
+                  return true;
+               }
+            }
+
+            return false;
+         }
+
          /**
           * Fetch a reference to the method declared by the passed in type.  This will construct the method
           * on first access.  This allows loose and deferred binding between plugins
