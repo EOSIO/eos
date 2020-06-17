@@ -76,9 +76,7 @@ class rabbitmq : public stream_handler {
       auto type = AMQP::direct;
       if (exchange_type == "fanout") {
          type = AMQP::fanout;
-      } else if (exchange_type == "topic") {
-         type = AMQP::topic;
-      } else {
+      } else if (exchange_type != "direct") {
          throw std::runtime_error("Unsupported RabbitMQ exchange type: " + exchange_type);
       }
 
