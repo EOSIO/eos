@@ -278,11 +278,11 @@ namespace eosio {
          }
 
          void on_applied_transaction( const transaction_trace_ptr& trace ) {
-            if( !trace->receipt.has_value() || (trace->receipt->status != transaction_receipt_header::executed &&
+            if( !trace->receipt || (trace->receipt->status != transaction_receipt_header::executed &&
                   trace->receipt->status != transaction_receipt_header::soft_fail) )
                return;
             for( const auto& atrace : trace->action_traces ) {
-               if( !atrace.receipt.has_value() ) continue;
+               if( !atrace.receipt ) continue;
                on_action_trace( atrace );
             }
          }
@@ -468,7 +468,7 @@ namespace eosio {
 
          bool in_history = (itr != idx.end() && txn_id_matched(itr->trx_id) );
 
-         if( !in_history && !p.block_num_hint.has_value() ) {
+         if( !in_history && !p.block_num_hint ) {
             EOS_THROW(tx_not_found, "Transaction ${id} not found in history and no block hint was given", ("id",p.id));
          }
 

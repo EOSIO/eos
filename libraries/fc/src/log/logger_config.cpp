@@ -81,11 +81,11 @@ namespace fc {
          auto lgr = log_config::get().logger_map[cfg.loggers[i].name];
 
          // TODO: finish configure logger here...
-         if( cfg.loggers[i].parent.has_value() ) {
+         if( cfg.loggers[i].parent ) {
             lgr.set_parent( log_config::get().logger_map[*cfg.loggers[i].parent] );
          }
          lgr.set_name(cfg.loggers[i].name);
-         if( cfg.loggers[i].level.has_value() ) lgr.set_log_level( *cfg.loggers[i].level );
+         if( cfg.loggers[i].level ) lgr.set_log_level( *cfg.loggers[i].level );
 
 
          for( auto a = cfg.loggers[i].appenders.begin(); a != cfg.loggers[i].appenders.end(); ++a ){

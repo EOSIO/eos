@@ -60,7 +60,7 @@ namespace fc
       catch (...)
       {
       }
-      if (!my->gelf_endpoint.has_value())
+      if (!my->gelf_endpoint)
       {
         // couldn't parse as a numeric ip address, try resolving as a DNS name.
         // This can yield, so don't do it in the catch block above
@@ -100,7 +100,7 @@ namespace fc
 
   void gelf_appender::log(const log_message& message)
   {
-    if (!my->gelf_endpoint.has_value())
+    if (!my->gelf_endpoint)
       return;
 
     log_context context = message.get_context();

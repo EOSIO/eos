@@ -158,7 +158,7 @@ public:
    }
 
    host_key url_to_host_key( const url& dest ) {
-      FC_ASSERT(dest.host().has_value(), "Provided URL has no host");
+      FC_ASSERT(dest.host(), "Provided URL has no host");
       uint16_t port = 80;
       if (dest.port()) {
          port = *dest.port();
@@ -316,7 +316,7 @@ public:
    variant post_sync(const url& dest, const variant& payload, const fc::time_point& _deadline) {
       static const deadline_type epoch(boost::gregorian::date(1970, 1, 1));
       auto deadline = epoch + boost::posix_time::microseconds(_deadline.time_since_epoch().count());
-      FC_ASSERT(dest.host().has_value(), "No host set on URL");
+      FC_ASSERT(dest.host(), "No host set on URL");
 
       string path = dest.path() ? dest.path()->generic_string() : "/";
       if (dest.query()) {

@@ -77,7 +77,7 @@ namespace eosio::trace_api {
          return get_block_t{};
       }
       std::optional<data_log_entry> entry = read_data_log(block_height, *trace_offset);
-      if (!entry.has_value()) {
+      if (!entry) {
          return get_block_t{};
       }
       return std::make_tuple( entry.value(), irreversible );
