@@ -20,8 +20,8 @@ class rabbitmq : public stream_handler {
    std::vector<eosio::name>             routes_;
 
  public:
-   rabbitmq(boost::asio::io_service& io_service, std::vector<eosio::name>&& routes, const AMQP::Address& address,
-            std::string&& queue_name)
+   rabbitmq(boost::asio::io_service& io_service, std::vector<eosio::name> routes, const AMQP::Address& address,
+            std::string queue_name)
        : queueName_(std::move(queue_name)), routes_(std::move(routes)) {
       ilog("Connecting to RabbitMQ address ${a} - Queue: ${q}...", ("a", std::string(address))("q", queueName_));
 
@@ -32,8 +32,8 @@ class rabbitmq : public stream_handler {
       declare_queue();
    }
 
-   rabbitmq(boost::asio::io_service& io_service, std::vector<eosio::name>&& routes, const AMQP::Address& address,
-            std::string&& exchange_name, const std::string& exchange_type)
+   rabbitmq(boost::asio::io_service& io_service, std::vector<eosio::name> routes, const AMQP::Address& address,
+            std::string exchange_name, std::string exchange_type)
        : exchangeName_(std::move(exchange_name)), routes_(std::move(routes)) {
       ilog("Connecting to RabbitMQ address ${a} - Exchange: ${e}...", ("a", std::string(address))("e", exchangeName_));
 
@@ -191,8 +191,8 @@ inline void initialize_rabbits_exchange(boost::asio::io_service&                
          exchange.erase(double_column_pos);
       }
 
-      streams.emplace_back(
-            std::make_unique<rabbitmq>(io_service, std::move(routes), address, std::move(exchange), exchange_type));
+      streams.emplace_back(std::make_unique<rabbitmq>(io_service, std::move(routes), address, std::move(exchange),
+                                                      std::move(exchange_type)));
    }
 }
 
