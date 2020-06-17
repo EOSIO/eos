@@ -54,13 +54,18 @@ struct rodeos_db_snapshot {
 
    void refresh();
    void end_write(bool write_fill);
-   void start_block(const eosio::ship_protocol::get_blocks_result_v0& result);
-   void end_block(const eosio::ship_protocol::get_blocks_result_v0& result, bool force_write);
-   void check_write(const eosio::ship_protocol::get_blocks_result_v0& result);
+   void start_block(const eosio::ship_protocol::get_blocks_result_base& result);
+   void end_block(const eosio::ship_protocol::get_blocks_result_base& result, bool force_write);
+   void check_write(const eosio::ship_protocol::get_blocks_result_base& result);
    void write_block_info(const eosio::ship_protocol::get_blocks_result_v0& result);
+   void write_block_info(const eosio::ship_protocol::get_blocks_result_v1& result);
    void write_deltas(const eosio::ship_protocol::get_blocks_result_v0& result, std::function<bool()> shutdown);
+   void write_deltas(const eosio::ship_protocol::get_blocks_result_v1& result, std::function<bool()> shutdown);
 
  private:
+   void write_block_info(uint32_t block_num, const eosio::checksum256& id,
+                         const eosio::ship_protocol::signed_block_header& block);
+   void write_deltas(uint32_t block_num, eosio::opaque<std::vector<eosio::ship_protocol::table_delta>> deltas, std::function<bool()> shutdown);
    void write_fill_status();
 };
 
@@ -71,14 +76,14 @@ struct rodeos_filter {
 
    rodeos_filter(eosio::name name, const std::string& wasm_filename);
 
-   void process(rodeos_db_snapshot& snapshot, const eosio::ship_protocol::get_blocks_result_v0& result,
+   void process(rodeos_db_snapshot& snapshot, const eosio::ship_protocol::get_blocks_result_base& result,
                 eosio::input_stream bin, const std::function<void(const char* data, uint64_t size)>& push_data);
 };
 
 struct rodeos_query_handler {
    std::shared_ptr<rodeos_db_partition>               partition;
    const std::shared_ptr<const wasm_ql::shared_state> shared_state;
-   wasm_ql::thread_state_cache                        state_cache;
+   const std::shared_ptr<wasm_ql::thread_state_cache> state_cache;
 
    rodeos_query_handler(std::shared_ptr<rodeos_db_partition>         partition,
                         std::shared_ptr<const wasm_ql::shared_state> shared_state);

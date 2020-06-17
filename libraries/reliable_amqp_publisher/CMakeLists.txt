@@ -1,0 +1,3 @@
+add_library(reliable_amqp_publisher reliable_amqp_publisher.cpp )
+target_include_directories(reliable_amqp_publisher PUBLIC include)
+target_link_libraries(reliable_amqp_publisher fc amqpcpp)

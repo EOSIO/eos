@@ -349,7 +349,7 @@ try:
          backupBlksDir(nodeIdOfNodeToTest)
 
          # Relaunch in irreversible mode and create the snapshot
-         relaunchNode(nodeToTest, nodeIdOfNodeToTest, chainArg=" --read-mode irreversible")
+         relaunchNode(nodeToTest, chainArg=" --read-mode irreversible")
          confirmHeadLibAndForkDbHeadOfIrrMode(nodeToTest)
          nodeToTest.createSnapshot()
          nodeToTest.kill(signal.SIGTERM)
