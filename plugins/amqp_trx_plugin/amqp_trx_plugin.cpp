@@ -123,6 +123,11 @@ void amqp_trx_plugin::plugin_startup() {
    try {
 
       ilog( "Starting amqp_trx_plugin" );
+
+      if( !my->trace_plug || my->trace_plug->get_state() == abstract_plugin::initialized ) {
+         my->trace_plug = nullptr;
+      }
+
       my->thread_pool.emplace( "amqp_t", 1 );
 
       my->amqp_trx.emplace( my->thread_pool->get_executor(), my->amqp_trx_address, "trx", [](const std::string& err) {
