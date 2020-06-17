@@ -20,6 +20,7 @@ public:
    }
 };
 
+/// Designed to work with io_service running on a dedicated thread.
 class amqp {
 public:
    using on_error_t = std::function<void(const std::string& err)>;
@@ -39,7 +40,7 @@ public:
    void publish( const std::string& exchange, const std::string& correlation_id, const char* data, size_t data_size ) {
       AMQP::Envelope env( data, data_size );
       env.setCorrelationID( correlation_id );
-      auto& result = channel_->publish( exchange, name_, env, 0 );
+      channel_->publish( exchange, name_, env, 0 );
    }
 
    auto& consume() { return channel_->consume( name_ ); }
@@ -54,14 +55,21 @@ public:
 
 private:
    void declare_queue() {
+      std::promise<void> connected;
       auto& queue = channel_->declareQueue( name_, AMQP::durable );
-      queue.onSuccess( []( const std::string& name, uint32_t messagecount, uint32_t consumercount ) {
+      queue.onSuccess( [&]( const std::string& name, uint32_t messagecount, uint32_t consumercount ) {
          dlog( "AMQP Connected Successfully!\n Queue ${q} - Messages: ${mc} - Consumers: ${cc}",
                ("q", name)( "mc", messagecount )( "cc", consumercount ) );
+         connected.set_value();
       } );
-      queue.onError( [on_err=on_error]( const char* error_message ) {
+      queue.onError( [&, on_err=on_error]( const char* error_message ) {
          on_err( error_message );
+         connected.set_value();
       } );
+      auto r = connected.get_future().wait_for(std::chrono::seconds(10));
+      if( r == std::future_status::timeout ) {
+         on_error("AMQP timeout declaring queue");
+      }
    }
 
 private:
