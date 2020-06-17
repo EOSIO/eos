@@ -1,5 +1,5 @@
 #include <eosio/amqp_trx_plugin/amqp_trx_plugin.hpp>
-#include <eosio/amqp_trx_plugin/amqp_handler.hpp>
+#include <eosio/amqp_trace_plugin/amqp_handler.hpp>
 #include <eosio/amqp_trace_plugin/amqp_trace_plugin.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
 
