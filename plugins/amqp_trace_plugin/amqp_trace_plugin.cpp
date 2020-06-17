@@ -1,5 +1,5 @@
 #include <eosio/amqp_trace_plugin/amqp_trace_plugin.hpp>
-#include <eosio/amqp_trace_plugin/amqp_publish_handler.hpp>
+#include <eosio/amqp_trace_plugin/amqp_handler.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
 
 #include <eosio/chain/exceptions.hpp>
@@ -22,7 +22,7 @@ struct amqp_trace_plugin_impl : std::enable_shared_from_this<amqp_trace_plugin_i
 
    // use thread pool even though only one thread currently since it provides simple interface for ioc
    std::optional<eosio::chain::named_thread_pool> thread_pool;
-   std::optional<amqp_publish> amqp_trace;
+   std::optional<amqp> amqp_trace;
    std::optional<scoped_connection> applied_transaction_connection;
 
    std::string amqp_trace_address;
