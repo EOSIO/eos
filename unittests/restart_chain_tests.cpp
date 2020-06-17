@@ -429,7 +429,6 @@ BOOST_AUTO_TEST_CASE(test_trim_blocklog_front) {
 }
 
 BOOST_AUTO_TEST_CASE(test_trim_blocklog_front_v1) {
-   block_log::set_version(1); 
    trim_blocklog_front(1);
 }
 
