@@ -765,11 +765,11 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       BOOST_REQUIRE(first_offset < offset);
 
       std::optional<data_log_entry> bt_data = sp.read_data_log(block_nums[0], block_offsets[0]);
-      BOOST_REQUIRE(bt_data.has_value());
+      BOOST_REQUIRE(bt_data);
       BOOST_REQUIRE_EQUAL(*bt_data, bt);
 
       bt_data = sp.read_data_log(block_nums[1], block_offsets[1]);
-      BOOST_REQUIRE(bt_data.has_value());
+      BOOST_REQUIRE(bt_data);
       BOOST_REQUIRE_EQUAL(*bt_data, bt2);
 
       block_nums.clear();
@@ -817,7 +817,7 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
             throw yield_exception("");
          }
       });
-      BOOST_REQUIRE(block1.has_value());
+      BOOST_REQUIRE(block1);
       BOOST_REQUIRE(std::get<1>(*block1));
       const auto block1_bt = std::get<0>(*block1);
       BOOST_REQUIRE_EQUAL(block1_bt, bt);
@@ -828,7 +828,7 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
             throw yield_exception("");
          }
       });
-      BOOST_REQUIRE(block2.has_value());
+      BOOST_REQUIRE(block2);
       BOOST_REQUIRE(!std::get<1>(*block2));
       const auto block2_bt = std::get<0>(*block2);
       BOOST_REQUIRE_EQUAL(block2_bt, bt2);
@@ -850,7 +850,7 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
             throw yield_exception("");
          }
       });
-      BOOST_REQUIRE(!block2.has_value());
+      BOOST_REQUIRE(!block2);
    }
 
 BOOST_AUTO_TEST_SUITE_END()

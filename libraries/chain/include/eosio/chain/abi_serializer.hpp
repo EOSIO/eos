@@ -440,7 +440,7 @@ namespace impl {
 
          try {
             auto abi = resolver(act.account);
-            if (abi.has_value()) {
+            if (abi) {
                auto type = abi->get_action_type(act.name);
                if (!type.empty()) {
                   try {
@@ -758,7 +758,7 @@ namespace impl {
                valid_empty_data = act.data.empty();
             } else if ( data.is_object() ) {
                auto abi = resolver(act.account);
-               if (abi.has_value()) {
+               if (abi) {
                   auto type = abi->get_action_type(act.name);
                   if (!type.empty()) {
                      variant_to_binary_context _ctx(*abi, ctx, type);

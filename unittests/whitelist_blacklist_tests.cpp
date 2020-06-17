@@ -27,7 +27,7 @@ class whitelist_blacklist_tester {
       whitelist_blacklist_tester() {}
 
       void init( bool bootstrap = true ) {
-         FC_ASSERT( !chain.has_value(), "chain is already up" );
+         FC_ASSERT( !chain, "chain is already up" );
 
          chain.emplace(tempdir, [&](controller::config& cfg) {
             cfg.sender_bypass_whiteblacklist = sender_bypass_whiteblacklist;
@@ -58,7 +58,7 @@ class whitelist_blacklist_tester {
       }
 
       void shutdown() {
-         FC_ASSERT( chain.has_value(), "chain is not up" );
+         FC_ASSERT( chain, "chain is not up" );
          last_produced_block = chain->get_last_produced_block_map();
          wdump((last_produced_block));
          chain.reset();

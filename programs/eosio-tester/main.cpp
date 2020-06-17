@@ -142,7 +142,7 @@ protocol_feature_set make_protocol_feature_set() {
          [&pfs, &visited_builtins, &add_builtins](builtin_protocol_feature_t codename) -> digest_type {
       auto res = visited_builtins.emplace(codename, std::optional<digest_type>());
       if (!res.second) {
-         EOS_ASSERT(res.first->second.has_value(), protocol_feature_exception,
+         EOS_ASSERT(res.first->second, protocol_feature_exception,
                     "invariant failure: cycle found in builtin protocol feature dependencies");
          return *res.first->second;
       }

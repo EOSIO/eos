@@ -319,7 +319,7 @@ namespace eosio { namespace chain {
 
       try {
          std::optional<permission_name> linked_permission = lookup_linked_permission(authorizer_account, scope, act_name);
-         if( !linked_permission.has_value() )
+         if( !linked_permission )
             return config::active_name;
 
          if( *linked_permission == config::eosio_any_name )
@@ -397,7 +397,7 @@ namespace eosio { namespace chain {
 
       const auto linked_permission_name = lookup_minimum_permission(link.account, link.code, link.type);
 
-      if( !linked_permission_name.has_value() ) // if action is linked to eosio.any permission
+      if( !linked_permission_name ) // if action is linked to eosio.any permission
          return;
 
       EOS_ASSERT( get_permission(auth).satisfies( get_permission({link.account, *linked_permission_name}),
@@ -418,7 +418,7 @@ namespace eosio { namespace chain {
                   "the owner of the linked permission needs to be the actor of the declared authorization" );
 
       const auto unlinked_permission_name = lookup_linked_permission(unlink.account, unlink.code, unlink.type);
-      EOS_ASSERT( unlinked_permission_name.has_value(), transaction_exception,
+      EOS_ASSERT( unlinked_permission_name, transaction_exception,
                   "cannot unlink non-existent permission link of account '${account}' for actions matching '${code}::${action}'",
                   ("account", unlink.account)("code", unlink.code)("action", unlink.type) );
 

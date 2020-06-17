@@ -552,7 +552,7 @@ resource_limits_manager::get_account_cpu_limit_ex( const account_name& name, uin
    arl.max = impl::downgrade_cast<int64_t>(max_user_use_in_window);
    arl.last_usage_update_time = block_timestamp_type(usage.cpu_usage.last_ordinal);
    arl.current_used = arl.used;
-   if ( current_time.has_value() ) {
+   if ( current_time ) {
       if (current_time->slot > usage.cpu_usage.last_ordinal) {
          auto history_usage = usage.cpu_usage;
          history_usage.add(0, current_time->slot, window_size);
@@ -613,7 +613,7 @@ resource_limits_manager::get_account_net_limit_ex( const account_name& name, uin
    arl.max = impl::downgrade_cast<int64_t>(max_user_use_in_window);
    arl.last_usage_update_time = block_timestamp_type(usage.net_usage.last_ordinal);
    arl.current_used = arl.used;
-   if ( current_time.has_value() ) {
+   if ( current_time ) {
       if (current_time->slot > usage.net_usage.last_ordinal) {
          auto history_usage = usage.net_usage;
          history_usage.add(0, current_time->slot, window_size);

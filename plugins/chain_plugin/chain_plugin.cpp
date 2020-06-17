@@ -492,7 +492,7 @@ protocol_feature_set initialize_protocol_features( const fc::path& p, bool popul
 
          auto f = read_builtin_protocol_feature( file_path );
 
-         if( !f.has_value() ) continue;
+         if( !f ) continue;
 
          auto res = found_builtin_protocol_features.emplace( f->get_codename(), file_path );
 
@@ -573,7 +573,7 @@ protocol_feature_set initialize_protocol_features( const fc::path& p, bool popul
    ( builtin_protocol_feature_t codename ) -> digest_type {
       auto res = visited_builtins.emplace( codename, std::optional<digest_type>() );
       if( !res.second ) {
-         EOS_ASSERT( res.first->second.has_value(), protocol_feature_exception,
+         EOS_ASSERT( res.first->second, protocol_feature_exception,
                      "invariant failure: cycle found in builtin protocol feature dependencies"
          );
          return *res.first->second;
@@ -794,7 +794,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
          if( fc::exists( my->blocks_dir / "blocks.log" )) {
             gs = block_log::extract_genesis_state( my->blocks_dir );
-            EOS_ASSERT( gs.has_value(),
+            EOS_ASSERT( gs,
                         plugin_config_exception,
                         "Block log at '${path}' does not contain a genesis state, it only has the chain-id.",
                         ("path", (my->blocks_dir / "blocks.log").generic_string())
@@ -1026,14 +1026,14 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
                         "--genesis-timestamp is only valid if also passed in with --genesis-json");
          }
 
-         if( !chain_id.has_value() ) {
+         if( !chain_id ) {
             if( my->genesis ) {
                // Uninitialized state database and genesis state extracted from block log
                chain_id = my->genesis->compute_chain_id();
             } else {
                // Uninitialized state database and no genesis state provided
 
-               EOS_ASSERT( !block_log_chain_id.has_value(), plugin_config_exception,
+               EOS_ASSERT( !block_log_chain_id, plugin_config_exception,
                            "Genesis state is necessary to initialize fresh blockchain state but genesis state could not be "
                            "found in the blocks log. Please either load from snapshot or find a blocks log that starts "
                            "from genesis."
@@ -1912,7 +1912,7 @@ vector<asset> read_only::get_currency_balance( const read_only::get_currency_bal
 
       EOS_ASSERT( cursor.get_symbol().valid(), chain::asset_type_exception, "Invalid asset");
 
-      if( !p.symbol.has_value() || boost::iequals(cursor.symbol_name(), *p.symbol) ) {
+      if( !p.symbol || boost::iequals(cursor.symbol_name(), *p.symbol) ) {
         results.emplace_back(cursor);
       }
 
@@ -2157,7 +2157,7 @@ fc::variant read_only::get_block(const read_only::get_block_params& params) cons
       block_num = fc::to_uint64(params.block_num_or_id);
    } catch( ... ) {}
 
-   if( block_num.has_value() ) {
+   if( block_num ) {
       block = db.fetch_block_by_number( *block_num );
    } else {
       try {
@@ -2218,7 +2218,7 @@ fc::variant read_only::get_block_header_state(const get_block_header_state_param
       block_num = fc::to_uint64(params.block_num_or_id);
    } catch( ... ) {}
 
-   if( block_num.has_value() ) {
+   if( block_num ) {
       b = db.fetch_block_state_by_number(*block_num);
    } else {
       try {
@@ -2477,7 +2477,7 @@ read_only::get_raw_abi_results read_only::get_raw_abi( const get_raw_abi_params&
    result.abi_hash = fc::sha256::hash( accnt_obj.abi.data(), accnt_obj.abi.size() );
    if( accnt_metadata_obj.code_hash != digest_type() )
       result.code_hash = accnt_metadata_obj.code_hash;
-   if( !params.abi_hash.has_value() || *params.abi_hash != result.abi_hash )
+   if( !params.abi_hash || *params.abi_hash != result.abi_hash )
       result.abi = blob{{accnt_obj.abi.begin(), accnt_obj.abi.end()}};
 
    return result;
@@ -2505,11 +2505,11 @@ read_only::get_account_results read_only::get_account( const get_account_params&
    uint32_t greylist_limit = db.is_resource_greylisted(result.account_name) ? 1 : config::maximum_elastic_resource_multiplier;
    const block_timestamp_type current_usage_time (db.head_block_time());
    result.net_limit.set( rm.get_account_net_limit_ex( result.account_name, greylist_limit, current_usage_time).first );
-   if ( result.net_limit.last_usage_update_time.has_value() && (result.net_limit.last_usage_update_time->slot == 0) ) {   // account has no action yet
+   if ( result.net_limit.last_usage_update_time && (result.net_limit.last_usage_update_time->slot == 0) ) {   // account has no action yet
       result.net_limit.last_usage_update_time = accnt_obj.creation_date;
    }
    result.cpu_limit.set( rm.get_account_cpu_limit_ex( result.account_name, greylist_limit, current_usage_time).first );
-   if ( result.cpu_limit.last_usage_update_time.has_value() && (result.cpu_limit.last_usage_update_time->slot == 0) ) {   // account has no action yet
+   if ( result.cpu_limit.last_usage_update_time && (result.cpu_limit.last_usage_update_time->slot == 0) ) {   // account has no action yet
       result.cpu_limit.last_usage_update_time = accnt_obj.creation_date;
    }
    result.ram_usage = rm.get_account_ram_usage( result.account_name );
@@ -2543,7 +2543,7 @@ read_only::get_account_results read_only::get_account( const get_account_params&
 
       auto core_symbol = extract_core_symbol();
 
-      if (params.expected_core_symbol.has_value())
+      if (params.expected_core_symbol)
          core_symbol = *(params.expected_core_symbol);
 
       const auto* t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( token_code, params.account_name, N(accounts) ));

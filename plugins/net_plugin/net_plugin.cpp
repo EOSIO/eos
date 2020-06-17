@@ -1013,7 +1013,7 @@ namespace eosio {
    }
 
    void connection::blk_send_branch_impl( uint32_t msg_head_num, uint32_t lib_num, uint32_t head_num ) {
-      if( !peer_requested.has_value() ) {
+      if( !peer_requested ) {
          auto last = msg_head_num != 0 ? msg_head_num : lib_num;
          peer_requested = peer_sync_state( last+1, head_num, last );
       } else {
@@ -1174,7 +1174,7 @@ namespace eosio {
    }
 
    bool connection::enqueue_sync_block() {
-      if( !peer_requested.has_value() ) {
+      if( !peer_requested ) {
          return false;
       } else {
          fc_dlog( logger, "enqueue sync block ${num}", ("num", peer_requested->last + 1) );
@@ -1277,7 +1277,7 @@ namespace eosio {
          } else {
             if( !send_buffer_v0 ) {
                const auto v0 = sb->to_signed_block_v0();
-               if( !v0.has_value() ) return send_buffer_v0;
+               if( !v0 ) return send_buffer_v0;
                send_buffer_v0 = create_send_buffer( *v0 );
             }
             return send_buffer_v0;
@@ -2184,7 +2184,7 @@ namespace eosio {
       block_id_type bid;
       {
          std::lock_guard<std::mutex> g_c_conn( c->conn_mtx );
-         if( !c->last_req.has_value() ) {
+         if( !c->last_req ) {
             return;
          }
          fc_wlog( logger, "failed to fetch from ${p}", ("p", c->peer_address()) );
@@ -2642,9 +2642,9 @@ namespace eosio {
             std::shared_ptr<packed_transaction> trx;
             fc::raw::unpack( ds, trx );
             ptr = std::move( trx );
-            EOS_ASSERT( !trx_id.has_value() || !ptr || *trx_id == ptr->id(), transaction_id_type_exception,
+            EOS_ASSERT( !trx_id || !ptr || *trx_id == ptr->id(), transaction_id_type_exception,
                         "Provided trx_id does not match provided packed_transaction" );
-            if( !trx_id.has_value() ) {
+            if( !trx_id ) {
                have_trx = my_impl->dispatcher->have_txn( ptr->id() );
             }
             node_transaction_state nts = {ptr->id(), ptr->expiration(), 0, connection_id};
@@ -3049,7 +3049,7 @@ namespace eosio {
             fc_dlog( logger, "bad packed_transaction : ${m}", ("m", result.get<fc::exception_ptr>()->what()) );
          } else {
             const transaction_trace_ptr& trace = result.get<transaction_trace_ptr>();
-            if( !trace->except.has_value() ) {
+            if( !trace->except ) {
                fc_dlog( logger, "chain accepted transaction, bcast ${id}", ("id", trace->id) );
             } else {
                fc_elog( logger, "bad packed_transaction : ${m}", ("m", trace->except->what()));

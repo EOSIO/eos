@@ -560,7 +560,7 @@ BOOST_AUTO_TEST_CASE(ram_billing_in_notify_tests) { try {
    chain.execute_setup_policy( setup_policy::preactivate_feature_and_new_bios );
    const auto& pfm = chain.control->get_protocol_feature_manager();
    const auto& d = pfm.get_builtin_digest(builtin_protocol_feature_t::action_return_value); // testapi requires this
-   BOOST_REQUIRE(d.has_value());
+   BOOST_REQUIRE(d);
    chain.preactivate_protocol_features( {*d} );
 
    chain.produce_blocks(2);
@@ -1401,7 +1401,7 @@ BOOST_AUTO_TEST_CASE(more_deferred_transaction_tests) { try {
 
    const auto& pfm = chain.control->get_protocol_feature_manager();
    auto d = pfm.get_builtin_digest( builtin_protocol_feature_t::replace_deferred );
-   BOOST_REQUIRE( d.has_value() );
+   BOOST_REQUIRE( d );
 
    chain.preactivate_protocol_features( {*d} );
    chain.produce_block();
@@ -2847,11 +2847,11 @@ BOOST_FIXTURE_TEST_CASE(eosio_assert_code_tests, TESTER) { try {
 
    auto trace = CALL_TEST_FUNCTION_NO_THROW( *this, "test_action", "test_assert_code", fc::raw::pack((uint64_t)42) );
    BOOST_REQUIRE( trace );
-   BOOST_REQUIRE( trace->except.has_value() );
+   BOOST_REQUIRE( trace->except );
    BOOST_REQUIRE( trace->error_code );
    BOOST_REQUIRE_EQUAL( *trace->error_code, 42 );
    BOOST_REQUIRE_EQUAL( trace->action_traces.size(), 1 );
-   BOOST_REQUIRE( trace->action_traces[0].except.has_value() );
+   BOOST_REQUIRE( trace->action_traces[0].except );
    BOOST_REQUIRE( trace->action_traces[0].error_code );
    BOOST_REQUIRE_EQUAL( *trace->action_traces[0].error_code, 42 );
 
@@ -2875,11 +2875,11 @@ BOOST_FIXTURE_TEST_CASE(eosio_assert_code_tests, TESTER) { try {
                   fc::raw::pack( static_cast<uint64_t>(system_error_code::generic_system_error) )
    );
    BOOST_REQUIRE( trace2 );
-   BOOST_REQUIRE( trace2->except.has_value() );
+   BOOST_REQUIRE( trace2->except );
    BOOST_REQUIRE( trace2->error_code );
    BOOST_REQUIRE_EQUAL( *trace2->error_code, static_cast<uint64_t>(system_error_code::contract_restricted_error_code) );
    BOOST_REQUIRE_EQUAL( trace2->action_traces.size(), 1 );
-   BOOST_REQUIRE( trace2->action_traces[0].except.has_value() );
+   BOOST_REQUIRE( trace2->action_traces[0].except );
    BOOST_REQUIRE( trace2->action_traces[0].error_code );
    BOOST_REQUIRE_EQUAL( *trace2->action_traces[0].error_code, static_cast<uint64_t>(system_error_code::contract_restricted_error_code) );
 

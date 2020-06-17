@@ -109,7 +109,7 @@ void history_pack_big_bytes(ST& ds, const eosio::chain::bytes& v) {
 
 template <typename ST>
 void history_pack_big_bytes(ST& ds, const std::optional<eosio::chain::bytes>& v) {
-   fc::raw::pack(ds, v.has_value());
+   fc::raw::pack(ds, v);
    if (v)
       history_pack_big_bytes(ds, *v);
 }
@@ -544,7 +544,7 @@ ST& operator<<(ST& ds, const history_serial_wrapper<eosio::chain::account_delta>
 inline std::optional<uint64_t> cap_error_code(const std::optional<uint64_t>& error_code) {
    std::optional<uint64_t> result;
 
-   if (!error_code.has_value())
+   if (!error_code)
       return result;
 
    const uint64_t upper_limit = static_cast<uint64_t>(eosio::chain::system_error_code::generic_system_error);

@@ -35,7 +35,7 @@ BOOST_AUTO_TEST_CASE( replace_producer_keys ) try {
    BOOST_REQUIRE(old_version == new_version);
 
    const auto& gpo = tester.control->db().get<global_property_object>();
-   BOOST_REQUIRE(!gpo.proposed_schedule_block_num.has_value());
+   BOOST_REQUIRE(!gpo.proposed_schedule_block_num);
    BOOST_REQUIRE(gpo.proposed_schedule.version == 0);
    BOOST_REQUIRE(gpo.proposed_schedule.producers.empty());
 
