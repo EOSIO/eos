@@ -220,7 +220,7 @@ namespace detail {
 
             uint32_t operator()(const permission_level_weight& permission) {
                auto status = authority_checker::permission_status_in_cache( cached_permissions, permission.permission );
-               if( !status ) {
+               if( !status.has_value() ) {
                   if( recursion_depth < checker.recursion_depth_limit ) {
                      bool r = false;
                      typename permission_cache_type::iterator itr = cached_permissions.end();

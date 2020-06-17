@@ -554,7 +554,7 @@ namespace eosio { namespace chain {
          buffer = pack(b, segment_compression);
       } else {
          auto block_ptr = b.to_signed_block_v0();
-         EOS_ASSERT(block_ptr, block_log_append_fail, "Unable to convert block to legacy format");
+         EOS_ASSERT(block_ptr.has_value(), block_log_append_fail, "Unable to convert block to legacy format");
          EOS_ASSERT(segment_compression == packed_transaction::cf_compression_type::none, block_log_append_fail,
             "the compression must be \"none\" for legacy format");
          buffer = fc::raw::pack(*block_ptr);
