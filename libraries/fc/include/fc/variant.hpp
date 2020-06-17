@@ -348,7 +348,7 @@ namespace fc
         }
 
         template<typename T>
-        variant( const std::optional<T>& v )
+        explicit variant( const std::optional<T>& v )
         {
            memset( this, 0, sizeof(*this) );
            if( v.has_value() ) *this = variant(*v);
