@@ -60,6 +60,13 @@ int end_i64(name code, name scope, name table) { return db_end_i64(code.value, s
       static int32_t previous(int32_t iterator, uint64_t& primary) {                                                   \
          return cdt_wrapper::db_idx_previous(iterator, &primary);                                                      \
       }                                                                                                                \
+      static void check_end(name code, name scope, name table, int expected_itr) {                                     \
+         auto itr = end(code, scope, table);                                                                           \
+         eosio::check(itr == expected_itr, "check_end failure: wrong iterator. code: " + code.to_string() +            \
+                                                 " scope: " + scope.to_string() + " table: " + table.to_string() +     \
+                                                 " itr: " + to_string(itr) +                                           \
+                                                 " expected_itr: " + to_string(expected_itr) + "\n");                  \
+      }                                                                                                                \
       static void check_find_secondary(name code, name scope, name table, int expected_itr, uint64_t expected_primary, \
                                        const TYPE& secondary_search) {                                                 \
          uint64_t primary   = 0xfeedbeef;                                                                              \
@@ -204,6 +211,13 @@ void store_multiple(name scope, name table, name payer, uint64_t id, const std::
    idx128::store(p("b"_n, scope), p("b"_n, table), payer, id, i128);
    idx_double::store(p("c"_n, scope), p("c"_n, table), payer, id, d);
    idx256::store(p("d"_n, scope), p("d"_n, table), payer, id, to_cs(cs));
+}
+
+void check_end_multiple(name code, name scope, name table, int expected_itr) {
+   idx64::check_end(code, p("a"_n, scope), p("a"_n, table), expected_itr);
+   idx128::check_end(code, p("b"_n, scope), p("b"_n, table), expected_itr);
+   idx_double::check_end(code, p("c"_n, scope), p("c"_n, table), expected_itr);
+   idx256::check_end(code, p("d"_n, scope), p("d"_n, table), expected_itr);
 }
 
 void check_lowerbound_multiple(name code, name scope, name table, int expected_itr, uint64_t expected_primary,
@@ -694,6 +708,15 @@ void legacydb_contract::read() {
    check_end_i64(get_self(), "scope.x"_n, "table2"_n, -7); // not searched for yet
    check_end_i64(get_self(), "scope.x"_n, "table1"_n, -8); // not searched for yet
    check_end_i64(get_self(), "nope"_n, "nada"_n, -1);
+
+   check_end_multiple(get_self(), "scope1"_n, "table1"_n, -2);
+   check_end_multiple(get_self(), "scope1"_n, "table2"_n, -3);
+   check_end_multiple(get_self(), "scope1"_n, "table3"_n, -4);
+   check_end_multiple(get_self(), "scope2"_n, "table1"_n, -5);
+   check_end_multiple(get_self(), "scope2"_n, "atable"_n, -6);
+   check_end_multiple(get_self(), "scope.x"_n, "table2"_n, -7); // not searched for yet
+   check_end_multiple(get_self(), "scope.x"_n, "table1"_n, -8); // not searched for yet
+   check_end_multiple(get_self(), "nope"_n, "nada"_n, -1);
 
    /////////////////////////////////
    // non-existing table

@@ -218,6 +218,11 @@ class iterator_cache_base {
    size_t end_iterator_to_index(int32_t ei) const { return (-ei - 2); }
    // Precondition: indx < tables.size() <= std::numeric_limits<int32_t>::max()
    int32_t index_to_end_iterator(size_t indx) const { return -(indx + 2); }
+
+ public:
+   int32_t end(uint64_t code, uint64_t scope, uint64_t table) {
+      return index_to_end_iterator(get_table_index({ code, table, scope }));
+   }
 };
 
 struct chaindb_primary_iterator : chaindb_iterator_base {
@@ -307,10 +312,6 @@ class iterator_cache : public iterator_cache_base<iterator_cache, chaindb_primar
       if (key + 1 == 0)
          return end(code, scope, table);
       return lower_bound(code, scope, table, key + 1, false);
-   }
-
-   int32_t end(uint64_t code, uint64_t scope, uint64_t table) {
-      return index_to_end_iterator(get_table_index({ code, table, scope }));
    }
 }; // iterator_cache
 
@@ -538,7 +539,7 @@ struct chaindb_callbacks {
       return get_##NAME().upper_bound(code, scope, table, *secondary, *primary);                                       \
    }                                                                                                                   \
    int32_t db_##NAME##_end(uint64_t code, uint64_t scope, uint64_t table) {                                            \
-      throw std::runtime_error("unimplemented: db_" #NAME "_end");                                                     \
+      return get_##NAME().end(code, scope, table);                                                                     \
    }
 
    IMPL_SECONDARY(idx64, uint64_t, eosio::name{ "contract.i1" })
@@ -606,9 +607,7 @@ struct chaindb_callbacks {
       write_cs(secondary, cs);
       return result;
    }
-   int32_t db_idx256_end(uint64_t code, uint64_t scope, uint64_t table) {
-      throw std::runtime_error("unimplemented: db_idx256_end");
-   }
+   int32_t db_idx256_end(uint64_t code, uint64_t scope, uint64_t table) { return get_idx256().end(code, scope, table); }
 
 #define REGISTER_SECONDARY(IDX)                                                                                        \
    Rft::template add<&Derived::db_##IDX##_store>("env", "db_" #IDX "_store");                                          \
