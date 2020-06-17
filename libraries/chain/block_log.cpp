@@ -598,6 +598,13 @@ namespace eosio { namespace chain {
          return std::make_pair(log_data.datastream_at(pos), log_data.get_preamble().version);
       }
 
+      /// Add a new entry into the catalog.
+      ///
+      /// Notice that \c start_block_num must be monotonically increasing between the invocations of this function
+      /// so that the new entry would be inserted at the end of the flat_map; otherwise, \c active_index would be invalidated
+      /// and the mapping between the log data their block range would be wrong. This function is only used during 
+      /// the splitting of block log. Using this function for other purpose should make sure if the monotonically 
+      /// increasing block num guarantee can be met.
       void add(uint32_t start_block_num, uint32_t end_block_num, fc::path filename_base) {
          if (this->collection.size() >= max_retained_files) {
             auto items_to_erase = max_retained_files - this->collection.size() + 1;
