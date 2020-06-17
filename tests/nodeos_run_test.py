@@ -399,7 +399,7 @@ try:
         Print("ERROR: Failed get currecy stats assertion. %s" % (res))
         raise
 
-    # disable amqp since cleos not set up to handle duplicates
+    # disable amqp since cleos with amqp does not return a trace
     if amqpAddr:
         node.setAMQPAddress(None)
 

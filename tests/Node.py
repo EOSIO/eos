@@ -572,6 +572,7 @@ class Node(object):
         amqpAddrStr = ""
         if self.amqpAddr is not None:
             amqpAddrStr = "--amqp %s " % self.amqpAddr
+            reportStatus = False
 
         dontSendStr = ""
         if dontSend:
@@ -827,9 +828,11 @@ class Node(object):
 
     # returns tuple with indication if transaction was successfully sent and either the transaction or else the exception output
     def pushMessage(self, account, action, data, opts, silentErrors=False, signatures=None):
+        reportStatus = True
         amqpAddrStr = ""
         if self.amqpAddr is not None:
             amqpAddrStr = "--amqp %s " % self.amqpAddr
+            reportStatus = False
         cmd="%s %s %s push action -j %s %s" % (Utils.EosClientPath, amqpAddrStr, self.eosClientArgs(), account, action)
         cmdArr=cmd.split()
         # not using __sign_str, since cmdArr messes up the string
@@ -844,7 +847,7 @@ class Node(object):
         start=time.perf_counter()
         try:
             trans=Utils.runCmdArrReturnJson(cmdArr)
-            self.trackCmdTransaction(trans, ignoreNonTrans=True)
+            self.trackCmdTransaction(trans, ignoreNonTrans=True, reportStatus=reportStatus)
             if Utils.Debug:
                 end=time.perf_counter()
                 Utils.Print("cmd Duration: %.3f sec" % (end-start))
@@ -861,9 +864,11 @@ class Node(object):
         assert(isinstance(trans, dict))
         if isinstance(permissions, str):
             permissions=[permissions]
+        reportStatus = True
         amqpAddrStr = ""
         if self.amqpAddr is not None:
             amqpAddrStr = "--amqp %s " % self.amqpAddr
+            reportStatus = False
         cmd="%s %s %s push transaction -j" % (Utils.EosClientPath, amqpAddrStr, self.eosClientArgs())
         cmdArr=cmd.split()
         transStr = json.dumps(trans, separators=(',', ':'))
@@ -881,7 +886,7 @@ class Node(object):
         start=time.perf_counter()
         try:
             retTrans=Utils.runCmdArrReturnJson(cmdArr)
-            self.trackCmdTransaction(retTrans, ignoreNonTrans=True)
+            self.trackCmdTransaction(retTrans, ignoreNonTrans=True, reportStatus=reportStatus)
             if Utils.Debug:
                 end=time.perf_counter()
                 Utils.Print("cmd Duration: %.3f sec" % (end-start))

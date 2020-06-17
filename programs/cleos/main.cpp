@@ -86,7 +86,6 @@ Options:
 #include <eosio/chain/contract_types.hpp>
 #include <eosio/chain/thread_utils.hpp>
 
-#include <eosio/amqp_trace_plugin/amqp_trace_plugin.hpp>
 #include <eosio/amqp_trx_plugin/amqp_trx_plugin.hpp>
 #include <eosio/amqp_trace_plugin/amqp_handler.hpp>
 
@@ -433,50 +432,24 @@ fc::variant push_transaction( signed_transaction& trx, const std::vector<public_
          return call(push_txn_func, packed_transaction_v0(trx, compression));
       } else {
          if( !amqp_address.empty() ) {
-            transaction_trace_msg trace_msg;
+            fc::variant result;
             eosio::transaction_msg msg{packed_transaction( std::move( trx ), true, compression )};
             auto buf = fc::raw::pack( msg );
             const auto& tid = msg.get<packed_transaction>().id();
             const string id = tid.str();
             {
                eosio::chain::named_thread_pool trx_thread_pool( "mqtrx", 1 );
-               eosio::chain::named_thread_pool trace_thread_pool( "mqtrac", 1 );
                eosio::amqp qp_trx( trx_thread_pool.get_executor(), amqp_address, "trx", [](const std::string& err){
                   std::cerr << "AMQP trx error: " << err << std::endl;
                   exit(1);
                } );
-               eosio::amqp qp_trace( trace_thread_pool.get_executor(), amqp_address, "trace", [](const std::string& err){
-                  std::cerr << "AMQP trace error: " << err << std::endl;
-                  exit(1);
-               } );
 
+               result = fc::mutable_variant_object()
+                     ("transaction_id", id)
+                     ("status", "submitted");
                qp_trx.publish( "", id, buf.data(), buf.size() );
 
-               std::promise<void> received_trace;
-               std::atomic_bool received = false;
-               auto& consumer = qp_trace.consume();
-               consumer.onError( []( const char* message ) {
-                  std::cerr << "consume failed: " << message << std::endl;
-               } );
-               consumer.onReceived( [&]( const AMQP::Message& message, uint64_t delivery_tag, bool redelivered ) {
-                  if( message.hasCorrelationID() && message.correlationID() == id && !received) {
-                     fc::datastream<const char*> ds( message.body(), message.bodySize() );
-                     fc::raw::unpack( ds, trace_msg );
-                     // don't ack as other consumers may be interested in trace: qp_trace.ack( delivery_tag );
-                     received = true;
-                     received_trace.set_value();
-                  }
-               } );
-               received_trace.get_future().wait();
                trx_thread_pool.stop();
-               trace_thread_pool.stop();
-            }
-            fc::variant result;
-            if( trace_msg.contains<transaction_trace>() ) {
-               result = eosio::chain_apis::read_write::send_transaction_results{tid, fc::variant(
-                     trace_msg.get<transaction_trace>() )};
-            } else {
-               result = trace_msg;
             }
             return result;
          } else {
