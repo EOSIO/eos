@@ -468,10 +468,9 @@ BOOST_AUTO_TEST_CASE( unapplied_transaction_queue_incoming_count ) try {
    q.add_incoming( trx5, false, [](auto){} );
    q.add_incoming( trx6, false, [](auto){} );
 
-   auto count = q.incoming_size();
    auto expected = q.size();
 
-   BOOST_CHECK( count == expected );
+   BOOST_CHECK( q.incoming_size() == expected );
 
    auto itr = q.unapplied_begin();
    auto end = q.unapplied_end();
@@ -479,7 +478,7 @@ BOOST_AUTO_TEST_CASE( unapplied_transaction_queue_incoming_count ) try {
    while( itr != end ) {
       q.add_persisted( itr->trx_meta );
       --expected;
-      BOOST_CHECK( count == expected );
+      BOOST_CHECK( q.incoming_size() == expected );
    }
 
    itr = q.unapplied_begin();
@@ -488,7 +487,7 @@ BOOST_AUTO_TEST_CASE( unapplied_transaction_queue_incoming_count ) try {
    while( itr != end ) {
       q.add_incoming( itr->trx_meta, false, [](auto){} );
       ++expected;
-      BOOST_CHECK( count == expected );
+      BOOST_CHECK( q.incoming_size() == expected );
    }
 
 } FC_LOG_AND_RETHROW() /// unapplied_transaction_queue_test
