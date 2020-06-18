@@ -12,8 +12,7 @@ class amqp {
 public:
    using on_error_t = std::function<void(const std::string& err)>;
    amqp( boost::asio::io_service& io_service, const std::string& address, std::string name, on_error_t on_err )
-         : connected_( std::make_unique<std::promise<void>>() )
-         , name_( std::move( name ) )
+         : name_( std::move( name ) )
          , on_error( std::move(on_err) )
    {
       AMQP::Address amqp_address( address );
@@ -47,21 +46,18 @@ private:
       queue.onSuccess( [&]( const std::string& name, uint32_t messagecount, uint32_t consumercount ) {
          dlog( "AMQP Connected Successfully!\n Queue ${q} - Messages: ${mc} - Consumers: ${cc}",
                ("q", name)( "mc", messagecount )( "cc", consumercount ) );
-         connected_->set_value();
+         connected_.set_value();
       } );
       queue.onError( [&, on_err=on_error]( const char* error_message ) {
          on_err( error_message );
-         connected_->set_value();
+         connected_.set_value();
       } );
    }
 
    void wait() {
-      if( connected_ ) {
-         auto r = connected_->get_future().wait_for( std::chrono::seconds( 10 ) );
-         if( r == std::future_status::timeout ) {
-            on_error( "AMQP timeout declaring queue" );
-         }
-         connected_.reset();
+      auto r = connected_.get_future().wait_for( std::chrono::seconds( 10 ) );
+      if( r == std::future_status::timeout ) {
+         on_error( "AMQP timeout declaring queue" );
       }
    }
 
@@ -91,7 +87,7 @@ private:
    std::unique_ptr<amqp_handler> handler_;
    std::unique_ptr<AMQP::TcpConnection> connection_;
    std::unique_ptr<AMQP::TcpChannel> channel_;
-   std::unique_ptr<std::promise<void>> connected_;
+   std::promise<void> connected_;
    std::string name_;
    on_error_t on_error;
 };
