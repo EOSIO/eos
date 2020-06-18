@@ -122,11 +122,17 @@ void amqp_trx_plugin::plugin_startup() {
    handle_sighup();
    try {
 
-      ilog( "Starting amqp_trx_plugin" );
-
-      if( !my->trace_plug || my->trace_plug->get_state() == abstract_plugin::initialized ) {
+      if( !my->trace_plug ||
+          ( my->trace_plug->get_state() != abstract_plugin::initialized &&
+            my->trace_plug->get_state() != abstract_plugin::started ) ) {
+         dlog( "running without amqp_trace_plugin" );
          my->trace_plug = nullptr;
+      } else {
+         // always want trace plugin running if specified so traces can be published
+         my->trace_plug->plugin_startup();
       }
+
+      ilog( "Starting amqp_trx_plugin" );
 
       my->thread_pool.emplace( "amqp_t", 1 );
 
