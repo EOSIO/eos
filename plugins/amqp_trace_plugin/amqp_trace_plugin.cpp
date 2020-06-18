@@ -37,8 +37,10 @@ public:
          transaction_trace_msg msg{transaction_trace_exception{error_code}};
          msg.get<transaction_trace_exception>().error_message = std::move( error_message );
          auto buf = fc::raw::pack( msg );
-         boost::asio::post( thread_pool->get_executor(), [my=shared_from_this(), buf=std::move(buf), tid=std::move(tid)]() {
-            my->amqp_trace->publish( my->amqp_trace_exchange, tid, buf.data(), buf.size() );
+         boost::asio::post( thread_pool->get_executor(), [wmy=weak_from_this(), buf=std::move(buf), tid=std::move(tid)]() {
+            auto my = wmy.lock(); // could be called from amqp_trx_plugin after this plugin is shutdown
+            if( my )
+               my->amqp_trace->publish( my->amqp_trace_exchange, tid, buf.data(), buf.size() );
          } );
       } FC_LOG_AND_DROP()
    }
