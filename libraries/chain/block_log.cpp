@@ -311,6 +311,8 @@ namespace eosio { namespace chain {
          //   block_id_type        previous;                   //bytes 14:45, low 4 bytes is big endian block number of
          //   previous block
 
+         EOS_ASSERT(position <= size(), block_log_exception, "Invalid block position ${position}", ("position", position));
+
          int blknum_offset = 14;
          blknum_offset += offset_to_block_start(version());
          uint32_t prev_block_num = read_buffer<uint32_t>(data() + position + blknum_offset);
