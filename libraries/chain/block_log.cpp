@@ -541,9 +541,22 @@ namespace eosio { namespace chain {
             if (!index_matches_data(index_path, log))
                block_log::construct_index(log_path, index_path);
 
-            auto [itr, _]      = collection.emplace(log.first_block_num(),
-                                                    mapped_type{ log.last_block_num(), path_without_extension });
-            this->active_index = collection.index_of(itr);
+            auto existing_itr = collection.find(log.first_block_num());
+            if (existing_itr != collection.end()) {
+               if (log.last_block_num() <= existing_itr->second.last_block_num) {
+                  wlog("${log_path} contains the overlapping range with ${existing_path}.log, droping ${log_path} "
+                       "from catelog",
+                       ("log_path", log_path.string())("existing_path", existing_itr->second.filename_base.string()));
+                  return;
+               }
+               else {
+                  wlog("${log_path} contains the overlapping range with ${existing_path}.log, droping ${existing_path}.log "
+                       "from catelog",
+                       ("log_path", log_path.string())("existing_path", existing_itr->second.filename_base.string()));
+               }
+            }
+
+            collection.insert_or_assign(log.first_block_num(), mapped_type{ log.last_block_num(), path_without_extension });
          });
       }  
 
