@@ -320,6 +320,12 @@ void legacydb_contract::write() {
    store_multiple("scope3"_n, "table1"_n, get_self(), 62,                    data_2, 0x2222,                0x2222'2222,                0.0,                   "0000000000000000000000000000000000000000000000000000000000ff0000");
    store_multiple("scope3"_n, "table1"_n, get_self(), 63,                    data_3, 0x2323,                0x2323'2323,                0.125,                 "00000000000000000000000000000000000000000000000000000000ff000000");
    store_multiple("scope3"_n, "table1"_n, get_self(), 64,                    data_4, 0x2424,                0x2424'2424,                0.25,                  "000000000000000000000000000000000000000000000000000000ff00000000");
+
+   store_multiple("scope3"_n, "table2"_n, get_self(), 74,                    data_4, 0x3030,                0x3030'3030,               -2.0,                   "00000000000000000000000000000000000000000000000000000000000000ff");
+   store_multiple("scope3"_n, "table2"_n, get_self(), 73,                    data_0, 0x3131,                0x3131'3131,               -1.0,                   "0000000000000000000000000000000000000000000000ff0000000000000000");
+   store_multiple("scope3"_n, "table2"_n, get_self(), 72,                    data_2, 0x3232,                0x3232'3232,               -0.0,                   "000000000000000000000000000000ff00000000000000000000000000000000");
+   store_multiple("scope3"_n, "table2"_n, get_self(), 71,                    data_1, 0x3333,                0x3333'3333,                1.0,                   "00000000000000ff000000000000000000000000000000000000000000000000");
+   store_multiple("scope3"_n, "table2"_n, get_self(), 70,                    data_3, 0x3434,                0x3434'3434,                2.0,                   "000000ff00000000000000000000000000000000000000000000000000000000");
    // clang-format on
 
    idx64::store("nope"_n, "just.2nd"_n, get_self(), 42, 42);
@@ -764,7 +770,7 @@ void legacydb_contract::read() {
 
    /////////////////////////////////
    // verify secondaries doen't share itr space with each other or with primary
-   // creates iterators 27
+   // creates iterators -10, 27
    /////////////////////////////////
 
    // each itr 27 points to a different row
@@ -777,7 +783,75 @@ void legacydb_contract::read() {
    idx256::check_find_secondary(get_self(), "d.scope3"_n, "d.table1"_n, 27, 64, to_cs("000000000000000000000000000000000000000000000000000000ff00000000"));
    // clang-format on
 
-   // TODO: verify secondary order when it doesn't match primary order
+   /////////////////////////////////
+   // verify secondary order when it doesn't match primary order
+   // creates iterators -11, 28 - 32
+   /////////////////////////////////
+
+   check_find_i64(get_self(), "scope3"_n, "table2"_n, 73, 28, data_0);
+   check_find_i64(get_self(), "scope3"_n, "table2"_n, 71, 29, data_1);
+   check_find_i64(get_self(), "scope3"_n, "table2"_n, 72, 30, data_2);
+   check_find_i64(get_self(), "scope3"_n, "table2"_n, 70, 31, data_3);
+   check_find_i64(get_self(), "scope3"_n, "table2"_n, 74, 32, data_4);
+   check_find_i64(get_self(), "scope3"_n, "table2"_n, 0, -11, {});
+   check_find_i64(get_self(), "scope3"_n, "table2"_n, 75, -11, {});
+
+   // clang-format off
+   check_find_secondary_multiple(get_self(), "scope3"_n, "table2"_n,  28, 73,         0x3131, 0x3131'3131, -1.0, "0000000000000000000000000000000000000000000000ff0000000000000000");
+   check_find_secondary_multiple(get_self(), "scope3"_n, "table2"_n,  29, 71,         0x3333, 0x3333'3333,  1.0, "00000000000000ff000000000000000000000000000000000000000000000000");
+   check_find_secondary_multiple(get_self(), "scope3"_n, "table2"_n,  30, 72,         0x3232, 0x3232'3232,  0.0, "000000000000000000000000000000ff00000000000000000000000000000000");
+   check_find_secondary_multiple(get_self(), "scope3"_n, "table2"_n,  31, 70,         0x3434, 0x3434'3434,  2.0, "000000ff00000000000000000000000000000000000000000000000000000000");
+   check_find_secondary_multiple(get_self(), "scope3"_n, "table2"_n,  32, 74,         0x3030, 0x3030'3030, -2.0, "00000000000000000000000000000000000000000000000000000000000000ff");
+   check_find_secondary_multiple(get_self(), "scope3"_n, "table2"_n, -11, 0xfeedbeef, 0x0000, 0x0000'0000, -3.0, "0000000000000000000000000000000000000000000000000000000000000000");
+   check_find_secondary_multiple(get_self(), "scope3"_n, "table2"_n, -11, 0xfeedbeef, 0x3535, 0x3535'3535,  7.5, "ff00000000000000000000000000000000000000000000000000000000000000");
+   // clang-format on
+
+   check_lowerbound_i64(get_self(), "scope3"_n, "table2"_n, 73, 28, data_0);
+   check_lowerbound_i64(get_self(), "scope3"_n, "table2"_n, 71, 29, data_1);
+   check_lowerbound_i64(get_self(), "scope3"_n, "table2"_n, 72, 30, data_2);
+   check_lowerbound_i64(get_self(), "scope3"_n, "table2"_n, 70, 31, data_3);
+   check_lowerbound_i64(get_self(), "scope3"_n, "table2"_n, 74, 32, data_4);
+   check_lowerbound_i64(get_self(), "scope3"_n, "table2"_n, 0, 31, data_3);
+   check_lowerbound_i64(get_self(), "scope3"_n, "table2"_n, 75, -11, {});
+
+   // clang-format off
+   check_lowerbound_multiple(get_self(), "scope3"_n, "table2"_n,  28, 73,         0x3131, 0x3131,   0x3131'3131, 0x3131'3131, -1.0, -1.0, "0000000000000000000000000000000000000000000000ff0000000000000000", "0000000000000000000000000000000000000000000000ff0000000000000000");
+   check_lowerbound_multiple(get_self(), "scope3"_n, "table2"_n,  29, 71,         0x3333, 0x3333,   0x3333'3333, 0x3333'3333,  1.0,  1.0, "00000000000000ff000000000000000000000000000000000000000000000000", "00000000000000ff000000000000000000000000000000000000000000000000");
+   check_lowerbound_multiple(get_self(), "scope3"_n, "table2"_n,  30, 72,         0x3232, 0x3232,   0x3232'3232, 0x3232'3232,  0.0,  0.0, "000000000000000000000000000000ff00000000000000000000000000000000", "000000000000000000000000000000ff00000000000000000000000000000000");
+   check_lowerbound_multiple(get_self(), "scope3"_n, "table2"_n,  31, 70,         0x3434, 0x3434,   0x3434'3434, 0x3434'3434,  2.0,  2.0, "000000ff00000000000000000000000000000000000000000000000000000000", "000000ff00000000000000000000000000000000000000000000000000000000");
+   check_lowerbound_multiple(get_self(), "scope3"_n, "table2"_n,  32, 74,         0x3030, 0x3030,   0x3030'3030, 0x3030'3030, -2.0, -2.0, "00000000000000000000000000000000000000000000000000000000000000ff", "00000000000000000000000000000000000000000000000000000000000000ff");
+   check_lowerbound_multiple(get_self(), "scope3"_n, "table2"_n,  32, 74,         0x0000, 0x3030,   0x0000'0000, 0x3030'3030, -3.0, -2.0, "0000000000000000000000000000000000000000000000000000000000000000", "00000000000000000000000000000000000000000000000000000000000000ff");
+   check_lowerbound_multiple(get_self(), "scope3"_n, "table2"_n, -11, 0xfeedbeef, 0x3535, 0x3535,   0x3535'3535, 0x3535'3535,  7.5,  7.5, "ff00000000000000000000000000000000000000000000000000000000000000", "ff00000000000000000000000000000000000000000000000000000000000000");
+   // clang-format on
+
+   check_next_i64(31, 29, 71);
+   check_next_i64(29, 30, 72);
+   check_next_i64(30, 28, 73);
+   check_next_i64(28, 32, 74);
+   check_next_i64(32, -11, 0xfeedbeef);
+   check_next_i64(-11, -1, 0xfeedbeef);
+
+   check_next_multiple(32, 28, 73);
+   check_next_multiple(28, 30, 72);
+   check_next_multiple(30, 29, 71);
+   check_next_multiple(29, 31, 70);
+   check_next_multiple(31, -11, 0xfeedbeef);
+   check_next_multiple(-11, -1, 0xfeedbeef);
+
+   check_prev_i64(-11, 32, 74);
+   check_prev_i64(32, 28, 73);
+   check_prev_i64(28, 30, 72);
+   check_prev_i64(30, 29, 71);
+   check_prev_i64(29, 31, 70);
+   check_prev_i64(31, -1, 0xfeedbeef);
+
+   check_prev_multiple(-11, 31, 70);
+   check_prev_multiple(31, 29, 71);
+   check_prev_multiple(29, 30, 72);
+   check_prev_multiple(30, 28, 73);
+   check_prev_multiple(28, 32, 74);
+   check_prev_multiple(32, -1, 0xfeedbeef);
+
    // TODO: duplicate secondaries
 
 } // legacydb_contract::read()
