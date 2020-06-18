@@ -107,6 +107,7 @@ void amqp_trace_plugin::plugin_startup() {
       handle_sighup();
       try {
          ilog( "Starting amqp_trace_plugin" );
+         my->started = true;
          my->thread_pool.emplace( "amqp_t", 1 );
 
          my->amqp_trace.emplace( my->thread_pool->get_executor(), my->amqp_trace_address, "trace",
@@ -124,7 +125,6 @@ void amqp_trace_plugin::plugin_startup() {
                         me->on_applied_transaction( std::get<0>( t ), std::get<1>( t ) );
                      } ) );
 
-         my->started = true;
       } catch( ... ) {
          // always want plugin_shutdown even on exception
          plugin_shutdown();
@@ -134,17 +134,20 @@ void amqp_trace_plugin::plugin_startup() {
 }
 
 void amqp_trace_plugin::plugin_shutdown() {
-   try {
-      dlog( "shutdown.." );
+   if( my->started ) {
+      try {
+         dlog( "shutdown.." );
 
-      my->applied_transaction_connection.reset();
-      if( my->thread_pool ) {
-         my->thread_pool->stop();
+         my->applied_transaction_connection.reset();
+         if( my->thread_pool ) {
+            my->thread_pool->stop();
+         }
+
+         dlog( "exit amqp_trace_plugin" );
       }
-
-      dlog( "exit amqp_trace_plugin" );
+      FC_CAPTURE_AND_RETHROW()
+      my->started = false;
    }
-   FC_CAPTURE_AND_RETHROW()
 }
 
 void amqp_trace_plugin::handle_sighup() {
