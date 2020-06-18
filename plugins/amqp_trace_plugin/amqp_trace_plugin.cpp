@@ -27,6 +27,7 @@ struct amqp_trace_plugin_impl : std::enable_shared_from_this<amqp_trace_plugin_i
 
    std::string amqp_trace_address;
    std::string amqp_trace_exchange;
+   bool started = false;
 
 public:
 
@@ -102,29 +103,33 @@ void amqp_trace_plugin::plugin_initialize(const variables_map& options) {
 }
 
 void amqp_trace_plugin::plugin_startup() {
-   handle_sighup();
-   try {
-      ilog( "Starting amqp_trace_plugin" );
-      my->thread_pool.emplace( "amqp_t", 1 );
+   if( !my->started ) {
+      handle_sighup();
+      try {
+         ilog( "Starting amqp_trace_plugin" );
+         my->thread_pool.emplace( "amqp_t", 1 );
 
-      my->amqp_trace.emplace( my->thread_pool->get_executor(), my->amqp_trace_address, "trace", [](const std::string& err) {
-         elog( "amqp error: ${e}", ("e", err) );
-         app().quit();
-      });
+         my->amqp_trace.emplace( my->thread_pool->get_executor(), my->amqp_trace_address, "trace",
+                                 []( const std::string& err ) {
+                                    elog( "amqp error: ${e}", ("e", err) );
+                                    app().quit();
+                                 } );
 
-      auto chain_plug = app().find_plugin<chain_plugin>();
-      EOS_ASSERT( chain_plug, chain::missing_chain_plugin_exception, "chain_plugin required" );
+         auto chain_plug = app().find_plugin<chain_plugin>();
+         EOS_ASSERT( chain_plug, chain::missing_chain_plugin_exception, "chain_plugin required" );
 
-      my->applied_transaction_connection.emplace(
-            chain_plug->chain().applied_transaction.connect(
-                  [me=my]( std::tuple<const chain::transaction_trace_ptr&, const chain::packed_transaction_ptr&> t ) {
-                     me->on_applied_transaction( std::get<0>( t ), std::get<1>( t ) );
-                  } ) );
+         my->applied_transaction_connection.emplace(
+               chain_plug->chain().applied_transaction.connect(
+                     [me = my]( std::tuple<const chain::transaction_trace_ptr&, const chain::packed_transaction_ptr&> t ) {
+                        me->on_applied_transaction( std::get<0>( t ), std::get<1>( t ) );
+                     } ) );
 
-   } catch( ... ) {
-      // always want plugin_shutdown even on exception
-      plugin_shutdown();
-      throw;
+         my->started = true;
+      } catch( ... ) {
+         // always want plugin_shutdown even on exception
+         plugin_shutdown();
+         throw;
+      }
    }
 }
 
