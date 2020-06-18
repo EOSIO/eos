@@ -829,11 +829,7 @@ class Node(object):
     # returns tuple with indication if transaction was successfully sent and either the transaction or else the exception output
     def pushMessage(self, account, action, data, opts, silentErrors=False, signatures=None):
         reportStatus = True
-        amqpAddrStr = ""
-        if self.amqpAddr is not None:
-            amqpAddrStr = "--amqp %s " % self.amqpAddr
-            reportStatus = False
-        cmd="%s %s %s push action -j %s %s" % (Utils.EosClientPath, amqpAddrStr, self.eosClientArgs(), account, action)
+        cmd="%s %s push action -j %s %s" % (Utils.EosClientPath, self.eosClientArgs(), account, action)
         cmdArr=cmd.split()
         # not using __sign_str, since cmdArr messes up the string
         if signatures is not None:
