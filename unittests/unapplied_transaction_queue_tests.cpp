@@ -448,5 +448,49 @@ BOOST_AUTO_TEST_CASE( unapplied_transaction_queue_erase_add ) try {
 
 } FC_LOG_AND_RETHROW() /// unapplied_transaction_queue_test
 
+BOOST_AUTO_TEST_CASE( unapplied_transaction_queue_incoming_count ) try {
+
+   unapplied_transaction_queue q;
+   BOOST_CHECK( q.empty() );
+   BOOST_CHECK( q.size() == 0 );
+
+   auto trx1 = unique_trx_meta_data();
+   auto trx2 = unique_trx_meta_data();
+   auto trx3 = unique_trx_meta_data();
+   auto trx4 = unique_trx_meta_data();
+   auto trx5 = unique_trx_meta_data();
+   auto trx6 = unique_trx_meta_data();
+
+   q.add_incoming( trx1, false, [](auto){} );
+   q.add_incoming( trx2, false, [](auto){} );
+   q.add_incoming( trx3, false, [](auto){} );
+   q.add_incoming( trx4, false, [](auto){} );
+   q.add_incoming( trx5, false, [](auto){} );
+   q.add_incoming( trx6, false, [](auto){} );
+
+   auto count = q.incoming_size();
+   auto expected = q.size();
+
+   BOOST_CHECK( count == expected );
+
+   auto itr = q.unapplied_begin();
+   auto end = q.unapplied_end();
+
+   while( itr != end ) {
+      q.add_persisted( itr->trx_meta );
+      --expected;
+      BOOST_CHECK( count == expected );
+   }
+
+   itr = q.unapplied_begin();
+   end = q.unapplied_end();
+
+   while( itr != end ) {
+      q.add_incoming( itr->trx_meta, false, [](auto){} );
+      ++expected;
+      BOOST_CHECK( count == expected );
+   }
+
+} FC_LOG_AND_RETHROW() /// unapplied_transaction_queue_test
 
 BOOST_AUTO_TEST_SUITE_END()
