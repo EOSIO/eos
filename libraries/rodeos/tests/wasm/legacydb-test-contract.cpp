@@ -205,8 +205,9 @@ checksum256 to_cs(const char (&cs)[65]) {
 }
 
 void store_multiple(name scope, name table, name payer, uint64_t id, const std::vector<char>& data, uint64_t i64,
-                    uint128_t i128, double d, const char (&cs)[65]) {
-   store_i64(scope, table, payer, id, data);
+                    uint128_t i128, double d, const char (&cs)[65], bool store_primary = true) {
+   if (store_primary)
+      store_i64(scope, table, payer, id, data);
    idx64::store(p("a"_n, scope), p("a"_n, table), payer, id, i64);
    idx128::store(p("b"_n, scope), p("b"_n, table), payer, id, i128);
    idx_double::store(p("c"_n, scope), p("c"_n, table), payer, id, d);
@@ -326,6 +327,16 @@ void legacydb_contract::write() {
    store_multiple("scope3"_n, "table2"_n, get_self(), 72,                    data_2, 0x3232,                0x3232'3232,               -0.0,                   "000000000000000000000000000000ff00000000000000000000000000000000");
    store_multiple("scope3"_n, "table2"_n, get_self(), 71,                    data_1, 0x3333,                0x3333'3333,                1.0,                   "00000000000000ff000000000000000000000000000000000000000000000000");
    store_multiple("scope3"_n, "table2"_n, get_self(), 70,                    data_3, 0x3434,                0x3434'3434,                2.0,                   "000000ff00000000000000000000000000000000000000000000000000000000");
+
+   store_multiple("scope3"_n, "table3"_n, get_self(), 80,                    data_0, 0x3030,                0x3030'3030,               -2.0,                   "00000000000000000000000000000000000000000000000000000000000000ff");
+   store_multiple("scope3"_n, "table3"_n, get_self(), 81,                    data_1, 0x3030,                0x3030'3030,               -2.0,                   "00000000000000000000000000000000000000000000000000000000000000ff");
+   store_multiple("scope3"_n, "table3"_n, get_self(), 82,                    data_2, 0x3030,                0x3030'3030,               -2.0,                   "00000000000000000000000000000000000000000000000000000000000000ff");
+   store_multiple("scope3"_n, "table3"_n, get_self(), 83,                    data_0, 0x3131,                0x3131'3131,               -1.0,                   "0000000000000000000000000000000000000000000000ff0000000000000000", false);
+   store_multiple("scope3"_n, "table3"_n, get_self(), 84,                    data_1, 0x3131,                0x3131'3131,               -1.0,                   "0000000000000000000000000000000000000000000000ff0000000000000000", false);
+   store_multiple("scope3"_n, "table3"_n, get_self(), 85,                    data_2, 0x3131,                0x3131'3131,               -1.0,                   "0000000000000000000000000000000000000000000000ff0000000000000000", false);
+   store_multiple("scope3"_n, "table3"_n, get_self(), 86,                    data_0, 0x3232,                0x3232'3232,               -0.0,                   "000000000000000000000000000000ff00000000000000000000000000000000", false);
+   store_multiple("scope3"_n, "table3"_n, get_self(), 87,                    data_1, 0x3232,                0x3232'3232,               -0.0,                   "000000000000000000000000000000ff00000000000000000000000000000000", false);
+   store_multiple("scope3"_n, "table3"_n, get_self(), 88,                    data_2, 0x3232,                0x3232'3232,               -0.0,                   "000000000000000000000000000000ff00000000000000000000000000000000", false);
    // clang-format on
 
    idx64::store("nope"_n, "just.2nd"_n, get_self(), 42, 42);
@@ -852,8 +863,37 @@ void legacydb_contract::read() {
    check_prev_multiple(28, 32, 74);
    check_prev_multiple(32, -1, 0xfeedbeef);
 
-   // TODO: duplicate secondaries
+   /////////////////////////////////
+   // verify multiple primaries to each secondary
+   // creates iterators -12, 33 - 41
+   /////////////////////////////////
 
+   // clang-format off
+   check_lowerbound_multiple(get_self(), "scope3"_n, "table3"_n, 33, 80, 0, 0x3030, 0, 0x3030'3030, -10.0, -2.0, "0000000000000000000000000000000000000000000000000000000000000000", "00000000000000000000000000000000000000000000000000000000000000ff");
+   check_next_multiple(33, 34, 81);
+   check_next_multiple(34, 35, 82);
+   check_next_multiple(35, 36, 83);
+   check_next_multiple(36, 37, 84);
+   check_next_multiple(37, 38, 85);
+   check_next_multiple(38, 39, 86);
+   check_next_multiple(39, 40, 87);
+   check_next_multiple(40, 41, 88);
+
+   check_end_multiple(get_self(), "scope3"_n, "table3"_n, -12);
+   check_prev_multiple(-12, 41, 88);
+   check_prev_multiple( 41, 40, 87);
+   check_prev_multiple( 40, 39, 86);
+   check_prev_multiple( 39, 38, 85);
+   check_prev_multiple( 38, 37, 84);
+   check_prev_multiple( 37, 36, 83);
+   check_prev_multiple( 36, 35, 82);
+   check_prev_multiple( 35, 34, 81);
+   check_prev_multiple( 34, 33, 80);
+
+   check_find_secondary_multiple(get_self(), "scope3"_n, "table3"_n, 33, 80, 0x3030, 0x3030'3030, -2.0, "00000000000000000000000000000000000000000000000000000000000000ff");
+   check_find_secondary_multiple(get_self(), "scope3"_n, "table3"_n, 36, 83, 0x3131, 0x3131'3131, -1.0, "0000000000000000000000000000000000000000000000ff0000000000000000");
+   check_find_secondary_multiple(get_self(), "scope3"_n, "table3"_n, 39, 86, 0x3232, 0x3232'3232, -0.0, "000000000000000000000000000000ff00000000000000000000000000000000");
+   // clang-format on
 } // legacydb_contract::read()
 
 EOSIO_ACTION_DISPATCHER(legacydb::actions)
