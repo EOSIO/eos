@@ -120,13 +120,13 @@ public:
       auto it = _keys.find(id);
       if( it != _keys.end() )
          return  it->second;
-      return std::optional<private_key_type>();
+      return std::make_optional<private_key_type>();
    }
 
    std::optional<signature_type> try_sign_digest( const digest_type digest, const public_key_type public_key ) {
       auto it = _keys.find(public_key);
       if( it == _keys.end() )
-         return std::optional<signature_type>{};
+         return std::make_optional<signature_type>();
       return it->second.sign(digest);
    }
 

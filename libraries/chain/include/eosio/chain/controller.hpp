@@ -346,7 +346,7 @@ namespace eosio { namespace chain {
                      return abi_serializer( abi, yield );
                } FC_CAPTURE_AND_LOG((n))
             }
-            return std::optional<abi_serializer>();
+            return std::make_optional<abi_serializer>();
          }
 
          template<typename T>

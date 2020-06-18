@@ -141,7 +141,7 @@ namespace detail {
             if( itr != permissions.end() )
                return itr->second;
 
-            return std::optional<permission_cache_status>();
+            return std::make_optional<permission_cache_status>();
          }
 
       private:

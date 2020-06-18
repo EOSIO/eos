@@ -247,7 +247,7 @@ namespace fc
   {
     if( my->_last_ntp_delta_initialized )
       return fc::time_point::now() + fc::microseconds(my->_last_ntp_delta_microseconds);
-    return std::optional<time_point>();
+    return std::make_optional<time_point>();
   }
 
 } //namespace fc

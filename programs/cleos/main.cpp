@@ -369,7 +369,7 @@ auto abi_serializer_resolver = [](const name& account) -> std::optional<abi_seri
 };
 
 auto abi_serializer_resolver_empty = [](const name& account) -> std::optional<abi_serializer> {
-   return std::optional<abi_serializer>();
+   return std::make_optional<abi_serializer>();
 };
 
 void prompt_for_wallet_password(string& pw, const string& name) {

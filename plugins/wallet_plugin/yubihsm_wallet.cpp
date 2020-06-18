@@ -136,7 +136,7 @@ struct yubihsm_wallet_impl {
    std::optional<signature_type> try_sign_digest(const digest_type d, const public_key_type public_key) {
       auto it = _keys.find(public_key);
       if(it == _keys.end())
-         return std::optional<signature_type>{};
+         return std::make_optional<signature_type>();
 
       size_t der_sig_sz = 128;
       uint8_t der_sig[der_sig_sz];

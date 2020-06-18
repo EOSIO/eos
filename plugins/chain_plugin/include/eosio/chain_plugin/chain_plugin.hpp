@@ -733,7 +733,7 @@ public:
 
    static bool recover_reversible_blocks( const fc::path& db_dir,
                                           uint32_t cache_size,
-                                          std::optional<fc::path> new_db_dir = std::optional<fc::path>(),
+                                          std::optional<fc::path> new_db_dir = std::make_optional<fc::path>(),
                                           uint32_t truncate_at_block = 0
                                         );
 

@@ -295,9 +295,9 @@ namespace eosio { namespace chain {
          if (link != nullptr) {
             return link->required_permission;
          }
-         return std::optional<permission_name>();
+         return std::make_optional<permission_name>();
 
-       //  return std::optional<permission_name>();
+       //  return std::make_optional<permission_name>();
       } FC_CAPTURE_AND_RETHROW((authorizer_account)(scope)(act_name))
    }
 
@@ -323,7 +323,7 @@ namespace eosio { namespace chain {
             return config::active_name;
 
          if( *linked_permission == config::eosio_any_name )
-            return std::optional<permission_name>();
+            return std::make_optional<permission_name>();
 
          return linked_permission;
       } FC_CAPTURE_AND_RETHROW((authorizer_account)(scope)(act_name))

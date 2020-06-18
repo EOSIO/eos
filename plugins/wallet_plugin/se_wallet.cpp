@@ -102,7 +102,7 @@ std::optional<signature_type> se_wallet::try_sign_digest(const digest_type diges
       if(it->public_key() == public_key)
          return it->sign(digest);
 
-   return std::optional<signature_type>{};
+   return std::make_optional<signature_type>();
 }
 
 }}
