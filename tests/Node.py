@@ -1488,6 +1488,14 @@ class Node(object):
         param = { }
         return self.processCurlCmd("producer", "create_snapshot", json.dumps(param))
 
+    # kill all exsiting nodeos in case lingering from previous test
+    @staticmethod
+    def killAllNodeos():
+        # kill the eos server
+        cmd="pkill -9 %s" % (Utils.EosServerName)
+        ret_code = subprocess.call(cmd.split(), stdout=Utils.FNull)
+        Utils.Print("cmd: %s, ret:%d" % (cmd, ret_code))
+
     @staticmethod
     def findStderrFiles(path):
         files=[]

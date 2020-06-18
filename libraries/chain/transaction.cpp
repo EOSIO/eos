@@ -391,32 +391,32 @@ void packed_transaction_v0::local_pack_context_free_data()
 }
 
 
-static digest_type prunable_digest(const packed_transaction::prunable_data_type::none& obj) {
-   return obj.prunable_digest;
+digest_type packed_transaction::prunable_data_type::none::prunable_digest() const {
+   return digest;
 }
 
-static digest_type prunable_digest(const packed_transaction::prunable_data_type::partial& obj) {
+digest_type  packed_transaction::prunable_data_type::partial::prunable_digest() const {
    EOS_THROW(tx_prune_exception, "unimplemented");
 }
 
-static digest_type prunable_digest(const packed_transaction::prunable_data_type::full& obj) {
+digest_type packed_transaction::prunable_data_type::full::prunable_digest() const {
    EOS_THROW(tx_prune_exception, "unimplemented");
 }
 
-static digest_type prunable_digest(const packed_transaction::prunable_data_type::full_legacy& obj) {
+digest_type packed_transaction::prunable_data_type::full_legacy::prunable_digest() const {
    digest_type::encoder prunable;
-   fc::raw::pack( prunable, obj.signatures );
-   fc::raw::pack( prunable, obj.packed_context_free_data );
+   fc::raw::pack( prunable, this->signatures );
+   fc::raw::pack( prunable, this->packed_context_free_data );
    return prunable.result();
 }
 
 digest_type packed_transaction::prunable_data_type::digest() const {
-   return prunable_data.visit( [](const auto& obj) { return prunable_digest(obj); } );
+   return prunable_data.visit( [](const auto& obj) { return obj.prunable_digest(); } );
 }
 
 packed_transaction::prunable_data_type packed_transaction::prunable_data_type::prune_all() const {
    return prunable_data.visit(
-       [](const auto& obj) -> packed_transaction::prunable_data_type { return {none{prunable_digest(obj)}}; });
+       [](const auto& obj) -> packed_transaction::prunable_data_type { return {none{obj.prunable_digest()}}; });
 }
 
 static constexpr std::size_t digest_pack_size = 32;

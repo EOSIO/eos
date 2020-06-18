@@ -378,9 +378,9 @@ try {
 
    chain.produce_block();
 
-   account_name acc1 = N("bill1");
-   account_name acc2 = N("bill2");
-   account_name acc1a = N("bill1a");
+   account_name acc1 = N(bill1);
+   account_name acc2 = N(bill2);
+   account_name acc1a = N(bill1a);
 
    chain.create_account(acc1);
    chain.create_account(acc1a);
@@ -436,10 +436,10 @@ try {
 
    chain.produce_block();
 
-   account_name acc1 = N("acc1");
-   account_name acc2 = N("acc2");
-   account_name acc3 = N("acc3");
-   account_name acc4 = N("acc4");
+   account_name acc1 = N(acc1);
+   account_name acc2 = N(acc2);
+   account_name acc3 = N(acc3);
+   account_name acc4 = N(acc4);
 
    chain.create_account(acc1);
    chain.produce_block();

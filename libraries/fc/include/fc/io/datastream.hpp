@@ -1,7 +1,9 @@
 #pragma once
 #include <fc/utility.hpp>
+#include <fc/exception/exception.hpp>
 #include <string.h>
 #include <stdint.h>
+#include <type_traits>
 
 #include <boost/multiprecision/cpp_int.hpp>
 
@@ -12,15 +14,18 @@ namespace detail
   NO_RETURN void throw_datastream_range_error( const char* file, size_t len, int64_t over );
 }
 
+template <typename Storage, typename Enable = void>
+class datastream;
+
 /**
- *  The purpose of this datastream is to provide a fast, effecient, means
+ *  The purpose of this datastream is to provide a fast, efficient, means
  *  of calculating the amount of data "about to be written" and then
  *  writing it.  This means having two modes of operation, "test run" where
  *  you call the entire pack sequence calculating the size, and then
  *  actually packing it after doing a single allocation.
  */
 template<typename T>
-class datastream {
+class datastream<T, std::enable_if_t<std::is_same_v<T, char*> || std::is_same_v<T, const char*>>>  {
    public:
       datastream( T start, size_t s )
       :_start(start),_pos(start),_end(start+s){};
@@ -77,7 +82,7 @@ class datastream {
 };
 
 template<>
-class datastream<size_t> {
+class datastream<size_t, void> {
    public:
      datastream( size_t init_size = 0):_size(init_size){};
      inline bool     skip( size_t s )                 { _size += s; return true;  }
@@ -90,6 +95,86 @@ class datastream<size_t> {
   private:
      size_t _size;
 };
+
+template <typename Streambuf>
+class datastream<Streambuf, typename std::enable_if_t<std::is_base_of_v<std::streambuf, Streambuf>>> {
+ private:
+   Streambuf buf;
+
+ public:
+   template <typename... Args>
+   datastream(Args&&... args)
+       : buf(std::forward<Args>(args)...) {}
+
+   size_t read(char* data, size_t n) { return buf.sgetn(data, n); }
+   size_t write(const char* data, size_t n) { return buf.sputn(data, n); }
+   size_t tellp() { return this->pubseekoff(0, std::ios::cur); }
+   bool   skip(size_t p) { this->pubseekoff(p, std::ios::cur);  return true;  }
+   bool   get(char& c) {
+      c = buf.sbumpc();
+      return true;
+   }
+   bool seekp(size_t off) {
+      buf.pubseekoff(off, std::ios::beg);
+      return true;
+   }
+   bool remaining() { return buf.in_avail(); }
+
+   Streambuf&       storage() { return buf; }
+   const Streambuf& storage() const { return buf; }
+};
+
+template <typename Container>
+class datastream<Container, typename std::enable_if_t<(std::is_same_v<std::vector<char>, Container> ||
+                                                       std::is_same_v<std::deque<char>, Container>)>> {
+ private:
+   Container _container;
+   size_t    cur;
+
+ public:
+   template <typename... Args>
+   datastream(Args&&... args)
+       : _container(std::forward<Args>(args)...)
+       , cur(0) {}
+
+   size_t read(char* s, size_t n) {
+      if (cur + n > _container.size()) {
+         FC_THROW_EXCEPTION(out_of_range_exception,
+                            "read datastream<std::vector<char>> of length ${len} over by ${over}",
+                            ("len", _container.size())("over", _container.size() - n));
+      }
+      std::copy_n(_container.begin() + cur, n, s);
+      cur += n;
+      return n;
+   }
+
+   size_t write(const char* s, size_t n) {
+      _container.resize(std::max(cur + n, _container.size()));
+      std::copy_n(s, n, _container.begin() + cur);
+      cur += n;
+      return n;
+   }
+
+   bool seekp(size_t off) {
+      cur = off;
+      return true;
+   }
+
+   size_t tellp() const { return cur; }
+   bool   skip(size_t p) { cur += p;  return true;  }
+
+   bool get(char& c) {
+      this->read(&c, 1);
+      return true;
+   }
+
+   size_t remaining() const { return _container.size() - cur; }
+
+   Container&       storage() { return _container; }
+   const Container& storage() const { return _container; }
+};
+
+
 
 template<typename ST>
 inline datastream<ST>& operator<<(datastream<ST>& ds, const __int128& d) {

@@ -132,7 +132,8 @@ struct cloner_session : ship_client::connection_callbacks, std::enable_shared_fr
       return result;
    }
 
-   bool received(get_blocks_result_v0& result, eosio::input_stream bin) override {
+   template<typename Get_Blocks_Result>
+   bool process_received(Get_Blocks_Result& result, eosio::input_stream bin) {
       if (!result.this_block)
          return true;
       if (config->stop_before && result.this_block->block_num >= config->stop_before) {
@@ -169,7 +170,15 @@ struct cloner_session : ship_client::connection_callbacks, std::enable_shared_fr
 
       rodeos_snapshot->end_block(result, false);
       return true;
-   } // receive_result()
+   }
+
+   bool received(get_blocks_result_v0& result, eosio::input_stream bin) override {
+      return process_received(result, bin);
+   }
+
+   bool received(get_blocks_result_v1& result, eosio::input_stream bin) override {
+      return process_received(result, bin);
+   }
 
    void closed(bool retry) override {
       if (my) {

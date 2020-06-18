@@ -15,6 +15,8 @@
 
 #include <eosio/chain/eosio_contract.hpp>
 
+#include <eosio/resource_monitor_plugin/resource_monitor_plugin.hpp>
+
 #include <chainbase/environment.hpp>
 
 #include <boost/signals2/connection.hpp>
@@ -740,6 +742,11 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       my->chain_config->blocks_dir = my->blocks_dir;
       my->chain_config->state_dir = app().data_dir() / config::default_state_dir_name;
       my->chain_config->read_only = my->readonly;
+
+      if (auto resmon_plugin = app().find_plugin<resource_monitor_plugin>()) {
+        resmon_plugin->monitor_directory(my->chain_config->blocks_dir);
+        resmon_plugin->monitor_directory(my->chain_config->state_dir);
+      }
 
       if( options.count( "chain-state-db-size-mb" ))
          my->chain_config->state_size = options.at( "chain-state-db-size-mb" ).as<uint64_t>() * 1024 * 1024;

@@ -427,10 +427,12 @@ struct controller_impl {
 
             emit( self.irreversible_block, *bitr );
 
+            // blog.append could fail due to failures like running out of space.
+            // Do it before commit so that in case it throws, DB can be rolled back.
+            blog.append( (*bitr)->block, packed_transaction::cf_compression_type::none );
+
             db.commit( (*bitr)->block_num );
             root_id = (*bitr)->id;
-
-            blog.append( (*bitr)->block, packed_transaction::cf_compression_type::none );
 
             auto rbitr = rbi.begin();
             while( rbitr != rbi.end() && rbitr->blocknum <= (*bitr)->block_num ) {
