@@ -81,7 +81,8 @@ class rabbitmq : public stream_handler {
       }
 
       auto& exchange = channel_->declareExchange(exchangeName_, type);
-      exchange.onSuccess([this]() { ilog("RabbitMQ Connected Successfully!\n Exchange ${e}", ("e", exchangeName_)); });
+      exchange.onSuccess(
+            [en = exchangeName_]() { ilog("RabbitMQ Connected Successfully!\n Exchange ${e}", ("e", en)); });
       exchange.onError([](const char* error_message) {
          throw std::runtime_error("RabbitMQ Exchange error: " + std::string(error_message));
       });
