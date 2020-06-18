@@ -490,6 +490,6 @@ BOOST_AUTO_TEST_CASE( unapplied_transaction_queue_incoming_count ) try {
       BOOST_CHECK( q.incoming_size() == expected );
    }
 
-} FC_LOG_AND_RETHROW() /// unapplied_transaction_queue_test
+} FC_LOG_AND_RETHROW() /// unapplied_transaction_queue_incoming_count
 
 BOOST_AUTO_TEST_SUITE_END()
