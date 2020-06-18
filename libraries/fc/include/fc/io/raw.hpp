@@ -268,7 +268,7 @@ namespace fc {
     // optional
     template<typename Stream, typename T>
     void pack( Stream& s, const std::optional<T>& v ) {
-      fc::raw::pack( s, v );
+      fc::raw::pack( s, v.has_value() );
       if( v ) fc::raw::pack( s, *v );
     }
 
