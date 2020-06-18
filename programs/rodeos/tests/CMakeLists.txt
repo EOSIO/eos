@@ -5,6 +5,6 @@ target_link_libraries(test_rodeos_cli
 )
 
 add_test(NAME test_rodeos_cli
-    COMMAND libraries/rodeos/tests/test_rodeos_cli
+    COMMAND programs/rodeos/tests/test_rodeos_cli
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
 )
