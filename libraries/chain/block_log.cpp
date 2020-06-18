@@ -607,7 +607,7 @@ namespace eosio { namespace chain {
       /// increasing block num guarantee can be met.
       void add(uint32_t start_block_num, uint32_t end_block_num, fc::path filename_base) {
          if (this->collection.size() >= max_retained_files) {
-            auto items_to_erase = max_retained_files - this->collection.size() + 1;
+            auto items_to_erase = max_retained_files > 0 ? this->collection.size() - max_retained_files + 1 : this->collection.size();
             for (auto it = this->collection.begin(); it < this->collection.begin() + items_to_erase; ++it) {
                auto name = it->second.filename_base;
                if (archive_dir.empty()) {
@@ -622,9 +622,10 @@ namespace eosio { namespace chain {
                }
             }
             this->collection.erase(this->collection.begin(), this->collection.begin() + items_to_erase);
-            this->active_index = this->active_index == npos ? npos : this->active_index - items_to_erase;
+            this->active_index = this->active_index == npos  || this->active_index < items_to_erase ? npos : this->active_index - items_to_erase;
          }
-         this->collection.emplace(start_block_num, mapped_type{end_block_num, filename_base});
+         if (max_retained_files > 0)
+            this->collection.emplace(start_block_num, mapped_type{end_block_num, filename_base});
       }
    };
 

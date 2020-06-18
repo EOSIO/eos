@@ -330,15 +330,16 @@ BOOST_AUTO_TEST_CASE(test_split_log_no_archive) {
    BOOST_CHECK( ! chain.control->fetch_block_by_number(80));
 }
 
-BOOST_AUTO_TEST_CASE(test_split_log_replay) {
-
+void split_log_replay(uint32_t replay_max_retained_block_files) {
    namespace bfs = boost::filesystem;
    fc::temp_directory temp_dir;
+
+   const uint32_t stride = 20;
 
    tester chain(
          temp_dir,
          [](controller::config& config) {
-            config.blocks_log_stride        = 20;
+            config.blocks_log_stride        = stride;
             config.max_retained_block_files = 10;
          },
          true);
@@ -352,11 +353,44 @@ BOOST_AUTO_TEST_CASE(test_split_log_replay) {
 
    // remove the state files to make sure we are starting from block log
    remove_existing_states(copied_config);
+   // we need to remove the reversible blocks so that new blocks can be produced from the new chain
+   bfs::remove_all(copied_config.blocks_dir/"reversible");
+   copied_config.blocks_log_stride        = stride;
+   copied_config.max_retained_block_files = replay_max_retained_block_files;
    tester from_block_log_chain(copied_config, *genesis);
    BOOST_CHECK( from_block_log_chain.control->fetch_block_by_number(1)->block_num() == 1);
    BOOST_CHECK( from_block_log_chain.control->fetch_block_by_number(75)->block_num() == 75);
    BOOST_CHECK( from_block_log_chain.control->fetch_block_by_number(100)->block_num() == 100);
    BOOST_CHECK( from_block_log_chain.control->fetch_block_by_number(150)->block_num() == 150);
+
+   // produce new blocks to cross the blocks_log_stride boundary
+   from_block_log_chain.produce_blocks(stride);
+
+   const auto previous_chunk_end_block_num = (from_block_log_chain.control->head_block_num() / stride) * stride;
+   const auto num_removed_blocks = std::min(stride * replay_max_retained_block_files, previous_chunk_end_block_num);
+   const auto min_retained_block_number = previous_chunk_end_block_num - num_removed_blocks + 1;
+
+   if (min_retained_block_number > 1) {
+      // old blocks beyond the max_retained_block_files will no longer be available
+      BOOST_CHECK(! from_block_log_chain.control->fetch_block_by_number(min_retained_block_number - 1));
+   }
+   BOOST_CHECK( from_block_log_chain.control->fetch_block_by_number(min_retained_block_number)->block_num() == min_retained_block_number);
+}
+
+BOOST_AUTO_TEST_CASE(test_split_log_replay_retained_block_files_10) {
+   split_log_replay(10);
+}
+
+BOOST_AUTO_TEST_CASE(test_split_log_replay_retained_block_files_5) {
+   split_log_replay(5);
+}
+
+BOOST_AUTO_TEST_CASE(test_split_log_replay_retained_block_files_1) {
+   split_log_replay(1);
+}
+
+BOOST_AUTO_TEST_CASE(test_split_log_replay_retained_block_files_0) {
+   split_log_replay(0);
 }
 
 BOOST_FIXTURE_TEST_CASE(restart_from_block_log_with_incomplete_head,restart_from_block_log_test_fixture) {
