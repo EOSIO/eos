@@ -163,6 +163,8 @@ void amqp_trx_plugin::plugin_startup() {
    } catch( ... ) {
       // always want plugin_shutdown even on exception
       plugin_shutdown();
+      if( my->trace_plug )
+         my->trace_plug->plugin_shutdown();
       throw;
    }
 }
