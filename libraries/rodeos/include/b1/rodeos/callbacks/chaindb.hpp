@@ -79,45 +79,51 @@ class iterator_cache_base {
    }
 
    template <typename Ship_index_type, typename T, typename M, typename F1, typename F2>
-   int32_t get_iterator_impl(int32_t table_index, const T& key, chain_kv::view::iterator&& view_it,
+   int32_t get_iterator_impl(int32_t table_index, const std::optional<T>& key, chain_kv::view::iterator&& view_it,
                              const M& key_to_iterator_index, bool view_it_is_secondary, F1 match, F2 get_key) {
       iterator* it;
       int32_t   result;
+
+      bool found = false;
       if (view_it.is_end()) {
          it     = &end_iterators[table_index];
          result = index_to_end_iterator(table_index);
-      } else {
-         auto map_it = key_to_iterator_index.find({ table_index, key });
+         found  = true;
+      }
+      if (!found && key) {
+         auto map_it = key_to_iterator_index.find({ table_index, *key });
+         if (map_it != key_to_iterator_index.end()) {
+            it     = &iterators[map_it->second];
+            result = map_it->second;
+            found  = true;
+         }
+      }
+      if (!found) {
+         eosio::input_stream                    stream;
+         std::shared_ptr<const chain_kv::bytes> v;
+         if (view_it_is_secondary) {
+            v      = view.get(state_account.value, view_it.get_kv()->value);
+            stream = { v->data(), v->size() };
+         } else {
+            stream = { view_it.get_kv()->value.data(), view_it.get_kv()->value.size() };
+         }
+         auto record = std::get<0>(eosio::from_bin<Ship_index_type>(stream));
+         if (!match(record))
+            return index_to_end_iterator(table_index);
+         auto map_it = key_to_iterator_index.find({ table_index, get_key(record) });
          if (map_it != key_to_iterator_index.end()) {
             it     = &iterators[map_it->second];
             result = map_it->second;
          } else {
-            eosio::input_stream                    stream;
-            std::shared_ptr<const chain_kv::bytes> v;
-            if (view_it_is_secondary) {
-               v      = view.get(state_account.value, view_it.get_kv()->value);
-               stream = { v->data(), v->size() };
-            } else {
-               stream = { view_it.get_kv()->value.data(), view_it.get_kv()->value.size() };
-            }
-            auto record = std::get<0>(eosio::from_bin<Ship_index_type>(stream));
-            if (!match(record))
-               return index_to_end_iterator(table_index);
-            map_it = key_to_iterator_index.find({ table_index, get_key(record) });
-            if (map_it != key_to_iterator_index.end()) {
-               it     = &iterators[map_it->second];
-               result = map_it->second;
-            } else {
-               if (iterators.size() > std::numeric_limits<int32_t>::max())
-                  throw std::runtime_error("too many iterators");
-               std::tie(result, it) = derived().create_iterator(table_index, record);
-            }
+            if (iterators.size() > std::numeric_limits<int32_t>::max())
+               throw std::runtime_error("too many iterators");
+            std::tie(result, it) = derived().create_iterator(table_index, record);
          }
       }
       if (!it->view_it)
          it->view_it = std::move(view_it);
       return result;
-   }
+   } // get_iterator_impl
 
    template <typename T>
    std::pair<size_t, iterator*> create_iterator(int32_t table_index, T& record) {
@@ -238,7 +244,7 @@ class iterator_cache : public iterator_cache_base<iterator_cache, chaindb_primar
    int32_t get_iterator(int32_t table_index, uint64_t key, chain_kv::view::iterator&& view_it,
                         bool require_match_primary = false) {
       return get_iterator_impl<contract_row>(
-            table_index, key, std::move(view_it), primary_key_to_iterator_index, false,
+            table_index, std::optional{ key }, std::move(view_it), primary_key_to_iterator_index, false,
             [&](auto& record) { return !require_match_primary || record.primary_key == key; },
             [&](auto& record) { return record.primary_key; });
    }
@@ -356,17 +362,19 @@ class secondary_iterator_cache : public iterator_cache_base<secondary_iterator_c
    int32_t get_primary_iterator(int32_t table_index, uint64_t key, chain_kv::view::iterator&& view_it,
                                 bool require_match_primary = false) {
       return base::template get_iterator_impl<Ship_index_type>(
-            table_index, key, std::move(view_it), base::primary_key_to_iterator_index, false,
+            table_index, std::optional{ key }, std::move(view_it), base::primary_key_to_iterator_index, false,
             [&](auto& record) { return !require_match_primary || record.primary_key == key; },
             [&](auto& record) { return record.primary_key; });
    }
 
    int32_t get_secondary_iterator(int32_t table_index, chain_kv::view::iterator&& view_it,
                                   const secondary_type& search_secondary, secondary_type& found_secondary,
-                                  uint64_t search_primary, uint64_t& found_primary, bool require_match_secondary) {
+                                  std::optional<uint64_t> search_primary, uint64_t& found_primary,
+                                  bool require_match_secondary) {
       auto itr = base::template get_iterator_impl<Ship_index_type>(
-            table_index, whole_key{ search_secondary, search_primary }, std::move(view_it), //
-            secondary_to_iterator_index, true,
+            table_index,
+            search_primary ? std::optional{ whole_key{ search_secondary, *search_primary } } : std::nullopt,
+            std::move(view_it), secondary_to_iterator_index, true,
             [&](auto& record) { return !require_match_secondary || record.secondary_key == search_secondary; },
             [&](auto& record) {
                return whole_key{ record.secondary_key, record.primary_key };
@@ -438,7 +446,7 @@ class secondary_iterator_cache : public iterator_cache_base<secondary_iterator_c
                                          (uint8_t)0x01, table_name, eosio::name{ "secondary" }, code, table, scope))) };
       it.lower_bound(eosio::convert_to_key(std::make_tuple((uint8_t)0x01, table_name, eosio::name{ "secondary" }, code,
                                                            table, scope, secondary, ~uint64_t(0), uint8_t(0))));
-      return get_secondary_iterator(table_index, std::move(it), secondary, secondary, 0, primary, false);
+      return get_secondary_iterator(table_index, std::move(it), secondary, secondary, std::nullopt, primary, false);
    }
 };
 
