@@ -45,7 +45,7 @@ add_executable( unit_test ${UNIT_TESTS} protocol_feature_digest_tests.cpp) # bui
 target_link_libraries( unit_test eosio_chain_wrap chainbase eosio_testing fc appbase state_history abieos amqp_compressed_proof_plugin ${PLATFORM_SPECIFIC_LIBS} )
 
 if(ENABLE_UNITY_BUILD)
-   set_source_files_properties(state_history_tests.cpp 
+   set_source_files_properties(state_history_tests.cpp compressed_proof_validator.cpp
                                PROPERTIES SKIP_UNITY_BUILD_INCLUSION TRUE)
 endif() 
 
