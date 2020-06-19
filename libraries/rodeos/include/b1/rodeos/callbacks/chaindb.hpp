@@ -448,6 +448,24 @@ class secondary_iterator_cache : public iterator_cache_base<secondary_iterator_c
                                                            table, scope, secondary, ~uint64_t(0), uint8_t(0))));
       return get_secondary_iterator(table_index, std::move(it), secondary, secondary, std::nullopt, primary, false);
    }
+
+   int32_t find_primary(uint64_t code, uint64_t scope, uint64_t table, uint64_t primary, secondary_type& secondary) {
+      int32_t table_index = base::get_table_index({ code, table, scope });
+      if (table_index < 0)
+         return -1;
+      auto map_it = base::primary_key_to_iterator_index.find({ table_index, primary });
+      if (map_it != base::primary_key_to_iterator_index.end()) {
+         if (map_it->second >= 0)
+            secondary = base::iterators[map_it->second].secondary;
+         return map_it->second;
+      }
+      chain_kv::view::iterator it{ base::view, state_account.value,
+                                   chain_kv::to_slice(eosio::convert_to_key(std::make_tuple(
+                                         (uint8_t)0x01, table_name, eosio::name{ "primary" }, code, table, scope))) };
+      it.lower_bound(eosio::convert_to_key(
+            std::make_tuple((uint8_t)0x01, table_name, eosio::name{ "primary" }, code, table, scope, primary)));
+      return get_primary_iterator(table_index, primary, std::move(it), true);
+   }
 };
 
 struct chaindb_state {
@@ -531,7 +549,7 @@ struct chaindb_callbacks {
    }                                                                                                                   \
    int32_t db_##NAME##_find_primary(uint64_t code, uint64_t scope, uint64_t table, legacy_ptr<TYPE> secondary,         \
                                     uint64_t primary) {                                                                \
-      throw std::runtime_error("unimplemented: db_" #NAME "_find_primary");                                            \
+      return get_##NAME().find_primary(code, scope, table, primary, *secondary);                                       \
    }                                                                                                                   \
    int32_t db_##NAME##_find_secondary(uint64_t code, uint64_t scope, uint64_t table, legacy_ptr<const TYPE> secondary, \
                                       legacy_ptr<uint64_t> primary) {                                                  \
@@ -571,7 +589,7 @@ struct chaindb_callbacks {
       memcpy(a, arr_128.data(), 32);
       return { a };
    }
-   void write_cs(legacy_span<__uint128_t>& arr_128, const eosio::checksum256 cs) {
+   void write_cs(legacy_span<__uint128_t>& arr_128, const eosio::checksum256& cs) {
       if (arr_128.size_bytes() != 32)
          throw std::runtime_error("checksum256 must be 32 bytes");
       auto a = cs.extract_as_word_array<__uint128_t>();
@@ -591,15 +609,17 @@ struct chaindb_callbacks {
    int32_t db_idx256_previous(int32_t iterator, legacy_ptr<uint64_t> primary) {
       return get_idx256().prev(iterator, *primary);
    }
-   int32_t db_idx256_find_primary(uint64_t code, uint64_t scope, uint64_t table, legacy_span<__uint128_t> secondary,
+   int32_t db_idx256_find_primary(uint64_t code, uint64_t scope, uint64_t table, legacy_span<__uint128_t> arr_128,
                                   uint64_t primary) {
-      throw std::runtime_error("unimplemented: db_idx256_find_primary");
+      auto cs     = read_cs(arr_128);
+      auto result = get_idx256().find_primary(code, scope, table, primary, cs);
+      write_cs(arr_128, cs);
+      return result;
    }
    int32_t db_idx256_find_secondary(uint64_t code, uint64_t scope, uint64_t table,
                                     legacy_span<const __uint128_t> secondary, legacy_ptr<uint64_t> primary) {
-      auto cs     = read_cs(secondary);
-      auto result = get_idx256().lower_bound(code, scope, table, cs, *primary, true);
-      return result;
+      auto cs = read_cs(secondary);
+      return get_idx256().lower_bound(code, scope, table, cs, *primary, true);
    }
    int32_t db_idx256_lowerbound(uint64_t code, uint64_t scope, uint64_t table, legacy_span<__uint128_t> secondary,
                                 legacy_ptr<uint64_t> primary) {
