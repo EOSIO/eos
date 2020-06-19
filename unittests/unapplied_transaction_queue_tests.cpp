@@ -472,22 +472,26 @@ BOOST_AUTO_TEST_CASE( unapplied_transaction_queue_incoming_count ) try {
 
    BOOST_CHECK( q.incoming_size() == expected );
 
-   auto itr = q.unapplied_begin();
-   auto end = q.unapplied_end();
+   auto itr = q.begin();
+   auto end = q.end();
 
    while( itr != end ) {
       q.add_persisted( itr->trx_meta );
       --expected;
       BOOST_CHECK( q.incoming_size() == expected );
+      ++itr;
    }
 
-   itr = q.unapplied_begin();
-   end = q.unapplied_end();
+   BOOST_CHECK( q.incoming_size() == 0 );
+
+   itr = q.begin();
+   end = q.end();
 
    while( itr != end ) {
       q.add_incoming( itr->trx_meta, false, [](auto){} );
       ++expected;
       BOOST_CHECK( q.incoming_size() == expected );
+      ++itr;
    }
 
 } FC_LOG_AND_RETHROW() /// unapplied_transaction_queue_incoming_count
