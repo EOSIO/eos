@@ -436,22 +436,15 @@ fc::variant push_transaction( signed_transaction& trx, const std::vector<public_
             eosio::transaction_msg msg{packed_transaction( std::move( trx ), true, compression )};
             auto buf = fc::raw::pack( msg );
             const auto& tid = msg.get<packed_transaction>().id();
-            const string id = tid.str();
-            eosio::chain::named_thread_pool trx_thread_pool( "mqtrx", 1 );
-            eosio::amqp qp_trx( trx_thread_pool.get_executor(), amqp_address, "trx", []( const std::string& err ) {
+            string id = tid.str();
+            eosio::amqp qp_trx( amqp_address, "trx", []( const std::string& err ) {
                std::cerr << "AMQP trx error: " << err << std::endl;
                exit( 1 );
             } );
-            try {
-               result = fc::mutable_variant_object()
-                     ( "transaction_id", id )
-                     ( "status", "submitted" );
-               qp_trx.publish( "", id, buf.data(), buf.size() );
-            } catch(...) {
-               trx_thread_pool.stop();
-               throw;
-            }
-            trx_thread_pool.stop();
+            result = fc::mutable_variant_object()
+                  ( "transaction_id", id )
+                  ( "status", "submitted" );
+            qp_trx.publish( "", std::move( id ), std::move( buf ) );
             return result;
          } else {
             try {
