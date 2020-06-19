@@ -20,8 +20,6 @@ using boost::signals2::scoped_connection;
 
 struct amqp_trace_plugin_impl : std::enable_shared_from_this<amqp_trace_plugin_impl> {
 
-   // use thread pool even though only one thread currently since it provides simple interface for ioc
-   std::optional<eosio::chain::named_thread_pool> thread_pool;
    std::optional<amqp> amqp_trace;
    std::optional<scoped_connection> applied_transaction_connection;
 
@@ -37,26 +35,20 @@ public:
          transaction_trace_msg msg{transaction_trace_exception{error_code}};
          msg.get<transaction_trace_exception>().error_message = std::move( error_message );
          auto buf = fc::raw::pack( msg );
-         boost::asio::post( thread_pool->get_executor(), [wmy=weak_from_this(), buf=std::move(buf), tid=std::move(tid)]() {
-            auto my = wmy.lock(); // could be called from amqp_trx_plugin after this plugin is shutdown
-            if( my )
-               my->amqp_trace->publish( my->amqp_trace_exchange, tid, buf.data(), buf.size() );
-         } );
+         amqp_trace->publish( amqp_trace_exchange, tid, std::move( buf ) );
       } FC_LOG_AND_DROP()
    }
 
    // called on application thread
    void on_applied_transaction(const chain::transaction_trace_ptr& trace, const chain::packed_transaction_ptr& t) {
       try {
-         boost::asio::post( thread_pool->get_executor(), [my=shared_from_this(), trace, t]() {
-            my->publish_result( t, trace );
-         } );
+         publish_result( t, trace );
       } FC_LOG_AND_DROP()
    }
 
 private:
 
-   // called from amqp thread
+   // called from application thread
    void publish_result( const chain::packed_transaction_ptr& trx, const chain::transaction_trace_ptr& trace ) {
       try {
          if( !trace->except ) {
@@ -64,14 +56,16 @@ private:
          } else {
             dlog( "trace except : ${m}", ("m", trace->except->to_string()) );
          }
-         fc::unsigned_int which = transaction_trace_msg::tag<chain::transaction_trace>::value;
-         uint32_t payload_size = fc::raw::pack_size( which );
-         payload_size += fc::raw::pack_size( *trace );
-         std::vector<char> buf( payload_size );
-         fc::datastream<char*> ds( buf.data(), payload_size );
-         fc::raw::pack( ds, which );
-         fc::raw::pack( ds, *trace );
-         amqp_trace->publish( amqp_trace_exchange, trx->id(), buf.data(), buf.size() );
+         amqp_trace->publish( amqp_trace_exchange, trx->id(), [trace]() {
+            fc::unsigned_int which = transaction_trace_msg::tag<chain::transaction_trace>::value;
+            uint32_t payload_size = fc::raw::pack_size( which );
+            payload_size += fc::raw::pack_size( *trace );
+            std::vector<char> buf( payload_size );
+            fc::datastream<char*> ds( buf.data(), payload_size );
+            fc::raw::pack( ds, which );
+            fc::raw::pack( ds, *trace );
+            return buf;
+         });
       } FC_LOG_AND_DROP()
    }
 
@@ -110,9 +104,8 @@ void amqp_trace_plugin::plugin_startup() {
       try {
          ilog( "Starting amqp_trace_plugin" );
          my->started = true;
-         my->thread_pool.emplace( "amqp_t", 1 );
 
-         my->amqp_trace.emplace( my->thread_pool->get_executor(), my->amqp_trace_address, "trace",
+         my->amqp_trace.emplace( my->amqp_trace_address, "trace",
                                  []( const std::string& err ) {
                                     elog( "amqp error: ${e}", ("e", err) );
                                     app().quit();
@@ -141,8 +134,8 @@ void amqp_trace_plugin::plugin_shutdown() {
          dlog( "shutdown.." );
 
          my->applied_transaction_connection.reset();
-         if( my->thread_pool ) {
-            my->thread_pool->stop();
+         if( my->amqp_trace ) {
+            my->amqp_trace->stop();
          }
 
          dlog( "exit amqp_trace_plugin" );

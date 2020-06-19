@@ -25,8 +25,6 @@ struct amqp_trx_plugin_impl : std::enable_shared_from_this<amqp_trx_plugin_impl>
 
    chain_plugin* chain_plug = nullptr;
    amqp_trace_plugin* trace_plug = nullptr;
-   // use thread pool even though only one thread currently since it provides simple interface for ioc
-   std::optional<eosio::chain::named_thread_pool> thread_pool;
    std::optional<amqp> amqp_trx;
 
    std::string amqp_trx_address;
@@ -134,31 +132,16 @@ void amqp_trx_plugin::plugin_startup() {
 
       ilog( "Starting amqp_trx_plugin" );
 
-      my->thread_pool.emplace( "amqp_t", 1 );
-
-      my->amqp_trx.emplace( my->thread_pool->get_executor(), my->amqp_trx_address, "trx", [](const std::string& err) {
-         elog( "amqp error: ${e}", ("e", err) );
-         app().quit();
-      });
-
-      auto& consumer = my->amqp_trx->consume();
-      consumer.onSuccess( []( const std::string& consumer_tag ) {
-         dlog( "consume started: ${tag}", ("tag", consumer_tag) );
-      } );
-      consumer.onError( []( const char* message ) {
-         wlog( "consume failed: ${e}", ("e", message) );
-      } );
-      consumer.onReceived( [this](const AMQP::Message& message, uint64_t delivery_tag, bool redelivered) {
-         if( app().is_quiting() ) {
-            my->amqp_trx->reject( delivery_tag );
-            return;
-         }
-         if( my->consume_message( message.body(), message.bodySize() ) ) {
-            my->amqp_trx->ack( delivery_tag );
-         } else {
-            my->amqp_trx->reject( delivery_tag );
-         }
-      } );
+      my->amqp_trx.emplace( my->amqp_trx_address, "trx",
+            [](const std::string& err) {
+               elog( "amqp error: ${e}", ("e", err) );
+               app().quit();
+            },
+            [&]( const char* buf, size_t s ) -> std::optional<bool> {
+               if( app().is_quiting() ) return false;
+               return my->consume_message( buf, s );
+            }
+      );
 
    } catch( ... ) {
       // always want plugin_shutdown even on exception
@@ -173,8 +156,8 @@ void amqp_trx_plugin::plugin_shutdown() {
    try {
       dlog( "shutdown.." );
 
-      if( my->thread_pool ) {
-         my->thread_pool->stop();
+      if( my->amqp_trx ) {
+         my->amqp_trx->stop();
       }
 
       dlog( "exit amqp_trx_plugin" );
