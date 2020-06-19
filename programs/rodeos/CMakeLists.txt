@@ -40,6 +40,8 @@ target_link_libraries( ${RODEOS_EXECUTABLE_NAME}
         PRIVATE appbase version
         PRIVATE rodeos_lib fc amqpcpp ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS})
 
+add_subdirectory(tests)
+
 copy_bin( ${RODEOS_EXECUTABLE_NAME} )
 install( TARGETS
    ${RODEOS_EXECUTABLE_NAME} RUNTIME DESTINATION ${CMAKE_INSTALL_FULL_BINDIR} COMPONENT base
