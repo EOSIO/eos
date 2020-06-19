@@ -1,3 +1,5 @@
+enable_testing()
+
 file(GLOB_RECURSE HEADERS "include/*.hpp" "include/*.h")
 
 add_library( rodeos_lib
@@ -14,3 +16,5 @@ target_link_libraries( rodeos_lib
 target_include_directories( rodeos_lib
                             PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include"
                           )
+
+add_subdirectory( tests )
