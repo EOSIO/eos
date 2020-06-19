@@ -137,7 +137,7 @@ void amqp_trx_plugin::plugin_startup() {
                elog( "amqp error: ${e}", ("e", err) );
                app().quit();
             },
-            [&]( const char* buf, size_t s ) -> std::optional<bool> {
+            [&]( const char* buf, size_t s ) {
                if( app().is_quiting() ) return false;
                return my->consume_message( buf, s );
             }

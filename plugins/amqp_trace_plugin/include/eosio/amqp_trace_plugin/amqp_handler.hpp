@@ -11,15 +11,15 @@
 namespace eosio {
 
 /// Designed to work with internal io_service running on a dedicated thread.
-/// All public interface methods can be called from any thread.
+/// All publish methods can be called from any thread, but should be sync'ed with stop() & destructor.
+/// Constructor, stop(), destructor should be called from same thread.
 class amqp {
 public:
    // called from amqp thread on errors
    using on_error_t = std::function<void(const std::string& err)>;
    // called from amqp thread on consume of message
-   // return empty optional for no ack/reject of message
-   //        true for ack, false for reject
-   using on_consume_t = std::function<std::optional<bool>(const char* buf, size_t s)>;
+   // return true for ack, false for reject
+   using on_consume_t = std::function<bool(const char* buf, size_t s)>;
 
    /// @param address AMQP address
    /// @param name AMQP routing key
@@ -35,7 +35,9 @@ public:
       ilog( "Connecting to AMQP address ${a} - Queue: ${q}...", ("a", std::string( amqp_address ))( "q", name_ ) );
 
       handler_ = std::make_unique<amqp_handler>( *this, thread_pool_.get_executor() );
-      connection_ = std::make_unique<AMQP::TcpConnection>( handler_.get(), amqp_address );
+      boost::asio::post( *handler_->amqp_strand(), [&]() {
+         connection_ = std::make_unique<AMQP::TcpConnection>( handler_.get(), amqp_address );
+      });
       wait();
    }
 
@@ -66,17 +68,20 @@ public:
       } );
    }
 
-   /// close connection and explicitly stop thread pool execution
+   /// Explicitly stop thread pool execution
    /// do not call from lambda's passed to publish or constructor e.g. on_error
    void stop() {
-      // drain amqp queue
-      std::promise<void> stop_promise;
-      boost::asio::post( *handler_->amqp_strand(), [&]() {
-         stop_promise.set_value();
-      } );
-      stop_promise.get_future().wait();
+      if( handler_ ) {
+         // drain amqp queue
+         std::promise<void> stop_promise;
+         boost::asio::post( *handler_->amqp_strand(), [&]() {
+            stop_promise.set_value();
+         } );
+         stop_promise.get_future().wait();
 
-      thread_pool_.stop();
+         thread_pool_.stop();
+         handler_.reset();
+      }
    }
 
 private:
@@ -114,13 +119,11 @@ private:
          connected_.set_value();
       } );
       consumer.onReceived( [&](const AMQP::Message& message, uint64_t delivery_tag, bool redelivered) {
-         std::optional<bool> r = on_consume_( message.body(), message.bodySize() );
+         bool r = on_consume_( message.body(), message.bodySize() );
          if( r ) {
-            if( *r ) {
-               channel_->ack( delivery_tag );
-            } else {
-               channel_->reject( delivery_tag );
-            }
+            channel_->ack( delivery_tag );
+         } else {
+            channel_->reject( delivery_tag );
          }
       } );
    }
