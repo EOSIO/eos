@@ -1,6 +1,5 @@
-#include <eosiolib/action.h>
-#include <eosiolib/chain.h>
-#include <eosiolib/eosio.hpp>
+#include <eosio/action.hpp>
+#include <eosio/eosio.hpp>
 
 #include "test_api.hpp"
 

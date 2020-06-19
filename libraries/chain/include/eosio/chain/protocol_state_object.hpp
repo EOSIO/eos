@@ -85,7 +85,6 @@ FC_REFLECT(eosio::chain::protocol_state_object::activated_protocol_feature,
 FC_REFLECT(eosio::chain::protocol_state_object,
             (activated_protocol_features)(preactivated_protocol_features)(whitelisted_intrinsics)(num_supported_key_types)
           )
-
 FC_REFLECT(eosio::chain::snapshot_protocol_state_object,
             (activated_protocol_features)(preactivated_protocol_features)(whitelisted_intrinsics)(num_supported_key_types)
           )

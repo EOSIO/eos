@@ -1,0 +1,60 @@
+openapi: 3.0.0
+info:
+  title: DB Size API
+  version: 1.0.0
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  contact:
+    url: https://eos.io
+servers:
+  - url: '{protocol}://{host}:{port}/v1/'
+    variables:
+      protocol:
+        enum:
+          - http
+          - https
+        default: http
+      host:
+        default: localhost
+      port:
+        default: "8080"
+components:
+  schemas: {}
+paths:
+  /db_size/get:
+    post:
+      summary: get
+      description: Retrieves database stats
+      operationId: get
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties: {}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                description: Defines the database stats
+                properties:
+                  free_bytes:
+                    type: integer
+                  used_bytes:
+                    type: integer
+                  size:
+                    type: integer
+                  indices:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        index:
+                          type: string
+                        row_count:
+                          type: integer

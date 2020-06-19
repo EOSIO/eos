@@ -51,7 +51,7 @@ BOOST_FIXTURE_TEST_CASE( test_abi_serializer, payloadless_tester ) {
    set_code( N(payloadless), contracts::payloadless_wasm() );
    set_abi( N(payloadless), contracts::payloadless_abi().data() );
 
-   variant pretty_trx = fc::mutable_variant_object()
+   fc::variant pretty_trx = fc::mutable_variant_object()
       ("actions", fc::variants({
          fc::mutable_variant_object()
             ("account", name(N(payloadless)))
@@ -68,7 +68,7 @@ BOOST_FIXTURE_TEST_CASE( test_abi_serializer, payloadless_tester ) {
 
    signed_transaction trx;
    // from_variant is key to this test as abi_serializer was explicitly not allowing empty "data"
-   abi_serializer::from_variant(pretty_trx, trx, get_resolver(), abi_serializer_max_time);
+   abi_serializer::from_variant(pretty_trx, trx, get_resolver(), abi_serializer::create_yield_function( abi_serializer_max_time ));
    set_transaction_headers(trx);
 
    trx.sign( get_private_key( N(payloadless), "active" ), control->get_chain_id() );

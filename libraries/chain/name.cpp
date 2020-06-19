@@ -1,18 +1,11 @@
 #include <eosio/chain/name.hpp>
 #include <fc/variant.hpp>
 #include <boost/algorithm/string.hpp>
-#include <fc/exception/exception.hpp>
-#include <eosio/chain/exceptions.hpp>
 
 namespace eosio::chain {
 
    void name::set( std::string_view str ) {
-      const auto len = str.size();
-      EOS_ASSERT(len <= 13, name_type_exception, "Name is longer than 13 characters (${name}) ", ("name", std::string(str)));
       value = string_to_uint64_t(str);
-      EOS_ASSERT(to_string() == str, name_type_exception,
-                 "Name not properly normalized (name: ${name}, normalized: ${normalized}) ",
-                 ("name", std::string(str))("normalized", to_string()));
    }
 
    // keep in sync with name::to_string() in contract definition for name

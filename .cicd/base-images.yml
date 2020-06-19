@@ -28,9 +28,9 @@ steps:
       - "git clone git@github.com:EOSIO/eos.git eos && cd eos && git checkout -f $BUILDKITE_BRANCH"
       - "cd eos && ./.cicd/platforms/pinned/macos-10.14-pinned.sh"
     plugins:
-      - EOSIO/anka#v0.6.0:
+      - EOSIO/anka#v0.6.1:
           debug: true
-          vm-name: "10.14.6_6C_14G_40G"
+          vm-name: "10.14.6_6C_14G_80G"
           no-volume: true
           always-pull: true
           wait-network: true
@@ -49,9 +49,9 @@ steps:
       - "git clone git@github.com:EOSIO/eos.git eos && cd eos && git checkout -f $BUILDKITE_BRANCH"
       - "cd eos && ./.cicd/platforms/pinned/macos-10.15-pinned.sh"
     plugins:
-      - EOSIO/anka#v0.6.0:
+      - EOSIO/anka#v0.6.1:
           debug: true
-          vm-name: "10.15.3_6C_14G_40G"
+          vm-name: "10.15.5_6C_14G_80G"
           no-volume: true
           always-pull: true
           wait-network: true
@@ -114,9 +114,9 @@ steps:
       - "git clone git@github.com:EOSIO/eos.git eos && cd eos && git checkout -f $BUILDKITE_BRANCH"
       - "cd eos && ./.cicd/platforms/unpinned/macos-10.14-unpinned.sh"
     plugins:
-      - EOSIO/anka#v0.6.0:
+      - EOSIO/anka#v0.6.1:
           debug: true
-          vm-name: "10.14.6_6C_14G_40G"
+          vm-name: "10.14.6_6C_14G_80G"
           no-volume: true
           always-pull: true
           wait-network: true
@@ -135,9 +135,9 @@ steps:
       - "git clone git@github.com:EOSIO/eos.git eos && cd eos && git checkout -f $BUILDKITE_BRANCH"
       - "cd eos && ./.cicd/platforms/unpinned/macos-10.15-unpinned.sh"
     plugins:
-      - EOSIO/anka#v0.6.0:
+      - EOSIO/anka#v0.6.1:
           debug: true
-          vm-name: "10.15.3_6C_14G_40G"
+          vm-name: "10.15.5_6C_14G_80G"
           no-volume: true
           always-pull: true
           wait-network: true

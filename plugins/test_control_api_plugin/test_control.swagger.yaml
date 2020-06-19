@@ -1,0 +1,58 @@
+openapi: 3.0.0
+info:
+  title: Test Control API
+  version: 1.0.0
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  contact:
+    url: https://eos.io
+tags:
+  - name: eosio
+servers:
+  - url: '{protocol}://{host}:{port}/v1/'
+    variables:
+      protocol:
+        enum:
+          - http
+          - https
+        default: http
+      host:
+        default: localhost
+      port:
+        default: "8080"
+components:
+  schemas: {}
+paths:
+  /test_control/kill_node_or_producer:
+    post:
+      tags:
+        - TestControl
+      summary: kill_node_or_producer
+      description: Kills node or producer
+      operationId: kill_node_or_producer
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - params
+              properties:
+                params:
+                  type: object
+                  properties:
+                    producer:
+                      $ref: 'https://eosio.github.io/schemata/v2.0/oas/Name.yaml'
+                    where_in_sequence:
+                      type: integer
+                    based_on_lib:
+                      type: integer
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                description: Returns Nothing

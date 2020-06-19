@@ -2,7 +2,7 @@
 set -eo pipefail
 . ./.cicd/helpers/general.sh
 export ENABLE_INSTALL=true
-export BRANCH=$(echo $BUILDKITE_BRANCH | sed 's/\//\_/')
+export BRANCH=$(echo $BUILDKITE_BRANCH | sed 's.^/..' | tr '/' '_')
 export CONTRACTS_BUILDER_TAG="eosio/ci-contracts-builder:base-ubuntu-18.04"
 export ARGS="--name ci-contracts-builder-$BUILDKITE_PIPELINE_SLUG-$BUILDKITE_BUILD_NUMBER --init -v $(pwd):$MOUNTED_DIR"
 $CICD_DIR/build.sh
