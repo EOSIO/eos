@@ -343,8 +343,8 @@ bool application::initialize_impl(int argc, char** argv, vector<abstract_plugin*
    try {
       bpo::notify(options);
    } catch(...) {
-      std::cerr << "Failed to notify plugins of options\n";
-      return false;
+      std::cerr << "APPBASE: Failed to notify plugins of options\n";
+      throw;
    }
 
    if(options.count("plugin") > 0)
