@@ -8,7 +8,7 @@ namespace eosio { namespace chain {
    namespace detail { class block_log_impl; }
 
    /* The block log is an external append only log of the blocks with a header. Blocks should only
-    * be written to the log after they irreverisble as the log is append only. The log is a doubly
+    * be written to the log after they irreversible as the log is append only. The log is a doubly
     * linked list of blocks. There is a secondary index file of only block positions that enables
     * O(1) random access lookup by block number.
     *
@@ -34,7 +34,8 @@ namespace eosio { namespace chain {
 
    class block_log {
       public:
-         block_log(const fc::path& data_dir, fc::path backup_dir = fc::path(), uint64_t stride=1000, uint16_t max_retained_files=10);
+         block_log(const fc::path& data_dir, fc::path backup_dir = fc::path(), uint64_t stride=1000, 
+                   uint16_t max_retained_files=10, bool allow_block_log_auto_fix=false);
          block_log(block_log&& other) = default;
          ~block_log();
          

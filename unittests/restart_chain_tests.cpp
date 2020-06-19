@@ -61,6 +61,7 @@ class replay_tester : public base_tester {
 struct restart_from_block_log_test_fixture {
    tester   chain;
    uint32_t cutoff_block_num;
+   bool     allow_block_log_auto_fix = false;
    restart_from_block_log_test_fixture() {
       chain.create_account(N(replay1));
       chain.produce_blocks(1);
@@ -80,7 +81,8 @@ struct restart_from_block_log_test_fixture {
    }
    ~restart_from_block_log_test_fixture() {
       controller::config copied_config = chain.get_config();
-      auto               genesis       = chain::block_log::extract_genesis_state(chain.get_config().blocks_dir);
+      copied_config.allow_block_log_auto_fix = this->allow_block_log_auto_fix;
+      auto genesis                           = chain::block_log::extract_genesis_state(chain.get_config().blocks_dir);
       BOOST_REQUIRE(genesis);
 
       // remove the state files to make sure we are starting from block log
@@ -402,6 +404,7 @@ BOOST_FIXTURE_TEST_CASE(restart_from_block_log_with_incomplete_head,restart_from
    logfile.open("ab");
    const char random_data[] = "12345678901231876983271649837";
    logfile.write(random_data, sizeof(random_data));
+   allow_block_log_auto_fix = true;
 }
 
 struct blocklog_version_setter {

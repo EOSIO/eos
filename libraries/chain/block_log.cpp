@@ -185,6 +185,12 @@ namespace eosio { namespace chain {
 
       using log_entry = std::variant<log_entry_v4, signed_block_v0>;
 
+      const block_header& get_block_header(const log_entry& entry) {
+         return std::visit(overloaded{ [](const signed_block_v0& v) -> const block_header& { return v; },
+                                [](const log_entry_v4& v) -> const block_header& { return v.block; } },
+                    entry);
+      }
+
       template <typename Stream>
       void unpack(Stream& ds, log_entry& entry) {
          std::visit(
@@ -362,10 +368,7 @@ namespace eosio { namespace chain {
             throw bad_block_excpetion{std::current_exception()};
          }
 
-         const block_header& header =
-             std::visit(overloaded{[](const signed_block_v0& v) -> const block_header& { return v; },
-                                   [](const log_entry_v4& v) -> const block_header& { return v.block; }},
-                        entry);
+         const block_header& header = get_block_header(entry);
 
          auto                id        = header.calculate_id();
          auto                block_num = block_header::num_from_id(id);
@@ -664,7 +667,7 @@ namespace eosio { namespace chain {
          size_t                    stride = std::numeric_limits<size_t>::max();
          static uint32_t           default_version;
 
-         block_log_impl(const fc::path& data_dir, fc::path archive_dir, uint64_t stride, uint16_t max_retained_files);
+         block_log_impl(const fc::path& data_dir, fc::path archive_dir, uint64_t stride, uint16_t max_retained_files, bool allow_block_log_auto_fix);
 
          static void ensure_file_exists(fc::cfile& f) {
             if (fc::exists(f.get_file_path()))
@@ -694,39 +697,17 @@ namespace eosio { namespace chain {
    } // namespace detail
 
    block_log::block_log(const fc::path& data_dir, fc::path archive_dir, uint64_t stride,
-                        uint16_t max_retained_files)
-       : my(new detail::block_log_impl(data_dir, archive_dir, stride, max_retained_files)) {}
+                        uint16_t max_retained_files, bool allow_block_log_auto_fix)
+       : my(new detail::block_log_impl(data_dir, archive_dir, stride, max_retained_files, allow_block_log_auto_fix)) {}
 
    block_log::~block_log() {}
 
-   bool detail::block_log_impl::recover_from_incomplete_block_head(block_log_data& log_data, block_log_index& index) {
-      if (preamble.version >= pruned_transaction_version) {
-         // check if the last block position
-         if (log_data.size() > index.back() + sizeof(uint32_t)) {
-            const uint32_t entry_size              = read_buffer<uint32_t>(log_data.data() + index.back());
-            const uint64_t trimmed_block_file_size = index.back() + entry_size;
-            const uint32_t expected_block_num      = log_data.first_block_num() + index.num_blocks() - 1;
-            if (log_data.size() > trimmed_block_file_size) {
-               try {
-                  log_data.light_validate_block_entry_at(index.back(), expected_block_num);
-                  ilog("The last block from blocks.log is incomplete, trim it.");
-                  boost::filesystem::resize_file(block_file.get_file_path(), trimmed_block_file_size);
-                  return true;
-               }
-               catch(...) {
-                  return false;
-               }
-            }
-         }
-      }
-      return false;
-   }
 
    void block_log::set_version(uint32_t ver) { detail::block_log_impl::default_version = ver; }
    uint32_t block_log::version() const { return my->preamble.version; }
 
    detail::block_log_impl::block_log_impl(const fc::path& data_dir, fc::path archive_dir, uint64_t stride,
-                                          uint16_t max_retained_files) {
+                                          uint16_t max_retained_files, bool allow_block_log_auto_fix) {
 
       if (!fc::is_directory(data_dir))
          fc::create_directories(data_dir);
@@ -786,7 +767,7 @@ namespace eosio { namespace chain {
             block_log_index index(index_file.get_file_path());
             
             if (log_data.last_block_position() != index.back()) {              
-               if (!recover_from_incomplete_block_head(log_data, index)) {
+               if (!allow_block_log_auto_fix || !recover_from_incomplete_block_head(log_data, index)) {
                   ilog("The last block positions from blocks.log and blocks.index are different, Reconstructing index...");
                   block_log::construct_index(block_file.get_file_path(), index_file.get_file_path());
                }  
@@ -1016,6 +997,42 @@ namespace eosio { namespace chain {
             "has been written out to '${tail_path}'.",
             ("num", block_num + 1)("tail_path", tail_path));
       
+   }
+
+   bool detail::block_log_impl::recover_from_incomplete_block_head(block_log_data& log_data, block_log_index& index) {
+      const uint64_t pos = index.back();
+      if (log_data.size() <= pos) {
+         // index refers to an invalid position, we cannot recover from it 
+         return false;
+      }
+
+      log_entry entry;
+      if (preamble.version < pruned_transaction_version) {
+         entry.emplace<signed_block_v0>();
+      }
+
+      const uint32_t expected_block_num = log_data.first_block_num() + index.num_blocks() - 1;
+      fc::datastream<const char*> ds(log_data.data() + pos, log_data.size() - pos);
+
+      try {
+         unpack(ds, entry);
+         const block_header& header = get_block_header(entry);
+         if (header.block_num() != expected_block_num) {
+            return false;
+         }
+         uint64_t tmp_pos = std::numeric_limits<uint64_t>::max();
+         ds.read(reinterpret_cast<char*>(&tmp_pos), sizeof(tmp_pos));
+         if (tmp_pos != pos)
+            return false;
+
+         const auto size_to_trim            = ds.remaining();
+         const auto trimmed_block_file_size = log_data.size() - size_to_trim;
+
+         write_incomplete_block_data(block_file.get_file_path().parent_path(), fc::time_point::now(), expected_block_num + 1,
+                                    log_data.data() + trimmed_block_file_size, size_to_trim);
+         boost::filesystem::resize_file(block_file.get_file_path(), trimmed_block_file_size);
+         return true;
+      } catch (...) { return false; }
    }
 
    fc::path block_log::repair_log(const fc::path& data_dir, uint32_t truncate_at_block) {

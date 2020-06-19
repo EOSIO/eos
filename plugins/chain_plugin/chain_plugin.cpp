@@ -228,13 +228,20 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("blocks-dir", bpo::value<bfs::path>()->default_value("blocks"),
           "the location of the blocks directory (absolute path or relative to application data dir)")
          ("blocks-log-stride", bpo::value<uint32_t>()->default_value(config::default_blocks_log_stride),
-         "split the block log file when the head block number is the multiple of the split factor")
+         "split the block log file when the head block number is the multiple of the split factor\n"
+         "When the stride is reached, the current block log and index will be renamed 'blocks-num_begin-num_end.log/index'\n"
+         "and a new current block log and index will be created with the most recent block. All files following\n"
+         "this format will be used to construct an extended block log.")
          ("max-retained-block-files", bpo::value<uint16_t>()->default_value(config::default_max_retained_block_files),
           "the maximum number of blocks files to retain so that the blocks in those files can be queried.\n" 
-          "When the number is reached, the oldest block file would be move to archive dir or deleted if the archive dir is empty." )
+          "When the number is reached, the oldest block file would be move to archive dir or deleted if the archive dir is empty.\n"
+          "The retained block log files should not be manipulated by users." )
          ("blocks-archive-dir", bpo::value<bfs::path>()->default_value(config::default_blocks_archive_dir_name),
           "the location of the blocks archive directory (absolute path or relative to blocks dir).\n"
-          "If the value is empty, blocks files beyond the retained limit will be deleted.")
+          "If the value is empty, blocks files beyond the retained limit will be deleted.\n"
+          "All files in the archive directory are completely under user's control, i.e. they won't be accessed by nodeos anymore.")
+         ("allow-block-log-auto-fix", bpo::value<bool>()->default_value("false"),
+          "When the existing block log is inconsistent with the index, allows fixing the log file automatically based on the index")
          ("protocol-features-dir", bpo::value<bfs::path>()->default_value("protocol_features"),
           "the location of the protocol_features directory (absolute path or relative to application config dir)")
          ("checkpoint", bpo::value<vector<string>>()->composing(), "Pairs of [BLOCK_NUM,BLOCK_ID] that should be enforced as checkpoints.")
@@ -752,6 +759,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       my->chain_config->blocks_archive_dir = options.at("blocks-archive-dir").as<bfs::path>();
       my->chain_config->blocks_log_stride  = options.at("blocks-log-stride").as<uint32_t>();
       my->chain_config->max_retained_block_files = options.at("max-retained-block-files").as<uint16_t>();
+      my->chain_config->allow_block_log_auto_fix = options.at("allow-block-log-auto-fix").as<bool>();
 
       if (auto resmon_plugin = app().find_plugin<resource_monitor_plugin>()) {
         resmon_plugin->monitor_directory(my->chain_config->blocks_dir);
