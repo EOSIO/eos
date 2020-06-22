@@ -111,7 +111,7 @@ namespace eosio { namespace chain { namespace webassembly {
       std::set<account_name> unique_producers;
       for (const auto& p: producers) {
          EOS_ASSERT( context.is_account(p.producer_name), wasm_execution_error, "producer schedule includes a nonexisting account" );
-         visit([&p, num_supported_key_types, validate_keys](const auto& a) {
+         std::visit([&p, num_supported_key_types, validate_keys](const auto& a) {
             uint32_t sum_weights = 0;
             std::set<public_key_type> unique_keys;
             for (const auto& kw: a.keys ) {

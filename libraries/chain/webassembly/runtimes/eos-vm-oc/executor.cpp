@@ -235,7 +235,7 @@ void executor::execute(const code_descriptor& code, memory& mem, apply_context& 
    switch(sigsetjmp(*cb->jmp, 0)) {
       case 0:
          stack.run([&]{
-            visit(overloaded {
+            std::visit(overloaded {
                [&](const no_offset&) {},
                [&](const intrinsic_ordinal& i) {
                   void(*start_func)() = (void(*)())(*(uintptr_t*)((uintptr_t)mem.zero_page_memory_base() - memory::first_intrinsic_offset - i.ordinal*8));

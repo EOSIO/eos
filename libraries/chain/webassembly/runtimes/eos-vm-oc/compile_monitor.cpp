@@ -65,7 +65,7 @@ struct compile_monitor_session {
             connection_dead_signal();
             return;
          }
-         visit(overloaded {
+         std::visit(overloaded {
             [&, &fds=fds](const compile_wasm_message& compile) {
                if(fds.size() != 1) {
                   connection_dead_signal();

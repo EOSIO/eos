@@ -415,7 +415,7 @@ namespace impl {
          auto h = ctx.enter_scope();
          mutable_variant_object obj_mvo;
          add_static_variant<Resolver> adder(obj_mvo, resolver, ctx);
-        std::visit(adder, v);
+         std::visit(adder, v);
          mvo(name, std::move(obj_mvo["_"]));
       }
 
