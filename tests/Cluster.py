@@ -196,9 +196,6 @@ class Cluster(object):
         elif associatedNodeLabels is not None:
             associatedNodeLabels=None    # need to supply alternateVersionLabelsFile to use labels
 
-        if extraNodeosArgs.find("--http-max-response-time-ms") == -1:
-            extraNodeosArgs+=" --http-max-response-time-ms 990000 "
-
         if associatedNodeLabels is not None:
             assert(isinstance(associatedNodeLabels, dict))
             Utils.Print("associatedNodeLabels size=%s" % (len(associatedNodeLabels)))
@@ -247,18 +244,12 @@ class Cluster(object):
         nodeosArgs="--max-transaction-time -1 --abi-serializer-max-time-ms 990000 --filter-on \"*\" --p2p-max-nodes-per-host %d" % (totalNodes)
         if not self.walletd:
             nodeosArgs += " --plugin eosio::wallet_api_plugin"
-        if extraNodeosArgs is not None:
-            assert(isinstance(extraNodeosArgs, str))
-            nodeosArgs += extraNodeosArgs
         if Utils.Debug:
             nodeosArgs += " --contracts-console"
         if PFSetupPolicy.hasPreactivateFeature(pfSetupPolicy):
             nodeosArgs += " --plugin eosio::producer_api_plugin"
 
-        if nodeosArgs:
-            cmdArr.append("--nodeos")
-            cmdArr.append(nodeosArgs)
-
+        httpMaxResponseTimeSet = False
         if specificExtraNodeosArgs is not None:
             assert(isinstance(specificExtraNodeosArgs, dict))
             for nodeNum,arg in specificExtraNodeosArgs.items():
@@ -267,7 +258,20 @@ class Cluster(object):
                 cmdArr.append("--specific-num")
                 cmdArr.append(str(nodeNum))
                 cmdArr.append("--specific-nodeos")
+                if arg.find("--http-max-response-time-ms") != -1:
+                    httpMaxResponseTimeSet = True
                 cmdArr.append(arg)
+
+        if not httpMaxResponseTimeSet and extraNodeosArgs.find("--http-max-response-time-ms") == -1:
+            extraNodeosArgs+=" --http-max-response-time-ms 990000 "
+
+        if extraNodeosArgs is not None:
+            assert(isinstance(extraNodeosArgs, str))
+            nodeosArgs += extraNodeosArgs
+
+        if nodeosArgs:
+            cmdArr.append("--nodeos")
+            cmdArr.append(nodeosArgs)
 
         cmdArr.append("--max-block-cpu-usage")
         cmdArr.append(str(160000000))
