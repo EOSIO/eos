@@ -1,3 +1,4 @@
+#include <chrono>
 #include <b1/rodeos/embedded_rodeos.h>
 #include <b1/rodeos/rodeos.hpp>
 #include <fc/scoped_exit.hpp>

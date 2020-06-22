@@ -244,7 +244,13 @@ void rodeos_filter::process(rodeos_db_snapshot& snapshot, const ship_protocol::g
    backend->set_wasm_allocator(&filter_state->wa);
    backend->initialize(&cb);
    try {
+      auto start = std::chrono::steady_clock::now();
       (*backend)(cb, "env", "apply", uint64_t(0), uint64_t(0), uint64_t(0));
+
+      auto stop = std::chrono::steady_clock::now();
+
+      auto x = std::chrono::duration_cast<std::chrono::microseconds>(stop - stop).count();
+      std::cout << (" filter processing time " + std::to_string(x) ) << std::endl;
 
       if (!filter_state->console.empty())
          ilog("filter ${n} console output: <<<\n${c}>>>", ("n", name.to_string())("c", filter_state->console));
