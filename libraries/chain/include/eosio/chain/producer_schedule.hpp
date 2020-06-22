@@ -166,7 +166,7 @@ namespace eosio { namespace chain {
 
       template<typename Op>
       static void for_each_key( const block_signing_authority& authority, Op&& op ) {
-         visit([&op](const auto &a){
+         std::visit([&op](const auto &a){
             a.for_each_key(std::forward<Op>(op));
          }, authority);
       }
@@ -177,7 +177,7 @@ namespace eosio { namespace chain {
       }
 
       static std::pair<bool, size_t> keys_satisfy_and_relevant( const std::set<public_key_type>& keys, const block_signing_authority& authority ) {
-        return visit([&keys](const auto &a){
+        return std::visit([&keys](const auto &a){
             return a.keys_satisfy_and_relevant(keys);
          }, authority);
       }
@@ -187,7 +187,7 @@ namespace eosio { namespace chain {
       }
 
       auto to_shared(chainbase::allocator<char> alloc) const {
-         auto shared_auth = visit([&alloc](const auto& a) {
+         auto shared_auth = std::visit([&alloc](const auto& a) {
             return a.to_shared(alloc);
          }, authority);
 
@@ -197,7 +197,7 @@ namespace eosio { namespace chain {
       static auto from_shared( const shared_producer_authority& src ) {
          producer_authority result;
          result.producer_name = src.producer_name;
-         result.authority = visit(overloaded {
+         result.authority = std::visit(overloaded {
             [](const shared_block_signing_authority_v0& a) {
                return block_signing_authority_v0::from_shared(a);
             }
@@ -312,8 +312,8 @@ namespace eosio { namespace chain {
       if(pa.producer_name != pb.producer_name) return false;
       if(pa.authority.index() != pb.authority.index()) return false;
 
-      bool authority_matches = visit([&pb]( const auto& lhs ){
-         return visit( [&lhs](const auto& rhs ) {
+      bool authority_matches = std::visit([&pb]( const auto& lhs ){
+         return std::visit( [&lhs](const auto& rhs ) {
             if (lhs.threshold != rhs.threshold) return false;
             return std::equal(lhs.keys.cbegin(), lhs.keys.cend(), rhs.keys.cbegin(), rhs.keys.cend());
          }, pb.authority);

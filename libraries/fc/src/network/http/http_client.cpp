@@ -347,7 +347,7 @@ public:
       });
 
       // Send the HTTP request to the remote host
-      error_code ec = visit(write_request_visitor(this, req, deadline), conn_iter->second);
+      error_code ec = std::visit(write_request_visitor(this, req, deadline), conn_iter->second);
       FC_ASSERT(!ec, "Failed to send request: ${message}", ("message",ec.message()));
 
       // This buffer is used for reading and must be persisted

@@ -988,7 +988,7 @@ namespace eosio { namespace chain {
 
       size_t num_trx_pruned = 0;
       for (auto& trx : entry.block.transactions) {
-         num_trx_pruned += visit(pruner);
+         num_trx_pruned += std::visit(pruner);
       }
       strm.skip(offset_to_block_start(version));
       entry.block.pack(strm, entry.meta.compression);
