@@ -97,9 +97,6 @@ try:
                           extraNodeosArgs=" --plugin eosio::producer_api_plugin ",
                           useBiosBootFile=False,
                           specificExtraNodeosArgs={
-                             0:"--http-max-response-time-ms 990000",
-                             1:"--http-max-response-time-ms 990000",
-                             2:"--http-max-response-time-ms 990000",
                              3:"--last-block-time-offset-us -200000"},
                           onlySetProds=True,
                           pfSetupPolicy=PFSetupPolicy.NONE,
