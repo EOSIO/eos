@@ -2269,7 +2269,7 @@ BOOST_AUTO_TEST_CASE(variants)
       // json -> variant -> abi_def -> bin
       auto bin = fc::raw::pack(fc::json::from_string(variant_abi).as<abi_def>());
       // bin -> abi_def -> variant -> abi_def
-      abi_serializer abis(variant(fc::raw::unpack<abi_def>(bin)).as<abi_def>(), abi_serializer::create_yield_function( max_serialization_time ) );
+      abi_serializer abis(fc::variant(fc::raw::unpack<abi_def>(bin)).as<abi_def>(), abi_serializer::create_yield_function( max_serialization_time ) );
 
       // duplicate variant definition detected
       BOOST_CHECK_THROW( abi_serializer( fc::json::from_string(duplicate_variant_abi).as<abi_def>(), abi_serializer::create_yield_function( max_serialization_time ) ), duplicate_abi_variant_def_exception );
@@ -2319,7 +2319,7 @@ BOOST_AUTO_TEST_CASE(aliased_variants)
       // json -> variant -> abi_def -> bin
       auto bin = fc::raw::pack(fc::json::from_string(aliased_variant).as<abi_def>());
       // bin -> abi_def -> variant -> abi_def
-      abi_serializer abis(variant(fc::raw::unpack<abi_def>(bin)).as<abi_def>(), abi_serializer::create_yield_function( max_serialization_time ) );
+      abi_serializer abis(fc::variant(fc::raw::unpack<abi_def>(bin)).as<abi_def>(), abi_serializer::create_yield_function( max_serialization_time ) );
 
       verify_round_trip_conversion(abis, "foo", R"(["int8",21])", "0015");
    } FC_LOG_AND_RETHROW()
@@ -2345,7 +2345,7 @@ BOOST_AUTO_TEST_CASE(variant_of_aliases)
       // json -> variant -> abi_def -> bin
       auto bin = fc::raw::pack(fc::json::from_string(aliased_variant).as<abi_def>());
       // bin -> abi_def -> variant -> abi_def
-      abi_serializer abis(variant(fc::raw::unpack<abi_def>(bin)).as<abi_def>(), abi_serializer::create_yield_function( max_serialization_time ) );
+      abi_serializer abis(fc::variant(fc::raw::unpack<abi_def>(bin)).as<abi_def>(), abi_serializer::create_yield_function( max_serialization_time ) );
 
       verify_round_trip_conversion(abis, "foo", R"(["foo_0",21])", "0015");
    } FC_LOG_AND_RETHROW()
@@ -2366,7 +2366,7 @@ BOOST_AUTO_TEST_CASE(action_results)
       // json -> variant -> abi_def -> bin
       auto bin = fc::raw::pack(fc::json::from_string(action_results_abi).as<abi_def>());
       // bin -> abi_def -> variant -> abi_def
-      auto def = variant(fc::raw::unpack<abi_def>(bin)).as<abi_def>();
+      auto def = fc::variant(fc::raw::unpack<abi_def>(bin)).as<abi_def>();
 
       BOOST_REQUIRE_EQUAL(def.action_results.value.size(), 2);
       BOOST_REQUIRE_EQUAL(def.action_results.value[0].name, name{"act1"});

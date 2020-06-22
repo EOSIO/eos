@@ -111,8 +111,7 @@ namespace eosio { namespace chain { namespace webassembly {
       std::set<account_name> unique_producers;
       for (const auto& p: producers) {
          EOS_ASSERT( context.is_account(p.producer_name), wasm_execution_error, "producer schedule includes a nonexisting account" );
-
-         p.authority.visit([&p, num_supported_key_types, validate_keys](const auto& a) {
+         visit([&p, num_supported_key_types, validate_keys](const auto& a) {
             uint32_t sum_weights = 0;
             std::set<public_key_type> unique_keys;
             for (const auto& kw: a.keys ) {
@@ -135,8 +134,7 @@ namespace eosio { namespace chain { namespace webassembly {
             EOS_ASSERT( a.keys.size() == unique_keys.size(), wasm_execution_error, "producer schedule includes a duplicated key for ${account}", ("account", p.producer_name));
             EOS_ASSERT( a.threshold > 0, wasm_execution_error, "producer schedule includes an authority with a threshold of 0 for ${account}", ("account", p.producer_name));
             EOS_ASSERT( sum_weights >= a.threshold, wasm_execution_error, "producer schedule includes an unsatisfiable authority for ${account}", ("account", p.producer_name));
-         });
-
+         }, p.authority);
 
          unique_producers.insert(p.producer_name);
       }

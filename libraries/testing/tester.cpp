@@ -287,13 +287,13 @@ namespace eosio { namespace testing {
       chain_transactions.clear();
       control->accepted_block.connect([this]( const block_state_ptr& block_state ){
         FC_ASSERT( block_state->block );
-          for( const auto& receipt : block_state->block->transactions ) {
-              if( receipt.trx.contains<packed_transaction>() ) {
-                  auto &pt = receipt.trx.get<packed_transaction>();
-                  chain_transactions[pt.get_transaction().id()] = receipt;
+          for( auto receipt : block_state->block->transactions ) {
+              if( std::holds_alternative<packed_transaction>(receipt.trx) ) {
+                  auto &pt = std::get<packed_transaction>(receipt.trx);
+                  chain_transactions[pt.get_transaction().id()] = std::move(receipt);
               } else {
-                  auto& id = receipt.trx.get<transaction_id_type>();
-                  chain_transactions[id] = receipt;
+                  auto& id = std::get<transaction_id_type>(receipt.trx);
+                  chain_transactions[id] = std::move(receipt);
               }
           }
       });
@@ -693,7 +693,7 @@ namespace eosio { namespace testing {
    } FC_CAPTURE_AND_RETHROW() }
 
    transaction_trace_ptr base_tester::push_reqauth( account_name from, const vector<permission_level>& auths, const vector<private_key_type>& keys ) {
-      variant pretty_trx = fc::mutable_variant_object()
+      fc::variant pretty_trx = fc::mutable_variant_object()
          ("actions", fc::variants({
             fc::mutable_variant_object()
                ("account", name(config::system_account_name))
@@ -727,7 +727,7 @@ namespace eosio { namespace testing {
 
    transaction_trace_ptr base_tester::push_dummy(account_name from, const string& v, uint32_t billed_cpu_time_us) {
       // use reqauth for a normal action, this could be anything
-      variant pretty_trx = fc::mutable_variant_object()
+      fc::variant pretty_trx = fc::mutable_variant_object()
          ("actions", fc::variants({
             fc::mutable_variant_object()
                ("account", name(config::system_account_name))
@@ -766,7 +766,7 @@ namespace eosio { namespace testing {
 
 
    transaction_trace_ptr base_tester::transfer( account_name from, account_name to, asset amount, string memo, account_name currency ) {
-      variant pretty_trx = fc::mutable_variant_object()
+      fc::variant pretty_trx = fc::mutable_variant_object()
          ("actions", fc::variants({
             fc::mutable_variant_object()
                ("account", currency)
@@ -795,7 +795,7 @@ namespace eosio { namespace testing {
 
 
    transaction_trace_ptr base_tester::issue( account_name to, string amount, account_name currency, string memo ) {
-      variant pretty_trx = fc::mutable_variant_object()
+      fc::variant pretty_trx = fc::mutable_variant_object()
          ("actions", fc::variants({
             fc::mutable_variant_object()
                ("account", currency)
@@ -1108,9 +1108,9 @@ namespace eosio { namespace testing {
       vector<legacy::producer_key> legacy_keys;
       legacy_keys.reserve(schedule.size());
       for (const auto &p : schedule) {
-         p.authority.visit([&legacy_keys, &p](const auto& auth){
+         std::visit([&legacy_keys, &p](const auto& auth){
             legacy_keys.emplace_back(legacy::producer_key{p.producer_name, auth.keys.front().key});
-         });
+         }, p.authority);
       }
 
       return push_action( config::system_account_name, N(setprods), config::system_account_name,

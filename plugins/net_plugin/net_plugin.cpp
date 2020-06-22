@@ -391,10 +391,10 @@ namespace eosio {
    constexpr auto     def_sync_fetch_span = 100;
 
    constexpr auto     message_header_size = 4;
-   constexpr uint32_t signed_block_v0_which       = net_message::tag<signed_block_v0>::value;       // see protocol net_message
-   constexpr uint32_t packed_transaction_v0_which = net_message::tag<packed_transaction_v0>::value; // see protocol net_message
-   constexpr uint32_t signed_block_which          = net_message::tag<signed_block>::value;          // see protocol net_message
-   constexpr uint32_t trx_message_v1_which        = net_message::tag<trx_message_v1>::value;        // see protocol net_message
+   constexpr uint32_t signed_block_v0_which       = fc::get_index<net_message, signed_block_v0>();       // see protocol net_message
+   constexpr uint32_t packed_transaction_v0_which = fc::get_index<net_message, packed_transaction_v0>(); // see protocol net_message
+   constexpr uint32_t signed_block_which          = fc::get_index<net_message, signed_block>();          // see protocol net_message
+   constexpr uint32_t trx_message_v1_which        = fc::get_index<net_message, trx_message_v1>();        // see protocol net_message
 
    /**
     *  For a while, network version was a 16 bit value equal to the second set of 16 bits
@@ -1290,7 +1290,7 @@ namespace eosio {
    private:
 
       static std::shared_ptr<std::vector<char>> create_send_buffer( const signed_block_ptr& sb ) {
-         static_assert( signed_block_which == net_message::position<signed_block>() );
+         static_assert( signed_block_which == fc::get_index<net_message, signed_block>() );
          // this implementation is to avoid copy of signed_block to net_message
          // matches which of net_message for signed_block
          fc_dlog( logger, "sending block ${bn}", ("bn", sb->block_num()) );
@@ -1298,7 +1298,7 @@ namespace eosio {
       }
 
       static std::shared_ptr<std::vector<char>> create_send_buffer( const signed_block_v0& sb_v0 ) {
-         static_assert( signed_block_v0_which == net_message::position<signed_block_v0>() );
+         static_assert( signed_block_v0_which == fc::get_index<net_message, signed_block_v0>() );
          // this implementation is to avoid copy of signed_block_v0 to net_message
          // matches which of net_message for signed_block_v0
          fc_dlog( logger, "sending v0 block ${bn}", ("bn", sb_v0.block_num()) );
@@ -1332,7 +1332,7 @@ namespace eosio {
    private:
 
       static std::shared_ptr<std::vector<char>> create_send_buffer( const packed_transaction_ptr& trx ) {
-         static_assert( trx_message_v1_which == net_message::position<trx_message_v1>() );
+         static_assert( trx_message_v1_which == fc::get_index<net_message, trx_message_v1>() );
          fc::optional<transaction_id_type> trx_id;
          if( trx->get_estimated_size() > 1024 ) { // simple guess on threshold
             fc_dlog( logger, "including trx id, est size: ${es}", ("es", trx->get_estimated_size()) );
@@ -1344,7 +1344,7 @@ namespace eosio {
       }
 
       static std::shared_ptr<std::vector<char>> create_send_buffer( const packed_transaction_v0& trx ) {
-         static_assert( packed_transaction_v0_which == net_message::position<packed_transaction_v0>() );
+         static_assert( packed_transaction_v0_which == fc::get_index<net_message, packed_transaction_v0>() );
          // this implementation is to avoid copy of packed_transaction_v0 to net_message
          // matches which of net_message for packed_transaction_v0
          return buffer_factory::create_send_buffer( packed_transaction_v0_which, trx );
@@ -1356,8 +1356,8 @@ namespace eosio {
    void connection::enqueue( const net_message& m ) {
       verify_strand_in_this_thread( strand, __func__, __LINE__ );
       go_away_reason close_after_send = no_reason;
-      if (m.contains<go_away_message>()) {
-         close_after_send = m.get<go_away_message>().reason;
+      if (std::holds_alternative<go_away_message>(m)) {
+         close_after_send = std::get<go_away_message>(m).reason;
       }
 
       buffer_factory buff_factory;
@@ -2008,8 +2008,8 @@ namespace eosio {
       update_block_num ubn( sb->block_num() );
       std::lock_guard<std::mutex> g( local_txns_mtx );
       for( const auto& recpt : sb->transactions ) {
-         const transaction_id_type& id = (recpt.trx.which() == 0) ? recpt.trx.get<transaction_id_type>()
-                                                                  : recpt.trx.get<packed_transaction>().id();
+         const transaction_id_type& id = (recpt.trx.index() == 0) ? std::get<transaction_id_type>(recpt.trx)
+                                                                  : std::get<packed_transaction>(recpt.trx).id();
          auto range = local_txns.get<by_id>().equal_range( id );
          for( auto itr = range.first; itr != range.second; ++itr ) {
             local_txns.modify( itr, ubn );
@@ -2518,7 +2518,7 @@ namespace eosio {
             net_message msg;
             fc::raw::unpack( ds, msg );
             msg_handler m( shared_from_this() );
-            msg.visit( m );
+            std::visit( m, msg );
          }
 
       } catch( const fc::exception& e ) {
@@ -2587,14 +2587,14 @@ namespace eosio {
       }
 
       auto is_webauthn_sig = []( const fc::crypto::signature& s ) {
-         return s.which() == fc::crypto::signature::storage_type::position<fc::crypto::webauthn::signature>();
+         return s.which() == fc::get_index<fc::crypto::signature::storage_type, fc::crypto::webauthn::signature>();
       };
       bool has_webauthn_sig = is_webauthn_sig( ptr->producer_signature );
 
       constexpr auto additional_sigs_eid = additional_block_signatures_extension::extension_id();
       auto exts = ptr->validate_and_extract_extensions();
       if( exts.count( additional_sigs_eid ) ) {
-         const auto &additional_sigs = exts.lower_bound( additional_sigs_eid )->second.get<additional_block_signatures_extension>().signatures;
+         const auto &additional_sigs = std::get<additional_block_signatures_extension>(exts.lower_bound( additional_sigs_eid )->second).signatures;
          has_webauthn_sig |= std::any_of( additional_sigs.begin(), additional_sigs.end(), is_webauthn_sig );
       }
 
@@ -3043,12 +3043,12 @@ namespace eosio {
       trx_in_progress_size += calc_trx_size( trx );
       app().post( priority::low, [trx{std::move(trx)}, weak = weak_from_this()]() {
          my_impl->chain_plug->accept_transaction( trx,
-            [weak, trx](const static_variant<fc::exception_ptr, transaction_trace_ptr>& result) mutable {
+            [weak, trx](const std::variant<fc::exception_ptr, transaction_trace_ptr>& result) mutable {
          // next (this lambda) called from application thread
-         if (result.contains<fc::exception_ptr>()) {
-            fc_dlog( logger, "bad packed_transaction : ${m}", ("m", result.get<fc::exception_ptr>()->what()) );
+         if (std::holds_alternative<fc::exception_ptr>(result)) {
+            fc_dlog( logger, "bad packed_transaction : ${m}", ("m", std::get<fc::exception_ptr>(result)->what()) );
          } else {
-            const transaction_trace_ptr& trace = result.get<transaction_trace_ptr>();
+            const transaction_trace_ptr& trace = std::get<transaction_trace_ptr>(result);
             if( !trace->except ) {
                fc_dlog( logger, "chain accepted transaction, bcast ${id}", ("id", trace->id) );
             } else {

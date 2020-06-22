@@ -410,7 +410,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
                      "only the deferred_transaction_generation_context extension is currently supported for deferred transactions"
          );
 
-         const auto& context = itr->second.get<deferred_transaction_generation_context>();
+         const auto& context = std::get<deferred_transaction_generation_context>(itr->second);
 
          EOS_ASSERT( context.sender == receiver, ill_formed_deferred_transaction_generation_context,
                      "deferred transaction generaction context contains mismatching sender",
@@ -806,16 +806,16 @@ int apply_context::get_context_free_data( uint32_t index, char* buffer, size_t b
 {
    const packed_transaction::prunable_data_type::prunable_data_t& data = trx_context.packed_trx.get_prunable_data().prunable_data;
    const bytes* cfd = nullptr;
-   if( data.contains<packed_transaction::prunable_data_type::none>() ) {
-   } else if( data.contains<packed_transaction::prunable_data_type::partial>() ) {
-      if( index >= data.get<packed_transaction::prunable_data_type::partial>().context_free_segments.size() ) return -1;
+   if( std::holds_alternative<packed_transaction::prunable_data_type::none>(data) ) {
+   } else if( std::holds_alternative<packed_transaction::prunable_data_type::partial>(data) ) {
+      if( index >= std::get<packed_transaction::prunable_data_type::partial>(data).context_free_segments.size() ) return -1;
 
       cfd = trx_context.packed_trx.get_context_free_data(index);
    } else {
       const std::vector<bytes>& context_free_data =
-            data.contains<packed_transaction::prunable_data_type::full_legacy>() ?
-               data.get<packed_transaction::prunable_data_type::full_legacy>().context_free_segments :
-               data.get<packed_transaction::prunable_data_type::full>().context_free_segments;
+            std::holds_alternative<packed_transaction::prunable_data_type::full_legacy>(data) ?
+               std::get<packed_transaction::prunable_data_type::full_legacy>(data).context_free_segments :
+               std::get<packed_transaction::prunable_data_type::full>(data).context_free_segments;
       if( index >= context_free_data.size() ) return -1;
 
       cfd = &context_free_data[index];

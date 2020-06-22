@@ -112,7 +112,7 @@ struct get_blocks_result_v0 {
    fc::optional<bytes>          deltas;
 };
 
-using state_request = fc::static_variant<get_status_request_v0, get_blocks_request_v0, get_blocks_ack_request_v0>;
+using state_request = std::variant<get_status_request_v0, get_blocks_request_v0, get_blocks_ack_request_v0>;
 
 struct account_auth_sequence {
    uint64_t account  = {};
@@ -139,7 +139,7 @@ struct action_receipt_v0 {
    fc::unsigned_int                   abi_sequence    = {};
 };
 
-using action_receipt = fc::static_variant<action_receipt_v0>;
+using action_receipt = std::variant<action_receipt_v0>;
 
 struct action {
    uint64_t                      account       = {};
@@ -178,7 +178,7 @@ struct action_trace_v1 {
    bytes                        return_value           = {};
 };
 
-using action_trace = fc::static_variant<action_trace_v0, action_trace_v1>;
+using action_trace = std::variant<action_trace_v0, action_trace_v1>;
 
 struct partial_transaction_v0 {
    eosio::chain::time_point_sec               expiration             = {};
@@ -204,12 +204,12 @@ struct partial_transaction_v1 {
    fc::optional<prunable_data_type>           prunable_data          = {};
 };
 
-using partial_transaction = fc::static_variant<partial_transaction_v0, partial_transaction_v1>;
+using partial_transaction = std::variant<partial_transaction_v0, partial_transaction_v1>;
 
 struct transaction_trace_recurse;
 
 struct transaction_trace_v0 {
-   using transaction_trace                       = fc::static_variant<transaction_trace_v0>;
+   using transaction_trace                       = std::variant<transaction_trace_v0>;
    eosio::chain::digest_type   id                = {};
    uint8_t                     status            = {};
    uint32_t                    cpu_usage_us      = {};
@@ -228,7 +228,7 @@ struct transaction_trace_v0 {
    fc::optional<partial_transaction>      partial           = {};
 };
 
-using transaction_trace = fc::static_variant<transaction_trace_v0>;
+using transaction_trace = std::variant<transaction_trace_v0>;
 struct transaction_trace_recurse {
    transaction_trace recurse;
 };
@@ -245,7 +245,7 @@ struct get_blocks_result_v1 {
    opaque<std::vector<table_delta>>       deltas;
 };
 
-using state_result = fc::static_variant<get_status_result_v0, get_blocks_result_v0, get_blocks_result_v1>;
+using state_result = std::variant<get_status_result_v0, get_blocks_result_v0, get_blocks_result_v1>;
 
 } // namespace state_history
 } // namespace eosio

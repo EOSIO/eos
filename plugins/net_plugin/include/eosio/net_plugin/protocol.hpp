@@ -140,7 +140,7 @@ namespace eosio {
       std::shared_ptr<packed_transaction> trx;
    };
 
-   using net_message = static_variant<handshake_message,
+   using net_message = std::variant<handshake_message,
                                       chain_size_message,
                                       go_away_message,
                                       time_message,

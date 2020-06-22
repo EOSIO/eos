@@ -1396,9 +1396,9 @@ struct get_schedule_subcommand {
          } else {
             printf( "    %-13s ", row["producer_name"].as_string().c_str() );
             auto a = row["authority"].as<block_signing_authority>();
-            static_assert( std::is_same<decltype(a), static_variant<block_signing_authority_v0>>::value,
+            static_assert( std::is_same<decltype(a), std::variant<block_signing_authority_v0>>::value,
                            "Updates maybe needed if block_signing_authority changes" );
-            block_signing_authority_v0 auth = a.get<block_signing_authority_v0>();
+            block_signing_authority_v0 auth = std::get<block_signing_authority_v0>(a);
             printf( "%s\n", fc::json::to_string( auth, fc::time_point::maximum() ).c_str() );
          }
       }

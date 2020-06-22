@@ -189,7 +189,7 @@ BOOST_FIXTURE_TEST_CASE( abi_from_variant, TESTER ) try {
       } FC_RETHROW_EXCEPTIONS(error, "Failed to find or parse ABI for ${name}", ("name", name))
    };
 
-   variant pretty_trx = mutable_variant_object()
+   fc::variant pretty_trx = mutable_variant_object()
       ("actions", variants({
          mutable_variant_object()
             ("account", "asserter")

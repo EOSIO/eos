@@ -185,7 +185,7 @@ BOOST_AUTO_TEST_CASE(variant_format_string_limited)
       for( int i = 0; i < 1024; ++i)
          b.data.push_back('b');
       variants c;
-      c.push_back(variant(a));
+      c.push_back(fc::variant(a));
       mu( "a", a );
       mu( "b", b );
       mu( "c", c );
@@ -700,7 +700,7 @@ BOOST_AUTO_TEST_CASE(transaction_test) { try {
    testing::TESTER test;
    signed_transaction trx;
 
-   variant pretty_trx = fc::mutable_variant_object()
+   fc::variant pretty_trx = fc::mutable_variant_object()
       ("actions", fc::variants({
          fc::mutable_variant_object()
             ("account", "eosio")
@@ -850,7 +850,7 @@ BOOST_AUTO_TEST_CASE(transaction_metadata_test) { try {
    testing::TESTER test;
    signed_transaction trx;
 
-   variant pretty_trx = fc::mutable_variant_object()
+   fc::variant pretty_trx = fc::mutable_variant_object()
       ("actions", fc::variants({
          fc::mutable_variant_object()
             ("account", "eosio")
@@ -1044,7 +1044,7 @@ BOOST_AUTO_TEST_CASE(pruned_block_test) {
    BOOST_TEST(in.tellp() <= buffer.size());
    BOOST_TEST(deserialized.transaction_mroot.str() == original->transaction_mroot.str());
    BOOST_TEST(deserialized.transaction_mroot.str() == calculate_trx_merkle(deserialized.transactions).str());
-   deserialized.transactions.back().trx.get<packed_transaction>().prune_all();
+   std::get<packed_transaction>(deserialized.transactions.back().trx).prune_all();
    deserialized.prune_state = signed_block::prune_state_type::incomplete;
    BOOST_TEST(deserialized.transaction_mroot.str() == calculate_trx_merkle(deserialized.transactions).str());
    fc::datastream<char*> out(buffer.data(), buffer.size());

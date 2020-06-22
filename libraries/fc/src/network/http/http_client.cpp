@@ -1,6 +1,7 @@
 #include <fc/network/http/http_client.hpp>
 #include <fc/io/json.hpp>
 #include <fc/scoped_exit.hpp>
+#include <fc/static_variant.hpp>
 
 #include <boost/beast/core.hpp>
 #include <boost/beast/http.hpp>
@@ -38,7 +39,7 @@ public:
 #ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
    using unix_socket_ptr = std::unique_ptr<local::stream_protocol::socket>;
 #endif
-   using connection = static_variant<raw_socket_ptr, ssl_socket_ptr
+   using connection = std::variant<raw_socket_ptr, ssl_socket_ptr
 #ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
                                      , unix_socket_ptr
 #endif
@@ -259,7 +260,7 @@ public:
    };
 
    bool check_closed( const connection_map::iterator& conn_itr ) {
-      if (conn_itr->second.visit(check_closed_visitor())) {
+      if (std::visit(check_closed_visitor(), conn_itr->second)) {
          _connections.erase(conn_itr);
          return true;
       } else {
@@ -346,7 +347,7 @@ public:
       });
 
       // Send the HTTP request to the remote host
-      error_code ec = conn_iter->second.visit(write_request_visitor(this, req, deadline));
+      error_code ec = visit(write_request_visitor(this, req, deadline), conn_iter->second);
       FC_ASSERT(!ec, "Failed to send request: ${message}", ("message",ec.message()));
 
       // This buffer is used for reading and must be persisted
@@ -356,7 +357,7 @@ public:
       http::response<http::string_body> res;
 
       // Receive the HTTP response
-      ec = conn_iter->second.visit(read_response_visitor(this, buffer, res, deadline));
+      ec = std::visit(read_response_visitor(this, buffer, res, deadline), conn_iter->second);
       FC_ASSERT(!ec, "Failed to read response: ${message}", ("message",ec.message()));
 
       // if the connection can be kept open, keep it open

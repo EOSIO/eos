@@ -108,15 +108,15 @@ struct txn_test_gen_plugin_impl {
 
       for (size_t i = 0; i < trxs->size(); ++i) {
          cp.accept_transaction( std::make_shared<packed_transaction>(signed_transaction(trxs->at(i)), true),
-               [=](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& result){
-            if (result.contains<fc::exception_ptr>()) {
-               next(result.get<fc::exception_ptr>());
+               [=](const std::variant<fc::exception_ptr, transaction_trace_ptr>& result){
+            if (std::holds_alternative<fc::exception_ptr>(result)) {
+               next(std::get<fc::exception_ptr>(result));
             } else {
-               if (result.contains<transaction_trace_ptr>() && result.get<transaction_trace_ptr>()->receipt) {
-                  _total_us += result.get<transaction_trace_ptr>()->receipt->cpu_usage_us;
+               if (std::holds_alternative<transaction_trace_ptr>(result) && std::get<transaction_trace_ptr>(result)->receipt) {
+                  _total_us += std::get<transaction_trace_ptr>(result)->receipt->cpu_usage_us;
                   ++_txcount;
                }
-            }
+            }                 
          });
       }
    }

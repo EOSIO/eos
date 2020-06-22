@@ -648,30 +648,30 @@ namespace eosio { namespace chain {
 
          auto& b = path.back();
 
-         EOS_ASSERT( b.contains<array_index_path_item>(), abi_exception, "trying to set array index without first pushing new array index item" );
+         EOS_ASSERT( std::holds_alternative<array_index_path_item>(b), abi_exception, "trying to set array index without first pushing new array index item" );
 
-         b.get<array_index_path_item>().array_index = i;
+         std::get<array_index_path_item>(b).array_index = i;
       }
 
       void abi_traverse_context_with_path::hint_array_type_if_in_array() {
-         if( path.size() == 0 || !path.back().contains<array_index_path_item>() )
+         if( path.size() == 0 || !std::holds_alternative<array_index_path_item>(path.back()) )
             return;
 
-         path.back().get<array_index_path_item>().type_hint = array_type_path_root{};
+         std::get<array_index_path_item>(path.back()).type_hint = array_type_path_root{};
       }
 
       void abi_traverse_context_with_path::hint_struct_type_if_in_array( const map<type_name, struct_def>::const_iterator& itr ) {
-         if( path.size() == 0 || !path.back().contains<array_index_path_item>() )
+         if( path.size() == 0 || !std::holds_alternative<array_index_path_item>(path.back()) )
             return;
 
-         path.back().get<array_index_path_item>().type_hint = struct_type_path_root{ .struct_itr = itr };
+         std::get<array_index_path_item>(path.back()).type_hint = struct_type_path_root{ .struct_itr = itr };
       }
 
       void abi_traverse_context_with_path::hint_variant_type_if_in_array( const map<type_name, variant_def>::const_iterator& itr ) {
-         if( path.size() == 0 || !path.back().contains<array_index_path_item>() )
+         if( path.size() == 0 || !std::holds_alternative<array_index_path_item>(path.back()) )
             return;
 
-         path.back().get<array_index_path_item>().type_hint = variant_type_path_root{ .variant_itr = itr };
+         std::get<array_index_path_item>(path.back()).type_hint = variant_type_path_root{ .variant_itr = itr };
       }
 
       constexpr size_t const_strlen( const char* str )
@@ -791,13 +791,13 @@ namespace eosio { namespace chain {
 
          void operator()( const array_index_path_item& item ) {
             const auto& th = item.type_hint;
-            if( th.contains<struct_type_path_root>() ) {
-               const auto& str = th.get<struct_type_path_root>().struct_itr->first;
+            if( std::holds_alternative<struct_type_path_root>(th) ) {
+               const auto& str = std::get<struct_type_path_root>(th).struct_itr->first;
                output_name( s, str, shorten_names );
-            } else if( th.contains<variant_type_path_root>() ) {
-               const auto& str = th.get<variant_type_path_root>().variant_itr->first;
+            } else if( std::holds_alternative<variant_type_path_root>(th) ) {
+               const auto& str = std::get<variant_type_path_root>(th).variant_itr->first;
                output_name( s, str, shorten_names );
-            } else if( th.contains<array_type_path_root>() ) {
+            } else if( std::holds_alternative<array_type_path_root>(th) ) {
                s << "ARRAY";
             } else {
                s << "UNKNOWN";
@@ -821,21 +821,21 @@ namespace eosio { namespace chain {
 
          generate_path_string_visitor visitor(shorten_names, !full_path);
          if( full_path )
-            root_of_path.visit( visitor );
+            std::visit( visitor, root_of_path );
          for( size_t i = 0, n = path.size(); i < n; ++i ) {
-            if( full_path && !path[i].contains<array_index_path_item>() )
+            if( full_path && !std::holds_alternative<array_index_path_item>(path[i]) )
                visitor.add_dot();
 
-            path[i].visit( visitor );
+            std::visit( visitor, path[i] );
 
          }
 
          if( !full_path ) {
-            if( visitor.last_path_item.contains<empty_path_item>() ) {
-               root_of_path.visit( visitor );
+            if( std::holds_alternative<empty_path_item>(visitor.last_path_item) ) {
+               std::visit( visitor, root_of_path );
             } else {
                path_item_type_visitor vis2(visitor.s, shorten_names);
-               visitor.last_path_item.visit(vis2);
+               std::visit(vis2, visitor.last_path_item);
             }
          }
 

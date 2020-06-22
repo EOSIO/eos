@@ -438,20 +438,20 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          bool exhausted = false;
          chain::controller& chain = chain_plug->chain();
 
-         auto send_response = [this, &trx, &chain, &next](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& response) {
+         auto send_response = [this, &trx, &chain, &next](const std::variant<fc::exception_ptr, transaction_trace_ptr>& response) {
             next(response);
-            if (response.contains<fc::exception_ptr>()) {
-               _transaction_ack_channel.publish(priority::low, std::pair<fc::exception_ptr, transaction_metadata_ptr>(response.get<fc::exception_ptr>(), trx));
+            if (std::holds_alternative<fc::exception_ptr>(response)) {
+               _transaction_ack_channel.publish(priority::low, std::pair<fc::exception_ptr, transaction_metadata_ptr>(std::get<fc::exception_ptr>(response), trx));
                if (_pending_block_mode == pending_block_mode::producing) {
                   fc_dlog(_trx_trace_log, "[TRX_TRACE] Block ${block_num} for producer ${prod} is REJECTING tx: ${txid} : ${why} ",
                         ("block_num", chain.head_block_num() + 1)
                         ("prod", get_pending_block_producer())
                         ("txid", trx->id())
-                        ("why",response.get<fc::exception_ptr>()->what()));
+                        ("why",std::get<fc::exception_ptr>(response)->what()));
                } else {
                   fc_dlog(_trx_trace_log, "[TRX_TRACE] Speculative execution is REJECTING tx: ${txid} : ${why} ",
                           ("txid", trx->id())
-                          ("why",response.get<fc::exception_ptr>()->what()));
+                          ("why",std::get<fc::exception_ptr>(response)->what()));
                }
             } else {
                _transaction_ack_channel.publish(priority::low, std::pair<fc::exception_ptr, transaction_metadata_ptr>(nullptr, trx));
@@ -1136,7 +1136,7 @@ void producer_plugin::create_snapshot(producer_plugin::next_function<producer_pl
    if( existing != pending_by_id.end() ) {
       // if a snapshot at this block is already pending, attach this requests handler to it
       pending_by_id.modify(existing, [&next]( auto& entry ){
-         entry.next = [prev = entry.next, next](const fc::static_variant<fc::exception_ptr, producer_plugin::snapshot_information>& res){
+         entry.next = [prev = entry.next, next](const std::variant<fc::exception_ptr, producer_plugin::snapshot_information>& res){
             prev(res);
             next(res);
          };

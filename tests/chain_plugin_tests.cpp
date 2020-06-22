@@ -60,7 +60,7 @@ BOOST_FIXTURE_TEST_CASE( get_block_with_invalid_abi, TESTER ) try {
    BOOST_REQUIRE_EQUAL(true, resolver(N(asserter)).valid());
 
    // make an action using the valid contract & abi
-   variant pretty_trx = mutable_variant_object()
+   fc::variant pretty_trx = mutable_variant_object()
       ("actions", variants({
          mutable_variant_object()
             ("account", "asserter")
