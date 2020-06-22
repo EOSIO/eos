@@ -229,7 +229,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "the location of the blocks directory (absolute path or relative to application data dir)")
          ("blocks-log-stride", bpo::value<uint32_t>()->default_value(config::default_blocks_log_stride),
          "split the block log file when the head block number is the multiple of the split factor\n"
-         "When the stride is reached, the current block log and index will be renamed 'blocks-num_begin-num_end.log/index'\n"
+         "When the stride is reached, the current block log and index will be renamed 'blocks-<start num>-<end num>.log/index'\n"
          "and a new current block log and index will be created with the most recent block. All files following\n"
          "this format will be used to construct an extended block log.")
          ("max-retained-block-files", bpo::value<uint16_t>()->default_value(config::default_max_retained_block_files),
