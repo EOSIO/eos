@@ -4,7 +4,6 @@ set -eo pipefail
 . ./.cicd/helpers/general.sh
 # tests
 if [[ $(uname) == 'Darwin' ]]; then # macOS
-    export PATH=$PATH:~/mongodb/bin
     set +e # defer error handling to end
     source ~/.bash_profile && ./"$@"
     EXIT_STATUS=$?
@@ -21,6 +20,11 @@ if [[ "$BUILDKITE" == 'true' ]]; then
     cd build
     # upload artifacts
     echo '+++ :arrow_up: Uploading Artifacts'
+    echo 'Compressing configuration'
+    [[ -d etc ]] && tar czf etc.tar.gz etc
+    echo 'Compressing logs'
+    [[ -d var ]] && tar czf var.tar.gz var
+    [[ -d eosio-ignition-wd ]] && tar czf eosio-ignition-wd.tar.gz eosio-ignition-wd
     echo 'Compressing core dumps...'
     [[ $((`ls -1 core.* 2>/dev/null | wc -l`)) != 0 ]] && tar czf core.tar.gz core.* || : # collect core dumps
     echo 'Compressing ls-tests logs...'
@@ -32,10 +36,14 @@ if [[ "$BUILDKITE" == 'true' ]]; then
     [[ -f config.ini ]] && buildkite-agent artifact upload config.ini
     [[ -f core.tar.gz ]] && buildkite-agent artifact upload core.tar.gz
     [[ -f genesis.json ]] && buildkite-agent artifact upload genesis.json
-    [[ -f mongod.log ]] && buildkite-agent artifact upload mongod.log
     [[ -f launcher_service.log ]] && buildkite-agent artifact upload launcher_service.log
     [[ -f ls_tests_logs.tar.gz ]] && buildkite-agent artifact upload ls_tests_logs.tar.gz
     [[ -f debug_logs.tar.gz ]] && buildkite-agent artifact upload debug_logs.tar.gz
+    [[ -f etc.tar.gz ]] && buildkite-agent artifact upload etc.tar.gz
+    [[ -f ctest-output.log ]] && buildkite-agent artifact upload ctest-output.log
+    [[ -f var.tar.gz ]] && buildkite-agent artifact upload var.tar.gz
+    [[ -f eosio-ignition-wd.tar.gz ]] && buildkite-agent artifact upload eosio-ignition-wd.tar.gz
+    [[ -f bios_boot.sh ]] && buildkite-agent artifact upload bios_boot.sh
     buildkite-agent artifact upload test-results.xml
     echo 'Done uploading artifacts.'
 fi

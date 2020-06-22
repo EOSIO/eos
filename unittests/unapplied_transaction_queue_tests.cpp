@@ -18,7 +18,8 @@ auto unique_trx_meta_data( fc::time_point expire = fc::time_point::now() + fc::s
    trx.expiration = expire;
    trx.actions.emplace_back( vector<permission_level>{{creator,config::active_name}},
                              onerror{ nextid, "test", 4 });
-   return transaction_metadata::create_no_recover_keys( packed_transaction( trx ), transaction_metadata::trx_type::input );
+   return transaction_metadata::create_no_recover_keys( std::make_shared<packed_transaction>( std::move(trx), true ),
+                                                        transaction_metadata::trx_type::input );
 }
 
 auto next( unapplied_transaction_queue& q ) {
@@ -447,5 +448,52 @@ BOOST_AUTO_TEST_CASE( unapplied_transaction_queue_erase_add ) try {
 
 } FC_LOG_AND_RETHROW() /// unapplied_transaction_queue_test
 
+BOOST_AUTO_TEST_CASE( unapplied_transaction_queue_incoming_count ) try {
+
+   unapplied_transaction_queue q;
+   BOOST_CHECK( q.empty() );
+   BOOST_CHECK( q.size() == 0 );
+
+   auto trx1 = unique_trx_meta_data();
+   auto trx2 = unique_trx_meta_data();
+   auto trx3 = unique_trx_meta_data();
+   auto trx4 = unique_trx_meta_data();
+   auto trx5 = unique_trx_meta_data();
+   auto trx6 = unique_trx_meta_data();
+
+   q.add_incoming( trx1, false, [](auto){} );
+   q.add_incoming( trx2, false, [](auto){} );
+   q.add_incoming( trx3, false, [](auto){} );
+   q.add_incoming( trx4, false, [](auto){} );
+   q.add_incoming( trx5, false, [](auto){} );
+   q.add_incoming( trx6, false, [](auto){} );
+
+   auto expected = q.size();
+
+   BOOST_CHECK( q.incoming_size() == expected );
+
+   auto itr = q.begin();
+   auto end = q.end();
+
+   while( itr != end ) {
+      q.add_persisted( itr->trx_meta );
+      --expected;
+      BOOST_CHECK( q.incoming_size() == expected );
+      ++itr;
+   }
+
+   BOOST_CHECK( q.incoming_size() == 0 );
+
+   itr = q.begin();
+   end = q.end();
+
+   while( itr != end ) {
+      q.add_incoming( itr->trx_meta, false, [](auto){} );
+      ++expected;
+      BOOST_CHECK( q.incoming_size() == expected );
+      ++itr;
+   }
+
+} FC_LOG_AND_RETHROW() /// unapplied_transaction_queue_incoming_count
 
 BOOST_AUTO_TEST_SUITE_END()

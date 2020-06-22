@@ -1,6 +1,7 @@
 #include <fc/variant.hpp>
 #include <fc/io/json.hpp>
 #include <eosio/db_size_api_plugin/db_size_api_plugin.hpp>
+#include <eosio/http_plugin/http_plugin.hpp>
 
 namespace eosio {
 
@@ -8,11 +9,11 @@ static appbase::abstract_plugin& _db_size_api_plugin = app().register_plugin<db_
 
 using namespace eosio;
 
-#define CALL(api_name, api_handle, call_name, INVOKE, http_response_code) \
+#define CALL_WITH_400(api_name, api_handle, call_name, INVOKE, http_response_code) \
 {std::string("/v1/" #api_name "/" #call_name), \
    [api_handle](string, string body, url_response_callback cb) mutable { \
           try { \
-             if (body.empty()) body = "{}"; \
+             body = parse_params<std::string, http_params_types::no_params_required>(body); \
              INVOKE \
              cb(http_response_code, fc::variant(result)); \
           } catch (...) { \
@@ -26,10 +27,8 @@ using namespace eosio;
 
 void db_size_api_plugin::plugin_startup() {
    app().get_plugin<http_plugin>().add_api({
-       CALL(db_size, this, get,
-            INVOKE_R_V(this, get), 200),
-       CALL(db_size, this, get_reversible,
-            INVOKE_R_V(this, get_reversible), 200),
+       CALL_WITH_400(db_size, this, get,  INVOKE_R_V(this, get), 200),
+       CALL_WITH_400(db_size, this, get_reversible, INVOKE_R_V(this, get_reversible), 200),
    });
 }
 

@@ -57,7 +57,7 @@
       ]
     },{
       "name": "net_plugin_impl",
-      "level": "debug",
+      "level": "info",
       "enabled": true,
       "additivity": false,
       "appenders": [
@@ -84,7 +84,16 @@
       ]
     },{
       "name": "transaction_tracing",
-      "level": "info",
+      "level": "debug",
+      "enabled": true,
+      "additivity": false,
+      "appenders": [
+        "stderr",
+        "net"
+      ]
+    },{
+      "name": "trace_api",
+      "level": "debug",
       "enabled": true,
       "additivity": false,
       "appenders": [

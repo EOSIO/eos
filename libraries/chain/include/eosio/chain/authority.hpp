@@ -20,7 +20,7 @@ struct shared_public_key {
             public_key_storage = k1r1;
          },
          [&](const shared_string& wa) {
-            fc::datastream ds(wa.data(), wa.size());
+            fc::datastream<const char*> ds(wa.data(), wa.size());
             fc::crypto::webauthn::public_key pub;
             fc::raw::unpack(ds, pub);
             public_key_storage = pub;
@@ -29,8 +29,8 @@ struct shared_public_key {
       return std::move(public_key_storage);
    }
 
-   operator string() const {
-      return (string)this->operator public_key_type();
+   std::string to_string() const {
+      return this->operator public_key_type().to_string();
    }
 
    shared_public_key_data pubkey;
@@ -64,7 +64,7 @@ struct shared_public_key {
             return r1._data == r._storage.get<fc::crypto::r1::public_key_shim>()._data;
          },
          [&](const shared_string& wa) {
-            fc::datastream ds(wa.data(), wa.size());
+            fc::datastream<const char*> ds(wa.data(), wa.size());
             fc::crypto::webauthn::public_key pub;
             fc::raw::unpack(ds, pub);
             return pub == r._storage.get<fc::crypto::webauthn::public_key>();
@@ -301,6 +301,9 @@ inline bool validate( const Authority& auth ) {
 
 } } // namespace eosio::chain
 
+namespace fc {
+   void to_variant(const eosio::chain::shared_public_key& var, fc::variant& vo);
+} // namespace fc
 
 FC_REFLECT(eosio::chain::permission_level_weight, (permission)(weight) )
 FC_REFLECT(eosio::chain::key_weight, (key)(weight) )

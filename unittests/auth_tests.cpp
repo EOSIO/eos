@@ -306,14 +306,14 @@ try {
    BOOST_TEST(joe_owner_authority.auth.threshold == 1u);
    BOOST_TEST(joe_owner_authority.auth.accounts.size() == 1u);
    BOOST_TEST(joe_owner_authority.auth.keys.size() == 1u);
-   BOOST_TEST(string(joe_owner_authority.auth.keys[0].key) == string(chain.get_public_key(name("joe"), "owner")));
+   BOOST_TEST(joe_owner_authority.auth.keys[0].key.to_string() == chain.get_public_key(name("joe"), "owner").to_string());
    BOOST_TEST(joe_owner_authority.auth.keys[0].weight == 1u);
 
    const auto& joe_active_authority = chain.get<permission_object, by_owner>(boost::make_tuple(name("joe"), name("active")));
    BOOST_TEST(joe_active_authority.auth.threshold == 1u);
    BOOST_TEST(joe_active_authority.auth.accounts.size() == 1u);
    BOOST_TEST(joe_active_authority.auth.keys.size() == 1u);
-   BOOST_TEST(string(joe_active_authority.auth.keys[0].key) == string(chain.get_public_key(name("joe"), "active")));
+   BOOST_TEST(joe_active_authority.auth.keys[0].key.to_string() == chain.get_public_key(name("joe"), "active").to_string());
    BOOST_TEST(joe_active_authority.auth.keys[0].weight == 1u);
 
    // Create duplicate name
@@ -378,9 +378,9 @@ try {
 
    chain.produce_block();
 
-   account_name acc1 = N("bill1");
-   account_name acc2 = N("bill2");
-   account_name acc1a = N("bill1a");
+   account_name acc1 = N(bill1);
+   account_name acc2 = N(bill2);
+   account_name acc1a = N(bill1a);
 
    chain.create_account(acc1);
    chain.create_account(acc1a);
@@ -436,10 +436,10 @@ try {
 
    chain.produce_block();
 
-   account_name acc1 = N("acc1");
-   account_name acc2 = N("acc2");
-   account_name acc3 = N("acc3");
-   account_name acc4 = N("acc4");
+   account_name acc1 = N(acc1);
+   account_name acc2 = N(acc2);
+   account_name acc3 = N(acc3);
+   account_name acc4 = N(acc4);
 
    chain.create_account(acc1);
    chain.produce_block();
