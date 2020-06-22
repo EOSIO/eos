@@ -121,7 +121,7 @@ namespace eosio { namespace testing {
 
             char serialized_sig[4096];
             datastream<char*> sig_ds(serialized_sig, sizeof(serialized_sig));
-            fc::raw::pack(sig_ds, (uint8_t)signature::storage_type::position<webauthn::signature>());
+            fc::raw::pack(sig_ds, (uint8_t)get_index<signature::storage_type, webauthn::signature>());
             fc::raw::pack(sig_ds, sig);
             fc::raw::pack(sig_ds, auth_data);
             fc::raw::pack(sig_ds, json);

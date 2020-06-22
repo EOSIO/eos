@@ -64,121 +64,121 @@ BOOST_AUTO_TEST_SUITE(static_variant_test_suite)
    BOOST_AUTO_TEST_CASE(test_eq)
    {
       // ensure that the given comparisons are present IFF the types support it
-      BOOST_REQUIRE(( !variant_has_op_v<std::equal_to, static_variant<not_comparable> > ));
-      BOOST_REQUIRE(( variant_has_op_v<std::equal_to, static_variant<eq_only> > ));
+      BOOST_REQUIRE(( !variant_has_op_v<std::equal_to, std::variant<not_comparable> > ));
+      BOOST_REQUIRE(( variant_has_op_v<std::equal_to, std::variant<eq_only> > ));
 
       // ensure that given comparisons are present IFF the ALL types support it
-      BOOST_REQUIRE(( !variant_has_op_v<std::equal_to, static_variant<eq_only, not_comparable> > ));
-      BOOST_REQUIRE(( variant_has_op_v<std::equal_to, static_variant<eq_only, full_comparable> > ));
+      BOOST_REQUIRE(( !variant_has_op_v<std::equal_to, std::variant<eq_only, not_comparable> > ));
+      BOOST_REQUIRE(( variant_has_op_v<std::equal_to, std::variant<eq_only, full_comparable> > ));
 
       // ensure the operator returns expected values
-      BOOST_REQUIRE((   static_variant<full_comparable>(full_comparable{1}) == static_variant<full_comparable>(full_comparable{1})  ));
-      BOOST_REQUIRE(( !(static_variant<full_comparable>(full_comparable{1}) == static_variant<full_comparable>(full_comparable{2})) ));
+      BOOST_REQUIRE((   std::variant<full_comparable>(full_comparable{1}) == std::variant<full_comparable>(full_comparable{1})  ));
+      BOOST_REQUIRE(( !(std::variant<full_comparable>(full_comparable{1}) == std::variant<full_comparable>(full_comparable{2})) ));
 
       // ensure the operator respects binary equivalent but different types
-      BOOST_REQUIRE(( !(static_variant<full_comparable, eq_only>(full_comparable{1}) == static_variant<full_comparable, eq_only>(eq_only{1})) ));
+      BOOST_REQUIRE(( !(std::variant<full_comparable, eq_only>(full_comparable{1}) == std::variant<full_comparable, eq_only>(eq_only{1})) ));
    }
 
    BOOST_AUTO_TEST_CASE(test_neq)
    {
       // ensure that the given comparisons are present IFF the types support it
-      BOOST_REQUIRE(( !variant_has_op_v<std::not_equal_to, static_variant<not_comparable> > ));
-      BOOST_REQUIRE(( variant_has_op_v<std::not_equal_to, static_variant<neq_only> > ));
+      BOOST_REQUIRE(( !variant_has_op_v<std::not_equal_to, std::variant<not_comparable> > ));
+      BOOST_REQUIRE(( variant_has_op_v<std::not_equal_to, std::variant<neq_only> > ));
 
       // ensure that given comparisons are present IFF the ALL types support it
-      BOOST_REQUIRE(( !variant_has_op_v<std::not_equal_to, static_variant<neq_only, not_comparable> > ));
-      BOOST_REQUIRE(( variant_has_op_v<std::not_equal_to, static_variant<neq_only, full_comparable> > ));
+      BOOST_REQUIRE(( !variant_has_op_v<std::not_equal_to, std::variant<neq_only, not_comparable> > ));
+      BOOST_REQUIRE(( variant_has_op_v<std::not_equal_to, std::variant<neq_only, full_comparable> > ));
 
       // ensure the operator returns expected values
-      BOOST_REQUIRE((   static_variant<full_comparable>(full_comparable{1}) != static_variant<full_comparable>(full_comparable{2})  ));
-      BOOST_REQUIRE(( !(static_variant<full_comparable>(full_comparable{1}) != static_variant<full_comparable>(full_comparable{1})) ));
+      BOOST_REQUIRE((   std::variant<full_comparable>(full_comparable{1}) != std::variant<full_comparable>(full_comparable{2})  ));
+      BOOST_REQUIRE(( !(std::variant<full_comparable>(full_comparable{1}) != std::variant<full_comparable>(full_comparable{1})) ));
 
       // ensure the operator respects binary equivalent but different types
-      BOOST_REQUIRE(( static_variant<full_comparable, neq_only>(full_comparable{1}) != static_variant<full_comparable, neq_only>(neq_only{1}) ));
+      BOOST_REQUIRE(( std::variant<full_comparable, neq_only>(full_comparable{1}) != std::variant<full_comparable, neq_only>(neq_only{1}) ));
    }
 
    BOOST_AUTO_TEST_CASE(test_lt)
    {
       // ensure that the given comparisons are present IFF the types support it
-      BOOST_REQUIRE(( !variant_has_op_v<std::less, static_variant<not_comparable> > ));
-      BOOST_REQUIRE(( variant_has_op_v<std::less, static_variant<lt_only> > ));
+      BOOST_REQUIRE(( !variant_has_op_v<std::less, std::variant<not_comparable> > ));
+      BOOST_REQUIRE(( variant_has_op_v<std::less, std::variant<lt_only> > ));
 
       // ensure that given comparisons are present IFF the ALL types support it
-      BOOST_REQUIRE(( !variant_has_op_v<std::less, static_variant<lt_only, not_comparable> > ));
-      BOOST_REQUIRE(( variant_has_op_v<std::less, static_variant<lt_only, full_comparable> > ));
+      BOOST_REQUIRE(( !variant_has_op_v<std::less, std::variant<lt_only, not_comparable> > ));
+      BOOST_REQUIRE(( variant_has_op_v<std::less, std::variant<lt_only, full_comparable> > ));
 
       // ensure the operator returns expected values
-      BOOST_REQUIRE((   static_variant<full_comparable>(full_comparable{1}) < static_variant<full_comparable>(full_comparable{2})  ));
-      BOOST_REQUIRE(( !(static_variant<full_comparable>(full_comparable{1}) < static_variant<full_comparable>(full_comparable{1})) ));
-      BOOST_REQUIRE(( !(static_variant<full_comparable>(full_comparable{1}) < static_variant<full_comparable>(full_comparable{0})) ));
+      BOOST_REQUIRE((   std::variant<full_comparable>(full_comparable{1}) < std::variant<full_comparable>(full_comparable{2})  ));
+      BOOST_REQUIRE(( !(std::variant<full_comparable>(full_comparable{1}) < std::variant<full_comparable>(full_comparable{1})) ));
+      BOOST_REQUIRE(( !(std::variant<full_comparable>(full_comparable{1}) < std::variant<full_comparable>(full_comparable{0})) ));
 
       // ensure the operator respects binary equivalent but different types
-      BOOST_REQUIRE((   static_variant<full_comparable, lt_only>(full_comparable{1}) < static_variant<full_comparable, lt_only>(lt_only{1})          ));
-      BOOST_REQUIRE(( !(static_variant<full_comparable, lt_only>(full_comparable{1}) < static_variant<full_comparable, lt_only>(full_comparable{1})) ));
-      BOOST_REQUIRE(( !(static_variant<full_comparable, lt_only>(lt_only{1})         < static_variant<full_comparable, lt_only>(full_comparable{1})) ));
+      BOOST_REQUIRE((   std::variant<full_comparable, lt_only>(full_comparable{1}) < std::variant<full_comparable, lt_only>(lt_only{1})          ));
+      BOOST_REQUIRE(( !(std::variant<full_comparable, lt_only>(full_comparable{1}) < std::variant<full_comparable, lt_only>(full_comparable{1})) ));
+      BOOST_REQUIRE(( !(std::variant<full_comparable, lt_only>(lt_only{1})         < std::variant<full_comparable, lt_only>(full_comparable{1})) ));
    }
 
    BOOST_AUTO_TEST_CASE(test_lte)
    {
       // ensure that the given comparisons are present IFF the types support it
-      BOOST_REQUIRE(( !variant_has_op_v<std::less_equal, static_variant<not_comparable> > ));
-      BOOST_REQUIRE(( variant_has_op_v<std::less_equal, static_variant<lte_only> > ));
+      BOOST_REQUIRE(( !variant_has_op_v<std::less_equal, std::variant<not_comparable> > ));
+      BOOST_REQUIRE(( variant_has_op_v<std::less_equal, std::variant<lte_only> > ));
 
       // ensure that given comparisons are present IFF the ALL types support it
-      BOOST_REQUIRE(( !variant_has_op_v<std::less_equal, static_variant<lte_only, not_comparable> > ));
-      BOOST_REQUIRE(( variant_has_op_v<std::less_equal, static_variant<lte_only, full_comparable> > ));
+      BOOST_REQUIRE(( !variant_has_op_v<std::less_equal, std::variant<lte_only, not_comparable> > ));
+      BOOST_REQUIRE(( variant_has_op_v<std::less_equal, std::variant<lte_only, full_comparable> > ));
 
       // ensure the operator returns expected values
-      BOOST_REQUIRE((   static_variant<full_comparable>(full_comparable{1}) <= static_variant<full_comparable>(full_comparable{2})  ));
-      BOOST_REQUIRE((   static_variant<full_comparable>(full_comparable{1}) <= static_variant<full_comparable>(full_comparable{1})  ));
-      BOOST_REQUIRE(( !(static_variant<full_comparable>(full_comparable{1}) <= static_variant<full_comparable>(full_comparable{0})) ));
+      BOOST_REQUIRE((   std::variant<full_comparable>(full_comparable{1}) <= std::variant<full_comparable>(full_comparable{2})  ));
+      BOOST_REQUIRE((   std::variant<full_comparable>(full_comparable{1}) <= std::variant<full_comparable>(full_comparable{1})  ));
+      BOOST_REQUIRE(( !(std::variant<full_comparable>(full_comparable{1}) <= std::variant<full_comparable>(full_comparable{0})) ));
 
       // ensure the operator respects binary equivalent but different types
-      BOOST_REQUIRE((   static_variant<full_comparable, lte_only>(full_comparable{1}) <= static_variant<full_comparable, lte_only>(lte_only{1})         ));
-      BOOST_REQUIRE((   static_variant<full_comparable, lte_only>(full_comparable{1}) <= static_variant<full_comparable, lte_only>(full_comparable{1})  ));
-      BOOST_REQUIRE(( !(static_variant<full_comparable, lte_only>(lte_only{1})        <= static_variant<full_comparable, lte_only>(full_comparable{1})) ));
+      BOOST_REQUIRE((   std::variant<full_comparable, lte_only>(full_comparable{1}) <= std::variant<full_comparable, lte_only>(lte_only{1})         ));
+      BOOST_REQUIRE((   std::variant<full_comparable, lte_only>(full_comparable{1}) <= std::variant<full_comparable, lte_only>(full_comparable{1})  ));
+      BOOST_REQUIRE(( !(std::variant<full_comparable, lte_only>(lte_only{1})        <= std::variant<full_comparable, lte_only>(full_comparable{1})) ));
    }
 
    BOOST_AUTO_TEST_CASE(test_gt)
    {
       // ensure that the given comparisons are present IFF the types support it
-      BOOST_REQUIRE(( !variant_has_op_v<std::greater, static_variant<not_comparable> > ));
-      BOOST_REQUIRE(( variant_has_op_v<std::greater, static_variant<gt_only> > ));
+      BOOST_REQUIRE(( !variant_has_op_v<std::greater, std::variant<not_comparable> > ));
+      BOOST_REQUIRE(( variant_has_op_v<std::greater, std::variant<gt_only> > ));
 
       // ensure that given comparisons are present IFF the ALL types support it
-      BOOST_REQUIRE(( !variant_has_op_v<std::greater, static_variant<gt_only, not_comparable> > ));
-      BOOST_REQUIRE(( variant_has_op_v<std::greater, static_variant<gt_only, full_comparable> > ));
+      BOOST_REQUIRE(( !variant_has_op_v<std::greater, std::variant<gt_only, not_comparable> > ));
+      BOOST_REQUIRE(( variant_has_op_v<std::greater, std::variant<gt_only, full_comparable> > ));
 
       // ensure the operator returns expected values
-      BOOST_REQUIRE(( !(static_variant<full_comparable>(full_comparable{1}) > static_variant<full_comparable>(full_comparable{2})) ));
-      BOOST_REQUIRE(( !(static_variant<full_comparable>(full_comparable{1}) > static_variant<full_comparable>(full_comparable{1})) ));
-      BOOST_REQUIRE((   static_variant<full_comparable>(full_comparable{1}) > static_variant<full_comparable>(full_comparable{0})  ));
+      BOOST_REQUIRE(( !(std::variant<full_comparable>(full_comparable{1}) > std::variant<full_comparable>(full_comparable{2})) ));
+      BOOST_REQUIRE(( !(std::variant<full_comparable>(full_comparable{1}) > std::variant<full_comparable>(full_comparable{1})) ));
+      BOOST_REQUIRE((   std::variant<full_comparable>(full_comparable{1}) > std::variant<full_comparable>(full_comparable{0})  ));
 
       // ensure the operator respects binary equivalent but different types
-      BOOST_REQUIRE(( !(static_variant<full_comparable, gt_only>(full_comparable{1}) > static_variant<full_comparable, gt_only>(gt_only{1}))         ));
-      BOOST_REQUIRE(( !(static_variant<full_comparable, gt_only>(full_comparable{1}) > static_variant<full_comparable, gt_only>(full_comparable{1})) ));
-      BOOST_REQUIRE((   static_variant<full_comparable, gt_only>(gt_only{1})         > static_variant<full_comparable, gt_only>(full_comparable{1})  ));
+      BOOST_REQUIRE(( !(std::variant<full_comparable, gt_only>(full_comparable{1}) > std::variant<full_comparable, gt_only>(gt_only{1}))         ));
+      BOOST_REQUIRE(( !(std::variant<full_comparable, gt_only>(full_comparable{1}) > std::variant<full_comparable, gt_only>(full_comparable{1})) ));
+      BOOST_REQUIRE((   std::variant<full_comparable, gt_only>(gt_only{1})         > std::variant<full_comparable, gt_only>(full_comparable{1})  ));
    }
 
    BOOST_AUTO_TEST_CASE(test_gte)
    {
       // ensure that the given comparisons are present IFF the types support it
-      BOOST_REQUIRE(( !variant_has_op_v<std::greater_equal, static_variant<not_comparable> > ));
-      BOOST_REQUIRE(( variant_has_op_v<std::greater_equal, static_variant<gte_only> > ));
+      BOOST_REQUIRE(( !variant_has_op_v<std::greater_equal, std::variant<not_comparable> > ));
+      BOOST_REQUIRE(( variant_has_op_v<std::greater_equal, std::variant<gte_only> > ));
 
       // ensure that given comparisons are present IFF the ALL types support it
-      BOOST_REQUIRE(( !variant_has_op_v<std::greater_equal, static_variant<gte_only, not_comparable> > ));
-      BOOST_REQUIRE(( variant_has_op_v<std::greater_equal, static_variant<gte_only, full_comparable> > ));
+      BOOST_REQUIRE(( !variant_has_op_v<std::greater_equal, std::variant<gte_only, not_comparable> > ));
+      BOOST_REQUIRE(( variant_has_op_v<std::greater_equal, std::variant<gte_only, full_comparable> > ));
 
       // ensure the operator returns expected values
-      BOOST_REQUIRE(( !(static_variant<full_comparable>(full_comparable{1}) >= static_variant<full_comparable>(full_comparable{2})) ));
-      BOOST_REQUIRE((   static_variant<full_comparable>(full_comparable{1}) >= static_variant<full_comparable>(full_comparable{1})  ));
-      BOOST_REQUIRE((   static_variant<full_comparable>(full_comparable{1}) >= static_variant<full_comparable>(full_comparable{0})  ));
+      BOOST_REQUIRE(( !(std::variant<full_comparable>(full_comparable{1}) >= std::variant<full_comparable>(full_comparable{2})) ));
+      BOOST_REQUIRE((   std::variant<full_comparable>(full_comparable{1}) >= std::variant<full_comparable>(full_comparable{1})  ));
+      BOOST_REQUIRE((   std::variant<full_comparable>(full_comparable{1}) >= std::variant<full_comparable>(full_comparable{0})  ));
 
       // ensure the operator respects binary equivalent but different types
-      BOOST_REQUIRE(( !(static_variant<full_comparable, gte_only>(full_comparable{1}) >= static_variant<full_comparable, gte_only>(gte_only{1}))        ));
-      BOOST_REQUIRE((   static_variant<full_comparable, gte_only>(full_comparable{1}) >= static_variant<full_comparable, gte_only>(full_comparable{1})  ));
-      BOOST_REQUIRE((   static_variant<full_comparable, gte_only>(gte_only{1})        >= static_variant<full_comparable, gte_only>(full_comparable{1})  ));
+      BOOST_REQUIRE(( !(std::variant<full_comparable, gte_only>(full_comparable{1}) >= std::variant<full_comparable, gte_only>(gte_only{1}))        ));
+      BOOST_REQUIRE((   std::variant<full_comparable, gte_only>(full_comparable{1}) >= std::variant<full_comparable, gte_only>(full_comparable{1})  ));
+      BOOST_REQUIRE((   std::variant<full_comparable, gte_only>(gte_only{1})        >= std::variant<full_comparable, gte_only>(full_comparable{1})  ));
    }
 
    enum class selected_op {
@@ -203,32 +203,33 @@ BOOST_AUTO_TEST_SUITE(static_variant_test_suite)
    BOOST_AUTO_TEST_CASE(test_visitor) 
    {
       test_visitor_type visitor;
-      using var_type = static_variant<string, std::vector<char>>;
+      using var_type = std::variant<string, std::vector<char>>;
       var_type string_lvalue = string("abcd");
       const var_type string_const_value = string("abcd");
 
-      BOOST_CHECK(string_lvalue.visit(visitor) == selected_op::STRING_LVALUE_REF);
-      BOOST_CHECK(var_type(string("abcd")).visit(visitor) == selected_op::STRING_RVALUE_REF);
-      BOOST_CHECK(string_const_value.visit(visitor) == selected_op::STRING_CONST_REF);
+      BOOST_CHECK(std::visit(visitor, string_lvalue) == selected_op::STRING_LVALUE_REF);
+      BOOST_CHECK(std::visit(visitor, var_type(string("abcd"))) == selected_op::STRING_RVALUE_REF);
+      BOOST_CHECK(std::visit(visitor, string_const_value) == selected_op::STRING_CONST_REF);
 
       var_type vector_lvalue = std::vector<char>{};
       const var_type vector_const_value = std::vector<char>{};
 
-      BOOST_CHECK(vector_lvalue.visit(visitor) == selected_op::VECTOR_LVALUE_REF);
-      BOOST_CHECK(var_type(std::vector<char>{}).visit(visitor) == selected_op::VECTOR_LVALUE_REF);
-      BOOST_CHECK(vector_const_value.visit(visitor) == selected_op::VECTOR_CONST_REF);
+      BOOST_CHECK(std::visit(visitor, vector_lvalue) == selected_op::VECTOR_LVALUE_REF);
+      BOOST_CHECK(std::visit(visitor, var_type(std::vector<char>{})) == selected_op::VECTOR_LVALUE_REF);
+      BOOST_CHECK(std::visit(visitor, vector_const_value) == selected_op::VECTOR_CONST_REF);
    }
 
    BOOST_AUTO_TEST_CASE(test_get) {
       test_visitor_type visitor;
 
-      using var_type = static_variant<string, std::vector<char>>;
+      using var_type = std::variant<string, std::vector<char>>;
       var_type lvalue(string("abc"));
       const var_type const_value(string("abc"));
 
-      BOOST_CHECK(visitor(lvalue.get<string>()) == selected_op::STRING_LVALUE_REF);
-      BOOST_CHECK(visitor(const_value.get<string>()) == selected_op::STRING_CONST_REF);
-      BOOST_CHECK(visitor(var_type(string("abc")).get<string>()) == selected_op::STRING_RVALUE_REF);
+      BOOST_CHECK(visitor(std::get<string>(lvalue)) == selected_op::STRING_LVALUE_REF);
+      BOOST_CHECK(visitor(std::get<string>(const_value)) == selected_op::STRING_CONST_REF);
+      BOOST_CHECK(visitor(std::get<string>(var_type(string("abc")))) == selected_op::STRING_RVALUE_REF);
+      
    }
 
 BOOST_AUTO_TEST_SUITE_END()

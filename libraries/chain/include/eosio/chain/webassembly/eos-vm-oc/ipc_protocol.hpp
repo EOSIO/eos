@@ -41,7 +41,7 @@ struct code_compilation_result_message {
 struct compilation_result_unknownfailure {};
 struct compilation_result_toofull {};
 
-using wasm_compilation_result = fc::static_variant<code_descriptor,  //a successful compile
+using wasm_compilation_result = std::variant<code_descriptor,  //a successful compile
                                                   compilation_result_unknownfailure,
                                                   compilation_result_toofull>;
 
@@ -51,7 +51,7 @@ struct wasm_compilation_result_message {
    size_t cache_free_bytes;
 };
 
-using eosvmoc_message = fc::static_variant<initialize_message,
+using eosvmoc_message = std::variant<initialize_message,
                                            initalize_response_message,
                                            compile_wasm_message,
                                            evict_wasms_message,

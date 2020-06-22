@@ -75,7 +75,7 @@ namespace eosio { namespace chain {
    using                               fc::flat_map;
    using                               fc::flat_multimap;
    using                               fc::flat_set;
-   using                               fc::static_variant;
+   using                               std::variant;
    using                               fc::ecc::range_proof_type;
    using                               fc::ecc::range_proof_info;
    using                               fc::ecc::commitment_type;

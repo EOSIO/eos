@@ -10,7 +10,7 @@ namespace eosio { namespace chain {
    namespace detail {
       template<typename... Ts>
       struct block_header_extension_types {
-         using block_header_extension_t = fc::static_variant< Ts... >;
+         using block_header_extension_t = std::variant< Ts... >;
          using decompose_t = decompose< Ts... >;
       };
    }

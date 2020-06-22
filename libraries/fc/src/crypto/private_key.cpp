@@ -15,7 +15,7 @@ namespace fc { namespace crypto {
 
    public_key private_key::get_public_key() const
    {
-      return public_key(_storage.visit(public_key_visitor()));
+      return public_key(std::visit(public_key_visitor(), _storage));
    }
 
    struct sign_visitor : visitor<signature::storage_type> {
@@ -36,7 +36,7 @@ namespace fc { namespace crypto {
 
    signature private_key::sign( const sha256& digest, bool require_canonical ) const
    {
-      return signature(_storage.visit(sign_visitor(digest, require_canonical)));
+      return signature(std::visit(sign_visitor(digest, require_canonical), _storage));
    }
 
    struct generate_shared_secret_visitor : visitor<sha512> {
@@ -48,7 +48,7 @@ namespace fc { namespace crypto {
       sha512 operator()(const KeyType& key) const
       {
          using PublicKeyType = typename KeyType::public_key_type;
-         return key.generate_shared_secret(_pub_storage.template get<PublicKeyType>());
+         return key.generate_shared_secret(std::template get<PublicKeyType>(_pub_storage));
       }
 
       const public_key::storage_type&  _pub_storage;
@@ -56,7 +56,7 @@ namespace fc { namespace crypto {
 
    sha512 private_key::generate_shared_secret( const public_key& pub ) const
    {
-      return _storage.visit(generate_shared_secret_visitor(pub._storage));
+      return std::visit(generate_shared_secret_visitor(pub._storage), _storage);
    }
 
    template<typename Data>
@@ -94,7 +94,7 @@ namespace fc { namespace crypto {
 
       if (pivot == std::string::npos) {
          // wif import
-         using default_type = private_key::storage_type::template type_at<0>;
+         using default_type = std::variant_alternative_t<0, private_key::storage_type>;
          return private_key::storage_type(from_wif<default_type>(base58str));
       } else {
          constexpr auto prefix = config::private_key_base_prefix;
@@ -113,14 +113,15 @@ namespace fc { namespace crypto {
 
    std::string private_key::to_string(const fc::yield_function_t& yield) const
    {
-      auto which = _storage.which();
+      // auto which = _storage.which();
+      auto which = _storage.index();
 
       if (which == 0) {
-         using default_type = storage_type::template type_at<0>;
-         return to_wif(_storage.template get<default_type>(), yield);
+         using default_type = std::variant_alternative_t<0, private_key::storage_type>;
+         return to_wif(std::template get<default_type>(_storage), yield);
       }
 
-      auto data_str = _storage.visit(base58str_visitor<storage_type, config::private_key_prefix>(yield));
+      auto data_str = std::visit(base58str_visitor<storage_type, config::private_key_prefix>(yield), _storage);
       return std::string(config::private_key_base_prefix) + "_" + data_str;
    }
 

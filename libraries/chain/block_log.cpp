@@ -37,7 +37,7 @@ namespace eosio { namespace chain {
       std::variant<genesis_state, chain_id_type> chain_context;
 
       chain_id_type chain_id() const {
-         return std::visit(overloaded{[](const chain_id_type& id) { return id; },
+         return visit(overloaded{[](const chain_id_type& id) { return id; },
                                       [](const genesis_state& state) { return state.compute_chain_id(); }},
                            chain_context);
       }
@@ -91,12 +91,12 @@ namespace eosio { namespace chain {
          if (version != initial_version) {
             ds.write(reinterpret_cast<const char*>(&first_block_num), sizeof(first_block_num));
 
-            std::visit(overloaded{[&ds](const chain_id_type& id) { ds << id; },
-                                 [&ds](const genesis_state& state) {
-                                    auto data = fc::raw::pack(state);
-                                    ds.write(data.data(), data.size());
-                                 }},
-                     chain_context);
+         visit(overloaded{[&ds](const chain_id_type& id) { ds << id; },
+                               [&ds](const genesis_state& state) {
+                                  auto data = fc::raw::pack(state);
+                                  ds.write(data.data(), data.size());
+                               }},
+                    chain_context);
 
             auto totem = block_log::npos;
             ds.write(reinterpret_cast<const char*>(&totem), sizeof(totem));
@@ -192,7 +192,7 @@ namespace eosio { namespace chain {
 
       template <typename Stream>
       void unpack(Stream& ds, log_entry& entry) {
-         std::visit(
+         visit(
              overloaded{[&ds](signed_block_v0& v) { fc::raw::unpack(ds, v); }, 
                         [&ds](log_entry_v4& v) { unpack(ds, v); }},
              entry);
@@ -297,7 +297,7 @@ namespace eosio { namespace chain {
       chain_id_type chain_id() const { return preamble.chain_id(); }
 
       fc::optional<genesis_state> get_genesis_state() const {
-         return std::visit(overloaded{[](const chain_id_type&) { return fc::optional<genesis_state>{}; },
+         return visit(overloaded{[](const chain_id_type&) { return fc::optional<genesis_state>{}; },
                                       [](const genesis_state& state) { return fc::optional<genesis_state>{state}; }},
                            preamble.chain_context);
       }
@@ -988,7 +988,7 @@ namespace eosio { namespace chain {
 
       size_t num_trx_pruned = 0;
       for (auto& trx : entry.block.transactions) {
-         num_trx_pruned += trx.trx.visit(pruner);
+         num_trx_pruned += visit(pruner);
       }
       strm.skip(offset_to_block_start(version));
       entry.block.pack(strm, entry.meta.compression);
