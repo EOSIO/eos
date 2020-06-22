@@ -1188,7 +1188,8 @@ struct controller_impl {
              || (code == contract_blacklist_exception::code_value)
              || (code == action_blacklist_exception::code_value)
              || (code == key_blacklist_exception::code_value)
-             || (code == sig_variable_size_limit_exception::code_value);
+             || (code == sig_variable_size_limit_exception::code_value)
+             || (code == inline_action_too_big_nonprivileged::code_value);
    }
 
    bool scheduled_failure_is_subjective( const fc::exception& e ) const {
