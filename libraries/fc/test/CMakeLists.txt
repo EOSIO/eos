@@ -2,7 +2,6 @@ add_subdirectory( crypto )
 add_subdirectory( io )
 add_subdirectory( network )
 add_subdirectory( scoped_exit )
-add_subdirectory( static_variant )
 add_subdirectory( variant )
 
 add_executable( test_base64 test_base64.cpp )
