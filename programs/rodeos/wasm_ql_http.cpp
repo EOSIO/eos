@@ -25,6 +25,7 @@
 #include <eosio/to_json.hpp>
 
 #include <algorithm>
+#include <chrono>
 #include <cstdlib>
 #include <functional>
 #include <iostream>
@@ -151,6 +152,9 @@ template <class Body, class Allocator, class Send>
 void handle_request(const wasm_ql::http_config& http_config, const wasm_ql::shared_state& shared_state,
                     thread_state_cache& state_cache, http::request<Body, http::basic_fields<Allocator>>&& req,
                     Send&& send) {
+
+   //std::cout << "req.keep_alive(): " << req.keep_alive() << std::endl;
+
    // Returns a bad request response
    const auto bad_request = [&http_config, &req](beast::string_view why) {
       http::response<http::string_body> res{ http::status::bad_request, req.version() };
@@ -247,13 +251,41 @@ void handle_request(const wasm_ql::http_config& http_config, const wasm_ql::shar
          if (req.method() != http::verb::post)
             return send(
                   error(http::status::bad_request, "Unsupported HTTP-method for " + req.target().to_string() + "\n"));
-         auto thread_state = state_cache.get_state();
-         send(ok(query_send_transaction(*thread_state, temp_contract_kv_prefix,
-                                        std::string_view{ req.body().data(), req.body().size() },
-                                        false // todo: switch to true when /v1/chain/send_transaction2
-                                        ),
-                 "application/json"));
-         state_cache.store_state(std::move(thread_state));
+         static std::mutex       m;
+         static auto             lastTime  = std::chrono::steady_clock::now();
+         static int              nfinished = 0;
+         auto                    start     = std::chrono::steady_clock::now();
+         static std::atomic<int> nthreads  = 0;
+         auto                    nt        = ++nthreads;
+         try {
+            auto thread_state = state_cache.get_state();
+            send(ok(query_send_transaction(*thread_state, temp_contract_kv_prefix,
+                                           std::string_view{ req.body().data(), req.body().size() },
+                                           false // todo: switch to true when /v1/chain/send_transaction2
+                                           ),
+                    "application/json"));
+            state_cache.store_state(std::move(thread_state));
+         } catch (...) {
+            elog("????????");
+            --nthreads;
+            throw;
+         }
+         --nthreads;
+         auto            stop = std::chrono::steady_clock::now();
+         static int      accn = 0;
+         static uint64_t acct = 0;
+         ++accn;
+         acct += std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count();
+         // std::cout << (std::to_string(std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count()) +
+         //               " us, avg = " + std::to_string(acct / accn) + ", threads = " + std::to_string(nt)) << std::endl;
+         std::unique_lock l{ m };
+         ++nfinished;
+         auto x = std::chrono::duration_cast<std::chrono::microseconds>(stop - lastTime).count();
+         if (x >= 1'000'000) {
+            std::cout << (std::to_string(x) + " us, " + std::to_string(nfinished) + " finished, " + std::to_string(nthreads) + " threads") << std::endl;
+            lastTime  = stop;
+            nfinished = 0;
+         }
          return;
       } else if (req.target().starts_with("/v1/") || http_config.static_dir.empty()) {
          // todo: redirect if /v1/?
@@ -330,6 +362,8 @@ void handle_request(const wasm_ql::http_config& http_config, const wasm_ql::shar
       return send(error(http::status::internal_server_error, "query failed: unknown exception\n"));
    }
 } // handle_request
+
+static std::atomic<int> nn = 0;
 
 // Handles an HTTP server connection
 class http_session : public std::enable_shared_from_this<http_session> {
@@ -413,7 +447,11 @@ class http_session : public std::enable_shared_from_this<http_session> {
                 const std::shared_ptr<const wasm_ql::shared_state>& shared_state,
                 const std::shared_ptr<thread_state_cache>& state_cache, tcp::socket&& socket)
        : stream(std::move(socket)), http_config(http_config), shared_state(shared_state), state_cache(state_cache),
-         queue_(*this) {}
+         queue_(*this) {
+      std::cout << "http_session  " << ++nn << std::endl;
+   }
+
+   ~http_session() { std::cout << "~http_session " << --nn << std::endl; }
 
    // Start the session
    void run() { do_read(); }
@@ -455,6 +493,8 @@ class http_session : public std::enable_shared_from_this<http_session> {
 
    void on_write(bool close, beast::error_code ec, std::size_t bytes_transferred) {
       boost::ignore_unused(bytes_transferred);
+
+      //std::cout << "close = " << close << std::endl;
 
       if (ec)
          return fail(ec, "write");
@@ -531,15 +571,18 @@ class listener : public std::enable_shared_from_this<listener> {
 
  private:
    void do_accept() {
+      //std::cout << "do_accept" << std::endl;
       // The new connection gets its own strand
       acceptor.async_accept(net::make_strand(ioc), beast::bind_front_handler(&listener::on_accept, shared_from_this()));
    }
 
    void on_accept(beast::error_code ec, tcp::socket socket) {
       if (ec) {
+         //std::cout << "on_accept *****fail*****" << std::endl;
          fail(ec, "accept");
       } else {
          // Create the http session and run it
+         //std::cout << "on_accept" << std::endl;
          std::make_shared<http_session>(http_config, shared_state, state_cache, std::move(socket))->run();
       }
 
