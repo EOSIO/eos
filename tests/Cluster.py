@@ -165,7 +165,7 @@ class Cluster(object):
     # pylint: disable=too-many-branches
     # pylint: disable=too-many-statements
     def launch(self, pnodes=1, unstartedNodes=0, totalNodes=1, prodCount=1, topo="mesh", delay=1, onlyBios=False, dontBootstrap=False,
-               totalProducers=None, sharedProducers=0, extraNodeosArgs=" --http-max-response-time-ms 990000 ", useBiosBootFile=True, specificExtraNodeosArgs=None, onlySetProds=False,
+               totalProducers=None, sharedProducers=0, extraNodeosArgs="", useBiosBootFile=True, specificExtraNodeosArgs=None, onlySetProds=False,
                pfSetupPolicy=PFSetupPolicy.FULL, alternateVersionLabelsFile=None, associatedNodeLabels=None, loadSystemContract=True):
         """Launch cluster.
         pnodes: producer nodes count
@@ -195,6 +195,9 @@ class Cluster(object):
             assert(isinstance(alternateVersionLabelsFile, str))
         elif associatedNodeLabels is not None:
             associatedNodeLabels=None    # need to supply alternateVersionLabelsFile to use labels
+
+        if extraNodeosArgs.find("--http-max-response-time-ms") == -1:
+            extraNodeosArgs+=" --http-max-response-time-ms 990000 "
 
         if associatedNodeLabels is not None:
             assert(isinstance(associatedNodeLabels, dict))
