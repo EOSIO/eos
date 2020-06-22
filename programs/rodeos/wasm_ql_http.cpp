@@ -255,6 +255,13 @@ void handle_request(const wasm_ql::http_config& http_config, const wasm_ql::shar
                  "application/json"));
          state_cache.store_state(std::move(thread_state));
          return;
+      } else if (req.target() == "/v1/rodeos/create_checkpoint") {
+         if (!http_config.checkpoint_dir)
+            throw std::runtime_error("Checkpoints are not enabled");
+         auto thread_state = state_cache.get_state();
+         send(ok(query_create_checkpoint(*thread_state, *http_config.checkpoint_dir), "application/json"));
+         state_cache.store_state(std::move(thread_state));
+         return;
       } else if (req.target().starts_with("/v1/") || http_config.static_dir.empty()) {
          // todo: redirect if /v1/?
          return send(

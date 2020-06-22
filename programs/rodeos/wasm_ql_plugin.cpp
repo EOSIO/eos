@@ -52,6 +52,9 @@ void wasm_ql_plugin::set_program_options(options_description& cli, options_descr
    op("wql-max-request-size", bpo::value<uint32_t>()->default_value(10000), "HTTP maximum request body size (bytes)");
    op("wql-idle-timeout", bpo::value<uint64_t>()->default_value(30000), "HTTP idle connection timeout (ms)");
    op("wql-exec-time", bpo::value<uint64_t>()->default_value(200), "Max query execution time (ms)");
+   op("wql-checkpoint-dir", bpo::value<boost::filesystem::path>(),
+      "Directory to place checkpoints. Caution: this allows anyone to create a checkpoint using RPC (default: "
+      "disabled)");
 }
 
 void wasm_ql_plugin::plugin_initialize(const variables_map& options) {
@@ -79,6 +82,14 @@ void wasm_ql_plugin::plugin_initialize(const variables_map& options) {
          http_config->allow_origin = options.at("wql-allow-origin").as<std::string>();
       if (options.count("wql-static-dir"))
          http_config->static_dir = options.at("wql-static-dir").as<std::string>();
+      if (options.count("wql-checkpoint-dir")) {
+         auto path = options.at("wql-checkpoint-dir").as<boost::filesystem::path>();
+         if (path.is_relative())
+            http_config->checkpoint_dir = app().data_dir() / path;
+         else
+            http_config->checkpoint_dir = path;
+         boost::filesystem::create_directories(*http_config->checkpoint_dir);
+      }
    }
    FC_LOG_AND_RETHROW()
 }
