@@ -764,13 +764,24 @@ namespace eosio { namespace chain {
 
          if (index_size) {
             ilog("Index is nonempty");
-            block_log_index index(index_file.get_file_path());
-            
-            if (log_data.last_block_position() != index.back()) {              
-               if (!allow_block_log_auto_fix || !recover_from_incomplete_block_head(log_data, index)) {
-                  ilog("The last block positions from blocks.log and blocks.index are different, Reconstructing index...");
-                  block_log::construct_index(block_file.get_file_path(), index_file.get_file_path());
-               }  
+            if (index_size % sizeof(uint64_t) == 0) {
+               block_log_index index(index_file.get_file_path());
+               
+               if (log_data.last_block_position() != index.back()) {      
+                  if (!allow_block_log_auto_fix)  {
+                     ilog("The last block positions from blocks.log and blocks.index are different, Reconstructing index...");
+                     block_log::construct_index(block_file.get_file_path(), index_file.get_file_path());
+                  }        
+                  else if (!recover_from_incomplete_block_head(log_data, index)) {
+                     block_log::repair_log(block_file.get_file_path().parent_path(), UINT32_MAX);
+                     block_log::construct_index(block_file.get_file_path(), index_file.get_file_path());
+                  }
+               }
+            }
+            else {
+               if (allow_block_log_auto_fix)
+                  block_log::repair_log(block_file.get_file_path().parent_path(), UINT32_MAX);
+               block_log::construct_index(block_file.get_file_path(), index_file.get_file_path());
             }
          } else {
             ilog("Index is empty. Reconstructing index...");
@@ -1035,7 +1046,7 @@ namespace eosio { namespace chain {
       } catch (...) { return false; }
    }
 
-   fc::path block_log::repair_log(const fc::path& data_dir, uint32_t truncate_at_block) {
+   fc::path block_log::repair_log(const fc::path& data_dir, uint32_t truncate_at_block, const char* reversible_block_dir_name) {
       ilog("Recovering Block Log...");
       EOS_ASSERT(fc::is_directory(data_dir) && fc::is_regular_file(data_dir / "blocks.log"), block_log_not_found,
                  "Block log not found in '${blocks_dir}'", ("blocks_dir", data_dir));
@@ -1053,10 +1064,16 @@ namespace eosio { namespace chain {
                  "Cannot move existing blocks directory to already existing directory '${new_blocks_dir}'",
                  ("new_blocks_dir", backup_dir));
 
-      fc::rename(blocks_dir, backup_dir);
+      fc::create_directories(backup_dir);
+      fc::rename(blocks_dir / "blocks.log", backup_dir / "blocks.log");
+      if (fc::exists(blocks_dir/ "blocks.index")) {
+         fc::rename(blocks_dir/ "blocks.index", backup_dir/ "blocks.index");
+      }
+      if (strlen(reversible_block_dir_name) && fc::is_directory(blocks_dir/reversible_block_dir_name)) {
+         fc::rename(blocks_dir/ reversible_block_dir_name, backup_dir/ reversible_block_dir_name);
+      }
       ilog("Moved existing blocks directory to backup location: '${new_blocks_dir}'", ("new_blocks_dir", backup_dir));
 
-      fc::create_directories(blocks_dir);
       const auto block_log_path  = blocks_dir / "blocks.log";
       const auto block_file_name = block_log_path.generic_string();
 

@@ -241,7 +241,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "If the value is empty, blocks files beyond the retained limit will be deleted.\n"
           "All files in the archive directory are completely under user's control, i.e. they won't be accessed by nodeos anymore.")
          ("allow-block-log-auto-fix", bpo::value<bool>()->default_value("false"),
-          "When the existing block log is inconsistent with the index, allows fixing the log file automatically based on the index")
+          "When the existing block log is inconsistent with the index, allows fixing the block log and index files")
          ("protocol-features-dir", bpo::value<bfs::path>()->default_value("protocol_features"),
           "the location of the protocol_features directory (absolute path or relative to application config dir)")
          ("checkpoint", bpo::value<vector<string>>()->composing(), "Pairs of [BLOCK_NUM,BLOCK_ID] that should be enforced as checkpoints.")
@@ -626,7 +626,7 @@ void
 chain_plugin::do_hard_replay(const variables_map& options) {
          ilog( "Hard replay requested: deleting state database" );
          clear_directory_contents( my->chain_config->state_dir );
-         auto backup_dir = block_log::repair_log( my->blocks_dir, options.at( "truncate-at-block" ).as<uint32_t>());
+         auto backup_dir = block_log::repair_log( my->blocks_dir, options.at( "truncate-at-block" ).as<uint32_t>(),config::reversible_blocks_dir_name);
          if( fc::exists( backup_dir / config::reversible_blocks_dir_name ) ||
              options.at( "fix-reversible-blocks" ).as<bool>()) {
             // Do not try to recover reversible blocks if the directory does not exist, unless the option was explicitly provided.

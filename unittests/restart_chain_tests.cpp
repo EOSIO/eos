@@ -395,7 +395,7 @@ BOOST_AUTO_TEST_CASE(test_split_log_replay_retained_block_files_0) {
    split_log_replay(0);
 }
 
-BOOST_FIXTURE_TEST_CASE(restart_from_block_log_with_incomplete_head,restart_from_block_log_test_fixture) {
+BOOST_FIXTURE_TEST_CASE(auto_fix_with_incomplete_head,restart_from_block_log_test_fixture) {
    auto& config = chain.get_config();
    auto blocks_path = config.blocks_dir;
    // write a few random bytes to block log indicating the last block entry is incomplete
@@ -404,6 +404,37 @@ BOOST_FIXTURE_TEST_CASE(restart_from_block_log_with_incomplete_head,restart_from
    logfile.open("ab");
    const char random_data[] = "12345678901231876983271649837";
    logfile.write(random_data, sizeof(random_data));
+   allow_block_log_auto_fix = true;
+}
+
+BOOST_FIXTURE_TEST_CASE(auto_fix_with_corrupted_index,restart_from_block_log_test_fixture) {
+   auto& config = chain.get_config();
+   auto blocks_path = config.blocks_dir;
+   // write a few random index to block log indicating the index is corrupted
+   fc::cfile indexfile;
+   indexfile.set_file_path(config.blocks_dir / "blocks.index");
+   indexfile.open("ab");
+   uint64_t data = UINT64_MAX;
+   indexfile.write(reinterpret_cast<const char*>(&data), sizeof(data));
+   allow_block_log_auto_fix = true;
+}
+
+BOOST_FIXTURE_TEST_CASE(auto_fix_with_corrupted_log_and_index,restart_from_block_log_test_fixture) {
+   auto& config = chain.get_config();
+   auto blocks_path = config.blocks_dir;
+   // write a few random bytes to block log and index
+   fc::cfile indexfile;
+   indexfile.set_file_path(config.blocks_dir / "blocks.index");
+   indexfile.open("ab");
+   const char random_index[] = "1234";
+   indexfile.write(reinterpret_cast<const char*>(&random_index), sizeof(random_index));
+
+   fc::cfile logfile;
+   logfile.set_file_path(config.blocks_dir / "blocks.log");
+   logfile.open("ab");
+   const char random_data[] = "12345678901231876983271649837";
+   logfile.write(random_data, sizeof(random_data));
+
    allow_block_log_auto_fix = true;
 }
 
