@@ -61,7 +61,7 @@ class replay_tester : public base_tester {
 struct restart_from_block_log_test_fixture {
    tester   chain;
    uint32_t cutoff_block_num;
-   bool     allow_block_log_auto_fix = false;
+   bool     fix_irreversible_blocks = false;
    restart_from_block_log_test_fixture() {
       chain.create_account(N(replay1));
       chain.produce_blocks(1);
@@ -80,9 +80,9 @@ struct restart_from_block_log_test_fixture {
       chain.close();
    }
    ~restart_from_block_log_test_fixture() {
-      controller::config copied_config = chain.get_config();
-      copied_config.allow_block_log_auto_fix = this->allow_block_log_auto_fix;
-      auto genesis                           = chain::block_log::extract_genesis_state(chain.get_config().blocks_dir);
+      controller::config copied_config      = chain.get_config();
+      copied_config.fix_irreversible_blocks = this->fix_irreversible_blocks;
+      auto genesis                          = chain::block_log::extract_genesis_state(chain.get_config().blocks_dir);
       BOOST_REQUIRE(genesis);
 
       // remove the state files to make sure we are starting from block log
@@ -404,7 +404,7 @@ BOOST_FIXTURE_TEST_CASE(auto_fix_with_incomplete_head,restart_from_block_log_tes
    logfile.open("ab");
    const char random_data[] = "12345678901231876983271649837";
    logfile.write(random_data, sizeof(random_data));
-   allow_block_log_auto_fix = true;
+   fix_irreversible_blocks = true;
 }
 
 BOOST_FIXTURE_TEST_CASE(auto_fix_with_corrupted_index,restart_from_block_log_test_fixture) {
@@ -416,7 +416,7 @@ BOOST_FIXTURE_TEST_CASE(auto_fix_with_corrupted_index,restart_from_block_log_tes
    indexfile.open("ab");
    uint64_t data = UINT64_MAX;
    indexfile.write(reinterpret_cast<const char*>(&data), sizeof(data));
-   allow_block_log_auto_fix = true;
+   fix_irreversible_blocks = true;
 }
 
 BOOST_FIXTURE_TEST_CASE(auto_fix_with_corrupted_log_and_index,restart_from_block_log_test_fixture) {
@@ -435,7 +435,7 @@ BOOST_FIXTURE_TEST_CASE(auto_fix_with_corrupted_log_and_index,restart_from_block
    const char random_data[] = "12345678901231876983271649837";
    logfile.write(random_data, sizeof(random_data));
 
-   allow_block_log_auto_fix = true;
+   fix_irreversible_blocks = true;
 }
 
 struct blocklog_version_setter {

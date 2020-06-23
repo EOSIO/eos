@@ -240,7 +240,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "the location of the blocks archive directory (absolute path or relative to blocks dir).\n"
           "If the value is empty, blocks files beyond the retained limit will be deleted.\n"
           "All files in the archive directory are completely under user's control, i.e. they won't be accessed by nodeos anymore.")
-         ("allow-block-log-auto-fix", bpo::value<bool>()->default_value("false"),
+         ("fix-irreversible-blocks", bpo::value<bool>()->default_value("false"),
           "When the existing block log is inconsistent with the index, allows fixing the block log and index files automatically - that is, " 
           "it will take the highest indexed block if it is valid; otherwise it will repair the block log and reconstruct the index.")
          ("protocol-features-dir", bpo::value<bfs::path>()->default_value("protocol_features"),
@@ -760,7 +760,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       my->chain_config->blocks_archive_dir = options.at("blocks-archive-dir").as<bfs::path>();
       my->chain_config->blocks_log_stride  = options.at("blocks-log-stride").as<uint32_t>();
       my->chain_config->max_retained_block_files = options.at("max-retained-block-files").as<uint16_t>();
-      my->chain_config->allow_block_log_auto_fix = options.at("allow-block-log-auto-fix").as<bool>();
+      my->chain_config->fix_irreversible_blocks = options.at("fix-irreversible-blocks").as<bool>();
 
       if (auto resmon_plugin = app().find_plugin<resource_monitor_plugin>()) {
         resmon_plugin->monitor_directory(my->chain_config->blocks_dir);

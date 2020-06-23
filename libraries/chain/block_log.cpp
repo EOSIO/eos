@@ -667,7 +667,7 @@ namespace eosio { namespace chain {
          size_t                    stride = std::numeric_limits<size_t>::max();
          static uint32_t           default_version;
 
-         block_log_impl(const fc::path& data_dir, fc::path archive_dir, uint64_t stride, uint16_t max_retained_files, bool allow_block_log_auto_fix);
+         block_log_impl(const fc::path& data_dir, fc::path archive_dir, uint64_t stride, uint16_t max_retained_files, bool fix_irreversible_blocks);
 
          static void ensure_file_exists(fc::cfile& f) {
             if (fc::exists(f.get_file_path()))
@@ -697,8 +697,8 @@ namespace eosio { namespace chain {
    } // namespace detail
 
    block_log::block_log(const fc::path& data_dir, fc::path archive_dir, uint64_t stride,
-                        uint16_t max_retained_files, bool allow_block_log_auto_fix)
-       : my(new detail::block_log_impl(data_dir, archive_dir, stride, max_retained_files, allow_block_log_auto_fix)) {}
+                        uint16_t max_retained_files, bool fix_irreversible_blocks)
+       : my(new detail::block_log_impl(data_dir, archive_dir, stride, max_retained_files, fix_irreversible_blocks)) {}
 
    block_log::~block_log() {}
 
@@ -707,7 +707,7 @@ namespace eosio { namespace chain {
    uint32_t block_log::version() const { return my->preamble.version; }
 
    detail::block_log_impl::block_log_impl(const fc::path& data_dir, fc::path archive_dir, uint64_t stride,
-                                          uint16_t max_retained_files, bool allow_block_log_auto_fix) {
+                                          uint16_t max_retained_files, bool fix_irreversible_blocks) {
 
       if (!fc::is_directory(data_dir))
          fc::create_directories(data_dir);
@@ -768,7 +768,7 @@ namespace eosio { namespace chain {
                block_log_index index(index_file.get_file_path());
                
                if (log_data.last_block_position() != index.back()) {      
-                  if (!allow_block_log_auto_fix)  {
+                  if (!fix_irreversible_blocks)  {
                      ilog("The last block positions from blocks.log and blocks.index are different, Reconstructing index...");
                      block_log::construct_index(block_file.get_file_path(), index_file.get_file_path());
                   }        
@@ -776,13 +776,15 @@ namespace eosio { namespace chain {
                      block_log::repair_log(block_file.get_file_path().parent_path(), UINT32_MAX);
                      block_log::construct_index(block_file.get_file_path(), index_file.get_file_path());
                   }
+               } else if (fix_irreversible_blocks) {
+                  ilog("Irreversible blocks was not corrupted.");
                }
             }
             else {
-               if (allow_block_log_auto_fix)
+               if (fix_irreversible_blocks)
                   block_log::repair_log(block_file.get_file_path().parent_path(), UINT32_MAX);
                block_log::construct_index(block_file.get_file_path(), index_file.get_file_path());
-            }
+            } 
          } else {
             ilog("Index is empty. Reconstructing index...");
             block_log::construct_index(block_file.get_file_path(), index_file.get_file_path());
