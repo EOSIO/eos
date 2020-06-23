@@ -55,24 +55,8 @@ struct overloaded : Ts... {
 template <class... Ts>
 overloaded(Ts...)->overloaded<Ts...>;
 
-// todo: relax some of these limits
-// todo: restore max_function_section_elements to 1023 and use nodeos's hard fork
 struct wasm_ql_backend_options {
-   // static constexpr std::uint32_t max_mutable_global_bytes      = 1024;
-   // static constexpr std::uint32_t max_table_elements            = 1024;
-   // static constexpr std::uint32_t max_section_elements          = 8191;
-   // static constexpr std::uint32_t max_function_section_elements = 8000;
-   // static constexpr std::uint32_t max_import_section_elements   = 1023;
-   // static constexpr std::uint32_t max_element_segment_elements  = 8191;
-   // static constexpr std::uint32_t max_data_segment_bytes        = 8191;
-   // static constexpr std::uint32_t max_linear_memory_init        = 64 * 1024;
-   // static constexpr std::uint32_t max_func_local_bytes          = 8192;
-   // static constexpr std::uint32_t max_local_sets                = 1023;
-   // static constexpr std::uint32_t eosio_max_nested_structures   = 1023;
-   // static constexpr std::uint32_t max_br_table_elements         = 8191;
-   // static constexpr std::uint32_t max_symbol_bytes              = 8191;
-   // static constexpr std::uint32_t max_memory_offset             = (33 * 1024 * 1024 - 1);
-   static constexpr std::uint32_t max_pages      = 528; // 33 MiB
+   std::uint32_t                  max_pages      = 528; // 33 MiB
    static constexpr std::uint32_t max_call_depth = 251;
 };
 
@@ -262,7 +246,8 @@ void run_action(wasm_ql::thread_state& thread_state, const std::vector<char>& co
          entry->name = action.account;
 
       std::call_once(registered_callbacks, register_callbacks);
-      entry->backend = std::make_unique<backend_t>(*code, nullptr);
+      entry->backend = std::make_unique<backend_t>(
+            *code, nullptr, wasm_ql_backend_options{ .max_pages = thread_state.shared->max_pages });
       rhf_t::resolve(entry->backend->get_module());
    }
    auto se = fc::make_scoped_exit([&] { thread_state.shared->backend_cache->add(std::move(*entry)); });

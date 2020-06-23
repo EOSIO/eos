@@ -11,6 +11,7 @@ namespace b1::rodeos::wasm_ql {
 class backend_cache;
 
 struct shared_state {
+   std::uint32_t                           max_pages        = 528; // 33 MiB
    uint32_t                                max_console_size = {};
    uint32_t                                wasm_cache_size  = {};
    uint64_t                                max_exec_time_ms = {};
