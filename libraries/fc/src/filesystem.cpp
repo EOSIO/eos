@@ -446,7 +446,7 @@ namespace fc {
 
    void temp_file_base::release()
    {
-      _path = std::make_optional<fc::path>();
+      _path = std::optional<fc::path>();
    }
 
    const fc::path& home_path()

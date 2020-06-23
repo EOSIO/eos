@@ -608,7 +608,7 @@ namespace eosio { namespace chain {
    std::optional<string> abi_serializer::get_error_message( uint64_t error_code )const {
       auto itr = error_messages.find( error_code );
       if( itr == error_messages.end() )
-         return std::make_optional<string>();
+         return std::optional<string>();
 
       return itr->second;
    }

@@ -297,8 +297,8 @@ namespace eosio { namespace chain {
       chain_id_type chain_id() const { return preamble.chain_id(); }
 
       std::optional<genesis_state> get_genesis_state() const {
-         return std::visit(overloaded{[](const chain_id_type&) { return std::make_optional<genesis_state>(); },
-                                      [](const genesis_state& state) { return std::make_optional<genesis_state>(state); }},
+         return std::visit(overloaded{[](const chain_id_type&) { return std::optional<genesis_state>(); },
+                                      [](const genesis_state& state) { return std::optional<genesis_state>(state); }},
                            preamble.chain_context);
       }
 

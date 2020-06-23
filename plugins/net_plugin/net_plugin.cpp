@@ -3789,7 +3789,7 @@ namespace eosio {
       auto con = my->find_connection( host );
       if( con )
          return con->get_status();
-      return std::make_optional<connection_status>();
+      return std::optional<connection_status>();
    }
 
    vector<connection_status> net_plugin::connections()const {

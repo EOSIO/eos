@@ -1714,7 +1714,7 @@ struct controller_impl {
 
             pending->_block_stage.get<building_block>()._new_pending_producer_schedule = producer_authority_schedule::from_shared(gpo.proposed_schedule);
             db.modify( gpo, [&]( auto& gp ) {
-               gp.proposed_schedule_block_num = std::make_optional<block_num_type>();
+               gp.proposed_schedule_block_num = std::optional<block_num_type>();
                gp.proposed_schedule.version=0;
                gp.proposed_schedule.producers.clear();
             });
@@ -3120,7 +3120,7 @@ const producer_authority_schedule& controller::pending_producers()const {
 std::optional<producer_authority_schedule> controller::proposed_producers()const {
    const auto& gpo = get_global_properties();
    if( !gpo.proposed_schedule_block_num )
-      return std::make_optional<producer_authority_schedule>();
+      return std::optional<producer_authority_schedule>();
 
    return producer_authority_schedule::from_shared(gpo.proposed_schedule);
 }

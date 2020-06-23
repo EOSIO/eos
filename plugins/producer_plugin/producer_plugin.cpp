@@ -1282,7 +1282,7 @@ std::optional<fc::time_point> producer_plugin_impl::calculate_next_block_time(co
    auto itr = std::find_if(active_schedule.begin(), active_schedule.end(), [&](const auto& asp){ return asp.producer_name == producer_name; });
    if (itr == active_schedule.end()) {
       // this producer is not in the active producer set
-      return std::make_optional<fc::time_point>();
+      return std::optional<fc::time_point>();
    }
 
    size_t producer_index = itr - active_schedule.begin();
