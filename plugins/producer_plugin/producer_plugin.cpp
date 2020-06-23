@@ -465,13 +465,16 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
 
          auto future = transaction_metadata::start_recover_keys( trx, _thread_pool->get_executor(),
                 chain.get_chain_id(), fc::microseconds( max_trx_cpu_usage ), chain.configured_subjective_signature_length_limit() );
-         boost::asio::post( _thread_pool->get_executor(), [self = this, future{std::move(future)}, persist_until_expired, next{std::move(next)}, &trx]() mutable {
+
+         auto trx_id = trx->id();
+         boost::asio::post(_thread_pool->get_executor(), [self = this, future{std::move(future)}, persist_until_expired,
+                                                          next{std::move(next)}, trx_id]() mutable {
             if( future.valid() ) {
                future.wait();
-               app().post( priority::low, [self, future{std::move(future)}, persist_until_expired, next{std::move( next )}, &trx]() mutable {
-                  auto exception_handler = [&next, self, &trx](fc::exception_ptr ex) {
+               app().post( priority::low, [self, future{std::move(future)}, persist_until_expired, next{std::move( next )}, trx_id]() mutable {
+                  auto exception_handler = [&next, self, trx_id](fc::exception_ptr ex) {
                     fc_dlog(_trx_failed_trace_log, "[TRX_TRACE] Speculative execution is REJECTING tx: ${txid} : ${why} ",
-                            ("txid", trx->id())("why",ex->what()));
+                            ("txid", trx_id)("why",ex->what()));
                      next(ex);
                   };
                   try {
