@@ -109,7 +109,7 @@ void history_pack_big_bytes(ST& ds, const eosio::chain::bytes& v) {
 
 template <typename ST>
 void history_pack_big_bytes(ST& ds, const std::optional<eosio::chain::bytes>& v) {
-   fc::raw::pack(ds, v);
+   fc::raw::pack(ds, v.has_value());
    if (v)
       history_pack_big_bytes(ds, *v);
 }
