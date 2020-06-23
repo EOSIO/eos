@@ -234,7 +234,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          "this format will be used to construct an extended block log.")
          ("max-retained-block-files", bpo::value<uint16_t>()->default_value(config::default_max_retained_block_files),
           "the maximum number of blocks files to retain so that the blocks in those files can be queried.\n" 
-          "When the number is reached, the oldest block file would be move to archive dir or deleted if the archive dir is empty.\n"
+          "When the number is reached, the oldest block file would be moved to archive dir or deleted if the archive dir is empty.\n"
           "The retained block log files should not be manipulated by users." )
          ("blocks-archive-dir", bpo::value<bfs::path>()->default_value(config::default_blocks_archive_dir_name),
           "the location of the blocks archive directory (absolute path or relative to blocks dir).\n"

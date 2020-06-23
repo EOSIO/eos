@@ -186,9 +186,9 @@ namespace eosio { namespace chain {
       using log_entry = std::variant<log_entry_v4, signed_block_v0>;
 
       const block_header& get_block_header(const log_entry& entry) {
-         return std::visit(overloaded{ [](const signed_block_v0& v) -> const block_header& { return v; },
-                                [](const log_entry_v4& v) -> const block_header& { return v.block; } },
-                    entry);
+         return std::visit(overloaded{[](const signed_block_v0& v) -> const block_header& { return v; },
+                                      [](const log_entry_v4& v) -> const block_header& { return v.block; }},
+                           entry);
       }
 
       template <typename Stream>
