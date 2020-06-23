@@ -53,7 +53,7 @@ namespace fc {
   std::string to_iso_string(const time_point &tp, bool extend_to_usec = false);
   std::string to_iso_string(const time_point_sec &tp);
 
-  inline std::string to_non_delimited_iso_string(const chrono::time_point_sec &  tp);
+  inline std::string to_non_delimited_iso_string(const time_point_sec &  tp);
 
   template <class Duration>
   inline std::string to_string(const Duration &  time) {

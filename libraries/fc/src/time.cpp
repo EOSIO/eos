@@ -38,7 +38,7 @@ namespace fc {
     return boost::posix_time::to_iso_extended_string(ptime);
   }
 
-  inline std::string to_non_delimited_iso_string(const chrono::time_point_sec &tp)
+  inline std::string to_non_delimited_iso_string(const time_point_sec &tp)
   {
     return boost::posix_time::to_iso_string(to_ptime(tp));
   }
