@@ -274,13 +274,13 @@ namespace eosio {
          cfg << "allowed-connection = any\n";
 
          for (const auto& priKey: node_config.producing_keys) {
-            cfg << "private-key = [\"" << std::string(priKey.get_public_key()) << "\",\""
-               << std::string(priKey) << "\"]\n";
+            cfg << "private-key = [\"" << priKey.get_public_key().to_string() << "\",\""
+               << priKey.to_string() << "\"]\n";
          }
 
          if (node_config.producers.size()) {
-            cfg << "private-key = [\"" << std::string(_config.default_key.get_public_key()) << "\",\""
-               << std::string(_config.default_key) << "\"]\n";
+            cfg << "private-key = [\"" << _config.default_key.get_public_key().to_string() << "\",\""
+               << _config.default_key.to_string() << "\"]\n";
          }
          for (auto& p : node_config.producers) {
             cfg << "producer-name = " << p << "\n";
@@ -659,7 +659,7 @@ namespace eosio {
             auto abi_results = result.as<get_abi_results>();
             fc::optional<abi_serializer> abis;
             if( abi_results.abi.valid() ) {
-               abis.emplace( *abi_results.abi, _config.abi_serializer_max_time );
+               abis.emplace( *abi_results.abi, abi_serializer::create_yield_function( _config.abi_serializer_max_time ) );
             }
             std::tie( it, std::ignore ) = abi_cache.emplace( account, abis );
          }
@@ -681,13 +681,13 @@ namespace eosio {
 
          char temp[512 * 1024];
          fc::datastream<char*> ds(temp, sizeof(temp)-1 );
-         abis->variant_to_binary( action_type, action_args_var, ds, _config.abi_serializer_max_time );
+         abis->variant_to_binary( action_type, action_args_var, ds, abi_serializer::create_yield_function( _config.abi_serializer_max_time ) );
          std::vector<char> r;
          r.assign(temp, temp + ds.tellp());
          return r;
       }
 
-      fc::variant push_transaction(int cluster_id, int node_id, signed_transaction& trx,
+      fc::variant push_transaction(int cluster_id, int node_id, signed_transaction&& trx,
                                    const std::vector<public_key_type>& sign_keys = std::vector<public_key_type>(),
                                    packed_transaction::compression_type compression = packed_transaction::compression_type::none) {
          const int port = _running_clusters[cluster_id].nodes[node_id]->http_port;
@@ -721,7 +721,7 @@ namespace eosio {
                   private_key_type pri_key = itr->second;
                   trx.sign(pri_key, *(chain_id_type *)&(info.chain_id));
                } else {
-                  throw std::runtime_error("private key of \"" + (std::string)pub_key + "\" not imported");
+                  throw std::runtime_error("private key of \"" + pub_key.to_string() + "\" not imported");
                }
             }
          } else {
@@ -734,13 +734,14 @@ namespace eosio {
                   private_key_type pri_key = itr->second;
                   trx.sign(pri_key, *(chain_id_type *)&(info.chain_id));
                } else {
-                  throw std::runtime_error("private key of \"" + (std::string)pub_key + "\" not imported");
+                  throw std::runtime_error("private key of \"" + pub_key.to_string() + "\" not imported");
                }
             }
          }
          _running_clusters[cluster_id].transaction_blocknum[trx.id()] = info.head_block_num + 1;
 
-         return call(cluster_id, node_id, "/v1/chain/send_transaction", fc::variant(packed_transaction(trx, compression)));
+         const bool legacy = true;
+         return call(cluster_id, node_id, "/v1/chain/send_transaction", fc::variant(packed_transaction(std::move(trx), legacy, compression)));
       }
 
       fc::variant push_actions(int cluster_id, int node_id, std::vector<chain::action>&& actions,
@@ -748,7 +749,7 @@ namespace eosio {
                                packed_transaction::compression_type compression = packed_transaction::compression_type::none ) {
          signed_transaction trx;
          trx.actions = std::move(actions);
-         return push_transaction(cluster_id, node_id, trx, sign_keys, compression);
+         return push_transaction(cluster_id, node_id, std::move(trx), sign_keys, compression);
       }
 
       fc::variant push_actions(launcher_service::push_actions_param param) {
@@ -791,7 +792,7 @@ namespace eosio {
          std::vector<std::string> pub_keys;
          for (auto& key : param.keys) {
             auto pkey = key.get_public_key();
-            pub_keys.push_back(std::string(pkey));
+            pub_keys.push_back(pkey.to_string());
             cluster_state.imported_keys[pkey] = key;
          }
          return fc::mutable_variant_object("imported_keys", pub_keys);
@@ -803,7 +804,7 @@ namespace eosio {
          private_key_type pri_key = private_key_type::regenerate(fc::ecc::private_key::generate_from_seed(digest).get_secret());
          public_key_type pub_key = pri_key.get_public_key();
          cluster_state.imported_keys[pub_key] = pri_key;
-         return fc::mutable_variant_object("generated_key", std::string(pub_key));
+         return fc::mutable_variant_object("generated_key", pub_key.to_string());
       }
 
       fc::variant verify_transaction(launcher_service::verify_transaction_param param) {
