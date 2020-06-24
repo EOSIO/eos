@@ -32,7 +32,7 @@ struct response_test_fixture {
       response_test_fixture& fixture;
    };
 
-   constexpr static auto default_mock_data_handler = [](const action_trace_v0& a, const yield_function&) -> fc::variant {
+   constexpr static auto default_mock_data_handler = [](const action_trace_v1& a, const yield_function&) -> fc::variant {
       return fc::mutable_variant_object()("hex" , fc::to_hex(a.data.data(), a.data.size()));
    };
 
@@ -42,7 +42,7 @@ struct response_test_fixture {
       :fixture(fixture)
       {}
 
-      fc::variant process_data(const action_trace_v0& action, const yield_function& yield) {
+      fc::variant process_data(const action_trace_v1& action, const yield_function& yield) {
          return fixture.mock_data_handler(action, yield);
       }
 
@@ -65,7 +65,7 @@ struct response_test_fixture {
 
    // fixture data and methods
    std::function<get_block_t(uint32_t, const yield_function&)> mock_get_block;
-   std::function<fc::variant(const action_trace_v0&, const yield_function&)> mock_data_handler = default_mock_data_handler;
+   std::function<fc::variant(const action_trace_v1&, const yield_function&)> mock_data_handler = default_mock_data_handler;
 
    response_impl_type response_impl;
 
@@ -133,7 +133,8 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
                         0,
                         "receiver"_n, "contract"_n, "action"_n,
                         {{ "alice"_n, "active"_n }},
-                        { 0x00, 0x01, 0x02, 0x03 }
+                        { 0x00, 0x01, 0x02, 0x03 },
+                        { 0x04, 0x05, 0x06, 0x07}
                      }
                   }
                },
@@ -171,6 +172,7 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
                            ("permission", "active")
                      }))
                      ("data", "00010203")
+                     ("return_value", "04050607")
                      ("params", fc::mutable_variant_object()
                            ("hex", "00010203"))
                }))
@@ -221,7 +223,8 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
                         0,
                         "receiver"_n, "contract"_n, "action"_n,
                         {{ "alice"_n, "active"_n }},
-                        { 0x00, 0x01, 0x02, 0x03 }
+                        { 0x00, 0x01, 0x02, 0x03 },
+                        { 0x04, 0x05, 0x06, 0x07}
                      }
                   }
                },
@@ -259,6 +262,7 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
                            ("permission", "active")
                      }))
                      ("data", "00010203")
+                     ("return_value", "04050607")
                }))
                ("status", "executed")
                ("cpu_usage_us", 10)
@@ -281,7 +285,7 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
       };
 
       // simulate an inability to parse the parameters
-      mock_data_handler = [](const action_trace_v0&, const yield_function&) -> fc::variant {
+      mock_data_handler = [](const action_trace_v1&, const yield_function&) -> fc::variant {
          return {};
       };
 
@@ -312,19 +316,22 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
                         1,
                         "receiver"_n, "contract"_n, "action"_n,
                         {{ "alice"_n, "active"_n }},
-                        { 0x01, 0x01, 0x01, 0x01 }
+                        { 0x01, 0x01, 0x01, 0x01 },
+                        { 0x05, 0x05, 0x05, 0x05}
                      },
                      {
                         0,
                         "receiver"_n, "contract"_n, "action"_n,
                         {{ "alice"_n, "active"_n }},
-                        { 0x00, 0x00, 0x00, 0x00 }
+                        { 0x00, 0x00, 0x00, 0x00 },
+                        { 0x04, 0x04, 0x04, 0x04 }
                      },
                      {
                         2,
                         "receiver"_n, "contract"_n, "action"_n,
                         {{ "alice"_n, "active"_n }},
-                        { 0x02, 0x02, 0x02, 0x02 }
+                        { 0x02, 0x02, 0x02, 0x02 },
+                        { 0x06, 0x06, 0x06, 0x06}
                      }
                   }
                },
@@ -362,6 +369,7 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
                            ("permission", "active")
                      }))
                      ("data", "00000000")
+                     ("return_value", "04040404")
                   ,
                   fc::mutable_variant_object()
                      ("global_sequence", 1)
@@ -374,6 +382,7 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
                            ("permission", "active")
                      }))
                      ("data", "01010101")
+                     ("return_value", "05050505")
                   ,
                   fc::mutable_variant_object()
                      ("global_sequence", 2)
@@ -386,6 +395,7 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
                            ("permission", "active")
                      }))
                      ("data", "02020202")
+                     ("return_value", "06060606")
                }))
                ("status", "executed")
                ("cpu_usage_us", 10)
@@ -408,7 +418,7 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
       };
 
       // simulate an inability to parse the parameters
-      mock_data_handler = [](const action_trace_v0&, const yield_function&) -> fc::variant {
+      mock_data_handler = [](const action_trace_v1&, const yield_function&) -> fc::variant {
          return {};
       };
 
@@ -500,7 +510,8 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
                         0,
                         "receiver"_n, "contract"_n, "action"_n,
                         {{ "alice"_n, "active"_n }},
-                        { 0x00, 0x01, 0x02, 0x03 }
+                        { 0x00, 0x01, 0x02, 0x03 },
+                        { 0x04, 0x05, 0x06, 0x07 }
                      }
                   }
                },
@@ -559,7 +570,8 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
                      0,
                      "receiver"_n, "contract"_n, "action"_n,
                      {{ "alice"_n, "active"_n }},
-                     { 0x00, 0x01, 0x02, 0x03 }
+                     { 0x00, 0x01, 0x02, 0x03 },
+                     { 0x04, 0x05, 0x06, 0x07 }
                   }
                }
             }
@@ -588,6 +600,7 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
                            ("permission", "active")
                      }))
                      ("data", "00010203")
+                     ("return_value", "04050607")
                      ("params", fc::mutable_variant_object()
                         ("hex", "00010203")
                      )

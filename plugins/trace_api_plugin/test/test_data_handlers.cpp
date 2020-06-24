@@ -12,8 +12,8 @@ using namespace eosio::trace_api::test_common;
 BOOST_AUTO_TEST_SUITE(abi_data_handler_tests)
    BOOST_AUTO_TEST_CASE(empty_data)
    {
-      auto action = action_trace_v0 {
-         0, "alice"_n, "alice"_n, "foo"_n, {}, {}
+      auto action = action_trace_v1 {
+         0, "alice"_n, "alice"_n, "foo"_n, {}, {},{}
       };
       abi_data_handler handler(exception_handler{});
 
@@ -25,8 +25,8 @@ BOOST_AUTO_TEST_SUITE(abi_data_handler_tests)
 
    BOOST_AUTO_TEST_CASE(no_abi)
    {
-      auto action = action_trace_v0 {
-         0, "alice"_n, "alice"_n, "foo"_n, {}, {0x00, 0x01, 0x02, 0x03}
+      auto action = action_trace_v1 {
+         0, "alice"_n, "alice"_n, "foo"_n, {}, {0x00, 0x01, 0x02, 0x03},{0x04,0x05,0x06,0x07}
       };
       abi_data_handler handler(exception_handler{});
 
@@ -38,8 +38,8 @@ BOOST_AUTO_TEST_SUITE(abi_data_handler_tests)
 
    BOOST_AUTO_TEST_CASE(basic_abi)
    {
-      auto action = action_trace_v0 {
-            0, "alice"_n, "alice"_n, "foo"_n, {}, {0x00, 0x01, 0x02, 0x03}
+      auto action = action_trace_v1 {
+            0, "alice"_n, "alice"_n, "foo"_n, {}, {0x00, 0x01, 0x02, 0x03},{0x04,0x05,0x06,0x07}
       };
 
       auto abi = chain::abi_def ( {},
@@ -69,8 +69,8 @@ BOOST_AUTO_TEST_SUITE(abi_data_handler_tests)
 
    BOOST_AUTO_TEST_CASE(basic_abi_wrong_type)
    {
-      auto action = action_trace_v0 {
-            0, "alice"_n, "alice"_n, "foo"_n, {}, {0x00, 0x01, 0x02, 0x03}
+      auto action = action_trace_v1 {
+            0, "alice"_n, "alice"_n, "foo"_n, {}, {0x00, 0x01, 0x02, 0x03},{0x04,0x05,0x06,0x07}
       };
 
       auto abi = chain::abi_def ( {},
@@ -96,8 +96,8 @@ BOOST_AUTO_TEST_SUITE(abi_data_handler_tests)
 
    BOOST_AUTO_TEST_CASE(basic_abi_insufficient_data)
    {
-      auto action = action_trace_v0 {
-            0, "alice"_n, "alice"_n, "foo"_n, {}, {0x00, 0x01, 0x02}
+      auto action = action_trace_v1 {
+            0, "alice"_n, "alice"_n, "foo"_n, {}, {0x00, 0x01, 0x02},{0x04,0x05,0x06}
       };
 
       auto abi = chain::abi_def ( {},

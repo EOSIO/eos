@@ -92,6 +92,17 @@ namespace eosio::trace_api {
          lhs.data == rhs.data;
    }
 
+   bool operator==(const action_trace_v1& lhs, const action_trace_v1& rhs) {
+      return
+         lhs.global_sequence == rhs.global_sequence &&
+         lhs.receiver == rhs.receiver &&
+         lhs.account == rhs.account &&
+         lhs.action == rhs.action &&
+         lhs.authorization == rhs.authorization &&
+         lhs.data == rhs.data &&
+         lhs.return_value == rhs.return_value;
+   }
+
    bool operator==(const transaction_trace_v0& lhs,  const transaction_trace_v0& rhs) {
       return
          lhs.id == rhs.id &&

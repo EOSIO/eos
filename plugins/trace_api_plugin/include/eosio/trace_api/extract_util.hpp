@@ -5,13 +5,18 @@
 
 namespace eosio { namespace trace_api {
 
-/// Used by to_transaction_trace_v0 for creation of action_trace_v0
-inline action_trace_v0 to_action_trace_v0( const chain::action_trace& at ) {
-   action_trace_v0 r;
+
+
+/// Used by to_transaction_trace_v0 for creation of action_trace_v1
+inline action_trace_v1 to_action_trace_v1( const chain::action_trace& at ) {
+   action_trace_v1 r;
    r.receiver = at.receiver;
    r.account = at.act.account;
    r.action = at.act.name;
    r.data = at.act.data;
+      // action_trace_v1 has return value, It's the only difference with action_trace_v0 
+   r.return_value = at.return_value;
+   
    if( at.receipt ) {
       r.global_sequence = at.receipt->global_sequence;
    }
@@ -23,8 +28,8 @@ inline action_trace_v0 to_action_trace_v0( const chain::action_trace& at ) {
 }
 
 /// @return transaction_trace_v0 with populated action_trace_v0
-inline transaction_trace_v0 to_transaction_trace_v0( const chain::transaction_trace_ptr& t ) {
-   transaction_trace_v0 r;
+inline transaction_trace_v1 to_transaction_trace_v0( const chain::transaction_trace_ptr& t ) {
+   transaction_trace_v1 r;
    if( !t->failed_dtrx_trace ) {
       r.id = t->id;
    } else {
@@ -33,7 +38,7 @@ inline transaction_trace_v0 to_transaction_trace_v0( const chain::transaction_tr
    r.actions.reserve( t->action_traces.size());
    for( const auto& at : t->action_traces ) {
       if( !at.context_free ) { // not including CFA at this time
-         r.actions.emplace_back( to_action_trace_v0( at ));
+         r.actions.emplace_back( to_action_trace_v1( at ));
       }
    }
    return r;
@@ -57,7 +62,7 @@ inline transaction_trace_v1 to_transaction_trace_v1( const cache_trace& t ) {
     r.actions.reserve( t.trace->action_traces.size());
     for( const auto& at : t.trace->action_traces ) {
         if( !at.context_free ) { // not including CFA at this time
-            r.actions.emplace_back( to_action_trace_v0( at ));
+            r.actions.emplace_back( to_action_trace_v1( at ));
         }
     }
     return r;

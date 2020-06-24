@@ -37,7 +37,7 @@ namespace eosio {
        * @param yield - a yield function to allow cooperation during long running tasks
        * @return variant representing the `data` field of the action interpreted by known ABIs OR an empty variant
        */
-      fc::variant process_data( const action_trace_v0& action, const yield_function& yield );
+      fc::variant process_data( const action_trace_v1& action, const yield_function& yield );
 
       /**
        * Utility class that allows mulitple request_handlers to share the same abi_data_handler
@@ -48,7 +48,7 @@ namespace eosio {
          :handler(handler)
          {}
 
-         fc::variant process_data( const action_trace_v0& action, const yield_function& yield ) {
+         fc::variant process_data( const action_trace_v1& action, const yield_function& yield ) {
             return handler->process_data(action, yield);
          }
 

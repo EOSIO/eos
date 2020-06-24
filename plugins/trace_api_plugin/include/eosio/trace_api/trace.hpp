@@ -21,11 +21,21 @@ namespace eosio { namespace trace_api {
       chain::bytes                        data = {};
    };
 
+      struct action_trace_v1 {
+      uint64_t                            global_sequence = {};
+      chain::name                         receiver = {};
+      chain::name                         account = {};
+      chain::name                         action = {};
+      std::vector<authorization_trace_v0> authorization = {};
+      chain::bytes                        data = {};
+      chain::bytes                        return_value = {};   // add return_value 
+   };
+
   struct transaction_trace_v0 {
       using status_type = chain::transaction_receipt_header::status_enum;
 
       chain::transaction_id_type    id = {};
-      std::vector<action_trace_v0>  actions = {};
+      std::vector<action_trace_v1>  actions = {};
    };
 
   struct transaction_trace_v1 : public transaction_trace_v0 {
@@ -61,6 +71,7 @@ namespace eosio { namespace trace_api {
 
 FC_REFLECT(eosio::trace_api::authorization_trace_v0, (account)(permission))
 FC_REFLECT(eosio::trace_api::action_trace_v0, (global_sequence)(receiver)(account)(action)(authorization)(data))
+FC_REFLECT(eosio::trace_api::action_trace_v1, (global_sequence)(receiver)(account)(action)(authorization)(data)(return_value))
 FC_REFLECT(eosio::trace_api::transaction_trace_v0, (id)(actions))
 FC_REFLECT_DERIVED(eosio::trace_api::transaction_trace_v1, (eosio::trace_api::transaction_trace_v0), (status)(cpu_usage_us)(net_usage_words)(signatures)(trx_header))
 FC_REFLECT(eosio::trace_api::block_trace_v0, (id)(number)(previous_id)(timestamp)(producer)(transactions))

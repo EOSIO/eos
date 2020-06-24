@@ -6,8 +6,7 @@
 #include <eosio/trace_api/common.hpp>
 
 namespace eosio::trace_api {
-   using data_handler_function = std::function<fc::variant(const action_trace_v0&, const yield_function&)>;
-
+   using data_handler_function = std::function<fc::variant(const action_trace_v1&, const yield_function&)>;
    namespace detail {
       class response_formatter {
       public:
@@ -43,7 +42,7 @@ namespace eosio::trace_api {
 
          yield();
 
-         auto data_handler = [this](const action_trace_v0& action, const yield_function& yield) -> fc::variant {
+         auto data_handler = [this](const action_trace_v1& action, const yield_function& yield) -> fc::variant {
             return data_handler_provider.process_data(action, yield);
          };
 

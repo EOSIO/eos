@@ -9,7 +9,7 @@ namespace eosio::trace_api {
             std::make_shared<chain::abi_serializer>(abi, chain::abi_serializer::create_yield_function(fc::microseconds::maximum())));
    }
 
-   fc::variant abi_data_handler::process_data(const action_trace_v0& action, const yield_function& yield ) {
+   fc::variant abi_data_handler::process_data(const action_trace_v1& action, const yield_function& yield ) {
       if (abi_serializer_by_account.count(action.account) > 0) {
          const auto& serializer_p = abi_serializer_by_account.at(action.account);
          auto type_name = serializer_p->get_action_type(action.action);

@@ -27,7 +27,7 @@ namespace {
 
    }
 
-   fc::variants process_actions(const std::vector<action_trace_v0>& actions, const data_handler_function& data_handler, const yield_function& yield ) {
+   fc::variants process_actions(const std::vector<action_trace_v1>& actions, const data_handler_function& data_handler, const yield_function& yield ) {
       fc::variants result;
       result.reserve(actions.size());
 
@@ -48,7 +48,8 @@ namespace {
                ("account", a.account.to_string())
                ("action", a.action.to_string())
                ("authorization", process_authorizations(a.authorization, yield))
-               ("data", fc::to_hex(a.data.data(), a.data.size()));
+               ("data", fc::to_hex(a.data.data(), a.data.size()))
+               ("return_value", fc::to_hex(a.return_value.data(), a.return_value.size()));    // add return_value if input is action_trace_v1
 
          auto params = data_handler(a, yield);
          if (!params.is_null()) {
@@ -77,7 +78,7 @@ namespace {
       return result;
    }
 
-    fc::variants process_transactions(const std::vector<transaction_trace_v1>& transactions, const data_handler_function& data_handler, const yield_function& yield ) {
+    fc::variants process_transactions(const std::vector<transaction_trace_v1>& transactions, const data_handler_function & data_handler, const yield_function& yield ) {
         fc::variants result;
         result.reserve(transactions.size());
         for ( const auto& t: transactions) {
