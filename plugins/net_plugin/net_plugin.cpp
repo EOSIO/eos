@@ -532,8 +532,8 @@ namespace eosio {
 
    class connection : public std::enable_shared_from_this<connection> {
    public:
-      explicit connection( string endpoint );
-      connection();
+      explicit connection(producer_plugin* pp, string endpoint );
+      connection(producer_plugin* pp);
 
       ~connection() {}
 
@@ -551,7 +551,8 @@ namespace eosio {
 
       void update_endpoints();
 
-      optional<peer_sync_state>    peer_requested;  // this peer is requesting info from us
+      producer_plugin*          producer_plug;
+      optional<peer_sync_state> peer_requested; // this peer is requesting info from us
 
       std::atomic<bool>                         socket_open{false};
 
@@ -811,8 +812,9 @@ namespace eosio {
 
    //---------------------------------------------------------------------------
 
-   connection::connection( string endpoint )
-      : peer_addr( endpoint ),
+   connection::connection(producer_plugin* pp,  string endpoint )
+      : producer_plug(pp),
+        peer_addr( endpoint ),
         strand( my_impl->thread_pool->get_executor() ),
         socket( new tcp::socket( my_impl->thread_pool->get_executor() ) ),
         connection_id( ++my_impl->current_connection_id ),
@@ -823,8 +825,9 @@ namespace eosio {
       fc_ilog( logger, "creating connection to ${n}", ("n", endpoint) );
    }
 
-   connection::connection()
-      : peer_addr(),
+   connection::connection(producer_plugin* pp)
+      : producer_plug(pp),
+        peer_addr(),
         strand( my_impl->thread_pool->get_executor() ),
         socket( new tcp::socket( my_impl->thread_pool->get_executor() ) ),
         connection_id( ++my_impl->current_connection_id ),
@@ -2313,7 +2316,7 @@ namespace eosio {
    }
 
    void net_plugin_impl::start_listen_loop() {
-      connection_ptr new_connection = std::make_shared<connection>();
+      connection_ptr new_connection = std::make_shared<connection>(producer_plug);
       new_connection->connecting = true;
       new_connection->strand.post( [this, new_connection = std::move( new_connection )](){
          acceptor->async_accept( *new_connection->socket,
@@ -2616,13 +2619,8 @@ namespace eosio {
          return true;
       }
 
-      uint32_t trx_in_progress_sz = this->trx_in_progress_size.load();
-      if( trx_in_progress_sz > def_max_trx_in_progress_size ) {
-         fc_wlog( logger, "Dropping trx, too many trx in progress ${s} bytes", ("s", trx_in_progress_sz) );
-         pending_message_buffer.advance_read_ptr( message_length );
-         return true;
-      }
-
+      unsigned long trx_in_progress_sz = this->trx_in_progress_size.load();
+      
       bool have_trx = false;
       shared_ptr<packed_transaction> ptr;
       auto ds = pending_message_buffer.create_datastream();
@@ -2633,6 +2631,12 @@ namespace eosio {
          fc::optional<transaction_id_type> trx_id;
          fc::raw::unpack( ds, trx_id );
          if( trx_id ) {
+            if (trx_in_progress_sz > def_max_trx_in_progress_size) {
+               char reason[72];
+               snprintf(reason, 72, "Dropping trx, too many trx in progress %lu bytes", trx_in_progress_sz);
+               producer_plug->log_failed_transaction(*trx_id, reason);
+               return true;
+            }
             have_trx = my_impl->dispatcher->add_peer_txn( *trx_id, connection_id );
          }
          if( have_trx ) {
@@ -2654,6 +2658,12 @@ namespace eosio {
       } else {
          packed_transaction_v0 pt_v0;
          fc::raw::unpack( ds, pt_v0 );
+         if( trx_in_progress_sz > def_max_trx_in_progress_size) {
+            char reason[72];
+            snprintf(reason, 72, "Dropping trx, too many trx in progress %lu bytes", trx_in_progress_sz);
+            producer_plug->log_failed_transaction(pt_v0.id(), reason);
+            return true;
+         }
          have_trx = my_impl->dispatcher->have_txn( pt_v0.id() );
          node_transaction_state nts = {pt_v0.id(), pt_v0.expiration(), 0, connection_id};
          my_impl->dispatcher->add_peer_txn( nts );
@@ -3743,7 +3753,7 @@ namespace eosio {
       if( my->find_connection( host ) )
          return "already connected";
 
-      connection_ptr c = std::make_shared<connection>( host );
+      connection_ptr c = std::make_shared<connection>(my->producer_plug, host );
       fc_dlog( logger, "calling active connector: ${h}", ("h", host) );
       if( c->resolve_and_connect() ) {
          fc_dlog( logger, "adding new connection to the list: ${c}", ("c", c->peer_name()) );

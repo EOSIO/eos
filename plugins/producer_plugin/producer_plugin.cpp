@@ -2050,4 +2050,9 @@ void producer_plugin_impl::produce_block() {
 
 }
 
+void producer_plugin::log_failed_transaction(const transaction_id_type& trx_id, const char* reason) const {
+   fc_dlog(_trx_failed_trace_log, "[TRX_TRACE] Speculative execution is REJECTING tx: ${txid} : ${why}",
+           ("trxid", trx_id)("reason", reason));
+}
+
 } // namespace eosio
