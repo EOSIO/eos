@@ -893,7 +893,7 @@ class Cluster:
                     break
 
         for additional in additional_extra_configs:
-            self.extra_configs.append(f"{additional}=990000")
+            self.extra_configs.append(f"{additional}=1000000")
 
         # ensure that net_plugin_impl always has an explicitly provided logging level
         new_logger = "net_plugin_impl"
