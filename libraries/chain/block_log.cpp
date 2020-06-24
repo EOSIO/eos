@@ -700,6 +700,10 @@ namespace eosio { namespace chain {
                         uint16_t max_retained_files, bool fix_irreversible_blocks)
        : my(new detail::block_log_impl(data_dir, archive_dir, stride, max_retained_files, fix_irreversible_blocks)) {}
 
+   block_log::block_log(const fc::path& data_dir,bool fix_irreversible_blocks,
+                        fc::path archive_dir, uint64_t stride, uint16_t max_retained_files)
+       : block_log(data_dir, archive_dir, stride, max_retained_files, fix_irreversible_blocks) {}
+
    block_log::~block_log() {}
 
 

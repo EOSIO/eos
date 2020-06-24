@@ -36,6 +36,9 @@ namespace eosio { namespace chain {
       public:
          block_log(const fc::path& data_dir, fc::path backup_dir = fc::path(), uint64_t stride=1000, 
                    uint16_t max_retained_files=10, bool fix_irreversible_blocks=false);
+         block_log(const fc::path& data_dir, bool fix_irreversible_blocks,
+                  fc::path backup_dir = fc::path(), uint64_t stride=1000,
+                  uint16_t max_retained_files=10);
          block_log(block_log&& other) = default;
          ~block_log();
          
