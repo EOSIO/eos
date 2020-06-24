@@ -395,6 +395,45 @@ BOOST_AUTO_TEST_CASE(test_split_log_replay_retained_block_files_0) {
    split_log_replay(0);
 }
 
+BOOST_AUTO_TEST_CASE(test_restart_without_blocks_log_file) {
+
+   namespace bfs = boost::filesystem;
+   fc::temp_directory temp_dir;
+
+   const uint32_t stride = 20;
+
+   tester chain(
+         temp_dir,
+         [](controller::config& config) {
+            config.blocks_log_stride        = stride;
+            config.max_retained_block_files = 10;
+         },
+         true);
+   chain.produce_blocks(160);
+   
+   controller::config copied_config = chain.get_config();
+   auto               genesis       = chain::block_log::extract_genesis_state(chain.get_config().blocks_dir);
+   BOOST_REQUIRE(genesis);
+
+   chain.close();
+
+   // remove the state files to make sure we are starting from block log
+   remove_existing_states(copied_config);
+   // we need to remove the reversible blocks so that new blocks can be produced from the new chain
+   bfs::remove_all(copied_config.blocks_dir/"reversible");
+   bfs::remove(copied_config.blocks_dir/"blocks.log");
+   bfs::remove(copied_config.blocks_dir/"blocks.index");
+   copied_config.blocks_log_stride        = stride;
+   copied_config.max_retained_block_files = 10;
+   tester from_block_log_chain(copied_config, *genesis);
+   BOOST_CHECK( from_block_log_chain.control->fetch_block_by_number(1)->block_num() == 1);
+   BOOST_CHECK( from_block_log_chain.control->fetch_block_by_number(75)->block_num() == 75);
+   BOOST_CHECK( from_block_log_chain.control->fetch_block_by_number(100)->block_num() == 100);
+   BOOST_CHECK( from_block_log_chain.control->fetch_block_by_number(160)->block_num() == 160);
+
+   from_block_log_chain.produce_blocks(10);
+}
+
 BOOST_FIXTURE_TEST_CASE(auto_fix_with_incomplete_head,restart_from_block_log_test_fixture) {
    auto& config = chain.get_config();
    auto blocks_path = config.blocks_dir;
