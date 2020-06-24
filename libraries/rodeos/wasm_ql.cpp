@@ -5,16 +5,20 @@
 #include <b1/rodeos/callbacks/console.hpp>
 #include <b1/rodeos/callbacks/memory.hpp>
 #include <b1/rodeos/callbacks/unimplemented.hpp>
+#include <b1/rodeos/rodeos.hpp>
+#include <boost/filesystem.hpp>
 #include <boost/multi_index/member.hpp>
 #include <boost/multi_index/ordered_index.hpp>
 #include <boost/multi_index/sequenced_index.hpp>
 #include <boost/multi_index_container.hpp>
+#include <chrono>
 #include <eosio/abi.hpp>
 #include <eosio/bytes.hpp>
 #include <eosio/vm/watchdog.hpp>
 #include <fc/log/logger.hpp>
 #include <fc/scoped_exit.hpp>
 #include <mutex>
+#include <rocksdb/utilities/checkpoint.h>
 
 using namespace std::literals;
 namespace ship_protocol = eosio::ship_protocol;
@@ -648,5 +652,77 @@ transaction_trace_v0 query_send_transaction(wasm_ql::thread_state&              
 
    return tt;
 } // query_send_transaction
+
+struct create_checkpoint_result {
+   std::string        path{};
+   eosio::checksum256 chain_id{};
+   uint32_t           head{};
+   eosio::checksum256 head_id{};
+   uint32_t           irreversible{};
+   eosio::checksum256 irreversible_id{};
+};
+
+EOSIO_REFLECT(create_checkpoint_result, path, chain_id, head, head_id, irreversible, irreversible_id)
+
+const std::vector<char>& query_create_checkpoint(wasm_ql::thread_state&         thread_state,
+                                                 const boost::filesystem::path& dir) {
+   try {
+      std::time_t t       = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+      char        buf[30] = "temp";
+      strftime(buf, 30, "%FT%H-%M-%S", localtime(&t));
+      auto tmp_path = dir / buf;
+      ilog("creating checkpoint ${p}", ("p", tmp_path.string()));
+
+      rocksdb::Checkpoint* p;
+      b1::chain_kv::check(rocksdb::Checkpoint::Create(thread_state.shared->db->rdb.get(), &p),
+                          "query_create_checkpoint: rocksdb::Checkpoint::Create: ");
+      std::unique_ptr<rocksdb::Checkpoint> checkpoint{ p };
+      b1::chain_kv::check(checkpoint->CreateCheckpoint(tmp_path.string()),
+                          "query_create_checkpoint: rocksdb::Checkpoint::CreateCheckpoint: ");
+
+      create_checkpoint_result result;
+      {
+         ilog("examining checkpoint ${p}", ("p", tmp_path.string()));
+         auto                       db        = std::make_shared<chain_kv::database>(tmp_path.c_str(), false);
+         auto                       partition = std::make_shared<rodeos::rodeos_db_partition>(db, std::vector<char>{});
+         rodeos::rodeos_db_snapshot snap{ partition, true };
+
+         result.chain_id        = snap.chain_id;
+         result.head            = snap.head;
+         result.head_id         = snap.head_id;
+         result.irreversible    = snap.irreversible;
+         result.irreversible_id = snap.irreversible_id;
+         auto head_id_json      = eosio::convert_to_json(result.head_id);
+         result.path            = tmp_path.string() +
+                       ("-head-" + std::to_string(result.head) + "-" + head_id_json.substr(1, head_id_json.size() - 2));
+
+         ilog("checkpoint contains:");
+         ilog("    revisions:    ${f} - ${r}",
+              ("f", snap.undo_stack->first_revision())("r", snap.undo_stack->revision()));
+         ilog("    chain:        ${a}", ("a", eosio::convert_to_json(snap.chain_id)));
+         ilog("    head:         ${a} ${b}", ("a", snap.head)("b", eosio::convert_to_json(snap.head_id)));
+         ilog("    irreversible: ${a} ${b}",
+              ("a", snap.irreversible)("b", eosio::convert_to_json(snap.irreversible_id)));
+      }
+
+      ilog("rename ${a} to ${b}", ("a", tmp_path.string())("b", result.path));
+      boost::filesystem::rename(tmp_path, result.path);
+
+      auto json = eosio::convert_to_json(result);
+      thread_state.action_return_value.assign(json.begin(), json.end());
+
+      ilog("checkpoint finished");
+      return thread_state.action_return_value;
+   } catch (const std::exception& e) {
+      elog("std::exception creating snapshot: ${e}", ("e", e.what()));
+      throw;
+   } catch (const fc::exception& e) {
+      elog("fc::exception creating snapshot: ${e}", ("e", e.to_detail_string()));
+      throw;
+   } catch (...) {
+      elog("unknown exception creating snapshot");
+      throw;
+   }
+}
 
 } // namespace b1::rodeos::wasm_ql
