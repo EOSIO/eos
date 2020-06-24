@@ -203,9 +203,6 @@ try:
     # verify it shuts down cleanly
     cluster.getNode(2).interruptAndVerifyExitStatus()
 
-    # test for blocks.index
-    blockIndexFile.close();
-    blockIndexFileSize = os.path.getsize(blockIndexFileName)
     # test for blocks.log
     blockLogFileName=os.path.join(blockLogDir, "blocks.log")
     blockIndexFileSize = os.path.getsize(blockIndexFileName)
@@ -218,8 +215,6 @@ try:
     truncatedBlockLogFileSize = os.path.getsize(blockLogFileName)
     assert truncatedBlockLogFileSize == blockLogFileSize - 1, "blocks.log not truncated properly\n"
 
-    # check_files should throw an exception
-    try:
     # fix_irreversible_blocks
     output=cluster.getBlockLog(0, blockLogAction=BlockLogAction.fix_irreversible_blocks)
 
