@@ -2852,8 +2852,9 @@ namespace eosio {
 
       uint32_t trx_in_progress_sz = this->trx_in_progress_size.load();
       if( trx_in_progress_sz > def_max_trx_in_progress_size ) {
-         fc_wlog( logger, "Dropping trx ${id}, too many trx in progress ${s} bytes",
-                  ("id", tid)("s", trx_in_progress_sz) );
+         char reason[72];
+         snprintf(reason, 72, "Dropping trx, too many trx in progress %lu bytes", (unsigned long) trx_in_progress_sz);
+         my_impl->producer_plug->log_failed_transaction(tid, reason);
          return;
       }
 
