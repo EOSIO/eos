@@ -700,7 +700,7 @@ namespace eosio { namespace chain {
                         uint16_t max_retained_files, bool fix_irreversible_blocks)
        : my(new detail::block_log_impl(data_dir, archive_dir, stride, max_retained_files, fix_irreversible_blocks)) {}
 
-    block_log::~block_log() {}
+   block_log::~block_log() {}
 
 
    void block_log::set_version(uint32_t ver) { detail::block_log_impl::default_version = ver; }
