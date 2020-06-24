@@ -49,6 +49,7 @@ addEnum(BlockLogAction, "trim")
 addEnum(BlockLogAction, "smoke_test")
 addEnum(BlockLogAction, "return_blocks")
 addEnum(BlockLogAction, "prune_transactions")
+addEnum(BlockLogAction, "fix_irreversible_blocks")
 
 ###########################################################################################
 
@@ -424,6 +425,8 @@ class Utils:
             blockLogActionStr=" --make-index "
         elif blockLogAction==BlockLogAction.trim:
             blockLogActionStr=" --trim "
+        elif blockLogAction==BlockLogAction.fix_irreversible_blocks:
+            blockLogActionStr=" --fix-irreversible-blocks "
         elif blockLogAction==BlockLogAction.smoke_test:
             blockLogActionStr = " --smoke-test "
         elif blockLogAction == BlockLogAction.prune_transactions:
