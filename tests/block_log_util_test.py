@@ -221,7 +221,7 @@ try:
     # check_files should throw an exception
     try:
     # fix_irreversible_blocks
-    output=cluster.getBlockLog(0, blockLogAction=BlockLogAction.fix_irreversbie_blocks)
+    output=cluster.getBlockLog(0, blockLogAction=BlockLogAction.fix_irreversible_blocks)
 
     output=cluster.getBlockLog(0, blockLogAction=BlockLogAction.smoke_test)
     expectedStr="no problems found"

@@ -49,6 +49,7 @@ addEnum(BlockLogAction, "trim")
 addEnum(BlockLogAction, "smoke_test")
 addEnum(BlockLogAction, "return_blocks")
 addEnum(BlockLogAction, "prune_transactions")
+addEnum(BlockLogAction, "fix_irreversible_blocks")
 
 ###########################################################################################
 
