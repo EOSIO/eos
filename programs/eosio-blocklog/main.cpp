@@ -192,8 +192,8 @@ void blocklog::set_program_options(options_description& cli)
          ("trim-blocklog", bpo::bool_switch(&trim_log)->default_value(false),
           "Trim blocks.log and blocks.index. Must give 'blocks-dir' and 'first and/or 'last'.")
          ("fix-irreversible-blocks", bpo::bool_switch(&fix_irreversible_blocks)->default_value(false),
-	      "When the existing block log is inconsistent with the index, allows fixing the block log and index files automatically - that is, "
-		  "it will take the highest indexed block if it is valid; otherwise it will repair the block log and reconstruct the index.")
+          "When the existing block log is inconsistent with the index, allows fixing the block log and index files automatically - that is, "
+          "it will take the highest indexed block if it is valid; otherwise it will repair the block log and reconstruct the index.")
          ("smoke-test", bpo::bool_switch(&smoke_test)->default_value(false),
           "Quick test that blocks.log and blocks.index are well formed and agree with each other.")
          ("block-num", bpo::value<uint32_t>()->default_value(0), "The block number which contains the transactions to be pruned")
@@ -239,7 +239,7 @@ bool trim_blocklog_front(bfs::path block_dir, uint32_t n) {        //n is first 
 
 void fix_irreversible_blocks(bfs::path block_dir) {
     std::cout << "\nfix_irreversible_blocks of blocks.log and blocks.index in directory " << block_dir << '\n';
-    block_log block_logger(block_dir, true);
+    block_log block_logger(block_dir, fc::path(), 0, 0, true);
     std::cout << "\nSmoke test of blocks.log and blocks.index in directory " << block_dir << '\n';
     block_log::smoke_test(block_dir, 0);
 }
