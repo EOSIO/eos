@@ -150,7 +150,6 @@ public:
 
 
    fc::optional<fork_database>      fork_db;
-   fc::optional<block_log>          block_logger;
    fc::optional<controller::config> chain_config;
    fc::optional<controller>         chain;
    fc::optional<genesis_state>      genesis;
@@ -228,6 +227,22 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
    cfg.add_options()
          ("blocks-dir", bpo::value<bfs::path>()->default_value("blocks"),
           "the location of the blocks directory (absolute path or relative to application data dir)")
+         ("blocks-log-stride", bpo::value<uint32_t>()->default_value(config::default_blocks_log_stride),
+         "split the block log file when the head block number is the multiple of the split factor\n"
+         "When the stride is reached, the current block log and index will be renamed 'blocks-<start num>-<end num>.log/index'\n"
+         "and a new current block log and index will be created with the most recent block. All files following\n"
+         "this format will be used to construct an extended block log.")
+         ("max-retained-block-files", bpo::value<uint16_t>()->default_value(config::default_max_retained_block_files),
+          "the maximum number of blocks files to retain so that the blocks in those files can be queried.\n" 
+          "When the number is reached, the oldest block file would be moved to archive dir or deleted if the archive dir is empty.\n"
+          "The retained block log files should not be manipulated by users." )
+         ("blocks-archive-dir", bpo::value<bfs::path>()->default_value(config::default_blocks_archive_dir_name),
+          "the location of the blocks archive directory (absolute path or relative to blocks dir).\n"
+          "If the value is empty, blocks files beyond the retained limit will be deleted.\n"
+          "All files in the archive directory are completely under user's control, i.e. they won't be accessed by nodeos anymore.")
+         ("fix-irreversible-blocks", bpo::value<bool>()->default_value("false"),
+          "When the existing block log is inconsistent with the index, allows fixing the block log and index files automatically - that is, " 
+          "it will take the highest indexed block if it is valid; otherwise it will repair the block log and reconstruct the index.")
          ("protocol-features-dir", bpo::value<bfs::path>()->default_value("protocol_features"),
           "the location of the protocol_features directory (absolute path or relative to application config dir)")
          ("checkpoint", bpo::value<vector<string>>()->composing(), "Pairs of [BLOCK_NUM,BLOCK_ID] that should be enforced as checkpoints.")
@@ -612,7 +627,7 @@ void
 chain_plugin::do_hard_replay(const variables_map& options) {
          ilog( "Hard replay requested: deleting state database" );
          clear_directory_contents( my->chain_config->state_dir );
-         auto backup_dir = block_log::repair_log( my->blocks_dir, options.at( "truncate-at-block" ).as<uint32_t>());
+         auto backup_dir = block_log::repair_log( my->blocks_dir, options.at( "truncate-at-block" ).as<uint32_t>(),config::reversible_blocks_dir_name);
          if( fc::exists( backup_dir / config::reversible_blocks_dir_name ) ||
              options.at( "fix-reversible-blocks" ).as<bool>()) {
             // Do not try to recover reversible blocks if the directory does not exist, unless the option was explicitly provided.
@@ -742,6 +757,10 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       my->chain_config->blocks_dir = my->blocks_dir;
       my->chain_config->state_dir = app().data_dir() / config::default_state_dir_name;
       my->chain_config->read_only = my->readonly;
+      my->chain_config->blocks_archive_dir = options.at("blocks-archive-dir").as<bfs::path>();
+      my->chain_config->blocks_log_stride  = options.at("blocks-log-stride").as<uint32_t>();
+      my->chain_config->max_retained_block_files = options.at("max-retained-block-files").as<uint16_t>();
+      my->chain_config->fix_irreversible_blocks = options.at("fix-irreversible-blocks").as<bool>();
 
       if (auto resmon_plugin = app().find_plugin<resource_monitor_plugin>()) {
         resmon_plugin->monitor_directory(my->chain_config->blocks_dir);
