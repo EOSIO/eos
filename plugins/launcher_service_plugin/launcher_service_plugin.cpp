@@ -687,7 +687,7 @@ namespace eosio {
          return r;
       }
 
-      fc::variant push_transaction(int cluster_id, int node_id, signed_transaction&& trx,
+      fc::variant push_transaction(int cluster_id, int node_id, signed_transaction& trx,
                                    const std::vector<public_key_type>& sign_keys = std::vector<public_key_type>(),
                                    packed_transaction::compression_type compression = packed_transaction::compression_type::none) {
          const int port = _running_clusters[cluster_id].nodes[node_id]->http_port;
@@ -741,7 +741,7 @@ namespace eosio {
          _running_clusters[cluster_id].transaction_blocknum[trx.id()] = info.head_block_num + 1;
 
          const bool legacy = true;
-         return call(cluster_id, node_id, "/v1/chain/send_transaction", fc::variant(packed_transaction(std::move(trx), legacy, compression)));
+         return call(cluster_id, node_id, "/v1/chain/send_transaction", fc::variant(packed_transaction_v0(trx, compression)));
       }
 
       fc::variant push_actions(int cluster_id, int node_id, std::vector<chain::action>&& actions,
@@ -749,7 +749,7 @@ namespace eosio {
                                packed_transaction::compression_type compression = packed_transaction::compression_type::none ) {
          signed_transaction trx;
          trx.actions = std::move(actions);
-         return push_transaction(cluster_id, node_id, std::move(trx), sign_keys, compression);
+         return push_transaction(cluster_id, node_id, trx, sign_keys, compression);
       }
 
       fc::variant push_actions(launcher_service::push_actions_param param) {
