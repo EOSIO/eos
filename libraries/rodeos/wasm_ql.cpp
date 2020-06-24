@@ -721,18 +721,19 @@ const std::vector<char>& query_create_checkpoint(wasm_ql::thread_state&         
       }
 
       ilog("rename ${a} to ${b}", ("a", tmp_path.string())("b", result.path));
-      ilog("checkpoint finished");
       boost::filesystem::rename(tmp_path, result.path);
 
       auto json = eosio::convert_to_json(result);
       thread_state.action_return_value.assign(json.begin(), json.end());
+
+      ilog("checkpoint finished");
       return thread_state.action_return_value;
    } catch (const std::exception& e) {
       elog("std::exception creating snapshot: ${e}", ("e", e.what()));
       throw;
    } catch (const fc::exception& e) {
-      throw;
       elog("fc::exception creating snapshot: ${e}", ("e", e.to_detail_string()));
+      throw;
    } catch (...) {
       elog("unknown exception creating snapshot");
       throw;
