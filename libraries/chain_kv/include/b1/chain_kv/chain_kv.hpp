@@ -135,6 +135,7 @@ struct database {
             std::optional<int> max_open_files = {}) {
 
       rocksdb::Options options;
+      options.OptimizeUniversalStyleCompaction();
       options.create_if_missing                    = create_if_missing;
       options.level_compaction_dynamic_level_bytes = true;
       options.bytes_per_sync                       = 1048576;

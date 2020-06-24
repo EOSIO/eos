@@ -127,8 +127,6 @@ void rodeos_db_snapshot::end_block(const get_blocks_result_base& result, bool fo
       first = head;
    if (write_now)
       end_write(write_now);
-   if (near)
-      db->flush(false, false);
 }
 
 void rodeos_db_snapshot::check_write(const ship_protocol::get_blocks_result_base& result) {
