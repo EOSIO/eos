@@ -2371,7 +2371,9 @@ void read_write::send_transaction(const read_write::send_transaction_params& par
       auto resolver = make_resolver(this, abi_serializer::create_yield_function( abi_serializer_max_time ));
       packed_transaction_ptr input_trx;
       try {
+         ilog("REMOVE send_transaction from_variant timeout:${t} sec",("t",abi_serializer_max_time.count() / 1'000'000));
          abi_serializer::from_variant(params, input_trx_v0, std::move( resolver ), abi_serializer::create_yield_function( abi_serializer_max_time ));
+         ilog("REMOVE send_transaction from_variant done");
          input_trx = std::make_shared<packed_transaction>( std::move( input_trx_v0 ), true );
       } EOS_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid packed transaction")
 
@@ -2385,8 +2387,11 @@ void read_write::send_transaction(const read_write::send_transaction_params& par
             try {
                fc::variant output;
                try {
+                  ilog("REMOVE send_transaction to_variant_with_abi timeout:${t} sec",("t",abi_serializer_max_time.count() / 1'000'000));
                   output = db.to_variant_with_abi( *trx_trace_ptr, abi_serializer::create_yield_function( abi_serializer_max_time ) );
+                  ilog("REMOVE to_variant_with_abi from_variant done");
                } catch( chain::abi_exception& ) {
+                  ilog("REMOVE to_variant_with_abi from_variant done (exception)");
                   output = *trx_trace_ptr;
                }
 
