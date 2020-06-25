@@ -64,7 +64,7 @@ void from_index(variant& v, int index)
 {
   if constexpr(i >= std::variant_size_v<variant>)
   {
-    FC_THROW_EXCEPTION(fc::out_of_range_exception, "Provided index out of range for variant.");
+    FC_THROW_EXCEPTION(fc::assert_exception, "Provided index out of range for variant.");
   }
   else if (index == 0)
   {
