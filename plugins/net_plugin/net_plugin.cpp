@@ -2616,7 +2616,7 @@ namespace eosio {
          return true;
       }
 
-      unsigned long trx_in_progress_sz = this->trx_in_progress_size.load();
+      const unsigned long trx_in_progress_sz = this->trx_in_progress_size.load();
 
       auto report_dropping_trx = [](const transaction_id_type& trx_id, unsigned long trx_in_progress_sz) {
          char reason[72];
@@ -2651,7 +2651,7 @@ namespace eosio {
 
             if (ptr && trx_id && *trx_id != ptr->id()) {
                my_impl->producer_plug->log_failed_transaction(*trx_id, "Provided trx_id does not match provided packed_transaction");
-               EOS_ASSERT(true, transaction_id_type_exception,
+               EOS_ASSERT(false, transaction_id_type_exception,
                         "Provided trx_id does not match provided packed_transaction" );
             }
             
