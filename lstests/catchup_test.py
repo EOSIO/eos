@@ -43,14 +43,15 @@ def start_gen(clus):
     clus.info(">>> [Catch-up Test] Generate Transactions")
     clus.call("send_raw", url=START_URL, string_data=START_STR, node_id=1, level="trace")
     blks = 30
+    leeway_time = blks * 0.5 + 2
     begin = clus.get_head_block_number(node_id=0)
     clus.info(f"Generation begins around block num {begin}")
-    clus.debug(f"Wait {blks * 0.5} seconds for {blks} blocks...")
-    time.sleep(blks * 0.5)
+    clus.debug(f"Wait {leeway_time} seconds for {blks} blocks...")
+    time.sleep(leeway_time)
     end = clus.check_sync().block_num
     if end - begin < blks:
         raise BlockchainError(f"Blocks produced ({end - begin}) are fewer than expected ({blks})")
-    clus.info(f"Generation ends at block num {end}")
+    clus.info(f"Generation syncing ends at block num {end}")
     return (begin, end)
 
 
