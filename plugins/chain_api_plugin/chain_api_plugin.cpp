@@ -44,47 +44,34 @@ struct async_result_visitor : public fc::visitor<fc::variant> {
           } \
        }}
 
-#define no_print(data)
-#define log_data(data) \
-    ilog(data);
-
-#define CALL_ASYNC_WITH_400(api_name, api_handle, api_namespace, call_name, call_result, http_response_code, params_type, print) \
+#define CALL_ASYNC_WITH_400(api_name, api_handle, api_namespace, call_name, call_result, http_response_code, params_type) \
 {std::string("/v1/" #api_name "/" #call_name), \
    [api_handle](string, string body, url_response_callback cb) mutable { \
-      print("REMOVE handling http call"); \
       api_handle.validate(); \
       try { \
          auto params = parse_params<api_namespace::call_name ## _params, params_type>(body);\
-         print("REMOVE calling api"); \
          api_handle.call_name( std::move(params),\
             [cb, body](const fc::static_variant<fc::exception_ptr, call_result>& result){\
                if (result.contains<fc::exception_ptr>()) {\
                   try {\
-                     print("REMOVE had exception"); \
                      result.get<fc::exception_ptr>()->dynamic_rethrow_exception();\
                   } catch (...) {\
-                     print("REMOVE handle inner exception"); \
                      http_plugin::handle_exception(#api_name, #call_name, body, cb);\
-                     print("REMOVE handle inner exception done"); \
                   }\
                } else {\
-                  print("REMOVE replying to caller"); \
                   cb(http_response_code, result.visit(async_result_visitor()));\
-                  print("REMOVE replying to caller done"); \
                }\
             });\
       } catch (...) { \
-         print("REMOVE handle outer exception"); \
          http_plugin::handle_exception(#api_name, #call_name, body, cb); \
-         print("REMOVE handle outer exception done"); \
       } \
    }\
 }
 
 #define CHAIN_RO_CALL(call_name, http_response_code, params_type) CALL_WITH_400(chain, ro_api, chain_apis::read_only, call_name, http_response_code, params_type)
 #define CHAIN_RW_CALL(call_name, http_response_code, params_type) CALL_WITH_400(chain, rw_api, chain_apis::read_write, call_name, http_response_code, params_type)
-#define CHAIN_RO_CALL_ASYNC(call_name, call_result, http_response_code, params_type) CALL_ASYNC_WITH_400(chain, ro_api, chain_apis::read_only, call_name, call_result, http_response_code, params_type, no_print)
-#define CHAIN_RW_CALL_ASYNC(call_name, call_result, http_response_code, params_type) CALL_ASYNC_WITH_400(chain, rw_api, chain_apis::read_write, call_name, call_result, http_response_code, params_type, log_data)
+#define CHAIN_RO_CALL_ASYNC(call_name, call_result, http_response_code, params_type) CALL_ASYNC_WITH_400(chain, ro_api, chain_apis::read_only, call_name, call_result, http_response_code, params_type)
+#define CHAIN_RW_CALL_ASYNC(call_name, call_result, http_response_code, params_type) CALL_ASYNC_WITH_400(chain, rw_api, chain_apis::read_write, call_name, call_result, http_response_code, params_type)
 
 void chain_api_plugin::plugin_startup() {
    ilog( "starting chain_api_plugin" );

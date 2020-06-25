@@ -2369,14 +2369,13 @@ void read_write::push_transactions(const read_write::push_transactions_params& p
 }
 
 void read_write::send_transaction(const read_write::send_transaction_params& params, next_function<read_write::send_transaction_results> next) {
-   ilog("REMOVE send_transaction timeout:${t} sec",("t",abi_serializer_max_time.count() / 1'000'000));
 
    try {
       packed_transaction_v0 input_trx_v0;
       auto resolver = make_resolver(this, abi_serializer::create_yield_function( abi_serializer_max_time ));
       packed_transaction_ptr input_trx;
       try {
-         ilog("REMOVE send_transaction from_variant");
+         ilog("REMOVE send_transaction from_variant timeout:${t} sec",("t",abi_serializer_max_time.count() / 1'000'000));
          abi_serializer::from_variant(params, input_trx_v0, std::move( resolver ), abi_serializer::create_yield_function( abi_serializer_max_time ));
          ilog("REMOVE send_transaction from_variant done");
          input_trx = std::make_shared<packed_transaction>( std::move( input_trx_v0 ), true );
@@ -2385,27 +2384,23 @@ void read_write::send_transaction(const read_write::send_transaction_params& par
       app().get_method<incoming::methods::transaction_async>()(input_trx, true,
             [this, next](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
          if (result.contains<fc::exception_ptr>()) {
-            ilog("REMOVE send_transaction passing exception to next");
             next(result.get<fc::exception_ptr>());
-            ilog("REMOVE send_transaction passing exception to next done");
          } else {
             auto trx_trace_ptr = result.get<transaction_trace_ptr>();
 
             try {
                fc::variant output;
                try {
-                  ilog("REMOVE send_transaction to_variant_with_abi");
+                  ilog("REMOVE send_transaction to_variant_with_abi timeout:${t} sec",("t",abi_serializer_max_time.count() / 1'000'000));
                   output = db.to_variant_with_abi( *trx_trace_ptr, abi_serializer::create_yield_function( abi_serializer_max_time ) );
-                  ilog("REMOVE send_transaction to_variant_with_abi done");
+                  ilog("REMOVE to_variant_with_abi from_variant done");
                } catch( chain::abi_exception& ) {
                   ilog("REMOVE to_variant_with_abi from_variant done (exception)");
                   output = *trx_trace_ptr;
                }
 
                const chain::transaction_id_type& id = trx_trace_ptr->id;
-               ilog("REMOVE send_transaction next");
                next(read_write::send_transaction_results{id, output});
-               ilog("REMOVE send_transaction next done");
             } CATCH_AND_CALL(next);
          }
       });
