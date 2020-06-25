@@ -2152,6 +2152,7 @@ fc::variant read_only::get_block(const read_only::get_block_params& params) cons
                chain::block_id_type_exception,
                "Invalid Block number or ID, must be greater than 0 and less than 64 characters"
    );
+   ilog("REMOVE get_block: ${b}",("b", params.block_num_or_id));
 
    try {
       block_num = fc::to_uint64(params.block_num_or_id);
@@ -2169,12 +2170,15 @@ fc::variant read_only::get_block(const read_only::get_block_params& params) cons
 
    // serializes signed_block to variant in signed_block_v0 format
    fc::variant pretty_output;
+   ilog("REMOVE get_block: ${b} to_variant",("b", params.block_num_or_id));
    abi_serializer::to_variant(*block, pretty_output, make_resolver(this, abi_serializer::create_yield_function( abi_serializer_max_time )),
                               abi_serializer::create_yield_function( abi_serializer_max_time ));
+   ilog("REMOVE get_block: ${b} to_variant done",("b", params.block_num_or_id));
 
    const auto id = block->calculate_id();
    const uint32_t ref_block_prefix = id._hash[1];
 
+   ilog("REMOVE get_block: ${b} done",("b", params.block_num_or_id));
    return fc::mutable_variant_object(pretty_output.get_object())
            ("id", id)
            ("block_num",block->block_num())
