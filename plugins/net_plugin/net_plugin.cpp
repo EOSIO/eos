@@ -2617,7 +2617,13 @@ namespace eosio {
       }
 
       unsigned long trx_in_progress_sz = this->trx_in_progress_size.load();
-      
+
+      auto report_dropping_trx = [](const transaction_id_type& trx_id, unsigned long trx_in_progress_sz) {
+         char reason[72];
+         snprintf(reason, 72, "Dropping trx, too many trx in progress %lu bytes", trx_in_progress_sz);
+         my_impl->producer_plug->log_failed_transaction(trx_id, reason);
+      };
+
       bool have_trx = false;
       shared_ptr<packed_transaction> ptr;
       auto ds = pending_message_buffer.create_datastream();
@@ -2629,13 +2635,12 @@ namespace eosio {
          fc::raw::unpack( ds, trx_id );
          if( trx_id ) {
             if (trx_in_progress_sz > def_max_trx_in_progress_size) {
-               char reason[72];
-               snprintf(reason, 72, "Dropping trx, too many trx in progress %lu bytes", trx_in_progress_sz);
-               my_impl->producer_plug->log_failed_transaction(*trx_id, reason);
+               report_dropping_trx(*trx_id, trx_in_progress_sz);
                return true;
             }
             have_trx = my_impl->dispatcher->add_peer_txn( *trx_id, connection_id );
          }
+
          if( have_trx ) {
             const auto buff_size_current = pending_message_buffer.bytes_to_read();
             pending_message_buffer.advance_read_ptr( message_length - (buff_size_start - buff_size_current) );
@@ -2643,9 +2648,19 @@ namespace eosio {
             std::shared_ptr<packed_transaction> trx;
             fc::raw::unpack( ds, trx );
             ptr = std::move( trx );
-            EOS_ASSERT( !trx_id || !ptr || *trx_id == ptr->id(), transaction_id_type_exception,
+
+            if (ptr && trx_id && *trx_id != ptr->id()) {
+               my_impl->producer_plug->log_failed_transaction(*trx_id, "Provided trx_id does not match provided packed_transaction");
+               EOS_ASSERT(true, transaction_id_type_exception,
                         "Provided trx_id does not match provided packed_transaction" );
+            }
+            
             if( !trx_id ) {
+               if (trx_in_progress_sz > def_max_trx_in_progress_size) {
+                  report_dropping_trx(ptr->id(), trx_in_progress_sz);
+                  return true;
+               }
+
                have_trx = my_impl->dispatcher->have_txn( ptr->id() );
             }
             node_transaction_state nts = {ptr->id(), ptr->expiration(), 0, connection_id};
@@ -2656,9 +2671,7 @@ namespace eosio {
          packed_transaction_v0 pt_v0;
          fc::raw::unpack( ds, pt_v0 );
          if( trx_in_progress_sz > def_max_trx_in_progress_size) {
-            char reason[72];
-            snprintf(reason, 72, "Dropping trx, too many trx in progress %lu bytes", trx_in_progress_sz);
-            my_impl->producer_plug->log_failed_transaction(pt_v0.id(), reason);
+            report_dropping_trx(pt_v0.id(), trx_in_progress_sz);
             return true;
          }
          have_trx = my_impl->dispatcher->have_txn( pt_v0.id() );
