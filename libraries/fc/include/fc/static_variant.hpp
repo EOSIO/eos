@@ -22,7 +22,7 @@ template<typename Result>
 struct visitor {};
 
 template<typename T, typename... Types>
-constexpr T& get_if(std::variant<Types...>& v)
+constexpr T& get(std::variant<Types...>& v)
 {
   if (auto result = std::get_if<T>(&v))
   {
@@ -33,7 +33,7 @@ constexpr T& get_if(std::variant<Types...>& v)
 }
 
 template<typename T, typename... Types>
-constexpr const T& get_if(const std::variant<Types...>& v)
+constexpr const T& get(const std::variant<Types...>& v)
 {
   if (const auto result = std::get_if<T>(&v))
   {
