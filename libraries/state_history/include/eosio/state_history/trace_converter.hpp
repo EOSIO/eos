@@ -127,7 +127,7 @@ void unpack(ISTREAM&& strm, ondisk_prunable_data_t& prunable, compression_type c
 template <typename ISTREAM, typename Visitor>
 void visit_deserialized_trace(ISTREAM& strm, transaction_trace& trace, compression_type compression,
                               Visitor&& visitor) {
-   auto& trace_v0 = std::get<transaction_trace_v0>(trace);
+   auto& trace_v0 = fc::get_if<transaction_trace_v0>(trace);
    if (trace_v0.failed_dtrx_trace.size()) {
       // failed_dtrx_trace have at most one element because it is encoded as an optional
       visit_deserialized_trace(strm, trace_v0.failed_dtrx_trace[0].recurse, compression,
@@ -206,7 +206,7 @@ void unpack(ISTREAM&& strm, std::vector<transaction_trace>& traces) {
    for (auto& trace : traces) {
       visit_deserialized_trace(strm, trace, static_cast<compression_type>(compression),
                                [](transaction_trace_v0& trace, ondisk_prunable_data_t&& prunable_data) {
-                                  auto& ptrx         = std::get<partial_transaction_v1>(*trace.partial);
+                                  auto& ptrx         = fc::get_if<partial_transaction_v1>(*trace.partial);
                                   ptrx.prunable_data = to_prunable_data_type(std::move(prunable_data));
                                });
    }

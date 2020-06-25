@@ -1132,7 +1132,7 @@ struct controller_impl {
 
    // The returned scoped_exit should not exceed the lifetime of the pending which existed when make_block_restore_point was called.
    fc::scoped_exit<std::function<void()>> make_block_restore_point() {
-      auto& bb = std::get<building_block>(pending->_block_stage);
+      auto& bb = fc::get_if<building_block>(pending->_block_stage);
       auto orig_trx_receipts_size           = bb._pending_trx_receipts.size();
       auto orig_trx_metas_size              = bb._pending_trx_metas.size();
       auto orig_trx_receipt_digests_size    = std::holds_alternative<digests_t>(bb._trx_mroot_or_receipt_digests) ?
@@ -1145,7 +1145,7 @@ struct controller_impl {
             orig_trx_receipt_digests_size,
             orig_action_receipt_digests_size]()
       {
-        auto& bb = std::get<building_block>(pending->_block_stage);
+        auto& bb = fc::get_if<building_block>(pending->_block_stage);
          bb._pending_trx_receipts.resize(orig_trx_receipts_size);
          bb._pending_trx_metas.resize(orig_trx_metas_size);
         if( std::holds_alternative<digests_t>(bb._trx_mroot_or_receipt_digests) )
@@ -1461,7 +1461,7 @@ struct controller_impl {
       r.cpu_usage_us         = cpu_usage_us;
       r.net_usage_words      = net_usage_words;
       r.status               = status;
-      auto& bb = std::get<building_block>(pending->_block_stage);
+      auto& bb = fc::get_if<building_block>(pending->_block_stage);
       if( std::holds_alternative<digests_t>(bb._trx_mroot_or_receipt_digests) )
          std::get<digests_t>(bb._trx_mroot_or_receipt_digests).emplace_back( r.digest() );
       return r;
@@ -1622,7 +1622,7 @@ struct controller_impl {
       pending->_block_status = s;
       pending->_producer_block_id = producer_block_id;
 
-      auto& bb = std::get<building_block>(pending->_block_stage);
+      auto& bb = fc::get_if<building_block>(pending->_block_stage);
       const auto& pbhs = bb._pending_block_header_state;
 
       if ( read_mode == db_read_mode::SPECULATIVE || pending->_block_status != controller::block_status::incomplete )
@@ -1767,14 +1767,14 @@ struct controller_impl {
       );
       resource_limits.process_block_usage(pbhs.block_num);
 
-      auto& bb = std::get<building_block>(pending->_block_stage);
+      auto& bb = fc::get_if<building_block>(pending->_block_stage);
 
       // Create (unsigned) block:
       auto block_ptr = std::make_shared<signed_block>( pbhs.make_block_header(
          std::holds_alternative<checksum256_type>(bb._trx_mroot_or_receipt_digests) ?
                std::get<checksum256_type>(bb._trx_mroot_or_receipt_digests) :
                merkle( std::move( std::get<digests_t>(bb._trx_mroot_or_receipt_digests) ) ),
-         merkle( std::move( std::get<building_block>(pending->_block_stage)._action_receipt_digests ) ),
+         merkle( std::move( fc::get_if<building_block>(pending->_block_stage)._action_receipt_digests ) ),
          bb._new_pending_producer_schedule,
          std::move( bb._new_protocol_feature_activations ),
          protocol_features.get_protocol_feature_set()
@@ -2006,7 +2006,7 @@ struct controller_impl {
 
          finalize_block();
 
-         auto& ab = std::get<assembled_block>(pending->_block_stage);
+         auto& ab = fc::get_if<assembled_block>(pending->_block_stage);
 
          // this implicitly asserts that all header fields (less the signature) are identical
          EOS_ASSERT( producer_block_id == ab._id, block_validate_exception, "Block ID does not match",
@@ -2737,7 +2737,7 @@ block_state_ptr controller::finalize_block( const signer_callback_type& signer_c
 
    my->finalize_block();
 
-   auto& ab = std::get<assembled_block>(my->pending->_block_stage);
+   auto& ab = fc::get_if<assembled_block>(my->pending->_block_stage);
 
    auto bsp = std::make_shared<block_state>(
                   std::move( ab._pending_block_header_state ),

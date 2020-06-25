@@ -92,12 +92,12 @@ namespace eosio { namespace chain {
          if (version != initial_version) {
             ds.write(reinterpret_cast<const char*>(&first_block_num), sizeof(first_block_num));
 
-         std::visit(overloaded{[&ds](const chain_id_type& id) { ds << id; },
-                               [&ds](const genesis_state& state) {
-                                  auto data = fc::raw::pack(state);
-                                  ds.write(data.data(), data.size());
-                               }},
-                    chain_context);
+            std::visit(overloaded{[&ds](const chain_id_type& id) { ds << id; },
+                                  [&ds](const genesis_state& state) {
+                                      auto data = fc::raw::pack(state);
+                                      ds.write(data.data(), data.size());
+                                  }}, 
+                       chain_context);
 
             auto totem = block_log::npos;
             ds.write(reinterpret_cast<const char*>(&totem), sizeof(totem));

@@ -138,7 +138,7 @@ namespace fc { namespace crypto {
       };
 
       static bool apply(const variant_type& a, const variant_type& b) {
-        return a.index() == b.index() && std::visit(visitor(b), a);
+         return a.index() == b.index() && std::visit(visitor(b), a);
       }
    };
 
@@ -166,7 +166,7 @@ namespace fc { namespace crypto {
       };
 
       static bool apply(const variant_type& a, const variant_type& b) {
-        return a.index() < b.index() || (a.index() == b.index() && std::visit(visitor(b), a));
+         return a.index() < b.index() || (a.index() == b.index() && std::visit(visitor(b), a));
       }
    };
 

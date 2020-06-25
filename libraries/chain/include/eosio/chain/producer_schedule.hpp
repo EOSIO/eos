@@ -177,7 +177,7 @@ namespace eosio { namespace chain {
       }
 
       static std::pair<bool, size_t> keys_satisfy_and_relevant( const std::set<public_key_type>& keys, const block_signing_authority& authority ) {
-        return std::visit([&keys](const auto &a){
+         return std::visit([&keys](const auto &a){
             return a.keys_satisfy_and_relevant(keys);
          }, authority);
       }

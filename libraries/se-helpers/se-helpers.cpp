@@ -97,7 +97,7 @@ fc::crypto::signature secure_enclave_key::sign(const fc::sha256& digest) const {
 
    fc::crypto::r1::compact_signature* compact_sig = (fc::crypto::r1::compact_signature *)(serialized_signature + 1);
    fc::ec_key key = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
-   *compact_sig = fc::crypto::r1::signature_from_ecdsa(key, std::get<fc::crypto::r1::public_key_shim>(my.pub_key._storage)._data, sig, digest);
+   *compact_sig = fc::crypto::r1::signature_from_ecdsa(key, fc::get_if<fc::crypto::r1::public_key_shim>(my.pub_key._storage)._data, sig, digest);
 
    fc::crypto::signature final_signature;
    fc::datastream<const char*> ds(serialized_signature, sizeof(serialized_signature));

@@ -79,7 +79,7 @@ namespace fc { namespace crypto {
    }
 
    size_t hash_value(const signature& b) {
-      return std::visit(hash_visitor(), b._storage);
+       return std::visit(hash_visitor(), b._storage);
    }
 } } // eosio::blockchain
 

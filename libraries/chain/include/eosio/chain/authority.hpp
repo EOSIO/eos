@@ -50,7 +50,7 @@ struct shared_public_key {
             return wa == std::get<shared_string>(rhs.pubkey);
          }
       }, lhs.pubkey);
-    }
+   }
 
    friend bool operator==(const shared_public_key& l, const public_key_type& r) {
       if(l.pubkey.index() != r._storage.index())
@@ -70,7 +70,7 @@ struct shared_public_key {
             return pub == std::get<fc::crypto::webauthn::public_key>(r._storage);
          }
       }, l.pubkey);
-    }
+   }
 
    friend bool operator==(const public_key_type& l, const shared_public_key& r) {
       return r == l;

@@ -116,7 +116,7 @@ struct txn_test_gen_plugin_impl {
                   _total_us += std::get<transaction_trace_ptr>(result)->receipt->cpu_usage_us;
                   ++_txcount;
                }
-            }                 
+            }
          });
       }
    }

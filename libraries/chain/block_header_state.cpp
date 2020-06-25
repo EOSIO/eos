@@ -208,13 +208,11 @@ namespace eosio { namespace chain {
             legacy::producer_schedule_type downgraded_producers;
             downgraded_producers.version = new_producers->version;
             for (const auto &p : new_producers->producers) {
-              std::visit([&downgraded_producers, &p](const auto& auth)
-                {
+               std::visit([&downgraded_producers, &p](const auto& auth)
+               {
                   EOS_ASSERT(auth.keys.size() == 1 && auth.keys.front().weight == auth.threshold, producer_schedule_exception, "multisig block signing present before enabled!");
                   downgraded_producers.producers.emplace_back(legacy::producer_key{p.producer_name, auth.keys.front().key});
-                },
-                p.authority
-                );
+               }, p.authority);
             }
             h.new_producers = std::move(downgraded_producers);
          }
@@ -266,7 +264,7 @@ namespace eosio { namespace chain {
          EOS_ASSERT(wtmsig_enabled, producer_schedule_exception, "Block header producer_schedule_change_extension before activation of WTMsig Block Signatures" );
          EOS_ASSERT( !was_pending_promoted, producer_schedule_exception, "cannot set pending producer schedule in the same block in which pending was promoted to active" );
 
-         const auto& new_producer_schedule = std::get<producer_schedule_change_extension>(exts.lower_bound(producer_schedule_change_extension::extension_id())->second);
+         const auto& new_producer_schedule = fc::get_if<producer_schedule_change_extension>(exts.lower_bound(producer_schedule_change_extension::extension_id())->second);
 
          EOS_ASSERT( new_producer_schedule.version == active_schedule.version + 1, producer_schedule_exception, "wrong producer schedule version specified" );
          EOS_ASSERT( prev_pending_schedule.schedule.producers.empty(), producer_schedule_exception,
@@ -279,7 +277,7 @@ namespace eosio { namespace chain {
       protocol_feature_activation_set_ptr new_activated_protocol_features;
       { // handle protocol_feature_activation
          if( exts.count(protocol_feature_activation::extension_id() > 0) ) {
-            const auto& new_protocol_features = std::get<protocol_feature_activation>(exts.lower_bound(protocol_feature_activation::extension_id())->second).protocol_features;
+            const auto& new_protocol_features = fc::get_if<protocol_feature_activation>(exts.lower_bound(protocol_feature_activation::extension_id())->second).protocol_features;
             validator( timestamp, prev_activated_protocol_features->protocol_features, new_protocol_features );
 
             new_activated_protocol_features =   std::make_shared<protocol_feature_activation_set>(
@@ -452,7 +450,7 @@ namespace eosio { namespace chain {
       if( header_exts.count(protocol_feature_activation::extension_id()) == 0 )
          return no_activations;
 
-      return std::get<protocol_feature_activation>(header_exts.lower_bound(protocol_feature_activation::extension_id())->second).protocol_features;
+      return fc::get_if<protocol_feature_activation>(header_exts.lower_bound(protocol_feature_activation::extension_id())->second).protocol_features;
    }
 
    block_header_state::block_header_state( legacy::snapshot_block_header_state_v2&& snapshot )

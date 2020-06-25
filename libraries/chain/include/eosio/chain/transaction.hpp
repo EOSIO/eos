@@ -236,9 +236,9 @@ namespace eosio { namespace chain {
          };
 
          using prunable_data_t = std::variant< full_legacy,
-                                                     none,
-                                                     partial,
-                                                     full >;
+                                               none,
+                                               partial,
+                                               full >;
 
          prunable_data_type prune_all() const;
          digest_type digest() const;

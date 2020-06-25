@@ -69,7 +69,7 @@ namespace fc { namespace crypto {
 
    bool public_key::valid()const
    {
-     return std::visit(is_valid_visitor(), _storage);
+      return std::visit(is_valid_visitor(), _storage);
    }
 
    std::string public_key::to_string(const fc::yield_function_t& yield) const
