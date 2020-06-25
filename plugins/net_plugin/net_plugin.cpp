@@ -2594,7 +2594,7 @@ namespace eosio {
       constexpr auto additional_sigs_eid = additional_block_signatures_extension::extension_id();
       auto exts = ptr->validate_and_extract_extensions();
       if( exts.count( additional_sigs_eid ) ) {
-         const auto &additional_sigs = std::get<additional_block_signatures_extension>(exts.lower_bound( additional_sigs_eid )->second).signatures;
+         const auto &additional_sigs = fc::get_if<additional_block_signatures_extension>(exts.lower_bound( additional_sigs_eid )->second).signatures;
          has_webauthn_sig |= std::any_of( additional_sigs.begin(), additional_sigs.end(), is_webauthn_sig );
       }
 

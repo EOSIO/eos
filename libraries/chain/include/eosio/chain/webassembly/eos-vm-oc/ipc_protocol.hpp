@@ -42,8 +42,8 @@ struct compilation_result_unknownfailure {};
 struct compilation_result_toofull {};
 
 using wasm_compilation_result = std::variant<code_descriptor,  //a successful compile
-                                                  compilation_result_unknownfailure,
-                                                  compilation_result_toofull>;
+                                             compilation_result_unknownfailure,
+                                             compilation_result_toofull>;
 
 struct wasm_compilation_result_message {
    code_tuple code;
@@ -52,12 +52,11 @@ struct wasm_compilation_result_message {
 };
 
 using eosvmoc_message = std::variant<initialize_message,
-                                           initalize_response_message,
-                                           compile_wasm_message,
-                                           evict_wasms_message,
-                                           code_compilation_result_message,
-                                           wasm_compilation_result_message
-                                          >;
+                                     initalize_response_message,
+                                     compile_wasm_message,
+                                     evict_wasms_message,
+                                     code_compilation_result_message,
+                                     wasm_compilation_result_message>;
 }}}
 
 FC_REFLECT(eosio::chain::eosvmoc::initialize_message, )

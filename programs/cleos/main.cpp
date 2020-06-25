@@ -1426,7 +1426,7 @@ struct get_schedule_subcommand {
             auto a = row["authority"].as<block_signing_authority>();
             static_assert( std::is_same<decltype(a), std::variant<block_signing_authority_v0>>::value,
                            "Updates maybe needed if block_signing_authority changes" );
-            block_signing_authority_v0 auth = std::get<block_signing_authority_v0>(a);
+            block_signing_authority_v0 auth = fc::get_if<block_signing_authority_v0>(a);
             printf( "%s\n", fc::json::to_string( auth, fc::time_point::maximum() ).c_str() );
          }
       }

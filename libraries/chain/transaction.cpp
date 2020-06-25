@@ -411,11 +411,11 @@ digest_type packed_transaction::prunable_data_type::full_legacy::prunable_digest
 }
 
 digest_type packed_transaction::prunable_data_type::digest() const {
-  return std::visit( [](const auto& obj) { return obj.prunable_digest(); }, prunable_data );
+   return std::visit( [](const auto& obj) { return obj.prunable_digest(); }, prunable_data );
 }
 
 packed_transaction::prunable_data_type packed_transaction::prunable_data_type::prune_all() const {
-  return std::visit([](const auto& obj) -> packed_transaction::prunable_data_type { return {none{obj.prunable_digest()}}; }, prunable_data);
+   return std::visit([](const auto& obj) -> packed_transaction::prunable_data_type { return {none{obj.prunable_digest()}}; }, prunable_data);
 }
 
 static constexpr std::size_t digest_pack_size = 32;
@@ -449,7 +449,7 @@ static std::size_t padded_pack_size(const packed_transaction::prunable_data_type
 }
 
 std::size_t packed_transaction::prunable_data_type::maximum_pruned_pack_size(packed_transaction::prunable_data_type::compression_type compression) const {
-  return 1 + std::visit([&](const auto& t){ return padded_pack_size(t, compression); }, prunable_data);
+   return 1 + std::visit([&](const auto& t){ return padded_pack_size(t, compression); }, prunable_data);
 }
 
 static packed_transaction::prunable_data_type make_prunable_transaction_data( bool legacy, vector<signature_type> signatures,
@@ -568,7 +568,7 @@ uint32_t packed_transaction::calculate_estimated_size() const {
          }
    };
 
-  return sizeof(*this) + packed_trx.size() * 2 + std::visit(visitor, prunable_data.prunable_data);
+   return sizeof(*this) + packed_trx.size() * 2 + std::visit(visitor, prunable_data.prunable_data);
 }
 
 digest_type packed_transaction::packed_digest()const {
@@ -599,11 +599,11 @@ const vector<bytes>* packed_transaction::get_context_free_data()const {
 const bytes* maybe_get_context_free_data(const packed_transaction::prunable_data_type::none&, std::size_t) { return nullptr; }
 const bytes* maybe_get_context_free_data(const packed_transaction::prunable_data_type::partial& p, std::size_t i) {
    if( p.context_free_segments.size() <= i ) return nullptr;
-     return std::visit(
-         overloaded{
-               []( const digest_type& t ) -> const bytes* { return nullptr; },
-               []( const bytes& vec ) { return &vec; }
-         }, p.context_free_segments[i] );
+   return std::visit(
+       overloaded{
+             []( const digest_type& t ) -> const bytes* { return nullptr; },
+             []( const bytes& vec ) { return &vec; }
+       }, p.context_free_segments[i] );
 }
 const bytes* maybe_get_context_free_data(const packed_transaction::prunable_data_type::full_legacy& full_leg, std::size_t i) {
    if( full_leg.context_free_segments.size() <= i ) return nullptr;

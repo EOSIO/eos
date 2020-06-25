@@ -113,7 +113,6 @@ namespace fc { namespace crypto {
 
    std::string private_key::to_string(const fc::yield_function_t& yield) const
    {
-      // auto which = _storage.which();
       auto which = _storage.index();
 
       if (which == 0) {
