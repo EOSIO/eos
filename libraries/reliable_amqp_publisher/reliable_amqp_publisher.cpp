@@ -23,6 +23,7 @@ struct reliable_amqp_publisher_handler;
 
 struct reliable_amqp_publisher_impl {
    reliable_amqp_publisher_impl(const std::string& url, const std::string& exchange, const std::string& routing_key,
+                                bool explicit_send,
                                 const boost::filesystem::path& unconfirmed_path, const std::optional<std::string>& message_id);
    ~reliable_amqp_publisher_impl();
    void retry_connection();
@@ -30,6 +31,7 @@ struct reliable_amqp_publisher_impl {
    void amqp_ready();
    void amqp_error(const char* message);
    void pump_queue();
+   void publish_message_raw(fc::unsigned_int num, std::vector<char>&& data);
 
    std::unique_ptr<AMQP::Address> amqp_address;
    std::unique_ptr<reliable_amqp_publisher_handler> handler;
@@ -40,7 +42,11 @@ struct reliable_amqp_publisher_impl {
    std::atomic_bool stopping = false;
 
    unsigned in_flight = 0;
-   std::deque<std::vector<char>> message_deque;
+   struct amqp_message {
+      fc::unsigned_int  num = 0; ///< unique numbers indicates amqp transaction set
+      std::vector<char> data;
+   };
+   std::deque<amqp_message> message_deque;
 
    std::thread thread;
    boost::asio::io_context ctx;
@@ -51,6 +57,7 @@ struct reliable_amqp_publisher_impl {
 
    const std::string exchange;
    const std::string routing_key;
+   const bool explicit_send;
    const std::optional<std::string> message_id;
    bool logged_exceeded_max_depth = false;
 
@@ -83,8 +90,9 @@ struct reliable_amqp_publisher_handler : AMQP::LibBoostAsioHandler {
 };
 
 reliable_amqp_publisher_impl::reliable_amqp_publisher_impl(const std::string& url, const std::string& exchange, const std::string& routing_key,
+                                                           bool explicit_send,
                                                            const boost::filesystem::path& unconfirmed_path, const std::optional<std::string>& message_id) :
-  data_file_path(unconfirmed_path), exchange(exchange), routing_key(routing_key), message_id(message_id) {
+  data_file_path(unconfirmed_path), exchange(exchange), routing_key(routing_key), explicit_send(explicit_send), message_id(message_id) {
    std::string host = "localhost", user = "guest", pass = "guest", path;
    uint16_t port = 5672;
    fc::url parsed_url(url);
@@ -198,7 +206,8 @@ void reliable_amqp_publisher_impl::amqp_ready() {
       elog("Channel error for AMQP connection ${s} publishing to \"${e}\": ${m}; restarting connection", ("s", (std::string)*amqp_address)("e", exchange)("m",s));
       retry_connection();
    });
-   pump_queue();
+   if( !explicit_send )
+      pump_queue();
 }
 
 void reliable_amqp_publisher_impl::amqp_error(const char* message) {
@@ -210,19 +219,26 @@ void reliable_amqp_publisher_impl::pump_queue() {
    if(stopping || in_flight || !connected || message_deque.empty())
       return;
 
-   constexpr size_t max_msg_single_transaction = 16;
-   const unsigned msgs_this_transaction = std::min(message_deque.size(), max_msg_single_transaction);
+   constexpr size_t max_msg_single_transaction = 16; // if msg.num == 0
 
    channel->startTransaction();
-   std::for_each(message_deque.begin(), message_deque.begin()+msgs_this_transaction, [this](const std::vector<char>& msg) {
-      AMQP::Envelope envelope(msg.data(), msg.size());
+   in_flight = 0;
+   fc::unsigned_int prev = 0;
+   for( auto i = message_deque.begin(), end = message_deque.end(); i != end; ++i, ++in_flight) {
+      const amqp_message& msg = *i;
+      if( in_flight != 0 && msg.num != prev )
+         break;
+      if( in_flight > max_msg_single_transaction && msg.num == fc::unsigned_int(0) )
+         break;
+
+      AMQP::Envelope envelope(msg.data.data(), msg.data.size());
       envelope.setPersistent();
       if(message_id)
          envelope.setMessageID(*message_id);
       channel->publish(exchange, routing_key, envelope);
-   });
 
-   in_flight = msgs_this_transaction;
+      prev = msg.num;
+   }
 
    channel->commitTransaction().onSuccess([this](){
       message_deque.erase(message_deque.begin(), message_deque.begin()+in_flight);
@@ -233,34 +249,53 @@ void reliable_amqp_publisher_impl::pump_queue() {
       //unfortuately we don't know if an error is due to something recoverable or if an error is due
       // to something unrecoverable. To know that, we need to pump the event queue some so that Channel's or
       // Connection's onError is delivered. Failure to pump the event queue here can result in runaway recursion.
-      handler->amqp_strand()->post([this]() {
-         pump_queue();
-      });
+      if( !explicit_send ) {
+         handler->amqp_strand()->post( [this]() {
+            pump_queue();
+         } );
+      }
    });
 }
 
-reliable_amqp_publisher::reliable_amqp_publisher(const std::string& url, const std::string& exchange, const std::string& routing_key, const boost::filesystem::path& unconfirmed_path, const std::optional<std::string>& message_id) :
-   my(new reliable_amqp_publisher_impl(url, exchange, routing_key, unconfirmed_path, message_id)) {}
-
-void reliable_amqp_publisher::publish_message_raw(std::vector<char>&& data) {
-   if(!my->ctx.get_executor().running_in_this_thread()) {
-      boost::asio::post(my->user_submitted_work_strand, [this, d=std::move(data)]() mutable {
-         publish_message_raw(std::move(d));
+void reliable_amqp_publisher_impl::publish_message_raw(fc::unsigned_int num, std::vector<char>&& data) {
+   if(!ctx.get_executor().running_in_this_thread()) {
+      boost::asio::post(user_submitted_work_strand, [this, num, d=std::move(data)]() mutable {
+         publish_message_raw(num, std::move(d));
       });
       return;
    }
 
    constexpr unsigned max_queued_messages = 1u<<20u;
 
-   if(my->message_deque.size() > max_queued_messages) {
-      if(my->logged_exceeded_max_depth == false)
+   if(message_deque.size() > max_queued_messages) {
+      if(logged_exceeded_max_depth == false)
          elog("AMQP connection ${a} publishing to \"${e}\" has reached ${max} unconfirmed messages; further messages will be dropped",
-              ("a", (std::string)*my->amqp_address)("e", my->exchange)("max", max_queued_messages));
-      my->logged_exceeded_max_depth = true;
+              ("a", (std::string)*amqp_address)("e", exchange)("max", max_queued_messages));
+      logged_exceeded_max_depth = true;
       return;
    }
-   my->message_deque.emplace_back(std::move(data));
-   my->pump_queue();
+   message_deque.emplace_back(amqp_message{num, std::move(data)});
+   if( !explicit_send )
+      pump_queue();
+}
+
+reliable_amqp_publisher::reliable_amqp_publisher(const std::string& url, const std::string& exchange, const std::string& routing_key,
+                                                 bool explicit_send,
+                                                 const boost::filesystem::path& unconfirmed_path, const std::optional<std::string>& message_id) :
+   my(new reliable_amqp_publisher_impl(url, exchange, routing_key, explicit_send, unconfirmed_path, message_id)) {}
+
+void reliable_amqp_publisher::publish_message_raw(std::vector<char>&& data) {
+   my->publish_message_raw( 0, std::move( data ) );
+}
+
+void reliable_amqp_publisher::publish_message_raw(fc::unsigned_int num, std::vector<char>&& data) {
+   my->publish_message_raw( num, std::move( data ) );
+}
+
+void reliable_amqp_publisher::send_messages() {
+   boost::asio::post(my->user_submitted_work_strand, [&my=my]() {
+      my->pump_queue();
+   } );
 }
 
 void reliable_amqp_publisher::post_on_io_context(std::function<void()>&& f) {
@@ -270,3 +305,5 @@ void reliable_amqp_publisher::post_on_io_context(std::function<void()>&& f) {
 reliable_amqp_publisher::~reliable_amqp_publisher() = default;
 
 }
+
+FC_REFLECT( eosio::reliable_amqp_publisher_impl::amqp_message, (num)(data) )

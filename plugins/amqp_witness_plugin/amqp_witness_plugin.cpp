@@ -58,7 +58,7 @@ void amqp_witness_plugin::plugin_startup() {
    if(boost::filesystem::exists(witness_data_file_path) && my->delete_previous)
       boost::filesystem::remove(witness_data_file_path);
 
-   my->rqueue = std::make_unique<reliable_amqp_publisher>(my->amqp_server, my->exchange, my->routing_key ? *my->routing_key : "", witness_data_file_path, "eosio.node.witness_v0");
+   my->rqueue = std::make_unique<reliable_amqp_publisher>(my->amqp_server, my->exchange, my->routing_key ? *my->routing_key : "", false, witness_data_file_path, "eosio.node.witness_v0");
 
    app().get_plugin<chain_plugin>().chain().irreversible_block.connect([&](const chain::block_state_ptr& bsp) {
       if(bsp->block->timestamp.to_time_point() < fc::time_point::now() - fc::seconds(my->staleness_limit))
