@@ -16,7 +16,35 @@ namespace b1 {
 using namespace appbase;
 using namespace std::literals;
 
-struct streamer_plugin_impl {
+struct streamer_plugin_impl : public streamer_t {
+
+   void start_block(uint32_t block_num) override {
+      for (const auto& stream : streams) {
+         stream->start_block(block_num);
+      }
+   }
+
+   void stream_data(const char* data, uint64_t data_size) override {
+      eosio::input_stream bin(data, data_size);
+      stream_wrapper      res = eosio::from_bin<stream_wrapper>(bin);
+      const auto&         sw  = std::get<stream_wrapper_v0>(res);
+      publish_to_streams(sw);
+   }
+
+   void publish_to_streams(const stream_wrapper_v0& sw) {
+      for (const auto& stream : streams) {
+         if (stream->check_route(sw.route)) {
+            stream->publish(sw.data.data(), sw.data.size(), sw.route);
+         }
+      }
+   }
+
+   void stop_block(uint32_t block_num) override {
+      for (const auto& stream : streams) {
+         stream->stop_block(block_num);
+      }
+   }
+
    std::vector<std::unique_ptr<stream_handler>> streams;
 };
 
@@ -61,24 +89,9 @@ void streamer_plugin::plugin_initialize(const variables_map& options) {
 void streamer_plugin::plugin_startup() {
    cloner_plugin* cloner = app().find_plugin<cloner_plugin>();
    EOS_ASSERT( cloner, eosio::chain::plugin_config_exception, "cloner_plugin not found" );
-   cloner->set_streamer([this](const char* data, uint64_t data_size) { stream_data(data, data_size); });
+   cloner->set_streamer(my);
 }
 
 void streamer_plugin::plugin_shutdown() {}
-
-void streamer_plugin::stream_data(const char* data, uint64_t data_size) {
-   eosio::input_stream bin(data, data_size);
-   stream_wrapper      res = eosio::from_bin<stream_wrapper>(bin);
-   const auto&         sw  = std::get<stream_wrapper_v0>(res);
-   publish_to_streams(sw);
-}
-
-void streamer_plugin::publish_to_streams(const stream_wrapper_v0& sw) {
-   for (const auto& stream : my->streams) {
-      if (stream->check_route(sw.route)) {
-         stream->publish(sw.data.data(), sw.data.size(), sw.route);
-      }
-   }
-}
 
 } // namespace b1
