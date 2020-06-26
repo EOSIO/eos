@@ -100,15 +100,6 @@
         "stderr",
         "net"
       ]
-    },{
-      "name": "amqp_trx",
-      "level": "debug",
-      "enabled": true,
-      "additivity": false,
-      "appenders": [
-        "stderr",
-        "net"
-      ]
     }
   ]
 }
