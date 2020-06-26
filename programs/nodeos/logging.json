@@ -91,6 +91,15 @@
         "stderr",
         "net"
       ]
+    }{
+      "name": "transaction_failure_tracing",
+      "level": "debug",
+      "enabled": true,
+      "additivity": false,
+      "appenders": [
+        "stderr",
+        "net"
+      ]
     },{
       "name": "trace_api",
       "level": "debug",

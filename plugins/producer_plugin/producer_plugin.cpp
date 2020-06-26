@@ -68,7 +68,7 @@ using boost::signals2::scoped_connection;
 const fc::string logger_name("producer_plugin");
 fc::logger _log;
 
-const fc::string trx_successful_trace_logger_name("transaction_success_tracing");
+const fc::string trx_successful_trace_logger_name("transaction_tracing");
 fc::logger       _trx_successful_trace_log;
 
 const fc::string trx_failed_trace_logger_name("transaction_failure_tracing");
@@ -473,7 +473,9 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                future.wait();
                app().post( priority::low, [self, future{std::move(future)}, persist_until_expired, next{std::move( next )}, trx_id]() mutable {
                   auto exception_handler = [&next, trx_id](fc::exception_ptr ex) {
-                    fc_dlog(_trx_failed_trace_log, "[TRX_TRACE] Speculative execution is REJECTING tx: ${txid} : ${why} ",
+                     fc_dlog(_trx_successful_trace_log, "[TRX_TRACE] Speculative execution is REJECTING tx: ${txid} : ${why} ",
+                            ("txid", trx_id)("why",ex->what()));
+                     fc_dlog(_trx_failed_trace_log, "[TRX_TRACE] Speculative execution is REJECTING tx: ${txid} : ${why} ",
                             ("txid", trx_id)("why",ex->what()));
                      next(ex);
                   };
@@ -499,12 +501,20 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
             if (response.contains<fc::exception_ptr>()) {
                _transaction_ack_channel.publish(priority::low, std::pair<fc::exception_ptr, transaction_metadata_ptr>(response.get<fc::exception_ptr>(), trx));
                if (_pending_block_mode == pending_block_mode::producing) {
+                  fc_dlog(_trx_successful_trace_log, "[TRX_TRACE] Block ${block_num} for producer ${prod} is REJECTING tx: ${txid} : ${why} ",
+                        ("block_num", chain.head_block_num() + 1)
+                        ("prod", get_pending_block_producer())
+                        ("txid", trx->id())
+                        ("why",response.get<fc::exception_ptr>()->what()));
                   fc_dlog(_trx_failed_trace_log, "[TRX_TRACE] Block ${block_num} for producer ${prod} is REJECTING tx: ${txid} : ${why} ",
                         ("block_num", chain.head_block_num() + 1)
                         ("prod", get_pending_block_producer())
                         ("txid", trx->id())
                         ("why",response.get<fc::exception_ptr>()->what()));
                } else {
+                  fc_dlog(_trx_successful_trace_log, "[TRX_TRACE] Speculative execution is REJECTING tx: ${txid} : ${why} ",
+                          ("txid", trx->id())
+                          ("why",response.get<fc::exception_ptr>()->what()));
                   fc_dlog(_trx_failed_trace_log, "[TRX_TRACE] Speculative execution is REJECTING tx: ${txid} : ${why} ",
                           ("txid", trx->id())
                           ("why",response.get<fc::exception_ptr>()->what()));
@@ -1668,16 +1678,24 @@ bool producer_plugin_impl::remove_expired_persisted_trxs( const fc::time_point& 
                    &chain, has_producers = !_producers.empty()]( const transaction_id_type& txid, trx_enum_type trx_type ) {
             if( trx_type == trx_enum_type::persisted ) {
                if( pbm == pending_block_mode::producing ) {
+                  fc_dlog(_trx_successful_trace_log,
+                           "[TRX_TRACE] Block ${block_num} for producer ${prod} is EXPIRING PERSISTED tx: ${txid}",
+                           ("block_num", chain.head_block_num() + 1)("txid", txid)
+                           ("prod", chain.is_building_block() ? chain.pending_block_producer() : name()) );
                   fc_dlog(_trx_failed_trace_log,
                            "[TRX_TRACE] Block ${block_num} for producer ${prod} is EXPIRING PERSISTED tx: ${txid}",
                            ("block_num", chain.head_block_num() + 1)("txid", txid)
                            ("prod", chain.is_building_block() ? chain.pending_block_producer() : name()) );
                } else {
+                  fc_dlog(_trx_successful_trace_log, "[TRX_TRACE] Speculative execution is EXPIRING PERSISTED tx: ${txid}", ("txid", txid));
                   fc_dlog(_trx_failed_trace_log, "[TRX_TRACE] Speculative execution is EXPIRING PERSISTED tx: ${txid}", ("txid", txid));
                }
                ++num_expired_persistent;
             } else {
                if (has_producers) {
+                  fc_dlog(_trx_successful_trace_log,
+                        "[TRX_TRACE] Node with producers configured is dropping an EXPIRED transaction that was PREVIOUSLY ACCEPTED : ${txid}",
+                        ("txid", txid));
                   fc_dlog(_trx_failed_trace_log,
                         "[TRX_TRACE] Node with producers configured is dropping an EXPIRED transaction that was PREVIOUSLY ACCEPTED : ${txid}",
                         ("txid", txid));
