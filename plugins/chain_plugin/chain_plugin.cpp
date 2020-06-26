@@ -2179,7 +2179,7 @@ fc::variant read_only::get_block(const read_only::get_block_params& params) cons
    const uint32_t ref_block_prefix = id._hash[1];
 
    ilog("REMOVE get_block: ${b} mvo",("b", params.block_num_or_id));
-   auto ret fc::mutable_variant_object(pretty_output.get_object())
+   auto ret = fc::mutable_variant_object(pretty_output.get_object())
            ("id", id)
            ("block_num",block->block_num())
            ("ref_block_prefix", ref_block_prefix);
