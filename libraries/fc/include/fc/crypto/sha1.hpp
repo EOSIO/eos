@@ -13,7 +13,8 @@ class sha1
     string str()const;
     operator string()const;
 
-    char*    data()const;
+    char*       data();
+    const char* data()const;
     size_t data_size()const { return 20; }
 
     static sha1 hash( const char* d, uint32_t dlen );
