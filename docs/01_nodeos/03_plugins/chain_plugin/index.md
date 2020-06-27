@@ -97,24 +97,24 @@ Config Options for eosio::chain_plugin:
   --chain-threads arg (=2)              Number of worker threads in controller 
                                         thread pool
   --contracts-console                   print contract's output to console
-  --actor-whitelist arg                 Account added to actor whitelist (may 
+  --actor-allowlist arg                 Account added to actor allowlist (may 
                                         specify multiple times)
-  --actor-blacklist arg                 Account added to actor blacklist (may 
+  --actor-blocklist arg                 Account added to actor blocklist (may 
                                         specify multiple times)
-  --contract-whitelist arg              Contract account added to contract 
-                                        whitelist (may specify multiple times)
-  --contract-blacklist arg              Contract account added to contract 
-                                        blacklist (may specify multiple times)
-  --action-blacklist arg                Action (in the form code::action) added
-                                        to action blacklist (may specify 
+  --contract-allowlist arg              Contract account added to contract 
+                                        allowlist (may specify multiple times)
+  --contract-blocklist arg              Contract account added to contract 
+                                        blocklist (may specify multiple times)
+  --action-blocklist arg                Action (in the form code::action) added
+                                        to action blocklist (may specify 
                                         multiple times)
-  --key-blacklist arg                   Public key added to blacklist of keys 
+  --key-blocklist arg                   Public key added to blocklist of keys 
                                         that should not be included in 
                                         authorities (may specify multiple 
                                         times)
-  --sender-bypass-whiteblacklist arg    Deferred transactions sent by accounts 
+  --sender-bypass-allowblocklist arg    Deferred transactions sent by accounts 
                                         in this list do not have any of the 
-                                        subjective whitelist/blacklist checks 
+                                        subjective allowlist/blocklist checks 
                                         applied to them (may specify multiple 
                                         times)
   --read-mode arg (=speculative)        Database read mode ("speculative", 

@@ -151,7 +151,7 @@ namespace eosio { namespace chain {
     *   |- misc_exception
     *   |- plugin_exception
     *   |- wallet_exception
-    *   |- whitelist_blacklist_exception
+    *   |- allowlist_blocklist_exception
     *   |- controller_emit_signal_exception
     *   |- abi_exception
     *   |- contract_exception
@@ -462,21 +462,21 @@ namespace eosio { namespace chain {
                                     3120012, "Secure Enclave Exception" )
 
 
-   FC_DECLARE_DERIVED_EXCEPTION( whitelist_blacklist_exception,   chain_exception,
-                                 3130000, "Actor or contract whitelist/blacklist exception" )
+   FC_DECLARE_DERIVED_EXCEPTION( allowlist_blocklist_exception,   chain_exception,
+                                 3130000, "Actor or contract allowlist/blocklist exception" )
 
-      FC_DECLARE_DERIVED_EXCEPTION( actor_whitelist_exception,    whitelist_blacklist_exception,
-                                    3130001, "Authorizing actor of transaction is not on the whitelist" )
-      FC_DECLARE_DERIVED_EXCEPTION( actor_blacklist_exception,    whitelist_blacklist_exception,
-                                    3130002, "Authorizing actor of transaction is on the blacklist" )
-      FC_DECLARE_DERIVED_EXCEPTION( contract_whitelist_exception, whitelist_blacklist_exception,
-                                    3130003, "Contract to execute is not on the whitelist" )
-      FC_DECLARE_DERIVED_EXCEPTION( contract_blacklist_exception, whitelist_blacklist_exception,
-                                    3130004, "Contract to execute is on the blacklist" )
-      FC_DECLARE_DERIVED_EXCEPTION( action_blacklist_exception,   whitelist_blacklist_exception,
-                                    3130005, "Action to execute is on the blacklist" )
-      FC_DECLARE_DERIVED_EXCEPTION( key_blacklist_exception,      whitelist_blacklist_exception,
-                                    3130006, "Public key in authority is on the blacklist" )
+      FC_DECLARE_DERIVED_EXCEPTION( actor_allowlist_exception,    allowlist_blocklist_exception,
+                                    3130001, "Authorizing actor of transaction is not on the allowlist" )
+      FC_DECLARE_DERIVED_EXCEPTION( actor_blocklist_exception,    allowlist_blocklist_exception,
+                                    3130002, "Authorizing actor of transaction is on the blocklist" )
+      FC_DECLARE_DERIVED_EXCEPTION( contract_allowlist_exception, allowlist_blocklist_exception,
+                                    3130003, "Contract to execute is not on the allowlist" )
+      FC_DECLARE_DERIVED_EXCEPTION( contract_blocklist_exception, allowlist_blocklist_exception,
+                                    3130004, "Contract to execute is on the blocklist" )
+      FC_DECLARE_DERIVED_EXCEPTION( action_blocklist_exception,   allowlist_blocklist_exception,
+                                    3130005, "Action to execute is on the blocklist" )
+      FC_DECLARE_DERIVED_EXCEPTION( key_blocklist_exception,      allowlist_blocklist_exception,
+                                    3130006, "Public key in authority is on the blocklist" )
 
    FC_DECLARE_DERIVED_EXCEPTION( controller_emit_signal_exception, chain_exception,
                                  3140000, "Exceptions that are allowed to bubble out of emit calls in controller" )

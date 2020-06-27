@@ -262,11 +262,11 @@ paths:
                 items:
                   $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
 
-  /producer/get_whitelist_blacklist:
+  /producer/get_allowlist_blocklist:
     post:
-      summary: get_whitelist_blacklist
-      description: Retreives the white list and black list for producer node
-      operationId: get_whitelist_blacklist
+      summary: get_allowlist_blocklist
+      description: Retreives the allow list and block list for producer node
+      operationId: get_allowlist_blocklist
       parameters: []
       requestBody:
         content:
@@ -282,25 +282,25 @@ paths:
             application/json:
               schema:
                 type: object
-                description: Defines the actor whitelist and blacklist, the contract whitelist and blacklist, the action blacklist and key blacklist
+                description: Defines the actor allowlist and blocklist, the contract allowlist and blocklist, the action blocklist and key blocklist
                 properties:
-                  actor_whitelist:
+                  actor_allowlist:
                     type: array
                     items:
                       $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
-                  actor_blacklist:
+                  actor_blocklist:
                     type: array
                     items:
                       $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
-                  contract_whitelist:
+                  contract_allowlist:
                     type: array
                     items:
                       $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
-                  contract_blacklist:
+                  contract_blocklist:
                     type: array
                     items:
                       $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
-                  action_blacklist:
+                  action_blocklist:
                     type: array
                     items:
                       type: array
@@ -309,16 +309,16 @@ paths:
                         allOf:
                           - $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
                           - $ref: "https://eosio.github.io/schemata/v2.0/oas/CppSignature.yaml"
-                  key_blacklist:
+                  key_blocklist:
                     type: array
                     items:
                       $ref: "https://eosio.github.io/schemata/v2.0/oas/KeyType.yaml"
 
-  /producer/set_whitelist_blacklist:
+  /producer/set_allowlist_blocklist:
     post:
-      summary: set_whitelist_blacklist
-      description: Sets the white list and black list for producer node
-      operationId: set_whitelist_blacklist
+      summary: set_allowlist_blocklist
+      description: Sets the allow list and block list for producer node
+      operationId: set_allowlist_blocklist
       parameters: []
       requestBody:
         content:
@@ -330,25 +330,25 @@ paths:
               properties:
                 params:
                   type: object
-                  description: Defines the actor whitelist and blacklist, the contract whitelist and blacklist, the action blacklist and key blacklist
+                  description: Defines the actor allowlist and blocklist, the contract allowlist and blocklist, the action blocklist and key blocklist
                   properties:
-                    actor_whitelist:
+                    actor_allowlist:
                       type: array
                       items:
                         $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
-                    actor_blacklist:
+                    actor_blocklist:
                       type: array
                       items:
                         $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
-                    contract_whitelist:
+                    contract_allowlist:
                       type: array
                       items:
                         $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
-                    contract_blacklist:
+                    contract_blocklist:
                       type: array
                       items:
                         $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
-                    action_blacklist:
+                    action_blocklist:
                       type: array
                       items:
                         type: array
@@ -357,7 +357,7 @@ paths:
                           allOf:
                             - $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
                             - $ref: "https://eosio.github.io/schemata/v2.0/oas/CppSignature.yaml"
-                    key_blacklist:
+                    key_blocklist:
                       type: array
                       items:
                         $ref: "https://eosio.github.io/schemata/v2.0/oas/KeyType.yaml"

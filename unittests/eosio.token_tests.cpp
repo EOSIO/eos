@@ -244,14 +244,14 @@ BOOST_FIXTURE_TEST_CASE( transfer_tests, eosio_token_tester ) try {
    REQUIRE_MATCHING_OBJECT( alice_balance, mvo()
       ("balance", "700 CERO")
       ("frozen", 0)
-      ("whitelist", 1)
+      ("allowlist", 1)
    );
 
    auto bob_balance = get_account(N(bob), "0,CERO");
    REQUIRE_MATCHING_OBJECT( bob_balance, mvo()
       ("balance", "300 CERO")
       ("frozen", 0)
-      ("whitelist", 1)
+      ("allowlist", 1)
    );
 
    BOOST_REQUIRE_EQUAL( wasm_assert_msg( "overdrawn balance" ),

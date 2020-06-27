@@ -2,7 +2,7 @@
 
 #include <eosio/chain/types.hpp>
 #include <eosio/chain/snapshot.hpp>
-#include <eosio/chain/whitelisted_intrinsics.hpp>
+#include <eosio/chain/allowlisted_intrinsics.hpp>
 #include <chainbase/chainbase.hpp>
 #include "multi_index_includes.hpp"
 
@@ -16,7 +16,7 @@ namespace eosio { namespace chain {
     */
    class protocol_state_object : public chainbase::object<protocol_state_object_type, protocol_state_object>
    {
-      OBJECT_CTOR(protocol_state_object, (activated_protocol_features)(preactivated_protocol_features)(whitelisted_intrinsics))
+      OBJECT_CTOR(protocol_state_object, (activated_protocol_features)(preactivated_protocol_features)(allowlisted_intrinsics))
 
    public:
       struct activated_protocol_feature {
@@ -39,7 +39,7 @@ namespace eosio { namespace chain {
       id_type                                    id;
       shared_vector<activated_protocol_feature>  activated_protocol_features;
       shared_vector<digest_type>                 preactivated_protocol_features;
-      whitelisted_intrinsics_type                whitelisted_intrinsics;
+      allowlisted_intrinsics_type                allowlisted_intrinsics;
       uint32_t                                   num_supported_key_types = 0;
    };
 
@@ -55,7 +55,7 @@ namespace eosio { namespace chain {
    struct snapshot_protocol_state_object {
       vector<protocol_state_object::activated_protocol_feature> activated_protocol_features;
       vector<digest_type>                                       preactivated_protocol_features;
-      std::set<std::string>                                     whitelisted_intrinsics;
+      std::set<std::string>                                     allowlisted_intrinsics;
       uint32_t                                                  num_supported_key_types = 0;
    };
 
@@ -83,8 +83,8 @@ FC_REFLECT(eosio::chain::protocol_state_object::activated_protocol_feature,
           )
 
 FC_REFLECT(eosio::chain::protocol_state_object,
-            (activated_protocol_features)(preactivated_protocol_features)(whitelisted_intrinsics)(num_supported_key_types)
+            (activated_protocol_features)(preactivated_protocol_features)(allowlisted_intrinsics)(num_supported_key_types)
           )
 FC_REFLECT(eosio::chain::snapshot_protocol_state_object,
-            (activated_protocol_features)(preactivated_protocol_features)(whitelisted_intrinsics)(num_supported_key_types)
+            (activated_protocol_features)(preactivated_protocol_features)(allowlisted_intrinsics)(num_supported_key_types)
           )

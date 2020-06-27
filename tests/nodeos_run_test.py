@@ -339,7 +339,7 @@ try:
     Print("push create action to currency1111 contract")
     contract="currency1111"
     action="create"
-    data="{\"issuer\":\"currency1111\",\"maximum_supply\":\"100000.0000 CUR\",\"can_freeze\":\"0\",\"can_recall\":\"0\",\"can_whitelist\":\"0\"}"
+    data="{\"issuer\":\"currency1111\",\"maximum_supply\":\"100000.0000 CUR\",\"can_freeze\":\"0\",\"can_recall\":\"0\",\"can_allowlist\":\"0\"}"
     opts="--permission currency1111@active"
     trans=node.pushMessage(contract, action, data, opts)
     try:

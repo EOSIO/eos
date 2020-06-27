@@ -957,52 +957,52 @@ class PluginHttpTest(unittest.TestCase):
         self.assertEqual(ret_json["code"], 400)
         self.assertEqual(ret_json["error"]["code"], 3200006)
 
-        # get_whitelist_blacklist with empty parameter
-        default_cmd = cmd_base + "get_whitelist_blacklist"
+        # get_allowlist_blocklist with empty parameter
+        default_cmd = cmd_base + "get_allowlist_blocklist"
         ret_json = Utils.runCmdReturnJson(default_cmd)
-        self.assertIn("actor_whitelist", ret_json)
-        self.assertIn("actor_blacklist", ret_json)
-        self.assertIn("contract_whitelist", ret_json)
-        self.assertIn("contract_blacklist", ret_json)
-        self.assertIn("action_blacklist", ret_json)
-        self.assertIn("key_blacklist", ret_json)
-        # get_whitelist_blacklist with empty content parameter
+        self.assertIn("actor_allowlist", ret_json)
+        self.assertIn("actor_blocklist", ret_json)
+        self.assertIn("contract_allowlist", ret_json)
+        self.assertIn("contract_blocklist", ret_json)
+        self.assertIn("action_blocklist", ret_json)
+        self.assertIn("key_blocklist", ret_json)
+        # get_allowlist_blocklist with empty content parameter
         empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
         ret_json = Utils.runCmdReturnJson(empty_content_cmd)
-        self.assertIn("actor_whitelist", ret_json)
-        self.assertIn("actor_blacklist", ret_json)
-        self.assertIn("contract_whitelist", ret_json)
-        self.assertIn("contract_blacklist", ret_json)
-        self.assertIn("action_blacklist", ret_json)
-        self.assertIn("key_blacklist", ret_json)
-        # get_whitelist_blacklist with invalid parameter
+        self.assertIn("actor_allowlist", ret_json)
+        self.assertIn("actor_blocklist", ret_json)
+        self.assertIn("contract_allowlist", ret_json)
+        self.assertIn("contract_blocklist", ret_json)
+        self.assertIn("action_blocklist", ret_json)
+        self.assertIn("key_blocklist", ret_json)
+        # get_allowlist_blocklist with invalid parameter
         invalid_cmd = default_cmd + self.http_post_str + self.http_post_invalid_param
         ret_json = Utils.runCmdReturnJson(invalid_cmd)
         self.assertEqual(ret_json["code"], 400)
         self.assertEqual(ret_json["error"]["code"], 3200006)
 
-        # set_whitelist_blacklist with empty parameter
-        default_cmd = cmd_base + "set_whitelist_blacklist"
+        # set_allowlist_blocklist with empty parameter
+        default_cmd = cmd_base + "set_allowlist_blocklist"
         ret_json = Utils.runCmdReturnJson(default_cmd)
         self.assertEqual(ret_json["code"], 400)
         self.assertEqual(ret_json["error"]["code"], 3200006)
-        # set_whitelist_blacklist with empty content parameter
+        # set_allowlist_blocklist with empty content parameter
         empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
         ret_json = Utils.runCmdReturnJson(empty_content_cmd)
         self.assertEqual(ret_json["code"], 400)
         self.assertEqual(ret_json["error"]["code"], 3200006)
-        # set_whitelist_blacklist with invalid parameter
+        # set_allowlist_blocklist with invalid parameter
         invalid_cmd = default_cmd + self.http_post_str + self.http_post_invalid_param
         ret_json = Utils.runCmdReturnJson(invalid_cmd)
         self.assertEqual(ret_json["code"], 400)
         self.assertEqual(ret_json["error"]["code"], 3200006)
-        # set_whitelist_blacklist with valid parameter
-        valid_cmd = default_cmd + self.http_post_str + ("'{%s, %s, %s, %s, %s, %s}'") % ("\"actor_whitelist\":[\"test2\"]",
-                                                                                         "\"actor_blacklist\":[\"test3\"]",
-                                                                                         "\"contract_whitelist\":[\"test4\"]",
-                                                                                         "\"contract_blacklist\":[\"test5\"]",
-                                                                                         "\"action_blacklist\":[]",
-                                                                                         "\"key_blacklist\":[]")
+        # set_allowlist_blocklist with valid parameter
+        valid_cmd = default_cmd + self.http_post_str + ("'{%s, %s, %s, %s, %s, %s}'") % ("\"actor_allowlist\":[\"test2\"]",
+                                                                                         "\"actor_blocklist\":[\"test3\"]",
+                                                                                         "\"contract_allowlist\":[\"test4\"]",
+                                                                                         "\"contract_blocklist\":[\"test5\"]",
+                                                                                         "\"action_blocklist\":[]",
+                                                                                         "\"key_blocklist\":[]")
         ret_json = Utils.runCmdReturnJson(valid_cmd)
         self.assertIn(ret_json["result"], "ok")
 

@@ -13,7 +13,7 @@ else
 fi
 
 
-# Download a newer version of cmake than is available in Travis's whitelisted apt sources.
+# Download a newer version of cmake than is available in Travis's allowlisted apt sources.
 mkdir cmake
 cd cmake
 wget --quiet -O ./cmake.tar.gz ${CMAKE_URL}
@@ -22,7 +22,7 @@ export PATH=`pwd`/bin:${PATH}
 cd ..
 cmake --version
 
-# Download a binary build of LLVM4 (also not available in Travis's whitelisted apt sources)
+# Download a binary build of LLVM4 (also not available in Travis's allowlisted apt sources)
 mkdir llvm4
 cd llvm4
 wget --quiet -O ./llvm.tar.xz ${LLVM_URL}

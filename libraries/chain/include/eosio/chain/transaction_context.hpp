@@ -111,7 +111,7 @@ namespace eosio { namespace chain {
 
          std::tuple<int64_t, int64_t, bool, bool> max_bandwidth_billed_accounts_can_pay( bool force_elastic_limits = false )const;
 
-         void validate_referenced_accounts( const transaction& trx, bool enforce_actor_whitelist_blacklist )const;
+         void validate_referenced_accounts( const transaction& trx, bool enforce_actor_allowlist_blocklist )const;
 
          uint32_t get_action_id() const { return action_id.current(); }
 
@@ -171,7 +171,7 @@ namespace eosio { namespace chain {
          fc::microseconds              delay;
          bool                          is_input           = false;
          bool                          apply_context_free = true;
-         bool                          enforce_whiteblacklist = true;
+         bool                          enforce_allowblocklist = true;
 
          fc::time_point                deadline = fc::time_point::maximum();
          fc::microseconds              leeway = fc::microseconds( config::default_subjective_cpu_leeway_us );

@@ -187,7 +187,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       bool maybe_produce_block();
       bool remove_expired_trxs( const fc::time_point& deadline );
       bool block_is_exhausted() const;
-      bool remove_expired_blacklisted_trxs( const fc::time_point& deadline );
+      bool remove_expired_blocklisted_trxs( const fc::time_point& deadline );
       bool process_unapplied_trxs( const fc::time_point& deadline );
       void process_scheduled_and_incoming_trxs( const fc::time_point& deadline, size_t& pending_incoming_process_limit );
       bool process_incoming_trxs( const fc::time_point& deadline, size_t& pending_incoming_process_limit );
@@ -228,7 +228,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       incoming::methods::block_sync::method_type::handle        _incoming_block_sync_provider;
       incoming::methods::transaction_async::method_type::handle _incoming_transaction_async_provider;
 
-      transaction_id_with_expiry_index                         _blacklisted_transactions;
+      transaction_id_with_expiry_index                         _blocklisted_transactions;
       pending_snapshot_index                                   _pending_snapshot_index;
 
       fc::optional<scoped_connection>                          _accepted_block_connection;
@@ -1042,26 +1042,26 @@ producer_plugin::greylist_params producer_plugin::get_greylist() const {
    return result;
 }
 
-producer_plugin::whitelist_blacklist producer_plugin::get_whitelist_blacklist() const {
+producer_plugin::allowlist_blocklist producer_plugin::get_allowlist_blocklist() const {
    chain::controller& chain = my->chain_plug->chain();
    return {
-      chain.get_actor_whitelist(),
-      chain.get_actor_blacklist(),
-      chain.get_contract_whitelist(),
-      chain.get_contract_blacklist(),
-      chain.get_action_blacklist(),
-      chain.get_key_blacklist()
+      chain.get_actor_allowlist(),
+      chain.get_actor_blocklist(),
+      chain.get_contract_allowlist(),
+      chain.get_contract_blocklist(),
+      chain.get_action_blocklist(),
+      chain.get_key_blocklist()
    };
 }
 
-void producer_plugin::set_whitelist_blacklist(const producer_plugin::whitelist_blacklist& params) {
+void producer_plugin::set_allowlist_blocklist(const producer_plugin::allowlist_blocklist& params) {
    chain::controller& chain = my->chain_plug->chain();
-   if(params.actor_whitelist.valid()) chain.set_actor_whitelist(*params.actor_whitelist);
-   if(params.actor_blacklist.valid()) chain.set_actor_blacklist(*params.actor_blacklist);
-   if(params.contract_whitelist.valid()) chain.set_contract_whitelist(*params.contract_whitelist);
-   if(params.contract_blacklist.valid()) chain.set_contract_blacklist(*params.contract_blacklist);
-   if(params.action_blacklist.valid()) chain.set_action_blacklist(*params.action_blacklist);
-   if(params.key_blacklist.valid()) chain.set_key_blacklist(*params.key_blacklist);
+   if(params.actor_allowlist.valid()) chain.set_actor_allowlist(*params.actor_allowlist);
+   if(params.actor_blocklist.valid()) chain.set_actor_blocklist(*params.actor_blocklist);
+   if(params.contract_allowlist.valid()) chain.set_contract_allowlist(*params.contract_allowlist);
+   if(params.contract_blocklist.valid()) chain.set_contract_blocklist(*params.contract_blocklist);
+   if(params.action_blocklist.valid()) chain.set_action_blocklist(*params.action_blocklist);
+   if(params.key_blocklist.valid()) chain.set_key_blocklist(*params.key_blocklist);
 }
 
 producer_plugin::integrity_hash_information producer_plugin::get_integrity_hash() const {
@@ -1521,7 +1521,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
       try {
          if( !remove_expired_trxs( preprocess_deadline ) )
             return start_block_result::exhausted;
-         if( !remove_expired_blacklisted_trxs( preprocess_deadline ) )
+         if( !remove_expired_blocklisted_trxs( preprocess_deadline ) )
             return start_block_result::exhausted;
 
          // limit execution of pending incoming to once per block
@@ -1612,27 +1612,27 @@ bool producer_plugin_impl::remove_expired_trxs( const fc::time_point& deadline )
    return !exhausted;
 }
 
-bool producer_plugin_impl::remove_expired_blacklisted_trxs( const fc::time_point& deadline )
+bool producer_plugin_impl::remove_expired_blocklisted_trxs( const fc::time_point& deadline )
 {
    bool exhausted = false;
-   auto& blacklist_by_expiry = _blacklisted_transactions.get<by_expiry>();
-   if(!blacklist_by_expiry.empty()) {
+   auto& blocklist_by_expiry = _blocklisted_transactions.get<by_expiry>();
+   if(!blocklist_by_expiry.empty()) {
       const chain::controller& chain = chain_plug->chain();
       const auto lib_time = chain.last_irreversible_block_time();
 
       int num_expired = 0;
-      int orig_count = _blacklisted_transactions.size();
+      int orig_count = _blocklisted_transactions.size();
 
-      while (!blacklist_by_expiry.empty() && blacklist_by_expiry.begin()->expiry <= lib_time) {
+      while (!blocklist_by_expiry.empty() && blocklist_by_expiry.begin()->expiry <= lib_time) {
          if (deadline <= fc::time_point::now()) {
             exhausted = true;
             break;
          }
-         blacklist_by_expiry.erase(blacklist_by_expiry.begin());
+         blocklist_by_expiry.erase(blocklist_by_expiry.begin());
          num_expired++;
       }
 
-      fc_dlog(_log, "Processed ${n} blacklisted transactions, Expired ${expired}",
+      fc_dlog(_log, "Processed ${n} blocklisted transactions, Expired ${expired}",
               ("n", orig_count)("expired", num_expired));
    }
    return !exhausted;
@@ -1710,7 +1710,7 @@ void producer_plugin_impl::process_scheduled_and_incoming_trxs( const fc::time_p
    bool exhausted = false;
    double incoming_trx_weight = 0.0;
 
-   auto& blacklist_by_id = _blacklisted_transactions.get<by_id>();
+   auto& blocklist_by_id = _blocklisted_transactions.get<by_id>();
    chain::controller& chain = chain_plug->chain();
    time_point pending_block_time = chain.pending_block_time();
    auto itr = _unapplied_transactions.incoming_begin();
@@ -1729,7 +1729,7 @@ void producer_plugin_impl::process_scheduled_and_incoming_trxs( const fc::time_p
          continue; // do not allow schedule and execute in same block
       }
 
-      if (blacklist_by_id.find(sch_itr->trx_id) != blacklist_by_id.end()) {
+      if (blocklist_by_id.find(sch_itr->trx_id) != blocklist_by_id.end()) {
          ++sch_itr;
          continue;
       }
@@ -1783,10 +1783,10 @@ void producer_plugin_impl::process_scheduled_and_incoming_trxs( const fc::time_p
                   exhausted = true;
                   break;
                }
-               // do not blacklist
+               // do not blocklist
             } else {
-               // this failed our configured maximum transaction time, we don't want to replay it add it to a blacklist
-               _blacklisted_transactions.insert(transaction_id_with_expiry{trx_id, sch_expiration});
+               // this failed our configured maximum transaction time, we don't want to replay it add it to a blocklist
+               _blocklisted_transactions.insert(transaction_id_with_expiry{trx_id, sch_expiration});
                num_failed++;
             }
          } else {

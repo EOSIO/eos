@@ -92,7 +92,7 @@ class code_cache_async : public code_cache_base {
       ~code_cache_async();
 
       //If code is in cache: returns pointer & bumps to front of MRU list
-      //If code is not in cache, and not blacklisted, and not currently compiling: return nullptr and kick off compile
+      //If code is not in cache, and not blocklisted, and not currently compiling: return nullptr and kick off compile
       //otherwise: return nullptr
       const code_descriptor* const get_descriptor_for_code(const digest_type& code_id, const uint8_t& vm_version);
 
@@ -101,7 +101,7 @@ class code_cache_async : public code_cache_base {
       boost::lockfree::spsc_queue<wasm_compilation_result_message> _result_queue;
       void wait_on_compile_monitor_message();
       std::tuple<size_t, size_t> consume_compile_thread_queue();
-      std::unordered_set<code_tuple> _blacklist;
+      std::unordered_set<code_tuple> _blocklist;
       size_t _threads;
 };
 

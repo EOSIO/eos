@@ -58,13 +58,13 @@ namespace eosio { namespace chain {
    class controller {
       public:
          struct config {
-            flat_set<account_name>   sender_bypass_whiteblacklist;
-            flat_set<account_name>   actor_whitelist;
-            flat_set<account_name>   actor_blacklist;
-            flat_set<account_name>   contract_whitelist;
-            flat_set<account_name>   contract_blacklist;
-            flat_set< pair<account_name, action_name> > action_blacklist;
-            flat_set<public_key_type> key_blacklist;
+            flat_set<account_name>   sender_bypass_allowblocklist;
+            flat_set<account_name>   actor_allowlist;
+            flat_set<account_name>   actor_blocklist;
+            flat_set<account_name>   contract_allowlist;
+            flat_set<account_name>   contract_blocklist;
+            flat_set< pair<account_name, action_name> > action_blocklist;
+            flat_set<public_key_type> key_blocklist;
             path                     blocks_dir                 = chain::config::default_blocks_dir_name;
             path                     blocks_archive_dir         = chain::config::default_blocks_archive_dir_name;
             path                     state_dir                  = chain::config::default_state_dir_name;
@@ -190,19 +190,19 @@ namespace eosio { namespace chain {
          authorization_manager&                get_mutable_authorization_manager();
          const protocol_feature_manager&       get_protocol_feature_manager()const;
 
-         const flat_set<account_name>&   get_actor_whitelist() const;
-         const flat_set<account_name>&   get_actor_blacklist() const;
-         const flat_set<account_name>&   get_contract_whitelist() const;
-         const flat_set<account_name>&   get_contract_blacklist() const;
-         const flat_set< pair<account_name, action_name> >& get_action_blacklist() const;
-         const flat_set<public_key_type>& get_key_blacklist() const;
+         const flat_set<account_name>&   get_actor_allowlist() const;
+         const flat_set<account_name>&   get_actor_blocklist() const;
+         const flat_set<account_name>&   get_contract_allowlist() const;
+         const flat_set<account_name>&   get_contract_blocklist() const;
+         const flat_set< pair<account_name, action_name> >& get_action_blocklist() const;
+         const flat_set<public_key_type>& get_key_blocklist() const;
 
-         void   set_actor_whitelist( const flat_set<account_name>& );
-         void   set_actor_blacklist( const flat_set<account_name>& );
-         void   set_contract_whitelist( const flat_set<account_name>& );
-         void   set_contract_blacklist( const flat_set<account_name>& );
-         void   set_action_blacklist( const flat_set< pair<account_name, action_name> >& );
-         void   set_key_blacklist( const flat_set<public_key_type>& );
+         void   set_actor_allowlist( const flat_set<account_name>& );
+         void   set_actor_blocklist( const flat_set<account_name>& );
+         void   set_contract_allowlist( const flat_set<account_name>& );
+         void   set_contract_blocklist( const flat_set<account_name>& );
+         void   set_action_blocklist( const flat_set< pair<account_name, action_name> >& );
+         void   set_key_blocklist( const flat_set<public_key_type>& );
 
          uint32_t             head_block_num()const;
          time_point           head_block_time()const;
@@ -247,7 +247,7 @@ namespace eosio { namespace chain {
          sha256 calculate_integrity_hash()const;
          void write_snapshot( const snapshot_writer_ptr& snapshot )const;
 
-         bool sender_avoids_whitelist_blacklist_enforcement( account_name sender )const;
+         bool sender_avoids_allowlist_blocklist_enforcement( account_name sender )const;
          void check_actor_list( const flat_set<account_name>& actors )const;
          void check_contract_list( account_name code )const;
          void check_action_list( account_name code, action_name action )const;

@@ -92,7 +92,7 @@ std::tuple<size_t, size_t> code_cache_async::consume_compile_thread_queue() {
             },
             [&](const compilation_result_unknownfailure&) {
                wlog("code ${c} failed to tier-up with EOS VM OC", ("c", result.code.code_id));
-               _blacklist.emplace(result.code);
+               _blocklist.emplace(result.code);
             },
             [&](const compilation_result_toofull&) {
                run_eviction_round();
@@ -140,7 +140,7 @@ const code_descriptor* const code_cache_async::get_descriptor_for_code(const dig
 
    const code_tuple ct = code_tuple{code_id, vm_version};
 
-   if(_blacklist.find(ct) != _blacklist.end())
+   if(_blocklist.find(ct) != _blocklist.end())
       return nullptr;
    if(auto it = _outstanding_compiles_and_poison.find(ct); it != _outstanding_compiles_and_poison.end()) {
       it->second = false;

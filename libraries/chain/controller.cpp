@@ -16,7 +16,7 @@
 #include <eosio/chain/transaction_object.hpp>
 #include <eosio/chain/reversible_block_object.hpp>
 #include <eosio/chain/genesis_intrinsics.hpp>
-#include <eosio/chain/whitelisted_intrinsics.hpp>
+#include <eosio/chain/allowlisted_intrinsics.hpp>
 #include <eosio/chain/database_header_object.hpp>
 #include <eosio/chain/kv_chainbase_objects.hpp>
 
@@ -1097,7 +1097,7 @@ struct controller_impl {
       db.create<protocol_state_object>([&](auto& pso ){
          pso.num_supported_key_types = config::genesis_num_supported_key_types;
          for( const auto& i : genesis_intrinsics ) {
-            add_intrinsic_to_whitelist( pso.whitelisted_intrinsics, i );
+            add_intrinsic_to_allowlist( pso.allowlisted_intrinsics, i );
          }
       });
 
@@ -1162,7 +1162,7 @@ struct controller_impl {
                                         uint32_t& cpu_time_to_bill_us, // only set on failure
                                         uint32_t billed_cpu_time_us,
                                         bool explicit_billed_cpu_time = false,
-                                        bool enforce_whiteblacklist = true
+                                        bool enforce_allowblocklist = true
                                       )
    {
       signed_transaction etrx;
@@ -1191,7 +1191,7 @@ struct controller_impl {
       trx_context.deadline = deadline;
       trx_context.explicit_billed_cpu_time = explicit_billed_cpu_time;
       trx_context.billed_cpu_time_us = billed_cpu_time_us;
-      trx_context.enforce_whiteblacklist = enforce_whiteblacklist;
+      trx_context.enforce_allowblocklist = enforce_allowblocklist;
       transaction_trace_ptr trace = trx_context.trace;
       try {
          trx_context.init_for_implicit_trx();
@@ -1242,12 +1242,12 @@ struct controller_impl {
              || (code == greylist_cpu_usage_exceeded::code_value)
              || (code == deadline_exception::code_value)
              || (code == leeway_deadline_exception::code_value)
-             || (code == actor_whitelist_exception::code_value)
-             || (code == actor_blacklist_exception::code_value)
-             || (code == contract_whitelist_exception::code_value)
-             || (code == contract_blacklist_exception::code_value)
-             || (code == action_blacklist_exception::code_value)
-             || (code == key_blacklist_exception::code_value)
+             || (code == actor_allowlist_exception::code_value)
+             || (code == actor_blocklist_exception::code_value)
+             || (code == contract_allowlist_exception::code_value)
+             || (code == contract_blocklist_exception::code_value)
+             || (code == action_blocklist_exception::code_value)
+             || (code == key_blocklist_exception::code_value)
              || (code == sig_variable_size_limit_exception::code_value);
    }
 
@@ -1325,12 +1325,12 @@ struct controller_impl {
       trx_context.deadline = deadline;
       trx_context.explicit_billed_cpu_time = explicit_billed_cpu_time;
       trx_context.billed_cpu_time_us = billed_cpu_time_us;
-      trx_context.enforce_whiteblacklist = gtrx.sender.empty() ? true : !sender_avoids_whitelist_blacklist_enforcement( gtrx.sender );
+      trx_context.enforce_allowblocklist = gtrx.sender.empty() ? true : !sender_avoids_allowlist_blocklist_enforcement( gtrx.sender );
       trace = trx_context.trace;
       try {
          trx_context.init_for_deferred_trx( gtrx.published );
 
-         if( trx_context.enforce_whiteblacklist && pending->_block_status == controller::block_status::incomplete ) {
+         if( trx_context.enforce_allowblocklist && pending->_block_status == controller::block_status::incomplete ) {
             flat_set<account_name> actors;
             for( const auto& act : trx->packed_trx()->get_transaction().actions ) {
                for( const auto& auth : act.authorization ) {
@@ -1388,7 +1388,7 @@ struct controller_impl {
 
          auto error_trace = apply_onerror( gtrx, deadline, trx_context.pseudo_start,
                                            cpu_time_to_bill_us, billed_cpu_time_us, explicit_billed_cpu_time,
-                                           trx_context.enforce_whiteblacklist );
+                                           trx_context.enforce_allowblocklist );
          error_trace->failed_dtrx_trace = trace;
          trace = error_trace;
          if( !trace->except_ptr ) {
@@ -1510,7 +1510,7 @@ struct controller_impl {
             if( trx->implicit ) {
                EOS_ASSERT( !explicit_net_usage_words.valid(), transaction_exception, "NET usage cannot be explicitly set for implicit transactions" );
                trx_context.init_for_implicit_trx();
-               trx_context.enforce_whiteblacklist = false;
+               trx_context.enforce_allowblocklist = false;
             } else {
                bool skip_recording = replay_head_time && (time_point(trn.expiration) <= *replay_head_time);
                if( explicit_net_usage_words ) {
@@ -2312,9 +2312,9 @@ struct controller_impl {
       }
    }
 
-   bool sender_avoids_whitelist_blacklist_enforcement( account_name sender )const {
-      if( conf.sender_bypass_whiteblacklist.size() > 0 &&
-          ( conf.sender_bypass_whiteblacklist.find( sender ) != conf.sender_bypass_whiteblacklist.end() ) )
+   bool sender_avoids_allowlist_blocklist_enforcement( account_name sender )const {
+      if( conf.sender_bypass_allowblocklist.size() > 0 &&
+          ( conf.sender_bypass_allowblocklist.find( sender ) != conf.sender_bypass_allowblocklist.end() ) )
       {
          return true;
       }
@@ -2325,24 +2325,24 @@ struct controller_impl {
    void check_actor_list( const flat_set<account_name>& actors )const {
       if( actors.size() == 0 ) return;
 
-      if( conf.actor_whitelist.size() > 0 ) {
-         // throw if actors is not a subset of whitelist
-         const auto& whitelist = conf.actor_whitelist;
+      if( conf.actor_allowlist.size() > 0 ) {
+         // throw if actors is not a subset of allowlist
+         const auto& allowlist = conf.actor_allowlist;
          bool is_subset = true;
 
          // quick extents check, then brute force the check actors
-         if (*actors.cbegin() >= *whitelist.cbegin() && *actors.crbegin() <= *whitelist.crbegin() ) {
-            auto lower_bound = whitelist.cbegin();
+         if (*actors.cbegin() >= *allowlist.cbegin() && *actors.crbegin() <= *allowlist.crbegin() ) {
+            auto lower_bound = allowlist.cbegin();
             for (const auto& actor: actors) {
-               lower_bound = std::lower_bound(lower_bound, whitelist.cend(), actor);
+               lower_bound = std::lower_bound(lower_bound, allowlist.cend(), actor);
 
                // if the actor is not found, this is not a subset
-               if (lower_bound == whitelist.cend() || *lower_bound != actor ) {
+               if (lower_bound == allowlist.cend() || *lower_bound != actor ) {
                   is_subset = false;
                   break;
                }
 
-               // if the actor was found, we are guaranteed that other actors are either not present in the whitelist
+               // if the actor was found, we are guaranteed that other actors are either not present in the allowlist
                // or will be present in the range defined as [next actor,end)
                lower_bound = std::next(lower_bound);
             }
@@ -2351,33 +2351,33 @@ struct controller_impl {
          }
 
          // helper lambda to lazily calculate the actors for error messaging
-         static auto generate_missing_actors = [](const flat_set<account_name>& actors, const flat_set<account_name>& whitelist) -> vector<account_name> {
+         static auto generate_missing_actors = [](const flat_set<account_name>& actors, const flat_set<account_name>& allowlist) -> vector<account_name> {
             vector<account_name> excluded;
             excluded.reserve( actors.size() );
             set_difference( actors.begin(), actors.end(),
-                            whitelist.begin(), whitelist.end(),
+                            allowlist.begin(), allowlist.end(),
                             std::back_inserter(excluded) );
             return excluded;
          };
 
-         EOS_ASSERT( is_subset,  actor_whitelist_exception,
-                     "authorizing actor(s) in transaction are not on the actor whitelist: ${actors}",
-                     ("actors", generate_missing_actors(actors, whitelist))
+         EOS_ASSERT( is_subset,  actor_allowlist_exception,
+                     "authorizing actor(s) in transaction are not on the actor allowlist: ${actors}",
+                     ("actors", generate_missing_actors(actors, allowlist))
                    );
-      } else if( conf.actor_blacklist.size() > 0 ) {
-         // throw if actors intersects blacklist
-         const auto& blacklist = conf.actor_blacklist;
+      } else if( conf.actor_blocklist.size() > 0 ) {
+         // throw if actors intersects blocklist
+         const auto& blocklist = conf.actor_blocklist;
          bool intersects = false;
 
          // quick extents check then brute force check actors
-         if( *actors.cbegin() <= *blacklist.crbegin() && *actors.crbegin() >= *blacklist.cbegin() ) {
-            auto lower_bound = blacklist.cbegin();
+         if( *actors.cbegin() <= *blocklist.crbegin() && *actors.crbegin() >= *blocklist.cbegin() ) {
+            auto lower_bound = blocklist.cbegin();
             for (const auto& actor: actors) {
-               lower_bound = std::lower_bound(lower_bound, blacklist.cend(), actor);
+               lower_bound = std::lower_bound(lower_bound, blocklist.cend(), actor);
 
-               // if the lower bound in the blacklist is at the end, all other actors are guaranteed to
-               // not exist in the blacklist
-               if (lower_bound == blacklist.cend()) {
+               // if the lower bound in the blocklist is at the end, all other actors are guaranteed to
+               // not exist in the blocklist
+               if (lower_bound == blocklist.cend()) {
                   break;
                }
 
@@ -2390,52 +2390,52 @@ struct controller_impl {
          }
 
          // helper lambda to lazily calculate the actors for error messaging
-         static auto generate_blacklisted_actors = [](const flat_set<account_name>& actors, const flat_set<account_name>& blacklist) -> vector<account_name> {
-            vector<account_name> blacklisted;
-            blacklisted.reserve( actors.size() );
+         static auto generate_blocklisted_actors = [](const flat_set<account_name>& actors, const flat_set<account_name>& blocklist) -> vector<account_name> {
+            vector<account_name> blocklisted;
+            blocklisted.reserve( actors.size() );
             set_intersection( actors.begin(), actors.end(),
-                              blacklist.begin(), blacklist.end(),
-                              std::back_inserter(blacklisted)
+                              blocklist.begin(), blocklist.end(),
+                              std::back_inserter(blocklisted)
                             );
-            return blacklisted;
+            return blocklisted;
          };
 
-         EOS_ASSERT( !intersects, actor_blacklist_exception,
-                     "authorizing actor(s) in transaction are on the actor blacklist: ${actors}",
-                     ("actors", generate_blacklisted_actors(actors, blacklist))
+         EOS_ASSERT( !intersects, actor_blocklist_exception,
+                     "authorizing actor(s) in transaction are on the actor blocklist: ${actors}",
+                     ("actors", generate_blocklisted_actors(actors, blocklist))
                    );
       }
    }
 
    void check_contract_list( account_name code )const {
-      if( conf.contract_whitelist.size() > 0 ) {
-         EOS_ASSERT( conf.contract_whitelist.find( code ) != conf.contract_whitelist.end(),
-                     contract_whitelist_exception,
-                     "account '${code}' is not on the contract whitelist", ("code", code)
+      if( conf.contract_allowlist.size() > 0 ) {
+         EOS_ASSERT( conf.contract_allowlist.find( code ) != conf.contract_allowlist.end(),
+                     contract_allowlist_exception,
+                     "account '${code}' is not on the contract allowlist", ("code", code)
                    );
-      } else if( conf.contract_blacklist.size() > 0 ) {
-         EOS_ASSERT( conf.contract_blacklist.find( code ) == conf.contract_blacklist.end(),
-                     contract_blacklist_exception,
-                     "account '${code}' is on the contract blacklist", ("code", code)
+      } else if( conf.contract_blocklist.size() > 0 ) {
+         EOS_ASSERT( conf.contract_blocklist.find( code ) == conf.contract_blocklist.end(),
+                     contract_blocklist_exception,
+                     "account '${code}' is on the contract blocklist", ("code", code)
                    );
       }
    }
 
    void check_action_list( account_name code, action_name action )const {
-      if( conf.action_blacklist.size() > 0 ) {
-         EOS_ASSERT( conf.action_blacklist.find( std::make_pair(code, action) ) == conf.action_blacklist.end(),
-                     action_blacklist_exception,
-                     "action '${code}::${action}' is on the action blacklist",
+      if( conf.action_blocklist.size() > 0 ) {
+         EOS_ASSERT( conf.action_blocklist.find( std::make_pair(code, action) ) == conf.action_blocklist.end(),
+                     action_blocklist_exception,
+                     "action '${code}::${action}' is on the action blocklist",
                      ("code", code)("action", action)
                    );
       }
    }
 
    void check_key_list( const public_key_type& key )const {
-      if( conf.key_blacklist.size() > 0 ) {
-         EOS_ASSERT( conf.key_blacklist.find( key ) == conf.key_blacklist.end(),
-                     key_blacklist_exception,
-                     "public key '${key}' is on the key blacklist",
+      if( conf.key_blocklist.size() > 0 ) {
+         EOS_ASSERT( conf.key_blocklist.find( key ) == conf.key_blocklist.end(),
+                     key_blocklist_exception,
+                     "public key '${key}' is on the key blocklist",
                      ("key", key)
                    );
       }
@@ -2798,46 +2798,46 @@ transaction_trace_ptr controller::push_scheduled_transaction( const transaction_
    return my->push_scheduled_transaction( trxid, deadline, billed_cpu_time_us, explicit_billed_cpu_time );
 }
 
-const flat_set<account_name>& controller::get_actor_whitelist() const {
-   return my->conf.actor_whitelist;
+const flat_set<account_name>& controller::get_actor_allowlist() const {
+   return my->conf.actor_allowlist;
 }
-const flat_set<account_name>& controller::get_actor_blacklist() const {
-   return my->conf.actor_blacklist;
+const flat_set<account_name>& controller::get_actor_blocklist() const {
+   return my->conf.actor_blocklist;
 }
-const flat_set<account_name>& controller::get_contract_whitelist() const {
-   return my->conf.contract_whitelist;
+const flat_set<account_name>& controller::get_contract_allowlist() const {
+   return my->conf.contract_allowlist;
 }
-const flat_set<account_name>& controller::get_contract_blacklist() const {
-   return my->conf.contract_blacklist;
+const flat_set<account_name>& controller::get_contract_blocklist() const {
+   return my->conf.contract_blocklist;
 }
-const flat_set< pair<account_name, action_name> >& controller::get_action_blacklist() const {
-   return my->conf.action_blacklist;
+const flat_set< pair<account_name, action_name> >& controller::get_action_blocklist() const {
+   return my->conf.action_blocklist;
 }
-const flat_set<public_key_type>& controller::get_key_blacklist() const {
-   return my->conf.key_blacklist;
+const flat_set<public_key_type>& controller::get_key_blocklist() const {
+   return my->conf.key_blocklist;
 }
 
-void controller::set_actor_whitelist( const flat_set<account_name>& new_actor_whitelist ) {
-   my->conf.actor_whitelist = new_actor_whitelist;
+void controller::set_actor_allowlist( const flat_set<account_name>& new_actor_allowlist ) {
+   my->conf.actor_allowlist = new_actor_allowlist;
 }
-void controller::set_actor_blacklist( const flat_set<account_name>& new_actor_blacklist ) {
-   my->conf.actor_blacklist = new_actor_blacklist;
+void controller::set_actor_blocklist( const flat_set<account_name>& new_actor_blocklist ) {
+   my->conf.actor_blocklist = new_actor_blocklist;
 }
-void controller::set_contract_whitelist( const flat_set<account_name>& new_contract_whitelist ) {
-   my->conf.contract_whitelist = new_contract_whitelist;
+void controller::set_contract_allowlist( const flat_set<account_name>& new_contract_allowlist ) {
+   my->conf.contract_allowlist = new_contract_allowlist;
 }
-void controller::set_contract_blacklist( const flat_set<account_name>& new_contract_blacklist ) {
-   my->conf.contract_blacklist = new_contract_blacklist;
+void controller::set_contract_blocklist( const flat_set<account_name>& new_contract_blocklist ) {
+   my->conf.contract_blocklist = new_contract_blocklist;
 }
-void controller::set_action_blacklist( const flat_set< pair<account_name, action_name> >& new_action_blacklist ) {
-   for (auto& act: new_action_blacklist) {
-      EOS_ASSERT(act.first != account_name(), name_type_exception, "Action blacklist - contract name should not be empty");
-      EOS_ASSERT(act.second != action_name(), action_type_exception, "Action blacklist - action name should not be empty");
+void controller::set_action_blocklist( const flat_set< pair<account_name, action_name> >& new_action_blocklist ) {
+   for (auto& act: new_action_blocklist) {
+      EOS_ASSERT(act.first != account_name(), name_type_exception, "Action blocklist - contract name should not be empty");
+      EOS_ASSERT(act.second != action_name(), action_type_exception, "Action blocklist - action name should not be empty");
    }
-   my->conf.action_blacklist = new_action_blacklist;
+   my->conf.action_blocklist = new_action_blocklist;
 }
-void controller::set_key_blacklist( const flat_set<public_key_type>& new_key_blacklist ) {
-   my->conf.key_blacklist = new_key_blacklist;
+void controller::set_key_blocklist( const flat_set<public_key_type>& new_key_blocklist ) {
+   my->conf.key_blocklist = new_key_blocklist;
 }
 
 uint32_t controller::head_block_num()const {
@@ -3204,8 +3204,8 @@ const account_object& controller::get_account( account_name name )const
    return my->db.get<account_object, by_name>(name);
 } FC_CAPTURE_AND_RETHROW( (name) ) }
 
-bool controller::sender_avoids_whitelist_blacklist_enforcement( account_name sender )const {
-   return my->sender_avoids_whitelist_blacklist_enforcement( sender );
+bool controller::sender_avoids_allowlist_blocklist_enforcement( account_name sender )const {
+   return my->sender_avoids_allowlist_blocklist_enforcement( sender );
 }
 
 void controller::check_actor_list( const flat_set<account_name>& actors )const {
@@ -3480,15 +3480,15 @@ void controller::replace_account_keys( name account, name permission, const publ
 template<>
 void controller_impl::on_activation<builtin_protocol_feature_t::preactivate_feature>() {
    db.modify( db.get<protocol_state_object>(), [&]( auto& ps ) {
-      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "preactivate_feature" );
-      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "is_feature_activated" );
+      add_intrinsic_to_allowlist( ps.allowlisted_intrinsics, "preactivate_feature" );
+      add_intrinsic_to_allowlist( ps.allowlisted_intrinsics, "is_feature_activated" );
    } );
 }
 
 template<>
 void controller_impl::on_activation<builtin_protocol_feature_t::get_sender>() {
    db.modify( db.get<protocol_state_object>(), [&]( auto& ps ) {
-      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "get_sender" );
+      add_intrinsic_to_allowlist( ps.allowlisted_intrinsics, "get_sender" );
    } );
 }
 
@@ -3524,48 +3524,48 @@ void controller_impl::on_activation<builtin_protocol_feature_t::webauthn_key>() 
 template<>
 void controller_impl::on_activation<builtin_protocol_feature_t::wtmsig_block_signatures>() {
    db.modify( db.get<protocol_state_object>(), [&]( auto& ps ) {
-      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "set_proposed_producers_ex" );
+      add_intrinsic_to_allowlist( ps.allowlisted_intrinsics, "set_proposed_producers_ex" );
    } );
 }
 
 template<>
 void controller_impl::on_activation<builtin_protocol_feature_t::action_return_value>() {
    db.modify( db.get<protocol_state_object>(), [&]( auto& ps ) {
-      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "set_action_return_value" );
+      add_intrinsic_to_allowlist( ps.allowlisted_intrinsics, "set_action_return_value" );
    } );
 }
 
 template<>
 void controller_impl::on_activation<builtin_protocol_feature_t::kv_database>() {
    db.modify( db.get<protocol_state_object>(), [&]( auto& ps ) {
-      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "kv_erase" );
-      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "kv_set" );
-      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "kv_get" );
-      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "kv_get_data" );
-      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "kv_it_create" );
-      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "kv_it_destroy" );
-      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "kv_it_status" );
-      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "kv_it_compare" );
-      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "kv_it_key_compare" );
-      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "kv_it_move_to_end" );
-      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "kv_it_next" );
-      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "kv_it_prev" );
-      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "kv_it_lower_bound" );
-      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "kv_it_key" );
-      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "kv_it_value" );
+      add_intrinsic_to_allowlist( ps.allowlisted_intrinsics, "kv_erase" );
+      add_intrinsic_to_allowlist( ps.allowlisted_intrinsics, "kv_set" );
+      add_intrinsic_to_allowlist( ps.allowlisted_intrinsics, "kv_get" );
+      add_intrinsic_to_allowlist( ps.allowlisted_intrinsics, "kv_get_data" );
+      add_intrinsic_to_allowlist( ps.allowlisted_intrinsics, "kv_it_create" );
+      add_intrinsic_to_allowlist( ps.allowlisted_intrinsics, "kv_it_destroy" );
+      add_intrinsic_to_allowlist( ps.allowlisted_intrinsics, "kv_it_status" );
+      add_intrinsic_to_allowlist( ps.allowlisted_intrinsics, "kv_it_compare" );
+      add_intrinsic_to_allowlist( ps.allowlisted_intrinsics, "kv_it_key_compare" );
+      add_intrinsic_to_allowlist( ps.allowlisted_intrinsics, "kv_it_move_to_end" );
+      add_intrinsic_to_allowlist( ps.allowlisted_intrinsics, "kv_it_next" );
+      add_intrinsic_to_allowlist( ps.allowlisted_intrinsics, "kv_it_prev" );
+      add_intrinsic_to_allowlist( ps.allowlisted_intrinsics, "kv_it_lower_bound" );
+      add_intrinsic_to_allowlist( ps.allowlisted_intrinsics, "kv_it_key" );
+      add_intrinsic_to_allowlist( ps.allowlisted_intrinsics, "kv_it_value" );
       // resource management
-      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "set_resource_limit" );
-      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "get_resource_limit" );
-      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "set_kv_parameters_packed" );
-      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "get_kv_parameters_packed" );
+      add_intrinsic_to_allowlist( ps.allowlisted_intrinsics, "set_resource_limit" );
+      add_intrinsic_to_allowlist( ps.allowlisted_intrinsics, "get_resource_limit" );
+      add_intrinsic_to_allowlist( ps.allowlisted_intrinsics, "set_kv_parameters_packed" );
+      add_intrinsic_to_allowlist( ps.allowlisted_intrinsics, "get_kv_parameters_packed" );
    } );
 }
 
 template<>
 void controller_impl::on_activation<builtin_protocol_feature_t::configurable_wasm_limits>() {
    db.modify( db.get<protocol_state_object>(), [&]( auto& ps ) {
-      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "set_wasm_parameters_packed" );
-      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "get_wasm_parameters_packed" );
+      add_intrinsic_to_allowlist( ps.allowlisted_intrinsics, "set_wasm_parameters_packed" );
+      add_intrinsic_to_allowlist( ps.allowlisted_intrinsics, "get_wasm_parameters_packed" );
    } );
 }
 

@@ -81,7 +81,7 @@ class currency_tester : public TESTER {
                  ("maximum_supply", "1000000000.0000 CUR")
                  ("can_freeze", 0)
                  ("can_recall", 0)
-                 ("can_whitelist", 0)
+                 ("can_allowlist", 0)
          );
          wdump((result));
 
