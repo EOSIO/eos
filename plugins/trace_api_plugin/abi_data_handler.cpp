@@ -31,4 +31,27 @@ namespace eosio::trace_api {
 
       return {};
    }
+
+      fc::variant abi_data_handler::process_data(const action_trace_v1& action, const yield_function& yield ) {
+      if (abi_serializer_by_account.count(action.account) > 0) {
+         const auto& serializer_p = abi_serializer_by_account.at(action.account);
+         auto type_name = serializer_p->get_action_type(action.action);
+
+         if (!type_name.empty()) {
+            try {
+               // abi_serializer expects a yield function that takes a recursion depth
+               auto abi_yield = [yield](size_t recursion_depth) {
+                  yield();
+                  EOS_ASSERT( recursion_depth < chain::abi_serializer::max_recursion_depth, chain::abi_recursion_depth_exception,
+                              "exceeded max_recursion_depth ${r} ", ("r", chain::abi_serializer::max_recursion_depth) );
+               };
+               return serializer_p->binary_to_variant(type_name, action.data, abi_yield);
+            } catch (...) {
+               except_handler(MAKE_EXCEPTION_WITH_CONTEXT(std::current_exception()));
+            }
+         }
+      }
+
+      return {};
+   }
 }

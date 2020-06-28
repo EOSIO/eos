@@ -62,6 +62,42 @@ namespace {
 
    }
 
+   fc::variants process_actions(const std::vector<action_trace_v1>& actions, const data_handler_function_v1& data_handler, const yield_function& yield ) {
+      fc::variants result;
+      result.reserve(actions.size());
+
+      // create a vector of indices to sort based on actions to avoid copies
+      std::vector<int> indices(actions.size());
+      std::iota(indices.begin(), indices.end(), 0);
+      std::sort(indices.begin(), indices.end(), [&actions](const int& lhs, const int& rhs) -> bool {
+         return actions.at(lhs).global_sequence < actions.at(rhs).global_sequence;
+      });
+
+      for ( int index : indices) {
+         yield();
+
+         const auto& a = actions.at(index);
+         auto action_variant = fc::mutable_variant_object()
+               ("global_sequence", a.global_sequence)
+               ("receiver", a.receiver.to_string())
+               ("account", a.account.to_string())
+               ("action", a.action.to_string())
+               ("authorization", process_authorizations(a.authorization, yield))
+               ("data", fc::to_hex(a.data.data(), a.data.size()))
+               ("return_value", fc::to_hex(a.return_value.data(), a.return_value.size()));
+
+         auto params = data_handler(a, yield);
+         if (!params.is_null()) {
+            action_variant("params", params);
+         }
+
+         result.emplace_back( std::move(action_variant) );
+      }
+
+      return result;
+
+   }
+
    fc::variants process_transactions(const std::vector<transaction_trace_v0>& transactions, const data_handler_function& data_handler, const yield_function& yield ) {
       fc::variants result;
       result.reserve(transactions.size());
@@ -96,6 +132,41 @@ namespace {
         return result;
     }
 
+   fc::variants process_transactions(const std::vector<transaction_trace_v2>& transactions, const data_handler_function_v1& data_handler, const yield_function& yield ) {
+      fc::variants result;
+      result.reserve(transactions.size());
+      for ( const auto& t: transactions) {
+         yield();
+
+         result.emplace_back(fc::mutable_variant_object()
+            ("id", t.id.str())
+            ("actions", process_actions(t.actions, data_handler, yield))
+         );
+      }
+
+      return result;
+   }
+
+    fc::variants process_transactions(const std::vector<transaction_trace_v3>& transactions, const data_handler_function_v1& data_handler, const yield_function& yield ) {
+        fc::variants result;
+        result.reserve(transactions.size());
+        for ( const auto& t: transactions) {
+            yield();
+            result.emplace_back(fc::mutable_variant_object()
+               ("id", t.id.str())
+               ("actions", process_actions(t.actions, data_handler, yield))
+               ("status", t.status)
+               ("cpu_usage_us", t.cpu_usage_us)
+               ("net_usage_words", t.net_usage_words)
+               ("signatures", t.signatures)
+               ("transaction_header", t.trx_header)
+            );
+        }
+
+        return result;
+    }
+
+
 }
 
 namespace eosio::trace_api::detail {
@@ -110,7 +181,18 @@ namespace eosio::trace_api::detail {
          ("transactions", process_transactions(trace.transactions, data_handler, yield ));
    }
 
-    fc::variant process_block_trace( const block_trace_v1& trace, bool irreversible, const data_handler_function& data_handler, const yield_function& yield ) {
+   fc::variant process_block_trace( const block_trace_v2& trace, bool irreversible, const data_handler_function_v1& data_handler, const yield_function& yield ) {
+      return fc::mutable_variant_object()
+         ("id", trace.id.str() )
+         ("number", trace.number )
+         ("previous_id", trace.previous_id.str() )
+         ("status", irreversible ? "irreversible" : "pending" )
+         ("timestamp", to_iso8601_datetime(trace.timestamp))
+         ("producer", trace.producer.to_string())
+         ("transactions", process_transactions(trace.transactions, data_handler, yield ));
+   }
+
+   fc::variant process_block_trace( const block_trace_v1& trace, bool irreversible, const data_handler_function& data_handler, const yield_function& yield ) {
         return fc::mutable_variant_object()
         ("id", trace.id.str() )
         ("number", trace.number )
@@ -122,9 +204,33 @@ namespace eosio::trace_api::detail {
         ("action_mroot", trace.action_mroot)
         ("schedule_version", trace.schedule_version)
         ("transactions", process_transactions(trace.transactions_v1, data_handler, yield ));
+   }
+
+   fc::variant process_block_trace( const block_trace_v3& trace, bool irreversible, const data_handler_function_v1& data_handler, const yield_function& yield ) {
+        return fc::mutable_variant_object()
+        ("id", trace.id.str() )
+        ("number", trace.number )
+        ("previous_id", trace.previous_id.str() )
+        ("status", irreversible ? "irreversible" : "pending" )
+        ("timestamp", to_iso8601_datetime(trace.timestamp))
+        ("producer", trace.producer.to_string())
+        ("transaction_mroot", trace.transaction_mroot)
+        ("action_mroot", trace.action_mroot)
+        ("schedule_version", trace.schedule_version)
+        ("transactions", process_transactions(trace.transactions_v3, data_handler, yield ));
     }
-    fc::variant response_formatter::process_block( const data_log_entry& trace, bool irreversible, const data_handler_function& data_handler, const yield_function& yield ) {
+   
+   // uint64_t response_formatter::get_block_trace_version(const data_log_entry& trace){
+   //     if (trace.contains<block_trace_v3>()) return 3;
+   //     else if(trace.contains<block_trace_v1>()) return 1;
+   //     else if(trace.contains<block_trace_v2>()) return 2;
+   //     else return 0;
+   // }
+
+    fc::variant response_formatter::process_block( const data_log_entry& trace, bool irreversible, const data_handler_function& data_handler, const data_handler_function_v1 & data_handler_v1 , const yield_function& yield ) {
         if (trace.contains<block_trace_v0>()) return process_block_trace(trace.get<block_trace_v0>(), irreversible, data_handler, yield);
-        else return process_block_trace(trace.get<block_trace_v1>(), irreversible, data_handler, yield);
+        else if(trace.contains<block_trace_v1>()) return process_block_trace(trace.get<block_trace_v1>(), irreversible, data_handler, yield);
+        else if(trace.contains<block_trace_v2>()) return process_block_trace(trace.get<block_trace_v2>(), irreversible, data_handler_v1, yield); 
+        else return process_block_trace(trace.get<block_trace_v3>(), irreversible, data_handler_v1, yield);
     }
 }

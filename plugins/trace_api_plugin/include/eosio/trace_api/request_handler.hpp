@@ -7,11 +7,12 @@
 
 namespace eosio::trace_api {
    using data_handler_function = std::function<fc::variant(const action_trace_v0&, const yield_function&)>;
-
+   using data_handler_function_v1 = std::function<fc::variant(const action_trace_v1&, const yield_function&)>;
    namespace detail {
       class response_formatter {
       public:
-         static fc::variant process_block( const data_log_entry& trace, bool irreversible, const data_handler_function& data_handler, const yield_function& yield );
+         static fc::variant process_block( const data_log_entry& trace, bool irreversible, const data_handler_function& data_handler, const data_handler_function_v1 & data_handler_v1, const yield_function& yield );
+         //uint64_t get_block_trace_version(const data_log_entry& trace);
       };
    }
 
@@ -42,12 +43,14 @@ namespace eosio::trace_api {
          }
 
          yield();
-
+         
          auto data_handler = [this](const action_trace_v0& action, const yield_function& yield) -> fc::variant {
-            return data_handler_provider.process_data(action, yield);
+               return data_handler_provider.process_data(action, yield);
          };
-
-         return detail::response_formatter::process_block(std::get<0>(*data), std::get<1>(*data), data_handler, yield);
+         auto data_handler_v1 = [this](const action_trace_v1& action, const yield_function& yield) -> fc::variant {
+               return data_handler_provider.process_data(action, yield);
+         };
+         return detail::response_formatter::process_block(std::get<0>(*data), std::get<1>(*data), data_handler, data_handler_v1, yield);
       }
 
    private:

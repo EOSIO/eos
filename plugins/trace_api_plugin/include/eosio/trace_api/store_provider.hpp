@@ -247,6 +247,7 @@ namespace eosio::trace_api {
             std::optional<uint32_t> minimum_uncompressed_irreversible_history_blocks, size_t compression_seek_point_stride);
 
       void append(const block_trace_v1& bt);
+      void append(const block_trace_v3& bt);
       void append_lib(uint32_t lib);
 
       /**

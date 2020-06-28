@@ -77,6 +77,9 @@ namespace {
       void append( const block_trace_v1& trace ) {
          store->append(trace);
       }
+      void append( const block_trace_v3& trace ) {
+         store->append(trace);
+      }
 
       void append_lib( uint32_t new_lib ) {
          store->append_lib(new_lib);

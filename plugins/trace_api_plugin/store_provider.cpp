@@ -46,6 +46,18 @@ namespace eosio::trace_api {
       append_store(be, index);
    }
 
+   void store_provider::append(const block_trace_v3& bt) {
+      fc::cfile trace;
+      fc::cfile index;
+      const uint32_t slice_number = _slice_directory.slice_number(bt.number);
+      _slice_directory.find_or_create_slice_pair(slice_number, open_state::write, trace, index);
+      // storing as static_variant to allow adding other data types to the trace file in the future
+      const uint64_t offset = append_store(data_log_entry { bt }, trace);
+
+      auto be = metadata_log_entry { block_entry_v0 { .id = bt.id, .number = bt.number, .offset = offset }};
+      append_store(be, index);
+   }
+
    void store_provider::append_lib(uint32_t lib) {
       fc::cfile index;
       const uint32_t slice_number = _slice_directory.slice_number(lib);

@@ -92,7 +92,23 @@ namespace eosio::trace_api {
          lhs.data == rhs.data;
    }
 
+   bool operator==(const action_trace_v1& lhs, const action_trace_v1& rhs) {
+      return
+         lhs.global_sequence == rhs.global_sequence &&
+         lhs.receiver == rhs.receiver &&
+         lhs.account == rhs.account &&
+         lhs.action == rhs.action &&
+         lhs.authorization == rhs.authorization &&
+         lhs.data == rhs.data &&
+         lhs.return_value == rhs.return_value;
+   }
+
    bool operator==(const transaction_trace_v0& lhs,  const transaction_trace_v0& rhs) {
+      return
+         lhs.id == rhs.id &&
+         lhs.actions == rhs.actions;
+   }
+   bool operator==(const transaction_trace_v2& lhs,  const transaction_trace_v2& rhs) {
       return
          lhs.id == rhs.id &&
          lhs.actions == rhs.actions;
@@ -107,8 +123,22 @@ namespace eosio::trace_api {
          lhs.producer == rhs.producer &&
          lhs.transactions == rhs.transactions;
    }
+   bool operator==(const block_trace_v2 &lhs, const block_trace_v2 &rhs) {
+      return
+         lhs.id == rhs.id &&
+         lhs.number == rhs.number &&
+         lhs.previous_id == rhs.previous_id &&
+         lhs.timestamp == rhs.timestamp &&
+         lhs.producer == rhs.producer &&
+         lhs.transactions == rhs.transactions;
+   }
 
    std::ostream& operator<<(std::ostream &os, const block_trace_v0 &bt) {
+      os << fc::json::to_string( bt, fc::time_point::maximum() );
+      return os;
+   }
+
+   std::ostream& operator<<(std::ostream &os, const block_trace_v2 &bt) {
       os << fc::json::to_string( bt, fc::time_point::maximum() );
       return os;
    }
