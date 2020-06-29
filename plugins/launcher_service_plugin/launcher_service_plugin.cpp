@@ -626,7 +626,10 @@ namespace eosio {
       }
 
       fc::variant get_block(int cluster_id, int node_id, std::string block_num_or_id) {
-         return call(cluster_id, node_id, "/v1/chain/get_block", fc::mutable_variant_object("block_num_or_id", block_num_or_id));
+         ilog("REMOVE get_block[${ci}][${ni}] ${bn}",("ci",cluster_id)("ni",node_id)("bn", block_num_or_id));
+         auto ret = call(cluster_id, node_id, "/v1/chain/get_block", fc::mutable_variant_object("block_num_or_id", block_num_or_id));
+         ilog("REMOVE get_block[${ci}][${ni}] ${bn} done",("ci",cluster_id)("ni",node_id)("bn", block_num_or_id));
+         return ret;
       }
 
       fc::variant get_protocol_features(int cluster_id, int node_id) {
