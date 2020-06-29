@@ -164,7 +164,7 @@ struct pending_state {
       if( std::holds_alternative<building_block>(_block_stage) )
          return std::get<building_block>(_block_stage)._pending_block_header_state;
 
-      return std::get<assembled_block>(_block_stage)._pending_block_header_state;     
+      return fc::get<assembled_block>(_block_stage)._pending_block_header_state;     
    }
 
    const deque<transaction_receipt>& get_trx_receipts()const {
@@ -174,7 +174,7 @@ struct pending_state {
       if( std::holds_alternative<assembled_block>(_block_stage) )
          return std::get<assembled_block>(_block_stage)._unsigned_block->transactions;
 
-      return std::get<completed_block>(_block_stage)._block_state->block->transactions;
+      return fc::get<completed_block>(_block_stage)._block_state->block->transactions;
     }
 
    deque<transaction_metadata_ptr> extract_trx_metas() {
@@ -184,7 +184,7 @@ struct pending_state {
       if( std::holds_alternative<assembled_block>(_block_stage) )
          return std::move( std::get<assembled_block>(_block_stage)._trx_metas );
 
-      return std::get<completed_block>(_block_stage)._block_state->extract_trxs_metas();
+      return fc::get<completed_block>(_block_stage)._block_state->extract_trxs_metas();
    }
 
    bool is_protocol_feature_activated( const digest_type& feature_digest )const {
@@ -209,7 +209,7 @@ struct pending_state {
          // TODO: implement this
       }
 
-      const auto& activated_features = std::get<completed_block>(_block_stage)._block_state->activated_protocol_features->protocol_features;
+      const auto& activated_features = fc::get<completed_block>(_block_stage)._block_state->activated_protocol_features->protocol_features;
       return (activated_features.find( feature_digest ) != activated_features.end());
    }
 
@@ -1202,7 +1202,7 @@ struct controller_impl {
          auto restore = make_block_restore_point();
          trace->receipt = push_receipt( gtrx.trx_id, transaction_receipt::soft_fail,
                                         trx_context.billed_cpu_time_us, trace->net_usage );
-         fc::move_append( std::get<building_block>(pending->_block_stage)._action_receipt_digests,
+         fc::move_append( fc::get<building_block>(pending->_block_stage)._action_receipt_digests,
                           std::move(trx_context.executed_action_receipt_digests) );
 
          trx_context.squash();
@@ -1351,7 +1351,7 @@ struct controller_impl {
                                         trx_context.billed_cpu_time_us,
                                         trace->net_usage );
 
-         fc::move_append( std::get<building_block>(pending->_block_stage)._action_receipt_digests,
+         fc::move_append( fc::get<building_block>(pending->_block_stage)._action_receipt_digests,
                           std::move(trx_context.executed_action_receipt_digests) );
 
          trace->account_ram_delta = account_delta( gtrx.payer, trx_removal_ram_delta );
@@ -1456,7 +1456,7 @@ struct controller_impl {
                                             uint64_t cpu_usage_us, uint64_t net_usage ) {
       uint64_t net_usage_words = net_usage / 8;
       EOS_ASSERT( net_usage_words*8 == net_usage, transaction_exception, "net_usage is not divisible by 8" );
-      auto& receipts = std::get<building_block>(pending->_block_stage)._pending_trx_receipts;
+      auto& receipts = fc::get<building_block>(pending->_block_stage)._pending_trx_receipts;
       receipts.emplace_back( trx );
       transaction_receipt& r = receipts.back();
       r.cpu_usage_us         = cpu_usage_us;
@@ -1546,7 +1546,7 @@ struct controller_impl {
                                                     : transaction_receipt::delayed;
                trace->receipt = push_receipt(*trx->packed_trx(), s, trx_context.billed_cpu_time_us, trace->net_usage);
                trx->billed_cpu_time_us = trx_context.billed_cpu_time_us;
-               std::get<building_block>(pending->_block_stage)._pending_trx_metas.emplace_back(trx);
+               fc::get<building_block>(pending->_block_stage)._pending_trx_metas.emplace_back(trx);
             } else {
                transaction_receipt_header r;
                r.status = transaction_receipt::executed;
@@ -1555,7 +1555,7 @@ struct controller_impl {
                trace->receipt = r;
             }
 
-            fc::move_append( std::get<building_block>(pending->_block_stage)._action_receipt_digests,
+            fc::move_append( fc::get<building_block>(pending->_block_stage)._action_receipt_digests,
                              std::move(trx_context.executed_action_receipt_digests) );
 
             // call the accept signal but only once for this transaction
@@ -1712,7 +1712,7 @@ struct controller_impl {
             EOS_ASSERT( gpo.proposed_schedule.version == pbhs.active_schedule_version + 1,
                         producer_schedule_exception, "wrong producer schedule version specified" );
 
-            std::get<building_block>(pending->_block_stage)._new_pending_producer_schedule = producer_authority_schedule::from_shared(gpo.proposed_schedule);
+            fc::get<building_block>(pending->_block_stage)._new_pending_producer_schedule = producer_authority_schedule::from_shared(gpo.proposed_schedule);
             db.modify( gpo, [&]( auto& gp ) {
                gp.proposed_schedule_block_num = optional<block_num_type>();
                gp.proposed_schedule.version=0;
@@ -1774,7 +1774,7 @@ struct controller_impl {
       auto block_ptr = std::make_shared<signed_block>( pbhs.make_block_header(
          std::holds_alternative<checksum256_type>(bb._trx_mroot_or_receipt_digests) ?
                std::get<checksum256_type>(bb._trx_mroot_or_receipt_digests) :
-               merkle( std::move( std::get<digests_t>(bb._trx_mroot_or_receipt_digests) ) ),
+               merkle( std::move( fc::get<digests_t>(bb._trx_mroot_or_receipt_digests) ) ),
          merkle( std::move( fc::get<building_block>(pending->_block_stage)._action_receipt_digests ) ),
          bb._new_pending_producer_schedule,
          std::move( bb._new_protocol_feature_activations ),
@@ -1927,7 +1927,7 @@ struct controller_impl {
          start_block( b->timestamp, b->confirmed, new_protocol_feature_activations, s, producer_block_id);
 
          // validated in create_block_state_future()
-         std::get<building_block>(pending->_block_stage)._trx_mroot_or_receipt_digests = b->transaction_mroot;
+         fc::get<building_block>(pending->_block_stage)._trx_mroot_or_receipt_digests = b->transaction_mroot;
 
          const bool existing_trxs_metas = !bsp->trxs_metas().empty();
          const bool pub_keys_recovered = bsp->is_pub_keys_recovered();
@@ -1964,7 +1964,7 @@ struct controller_impl {
          bool explicit_net = self.skip_trx_checks();
 
          size_t packed_idx = 0;
-         const auto& trx_receipts = std::get<building_block>(pending->_block_stage)._pending_trx_receipts;
+         const auto& trx_receipts = fc::get<building_block>(pending->_block_stage)._pending_trx_receipts;
          for( const auto& receipt : b->transactions ) {
             auto num_pending_receipts = trx_receipts.size();
             if( std::holds_alternative<packed_transaction>(receipt.trx) ) {
@@ -3109,7 +3109,7 @@ const producer_authority_schedule& controller::pending_producers()const {
       }
    }
 
-   const auto& bb = std::get<building_block>(my->pending->_block_stage);
+   const auto& bb = fc::get<building_block>(my->pending->_block_stage);
 
    if( bb._new_pending_producer_schedule )
       return *bb._new_pending_producer_schedule;
@@ -3460,7 +3460,7 @@ void controller::replace_producer_keys( const public_key_type& key ) {
    my->head->pending_schedule.schedule.version = version;
    for (auto& prod: my->head->active_schedule.producers ) {
       ilog("${n}", ("n", prod.producer_name));
-      std::visit([&](auto &auth) {
+      fc::visit([&](auto &auth) {
          auth.threshold = 1;
          auth.keys = {key_weight{key, 1}};
       }, prod.authority);

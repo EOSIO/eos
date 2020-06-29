@@ -835,7 +835,7 @@ int apply_context::get_context_free_data( uint32_t index, char* buffer, size_t b
       const std::vector<bytes>& context_free_data =
             std::holds_alternative<packed_transaction::prunable_data_type::full_legacy>(data) ?
                std::get<packed_transaction::prunable_data_type::full_legacy>(data).context_free_segments :
-               std::get<packed_transaction::prunable_data_type::full>(data).context_free_segments;
+               fc::get<packed_transaction::prunable_data_type::full>(data).context_free_segments;
       if( index >= context_free_data.size() ) return -1;
 
       cfd = &context_free_data[index];

@@ -15,7 +15,7 @@ struct shared_public_key {
 
    operator public_key_type() const {
       fc::crypto::public_key::storage_type public_key_storage;
-      std::visit(overloaded {
+      fc::visit(overloaded {
          [&](const auto& k1r1) {
             public_key_storage = k1r1;
          },
@@ -39,7 +39,7 @@ struct shared_public_key {
       if(lhs.pubkey.index() != rhs.pubkey.index())
          return false;
 
-      return std::visit(overloaded {
+      return fc::visit(overloaded {
          [&](const fc::ecc::public_key_shim& k1) {
             return k1._data == std::get<fc::ecc::public_key_shim>(rhs.pubkey)._data;
          },
@@ -56,7 +56,7 @@ struct shared_public_key {
       if(l.pubkey.index() != r._storage.index())
          return false;
 
-      return std::visit(overloaded {
+      return fc::visit(overloaded {
          [&](const fc::ecc::public_key_shim& k1) {
             return k1._data == std::get<fc::ecc::public_key_shim>(r._storage)._data;
          },
@@ -67,7 +67,7 @@ struct shared_public_key {
             fc::datastream<const char*> ds(wa.data(), wa.size());
             fc::crypto::webauthn::public_key pub;
             fc::raw::unpack(ds, pub);
-            return pub == std::get<fc::crypto::webauthn::public_key>(r._storage);
+            return pub == fc::get<fc::crypto::webauthn::public_key>(r._storage);
          }
       }, l.pubkey);
    }
@@ -105,7 +105,7 @@ struct shared_key_weight {
    }
 
    static shared_key_weight convert(chainbase::allocator<char> allocator, const key_weight& k) {
-      return std::visit(overloaded {
+      return fc::visit(overloaded {
          [&](const auto& k1r1) {
             return shared_key_weight(k1r1, k.weight);
          },

@@ -2286,7 +2286,7 @@ void read_write::push_transaction(const read_write::push_transaction_params& par
          if (std::holds_alternative<fc::exception_ptr>(result)) {
             next(std::get<fc::exception_ptr>(result));
          } else {
-            auto trx_trace_ptr = std::get<transaction_trace_ptr>(result);
+            auto trx_trace_ptr = fc::get<transaction_trace_ptr>(result);
 
             try {
                fc::variant output;
@@ -2361,7 +2361,7 @@ static void push_recurse(read_write* rw, int index, const std::shared_ptr<read_w
          const auto& e = std::get<fc::exception_ptr>(result);
          results->emplace_back( read_write::push_transaction_results{ transaction_id_type(), fc::mutable_variant_object( "error", e->to_detail_string() ) } );
       } else {
-         const auto& r = std::get<read_write::push_transaction_results>(result);
+         const auto& r = fc::get<read_write::push_transaction_results>(result);
          results->emplace_back( r );
       }
 
@@ -2407,7 +2407,7 @@ void read_write::send_transaction(const read_write::send_transaction_params& par
          if (std::holds_alternative<fc::exception_ptr>(result)) {
             next(std::get<fc::exception_ptr>(result));
          } else {
-            auto trx_trace_ptr = std::get<transaction_trace_ptr>(result);
+            auto trx_trace_ptr = fc::get<transaction_trace_ptr>(result);
 
             try {
                fc::variant output;
