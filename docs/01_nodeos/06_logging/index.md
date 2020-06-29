@@ -81,6 +81,7 @@ The logging library built into EOSIO currently supports the following loggers:
 - `http_plugin` - detailed logging for the http plugin.
 - `producer_plugin` - detailed logging for the producer plugin.
 - `transaction_tracing` - detailed log that emits verdicts from relay nodes on the P2P network.
+- `transaction_failure_tracing` - detailed log that emits failed verdicts from relay nodes on the P2P network.
 - `trace_api` - detailed logging for the trace_api plugin.
 
 The configuration options are:
