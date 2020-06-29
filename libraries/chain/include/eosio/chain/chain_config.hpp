@@ -32,7 +32,6 @@ struct chain_config {
    uint32_t   max_inline_action_size;               ///< maximum allowed size (in bytes) of an inline action
    uint16_t   max_inline_action_depth;              ///< recursion depth limit on sending inline actions
    uint16_t   max_authority_depth;                  ///< recursion depth limit for checking if an authority is satisfied
-   uint32_t   max_nonprivileged_inline_action_size; ///< maximum allowed size (in bytes) of an inline action for a nonprivileged account
 
    void validate()const;
 
@@ -75,8 +74,7 @@ struct chain_config {
                            lhs.max_transaction_delay,
                            lhs.max_inline_action_size,
                            lhs.max_inline_action_depth,
-                           lhs.max_authority_depth,
-                           lhs.max_nonprivileged_inline_action_size
+                           lhs.max_authority_depth
                         )
                ==
                std::tie(   rhs.max_block_net_usage,
@@ -95,8 +93,7 @@ struct chain_config {
                            rhs.max_transaction_delay,
                            rhs.max_inline_action_size,
                            rhs.max_inline_action_depth,
-                           rhs.max_authority_depth,
-                           rhs.max_nonprivileged_inline_action_size
+                           rhs.max_authority_depth
                         );
    };
 
@@ -116,6 +113,4 @@ FC_REFLECT(eosio::chain::chain_config,
 
            (max_transaction_lifetime)(deferred_trx_expiration_window)(max_transaction_delay)
            (max_inline_action_size)(max_inline_action_depth)(max_authority_depth)
-           (max_nonprivileged_inline_action_size)
-
 )

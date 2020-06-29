@@ -77,6 +77,7 @@ namespace eosio { namespace chain {
             uint16_t                 max_retained_block_files   = chain::config::default_max_retained_block_files;
             uint64_t                 blocks_log_stride          = chain::config::default_blocks_log_stride;
             fc::microseconds         abi_serializer_max_time_us = fc::microseconds(chain::config::default_abi_serializer_max_time_us);
+            uint32_t   max_nonprivileged_inline_action_size =  chain::config::default_max_nonprivileged_inline_action_size;
             bool                     read_only                  = false;
             bool                     force_all_checks           = false;
             bool                     disable_replay_opts        = false;
@@ -189,6 +190,7 @@ namespace eosio { namespace chain {
          const authorization_manager&          get_authorization_manager()const;
          authorization_manager&                get_mutable_authorization_manager();
          const protocol_feature_manager&       get_protocol_feature_manager()const;
+         uint32_t                              get_max_nonprivileged_inline_action_size()const;
 
          const flat_set<account_name>&   get_actor_whitelist() const;
          const flat_set<account_name>&   get_actor_blacklist() const;

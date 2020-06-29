@@ -2520,6 +2520,11 @@ const protocol_feature_manager& controller::get_protocol_feature_manager()const
    return my->protocol_features;
 }
 
+uint32_t controller::get_max_nonprivileged_inline_action_size()const
+{
+   return my->conf.max_nonprivileged_inline_action_size;
+}
+
 controller::controller( const controller::config& cfg, const chain_id_type& chain_id )
 :my( new controller_impl( cfg, *this, protocol_feature_set{}, chain_id ) )
 {
