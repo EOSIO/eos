@@ -208,7 +208,7 @@ namespace eosio { namespace chain {
             legacy::producer_schedule_type downgraded_producers;
             downgraded_producers.version = new_producers->version;
             for (const auto &p : new_producers->producers) {
-               std::visit([&downgraded_producers, &p](const auto& auth)
+               fc::visit([&downgraded_producers, &p](const auto& auth)
                {
                   EOS_ASSERT(auth.keys.size() == 1 && auth.keys.front().weight == auth.threshold, producer_schedule_exception, "multisig block signing present before enabled!");
                   downgraded_producers.producers.emplace_back(legacy::producer_key{p.producer_name, auth.keys.front().key});
@@ -410,7 +410,7 @@ namespace eosio { namespace chain {
 
    void block_header_state::verify_signee( )const {
 
-      auto num_keys_in_authority = std::visit([](const auto &a){ return a.keys.size(); }, valid_block_signing_authority);
+      auto num_keys_in_authority = fc::visit([](const auto &a){ return a.keys.size(); }, valid_block_signing_authority);
       EOS_ASSERT(1 + additional_signatures.size() <= num_keys_in_authority, wrong_signing_key,
                  "number of block signatures (${num_block_signatures}) exceeds number of keys in block signing authority (${num_keys})",
                  ("num_block_signatures", 1 + additional_signatures.size())

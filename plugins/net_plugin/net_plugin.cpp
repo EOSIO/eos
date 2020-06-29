@@ -2009,7 +2009,7 @@ namespace eosio {
       std::lock_guard<std::mutex> g( local_txns_mtx );
       for( const auto& recpt : sb->transactions ) {
          const transaction_id_type& id = (recpt.trx.index() == 0) ? std::get<transaction_id_type>(recpt.trx)
-                                                                  : std::get<packed_transaction>(recpt.trx).id();
+                                                                  : fc::get<packed_transaction>(recpt.trx).id();
          auto range = local_txns.get<by_id>().equal_range( id );
          for( auto itr = range.first; itr != range.second; ++itr ) {
             local_txns.modify( itr, ubn );
@@ -2518,7 +2518,7 @@ namespace eosio {
             net_message msg;
             fc::raw::unpack( ds, msg );
             msg_handler m( shared_from_this() );
-            std::visit( m, msg );
+            fc::visit( m, msg );
          }
 
       } catch( const fc::exception& e ) {
@@ -3048,7 +3048,7 @@ namespace eosio {
          if (std::holds_alternative<fc::exception_ptr>(result)) {
             fc_dlog( logger, "bad packed_transaction : ${m}", ("m", std::get<fc::exception_ptr>(result)->what()) );
          } else {
-            const transaction_trace_ptr& trace = std::get<transaction_trace_ptr>(result);
+            const transaction_trace_ptr& trace = fc::get<transaction_trace_ptr>(result);
             if( !trace->except ) {
                fc_dlog( logger, "chain accepted transaction, bcast ${id}", ("id", trace->id) );
             } else {

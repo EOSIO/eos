@@ -92,7 +92,7 @@ private:
             if( std::holds_alternative<transaction_id_type>(r.trx)) {
                id = std::get<transaction_id_type>(r.trx);
             } else {
-               id = std::get<packed_transaction>(r.trx).id();
+               id = fc::get<packed_transaction>(r.trx).id();
             }
             const auto it = cached_traces.find( id );
             if( it != cached_traces.end() ) {

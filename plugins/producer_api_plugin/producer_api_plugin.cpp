@@ -50,7 +50,7 @@ struct async_result_visitor : public fc::visitor<fc::variant> {
                http_plugin::handle_exception(#api_name, #call_name, body, cb);\
             }\
          } else {\
-            cb(http_response_code, std::visit(async_result_visitor(), result));\
+            cb(http_response_code, fc::visit(async_result_visitor(), result));\
          }\
       };\
       INVOKE\

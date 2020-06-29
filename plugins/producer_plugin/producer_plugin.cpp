@@ -451,7 +451,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                } else {
                   fc_dlog(_trx_trace_log, "[TRX_TRACE] Speculative execution is REJECTING tx: ${txid} : ${why} ",
                           ("txid", trx->id())
-                          ("why",std::get<fc::exception_ptr>(response)->what()));
+                          ("why",fc::get<fc::exception_ptr>(response)->what()));
                }
             } else {
                _transaction_ack_channel.publish(priority::low, std::pair<fc::exception_ptr, transaction_metadata_ptr>(nullptr, trx));

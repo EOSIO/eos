@@ -821,21 +821,21 @@ namespace eosio { namespace chain {
 
          generate_path_string_visitor visitor(shorten_names, !full_path);
          if( full_path )
-            std::visit( visitor, root_of_path );
+            fc::visit( visitor, root_of_path );
          for( size_t i = 0, n = path.size(); i < n; ++i ) {
             if( full_path && !std::holds_alternative<array_index_path_item>(path[i]) )
                visitor.add_dot();
 
-            std::visit( visitor, path[i] );
+            fc::visit( visitor, path[i] );
 
          }
 
          if( !full_path ) {
             if( std::holds_alternative<empty_path_item>(visitor.last_path_item) ) {
-               std::visit( visitor, root_of_path );
+               fc::visit( visitor, root_of_path );
             } else {
                path_item_type_visitor vis2(visitor.s, shorten_names);
-               std::visit(vis2, visitor.last_path_item);
+               fc::visit(vis2, visitor.last_path_item);
             }
          }
 

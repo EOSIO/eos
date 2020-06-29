@@ -750,7 +750,7 @@ namespace fc {
     void pack( Stream& s, const std::variant<T...>& sv )
     {
        fc::raw::pack( s, unsigned_int(sv.index()) );
-       std::visit( pack_static_variant<Stream>(s), sv );
+       fc::visit( pack_static_variant<Stream>(s), sv );
     }
 
     template<typename Stream, typename... T> void unpack( Stream& s, std::variant<T...>& sv )
@@ -758,7 +758,7 @@ namespace fc {
        unsigned_int w;
        fc::raw::unpack( s, w );
        fc::from_index(sv, w.value);
-       std::visit( unpack_static_variant<Stream>(s), sv );
+       fc::visit( unpack_static_variant<Stream>(s), sv );
     }
 
 

@@ -1044,7 +1044,7 @@ BOOST_AUTO_TEST_CASE(pruned_block_test) {
    BOOST_TEST(in.tellp() <= buffer.size());
    BOOST_TEST(deserialized.transaction_mroot.str() == original->transaction_mroot.str());
    BOOST_TEST(deserialized.transaction_mroot.str() == calculate_trx_merkle(deserialized.transactions).str());
-   std::get<packed_transaction>(deserialized.transactions.back().trx).prune_all();
+   fc::get<packed_transaction>(deserialized.transactions.back().trx).prune_all();
    deserialized.prune_state = signed_block::prune_state_type::incomplete;
    BOOST_TEST(deserialized.transaction_mroot.str() == calculate_trx_merkle(deserialized.transactions).str());
    fc::datastream<char*> out(buffer.data(), buffer.size());

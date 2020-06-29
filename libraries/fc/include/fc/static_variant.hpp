@@ -12,6 +12,7 @@
 #pragma once
 #include <stdexcept>
 #include <typeinfo>
+#include <type_traits>
 #include <fc/exception/exception.hpp>
 #include <boost/core/typeinfo.hpp>
 #include <variant>
@@ -57,6 +58,28 @@ constexpr const T& get(const std::variant<Types...>& v)
   }
 
   FC_THROW_EXCEPTION(fc::assert_exception, "variant does not contain a value of type ${t}", ("t",fc::get_typename<T>::name()));
+}
+
+// fc::visit mimics the functionality of std::visit with the
+// exception that in the case of the variant not holding a valur, it will raise an fc::assert_exception.
+//
+// Prefer calling fc::visit in cases where you are excepting an fc exception.
+// All other cases, prefer calling std::visit.
+template <class Visitor, class... Variants>
+decltype(auto) visit(Visitor&& vis, Variants&&... vars)
+{
+  try
+  {
+    return std::visit(std::forward<Visitor>(vis), std::forward<Variants>(vars)...);
+  }
+  catch(const std::bad_variant_access&)
+  {
+    FC_THROW_EXCEPTION(fc::assert_exception, "Internal error: static_variant tag is invalid.");
+  }
+  catch (...)
+  {
+    throw;
+  }
 }
 
 template <typename variant, int32_t i = 0>
