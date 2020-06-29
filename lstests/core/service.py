@@ -639,7 +639,7 @@ class Service:
         if self.launcher_maximum_idle_time is not None:
             self.debug(color.green(f"generating {self.gene}"))
             idle_timeout_flag = f"--idle-shutdown={self.launcher_maximum_idle_time}"
-        cmdStr =  f"{self.file} --http-server-address=0.0.0.0:{self.port} --genesis-json={self.gene}  --abi-serializer-max-time-ms 990000 --http-max-response-time-ms 990000 " + \
+        cmdStr =  f"{self.file} --http-server-address=0.0.0.0:{self.port} --genesis-json={self.gene} " + \
                   f"{generate_genesis_flag} {idle_timeout_flag} {self.extra_args} >{PROGRAM_LOG}  2>&1 &"
         self.debug(color.green("Running: {}".format(cmdStr)))
         os.system(cmdStr)
