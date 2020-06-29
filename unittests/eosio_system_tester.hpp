@@ -303,7 +303,7 @@ public:
          ("max_transaction_lifetime", 3600 + n)
          ("deferred_trx_expiration_window", 600 + n)
          ("max_transaction_delay", 10*86400+n)
-         ("max_inline_action_size", 4096 + n)
+         ("max_inline_action_size", 512*1024 + n)
          ("max_inline_action_depth", 4 + n)
          ("max_authority_depth", 6 + n)
          ("max_ram_size", (n % 10 + 1) * 1024 * 1024)

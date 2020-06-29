@@ -1,7 +1,6 @@
 #include <eosio/chain/asset.hpp>
 #include <eosio/chain/authority.hpp>
 #include <eosio/chain/authority_checker.hpp>
-#include <eosio/chain/chain_config.hpp>
 #include <eosio/chain/types.hpp>
 #include <eosio/chain/thread_utils.hpp>
 #include <eosio/testing/tester.hpp>

@@ -291,7 +291,7 @@ void apply_context::execute_inline( action&& a ) {
    // No need to check authorization if replaying irreversible blocks or contract is privileged
    if( !control.skip_auth_check() && !privileged ) {
       const auto& chain_config = control.get_global_properties().configuration;
-      EOS_ASSERT( a.data.size() < std::min(chain_config.max_inline_action_size, chain_config.max_nonprivileged_inline_action_size),
+      EOS_ASSERT( a.data.size() < std::min(chain_config.max_inline_action_size, control.get_max_nonprivileged_inline_action_size()),
                   inline_action_too_big_nonprivileged,
                   "inline action too big for nonprivileged account ${account}", ("account", a.account));
       try {
