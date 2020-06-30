@@ -16,19 +16,30 @@ void launcher_service_api_plugin::set_program_options(options_description&, opti
 void launcher_service_api_plugin::plugin_initialize(const variables_map& options) {
 }
 
-#define CALL(api_name, call_name, http_response_code) \
+#define print_log(msg) ilog(msg)
+#define no_print(msg)
+
+#define CALL_PRINT(api_name, call_name, http_response_code, print) \
 {std::string("/v1/" #api_name "/" #call_name), \
    [&](string, string body, url_response_callback cb) mutable { \
+          print("REMOVE /v1/" #api_name "/" #call_name " 1"); \
           try { \
              if (body.empty()) body = "{}"; \
              auto launcher_service = app().get_plugin<launcher_service_plugin>(); \
              auto idle_timeout_restart = launcher_service.ensure_idle_timeout_reschedule(); \
+             print("REMOVE /v1/" #api_name "/" #call_name " call"); \
              auto result = launcher_service.call_name(fc::json::from_string(body).as<call_name ## _param>()); \
+             print("REMOVE /v1/" #api_name "/" #call_name " callback"); \
              cb(http_response_code, fc::variant(result)); \
+             print("REMOVE /v1/" #api_name "/" #call_name " callback done"); \
           } catch (...) { \
+             print("REMOVE /v1/" #api_name "/" #call_name " exception"); \
              http_plugin::handle_exception(#api_name, #call_name, body, cb); \
+             print("REMOVE /v1/" #api_name "/" #call_name " exception done"); \
           } \
        }}
+
+#define CALL(api_name, call_name, http_response_code) CALL_PRINT(api_name, call_name, http_response_code, no_print)
 
 void launcher_service_api_plugin::plugin_startup() {
 
@@ -56,7 +67,7 @@ void launcher_service_api_plugin::plugin_startup() {
       CALL(launcher, generate_key, 200),
 
       CALL(launcher, get_info, 200),
-      CALL(launcher, get_block, 200),
+      CALL_PRINT(launcher, get_block, 200, print_log),
       CALL(launcher, get_account, 200),
       CALL(launcher, get_code_hash, 200),
       CALL(launcher, get_cluster_info, 200),
