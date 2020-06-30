@@ -12,7 +12,8 @@ STOP_URL = "/v1/txn_test_gen/stop_generation"
 PRIVATE_KEY = "5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3"
 CREATE_STR = f"[\"eosio\", \"{PRIVATE_KEY}\"]"
 START_STR = "[\"salt\",10,10]"
-REQUIRED_AVG = 400
+REQUIRED_AVG = 150
+SLIDING_AVG_WINDOW = 30
 CATCHUP_ROUNDS = 3
 
 
@@ -71,10 +72,23 @@ def stop_gen(clus):
 
 def count_gen(clus, begin, end):
     total = 0
+    sliding_total = 0
+    window = []
     for i in range(begin + 1, end + 1):
         n = len(clus.get_block(i, level="trace").response_dict["transactions"])
         clus.info(f"Block {i} has {n} transactions.")
         total += n
+        full_window = len(window) == SLIDING_AVG_WINDOW
+        if full_window:
+            old = window.pop(0)
+            sliding_total -= old
+        window.append(n)
+        sliding_total += n
+        if full_window:
+            window_avg = sliding_total / SLIDING_AVG_WINDOW
+            if window_avg < REQUIRED_AVG:
+                raise BlockchainError(f"The average number of transactions per block ({window_avg}) over the last {SLIDING_AVG_WINDOW} blocks is less than required ({REQUIRED_AVG})")
+
     clus.info(f"There are {total} transactions in {end - begin} blocks.")
     avg = total / (end - begin)
     if avg < REQUIRED_AVG:
