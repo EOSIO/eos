@@ -31,7 +31,7 @@ struct reliable_amqp_publisher_impl {
    void amqp_error(const char* message);
    void pump_queue();
    void publish_message_raw(std::vector<char>&& data);
-   void publish_messages_raw(std::deque<std::vector<char>>&& queue);
+   void publish_messages_raw(std::deque<std::pair<std::string, std::vector<char>>>&& queue);
 
    std::unique_ptr<AMQP::Address> amqp_address;
    std::unique_ptr<reliable_amqp_publisher_handler> handler;
@@ -45,6 +45,7 @@ struct reliable_amqp_publisher_impl {
    fc::unsigned_int batch_num = 0;
    struct amqp_message {
       fc::unsigned_int  num = 0; ///< unique numbers indicates amqp transaction set
+      std::string       routing_key;
       std::vector<char> data;
    };
    std::deque<amqp_message> message_deque;
@@ -235,7 +236,7 @@ void reliable_amqp_publisher_impl::pump_queue() {
       envelope.setPersistent();
       if(message_id)
          envelope.setMessageID(*message_id);
-      channel->publish(exchange, routing_key, envelope);
+      channel->publish(exchange, msg.routing_key.empty() ? routing_key : msg.routing_key, envelope);
 
       prev = msg.num;
    }
@@ -274,11 +275,11 @@ void reliable_amqp_publisher_impl::publish_message_raw(std::vector<char>&& data)
       logged_exceeded_max_depth = true;
       return;
    }
-   message_deque.emplace_back(amqp_message{0, std::move(data)});
+   message_deque.emplace_back(amqp_message{0, "", std::move(data)});
    pump_queue();
 }
 
-void reliable_amqp_publisher_impl::publish_messages_raw(std::deque<std::vector<char>>&& queue) {
+void reliable_amqp_publisher_impl::publish_messages_raw(std::deque<std::pair<std::string, std::vector<char>>>&& queue) {
    if(!ctx.get_executor().running_in_this_thread()) {
       boost::asio::post(user_submitted_work_strand, [this, q=std::move(queue)]() mutable {
          publish_messages_raw(std::move(q));
@@ -296,7 +297,7 @@ void reliable_amqp_publisher_impl::publish_messages_raw(std::deque<std::vector<c
 
    ++batch_num.value;
    for( auto& d : queue ) {
-      message_deque.emplace_back(amqp_message{batch_num, std::move(d)});
+      message_deque.emplace_back(amqp_message{batch_num, std::move(d.first), std::move(d.second)});
    }
    pump_queue();
 }
@@ -309,7 +310,7 @@ void reliable_amqp_publisher::publish_message_raw(std::vector<char>&& data) {
    my->publish_message_raw( std::move( data ) );
 }
 
-void reliable_amqp_publisher::publish_messages_raw(std::deque<std::vector<char>>&& queue) {
+void reliable_amqp_publisher::publish_messages_raw(std::deque<std::pair<std::string, std::vector<char>>>&& queue) {
    my->publish_messages_raw( std::move( queue ) );
 }
 

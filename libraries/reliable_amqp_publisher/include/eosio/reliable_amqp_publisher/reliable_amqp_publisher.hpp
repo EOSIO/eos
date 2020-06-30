@@ -25,7 +25,7 @@ class reliable_amqp_publisher {
       /// Create a reliable queue to the given server publishing to the given exchange
       /// \param server_url server url as amqp://...
       /// \param exchange the exchange to publish to
-      /// \param routing_key on published messages
+      /// \param routing_key on published messages, used if no routing_key provided for publish_message.. calls
       /// \param unconfirmed_path path to save/load unconfirmed message to be tried again after stop/start
       /// \param message_id optional message id to send with each message
       reliable_amqp_publisher(const std::string& server_url, const std::string& exchange, const std::string& routing_key,
@@ -41,9 +41,9 @@ class reliable_amqp_publisher {
 
       void publish_message_raw(std::vector<char>&& data);
 
-      /// Publish a messages. May be called from any thread.
-      /// \param queue set of messages to send in one transaction
-      void publish_messages_raw(std::deque<std::vector<char>>&& queue);
+      /// Publish messages. May be called from any thread.
+      /// \param queue set of messages to send in one transaction <routing_key, message_data>
+      void publish_messages_raw(std::deque<std::pair<std::string, std::vector<char>>>&& queue);
 
       /// reliable_amqp_publisher runs its own thread. In some cases it may be desirable to skip a needless thread jump
       ///  when performing work. This method will allow submission of work to reliable_amqp_publisher's thread.
