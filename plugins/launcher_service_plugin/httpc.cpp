@@ -210,7 +210,6 @@ namespace eosio {
                              const std::string &postjson,
                              bool print_request,
                              bool print_response ) {
-      ilog("REMOVE do_http_call 1");
       const auto& url = cp.url;
 
       boost::asio::streambuf request;
@@ -249,11 +248,8 @@ namespace eosio {
          }
          else if(url.scheme == "http") {
             tcp::socket socket(cp.context->ios);
-            ilog("REMOVE do_http_call 2");
             do_connect(socket, url);
-            ilog("REMOVE do_http_call 3");
             re = do_txrx(socket, request, status_code);
-            ilog("REMOVE do_http_call 4");
          }
          else { //https
             boost::asio::ssl::context ssl_context(boost::asio::ssl::context::sslv23_client);
@@ -265,26 +261,19 @@ namespace eosio {
                socket.set_verify_mode(boost::asio::ssl::verify_peer);
                socket.set_verify_callback(boost::asio::ssl::rfc2818_verification(url.server));
             }
-            ilog("REMOVE do_http_call 5");
             do_connect(socket.next_layer(), url);
-            ilog("REMOVE do_http_call 6");
             socket.handshake(boost::asio::ssl::stream_base::client);
-            ilog("REMOVE do_http_call 7");
             re = do_txrx(socket, request, status_code);
-            ilog("REMOVE do_http_call 8");
             //try and do a clean shutdown; but swallow if this fails (other side could have already gave TCP the ax)
-            try {socket.shutdown();ilog("REMOVE do_http_call 9");} catch(...) {ilog("REMOVE do_http_call 10");}
+            try {socket.shutdown();} catch(...) {}
          }
       } catch ( invalid_http_request& e ) {
-         ilog("REMOVE do_http_call 11");
          e.append_log( FC_LOG_MESSAGE( info, "Please verify this url is valid: ${url}", ("url", url.scheme + "://" + url.server + ":" + url.port + url.path) ) );
          e.append_log( FC_LOG_MESSAGE( info, "If the condition persists, please contact the RPC server administrator for ${server}!", ("server", url.server) ) );
          throw;
       }
 
-      ilog("REMOVE do_http_call 12");
       const auto response_result = fc::json::from_string(re);
-      ilog("REMOVE do_http_call 13");
       if( print_response ) {
          std::cerr << "RESPONSE:" << std::endl
                   << "---------------------" << std::endl
