@@ -16,7 +16,7 @@ class stream_handler {
    virtual ~stream_handler() {}
    virtual const std::vector<eosio::name>& get_routes() const = 0;
    virtual void start_block(uint32_t block_num) {};
-   virtual void publish(const char* data, uint64_t data_size, const eosio::name& routing_key) = 0;
+   virtual void publish(const std::vector<char>& data, const eosio::name& routing_key) = 0;
    virtual void stop_block(uint32_t block_num) {}
 
    bool check_route(const eosio::name& stream_route) {
