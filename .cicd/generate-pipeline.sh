@@ -8,11 +8,6 @@ export PLATFORMS_JSON_ARRAY='[]'
 BUILDKITE_BUILD_AGENT_QUEUE='automation-eks-eos-builder-fleet'
 BUILDKITE_TEST_AGENT_QUEUE='automation-eks-eos-tester-fleet'
 [[ -z "$ROUNDS" ]] && export ROUNDS='1'
-LINUX_CONCURRENCY='8'
-MAC_CONCURRENCY='2'
-LINUX_CONCURRENCY_GROUP='eos-scheduled-build'
-MAC_CONCURRENCY_GROUP='eos-scheduled-build-mac'
-
 # Determine if it's a forked PR and make sure to add git fetch so we don't have to git clone the forked repo's url
 if [[ $BUILDKITE_BRANCH =~ ^pull/[0-9]+/head: ]]; then
   PR_ID=$(echo $BUILDKITE_BRANCH | cut -d/ -f2)
@@ -99,8 +94,6 @@ echo ''
 echo '    # builds'
 echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | while read -r PLATFORM_JSON; do
     if [[ ! "$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)" =~ 'macos' ]]; then
-        CONCURRENCY=$LINUX_CONCURRENCY
-        CONCURRENCY_GROUP=$LINUX_CONCURRENCY_GROUP
         cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build"
     command:
@@ -116,8 +109,6 @@ echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | while read -r PLATFORM_JSON; do
 
 EOF
     else
-        CONCURRENCY=$MAC_CONCURRENCY
-        CONCURRENCY_GROUP=$MAC_CONCURRENCY_GROUP
         cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build"
     command:
@@ -156,12 +147,6 @@ EOF
     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_BUILD}
 EOF
     fi
-    if [ "$BUILDKITE_SOURCE" = "schedule" ]; then
-        cat <<EOF
-    concurrency: ${CONCURRENCY}
-    concurrency_group: ${CONCURRENCY_GROUP}
-EOF
-    fi
 done
 cat <<EOF
 
@@ -187,8 +172,6 @@ for ROUND in $(seq 1 $ROUNDS); do
     echo '    # parallel tests'
     echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | while read -r PLATFORM_JSON; do
         if [[ ! "$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)" =~ 'macos' ]]; then
-            CONCURRENCY=$LINUX_CONCURRENCY
-            CONCURRENCY_GROUP=$LINUX_CONCURRENCY_GROUP
             cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Unit Tests"
     command:
@@ -207,8 +190,6 @@ for ROUND in $(seq 1 $ROUNDS); do
 
 EOF
         else
-            CONCURRENCY=$MAC_CONCURRENCY
-            CONCURRENCY_GROUP=$MAC_CONCURRENCY_GROUP
             cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Unit Tests"
     command:
@@ -238,20 +219,12 @@ EOF
 
 EOF
         fi
-        if [ "$BUILDKITE_SOURCE" = "schedule" ]; then
-            cat <<EOF
-    concurrency: ${CONCURRENCY}
-    concurrency_group: ${CONCURRENCY_GROUP}
-EOF
-        fi
     echo
     done
     # wasm spec tests
     echo '    # wasm spec tests'
     echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | while read -r PLATFORM_JSON; do
         if [[ ! "$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)" =~ 'macos' ]]; then
-            CONCURRENCY=$LINUX_CONCURRENCY
-            CONCURRENCY_GROUP=$LINUX_CONCURRENCY_GROUP
             cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - WASM Spec Tests"
     command:
@@ -270,8 +243,6 @@ EOF
 
 EOF
         else
-            CONCURRENCY=$MAC_CONCURRENCY
-            CONCURRENCY_GROUP=$MAC_CONCURRENCY_GROUP
             cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - WASM Spec Tests"
     command:
@@ -301,12 +272,6 @@ EOF
 
 EOF
         fi
-        if [ "$BUILDKITE_SOURCE" = "schedule" ]; then
-            cat <<EOF
-    concurrency: ${CONCURRENCY}
-    concurrency_group: ${CONCURRENCY_GROUP}
-EOF
-        fi
     echo
     done
     # serial tests
@@ -316,8 +281,6 @@ EOF
         SERIAL_TESTS="$(cat tests/CMakeLists.txt | grep nonparallelizable_tests | grep -v "^#" | awk -F" " '{ print $2 }')"
         for TEST_NAME in $SERIAL_TESTS; do
             if [[ ! "$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)" =~ 'macos' ]]; then
-                CONCURRENCY=$LINUX_CONCURRENCY
-                CONCURRENCY_GROUP=$LINUX_CONCURRENCY_GROUP
                 cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - $TEST_NAME"
     command:
@@ -336,8 +299,6 @@ EOF
 
 EOF
             else
-                CONCURRENCY=$MAC_CONCURRENCY
-                CONCURRENCY_GROUP=$MAC_CONCURRENCY_GROUP
                 cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - $TEST_NAME"
     command:
@@ -366,12 +327,6 @@ EOF
     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_SERIAL_TESTS}
 EOF
             fi
-            if [ "$BUILDKITE_SOURCE" = "schedule" ]; then
-                cat <<EOF
-    concurrency: ${CONCURRENCY}
-    concurrency_group: ${CONCURRENCY_GROUP}
-EOF
-            fi
             echo
         done
         IFS=$nIFS
@@ -383,8 +338,6 @@ EOF
         LR_TESTS="$(cat tests/CMakeLists.txt | grep long_running_tests | grep -v "^#" | awk -F" " '{ print $2 }')"
         for TEST_NAME in $LR_TESTS; do
             if [[ ! "$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)" =~ 'macos' ]]; then
-                CONCURRENCY=$LINUX_CONCURRENCY
-                CONCURRENCY_GROUP=$LINUX_CONCURRENCY_GROUP
                 cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - $TEST_NAME"
     command:
@@ -403,8 +356,6 @@ EOF
 
 EOF
             else
-                CONCURRENCY=$MAC_CONCURRENCY
-                CONCURRENCY_GROUP=$MAC_CONCURRENCY_GROUP
                 cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - $TEST_NAME"
     command:
@@ -431,12 +382,6 @@ EOF
         permit_on_passed: true
     timeout: ${TIMEOUT:-180}
     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_LONG_RUNNING_TESTS:-true}
-EOF
-            fi
-            if [ "$BUILDKITE_SOURCE" = "schedule" ]; then
-                cat <<EOF
-    concurrency: ${CONCURRENCY}
-    concurrency_group: ${CONCURRENCY_GROUP}
 EOF
             fi
             echo
