@@ -331,4 +331,4 @@ reliable_amqp_publisher::~reliable_amqp_publisher() = default;
 
 }
 
-FC_REFLECT( eosio::reliable_amqp_publisher_impl::amqp_message, (num)(data) )
+FC_REFLECT( eosio::reliable_amqp_publisher_impl::amqp_message, (num)(routing_key)(data) )
