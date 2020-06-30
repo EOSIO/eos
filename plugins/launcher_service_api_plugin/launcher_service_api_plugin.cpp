@@ -27,9 +27,7 @@ void launcher_service_api_plugin::plugin_initialize(const variables_map& options
              if (body.empty()) body = "{}"; \
              auto launcher_service = app().get_plugin<launcher_service_plugin>(); \
              auto idle_timeout_restart = launcher_service.ensure_idle_timeout_reschedule(); \
-             print("REMOVE /v1/" #api_name "/" #call_name " call"); \
              auto result = launcher_service.call_name(fc::json::from_string(body).as<call_name ## _param>()); \
-             print("REMOVE /v1/" #api_name "/" #call_name " callback"); \
              cb(http_response_code, fc::variant(result)); \
              print("REMOVE /v1/" #api_name "/" #call_name " callback done"); \
           } catch (...) { \
