@@ -1132,23 +1132,19 @@ fc::variant launcher_service_plugin::get_cluster_info(launcher_service::cluster_
    threads.reserve(nodecount);
    int k = 0;
    bool set_errstr = true;
-   const auto start1 = time_point::now();
    for (auto& itr : cluster_state.nodes) {
       const int id = itr.second->id;
       const int port = itr.second->http_port;
       auto& thread_result = thread_results[k];
       thread_result.first = -1;
       if (port) {
-         const auto start2 = time_point::now();
          auto& errstr = errstrs[k];
-         threads.push_back(std::thread([this, k, cid = param.cluster_id, id, port, &thread_result, &hasok, &haserror, &errstr, &start1, &start2]() {
-            const auto start3 = time_point::now();
+         threads.push_back(std::thread([this, k, cid = param.cluster_id, id, port, &thread_result, &hasok, &haserror, &errstr]() {
             thread_result.first = id;
             try {
                thread_result.second = _my->get_info(cid, id, true);
                hasok = true;
                const auto end = time_point::now();
-               ilog("thread ${k} get_info SUCCEEDED and took ${t1}, ${t2}, ${t3}",("k",k)("t1", (end-start3).count())("t2", (end-start2).count())("t3", (end-start1).count()));
                return;
             } catch (boost::system::system_error& e) {
                haserror = true;
@@ -1166,33 +1162,23 @@ fc::variant launcher_service_plugin::get_cluster_info(launcher_service::cluster_
                std::string url = "http://" + _my->_config.host_name + ":" + _my->itoa(port);
                thread_result.second = fc::mutable_variant_object("error", "unknown error")("url", url);
             }
-            const auto end = time_point::now();
-            ilog("thread ${k} get_info FAILED and took ${t1}, ${t2}, ${t3}",("k",k)("t1", (end-start3).count())("t2", (end-start2).count())("t3", (end-start1).count()));
          }));
       }
       ++k;
    }
-   vector<int64_t> times1;
    for (auto& t: threads) {
       t.join();
-      times1.push_back((time_point::now() - start1).count());
    }
-   vector<int64_t> times2;
    for (int i = 0; i < k; ++i) {
       if (thread_results[i].first >= 0) {
          result[thread_results[i].first] = std::move(thread_results[i].second);
       }
-      times2.push_back((time_point::now() - start1).count());
    }
    if (!hasok && haserror) {
       for (auto& err: errstrs) {
          if (err.length())
             throw std::runtime_error(err);
       }
-   }
-   for (uint index = 0; index < times1.size(); ++index) {
-      const auto end = time_point::now();
-      ilog("thread ${k} done and took ${t1}, ${t2}, ${t3}",("k",k)("t1", (end-start1).count())("t2", times1[index])("t3", times2[index]));
    }
    return fc::mutable_variant_object("result", result);
 }
