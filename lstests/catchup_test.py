@@ -77,6 +77,7 @@ def stop_gen(clus):
 def count_gen(clus, begin, end):
     total = 0
     sliding_total = 0
+    sliding_window_avg_min = None
     window = []
     for i in range(begin + 1, end + 1):
         n = len(clus.get_block(i, level="trace").response_dict["transactions"])
@@ -92,8 +93,10 @@ def count_gen(clus, begin, end):
             window_avg = sliding_total / SLIDING_AVG_WINDOW
             if window_avg < REQUIRED_SLIDING_WINDOW_AVG:
                 raise BlockchainError(f"The average number of transactions per block ({window_avg}) over the last {SLIDING_AVG_WINDOW} blocks is less than required ({REQUIRED_SLIDING_WINDOW_AVG})")
+            if sliding_window_avg_min is None or sliding_window_avg_min > window_avg:
+                sliding_window_avg_min = window_avg
 
-    clus.info(f"There are {total} transactions in {end - begin} blocks.")
+    clus.info(f"There are {total} transactions in {end - begin} blocks. Lowest sliding window average transactions per block: {sliding_window_avg_min}")
     avg = total / (end - begin)
     if avg < REQUIRED_AVG:
         raise BlockchainError(f"The average number of transactions per block ({avg}) is less than required ({REQUIRED_AVG})")
