@@ -14,6 +14,7 @@ CREATE_STR = f"[\"eosio\", \"{PRIVATE_KEY}\"]"
 START_STR = "[\"salt\",10,10]"
 REQUIRED_AVG = 150
 SLIDING_AVG_WINDOW = 30
+REQUIRED_SLIDING_WINDOW_AVG = 80
 CATCHUP_ROUNDS = 3
 
 
@@ -86,8 +87,8 @@ def count_gen(clus, begin, end):
         sliding_total += n
         if full_window:
             window_avg = sliding_total / SLIDING_AVG_WINDOW
-            if window_avg < REQUIRED_AVG:
-                raise BlockchainError(f"The average number of transactions per block ({window_avg}) over the last {SLIDING_AVG_WINDOW} blocks is less than required ({REQUIRED_AVG})")
+            if window_avg < REQUIRED_SLIDING_WINDOW_AVG:
+                raise BlockchainError(f"The average number of transactions per block ({window_avg}) over the last {SLIDING_AVG_WINDOW} blocks is less than required ({REQUIRED_SLIDING_WINDOW_AVG})")
 
     clus.info(f"There are {total} transactions in {end - begin} blocks.")
     avg = total / (end - begin)
