@@ -319,7 +319,7 @@ struct txn_test_gen_plugin_impl {
          send_transaction([this](const fc::exception_ptr& e){
             if (e) {
                elog("pushing transaction failed: ${e}", ("e", e->to_detail_string()));
-               if(running && ++repeat_exceptions > 2)
+               if(running && ++repeat_exceptions > repeat_exceptions_allowed)
                   stop_generation();
             }
             else {
@@ -407,6 +407,7 @@ struct txn_test_gen_plugin_impl {
 
    bool running{false};
    unsigned int repeat_exceptions = 0;
+   unsigned int repeat_exceptions_allowed = 0;
 
    unsigned timer_timeout;
    unsigned batch;
@@ -426,6 +427,7 @@ void txn_test_gen_plugin::set_program_options(options_description&, options_desc
       ("txn-reference-block-lag", bpo::value<int32_t>()->default_value(0), "Lag in number of blocks from the head block when selecting the reference block for transactions (-1 means Last Irreversible Block)")
       ("txn-test-gen-threads", bpo::value<uint16_t>()->default_value(2), "Number of worker threads in txn_test_gen thread pool")
       ("txn-test-gen-account-prefix", bpo::value<string>()->default_value("txn.test."), "Prefix to use for accounts generated and used by this plugin")
+      ("txn-test-gen-allowed-repeat-exceptions", bpo::value<uint32_t>()->default_value(0), "How many exceptions to allow in repeat periods before stopping generation")
    ;
 }
 
@@ -440,6 +442,7 @@ void txn_test_gen_plugin::plugin_initialize(const variables_map& options) {
       my->newaccountT = eosio::chain::name(thread_pool_account_prefix + "t");
       EOS_ASSERT( my->thread_pool_size > 0, chain::plugin_config_exception,
                   "txn-test-gen-threads ${num} must be greater than 0", ("num", my->thread_pool_size) );
+      my->repeat_exceptions_allowed = options.at( "txn-test-gen-allowed-repeat-exceptions" ).as<uint32_t>();
    } FC_LOG_AND_RETHROW()
 }
 

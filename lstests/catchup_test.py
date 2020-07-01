@@ -16,6 +16,7 @@ REQUIRED_AVG = 150
 SLIDING_AVG_WINDOW = 30
 REQUIRED_SLIDING_WINDOW_AVG = 80
 CATCHUP_ROUNDS = 3
+REPEAT_EXCEPTIONS_ALLOWED = 10
 
 
 def init_cluster():
@@ -26,7 +27,9 @@ def init_cluster():
                     FileWriter(filename=f"{test}-trace.log", threshold="trace", monochrome=True))
     service = Service(logger=logger)
     cluster = Cluster(service=service, node_count=3, pnode_count=3, producer_count=3,
-                      dont_newacco=True, extra_configs=[f"plugin={TEST_PLUGIN}"])
+                      dont_newacco=True,
+                      extra_configs=[f"plugin={TEST_PLUGIN}",
+                                     f"txn-test-gen-allowed-repeat-exceptions={REPEAT_EXCEPTIONS_ALLOWED}"])
     return cluster
 
 
