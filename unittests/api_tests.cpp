@@ -1117,9 +1117,9 @@ BOOST_FIXTURE_TEST_CASE(transaction_tests, TESTER) { try {
    CALL_TEST_FUNCTION(*this, "test_transaction", "send_action_empty", {});
 
    // test send_action_large
-   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION(*this, "test_transaction", "send_action_large", {}), inline_action_too_big,
+   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION(*this, "test_transaction", "send_action_large", {}), inline_action_too_big_nonprivileged,
          [](const fc::exception& e) {
-            return expect_assert_message(e, "inline action too big");
+            return expect_assert_message(e, "inline action too big for nonprivileged account");
          }
       );
 
