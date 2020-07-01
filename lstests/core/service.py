@@ -1065,9 +1065,7 @@ class Cluster:
         return self.call("get_info", node_id=node_id, **call_kwargs)
 
     def get_block(self, block_num_or_id, node_id=0, **call_kwargs):
-        self.info(f"REMOVE get_block[{node_id}]: {block_num_or_id}")
         ret = self.call("get_block", node_id=node_id, block_num_or_id=block_num_or_id, **call_kwargs)
-        self.info(f"REMOVE get_block[{node_id}]: {block_num_or_id} done")
         return ret
 
     def get_account(self, name, node_id=0, **call_kwargs):

@@ -31,25 +31,16 @@ struct async_result_visitor : public fc::visitor<fc::variant> {
    }
 };
 
-#define print_log(msg) ilog(msg)
-#define no_print(msg)
-
-#define CALL_WITH_400(api_name, api_handle, api_namespace, call_name, http_response_code, params_type, print) \
+#define CALL_WITH_400(api_name, api_handle, api_namespace, call_name, http_response_code, params_type) \
 {std::string("/v1/" #api_name "/" #call_name), \
    [api_handle](string, string body, url_response_callback cb) mutable { \
-          print("REMOVE /v1/" #api_name "/" #call_name); \
           api_handle.validate(); \
           try { \
              auto params = parse_params<api_namespace::call_name ## _params, params_type>(body);\
-             print("REMOVE /v1/" #api_name "/" #call_name " call method"); \
              fc::variant result( api_handle.call_name( std::move(params) ) ); \
-             print("REMOVE /v1/" #api_name "/" #call_name " callback"); \
              cb(http_response_code, std::move(result)); \
-             print("REMOVE /v1/" #api_name "/" #call_name " callback done"); \
           } catch (...) { \
-             print("REMOVE /v1/" #api_name "/" #call_name " handle exception"); \
              http_plugin::handle_exception(#api_name, #call_name, body, cb); \
-             print("REMOVE /v1/" #api_name "/" #call_name " handle exception done"); \
           } \
        }}
 
@@ -77,9 +68,8 @@ struct async_result_visitor : public fc::visitor<fc::variant> {
    }\
 }
 
-#define CHAIN_RO_CALL(call_name, http_response_code, params_type) CALL_WITH_400(chain, ro_api, chain_apis::read_only, call_name, http_response_code, params_type, no_print)
-#define CHAIN_RO_CALL_PRINT(call_name, http_response_code, params_type) CALL_WITH_400(chain, ro_api, chain_apis::read_only, call_name, http_response_code, params_type, print_log)
-#define CHAIN_RW_CALL(call_name, http_response_code, params_type) CALL_WITH_400(chain, rw_api, chain_apis::read_write, call_name, http_response_code, params_type, no_print)
+#define CHAIN_RO_CALL(call_name, http_response_code, params_type) CALL_WITH_400(chain, ro_api, chain_apis::read_only, call_name, http_response_code, params_type)
+#define CHAIN_RW_CALL(call_name, http_response_code, params_type) CALL_WITH_400(chain, rw_api, chain_apis::read_write, call_name, http_response_code, params_type)
 #define CHAIN_RO_CALL_ASYNC(call_name, call_result, http_response_code, params_type) CALL_ASYNC_WITH_400(chain, ro_api, chain_apis::read_only, call_name, call_result, http_response_code, params_type)
 #define CHAIN_RW_CALL_ASYNC(call_name, call_result, http_response_code, params_type) CALL_ASYNC_WITH_400(chain, rw_api, chain_apis::read_write, call_name, call_result, http_response_code, params_type)
 
@@ -96,7 +86,7 @@ void chain_api_plugin::plugin_startup() {
       CHAIN_RO_CALL(get_info, 200, http_params_types::no_params_required)}, appbase::priority::medium_high);
    _http_plugin.add_api({
       CHAIN_RO_CALL(get_activated_protocol_features, 200, http_params_types::possible_no_params),
-      CHAIN_RO_CALL_PRINT(get_block, 200, http_params_types::params_required),
+      CHAIN_RO_CALL(get_block, 200, http_params_types::params_required),
       CHAIN_RO_CALL(get_block_info, 200, http_params_types::params_required),
       CHAIN_RO_CALL(get_block_header_state, 200, http_params_types::params_required),
       CHAIN_RO_CALL(get_account, 200, http_params_types::params_required),

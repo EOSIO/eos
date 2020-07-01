@@ -517,7 +517,6 @@ namespace eosio {
                boost::asio::post( thread_pool->get_executor(), [this, con, code, tracked_response=std::move(tracked_response)]() {
                   try {
                      const auto time = fc::time_point::now() + max_response_time;
-                     ilog("REMOVE to_string deadline: ${t}",("t",time));
                      std::string json = fc::json::to_string( *tracked_response, time );
                      auto tracked_json = make_in_flight(std::move(json), *this);
                      con->set_body( std::move( *tracked_json ) );
@@ -775,7 +774,6 @@ namespace eosio {
 
          my->max_bytes_in_flight = options.at( "http-max-bytes-in-flight-mb" ).as<uint32_t>() * 1024 * 1024;
          my->max_response_time = fc::microseconds( options.at("http-max-response-time-ms").as<uint32_t>() * 1000 );
-         ilog("REMOVE max_response_time: ${t}",("t", my->max_response_time));
 
          //watch out for the returns above when adding new code here
       } FC_LOG_AND_RETHROW()
