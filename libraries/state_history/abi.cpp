@@ -398,7 +398,7 @@ extern const char* const state_history_plugin_abi = R"({
             ]
         },
         {
-            "name": "chain_config", "fields": [
+            "name": "chain_config_v0", "fields": [
                 { "type": "uint64", "name": "max_block_net_usage" },
                 { "type": "uint32", "name": "target_block_net_usage_pct" },
                 { "type": "uint32", "name": "max_transaction_net_usage" },
