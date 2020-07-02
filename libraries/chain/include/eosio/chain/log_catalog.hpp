@@ -9,7 +9,7 @@
 namespace eosio {
 namespace chain {
 
-namespace bfs = bfs;
+namespace bfs = boost::filesystem;
 
 template <typename Lambda>
 void for_each_file_in_dir_matches(const bfs::path& dir, std::string pattern, Lambda&& lambda) {
