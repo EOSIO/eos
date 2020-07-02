@@ -143,12 +143,18 @@ namespace fc {
                                               const time_point_sec& relative_to_time /* = fc::now<fc::microseconds>() */,
                                               const std::string& default_ago /* = " ago" */) {
     string ago = default_ago;
-    int32_t seconds_ago = fc::duration_cast<fc::seconds>( relative_to_time.time_since_epoch() - event_time.time_since_epoch() ).count();
-    if (seconds_ago < 0)
-    {
+
+    uint32_t r = fc::duration_cast<fc::seconds>( relative_to_time.time_since_epoch()).count();
+    uint32_t e = fc::duration_cast<fc::seconds>( event_time.time_since_epoch()).count();
+
+    int32_t seconds_ago;
+    if (r < e) {
        ago = " in the future";
-       seconds_ago = -seconds_ago;
+       seconds_ago = e - r;
+    } else {
+       seconds_ago = r - e;
     }
+
     std::stringstream result;
     if (seconds_ago < 90)
     {
