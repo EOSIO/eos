@@ -33,17 +33,17 @@ chainbase::bfs::path get_parent_path(chainbase::bfs::path blocks_dir, int ordina
 
 controller::config copy_config(const controller::config& config, int ordinal) {
    controller::config copied_config = config;
-   auto parent_path = get_parent_path(config.blocks_dir, ordinal);
-   copied_config.blocks_dir = parent_path / config.blocks_dir.filename().generic_string();
+   auto parent_path = get_parent_path(config.blog.log_dir, ordinal);
+   copied_config.blog.log_dir = parent_path / config.blog.log_dir.filename().generic_string();
    copied_config.state_dir = parent_path / config.state_dir.filename().generic_string();
    return copied_config;
 }
 
 controller::config copy_config_and_files(const controller::config& config, int ordinal) {
    controller::config copied_config = copy_config(config, ordinal);
-   fc::create_directories(copied_config.blocks_dir);
-   fc::copy(config.blocks_dir / "blocks.log", copied_config.blocks_dir / "blocks.log");
-   fc::copy(config.blocks_dir / config::reversible_blocks_dir_name, copied_config.blocks_dir / config::reversible_blocks_dir_name );
+   fc::create_directories(copied_config.blog.log_dir);
+   fc::copy(config.blog.log_dir / "blocks.log", copied_config.blog.log_dir / "blocks.log");
+   fc::copy(config.blog.log_dir / config::reversible_blocks_dir_name, copied_config.blog.log_dir / config::reversible_blocks_dir_name );
    return copied_config;
 }
 
@@ -52,7 +52,7 @@ public:
    enum config_file_handling { dont_copy_config_files, copy_config_files };
    snapshotted_tester(controller::config config, const snapshot_reader_ptr& snapshot, int ordinal,
            config_file_handling copy_files_from_config = config_file_handling::dont_copy_config_files) {
-      FC_ASSERT(config.blocks_dir.filename().generic_string() != "."
+      FC_ASSERT(config.blog.log_dir.filename().generic_string() != "."
                 && config.state_dir.filename().generic_string() != ".", "invalid path names in controller::config");
 
       controller::config copied_config = (copy_files_from_config == copy_config_files)
@@ -323,7 +323,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_exhaustive_snapshot, SNAPSHOT_SUITE, snapshot
 BOOST_AUTO_TEST_CASE_TEMPLATE(test_replay_over_snapshot, SNAPSHOT_SUITE, snapshot_suites)
 {
    tester chain;
-   const chainbase::bfs::path parent_path = chain.get_config().blocks_dir.parent_path();
+   const chainbase::bfs::path parent_path = chain.get_config().blog.log_dir.parent_path();
 
    chain.create_account(N(snapshot));
    chain.produce_blocks(1);
@@ -403,7 +403,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_replay_over_snapshot, SNAPSHOT_SUITE, snapsho
 
    // verifies that chain's block_log has a genesis_state (and blocks starting at 1)
    controller::config copied_config = copy_config_and_files(chain.get_config(), ordinal++);
-   auto genesis = chain::block_log::extract_genesis_state(chain.get_config().blocks_dir);
+   auto genesis = chain::block_log::extract_genesis_state(chain.get_config().blog.log_dir);
    BOOST_REQUIRE(genesis);
    tester from_block_log_chain(copied_config, *genesis);
    const auto from_block_log_head = from_block_log_chain.control->head_block_num();
@@ -418,7 +418,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_replay_over_snapshot, SNAPSHOT_SUITE, snapsho
 BOOST_AUTO_TEST_CASE_TEMPLATE(test_chain_id_in_snapshot, SNAPSHOT_SUITE, snapshot_suites)
 {
    tester chain;
-   const chainbase::bfs::path parent_path = chain.get_config().blocks_dir.parent_path();
+   const chainbase::bfs::path parent_path = chain.get_config().blog.log_dir.parent_path();
 
    chain.create_account(N(snapshot));
    chain.produce_blocks(1);
@@ -501,7 +501,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_compatible_versions, SNAPSHOT_SUITE, snapshot
 BOOST_AUTO_TEST_CASE_TEMPLATE(test_pending_schedule_snapshot, SNAPSHOT_SUITE, snapshot_suites)
 {
    tester chain(setup_policy::preactivate_feature_and_new_bios);
-   auto genesis = chain::block_log::extract_genesis_state(chain.get_config().blocks_dir);
+   auto genesis = chain::block_log::extract_genesis_state(chain.get_config().blog.log_dir);
    BOOST_REQUIRE(genesis);
    BOOST_REQUIRE_EQUAL(genesis->compute_chain_id(), chain.control->get_chain_id());
    const auto& gpo = chain.control->get_global_properties();
@@ -571,7 +571,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_pending_schedule_snapshot, SNAPSHOT_SUITE, sn
 BOOST_AUTO_TEST_CASE_TEMPLATE(test_restart_with_existing_state_and_truncated_block_log, SNAPSHOT_SUITE, snapshot_suites)
 {
    tester chain;
-   const chainbase::bfs::path parent_path = chain.get_config().blocks_dir.parent_path();
+   const chainbase::bfs::path parent_path = chain.get_config().blog.log_dir.parent_path();
 
    chain.create_account(N(snapshot));
    chain.produce_blocks(1);

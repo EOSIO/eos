@@ -65,7 +65,7 @@ struct state_history_abi_serializer {
 
 BOOST_AUTO_TEST_SUITE(test_state_history)
 
-    BOOST_AUTO_TEST_CASE(test_trace_converter) {
+BOOST_AUTO_TEST_CASE(test_trace_converter) {
 
    tester chain;
    using namespace eosio::state_history;
@@ -116,7 +116,7 @@ BOOST_AUTO_TEST_CASE(test_trace_log) {
 
    scoped_temp_path state_history_dir;
    fc::create_directories(state_history_dir.path);
-   state_history_traces_log log(state_history_dir.path);
+   state_history_traces_log log({ .log_dir = state_history_dir.path });
 
    chain.control->applied_transaction.connect(
        [&](std::tuple<const transaction_trace_ptr&, const packed_transaction_ptr&> t) {
@@ -141,7 +141,7 @@ BOOST_AUTO_TEST_CASE(test_trace_log) {
 
    // we assume the nodeos has to be stopped while running, it can only be read
    // correctly with restart
-   state_history_traces_log new_log(state_history_dir.path);
+   state_history_traces_log new_log({ .log_dir = state_history_dir.path });
    auto                     pruned_traces = new_log.get_traces(cfd_trace->block_num);
    BOOST_REQUIRE(pruned_traces.size());
 
@@ -155,7 +155,7 @@ BOOST_AUTO_TEST_CASE(test_chain_state_log) {
 
    scoped_temp_path state_history_dir;
    fc::create_directories(state_history_dir.path);
-   state_history_chain_state_log log(state_history_dir.path);
+   state_history_chain_state_log log({ .log_dir = state_history_dir.path });
 
    uint32_t last_accepted_block_num = 0;
 
@@ -171,6 +171,113 @@ BOOST_AUTO_TEST_CASE(test_chain_state_log) {
    eosio::input_stream                            deltas_bin{entry.data(), entry.data() + entry.size()};
    BOOST_CHECK_NO_THROW(from_bin(deltas, deltas_bin));
 }
+
+BOOST_AUTO_TEST_CASE(test_splitted_log) {
+   namespace bfs = boost::filesystem;
+
+   scoped_temp_path state_history_dir;
+   fc::create_directories(state_history_dir.path);
+
+   state_history_config config{
+      .log_dir = state_history_dir.path,
+      .archive_dir = "archive",
+      .stride  = 20,
+      .max_retained_files = 5 
+   };
+
+   state_history_traces_log traces_log(config);
+   state_history_chain_state_log chain_state_log(config);
+
+   uint32_t last_accepted_block_num = 0;
+
+   tester chain([&](eosio::chain::controller& control) {
+      control.applied_transaction.connect(
+       [&](std::tuple<const transaction_trace_ptr&, const packed_transaction_ptr&> t) {
+          traces_log.add_transaction(std::get<0>(t), std::get<1>(t));
+       });
+
+      control.accepted_block.connect([&](const block_state_ptr& bs) { 
+         traces_log.store(control.db(), bs); 
+         chain_state_log.store(control.db(), bs); 
+         last_accepted_block_num = bs->block_num;
+      });
+      control.block_start.connect([&](uint32_t block_num) { traces_log.block_start(block_num); } );
+   });
+
+
+   chain.produce_blocks(50);
+
+   deploy_test_api(chain);
+   auto cfd_trace = push_test_cfd_transaction(chain);
+
+   chain.produce_blocks(100);
+
+
+   auto log_dir = state_history_dir.path;
+   auto archive_dir = log_dir / "archive";
+
+   BOOST_CHECK(bfs::exists( archive_dir / "trace_history-2-20.log" ));
+   BOOST_CHECK(bfs::exists( archive_dir / "trace_history-2-20.index" ));
+   BOOST_CHECK(bfs::exists( archive_dir / "trace_history-21-40.log" ));
+   BOOST_CHECK(bfs::exists( archive_dir / "trace_history-21-40.index" ));
+
+   BOOST_CHECK(bfs::exists( archive_dir / "chain_state_history-2-20.log" ));
+   BOOST_CHECK(bfs::exists( archive_dir / "chain_state_history-2-20.index" ));
+   BOOST_CHECK(bfs::exists( archive_dir / "chain_state_history-21-40.log" ));
+   BOOST_CHECK(bfs::exists( archive_dir / "chain_state_history-21-40.index" ));
+
+   BOOST_CHECK(bfs::exists( log_dir / "trace_history-41-60.log" ));
+   BOOST_CHECK(bfs::exists( log_dir / "trace_history-41-60.index" ));
+   BOOST_CHECK(bfs::exists( log_dir / "trace_history-61-80.log" ));
+   BOOST_CHECK(bfs::exists( log_dir / "trace_history-61-80.index" ));
+   BOOST_CHECK(bfs::exists( log_dir / "trace_history-81-100.log" ));
+   BOOST_CHECK(bfs::exists( log_dir / "trace_history-81-100.index" ));
+   BOOST_CHECK(bfs::exists( log_dir / "trace_history-101-120.log" ));
+   BOOST_CHECK(bfs::exists( log_dir / "trace_history-101-120.index" ));
+   BOOST_CHECK(bfs::exists( log_dir / "trace_history-121-140.log" ));
+   BOOST_CHECK(bfs::exists( log_dir / "trace_history-121-140.index" ));
+
+   BOOST_CHECK(bfs::exists( log_dir / "chain_state_history-41-60.log" ));
+   BOOST_CHECK(bfs::exists( log_dir / "chain_state_history-41-60.index" ));
+   BOOST_CHECK(bfs::exists( log_dir / "chain_state_history-61-80.log" ));
+   BOOST_CHECK(bfs::exists( log_dir / "chain_state_history-61-80.index" ));
+   BOOST_CHECK(bfs::exists( log_dir / "chain_state_history-81-100.log" ));
+   BOOST_CHECK(bfs::exists( log_dir / "chain_state_history-81-100.index" ));
+   BOOST_CHECK(bfs::exists( log_dir / "chain_state_history-101-120.log" ));
+   BOOST_CHECK(bfs::exists( log_dir / "chain_state_history-101-120.index" ));
+   BOOST_CHECK(bfs::exists( log_dir / "chain_state_history-121-140.log" ));
+   BOOST_CHECK(bfs::exists( log_dir / "chain_state_history-121-140.index" ));
+
+   BOOST_CHECK(traces_log.get_traces(10).empty());
+   BOOST_CHECK(traces_log.get_traces(100).size());
+   BOOST_CHECK(traces_log.get_traces(140).size());
+   BOOST_CHECK(traces_log.get_traces(150).size());
+   BOOST_CHECK(traces_log.get_traces(160).empty());
+
+   BOOST_CHECK(chain_state_log.get_log_entry(10).empty());
+   BOOST_CHECK(chain_state_log.get_log_entry(100).size());
+   BOOST_CHECK(chain_state_log.get_log_entry(140).size());
+   BOOST_CHECK(chain_state_log.get_log_entry(150).size());
+   BOOST_CHECK(chain_state_log.get_log_entry(160).empty());
+
+   auto traces = traces_log.get_traces(cfd_trace->block_num);
+   BOOST_REQUIRE(traces.size());
+
+   BOOST_REQUIRE(!get_prunable_data_from_traces(traces, cfd_trace->id).contains<prunable_data_type::none>());
+
+   std::vector<transaction_id_type> ids{cfd_trace->id};
+   traces_log.prune_transactions(cfd_trace->block_num, ids);
+   BOOST_REQUIRE(ids.empty());
+
+   // we assume the nodeos has to be stopped while running, it can only be read
+   // correctly with restart
+   state_history_traces_log new_log({ .log_dir = state_history_dir.path });
+   auto                     pruned_traces = new_log.get_traces(cfd_trace->block_num);
+   BOOST_REQUIRE(pruned_traces.size());
+
+   BOOST_CHECK(get_prunable_data_from_traces(pruned_traces, cfd_trace->id).contains<prunable_data_type::none>());
+}
+
 
 BOOST_AUTO_TEST_CASE(test_state_result_abi) {
    using namespace state_history;
