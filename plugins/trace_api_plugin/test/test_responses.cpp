@@ -37,6 +37,10 @@ struct response_test_fixture {
    };
 
    constexpr static auto default_mock_data_handler_v1 = [](const action_trace_v1& a, const yield_function&) -> fc::variant {
+      return fc::mutable_variant_object()("hex" , fc::to_hex(a.data.data(), a.data.size()));
+   };
+
+   constexpr static auto default_mock_return_handler = [](const action_trace_v1& a, const yield_function&) -> fc::variant {
       return fc::mutable_variant_object()("hex" , fc::to_hex(a.return_value.data(), a.return_value.size()));
    };
 
@@ -52,6 +56,10 @@ struct response_test_fixture {
 
       fc::variant process_data(const action_trace_v1& action, const yield_function& yield) {
          return fixture.mock_data_handler_v1(action, yield);
+      }
+
+      fc::variant process_return(const action_trace_v1& action, const yield_function& yield) {
+         return fixture.mock_return_handler(action, yield);
       }
 
       response_test_fixture& fixture;
@@ -75,6 +83,7 @@ struct response_test_fixture {
    std::function<get_block_t(uint32_t, const yield_function&)> mock_get_block;
    std::function<fc::variant(const action_trace_v0&, const yield_function&)> mock_data_handler = default_mock_data_handler;
    std::function<fc::variant(const action_trace_v1&, const yield_function&)> mock_data_handler_v1 = default_mock_data_handler_v1;
+   std::function<fc::variant(const action_trace_v1&, const yield_function&)> mock_return_handler = default_mock_return_handler;
 
    response_impl_type response_impl;
 
@@ -722,6 +731,8 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
                      ("data", "00010203")
                      ("return_value", "04050607")
                      ("params", fc::mutable_variant_object()
+                           ("hex", "00010203"))
+                     ("return_data", fc::mutable_variant_object()
                            ("hex", "04050607"))
                }))
                ("status", "executed")
@@ -832,8 +843,11 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
          return std::make_tuple(data_log_entry(block_trace), false);
       };
 
-      // simulate an inability to parse the parameters
+      // simulate an inability to parse the parameters and return_data
       mock_data_handler_v1 = [](const action_trace_v1&, const yield_function&) -> fc::variant {
+         return {};
+      };
+      mock_return_handler = [](const action_trace_v1&, const yield_function&) -> fc::variant {
          return {};
       };
 
@@ -965,8 +979,11 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
          return std::make_tuple(data_log_entry(block_trace), false);
       };
 
-      // simulate an inability to parse the parameters
+      // simulate an inability to parse the parameters and return_data
       mock_data_handler_v1 = [](const action_trace_v1&, const yield_function&) -> fc::variant {
+         return {};
+      };
+      mock_return_handler = [](const action_trace_v1&, const yield_function&) -> fc::variant {
          return {};
       };
 
@@ -1150,8 +1167,9 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
                      ("data", "00010203")
                      ("return_value", "04050607")
                      ("params", fc::mutable_variant_object()
-                        ("hex", "04050607")
-                     )
+                        ("hex", "00010203"))
+                     ("return_data", fc::mutable_variant_object()
+                        ("hex", "04050607"))
                }))
          }))
       ;

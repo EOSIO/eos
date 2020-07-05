@@ -23,7 +23,7 @@ inline action_trace_v0 to_action_trace_v0( const chain::action_trace& at ) {
 }
 
 
-/// Used by to_transaction_trace_v0 for creation of action_trace_v0
+/// Used by to_transaction_trace_v1 for creation of action_trace_v1
 inline action_trace_v1 to_action_trace_v1( const chain::action_trace& at ) {
    action_trace_v1 r;
    r.receiver = at.receiver;
@@ -83,7 +83,7 @@ inline transaction_trace_v1 to_transaction_trace_v1( const cache_trace& t ) {
     return r;
 }
 
-/// @return transaction_trace_v0 with populated action_trace_v0
+/// @return transaction_trace_v2 with populated action_trace_v1
 inline transaction_trace_v2 to_transaction_trace_v2( const chain::transaction_trace_ptr& t ) {
    transaction_trace_v2 r;
    if( !t->failed_dtrx_trace ) {
