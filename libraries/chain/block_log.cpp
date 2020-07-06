@@ -567,7 +567,7 @@ namespace eosio { namespace chain {
       if (!fc::is_directory(config.log_dir))
          fc::create_directories(config.log_dir);
       
-      catalog.open(config.log_dir, config.archive_dir, "blocks");
+      catalog.open(config.log_dir, config.retained_dir, config.archive_dir, "blocks");
       
       catalog.max_retained_files = config.max_retained_files;
       this->stride               = config.stride;

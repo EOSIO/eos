@@ -98,6 +98,7 @@ class state_history_log_data : public chain::log_data_base<state_history_log_dat
 
 struct state_history_config {
    bfs::path log_dir;
+   bfs::path retained_dir;
    bfs::path archive_dir;
    uint32_t  stride             = UINT32_MAX;
    uint32_t  max_retained_files = 10;

@@ -380,6 +380,9 @@ void state_history_plugin::set_program_options(options_description& cli, options
    auto options = cfg.add_options();
    options("state-history-dir", bpo::value<bfs::path>()->default_value("state-history"),
            "the location of the state-history directory (absolute path or relative to application data dir)");
+   options("state-history-retained-dir", bpo::value<bfs::path>()->default_value(""),
+           "the location of the state history retained directory (absolute path or relative to state-history dir).\n"
+           "If the value is empty, it is set to the value of state-history directory.");
    options("state-history-archive-dir", bpo::value<bfs::path>()->default_value("archive"),
            "the location of the state history archive directory (absolute path or relative to state-history dir).\n"
            "If the value is empty, blocks files beyond the retained limit will be deleted.\n"
@@ -433,6 +436,7 @@ void state_history_plugin::plugin_initialize(const variables_map& options) {
       if (auto resmon_plugin = app().find_plugin<resource_monitor_plugin>())
          resmon_plugin->monitor_directory(config.log_dir);
 
+      config.retained_dir       = options.at("state-history-retained-dir").as<bfs::path>();
       config.archive_dir        = options.at("state-history-archive-dir").as<bfs::path>();
       config.stride             = options.at("state-history-stride").as<uint32_t>();
       config.max_retained_files = options.at("max-retained-history-files").as<uint32_t>();

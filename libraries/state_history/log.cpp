@@ -38,7 +38,7 @@ void state_history_log_data::construct_index(const fc::path& index_file_name) co
 
 state_history_log::state_history_log(const char* const name, const state_history_config& config)
     : name(name) {
-   catalog.open(config.log_dir, config.archive_dir, name);
+   catalog.open(config.log_dir, config.retained_dir, config.archive_dir, name);
    catalog.max_retained_files = config.max_retained_files;
    this->stride               = config.stride;
    open_log(config.log_dir / (std::string(name) + ".log"));

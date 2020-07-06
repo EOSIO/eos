@@ -46,6 +46,7 @@ struct log_catalog {
 
    using mapmode = boost::iostreams::mapped_file::mapmode;
 
+   bfs::path    retained_dir;
    bfs::path    archive_dir;
    size_type    max_retained_files = 10;
    collection_t collection;
@@ -62,20 +63,25 @@ struct log_catalog {
       return collection.begin()->first;
    }
 
-   void open(const bfs::path& log_dir, const bfs::path& archive_dir, const char* name,
+   static bfs::path make_abosolute_dir(const bfs::path& base_dir, bfs::path new_dir) {
+      if (new_dir.is_relative())
+         new_dir = base_dir / new_dir;
+      
+      if (!bfs::is_directory(new_dir))
+         bfs::create_directories(new_dir);
+      
+      return new_dir;
+   }
+
+   void open(const bfs::path& log_dir, const bfs::path& retained_dir, const bfs::path& archive_dir, const char* name,
              const char* suffix_pattern = R"(-\d+-\d+\.log)") {
 
+      this->retained_dir = make_abosolute_dir(log_dir, retained_dir.empty() ? log_dir : retained_dir);
       if (!archive_dir.empty()) {
-         if (archive_dir.is_relative())
-            this->archive_dir = log_dir / archive_dir;
-         else
-            this->archive_dir = archive_dir;
-
-         if (!bfs::is_directory(this->archive_dir))
-            bfs::create_directories(this->archive_dir);
+         this->archive_dir  = make_abosolute_dir(log_dir, archive_dir);
       }
 
-      for_each_file_in_dir_matches(log_dir, std::string(name) + suffix_pattern, [this](bfs::path path) {
+      for_each_file_in_dir_matches(this->retained_dir, std::string(name) + suffix_pattern, [this](bfs::path path) {
          auto log_path               = path;
          auto index_path             = path.replace_extension("index");
          auto path_without_extension = log_path.parent_path() / log_path.stem().string();
@@ -184,9 +190,19 @@ struct log_catalog {
       return {};
    }
 
+   static void rename_if_not_exists(bfs::path old_name, bfs::path new_name) {
+      if (!bfs::exists(new_name)) {
+         bfs::rename(old_name, new_name);
+      }
+      else {
+         bfs::remove(old_name);
+         wlog("${new_name} already exists, just remove ${old_name}", ("old_name", old_name.string())("new_name", new_name.string()));
+      }
+   }
+
    static void rename_bundle(bfs::path orig_path, bfs::path new_path) {
-      bfs::rename(orig_path.replace_extension(".log"), new_path.replace_extension(".log"));
-      bfs::rename(orig_path.replace_extension(".index"), new_path.replace_extension(".index"));
+      rename_if_not_exists(orig_path.replace_extension(".log"), new_path.replace_extension(".log"));
+      rename_if_not_exists(orig_path.replace_extension(".index"), new_path.replace_extension(".index"));
    }
 
    /// Add a new entry into the catalog.
@@ -201,7 +217,7 @@ struct log_catalog {
       const int bufsize = 64;
       char      buf[bufsize];
       snprintf(buf, bufsize, "%s-%d-%d", name, start_block_num, end_block_num);
-      bfs::path new_path = dir / buf;
+      bfs::path new_path = retained_dir / buf;
       rename_bundle(dir / name, new_path);
 
       if (this->collection.size() >= max_retained_files) {
