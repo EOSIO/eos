@@ -240,7 +240,10 @@ bool trim_blocklog_front(bfs::path block_dir, uint32_t n) {        //n is first 
 
 void fix_irreversible_blocks(bfs::path block_dir) {
    std::cout << "\nfix_irreversible_blocks of blocks.log and blocks.index in directory " << block_dir << '\n';
-   block_log block_logger({ .log_dir = block_dir, .fix_irreversible_blocks = true });
+   block_log::config_type config;
+   config.log_dir = block_dir;
+   config.fix_irreversible_blocks = true;
+   block_log block_logger(config);
 
    std::cout << "\nSmoke test of blocks.log and blocks.index in directory " << block_dir << '\n';
    block_log::smoke_test(block_dir, 0);

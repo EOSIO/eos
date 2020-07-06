@@ -385,7 +385,7 @@ void state_history_plugin::set_program_options(options_description& cli, options
            "If the value is empty, blocks files beyond the retained limit will be deleted.\n"
            "All files in the archive directory are completely under user's control, i.e. they won't be accessed by nodeos anymore.");
    options("state-history-stride", bpo::value<uint32_t>()->default_value(UINT32_MAX),
-         "split the state history log file when the block number is the multiple of the stride\n"
+         "split the state history log files when the block number is the multiple of the stride\n"
          "When the stride is reached, the current history log and index will be renamed '*-history-<start num>-<end num>.log/index'\n"
          "and a new current history log and index will be created with the most recent blocks. All files following\n"
          "this format will be used to construct an extended history log.");
