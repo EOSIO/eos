@@ -130,7 +130,7 @@ function print_supported_linux_distros_and_exit() {
 
 function ensure-compiler() {
     # Support build-essentials on ubuntu
-    if [[ $NAME == "CentOS Linux" ]] || [[ $VERSION_ID == "16.04" ]] || ( $PIN_COMPILER && [[ $VERSION_ID == "18.04" ]] ); then
+    if [[ $NAME == "CentOS Linux" ]] || [[ $VERSION_ID == "16.04" ]] || ( $PIN_COMPILER && ( [[ $VERSION_ID == "18.04" ]] || [[ $VERSION_ID == "20.04" ]] ) ); then
         export CXX=${CXX:-'g++'}
         export CC=${CC:-'gcc'}
     fi
@@ -240,7 +240,7 @@ function ensure-boost() {
         && SDKROOT="$SDKROOT" ./b2 ${B2_FLAGS} \
         && cd .. \
         && rm -f boost_$BOOST_VERSION.tar.bz2 \
-        && rm -rf $BOOST_LINK_LOCATION"        
+        && rm -rf $BOOST_LINK_LOCATION"
         echo " - Boost library successfully installed @ ${BOOST_ROOT}"
         echo ""
     else
