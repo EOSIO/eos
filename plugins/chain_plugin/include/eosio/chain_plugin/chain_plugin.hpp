@@ -66,6 +66,9 @@ uint64_t convert_to_type(const string& str, const string& desc);
 template<>
 double convert_to_type(const string& str, const string& desc);
 
+template<>
+name convert_to_type(const string& str, const string& desc);
+
 template<typename Type>
 string convert_to_string(const Type& source, const string& key_type, const string& encode_type, const string& desc);
 
