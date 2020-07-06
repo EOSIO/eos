@@ -895,13 +895,14 @@ class Cluster:
         for additional in additional_extra_configs:
             self.extra_configs.append(f"{additional}=10000000")
 
-        # ensure that net_plugin_impl always has an explicitly provided logging level
-        new_logger = "net_plugin_impl"
+        # ensure that net_plugin_impl and producer_plugin always have an explicitly provided logging level
+        new_loggers = ["net_plugin_impl","producer_plugin"]
         for logger in self.special_log_levels:
-            if logger[0] == new_logger:
-                new_logger = None
-                break
-        if new_logger:
+            if logger[0] in new_loggers:
+                new_loggers.remove(logger[0])
+                if len(new_loggers) < 0:
+                    break
+        for new_logger in new_loggers:
             self.special_log_levels.append( [new_logger, "debug"] )
         # check for logical errors in config
         self.check_config()
