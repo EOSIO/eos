@@ -809,6 +809,7 @@ launcher_def::define_network () {
         if (lhost) {
           bindings.emplace_back(move(*lhost));
           delete lhost;
+          lhost = nullptr;
         }
         lhost = new host_def;
         lhost->genesis = genesis.string();
@@ -849,6 +850,7 @@ launcher_def::define_network () {
     } // for i
     bindings.emplace_back( move(*lhost) );
     delete lhost;
+    lhost = nullptr;
   }
 }
 
