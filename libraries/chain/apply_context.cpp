@@ -288,14 +288,14 @@ void apply_context::execute_inline( action&& a ) {
       control.check_actor_list( actors );
    }
 
+   if( !privileged && control.is_producing_block() ) {
+      const auto& chain_config = control.get_global_properties().configuration;
+      EOS_ASSERT( a.data.size() < std::min(chain_config.max_inline_action_size, control.get_max_nonprivileged_inline_action_size()),
+                  inline_action_too_big_nonprivileged,
+                  "inline action too big for nonprivileged account ${account}", ("account", a.account));
+   }
    // No need to check authorization if replaying irreversible blocks or contract is privileged
    if( !control.skip_auth_check() && !privileged ) {
-      if( control.is_producing_block() ) {
-         const auto& chain_config = control.get_global_properties().configuration;
-         EOS_ASSERT( a.data.size() < std::min(chain_config.max_inline_action_size, control.get_max_nonprivileged_inline_action_size()),
-                     inline_action_too_big_nonprivileged,
-                     "inline action too big for nonprivileged account ${account}", ("account", a.account));
-      }
       try {
          control.get_authorization_manager()
                 .check_authorization( {a},
