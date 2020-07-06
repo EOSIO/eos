@@ -1629,7 +1629,7 @@ class Cluster:
 
         msg = ">>> Production check failed."
         for prod in counter:
-            msg += f"\n{prod} produced {counter[prod]} {helper.plural('block', {counter[prod]})}."
+            msg += f"\n{prod} produced {counter[prod]} {helper.plural('block', counter[prod])}."
         self.error(msg)
         if not dont_raise:
             raise BlockchainError(msg)
