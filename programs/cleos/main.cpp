@@ -590,7 +590,7 @@ void print_result( const fc::variant& result ) { try {
             for( const auto& a : actions ) {
                print_action_tree( a );
             }
-            wlog( "\rwarning: transaction executed locally, but may not be confirmed by the network yet" );
+            wlog( "\r\nwarning: transaction executed locally, but may not be confirmed by the network yet" );
          }
       } else {
          cerr << fc::json::to_pretty_string( result ) << endl;

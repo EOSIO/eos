@@ -1,4 +1,4 @@
-#include <fc/log/console_appender.hpp>
+%s/^M$//#include <fc/log/console_appender.hpp>
 #include <fc/log/log_message.hpp>
 #include <fc/string.hpp>
 #include <fc/variant.hpp>
@@ -105,6 +105,7 @@ namespace fc {
 
       std::string line;
       line.reserve( 256 );
+      line += "[ ";
       if(my->use_syslog_header) {
          switch(m.get_context().get_log_level()) {
             case log_level::error:
@@ -120,7 +121,8 @@ namespace fc {
                line += "<7>";
                break;
          }
-      }
+      }^M
+
       line += fixed_size(  5, context.get_log_level().to_string() ); line += ' ';
       // use now() instead of context.get_timestamp() because log_message construction can include user provided long running calls
       line += string( time_point::now() ); line += ' ';
@@ -138,8 +140,11 @@ namespace fc {
          if( me[p] == ':' ) ++p;
          line += fixed_size( 20, context.get_method().substr( p, 20 ) ); line += ' ';
       }
+
       line += "] ";
-      line += fc::format_string( m.get_format(), m.get_data() );
+      std::string message = fc::format_string( m.get_format(), m.get_data() );
+      message.erase( std::remove(message.begin(), message.end(), '\r'), message.end() );
+      line += message;
 
       print( line, my->lc[context.get_log_level()] );
 
