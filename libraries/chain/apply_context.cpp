@@ -386,6 +386,12 @@ void apply_context::execute_context_free_inline( action&& a ) {
    EOS_ASSERT( a.authorization.size() == 0, action_validate_exception,
                "context-free actions cannot have authorizations" );
 
+   if( !privileged && control.is_producing_block() ) {
+      const auto& chain_config = control.get_global_properties().configuration;
+      EOS_ASSERT( a.data.size() < std::min(chain_config.max_inline_action_size, control.get_max_nonprivileged_inline_action_size()),
+                  inline_action_too_big_nonprivileged,
+                  "inline action too big for nonprivileged account ${account}", ("account", a.account));
+   }
 
    auto inline_receiver = a.account;
    _cfa_inline_actions.emplace_back(
