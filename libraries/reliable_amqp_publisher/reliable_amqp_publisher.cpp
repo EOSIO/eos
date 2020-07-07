@@ -1,3 +1,4 @@
+#include <eosio/retrying_amqp_connection/retrying_amqp_connection.hpp>
 #include <eosio/reliable_amqp_publisher/reliable_amqp_publisher.hpp>
 
 #include <fc/network/url.hpp>
@@ -25,18 +26,12 @@ struct reliable_amqp_publisher_impl {
    reliable_amqp_publisher_impl(const std::string& url, const std::string& exchange, const std::string& routing_key,
                                 const boost::filesystem::path& unconfirmed_path, const std::optional<std::string>& message_id);
    ~reliable_amqp_publisher_impl();
-   void retry_connection();
-   void bringup_connection();
-   void amqp_ready();
-   void amqp_error(const char* message);
    void pump_queue();
 
-   std::unique_ptr<AMQP::Address> amqp_address;
-   std::unique_ptr<reliable_amqp_publisher_handler> handler;
-   std::unique_ptr<AMQP::TcpConnection> connection;
-   std::unique_ptr<AMQP::TcpChannel> channel;
+   void channel_ready(AMQP::Channel* channel);
+   void channel_failed();
 
-   bool connected = false;
+   AMQP::Channel* channel = nullptr;  //nullptr when channel is not up
    std::atomic_bool stopping = false;
 
    unsigned in_flight = 0;
@@ -44,8 +39,8 @@ struct reliable_amqp_publisher_impl {
 
    std::thread thread;
    boost::asio::io_context ctx;
-   boost::asio::deadline_timer retry_timer{ctx};
-   unsigned next_retry_time = 1;
+
+   single_channel_retrying_amqp_connection<boost::asio::io_context> retrying_connection;
 
    const boost::filesystem::path data_file_path;
 
@@ -57,52 +52,10 @@ struct reliable_amqp_publisher_impl {
    boost::asio::strand<boost::asio::io_context::executor_type> user_submitted_work_strand = boost::asio::make_strand(ctx);
 };
 
-struct reliable_amqp_publisher_handler : AMQP::LibBoostAsioHandler {
-   reliable_amqp_publisher_handler(reliable_amqp_publisher_impl& impl) :
-      AMQP::LibBoostAsioHandler(impl.ctx),
-      impl(impl) {}
-
-   void onReady(AMQP::TcpConnection* c) override {
-      impl.amqp_ready();
-   }
-
-   //disable heartbeat for now
-   uint16_t onNegotiate(AMQP::TcpConnection* connection, uint16_t interval) override {
-      return 0;
-   }
-
-   void onError(AMQP::TcpConnection*, const char* message) override {
-      impl.amqp_error(message);
-   }
-
-   auto amqp_strand() {
-      return _strand;
-   }
-
-   reliable_amqp_publisher_impl& impl;
-};
-
 reliable_amqp_publisher_impl::reliable_amqp_publisher_impl(const std::string& url, const std::string& exchange, const std::string& routing_key,
                                                            const boost::filesystem::path& unconfirmed_path, const std::optional<std::string>& message_id) :
+  retrying_connection(ctx, url, [this](AMQP::Channel* c){channel_ready(c);}, [this](){channel_failed();}),
   data_file_path(unconfirmed_path), exchange(exchange), routing_key(routing_key), message_id(message_id) {
-   std::string host = "localhost", user = "guest", pass = "guest", path;
-   uint16_t port = 5672;
-   fc::url parsed_url(url);
-   FC_ASSERT(parsed_url.proto() == "amqp", "Only amqp:// URIs are supported for AMQP addresses");
-   if(parsed_url.host() && parsed_url.host()->size())
-      host = *parsed_url.host();
-   if(parsed_url.user())
-      user = *parsed_url.user();
-   if(parsed_url.pass())
-      pass = *parsed_url.pass();
-   if(parsed_url.port())
-      port = *parsed_url.port();
-   if(parsed_url.path())
-      path = parsed_url.path()->string();
-
-   std::stringstream hostss;
-   hostss << "amqp://" << user << ":" << pass << "@" << host << ":" << port << "/" << path;
-   amqp_address = std::make_unique<AMQP::Address>(hostss.str());
 
    boost::system::error_code ec;
    boost::filesystem::create_directories(data_file_path.parent_path(), ec);
@@ -123,7 +76,6 @@ reliable_amqp_publisher_impl::reliable_amqp_publisher_impl(const std::string& ur
 
    thread = std::thread([this]() {
       fc::set_os_thread_name("amqp");
-      bringup_connection();
       while(true) {
          try {
             ctx.run();
@@ -164,50 +116,17 @@ reliable_amqp_publisher_impl::~reliable_amqp_publisher_impl() {
    }
 }
 
-void reliable_amqp_publisher_impl::retry_connection() {
-   connected = false;
-   channel.reset();
-   connection.reset();
-   handler.reset();
-   const unsigned max_retry_seconds = 30u;
-   next_retry_time = std::min(next_retry_time, max_retry_seconds);
-   retry_timer.expires_from_now(boost::posix_time::seconds(next_retry_time));
-   retry_timer.async_wait([&](auto ec) {
-      if(ec)
-         return;
-      bringup_connection();
-   });
-   next_retry_time *= 2;
-}
-
-void reliable_amqp_publisher_impl::bringup_connection() {
-   handler = std::make_unique<reliable_amqp_publisher_handler>(*this);
-   try {
-      connection = std::make_unique<AMQP::TcpConnection>(handler.get(), *amqp_address);
-   } catch(...) { //this should never happen, but it could technically have thrown
-      retry_connection();
-   }
-}
-
-void reliable_amqp_publisher_impl::amqp_ready() {
-   ilog("AMQP connection ${s} publishing to \"${e}\" established", ("s", (std::string)*amqp_address)("e", exchange));
-   next_retry_time = 1;
-   connected = true;
-   channel = std::make_unique<AMQP::TcpChannel>(connection.get());
-   channel->onError([this](const char* s) {
-      elog("Channel error for AMQP connection ${s} publishing to \"${e}\": ${m}; restarting connection", ("s", (std::string)*amqp_address)("e", exchange)("m",s));
-      retry_connection();
-   });
+void reliable_amqp_publisher_impl::channel_ready(AMQP::Channel* c) {
+   channel = c;
    pump_queue();
 }
 
-void reliable_amqp_publisher_impl::amqp_error(const char* message) {
-   wlog("AMQP connection ${a} publishing to \"${e}\" failed: ${m}; retrying", ("a", (std::string)*amqp_address)("m", message)("e", exchange));
-   retry_connection();
+void reliable_amqp_publisher_impl::channel_failed() {
+   channel = nullptr;
 }
 
 void reliable_amqp_publisher_impl::pump_queue() {
-   if(stopping || in_flight || !connected || message_deque.empty())
+   if(stopping || in_flight || !channel || message_deque.empty())
       return;
 
    constexpr size_t max_msg_single_transaction = 16;
@@ -231,9 +150,9 @@ void reliable_amqp_publisher_impl::pump_queue() {
    .onFinalize([this]() {
       in_flight = 0;
       //unfortuately we don't know if an error is due to something recoverable or if an error is due
-      // to something unrecoverable. To know that, we need to pump the event queue some so that Channel's or
-      // Connection's onError is delivered. Failure to pump the event queue here can result in runaway recursion.
-      handler->amqp_strand()->post([this]() {
+      // to something unrecoverable. To know that, we need to pump the event queue some which may allow
+      // channel_failed() to be called as needed. So always pump the event queue here
+      ctx.post([this]() {
          pump_queue();
       });
    });
@@ -255,7 +174,7 @@ void reliable_amqp_publisher::publish_message_raw(std::vector<char>&& data) {
    if(my->message_deque.size() > max_queued_messages) {
       if(my->logged_exceeded_max_depth == false)
          elog("AMQP connection ${a} publishing to \"${e}\" has reached ${max} unconfirmed messages; further messages will be dropped",
-              ("a", (std::string)*my->amqp_address)("e", my->exchange)("max", max_queued_messages));
+              ("a", my->retrying_connection.address())("e", my->exchange)("max", max_queued_messages));
       my->logged_exceeded_max_depth = true;
       return;
    }
