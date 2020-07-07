@@ -1,4 +1,4 @@
-%s/^M$//#include <fc/log/console_appender.hpp>
+#include <fc/log/console_appender.hpp>
 #include <fc/log/log_message.hpp>
 #include <fc/string.hpp>
 #include <fc/variant.hpp>
@@ -121,7 +121,7 @@ namespace fc {
                line += "<7>";
                break;
          }
-      }^M
+      }
 
       line += fixed_size(  5, context.get_log_level().to_string() ); line += ' ';
       // use now() instead of context.get_timestamp() because log_message construction can include user provided long running calls
