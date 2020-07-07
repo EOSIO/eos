@@ -169,8 +169,9 @@ Config Options for eosio::chain_plugin:
                                         multiple times)
                                         
   --max-nonprivileged-inline-action-size arg          
-                                        Sets the maximum limit for non-privileged 
-                                        inline actions. The default value is 4 KB 
+                                        Sets the maximum limit for 
+                                        non-privileged inline actions. 
+                                        The default value is 4 KB 
                                         and if this threshold is exceeded,
                                         the transaction will subjectively fail.                                       
 ```
