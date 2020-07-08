@@ -152,7 +152,7 @@ namespace eosio { namespace testing {
 
          virtual ~base_tester() {};
 
-         void              init(const setup_policy policy = setup_policy::full, db_read_mode read_mode = db_read_mode::SPECULATIVE, optional<uint32_t> genesis_max_inline_action_size = optional<uint32_t>{}, optional<uint32_t> genesis_max_nonprivileged_inline_action_size = optional<uint32_t>{});
+         void              init(const setup_policy policy = setup_policy::full, db_read_mode read_mode = db_read_mode::SPECULATIVE, optional<uint32_t> genesis_max_inline_action_size = optional<uint32_t>{}, optional<uint32_t> config_max_nonprivileged_inline_action_size = optional<uint32_t>{});
          void              init(controller::config config, const snapshot_reader_ptr& snapshot);
          void              init(controller::config config, const genesis_state& genesis);
          void              init(controller::config config);

@@ -150,8 +150,8 @@ namespace eosio { namespace testing {
      return control->head_block_id() == other.control->head_block_id();
    }
 
-   void base_tester::init(const setup_policy policy, db_read_mode read_mode, optional<uint32_t> genesis_max_inline_action_size, optional<uint32_t> genesis_max_nonprivileged_inline_action_size) {
-      auto def_conf = default_config(tempdir, genesis_max_inline_action_size, genesis_max_nonprivileged_inline_action_size);
+   void base_tester::init(const setup_policy policy, db_read_mode read_mode, optional<uint32_t> genesis_max_inline_action_size, optional<uint32_t> config_max_nonprivileged_inline_action_size) {
+      auto def_conf = default_config(tempdir, genesis_max_inline_action_size, config_max_nonprivileged_inline_action_size);
       def_conf.first.read_mode = read_mode;
       cfg = def_conf.first;
 
