@@ -1228,11 +1228,11 @@ BOOST_AUTO_TEST_CASE(deferred_inline_action_subjective_limit_failure) { try {
    } );
    CALL_TEST_FUNCTION(chain, "test_transaction", "send_deferred_transaction_4k_action", {} );
    BOOST_CHECK(!trace);
-   try {
-      chain.produce_block( fc::seconds(2) );
-   } catch (const fc::exception& ex) {
-      BOOST_REQUIRE_EQUAL(inline_action_too_big_nonprivileged::code_value, ex.code());
-   }
+   BOOST_CHECK_EXCEPTION(chain.produce_block( fc::seconds(2) ), fc::exception, 
+                         [](const fc::exception& e) {
+                            return expect_assert_message(e, "inline action too big for nonprivileged account");
+                         }
+   );
 
    //check that it gets executed afterwards
    BOOST_REQUIRE(trace);
