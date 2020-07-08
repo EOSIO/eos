@@ -447,18 +447,20 @@ BOOST_FIXTURE_TEST_CASE( get_table_by_seckey_test, TESTER ) try {
    }
 
    // all digits name search
-   const std::string all_digits_name = "1234";
-   bidname(N(inita), name(all_digits_name), eosio::chain::asset::from_string("1.0000 SYS"));
+   const std::string all_digits_name_1 = "1234";
+   const std::string all_digits_name_2 = "2345";
+   bidname(N(inita), name(all_digits_name_1), eosio::chain::asset::from_string("1.0000 SYS"));
+   bidname(N(inita), name(all_digits_name_2), eosio::chain::asset::from_string("1.0000 SYS"));
    produce_blocks(1);
-   p.lower_bound = all_digits_name;
-   p.upper_bound = all_digits_name;
+   p.lower_bound = all_digits_name_1;
+   p.upper_bound = all_digits_name_1;
    p.index_position = "primary";
    p.key_type = "name";
    p.limit = 10;
    eosio::chain_apis::read_only::get_table_rows_result all_digits_result = plugin.read_only::get_table_rows(p);
    BOOST_REQUIRE_EQUAL(1u, all_digits_result.rows.size());
    BOOST_REQUIRE_EQUAL(false, all_digits_result.more);
-   BOOST_REQUIRE_EQUAL(all_digits_name, all_digits_result.rows[0]["newname"].as_string());
+   BOOST_REQUIRE_EQUAL(all_digits_name_1, all_digits_result.rows[0]["newname"].as_string());
 
 } FC_LOG_AND_RETHROW()
 
