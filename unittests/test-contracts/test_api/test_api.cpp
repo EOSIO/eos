@@ -116,6 +116,7 @@ extern "C" {
       WASM_TEST_HANDLER   ( test_transaction, send_action_inline_fail                );
       WASM_TEST_HANDLER   ( test_transaction, send_action_empty                      );
       WASM_TEST_HANDLER   ( test_transaction, send_action_large                      );
+      WASM_TEST_HANDLER   ( test_transaction, send_action_4k                         );
       WASM_TEST_HANDLER   ( test_transaction, send_action_recurse                    );
       WASM_TEST_HANDLER   ( test_transaction, test_read_transaction                  );
       WASM_TEST_HANDLER   ( test_transaction, test_transaction_size                  );
@@ -160,7 +161,7 @@ extern "C" {
       WASM_TEST_HANDLER_EX( test_permission, test_account_creation_time );
 
       //unhandled test call
-      eosio_assert( false, "Unknown Test" );
+      eosio_assert( false, "Unknown Test ahhh!" );
 
    }
 }

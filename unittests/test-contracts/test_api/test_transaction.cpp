@@ -100,6 +100,21 @@ void test_transaction::send_action_large() {
 }
 
 /**
+ * send an inline action that is 4K
+ */
+void test_transaction::send_action_4k() {
+   using namespace eosio;
+   static char large_message[4 * 1024];
+   test_action_action<"testapi"_n.value, WASM_TEST_ACTION( "test_action", "assert_true" )> test_action;
+   copy_data( large_message, 4*1024, test_action.data );
+
+   std::vector<permission_level> permissions = { {"testapi"_n, "active"_n} };
+   action act( permissions, name{"testapi"}, name{WASM_TEST_ACTION("test_action", "assert_true")}, test_action );
+
+   act.send();
+}
+
+/**
  * cause failure due recursive loop
  */
 void test_transaction::send_action_recurse() {
