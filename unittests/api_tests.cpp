@@ -1204,12 +1204,85 @@ BOOST_AUTO_TEST_CASE(inline_action_objective_limit) { try {
    chain.produce_block();
 
    // test send_action_empty
-   ilog("REMOVE 1");
    BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION(chain, "test_transaction", "send_action_4k", {}), inline_action_too_big,
                          [](const fc::exception& e) {
                             return expect_assert_message(e, "inline action too big");
                          }
    );
+
+} FC_LOG_AND_RETHROW() }
+
+BOOST_AUTO_TEST_CASE(deferred_inline_action_subjective_limit_failure) { try {
+   const uint32_t _4k = 4 * 1024;
+   tester chain(setup_policy::full, db_read_mode::SPECULATIVE, {_4k + 100}, {_4k});
+   chain.produce_blocks(2);
+   chain.create_accounts( {N(testapi), N(testapi2), N(alice)} );
+   chain.set_code( N(testapi), contracts::test_api_wasm() );
+   chain.set_code( N(testapi2), contracts::test_api_wasm() );
+   chain.produce_block();
+
+   transaction_trace_ptr trace;
+   auto c = chain.control->applied_transaction.connect([&](std::tuple<const transaction_trace_ptr&, const signed_transaction&> x) {
+      auto& t = std::get<0>(x);
+      if (t->scheduled) { trace = t; }
+   } );
+   CALL_TEST_FUNCTION(chain, "test_transaction", "send_deferred_transaction_4k_action", {} );
+   BOOST_CHECK(!trace);
+   try {
+      chain.produce_block( fc::seconds(2) );
+   } catch (const fc::exception& ex) {
+      BOOST_REQUIRE_EQUAL(inline_action_too_big_nonprivileged::code_value, ex.code());
+   }
+
+   //check that it gets executed afterwards
+   BOOST_REQUIRE(trace);
+   BOOST_REQUIRE(trace->except);
+   BOOST_REQUIRE(trace->error_code);
+
+   //confirm printed message
+   BOOST_REQUIRE_EQUAL(1, trace->action_traces.size());
+   c.disconnect();
+
+} FC_LOG_AND_RETHROW() }
+
+BOOST_AUTO_TEST_CASE(deferred_inline_action_subjective_limit) { try {
+   const uint32_t _4k = 4 * 1024;
+   tester chain(setup_policy::full, db_read_mode::SPECULATIVE, {_4k + 100}, {_4k + 1});
+   tester chain2(setup_policy::full, db_read_mode::SPECULATIVE, {_4k + 100}, {_4k});
+   signed_block_ptr block;
+   for (int n=0; n < 2; ++n) {
+      block = chain.produce_block();
+      chain2.push_block(block);
+   }
+   chain.create_accounts( {N(testapi), N(testapi2), N(alice)} );
+   chain.set_code( N(testapi), contracts::test_api_wasm() );
+   chain.set_code( N(testapi2), contracts::test_api_wasm() );
+   block = chain.produce_block();
+   chain2.push_block(block);
+
+   transaction_trace_ptr trace;
+   auto c = chain.control->applied_transaction.connect([&](std::tuple<const transaction_trace_ptr&, const signed_transaction&> x) {
+      auto& t = std::get<0>(x);
+      if (t->scheduled) { trace = t; }
+   } );
+   block = CALL_TEST_FUNCTION_WITH_BLOCK(chain, "test_transaction", "send_deferred_transaction_4k_action", {} ).second;
+   chain2.push_block(block);
+   BOOST_CHECK(!trace);
+   block = chain.produce_block( fc::seconds(2) );
+   chain2.push_block(block);
+
+   //check that it gets executed afterwards
+   BOOST_REQUIRE(trace);
+
+   //confirm printed message
+   BOOST_TEST(!trace->action_traces.empty());
+   BOOST_TEST(trace->action_traces.back().console == "exec 8");
+   c.disconnect();
+
+   for (int n=0; n < 10; ++n) {
+      block = chain.produce_block();
+      chain2.push_block(block);
+   }
 
 } FC_LOG_AND_RETHROW() }
 
