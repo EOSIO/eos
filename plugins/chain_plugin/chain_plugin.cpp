@@ -1735,19 +1735,6 @@ uint64_t convert_to_type(const string& str, const string& desc) {
 }
 
 template<>
-name convert_to_type(const string& str, const string& desc) {
-
-   try {
-      auto trimmed_str = str;
-      boost::trim(trimmed_str);
-      return name(trimmed_str);
-   } catch( ... ) {
-      EOS_ASSERT( false, chain_type_exception, "Could not convert ${desc} string '${str}' to name",
-                  ("desc", desc)("str", str));
-   }
-}
-
-template<>
 double convert_to_type(const string& str, const string& desc) {
    double val{};
    try {
