@@ -1291,7 +1291,6 @@ BOOST_AUTO_TEST_CASE(deferred_inline_action_subjective_limit_failure) { try {
    BOOST_REQUIRE(trace->except);
    BOOST_REQUIRE(trace->error_code);
 
-   //confirm printed message
    BOOST_REQUIRE_EQUAL(1, trace->action_traces.size());
    c.disconnect();
 
