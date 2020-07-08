@@ -182,14 +182,14 @@ transaction_trace_ptr CallAction(TESTER& test, T ac, const vector<account_name>&
    return res;
 }
 
-template <typename T>
-transaction_trace_ptr CallFunction(TESTER& test, T ac, const vector<char>& data, const vector<account_name>& scope = {N(testapi)}, bool no_throw = false) {
+template <typename T, typename Tester>
+std::pair<transaction_trace_ptr, signed_block_ptr> _CallFunction(Tester& test, T ac, const vector<char>& data, const vector<account_name>& scope = {N(testapi)}, bool no_throw = false) {
    {
       signed_transaction trx;
 
       auto pl = vector<permission_level>{{scope[0], config::active_name}};
       if (scope.size() > 1)
-         for (unsigned int i=1; i < scope.size(); i++)
+         for (unsigned int i = 1; i < scope.size(); i++)
             pl.push_back({scope[i], config::active_name});
 
       action act(pl, ac);
@@ -203,16 +203,24 @@ transaction_trace_ptr CallFunction(TESTER& test, T ac, const vector<char>& data,
       flat_set<public_key_type> keys;
       trx.get_signature_keys(test.control->get_chain_id(), fc::time_point::maximum(), keys);
 
-      auto res = test.push_transaction(trx, fc::time_point::maximum(), TESTER::DEFAULT_BILLED_CPU_TIME_US, no_throw);
+      auto res = test.push_transaction(trx, fc::time_point::maximum(), Tester::DEFAULT_BILLED_CPU_TIME_US, no_throw);
       if (!no_throw) {
          BOOST_CHECK_EQUAL(res->receipt->status, transaction_receipt::executed);
       }
-      test.produce_block();
-      return res;
+      auto block = test.produce_block();
+      return { res, block };
+   }
+}
+
+template <typename T, typename Tester>
+transaction_trace_ptr CallFunction(Tester& test, T ac, const vector<char>& data, const vector<account_name>& scope = {N(testapi)}, bool no_throw = false) {
+   {
+      return _CallFunction(test, ac, data, scope, no_throw).first;
    }
 }
 
 #define CALL_TEST_FUNCTION(_TESTER, CLS, MTH, DATA) CallFunction(_TESTER, test_api_action<TEST_METHOD(CLS, MTH)>{}, DATA)
+#define CALL_TEST_FUNCTION_WITH_BLOCK(_TESTER, CLS, MTH, DATA) _CallFunction(_TESTER, test_api_action<TEST_METHOD(CLS, MTH)>{}, DATA)
 #define CALL_TEST_FUNCTION_SYSTEM(_TESTER, CLS, MTH, DATA) CallFunction(_TESTER, test_chain_action<TEST_METHOD(CLS, MTH)>{}, DATA, {config::system_account_name} )
 #define CALL_TEST_FUNCTION_SCOPE(_TESTER, CLS, MTH, DATA, ACCOUNT) CallFunction(_TESTER, test_api_action<TEST_METHOD(CLS, MTH)>{}, DATA, ACCOUNT)
 #define CALL_TEST_FUNCTION_NO_THROW(_TESTER, CLS, MTH, DATA) CallFunction(_TESTER, test_api_action<TEST_METHOD(CLS, MTH)>{}, DATA, {N(testapi)}, true)
@@ -1201,6 +1209,62 @@ BOOST_FIXTURE_TEST_CASE(transaction_tests, TESTER) { try {
       );
 
    BOOST_REQUIRE_EQUAL( validate(), true );
+} FC_LOG_AND_RETHROW() }
+
+/*************************************************************************************
+ * verify subjective limit test case
+ *************************************************************************************/
+BOOST_AUTO_TEST_CASE(inline_action_subjective_limit) { try {
+   const uint32_t _4k = 4 * 1024;
+   tester chain(setup_policy::full, db_read_mode::SPECULATIVE, {_4k + 100}, {_4k + 1});
+   tester chain2(setup_policy::full, db_read_mode::SPECULATIVE, {_4k + 100}, {_4k});
+   signed_block_ptr block;
+   for (int n=0; n < 2; ++n) {
+      block = chain.produce_block();
+      chain2.push_block(block);
+   }
+   chain.create_account( N(testapi) );
+   for (int n=0; n < 2; ++n) {
+      block = chain.produce_block();
+      chain2.push_block(block);
+   }
+   chain.set_code( N(testapi), contracts::test_api_wasm() );
+   block = chain.produce_block();
+   chain2.push_block(block);
+
+   // test send_action_empty
+   block = CALL_TEST_FUNCTION_WITH_BLOCK(chain, "test_transaction", "send_action_4k", {}).second;
+   chain2.push_block(block);
+   block = chain.produce_block();
+   chain2.push_block(block);
+
+} FC_LOG_AND_RETHROW() }
+
+/*************************************************************************************
+ * verify objective limit test case
+ *************************************************************************************/
+BOOST_AUTO_TEST_CASE(inline_action_objective_limit) { try {
+   const uint32_t _4k = 4 * 1024;
+   tester chain(setup_policy::full, db_read_mode::SPECULATIVE, {_4k}, {_4k - 1});
+   chain.produce_blocks(2);
+   chain.create_account( N(testapi) );
+   chain.produce_blocks(100);
+   chain.set_code( N(testapi), contracts::test_api_wasm() );
+   chain.produce_block();
+
+   chain.push_action(config::system_account_name, N(setpriv), config::system_account_name,  mutable_variant_object()
+         ("account", "testapi")
+         ("is_priv", 1));
+   chain.produce_block();
+
+   // test send_action_empty
+   ilog("REMOVE 1");
+   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION(chain, "test_transaction", "send_action_4k", {}), inline_action_too_big,
+                         [](const fc::exception& e) {
+                            return expect_assert_message(e, "inline action too big");
+                         }
+   );
+
 } FC_LOG_AND_RETHROW() }
 
 BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
