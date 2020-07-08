@@ -1,6 +1,7 @@
 #include <eosio/chain/abi_serializer.hpp>
 #include <eosio/chain/resource_limits.hpp>
 #include <eosio/testing/tester.hpp>
+#include <eosio/chain/kv_chainbase_objects.hpp>
 
 #include <Runtime/Runtime.h>
 
@@ -76,13 +77,13 @@ class kv_tester : public tester {
       produce_block();
    }
 
-   action_result push_action(const action_name& name, const variant_object& data, chain::name account = N(kvtest)) {
+   action_result push_action(const action_name& name, const variant_object& data, chain::name account = N(kvtest), chain::name authorizer = N(kvtest)) {
       string action_type_name = abi_ser.get_action_type(name);
       action act;
       act.account = account;
       act.name    = name;
       act.data    = abi_ser.variant_to_binary(action_type_name, data, abi_serializer::create_yield_function(abi_serializer_max_time));
-      return base_tester::push_action(std::move(act), N(kvtest).to_uint64_t());
+      return base_tester::push_action(std::move(act), authorizer.to_uint64_t());
    }
 
    action_result set_limit(name db, int64_t limit, name account = N(kvtest)) {
@@ -129,8 +130,13 @@ class kv_tester : public tester {
    }
 
    template <typename V>
+   action_result set(name db, name contract, const char* k, V v, name payer) {
+      return push_action(N(set), mvo()("db", db)("contract", contract)("k", k)("v", v)("payer", payer), contract, payer);
+   }
+
+   template <typename V>
    action_result set(name db, name contract, const char* k, V v) {
-      return push_action(N(set), mvo()("db", db)("contract", contract)("k", k)("v", v));
+      return push_action(N(set), mvo()("db", db)("contract", contract)("k", k)("v", v)("payer", contract));
    }
 
    action_result iterlimit(const std::vector<itparam>& params) {
@@ -166,11 +172,11 @@ class kv_tester : public tester {
                                                                     "k", k)("v", v)("test_id", test_id)("insert", insert)("reinsert", reinsert)));
    }
 
-   uint64_t get_usage(name db) {
+   uint64_t get_usage(name db, name account=N(kvtest)) {
       if (db == N(eosio.kvram)) {
-         return control->get_resource_limits_manager().get_account_ram_usage(N(kvtest));
+         return control->get_resource_limits_manager().get_account_ram_usage(account);
       } else if (db == N(eosio.kvdisk)) {
-         return control->get_resource_limits_manager().get_account_disk_usage(N(kvtest));
+         return control->get_resource_limits_manager().get_account_disk_usage(account);
       }
       BOOST_FAIL("Wrong db");
       return 0;
@@ -459,34 +465,47 @@ class kv_tester : public tester {
       if(db == N(eosio.kvdisk)) BOOST_TEST(base_usage == 0);
 
       get("", db, N(kvtest), "11", nullptr);
-      BOOST_TEST(get_usage(db) == base_usage);
-      BOOST_TEST("" == set(db, N(kvtest), "11", ""));
-      BOOST_TEST(get_usage(db) == base_usage + 112 + 1);
-      BOOST_TEST("" == set(db, N(kvtest), "11", "1234"));
-      BOOST_TEST(get_usage(db) == base_usage + 112 + 1 + 2);
-      BOOST_TEST("" == set(db, N(kvtest), "11", "12"));
-      BOOST_TEST(get_usage(db) == base_usage + 112 + 1 + 1);
+      BOOST_TEST(get_usage(db, N(kvtest)) == base_usage);
+      BOOST_TEST("" == set(db, N(kvtest), "11", "", N(kvtest)));
+
+      const int base_billable = config::billable_size_v<kv_object>;
+      BOOST_TEST(get_usage(db, N(kvtest)) == base_usage + base_billable + 1);
+      BOOST_TEST("" == set(db, N(kvtest), "11", "1234", N(kvtest)));
+      BOOST_TEST(get_usage(db, N(kvtest)) == base_usage + base_billable + 1 + 2);
+      BOOST_TEST("" == set(db, N(kvtest), "11", "12", N(kvtest)));
+      BOOST_TEST(get_usage(db, N(kvtest)) == base_usage + base_billable + 1 + 1);
       erase("", db, N(kvtest), "11");
-      BOOST_TEST(get_usage(db) == base_usage);
+      BOOST_TEST(get_usage(db, N(kvtest)) == base_usage);
+
+      // test payer changes
+      BOOST_TEST("" == set(db, N(kvtest), "11", "", N(kvtest)));
+      BOOST_TEST(get_usage(db, N(kvtest)) == base_usage + base_billable + 1);
+
+      uint64_t base_usage1 = get_usage(db, N(kvtest1));
+      BOOST_TEST("" == set(db, N(kvtest), "11", "", N(kvtest1)));
+
+      BOOST_TEST(get_usage(db, N(kvtest)) == base_usage);
+      BOOST_TEST(get_usage(db, N(kvtest1)) == base_usage1 + base_billable + 1);
    }
 
    void test_resource_limit(name db) {
       uint64_t base_usage = get_usage(db);
       // insert a new element
-      BOOST_TEST_REQUIRE(set_limit(db, base_usage + 112) == "");
+      const int base_billable = config::billable_size_v<kv_object>;
+      BOOST_TEST_REQUIRE(set_limit(db, base_usage + base_billable) == "");
       BOOST_TEST(set(db, N(kvtest), "11", "").find("account kvtest has insufficient") == 0);
-      BOOST_TEST_REQUIRE(set_limit(db, base_usage + 112 + 1) == "");
+      BOOST_TEST_REQUIRE(set_limit(db, base_usage + base_billable + 1) == "");
       BOOST_TEST("" == set(db, N(kvtest), "11", ""));
       // increase the size of a value
-      BOOST_TEST_REQUIRE(set_limit(db, base_usage + 112 + 1 + 2 - 1) == "");
+      BOOST_TEST_REQUIRE(set_limit(db, base_usage + base_billable + 1 + 2 - 1) == "");
       BOOST_TEST(set(db, N(kvtest), "11", "1234").find("account kvtest has insufficient") == 0);
-      BOOST_TEST_REQUIRE(set_limit(db, base_usage + 112 + 1 + 2) == "");
+      BOOST_TEST_REQUIRE(set_limit(db, base_usage + base_billable + 1 + 2) == "");
       BOOST_TEST("" == set(db, N(kvtest), "11", "1234"));
       // decrease the size of a value
       BOOST_TEST("" == set(db, N(kvtest), "11", ""));
       // decrease limits
-      BOOST_TEST(set_limit(db, base_usage + 112).find("account kvtest has insufficient") == 0);
-      BOOST_TEST(set_limit(db, base_usage + 112 + 1) == "");
+      BOOST_TEST(set_limit(db, base_usage + base_billable).find("account kvtest has insufficient") == 0);
+      BOOST_TEST(set_limit(db, base_usage + base_billable + 1) == "");
       // erase an element
       erase("", db, N(kvtest), "11");
    }
@@ -513,7 +532,7 @@ class kv_tester : public tester {
       action act;
       act.account = N(kvtest);
       act.name    = N(set);
-      act.data    = abi_ser.variant_to_binary("set", mvo()("db", db)("contract", N(kvtest))("k", k)("v", v), abi_serializer::create_yield_function(abi_serializer_max_time));
+      act.data    = abi_ser.variant_to_binary("set", mvo()("db", db)("contract", N(kvtest))("k", k)("v", v)("payer", N(kvtest)), abi_serializer::create_yield_function(abi_serializer_max_time));
       act.authorization = vector<permission_level>{{N(kvtest), config::active_name}};
       return act;
    }
@@ -548,7 +567,7 @@ class kv_tester : public tester {
       signed_transaction trx;
       {
          trx.actions.push_back(make_set_action(db, 512));
-         trx.actions.push_back(make_set_limit_action(db, base_usage + 624));
+         trx.actions.push_back(make_set_limit_action(db, base_usage + 640));
       }
       set_transaction_headers(trx);
       trx.sign(get_private_key(N(kvtest), "active"), control->get_chain_id());
@@ -785,14 +804,14 @@ static const char kv_notify_wast[] = R"=====(
  (func $kv_it_create (import "env" "kv_it_create") (param i64 i64 i32 i32) (result i32))
  (func $kv_it_destroy (import "env" "kv_it_destroy") (param i32))
  (func $kv_get (import "env" "kv_get") (param i64 i64 i32 i32 i32) (result i32))
- (func $kv_set (import "env" "kv_set") (param i64 i64 i32 i32 i32 i32) (result i64))
+ (func $kv_set (import "env" "kv_set") (param i64 i64 i32 i32 i32 i32 i64) (result i64))
  (func $require_recipient (import "env" "require_recipient") (param i64))
  (memory 1)
  (func (export "apply") (param i64 i64 i64)
   (drop (call $kv_it_create (get_local 2) (get_local 0) (i32.const 0) (i32.const 0)))
   (drop (call $kv_it_create (get_local 2) (get_local 0) (i32.const 0) (i32.const 0)))
   (call $kv_it_destroy (i32.const 2))
-  (drop (call $kv_set (get_local 2) (get_local 0) (i32.const 0) (i32.const 0) (i32.const 1) (i32.const 1)))
+  (drop (call $kv_set (get_local 2) (get_local 0) (i32.const 0) (i32.const 0) (i32.const 1) (i32.const 1)  (get_local 0)))
   (drop (call $kv_get (get_local 2) (get_local 0) (i32.const 0) (i32.const 0) (i32.const 8)))
   (call $require_recipient (i64.const 11327368596746665984))
  )
@@ -803,13 +822,13 @@ static const char kv_notified_wast[] = R"=====(
 (module
  (func $kv_it_create (import "env" "kv_it_create")(param i64 i64 i32 i32) (result i32))
  (func $kv_get_data (import "env" "kv_get_data") (param i64 i32 i32 i32) (result i32))
- (func $kv_set (import "env" "kv_set") (param i64 i64 i32 i32 i32 i32) (result i64))
+ (func $kv_set (import "env" "kv_set") (param i64 i64 i32 i32 i32 i32 i64) (result i64))
  (func $eosio_assert (import "env" "eosio_assert") (param i32 i32))
  (memory 1)
  (func (export "apply") (param i64 i64 i64)
   (call $eosio_assert (i32.eq (call $kv_it_create (get_local 2) (get_local 0) (i32.const 0) (i32.const 0)) (i32.const 1)) (i32.const 80))
   (call $eosio_assert (i32.eq (call $kv_get_data (get_local 2) (i32.const 0) (i32.const 0) (i32.const 0)) (i32.const 0)) (i32.const 160))
-  (drop (call $kv_set (get_local 2) (get_local 0) (i32.const 0) (i32.const 0) (i32.const 1) (i32.const 1)))
+  (drop (call $kv_set (get_local 2) (get_local 0) (i32.const 0) (i32.const 0) (i32.const 1) (i32.const 1) (get_local 0)))
  )
  (data (i32.const 80) "Wrong iterator value")
  (data (i32.const 160) "Temporary data buffer not empty")
@@ -832,15 +851,15 @@ BOOST_DATA_TEST_CASE_F(tester, notify, bdata::make(databases), db) {
 static const char kv_alias_pass_wast[] = R"=====(
 (module
  (func $kv_get (import "env" "kv_get") (param i64 i64 i32 i32 i32) (result i32))
- (func $kv_set (import "env" "kv_set") (param i64 i64 i32 i32 i32 i32) (result i64))
+ (func $kv_set (import "env" "kv_set") (param i64 i64 i32 i32 i32 i32 i64) (result i64))
  (memory 1)
  (func (export "apply") (param i64 i64 i64)
-  (drop (call $kv_set (get_local 2) (get_local 0) (i32.const 0) (i32.const 0) (i32.const 0) (i32.const 1)))
-  (drop (call $kv_set (get_local 2) (get_local 0) (i32.const 0) (i32.const 1) (i32.const 0) (i32.const 0)))
-  (drop (call $kv_set (get_local 2) (get_local 0) (i32.const 0) (i32.const 1) (i32.const 1) (i32.const 0)))
-  (drop (call $kv_set (get_local 2) (get_local 0) (i32.const 1) (i32.const 0) (i32.const 0) (i32.const 1)))
-  (drop (call $kv_set (get_local 2) (get_local 0) (i32.const 0) (i32.const 2) (i32.const 1) (i32.const 0)))
-  (drop (call $kv_set (get_local 2) (get_local 0) (i32.const 1) (i32.const 0) (i32.const 0) (i32.const 2)))
+  (drop (call $kv_set (get_local 2) (get_local 0) (i32.const 0) (i32.const 0) (i32.const 0) (i32.const 1) (get_local 0)))
+  (drop (call $kv_set (get_local 2) (get_local 0) (i32.const 0) (i32.const 1) (i32.const 0) (i32.const 0) (get_local 0)))
+  (drop (call $kv_set (get_local 2) (get_local 0) (i32.const 0) (i32.const 1) (i32.const 1) (i32.const 0) (get_local 0)))
+  (drop (call $kv_set (get_local 2) (get_local 0) (i32.const 1) (i32.const 0) (i32.const 0) (i32.const 1) (get_local 0)))
+  (drop (call $kv_set (get_local 2) (get_local 0) (i32.const 0) (i32.const 2) (i32.const 1) (i32.const 0) (get_local 0)))
+  (drop (call $kv_set (get_local 2) (get_local 0) (i32.const 1) (i32.const 0) (i32.const 0) (i32.const 2) (get_local 0)))
   (drop (call $kv_get (get_local 2) (get_local 0) (i32.const 1) (i32.const 1) (i32.const 2)))
   (drop (call $kv_get (get_local 2) (get_local 0) (i32.const 2) (i32.const 0) (i32.const 2)))
   (drop (call $kv_get (get_local 2) (get_local 0) (i32.const 6) (i32.const 1) (i32.const 2)))
@@ -854,7 +873,7 @@ static const char kv_alias_general_wast[] = R"=====(
 (module
  (func $read_action_data (import "env" "read_action_data") (param i32 i32) (result i32))
  (func $kv_get (import "env" "kv_get") (param i64 i64 i32 i32 i32) (result i32))
- (func $kv_set (import "env" "kv_set") (param i64 i64 i32 i32 i32 i32) (result i64))
+ (func $kv_set (import "env" "kv_set") (param i64 i64 i32 i32 i32 i32 i64) (result i64))
  (memory 1)
  (func (export "apply") (param i64 i64 i64)
   (local $span_start i32)
@@ -863,8 +882,8 @@ static const char kv_alias_general_wast[] = R"=====(
   (set_local $span_start (i32.load (i32.const 0)))
   (set_local $span_size  (i32.load (i32.const 4)))
   (drop (call $kv_get (get_local 2) (get_local 0) (get_local $span_start) (get_local $span_size) (i32.const 32)))
-  (drop (call $kv_set (get_local 2) (get_local 0) (i32.const 64) (i32.const 4) (get_local $span_start) (get_local $span_size)))
-  (drop (call $kv_set (get_local 2) (get_local 0) (get_local $span_start) (get_local $span_size) (i32.const 128) (i32.const 4)))
+  (drop (call $kv_set (get_local 2) (get_local 0) (i32.const 64) (i32.const 4) (get_local $span_start) (get_local $span_size) (get_local 0)))
+  (drop (call $kv_set (get_local 2) (get_local 0) (get_local $span_start) (get_local $span_size) (i32.const 128) (i32.const 4) (get_local 0)))
  )
 )
 )=====";

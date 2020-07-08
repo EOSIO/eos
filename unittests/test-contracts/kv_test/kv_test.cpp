@@ -1,5 +1,6 @@
 #include <eosio/eosio.hpp>
 
+
 using namespace eosio;
 
 enum it_stat : int32_t {
@@ -12,7 +13,7 @@ enum it_stat : int32_t {
 
 // clang-format off
 IMPORT int64_t  kv_erase(name db, name contract, const char* key, uint32_t key_size);
-IMPORT int64_t  kv_set(name db, name contract, const char* key, uint32_t key_size, const char* value, uint32_t value_size);
+IMPORT int64_t  kv_set(name db, name contract, const char* key, uint32_t key_size, const char* value, uint32_t value_size, name payer);
 IMPORT bool     kv_get(name db, name contract, const char* key, uint32_t key_size, uint32_t& value_size);
 IMPORT uint32_t kv_get_data(name db, uint32_t offset, char* data, uint32_t data_size);
 IMPORT uint32_t kv_it_create(name db, name contract, const char* prefix, uint32_t size);
@@ -108,8 +109,8 @@ class [[eosio::contract("kv_test")]] kvtest : public eosio::contract {
       kv_erase(db, contract, k.data(), k.size());
    }
 
-   [[eosio::action]] void set(name db, name contract, const std::vector<char>& k, const std::vector<char>& v) {
-      kv_set(db, contract, k.data(), k.size(), v.data(), v.size());
+   [[eosio::action]] void set(name db, name contract, const std::vector<char>& k, const std::vector<char>& v, name payer) {
+      kv_set(db, contract, k.data(), k.size(), v.data(), v.size(), payer);
    }
 
    [[eosio::action]] void get(name db, name contract, const std::vector<char>& k,
@@ -129,7 +130,7 @@ class [[eosio::contract("kv_test")]] kvtest : public eosio::contract {
 
    [[eosio::action]] void setmany(name db, name contract, const std::vector<kv>& kvs) {
       for (auto& kv : kvs) //
-         kv_set(db, contract, kv.k.data(), kv.k.size(), kv.v.data(), kv.v.size());
+         kv_set(db, contract, kv.k.data(), kv.k.size(), kv.v.data(), kv.v.size(), contract);
    }
 
    [[eosio::action]] void getdata(name db) {
@@ -145,7 +146,7 @@ class [[eosio::contract("kv_test")]] kvtest : public eosio::contract {
       TEST(kv_get_data(db, 0xFFFFFFFFu, buf.data(), 1024) == 0);
       TEST(buf == orig_buf); // unchanged
       // Add a value and load it into the temporary buffer
-      kv_set(db, get_self(), "key", 3, "value", 5);
+      kv_set(db, get_self(), "key", 3, "value", 5, get_self());
       TEST(kv_get_data(db, 0, nullptr, 0) == 0);
       uint32_t value_size = 0xffffffff;
       kv_get(db, get_self(), "key", 3, value_size);
@@ -169,10 +170,10 @@ class [[eosio::contract("kv_test")]] kvtest : public eosio::contract {
       TEST(kv_get_data(db, 0, buf.data(), 1024) == 0);
       // kv_set clears the buffer
       kv_get(db, get_self(), "key", 3, value_size);
-      kv_set(db, get_self(), "key2", 4, "", 0); // set another key
+      kv_set(db, get_self(), "key2", 4, "", 0, get_self()); // set another key
       TEST(kv_get_data(db, 0, buf.data(), 1024) == 0);
       kv_get(db, get_self(), "key", 3, value_size);
-      kv_set(db, get_self(), "key", 3, "value", 5); // same key
+      kv_set(db, get_self(), "key", 3, "value", 5, get_self()); // same key
       TEST(kv_get_data(db, 0, buf.data(), 1024) == 0);
       // kv_erase clears the buffer
       kv_get(db, get_self(), "key", 3, value_size);
@@ -329,7 +330,7 @@ class [[eosio::contract("kv_test")]] kvtest : public eosio::contract {
    [[eosio::action]] void itstaterased(name db, name contract, const std::vector<char>& prefix,
                                        const std::vector<char>& k, const std::vector<char>& v,
                                        int test_id, bool insert, bool reinsert) {
-      if(insert) kv_set(db, contract, k.data(), k.size(), v.data(), v.size());
+      if(insert) kv_set(db, contract, k.data(), k.size(), v.data(), v.size(), contract);
       auto it = kv_it_create(db, contract, prefix.data(), prefix.size());
       uint32_t key_size, value_size;
       it_stat stat = kv_it_lower_bound(it, k.data(), k.size(), &key_size, &value_size);
@@ -402,7 +403,7 @@ class [[eosio::contract("kv_test")]] kvtest : public eosio::contract {
          check_status(test_id);
          return;
       }
-      kv_set(db, contract, k.data(), k.size(), v.data(), v.size());
+      kv_set(db, contract, k.data(), k.size(), v.data(), v.size(), contract);
       check_status(test_id);
    } // itstaterased
 

@@ -1106,8 +1106,8 @@ int64_t apply_context::kv_erase(uint64_t db, uint64_t contract, const char* key,
    return kv_get_db(db).kv_erase(contract, key, key_size);
 }
 
-int64_t apply_context::kv_set(uint64_t db, uint64_t contract, const char* key, uint32_t key_size, const char* value, uint32_t value_size) {
-   return kv_get_db(db).kv_set(contract, key, key_size, value, value_size);
+int64_t apply_context::kv_set(uint64_t db, uint64_t contract, const char* key, uint32_t key_size, const char* value, uint32_t value_size, account_name payer) {
+   return kv_get_db(db).kv_set(contract, key, key_size, value, value_size, payer);
 }
 
 bool apply_context::kv_get(uint64_t db, uint64_t contract, const char* key, uint32_t key_size, uint32_t& value_size) {
