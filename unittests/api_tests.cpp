@@ -1232,7 +1232,6 @@ BOOST_AUTO_TEST_CASE(inline_action_subjective_limit) { try {
    block = chain.produce_block();
    chain2.push_block(block);
 
-   // test send_action_empty
    block = CALL_TEST_FUNCTION_WITH_BLOCK(chain, "test_transaction", "send_action_4k", {}).second;
    chain2.push_block(block);
    block = chain.produce_block();
@@ -1257,7 +1256,6 @@ BOOST_AUTO_TEST_CASE(inline_action_objective_limit) { try {
          ("is_priv", 1));
    chain.produce_block();
 
-   // test send_action_empty
    BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION(chain, "test_transaction", "send_action_4k", {}), inline_action_too_big,
                          [](const fc::exception& e) {
                             return expect_assert_message(e, "inline action too big");
@@ -1288,7 +1286,7 @@ BOOST_AUTO_TEST_CASE(deferred_inline_action_subjective_limit_failure) { try {
                          }
    );
 
-   //check that it gets executed afterwards
+   //check that it populates exception fields
    BOOST_REQUIRE(trace);
    BOOST_REQUIRE(trace->except);
    BOOST_REQUIRE(trace->error_code);
