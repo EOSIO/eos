@@ -60,7 +60,7 @@ namespace eosio { namespace chain {
    template<typename Interface>
    struct basic_type_converter : public eosio::vm::type_converter<webassembly::interface, Interface> {
       using base_type = eosio::vm::type_converter<webassembly::interface, Interface>;
-      using base_type::type_converter;
+      using eosio::vm::type_converter<webassembly::interface, Interface>::type_converter;
       using base_type::from_wasm;
       using base_type::to_wasm;
 
