@@ -52,7 +52,7 @@ namespace eosio { namespace chain {
          eosvmoc_tier(const boost::filesystem::path& d, const eosvmoc::config& c, const chainbase::database& db)
           : cc(d, c, db), exec(cc),
             // Can't get max_pages from db, because db hasn't been initialized yet.
-            mem(0) {}
+            mem(0, eosvmoc::get_intrinsic_map()) {}
          eosvmoc::code_cache_async cc;
          eosvmoc::executor exec;
          eosvmoc::memory mem;
