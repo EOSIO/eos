@@ -1585,8 +1585,9 @@ class Cluster:
                  f"{rest} {helper.plural('block', rest)} {helper.singular('remain', rest)} to to be checked.", level=level)
         counter = {x: 0 for x in expected_producers}
         counter[curr_prod] += 1
-        entr_prod = last_prod = curr_prod
-        end_block_num = begin_block_num + full_round * len(expected_producers)
+        last_prod = curr_prod
+        producers_in_schedule = len(expected_producers)
+        end_block_num = begin_block_num + full_round * producers_in_schedule
         for num in range(begin_block_num + 1, end_block_num):
             curr_prod = self.wait_get_producer_by_block(num, level="trace")
             counter[curr_prod] += 1
@@ -1595,7 +1596,22 @@ class Cluster:
                 self.error(msg)
                 if not dont_raise:
                     raise BlockchainError(msg)
-            if curr_prod != last_prod and last_prod != entr_prod:
+            if curr_prod != last_prod:
+                num_identified_prod = len(counter)
+                if num_identified_prod == producers_in_schedule:
+                    self.log(f"All {producers_in_schedule} producers were identified and "
+                             f"each produced at least {min_required_per_round} blocks", level)
+                    break
+
+                if counter[curr_prod] != 1:
+                    count = counter[curr_prod]
+                    msg = (f"Producer changes to \"{curr_prod}\" after last producer \"{last_prod}\", but it was "
+                           f"already identified earlier in the production round and only {num_identified_prod} of "
+                           f"the expected {producers_in_schedule} producers had produced.")
+                    self.error(msg)
+                    if not dont_raise:
+                        raise BlockchainError(msg)
+
                 if counter[last_prod] < min_required_per_round or counter[last_prod] > full_round:
                     count = counter[last_prod]
                     msg = (f"Producer changes to \"{curr_prod}\" after last producer \"{last_prod}\" "
