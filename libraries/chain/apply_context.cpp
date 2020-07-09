@@ -1229,7 +1229,14 @@ void apply_context::add_ram_usage( account_name account, int64_t ram_delta, cons
    }
 }
 
-void apply_context::add_disk_usage( account_name account, int64_t disk_delta, const storage_usage_trace& trace ) {
+void apply_context::update_disk_usage( account_name account, int64_t disk_delta, const storage_usage_trace& trace ) {
+
+   if (disk_delta > 0 && !privileged) {
+      EOS_ASSERT(receiver == act->account, subjective_block_production_exception,
+                 "Cannot charge disk to other accounts during notify.");
+      require_authorization(account);
+   }
+
    trx_context.add_disk_usage( account, disk_delta, trace );
 
    auto p = _account_disk_deltas.emplace( account, disk_delta );
