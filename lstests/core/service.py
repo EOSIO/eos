@@ -1282,7 +1282,7 @@ class Cluster:
             t.join()
         error_count = len(channel)
         if error_count:
-            msg = f"{error_count} {helper.plural('exception', cnt)} occurred in bios creating accounts."
+            msg = f"{error_count} {helper.plural('exception', error_count)} occurred in bios creating accounts."
             cnt = min(error_count, 10)
             msg += f"\nReporting first {cnt} {helper.plural('exception', cnt)}:"
             for i in range(cnt):
