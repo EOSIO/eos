@@ -242,12 +242,12 @@ void apply_context::require_recipient( account_name recipient ) {
  *  implicitly authorized by the current receiver (running code). This method has significant
  *  security considerations and several options have been considered:
  *
- *  1. priviledged accounts (those marked as such by block producers) can authorize any action
+ *  1. privileged accounts (those marked as such by block producers) can authorize any action
  *  2. all other actions are only authorized by 'receiver' which means the following:
  *         a. the user must set permissions on their account to allow the 'receiver' to act on their behalf
  *
- *  Discarded Implemenation:  at one point we allowed any account that authorized the current transaction
- *   to implicitly authorize an inline transaction. This approach would allow privelege escalation and
+ *  Discarded Implementation: at one point we allowed any account that authorized the current transaction
+ *   to implicitly authorize an inline transaction. This approach would allow privilege escalation and
  *   make it unsafe for users to interact with certain contracts.  We opted instead to have applications
  *   ask the user for permission to take certain actions rather than making it implicit. This way users
  *   can better understand the security risk.
@@ -288,6 +288,12 @@ void apply_context::execute_inline( action&& a ) {
       control.check_actor_list( actors );
    }
 
+   if( !privileged && control.is_producing_block() ) {
+      const auto& chain_config = control.get_global_properties().configuration;
+      EOS_ASSERT( a.data.size() < std::min(chain_config.max_inline_action_size, control.get_max_nonprivileged_inline_action_size()),
+                  inline_action_too_big_nonprivileged,
+                  "inline action too big for nonprivileged account ${account}", ("account", a.account));
+   }
    // No need to check authorization if replaying irreversible blocks or contract is privileged
    if( !control.skip_auth_check() && !privileged ) {
       try {
@@ -337,6 +343,12 @@ void apply_context::execute_context_free_inline( action&& a ) {
    EOS_ASSERT( a.authorization.size() == 0, action_validate_exception,
                "context-free actions cannot have authorizations" );
 
+   if( !privileged && control.is_producing_block() ) {
+      const auto& chain_config = control.get_global_properties().configuration;
+      EOS_ASSERT( a.data.size() < std::min(chain_config.max_inline_action_size, control.get_max_nonprivileged_inline_action_size()),
+                  inline_action_too_big_nonprivileged,
+                  "inline action too big for nonprivileged account ${account}", ("account", a.account));
+   }
 
    auto inline_receiver = a.account;
    _cfa_inline_actions.emplace_back(

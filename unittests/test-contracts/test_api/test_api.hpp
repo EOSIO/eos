@@ -157,6 +157,7 @@ struct test_transaction {
    static void send_action_empty();
    static void send_action_max();
    static void send_action_large();
+   static void send_action_4k();
    static void send_action_recurse();
    static void send_action_inline_fail();
    static void test_read_transaction();
@@ -170,6 +171,7 @@ struct test_transaction {
    static void send_action_sender(uint64_t receiver, uint64_t code, uint64_t action);
    static void deferred_print();
    static void send_deferred_transaction(uint64_t receiver, uint64_t code, uint64_t action);
+   static void send_deferred_transaction_4k_action(uint64_t receiver, uint64_t code, uint64_t action);
    static void send_deferred_transaction_replace(uint64_t receiver, uint64_t code, uint64_t action);
    static void send_deferred_tx_with_dtt_action();
    static void cancel_deferred_transaction_success();
