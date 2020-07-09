@@ -516,6 +516,8 @@ namespace eosio { namespace chain {
                                     3015015, "Duplicate variant definition in the ABI" )
       FC_DECLARE_DERIVED_EXCEPTION( unsupported_abi_version_exception,  abi_exception,
                                     3015016, "ABI has an unsupported version" )
+      FC_DECLARE_DERIVED_EXCEPTION( duplicate_abi_action_results_def_exception,  abi_exception,
+                                    3015017, "Duplicate action results definition in the ABI" )
 
    FC_DECLARE_DERIVED_EXCEPTION( contract_exception,           chain_exception,
                                  3160000, "Contract exception" )

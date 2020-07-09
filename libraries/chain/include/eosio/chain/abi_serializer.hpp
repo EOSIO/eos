@@ -54,6 +54,7 @@ struct abi_serializer {
 
    type_name get_action_type(name action)const;
    type_name get_table_type(name action)const;
+   type_name get_action_result_type(name action_result)const;
 
    optional<string>  get_error_message( uint64_t error_code )const;
 
@@ -119,6 +120,7 @@ private:
    map<name,type_name>                        tables;
    map<uint64_t, string>                      error_messages;
    map<type_name, variant_def, std::less<>>   variants;
+   map<name,type_name>                        action_results;
 
    map<type_name, pair<unpack_function, pack_function>, std::less<>> built_in_types;
    void configure_built_in_types();
