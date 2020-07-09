@@ -39,8 +39,8 @@ static constexpr size_t descriptor_ptr_from_file_start = header_offset + offseto
 
 static_assert(sizeof(code_cache_header) <= header_size, "code_cache_header too big");
 
-code_cache_async::code_cache_async(const bfs::path data_dir, const eosvmoc::config& eosvmoc_config, const chainbase::database& db) :
-   code_cache_base(data_dir, eosvmoc_config, db),
+code_cache_async::code_cache_async(const bfs::path data_dir, const eosvmoc::config& eosvmoc_config, code_finder db) :
+   code_cache_base(data_dir, eosvmoc_config, std::move(db)),
    _result_queue(eosvmoc_config.threads * 2),
    _threads(eosvmoc_config.threads)
 {
@@ -119,11 +119,11 @@ const code_descriptor* const code_cache_async::get_descriptor_for_code(const dig
 
          //it's not clear this check is required: if apply() was called for code then it existed in the code_index; and then
          // if we got notification of it no longer existing we would have removed it from queued_compiles
-         const code_object* const codeobject = _db.find<code_object,by_code_hash>(boost::make_tuple(nextup->code_id, 0, nextup->vm_version));
-         if(codeobject) {
+         std::string_view const codeobject = _db(nextup->code_id, nextup->vm_version);
+         if(!codeobject.empty()) {
             _outstanding_compiles_and_poison.emplace(*nextup, false);
             std::vector<wrapped_fd> fds_to_pass;
-            fds_to_pass.emplace_back(memfd_for_bytearray(codeobject->code));
+            fds_to_pass.emplace_back(memfd_for_bytearray(codeobject));
             FC_ASSERT(write_message_with_fds(_compile_monitor_write_socket, compile_wasm_message{ *nextup }, fds_to_pass), "EOS VM failed to communicate to OOP manager");
             --count_processed;
          }
@@ -154,13 +154,13 @@ const code_descriptor* const code_cache_async::get_descriptor_for_code(const dig
       return nullptr;
    }
 
-   const code_object* const codeobject = _db.find<code_object,by_code_hash>(boost::make_tuple(code_id, 0, vm_version));
-   if(!codeobject) //should be impossible right?
+   std::string_view const codeobject = _db(code_id, vm_version);
+   if(codeobject.empty()) //should be impossible right?
       return nullptr;
 
    _outstanding_compiles_and_poison.emplace(ct, false);
    std::vector<wrapped_fd> fds_to_pass;
-   fds_to_pass.emplace_back(memfd_for_bytearray(codeobject->code));
+   fds_to_pass.emplace_back(memfd_for_bytearray(codeobject));
    write_message_with_fds(_compile_monitor_write_socket, compile_wasm_message{ ct }, fds_to_pass);
    return nullptr;
 }
@@ -182,12 +182,12 @@ const code_descriptor* const code_cache_sync::get_descriptor_for_code_sync(const
       return &*it;
    }
 
-   const code_object* const codeobject = _db.find<code_object,by_code_hash>(boost::make_tuple(code_id, 0, vm_version));
-   if(!codeobject) //should be impossible right?
+   std::string_view const codeobject = _db(code_id, vm_version);
+   if(codeobject.empty()) //should be impossible right?
       return nullptr;
 
    std::vector<wrapped_fd> fds_to_pass;
-   fds_to_pass.emplace_back(memfd_for_bytearray(codeobject->code));
+   fds_to_pass.emplace_back(memfd_for_bytearray(codeobject));
 
    write_message_with_fds(_compile_monitor_write_socket, compile_wasm_message{ {code_id, vm_version} }, fds_to_pass);
    auto [success, message, fds] = read_message_with_fds(_compile_monitor_read_socket);
@@ -202,8 +202,8 @@ const code_descriptor* const code_cache_sync::get_descriptor_for_code_sync(const
    return &*_cache_index.push_front(std::move(result.result.get<code_descriptor>())).first;
 }
 
-code_cache_base::code_cache_base(const boost::filesystem::path data_dir, const eosvmoc::config& eosvmoc_config, const chainbase::database& db) :
-   _db(db),
+code_cache_base::code_cache_base(const boost::filesystem::path data_dir, const eosvmoc::config& eosvmoc_config, code_finder db) :
+   _db(std::move(db)),
    _cache_file_path(data_dir/"code_cache.bin")
 {
    static_assert(sizeof(allocator_t) <= header_offset, "header offset intersects with allocator");

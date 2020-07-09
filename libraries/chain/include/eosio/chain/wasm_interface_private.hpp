@@ -50,7 +50,11 @@ namespace eosio { namespace chain {
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
       struct eosvmoc_tier {
          eosvmoc_tier(const boost::filesystem::path& d, const eosvmoc::config& c, const chainbase::database& db)
-          : cc(d, c, db), exec(cc),
+           : cc(d, c, [&db](const digest_type& id, uint8_t vm_version) -> std::string_view {
+                        auto * p = db.find<code_object,by_code_hash>(boost::make_tuple(id, 0, vm_version));
+                        if(p) return { p->code.data(), p->code.size() };
+                        else return {};
+                      }), exec(cc),
             // Can't get max_pages from db, because db hasn't been initialized yet.
             mem(0, eosvmoc::get_intrinsic_map()) {}
          eosvmoc::code_cache_async cc;
