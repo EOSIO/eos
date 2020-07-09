@@ -431,7 +431,8 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_chain_id_in_snapshot, SNAPSHOT_SUITE, snapsho
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(test_compatible_versions, SNAPSHOT_SUITE, snapshot_suites)
 {
-   tester chain(setup_policy::preactivate_feature_and_new_bios);
+   const uint32_t legacy_default_max_inline_action_size = 4 * 1024;
+   tester chain(setup_policy::preactivate_feature_and_new_bios, db_read_mode::SPECULATIVE, {legacy_default_max_inline_action_size});
 
    ///< Begin deterministic code to generate blockchain for comparison
    // TODO: create a utility that will write new bin/json gzipped files based on this
@@ -462,7 +463,8 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_compatible_versions, SNAPSHOT_SUITE, snapshot
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(test_pending_schedule_snapshot, SNAPSHOT_SUITE, snapshot_suites)
 {
-   tester chain(setup_policy::preactivate_feature_and_new_bios);
+   const uint32_t legacy_default_max_inline_action_size = 4 * 1024;
+   tester chain(setup_policy::preactivate_feature_and_new_bios, db_read_mode::SPECULATIVE, {legacy_default_max_inline_action_size});
    auto genesis = chain::block_log::extract_genesis_state(chain.get_config().blocks_dir);
    BOOST_REQUIRE(genesis);
    BOOST_REQUIRE_EQUAL(genesis->compute_chain_id(), chain.control->get_chain_id());

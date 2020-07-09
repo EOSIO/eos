@@ -117,6 +117,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
    bool                                                       trace_debug_mode = false;
    bool                                                       stopping = false;
    fc::optional<scoped_connection>                            applied_transaction_connection;
+   fc::optional<scoped_connection>                            block_start_connection;
    fc::optional<scoped_connection>                            accepted_block_connection;
    string                                                     endpoint_address = "0.0.0.0";
    uint16_t                                                   endpoint_port    = 8080;
@@ -410,21 +411,9 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       });
    }
 
-   static bool is_onblock(const transaction_trace_ptr& p) {
-      if (p->action_traces.empty())
-         return false;
-      auto& act = p->action_traces[0].act;
-      if (act.account != eosio::chain::config::system_account_name || act.name != N(onblock) ||
-          act.authorization.size() != 1)
-         return false;
-      auto& auth = act.authorization[0];
-      return auth.actor == eosio::chain::config::system_account_name &&
-             auth.permission == eosio::chain::config::active_name;
-   }
-
    void on_applied_transaction(const transaction_trace_ptr& p, const signed_transaction& t) {
       if (p->receipt && trace_log) {
-         if (is_onblock(p))
+         if (chain::is_onblock(*p))
             onblock_trace.emplace(p, t);
          else if (p->failed_dtrx_trace)
             cached_traces[p->failed_dtrx_trace->id] = augmented_transaction_trace{p, t};
@@ -446,6 +435,15 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       }
    }
 
+   void on_block_start(uint32_t block_num) {
+      clear_caches();
+   }
+
+   void clear_caches() {
+      cached_traces.clear();
+      onblock_trace.reset();
+   }
+
    void store_traces(const block_state_ptr& block_state) {
       if (!trace_log)
          return;
@@ -463,8 +461,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
                     "missing trace for transaction ${id}", ("id", id));
          traces.push_back(it->second);
       }
-      cached_traces.clear();
-      onblock_trace.reset();
+      clear_caches();
 
       auto& db         = chain_plug->chain().db();
       auto  traces_bin = zlib_compress_bytes(fc::raw::pack(make_history_context_wrapper(db, trace_debug_mode, traces)));
@@ -614,6 +611,8 @@ void state_history_plugin::plugin_initialize(const variables_map& options) {
           }));
       my->accepted_block_connection.emplace(
           chain.accepted_block.connect([&](const block_state_ptr& p) { my->on_accepted_block(p); }));
+      my->block_start_connection.emplace(
+          chain.block_start.connect([&](uint32_t block_num) { my->on_block_start(block_num); }));
 
       auto                    dir_option = options.at("state-history-dir").as<bfs::path>();
       boost::filesystem::path state_history_dir;
@@ -654,6 +653,7 @@ void state_history_plugin::plugin_startup() { my->listen(); }
 void state_history_plugin::plugin_shutdown() {
    my->applied_transaction_connection.reset();
    my->accepted_block_connection.reset();
+   my->block_start_connection.reset();
    while (!my->sessions.empty())
       my->sessions.begin()->second->close();
    my->stopping = true;

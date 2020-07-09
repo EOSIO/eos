@@ -304,6 +304,8 @@ namespace eosio { namespace chain {
                                     3050010, "Action attempts to increase RAM usage of account without authorization" )
       FC_DECLARE_DERIVED_EXCEPTION( restricted_error_code_exception, action_validate_exception,
                                     3050011, "eosio_assert_code assertion failure uses restricted error code value" )
+      FC_DECLARE_DERIVED_EXCEPTION( inline_action_too_big_nonprivileged, action_validate_exception,
+                                    3050012, "Inline action exceeds maximum size limit for a non-privileged account" )
 
    FC_DECLARE_DERIVED_EXCEPTION( database_exception, chain_exception,
                                  3060000, "Database exception" )

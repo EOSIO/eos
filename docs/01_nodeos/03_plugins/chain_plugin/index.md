@@ -167,6 +167,13 @@ Config Options for eosio::chain_plugin:
   --database-hugepage-path arg          Optional path for database hugepages 
                                         when in "locked" mode (may specify 
                                         multiple times)
+                                        
+  --max-nonprivileged-inline-action-size arg          
+                                        Sets the maximum limit for 
+                                        non-privileged inline actions. 
+                                        The default value is 4 KB 
+                                        and if this threshold is exceeded,
+                                        the transaction will subjectively fail.                                       
 ```
 
 ## Dependencies

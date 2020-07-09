@@ -1185,7 +1185,8 @@ struct controller_impl {
              || (code == contract_blacklist_exception::code_value)
              || (code == action_blacklist_exception::code_value)
              || (code == key_blacklist_exception::code_value)
-             || (code == sig_variable_size_limit_exception::code_value);
+             || (code == sig_variable_size_limit_exception::code_value)
+             || (code == inline_action_too_big_nonprivileged::code_value);
    }
 
    bool scheduled_failure_is_subjective( const fc::exception& e ) const {
@@ -1519,6 +1520,8 @@ struct controller_impl {
                      const optional<block_id_type>& producer_block_id )
    {
       EOS_ASSERT( !pending, block_validate_exception, "pending block already exists" );
+
+      emit( self.block_start, head->block_num + 1 );
 
       auto guard_pending = fc::make_scoped_exit([this, head_block_num=head->block_num](){
          protocol_features.popped_blocks_to( head_block_num );
@@ -2425,6 +2428,11 @@ authorization_manager&         controller::get_mutable_authorization_manager()
 const protocol_feature_manager& controller::get_protocol_feature_manager()const
 {
    return my->protocol_features;
+}
+
+uint32_t controller::get_max_nonprivileged_inline_action_size()const
+{
+   return my->conf.max_nonprivileged_inline_action_size;
 }
 
 controller::controller( const controller::config& cfg, const chain_id_type& chain_id )

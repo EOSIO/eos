@@ -150,8 +150,8 @@ namespace eosio { namespace testing {
      return control->head_block_id() == other.control->head_block_id();
    }
 
-   void base_tester::init(const setup_policy policy, db_read_mode read_mode) {
-      auto def_conf = default_config(tempdir);
+   void base_tester::init(const setup_policy policy, db_read_mode read_mode, optional<uint32_t> genesis_max_inline_action_size, optional<uint32_t> config_max_nonprivileged_inline_action_size) {
+      auto def_conf = default_config(tempdir, genesis_max_inline_action_size, config_max_nonprivileged_inline_action_size);
       def_conf.first.read_mode = read_mode;
       cfg = def_conf.first;
 
@@ -332,6 +332,7 @@ namespace eosio { namespace testing {
             auto trace = control->push_transaction( itr->trx_meta, fc::time_point::maximum(), DEFAULT_BILLED_CPU_TIME_US, true );
             traces.emplace_back( trace );
             if(!no_throw && trace->except) {
+               // this always throws an fc::exception, since the original exception is copied into an fc::exception
                trace->except->dynamic_rethrow_exception();
             }
             itr = unapplied_transactions.erase( itr );
@@ -343,6 +344,7 @@ namespace eosio { namespace testing {
                auto trace = control->push_scheduled_transaction( trx, fc::time_point::maximum(), DEFAULT_BILLED_CPU_TIME_US, true );
                traces.emplace_back( trace );
                if( !no_throw && trace->except ) {
+                  // this always throws an fc::exception, since the original exception is copied into an fc::exception
                   trace->except->dynamic_rethrow_exception();
                }
             }
