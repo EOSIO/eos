@@ -390,7 +390,7 @@ namespace eosio { namespace testing {
             return genesis;
          }
 
-         static std::pair<controller::config, genesis_state> default_config(const fc::temp_directory& tempdir, optional<uint32_t> genesis_max_inline_action_size = optional<uint32_t>{}, optional<uint32_t> genesis_max_nonprivileged_inline_action_size = optional<uint32_t>{}) {
+         static std::pair<controller::config, genesis_state> default_config(const fc::temp_directory& tempdir, optional<uint32_t> genesis_max_inline_action_size = optional<uint32_t>{}, optional<uint32_t> config_max_nonprivileged_inline_action_size = optional<uint32_t>{}) {
             controller::config cfg;
             cfg.blocks_dir      = tempdir.path() / config::default_blocks_dir_name;
             cfg.state_dir  = tempdir.path() / config::default_state_dir_name;
@@ -415,8 +415,8 @@ namespace eosio { namespace testing {
             if (genesis_max_inline_action_size) {
                gen.initial_configuration.max_inline_action_size = *genesis_max_inline_action_size;
             }
-            if (genesis_max_nonprivileged_inline_action_size) {
-               cfg.max_nonprivileged_inline_action_size = *genesis_max_nonprivileged_inline_action_size;
+            if (config_max_nonprivileged_inline_action_size) {
+               cfg.max_nonprivileged_inline_action_size = *config_max_nonprivileged_inline_action_size;
             }
             return {cfg, gen};
          }
@@ -448,8 +448,8 @@ namespace eosio { namespace testing {
 
    class tester : public base_tester {
    public:
-      tester(setup_policy policy = setup_policy::full, db_read_mode read_mode = db_read_mode::SPECULATIVE, optional<uint32_t> genesis_max_inline_action_size = optional<uint32_t>{}, optional<uint32_t> genesis_max_nonprivileged_inline_action_size = optional<uint32_t>{}) {
-         init(policy, read_mode, genesis_max_inline_action_size, genesis_max_nonprivileged_inline_action_size);
+      tester(setup_policy policy = setup_policy::full, db_read_mode read_mode = db_read_mode::SPECULATIVE, optional<uint32_t> genesis_max_inline_action_size = optional<uint32_t>{}, optional<uint32_t> config_max_nonprivileged_inline_action_size = optional<uint32_t>{}) {
+         init(policy, read_mode, genesis_max_inline_action_size, config_max_nonprivileged_inline_action_size);
       }
 
       tester(controller::config config, const genesis_state& genesis) {
