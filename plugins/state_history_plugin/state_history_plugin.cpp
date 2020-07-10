@@ -3,6 +3,7 @@
 #include <eosio/state_history/log.hpp>
 #include <eosio/state_history/serialization.hpp>
 #include <eosio/state_history_plugin/state_history_plugin.hpp>
+#include <eosio/history_plugin/history_plugin.hpp>
 
 #include <boost/asio/bind_executor.hpp>
 #include <boost/asio/ip/host_name.hpp>
@@ -45,6 +46,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
    fc::optional<state_history_traces_log>                     trace_log;
    fc::optional<state_history_chain_state_log>                chain_state_log;
    bool                                                       stopping = false;
+   bool                                                       allow_legacy_history_plugin = false;
    fc::optional<scoped_connection>                            applied_transaction_connection;
    fc::optional<scoped_connection>                            block_start_connection;
    fc::optional<scoped_connection>                            accepted_block_connection;
@@ -296,6 +298,16 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
    std::map<session*, std::shared_ptr<session>> sessions;
 
    void listen() {
+      if ( app().is_plugin_initialized<history_plugin>() ) {
+         wlog( "Legacy history plugin is running; this will cause random crashes." );
+         if ( allow_legacy_history_plugin ) {
+            wlog( "With state-history-allow-legacy-history-plugin set, proceed at your own risk" );
+         } else {
+            wlog( "With state-history-allow-legacy-history-plugin not set, shutting down." );
+            appbase::app().quit();
+         }
+      }
+
       boost::system::error_code ec;
 
       auto address  = boost::asio::ip::make_address(endpoint_address);
@@ -384,6 +396,8 @@ void state_history_plugin::set_program_options(options_description& cli, options
            "enable debug mode for trace history");
    options("context-free-data-compression", bpo::value<string>()->default_value("zlib"), 
            "compression mode for context free data in transaction traces. Supported options are \"zlib\" and \"none\"");
+   options("state-history-allow-legacy-history-plugin", bpo::bool_switch()->default_value(false),
+           "allow legacy history plugin to run at the same time. Caution: it will cause random crashes");
 }
 
 void state_history_plugin::plugin_initialize(const variables_map& options) {
@@ -442,6 +456,10 @@ void state_history_plugin::plugin_initialize(const variables_map& options) {
 
       if (options.at("chain-state-history").as<bool>())
          my->chain_state_log.emplace(state_history_dir);
+      
+      if (options.at("state-history-allow-legacy-history-plugin").as<bool>()) {
+         my->allow_legacy_history_plugin = true;
+      }
    }
    FC_LOG_AND_RETHROW()
 } // state_history_plugin::plugin_initialize

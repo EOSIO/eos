@@ -57,6 +57,7 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/plugin_http_api_test.py ${CMAKE_CURRE
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/resource_monitor_plugin_test.py ${CMAKE_CURRENT_BINARY_DIR}/resource_monitor_plugin_test.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/rodeos_test.py ${CMAKE_CURRENT_BINARY_DIR}/rodeos_test.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/test_filter.wasm ${CMAKE_CURRENT_BINARY_DIR}/test_filter.wasm COPYONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/state_history_history_test.py ${CMAKE_CURRENT_BINARY_DIR}/state_history_history_test.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/trace_plugin_test.py ${CMAKE_CURRENT_BINARY_DIR}/trace_plugin_test.py COPYONLY)
 
 #To run plugin_test with all log from blockchain displayed, put --verbose after --, i.e. plugin_test -- --verbose
@@ -181,6 +182,9 @@ add_subdirectory(se_tests)
 
 add_test(NAME resource_monitor_plugin_test COMMAND tests/resource_monitor_plugin_test.py WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_property(TEST resource_monitor_plugin_test PROPERTY LABELS long_running_tests)
+
+add_test(NAME state_history_history_test COMMAND tests/state_history_history_test.py -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST state_history_history_test PROPERTY LABELS long_running_tests)
 
 if(ENABLE_COVERAGE_TESTING)
 
