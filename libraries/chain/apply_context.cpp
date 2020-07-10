@@ -1229,17 +1229,19 @@ void apply_context::add_ram_usage( account_name account, int64_t ram_delta, cons
    }
 }
 
-void apply_context::update_disk_usage( account_name account, int64_t disk_delta, const storage_usage_trace& trace ) {
+void apply_context::update_disk_usage( account_name payer, int64_t disk_delta, const storage_usage_trace& trace ) {
 
-   if (disk_delta > 0 && !privileged) {
-      EOS_ASSERT(receiver == act->account, subjective_block_production_exception,
-                 "Cannot charge disk to other accounts during notify.");
-      require_authorization(account);
+   if (disk_delta > 0 && !privileged && payer != receiver) {
+      EOS_ASSERT(
+          receiver == act->account, unauthorized_disk_usage_increase,
+          "unprivileged contract cannot increase disk usage of another account within a notify context: ${account}",
+          ("account", payer));
+      require_authorization(payer);
    }
 
-   trx_context.add_disk_usage( account, disk_delta, trace );
+   trx_context.add_disk_usage( payer, disk_delta, trace );
 
-   auto p = _account_disk_deltas.emplace( account, disk_delta );
+   auto p = _account_disk_deltas.emplace( payer, disk_delta );
    if( !p.second ) {
       p.first->delta += disk_delta;
    }
