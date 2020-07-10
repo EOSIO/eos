@@ -105,7 +105,6 @@ namespace fc {
 
       std::string line;
       line.reserve( 256 );
-      line += "[ ";
       if(my->use_syslog_header) {
          switch(m.get_context().get_log_level()) {
             case log_level::error:
