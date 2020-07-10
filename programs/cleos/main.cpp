@@ -483,8 +483,10 @@ void print_action( const fc::variant& at ) {
    */
    if( args.size() > 100 ) args = args.substr(0,100) + "...";
    cout << "#" << std::setw(14) << right << receiver << " <= " << std::setw(28) << std::left << (code +"::" + func) << " " << args << "\n";
-   if ( return_value.size())  {
-      cout << std::setw(28) << std::left << "=>" << "return value: " << return_value << "\n";
+   if ( return_value.size()) {
+      if (return_value.size() > 100)
+         return_value = return_value.substr(0, 100) + "...";
+      cout << std::setw(19) << std::left << "=>" << std::setw(29) << "return value: " << return_value << "\n";
    }
    if( console.size() ) {
       std::stringstream ss(console);
