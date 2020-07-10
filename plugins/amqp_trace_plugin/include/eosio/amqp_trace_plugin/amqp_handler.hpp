@@ -17,14 +17,16 @@ class amqp {
 public:
    // called from amqp thread on errors
    using on_error_t = std::function<void(const std::string& err)>;
+   // delivery_tag type of consume, use for ack/reject
+   using delivery_tag_t = uint64_t;
    // called from amqp thread on consume of message
-   // return true for ack, false for reject
-   using on_consume_t = std::function<bool(const char* buf, size_t s)>;
+   using on_consume_t = std::function<void(const delivery_tag_t& delivery_tag, const char* buf, size_t s)>;
 
    /// @param address AMQP address
    /// @param name AMQP routing key
    /// @param on_err callback for errors, called from amqp thread, can be nullptr
-   /// @param on_consume callback for consume on routing key name, called from amqp thread, null if no consume needed
+   /// @param on_consume callback for consume on routing key name, called from amqp thread, null if no consume needed.
+   ///        user required to ack/reject delivery_tag for each callback.
    amqp( const std::string& address, std::string name, on_error_t on_err, on_consume_t on_consume = nullptr )
          : thread_pool_( "ampq", 1) // amqp is not thread safe, use only one thread
          , name_( std::move( name ) )
@@ -84,6 +86,26 @@ public:
       }
    }
 
+   /// ack consume message
+   void ack( const delivery_tag_t& delivery_tag ) {
+      boost::asio::post( *handler_->amqp_strand(),
+            [my = this, delivery_tag]() {
+               try {
+                  my->channel_->ack( delivery_tag );
+               } FC_LOG_AND_DROP()
+            } );
+   }
+
+   // reject consume message
+   void reject( const delivery_tag_t& delivery_tag ) {
+      boost::asio::post( *handler_->amqp_strand(),
+            [my = this, delivery_tag]() {
+               try {
+                  my->channel_->reject( delivery_tag );
+               } FC_LOG_AND_DROP()
+            } );
+   }
+
 private:
    // called amqp thread
    void init( AMQP::TcpConnection* c ) {
@@ -118,13 +140,8 @@ private:
          on_error( message );
          connected_.set_value();
       } );
-      consumer.onReceived( [&](const AMQP::Message& message, uint64_t delivery_tag, bool redelivered) {
-         bool r = on_consume_( message.body(), message.bodySize() );
-         if( r ) {
-            channel_->ack( delivery_tag );
-         } else {
-            channel_->reject( delivery_tag );
-         }
+      consumer.onReceived( [&](const AMQP::Message& message, const delivery_tag_t& delivery_tag, bool redelivered) {
+         on_consume_( delivery_tag, message.body(), message.bodySize() );
       } );
    }
 
