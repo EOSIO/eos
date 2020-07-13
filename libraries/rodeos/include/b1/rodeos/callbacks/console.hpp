@@ -65,17 +65,17 @@ struct console_callbacks {
    template <typename Rft>
    static void register_callbacks() {
       // todo: preconditions
-      Rft::template add<&Derived::prints>("env", "prints");
-      Rft::template add<&Derived::prints_l>("env", "prints_l");
-      Rft::template add<&Derived::printi>("env", "printi");
-      Rft::template add<&Derived::printui>("env", "printui");
-      Rft::template add<&Derived::printi128>("env", "printi128");
-      Rft::template add<&Derived::printui128>("env", "printui128");
-      Rft::template add<&Derived::printsf>("env", "printsf");
-      Rft::template add<&Derived::printdf>("env", "printdf");
-      Rft::template add<&Derived::printqf>("env", "printqf");
-      Rft::template add<&Derived::printn>("env", "printn");
-      Rft::template add<&Derived::printhex>("env", "printhex");
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, prints);
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, prints_l);
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, printi);
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, printui);
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, printi128);
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, printui128);
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, printsf);
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, printdf);
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, printqf);
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, printn);
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, printhex);
    }
 }; // console_callbacks
 

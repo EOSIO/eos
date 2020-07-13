@@ -23,16 +23,6 @@ struct null_terminated_ptr : eosio::vm::span<const char> {
    null_terminated_ptr(const char* ptr) : base_type(ptr, strlen(ptr)) {}
 };
 
-// wrapper pointer type to keep the validations from being done
-template <typename T>
-struct unvalidated_ptr {
-   static_assert(sizeof(T) == 1); // currently only going to support these for char and const char
-      operator T*() { return ptr; }
-   T* operator->() { return ptr; }
-   T& operator*() { return *ptr; }
-   T* ptr;
-};
-
 inline size_t legacy_copy_to_wasm(char* dest, size_t dest_size, const char* src, size_t src_size) {
    if (dest_size == 0)
       return src_size;
@@ -41,20 +31,47 @@ inline size_t legacy_copy_to_wasm(char* dest, size_t dest_size, const char* src,
    return copy_size;
 }
 
+struct memcpy_params {
+   void* dst;
+   const void* src;
+   eosio::vm::wasm_size_t size;
+};
+
+struct memcmp_params {
+   const void* lhs;
+   const void* rhs;
+   eosio::vm::wasm_size_t size;
+};
+
+struct memset_params {
+   const void* dst;
+   const int32_t val;
+   eosio::vm::wasm_size_t size;
+};
+
 template <typename Host, typename Execution_Interface = eosio::vm::execution_interface>
 struct type_converter : eosio::vm::type_converter<Host, Execution_Interface> {
    using base_type = eosio::vm::type_converter<Host, Execution_Interface>;
    using base_type::base_type;
    using base_type::from_wasm;
 
-   template <typename T>
-   auto from_wasm(const void* ptr) const -> std::enable_if_t<std::is_same_v<T, unvalidated_ptr<const char>>, T> {
-      return { static_cast<const char*>(ptr) };
+   EOS_VM_FROM_WASM(memcpy_params, (eosio::vm::wasm_ptr_t dst, eosio::vm::wasm_ptr_t src, eosio::vm::wasm_size_t size)) {
+      auto d = this->template validate_pointer<char>(dst, size);
+      auto s = this->template validate_pointer<char>(src, size);
+      this->template validate_pointer<char>(dst, 1);
+      return { d, s, size };
    }
 
-   template <typename T>
-   auto from_wasm(void* ptr) const -> std::enable_if_t<std::is_same_v<T, unvalidated_ptr<char>>, T> {
-      return { static_cast<char*>(ptr) };
+   EOS_VM_FROM_WASM(memcmp_params, (eosio::vm::wasm_ptr_t lhs, eosio::vm::wasm_ptr_t rhs, eosio::vm::wasm_size_t size)) {
+      auto l = this->template validate_pointer<char>(lhs, size);
+      auto r = this->template validate_pointer<char>(rhs, size);
+      return { l, r, size };
+   }
+
+   EOS_VM_FROM_WASM(memset_params, (eosio::vm::wasm_ptr_t dst, int32_t val, eosio::vm::wasm_size_t size)) {
+      auto d = this->template validate_pointer<char>(dst, size);
+      this->template validate_pointer<char>(dst, 1);
+      return { d, val, size };
    }
 
    template <typename T>
