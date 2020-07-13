@@ -19,7 +19,7 @@ struct filter_callbacks {
    template <typename Rft>
    static void register_callbacks() {
       // todo: preconditions
-      Rft::template add<&Derived::push_data>("env", "push_data");
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, push_data)
    }
 }; // query_callbacks
 

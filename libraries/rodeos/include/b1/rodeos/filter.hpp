@@ -17,8 +17,29 @@ struct callbacks;
 using rhf_t     = registered_host_functions<callbacks>;
 using backend_t = eosio::vm::backend<rhf_t, eosio::vm::jit>;
 
+#ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
+struct eosvmoc_tier {
+   eosvmoc_tier(const boost::filesystem::path& d, const eosio::chain::webassembly::eosvmoc::config& c, const std::vector<uint8_t>& code, const eosio::chain::digest_type& code_hash)
+     : cc(d, c, [code, code_hash](const eosio::chain::digest_type& id, uint8_t vm_version) -> std::string_view {
+                  if(id == code_hash) return { reinterpret_cast<const char*>(code.data()), code.size() };
+                  else return {};
+                }), exec(cc),
+       mem(512, get_intrinsic_map()), hash(code_hash) {
+      // start background compile
+      cc.get_descriptor_for_code(code_hash, 0);
+   }
+   eosio::chain::webassembly::eosvmoc::code_cache_async cc;
+   eosio::chain::webassembly::eosvmoc::executor exec;
+   eosio::chain::webassembly::eosvmoc::memory mem;
+   eosio::chain::digest_type hash;
+};
+#endif
+
 struct filter_state : b1::rodeos::data_state<backend_t>, b1::rodeos::console_state, b1::rodeos::filter_callback_state {
    eosio::vm::wasm_allocator wa = {};
+#ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
+   std::optional<eosvmoc_tier> eosvmoc_tierup;
+#endif
 };
 
 struct callbacks : b1::rodeos::chaindb_callbacks<callbacks>,

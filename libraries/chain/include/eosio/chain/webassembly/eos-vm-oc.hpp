@@ -223,7 +223,7 @@ struct eos_vm_oc_type_converter : public basic_type_converter<eos_vm_oc_executio
    }
 };
 
-template<typename Args, std::size_t... Is>
+template<typename TC, typename Args, std::size_t... Is>
 auto get_ct_args(std::index_sequence<Is...>);
 
 inline uint32_t make_native_type(vm::i32_const_t x) { return x.data.ui; }
@@ -246,11 +246,12 @@ auto get_ct_args_i() {
    }
 }
 
-template<typename Args, std::size_t... Is>
+template<typename TC, typename Args, std::size_t... Is>
 auto get_ct_args(std::index_sequence<Is...>) {
-   return std::tuple_cat(get_ct_args_i<eos_vm_oc_type_converter, std::tuple_element_t<Is, Args>>()...);
+   return std::tuple_cat(get_ct_args_i<TC, std::tuple_element_t<Is, Args>>()...);
 }
 
+template<typename TC>
 struct result_resolver {
    // Suppress "expression result unused" warnings
    result_resolver(eos_vm_oc_type_converter& tc) : tc(tc) {}
@@ -258,10 +259,12 @@ struct result_resolver {
    auto operator,(T&& res) {
       return make_native_type(vm::detail::resolve_result(tc, static_cast<T&&>(res)));
    }
-   eos_vm_oc_type_converter& tc;
+   TC& tc;
 };
+template<typename TC>
+result_resolver(TC&) -> result_resolver<TC>;
 
-template<auto F, typename Interface, typename Preconditions, bool is_injected, typename... A>
+template<auto F, typename Interface, typename TC, typename Preconditions, bool is_injected, typename... A>
 auto fn(A... a) {
    try {
       if constexpr(!is_injected) {
@@ -279,14 +282,13 @@ auto fn(A... a) {
       using native_args = vm::flatten_parameters_t<AUTO_PARAM_WORKAROUND(F)>;
       eosio::vm::native_value stack[] = { a... };
       constexpr int cb_ctx_ptr_offset = OFFSET_OF_CONTROL_BLOCK_MEMBER(ctx);
-      apply_context* ctx;
+      Interface* host;
       asm("mov %%gs:%c[applyContextOffset], %[cPtr]\n"
-          : [cPtr] "=r" (ctx)
+          : [cPtr] "=r" (host)
           : [applyContextOffset] "i" (cb_ctx_ptr_offset)
           );
-      Interface host(*ctx);
-      eos_vm_oc_type_converter tc{&host, eos_vm_oc_execution_interface{stack + sizeof...(A)}};
-      return result_resolver{tc}, eosio::vm::invoke_with_host<F, Preconditions, native_args>(tc, &host, std::make_index_sequence<sizeof...(A)>());
+      TC tc{host, eos_vm_oc_execution_interface{stack + sizeof...(A)}};
+      return result_resolver{tc}, eosio::vm::invoke_with_host<F, Preconditions, native_args>(tc, host, std::make_index_sequence<sizeof...(A)>());
    }
    catch(...) {
       *reinterpret_cast<std::exception_ptr*>(eos_vm_oc_get_exception_ptr()) = std::current_exception();
@@ -295,23 +297,23 @@ auto fn(A... a) {
    __builtin_unreachable();
 }
 
-template<auto F, typename Preconditions, typename Args, bool is_injected, std::size_t... Is>
+template<auto F, typename Cls, typename TC, typename Preconditions, typename Args, bool is_injected, std::size_t... Is>
 constexpr auto create_function(std::index_sequence<Is...>) {
-   return &fn<F, webassembly::interface, Preconditions, is_injected, std::tuple_element_t<Is, Args>...>;
+   return &fn<F, Cls, TC, Preconditions, is_injected, std::tuple_element_t<Is, Args>...>;
 }
 
-template<auto F, typename Preconditions, bool is_injected>
+template<auto F, typename Cls, typename TC, typename Preconditions, bool is_injected>
 constexpr auto create_function() {
    using native_args = vm::flatten_parameters_t<AUTO_PARAM_WORKAROUND(F)>;
-   using wasm_args = decltype(get_ct_args<native_args>(std::make_index_sequence<std::tuple_size_v<native_args>>()));
-   return create_function<F, Preconditions, wasm_args, is_injected>(std::make_index_sequence<std::tuple_size_v<wasm_args>>());
+   using wasm_args = decltype(get_ct_args<TC, native_args>(std::make_index_sequence<std::tuple_size_v<native_args>>()));
+   return create_function<F, Cls, TC, Preconditions, wasm_args, is_injected>(std::make_index_sequence<std::tuple_size_v<wasm_args>>());
 }
 
 template<auto F, bool injected, typename Preconditions, typename Name>
 void register_eosvm_oc(Name n) {
    // Has special handling
    if(n == BOOST_HANA_STRING("env.eosio_exit")) return;
-   constexpr auto fn = create_function<F, Preconditions, injected>();
+   constexpr auto fn = create_function<F, webassembly::interface, eos_vm_oc_type_converter, Preconditions, injected>();
    intrinsic the_intrinsic(
       n.c_str(),
       wasm_function_type_provider<std::remove_pointer_t<decltype(fn)>>::type(),
