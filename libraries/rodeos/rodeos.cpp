@@ -258,7 +258,9 @@ rodeos_filter::rodeos_filter(eosio::name name, const std::string& wasm_filename)
    filter::rhf_t::resolve(backend->get_module());
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
    if(true) {
+     try {
      filter_state->eosvmoc_tierup.emplace("data/rodeos_cache.bin", eosio::chain::webassembly::eosvmoc::config{}, code, eosio::chain::digest_type::hash(reinterpret_cast<const char*>(code.data()), code.size()));
+     } FC_LOG_AND_RETHROW();
    }
 #endif
 }
