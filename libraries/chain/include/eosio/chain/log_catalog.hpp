@@ -20,7 +20,7 @@ void for_each_file_in_dir_matches(const bfs::path& dir, std::string pattern, Lam
       // Skip if not a file
       if (!bfs::is_regular_file(p->status()))
          continue;
-      // skip if it's not match blocks-*-*.log
+      // skip if it does not match the pattern
       if (!std::regex_match(p->path().filename().string(), what, my_filter))
          continue;
       lambda(p->path());
@@ -97,8 +97,8 @@ struct log_catalog {
          auto existing_itr = collection.find(log.first_block_num());
          if (existing_itr != collection.end()) {
             if (log.last_block_num() <= existing_itr->second.last_block_num) {
-               wlog("${log_path} contains the overlapping range with ${existing_path}.log, droping ${log_path} "
-                    "from catelog",
+               wlog("${log_path} contains the overlapping range with ${existing_path}.log, dropping ${log_path} "
+                    "from catalog",
                     ("log_path", log_path.string())("existing_path", existing_itr->second.filename_base.string()));
                return;
             } else {
@@ -114,41 +114,33 @@ struct log_catalog {
    }
 
    bool index_matches_data(const bfs::path& index_path, const LogData& log) const {
-      if (bfs::exists(index_path) && bfs::file_size(index_path) / sizeof(uint64_t) != log.num_blocks()) {
-         // make sure the last 8 bytes of index and log matches
+      if (!bfs::exists(index_path)) return false;
 
-         fc::cfile index_file;
-         index_file.set_file_path(index_path);
-         index_file.open("r");
-         index_file.seek_end(-sizeof(uint64_t));
-         uint64_t pos;
-         index_file.read(reinterpret_cast<char*>(&pos), sizeof(pos));
-         return pos == log.last_block_position();
-      }
-      return false;
+      auto num_blocks_in_index = bfs::file_size(index_path) / sizeof(uint64_t);
+      if (num_blocks_in_index != log.num_blocks())
+         return false;
+
+      // make sure the last 8 bytes of index and log matches
+      fc::cfile index_file;
+      index_file.set_file_path(index_path);
+      index_file.open("r");
+      index_file.seek_end(-sizeof(uint64_t));
+      uint64_t pos;
+      index_file.read(reinterpret_cast<char*>(&pos), sizeof(pos));
+      return pos == log.last_block_position();
    }
 
-   std::string filebase_for_block(uint32_t block_num) {
-      if (collection.empty() || block_num < collection.begin()->first)
-         return "";
-      auto it = --collection.upper_bound(block_num);
-
-      if (block_num <= it->second.last_block_num)
-         return it->second.filename_base;
-      return "";
-   }
-
-   bool set_active_item(uint32_t block_num, mapmode mode = mapmode::readonly) {
+   std::optional<uint64_t> get_block_position(uint32_t block_num, mapmode mode = mapmode::readonly) {
       try {
          if (active_index != npos) {
             auto active_item = collection.nth(active_index);
             if (active_item->first <= block_num && block_num <= active_item->second.last_block_num &&
                 log_data.flags() == mode) {
-               return true;
+               return log_index.nth_block_position(block_num - log_data.first_block_num());
             }
          }
          if (collection.empty() || block_num < collection.begin()->first)
-            return false;
+            return {};
 
          auto it = --collection.upper_bound(block_num);
 
@@ -157,35 +149,35 @@ struct log_catalog {
             log_data.open(name.replace_extension("log"), mode);
             log_index.open(name.replace_extension("index"));
             this->active_index = collection.index_of(it);
-            return true;
+            return log_index.nth_block_position(block_num - log_data.first_block_num());
          }
-         return false;
+         return {};
       } catch (...) {
          this->active_index = npos;
-         return false;
+         return {};
       }
    }
 
    std::pair<fc::datastream<const char*>, uint32_t> ro_stream_for_block(uint32_t block_num) {
-      if (set_active_item(block_num, mapmode::readonly)) {
-         auto pos = log_index.nth_block_position(block_num - log_data.first_block_num());
-         return std::make_pair(log_data.ro_stream_at(pos), log_data.version());
+      auto pos = get_block_position(block_num, mapmode::readonly);
+      if (pos) {
+         return std::make_pair(log_data.ro_stream_at(*pos), log_data.version());
       }
       return {fc::datastream<const char*>(nullptr, 0), static_cast<uint32_t>(0)};
    }
 
    std::pair<fc::datastream<char*>, uint32_t> rw_stream_for_block(uint32_t block_num) {
-      if (set_active_item(block_num, mapmode::readwrite)) {
-         auto pos = log_index.nth_block_position(block_num - log_data.first_block_num());
-         return std::make_pair(log_data.rw_stream_at(pos), log_data.version());
+      auto pos = get_block_position(block_num, mapmode::readwrite);
+      if (pos) {
+         return std::make_pair(log_data.rw_stream_at(*pos), log_data.version());
       }
       return {fc::datastream<char*>(nullptr, 0), static_cast<uint32_t>(0)};
    }
 
    std::optional<block_id_type> id_for_block(uint32_t block_num) {
-      if (set_active_item(block_num, mapmode::readonly)) {
-         auto pos = log_index.nth_block_position(block_num - log_data.first_block_num());
-         return log_data.block_id_at(pos);
+      auto pos = get_block_position(block_num, mapmode::readonly);
+      if (pos) {
+         return log_data.block_id_at(*pos);
       }
       return {};
    }
@@ -196,7 +188,7 @@ struct log_catalog {
       }
       else {
          bfs::remove(old_name);
-         wlog("${new_name} already exists, just remove ${old_name}", ("old_name", old_name.string())("new_name", new_name.string()));
+         wlog("${new_name} already exists, just removing ${old_name}", ("old_name", old_name.string())("new_name", new_name.string()));
       }
    }
 
@@ -221,7 +213,7 @@ struct log_catalog {
       rename_bundle(dir / name, new_path);
 
       if (this->collection.size() >= max_retained_files) {
-         auto items_to_erase =
+         const auto items_to_erase =
              max_retained_files > 0 ? this->collection.size() - max_retained_files + 1 : this->collection.size();
          for (auto it = this->collection.begin(); it < this->collection.begin() + items_to_erase; ++it) {
             auto orig_name = it->second.filename_base;

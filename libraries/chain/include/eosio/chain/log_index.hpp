@@ -19,7 +19,7 @@ class log_index {
          file.close();
       file.open(path.generic_string());
       EOS_ASSERT(file.size() % sizeof(uint64_t) == 0, Exception,
-                 "The size of ${file} is not the multiple of sizeof(uint64_t)", ("file", path.generic_string()));
+                 "The size of ${file} is not a multiple of sizeof(uint64_t)", ("file", path.generic_string()));
    }
 
    bool is_open() const { return file.is_open(); }
