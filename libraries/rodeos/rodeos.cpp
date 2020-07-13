@@ -256,6 +256,11 @@ rodeos_filter::rodeos_filter(eosio::name name, const std::string& wasm_filename)
    backend      = std::make_unique<filter::backend_t>(code, nullptr);
    filter_state = std::make_unique<filter::filter_state>();
    filter::rhf_t::resolve(backend->get_module());
+#ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
+   if(true) {
+     filter_state->eosvmoc_tierup.emplace("data/rodeos_cache.bin", eosio::chain::webassembly::eosvmoc::config{}, code, eosio::chain::digest_type::hash(reinterpret_cast<const char*>(code.data()), code.size()));
+   }
+#endif
 }
 
 void rodeos_filter::process(rodeos_db_snapshot& snapshot, const ship_protocol::get_blocks_result_base& result,
@@ -272,6 +277,17 @@ void rodeos_filter::process(rodeos_db_snapshot& snapshot, const ship_protocol::g
    filter_state->console.clear();
    filter_state->input_data = bin;
    filter_state->push_data  = push_data;
+
+#ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
+   if(filter_state->eosvmoc_tierup) {
+      const auto* code = filter_state->eosvmoc_tierup->cc.get_descriptor_for_code(filter_state->eosvmoc_tierup->hash, 0);
+      if(code) {
+         filter_state->eosvmoc_tierup->exec.execute(*code, filter_state->eosvmoc_tierup->mem, &cb, 528, 251, [](auto, auto){}, []{}, 0, 0, 0);
+         return;
+      }
+   }
+#endif
+
    backend->set_wasm_allocator(&filter_state->wa);
    backend->initialize(&cb);
    try {

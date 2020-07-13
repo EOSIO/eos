@@ -1,4 +1,5 @@
 #include <eosio/chain/webassembly/eos-vm-oc.hpp>
+#include <eosio/chain/webassembly/interface.hpp>
 #include <eosio/chain/wasm_eosio_constraints.hpp>
 #include <eosio/chain/wasm_eosio_injection.hpp>
 #include <eosio/chain/apply_context.hpp>
@@ -36,7 +37,8 @@ class eosvmoc_instantiated_module : public wasm_instantiated_module_interface {
             max_call_depth = config.max_call_depth;
             max_pages = config.max_pages;
          }
-         _eosvmoc_runtime.exec.execute(*cd, _eosvmoc_runtime.mem, &context, max_call_depth, max_pages,
+         webassembly::interface iface(context);
+         _eosvmoc_runtime.exec.execute(*cd, _eosvmoc_runtime.mem, &iface, max_call_depth, max_pages,
                                        [&context](void (*fn)(void*), void* data) {
                                           context.trx_context.transaction_timer.set_expiration_callback(fn, data);
                                        }, [&context]{ context.trx_context.checktime(); },

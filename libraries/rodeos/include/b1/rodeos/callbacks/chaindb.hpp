@@ -236,16 +236,16 @@ struct chaindb_callbacks {
    template <typename Rft>
    static void register_callbacks() {
       // todo: preconditions
-      Rft::template add<&Derived::db_store_i64>("env", "db_store_i64");
-      Rft::template add<&Derived::db_update_i64>("env", "db_update_i64");
-      Rft::template add<&Derived::db_remove_i64>("env", "db_remove_i64");
-      Rft::template add<&Derived::db_get_i64>("env", "db_get_i64");
-      Rft::template add<&Derived::db_next_i64>("env", "db_next_i64");
-      Rft::template add<&Derived::db_previous_i64>("env", "db_previous_i64");
-      Rft::template add<&Derived::db_find_i64>("env", "db_find_i64");
-      Rft::template add<&Derived::db_lowerbound_i64>("env", "db_lowerbound_i64");
-      Rft::template add<&Derived::db_upperbound_i64>("env", "db_upperbound_i64");
-      Rft::template add<&Derived::db_end_i64>("env", "db_end_i64");
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, db_store_i64);
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, db_update_i64);
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, db_remove_i64);
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, db_get_i64);
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, db_next_i64);
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, db_previous_i64);
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, db_find_i64);
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, db_lowerbound_i64);
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, db_upperbound_i64);
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, db_end_i64);
    }
 };
 
