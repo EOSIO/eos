@@ -20,6 +20,7 @@ class PluginHttpTest(unittest.TestCase):
     data_dir = Utils.getNodeDataDir(node_id)
     http_post_str = " -X POST -d "
     http_post_invalid_param = " '{invalid}' "
+    empty_content_str = " ' { } '  "
 
     # make a fresh data dir
     def createDataDir(self):
@@ -40,7 +41,7 @@ class PluginHttpTest(unittest.TestCase):
     def startEnv(self) :
         self.createDataDir(self)
         self.keosd.launch()
-        nodeos_plugins = (" --plugin %s --plugin %s --plugin %s --plugin %s --plugin %s --plugin %s --plugin %s"
+        nodeos_plugins = (" --plugin %s --plugin %s --plugin %s --plugin %s --plugin %s --plugin %s --plugin %s --plugin %s "
                           " --plugin %s --plugin %s --plugin %s --plugin %s ") % ( "eosio::trace_api_plugin",
                                                                                    "eosio::test_control_api_plugin",
                                                                                    "eosio::test_control_plugin",
@@ -50,6 +51,7 @@ class PluginHttpTest(unittest.TestCase):
                                                                                    "eosio::producer_api_plugin",
                                                                                    "eosio::chain_api_plugin",
                                                                                    "eosio::http_plugin",
+                                                                                   "eosio::db_size_api_plugin",
                                                                                    "eosio::history_plugin",
                                                                                    "eosio::history_api_plugin")
         nodeos_flags = (" --data-dir=%s --trace-dir=%s --trace-no-abis --filter-on=%s --access-control-allow-origin=%s "
@@ -66,6 +68,10 @@ class PluginHttpTest(unittest.TestCase):
         default_cmd = cmd_base + "get_info"
         ret_json = Utils.runCmdReturnJson(default_cmd)
         self.assertIn("server_version", ret_json)
+        # get_info with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
+        self.assertIn("server_version", ret_json)
         # get_info with invalid parameter
         invalid_cmd = default_cmd + self.http_post_str + self.http_post_invalid_param
         ret_json = Utils.runCmdReturnJson(invalid_cmd)
@@ -74,6 +80,10 @@ class PluginHttpTest(unittest.TestCase):
         # get_activated_protocol_features without parameter
         default_cmd = cmd_base + "get_activated_protocol_features"
         ret_json = Utils.runCmdReturnJson(default_cmd)
+        self.assertEqual(type(ret_json["activated_protocol_features"]), list)
+        # get_activated_protocol_features with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
         self.assertEqual(type(ret_json["activated_protocol_features"]), list)
         # get_activated_protocol_features with invalid parameter
         invalid_cmd = default_cmd + self.http_post_str + self.http_post_invalid_param
@@ -114,6 +124,10 @@ class PluginHttpTest(unittest.TestCase):
         default_cmd = cmd_base + "get_block"
         ret_json = Utils.runCmdReturnJson(default_cmd)
         self.assertEqual(ret_json["code"], 400)
+        # get_block with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
+        self.assertEqual(ret_json["code"], 400)
         # get_block with invalid parameter
         invalid_cmd = default_cmd + self.http_post_str + self.http_post_invalid_param
         ret_json = Utils.runCmdReturnJson(invalid_cmd)
@@ -127,6 +141,10 @@ class PluginHttpTest(unittest.TestCase):
         default_cmd = cmd_base + "get_block_info"
         ret_json = Utils.runCmdReturnJson(default_cmd)
         self.assertEqual(ret_json["code"], 400)
+        # get_block_info with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
+        self.assertEqual(ret_json["code"], 400)
         # get_block_info with invalid parameter
         invalid_cmd = default_cmd + self.http_post_str + self.http_post_invalid_param
         ret_json = Utils.runCmdReturnJson(invalid_cmd)
@@ -139,6 +157,11 @@ class PluginHttpTest(unittest.TestCase):
         # get_block_header_state with empty parameter
         default_cmd = cmd_base + "get_block_header_state"
         ret_json = Utils.runCmdReturnJson(default_cmd)
+        self.assertEqual(ret_json["code"], 400)
+        self.assertEqual(ret_json["error"]["code"], 3200006)
+        # get_block_header_state with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
         self.assertEqual(ret_json["code"], 400)
         self.assertEqual(ret_json["error"]["code"], 3200006)
         # get_block_header_state with invalid parameter
@@ -157,6 +180,11 @@ class PluginHttpTest(unittest.TestCase):
         ret_json = Utils.runCmdReturnJson(default_cmd)
         self.assertEqual(ret_json["code"], 400)
         self.assertEqual(ret_json["error"]["code"], 3200006)
+        # get_account with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
+        self.assertEqual(ret_json["code"], 400)
+        self.assertEqual(ret_json["error"]["code"], 3200006)
         # get_account with invalid parameter
         invalid_cmd = default_cmd + self.http_post_str + self.http_post_invalid_param
         ret_json = Utils.runCmdReturnJson(invalid_cmd)
@@ -170,6 +198,11 @@ class PluginHttpTest(unittest.TestCase):
         # get_code with empty parameter
         default_cmd = cmd_base + "get_code"
         ret_json = Utils.runCmdReturnJson(default_cmd)
+        self.assertEqual(ret_json["code"], 400)
+        self.assertEqual(ret_json["error"]["code"], 3200006)
+        # get_code with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
         self.assertEqual(ret_json["code"], 400)
         self.assertEqual(ret_json["error"]["code"], 3200006)
         # get_code with invalid parameter
@@ -187,6 +220,11 @@ class PluginHttpTest(unittest.TestCase):
         ret_json = Utils.runCmdReturnJson(default_cmd)
         self.assertEqual(ret_json["code"], 400)
         self.assertEqual(ret_json["error"]["code"], 3200006)
+        # get_code_hash with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
+        self.assertEqual(ret_json["code"], 400)
+        self.assertEqual(ret_json["error"]["code"], 3200006)
         # get_code_hash with invalid parameter
         invalid_cmd = default_cmd + self.http_post_str + self.http_post_invalid_param
         ret_json = Utils.runCmdReturnJson(invalid_cmd)
@@ -200,6 +238,11 @@ class PluginHttpTest(unittest.TestCase):
         # get_abi with empty parameter
         default_cmd = cmd_base + "get_abi"
         ret_json = Utils.runCmdReturnJson(default_cmd)
+        self.assertEqual(ret_json["code"], 400)
+        self.assertEqual(ret_json["error"]["code"], 3200006)
+        # get_abi with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
         self.assertEqual(ret_json["code"], 400)
         self.assertEqual(ret_json["error"]["code"], 3200006)
         # get_abi with invalid parameter
@@ -217,6 +260,11 @@ class PluginHttpTest(unittest.TestCase):
         ret_json = Utils.runCmdReturnJson(default_cmd)
         self.assertEqual(ret_json["code"], 400)
         self.assertEqual(ret_json["error"]["code"], 3200006)
+        # get_raw_code_and_abi with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
+        self.assertEqual(ret_json["code"], 400)
+        self.assertEqual(ret_json["error"]["code"], 3200006)
         # get_raw_code_and_abi with invalid parameter
         invalid_cmd = default_cmd + self.http_post_str + self.http_post_invalid_param
         ret_json = Utils.runCmdReturnJson(invalid_cmd)
@@ -232,6 +280,11 @@ class PluginHttpTest(unittest.TestCase):
         ret_json = Utils.runCmdReturnJson(default_cmd)
         self.assertEqual(ret_json["code"], 400)
         self.assertEqual(ret_json["error"]["code"], 3200006)
+        # get_raw_abi with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
+        self.assertEqual(ret_json["code"], 400)
+        self.assertEqual(ret_json["error"]["code"], 3200006)
         # get_raw_abi with invalid parameter
         invalid_cmd = default_cmd + self.http_post_str + self.http_post_invalid_param
         ret_json = Utils.runCmdReturnJson(invalid_cmd)
@@ -245,6 +298,11 @@ class PluginHttpTest(unittest.TestCase):
         # get_table_rows with empty parameter
         default_cmd = cmd_base + "get_table_rows"
         ret_json = Utils.runCmdReturnJson(default_cmd)
+        self.assertEqual(ret_json["code"], 400)
+        self.assertEqual(ret_json["error"]["code"], 3200006)
+        # get_table_rows with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
         self.assertEqual(ret_json["code"], 400)
         self.assertEqual(ret_json["error"]["code"], 3200006)
         # get_table_rows with invalid parameter
@@ -271,6 +329,11 @@ class PluginHttpTest(unittest.TestCase):
         ret_json = Utils.runCmdReturnJson(default_cmd)
         self.assertEqual(ret_json["code"], 400)
         self.assertEqual(ret_json["error"]["code"], 3200006)
+        # get_table_by_scope with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
+        self.assertEqual(ret_json["code"], 400)
+        self.assertEqual(ret_json["error"]["code"], 3200006)
         # get_table_by_scope with invalid parameter
         invalid_cmd = default_cmd + self.http_post_str + self.http_post_invalid_param
         ret_json = Utils.runCmdReturnJson(invalid_cmd)
@@ -292,6 +355,11 @@ class PluginHttpTest(unittest.TestCase):
         ret_json = Utils.runCmdReturnJson(default_cmd)
         self.assertEqual(ret_json["code"], 400)
         self.assertEqual(ret_json["error"]["code"], 3200006)
+        # get_currency_balance with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
+        self.assertEqual(ret_json["code"], 400)
+        self.assertEqual(ret_json["error"]["code"], 3200006)
         # get_currency_balance with invalid parameter
         invalid_cmd = default_cmd + self.http_post_str + self.http_post_invalid_param
         ret_json = Utils.runCmdReturnJson(invalid_cmd)
@@ -305,6 +373,11 @@ class PluginHttpTest(unittest.TestCase):
         # get_currency_stats with empty parameter
         default_cmd = cmd_base + "get_currency_stats"
         ret_json = Utils.runCmdReturnJson(default_cmd)
+        self.assertEqual(ret_json["code"], 400)
+        self.assertEqual(ret_json["error"]["code"], 3200006)
+        # get_currency_stats with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
         self.assertEqual(ret_json["code"], 400)
         self.assertEqual(ret_json["error"]["code"], 3200006)
         # get_currency_stats with invalid parameter
@@ -322,6 +395,11 @@ class PluginHttpTest(unittest.TestCase):
         ret_json = Utils.runCmdReturnJson(default_cmd)
         self.assertEqual(ret_json["code"], 400)
         self.assertEqual(ret_json["error"]["code"], 3200006)
+        # get_producers with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
+        self.assertEqual(ret_json["code"], 400)
+        self.assertEqual(ret_json["error"]["code"], 3200006)
         # get_producers with invalid parameter
         invalid_cmd = default_cmd + self.http_post_str + self.http_post_invalid_param
         ret_json = Utils.runCmdReturnJson(invalid_cmd)
@@ -336,6 +414,10 @@ class PluginHttpTest(unittest.TestCase):
         default_cmd = cmd_base + "get_producer_schedule"
         ret_json = Utils.runCmdReturnJson(default_cmd)
         self.assertEqual(type(ret_json["active"]), dict)
+        # get_producer_schedule with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
+        self.assertEqual(type(ret_json["active"]), dict)
         # get_producer_schedule with invalid parameter
         invalid_cmd = default_cmd + self.http_post_str + self.http_post_invalid_param
         ret_json = Utils.runCmdReturnJson(invalid_cmd)
@@ -345,6 +427,11 @@ class PluginHttpTest(unittest.TestCase):
         # get_scheduled_transactions with empty parameter
         default_cmd = cmd_base + "get_scheduled_transactions"
         ret_json = Utils.runCmdReturnJson(default_cmd)
+        self.assertEqual(ret_json["code"], 400)
+        self.assertEqual(ret_json["error"]["code"], 3200006)
+        # get_scheduled_transactions with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
         self.assertEqual(ret_json["code"], 400)
         self.assertEqual(ret_json["error"]["code"], 3200006)
         # get_scheduled_transactions with invalid parameter
@@ -360,6 +447,11 @@ class PluginHttpTest(unittest.TestCase):
         # abi_json_to_bin with empty parameter
         default_cmd = cmd_base + "abi_json_to_bin"
         ret_json = Utils.runCmdReturnJson(default_cmd)
+        self.assertEqual(ret_json["code"], 400)
+        self.assertEqual(ret_json["error"]["code"], 3200006)
+        # abi_json_to_bin with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
         self.assertEqual(ret_json["code"], 400)
         self.assertEqual(ret_json["error"]["code"], 3200006)
         # abi_json_to_bin with invalid parameter
@@ -381,6 +473,11 @@ class PluginHttpTest(unittest.TestCase):
         ret_json = Utils.runCmdReturnJson(default_cmd)
         self.assertEqual(ret_json["code"], 400)
         self.assertEqual(ret_json["error"]["code"], 3200006)
+        # abi_bin_to_json with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
+        self.assertEqual(ret_json["code"], 400)
+        self.assertEqual(ret_json["error"]["code"], 3200006)
         # abi_bin_to_json with invalid parameter
         invalid_cmd = default_cmd + self.http_post_str + self.http_post_invalid_param
         ret_json = Utils.runCmdReturnJson(invalid_cmd)
@@ -398,6 +495,11 @@ class PluginHttpTest(unittest.TestCase):
         # get_required_keys with empty p4arameter
         default_cmd = cmd_base + "get_required_keys"
         ret_json = Utils.runCmdReturnJson(default_cmd)
+        self.assertEqual(ret_json["code"], 400)
+        self.assertEqual(ret_json["error"]["code"], 3200006)
+        # get_required_keys with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
         self.assertEqual(ret_json["code"], 400)
         self.assertEqual(ret_json["error"]["code"], 3200006)
         # get_required_keys with invalid parameter
@@ -422,9 +524,14 @@ class PluginHttpTest(unittest.TestCase):
         ret_json = Utils.runCmdReturnJson(valid_cmd)
         self.assertEqual(ret_json["code"], 500)
 
-        # get_transaction_id with empty p4arameter
+        # get_transaction_id with empty parameter
         default_cmd = cmd_base + "get_transaction_id"
         ret_json = Utils.runCmdReturnJson(default_cmd)
+        self.assertEqual(ret_json["code"], 400)
+        self.assertEqual(ret_json["error"]["code"], 3200006)
+        # get_transaction_id with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
         self.assertEqual(ret_json["code"], 400)
         self.assertEqual(ret_json["error"]["code"], 3200006)
         # get_transaction_id with invalid parameter
@@ -455,6 +562,11 @@ class PluginHttpTest(unittest.TestCase):
         ret_json = Utils.runCmdReturnJson(default_cmd)
         self.assertEqual(ret_json["code"], 400)
         self.assertEqual(ret_json["error"]["code"], 3200006)
+        # push_block with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
+        self.assertEqual(ret_json["code"], 400)
+        self.assertEqual(ret_json["error"]["code"], 3200006)
         # push_block with invalid parameter
         invalid_cmd = default_cmd + self.http_post_str + self.http_post_invalid_param
         ret_json = Utils.runCmdReturnJson(invalid_cmd)
@@ -468,6 +580,11 @@ class PluginHttpTest(unittest.TestCase):
         # push_transaction with empty parameter
         default_cmd = cmd_base + "push_transaction"
         ret_json = Utils.runCmdReturnJson(default_cmd)
+        self.assertEqual(ret_json["code"], 400)
+        self.assertEqual(ret_json["error"]["code"], 3200006)
+        # push_transaction with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
         self.assertEqual(ret_json["code"], 400)
         self.assertEqual(ret_json["error"]["code"], 3200006)
         # push_transaction with invalid parameter
@@ -490,6 +607,11 @@ class PluginHttpTest(unittest.TestCase):
         ret_json = Utils.runCmdReturnJson(default_cmd)
         self.assertEqual(ret_json["code"], 400)
         self.assertEqual(ret_json["error"]["code"], 3200006)
+        # push_transactions with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
+        self.assertEqual(ret_json["code"], 400)
+        self.assertEqual(ret_json["error"]["code"], 3200006)
         # push_transactions with invalid parameter
         invalid_cmd = default_cmd + self.http_post_str + self.http_post_invalid_param
         ret_json = Utils.runCmdReturnJson(invalid_cmd)
@@ -508,6 +630,11 @@ class PluginHttpTest(unittest.TestCase):
         # send_transaction with empty parameter
         default_cmd = cmd_base + "send_transaction"
         ret_json = Utils.runCmdReturnJson(default_cmd)
+        self.assertEqual(ret_json["code"], 400)
+        self.assertEqual(ret_json["error"]["code"], 3200006)
+        # send_transaction with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
         self.assertEqual(ret_json["code"], 400)
         self.assertEqual(ret_json["error"]["code"], 3200006)
         # send_transaction with invalid parameter
@@ -534,6 +661,11 @@ class PluginHttpTest(unittest.TestCase):
         ret_json = Utils.runCmdReturnJson(default_cmd)
         self.assertEqual(ret_json["code"], 400)
         self.assertEqual(ret_json["error"]["code"], 3200006)
+        # get_actions with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
+        self.assertEqual(ret_json["code"], 400)
+        self.assertEqual(ret_json["error"]["code"], 3200006)
         # get_actions with invalid parameter
         invalid_cmd = default_cmd + self.http_post_str + self.http_post_invalid_param
         ret_json = Utils.runCmdReturnJson(invalid_cmd)
@@ -547,6 +679,11 @@ class PluginHttpTest(unittest.TestCase):
         # get_transaction with empty parameter
         default_cmd = cmd_base + "get_transaction"
         ret_json = Utils.runCmdReturnJson(default_cmd)
+        self.assertEqual(ret_json["code"], 400)
+        self.assertEqual(ret_json["error"]["code"], 3200006)
+        # get_transaction with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
         self.assertEqual(ret_json["code"], 400)
         self.assertEqual(ret_json["error"]["code"], 3200006)
         # get_transaction with invalid parameter
@@ -566,6 +703,11 @@ class PluginHttpTest(unittest.TestCase):
         ret_json = Utils.runCmdReturnJson(default_cmd)
         self.assertEqual(ret_json["code"], 400)
         self.assertEqual(ret_json["error"]["code"], 3200006)
+        # get_key_accounts with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
+        self.assertEqual(ret_json["code"], 400)
+        self.assertEqual(ret_json["error"]["code"], 3200006)
         # get_key_accounts with invalid parameter
         invalid_cmd = default_cmd + self.http_post_str + self.http_post_invalid_param
         ret_json = Utils.runCmdReturnJson(invalid_cmd)
@@ -579,6 +721,11 @@ class PluginHttpTest(unittest.TestCase):
         # get_controlled_accounts with empty parameter
         default_cmd = cmd_base + "get_controlled_accounts"
         ret_json = Utils.runCmdReturnJson(default_cmd)
+        self.assertEqual(ret_json["code"], 400)
+        self.assertEqual(ret_json["error"]["code"], 3200006)
+        # get_controlled_accounts with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
         self.assertEqual(ret_json["code"], 400)
         self.assertEqual(ret_json["error"]["code"], 3200006)
         # get_controlled_accounts with invalid parameter
@@ -600,6 +747,11 @@ class PluginHttpTest(unittest.TestCase):
         ret_json = Utils.runCmdReturnJson(default_cmd)
         self.assertEqual(ret_json["code"], 400)
         self.assertEqual(ret_json["error"]["code"], 3200006)
+        # connect with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
+        self.assertEqual(ret_json["code"], 400)
+        self.assertEqual(ret_json["error"]["code"], 3200006)
         # connect with invalid parameter
         invalid_cmd = default_cmd + self.http_post_str + self.http_post_invalid_param
         ret_json = Utils.runCmdReturnJson(invalid_cmd)
@@ -613,6 +765,11 @@ class PluginHttpTest(unittest.TestCase):
         # disconnect with empty parameter
         default_cmd = cmd_base + "disconnect"
         ret_json = Utils.runCmdReturnJson(default_cmd)
+        self.assertEqual(ret_json["code"], 400)
+        self.assertEqual(ret_json["error"]["code"], 3200006)
+        # disconnect with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
         self.assertEqual(ret_json["code"], 400)
         self.assertEqual(ret_json["error"]["code"], 3200006)
         # disconnect with invalid parameter
@@ -630,6 +787,11 @@ class PluginHttpTest(unittest.TestCase):
         ret_json = Utils.runCmdReturnJson(default_cmd)
         self.assertEqual(ret_json["code"], 400)
         self.assertEqual(ret_json["error"]["code"], 3200006)
+        # status with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
+        self.assertEqual(ret_json["code"], 400)
+        self.assertEqual(ret_json["error"]["code"], 3200006)
         # status with invalid parameter
         invalid_cmd = default_cmd + self.http_post_str + self.http_post_invalid_param
         ret_json = Utils.runCmdReturnJson(invalid_cmd)
@@ -642,6 +804,10 @@ class PluginHttpTest(unittest.TestCase):
 
         # connections with empty parameter
         default_cmd = cmd_base + "connections"
+        ret_str = Utils.runCmdReturnStr(default_cmd)
+        self.assertEqual(ret_str, "[]")
+        # connections with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
         ret_str = Utils.runCmdReturnStr(default_cmd)
         self.assertEqual(ret_str, "[]")
         # connections with invalid parameter
@@ -658,6 +824,10 @@ class PluginHttpTest(unittest.TestCase):
         default_cmd = cmd_base + "pause"
         ret_json = Utils.runCmdReturnJson(default_cmd)
         self.assertEqual(ret_json["result"], "ok")
+        # pause with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
+        self.assertEqual(ret_json["result"], "ok")
         # pause with invalid parameter
         invalid_cmd = default_cmd + self.http_post_str + self.http_post_invalid_param
         ret_json = Utils.runCmdReturnJson(invalid_cmd)
@@ -668,6 +838,10 @@ class PluginHttpTest(unittest.TestCase):
         default_cmd = cmd_base + "resume"
         ret_json = Utils.runCmdReturnJson(default_cmd)
         self.assertEqual(ret_json["result"], "ok")
+        # resume with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
+        self.assertEqual(ret_json["result"], "ok")
         # resume with invalid parameter
         invalid_cmd = default_cmd + self.http_post_str + self.http_post_invalid_param
         ret_json = Utils.runCmdReturnJson(invalid_cmd)
@@ -676,6 +850,10 @@ class PluginHttpTest(unittest.TestCase):
 
         # paused with empty parameter
         default_cmd = cmd_base + "paused"
+        ret_str = Utils.runCmdReturnStr(default_cmd)
+        self.assertEqual(ret_str, "false")
+        # paused with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
         ret_str = Utils.runCmdReturnStr(default_cmd)
         self.assertEqual(ret_str, "false")
         # paused with invalid parameter
@@ -688,6 +866,10 @@ class PluginHttpTest(unittest.TestCase):
         default_cmd = cmd_base + "get_runtime_options"
         ret_json = Utils.runCmdReturnJson(default_cmd)
         self.assertIn("max_transaction_time", ret_json)
+        # get_runtime_options with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
+        self.assertIn("max_transaction_time", ret_json)
         # get_runtime_options with invalid parameter
         invalid_cmd = default_cmd + self.http_post_str + self.http_post_invalid_param
         ret_json = Utils.runCmdReturnJson(invalid_cmd)
@@ -697,6 +879,11 @@ class PluginHttpTest(unittest.TestCase):
         # update_runtime_options with empty parameter
         default_cmd = cmd_base + "update_runtime_options"
         ret_json = Utils.runCmdReturnJson(default_cmd)
+        self.assertEqual(ret_json["code"], 400)
+        self.assertEqual(ret_json["error"]["code"], 3200006)
+        # update_runtime_options with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
         self.assertEqual(ret_json["code"], 400)
         self.assertEqual(ret_json["error"]["code"], 3200006)
         # update_runtime_options with invalid parameter
@@ -721,6 +908,11 @@ class PluginHttpTest(unittest.TestCase):
         ret_json = Utils.runCmdReturnJson(default_cmd)
         self.assertEqual(ret_json["code"], 400)
         self.assertEqual(ret_json["error"]["code"], 3200006)
+        # add_greylist_accounts with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
+        self.assertEqual(ret_json["code"], 400)
+        self.assertEqual(ret_json["error"]["code"], 3200006)
         # add_greylist_accounts with invalid parameter
         invalid_cmd = default_cmd + self.http_post_str + self.http_post_invalid_param
         ret_json = Utils.runCmdReturnJson(invalid_cmd)
@@ -734,6 +926,11 @@ class PluginHttpTest(unittest.TestCase):
         # remove_greylist_accounts with empty parameter
         default_cmd = cmd_base + "remove_greylist_accounts"
         ret_json = Utils.runCmdReturnJson(default_cmd)
+        self.assertEqual(ret_json["code"], 400)
+        self.assertEqual(ret_json["error"]["code"], 3200006)
+        # remove_greylist_accounts with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
         self.assertEqual(ret_json["code"], 400)
         self.assertEqual(ret_json["error"]["code"], 3200006)
         # remove_greylist_accounts with invalid parameter
@@ -750,6 +947,10 @@ class PluginHttpTest(unittest.TestCase):
         default_cmd = cmd_base + "get_greylist"
         ret_json = Utils.runCmdReturnJson(default_cmd)
         self.assertIn("accounts", ret_json)
+        # get_greylist with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
+        self.assertIn("accounts", ret_json)
         # get_greylist with invalid parameter
         invalid_cmd = default_cmd + self.http_post_str + self.http_post_invalid_param
         ret_json = Utils.runCmdReturnJson(invalid_cmd)
@@ -765,6 +966,15 @@ class PluginHttpTest(unittest.TestCase):
         self.assertIn("contract_blacklist", ret_json)
         self.assertIn("action_blacklist", ret_json)
         self.assertIn("key_blacklist", ret_json)
+        # get_whitelist_blacklist with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
+        self.assertIn("actor_whitelist", ret_json)
+        self.assertIn("actor_blacklist", ret_json)
+        self.assertIn("contract_whitelist", ret_json)
+        self.assertIn("contract_blacklist", ret_json)
+        self.assertIn("action_blacklist", ret_json)
+        self.assertIn("key_blacklist", ret_json)
         # get_whitelist_blacklist with invalid parameter
         invalid_cmd = default_cmd + self.http_post_str + self.http_post_invalid_param
         ret_json = Utils.runCmdReturnJson(invalid_cmd)
@@ -774,6 +984,11 @@ class PluginHttpTest(unittest.TestCase):
         # set_whitelist_blacklist with empty parameter
         default_cmd = cmd_base + "set_whitelist_blacklist"
         ret_json = Utils.runCmdReturnJson(default_cmd)
+        self.assertEqual(ret_json["code"], 400)
+        self.assertEqual(ret_json["error"]["code"], 3200006)
+        # set_whitelist_blacklist with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
         self.assertEqual(ret_json["code"], 400)
         self.assertEqual(ret_json["error"]["code"], 3200006)
         # set_whitelist_blacklist with invalid parameter
@@ -796,6 +1011,11 @@ class PluginHttpTest(unittest.TestCase):
         ret_json = Utils.runCmdReturnJson(default_cmd)
         self.assertIn("head_block_id", ret_json)
         self.assertIn("integrity_hash", ret_json)
+        # get_integrity_hash with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
+        self.assertIn("head_block_id", ret_json)
+        self.assertIn("integrity_hash", ret_json)
         # get_integrity_hash with invalid parameter
         invalid_cmd = default_cmd + self.http_post_str + self.http_post_invalid_param
         ret_json = Utils.runCmdReturnJson(invalid_cmd)
@@ -805,6 +1025,11 @@ class PluginHttpTest(unittest.TestCase):
         # create_snapshot with empty parameter
         default_cmd = cmd_base + "create_snapshot"
         ret_json = Utils.runCmdReturnJson(default_cmd)
+        self.assertEqual(ret_json["code"], 500)
+        self.assertEqual(ret_json["error"]["code"], 3170000)
+        # create_snapshot with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
         self.assertEqual(ret_json["code"], 500)
         self.assertEqual(ret_json["error"]["code"], 3170000)
         # create_snapshot with invalid parameter
@@ -822,6 +1047,10 @@ class PluginHttpTest(unittest.TestCase):
         default_cmd = cmd_base + "get_scheduled_protocol_feature_activations"
         ret_json = Utils.runCmdReturnJson(default_cmd)
         self.assertIn("protocol_features_to_activate", ret_json)
+        # get_scheduled_protocol_feature_activations with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
+        self.assertIn("protocol_features_to_activate", ret_json)
         # get_scheduled_protocol_feature_activations with invalid parameter
         invalid_cmd = default_cmd + self.http_post_str + self.http_post_invalid_param
         ret_json = Utils.runCmdReturnJson(invalid_cmd)
@@ -831,6 +1060,11 @@ class PluginHttpTest(unittest.TestCase):
         # schedule_protocol_feature_activations with empty parameter
         default_cmd = cmd_base + "schedule_protocol_feature_activations"
         ret_json = Utils.runCmdReturnJson(default_cmd)
+        self.assertEqual(ret_json["code"], 400)
+        self.assertEqual(ret_json["error"]["code"], 3200006)
+        # schedule_protocol_feature_activations with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
         self.assertEqual(ret_json["code"], 400)
         self.assertEqual(ret_json["error"]["code"], 3200006)
         # schedule_protocol_feature_activations with invalid parameter
@@ -846,6 +1080,11 @@ class PluginHttpTest(unittest.TestCase):
         # get_supported_protocol_features with empty parameter
         default_cmd = cmd_base + "get_supported_protocol_features"
         ret_json = Utils.runCmdReturnJson(default_cmd)
+        self.assertIn("feature_digest", ret_json[0])
+        self.assertIn("subjective_restrictions", ret_json[0])
+        # get_supported_protocol_features with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
         self.assertIn("feature_digest", ret_json[0])
         self.assertIn("subjective_restrictions", ret_json[0])
         # get_supported_protocol_features with invalid parameter
@@ -874,6 +1113,11 @@ class PluginHttpTest(unittest.TestCase):
         ret_json = Utils.runCmdReturnJson(default_cmd)
         self.assertEqual(ret_json["code"], 400)
         self.assertEqual(ret_json["error"]["code"], 3200006)
+        # get_account_ram_corrections with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
+        self.assertEqual(ret_json["code"], 400)
+        self.assertEqual(ret_json["error"]["code"], 3200006)
         # get_account_ram_corrections with invalid parameter
         invalid_cmd = default_cmd + self.http_post_str + self.http_post_invalid_param
         ret_json = Utils.runCmdReturnJson(invalid_cmd)
@@ -893,6 +1137,11 @@ class PluginHttpTest(unittest.TestCase):
         ret_json = Utils.runCmdReturnJson(default_cmd)
         self.assertEqual(ret_json["code"], 400)
         self.assertEqual(ret_json["error"]["code"], 3200006)
+        # set_timeout with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
+        self.assertEqual(ret_json["code"], 400)
+        self.assertEqual(ret_json["error"]["code"], 3200006)
         # set_timeout with invalid parameter
         invalid_cmd = default_cmd + self.http_post_str + self.http_post_invalid_param
         ret_json = Utils.runCmdReturnJson(invalid_cmd)
@@ -906,6 +1155,11 @@ class PluginHttpTest(unittest.TestCase):
         # sign_transaction with empty parameter
         default_cmd = cmd_base + "sign_transaction"
         ret_json = Utils.runCmdReturnJson(default_cmd)
+        self.assertEqual(ret_json["code"], 400)
+        self.assertEqual(ret_json["error"]["code"], 3200006)
+        # sign_transaction with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
         self.assertEqual(ret_json["code"], 400)
         self.assertEqual(ret_json["error"]["code"], 3200006)
         # sign_transaction with invalid parameter
@@ -937,6 +1191,11 @@ class PluginHttpTest(unittest.TestCase):
         ret_json = Utils.runCmdReturnJson(default_cmd)
         self.assertEqual(ret_json["code"], 400)
         self.assertEqual(ret_json["error"]["code"], 3200006)
+        # create with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
+        self.assertEqual(ret_json["code"], 400)
+        self.assertEqual(ret_json["error"]["code"], 3200006)
         # create with invalid parameter
         invalid_cmd = default_cmd + self.http_post_str + self.http_post_invalid_param
         ret_json = Utils.runCmdReturnJson(invalid_cmd)
@@ -950,6 +1209,11 @@ class PluginHttpTest(unittest.TestCase):
         # open with empty parameter
         default_cmd = cmd_base + "open"
         ret_json = Utils.runCmdReturnJson(default_cmd)
+        self.assertEqual(ret_json["code"], 400)
+        self.assertEqual(ret_json["error"]["code"], 3200006)
+        # open with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
         self.assertEqual(ret_json["code"], 400)
         self.assertEqual(ret_json["error"]["code"], 3200006)
         # create with invalid parameter
@@ -966,6 +1230,10 @@ class PluginHttpTest(unittest.TestCase):
         default_cmd = cmd_base + "lock_all"
         ret_str = Utils.runCmdReturnStr(default_cmd)
         self.assertEqual("{}", ret_str)
+        # lock_all with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_str = Utils.runCmdReturnStr(default_cmd)
+        self.assertEqual("{}", ret_str)
         # lock_all with invalid parameter
         invalid_cmd = default_cmd + self.http_post_str + self.http_post_invalid_param
         ret_json = Utils.runCmdReturnJson(invalid_cmd)
@@ -975,6 +1243,11 @@ class PluginHttpTest(unittest.TestCase):
         # lock with empty parameter
         default_cmd = cmd_base + "lock"
         ret_json = Utils.runCmdReturnJson(default_cmd)
+        self.assertEqual(ret_json["code"], 400)
+        self.assertEqual(ret_json["error"]["code"], 3200006)
+        # lock with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
         self.assertEqual(ret_json["code"], 400)
         self.assertEqual(ret_json["error"]["code"], 3200006)
         # lock with invalid parameter
@@ -992,6 +1265,11 @@ class PluginHttpTest(unittest.TestCase):
         ret_json = Utils.runCmdReturnJson(default_cmd)
         self.assertEqual(ret_json["code"], 400)
         self.assertEqual(ret_json["error"]["code"], 3200006)
+        # unlock with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
+        self.assertEqual(ret_json["code"], 400)
+        self.assertEqual(ret_json["error"]["code"], 3200006)
         # unlock with invalid parameter
         invalid_cmd = default_cmd + self.http_post_str + self.http_post_invalid_param
         ret_json = Utils.runCmdReturnJson(invalid_cmd)
@@ -1005,6 +1283,11 @@ class PluginHttpTest(unittest.TestCase):
         # import_key with empty parameter
         default_cmd = cmd_base + "import_key"
         ret_json = Utils.runCmdReturnJson(default_cmd)
+        self.assertEqual(ret_json["code"], 400)
+        self.assertEqual(ret_json["error"]["code"], 3200006)
+        # import_key with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
         self.assertEqual(ret_json["code"], 400)
         self.assertEqual(ret_json["error"]["code"], 3200006)
         # import_key with invalid parameter
@@ -1022,6 +1305,11 @@ class PluginHttpTest(unittest.TestCase):
         ret_json = Utils.runCmdReturnJson(default_cmd)
         self.assertEqual(ret_json["code"], 400)
         self.assertEqual(ret_json["error"]["code"], 3200006)
+        # remove_key with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
+        self.assertEqual(ret_json["code"], 400)
+        self.assertEqual(ret_json["error"]["code"], 3200006)
         # remove_key with invalid parameter
         invalid_cmd = default_cmd + self.http_post_str + self.http_post_invalid_param
         ret_json = Utils.runCmdReturnJson(invalid_cmd)
@@ -1035,6 +1323,11 @@ class PluginHttpTest(unittest.TestCase):
         # create_key with empty parameter
         default_cmd = cmd_base + "remove_key"
         ret_json = Utils.runCmdReturnJson(default_cmd)
+        self.assertEqual(ret_json["code"], 400)
+        self.assertEqual(ret_json["error"]["code"], 3200006)
+        # create_key with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
         self.assertEqual(ret_json["code"], 400)
         self.assertEqual(ret_json["error"]["code"], 3200006)
         # create_key with invalid parameter
@@ -1051,6 +1344,10 @@ class PluginHttpTest(unittest.TestCase):
         default_cmd = cmd_base + "list_wallets"
         ret_json = Utils.runCmdReturnJson(default_cmd)
         self.assertEqual(type(ret_json), list)
+        # list_wallets with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
+        self.assertEqual(type(ret_json), list)
         # list_wallets with invalid parameter
         invalid_cmd = default_cmd + self.http_post_str + self.http_post_invalid_param
         ret_json = Utils.runCmdReturnJson(invalid_cmd)
@@ -1060,6 +1357,11 @@ class PluginHttpTest(unittest.TestCase):
         # list_keys with empty parameter
         default_cmd = cmd_base + "list_keys"
         ret_json = Utils.runCmdReturnJson(default_cmd)
+        self.assertEqual(ret_json["code"], 400)
+        self.assertEqual(ret_json["error"]["code"], 3200006)
+        # list_keys with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
         self.assertEqual(ret_json["code"], 400)
         self.assertEqual(ret_json["error"]["code"], 3200006)
         # list_keys with invalid parameter
@@ -1076,6 +1378,10 @@ class PluginHttpTest(unittest.TestCase):
         default_cmd = cmd_base + "get_public_keys"
         ret_json = Utils.runCmdReturnJson(default_cmd)
         self.assertEqual(type(ret_json), dict)
+        # get_public_keys with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
+        self.assertEqual(type(ret_json), dict)
         # list_wallets with invalid parameter
         invalid_cmd = default_cmd + self.http_post_str + self.http_post_invalid_param
         ret_json = Utils.runCmdReturnJson(invalid_cmd)
@@ -1089,6 +1395,11 @@ class PluginHttpTest(unittest.TestCase):
         # kill_node_on_producer with empty parameter
         default_cmd = cmd_base + "kill_node_on_producer"
         ret_json = Utils.runCmdReturnJson(default_cmd)
+        self.assertEqual(ret_json["code"], 400)
+        self.assertEqual(ret_json["error"]["code"], 3200006)
+        # kill_node_on_producer with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
         self.assertEqual(ret_json["code"], 400)
         self.assertEqual(ret_json["error"]["code"], 3200006)
         # kill_node_on_producer with invalid parameter
@@ -1109,6 +1420,10 @@ class PluginHttpTest(unittest.TestCase):
         default_cmd = cmd_base + "get_block"
         ret_json = Utils.runCmdReturnJson(default_cmd)
         self.assertEqual(ret_json["code"], 400)
+        # get_block with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
+        self.assertEqual(ret_json["code"], 400)
         # get_block with invalid parameter
         invalid_cmd = default_cmd + self.http_post_str + self.http_post_invalid_param
         ret_json = Utils.runCmdReturnJson(invalid_cmd)
@@ -1118,6 +1433,49 @@ class PluginHttpTest(unittest.TestCase):
         ret_json = Utils.runCmdReturnJson(valid_cmd)
         self.assertEqual(ret_json["code"], 404)
         self.assertEqual(ret_json["error"]["code"], 0)
+
+    # test all db_size api
+    def test_DbSizeApi(self) :
+        cmd_base = self.base_node_cmd_str + "db_size/"
+
+        # get with empty parameter
+        default_cmd = cmd_base + "get"
+        ret_json = Utils.runCmdReturnJson(default_cmd)
+        self.assertIn("free_bytes", ret_json)
+        self.assertIn("used_bytes", ret_json)
+        self.assertIn("size", ret_json)
+        self.assertIn("indices", ret_json)
+        # get with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
+        self.assertIn("free_bytes", ret_json)
+        self.assertIn("used_bytes", ret_json)
+        self.assertIn("size", ret_json)
+        self.assertIn("indices", ret_json)
+        # get with invalid parameter
+        invalid_cmd = default_cmd + self.http_post_str + self.http_post_invalid_param
+        ret_json = Utils.runCmdReturnJson(invalid_cmd)
+        self.assertEqual(ret_json["code"], 400)
+
+        # get_reversible with empty parameter
+        default_cmd = cmd_base + "get_reversible"
+        ret_json = Utils.runCmdReturnJson(default_cmd)
+        self.assertIn("free_bytes", ret_json)
+        self.assertIn("used_bytes", ret_json)
+        self.assertIn("size", ret_json)
+        self.assertIn("indices", ret_json)
+        # get_reversible with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
+        self.assertIn("free_bytes", ret_json)
+        self.assertIn("used_bytes", ret_json)
+        self.assertIn("size", ret_json)
+        self.assertIn("indices", ret_json)
+        # get_reversible with invalid parameter
+        invalid_cmd = default_cmd + self.http_post_str + self.http_post_invalid_param
+        ret_json = Utils.runCmdReturnJson(invalid_cmd)
+        self.assertEqual(ret_json["code"], 400)
+
 
     @classmethod
     def setUpClass(self):

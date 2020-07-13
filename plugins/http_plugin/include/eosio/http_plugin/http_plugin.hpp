@@ -159,6 +159,55 @@ namespace eosio {
       error_info error;
    };
 
+   inline std::string_view make_trimmed_string_view(const std::string& body) {
+      if (body.empty()) {
+         return {};
+      }
+      size_t left = 0;
+      size_t right = body.size() - 1;
+
+      while(left < right)
+      {
+         if (body[left] == ' ') {
+            ++left;
+         } else {
+            break;
+         }
+      }
+      while(left < right)
+      {
+         if (body[right] == ' ') {
+            --right;
+         } else {
+            break;
+         }
+      }
+      if ((left == right) && (body[left] == ' ')) {
+         return {};
+      }
+      return {body.substr(left, right-left+1)};
+   }
+
+   inline bool is_empty_content(const std::string& body) {
+      const auto trimmed_body_view = make_trimmed_string_view(body);
+      if (trimmed_body_view.empty()) {
+         return true;
+      }
+      const size_t body_size = trimmed_body_view.size();
+      if ((body_size > 1) && (trimmed_body_view.at(0) == '{') && (trimmed_body_view.at(body_size - 1) == '}')) {
+         for(size_t idx=1; idx<body_size-1; ++idx)
+         {
+            if ((trimmed_body_view.at(idx) != ' ') && (trimmed_body_view.at(idx) != '\t'))
+            {
+               return false;
+            }
+         }
+      } else {
+         return false;
+      }
+      return true;
+   }
+
    enum class http_params_types {
       no_params_required = 0,
       params_required = 1,
@@ -168,7 +217,7 @@ namespace eosio {
    template<typename T, http_params_types params_type>
    T parse_params(const std::string& body) {
       if constexpr (params_type == http_params_types::params_required) {
-         if (body.empty()) {
+         if (is_empty_content(body)) {
             EOS_THROW(chain::invalid_http_request, "A Request body is required");
          }
       }
@@ -176,7 +225,7 @@ namespace eosio {
       try {
          try {
             if constexpr (params_type == http_params_types::no_params_required || params_type == http_params_types::possible_no_params) {
-               if (body.empty()) {
+               if (is_empty_content(body)) {
                   if constexpr (std::is_same_v<T, std::string>) {
                      return std::string("{}");
                   }

@@ -251,7 +251,7 @@ rodeos_bool rodeos_query_transaction(rodeos_error* error, rodeos_query_handler* 
       eosio::input_stream            s{ data, size };
       auto trx = eosio::from_bin<eosio::ship_protocol::packed_transaction>(s);
 
-      auto                                    thread_state = handler->state_cache.get_state();
+      auto                                    thread_state = handler->state_cache->get_state();
       eosio::ship_protocol::transaction_trace tt;
       if (snapshot->snap.has_value()) {
          tt = query_send_transaction(*thread_state, snapshot->partition->contract_kv_prefix, trx,
@@ -260,8 +260,6 @@ rodeos_bool rodeos_query_transaction(rodeos_error* error, rodeos_query_handler* 
          tt = query_send_transaction(*thread_state, snapshot->partition->contract_kv_prefix, trx, nullptr, memory,
                                      true);
       }
-
-      handler->state_cache.store_state(std::move(thread_state));
 
       eosio::size_stream ss;
       eosio::to_bin(tt, ss);

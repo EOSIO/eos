@@ -22,7 +22,8 @@ string sha1::str()const {
 }
 sha1::operator string()const { return  str(); }
 
-char* sha1::data()const { return (char*)&_hash[0]; }
+char* sha1::data() { return (char*)&_hash[0]; }
+const char* sha1::data()const { return (char*)&_hash[0]; }
 
 
 struct sha1::encoder::impl {

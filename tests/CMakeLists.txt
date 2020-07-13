@@ -54,8 +54,10 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/light_validation_sync_test.py ${CMAKE
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/eosio_blocklog_prune_test.py ${CMAKE_CURRENT_BINARY_DIR}/eosio_blocklog_prune_test.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cli_test.py ${CMAKE_CURRENT_BINARY_DIR}/cli_test.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/plugin_http_api_test.py ${CMAKE_CURRENT_BINARY_DIR}/plugin_http_api_test.py COPYONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/resource_monitor_plugin_test.py ${CMAKE_CURRENT_BINARY_DIR}/resource_monitor_plugin_test.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/rodeos_test.py ${CMAKE_CURRENT_BINARY_DIR}/rodeos_test.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/test_filter.wasm ${CMAKE_CURRENT_BINARY_DIR}/test_filter.wasm COPYONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/trace_plugin_test.py ${CMAKE_CURRENT_BINARY_DIR}/trace_plugin_test.py COPYONLY)
 
 #To run plugin_test with all log from blockchain displayed, put --verbose after --, i.e. plugin_test -- --verbose
 add_test(NAME plugin_test COMMAND plugin_test --report_level=detailed --color_output)
@@ -74,6 +76,11 @@ endif(NODE_FOUND)
 
 add_test(NAME p2p_dawn515_test COMMAND tests/p2p_tests/dawn_515/test.sh WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_property(TEST p2p_dawn515_test PROPERTY LABELS nonparallelizable_tests)
+
+if (DEFINED AMQP_CONN_STR)
+  add_test(NAME nodeos_run_test-rabbitmq COMMAND tests/nodeos_run_test.py --amqp-address ${AMQP_CONN_STR} -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+  set_property(TEST nodeos_run_test-rabbitmq PROPERTY LABELS nonparallelizable_tests)
+endif()
 
 add_test(NAME producer-preactivate-feature-test COMMAND tests/prod_preactivation_test.py --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_property(TEST producer-preactivate-feature-test PROPERTY LABELS nonparallelizable_tests)
@@ -171,7 +178,14 @@ add_test(NAME plugin_http_api_test COMMAND tests/plugin_http_api_test.py WORKING
 set_tests_properties(plugin_http_api_test PROPERTIES TIMEOUT 40)
 set_property(TEST plugin_http_api_test PROPERTY LABELS nonparallelizable_tests)
 
+add_test(NAME trace_plugin_test COMMAND tests/trace_plugin_test.py WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_tests_properties(trace_plugin_test PROPERTIES TIMEOUT 100)
+set_property(TEST trace_plugin_test PROPERTY LABELS nonparallelizable_tests)
+
 add_subdirectory(se_tests)
+
+add_test(NAME resource_monitor_plugin_test COMMAND tests/resource_monitor_plugin_test.py WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST resource_monitor_plugin_test PROPERTY LABELS long_running_tests)
 
 if(ENABLE_COVERAGE_TESTING)
 

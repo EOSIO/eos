@@ -48,6 +48,7 @@ struct blocklog {
    bool                             as_json_array = false;
    bool                             make_index = false;
    bool                             trim_log = false;
+   bool                             fix_irreversible_blocks = false;
    bool                             smoke_test = false;
    bool                             prune_transactions = false;
    bool                             help               = false;
@@ -190,6 +191,9 @@ void blocklog::set_program_options(options_description& cli)
           "Create blocks.index from blocks.log. Must give 'blocks-dir'. Give 'output-file' relative to current directory or absolute path (default is <blocks-dir>/blocks.index).")
          ("trim-blocklog", bpo::bool_switch(&trim_log)->default_value(false),
           "Trim blocks.log and blocks.index. Must give 'blocks-dir' and 'first and/or 'last'.")
+         ("fix-irreversible-blocks", bpo::bool_switch(&fix_irreversible_blocks)->default_value(false),
+          "When the existing block log is inconsistent with the index, allows fixing the block log and index files automatically - that is, "
+          "it will take the highest indexed block if it is valid; otherwise it will repair the block log and reconstruct the index.")
          ("smoke-test", bpo::bool_switch(&smoke_test)->default_value(false),
           "Quick test that blocks.log and blocks.index are well formed and agree with each other.")
          ("block-num", bpo::value<uint32_t>()->default_value(0), "The block number which contains the transactions to be pruned")
@@ -233,6 +237,12 @@ bool trim_blocklog_front(bfs::path block_dir, uint32_t n) {        //n is first 
    return status;
 }
 
+void fix_irreversible_blocks(bfs::path block_dir) {
+    std::cout << "\nfix_irreversible_blocks of blocks.log and blocks.index in directory " << block_dir << '\n';
+    block_log block_logger(block_dir, fc::path(), 0, 0, true);
+    std::cout << "\nSmoke test of blocks.log and blocks.index in directory " << block_dir << '\n';
+    block_log::smoke_test(block_dir, 0);
+}
 
 void smoke_test(bfs::path block_dir) {
    using namespace std;
@@ -288,6 +298,10 @@ int main(int argc, char** argv) {
       if (blog.smoke_test) {
          smoke_test(vmap.at("blocks-dir").as<bfs::path>());
          return 0;
+      }
+      if (blog.fix_irreversible_blocks) {
+          fix_irreversible_blocks(vmap.at("blocks-dir").as<bfs::path>());
+          return 0;
       }
       if (blog.trim_log) {
          if (blog.first_block == 0 && blog.last_block == std::numeric_limits<uint32_t>::max()) {

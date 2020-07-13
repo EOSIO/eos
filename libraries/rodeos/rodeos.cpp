@@ -314,6 +314,8 @@ void rodeos_filter::process(rodeos_db_snapshot& snapshot, const ship_protocol::g
 
 rodeos_query_handler::rodeos_query_handler(std::shared_ptr<rodeos_db_partition>         partition,
                                            std::shared_ptr<const wasm_ql::shared_state> shared_state)
-    : partition{ partition }, shared_state{ std::move(shared_state) }, state_cache{ this->shared_state } {}
+    : partition{ partition }, shared_state{ std::move(shared_state) }, state_cache{
+         std::make_shared<wasm_ql::thread_state_cache>(this->shared_state)
+      } {}
 
 } // namespace b1::rodeos

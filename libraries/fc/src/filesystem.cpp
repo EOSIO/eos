@@ -170,6 +170,8 @@ namespace fc {
   bool path::is_relative()const { return _p->is_relative(); }
   bool path::is_absolute()const { return _p->is_absolute(); }
 
+  bool path::empty() const { return _p->empty(); }
+
       directory_iterator::directory_iterator( const fc::path& p )
       :_p(p){}
 

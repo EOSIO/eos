@@ -1,7 +1,6 @@
 #include <eosio/chain/generated_transaction_object.hpp>
 #include <eosio/chain/resource_limits.hpp>
 #include <eosio/testing/tester.hpp>
-#include <eosio/testing/tester_network.hpp>
 
 #include <fc/variant_object.hpp>
 
