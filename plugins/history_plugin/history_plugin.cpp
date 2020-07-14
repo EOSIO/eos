@@ -352,7 +352,7 @@ namespace eosio {
          db.add_index<public_key_history_multi_index>();
 
          my->applied_transaction_connection.emplace(
-               chain.applied_transaction.connect( [&]( std::tuple<const transaction_trace_ptr&, const signed_transaction&> t ) {
+               chain.applied_transaction.connect( [&]( std::tuple<const transaction_trace_ptr&, const packed_transaction_ptr&> t ) {
                   my->on_applied_transaction( std::get<0>(t) );
                } ));
       } FC_LOG_AND_RETHROW()
@@ -498,7 +498,13 @@ namespace eosio {
                         auto &pt = receipt.trx.get<packed_transaction>();
                         if (pt.id() == result.id) {
                             fc::mutable_variant_object r("receipt", receipt);
-                            r("trx", chain.to_variant_with_abi(pt.get_signed_transaction(), abi_serializer::create_yield_function( abi_serializer_max_time )));
+                            fc::variant v = chain.to_variant_with_abi(pt.get_transaction(), abi_serializer::create_yield_function( abi_serializer_max_time ));
+                            fc::mutable_variant_object tmp(v.get_object());
+                            const auto* sigs = pt.get_signatures();
+                            tmp("signatures", sigs != nullptr ? *sigs : vector<signature_type>());
+                            const auto* context_free_data = pt.get_context_free_data();
+                            tmp("context_free_data", context_free_data != nullptr ? *context_free_data : vector<bytes>());
+                            r("trx", std::move(tmp) );
                             result.trx = move(r);
                             break;
                         }
@@ -526,7 +532,13 @@ namespace eosio {
                         result.block_num = *p.block_num_hint;
                         result.block_time = blk->timestamp;
                         fc::mutable_variant_object r("receipt", receipt);
-                        r("trx", chain.to_variant_with_abi(pt.get_signed_transaction(), abi_serializer::create_yield_function( abi_serializer_max_time )));
+                        fc::variant v = chain.to_variant_with_abi(pt.get_transaction(), abi_serializer::create_yield_function( abi_serializer_max_time ));
+                        fc::mutable_variant_object tmp(v.get_object());
+                        const auto* sigs = pt.get_signatures();
+                        tmp("signatures", sigs != nullptr ? *sigs : vector<signature_type>());
+                        const auto* context_free_data = pt.get_context_free_data();
+                        tmp("context_free_data", context_free_data != nullptr ? *context_free_data : vector<bytes>());
+                        r("trx", std::move(tmp) );
                         result.trx = move(r);
                         found = true;
                         break;

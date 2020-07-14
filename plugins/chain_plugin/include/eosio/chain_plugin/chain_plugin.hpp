@@ -618,7 +618,7 @@ public:
    read_write(controller& db, const fc::microseconds& abi_serializer_max_time, bool api_accept_transactions);
    void validate() const;
 
-   using push_block_params = chain::signed_block;
+   using push_block_params = chain::signed_block_v0;
    using push_block_results = empty;
    void push_block(push_block_params&& params, chain::plugin_interface::next_function<push_block_results> next);
 
@@ -731,8 +731,6 @@ public:
 
    bool accept_block( const chain::signed_block_ptr& block, const chain::block_id_type& id );
    void accept_transaction(const chain::packed_transaction_ptr& trx, chain::plugin_interface::next_function<chain::transaction_trace_ptr> next);
-
-   bool block_is_on_preferred_chain(const chain::block_id_type& block_id);
 
    static bool recover_reversible_blocks( const fc::path& db_dir,
                                           uint32_t cache_size,

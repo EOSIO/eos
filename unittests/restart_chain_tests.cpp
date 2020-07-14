@@ -10,6 +10,9 @@
 
 #include <contracts.hpp>
 #include <snapshots.hpp>
+#include <boost/iostreams/device/mapped_file.hpp>
+#include <fc/io/cfile.hpp>
+#include "test_cfd_transaction.hpp"
 
 using namespace eosio;
 using namespace testing;
@@ -27,30 +30,6 @@ void remove_existing_states(controller::config& config) {
    remove_all(state_path);
    fc::create_directories(state_path);
 }
-
-struct dummy_action {
-   static eosio::chain::name get_name() { return N(dummyaction); }
-   static eosio::chain::name get_account() { return N(testapi); }
-
-   char     a; // 1
-   uint64_t b; // 8
-   int32_t  c; // 4
-};
-
-struct cf_action {
-   static eosio::chain::name get_name() { return N(cfaction); }
-   static eosio::chain::name get_account() { return N(testapi); }
-
-   uint32_t payload = 100;
-   uint32_t cfd_idx = 0; // context free data index
-};
-
-FC_REFLECT(dummy_action, (a)(b)(c))
-FC_REFLECT(cf_action, (payload)(cfd_idx))
-
-#define DUMMY_ACTION_DEFAULT_A 0x45
-#define DUMMY_ACTION_DEFAULT_B 0xab11cd1244556677
-#define DUMMY_ACTION_DEFAULT_C 0x7451ae12
 
 class replay_tester : public base_tester {
  public:
@@ -77,6 +56,105 @@ class replay_tester : public base_tester {
    signed_block_ptr finish_block() override { return _finish_block(); }
 
    bool validate() { return true; }
+};
+
+struct restart_from_block_log_test_fixture {
+   tester   chain;
+   uint32_t cutoff_block_num;
+   bool     fix_irreversible_blocks = false;
+   restart_from_block_log_test_fixture() {
+      chain.create_account(N(replay1));
+      chain.produce_blocks(1);
+      chain.create_account(N(replay2));
+      chain.produce_blocks(1);
+      chain.create_account(N(replay3));
+      chain.produce_blocks(1);
+      auto cutoff_block = chain.produce_block();
+      cutoff_block_num  = cutoff_block->block_num();
+      chain.produce_blocks(10);
+
+      BOOST_REQUIRE_NO_THROW(chain.control->get_account(N(replay1)));
+      BOOST_REQUIRE_NO_THROW(chain.control->get_account(N(replay2)));
+      BOOST_REQUIRE_NO_THROW(chain.control->get_account(N(replay3)));
+
+      chain.close();
+   }
+   ~restart_from_block_log_test_fixture() {
+      controller::config copied_config      = chain.get_config();
+      copied_config.fix_irreversible_blocks = this->fix_irreversible_blocks;
+      auto genesis                          = chain::block_log::extract_genesis_state(chain.get_config().blocks_dir);
+      BOOST_REQUIRE(genesis);
+
+      // remove the state files to make sure we are starting from block log
+      remove_existing_states(copied_config);
+      tester from_block_log_chain(copied_config, *genesis);
+      BOOST_REQUIRE_NO_THROW(from_block_log_chain.control->get_account(N(replay1)));
+      BOOST_REQUIRE_NO_THROW(from_block_log_chain.control->get_account(N(replay2)));
+      BOOST_REQUIRE_NO_THROW(from_block_log_chain.control->get_account(N(replay3)));
+   }
+};
+
+struct light_validation_restart_from_block_log_test_fixture {
+   tester chain;
+   eosio::chain::transaction_trace_ptr trace;
+   light_validation_restart_from_block_log_test_fixture()
+       : chain(setup_policy::full) {
+
+      deploy_test_api(chain);
+      trace = push_test_cfd_transaction(chain);
+      chain.produce_blocks(10);
+
+      BOOST_REQUIRE(trace->receipt);
+      BOOST_CHECK_EQUAL(trace->receipt->status, transaction_receipt::executed);
+      BOOST_CHECK_EQUAL(2, trace->action_traces.size());
+
+      BOOST_CHECK(trace->action_traces.at(0).context_free);            // cfa
+      BOOST_CHECK_EQUAL("test\n", trace->action_traces.at(0).console); // cfa executed
+
+      BOOST_CHECK(!trace->action_traces.at(1).context_free); // non-cfa
+      BOOST_CHECK_EQUAL("", trace->action_traces.at(1).console);
+
+      chain.close();
+   }
+
+   ~light_validation_restart_from_block_log_test_fixture() {
+      controller::config copied_config = chain.get_config();
+      auto               genesis       = chain::block_log::extract_genesis_state(chain.get_config().blocks_dir);
+      BOOST_REQUIRE(genesis);
+
+      // remove the state files to make sure we are starting from block log
+      remove_existing_states(copied_config);
+
+      transaction_trace_ptr other_trace;
+
+      replay_tester from_block_log_chain(copied_config, *genesis,
+                                         [&](std::tuple<const transaction_trace_ptr&, const packed_transaction_ptr&> x) {
+                                            auto& t = std::get<0>(x);
+                                            if (t && t->id == trace->id) {
+                                               other_trace = t;
+                                            }
+                                         });
+
+      BOOST_REQUIRE(other_trace);
+      BOOST_REQUIRE(other_trace->receipt);
+      BOOST_CHECK_EQUAL(other_trace->receipt->status, transaction_receipt::executed);
+      BOOST_CHECK(*trace->receipt == *other_trace->receipt);
+      BOOST_CHECK_EQUAL(2, other_trace->action_traces.size());
+
+      BOOST_CHECK(other_trace->action_traces.at(0).context_free);      // cfa
+      BOOST_CHECK_EQUAL("", other_trace->action_traces.at(0).console); // cfa not executed for replay
+      BOOST_CHECK_EQUAL(trace->action_traces.at(0).receipt->global_sequence,
+                        other_trace->action_traces.at(0).receipt->global_sequence);
+      BOOST_CHECK_EQUAL(trace->action_traces.at(0).receipt->digest(),
+                        other_trace->action_traces.at(0).receipt->digest());
+
+      BOOST_CHECK(!other_trace->action_traces.at(1).context_free); // non-cfa
+      BOOST_CHECK_EQUAL("", other_trace->action_traces.at(1).console);
+      BOOST_CHECK_EQUAL(trace->action_traces.at(1).receipt->global_sequence,
+                        other_trace->action_traces.at(1).receipt->global_sequence);
+      BOOST_CHECK_EQUAL(trace->action_traces.at(1).receipt->digest(),
+                        other_trace->action_traces.at(1).receipt->digest());
+   }
 };
 
 BOOST_AUTO_TEST_SUITE(restart_chain_tests)
@@ -134,104 +212,339 @@ BOOST_AUTO_TEST_CASE(test_restart_with_different_chain_id) {
                            fc_exception_message_starts_with("chain ID in state "));
 }
 
-BOOST_AUTO_TEST_CASE(test_restart_from_block_log) {
-   tester chain;
-
-   chain.create_account(N(replay1));
-   chain.produce_blocks(1);
-   chain.create_account(N(replay2));
-   chain.produce_blocks(1);
-   chain.create_account(N(replay3));
-   chain.produce_blocks(1);
-
-   BOOST_REQUIRE_NO_THROW(chain.control->get_account(N(replay1)));
-   BOOST_REQUIRE_NO_THROW(chain.control->get_account(N(replay2)));
-   BOOST_REQUIRE_NO_THROW(chain.control->get_account(N(replay3)));
-
-   chain.close();
-
-   controller::config copied_config = chain.get_config();
-   auto               genesis       = chain::block_log::extract_genesis_state(chain.get_config().blocks_dir);
-   BOOST_REQUIRE(genesis);
-
-   // remove the state files to make sure we are starting from block log
-   remove_existing_states(copied_config);
-
-   tester from_block_log_chain(copied_config, *genesis);
-
-   BOOST_REQUIRE_NO_THROW(from_block_log_chain.control->get_account(N(replay1)));
-   BOOST_REQUIRE_NO_THROW(from_block_log_chain.control->get_account(N(replay2)));
-   BOOST_REQUIRE_NO_THROW(from_block_log_chain.control->get_account(N(replay3)));
+BOOST_FIXTURE_TEST_CASE(test_restart_from_block_log, restart_from_block_log_test_fixture) {
+   BOOST_REQUIRE_NO_THROW(block_log::smoke_test(chain.get_config().blocks_dir, 1));
 }
 
-BOOST_AUTO_TEST_CASE(test_light_validation_restart_from_block_log) {
-   tester chain(setup_policy::full);
+BOOST_FIXTURE_TEST_CASE(test_restart_from_trimmed_block_log, restart_from_block_log_test_fixture) {
+   auto& config = chain.get_config();
+   auto blocks_path = config.blocks_dir;
+   remove_all(blocks_path/"reversible");
+   BOOST_REQUIRE_NO_THROW(block_log::trim_blocklog_end(config.blocks_dir, cutoff_block_num));
+   block_log log(chain.get_config().blocks_dir);
+   BOOST_CHECK(log.head()->block_num() == cutoff_block_num);
+   BOOST_CHECK(fc::file_size(blocks_path / "blocks.index") == cutoff_block_num * sizeof(uint64_t));
+}
 
-   chain.create_account(N(testapi));
-   chain.create_account(N(dummy));
-   chain.produce_block();
-   chain.set_code(N(testapi), contracts::test_api_wasm());
-   chain.produce_block();
+BOOST_FIXTURE_TEST_CASE(test_light_validation_restart_from_block_log, light_validation_restart_from_block_log_test_fixture) {
+}
 
-   cf_action          cfa;
-   signed_transaction trx;
-   action             act({}, cfa);
-   trx.context_free_actions.push_back(act);
-   trx.context_free_data.emplace_back(fc::raw::pack<uint32_t>(100)); // verify payload matches context free data
-   trx.context_free_data.emplace_back(fc::raw::pack<uint32_t>(200));
-   // add a normal action along with cfa
-   dummy_action da = {DUMMY_ACTION_DEFAULT_A, DUMMY_ACTION_DEFAULT_B, DUMMY_ACTION_DEFAULT_C};
-   action       act1(vector<permission_level>{{N(testapi), config::active_name}}, da);
-   trx.actions.push_back(act1);
-   chain.set_transaction_headers(trx);
-   // run normal passing case
-   auto sigs  = trx.sign(chain.get_private_key(N(testapi), "active"), chain.control->get_chain_id());
-   auto trace = chain.push_transaction(trx);
-   chain.produce_block();
+BOOST_FIXTURE_TEST_CASE(test_light_validation_restart_from_block_log_with_pruned_trx, light_validation_restart_from_block_log_test_fixture) {
+   const auto& blocks_dir = chain.get_config().blocks_dir;
+   block_log blog(blocks_dir);
+   std::vector<transaction_id_type> ids{trace->id};
+   BOOST_CHECK(blog.prune_transactions(trace->block_num, ids) == 1);
+   BOOST_CHECK(ids.empty());
+   BOOST_REQUIRE_NO_THROW(block_log::repair_log(blocks_dir));
+}
 
-   BOOST_REQUIRE(trace->receipt);
-   BOOST_CHECK_EQUAL(trace->receipt->status, transaction_receipt::executed);
-   BOOST_CHECK_EQUAL(2, trace->action_traces.size());
+BOOST_AUTO_TEST_CASE(test_split_log) {
+   namespace bfs = boost::filesystem;
+   fc::temp_directory temp_dir;
 
-   BOOST_CHECK(trace->action_traces.at(0).context_free); // cfa
-   BOOST_CHECK_EQUAL("test\n", trace->action_traces.at(0).console); // cfa executed
+   tester chain(
+         temp_dir,
+         [](controller::config& config) {
+            config.blocks_log_stride        = 20;
+            config.max_retained_block_files = 5;
+         },
+         true);
+   chain.produce_blocks(150);
 
-   BOOST_CHECK(!trace->action_traces.at(1).context_free); // non-cfa
-   BOOST_CHECK_EQUAL("", trace->action_traces.at(1).console);
+   auto blocks_dir = chain.get_config().blocks_dir;
+   auto blocks_archive_dir = chain.get_config().blocks_dir / chain.get_config().blocks_archive_dir;
 
-   chain.close();
+   BOOST_CHECK(bfs::exists( blocks_archive_dir / "blocks-1-20.log" ));
+   BOOST_CHECK(bfs::exists( blocks_archive_dir / "blocks-1-20.index" ));
+   BOOST_CHECK(bfs::exists( blocks_archive_dir / "blocks-21-40.log" ));
+   BOOST_CHECK(bfs::exists( blocks_archive_dir / "blocks-21-40.index" ));
 
+   BOOST_CHECK(bfs::exists( blocks_dir / "blocks-41-60.log" ));
+   BOOST_CHECK(bfs::exists( blocks_dir / "blocks-41-60.index" ));
+   BOOST_CHECK(bfs::exists( blocks_dir / "blocks-61-80.log" ));
+   BOOST_CHECK(bfs::exists( blocks_dir / "blocks-61-80.index" ));
+   BOOST_CHECK(bfs::exists( blocks_dir / "blocks-81-100.log" ));
+   BOOST_CHECK(bfs::exists( blocks_dir / "blocks-81-100.index" ));
+   BOOST_CHECK(bfs::exists( blocks_dir / "blocks-101-120.log" ));
+   BOOST_CHECK(bfs::exists( blocks_dir / "blocks-101-120.index" ));
+   BOOST_CHECK(bfs::exists( blocks_dir / "blocks-121-140.log" ));
+   BOOST_CHECK(bfs::exists( blocks_dir / "blocks-121-140.index" ));
+
+   BOOST_CHECK( ! chain.control->fetch_block_by_number(40) );
+   
+   BOOST_CHECK( chain.control->fetch_block_by_number(81)->block_num() == 81 );
+   BOOST_CHECK( chain.control->fetch_block_by_number(90)->block_num() == 90 );
+   BOOST_CHECK( chain.control->fetch_block_by_number(100)->block_num() == 100 );
+
+   BOOST_CHECK( chain.control->fetch_block_by_number(41)->block_num() == 41 );
+   BOOST_CHECK( chain.control->fetch_block_by_number(50)->block_num() == 50 );
+   BOOST_CHECK( chain.control->fetch_block_by_number(60)->block_num() == 60 );
+
+   BOOST_CHECK( chain.control->fetch_block_by_number(121)->block_num() == 121 );
+   BOOST_CHECK( chain.control->fetch_block_by_number(130)->block_num() == 130 );
+   BOOST_CHECK( chain.control->fetch_block_by_number(140)->block_num() == 140 );
+
+   BOOST_CHECK( chain.control->fetch_block_by_number(145)->block_num() == 145);
+
+   BOOST_CHECK( ! chain.control->fetch_block_by_number(160));
+}
+
+BOOST_AUTO_TEST_CASE(test_split_log_no_archive) {
+
+   namespace bfs = boost::filesystem;
+   fc::temp_directory temp_dir;
+
+   tester chain(
+         temp_dir,
+         [](controller::config& config) {
+            config.blocks_archive_dir       = "";
+            config.blocks_log_stride        = 10;
+            config.max_retained_block_files = 5;
+         },
+         true);
+   chain.produce_blocks(75);
+
+   auto blocks_dir = chain.get_config().blocks_dir;
+   auto blocks_archive_dir = chain.get_config().blocks_dir / chain.get_config().blocks_archive_dir;
+
+   BOOST_CHECK(!bfs::exists( blocks_archive_dir / "blocks-1-10.log" ));
+   BOOST_CHECK(!bfs::exists( blocks_archive_dir / "blocks-1-10.index" ));
+   BOOST_CHECK(!bfs::exists( blocks_archive_dir / "blocks-11-20.log" ));
+   BOOST_CHECK(!bfs::exists( blocks_archive_dir / "blocks-11-20.index" ));
+   BOOST_CHECK(!bfs::exists( blocks_dir / "blocks-1-10.log" ));
+   BOOST_CHECK(!bfs::exists( blocks_dir / "blocks-1-10.index" ));
+   BOOST_CHECK(!bfs::exists( blocks_dir / "blocks-11-20.log" ));
+   BOOST_CHECK(!bfs::exists( blocks_dir / "blocks-11-20.index" ));
+
+   BOOST_CHECK(bfs::exists( blocks_dir / "blocks-21-30.log" ));
+   BOOST_CHECK(bfs::exists( blocks_dir / "blocks-21-30.index" ));
+   BOOST_CHECK(bfs::exists( blocks_dir / "blocks-31-40.log" ));
+   BOOST_CHECK(bfs::exists( blocks_dir / "blocks-31-40.index" ));
+   BOOST_CHECK(bfs::exists( blocks_dir / "blocks-41-50.log" ));
+   BOOST_CHECK(bfs::exists( blocks_dir / "blocks-41-50.index" ));
+   BOOST_CHECK(bfs::exists( blocks_dir / "blocks-51-60.log" ));
+   BOOST_CHECK(bfs::exists( blocks_dir / "blocks-51-60.index" ));
+   BOOST_CHECK(bfs::exists( blocks_dir / "blocks-61-70.log" ));
+   BOOST_CHECK(bfs::exists( blocks_dir / "blocks-61-70.index" ));
+
+   BOOST_CHECK( ! chain.control->fetch_block_by_number(10));
+   BOOST_CHECK( chain.control->fetch_block_by_number(70));
+   BOOST_CHECK( ! chain.control->fetch_block_by_number(80));
+}
+
+void split_log_replay(uint32_t replay_max_retained_block_files) {
+   namespace bfs = boost::filesystem;
+   fc::temp_directory temp_dir;
+
+   const uint32_t stride = 20;
+
+   tester chain(
+         temp_dir,
+         [](controller::config& config) {
+            config.blocks_log_stride        = stride;
+            config.max_retained_block_files = 10;
+         },
+         true);
+   chain.produce_blocks(150);
+   
    controller::config copied_config = chain.get_config();
    auto               genesis       = chain::block_log::extract_genesis_state(chain.get_config().blocks_dir);
    BOOST_REQUIRE(genesis);
 
+   chain.close();
+
    // remove the state files to make sure we are starting from block log
    remove_existing_states(copied_config);
-   transaction_trace_ptr other_trace;
+   // we need to remove the reversible blocks so that new blocks can be produced from the new chain
+   bfs::remove_all(copied_config.blocks_dir/"reversible");
+   copied_config.blocks_log_stride        = stride;
+   copied_config.max_retained_block_files = replay_max_retained_block_files;
+   tester from_block_log_chain(copied_config, *genesis);
+   BOOST_CHECK( from_block_log_chain.control->fetch_block_by_number(1)->block_num() == 1);
+   BOOST_CHECK( from_block_log_chain.control->fetch_block_by_number(75)->block_num() == 75);
+   BOOST_CHECK( from_block_log_chain.control->fetch_block_by_number(100)->block_num() == 100);
+   BOOST_CHECK( from_block_log_chain.control->fetch_block_by_number(150)->block_num() == 150);
 
-   replay_tester from_block_log_chain(copied_config, *genesis,
-                                      [&](std::tuple<const transaction_trace_ptr&, const signed_transaction&> x) {
-                                         auto& t = std::get<0>(x);
-                                         if (t && t->id == trace->id) {
-                                            other_trace = t;
-                                         }
-                                      });
+   // produce new blocks to cross the blocks_log_stride boundary
+   from_block_log_chain.produce_blocks(stride);
 
-   BOOST_REQUIRE(other_trace);
-   BOOST_REQUIRE(other_trace->receipt);
-   BOOST_CHECK_EQUAL(other_trace->receipt->status, transaction_receipt::executed);
-   BOOST_CHECK(*trace->receipt == *other_trace->receipt);
-   BOOST_CHECK_EQUAL(2, other_trace->action_traces.size());
+   const auto previous_chunk_end_block_num = (from_block_log_chain.control->head_block_num() / stride) * stride;
+   const auto num_removed_blocks = std::min(stride * replay_max_retained_block_files, previous_chunk_end_block_num);
+   const auto min_retained_block_number = previous_chunk_end_block_num - num_removed_blocks + 1;
 
-   BOOST_CHECK(other_trace->action_traces.at(0).context_free); // cfa
-   BOOST_CHECK_EQUAL("", other_trace->action_traces.at(0).console); // cfa not executed for replay
-   BOOST_CHECK_EQUAL(trace->action_traces.at(0).receipt->global_sequence, other_trace->action_traces.at(0).receipt->global_sequence);
-   BOOST_CHECK_EQUAL(trace->action_traces.at(0).receipt->digest(), other_trace->action_traces.at(0).receipt->digest());
+   if (min_retained_block_number > 1) {
+      // old blocks beyond the max_retained_block_files will no longer be available
+      BOOST_CHECK(! from_block_log_chain.control->fetch_block_by_number(min_retained_block_number - 1));
+   }
+   BOOST_CHECK( from_block_log_chain.control->fetch_block_by_number(min_retained_block_number)->block_num() == min_retained_block_number);
+}
 
-   BOOST_CHECK(!other_trace->action_traces.at(1).context_free); // non-cfa
-   BOOST_CHECK_EQUAL("", other_trace->action_traces.at(1).console);
-   BOOST_CHECK_EQUAL(trace->action_traces.at(1).receipt->global_sequence, other_trace->action_traces.at(1).receipt->global_sequence);
-   BOOST_CHECK_EQUAL(trace->action_traces.at(1).receipt->digest(), other_trace->action_traces.at(1).receipt->digest());
+BOOST_AUTO_TEST_CASE(test_split_log_replay_retained_block_files_10) {
+   split_log_replay(10);
+}
+
+BOOST_AUTO_TEST_CASE(test_split_log_replay_retained_block_files_5) {
+   split_log_replay(5);
+}
+
+BOOST_AUTO_TEST_CASE(test_split_log_replay_retained_block_files_1) {
+   split_log_replay(1);
+}
+
+BOOST_AUTO_TEST_CASE(test_split_log_replay_retained_block_files_0) {
+   split_log_replay(0);
+}
+
+BOOST_AUTO_TEST_CASE(test_restart_without_blocks_log_file) {
+
+   namespace bfs = boost::filesystem;
+   fc::temp_directory temp_dir;
+
+   const uint32_t stride = 20;
+
+   tester chain(
+         temp_dir,
+         [](controller::config& config) {
+            config.blocks_log_stride        = stride;
+            config.max_retained_block_files = 10;
+         },
+         true);
+   chain.produce_blocks(160);
+   
+   controller::config copied_config = chain.get_config();
+   auto               genesis       = chain::block_log::extract_genesis_state(chain.get_config().blocks_dir);
+   BOOST_REQUIRE(genesis);
+
+   chain.close();
+
+   // remove the state files to make sure we are starting from block log
+   remove_existing_states(copied_config);
+   // we need to remove the reversible blocks so that new blocks can be produced from the new chain
+   bfs::remove_all(copied_config.blocks_dir/"reversible");
+   bfs::remove(copied_config.blocks_dir/"blocks.log");
+   bfs::remove(copied_config.blocks_dir/"blocks.index");
+   copied_config.blocks_log_stride        = stride;
+   copied_config.max_retained_block_files = 10;
+   tester from_block_log_chain(copied_config, *genesis);
+   BOOST_CHECK( from_block_log_chain.control->fetch_block_by_number(1)->block_num() == 1);
+   BOOST_CHECK( from_block_log_chain.control->fetch_block_by_number(75)->block_num() == 75);
+   BOOST_CHECK( from_block_log_chain.control->fetch_block_by_number(100)->block_num() == 100);
+   BOOST_CHECK( from_block_log_chain.control->fetch_block_by_number(160)->block_num() == 160);
+
+   from_block_log_chain.produce_blocks(10);
+}
+
+BOOST_FIXTURE_TEST_CASE(auto_fix_with_incomplete_head,restart_from_block_log_test_fixture) {
+   auto& config = chain.get_config();
+   auto blocks_path = config.blocks_dir;
+   // write a few random bytes to block log indicating the last block entry is incomplete
+   fc::cfile logfile;
+   logfile.set_file_path(config.blocks_dir / "blocks.log");
+   logfile.open("ab");
+   const char random_data[] = "12345678901231876983271649837";
+   logfile.write(random_data, sizeof(random_data));
+   fix_irreversible_blocks = true;
+}
+
+BOOST_FIXTURE_TEST_CASE(auto_fix_with_corrupted_index,restart_from_block_log_test_fixture) {
+   auto& config = chain.get_config();
+   auto blocks_path = config.blocks_dir;
+   // write a few random index to block log indicating the index is corrupted
+   fc::cfile indexfile;
+   indexfile.set_file_path(config.blocks_dir / "blocks.index");
+   indexfile.open("ab");
+   uint64_t data = UINT64_MAX;
+   indexfile.write(reinterpret_cast<const char*>(&data), sizeof(data));
+   fix_irreversible_blocks = true;
+}
+
+BOOST_FIXTURE_TEST_CASE(auto_fix_with_corrupted_log_and_index,restart_from_block_log_test_fixture) {
+   auto& config = chain.get_config();
+   auto blocks_path = config.blocks_dir;
+   // write a few random bytes to block log and index
+   fc::cfile indexfile;
+   indexfile.set_file_path(config.blocks_dir / "blocks.index");
+   indexfile.open("ab");
+   const char random_index[] = "1234";
+   indexfile.write(reinterpret_cast<const char*>(&random_index), sizeof(random_index));
+
+   fc::cfile logfile;
+   logfile.set_file_path(config.blocks_dir / "blocks.log");
+   logfile.open("ab");
+   const char random_data[] = "12345678901231876983271649837";
+   logfile.write(random_data, sizeof(random_data));
+
+   fix_irreversible_blocks = true;
+}
+
+struct blocklog_version_setter {
+   blocklog_version_setter(uint32_t ver) { block_log::set_version(ver); };
+   ~blocklog_version_setter() { block_log::set_version(block_log::max_supported_version); };
+};
+
+BOOST_AUTO_TEST_CASE(test_split_from_v1_log) {
+   namespace bfs = boost::filesystem;
+   fc::temp_directory temp_dir;
+   blocklog_version_setter set_version(1); 
+   tester chain(
+         temp_dir,
+         [](controller::config& config) {
+            config.blocks_log_stride        = 20;
+            config.max_retained_block_files = 5;
+         },
+         true);
+   chain.produce_blocks(75);
+
+   BOOST_CHECK( chain.control->fetch_block_by_number(1)->block_num() == 1 );
+   BOOST_CHECK( chain.control->fetch_block_by_number(21)->block_num() == 21 );
+   BOOST_CHECK( chain.control->fetch_block_by_number(41)->block_num() == 41 );
+   BOOST_CHECK( chain.control->fetch_block_by_number(75)->block_num() == 75 );
+}
+
+void trim_blocklog_front(uint32_t version) {
+   blocklog_version_setter set_version(version); 
+   tester chain;
+   chain.produce_blocks(10);
+   chain.produce_blocks(20);
+   chain.close();
+
+   namespace bfs = boost::filesystem;
+
+   auto  blocks_dir = chain.get_config().blocks_dir;
+   auto  old_index_size = fc::file_size(blocks_dir / "blocks.index");
+
+   scoped_temp_path temp1, temp2;
+   boost::filesystem::create_directory(temp1.path);
+   bfs::copy(blocks_dir / "blocks.log", temp1.path / "blocks.log");
+   bfs::copy(blocks_dir / "blocks.index", temp1.path / "blocks.index");
+   BOOST_REQUIRE_NO_THROW(block_log::trim_blocklog_front(temp1.path, temp2.path, 10));
+   BOOST_REQUIRE_NO_THROW(block_log::smoke_test(temp1.path, 1));
+
+   block_log old_log(blocks_dir);
+   block_log new_log(temp1.path);
+   // double check if the version has been set to the desired version
+   BOOST_CHECK(old_log.version() == version); 
+   BOOST_CHECK(new_log.first_block_num() == 10);
+   BOOST_CHECK(new_log.head()->block_num() == old_log.head()->block_num());
+
+   int num_blocks_trimmed = 10 - 1;
+   BOOST_CHECK(fc::file_size(temp1.path / "blocks.index") == old_index_size - sizeof(uint64_t) * num_blocks_trimmed);
+}
+
+BOOST_AUTO_TEST_CASE(test_trim_blocklog_front) { 
+   trim_blocklog_front(block_log::max_supported_version); 
+}
+
+BOOST_AUTO_TEST_CASE(test_trim_blocklog_front_v1) {
+   trim_blocklog_front(1);
+}
+
+BOOST_AUTO_TEST_CASE(test_trim_blocklog_front_v2) {
+   trim_blocklog_front(2);
+}
+
+BOOST_AUTO_TEST_CASE(test_trim_blocklog_front_v3) {
+   trim_blocklog_front(3);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

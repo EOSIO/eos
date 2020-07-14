@@ -14,18 +14,6 @@ else
     npm install
 fi
 cd $GIT_ROOT/build
-# mongoDB
-if [[ ! -z "$(pgrep mongod)" ]]; then
-    echo "+++ $([[ "$BUILDKITE" == 'true' ]] && echo ':leaves: ')Killing old MongoDB"
-    $(pgrep mongod | xargs kill -9) || :
-fi
-# do not start mongod if it does not exist
-if [[ -x $(command -v mongod) ]]; then
-    echo "+++ $([[ "$BUILDKITE" == 'true' ]] && echo ':leaves: ')Starting new MongoDB"
-    [[ ! -d ~/data/mongodb && ! -d mongodata ]] && mkdir mongodata
-    echo "$ mongod --fork --logpath $(pwd)/mongod.log $([[ -d ~/data/mongodb ]] && echo '--dbpath ~/data/mongodb' || echo "--dbpath $(pwd)/mongodata") $(if [[ -f ~/etc/mongod.conf ]]; then echo '-f ~/etc/mongod.conf'; elif [[ -f /usr/local/etc/mongod.conf ]]; then echo '-f /usr/local/etc/mongod.conf'; fi)"
-    eval mongod --fork --logpath $(pwd)/mongod.log $([[ -d ~/data/mongodb ]] && echo '--dbpath ~/data/mongodb' || echo "--dbpath $(pwd)/mongodata") $(if [[ -f ~/etc/mongod.conf ]]; then echo '-f ~/etc/mongod.conf'; elif [[ -f /usr/local/etc/mongod.conf ]]; then echo '-f /usr/local/etc/mongod.conf'; fi)
-fi
 # tests
 if [[ -z "$TEST" ]]; then # run all serial tests
     # count tests
@@ -51,17 +39,20 @@ else # run specific serial test
         echo "$TEST found."
         # run tests
         set +e # defer ctest error handling to end
-        echo "$ ctest -R ^$TEST$ --output-on-failure -T Test"
-        ctest -R ^$TEST$ --output-on-failure -T Test
+        echo "$ ctest -R ^$TEST$ -V -T Test > ctest-output.log 2>&1"
+        ctest -R ^$TEST$ -V -T Test > ctest-output.log 2>&1
         EXIT_STATUS=$?
+        if  [[ $EXIT_STATUS -ne 0 ]]; then
+            cat ctest-output.log
+            echo "$TEST FAILED - see ctest-output.log in archive"
+        else
+            echo "$TEST PASSED"
+        fi
+        grep "produced the following blocks late" ctest-output.log
         echo "Done running $TEST."
     else
         echo "+++ $([[ "$BUILDKITE" == 'true' ]] && echo ':no_entry: ')ERROR: No tests matching \"$TEST\" registered with ctest! Exiting..."
         EXIT_STATUS='1'
     fi
-fi
-if [[ ! -z "$(pgrep mongod)" ]]; then
-    echo "+++ $([[ "$BUILDKITE" == 'true' ]] && echo ':leaves: ')Killing MongoDB"
-    $(pgrep mongod | xargs kill -9) || :
 fi
 exit $EXIT_STATUS

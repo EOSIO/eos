@@ -71,7 +71,7 @@ Config Options for eosio::chain_plugin:
                                         application config dir)
   --checkpoint arg                      Pairs of [BLOCK_NUM,BLOCK_ID] that 
                                         should be enforced as checkpoints.
-  --wasm-runtime eos-vm|eos-vm-jit      Override default WASM runtime (wabt)
+  --wasm-runtime eos-vm|eos-vm-jit      Override default WASM runtime (eos-vm-jit)
   --eos-vm-oc-enable                    Enable optimized compilation in WASM
   --abi-serializer-max-time-ms arg (=15000)
                                         Override default maximum ABI 
@@ -167,6 +167,13 @@ Config Options for eosio::chain_plugin:
   --database-hugepage-path arg          Optional path for database hugepages 
                                         when in "locked" mode (may specify 
                                         multiple times)
+                                        
+  --max-nonprivileged-inline-action-size arg          
+                                        Sets the maximum limit for 
+                                        non-privileged inline actions. 
+                                        The default value is 4 KB 
+                                        and if this threshold is exceeded,
+                                        the transaction will subjectively fail.                                       
 ```
 
 ## Dependencies

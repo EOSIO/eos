@@ -78,7 +78,7 @@ BOOST_AUTO_TEST_CASE( fork_with_bad_block ) try {
                copy_b->action_mroot._hash[0] ^= 0x1ULL;
             } else if (j < i) {
                // link to a corrupted chain
-               copy_b->previous = fork.blocks.back()->id();
+               copy_b->previous = fork.blocks.back()->calculate_id();
             }
 
             // re-sign the block
@@ -87,7 +87,7 @@ BOOST_AUTO_TEST_CASE( fork_with_bad_block ) try {
             copy_b->producer_signature = remote.get_private_key(N(b), "active").sign(sig_digest);
 
             // add this new block to our corrupted block merkle
-            fork.block_merkle.append(copy_b->id());
+            fork.block_merkle.append(copy_b->calculate_id());
             fork.blocks.emplace_back(copy_b);
          } else {
             fork.blocks.emplace_back(b);
@@ -105,7 +105,7 @@ BOOST_AUTO_TEST_CASE( fork_with_bad_block ) try {
          for (size_t fidx = 0; fidx < fork.blocks.size() - 1; fidx++) {
             const auto& b = fork.blocks.at(fidx);
             // push the block only if its not known already
-            if (!bios.control->fetch_block_by_id(b->id())) {
+            if (!bios.control->fetch_block_by_id(b->calculate_id())) {
                bios.push_block(b);
             }
          }
@@ -266,7 +266,8 @@ BOOST_AUTO_TEST_CASE( forking ) try {
    wlog( "now push dan's block to c1 but first corrupt it so it is a bad block" );
    signed_block bad_block = std::move(*b);
    bad_block.action_mroot = bad_block.previous;
-   auto bad_block_bs = c.control->create_block_state_future( std::make_shared<signed_block>(std::move(bad_block)) );
+   auto bad_id = bad_block.calculate_id();
+   auto bad_block_bs = c.control->create_block_state_future( bad_id, std::make_shared<signed_block>(std::move(bad_block)) );
    c.control->abort_block();
    BOOST_REQUIRE_EXCEPTION(c.control->push_block( bad_block_bs, forked_branch_callback{}, trx_meta_cache_lookup{} ), fc::exception,
       [] (const fc::exception &ex)->bool {
@@ -362,7 +363,7 @@ BOOST_AUTO_TEST_CASE( validator_accepts_valid_blocks ) try {
 
    BOOST_REQUIRE( first_block );
    first_block->verify_signee();
-   BOOST_CHECK_EQUAL( first_block->header.id(), first_block->block->id() );
+   BOOST_CHECK_EQUAL( first_block->header.calculate_id(), first_block->block->calculate_id() );
    BOOST_CHECK( first_block->header.producer_signature == first_block->block->producer_signature );
 
    c.disconnect();
@@ -643,7 +644,7 @@ BOOST_AUTO_TEST_CASE( push_block_returns_forked_transactions ) try {
                                       .active   = active_auth,
                                 });
       trx.expiration = c.control->head_block_time() + fc::seconds( 60 );
-      trx.set_reference_block( cb->id() );
+      trx.set_reference_block( cb->calculate_id() );
       trx.sign( get_private_key( config::system_account_name, "active" ), c.control->get_chain_id()  );
       trace1 = c.push_transaction( trx );
    }
@@ -660,7 +661,7 @@ BOOST_AUTO_TEST_CASE( push_block_returns_forked_transactions ) try {
                                       .active   = active_auth,
                                 });
       trx.expiration = c.control->head_block_time() + fc::seconds( 60 );
-      trx.set_reference_block( cb->id() );
+      trx.set_reference_block( cb->calculate_id() );
       trx.sign( get_private_key( config::system_account_name, "active" ), c.control->get_chain_id()  );
       trace2 = c.push_transaction( trx );
    }
@@ -676,7 +677,7 @@ BOOST_AUTO_TEST_CASE( push_block_returns_forked_transactions ) try {
                                       .active   = active_auth,
                                 });
       trx.expiration = c.control->head_block_time() + fc::seconds( 60 );
-      trx.set_reference_block( cb->id() );
+      trx.set_reference_block( cb->calculate_id() );
       trx.sign( get_private_key( config::system_account_name, "active" ), c.control->get_chain_id()  );
       trace3 = c.push_transaction( trx );
    }
@@ -692,7 +693,7 @@ BOOST_AUTO_TEST_CASE( push_block_returns_forked_transactions ) try {
                                       .active   = active_auth,
                                 });
       trx.expiration = c.control->head_block_time() + fc::seconds( 60 );
-      trx.set_reference_block( b->id() ); // tapos to dan's block should be rejected on fork switch
+      trx.set_reference_block( b->calculate_id() ); // tapos to dan's block should be rejected on fork switch
       trx.sign( get_private_key( config::system_account_name, "active" ), c.control->get_chain_id()  );
       trace4 = c.push_transaction( trx );
       BOOST_CHECK( trace4->receipt->status == transaction_receipt_header::executed );

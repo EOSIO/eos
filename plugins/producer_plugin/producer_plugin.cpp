@@ -6,6 +6,7 @@
 #include <eosio/chain/transaction_object.hpp>
 #include <eosio/chain/thread_utils.hpp>
 #include <eosio/chain/unapplied_transaction_queue.hpp>
+#include <eosio/resource_monitor_plugin/resource_monitor_plugin.hpp>
 
 #include <fc/io/json.hpp>
 #include <fc/log/logger_config.hpp>
@@ -16,7 +17,6 @@
 
 #include <iostream>
 #include <algorithm>
-#include <boost/algorithm/string.hpp>
 #include <boost/range/adaptor/map.hpp>
 #include <boost/function_output_iterator.hpp>
 #include <boost/multi_index_container.hpp>
@@ -65,8 +65,11 @@ using boost::signals2::scoped_connection;
 const fc::string logger_name("producer_plugin");
 fc::logger _log;
 
-const fc::string trx_trace_logger_name("transaction_tracing");
-fc::logger _trx_trace_log;
+const fc::string trx_successful_trace_logger_name("transaction_success_tracing");
+fc::logger       _trx_successful_trace_log;
+
+const fc::string trx_failed_trace_logger_name("transaction_failure_tracing");
+fc::logger       _trx_failed_trace_log;
 
 namespace eosio {
 
@@ -193,7 +196,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       bool     _production_enabled                 = false;
       bool     _pause_production                   = false;
 
-      using signature_provider_type = std::function<chain::signature_type(chain::digest_type)>;
+      using signature_provider_type = signature_provider_plugin::signature_provider_type;
       std::map<chain::public_key_type, signature_provider_type> _signature_providers;
       std::set<chain::account_name>                             _producers;
       boost::asio::deadline_timer                               _timer;
@@ -211,7 +214,6 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       uint32_t                                                  _max_block_net_usage_threshold_bytes = 0;
       int32_t                                                   _max_scheduled_transaction_time_per_block_ms = 0;
       fc::time_point                                            _irreversible_block_time;
-      fc::microseconds                                          _keosd_provider_timeout_us;
 
       std::vector<chain::digest_type>                           _protocol_features_to_activate;
       bool                                                      _protocol_features_signaled = false; // to mark whether it has been signaled in start_block
@@ -348,7 +350,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
             return false;
          }
 
-         const auto& id = block_id ? *block_id : block->id();
+         const auto& id = block_id ? *block_id : block->calculate_id();
          auto blk_num = block->block_num();
 
          fc_dlog(_log, "received incoming block ${n} ${id}", ("n", blk_num)("id", id));
@@ -361,7 +363,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          if( existing ) { return false; }
 
          // start processing of block
-         auto bsf = chain.create_block_state_future( block );
+         auto bsf = chain.create_block_state_future( id, block );
 
          // abort the pending block
          _unapplied_transactions.add_aborted( chain.abort_block() );
@@ -419,17 +421,26 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
 
          auto future = transaction_metadata::start_recover_keys( trx, _thread_pool->get_executor(),
                 chain.get_chain_id(), fc::microseconds( max_trx_cpu_usage ), chain.configured_subjective_signature_length_limit() );
-         boost::asio::post( _thread_pool->get_executor(), [self = this, future{std::move(future)}, persist_until_expired, next{std::move(next)}]() mutable {
+
+         auto trx_id = trx->id();
+         boost::asio::post(_thread_pool->get_executor(), [self = this, future{std::move(future)}, persist_until_expired,
+                                                          next{std::move(next)}, trx_id]() mutable {
             if( future.valid() ) {
                future.wait();
-               app().post( priority::low, [self, future{std::move(future)}, persist_until_expired, next{std::move( next )}]() mutable {
+               app().post( priority::low, [self, future{std::move(future)}, persist_until_expired, next{std::move( next )}, trx_id]() mutable {
+                  auto exception_handler = [&next, trx_id](fc::exception_ptr ex) {
+                    fc_dlog(_trx_failed_trace_log, "[TRX_TRACE] Speculative execution is REJECTING tx: ${txid} : ${why} ",
+                            ("txid", trx_id)("why",ex->what()));
+                     next(ex);
+                  };
                   try {
-                     if( !self->process_incoming_transaction_async( future.get(), persist_until_expired, std::move( next ) ) ) {
+                     auto result = future.get();
+                     if( !self->process_incoming_transaction_async( result, persist_until_expired, next ) ) {
                         if( self->_pending_block_mode == pending_block_mode::producing ) {
                            self->schedule_maybe_produce_block( true );
                         }
                      }
-                  } CATCH_AND_CALL(next);
+                  } CATCH_AND_CALL(exception_handler);
                } );
             }
          });
@@ -444,25 +455,25 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
             if (response.contains<fc::exception_ptr>()) {
                _transaction_ack_channel.publish(priority::low, std::pair<fc::exception_ptr, transaction_metadata_ptr>(response.get<fc::exception_ptr>(), trx));
                if (_pending_block_mode == pending_block_mode::producing) {
-                  fc_dlog(_trx_trace_log, "[TRX_TRACE] Block ${block_num} for producer ${prod} is REJECTING tx: ${txid} : ${why} ",
+                  fc_dlog(_trx_failed_trace_log, "[TRX_TRACE] Block ${block_num} for producer ${prod} is REJECTING tx: ${txid} : ${why} ",
                         ("block_num", chain.head_block_num() + 1)
-                        ("prod", chain.pending_block_producer())
+                        ("prod", get_pending_block_producer())
                         ("txid", trx->id())
                         ("why",response.get<fc::exception_ptr>()->what()));
                } else {
-                  fc_dlog(_trx_trace_log, "[TRX_TRACE] Speculative execution is REJECTING tx: ${txid} : ${why} ",
+                  fc_dlog(_trx_failed_trace_log, "[TRX_TRACE] Speculative execution is REJECTING tx: ${txid} : ${why} ",
                           ("txid", trx->id())
                           ("why",response.get<fc::exception_ptr>()->what()));
                }
             } else {
                _transaction_ack_channel.publish(priority::low, std::pair<fc::exception_ptr, transaction_metadata_ptr>(nullptr, trx));
                if (_pending_block_mode == pending_block_mode::producing) {
-                  fc_dlog(_trx_trace_log, "[TRX_TRACE] Block ${block_num} for producer ${prod} is ACCEPTING tx: ${txid}",
+                  fc_dlog(_trx_successful_trace_log, "[TRX_TRACE] Block ${block_num} for producer ${prod} is ACCEPTING tx: ${txid}",
                           ("block_num", chain.head_block_num() + 1)
-                          ("prod", chain.pending_block_producer())
+                          ("prod", get_pending_block_producer())
                           ("txid", trx->id()));
                } else {
-                  fc_dlog(_trx_trace_log, "[TRX_TRACE] Speculative execution is ACCEPTING tx: ${txid}",
+                  fc_dlog(_trx_successful_trace_log, "[TRX_TRACE] Speculative execution is ACCEPTING tx: ${txid}",
                           ("txid", trx->id()));
                }
             }
@@ -505,12 +516,12 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                if( exception_is_exhausted( *trace->except, deadline_is_subjective )) {
                   _unapplied_transactions.add_incoming( trx, persist_until_expired, next );
                   if( _pending_block_mode == pending_block_mode::producing ) {
-                     fc_dlog( _trx_trace_log, "[TRX_TRACE] Block ${block_num} for producer ${prod} COULD NOT FIT, tx: ${txid} RETRYING ",
+                     fc_dlog(_log, "[TRX_TRACE] Block ${block_num} for producer ${prod} COULD NOT FIT, tx: ${txid} RETRYING ",
                               ("block_num", chain.head_block_num() + 1)
-                              ("prod", chain.pending_block_producer())
+                              ("prod", get_pending_block_producer())
                               ("txid", trx->id()));
                   } else {
-                     fc_dlog( _trx_trace_log, "[TRX_TRACE] Speculative execution COULD NOT FIT tx: ${txid} RETRYING",
+                     fc_dlog(_log, "[TRX_TRACE] Speculative execution COULD NOT FIT tx: ${txid} RETRYING",
                               ("txid", trx->id()));
                   }
                   if( !exhausted )
@@ -546,6 +557,15 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
             return fc::microseconds(0);
          } else {
             return now - _irreversible_block_time;
+         }
+      }
+
+      account_name get_pending_block_producer() {
+         auto& chain = chain_plug->chain();
+         if (chain.is_building_block()) {
+            return chain.pending_block_producer();
+         } else {
+            return {};
          }
       }
 
@@ -621,15 +641,7 @@ void producer_plugin::set_program_options(
          ("signature-provider", boost::program_options::value<vector<string>>()->composing()->multitoken()->default_value(
                {default_priv_key.get_public_key().to_string() + "=KEY:" + default_priv_key.to_string()},
                 default_priv_key.get_public_key().to_string() + "=KEY:" + default_priv_key.to_string()),
-          "Key=Value pairs in the form <public-key>=<provider-spec>\n"
-          "Where:\n"
-          "   <public-key>    \tis a string form of a vaild EOSIO public key\n\n"
-          "   <provider-spec> \tis a string in the form <provider-type>:<data>\n\n"
-          "   <provider-type> \tis KEY, or KEOSD\n\n"
-          "   KEY:<data>      \tis a string form of a valid EOSIO private key which maps to the provided public key\n\n"
-          "   KEOSD:<data>    \tis the URL where keosd is available and the approptiate wallet(s) are unlocked")
-         ("keosd-provider-timeout", boost::program_options::value<int32_t>()->default_value(5),
-          "Limits the maximum time (in milliseconds) that is allowed for sending blocks to a keosd provider for signing")
+               app().get_plugin<signature_provider_plugin>().signature_provider_help_text())
          ("greylist-account", boost::program_options::value<vector<string>>()->composing()->multitoken(),
           "account that can not access to extended CPU/NET virtual resources")
          ("greylist-limit", boost::program_options::value<uint32_t>()->default_value(1000),
@@ -696,37 +708,6 @@ if( options.count(op_name) ) { \
    } \
 }
 
-static producer_plugin_impl::signature_provider_type
-make_key_signature_provider(const private_key_type& key) {
-   return [key]( const chain::digest_type& digest ) {
-      return key.sign(digest);
-   };
-}
-
-static producer_plugin_impl::signature_provider_type
-make_keosd_signature_provider(const std::shared_ptr<producer_plugin_impl>& impl, const string& url_str, const public_key_type pubkey) {
-   fc::url keosd_url;
-   if(boost::algorithm::starts_with(url_str, "unix://"))
-      //send the entire string after unix:// to http_plugin. It'll auto-detect which part
-      // is the unix socket path, and which part is the url to hit on the server
-      keosd_url = fc::url("unix", url_str.substr(7), ostring(), ostring(), ostring(), ostring(), ovariant_object(), fc::optional<uint16_t>());
-   else
-      keosd_url = fc::url(url_str);
-   std::weak_ptr<producer_plugin_impl> weak_impl = impl;
-
-   return [weak_impl, keosd_url, pubkey]( const chain::digest_type& digest ) {
-      auto impl = weak_impl.lock();
-      if (impl) {
-         fc::variant params;
-         fc::to_variant(std::make_pair(digest, pubkey), params);
-         auto deadline = impl->_keosd_provider_timeout_us.count() >= 0 ? fc::time_point::now() + impl->_keosd_provider_timeout_us : fc::time_point::maximum();
-         return app().get_plugin<http_client_plugin>().get_client().post_sync(keosd_url, params, deadline).as<chain::signature_type>();
-      } else {
-         return signature_type();
-      }
-   };
-}
-
 void producer_plugin::plugin_initialize(const boost::program_options::variables_map& options)
 { try {
    my->chain_plug = app().find_plugin<chain_plugin>();
@@ -748,7 +729,7 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
       {
          try {
             auto key_id_to_wif_pair = dejsonify<std::pair<public_key_type, private_key_type>>(key_id_to_wif_pair_string);
-            my->_signature_providers[key_id_to_wif_pair.first] = make_key_signature_provider(key_id_to_wif_pair.second);
+            my->_signature_providers[key_id_to_wif_pair.first] = app().get_plugin<signature_provider_plugin>().signature_provider_for_private_key(key_id_to_wif_pair.second);
             auto blanked_privkey = std::string(key_id_to_wif_pair.second.to_string().size(), '*' );
             wlog("\"private-key\" is DEPRECATED, use \"signature-provider=${pub}=KEY:${priv}\"", ("pub",key_id_to_wif_pair.first)("priv", blanked_privkey));
          } catch ( fc::exception& e ) {
@@ -761,31 +742,15 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
       const std::vector<std::string> key_spec_pairs = options["signature-provider"].as<std::vector<std::string>>();
       for (const auto& key_spec_pair : key_spec_pairs) {
          try {
-            auto delim = key_spec_pair.find("=");
-            EOS_ASSERT(delim != std::string::npos, plugin_config_exception, "Missing \"=\" in the key spec pair");
-            auto pub_key_str = key_spec_pair.substr(0, delim);
-            auto spec_str = key_spec_pair.substr(delim + 1);
-
-            auto spec_delim = spec_str.find(":");
-            EOS_ASSERT(spec_delim != std::string::npos, plugin_config_exception, "Missing \":\" in the key spec pair");
-            auto spec_type_str = spec_str.substr(0, spec_delim);
-            auto spec_data = spec_str.substr(spec_delim + 1);
-
-            auto pubkey = public_key_type(pub_key_str);
-
-            if (spec_type_str == "KEY") {
-               my->_signature_providers[pubkey] = make_key_signature_provider(private_key_type(spec_data));
-            } else if (spec_type_str == "KEOSD") {
-               my->_signature_providers[pubkey] = make_keosd_signature_provider(my, spec_data, pubkey);
-            }
-
+            const auto& [pubkey, provider] = app().get_plugin<signature_provider_plugin>().signature_provider_for_specification(key_spec_pair);
+            my->_signature_providers[pubkey] = provider;
+         } catch(secure_enclave_exception& e) {
+            elog("Error with Secure Enclave signature provider: ${e}; ignoring ${val}", ("e", e.top_message())("val", key_spec_pair));
          } catch (...) {
             elog("Malformed signature provider: \"${val}\", ignoring!", ("val", key_spec_pair));
          }
       }
    }
-
-   my->_keosd_provider_timeout_us = fc::milliseconds(options.at("keosd-provider-timeout").as<int32_t>());
 
    my->_produce_time_offset_us = options.at("produce-time-offset-us").as<int32_t>();
    EOS_ASSERT( my->_produce_time_offset_us <= 0 && my->_produce_time_offset_us >= -config::block_interval_us, plugin_config_exception,
@@ -855,6 +820,10 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
 
       EOS_ASSERT( fc::is_directory(my->_snapshots_dir), snapshot_directory_not_found_exception,
                   "No such directory '${dir}'", ("dir", my->_snapshots_dir.generic_string()) );
+
+      if (auto resmon_plugin = app().find_plugin<resource_monitor_plugin>()) {
+         resmon_plugin->monitor_directory(my->_snapshots_dir);
+      }
    }
 
    my->_incoming_block_subscription = app().get_channel<incoming::channels::block>().subscribe(
@@ -962,7 +931,8 @@ void producer_plugin::plugin_shutdown() {
 
 void producer_plugin::handle_sighup() {
    fc::logger::update( logger_name, _log );
-   fc::logger::update( trx_trace_logger_name, _trx_trace_log );
+   fc::logger::update(trx_successful_trace_logger_name, _trx_successful_trace_log);
+   fc::logger::update(trx_failed_trace_logger_name, _trx_failed_trace_log);
 }
 
 void producer_plugin::pause() {
@@ -1610,16 +1580,17 @@ bool producer_plugin_impl::remove_expired_trxs( const fc::time_point& deadline )
                    &chain, has_producers = !_producers.empty()]( const transaction_id_type& txid, trx_enum_type trx_type ) {
             if( trx_type == trx_enum_type::persisted ) {
                if( pbm == pending_block_mode::producing ) {
-                  fc_dlog( _trx_trace_log,
+                  fc_dlog(_trx_failed_trace_log,
                            "[TRX_TRACE] Block ${block_num} for producer ${prod} is EXPIRING PERSISTED tx: ${txid}",
-                           ("block_num", chain.head_block_num() + 1)("prod", chain.pending_block_producer())("txid", txid));
+                           ("block_num", chain.head_block_num() + 1)("txid", txid)
+                           ("prod", chain.is_building_block() ? chain.pending_block_producer() : name()) );
                } else {
-                  fc_dlog( _trx_trace_log, "[TRX_TRACE] Speculative execution is EXPIRING PERSISTED tx: ${txid}", ("txid", txid));
+                  fc_dlog(_trx_failed_trace_log, "[TRX_TRACE] Speculative execution is EXPIRING PERSISTED tx: ${txid}", ("txid", txid));
                }
                ++num_expired_persistent;
             } else {
                if (has_producers) {
-                  fc_dlog(_trx_trace_log,
+                  fc_dlog(_trx_failed_trace_log,
                         "[TRX_TRACE] Node with producers configured is dropping an EXPIRED transaction that was PREVIOUSLY ACCEPTED : ${txid}",
                         ("txid", txid));
                }
@@ -2077,6 +2048,11 @@ void producer_plugin_impl::produce_block() {
         ("n",new_bs->block_num)("t",new_bs->header.timestamp)
         ("count",new_bs->block->transactions.size())("lib",chain.last_irreversible_block_num())("confs", new_bs->header.confirmed));
 
+}
+
+void producer_plugin::log_failed_transaction(const transaction_id_type& trx_id, const char* reason) const {
+   fc_dlog(_trx_failed_trace_log, "[TRX_TRACE] Speculative execution is REJECTING tx: ${txid} : ${why}",
+           ("trxid", trx_id)("reason", reason));
 }
 
 } // namespace eosio

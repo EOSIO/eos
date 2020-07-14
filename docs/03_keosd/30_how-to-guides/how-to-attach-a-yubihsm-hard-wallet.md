@@ -1,3 +1,8 @@
+---
+content_title: How To Attach a YubiHSM Hard Wallet
+link_text: How To Attach a YubiHSM Hard Wallet
+---
+
 ## Goal
 
 Attach a YubiHSM as a hard wallet

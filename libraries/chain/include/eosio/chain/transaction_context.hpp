@@ -54,8 +54,7 @@ namespace eosio { namespace chain {
       public:
 
          transaction_context( controller& c,
-                              const signed_transaction& t,
-                              const transaction_id_type& trx_id,
+                              const packed_transaction& t,
                               transaction_checktime_timer&& timer,
                               fc::time_point start = fc::time_point::now() );
 
@@ -75,10 +74,10 @@ namespace eosio { namespace chain {
          void squash();
          void undo();
 
-         inline void add_net_usage( uint64_t u ) { 
+         inline void add_net_usage( uint64_t u ) {
             if( explicit_net_usage ) return;
             net_usage += u;
-            check_net_usage(); 
+            check_net_usage();
          }
 
          inline void round_up_net_usage() {
@@ -121,7 +120,8 @@ namespace eosio { namespace chain {
          friend struct controller_impl;
          friend class apply_context;
 
-         void add_ram_usage( account_name account, int64_t ram_delta, const ram_trace& trace );
+         void add_ram_usage( account_name account, int64_t ram_delta, const storage_usage_trace& trace );
+         void add_disk_usage( account_name account, int64_t disk_delta, const storage_usage_trace& trace );
 
          action_trace& get_action_trace( uint32_t action_ordinal );
          const action_trace& get_action_trace( uint32_t action_ordinal )const;
@@ -152,8 +152,7 @@ namespace eosio { namespace chain {
       public:
 
          controller&                   control;
-         const signed_transaction&     trx;
-         transaction_id_type           id;
+         const packed_transaction&     packed_trx;
          optional<chainbase::database::session>  undo_session;
          transaction_trace_ptr         trace;
          fc::time_point                start;
@@ -164,6 +163,7 @@ namespace eosio { namespace chain {
          deque<digest_type>            executed_action_receipt_digests;
          flat_set<account_name>        bill_to_accounts;
          flat_set<account_name>        validate_ram_usage;
+         flat_set<account_name>        validate_disk_usage;
 
          /// the maximum number of virtual CPU instructions of the transaction that can be safely billed to the billable accounts
          uint64_t                      initial_max_billable_cpu = 0;

@@ -138,8 +138,8 @@ def confirmHeadLibAndForkDbHeadOfSpecMode(nodeToTest, headLibAndForkDbHeadBefore
       assert forkDbHead == forkDbHeadBeforeSwitchMode, \
          "Fork db head ({}) should be equal to fork db head before switch mode ({}) ".format(forkDbHead, forkDbHeadBeforeSwitchMode)
 
-def relaunchNode(node: Node, nodeId, chainArg="", addSwapFlags=None, relaunchAssertMessage="Fail to relaunch"):
-   isRelaunchSuccess = node.relaunch(nodeId, chainArg=chainArg, addSwapFlags=addSwapFlags, timeout=relaunchTimeout, cachePopen=True)
+def relaunchNode(node: Node, chainArg="", addSwapFlags=None, relaunchAssertMessage="Fail to relaunch"):
+   isRelaunchSuccess = node.relaunch(chainArg=chainArg, addSwapFlags=addSwapFlags, timeout=relaunchTimeout, cachePopen=True)
    time.sleep(1) # Give a second to replay or resync if needed
    assert isRelaunchSuccess, relaunchAssertMessage
    return isRelaunchSuccess
@@ -174,7 +174,7 @@ try:
 
    def startProdNode():
       if producingNode.killed:
-         relaunchNode(producingNode, producingNodeId)
+         relaunchNode(producingNode)
 
    # Give some time for it to produce, so lib is advancing
    waitForBlksProducedAndLibAdvanced()
@@ -193,7 +193,7 @@ try:
          # Relaunch killed node so it can be used for the test
          nodeToTest = cluster.getNode(nodeIdOfNodeToTest)
          Utils.Print("Re-launch node #{} to excute test scenario: {}".format(nodeIdOfNodeToTest, runTestScenario.__name__))
-         relaunchNode(nodeToTest, nodeIdOfNodeToTest, relaunchAssertMessage="Fail to relaunch before running test scenario")
+         relaunchNode(nodeToTest, relaunchAssertMessage="Fail to relaunch before running test scenario")
 
          # Run test scenario
          runTestScenario(nodeIdOfNodeToTest, nodeToTest)
@@ -216,7 +216,7 @@ try:
 
       # Kill node and replay in irreversible mode
       nodeToTest.kill(signal.SIGTERM)
-      relaunchNode(nodeToTest, nodeIdOfNodeToTest, chainArg=" --read-mode irreversible --replay")
+      relaunchNode(nodeToTest, chainArg=" --read-mode irreversible --replay")
 
       # Confirm state
       confirmHeadLibAndForkDbHeadOfIrrMode(nodeToTest, headLibAndForkDbHeadBeforeSwitchMode)
@@ -230,7 +230,7 @@ try:
       # Shut down node, remove reversible blks and relaunch
       nodeToTest.kill(signal.SIGTERM)
       removeReversibleBlks(nodeIdOfNodeToTest)
-      relaunchNode(nodeToTest, nodeIdOfNodeToTest, chainArg=" --read-mode irreversible --replay")
+      relaunchNode(nodeToTest, chainArg=" --read-mode irreversible --replay")
 
       # Ensure the node condition is as expected after relaunch
       confirmHeadLibAndForkDbHeadOfIrrMode(nodeToTest, headLibAndForkDbHeadBeforeSwitchMode)
@@ -243,7 +243,7 @@ try:
 
       # Kill and relaunch in irreversible mode
       nodeToTest.kill(signal.SIGTERM)
-      relaunchNode(nodeToTest, nodeIdOfNodeToTest, chainArg=" --read-mode irreversible")
+      relaunchNode(nodeToTest, chainArg=" --read-mode irreversible")
 
       # Ensure the node condition is as expected after relaunch
       confirmHeadLibAndForkDbHeadOfIrrMode(nodeToTest, headLibAndForkDbHeadBeforeSwitchMode)
@@ -256,7 +256,7 @@ try:
 
       # Kill and relaunch in speculative mode
       nodeToTest.kill(signal.SIGTERM)
-      relaunchNode(nodeToTest, nodeIdOfNodeToTest, addSwapFlags={"--read-mode": "speculative"})
+      relaunchNode(nodeToTest, addSwapFlags={"--read-mode": "speculative"})
 
       # Ensure the node condition is as expected after relaunch
       confirmHeadLibAndForkDbHeadOfSpecMode(nodeToTest, headLibAndForkDbHeadBeforeSwitchMode)
@@ -272,7 +272,7 @@ try:
          # Kill and relaunch in irreversible mode
          nodeToTest.kill(signal.SIGTERM)
          waitForBlksProducedAndLibAdvanced() # Wait for some blks to be produced and lib advance
-         relaunchNode(nodeToTest, nodeIdOfNodeToTest, chainArg=" --read-mode irreversible")
+         relaunchNode(nodeToTest, chainArg=" --read-mode irreversible")
 
          # Ensure the node condition is as expected after relaunch
          ensureHeadLibAndForkDbHeadIsAdvancing(nodeToTest)
@@ -291,7 +291,7 @@ try:
          # Kill and relaunch in irreversible mode
          nodeToTest.kill(signal.SIGTERM)
          waitForBlksProducedAndLibAdvanced() # Wait for some blks to be produced and lib advance)
-         relaunchNode(nodeToTest, nodeIdOfNodeToTest, addSwapFlags={"--read-mode": "speculative"})
+         relaunchNode(nodeToTest, addSwapFlags={"--read-mode": "speculative"})
 
          # Ensure the node condition is as expected after relaunch
          ensureHeadLibAndForkDbHeadIsAdvancing(nodeToTest)
@@ -309,7 +309,7 @@ try:
          # Kill node and replay in irreversible mode
          nodeToTest.kill(signal.SIGTERM)
          waitForBlksProducedAndLibAdvanced() # Wait
-         relaunchNode(nodeToTest, nodeIdOfNodeToTest, chainArg=" --read-mode irreversible --replay")
+         relaunchNode(nodeToTest, chainArg=" --read-mode irreversible --replay")
 
          # Ensure the node condition is as expected after relaunch
          ensureHeadLibAndForkDbHeadIsAdvancing(nodeToTest)
@@ -329,7 +329,7 @@ try:
          nodeToTest.kill(signal.SIGTERM)
          removeReversibleBlks(nodeIdOfNodeToTest)
          waitForBlksProducedAndLibAdvanced() # Wait
-         relaunchNode(nodeToTest, nodeIdOfNodeToTest, chainArg=" --read-mode irreversible --replay")
+         relaunchNode(nodeToTest, chainArg=" --read-mode irreversible --replay")
 
          # Ensure the node condition is as expected after relaunch
          ensureHeadLibAndForkDbHeadIsAdvancing(nodeToTest)
@@ -349,7 +349,7 @@ try:
          backupBlksDir(nodeIdOfNodeToTest)
 
          # Relaunch in irreversible mode and create the snapshot
-         relaunchNode(nodeToTest, nodeIdOfNodeToTest, chainArg=" --read-mode irreversible")
+         relaunchNode(nodeToTest, chainArg=" --read-mode irreversible")
          confirmHeadLibAndForkDbHeadOfIrrMode(nodeToTest)
          nodeToTest.createSnapshot()
          nodeToTest.kill(signal.SIGTERM)
@@ -357,7 +357,7 @@ try:
          # Start from clean data dir, recover back up blocks, and then relaunch with irreversible snapshot
          removeState(nodeIdOfNodeToTest)
          recoverBackedupBlksDir(nodeIdOfNodeToTest) # this function will delete the existing blocks dir first
-         relaunchNode(nodeToTest, nodeIdOfNodeToTest, chainArg=" --snapshot {}".format(getLatestSnapshot(nodeIdOfNodeToTest)), addSwapFlags={"--read-mode": "speculative"})
+         relaunchNode(nodeToTest, chainArg=" --snapshot {}".format(getLatestSnapshot(nodeIdOfNodeToTest)), addSwapFlags={"--read-mode": "speculative"})
          confirmHeadLibAndForkDbHeadOfSpecMode(nodeToTest)
          # Ensure it automatically replays "reversible blocks", i.e. head lib and fork db should be the same
          headLibAndForkDbHeadAfterRelaunch = getHeadLibAndForkDbHead(nodeToTest)
@@ -376,7 +376,7 @@ try:
          # Relaunch the node again (using the same snapshot)
          # This time ensure it automatically replays both "irreversible blocks" and "reversible blocks", i.e. the end result should be the same as before shutdown
          removeState(nodeIdOfNodeToTest)
-         relaunchNode(nodeToTest, nodeIdOfNodeToTest)
+         relaunchNode(nodeToTest)
          headLibAndForkDbHeadAfterRelaunch = getHeadLibAndForkDbHead(nodeToTest)
          assert headLibAndForkDbHeadBeforeShutdown == headLibAndForkDbHeadAfterRelaunch, \
             "Head, Lib, and Fork Db after relaunch is different {} vs {}".format(headLibAndForkDbHeadBeforeShutdown, headLibAndForkDbHeadAfterRelaunch)

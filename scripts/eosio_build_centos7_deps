@@ -10,7 +10,6 @@ bzip2-devel,rpm -qa
 openssl-devel,rpm -qa
 gmp-devel,rpm -qa
 ocaml,rpm -qa
-libicu-devel,rpm -qa
 python,rpm -qa
 python-devel,rpm -qa
 rh-python36,rpm -qa

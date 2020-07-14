@@ -246,7 +246,7 @@ namespace eosio::trace_api {
       store_provider(const boost::filesystem::path& slice_dir, uint32_t stride_width, std::optional<uint32_t> minimum_irreversible_history_blocks,
             std::optional<uint32_t> minimum_uncompressed_irreversible_history_blocks, size_t compression_seek_point_stride);
 
-      void append(const block_trace_v0& bt);
+      void append(const block_trace_v1& bt);
       void append_lib(uint32_t lib);
 
       /**

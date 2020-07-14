@@ -10,9 +10,7 @@ You can force a running `nodeos` instance to create a snapshot by using the `cre
 If your `nodeos` instance is running locally, the below command will request `nodeos` to create a snapshot:
 
 ```sh
-curl --request POST \
-  --url http://127.0.0.1:8888/v1/producer/create_snapshot \
-  --header 'content-type: application/x-www-form-urlencoded; charset=UTF-8'
+curl -X POST http://127.0.0.1:8888/v1/producer/create_snapshot
 ```
 
 [[info | Getting other `blocks.log` files]]

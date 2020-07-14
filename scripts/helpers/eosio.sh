@@ -37,8 +37,6 @@ function setup() {
         echo "PROCEED: ${PROCEED}"
         echo "ENABLE_COVERAGE_TESTING: ${ENABLE_COVERAGE_TESTING}"
         echo "ENABLE_DOXYGEN: ${ENABLE_DOXYGEN}"
-        echo "ENABLE_MONGO: ${ENABLE_MONGO}"
-        echo "INSTALL_MONGO: ${INSTALL_MONGO}"
         echo "SUDO_LOCATION: ${SUDO_LOCATION}"
         echo "PIN_COMPILER: ${PIN_COMPILER}"
     fi
@@ -52,10 +50,6 @@ function setup() {
     execute mkdir -p $VAR_DIR/log
     execute mkdir -p $ETC_DIR
     execute mkdir -p $LIB_DIR
-    if $ENABLE_MONGO; then
-        execute mkdir -p $MONGODB_LOG_DIR
-        execute mkdir -p $MONGODB_DATA_DIR
-    fi
 }
 
 function ensure-which() {
@@ -134,21 +128,6 @@ function print_supported_linux_distros_and_exit() {
    exit 1
 }
 
-function prompt-mongo-install() {
-    if $ENABLE_MONGO; then
-        while true; do
-            [[ $NONINTERACTIVE == false ]] && printf "${COLOR_YELLOW}You have chosen to include MongoDB support. Do you want for us to install MongoDB as well? (y/n)?${COLOR_NC}" && read -p " " PROCEED
-            echo ""
-            case $PROCEED in
-                "" ) echo "What would you like to do?";;
-                0 | true | [Yy]* ) export INSTALL_MONGO=true; break;;
-                1 | false | [Nn]* ) echo "${COLOR_RED} - Existing MongoDB will be used.${COLOR_NC}"; break;;
-                * ) echo "Please type 'y' for yes or 'n' for no.";;
-            esac
-        done
-    fi
-}
-
 function ensure-compiler() {
     # Support build-essentials on ubuntu
     if [[ $NAME == "CentOS Linux" ]] || [[ $VERSION_ID == "16.04" ]] || ( $PIN_COMPILER && [[ $VERSION_ID == "18.04" ]] ); then
@@ -174,9 +153,9 @@ function ensure-compiler() {
                 [[ $( $(which $CXX) --version | cut -d ' ' -f 4 | cut -d '.' -f 1 | head -n 1 ) -lt 10 ]] && export NO_CPP17=true
             else
                 if [[ $( $(which $CXX) --version | cut -d ' ' -f 3 | head -n 1 | cut -d '.' -f1) =~ ^[0-9]+$ ]]; then # Check if the version message cut returns an integer
-                    [[ $( $(which $CXX) --version | cut -d ' ' -f 3 | head -n 1 | cut -d '.' -f1) < 6 ]] && export NO_CPP17=true
+                    [[ $( $(which $CXX) --version | cut -d ' ' -f 3 | head -n 1 | cut -d '.' -f1) -lt 6 ]] && export NO_CPP17=true
                 elif [[ $(clang --version | cut -d ' ' -f 4 | head -n 1 | cut -d '.' -f1) =~ ^[0-9]+$ ]]; then # Check if the version message cut returns an integer
-                    [[ $( $(which $CXX) --version | cut -d ' ' -f 4 | cut -d '.' -f 1 | head -n 1 ) < 6 ]] && export NO_CPP17=true
+                    [[ $( $(which $CXX) --version | cut -d ' ' -f 4 | cut -d '.' -f 1 | head -n 1 ) -lt 6 ]] && export NO_CPP17=true
                 fi
             fi
         else
