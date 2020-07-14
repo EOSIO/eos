@@ -2361,7 +2361,29 @@ BOOST_AUTO_TEST_CASE(action_results)
       ],
    })";
 
+   auto duplicate_action_results_abi = R"({
+      "version": "eosio::abi/1.2",
+      "action_results": [
+         {"name": "act1", "result_type": "string"},
+         {"name": "act1", "result_type": "string"},
+      ],
+   })";
+
+   auto action_results_abi_invalid_type = R"({
+      "version": "eosio::abi/1.2",
+      "action_results": [
+         {"name": "act1", "result_type": "string"},
+         {"name": "act2", "result_type": "uint9000"},
+      ],
+   })";
+
    try {
+      // duplicate action_results definition detected
+      BOOST_CHECK_THROW( abi_serializer( fc::json::from_string(duplicate_action_results_abi).as<abi_def>(), abi_serializer::create_yield_function( max_serialization_time ) ), duplicate_abi_action_results_def_exception );
+
+      // invalid_type_inside_abi
+      BOOST_CHECK_THROW( abi_serializer( fc::json::from_string(action_results_abi_invalid_type).as<abi_def>(), abi_serializer::create_yield_function( max_serialization_time ) ), invalid_type_inside_abi );
+
       // round-trip abi through multiple formats
       // json -> variant -> abi_def -> bin
       auto bin = fc::raw::pack(fc::json::from_string(action_results_abi).as<abi_def>());
