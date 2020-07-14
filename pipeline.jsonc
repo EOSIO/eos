@@ -1,4 +1,11 @@
 {
+    "eosio-docker-builds":
+    {
+        "environment":
+        {
+            "BUILDER_TAG": "v2.0.0"
+        }
+    },
     "eos-multiversion-tests":
     {
         "environment":
@@ -9,22 +16,6 @@
         [
             "170=v1.7.0"
         ]
-    },
-    "eosio-docker-builds":
-    {
-        "environment":
-        {
-            "BUILDER_TAG": "v2.0.0"
-        }
-    },
-    "eosio-sync-tests":
-    {
-        "environment":
-        {
-            "SKIP_PRE_V180": "true",
-            "SKIP_V180": "true",
-            "SKIP_V200": "false"
-        }
     },
     "eosio-replay-tests":
     {
@@ -43,5 +34,14 @@
                 "commit": "6de603529d962193eb64b3b47b2bfee9fbe185b4"
             }
         ]
+    },
+    "eosio-sync-tests":
+    {
+        "environment":
+        {
+            "SKIP_PRE_V180": "true",
+            "SKIP_V180": "true",
+            "SKIP_V200": "false"
+        }
     }
 }
