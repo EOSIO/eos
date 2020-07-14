@@ -3100,7 +3100,7 @@ BOOST_FIXTURE_TEST_CASE(action_results_tests, TESTER) { try {
       auto &atrace = res->action_traces;
       BOOST_REQUIRE_EQUAL( atrace[0].receipt.valid(), true );
       BOOST_REQUIRE_EQUAL( atrace[0].return_value.size(), 4 );
-      BOOST_REQUIRE_EQUAL( fc::raw::unpack<unsigned_int>(atrace[0].return_value), unsigned_int(10) );
+      BOOST_REQUIRE_EQUAL( fc::raw::unpack<int>(atrace[0].return_value), 10 );
    } );
 } FC_LOG_AND_RETHROW() }
 
