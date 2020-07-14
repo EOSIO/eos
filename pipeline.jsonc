@@ -1,4 +1,22 @@
 {
+    "eosio-code-coverage":
+    {
+        "exclude": [ // ignore coverage reports from source filenames matching these PCREs
+            "^/build/",
+            "^/coverage/",
+            "^/.git/",
+            "^/libraries/eos-vm/",
+            "^/libraries/fc/",
+            "^/libraries/wabt/",
+            "^/libraries/wasm-jit/",
+            "^/node_modules/",
+            "^/unittests/"
+        ],
+        "expect": [ // expect coverage reports from source filenames matching these PCREs
+            "[.]c(pp)?([.]in)?$",
+            "[.]h(pp)?([.]in)?$"
+        ]
+    },
     "eosio-docker-builds":
     {
         "environment":
