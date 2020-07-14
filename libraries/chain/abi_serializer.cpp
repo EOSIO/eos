@@ -161,7 +161,7 @@ namespace eosio { namespace chain {
       for( const auto& v : abi.variants.value )
          variants[v.name] = v;
 
-      for( const auto& r : abi.action_results )
+      for( const auto& r : abi.action_results.value )
          action_results[r.name] = r.result_type;
 
       /**
@@ -174,7 +174,7 @@ namespace eosio { namespace chain {
       EOS_ASSERT( tables.size() == abi.tables.size(), duplicate_abi_table_def_exception, "duplicate table definition detected" );
       EOS_ASSERT( error_messages.size() == abi.error_messages.size(), duplicate_abi_err_msg_def_exception, "duplicate error message definition detected" );
       EOS_ASSERT( variants.size() == abi.variants.value.size(), duplicate_abi_variant_def_exception, "duplicate variant definition detected" );
-      EOS_ASSERT( action_results.size() == abi.action_results.size(), duplicate_abi_action_results_def_exception, "duplicate action results definition detected" );
+      EOS_ASSERT( action_results.size() == abi.action_results.value.size(), duplicate_abi_action_results_def_exception, "duplicate action results definition detected" );
 
       validate(ctx);
    }
