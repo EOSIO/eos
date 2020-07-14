@@ -3,6 +3,9 @@
 #include <b1/rodeos/callbacks/kv.hpp>
 #include <b1/rodeos/rodeos_tables.hpp>
 
+// TODO: get rid of this.  eos-vm-oc internals currently need the intrinsic table to be initialized.
+#include <eosio/chain/webassembly/interface.hpp>
+
 namespace b1::rodeos {
 
 namespace ship_protocol = eosio::ship_protocol;

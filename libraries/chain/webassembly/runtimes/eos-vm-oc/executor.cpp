@@ -119,6 +119,19 @@ DEFINE_EOSVMOC_TRAP_INTRINSIC(eosvmoc_internal,unreachable) {
    throw_internal_exception("Unreachable reached");
 }
 
+// Rodeos intrinsics
+DEFINE_EOSVMOC_TRAP_INTRINSIC(env,push_data) {
+   throw_internal_exception("push_data called");
+}
+
+DEFINE_EOSVMOC_TRAP_INTRINSIC(env,get_input_data) {
+   throw_internal_exception("get_input_data called");
+}
+
+DEFINE_EOSVMOC_TRAP_INTRINSIC(env,set_output_data) {
+   throw_internal_exception("set_output_data called");
+}
+
 struct executor_signal_init {
    executor_signal_init() {
       struct sigaction sig_action, old_sig_action;
