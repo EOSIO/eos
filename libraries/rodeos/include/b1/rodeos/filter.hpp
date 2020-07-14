@@ -8,6 +8,7 @@
 #include <b1/rodeos/callbacks/memory.hpp>
 #include <b1/rodeos/callbacks/unimplemented.hpp>
 #include <b1/rodeos/callbacks/unimplemented_filter.hpp>
+#include <boost/hana/for_each.hpp>
 
 // todo: configure limits
 // todo: timeout
@@ -66,6 +67,11 @@ struct callbacks : b1::rodeos::chaindb_callbacks<callbacks>,
    auto& get_db_view_state() { return db_view_state; }
 };
 
+template<typename S>
+inline void unknown_intrinsic(...) {
+   std::cerr << "Unknown intrinsic: " << S().c_str() << std::endl;
+}
+
 inline void register_callbacks() {
    b1::rodeos::chaindb_callbacks<callbacks>::register_callbacks<rhf_t>();
    b1::rodeos::compiler_builtins_callbacks<callbacks>::register_callbacks<rhf_t>();
@@ -77,6 +83,21 @@ inline void register_callbacks() {
    b1::rodeos::memory_callbacks<callbacks>::register_callbacks<rhf_t>();
    b1::rodeos::unimplemented_callbacks<callbacks>::register_callbacks<rhf_t>();
    b1::rodeos::unimplemented_filter_callbacks<callbacks>::register_callbacks<rhf_t>();
+
+   const auto& base_map = eosio::chain::webassembly::eosvmoc::get_intrinsic_map();
+   auto& my_map = get_intrinsic_map();
+
+   // Internal intrinsics do not use apply_context and are therefore safe to use as-is
+   for(const auto& item : base_map) {
+      if(item.first.substr(0, 16) == "eosvmoc_internal" || item.first == "env.eosio_exit") {
+         my_map.insert(item);
+      }
+   }
+
+   boost::hana::for_each(eosio::chain::webassembly::eosvmoc::intrinsic_table, [&](auto S) {
+       my_map.insert({S.c_str(), {nullptr, reinterpret_cast<void*>(unknown_intrinsic<decltype(S)>),
+                                  ::boost::hana::index_if(eosio::chain::webassembly::eosvmoc::intrinsic_table, ::boost::hana::equal.to(S)).value()}});
+   });
 }
 
 } // namespace b1::rodeos::filter
