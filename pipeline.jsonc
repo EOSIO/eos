@@ -7,7 +7,6 @@
             "^/.git/",
             "^/libraries/eos-vm/",
             "^/libraries/fc/",
-            "^/libraries/wabt/",
             "^/libraries/wasm-jit/",
             "^/node_modules/",
             "^/unittests/"
