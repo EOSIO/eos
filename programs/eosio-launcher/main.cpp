@@ -1189,12 +1189,6 @@ launcher_def::write_logging_config_file(tn_node_def &node) {
   if( gelf_enabled ) ta.appenders.push_back( "net" );
   log_config.loggers.emplace_back( ta );
 
-  fc::logger_config at( "amqp_trx" );
-  at.level = fc::log_level::debug;
-  at.appenders.push_back( "stderr" );
-  if( gelf_enabled ) at.appenders.push_back( "net" );
-  log_config.loggers.emplace_back( at );
-
   auto str = fc::json::to_pretty_string( log_config, fc::time_point::maximum(), fc::json::output_formatting::stringify_large_ints_and_doubles );
   cfg.write( str.c_str(), str.size() );
   cfg.close();

@@ -21,8 +21,8 @@ namespace fc {
     }
     sha224::operator string()const { return  str(); }
 
-    char* sha224::data()const { return (char*)&_hash[0]; }
-
+    char* sha224::data() { return (char*)&_hash[0]; }
+    const char* sha224::data() const { return (const char*)&_hash[0]; }
 
     struct sha224::encoder::impl {
        SHA256_CTX ctx;

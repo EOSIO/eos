@@ -21,7 +21,8 @@ namespace fc {
     }
     sha512::operator string()const { return  str(); }
 
-    char* sha512::data()const { return (char*)&_hash[0]; }
+    char* sha512::data() { return (char*)&_hash[0]; }
+    const char* sha512::data()const { return (const char*)&_hash[0]; }
 
 
     struct sha512::encoder::impl {
