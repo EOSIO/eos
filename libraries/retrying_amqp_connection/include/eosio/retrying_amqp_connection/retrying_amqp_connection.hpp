@@ -91,11 +91,14 @@ private:
    }
 
    void schedule_retry() {
+      _sock.close();
+      _resolver.cancel();
+
+      //calling the failure callback will likely cause downstream users to take action such as closing an AMQP::Channel which
+      // will attempt to send data. Ensure that _sock is closed before then so onData() will drop those attempts
       if(_indicated_ready)
          _failed_callback();
       _indicated_ready = false;
-      _sock.close();
-      _resolver.cancel();
 
       boost::system::error_code ec;
       _timer.expires_from_now(std::chrono::seconds(1), ec);
