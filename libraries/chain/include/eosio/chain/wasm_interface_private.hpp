@@ -51,8 +51,7 @@ namespace eosio { namespace chain {
       struct eosvmoc_tier {
          eosvmoc_tier(const boost::filesystem::path& d, const eosvmoc::config& c, const chainbase::database& db)
           : cc(d, c, db), exec(cc),
-            // Can't get max_pages from db, because db hasn't been initialized yet.
-            mem(0) {}
+            mem(wasm_constraints::maximum_linear_memory/wasm_constraints::wasm_page_size) {}
          eosvmoc::code_cache_async cc;
          eosvmoc::executor exec;
          eosvmoc::memory mem;
