@@ -21,7 +21,7 @@
     {
         "environment":
         {
-            "BUILDER_TAG": "v2.0.0"
+            "BUILDER_TAG": "v2.0.7"
         }
     },
     "eos-multiversion-tests":
