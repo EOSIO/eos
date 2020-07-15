@@ -29,6 +29,7 @@ struct reliable_amqp_publisher_impl {
    void pump_queue();
    void publish_message_raw(std::vector<char>&& data);
    void publish_messages_raw(std::deque<std::pair<std::string, std::vector<char>>>&& queue);
+   void publish_message_direct(const std::string& routing_key, std::vector<char>&& data);
 
    void channel_ready(AMQP::Channel* channel);
    void channel_failed();
@@ -311,6 +312,22 @@ void reliable_amqp_publisher_impl::publish_messages_raw(std::deque<std::pair<std
    pump_queue();
 }
 
+void reliable_amqp_publisher_impl::publish_message_direct(const std::string& rk, std::vector<char>&& data) {
+   if(!ctx.get_executor().running_in_this_thread()) {
+      boost::asio::post(user_submitted_work_strand, [this, rk, d=std::move(data)]() mutable {
+         publish_message_direct(rk, std::move(d));
+      });
+      return;
+   }
+
+   AMQP::Envelope envelope(data.data(), data.size());
+   envelope.setPersistent();
+   if(message_id)
+      envelope.setMessageID(*message_id);
+   channel->publish(exchange, rk.empty() ? routing_key : rk, envelope);
+}
+
+
 reliable_amqp_publisher::reliable_amqp_publisher(const std::string& url, const std::string& exchange, const std::string& routing_key,
                                                  const boost::filesystem::path& unconfirmed_path, const std::optional<std::string>& message_id) :
    my(new reliable_amqp_publisher_impl(url, exchange, routing_key, unconfirmed_path, message_id)) {}
@@ -321,6 +338,10 @@ void reliable_amqp_publisher::publish_message_raw(std::vector<char>&& data) {
 
 void reliable_amqp_publisher::publish_messages_raw(std::deque<std::pair<std::string, std::vector<char>>>&& queue) {
    my->publish_messages_raw( std::move( queue ) );
+}
+
+void reliable_amqp_publisher::publish_message_direct(const std::string& routing_key, std::vector<char>&& data) {
+   my->publish_message_direct( routing_key, std::move( data ) );
 }
 
 void reliable_amqp_publisher::post_on_io_context(std::function<void()>&& f) {
