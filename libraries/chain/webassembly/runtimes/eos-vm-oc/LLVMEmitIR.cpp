@@ -134,7 +134,7 @@ namespace LLVMJIT
 		std::vector<llvm::Function*> functionDefs;
 		std::vector<size_t> importedFunctionOffsets;
 		std::vector<llvm::Constant*> globals;
-		llvm::GlobalValue* defaultTablePointer;
+		llvm::GlobalVariable* defaultTablePointer;
 		llvm::Constant* defaultTableMaxElementIndex;
 		llvm::Constant* defaultMemoryBase;
 		llvm::Constant* depthCounter;
@@ -1288,9 +1288,9 @@ namespace LLVMJIT
 		if(module.tables.size()) {
 			auto tableElementType = llvm::StructType::get(context,{llvmI8PtrType, llvmI64Type});
 			llvm::Type* tableArrayTy = llvm::ArrayType::get(tableElementType, module.tables.defs[0].type.size.min);
-#warning change this to use ExternallyInitialized when OC is reenabled.
-			defaultTablePointer = new llvm::GlobalVariable(*llvmModule, tableArrayTy, false, llvm::GlobalValue::ExternalLinkage, llvm::ConstantAggregateZero::get(tableArrayTy), getTableSymbolName());
-			defaultTablePointer->setVisibility(llvm::GlobalValue::ProtectedVisibility); // Don't use the GOT.
+			defaultTablePointer = new llvm::GlobalVariable(*llvmModule, tableArrayTy, true, llvm::GlobalValue::PrivateLinkage, llvm::ConstantAggregateZero::get(tableArrayTy), getTableSymbolName());
+			defaultTablePointer->setExternallyInitialized(true);
+			defaultTablePointer->setSection(".eosio_table");
 			defaultTableMaxElementIndex = emitLiteral((U64)module.tables.defs[0].type.size.min);
 			for(const TableSegment& table_segment : module.tableSegments)
 				for(Uptr i = 0; i < table_segment.indices.size(); ++i)
