@@ -4,7 +4,7 @@
 
 #include <eosio/vm/backend.hpp>
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
-#include <eosio/chain/webassembly/eos-vm-oc.hpp>
+#   include <eosio/chain/webassembly/eos-vm-oc.hpp>
 #endif
 #include <boost/hana/string.hpp>
 
@@ -32,20 +32,20 @@ inline size_t legacy_copy_to_wasm(char* dest, size_t dest_size, const char* src,
 }
 
 struct memcpy_params {
-   void* dst;
-   const void* src;
+   void*                  dst;
+   const void*            src;
    eosio::vm::wasm_size_t size;
 };
 
 struct memcmp_params {
-   const void* lhs;
-   const void* rhs;
+   const void*            lhs;
+   const void*            rhs;
    eosio::vm::wasm_size_t size;
 };
 
 struct memset_params {
-   const void* dst;
-   const int32_t val;
+   const void*            dst;
+   const int32_t          val;
    eosio::vm::wasm_size_t size;
 };
 
@@ -55,14 +55,16 @@ struct type_converter : eosio::vm::type_converter<Host, Execution_Interface> {
    using base_type::base_type;
    using base_type::from_wasm;
 
-   EOS_VM_FROM_WASM(memcpy_params, (eosio::vm::wasm_ptr_t dst, eosio::vm::wasm_ptr_t src, eosio::vm::wasm_size_t size)) {
+   EOS_VM_FROM_WASM(memcpy_params,
+                    (eosio::vm::wasm_ptr_t dst, eosio::vm::wasm_ptr_t src, eosio::vm::wasm_size_t size)) {
       auto d = this->template validate_pointer<char>(dst, size);
       auto s = this->template validate_pointer<char>(src, size);
       this->template validate_pointer<char>(dst, 1);
       return { d, s, size };
    }
 
-   EOS_VM_FROM_WASM(memcmp_params, (eosio::vm::wasm_ptr_t lhs, eosio::vm::wasm_ptr_t rhs, eosio::vm::wasm_size_t size)) {
+   EOS_VM_FROM_WASM(memcmp_params,
+                    (eosio::vm::wasm_ptr_t lhs, eosio::vm::wasm_ptr_t rhs, eosio::vm::wasm_size_t size)) {
       auto l = this->template validate_pointer<char>(lhs, size);
       auto r = this->template validate_pointer<char>(rhs, size);
       return { l, r, size };
@@ -93,18 +95,19 @@ using registered_host_functions =
 
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
 
-template<typename Cls>
-struct eos_vm_oc_type_converter : public type_converter<Cls, eosio::chain::webassembly::eosvmoc::eos_vm_oc_execution_interface> {
+template <typename Cls>
+struct eos_vm_oc_type_converter
+    : public type_converter<Cls, eosio::chain::webassembly::eosvmoc::eos_vm_oc_execution_interface> {
    using base_type = type_converter<Cls, eosio::chain::webassembly::eosvmoc::eos_vm_oc_execution_interface>;
    using base_type::base_type;
-   using base_type::to_wasm;
    using base_type::from_wasm;
+   using base_type::to_wasm;
 
    eosio::vm::wasm_ptr_t to_wasm(void*&& ptr) {
       return eosio::chain::webassembly::eosvmoc::convert_native_to_wasm(static_cast<char*>(ptr));
    }
 
-   template<typename T>
+   template <typename T>
    inline decltype(auto) as_value(const eosio::vm::native_value& val) const {
       if constexpr (std::is_integral_v<T> && sizeof(T) == 4)
          return static_cast<T>(val.i32);
@@ -125,18 +128,21 @@ inline eosio::chain::eosvmoc::intrinsic_map_t& get_intrinsic_map() {
    return the_map;
 };
 
-template<auto F, typename Cls, bool injected, typename Preconditions, typename Name>
+template <auto F, typename Cls, bool injected, typename Preconditions, typename Name>
 void register_eosvm_oc(Name n) {
-   constexpr auto fn = eosio::chain::webassembly::eosvmoc::create_function<F, Cls, eos_vm_oc_type_converter<Cls>, Preconditions, injected>();
-   get_intrinsic_map().insert({n.c_str(), {
-      eosio::chain::webassembly::eosvmoc::wasm_function_type_provider<std::remove_pointer_t<decltype(fn)>>::type(),
-      reinterpret_cast<void*>(fn),
-      ::boost::hana::index_if(eosio::chain::webassembly::eosvmoc::intrinsic_table, ::boost::hana::equal.to(n)).value()
-   }});
+   constexpr auto fn = eosio::chain::webassembly::eosvmoc::create_function<F, Cls, eos_vm_oc_type_converter<Cls>,
+                                                                           Preconditions, injected>();
+   get_intrinsic_map().insert(
+         { n.c_str(),
+           { eosio::chain::webassembly::eosvmoc::wasm_function_type_provider<
+                   std::remove_pointer_t<decltype(fn)>>::type(),
+             reinterpret_cast<void*>(fn),
+             ::boost::hana::index_if(eosio::chain::webassembly::eosvmoc::intrinsic_table, ::boost::hana::equal.to(n))
+                   .value() } });
 }
 #endif
 
-template<typename Rft, auto F, typename Name>
+template <typename Rft, auto F, typename Name>
 void register_host_function(Name fn_name) {
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
    register_eosvm_oc<F, typename Rft::host_type_t, false, std::tuple<>>(BOOST_HANA_STRING("env.") + fn_name);
@@ -144,6 +150,7 @@ void register_host_function(Name fn_name) {
    Rft::template add<F>("env", fn_name.c_str());
 }
 
-#define RODEOS_REGISTER_CALLBACK(RFT, DERIVED, NAME) ::b1::rodeos::register_host_function<RFT, &DERIVED::NAME>(BOOST_HANA_STRING(#NAME));
+#define RODEOS_REGISTER_CALLBACK(RFT, DERIVED, NAME)                                                                   \
+   ::b1::rodeos::register_host_function<RFT, &DERIVED::NAME>(BOOST_HANA_STRING(#NAME));
 
 } // namespace b1::rodeos

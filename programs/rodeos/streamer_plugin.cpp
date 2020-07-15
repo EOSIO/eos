@@ -31,7 +31,8 @@ void streamer_plugin::set_program_options(options_description& cli, options_desc
    op("stream-rabbits", bpo::value<std::vector<string>>()->composing(),
       "RabbitMQ Streams to queues if any; Format: amqp://USER:PASSWORD@ADDRESS:PORT/QUEUE[/STREAMING_ROUTE, ...]");
    op("stream-rabbits-exchange", bpo::value<std::vector<string>>()->composing(),
-      "RabbitMQ Streams to exchanges if any; Format: amqp://USER:PASSWORD@ADDRESS:PORT/EXCHANGE[::EXCHANGE_TYPE][/STREAMING_ROUTE, ...]");
+      "RabbitMQ Streams to exchanges if any; Format: "
+      "amqp://USER:PASSWORD@ADDRESS:PORT/EXCHANGE[::EXCHANGE_TYPE][/STREAMING_ROUTE, ...]");
    op("stream-loggers", bpo::value<std::vector<string>>()->composing(),
       "Logger Streams if any; Format: [routing_keys, ...]");
 }
@@ -60,7 +61,7 @@ void streamer_plugin::plugin_initialize(const variables_map& options) {
 
 void streamer_plugin::plugin_startup() {
    cloner_plugin* cloner = app().find_plugin<cloner_plugin>();
-   EOS_ASSERT( cloner, eosio::chain::plugin_config_exception, "cloner_plugin not found" );
+   EOS_ASSERT(cloner, eosio::chain::plugin_config_exception, "cloner_plugin not found");
    cloner->set_streamer([this](const char* data, uint64_t data_size) { stream_data(data, data_size); });
 }
 

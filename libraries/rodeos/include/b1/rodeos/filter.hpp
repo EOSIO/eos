@@ -20,19 +20,23 @@ using backend_t = eosio::vm::backend<rhf_t, eosio::vm::jit>;
 
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
 struct eosvmoc_tier {
-   eosvmoc_tier(const boost::filesystem::path& d, const eosio::chain::webassembly::eosvmoc::config& c, const std::vector<uint8_t>& code, const eosio::chain::digest_type& code_hash)
-     : cc(d, c, [code, code_hash](const eosio::chain::digest_type& id, uint8_t vm_version) -> std::string_view {
-                  if(id == code_hash) return { reinterpret_cast<const char*>(code.data()), code.size() };
-                  else return {};
-                }), exec(cc),
-       mem(512, get_intrinsic_map()), hash(code_hash) {
+   eosvmoc_tier(const boost::filesystem::path& d, const eosio::chain::webassembly::eosvmoc::config& c,
+                const std::vector<uint8_t>& code, const eosio::chain::digest_type& code_hash)
+       : cc(d, c,
+            [code, code_hash](const eosio::chain::digest_type& id, uint8_t vm_version) -> std::string_view {
+               if (id == code_hash)
+                  return { reinterpret_cast<const char*>(code.data()), code.size() };
+               else
+                  return {};
+            }),
+         exec(cc), mem(512, get_intrinsic_map()), hash(code_hash) {
       // start background compile
       cc.get_descriptor_for_code(code_hash, 0);
    }
    eosio::chain::webassembly::eosvmoc::code_cache_async cc;
-   eosio::chain::webassembly::eosvmoc::executor exec;
-   eosio::chain::webassembly::eosvmoc::memory mem;
-   eosio::chain::digest_type hash;
+   eosio::chain::webassembly::eosvmoc::executor         exec;
+   eosio::chain::webassembly::eosvmoc::memory           mem;
+   eosio::chain::digest_type                            hash;
 };
 #endif
 
@@ -67,7 +71,7 @@ struct callbacks : b1::rodeos::chaindb_callbacks<callbacks>,
    auto& get_db_view_state() { return db_view_state; }
 };
 
-template<typename S>
+template <typename S>
 inline void unknown_intrinsic(...) {
    std::cerr << "Unknown intrinsic: " << S().c_str() << std::endl;
 }
@@ -85,18 +89,21 @@ inline void register_callbacks() {
    b1::rodeos::unimplemented_filter_callbacks<callbacks>::register_callbacks<rhf_t>();
 
    const auto& base_map = eosio::chain::webassembly::eosvmoc::get_intrinsic_map();
-   auto& my_map = get_intrinsic_map();
+   auto&       my_map   = get_intrinsic_map();
 
    // Internal intrinsics do not use apply_context and are therefore safe to use as-is
-   for(const auto& item : base_map) {
-      if(item.first.substr(0, 16) == "eosvmoc_internal" || item.first == "env.eosio_exit") {
+   for (const auto& item : base_map) {
+      if (item.first.substr(0, 16) == "eosvmoc_internal" || item.first == "env.eosio_exit") {
          my_map.insert(item);
       }
    }
 
    boost::hana::for_each(eosio::chain::webassembly::eosvmoc::intrinsic_table, [&](auto S) {
-       my_map.insert({S.c_str(), {nullptr, reinterpret_cast<void*>(unknown_intrinsic<decltype(S)>),
-                                  ::boost::hana::index_if(eosio::chain::webassembly::eosvmoc::intrinsic_table, ::boost::hana::equal.to(S)).value()}});
+      my_map.insert(
+            { S.c_str(),
+              { nullptr, reinterpret_cast<void*>(unknown_intrinsic<decltype(S)>),
+                ::boost::hana::index_if(eosio::chain::webassembly::eosvmoc::intrinsic_table, ::boost::hana::equal.to(S))
+                      .value() } });
    });
 }
 

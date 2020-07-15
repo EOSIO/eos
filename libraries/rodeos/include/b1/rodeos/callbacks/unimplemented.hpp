@@ -153,27 +153,27 @@ struct unimplemented_callbacks {
       RODEOS_REGISTER_CALLBACK(Rft, Derived, get_active_producers);
 
 #define DB_SECONDARY_INDEX_METHODS_SIMPLE(IDX)                                                                         \
-   RODEOS_REGISTER_CALLBACK(Rft, Derived, db_##IDX##_store);                                          \
-   RODEOS_REGISTER_CALLBACK(Rft, Derived, db_##IDX##_remove);                                        \
-   RODEOS_REGISTER_CALLBACK(Rft, Derived, db_##IDX##_update);                                        \
-   RODEOS_REGISTER_CALLBACK(Rft, Derived, db_##IDX##_find_primary);                            \
-   RODEOS_REGISTER_CALLBACK(Rft, Derived, db_##IDX##_find_secondary);                        \
-   RODEOS_REGISTER_CALLBACK(Rft, Derived, db_##IDX##_lowerbound);                                \
-   RODEOS_REGISTER_CALLBACK(Rft, Derived, db_##IDX##_upperbound);                                \
-   RODEOS_REGISTER_CALLBACK(Rft, Derived, db_##IDX##_end);                                              \
-   RODEOS_REGISTER_CALLBACK(Rft, Derived, db_##IDX##_next);                                            \
+   RODEOS_REGISTER_CALLBACK(Rft, Derived, db_##IDX##_store);                                                           \
+   RODEOS_REGISTER_CALLBACK(Rft, Derived, db_##IDX##_remove);                                                          \
+   RODEOS_REGISTER_CALLBACK(Rft, Derived, db_##IDX##_update);                                                          \
+   RODEOS_REGISTER_CALLBACK(Rft, Derived, db_##IDX##_find_primary);                                                    \
+   RODEOS_REGISTER_CALLBACK(Rft, Derived, db_##IDX##_find_secondary);                                                  \
+   RODEOS_REGISTER_CALLBACK(Rft, Derived, db_##IDX##_lowerbound);                                                      \
+   RODEOS_REGISTER_CALLBACK(Rft, Derived, db_##IDX##_upperbound);                                                      \
+   RODEOS_REGISTER_CALLBACK(Rft, Derived, db_##IDX##_end);                                                             \
+   RODEOS_REGISTER_CALLBACK(Rft, Derived, db_##IDX##_next);                                                            \
    RODEOS_REGISTER_CALLBACK(Rft, Derived, db_##IDX##_previous);
 
 #define DB_SECONDARY_INDEX_METHODS_ARRAY(IDX)                                                                          \
-   RODEOS_REGISTER_CALLBACK(Rft, Derived, db_##IDX##_store);                                          \
-   RODEOS_REGISTER_CALLBACK(Rft, Derived, db_##IDX##_remove);                                        \
-   RODEOS_REGISTER_CALLBACK(Rft, Derived, db_##IDX##_update);                                        \
-   RODEOS_REGISTER_CALLBACK(Rft, Derived, db_##IDX##_find_primary);                            \
-   RODEOS_REGISTER_CALLBACK(Rft, Derived, db_##IDX##_find_secondary);                        \
-   RODEOS_REGISTER_CALLBACK(Rft, Derived, db_##IDX##_lowerbound);                                \
-   RODEOS_REGISTER_CALLBACK(Rft, Derived, db_##IDX##_upperbound);                                \
-   RODEOS_REGISTER_CALLBACK(Rft, Derived, db_##IDX##_end);                                              \
-   RODEOS_REGISTER_CALLBACK(Rft, Derived, db_##IDX##_next);                                            \
+   RODEOS_REGISTER_CALLBACK(Rft, Derived, db_##IDX##_store);                                                           \
+   RODEOS_REGISTER_CALLBACK(Rft, Derived, db_##IDX##_remove);                                                          \
+   RODEOS_REGISTER_CALLBACK(Rft, Derived, db_##IDX##_update);                                                          \
+   RODEOS_REGISTER_CALLBACK(Rft, Derived, db_##IDX##_find_primary);                                                    \
+   RODEOS_REGISTER_CALLBACK(Rft, Derived, db_##IDX##_find_secondary);                                                  \
+   RODEOS_REGISTER_CALLBACK(Rft, Derived, db_##IDX##_lowerbound);                                                      \
+   RODEOS_REGISTER_CALLBACK(Rft, Derived, db_##IDX##_upperbound);                                                      \
+   RODEOS_REGISTER_CALLBACK(Rft, Derived, db_##IDX##_end);                                                             \
+   RODEOS_REGISTER_CALLBACK(Rft, Derived, db_##IDX##_next);                                                            \
    RODEOS_REGISTER_CALLBACK(Rft, Derived, db_##IDX##_previous);
 
       // database_api
