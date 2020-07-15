@@ -22,12 +22,13 @@ struct visitor {};
 template<typename T, typename... Types>
 constexpr T& get(std::variant<Types...>& v)
 {
-  if (auto result = std::get_if<T>(&v))
-  {
-    return *result;
-  }
+  return std::get<T>(v);
+  //if (auto result = std::get_if<T>(&v))
+  //{
+  //  return *result;
+  //}
 
-  FC_THROW_EXCEPTION(fc::assert_exception, "variant does not contain a value of type ${t}", ("t",fc::get_typename<T>::name()));
+  //FC_THROW_EXCEPTION(fc::assert_exception, "variant does not contain a value of type ${t}", ("t",fc::get_typename<T>::name()));
 }
 
 // fc::get mimics the functionality of std::get with the
@@ -41,12 +42,13 @@ constexpr T& get(std::variant<Types...>& v)
 template<typename T, typename... Types>
 constexpr const T& get(const std::variant<Types...>& v)
 {
-  if (const auto result = std::get_if<T>(&v))
-  {
-    return *result;
-  }
+  return std::get<T>(v);
+  //if (const auto result = std::get_if<T>(&v))
+  //{
+  //  return *result;
+  //}
 
-  FC_THROW_EXCEPTION(fc::assert_exception, "variant does not contain a value of type ${t}", ("t",fc::get_typename<T>::name()));
+  //FC_THROW_EXCEPTION(fc::assert_exception, "variant does not contain a value of type ${t}", ("t",fc::get_typename<T>::name()));
 }
 
 // fc::visit mimics the functionality of std::visit with the
@@ -57,18 +59,18 @@ constexpr const T& get(const std::variant<Types...>& v)
 template <class Visitor, class... Variants>
 decltype(auto) visit(Visitor&& vis, Variants&&... vars)
 {
-  try
-  {
+  //try
+  //{
     return std::visit(std::forward<Visitor>(vis), std::forward<Variants>(vars)...);
-  }
-  catch(const std::bad_variant_access&)
-  {
-    FC_THROW_EXCEPTION(fc::assert_exception, "Internal error: static_variant tag is invalid.");
-  }
-  catch (...)
-  {
-    throw;
-  }
+  //}
+  //catch(const std::bad_variant_access&)
+  //{
+  //  FC_THROW_EXCEPTION(fc::assert_exception, "Internal error: static_variant tag is invalid.");
+  //}
+  //catch (...)
+  //{
+  //  throw;
+  //}
 }
 
 template <typename variant, int32_t i = 0>
