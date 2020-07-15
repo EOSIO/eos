@@ -86,6 +86,13 @@ void http_api_connection::on_request( const fc::http::request& req, const fc::ht
    std::string resp_body;
    http::reply::status_code resp_status;
 
+   auto handle_error = [&](const auto& e)
+   {
+      resp_status = http::reply::InternalServerError;
+      resp_body = "";
+      wdump((e.to_detail_string()));
+   };
+
    try
    {
       resp.add_header( "Content-Type", "application/json" );
@@ -96,6 +103,12 @@ void http_api_connection::on_request( const fc::http::request& req, const fc::ht
       if( var_obj.contains( "method" ) )
       {
          auto call = var.as<fc::rpc::request>();
+         auto handle_error_inner = [&](const auto& e)
+         {
+            resp_body = fc::json::to_string( fc::rpc::response( *call.id, error_object{ 1, e.to_detail_string(), fc::variant(e)} ) );
+            resp_status = http::reply::InternalServerError;}
+         };
+
          try
          {
             auto result = _rpc_state.local_call( call.method, call.params );
@@ -104,8 +117,11 @@ void http_api_connection::on_request( const fc::http::request& req, const fc::ht
          }
          catch ( const fc::exception& e )
          {
-            resp_body = fc::json::to_string( fc::rpc::response( *call.id, error_object{ 1, e.to_detail_string(), fc::variant(e)} ) );
-            resp_status = http::reply::InternalServerError;
+            handle_error_inner(e);
+         }
+         catch ( const std::exception& e )
+         {
+            handle_error_inner(fc::std_exception_wrapper::from_current_exception(e));
          }
       }
       else
@@ -116,10 +132,13 @@ void http_api_connection::on_request( const fc::http::request& req, const fc::ht
    }
    catch ( const fc::exception& e )
    {
-      resp_status = http::reply::InternalServerError;
-      resp_body = "";
-      wdump((e.to_detail_string()));
+      handle_error(e);
    }
+   catch ( const std::exception& e )
+   {
+      handle_error(fc::std_exception_wrapper::from_current_exception(e));
+   }
+
    try
    {
       resp.set_status( resp_status );
@@ -129,6 +148,10 @@ void http_api_connection::on_request( const fc::http::request& req, const fc::ht
    catch( const fc::exception& e )
    {
       wdump((e.to_detail_string()));
+   }
+   catch ( const std::exception& e )
+   {
+      wdump((fc::std_exception_wrapper::from_current_exception(e).to_detail_string()));
    }
    return;
 }

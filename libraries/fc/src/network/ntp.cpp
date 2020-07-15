@@ -105,6 +105,10 @@ namespace fc
           {
             elog( "${e}", ("e",e.to_detail_string() ) );
           }
+          catch ( const std::exception& e )
+          {
+            elog( "${e}", ("e",e.what() ) );
+          }
         }
       } // request_now
 

@@ -258,6 +258,9 @@ struct txn_test_gen_plugin_impl {
       } catch (const fc::exception& e) {
          next(e.dynamic_copy_exception());
          return;
+      } catch (const std::exception& e) {
+         next(fc::std_exception_wrapper::from_current_exception(e).dynamic_copy_exception());
+         return;
       }
 
       push_transactions(std::move(trxs), next);
@@ -381,6 +384,8 @@ struct txn_test_gen_plugin_impl {
          }
       } catch ( const fc::exception& e ) {
          next(e.dynamic_copy_exception());
+      } catch (const std::exception& e) {
+         next(fc::std_exception_wrapper::from_current_exception(e).dynamic_copy_exception());
       }
 
       push_transactions(std::move(trxs), next);
@@ -451,7 +456,7 @@ void txn_test_gen_plugin::plugin_shutdown() {
    try {
       my->stop_generation();
    }
-   catch(fc::exception& e) {
+   catch(const std::exception& e) {
    }
 }
 

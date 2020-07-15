@@ -35,6 +35,8 @@ void http_client_plugin::plugin_initialize(const variables_map& options) {
                              "File does not appear to be a PEM encoded certificate" );
                } catch ( const fc::exception& e ) {
                   elog( "Failed to read PEM ${f} : ${e}", ("f", root_pem)( "e", e.to_detail_string()));
+               } catch ( const std::exception& e ) {
+                  elog( "Failed to read PEM ${f} : ${e}", ("f", root_pem)( "e", fc::std_exception_wrapper::from_current_exception(e).to_detail_string()));
                }
             }
 
@@ -42,6 +44,8 @@ void http_client_plugin::plugin_initialize(const variables_map& options) {
                my->add_cert( pem_str );
             } catch ( const fc::exception& e ) {
                elog( "Failed to read PEM : ${e} \n${pem}\n", ("pem", pem_str)( "e", e.to_detail_string()));
+            } catch ( const std::exception& e ) {
+               elog( "Failed to read PEM : ${e} \n${pem}\n", ("pem", pem_str)( "e", fc::std_exception_wrapper::from_current_exception(e).to_detail_string()));
             }
          }
       }

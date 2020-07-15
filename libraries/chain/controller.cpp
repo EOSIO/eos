@@ -440,7 +440,7 @@ struct controller_impl {
                rbitr = rbi.begin();
             }
          }
-      } catch( fc::exception& ) {
+      } catch( std::exception& ) {
          if( root_id != fork_db.root()->id ) {
             fork_db.advance_root( root_id );
          }
@@ -1193,6 +1193,15 @@ struct controller_impl {
       trx_context.billed_cpu_time_us = billed_cpu_time_us;
       trx_context.enforce_whiteblacklist = enforce_whiteblacklist;
       transaction_trace_ptr trace = trx_context.trace;
+
+      auto handle_exception = [&](const auto& e)
+      {
+         cpu_time_to_bill_us = trx_context.update_billed_cpu_time( fc::time_point::now() );
+         trace->error_code = controller::convert_exception_to_error_code( e );
+         trace->except = e;
+         trace->except_ptr = std::current_exception();
+      };
+
       try {
          trx_context.init_for_implicit_trx();
          trx_context.published = gtrx.published;
@@ -1211,10 +1220,10 @@ struct controller_impl {
       } catch( const objective_block_validation_exception& ) {
          throw;
       } catch( const fc::exception& e ) {
-         cpu_time_to_bill_us = trx_context.update_billed_cpu_time( fc::time_point::now() );
-         trace->error_code = controller::convert_exception_to_error_code( e );
-         trace->except = e;
-         trace->except_ptr = std::current_exception();
+         handle_exception(e);
+      } catch ( const std::exception& e ) {
+         auto wrapper = fc::std_exception_wrapper::from_current_exception(e);
+         handle_exception(wrapper);
       }
       return trace;
    }
@@ -1327,6 +1336,22 @@ struct controller_impl {
       trx_context.billed_cpu_time_us = billed_cpu_time_us;
       trx_context.enforce_whiteblacklist = gtrx.sender.empty() ? true : !sender_avoids_whitelist_blacklist_enforcement( gtrx.sender );
       trace = trx_context.trace;
+
+      auto handle_exception = [&](const auto& e)
+      {
+         cpu_time_to_bill_us = trx_context.update_billed_cpu_time( fc::time_point::now() );
+         trace->error_code = controller::convert_exception_to_error_code( e );
+         trace->except = e;
+         trace->except_ptr = std::current_exception();
+         trace->elapsed = fc::time_point::now() - trx_context.start;
+
+         if (auto dm_logger = get_deep_mind_logger()) {
+            fc_dlog(*dm_logger, "DTRX_OP FAILED ${action_id}",
+               ("action_id", trx_context.get_action_id())
+            );
+         }
+      };
+
       try {
          trx_context.init_for_deferred_trx( gtrx.published );
 
@@ -1367,18 +1392,12 @@ struct controller_impl {
       } catch( const objective_block_validation_exception& ) {
          throw;
       } catch( const fc::exception& e ) {
-         cpu_time_to_bill_us = trx_context.update_billed_cpu_time( fc::time_point::now() );
-         trace->error_code = controller::convert_exception_to_error_code( e );
-         trace->except = e;
-         trace->except_ptr = std::current_exception();
-         trace->elapsed = fc::time_point::now() - trx_context.start;
-
-         if (auto dm_logger = get_deep_mind_logger()) {
-            fc_dlog(*dm_logger, "DTRX_OP FAILED ${action_id}",
-               ("action_id", trx_context.get_action_id())
-            );
-         }
+        handle_exception(e);
+      } catch ( const std::exception& e) {
+        auto wrapper = fc::std_exception_wrapper::from_current_exception(e);
+        handle_exception(wrapper);
       }
+
       trx_context.undo();
 
       // Only subjective OR soft OR hard failure logic below:
@@ -1505,6 +1524,14 @@ struct controller_impl {
          trx_context.explicit_billed_cpu_time = explicit_billed_cpu_time;
          trx_context.billed_cpu_time_us = billed_cpu_time_us;
          trace = trx_context.trace;
+
+         auto handle_exception =[&](const auto& e)
+         {
+            trace->error_code = controller::convert_exception_to_error_code( e );
+            trace->except = e;
+            trace->except_ptr = std::current_exception();
+         };
+
          try {
             const transaction& trn = trx->packed_trx()->get_transaction();
             if( trx->implicit ) {
@@ -1578,9 +1605,10 @@ struct controller_impl {
          } catch( const objective_block_validation_exception& ) {
             throw;
          } catch (const fc::exception& e) {
-            trace->error_code = controller::convert_exception_to_error_code( e );
-            trace->except = e;
-            trace->except_ptr = std::current_exception();
+           handle_exception(e);
+         } catch (const std::exception& e) {
+           auto wrapper = fc::std_exception_wrapper::from_current_exception(e);
+           handle_exception(wrapper);
          }
 
          emit( self.accepted_transaction, trx );
@@ -1737,6 +1765,9 @@ struct controller_impl {
          } catch( const fc::exception& e ) {
             wlog( "on block transaction failed, but shouldn't impact block generation, system contract needs update" );
             edump((e.to_detail_string()));
+         } catch( const std::exception& e ) {
+            wlog( "on block transaction failed due to unexpected exception" );
+            edump((e.what()));
          } catch( ... ) {
             elog( "on block transaction failed due to unknown exception" );
          }
@@ -2024,6 +2055,10 @@ struct controller_impl {
          edump((e.to_detail_string()));
          abort_block();
          throw;
+      } catch ( const std::exception& e ) {
+         edump((e.what()));
+         abort_block();
+         throw;
       }
    } FC_CAPTURE_AND_RETHROW() } /// apply_block
 
@@ -2167,7 +2202,7 @@ struct controller_impl {
             apply_block( new_head, s, trx_lookup );
             fork_db.mark_valid( new_head );
             head = new_head;
-         } catch ( const fc::exception& e ) {
+         } catch ( const std::exception& e ) {
             fork_db.remove( new_head->id );
             throw;
          }
@@ -2196,18 +2231,21 @@ struct controller_impl {
          }
 
          for( auto ritr = branches.first.rbegin(); ritr != branches.first.rend(); ++ritr ) {
-            optional<fc::exception> except;
+            auto except = std::exception_ptr{};
             try {
                apply_block( *ritr, (*ritr)->is_valid() ? controller::block_status::validated
                                                        : controller::block_status::complete, trx_lookup );
                fork_db.mark_valid( *ritr );
                head = *ritr;
             } catch (const fc::exception& e) {
-               except = e;
+               elog("exception thrown while switching forks ${e}", ("e", e.to_detail_string()));
+               except = std::current_exception();
+            } catch (const std::exception& e) {
+               elog("exception thrown while switching forks ${e}", ("e", e.what()));
+               except = std::current_exception();
             }
-            if( except ) {
-               elog("exception thrown while switching forks ${e}", ("e", except->to_detail_string()));
 
+            if( except ) {
                // ritr currently points to the block that threw
                // Remove the block that threw and all forks built off it.
                fork_db.remove( (*ritr)->id );
@@ -2226,7 +2264,7 @@ struct controller_impl {
                   apply_block( *ritr, controller::block_status::validated /* we previously validated these blocks*/, trx_lookup );
                   head = *ritr;
                }
-               throw *except;
+               std::rethrow_exception(except);
             } // end if exception
          } /// end for each block in branch
 

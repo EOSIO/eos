@@ -1237,8 +1237,10 @@ int main(int argc, char* argv[]) {
       std::cerr << "tester wasm asserted: " << e.what() << "\n";
    } catch (eosio::vm::exception& e) {
       std::cerr << "vm::exception: " << e.detail() << "\n";
-   } catch (std::exception& e) { std::cerr << "std::exception: " << e.what() << "\n"; } catch (fc::exception& e) {
+   } catch (fc::exception& e) {
       std::cerr << "fc::exception: " << e.to_string() << "\n";
+   } catch (std::exception& e) { 
+     std::cerr << "std::exception: " << e.what() << "\n"; 
    }
    return 1;
 }

@@ -1144,10 +1144,10 @@ namespace eosio {
 
                c->enqueue_sync_block();
                c->do_queue_write();
-            } catch( const std::exception& ex ) {
-               fc_elog( logger, "Exception in do_queue_write to ${p} ${s}", ("p", c->peer_name())( "s", ex.what() ) );
             } catch( const fc::exception& ex ) {
                fc_elog( logger, "Exception in do_queue_write to ${p} ${s}", ("p", c->peer_name())( "s", ex.to_string() ) );
+            } catch( const std::exception& ex ) {
+               fc_elog( logger, "Exception in do_queue_write to ${p} ${s}", ("p", c->peer_name())( "s", ex.what() ) );
             } catch( ... ) {
                fc_elog( logger, "Exception in do_queue_write to ${p}", ("p", c->peer_name()) );
             }
@@ -2476,12 +2476,12 @@ namespace eosio {
                      close_connection = true;
                   }
                }
-               catch(const std::exception &ex) {
-                  fc_elog( logger, "Exception in handling read data: ${s}", ("s",ex.what()) );
-                  close_connection = true;
-               }
                catch(const fc::exception &ex) {
                   fc_elog( logger, "Exception in handling read data ${s}", ("s",ex.to_string()) );
+                  close_connection = true;
+               }
+               catch(const std::exception &ex) {
+                  fc_elog( logger, "Exception in handling read data: ${s}", ("s",ex.what()) );
                   close_connection = true;
                }
                catch (...) {
@@ -3361,7 +3361,7 @@ namespace eosio {
          try {
             peer_key = crypto::public_key(msg.sig, msg.token, true);
          }
-         catch (fc::exception& /*e*/) {
+         catch (const std::exception& /*e*/) {
             fc_elog( logger, "Peer ${peer} sent a handshake with an unrecoverable key.", ("peer", msg.p2p_address) );
             return false;
          }

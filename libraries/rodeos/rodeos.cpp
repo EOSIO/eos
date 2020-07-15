@@ -282,10 +282,10 @@ void rodeos_filter::process(rodeos_db_snapshot& snapshot, const ship_protocol::g
    } catch (...) {
       try {
          throw;
-      } catch( const std::exception& e ) {
-         elog( "std::exception processing filter wasm: ${e}", ("e", e.what()) );
       } catch( const fc::exception& e ) {
          elog( "fc::exception processing filter wasm: ${e}", ("e", e.to_detail_string()) );
+      } catch( const std::exception& e ) {
+         elog( "std::exception processing filter wasm: ${e}", ("e", e.what()) );
       } catch( ... ) {
          elog( "unknown exception processing filter wasm" );
       }
