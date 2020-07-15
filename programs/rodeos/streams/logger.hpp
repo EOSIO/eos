@@ -9,9 +9,7 @@ class logger : public stream_handler {
    std::vector<eosio::name> routes_;
 
  public:
-   logger(std::vector<eosio::name> routes) : routes_(std::move(routes)) {
-      ilog("logger initialized");
-   }
+   logger(std::vector<eosio::name> routes) : routes_(std::move(routes)) { ilog("logger initialized"); }
 
    const std::vector<eosio::name>& get_routes() const override { return routes_; }
 

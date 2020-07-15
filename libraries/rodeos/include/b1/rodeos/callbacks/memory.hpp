@@ -22,12 +22,12 @@ struct memory_callbacks {
 
    int32_t memcmp_impl(memcmp_params params) const {
       auto [dest, src, length] = params;
-      int32_t ret = std::memcmp((const char*)dest, (const char*)src, length);
+      int32_t ret              = std::memcmp((const char*)dest, (const char*)src, length);
       return ret < 0 ? -1 : ret > 0 ? 1 : 0;
    }
 
    void* memset_impl(memset_params params) const {
-      auto [dest,value,length] = params;
+      auto [dest, value, length] = params;
       return (char*)std::memset((char*)dest, value, length);
    }
 

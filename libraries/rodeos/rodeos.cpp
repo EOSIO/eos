@@ -180,21 +180,22 @@ void rodeos_db_snapshot::write_block_info(const ship_protocol::get_blocks_result
    if (!result.block)
       return;
 
-   uint32_t            block_num = result.this_block->block_num;
+   uint32_t block_num = result.this_block->block_num;
 
    const signed_block_header& header =
          std::visit([](const auto& blk) { return static_cast<const signed_block_header&>(blk); }, *result.block);
    write_block_info(block_num, result.this_block->block_id, header);
 }
 
-void rodeos_db_snapshot::write_deltas(uint32_t block_num, eosio::opaque<std::vector<ship_protocol::table_delta>> deltas, std::function<bool()> shutdown) {
+void rodeos_db_snapshot::write_deltas(uint32_t block_num, eosio::opaque<std::vector<ship_protocol::table_delta>> deltas,
+                                      std::function<bool()> shutdown) {
    db_view_state view_state{ state_account, *db, *write_session, partition->contract_kv_prefix };
    view_state.kv_ram.enable_write           = true;
    view_state.kv_ram.bypass_receiver_check  = true;
    view_state.kv_disk.enable_write          = true;
    view_state.kv_disk.bypass_receiver_check = true;
    view_state.kv_state.enable_write         = true;
-   uint32_t num = deltas.unpack_size();
+   uint32_t num                             = deltas.unpack_size();
    for (uint32_t i = 0; i < num; ++i) {
       ship_protocol::table_delta delta;
       deltas.unpack_next(delta);
@@ -217,28 +218,31 @@ void rodeos_db_snapshot::write_deltas(uint32_t block_num, eosio::opaque<std::vec
 }
 
 void rodeos_db_snapshot::write_deltas(const ship_protocol::get_blocks_result_v0& result,
-                                      std::function<bool()> shutdown) {
+                                      std::function<bool()>                      shutdown) {
    check_write(result);
    if (!result.deltas)
       return;
 
-   uint32_t            block_num = result.this_block->block_num;
+   uint32_t block_num = result.this_block->block_num;
    write_deltas(block_num, eosio::opaque<std::vector<ship_protocol::table_delta>>(*result.deltas), shutdown);
 }
 
 void rodeos_db_snapshot::write_deltas(const ship_protocol::get_blocks_result_v1& result,
-                                      std::function<bool()> shutdown) {
+                                      std::function<bool()>                      shutdown) {
    check_write(result);
    if (result.deltas.empty())
       return;
 
-   uint32_t            block_num = result.this_block->block_num;
+   uint32_t block_num = result.this_block->block_num;
    write_deltas(block_num, result.deltas, shutdown);
 }
 
 std::once_flag registered_filter_callbacks;
 
-rodeos_filter::rodeos_filter(eosio::name name, const std::string& wasm_filename, const boost::filesystem::path& eosvmoc_path, const eosio::chain::webassembly::eosvmoc::config& eosvmoc_config, bool eosvmoc_enable) : name{ name } {
+rodeos_filter::rodeos_filter(eosio::name name, const std::string& wasm_filename,
+                             const boost::filesystem::path&                    eosvmoc_path,
+                             const eosio::chain::webassembly::eosvmoc::config& eosvmoc_config, bool eosvmoc_enable)
+    : name{ name } {
    std::call_once(registered_filter_callbacks, filter::register_callbacks);
 
    std::ifstream wasm_file(wasm_filename, std::ios::binary);
@@ -257,10 +261,13 @@ rodeos_filter::rodeos_filter(eosio::name name, const std::string& wasm_filename,
    filter_state = std::make_unique<filter::filter_state>();
    filter::rhf_t::resolve(backend->get_module());
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
-   if(eosvmoc_enable) {
+   if (eosvmoc_enable) {
       try {
-         filter_state->eosvmoc_tierup.emplace(eosvmoc_path, eosvmoc_config, code, eosio::chain::digest_type::hash(reinterpret_cast<const char*>(code.data()), code.size()));
-      } FC_LOG_AND_RETHROW();
+         filter_state->eosvmoc_tierup.emplace(
+               eosvmoc_path, eosvmoc_config, code,
+               eosio::chain::digest_type::hash(reinterpret_cast<const char*>(code.data()), code.size()));
+      }
+      FC_LOG_AND_RETHROW();
    }
 #endif
 }
@@ -281,10 +288,12 @@ void rodeos_filter::process(rodeos_db_snapshot& snapshot, const ship_protocol::g
    filter_state->push_data  = push_data;
 
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
-   if(filter_state->eosvmoc_tierup) {
-      const auto* code = filter_state->eosvmoc_tierup->cc.get_descriptor_for_code(filter_state->eosvmoc_tierup->hash, 0);
-      if(code) {
-         filter_state->eosvmoc_tierup->exec.execute(*code, filter_state->eosvmoc_tierup->mem, &cb, 528, 251, [](auto, auto){}, []{}, 0, 0, 0);
+   if (filter_state->eosvmoc_tierup) {
+      const auto* code =
+            filter_state->eosvmoc_tierup->cc.get_descriptor_for_code(filter_state->eosvmoc_tierup->hash, 0);
+      if (code) {
+         filter_state->eosvmoc_tierup->exec.execute(
+               *code, filter_state->eosvmoc_tierup->mem, &cb, 528, 251, [](auto, auto) {}, [] {}, 0, 0, 0);
          return;
       }
    }
@@ -300,13 +309,11 @@ void rodeos_filter::process(rodeos_db_snapshot& snapshot, const ship_protocol::g
    } catch (...) {
       try {
          throw;
-      } catch( const std::exception& e ) {
-         elog( "std::exception processing filter wasm: ${e}", ("e", e.what()) );
-      } catch( const fc::exception& e ) {
-         elog( "fc::exception processing filter wasm: ${e}", ("e", e.to_detail_string()) );
-      } catch( ... ) {
-         elog( "unknown exception processing filter wasm" );
-      }
+      } catch (const std::exception& e) {
+         elog("std::exception processing filter wasm: ${e}", ("e", e.what()));
+      } catch (const fc::exception& e) {
+         elog("fc::exception processing filter wasm: ${e}", ("e", e.to_detail_string()));
+      } catch (...) { elog("unknown exception processing filter wasm"); }
       if (!filter_state->console.empty())
          ilog("filter ${n} console output before exception: <<<\n${c}>>>",
               ("n", name.to_string())("c", filter_state->console));
