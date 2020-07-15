@@ -238,7 +238,7 @@ void rodeos_db_snapshot::write_deltas(const ship_protocol::get_blocks_result_v1&
 
 std::once_flag registered_filter_callbacks;
 
-rodeos_filter::rodeos_filter(eosio::name name, const std::string& wasm_filename) : name{ name } {
+rodeos_filter::rodeos_filter(eosio::name name, const std::string& wasm_filename, const boost::filesystem::path& eosvmoc_path, const eosio::chain::webassembly::eosvmoc::config& eosvmoc_config, bool eosvmoc_enable) : name{ name } {
    std::call_once(registered_filter_callbacks, filter::register_callbacks);
 
    std::ifstream wasm_file(wasm_filename, std::ios::binary);
@@ -257,10 +257,10 @@ rodeos_filter::rodeos_filter(eosio::name name, const std::string& wasm_filename)
    filter_state = std::make_unique<filter::filter_state>();
    filter::rhf_t::resolve(backend->get_module());
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
-   if(true) {
-     try {
-     filter_state->eosvmoc_tierup.emplace("data/rodeos_cache.bin", eosio::chain::webassembly::eosvmoc::config{}, code, eosio::chain::digest_type::hash(reinterpret_cast<const char*>(code.data()), code.size()));
-     } FC_LOG_AND_RETHROW();
+   if(eosvmoc_enable) {
+      try {
+         filter_state->eosvmoc_tierup.emplace(eosvmoc_path, eosvmoc_config, code, eosio::chain::digest_type::hash(reinterpret_cast<const char*>(code.data()), code.size()));
+      } FC_LOG_AND_RETHROW();
    }
 #endif
 }

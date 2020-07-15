@@ -34,6 +34,9 @@ struct cloner_config : ship_client::connection_config {
    bool        exit_on_filter_wasm_error = false;
    eosio::name filter_name = {}; // todo: remove
    std::string filter_wasm = {}; // todo: remove
+
+   eosio::chain::webassembly::eosvmoc::config eosvmoc_config;
+   bool eosvmoc_tierup = false;
 };
 
 struct cloner_plugin_impl : std::enable_shared_from_this<cloner_plugin_impl> {
@@ -72,7 +75,7 @@ struct cloner_session : ship_client::connection_callbacks, std::enable_shared_fr
    cloner_session(cloner_plugin_impl* my) : my(my), config(my->config) {
       // todo: remove
       if (!config->filter_wasm.empty())
-         filter = std::make_unique<rodeos_filter>(config->filter_name, config->filter_wasm);
+         filter = std::make_unique<rodeos_filter>(config->filter_name, config->filter_wasm, app().data_dir(), config->eosvmoc_config, config->eosvmoc_tierup);
    }
 
    void connect(asio::io_context& ioc) {
@@ -222,6 +225,17 @@ void cloner_plugin::set_program_options(options_description& cli, options_descri
    // todo: remove
    op("filter-name", bpo::value<std::string>(), "Filter name");
    op("filter-wasm", bpo::value<std::string>(), "Filter wasm");
+
+#ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
+   op("eos-vm-oc-cache-size-mb", bpo::value<uint64_t>()->default_value(eosio::chain::webassembly::eosvmoc::config().cache_size / (1024u*1024u)), "Maximum size (in MiB) of the EOS VM OC code cache");
+   op("eos-vm-oc-compile-threads", bpo::value<uint64_t>()->default_value(1u)->notifier([](const auto t) {
+         if(t == 0) {
+            elog("eos-vm-oc-compile-threads must be set to a non-zero value");
+            EOS_ASSERT(false, eosio::chain::plugin_exception, "");
+         }
+   }), "Number of threads to use for EOS VM OC tier-up");
+   op("eos-vm-oc-enable", bpo::bool_switch(), "Enable EOS VM OC tier-up runtime");
+#endif
 }
 
 void cloner_plugin::plugin_initialize(const variables_map& options) {
@@ -243,6 +257,15 @@ void cloner_plugin::plugin_initialize(const variables_map& options) {
       } else if (options.count("filter-name") || options.count("filter-wasm")) {
          throw std::runtime_error("filter-name and filter-wasm must be used together");
       }
+
+#ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
+      if (options.count("eos-vm-oc-cache-size-mb"))
+         my->config->eosvmoc_config.cache_size = options.at( "eos-vm-oc-cache-size-mb" ).as<uint64_t>() * 1024u * 1024u;
+      if (options.count("eos-vm-oc-compile-threads"))
+         my->config->eosvmoc_config.threads = options.at("eos-vm-oc-compile-threads").as<uint64_t>();
+      if (options["eos-vm-oc-enable"].as<bool>())
+         my->config->eosvmoc_tierup = true;
+#endif
    }
    FC_LOG_AND_RETHROW()
 }

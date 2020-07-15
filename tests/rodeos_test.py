@@ -114,7 +114,7 @@ class Rodeos:
         self.rodeosStdout = open(os.path.join(self.rodeosDir, "stdout.out"), "w")
         self.rodeosStderr = open(os.path.join(self.rodeosDir, "stderr.out"), "w")
         self.rodeos = subprocess.Popen(['./programs/rodeos/rodeos', '--rdb-database', os.path.join(self.rodeosDir,'rocksdb'), '--data-dir', os.path.join(self.rodeosDir,'data'),
-                               '--clone-connect-to',  self.stateHistoryEndpoint , '--filter-name', self.filterName , '--filter-wasm', self.filterWasm ],
+                               '--clone-connect-to',  self.stateHistoryEndpoint , '--filter-name', self.filterName , '--filter-wasm', self.filterWasm, "--eos-vm-oc-enable" ],
                 stdout=self.rodeosStdout, 
                 stderr=self.rodeosStderr)
         return self
