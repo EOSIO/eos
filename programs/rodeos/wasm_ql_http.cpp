@@ -524,9 +524,10 @@ class listener : public std::enable_shared_from_this<listener> {
    }
 
    // Start accepting incoming connections
-   void run() {
+   bool run() {
       if (acceptor_ready)
          do_accept();
+      return acceptor_ready;
    }
 
  private:
@@ -567,7 +568,7 @@ struct server_impl : http_server, std::enable_shared_from_this<server_impl> {
       threads.clear();
    }
 
-   void start() {
+   bool start() {
       boost::system::error_code ec;
       auto                      check_ec = [&](const char* what) {
          if (!ec)
@@ -583,13 +584,15 @@ struct server_impl : http_server, std::enable_shared_from_this<server_impl> {
       } catch (std::exception& e) {
          throw std::runtime_error("make_address(): "s + http_config->address + ": " + e.what());
       }
-      std::make_shared<listener>(http_config, shared_state, ioc,
-                                 tcp::endpoint{ a, (unsigned short)std::atoi(http_config->port.c_str()) })
-            ->run();
+      auto l = std::make_shared<listener>(http_config, shared_state, ioc,
+                                          tcp::endpoint{ a, (unsigned short)std::atoi(http_config->port.c_str()) });
+      if (!l->run())
+         return false;
 
       threads.reserve(http_config->num_threads);
       for (int i = 0; i < http_config->num_threads; ++i)
          threads.emplace_back([self = shared_from_this()] { self->ioc.run(); });
+      return true;
    }
 }; // server_impl
 
@@ -597,8 +600,10 @@ std::shared_ptr<http_server> http_server::create(const std::shared_ptr<const htt
                                                  const std::shared_ptr<const shared_state>& shared_state) {
    FC_ASSERT(http_config->num_threads > 0, "too few threads");
    auto server = std::make_shared<server_impl>(http_config, shared_state);
-   server->start();
-   return server;
+   if (server->start())
+      return server;
+   else
+      return nullptr;
 }
 
 } // namespace b1::rodeos::wasm_ql
