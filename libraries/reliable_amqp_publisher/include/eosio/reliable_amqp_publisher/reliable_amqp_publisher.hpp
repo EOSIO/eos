@@ -45,6 +45,12 @@ class reliable_amqp_publisher {
       /// \param queue set of messages to send in one transaction <routing_key, message_data>
       void publish_messages_raw(std::deque<std::pair<std::string, std::vector<char>>>&& queue);
 
+      /// Publish message directly to AMQP queue
+      /// Bypasses all reliable mechanisms and just does a simple AMQP publish. Does not queue or retry.
+      /// \param routing_key if empty() uses class provided default routing_key
+      /// \param data message to send
+      void publish_message_direct(const std::string& routing_key, std::vector<char>&& data);
+
       /// reliable_amqp_publisher runs its own thread. In some cases it may be desirable to skip a needless thread jump
       ///  when performing work. This method will allow submission of work to reliable_amqp_publisher's thread.
       ///  To ensure proper shutdown semantics, the function passed should call publish_message() before returning. That is,
