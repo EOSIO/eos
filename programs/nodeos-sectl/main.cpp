@@ -37,8 +37,12 @@ int main(int argc, char** argv) {
       bpo::store(bpo::parse_command_line(argc, argv, cli), varmap);
       bpo::notify(varmap);
    }
-   catch(fc::exception& e) {
+   catch(const fc::exception& e) {
       elog("${e}", ("e", e.to_detail_string()));
+      return 1;
+   }
+   catch(const std::exception& e) {
+      elog("${e}", ("e", fc::std_exception_wrapper::from_current_exception(e).to_detail_string()));
       return 1;
    }
 

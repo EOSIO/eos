@@ -3575,7 +3575,7 @@ int main( int argc, char** argv ) {
       try {
          signed_transaction trx = trx_var.as<signed_transaction>();
          std::cout << fc::json::to_pretty_string( push_transaction( trx, signing_keys_opt.get_keys() )) << std::endl;
-      } catch( fc::exception& ) {
+      } catch( const std::exception& ) {
          // unable to convert so try via abi
          signed_transaction trx;
          abi_serializer::from_variant( trx_var, trx, abi_serializer_resolver, abi_serializer::create_yield_function( abi_serializer_max_time ) );
@@ -4103,6 +4103,17 @@ int main( int argc, char** argv ) {
    auto rexexec        = rexexec_subcommand(rex);
    auto closerex       = closerex_subcommand(rex);
 
+   auto handle_error = [&](const auto& e)
+   {
+      // attempt to extract the error code if one is present
+      if (!print_recognized_errors(e, verbose)) {
+         // Error is not recognized
+         if (!print_help_text(e) || verbose) {
+            elog("Failed with error: ${e}", ("e", verbose ? e.to_detail_string() : e.to_string()));
+         }
+      }
+      return 1;
+   };
 
    try {
        app.parse(argc, argv);
@@ -4116,14 +4127,9 @@ int main( int argc, char** argv ) {
       }
       return 1;
    } catch (const fc::exception& e) {
-      // attempt to extract the error code if one is present
-      if (!print_recognized_errors(e, verbose)) {
-         // Error is not recognized
-         if (!print_help_text(e) || verbose) {
-            elog("Failed with error: ${e}", ("e", verbose ? e.to_detail_string() : e.to_string()));
-         }
-      }
-      return 1;
+      return handle_error(e);
+   } catch (const std::exception& e) {
+      return handle_error(fc::std_exception_wrapper::from_current_exception(e)); 
    }
 
    return 0;

@@ -86,6 +86,13 @@ std::string websocket_api_connection::on_message(
    bool send_message /* = true */ )
 {
    wdump((message));
+
+   auto handle_error = [&](const auto& e)
+   {
+      wdump((e.to_detail_string()));
+      return e.to_detail_string();
+   };
+
    try
    {
       auto var = fc::json::from_string(message);
@@ -94,6 +101,17 @@ std::string websocket_api_connection::on_message(
       {
          auto call = var.as<fc::rpc::request>();
          exception_ptr optexcept;
+
+         auto handle_error_inner = [&](const auto& e)
+         {
+           if (!call.id)
+           {
+             return nullptr;
+           }
+
+           return e.dynamic_copy_exception();
+         };
+
          try
          {
             auto result = _rpc_state.local_call( call.method, call.params );
@@ -107,11 +125,13 @@ std::string websocket_api_connection::on_message(
          }
          catch ( const fc::exception& e )
          {
-            if( call.id )
-            {
-               optexcept = e.dynamic_copy_exception();
-            }
+            optexcept = handle_error_inner(e);
          }
+         catch ( const std::exception& e )
+         {
+            optexcept = handle_error_inner(fc::std_exception_wrapper::from_current_exception(e));
+         }
+
          if( optexcept ) {
 
                auto reply = fc::json::to_string( response( *call.id,  error_object{ 1, optexcept->to_detail_string(), fc::variant(*optexcept)}  ) );
@@ -129,8 +149,11 @@ std::string websocket_api_connection::on_message(
    }
    catch ( const fc::exception& e )
    {
-      wdump((e.to_detail_string()));
-      return e.to_detail_string();
+     return handle_error(e);
+   }
+   catch ( const std::exception& e)
+   {
+     return handle_error(fc::std_exception_wrapper::from_current_exception(e));
    }
    return string();
 }

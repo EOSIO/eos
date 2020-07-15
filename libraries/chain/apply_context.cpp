@@ -84,6 +84,16 @@ void apply_context::exec_one()
 
    const auto& cfg = control.get_global_properties().configuration;
    const account_metadata_object* receiver_account = nullptr;
+
+   auto handle_exception = [&](const auto& e)
+   {
+      action_trace& trace = trx_context.get_action_trace( action_ordinal );
+      trace.error_code = controller::convert_exception_to_error_code( e );
+      trace.except = e;
+      finalize_trace( trace, start );
+      throw;
+   };
+
    try {
       try {
          action_return_value.clear();
@@ -140,11 +150,10 @@ void apply_context::exec_one()
          act_digest = digest_type::hash(*act);
       }
    } catch( const fc::exception& e ) {
-      action_trace& trace = trx_context.get_action_trace( action_ordinal );
-      trace.error_code = controller::convert_exception_to_error_code( e );
-      trace.except = e;
-      finalize_trace( trace, start );
-      throw;
+      handle_exception(e);
+   } catch ( const std::exception& e ) {
+      auto wrapper = fc::std_exception_wrapper::from_current_exception(e);
+      handle_exception(wrapper);
    }
 
    // Note: It should not be possible for receiver_account to be invalidated because:

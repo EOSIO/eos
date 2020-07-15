@@ -215,7 +215,7 @@ struct compile_monitor {
             });
             write_message_with_fds(_nodeos_socket, initalize_response_message());
          }
-         catch(const fc::exception& e) {
+         catch(const std::exception& e) {
             write_message_with_fds(_nodeos_socket, initalize_response_message{e.what()});
          }
          catch(...) {
