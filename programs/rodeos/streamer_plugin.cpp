@@ -47,6 +47,7 @@ struct streamer_plugin_impl : public streamer_t {
 
    std::vector<std::unique_ptr<stream_handler>> streams;
    bool delete_previous = false;
+   bool publish_immediately = false;
 };
 
 static abstract_plugin& _streamer_plugin = app().register_plugin<streamer_plugin>();
@@ -61,6 +62,8 @@ void streamer_plugin::set_program_options(options_description& cli, options_desc
       "RabbitMQ Streams to queues if any; Format: amqp://USER:PASSWORD@ADDRESS:PORT/QUEUE[/STREAMING_ROUTE, ...]");
    op("stream-rabbits-exchange", bpo::value<std::vector<string>>()->composing(),
       "RabbitMQ Streams to exchanges if any; Format: amqp://USER:PASSWORD@ADDRESS:PORT/EXCHANGE[::EXCHANGE_TYPE][/STREAMING_ROUTE, ...]");
+   op("stream-rabbits-immediately", bpo::bool_switch(&my->publish_immediately)->default_value(false),
+      "Stream to RabbitMQ immediately instead of batching per block. Disables reliable message delivery.");
    op("stream-loggers", bpo::value<std::vector<string>>()->composing(),
       "Logger Streams if any; Format: [routing_keys, ...]");
 
@@ -85,12 +88,12 @@ void streamer_plugin::plugin_initialize(const variables_map& options) {
 
       if (options.count("stream-rabbits")) {
          auto rabbits = options.at("stream-rabbits").as<std::vector<std::string>>();
-         initialize_rabbits_queue(app().get_io_service(), my->streams, rabbits, stream_data_path);
+         initialize_rabbits_queue(app().get_io_service(), my->streams, rabbits, my->publish_immediately, stream_data_path);
       }
 
       if (options.count("stream-rabbits-exchange")) {
          auto rabbits = options.at("stream-rabbits-exchange").as<std::vector<std::string>>();
-         initialize_rabbits_exchange(app().get_io_service(), my->streams, rabbits, stream_data_path);
+         initialize_rabbits_exchange(app().get_io_service(), my->streams, rabbits, my->publish_immediately, stream_data_path);
       }
 
       ilog("initialized streams: ${streams}", ("streams", my->streams.size()));
