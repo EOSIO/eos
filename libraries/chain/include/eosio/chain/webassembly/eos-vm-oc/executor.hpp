@@ -20,13 +20,17 @@ class code_cache_base;
 class memory;
 struct code_descriptor;
 
+struct timer_base {
+   virtual void set_expiration_callback(void(*)(void*), void*) {}
+   virtual void checktime() {}
+};
+
 class executor {
    public:
       executor(const code_cache_base& cc);
       ~executor();
 
-      using timer_t = std::function<void(void(*)(void*), void*)>;
-      void execute(const code_descriptor& code, memory& mem, void* context, uint64_t max_call_depth, uint64_t max_pages, timer_t set_timer_callback, std::function<void()> checktime, uint64_t receiver, uint64_t account, uint64_t action);
+      void execute(const code_descriptor& code, memory& mem, void* context, uint64_t max_call_depth, uint64_t max_pages, timer_base* timer, uint64_t receiver, uint64_t account, uint64_t action);
 
    private:
       uint8_t* code_mapping;

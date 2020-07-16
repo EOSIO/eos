@@ -162,7 +162,7 @@ executor::executor(const code_cache_base& cc) {
    mapping_is_executable = true;
 }
 
-void executor::execute(const code_descriptor& code, memory& mem, void* context, uint64_t max_call_depth, uint64_t max_pages, timer_t set_timer_callback, std::function<void()> checktime, uint64_t receiver, uint64_t account, uint64_t action) {
+void executor::execute(const code_descriptor& code, memory& mem, void* context, uint64_t max_call_depth, uint64_t max_pages, timer_base* timer, uint64_t receiver, uint64_t account, uint64_t action) {
    if(mapping_is_executable == false) {
       mprotect(code_mapping, code_mapping_size, PROT_EXEC|PROT_READ);
       mapping_is_executable = true;
@@ -217,17 +217,17 @@ void executor::execute(const code_descriptor& code, memory& mem, void* context, 
    cb->is_running = true;
    cb->globals = globals;
 
-   set_timer_callback([](void* user) {
+   timer->set_expiration_callback([](void* user) {
       executor* self = (executor*)user;
       syscall(SYS_mprotect, self->code_mapping, self->code_mapping_size, PROT_NONE);
       self->mapping_is_executable = false;
    }, this);
-   checktime(); //catch any expiration that might have occurred before setting up callback
+   timer->checktime(); //catch any expiration that might have occurred before setting up callback
 
-   auto cleanup = fc::make_scoped_exit([cb, &set_timer_callback, &mem=mem](){
+   auto cleanup = fc::make_scoped_exit([cb, timer, &mem=mem](){
       cb->is_running = false;
       cb->bounce_buffers->clear();
-      set_timer_callback(nullptr, nullptr);
+      timer->set_expiration_callback(nullptr, nullptr);
 
       uint64_t base_pages = mem.size_of_memory_slice_mapping()/memory::stride - 1;
       if(cb->current_linear_memory_pages > base_pages) {
@@ -252,12 +252,12 @@ void executor::execute(const code_descriptor& code, memory& mem, void* context, 
                   start_func();
                }
             });
-            apply_func(receiver, account, action); // context.get_receiver().to_uint64_t(), context.get_action().account.to_uint64_t(), context.get_action().name.to_uint64_t());
+            apply_func(receiver, account, action);
          });
          break;
       //case 1: clean eosio_exit
       case EOSVMOC_EXIT_CHECKTIME_FAIL:
-         checktime();
+         timer->checktime();
          break;
       case EOSVMOC_EXIT_SEGV:
          EOS_ASSERT(false, wasm_execution_error, "access violation");
