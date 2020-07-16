@@ -18,7 +18,7 @@ static intrinsic_map_t& the_intrinsic_map() {
    return intrinsic_map;
 }
 
-const intrinsic_map_t& get_intrinsic_map() {
+const intrinsic_map_t& get_internal_intrinsic_map() {
    return the_intrinsic_map();
 }
 

@@ -39,6 +39,8 @@ memory::memory(uint64_t max_pages, const intrinsic_map_t& intrinsics) {
    uintptr_t* const intrinsic_jump_table = reinterpret_cast<uintptr_t* const>(zeropage_base - first_intrinsic_offset);
    for(const auto& intrinsic : intrinsics)
       intrinsic_jump_table[-intrinsic.second.ordinal] = (uintptr_t)intrinsic.second.function_ptr;
+   for(const auto& intrinsic : get_internal_intrinsic_map())
+      intrinsic_jump_table[-intrinsic.second.ordinal] = (uintptr_t)intrinsic.second.function_ptr;
 }
 
 #if 0

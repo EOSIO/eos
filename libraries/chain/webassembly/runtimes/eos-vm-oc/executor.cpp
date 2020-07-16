@@ -119,19 +119,6 @@ DEFINE_EOSVMOC_TRAP_INTRINSIC(eosvmoc_internal,unreachable) {
    throw_internal_exception("Unreachable reached");
 }
 
-// Rodeos intrinsics
-DEFINE_EOSVMOC_TRAP_INTRINSIC(env,push_data) {
-   throw_internal_exception("push_data called");
-}
-
-DEFINE_EOSVMOC_TRAP_INTRINSIC(env,get_input_data) {
-   throw_internal_exception("get_input_data called");
-}
-
-DEFINE_EOSVMOC_TRAP_INTRINSIC(env,set_output_data) {
-   throw_internal_exception("set_output_data called");
-}
-
 void register_softfloat();
 static auto registration = (register_softfloat(),0);
 

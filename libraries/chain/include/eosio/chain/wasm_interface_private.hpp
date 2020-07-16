@@ -56,7 +56,7 @@ namespace eosio { namespace chain {
                         else return {};
                       }), exec(cc),
             // Can't get max_pages from db, because db hasn't been initialized yet.
-            mem(0, eosvmoc::get_intrinsic_map()) {}
+            mem(0, webassembly::eosvmoc::get_intrinsic_map()) {}
          eosvmoc::code_cache_async cc;
          eosvmoc::executor exec;
          eosvmoc::memory mem;
