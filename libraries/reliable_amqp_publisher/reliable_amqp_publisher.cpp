@@ -40,7 +40,7 @@ struct reliable_amqp_publisher_impl {
    std::thread thread;
    boost::asio::io_context ctx;
 
-   single_channel_retrying_amqp_connection<boost::asio::io_context> retrying_connection;
+   single_channel_retrying_amqp_connection retrying_connection;
 
    const boost::filesystem::path data_file_path;
 
