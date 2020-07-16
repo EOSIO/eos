@@ -25,6 +25,8 @@ struct timer_base {
    virtual void checktime() {}
 };
 
+void throw_internal_exception(const char* const s);
+
 class executor {
    public:
       executor(const code_cache_base& cc);

@@ -86,7 +86,7 @@ static intrinsic eosio_exit_intrinsic("env.eosio_exit", IR::FunctionType::get(IR
   boost::hana::index_if(intrinsic_table, ::boost::hana::equal.to(BOOST_HANA_STRING("env.eosio_exit"))).value()
 );
 
-static void throw_internal_exception(const char* const s) {
+void throw_internal_exception(const char* const s) {
    *reinterpret_cast<std::exception_ptr*>(eos_vm_oc_get_exception_ptr()) = std::make_exception_ptr(wasm_execution_error(FC_LOG_MESSAGE(error, s)));
    siglongjmp(*eos_vm_oc_get_jmp_buf(), EOSVMOC_EXIT_EXCEPTION);
    __builtin_unreachable();
@@ -131,6 +131,9 @@ DEFINE_EOSVMOC_TRAP_INTRINSIC(env,get_input_data) {
 DEFINE_EOSVMOC_TRAP_INTRINSIC(env,set_output_data) {
    throw_internal_exception("set_output_data called");
 }
+
+void register_softfloat();
+static auto registration = (register_softfloat(),0);
 
 struct executor_signal_init {
    executor_signal_init() {

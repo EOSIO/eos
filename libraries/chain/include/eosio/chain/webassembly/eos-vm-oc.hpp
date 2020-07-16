@@ -142,6 +142,14 @@ template<>
 struct wasm_to_value_type<U64> {
    static constexpr auto value = ValueType::i64;
 };
+template<>
+struct wasm_to_value_type<I32> {
+   static constexpr auto value = ValueType::i32;
+};
+template<>
+struct wasm_to_value_type<I64> {
+   static constexpr auto value = ValueType::i64;
+};
 
 template<typename T>
 constexpr auto wasm_to_value_type_v = wasm_to_value_type<T>::value;
@@ -162,6 +170,14 @@ struct wasm_to_rvalue_type<U32> {
 };
 template<>
 struct wasm_to_rvalue_type<U64> {
+   static constexpr auto value = ResultType::i64;
+};
+template<>
+struct wasm_to_rvalue_type<I32> {
+   static constexpr auto value = ResultType::i32;
+};
+template<>
+struct wasm_to_rvalue_type<I64> {
    static constexpr auto value = ResultType::i64;
 };
 template<>

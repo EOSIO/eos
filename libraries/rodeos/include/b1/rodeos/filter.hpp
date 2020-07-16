@@ -94,7 +94,7 @@ inline void register_callbacks() {
 
    // Internal intrinsics do not use apply_context and are therefore safe to use as-is
    for (const auto& item : base_map) {
-      if (item.first.substr(0, 16) == "eosvmoc_internal" || item.first == "env.eosio_exit") {
+      if (item.first.substr(0, 16) == "eosvmoc_internal" || item.first.substr(0, 15) == "eosio_injection" || item.first == "env.eosio_exit") {
          my_map.insert(item);
       }
    }
