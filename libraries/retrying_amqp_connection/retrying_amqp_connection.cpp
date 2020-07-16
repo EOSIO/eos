@@ -68,6 +68,15 @@ struct retrying_amqp_connection::impl : public AMQP::ConnectionHandler {
    }
 
    void schedule_retry() {
+      //in some cases, such as an async_read & async_write both outstanding at the same time during socket failure,
+      // schedule_retry() can be called multiple times in quick succession. nominally this causes an already closed _sock
+      // to be closed(), and cancels the pending 1 second timer when restarting the 1 second timer. In theory though, if thread
+      // timing is particularly slow, the one second timer may have already expired (and the callback can no longer be cancelled)
+      // which could potentially queue up two start_connection()s.
+      //Bail out early if a pending timer is already running and the callback hasn't been called.
+      if(_retry_scheduled)
+         return;
+
       _sock.close();
       _resolver.cancel();
 
@@ -81,7 +90,9 @@ struct retrying_amqp_connection::impl : public AMQP::ConnectionHandler {
       _timer.expires_from_now(std::chrono::seconds(1), ec);
       if(ec)
          return;
+      _retry_scheduled = true;
       _timer.async_wait(boost::asio::bind_executor(_strand, [this](const auto ec) {
+         _retry_scheduled = false;
          if(ec)
             return;
          start_connection();
@@ -140,6 +151,7 @@ struct retrying_amqp_connection::impl : public AMQP::ConnectionHandler {
    connection_ready_callback_t  _ready_callback;
    connection_failed_callback_t _failed_callback;
    bool _indicated_ready = false;
+   bool _retry_scheduled = false;
 
    fc::logger _logger;
 
